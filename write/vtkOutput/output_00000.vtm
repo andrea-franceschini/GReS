@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VTKFile type="vtkMultiBlockDataSet" version="1.0">
+   <vtkMultiBlockDataSet>
+      <Block name="CellElementRegion">
+         <DataSet file="output_00000/domain.vtu" name="Domain"/>
+      </Block>
+      <Block name="SurfaceElementRegion">
+         <DataSet file="output_00000/fracture.vtu" name="Fracture"/>
+      </Block>
+   </vtkMultiBlockDataSet>
+</VTKFile>
