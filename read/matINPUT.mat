@@ -1,0 +1,29 @@
+ 4                                            !#materials
+ 1     ---------------------------------------!matID
+ 1                                            !matModel 
+ 0.5D-1	    0.5D-1     0.5D-1                 !PERMX,PERMY,PERMZ
+ 0.40D0     4.4D-04    9.81D-3                !porosita',betaf,gammaw
+ 0.2D0      0.15D0     1.00D0                 !E,NI,ALFA
+ 8.90D0    -0.30D0     1.30    0.42    20.00  !a.b.e0.Cc.Cr(constitutive-law)
+ End
+ 2     ---------------------------------------!matID
+ 1                                            !matModel 
+ 0.5D-1     0.5D-1     0.5D-1                 !PERMX,PERMY,PERMZ
+ 0.40D0     4.4D-04    9.81D-3                !porosita',betaf,gammaw
+ 1.0D4      0.15D0     1.00D0                 !E,NI,ALFA
+ 1.50D1     0.00D0     0.3    0.01     20.00  !a.b.e0.Cc.Cr(constitutive-law)
+ End
+ 3     ---------------------------------------!matID
+ 2                                            !matModel 
+ 0.5D-7     0.5D-7     0.5D-7                 !PERMX,PERMY,PERMZ
+ 0.40D0     4.4D-04    9.81D-3                !porosita',betaf,gammaw
+ 2.5D0      0.15D0     1.00D0                 !E,NI,ALFA
+ 3.00D0    -0.40D0     0.98   0.12    20.00   !a.b.e0.Cc.Cr(constitutive-law)
+ End
+ 4     ---------------------------------------!matID
+ 2                                            !matModel 
+ 0.5D-7     0.5D-7     0.5D-7                 !PERMX,PERMY,PERMZ
+ 0.40D0     4.4D-04    9.81D-3                !porosita',betaf,gammaw
+ 1.0D1      0.15D0     1.00D0                 !E,NI,ALFA
+ 8.90D-1   -0.40D0     0.8    0.1     20.00   !a.b.e0.Cc.Cr(constitutive-law)
+ End

@@ -16,3 +16,10 @@ list = fieldnames(mesh.surfaceRegions);
 for i = 1 : length(list)
     fprintf('%s\n', cell2mat(list(i)));
 end
+
+fileName = 'material.mat';
+mat = Material ();
+%tic;
+readMaterial(fileName);
+%t1 = toc;
+%fprintf('Time to read %.3f [s]\n', t1)
