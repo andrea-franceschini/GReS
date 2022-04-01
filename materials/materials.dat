@@ -1,0 +1,15 @@
+Elastic                                      % material model
+elas                                         % name
+0.2D0      0.15D0                            % E, nu
+End
+
+Hypoplastic                                  % material model
+hypo                                         % name
+0.15 1.50D1 0.10D0  0.3    0.01    20.00     % nu, a, b, e0, Cc, Cr
+End
+
+PorousRock                                   % material model
+rock                                         % name 
+0.5D-7     0.5D-7     0.5D-7   0.4           % permx, permy, permz, porosity
+End
+
