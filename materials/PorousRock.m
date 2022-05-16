@@ -1,23 +1,28 @@
 classdef PorousRock < handle
-  %MATERIAL General material class
+  % Porous rock material class
 
   properties (Access = private)
     %General properties:
-    kx = [];             %Elastic modulus 
-    ky = [];            %Poisson ratio 
-    kz = [];
-    poro = [];
+    kx = [];             %Permeability in x
+    ky = [];             %Permeability in y 
+    kz = [];             %Permeability in z
+    poro = [];           %Porosity
   end
 
   methods (Access = public)
+      % Class constructor method
     function obj = PorousRock(inputString)
+      % Calling the function setMaterialParameters to set material
+      % parameters
       obj.setMaterialParameters(inputString);
     end
 
+    % Function to get material porosity
     function poro = getPorosity(obj)
       poro = obj.poro;
     end
 
+    % Function to get material permeability
     function [kx, ky, kz] = getPermeability(obj)
       kx = obj.kx;
       ky = obj.ky;
@@ -26,6 +31,8 @@ classdef PorousRock < handle
   end
 
   methods (Access = private)
+      % Function that set the material parameters coming from "data"
+      % (Materials) inside the vector "params"
     function setMaterialParameters(obj, inputString)
       words = strsplit(inputString, ' ');
       params = zeros(length(words),1);
@@ -36,6 +43,8 @@ classdef PorousRock < handle
           params(k) = sscanf(words{i}, '%e');
         end
       end
+      % Object properties are assigned with the same order used in the input
+      % file
       obj.kx = params(1);
       obj.ky = params(2);
       obj.kz = params(3);
