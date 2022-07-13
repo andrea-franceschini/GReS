@@ -1,0 +1,17 @@
+NodalDirichlet                               % BC name
+nodeDir                                      % BC type
+3                                            % dofmax
+4     4     4                                % #ID_blocked_x, #ID_blocked_y ,#ID_blocked_z
+1     0                                      % ID_x, value_x
+2     0                                    
+3     0                                      
+4     0                                   
+1     0                                      % ID_y, value_y
+2     0  
+3     0                                    
+4     0   
+1     0                                      % ID_z, value_z
+2     0    
+3     0                                      
+4     0              
+End
