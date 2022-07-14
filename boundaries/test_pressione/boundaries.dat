@@ -1,7 +1,0 @@
-Dirichlet                                    % BC name
-dir                                          % BC type
-1                                            % dofmax
-2                                            % #ID_blocked
-2    0                                       % ID, value
-3    0    
-End
