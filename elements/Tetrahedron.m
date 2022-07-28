@@ -107,6 +107,7 @@ classdef Tetrahedron < handle
     
     %Function for volume calculation
     function getVolume(obj)
+        obj.Vol = zeros(obj.nElem,1);
         
         for el = 1:obj.nElem
             i = obj.elemTopol(el,1);
@@ -114,16 +115,16 @@ classdef Tetrahedron < handle
             m = obj.elemTopol(el,3);
             p = obj.elemTopol(el,4);
             
-            obj.Vol = (det([1 obj.nodeCoords(i,1) obj.nodeCoords(i,2) obj.nodeCoords(i,3);
-                        1 obj.nodeCoords(j,1) obj.nodeCoords(j,2) obj.nodeCoords(j,3);
-                        1 obj.nodeCoords(m,1) obj.nodeCoords(m,2) obj.nodeCoords(m,3);
-                        1 obj.nodeCoords(p,1) obj.nodeCoords(p,2) obj.nodeCoords(p,3)]))/6;
+            obj.Vol(el) = (det([1 obj.nodeCoords(i,1) obj.nodeCoords(i,2) obj.nodeCoords(i,3);
+                                1 obj.nodeCoords(j,1) obj.nodeCoords(j,2) obj.nodeCoords(j,3);
+                                1 obj.nodeCoords(m,1) obj.nodeCoords(m,2) obj.nodeCoords(m,3);
+                                1 obj.nodeCoords(p,1) obj.nodeCoords(p,2) obj.nodeCoords(p,3)]))/6;
          end
     end
     
     
-        %Function for derivates matrices calculation
-     function getDerivates(obj)
+        %Function for derivatives matrices calculation
+     function getDerivatives(obj)
         %Allocation
         obj.B = zeros(2*obj.dofmax*obj.nElem,obj.nNode*obj.dofmax);
          
@@ -163,7 +164,7 @@ classdef Tetrahedron < handle
                    0    d(4) c(4);
                    d(4) 0    b(4)];
                           
-         obj.B (6*el-5:6*el,:)  = (1/(6*obj.Vol))* [B1 B2 B3 B4];
+         obj.B (6*el-5:6*el,:)  = (1/(6*obj.Vol(el)))* [B1 B2 B3 B4];
          end
          
        % Quadratic tetrahedron
@@ -202,7 +203,8 @@ classdef Tetrahedron < handle
   methods (Access = private)
       % Function that set the element parameters coming from "data"
     function setElementData(obj,data)
-        obj.nNode = data{1};
+        nNode = data{1};
+        obj.nNode = nNode(1,1);
         obj.nodeCoords = data{2};
         obj.nElem = data{3};
         obj.elemTopol = data{4};

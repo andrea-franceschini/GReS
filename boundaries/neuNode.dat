@@ -1,6 +1,5 @@
 NodeBC                                       % BC name
 nodeNeu                                      % BC type
-3                                            % dofmax
 2     0     0                                % #ID_blocked, #ID_blocked ,#ID_blocked
 1    100                                     % ID_x, value_x
 4    200                                   

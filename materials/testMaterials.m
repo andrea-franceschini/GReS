@@ -15,20 +15,20 @@ elas = mat.getMaterial('elas');
 
 % Calling the function of the class "Elastic" that calculates stiffness
 % matrix for elastic materials
-elas.getStiffnessMatrix()
+D1 = elas.getStiffnessMatrix();
 
 hypopl = mat.getMaterial('hypopl');
 % Calling the function of the class "HypoPlastic" that calculates stiffness
 % matrix for elastic materials. Z-stress is needed as input data
-hypopl.getStiffnessMatrix(1)
+D2 = hypopl.getStiffnessMatrix(1);
 
 hypoel = mat.getMaterial('hypoel');
 % Calling the function of the class "HypoPlastic" that calculates stiffness
 % matrix for elastic materials. Z-stress is needed as input data
-hypoel.getStiffnessMatrix(3)
+D3 = hypoel.getStiffnessMatrix(3);
 
 anis = mat.getMaterial('transvel');
-aa = anis.getStiffnessMatrix(3)
+D4 = anis.getStiffnessMatrix(3);
 
 % cam = mat.getMaterial('camclay');
 % cam.
@@ -36,11 +36,11 @@ aa = anis.getStiffnessMatrix(3)
 rock = mat.getMaterial('rock');
 % Calling the function of the class "PorousRock" that gets rock
 % permeability
-rock.getPermeability()
+rock.getPermeability();
 
 water = mat.getMaterial('fluid');
 % Calling the function of the class "Fluid" that gets the fluid weight
-water.getWeight()
+water.getWeight();
 
 % Reading the stopwatch timer
 t1 = toc;

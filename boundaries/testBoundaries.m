@@ -3,7 +3,7 @@ clear;
 clc;
 
 % Neumann and Dirichlet boundary conditions are defined in separeted input 
-% files,however it is possibile to put together these two input files and generate
+% files, however it is possibile to put together these two input files and generate
 % different input files based on the type of BC (node, surface..) instead
 
 %------------------------------  DIRICHLET  ------------------------------

@@ -1,10 +1,11 @@
 classdef Materials < handle
   % MATERIAL General material class
 
-  properties (Access = private)
+  properties (Access = public)
     % Creation of a Map Object 
     db = containers.Map;
   end
+
 
   methods (Access = public)
     % Class constructor method   
@@ -14,7 +15,7 @@ classdef Materials < handle
     end
 
     % Function to get the matIdentifier defined by the user 
-    function mat = getMaterial(obj, matIdentifier)
+    function mat = getMaterial(obj,matIdentifier)
      % Determining if the matIdentifier is related to one of the existing 
      % materials' class
       if (obj.db.isKey(matIdentifier))

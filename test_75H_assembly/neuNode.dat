@@ -1,0 +1,7 @@
+NodeBC                                       % BC name
+nodeNeu                                      % BC type
+0     0     1                                % #ID_blocked, #ID_blocked ,#ID_blocked
+                                             % ID_x, value_x                               
+                                             % ID_y, value_y
+17  -1e3                                    % ID_z, value_z  
+End

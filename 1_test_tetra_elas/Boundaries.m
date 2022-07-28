@@ -1,5 +1,5 @@
 classdef Boundaries < handle
-  % BOUNDARIES General material class
+  % BOUNDARIES General boundary condition class
 
   properties (Access = private)
     % Creation of a Map Object 
@@ -20,8 +20,8 @@ classdef Boundaries < handle
       if (obj.db.isKey(BCIdentifier))
         bcType = obj.db(BCIdentifier);
       else
-        %displaying error message if the boundary class has not been
-        %created yet
+        % Displaying error message if the boundary class has not been
+        % created yet
          error('Boundary condition % not present', BCIdentifier);
       end
     end
@@ -29,7 +29,7 @@ classdef Boundaries < handle
 
   methods (Access = private)
       
-    %Function to read the input file
+    % Function to read the input file
     function readInputFile(obj, fileName)
       fid = fopen(fileName, 'r');
       % Reading until the end of the file:
@@ -40,11 +40,11 @@ classdef Boundaries < handle
         if (length(line) == 0)
           continue;
         end
-        % Reading BC's name (first line)
+        % Reading and setting BC's name (first line)
         BCName = sscanf(line,'%s',1);
         % Reading the second line of the input file
         line = obj.getNewLine(fid);
-        % Reading boundary condition's identifier
+        % Setting boundary condition's identifier (second line)
         BCIdentifier = sscanf(line,'%s',1);
         % Creation of an empty array to store data
         data = [];
@@ -60,16 +60,13 @@ classdef Boundaries < handle
         end        
        
         
-  % Calling the right BC class based on BCIdentifier 
+  % Calling the right BC class based on BCIdentifier (= BCname in the input
+  % file)
         switch lower(BCName)
-          case 'nodaldirichlet'
+          case 'nodebc'
             obj.db(BCIdentifier) = NodeBC(data);
-          case 'nodalneumann'
-            obj.db(BCIdentifier) = NodeBC(data);
-%           case 'superficialdirichlet'
-%             obj.db(BCIdentifier) = FaceBC(data);
-%           case 'superficialneumann'
-%             obj.db(BCIdentifier) = FaceBC(data);
+%           case 'surfacebc'
+%             obj.db(BCIdentifier) = SurfaceBC(data);
           otherwise
             error('%s not available', matName);
         end

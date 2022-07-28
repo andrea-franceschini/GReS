@@ -9,11 +9,10 @@ classdef Elements < handle
   end
    
   methods (Access = public)
-      function obj = Elements(nNode,nodeCoords,nElem,elemTopol,surfTopol)
-        obj.setElementData(nNode,nodeCoords,nElem,elemTopol,surfTopol)
+      function obj = Elements(varargin)
+        obj.setElementData(varargin)
       end
-  
-  
+    
       function el = getElement(obj,elemType)
         if elemType == 10
             el = Tetrahedron(obj.data);
@@ -23,11 +22,12 @@ classdef Elements < handle
            error('Element not available');
         end
      end
+
   end
   
   methods (Access = private)
-      function obj = setElementData(obj,nNode,nodeCoords,nElem,elemTopol,surfTopol)
-          obj.data = {nNode nodeCoords nElem elemTopol surfTopol};
+      function obj = setElementData(obj,varargin)
+          obj.data = varargin{1};
       end
   end
   
