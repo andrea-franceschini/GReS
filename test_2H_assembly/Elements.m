@@ -10,7 +10,7 @@ classdef Elements < handle
    
   methods (Access = public)
       function obj = Elements(varargin)
-        obj.setElementData(varargin)
+        obj.setElementData(varargin);
       end
     
       function el = getElement(obj,elemType)

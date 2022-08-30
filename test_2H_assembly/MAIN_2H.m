@@ -115,7 +115,7 @@ bound = Boundaries(fileName);
 % conditions for the nodes of the mesh (BCIdentifier = nodeDir)
 nodedisp = bound.getBC('nodeDir');
 % Creation of the object "nodedisp" (boundary conditions for node displacements)
-nodedisp.NodeBoundary()
+nodedisp.NodeBoundary();
 
 % NEUMANN
 % Setting input file
@@ -142,7 +142,7 @@ tic;
 % If needed for constitutive law, specify stress value after "hexa"
 K = assemblyKGauss(nTotNode, elemMAT, mat, hexa);
 autoval = eigs(K);
-spy(K)
+%spy(K)
 % Reading time
 AssemblyK_time = toc;
 
