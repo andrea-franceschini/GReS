@@ -1,0 +1,15 @@
+NodeBC                              % BC name
+nodeNeu                             % BC type
+0   0   9                          % #ID_blocked_x, #ID_blocked_y ,#ID_blocked_z
+                                     % ID_x, value_x
+                                     % ID_y, value_y
+1 -34.7168                           % ID_z, value_z
+2 -69.4227             
+3 -20.8333             
+4 -97.2222             
+5 -125             
+6 -27.7778             
+7 -34.7276             
+8 -69.4661             
+9 -20.8333             
+End

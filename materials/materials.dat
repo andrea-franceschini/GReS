@@ -3,14 +3,9 @@ elas                                         % name
 0.2e0      0.15e0                            % E, nu
 End
 
-HypoPlastic                                  % material model
-hypopl                                       % name
-0.15 1.50e1 0.10e0  0.3    0.01    20.00     % nu, a, b, e0, Cc, Cr
-End
-
 HypoElastic                                         % material model
 hypoel                                              % name
-0.15 1.50e1 0.10e0 1.0e1 0.8e0 0.3 0.01 20.00 150   % nu, a, b, a1, b1, e0, Cc, Cr, szmin
+0.15 1.50e1 0.10e0 1.0e1 0.8e0 0.3 0.01 20.00 150   % nu, a, b, a1, b1, szmin
 End
 
 TransvElastic                                % material model

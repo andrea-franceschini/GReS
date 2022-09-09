@@ -10,12 +10,6 @@ classdef HypoElastic < handle
     % a1, b1, in cm = a1 * sz^b1
     a1 = [];
     b1 = [];
-    % Initial void index
-    e0 = [];
-    % Compression coefficient
-    Cc = [];
-    % Recompression index
-    Cr = [];
     % Lowest vertical stress
     szmin = [];
   end
@@ -81,14 +75,12 @@ classdef HypoElastic < handle
 
     % Function for compressibility calculation
     function cm = getCompressibility(obj, sz)
-        sz = sz{1};
         if sz <= obj.szmin
         % Loading path
             cm = (obj.a) * (abs(sz))^(obj.b);
         else
         % Unloading/reloading path
-            %cm = (obj.a1) * (abs(sz))^(obj.b1);
-            cm = ((1+0.3)*(1-2*0.3))/(1);
+            cm = (obj.a1) * (abs(sz))^(obj.b1);
         end
     end
   end

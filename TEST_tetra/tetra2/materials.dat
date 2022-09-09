@@ -1,0 +1,4 @@
+Elastic                                      % material model
+elas                                         % name
+1.5e1      0.3e0                             % E, nu
+End

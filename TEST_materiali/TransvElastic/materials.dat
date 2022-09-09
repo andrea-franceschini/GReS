@@ -1,0 +1,4 @@
+TransvElastic                                % material model
+transvel                                     % name 
+1     15     0.3   0.3                       % Ep, Ez, nu_p, nu_z
+End
