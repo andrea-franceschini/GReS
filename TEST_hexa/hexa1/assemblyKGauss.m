@@ -16,8 +16,7 @@ K = sparse(Kdim,Kdim,0);
       
       % Sum of stiffness matrices calculated in each Gauss points
       % j = n-th Gauss point
-      pGauss = 1;
-      while pGauss <= ncol
+      for pGauss = 1 : ncol
           s = gCoord(1,:);
           t = gCoord(2,:);
           p = gCoord(3,:);
@@ -47,10 +46,8 @@ K = sparse(Kdim,Kdim,0);
 
           % Assembly the element local stiffness matrix
           k = k + k_pGauss; 
-          pGauss = pGauss+1;
      end
 
- 
        
     dof = length(k)/element.nNode;   
     
