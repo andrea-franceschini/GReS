@@ -1,14 +1,14 @@
 classdef Fluid < handle
-    % Fluid material class  
+  % FLUID general fluid class  
     
-    properties (Access = private)
-        %General properties:
-         gamma = [];             %Fluid specific weight 
-         beta = [];              %Fluid compressibility 
-    end 
+  properties (Access = private)
+    %General properties:
+    gamma = [];             %Fluid specific weight 
+    beta = [];              %Fluid compressibility 
+  end 
     
-    methods (Access = public)
-        % Class constructor method
+  methods (Access = public)
+    % Class constructor method
     function obj = Fluid(inputString)
       % Calling the function setMaterialParameters to set material
       % parameters
@@ -24,11 +24,11 @@ classdef Fluid < handle
     function beta = getCompressibility(obj)
       beta = obj.beta;
     end
-  end
+ end
     
-    methods (Access = private)
-      % Function that set the material parameters coming from "data"
-      % (Materials) inside the vector "params"
+  methods (Access = private)
+    % Function that assigns the material data the object properties
+    % coming the cell "data" created inside the class Materials
     function setMaterialParameters(obj, inputString)
       words = strsplit(inputString, ' ');
       params = zeros(length(words),1);
@@ -39,8 +39,8 @@ classdef Fluid < handle
           params(k) = sscanf(words{i}, '%e');
         end
       end
-      % Object properties are assigned with the same order used in the input
-      % file
+      % Object properties are assigned with the same order used for the 
+      % material parameters inside the input file
       obj.gamma = params(1);
       obj.beta = params(2);
     end

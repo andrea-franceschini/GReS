@@ -1,5 +1,5 @@
 classdef PorousRock < handle
-  % Porous rock material class
+  % POROUS ROCK material class
 
   properties (Access = private)
     %General properties:
@@ -31,8 +31,8 @@ classdef PorousRock < handle
   end
 
   methods (Access = private)
-      % Function that set the material parameters coming from "data"
-      % (Materials) inside the vector "params"
+    % Function that assigns the material data the object properties
+    % coming the cell "data" created inside the class Materials
     function setMaterialParameters(obj, inputString)
       words = strsplit(inputString, ' ');
       params = zeros(length(words),1);
@@ -43,8 +43,8 @@ classdef PorousRock < handle
           params(k) = sscanf(words{i}, '%e');
         end
       end
-      % Object properties are assigned with the same order used in the input
-      % file
+      % Object properties are assigned with the same order used for the 
+      % material parameters inside the input file
       obj.kx = params(1);
       obj.ky = params(2);
       obj.kz = params(3);

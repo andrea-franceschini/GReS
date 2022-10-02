@@ -82,7 +82,7 @@ elems = Elements(nNode,nodeCoords,nElem,elemTopol,surfTopol,cellCentroid);
 tetra = elems.getElement(elemType);
 
 % Calling the function of the class that calculates shape functions
-tetra.getCoefficient();
+tetra.getBasisF();
 
 % Calling the function of the class that calculates the area of the faces 
 % of the elements
@@ -146,9 +146,9 @@ autoval = eigs(K);
 AssemblyK_time = toc;
 
 % Function to assembly boundary conditions
-[K,f] = assemblyBC(nTotNode, K, nodedisp, nodeforce);
+[K,f] = imposeBC(nTotNode, K, nodedisp, nodeforce);
 % Reading time
-AssemblyBC_time = toc;
+ImposeBC_time = toc;
 %----------------------------- END ASSEMBLY ------------------------------
 
 % Printing time 
@@ -157,7 +157,7 @@ fprintf('Time to generate object "Materials" %.3f [s]\n', Generate_materials);
 fprintf('Time to generate object "Elements" %.3f [s]\n', Generate_elements);
 fprintf('Time to generate object "Boundaries" %.3f [s]\n', Generate_BC);
 fprintf('Time to assembly global stiffness matrix %.3f [s]\n', AssemblyK_time);
-fprintf('Time to assembly boundary conditions %.3f [s]\n', AssemblyBC_time);
+fprintf('Time to impose boundary conditions %.3f [s]\n', ImposeBC_time);
 
 %--------------------------- SYSTEM SOLVING ------------------------------
 % Starting a timer
@@ -199,3 +199,27 @@ cellData3D = repmat(struct('name', 1, 'data', 1), 0, 1);
 
 V = VTKOutput(mesh);
 V.writeVTKFile(0.0, pointData3D, [], [], []);
+
+% ---------------------- ANALITYCAL SOLUTION ---------------------------
+% m = 50 kg on a 50x50 cm surface:
+sigma_z = -0.2;  %MPa
+
+% Vertical compressibility:
+D = elas.getStiffnessMatrix();
+K_z = D(3,3);
+
+% Model geometry:
+H = 1500;    %mm
+z_coord = nodeCoords(:,3);
+
+% Analitycal solution
+u_real = zeros(nTotNode,1);
+for i = 1:nTotNode
+    u_real(i) = (sigma_z/K_z)*z_coord(i);
+end
+
+% ------------------------- 2-NORM ERROR ------------------------------
+norm1 = norm(u_real - u_z);
+norm2 = norm(u_real);
+
+error = norm1/norm2;

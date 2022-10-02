@@ -1,59 +1,67 @@
 function K = assemblyKGauss(nTotNode, elemMAT, mat, element, varargin)
 % Function for global stiffness matrix assembly with no boundary conditions
 
-Kdim = element.dofmax*nTotNode;
-
-%Global stiffness matrix memory allocation
-K = sparse(Kdim,Kdim,0);
-
-%Assembly local stiffness matrices for each element
-  for el = 1: element.nElem
-      k = zeros(element.dofmax*element.nNode);
-      
-      %Gauss integration points coordinates and weights
-      [gCoord,gWeight] = gaussValue(element.nNode,element.dim);
-      [~,ncol] = size(gCoord);
-      
-      % Sum of stiffness matrices calculated in each Gauss points
-      % j = n-th Gauss point
-      pGauss = 1;
-      while pGauss <= ncol
-          s = gCoord(1,:);
-          t = gCoord(2,:);
-          p = gCoord(3,:);
-          s = s(pGauss);
-          t = t(pGauss);
-          p = p(pGauss);
-          
-          element.getJacobian(el,s,t,p);
-          element.getDerivatives(el,s,t,p);
-          Bt = (element.B)';
-          
-          % Get the right material stiffness for each element 
-          for i = 1 : length(mat.db.keys)
-              if elemMAT(el) == i
-                 var = mat.db.keys;
-                 matIdentifier = var(i);
-                 matIdentifier = char(matIdentifier);
-              end
-          end
-          D = mat.getMaterial(matIdentifier).getStiffnessMatrix(varargin);
-
-          % Calculate stiffness contribution in n-th Gauss point
-          for d = 1:element.dim
-              W = gWeight(pGauss,d);
-              k_pGauss = Bt*D*(element.B)*(det(element.J))*W;
-          end
-
-          % Assembly the element local stiffness matrix
-          k = k + k_pGauss; 
-          pGauss = pGauss+1;
-     end
-
+ % Global stiffness matrix dimension
+ Kdim = element.dofmax*nTotNode;
  
-       
+ % Global stiffness matrix memory allocation
+ K = sparse(Kdim,Kdim,0);
+
+  % Assembly local stiffness matrices for each element
+  for el = 1: element.nElem
+    k = zeros(element.dofmax*element.nNode);
+      
+    % Gauss integration points coordinates and weights
+    [gCoord,gWeight] = gaussValue(element.nNode,element.dim);
+    [~,ncol] = size(gCoord);
+      
+    % Sum of stiffness matrices calculated in each Gauss points
+    % j = n-th Gauss point
+    pGauss = 1;
+    while pGauss <= ncol
+       s = gCoord(1,:);
+       t = gCoord(2,:);
+       p = gCoord(3,:);
+       s = s(pGauss);
+       t = t(pGauss);
+       p = p(pGauss);
+          
+       element.getJacobian(el,s,t,p);
+       element.getDerivatives(el,s,t,p);
+       Bt = (element.B)';
+          
+       % Get the right material stiffness for each element 
+       for i = 1 : length(mat.db.keys)
+          if elemMAT(el) == i
+             var = mat.db.keys;
+             matIdentifier = var(i);
+             matIdentifier = char(matIdentifier);
+          end
+       end
+       % Material stiffness matrix
+       if nargin > 4
+         sz_vec = varargin{1};
+         sz = sz_vec(el);
+         D = mat.getMaterial(matIdentifier).getStiffnessMatrix(sz);
+       else 
+         D = mat.getMaterial(matIdentifier).getStiffnessMatrix();
+       end
+
+       % Calculate stiffness contribution in n-th Gauss point
+       for d = 1:element.dim
+         W = gWeight(pGauss,d);
+         k_pGauss = Bt*D*(element.B)*(det(element.J))*W;
+       end
+
+       % Assembly the element local stiffness matrix
+       k = k + k_pGauss; 
+       pGauss = pGauss+1;
+    end
+    
+    % Number of degrees of freedom for each node
     dof = length(k)/element.nNode;   
     
+    % Assembly local stiffness matrix terms inside global stiffness matrix
     for i_loc = 1:element.nNode
         i_glob = element.elemTopol(el,i_loc);
       
@@ -71,13 +79,12 @@ K = sparse(Kdim,Kdim,0);
     end
   end
 
-
+  % Singular matrix check
   for i = 1 : Kdim
        if K(i,i) == 0
            error ('Singular matrix')
        end
   end
-
 
 end
 

@@ -86,7 +86,7 @@ hexa = elems.getElement(elemType);
 hexa.getSide();
 
 % Calling the function of the class that reorders the elements' topology
-%hexa.reOrderTopol();
+hexa.reOrderTopol();
 
 % Calling the function of the class that calculates the area of the faces 
 % of the elements
@@ -115,7 +115,7 @@ bound = Boundaries(fileName);
 % conditions for the nodes of the mesh (BCIdentifier = nodeDir)
 nodedisp = bound.getBC('nodeDir');
 % Creation of the object "nodedisp" (boundary conditions for node displacements)
-nodedisp.NodeBoundary();
+nodedisp.NodeBoundary()
 
 % NEUMANN
 % Setting input file
@@ -147,9 +147,9 @@ autoval = eigs(K);
 AssemblyK_time = toc;
 
 % Function to assembly boundary conditions
-[K,f] = assemblyBC(nTotNode, K, nodedisp, nodeforce);
+[K,f] = imposeBC(nTotNode, K, nodedisp, nodeforce);
 % Reading time
-AssemblyBC_time = toc;
+ImposeBC_time = toc;
 %----------------------------- END ASSEMBLY ------------------------------
 
 % Printing time 
@@ -158,7 +158,7 @@ fprintf('Time to generate object "Materials" %.3f [s]\n', Generate_materials);
 fprintf('Time to generate object "Elements" %.3f [s]\n', Generate_elements);
 fprintf('Time to generate object "Boundaries" %.3f [s]\n', Generate_BC);
 fprintf('Time to assembly global stiffness matrix %.3f [s]\n', AssemblyK_time);
-fprintf('Time to assembly boundary conditions %.3f [s]\n', AssemblyBC_time);
+fprintf('Time to impose boundary conditions %.3f [s]\n', ImposeBC_time);
 
 %--------------------------- SYSTEM SOLVING ------------------------------
 % Starting a timer
@@ -169,9 +169,6 @@ u = K\f;
 Solving_time = toc;
 %------------------------- END SYSTEM SOLVING ----------------------------
 
-% Printing time 
-fprintf('Time to solve %.3f [s]\n', Solving_time);
-
 %---------------------- DISPLACEMENT EVALUATION --------------------------
 u_x = zeros(nTotNode,1);
 u_y = zeros(nTotNode,1);
@@ -181,6 +178,9 @@ for i = 1:nTotNode
   u_y(i) = u(i*3-1);
   u_z(i) = u(i*3);
 end
+
+
+
 
 % -----------------------
 
@@ -197,3 +197,39 @@ cellData3D = repmat(struct('name', 1, 'data', 1), 0, 1);
 
 V = VTKOutput(mesh);
 V.writeVTKFile(0.0, pointData3D, [], [], []);
+
+% ---------------------- ANALITYCAL SOLUTION ---------------------------
+% m = 50 kg on a 50x50 cm surface:
+sigma_z = -0.2;  %MPa
+
+% Vertical compressibility:
+D = elas.getStiffnessMatrix();
+K_z = D(3,3);
+
+% Model geometry:
+H = 1500;    %mm
+z_coord = nodeCoords(:,3);
+
+% Analitycal solution
+u_real = zeros(nTotNode,1);
+for i = 1:nTotNode
+    u_real(i) = (sigma_z/K_z)*z_coord(i);
+end
+
+% ------------------------- 2-NORM ERROR ------------------------------
+norm1 = norm(u_real - u_z);
+norm2 = norm(u_real);
+
+error = norm1/norm2;
+
+%----------------- CENTRAL NODE DISPLACEMENT Z ----------------------
+i = 1;
+for n = 1 : nTotNode
+    if (nodeCoords(n,1) == 250) && (nodeCoords(n,2) == 250)
+        u_centr(i) = u_z(n);
+        depth(i) = nodeCoords(n,3); 
+        i = i + 1;
+    end
+end
+u_centr = (u_centr)';
+depth = (depth)';

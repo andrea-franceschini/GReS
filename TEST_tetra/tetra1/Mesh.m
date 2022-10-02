@@ -13,24 +13,24 @@ classdef Mesh < handle
     % Total number of mesh 2D elements
     nSurfaces = 0;
 
-    % Nodal coordinates
+    % Nodes' coordinates
     coordinates = [];
 
     % Cell to node mapping:
-    % Nodes of i-element
+    % 3D elements' nodes sequences 
     cells = [];
-    %Material tag
+    % 3D elements' tag (region)
     cellTag = [];
-    %Number of nodes of the 3D element
+    % Number of nodes for each 3D element
     cellNumVerts = [];
     
     %cellToNode = logical(sparse(0, 0));
     %nodeToCell = logical(sparse(0, 0));
 
     % Surface to node mapping:
-    % Nodes of i-surface
+    % 2D elements' nodes sequences
     surfaces = [];
-    % Surface tag (position)
+    % 2D elements' tag (region)
     surfaceTag = [];
     % Number of nodes of the 2D element
     surfaceNumVerts = [];
@@ -44,9 +44,9 @@ classdef Mesh < handle
     % Coordinates of 2D element centroid
     surfaceCentroid = [];
 
-    % Tag for 3D element type
+    % 3D element VTK type tag
     cellVTKType = [];
-    % Tag for 2D element type
+    % 2D element VTK type tag
     surfaceVTKType = [];
     meshType = 'Unstructured'
 
@@ -74,49 +74,41 @@ classdef Mesh < handle
 
   methods (Access = public)
 
+    % Function to read mesh data and store this data inside the properties 
+    % of the object created with the class "Mesh"
     function importGMSHmesh(obj, fileName)
-      % Reading input file, creation of 3 matrices
+      % Reading input file 
       [obj.coordinates, elems, regions] = mxImportGMSHmesh(fileName);
-      % Conversion to double precision
       elems = double(elems);
-      % Assignment of prop nDim(scalar) = number of columns of obj.coordinates
+      
+      % STORING DATA INSIDE OBJECT'S PROPERTIES
+      % 3D ELEMENT DATA
       obj.nDim = size(obj.coordinates,2);
-      % Assignment of prop nNodes(scalar) = number of rows of obj.coordinates
       obj.nNodes = size(obj.coordinates,1);
-      % Vector cellsID: 3D element tag for readGMSHmesh.cpp
+      % cellsID = 3D element tag for readGMSHmesh.cpp
       cellsID = [4, 5, 6, 7];
-      % Vector ID: for 3D elements' position in matrix "elems"
       ID = ismember(elems(:,1), cellsID);
-      % Assignment of prop cellNumVerts(vector,size = nCells) = number of the nodes of the 3D elements
       obj.cellNumVerts = elems(ID,3);
-      % Assignment of nVerts (scalar) = max element of obj.cellNumVerts
       nVerts = max(obj.cellNumVerts);
-      % Assignment of prop cells (vector) = columns 4 to nVerts+3 of "elems"
       obj.cells = elems(ID,4:nVerts+3);
-      % Assignment of prop cellVTKtype(vector) = first column of "elems" 
       obj.cellVTKType = obj.typeMapping(elems(ID,1));
-      % Assignment of prop cellTag (vector) = second column of "elems"
       obj.cellTag = elems(ID,2);
-      % Assignment of prop nCells (scalar) = size of cellTag
       obj.nCells = length(obj.cellTag);
 
-      % Creation of index nRegions
+      % REGIONS DATA FOR 3D ELEMENT
       nRegions = length(regions);
-      % Space allocation for vector "dims"
       dims = zeros(nRegions,1);
       for i = 1 : nRegions
         dims(i) = regions(i).dim;
       end
-      % Creation of vector with linear indices of =3 entries in dims
       ID = find(dims == 3);
       for i = 1 : length(ID)
         obj.cellRegions = setfield(obj.cellRegions, regions(ID(i)).name, regions(ID(i)).ID);
       end
 
-      % Same as cells' prop, but with surfaces
-      %vector cellsID: 2D element tag for readGMSHmesh.cpp
+      % 2D ELEMENT DATA
+      % cellsID = 2D surface tag for readGMSHmesh.cpp
       cellsID = [2, 3];
-      %vector ID: for 2Delements' position in "elems"
       ID = ismember(elems(:,1), cellsID);
       obj.surfaceNumVerts = elems(ID,3);
       nVerts = max(obj.surfaceNumVerts);
@@ -125,17 +117,18 @@ classdef Mesh < handle
       obj.surfaceTag = elems(ID,2);
       obj.nSurfaces = length(obj.surfaceTag);
 
+      % REGIONS DATA FOR 2D ELEMENT
       dims = zeros(nRegions,1);
       for i = 1 : nRegions
         dims(i) = regions(i).dim;
       end
-      % Creation of vector with linear indices of =2 entries in dims
       ID = find(dims == 2);
       for i = 1 : length(ID)
         obj.surfaceRegions = setfield(obj.surfaceRegions, regions(ID(i)).name, regions(ID(i)).ID);
       end
     end
     
+    % Function to call functions that calculate cells' and surfaces' centroids
     function finalize(obj) 
       computeCellCentroid(obj);
       computeSurfaceCentroid(obj);
@@ -159,6 +152,7 @@ classdef Mesh < handle
       end
     end
 
+    % Function for call 3D elements' region based on their cellTag
     function ID = findCellsOfRegion(obj, region)
       if (isfield(obj.cellRegions, region))
         val = getfield(obj.cellRegions, region);
@@ -168,6 +162,7 @@ classdef Mesh < handle
       ID = obj.cellTag == val;
     end
 
+    % Function for call 2D elements' region based on their cellTag
     function ID = findSurfacesOfRegion(obj, region)
       if (isfield(obj.surfaceRegions, region))
         val = getfield(obj.surfaceRegions, region);

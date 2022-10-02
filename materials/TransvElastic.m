@@ -1,27 +1,27 @@
 classdef TransvElastic < handle
-  % Elastic anisotropic (transversely isotropic) material class
+  % ELASTIC TRANSVERSE ISOTROPIC material class
 
   properties (Access = private)
-    % Elastic modulus in the x-y symmetry plane (plane1)
+    % Elastic modulus in the symmetry plane (x,y)
     E_p = [];
-    % Elastic modulus in z-direction (perpendicular to plane1) 
+    % Elastic modulus in perpendicular direction (z) 
     E_z = [];
-    % Poisson's ratio in the x-y symmetry plane (plane1)
+    % Poisson's ratio in the symmetry plane (x,y)
     nu_p = [];
-    % Poisson's ratio in z-direction (perpendicular to plane1) 
+    % Poisson's ratio in perpendicular direction (z) 
     nu_z = [];
   end
 
   methods (Access = public)
-      % Class constructor method
+    % Class constructor method
     function obj = TransvElastic(inputString)
-      % Calling the function setMaterialParameters to set material
-      % parameters
+      % Calling the function to set object properties 
       obj.setMaterialParameters(inputString);
     end
 
-    % Function calculating the stiffness matrix using the class properties
+    % Material stiffness matrix calculation using the object properties
     function D = getStiffnessMatrix(obj, varargin)
+      % Elastic moduli ratio
       lambda = obj.E_p/obj.E_z;
       % Constituent matrix
       D = zeros(6,6);
@@ -34,16 +34,15 @@ classdef TransvElastic < handle
       D(3,1) = obj.E_p*obj.nu_z/(lambda-lambda*obj.nu_p-2*(obj.nu_z)^2);
       D(3,2) = obj.E_p*obj.nu_z/(lambda-lambda*obj.nu_p-2*(obj.nu_z)^2);
       D(3,3) = ((1-obj.nu_p)*obj.E_p)/(lambda-lambda*obj.nu_p-2*(obj.nu_z)^2);
-      D(4,4) = obj.E_p/(2*(1+obj.nu_p));
-      D(5,5) = obj.E_p/(2*(1+obj.nu_p));
+      D(4,4) = obj.E_p/(2*(1+obj.nu_z));
+      D(5,5) = obj.E_p/(2*(1+obj.nu_z));
       D(6,6) = 0.5*(D(1,1)-D(1,2));
-      
+      D = abs(D);
     end
   end
 
   methods (Access = private)
-      % Function that set the material parameters coming from "data"
-      % (Materials) inside the vector "params"
+    % Assigning material parameters (read inside the class Materials) to object properties
     function setMaterialParameters(obj, inputString)
       words = strsplit(inputString, ' ');
       params = zeros(length(words),1);
@@ -54,8 +53,7 @@ classdef TransvElastic < handle
           params(k) = sscanf(words{i}, '%e');
         end
       end
-      % Object properties are assigned with the same order used in the input
-      % file
+      % Object properties are assigned with the same order used for material parameters inside the input file
       obj.E_p = params(1);
       obj.E_z = params(2);
       obj.nu_p = params(3);

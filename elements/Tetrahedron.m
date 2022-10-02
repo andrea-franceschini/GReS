@@ -1,5 +1,5 @@
 classdef Tetrahedron < handle
-  % Tetrahedron element class
+ % TETRAHEDRON element class
 
   properties (Access = public)
     % INPUT 
@@ -8,48 +8,46 @@ classdef Tetrahedron < handle
     nFace = 4;
     % Number of nodes of the element
     nNode = [];
-    % Node coordinates
+    % Nodes coordinates
     nodeCoords = [];
     % Total number of elements in the mesh
     nElem = [];
-    % Element's topology
+    % Elements nodes sequence
     elemTopol = [];
-    % Surface's topology
+    % Surfaces nodes sequence
     surfTopol = [];
 
     % OUTPUT 
-    % Element volume
+    % Elements volume
     Vol = [];
-    % Element Area
+    % Surfaces Area
     Area = [];
-    % Shape function coefficients
-    Coeff = [];
-    % Derivates matrices
+    % Basis function matrix
+    N = [];
+    % Basis function derivatives matrix 
     B = [];
   end
 
   methods (Access = public)
     % Class constructor method
     function obj = Tetrahedron(data)
+       % Calling the function to set element data
        obj.setElementData(data);
     end
-
-    
-    %Function for shape function coefficients calculation
-    function getCoefficient(obj)
-        % Allocation
-        obj.Coeff = zeros(3*obj.nElem,obj.nNode);
+   
+    % Basis function coefficients calculation
+    function getBasisF(obj)
+       obj.N = zeros(3*obj.nElem,obj.nNode);
         
-        % Linear tetrahedron
-        if obj.nNode == 4
+       % Linear tetrahedron
+       if obj.nNode == 4
             
           for el = 1:obj.nElem
             i = obj.elemTopol(el,1);
             j = obj.elemTopol(el,2);
             m = obj.elemTopol(el,3);
             p = obj.elemTopol(el,4);
-            
-            
+                        
             b(1) = -det([1 obj.nodeCoords(j,2) obj.nodeCoords(j,3);
                          1 obj.nodeCoords(m,2) obj.nodeCoords(m,3);
                          1 obj.nodeCoords(p,2) obj.nodeCoords(p,3);]);
@@ -59,8 +57,7 @@ classdef Tetrahedron < handle
             d(1) = -det([1 obj.nodeCoords(j,1) obj.nodeCoords(j,2);
                          1 obj.nodeCoords(m,1) obj.nodeCoords(m,2);
                          1 obj.nodeCoords(p,1) obj.nodeCoords(p,2);]);
-                     
-                     
+                                          
             b(2) = det([1 obj.nodeCoords(i,2) obj.nodeCoords(i,3);
                         1 obj.nodeCoords(m,2) obj.nodeCoords(m,3);
                         1 obj.nodeCoords(p,2) obj.nodeCoords(p,3);]);
@@ -70,8 +67,7 @@ classdef Tetrahedron < handle
             d(2) = det([1 obj.nodeCoords(i,1) obj.nodeCoords(i,2);
                         1 obj.nodeCoords(m,1) obj.nodeCoords(m,2);
                         1 obj.nodeCoords(p,1) obj.nodeCoords(p,2);]);
-                                         
-                     
+                                                              
             b(3) = -det([1 obj.nodeCoords(i,2) obj.nodeCoords(i,3);
                          1 obj.nodeCoords(j,2) obj.nodeCoords(j,3);
                          1 obj.nodeCoords(p,2) obj.nodeCoords(p,3);]);
@@ -81,8 +77,7 @@ classdef Tetrahedron < handle
             d(3) = -det([1 obj.nodeCoords(i,1) obj.nodeCoords(i,2);
                          1 obj.nodeCoords(j,1) obj.nodeCoords(j,2);
                          1 obj.nodeCoords(p,1) obj.nodeCoords(p,2);]);
-                     
-                     
+                                         
             b(4) = det([1 obj.nodeCoords(i,2) obj.nodeCoords(i,3);
                         1 obj.nodeCoords(j,2) obj.nodeCoords(j,3);
                         1 obj.nodeCoords(m,2) obj.nodeCoords(m,3);]);
@@ -93,22 +88,20 @@ classdef Tetrahedron < handle
                         1 obj.nodeCoords(j,1) obj.nodeCoords(j,2);
                         1 obj.nodeCoords(m,1) obj.nodeCoords(m,2);]);
                                          
-            obj.Coeff(3*el-2,:) = b;
-            obj.Coeff(3*el-1,:) = c;
-            obj.Coeff(3*el,:) = d;
+            obj.N(3*el-2,:) = b;
+            obj.N(3*el-1,:) = c;
+            obj.N(3*el,:) = d;
           end
 
         % Quadratic tetrahedron
         elseif obj.nNode == 10
-             error('Element not available');
+            error('Element not available');
         end
     end
-    
-    
-    %Function for volume calculation
-    function getVolume(obj)
-        obj.Vol = zeros(obj.nElem,1);
         
+    % Elements volume calculation
+    function getVolume(obj)
+        obj.Vol = zeros(obj.nElem,1);        
         for el = 1:obj.nElem
             i = obj.elemTopol(el,1);
             j = obj.elemTopol(el,2);
@@ -119,22 +112,20 @@ classdef Tetrahedron < handle
                                 1 obj.nodeCoords(j,1) obj.nodeCoords(j,2) obj.nodeCoords(j,3);
                                 1 obj.nodeCoords(m,1) obj.nodeCoords(m,2) obj.nodeCoords(m,3);
                                 1 obj.nodeCoords(p,1) obj.nodeCoords(p,2) obj.nodeCoords(p,3)]))/6;
-         end
+        end
     end
     
-    
-        %Function for derivatives matrices calculation
-     function getDerivatives(obj)
-        %Allocation
-        obj.B = zeros(2*obj.dofmax*obj.nElem,obj.nNode*obj.dofmax);
+    % Basis function derivatives calculation
+    function getDerivatives(obj)
+       obj.B = zeros(2*obj.dofmax*obj.nElem,obj.nNode*obj.dofmax);
          
        % Linear tetrahedron
        if obj.nNode == 4
             
          for el = 1: obj.nElem
-          b = obj.Coeff(3*el-2,:);
-          c = obj.Coeff(3*el-1,:);
-          d = obj.Coeff(3*el,:);
+          b = obj.N(3*el-2,:);
+          c = obj.N(3*el-1,:);
+          d = obj.N(3*el,:);
 
              B1 = [b(1)   0     0;
                    0    c(1)    0;
@@ -169,19 +160,18 @@ classdef Tetrahedron < handle
          
        % Quadratic tetrahedron
        elseif obj.nNode == 10
-             error('Element not available');
+           error('Element not available');
        end
-      end
-       
-  
-  % Function for the surfaces area calculation
+    end
+        
+    % Elements surfaces area calculation 
     function getArea(obj)
-    [nrow,ncol] = size(obj.surfTopol);
-     obj.Area = zeros(nrow,1);
+      [nrow,ncol] = size(obj.surfTopol);
+      obj.Area = zeros(nrow,1);
          for f = 1:nrow
              for ind = 1:ncol
-                 node = obj.surfTopol(f,ind);
-                 coord(ind,:) = obj.nodeCoords(node,:);
+                node = obj.surfTopol(f,ind);
+                coord(ind,:) = obj.nodeCoords(node,:);
              end
              n1 = coord(1,:);
              n2 = coord(2,:);
@@ -193,15 +183,13 @@ classdef Tetrahedron < handle
              prodvett = cross(v1,v2);
              norma = norm(prodvett);
              obj.Area(f) = 0.5*norma;
-            
          end
      end
         
-     end
-
+  end
 
   methods (Access = private)
-      % Function that set the element parameters coming from "data"
+    % Assigning the object properties from mesh data
     function setElementData(obj,data)
         nNode = data{1};
         obj.nNode = nNode(1,1);

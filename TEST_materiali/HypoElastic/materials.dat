@@ -1,4 +1,0 @@
-HypoElastic                                    % material model
-hypoel                                         % name
-0.3e0   2e-2   -1.15e0   3e-4   -0.8e0    -20  % nu, a, b, a1, b1, szmin
-End

@@ -17,11 +17,6 @@ elas = mat.getMaterial('elas');
 % matrix for elastic materials
 D1 = elas.getStiffnessMatrix();
 
-hypopl = mat.getMaterial('hypopl');
-% Calling the function of the class "HypoPlastic" that calculates stiffness
-% matrix for elastic materials. Z-stress is needed as input data
-D2 = hypopl.getStiffnessMatrix(1);
-
 hypoel = mat.getMaterial('hypoel');
 % Calling the function of the class "HypoPlastic" that calculates stiffness
 % matrix for elastic materials. Z-stress is needed as input data

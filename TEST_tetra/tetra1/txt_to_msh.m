@@ -3,7 +3,7 @@ clear;
 clc;
 
 %--------------------- FROM TXT TO MSH ------------------
-fileName = 'tetra1.txt';
+fileName = 'tetra2.txt';
 %--------------------------------------------------------
 
 fid = fopen(fileName,'r');

@@ -1,5 +1,5 @@
 classdef Elastic < handle
-  % Elastic isotropic material class
+  % ELASTIC ISOTROPIC material class
 
   properties (Access = private)
     % Elastic modulus
@@ -11,12 +11,11 @@ classdef Elastic < handle
   methods (Access = public)
     % Class constructor method
     function obj = Elastic(inputString)
-      % Calling the function setMaterialParameters to set material
-      % parameters
+      % Calling the function to set object properties 
       obj.setMaterialParameters(inputString);
     end
 
-    % Function calculating the stiffness matrix using the class properties
+    % Material stiffness matrix calculation using the object properties
     function D = getStiffnessMatrix(obj, varargin)
       % Constituent matrix
       D = zeros(6,6);
@@ -37,8 +36,7 @@ classdef Elastic < handle
   end
 
   methods (Access = private)
-      % Function that set the material parameters coming from "data"
-      % (Materials) inside the vector "params"
+    % Assigning material parameters (read inside the class Materials) to object properties
     function setMaterialParameters(obj, inputString)
       words = strsplit(inputString, ' ');
       params = zeros(length(words),1);
@@ -49,8 +47,8 @@ classdef Elastic < handle
           params(k) = sscanf(words{i}, '%e');
         end
       end
-      % Object properties are assigned with the same order used in the input
-      % file
+      % Object properties are assigned with the same order used for
+      % material parameters inside the input file
       obj.E = params(1);
       obj.nu = params(2);
     end

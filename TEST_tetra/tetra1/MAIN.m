@@ -3,7 +3,7 @@ clear;
 clc;
 
 % --------------------------- READING MESH ---------------------------
-% Getting parameters from the object mesh created with "Mesh.m"
+% Creation of an object with class "Mesh"
 mesh = Mesh();
 
 % Starting a timer
@@ -12,7 +12,7 @@ tic;
 % Setting the input file name
 fileName = 'mesh.msh';
 
-% Calling a function from the class "Mesh" that import mesh data
+% Calling a function from the class "Mesh" that imports mesh data
 mesh.importGMSHmesh(fileName);
 
 % Calling a function from the class "Mesh" for centroid calculation
@@ -21,7 +21,7 @@ mesh.finalize();
 % Reading time
 Reading_mesh = toc;
 % ------------------------- END READING MESH -----------------------------
-%
+
 % ---------------------------- MESH DATA  --------------------------------
 % Getting data from the object created with Mesh.m
 
@@ -63,10 +63,9 @@ tic;
 % Setting the input file name
 fileName = 'materials.dat';
 
-% Creation of an object of "Materials"
-mat = Materials(fileName);
 
-% Calling the "getMaterial" function from the class "Materials" 
+% Linear elastic isotropic material (matIdentifier = elas)
+mat = Materials(fileName);
 elas = mat.getMaterial('elas');
 
 % Reading time
@@ -77,23 +76,18 @@ Generate_materials = toc;
 % Starting a timer
 tic;
 
-% Creation of an object of "Elements"
-elems = Elements(nNode,nodeCoords,nElem,elemTopol,surfTopol,cellCentroid);
+% Tetrahedrons 
+elems = Elements(nNode,nodeCoords,nElem,elemTopol,surfTopol);
 tetra = elems.getElement(elemType);
 
-% Calling the function of the class that calculates shape functions
-tetra.getCoefficient();
-
-% Calling the function of the class that calculates the area of the faces 
-% of the elements
-tetra.getArea()
+% Basis functions calculation
+tetra.getBasisF();
 
 % Calling the function of the class that calculates the volume of the
 % element
 tetra.getVolume();
 
-% Calling the function of the class that calculates the matrix of the 
-% derivatives 
+% Basis function derivatives calculation 
 tetra.getDerivatives();
 
 % Reading time
@@ -111,23 +105,20 @@ fileName = 'dirNode.dat';
 %Creation of an object of "Boundaries" (general boundary condition)
 bound = Boundaries(fileName);
 
-% Defining boundary conditions in the input file as Dirichlet's boundary
-% conditions for the nodes of the mesh (BCIdentifier = nodeDir)
+% Nodal Dirichlet boundary conditions (BCIdentifier = nodeDir)
 nodedisp = bound.getBC('nodeDir');
-% Creation of the object "nodedisp" (boundary conditions for node displacements)
+% nodedisp = nodal displacements
 nodedisp.NodeBoundary()
 
 % NEUMANN
 % Setting input file
 fileName = 'neuNode.dat';
 
-%Creation of an object of "Boundaries" (general boundary condition)
 bound = Boundaries(fileName);
 
-% Defining boundary conditions in the input file as Neumann's boundary
-% conditions for the nodes of the mesh (BCIdentifier = nodeNeu)
+% Nodal Neumann boundary conditions (BCIdentifier = nodeNeu)
 nodeforce = bound.getBC('nodeNeu');
-% Creation of the object "nodeforce" (boundary conditions for node forces)
+% nodeforce = nodal forces
 nodeforce.NodeBoundary()
 
 % Reading time
@@ -141,14 +132,14 @@ tic;
 % Function to assembly global stiffness matrix
 K = assemblyK(nTotNode, elemMAT, mat, tetra);
 autoval = eigs(K);
-%spy(K)
+
 % Reading time
 AssemblyK_time = toc;
 
-% Function to assembly boundary conditions
-[K,f] = assemblyBC(nTotNode, K, nodedisp, nodeforce);
+% Function to assign boundary conditions
+[K,f] = imposeBC(nTotNode, K, nodedisp, nodeforce);
 % Reading time
-AssemblyBC_time = toc;
+ImposeBC_time = toc;
 %----------------------------- END ASSEMBLY ------------------------------
 
 % Printing time 
@@ -157,21 +148,17 @@ fprintf('Time to generate object "Materials" %.3f [s]\n', Generate_materials);
 fprintf('Time to generate object "Elements" %.3f [s]\n', Generate_elements);
 fprintf('Time to generate object "Boundaries" %.3f [s]\n', Generate_BC);
 fprintf('Time to assembly global stiffness matrix %.3f [s]\n', AssemblyK_time);
-fprintf('Time to assembly boundary conditions %.3f [s]\n', AssemblyBC_time);
+fprintf('Time to impose boundary conditions %.3f [s]\n', ImposeBC_time);
 
-%--------------------------- SYSTEM SOLVING ------------------------------
+%------------------------- LINEAR SYSTEM SOLVER --------------------------
 % Starting a timer
 tic;
 
 u = K\f;
 % Reading time
 Solving_time = toc;
-%------------------------- END SYSTEM SOLVING ----------------------------
+%------------------------- END SYSTEM SOLVER -----------------------------
 
-% Printing time 
-fprintf('Time to solve %.3f [s]\n', Solving_time);
-Total_time = Solving_time+Reading_mesh+Generate_materials+Generate_elements+Generate_BC+AssemblyK_time+AssemblyBC_time;
-fprintf('Time to run analysis %.3f [s]\n', Total_time);
 %---------------------- DISPLACEMENT EVALUATION --------------------------
 u_x = zeros(nTotNode,1);
 u_y = zeros(nTotNode,1);
@@ -182,8 +169,7 @@ for i = 1:nTotNode
   u_z(i) = u(i*3);
 end
 
-% -----------------------
-
+% ----------------------------- VTK RESULTS -----------------------------
 addpath('../../write');
 
 pointData3D = repmat(struct('name', 1, 'data', 1), 3, 1);
@@ -197,3 +183,26 @@ cellData3D = repmat(struct('name', 1, 'data', 1), 0, 1);
 
 V = VTKOutput(mesh);
 V.writeVTKFile(0.0, pointData3D, [], [], []);
+
+% ---------------------- ANALITYCAL SOLUTION ---------------------------
+% Surface pressure
+sigma_z = -0.2;  %MPa
+
+% Vertical compressibility:
+D = elas.getStiffnessMatrix();
+K_z = D(3,3);
+
+% Model geometry:
+H = 1500;    %mm
+z_coord = nodeCoords(:,3);
+
+% Analitycal solution
+u_real = zeros(nTotNode,1);
+for i = 1:nTotNode
+    u_real(i) = (sigma_z/K_z)*z_coord(i);
+end
+
+% ------------------------- 2-NORM ERROR ------------------------------
+norm1 = norm(u_real - u_z);
+norm2 = norm(u_real);
+error = norm1/norm2;
