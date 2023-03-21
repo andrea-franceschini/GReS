@@ -1,0 +1,38 @@
+NodeBC                                       % BC item
+Dir                                          % BC type
+Flow                                         % Physics
+nodeDirF                                     % BC name
+5                                            % #ID_blocked
+1
+4
+5
+7                                     
+2
+
+TIME 0.0
+1.1
+1.2
+1.3
+1.4
+1.5
+
+TIME 2.0
+2.1
+2.2
+2.3
+2.4
+2.5
+
+TIME 3.0
+3.1
+3.2
+3.3
+3.4
+3.5
+
+TIME 5.0
+5.1
+5.2
+5.3
+5.4
+5.5

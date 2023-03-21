@@ -1,0 +1,39 @@
+NodeBC                                       % BC item
+Dir                                          % BC type
+Poro                                         % Physics
+nodeDirP                                     % BC name
+0    3     2                                 % #ID_blocked, #ID_blocked ,#ID_blocked
+                                             % ID_x, value_x
+1                                            % ID_y, value_y
+4
+5
+4                                            % ID_z, value_z
+6
+
+TIME 0.0
+1.1
+1.2
+1.3
+1.4
+1.5
+   
+TIME 2.0
+2.1
+2.2
+2.3
+2.4
+2.5
+
+TIME 5.0
+3.1
+3.2
+3.3
+3.4
+3.5
+
+TIME 10.0
+10.1
+10.2
+10.3
+10.4
+10.5

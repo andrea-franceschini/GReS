@@ -1,9 +1,0 @@
-Elastic                                      % material model
-elas1                                        % name
-15      0.3e0                                % E, nu
-End
-
-Elastic                                      % material model
-elas2                                        % name
-100      0.3e0                               % E, nu
-End

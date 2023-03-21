@@ -1,0 +1,27 @@
+NodeBC                            % BC item
+Dir                               % BC type
+Flow                              % Physics
+nodeDir                           % BC name
+6                                 % #ID_constrained
+5
+572
+571           
+570           
+569
+1            
+
+TIME 0
+10
+10           
+10           
+10           
+10
+10           
+
+TIME 1.e12
+10
+10           
+10           
+10           
+10
+10               

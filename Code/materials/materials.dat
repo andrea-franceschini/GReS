@@ -1,0 +1,24 @@
+Elastic                                      % material model
+elas                                         % name
+0.2e0      0.15e0                            % E, nu
+End
+
+HypoElastic                                         % material model
+hypoel                                              % name
+0.15 1.50e1 0.10e0 1.0e1 0.8e0 0.3 0.01 20.00 150   % nu, a, b, a1, b1, szmin
+End
+
+TransvElastic                                % material model
+transvel                                     % name 
+100     150     0.3   0.4                    % Ep, Ez, nu_p, nu_z
+End
+
+PorousRock                                   % material model
+rock                                         % name 
+0.5e-7     0.5e-7     0.5e-7   0.4           % permx, permy, permz, porosity
+End
+
+Fluid                                        % material model
+fluid                                        % name 
+9.81e-3      1                               % specif weight, compressibility
+End

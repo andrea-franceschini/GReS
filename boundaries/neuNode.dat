@@ -1,8 +1,0 @@
-NodeBC                                       % BC name
-nodeNeu                                      % BC type
-2     0     0                                % #ID_blocked, #ID_blocked ,#ID_blocked
-1    100                                     % ID_x, value_x
-4    200                                   
-                                             % ID_y, value_y
-                                             % ID_z, value_z
-End
