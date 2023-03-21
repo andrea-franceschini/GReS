@@ -1,25 +1,13 @@
 close all;
 clear;
-addpath('../../Code/read');
-addpath('../../Code/boundaries');
-addpath('../../Code/discretizer');
-addpath('../../Code/elements');
-addpath('../../Code/materials');
-addpath('../../Code/preproc');
-addpath('../../Code/state');
-addpath('../../Code/write');
-addpath('../../Code/nonlinearsolver');
-addpath('../../Code/modeltype');
-addpath('../../Code/outstate');
-addpath('../../Code/simparam');
-
+%
 % -------------------------- SET THE PHYSICS -------------------------
 %
 model = ModelType('Poromechanics');
 %
 % --------------------- READING SIMULATION SETTINGS ------------------
 %
-fileName = "SimParam.dat";
+fileName = "simParam.dat";
 simParam = SimulationParameters(fileName);
 %
 % --------------------------- READING MESH ---------------------------

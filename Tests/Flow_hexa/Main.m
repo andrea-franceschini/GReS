@@ -1,25 +1,13 @@
 close all;
 clear;
-addpath('../../Code/read');
-addpath('../../Code/boundaries');
-addpath('../../Code/discretizer');
-addpath('../../Code/elements');
-addpath('../../Code/materials');
-addpath('../../Code/gauss');
-addpath('../../Code/preproc');
-addpath('../../Code/state');
-addpath('../../Code/write');
-addpath('../../Code/nonlinearsolver');
-addpath('../../Code/modeltype');
-addpath('../../Code/outstate');
-
+%
 % -------------------------- SET THE PHYSICS -------------------------
 %
 model = ModelType('SinglePhaseFlow');
 %
 % ------------------- READING SIMULATION PARAMETERS ------------------
 %
-fileName = "SimParam.dat";
+fileName = "simParam.dat";
 simParam = SimulationParameters(fileName);
 %
 % --------------------------- READING MESH ---------------------------
