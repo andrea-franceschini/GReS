@@ -30,3 +30,6 @@
 *.exe
 *.out
 *.app
+
+# Output folders with vtk files
+/Tests/*/vtkOutput/
