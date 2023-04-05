@@ -2,22 +2,9 @@ NodeBC                                       % BC item
 Neu                                          % BC type
 Flow                                         % Physics
 nodeNeuF                                     % BC name
-2                                            % #ID_blocked
-1                                    
-5
-
-TIME 0.0
-1.1
-1.2
-
-TIME 2.0
-2.1
-2.2
-
-TIME 7.0
-3.1
-3.2
-
-TIME 7.2
-7.1
-7.2
+neuNodeFlow/list
+0.0 neuNodeFlow/time0.dat
+2.0 neuNodeFlow/time1.dat
+7.0 neuNodeFlow/time2.dat
+7.2 neuNodeFlow/time3.dat
+End

@@ -27,6 +27,9 @@ classdef VTKOutput < handle
     surfaceElems;
     is2DMeshReady = false;
     NotANumber = 1.e100;
+    nDataMax = 100;
+    IDdata = 0;
+    data;
 
   end
 
@@ -40,10 +43,32 @@ classdef VTKOutput < handle
           error('Too many inputs.');
         end
       end
+      obj.data = repmat(struct('time', 0, 'vtm', []), obj.nDataMax, 1);
+    end
+
+    function delete(obj)
+      mesh = [];
+      surfaceList = [];
+      glo2loc = [];
+      surfaceCoord = [];
+      surfaceElems = [];
+      data = [];
+    end
+
+    function finalize(obj)
+      obj.writePVDFile();
+      obj.delete();
     end
 
     function writeVTKFile(obj, time, pointData3D, cellData3D, pointData2D, cellData2D)
-      writeVTUFile(obj, time, pointData3D, cellData3D, pointData2D, cellData2D);
+      vtmFileName = writeVTUFile(obj, time, pointData3D, cellData3D, pointData2D, cellData2D);
+      obj.IDdata = obj.IDdata + 1;
+      if (obj.IDdata > obj.nDataMax)
+        obj.nDataMax = 2*obj.nDataMax;
+        obj.data(obj.nDataMax) = obj.data(1);
+      end
+      obj.data(obj.IDdata).time = time;
+      obj.data(obj.IDdata).vtm = vtmFileName;
     end
 
     function setVTKFolder(obj, folderName)
@@ -71,7 +96,27 @@ classdef VTKOutput < handle
       obj.isFolderReady = true;
     end
 
-    function writeVTMFile(obj)
+    function writePVDFile(obj)
+      docNode = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
+      toc = docNode.getDocumentElement;
+      toc.setAttribute('type', 'Collection');
+      toc.setAttribute('version', '1.0');
+      blocks = docNode.createElement('Collection');
+
+      for i = 1 : obj.IDdata
+        block = docNode.createElement('DataSet');
+        block.setAttribute('timestep', sprintf('%e', obj.data(i).time));
+        block.setAttribute('file', obj.data(i).vtm);
+        blocks.appendChild(block);
+      end
+
+      toc.appendChild(blocks);
+
+      fileName = sprintf('%s.pvd', obj.folderName);
+      xmlwrite(fileName, docNode);
+    end
+
+    function fileName = writeVTMFile(obj)
       outName = setOutputName(obj);
 
       docNode = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
@@ -135,7 +180,7 @@ classdef VTKOutput < handle
       obj.is2DMeshReady = true;
     end
 
-    function writeVTUFile(obj, time, pointData3D, cellData3D, pointData2D, cellData2D)
+    function vtmFileName = writeVTUFile(obj, time, pointData3D, cellData3D, pointData2D, cellData2D)
       if (~obj.isFolderReady)
         createVTKFolder(obj);
       end
@@ -148,7 +193,7 @@ classdef VTKOutput < handle
         end
       end
 
-      writeVTMFile(obj);
+      vtmFileName = writeVTMFile(obj);
       status = mkdir(sprintf('%s/%s', obj.folderName, outName));
       if (status ~= 1)
         error('Unable to create folder for VTK output.');

@@ -23,6 +23,10 @@ classdef OutState < handle
       data = varargin;
       obj.setOutState(nIn,symMod,mesh,fileName,data)
     end
+
+    function finalize(obj)
+      obj.VTK.finalize();
+    end
     
     function printState(obj,stateOld,stateNew)
       if nargin == 2
@@ -100,7 +104,7 @@ classdef OutState < handle
       [flEof,line] = OutState.readLine(fid);
       %
       block = '';
-      while ~strcmpi(line,'End')
+      while ~strcmp(line, 'End')
         line = strtrim(line);
         if isempty(line)
           error('Blank line encountered while reading the print times in file %s',fileName);

@@ -2,26 +2,6 @@ NodeBC                            % BC item
 Neu                               % BC type
 Flow                              % Physics
 nodeNeu                           % BC name
-6                                 % #ID_constrained
-7             
-580           
-579            
-578            
-577   
-3    
-
-TIME 0
-0.02
-0.02          
-0.02         
-0.02        
-0.02
-0.02     
-
-TIME 1.e12
-0.02
-0.02       
-0.02       
-0.02       
-0.02
-0.02
+neuNode/list
+0.0 neuNode/time0.dat
+End

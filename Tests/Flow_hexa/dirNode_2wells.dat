@@ -2,44 +2,6 @@ NodeBC                            % BC item
 Dir                               % BC type
 Flow                              % Physics
 nodeDir                           % BC name
-12                                % #ID_constrained
-5   
-504            
-503            
-502            
-501
-1           
-7             
-512            
-511            
-510            
-509
-3          
-
-TIME 0.0
-100
-100
-100
-100
-100
-100
-60
-60
-60
-60
-60
-60
-
-TIME 1.e6
-100
-100
-100
-100
-100
-100
-60
-60
-60
-60
-60
-60
+dirNode_2wells/list
+0.0 dirNode_2wells/time0.dat
+End

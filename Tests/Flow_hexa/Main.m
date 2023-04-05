@@ -67,5 +67,8 @@ NSolv = NonLinearSolver(model,simParam,mesh,hexa,mat,pre,bound,BCName,printUtils
 % Performing the loop
 [simState] = NSolv.NonLinearLoop();
 %
+% Finalize the print utility
+printUtils.finalize()
+%
 % Clean-up
 delete(bound);

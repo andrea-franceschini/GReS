@@ -64,7 +64,7 @@ classdef NonLinearSolver < handle
       obj.dt = obj.simParameters.dtIni;
       %
       % Setup the boundary conditions
-      obj.bound.iniBC(obj.BCName,obj.stateTmp);
+      %obj.bound.iniBC(obj.BCName,obj.stateTmp);
       %
       %
       % Loop over time
@@ -73,7 +73,7 @@ classdef NonLinearSolver < handle
         obj.tStep = obj.tStep + 1;
         obj.t = obj.t + obj.dt;
         % Apply the Dirichlet condition value to the solution vector
-        obj.bound.applyDirVal(obj.t);
+        applyDirVal(obj.bound, obj.t, obj.stateTmp);
         %
         fprintf('\nTSTEP %d   ---  TIME %f\n',obj.tStep,obj.t);
         fprintf('-----------------------------------------------------------\n');
@@ -91,11 +91,8 @@ classdef NonLinearSolver < handle
         end
         %
         % Apply Neu and Dir conditions
-        obj.bound.applyBC(linSyst,obj.t);
-%         obj.bound.applyBCNeu(linSyst);
+        applyBC(obj.bound, obj.t, linSyst);
         rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
-%         obj.bound.applyBCDir(linSyst);
-%         obj.bound.applyBCNeu(linSyst);
         tolWeigh = obj.simParameters.relTol*rhsNorm;
         obj.iter = 0;
         %
@@ -120,12 +117,8 @@ classdef NonLinearSolver < handle
             linSyst.computeFlowRHS(obj.statek,obj.stateTmp);
           end
           %
-          obj.bound.applyBC(linSyst,obj.t);
-%           obj.bound.applyBCNeu(linSyst);
+          applyBC(obj.bound, obj.t, linSyst);
           rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
-%           obj.bound.applyBCDir(linSyst);
-%           obj.bound.applyBCNeu(linSyst);
-%         rhsNorm = findNorm(obj,linSyst.rhs);
           fprintf('%d     %e\n',obj.iter,rhsNorm);
         end
         %
