@@ -1,76 +1,71 @@
 close all;
 clear;
-%
+
 % -------------------------- SET THE PHYSICS -------------------------
+model = ModelType("SinglePhaseFlow_FEM");
 %
-model = ModelType('SinglePhaseFlow');
-%
-% ------------------- READING SIMULATION PARAMETERS ------------------
-%
-fileName = "simParam.dat";
+% ----------------------- SIMULATION PARAMETERS ----------------------
+fileName = "SimParam.dat";
 simParam = SimulationParameters(fileName);
 %
-% --------------------------- READING MESH ---------------------------
+% ------------------------------  MESH -------------------------------
+% Create the Mesh object
+topology = Mesh();
 %
-% Getting parameters from the object mesh created with "Mesh.m"
-mesh = Mesh();
-
-% Setting the input file name
+% Set the input file name
 fileName = 'mesh_25x100x5.msh';
-
-% Calling a function from the class "Mesh" that import mesh data
-mesh.importGMSHmesh(fileName);
 %
-%------------------------------- MATERIALS -------------------------------
+% Import the mesh data into the Mesh object
+topology.importGMSHmesh(fileName);
 %
-% Setting the input file name
+%----------------------------- MATERIALS -----------------------------
+%
+% Set the input file name
 fileName = 'materials.dat';
-
-% Creation of an object of "Materials"
+%
+% Create an object of the Materials class and read the materials file
 mat = Materials(fileName);
 %
-%-------------------------------- ELEMENTS ------------------------------
+%------------------------------ ELEMENTS -----------------------------
 %
-% Define Gauss points only if required, i.e., there is at least one
-% hexahedral element
+% Create an object of the "Elements" class and process the element properties
+elems = Elements(topology);
 %
-% Creation of an object of "Elements"
-elems = Elements(mesh);
-tetra = elems.getElement(mesh.cellVTKType);
+% Wrap Mesh, Elements and Faces objects in a structure
+grid = struct('topology',topology,'cells',elems,'faces',[]);
 %
-%--------------------------- BOUNDARY CONDITIONS -------------------------
+%------------------------ BOUNDARY CONDITIONS ------------------------
 %
-% Setting input file
-% fileName = "dirNode_2wells.dat";
-fileName = ["dirNode_1well.dat", "neuNode.dat"];
-
-%Creation of an object of "Boundaries" (general boundary condition)
+% Set the input file
+fileName = "dirNode_2wells.dat";
+%
+% Create an object of the "Boundaries" class and read the boundary
+% conditions
 bound = Boundaries(fileName);
 %
-%------------------------------- ASSEMBLY --------------------------------
+%-------------------------- PREPROCESSING ----------------------------
 %
-% Computing some pre-processing stuff
-pre = PreProc(mesh,mat);
-% Define the initial reservoir state
-resState = State(model,mesh,tetra,mat,pre);
+% Some preprocessing stuff
+pre = PreProc(grid,mat);
 %
-% Setting up the print utility 
-printUtils = OutState(model,mesh,'outTime.dat');
+% Set the "State" object. It contains all the vectors describing the state
+% of the reservoir in terms of pressure, displacement, stress, ...
+resState = State(model,grid,mat,pre);
+%
+% Create and set the print utility
+printUtils = OutState(model,grid,'outTime.dat');
+%
+% Print the reservoir initial state
 printUtils.printState(resState);
 %
-% Define the name of the BC that are to be imposed
-% BCName = "nodeDir";
-BCName = ["nodeDir","nodeNeu"];
+% ---------------------------- SOLUTION -------------------------------
 %
-% Nonlinear solver in time
-% Setup
-NSolv = NonLinearSolver(model,simParam,mesh,tetra,mat,pre,bound,BCName, ...
-        printUtils,resState);
-% Performing the loop
+NSolv = NonLinearSolver(model,simParam,grid,mat,pre,bound,printUtils,resState);
+%
+% Solve the problem
 [simState] = NSolv.NonLinearLoop();
 %
 % Finalize the print utility
 printUtils.finalize()
 %
-% Clean-up
 delete(bound);

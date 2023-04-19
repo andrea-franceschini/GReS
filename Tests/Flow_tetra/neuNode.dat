@@ -3,5 +3,5 @@ Neu                               % BC type
 Flow                              % Physics
 nodeNeu                           % BC name
 neuNode/list
-0.0 neuNode/time0.dat
+0.0   neuNode/time0.dat
 End

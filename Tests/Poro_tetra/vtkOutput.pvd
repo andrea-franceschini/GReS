@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<VTKFile type="Collection" version="1.0">
-   <Collection>
-      <DataSet file="vtkOutput/output_00000.vtm" timestep="1.010000e+02"/>
-   </Collection>
-</VTKFile>

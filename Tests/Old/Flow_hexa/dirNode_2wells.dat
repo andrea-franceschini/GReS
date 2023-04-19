@@ -1,0 +1,7 @@
+NodeBC                            % BC item
+Dir                               % BC type
+Flow                              % Physics
+nodeDir                           % BC name
+dirNode_2wells/list
+0.0 dirNode_2wells/time0.dat
+End

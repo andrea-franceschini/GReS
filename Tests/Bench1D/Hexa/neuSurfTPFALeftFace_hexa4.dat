@@ -1,0 +1,7 @@
+SurfBC                            % BC item
+Neu                               % BC type
+Flow                              % Physics
+lFace                             % BC name
+neuSurfTPFALeftFace_hexa4/list
+0.0 neuSurfTPFALeftFace_hexa4/time0.dat
+End

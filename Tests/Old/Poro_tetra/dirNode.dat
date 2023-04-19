@@ -1,0 +1,7 @@
+NodeBC                            % BC item
+Dir                               % BC type
+Poro                              % Physics
+nodeDir                           % BC name
+dirNode/list
+0.0 dirNode/time0.dat
+End
