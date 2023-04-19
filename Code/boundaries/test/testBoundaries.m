@@ -9,7 +9,8 @@ addpath('../');
 
 %------------------------------  DIRICHLET  ------------------------------
 % Setting input file
-fileName = ["dirNodePoro.dat","neuNodePoro.dat","dirNodeFlow.dat","neuNodeFlow.dat"];
+fileName = ["dirNodePoro.dat","neuNodePoro.dat","dirNodeFlow.dat", ...
+  "neuNodeFlow.dat","volForceFlow.dat","volForcePoro.dat"];
 
 % Creation of the object "Boundaries" (general boundary condition)
 bound = Boundaries(fileName);
@@ -36,10 +37,11 @@ tic;
 %  Creation of the object "nodedisp" (boundary conditions for node displacements)
 %nodeNeuF
 
-t = 3.45;
+t = 3.56;
 % Reading the stopwatch timer
 tD = toc;
-BCName = ["nodeDirP", "nodeDirF", "nodeNeuP", "nodeNeuF"];
+BCName = ["nodeDirP", "nodeDirF", "nodeNeuP", "nodeNeuF", "volForceF", ...
+  "volForceP"];
 for i=1:length(BCName)
   vals = getVals(bound,BCName(i), t);
   dofs = getDofs(bound,BCName(i));

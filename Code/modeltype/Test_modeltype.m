@@ -1,6 +1,17 @@
 close all
 clear all
-tic
+% models = ["SinglePhaseFlow_FVTPFA";
+%           "VariabSatFlow_FEM"];
+models = "VariabSatFlow_FVTPFA";
+m = ModelType(models);
+out = isPoromechanics(m)
+out = isSinglePhaseFlow(m)
+out = isVariabSatFlow(m)
+out = isFEMBased(m,'Poro')
+out = isFEMBased(m,'Flow')
+out = isFVTPFABased(m,'Poro')
+out = isFVTPFABased(m,'Flow')
+% tic
 % m1 = ModelType.Poromechanics;
 % m2 = ModelType.SinglePhaseFlow;
 % m3 = bitor(ModelType.SinglePhaseFlow,ModelType.Poromechanics);
@@ -13,18 +24,18 @@ tic
 % end
 % totTime1 = toc
 
-tic
-m1a = ModelType('Poromechanics');
-m2a = ModelType('SinglePhaseFlow');
-m3a = ModelType('CoupFlowPoro');
-for i=1:5000
-  t1 = isPoromechanics(m1a);
-  t2 = isSinglePhaseFlow(m1a);
-  t3 = isPoromechanics(m3a);
-  t4 = isSinglePhaseFlow(m3a);
-  t5 = isCoupFlowPoro(m3a);
-end
-totTime2 = toc
+% tic
+% m1a = ModelType('Poromechanics');
+% m2a = ModelType('SinglePhaseFlow');
+% m3a = ModelType('CoupFlowPoro');
+% for i=1:5000
+%   t1 = isPoromechanics(m1a);
+%   t2 = isSinglePhaseFlow(m1a);
+%   t3 = isPoromechanics(m3a);
+%   t4 = isSinglePhaseFlow(m3a);
+%   t5 = isCoupFlowPoro(m3a);
+% end
+% totTime2 = toc
 
 % switch m1
 %   case ModelType.SinglePhaseFlow

@@ -19,8 +19,10 @@ classdef NonLinearSolver < handle
     %
     model
     simParameters
+    grid
     mesh
     elements
+%     faces
     material
     bound
     BCName
@@ -37,19 +39,19 @@ classdef NonLinearSolver < handle
   end
   
   methods (Access = public)
-    function obj = NonLinearSolver(symmod,simParam,msh,elem,mat,pre,bc,BName,prtUtil,stateIni,varargin)
+    function obj = NonLinearSolver(symmod,simParam,grid,mat,pre,bc,BName,prtUtil,stateIni,varargin)
       nIn = nargin;
       data = varargin;
-      obj.setNonLinearSolver(nIn,symmod,simParam,msh,elem,mat,pre,bc,BName,prtUtil,stateIni,data);
+      obj.setNonLinearSolver(nIn,symmod,simParam,grid,mat,pre,bc,BName,prtUtil,stateIni,data);
     end
 
     function [simStat] = NonLinearLoop(obj)
       simStat = 1;
       if obj.preP.nE(2) > 0  % There is at least one hexahedron
-        linSyst = Discretizer(obj.model,obj.mesh,obj.elements,obj.material, ...
+        linSyst = Discretizer(obj.model,obj.grid,obj.material, ...
                   obj.preP,obj.GaussPts);
       else
-        linSyst = Discretizer(obj.model,obj.mesh,obj.elements,obj.material, ...
+        linSyst = Discretizer(obj.model,obj.grid,obj.material, ...
                 obj.preP);
       end
       % Compute H and P matrices for flow simulations and the gravity
@@ -64,7 +66,7 @@ classdef NonLinearSolver < handle
       obj.dt = obj.simParameters.dtIni;
       %
       % Setup the boundary conditions
-      %obj.bound.iniBC(obj.BCName,obj.stateTmp);
+%       obj.bound.iniBC(obj.BCName,obj.stateTmp);
       %
       %
       % Loop over time
@@ -91,8 +93,12 @@ classdef NonLinearSolver < handle
         end
         %
         % Apply Neu and Dir conditions
-        applyBC(obj.bound, obj.t, linSyst);
+        applyBCandForces(obj.model, obj.grid, obj.bound, ...
+          obj.t, linSyst);
+%         obj.bound.applyBCNeu(linSyst);
         rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
+%         obj.bound.applyBCDir(linSyst);
+%         obj.bound.applyBCNeu(linSyst);
         tolWeigh = obj.simParameters.relTol*rhsNorm;
         obj.iter = 0;
         %
@@ -117,8 +123,13 @@ classdef NonLinearSolver < handle
             linSyst.computeFlowRHS(obj.statek,obj.stateTmp);
           end
           %
-          applyBC(obj.bound, obj.t, linSyst);
+          applyBCandForces(obj.model, obj.grid, obj.bound, ...
+            obj.t, linSyst);
+%           obj.bound.applyBCNeu(linSyst);
           rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
+%           obj.bound.applyBCDir(linSyst);
+%           obj.bound.applyBCNeu(linSyst);
+%         rhsNorm = findNorm(obj,linSyst.rhs);
           fprintf('%d     %e\n',obj.iter,rhsNorm);
         end
         %
@@ -127,7 +138,7 @@ classdef NonLinearSolver < handle
         if flConv % Convergence
           obj.stateTmp.t = obj.t;
           % Print the solution, if needed
-          if obj.t > obj.simParameters.tMax
+          if obj.t > obj.simParameters.tMax   % For Steady State
             printState(obj.printUtil,obj.stateTmp);
           else
             printState(obj.printUtil,obj.statek,obj.stateTmp);
@@ -223,11 +234,12 @@ classdef NonLinearSolver < handle
   end
   
   methods (Access = private)
-    function setNonLinearSolver(obj,nIn,symmod,simParam,msh,elem,mat,pre,bc,BName,prtUtil,stateIni,data)
+    function setNonLinearSolver(obj,nIn,symmod,simParam,grid,mat,pre,bc,BName,prtUtil,stateIni,data)
       obj.model = symmod;
       obj.simParameters = simParam;
-      obj.mesh = msh;
-      obj.elements = elem;
+      obj.grid = grid;
+      obj.mesh = grid.topology;
+      obj.elements = grid.cells;
       obj.material = mat;
       obj.preP = pre;
       obj.bound = bc;
@@ -235,7 +247,7 @@ classdef NonLinearSolver < handle
       obj.printUtil = prtUtil;
       obj.statek = stateIni;
       obj.stateTmp = copy(stateIni);
-      if nIn > 10
+      if nIn > 9
         obj.GaussPts = data{1};
       end
       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

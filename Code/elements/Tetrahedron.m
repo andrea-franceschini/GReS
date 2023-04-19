@@ -1,11 +1,11 @@
 classdef Tetrahedron < handle
   % TETRAHEDRON element class
 
-  properties (Access = public)
+  properties (Access = private)
     mesh
-    vol
-    volSign
-    volNod
+%     vol
+%     volSign
+%     volNod
   end
   
   properties (Access = public)
@@ -17,7 +17,7 @@ classdef Tetrahedron < handle
     function obj = Tetrahedron(mesh)
       % Calling the function to set element data
       obj.setTetrahedron(mesh);
-      computeCellCentroid(obj);
+%       computeCellCentroid(obj);
     end
     %
     function [mat] = getDerBasisF(obj,el)
@@ -37,37 +37,43 @@ classdef Tetrahedron < handle
       %         vol = (obj.mesh.coordinates(top,1)')*mat(2,:)';
       %       end
     end
-
-    function v = getVolume(obj,el)
-      v = obj.vol(el);
-    end
     
-    function vS = getVolumeSign(obj,el)
-      vS = obj.volSign(el);
-    end
-  end
-   
-  methods (Access = private)
-%   Elements volume calculation
-    function findVolume(obj)
-      obj.vol = zeros(obj.mesh.nCells,1);
-      obj.volSign = ones(obj.mesh.nCells,1);
-      obj.volNod = zeros(obj.mesh.nNodes,1);
-      for el = 1:obj.mesh.nCells
-        top = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
-        obj.vol(el) = det([1 obj.mesh.coordinates(top(1),:);
-                           1 obj.mesh.coordinates(top(2),:);
-                           1 obj.mesh.coordinates(top(3),:);
-                           1 obj.mesh.coordinates(top(4),:)])/6;
-        if obj.vol(el) < 0
-          obj.volSign(el) = -1;
-          obj.vol(el) = -obj.vol(el);
+    %   Elements volume calculation
+    function vol = findVolume(obj,idTetra)
+      vol = zeros(length(idTetra),1);
+%       obj.volSign = ones(obj.mesh.nCells,1);
+%       obj.volNod = zeros(obj.mesh.nNodes,1);
+      i = 0;
+      for el = idTetra
+        i = i + 1;
+        top = obj.mesh.cells(el,1:4);
+        vol(i) = det([1 obj.mesh.coordinates(top(1),:);
+                      1 obj.mesh.coordinates(top(2),:);
+                      1 obj.mesh.coordinates(top(3),:);
+                      1 obj.mesh.coordinates(top(4),:)])/6;
+        if vol(i) < 0
+%           obj.volSign(el) = -1;
+          vol(i) = -vol(i);
         end
-        for i=1:obj.mesh.cellNumVerts(el)
-          obj.volNod(top(i)) = obj.volNod(top(i)) + obj.vol(el)/obj.mesh.cellNumVerts(el);
-        end
+%         for i=1:obj.mesh.cellNumVerts(el)
+%           obj.volNod(top(i)) = obj.volNod(top(i)) + obj.vol(el)/obj.mesh.cellNumVerts(el);
+%         end
       end
+      % Although it has no for loop, the following solution takes more
+      % time!
+%       obj.vol = arrayfun(@(e) det([1 obj.mesh.coordinates(obj.mesh.cells(e,1),:);
+%                                    1 obj.mesh.coordinates(obj.mesh.cells(e,2),:);
+%                                    1 obj.mesh.coordinates(obj.mesh.cells(e,3),:);
+%                                    1 obj.mesh.coordinates(obj.mesh.cells(e,4),:)])/6,1:obj.mesh.nCells);
     end
+
+%     function v = getVolume(obj,el)
+%       v = obj.vol(el);
+%     end
+%     
+%     function vS = getVolumeSign(obj,el)
+%       vS = obj.volSign(el);
+%     end
   end
   
   methods (Access = private)
@@ -76,7 +82,7 @@ classdef Tetrahedron < handle
       if any(obj.mesh.cellNumVerts == 10)
         error('Quadratic tetrahedron not available');
       end
-      findVolume(obj);
+%       findVolume(obj);
     end
     
     function computeCellCentroid(obj)

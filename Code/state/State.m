@@ -13,6 +13,7 @@ classdef State < matlab.mixin.Copyable
   
   properties (Access = private)
     model
+    grid
     mesh
     elements
     material
@@ -29,12 +30,12 @@ classdef State < matlab.mixin.Copyable
 %   end
   
   methods (Access = public)
-    function obj = State(symmod,msh,elem,mat,pre,varargin)
+    function obj = State(symmod,grid,mat,pre,varargin)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
       nIn = nargin;
       data = varargin;
-      obj.setState(nIn,symmod,msh,elem,mat,pre,data);
+      obj.setState(nIn,symmod,grid,mat,pre,data);
       obj.iniState();
     end
     
@@ -60,7 +61,7 @@ classdef State < matlab.mixin.Copyable
   %             obj.avStress(el,:) = obj.stress(l+1,:);
               l = l + 1;
             case 12 % Hexa
-              [N,~] = getDerBasisFAndDet(obj.elements,el);
+              N = getDerBasisFAndDet(obj.elements.hexa,el,2);
               B = zeros(6,8*obj.mesh.nDim,obj.GaussPts.nNode);
               B(obj.preP.indB(:,2)) = N(obj.preP.indB(:,1));
               D = obj.preP.getStiffMatrix(el,obj.stress(l+1:l+obj.GaussPts.nNode,3) ...
@@ -98,14 +99,14 @@ classdef State < matlab.mixin.Copyable
             avStress(el,:) = obj.stress(l+1,:);
             l = l + 1;
           case 12 % Hexa
-            [N,dJWeighed] = getDerBasisFAndDet(obj.elements,el);
+            [N,dJWeighed] = getDerBasisFAndDet(obj.elements.hexa,el,1);
             B = zeros(6,8*obj.mesh.nDim,obj.GaussPts.nNode);
             B(obj.preP.indB(:,2)) = N(obj.preP.indB(:,1));
-            vol = getVolume(obj.elements,el); % Volumetric average
-            avStress(el,:) = sum(diag(dJWeighed)*obj.stress((l+1):(l+obj.GaussPts.nNode),:))/vol;
+%             vol = getVolume(obj.elements,el); % Volumetric average
+            avStress(el,:) = sum(diag(dJWeighed)*obj.stress((l+1):(l+obj.GaussPts.nNode),:))/obj.elements.vol(el);
             dStrain = pagemtimes(B,obj.displ(dof));
             dStrain = dStrain.*reshape(dJWeighed,1,1,[]);
-            avStrain(el,:) = sum(dStrain,3)/vol;
+            avStrain(el,:) = sum(dStrain,3)/obj.elements.vol(el);
             l = l + obj.GaussPts.nNode;
         end
       end
@@ -115,7 +116,11 @@ classdef State < matlab.mixin.Copyable
       fluidPot = obj.pressure;
       gamma = obj.material.getMaterial(2*obj.preP.nMat+1).getFluidSpecWeight();
       if gamma > 0
-        fluidPot = fluidPot + gamma*obj.mesh.coordinates(:,3);
+        if isFEMBased(obj.model)
+          fluidPot = fluidPot + gamma*obj.mesh.coordinates(:,3);
+        elseif isFVTPFABased(obj.model)
+          fluidPot = fluidPot + gamma*obj.elements.cellCentroid(:,3);
+        end
       end
     end
     
@@ -151,19 +156,20 @@ classdef State < matlab.mixin.Copyable
   end
   
   methods (Access = private)
-    function setState(obj,nIn,symmod,msh,elem,mat,pre,data)
+    function setState(obj,nIn,symmod,grid,mat,pre,data)
       obj.model = symmod;
-      obj.mesh = msh;
-      obj.elements = elem;
+      obj.grid = grid;
+      obj.mesh = grid.topology;
+      obj.elements = grid.cells;
       obj.material = mat;
       obj.preP = pre;
 %       obj.density = dens;
-      if nIn > 5
+      if nIn > 4
         obj.GaussPts = data{1};
       end
       if isPoromechanics(obj.model)
         tmp = 1;
-        if nIn > 5
+        if nIn > 4
           tmp = obj.GaussPts.nNode;
         end
         % NOT ELEGANT AT ALL. FIX!
@@ -176,7 +182,12 @@ classdef State < matlab.mixin.Copyable
       end
       %
       if isSinglePhaseFlow(obj.model)
-        obj.pressure = zeros(obj.mesh.nNodes,1);
+        if isFEMBased(obj.model,'Flow')
+          nr = obj.mesh.nNodes;
+        elseif isFVTPFABased(obj.model,'Flow')
+          nr = obj.mesh.nCells;
+        end
+        obj.pressure = zeros(nr,1);
       end
     end
     
@@ -200,7 +211,7 @@ classdef State < matlab.mixin.Copyable
               %%%%%%%%%%%%%%%%%%%%%%%%%% FIX CALL TO TWO ELEMENTS %%%%%%%%%
 %               [~,dJWeighed] = getDerBasisFAndDet(obj.elements,el);
               %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-              GPLoc = obj.elements.getGPointsLocation(el);
+              GPLoc = obj.elements.hexa.getGPointsLocation(el);
               obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3) = -specGrav*(max_z-GPLoc(:,3))-50;  %MPa
               obj.iniStress(l1+1:l1+obj.GaussPts.nNode,1) = M*obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3);
               obj.iniStress(l1+1:l1+obj.GaussPts.nNode,2) = obj.iniStress(l1+1:l1+obj.GaussPts.nNode,1);
@@ -212,10 +223,18 @@ classdef State < matlab.mixin.Copyable
       end
       %
       if isSinglePhaseFlow(obj.model)
+%         if 5<1
         max_z = 410;
         gamma = obj.material.getMaterial(2*obj.preP.nMat+1).getFluidSpecWeight();
-        obj.pressure = gamma*(max_z-obj.mesh.coordinates(:,3));
-%         obj.pressure = zeros(length(obj.mesh.coordinates(:,3)),1);
+        if isFEMBased(obj.model,'Flow')
+%           obj.pressure = gamma*(max_z-obj.mesh.coordinates(:,3));
+        obj.pressure = zeros(length(obj.mesh.coordinates(:,3)),1);
+%         obj.pressure = 392.4*ones(length(obj.mesh.coordinates(:,3)),1);
+        elseif isFVTPFABased(obj.model,'Flow')
+%           obj.pressure = gamma*(max_z-obj.elements.cellCentroid(:,3));
+          obj.pressure = zeros(obj.mesh.nCells,1);
+        end
+%         end
       end
     end
   end
@@ -223,9 +242,9 @@ classdef State < matlab.mixin.Copyable
   methods (Access = protected)
     function cp = copyElement(obj)
       if isempty(obj.GaussPts)
-        cp = State(obj.model,obj.mesh,obj.elements,obj.material,obj.preP);
+        cp = State(obj.model,obj.grid,obj.material,obj.preP);
       else
-        cp = State(obj.model,obj.mesh,obj.elements,obj.material,obj.preP,obj.GaussPts);
+        cp = State(obj.model,obj.grid,obj.material,obj.preP,obj.GaussPts);
       end
       %
       cp.stress = obj.stress;

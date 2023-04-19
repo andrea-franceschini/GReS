@@ -17,12 +17,12 @@ classdef PreProc < handle
   end
   
   methods (Access = public)
-    function obj = PreProc(msh,mat,varargin)
+    function obj = PreProc(grid,mat,varargin)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
       nIn = nargin;
       data = varargin;
-      obj.setPreProc(nIn,msh,mat,data);
+      obj.setPreProc(nIn,grid,mat,data);
     end
     
     function dof = getDoFID(obj,el)
@@ -53,8 +53,8 @@ classdef PreProc < handle
   end
   
   methods (Access = private)
-    function setPreProc(obj,nIn,msh,mat,data)
-      obj.mesh = msh;
+    function setPreProc(obj,nIn,grid,mat,data)
+      obj.mesh = grid.topology;
       obj.material = mat;
       if nIn > 2
         obj.GaussPts = data{1};

@@ -12,38 +12,55 @@ classdef OutState < handle
     mesh
     timeID = 1
     VTK
+    flOutData = true
+    m
 %     flPrint = true
   end
   
   methods (Access = public)
-    function obj = OutState(symMod,mesh,fileName,varargin)
+    function obj = OutState(symMod,grid,fileName,varargin)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
       nIn = nargin;
       data = varargin;
-      obj.setOutState(nIn,symMod,mesh,fileName,data)
+      obj.setOutState(nIn,symMod,grid,fileName,data)
     end
-
+    
     function finalize(obj)
       obj.VTK.finalize();
     end
     
     function printState(obj,stateOld,stateNew)
       if nargin == 2
-        if isCoupFlowPoro(obj.model)
+        printProp.time = stateOld.t;
+%         if isPoromechanics(obj.model) && isSinglePhaseFlow(obj.model)
+%           [avStressOld,avStrainOld] = finalizeStatePoro(stateOld);
+%           [fluidPotOld] = finalizeStateFlow(stateOld);
+%           printProp = struct('time',stateOld.t,'displ',stateOld.displ, ...
+%             'stress',avStressOld,'strain',avStrainOld, ...
+%             'pressure',stateOld.pressure,'potential',fluidPotOld);
+        if obj.flOutData
+          obj.m.expTime(obj.timeID,1) = printProp.time;
+        end
+        if isPoromechanics(obj.model)
           [avStressOld,avStrainOld] = finalizeStatePoro(stateOld);
-          [fluidPotOld] = finalizeStateFlow(stateOld);
-          printProp = struct('time',stateOld.t,'displ',stateOld.displ, ...
-            'stress',avStressOld,'strain',avStrainOld, ...
-            'pressure',stateOld.pressure,'potential',fluidPotOld);
-        elseif isPoromechanics(obj.model)
-          [avStressOld,avStrainOld] = finalizeStatePoro(stateOld);
-          printProp = struct('time',stateOld.t,'displ',stateOld.displ, ...
-            'stress',avStressOld,'strain',avStrainOld);
+%           printProp = struct('time',stateOld.t,'displ',stateOld.displ, ...
+%             'stress',avStressOld,'strain',avStrainOld);
+          printProp.displ = stateOld.displ;
+          printProp.stress = avStressOld;
+          printProp.strain = avStrainOld;
+          if obj.flOutData
+            obj.m.expDispl(:,obj.timeID) = printProp.displ;
+          end
         elseif isSinglePhaseFlow(obj.model)
           [fluidPotOld] = finalizeStateFlow(stateOld);
-          printProp = struct('time',stateOld.t,'pressure',stateOld.pressure, ...
-          'potential',fluidPotOld);
+%           printProp = struct('time',stateOld.t,'pressure',stateOld.pressure, ...
+%           'potential',fluidPotOld);
+          printProp.pressure = stateOld.pressure;
+          printProp.potential = fluidPotOld;
+          if obj.flOutData
+            obj.m.expPress(:,obj.timeID) = printProp.pressure;
+          end
         end
         buildPrintStruct(obj,printProp);
       elseif nargin == 3
@@ -56,30 +73,45 @@ classdef OutState < handle
             %
             % Linear interpolation
             fac = (obj.timeList(obj.timeID) - stateOld.t)/(stateNew.t - stateOld.t);
-            if isCoupFlowPoro(obj.model)
+            printProp.time = obj.timeList(obj.timeID);
+%             if isPoromechanics(obj.model) && isSinglePhaseFlow(obj.model)
+%               [avStressOld,avStrainOld] = finalizeStatePoro(stateOld);
+%               [avStressNew,avStrainNew] = finalizeStatePoro(stateNew);
+%               [fluidPotOld] = finalizeStateFlow(stateOld);
+%               [fluidPotNew] = finalizeStateFlow(stateNew);
+%               printProp = struct('time',obj.timeList(obj.timeID), ...
+%                 'displ',stateNew.displ*fac+stateOld.displ*(1-fac), ...
+%                 'stress',avStressNew*fac+avStressOld*(1-fac), ...
+%                 'strain',avStrainNew*fac+avStrainOld*(1-fac), ...
+%                 'pressure',stateNew.pressure*fac+stateOld.pressure*(1-fac), ...
+%                 'potential',fluidPotNew*fac+fluidPotOld*(1-fac));
+            if obj.flOutData
+              obj.m.expTime(obj.timeID+1,1) = printProp.time;
+            end
+            if isPoromechanics(obj.model)
               [avStressOld,avStrainOld] = finalizeStatePoro(stateOld);
               [avStressNew,avStrainNew] = finalizeStatePoro(stateNew);
-              [fluidPotOld] = finalizeStateFlow(stateOld);
-              [fluidPotNew] = finalizeStateFlow(stateNew);
-              printProp = struct('time',obj.timeList(obj.timeID), ...
-                'displ',stateNew.displ*fac+stateOld.displ*(1-fac), ...
-                'stress',avStressNew*fac+avStressOld*(1-fac), ...
-                'strain',avStrainNew*fac+avStrainOld*(1-fac), ...
-                'pressure',stateNew.pressure*fac+stateOld.pressure*(1-fac), ...
-                'potential',fluidPotNew*fac+fluidPotOld*(1-fac));
-            elseif isPoromechanics(obj.model)
-              [avStressOld,avStrainOld] = finalizeStatePoro(stateOld);
-              [avStressNew,avStrainNew] = finalizeStatePoro(stateNew);
-              printProp = struct('time',obj.timeList(obj.timeID), ...
-                'displ',stateNew.displ*fac+stateOld.displ*(1-fac), ...
-                'stress',avStressNew*fac+avStressOld*(1-fac), ...
-                'strain',avStrainNew*fac+avStrainOld*(1-fac));
+%               printProp = struct('time',obj.timeList(obj.timeID), ...
+%                 'displ',stateNew.displ*fac+stateOld.displ*(1-fac), ...
+%                 'stress',avStressNew*fac+avStressOld*(1-fac), ...
+%                 'strain',avStrainNew*fac+avStrainOld*(1-fac));
+              printProp.displ = stateNew.displ*fac+stateOld.displ*(1-fac);
+              printProp.stress = avStressNew*fac+avStressOld*(1-fac);
+              printProp.strain = avStrainNew*fac+avStrainOld*(1-fac);
+              if obj.flOutData
+                obj.m.expDispl(:,obj.timeID+1) = printProp.displ;
+              end
             elseif isSinglePhaseFlow(obj.model)
               [fluidPotOld] = finalizeStateFlow(stateOld);
               [fluidPotNew] = finalizeStateFlow(stateNew);
-              printProp = struct('time',obj.timeList(obj.timeID), ...
-                'pressure',stateNew.pressure*fac+stateOld.pressure*(1-fac), ...
-                'potential',fluidPotNew*fac+fluidPotOld*(1-fac));
+%               printProp = struct('time',obj.timeList(obj.timeID), ...
+%                 'pressure',stateNew.pressure*fac+stateOld.pressure*(1-fac), ...
+%                 'potential',fluidPotNew*fac+fluidPotOld*(1-fac));
+              printProp.pressure = stateNew.pressure*fac+stateOld.pressure*(1-fac);
+              printProp.potential = fluidPotNew*fac+fluidPotOld*(1-fac);
+              if obj.flOutData
+                obj.m.expPress(:,obj.timeID+1) = printProp.pressure;
+              end
             end
             buildPrintStruct(obj,printProp);
             obj.timeID = obj.timeID + 1;
@@ -93,18 +125,18 @@ classdef OutState < handle
   end
   
   methods (Access = private)
-    function setOutState(obj,nIn,symMod,mesh,fileName,data)
+    function setOutState(obj,nIn,symMod,grid,fileName,data)
       if nIn > 3
         obj.printPath = data{1};
       end
       obj.model = symMod;
-      obj.mesh = mesh;
+      obj.mesh = grid.topology;
       %
       fid = fopen(fileName,'r');
       [flEof,line] = OutState.readLine(fid);
       %
       block = '';
-      while ~strcmp(line, 'End')
+      while ~strcmpi(line,'End')
         line = strtrim(line);
         if isempty(line)
           error('Blank line encountered while reading the print times in file %s',fileName);
@@ -121,28 +153,70 @@ classdef OutState < handle
           error('There are invalid entries in the list of output times')
         end
       else
-        obj.timeList = [0 1];
+        obj.timeList = [];
       end
       fclose(fid);
       %
       obj.VTK = VTKOutput(obj.mesh);
+      %
+      % TO DO: Here we are printing everything; consider adding the
+      % possibility of printing only the results of a portion of the domain
+      if obj.flOutData
+        if isfile('expData.mat')
+          delete 'expData.mat'
+        end
+        obj.m = matfile('expData.mat');
+        l = length(obj.timeList) + 1;
+        obj.m.expTime = zeros(l,1);
+        if isSinglePhaseFlow(obj.model)
+          if isFEMBased(obj.model,'Flow')
+            obj.m.expPress = zeros(obj.mesh.nNodes,l);
+          elseif isFVTPFABased(obj.model,'Flow')
+            obj.m.expPress = zeros(obj.mesh.nCells,l);
+          end
+        end
+        if isPoromechanics(obj.model)
+          obj.m.expDispl = zeros(obj.mesh.nDims*obj.mesh.nNodes,l);
+          % Maybe consider adding other output properties
+        end
+      end
     end
     %
     
     function buildPrintStruct(obj,printProp)
-      if isCoupFlowPoro(obj.model)
-        nPointProp = 5;
-        nCellProp = 12;
-      elseif isPoromechanics(obj.model)
-        nPointProp = 3;
-        nCellProp = 12;
-      elseif isSinglePhaseFlow(obj.model)
-        nPointProp = 2;
+      nPointProp = 0;
+      nCellProp = 0;
+%       if isCoupFlowPoro(obj.model)
+%         % Poromechanics
+%         nPointProp = 3;
+%         nCellProp = 12;
+%         % Flow part
+%         if isFEMBased(obj.model)
+%           nPointProp = nPointProp + 2;
+%         elseif isFVTPFABased(obj.model)
+%           nCellProp = nCellProp + 2;
+%         end
+      if isPoromechanics(obj.model)
+        nPointProp = nPointProp + 3;
+        nCellProp = nCellProp + 12;
+      end
+      if isSinglePhaseFlow(obj.model)
+        if isFEMBased(obj.model,'Flow')
+          nPointProp = nPointProp + 2;
+        elseif isFVTPFABased(obj.model,'Flow')
+          nCellProp = nCellProp + 2;
+        end
       end
       %
-      pointData3D = repmat(struct('name', 1, 'data', 1), nPointProp, 1);
-      if isPoromechanics(obj.model)
+      if nPointProp > 0
+        pointData3D = repmat(struct('name', 1, 'data', 1), nPointProp, 1);
+      else
+        pointData3D = [];
+      end
+      if nCellProp > 0
         cellData3D = repmat(struct('name', 1, 'data', 1), nCellProp, 1);
+      else
+        cellData3D = [];
       end
       %
       if isPoromechanics(obj.model)
@@ -186,18 +260,25 @@ classdef OutState < handle
       %
       if isSinglePhaseFlow(obj.model)
         %
-        % Pressure
-        pointData3D(nPointProp-1).name = 'press';
-        pointData3D(nPointProp-1).data = printProp.pressure;
-        pointData3D(nPointProp).name = 'potential';
-        pointData3D(nPointProp).data = printProp.potential;
+        % Pressure and potential
+        if isFEMBased(obj.model,'Flow')
+          pointData3D(nPointProp-1).name = 'press';
+          pointData3D(nPointProp-1).data = printProp.pressure;
+          pointData3D(nPointProp).name = 'potential';
+          pointData3D(nPointProp).data = printProp.potential;
+        elseif isFVTPFABased(obj.model,'Flow')
+          cellData3D(nCellProp-1).name = 'press';
+          cellData3D(nCellProp-1).data = printProp.pressure;
+          cellData3D(nCellProp).name = 'potential';
+          cellData3D(nCellProp).data = printProp.potential;
+        end
       end
       %
-      if isPoromechanics(obj.model)
+%       if isPoromechanics(obj.model)
         obj.VTK.writeVTKFile(printProp.time, pointData3D, cellData3D, [], []);
-      elseif isSinglePhaseFlow(obj.model)
-        obj.VTK.writeVTKFile(printProp.time, pointData3D, [], [], []);
-      end
+%       elseif isSinglePhaseFlow(obj.model)
+%         obj.VTK.writeVTKFile(printProp.time, pointData3D, [], [], []);
+%       end
     end
   end
   

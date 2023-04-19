@@ -14,40 +14,40 @@ classdef Mesh < handle
     nSurfaces = 0;
 
     % Nodes' coordinates
-    coordinates = [];
+    coordinates;
 
     % Cell to node mapping:
     % 3D elements' nodes sequences 
-    cells = [];
+    cells;
     % 3D elements' tag (region)
-    cellTag = [];
+    cellTag;
     % Number of nodes for each 3D element
-    cellNumVerts = [];
+    cellNumVerts;
     
     %cellToNode = logical(sparse(0, 0));
     %nodeToCell = logical(sparse(0, 0));
 
     % Surface to node mapping:
     % 2D elements' nodes sequences
-    surfaces = [];
+    surfaces;
     % 2D elements' tag (region)
-    surfaceTag = [];
+    surfaceTag;
     % Number of nodes of the 2D element
-    surfaceNumVerts = [];
+    surfaceNumVerts;
 
     % Regions
-    cellRegions = [];
-    surfaceRegions = [];
+    cellRegions;
+    surfaceRegions;
 
     % Coordinates of 3D element centroid
-    cellCentroid = [];
+%     cellCentroid = [];
     % Coordinates of 2D element centroid
-    surfaceCentroid = [];
+%     surfaceCentroid = [];
 
     % 3D element VTK type tag
-    cellVTKType = [];
+    cellVTKType;
     % 2D element VTK type tag
-    surfaceVTKType = [];
+    surfaceVTKType;
     meshType = 'Unstructured'
 
   end
@@ -94,7 +94,14 @@ classdef Mesh < handle
       obj.cellVTKType = obj.typeMapping(elems(ID,1));
       obj.cellTag = elems(ID,2);
       obj.nCells = length(obj.cellTag);
-
+      %
+      % Check for unsupported elements
+      if any(~ismember(obj.cellVTKType,[10 12]))
+        error(['There are unsupported elements in the mesh.\n', ...
+          'Supported elements are: - 4-node tetrahedra (VTKType = %d)\n', ...
+          '                        - 8-node hexahedra  (VTKType = %d)'],10,12);
+      end
+      %
       % REGIONS DATA FOR 3D ELEMENT
       nRegions = length(regions);
       dims = zeros(nRegions,1);
@@ -116,7 +123,14 @@ classdef Mesh < handle
       obj.surfaceVTKType = obj.typeMapping(elems(ID,1));
       obj.surfaceTag = elems(ID,2);
       obj.nSurfaces = length(obj.surfaceTag);
-
+      %
+      % Check for unsupported elements
+      if any(~ismember(obj.surfaceVTKType,[5 9]))
+        error(['There are unsupported surfaces in the mesh.\n', ...
+          'Supported surfaces are: - 3-node triangles       (VTKType = %d)\n', ...
+          '                        - 4-node quadrilaterals  (VTKType = %d)'],5,9);
+      end
+      %
       % REGIONS DATA FOR 2D ELEMENT
       dims = zeros(nRegions,1);
       for i = 1 : nRegions
@@ -145,11 +159,11 @@ classdef Mesh < handle
     %
     
     % Function for 2D element centroid calculation
-    function computeSurfaceCentroid(obj)
-      obj.surfaceCentroid = sparse(repelem(1:obj.nSurfaces,obj.surfaceNumVerts), ...
-          nonzeros((obj.surfaces)'),repelem((obj.surfaceNumVerts).^(-1),obj.surfaceNumVerts),obj.nSurfaces,obj.nNodes) ...
-          * obj.coordinates;
-    end
+%     function computeSurfaceCentroid(obj)
+%       obj.surfaceCentroid = sparse(repelem(1:obj.nSurfaces,obj.surfaceNumVerts), ...
+%           nonzeros((obj.surfaces)'),repelem((obj.surfaceNumVerts).^(-1),obj.surfaceNumVerts),obj.nSurfaces,obj.nNodes) ...
+%           * obj.coordinates;
+%     end
     %
 %     function computeSurfaceCentroid(obj)
 %       obj.surfaceCentroid = zeros(obj.nSurfaces,3);

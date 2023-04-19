@@ -22,14 +22,27 @@ classdef PorousRock < handle
       poro = obj.poro;
     end
 
-    % Function to get material permeability
+    % Function to get material permeability as a 3x3 matrix
     function K = getPermMatrix(obj)
-      if length(obj.KVec) == 3
+      if length(obj.KVec) == 1
+        K = diag(obj.KVec*ones(3,1));
+      elseif length(obj.KVec) == 3
         K = diag(obj.KVec);
       else
-        K = [obj.KVec(1) obj.KVec(2) obj.KVec(4);
-             obj.KVec(2) obj.KVec(3) obj.KVec(5);
-             obj.KVec(4) obj.KVec(5) obj.KVec(6)];
+        K = [obj.KVec(1) obj.KVec(2) obj.KVec(3);
+             obj.KVec(2) obj.KVec(4) obj.KVec(5);
+             obj.KVec(3) obj.KVec(5) obj.KVec(6)];
+      end
+    end
+    
+    function K = getPermVector(obj) % Inspired by MRST
+      if length(obj.KVec) == 1
+        K = [obj.KVec, 0, 0, 0, obj.KVec, 0, 0, 0, obj.KVec];
+      elseif length(obj.KVec) == 3
+        K = [obj.KVec(1), 0, 0, 0, obj.KVec(2), 0, 0, 0, obj.KVec(3)];
+      else
+        K = [obj.KVec(1), obj.KVec(2), obj.KVec(3), obj.KVec(2), obj.KVec(4), ...
+             obj.KVec(5), obj.KVec(3), obj.KVec(5), obj.KVec(6)];
       end
     end
     
@@ -74,15 +87,19 @@ classdef PorousRock < handle
 %             obj.alpha = params(2);
             obj.specGrav = params(2);
           case 3
-            KTmp([1 2 4]) = [params(1), params(2), params(3)];
+            KTmp([1 2 3]) = [params(1), params(2), params(3)];
           case 4
-            KTmp([3 5]) = [params(1), params(2)];
+            KTmp([4 5]) = [params(1), params(2)];
           case 5
             KTmp(6) = params(1);
         end
       end
-      if all(KTmp([2 4 5]) == 0)
-        obj.KVec = [KTmp(1); KTmp(3); KTmp(6)];
+      if all(KTmp([2 3 5]) == 0)
+        if all(KTmp([4 6]) == KTmp(1))
+          obj.KVec = KTmp(1);
+        else
+          obj.KVec = [KTmp(1); KTmp(4); KTmp(6)];
+        end
       else
         obj.KVec = KTmp;
       end

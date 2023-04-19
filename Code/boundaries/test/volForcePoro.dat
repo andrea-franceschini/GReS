@@ -1,0 +1,9 @@
+VolumeForce                                  % BC item
+Poro                                         % Physics
+volForceP                                    % BC name
+volForcePoro/list
+0.0  volForcePoro/time0.dat
+5.0  volForcePoro/time1.dat
+10.0 volForcePoro/time2.dat
+12.0 volForcePoro/time3.dat
+End
