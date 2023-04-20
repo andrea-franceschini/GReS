@@ -36,5 +36,8 @@
 *.vtm
 *.pvd
 
+# Matlab files
+*.mat
+
 # Output folders with vtk files
 /Tests/*/vtkOutput/
