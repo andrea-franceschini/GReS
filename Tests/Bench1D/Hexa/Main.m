@@ -49,7 +49,7 @@ fileName = ["dirElemRightFace_hexa1.dat","neuSurfLeftFace_hexa1.dat", ...
 % Create an object of the "Boundaries" class and read the boundary
 % conditions
 bound = Boundaries(fileName);
-linkBoundSurf2TPFAFace(model,bound,grid);
+%linkBoundSurf2TPFAFace(model,bound,grid);
 %
 %-------------------------- PREPROCESSING ----------------------------
 %

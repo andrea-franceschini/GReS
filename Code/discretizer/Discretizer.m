@@ -7,7 +7,11 @@ classdef Discretizer < handle
     P
     K
     K2
+    Q
     rhs
+    rhsPoro
+    rhsFlow
+    KPoro
   end
   
   properties (Access = private)
@@ -194,8 +198,8 @@ classdef Discretizer < handle
         % Get the right material stiffness for each element
         switch obj.mesh.cellVTKType(el)
           case 10 % Tetrahedra
-            N = getDerBasisF(obj.elements,el);
-            vol = getVolume(obj.elements,el);
+            N = getDerBasisF(obj.elements.tetra,el);
+            vol = findVolume(obj.elements.tetra,el);
             B = zeros(6,4*obj.mesh.nDim);
             B(obj.preP.indB(1:36,2)) = N(obj.preP.indB(1:36,1));
             D = obj.preP.getStiffMatrix(el,state.stress(l2+1,3)+state.iniStress(l2+1,3));
@@ -272,7 +276,148 @@ classdef Discretizer < handle
 %         end
 %       end
 %     end
+    function  rhs = computePoroCouple(obj)
+       % calculate poromechanics stiffness matrix in coupled model
+       % output: right-hand side (internal forces) waiting for external
+       % forces and Neumann conditions
+       
+       %same instructions for computePoroSyst, different Output variables
+      rhs = zeros(obj.mesh.nNodes*obj.mesh.nDim,1);
+      iiVec = zeros(obj.preP.nEntryKLoc*obj.preP.nE,1);
+      jjVec = zeros(obj.preP.nEntryKLoc*obj.preP.nE,1);
+      KVec = zeros(obj.preP.nEntryKLoc*obj.preP.nE,1);
+      %
+      l1 = 0;
+      l2 = 0;
+      for el=1:obj.mesh.nCells
+        % Get the right material stiffness for each element
+        switch obj.mesh.cellVTKType(el)
+          case 10 % Tetrahedra
+            N = getDerBasisF(obj.elements.tetra,el);
+            vol = findVolume(obj.elements.tetra,el);
+            B = zeros(6,4*obj.mesh.nDim);
+            B(obj.preP.indB(1:36,2)) = N(obj.preP.indB(1:36,1));
+            D = obj.preP.getStiffMatrix(el,state.stress(l2+1,3)+state.iniStress(l2+1,3));
+            KLoc = B'*D*B*vol;
+            s1 = obj.preP.nEntryKLoc(1);
+            %
+%             if obj.flCompRHS
+              fLoc = (B')*(state.stress(l2+1,:))'*vol;
+              s2 = 1;
+%             end
+          case 12 % Hexahedra
+              [N,dJWeighed] = getDerBasisFAndDet(obj.elements.hexa,el,1);
+              B = zeros(6,8*obj.mesh.nDim,obj.GaussPts.nNode);
+              B(obj.preP.indB(:,2)) = N(obj.preP.indB(:,1));
+              D = obj.preP.getStiffMatrix(el,state.stress(l2+1:l2+obj.GaussPts.nNode,3)+state.iniStress(l2+1:l2+obj.GaussPts.nNode,3));
+              Ks = pagemtimes(pagemtimes(B,'ctranspose',D,'none'),B);
+              Ks = Ks.*reshape(dJWeighed,1,1,[]);
+              KLoc = sum(Ks,3);
+              clear Ks;
+              s1 = obj.preP.nEntryKLoc(2);
+              sz = state.stress(l2+1:l2+obj.GaussPts.nNode,:);
+              sz = reshape(sz',6,1,obj.GaussPts.nNode);
+              fTmp = pagemtimes(B,'ctranspose',sz,'none'); %internal forces local calculation
+              fTmp = fTmp.*reshape(dJWeighed,1,1,[]); 
+              fLoc = sum(fTmp,3);
+              s2 = obj.GaussPts.nNode;
+%               end
+        end
+        %
+        dof = obj.preP.getDoFID(el);
+        [jjLoc,iiLoc] = meshgrid(dof,dof);
+        iiVec(l1+1:l1+s1) = iiLoc(:);
+        jjVec(l1+1:l1+s1) = jjLoc(:);
+        KVec(l1+1:l1+s1) = KLoc(:);
+        % Accumulate the residual contributions
+        rhs(dof) = rhs(dof) + fLoc;
+%         end
+        l1 = l1 + s1;
+        l2 = l2 + s2;
+      end
+      % Populate the Jacobian
+      obj.KPoro = sparse(iiVec,jjVec,KVec,obj.mesh.nNodes*obj.mesh.nDim, ...
+                     obj.mesh.nNodes*obj.mesh.nDim);
+    end
+
+
+    function computeCoupleMat(obj)
+        
+       %initializing index vectors for assembly 
+       iivec = zeros((obj.preP.nNodesElem.^2*obj.mesh.nDim)*obj.preP.ne,1);
+       jjvec = zeros((obj.preP.nNodesElem.^2*obj.mesh.nDim)*obj.preP.ne,1);
+       Qvec =  zeros((obj.preP.nNodesElem.^2*obj.mesh.nDim)*obj.preP.ne,1);
+       
+       l1=0;
+       biot = 1; %TO DO: call to Biot Coefficient in PorousRock class
+       
+       if obj.preP.ne(2) > 0 %at least one Hexahedron
+           N1 = getBasisFinGPoints(obj.elements); %compute Basis Function matrix for further calculations
+       end
+       
+       for el=1:obj.mesh.nCells
+           switch obj.mesh.cellVTKType(el)
+               case 10 %Tetrahedrons, direct integration 
+                   vol = findVolume(obj.elements.tetra,el);
+                   der = getDerBasisF(obj.elements.tetra,el);
+                   der = der';
+                   Qloc = biot*0.25*repelem(der(:),1,4)*vol;
+                   s1 = obj.preP.nNodesElem(1).^2*obj.mesh.ndim;
+               case 12 %Hexahedrons, Gauss integration
+                   [N,dJWeighed] = getDerBasisFandDet(obj.elements.hexa,el,1);
+                   nG = obj.GaussPts.nNode;
+                   iN = zeros(6,8,nG); %matrix product i*N
+                   B = zeros(6,8*obj.mesh.nDim,obj.GaussPts.nNode);
+                   B(obj.preP.indB(:,2)) = N(obj.preP.indB(:,1));
+                   iN(1,:,:) = reshape(N1',1,8,nG);
+                   iN(2:3,:,:) = repmat(iN(1,:,:),2,1,1);
+                   Qs = biot*pagemtimes(B,'ctranspose',iN,'none');
+                   Qs = Qs.*reshape(dJWeighed,1,1,[]);
+                   Qloc = sum(Qs,3);
+                   clear Qs;
+                   s1 = obj.preP.nNodesElem(2)^2*obj.mesh.nDim;   
+           end
+       
+       %assembly Coupling Matrix
+       dofporo = obj.preP.getDofID(el);
+       dofflow = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
+       [jjloc,iiloc] = meshgrid(dofflow,dofporo);
+       iivec(l1+1:l1+s1) = iiloc(:);
+       jjvec(l1+1:l1+s1) = jjloc(:);
+       Qvec(l1+1:l1+s1) = Qloc(:);
+       
+       l1 = l1+s1;
+       end  
+       obj.Q = sparse(iiVec,jjVec,QVec,obj.mesh.nNodes*obj.mesh.nDim, ...
+                     obj.mesh.nNodes);
+    end
+
+    function computeCoupleSyst(obj,theta,dt,statek,stateTmp)
+%Not necessary since they are already computed before the NR loop
+%         obj.computeFlowMat(); 
+%         obj.computeFlowRHSGravContribute();
+        obj.computeCoupleMat;
+        obj.rhsFlow = obj.fConst; %initializing flow RHS
+        obj.rhsPoro = obj.computePoroCouple(); 
+
+        %computing rhs contributes (neumann and volume forces still
+        %missing!)
+        
+        obj.rhsPoro = obj.rhsPoro + (-obj.Q*stateTmp.pressure) - (((1-theta)/theta)*...
+            (obj.Q*statek.pressure-obj.KPoro*statek.displ));
+        
+        obj.rhsFlow = obj.rhsFlow + (-(obj.Q)'*stateTmp.displ- ...
+            (theta*dt*obj.H+obj.P)*stateTmp.pressure) - ...
+            ((-obj.Q)'*statek.displ+((1-theta)*dt*obj.H-obj.P)*statek.pressure);
+        
+    end
+        
+
   end
+  
+  
+  
+  
   
   methods(Access = private)
     function setDiscretizer(obj,nIn,symmod,grid,mat,pre,data)

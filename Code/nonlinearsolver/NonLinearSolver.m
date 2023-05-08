@@ -25,7 +25,7 @@ classdef NonLinearSolver < handle
 %     faces
     material
     bound
-    BCName
+    %BCName
     preP
     GaussPts
     printUtil
@@ -39,10 +39,10 @@ classdef NonLinearSolver < handle
   end
   
   methods (Access = public)
-    function obj = NonLinearSolver(symmod,simParam,grid,mat,pre,bc,BName,prtUtil,stateIni,varargin)
+    function obj = NonLinearSolver(symmod,simParam,grid,mat,pre,bc,prtUtil,stateIni,varargin)
       nIn = nargin;
       data = varargin;
-      obj.setNonLinearSolver(nIn,symmod,simParam,grid,mat,pre,bc,BName,prtUtil,stateIni,data);
+      obj.setNonLinearSolver(nIn,symmod,simParam,grid,mat,pre,bc,prtUtil,stateIni,data);
     end
 
     function [simStat] = NonLinearLoop(obj)
@@ -75,22 +75,28 @@ classdef NonLinearSolver < handle
         obj.tStep = obj.tStep + 1;
         obj.t = obj.t + obj.dt;
         % Apply the Dirichlet condition value to the solution vector
+        % (changes not needed for Coupled model)
         applyDirVal(obj.bound, obj.t, obj.stateTmp);
         %
         fprintf('\nTSTEP %d   ---  TIME %f\n',obj.tStep,obj.t);
         fprintf('-----------------------------------------------------------\n');
         fprintf('Iter     ||rhs||\n');
         %
-        if isPoromechanics(obj.model)
-          % Compute Jacobian and residual of the poromechanical problem
-          linSyst.computePoroSyst(obj.stateTmp);
-        end
-        if isSinglePhaseFlow(obj.model)
+         if isSinglePhaseFlow(obj.model)
           % Compute Jacobian and residual of the flow problem 
           linSyst.computeFlowSystMat(obj.simParameters.theta,obj.dt);
           %
           linSyst.computeFlowRHS(obj.statek,obj.stateTmp);
+         end
+        
+        if isCoupled(obj.model)
+%         %compute Residual for coupled system
+          linSyst.computeCoupleSyst(obj.simParameters.theta,obj.dt,obj.statek,obs.stateTmp)
+        elseif isPoromechanics(obj.model)
+          % Compute Jacobian and residual of the poromechanical problem
+          linSyst.computePoroSyst(obj.stateTmp);
         end
+       
         %
         % Apply Neu and Dir conditions
         applyBCandForces(obj.model, obj.grid, obj.bound, ...
@@ -234,7 +240,7 @@ classdef NonLinearSolver < handle
   end
   
   methods (Access = private)
-    function setNonLinearSolver(obj,nIn,symmod,simParam,grid,mat,pre,bc,BName,prtUtil,stateIni,data)
+    function setNonLinearSolver(obj,nIn,symmod,simParam,grid,mat,pre,bc,prtUtil,stateIni,data)
       obj.model = symmod;
       obj.simParameters = simParam;
       obj.grid = grid;
@@ -243,7 +249,7 @@ classdef NonLinearSolver < handle
       obj.material = mat;
       obj.preP = pre;
       obj.bound = bc;
-      obj.BCName = BName;
+      %obj.BCName = BName;
       obj.printUtil = prtUtil;
       obj.statek = stateIni;
       obj.stateTmp = copy(stateIni);

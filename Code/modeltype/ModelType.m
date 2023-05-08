@@ -45,6 +45,12 @@ classdef ModelType < handle
       end
     end
     
+    function out = isCoupled(obj)
+        out = false; 
+         if obj.ModSettings(1) > 0 && floor(obj.ModSettings(2)/10) == 1
+        out = true;
+        end
+    end
 %     function out = isCoupFlowPoro(obj)
 %       out = false;
 %       if all(obj.ModSettings(1:2))

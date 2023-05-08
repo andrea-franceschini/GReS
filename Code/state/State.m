@@ -51,7 +51,7 @@ classdef State < matlab.mixin.Copyable
           dof = getDoFID(obj.preP,el);
           switch obj.mesh.cellVTKType(el)
             case 10 % Tetra
-              N = getDerBasisF(obj.elements,el);
+              N = getDerBasisF(obj.elements.tetra,el);
               B = zeros(6,4*obj.mesh.nDim);
               B(obj.preP.indB(1:36,2)) = N(obj.preP.indB(1:36,1));
               D = obj.preP.getStiffMatrix(el,obj.stress(l+1,3) ...
@@ -91,7 +91,7 @@ classdef State < matlab.mixin.Copyable
         dof = getDoFID(obj.preP,el);
         switch obj.mesh.cellVTKType(el)
           case 10 % Tetra
-            N = getDerBasisF(obj.elements,el);
+            N = getDerBasisF(obj.elements.tetra,el);
             B = zeros(6,4*obj.mesh.nDim);
             B(obj.preP.indB(1:36,2)) = N(obj.preP.indB(1:36,1));
             dStrain = B*obj.displ(dof);

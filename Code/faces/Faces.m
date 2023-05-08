@@ -102,8 +102,8 @@ classdef Faces < handle
       d = obj.mesh.coordinates(quadNod,:) - repelem(surfCentroid,4,1);
       % Works only for 4-point faces
       ptr = repmat(mod(1:4,4)+1,1,nQuad) + repelem(cumsum([0 4*ones(1,nQuad-1)]),4);
-      normalTri = cross(d,d(ptr,:),2);
-      areaTri = vecnorm(normalTri,2,2)/2;
+      normalTri = cross(d,d(ptr,:),2); 
+      areaTri = vecnorm(normalTri,2,2)/2; %norma di ogni riga
 %       faceArea = sum(reshape(areaTri,4,[]));
       areaQuad = accumarray(repelem(1:nQuad,4)',areaTri);
     end

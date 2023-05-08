@@ -1,7 +1,7 @@
 classdef Elastic < handle
   % ELASTIC ISOTROPIC material class
 
-  properties (Access = private)
+  properties (Access = public)
     % Elastic modulus
     E
     % Poisson's ratio

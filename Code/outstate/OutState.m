@@ -176,7 +176,7 @@ classdef OutState < handle
           end
         end
         if isPoromechanics(obj.model)
-          obj.m.expDispl = zeros(obj.mesh.nDims*obj.mesh.nNodes,l);
+          obj.m.expDispl = zeros(obj.mesh.nDim*obj.mesh.nNodes,l);
           % Maybe consider adding other output properties
         end
       end
