@@ -42,7 +42,43 @@ classdef State < matlab.mixin.Copyable
     function updateState(obj,dSol)
       %METHOD1 Summary of this method goes here
       %   Detailed explanation goes here
-      if isPoromechanics(obj.model)
+      if isCoupled(obj.model)
+        du = dSol(1:obj.mesh.nDim*obj.mesh.nNodes);
+        dp = dSol(obj.mesh.nDim*obj.mesh.nNodes+1:end);
+        obj.displ = obj.displ + du;
+        obj.pressure = obj.pressure + dp;
+        % Update stress
+        l = 0;
+        for el=1:obj.mesh.nCells
+          dof = getDoFID(obj.preP,el);
+          switch obj.mesh.cellVTKType(el)
+            case 10 % Tetra
+              N = getDerBasisF(obj.elements.tetra,el);
+              B = zeros(6,4*obj.mesh.nDim);
+              B(obj.preP.indB(1:36,2)) = N(obj.preP.indB(1:36,1));
+              D = obj.preP.getStiffMatrix(el,obj.stress(l+1,3) ...
+                  + obj.iniStress(l+1,3));  % obj.stress before being updated
+              dStress = D*B*du(dof);
+              obj.stress(l+1,:) = obj.stress(l+1,:) + dStress';
+  %             obj.avStress(el,:) = obj.stress(l+1,:);
+              l = l + 1;
+            case 12 % Hexa
+              N = getDerBasisFAndDet(obj.elements.hexa,el,2);
+              B = zeros(6,8*obj.mesh.nDim,obj.GaussPts.nNode);
+              B(obj.preP.indB(:,2)) = N(obj.preP.indB(:,1));
+              D = obj.preP.getStiffMatrix(el,obj.stress(l+1:l+obj.GaussPts.nNode,3) ...
+                  + obj.iniStress(l+1:l+obj.GaussPts.nNode,3));  % obj.stress before being updated
+              dStress = pagemtimes(D,pagemtimes(B,du(dof)));
+              obj.stress((l+1):(l+obj.GaussPts.nNode),:) = ...
+                obj.stress((l+1):(l+obj.GaussPts.nNode),:) + ...
+                reshape(dStress,6,obj.GaussPts.nNode)';
+  %             vol = getVolume(obj.elements,el); % Volumetric average
+  %             dStress = dStress.*reshape(dJWeighed,1,1,[]);
+  %             obj.avStress(el,:) = sum(dStress,3)/vol;
+              l = l + obj.GaussPts.nNode;
+          end
+        end
+      elseif isPoromechanics(obj.model)
         obj.displ = obj.displ + dSol;
         %
         % Update stress
@@ -76,9 +112,8 @@ classdef State < matlab.mixin.Copyable
               l = l + obj.GaussPts.nNode;
           end
         end
-      end
       %
-      if isSinglePhaseFlow(obj.model)
+      elseif isSinglePhaseFlow(obj.model)
         obj.pressure = obj.pressure + dSol;
       end
     end

@@ -81,26 +81,25 @@ classdef NonLinearSolver < handle
         fprintf('\nTSTEP %d   ---  TIME %f\n',obj.tStep,obj.t);
         fprintf('-----------------------------------------------------------\n');
         fprintf('Iter     ||rhs||\n');
-        %
-         if isSinglePhaseFlow(obj.model)
-          % Compute Jacobian and residual of the flow problem 
-          linSyst.computeFlowSystMat(obj.simParameters.theta,obj.dt);
-          %
-          linSyst.computeFlowRHS(obj.statek,obj.stateTmp);
-         end
+        
         
         if isCoupled(obj.model)
-%         %compute Residual for coupled system
+%         %compute Jacobian and Residual for coupled system
           linSyst.computeCoupleSyst(obj.simParameters.theta,obj.dt,obj.statek,obs.stateTmp)
         elseif isPoromechanics(obj.model)
           % Compute Jacobian and residual of the poromechanical problem
           linSyst.computePoroSyst(obj.stateTmp);
+        elseif isSinglePhaseFlow(obj.model)
+          % Compute Jacobian and residual of the flow problem 
+          linSyst.computeFlowSystMat(obj.simParameters.theta,obj.dt);
+          %
+          linSyst.computeFlowRHS(obj.statek,obj.stateTmp);
         end
        
         %
         % Apply Neu and Dir conditions
         applyBCandForces(obj.model, obj.grid, obj.bound, ...
-          obj.t, linSyst);
+          obj.t, linSyst,obj.simParameters.theta,obj.dt);
 %         obj.bound.applyBCNeu(linSyst);
         rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
 %         obj.bound.applyBCDir(linSyst);
@@ -130,7 +129,7 @@ classdef NonLinearSolver < handle
           end
           %
           applyBCandForces(obj.model, obj.grid, obj.bound, ...
-            obj.t, linSyst);
+            obj.t, linSyst,obj.simParameters.theta,obj.dt);
 %           obj.bound.applyBCNeu(linSyst);
           rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
 %           obj.bound.applyBCDir(linSyst);

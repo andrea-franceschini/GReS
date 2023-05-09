@@ -12,6 +12,8 @@ classdef Discretizer < handle
     rhsPoro
     rhsFlow
     KPoro
+    KFlow
+    K2Flow
   end
   
   properties (Access = private)
@@ -124,7 +126,13 @@ classdef Discretizer < handle
     function computeFlowSystMat(obj,theta,dt)
       % Compute matrices K and K2
       obj.K = theta*obj.H + obj.P/dt;
-      obj.K2 = obj.P/dt - (1-theta)*obj.H;
+      obj.K2 = -obj.P/dt + (1-theta)*obj.H;
+    end
+    
+     function computeCoupleFlowSystMat(obj,theta,dt)
+      % Compute matrices KFlow and K2Flow for Coupled system
+      obj.KFlow = -(theta*dt*obj.H+obj.P);
+      obj.K2Flow = obj.P/dt - (1-theta)*obj.H;
     end
     
     function computeFlowRHSGravContribute(obj)
@@ -276,13 +284,13 @@ classdef Discretizer < handle
 %         end
 %       end
 %     end
-    function  rhs = computePoroCouple(obj)
+    function  computePoroCouple(obj)
        % calculate poromechanics stiffness matrix in coupled model
        % output: right-hand side (internal forces) waiting for external
        % forces and Neumann conditions
        
        %same instructions for computePoroSyst, different Output variables
-      rhs = zeros(obj.mesh.nNodes*obj.mesh.nDim,1);
+      obj.rhsPoro = zeros(obj.mesh.nNodes*obj.mesh.nDim,1);
       iiVec = zeros(obj.preP.nEntryKLoc*obj.preP.nE,1);
       jjVec = zeros(obj.preP.nEntryKLoc*obj.preP.nE,1);
       KVec = zeros(obj.preP.nEntryKLoc*obj.preP.nE,1);
@@ -330,7 +338,7 @@ classdef Discretizer < handle
         jjVec(l1+1:l1+s1) = jjLoc(:);
         KVec(l1+1:l1+s1) = KLoc(:);
         % Accumulate the residual contributions
-        rhs(dof) = rhs(dof) + fLoc;
+        obj.rhsPoro(dof) = obj.rhsPoro(dof) + fLoc;
 %         end
         l1 = l1 + s1;
         l2 = l2 + s2;
@@ -396,27 +404,25 @@ classdef Discretizer < handle
 %Not necessary since they are already computed before the NR loop
 %         obj.computeFlowMat(); 
 %         obj.computeFlowRHSGravContribute();
-        obj.computeCoupleMat;
+        obj.computeCoupleMat(); %computing coupling matrix
         obj.rhsFlow = obj.fConst; %initializing flow RHS
-        obj.rhsPoro = obj.computePoroCouple(); 
-
+        obj.computePoroCouple(); %computing Poromechanics stiffness and initializing Poromechanics rhs with internal forces
+        obj.computeCoupleFlowSystMat(theta,dt);
         %computing rhs contributes (neumann and volume forces still
-        %missing!)
+        %missing! they are added with applyBCandForces function)
+        
         
         obj.rhsPoro = obj.rhsPoro + (-obj.Q*stateTmp.pressure) - (((1-theta)/theta)*...
             (obj.Q*statek.pressure-obj.KPoro*statek.displ));
         
-        obj.rhsFlow = obj.rhsFlow + (-(obj.Q)'*stateTmp.displ- ...
-            (theta*dt*obj.H+obj.P)*stateTmp.pressure) - ...
-            ((-obj.Q)'*statek.displ+((1-theta)*dt*obj.H-obj.P)*statek.pressure);
+        obj.rhsFlow = obj.rhsFlow + (-(obj.Q)'*stateTmp.displ + obj.KFlow*stateTmp.pressure) - ...
+            ((-obj.Q)'*statek.displ + obj.K2Flow*statek.pressure);
         
+       %construct Jacobian and rhs for Coupled System
+        obj.K = [obj.KPoro, -obj.Q; -(obj.Q)', obj.KFlow];
+        obj.rhs = [obj.rhsPoro; obj.rhsFlow];
     end
-        
-
   end
-  
-  
-  
   
   
   methods(Access = private)

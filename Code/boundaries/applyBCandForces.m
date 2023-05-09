@@ -1,4 +1,4 @@
- function applyBCandForces(model, grid, bound, t, syst)
+ function applyBCandForces(model, grid, bound, t, syst,theta,dt)
   % Impose BC to the linearized system (Jacobian matrix + RHS)
   % The Penalty method is used for the Dirichlet conditions
   %
@@ -6,15 +6,26 @@
   %
   keys = bound.db.keys;
   %%%%%%%%%%%%%%%%%%%%%%%%%%%IF COUPLED%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  %BCs added according to formulation n.1 in IJNAMG2009
   if isCoupled(model)
     for i = 1 : length(keys)
     if strcmp(bound.getCond(keys{i}),'NodeBC')
-      if strcmp(bound.getType(keys{i}), 'Neu')  % Apply Neumann conditions,if any
-        syst.rhs(bound.getDofs(keys{i})) = syst.rhs(bound.getDofs(keys{i})) - bound.getVals(keys{i}, t);
-      elseif strcmp(bound.getType(keys{i}), 'Dir')  % Apply Dirichlet conditions
-        nrows = size(syst.K,1);
-        syst.K(nrows*(bound.getDofs(keys{i})-1) + bound.getDofs(keys{i})) = maxVal*1.e10;
-        syst.rhs(bound.getDofs(keys{i})) = 0;
+      if strcmp(bound.getPhysics(keys{i}),'Poro')
+          if strcmp(bound.getType(keys{i}), 'Neu')  % Apply Neumann conditions,if any
+            syst.rhsPoro(bound.getDofs(keys{i})) = syst.rhsPoro(bound.getDofs(keys{i})) - (1/theta)*bound.getVals(keys{i}, t);
+          elseif strcmp(bound.getType(keys{i}), 'Dir')  % Apply Dirichlet conditions
+            nrows = size(syst.KPoro,1);
+            syst.KPoro(nrows*(bound.getDofs(keys{i})-1) + bound.getDofs(keys{i})) = maxVal*1.e10;
+            syst.rhsPoro(bound.getDofs(keys{i})) = 0;
+          end
+      elseif strcmp(bound.getPhysics(keys{i}),'Flow')
+          if strcmp(bound.getType(keys{i}), 'Neu')  % Apply Neumann conditions,if any
+            syst.rhsFlow(bound.getDofs(keys{i})) = syst.rhsFlow(bound.getDofs(keys{i})) + dt*bound.getVals(keys{i}, t);
+          elseif strcmp(bound.getType(keys{i}), 'Dir')  % Apply Dirichlet conditions
+            nrows = size(syst.KFlow,1);
+            syst.KFlow(nrows*(bound.getDofs(keys{i})-1) + bound.getDofs(keys{i})) = maxVal*1.e10;
+            syst.rhsFlow(bound.getDofs(keys{i})) = 0;
+          end
       end
     elseif strcmp(bound.getCond(keys{i}),'ElementBC')
       nrows = size(syst.K,1);
@@ -41,7 +52,7 @@
             if length(aNod) == 1
               aNod = aNod*ones(3,1);
             end
-            syst.rhs(nodes) = syst.rhs(nodes) - fval.*aNod;
+            syst.rhsFlow(nodes) = syst.rhsFlow(nodes) + dt*fval.*aNod;
           end
         elseif strcmp(bound.getType(keys{i}), 'Dir')
           error('Dirichlet cond. for FEM on surf is not available (ref. %s)', ...
