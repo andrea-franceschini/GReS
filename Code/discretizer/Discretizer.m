@@ -284,7 +284,7 @@ classdef Discretizer < handle
 %         end
 %       end
 %     end
-    function  computePoroCouple(obj)
+    function  computePoroCouple(obj,state)
        % calculate poromechanics stiffness matrix in coupled model
        % output: right-hand side (internal forces) waiting for external
        % forces and Neumann conditions
@@ -352,14 +352,14 @@ classdef Discretizer < handle
     function computeCoupleMat(obj)
         
        %initializing index vectors for assembly 
-       iivec = zeros((obj.preP.nNodesElem.^2*obj.mesh.nDim)*obj.preP.ne,1);
-       jjvec = zeros((obj.preP.nNodesElem.^2*obj.mesh.nDim)*obj.preP.ne,1);
-       Qvec =  zeros((obj.preP.nNodesElem.^2*obj.mesh.nDim)*obj.preP.ne,1);
+       iivec = zeros((obj.preP.nNodesElem.^2*obj.mesh.nDim)*obj.preP.nE,1);
+       jjvec = zeros((obj.preP.nNodesElem.^2*obj.mesh.nDim)*obj.preP.nE,1);
+       Qvec =  zeros((obj.preP.nNodesElem.^2*obj.mesh.nDim)*obj.preP.nE,1);
        
        l1=0;
        biot = 1; %TO DO: call to Biot Coefficient in PorousRock class
        
-       if obj.preP.ne(2) > 0 %at least one Hexahedron
+       if obj.preP.nE(2) > 0 %at least one Hexahedron
            N1 = getBasisFinGPoints(obj.elements); %compute Basis Function matrix for further calculations
        end
        
@@ -370,7 +370,7 @@ classdef Discretizer < handle
                    der = getDerBasisF(obj.elements.tetra,el);
                    der = der';
                    Qloc = biot*0.25*repelem(der(:),1,4)*vol;
-                   s1 = obj.preP.nNodesElem(1).^2*obj.mesh.ndim;
+                   s1 = obj.preP.nNodesElem(1).^2*obj.mesh.nDim;
                case 12 %Hexahedrons, Gauss integration
                    [N,dJWeighed] = getDerBasisFandDet(obj.elements.hexa,el,1);
                    nG = obj.GaussPts.nNode;
@@ -387,7 +387,7 @@ classdef Discretizer < handle
            end
        
        %assembly Coupling Matrix
-       dofporo = obj.preP.getDofID(el);
+       dofporo = obj.preP.getDoFID(el);
        dofflow = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
        [jjloc,iiloc] = meshgrid(dofflow,dofporo);
        iivec(l1+1:l1+s1) = iiloc(:);
@@ -396,7 +396,7 @@ classdef Discretizer < handle
        
        l1 = l1+s1;
        end  
-       obj.Q = sparse(iiVec,jjVec,QVec,obj.mesh.nNodes*obj.mesh.nDim, ...
+       obj.Q = sparse(iivec,jjvec,Qvec,obj.mesh.nNodes*obj.mesh.nDim, ...
                      obj.mesh.nNodes);
     end
 
@@ -406,7 +406,7 @@ classdef Discretizer < handle
 %         obj.computeFlowRHSGravContribute();
         obj.computeCoupleMat(); %computing coupling matrix
         obj.rhsFlow = obj.fConst; %initializing flow RHS
-        obj.computePoroCouple(); %computing Poromechanics stiffness and initializing Poromechanics rhs with internal forces
+        obj.computePoroCouple(stateTmp); %computing Poromechanics stiffness and initializing Poromechanics rhs with internal forces
         obj.computeCoupleFlowSystMat(theta,dt);
         %computing rhs contributes (neumann and volume forces still
         %missing! they are added with applyBCandForces function)

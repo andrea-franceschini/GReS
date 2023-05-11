@@ -33,16 +33,17 @@ classdef OutState < handle
     function printState(obj,stateOld,stateNew)
       if nargin == 2
         printProp.time = stateOld.t;
-%         if isPoromechanics(obj.model) && isSinglePhaseFlow(obj.model)
-%           [avStressOld,avStrainOld] = finalizeStatePoro(stateOld);
-%           [fluidPotOld] = finalizeStateFlow(stateOld);
-%           printProp = struct('time',stateOld.t,'displ',stateOld.displ, ...
-%             'stress',avStressOld,'strain',avStrainOld, ...
-%             'pressure',stateOld.pressure,'potential',fluidPotOld);
+%        
         if obj.flOutData
           obj.m.expTime(obj.timeID,1) = printProp.time;
         end
-        if isPoromechanics(obj.model)
+        if isPoromechanics(obj.model) && isSinglePhaseFlow(obj.model)
+          [avStressOld,avStrainOld] = finalizeStatePoro(stateOld);
+          [fluidPotOld] = finalizeStateFlow(stateOld);
+          printProp = struct('time',stateOld.t,'displ',stateOld.displ, ...
+            'stress',avStressOld,'strain',avStrainOld, ...
+            'pressure',stateOld.pressure,'potential',fluidPotOld);
+        elseif isPoromechanics(obj.model)
           [avStressOld,avStrainOld] = finalizeStatePoro(stateOld);
 %           printProp = struct('time',stateOld.t,'displ',stateOld.displ, ...
 %             'stress',avStressOld,'strain',avStrainOld);

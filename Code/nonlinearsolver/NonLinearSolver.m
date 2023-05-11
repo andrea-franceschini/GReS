@@ -85,7 +85,7 @@ classdef NonLinearSolver < handle
         
         if isCoupled(obj.model)
 %         %compute Jacobian and Residual for coupled system
-          linSyst.computeCoupleSyst(obj.simParameters.theta,obj.dt,obj.statek,obs.stateTmp)
+          linSyst.computeCoupleSyst(obj.simParameters.theta,obj.dt,obj.statek,obj.stateTmp)
         elseif isPoromechanics(obj.model)
           % Compute Jacobian and residual of the poromechanical problem
           linSyst.computePoroSyst(obj.stateTmp);
@@ -118,11 +118,12 @@ classdef NonLinearSolver < handle
           obj.stateTmp.updateState(du); 
           %
           % Compute residual and update Jacobian
-          if isPoromechanics(obj.model)
+          if isCoupled(obj.model)
+              linSyst.computeCoupleSyst(obj.simParameters.theta,obj.dt,obj.statek,obj.stateTmp);
+          elseif isPoromechanics(obj.model)
             linSyst.computePoroSyst(obj.stateTmp);
-          end
           %
-          if isSinglePhaseFlow(obj.model)
+          elseif isSinglePhaseFlow(obj.model)
             linSyst.computeFlowSystMat(obj.simParameters.theta,obj.dt);   % Not needed
 %             since the problem is linear
             linSyst.computeFlowRHS(obj.statek,obj.stateTmp);
