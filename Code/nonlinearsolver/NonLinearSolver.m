@@ -25,7 +25,7 @@ classdef NonLinearSolver < handle
 %     faces
     material
     bound
-    BCName
+%     BCName
     preP
     GaussPts
     printUtil
@@ -39,10 +39,10 @@ classdef NonLinearSolver < handle
   end
   
   methods (Access = public)
-    function obj = NonLinearSolver(symmod,simParam,grid,mat,pre,bc,BName,prtUtil,stateIni,varargin)
+    function obj = NonLinearSolver(symmod,simParam,grid,mat,pre,bc,prtUtil,stateIni,varargin)
       nIn = nargin;
       data = varargin;
-      obj.setNonLinearSolver(nIn,symmod,simParam,grid,mat,pre,bc,BName,prtUtil,stateIni,data);
+      obj.setNonLinearSolver(nIn,symmod,simParam,grid,mat,pre,bc,prtUtil,stateIni,data);
     end
 
     function [simStat] = NonLinearLoop(obj)
@@ -93,8 +93,8 @@ classdef NonLinearSolver < handle
         end
         %
         % Apply Neu and Dir conditions
-        applyBCandForces(obj.model, obj.grid, obj.bound, ...
-          obj.t, linSyst);
+        applyBCandForces(obj.model, obj.grid, obj.bound, obj.material, ...
+          obj.preP, obj.t, linSyst, obj.stateTmp);
 %         obj.bound.applyBCNeu(linSyst);
         rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
 %         obj.bound.applyBCDir(linSyst);
@@ -123,8 +123,8 @@ classdef NonLinearSolver < handle
             linSyst.computeFlowRHS(obj.statek,obj.stateTmp);
           end
           %
-          applyBCandForces(obj.model, obj.grid, obj.bound, ...
-            obj.t, linSyst);
+          applyBCandForces(obj.model, obj.grid, obj.bound, obj.material, ...
+            obj.preP, obj.t, linSyst, obj.stateTmp);
 %           obj.bound.applyBCNeu(linSyst);
           rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
 %           obj.bound.applyBCDir(linSyst);
@@ -234,7 +234,7 @@ classdef NonLinearSolver < handle
   end
   
   methods (Access = private)
-    function setNonLinearSolver(obj,nIn,symmod,simParam,grid,mat,pre,bc,BName,prtUtil,stateIni,data)
+    function setNonLinearSolver(obj,nIn,symmod,simParam,grid,mat,pre,bc,prtUtil,stateIni,data)
       obj.model = symmod;
       obj.simParameters = simParam;
       obj.grid = grid;
@@ -243,11 +243,11 @@ classdef NonLinearSolver < handle
       obj.material = mat;
       obj.preP = pre;
       obj.bound = bc;
-      obj.BCName = BName;
+%       obj.BCName = BName;
       obj.printUtil = prtUtil;
       obj.statek = stateIni;
       obj.stateTmp = copy(stateIni);
-      if nIn > 9
+      if nIn > 8
         obj.GaussPts = data{1};
       end
       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

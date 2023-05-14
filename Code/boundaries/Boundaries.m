@@ -8,12 +8,13 @@ classdef Boundaries < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = Boundaries(fileName)
+    function obj = Boundaries(fileNames,model,grid) %,model,grid
       % MATLAB evaluates the assignment expression for each instance, which
       % ensures that each instance has a unique value
       obj.db = containers.Map('KeyType','char','ValueType','any');
       % Calling the function to read input data from file
-      obj.readInputFiles(fileName);
+      obj.readInputFiles(fileNames);
+      obj.computeBoundaryProperties(model,grid);
     end
     
     function delete(obj)
@@ -56,8 +57,139 @@ classdef Boundaries < handle
       physics = obj.getData(identifier).physics;
     end
     
+    function ent = getLoadedEntities(obj, identifier)
+      ent = obj.getData(identifier).loadedEnts;
+    end
+    
+    function infl = getEntitiesInfluence(obj, identifier)
+      infl = obj.getData(identifier).entitiesInfl;
+    end
+    
+    function direction = getDirection(obj, identifier)
+      direction = obj.getData(identifier).direction;
+    end
+    
     function setDofs(obj, identifier, list)
       obj.getData(identifier).data.entities = list;
+    end
+    
+    function computeBoundaryProperties(obj,model,grid)
+      keys = obj.db.keys;
+      for i = 1 : length(keys)
+        if strcmp(obj.getCond(keys{i}), 'VolumeForce') && ...
+            isFEMBased(model,obj.getPhysics(keys{i}))
+          dofs = obj.getDofs(keys{i});
+          tmpMat = grid.topology.cells(dofs,:)';
+          [loadedEnts] = unique(tmpMat(tmpMat ~= 0));
+          ptrHexa = grid.topology.cellVTKType(dofs) == 12;
+          ptrTetra = grid.topology.cellVTKType(dofs) == 10;
+          nHexa = nnz(ptrHexa);
+          nTetra = nnz(ptrTetra);
+          rowID = zeros(8*nHexa+4*nTetra,1);
+          colID = zeros(8*nHexa+4*nTetra,1);
+          nodeVol = zeros(8*nHexa+4*nTetra,1);
+          ptr = 0;
+          if any(ptrHexa)
+            nodeVol(ptr+1:ptr+8*nHexa) = grid.cells.hexa.findNodeVolume(dofs(ptrHexa)');
+            topolHexa = tmpMat(:,ptrHexa);
+            [~,rowID(ptr+1:ptr+8*nHexa)] = ismember(topolHexa(topolHexa ~= 0),loadedEnts);
+            colID(ptr+1:ptr+8*nHexa) = repelem(find(ptrHexa),8);
+            ptr = ptr + 8*nHexa;
+            clear topolHexa
+          end
+          if any(ptrTetra)
+            nodeVol(ptr+1:ptr+4*nTetra) = 0.25*repelem(grid.cells.vol(dofs(ptrTetra)),4);
+            topolTetra = tmpMat(:,ptrTetra);
+            [~,rowID(ptr+1:ptr+4*nTetra)] = ismember(topolTetra(topolTetra ~= 0),loadedEnts);
+            colID(ptr+1:ptr+4*nTetra) = repelem(find(ptrTetra),4);
+            clear topolTetra
+          end
+          nodeVolume = sparse(rowID,colID,nodeVol,length(loadedEnts),length(dofs));
+          tmpDbEntry = obj.getData(keys{i});
+          tmpDbEntry.entitiesInfl = nodeVolume;
+          tmpDbEntry.loadedEnts = loadedEnts;
+          obj.db(keys{i}) = tmpDbEntry;
+        elseif strcmp(obj.getCond(keys{i}), 'SurfBC') && ...
+            isFEMBased(model,obj.getPhysics(keys{i}))
+          dofs = obj.getDofs(keys{i});
+          tmpMat = grid.topology.surfaces(dofs,:)';
+          [loadedEnts] = unique(tmpMat(tmpMat ~= 0));
+          ptrTri = grid.topology.surfaceVTKType(dofs) == 5;
+          ptrQuad = grid.topology.surfaceVTKType(dofs) == 9;
+          nQuad = nnz(ptrQuad);
+          nTri = nnz(ptrTri);
+          rowID = zeros(4*nQuad+3*nTri,1);
+          colID = zeros(4*nQuad+3*nTri,1);
+          areaSurf = zeros(4*nQuad+3*nTri,1);
+          ptr = 0;
+          if any(ptrQuad)
+            areaSurf(ptr+1:ptr+4*nQuad) = 0.25*repelem(grid.faces.computeAreaQuad(dofs(ptrQuad)),4);
+            topolQuad = tmpMat(:,ptrQuad);
+            [~,rowID(ptr+1:ptr+4*nQuad)] = ismember(topolQuad(topolQuad ~= 0),loadedEnts);
+            colID(ptr+1:ptr+4*nQuad) = repelem(find(ptrQuad),4);
+            ptr = ptr + 4*nQuad;
+            clear topolQuad
+          end
+          if any(ptrTri)
+            areaSurf(ptr+1:ptr+3*nTri) = 1/3*repelem(grid.faces.computeAreaTri(dofs(ptrTri)),3);
+            topolTri = tmpMat(:,ptrTri);
+            [~,rowID(ptr+1:ptr+3*nTri)] = ismember(topolTri(topolTri ~= 0),loadedEnts);
+            colID(ptr+1:ptr+3*nTri) = repelem(find(ptrTri),3);
+            clear topolTri
+          end
+          nodeArea = sparse(rowID,colID,areaSurf,length(loadedEnts),length(dofs));
+          %
+          if strcmp(obj.getPhysics(keys{i}),'Poro')
+            direction = obj.getDirection(keys{i});
+            switch direction
+              case 'x'
+                loadedEnts = 3*loadedEnts - 2;
+              case 'y'
+                loadedEnts = 3*loadedEnts - 1;
+              case 'z'
+                loadedEnts = 3*loadedEnts;
+            end
+          end
+          tmpDbEntry = obj.getData(keys{i});
+          tmpDbEntry.entitiesInfl = nodeArea;
+          tmpDbEntry.loadedEnts = loadedEnts;
+          obj.db(keys{i}) = tmpDbEntry;
+%           dofs = obj.getDofs(keys{i});
+%           areaSurf = zeros(length(dofs),1);
+%           idTri = dofs(grid.topology.surfaceVTKType(dofs) == 5);
+%           idQuad = dofs(grid.topology.surfaceVTKType(dofs) == 9);
+%           if ~isempty(idTri)
+%             areaSurf(idTri) = grid.faces.computeAreaTri(idTri);
+%           end
+%           if ~isempty(idQuad)
+%             areaSurf(idQuad) = grid.faces.computeAreaQuad(idQuad);
+%           end
+%           tmpMat = grid.topology.surfaces(dofs,:)';
+%           [loadedEnts,~,rowID] = unique(tmpMat(tmpMat ~= 0));
+%           clear tmpMat
+%           areaSurf = areaSurf./grid.topology.surfaceNumVerts(dofs);
+%           nodeArea = sparse(rowID,repelem(1:length(dofs), ...
+%             grid.topology.surfaceNumVerts(dofs)),repelem(areaSurf, ...
+%             grid.topology.surfaceNumVerts(dofs)), ...
+%             length(loadedEnts),length(dofs));
+%           %
+%           if strcmp(obj.getPhysics(keys{i}),'Poro')
+%             direction = obj.getDirection(keys{i});
+%             switch direction
+%               case 'x'
+%                 loadedEnts = 3*loadedEnts - 2;
+%               case 'y'
+%                 loadedEnts = 3*loadedEnts - 1;
+%               case 'z'
+%                 loadedEnts = 3*loadedEnts;
+%             end
+%           end
+%           tmpDbEntry = obj.getData(keys{i});
+%           tmpDbEntry.entitiesInfl = nodeArea;
+%           tmpDbEntry.loadedEnts = loadedEnts;
+%           obj.db(keys{i}) = tmpDbEntry;
+        end
+      end
     end
     
 %     function iniBC(obj,BCList,state)
@@ -230,7 +362,7 @@ classdef Boundaries < handle
       end
       token = Boundaries.readToken(fid);
       if (~ismember(token, ['NodeBC', 'SurfBC', 'VolForce']))
-        error(['%s condition is not admitted\n', ...
+        error(['%s condition is unknown\n', ...
           'Accepted types are: NodeBC   -> Boundary cond. on nodes\n',...
           '                    SurfBC   -> Boundary cond. on surfaces\n',...
           '                    VolForce -> Volume force on elements'], token);
@@ -243,6 +375,13 @@ classdef Boundaries < handle
         end
       end
       physics = Boundaries.readToken(fid);
+      if strcmp(physics,'Poro') && strcmp(token,'SurfBC')
+        direction = Boundaries.readToken(fid);
+        if ~ismember(direction,['x','y','z'])
+          error(['%s is an invalid direction of the distrbuted load\n', ...
+            'Accepted directions are: x, y, and z'],direction);
+        end
+      end
       name = Boundaries.readToken(fid);
       setFile = Boundaries.readToken(fid);
       [times, dataFiles] = Boundaries.readDataFiles(fid);
@@ -250,16 +389,24 @@ classdef Boundaries < handle
       if obj.db.isKey(name)
         error('%s boundary condition name already defined', name);
       end
-      switch (token)
-        case {'NodeBC', 'SurfBC'}
+      switch token
+        case 'NodeBC'
           obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
             'cond',token,'type', type, 'physics', physics);
+        case 'SurfBC'
+          switch physics
+            case 'Flow'
+              obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
+                'cond',token,'type', type, 'physics', physics);
+            case 'Poro'
+              obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
+                'cond', token,'direction', direction, 'type', type, 'physics', physics);
+          end
         case {'VolumeForce', 'ElementBC'}
           obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
             'cond',token, 'physics', physics);
       end
       %
-      
     end
     
     % Reading boundary input file

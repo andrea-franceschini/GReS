@@ -1,0 +1,15 @@
+NodeBC                            % BC item
+Dir                               % BC type
+Flow                              % Physics
+latSurf                           % BC name
+dirNodeLatSurf_hexa/list
+0.000000 dirNodeLatSurf_hexa/time0.dat
+0.500000 dirNodeLatSurf_hexa/time1.dat
+1.000000 dirNodeLatSurf_hexa/time2.dat
+10.000000 dirNodeLatSurf_hexa/time3.dat
+20.000000 dirNodeLatSurf_hexa/time4.dat
+50.000000 dirNodeLatSurf_hexa/time5.dat
+100.000000 dirNodeLatSurf_hexa/time6.dat
+150.000000 dirNodeLatSurf_hexa/time7.dat
+200.000000 dirNodeLatSurf_hexa/time8.dat
+End

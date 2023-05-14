@@ -114,11 +114,11 @@ classdef State < matlab.mixin.Copyable
     
     function [fluidPot] = finalizeStateFlow(obj)
       fluidPot = obj.pressure;
-      gamma = obj.material.getMaterial(2*obj.preP.nMat+1).getFluidSpecWeight();
+      gamma = obj.material.getMaterial(obj.preP.nMat+1).getFluidSpecWeight();
       if gamma > 0
-        if isFEMBased(obj.model)
+        if isFEMBased(obj.model,'Flow')
           fluidPot = fluidPot + gamma*obj.mesh.coordinates(:,3);
-        elseif isFVTPFABased(obj.model)
+        elseif isFVTPFABased(obj.model,'Flow')
           fluidPot = fluidPot + gamma*obj.elements.cellCentroid(:,3);
         end
       end
@@ -196,7 +196,7 @@ classdef State < matlab.mixin.Copyable
       if isPoromechanics(obj.model)
         l1 = 0;
         for el = 1:obj.mesh.nCells
-          M = obj.material.getMaterial(obj.mesh.cellTag(el)).getMFactor();
+          M = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getMFactor();
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
           specGrav = 0.0216;    % FIX THE CALL TO THE PROPERTY IN MATERIAL - POROUS ROCK
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -225,14 +225,15 @@ classdef State < matlab.mixin.Copyable
       if isSinglePhaseFlow(obj.model)
 %         if 5<1
         max_z = 410;
-        gamma = obj.material.getMaterial(2*obj.preP.nMat+1).getFluidSpecWeight();
+        gamma = obj.material.getMaterial(obj.preP.nMat+1).getFluidSpecWeight();
         if isFEMBased(obj.model,'Flow')
 %           obj.pressure = gamma*(max_z-obj.mesh.coordinates(:,3));
         obj.pressure = zeros(length(obj.mesh.coordinates(:,3)),1);
-%         obj.pressure = 392.4*ones(length(obj.mesh.coordinates(:,3)),1);
+%           obj.pressure = 392.4*ones(length(obj.mesh.coordinates(:,3)),1);
         elseif isFVTPFABased(obj.model,'Flow')
 %           obj.pressure = gamma*(max_z-obj.elements.cellCentroid(:,3));
           obj.pressure = zeros(obj.mesh.nCells,1);
+%           obj.pressure = 392.4*ones(obj.mesh.nCells,1);
         end
 %         end
       end

@@ -1,6 +1,0 @@
-VolumeForce                       % BC item
-Flow                              % Physics
-volForce                          % BC name
-volForce/list
-0.0   volForce/time0.dat
-End

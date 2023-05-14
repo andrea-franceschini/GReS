@@ -38,6 +38,10 @@ classdef Discretizer < handle
       obj.setDiscretizer(nIn,symmod,grid,mat,pre,data);
     end
     
+    function trans = getFaceTransmissibilities(obj,faceID)
+      trans = obj.trans(faceID);
+    end
+    
     function computeFlowMat(obj)
       if obj.model.isFEMBased('Flow')
         % Compute the stiffness (H) and mass (P) matrices for the flow problem by FEM
@@ -46,19 +50,19 @@ classdef Discretizer < handle
         HVec = zeros((obj.preP.nNodesElem.^2)*obj.preP.nE,1);
         PVec = zeros((obj.preP.nNodesElem.^2)*obj.preP.nE,1);
         % Get the fluid compressibility
-        beta = obj.material.getMaterial(2*obj.preP.nMat+1).getFluidCompressibility();
+        beta = obj.material.getMaterial(obj.preP.nMat+1).getFluidCompressibility();
         if obj.preP.nE(2) > 0
           N1 = obj.elements.hexa.getBasisFinGPoints();
         end
         % Get the fluid dynamic viscosity
-        mu = obj.material.getMaterial(2*obj.preP.nMat+1).getDynViscosity();
+        mu = obj.material.getMaterial(obj.preP.nMat+1).getDynViscosity();
         %
         l1 = 0;
         for el=1:obj.mesh.nCells
           % Get the rock permeability, porosity and compressibility
-          permMat = obj.material.getMaterial(obj.preP.nMat+obj.mesh.cellTag(el)).getPermMatrix();
-          poro = obj.material.getMaterial(obj.preP.nMat+obj.mesh.cellTag(el)).getPorosity();
-          alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).getRockCompressibility();
+          permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+          poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
+          alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
           % Compute the element matrices based on the element type
           % (tetrahedra vs. hexahedra)
           switch obj.mesh.cellVTKType(el)
@@ -106,10 +110,10 @@ classdef Discretizer < handle
                         sumDiagTrans],obj.mesh.nCells,obj.mesh.nCells);
         poroMat = zeros(obj.preP.nMat,1);
         alphaMat = zeros(obj.preP.nMat,1);
-        beta = obj.material.getMaterial(2*obj.preP.nMat+1).getFluidCompressibility();
+        beta = obj.material.getMaterial(obj.preP.nMat+1).getFluidCompressibility();
         for m = 1:obj.preP.nMat
-          poroMat(m) = obj.material.getMaterial(obj.preP.nMat+m).getPorosity();
-          alphaMat(m) = obj.material.getMaterial(m).getRockCompressibility();
+          poroMat(m) = obj.material.getMaterial(m).PorousRock.getPorosity();
+          alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
         end
         % (alpha+poro*beta)
         PVal = (alphaMat(obj.mesh.cellTag) + beta*poroMat(obj.mesh.cellTag)).*obj.elements.vol;
@@ -132,13 +136,13 @@ classdef Discretizer < handle
       end
       obj.fConst = zeros(nr,1); clear nr;
       % Get the fluid specific weight and viscosity
-      gamma = obj.material.getMaterial(2*obj.preP.nMat+1).getFluidSpecWeight();
+      gamma = obj.material.getMaterial(obj.preP.nMat+1).getFluidSpecWeight();
       if gamma > 0
         if isFEMBased(obj.model,'Flow')
-          mu = obj.material.getMaterial(2*obj.preP.nMat+1).getDynViscosity();
+          mu = obj.material.getMaterial(obj.preP.nMat+1).getDynViscosity();
           for el=1:obj.mesh.nCells
             % Get the material permeability
-            permMat = obj.material.getMaterial(obj.preP.nMat+obj.mesh.cellTag(el)).getPermMatrix();
+            permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
             permMat = permMat/mu;
             switch obj.mesh.cellVTKType(el)
               case 10 % Tetrahedra
@@ -320,14 +324,14 @@ classdef Discretizer < handle
       N = bsxfun(@times,sgn,obj.faces.faceNormal(obj.faces.faces2Elements(:,1),:));
       KMat = zeros(obj.preP.nMat,9);
       for i=1:obj.preP.nMat
-        KMat(i,:) = obj.material.getMaterial(obj.preP.nMat+i).getPermVector();
+        KMat(i,:) = obj.material.getMaterial(i).PorousRock.getPermVector();
       end
       hT = zeros(length(hf2Cell),1);
       for k=1:length(r)
         hT = hT + L(:,r(k)) .* KMat(obj.mesh.cellTag(hf2Cell),k) .* N(:,c(k));
       end
       hT = hT./sum(L.*L,2);
-      mu = obj.material.getMaterial(2*obj.preP.nMat+1).getDynViscosity();
+      mu = obj.material.getMaterial(obj.preP.nMat+1).getDynViscosity();
       hT = hT/mu;
       %
       obj.trans = 1 ./ accumarray(obj.faces.faces2Elements(:,1),1 ./ hT,[obj.faces.nFaces,1]);

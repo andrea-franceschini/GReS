@@ -12,9 +12,9 @@ classdef PorousRock < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = PorousRock(inputString)
+    function obj = PorousRock(fID, matFileName)
       % Calling the function to set the object properties
-      obj.setMaterialParameters(inputString);
+      obj.readMaterialParameters(fID, matFileName);
     end
 
     % Function to get material porosity
@@ -55,45 +55,55 @@ classdef PorousRock < handle
   methods (Access = private)
     % Assigning material parameters (check also the Materials class)
     % to object properties
-    function setMaterialParameters(obj,block)
-      % Preliminary check on the number of rows in each material block
-      % and the number of parameters
-      nEntry = size(block,1);
-      if nEntry ~= 5
-        error('Wrong number of input rows in material %s',block(1));
-      end
+    function readMaterialParameters(obj, fID, matFileName)
+      tmpVec = readDataInLine(fID, matFileName, 2);
+      obj.poro = tmpVec(1);
+      obj.specGrav = tmpVec(2);
       KTmp = zeros(6,1);
-      for i=2:5
-        strParams = strsplit(block(i));
-        nEntry = size(strParams,2);
-        err = false;
-        switch i
-          case 3
-            if nEntry ~= 3; err = true; end
-          case {2 4}
-            if nEntry ~= 2; err = true; end
-          case 5
-            if nEntry ~= 1; err = true; end
-        end
-        %
-        if err
-          error('Wrong number of input parameters in material %s, row %d',block(1),i);
-        end
-        %
-        params = str2double(strParams);
-        switch i
-          case 2
-            obj.poro = params(1);
-%             obj.alpha = params(2);
-            obj.specGrav = params(2);
-          case 3
-            KTmp([1 2 3]) = [params(1), params(2), params(3)];
-          case 4
-            KTmp([4 5]) = [params(1), params(2)];
-          case 5
-            KTmp(6) = params(1);
-        end
-      end
+      tmpVec = readDataInLine(fID, matFileName, 3);
+      KTmp(1:3) = tmpVec;
+      tmpVec = readDataInLine(fID, matFileName, 2);
+      KTmp(4:5) = tmpVec;
+      tmpVec = readDataInLine(fID, matFileName, 1);
+      KTmp(6) = tmpVec;
+%       % Preliminary check on the number of rows in each material block
+%       % and the number of parameters
+%       nEntry = size(block,1);
+%       if nEntry ~= 5
+%         error('Wrong number of input rows in material %s',block(1));
+%       end
+%       KTmp = zeros(6,1);
+%       for i=2:5
+%         strParams = strsplit(block(i));
+%         nEntry = size(strParams,2);
+%         err = false;
+%         switch i
+%           case 3
+%             if nEntry ~= 3; err = true; end
+%           case {2 4}
+%             if nEntry ~= 2; err = true; end
+%           case 5
+%             if nEntry ~= 1; err = true; end
+%         end
+%         %
+%         if err
+%           error('Wrong number of input parameters in material %s, row %d',block(1),i);
+%         end
+%         %
+%         params = str2double(strParams);
+%         switch i
+%           case 2
+%             obj.poro = params(1);
+% %             obj.alpha = params(2);
+%             obj.specGrav = params(2);
+%           case 3
+%             KTmp([1 2 3]) = [params(1), params(2), params(3)];
+%           case 4
+%             KTmp([4 5]) = [params(1), params(2)];
+%           case 5
+%             KTmp(6) = params(1);
+%         end
+%       end
       if all(KTmp([2 3 5]) == 0)
         if all(KTmp([4 6]) == KTmp(1))
           obj.KVec = KTmp(1);
@@ -112,7 +122,7 @@ classdef PorousRock < handle
       if any(eigv < length(eigv)*eps(max(eigv)))  
         % Tolerance chosen following the hint in:
         % https://it.mathworks.com/help/matlab/math/determine-whether-matrix-is-positive-definite.html#DetermineWhetherMatrixIsSPDExample-3
-        error('The permeability matrix for material %s is not positive definite',block(1));
+        error('The permeability matrix for material %s is not positive definite',matFileName);
       end
     end
   end

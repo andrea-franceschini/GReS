@@ -1,0 +1,6 @@
+VolumeForce                       % BC item
+Flow                              % Physics
+nodeNeu                           % BC name
+neuVol/list
+0.0 neuVol/time0.dat
+End

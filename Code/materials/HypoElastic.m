@@ -19,9 +19,9 @@ classdef HypoElastic < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = HypoElastic(inputString)
+    function obj = HypoElastic(fID, matFileName)
       % Calling the function to set the object properties
-      obj.setMaterialParameters(inputString);
+      obj.readMaterialParameters(fID, matFileName);
       obj.computeConstPart();
     end
 
@@ -54,26 +54,15 @@ classdef HypoElastic < handle
   methods (Access = private)
     % Assigning material parameters (check also the Materials class)
     % to object properties
-    function setMaterialParameters(obj, block)
-      % Preliminary check on the number of rows in each material block
-      % and the number of parameters
-      nEntry = size(block,1);
-      if nEntry ~= 2
-        error('Wrong number of input rows in material %s', block(1));
-      end
-      strParams = strsplit(block(2));
-      nEntry = size(strParams,2);
-      if nEntry ~= 6
-        error('Wrong number of input parameters in material %s',block(1));
-      end
-      params = str2double(strParams);
+    function readMaterialParameters(obj, fID, matFileName)
+      tmpVec = readDataInLine(fID, matFileName, 6);
       % Assign object properties
-      obj.nu = params(1);
-      obj.a = params(2);
-      obj.b = params(3);
-      obj.a1 = params(4);
-      obj.b1 = params(5);
-      obj.szmin = params(6);
+      obj.nu = tmpVec(1);
+      obj.a = tmpVec(2);
+      obj.b = tmpVec(3);
+      obj.a1 = tmpVec(4);
+      obj.b1 = tmpVec(5);
+      obj.szmin = tmpVec(6);
       %
       % Compute the M factor
       obj.M = obj.nu/(1-obj.nu);

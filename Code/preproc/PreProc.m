@@ -32,7 +32,7 @@ classdef PreProc < handle
     end
     
     function D = getStiffMatrix(obj,el,sz)
-      mat = obj.material.getMaterial(obj.mesh.cellTag(el));
+      mat = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw;
       % Material stiffness matrix
       if isa(mat,'HypoElastic')
         D = mat.getStiffnessMatrix(sz);

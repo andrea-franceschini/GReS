@@ -114,12 +114,14 @@ classdef Hexahedron < handle
 %       obj.volNod = zeros(obj.mesh.nNodes,1);
       cellCentroid = zeros(length(idHexa),3);
       i = 0;
-      for el=idHexa
+      for el = idHexa
         i = i + 1;
 %         findJacAndDet(obj,el)
-        obj.J = pagemtimes(obj.J1,obj.mesh.coordinates(obj.mesh.cells(el,:),:));
-        obj.detJ = arrayfun(@(x) det(obj.J(:,:,x)),1:obj.GaussPts.nNode);
-        vol(i) = (obj.detJ) * (obj.GaussPts.weight);
+% % %         obj.J = pagemtimes(obj.J1,obj.mesh.coordinates(obj.mesh.cells(el,:),:));
+% % %         obj.detJ = arrayfun(@(x) det(obj.J(:,:,x)),1:obj.GaussPts.nNode);
+% % %         vol(i) = (obj.detJ) * (obj.GaussPts.weight);
+        dJWeighed = getDerBasisFAndDet(obj,el,3);
+        vol(i) = sum(dJWeighed);
         assert(vol(i)>0,'Volume less than 0');
 %         top = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
 %         obj.volNod(top) = obj.volNod(top) + obj.vol(el)/obj.mesh.cellNumVerts(el);
@@ -129,6 +131,16 @@ classdef Hexahedron < handle
         %
         gPCoordinates = getGPointsLocation(obj,el);
         cellCentroid(i,:) = obj.detJ * gPCoordinates/vol(i);
+      end
+    end
+    
+    function nodeVol = findNodeVolume(obj,idHexa)
+      nodeVol = zeros(8*length(idHexa),1);
+      ptr = 0;
+      for el = idHexa
+        dJWeighed = obj.getDerBasisFAndDet(el,3);
+        nodeVol(ptr+1:ptr+8) = obj.N1'*dJWeighed';
+        ptr = ptr + 8;
       end
     end
     

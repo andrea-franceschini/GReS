@@ -1,7 +1,0 @@
-NodeBC                            % BC item
-Dir                               % BC type
-Flow                              % Physics
-nodeDir                           % BC name
-dirNode_1well/list
-0.0   dirNode_1well/time0.dat
-End

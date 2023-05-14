@@ -1,0 +1,7 @@
+SurfBC                            % BC item
+Dir                               % BC type
+Flow                              % Physics
+rFace                             % BC name
+dirSurfRightFace_hexa2/list
+0.000000 dirSurfRightFace_hexa2/time0.dat
+End

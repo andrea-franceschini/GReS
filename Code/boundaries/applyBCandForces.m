@@ -1,4 +1,4 @@
-function applyBCandForces(model, grid, bound, t, syst)
+function applyBCandForces(model, grid, bound, material, preP, t, syst, state)
   % Impose BC to the linearized system (Jacobian matrix + RHS)
   % The Penalty method is used for the Dirichlet conditions
   %
@@ -21,6 +21,11 @@ function applyBCandForces(model, grid, bound, t, syst)
     elseif strcmp(bound.getCond(keys{i}),'SurfBC')
       if isFEMBased(model,bound.getPhysics(keys{i}))
         if strcmp(bound.getType(keys{i}), 'Neu')
+          loadedEnts = bound.getLoadedEntities(keys{i});
+          entitiesInfl = bound.getEntitiesInfluence(keys{i});
+          q = bound.getVals(keys{i}, t);
+          entitiesForce = entitiesInfl*q;
+          syst.rhs(loadedEnts) = syst.rhs(loadedEnts) - entitiesForce;
 %           nod2FaceCond = obj.grid.topology.surfaces(bound.getDofs(keys{i}),:);
 %           nod2FaceCond = nod2FaceCond';
 %           nod2faceVec = nod2FaceCond(nod2FaceCond ~= 0);
@@ -29,18 +34,18 @@ function applyBCandForces(model, grid, bound, t, syst)
 %           syst.rhs(nod2faceVec) = syst.rhs(nod2faceVec) +
           %
           % TO DO: Vectorize the following lines
-          vals = bound.getVals(keys{i}, t);
-          id = 0;
-          for s = bound.getDofs(keys{i})'
-            id = id + 1;
-            nodes = grid.topology.surfaces(s,1:grid.topology.surfaceNumVerts(s));
-            fval = vals(id)*ones(length(nodes),1);
-            aNod = grid.faces.areaNod(grid.faces.mapAreaNod(s):grid.faces.mapAreaNod(s+1)-1);
-            if length(aNod) == 1
-              aNod = aNod*ones(3,1);
-            end
-            syst.rhs(nodes) = syst.rhs(nodes) - fval.*aNod;
-          end
+%           vals = bound.getVals(keys{i}, t);
+%           id = 0;
+%           for s = bound.getDofs(keys{i})'
+%             id = id + 1;
+%             nodes = grid.topology.surfaces(s,1:grid.topology.surfaceNumVerts(s));
+%             fval = vals(id)*ones(length(nodes),1);
+%             aNod = grid.faces.areaNod(grid.faces.mapAreaNod(s):grid.faces.mapAreaNod(s+1)-1);
+%             if length(aNod) == 1
+%               aNod = aNod*ones(3,1);
+%             end
+%             syst.rhs(nodes) = syst.rhs(nodes) - fval.*aNod;
+%           end
         elseif strcmp(bound.getType(keys{i}), 'Dir')
           error('Dirichlet cond. for FEM on surf is not available (ref. %s)', ...
             bound.getToken(keys{i}));
@@ -48,34 +53,48 @@ function applyBCandForces(model, grid, bound, t, syst)
       elseif isFVTPFABased(model,bound.getPhysics(keys{i}))
         if strcmp(bound.getType(keys{i}), 'Neu')
           faceID = bound.getDofs(keys{i});
-          neigh = grid.faces.faceNeighbors(faceID,:);
-          assert(all(sum(neigh~=0,2) == 1),'Corrupted face numbering in %s',bound.getName(keys{i}));
-          neigh = sum(neigh,2);
-          syst.rhs(neigh) = syst.rhs(neigh) - bound.getVals(keys{i}, t);
+%           neigh = grid.faces.faceNeighbors(faceID,:);
+%           assert(all(sum(neigh~=0,2) == 1),'Corrupted face numbering in %s',bound.getName(keys{i}));
+          neigh = sum(grid.faces.faceNeighbors(faceID,:),2);
+          syst.rhs(neigh) = syst.rhs(neigh) - vecnorm(grid.faces.faceNormal(faceID,:),2,2).*bound.getVals(keys{i}, t);
         elseif strcmp(bound.getType(keys{i}), 'Dir')
-          error('Dirichlet cond. for FVTPFA on surf has not been implemented yet (ref. %s)', ...
-          bound.getName(keys{i}));
+%           error('Dirichlet cond. for FVTPFA on surf has not been implemented yet (ref. %s)', ...
+%           bound.getName(keys{i}));
+          nrows = size(syst.K,1);
+          faceID = bound.getDofs(keys{i});
+          neighEl = sum(grid.faces.faceNeighbors(faceID,:),2);
+          gamma = material.getMaterial(preP.nMat+1).getFluidSpecWeight();
+          trans = getFaceTransmissibilities(syst,faceID);
+          q = trans.*((state.pressure(neighEl) - bound.getVals(keys{i}, t))...
+            + gamma*(grid.cells.cellCentroid(neighEl,3) - grid.faces.faceCentroid(faceID,3)));
+          syst.rhs(neighEl) = syst.rhs(neighEl) + q;
+          syst.K(nrows*(neighEl-1) + neighEl) = syst.K(nrows*(neighEl-1) + neighEl) + trans;
         end
       end
     elseif strcmp(bound.getCond(keys{i}), 'VolumeForce')
       if isFEMBased(model,bound.getPhysics(keys{i}))
-        val = bound.getVals(keys{i}, t);
-        ptr = 0;
-        if any(grid.topology.cellVTKType(bound.getDofs(keys{i}))== 12)
-          N1 = getBasisFinGPoints(grid.cells.hexa);
-        end
-        for el=(bound.getDofs(keys{i}))'
-          ptr = ptr + 1;
-          nodes = grid.topology.cells(el,1:grid.topology.cellNumVerts(el));
-          switch grid.topology.cellVTKType(el)
-            case 10 % Tetrahedron
-              addRhs = (grid.cells.vol(el)/grid.topology.cellNumVerts(el))*repmat(val(ptr),[grid.topology.cellNumVerts(el),1]);
-            case 12 % Hexahedron
-              dJWeighed = getDerBasisFAndDet(grid.cells.hexa,el,3);
-              addRhs = val(ptr)*N1'*dJWeighed';
-          end
-          syst.rhs(nodes) = syst.rhs(nodes) - addRhs;
-        end
+%         val = bound.getVals(keys{i}, t);
+%         ptr = 0;
+%         if any(grid.topology.cellVTKType(bound.getDofs(keys{i}))== 12)  % Hexa
+%           N1 = getBasisFinGPoints(grid.cells.hexa);
+%         end
+%         for el=(bound.getDofs(keys{i}))'
+%           ptr = ptr + 1;
+%           nodes = grid.topology.cells(el,1:grid.topology.cellNumVerts(el));
+%           switch grid.topology.cellVTKType(el)
+%             case 10 % Tetrahedron
+%               addRhs = (grid.cells.vol(el)/grid.topology.cellNumVerts(el))*repmat(val(ptr),[grid.topology.cellNumVerts(el),1]);
+%             case 12 % Hexahedron
+%               dJWeighed = getDerBasisFAndDet(grid.cells.hexa,el,3);
+%               addRhs = val(ptr)*N1'*dJWeighed';
+%           end
+%           syst.rhs(nodes) = syst.rhs(nodes) - addRhs;
+%         end
+        loadedEnts = bound.getLoadedEntities(keys{i});
+        entitiesInfl = bound.getEntitiesInfluence(keys{i});
+        q = bound.getVals(keys{i}, t);
+        entitiesForce = entitiesInfl*q;
+        syst.rhs(loadedEnts) = syst.rhs(loadedEnts) - entitiesForce;
       elseif isFVTPFABased(model,bound.getPhysics(keys{i}))
         syst.rhs(bound.getDofs(keys{i})) = syst.rhs(bound.getDofs(keys{i})) - bound.getVals(keys{i}, t).*grid.cells.vol(bound.getDofs(keys{i}));
       end

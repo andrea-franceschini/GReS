@@ -12,7 +12,7 @@ classdef OutState < handle
     mesh
     timeID = 1
     VTK
-    flOutData = true
+    flOutData = false
     m
 %     flPrint = true
   end
@@ -202,7 +202,7 @@ classdef OutState < handle
       end
       if isSinglePhaseFlow(obj.model)
         if isFEMBased(obj.model,'Flow')
-          nPointProp = nPointProp + 2;
+          nPointProp = nPointProp + 3;   %2
         elseif isFVTPFABased(obj.model,'Flow')
           nCellProp = nCellProp + 2;
         end
@@ -262,10 +262,12 @@ classdef OutState < handle
         %
         % Pressure and potential
         if isFEMBased(obj.model,'Flow')
-          pointData3D(nPointProp-1).name = 'press';
-          pointData3D(nPointProp-1).data = printProp.pressure;
-          pointData3D(nPointProp).name = 'potential';
-          pointData3D(nPointProp).data = printProp.potential;
+          pointData3D(nPointProp-2).name = 'press';   %-1
+          pointData3D(nPointProp-2).data = printProp.pressure;
+          pointData3D(nPointProp-1).name = 'potential';
+          pointData3D(nPointProp-1).data = printProp.potential;
+          pointData3D(nPointProp).name = 'nodeID';
+          pointData3D(nPointProp).data = (1:length(printProp.pressure))';
         elseif isFVTPFABased(obj.model,'Flow')
           cellData3D(nCellProp-1).name = 'press';
           cellData3D(nCellProp-1).data = printProp.pressure;

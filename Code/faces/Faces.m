@@ -11,8 +11,6 @@ classdef Faces < handle
     faceCentroid
     faceNormal
     nFaces
-    areaNod    % Only for boundary faces
-    mapAreaNod
   end
   
   properties (Access = private)
@@ -26,37 +24,7 @@ classdef Faces < handle
       %   Detailed explanation goes here
       obj.setFaces(msh,simmod);
     end
-  end
-    
-  methods (Access = private)
-    function setFaces(obj,msh,simmod)
-      obj.mesh = msh;
-      obj.model = simmod;
-      %
-      if obj.mesh.nSurfaces > 0
-        id = 1:obj.mesh.nSurfaces;
-        vTmp = double(obj.mesh.surfaceVTKType == 5) + 4*double(obj.mesh.surfaceVTKType == 9);
-        obj.areaNod = zeros(sum(vTmp),1);
-        obj.mapAreaNod = cumsum([1 vTmp']);
-        idTri = id(vTmp == 1);
-        idQuad = id(vTmp == 4);
-        if ~isempty(idTri)
-          obj.areaNod(obj.mapAreaNod(idTri)) = obj.computeAreaTri(idTri);
-          obj.areaNod(obj.mapAreaNod(idTri)) = (1/3)*obj.areaNod(obj.mapAreaNod(idTri));
-        end
-        if ~isempty(idQuad)
-          vTmp1 = obj.computeAreaQuad(idQuad);
-          obj.areaNod(find(repelem(vTmp,vTmp)==4))=0.25*repelem(vTmp1,4);
-        end
-        obj.nFaces = obj.mesh.nSurfaces;
-      end 
-      %
-      if obj.model.isFVTPFABased('Flow')
-        obj.setupFaceTopology;
-        obj.computeFaceProperties;
-      end
-    end
-%     Triangle:
+    %     Triangle:
 % 
 %     v
 %     ^
@@ -97,7 +65,7 @@ classdef Faces < handle
       quadNod = obj.mesh.surfaces(idQuad,1:4);
       quadNod = reshape(quadNod',[],1);
       surfCentroid = sparse(repelem(1:nQuad,4)', ...
-        quadNod,0.25*ones(length(quadNod),1),...
+        quadNod,0.25*ones(length(quadNod),1), ...
         nQuad,obj.mesh.nNodes)*obj.mesh.coordinates;
       d = obj.mesh.coordinates(quadNod,:) - repelem(surfCentroid,4,1);
       % Works only for 4-point faces
@@ -107,6 +75,62 @@ classdef Faces < handle
 %       faceArea = sum(reshape(areaTri,4,[]));
       areaQuad = accumarray(repelem(1:nQuad,4)',areaTri);
     end
+  end
+    
+  methods (Access = private)
+    function setFaces(obj,msh,simmod)
+      obj.mesh = msh;
+      obj.model = simmod;
+      %
+% % %       if obj.mesh.nSurfaces > 0
+% % %         obj.nFaces = obj.mesh.nSurfaces;
+% % %         areaSurf = zeros(obj.mesh.nSurfaces,1);
+% % %         idTri = (obj.mesh.surfaceVTKType == 5);
+% % %         idQuad = (obj.mesh.surfaceVTKType == 9);
+% % %         if any(idTri)
+% % %           areaSurf(idTri) = obj.computeAreaTri(idTri);
+% % %         end
+% % %         if any(idQuad)
+% % %           areaSurf(idQuad) = obj.computeAreaQuad(idQuad);
+% % %         end
+% % %         tmpMat = obj.mesh.surfaces';
+% % %         topolVec = tmpMat(tmpMat ~= 0);
+% % %         [obj.loadedNodesSurf,~,rowID] = unique(topolVec);
+% % %         clear matTmp
+% % %         colID = repelem(1:obj.mesh.nSurfaces,obj.mesh.surfaceNumVerts);
+% % %         areaSurf = areaSurf./obj.mesh.surfaceNumVerts;
+% % %         aNod = repelem(areaSurf,obj.mesh.surfaceNumVerts); %./obj.mesh.surfaceNumVerts;
+% % %         obj.nodeArea = sparse(rowID,colID,aNod,length(obj.loadedNodesSurf),obj.mesh.nSurfaces);
+% % %       end
+      %
+      if obj.model.isFVTPFABased('Flow')
+        obj.setupFaceTopology;
+        obj.computeFaceProperties;
+      end
+    end
+        
+%         id = 1:obj.mesh.nSurfaces;
+%         vTmp = double(obj.mesh.surfaceVTKType == 5) + 4*double(obj.mesh.surfaceVTKType == 9);
+%         obj.areaNod = zeros(sum(vTmp),1);
+%         obj.mapAreaNod = cumsum([1 vTmp']);
+%         idTri = id(vTmp == 1);
+%         idQuad = id(vTmp == 4);
+%         if ~isempty(idTri)
+%           obj.areaNod(obj.mapAreaNod(idTri)) = obj.computeAreaTri(idTri);
+%           obj.areaNod(obj.mapAreaNod(idTri)) = (1/3)*obj.areaNod(obj.mapAreaNod(idTri));
+%         end
+%         if ~isempty(idQuad)
+%           vTmp1 = obj.computeAreaQuad(idQuad);
+%           obj.areaNod(find(repelem(vTmp,vTmp)==4))=0.25*repelem(vTmp1,4);
+%         end
+%         obj.nFaces = obj.mesh.nSurfaces;
+%       end 
+%       %
+%       if obj.model.isFVTPFABased('Flow')
+%         obj.setupFaceTopology;
+%         obj.computeFaceProperties;
+%       end
+%     end
     
     function computeFaceProperties(obj)
 %       % Compute faces center point by averaging
