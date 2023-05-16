@@ -149,6 +149,7 @@ classdef NonLinearSolver < handle
           else
             printState(obj.printUtil,obj.statek,obj.stateTmp);
           end
+          %updating output matrixes
         end
         %
         % Manage next time step

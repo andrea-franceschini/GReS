@@ -207,6 +207,8 @@ classdef State < matlab.mixin.Copyable
         if nIn > 4
           tmp = obj.GaussPts.nNode;
         end
+      
+      
         % NOT ELEGANT AT ALL. FIX!
         obj.stress = zeros([1, tmp, 0, 0]*obj.preP.nE,6);
         obj.iniStress = zeros([1, tmp, 0, 0]*obj.preP.nE,6);
@@ -227,6 +229,7 @@ classdef State < matlab.mixin.Copyable
     end
     
     function iniState(obj)
+      
       max_z = max(obj.mesh.coordinates(:,3));
       if isPoromechanics(obj.model)
         l1 = 0;
@@ -263,7 +266,8 @@ classdef State < matlab.mixin.Copyable
         gamma = obj.material.getMaterial(2*obj.preP.nMat+1).getFluidSpecWeight();
         if isFEMBased(obj.model,'Flow')
 %           obj.pressure = gamma*(max_z-obj.mesh.coordinates(:,3));
-        obj.pressure = zeros(length(obj.mesh.coordinates(:,3)),1);
+         obj.pressure = zeros(length(obj.mesh.coordinates(:,3)),1);
+
 %         obj.pressure = 392.4*ones(length(obj.mesh.coordinates(:,3)),1);
         elseif isFVTPFABased(obj.model,'Flow')
 %           obj.pressure = gamma*(max_z-obj.elements.cellCentroid(:,3));

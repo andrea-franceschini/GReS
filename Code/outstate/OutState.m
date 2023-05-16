@@ -102,7 +102,8 @@ classdef OutState < handle
               if obj.flOutData
                 obj.m.expDispl(:,obj.timeID+1) = printProp.displ;
               end
-            elseif isSinglePhaseFlow(obj.model)
+            end
+             if isSinglePhaseFlow(obj.model)
               [fluidPotOld] = finalizeStateFlow(stateOld);
               [fluidPotNew] = finalizeStateFlow(stateNew);
 %               printProp = struct('time',obj.timeList(obj.timeID), ...

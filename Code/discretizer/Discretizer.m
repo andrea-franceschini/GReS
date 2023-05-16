@@ -132,7 +132,7 @@ classdef Discretizer < handle
      function computeCoupleFlowSystMat(obj,theta,dt)
       % Compute matrices KFlow and K2Flow for Coupled system
       obj.KFlow = -(theta*dt*obj.H+obj.P);
-      obj.K2Flow = obj.P/dt - (1-theta)*obj.H;
+      obj.K2Flow = - obj.P/dt + (1-theta)*obj.H;
     end
     
     function computeFlowRHSGravContribute(obj)
@@ -311,6 +311,7 @@ classdef Discretizer < handle
             %
 %             if obj.flCompRHS
               fLoc = (B')*(state.stress(l2+1,:))'*vol;
+              %initial stress solution
               s2 = 1;
 %             end
           case 12 % Hexahedra
@@ -411,8 +412,9 @@ classdef Discretizer < handle
         %computing rhs contributes (neumann and volume forces still
         %missing! they are added with applyBCandForces function)
         
-        
-        obj.rhsPoro = obj.rhsPoro + (-obj.Q*stateTmp.pressure) - (((1-theta)/theta)*...
+        %temporarily poromechanics internal forces are computed with
+        %displacement. Update with stress computation!
+        obj.rhsPoro = obj.KPoro*stateTmp.displ + (-obj.Q*stateTmp.pressure) - (((1-theta)/theta)*...
             (obj.Q*statek.pressure-obj.KPoro*statek.displ));
         
         obj.rhsFlow = obj.rhsFlow + (-(obj.Q)'*stateTmp.displ + obj.KFlow*stateTmp.pressure) - ...
