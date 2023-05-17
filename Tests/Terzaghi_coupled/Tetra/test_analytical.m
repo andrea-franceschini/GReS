@@ -46,16 +46,17 @@ seriesU = sum(reshape(matU, nz,nt,[]),3);
 p = (4/pi)*seriesP.*p0; %[kPa]
 u = cm*((L-z)-(8*L/pi^2)*seriesU).*p0 + u0;
 
-% coord = load('coordZ.txt');
-% ind = zeros(length(coord),1);
-% for i=1:length(coord)
-%     ind(i)=find(z==coord(i));
-% end
-% pIni = p0(ind);
-% uIni = u0(ind);
-% save 'uIni.dat' uIni -ascii
-% save 'pIni.dat' pIni -ascii
-%plot soluzioni analitiche
+coord = load('coordZ.txt');
+ind = zeros(length(coord),1);
+for i=1:length(coord)
+    ind(i)=find(z==coord(i));
+end
+u0 = flip(u0);
+pIni = p0(ind);
+uIni = u0(ind);
+save 'uIni.dat' uIni -ascii
+save 'pIni.dat' pIni -ascii
+plot soluzioni analitiche
 figure(1)
 plot(p,flip(repmat(z,[1,nt])),'-o')
 

@@ -13,7 +13,7 @@ simParam = SimulationParameters(fileName);
 topology = Mesh();
 %
 % Set the input file name
-fileName = 'Bench1D_flow_tetra.msh';
+fileName = 'Bench1D_coupled.msh';
 %
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -59,7 +59,7 @@ p0 = load('pIni.dat');
 % of the reservoir in terms of pressure, displacement, stress, ...
 resState = State(model,grid,mat,pre);
 %manually assigning initial conditions before proper implementation
-resState.displ(3:3:end) = u0; %only DZ is fixed initially
+resState.displ(3:3:end) = -u0; %only DZ is fixed initially
 resState.pressure = p0;
 %
 % Create and set the print utility

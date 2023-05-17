@@ -370,7 +370,6 @@ classdef Discretizer < handle
                case 10 %Tetrahedrons, direct integration 
                    vol = findVolume(obj.elements.tetra,el);
                    der = getDerBasisF(obj.elements.tetra,el);
-                   der = der';
                    Qloc = biot*0.25*repelem(der(:),1,4)*vol;
                    s1 = obj.preP.nNodesElem(1).^2*obj.mesh.nDim;
                case 12 %Hexahedrons, Gauss integration
