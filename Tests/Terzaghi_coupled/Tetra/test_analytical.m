@@ -54,6 +54,7 @@ end
 u0 = flip(u0);
 pIni = p0(ind);
 uIni = u0(ind);
+save 'ind.dat' ind -ascii 
 save 'uIni.dat' uIni -ascii
 save 'pIni.dat' pIni -ascii
 plot soluzioni analitiche

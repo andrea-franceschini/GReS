@@ -121,8 +121,8 @@ classdef OutState < handle
               break
             end
             %salvataggio vettori soluzione
-              index = load('ind.dat');
-              pOut(:,obj.timeID) = printProp.pressure(index);
+%             index = load(ind.dat);
+%             pOut(obj.timeID,
             
           end
         end
