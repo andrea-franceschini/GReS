@@ -99,7 +99,7 @@ classdef NonLinearSolver < handle
         %
         % Apply Neu and Dir conditions
         applyBCandForces(obj.model, obj.grid, obj.bound, ...
-          obj.t, linSyst,obj.simParameters.theta,obj.dt);
+          obj.t, linSyst);
 %         obj.bound.applyBCNeu(linSyst);
         rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
 %         obj.bound.applyBCDir(linSyst);
@@ -130,7 +130,7 @@ classdef NonLinearSolver < handle
           end
           %
           applyBCandForces(obj.model, obj.grid, obj.bound, ...
-            obj.t, linSyst,obj.simParameters.theta,obj.dt);
+            obj.t, linSyst);
 %           obj.bound.applyBCNeu(linSyst);
           rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
 %           obj.bound.applyBCDir(linSyst);

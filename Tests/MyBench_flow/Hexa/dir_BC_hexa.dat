@@ -1,7 +1,0 @@
-NodeBC                            % BC item
-Dir                               % BC type
-Flow                              % Physics
-dir_top                             % BC name
-dir_BC_hexa/list
-0.000000 dir_BC_hexa/time0.dat
-End

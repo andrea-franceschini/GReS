@@ -409,7 +409,7 @@ classdef Discretizer < handle
         obj.computeCoupleMat(); %computing coupling matrix
         obj.rhsFlow = obj.fConst; %initializing flow RHS
         obj.computePoroCouple(stateTmp); %computing Poromechanics stiffness and initializing Poromechanics rhs with internal forces
-        %obj.computeCoupleFlowSystMat(theta,dt);
+        obj.computeCoupleFlowSystMat(theta,dt);
         %computing rhs contributes (neumann and volume forces still
         %missing! they are added with applyBCandForces function)
         

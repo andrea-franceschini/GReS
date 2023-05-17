@@ -1,7 +1,0 @@
-SurfBC                            % BC item
-Neu                               % BC type
-Flow                              % Physics
-neu_down                          % BC name
-neu_BC_hexa/list
-0.0 neu_BC_hexa/time0.dat
-End
