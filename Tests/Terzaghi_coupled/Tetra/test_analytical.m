@@ -3,7 +3,7 @@ clear; clc;
 %Proprietà materiale (sabbia)
 k = 1.0e-5; %[m/s]
 porosity = 0.375; 
-beta = 4.6e-7 ; % [kPa^-1] fluid compressibility
+beta = 4.4e-7 ; % [kPa^-1] fluid compressibility
 lambda = 40000; %[kPa] costante lamè
 mu = 40000; %[kPa] costante lamè
 biot = 1.0; %coefficiente di Biot
@@ -11,7 +11,7 @@ E = 100000; %[kPa]
 gamma = 9.81; %[kPa] water speicific weight 
 
 %vettore profondità
-L = 10; %[m] lunghezza colonna di terreno
+L = 15; %[m] lunghezza colonna di terreno
 z = [0:0.5:L];
 z = z';
 nz = length(z);
@@ -31,7 +31,7 @@ nm = 10000;
 m = [0:nm];
 
 %array for time instants
-t = [30 60 600 1200 1800];
+t = [30 60 600 1200 1800 3600];
 nt = length(t);
 
 cellsP = arrayfun(@(m) bsxfun(@(z,t) (1/(2*m+1))*exp((-(2*m+1)^2*pi^2*c*t)/(4*L^2))*sin(((2*m+1)*pi*z)/(2*L)),z,t),m,'UniformOutput',false);
@@ -57,7 +57,6 @@ uIni = u0(ind);
 save 'ind.dat' ind -ascii 
 save 'uIni.dat' uIni -ascii
 save 'pIni.dat' pIni -ascii
-plot soluzioni analitiche
 figure(1)
 plot(p,flip(repmat(z,[1,nt])),'-o')
 

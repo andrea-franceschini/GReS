@@ -8,7 +8,7 @@
   %
   keys = bound.db.keys;
 %   %%%%%%%%%%%%%%%%%%%%%%%%%%%IF COUPLED%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  %BCs added according to formulation n.1 in IJNAMG2009
+  %BCs added according to IJSS_2001a
   if isCoupled(model)
     for i = 1 : length(keys)
     if strcmp(bound.getCond(keys{i}),'NodeBC')

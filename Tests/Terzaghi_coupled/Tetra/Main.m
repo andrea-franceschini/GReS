@@ -1,4 +1,4 @@
-close all;
+Mclose all;
 clear;
 
 % -------------------------- SET THE PHYSICS -------------------------
