@@ -1,6 +1,0 @@
-VolumeForce                       % BC item
-Flow                              % Physics
-lFace                             % BC name
-neuVolTPFALeftFace_hexa4/list
-0.0 neuVolTPFALeftFace_hexa4/time0.dat
-End

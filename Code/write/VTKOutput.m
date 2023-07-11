@@ -46,14 +46,14 @@ classdef VTKOutput < handle
       obj.data = repmat(struct('time', 0, 'vtm', []), obj.nDataMax, 1);
     end
 
-    function delete(obj)
-      mesh = [];
-      surfaceList = [];
-      glo2loc = [];
-      surfaceCoord = [];
-      surfaceElems = [];
-      data = [];
-    end
+    % function delete(obj)
+    %   mesh = [];
+    %   surfaceList = [];
+    %   glo2loc = [];
+    %   surfaceCoord = [];
+    %   surfaceElems = [];
+    %   data = [];
+    % end
 
     function finalize(obj)
       obj.writePVDFile();

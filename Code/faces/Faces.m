@@ -3,14 +3,14 @@ classdef Faces < handle
   %   Detailed explanation goes here
   
   properties (Access = public)
-    mapN2F
-    nodes2Faces
-    faceNeighbors
-    mapF2E
-    faces2Elements
-    faceCentroid
-    faceNormal
-    nFaces
+    nodes2Faces      % List of nodes of each face. The data is arranged vectorwise
+    mapN2F           % Indirection map for nodes2Faces    
+    faces2Elements   % List of faces of each element. The data is arranged vectorwise
+    mapF2E           % Indirection map for faces2Elements
+    faceNeighbors    % IDs of the cells to the left and right of each face (nf x 2 matrix)
+    faceCentroid     % Centroid coordinates of each face
+    faceNormal       % Normal to each face (the magnitude of the vector is equal to the area)
+    nFaces           % # of faces
   end
   
   properties (Access = private)
@@ -19,10 +19,10 @@ classdef Faces < handle
   end
   
   methods (Access = public)
-    function obj = Faces(msh,simmod)
+    function obj = Faces(simmod,msh)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
-      obj.setFaces(msh,simmod);
+      obj.setFaces(simmod,msh);
     end
     %     Triangle:
 % 
@@ -78,7 +78,7 @@ classdef Faces < handle
   end
     
   methods (Access = private)
-    function setFaces(obj,msh,simmod)
+    function setFaces(obj,simmod,msh)
       obj.mesh = msh;
       obj.model = simmod;
       %

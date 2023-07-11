@@ -8,18 +8,24 @@ classdef PorousRock < handle
     poro                 % Porosity
 %     alpha                % Rock compressibility (can be replaced by the oedometer test compressibility Cm)
     specGrav             % Specific gravity of rock
+    Swr                  % Residual saturation of water
   end
 
   methods (Access = public)
     % Class constructor method
-    function obj = PorousRock(fID, matFileName)
+    function obj = PorousRock(fID, model, matFileName)
       % Calling the function to set the object properties
-      obj.readMaterialParameters(fID, matFileName);
+      obj.readMaterialParameters(model, fID, matFileName);
     end
 
     % Function to get material porosity
     function poro = getPorosity(obj)
       poro = obj.poro;
+    end
+    
+    % Function to get material porosity
+    function Swr = getWaterResSat(obj)
+      Swr = obj.Swr;
     end
 
     % Function to get material permeability as a 3x3 matrix
@@ -55,7 +61,7 @@ classdef PorousRock < handle
   methods (Access = private)
     % Assigning material parameters (check also the Materials class)
     % to object properties
-    function readMaterialParameters(obj, fID, matFileName)
+    function readMaterialParameters(obj, model, fID, matFileName)
       tmpVec = readDataInLine(fID, matFileName, 2);
       obj.poro = tmpVec(1);
       obj.specGrav = tmpVec(2);
@@ -66,6 +72,9 @@ classdef PorousRock < handle
       KTmp(4:5) = tmpVec;
       tmpVec = readDataInLine(fID, matFileName, 1);
       KTmp(6) = tmpVec;
+      if model.isVariabSatFlow()
+        obj.Swr = readDataInLine(fID, matFileName, 1);
+      end
 %       % Preliminary check on the number of rows in each material block
 %       % and the number of parameters
 %       nEntry = size(block,1);

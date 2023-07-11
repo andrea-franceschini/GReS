@@ -33,9 +33,11 @@ classdef TransvElastic < handle
       % Calling the function to set object properties 
       obj.setMaterialParameters(inputString);
     end
-
+    %
     % Material stiffness matrix calculation using the object properties
-    function D = getStiffnessMatrix(obj)
+    function [DAll, sigmaOut, status] = getStiffnessMatrix(obj, sigmaIn, epsilon, dt, status)
+      nptGauss = size(sigmaIn,1);
+%       sigmaOut = zeros(nptGauss,6);   % MODIFICA SN
       % Stiffness matrix
       D = zeros(6);
       a = 1/obj.Eh;
@@ -45,7 +47,27 @@ classdef TransvElastic < handle
       D(1:3,1:3) = inv([a b c; b a c; c c d]);
       D(22) = obj.Gh;
       D([29 36]) = obj.Gv;
+      % MODIFICA SN
+%       for i = 1 : nptGauss
+%         sigmaOut(i,:) = sigmaIn(i,:) + eps(i,:)*D;
+%         DAll(:,:,i) = D;
+%       end
+      sigmaOut = sigmaIn + epsilon*D;
+      DAll = repmat(D,[1,1,nptGauss]);
     end
+    %
+    % Material stiffness matrix calculation using the object properties
+%     function D = getStiffnessMatrix(obj)
+%       % Stiffness matrix
+%       D = zeros(6);
+%       a = 1/obj.Eh;
+%       b = -obj.vh/obj.Eh;
+%       c = -obj.vv/obj.Eh;
+%       d = 1/obj.Ev;
+%       D(1:3,1:3) = inv([a b c; b a c; c c d]);
+%       D(22) = obj.Gh;
+%       D([29 36]) = obj.Gv;
+%     end
     
     % Method that returns the M factor
     function m = getMFactor(obj)

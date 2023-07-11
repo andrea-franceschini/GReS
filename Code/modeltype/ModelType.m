@@ -2,7 +2,7 @@ classdef ModelType < handle
   %UNTITLED Summary of this class goes here
   %   Detailed explanation goes here
   
-  properties (Access = public)
+  properties (Access = private)
     ModSettings = zeros(3,1); % [Poromechanics; Flow; Thermal]
     % ModSettings(1) -> Poromechanics
     %    0   -> The model is inactive
@@ -27,6 +27,13 @@ classdef ModelType < handle
     function out = isPoromechanics(obj)
       out = false;
       if obj.ModSettings(1) > 0
+        out = true;
+      end
+    end
+    
+    function out = isFlow(obj)
+      out = false;
+      if obj.ModSettings(2) > 0
         out = true;
       end
     end
@@ -87,7 +94,7 @@ classdef ModelType < handle
           otherwise
             error(['%s model is invalid\n', ...
               'Accepted physics are: Poromechanics, SinglePhaseFlow,\n', ...
-              'VariabSatFlow, Thermal'],spltStr(1));
+              'VariabSatFlow'],spltStr(1));
         end
         if obj.ModSettings(r) ~= 0
           s = ModelType.findPhysicsFromID(r);
@@ -104,7 +111,7 @@ classdef ModelType < handle
           otherwise
             error(['%s spatial discretization scheme is invalid\n', ...
               'Accepted schemes are:\n', ...
-              '  FEM -> Finite Element Model\n', ...
+              '  FEM    -> Finite Element Model\n', ...
               '  FVTPFA -> Finite Volume Method with Two-Point Flux Approximation'],spltStr(2));
         end
         %

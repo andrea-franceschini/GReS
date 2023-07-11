@@ -14,16 +14,15 @@ classdef OutState < handle
     VTK
     flOutData = false
     m
+    material
 %     flPrint = true
   end
   
   methods (Access = public)
-    function obj = OutState(symMod,grid,fileName,varargin)
+    function obj = OutState(symMod,mat,grid,fileName,varargin)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
-      nIn = nargin;
-      data = varargin;
-      obj.setOutState(nIn,symMod,grid,fileName,data)
+      obj.setOutState(symMod,mat,grid,fileName,varargin)
     end
     
     function finalize(obj)
@@ -46,20 +45,27 @@ classdef OutState < handle
           [avStressOld,avStrainOld] = finalizeStatePoro(stateOld);
 %           printProp = struct('time',stateOld.t,'displ',stateOld.displ, ...
 %             'stress',avStressOld,'strain',avStrainOld);
-          printProp.displ = stateOld.displ;
+          printProp.dispConv = stateOld.dispConv;
           printProp.stress = avStressOld;
           printProp.strain = avStrainOld;
           if obj.flOutData
-            obj.m.expDispl(:,obj.timeID) = printProp.displ;
+            obj.m.expDispl(:,obj.timeID) = printProp.dispConv;
           end
-        elseif isSinglePhaseFlow(obj.model)
+        end
+        if isFlow(obj.model)
           [fluidPotOld] = finalizeStateFlow(stateOld);
 %           printProp = struct('time',stateOld.t,'pressure',stateOld.pressure, ...
 %           'potential',fluidPotOld);
           printProp.pressure = stateOld.pressure;
           printProp.potential = fluidPotOld;
+          if isVariabSatFlow(obj.model)
+            printProp.Sw = stateOld.watSat;
+          end
           if obj.flOutData
             obj.m.expPress(:,obj.timeID) = printProp.pressure;
+            if isVariabSatFlow(obj.model)
+              obj.m.expSw(:,obj.timeID) = printProp.Sw;
+            end
           end
         end
         buildPrintStruct(obj,printProp);
@@ -95,13 +101,14 @@ classdef OutState < handle
 %                 'displ',stateNew.displ*fac+stateOld.displ*(1-fac), ...
 %                 'stress',avStressNew*fac+avStressOld*(1-fac), ...
 %                 'strain',avStrainNew*fac+avStrainOld*(1-fac));
-              printProp.displ = stateNew.displ*fac+stateOld.displ*(1-fac);
+              printProp.dispConv = stateNew.dispConv*fac+stateOld.dispConv*(1-fac);
               printProp.stress = avStressNew*fac+avStressOld*(1-fac);
               printProp.strain = avStrainNew*fac+avStrainOld*(1-fac);
               if obj.flOutData
-                obj.m.expDispl(:,obj.timeID+1) = printProp.displ;
+                obj.m.expDispl(:,obj.timeID+1) = printProp.dispConv;
               end
-            elseif isSinglePhaseFlow(obj.model)
+            end
+            if isFlow(obj.model)
               [fluidPotOld] = finalizeStateFlow(stateOld);
               [fluidPotNew] = finalizeStateFlow(stateNew);
 %               printProp = struct('time',obj.timeList(obj.timeID), ...
@@ -111,6 +118,13 @@ classdef OutState < handle
               printProp.potential = fluidPotNew*fac+fluidPotOld*(1-fac);
               if obj.flOutData
                 obj.m.expPress(:,obj.timeID+1) = printProp.pressure;
+              end
+              if isVariabSatFlow(obj.model)
+%                 printProp.Sw = stateNew.watSat*fac+stateOld.watSat*(1-fac);
+                printProp.Sw = obj.material.computeSwAnddSw(obj.mesh,printProp.pressure);
+                if obj.flOutData
+                  obj.m.expSw(:,obj.timeID+1) = printProp.Sw;
+                end
               end
             end
             buildPrintStruct(obj,printProp);
@@ -125,18 +139,19 @@ classdef OutState < handle
   end
   
   methods (Access = private)
-    function setOutState(obj,nIn,symMod,grid,fileName,data)
-      if nIn > 3
-        obj.printPath = data{1};
+    function setOutState(obj,symMod,mat,grid,fileName,data)
+      if ~isempty(data)
+        obj.GaussPts = data{1};
       end
       obj.model = symMod;
+      obj.material = mat;
       obj.mesh = grid.topology;
       %
       fid = fopen(fileName,'r');
       [flEof,line] = OutState.readLine(fid);
       %
       block = '';
-      while ~strcmpi(line,'End')
+      while ~strcmp(line,'End')
         line = strtrim(line);
         if isempty(line)
           error('Blank line encountered while reading the print times in file %s',fileName);
@@ -168,11 +183,14 @@ classdef OutState < handle
         obj.m = matfile('expData.mat');
         l = length(obj.timeList) + 1;
         obj.m.expTime = zeros(l,1);
-        if isSinglePhaseFlow(obj.model)
+        if isFlow(obj.model)
           if isFEMBased(obj.model,'Flow')
             obj.m.expPress = zeros(obj.mesh.nNodes,l);
           elseif isFVTPFABased(obj.model,'Flow')
             obj.m.expPress = zeros(obj.mesh.nCells,l);
+            if isVariabSatFlow(obj.model)
+              obj.m.expSw = zeros(obj.mesh.nCells,l);
+            end
           end
         end
         if isPoromechanics(obj.model)
@@ -200,11 +218,14 @@ classdef OutState < handle
         nPointProp = nPointProp + 3;
         nCellProp = nCellProp + 12;
       end
-      if isSinglePhaseFlow(obj.model)
+      if isFlow(obj.model)
         if isFEMBased(obj.model,'Flow')
-          nPointProp = nPointProp + 3;   %2
+          nPointProp = nPointProp + 2;   %2
         elseif isFVTPFABased(obj.model,'Flow')
           nCellProp = nCellProp + 2;
+        end
+        if isVariabSatFlow(obj.model)
+          nCellProp = nCellProp + 1;
         end
       end
       %
@@ -223,11 +244,11 @@ classdef OutState < handle
         %
         % Displacement
         pointData3D(1).name = 'ux';
-        pointData3D(1).data = printProp.displ(1:3:length(printProp.displ));
+        pointData3D(1).data = printProp.dispConv(1:3:length(printProp.dispConv));
         pointData3D(2).name = 'uy';
-        pointData3D(2).data = printProp.displ(2:3:length(printProp.displ));
+        pointData3D(2).data = printProp.dispConv(2:3:length(printProp.dispConv));
         pointData3D(3).name = 'uz';
-        pointData3D(3).data = printProp.displ(3:3:length(printProp.displ));
+        pointData3D(3).data = printProp.dispConv(3:3:length(printProp.dispConv));
         %
         % Stress
         cellData3D(1).name = 'sx';
@@ -258,21 +279,25 @@ classdef OutState < handle
         cellData3D(12).data = printProp.strain(:,6);
       end
       %
-      if isSinglePhaseFlow(obj.model)
+      if isFlow(obj.model)
         %
         % Pressure and potential
         if isFEMBased(obj.model,'Flow')
-          pointData3D(nPointProp-2).name = 'press';   %-1
-          pointData3D(nPointProp-2).data = printProp.pressure;
-          pointData3D(nPointProp-1).name = 'potential';
-          pointData3D(nPointProp-1).data = printProp.potential;
-          pointData3D(nPointProp).name = 'nodeID';
-          pointData3D(nPointProp).data = (1:length(printProp.pressure))';
+          pointData3D(nPointProp-1).name = 'press';   %-1
+          pointData3D(nPointProp-1).data = printProp.pressure;
+          pointData3D(nPointProp).name = 'potential';
+          pointData3D(nPointProp).data = printProp.potential;
+%           pointData3D(nPointProp).name = 'nodeID';
+%           pointData3D(nPointProp).data = (1:length(printProp.pressure))';
         elseif isFVTPFABased(obj.model,'Flow')
           cellData3D(nCellProp-1).name = 'press';
           cellData3D(nCellProp-1).data = printProp.pressure;
           cellData3D(nCellProp).name = 'potential';
           cellData3D(nCellProp).data = printProp.potential;
+          if isVariabSatFlow(obj.model)
+            cellData3D(nCellProp-2).name = 'Sw';
+            cellData3D(nCellProp-2).data = printProp.Sw;
+          end
         end
       end
       %

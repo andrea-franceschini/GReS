@@ -16,96 +16,271 @@ classdef SimulationParameters < handle
     divFac = 2
     relaxFac = 0
     pTarget
+    sTarget = 0.4
+    NLSolver = 'Newton'
   end
   
   methods (Access = public)
-    function obj = SimulationParameters(fileName)
-      obj.setSimulationParameters(fileName);
+    function obj = SimulationParameters(model,fileName)
+      obj.setSimulationParameters(model,fileName);
+    end
+    
+    function status = isNewtonNLSolver(obj)
+      status = false;
+      if strcmp(obj.NLSolver,'Newton')
+        status = true;
+      end
+    end
+    
+    function status = isPicardNLSolver(obj)
+      status = false;
+      if strcmp(obj.NLSolver,'Picard')
+        status = true;
+      end
     end
   end
   
   methods (Access = private)
-    function setSimulationParameters(obj,fileName)
+    function setSimulationParameters(obj,model,fileName)
       fid = fopen(fileName,'r');
       if fid == -1
         error('File %s not opened correctly',fileName);
       end
-      block = '';
-      [flEof,line] = SimulationParameters.readLine(fid);
-      while (~strcmpi(line,'end'))
-        if flEof == 1
-          error('End of file while reading Simulation settings file %s',obj.fileName);
-        end
-        line = strtrim(strtok(line,'%'));
-        block = [block, line, ' '];
-        [flEof,line] = SimulationParameters.readLine(fid);
+      %
+      % Read the model parameters
+      %
+      % Single-phase Flow
+      if model.isSinglePhaseFlow()
+        readSPFParameters(obj,fid,fileName);
+      elseif model.isVariabSatFlow()
+        readVSFParameters(obj,fid,fileName);
+      elseif model.isPoromechanics()
+%         readPoromechParameters(obj,fid,fileName);
+        readSPFParameters(obj,fid,fileName);
+      end
+      token = SimulationParameters.readToken(fid,fileName);
+      if ~strcmp(token,'End')
+        error('Missing End statement at the end of Simulation settings file %s',fileName);
       end
       fclose(fid);
-      blockSplt = strsplit(string(deblank(block)));
-      tmpVec = str2double(blockSplt);
-      NaNParam = isnan(tmpVec);
-      if ~all(strcmpi(blockSplt(NaNParam),'default'))
-        error('There are invalid entries in %s file',fileName);
+    end
+    
+    function readSPFParameters(obj,fid,fName)
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',false,1,fName)
+        obj.tMax = str2double(token);
       end
       %
-      if NaNParam(1) == 0
-        obj.tMax = tmpVec(1);
-      else
-        error('There is no default value for tMax - row 1 of %s file',fileName);
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',false,2,fName)
+        obj.dtIni = str2double(token);
       end
       %
-      if NaNParam(2) == 0
-        obj.dtIni = tmpVec(2);
-      else
-        error('There is no default value for dtIni - row 2 of %s file',fileName);
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',false,3,fName)
+        obj.dtMin = str2double(token);
       end
       %
-      if NaNParam(3) == 0
-        obj.dtMin = tmpVec(3);
-      else
-        error('There is no default value for dtMin - row 3 of %s file',fileName);
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',false,4,fName)
+        obj.dtMax = str2double(token);
       end
       %
-      if NaNParam(4) == 0
-        obj.dtMax = tmpVec(4);
-      else
-        error('There is no default value for dtMax - row 4 of %s file',fileName);
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,5,fName)
+        obj.multFac = str2double(token);
       end
-      if NaNParam(5) == 0; obj.multFac = tmpVec(5); end
-      if NaNParam(6) == 0; obj.divFac = tmpVec(6); end
       %
-      if NaNParam(7) == 0
-        obj.pTarget = tmpVec(7);
-      else
-        error('There is no default value for pTarget - row 7 of %s file',fileName);
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,6,fName)
+        obj.divFac = str2double(token);
       end
-      if NaNParam(8) == 0; obj.relaxFac = tmpVec(8); end
-      if NaNParam(9) == 0; obj.theta = tmpVec(9); end
-      if NaNParam(10) == 0; obj.relTol = tmpVec(10); end
-      if NaNParam(11) == 0; obj.absTol = tmpVec(11); end
       %
-      if NaNParam(12) == 0
-        if ismember(tmpVec(12),[2 Inf])
-          obj.pNorm = tmpVec(12);
-        else
-          error('Invalid value for pTarget - row 7 of %s file\nAccepted p-norms are: 2 and Inf',fileName);
-        end
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',false,7,fName)
+        obj.pTarget = str2double(token);
       end
-      if NaNParam(13) == 0; obj.itMaxNR = tmpVec(13); end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,8,fName)
+        obj.relaxFac = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,9, ...
+          fName,[0, 0.5, 1])
+        obj.theta = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,10,fName)
+        obj.relTol = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,11,fName)
+        obj.absTol = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,12, ...
+          fName,["2", "Inf"])
+        obj.pNorm = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,13,fName)
+        obj.itMaxNR = str2double(token);
+      end
+    end
+    
+    function readVSFParameters(obj,fid,fName)
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',false,1,fName)
+        obj.tMax = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',false,2,fName)
+        obj.dtIni = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',false,3,fName)
+        obj.dtMin = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',false,4,fName)
+        obj.dtMax = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,5,fName)
+        obj.multFac = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,6,fName)
+        obj.divFac = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',false,7,fName)
+        obj.pTarget = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,8,fName)
+        obj.relaxFac = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,9, ...
+          fName,[0, 0.5, 1])
+        obj.theta = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,10,fName)
+        obj.relTol = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,11,fName)
+        obj.absTol = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,12, ...
+          fName,["2", "Inf"])
+        obj.pNorm = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'string',true,13, ...
+          fName,["Newton", "Picard"])
+        obj.NLSolver = token;
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,14,fName)
+        obj.itMaxNR = str2double(token);
+      end
+    end
+    
+    function readPoromechParameters(obj,fid,fName)
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,1,fName)
+        obj.relTol = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,2,fName)
+        obj.absTol = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,3, ...
+          fName,["2", "Inf"])
+        obj.pNorm = str2double(token);
+      end
+      %
+      token = SimulationParameters.readToken(fid,fName);
+      if ~SimulationParameters.checkEntry(token,'number',true,4,fName)
+        obj.itMaxNR = str2double(token);
+      end
+      %
+      obj.tMax = 1;
+      obj.dtIni = 1.e10;
+      obj.dtMin = 1;
+      obj.dtMax = 1;
     end
   end
   
   methods (Static = true)
-    function [flEof,line] = readLine(fid)
+    function token = readToken(fid,fileName)
       flEof = feof(fid);   % end-of-file flag
       if flEof == 1
-        line = '';
+        error('End of file while reading Simulation settings file %s',fileName);
       else
-        line = deblank(fgetl(fid));
-        if isempty(line)
-          error('No blank lines are admitted in Simulatio parameters file');
-        end
+        token = strtrim(strtok(fgetl(fid),'%'));
       end  
+    end
+    
+    function isDefault = checkEntry(token,type,defAdm,i,fileName,varargin)
+      isDefault = false;
+      if isnan(str2double(token))
+        if strcmp(token,'Default')
+          if defAdm
+            isDefault = true;
+          else
+            error('There is no default value for the parameter in row %d of file %s',i,fileName);
+          end
+        elseif strcmp(type,'number')
+          error('Expected numeric entry in row %d of file %s',i,fileName);
+        elseif strcmp(type,'string')
+          if ~isempty(varargin)
+            if ~ismember(token,varargin{1})
+              str = sprintf(' %s',varargin{1});
+              fmt = ['Invalid entry in row %d in file %s\nExpected options are:' str];
+              error(fmt,i,fileName);
+            end
+          end
+        end
+      else
+        if strcmp(type,'string')
+          error('Expected string entry in row %d in file %s',i,fileName);
+        elseif strcmp(type,'number')
+          if ~isempty(varargin)
+            if ~ismember(token,varargin{1})
+              str = sprintf(' %s',varargin{1});
+              fmt = ['Invalid entry in row %d in file %s\nExpected options are:' str];
+              error(fmt,i,fileName);
+            end
+          end
+        end
+      end
     end
   end
 end

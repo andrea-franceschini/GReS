@@ -1,7 +1,0 @@
-NodeBC                              % BC item
-Neu                                 % BC type
-Poro                                % Physics
-nodeNeu                             % BC name
-neuNode/list
-0.0 neuNode/time0.dat
-End

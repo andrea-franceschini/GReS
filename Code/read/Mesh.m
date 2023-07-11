@@ -5,51 +5,45 @@ classdef Mesh < handle
 
     % GENERAL INFO:
     % Mesh dimension
-    nDim = 0; 
+    nDim = 0
     % Total number of mesh nodes
-    nNodes = 0;
+    nNodes = 0
     % Total number of mesh 3D elements
-    nCells = 0;
+    nCells = 0
     % Total number of mesh 2D elements
-    nSurfaces = 0;
-
+    nSurfaces = 0
+    
     % Nodes' coordinates
-    coordinates;
-
+    coordinates
     % Cell to node mapping:
     % 3D elements' nodes sequences 
-    cells;
+    cells
     % 3D elements' tag (region)
-    cellTag;
+    cellTag
+    % Number of elements' tag
+    nCellTag
     % Number of nodes for each 3D element
-    cellNumVerts;
+    cellNumVerts
     
-    %cellToNode = logical(sparse(0, 0));
-    %nodeToCell = logical(sparse(0, 0));
-
     % Surface to node mapping:
     % 2D elements' nodes sequences
-    surfaces;
+    surfaces
     % 2D elements' tag (region)
-    surfaceTag;
+    surfaceTag
+    % Number of surfaces' tag
+    nSurfaceTag
     % Number of nodes of the 2D element
-    surfaceNumVerts;
+    surfaceNumVerts
 
     % Regions
     cellRegions;
     surfaceRegions;
-
-    % Coordinates of 3D element centroid
-%     cellCentroid = [];
-    % Coordinates of 2D element centroid
-%     surfaceCentroid = [];
 
     % 3D element VTK type tag
     cellVTKType;
     % 2D element VTK type tag
     surfaceVTKType;
     meshType = 'Unstructured'
-
   end
 
   properties (Access = private)
@@ -140,6 +134,9 @@ classdef Mesh < handle
       for i = 1 : length(ID)
         obj.surfaceRegions = setfield(obj.surfaceRegions, regions(ID(i)).name, regions(ID(i)).ID);
       end
+      %
+      obj.nCellTag = max(obj.cellTag);
+      obj.nSurfaceTag = max(obj.surfaceTag);
     end
     
     % Function to call functions that calculate cells' and surfaces' centroids

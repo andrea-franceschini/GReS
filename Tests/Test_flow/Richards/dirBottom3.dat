@@ -1,0 +1,9 @@
+NodeBC                            % BC item
+Dir                               % BC type
+Flow                              % Physics
+bFace                             % BC name
+dirBottom3/list
+0.000000 dirBottom3/time0.dat
+5.000000 dirBottom3/time1.dat
+10.00000 dirBottom3/time2.dat
+End

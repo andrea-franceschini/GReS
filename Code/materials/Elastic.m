@@ -18,16 +18,41 @@ classdef Elastic < handle
       % Calling the function to set the object properties 
       obj.readMaterialParameters(fID, matFileName);
     end
+    
+    function [status] = initializeStatus(obj, sigma)
+      nptGauss = size(sigma,1);
+      status = zeros(nptGauss,2);
+    end
     %
     % Material stiffness matrix calculation using the object properties
-    function D = getStiffnessMatrix(obj)
+    function [DAll, sigmaOut, status] = getStiffnessMatrix(obj, sigmaIn, epsilon, dt, status)
+      nptGauss = size(sigmaIn,1);
+%       sigmaOut = zeros(nptGauss,6);    % MODIFICA SN
       % Stiffness matrix
+%       DAll = zeros(6,6,nptGauss);      % MODIFICA SN
       D = zeros(6);
       D([1 8 15]) = 1-obj.nu;
       D([2 3 7 9 13 14]) = obj.nu;
       D([22 29 36]) = (1-2*obj.nu)/2;
       D = obj.E/((1+obj.nu)*(1-2*obj.nu))*D;
+      % MODIFICA SN
+%       for i = 1 : nptGauss
+%         sigmaOut(i,:) = sigmaIn(i,:) + epsilon(i,:)*D;
+%         DAll(:,:,i) = D;
+%       end
+      sigmaOut = sigmaIn + epsilon*D;
+      DAll = repmat(D,[1, 1, nptGauss]);
     end
+    %
+    % Material stiffness matrix calculation using the object properties
+%     function D = getStiffnessMatrix(obj)
+%       % Stiffness matrix
+%       D = zeros(6);
+%       D([1 8 15]) = 1-obj.nu;
+%       D([2 3 7 9 13 14]) = obj.nu;
+%       D([22 29 36]) = (1-2*obj.nu)/2;
+%       D = obj.E/((1+obj.nu)*(1-2*obj.nu))*D;
+%     end
     
     % Method that returns the M factor
     function m = getMFactor(obj)

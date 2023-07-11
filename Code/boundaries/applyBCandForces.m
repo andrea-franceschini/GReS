@@ -1,8 +1,8 @@
-function applyBCandForces(model, grid, bound, material, preP, t, syst, state)
+function applyBCandForces(model, grid, bound, material, t, syst, state)
   % Impose BC to the linearized system (Jacobian matrix + RHS)
   % The Penalty method is used for the Dirichlet conditions
   %
-  maxVal = max(abs(syst.K), [], 'all');
+  maxVal = max(abs(syst.J), [], 'all');
   %
   keys = bound.db.keys;
   for i = 1 : length(keys)
@@ -10,13 +10,13 @@ function applyBCandForces(model, grid, bound, material, preP, t, syst, state)
       if strcmp(bound.getType(keys{i}), 'Neu')  % Apply Neumann conditions,if any
         syst.rhs(bound.getDofs(keys{i})) = syst.rhs(bound.getDofs(keys{i})) - bound.getVals(keys{i}, t);
       elseif strcmp(bound.getType(keys{i}), 'Dir')  % Apply Dirichlet conditions
-        nrows = size(syst.K,1);
-        syst.K(nrows*(bound.getDofs(keys{i})-1) + bound.getDofs(keys{i})) = maxVal*1.e10;
+        nrows = size(syst.J,1);
+        syst.J(nrows*(bound.getDofs(keys{i})-1) + bound.getDofs(keys{i})) = maxVal*1.e10;
         syst.rhs(bound.getDofs(keys{i})) = 0;
       end
     elseif strcmp(bound.getCond(keys{i}),'ElementBC')
-      nrows = size(syst.K,1);
-      syst.K(nrows*(bound.getDofs(keys{i})-1) + bound.getDofs(keys{i})) = maxVal*1.e10;
+      nrows = size(syst.J,1);
+      syst.J(nrows*(bound.getDofs(keys{i})-1) + bound.getDofs(keys{i})) = maxVal*1.e10;
       syst.rhs(bound.getDofs(keys{i})) = 0;
     elseif strcmp(bound.getCond(keys{i}),'SurfBC')
       if isFEMBased(model,bound.getPhysics(keys{i}))
@@ -24,8 +24,8 @@ function applyBCandForces(model, grid, bound, material, preP, t, syst, state)
           loadedEnts = bound.getLoadedEntities(keys{i});
           entitiesInfl = bound.getEntitiesInfluence(keys{i});
           q = bound.getVals(keys{i}, t);
-          entitiesForce = entitiesInfl*q;
-          syst.rhs(loadedEnts) = syst.rhs(loadedEnts) - entitiesForce;
+%           entitiesForce = entitiesInfl*q;
+          syst.rhs(loadedEnts) = syst.rhs(loadedEnts) - entitiesInfl*q;
 %           nod2FaceCond = obj.grid.topology.surfaces(bound.getDofs(keys{i}),:);
 %           nod2FaceCond = nod2FaceCond';
 %           nod2faceVec = nod2FaceCond(nod2FaceCond ~= 0);
@@ -60,15 +60,16 @@ function applyBCandForces(model, grid, bound, material, preP, t, syst, state)
         elseif strcmp(bound.getType(keys{i}), 'Dir')
 %           error('Dirichlet cond. for FVTPFA on surf has not been implemented yet (ref. %s)', ...
 %           bound.getName(keys{i}));
-          nrows = size(syst.K,1);
+          nrows = size(syst.J,1);
           faceID = bound.getDofs(keys{i});
           neighEl = sum(grid.faces.faceNeighbors(faceID,:),2);
-          gamma = material.getMaterial(preP.nMat+1).getFluidSpecWeight();
+          gamma = material.getMaterial(grid.topology.nCellTag+1).getFluidSpecWeight();
+          mu = material.getMaterial(grid.topology.nCellTag+1).getDynViscosity();
           trans = getFaceTransmissibilities(syst,faceID);
-          q = trans.*((state.pressure(neighEl) - bound.getVals(keys{i}, t))...
+          q = 1/mu*trans.*((state.pressure(neighEl) - bound.getVals(keys{i}, t))...
             + gamma*(grid.cells.cellCentroid(neighEl,3) - grid.faces.faceCentroid(faceID,3)));
           syst.rhs(neighEl) = syst.rhs(neighEl) + q;
-          syst.K(nrows*(neighEl-1) + neighEl) = syst.K(nrows*(neighEl-1) + neighEl) + trans;
+          syst.J(nrows*(neighEl-1) + neighEl) = syst.J(nrows*(neighEl-1) + neighEl) + 1/mu*trans;
         end
       end
     elseif strcmp(bound.getCond(keys{i}), 'VolumeForce')

@@ -1,0 +1,24 @@
+TO DO LIST:
+- Lettura della mesh in formato .vtk
+- Gestione dell'output: modificare la dimensione del time step per calcolare e
+  stampare la soluzione all'istante di output desiderato.
+- Espansione del modulo di stampa della soluzione su file .mat. Allo stato
+  attuale il codice stampa la soluzione agli istanti di output desiderati su
+  tutto il dominio qualora la flag flOutData nella classe OutState e' vera.
+  Considerare la possibilita' di produrre la soluzione solo in una porzione
+  specifica del dominio.
+- Metodo theta di Newmark per l'integrazione temporale. Considerare se
+  effettivamente necessario.
+- Inizializzazione del modello sul modello della routine per l'applicazione
+  delle condizioni al contorno.
+- L'accesso alle informazioni contenute nella struttura "map" di Matlab sembra
+  piuttosto lento. Considerare l'utilizzo di altre strutture in particolare per
+  le variabili di piu' frequente accesso (i materiali).
+- Introdurre una classe che gestisce il log degli eventi principali, errori e
+  warning incontrati nell'esecuzione del codice.
+- Calcolo esplicito dei flussi/velocita' negli elementi per le simulazioni di
+  flusso.
+- Richards: testare e verificare in maniera piu' esaustiva l'implementazione corrente.
+- Richards: introdurre condizioni al contorno tipo seepage face.
+- Richards: valutare l'aggiunta del termine dipendente dalla derivata seconda
+  di Sw nello jacobiano.

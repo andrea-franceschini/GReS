@@ -2,10 +2,14 @@ classdef Elements < handle
   % ELEMENT General element class
   
   properties (Access = public)
+    % Number of elements by type
+    nCellsByType   % nCellsByType = [#tetra, #hexa, #wed, #pyr]
+    nNodesElem = [4, 8, 6, 5]
     cellCentroid
     vol
     tetra
     hexa
+    indB
   end
 
   properties (Access = private)
@@ -57,14 +61,27 @@ classdef Elements < handle
         obj.GaussPts = data{1};
       end
       %
-      if any(obj.mesh.cellVTKType == 10)
+      obj.nCellsByType = histc(obj.mesh.cellVTKType,[10, 12, 13, 14]);
+      %
+      if obj.nCellsByType(1) > 0
         obj.tetra = Tetrahedron(obj.mesh);
       end
-      if any(obj.mesh.cellVTKType == 12)
+      if obj.nCellsByType(2) > 0
         obj.hexa = Hexahedron(obj.mesh,obj.GaussPts);
       end
       obj.vol = zeros(obj.mesh.nCells,1);
       obj.cellCentroid = zeros(obj.mesh.nCells,3);
+      %
+      if obj.nCellsByType(2) == 0
+        l1 = 4;
+      else
+        l1 = 8*obj.GaussPts.nNode;
+      end
+      obj.indB = zeros(9*l1,2);
+      obj.indB(:,1) = repmat([1, 2, 3, 2, 1, 3, 3, 2, 1],[1,l1]);
+      obj.indB(:,2) = repmat([1, 4, 6, 8,10,11,15,17,18],[1,l1]);
+      obj.indB(:,1) = obj.indB(:,1) + repelem(3*(0:(l1-1))',9);
+      obj.indB(:,2) = obj.indB(:,2) + repelem(18*(0:(l1-1))',9);
     end
     
     function computeCellProperties(obj)
@@ -84,7 +101,9 @@ classdef Elements < handle
     
     function tetraCtr = computeCentroidGeneral(obj,idTetra)
       tetraCtr = sparse(repelem(1:length(idTetra),obj.mesh.cellNumVerts(idTetra)), ...
-          nonzeros((obj.mesh.cells(idTetra,:))'),repelem((obj.mesh.cellNumVerts(idTetra)).^(-1),obj.mesh.cellNumVerts(idTetra)),length(idTetra),obj.mesh.nNodes) ...
+          nonzeros((obj.mesh.cells(idTetra,:))'), ...
+          repelem((obj.mesh.cellNumVerts(idTetra)).^(-1), ...
+          obj.mesh.cellNumVerts(idTetra)),length(idTetra),obj.mesh.nNodes) ...
           * obj.mesh.coordinates;
 %     end
     end

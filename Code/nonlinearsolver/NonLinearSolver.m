@@ -26,7 +26,6 @@ classdef NonLinearSolver < handle
     material
     bound
 %     BCName
-    preP
     GaussPts
     printUtil
     statek
@@ -39,26 +38,23 @@ classdef NonLinearSolver < handle
   end
   
   methods (Access = public)
-    function obj = NonLinearSolver(symmod,simParam,grid,mat,pre,bc,prtUtil,stateIni,varargin)
-      nIn = nargin;
-      data = varargin;
-      obj.setNonLinearSolver(nIn,symmod,simParam,grid,mat,pre,bc,prtUtil,stateIni,data);
+    function obj = NonLinearSolver(symmod,simParam,grid,mat,bc,prtUtil,stateIni,varargin)
+      obj.setNonLinearSolver(symmod,simParam,grid,mat,bc,prtUtil,stateIni,varargin);
     end
 
     function [simStat] = NonLinearLoop(obj)
       simStat = 1;
-      if obj.preP.nE(2) > 0  % There is at least one hexahedron
-        linSyst = Discretizer(obj.model,obj.grid,obj.material, ...
-                  obj.preP,obj.GaussPts);
+      if obj.elements.nCellsByType(2) > 0  % There is at least one hexahedron
+        linSyst = Discretizer(obj.model,obj.simParameters,obj.grid,obj.material, ...
+                  obj.GaussPts);
       else
-        linSyst = Discretizer(obj.model,obj.grid,obj.material, ...
-                obj.preP);
+        linSyst = Discretizer(obj.model,obj.simParameters,obj.grid,obj.material);
       end
       % Compute H and P matrices for flow simulations and the gravity
       % contribution
       if isSinglePhaseFlow(obj.model)
-        linSyst.computeFlowMat();
-        linSyst.computeFlowRHSGravContribute();
+        linSyst.computeSPFMatrices();
+%         linSyst.computeFlowRHSGravTerm();
       end
 %       t  = 0;
 %       tStep = 0;
@@ -77,24 +73,26 @@ classdef NonLinearSolver < handle
         % Apply the Dirichlet condition value to the solution vector
         applyDirVal(obj.bound, obj.t, obj.stateTmp);
         %
-        fprintf('\nTSTEP %d   ---  TIME %f\n',obj.tStep,obj.t);
+        fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
         fprintf('-----------------------------------------------------------\n');
         fprintf('Iter     ||rhs||\n');
         %
         if isPoromechanics(obj.model)
           % Compute Jacobian and residual of the poromechanical problem
-          linSyst.computePoroSyst(obj.stateTmp);
+          linSyst.computePoroSyst(obj.stateTmp,obj.dt);
         end
         if isSinglePhaseFlow(obj.model)
           % Compute Jacobian and residual of the flow problem 
-          linSyst.computeFlowSystMat(obj.simParameters.theta,obj.dt);
-          %
-          linSyst.computeFlowRHS(obj.statek,obj.stateTmp);
+          linSyst.computeFlowJacobian(obj.dt);
+          mu = obj.material.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();
+          linSyst.computeFlowRHS(obj.statek,obj.stateTmp,obj.dt,1/mu);
+        elseif isVariabSatFlow(obj.model)
+          linSyst.computeVSFMatricesAndRHS(obj.statek,obj.stateTmp,obj.dt);
         end
         %
         % Apply Neu and Dir conditions
         applyBCandForces(obj.model, obj.grid, obj.bound, obj.material, ...
-          obj.preP, obj.t, linSyst, obj.stateTmp);
+          obj.t, linSyst, obj.stateTmp);
 %         obj.bound.applyBCNeu(linSyst);
         rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
 %         obj.bound.applyBCDir(linSyst);
@@ -103,28 +101,32 @@ classdef NonLinearSolver < handle
         obj.iter = 0;
         %
         fprintf('0     %e\n',rhsNorm);
-        while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) && (rhsNorm > obj.simParameters.absTol)) || obj.iter == 0
+        while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
+            && (rhsNorm > obj.simParameters.absTol)) || obj.iter == 0
           obj.iter = obj.iter + 1;
           %
           % Solve system with increment
-          du = linSyst.K\(-linSyst.rhs);
+          du = linSyst.J\(-linSyst.rhs);
           %
           % Update tmpState
-          obj.stateTmp.updateState(du); 
+          obj.stateTmp.updateState(du);
           %
           % Compute residual and update Jacobian
           if isPoromechanics(obj.model)
-            linSyst.computePoroSyst(obj.stateTmp);
+            linSyst.computePoroSyst(obj.stateTmp,obj.dt);
           end
           %
           if isSinglePhaseFlow(obj.model)
-            linSyst.computeFlowSystMat(obj.simParameters.theta,obj.dt);   % Not needed
-%             since the problem is linear
-            linSyst.computeFlowRHS(obj.statek,obj.stateTmp);
+            % Compute Jacobian and residual of the flow problem 
+            linSyst.computeFlowJacobian(obj.dt);
+            mu = obj.material.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();
+            linSyst.computeFlowRHS(obj.statek,obj.stateTmp,obj.dt,1/mu);
+          elseif isVariabSatFlow(obj.model)
+            linSyst.computeVSFMatricesAndRHS(obj.statek,obj.stateTmp,obj.dt)
           end
           %
           applyBCandForces(obj.model, obj.grid, obj.bound, obj.material, ...
-            obj.preP, obj.t, linSyst, obj.stateTmp);
+            obj.t, linSyst, obj.stateTmp);
 %           obj.bound.applyBCNeu(linSyst);
           rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
 %           obj.bound.applyBCDir(linSyst);
@@ -138,6 +140,12 @@ classdef NonLinearSolver < handle
         if flConv % Convergence
           obj.stateTmp.t = obj.t;
           % Print the solution, if needed
+          if isPoromechanics(obj.model)
+            obj.stateTmp.advanceState();
+          end
+          if isVariabSatFlow(obj.model)
+            obj.stateTmp.updateSaturation()
+          end
           if obj.t > obj.simParameters.tMax   % For Steady State
             printState(obj.printUtil,obj.stateTmp);
           else
@@ -234,20 +242,19 @@ classdef NonLinearSolver < handle
   end
   
   methods (Access = private)
-    function setNonLinearSolver(obj,nIn,symmod,simParam,grid,mat,pre,bc,prtUtil,stateIni,data)
+    function setNonLinearSolver(obj,symmod,simParam,grid,mat,bc,prtUtil,stateIni,data)
       obj.model = symmod;
       obj.simParameters = simParam;
       obj.grid = grid;
       obj.mesh = grid.topology;
       obj.elements = grid.cells;
       obj.material = mat;
-      obj.preP = pre;
       obj.bound = bc;
 %       obj.BCName = BName;
       obj.printUtil = prtUtil;
       obj.statek = stateIni;
       obj.stateTmp = copy(stateIni);
-      if nIn > 8
+      if ~isempty(data)
         obj.GaussPts = data{1};
       end
       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -288,14 +295,23 @@ classdef NonLinearSolver < handle
         assert(obj.dt >= obj.simParameters.dtMin,'Minimum time step reached');
         fprintf('\n %s \n','BACKSTEP');
       else % Go on if converged
-        if isSinglePhaseFlow(obj.model)
-          dpMax = max(abs(obj.stateTmp.pressure-obj.statek.pressure));
-          obj.dt = min([obj.dt * min([obj.simParameters.multFac, ...
-            (1+obj.simParameters.relaxFac)*obj.simParameters.pTarget/(dpMax + obj.simParameters.relaxFac*obj.simParameters.pTarget)]), ...
-            obj.simParameters.dtMax]);
-        elseif isPoromechanics(obj.model)
-          obj.dt = min(obj.dt * obj.simParameters.multFac,obj.simParameters.dtMax);
+        tmpVec = obj.simParameters.multFac;
+        if isFlow(obj.model)
+          dpMax = max(abs(obj.stateTmp.pressure - obj.statek.pressure));
+          tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
+            obj.simParameters.pTarget/(dpMax + obj.simParameters.relaxFac* ...
+            obj.simParameters.pTarget)];
+%           if isVariabSatFlow(obj.model)
+%             dSwMax = max(abs(obj.stateTmp.watSat-obj.statek.watSat));
+%             tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
+%             obj.simParameters.sTarget/(dSwMax + obj.simParameters.relaxFac* ...
+%             obj.simParameters.sTarget)];
+%           end
         end
+        obj.dt = min([obj.dt * min(tmpVec),obj.simParameters.dtMax]);
+%         if obj.dt < obj.simParameters.dtMin
+%           obj.dt = obj.simParameters.dtMin;
+%         end
         transferState(obj.stateTmp,obj.statek);
         %
         if ((obj.t + obj.dt) > obj.simParameters.tMax)

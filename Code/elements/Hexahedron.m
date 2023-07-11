@@ -65,7 +65,10 @@ classdef Hexahedron < handle
       %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
       obj.J = pagemtimes(obj.J1,obj.mesh.coordinates(obj.mesh.cells(el,:),:));
       if flOut == 3 || flOut == 1
-        obj.detJ = arrayfun(@(x) det(obj.J(:,:,x)),1:obj.GaussPts.nNode);
+%         obj.detJ = arrayfun(@(x) det(obj.J(:,:,x)),1:obj.GaussPts.nNode);
+          for i=1:obj.GaussPts.nNode
+            obj.detJ(i) = det(obj.J(:,:,i));
+          end
         if flOut == 1
           outVar2 = obj.detJ.*(obj.GaussPts.weight)';
         elseif flOut == 3
@@ -73,9 +76,12 @@ classdef Hexahedron < handle
         end
       end
       if flOut == 2 || flOut == 1
-        invJTmp = arrayfun(@(x) inv(obj.J(:,:,x)),1:obj.GaussPts.nNode,'UniformOutput',false);
-        obj.J = reshape(cell2mat(invJTmp),obj.mesh.nDim,obj.mesh.nDim,obj.GaussPts.nNode); %possibly we can overwrite J
-        clear invJTmp
+%         invJTmp = arrayfun(@(x) inv(obj.J(:,:,x)),1:obj.GaussPts.nNode,'UniformOutput',false);
+%         obj.J = reshape(cell2mat(invJTmp),obj.mesh.nDim,obj.mesh.nDim,obj.GaussPts.nNode); %possibly we can overwrite J
+%         clear invJTmp
+        for i=1:obj.GaussPts.nNode
+          obj.J(:,:,i) = inv(obj.J(:,:,i));
+        end
         outVar1 = pagemtimes(obj.J,obj.J1);
       end
     end
@@ -193,6 +199,7 @@ classdef Hexahedron < handle
       obj.GaussPts = GPoints;
       findLocDerBasisF(obj);
       findLocBasisF(obj);
+      obj.detJ = zeros(1,obj.GaussPts.nNode);
     end
   end
 
