@@ -8,8 +8,9 @@ function applyDirVal(bound, t, resState)
 %       if strcmp(bound.getType(keys{i}), 'Dir')  % Apply Dirichlet conditions
       if strcmp(bound.getPhysics(keys{i}), 'Flow')
         resState.pressure(bound.getDofs(keys{i})) = bound.getVals(keys{i}, t);
-      elseif strcmp(bound.getType(keys{i}), 'Poro')
-        resState.displ(bound.getDofs(keys{i})) = bound.getVals(keys{i}, t);
+      elseif strcmp(bound.getPhysics(keys{i}), 'Poro')
+        resState.dispConv(bound.getDofs(keys{i})) = bound.getVals(keys{i}, t);
+        resState.dispCurr(bound.getDofs(keys{i})) = bound.getVals(keys{i}, t);
       end
 %       end
     end

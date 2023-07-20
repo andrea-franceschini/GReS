@@ -77,11 +77,14 @@ classdef NonLinearSolver < handle
         fprintf('-----------------------------------------------------------\n');
         fprintf('Iter     ||rhs||\n');
         %
-        if isPoromechanics(obj.model)
+        if isPoromechanics(obj.model) && isSinglePhaseFlow(obj.model)
+            % compute Jacobian and residual of coupled hydro-mechanics
+            % problem
+          linSyst.computeCoupleSyst(obj.simParameters.theta,obj.dt,obj.statek,obj.stateTmp)
+        elseif isPoromechanics(obj.model) 
           % Compute Jacobian and residual of the poromechanical problem
           linSyst.computePoroSyst(obj.stateTmp,obj.dt);
-        end
-        if isSinglePhaseFlow(obj.model)
+        elseif isSinglePhaseFlow(obj.model)
           % Compute Jacobian and residual of the flow problem 
           linSyst.computeFlowJacobian(obj.dt);
           mu = obj.material.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();
@@ -112,11 +115,13 @@ classdef NonLinearSolver < handle
           obj.stateTmp.updateState(du);
           %
           % Compute residual and update Jacobian
-          if isPoromechanics(obj.model)
+          if isPoromechanics(obj.model) && isSinglePhaseFlow(obj.model)
+            % compute Jacobian and residual of coupled hydro-mechanics
+            % problem
+          linSyst.computeCoupleSyst(obj.simParameters.theta,obj.dt,obj.statek,obj.stateTmp)
+          elseif isPoromechanics(obj.model)
             linSyst.computePoroSyst(obj.stateTmp,obj.dt);
-          end
-          %
-          if isSinglePhaseFlow(obj.model)
+          elseif isSinglePhaseFlow(obj.model)
             % Compute Jacobian and residual of the flow problem 
             linSyst.computeFlowJacobian(obj.dt);
             mu = obj.material.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();

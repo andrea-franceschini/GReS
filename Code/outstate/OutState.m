@@ -4,6 +4,7 @@ classdef OutState < handle
   
   properties (Access = public)
     timeList
+    m
   end
   
   properties (Access = private)
@@ -12,8 +13,7 @@ classdef OutState < handle
     mesh
     timeID = 1
     VTK
-    flOutData = false
-    m
+    flOutData = true
     material
 %     flPrint = true
   end
@@ -180,7 +180,7 @@ classdef OutState < handle
         if isfile('expData.mat')
           delete 'expData.mat'
         end
-        obj.m = matfile('expData.mat');
+        obj.m = matfile('expData.mat','Writable',true);
         l = length(obj.timeList) + 1;
         obj.m.expTime = zeros(l,1);
         if isFlow(obj.model)
@@ -194,7 +194,7 @@ classdef OutState < handle
           end
         end
         if isPoromechanics(obj.model)
-          obj.m.expDispl = zeros(obj.mesh.nDims*obj.mesh.nNodes,l);
+          obj.m.expDispl = zeros(obj.mesh.nDim*obj.mesh.nNodes,l);
           % Maybe consider adding other output properties
         end
       end
