@@ -272,8 +272,8 @@ classdef State < matlab.mixin.Copyable
         for el = 1:obj.mesh.nCells
           M = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getMFactor();
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-          specGrav = 0.0216;    % FIX THE CALL TO THE PROPERTY IN MATERIAL - POROUS ROCK
-%           specGrav = 0;
+          %specGrav = 0.0216;    % FIX THE CALL TO THE PROPERTY IN MATERIAL - POROUS ROCK
+           specGrav = 0;
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
           switch obj.mesh.cellVTKType(el)
             case 10 % Tetra
