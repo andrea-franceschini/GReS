@@ -1,0 +1,7 @@
+SurfBC                            % BC item
+Neu                               % BC type
+Flow                              % Physics
+lateralUndrained                           % BC name
+neuSurfTopBotLatFlow/list
+0.000000 neuSurfTopBotLatFlow/time0.dat
+End
