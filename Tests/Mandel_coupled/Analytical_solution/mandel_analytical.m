@@ -57,7 +57,7 @@ ux0 = F*nuU*x/(2*mu*a);
 uz0 = -F*(1-nuU)*z/(2*mu*a);
 
 %array for time instants
-t = [0.05 0.5 5 10];
+t = [0.05];
 nt = length(t);
 
 %calculating series terms (creates cell array)
@@ -95,6 +95,12 @@ ux = x'*((F*nu)/(2*mu*a) - (F*nuU)/(mu*a)*seriesUx1)+ F/mu*seriesUx2;
 uz = z'*(-(F*(1-nu)/(2*mu*a))+(F*(1-nuU)/(mu*a))*seriesUz);
 norm_p = p/p0;
 
+
+if writemode
+ save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Hexa\H01\pAnalPlot.dat p -ascii
+ save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Hexa\H01\uxAnalPlot.dat ux -ascii
+ save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Hexa\H01\uzAnalPlot.dat uz -ascii
+end
 
 time_string = "t =" + t + "s";
 
@@ -150,11 +156,8 @@ norm_ptime = ptime/p0;
 figure(4)
 semilogx(dimless_time/time_factor, norm_ptime' ,'-')
 legend('x=0','x=a/4','x=a/2')
-
-
 %%%%calculating initial solution to be assign to the model%%%%%%%%%%%%%%%%
 %First save in the repo the vectors of coordinates for each node
-if writemode
     zmesh = load('zmesh.dat');
     xmesh = load('xmesh.dat');
     nNodes = length(zmesh);
@@ -164,7 +167,46 @@ if writemode
     p0fem(:) = (1/(3*a))*B*(1+nuU)*F;
     ux0fem(:) = F*nuU*xmesh/(2*mu*a);
     uz0fem(:) = -F*(1-nuU)*zmesh/(2*mu*a);
+ 
+    
+%%  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%calculating analytical solution using coordinates vector from FEM grid
+%calculating series terms (creates cell array)
+cellsP = arrayfun(@(alphan) bsxfun(@(xmesh,t) (sin(alphan)/(alphan - ...
+    sin(alphan)*cos(alphan)))*(cos(alphan*xmesh/a)-cos(alphan))*exp(-alphan^2*c*t/a^2),xmesh,t),alphan,'UniformOutput',false);
 
+cellsUx1 = arrayfun(@(alphan) arrayfun(@(t) ((sin(alphan)*cos(alphan))/(alphan - ...
+   sin(alphan)*cos(alphan)))*exp(-alphan^2*c*t/a^2),t),alphan,'UniformOutput',false);
+
+cellsUx2 = arrayfun(@(alphan) bsxfun(@(xmesh,t) ...
+    ((cos(alphan)/(alphan - sin(alphan)*cos(alphan)))*sin(alphan*xmesh/a)...
+    *exp(-alphan^2*c*t/a^2)),xmesh,t),alphan,'UniformOutput',false);
+
+cellsUz = arrayfun(@(alphan) arrayfun(@(t) ((sin(alphan)*cos(alphan))/(alphan - ...
+   sin(alphan)*cos(alphan)))*exp(-alphan^2*c*t/a^2),t),alphan,'UniformOutput',false);
+
+%converting cell array into 2S matrices
+matP = cell2mat(cellsP);
+matUx1 = cell2mat(cellsUx1);
+matUx2 = cell2mat(cellsUx2);
+matUz = cell2mat(cellsUz);
+%reshaping matrices and summation along third direction. 
+%Dim 1: position
+%Dim 2: time
+%Dim 3: Series term
+
+seriesP = sum(reshape(matP,nNodes,nt,[]),3);
+seriesUx1 = sum(reshape(matUx1,1,nt,[]),3);
+seriesUx2 = sum(reshape(matUx2,nNodes,nt,[]),3);
+seriesUz = sum(reshape(matUz,1,nt,[]),3);
+
+%calculating solutions
+p = 2*p0*seriesP;
+ux = xmesh*((F*nu)/(2*mu*a) - (F*nuU)/(mu*a)*seriesUx1)+ F/mu*seriesUx2;
+uz = zmesh*(-(F*(1-nu)/(2*mu*a))+(F*(1-nuU)/(mu*a))*seriesUz);
+
+if writemode
     save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Hexa\H01\pIniH01.dat p0fem -ascii
     save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Hexa\H01\uxIniH01.dat ux0fem -ascii
     save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Hexa\H01\uzIniH01.dat uz0fem -ascii
@@ -173,7 +215,6 @@ if writemode
     save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Hexa\H01\uzAnal.dat uz -ascii
     save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Hexa\H01\xAnal.dat x -ascii
     save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Hexa\H01\zAnal.dat z -ascii
-    
 else 
     disp('WriteMode currently set to false')
 end

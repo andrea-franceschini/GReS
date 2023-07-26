@@ -133,13 +133,18 @@ dispXplot = disp(3*nodesX-2,2:end);
 dispZplot = disp(3*nodesZ,2:end);
 
 
-%Getting analytical solution arrays for plots
+%Getting analytical solution arrays for errors check
 analpress  = load('pAnal.dat');
 analDX = load('uxAnal.dat');
 analDZ = load('uzAnal.dat');
-%getting position vectors for analytical solution
+
+%getting position vectors for plots
 xAnal = load('xAnal.dat');
 zAnal = load('zAnal.dat');
+%getting analytical solution arrays for plots
+analpressPlot  = load('pAnalPlot.dat');
+analDXPlot = load('uxAnalPlot.dat');
+analDZPlot = load('uzAnalPlot.dat');
 
 
 %Plotting solution
@@ -147,7 +152,7 @@ zAnal = load('zAnal.dat');
 figure(1)
 plotObj1 = plot(topology.coordinates(nodesP,1),pressplot,'o');
 hold on
-plotObj2 = plot(xAnal,analpress);
+plotObj2 = plot(xAnal,analpressPlot);
 xlabel('x (m)')
 ylabel('Pressure (kPa)')
 legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
@@ -157,7 +162,7 @@ title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
 figure(2)
 plotObj1 = plot(topology.coordinates(nodesX,1),dispXplot,'o');
 hold on
-plotObj2 = plot(xAnal,analDX);
+plotObj2 = plot(xAnal,analDXPlot);
 xlabel('X (m)')
 ylabel('DX (m)')
 title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
@@ -167,7 +172,7 @@ legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
 figure(3)
 plotObj1 = plot(dispZplot,topology.coordinates(nodesZ,3),'o');
 hold on
-plotObj2 = plot(analDZ,zAnal);
+plotObj2 = plot(analDZPlot,zAnal);
 xlabel('Displacement Z (m)')
 ylabel('Depht (m)')
 title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
@@ -191,10 +196,11 @@ for el=1:topology.nCells
 end
 
 
-errpress = sqrt(sum((analpress - press(:,2:end)).^2));
-normanal = sqrt(sum(analpress.^2));
-errRelpress = errpress./normanal;
+%errpress = sqrt(sum((analpress - press(:,2:end)).^2));
+%normanal = sqrt(sum(analpress.^2));
+%errRelpress = errpress./normanal;
 
+%compute weighed error for the whole grid
 errpress2 = (analpress - press(:,2:end)).^2;
 errNormpress = sqrt(errpress2'*volNod);
 

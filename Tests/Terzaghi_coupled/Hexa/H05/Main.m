@@ -153,9 +153,9 @@ for el=1:topology.nCells
 end
 
 
-errpress = sqrt(sum((analpress - press(:,2:end)).^2));
-normanal = sqrt(sum(analpress.^2));
-errRelpress = errpress./normanal;
+% errpress = sqrt(sum((analpress - press(:,2:end)).^2));
+% normanal = sqrt(sum(analpress.^2));
+% errRelpress = errpress./normanal;
 
 errpress2 = (analpress - press(:,2:end)).^2;
 errNormpress = sqrt(errpress2'*volNod);
