@@ -1,0 +1,7 @@
+NodeBC                            % BC item
+Neu                               % BC type
+Flow                              % Physics
+flux                             % BC name
+flux/list
+0.000000 flux/time0.dat
+End

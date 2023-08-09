@@ -1,10 +1,10 @@
-0.04999               % Simulation end time
-0.005              % Initial time step size
+10               % Simulation end time
+0.001              % Initial time step size
 1.e-5                 % Minimum time step size
-1                % Maximum time step size
-1        % Time step increment augmentation factor (multiplicative)
+0.5                % Maximum time step size
+Default        % Time step increment augmentation factor (multiplicative)
 Default               % Time step increment chopping factor (multiplicative)
-1000         % Pressure increment target between consecutive time steps
+1         % Pressure increment target between consecutive time steps
 Default               % Relaxation factor for time step increment
 Default               % Theta parameter for Newmark method (time integration)
 Default               % Relative tolerance for the nonlinear solver

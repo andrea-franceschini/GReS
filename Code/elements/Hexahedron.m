@@ -1,4 +1,4 @@
-classdef Hexahedron < handle
+ classdef Hexahedron < handle
   % HEXAHEDRON element class
 
   properties (Access = public)
@@ -84,7 +84,8 @@ classdef Hexahedron < handle
         end
         outVar1 = pagemtimes(obj.J,obj.J1);
       end
-    end
+      end
+   
     
 %     function findJacAndDet(obj,el)
 %       % Find the Jacobian matrix of the isoparametric map and its determinant
@@ -203,4 +204,4 @@ classdef Hexahedron < handle
     end
   end
 
-end
+  end

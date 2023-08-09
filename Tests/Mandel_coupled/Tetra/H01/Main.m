@@ -36,9 +36,11 @@ elems = Elements(topology);
 
 xvector = topology.coordinates(:,1);
 zvector = topology.coordinates(:,3);
+
+mandel_analytical;
 %saving coordinates for later use
-save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution\xmesh.dat xvector  -ascii
-save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution\zmesh.dat zvector  -ascii
+%save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution\xmesh.dat xvector  -ascii
+%save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution\zmesh.dat zvector  -ascii
 %
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);
@@ -50,7 +52,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
 % Set the input file
 fileName = ["dirNodBotFacePoro.dat","dirNodLatFaceYPoro.dat","dirNodLatFaceXPoro.dat",...
-    "neuSurfTopFacePoro.dat","neuNodTopBotLatFlow.dat","dirNodFreeFaceFlow.dat","neuSurfTopRigidYPoro.dat","neuSurfTopRigidXPoro.dat"];
+    "neuSurfTopFacePoro.dat","neuNodTopBotLatFlow.dat","dirNodFreeFaceFlow.dat"];
 %
 % Create an object of the "Boundaries" class and read the boundary
 % conditions
@@ -71,19 +73,15 @@ entities_list = writeBC(grid,BCtable,BClist);
 %
 %reading vectors containing initial conditions for each node, must change
 %if the mesh change. The suffix represents the element dimension
-ux0 = load('uxIniH01.dat');
-uz0 = load('uzIniH01.dat');
-p0 = load('pIniH01.dat');
-
 % Set the "State" object. It contains all the vectors describing the state
 % of the reservoir in terms of pressure, displacement, stress, ...
 resState = State(model,grid,mat);
 %manually assigning initial conditions before proper implementation
-resState.dispConv(3:3:end) = uz0; 
-resState.dispCurr(3:3:end) = uz0; 
-resState.dispConv(1:3:end) = ux0;
-resState.dispConv(1:3:end) = ux0;
-resState.pressure = p0;
+resState.dispConv(3:3:end) = uz0fem'; 
+resState.dispCurr(3:3:end) = uz0fem'; 
+resState.dispConv(1:3:end) = ux0fem';
+resState.dispConv(1:3:end) = ux0fem';
+resState.pressure(1:end) = p0fem;
 %
 % Create and set the print utility
 printUtils = OutState(model,mat,grid,'outTime.dat');
@@ -113,9 +111,9 @@ printUtils.finalize()
 tol = 0.001;
 nodesP = find(topology.coordinates(:,2)+topology.coordinates(:,3)==0);
 nodesX1 = find(abs(topology.coordinates(:,2)-0.5)<tol) ;
-nodesX2 = find(abs(topology.coordinates(:,3)-0.5)<tol);
+nodesX2 = find(abs(topology.coordinates(:,3)-0.7)<tol);
 nodesX = intersect(nodesX1,nodesX2);
-nodesZ1 = find(abs(topology.coordinates(:,1)-0.5)<tol);
+nodesZ1 = find(abs(topology.coordinates(:,1)-0.6)<tol);
 nodesZ2 = find(abs(topology.coordinates(:,2)-0.5)<tol);
 nodesZ = intersect(nodesZ1,nodesZ2);
 [coordsP,ind] = sort(topology.coordinates(nodesP,1));
@@ -126,57 +124,73 @@ nodesX = nodesX(ind);
 nodesZ = nodesZ(ind);
 
 %Getting pressure and displacement solution for specified output times from MatFILE
+times = [0.25,1,5,10];
+tmp = ismember(expTime,times);
+listTimes = find(tmp==1);
+
 press = printUtils.m.expPress;
 disp = printUtils.m.expDispl;
-pressplot = press(nodesP,2:end);
-dispXplot = disp(3*nodesX-2,2:end);
-dispZplot = disp(3*nodesZ,2:end);
+pressplot = press(nodesP,listTimes);
+dispXplot = disp(3*nodesX-2,listTimes);
+dispZplot = disp(3*nodesZ,listTimes);
 
 
-%Getting analytical solution arrays for errors check
-analpress  = load('pAnal.dat');
-analDX = load('uxAnal.dat');
-analDZ = load('uzAnal.dat');
 
-%getting position vectors for plots
-xAnal = load('xAnal.dat');
-zAnal = load('zAnal.dat');
-%getting analytical solution arrays for plots
-analpressPlot  = load('pAnalPlot.dat');
-analDXPlot = load('uxAnalPlot.dat');
-analDZPlot = load('uzAnalPlot.dat');
 
 
 %Plotting solution
 %Pressure
 figure(1)
-plotObj1 = plot(topology.coordinates(nodesP,1),pressplot,'o');
+plotObj1 = plot(topology.coordinates(nodesP,1),pressplot,'ko');
 hold on
-plotObj2 = plot(xAnal,analpressPlot);
+plotObj2 = plot(topology.coordinates(nodesP,1),pressplotHexa,'k*');
+plotObj3 = plot(x,p,'k');
+grid on
+xlim([-0.05,1.05])
 xlabel('x (m)')
 ylabel('Pressure (kPa)')
-legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
+legend([plotObj1(1),plotObj2(1),plotObj3(1)],{'Tetraedri','Esaedri','Analitica'});
 title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
 
 %Displacement DX
 figure(2)
-plotObj1 = plot(topology.coordinates(nodesX,1),dispXplot,'o');
+plotObj1 = plot(topology.coordinates(nodesX,1),dispXplot,'ko');
 hold on
-plotObj2 = plot(xAnal,analDXPlot);
+plotObj2 = plot(topology.coordinates(nodesX,1),dispXplotHexa,'k*');
+plotObj3 = plot(x,ux,'k');
+grid on
 xlabel('X (m)')
 ylabel('DX (m)')
 title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
-legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
+legend([plotObj1(1),plotObj2(1),plotObj3(1)],{'Tetraedri','Esaedri','Analitica'});
 
 %Displacement DZ
 figure(3)
-plotObj1 = plot(dispZplot,topology.coordinates(nodesZ,3),'o');
+plotObj1 = plot(dispZplot,topology.coordinates(nodesZ,3),'ko');
 hold on
-plotObj2 = plot(analDZPlot,zAnal);
+plotObj2 = plot(dispZplotHexa,topology.coordinates(nodesZ,3),'k*');
+plotObj3 = plot(uz,z,'k');
 xlabel('Displacement Z (m)')
 ylabel('Depht (m)')
 title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
-legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
+legend([plotObj1(1),plotObj2(1),plotObj3(1)],{'Tetraedri','Esaedri','Analitica'});
+grid on
+ylim([-0.05 1.05])
+
+%plot pressure in time
+%find nodes on 0, L/4, L/2
+n1 = 1; n2 = 10; n3 = 13;
+figure(4)
+plotObj1 = semilogx(expTime,expPress([n1;n2;n3],:),'kx');
+hold on
+plotObj2 = semilogx(tp,pt(1,:),'k--');
+plotObj3 = semilogx(tp,pt(2,:),'k:');
+plotObj4 = semilogx(tp,pt(3,:),'k-.');
+xlabel('Tempo (s)')
+ylabel('Pressione (kPa)')
+title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
+legend([plotObj2(1),plotObj3(1),plotObj4(1)],{'x=0 m','x=0.2 m','x = 0.5 m'});
+grid on
 
 %%
 %Checking error norm 
@@ -201,11 +215,16 @@ end
 %errRelpress = errpress./normanal;
 
 %compute weighed error for the whole grid
-errpress2 = (analpress - press(:,2:end)).^2;
+errpress2 = (pfem - press(:,2:end)).^2;
 errNormpress = sqrt(errpress2'*volNod);
 
+errdispX2 = (uxfem - disp(1:3:end,2:end)).^2;
+errNormDispX = sqrt(errdispX2'*volNod);
 
+errdispZ2 = (uzfem - disp(3:3:end,2:end)).^2;
+errNormDispZ = sqrt(errdispZ2'*volNod);
 
+errPressRel = errNormpress/norm(pfem);
 
 
 

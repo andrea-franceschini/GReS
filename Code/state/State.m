@@ -138,7 +138,7 @@ classdef State < matlab.mixin.Copyable
             B(obj.elements.indB(1:36,2)) = N(obj.elements.indB(1:36,1));
             dStrain = B*obj.dispCurr(dof);
             avStrain(el,:) = dStrain;
-%             avStress(el,:) = obj.stress(l+1,:);
+ %           avStress(el,:) = obj.stress(l+1,:);
             l = l + 1;
           case 12 % Hexa
             [N,dJWeighed] = getDerBasisFAndDet(obj.elements.hexa,el,1);
@@ -287,7 +287,7 @@ classdef State < matlab.mixin.Copyable
 %               [~,dJWeighed] = getDerBasisFAndDet(obj.elements,el);
               %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
               GPLoc = obj.elements.hexa.getGPointsLocation(el);
-              obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3) = -specGrav*(max_z-GPLoc(:,3))-50;  %MPa
+              obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3) = -specGrav*(max_z-GPLoc(:,3));  %MPa
               obj.iniStress(l1+1:l1+obj.GaussPts.nNode,1) = M*obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3);
               obj.iniStress(l1+1:l1+obj.GaussPts.nNode,2) = obj.iniStress(l1+1:l1+obj.GaussPts.nNode,1);
 %               vol = getVolume(obj.elements,el);
@@ -301,12 +301,12 @@ classdef State < matlab.mixin.Copyable
       %
       if isFlow(obj.model)
 %         if 5<1
-        max_z = 9;
-        gamma = obj.material.getMaterial(obj.mesh.nCellTag+1).getFluidSpecWeight();
+        %max_z = 9;
+        %gamma = obj.material.getMaterial(obj.mesh.nCellTag+1).getFluidSpecWeight();
         if isFEMBased(obj.model,'Flow')
-          obj.pressure = gamma*(max_z-obj.mesh.coordinates(:,3));
+          %obj.pressure = gamma*(max_z-obj.mesh.coordinates(:,3));
 %         obj.pressure = zeros(length(obj.mesh.coordinates(:,3)),1);
-          obj.pressure = 392.4*ones(length(obj.mesh.coordinates(:,3)),1);
+          %obj.pressure = 392.4*ones(length(obj.mesh.coordinates(:,3)),1);
 %           obj.pressure = 450*ones(length(obj.mesh.coordinates(:,3)),1);
         elseif isFVTPFABased(obj.model,'Flow')
           obj.pressure = gamma*(max_z-obj.elements.cellCentroid(:,3));

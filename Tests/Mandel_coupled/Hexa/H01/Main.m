@@ -54,7 +54,7 @@ fileName = ["dirNodBotFacePoro.dat","dirNodLatFaceYPoro.dat","dirNodLatFaceXPoro
 %
 BClist = fileName;
 BCtable = {1;3;4;2;[2 3 4 1];5};
-entities_list = writeBC(grid,BCtable,BClist);
+%entities_list = writeBC(grid,BCtable,BClist);
 % Create an object of the "Boundaries" class and read the boundary
 % conditions
 bound = Boundaries(fileName,model,grid);
@@ -109,14 +109,15 @@ printUtils.finalize()
 % -------------------------- BENCHMARK ------------------------------
 
 %Post processing using MAT-FILE 
+%Post processing using MAT-FILE 
 
 %list of nodes along vertical axis (with x,y=0)
 tol = 0.001;
 nodesP = find(topology.coordinates(:,2)+topology.coordinates(:,3)==0);
 nodesX1 = find(abs(topology.coordinates(:,2)-0.5)<tol) ;
-nodesX2 = find(abs(topology.coordinates(:,3)-0.5)<tol);
+nodesX2 = find(abs(topology.coordinates(:,3)-0.7)<tol);
 nodesX = intersect(nodesX1,nodesX2);
-nodesZ1 = find(abs(topology.coordinates(:,1)-0.5)<tol);
+nodesZ1 = find(abs(topology.coordinates(:,1)-0.6)<tol);
 nodesZ2 = find(abs(topology.coordinates(:,2)-0.5)<tol);
 nodesZ = intersect(nodesZ1,nodesZ2);
 [coordsP,ind] = sort(topology.coordinates(nodesP,1));
@@ -129,31 +130,20 @@ nodesZ = nodesZ(ind);
 %Getting pressure and displacement solution for specified output times from MatFILE
 press = printUtils.m.expPress;
 disp = printUtils.m.expDispl;
-pressplot = press(nodesP,2:end);
-dispXplot = disp(3*nodesX-2,2:end);
-dispZplot = disp(3*nodesZ,2:end);
+pressplotHexa = press(nodesP,2:end);
+dispXplotHexa = disp(3*nodesX-2,2:end);
+dispZplotHexa = disp(3*nodesZ,2:end);
 
 
-%Getting analytical solution arrays for errors check
-analpress  = load('pAnal.dat');
-analDX = load('uxAnal.dat');
-analDZ = load('uzAnal.dat');
 
-%getting position vectors for plots
-xAnal = load('xAnal.dat');
-zAnal = load('zAnal.dat');
-%getting analytical solution arrays for plots
-analpressPlot  = load('pAnalPlot.dat');
-analDXPlot = load('uxAnalPlot.dat');
-analDZPlot = load('uzAnalPlot.dat');
 
 
 %Plotting solution
 %Pressure
 figure(1)
-plotObj1 = plot(topology.coordinates(nodesP,1),pressplot,'o');
+plotObj1 = plot(topology.coordinates(nodesP,1),pressplotHexa,'k*');
 hold on
-plotObj2 = plot(xAnal,analpressPlot);
+plotObj2 = plot(x,p,'k');
 xlabel('x (m)')
 ylabel('Pressure (kPa)')
 legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
@@ -161,23 +151,28 @@ title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
 
 %Displacement DX
 figure(2)
-plotObj1 = plot(topology.coordinates(nodesX,1),dispXplot,'o');
+plotObj1 = plot(topology.coordinates(nodesX,1),dispXplotHexa,'k*');
 hold on
-plotObj2 = plot(xAnal,analDXPlot);
+plotObj2 = plot(x,ux,'k');
 xlabel('X (m)')
 ylabel('DX (m)')
+xlim([-0.2 1.02])
 title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
 legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
 
 %Displacement DZ
 figure(3)
-plotObj1 = plot(dispZplot,topology.coordinates(nodesZ,3),'o');
+plotObj1 = plot(dispZplotHexa,topology.coordinates(nodesZ,3),'k*');
 hold on
-plotObj2 = plot(analDZPlot,zAnal);
+plotObj2 = plot(uz,z,'k');
 xlabel('Displacement Z (m)')
 ylabel('Depht (m)')
 title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
 legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
+
+
+%saving hexa solutions in mat file
+save('hexa_numSol.mat','pressplotHexa','dispXplotHexa','dispZplotHexa')
 
 %%
 %Checking error norm 

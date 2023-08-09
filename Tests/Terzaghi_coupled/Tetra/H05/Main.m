@@ -30,9 +30,16 @@ mat = Materials(model,fileName);
 % Create an object of the "Elements" class and process the element properties
 elems = Elements(topology);
 
+%saving z_vector coordinates for analytical solution calculation
 zvector = topology.coordinates(:,3);
+
+%calling analytical solution script
+terzaghi_analytical;
+
+
+
 %saving coordinates for later use
-save depht_H05.dat zvector  -ascii
+%save depht_H05.dat zvector  -ascii
 %
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);
@@ -58,18 +65,18 @@ bound = Boundaries(fileName,model,grid);
 %getDoFID is an external function in Discretizer repository
 %pre = PreProc(grid,mat);
 %
-%reading vectors containing initial conditions for each node, must change
-%if the mesh change. The suffix represents the element dimension
-u0 = load('uIni05.dat');
-p0 = load('pIni05.dat');
+%reading vectors containing initial conditions for each node
+% u0 = load('uIni05.dat');
+% p0 = load('pIni05.dat');
 
 % Set the "State" object. It contains all the vectors describing the state
 % of the reservoir in terms of pressure, displacement, stress, ...
 resState = State(model,grid,mat);
+
 %manually assigning initial conditions before proper implementation
-resState.dispConv(3:3:end) = -u0; %only DZ is fixed initially
-resState.dispCurr(3:3:end) = -u0; %only DZ is fixed initially
-resState.pressure = p0;
+resState.dispConv(3:3:end) = -u0fem'; %only DZ is fixed initially
+resState.dispCurr(3:3:end) = -u0fem'; %only DZ is fixed initially
+resState.pressure = p0fem;
 %
 % Create and set the print utility
 printUtils = OutState(model,mat,grid,'outTime.dat');
@@ -95,7 +102,7 @@ printUtils.finalize()
 
 %Post processing using MAT-FILE 
 
-%list of nodes along vertical axis (with x,y=0)
+%nodes vector contain list of nodes along vertical axis (with x,y=0) 
 nodes = find(topology.coordinates(:,1)+topology.coordinates(:,2)==0);
 [coords,ind] = sort(topology.coordinates(nodes,3));
 nodes = nodes(ind);
@@ -106,34 +113,27 @@ disp = printUtils.m.expDispl;
 pressplot = press(nodes,2:end);
 dispplot = disp(3*nodes,2:end);
 
-%Getting analytical solution arrays
-analpress  = load('analytical_pressure_H05.dat');
-analpressplot = analpress(nodes,:);
-zcoord = load('zcoord.dat');
-
-analdisp = load('analytical_displacement_H05.dat');
-analdispplot = analdisp(nodes,:);
-
 
 %Plotting solution
 figure(1)
-plotObj1 = plot(pressplot,topology.coordinates(nodes,3),'o-');
+plotObj1 = plot(pressplot,topology.coordinates(nodes,3),'ko');
 hold on
-plotObj2 = plot(analpressplot,topology.coordinates(nodes,3));
-xlabel('Pressure (kPa)')
-ylabel('Depht (m)')
-legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
-title('h = 0.5 m \Delta t_{ini} = 0.01 s \theta = 1.0')
+plotObj2 = plot(pfem(nodes,:),topology.coordinates(nodes,3),'k');
+xlabel('Pressione (kPa)')
+ylabel('z (m)')
+legend([plotObj1(1),plotObj2(1)],{'Numerica','Analitica'});
+title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
 
 figure(2)
-plotObj1 = plot(-dispplot,topology.coordinates(nodes,3),'o-');
+plotObj1 = plot(-dispplot,topology.coordinates(nodes,3),'ko');
 hold on
-plotObj2 = plot(analdispplot,topology.coordinates(nodes,3));
-xlabel('Displacement (m)')
-ylabel('Depht (m)')
-title('h = 0.5 m \Delta t_{ini} = 0.01 s \theta = 1.0')
-legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
+plotObj2 = plot(ufem(nodes,:),topology.coordinates(nodes,3),'k');
+xlabel('Spostamenti verticali (m)')
+ylabel('z (m)')
+title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
+legend([plotObj1(1),plotObj2(1)],{'Numerica','Analitica'});
 
+%%
 %Checking error norm 
 % Compute the volume connected to each node
 volNod = zeros(topology.nNodes,1);
@@ -151,12 +151,17 @@ for el=1:topology.nCells
 end
 
 
-errpress = sqrt(sum((analpress - press(:,2:end)).^2));
-normanal = sqrt(sum(analpress.^2));
-errRelpress = errpress./normanal;
+% errpress = sqrt(sum((analpress - press(:,2:end)).^2));
+% normanal = sqrt(sum(analpress.^2));
+% errRelpress = errpress./normanal;
 
-errpress2 = (analpress - press(:,2:end)).^2;
-errNormpress = sqrt(errpress2'*volNod);
+%pressure_error
+errpress2 = (pfem - press(:,2:end)).^2;
+errNormpressure = sqrt(errpress2'*volNod);
+
+%displacement_error
+errdisp2 = (ufem - disp(3:3:end,2:end)).^2;
+errNormpdisp = sqrt(errdisp2'*volNod);
 
 
 
