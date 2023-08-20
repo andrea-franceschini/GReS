@@ -330,7 +330,7 @@ classdef Discretizer < handle
               Ks = pagemtimes(pagemtimes(B,'ctranspose',D,'none'),B);
               Ks = Ks.*reshape(dJWeighed,1,1,[]);
               KLoc = sum(Ks,3);
-              clear Js;
+              clear Ks;
               s1 = obj.nEntryKLoc(2);
               %sz = sigma - state.iniStress(l2+1:l2+obj.GaussPts.nNode,:);
               %sz = reshape(sz',6,1,obj.GaussPts.nNode);

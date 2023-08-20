@@ -1,0 +1,11 @@
+NodeBC                            % BC item
+Neu                               % BC type
+Flow                              % Physics
+flux                             % BC name
+flux/list
+0.000000 flux/time0.dat
+1.000000 flux/timeMax1.dat
+6.000000 flux/timeMax2.dat
+7.000000 flux/timeEnd.dat
+100.000000 flux/timeInf.dat
+End

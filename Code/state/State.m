@@ -288,11 +288,14 @@ classdef State < matlab.mixin.Copyable
               %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
               GPLoc = obj.elements.hexa.getGPointsLocation(el);
               obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3) = -specGrav*(max_z-GPLoc(:,3));  %MPa
-              obj.iniStress(l1+1:l1+obj.GaussPts.nNode,1) = M*obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3);
-              obj.iniStress(l1+1:l1+obj.GaussPts.nNode,2) = obj.iniStress(l1+1:l1+obj.GaussPts.nNode,1);
-%               vol = getVolume(obj.elements,el);
+              % stress distribution for test case 02 (Bau et al)
+%               obg = -12218.174e-6*GPLoc(:,3).^0.0766;
+%               obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3) = (obg+9.8e-3).*GPLoc(:,3);
+               obj.iniStress(l1+1:l1+obj.GaussPts.nNode,1) = M*obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3);
+               obj.iniStress(l1+1:l1+obj.GaussPts.nNode,2) = obj.iniStress(l1+1:l1+obj.GaussPts.nNode,1);
+               %vol = getVolume(obj.elements,el);
 %               obj.iniAvStress(el,:) = ((obj.iniStress(l1+1:l1+obj.GaussPts.nNode,:))'*dJWeighed')/vol;
-              l1 = l1 + obj.GaussPts.nNode;
+%              l1 = l1 + obj.GaussPts.nNode;
           end
         end
       end

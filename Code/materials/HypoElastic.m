@@ -24,6 +24,11 @@ classdef HypoElastic < handle
       obj.readMaterialParameters(fID, matFileName);
       obj.computeConstPart();
     end
+    
+        function [status] = initializeStatus(obj, sigma)
+      nptGauss = size(sigma,1);
+      status = zeros(nptGauss,2);
+    end
 
     % Material stiffness matrix calculation using the object properties
 %     function D = getStiffnessMatrix(obj, varargin)
@@ -35,14 +40,17 @@ classdef HypoElastic < handle
 %       cm = getCompressibility(obj, varargin{1});
 %       D = (1/cm)*obj.D1;
 %     end
-    function D = getStiffnessMatrix(obj, sz)
+    function [DAll, sigmaOut, status] = getStiffnessMatrix(obj, sigmaIn, epsilon, dt, status)
 %       if (nargin ~= 2) 
 %         error('Error in calling the HypoElastic/getStiffnessMatrix method - INPUT: (sz)');
 %       end
       % Stiffness matrix
-      % varargin{1} is sz, i.e., the vertical stress 
-      cM = getRockCompressibility(obj, sz);
+      % varargin{1} is sz, i.e., the vertical stress
+      nptGauss = size(sigmaIn,1);
+      cM = getRockCompressibility(obj, sigmaIn); %medium value in the element
       D = obj.D1.*reshape(1./cM,1,1,[]);
+      sigmaOut = sigmaIn + epsilon*D;
+      DAll = repmat(D,[1, 1, nptGauss]);
     end
     
     % Method that returns the M factor
@@ -77,7 +85,8 @@ classdef HypoElastic < handle
     end
 
     % Compressibility calculation
-    function cM = getRockCompressibility(obj, sz)
+    function cM = getRockCompressibility(obj, sigmaIn)
+        sz = mean(sigmaIn(:,3));
       if sz <= obj.szmin
         % Loading path
         cM = (obj.a).*(abs(sz)).^(obj.b);
