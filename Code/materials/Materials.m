@@ -137,9 +137,9 @@ classdef Materials < handle
       [status] = mat.initializeStatus(sigma);
     end
     
-    function [D, sigma, status] = updateMaterial(obj, cTag, sigma, epsilon, dt, status)
+    function [D, sigma, status] = updateMaterial(obj, cTag, sigma, epsilon, dt, status, t)
       mat = obj.getMaterial(cTag).ConstLaw;
-      [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status);
+      [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status, t);
     end
     
 %     function [Sw,dSw,lw,dlw] = computeSwAndLambda(obj,mesh,upElem,pkpt)

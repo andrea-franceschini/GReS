@@ -7,5 +7,6 @@ flux/list
 1.000000 flux/timeMax1.dat
 6.000000 flux/timeMax2.dat
 7.000000 flux/timeEnd.dat
-100.000000 flux/timeInf.dat
+20.000000 flux/timeInf.dat
+20.999 flux/timeRecover.dat
 End

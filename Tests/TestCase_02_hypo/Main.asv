@@ -22,7 +22,7 @@ topology.importGMSHmesh(fileName);
 %----------------------------- MATERIALS -----------------------------
 %
 % Set the input file name
-fileName = 'materialsList.dat';
+fileName = 'materialsListHypo.dat';
 %
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
@@ -109,24 +109,53 @@ tmp4 = topology.coordinates(:,2)>499.9;
 tmp = tmp1+tmp2+tmp3+tmp4;
 vert = find(tmp == 4);
 [vertax,ind] = sort(topology.coordinates(vert,3));
-time_string = "Giorno  " + expTime;
-timeInd = [4 9 16 ];
-pressPlot = expPress(vert(ind),:);
-dispPlot = expDispl(3*vert(ind),:);
-set(0,'DefaultAxesColorOrder',[0 0 0],...
-      'DefaultAxesLineStyleOrder','-|--|:|-.')
+timeP = [2 3 4 5 6 7 8 9 10 11 12 13 14];
+timeDisp = [2 3 4 5 6 7 8 9 10 11 12 13 14];
+time_stringP = "Anno  " + expTime(timeP);
+time_stringDisp = "Anno  " + expTime(timeDisp);
+pressPlot = expPress(vert(ind),timeP);
+dispPlot = expDispl(3*vert(ind),timeDisp);
+% set(0,'DefaultAxesColorOrder',[0 0 0],...
+%       'DefaultAxesLineStyleOrder','-.|-*|-|')
 figure(1)
 plot(pressPlot,vertax)
 xlabel('Pressione [kPa]')
 ylabel('z (m)')
-legend(time_string)
+ax = gca;
+mylinestyles = ["-square"; "-*"; "-o"; "-^";"-x"];
+ax.LineStyleOrder = mylinestyles;
+legend(time_stringP)
 figure(2)
 plot(1000*dispPlot,vertax);
 xlabel('Spostamento verticale (mm)')
 ylabel('z (m)')
+ax = gca;
+ax.LineStyleOrder = mylinestyles;
 % xlim([0 50])
 % ylim([-60 5])
-legend(time_string)
+legend(time_stringDisp)
+
+%pressure in the reservoir vs time
+nodeP = 2820;
+nodeDisp = 1726;
+figure(3)
+plot(expTime,expPress(nodeP,:),'-o','lineWidth',1);
+xlabel("Tempo (anni)")
+ylabel("Pressione nell'acquifero (kPa)")
+figure(4)
+plot(expTime,1000*expDispl(3*nodeDisp,:),'-o','lineWidth',1);
+xlabel("Tempo (anni)")
+ylabel("Subsidenza (mm)")
+
+
+%spostamenti differenziali nell'acquifero
+nodeInf = 943;
+nodeSup = 1168;
+diff = abs(expDispl(3*nodeSup,:)-expDispl(3*nodeInf,:));
+figure(5)
+plot(expTime,1000*diff,'-o','lineWidth',1);
+xlabel("Tempo (anni)")
+ylabel("Compat(mm)")
 
 
 %%

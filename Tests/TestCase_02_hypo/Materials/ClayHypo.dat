@@ -1,11 +1,11 @@
 HypoElastic                           % material model
-0.3 1.044e-2 -1.11347 2.0e-4 -0.9 0     % nu, a, b, a1, b1, szmin [values for MPa]
+0.3 1.044e-2 -1.11347 2.9087e-4 -0.4315 0     % nu, a, b, a1, b1, szmin [values for MPa]
 
 PorousRock                        % material model
-0.3      0.021                       % porosity, compressibility (alpha) in MPa, specific weight kPa
-1.0e-14     0      0                % intrinsic permeability matrix (upper part) 
-       1.0e-14     0
-              1.0e-14
+0.3      0.021                       % porosity, compressibility (alpha) in MPa, specific weight MPa
+2.0e-16     0      0                % intrinsic permeability matrix (upper part) 
+       2.0e-16     0
+              2.0e-16
 End
 
 

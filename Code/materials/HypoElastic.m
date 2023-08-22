@@ -40,14 +40,14 @@ classdef HypoElastic < handle
 %       cm = getCompressibility(obj, varargin{1});
 %       D = (1/cm)*obj.D1;
 %     end
-    function [DAll, sigmaOut, status] = getStiffnessMatrix(obj, sigmaIn, epsilon, dt, status)
+    function [DAll, sigmaOut, status] = getStiffnessMatrix(obj, sigmaIn, epsilon, dt, status, t)
 %       if (nargin ~= 2) 
 %         error('Error in calling the HypoElastic/getStiffnessMatrix method - INPUT: (sz)');
 %       end
       % Stiffness matrix
       % varargin{1} is sz, i.e., the vertical stress
       nptGauss = size(sigmaIn,1);
-      cM = getRockCompressibility(obj, sigmaIn); %medium value in the element
+      cM = getRockCompressibility(obj, sigmaIn, epsilon, t); %medium value in the element
       D = obj.D1.*reshape(1./cM,1,1,[]);
       sigmaOut = sigmaIn + epsilon*D;
       DAll = repmat(D,[1, 1, nptGauss]);
@@ -85,9 +85,9 @@ classdef HypoElastic < handle
     end
 
     % Compressibility calculation
-    function cM = getRockCompressibility(obj, sigmaIn)
+    function cM = getRockCompressibility(obj, sigmaIn, epsilon, t)
         sz = mean(sigmaIn(:,3));
-      if sz <= obj.szmin
+      if sz<obj.szmin
         % Loading path
         cM = (obj.a).*(abs(sz)).^(obj.b);
       else
