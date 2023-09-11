@@ -114,27 +114,27 @@ disp = printUtils.m.expDispl;
 pressplot = press(nodes,2:end);
 dispplot = disp(3*nodes,2:end);
 
-% 
-% %Plotting solution
-% figure(1)
-% plotObj1 = plot(pressplot,topology.coordinates(nodes,3),'k*');
-% hold on
-% plotObj2 = plot(pfem(nodes,:),topology.coordinates(nodes,3),'k');
-% grid on
-% xlabel('Pressione (kPa)')
-% ylabel('z (m)')
-% legend([plotObj1(1),plotObj2(1)],{'Numerica','Analitica'});
-% title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
-% 
-% figure(2)
-% plotObj1 = plot(-dispplot,topology.coordinates(nodes,3),'k*');
-% hold on
-% plotObj2 = plot(ufem(nodes,:),topology.coordinates(nodes,3),'k');
-% grid on
-% xlabel('Spostamenti verticali (m)')
-% ylabel('z (m)')
-% title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
-% legend([plotObj1(1),plotObj2(1)],{'Numerica','Analitica'});
+
+%Plotting solution
+figure(1)
+plotObj1 = plot(pressplot,topology.coordinates(nodes,3),'ko');
+hold on
+plotObj2 = plot(pfem(nodes,:),topology.coordinates(nodes,3),'k');
+grid on
+xlabel('Pressione (kPa)')
+ylabel('z (m)')
+legend([plotObj1(1),plotObj2(1)],{'Numerica','Analitica'});
+title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
+
+figure(2)
+plotObj1 = plot(-dispplot,topology.coordinates(nodes,3),'ko');
+hold on
+plotObj2 = plot(ufem(nodes,:),topology.coordinates(nodes,3),'k');
+grid on
+xlabel('Spostamenti verticali (m)')
+ylabel('z (m)')
+title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
+legend([plotObj1(1),plotObj2(1)],{'Numerica','Analitica'});
 
 %%
 %Checking error norm 

@@ -22,7 +22,7 @@ topology.importGMSHmesh(fileName);
 %----------------------------- MATERIALS -----------------------------
 %
 % Set the input file name
-fileName = 'materialsListHypo.dat';
+fileName = 'materialsList.dat';
 %
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
@@ -102,6 +102,11 @@ printUtils.finalize()
 %
 
 %% POST PROCESSING
+expTime = printUtils.m.expTime;
+expPress = printUtils.m.expPress;
+expDispl = printUtils.m.expDispl;
+
+
 tmp1 = topology.coordinates(:,1)<500.1;
 tmp2 = topology.coordinates(:,1)>499.9;
 tmp3 = topology.coordinates(:,2)<500.1;
@@ -109,8 +114,8 @@ tmp4 = topology.coordinates(:,2)>499.9;
 tmp = tmp1+tmp2+tmp3+tmp4;
 vert = find(tmp == 4);
 [vertax,ind] = sort(topology.coordinates(vert,3));
-timeP = [2 3 4 5 6 7 8 9 10 11 12 13 14];
-timeDisp = [2 3 4 5 6 7 8 9 10 11 12 13 14];
+timeP = [2 4 6 8 28 29];
+timeDisp = [2 4 6 8 28 29];
 time_stringP = "Anno  " + expTime(timeP);
 time_stringDisp = "Anno  " + expTime(timeDisp);
 pressPlot = expPress(vert(ind),timeP);

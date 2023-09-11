@@ -125,6 +125,7 @@ nodesZ = nodesZ(ind);
 
 %Getting pressure and displacement solution for specified output times from MatFILE
 times = [0.25,1,5,10];
+expTime = printUtils.m.expTime;
 tmp = ismember(expTime,times);
 listTimes = find(tmp==1);
 
@@ -143,12 +144,12 @@ dispZplot = disp(3*nodesZ,listTimes);
 figure(1)
 plotObj1 = plot(topology.coordinates(nodesP,1),pressplot,'ko');
 hold on
-plotObj2 = plot(topology.coordinates(nodesP,1),pressplotHexa,'k*');
-plotObj3 = plot(x,p,'k');
+plotObj2 = plot(topology.coordinates(nodesP,1),pressplotHexa,'k^');
+plotObj3 = plot(x,p,'k-');
 grid on
 xlim([-0.05,1.05])
 xlabel('x (m)')
-ylabel('Pressure (kPa)')
+ylabel('Pressione (kPa)')
 legend([plotObj1(1),plotObj2(1),plotObj3(1)],{'Tetraedri','Esaedri','Analitica'});
 title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
 
@@ -156,11 +157,11 @@ title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
 figure(2)
 plotObj1 = plot(topology.coordinates(nodesX,1),dispXplot,'ko');
 hold on
-plotObj2 = plot(topology.coordinates(nodesX,1),dispXplotHexa,'k*');
-plotObj3 = plot(x,ux,'k');
+plotObj2 = plot(topology.coordinates(nodesX,1),dispXplotHexa,'k^');
+plotObj3 = plot(x,ux,'k-');
 grid on
-xlabel('X (m)')
-ylabel('DX (m)')
+xlabel('x (m)')
+ylabel('Spostamenti u_x (m)')
 title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
 legend([plotObj1(1),plotObj2(1),plotObj3(1)],{'Tetraedri','Esaedri','Analitica'});
 
@@ -168,7 +169,7 @@ legend([plotObj1(1),plotObj2(1),plotObj3(1)],{'Tetraedri','Esaedri','Analitica'}
 figure(3)
 plotObj1 = plot(dispZplot,topology.coordinates(nodesZ,3),'ko');
 hold on
-plotObj2 = plot(dispZplotHexa,topology.coordinates(nodesZ,3),'k*');
+plotObj2 = plot(dispZplotHexa,topology.coordinates(nodesZ,3),'k^');
 plotObj3 = plot(uz,z,'k');
 xlabel('Displacement Z (m)')
 ylabel('Depht (m)')
@@ -179,18 +180,18 @@ ylim([-0.05 1.05])
 
 %plot pressure in time
 %find nodes on 0, L/4, L/2
-n1 = 1; n2 = 10; n3 = 13;
-figure(4)
-plotObj1 = semilogx(expTime,expPress([n1;n2;n3],:),'kx');
-hold on
-plotObj2 = semilogx(tp,pt(1,:),'k--');
-plotObj3 = semilogx(tp,pt(2,:),'k:');
-plotObj4 = semilogx(tp,pt(3,:),'k-.');
-xlabel('Tempo (s)')
-ylabel('Pressione (kPa)')
-title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
-legend([plotObj2(1),plotObj3(1),plotObj4(1)],{'x=0 m','x=0.2 m','x = 0.5 m'});
-grid on
+% n1 = 1; n2 = 10; n3 = 13;
+% figure(4)
+% plotObj1 = semilogx(expTime,press([n1;n2;n3],:),'kx');
+% hold on
+% plotObj2 = semilogx(tp,pt(1,:),'k--');
+% plotObj3 = semilogx(tp,pt(2,:),'k:');
+% plotObj4 = semilogx(tp,pt(3,:),'k-.');
+% xlabel('Tempo (s)')
+% ylabel('Pressione (kPa)')
+% title('h = 0.1 m \Delta t_{ini} = 0.01 s  \theta = 1.0')
+% legend([plotObj2(1),plotObj3(1),plotObj4(1)],{'x = 0 m','x = 0.2 m','x = 0.5 m'});
+% grid on
 
 %%
 %Checking error norm 

@@ -22,7 +22,7 @@ topology.importGMSHmesh(fileName);
 %----------------------------- MATERIALS -----------------------------
 %
 % Set the input file name
-fileName = 'materialsList.dat';
+fileName = 'materialsListElastic.dat';
 %
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);

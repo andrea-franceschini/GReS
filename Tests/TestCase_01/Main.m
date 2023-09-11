@@ -1,8 +1,7 @@
-close all;
-clear;
+% close all;
+% clear;
 
 %anal_path =  'C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution';
-tic
 % -------------------------- SET THE PHYSICS -------------------------
 model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
 %
@@ -105,40 +104,59 @@ printUtils.finalize()
 %%
 % -------------------------- POST PROCESSING ------------------------------
 
-% nodes = [143;215;287;359];
-% pressplot = expPress(nodes,:);
-% dispPlot = expDispl(nodes*3,:);
-% figure(1)
-% plot(expTime,pressplot,'k-*')
-% xlabel('Tempo (giorni)')
-% ylabel('Pressione (kPa)')
-% xlim([0 12])
-% ylim([-1 6])
-% grid on
-% figure(2)
-% plot(expTime,1000*dispPlot,'k-*')
-% xlabel('Tempo (giorni)')
-% ylabel('Spostamenti verticali (mm)')
-% xlim([0 12])
-% ylim([-40 5])
-% grid on
+nodes = [143;215;287;359];
+pressplot = expPress(nodes,:);
+dispPlot = expDispl(nodes*3,:);
+figure(1)
+plot(expTime,pressplot,'k-o')
+xlabel('Tempo (giorni)')
+ylabel('Pressione (kPa)')
+xlim([0 12])
+ylim([-1 6])
+grid on
+figure(2)
+plot(expTime,1000*dispPlot,'k-o')
+xlabel('Tempo (giorni)')
+ylabel('Spostamenti verticali (mm)')
+xlim([0 12])
+ylim([-40 5])
+grid on
 
-% timesInd = [3 5 7 11 17];
-% nodes_subsidence = intersect(find(topology.coordinates(:,3) ==50),find(topology.coordinates(:,2) ==0));
-% x = sort(topology.coordinates(nodes_subsidence,1));
-% subs = sort(expDispl(3*nodes_subsidence,timesInd),'ascend');
-% set(0,'DefaultAxesColorOrder',[0 0 0],...
-%       'DefaultAxesLineStyleOrder','-|--|:|-.')
-% plot(x,1000*subs);
-% xlabel('x (m)')
-% ylabel('Spostamento verticale (mm)')
-% xlim([0 50])
-% ylim([-60 5])
-% time_string = "Giorno  " + expTime(timesInd);
-% legend(time_string)
-% 
-% 
-% grid on
+timesInd = [3 5 7 11 17];
+nodes_subsidence = intersect(find(topology.coordinates(:,3) ==50),find(topology.coordinates(:,2) ==0));
+x = sort(topology.coordinates(nodes_subsidence,1));
+subs = sort(expDispl(3*nodes_subsidence,timesInd),'ascend');
+set(0,'DefaultAxesColorOrder',[0 0 0],...
+      'DefaultAxesLineStyleOrder','-|--|:|-.')
+figure(3)
+plot(x,1000*subs);
+xlabel('r (m)')
+ylabel('Spostamento verticale (mm)')
+xlim([0 50])
+ylim([-60 5])
+time_string = "Giorno  " + expTime(timesInd);
+legend(time_string)
+
+figure(4)
+t = [0 1 6 7 100];
+q = [0 -90000 -90000 0 0];
+plot(t,q,'.-','LineWidth',1,'MarkerSize',15)
+xlim([-1 10])
+ylim([-100000 5000])
+set(gca, 'YDir','reverse')
+xlabel('Pressione (kPa)')
+ylabel('Flusso prescritto (m^3/anno)')
+
+figure(5)
+t = [0 3 100];
+q = [0 10 10];
+plot(t,q,'.-','LineWidth',1,'MarkerSize',15)
+xlim([-1 10])
+ylim([-1 12])
+xlabel('Tempo (giorni)')
+ylabel('Carico agente (kPa)')
+
+%grid on
 
 %%
 %Checking error norm 

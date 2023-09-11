@@ -63,8 +63,9 @@ if plotMode == false
     xmesh = xvector';
     [p0fem,ux0fem,uz0fem] = mandelIni(B,F,xmesh,zmesh,nuU,mu);
     [pfem,uxfem,uzfem,norm_p] = mandelSol(alphan,xmesh,t,c,p0fem,F,nu,nuU,mu,zmesh);
+    save('mandelPlotNum.mat','pfem','uxfem','uzfem','x','z')
 else 
-    t = [0.01 0.1 0.25];
+    t = [0.25 1 5 10];
     nt = length(t);
     a = 1; %[m]
     b = 1; %[m]
@@ -72,7 +73,7 @@ else
     z = linspace(0,a,nz);
     [p0,ux0,uz0] = mandelIni(B,F,x,z,nuU,mu);
     [p,ux,uz,norm_p] = mandelSol(alphan,x,t,c,p0,F,nu,nuU,mu,z);
-    
+    save('mandelPlot.mat','p','ux','uz','x','z')
     time_string = "t =" + t + "s";
     
      set(0,'DefaultAxesColorOrder',[0 0 0],...
@@ -97,7 +98,7 @@ else
     xlabel('Displacement DZ (m)')
     
     
-    save('mandelPlot.mat','p','ux','uz','x','z')
+    
     
     %analytical pressure solution vs time
     tp = logspace(-2,1,100);

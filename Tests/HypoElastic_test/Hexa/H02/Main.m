@@ -1,8 +1,6 @@
 close all;
 clear;
 
-%anal_path =  'C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution';
-
 % -------------------------- SET THE PHYSICS -------------------------
 model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
 %
@@ -15,14 +13,14 @@ simParam = SimulationParameters(model,fileName);
 topology = Mesh();
 %
 % Set the input file name
-fileName = 'Test02_hexa.msh';
+fileName = 'TerzaghiH02_hexa.msh';
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
 %
 %----------------------------- MATERIALS -----------------------------
 %
 % Set the input file name
-fileName = 'materialsListHypo.dat';
+fileName = 'materialsList.dat';
 %
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
@@ -34,13 +32,9 @@ GaussPts = Gauss(12,2,3);
 % Create an object of the "Elements" class and process the element properties
 elems = Elements(topology,GaussPts);
 
-%xvector = topology.coordinates(:,1);
-%zvector = topology.coordinates(:,3);
-
-%mandel_analytical;
+zvector = topology.coordinates(:,3);
 %saving coordinates for later use
-%save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution\xmesh.dat xvector  -ascii
-%save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution\zmesh.dat zvector  -ascii
+save depht_H02.dat zvector  -ascii
 %
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);
@@ -51,15 +45,11 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
 % Set the input file
-fileName = ["bottom_fixed.dat","top_drained.dat","flux.dat","Impermeable.dat","lateral_fix.dat"];
-% BClist = fileName;
-% BCtable = {1,2,1,[1 3 4],4,3};
-% [entities_list,surf_list] = writeBC(grid,BCtable,BClist);
-%Create an object of the "Boundaries" class and read the boundary
-%conditions
+fileName = ["dir_BC_flow_tetra.dat","dir_BC_poro_tetra.dat","neuSurf_BC_poro_tetra.dat"];
+%
+% Create an object of the "Boundaries" class and read the boundary
+% conditions
 bound = Boundaries(fileName,model,grid);
-
-
 %
 %-------------------------- PREPROCESSING ----------------------------
 %
@@ -72,15 +62,16 @@ bound = Boundaries(fileName,model,grid);
 %
 %reading vectors containing initial conditions for each node, must change
 %if the mesh change. The suffix represents the element dimension
+u0 = load('uIni02.dat');
+p0 = load('pIni02.dat');
+
 % Set the "State" object. It contains all the vectors describing the state
 % of the reservoir in terms of pressure, displacement, stress, ...
 resState = State(model,grid,mat,GaussPts);
 %manually assigning initial conditions before proper implementation
-% resState.dispConv(3:3:end) = uz0fem'; 
-% resState.dispCurr(3:3:end) = uz0fem'; 
-% resState.dispConv(1:3:end) = ux0fem';
-% resState.dispConv(1:3:end) = ux0fem';
-% resState.pressure(1:end) = p0fem;
+resState.dispConv(3:3:end) = -u0; %only DZ is fixed initially
+resState.dispCurr(3:3:end) = -u0; %only DZ is fixed initially
+resState.pressure = p0;
 %
 % Create and set the print utility
 printUtils = OutState(model,mat,grid,'outTime.dat');
@@ -101,99 +92,76 @@ NSolv = NonLinearSolver(model,simParam,grid,mat,bound,printUtils,resState,GaussP
 printUtils.finalize()
 %
 
-%% POST PROCESSING
-tmp1 = topology.coordinates(:,1)<500.1;
-tmp2 = topology.coordinates(:,1)>499.9;
-tmp3 = topology.coordinates(:,2)<500.1;
-tmp4 = topology.coordinates(:,2)>499.9;
-tmp = tmp1+tmp2+tmp3+tmp4;
-vert = find(tmp == 4);
-[vertax,ind] = sort(topology.coordinates(vert,3));
-timeP = [2 3 4 5 6 7 8 9 10 11 12 13 14];
-timeDisp = [2 3 4 5 6 7 8 9 10 11 12 13 14];
-time_stringP = "Anno  " + expTime(timeP);
-time_stringDisp = "Anno  " + expTime(timeDisp);
-pressPlot = expPress(vert(ind),timeP);
-dispPlot = expDispl(3*vert(ind),timeDisp);
-% set(0,'DefaultAxesColorOrder',[0 0 0],...
-%       'DefaultAxesLineStyleOrder','-.|-*|-|')
-figure(1)
-plot(pressPlot,vertax)
-xlabel('Pressione [kPa]')
-ylabel('z (m)')
-ax = gca;
-mylinestyles = ["-square"; "-*"; "-o"; "-^";"-x"];
-ax.LineStyleOrder = mylinestyles;
-legend(time_stringP)
-figure(2)
-plot(1000*dispPlot,vertax);
-xlabel('Spostamento verticale (mm)')
-ylabel('z (m)')
-ax = gca;
-ax.LineStyleOrder = mylinestyles;
-% xlim([0 50])
-% ylim([-60 5])
-legend(time_stringDisp)
-
-%pressure in the reservoir vs time
-nodeP = 2820;
-nodeDisp = 1726;
-figure(3)
-plot(expTime,expPress(nodeP,:),'-o','lineWidth',1);
-xlabel("Tempo (anni)")
-ylabel("Pressione nell'acquifero (kPa)")
-figure(4)
-plot(expTime,1000*expDispl(3*nodeDisp,:),'-o','lineWidth',1);
-xlabel("Tempo (anni)")
-ylabel("Subsidenza (mm)")
-
-
-%spostamenti differenziali nell'acquifero
-nodeInf = 943;
-nodeSup = 1168;
-diff = abs(expDispl(3*nodeSup,:)-expDispl(3*nodeInf,:));
-figure(5)
-plot(expTime,1000*diff,'-o','lineWidth',1);
-xlabel("Tempo (anni)")
-ylabel("Compat(mm)")
-
-
 %%
+% -------------------------- BENCHMARK ------------------------------
+
+%Post processing using MAT-FILE 
+
+%list of nodes along vertical axis (with x,y=0)
+nodes = find(topology.coordinates(:,1)+topology.coordinates(:,2)==0);
+[coords,ind] = sort(topology.coordinates(nodes,3));
+nodes = nodes(ind);
+
+%Getting pressure and displacement solution for specified time from MatFILE
+press = printUtils.m.expPress;
+disp = printUtils.m.expDispl;
+pressplot = press(nodes,2:end);
+dispplot = disp(3*nodes,2:end);
+
+%Getting analytical solution arrays
+analpress  = load('analytical_pressure_H02.dat');
+analpressplot = analpress(nodes,:);
+zcoord = load('zcoord.dat');
+
+analdisp = load('analytical_displacement_H02.dat');
+analdispplot = analdisp(nodes,:);
+
+
+%Plotting solution
+figure(1)
+plotObj1 = plot(pressplot,topology.coordinates(nodes,3),'o-');
+hold on
+plotObj2 = plot(analpressplot,topology.coordinates(nodes,3));
+xlabel('Pressure (kPa)')
+ylabel('Depht (m)')
+legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
+title('h = 0.5 m \Delta t_{ini} = 0.01 s \theta = 1.0')
+
+figure(2)
+plotObj1 = plot(-dispplot,topology.coordinates(nodes,3),'o-');
+hold on
+plotObj2 = plot(analdispplot,topology.coordinates(nodes,3));
+xlabel('Displacement (m)')
+ylabel('Depht (m)')
+title('h = 0.5 m \Delta t_{ini} = 0.01 s \theta = 1.0')
+legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
+
 %Checking error norm 
 % Compute the volume connected to each node
-% volNod = zeros(topology.nNodes,1);
-% if any(topology.cellVTKType == 12)
-%   N1 = getBasisFinGPoints(elems.hexa);
-% end
-% for el=1:topology.nCells
-%   top = topology.cells(el,1:topology.cellNumVerts(el));
-%   if topology.cellVTKType(el) == 10 % Tetra
-%     volNod(top) = volNod(top) + elems.vol(el)/topology.cellNumVerts(el);
-%   elseif topology.cellVTKType(el) == 12 % Hexa
-%     dJWeighed = getDerBasisFAndDet(elems.hexa,el,3);
-%     volNod(top) = volNod(top)+ N1'*dJWeighed';
-%   end
-% end
+volNod = zeros(topology.nNodes,1);
+if any(topology.cellVTKType == 12)
+  N1 = getBasisFinGPoints(elems.hexa);
+end
+for el=1:topology.nCells
+  top = topology.cells(el,1:topology.cellNumVerts(el));
+  if topology.cellVTKType(el) == 10 % Tetra
+    volNod(top) = volNod(top) + elems.vol(el)/topology.cellNumVerts(el);
+  elseif topology.cellVTKType(el) == 12 % Hexa
+    dJWeighed = getDerBasisFAndDet(elems.hexa,el,3);
+    volNod(top) = volNod(top)+ N1'*dJWeighed';
+  end
+end
 
 
-%errpress = sqrt(sum((analpress - press(:,2:end)).^2));
-%normanal = sqrt(sum(analpress.^2));
-%errRelpress = errpress./normanal;
+errpress = sqrt(sum((analpress - press(:,2:end)).^2));
+normanal = sqrt(sum(analpress.^2));
+errRelpress = errpress./normanal;
 
-%compute weighed error for the whole grid
-% errpress2 = (pfem - press(:,2:end)).^2;
-% errNormpress = sqrt(errpress2'*volNod);
-% 
-% errdispX2 = (uxfem - disp(1:3:end,2:end)).^2;
-% errNormDispX = sqrt(errdispX2'*volNod);
-% 
-% errdispZ2 = (uzfem - disp(3:3:end,2:end)).^2;
-% errNormDispZ = sqrt(errdispZ2'*volNod);
+errpress2 = (analpress - press(:,2:end)).^2;
+errNormpress = sqrt(errpress2'*volNod);
 
-%diagram to find stationary flow
-% t=[10 50 100 500 1000];
-% p=[678 2580 4239 11852 17741.3];
-% plot(t,p)
+
+
 
 
 
@@ -212,19 +180,19 @@ ylabel("Compat(mm)")
 
 %
 % % Compute the volume connected to each node
-volNod = zeros(topology.nNodes,1);
-if any(topology.cellVTKType == 12)
-  N1 = getBasisFinGPoints(elements.hexa);
-end
-for el=1:topology.nCells
-  top = topology.cells(el,1:topology.cellNumVerts(el));
-  if topology.cellVTKType(el) == 10 % Tetra
-    volNod(top) = volNod(top) + elems.vol(el)/topology.cellNumVerts(el);
-  elseif topology.cellVTKType(el) == 12 % Hexa
-    dJWeighed = getDerBasisFAndDet(elems.hexa,el,3);
-    volNod(top) = volNod(top)+ N1'*dJWeighed';
-  end
-end
+% volNod = zeros(topology.nNodes,1);
+% if any(topology.cellVTKType == 12)
+%   N1 = getBasisFinGPoints(elements.hexa);
+% end
+% for el=1:topology.nCells
+%   top = topology.cells(el,1:topology.cellNumVerts(el));
+%   if topology.cellVTKType(el) == 10 % Tetra
+%     volNod(top) = volNod(top) + elems.vol(el)/topology.cellNumVerts(el);
+%   elseif topology.cellVTKType(el) == 12 % Hexa
+%     dJWeighed = getDerBasisFAndDet(elems.hexa,el,3);
+%     volNod(top) = volNod(top)+ N1'*dJWeighed';
+%   end
+% end
 % %
 % % Edge length
 % % ledge = zeros(topology.nCells,1);
