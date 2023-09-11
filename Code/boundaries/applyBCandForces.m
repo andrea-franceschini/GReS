@@ -110,7 +110,7 @@ if isPoromechanics(model) && isFlow(model)
         end
       end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  UNCOUPLED  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  else
+else
   for i = 1 : length(keys)
     if strcmp(bound.getCond(keys{i}),'NodeBC')
       if strcmp(bound.getType(keys{i}), 'Neu')  % Apply Neumann conditions,if any

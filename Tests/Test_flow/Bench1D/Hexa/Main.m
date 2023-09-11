@@ -54,8 +54,13 @@ fileName = ["neuSurfLeftFace_hexa4.dat","dirSurfRightFace_hexa4.dat", ...
 %
 % Create an object of the "Boundaries" class and read the boundary
 % conditions
+<<<<<<< HEAD:Tests/Test_flow/Bench1D/Hexa/Main.m
 bound = Boundaries(fileName,model,grid);
 linkBoundSurf2TPFAFace(model,bound,grid);
+=======
+bound = Boundaries(fileName);
+%linkBoundSurf2TPFAFace(model,bound,grid);
+>>>>>>> 2fd0824256e1ec6d23d32b48da985c601d732b96:Tests/Bench1D/Hexa/Main.m
 %
 %-------------------------- PREPROCESSING ----------------------------
 %

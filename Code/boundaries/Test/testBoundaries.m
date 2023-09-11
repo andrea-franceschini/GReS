@@ -37,7 +37,7 @@ tic;
 %  Creation of the object "nodedisp" (boundary conditions for node displacements)
 %nodeNeuF
 
-t = 3.56;
+t = 15;
 % Reading the stopwatch timer
 tD = toc;
 BCName = ["nodeDirP", "nodeDirF", "nodeNeuP", "nodeNeuF", "volForceF", ...

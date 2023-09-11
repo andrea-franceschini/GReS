@@ -349,4 +349,5 @@ classdef State < matlab.mixin.Copyable
       cp.t = obj.t;
     end
   end
+
 end
