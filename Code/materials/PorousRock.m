@@ -6,6 +6,7 @@ classdef PorousRock < handle
     KVec                 % Vector of permeabilities
                          % (upper triangular part ordered column-wise)
     poro                 % Porosity
+    biot                 % Biot coefficient
 %     alpha                % Rock compressibility (can be replaced by the oedometer test compressibility Cm)
     specGrav             % Specific gravity of rock
     Swr                  % Residual saturation of water
@@ -26,6 +27,16 @@ classdef PorousRock < handle
     % Function to get material porosity
     function Swr = getWaterResSat(obj)
       Swr = obj.Swr;
+    end
+    
+    function specGrav = getSpecificGravity(obj)
+        specGrav = obj.specGrav;
+    end
+    
+        
+    % Function to get material porosity
+    function biotCoeff = getBiotCoefficient(obj)
+      biotCoeff = obj.biot;
     end
 
     % Function to get material permeability as a 3x3 matrix
@@ -72,6 +83,9 @@ classdef PorousRock < handle
       KTmp(4:5) = tmpVec;
       tmpVec = readDataInLine(fID, matFileName, 1);
       KTmp(6) = tmpVec;
+      if model.isSinglePhaseFlow() && model.isPoromechanics()
+          obj.biot = readDataInLine(fID, matFileName, 1);
+      end
       if model.isVariabSatFlow()
         obj.Swr = readDataInLine(fID, matFileName, 1);
       end

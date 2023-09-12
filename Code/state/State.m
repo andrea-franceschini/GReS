@@ -34,8 +34,9 @@ classdef State < matlab.mixin.Copyable
     function obj = State(symmod,grid,mat,varargin)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
-      obj.setState(symmod,grid,mat,varargin);
-      obj.iniState();
+      [fileName, Gauss] = obj.manageStateInput(varargin);
+      obj.setState(symmod,grid,mat,Gauss);
+      obj.iniState(fileName);
     end
     
     function advanceState(obj)
@@ -228,7 +229,7 @@ classdef State < matlab.mixin.Copyable
       obj.material = mat;
 %       obj.density = dens;
       if ~isempty(data)
-        obj.GaussPts = data{1};
+        obj.GaussPts = data;
       end
       if isPoromechanics(obj.model)
         tmp = 1;
@@ -265,69 +266,92 @@ classdef State < matlab.mixin.Copyable
       end
     end
     
-    function iniState(obj)
-      max_z = max(obj.mesh.coordinates(:,3));
-      if isPoromechanics(obj.model)
-        l1 = 0;
-        for el = 1:obj.mesh.nCells
-          M = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getMFactor();
-          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-          %specGrav = 0.0216;    % FIX THE CALL TO THE PROPERTY IN MATERIAL - POROUS ROCK
-           specGrav = 0;
-          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-          switch obj.mesh.cellVTKType(el)
-            case 10 % Tetra
-              obj.iniStress(l1+1,3) = -specGrav*(max_z-obj.elements.cellCentroid(el,3));
-              obj.iniStress(l1+1,2) = M*obj.iniStress(l1+1,3);
-              obj.iniStress(l1+1,1) = obj.iniStress(l1+1,2);
-%               obj.iniAvStress(el,:) = obj.iniStress(l1+1,:);
-              l1 = l1 + 1;
-            case 12 % Hexa
-              %%%%%%%%%%%%%%%%%%%%%%%%%% FIX CALL TO TWO ELEMENTS %%%%%%%%%
-%               [~,dJWeighed] = getDerBasisFAndDet(obj.elements,el);
-              %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-              GPLoc = obj.elements.hexa.getGPointsLocation(el);
-              obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3) = -specGrav*(max_z-GPLoc(:,3));  %MPa
-              % stress distribution for test case 02 (Bau et al)
-               %obg = -12218.174e-6*(abs(max_z-GPLoc(:,3))).^0.0766;
-               %obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3) = (obg+9.8e-3).*(max_z-GPLoc(:,3));
-               %obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3) = (obg).*(max_z-GPLoc(:,3));
-               obj.iniStress(l1+1:l1+obj.GaussPts.nNode,1) = M*obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3);
-               obj.iniStress(l1+1:l1+obj.GaussPts.nNode,2) = obj.iniStress(l1+1:l1+obj.GaussPts.nNode,1);
-               %vol = getVolume(obj.elements,el);
-%               obj.iniAvStress(el,:) = ((obj.iniStress(l1+1:l1+obj.GaussPts.nNode,:))'*dJWeighed')/vol;
-              l1 = l1 + obj.GaussPts.nNode;
+    function iniState(obj,fileName)
+      if ~isempty(fileName)
+          %%%%reading input file for initial conditions
+      else
+          max_z = max(obj.mesh.coordinates(:,3));
+          if isPoromechanics(obj.model)
+            l1 = 0;
+            for el = 1:obj.mesh.nCells
+              M = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getMFactor();
+              %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+              %specGrav = 0.0216;    % FIX THE CALL TO THE PROPERTY IN MATERIAL - POROUS ROCK
+               specGrav = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getSpecificGravity();
+              %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+              switch obj.mesh.cellVTKType(el)
+                case 10 % Tetra
+                  obj.iniStress(l1+1,3) = -specGrav*(max_z-obj.elements.cellCentroid(el,3));
+                  obj.iniStress(l1+1,2) = M*obj.iniStress(l1+1,3);
+                  obj.iniStress(l1+1,1) = obj.iniStress(l1+1,2);
+    %               obj.iniAvStress(el,:) = obj.iniStress(l1+1,:);
+                  l1 = l1 + 1;
+                case 12 % Hexa
+                  %%%%%%%%%%%%%%%%%%%%%%%%%% FIX CALL TO TWO ELEMENTS %%%%%%%%%
+    %               [~,dJWeighed] = getDerBasisFAndDet(obj.elements,el);
+                  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                  GPLoc = obj.elements.hexa.getGPointsLocation(el);
+                  obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3) = -specGrav*(max_z-GPLoc(:,3));  %MPa
+                  % stress distribution for test case 02 (Bau et al)
+                   %obg = -12218.174e-6*(abs(max_z-GPLoc(:,3))).^0.0766;
+                   %obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3) = (obg+9.8e-3).*(max_z-GPLoc(:,3));
+                   %obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3) = (obg).*(max_z-GPLoc(:,3));
+                   obj.iniStress(l1+1:l1+obj.GaussPts.nNode,1) = M*obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3);
+                   obj.iniStress(l1+1:l1+obj.GaussPts.nNode,2) = obj.iniStress(l1+1:l1+obj.GaussPts.nNode,1);
+                   %vol = getVolume(obj.elements,el);
+    %               obj.iniAvStress(el,:) = ((obj.iniStress(l1+1:l1+obj.GaussPts.nNode,:))'*dJWeighed')/vol;
+                  l1 = l1 + obj.GaussPts.nNode;
+              end
+            end
           end
-        end
+          %
+          obj.conv.stress = obj.iniStress;
+
+
+          %
+          if isFlow(obj.model)
+    %         if 5<1
+            %max_z = 9;
+            %gamma = obj.material.getMaterial(obj.mesh.nCellTag+1).getFluidSpecWeight();
+            if isFEMBased(obj.model,'Flow')
+              %obj.pressure = gamma*(max_z-obj.mesh.coordinates(:,3));
+    %         obj.pressure = zeros(length(obj.mesh.coordinates(:,3)),1);
+              %obj.pressure = 392.4*ones(length(obj.mesh.coordinates(:,3)),1);
+    %           obj.pressure = 450*ones(length(obj.mesh.coordinates(:,3)),1);
+            elseif isFVTPFABased(obj.model,'Flow')
+              obj.pressure = gamma*(max_z-obj.elements.cellCentroid(:,3));
+    %           obj.pressure = zeros(obj.mesh.nCells,1);
+    %           obj.pressure = 392.4*ones(obj.mesh.nCells,1);
+            end
+    %         end
+            if obj.model.isVariabSatFlow()
+              obj.watSat = obj.material.computeSwAnddSw(obj.mesh,obj.pressure);
+            end
+    %         obj.pressure = 80*ones(obj.mesh.nCells,1);
+          end
+          %
+          if isPoromechanics(obj.model)
+            initializeStatus(obj);
+          end
       end
-      %
-      obj.conv.stress = obj.iniStress;
-      %
-      if isFlow(obj.model)
-%         if 5<1
-        %max_z = 9;
-        %gamma = obj.material.getMaterial(obj.mesh.nCellTag+1).getFluidSpecWeight();
-        if isFEMBased(obj.model,'Flow')
-          %obj.pressure = gamma*(max_z-obj.mesh.coordinates(:,3));
-%         obj.pressure = zeros(length(obj.mesh.coordinates(:,3)),1);
-          %obj.pressure = 392.4*ones(length(obj.mesh.coordinates(:,3)),1);
-%           obj.pressure = 450*ones(length(obj.mesh.coordinates(:,3)),1);
-        elseif isFVTPFABased(obj.model,'Flow')
-          obj.pressure = gamma*(max_z-obj.elements.cellCentroid(:,3));
-%           obj.pressure = zeros(obj.mesh.nCells,1);
-%           obj.pressure = 392.4*ones(obj.mesh.nCells,1);
-        end
-%         end
-        if obj.model.isVariabSatFlow()
-          obj.watSat = obj.material.computeSwAnddSw(obj.mesh,obj.pressure);
-        end
-%         obj.pressure = 80*ones(obj.mesh.nCells,1);
-      end
-      %
-      if isPoromechanics(obj.model)
-        initializeStatus(obj);
-      end
+
     end
+    
+    function [fileName, Gauss] = manageStateInput(~,data)
+        if size(data,2) == 2
+            fileName = data{1};
+            Gauss = data{2};
+        elseif size(data) == 1
+            if isstring(data{1})
+                fileName = data{1};
+                Gauss = [];
+            else
+                fileName = [];
+                Gauss = data{1};
+            end
+        end
+    end
+    
   end
   
   methods (Access = protected)
