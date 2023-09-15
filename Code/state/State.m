@@ -34,7 +34,7 @@ classdef State < matlab.mixin.Copyable
     function obj = State(symmod,grid,mat,varargin)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
-      [fileName, Gauss] = obj.manageStateInput(varargin);
+      [fileName, Gauss] = State.manageStateInput(varargin);
       obj.setState(symmod,grid,mat,Gauss);
       obj.iniState(fileName);
     end
@@ -268,8 +268,11 @@ classdef State < matlab.mixin.Copyable
     
     function iniState(obj,fileName)
       if ~isempty(fileName)
+          obj.readInputFiles(fileName);
           %%%%reading input file for initial conditions
       else
+          %manual assignment of initial conditions, still useful for
+          %testing
           max_z = max(obj.mesh.coordinates(:,3));
           if isPoromechanics(obj.model)
             l1 = 0;
@@ -334,10 +337,116 @@ classdef State < matlab.mixin.Copyable
             initializeStatus(obj);
           end
       end
-
     end
     
-    function [fileName, Gauss] = manageStateInput(~,data)
+   
+    
+
+    
+    
+    function readInputFiles(obj,fileList)
+      n = length(fileList);
+      assert(n > 0,'No boundary conditions are to be imposed');
+      for i = 1 : n
+        readInputFile(obj,fileList(i));
+      end      
+    end
+    
+    function readInputFile(obj,fileName)
+        fID = obj.openReadOnlyFile(fileName);
+        token = State.readToken(fID);
+        if (~ismember(token, ['IniBCGeneral', 'IniBCHydrostatic']))
+        error(['%s condition is unknown\n', ...
+          'Accepted types are: IniBCGeneral   -> General initial conditions\n',...
+          '                    IniBCHydrostatic   -> Hydrostatic initial conditions\n'], token);
+        end
+        physics = State.readToken(fID);
+        if (~ismember(physics, ['Poro', 'Flow',"VSFlow"]))
+        error(['%s condition is unknown\n', ...
+          'Accepted physics are: Poro   -> Poromechanics initial conditions\n',...
+          '                      Flow   -> Single Phase Flow initial conditions\n',...
+          '                      VSFlow   -> Variably saturated Flow initial conditions\n'],physics);
+        end
+        entitiesFile = State.readToken(fID);
+        valuesFile = State.readToken(fID);
+        obj.applyIniBC(entitiesFile, valuesFile, physics);
+    end
+    
+    function applyIniBC(obj,entitiesFile, valuesFile, physics)
+    %reading entities file 
+    if (~exist(entitiesFile, 'file'))
+    error('File %s does not seem to exist. Please, check the provided file.', fileName);
+    end
+      header = false;
+      fid = fopen(entitiesFile, 'r');
+      while (~feof(fid) && ~header)
+        line = fgetl(fid);
+        word = sscanf(line, '%s');
+        if (~strcmp(word(1), '%'))
+          % If this is not a commented line (not starting with %)
+          nVals = sscanf(line, '%i');
+          header = true;
+        end
+      end
+      dim = length(nVals);
+      id = 1;
+      while ~feof(fid)
+       line = fgetl(fid);
+       word = sscanf(line, '%s');
+       if (~strcmp(word(1), '%'))
+          % If this is not a commented line (not starting with %)
+          num = sscanf(line, '%i');
+          nNum = length(num);
+          ents(id:id+nNum-1) = num;
+          id = id + nNum;
+       end
+      end
+     dofs = ents.*(dim*(ones(sum(nVals),1))')-repelem(flip((0:dim-1)),nVals); %will be replaced by a proper DOF manager method 
+     %reading list of values to be assign to dofs
+     fid = fopen(valuesFile, 'r');
+     id = 1;
+      while ~feof(fid)
+       line = fgetl(fid);
+       word = sscanf(line, '%s');
+       if (~strcmp(word(1), '%'))
+          % If this is not a commented line (not starting with %)
+          num = sscanf(line, '%i');
+          nNum = length(num);
+          vals(id:id+nNum-1) = num;
+          id = id + nNum;
+       end
+      end
+      
+      if strcmp(physics,"Poro")
+          obj.dispCurr(dofs) = vals;
+          obj.dispConv(dofs) = vals;
+      elseif strcmp(physics,"Flow")
+          obj.pressure(dofs) = vals;
+      end
+    end
+
+
+ end
+  
+   methods(Static = true)
+    % Read the next token and check for eof
+    function [token] = readToken(fid)
+      flEof = feof(fid);   % end-of-file flag
+      if flEof == 1
+        error('No token available in boundary condition file.');
+      else
+        token = sscanf(fgetl(fid), '%s', 1);
+      end
+    end
+    
+     function fID = openReadOnlyFile(fName)
+      fID = fopen(fName, 'r');
+      if fID == -1
+        error('File %s does not exist in the directory',fName);
+      end
+     end
+     
+        function [fileName, Gauss] = manageStateInput(data)
         if size(data,2) == 2
             fileName = data{1};
             Gauss = data{2};
@@ -350,9 +459,10 @@ classdef State < matlab.mixin.Copyable
                 Gauss = data{1};
             end
         end
-    end
+       end
     
-  end
+   end
+
   
   methods (Access = protected)
     function cp = copyElement(obj)
