@@ -39,5 +39,5 @@ faces = Faces(model, topology);
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 %------------------------ INITIAL CONDITION TESTING ---------------------
-fileList = ["iniDisp.dat","iniPressure.dat"];
+fileList = ["hydrostatic_test.dat"];
 resState = State(model,grid,mat,fileList);
