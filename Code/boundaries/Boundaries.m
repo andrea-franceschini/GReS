@@ -378,7 +378,7 @@ classdef Boundaries < handle
       if strcmp(physics,'Poro') && strcmp(token,'SurfBC')
         direction = Boundaries.readToken(fid);
         if ~ismember(direction,['x','y','z'])
-          error(['%s is an invalid direction of the distrbuted load\n', ...
+          error(['%s is an invalid direction of the distributed load\n', ...
             'Accepted directions are: x, y, and z'],direction);
         end
       end

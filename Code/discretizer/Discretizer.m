@@ -379,13 +379,14 @@ classdef Discretizer < handle
        Qvec =  zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*obj.elements.nCellsByType,1);
        
        l1=0;
-       biot = 1; %TO DO: call to Biot Coefficient in PorousRock class
        
+             
        if obj.elements.nCellsByType(2) > 0 %at least one Hexahedron
            N1 = getBasisFinGPoints(obj.elements.hexa); %compute Basis Function matrix for further calculations
        end
        
        for el=1:obj.mesh.nCells
+           biot = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getBiotCoefficient();
            switch obj.mesh.cellVTKType(el)
                case 10 %Tetrahedrons, direct integration 
                    vol = findVolume(obj.elements.tetra,el);

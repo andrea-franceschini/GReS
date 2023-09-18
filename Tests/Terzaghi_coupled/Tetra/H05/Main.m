@@ -71,12 +71,15 @@ bound = Boundaries(fileName,model,grid);
 
 % Set the "State" object. It contains all the vectors describing the state
 % of the reservoir in terms of pressure, displacement, stress, ...
-resState = State(model,grid,mat);
+file = ["iniDisp.dat","iniPressure.dat"];
+resState = State(model,grid,mat,file);
 
 %manually assigning initial conditions before proper implementation
-resState.dispConv(3:3:end) = -u0fem'; %only DZ is fixed initially
-resState.dispCurr(3:3:end) = -u0fem'; %only DZ is fixed initially
-resState.pressure = p0fem;
+%  resState.dispConv(3:3:end) = -u0fem'; %only DZ is fixed initially
+%  resState.dispCurr(3:3:end) = -u0fem'; %only DZ is fixed initially
+%  resState.pressure = p0fem;
+
+
 %
 % Create and set the print utility
 printUtils = OutState(model,mat,grid,'outTime.dat');
