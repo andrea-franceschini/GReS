@@ -59,7 +59,7 @@ classdef NonLinearSolver < handle
 %       t  = 0;
 %       tStep = 0;
       % Initialize the time step increment
-      obj.dt = obj.simParameters.dtIni;
+      obj.dt = obj.simParameters.dtIni;     
       %
       % Setup the boundary conditions
 %       obj.bound.iniBC(obj.BCName,obj.stateTmp);
@@ -69,11 +69,13 @@ classdef NonLinearSolver < handle
       while obj.t < obj.simParameters.tMax
         % Update the simulation time and time step ID
         obj.tStep = obj.tStep + 1;
-        obj.t = obj.t + obj.dt;
+        %new time update to fit the outTime list
+        [obj.t, delta_t] = obj.updateTime();
+        %obj.t = obj.t + obj.dt;
         % Apply the Dirichlet condition value to the solution vector
         applyDirVal(obj.bound, obj.t, obj.stateTmp);
         %
-        fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
+        fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t);
         fprintf('-----------------------------------------------------------\n');
         fprintf('Iter     ||rhs||\n');
         %
@@ -81,17 +83,17 @@ classdef NonLinearSolver < handle
             % compute Jacobian and residual of coupled hydro-mechanics
             % problem
             
-          linSyst.computeCoupleSyst(obj.simParameters.theta,obj.dt,obj.statek,obj.stateTmp)
+          linSyst.computeCoupleSyst(obj.simParameters.theta,delta_t,obj.statek,obj.stateTmp)
         elseif isPoromechanics(obj.model) 
           % Compute Jacobian and residual of the poromechanical problem
-          linSyst.computePoroSyst(obj.stateTmp,obj.dt);
+          linSyst.computePoroSyst(obj.stateTmp,delta_t);
         elseif isSinglePhaseFlow(obj.model)
           % Compute Jacobian and residual of the flow problem 
-          linSyst.computeFlowJacobian(obj.dt);
+          linSyst.computeFlowJacobian(delta_t);
           mu = obj.material.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();
-          linSyst.computeFlowRHS(obj.statek,obj.stateTmp,obj.dt,1/mu);
+          linSyst.computeFlowRHS(obj.statek,obj.stateTmp,delta_t,1/mu);
         elseif isVariabSatFlow(obj.model)
-          linSyst.computeVSFMatricesAndRHS(obj.statek,obj.stateTmp,obj.dt);
+          linSyst.computeVSFMatricesAndRHS(obj.statek,obj.stateTmp,delta_t);
         end
         %
         % Apply Neu and Dir conditions
@@ -291,7 +293,16 @@ classdef NonLinearSolver < handle
 %       end
 %       rhsNorm = norm(f(setxor(1:length(f),dofDir)),obj.pNorm);
 %     end
-  
+    function [t, dt] = updateTime(obj)
+        if obj.printUtil.modTime
+        tmp = find(obj.t<obj.printUtil.timeList(),1,'first');
+        t = min([obj.t + obj.dt, obj.printUtil.timeList(tmp)]);
+        else
+        t = obj.t + obj. dt;
+        end
+        dt = t - obj.t; 
+    end
+
     function manageNextTimeStep(obj,flConv)
       if ~flConv   % Perform backstep
         transferState(obj.statek,obj.stateTmp);
@@ -318,6 +329,14 @@ classdef NonLinearSolver < handle
 %         if obj.dt < obj.simParameters.dtMin
 %           obj.dt = obj.simParameters.dtMin;
 %         end
+       %find interval on printUtil's timeList which contains obj.t
+%         tmp = find(obj.t<obj.printUtil.timeList(1),1,'first');
+%         if ((obj.t + obj.dt) > obj.printUtil.timeList(tmp))
+%             obj.dt = obj.printUtil.timeList(tmp) - obj.t;
+%         end
+%         
+        
+        
         transferState(obj.stateTmp,obj.statek);
         %
         if ((obj.t + obj.dt) > obj.simParameters.tMax)

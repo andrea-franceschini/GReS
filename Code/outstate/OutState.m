@@ -3,6 +3,7 @@ classdef OutState < handle
   %   Detailed explanation goes here
   
   properties (Access = public)
+    modTime = false %flag for time step size matching timeList
     timeList
     m
   end
@@ -149,6 +150,18 @@ classdef OutState < handle
       %
       fid = fopen(fileName,'r');
       [flEof,line] = OutState.readLine(fid);
+      if isempty(sscanf(line,'%f'))
+          line = strtok(line);
+          if strcmpi(line,'on')
+              obj.modTime = true;
+          elseif strcmpi(line,'off')
+              obj.modTime = false;
+          elseif ~strcmpi(line,['on','off']) && ~strcmp(line(1), '%')
+              error('Invalid header in %s. Optional header must be either [on] or [off]',fileName)
+          end
+          [flEof,line] = OutState.readLine(fid);
+      end
+
       %
       block = '';
       while ~strcmp(line,'End')
