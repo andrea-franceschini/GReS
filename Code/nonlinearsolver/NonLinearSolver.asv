@@ -295,12 +295,15 @@ classdef NonLinearSolver < handle
 %     end
     function [t, dt] = updateTime(obj)
         if obj.printUtil.modTime
-        tmp = find(obj.t<obj.printUtil.timeList(),1,'first');
-        t = min([obj.t + obj.dt, obj.printUtil.timeList(tmp)]);
+             tmp = find(obj.t<obj.printUtil.timeList(),1,'first');
+             t = min([obj.t + obj.dt, obj.printUtil.timeList(tmp)]);
+             dt = t - obj.t;
         else
-        t = obj.t + obj. dt;
+            t = obj.t + obj. dt;
+            dt = 
         end
-        dt = t - obj.t; 
+            
+            
     end
 
     function manageNextTimeStep(obj,flConv)
