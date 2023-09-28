@@ -1,5 +1,6 @@
 close all;
 clear;
+addpath('C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07')
 
 % -------------------------- SET THE PHYSICS -------------------------
 model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
