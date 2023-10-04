@@ -2,7 +2,7 @@ close all;
 clear;
 
 % -------------------------- SET THE PHYSICS -------------------------
-model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
+model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
@@ -72,7 +72,7 @@ bound = Boundaries(fileName,model,grid);
 
 % Set the "State" object. It contains all the vectors describing the state
 % of the reservoir in terms of pressure, displacement, stress, ...
-file = 'initialconditions';
+%file = 'initialconditions';
 resState = State(model,grid,mat,file,GaussPts);
 
 %manually assigning initial conditions before proper implementation

@@ -1,15 +1,11 @@
-function newStr = translatePhysic(str)
-%Translate physics string in order to correctly query modelType class
+function str = translatePhysic(str)
+%Translate physics string in order to correctly query different classes
 %   Detailed explanation goes here
-switch str
-    case "Poromechanics"
-        newStr = 'Poro';
-    case "SPFlow"
-        newStr = 'Flow';
-    case "Poro"
-        newStr = 'Poromechanics';
-    case "Flow"
-        newStr = 'SPFlow';
+if strcmp(str, "Poromechanics")
+    str = "Poro";
+end
+if strcmp(str, "SPFlow")
+    str = "Flow";
 end
 end
 

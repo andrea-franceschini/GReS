@@ -4,20 +4,18 @@ classdef DoFManager < handle
     %   associates a degree of freedom to nodes
     
     properties (Access = private)
-        physicsList = "" %list of activated physics in the model
-        ncomp %number of components for every physic in physicsList
-        model 
-        
+        physicsList = ""
+        ncomp
+        model
+        SubPhysics
     end
     
     properties (Access = public)
-        subDomains %subDomain database 
-        elemDofTable %table map elements ---> dof
-        faceDofTable %table map faces ---> dof
-        nodeDofTable %table nodes elements ---> dof
-        numDof %array of total dofs for every subPhysic
-        subPhysics %list of physics in the global solution vector
-        subList %subDomain corresponding to every subPhysic
+        subDomains
+        elemDofTable
+        faceDofTable
+        nodeDofTable
+        numDofTable
     end
     
     methods
@@ -86,6 +84,7 @@ classdef DoFManager < handle
             end
             obj.ncomp = ones(length(obj.physicsList),1)+(mesh.nDim-1)*ismember(obj.physicsList,"Poro");
             checkModelCompatibility(obj)
+            obj.subPhysics = obj.
         end
             
         function buildDofTable(obj, mesh)
@@ -95,14 +94,12 @@ classdef DoFManager < handle
             nPh = length(obj.physicsList)+ (mesh.nDim-1)*any(obj.physicsList == "Poro");
             %convert the following matrix in sparse format (after
             %testing)
-            obj.elemDofTable = zeros(mesh.nCells,nPh,3);
-            obj.nodeDofTable = zeros(mesh.nNodes,nPh,3);
-            numDofTable = zeros(length(obj.subDomains),length(obj.physicsList));
+            obj.elemDofTable = zeros(mesh.nCells,nPh,2);
+            obj.nodeDofTable = zeros(mesh.nNodes,nPh,2);
+            obj.numDofTable = zeros(length(obj.subDomains),length(obj.physicsList));
             dofCount = 0;
-            phCount = 0;
             for subID = 1:length(obj.subDomains)
                 for i=1:length(obj.physicsList)
-                    phCount = phCount + 1;
                     %get column of dofTable taken by physics(i)
                     if any(obj.subDomains(subID).physics == obj.physicsList(i))
                         col = obj.getColTable(obj.physicsList(i));
@@ -111,29 +108,23 @@ classdef DoFManager < handle
                         %the specified physics in DofTable
                         nodesList = unique(mesh.cells(ismember(mesh.cellTag,obj.subDomains(subID).regions),:));
                         nodesList = nodesList(obj.nodeDofTable(nodesList, col(1))==0); %removing nodes with DOF already assigned
-                        numDofTable(subID,i) = length(nodesList)*obj.ncomp(i);
-                        localDofs =  reshape(1:numDofTable(subID,i),obj.ncomp(i),length(nodesList));
+                        obj.numDofTable(subID,i) = length(nodesList)*obj.ncomp(i);
+                        localDofs =  reshape(1:obj.numDofTable(subID,i),obj.ncomp(i),length(nodesList));
                         globalDofs = dofCount + localDofs;
                         obj.nodeDofTable(nodesList,col,1) = globalDofs';
                         obj.nodeDofTable(nodesList,col,2) = localDofs';
-                        obj.nodeDofTable(nodesList,col,3) = phCount;
                         elseif isFVTPFABased(obj.model,obj.physicsList(i))
                         elemList = find(ismember(mesh.cellTag,obj.subDomains(subID).regions));
                         obj.numDofTable(subID,i) = length(elemList)*obj.ncomp(i);
-                        localDofs = reshape(1:numDofTable(subID,i),obj.ncomp(i),length(elemList));
+                        localDofs = reshape(1:obj.numDofTable(subID,i),obj.ncomp(i),length(elemList));
                         globalDofs = dofCount + localDofs; 
                         obj.elemDofTable(elemList,col,1) = globalDofs';
                         obj.elemDofTable(elemList,col,2) = localDofs';
-                        obj.elemDofTable(elemList,col,3) = phCount;
                         end
-                        dofCount = dofCount + numDofTable(subID,i);
+                        dofCount = dofCount + obj.numDofTable(subID,i);
                     end
                 end
-            end  
-            [tmprow,tmpcol] = find(numDofTable' ~= 0);
-            obj.subPhysics = obj.physicsList(tmprow);
-            obj.subList = tmpcol;
-            obj.numDof = nonzeros(numDofTable');
+            end               
         end
         
         function dofs = getDoF(obj,physic,varargin)

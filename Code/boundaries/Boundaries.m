@@ -5,13 +5,20 @@ classdef Boundaries < handle
     % Creation of a Map object for the boundary conditions
     db
   end
+  
+    properties (Access = private)
+    model
+    dof
+  end
 
   methods (Access = public)
     % Class constructor method
-    function obj = Boundaries(fileNames,model,grid) %,model,grid
+    function obj = Boundaries(fileNames,model,grid,dof) %,model,grid
       % MATLAB evaluates the assignment expression for each instance, which
       % ensures that each instance has a unique value
       obj.db = containers.Map('KeyType','char','ValueType','any');
+      obj.dof = dof;
+      obj.model = model;
       % Calling the function to read input data from file
       obj.readInputFiles(fileNames);
       obj.computeBoundaryProperties(model,grid);
@@ -37,8 +44,69 @@ classdef Boundaries < handle
       vals = obj.getData(identifier).data.getValues(t);
     end
 
-    function list = getDofs(obj, identifier)
-      list = obj.getData(identifier).data.entities;
+    function list = getDofs(obj, identifier) 
+      %return loaded DOFS for the specified BC in global indexing
+      %list = obj.getData(identifier).data.entities; OLD VERSION
+      %%%%update to getDofs method
+      col = obj.dof.getColTable(obj.getPhysics(identifier));
+      if ~isfield(obj.getData(identifier), 'loadedEnts') 
+            nEnts = obj.getData(identifier).data.nEntities;
+            entities = obj.getData(identifier).data.entities;
+            i1 = 1;
+            for i = 1:length(nEnts)
+              i2 = i1 + nEnts(i);
+              if strcmp(obj.getCond(identifier),'NodeBC') % Node BC ---> Node Dof
+                list(i1:i2-1) = obj.dof.nodeDofTable(entities(i1:i2-1),col(i));
+              elseif strcmp(obj.getCond(identifier),'ElementBC') % Element BC ---> Element Dof
+                list(i1:i2-1) = obj.dof.elemDofTable(entities(i1:i2-1),col(i));  
+              end
+              i1 = i2;
+            end
+      elseif strcmp(obj.getCond(identifier),'SurfBC')
+          % SurfBC ---> Node Dof
+          loadedEnts = obj.getLoadedEntities(identifier);
+          if isFEMBased(obj.model,obj.getPhysics(identifier))
+              if strcmp(obj.getPhysics(identifier),'Poro')
+                  direction = obj.getDirection(identifier);
+                  switch direction
+                      case 'x'
+                        list = obj.dof.nodeDofTable(loadedEnts,col(1));
+                      case 'y'
+                        list = obj.dof.nodeDofTable(loadedEnts,col(2));
+                      case 'z'
+                        list = obj.dof.nodeDofTable(loadedEnts,col(3));
+                  end
+              elseif strcmp(obj.getPhysics(identifier),'Flow')
+                  list = obj.dof.nodeDofTable(loadedEnts,col);
+              end
+            elseif isFVTPFA(obj.model,bound.getPhysics(identifier))
+          % SurfBC ---> Element Dof
+                if  strcmp(obj.getPhysics(identifier),'Poro')
+                    direction = obj.getDirection(identifier);
+                    switch direction
+                        case 'x'
+                            list = obj.dof.elemDofTable(loadedEnts,col(1));
+                        case 'y'
+                            list = obj.dof.elemDofTable(loadedEnts,col(2));
+                        case 'z'
+                            list = obj.dof.elemDofTable(loadedEnts,col(3));
+                    end
+                elseif strcmp(obj.getPhysics(identifier),'Flow')
+                    list = obj.dof.elemDofTable(loadedEnts,col);
+                end
+          end
+      elseif strcmp(obj.getCond(identifier),'VolumeForce')
+          loadedEnts = obj.getLoadedEntities(identifier);
+          % Volume Force ---> Node Dof
+          %VolumeForce are available only for flow model
+          if isFEMBased(obj.model,bound.getPhysics(identifier))
+              list = obj.dof.nodeDofTable(loadedEnts,col);
+          elseif isFVTPFA(obj.model,bound.getPhysics(identifier))
+          % Volume Force ---> Element Dof
+              list = obj.dof.elemDofTable(loadedEnts,col);
+          end
+      end
+               
     end
     
     function cond = getCond(obj, identifier)
@@ -56,6 +124,21 @@ classdef Boundaries < handle
     function physics = getPhysics(obj, identifier)
       physics = obj.getData(identifier).physics;
     end
+    
+    function ents = getEntities(obj, identifier)   
+      %this method return the index of constrained entities inside solution vectors
+      %(pressure, displacement)...  
+      ents = obj.getData(identifier).data.entities; 
+      % consider solution components
+      nEnts = obj.getData(identifier).data.nEntities;
+      i1 = 1;
+      comps = length(nEnts);
+      for i = 1:comps
+          i2 = i1 + nEnts(i);
+          ents(i1:i2-1) = comps*(ents(i1:i2-1)-1)+i;
+          i1 = i2;
+      end
+     end
     
     function ent = getLoadedEntities(obj, identifier)
       ent = obj.getData(identifier).loadedEnts;
@@ -78,7 +161,7 @@ classdef Boundaries < handle
       for i = 1 : length(keys)
         if strcmp(obj.getCond(keys{i}), 'VolumeForce') && ...
             isFEMBased(model,obj.getPhysics(keys{i}))
-          dofs = obj.getDofs(keys{i});
+          dofs = obj.getEntities(keys{i});
           tmpMat = grid.topology.cells(dofs,:)';
           [loadedEnts] = unique(tmpMat(tmpMat ~= 0));
           ptrHexa = grid.topology.cellVTKType(dofs) == 12;
@@ -111,7 +194,7 @@ classdef Boundaries < handle
           obj.db(keys{i}) = tmpDbEntry;
         elseif strcmp(obj.getCond(keys{i}), 'SurfBC') && ...
             isFEMBased(model,obj.getPhysics(keys{i}))
-          dofs = obj.getDofs(keys{i});
+          dofs = obj.getEntities(keys{i});
           tmpMat = grid.topology.surfaces(dofs,:)';
           [loadedEnts] = unique(tmpMat(tmpMat ~= 0));
           ptrTri = grid.topology.surfaceVTKType(dofs) == 5;
@@ -139,17 +222,19 @@ classdef Boundaries < handle
           end
           nodeArea = sparse(rowID,colID,areaSurf,length(loadedEnts),length(dofs));
           %
-          if strcmp(obj.getPhysics(keys{i}),'Poro')
-            direction = obj.getDirection(keys{i});
-            switch direction
-              case 'x'
-                loadedEnts = 3*loadedEnts - 2;
-              case 'y'
-                loadedEnts = 3*loadedEnts - 1;
-              case 'z'
-                loadedEnts = 3*loadedEnts;
-            end
-          end
+          %this instructions will be later moved in the general
+          %getDofs method
+%           if strcmp(obj.getPhysics(keys{i}),'Poro')
+%             direction = obj.getDirection(keys{i});
+%             switch direction
+%               case 'x'
+%                 loadedEnts = 3*loadedEnts - 2;
+%               case 'y'
+%                 loadedEnts = 3*loadedEnts - 1;
+%               case 'z'
+%                 loadedEnts = 3*loadedEnts;
+%             end
+%           end
           tmpDbEntry = obj.getData(keys{i});
           tmpDbEntry.entitiesInfl = nodeArea;
           tmpDbEntry.loadedEnts = loadedEnts;
@@ -361,13 +446,13 @@ classdef Boundaries < handle
         error('File %s not opened correctly',fileName);
       end
       token = Boundaries.readToken(fid);
-      if (~ismember(token, ['NodeBC', 'SurfBC', 'VolForce']))
+      if (~ismember(convertCharsToStrings(token), ["NodeBC", "SurfBC", "VolForce"]))
         error(['%s condition is unknown\n', ...
           'Accepted types are: NodeBC   -> Boundary cond. on nodes\n',...
           '                    SurfBC   -> Boundary cond. on surfaces\n',...
           '                    VolForce -> Volume force on elements'], token);
       end
-      if ismember(token, ['NodeBC', 'SurfBC'])
+      if ismember(convertCharsToStrings(token), ["NodeBC", "SurfBC"])
         type = Boundaries.readToken(fid);
         if (~ismember(type, ['Dir', 'Neu']))
           error(['%s boundary condition is not admitted\n', ...
@@ -375,6 +460,7 @@ classdef Boundaries < handle
         end
       end
       physics = Boundaries.readToken(fid);
+      
       if strcmp(physics,'Poro') && strcmp(token,'SurfBC')
         direction = Boundaries.readToken(fid);
         if ~ismember(direction,['x','y','z'])

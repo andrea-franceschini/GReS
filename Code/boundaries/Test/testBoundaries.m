@@ -13,6 +13,9 @@ fileName = ["dirNodePoro.dat","neuNodePoro.dat","dirNodeFlow.dat", ...
   "neuNodeFlow.dat","volForceFlow.dat","volForcePoro.dat"];
 
 % Creation of the object "Boundaries" (general boundary condition)
+
+
+
 bound = Boundaries(fileName);
 % Starting a timer
 tic;

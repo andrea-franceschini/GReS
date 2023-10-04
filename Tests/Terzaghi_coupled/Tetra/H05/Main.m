@@ -48,6 +48,8 @@ faces = Faces(model, topology);
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
+% Degree of freedom manager 
+dofmanager = DoFManager(topology,model);
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
 % Set the input file
@@ -55,7 +57,7 @@ fileName = ["dir_BC_flow_tetra.dat","dir_BC_poro_tetra.dat","neuSurf_BC_poro_tet
 %
 % Create an object of the "Boundaries" class and read the boundary
 % conditions
-bound = Boundaries(fileName,model,grid);
+bound = Boundaries(fileName,model,grid,dofmanager);
 %
 %-------------------------- PREPROCESSING ----------------------------
 %
@@ -92,7 +94,7 @@ printUtils.printState(resState);
 %
 
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,grid,mat,bound,printUtils,resState);
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();

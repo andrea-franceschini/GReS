@@ -19,6 +19,7 @@ classdef NonLinearSolver < handle
     %
     model
     simParameters
+    dofManager
     grid
     mesh
     elements
@@ -38,17 +39,17 @@ classdef NonLinearSolver < handle
   end
   
   methods (Access = public)
-    function obj = NonLinearSolver(symmod,simParam,grid,mat,bc,prtUtil,stateIni,varargin)
-      obj.setNonLinearSolver(symmod,simParam,grid,mat,bc,prtUtil,stateIni,varargin);
+    function obj = NonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,varargin)
+      obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,varargin);
     end
 
     function [simStat] = NonLinearLoop(obj)
       simStat = 1;
       if obj.elements.nCellsByType(2) > 0  % There is at least one hexahedron
-        linSyst = Discretizer(obj.model,obj.simParameters,obj.grid,obj.material, ...
+        linSyst = Discretizer(obj.model,obj.simParameters,obj.dofManager,obj.grid,obj.material, ...
                   obj.GaussPts);
       else
-        linSyst = Discretizer(obj.model,obj.simParameters,obj.grid,obj.material);
+        linSyst = Discretizer(obj.model,obj.simParameters,obj.dofManager,obj.grid,obj.material);
       end
       % Compute H and P matrices for flow simulations and the gravity
       % contribution
@@ -81,8 +82,7 @@ classdef NonLinearSolver < handle
         %
         if isPoromechanics(obj.model) && isSinglePhaseFlow(obj.model)
             % compute Jacobian and residual of coupled hydro-mechanics
-            % problem
-            
+            % problem           
           linSyst.computeCoupleSyst(obj.simParameters.theta,delta_t,obj.statek,obj.stateTmp)
         elseif isPoromechanics(obj.model) 
           % Compute Jacobian and residual of the poromechanical problem
@@ -250,9 +250,10 @@ classdef NonLinearSolver < handle
   end
   
   methods (Access = private)
-    function setNonLinearSolver(obj,symmod,simParam,grid,mat,bc,prtUtil,stateIni,data)
+    function setNonLinearSolver(obj,symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,data)
       obj.model = symmod;
       obj.simParameters = simParam;
+      obj.dofManager = dofManager;
       obj.grid = grid;
       obj.mesh = grid.topology;
       obj.elements = grid.cells;

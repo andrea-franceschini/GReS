@@ -49,6 +49,7 @@ classdef State < matlab.mixin.Copyable
     function updateState(obj,dSol)
       %METHOD1 Summary of this method goes here
       %   Detailed explanation goes here
+      %solution vectors update will exploit the DofManager map
        if isPoromechanics(obj.model) && isFlow(obj.model)
        %updating poromechanics DOFs
         ddisp = dSol(1:obj.mesh.nDim*obj.mesh.nNodes);
@@ -221,7 +222,8 @@ classdef State < matlab.mixin.Copyable
   end
   
   methods (Access = private)
-    function setState(obj,symmod,grid,mat,data)
+
+      function setState(obj,symmod,grid,mat,data)
       obj.model = symmod;
       obj.grid = grid;
       obj.mesh = grid.topology;

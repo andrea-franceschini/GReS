@@ -14,6 +14,7 @@ classdef Discretizer < handle
   properties (Access = public)
     model
     simParams
+    dofManager
     mesh
     elements
     faces
@@ -39,15 +40,19 @@ classdef Discretizer < handle
   end
   
   methods (Access = public)
-    function obj = Discretizer(symmod,simParams,grid,mat,varargin)
+    function obj = Discretizer(symmod,simParams,dofManager,grid,mat,varargin)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
-      obj.setDiscretizer(symmod,simParams,grid,mat,varargin);
+      obj.setDiscretizer(symmod,simParams,dofManager,grid,mat,varargin);
     end
     
     function trans = getFaceTransmissibilities(obj,faceID)
       trans = obj.trans(faceID);
     end
+    
+    
+    
+    
     
     function computeSPFMatrices(obj)
       if obj.model.isFEMBased('Flow')
@@ -482,9 +487,10 @@ classdef Discretizer < handle
   end
   
   methods(Access = private)
-    function setDiscretizer(obj,symmod,params,grid,mat,data)
+    function setDiscretizer(obj,symmod,params,dofManager,grid,mat,data)
       obj.model = symmod;
       obj.simParams = params;
+      obj.dofManager = dofManager;
       obj.mesh = grid.topology;
       obj.elements = grid.cells;
       obj.faces = grid.faces;
