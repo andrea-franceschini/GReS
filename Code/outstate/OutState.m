@@ -214,6 +214,8 @@ classdef OutState < handle
     end
     %
     
+
+    
     function buildPrintStruct(obj,printProp)
       nPointProp = 0;
       nCellProp = 0;

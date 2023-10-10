@@ -49,6 +49,7 @@ classdef State < matlab.mixin.Copyable
     function updateState(obj,dSol)
       %METHOD1 Summary of this method goes here
       %   Detailed explanation goes here
+      %solution vectors update will exploit the DofManager map
        if isPoromechanics(obj.model) && isFlow(obj.model)
        %updating poromechanics DOFs
         ddisp = dSol(1:obj.mesh.nDim*obj.mesh.nNodes);
@@ -221,7 +222,8 @@ classdef State < matlab.mixin.Copyable
   end
   
   methods (Access = private)
-    function setState(obj,symmod,grid,mat,data)
+
+      function setState(obj,symmod,grid,mat,data)
       obj.model = symmod;
       obj.grid = grid;
       obj.mesh = grid.topology;
@@ -273,11 +275,11 @@ classdef State < matlab.mixin.Copyable
       else
           %manual assignment of initial conditions, still useful for
           %testing
-          %max_z = max(obj.mesh.coordinates(:,3));
+          max_z = max(obj.mesh.coordinates(:,3));
           if isPoromechanics(obj.model)
             l1 = 0;
             for el = 1:obj.mesh.nCells
-              %M = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getMFactor();
+              M = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getMFactor();
               %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
               %specGrav = 0.0216;    % FIX THE CALL TO THE PROPERTY IN MATERIAL - POROUS ROCK
               %specGrav = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getSpecificGravity();
@@ -293,7 +295,7 @@ classdef State < matlab.mixin.Copyable
                   %%%%%%%%%%%%%%%%%%%%%%%%%% FIX CALL TO TWO ELEMENTS %%%%%%%%%
     %               [~,dJWeighed] = getDerBasisFAndDet(obj.elements,el);
                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                  %GPLoc = obj.elements.hexa.getGPointsLocation(el);
+                  GPLoc = obj.elements.hexa.getGPointsLocation(el);
                   %obj.iniStress(l1+1:l1+obj.GaussPts.nNode,3) = -specGrav*(max_z-GPLoc(:,3));  %MPa
                   % stress distribution for test case 02 (Bau et al)
                    %obg = -12218.174e-6*(abs(max_z-GPLoc(:,3))).^0.0766;

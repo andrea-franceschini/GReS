@@ -2,30 +2,42 @@ classdef Materials < handle
   % MATERIAL - General material class
 
   properties (Access = private)
-    % Creation of a Map object 
-    db = containers.Map('KeyType','double','ValueType','any');
+    % Creation of a Dictionary object (faster than map)
+    db = configureDictionary("double","struct")
+    matMap
   end
 
   methods (Access = public)
     % Class constructor method   
     function obj = Materials(model,fListName)
       % Calling the function to read input data from file
+      obj.matMap =zeros(100,100);
       obj.readInputFiles(model,fListName)
     end
 
     % Get the material defined by matIdentifier and check if it is a
     % key of the Map db
-    function mat = getMaterial(obj,matID)
+    function mat = getMaterial(obj,cellID)
       %
       % The preliminary check whether matID is key of db has been commented
       % since it is highly expensive
 %       if (obj.db.isKey(matID))
+        [matID,~] = find(obj.matMap == cellID);
+        assert(length(matID)==1,['Multiple materials assigned to elements',...
+            ' with cellTags %i'], cellID)
         mat = obj.db(matID);
 %       else
 %       Displaying error message if matIdentifier is not a key 
 %       of the map
 %         error('Material %s not present', matID);
 %       end
+    end
+
+    function fluidMat = getFluid(obj)
+        %fluid materials corresponds to null rows in materials map. 
+        %Fluid are not assigned to any cellTag
+        f= find(sum(obj.matMap,2)==0);
+        fluidMat = obj.db(f);
     end
     
     function varargout = computeSwAnddSw(obj,mesh,pkpt)
@@ -180,7 +192,7 @@ classdef Materials < handle
 
   methods (Access = private)
     % Reading the input file by material blocks
-    function readInputFile(obj, model, matFileName, matID)
+    function readInputFile(obj, model, matFileName, matID, cellTags)
       fID = Materials.openReadOnlyFile(matFileName);
       %
       assert(~feof(fID),'No material properties have been assigned in %s',matFileName);
@@ -217,6 +229,12 @@ classdef Materials < handle
         elseif strcmp(token,'End')
           break
         end
+      end
+      if isfield(matProp,'ConstLaw')
+          %check if non-fluid material has cellTags assigned
+          assert(~isempty(cellTags),"Undefined cellTags for material #%i", matID)
+      else
+          assert(isempty(cellTags),"Fluid material do not require any cellTag", matID)
       end
       obj.db(matID) = matProp;
       fclose(fID);
@@ -267,13 +285,15 @@ classdef Materials < handle
     % Reading boundary input file
     function readInputFiles(obj, model, fListName)
       fID = Materials.openReadOnlyFile(fListName);
-      matFileName = readToken(fID, fListName);
+      [cellTags,matFileName] = readTokenList(fID, fListName);
       matID = 0;
       while ~strcmp(matFileName,'End')
         matID = matID + 1;
-        readInputFile(obj, model, matFileName, matID);
-        matFileName = readToken(fID, fListName);
+        readInputFile(obj, model, matFileName, matID, cellTags);
+        obj.matMap(matID,1:length(cellTags)) = cellTags;
+        [cellTags,matFileName] = readTokenList(fID, fListName);
       end
+      obj.matMap = obj.matMap(1:matID,sum(obj.matMap,1)~=0);
       fclose(fID);
     end
   end

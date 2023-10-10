@@ -7,6 +7,7 @@ classdef Discretizer < handle
     P
     J
     rhs
+    blockJ
     KPoro
     Q
   end
@@ -14,6 +15,7 @@ classdef Discretizer < handle
   properties (Access = public)
     model
     simParams
+    dofmanager
     mesh
     elements
     faces
@@ -39,15 +41,19 @@ classdef Discretizer < handle
   end
   
   methods (Access = public)
-    function obj = Discretizer(symmod,simParams,grid,mat,varargin)
+    function obj = Discretizer(symmod,simParams,dofManager,grid,mat,varargin)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
-      obj.setDiscretizer(symmod,simParams,grid,mat,varargin);
+      obj.setDiscretizer(symmod,simParams,dofManager,grid,mat,varargin);
     end
     
     function trans = getFaceTransmissibilities(obj,faceID)
       trans = obj.trans(faceID);
     end
+    
+    
+    
+    
     
     function computeSPFMatrices(obj)
       if obj.model.isFEMBased('Flow')
@@ -482,9 +488,10 @@ classdef Discretizer < handle
   end
   
   methods(Access = private)
-    function setDiscretizer(obj,symmod,params,grid,mat,data)
+    function setDiscretizer(obj,symmod,params,dofManager,grid,mat,data)
       obj.model = symmod;
       obj.simParams = params;
+      obj.dof = dofManager;
       obj.mesh = grid.topology;
       obj.elements = grid.cells;
       obj.faces = grid.faces;
@@ -499,6 +506,9 @@ classdef Discretizer < handle
       %
       obj.nEntryKLoc = (obj.mesh.nDim^2)*(obj.elements.nNodesElem).^2;
       %
+      initializeBlockJacobian(obj)
+      
+      %%% richards model -  will be checked in the future %%%%%%%%%%%%%%%%
       if obj.model.isFVTPFABased('Flow')
         obj.computeTrans;
         obj.isIntFaces = all(obj.faces.faceNeighbors ~= 0,2);
@@ -625,6 +635,24 @@ classdef Discretizer < handle
         -lw.*obj.RHSGravTerm],[obj.mesh.nCells,1]);
 %       end
     end
+    
+    function initializeBlockJacobian(obj)
+        %block dimension of the Jacobian matrix
+        dim = lenght(obj.dofmanager.subList);
+        obj.blockJ = repmat(struct('block',[],'subID',[],'physics',[],'coupling',[]),dim,dim);
+        for i = 1:dim
+            for j=1:dim
+                subID = subList(i);
+                obj.blockJ(i,j).subID = subID;
+                obj.blockJ(i,j).physics = obj.dofmanager.subDomains(subID).physics([i j]);
+                if physics(1) ~= physic(2) && obj.dofmanager.subDomains(subID).coupling == "Coupled"
+                    obj.blockJ(i,j).coupling = true;
+                end
+            end
+        end  
+    end
+            
+
     
     function [Swkpt,dSwkpt,lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt)
       neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
