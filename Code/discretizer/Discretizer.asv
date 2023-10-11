@@ -16,7 +16,7 @@ classdef Discretizer < handle
   properties (Access = public)
     model
     simParams
-    dofm
+    dof
     mesh
     elements
     faces
@@ -304,10 +304,10 @@ classdef Discretizer < handle
       for el=1:obj.mesh.nCells
         % Get the right material stiffness for each element
         switch obj.mesh.cellVTKType(el)
-          case 10 % Tetrahedraobj.dof
+          case 10 % Tetrahedra
            N = getDerBasisF(obj.elements.tetra,el);
-            vol = findVolume(oobj.dofbj.elements.tetra,el);
-            B = zerosobj.dof(6,4*obj.mesh.nDim);
+            vol = findVolume(obj.elements.tetra,el);
+            B = zeros(6,4*obj.mesh.nDim);
             B(obj.elements.indB(1:36,2)) = N(obj.elements.indB(1:36,1));
             [D, sigma, status] = obj.material.updateMaterial(obj.mesh.cellTag(el), ...
                  state.conv.stress(l2+1,:), ...
@@ -492,7 +492,7 @@ classdef Discretizer < handle
     function setDiscretizer(obj,symmod,params,dofManager,grid,mat,data)
       obj.model = symmod;
       obj.simParams = params;
-      obj.dofm = dofManager;
+      obj.dof = dofManager;
       obj.mesh = grid.topology;
       obj.elements = grid.cells;
       obj.faces = grid.faces;
@@ -507,7 +507,7 @@ classdef Discretizer < handle
       %
       obj.nEntryKLoc = (obj.mesh.nDim^2)*(obj.elements.nNodesElem).^2;
       %
-      initializeBlockJacobianAndRhs(obj)
+      initializeBlockJacobian(obj)
       %%% richards model -  will be checked in the future %%%%%%%%%%%%%%%%
       if obj.model.isFVTPFABased('Flow')
         obj.computeTrans;
@@ -638,20 +638,20 @@ classdef Discretizer < handle
     
     function initializeBlockJacobianAndRhs(obj)
         %block dimension of the Jacobian matrix
-        dim = length(obj.dofm.subList);
-        obj.blockJ = repmat(struct('block',[],'subID',[],'physics',[],'coupling',[]),dim);
-        obj.blockRhs = repmat(struct('block',[],'subID',[],'physic',[]),dim,1);
+        dim = length(obj.dof.subList);
+        obj.blockJ = repmat(struct('block',[],'subID',[],'physics',[],'coupling',[]),dim,dim);
+        obj.blockRhs = repmat(struct('block',[],'subID',[],'physic',[]),dim);
         for i = 1:dim
-            subID = obj.dofm.subList(i);
+            subID = obj.dof.subList(i);
             obj.blockRhs(i).subID = subID;
-            obj.blockRhs(i).physic = obj.dofm.subPhysics(i);
-            obj.blockRhs(i).block = zeros(obj.dofm.numDof(i),1);
+            obj.blockRhs(i).physic = obj.dof.subDomains(subID).subPhysics(i);
+            obj.blockRhs(i).block = zeros(obj.dof.numDof(i),1);
             for j=1:dim
-                subID = obj.dofm.subList(i);
+                subID = obj.dof.subList(i);
                 obj.blockJ(i,j).subID = subID;
-                obj.blockJ(i,j).physics = obj.dofm.subDomains(subID).physics([i j]);
-                obj.blockJ(i,j).block = sparse(obj.dofm.numDof(i),obj.dofm.numDof(j));
-                if obj.blockJ(i,j).physics(1) ~= obj.blockJ(i,j).physics(2) && obj.dofm.subDomains(subID).coupling == "Coupled"
+                obj.blockJ(i,j).physics = obj.dof.subDomains(subID).physics([i j]);
+                obj.blockJ(i,j).block = sparse(obj.dof.numDof(i),obj.dof.numDof(j));
+                if obj.blockJ(i,j).physics(1) ~= obj.blockJ(i,j).physics(2) && obj.dof.subDomains(subID).coupling == "Coupled"
                     obj.blockJ(i,j).coupling = true;
                 end
             end

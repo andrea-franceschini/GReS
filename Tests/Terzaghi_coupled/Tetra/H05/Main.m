@@ -35,7 +35,7 @@ elems = Elements(topology);
 zvector = topology.coordinates(:,3);
 
 %calling analytical solution script
-terzaghi_analytical;
+%terzaghi_analytical;
 
 
 

@@ -1,6 +1,9 @@
-3                                % cellTags in SubDomain
+1                                % cellTags in SubDomain
 Coupled Poromechanics SPFlow      % Physics in SubDomain
 
-1 2 
+2
 Poromechanics
+
+3
+SPFlow
 End

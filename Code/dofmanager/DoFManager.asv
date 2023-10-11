@@ -141,7 +141,7 @@ classdef DoFManager < handle
         end
         
         function dofs = getDoF(obj,physic,varargin)
-            %Return Global DOFs associated to entities
+            %Return DOFs associated to entities
             physic = translatePhysic(physic);
             col = obj.getColTable(physic);
             if isFEMBased(obj.model,physic) 
@@ -163,8 +163,7 @@ classdef DoFManager < handle
         end
         
         function dofs = getLocDoF(obj,physic,varargin)
-            %Return Local subPhysics DOFs associated to entities
-            %Needed for ApplyBCAndForces
+            %Return DOFs associated to entities
             physic = translatePhysic(physic);
             col = obj.getColTable(physic);
             if isFEMBased(obj.model,physic) 

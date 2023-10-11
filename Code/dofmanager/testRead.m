@@ -14,6 +14,8 @@ fileName = 'materialsList.dat';
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
 test = mat.getMaterial(1);
+testf = mat.getFluid();
+
 %---------------------------------------------------------------------
 
 

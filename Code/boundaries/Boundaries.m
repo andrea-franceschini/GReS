@@ -127,6 +127,7 @@ classdef Boundaries < handle
     
     function ents = getEntities(obj, identifier)   
       %this method return the index of constrained entities inside solution vectors
+      %needed for applying Dirichlet BCs
       %(pressure, displacement)...  
       ents = obj.getData(identifier).data.entities; 
       % consider solution components

@@ -1,4 +1,4 @@
 Materials/Water.dat 
-1 2 Materials/PorousMedia.dat
-1   Materials/PorousMedia.dat
+1  Materials/PorousMedia.dat
+2   Materials/PorousMedia.dat
 End
