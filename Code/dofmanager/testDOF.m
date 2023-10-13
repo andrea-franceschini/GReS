@@ -30,10 +30,8 @@ faces = Faces(model, topology);
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 %%%TESTING DOF MANAGER CLASS
-tic
 fileName = 'dof.dat';
 dofmanager = DoFManager(topology, model, fileName);
-dof_time = toc;
 test = dofmanager.getDofTables();
 testdof = dofmanager.getLocDoF('Flow');
 %tab = getSubTable(dofmanager,2);

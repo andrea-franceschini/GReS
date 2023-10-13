@@ -1,4 +1,4 @@
-classdef Discretizer < handle
+classdef Discretizer < handle           
   %UNTITLED Summary of this class goes here
   %   Detailed explanation goes here
   
@@ -16,7 +16,7 @@ classdef Discretizer < handle
   properties (Access = public)
     model
     simParams
-    dof
+    dofm
     mesh
     elements
     faces
@@ -58,7 +58,7 @@ classdef Discretizer < handle
     
     function computeSPFMatrices(obj)
       if obj.model.isFEMBased('Flow')
-        computeFlowStiffAndCapMatFEM(obj);
+        computeFlowStiffAndCapMatFEM_Test(obj);
       elseif obj.model.isFVTPFABased('Flow')
         mu = obj.material.getFluid().getDynViscosity();
         computeFlowStiffMatFV(obj,1/mu);
@@ -137,11 +137,89 @@ classdef Discretizer < handle
       obj.H = sparse(iiVec,jjVec,HVec,obj.mesh.nNodes,obj.mesh.nNodes);
       obj.P = sparse(iiVec,jjVec,PVec,obj.mesh.nNodes,obj.mesh.nNodes);
     end
+
+    function computeFlowStiffAndCapMatFEM_Test(obj) %provisional method exploiting dof manager workflow
+          nBlock = size(obj.blockJ,1);
+          for i=1:nBlock
+              for j=1:nBlock
+                  if all(strcmp(obj.blockJ(i,j).physics,'Flow'))   
+                      subReg = obj.dofm.subDomains(obj.blockJ(i,j).subID).regions; %region for block's subdomain
+                      subCells = find(ismember(obj.mesh.cellTag,subReg)); %id of cells in subdomain
+                      nSubCells = length(subCells); %number of cells in subdomain
+                      nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]); 
+                      % Compute the stiffness (H) and mass (P) matrices for the flow problem by FEM
+                      iiVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+                      jjVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+                      HVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+                      PVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+                      % Get the fluid compressibility
+                      beta = obj.material.getFluid().getFluidCompressibility();
+                      if nSubCellsByType(2) > 0
+                        N1 = obj.elements.hexa.getBasisFinGPoints();
+                      end
+                      % Get the fluid dynamic viscosity
+                      mu = obj.material.getFluid().getDynViscosity();
+                      %
+                      l1 = 0;
+                      for el = subCells'
+                        % Get the rock permeability, porosity and compressibility
+                        permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+                        poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
+                        if isPoromechanics(obj.model)
+                            alpha = 0; %this term is not needed in coupled formulation
+                        else
+                            alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
+                            %solid skeleton contribution to storage term as oedometric compressibility . 
+                        end
+                        % Compute the element matrices based on the element type
+                        % (tetrahedra vs. hexahedra)
+                        switch obj.mesh.cellVTKType(el)
+                          case 10 % Tetrahedra
+                            % Computing the H matrix contribution
+                            N = obj.elements.tetra.getDerBasisF(el);
+                %               vol = getVolume(obj.elements,el);
+                            HLoc = N'*permMat*N*obj.elements.vol(el)/mu;
+                            s1 = obj.elements.nNodesElem(1)^2;
+                            % Computing the P matrix contribution
+                            PLoc = ((alpha + poro*beta)*obj.elements.vol(el)/20)*(ones(obj.elements.nNodesElem(1))...
+                                    + eye(obj.elements.nNodesElem(1)));
+                          case 12 % Hexa
+                            [N,dJWeighed] = obj.elements.hexa.getDerBasisFAndDet(el,1);
+                            permMat = permMat/mu;
+                            Hs = pagemtimes(pagemtimes(N,'ctranspose',permMat,'none'),N);
+                            Hs = Hs.*reshape(dJWeighed,1,1,[]);
+                            HLoc = sum(Hs,3);
+                            clear Hs;
+                            s1 = obj.elements.nNodesElem(2)^2;
+                            % Computing the P matrix contribution
+                            PLoc = (alpha+poro*beta)*(N1'*diag(dJWeighed)*N1);
+                        end
+                        %Getting dof associated to Flow subphysic
+                        dof = obj.dofm.getLocDoF('Flow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+                        %dof = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
+                        [jjLoc,iiLoc] = meshgrid(dof,dof);
+                        iiVec(l1+1:l1+s1) = iiLoc(:);
+                        jjVec(l1+1:l1+s1) = jjLoc(:);
+                        HVec(l1+1:l1+s1) = HLoc(:);
+                        PVec(l1+1:l1+s1) = PLoc(:);
+                        l1 = l1 + s1;
+                      end
+                      % Assemble H and P matrices defined as new fields of
+                      % block Jacobian matrix
+                      obj.blockJ(i,j).H = sparse(iiVec,jjVec,HVec,obj.dofm.numDof(i),obj.dofm.numDof(j));
+                      obj.blockJ(i,j).P = sparse(iiVec,jjVec,PVec,obj.dofm.numDof(i),obj.dofm.numDof(j));
+                  end
+              end
+          end
+      end
     
+      
+
+
     function computeFlowStiffMatFV(obj,lw)
       % Inspired by MRST
       neigh1 = obj.faces.faceNeighbors(obj.isIntFaces,1);
-      neigh2 = obj.faces.faceNeighbors(obj.isIntFaces,2);
+      neigh2 = obj.faces.facendeNeighbors(obj.isIntFaces,2);
       tmpVec = lw.*obj.trans(obj.isIntFaces);
 %       tmpVec = lw.*tmpVec;
       sumDiagTrans = accumarray([neigh1; neigh2], ...
@@ -184,6 +262,23 @@ classdef Discretizer < handle
       end
     end
 
+    function computeFlowJacobian_Test(obj,dt,varargin)
+      nBlock = size(obj.blockJ,1);
+          for i=1:nBlock^2
+              if all(strcmp(obj.blockJ(i).physics,'Flow')) 
+                  % varargin -> statek,stateTmp,pkpt,dSwkpt,dlwkpt
+                  % IF SINGLE PHASE
+                  obj.blockJ(i).block = obj.simParams.theta*obj.blockJ(i).H + obj.blockJ(i).P/dt;
+                  if obj.model.isVariabSatFlow() && obj.simParams.isNewtonNLSolver()
+                    % Compute the additional terms of the Jacobian
+                    [JNewt] = computeNewtPartOfJacobian(obj,dt,varargin{1}, ...
+                      varargin{2},varargin{3},varargin{4},varargin{5});
+                    obj.J = obj.J + JNewt;
+                  end
+              end
+          end
+    end
+
     function computeFlowRHS(obj,statek,stateTmp,dt,lw)
       % Compute the residual of the flow problem
 %       obj.rhs = (obj.simParams.theta*obj.H + obj.P/dt)*stateTmp.pressure ...
@@ -199,6 +294,24 @@ classdef Discretizer < handle
         end
       end
     end
+
+    function computePoroRhs(obj,statek,stateTmp)
+      %loop trough rhs blocks to find coupled poromechanics residual 
+      nRhs = length(obj.blockRhs);
+      theta = obj.simParams.theta;
+      for i = 1:nRhs
+          if obj.blockRhs(i).physic == 'Poro' && obj.blockRhs(i).coupled
+              for j = 1:nRhs
+                  if all(strcmp(obj.blockJ(i,j).physics,'Poro'))
+                  obj.blockRhs.block(i) = theta*obj.blockJ(i,j)*
+                  end
+              end
+          end
+      
+      end
+    end
+
+
     
     function computePoroSyst(obj,state,dt)
       % Compute the Jacobian and residual of the geomechanical problem
@@ -288,6 +401,173 @@ classdef Discretizer < handle
       obj.J = sparse(iiVec,jjVec,JVec,obj.mesh.nNodes*obj.mesh.nDim, ...
                      obj.mesh.nNodes*obj.mesh.nDim);
     end
+
+    function computePoroSyst_Test(obj,state,dt)
+    % Compute the Jacobian and residual of the geomechanical problem
+      nBlock = size(obj.blockJ,1);
+      % Loop trough elements of blockJ matrix to find pairs PORO-PORO
+      for i=1:nBlock
+          for j=1:nBlock
+              if all(strcmp(obj.blockJ(i,j).physics,'Poro')) && ~obj.blockJ(i,j).coupling   
+                  subReg = obj.dofm.subDomains(obj.blockJ(i,j).subID).regions; %region for block's subdomain
+                  subCells = find(ismember(obj.mesh.cellTag,subReg)); %id of cells in subdomain
+                  nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]); 
+                  % Compute the stiffness (H) and mass (P) matrices for the flow problem by FEM
+                  iiVec = zeros(obj.nEntryKLoc*nSubCellsByType,1);
+                  jjVec = zeros(obj.nEntryKLoc*nSubCellsByType,1);
+                  KVec = zeros(obj.nEntryKLoc*nSubCellsByType,1);
+                  %
+                  l1 = 0;
+                  l2 = 0;
+                  for el=subCells'
+                    % Get the right material stiffness for each element
+                    switch obj.mesh.cellVTKType(el)
+                      case 10 % Tetrahedra
+                        N = getDerBasisF(obj.elements.tetra,el);
+                        vol = findVolume(obj.elements.tetra,el);
+                        B = zeros(6,4*obj.mesh.nDim);
+                        B(obj.elements.indB(1:36,2)) = N(obj.elements.indB(1:36,1));
+                        [D, sigma, status] = obj.material.updateMaterial(obj.mesh.cellTag(el), ...
+                             state.conv.stress(l2+1,:), ...
+                             state.curr.strain(l2+1,:), ...
+                             dt,state.conv.status(l2+1,:), el, state.t);
+                         state.curr.status(l2+1,:) = status;
+                         state.curr.stress(l2+1,:) = sigma;
+                       % D = obj.preP.getStiffMatrix(el,state.stress(l2+1,3)+state.iniStress(l2+1,3));
+                        KLoc = B'*D*B*vol;
+                        s1 = obj.nEntryKLoc(1);
+                        %
+            %             if obj.flCompRHS
+                          sz = sigma - state.iniStress(l2+1,:);
+                          fLoc = (B')*sz'*vol;
+                          s2 = 1;
+            %             end
+                      case 12 % Hexahedra
+                          [N,dJWeighed] = getDerBasisFAndDet(obj.elements.hexa,el,1);
+                          B = zeros(6,8*obj.mesh.nDim,obj.GaussPts.nNode);
+                          B(obj.elements.indB(:,2)) = N(obj.elements.indB(:,1));
+                          [D, sigma, status] = obj.material.updateMaterial(obj.mesh.cellTag(el), ...
+                             state.conv.stress(l2+1:l2+obj.GaussPts.nNode,:), ...
+                             state.curr.strain(l2+1:l2+obj.GaussPts.nNode,:), ...
+                             dt,state.conv.status(l2+1:l2+obj.GaussPts.nNode,:), el, state.t);
+                          state.curr.status(l2+1:l2+obj.GaussPts.nNode,:) = status;
+                          state.curr.stress((l2+1):(l2+obj.GaussPts.nNode),:) = sigma;
+                          Ks = pagemtimes(pagemtimes(B,'ctranspose',D,'none'),B);
+                          Ks = Ks.*reshape(dJWeighed,1,1,[]);
+                          KLoc = sum(Ks,3);
+                          clear Ks;
+                          s1 = obj.nEntryKLoc(2);
+                          sz = sigma - state.iniStress(l2+1:l2+obj.GaussPts.nNode,:);
+                          sz = reshape(sz',6,1,obj.GaussPts.nNode);
+                          fTmp = pagemtimes(B,'ctranspose',sz,'none');
+                          fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
+                          fLoc = sum(fTmp,3);
+                          s2 = obj.GaussPts.nNode;
+                    end
+                    %
+                    dof = obj.dofm.getLocDoF('Poro',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+                    [jjLoc,iiLoc] = meshgrid(dof,dof);
+                    iiVec(l1+1:l1+s1) = iiLoc(:);
+                    jjVec(l1+1:l1+s1) = jjLoc(:);
+                    KVec(l1+1:l1+s1) = KLoc(:);
+                    % Accumulate the residual contributions - 
+                    % theta method not required for uncoupled Poromechanics
+                      obj.blockRhs(i).block(dof) = obj.blockRhs(i).block(dof) + fLoc;
+            %         end
+                    l1 = l1 + s1;
+                    l2 = l2 + s2;
+                  end
+                  % Populate the Jacobian
+                  obj.blockJ(i,j).block = sparse(iiVec,jjVec,KVec,obj.mesh.nNodes*obj.mesh.nDim, ...
+                                 obj.mesh.nNodes*obj.mesh.nDim);
+              end
+          end
+      end
+    end
+
+    function computePoroCoupled_Test(obj,state,dt)
+    % Compute the Jacobian and residual of the geomechanical problem
+      nBlock = size(obj.blockJ,1);
+      % Loop trough elements of blockJ matrix to find pairs PORO-PORO
+      for i=1:nBlock
+          for j=1:nBlock
+              if all(strcmp(obj.blockJ(i,j).physics,'Poro')) && obj.blockJ(i,j).coupling   
+                  subReg = obj.dofm.subDomains(obj.blockJ(i,j).subID).regions; %region for block's subdomain
+                  subCells = find(ismember(obj.mesh.cellTag,subReg)); %id of cells in subdomain
+                  nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]); 
+                  % Compute the stiffness (H) and mass (P) matrices for the flow problem by FEM
+                  iiVec = zeros(obj.nEntryKLoc*nSubCellsByType,1);
+                  jjVec = zeros(obj.nEntryKLoc*nSubCellsByType,1);
+                  KVec = zeros(obj.nEntryKLoc*nSubCellsByType,1);
+                  %
+                  l1 = 0;
+                  l2 = 0;
+                  for el=subCells'
+                    % Get the right material stiffness for each element
+                    switch obj.mesh.cellVTKType(el)
+                      case 10 % Tetrahedra
+                        N = getDerBasisF(obj.elements.tetra,el);
+                        vol = findVolume(obj.elements.tetra,el);
+                        B = zeros(6,4*obj.mesh.nDim);
+                        B(obj.elements.indB(1:36,2)) = N(obj.elements.indB(1:36,1));
+                        [D, sigma, status] = obj.material.updateMaterial(obj.mesh.cellTag(el), ...
+                             state.conv.stress(l2+1,:), ...
+                             state.curr.strain(l2+1,:), ...
+                             dt,state.conv.status(l2+1,:), el, state.t);
+                         state.curr.status(l2+1,:) = status;
+                         state.curr.stress(l2+1,:) = sigma;
+                       % D = obj.preP.getStiffMatrix(el,state.stress(l2+1,3)+state.iniStress(l2+1,3));
+                        KLoc = B'*D*B*vol;
+                        s1 = obj.nEntryKLoc(1);
+                        %
+            %             if obj.flCompRHS
+                          sz = sigma - state.iniStress(l2+1,:);
+                          fLoc = (B')*sz'*vol;
+                          s2 = 1;
+            %             end
+                      case 12 % Hexahedra
+                          [N,dJWeighed] = getDerBasisFAndDet(obj.elements.hexa,el,1);
+                          B = zeros(6,8*obj.mesh.nDim,obj.GaussPts.nNode);
+                          B(obj.elements.indB(:,2)) = N(obj.elements.indB(:,1));
+                          [D, sigma, status] = obj.material.updateMaterial(obj.mesh.cellTag(el), ...
+                             state.conv.stress(l2+1:l2+obj.GaussPts.nNode,:), ...
+                             state.curr.strain(l2+1:l2+obj.GaussPts.nNode,:), ...
+                             dt,state.conv.status(l2+1:l2+obj.GaussPts.nNode,:), el, state.t);
+                          state.curr.status(l2+1:l2+obj.GaussPts.nNode,:) = status;
+                          state.curr.stress((l2+1):(l2+obj.GaussPts.nNode),:) = sigma;
+                          Ks = pagemtimes(pagemtimes(B,'ctranspose',D,'none'),B);
+                          Ks = Ks.*reshape(dJWeighed,1,1,[]);
+                          KLoc = sum(Ks,3);
+                          clear Ks;
+                          s1 = obj.nEntryKLoc(2);
+                          sz = sigma - state.iniStress(l2+1:l2+obj.GaussPts.nNode,:);
+                          sz = reshape(sz',6,1,obj.GaussPts.nNode);
+                          fTmp = pagemtimes(B,'ctranspose',sz,'none');
+                          fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
+                          fLoc = sum(fTmp,3);
+                          s2 = obj.GaussPts.nNode;
+                    end
+                    %
+                    dof = obj.dofm.getLocDoF('Poro',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+                    [jjLoc,iiLoc] = meshgrid(dof,dof);
+                    iiVec(l1+1:l1+s1) = iiLoc(:);
+                    jjVec(l1+1:l1+s1) = jjLoc(:);
+                    KVec(l1+1:l1+s1) = KLoc(:);
+                    % Accumulate the residual contributions - 
+                    % theta method not required for uncoupled Poromechanics
+                    % obj.blockRhs(i).block(dof) = obj.blockRhs(i).block(dof) + fLoc;
+            %         end
+                    l1 = l1 + s1;
+                    l2 = l2 + s2;
+                  end
+                  % Populate the Jacobian 
+                  % Coupled Poro Block is already multiplied by theta
+                  obj.blockJ(i,j).block = obj.simParams.theta*sparse(iiVec,jjVec,KVec,obj.mesh.nNodes*obj.mesh.nDim, ...
+                                 obj.mesh.nNodes*obj.mesh.nDim);
+              end
+          end
+      end
+    end
     
     
      function computePoroCoupled(obj,state,dt)
@@ -304,10 +584,10 @@ classdef Discretizer < handle
       for el=1:obj.mesh.nCells
         % Get the right material stiffness for each element
         switch obj.mesh.cellVTKType(el)
-          case 10 % Tetrahedra
+          case 10 % Tetrahedraobj.dof
            N = getDerBasisF(obj.elements.tetra,el);
-            vol = findVolume(obj.elements.tetra,el);
-            B = zeros(6,4*obj.mesh.nDim);
+            vol = findVolume(obj.dofm.elements.tetra,el);
+            B = zerosobj.dof(6,4*obj.mesh.nDim);
             B(obj.elements.indB(1:36,2)) = N(obj.elements.indB(1:36,1));
             [D, sigma, status] = obj.material.updateMaterial(obj.mesh.cellTag(el), ...
                  state.conv.stress(l2+1,:), ...
@@ -492,7 +772,7 @@ classdef Discretizer < handle
     function setDiscretizer(obj,symmod,params,dofManager,grid,mat,data)
       obj.model = symmod;
       obj.simParams = params;
-      obj.dof = dofManager;
+      obj.dofm = dofManager;
       obj.mesh = grid.topology;
       obj.elements = grid.cells;
       obj.faces = grid.faces;
@@ -507,7 +787,7 @@ classdef Discretizer < handle
       %
       obj.nEntryKLoc = (obj.mesh.nDim^2)*(obj.elements.nNodesElem).^2;
       %
-      initializeBlockJacobian(obj)
+      initializeBlockJacobianAndRhs(obj)
       %%% richards model -  will be checked in the future %%%%%%%%%%%%%%%%
       if obj.model.isFVTPFABased('Flow')
         obj.computeTrans;
@@ -518,7 +798,7 @@ classdef Discretizer < handle
       end
       %
       if obj.model.isFlow()
-        computeFlowRHSGravTerm(obj);
+        computeFlowRHSGravTerm_Test(obj);
       end
 %       if isSinglePhaseFlow(obj.model)
 %         obj.fOld = zeros(obj.mesh.nNodes,1);
@@ -623,6 +903,56 @@ classdef Discretizer < handle
       % SOURCE/SINK CONTRIBUTION IS MISSING AT THE MOMENT
 %       obj.fOld = obj.fConst;
     end
+
+    function computeFlowRHSGravTerm_Test(obj)
+      % Compute the gravity contribution
+      % Get the fluid specific weight and viscosity
+      gamma = obj.material.getFluid().getFluidSpecWeight();
+      if gamma > 0
+          nBlock = length(obj.blockRhs);
+%         mu = obj.material.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();
+            if isFEMBased(obj.model,'Flow')
+                for i = 1:nBlock
+                    if obj.blockRhs(i).physic == 'Flow'
+                      obj.blockRhs(i).rhsGrav = obj.blockRhs(i).block;
+                      subReg = obj.dofm.subDomains(obj.dofm.subList(i)).regions; %region for block's subdomain
+                      subCells = find(ismember(obj.mesh.cellTag,subReg)); %id of cells in subdomain
+                      %nSubCells = length(subCells); %number of cells in subdomain
+                      for el = subCells'
+                        % Get the material permeability
+                        permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+            %             permMat = permMat/mu;
+                        switch obj.mesh.cellVTKType(el)
+                          case 10 % Tetrahedra
+                            N = obj.elements.tetra.getDerBasisF(el);
+              %               volSign = getVolumeSign(obj.elements,el);
+            %                 vol = getVolume(obj.elements,el);
+              %               fLoc = (N'*permMat(:,3))*volSign*vol*gamma;
+                            fLoc = (N'*permMat(:,3))*obj.elements.vol(el)*gamma;
+                          case 12 % Hexa
+                            [N,dJWeighed] = obj.elements.hexa.getDerBasisFAndDet(el,1);
+                            fs = pagemtimes(N,'ctranspose',permMat(:,3),'none');
+                            fs = fs.*reshape(dJWeighed,1,1,[]);
+                            fLoc = sum(fs,3)*gamma;
+                        end
+                        %
+                        dof = obj.dofm.getLocDoF('Flow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+                        obj.blockRhs(i).rhsGrav(dof)  = obj.blockRhs(i).rhsGrav(dof)  + fLoc;
+                      end
+                    end
+                end
+             elseif isFVTPFABased(obj.model,'Flow')
+                  neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+        %           nr = nnz(obj.isIntFaces);
+                  zVec = obj.elements.cellCentroid(:,3);
+                  zNeigh = zVec(neigh);
+                  obj.RHSGravTerm = gamma*obj.trans(obj.isIntFaces).*(zNeigh(:,1) - zNeigh(:,2));
+            end
+      end
+      % Initializing fOld
+      % SOURCE/SINK CONTRIBUTION IS MISSING AT THE MOMENT
+%       obj.fOld = obj.fConst;
+    end
     
     function gTerm = finalizeRHSGravTerm(obj,lw)
       % varargin{1} -> lw
@@ -638,22 +968,21 @@ classdef Discretizer < handle
     
     function initializeBlockJacobianAndRhs(obj)
         %block dimension of the Jacobian matrix
-        dim = length(obj.dof.subList);
-        obj.blockJ = repmat(struct('block',[],'subID',[],'physics',[],'coupling',[]),dim,dim);
-        obj.blockRhs = repmat(struct('block',[],'subID',[],'physic',[]),dim);
+        dim = length(obj.dofm.subList);
+        obj.blockJ = repmat(struct('block',[],'subID',[],'physics',[],'coupling',[]),dim);
+        obj.blockRhs = repmat(struct('block',[],'subID',[],'physic',[]),dim,1);
         for i = 1:dim
-            subID = obj.dof.subList(i);
+            subID = obj.dofm.subList(i);
             obj.blockRhs(i).subID = subID;
-            obj.blockRhs(i).physic = obj.dof.subDomains(subID).subPhysics(i);
-            obj.blockRhs(i).block = zeros(obj.dof.numDof(i),1);
+            obj.blockRhs(i).physic = obj.dofm.subPhysics(i);
+            obj.blockRhs(i).block = zeros(obj.dofm.numDof(i),1);
+            obj.blockRhs(i).coupling = obj.dofm.subDomains(subID).coupling;
             for j=1:dim
-                subID = obj.dof.subList(i);
+                subID = obj.dofm.subList(i);
                 obj.blockJ(i,j).subID = subID;
-                obj.blockJ(i,j).physics = obj.dof.subDomains(subID).physics([i j]);
-                obj.blockJ(i,j).block = sparse(obj.dof.numDof(i),obj.dof.numDof(j));
-                if obj.blockJ(i,j).physics(1) ~= obj.blockJ(i,j).physics(2) && obj.dof.subDomains(subID).coupling == "Coupled"
-                    obj.blockJ(i,j).coupling = true;
-                end
+                obj.blockJ(i,j).physics = obj.dofm.subPhysics([i j]);
+                obj.blockJ(i,j).block = sparse(obj.dofm.numDof(i),obj.dofm.numDof(j));
+                obj.blockJ(i,j).coupling = obj.dofm.subDomains(subID).coupling;
             end
         end  
     end

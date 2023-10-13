@@ -59,11 +59,11 @@ classdef DoFManager < handle
                          if length(physics) < 3
                              error('Coupled models need at least two physics')
                          else
-                             obj.subDomains(subID).coupling = "Coupled";
+                             obj.subDomains(subID).coupling = true;
                              physics = physics(2:end);
                          end
                      else
-                         obj.subDomains(subID).coupling = "Uncoupled";
+                         obj.subDomains(subID).coupling = false;
                      end
                      physics = rename(physics);
                      obj.subDomains(subID).regions = domainRegions;
@@ -81,7 +81,12 @@ classdef DoFManager < handle
                     obj.physicsList = physics;
                     obj.subDomains(1).physics = physics;
                     obj.subDomains(1).regions = (1:mesh.nCellTag)';
-                    obj.subDomains(1).coupling = "Coupled";  
+                    if length(physics) == 2
+                        obj.subDomains(1).coupling = true;  
+                    else
+                        obj.subDomains(1).coupling = false;
+                    end
+                    
                     obj.subDomains = obj.subDomains(1);
             end
             obj.ncomp = ones(length(obj.physicsList),1)+(mesh.nDim-1)*ismember(obj.physicsList,"Poro");
@@ -142,6 +147,7 @@ classdef DoFManager < handle
         
         function dofs = getDoF(obj,physic,varargin)
             %Return Global DOFs associated to entities
+            %Needed to map global Dofs with local solution arrays
             physic = translatePhysic(physic);
             col = obj.getColTable(physic);
             if isFEMBased(obj.model,physic) 
@@ -164,7 +170,7 @@ classdef DoFManager < handle
         
         function dofs = getLocDoF(obj,physic,varargin)
             %Return Local subPhysics DOFs associated to entities
-            %Needed for ApplyBCAndForces
+            %Needed for ApplyBCAndForces and matrix assembly
             physic = translatePhysic(physic);
             col = obj.getColTable(physic);
             if isFEMBased(obj.model,physic) 
