@@ -159,7 +159,7 @@ classdef State < matlab.mixin.Copyable
     
     function [fluidPot] = finalizeStateFlow(obj)
       fluidPot = obj.pressure;
-      gamma = obj.material.getMaterial(obj.mesh.nCellTag+1).getFluidSpecWeight();
+      gamma = obj.material.getFluid().getFluidSpecWeight();
       if gamma > 0
         if isFEMBased(obj.model,'Flow')
           fluidPot = fluidPot + gamma*obj.mesh.coordinates(:,3);
@@ -343,7 +343,7 @@ classdef State < matlab.mixin.Copyable
     
    
     function applyHydroStatCond(obj,watlev,max_z)
-        gamma_w = obj.material.getMaterial(obj.mesh.nCellTag+1).getFluidSpecWeight();
+        gamma_w = obj.material.getFluid().getFluidSpecWeight();
            if isPoromechanics(obj.model)
             l1 = 0;
             for el = 1:obj.mesh.nCells

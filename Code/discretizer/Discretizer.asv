@@ -303,7 +303,7 @@ classdef Discretizer < handle
           if obj.blockRhs(i).physic == 'Poro' && obj.blockRhs(i).coupled
               for j = 1:nRhs
                   if all(strcmp(obj.blockJ(i,j).physics,'Poro'))
-                  %obj.blockRhs.block(i) = theta*obj.blockJ(i,j);
+                  obj.blockRhs.block(i) = theta*obj.blockJ(i,j)*
                   end
               end
           end

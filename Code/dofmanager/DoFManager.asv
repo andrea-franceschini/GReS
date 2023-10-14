@@ -9,7 +9,7 @@ classdef DoFManager < handle
         model 
         
     end
-
+    
     properties (Access = public)
         subDomains %subDomain database 
         elemDofTable %table map elements ---> dof
@@ -81,12 +81,7 @@ classdef DoFManager < handle
                     obj.physicsList = physics;
                     obj.subDomains(1).physics = physics;
                     obj.subDomains(1).regions = (1:mesh.nCellTag)';
-                    if length(physics) == 2
-                        obj.subDomains(1).coupling = true;  
-                    else
-                        obj.subDomains(1).coupling = false;
-                    end
-                    
+                    obj.subDomains(1).coupling = ture  
                     obj.subDomains = obj.subDomains(1);
             end
             obj.ncomp = ones(length(obj.physicsList),1)+(mesh.nDim-1)*ismember(obj.physicsList,"Poro");

@@ -3,7 +3,9 @@ classdef Materials < handle
 
   properties (Access = private)
     % Creation of a Dictionary object (faster than map)
-    db = configureDictionary("double","struct")
+    %db = configureDictionary("double","struct"); 
+    % configureDictionary is not supported before 2023b
+    db = containers.Map('KeyType','double','ValueType','any')
     matMap
   end
 
@@ -23,7 +25,7 @@ classdef Materials < handle
       % since it is highly expensive
 %       if (obj.db.isKey(matID))
         [matID,~] = find(obj.matMap == cellID);
-        assert(length(matID)==1,['Multiple materials assigned to elements',...
+        assert(length(matID)==1,['Zero or Multiple materials assigned to elements',...
             ' with cellTags %i'], cellID)
         mat = obj.db(matID);
 %       else
@@ -36,7 +38,7 @@ classdef Materials < handle
     function fluidMat = getFluid(obj)
         %fluid materials corresponds to null rows in materials map. 
         %Fluid are not assigned to any cellTag
-        f= find(sum(obj.matMap,2)==0);
+        f = find(sum(obj.matMap,2)==0);
         fluidMat = obj.db(f);
     end
     
