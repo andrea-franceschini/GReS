@@ -171,9 +171,6 @@ errNormpdisp = sqrt(errdisp2'*volNod);
 
 
 
-
-
-
 %%
 
 

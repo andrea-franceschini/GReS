@@ -2,14 +2,13 @@ classdef DoFManager < handle
     %DOFMANAGER Summary of this class goes here
     %   general subdomain manager
     %   associates a degree of freedom to nodes
-    
     properties (Access = private)
         physicsList = "" %list of activated physics in the model
         ncomp %number of components for every physic in physicsList
         model 
         
     end
-    
+
     properties (Access = public)
         subDomains %subDomain database 
         elemDofTable %table map elements ---> dof
