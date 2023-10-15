@@ -84,6 +84,7 @@ classdef NonLinearSolver < handle
             % compute Jacobian and residual of coupled hydro-mechanics
             % problem       
           linSyst.computePoroSyst_Test(obj.stateTmp,obj.dt);  
+          linSyst.computePoroRhs(obj.statek,obj.stateTmp)
           linSyst.computeCoupleSyst(obj.simParameters.theta,delta_t,obj.statek,obj.stateTmp)
         elseif isPoromechanics(obj.model) 
           % Compute Jacobian and residual of the poromechanical problem

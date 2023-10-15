@@ -111,7 +111,6 @@ classdef DoFManager < handle
             phCount = 0;
             for subID = 1:length(obj.subDomains)
                 for i=1:length(obj.physicsList)
-                    phCount = phCount + 1;
                     %get column of dofTable taken by physics(i)
                     if any(obj.subDomains(subID).physics == obj.physicsList(i))
                         col = obj.getColTable(obj.physicsList(i));
@@ -120,20 +119,26 @@ classdef DoFManager < handle
                         %the specified physics in DofTable
                         nodesList = unique(mesh.cells(ismember(mesh.cellTag,obj.subDomains(subID).regions),:));
                         nodesList = nodesList(obj.nodeDofTable(nodesList, col(1))==0); %removing nodes with DOF already assigned
-                        numDofTable(subID,i) = length(nodesList)*obj.ncomp(i);
-                        localDofs =  reshape(1:numDofTable(subID,i),obj.ncomp(i),length(nodesList));
-                        globalDofs = dofCount + localDofs;
-                        obj.nodeDofTable(nodesList,col,1) = globalDofs';
-                        obj.nodeDofTable(nodesList,col,2) = localDofs';
-                        obj.nodeDofTable(nodesList,col,3) = phCount;
+                        if ~isempty(nodesList)
+                            numDofTable(subID,i) = length(nodesList)*obj.ncomp(i);
+                            localDofs =  reshape(1:numDofTable(subID,i),obj.ncomp(i),length(nodesList));
+                            globalDofs = dofCount + localDofs;
+                            obj.nodeDofTable(nodesList,col,1) = globalDofs';
+                            obj.nodeDofTable(nodesList,col,2) = localDofs';
+                            phCount = phCount + 1;
+                            obj.nodeDofTable(nodesList,col,3) = phCount;
+                        end
                         elseif isFVTPFABased(obj.model,obj.physicsList(i))
                         elemList = find(ismember(mesh.cellTag,obj.subDomains(subID).regions));
-                        numDofTable(subID,i) = length(elemList)*obj.ncomp(i);
-                        localDofs = reshape(1:numDofTable(subID,i),obj.ncomp(i),length(elemList));
-                        globalDofs = dofCount + localDofs; 
-                        obj.elemDofTable(elemList,col,1) = globalDofs';
-                        obj.elemDofTable(elemList,col,2) = localDofs';
-                        obj.elemDofTable(elemList,col,3) = phCount;
+                        if ~isempty(elemList)
+                            numDofTable(subID,i) = length(elemList)*obj.ncomp(i);
+                            localDofs = reshape(1:numDofTable(subID,i),obj.ncomp(i),length(elemList));
+                            globalDofs = dofCount + localDofs; 
+                            obj.elemDofTable(elemList,col,1) = globalDofs';
+                            obj.elemDofTable(elemList,col,2) = localDofs';
+                            phCount = phCount + 1;
+                            obj.elemDofTable(elemList,col,3) = phCount;
+                        end
                         end
                         dofCount = dofCount + numDofTable(subID,i);
                     end
@@ -171,22 +176,35 @@ classdef DoFManager < handle
         function dofs = getLocDoF(obj,physic,varargin)
             %Return Local subPhysics DOFs associated to entities
             %Needed for ApplyBCAndForces and matrix assembly
-            physic = translatePhysic(physic);
-            col = obj.getColTable(physic);
-            if isFEMBased(obj.model,physic) 
-                if isempty(varargin)
-                    dofs = (obj.nodeDofTable(:,col,2))';
-                else
-                    entities = varargin{1};
-                    dofs = (obj.nodeDofTable(entities,col,2))';
+            if ischar(physic)
+                physic = translatePhysic(physic);
+                col = obj.getColTable(physic);
+                if isFEMBased(obj.model,physic) 
+                    if isempty(varargin)
+                        dofs = (obj.nodeDofTable(:,col,2))';
+                    else
+                        entities = varargin{1};
+                        dofs = (obj.nodeDofTable(entities,col,2))';
+                    end
+                elseif isFVTPFABased(obj.model,physic)
+                    if isempty(varargin)
+                        dofs = (obj.elemDofTable(:,col,2))';
+                    else 
+                        entities = varargin{1};
+                        dofs = (obj.elemDofTable(entities,col,2))';
+                    end
                 end
-            elseif isFVTPFABased(obj.model,physic)
-                if isempty(varargin)
-                    dofs = (obj.elemDofTable(:,col,2))';
-                else 
-                    entities = varargin{1};
-                    dofs = (obj.elemDofTable(entities,col,2))';
+            else %if input is subPhysic ID
+                if isFEMBased(obj.model,obj.subPhysics(physic))
+                    [row,~] = find(obj.nodeDofTable(:,:,3)==physic);
+                elseif isFVTPFABased(obj.model,physic)
+                    [row,~] = find(obj.elemDofTable(:,:,3)==physic);
                 end
+                    ncomps = obj.ncomp(obj.physicsList == obj.subPhysics(physic));
+                    row = (reshape(row,[],ncomps))';
+                    tmp = [0;1;2];
+                    tmp = tmp(1:ncomps);
+                    dofs = row(:)*length(tmp)-repmat(flip(tmp),size(row,2),1);     
             end
             dofs = dofs(:);
         end

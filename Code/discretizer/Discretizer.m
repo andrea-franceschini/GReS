@@ -295,19 +295,21 @@ classdef Discretizer < handle
       end
     end
 
-    function computePoroRhs(obj,statek,stateTmp)
+    function computePoroRhs(obj,statek,stateTmp) 
       %loop trough rhs blocks to find coupled poromechanics residual 
       nRhs = length(obj.blockRhs);
       theta = obj.simParams.theta;
       for i = 1:nRhs
-          if obj.blockRhs(i).physic == 'Poro' && obj.blockRhs(i).coupled
+          if strcmp(obj.blockRhs(i).physic,'Poro') && obj.blockRhs(i).coupling
               for j = 1:nRhs
                   if all(strcmp(obj.blockJ(i,j).physics,'Poro'))
-                  %obj.blockRhs.block(i) = theta*obj.blockJ(i,j);
+                    dofs = obj.dofm.getLocDoF(j);  
+                    obj.blockRhs(i).block = obj.blockRhs(i).block + ...
+                        theta*obj.blockJ(i,j).block*stateTmp.dispCurr(dofs) + ...
+                        (1-theta)*obj.blockJ(i,j).block*statek.dispConv(dofs);
                   end
               end
           end
-      
       end
     end
 
@@ -586,8 +588,8 @@ classdef Discretizer < handle
         switch obj.mesh.cellVTKType(el)
           case 10 % Tetrahedraobj.dof
            N = getDerBasisF(obj.elements.tetra,el);
-            vol = findVolume(obj.dofm.elements.tetra,el);
-            B = zerosobj.dof(6,4*obj.mesh.nDim);
+            vol = findVolume(obj.elements.tetra,el);
+            B = zeros(6,4*obj.mesh.nDim);
             B(obj.elements.indB(1:36,2)) = N(obj.elements.indB(1:36,1));
             [D, sigma, status] = obj.material.updateMaterial(obj.mesh.cellTag(el), ...
                  state.conv.stress(l2+1,:), ...
