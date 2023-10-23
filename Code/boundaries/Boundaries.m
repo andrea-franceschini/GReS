@@ -106,6 +106,9 @@ classdef Boundaries < handle
               list = obj.dof.elemDofTable(loadedEnts,col);
           end
       end
+      if any(list == 0)
+          error('Boundary conditions %s not supported from subdomain',identifier)
+      end
                
     end
     

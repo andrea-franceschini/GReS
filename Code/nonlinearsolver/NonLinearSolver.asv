@@ -121,8 +121,8 @@ classdef NonLinearSolver < handle
         applyBCandForces_test(obj.model, obj.grid, obj.bound, obj.material, ...
           obj.t, linSyst, obj.stateTmp);
 %         obj.bound.applyBCNeu(linSyst);
-        %rhsNorm1 = norm(linSyst.rhs,obj.simParameters.pNorm);
-        rhsNorm = computeRhsNorm(obj,linSyst);
+        rhsNorm1 = norm(linSyst.rhs,obj.simParameters.pNorm);
+        rhsNorm2 = computeRhsNorm(obj,linSyst);
         linSyst.resetJacobianAndRhs();
 %         obj.bound.applyBCDir(linSyst);
 %         obj.bound.applyBCNeu(linSyst);
@@ -161,8 +161,8 @@ classdef NonLinearSolver < handle
           applyBCandForces_test(obj.model, obj.grid, obj.bound, obj.material, ...
             obj.t, linSyst, obj.stateTmp);
 %           obj.bound.applyBCNeu(linSyst);
-          %rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
-          rhsNorm= computeRhsNorm(obj,linSyst);
+          rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
+          rhsNorm2= computeRhsNorm(obj,linSyst);
           linSyst.resetJacobianAndRhs();
 %           obj.bound.applyBCDir(linSyst);
 %           obj.bound.applyBCNeu(linSyst);
@@ -334,11 +334,11 @@ classdef NonLinearSolver < handle
     function rhsNorm = computeRhsNorm(obj,syst)
         %Return maximum norm of all Rhs block
         nRhs = length(syst.dofm.subList);
-        rhs = zeros(nRhs,1);
-        l1 = 0;
+        rhs = zeros(nRhs);
+        l1 = 1
         for i = 1:nRhs
             ncomp = syst.dofm.numDof(i);
-            rhs(i) = norm(syst.rhs(l1+1:l1+ncomp), obj.simParameters.pNorm);
+            rhs(i) = norm(syst.rhs(l1+1,l1+ncomp), obj.simParameters.pNorm);
             l1 = l1 + ncomp;
         end
         rhsNorm = max(rhs);

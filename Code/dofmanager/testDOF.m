@@ -13,10 +13,10 @@ fileName = 'materialsList.dat';
 %
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
-test = mat.getMaterial(1);
+test = mat.getMaterial(2);
 testf = mat.getFluid();
 
-%---------------------------------------------------------------------
+%----------------------------- TOPOLOGY -----------------------------
 
 
 %%%% SET UP THE TEST GRID
@@ -29,14 +29,14 @@ faces = Faces(model, topology);
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
-%%%TESTING DOF MANAGER CLASS
+%----------------------------- DOF MANAGER -----------------------------
 fileName = 'dof.dat';
 dofmanager = DoFManager(topology, model, fileName);
 test = dofmanager.getDofTables();
 testdof = dofmanager.getLocDoF('Flow');
 %tab = getSubTable(dofmanager,2);
 
-%%% TEST BCs ACCESS TO DOFS 
+%----------------------------- BOUNDARY CONDITIONS -----------------------------
 % Set the input file
 fileName = ["dir_BC_flow_tetra.dat","dir_BC_poro_tetra.dat","neuSurf_BC_poro_tetra.dat"];
 %
@@ -44,10 +44,10 @@ fileName = ["dir_BC_flow_tetra.dat","dir_BC_poro_tetra.dat","neuSurf_BC_poro_tet
 % conditions
 bound = Boundaries(fileName,model,grid,dofmanager);
 
-% Set state object
+%----------------------------- STATE -----------------------------
 resState = State(model,grid,mat);
 
-% Create and set the print utility
+%----------------------------- PRINT -----------------------------
 printUtils = OutState(model,mat,grid,'outTime.dat');
 %
 % Print the reservoir initial state

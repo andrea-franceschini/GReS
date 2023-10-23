@@ -33,32 +33,27 @@ mat = Materials(model,fileName);
 %GaussPts = Gauss(12,2,3);
 % Create an object of the "Elements" class and process the element properties
 elems = Elements(topology);
-
-%xvector = topology.coordinates(:,1);
-%zvector = topology.coordinates(:,3);
-
-%mandel_analytical;
-%saving coordinates for later use
-%save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution\xmesh.dat xvector  -ascii
-%save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution\zmesh.dat zvector  -ascii
-%
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);
 %
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
+%----------------------------- DOF MANAGER -----------------------------
+fileName = 'dof.dat';
+dofmanager = DoFManager(topology, model, fileName);
+
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
 % Set the input file
-fileName = ["bottom_fixed.dat","top_drained.dat","flux.dat","Impermeable.dat","lateral_fix.dat"];
+fileName = ["bottom_fixed.dat","flux.dat","lateral_fix.dat"];
 %
 % BClist = fileName;
 % BCtable = {1,2,[1 3 4],3,4};
 % [entities_list,surf_list] = writeBC(grid,BCtable,BClist);
 %Create an object of the "Boundaries" class and read the boundary
 %conditions
-bound = Boundaries(fileName,model,grid);
+bound = Boundaries(fileName,model,grid,dofmanager);
 
 
 %
@@ -93,7 +88,7 @@ printUtils.printState(resState);
 %
 
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,grid,mat,bound,printUtils,resState);
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();

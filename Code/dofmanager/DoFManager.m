@@ -171,11 +171,36 @@ classdef DoFManager < handle
                 end
             end
             dofs = dofs(:);
+            dofs = nonzeros(dofs);
+        end
+
+
+        function subPh = getSubPhysic(obj,physic,varargin)
+            %Return Global DOFs associated to entities
+            %Needed to map global Dofs with local solution arrays
+            physic = translatePhysic(physic);
+            col = obj.getColTable(physic);
+            if isFEMBased(obj.model,physic) 
+                if isempty(varargin)
+                    subPh = (obj.nodeDofTable(:,col,3))';
+                else
+                    entities = varargin{1};
+                    subPh = (obj.nodeDofTable(entities,col,3))';
+                end
+            elseif isFVTPFABased(obj.model,physic)
+                if isempty(varargin)
+                    subPh = (obj.elemDofTable(:,col,3))';
+                else 
+                    entities = varargin{1};
+                    subPh = (obj.elemDofTable(entities,col,3))';
+                end
+            end
+            subPh = subPh(:);
         end
         
         function dofs = getLocDoF(obj,physic,varargin)
             %Return Local subPhysics DOFs associated to entities
-            %Needed for ApplyBCAndForces and matrix assembly
+            %Needed for matrix assembly
             if ischar(physic)
                 physic = translatePhysic(physic);
                 col = obj.getColTable(physic);
@@ -207,6 +232,23 @@ classdef DoFManager < handle
                     dofs = row(:)*length(tmp)-repmat(flip(tmp),size(row,2),1);     
             end
             dofs = dofs(:);
+            dofs = nonzeros(dofs);
+        end
+
+        function ents = getEntities(obj,physic)
+            %return indices of solution vector associated to input physic
+            physic = translatePhysic(physic);
+            col = obj.getColTable(physic);
+            ncom = length(col);
+            if isFEMBased(obj.model,physic)
+                [ents,~] = find(obj.nodeDofTable(:,col) > 0);
+            elseif isFVTPFABased(obj.model,physic)
+                [ents,~] = find(obj.elemDofTable > 0);
+            end
+            ents = (reshape(ents,[],ncom))';
+            tmp = [0;1;2];
+            tmp = tmp(1:ncom);
+            ents = ents(:)*length(tmp)-repmat(flip(tmp),size(ents,2),1);     
         end
             
         

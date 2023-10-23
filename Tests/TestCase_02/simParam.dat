@@ -4,7 +4,7 @@
 200                % Maximum time step size
 Default        % Time step increment augmentation factor (multiplicative)
 Default               % Time step increment chopping factor (multiplicative)
-1000         % Pressure increment target between consecutive time steps
+1000000000         % Pressure increment target between consecutive time steps
 Default               % Relaxation factor for time step increment
 Default               % Theta parameter for Newmark method (time integration)
 Default               % Relative tolerance for the nonlinear solver

@@ -127,6 +127,58 @@ classdef State < matlab.mixin.Copyable
       end
     end
     
+      function updateState_test(obj,dSol,dofm)
+      %METHOD1 Summary of this method goes here
+      %   Detailed explanation goes here
+      %solution vectors update will exploit the DofManager map
+
+       if isPoromechanics(obj.model)
+        glob = dofm.getDoF('Poro');
+        loc = dofm.getEntities('Poro');
+        obj.dispCurr(loc) = obj.dispCurr(loc) + dSol(glob);
+        %
+        du = obj.dispCurr - obj.dispConv;
+        %
+        % Update stress
+        l = 0;
+        for el=1:obj.mesh.nCells
+          dof = getDoFID(obj.mesh,el);
+          switch obj.mesh.cellVTKType(el)
+            case 10 % Tetra
+              N = getDerBasisF(obj.elements.tetra,el);
+              B = zeros(6,4*obj.mesh.nDim);
+              B(obj.elements.indB(1:36,2)) = N(obj.elements.indB(1:36,1));
+              obj.curr.strain(l+1,:) = (B*du(dof))';
+              l = l + 1;
+            case 12 % Hexa
+              N = getDerBasisFAndDet(obj.elements.hexa,el,2);
+              B = zeros(6,8*obj.mesh.nDim,obj.GaussPts.nNode);
+              B(obj.elements.indB(:,2)) = N(obj.elements.indB(:,1));
+%               D = obj.preP.getStiffMatrix(el,obj.stress(l+1:l+obj.GaussPts.nNode,3) ...
+%                   + obj.iniStress(l+1:l+obj.GaussPts.nNode,3));  % obj.stress before being updated
+%               dStress = pagemtimes(D,pagemtimes(B,dSol(dof)));
+%               obj.stress((l+1):(l+obj.GaussPts.nNode),:) = ...
+%                 obj.stress((l+1):(l+obj.GaussPts.nNode),:) + ...
+%                 reshape(dStress,6,obj.GaussPts.nNode)';
+  %             vol = getVolume(obj.elements,el); % Volumetric average
+  %             dStress = dStress.*reshape(dJWeighed,1,1,[]);
+  %             obj.avStress(el,:) = sum(dStress,3)/vol;
+              obj.curr.strain((l+1):(l+obj.GaussPts.nNode),:) = ...
+                reshape(pagemtimes(B,du(dof)),6,obj.GaussPts.nNode)';
+              l = l + obj.GaussPts.nNode;
+          end
+        end
+       end
+
+       if isFlow(obj.model)
+           glob = dofm.getDoF('Flow');
+           loc = dofm.getEntities('Flow');
+           obj.pressure(loc) = obj.pressure(loc) + dSol(glob);
+       end
+
+      %        
+    end
+
     function [avStress,avStrain] = finalizeStatePoro(obj)
       avStress = zeros(obj.mesh.nCells,6);
       avStrain = zeros(obj.mesh.nCells,6);
