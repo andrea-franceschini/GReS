@@ -925,6 +925,8 @@ classdef Discretizer < handle
               % Compute the stiffness (H) and mass (P) matrices for the flow problem by FEM
               iivec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
               jjvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+              phVeci = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+              phVecj = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
               Qvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
               %
               l1 = 0;
@@ -970,21 +972,15 @@ classdef Discretizer < handle
               k = 1;
               % Populate the Jacobian
               for ii = 1:nSubPh
-                  for jj = k:nSubPh
-                      if any(strcmp(obj.blockJ(ii,jj).physics,'Poro')) && any(strcmp(obj.blockJ(ii,jj).physics,'Flow')) 
+                  for jj = 1:nSubPh
+                      if strcmp(obj.dofm.subPhysics(ii),'Poro') && any(strcmp(obj.blockJ(ii,jj).physics,'Poro')) && any(strcmp(obj.blockJ(ii,jj).physics,'Flow')) 
                          %find pairs of row,col indices belonging to ii,jj
                         tmp = intersect(find(phVeci == ii),find(phVecj == jj));
                         Qtmp = sparse(iivec(tmp),jjvec(tmp),Qvec(tmp),obj.dofm.numDof(ii),obj.dofm.numDof(jj));
-                        if strcmp(obj.blockJ(ii,jj).physics(1),'Poro')
-                          obj.blockJ(ii,jj).block = obj.blockJ(ii,jj).block - obj.simParams.theta*Qtmp;
-                          obj.blockJ(jj,ii).block = obj.blockJ(jj,ii).block + Qtmp'/dt;
-                        else
-                          obj.blockJ(ii,jj).block = obj.blockJ(ii,jj).block + Qtmp'/dt;
-                          obj.blockJ(jj,ii).block = obj.blockJ(jj,ii).block - obj.simParams.theta*Qtmp;
-                        end
+                        obj.blockJ(ii,jj).block = obj.blockJ(ii,jj).block - obj.simParams.theta*Qtmp;
+                        obj.blockJ(jj,ii).block = obj.blockJ(jj,ii).block + Qtmp'/dt;
                       end
                   end
-                  k = k+1; %look for upper triangular only;
               end
           end
       end
