@@ -62,7 +62,10 @@ classdef NonLinearSolver < handle
       % Initialize the time step increment
       obj.dt = obj.simParameters.dtIni;  
       delta_t = obj.dt; % dynamic time step
-      flConv = true; %convergence flag
+      flConv = true;
+      %
+      % Setup the boundary conditions
+%       obj.bound.iniBC(obj.BCName,obj.stateTmp);
       %
       %
       % Loop over time
@@ -188,7 +191,7 @@ classdef NonLinearSolver < handle
         end
         %
         % Manage next time step
-        delta_t = manageNextTimeStep(obj,delta_t,flConv);
+        manageNextTimeStep(obj,flConv);
       end
         %
         % Manage next time step
@@ -320,13 +323,14 @@ classdef NonLinearSolver < handle
 %       end
 %       rhsNorm = norm(f(setxor(1:length(f),dofDir)),obj.pNorm);
 %     end
-    function [t, dt] = updateTime(obj,conv,dt)
+function [t, dt] = updateTime(obj,conv,dt)
         if obj.printUtil.modTime
             tmp = find(obj.t<obj.printUtil.timeList(),1,'first');
             if ~conv       
                 t = min([obj.t + obj.dt, obj.t + dt, obj.printUtil.timeList(tmp)]);
             else 
-                t = min([obj.t + obj.dt, obj.printUtil.timeList(tmp)]);
+                t = 
+
             end
         else
         t = obj.t + obj.dt;
@@ -348,14 +352,13 @@ classdef NonLinearSolver < handle
     end
 
 
-    function [dt] = manageNextTimeStep(obj,dt,flConv)
+    function manageNextTimeStep(obj,flConv)
       if ~flConv   % Perform backstep
         transferState(obj.statek,obj.stateTmp);
         obj.t = obj.t - obj.dt;
         obj.tStep = obj.tStep - 1;
-        dt = dt/obj.simParameters.divFac;
         obj.dt = obj.dt/obj.simParameters.divFac;  % Time increment chop
-        assert(min(dt,obj.dt) >= obj.simParameters.dtMin,'Minimum time step reached');
+        assert(obj.dt >= obj.simParameters.dtMin,'Minimum time step reached');
         fprintf('\n %s \n','BACKSTEP');
       else % Go on if converged
         tmpVec = obj.simParameters.multFac;

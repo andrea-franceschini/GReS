@@ -22,3 +22,20 @@ TO DO LIST:
 - Richards: introdurre condizioni al contorno tipo seepage face.
 - Richards: valutare l'aggiunta del termine dipendente dalla derivata seconda
   di Sw nello jacobiano.
+
+
+
+DONE:
+- Added non homogenous initial conditions and Hydrostatic conditions
+- Time step automatic adjustment (chopping factor to be fixed)
+- Introduced new DoF manager class
+- Dictionary insted of Map is straightforward (remove method available only from 2023b matlab version)
+- Different physics in subDomains allowed using DoF Manager.
+
+TO DO: 
+- Fix time step managment and chopping
+- Introduce Biot for FV discretization of flow model
+- Print solution on a specific portion of the domain (using mat file and flOut data)
+- Richards equations, go deeper;
+
+

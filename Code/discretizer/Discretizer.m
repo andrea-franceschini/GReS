@@ -223,7 +223,7 @@ classdef Discretizer < handle
                       tmp = intersect(find(phVeci == ii),find(phVecj == jj));
                       obj.blockJ(ii,jj).H = obj.blockJ(ii,jj).H + sparse(iiVec(tmp),jjVec(tmp),HVec(tmp),obj.dofm.numDof(ii),obj.dofm.numDof(jj)); 
                       obj.blockJ(ii,jj).P = obj.blockJ(ii,jj).P + sparse(iiVec(tmp),jjVec(tmp),PVec(tmp),obj.dofm.numDof(ii),obj.dofm.numDof(jj)); 
-                      %consider a transpose option for the following line
+                      %consider a transpose option for the following lines
                       if ii ~= jj
                         obj.blockJ(jj,ii).H = (obj.blockJ(ii,jj).H)';
                         obj.blockJ(jj,ii).P = (obj.blockJ(ii,jj).P)';
@@ -241,8 +241,10 @@ classdef Discretizer < handle
 
     function computeFlowStiffMatFV(obj,lw)
       % Inspired by MRST
+      % Pairs of cells sharing internal faces
       neigh1 = obj.faces.faceNeighbors(obj.isIntFaces,1);
-      neigh2 = obj.faces.facendeNeighbors(obj.isIntFaces,2);
+      neigh2 = obj.faces.faceNeighbors(obj.isIntFaces,2);
+      % Transmissibility of internal faces
       tmpVec = lw.*obj.trans(obj.isIntFaces);
 %       tmpVec = lw.*tmpVec;
       sumDiagTrans = accumarray([neigh1; neigh2], ...
@@ -1093,7 +1095,7 @@ classdef Discretizer < handle
             obj.blockRhs(i).block = zeros(obj.dofm.numDof(i),1);
             for j=1:dim
                 obj.blockJ(i,j).block = sparse(obj.dofm.numDof(i),obj.dofm.numDof(j));
-                % flow matrices stay the same
+                % flow matrices H and P stay the same
             end
         end
     end  
