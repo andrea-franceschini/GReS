@@ -18,6 +18,7 @@ classdef DoFManager < handle
         numDof %array of total dofs for every subPhysic
         subPhysics %list of physics in the global solution vector
         subList %subDomain corresponding to every subPhysic
+        subCells
     end
     
     methods
@@ -100,16 +101,17 @@ classdef DoFManager < handle
             %DofTable(:,:,1) ---> global dofs
             %DofTable(:,:,2) ---> local dofs
             %DofTbale(:,:,3) ----> physic index in global solution vector
-
             nPh = length(obj.physicsList)+ (mesh.nDim-1)*any(obj.physicsList == "Poro");
             %convert the following matrix in sparse format (after
             %testing)
+            obj.subCells = sparse(mesh.nCells, length(obj.subDomains));
             obj.elemDofTable = zeros(mesh.nCells,nPh,3);
             obj.nodeDofTable = zeros(mesh.nNodes,nPh,3);
             numDofTable = zeros(length(obj.subDomains),length(obj.physicsList));
             dofCount = 0;
             phCount = 0;
             for subID = 1:length(obj.subDomains)
+                obj.subCells(:,subID) = ismember(mesh.cellTag,obj.subDomains(subID).regions);
                 for i=1:length(obj.physicsList)
                     %get column of dofTable taken by physics(i)
                     if any(obj.subDomains(subID).physics == obj.physicsList(i))
@@ -249,6 +251,24 @@ classdef DoFManager < handle
             tmp = [0;1;2];
             tmp = tmp(1:ncom);
             ents = ents(:)*length(tmp)-repmat(flip(tmp),size(ents,2),1);     
+        end
+
+        function tags = getCellTag(obj,physic)
+            tags = [];
+            for i = 1:length(obj.subDomains)
+                if any(strcmp(obj.subDomains(i).physics,physic))
+                    tags = [tags; obj.subDomains.regions(:)];
+                end
+            end
+        end
+
+        function tags = getSubCells(obj,physic)
+            tags = [];
+            for i = 1:length(obj.subDomains)
+                if any(strcmp(obj.subDomains(i).physics,physic))
+                    tags = [tags; obj.subDomains.regions(:)];
+                end
+            end
         end
             
         

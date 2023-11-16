@@ -234,9 +234,8 @@ classdef Discretizer < handle
               end
           end
       end
-      end
-    
-      
+    end
+
 
 
     function computeFlowStiffMatFV(obj,lw)
@@ -253,6 +252,29 @@ classdef Discretizer < handle
                      [neigh2; neigh1; (1:obj.mesh.nCells)'], ...
                      [-tmpVec; -tmpVec; ...
                       sumDiagTrans],obj.mesh.nCells,obj.mesh.nCells);
+    end
+    
+      
+
+
+    function computeFlowStiffMatFV_Test(obj,lw)
+      % Inspired by MRST
+      % Pairs of cells sharing internal faces
+      for i = 1:length(obj.dofm.subDomains)
+          subCells = find(obj.dofm.subCells(:,i));
+          nSubCells = length(subCells); 
+          neigh1 = obj.faces.faceNeighbors(obj.isIntFaces(i),1);
+          neigh2 = obj.faces.faceNeighbors(obj.isIntFaces(i),2);
+          % Transmissibility of internal faces
+          tmpVec = lw.*obj.trans(obj.isIntFaces(i));
+    %       tmpVec = lw.*tmpVec;
+          sumDiagTrans = accumarray([neigh1; neigh2], ...
+            repmat(tmpVec,[2,1]),[nSubCells,1]);
+          obj.H = sparse([neigh1; neigh2; (1:obj.mesh.nCells)'], ...
+                         [neigh2; neigh1; (1:obj.mesh.nCells)'], ...
+                         [-tmpVec; -tmpVec; ...
+                          sumDiagTrans],obj.mesh.nCells,obj.mesh.nCells);
+      end
     end
     
     function computeFlowCapMatFV(obj,varargin)
@@ -576,8 +598,9 @@ classdef Discretizer < handle
       % Loop trough elements of blockJ matrix to find pairs PORO-PORO
       for i = 1:nSub
           if any(strcmp(obj.dofm.subDomains(i).physics,'Poro'))   
-              subReg = obj.dofm.subDomains(i).regions; %region for block's subdomain
-              subCells = find(ismember(obj.mesh.cellTag,subReg)); %id of cells in subdomain
+              %subReg = obj.dofm.subDomains(i).regions; %region for block's subdomain
+              subCells = find(obj.dofm.subCells(:,i));
+              %subCells = find(ismember(obj.mesh.cellTag,subReg)); %id of cells in subdomain
               nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]); 
               iiVec = zeros(obj.nEntryKLoc*nSubCellsByType,1);
               jjVec = zeros(obj.nEntryKLoc*nSubCellsByType,1);
@@ -1183,14 +1206,32 @@ classdef Discretizer < handle
       %%% richards model -  will be checked in the future %%%%%%%%%%%%%%%%
       if obj.model.isFVTPFABased('Flow')
         obj.computeTrans;
-        obj.isIntFaces = all(obj.faces.faceNeighbors ~= 0,2);
+        %get cells with active flow model
+        
+        % internal faces inside each subdomain
+        nSub = length(obj.dofm.subDomains);
+        IntFaces = zeros(obj.faces.nFaces,nSub);
+        flowCells = [];
+        for i = 1:nSub
+            if any(strcmp(obj.dofm.subDomains(i).physics,"Flow"))
+            flowCells = [flowCells; find(obj.dofm.subCells(:,i))];
+            end
+        end
+
+        for i = 1:nSub
+            intcells = find(obj.dofm.subCells(:,i));
+            tmp1 = any(ismember(obj.faces.faceNeighbors, intcells),2);
+            tmp2 = all(ismember(obj.faces.faceNeighbors, flowCells),2);
+            IntFaces(:,i) = all([tmp1 tmp2],2);
+        end
+        obj.isIntFaces = logical(IntFaces);
         if obj.model.isVariabSatFlow()
           obj.upElem = zeros(nnz(obj.isIntFaces),1);
         end
       end
       %
       if obj.model.isFlow()
-        computeFlowRHSGravTerm_Test(obj);
+        %computeFlowRHSGravTerm_Test(obj);
       end
 %       if isSinglePhaseFlow(obj.model)
 %         obj.fOld = zeros(obj.mesh.nNodes,1);

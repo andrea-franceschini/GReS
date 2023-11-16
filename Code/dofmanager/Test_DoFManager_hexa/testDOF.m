@@ -1,7 +1,7 @@
-clear; clc; close all;
+clear;  close all;
 topology = Mesh();
 %setting the model and physics included
-model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
+model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 % Set the input file name
 fileName = "simParam.dat";
 simParam = SimulationParameters(model,fileName);
@@ -20,10 +20,12 @@ testf = mat.getFluid();
 
 
 %%%% SET UP THE TEST GRID
-fileName = 'TestDoFManager.msh';
+%file = 'TestDoFManagerHexa.msh';
+file = 'TestDoF.msh';
 % Import the mesh data into the Mesh object
-topology.importGMSHmesh(fileName);
-elems = Elements(topology);
+topology.importGMSHmesh(file);
+GaussPts = Gauss(12,2,3);
+elems = Elements(topology, GaussPts);
 faces = Faces(model, topology);
 %
 % Wrap Mesh, Elements and Faces objects in a structure
@@ -45,7 +47,7 @@ fileName = ["dir_BC_flow_tetra.dat","dir_BC_poro_tetra.dat","neuSurf_BC_poro_tet
 bound = Boundaries(fileName,model,grid,dofmanager);
 
 %----------------------------- STATE -----------------------------
-resState = State(model,grid,mat);
+resState = State(model,grid,mat,GaussPts);
 
 %----------------------------- PRINT -----------------------------
 printUtils = OutState(model,mat,grid,'outTime.dat');
@@ -57,7 +59,7 @@ printUtils.printState(resState);
 %
 
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState);
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();

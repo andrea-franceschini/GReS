@@ -1,8 +1,9 @@
 close all;
 clear;
+addpath('C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07')
 
 % -------------------------- SET THE PHYSICS -------------------------
-model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
+model = ModelType("SinglePhaseFlow_FVTPFA");
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
@@ -13,7 +14,7 @@ simParam = SimulationParameters(model,fileName);
 topology = Mesh();
 %
 % Set the input file name
-fileName = 'TerzaghiH05_hexa.msh';
+fileName = 'TerzaghiH05.msh';
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
 %
@@ -27,9 +28,8 @@ mat = Materials(model,fileName);
 %
 %------------------------------ ELEMENTS -----------------------------
 %
-GaussPts = Gauss(12,2,3);
 % Create an object of the "Elements" class and process the element properties
-elems = Elements(topology,GaussPts);
+elems = Elements(topology);
 
 %saving z_vector coordinates for analytical solution calculation
 zvector = topology.coordinates(:,3);
@@ -50,11 +50,10 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
 % Degree of freedom manager 
 dofmanager = DoFManager(topology,model);
-
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
 % Set the input file
-fileName = ["dir_BC_flow_tetra.dat","dir_BC_poro_tetra.dat","neuSurf_BC_poro_tetra.dat"];
+fileName = "dir_BC_flow_tetra.dat";
 %
 % Create an object of the "Boundaries" class and read the boundary
 % conditions
@@ -75,14 +74,15 @@ bound = Boundaries(fileName,model,grid,dofmanager);
 
 % Set the "State" object. It contains all the vectors describing the state
 % of the reservoir in terms of pressure, displacement, stress, ...
-%file = 'initialconditions';
-file = ["iniDisp.dat","iniPressure.dat"];
-resState = State(model,grid,mat,file,GaussPts);
+file = "iniPressure.dat";
+resState = State(model,grid,mat,file);
 
 %manually assigning initial conditions before proper implementation
-% resState.dispConv(3:3:end) = -u0fem'; %only DZ is fixed initially
-% resState.dispCurr(3:3:end) = -u0fem'; %only DZ is fixed initially
-% resState.pressure = p0fem;
+%  resState.dispConv(3:3:end) = -u0fem'; %only DZ is fixed initially
+%  resState.dispCurr(3:3:end) = -u0fem'; %only DZ is fixed initially
+%  resState.pressure = p0fem;
+
+
 %
 % Create and set the print utility
 printUtils = OutState(model,mat,grid,'outTime.dat');
@@ -94,7 +94,7 @@ printUtils.printState(resState);
 %
 
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();
@@ -125,7 +125,6 @@ figure(1)
 plotObj1 = plot(pressplot,topology.coordinates(nodes,3),'ko');
 hold on
 plotObj2 = plot(pfem(nodes,:),topology.coordinates(nodes,3),'k');
-grid on
 xlabel('Pressione (kPa)')
 ylabel('z (m)')
 legend([plotObj1(1),plotObj2(1)],{'Numerica','Analitica'});
@@ -135,7 +134,6 @@ figure(2)
 plotObj1 = plot(-dispplot,topology.coordinates(nodes,3),'ko');
 hold on
 plotObj2 = plot(ufem(nodes,:),topology.coordinates(nodes,3),'k');
-grid on
 xlabel('Spostamenti verticali (m)')
 ylabel('z (m)')
 title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
@@ -146,7 +144,7 @@ legend([plotObj1(1),plotObj2(1)],{'Numerica','Analitica'});
 % Compute the volume connected to each node
 volNod = zeros(topology.nNodes,1);
 if any(topology.cellVTKType == 12)
-  N1 = getBasisFinGPoints(elems.hexa);
+  N1 = getBasisFinGPoints(elements.hexa);
 end
 for el=1:topology.nCells
   top = topology.cells(el,1:topology.cellNumVerts(el));
@@ -170,9 +168,6 @@ errNormpressure = sqrt(errpress2'*volNod);
 %displacement_error
 errdisp2 = (ufem - disp(3:3:end,2:end)).^2;
 errNormpdisp = sqrt(errdisp2'*volNod);
-
-
-
 
 
 
