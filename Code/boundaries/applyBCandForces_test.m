@@ -54,7 +54,7 @@ function applyBCandForces_test(model, grid, bound, material, t, syst, state)
         end
       elseif isFVTPFABased(model,bound.getPhysics(keys{i}))
         if strcmp(bound.getType(keys{i}), 'Neu')
-          faceID = bound.getDofs(keys{i});
+          faceID = bound.getEntities(keys{i});
 %           neigh = grid.faces.faceNeighbors(faceID,:);
 %           assert(all(sum(neigh~=0,2) == 1),'Corrupted face numbering in %s',bound.getName(keys{i}));
           neigh = sum(grid.faces.faceNeighbors(faceID,:),2);
@@ -63,13 +63,15 @@ function applyBCandForces_test(model, grid, bound, material, t, syst, state)
 %           error('Dirichlet cond. for FVTPFA on surf has not been implemented yet (ref. %s)', ...
 %           bound.getName(keys{i}));
           nrows = size(syst.J,1);
-          faceID = bound.getDofs(keys{i});
+          faceID = bound.getEntities(keys{i});
           neighEl = sum(grid.faces.faceNeighbors(faceID,:),2);
-          gamma = material.getMaterial(grid.topology.nCellTag+1).getFluidSpecWeight();
-          mu = material.getMaterial(grid.topology.nCellTag+1).getDynViscosity();
+          neighElLoc = bound.dof.getLocDoF('Flow',neighEl);
+          neighEl = bound.dof.getDoF('Flow',neighEl);
+          gamma = material.getFluid().getFluidSpecWeight();
+          mu = material.getFluid().getDynViscosity();
           trans = getFaceTransmissibilities(syst,faceID);
-          q = 1/mu*trans.*((state.pressure(neighEl) - bound.getVals(keys{i}, t))...
-            + gamma*(grid.cells.cellCentroid(neighEl,3) - grid.faces.faceCentroid(faceID,3)));
+          q = 1/mu*trans.*((state.pressure(neighElLoc) - bound.getVals(keys{i}, t))...
+            + gamma*(grid.cells.cellCentroid(neighElLoc,3) - grid.faces.faceCentroid(faceID,3)));
           syst.rhs(neighEl) = syst.rhs(neighEl) + q;
           syst.J(nrows*(neighEl-1) + neighEl) = syst.J(nrows*(neighEl-1) + neighEl) + 1/mu*trans;
         end

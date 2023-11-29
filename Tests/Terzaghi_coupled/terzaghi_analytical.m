@@ -39,10 +39,15 @@ nm = 1000;
 if plotMode == false
     fileName = 'OutTime.dat';
     t = readtime(fileName);
-    zmesh = zvector;
-    zmesh = zmesh';
-    [p0fem,u0fem] = iniSol(zmesh,M,pL,Ku,biot,G);
-    [pfem,ufem] = TerzaghiSol(u0fem,zmesh,t,nm,L,c,pL,biot,gamma,G,nu);
+    zmeshU = nodez;
+    zmeshU = zmeshU';
+    if isFVTPFABased(model,'Flow')
+        zmeshP = cellz';
+    else
+        zmeshP = zmeshU;
+    end
+    [p0fem,u0fem] = iniSol(zmeshU,zmeshP,M,pL,Ku,biot,G);
+    [pfem,ufem] = TerzaghiSol(u0fem,zmeshU,zmeshP,t,nm,L,c,pL,biot,gamma,G,nu);
 else
     t = [30 300 600 1800];
     nt = length(t);

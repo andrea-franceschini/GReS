@@ -32,10 +32,11 @@ GaussPts = Gauss(12,2,3);
 elems = Elements(topology,GaussPts);
 
 %saving z_vector coordinates for analytical solution calculation
-zvector = topology.coordinates(:,3);
+cellz = elems.cellCentroid(:,3);
+nodez = topology.coordinates(:,3);
 
 %calling analytical solution script
-%terzaghi_analytical;
+terzaghi_analytical;
 
 
 
@@ -107,24 +108,30 @@ printUtils.finalize()
 % -------------------------- BENCHMARK ------------------------------
 
 %Post processing using MAT-FILE 
-
 %nodes vector contain list of nodes along vertical axis (with x,y=0) 
-nodes = find(topology.coordinates(:,1)+topology.coordinates(:,2)==0);
-[coords,ind] = sort(topology.coordinates(nodes,3));
-nodes = nodes(ind);
+nodesU = find(topology.coordinates(:,1)+topology.coordinates(:,2)==0);
+[~,ind] = sort(topology.coordinates(nodesU,3));
+nodesU = nodesU(ind);
+
+
+% elem vector containing elements centroid along vertical axis
+nodesP = find(elems.cellCentroid(:,1) + elems.cellCentroid(:,2) < 0.51 );
+[~,ind] = sort(elems.cellCentroid(nodesP,3));
+nodesP = nodesP(ind);
+
 
 %Getting pressure and displacement solution for specified time from MatFILE
 press = printUtils.m.expPress;
 disp = printUtils.m.expDispl;
-pressplot = press(nodes,2:end);
-dispplot = disp(3*nodes,2:end);
+pressplot = press(nodesP,2:end);
+dispplot = disp(3*nodesU,2:end);
 
 
 %Plotting solution
 figure(1)
-plotObj1 = plot(pressplot,topology.coordinates(nodes,3),'ko');
+plotObj1 = plot(pressplot,elems.cellCentroid(nodesP,3),'ko');
 hold on
-plotObj2 = plot(pfem(nodes,:),topology.coordinates(nodes,3),'k');
+plotObj2 = plot(pfem(nodesP,:),elems.cellCentroid(nodesP,3),'k');
 grid on
 xlabel('Pressione (kPa)')
 ylabel('z (m)')
@@ -132,9 +139,9 @@ legend([plotObj1(1),plotObj2(1)],{'Numerica','Analitica'});
 title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
 
 figure(2)
-plotObj1 = plot(-dispplot,topology.coordinates(nodes,3),'ko');
+plotObj1 = plot(-dispplot,topology.coordinates(nodesU,3),'ko');
 hold on
-plotObj2 = plot(ufem(nodes,:),topology.coordinates(nodes,3),'k');
+plotObj2 = plot(ufem(nodesU,:),topology.coordinates(nodesU,3),'k');
 grid on
 xlabel('Spostamenti verticali (m)')
 ylabel('z (m)')
@@ -165,16 +172,11 @@ end
 
 %pressure_error
 errpress2 = (pfem - press(:,2:end)).^2;
-errNormpressure = sqrt(errpress2'*volNod);
+errNormpressure = sqrt(errpress2'*elems.vol);
 
 %displacement_error
 errdisp2 = (ufem - disp(3:3:end,2:end)).^2;
-errNormpdisp = sqrt(errdisp2'*volNod);
-
-
-
-
-
+errNormdisp = sqrt(errdisp2'*volNod);
 
 %%
 

@@ -61,8 +61,8 @@ classdef Discretizer < handle
         computeFlowStiffAndCapMatFEM_Test(obj);
       elseif obj.model.isFVTPFABased('Flow')
         mu = obj.material.getFluid().getDynViscosity();
-        computeFlowStiffMatFV(obj,1/mu);
-        computeFlowCapMatFV(obj);
+        computeFlowStiffMatFV_Test(obj,1/mu);
+        computeFlowCapMatFV_Test(obj);
       end
     end
     
@@ -168,7 +168,7 @@ classdef Discretizer < handle
                 % Get the rock permeability, porosity and compressibility
                 permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
                 poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
-                if isPoromechanics(obj.model)
+                if  any(strcmp(obj.dofm.subDomains(i).physics,'Poro'))
                     alpha = 0; %this term is not needed in coupled formulation
                 else
                     alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
@@ -259,21 +259,51 @@ classdef Discretizer < handle
 
     function computeFlowStiffMatFV_Test(obj,lw)
       % Inspired by MRST
-      % Pairs of cells sharing internal faces
+      nSubPh = length(obj.dofm.subList);
       for i = 1:length(obj.dofm.subDomains)
+          if any(strcmp(obj.dofm.subDomains(i).physics,'Flow'))
           subCells = find(obj.dofm.subCells(:,i));
           nSubCells = length(subCells); 
-          neigh1 = obj.faces.faceNeighbors(obj.isIntFaces(i),1);
-          neigh2 = obj.faces.faceNeighbors(obj.isIntFaces(i),2);
+          %get pairs of faces that contribute to the subdomain
+          neigh1 = obj.faces.faceNeighbors(obj.isIntFaces(:,i),1);
+          neigh2 = obj.faces.faceNeighbors(obj.isIntFaces(:,i),2);
+          neigh1dof = obj.dofm.getLocDoF('Flow',neigh1);
+          neigh2dof = obj.dofm.getLocDoF('Flow',neigh2);
+          neigh1ph =  obj.dofm.getSubPhysic('Flow',neigh1);
+          neigh2ph =  obj.dofm.getSubPhysic('Flow',neigh2);
           % Transmissibility of internal faces
-          tmpVec = lw.*obj.trans(obj.isIntFaces(i));
-    %       tmpVec = lw.*tmpVec;
-          sumDiagTrans = accumarray([neigh1; neigh2], ...
+          tmpVec = lw.*obj.trans(obj.isIntFaces(:,i));
+          % tmpVec = lw.*tmpVec;
+          sumDiagTrans = accumarray([neigh1dof; neigh2dof], ...
             repmat(tmpVec,[2,1]),[nSubCells,1]);
-          obj.H = sparse([neigh1; neigh2; (1:obj.mesh.nCells)'], ...
-                         [neigh2; neigh1; (1:obj.mesh.nCells)'], ...
-                         [-tmpVec; -tmpVec; ...
-                          sumDiagTrans],obj.mesh.nCells,obj.mesh.nCells);
+          % Assemble H matrices defined as new fields of block Jacobian matrix
+          k=1;
+          % Populate the Jacobian
+          for ii = 1:nSubPh
+              for jj = k:nSubPh
+                  if all(strcmp(obj.blockJ(ii,jj).physics,'Flow'))
+                  %find pairs of row,col indices belonging to ii,jj
+                  %block of Jacobian
+                  tmp = intersect(find(neigh1ph == ii),find(neigh2ph == jj));
+                  if ii == jj
+                      %diagonal block involving diagonal terms
+                      obj.blockJ(ii,jj).H  = obj.blockJ(ii,jj).H + sparse([neigh1dof(tmp); neigh2dof(tmp); (1:nSubCells)'], ...
+                         [neigh2dof(tmp); neigh1dof(tmp); (1:nSubCells)'], ...
+                         [-tmpVec(tmp); -tmpVec(tmp); ...
+                          sumDiagTrans],obj.dofm.numDof(ii),obj.dofm.numDof(jj));
+                  else
+                      %extra-diagonal block
+                      obj.blockJ(ii,jj).H  = obj.blockJ(ii,jj).H + sparse([neigh1dof(tmp); neigh2dof(tmp)], ...
+                         [neigh2dof(tmp); neigh1dof(tmp)], ...
+                         [-tmpVec(tmp); -tmpVec(tmp)],obj.dofm.numDof(ii),obj.dofm.numDof(jj));     
+                      %exploiting symmetry of flow stiffness matrix
+                      obj.blockJ(jj,ii).H = (obj.blockJ(ii,jj).H)';
+                  end
+                  end
+              end
+          end
+
+          end
       end
     end
     
@@ -295,6 +325,41 @@ classdef Discretizer < handle
       end
       PVal = PVal.*obj.elements.vol;
       obj.P = sparse(1:obj.mesh.nCells,1:obj.mesh.nCells,PVal,obj.mesh.nCells,obj.mesh.nCells);
+    end
+
+    function computeFlowCapMatFV_Test(obj,varargin)
+      % if isVariabSatFlow
+      % varargin{1} -> Sw
+      % varargin{2} -> dSw
+      nSubPh = length(obj.dofm.subList);
+      for i = 1:length(obj.dofm.subDomains)
+          if any(strcmp(obj.dofm.subDomains(i).physics,'Flow'))
+              subCells = find(obj.dofm.subCells(:,i));
+              nSubCells = length(subCells); 
+              poroMat = zeros(nSubCells,1);
+              alphaMat = zeros(nSubCells,1);
+              beta = obj.material.getFluid().getFluidCompressibility();
+              for m = 1:obj.mesh.nCellTag
+                if ~any(strcmp(obj.dofm.subDomains(i).physics,'Poro'))
+                    % compute alpha only if there's no coupling in the
+                    % subdomain 
+                    alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
+                end
+                poroMat(m) = obj.material.getMaterial(m).PorousRock.getPorosity();
+              end
+              % (alpha+poro*beta)
+              PVal = alphaMat(obj.mesh.cellTag(subCells)) + beta*poroMat(obj.mesh.cellTag(subCells));
+              if obj.model.isVariabSatFlow()
+                PVal = PVal.*varargin{1} + poroMat(obj.mesh.cellTag(subCells)).*varargin{2};
+              end
+              PVal = PVal.*obj.elements.vol(subCells);
+              for ii = 1:nSubPh
+                if all(strcmp(obj.blockJ(ii,ii).physics,'Flow'))
+                 obj.blockJ(ii,ii).P = obj.blockJ(ii,ii).P + sparse(1:nSubCells,1:nSubCells,PVal,nSubCells,nSubCells);
+                end
+              end
+          end
+      end
     end
 
     function computeFlowJacobian(obj,dt,varargin)
@@ -343,19 +408,19 @@ classdef Discretizer < handle
                         (obj.blockJ(i,j).P/dt)*(stateTmp.pressure(dofs) - statek.pressure(dofs));
                   end
               end
+              gamma = obj.material.getFluid().getFluidSpecWeight();
+              %adding gravity rhs contribute
+              if gamma > 0
+                if isFEMBased(obj.model,'Flow')
+                 obj.blockRhs(i).block = obj.blockRhs(i).block + obj.blockRhs(i).rhsGrav;
+                elseif isFVTPFABased(obj.model,'Flow')
+                  obj.blockRhs(i).block = obj.blockRhs(i).block + finalizeRHSGravTerm(obj,i,lw);
+                end
+              end
           end
       end
       % obj.rhs = obj.simParams.theta*obj.H*stateTmp.pressure + 1/dt*obj.P*stateTmp.pressure ...
       %   - 1/dt*obj.P*statek.pressure + (1 - obj.simParams.theta)*obj.H*statek.pressure;
-      gamma = obj.material.getFluid().getFluidSpecWeight();
-      %adding gravity rhs contribute
-      if gamma > 0
-        if isFEMBased(obj.model,'Flow')
-         obj.blockRhs(i).block = obj.blockRhs(i).block + obj.blockRhs(i).rhsGrav;
-        elseif isFVTPFABased(obj.model,'Flow')
-          obj.rhs = obj.rhs + finalizeRHSGravTerm(obj,lw);
-        end
-      end
     end
 
     function computeFlowRHS(obj,statek,stateTmp,dt,lw)
@@ -883,6 +948,9 @@ classdef Discretizer < handle
                   jjvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
                   Qvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
                   %
+                  if nSubCellsByType(2) > 0
+                    N1 = obj.elements.hexa.getBasisFinGPoints();
+                  end
                   l1 = 0;
                   for el=subCells'
                     % Get the right material stiffness for each element
@@ -937,7 +1005,7 @@ classdef Discretizer < handle
       end   
     end
 
-    function computeBiotMat_Test(obj,dt)
+    function computeBiotMat_FEM_FEM_Test(obj,dt)
       %loop search inside Jacobian block matrix
       nSubPh = size(obj.blockJ,1);
       nSub = length(obj.dofm.subDomains);
@@ -955,6 +1023,9 @@ classdef Discretizer < handle
               Qvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
               %
               l1 = 0;
+              if nSubCellsByType(2) > 0
+                N1 = obj.elements.hexa.getBasisFinGPoints();
+              end              
               for el=subCells'
                 % Get the right material stiffness for each element
                biot = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getBiotCoefficient();
@@ -984,6 +1055,85 @@ classdef Discretizer < handle
                phrow = obj.dofm.getSubPhysic('Poro',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
                dofcol = obj.dofm.getLocDoF('Flow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
                phcol = obj.dofm.getSubPhysic('Flow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+
+               [jjloc,iiloc] = meshgrid(dofcol,dofrow);
+               [phLocj,phLoci] = meshgrid(phcol,phrow);
+               iivec(l1+1:l1+s1) = iiloc(:);
+               jjvec(l1+1:l1+s1) = jjloc(:);
+               phVeci(l1+1:l1+s1) = phLoci(:);
+               phVecj(l1+1:l1+s1) = phLocj(:);
+               Qvec(l1+1:l1+s1) = Qloc(:); 
+               l1 = l1+s1;
+              end
+              k = 1;
+              % Populate the Jacobian
+              for ii = 1:nSubPh
+                  for jj = 1:nSubPh
+                      if strcmp(obj.dofm.subPhysics(ii),'Poro') && any(strcmp(obj.blockJ(ii,jj).physics,'Poro')) && any(strcmp(obj.blockJ(ii,jj).physics,'Flow')) 
+                         %find pairs of row,col indices belonging to ii,jj
+                        tmp = intersect(find(phVeci == ii),find(phVecj == jj));
+                        Qtmp = sparse(iivec(tmp),jjvec(tmp),Qvec(tmp),obj.dofm.numDof(ii),obj.dofm.numDof(jj));
+                        obj.blockJ(ii,jj).block = obj.blockJ(ii,jj).block - obj.simParams.theta*Qtmp;
+                        obj.blockJ(jj,ii).block = obj.blockJ(jj,ii).block + Qtmp'/dt;
+                      end
+                  end
+              end
+          end
+      end
+    end
+
+    function computeBiotMat_FEM_FV_Test(obj,dt)
+      %loop search inside Jacobian block matrix
+      nSubPh = size(obj.blockJ,1);
+      nSub = length(obj.dofm.subDomains);
+      % Loop trough elements of blockJ matrix to find pairs PORO-FLOW
+      for i = 1:nSub
+          if obj.dofm.subDomains(i).coupling 
+              subReg = obj.dofm.subDomains(i).regions; %region for block's subdomain
+              subCells = find(ismember(obj.mesh.cellTag,subReg)); %id of cells in subdomain
+              nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]); 
+              iivec = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
+              jjvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
+              phVeci = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
+              phVecj = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
+              Qvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
+              %
+              if nSubCellsByType(2) > 0
+                  N1 = obj.elements.hexa.getBasisFinGPoints();
+              end
+              l1 = 0;
+              for el=subCells'
+                % Get the right material stiffness for each element
+               biot = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getBiotCoefficient();
+               switch obj.mesh.cellVTKType(el)
+                   case 10 %Tetrahedrons, direct integration 
+                       error('TPFA-FV not implemented for Tetrahedrons')
+                       vol = findVolume(obj.elements.tetra,el);
+                       der = getDerBasisF(obj.elements.tetra,el);
+                       Qloc = biot*0.25*repelem(der(:),1,4)*vol;
+                       s1 = obj.elements.nNodesElem(1).^2*obj.mesh.nDim;
+                   case 12 %Hexahedrons, Gauss integration
+                       [N,dJWeighed] = getDerBasisFAndDet(obj.elements.hexa,el,1);
+                       nG = obj.GaussPts.nNode;
+                       %iN = zeros(6,8,nG); %matrix product i*N
+                       B = zeros(6,8*obj.mesh.nDim,nG);
+                       B(obj.elements.indB(:,2)) = N(obj.elements.indB(:,1));
+                       tmp = [1;1;1;0;0;0];
+                       kron = repmat(tmp,1,1,8);
+                       % iN(1,:,:) = reshape(N1',1,8,nG);
+                       % iN(2:3,:,:) = repmat(iN(1,:,:),2,1,1);
+                       Qs = biot*pagemtimes(B,'ctranspose',kron,'none');
+                       Qs = Qs.*reshape(dJWeighed,1,1,[]);
+                       Qloc = sum(Qs,3);
+                       clear Qs;
+                       s1 = obj.elements.nNodesElem(2)*obj.mesh.nDim;   
+               end
+               %
+               %assembly Coupling Matrix
+               dofrow = obj.dofm.getLocDoF('Poro',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+               phrow = obj.dofm.getSubPhysic('Poro',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+               dofcol = obj.dofm.getLocDoF('Flow',el);
+               phcol = obj.dofm.getSubPhysic('Flow',el);
 
                [jjloc,iiloc] = meshgrid(dofcol,dofrow);
                [phLocj,phLoci] = meshgrid(phcol,phrow);
@@ -1095,7 +1245,11 @@ classdef Discretizer < handle
         %Flow matrices are computed before time loop
         %compute coupled Poromechanics blocks
         computePoroCoupled_Test(obj,stateTmp,dt)
-        computeBiotMat_Test(obj,dt);
+        if isFEMBased(obj.model,'Flow')
+            computeBiotMat_FEM_FEM_Test(obj,dt);
+        elseif isFVTPFABased(obj.model,'Flow')
+            computeBiotMat_FEM_FV_Test(obj,dt);
+        end
         computePoroRhs(obj,stateTmp);
         computeBiotRhs(obj,stateTmp,statek);
      end
@@ -1231,7 +1385,7 @@ classdef Discretizer < handle
       end
       %
       if obj.model.isFlow()
-        %computeFlowRHSGravTerm_Test(obj);
+        computeFlowRHSGravTerm_Test(obj);
       end
 %       if isSinglePhaseFlow(obj.model)
 %         obj.fOld = zeros(obj.mesh.nNodes,1);
@@ -1345,13 +1499,15 @@ classdef Discretizer < handle
       if gamma > 0
           nBlock = length(obj.blockRhs);
 %         mu = obj.material.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();
-            if isFEMBased(obj.model,'Flow')
                 for i = 1:nBlock
                     if strcmp(obj.blockRhs(i).physic,'Flow')
                       obj.blockRhs(i).rhsGrav = obj.blockRhs(i).block;
                       subReg = obj.dofm.subDomains(obj.dofm.subList(i)).regions; %region for block's subdomain
                       subCells = find(ismember(obj.mesh.cellTag,subReg)); %id of cells in subdomain
-                      %nSubCells = length(subCells); %number of cells in subdomain
+                      %nSubCells = length(subCells); %number of cells in
+                      %subdomain
+                      if isFEMBased(obj.model,'Flow')
+                      l1 = 0;
                       for el = subCells'
                         % Get the material permeability
                         permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
@@ -1363,41 +1519,55 @@ classdef Discretizer < handle
             %                 vol = getVolume(obj.elements,el);
               %               fLoc = (N'*permMat(:,3))*volSign*vol*gamma;
                             fLoc = (N'*permMat(:,3))*obj.elements.vol(el)*gamma;
+                            s1 = obj.elements.nNodesElem(1);
                           case 12 % Hexa
                             [N,dJWeighed] = obj.elements.hexa.getDerBasisFAndDet(el,1);
                             fs = pagemtimes(N,'ctranspose',permMat(:,3),'none');
                             fs = fs.*reshape(dJWeighed,1,1,[]);
                             fLoc = sum(fs,3)*gamma;
+                            s1 = obj.elements.nNodesElem(2);
                         end
                         %
                         dof = obj.dofm.getLocDoF('Flow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
-                        obj.blockRhs(i).rhsGrav(dof)  = obj.blockRhs(i).rhsGrav(dof)  + fLoc;
+                        ph = obj.dofm.SubPhysic('Flow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+                        dofVec(l1+1:l1+s1) = dof;
+                        phVec(l1+1:l1+s1) = ph;
+                        fVec(l1+1:l1+s1) = fLoc;
+                        l1 = l1 + s1;
+                      end
+                      for ii = 1:nBlock
+                          tmp = phVec == ii;
+                          obj.blockRhs(ii).rhsGrav(dofVec(tmp))  = obj.blockRhs(ii).rhsGrav(dofVec(tmp)) + fVec(tmp);
+                      end
+                      elseif isFVTPFABased(obj.model,'Flow')
+                          subID = obj.dofm.subList(i);
+                          neigh = obj.faces.faceNeighbors(obj.isIntFaces(:,subID),:);
+                %           nr = nnz(obj.isIntFaces);
+                          zVec = obj.elements.cellCentroid(:,3);
+                          zNeigh = zVec(neigh);
+                          obj.blockRhs(i).rhsGrav = gamma*obj.trans(obj.isIntFaces(:,subID)).*(zNeigh(:,1) - zNeigh(:,2));
                       end
                     end
                 end
-             elseif isFVTPFABased(obj.model,'Flow')
-                  neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-        %           nr = nnz(obj.isIntFaces);
-                  zVec = obj.elements.cellCentroid(:,3);
-                  zNeigh = zVec(neigh);
-                  obj.RHSGravTerm = gamma*obj.trans(obj.isIntFaces).*(zNeigh(:,1) - zNeigh(:,2));
-            end
       end
       % Initializing fOld
       % SOURCE/SINK CONTRIBUTION IS MISSING AT THE MOMENT
 %       obj.fOld = obj.fConst;
     end
     
-    function gTerm = finalizeRHSGravTerm(obj,lw)
+    function gTerm = finalizeRHSGravTerm(obj,idblock,lw)
       % varargin{1} -> lw
-      neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-%       if obj.model.isSinglePhaseFlow()
-%         gTerm = accumarray(neigh(:),[obj.RHSGravTerm; -obj.RHSGravTerm],[obj.mesh.nCells,1]);
-%       elseif obj.model.isVariabSatFlow()
-%         tmpVec = lw.*obj.RHSGravTerm;
-      gTerm = accumarray(neigh(:),[lw.*obj.RHSGravTerm; ...
-        -lw.*obj.RHSGravTerm],[obj.mesh.nCells,1]);
+      subID = obj.dofm.subList(idblock);
+      neigh = obj.faces.faceNeighbors(obj.isIntFaces(:,subID),:);
+      dof = obj.dofm.getLocDoF('Flow',neigh(:));
+      if obj.model.isSinglePhaseFlow()
+        gTerm = accumarray(dof,[obj.blockRhs(idblock).rhsGrav; -obj.blockRhs(idblock).rhsGrav],[obj.dofm.numDof(idblock),1]);
+      elseif obj.model.isVariabSatFlow()
+        %tmpVec = lw.*obj.RHSGravTerm;
+      gTerm = accumarray(dof,[lw.*obj.blockRhs.rhsGrav; ...
+        -lw.*obj.blockRhs.rhsGrav],[obj.dofm.numDof(idblock),1]);
 %       end
+      end
     end
     
     function initializeBlockJacobianAndRhs(obj)

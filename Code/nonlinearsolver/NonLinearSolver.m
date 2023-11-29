@@ -120,8 +120,8 @@ classdef NonLinearSolver < handle
         applyBCandForces_test(obj.model, obj.grid, obj.bound, obj.material, ...
           obj.t, linSyst, obj.stateTmp);
 %         obj.bound.applyBCNeu(linSyst);
-        %rhsNorm1 = norm(linSyst.rhs,obj.simParameters.pNorm);
-        rhsNorm = computeRhsNorm(obj,linSyst);
+        rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
+        %rhsNorm = computeRhsNorm(obj,linSyst);
         linSyst.resetJacobianAndRhs();
 %         obj.bound.applyBCDir(linSyst);
 %         obj.bound.applyBCNeu(linSyst);
@@ -161,7 +161,7 @@ classdef NonLinearSolver < handle
             obj.t, linSyst, obj.stateTmp);
 %           obj.bound.applyBCNeu(linSyst);
           %rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
-          rhsNorm= computeRhsNorm(obj,linSyst);
+          rhsNorm = computeRhsNorm(obj,linSyst);
           linSyst.resetJacobianAndRhs();
 %           obj.bound.applyBCDir(linSyst);
 %           obj.bound.applyBCNeu(linSyst);

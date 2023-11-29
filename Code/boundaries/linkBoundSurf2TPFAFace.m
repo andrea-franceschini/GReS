@@ -24,7 +24,7 @@ if any(flRenum)
   faceBound = sort(faceBound',2);
   %
   for i = find(flRenum)'
-    bFaceTop = grid.topology.surfaces(bound.getDofs(keys{i}),:);
+    bFaceTop = grid.topology.surfaces(bound.getEntities(keys{i}),:); 
     [~,~,ib] = intersect(sort(bFaceTop,2),faceBound,'stable','rows');
     newID = idBFace(ib);
     assert(all(sum(grid.faces.faceNeighbors(newID,:) ~= 0,2) == 1),'Corrupted face renumbering for %s surface condition',bound.getName(keys{i}));

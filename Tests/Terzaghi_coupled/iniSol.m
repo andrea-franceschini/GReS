@@ -1,7 +1,7 @@
-function [p0,u0] = iniSol(z,M,pL,Ku,biot,G)
-nz = length(z);
-p0 = zeros(nz,1);
+function [p0,u0] = iniSol(zu,zp,M,pL,Ku,biot,G)
+nzp = length(zp);
+p0 = zeros(nzp,1);
 p0(1:end) = (biot*M*pL)/(Ku+4*G/3);
-u0 = arrayfun(@(z) 1/(Ku+4*G/3)*pL*(z),z);
+u0 = arrayfun(@(zu) 1/(Ku+4*G/3)*pL*(zu),zu);
 end
 

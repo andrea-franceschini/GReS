@@ -4,11 +4,11 @@ classdef Boundaries < handle
   properties (Access = public)
     % Creation of a Map object for the boundary conditions
     db
+    dof
   end
   
     properties (Access = private)
     model
-    dof
   end
 
   methods (Access = public)
@@ -22,6 +22,7 @@ classdef Boundaries < handle
       % Calling the function to read input data from file
       obj.readInputFiles(fileNames);
       obj.computeBoundaryProperties(model,grid);
+      linkBoundSurf2TPFAFace(model,obj,grid);
     end
     
     function delete(obj)
@@ -49,7 +50,7 @@ classdef Boundaries < handle
       %list = obj.getData(identifier).data.entities; OLD VERSION
       %%%%update to getDofs method
       col = obj.dof.getColTable(obj.getPhysics(identifier));
-      if ~isfield(obj.getData(identifier), 'loadedEnts') 
+      if strcmp(obj.getCond(identifier),'NodeBC') | strcmp(obj.getCond(identifier),'ElementBC') 
             nEnts = obj.getData(identifier).data.nEntities;
             entities = obj.getData(identifier).data.entities;
             i1 = 1;

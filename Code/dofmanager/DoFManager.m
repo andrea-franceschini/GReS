@@ -224,7 +224,7 @@ classdef DoFManager < handle
             else %if input is subPhysic ID
                 if isFEMBased(obj.model,obj.subPhysics(physic))
                     [row,~] = find(obj.nodeDofTable(:,:,3)==physic);
-                elseif isFVTPFABased(obj.model,physic)
+                elseif isFVTPFABased(obj.model,obj.subPhysics(physic))
                     [row,~] = find(obj.elemDofTable(:,:,3)==physic);
                 end
                     ncomps = obj.ncomp(obj.physicsList == obj.subPhysics(physic));
@@ -245,7 +245,7 @@ classdef DoFManager < handle
             if isFEMBased(obj.model,physic)
                 [ents,~] = find(obj.nodeDofTable(:,col) > 0);
             elseif isFVTPFABased(obj.model,physic)
-                [ents,~] = find(obj.elemDofTable > 0);
+                [ents,~] = find(obj.elemDofTable(:,col) > 0);
             end
             ents = (reshape(ents,[],ncom))';
             tmp = [0;1;2];
