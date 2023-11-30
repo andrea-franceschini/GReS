@@ -410,7 +410,7 @@ classdef Discretizer < handle
               end
               gamma = obj.material.getFluid().getFluidSpecWeight();
               %adding gravity rhs contribute
-              if gamma > 0
+              if 1
                 if isFEMBased(obj.model,'Flow')
                  obj.blockRhs(i).block = obj.blockRhs(i).block + obj.blockRhs(i).rhsGrav;
                 elseif isFVTPFABased(obj.model,'Flow')
@@ -948,6 +948,9 @@ classdef Discretizer < handle
                   jjvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
                   Qvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
                   %
+                  if nSubCellsByType(2) > 0
+                    N1 = obj.elements.hexa.getBasisFinGPoints();
+                  end
                   l1 = 0;
                   for el=subCells'
                     % Get the right material stiffness for each element
@@ -1002,7 +1005,7 @@ classdef Discretizer < handle
       end   
     end
 
-    function computeBiotMat_FEM_FV_Test(obj,dt)
+    function computeBiotMat_FEM_FEM_Test(obj,dt)
       %loop search inside Jacobian block matrix
       nSubPh = size(obj.blockJ,1);
       nSub = length(obj.dofm.subDomains);
@@ -1020,6 +1023,9 @@ classdef Discretizer < handle
               Qvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
               %
               l1 = 0;
+              if nSubCellsByType(2) > 0
+                N1 = obj.elements.hexa.getBasisFinGPoints();
+              end              
               for el=subCells'
                 % Get the right material stiffness for each element
                biot = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getBiotCoefficient();
@@ -1086,19 +1092,22 @@ classdef Discretizer < handle
               subReg = obj.dofm.subDomains(i).regions; %region for block's subdomain
               subCells = find(ismember(obj.mesh.cellTag,subReg)); %id of cells in subdomain
               nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]); 
-              % Compute the stiffness (H) and mass (P) matrices for the flow problem by FEM
-              iivec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
-              jjvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
-              phVeci = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
-              phVecj = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
-              Qvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+              iivec = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
+              jjvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
+              phVeci = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
+              phVecj = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
+              Qvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
               %
+              if nSubCellsByType(2) > 0
+                  N1 = obj.elements.hexa.getBasisFinGPoints();
+              end
               l1 = 0;
               for el=subCells'
                 % Get the right material stiffness for each element
                biot = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getBiotCoefficient();
                switch obj.mesh.cellVTKType(el)
                    case 10 %Tetrahedrons, direct integration 
+                       error('TPFA-FV not implemented for Tetrahedrons')
                        vol = findVolume(obj.elements.tetra,el);
                        der = getDerBasisF(obj.elements.tetra,el);
                        Qloc = biot*0.25*repelem(der(:),1,4)*vol;
@@ -1106,23 +1115,25 @@ classdef Discretizer < handle
                    case 12 %Hexahedrons, Gauss integration
                        [N,dJWeighed] = getDerBasisFAndDet(obj.elements.hexa,el,1);
                        nG = obj.GaussPts.nNode;
-                       iN = zeros(6,8,nG); %matrix product i*N
-                       B = zeros(6,8*obj.mesh.nDim,obj.GaussPts.nNode);
+                       %iN = zeros(6,8,nG); %matrix product i*N
+                       B = zeros(6,8*obj.mesh.nDim,nG);
                        B(obj.elements.indB(:,2)) = N(obj.elements.indB(:,1));
-                       iN(1,:,:) = reshape(N1',1,8,nG);
-                       iN(2:3,:,:) = repmat(iN(1,:,:),2,1,1);
-                       Qs = biot*pagemtimes(B,'ctranspose',iN,'none');
+                       tmp = [1;1;1;0;0;0];
+                       kron = repmat(tmp,1,1,8);
+                       % iN(1,:,:) = reshape(N1',1,8,nG);
+                       % iN(2:3,:,:) = repmat(iN(1,:,:),2,1,1);
+                       Qs = biot*pagemtimes(B,'ctranspose',kron,'none');
                        Qs = Qs.*reshape(dJWeighed,1,1,[]);
                        Qloc = sum(Qs,3);
                        clear Qs;
-                       s1 = obj.elements.nNodesElem(2)^2*obj.mesh.nDim;   
+                       s1 = obj.elements.nNodesElem(2)*obj.mesh.nDim;   
                end
                %
                %assembly Coupling Matrix
                dofrow = obj.dofm.getLocDoF('Poro',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
                phrow = obj.dofm.getSubPhysic('Poro',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
-               dofcol = obj.dofm.getLocDoF('Flow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
-               phcol = obj.dofm.getSubPhysic('Flow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+               dofcol = obj.dofm.getLocDoF('Flow',el);
+               phcol = obj.dofm.getSubPhysic('Flow',el);
 
                [jjloc,iiloc] = meshgrid(dofcol,dofrow);
                [phLocj,phLoci] = meshgrid(phcol,phrow);
@@ -1235,9 +1246,10 @@ classdef Discretizer < handle
         %compute coupled Poromechanics blocks
         computePoroCoupled_Test(obj,stateTmp,dt)
         if isFEMBased(obj.model,'Flow')
-                    computeBiotMat_Test(obj,dt);
-        else
-
+            computeBiotMat_FEM_FEM_Test(obj,dt);
+        elseif isFVTPFABased(obj.model,'Flow')
+            computeBiotMat_FEM_FV_Test(obj,dt);
+        end
         computePoroRhs(obj,stateTmp);
         computeBiotRhs(obj,stateTmp,statek);
      end

@@ -73,7 +73,7 @@ classdef NonLinearSolver < handle
         [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
         %obj.t = obj.t + obj.dt;
         % Apply the Dirichlet condition value to the solution vector
-        applyDirVal(obj.bound, obj.t, obj.stateTmp);
+        applyDirVal(obj.model, obj.bound, obj.t, obj.stateTmp);
         %
         fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t);
         fprintf('-----------------------------------------------------------\n');

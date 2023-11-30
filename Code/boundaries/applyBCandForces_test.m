@@ -49,8 +49,11 @@ function applyBCandForces_test(model, grid, bound, material, t, syst, state)
 %             syst.rhs(nodes) = syst.rhs(nodes) - fval.*aNod;
 %           end
         elseif strcmp(bound.getType(keys{i}), 'Dir')
-          error('Dirichlet cond. for FEM on surf is not available (ref. %s)', ...
-            bound.getToken(keys{i}));
+            % i dont need to compute value of dirichlet condition in the
+            % residual system
+            nrows = size(syst.J,1);
+            syst.J(nrows*(bound.getDofs(keys{i})-1) + bound.getDofs(keys{i})) = maxVal*1.e10;
+            syst.rhs(bound.getDofs(keys{i})) = 0;
         end
       elseif isFVTPFABased(model,bound.getPhysics(keys{i}))
         if strcmp(bound.getType(keys{i}), 'Neu')

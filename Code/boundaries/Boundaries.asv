@@ -292,16 +292,15 @@ classdef Boundaries < handle
           comps = length(nEnts);
           nLoadEnts = zeros(comps,1);
           i1 = 1; j1 = 1;
-          nodes = []; sid = [];
-          for ic = 1: comps
-              i2 = i1+nEnts(ic);
-              surfs = (grid.topology.surfaces(dofs(i1:i2-1),:))';
+          for i = 1: comps
+              i2 = i1+nEnts(i);
+              surfs = (grid.topology.surfaces(dofs(i1:i2-1,:)))';
               [nod, ind, ~] = unique(surfs,'last');
-              nLoadEnts(ic) = length(nod);
-              j2 = j1 + nLoadEnts(ic);
-              [~, s] = ind2sub(size(surfs),ind);
-              sid(j1:j2-1,1) = s + i1-1;
-              nodes(j1:j2-1,1) = nod;
+              nLoadEnts(i) = length(nod);
+              j2 = j1 + nLoadEnts(i);
+              [~, sid] = ind2sub(size(surfs),ind);
+              sid(i1:i2-1) = sid(i1:i2-1) + i1-1;
+              nodes(j1:j2-1) = nod;
               i1 = i2;
               j1 = j2;
               %               i2 = i1 + nEnts(i);
@@ -503,7 +502,7 @@ classdef Boundaries < handle
       end
       physics = Boundaries.readToken(fid);
       
-      if strcmp(physics,'Poro') && strcmp(token,'SurfBC') && strcmp(type,'Neu') 
+      if strcmp(physics,'Poro') && strcmp(token,'SurfBC')
         direction = Boundaries.readToken(fid);
         if ~ismember(direction,['x','y','z'])
           error(['%s is an invalid direction of the distributed load\n', ...
@@ -530,10 +529,9 @@ classdef Boundaries < handle
                 switch type
                     case 'Neu'
                       obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
-                        'cond', token,'direction', direction, 'type', type, 'physics', physics);
+                'cond', token,'direction', direction, 'type', type, 'physics', physics);
+
                     case 'Dir'
-                      obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
-                        'cond', token,'type', type, 'physics', physics);                        
                 end
           end
         case {'VolumeForce', 'ElementBC'}

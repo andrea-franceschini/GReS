@@ -32,13 +32,15 @@ GaussPts = Gauss(12,2,3);
 elems = Elements(topology,GaussPts);
 
 %saving z_vector coordinates for analytical solution calculation
-cellz = elems.cellCentroid(:,3);
 nodez = topology.coordinates(:,3);
+if isFVTPFABased(model,'Flow')
+    cellz = elems.cellCentroid(:,3);
+else
+    cellz = nodez;
+end
 
 %calling analytical solution script
 terzaghi_analytical;
-
-
 
 %saving coordinates for later use
 %save depht_H05.dat zvector  -ascii
@@ -55,7 +57,7 @@ dofmanager = DoFManager(topology,model);
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
 % Set the input file
-fileName = ["dir_BC_flow_tetra.dat","dir_BC_poro_tetra.dat","neuSurf_BC_poro_tetra.dat"];
+fileName = ["dir_BC_flow_tetra.dat","dir_BCSurf_poro_tetra.dat","neuSurf_BC_poro_tetra.dat"];
 %
 % Create an object of the "Boundaries" class and read the boundary
 % conditions
@@ -93,7 +95,6 @@ printUtils.printState(resState);
 %
 % ---------------------------- SOLUTION -------------------------------
 %
-
 % Create the object handling the (nonlinear) solution of the problem
 NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
 %
@@ -115,9 +116,13 @@ nodesU = nodesU(ind);
 
 
 % elem vector containing elements centroid along vertical axis
-nodesP = find(elems.cellCentroid(:,1) + elems.cellCentroid(:,2) < 0.51 );
-[~,ind] = sort(elems.cellCentroid(nodesP,3));
-nodesP = nodesP(ind);
+if isFEMBased(model,'Flow')
+    nodesP = nodesU;
+else
+    nodesP = find(elems.cellCentroid(:,1) + elems.cellCentroid(:,2) < 0.51 );
+    [~,ind] = sort(elems.cellCentroid(nodesP,3));
+    nodesP = nodesP(ind);
+end
 
 
 %Getting pressure and displacement solution for specified time from MatFILE
@@ -128,10 +133,15 @@ dispplot = disp(3*nodesU,2:end);
 
 
 %Plotting solution
+if isFVTPFABased(model,'Flow')
+    ptsY = elems.cellCentroid(nodesP,3);
+else
+    ptsY = topology.coordinates(nodesP,3);
+end
 figure(1)
-plotObj1 = plot(pressplot,elems.cellCentroid(nodesP,3),'ko');
+plotObj1 = plot(pressplot,ptsY,'ko');
 hold on
-plotObj2 = plot(pfem(nodesP,:),elems.cellCentroid(nodesP,3),'k');
+plotObj2 = plot(pfem(nodesP,:),ptsY,'k');
 grid on
 xlabel('Pressione (kPa)')
 ylabel('z (m)')
