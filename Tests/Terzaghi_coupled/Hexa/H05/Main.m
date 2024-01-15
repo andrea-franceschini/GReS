@@ -32,7 +32,12 @@ GaussPts = Gauss(12,2,3);
 elems = Elements(topology,GaussPts);
 
 %saving z_vector coordinates for analytical solution calculation
-zvector = topology.coordinates(:,3);
+nodez = topology.coordinates(:,3);
+if isFVTPFABased(model,'Flow')
+    cellz = elems.cellCentroid(:,3);
+else
+    cellz = nodez;
+end
 
 %calling analytical solution script
 terzaghi_analytical;

@@ -1,8 +1,12 @@
 close all;
 clear;
 
+%adding path
+rmpath(genpath('C:\Users\Moretto\Documents\PHD\GReS\GReS'))
+addpath(genpath('C:\Users\Moretto\Documents\PHD\GReS\GReS\Code'));
+addpath(genpath(pwd));
 %anal_path =  'C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution';
-
+tic
 % -------------------------- SET THE PHYSICS -------------------------
 model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 %
@@ -30,9 +34,9 @@ mat = Materials(model,fileName);
 %------------------------------ ELEMENTS -----------------------------
 %
 % Define Gauss points
-%GaussPts = Gauss(12,2,3);
+GaussPts = Gauss(12,2,3);
 % Create an object of the "Elements" class and process the element properties
-elems = Elements(topology);
+elems = Elements(topology,GaussPts);
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);
 %
@@ -70,7 +74,7 @@ bound = Boundaries(fileName,model,grid,dofmanager);
 %if the mesh change. The suffix represents the element dimension
 % Set the "State" object. It contains all the vectors describing the state
 % of the reservoir in terms of pressure, displacement, stress, ...
-resState = State(model,grid,mat);
+resState = State(model,grid,mat,GaussPts);
 %manually assigning initial conditions before proper implementation
 % resState.dispConv(3:3:end) = uz0fem'; 
 % resState.dispCurr(3:3:end) = uz0fem'; 
@@ -88,7 +92,7 @@ printUtils.printState(resState);
 %
 
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState);
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();
@@ -96,34 +100,61 @@ NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resS
 % Finalize the print utility
 printUtils.finalize()
 %
+time = toc;
 
 %% POST PROCESSING
-load('C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Hexa\H01\expData.mat')
+%loading output file (inside mandel directory for some reason)
+load('expData.mat')
+
+%find nodes in vertical symmetry axis
 tmp1=topology.coordinates(:,1)<500.1;
 tmp2 = topology.coordinates(:,1)>499.9;
 tmp3 = topology.coordinates(:,2)<500.1;
 tmp4 = topology.coordinates(:,2)>499.9;
-tmp = tmp1+tmp2+tmp3+tmp4;
-vert = find(tmp == 4);
-[vertax,ind] = sort(topology.coordinates(vert,3));
-timesInd = [2;3;4];
+tmpNod = tmp1+tmp2+tmp3+tmp4;
+vertNod = find(tmpNod == 4);
+[vertNodZ,indNod] = sort(topology.coordinates(vertNod,3));
+
+
+%find elemes in vertical symmetry axis
+tmp1 = elems.cellCentroid(:,1)<450.1;
+tmp2 = elems.cellCentroid(:,1)>449.9;
+tmp3 = elems.cellCentroid(:,2)<550.1;
+tmp4 = elems.cellCentroid(:,2)>449.9;
+tmpEl = tmp1+tmp2+tmp3+tmp4;
+vertEl = find(tmpEl == 4);
+[vertElZ,indEl] = sort(elems.cellCentroid(vertEl,3));
+
+timesInd = [2;5;8];
 time_string = "Year  " + expTime(timesInd);
-pressPlot = expPress(vert(ind),timesInd);
-dispPlot = expDispl(3*vert(ind),timesInd);
 set(0,'DefaultAxesColorOrder',[0 0 0],...
       'DefaultAxesLineStyleOrder','-|--|:|-.')
-figure(1)
-plot(pressPlot,vertax)
-xlabel('Pressione [kPa]')
-ylabel('z (m)')
-legend(time_string)
+
+if isFEMBased(model,'Flow')
+    pressPlot = expPress(vertNod(indNod),timesInd);
+    figure(1)
+    plot(pressPlot,vertNodZ)
+    xlabel('Pressione [kPa]')
+    ylabel('z (m)')
+    legend(time_string)
+elseif isFVTPFABased(model,'Flow')
+    pressPlot = expPress(vertEl(indEl),timesInd);
+    figure(1)
+    plot(pressPlot,vertElZ)
+    xlabel('Pressione [kPa]')
+    ylabel('z (m)')
+    legend(time_string)
+end
+dispPlot = expDispl(3*vertNod(indNod),timesInd);
+
 figure(2)
-plot(1000*dispPlot,vertax);
+plot(1000*dispPlot,vertNodZ);
 xlabel('Spostamento verticale (mm)')
 ylabel('z (m)')
 % xlim([0 50])
 % ylim([-60 5])
 legend(time_string)
+
 
 
 %%

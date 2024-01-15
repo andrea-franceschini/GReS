@@ -110,14 +110,15 @@ classdef Boundaries < handle
                 end
           end
       elseif strcmp(obj.getCond(identifier),'VolumeForce')
-          loadedEnts = obj.getLoadedEntities(identifier);
           % Volume Force ---> Node Dof
           %VolumeForce are available only for flow model
-          if isFEMBased(obj.model,bound.getPhysics(identifier))
+          if isFEMBased(obj.model,obj.getPhysics(identifier))
+              loadedEnts = obj.getLoadedEntities(identifier);
               list = obj.dof.nodeDofTable(loadedEnts,col);
-          elseif isFVTPFA(obj.model,bound.getPhysics(identifier))
+          elseif isFVTPFABased(obj.model,obj.getPhysics(identifier))
           % Volume Force ---> Element Dof
-              list = obj.dof.elemDofTable(loadedEnts,col);
+              ents = obj.getData(identifier).data.entities;
+              list = obj.dof.elemDofTable(ents,col);
           end
       end
       if any(list == 0)
@@ -203,8 +204,7 @@ classdef Boundaries < handle
       keys = obj.db.keys;
       for i = 1 : length(keys)
         if strcmp(obj.getCond(keys{i}), 'VolumeForce') && ...
-            isFEMBased(model,obj.getPhysics(keys{i})) && ...
-            strcmp(obj.getType(keys{i}),'Neu')
+            isFEMBased(model,obj.getPhysics(keys{i})) 
           dofs = obj.getEntities(keys{i});
           tmpMat = grid.topology.cells(dofs,:)';
           [loadedEnts] = unique(tmpMat(tmpMat ~= 0));
@@ -488,13 +488,14 @@ classdef Boundaries < handle
         error('File %s not opened correctly',fileName);
       end
       token = Boundaries.readToken(fid);
-      if (~ismember(convertCharsToStrings(token), ["NodeBC", "SurfBC", "VolForce"]))
+      if (~ismember(convertCharsToStrings(token), ["NodeBC", "SurfBC", "VolumeForce","ElementBC"]))
         error(['%s condition is unknown\n', ...
           'Accepted types are: NodeBC   -> Boundary cond. on nodes\n',...
           '                    SurfBC   -> Boundary cond. on surfaces\n',...
-          '                    VolForce -> Volume force on elements'], token);
+          '                    ElementBC   -> Boundary cond. on elements\n',...                      
+          '                    VolumeForce -> Volume force on elements'], token);
       end
-      if ismember(convertCharsToStrings(token), ["NodeBC", "SurfBC"])
+      if ismember(convertCharsToStrings(token), ["NodeBC", "SurfBC", "ElementBC"])
         type = Boundaries.readToken(fid);
         if (~ismember(type, ['Dir', 'Neu']))
           error(['%s boundary condition is not admitted\n', ...

@@ -16,5 +16,8 @@ function vals = readDataSet(fileName, nVals)
       id = id + nNum;
     end
   end
+  if length(vals) ~= nVals
+      error('Number of values in %s not matching number of constrained entities',fileName)
+  end
   fclose(fid);
 end
