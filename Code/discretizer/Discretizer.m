@@ -1492,6 +1492,7 @@ classdef Discretizer < handle
 %       obj.fOld = obj.fConst;
     end
 
+
     function computeFlowRHSGravTerm_Test(obj)
       % Compute the gravity contribution
       % Get the fluid specific weight and viscosity
@@ -1529,7 +1530,7 @@ classdef Discretizer < handle
                         end
                         %
                         dof = obj.dofm.getLocDoF('Flow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
-                        ph = obj.dofm.SubPhysic('Flow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+                        ph = obj.dofm.getSubPhysic('Flow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
                         dofVec(l1+1:l1+s1) = dof;
                         phVec(l1+1:l1+s1) = ph;
                         fVec(l1+1:l1+s1) = fLoc;

@@ -96,35 +96,17 @@ classdef NonLinearSolver < handle
         if isPoromechanics(obj.model) && isSinglePhaseFlow(obj.model)
             linSyst.computeBiotSyst(delta_t,obj.statek,obj.stateTmp);
         end
- 
-
-        % if isPoromechanics(obj.model) && isSinglePhaseFlow(obj.model)
-        %     % compute Jacobian and residual of coupled hydro-mechanics
-        %     % problem       
-        %   linSyst.computeCoupleSyst(obj.simParameters.theta,delta_t,obj.statek,obj.stateTmp)
-        % elseif isPoromechanics(obj.model) 
-        %   % Compute Jacobian and residual of the poromechanical problem
-        %   linSyst.computePoroSyst(obj.stateTmp,delta_t);
-        % elseif isSinglePhaseFlow(obj.model)
-        %   % Compute Jacobian and residual of the flow problem 
-        %   linSyst.computeFlowJacobian(delta_t);
-        %   mu = obj.material.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();
-        %   linSyst.computeFlowRHS(obj.statek,obj.stateTmp,delta_t,1/mu);
-        % elseif isVariabSatFlow(obj.model)
-        %   linSyst.computeVSFMatricesAndRHS(obj.statek,obj.stateTmp,delta_t);
-        % end
-        %
-
-        % Apply Neu and Dir conditions
-        linSyst.buildGlobalJacobianAndRhs();
+        
+        % Apply BCs to the block-wise system
         applyBCandForces_test(obj.model, obj.grid, obj.bound, obj.material, ...
           obj.t, linSyst, obj.stateTmp);
-%         obj.bound.applyBCNeu(linSyst);
-        rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
-        %rhsNorm = computeRhsNorm(obj,linSyst);
+        % Build global system
+        linSyst.buildGlobalJacobianAndRhs();
+        % old_ApplyBCAndForces(obj.model, obj.grid, obj.bound, obj.material, ...
+        %   obj.t, linSyst, obj.stateTmp);
+        %rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
+        [locRhsNorm, rhsNorm] = computeRhsNorm(obj,linSyst);
         linSyst.resetJacobianAndRhs();
-%         obj.bound.applyBCDir(linSyst);
-%         obj.bound.applyBCNeu(linSyst);
         tolWeigh = obj.simParameters.relTol*rhsNorm;
         obj.iter = 0;
         %
@@ -156,12 +138,14 @@ classdef NonLinearSolver < handle
             linSyst.computeBiotSyst(delta_t,obj.statek,obj.stateTmp);
           end
           %
-          linSyst.buildGlobalJacobianAndRhs();
           applyBCandForces_test(obj.model, obj.grid, obj.bound, obj.material, ...
             obj.t, linSyst, obj.stateTmp);
+          linSyst.buildGlobalJacobianAndRhs();
+          % old_ApplyBCAndForces(obj.model, obj.grid, obj.bound, obj.material, ...
+          % obj.t, linSyst, obj.stateTmp);
 %           obj.bound.applyBCNeu(linSyst);
           %rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
-          rhsNorm = computeRhsNorm(obj,linSyst);
+          [locRhsNorm, rhsNorm] = computeRhsNorm(obj,linSyst);
           linSyst.resetJacobianAndRhs();
 %           obj.bound.applyBCDir(linSyst);
 %           obj.bound.applyBCNeu(linSyst);
@@ -334,17 +318,15 @@ classdef NonLinearSolver < handle
         dt = t - obj.t; 
     end
 
-    function rhsNorm = computeRhsNorm(obj,syst)
+    function [locRhsNorm, globRhsNorm] = computeRhsNorm(obj,syst)
         %Return maximum norm of all Rhs block
         nRhs = length(syst.dofm.subList);
-        rhs = zeros(nRhs,1);
-        l1 = 0;
+        locRhsNorm = zeros(nRhs,1);
         for i = 1:nRhs
-            ncomp = syst.dofm.numDof(i);
-            rhs(i) = norm(syst.rhs(l1+1:l1+ncomp), obj.simParameters.pNorm);
-            l1 = l1 + ncomp;
+            locRhsNorm(i) = norm(syst.blockRhs(i).block, obj.simParameters.pNorm);
         end
-        rhsNorm = max(rhs);
+        globtmp = norm(syst.rhs,  obj.simParameters.pNorm);
+        globRhsNorm = sqrt(sum(locRhsNorm.^2));
     end
 
 

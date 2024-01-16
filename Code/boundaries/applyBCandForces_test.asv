@@ -1,72 +1,94 @@
 function applyBCandForces_test(model, grid, bound, material, t, syst, state)
+  % Apply Boundary condition to the block partitioned system. The local 
+  % dof indexing is used. BC assignment is done by ApplyBC function.
   % Impose BC to the linearized system (Jacobian matrix + RHS)
   % The Penalty method is used for the Dirichlet conditions
-  %DoF Manager class exploited
-  maxVal = max(abs(syst.J), [], 'all');
-  %
   keys = bound.db.keys;
+  dirVal = []; % if stays empty Penalty method is used
+  rhsVal = []; % if stays empty Penalty method is used
   for i = 1 : length(keys)
-    % --------------------------NODE BC --------------------------------- 
-    if strcmp(bound.getCond(keys{i}),'NodeBC') 
-      if strcmp(bound.getType(keys{i}), 'Neu')  % Apply Neumann conditions,if any
-        syst.rhs(bound.getDofs(keys{i})) = syst.rhs(bound.getDofs(keys{i})) - bound.getVals(keys{i}, t);
-      elseif strcmp(bound.getType(keys{i}), 'Dir')  % Apply Dirichlet conditions
-        nrows = size(syst.J,1);
-        syst.J(nrows*(bound.getDofs(keys{i})-1) + bound.getDofs(keys{i})) = maxVal*1.e10;
-        syst.rhs(bound.getDofs(keys{i})) = 0;
+      cond = bound.getCond(keys{i});
+      type = bound.getType(keys{i});
+      ph = bound.getPhysics(keys{i});
+      switch cond
+          case 'NodeBC'
+              bcDofs = bound.getDofs(keys{i});
+              switch bound.getType(keys{i})
+                  case 'Neu'
+                      rhsVal = - bound.getVals(keys{i}, t);
+              end
+          case 'ElementBC'
+              bcDofs = bound.getDofs(keys{i});
+          case 'SurfBC'
+              if isFEMBased(model,bound.getPhysics(keys{i}))
+                  bcDofs = bound.getLocDofs(keys{i});
+                  switch type
+                      case 'Neu'
+                          entitiesInfl = bound.getEntitiesInfluence(keys{i});
+                          q = bound.getVals(keys{i}, t);
+                          rhsVal = - entitiesInfl*q;
+                  end    
+              elseif isFVTPFABased(model,bound.getPhysics(keys{i}))
+                  faceID = bound.getEntities(keys{i});
+                  neigh = sum(grid.faces.faceNeighbors(faceID,:),2); % possibly repeated cells
+                  doftmp = bound.dof.getDoF('Flow',neigh); 
+                  [bcDofs,~,ind] = unique(doftmp); % cell dof with no repetitions (corner cells have more than one face on the boundary!)
+                  switch bound.getType(keys{i})                     
+                      case 'Neu'
+                          area = -vecnorm(grid.faces.faceNormal(faceID,:),2,2).*bound.getVals(keys{i}, t);
+                          rhsVal = accumarray(ind, area);
+                      case 'Dir'
+                          gamma = material.getFluid().getFluidSpecWeight();
+                          mu = material.getFluid().getDynViscosity();
+                          trans = getFaceTransmissibilities(syst,faceID);
+                          q = 1/mu*trans.*((state.pressure(neigh) - bound.getVals(keys{i}, t))...
+                            + gamma*(grid.cells.cellCentroid(neigh,3) - grid.faces.faceCentroid(faceID,3)));
+                          rhsVal = accumrray(ind,q);
+                          dirVal = 1/mu*trans;
+                  end    
+              end
+          case 'VolumeForce'
+              bcDofs = bound.getDofs(keys{i});
+              if isFEMBased(model,bound.getPhysics(keys{i}))
+                entitiesInfl = bound.getEntitiesInfluence(keys{i});
+                q = bound.getVals(keys{i}, t);
+                rhsVal = - entitiesInfl*q;
+              elseif isFVTPFABased(model,bound.getPhysics(keys{i}))
+                rhsVal = - bound.getVals(keys{i}, t).*grid.cells.vol(bound.getEntities(keys{i}));
+              end
       end
-    % --------------------------ELEMENT BC ---------------------------------   
-    elseif strcmp(bound.getCond(keys{i}),'ElementBC') %apply dirichlet condition assigned on cells (FVTPFA scheme)
-      nrows = size(syst.J,1);
-      syst.J(nrows*(bound.getDofs(keys{i})-1) + bound.getDofs(keys{i})) = maxVal*1.e10;
-      syst.rhs(bound.getDofs(keys{i})) = 0;
-    % --------------------------SURFACE BC --------------------------------- 
-    elseif strcmp(bound.getCond(keys{i}),'SurfBC')
-      %FEM surface BC  
-      if isFEMBased(model,bound.getPhysics(keys{i}))
-        if strcmp(bound.getType(keys{i}), 'Neu')
-          entitiesInfl = bound.getEntitiesInfluence(keys{i});
-          q = bound.getVals(keys{i}, t);
-          syst.rhs(bound.getDofs(keys{i})) = syst.rhs(bound.getDofs(keys{i})) - entitiesInfl*q;
-        elseif strcmp(bound.getType(keys{i}), 'Dir')
-            nrows = size(syst.J,1);
-            syst.J(nrows*(bound.getDofs(keys{i})-1) + bound.getDofs(keys{i})) = maxVal*1.e10;
-            syst.rhs(bound.getDofs(keys{i})) = 0;
-        end
-      elseif isFVTPFABased(model,bound.getPhysics(keys{i}))
-        if strcmp(bound.getType(keys{i}), 'Neu')
-          faceID = bound.getEntities(keys{i});
-%           neigh = grid.faces.faceNeighbors(faceID,:);
-%           assert(all(sum(neigh~=0,2) == 1),'Corrupted face numbering in %s',bound.getName(keys{i}));
-          neigh = sum(grid.faces.faceNeighbors(faceID,:),2);
-          syst.rhs(neigh) = syst.rhs(neigh) - vecnorm(grid.faces.faceNormal(faceID,:),2,2).*bound.getVals(keys{i}, t);
-        elseif strcmp(bound.getType(keys{i}), 'Dir')
-%           error('Dirichlet cond. for FVTPFA on surf has not been implemented yet (ref. %s)', ...
-%           bound.getName(keys{i}));
-          nrows = size(syst.J,1);
-          faceID = bound.getEntities(keys{i});
-          neighEl = sum(grid.faces.faceNeighbors(faceID,:),2);
-          neighElLoc = bound.dof.getLocDoF('Flow',neighEl);
-          neighEl = bound.dof.getDoF('Flow',neighEl);
-          gamma = material.getFluid().getFluidSpecWeight();
-          mu = material.getFluid().getDynViscosity();
-          trans = getFaceTransmissibilities(syst,faceID);
-          q = 1/mu*trans.*((state.pressure(neighElLoc) - bound.getVals(keys{i}, t))...
-            + gamma*(grid.cells.cellCentroid(neighElLoc,3) - grid.faces.faceCentroid(faceID,3)));
-          syst.rhs(neighEl) = syst.rhs(neighEl) + q;
-          syst.J(nrows*(neighEl-1) + neighEl) = syst.J(nrows*(neighEl-1) + neighEl) + 1/mu*trans;
-        end
-      end
-    % --------------------------VOLUME FORCE ---------------------------------   
-    elseif strcmp(bound.getCond(keys{i}), 'VolumeForce')
-      if isFEMBased(model,bound.getPhysics(keys{i}))
-        entitiesInfl = bound.getEntitiesInfluence(keys{i});
-        q = bound.getVals(keys{i}, t);
-        entitiesForce = entitiesInfl*q;
-        syst.rhs(bound.getDofs(keys{i})) = syst.rhs(bound.getDofs(keys{i})) - entitiesForce;
-      elseif isFVTPFABased(model,bound.getPhysics(keys{i}))
-        syst.rhs(bound.getDofs(keys{i})) = syst.rhs(bound.getDofs(keys{i})) - bound.getVals(keys{i}, t).*grid.cells.vol(bound.getEntities(keys{i}));
-      end
+
+% ----------------------------- APPLY BC ----------------------------------
+    % get entity type associated to BC
+    if isFEMBased(model, ph)
+        ent = 'node';
+    elseif isFVTPFABased(model, ph)
+        ent = 'elem';
+    end
+
+    
+    locDofs = bound.dof.glob2loc(bcDofs,ent); % get local dofs 
+    phDofs = bound.dof.glob2sub(bcDofs, ent);  % get block ID associated to given bc global dofs
+    switch type
+        case 'Dir' % Dirichlet BC
+            for j = unique(phDofs)'
+                dof = locDofs(phDofs == j);
+                nrows = size(syst.blockJ(j,j).block,1);
+                if isempty(rhsVal) && isempty(dirVal) % penalty method
+                    maxVal = max(syst.blockJ(j,j).block, [], "all");
+                    syst.blockJ(j,j).block(nrows*(dof-1) + dof) = maxVal*1.e10;
+                    syst.blockRhs(j).block(dof) = 0;
+                else
+                    syst.blockJ(j,j).block(nrows*(dof-1) + dof) = syst.blockJ(j,j).block(nrows*(dof-1) + dof) + dirVal;
+                    syst.blockRhs(j).block(dof) = syst.blockRhs(j).block(dof) + rhsVal;
+                end
+            end
+        case 'Neu'
+            for j = unique(phDofs)'
+                dof = locDofs(phDofs == j);
+                syst.blockRhs(j).block(dof) = syst.blockRhs(j).block(dof) + rhsVal;
+            end
     end
   end
+
 end

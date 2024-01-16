@@ -126,6 +126,86 @@ classdef Boundaries < handle
       end
                
     end
+
+    function list = getLocDofs(obj, identifier)
+      %return loaded DOFS for the specified BC in global indexing
+      %list = obj.getData(identifier).data.entities; OLD VERSION
+      %%%%update to getDofs method
+      col = obj.dof.getColTable(obj.getPhysics(identifier));
+      if strcmp(obj.getCond(identifier),'NodeBC') | strcmp(obj.getCond(identifier),'ElementBC') 
+            nEnts = obj.getData(identifier).data.nEntities;
+            entities = obj.getData(identifier).data.entities;
+            i1 = 1;
+            for i = 1:length(nEnts)
+              i2 = i1 + nEnts(i);
+              if strcmp(obj.getCond(identifier),'NodeBC') % Node BC ---> Node Dof
+                list(i1:i2-1) = obj.dof.nodeDofTable(entities(i1:i2-1),col(i),2);
+              elseif strcmp(obj.getCond(identifier),'ElementBC') % Element BC ---> Element Dof
+                list(i1:i2-1) = obj.dof.elemDofTable(entities(i1:i2-1),col(i));  
+              end
+              i1 = i2;
+            end
+      elseif strcmp(obj.getCond(identifier),'SurfBC')
+          % SurfBC ---> Node Dof
+          if isFEMBased(obj.model,obj.getPhysics(identifier))
+              if strcmp(obj.getType(identifier),'Neu')
+                  loadedEnts = obj.getLoadedEntities(identifier);
+                  if strcmp(obj.getPhysics(identifier),'Poro')
+                      direction = obj.getDirection(identifier);
+                      switch direction
+                          case 'x'
+                            list = obj.dof.nodeDofTable(loadedEnts,col(1),2);
+                          case 'y'
+                            list = obj.dof.nodeDofTable(loadedEnts,col(2),2);
+                          case 'z'
+                            list = obj.dof.nodeDofTable(loadedEnts,col(3),2);
+                      end
+                  elseif strcmp(obj.getPhysics(identifier),'Flow')
+                      list = obj.dof.nodeDofTable(loadedEnts,col);
+                  end
+              elseif strcmp(obj.getType(identifier),'Dir')           
+                nEnts = obj.getNumbLoadedEntities(identifier);
+                ents = obj.getLoadedEntities(identifier);
+                i1 = 1;
+                for i = 1:length(nEnts)
+                  i2 = i1 + nEnts(i);
+                  list(i1:i2-1) = obj.dof.nodeDofTable(ents(i1:i2-1),col(i),2);
+                  i1 = i2;
+                end
+              end
+            elseif isFVTPFA(obj.model,bound.getPhysics(identifier))
+          % SurfBC ---> Element Dof
+                if  strcmp(obj.getPhysics(identifier),'Poro')
+                    direction = obj.getDirection(identifier);
+                    switch direction
+                        case 'x'
+                            list = obj.dof.elemDofTable(loadedEnts,col(1),2);
+                        case 'y'
+                            list = obj.dof.elemDofTable(loadedEnts,col(2),2);
+                        case 'z'
+                            list = obj.dof.elemDofTable(loadedEnts,col(3),2);
+                    end
+                elseif strcmp(obj.getPhysics(identifier),'Flow')
+                    list = obj.dof.elemDofTable(loadedEnts,col,2);
+                end
+          end
+      elseif strcmp(obj.getCond(identifier),'VolumeForce')
+          % Volume Force ---> Node Dof
+          %VolumeForce are available only for flow model
+          if isFEMBased(obj.model,obj.getPhysics(identifier))
+              loadedEnts = obj.getLoadedEntities(identifier);
+              list = obj.dof.nodeDofTable(loadedEnts,col,2);
+          elseif isFVTPFABased(obj.model,obj.getPhysics(identifier))
+          % Volume Force ---> Element Dof
+              ents = obj.getData(identifier).data.entities;
+              list = obj.dof.elemDofTable(ents,col,2);
+          end
+      end
+      if any(list == 0)
+          error('Boundary conditions %s not supported from subdomain',identifier)
+      end
+               
+    end
     
     function cond = getCond(obj, identifier)
       cond = obj.getData(identifier).cond;

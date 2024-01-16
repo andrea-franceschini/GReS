@@ -119,7 +119,7 @@ nodesU = nodesU(ind);
 if isFEMBased(model,'Flow')
     nodesP = nodesU;
 else
-    nodesP = find(elems.cellCentroid(:,1) + elems.cellCentroid(:,2) < 0.51 );
+    nodesP = find(elems.cellCentroid(:,1) + elems.cellCentroid(:,2) < 0.51);
     [~,ind] = sort(elems.cellCentroid(nodesP,3));
     nodesP = nodesP(ind);
 end

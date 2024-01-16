@@ -13,7 +13,7 @@ classdef Materials < handle
     % Class constructor method   
     function obj = Materials(model,fListName)
       % Calling the function to read input data from file
-      obj.matMap =zeros(100,100);
+      obj.matMap = zeros(100,100);
       obj.readInputFiles(model,fListName)
     end
 

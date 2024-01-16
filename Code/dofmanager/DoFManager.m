@@ -178,7 +178,7 @@ classdef DoFManager < handle
 
 
         function subPh = getSubPhysic(obj,physic,varargin)
-            %Return Global DOFs associated to entities
+            %Return Physic ID associated to entities
             %Needed to map global Dofs with local solution arrays
             physic = translatePhysic(physic);
             col = obj.getColTable(physic);
@@ -304,11 +304,64 @@ classdef DoFManager < handle
                  assert(isFlow(obj.model),['Flow physical ',...
                      'model not defined in ModelType class']);
              end    
-        end
-        
-    
-    
-            
+         end
+
+
+         function locList = glob2loc(obj, globList, ent)
+             % map a global degree of freedome to its local counterpart
+             switch ent
+                 case 'node'
+                    [row, col] = find(ismember(obj.nodeDofTable(:,:,1),globList'));
+                    locTab = obj.nodeDofTable(:,:,2);
+                    locList = locTab(sub2ind(size(locTab), row, col));
+                 case 'elem'
+                    [row, col] = find(ismember(obj.elemDofTable(:,:,1),globList'));
+                    locTab = obj.elemDofTable(:,:,2);
+                    locList = locTab(sub2ind(size(locTab), row, col));               
+             end
+         end
+
+         function globList = loc2glob(obj, locList, ent)
+             % map a local degree of freedome to its global counterpart
+             switch ent
+                 case 'node'
+                    [row, col] = find(ismember(obj.nodeDofTable(:,:,2),locList'));
+                    globTab = obj.nodeDofTable(:,:,1);
+                    globList = globTab(sub2ind(size(globTab), row, col));
+                 case 'elem'
+                    [row, col] = find(ismember(obj.elemDofTable(:,:,2),locList'));
+                    globTab = obj.elemDofTable(:,:,1);
+                    globList = globTab(sub2ind(size(globTab), row, col));                  
+             end
+         end
+
+         function subList = loc2sub(obj, locList, ent)
+             % map a local dof to its physic ID
+             switch ent
+                 case 'node'
+                    [row, col] = find(ismember(obj.nodeDofTable(:,:,2), locList'));
+                    subTab = obj.nodeDofTable(:,:,3);
+                    subList = subTab(sub2ind(size(subTab), row, col));
+                 case 'elem'
+                    [row, col] = find(ismember(obj.elemDofTable(:,:,2), locList'));
+                    subTab = obj.elemDofTable(:,:,3);
+                    subList = subTab(sub2ind(size(subTab), row, col));                
+             end                         
+         end
+
+         function subList = glob2sub(obj, globList, ent)
+             % map a local dof to its physic ID
+             switch ent
+                 case 'node'
+                     [row, col] = find(ismember(obj.nodeDofTable(:,:,1), globList'));
+                     subTab = obj.nodeDofTable(:,:,3);
+                     subList = subTab(sub2ind(size(subTab), row, col));
+                 case 'elem'
+                     [row, col] = find(ismember(obj.elemDofTable(:,:,1), globList'));
+                     subTab = obj.elemDofTable(:,:,3);
+                     subList = subTab(sub2ind(size(subTab), row, col));
+             end
+         end
     end
 end
 
