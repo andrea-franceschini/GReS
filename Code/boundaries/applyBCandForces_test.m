@@ -46,7 +46,7 @@ function applyBCandForces_test(model, grid, bound, material, t, syst, state)
                           trans = getFaceTransmissibilities(syst,faceID);
                           q = 1/mu*trans.*((state.pressure(neigh) - bound.getVals(keys{i}, t))...
                             + gamma*(grid.cells.cellCentroid(neigh,3) - grid.faces.faceCentroid(faceID,3)));
-                          rhsVal = accumrray(ind,q);
+                          rhsVal = accumarray(ind,q);
                           dirVal = 1/mu*trans;
                   end    
               end
