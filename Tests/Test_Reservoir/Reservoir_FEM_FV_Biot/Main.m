@@ -125,7 +125,7 @@ tmpEl = tmp1+tmp2+tmp3+tmp4;
 vertEl = find(tmpEl == 4);
 [vertElZ,indEl] = sort(elems.cellCentroid(vertEl,3));
 
-timesInd = [2;5;8];
+timesInd = [2;3;4];
 time_string = "Year  " + expTime(timesInd);
 set(0,'DefaultAxesColorOrder',[0 0 0],...
       'DefaultAxesLineStyleOrder','-|--|:|-.')

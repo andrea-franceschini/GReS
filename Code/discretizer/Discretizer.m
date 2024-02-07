@@ -1,7 +1,11 @@
 classdef Discretizer < handle           
   %UNTITLED Summary of this class goes here
   %   Detailed explanation goes here
-  
+  properties (Access = private)
+      db = containers.Map('KeyType','char','ValueType','any')
+      modMap
+  end
+
   properties (Access = public)
     H
     P
@@ -21,15 +25,7 @@ classdef Discretizer < handle
     elements
     faces
     material
-%     bound
-%     BCName
-%     state
     GaussPts
-%     probType  %either linear (lin) or nonlinear (nonlin)
-%     flCompRHS = false
-%     nE   % nE = [#tetra, #hexa, #wed, #pyr]
-%     nEntryKLoc
-%     fConst
     trans
     RHSGravTerm
     upElem
@@ -1338,66 +1334,99 @@ classdef Discretizer < handle
   end
   
   methods(Access = private)
-    function setDiscretizer(obj,symmod,params,dofManager,grid,mat,data)
-      obj.model = symmod;
-      obj.simParams = params;
-      obj.dofm = dofManager;
-      obj.mesh = grid.topology;
-      obj.elements = grid.cells;
-      obj.faces = grid.faces;
-      obj.material = mat;
-%       obj.probType = pType;
-%       obj.bound = bc;
-%       obj.BCName = BCName;
-%       obj.state = stat;
-      if ~isempty(data)
-        obj.GaussPts = data{1};
-      end
-      %
-      obj.nEntryKLoc = (obj.mesh.nDim^2)*(obj.elements.nNodesElem).^2;
-      %
-      initializeBlockJacobianAndRhs(obj)
-      %%% richards model -  will be checked in the future %%%%%%%%%%%%%%%%
-      if obj.model.isFVTPFABased('Flow')
-        obj.computeTrans;
-        %get cells with active flow model
-        
-        % internal faces inside each subdomain
-        nSub = length(obj.dofm.subDomains);
-        IntFaces = zeros(obj.faces.nFaces,nSub);
-        flowCells = [];
-        for i = 1:nSub
-            if any(strcmp(obj.dofm.subDomains(i).physics,"Flow"))
-            flowCells = [flowCells; find(obj.dofm.subCells(:,i))];
-            end
-        end
+      function setDiscretizer(obj,symmod,params,dofManager,grid,mat,data)
+          obj.model = symmod;
+          obj.simParams = params;
+          obj.dofm = dofManager;
+          obj.mesh = grid.topology;
+          obj.elements = grid.cells;
+          obj.faces = grid.faces;
+          obj.material = mat;
+          %       obj.probType = pType;
+          %       obj.bound = bc;
+          %       obj.BCName = BCName;
+          %       obj.state = stat;
+          if ~isempty(data)
+              obj.GaussPts = data{1};
+          end
+          %
+          obj.nEntryKLoc = (obj.mesh.nDim^2)*(obj.elements.nNodesElem).^2;
+          %
+          initializeBlockJacobianAndRhs(obj)
+          nsyst = length(obj.blockRhs);
+          getModelMap(obj);
+          mods = cell(nsyst,1);
+          for i = 1:nsyst^2
+              str = obj.blockJ(i).physics;
+              str = convertStringsToChars(str);
+              str = obj.modMap(strcat(str{:}));
+              mods{i} = str;
+          end
+          mods = unique(mods);
+          for i = 1:length(mods)
+              switch mods{i}
+                  case 'Poro'
+                      obj.db('Poro') = Poromechanics(symmod,params,dofManager,grid,mat,data);
+                  case 'Flow'
+                      obj.db('Flow') = SPFlow(symmod,params,dofManager,grid,mat,data);
+              end
+          end
+          
+          
+          
 
-        for i = 1:nSub
-            intcells = find(obj.dofm.subCells(:,i));
-            tmp1 = any(ismember(obj.faces.faceNeighbors, intcells),2);
-            tmp2 = all(ismember(obj.faces.faceNeighbors, flowCells),2);
-            IntFaces(:,i) = all([tmp1 tmp2],2);
-        end
-        obj.isIntFaces = logical(IntFaces);
-        if obj.model.isVariabSatFlow()
-          obj.upElem = zeros(nnz(obj.isIntFaces),1);
-        end
+          %%% richards model -  will be checked in the future %%%%%%%%%%%%%%%%
+          if obj.model.isFVTPFABased('Flow')
+              obj.computeTrans;
+              %get cells with active flow model
+              % internal faces inside each subdomain
+              nSub = length(obj.dofm.subDomains);
+              IntFaces = zeros(obj.faces.nFaces,nSub);
+              flowCells = [];
+              for i = 1:nSub
+                  if any(strcmp(obj.dofm.subDomains(i).physics,"Flow"))
+                      flowCells = [flowCells; find(obj.dofm.subCells(:,i))];
+                  end
+              end
+
+              for i = 1:nSub
+                  intcells = find(obj.dofm.subCells(:,i));
+                  tmp1 = any(ismember(obj.faces.faceNeighbors, intcells),2);
+                  tmp2 = all(ismember(obj.faces.faceNeighbors, flowCells),2);
+                  IntFaces(:,i) = all([tmp1 tmp2],2);
+              end
+              obj.isIntFaces = logical(IntFaces);
+
+              if obj.model.isVariabSatFlow()
+                  obj.upElem = zeros(nnz(obj.isIntFaces),1);
+              end
+          end
+          %
+          if obj.model.isFlow()
+              computeFlowRHSGravTerm_Test(obj);
+          end
+          %       if isSinglePhaseFlow(obj.model)
+          %         obj.fOld = zeros(obj.mesh.nNodes,1);
+          %         obj.fNew = zeros(obj.mesh.nNodes,1);
+          %       end
+          %       if strcmpi(obj.probType,'lin')
+          %         obj.flCompRHS = false;
+          %       elseif strcmpi(obj.probType,'nonlin')
+          %         obj.flCompRHS = true;
+          %       end
+
+
+          % create subclasses related to each model
       end
-      %
-      if obj.model.isFlow()
-        computeFlowRHSGravTerm_Test(obj);
-      end
-%       if isSinglePhaseFlow(obj.model)
-%         obj.fOld = zeros(obj.mesh.nNodes,1);
-%         obj.fNew = zeros(obj.mesh.nNodes,1);
-%       end
-%       if strcmpi(obj.probType,'lin')
-%         obj.flCompRHS = false;
-%       elseif strcmpi(obj.probType,'nonlin')
-%         obj.flCompRHS = true;
-%       end
-    end
     
+      function getModelMap(obj)
+          mp = containers.Map('KeyType','char','ValueType','any');
+          mp('PoroPoro') = 'Poro';
+          mp('PoroFlow') = 'Biot';
+          mp('FlowPoro') = 'Biot';
+          mp('FlowFlow') = 'Flow';
+          obj.modMap = mp;
+      end
 
     function [JNewt] = computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,dlwkpt)
       neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
@@ -1493,6 +1522,7 @@ classdef Discretizer < handle
     end
 
 
+
     function computeFlowRHSGravTerm_Test(obj)
       % Compute the gravity contribution
       % Get the fluid specific weight and viscosity
@@ -1585,7 +1615,8 @@ classdef Discretizer < handle
             for j=1:dim
                 subID = obj.dofm.subList(i);
                 obj.blockJ(i,j).subID = subID;
-                obj.blockJ(i,j).physics = obj.dofm.subPhysics([i j]);
+                phs = obj.dofm.subPhysics([i j]);
+                obj.blockJ(i,j).physics = phs;
                 obj.blockJ(i,j).block = sparse(obj.dofm.numDof(i),obj.dofm.numDof(j));
                 if all(strcmp(obj.blockJ(i,j).physics,'Flow'))
                     %Initialize flow elementary matrix

@@ -2,7 +2,7 @@ SurfBC                            % BC item
 Neu                               % BC type
 Poro                              % Physics
 z                                 % Direction
-neu_top_force                     % BC name
+neu_top                          % BC name
 neuSurf_BC_poro_tetra/list
 0.0 neuSurf_BC_poro_tetra/time0.dat
 End

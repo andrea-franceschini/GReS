@@ -586,7 +586,7 @@ classdef State < matlab.mixin.Copyable
       cp.dispConv = obj.dispConv;
 %       cp.avStress = obj.avStress;
       cp.iniStress = obj.iniStress;
-      cp.dispConv = obj.dispConv;
+      cp.dispCurr = obj.dispCurr;
 %       cp.iniAvStress = obj.iniAvStress;
       cp.pressure = obj.pressure;
       cp.t = obj.t;

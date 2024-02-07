@@ -1,7 +1,7 @@
 SurfBC                            % BC item
 Dir                               % BC type
 Poro                              % Physics
-dir_down                             % BC name
+dir_poro                             % BC name
 dir_BCSurf_poro_tetra/list
 0.000000 dir_BCSurf_poro_tetra/time0.dat
 End

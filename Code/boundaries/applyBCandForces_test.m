@@ -1,6 +1,6 @@
 function applyBCandForces_test(model, grid, bound, material, t, syst, state)
-  % Apply Boundary condition to the block partitioned system. The local 
-  % dof indexing is used. BC assignment is done by ApplyBC function.
+  % Apply Boundary condition to the block partitioned system.  
+  % Block dof indexing is used. 
   % Impose BC to the linearized system (Jacobian matrix + RHS)
   % The Penalty method is used for the Dirichlet conditions
   keys = bound.db.keys;
@@ -12,7 +12,6 @@ function applyBCandForces_test(model, grid, bound, material, t, syst, state)
       if ~strcmp(cond,"VolumeForce")
         type = bound.getType(keys{i});
       end
-      ph = bound.getPhysics(keys{i});
       switch cond
           case 'NodeBC'
               bcDofs = bound.getDofs(keys{i});
@@ -43,10 +42,10 @@ function applyBCandForces_test(model, grid, bound, material, t, syst, state)
                       case 'Dir'
                           gamma = material.getFluid().getFluidSpecWeight();
                           mu = material.getFluid().getDynViscosity();
-                          trans = getFaceTransmissibilities(syst,faceID);
+                          trans = getFaceTransmissibilities(syst.getField('Flow'),faceID);
                           q = 1/mu*trans.*((state.pressure(neigh) - bound.getVals(keys{i}, t))...
                             + gamma*(grid.cells.cellCentroid(neigh,3) - grid.faces.faceCentroid(faceID,3)));
-                          rhsVal = accumrray(ind,q);
+                          rhsVal = accumarray(ind,q);
                           dirVal = 1/mu*trans;
                   end    
               end
@@ -63,40 +62,41 @@ function applyBCandForces_test(model, grid, bound, material, t, syst, state)
 
 % ----------------------------- APPLY BC ----------------------------------
     % get entity type associated to BC
-    if isFEMBased(model, ph)
-        ent = 'node';
-    elseif isFVTPFABased(model, ph)
-        ent = 'elem';
-    end
+    % if isFEMBased(model, ph)
+    %     ent = 'node';
+    % elseif isFVTPFABased(model, ph)
+    %     ent = 'elem';
+    % end
 
     
-    locDofs = bound.dof.glob2loc(bcDofs,ent); % get local dofs 
-    phDofs = bound.dof.glob2sub(bcDofs, ent);  % get block ID associated to given bc global dofs
+    locDofs = bound.dof.glob2loc(bcDofs); % get local dofs 
+    phDofs = bound.dof.glob2block(bcDofs);  % get block ID associated to given bc global dofs
     switch type
         case 'Dir' % Dirichlet BC
             for j = unique(phDofs)'
                 dof = locDofs(phDofs == j);
-                nrows = size(syst.blockJ(j,j).block,1);
+                nrows = size(syst.J{j,j},1);
                 if isempty(rhsVal) && isempty(dirVal) % penalty method
-                    maxVal = max(syst.blockJ(j,j).block, [], "all");
-                    syst.blockJ(j,j).block(nrows*(dof-1) + dof) = maxVal*1.e10;
-                    syst.blockRhs(j).block(dof) = 0;
+                    maxVal = max(syst.J{j,j}, [], "all");
+                    syst.J{j,j}(nrows*(dof-1) + dof) = maxVal*1.e10;
+                    syst.rhs{j}(dof) = 0;
                 else
-                    syst.blockJ(j,j).block(nrows*(dof-1) + dof) = syst.blockJ(j,j).block(nrows*(dof-1) + dof) + dirVal;
-                    syst.blockRhs(j).block(dof) = syst.blockRhs(j).block(dof) + rhsVal;
+                    syst.J{j,j}(nrows*(dof-1) + dof) = syst.J{j,j}(nrows*(dof-1) + dof) + dirVal(ind);
+                    syst.rhs{j}(dof) = syst.rhs{j}(dof) + rhsVal(ind);
                 end
             end
         case 'Neu'
             for j = unique(phDofs)'
-                dof = locDofs(phDofs == j);
-                syst.blockRhs(j).block(dof) = syst.blockRhs(j).block(dof) + rhsVal;
+                ind = phDofs == j;
+                dof = locDofs(ind);
+                syst.rhs{j}(dof) = syst.rhs{j}(dof) + rhsVal(ind);
             end
         otherwise
             for j = unique(phDofs)'
-                dof = locDofs(phDofs == j);
-                syst.blockRhs(j).block(dof) = syst.blockRhs(j).block(dof) + rhsVal;
+                ind = phDofs == j;
+                dof = locDofs(ind);
+                syst.rhs{j}(dof) = syst.rhs{j}(dof) + rhsVal(ind);
             end
-
     end
   end
 

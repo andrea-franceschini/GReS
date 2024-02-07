@@ -81,13 +81,7 @@ classdef DoFManager < handle
                     physics = physics(tmp);
                     obj.physicsList = physics;
                     obj.subDomains(1).physics = physics;
-                    obj.subDomains(1).regions = (1:mesh.nCellTag)';
-                    if length(physics) == 2
-                        obj.subDomains(1).coupling = true;  
-                    else
-                        obj.subDomains(1).coupling = false;
-                    end
-                    
+                    obj.subDomains(1).regions = (1:mesh.nCellTag)';                    
                     obj.subDomains = obj.subDomains(1);
             end
             obj.ncomp = ones(length(obj.physicsList),1)+(mesh.nDim-1)*ismember(obj.physicsList,"Poro");

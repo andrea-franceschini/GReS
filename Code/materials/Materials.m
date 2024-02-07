@@ -1,17 +1,18 @@
 classdef Materials < handle
   % MATERIAL - General material class
 
-  properties (Access = private)
+  properties (Access = public)
     % Creation of a Dictionary object (faster than map)
     %db = configureDictionary("double","struct"); 
     % configureDictionary is not supported before 2023b
-    db = containers.Map('KeyType','double','ValueType','any')
+    db 
     matMap
   end
 
   methods (Access = public)
     % Class constructor method   
     function obj = Materials(model,fListName)
+      obj.db = containers.Map('KeyType','double','ValueType','any');
       % Calling the function to read input data from file
       obj.matMap = zeros(100,100);
       obj.readInputFiles(model,fListName)
