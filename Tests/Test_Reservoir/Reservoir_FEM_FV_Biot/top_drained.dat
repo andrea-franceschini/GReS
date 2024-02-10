@@ -1,4 +1,4 @@
-NodeBC                            % BC item
+SurfBC                            % BC item
 Dir                               % BC type
 Flow                              % Physics
 top                             % BC name

@@ -172,6 +172,8 @@ classdef Biot < handle
             % select active coefficients of matrices and solution vectors
             entsPoro = obj.dofm.field2ent('Poro');
             entsFlow = obj.dofm.field2ent('Flow');
+            % maybe im taking into account displacement nodes that shuold
+            % not be coupled!
             %
             obj.rhsPoro = -theta*obj.Q*stateTmp.pressure(entsFlow) - ...
                 (1-theta)*(obj.Q*statek.pressure(entsFlow));

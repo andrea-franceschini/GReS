@@ -115,11 +115,11 @@ classdef Boundaries < handle
             %VolumeForce are available only for flow model
             if isFEMBased(obj.model,obj.getPhysics(identifier))
                 loadedEnts = obj.getLoadedEntities(identifier);
-                list = obj.dof.nodeDofTable(loadedEnts,col);
+                list = obj.dof.nod2dof(loadedEnts,col);
             elseif isFVTPFABased(obj.model,obj.getPhysics(identifier))
                 % Volume Force ---> Element Dof
                 ents = obj.getData(identifier).data.entities;
-                list = obj.dof.elemDofTable(ents,col);
+                list = obj.dof.elem2dof(ents,col);
             end
         end
         if any(list == 0)

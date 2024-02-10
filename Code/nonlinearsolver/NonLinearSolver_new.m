@@ -73,7 +73,6 @@ classdef NonLinearSolver_new < handle
             end
              linSyst.getField(fld).computeRhs(obj.stateTmp,obj.statek,delta_t);
         end
-
         % compute block Jacobian and block Rhs
         linSyst.computeBlockJacobianAndRhs(delta_t);
 
@@ -99,7 +98,10 @@ classdef NonLinearSolver_new < handle
           linSyst.resetJacobianAndRhs(); 
           % Update tmpState
           obj.stateTmp.updateState_test(du,obj.dofManager);
+
           % Compute Rhs and Matrices of NonLinear models
+          % Loop trough problem fields (different compared to number of
+          % blocks)
           for i = 1:length(linSyst.fields)
               fld = linSyst.fields{i};
               if ~isLinear(linSyst.db(fld))

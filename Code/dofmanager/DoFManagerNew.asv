@@ -218,23 +218,22 @@ classdef DoFManagerNew < handle
             dofs = find(ismember(obj.glob2block,field));
         end
 
-        function ents = field2ent(obj, field)
+        function ent = field2ent(obj, field)
             % INPUT: field string
             % OUTPUT: state array indices
             col = obj.getColTable(field);
             ncom = length(col);
+            blk = find(strcmp(obj.subPhysics,field));
+            glob = find(ismember(obj.glob2block,blk));
             if isFEMBased(obj.model, field)
-                ents = find(obj.nod2dof(:,col(1))); % non ordered active ents
-                [~, i] = sort(nonzeros(obj.nod2dof(:,col(1))));
-                ents = ents(i);
+                [~,ents] = find((ismember(obj.nod2dof,glob))');
             elseif isFVTPFABased(obj.model, field)
-                ents = find(obj.elem2dof(:,col(1))); % non ordered ents
-                [~, i] = sort(nonzeros(obj.elem2dof(:,col(1))));
-                ents = ents(i);
+                [~,ents] = find((ismember(obj.elem2dof,glob))');
             end
             tmp = [0;1;2];
             tmp = tmp(1:ncom);
-            ents = repelem(ents(:)*ncom,ncom)-repmat(flip(tmp),length(unique(ents)),1);
+            ents = ents(:)*length(tmp)-repmat(flip(tmp),length(unique(ents)),1);
+
         end
 
 

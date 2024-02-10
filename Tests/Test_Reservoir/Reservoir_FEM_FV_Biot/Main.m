@@ -6,9 +6,10 @@ rmpath(genpath('C:\Users\Moretto\Documents\PHD\GReS\GReS'))
 addpath(genpath('C:\Users\Moretto\Documents\PHD\GReS\GReS\Code'));
 addpath(genpath(pwd));
 %anal_path =  'C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution';
+%%
 tic
 % -------------------------- SET THE PHYSICS -------------------------
-model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
+model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
@@ -45,7 +46,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
 %----------------------------- DOF MANAGER -----------------------------
 fileName = 'dof.dat';
-dofmanager = DoFManager(topology, model, fileName);
+dofmanager = DoFManagerNew(topology, model, fileName);
 
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
@@ -60,28 +61,10 @@ fileName = ["bottom_fixed.dat","flux.dat","lateral_fix.dat","Impermeable.dat"];
 bound = Boundaries(fileName,model,grid,dofmanager);
 
 
-%
-%-------------------------- PREPROCESSING ----------------------------
-%
-% Some preprocessing stuff
-%PreProc class has been removed in the last version
-%indB is now defined in Elements Class
-%getStiffMatrix is now a method of material SubClasses (Elastic, SSCM...)
-%getDoFID is an external function in Discretizer repository
-%pre = PreProc(grid,mat);
-%
-%reading vectors containing initial conditions for each node, must change
-%if the mesh change. The suffix represents the element dimension
 % Set the "State" object. It contains all the vectors describing the state
 % of the reservoir in terms of pressure, displacement, stress, ...
 resState = State(model,grid,mat,GaussPts);
-%manually assigning initial conditions before proper implementation
-% resState.dispConv(3:3:end) = uz0fem'; 
-% resState.dispCurr(3:3:end) = uz0fem'; 
-% resState.dispConv(1:3:end) = ux0fem';
-% resState.dispConv(1:3:end) = ux0fem';
-% resState.pressure(1:end) = p0fem;
-%
+
 % Create and set the print utility
 printUtils = OutState(model,mat,grid,'outTime.dat');
 %
@@ -92,7 +75,7 @@ printUtils.printState(resState);
 %
 
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
+NSolv = NonLinearSolver_new(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();
