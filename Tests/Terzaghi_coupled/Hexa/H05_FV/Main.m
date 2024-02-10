@@ -50,7 +50,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
 % Degree of freedom manager 
 fname = 'dof.dat';
-dofmanager = DoFManagerNew(topology,model);
+dofmanager = DoFManager(topology,model);
 
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
@@ -79,7 +79,7 @@ printUtils.printState(resState);
 % ---------------------------- SOLUTION -------------------------------
 %
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver_new(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();

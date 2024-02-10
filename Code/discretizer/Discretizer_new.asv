@@ -1,4 +1,4 @@
-classdef Discretizer_new < handle           
+classdef Discretizer < handle           
   % General discretizer class
   % Database for all models activated in the simulation
   properties (Access = private)
@@ -26,7 +26,7 @@ classdef Discretizer_new < handle
   end
   
   methods (Access = public)
-      function obj = Discretizer_new(symmod,simParams,dofManager,grid,mat,varargin)
+      function obj = Discretizer(symmod,simParams,dofManager,grid,mat,varargin)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
       obj.db = containers.Map('KeyType','char','ValueType','any');

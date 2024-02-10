@@ -3,19 +3,6 @@ classdef NonLinearSolver < handle
   %   Detailed explanation goes here
   
   properties (Access = private)
-%     itMax = 10
-%     relTol = 1.e-6
-%     absTol = 1.e-10
-%     pNorm = 2
-%     theta = 1
-%     dtIni = 0.5    % 0.5
-%     dtMin = 1.e-5
-%     dtMax = 1
-%     tMax = 0.2
-%     multFac = 1.1
-%     divFac = 2
-%     relaxFac = 0
-%     pTarget = 1000000000000
     %
     model
     simParameters
@@ -39,7 +26,7 @@ classdef NonLinearSolver < handle
   end
   
   methods (Access = public)
-    function obj = NonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,varargin)
+      function obj = NonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,varargin)
       obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,varargin);
     end
 
@@ -51,17 +38,16 @@ classdef NonLinearSolver < handle
       else
         linSyst = Discretizer(obj.model,obj.simParameters,obj.dofManager,obj.grid,obj.material);
       end
-      % Compute H and P matrices for flow simulations and the gravity
-      % contribution
-      if isSinglePhaseFlow(obj.model)
-        linSyst.computeSPFMatrices();
-%         linSyst.computeFlowRHSGravTerm();
-      end
-%       t  = 0;
-%       tStep = 0;
       % Initialize the time step increment
       obj.dt = obj.simParameters.dtIni;  
       delta_t = obj.dt; % dynamic time step
+      % Compute matrices of Linear models (once for the entire simulation)
+      for i = 1:length(linSyst.fields)
+          fld = linSyst.fields{i};
+          if isLinear(linSyst.db(fld))
+              linSyst.getField(fld).computeMat(obj.stateTmp,delta_t);
+          end
+      end
       flConv = true; %convergence flag
       %
       %
@@ -79,34 +65,25 @@ classdef NonLinearSolver < handle
         fprintf('-----------------------------------------------------------\n');
         fprintf('Iter     ||rhs||\n');
         %
-        %Call different solvers' methods separately
-        % ---> SPFLOW <--- (matrices computed once before entering time stepping scheme)
-        if isSinglePhaseFlow(obj.model)
-            linSyst.computeFlowJacobian_Test(delta_t);
-            mu = obj.material.getFluid().getDynViscosity();
-            linSyst.computeFlowRHS_test(obj.statek,obj.stateTmp,delta_t,1/mu);
+        % Compute Rhs and matrices of NonLinear models
+        for i = 1:length(linSyst.fields)
+            fld = linSyst.fields{i};
+            if ~isLinear(linSyst.db(fld))
+                linSyst.getField(fld).computeMat(obj.stateTmp,delta_t);
+            end
+             linSyst.getField(fld).computeRhs(obj.stateTmp,obj.statek,delta_t);
         end
+        % compute block Jacobian and block Rhs
+        linSyst.computeBlockJacobianAndRhs(delta_t);
 
-        % ---> POROMECHANICS <--- (if theta method is not required)
-        if  isPoromechanics(obj.model) && ~isSinglePhaseFlow(obj.model)
-            linSyst.computePoroSyst_Test(obj.stateTmp,delta_t);
-        end
-
-        % ---> BIOT COUPLING <---
-        if isPoromechanics(obj.model) && isSinglePhaseFlow(obj.model)
-            linSyst.computeBiotSyst(delta_t,obj.statek,obj.stateTmp);
-        end
-        
         % Apply BCs to the block-wise system
-        applyBCandForces_test(obj.model, obj.grid, obj.bound, obj.material, ...
+        applyBCandForces(obj.model, obj.grid, obj.bound, obj.material, ...
           obj.t, linSyst, obj.stateTmp);
-        % Build global system
-        linSyst.buildGlobalJacobianAndRhs();
-        % old_ApplyBCAndForces(obj.model, obj.grid, obj.bound, obj.material, ...
-        %   obj.t, linSyst, obj.stateTmp);
-        %rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
+
+        % compute Rhs norm
         [locRhsNorm, rhsNorm] = computeRhsNorm(obj,linSyst);
-        linSyst.resetJacobianAndRhs();
+        % consider output of local field rhs contribution
+
         tolWeigh = obj.simParameters.relTol*rhsNorm;
         obj.iter = 0;
         %
@@ -116,40 +93,29 @@ classdef NonLinearSolver < handle
           obj.iter = obj.iter + 1;
           %
           % Solve system with increment
-          du = linSyst.J\(-linSyst.rhs);
-          %
+          du = solve(linSyst);
+          % Reset global Jacobian and Rhs
+          linSyst.resetJacobianAndRhs(); 
           % Update tmpState
-          obj.stateTmp.updateState_test(du,obj.dofManager);
-          %
-          % Compute residual and update Jacobian
-          if isSinglePhaseFlow(obj.model)
-            linSyst.computeFlowJacobian_Test(delta_t);
-            mu = obj.material.getFluid().getDynViscosity();
-            linSyst.computeFlowRHS_test(obj.statek,obj.stateTmp,delta_t,1/mu);
-          end
+          obj.stateTmp.updateState(du,obj.dofManager);
 
-        % ---> POROMECHANICS <--- (if theta method is not required)
-          if  isPoromechanics(obj.model) && ~isSinglePhaseFlow(obj.model)
-            linSyst.computePoroSyst_Test(obj.stateTmp,delta_t);
+          % Compute Rhs and Matrices of NonLinear models
+          % Loop trough problem fields (different compared to number of
+          % blocks)
+          for i = 1:length(linSyst.fields)
+              fld = linSyst.fields{i};
+              if ~isLinear(linSyst.db(fld))
+                  linSyst.getField(fld).computeMat(obj.stateTmp,delta_t);
+              end
+              linSyst.getField(fld).computeRhs(obj.stateTmp,obj.statek,delta_t);
           end
-
-        % ---> BIOT COUPLING <---
-          if isPoromechanics(obj.model) && isSinglePhaseFlow(obj.model)
-            linSyst.computeBiotSyst(delta_t,obj.statek,obj.stateTmp);
-          end
+          % compute block Jacobian and block Rhs (with theta method)
+          linSyst.computeBlockJacobianAndRhs(delta_t);
           %
-          applyBCandForces_test(obj.model, obj.grid, obj.bound, obj.material, ...
+          applyBCandForces(obj.model, obj.grid, obj.bound, obj.material, ...
             obj.t, linSyst, obj.stateTmp);
-          linSyst.buildGlobalJacobianAndRhs();
-          % old_ApplyBCAndForces(obj.model, obj.grid, obj.bound, obj.material, ...
-          % obj.t, linSyst, obj.stateTmp);
-%           obj.bound.applyBCNeu(linSyst);
-          %rhsNorm = norm(linSyst.rhs,obj.simParameters.pNorm);
+          % compute residual norm
           [locRhsNorm, rhsNorm] = computeRhsNorm(obj,linSyst);
-          linSyst.resetJacobianAndRhs();
-%           obj.bound.applyBCDir(linSyst);
-%           obj.bound.applyBCNeu(linSyst);
-%         rhsNorm = findNorm(obj,linSyst.rhs);
           fprintf('%d     %e\n',obj.iter,rhsNorm);
         end
         %
@@ -175,87 +141,6 @@ classdef NonLinearSolver < handle
         delta_t = manageNextTimeStep(obj,delta_t,flConv);
       end
         %
-        % Manage next time step
-          
-          
-%           flConv = true;
-%           stateTmp.time = time;
-%           %
-%           % Print the solution if needed
-%           if time > obj.tMax
-%             printState(obj.printUtil,stateTmp);
-%           else
-%             printState(obj.printUtil,statek,stateTmp);
-%           end
-%           transferState(stateTmp,statek);
-          %
-
-%       end
-%         end
-%       end
-      %
-      %Update dt or perform backstep based on flConv
-      % IMPLEMENT!
-%       simStat = 0;
-%       printState(obj.printUtil,statek);
-      
-%       tmpState = copy(resState);
-%       obj.bound.iniBC(tmpState,obj.BCName);
-%       du = obj.bound.applyDirDispl();
-%       %
-%       % Update tmpState
-%       tmpState.updateState(du);
-%       clear du
-%       fprintf('-----------------------------------------------------------\n');
-%       fprintf('Iter     ||rhs||\n');
-%       %
-%       % Apply Dir Bcond to the initial solution
-%       % Assemble Jac and rhs
-%       linSyst = Discretizer(obj.mesh,obj.elements,obj.material, ...
-%                 obj.preP,obj.GaussPts);
-%       if ModelType.isPoromechanics(obj.model) || ModelType.isCoupFlowPoro(obj.model)
-%         linSyst.computeMat(tmpState);
-%       end
-%       if ModelType.isFlow(obj.model) || ModelType.isCoupFlowPoro(obj.model)
-%         linSyst.computeFlowMat();
-%       end
-%       % Apply BC - to the Jacobian and RHS
-%       obj.bound.applyBC(linSyst);
-%       rhsNorm = norm(linSyst.rhs,obj.pNorm);
-% %       rhsNorm = findNorm(obj,linSyst.rhs);
-%       tolWeigh = obj.tol*rhsNorm;
-%       iter = 0;
-%       conv = false;
-%       %
-%       fprintf('0     %e\n',rhsNorm);
-%       while ((rhsNorm > tolWeigh) && (iter < obj.itMax))
-%         iter = iter + 1;
-%         %
-%         % Solve system with increment
-%         du = linSyst.K\(-linSyst.rhs);
-%         %
-%         % Update tmpState
-%         tmpState.updateState(du);
-%         %
-%         % Compute residual and updated Jacobian
-%         linSyst.computeMat(tmpState);
-%         obj.bound.applyBC(linSyst);
-%         rhsNorm = norm(linSyst.rhs,obj.pNorm);
-% %         rhsNorm = findNorm(obj,linSyst.rhs);
-%         fprintf('%d     %e\n',iter,rhsNorm);
-%         % 
-%       end
-%       % Check for convergence
-%       if rhsNorm < tolWeigh
-%         finalizeState(tmpState);
-%         conv = true;
-%         resState.stress = tmpState.stress;
-%         resState.avStress = tmpState.avStress;
-%         resState.displ = tmpState.displ;
-%         resState.avStrain = tmpState.avStrain;
-%       end
-%     end
-%   end
     end
   end
   
@@ -276,34 +161,7 @@ classdef NonLinearSolver < handle
       if ~isempty(data)
         obj.GaussPts = data{1};
       end
-      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % %       flErr = false;
-% % %       if isnumeric(obj.pNorm)
-% % %         if obj.pNorm ~= 2
-% % %           flErr = true;
-% % %         end
-% % %       elseif ischar(obj.pNorm)
-% % %         obj.pNorm = lower(obj.pNorm);
-% % %         if ~strcmp(obj.pNorm,'inf')
-% % %           flErr = true;
-% % %         end
-% % %       end
-% % %       if flErr
-% % %         error('Accepted p-norms are: 2 (numeric variable) and "Inf" (char varibale)');
-% % %       end
-% % %       obj.pNorm = pNorm;
     end
-%     function rhsNorm = findNorm(obj,f)
-%       l = length(obj.BCName);
-%       dofDir = [];
-%       for i=1:l
-%         cond = getBC(obj.bound,obj.BCName(i));
-%         if strcmp(cond.boundType,'dir')  % Apply Dirichlet conditions
-%           dofDir = [dofDir; cond.boundDof];
-%         end
-%       end
-%       rhsNorm = norm(f(setxor(1:length(f),dofDir)),obj.pNorm);
-%     end
     function [t, dt] = updateTime(obj,conv,dt)
         if obj.printUtil.modTime
             tmp = find(obj.t<obj.printUtil.timeList(),1,'first');
@@ -323,9 +181,8 @@ classdef NonLinearSolver < handle
         nRhs = length(syst.dofm.subList);
         locRhsNorm = zeros(nRhs,1);
         for i = 1:nRhs
-            locRhsNorm(i) = norm(syst.blockRhs(i).block, obj.simParameters.pNorm);
+            locRhsNorm(i) = norm(syst.rhs{i}, obj.simParameters.pNorm);
         end
-        globtmp = norm(syst.rhs,  obj.simParameters.pNorm);
         globRhsNorm = sqrt(sum(locRhsNorm.^2));
     end
 
@@ -363,8 +220,7 @@ classdef NonLinearSolver < handle
 %             obj.dt = obj.printUtil.timeList(tmp) - obj.t;
 %         end
 %         
-        
-        
+               
         transferState(obj.stateTmp,obj.statek);
         %
         if ((obj.t + obj.dt) > obj.simParameters.tMax)

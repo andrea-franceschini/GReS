@@ -9,7 +9,7 @@ addpath(genpath(pwd));
 %%
 tic
 % -------------------------- SET THE PHYSICS -------------------------
-model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
+model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
@@ -46,7 +46,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
 %----------------------------- DOF MANAGER -----------------------------
 fileName = 'dof.dat';
-dofmanager = DoFManagerNew(topology, model, fileName);
+dofmanager = DoFManager(topology, model, fileName);
 
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
@@ -75,7 +75,7 @@ printUtils.printState(resState);
 %
 
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver_new(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();
