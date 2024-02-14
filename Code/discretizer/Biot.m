@@ -1,8 +1,8 @@
 classdef Biot < handle
-    %POROMECHANICS
-    % Subclass of Discretizer
-    % Implement Poromechanics methods to assemble the stiffness matrix and
-    % the residual contribution
+    % Biot model subclass
+    % Coupled poromechanics with:
+    % SinglePhase flow 
+    % Variably Saturated flow: still to be updated
 
     properties
         model
@@ -13,6 +13,7 @@ classdef Biot < handle
         faces
         material
         GaussPts
+        flowStr
         Q               % stiffness matrix
         rhsPoro         % residual contribution to Poro problem
         rhsFlow         % residual contribution to Flow problem
@@ -28,12 +29,14 @@ classdef Biot < handle
             obj.elements = grid.cells;
             obj.faces = grid.faces;
             obj.material = mat;
-            %       obj.probType = pType;
-            %       obj.bound = bc;
-            %       obj.BCName = BCName;
-            %       obj.state = stat;
             if ~isempty(data)
                 obj.GaussPts = data{1};
+            end
+
+            if isSinglePhaseFlow(obj.model)
+                obj.flowStr = 'SPFlow';
+            elseif isVariabSatFlow(obj.model)
+                obj.flowStr = 'VSFlow';
             end
             %
         end
@@ -52,7 +55,7 @@ classdef Biot < handle
             nSub = length(obj.dofm.subDomains);
             subInd = zeros(nSub,1);
             for i = 1:length(obj.dofm.subDomains)
-                if all(ismember(["Poro"; "Flow"], obj.dofm.subDomains(i).physics))
+                if all(ismember(["Poro"; obj.flowStr], obj.dofm.subDomains(i).physics))
                     subInd(i) = i;
                 end
             end
@@ -93,7 +96,7 @@ classdef Biot < handle
                 %
                 %assembly Coupling Matrix
                 dofrow = obj.dofm.ent2field('Poro',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
-                dofcol = obj.dofm.ent2field('Flow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+                dofcol = obj.dofm.ent2field(obj.flowStr,obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
                 [jjloc,iiloc] = meshgrid(dofcol,dofrow);
                 iivec(l1+1:l1+s1) = iiloc(:);
                 jjvec(l1+1:l1+s1) = jjloc(:);
@@ -101,7 +104,7 @@ classdef Biot < handle
                 l1 = l1+s1;
             end
             nDofPoro = sum(obj.dofm.numDof(strcmp(obj.dofm.subPhysics,'Poro')));
-            nDofFlow = sum(obj.dofm.numDof(strcmp(obj.dofm.subPhysics,'Flow')));
+            nDofFlow = sum(obj.dofm.numDof(strcmp(obj.dofm.subPhysics,obj.flowStr)));
             obj.Q = sparse(iivec, jjvec, Qvec, nDofPoro, nDofFlow);
         end
 
@@ -110,7 +113,7 @@ classdef Biot < handle
             nSub = length(obj.dofm.subDomains);
             subInd = zeros(nSub,1);
             for i = 1:length(obj.dofm.subDomains)
-                if all(ismember(["Poro"; "Flow"], obj.dofm.subDomains(i).physics))
+                if all(ismember(["Poro"; obj.flowStr], obj.dofm.subDomains(i).physics))
                     subInd(i) = i;
                 end
             end
@@ -131,10 +134,10 @@ classdef Biot < handle
                 switch obj.mesh.cellVTKType(el)
                     case 10 %Tetrahedrons, direct integration
                         error('TPFA-FV not implemented for Tetrahedrons')
-                        vol = findVolume(obj.elements.tetra,el);
-                        der = getDerBasisF(obj.elements.tetra,el);
-                        Qloc = biot*0.25*repelem(der(:),1,4)*vol;
-                        s1 = obj.elements.nNodesElem(1).^2*obj.mesh.nDim;
+                        % vol = findVolume(obj.elements.tetra,el);
+                        % der = getDerBasisF(obj.elements.tetra,el);
+                        % Qloc = biot*0.25*repelem(der(:),1,4)*vol;
+                        % s1 = obj.elements.nNodesElem(1).^2*obj.mesh.nDim;
                     case 12 %Hexahedrons, Gauss integration
                         [N,dJWeighed] = getDerBasisFAndDet(obj.elements.hexa,el,1);
                         nG = obj.GaussPts.nNode;
@@ -154,7 +157,7 @@ classdef Biot < handle
                 %
                 %assembly Coupling Matrix
                 dofrow = obj.dofm.ent2field('Poro',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
-                dofcol = obj.dofm.ent2field('Flow',el);
+                dofcol = obj.dofm.ent2field(obj.flowStr,el);
                 [jjloc,iiloc] = meshgrid(dofcol,dofrow);
                 iivec(l1+1:l1+s1) = iiloc(:);
                 jjvec(l1+1:l1+s1) = jjloc(:);
@@ -162,7 +165,7 @@ classdef Biot < handle
                 l1 = l1+s1;
             end
             nDofPoro = sum(obj.dofm.numDof(strcmp(obj.dofm.subPhysics,'Poro')));
-            nDofFlow = sum(obj.dofm.numDof(strcmp(obj.dofm.subPhysics,'Flow')));
+            nDofFlow = sum(obj.dofm.numDof(strcmp(obj.dofm.subPhysics,obj.flowStr)));
             obj.Q = sparse(iivec, jjvec, Qvec, nDofPoro, nDofFlow);
         end
 
@@ -171,7 +174,7 @@ classdef Biot < handle
             theta = obj.simParams.theta;
             % select active coefficients of matrices and solution vectors
             entsPoro = obj.dofm.field2ent('Poro');
-            entsFlow = obj.dofm.field2ent('Flow');
+            entsFlow = obj.dofm.field2ent(obj.flowStr);
             % maybe im taking into account displacement nodes that shuold
             % not be coupled!
             %
@@ -189,7 +192,7 @@ classdef Biot < handle
             locCol = obj.dofm.field2block(fCol);
             if strcmp(obj.dofm.subPhysics(fRow), 'Poro')
                 blk = -obj.simParams.theta*obj.Q(locRow,locCol);
-            elseif strcmp(obj.dofm.subPhysics(fRow), 'Flow')
+            elseif strcmp(obj.dofm.subPhysics(fRow), obj.flowStr)
                 blk = (obj.Q(locCol,locRow))'/dt;
             end
         end
@@ -200,7 +203,7 @@ classdef Biot < handle
             dofs = obj.dofm.field2block(fld);
             if strcmp(obj.dofm.subPhysics(fld), 'Poro')
                 blk = obj.rhsPoro(dofs);
-            elseif strcmp(obj.dofm.subPhysics(fld), 'Flow')
+            elseif strcmp(obj.dofm.subPhysics(fld), obj.flowStr)
                 blk = obj.rhsFlow(dofs);
             end
         end

@@ -1,8 +1,9 @@
-classdef SPFlow < handle
-    %POROMECHANICS
+classdef VSFlow < handle
+    % Variably Saturated flow
     % Subclass of Discretizer
-    % Implement Poromechanics methods to assemble the stiffness matrix and
-    % the residual contribution
+    % Implements Richards equations for unsaturated flow in vadose region
+    % most of the method are directly derived from SPFlow class, but the
+    % class is different to preserve code modularity
 
     properties
         model
@@ -15,14 +16,17 @@ classdef SPFlow < handle
         GaussPts
         trans
         isIntFaces
+        lwkpt           % mobility
         H               % stiffness matrix
         P               % capacity matrix
+        JNewt = []      % newton jacobian contribution
         rhs             % residual
         rhsGrav         % gravity contribute to rhs
+        upElem          % upstream elements array for each face
     end
 
     methods (Access = public)
-        function obj = SPFlow(symmod,params,dofManager,grid,mat,data)
+        function obj = VSFlow(symmod,params,dofManager,grid,mat,data)
             obj.model = symmod;
             obj.simParams = params;
             obj.dofm = dofManager;
@@ -42,7 +46,7 @@ classdef SPFlow < handle
                 IntFaces = zeros(obj.faces.nFaces,nSub);
                 flowCells = [];
                 for i = 1:nSub
-                    if any(strcmp(obj.dofm.subDomains(i).physics,"SPFlow"))
+                    if any(strcmp(obj.dofm.subDomains(i).physics,"VSFlow"))
                         flowCells = [flowCells; find(obj.dofm.subCells(:,i))];
                     end
                 end
@@ -54,103 +58,39 @@ classdef SPFlow < handle
                     IntFaces(:,i) = all([tmp1 tmp2],2);
                 end
                 obj.isIntFaces = logical(IntFaces);
+                obj.upElem = zeros(nnz(obj.isIntFaces),1);
             end
-
             computeRHSGravTerm(obj);
-
         end
+
 
 
         function computeMat(obj,varargin)
-            if isempty(obj.H) && isempty(obj.P)
-                if obj.model.isFEMBased('Flow')
-                    computeMatFEM(obj);
-                elseif obj.model.isFVTPFABased('Flow')
-                    mu = obj.material.getFluid().getDynViscosity();
-                    computeStiffMatFV(obj,1/mu);
-                    computeCapMatFV(obj);
-                end
+            stateTmp = varargin{1};
+            statek = varargin{2};
+            dt = varargin{3};
+            pkpt = obj.simParams.theta*stateTmp.pressure + ...
+                (1 - obj.simParams.theta)*statek.pressure;
+            [Swkpt,dSwkpt,obj.lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt);
+            computeStiffMatFV(obj,obj.lwkpt);
+            computeCapMatFV(obj,Swkpt,dSwkpt);
+            if isNewtonNLSolver(obj.simParams)
+                computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,dlwkpt)
             end
-        end
-
-        function computeMatFEM(obj) %provisional method exploiting dof manager workflow
-            subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'SPFlow'));
-            [subCells, ~] = find(obj.dofm.subCells(:,subInd));
-            %nSubCells = length(subCells); %number of cells in subdomain
-            nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]);
-            % Compute the stiffness (H) and mass (P) matrices for the flow problem by FEM
-            iiVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
-            jjVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
-            HVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
-            PVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
-            % Get the fluid compressibility
-            beta = obj.material.getFluid().getFluidCompressibility();
-            if nSubCellsByType(2) > 0
-                N1 = obj.elements.hexa.getBasisFinGPoints();
-            end
-            % Get the fluid dynamic viscosity
-            mu = obj.material.getFluid().getDynViscosity();
-            %
-            l1 = 0;
-            for el = subCells'
-                % Get the rock permeability, porosity and compressibility
-                permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
-                poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
-                if  any(strcmp(obj.dofm.subDomains(subInd).physics,'Poro'))
-                    alpha = 0; %this term is not needed in coupled formulation
-                else
-                    alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
-                    %solid skeleton contribution to storage term as oedometric compressibility .
-                end
-                % Compute the element matrices based on the element type
-                % (tetrahedra vs. hexahedra)
-                switch obj.mesh.cellVTKType(el)
-                    case 10 % Tetrahedra
-                        % Computing the H matrix contribution
-                        N = obj.elements.tetra.getDerBasisF(el);
-                        %               vol = getVolume(obj.elements,el);
-                        HLoc = N'*permMat*N*obj.elements.vol(el)/mu;
-                        s1 = obj.elements.nNodesElem(1)^2;
-                        % Computing the P matrix contribution
-                        PLoc = ((alpha + poro*beta)*obj.elements.vol(el)/20)*(ones(obj.elements.nNodesElem(1))...
-                            + eye(obj.elements.nNodesElem(1)));
-                    case 12 % Hexa
-                        [N,dJWeighed] = obj.elements.hexa.getDerBasisFAndDet(el,1);
-                        permMat = permMat/mu;
-                        Hs = pagemtimes(pagemtimes(N,'ctranspose',permMat,'none'),N);
-                        Hs = Hs.*reshape(dJWeighed,1,1,[]);
-                        HLoc = sum(Hs,3);
-                        clear Hs;
-                        s1 = obj.elements.nNodesElem(2)^2;
-                        % Computing the P matrix contribution
-                        PLoc = (alpha+poro*beta)*(N1'*diag(dJWeighed)*N1);
-                end
-                %Getting dof associated to Flow subphysic
-                dof = obj.dofm.ent2field('SPFlow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
-                [jjLoc,iiLoc] = meshgrid(dof,dof);
-                iiVec(l1+1:l1+s1) = iiLoc(:);
-                jjVec(l1+1:l1+s1) = jjLoc(:);
-                HVec(l1+1:l1+s1) = HLoc(:);
-                PVec(l1+1:l1+s1) = PLoc(:);
-                l1 = l1 + s1;
-            end
-            % Assemble H and P matrices defined as new fields of
-            obj.H = sparse(iiVec, jjVec, HVec);
-            obj.P = sparse(iiVec, jjVec, PVec);
         end
 
 
         function computeStiffMatFV(obj,lw)
             % Inspired by MRST
-            subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'SPFlow'));
+            subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'VSFlow'));
             [subCells, ~] = find(obj.dofm.subCells(:,subInd));
             nSubCells = length(subCells); 
             %get pairs of faces that contribute to the subdomain
             intFaces = any(obj.isIntFaces(:,subInd),2);
             neigh1 = obj.faces.faceNeighbors(intFaces,1);
             neigh2 = obj.faces.faceNeighbors(intFaces,2);
-            neigh1dof = obj.dofm.ent2field('SPFlow',neigh1);
-            neigh2dof = obj.dofm.ent2field('SPFlow',neigh2);
+            neigh1dof = obj.dofm.ent2field('VSFlow',neigh1);
+            neigh2dof = obj.dofm.ent2field('VSFlow',neigh2);
             % Transmissibility of internal faces
             tmpVec = lw.*obj.trans(intFaces);
             % tmpVec = lw.*tmpVec;
@@ -166,7 +106,7 @@ classdef SPFlow < handle
 
 
         function computeCapMatFV(obj,varargin)
-            subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'SPFlow'));
+            subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'VSFlow'));
             [subCells, ~] = find(obj.dofm.subCells(:,subInd));
             nSubCells = length(subCells);
             poroMat = zeros(nSubCells,1);
@@ -180,19 +120,19 @@ classdef SPFlow < handle
                 end
                 poroMat(m) = obj.material.getMaterial(m).PorousRock.getPorosity();
             end
-            % (alpha+poro*beta)
-            PVal = alphaMat(obj.mesh.cellTag(subCells)) + beta*poroMat(obj.mesh.cellTag(subCells));
+            % compute storage using updated saturation
+            PVal = alphaMat(obj.mesh.cellTag(subCells)) + beta*poroMat(obj.mesh.cellTag(subCells));     
+            PVal = PVal.*varargin{1} + poroMat(obj.mesh.cellTag).*varargin{2};
             PVal = PVal.*obj.elements.vol(subCells);
-            dof = obj.dofm.ent2field('SPFlow', subCells);
+            dof = obj.dofm.ent2field('VSFlow', subCells);
             obj.P = sparse(dof,dof,PVal);
         end
 
 
         function computeRhs(obj,stateTmp,statek,dt)
             % Compute the residual of the flow problem
-            lw = obj.material.getFluid().getDynViscosity();
             theta = obj.simParams.theta;
-            ents = obj.dofm.field2ent('SPFlow');
+            ents = obj.dofm.field2ent('VSFlow');
             rhsStiff = theta*obj.H*stateTmp.pressure(ents) + (1-theta)*obj.H*statek.pressure(ents);
             rhsCap = (obj.P/dt)*(stateTmp.pressure(ents) - statek.pressure(ents));
             obj.rhs = rhsStiff + rhsCap;
@@ -202,7 +142,7 @@ classdef SPFlow < handle
                 if isFEMBased(obj.model,'Flow')
                     obj.rhs = obj.rhs + obj.rhsGrav;
                 elseif isFVTPFABased(obj.model,'Flow')
-                    obj.rhs = obj.rhs + finalizeRHSGravTerm(obj,lw);
+                    obj.rhs = obj.rhs + finalizeRHSGravTerm(obj,obj.lwkpt);
                 end
             end
         end
@@ -213,7 +153,7 @@ classdef SPFlow < handle
             rhsTmp = zeros(sum(obj.dofm.numDof),1);
             gamma = obj.material.getFluid().getFluidSpecWeight();
             if gamma > 0
-                subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'SPFlow'));
+                subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'VSFlow'));
                 [subCells, ~] = find(obj.dofm.subCells(:,subInd));
                 if isFEMBased(obj.model,'Flow')
                     for el = subCells'
@@ -231,27 +171,27 @@ classdef SPFlow < handle
                                 fLoc = sum(fs,3)*gamma;
                         end
                         %
-                        dof = obj.dofm.ent2field('SPFlow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+                        dof = obj.dofm.ent2field('VSFlow',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
                         rhsTmp(dof) = rhsTmp(dof) + fLoc; 
                     end
-                    obj.rhsGrav = rhsTmp(obj.dofm.getDoF('SPFlow'));
+                    obj.rhsGrav = rhsTmp(obj.dofm.getDoF('VSFlow'));
                 elseif isFVTPFABased(obj.model,'Flow')
                     intFaces = any(obj.isIntFaces(:,subInd),2);
                     neigh = obj.faces.faceNeighbors(intFaces,:);
                     zVec = obj.elements.cellCentroid(:,3);
                     zNeigh = zVec(neigh);
-                    obj.rhsGrav = gamma*obj.trans(obj.isIntFaces(:,subInd)).*(zNeigh(:,1) - zNeigh(:,2));
+                    obj.rhsGrav = gamma*obj.trans(intFaces).*(zNeigh(:,1) - zNeigh(:,2));
                 end
             end
         end
 
         function gTerm = finalizeRHSGravTerm(obj,lw)            
-            subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'SPFlow'));
+            subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'VSFlow'));
             nSubCells = nnz(obj.dofm.subCells(:,subInd));
             intFaces = any(obj.isIntFaces(:,subInd),2);
             neigh = obj.faces.faceNeighbors(intFaces,:);
-            neigh = obj.dofm.ent2field('SPFlow',neigh);
-            gTerm = accumarray(neigh(:),[lw.*obj.rhsGrav; ...
+            neigh = obj.dofm.ent2field('VSFlow',neigh(:));
+            gTerm = accumarray(neigh,[lw.*obj.rhsGrav; ...
                  -lw.*obj.rhsGrav],[nSubCells,1]);
 
         end
@@ -262,11 +202,17 @@ classdef SPFlow < handle
             dt = varargin{3};
             locRow = obj.dofm.field2block(fRow);
             locCol = obj.dofm.field2block(fCol);
-            blk = obj.simParams.theta*obj.H(locRow,locCol) + obj.P(locRow,locCol)/dt;
+            if isNewtonNLSolver(obj.simParams)
+                blk = obj.simParams.theta*obj.H(locRow,locCol) + obj.P(locRow,locCol)/dt + ...
+                    obj.JNewt(locRow,locCol);
+            else
+                blk = obj.simParams.theta*obj.H(locRow,locCol) + obj.P(locRow,locCol)/dt;
+
+            end
         end
 
         function blk = blockRhs(obj, fld)
-            if ~strcmp(obj.dofm.subPhysics(fld), 'SPFlow')
+            if ~strcmp(obj.dofm.subPhysics(fld), 'VSFlow')
                 % no contribution to non poro fields
                 blk = 0;
             else
@@ -276,7 +222,7 @@ classdef SPFlow < handle
         end
 
         function out = isLinear(obj)
-            out = true;
+            out = false;
         end
 
 
@@ -308,6 +254,58 @@ classdef SPFlow < handle
             obj.trans = 1 ./ accumarray(obj.faces.faces2Elements(:,1),1 ./ hT,[obj.faces.nFaces,1]);
         end
 
+        function [Swkpt,dSwkpt,lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt)
+            % compute upstream elements for each face
+            % interpolate effective saturation and relative permeability 
+            % and first derivatives
+            subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'VSFlow'));
+            intFaces = any(obj.isIntFaces(:,subInd),2);
+            neigh = obj.faces.faceNeighbors(intFaces,:);
+            gamma = obj.material.getFluid().getFluidSpecWeight();
+            if gamma > 0
+                zVec = obj.elements.cellCentroid(:,3);
+                zNeigh = zVec(neigh);
+                lElemIsUp = pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
+            else
+                lElemIsUp = pkpt(neigh(:,1)) >= pkpt(neigh(:,2));
+            end
+            obj.upElem(lElemIsUp) = neigh(lElemIsUp,1);
+            obj.upElem(~lElemIsUp) = neigh(~lElemIsUp,2);
+            [Swkpt,dSwkpt] = obj.material.computeSwAnddSw(obj.mesh,pkpt);
+            dSwkpt = - dSwkpt;
+            [lwkpt,dlwkpt] = obj.material.computeLwAnddLw(obj.mesh,obj.upElem,pkpt);
+            dlwkpt = - dlwkpt;
+        end
+
+        function computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,dlwkpt)
+            subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'VSFlow'));
+            [subCells, ~] = find(obj.dofm.subCells(:,subInd));
+            nSubCells = length(subCells);
+            intFaces = any(obj.isIntFaces(:,subInd),2);
+            % compute matrices J1 and J2 (gathering non linear terms)
+            neigh = obj.faces.faceNeighbors(intFaces,:);
+            zVec = obj.elements.cellCentroid(:,3);
+            zNeigh = zVec(neigh);
+            gamma = obj.material.getFluid().getFluidSpecWeight();
+            tmpVec1 = (dlwkpt.*obj.trans(intFaces)).*(pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
+            %
+            poroMat = zeros(obj.mesh.nCellTag,1);
+            alphaMat = zeros(obj.mesh.nCellTag,1);
+            beta = obj.material.getFluid().getFluidCompressibility();
+            for m = 1:obj.mesh.nCellTag
+                poroMat(m) = obj.material.getMaterial(m).PorousRock.getPorosity();
+                alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
+            end
+            tmpVec2 = alphaMat(obj.mesh.cellTag) + beta*poroMat(obj.mesh.cellTag);
+            tmpVec2 = 1/dt*((tmpVec2(subCells).*dSwkpt(subCells)).*(stateTmp.pressure(subCells) - statek.pressure(subCells))).*obj.elements.vol(subCells);
+            neigh1dof = obj.dofm.ent2field('VSFlow',neigh(:,1));
+            neigh2dof = obj.dofm.ent2field('VSFlow',neigh(:,2));
+            upElemdof = obj.dofm.ent2field('VSFlow',obj.upElem);
+            obj.JNewt = sparse([neigh1dof; neigh2dof; (1:nSubCells)'], ...
+                [repmat(upElemdof,[2,1]);  (1:nSubCells)'], ...
+                [tmpVec1; -tmpVec1; tmpVec2],nSubCells,nSubCells);
+            obj.JNewt = obj.simParams.theta*obj.JNewt;
+        end
     end
 end
 

@@ -51,7 +51,8 @@ classdef Boundaries < handle
         %return loaded DOFS for the specified BC in global indexing
         %list = obj.getData(identifier).data.entities; OLD VERSION
         %%%%update to getDofs method
-        col = obj.dof.getColTable(obj.getPhysics(identifier));
+        ph = obj.getPhysics(identifier);
+        col = obj.dof.getColTable(translatePhysic(ph, obj.model));
         if strcmp(obj.getCond(identifier),'NodeBC') | strcmp(obj.getCond(identifier),'ElementBC')
             nEnts = obj.getData(identifier).data.nEntities;
             entities = obj.getData(identifier).data.entities;
@@ -67,10 +68,10 @@ classdef Boundaries < handle
             end
         elseif strcmp(obj.getCond(identifier),'SurfBC')
             % SurfBC ---> Node Dof
-            if isFEMBased(obj.model,obj.getPhysics(identifier))
+            if isFEMBased(obj.model,ph)
                 if strcmp(obj.getType(identifier),'Neu')
                     loadedEnts = obj.getLoadedEntities(identifier);
-                    if strcmp(obj.getPhysics(identifier),'Poro')
+                    if strcmp(ph,'Poro')
                         direction = obj.getDirection(identifier);
                         switch direction
                             case 'x'
@@ -80,7 +81,7 @@ classdef Boundaries < handle
                             case 'z'
                                 list = obj.dof.nod2dof(loadedEnts,col(3));
                         end
-                    elseif strcmp(obj.getPhysics(identifier),'Flow')
+                    elseif strcmp(ph,'Flow')
                         list = obj.dof.nod2dof(loadedEnts,col);
                     end
                 elseif strcmp(obj.getType(identifier),'Dir')
@@ -93,10 +94,10 @@ classdef Boundaries < handle
                         i1 = i2;
                     end
                 end
-            elseif isFVTPFA(obj.model,bound.getPhysics(identifier))
+            elseif isFVTPFA(obj.model, ph)
                 % SurfBC ---> Element Dof
                 loadedEnts = obj.getLoadedEntities(identifier);
-                if  strcmp(obj.getPhysics(identifier),'Poro')
+                if  strcmp(ph, 'Poro')
                     direction = obj.getDirection(identifier);
                     switch direction
                         case 'x'
@@ -106,17 +107,17 @@ classdef Boundaries < handle
                         case 'z'
                             list = obj.dof.elem2dof(loadedEnts,col(3));
                     end
-                elseif strcmp(obj.getPhysics(identifier),'Flow')
+                elseif strcmp(ph,'Flow')
                     list = obj.dof.elem2dof(loadedEnts,col);
                 end
             end
         elseif strcmp(obj.getCond(identifier),'VolumeForce')
             % Volume Force ---> Node Dof
             %VolumeForce are available only for flow model
-            if isFEMBased(obj.model,obj.getPhysics(identifier))
+            if isFEMBased(obj.model,ph)
                 loadedEnts = obj.getLoadedEntities(identifier);
                 list = obj.dof.nod2dof(loadedEnts,col);
-            elseif isFVTPFABased(obj.model,obj.getPhysics(identifier))
+            elseif isFVTPFABased(obj.model,ph)
                 % Volume Force ---> Element Dof
                 ents = obj.getData(identifier).data.entities;
                 list = obj.dof.elem2dof(ents,col);
@@ -193,10 +194,10 @@ classdef Boundaries < handle
       elseif strcmp(obj.getCond(identifier),'VolumeForce')
           % Volume Force ---> Node Dof
           %VolumeForce are available only for flow model
-          if isFEMBased(obj.model,obj.getPhysics(identifier))
+          if isFEMBased(obj.model,translatePhysic(obj.getPhysics(identifier),obj.model))
               loadedEnts = obj.getLoadedEntities(identifier);
               list = obj.dof.nodeDofTable(loadedEnts,col,2);
-          elseif isFVTPFABased(obj.model,obj.getPhysics(identifier))
+          elseif isFVTPFABased(obj.model,translatePhysic(obj.getPhysics(identifier),obj.model))
           % Volume Force ---> Element Dof
               ents = obj.getData(identifier).data.entities;
               list = obj.dof.elemDofTable(ents,col,2);
@@ -600,7 +601,7 @@ classdef Boundaries < handle
         error('%s boundary condition name already defined', name);
       end
       switch token
-        case 'NodeBC'
+          case {'NodeBC', 'ElementBC'}
           obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
             'cond',token,'type', type, 'physics', physics);
         case 'SurfBC'
@@ -618,7 +619,7 @@ classdef Boundaries < handle
                         'cond', token,'type', type, 'physics', physics);                        
                 end
           end
-        case {'VolumeForce', 'ElementBC'}
+        case 'VolumeForce'
           obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
             'cond',token, 'physics', physics);
       end

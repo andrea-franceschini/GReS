@@ -31,10 +31,7 @@ classdef DoFManager < handle
                 fileName = varargin{1};
             end
             obj.readInputFile(fileName,mesh); 
-            %consider adding a default definition of subdomain if
-            %fileName is empty (varargin)
             obj.buildDofTable(mesh)
-            %obj.mergeSubDomains;
         end
         
         function readInputFile(obj,file,mesh)
@@ -54,10 +51,10 @@ classdef DoFManager < handle
                      assert(all(ismember(domainRegions, mesh.cellTag)), ['Invalid' ...
                          'Region tag for subDomain %i'], subID)
                      physics = convertCharsToStrings(split(strip((strtok(fgetl(fID),'%')))));
-                     if (~ismember(physics, ["Poromechanics","SPFlow","Thermal"]))
+                     if (~ismember(physics, ["Poromechanics","SPFlow","VSFlow"]))
                          error(['Unknown physics in %s input file\n', ...
                          'Accepted physics for DoF Manager input file are: \n',...
-                         'Poromechanics, SPFlow, Thermo'], file);
+                         'Poromechanics, SPFlow, VSFlow'], file);
                      end
                      physics = rename(physics);
                      obj.subDomains(subID).regions = domainRegions;
@@ -69,8 +66,8 @@ classdef DoFManager < handle
                     obj.physicsList = obj.physicsList(2:end);
                     obj.subDomains =  obj.subDomains(1:subID); 
             else 
-                    tmp = [isPoromechanics(obj.model); isFlow(obj.model)];
-                    physics = ["Poro";"Flow"];
+                    tmp = [isPoromechanics(obj.model); isSinglePhaseFlow(obj.model); isVariabSatFlow(obj.model)];
+                    physics = ["Poro";"SPFlow";"VSFlow"];
                     physics = physics(tmp);
                     obj.physicsList = physics;
                     obj.subDomains(1).physics = physics;
@@ -83,12 +80,11 @@ classdef DoFManager < handle
             
         function buildDofTable(obj, mesh)
             %building matrices that map any entity (elements, faces,
-            %nodes) with the corresponing DoF in the final system. 
+            %nodes) with the corresponing DoF in the final system.
             %code has to deal with "overlapping" subDomain physics
             % row index --> entity tag
             % column index --> component tag
-            % entry (1:end-1) --> global DoF
-            % entry (end) --> fieldTag
+            % entry (~,1:end) --> global DoF
             nPh = length(obj.physicsList) + (mesh.nDim-1)*any(obj.physicsList == "Poro");
             %convert the following matrix in sparse format (after
             %testing)
@@ -103,28 +99,28 @@ classdef DoFManager < handle
                     %get column of dofTable taken by physics(i)
                     if any(obj.subDomains(subID).physics == obj.physicsList(i))
                         col = obj.getColTable(obj.physicsList(i));
-                        if isFEMBased(obj.model,obj.physicsList(i)) %node centered discretization
-                        %count number of zero entries for the nodesList for
-                        %the specified physics in DofTable
-                        nodesList = unique(mesh.cells(ismember(mesh.cellTag,obj.subDomains(subID).regions),:));
-                        nodesList = nodesList(obj.nod2dof(nodesList, col(1))==0); %removing nodes with DOF already assigned
-                        if ~isempty(nodesList)
-                            numDofTable(subID,i) = length(nodesList)*obj.ncomp(i);
-                            globalDofs = dofCount + reshape(1:numDofTable(subID,i),obj.ncomp(i),length(nodesList));
-                            obj.nod2dof(nodesList,col) = globalDofs';      
-                        end
-                        elseif isFVTPFABased(obj.model,obj.physicsList(i))
-                        elemList = find(ismember(mesh.cellTag,obj.subDomains(subID).regions));
-                        if ~isempty(elemList)
-                            numDofTable(subID,i) = length(elemList)*obj.ncomp(i);
-                            globalDofs = dofCount + reshape(1:numDofTable(subID,i),obj.ncomp(i),length(elemList)); 
-                            obj.elem2dof(elemList,col) = globalDofs';
-                        end
+                        if isFEMBased(obj.model,translatePhysic(obj.physicsList(i), obj.model)) %node centered discretization
+                            %count number of zero entries for the nodesList for
+                            %the specified physics in DofTable
+                            nodesList = unique(mesh.cells(ismember(mesh.cellTag,obj.subDomains(subID).regions),:));
+                            nodesList = nodesList(obj.nod2dof(nodesList, col(1))==0); %removing nodes with DOF already assigned
+                            if ~isempty(nodesList)
+                                numDofTable(subID,i) = length(nodesList)*obj.ncomp(i);
+                                globalDofs = dofCount + reshape(1:numDofTable(subID,i),obj.ncomp(i),length(nodesList));
+                                obj.nod2dof(nodesList,col) = globalDofs';
+                            end
+                        elseif isFVTPFABased(obj.model,translatePhysic(obj.physicsList(i),obj.model))
+                            elemList = find(ismember(mesh.cellTag,obj.subDomains(subID).regions));
+                            if ~isempty(elemList)
+                                numDofTable(subID,i) = length(elemList)*obj.ncomp(i);
+                                globalDofs = dofCount + reshape(1:numDofTable(subID,i),obj.ncomp(i),length(elemList));
+                                obj.elem2dof(elemList,col) = globalDofs';
+                            end
                         end
                         dofCount = dofCount + numDofTable(subID,i);
                     end
                 end
-            end  
+            end
             [tmprow,tmpcol] = find(numDofTable' ~= 0);
             obj.subPhysics = obj.physicsList(tmprow);
             obj.subList = tmpcol;
@@ -135,8 +131,8 @@ classdef DoFManager < handle
         function dofs = getDoF(obj,physic,varargin)
             %Return Global DOFs associated to entities
             %Needed to map global Dofs with local solution arrays
-            physic = translatePhysic(physic);
             col = obj.getColTable(physic);
+            physic = translatePhysic(physic, obj.model);
             if isFEMBased(obj.model,physic) 
                 if isempty(varargin)
                     dofs = (obj.nod2dof(:,col))';
@@ -193,6 +189,7 @@ classdef DoFManager < handle
             % INPUT: field string
             % OUTPUT: state array indices
             col = obj.getColTable(field);
+            field = translatePhysic(field, obj.model);
             ncom = length(col);
             if isFEMBased(obj.model, field)
                 ents = find(obj.nod2dof(:,col(1))); % non ordered active ents
@@ -211,8 +208,7 @@ classdef DoFManager < handle
         function ents = getEntities(obj, physic, varargin)
             %return indices of solution vector associated to input physic
             % or field (varargin)
-            physic = translatePhysic(physic);
-            col = obj.getColTable(physic);
+            col = obj.getColTable(translatePhysic(physic, obj.model));
             ncom = length(col);
             if isFEMBased(obj.model,physic)
                 [ents,~] = find(obj.nod2dof(:,col) > 0);
@@ -261,21 +257,26 @@ classdef DoFManager < handle
         end
                 
          function table = getDofTables(obj)
-             table.elemTable = obj.elemDofTable;
-             table.nodeTable = obj.nodeDofTable;
+             table.elemTable = obj.elem2dof;
+             table.nodeTable = obj.nod2dof;
          end
          
          function checkModelCompatibility(obj)
-             if any(strcmp(obj.physicsList,"Poro"))
-                 assert(isPoromechanics(obj.model),['Poromechanics physical ',...
-                     'model not defined in ModelType class']);
-              
+             for i = 1:length(obj.physicsList)
+                 switch obj.physicsList(i)
+                     case "Poro"
+                         assert(isPoromechanics(obj.model),['Poromechanics physical ',...
+                             'model not defined in ModelType class']);
+
+                     case "SPFlow"
+                         assert(isSinglePhaseFlow(obj.model),['Single Phase Flow physical ',...
+                             'model not defined in ModelType class']);
+
+                     case "VSFlow"
+                         assert(isVariabSatFlow(obj.model),['Variably Saturated Flow physical ',...
+                             'model not defined in ModelType class']);
+                 end
              end
-            
-             if any(strcmp(obj.physicsList,"Flow"))
-                 assert(isFlow(obj.model),['Flow physical ',...
-                     'model not defined in ModelType class']);
-             end    
          end
 
     end

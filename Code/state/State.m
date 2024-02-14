@@ -90,13 +90,13 @@ classdef State < matlab.mixin.Copyable
             end
 
             if isFlow(obj.model)
-                glob = dofm.getDoF('Flow');
+                glob = dofm.getDoF(translatePhysic('Flow',obj.model));
                 loc = dofm.getEntities('Flow');
                 obj.pressure(loc) = obj.pressure(loc) + dSol(glob);
             end
+        end
 
             %
-        end
 
         function [avStress,avStrain] = finalizeStatePoro(obj)
             avStress = zeros(obj.mesh.nCells,6);
@@ -287,15 +287,15 @@ classdef State < matlab.mixin.Copyable
                 %
                 if isFlow(obj.model)
                     %         if 5<1
-                    %max_z = 9;
-                    %gamma = obj.material.getMaterial(obj.mesh.nCellTag+1).getFluidSpecWeight();
+                    max_z = 9;
+                    gamma = obj.material.getFluid().getFluidSpecWeight();
                     if isFEMBased(obj.model,'Flow')
                         %obj.pressure = gamma*(max_z-obj.mesh.coordinates(:,3));
                         %         obj.pressure = zeros(length(obj.mesh.coordinates(:,3)),1);
                         %obj.pressure = 392.4*ones(length(obj.mesh.coordinates(:,3)),1);
                         %           obj.pressure = 450*ones(length(obj.mesh.coordinates(:,3)),1);
                     elseif isFVTPFABased(obj.model,'Flow')
-                        %obj.pressure = gamma*(max_z-obj.elements.cellCentroid(:,3));
+                        obj.pressure = gamma*(max_z-obj.elements.cellCentroid(:,3));
                         %           obj.pressure = zeros(obj.mesh.nCells,1);
                         %           obj.pressure = 392.4*ones(obj.mesh.nCells,1);
                     end

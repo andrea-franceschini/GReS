@@ -50,7 +50,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
 % Degree of freedom manager 
 fname = 'dof.dat';
-dofmanager = DoFManager(topology,model);
+dofmanager = DoFManager(topology,model,fname);
 
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %

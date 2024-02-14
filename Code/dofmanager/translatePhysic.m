@@ -1,11 +1,18 @@
-function str = translatePhysic(str)
+function str = translatePhysic(str,model)
 %Translate physics string in order to correctly query different classes
 %   Detailed explanation goes here
-if strcmp(str, "Poromechanics")
-    str = "Poro";
+switch str
+    case "Poromechanics"
+        str = "Poro";
+    case "SPFlow"
+        str = "Flow";
+    case "VSFlow"
+        str = "Flow";
+    case "Flow"
+        if isSinglePhaseFlow(model)
+            str = "SPFlow";
+        elseif isVariabSatFlow(model)
+            str = "VSFlow";
+        end
 end
-if strcmp(str, "SPFlow")
-    str = "Flow";
 end
-end
-

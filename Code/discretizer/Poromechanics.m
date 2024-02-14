@@ -42,7 +42,7 @@ classdef Poromechanics < handle
         function computeMat(obj,varargin)
             % Compute Stiffness matrix for mechanical problem 
             state = varargin{1};
-            dt = varargin{2};
+            dt = varargin{3};
             subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'Poro'));
             [subCells, ~] = find(obj.dofm.subCells(:,subInd));
             nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]);

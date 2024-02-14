@@ -1,4 +1,4 @@
-function applyBCandForces_test(model, grid, bound, material, t, syst, state)
+function applyBCandForces(model, grid, bound, material, t, syst, state)
   % Apply Boundary condition to the block partitioned system.  
   % Block dof indexing is used. 
   % Impose BC to the linearized system (Jacobian matrix + RHS)
@@ -9,7 +9,9 @@ function applyBCandForces_test(model, grid, bound, material, t, syst, state)
       rhsVal = []; % if stays empty Penalty method is used
       type = 'tmp';
       cond = bound.getCond(keys{i});
-      if ~strcmp(cond,"VolumeForce")
+      ph = bound.getPhysics(keys{i});
+      ph_mod = translatePhysic(ph,model);
+      if ~strcmp(cond,'VolumeForce')
         type = bound.getType(keys{i});
       end
       switch cond
@@ -22,7 +24,7 @@ function applyBCandForces_test(model, grid, bound, material, t, syst, state)
           case 'ElementBC'
               bcDofs = bound.getDofs(keys{i});
           case 'SurfBC'
-              if isFEMBased(model,bound.getPhysics(keys{i}))
+              if isFEMBased(model,ph)
                   bcDofs = bound.getDofs(keys{i});
                   switch type
                       case 'Neu'
@@ -30,10 +32,10 @@ function applyBCandForces_test(model, grid, bound, material, t, syst, state)
                           q = bound.getVals(keys{i}, t);
                           rhsVal = - entitiesInfl*q;
                   end    
-              elseif isFVTPFABased(model,bound.getPhysics(keys{i}))
+              elseif isFVTPFABased(model,ph)
                   faceID = bound.getEntities(keys{i});
                   neigh = sum(grid.faces.faceNeighbors(faceID,:),2); % possibly repeated cells
-                  doftmp = bound.dof.getDoF('Flow',neigh); 
+                  doftmp = bound.dof.getDoF(ph_mod,neigh); 
                   [bcDofs,~,ind] = unique(doftmp); % cell dof with no repetitions (corner cells have more than one face on the boundary!)
                   switch bound.getType(keys{i})                     
                       case 'Neu'
@@ -42,7 +44,7 @@ function applyBCandForces_test(model, grid, bound, material, t, syst, state)
                       case 'Dir'
                           gamma = material.getFluid().getFluidSpecWeight();
                           mu = material.getFluid().getDynViscosity();
-                          trans = getFaceTransmissibilities(syst.getField('Flow'),faceID);
+                          trans = getFaceTransmissibilities(syst.getField(ph),faceID);
                           q = 1/mu*trans.*((state.pressure(neigh) - bound.getVals(keys{i}, t))...
                             + gamma*(grid.cells.cellCentroid(neigh,3) - grid.faces.faceCentroid(faceID,3)));
                           rhsVal = accumarray(ind,q);
@@ -51,23 +53,16 @@ function applyBCandForces_test(model, grid, bound, material, t, syst, state)
               end
           case 'VolumeForce'
               bcDofs = bound.getDofs(keys{i});
-              if isFEMBased(model,bound.getPhysics(keys{i}))
+              if isFEMBased(model, ph)
                 entitiesInfl = bound.getEntitiesInfluence(keys{i});
                 q = bound.getVals(keys{i}, t);
                 rhsVal = - entitiesInfl*q;
-              elseif isFVTPFABased(model,bound.getPhysics(keys{i}))
+              elseif isFVTPFABased(model, ph)
                 rhsVal = - bound.getVals(keys{i}, t).*grid.cells.vol(bound.getEntities(keys{i}));
               end
       end
 
 % ----------------------------- APPLY BC ----------------------------------
-    % get entity type associated to BC
-    % if isFEMBased(model, ph)
-    %     ent = 'node';
-    % elseif isFVTPFABased(model, ph)
-    %     ent = 'elem';
-    % end
-
     
     locDofs = bound.dof.glob2loc(bcDofs); % get local dofs 
     phDofs = bound.dof.glob2block(bcDofs);  % get block ID associated to given bc global dofs

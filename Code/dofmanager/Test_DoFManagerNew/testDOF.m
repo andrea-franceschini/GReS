@@ -1,9 +1,9 @@
 clear;  close all;
 topology = Mesh();
 %setting the model and physics included
-model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
+model = ModelType(["Poromechanics_FEM", "VariabSatFlow_FVTPFA"]);
 % Set the input file name
-fileName = "simParam.dat";
+fileName = "simParamVS.dat";
 simParam = SimulationParameters(model,fileName);
 
 %----------------------------- MATERIALS -----------------------------
@@ -30,7 +30,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 %----------------------------- DOF MANAGER -----------------------------
 fileName = 'dof.dat';
-dofmanager = DoFManagerNew(topology, model, fileName);
+dofmanager = DoFManager(topology, model, fileName);
 %tab = getSubTable(dofmanager,2);
 
 %----------------------------- BOUNDARY CONDITIONS -----------------------------
@@ -54,7 +54,7 @@ printUtils.printState(resState);
 %
 
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver_new(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();

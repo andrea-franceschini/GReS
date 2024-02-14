@@ -105,7 +105,7 @@ classdef Discretizer < handle
         dSol = cell2mat(obj.J)\(-cell2mat(obj.rhs));
     end
 
-    function out = getSPFlow(obj)
+    function out = getFlow(obj)
         out = obj.db('Flow');
     end
 
@@ -116,6 +116,7 @@ classdef Discretizer < handle
     function out = getBiot(obj)
         out = obj.db('Biot');
     end
+
 
   function out = getField(obj,fld)
       out = obj.db(fld);
@@ -133,7 +134,9 @@ classdef Discretizer < handle
           fldMap = cell(obj.nField, obj.nField);
           for i = 1:obj.nField
               for j = 1:obj.nField
-                  str = convertStringsToChars(strcat(dofManager.subPhysics(i),dofManager.subPhysics(j)));
+                  ph1 = translatePhysic(dofManager.subPhysics(i));
+                  ph2 = translatePhysic(dofManager.subPhysics(j));
+                  str = convertStringsToChars(strcat(ph1,ph2));
                   fldMap{i,j} = modMap(str);
               end
           end
@@ -153,7 +156,11 @@ classdef Discretizer < handle
                   case 'Poro'
                       obj.db('Poro') = Poromechanics(symmod,params,dofManager,grid,mat,data);
                   case 'Flow'
-                      obj.db('Flow') = SPFlow(symmod,params,dofManager,grid,mat,data);
+                      if isSinglePhaseFlow(obj.model)
+                          obj.db('Flow') = SPFlow(symmod,params,dofManager,grid,mat,data);
+                      elseif isVariabSatFlow(obj.model)
+                          obj.db('Flow') = VSFlow(symmod,params,dofManager,grid,mat,data);
+                      end
                   case 'Biot'
                       obj.db('Biot') = Biot(symmod,params,dofManager,grid,mat,data);
               end

@@ -110,7 +110,7 @@ classdef Materials < handle
           [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).RelativePermCurve.interpTable(p);
         end
       end
-      mu = obj.getMaterial(mesh.nCellTag+1).getDynViscosity();
+      mu = obj.getFluid().getDynViscosity();
       varargout{1} = varargout{1}/mu;
       varargout{2} = varargout{2}/mu;
       % end

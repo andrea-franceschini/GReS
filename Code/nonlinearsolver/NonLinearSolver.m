@@ -69,7 +69,7 @@ classdef NonLinearSolver < handle
         for i = 1:length(linSyst.fields)
             fld = linSyst.fields{i};
             if ~isLinear(linSyst.db(fld))
-                linSyst.getField(fld).computeMat(obj.stateTmp,delta_t);
+                linSyst.getField(fld).computeMat(obj.stateTmp,obj.statek,delta_t);
             end
              linSyst.getField(fld).computeRhs(obj.stateTmp,obj.statek,delta_t);
         end
@@ -105,7 +105,7 @@ classdef NonLinearSolver < handle
           for i = 1:length(linSyst.fields)
               fld = linSyst.fields{i};
               if ~isLinear(linSyst.db(fld))
-                  linSyst.getField(fld).computeMat(obj.stateTmp,delta_t);
+                  linSyst.getField(fld).computeMat(obj.stateTmp,obj.statek,delta_t);
               end
               linSyst.getField(fld).computeRhs(obj.stateTmp,obj.statek,delta_t);
           end

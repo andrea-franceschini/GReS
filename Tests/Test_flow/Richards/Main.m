@@ -5,7 +5,7 @@ clear;
 model = ModelType("VariabSatFlow_FVTPFA");
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
-fileName = "SimParam.dat";
+fileName = "simParam.dat";
 simParam = SimulationParameters(model,fileName);
 %
 % ------------------------------  MESH -------------------------------
@@ -49,8 +49,10 @@ fileName = "dirBottom3.dat";
 %
 % Create an object of the "Boundaries" class and read the boundary
 % conditions
-bound = Boundaries(fileName,model,grid);
-linkBoundSurf2TPFAFace(model,bound,grid);
+dofmanager = DoFManager(topology,model);
+
+bound = Boundaries(fileName,model,grid, dofmanager);
+%linkBoundSurf2TPFAFace(model,bound,grid);
 %
 %-------------------------- PREPROCESSING ----------------------------
 %
@@ -67,7 +69,7 @@ printUtils.printState(resState);
 % ---------------------------- SOLUTION -------------------------------
 %
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,grid,mat,bound, ...
+NSolv = NonLinearSolver(model,simParam, dofmanager,grid,mat,bound, ...
   printUtils,resState,GaussPts);
 %
 % Solve the problem
@@ -79,3 +81,50 @@ printUtils.finalize()
 % -------------------------- BENCHMARK ------------------------------
 %
 delete(bound);
+%% -------------------------- BENCHMARK ------------------------------
+
+%Post processing using MAT-FILE 
+
+% elem vector containing elements centroid along vertical axis
+if isFEMBased(model,'Flow')
+    nodesP = nodesU;
+else
+    numb = 0.125;
+    tol = 0.01;
+    nodesP = find(abs(elems.cellCentroid(:,1)-numb) < tol & abs(elems.cellCentroid(:,2)-numb) < tol);
+    [~,ind] = sort(elems.cellCentroid(nodesP,3));
+    nodesP = nodesP(ind);
+end
+
+tind = [3;5;10;20;30;37];
+press = printUtils.m.expPress;
+sw = printUtils.m.expSw;
+t = printUtils.m.expTime;
+t = t(tind);
+tstr = num2str(t);
+%Getting pressure and displacement solution for specified time from MatFILE
+pressplot = press(nodesP,tind);
+swplot = sw(nodesP,tind);
+
+
+%Plotting solution
+if isFVTPFABased(model,'Flow')
+    ptsY = elems.cellCentroid(nodesP,3);
+else
+    ptsY = topology.coordinates(nodesP,3);
+end
+figure(1)
+plot(pressplot,ptsY,'-o');
+hold on
+xlabel('Pressione (kPa)')
+ylabel('z (m)')
+legend(tstr)
+
+
+figure(2)
+plot(-swplot,ptsY,'-o');
+hold on
+xlabel('Saturazione')
+ylabel('z (m)')
+str = strcat('t = ',tstr);
+legend(str)
