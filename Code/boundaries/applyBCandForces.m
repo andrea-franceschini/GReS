@@ -64,7 +64,7 @@ function applyBCandForces(model, grid, bound, material, t, syst, state)
 
 % ----------------------------- APPLY BC ----------------------------------
     
-    locDofs = bound.dof.glob2loc(bcDofs); % get local dofs 
+    locDofs = bound.dof.glob2blockDoF(bcDofs); % get local block dofs 
     phDofs = bound.dof.glob2block(bcDofs);  % get block ID associated to given bc global dofs
     switch type
         case 'Dir' % Dirichlet BC

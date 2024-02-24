@@ -81,7 +81,7 @@ classdef NonLinearSolver < handle
           obj.t, linSyst, obj.stateTmp);
 
         % compute Rhs norm
-        [locRhsNorm, rhsNorm] = computeRhsNorm(obj,linSyst);
+        [~, rhsNorm] = computeRhsNorm(obj,linSyst);
         % consider output of local field rhs contribution
 
         tolWeigh = obj.simParameters.relTol*rhsNorm;
@@ -115,7 +115,7 @@ classdef NonLinearSolver < handle
           applyBCandForces(obj.model, obj.grid, obj.bound, obj.material, ...
             obj.t, linSyst, obj.stateTmp);
           % compute residual norm
-          [locRhsNorm, rhsNorm] = computeRhsNorm(obj,linSyst);
+          [~, rhsNorm] = computeRhsNorm(obj,linSyst);
           fprintf('%d     %e\n',obj.iter,rhsNorm);
         end
         %
