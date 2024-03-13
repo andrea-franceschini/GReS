@@ -42,6 +42,7 @@ classdef Biot < handle
         end
 
         function computeMat(obj,varargin)
+            % call method according to the discretization technique chosen
             if isFEMBased(obj.model, 'Flow')
                 computeMatFEM_FEM(obj);
             elseif isFVTPFABased(obj.model,'Flow')

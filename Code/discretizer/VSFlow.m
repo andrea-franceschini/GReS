@@ -106,6 +106,7 @@ classdef VSFlow < handle
 
 
         function computeCapMatFV(obj,varargin)
+            % the model is uncoupled
             subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'VSFlow'));
             [subCells, ~] = find(obj.dofm.subCells(:,subInd));
             nSubCells = length(subCells);

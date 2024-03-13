@@ -56,22 +56,22 @@ classdef Discretizer < handle
     %   end
     % end
 
-    function computeFlowJacobian_Test(obj,dt,varargin)
-      nBlock = size(obj.blockJ,1);
-          for i=1:nBlock^2
-              if all(strcmp(obj.blockJ(i).physics,'Flow')) 
-                  % varargin -> statek,stateTmp,pkpt,dSwkpt,dlwkpt
-                  % IF SINGLE PHASE
-                  obj.blockJ(i).block = obj.simParams.theta*obj.blockJ(i).H + obj.blockJ(i).P/dt;
-                  if obj.model.isVariabSatFlow() && obj.simParams.isNewtonNLSolver()
-                    % Compute the additional terms of the Jacobian
-                    [JNewt] = computeNewtPartOfJacobian(obj,dt,varargin{1}, ...
-                      varargin{2},varargin{3},varargin{4},varargin{5});
-                    obj.J = obj.J + JNewt;
-                  end
-              end
-          end
-    end
+    % function computeFlowJacobian_Test(obj,dt,varargin)
+    %   nBlock = size(obj.blockJ,1);
+    %       for i=1:nBlock^2
+    %           if all(strcmp(obj.blockJ(i).physics,'Flow')) 
+    %               % varargin -> statek,stateTmp,pkpt,dSwkpt,dlwkpt
+    %               % IF SINGLE PHASE
+    %               obj.blockJ(i).block = obj.simParams.theta*obj.blockJ(i).H + obj.blockJ(i).P/dt;
+    %               if obj.model.isVariabSatFlow() && obj.simParams.isNewtonNLSolver()
+    %                 % Compute the additional terms of the Jacobian
+    %                 [JNewt] = computeNewtPartOfJacobian(obj,dt,varargin{1}, ...
+    %                   varargin{2},varargin{3},varargin{4},varargin{5});
+    %                 obj.J = obj.J + JNewt;
+    %               end
+    %           end
+    %       end
+    % end
 
 
     function computeBlockJacobianAndRhs(obj, dt)
