@@ -4,6 +4,7 @@ classdef Elements < handle
   properties (Access = public)
     % Number of elements by type
     nCellsByType   % nCellsByType = [#tetra, #hexa, #wed, #pyr]
+    nSurfByType    % nCellsByType = [#tetra, #hexa, #wed, #pyr]
     nNodesElem = [4, 8, 6, 5]
     cellCentroid
     vol
@@ -62,6 +63,7 @@ classdef Elements < handle
       end
       %
       obj.nCellsByType = histc(obj.mesh.cellVTKType,[10, 12, 13, 14]);
+      obj.nSurfByType = histc(obj.mesh.surfaceVTKType,[10, 12, 13, 14]);
       %
       if obj.nCellsByType(1) > 0
         obj.tetra = Tetrahedron(obj.mesh);

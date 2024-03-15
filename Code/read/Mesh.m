@@ -12,7 +12,8 @@ classdef Mesh < handle
     nCells = 0
     % Total number of mesh 2D elements
     nSurfaces = 0
-    
+    % Total number of mesh 1D elements
+    nEdges = 0
     % Nodes' coordinates
     coordinates
     % Cell to node mapping:
@@ -24,7 +25,6 @@ classdef Mesh < handle
     nCellTag
     % Number of nodes for each 3D element
     cellNumVerts
-    
     % Surface to node mapping:
     % 2D elements' nodes sequences
     surfaces
@@ -34,6 +34,11 @@ classdef Mesh < handle
     nSurfaceTag
     % Number of nodes of the 2D element
     surfaceNumVerts
+    % Edge to node mapping (Required for 2D problems):
+    % 1D elements' nodes sequences
+    edges
+    % 1D elements' tag (region)
+    edgeTag
 
     % Regions
     cellRegions;
@@ -120,10 +125,18 @@ classdef Mesh < handle
       %
       % Check for unsupported elements
       if any(~ismember(obj.surfaceVTKType,[5 9]))
-        error(['There are unsupported surfaces in the mesh.\n', ...
-          'Supported surfaces are: - 3-node triangles       (VTKType = %d)\n', ...
-          '                        - 4-node quadrilaterals  (VTKType = %d)'],5,9);
+          error(['There are unsupported surfaces in the mesh.\n', ...
+              'Supported surfaces are: - 3-node triangles       (VTKType = %d)\n', ...
+              '                        - 4-node quadrilaterals  (VTKType = %d)'],5,9);
       end
+
+      % 1D ELEMENT DATA
+      % cellsID = 2D surface tag for readGMSHmesh.cpp
+      cellsID = 1;
+      ID = ismember(elems(:,1), cellsID);
+      obj.edges = elems(ID,4:5);
+      obj.edgeTag = elems(ID,2);
+      obj.nEdges = length(obj.edgeTag);
       %
       % REGIONS DATA FOR 2D ELEMENT
       dims = zeros(nRegions,1);

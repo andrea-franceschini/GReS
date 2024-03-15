@@ -1,0 +1,7 @@
+SurfBC                            % BC item
+Dir                               % BC type
+Poro                              % Physics
+PlaneStrain                           % BC name
+dirNodLatFaceYPoro/list
+0.000000 dirNodLatFaceYPoro/time0.dat
+End

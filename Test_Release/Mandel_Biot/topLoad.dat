@@ -1,0 +1,8 @@
+SurfBC                            % BC item
+Neu                               % BC type
+Poro                              % Physics
+z                                 % Direction
+topLoad                           % BC name
+topLoad/list
+0.000000 topLoad/time0.dat
+End

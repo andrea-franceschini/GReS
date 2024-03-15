@@ -56,7 +56,7 @@
       %    1) [mat,dJWeighed] = getDerBasisFAndDet(obj,el,1)
       %    2) mat = getDerBasisFAndDet(obj,el,2)
       %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
-      obj.J = pagemtimes(obj.J1,obj.mesh.coordinates(obj.mesh.cells(el,:),:));
+      obj.J = pagemtimes(obj.J1,obj.mesh.coordinates(obj.mesh.surfaces(el,:),:));
       if flOut == 3 || flOut == 1
 %         obj.detJ = arrayfun(@(x) det(obj.J(:,:,x)),1:obj.GaussPts.nNode);
           for i=1:obj.GaussPts.nNode
@@ -107,30 +107,19 @@
 %     function v = getVolume(obj,el)
 %       v = obj.vol(el);
 %     end
-    function [vol,cellCentroid] = findAreaAndCentroid(obj,idHexa)
-      % Find the volume of the cells using the determinant of the Jacobian
+    function [area,cellCentroid] = findAreaAndCentroid(obj,idHexa)
+      % Find the Area of the cells using the determinant of the Jacobian
       % of the isoparameric transformation
-      vol = zeros(length(idHexa),1);
-%       obj.volNod = zeros(obj.mesh.nNodes,1);
+      area = zeros(length(idHexa),1);
       cellCentroid = zeros(length(idHexa),3);
       i = 0;
       for el = idHexa
         i = i + 1;
-%         findJacAndDet(obj,el)
-% % %         obj.J = pagemtimes(obj.J1,obj.mesh.coordinates(obj.mesh.cells(el,:),:));
-% % %         obj.detJ = arrayfun(@(x) det(obj.J(:,:,x)),1:obj.GaussPts.nNode);
-% % %         vol(i) = (obj.detJ) * (obj.GaussPts.weight);
         dJWeighed = getDerBasisFAndDet(obj,el,3);
-        vol(i) = sum(dJWeighed);
-        assert(vol(i)>0,'Volume less than 0');
-%         top = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
-%         obj.volNod(top) = obj.volNod(top) + obj.vol(el)/obj.mesh.cellNumVerts(el);
-%         for i=1:obj.mesh.cellNumVerts(el)
-%           obj.volNod(top(i)) = obj.volNod(top(i)) + obj.vol(el)/obj.mesh.cellNumVerts(el);
-%         end
-        %
+        area(i) = sum(dJWeighed);
+        assert(area(i)>0,'Volume less than 0');
         gPCoordinates = getGPointsLocation(obj,el);
-        cellCentroid(i,:) = obj.detJ * gPCoordinates/vol(i);
+        cellCentroid(i,:) = obj.detJ * gPCoordinates/area(i);
       end
     end
     
@@ -147,35 +136,35 @@
     function gPCoordinates = getGPointsLocation(obj,el)
       % Get the location of the Gauss points in the element in the physical
       % space
-      gPCoordinates = obj.N1*obj.mesh.coordinates(obj.mesh.cells(el,:),:);
+      gPCoordinates = obj.N1*obj.mesh.coordinates(obj.mesh.surfaces(el,:),:);
     end
   end
 
   methods (Access = private)
     function findLocDerBasisF(obj)
       % Compute derivatives in the reference space for all Gauss points
-      obj.J1 = zeros(obj.mesh.nDim,obj.mesh.cellNumVerts(1),obj.GaussPts.nNode);
+      obj.J1 = zeros(obj.mesh.nDim,obj.mesh.surfNumVerts(1),obj.GaussPts.nNode);
       %
       % d(N)/d\csi
       d1 = bsxfun(@(i,j) 1/4*obj.coordLoc(j,1).* ...
           (1+obj.coordLoc(j,2).*obj.GaussPts.coord(i,2)).* ...
-          (1:obj.GaussPts.nNode)',1:obj.mesh.cellNumVerts(1));
+          (1:obj.GaussPts.nNode)',1:obj.mesh.surfNumVerts(1));
       %
       % d(N)/d\eta
       d2 = bsxfun(@(i,j) 1/4*obj.coordLoc(j,2).* ...
           (1+obj.coordLoc(j,1).*obj.GaussPts.coord(i,1)).* ...
-          (1:obj.GaussPts.nNode)',1:obj.mesh.cellNumVerts(1));
+          (1:obj.GaussPts.nNode)',1:obj.mesh.surfNumVerts(1));
       % d2 = 1/8.*coord_loc(:,2).*(1+coord_loc(:,1).*pti_G(1)).*(1+coord_loc(:,3).*pti_G(3));
       %
-      obj.J1(1,1:obj.mesh.cellNumVerts(1),1:obj.GaussPts.nNode) = d1';
-      obj.J1(2,1:obj.mesh.cellNumVerts(1),1:obj.GaussPts.nNode) = d2';
+      obj.J1(1,1:obj.mesh.surfNumVerts(1),1:obj.GaussPts.nNode) = d1';
+      obj.J1(2,1:obj.mesh.surfNumVerts(1),1:obj.GaussPts.nNode) = d2';
     end
     
     function findLocBasisF(obj)
       % Find the value the basis functions take at the Gauss points
       obj.N1 = bsxfun(@(i,j) 1/4*(1+obj.coordLoc(j,1).*obj.GaussPts.coord(i,1)).* ...
                      (1+obj.coordLoc(j,2).*obj.GaussPts.coord(i,2)).* ...
-                     (1:obj.GaussPts.nNode)',1:obj.mesh.cellNumVerts(1));
+                     (1:obj.GaussPts.nNode)',1:obj.mesh.surfNumVerts(1));
     end
     
     function setQuad(obj,msh,GPoints)

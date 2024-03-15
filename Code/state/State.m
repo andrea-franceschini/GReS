@@ -34,7 +34,7 @@ classdef State < matlab.mixin.Copyable
         function obj = State(symmod,grid,mat,varargin)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
-            [fileName, Gauss] = State.manageStateInput(varargin);
+            [fileName, Gauss] = obj.manageStateInput(varargin);
             obj.setState(symmod,grid,mat,Gauss);
             obj.iniState(fileName);
         end
