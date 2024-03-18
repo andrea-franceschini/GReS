@@ -9,7 +9,7 @@ xlim([0 10])
 set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 16);
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 10)
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'Rel_perm', '.png');
+stmp = strcat('Images\', 'Rel_perm', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 figure(2)
@@ -22,5 +22,5 @@ ylabel('Effective Saturation S^*_w')
 set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 16);
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 10)
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'Effective_sat', '.png');
+stmp = strcat('Images\', 'Effective_sat', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)

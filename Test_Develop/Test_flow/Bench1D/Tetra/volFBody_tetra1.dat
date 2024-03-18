@@ -1,6 +1,0 @@
-VolumeForce                       % BC item
-Flow                              % Physics
-distrSource                       % BC name
-volFBody_tetra1/list
-0.000000 volFBody_tetra1/time0.dat
-End

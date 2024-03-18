@@ -1,7 +1,0 @@
-NodeBC                            % BC item
-Dir                               % BC type
-Poro                              % Physics
-topFaceY                           % BC name
-neuSurfTopRigidYPoro/list
-0.000000 neuSurfTopRigidYPoro/time0.dat
-End

@@ -1,7 +1,0 @@
-NodeBC                            % BC item
-Dir                               % BC type
-Flow                              % Physics
-rFace                             % BC name
-dirRightFace_tetra2/list
-0.000000 dirRightFace_tetra2/time0.dat
-End

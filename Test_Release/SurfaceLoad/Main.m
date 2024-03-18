@@ -1,7 +1,6 @@
 % close all;
 % clear;
 
-%anal_path =  'C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution';
 % -------------------------- SET THE PHYSICS -------------------------
 model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 %
@@ -38,8 +37,6 @@ elems = Elements(topology,GaussPts);
 
 %mandel_analytical;
 %saving coordinates for later use
-%save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution\xmesh.dat xvector  -ascii
-%save C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution\zmesh.dat zvector  -ascii
 %
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);
@@ -98,7 +95,7 @@ set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14)
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
 % export figure with quality
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'SurfLoad_pressure', '.png');
+stmp = strcat('Images\', 'SurfLoad_pressure', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 figure(2)
@@ -112,7 +109,7 @@ set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14)
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
 % export figure with quality
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'SurfLoad_dispTime', '.png');
+stmp = strcat('Images\', 'SurfLoad_dispTime', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 
@@ -136,7 +133,7 @@ set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14)
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
 % export figure with quality
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'SurfLoad_dispR', '.png');
+stmp = strcat('Images\', 'SurfLoad_dispR', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 

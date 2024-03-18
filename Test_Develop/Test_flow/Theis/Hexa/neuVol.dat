@@ -1,6 +1,0 @@
-VolumeForce                       % BC item
-Flow                              % Physics
-neuVol                           % BC name
-neuVol/list
-0.0 neuVol/time0.dat
-End

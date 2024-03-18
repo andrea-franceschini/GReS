@@ -1,9 +1,0 @@
-ElementBC                            % BC item
-Dir                               % BC type
-Flow                              % Physics
-bFace                             % BC name
-dirBottom3_cells/list
-0.000000 dirBottom3_cells/time0.dat
-5.000000 dirBottom3_cells/time1.dat
-10.00000 dirBottom3_cells/time2.dat
-End

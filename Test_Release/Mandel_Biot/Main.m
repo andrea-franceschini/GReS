@@ -1,8 +1,6 @@
 close all;
 clear;
 
-%anal_path =  'C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution';
-
 % -------------------------- SET THE PHYSICS -------------------------
 model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 %
@@ -118,7 +116,7 @@ set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14)
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
 % export figure with quality
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'Mandel_pressure', '.png');
+stmp = strcat('Images\', 'Mandel_pressure', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 %Displacement DX
@@ -134,7 +132,7 @@ set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14)
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
 % export figure with quality
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'Mandel_UX', '.png');
+stmp = strcat('Images\', 'Mandel_UX', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 %Displacement DZ
@@ -151,7 +149,7 @@ set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14)
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
 % export figure with quality
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'Mandel_UZ', '.png');
+stmp = strcat('Images\', 'Mandel_UZ', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 

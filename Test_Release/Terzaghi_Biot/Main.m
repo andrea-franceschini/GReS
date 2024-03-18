@@ -136,7 +136,7 @@ set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14)
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 12)
 % export figure with quality
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images', 'Terzaghi_pressure', '.png');
+stmp = strcat('Images', 'Terzaghi_pressure', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 figure(2)
@@ -153,7 +153,7 @@ set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
 % export figure with quality
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'Terzaghi_disp', '.png');
+stmp = strcat('Images\', 'Terzaghi_disp', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 %%
 %Checking error norm 

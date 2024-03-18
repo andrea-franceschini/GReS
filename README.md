@@ -1,2 +1,2 @@
 # GReS
-General purpose Reservoir Simulator
+Geomechanical Reservoir Simulator

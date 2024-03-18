@@ -1,7 +1,0 @@
-SurfBC                            % BC item
-Dir                               % BC type
-Flow                              % Physics
-rFace                             % BC name
-dirSurfRightFace_hexa4/list
-0.000000 dirSurfRightFace_hexa4/time0.dat
-End
