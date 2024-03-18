@@ -348,7 +348,7 @@ classdef State < matlab.mixin.Copyable
             if isFlow(obj.model)
                 %gamma = obj.material.getMaterial(obj.mesh.nCellTag+1).getFluidSpecWeight();
                 if isFEMBased(obj.model,'Flow')
-                    obj.pressure = gamma_w*(watlev-obj.mesh.coordinates(:,3));
+                    obj.pressure = gamma_w*(max_z-obj.mesh.coordinates(:,3)-watlev);
                 elseif isFVTPFABased(obj.model,'Flow')
                     obj.pressure = gamma_w*(watlev-obj.elements.cellCentroid(:,3));
                     obj.watSat = obj.material.computeSwAnddSw(obj.mesh,obj.pressure);

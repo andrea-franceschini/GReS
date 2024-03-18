@@ -46,9 +46,9 @@ classdef Triangle < handle
       for el = idTetra
         i = i + 1;
         top = obj.mesh.surfaces(el,1:3);
-        vol(i) = det([1 obj.mesh.coordinates(top(1),:);
-                      1 obj.mesh.coordinates(top(2),:);
-                      1 obj.mesh.coordinates(top(3),:);])/2;
+        vol(i) = 0.5*det([1 obj.mesh.coordinates(top(1),1:2);
+                      1 obj.mesh.coordinates(top(2),1:2);
+                      1 obj.mesh.coordinates(top(3),1:2);]);
         if vol(i) < 0
 %           obj.volSign(el) = -1;
           vol(i) = -vol(i);

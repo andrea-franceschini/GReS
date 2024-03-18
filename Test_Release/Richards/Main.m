@@ -13,7 +13,7 @@ simParam = SimulationParameters(model,fileName);
 topology = Mesh();
 %
 % Set the input file name
-fileName = 'Bench1D_hexa3.msh';
+fileName = 'Bench1D_hexa.msh';
 %
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -45,7 +45,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 % Set the input file
 % fileName = ["neuSurfLeftFace_hexa2.dat","dirNodRightFace_hexa2.dat", ...
 %   "volFBody_hexa2.dat"];
-fileName = "dirBottom3.dat";
+fileName = "dirBottom.dat";
 %
 % Create an object of the "Boundaries" class and read the boundary
 % conditions
@@ -58,7 +58,8 @@ bound = Boundaries(fileName,model,grid, dofmanager);
 %
 % Set the "State" object. It contains all the vectors describing the state
 % of the reservoir in terms of pressure, displacement, stress, ...
-resState = State(model,grid,mat,GaussPts);
+fName = "iniPressure.dat";
+resState = State(model,grid,mat,fName,GaussPts);
 %
 % Create and set the print utility
 printUtils = OutState(model,mat,grid,'outTime.dat');
@@ -100,7 +101,10 @@ tind = [3;5;10;20;30;37];
 press = printUtils.m.expPress;
 sw = printUtils.m.expSw;
 t = printUtils.m.expTime;
-t = t(tind);
+t_max = t(end);
+t = t(tind)/t_max;
+
+
 tstr = num2str(t);
 %Getting pressure and saturation solution for specified time from MatFILE
 pressplot = press(nodesP,tind);
@@ -122,9 +126,9 @@ legend(tstr)
 
 
 figure(2)
-plot(-swplot,ptsY,'-o');
+plot(swplot,ptsY,'-o');
 hold on
 xlabel('Saturation')
-ylabel('z (m)')
+ylabel('z/H (m)')
 str = strcat('t = ',tstr);
 legend(str)
