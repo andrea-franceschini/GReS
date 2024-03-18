@@ -1,7 +1,6 @@
 close all;
 clear;
 
-%anal_path =  'C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution';
 
 % -------------------------- SET THE PHYSICS -------------------------
 model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
@@ -27,6 +26,7 @@ fileName = 'materialsList.dat';
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
 %
+Mandel_Analytical(topology, mat, 10)
 %------------------------------ ELEMENTS -----------------------------
 %
 % Define Gauss points
@@ -76,6 +76,15 @@ printUtils.finalize()
 %
 %%
 % -------------------------- BENCHMARK ------------------------------
+
+image_dir = strcat(pwd,'/Images');
+if isfolder(image_dir)
+    rmdir(image_dir,"s")
+    mkdir Images
+else
+    mkdir Images
+end
+
 %Post processing using MAT-FILE
 %list of nodes along vertical axis (with x,y=0)
 tol = 0.001;
@@ -102,14 +111,15 @@ pressNum = press(elemP,2:end);
 dispXNum = disp(3*nodesX-2,2:end);
 dispZNum = disp(3*nodesZ,2:end);
 
-
+% Loading analytical solution MAT-FILE into workspace
+load("Mandel_Analytical.mat");
 
 %Plotting solution
 %Pressure
 figure(1)
 plotObj1 = plot(elems.cellCentroid(elemP,1),pressNum,'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
-plotObj2 = plot(x,p,'k', 'LineWidth', 1);
+plotObj2 = plot(x,p,'k-', 'LineWidth', 1);
 xlabel('x (m)')
 ylabel('Pressure (kPa)')
 legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
@@ -118,31 +128,32 @@ set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14)
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
 % export figure with quality
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'Mandel_pressure', '.png');
+stmp = strcat('Images\', 'Mandel_pressure', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 %Displacement DX
 figure(2)
 plotObj1 = plot(topology.coordinates(nodesX,1),dispXNum,'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
-plotObj2 = plot(x,ux,'k', 'LineWidth', 1);
+plotObj2 = plot(x,ux,'k-', 'LineWidth', 1);
 xlabel('x (m)')
-ylabel('Displacement X (m)')
+ylabel('Displacement u_x (m)')
+ylim([0 7.e-5])
 legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'}, 'Location', 'southeast');
 grid on
 set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14);
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
 % export figure with quality
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'Mandel_UX', '.png');
+stmp = strcat('Images\', 'Mandel_UX', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 %Displacement DZ
 figure(3)
 plotObj1 = plot(dispZNum,topology.coordinates(nodesZ,3),'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
-plotObj2 = plot(uz,z,'k', 'LineWidth', 1);
-xlabel('Displacement Z (m)')
+plotObj2 = plot(uz,z,'k-', 'LineWidth', 1);
+xlabel('Displacement u_z (m)')
 xlim([-10e-5 1e-5])
 ylabel('z (m)')
 legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'});
@@ -151,33 +162,5 @@ set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14)
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
 % export figure with quality
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'Mandel_UZ', '.png');
+stmp = strcat('Images\', 'Mandel_UZ', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
-
-
-%%
-%Checking error norm 
-% Compute the volume connected to each node
-volNod = zeros(topology.nNodes,1);
-if any(topology.cellVTKType == 12)
-  N1 = getBasisFinGPoints(elems.hexa);
-end
-for el=1:topology.nCells
-  top = topology.cells(el,1:topology.cellNumVerts(el));
-  if topology.cellVTKType(el) == 10 % Tetra
-    volNod(top) = volNod(top) + elems.vol(el)/topology.cellNumVerts(el);
-  elseif topology.cellVTKType(el) == 12 % Hexa
-    dJWeighed = getDerBasisFAndDet(elems.hexa,el,3);
-    volNod(top) = volNod(top)+ N1'*dJWeighed';
-  end
-end
-
-
-%errpress = sqrt(sum((analpress - press(:,2:end)).^2));
-%normanal = sqrt(sum(analpress.^2));
-%errRelpress = errpress./normanal;
-
-%compute weighed error for the whole grid
-errpress2 = (analpress - press(:,2:end)).^2;
-errNormpress = sqrt(errpress2'*volNod);
-

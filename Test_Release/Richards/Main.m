@@ -84,6 +84,14 @@ printUtils.finalize()
 delete(bound);
 %% -------------------------- BENCHMARK ------------------------------
 
+image_dir = strcat(pwd,'/Images');
+if isfolder(image_dir)
+    rmdir(image_dir,"s")
+    mkdir Images
+else
+    mkdir Images
+end
+
 %Post processing using MAT-FILE 
 
 % elem vector containing elements centroid along vertical axis
@@ -97,7 +105,7 @@ else
     nodesP = nodesP(ind);
 end
 
-tind = [3;5;10;20;30;37];
+tind = [9;21; 30; 37];
 press = printUtils.m.expPress;
 sw = printUtils.m.expSw;
 t = printUtils.m.expTime;
@@ -105,7 +113,7 @@ t_max = t(end);
 t = t(tind)/t_max;
 
 
-tstr = num2str(t);
+tstr = strcat(num2str(t),' \cdotT');
 %Getting pressure and saturation solution for specified time from MatFILE
 pressplot = press(nodesP,tind);
 swplot = sw(nodesP,tind);
@@ -118,17 +126,29 @@ else
     ptsY = topology.coordinates(nodesP,3);
 end
 figure(1)
-plot(pressplot,ptsY,'-o');
+plot(pressplot,ptsY,'.k-', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
 xlabel('Pressure (kPa)')
-ylabel('z (m)')
-legend(tstr)
-
+ylabel('z(m)')
+grid on
+set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
+a = get(gca,'XTickLabel');
+set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
+% export figure with quality
+stmp = strcat('Images\', 'Richards_pressure', '.png');
+exportgraphics(gcf,stmp,'Resolution',400)
 
 figure(2)
-plot(swplot,ptsY,'-o');
+plot(swplot,ptsY,'.k-', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
 xlabel('Saturation')
-ylabel('z/H (m)')
+ylabel('z(m)')
+xlim([0 1])
 str = strcat('t = ',tstr);
-legend(str)
+grid on
+set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
+a = get(gca,'XTickLabel');
+set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
+% export figure with quality
+stmp = strcat('Images\', 'Richards_staturation', '.png');
+exportgraphics(gcf,stmp,'Resolution',400)

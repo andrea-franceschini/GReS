@@ -1,7 +1,0 @@
-SurfBC                            % BC item
-Neu                               % BC type
-Flow                              % Physics
-lFace                             % BC name
-neuSurfLeftFace_tetra3/list
-0.0 neuSurfLeftFace_tetra3/time0.dat
-End

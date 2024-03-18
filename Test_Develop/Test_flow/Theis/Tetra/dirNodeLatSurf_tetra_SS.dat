@@ -1,7 +1,0 @@
-NodeBC                            % BC item
-Dir                               % BC type
-Flow                              % Physics
-latSurf                           % BC name
-dirNodeLatSurf_tetra_SS/list
-0.000000 dirNodeLatSurf_tetra_SS/time0.dat
-End

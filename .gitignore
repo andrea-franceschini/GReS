@@ -43,3 +43,7 @@
 /Tests/*/vtkOutput/
 # Temporary folders with external classes
 /Code/cross_grid/
+# Test devlopment 
+/Test_Develop/
+# Manual
+/Manual/

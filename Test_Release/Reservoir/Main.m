@@ -1,13 +1,6 @@
 close all;
 clear;
 
-%adding path
-rmpath(genpath('C:\Users\Moretto\Documents\PHD\GReS\GReS'))
-addpath(genpath('C:\Users\Moretto\Documents\PHD\GReS\GReS\Code'));
-addpath(genpath(pwd));
-%anal_path =  'C:\Users\Moretto\Documents\UNIPD\Tesi_magistrale\Code_18_07\GReS\Tests\Mandel_coupled\Analytical_solution';
-%%
-tic
 % -------------------------- SET THE PHYSICS -------------------------
 model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 %
@@ -84,12 +77,20 @@ NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resS
 %
 % Finalize the print utility
 printUtils.finalize()
-%
-time = toc;
 
 %% POST PROCESSING
-%loading output file (inside mandel directory for some reason)
-load('expData.mat')
+
+image_dir = strcat(pwd,'/Images');
+if isfolder(image_dir)
+    rmdir(image_dir,"s")
+    mkdir Images
+else
+    mkdir Images
+end
+
+expPress = printUtils.m.expPress;
+expDispl = printUtils.m.expDispl;
+expTime = printUtils.m.expTime;
 
 %find nodes in vertical symmetry axis
 tmp1=topology.coordinates(:,1)<500.1;
@@ -119,130 +120,38 @@ if isFEMBased(model,'Flow')
     pressPlot = expPress(vertNod(indNod),timesInd);
     figure(1)
     plot(pressPlot,vertNodZ)
-    xlabel('Pressione [kPa]')
+    xlabel('Pressure [kPa]')
     ylabel('z (m)')
     legend(time_string)
 elseif isFVTPFABased(model,'Flow')
     pressPlot = expPress(vertEl(indEl),timesInd);
     figure(1)
     plot(pressPlot,vertElZ)
-    xlabel('Pressione [kPa]')
+    xlabel('Pressure [kPa]')
     ylabel('z (m)')
     legend(time_string)
 end
+grid on
+set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14);
+a = get(gca,'XTickLabel');
+set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
+% export figure with quality
+stmp = strcat('Images\', 'DeepAcquifer_pressure', '.png');
+exportgraphics(gcf,stmp,'Resolution',400)
+
+
 dispPlot = expDispl(3*vertNod(indNod),timesInd);
 
 figure(2)
 plot(1000*dispPlot,vertNodZ);
-xlabel('Spostamento verticale (mm)')
+xlabel('Vertical displacement (mm)')
 ylabel('z (m)')
 % xlim([0 50])
 % ylim([-60 5])
 legend(time_string)
-
-
-
-%%
-%Checking error norm 
-% Compute the volume connected to each node
-% volNod = zeros(topology.nNodes,1);
-% if any(topology.cellVTKType == 12)
-%   N1 = getBasisFinGPoints(elems.hexa);
-% end
-% for el=1:topology.nCells
-%   top = topology.cells(el,1:topology.cellNumVerts(el));
-%   if topology.cellVTKType(el) == 10 % Tetra
-%     volNod(top) = volNod(top) + elems.vol(el)/topology.cellNumVerts(el);
-%   elseif topology.cellVTKType(el) == 12 % Hexa
-%     dJWeighed = getDerBasisFAndDet(elems.hexa,el,3);
-%     volNod(top) = volNod(top)+ N1'*dJWeighed';
-%   end
-% end
-
-
-%errpress = sqrt(sum((analpress - press(:,2:end)).^2));
-%normanal = sqrt(sum(analpress.^2));
-%errRelpress = errpress./normanal;
-
-%compute weighed error for the whole grid
-% errpress2 = (pfem - press(:,2:end)).^2;
-% errNormpress = sqrt(errpress2'*volNod);
-% 
-% errdispX2 = (uxfem - disp(1:3:end,2:end)).^2;
-% errNormDispX = sqrt(errdispX2'*volNod);
-% 
-% errdispZ2 = (uzfem - disp(3:3:end,2:end)).^2;
-% errNormDispZ = sqrt(errdispZ2'*volNod);
-
-%diagram to find stationary flow
-% t=[10 50 100 500 1000];
-% p=[678 2580 4239 11852 17741.3];
-% plot(t,p)
-
-
-
-%%
-%
-% % Compute the volume connected to each node
-volNod = zeros(topology.nNodes,1);
-if any(topology.cellVTKType == 12)
-  N1 = getBasisFinGPoints(elements.hexa);
-end
-for el=1:topology.nCells
-  top = topology.cells(el,1:topology.cellNumVerts(el));
-  if topology.cellVTKType(el) == 10 % Tetra
-    volNod(top) = volNod(top) + elems.vol(el)/topology.cellNumVerts(el);
-  elseif topology.cellVTKType(el) == 12 % Hexa
-    dJWeighed = getDerBasisFAndDet(elems.hexa,el,3);
-    volNod(top) = volNod(top)+ N1'*dJWeighed';
-  end
-end
-% %
-% % Edge length
-% % ledge = zeros(topology.nCells,1);
-% % for el = 1:topology.nCells
-% %   comb = nchoosek(topology.cells(el,:),2);
-% %   ledgeLoc = sqrt((topology.coordinates(comb(:,1),1)-topology.coordinates(comb(:,2),1)).^2 + ...
-% %     (topology.coordinates(comb(:,1),2)-topology.coordinates(comb(:,2),2)).^2 + ...
-% %     (topology.coordinates(comb(:,1),3)-topology.coordinates(comb(:,2),3)).^2);
-% %   ledge(el) = max(ledgeLoc);
-% % end
-% %
-% 
-% % Analytical solution for flow problem
-% %load('expData.mat');
-% 
-% qS = bound.getVals('neu_down', 1);
-% qB = -qS(1);
-% permMat = mat.getMaterial(2).getPermMatrix();
-% kB = permMat(1,1);
-% % fVec = bound.getVals('distrSource', 1);
-% % fB = -fVec(1);
-% fB = 0;
-% pVec = bound.getVals('dir_top', 1);
-% pB = pVec(1);
-% len = max(topology.coordinates(:,3));
-% pAnal = fB/(2*kB)*topology.coordinates(:,3).^2 + ...
-%   qB/kB*topology.coordinates(:,3) + (pB-1/kB*((len^2)/2*fB+len*qB));
-% errflow = (resState.pressure - pAnal).^2;
-% errNormflow = sqrt(errflow'*volNod);
-% 
-% % Analytical solution_1D truss
-% %load('expData.mat');
-% fS = bound.getVals('neu_top', 1);
-% fB = -fS(1);
-% %permMat = mat.getMaterial(2).getPermMatrix();
-% %kB = permMat(1,1);
-% % fVec = bound.getVals('distrSource', 1);
-% % fB = -fVec(1);
-% E = mat.getMaterial(1).E;
-% uVec = bound.getVals('dir_down', 1);
-% uB = uVec(1);
-% len = max(topology.coordinates(:,3));
-% uAnal = fB/E*topology.coordinates(:,3);
-% uz = resState.displ(3:3:end);
-% errporo = (uz - uAnal).^2;
-% errNormporo = sqrt(errporo'*volNod);
-% 
-% 
-% delete(bound);
+set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14);
+a = get(gca,'XTickLabel');
+set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
+% export figure with quality
+stmp = strcat('Images\', 'DeepAcquifer_vertDisplacements', '.png');
+exportgraphics(gcf,stmp,'Resolution',400)

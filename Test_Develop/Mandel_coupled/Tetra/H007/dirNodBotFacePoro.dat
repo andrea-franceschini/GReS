@@ -1,7 +1,0 @@
-NodeBC                            % BC item
-Dir                               % BC type
-Poro                              % Physics
-botFace                           % BC name
-dirNodBotFacePoro/list
-0.000000 dirNodBotFacePoro/time0.dat
-End
