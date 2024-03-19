@@ -43,7 +43,7 @@ dofmanager = DoFManager(topology,model);
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
 % Set the input file
-fileName = ["dir_Poro_fixed.dat","neuSurf_Poro_topLoad.dat","dir_Poro_Sym.dat","dir_Flow_TopDrained.dat"];
+fileName = ["dir_Poro_fixed.dat","neuSurf_Poro_TopLoad.dat","dir_Poro_Sym.dat","dir_Flow_TopDrained.dat"];
 %
 bound = Boundaries(fileName,model,grid,dofmanager);
 %

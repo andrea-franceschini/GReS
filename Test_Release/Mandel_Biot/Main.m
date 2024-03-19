@@ -1,6 +1,7 @@
 close all;
 clear;
 
+warning('off','MATLAB:nearlySingularMatrix');
 
 % -------------------------- SET THE PHYSICS -------------------------
 model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
