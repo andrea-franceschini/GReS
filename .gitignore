@@ -38,8 +38,3 @@
 
 # Matlab files
 *.mat
-
-# Output folders with vtk files
-/Tests/*/vtkOutput/
-# Temporary folders with external classes
-/Code/cross_grid/
