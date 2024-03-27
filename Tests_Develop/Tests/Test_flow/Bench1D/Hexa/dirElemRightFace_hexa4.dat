@@ -1,0 +1,6 @@
+ElementBC                         % BC item
+Flow                              % Physics
+rFace                             % BC name
+dirElemRightFace_hexa4/list
+0.000000 dirElemRightFace_hexa4/time0.dat
+End

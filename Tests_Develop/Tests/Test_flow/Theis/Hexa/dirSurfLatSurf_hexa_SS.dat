@@ -1,0 +1,7 @@
+SurfBC                            % BC item
+Dir                               % BC type
+Flow                              % Physics
+latSurf                           % BC name
+dirSurfLatSurf_hexa_SS/list
+0.000000 dirSurfLatSurf_hexa_SS/time0.dat
+End

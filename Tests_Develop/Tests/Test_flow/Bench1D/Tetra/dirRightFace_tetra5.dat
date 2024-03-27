@@ -1,0 +1,7 @@
+NodeBC                            % BC item
+Dir                               % BC type
+Flow                              % Physics
+rFace                             % BC name
+dirRightFace_tetra5/list
+0.000000 dirRightFace_tetra5/time0.dat
+End

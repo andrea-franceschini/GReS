@@ -1,0 +1,12 @@
+Elastic                           % material model
+1500000      0.3                   % E [kPa], nu
+
+PorousRock                        % material model
+0.3      21                       % porosity, compressibility (alpha) in kPa, specific weight kPa
+2.0e-12     0      0                % intrinsic permeability matrix (upper part) 
+       2.0e-12     0
+              2.0e-12
+1.0                               % biot coefficient    
+End
+
+

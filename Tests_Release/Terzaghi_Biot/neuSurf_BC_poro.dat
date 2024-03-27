@@ -1,0 +1,8 @@
+SurfBC                              % BC item (NodeBC,SurfBC, ElementBC, VolumeForce)
+Neu                                 % BC type (Dir, Neu)
+Poro                                % Physics (Poro, Flow)
+z                                   % Direction (x,y,z)
+neu_top_force                       % BC name (for error checking purposes)
+neuSurf_BC_poro/list                
+0.0 neuSurf_BC_poro/time0.dat 
+End

@@ -1,0 +1,6 @@
+VolumeForce                       % BC item
+Flow                              % Physics
+distrSource                       % BC name
+volFBody_hexa1/list
+0.000000 volFBody_hexa1/time0.dat
+End
