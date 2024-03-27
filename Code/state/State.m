@@ -339,24 +339,20 @@ classdef State < matlab.mixin.Copyable
                             l1 = l1 + obj.GaussPts.nNode;
                     end
                 end
+                obj.conv.stress = obj.iniStress;
             end
             %
-            obj.conv.stress = obj.iniStress;
+
 
             %
             if isFlow(obj.model)
                 %gamma = obj.material.getMaterial(obj.mesh.nCellTag+1).getFluidSpecWeight();
                 if isFEMBased(obj.model,'Flow')
-                    obj.pressure = gamma_w*(max_z-obj.mesh.coordinates(:,3)-watlev);
+                    obj.pressure = gamma_w*(watlev-obj.mesh.coordinates(:,3));
                 elseif isFVTPFABased(obj.model,'Flow')
-                    obj.pressure = gamma_w*(max_z-obj.elements.cellCentroid(:,3)-waltev);
+                    obj.pressure = gamma_w*(watlev-obj.elements.cellCentroid(:,3));
+                    obj.watSat = obj.material.computeSwAnddSw(obj.mesh,obj.pressure);
                 end
-                obj.pressure(obj.pressure<0) = 0;
-                %         end
-                %             if obj.model.isVariabSatFlow()
-                %               obj.watSat = obj.material.computeSwAnddSw(obj.mesh,obj.pressure);
-                %             end
-                %         obj.pressure = 80*ones(obj.mesh.nCells,1);
             end
         end
 

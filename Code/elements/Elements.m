@@ -10,7 +10,10 @@ classdef Elements < handle
     vol
     tetra
     hexa
+    tri
+    quad
     indB
+    indB2D
   end
 
   properties (Access = private)
@@ -63,7 +66,6 @@ classdef Elements < handle
       end
       %
       obj.nCellsByType = histc(obj.mesh.cellVTKType,[10, 12, 13, 14]);
-      obj.nSurfByType = histc(obj.mesh.surfaceVTKType,[10, 12, 13, 14]);
       %
       if obj.nCellsByType(1) > 0
         obj.tetra = Tetrahedron(obj.mesh);
@@ -84,6 +86,27 @@ classdef Elements < handle
       obj.indB(:,2) = repmat([1, 4, 6, 8,10,11,15,17,18],[1,l1]);
       obj.indB(:,1) = obj.indB(:,1) + repelem(3*(0:(l1-1))',9);
       obj.indB(:,2) = obj.indB(:,2) + repelem(18*(0:(l1-1))',9);
+
+      % 2D elements (triangles, quadrilateral)
+      obj.nSurfByType = histc(obj.mesh.surfaceVTKType,[5, 9]);
+      if obj.nSurfByType(1) > 0
+          obj.tri = Triangle(obj.mesh);
+      end
+      if obj.nSurfByType(2) > 0
+          %obj.quad = Quadrilateral(obj.mesh,obj.GaussPts);
+      end
+
+      if obj.nSurfByType(2) == 0
+          l1 = 3;
+      else
+          l1 = 4*obj.GaussPts.nNode;
+      end
+      % Matrix of derivatives of the basis functions for 2D elements
+      obj.indB2D = zeros(4*l1,2);
+      obj.indB2D(:,1) = repmat([1, 2, 2, 1],[1,l1]);
+      obj.indB2D(:,2) = repmat([1, 3, 5, 6],[1,l1]);
+      obj.indB2D(:,1) = obj.indB2D(:,1) + repelem(2*(0:(l1-1))',4);
+      obj.indB2D(:,2) = obj.indB2D(:,2) + repelem(6*(0:(l1-1))',4);
     end
     
     function computeCellProperties(obj)

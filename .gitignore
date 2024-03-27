@@ -38,6 +38,9 @@
 
 # Matlab files
 *.mat
+<<<<<<< HEAD
 
 # Output folders with vtk files
 /Tests/*/vtkOutput/
+=======
+>>>>>>> origin
