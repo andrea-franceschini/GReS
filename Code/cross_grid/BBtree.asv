@@ -1,0 +1,29 @@
+clear
+close all
+% define random pairs of points;
+% define number of polygon edges
+n_edges = 4;
+l1 = 2*pi*sort(rand(n_edges,1));
+l1 = [l1; l1(1)];
+l2 = 2*pi*sort(rand(n_edges,1));
+l2 = [l2; l2(1)];
+xp1 = cos(l1);
+yp1 = sin(l1);
+xp2 = 1 + cos(l2);
+yp2 = 1 + sin(l2);
+plot(xp1,yp1)
+hold on
+plot(xp2,yp2)
+
+%% define direction in which evaluate bounding nodes
+dir = [1 0;
+       0 1;
+      -1 1;
+      1 1];
+vals = [xp yp]*dir;
+[~,imax] = max(vals);
+[~,imin] = min(vals);
+hold on
+plot(xp(imax),yp(imax), 'ro')
+plot(xp(imin),yp(imin), 'ro')
+
