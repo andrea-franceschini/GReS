@@ -1,7 +1,7 @@
 function real_pts = ref2nod(pts,a,b)
 % return pts coordinates in the real space given extreme nodes
-
-real_pts = ((b-a)/2)*pts + (a+b)/2;
-
+% a = [x1,y1]    b = [x2,y2];
+real_pts(:,1) = ((b(1)-a(1))/2)*pts + (a(1)+b(1))/2;
+real_pts(:,2) = zeros(length(pts),1);
 end
 

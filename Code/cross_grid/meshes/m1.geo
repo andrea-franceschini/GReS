@@ -1,7 +1,11 @@
 Mesh.Format = 1;
 Mesh.MshFileVersion = 2.2; 
 
+<<<<<<< HEAD
 h = 0.05;
+=======
+h = 0.25;
+>>>>>>> origin/feature/cross_grid
 
 Point(1) = {0,0,0,h};
 Point(2) = {1,0,0,h};
@@ -17,7 +21,14 @@ Curve Loop(1) = {1,2,3,4};
 
 Plane Surface(1) = {1};
 Physical Surface("domain",1) = {1};
+<<<<<<< HEAD
 
 Mesh 2;
 Save "mesh2.msh";
+=======
+Recombine Surface{1};
+
+Mesh 2;
+Save "mesh2_quad.msh";
+>>>>>>> origin/feature/cross_grid
 

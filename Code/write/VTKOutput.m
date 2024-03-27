@@ -38,7 +38,7 @@ classdef VTKOutput < handle
     function obj = VTKOutput(mesh, varargin)
       obj.mesh = mesh;
       if (nargin > 1)
-        obj.folderName = varargin(1);
+        obj.folderName = varargin{1};
         if (nargin > 2)
           error('Too many inputs.');
         end
@@ -271,8 +271,13 @@ classdef VTKOutput < handle
       end
 
       fname = sprintf('%s/%s/%s', obj.folderName, outName, obj.cellFileName);
-      mxVTKWriter(fname, time, obj.mesh.coordinates, obj.mesh.cells, obj.mesh.cellVTKType, ...
-                  obj.mesh.cellNumVerts, pointData3D, cellData3D);
+      if any(obj.mesh.coordinates(:,3)~=0)
+          mxVTKWriter(fname, time, obj.mesh.coordinates, obj.mesh.cells, obj.mesh.cellVTKType, ...
+              obj.mesh.cellNumVerts, pointData3D, cellData3D);
+      else
+          mxVTKWriter(fname, time, obj.mesh.coordinates, obj.mesh.surfaces, obj.mesh.surfaceVTKType, ...
+              obj.mesh.surfaceNumVerts, pointData2D, cellData2D);
+      end
 
       if (obj.hasFaults)
 

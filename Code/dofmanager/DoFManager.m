@@ -173,7 +173,7 @@ classdef DoFManager < handle
         end
 
 
-        function dofs = glob2loc(obj, list)
+        function dofs = glob2blockDoF(obj, list)
             list = list(:); % make sure is a column vector
             % Return block numbering from global dof numbering
             s = cumsum(obj.numDof);
@@ -181,9 +181,9 @@ classdef DoFManager < handle
             dofs = list - s(obj.glob2block(list));
         end
 
-        function dofs = field2dof(obj,field)
-            dofs = find(ismember(obj.glob2block,field));
-        end
+        % function dofs = field2dof(obj,field)
+        %     dofs = find(ismember(obj.glob2block,field));
+        % end
 
         function ents = field2ent(obj, field)
             % INPUT: field string

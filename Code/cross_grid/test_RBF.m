@@ -4,8 +4,8 @@ close all; clear
 %% IMPORT MESHES
 msh1 = Mesh();
 msh2 = Mesh();
-msh1.importGMSHmesh('meshes/mesh1.msh');
-msh2.importGMSHmesh('meshes/mesh2.msh');
+msh1.importGMSHmesh('meshes/mesh1_quad.msh');
+msh2.importGMSHmesh('meshes/mesh1_quad.msh');
 
 %% INTERPOLATE
 testFunc = @(x,y,z) sin(2*pi*x).*cos(3*pi*y) + exp(x+y);

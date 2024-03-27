@@ -8,14 +8,16 @@ classdef RBF_interpolation < handle
         fiNM
         maxRad
         radiusList
+        circumRadius
     end
     
     methods
         function obj = RBF_interpolation(mshIn, mshOut, nLinks)
-            obj.meshIn = mshIn;     % Origin discretization
-            obj.meshOut = mshOut;   % Destination discretization
-            obj.computeFiMM(nLinks);
-            obj.computeCrossMat();
+            obj.meshIn = mshIn;      % Origin discretization
+            obj.meshOut = mshOut;    % Destination discretization
+            obj.computeFiMM(nLinks); % Interpolation matrix (return local radius if nLinks = 1) 
+            obj.computeCrossMat();   
+            obj.computeCircumRadius();   % maximum edge length of each cell 
         end
 
         function fOut = interpolate(obj,fIn)
@@ -28,6 +30,30 @@ classdef RBF_interpolation < handle
         function P = compute_cross_mat(obj)
             % compute mortar method cross matrix on Slave interface only
             % make use of radial basis functions
+        end
+
+        function [wf, w1] = computeLocalInterpolant(obj, nId)
+            % compute the weights for the RL-RBF interpolant around a
+            % specific node of the grid
+            rad = obj.radiusList(nId); % radius of local support
+            
+        end
+
+        function obj = computeCircumRadius(obj)
+            if any(obj.meshIn.coordinates(:,3)~=0)
+                h = zeros(obj.meshIn.nCells,1);
+                for el = 1:obj.meshIn.nCells
+                    nodes = obj.meshIn.cells(el,:);
+                    h(el) = max(vecnorm(obj.meshIn.coordinates(nodes,:) - obj.meshIn.coordinates([nodes(2:end) nodes(1)],:),2,2));
+                end
+            else
+                h = zeros(obj.meshIn.nSurfaces,1);
+                for el = 1:obj.meshIn.nSurfaces
+                    nodes = obj.meshIn.surfaces(el,:);
+                    h(el) = max(vecnorm(obj.meshIn.coordinates(nodes,:) - obj.meshIn.coordinates([nodes(2:end) nodes(1)],:),2,2));
+                end
+            end
+            obj.circumRadius = h/2;
         end
         
 
