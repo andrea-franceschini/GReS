@@ -111,6 +111,9 @@ disp = printUtils.m.expDispl;
 pressplot = press(nodesP,2:end);
 dispplot = disp(3*nodesU,2:end);
 
+H = max(topology.coordinates(:,3));
+p0 = max(press(:,1));
+
 
 %Plotting solution
 if isFVTPFABased(model,'Flow')
@@ -119,36 +122,36 @@ else
     ptsY = topology.coordinates(nodesP,3);
 end
 figure(1)
-plotObj1 = plot(pressplot,ptsY,'k.', 'LineWidth', 1, 'MarkerSize', 15);
+plotObj1 = plot(pressplot/p0,ptsY/H,'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
-plotObj2 = plot(p,z,'k-', 'LineWidth', 1);
+plotObj2 = plot(p/p0,z/H,'k-', 'LineWidth', 1);
 grid on
-xlabel('Pressure (kPa)')
-ylabel('z (m)')
+xlabel('p/p_0')
+ylabel('z/H')
 legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'}, 'Location', 'northeast');
 %title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
 axis tight
-xlim([0 10.2])
+xlim([0 1.02])
 set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14);
 a = get(gca,'XTickLabel');
-set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 12)
+set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
 % export figure with quality
 stmp = strcat('Images\', 'Terzaghi_pressure', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 figure(2)
-plotObj1 = plot(-dispplot,topology.coordinates(nodesU,3),'k.', 'LineWidth', 1, 'MarkerSize', 15);
+plotObj1 = plot(-dispplot/H,topology.coordinates(nodesU,3)/H,'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
-plotObj2 = plot(u,z,'k-',  'LineWidth', 1);
+plotObj2 = plot(u/H,z/H,'k-',  'LineWidth', 1);
 grid on
-xlabel('Vertical displacements (mm)')
-ylabel('z (m)')
+xlabel('u_z/H')
+ylabel('z/H')
 %title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
 legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'}, 'Location', 'southeast');
 
 set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
 a = get(gca,'XTickLabel');
-set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
+set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 10)
 % export figure with quality
 stmp = strcat('Images\', 'Terzaghi_disp', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
