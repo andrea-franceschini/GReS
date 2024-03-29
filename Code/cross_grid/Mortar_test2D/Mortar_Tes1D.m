@@ -35,7 +35,7 @@ D(9) = 0.5*(1-2*nu);
 D = (E/((1+nu)*(1-2*nu)))*D;
 Ku = (E*(1-nu))/((1+nu)*(1-2*nu));
 % external force
-F = -100;
+F = -10000;
 % gauss class for 1D element integration
 nGP = 4;
 gauss = Gauss(12,nGP,1);
@@ -44,13 +44,13 @@ fileNameTop = [];
 fileNameBottom = [];
 
 % Set the input file name
-for k = 1:4
+for k = 1:5
     fileNameTop = [fileNameTop; strcat('Mesh_flat_convergenceTest/TopBlock_tetra_h',num2str(k),'.msh')];
     fileNameBottom = [fileNameBottom; strcat('Mesh_flat_convergenceTest/BottomBlock_tetra_h',num2str(k),'.msh')];
 end
 
-flagTop = 'master';
-h = zeros(4,1);
+flagTop = 'slave';
+h = zeros(5,1);
 ini_str = strcat("2D MORTAR METHOD: top coarser mesh as ",flagTop, '\n');
 fprintf(ini_str)
 
@@ -144,7 +144,7 @@ for integration = int_str
         % ------------------- APPLY BCS -------------------------------
         % apply boundary conditions to each portion (penalty method)
         nrows = size(K,1);
-        penParm = 1.e10*max(K,[],'all');
+        penParm = 1e11*max(K,[],'all');
 
         %------------------- TOP LOAD BCS -----------------------------
         % get Loaded dofs on top edge
@@ -166,11 +166,10 @@ for integration = int_str
         % get associated dofs (in x and y directions)
         dirBotDoF = getDoF(dirNod');
         dirBotDoF = getGlobalDofs(dirBotDoF,dofM,dofS,dofIm,bottom);
-        K(nrows*(dirBotDoF-1) + dirBotDoF) = penParm;
-        f(dirBotDoF) = f(dirBotDoF)*penParm;
+        [K,f] = applyDir(dirBotDoF, zeros(length(dirBotDoF),1), K, f);
 
 
-        %------------------- LATERAL CONSTRAINT  -----------------------------
+        %------------------- LATERAL CONSTRAINT  --------------------------
 
         % LATERAL EDGES: note, only master nodes lying on the interface must be
         % fixed!
@@ -182,8 +181,7 @@ for integration = int_str
         dofLatMaster = 2*nodesLatMaster-1; % x direction is fixed
         dofLatMaster = getGlobalDofs(dofLatMaster,dofM,dofS,dofIm,'master');
         % Apply penalty method
-        K(nrows*(dofLatMaster-1) + dofLatMaster) = penParm;
-        f(dofLatMaster) = f(dofLatMaster)*penParm;
+        [K,f] = applyDir(dofLatMaster, zeros(length(dofLatMaster),1), K, f);
 
 
         % get nodes in the master interface
@@ -192,8 +190,7 @@ for integration = int_str
         dofLatInt = 2*nodesLatInt-1;
         dofLatInt = getGlobalDofs(dofLatInt,dofM,dofS,dofIm,'interface');
         % Apply penalty method
-        K(nrows*(dofLatInt-1) + dofLatInt) = penParm;
-        f(dofLatInt) = f(dofLatInt)*penParm;
+        [K,f] = applyDir(dofLatInt, zeros(length(dofLatInt),1), K, f);
 
 
         % get nodes in the slave domain (not in the interface)
@@ -205,8 +202,9 @@ for integration = int_str
         dofLatSlave = 2*nodesLatSlave-1; % x direction is fixed
         dofLatSlave = getGlobalDofs(dofLatSlave,dofM,dofS,dofIm,'slave');
         % Apply penalty method
-        K(nrows*(dofLatSlave-1) + dofLatSlave) = penParm;
-        f(dofLatSlave) = f(dofLatSlave)*penParm;
+        [K,f] = applyDir(dofLatSlave, zeros(length(dofLatSlave),1), K, f);
+
+        % ---------------------- SOLVE SYSTEM --------------------------
 
 
         % solve linear system
@@ -234,10 +232,10 @@ for integration = int_str
 
         % Plot results to Paraview
 
-        fNameTop = strcat('disp_top_h',num2str(mCount),'_',integration);
-        fNameBottom = strcat('disp_bottom_h',num2str(mCount),'_',integration);
-        plotParaview(topMesh,fNameTop, u_top', 'all')
-        plotParaview(bottomMesh,fNameBottom, u_bottom', 'all')
+        % fNameTop = strcat('disp_top_h',num2str(mCount),'_',integration);
+        % fNameBottom = strcat('disp_bottom_h',num2str(mCount),'_',integration);
+        % plotParaview(topMesh,fNameTop, u_top', 'all')
+        % plotParaview(bottomMesh,fNameBottom, u_bottom', 'all')
 
 
         % Analytical displacements
@@ -252,10 +250,10 @@ for integration = int_str
         err_top(isinf(err_top)) = 0;
         err_bottom(isinf(err_bottom)) = 0;
         %
-        fNameTopErr = strcat('err_top_h',num2str(mCount),'_',integration);
-        fNameBottomErr = strcat('err_bottom_h',num2str(mCount),'_',integration);
-        plotParaview(topMesh,fNameTopErr, err_top', 'y')
-        plotParaview(bottomMesh,fNameBottomErr, err_bottom', 'y')
+        % fNameTopErr = strcat('err_top_h',num2str(mCount),'_',integration);
+        % fNameBottomErr = strcat('err_bottom_h',num2str(mCount),'_',integration);
+        % plotParaview(topMesh,fNameTopErr, err_top', 'y')
+        % plotParaview(bottomMesh,fNameBottomErr, err_bottom', 'y')
 
         %% Error analysis
 
@@ -285,6 +283,8 @@ for integration = int_str
         end
         L2Slave(isinf(L2Slave)) = 0;
         L2Master(isinf(L2Master)) = 0;
+        L2Slave(isnan(L2Slave)) = 0;
+        L2Master(isnan(L2Master)) = 0;
         L2Slave = sqrt(L2Slave'*volNodSlave);
         L2Master = sqrt(L2Master'*volNodMaster);
         brokenL2 = sqrt(L2Master^2 + L2Slave^2);
@@ -384,7 +384,7 @@ hold on
 leg_str = [leg_str, "BN EB integration"];
 end
 legend(leg_str);
-tit_str = strcat('H1 error plot with coarser top domain as',flagTop);
+tit_str = strcat("H1 error plot with coarser top domain as ",flagTop);
 title(tit_str);
 
 

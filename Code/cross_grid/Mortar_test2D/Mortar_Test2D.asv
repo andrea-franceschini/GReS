@@ -37,8 +37,10 @@ Ku = (E*(1-nu))/((1+nu)*(1-2*nu));
 % external force
 F = -100;
 % gauss class for 1D element integration
-nGP = 4;
-gauss = Gauss(12,nGP,1);
+nGPRBF = 15;
+gaussRBF = Gauss(12,nGPRBF,1);
+nGPEB = 6;
+gaussEB = Gauss(12,nGPEB,1);
 
 fileNameTop = [];
 fileNameBottom = [];
@@ -49,12 +51,14 @@ for k = 1:5
     fileNameBottom = [fileNameBottom; strcat('Mesh_flat_convergenceTest/BottomBlock_tetra_h',num2str(k),'.msh')];
 end
 
-flagTop = 'ma';
+flagTop = 'master';
 h = zeros(5,1);
 ini_str = strcat("2D MORTAR METHOD: top coarser mesh as ",flagTop, '\n');
 fprintf(ini_str)
 
-int_str = ["SB", "RBF", "EB"]; % RBF or SB
+
+int_str = ["RBF","SB", "EB"]; % RBF or SB
+
 for integration = int_str
     if strcmp(integration,'RBF')
         fopen('L2_rbf.txt','w');
@@ -67,7 +71,7 @@ for integration = int_str
         fopen('H1_eb.txt','w');
     end
 
-    for mCount = 1:5
+    for mCount = 1:4
         p_str = strcat(integration,' integration - Mesh size h', num2str(mCount), ' \n');
         fprintf(p_str)
         % Import the mesh data into the Mesh object
@@ -101,11 +105,11 @@ for integration = int_str
 
         % compute mortar operator
         if strcmp(integration,'RBF')
-            Etmp = compute_mortar(masterMesh, slaveMesh, gauss, 1, 1);
+            Etmp = compute_mortar(masterMesh, slaveMesh, gaussRBF, 1, 1);
         elseif strcmp(integration, 'SB')
             Etmp = compute_mortar_SB(masterMesh, slaveMesh, 1, 1, 3);
         elseif strcmp(integration, 'EB')
-            Etmp = compute_mortar_EB(masterMesh, slaveMesh, gauss, 1, 1);
+            Etmp = compute_mortar_EB(masterMesh, slaveMesh, gaussEB, 1, 1);
         end
 
         % reordering the matrix of the system
@@ -144,7 +148,7 @@ for integration = int_str
         % ------------------- APPLY BCS -------------------------------
         % apply boundary conditions to each portion (penalty method)
         nrows = size(K,1);
-        penParm = 1.e10*max(K,[],'all');
+        penParm = 1e11*max(K,[],'all');
 
         %------------------- TOP LOAD BCS -----------------------------
         % get Loaded dofs on top edge
@@ -166,11 +170,10 @@ for integration = int_str
         % get associated dofs (in x and y directions)
         dirBotDoF = getDoF(dirNod');
         dirBotDoF = getGlobalDofs(dirBotDoF,dofM,dofS,dofIm,bottom);
-        K(nrows*(dirBotDoF-1) + dirBotDoF) = penParm;
-        f(dirBotDoF) = f(dirBotDoF)*penParm;
+        [K,f] = applyDir(dirBotDoF, zeros(length(dirBotDoF),1), K, f);
 
 
-        %------------------- LATERAL CONSTRAINT  -----------------------------
+        %------------------- LATERAL CONSTRAINT  --------------------------
 
         % LATERAL EDGES: note, only master nodes lying on the interface must be
         % fixed!
@@ -182,8 +185,7 @@ for integration = int_str
         dofLatMaster = 2*nodesLatMaster-1; % x direction is fixed
         dofLatMaster = getGlobalDofs(dofLatMaster,dofM,dofS,dofIm,'master');
         % Apply penalty method
-        K(nrows*(dofLatMaster-1) + dofLatMaster) = penParm;
-        f(dofLatMaster) = f(dofLatMaster)*penParm;
+        [K,f] = applyDir(dofLatMaster, zeros(length(dofLatMaster),1), K, f);
 
 
         % get nodes in the master interface
@@ -192,8 +194,7 @@ for integration = int_str
         dofLatInt = 2*nodesLatInt-1;
         dofLatInt = getGlobalDofs(dofLatInt,dofM,dofS,dofIm,'interface');
         % Apply penalty method
-        K(nrows*(dofLatInt-1) + dofLatInt) = penParm;
-        f(dofLatInt) = f(dofLatInt)*penParm;
+        [K,f] = applyDir(dofLatInt, zeros(length(dofLatInt),1), K, f);
 
 
         % get nodes in the slave domain (not in the interface)
@@ -205,8 +206,9 @@ for integration = int_str
         dofLatSlave = 2*nodesLatSlave-1; % x direction is fixed
         dofLatSlave = getGlobalDofs(dofLatSlave,dofM,dofS,dofIm,'slave');
         % Apply penalty method
-        K(nrows*(dofLatSlave-1) + dofLatSlave) = penParm;
-        f(dofLatSlave) = f(dofLatSlave)*penParm;
+        [K,f] = applyDir(dofLatSlave, zeros(length(dofLatSlave),1), K, f);
+
+        % ---------------------- SOLVE SYSTEM --------------------------
 
 
         % solve linear system
@@ -233,11 +235,15 @@ for integration = int_str
         end
 
         % Plot results to Paraview
-
-        % fNameTop = strcat('disp_top_h',num2str(mCount),'_',integration);
-        % fNameBottom = strcat('disp_bottom_h',num2str(mCount),'_',integration);
-        % plotParaview(topMesh,fNameTop, u_top', 'all')
-        % plotParaview(bottomMesh,fNameBottom, u_bottom', 'all')
+        if strcmp(flagTop,'master')
+            strTop = 'masterTop';
+        else
+            strTop = 'slaveTop';
+        end
+        fNameTop = strcat(strTop,'disp_top_h',num2str(mCount),'_',integration);
+        fNameBottom = strcat(strTop,'disp_bottom_h',num2str(mCount),'_',integration);
+        plotParaview(topMesh,fNameTop, u_top', 'all')
+        plotParaview(bottomMesh,fNameBottom, u_bottom', 'all')
 
 
         % Analytical displacements
@@ -252,10 +258,11 @@ for integration = int_str
         err_top(isinf(err_top)) = 0;
         err_bottom(isinf(err_bottom)) = 0;
         %
-        % fNameTopErr = strcat('err_top_h',num2str(mCount),'_',integration);
-        % fNameBottomErr = strcat('err_bottom_h',num2str(mCount),'_',integration);
-        % plotParaview(topMesh,fNameTopErr, err_top', 'y')
-        % plotParaview(bottomMesh,fNameBottomErr, err_bottom', 'y')
+
+        fNameTopErr = strcat(strTop,'err_top_h',num2str(mCount),'_',integration);
+        fNameBottomErr = strcat(strTop,'err_bottom_h',num2str(mCount),'_',integration);
+        plotParaview(topMesh,fNameTopErr, err_top', 'y')
+        plotParaview(bottomMesh,fNameBottomErr, err_bottom', 'y')
 
         %% Error analysis
 
@@ -285,6 +292,8 @@ for integration = int_str
         end
         L2Slave(isinf(L2Slave)) = 0;
         L2Master(isinf(L2Master)) = 0;
+        L2Slave(isnan(L2Slave)) = 0;
+        L2Master(isnan(L2Master)) = 0;
         L2Slave = sqrt(L2Slave'*volNodSlave);
         L2Master = sqrt(L2Master'*volNodMaster);
         brokenL2 = sqrt(L2Master^2 + L2Slave^2);
@@ -351,74 +360,79 @@ for integration = int_str
 end
 
 %% plot convergence rates
-
+ 
 fprintf('Plotting graphs \n')
 % H1 error plot
 leg_str = [];
 figure(1)
 if any(strcmp(int_str, 'RBF'))
 H1_RBF = load('H1_rbf.txt');
-loglog(H1_RBF(:,1), H1_RBF(:,2), '-ro')
+loglog(H1_RBF(:,1), H1_RBF(:,2), '--ro', 'LineWidth', 1, 'MarkerSize', 8.5)
 hold on
-% loglog(H1_RBF(:,1), H1_RBF(:,3), '--r*')
-% loglog(H1_RBF(:,1), H1_RBF(:,4), '--rs')
-leg_str = [leg_str, "BN RBF integration"];
+%loglog(H1_RBF(:,1), H1RBFgp4, '--r^', 'LineWidth', 1, 'MarkerSize', 8.5)
+% loglog(H1_RBF(:,1), H1RBFgp6, '--rs',  'LineWidth', 1, 'MarkerSize', 8.5)
+leg_str = [leg_str, "RBF integration 15GP"];
 end
 
 
 if any(strcmp(int_str, 'SB'))
 H1_SB = load('H1_sb.txt');
-loglog(H1_SB(:,1), H1_SB(:,2), '-ko')
+loglog(H1_SB(:,1), H1_SB(:,2), '-ko',  'LineWidth', 1, 'MarkerSize', 8.5)
 hold on
 % loglog(H1_SB(:,1), H1_SB(:,3), '--k*')
 % loglog(H1_SB(:,1), H1_SB(:,4), '--ks')
-leg_str = [leg_str, "BN SB integration"];
+leg_str = [leg_str, "SB integration"];
 end
 
 if any(strcmp(int_str, 'EB'))
 H1_EB = load('H1_eb.txt');
-loglog(H1_EB(:,1), H1_EB(:,2), '-bo')
+loglog(H1_EB(:,1), H1_EB(:,2), '-bo', 'LineWidth', 1, 'MarkerSize', 8.5)
 hold on
 % loglog(H1_EB(:,1), H1_EB(:,3), '--b*')
 % loglog(H1_EB(:,1), H1_EB(:,4), '--bs')
-leg_str = [leg_str, "BN EB integration"];
+leg_str = [leg_str, "EB integration 4GP"];
 end
-legend(leg_str);
+legend(leg_str, 'Location', 'northwest');
 tit_str = strcat("H1 error plot with coarser top domain as ",flagTop);
-title(tit_str);
+%title(tit_str);
+xticks([])
+xlabel('Mesh size')
+ylabel('H1 broken error norm')
+set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14);
+a = get(gca,'XTickLabel');
+set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 12)
 
-
-% L2 error plot
-leg_str = [];
-figure(2)
-if any(strcmp(int_str, 'RBF'))
-L2_RBF = load('L2_rbf.txt');
-loglog(L2_RBF(:,1), L2_RBF(:,2), '-ro')
-hold on
-%loglog(L2_RBF(:,1), L2_RBF(:,3), '--r*')
-%loglog(L2_RBF(:,1), L2_RBF(:,4), '--rs')
-leg_str = [leg_str, "BN RBF integration"];
-end
-
-
-if any(strcmp(int_str, 'SB'))
-L2_SB = load('L2_sb.txt');
-loglog(L2_SB(:,1), L2_SB(:,2), '-ko')
-hold on
-%loglog(L2_SB(:,1), L2_SB(:,3), '--k*')
-%loglog(L2_SB(:,1), L2_SB(:,4), '--ks')
-leg_str = [leg_str, "BN SB integration"];
-end
-
-if any(strcmp(int_str, 'EB'))
-L2_EB = load('L2_eb.txt');
-loglog(L2_EB(:,1), L2_EB(:,2), '-bo')
-hold on
-%loglog(L2_EB(:,1), L2_EB(:,3), '--b*')
-%loglog(L2_EB(:,1), L2_EB(:,4), '--bs')
-leg_str = [leg_str, "BN EB integration"];
-end
-legend(leg_str);
-tit_str = strcat("L2 error plot with coarser top domain as ",flagTop);
-title(tit_str);
+% % % L2 error plot
+% leg_str = [];
+% figure(2)
+% if any(strcmp(int_str, 'RBF'))
+% L2_RBF = load('L2_rbf.txt');
+% loglog(L2_RBF(:,1), L2_RBF(:,2), '-ro')
+% hold on
+% %loglog(L2_RBF(:,1), L2_RBF(:,3), '--r*')
+% %loglog(L2_RBF(:,1), L2_RBF(:,4), '--rs')
+% leg_str = [leg_str, "BN RBF integration"];
+% end
+% 
+% 
+% if any(strcmp(int_str, 'SB'))
+% L2_SB = load('L2_sb.txt');
+% loglog(L2_SB(:,1), L2_SB(:,2), '-ko')
+% hold on
+% %loglog(L2_SB(:,1), L2_SB(:,3), '--k*')
+% %loglog(L2_SB(:,1), L2_SB(:,4), '--ks')
+% leg_str = [leg_str, "BN SB integration"];
+% end
+% 
+% if any(strcmp(int_str, 'EB'))
+% L2_EB = load('L2_eb.txt');
+% loglog(L2_EB(:,1), L2_EB(:,2), '-bo')
+% hold on
+% %loglog(L2_EB(:,1), L2_EB(:,3), '--b*')
+% %loglog(L2_EB(:,1), L2_EB(:,4), '--bs')
+% leg_str = [leg_str, "BN EB integration"];
+% end
+% legend(leg_str);
+% tit_str = strcat("L2 error plot with coarser top domain as ",flagTop);
+% title(tit_str);
 fprintf('COMPLETED SUCCESSFULLY \n')

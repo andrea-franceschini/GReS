@@ -2,7 +2,7 @@ function [vals, pos] = evalSF(nodeID, elem_list, nInts, mastertop, master)
 % evaluate shape function in the real space and return position of
 % integration points in the real space (extended to x,y)
 % already ordered to perform RBF interpolation
-intPts = [-1 -0.99 0.99 1];
+intPts = [-1 -0.9999 0.9999 1];
 intPts = unique([intPts, linspace(intPts(2), intPts(4), nInts)]);
 vals = zeros(length(intPts)*length(elem_list),1);
 pos =  zeros(length(intPts)*length(elem_list),2);

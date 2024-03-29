@@ -5,7 +5,7 @@ function E = compute_mortar(masterInt, slaveInt, gauss, tagMaster, tagSlave)
 
 
 % number of interpolation points for local master basis functions
-nInt = 10;
+nInt = 30;
 
 % Gauss integration parameters
 gpRef = gauss.coord;

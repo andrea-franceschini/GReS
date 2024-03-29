@@ -109,6 +109,15 @@ M = M(nodesMaster, nodesSlave);
 invD = inv(D);
 E = invD*M';
 
+% test
+f = @(x) sin(3*x);
+[cM, indM] = masterInt.coordinates(nodesMaster,1);
+[cS, indS] = masterInt.coordinates(nodesSlave,1);
+fM = f(cM);
+fS = E*fM;
+plot(cM, fM(indM))
+hold on
+plot(cS, fS)
 end
 
 
