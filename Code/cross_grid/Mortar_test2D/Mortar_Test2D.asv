@@ -57,7 +57,9 @@ ini_str = strcat("2D MORTAR METHOD: top coarser mesh as ",flagTop, '\n');
 fprintf(ini_str)
 
 
-int_str = ["RBF","SB", "EB"]; % RBF or SB
+int_str = ["SB"]; % RBF or SB
+
+solution_scheme = "SP"; % SP (saddle point) % COND (condensated) 
 
 for integration = int_str
     if strcmp(integration,'RBF')
@@ -71,7 +73,7 @@ for integration = int_str
         fopen('H1_eb.txt','w');
     end
 
-    for mCount = 1:4
+    for mCount = 1:1
         p_str = strcat(integration,' integration - Mesh size h', num2str(mCount), ' \n');
         fprintf(p_str)
         % Import the mesh data into the Mesh object
@@ -103,11 +105,17 @@ for integration = int_str
         nodesMaster = unique(masterMesh.edges(masterMesh.edgeTag == 1,:));
         nodesSlave = unique(slaveMesh.edges(slaveMesh.edgeTag == 1,:));
 
+        % get ID of interface nodes belonging to Dirichlet boundary
+        % Constant basis functions are considered for element containing
+        % these nodes
+        boundInt = unique(slaveMesh.edges(slaveMesh.edgeTag == 3,:));
+        boundInt = boundInt(ismember(boundInt, nodesSlave));
+
         % compute mortar operator
         if strcmp(integration,'RBF')
             Etmp = compute_mortar(masterMesh, slaveMesh, gaussRBF, 1, 1);
         elseif strcmp(integration, 'SB')
-            Etmp = compute_mortar_SB(masterMesh, slaveMesh, 1, 1, 3);
+            [Etmp, Mtmp, Dtmp] = compute_mortar_SB(masterMesh, slaveMesh, boundInt, 1, 1, 3);
         elseif strcmp(integration, 'EB')
             Etmp = compute_mortar_EB(masterMesh, slaveMesh, gaussEB, 1, 1);
         end
@@ -117,6 +125,8 @@ for integration = int_str
         % | dofM = nodi interni master      |
         % | dofS = nodi interni slave       |
         % | dofIm = nodi interfaccia master |
+        % | dofIs = nodi interfaccia slave  |
+        % dof Lagrange multiplier not needed
 
         dofIm = getDoF(nodesMaster');
         dofM = getDoF(1:masterMesh.nNodes);
@@ -134,16 +144,43 @@ for integration = int_str
         nM = length(nodesMaster);
         nS = length(nodesSlave);
         E = zeros(2*nS,2*nM);
+        M = zeros(2*nS,2*nM);
+        D = zeros(2*nS,2*nS);
         E(2*(1:nS)'-1,2*(1:nM)'-1) = Etmp;
         E(2*(1:nS)',2*(1:nM)') = Etmp;
+        M(2*(1:nS)'-1,2*(1:nM)'-1) = Mtmp;
+        M(2*(1:nS)',2*(1:nM)') = Mtmp;
+        D(2*(1:nS)'-1,2*(1:nS)'-1) = Dtmp;
+        D(2*(1:nS)',2*(1:nS)') = Dtmp;
 
-        K = [Kmm, zeros(length(dofM),length(dofS)), KmIm;
+        % condensated stiffness matrix
+        KCOND = [Kmm, zeros(length(dofM),length(dofS)), KmIm;
             zeros(length(dofS),length(dofM)), Kss, KsIs*E;
             KmIm', E'*KsIs', KImIm+E'*KIsIs*E];
+        
+        % complete saddle point matrix
+        KSP = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofIs));
+            zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofIs)) ;
+            KmIm', zeros(length(dofIm),length(dofS)), KImIm, zeros(length(dofIm),length(dofIs)), -M';
+            zeros(length(dofIs), length(dofM)), KsIs', zeros(length(dofIs), length(dofIm)), D';
+            zeros(length(dofIs), length(dofM)), zeros(length(dofIs), length(dofS)), -M, D,  zeros(length(dofIs), length(dofIs))  
+            ];
 
         % creating global dof array and initializing forcing vector
-        listDofs = [dofM';dofS';dofIm'];
-        f = zeros(length(listDofs),1);
+        listDofsCOND = [dofM';dofS';dofIm'];
+        listDofsSP = [dofM';dofS';dofIm'; dofIs'; dofIs'];
+        fCOND = zeros(length(listDofs),1);
+        fSP = zeros(length(listDofsSP),1);
+
+        if strcmp(solution_scheme, "SP")
+            K = KSP;
+            f = fSP;
+        else
+            K = KCOND;
+            f = fCOND;
+        end
+
+
 
         % ------------------- APPLY BCS -------------------------------
         % apply boundary conditions to each portion (penalty method)
@@ -174,7 +211,7 @@ for integration = int_str
 
 
         %------------------- LATERAL CONSTRAINT  --------------------------
-
+        % 
         % LATERAL EDGES: note, only master nodes lying on the interface must be
         % fixed!
         % get nodes from master domain (not in the interface)
@@ -213,7 +250,14 @@ for integration = int_str
 
         % solve linear system
         u = K\f;
-        u_slave = E*u(length(dofM)+length(dofS)+1:end);
+
+        % get slave side solution
+        if strcmp(solution_scheme, "SP")
+            l = length(dofM)+length(dofS)+length(dofIm);
+            u_slave = u(l+1:l+length(dofIs));
+        else
+            u_slave = E*u(length(dofM)+length(dofS)+1:end);
+        end
 
         % plot solution (use the plot_function already used for the RBF stand alone
         % tests!)

@@ -1,4 +1,4 @@
-function E = compute_mortar_SB(masterInt, slaveInt, dirNod, tagMaster, tagSlave, nGP)
+function [E, M, D] = compute_mortar_SB(masterInt, slaveInt, dirNod, tagMaster, tagSlave, nGP)
 % compute mortar matrix given from a pair of interfaces.
 % INPUT: mesh objects, dirichlet nodes in the interface, edge tag for master and slave
 % interfaces, Gauss points
@@ -26,7 +26,7 @@ slavetop = slaveInt.edges(slaveInt.edgeTag == tagSlave, :);
 % number of slave and master nodes
 nodesMaster = unique(masterInt.edges(masterInt.edgeTag == tagMaster,:));
 nodesSlave = unique(slaveInt.edges(slaveInt.edgeTag == tagSlave,:));
-%
+%end
 if abs(max(masterInt.coordinates(nodesMaster,2))-min(masterInt.coordinates(nodesMaster,2))) > tol
     return
 end
@@ -116,9 +116,9 @@ for i = 1:size(mastertop,1)
 end
 
 M = M(nodesMaster, nodesSlave);
-
+M = M';
 invD = inv(D);
-E = invD*M';
+E = invD*M;
 
 end
 

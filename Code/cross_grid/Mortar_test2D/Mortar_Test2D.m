@@ -33,6 +33,7 @@ D([1 5]) = 1-nu;
 D([2 4]) = nu;
 D(9) = 0.5*(1-2*nu);
 D = (E/((1+nu)*(1-2*nu)))*D;
+Dmat = D;
 Ku = (E*(1-nu))/((1+nu)*(1-2*nu));
 % external force
 F = -100;
@@ -51,13 +52,15 @@ for k = 1:5
     fileNameBottom = [fileNameBottom; strcat('Mesh_flat_convergenceTest/BottomBlock_tetra_h',num2str(k),'.msh')];
 end
 
-flagTop = 'master';
+flagTop = 'slave';
 h = zeros(5,1);
 ini_str = strcat("2D MORTAR METHOD: top coarser mesh as ",flagTop, '\n');
 fprintf(ini_str)
 
 
-int_str = ["SB"]; % RBF or SB
+int_str = ["EB"]; % RBF or SB
+
+solution_scheme = "SP"; % SP (saddle point) % COND (condensated) 
 
 for integration = int_str
     if strcmp(integration,'RBF')
@@ -71,7 +74,7 @@ for integration = int_str
         fopen('H1_eb.txt','w');
     end
 
-    for mCount = 1:1
+    for mCount = 1:5
         p_str = strcat(integration,' integration - Mesh size h', num2str(mCount), ' \n');
         fprintf(p_str)
         % Import the mesh data into the Mesh object
@@ -97,8 +100,8 @@ for integration = int_str
 
         % computing stiffness matrix on each domain
         % DOMAIN 1
-        KMaster = stiff(masterMesh, elemsMaster, D);
-        KSlave = stiff(slaveMesh, elemsSlave, D);
+        KMaster = stiff(masterMesh, elemsMaster, Dmat);
+        KSlave = stiff(slaveMesh, elemsSlave, Dmat);
         % get id of nodes belonging to master and slave interfaces
         nodesMaster = unique(masterMesh.edges(masterMesh.edgeTag == 1,:));
         nodesSlave = unique(slaveMesh.edges(slaveMesh.edgeTag == 1,:));
@@ -111,11 +114,12 @@ for integration = int_str
 
         % compute mortar operator
         if strcmp(integration,'RBF')
-            Etmp = compute_mortar(masterMesh, slaveMesh, gaussRBF, 1, 1);
+            [Etmp, Mtmp, Dtmp] = compute_mortar(masterMesh, slaveMesh, boundInt, 15, 1, 1, "RBF");
         elseif strcmp(integration, 'SB')
-            Etmp = compute_mortar_SB(masterMesh, slaveMesh, boundInt, 1, 1, 3);
+            [Etmp, Mtmp, Dtmp] = compute_mortar(masterMesh, slaveMesh, boundInt, 3, 1, 1, "SB");
         elseif strcmp(integration, 'EB')
-            Etmp = compute_mortar_EB(masterMesh, slaveMesh, gaussEB, 1, 1);
+            [Etmp, Mtmp, Dtmp] = compute_mortar(masterMesh, slaveMesh, boundInt, 6, 1, 1, "EB");
+            %[Etmp] = compute_mortar_EB(masterMesh, slaveMesh, gaussEB, 1, 1);
         end
 
         % reordering the matrix of the system
@@ -123,6 +127,8 @@ for integration = int_str
         % | dofM = nodi interni master      |
         % | dofS = nodi interni slave       |
         % | dofIm = nodi interfaccia master |
+        % | dofIs = nodi interfaccia slave  |
+        % dof Lagrange multiplier not needed
 
         dofIm = getDoF(nodesMaster');
         dofM = getDoF(1:masterMesh.nNodes);
@@ -140,16 +146,42 @@ for integration = int_str
         nM = length(nodesMaster);
         nS = length(nodesSlave);
         E = zeros(2*nS,2*nM);
+        M = zeros(2*nS,2*nM);
+        D = zeros(2*nS,2*nS);
         E(2*(1:nS)'-1,2*(1:nM)'-1) = Etmp;
         E(2*(1:nS)',2*(1:nM)') = Etmp;
+        M(2*(1:nS)'-1,2*(1:nM)'-1) = Mtmp;
+        M(2*(1:nS)',2*(1:nM)') = Mtmp;
+        D(2*(1:nS)'-1,2*(1:nS)'-1) = Dtmp;
+        D(2*(1:nS)',2*(1:nS)') = Dtmp;
 
-        K = [Kmm, zeros(length(dofM),length(dofS)), KmIm;
+        % condensated stiffness matrix
+        KCOND = [Kmm, zeros(length(dofM),length(dofS)), KmIm;
             zeros(length(dofS),length(dofM)), Kss, KsIs*E;
             KmIm', E'*KsIs', KImIm+E'*KIsIs*E];
+        
+        % complete saddle point matrix
+        KSP = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofIs));
+            zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofIs)) ;
+            KmIm', zeros(length(dofIm),length(dofS)), KImIm, zeros(length(dofIm),length(dofIs)), -M';
+            zeros(length(dofIs), length(dofM)), KsIs', zeros(length(dofIs), length(dofIm)), KIsIs, D';
+            zeros(length(dofIs), length(dofM)), zeros(length(dofIs), length(dofS)), -M, D,  zeros(length(dofIs), length(dofIs))  
+            ];
 
         % creating global dof array and initializing forcing vector
-        listDofs = [dofM';dofS';dofIm'];
-        f = zeros(length(listDofs),1);
+        listDofsCOND = [dofM';dofS';dofIm'];
+        listDofsSP = [dofM';dofS';dofIm'; dofIs'; dofIs'];
+        fCOND = zeros(length(listDofsCOND),1);
+        fSP = zeros(length(listDofsSP),1);
+
+        if strcmp(solution_scheme, "SP")
+            K = KSP;
+            f = fSP;
+        else
+            K = KCOND;
+            f = fCOND;
+        end
+
 
         % ------------------- APPLY BCS -------------------------------
         % apply boundary conditions to each portion (penalty method)
@@ -160,12 +192,12 @@ for integration = int_str
         % get Loaded dofs on top edge
         nodesLoad = unique(topMesh.edges(topMesh.edgeTag == 2,:));
         h(mCount) = (length(nodesLoad)-1)^-1;
-        % special treatment of extreme points (having force 1/2)
+        % special treatment of infextreme points (having force 1/2)
         n_ext = nodesLoad(ismember(topMesh.coordinates(nodesLoad,1),[0; 1]));
         loadDoFext = 2*n_ext;
         loadDoFY = 2*nodesLoad(~ismember(nodesLoad, n_ext));
-        loadDoFext = getGlobalDofs(loadDoFext, dofM,dofS,dofIm, flagTop);
-        loadDoFY = getGlobalDofs(loadDoFY, dofM,dofS,dofIm, flagTop);
+        loadDoFext = getGlobalDofs(loadDoFext, dofM,dofS,dofIm,dofIs, flagTop);
+        loadDoFY = getGlobalDofs(loadDoFY, dofM,dofS,dofIm,dofIs, flagTop);
         f(loadDoFext) = 0.5*F/(length(nodesLoad)-1);
         f(loadDoFY) = F/(length(nodesLoad)-1);
 
@@ -175,7 +207,7 @@ for integration = int_str
         dirNod = unique(bottomMesh.edges(bottomMesh.edgeTag == 2,:));
         % get associated dofs (in x and y directions)
         dirBotDoF = getDoF(dirNod');
-        dirBotDoF = getGlobalDofs(dirBotDoF,dofM,dofS,dofIm,bottom);
+        dirBotDoF = getGlobalDofs(dirBotDoF,dofM,dofS,dofIm,dofIs,bottom);
         [K,f] = applyDir(dirBotDoF, zeros(length(dirBotDoF),1), K, f);
 
 
@@ -189,7 +221,7 @@ for integration = int_str
         nodesLatMaster = nodesLatMaster(~ismember(nodesLatMaster, nodesMaster));
         % get corresponding DoFs in the linear system
         dofLatMaster = 2*nodesLatMaster-1; % x direction is fixed
-        dofLatMaster = getGlobalDofs(dofLatMaster,dofM,dofS,dofIm,'master');
+        dofLatMaster = getGlobalDofs(dofLatMaster,dofM,dofS,dofIm,dofIs,'master');
         % Apply penalty method
         [K,f] = applyDir(dofLatMaster, zeros(length(dofLatMaster),1), K, f);
 
@@ -198,9 +230,21 @@ for integration = int_str
         nodesLatMaster = unique(masterMesh.edges(masterMesh.edgeTag == 3,:));
         nodesLatInt = nodesLatMaster(ismember(nodesLatMaster, nodesMaster));
         dofLatInt = 2*nodesLatInt-1;
-        dofLatInt = getGlobalDofs(dofLatInt,dofM,dofS,dofIm,'interface');
+        dofLatInt = getGlobalDofs(dofLatInt,dofM,dofS,dofIm,dofIs,'interfaceMaster');
         % Apply penalty method
         [K,f] = applyDir(dofLatInt, zeros(length(dofLatInt),1), K, f);
+
+        % get nodes in the slave interface (SADDLE POINT CASE ONLY)
+        if strcmp(solution_scheme, "SP")
+            nodesLatSlave = unique(slaveMesh.edges(slaveMesh.edgeTag == 3,:));
+            nodesLatInt = nodesLatSlave(ismember(nodesLatSlave, nodesSlave));
+            dofLatInt = 2*nodesLatInt-1;
+            dofLatInt = getGlobalDofs(dofLatInt,dofM,dofS,dofIm,dofIs,'interfaceSlave');
+            % Apply penalty method
+            [K,f] = applyDir(dofLatInt, zeros(length(dofLatInt),1), K, f);
+        end
+
+
 
 
         % get nodes in the slave domain (not in the interface)
@@ -210,7 +254,7 @@ for integration = int_str
         nodesLatSlave = nodesLatSlave(~ismember(nodesLatSlave, nodesSlave));
         % get corresponding DoFs in the linear system
         dofLatSlave = 2*nodesLatSlave-1; % x direction is fixed
-        dofLatSlave = getGlobalDofs(dofLatSlave,dofM,dofS,dofIm,'slave');
+        dofLatSlave = getGlobalDofs(dofLatSlave,dofM,dofS,dofIm,dofIs,'slave');
         % Apply penalty method
         [K,f] = applyDir(dofLatSlave, zeros(length(dofLatSlave),1), K, f);
 
@@ -219,7 +263,14 @@ for integration = int_str
 
         % solve linear system
         u = K\f;
-        u_slave = E*u(length(dofM)+length(dofS)+1:end);
+
+        % get slave side solution
+        if strcmp(solution_scheme, "SP")
+            l = length(dofM)+length(dofS)+length(dofIm);
+            u_slave = u(l+1:l+length(dofIs));
+        else
+            u_slave = E*u(length(dofM)+length(dofS)+1:end);
+        end
 
         % plot solution (use the plot_function already used for the RBF stand alone
         % tests!)
@@ -230,12 +281,12 @@ for integration = int_str
         %collect displacement of master domain and slave domain, according to user assignment;
         if strcmp(flagTop, 'master')
             u_top(dofM) = u(1:length(dofM));
-            u_top(dofIm) = u(length(dofM)+length(dofS)+1:end);
+            u_top(dofIm) = u(length(dofM)+length(dofS)+1:length(dofM)+length(dofS)+length(dofIm));
             u_bottom(dofS) = u(length(dofM)+1:length(dofM)+length(dofS));
             u_bottom(dofIs) = u_slave;
         elseif strcmp(flagTop, 'slave')
             u_bottom(dofM) = u(1:length(dofM));
-            u_bottom(dofIm) = u(length(dofM)+length(dofS)+1:end);
+            u_bottom(dofIm) = u(length(dofM)+length(dofS)+1:length(dofM)+length(dofS)+length(dofIm));
             u_top(dofS) = u(length(dofM)+1:length(dofM)+length(dofS));
             u_top(dofIs) = u_slave;
         end
@@ -246,10 +297,10 @@ for integration = int_str
         else
             strTop = 'slaveTop';
         end
-        fNameTop = strcat(strTop,'disp_top_h',num2str(mCount),'_',integration);
-        fNameBottom = strcat(strTop,'disp_bottom_h',num2str(mCount),'_',integration);
-        plotParaview(topMesh,fNameTop, u_top', 'all')
-        plotParaview(bottomMesh,fNameBottom, u_bottom', 'all')
+        % fNameTop = strcat(strTop,'disp_top_h',num2str(mCount),'_',integration);
+        % fNameBottom = strcat(strTop,'disp_bottom_h',num2str(mCount),'_',integration);
+        % plotParaview(topMesh,fNameTop, u_top', 'all')
+        % plotParaview(bottomMesh,fNameBottom, u_bottom', 'all')
 
 
         % Analytical displacements
@@ -263,12 +314,14 @@ for integration = int_str
         err_bottom = abs(u_anal_bot(2:2:end) - u_bottom(2:2:end))./abs(u_anal_bot(2:2:end));
         err_top(isinf(err_top)) = 0;
         err_bottom(isinf(err_bottom)) = 0;
+        err_top(isnan(err_top)) = 0;
+        err_bottom(isnan(err_bottom)) = 0;
         %
 
-        fNameTopErr = strcat(strTop,'err_top_h',num2str(mCount),'_',integration);
-        fNameBottomErr = strcat(strTop,'err_bottom_h',num2str(mCount),'_',integration);
-        plotParaview(topMesh,fNameTopErr, err_top', 'y')
-        plotParaview(bottomMesh,fNameBottomErr, err_bottom', 'y')
+        % fNameTopErr = strcat(strTop,'err_top_h',num2str(mCount),'_',integration);
+        % fNameBottomErr = strcat(strTop,'err_bottom_h',num2str(mCount),'_',integration);
+        % plotParaview(topMesh,fNameTopErr, err_top', 'y')
+        % plotParaview(bottomMesh,fNameBottomErr, err_bottom', 'y')
 
         %% Error analysis
 
@@ -325,7 +378,7 @@ for integration = int_str
                 e = B*u_anal_bot(getDoF(top));
                 e_h = B*u_bottom(getDoF(top));
             end
-            H1master(el) = (e-e_h)'*D*(e-e_h)*vol;
+            H1master(el) = (e-e_h)'*Dmat*(e-e_h)*vol;
         end
 
         % Slave surface
@@ -342,7 +395,7 @@ for integration = int_str
                 e = B*u_anal_top(getDoF(top));
                 e_h = B*u_top(getDoF(top));
             end
-            H1slave(el) = (e-e_h)'*D*(e-e_h)*vol;
+            H1slave(el) = (e-e_h)'*Dmat*(e-e_h)*vol;
         end
 
         brokenH1 = sqrt(sum(H1master)+sum(H1slave));
