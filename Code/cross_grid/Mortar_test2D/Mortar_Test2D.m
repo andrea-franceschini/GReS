@@ -51,13 +51,13 @@ for k = 1:5
     fileNameBottom = [fileNameBottom; strcat('Mesh_flat_convergenceTest/BottomBlock_tetra_h',num2str(k),'.msh')];
 end
 
-flagTop = 'slave';
+flagTop = 'master';
 h = zeros(5,1);
 ini_str = strcat("2D MORTAR METHOD: top coarser mesh as ",flagTop, '\n');
 fprintf(ini_str)
 
 
-int_str = ["RBF","SB", "EB"]; % RBF or SB
+int_str = ["SB"]; % RBF or SB
 
 for integration = int_str
     if strcmp(integration,'RBF')
@@ -71,7 +71,7 @@ for integration = int_str
         fopen('H1_eb.txt','w');
     end
 
-    for mCount = 1:5
+    for mCount = 1:1
         p_str = strcat(integration,' integration - Mesh size h', num2str(mCount), ' \n');
         fprintf(p_str)
         % Import the mesh data into the Mesh object
@@ -103,11 +103,17 @@ for integration = int_str
         nodesMaster = unique(masterMesh.edges(masterMesh.edgeTag == 1,:));
         nodesSlave = unique(slaveMesh.edges(slaveMesh.edgeTag == 1,:));
 
+        % get ID of interface nodes belonging to Dirichlet boundary
+        % Constant basis functions are considered for element containing
+        % these nodes
+        boundInt = unique(slaveMesh.edges(slaveMesh.edgeTag == 3,:));
+        boundInt = boundInt(ismember(boundInt, nodesSlave));
+
         % compute mortar operator
         if strcmp(integration,'RBF')
             Etmp = compute_mortar(masterMesh, slaveMesh, gaussRBF, 1, 1);
         elseif strcmp(integration, 'SB')
-            Etmp = compute_mortar_SB(masterMesh, slaveMesh, 1, 1, 3);
+            Etmp = compute_mortar_SB(masterMesh, slaveMesh, boundInt, 1, 1, 3);
         elseif strcmp(integration, 'EB')
             Etmp = compute_mortar_EB(masterMesh, slaveMesh, gaussEB, 1, 1);
         end
@@ -174,7 +180,7 @@ for integration = int_str
 
 
         %------------------- LATERAL CONSTRAINT  --------------------------
-
+        % 
         % LATERAL EDGES: note, only master nodes lying on the interface must be
         % fixed!
         % get nodes from master domain (not in the interface)

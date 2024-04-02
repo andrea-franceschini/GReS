@@ -1,7 +1,7 @@
-function E = compute_mortar_SB(masterInt, slaveInt, tagMaster, tagSlave, nGP)
+function E = compute_mortar_SB(masterInt, slaveInt, dirNod, tagMaster, tagSlave, nGP)
 % compute mortar matrix given from a pair of interfaces.
-% INPUT: mesh objects, gauss class, edge tag for master and slave
-% interfaces
+% INPUT: mesh objects, dirichlet nodes in the interface, edge tag for master and slave
+% interfaces, Gauss points
 
 % uses Segment based approach for exact computation of the mortar integral
 % valid only if the connected interfaces are flat
@@ -54,12 +54,16 @@ for i = 1:size(mastertop,1)
     end
 end
 
+% get edges with Dirichlet nodes (constant Basis Functions)
+edgeDir = find(any(ismember(slavetop,dirNod),2));
+
 %% Compute slave matrix D 
 for sID = 1:size(slavetop,1)
     % elem length
     i1 = slavetop(sID,1);
     i2 = slavetop(sID,2);
     h = norm(slave(i1,:)-slave(i2,:));
+    if sID == 
     Dloc = (h/6)*[2 1; 1 2];
     D([i1 i2], [i1 i2]) = D([i1 i2], [i1 i2]) + Dloc;
 end
@@ -109,15 +113,6 @@ M = M(nodesMaster, nodesSlave);
 invD = inv(D);
 E = invD*M';
 
-% test
-f = @(x) sin(3*x);
-[cM, indM] = masterInt.coordinates(nodesMaster,1);
-[cS, indS] = masterInt.coordinates(nodesSlave,1);
-fM = f(cM);
-fS = E*fM;
-plot(cM, fM(indM))
-hold on
-plot(cS, fS)
 end
 
 
