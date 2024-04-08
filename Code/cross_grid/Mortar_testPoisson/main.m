@@ -10,7 +10,7 @@ fPlot = false;
 % selecting solution method
 % COND --> condansated approach
 % SP --> saddle point matrix
-sol_scheme = 'SP';
+sol_scheme = 'COND';
 
 % IMPORT MESHES
 topMesh = Mesh();
@@ -24,7 +24,6 @@ bottomMesh.importGMSHmesh('Mesh/BottomBlock_tetra.msh');
 fileNameTop = [];
 fileNameBottom = [];
 
-h = [0.1; 0.05; 0.025; 0.0125];
 % Set the input file name
 for k = 1:4
     fileNameTop = [fileNameTop; strcat('Mesh_conv/TopBlock_tetra_h',num2str(k),'.msh')];
@@ -36,7 +35,7 @@ end
 
 
 % selecting master and slave domain
-flagTop = 'master';
+flagTop = 'slave';
 if strcmp(flagTop, 'master')
     bottom = 'slave';
     masterMesh = topMesh;
@@ -50,23 +49,22 @@ end
 % selecting integration approach
 int_str = ["SB","RBF","EB"];
 
+tmp = strcat(flagTop,'TOP');
 % open files for writing convergence results
 for integration = int_str
     if strcmp(integration,'RBF')
-        fopen('L2_rbf.txt','w');
-        fopen('H1_rbf.txt','w');
+        fopen(strcat(tmp,'L2_rbf.txt'),'w');
+        fopen(strcat(tmp,'H1_rbf.txt'),'w');
     elseif strcmp(integration, 'SB')
-        fopen('L2_sb.txt','w');
-        fopen('H1_sb.txt','w');
+        fopen(strcat(tmp,'L2_sb.txt'),'w');
+        fopen(strcat(tmp,'H1_sb.txt'),'w');
     elseif strcmp(integration, 'EB')
-        fopen('L2_eb.txt','w');
-        fopen('H1_eb.txt','w');
+        fopen(strcat(tmp,'L2_eb.txt'),'w');
+        fopen(strcat(tmp,'H1_eb.txt'),'w');
     end
 
 
-    nGrids = 4;
-    h = h(1:nGrids);
-
+    nGrids = 3;
 
     for mCount = 1:nGrids
         p_str = strcat(integration,' integration - Mesh size h', num2str(mCount), ' \n');
@@ -86,6 +84,8 @@ for integration = int_str
         nodesMaster = unique(masterMesh.edges(masterMesh.edgeTag == 1,:));
         nodesSlave = unique(slaveMesh.edges(slaveMesh.edgeTag == 1,:));
 
+        h = 1/(length(nodesSlave)-1);
+
         % get ID of interface nodes belonging to Dirichlet boundary
         % Constant basis functions are considered for slave elements containing
         % these nodes (actually this doesn't seem to affect the results)
@@ -94,7 +94,7 @@ for integration = int_str
 
         % compute mortar operator and matrices
         if strcmp(integration,'RBF')
-            [E, M, D] = compute_mortar(masterMesh, slaveMesh, [], 6, 1, 1, "RBF");
+            [E, M, D] = compute_mortar(masterMesh, slaveMesh, [], 15, 1, 1, "RBF");
         elseif strcmp(integration, 'SB')
             [E, M, D] = compute_mortar(masterMesh, slaveMesh, [], 3, 1, 1, "SB");
         elseif strcmp(integration, 'EB')
@@ -269,30 +269,28 @@ for integration = int_str
                 strTop = 'slaveTop';
             end
 
-            fNameTop = strcat(strTop,'_SolTop','_',integration);
-            fNameBottom = strcat(strTop,'_SolBot','_',integration);
+            fNameTop = strcat(strTop,'_SolTop','_',integration,'_h',num2str(mCount));
+            fNameBottom = strcat(strTop,'_SolBot','_',integration,'_h',num2str(mCount));
             plotParaview(topMesh,fNameTop, u_top', 'x')
             plotParaview(bottomMesh,fNameBottom, u_bottom', 'x')
 
 
-            fNameTop = strcat(strTop,'_errTop','_',integration);
-            fNameBottom = strcat(strTop,'_errBot','_',integration);
+            fNameTop = strcat(strTop,'_errTop','_',integration,'_h',num2str(mCount));
+            fNameBottom = strcat(strTop,'_errBot','_',integration,'_h',num2str(mCount));
             plotParaview(topMesh,fNameTop, err_top_rel', 'x')
             plotParaview(bottomMesh,fNameBottom, err_bot_rel', 'x')
         end
 
         % Error norms
+        % L2 error
         if strcmp(flagTop, 'master')
             L2Master = (u_anal_top - u_top).^2;
             L2Slave = (u_anal_bot - u_bottom).^2;
-            H1Master = sqrt(err_top'*KMaster*err_top);
-            H1Slave = sqrt(err_bot'*KSlave*err_bot);
         else
             L2Slave = (u_anal_top - u_top).^2;
             L2Master = (u_anal_bot - u_bottom).^2;
-            H1Master = sqrt(err_bot'*KMaster*err_bot);
-            H1Slave = sqrt(err_top'*KSlave*err_top);
         end
+
         L2Slave(isinf(L2Slave)) = 0;
         L2Master(isinf(L2Master)) = 0;
         L2Slave(isnan(L2Slave)) = 0;
@@ -300,21 +298,63 @@ for integration = int_str
         L2Slave = sqrt(L2Slave'*aNslave);
         L2Master = sqrt(L2Master'*aNmaster);
         brokenL2 = sqrt(L2Master^2 + L2Slave^2);
+
+        % H1 error
+
+        H1Master = zeros(masterMesh.nSurfaces,1);
+        H1Slave = zeros(slaveMesh.nSurfaces,1);
+        % Master surface
+        for el = 1:masterMesh.nSurfaces
+            top = masterMesh.surfaces(el, 1:masterMesh.surfaceNumVerts(el));
+            N = getDerBasisF(elemsMaster.tri,el);
+            vol = findVolume(elemsMaster.tri,el);
+            if strcmp(flagTop,'master')
+                u_ex = u_anal_top(top);
+                u_h = u_top(top);
+            else
+                u_ex = u_anal_bot(top);
+                u_h = u_bottom(top);
+            end
+            H1Master(el) = (N*(u_ex-u_h))'*(N*(u_ex-u_h));
+            H1Master(el) = H1Master(el)*vol;
+        end
+
+        % Slave surface
+        for el = 1:slaveMesh.nSurfaces
+            top = slaveMesh.surfaces(el, 1:slaveMesh.surfaceNumVerts(el));
+            N = getDerBasisF(elemsSlave.tri,el);
+            vol = findVolume(elemsSlave.tri,el);
+            if strcmp(flagTop,'master')
+                u_ex = u_anal_bot(top);
+                u_h = u_bottom(top);
+            else
+                u_ex = u_anal_top(top);
+                u_h = u_top(top);
+            end
+            H1Slave(el) = (N*(u_ex-u_h))'*(N*(u_ex-u_h));
+            H1Slave(el) = H1Slave(el)*vol;
+        end
+        
+        %H1 seminorms squared
+        H1Slave = sqrt(sum(H1Slave));
+        H1Master = sqrt(sum(H1Master));
+        % H1Slave = sqrt(H1Slave+L2Slave^2);
+        % H1Master = sqrt(H1Master+L2Master^2);
         brokenH1 = sqrt(H1Master^2 + H1Slave^2);
 
         % SAVING OUTPUT DATAS IN TEXT FILES
         if strcmp(integration,'RBF')
-            fID1 = fopen('L2_rbf.txt', 'a');
-            fID2 = fopen('H1_rbf.txt', 'a');
+            fID1 = fopen(strcat(tmp,'L2_rbf.txt'), 'a');
+            fID2 = fopen(strcat(tmp,'H1_rbf.txt'), 'a');
         elseif strcmp(integration, 'SB')
-            fID1 = fopen('L2_sb.txt', 'a');
-            fID2 = fopen('H1_sb.txt', 'a');
+            fID1 = fopen(strcat(tmp,'L2_sb.txt'), 'a');
+            fID2 = fopen(strcat(tmp,'H1_sb.txt'), 'a');
         elseif strcmp(integration, 'EB')
-            fID1 = fopen('L2_eb.txt', 'a');
-            fID2 = fopen('H1_eb.txt', 'a');
+            fID1 = fopen(strcat(tmp,'L2_eb.txt'), 'a');
+            fID2 = fopen(strcat(tmp,'H1_eb.txt'), 'a');
         end
-        fprintf(fID1,'%2.5f %2.10f %2.10f %2.10f \n', h(mCount), brokenL2, L2Master, L2Slave);
-        fprintf(fID2,'%2.5f %2.10f %2.10f %2.10f \n', h(mCount), brokenH1, H1Master, H1Slave);
+        fprintf(fID1,'%2.5f %2.10f %2.10f %2.10f \n', h, brokenL2, L2Master, L2Slave);
+        fprintf(fID2,'%2.5f %2.10f %2.10f %2.10f \n', h, brokenH1, H1Master, H1Slave);
     end
 end
 
@@ -325,7 +365,7 @@ fprintf('Plotting graphs \n')
 leg_str = [];
 figure(1)
 if any(strcmp(int_str, 'RBF'))
-H1_RBF = load('H1_rbf.txt');
+H1_RBF = load(strcat(tmp,'H1_rbf.txt'));
 loglog(H1_RBF(:,1), H1_RBF(:,2), '--ro', 'LineWidth', 1, 'MarkerSize', 8.5)
 hold on
 %loglog(H1_RBF(:,1), H1RBFgp4, '--r^', 'LineWidth', 1, 'MarkerSize', 8.5)
@@ -335,7 +375,7 @@ end
 
 
 if any(strcmp(int_str, 'SB'))
-H1_SB = load('H1_sb.txt');
+H1_SB = load(strcat(tmp,'H1_sb.txt'));
 loglog(H1_SB(:,1), H1_SB(:,2), '-ko',  'LineWidth', 1, 'MarkerSize', 8.5)
 hold on
 % loglog(H1_SB(:,1), H1_SB(:,3), '--k*')
@@ -344,7 +384,7 @@ leg_str = [leg_str, "SB integration"];
 end
 
 if any(strcmp(int_str, 'EB'))
-H1_EB = load('H1_eb.txt');
+H1_EB = load(strcat(tmp,'H1_eb.txt'));
 loglog(H1_EB(:,1), H1_EB(:,2), '-bo', 'LineWidth', 1, 'MarkerSize', 8.5)
 hold on
 % loglog(H1_EB(:,1), H1_EB(:,3), '--b*')
@@ -356,16 +396,16 @@ tit_str = strcat("H1 error plot with coarser top domain as ",flagTop);
 title(tit_str);
 xticks([])
 xlabel('Mesh size')
-ylabel('H1 energy broken error norm')
+ylabel('H1 energy broken error seminorm')
 set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14);
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 12)
 
 % L2 error plot
 leg_str = [];
-figure(1)
+figure(2)
 if any(strcmp(int_str, 'RBF'))
-L2_RBF = load('L2_rbf.txt');
+L2_RBF = load(strcat(tmp,'L2_rbf.txt'));
 loglog(L2_RBF(:,1), L2_RBF(:,2), '--ro', 'LineWidth', 1, 'MarkerSize', 8.5)
 hold on
 %loglog(H1_RBF(:,1), H1RBFgp4, '--r^', 'LineWidth', 1, 'MarkerSize', 8.5)
@@ -375,7 +415,7 @@ end
 
 
 if any(strcmp(int_str, 'SB'))
-L2_SB = load('L2_sb.txt');
+L2_SB = load(strcat(tmp,'L2_sb.txt'));
 loglog(L2_SB(:,1), L2_SB(:,2), '-ko',  'LineWidth', 1, 'MarkerSize', 8.5)
 hold on
 % loglog(H1_SB(:,1), H1_SB(:,3), '--k*')
@@ -384,7 +424,7 @@ leg_str = [leg_str, "SB integration"];
 end
 
 if any(strcmp(int_str, 'EB'))
-L2_EB = load('L2_eb.txt');
+L2_EB = load(strcat(tmp,'L2_eb.txt'));
 loglog(L2_EB(:,1), L2_EB(:,2), '-bo', 'LineWidth', 1, 'MarkerSize', 8.5)
 hold on
 % loglog(H1_EB(:,1), H1_EB(:,3), '--b*')
