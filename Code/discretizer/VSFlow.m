@@ -71,11 +71,11 @@ classdef VSFlow < handle
             dt = varargin{3};
             pkpt = obj.simParams.theta*stateTmp.pressure + ...
                 (1 - obj.simParams.theta)*statek.pressure;
-            [Swkpt,dSwkpt,obj.lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt);
+            [Swkpt,dSwkpt,d2Swkpt, obj.lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt);
             computeStiffMatFV(obj,obj.lwkpt);
             computeCapMatFV(obj,Swkpt,dSwkpt);
             if isNewtonNLSolver(obj.simParams)
-                computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,dlwkpt)
+                computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,d2Swkpt,dlwkpt)
             end
         end
 
@@ -255,11 +255,12 @@ classdef VSFlow < handle
             obj.trans = 1 ./ accumarray(obj.faces.faces2Elements(:,1),1 ./ hT,[obj.faces.nFaces,1]);
         end
 
-        function [Swkpt,dSwkpt,lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt)
+        function [Swkpt,dSwkpt,d2Swkpt,lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt)
             % compute upstream elements for each face
             % interpolate effective saturation and relative permeability 
             % and first derivatives
-            subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'VSFlow'));
+            % compute also second derivative for saturation
+            subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics,'VSFlow'));
             intFaces = any(obj.isIntFaces(:,subInd),2);
             neigh = obj.faces.faceNeighbors(intFaces,:);
             gamma = obj.material.getFluid().getFluidSpecWeight();
@@ -272,13 +273,13 @@ classdef VSFlow < handle
             end
             obj.upElem(lElemIsUp) = neigh(lElemIsUp,1);
             obj.upElem(~lElemIsUp) = neigh(~lElemIsUp,2);
-            [Swkpt,dSwkpt] = obj.material.computeSwAnddSw(obj.mesh,pkpt);
+            [Swkpt,dSwkpt,d2Swkpt] = obj.material.computeSwAnddSw(obj.mesh,pkpt);
             dSwkpt = - dSwkpt;
             [lwkpt,dlwkpt] = obj.material.computeLwAnddLw(obj.mesh,obj.upElem,pkpt);
             dlwkpt = - dlwkpt;
         end
 
-        function computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,dlwkpt)
+        function computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,d2Swkpt,dlwkpt)
             subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'VSFlow'));
             [subCells, ~] = find(obj.dofm.subCells(:,subInd));
             nSubCells = length(subCells);
@@ -298,7 +299,7 @@ classdef VSFlow < handle
                 alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
             end
             tmpVec2 = alphaMat(obj.mesh.cellTag) + beta*poroMat(obj.mesh.cellTag);
-            tmpVec2 = 1/dt*((tmpVec2(subCells).*dSwkpt(subCells)).*(stateTmp.pressure(subCells) - statek.pressure(subCells))).*obj.elements.vol(subCells);
+            tmpVec2 = 1/dt*((tmpVec2(subCells).*dSwkpt(subCells) + poroMat(obj.mesh.cellTag).*d2Swkpt(subCells)).*(stateTmp.pressure(subCells) - statek.pressure(subCells))).*obj.elements.vol(subCells);
             neigh1dof = obj.dofm.ent2field('VSFlow',neigh(:,1));
             neigh2dof = obj.dofm.ent2field('VSFlow',neigh(:,2));
             upElemdof = obj.dofm.ent2field('VSFlow',obj.upElem);

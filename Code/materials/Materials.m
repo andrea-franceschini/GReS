@@ -46,49 +46,59 @@ classdef Materials < handle
     function varargout = computeSwAnddSw(obj,mesh,pkpt)
       % varargout{1} -> Sw
       % varargout{2} -> dSw
+      % varargout{2} -> d2Sw
       % if 5<1
       varargout{1} = zeros(mesh.nCells,1);
       if nargout == 2
         varargout{2} = zeros(mesh.nCells,1);
       end
+      if nargout == 3
+          varargout{2} = zeros(mesh.nCells,1);
+          varargout{3} = zeros(mesh.nCells,1);
+      end
       for m = 1:mesh.nCellTag
-        isElMat = mesh.cellTag == m;
-        p = pkpt(isElMat);
-        if nargout == 1
-          varargout{1}(isElMat) = obj.getMaterial(m).CapillaryCurve.interpTable(p);
-        elseif nargout == 2
-          [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).CapillaryCurve.interpTable(p);
-        end
+          isElMat = mesh.cellTag == m;
+          p = pkpt(isElMat);
+          if nargout == 1
+              varargout{1}(isElMat) = obj.getMaterial(m).CapillaryCurve.interpTable(p);
+          elseif nargout == 2
+              [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).CapillaryCurve.interpTable(p);
+          elseif nargout == 3
+              [varargout{1}(isElMat), varargout{2}(isElMat), varargout{3}(isElMat)] = obj.getMaterial(m).CapillaryCurve.interpTable(p);
+          end
         Swr = obj.getMaterial(m).PorousRock.getWaterResSat();
         varargout{1}(isElMat) = Swr + (1-Swr)*varargout{1}(isElMat);
-        if nargout == 2
-          varargout{2}(isElMat) = (1-Swr)*varargout{2}(isElMat);
+        if nargout > 1
+            varargout{2}(isElMat) = (1-Swr)*varargout{2}(isElMat);
+        end
+        if nargout > 2
+            varargout{3}(isElMat) = (1-Swr)*varargout{3}(isElMat);
         end
       end
       % end
       %
       %
       %
-      if 5<1
-      varargout{1} = ones(mesh.nCells,1);
-      if nargout == 2
-        varargout{2} = zeros(mesh.nCells,1);
-      end
-      n = 3.1769;
-      pEntry = 2.7840;
-      m = 1 - 1/n;
-      pkpt = -pkpt;
-      isPos = pkpt >= 0;
-      SeFun = @(p) (1 + (p./pEntry).^n).^(-m);
-      dSeFun = @(p) -m.*(1 + (p./pEntry).^n).^(-m-1).*n./pEntry.*(p./pEntry).^(n-1);
-      varargout{1}(isPos) = SeFun(pkpt(isPos));
-      Swr = obj.getMaterial(1).PorousRock.getWaterResSat();
-      varargout{1} = Swr + (1-Swr)*varargout{1};
-      if nargout == 2
-        varargout{2}(isPos) = dSeFun(pkpt(isPos));
-        varargout{2} = (1-Swr)*varargout{2};
-      end
-      end
+      % if 5<1
+      % varargout{1} = ones(mesh.nCells,1);
+      % if nargout == 2
+      %   varargout{2} = zeros(mesh.nCells,1);
+      % end
+      % n = 3.1769;
+      % pEntry = 2.7840;
+      % m = 1 - 1/n;
+      % pkpt = -pkpt;
+      % isPos = pkpt >= 0;
+      % SeFun = @(p) (1 + (p./pEntry).^n).^(-m);
+      % dSeFun = @(p) -m.*(1 + (p./pEntry).^n).^(-m-1).*n./pEntry.*(p./pEntry).^(n-1);
+      % varargout{1}(isPos) = SeFun(pkpt(isPos));
+      % Swr = obj.getMaterial(1).PorousRock.getWaterResSat();
+      % varargout{1} = Swr + (1-Swr)*varargout{1};
+      % if nargout == 2
+      %   varargout{2}(isPos) = dSeFun(pkpt(isPos));
+      %   varargout{2} = (1-Swr)*varargout{2};
+      % end
+      % end
     end
     
     function varargout = computeLwAnddLw(obj,mesh,upElem,pkpt)

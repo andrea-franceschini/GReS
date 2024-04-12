@@ -4,6 +4,7 @@ classdef TabularCurve < handle
   properties (Access = private)
     tabW
     derivW
+    derivW2
     nPoints
   end
 
@@ -25,28 +26,44 @@ classdef TabularCurve < handle
       %
       varargout{1}(xNeg) = 1;
       %
-      dy = (obj.tabW(1,2) - 1)/obj.tabW(1,1);
-      varargout{1}(xOutL) = 1 + dy*x(xOutL);
+      dyL = (obj.tabW(1,2) - 1)/obj.tabW(1,1);
+      varargout{1}(xOutL) = 1 + dyL*x(xOutL);
       %
       varargout{1}(xIn) = interp1(obj.tabW(:,1),obj.tabW(:,2),x(xIn));
       %
-      dy = (obj.tabW(end,2) - obj.tabW(end-1,2))/(obj.tabW(end,1) - obj.tabW(end-1,1));
-      varargout{1}(xOutR) = obj.tabW(end-1,2) + dy*(x(xOutR) - obj.tabW(end-1,1));
+      dyR = (obj.tabW(end,2) - obj.tabW(end-1,2))/(obj.tabW(end,1) - obj.tabW(end-1,1));
+      varargout{1}(xOutR) = obj.tabW(end-1,2) + dyR*(x(xOutR) - obj.tabW(end-1,1));
       idOutR = find(xOutR);
       yNeg = varargout{1}(xOutR) < 0;
       varargout{1}(idOutR(yNeg)) = 0;
-      if nargout == 2
+      if nargout > 1 % compute first derivative
         varargout{2} = zeros(length(x),1);
         %
         varargout{2}(xNeg) = 0;
         %
-        varargout{2}(xOutL) = dy;
+        varargout{2}(xOutL) = dyL;
         %
         [~,~,binID] = histcounts(x(xIn),obj.tabW(:,1));
         varargout{2}(xIn) = obj.derivW(binID);
         %
-        varargout{2}(idOutR) = dy;
+        varargout{2}(idOutR) = dyR;
         varargout{2}(idOutR(yNeg)) = 0;
+      end
+      if nargout > 2 %compute also the second derivative
+          varargout{3} = zeros(length(x),1);
+          %
+          varargout{3}(xNeg) = 0;
+          %
+          varargout{3}(xOutL) = 0;
+          %
+          % compute histogram columns for second derivative
+          tmp = [obj.tabW(1:end-1,1) obj.tabW(2:end,1)];
+          tmp = mean(tmp,2);
+          [~,~,binID] = histcounts(x(xIn),tmp);
+          varargout{3}(xIn) = obj.derivW2(binID);
+          %
+          varargout{3}(idOutR) = 0;
+          varargout{3}(idOutR(yNeg)) = 0;
       end
     end
 %     function [y, dy] = interpTable(obj, x)
@@ -87,6 +104,9 @@ classdef TabularCurve < handle
       obj.tabW = load(curveFname);
       obj.nPoints = size(obj.tabW,1);
       obj.derivW = diff(obj.tabW(:,2))./diff(obj.tabW(:,1));
+      obj.derivW2 = ((obj.tabW(3:end,2)-obj.tabW(2:end-1,2))./(obj.tabW(3:end,1)-obj.tabW(2:end-1,1)) - ...
+          (obj.tabW(2:end-1,2)-obj.tabW(1:end-2,2))./(obj.tabW(2:end-1,1)-obj.tabW(1:end-2,1)))./(0.5*...
+          (obj.tabW(3:end,1)-obj.tabW(1:end-2,1)));
     end
   end
 end

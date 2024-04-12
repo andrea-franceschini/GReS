@@ -2,7 +2,6 @@ classdef Biot < handle
     % Biot model subclass
     % Coupled poromechanics with:
     % SinglePhase flow 
-    % Variably Saturated flow: still to be updated
 
     properties
         model

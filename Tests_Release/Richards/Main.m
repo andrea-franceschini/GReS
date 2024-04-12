@@ -13,7 +13,7 @@ simParam = SimulationParameters(model,fileName);
 topology = Mesh();
 %
 % Set the input file name
-fileName = 'Bench1D_hexa.msh';
+fileName = 'meshes/Richards_refined.msh';
 %
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -105,10 +105,10 @@ else
     nodesP = nodesP(ind);
 end
 
-tind = [9;21; 30; 37];
 press = printUtils.m.expPress;
 sw = printUtils.m.expSw;
 t = printUtils.m.expTime;
+tind = [3;4;5;6;20;29;39;41];
 t_max = t(end);
 t = t(tind)/t_max;
 
@@ -129,7 +129,7 @@ else
     ptsY = topology.coordinates(nodesP,3);
 end
 figure(1)
-plot(pressplot/ptop,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 15);
+plot(pressplot/ptop,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);
 hold on
 xlabel('p/p_{top}')
 ylabel('z/H')
@@ -144,7 +144,7 @@ stmp = strcat('Images\', 'Richards_pressure', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 figure(2)
-plot(swplot,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 15);
+plot(swplot,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);
 hold on
 xlabel('Saturation S_w')
 ylabel('z/H')

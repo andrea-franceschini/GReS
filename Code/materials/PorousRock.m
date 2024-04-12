@@ -83,7 +83,7 @@ classdef PorousRock < handle
       KTmp(4:5) = tmpVec;
       tmpVec = readDataInLine(fID, matFileName, 1);
       KTmp(6) = tmpVec;
-      if model.isSinglePhaseFlow() && model.isPoromechanics()
+      if model.isFlow() && model.isPoromechanics()
           obj.biot = readDataInLine(fID, matFileName, 1);
       end
       if model.isVariabSatFlow()

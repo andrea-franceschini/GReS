@@ -158,11 +158,17 @@ classdef Discretizer < handle
                   case 'Flow'
                       if isSinglePhaseFlow(obj.model)
                           obj.db('Flow') = SPFlow(symmod,params,dofManager,grid,mat,data);
-                      elseif isVariabSatFlow(obj.model)
+                      end
+                      if isVariabSatFlow(obj.model)
                           obj.db('Flow') = VSFlow(symmod,params,dofManager,grid,mat,data);
                       end
                   case 'Biot'
-                      obj.db('Biot') = Biot(symmod,params,dofManager,grid,mat,data);
+                      if isSinglePhaseFlow(obj.model)
+                          obj.db('Biot') = Biot(symmod,params,dofManager,grid,mat,data);
+                      end
+                      if isVariabSatFlow(obj.model)
+                          obj.db('Biot') = BiotVS(symmod,params,dofManager,grid,mat,data);
+                      end
               end
           end
           
