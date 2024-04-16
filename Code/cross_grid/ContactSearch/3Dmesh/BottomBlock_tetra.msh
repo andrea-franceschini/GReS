@@ -1,0 +1,13 @@
+$MeshFormat
+2.2 0 8
+$EndMeshFormat
+$PhysicalNames
+1
+2 1 "Domain_test"
+$EndPhysicalNames
+$Nodes
+0
+$EndNodes
+$Elements
+0
+$EndElements

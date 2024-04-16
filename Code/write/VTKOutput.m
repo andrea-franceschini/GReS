@@ -271,7 +271,7 @@ classdef VTKOutput < handle
       end
 
       fname = sprintf('%s/%s/%s', obj.folderName, outName, obj.cellFileName);
-      if any(obj.mesh.coordinates(:,3)~=0)
+      if ~isempty(obj.mesh.cells)
           mxVTKWriter(fname, time, obj.mesh.coordinates, obj.mesh.cells, obj.mesh.cellVTKType, ...
               obj.mesh.cellNumVerts, pointData3D, cellData3D);
       else

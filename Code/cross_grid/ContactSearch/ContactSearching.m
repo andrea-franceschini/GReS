@@ -13,8 +13,7 @@ classdef ContactSearching < handle
         leaf2elem1
         leaf2elem2
         elemConnectivity
-        
-
+        dim
     end
     
     methods
@@ -25,9 +24,21 @@ classdef ContactSearching < handle
             obj.msh2 = msh2;
             obj.elemConnectivity = sparse(obj.msh1.nSurfaces, obj.msh2.nSurfaces);
             switch k
-                case 8
+                case 8 % standard case for 2D grids
                     obj.polytop = [1 0 -1 1;
                                    0 1 1 1];
+                    obj.dim = 2; 
+                case 18 % standard case for 3D grids
+                    obj.polytop = [1 0 0;
+                                    0 1 0;
+                                    0 0 1;
+                                    1 1 0;
+                                    1 0 1;
+                                    0 1 1;
+                                    1 -1 0;
+                                    1 0 -1;
+                                    0 1 -1]';
+                    obj.dim = 3;
                 otherwise
                     error('%i - top discrete polytop is not supported',k);
             end
@@ -95,20 +106,26 @@ classdef ContactSearching < handle
             % INPUT: set of cells indices
             % OUTPUT: k primitives defining the bounding polytop of the
             %         Cells belonging to left and right child (if any)
+            nNodes = size(msh.surfaces,2);
+            surfCentroid = zeros(msh.nSurfaces,nNodes);
+            % compute surface centroids
+            for i = 1:3
+                tmp = msh.coordinates(msh.surfaces',i);
+                tmp = reshape(tmp,nNodes,[]);
+                surfCentroid(:,i) = sum(tmp,1)/nNodes;
+            end
 
             % get unique set of nodes belonging to input cells
             nodes = unique(msh.surfaces(surfID,:));
-            if size(obj.polytop,2) == 4
-                % assuming 2D case, discard z coordinate
-                coords = msh.coordinates(nodes,1:2);
-            end
+            % Store coordinates depending on 2D or 3D cases
+            coords = msh.coordinates(nodes,1:obj.dim);
             prim = coords*obj.polytop;
             ktopVals = [min(prim); max(prim)];
-            % reduce slightly the size of the k-top (easy in 2D)
+            % increase slightly the size of the k-top (useful in 3D
+            % setting)
             red = min(abs(ktopVals(1,:) - ktopVals(2,:)));
-            ktopVals = ktopVals + [0.01*red; -0.01*red];
-            
-            
+            ktopVals = ktopVals - [0.05*red; -0.05*red];
+                        
             if length(surfID) > 1
                 % split using cutting plane 
                 % oriented like axis i 
@@ -116,7 +133,7 @@ classdef ContactSearching < handle
                 [~,i] = max(abs(ktopVals(1,:) - ktopVals(2,:)));
                 m = median(prim(:,i));
                 ktopVals = (ktopVals(:))';
-                surfPrim = msh.surfaceCentroid(surfID,1:2)*obj.polytop(:,i);
+                surfPrim = surfCentroid(surfID,1:obj.dim)*obj.polytop(:,i);
                 id = surfPrim < m;
                 lCells = surfID(id);
                 rCells = surfID(~id);
