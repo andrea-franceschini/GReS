@@ -66,6 +66,10 @@ classdef Elements < handle
       end
       %
       obj.nCellsByType = histc(obj.mesh.cellVTKType,[10, 12, 13, 14]);
+      % in some cases histc may produce an empty array
+      if isempty(obj.nCellsByType)
+          obj.nCellsByType = zeros(4,1);
+      end
       %
       if obj.nCellsByType(1) > 0
         obj.tetra = Tetrahedron(obj.mesh);
@@ -93,7 +97,7 @@ classdef Elements < handle
           obj.tri = Triangle(obj.mesh);
       end
       if obj.nSurfByType(2) > 0
-          %obj.quad = Quadrilateral(obj.mesh,obj.GaussPts);
+          obj.quad = Quadrilateral(obj.mesh,obj.GaussPts);
       end
 
       if obj.nSurfByType(2) == 0

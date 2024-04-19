@@ -26,8 +26,8 @@ close all; clear
 tol = 1.e-2;
 
 % master and slave surfaces node position along X axis
-nMaster = 9;
-nSlave = 14;
+nMaster = 8;
+nSlave = 8;
 master = zeros(nMaster,2); % coordinates of master side
 slave = zeros(nSlave,2);
 master(:,1) = (linspace(-1,1,nMaster))';
@@ -43,10 +43,10 @@ slave(:,2) = -fact*ss*rand(nSlave,1)+fact*ss*rand(nSlave,1);
 
 
  % number of RBF interpolation points for each element
-nInt = 5;
+nInt = 100;
 
 % Number of integration points for RBF testing (GP class taken from GReS)
-nGP = 4;
+nGP = 6;
 
 % Inizialize output matrices
 D = zeros(length(slave), length(slave));
@@ -254,7 +254,7 @@ for el = 1:size(slavetop,1)
     lNod(n2) = lNod(n2) + l/2;
 end
 
-f = @(x) 0.5*sin(2*x)+0.5*cos(4*x);
+f = @(x) 3 + 0.000001*x;
 fMaster = f(master(:,1)); % analytical function computed on master mesh
 plotSlave = (linspace(-1,1,100))';
 fplotSlave = f(plotSlave);

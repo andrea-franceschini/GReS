@@ -14,16 +14,14 @@ Point(1) = {0, 0, 0, lc};
 Point(2) = {1, 0, 0, lc};
 
 // Circle center
-Point(3) = {0.5, 0, -0.4, lc};
-Circle(1) = {1, 3, 2};
+Line(1) = {1, 2};
 
 Extrude {0, 1, 0} {Line{1}; Layers{13}; Recombine;}
-
 
 //Transfinite Surface {1};
 
 Physical Surface("Domain_test",1)={5};
 
 Mesh 2;
-Save "Mesh_fine_HEXA.msh";
+Save "Mesh_fineFlat.msh";
 

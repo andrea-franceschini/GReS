@@ -1,7 +1,6 @@
 function [K, f] = applyDir(dofs, vals, K, f)
 % Apply Dirichlet BCs with an improved algorithm compared to Penalty
 % approach
-
 % set Dir rows to zero
 K(dofs,:) = 0;
 % Update rhs with columns to be removed

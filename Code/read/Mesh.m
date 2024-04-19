@@ -82,7 +82,11 @@ classdef Mesh < handle
       
       % STORING DATA INSIDE OBJECT'S PROPERTIES
       % 3D ELEMENT DATA
-      obj.nDim = size(obj.coordinates,2);
+      if any(obj.coordinates(:,3) ~= 0)
+          obj.nDim = 3;
+      else 
+          obj.nDim = 2;
+      end
       obj.nNodes = size(obj.coordinates,1);
       % cellsID = 3D element tag for readGMSHmesh.cpp
       cellsID = [4, 5, 6, 7];
@@ -219,6 +223,29 @@ classdef Mesh < handle
       ID = obj.surfaceTag == val;
     end
 
+    % Function to build a 2D mesh object based on the surfaceTag of a 3D
+    % mesh
+    function surfMesh = getSurfaceMesh(obj, surfTag)
+        % initialize Mesh object
+        surfMesh = Mesh();
+        surfTopol = obj.surfaces(obj.surfaceTag == surfTag,:);      
+        % renumber the nodes starting from 1;
+        surfTopol = surfTopol(:);
+        % ordered list of unique nodes in the topology matrix
+        surfOrd = unique(surfTopol);
+        mapping = containers.Map(surfOrd, 1:numel(surfOrd));
+        for i = 1:length(surfTopol)
+            surfTopol(i) = mapping(surfTopol(i));
+        end
+        surfMesh.surfaces = (reshape(surfTopol, [], 4));
+        surfMesh.coordinates = obj.coordinates(surfOrd,:);
+        surfMesh.nNodes = length(surfMesh.coordinates);
+        surfMesh.nSurfaces = length(surfMesh.surfaces);
+        surfMesh.surfaceTag = repmat(surfTag, surfMesh.nSurfaces,1);
+        surfMesh.nSurfaceTag = 1;
+        surfMesh.surfaceVTKType = obj.surfaceVTKType(obj.surfaceTag == surfTag);
+        surfMesh.surfaceNumVerts = obj.surfaceNumVerts(obj.surfaceTag == surfTag);
+        surfMesh.nDim = 3;
+    end
   end
-
 end

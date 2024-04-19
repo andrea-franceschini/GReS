@@ -30,10 +30,6 @@ for k = 1:4
     fileNameBottom = [fileNameBottom; strcat('Mesh_conv/BottomBlock_tetra_h',num2str(k),'.msh')];
 end
 
-
-
-
-
 % selecting master and slave domain
 flagTop = 'slave';
 if strcmp(flagTop, 'master')
