@@ -1,12 +1,9 @@
-function [E, M, D] = compute_mortar(masterInt, slaveInt, dirNod, nGP, tagMaster, tagSlave, tagMethod)
+function [E, M, D] = compute_mortar(masterInt, slaveInt, dirNod, nInt, nGP, tagMaster, tagSlave, tagMethod)
 % compute mortar matrix given from a pair of interfaces.
 % INPUT: mesh objects, gauss class, edge tag for master and slave
 % interfaces
 
 tolInt = 1.e-3;
-
-% number of interpolation points for local master basis functions
-nInt = 10;
 
 % Gauss integration parameters
 gauss = Gauss(12,nGP,1);
@@ -202,8 +199,7 @@ end
 %
 M = M(nodesMaster, nodesSlave);
 M = M';
-invD = inv(D);
-E = invD*M;
+E = D\M;
 end
 
 

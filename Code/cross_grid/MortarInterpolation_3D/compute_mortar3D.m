@@ -106,8 +106,9 @@ for i = nodesMaster'
         M(i,slavetop(j,:)) = M(i,slavetop(j,:)) + intVal;
     end
 end
+M = M';
 %
-E = D\M';
+E = D\M;
 end
 
 

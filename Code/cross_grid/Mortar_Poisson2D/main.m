@@ -10,7 +10,7 @@ fPlot = false;
 % selecting solution method
 % COND --> condansated approach
 % SP --> saddle point matrix
-sol_scheme = 'COND';
+sol_scheme = 'SP';
 
 % IMPORT MESHES
 topMesh = Mesh();
@@ -31,7 +31,7 @@ for k = 1:4
 end
 
 % selecting master and slave domain
-flagTop = 'slave';
+flagTop = 'master';
 if strcmp(flagTop, 'master')
     bottom = 'slave';
     masterMesh = topMesh;
@@ -60,7 +60,7 @@ for integration = int_str
     end
 
 
-    nGrids = 3;
+    nGrids = 4;
 
     for mCount = 1:nGrids
         p_str = strcat(integration,' integration - Mesh size h', num2str(mCount), ' \n');
@@ -90,11 +90,11 @@ for integration = int_str
 
         % compute mortar operator and matrices
         if strcmp(integration,'RBF')
-            [E, M, D] = compute_mortar(masterMesh, slaveMesh, [], 15, 1, 1, "RBF");
+            [E, M, D] = compute_mortar(masterMesh, slaveMesh, [], 20, 6, 1, 1, "RBF");
         elseif strcmp(integration, 'SB')
-            [E, M, D] = compute_mortar(masterMesh, slaveMesh, [], 3, 1, 1, "SB");
+            [E, M, D] = compute_mortar(masterMesh, slaveMesh, [], 13, 3, 1, 1, "SB");
         elseif strcmp(integration, 'EB')
-            [E, M, D] = compute_mortar(masterMesh, slaveMesh, [], 6, 1, 1, "EB");
+            [E, M, D] = compute_mortar(masterMesh, slaveMesh, [], 13, 6, 1, 1, "EB");
             %[Etmp] = compute_mortar_EB(masterMesh, slaveMesh, gaussEB, 1, 1);
         end
 
@@ -237,9 +237,6 @@ for integration = int_str
             u_top(dofIs) = u_slave;
         end
 
-
-
-
         % Error analysis
         u_anal = @(x,y) 16*x.*y.*(1-x).*(1-y);
         % analytical solution
@@ -270,7 +267,6 @@ for integration = int_str
             plotParaview(topMesh,fNameTop, u_top', 'x')
             plotParaview(bottomMesh,fNameBottom, u_bottom', 'x')
 
-
             fNameTop = strcat(strTop,'_errTop','_',integration,'_h',num2str(mCount));
             fNameBottom = strcat(strTop,'_errBot','_',integration,'_h',num2str(mCount));
             plotParaview(topMesh,fNameTop, err_top_rel', 'x')
@@ -296,7 +292,6 @@ for integration = int_str
         brokenL2 = sqrt(L2Master^2 + L2Slave^2);
 
         % H1 error
-
         H1Master = zeros(masterMesh.nSurfaces,1);
         H1Slave = zeros(slaveMesh.nSurfaces,1);
         % Master surface

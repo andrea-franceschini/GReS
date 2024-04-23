@@ -5,13 +5,21 @@ close all
 % the rhs is f = ; cos(pi*y)*cos(pi*z)*(-2 -3*pi^2*sin(pi*x) - 4*pi^2*x+ 2*pi^2*x^2
 %
 
+% Analytical solution
+u_anal = @(x,y,z) cos(pi*y).*cos(pi*z).*(2*x - x.^2 + sin(pi*x));
+
+% Analtical rhs
+h = @(x) -2-3*pi^2*sin(pi*x)-4*pi^2*x+2*pi^2*x.^2;
+fAn = @(x,y,z) -cos(pi*y).*cos(pi*z).*h(x);
+
+
 % flagPlot: true --> results to Paraview in this directory
 fPlot = true;
 
 % selecting solution method
 % COND --> condansated approach
 % SP --> saddle point matrix
-sol_scheme = 'COND';
+sol_scheme = 'SP';
 
 % IMPORT MESHES
 leftMesh = Mesh();
@@ -77,7 +85,7 @@ for mCount = 1:nGrids
     % boundInt = boundInt(ismember(boundInt, nodesSlave));
     % 
     nGPrbf = 5;
-    nINTrbf = 10;
+    nINTrbf = 6;
     % compute mortar operator and matrices
     [E, M, D] = compute_mortar3D(intMaster, intSlave, cs.elemConnectivity, nGPrbf, nINTrbf);
 
@@ -123,8 +131,6 @@ for mCount = 1:nGrids
     x = [xM;xS];
     y = [yM;yS];
     z = [zM;zS];
-    h = @(x) -2-3*pi^2*sin(pi*x)-4*pi^2*x+2*pi^2*x.^2;
-    fAn = @(x,y,z) cos(pi*y).*cos(pi*z).*h(x);
     f = fAn(x,y,z);
     % compute forcing vector and areanod
     f = f.*[vNmaster(dofM);vNmaster(dofIm);vNslave(dofS);vNslave(dofIs)];
@@ -137,7 +143,7 @@ for mCount = 1:nGrids
     if strcmp(sol_scheme, 'SP')
         % complete saddle point matrix
         K = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofIs));
-            zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofIs)) ;
+            zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofIs));
             KmIm', zeros(length(dofIm),length(dofS)), KImIm, zeros(length(dofIm),length(dofIs)), -M';
             zeros(length(dofIs), length(dofM)), KsIs', zeros(length(dofIs), length(dofIm)), KIsIs, D';
             zeros(length(dofIs), length(dofM)), zeros(length(dofIs), length(dofS)), -M, D,  zeros(length(dofIs), length(dofIs))];
@@ -159,32 +165,50 @@ for mCount = 1:nGrids
     % homogeneous Dirichlet BCs
     % master domain
     % get nodes from master domain (not in the interface)
-    nodesLatMaster = unique(masterMesh.surfaces(masterMesh.surfaceTag == 1,:));
+    nodesLatMaster = unique(masterMesh.surfaces(masterMesh.surfaceTag == 2,:));
     % extract nodes not belonging to the interface
     nodesLatMaster = nodesLatMaster(~ismember(nodesLatMaster, nodesMaster));
     % get corresponding DoFs in the linear system
     dofLatMaster = nodesLatMaster;
     dofLatMaster = getGlobalDofs(dofLatMaster,dofM,dofS,dofIm,dofIs,'master');
+    % evalutate analytical solution on dirichlet nodes of the master domain
+    x = masterMesh.coordinates(nodesLatMaster,1);
+    y = masterMesh.coordinates(nodesLatMaster,2);
+    z = masterMesh.coordinates(nodesLatMaster,3);
+    fDir = u_anal(x,y,z);
+    
     % Apply Dirichlet BCs with standard method (1 in the main diagonal)
-    [K,f] = applyDir(dofLatMaster, zeros(length(dofLatMaster),1), K, f);
+    [K,f] = applyDir(dofLatMaster, fDir, K, f);
 
     % slave domain
-    nodesLatSlave = unique(slaveMesh.surfaces(slaveMesh.surfaceTag == 1,:));
+    nodesLatSlave = unique(slaveMesh.surfaces(slaveMesh.surfaceTag == 2,:));
     % extract nodes not belonging to the interface
     nodesLatSlave = nodesLatSlave(~ismember(nodesLatSlave, nodesSlave));
     % get corresponding DoFs in the linear system
     dofLatSlave = nodesLatSlave; % x direction is fixed
     dofLatSlave = getGlobalDofs(dofLatSlave,dofM,dofS,dofIm,dofIs,'slave');
+    % evaluate analytical solution on dirichlet nodes of the slave domain
+    x = slaveMesh.coordinates(nodesLatSlave,1);
+    y = slaveMesh.coordinates(nodesLatSlave,2);
+    z = slaveMesh.coordinates(nodesLatSlave,3);
+    fDir = u_anal(x,y,z);
+
     % Apply Dirichlet BCs
-    [K,f] = applyDir(dofLatSlave, zeros(length(dofLatSlave),1), K, f);
+    [K,f] = applyDir(dofLatSlave, fDir, K, f);
 
     % master interface
-    nodesLatMaster = unique(masterMesh.surfaces(masterMesh.surfaceTag == 1,:));
+    nodesLatMaster = unique(masterMesh.surfaces(masterMesh.surfaceTag == 2,:));
     nodesLatInt = nodesLatMaster(ismember(nodesLatMaster, nodesMaster));
     dofLatInt = nodesLatInt;
     dofLatInt = getGlobalDofs(dofLatInt,dofM,dofS,dofIm,dofIs,'interfaceMaster');
+    % evalutate analytical solution on dirichlet nodes of the master
+    % interface
+    x = masterMesh.coordinates(nodesLatInt,1);
+    y = masterMesh.coordinates(nodesLatInt,2);
+    z = masterMesh.coordinates(nodesLatInt,3);
+    fDir = u_anal(x,y,z);
     % Apply Dirichlet BCs
-    [K,f] = applyDir(dofLatInt, zeros(length(dofLatInt),1), K, f);
+    [K,f] = applyDir(dofLatInt, fDir, K, f);
     %
     % if strcmp(sol_scheme,'SP')
     %     % slave interface
@@ -231,7 +255,6 @@ for mCount = 1:nGrids
 
 
     % Computing errors
-    u_anal = @(x,y,z) cos(pi*y).*cos(pi*z).*(2*x - x.^2 + sin(pi*x));
     % analytical solution
     u_anal_left = u_anal(leftMesh.coordinates(:,1), leftMesh.coordinates(:,2), leftMesh.coordinates(:,3));
     u_anal_right = u_anal(rightMesh.coordinates(:,1), rightMesh.coordinates(:,2),  rightMesh.coordinates(:,3));
@@ -260,74 +283,109 @@ for mCount = 1:nGrids
         plotParaview(leftMesh,fNameLeft, u_left', 'x')
         plotParaview(rightMesh,fNameRight, u_right', 'x')
 
-
         fNameLeft = strcat(strLeft,'_errLeft','_h',num2str(mCount));
         fNameRight = strcat(strLeft,'_errRight','_h',num2str(mCount));
-        plotParaview(leftMesh,fNameLeft, err_left_rel', 'x')
-        plotParaview(rightMesh,fNameRight, err_right_rel', 'x')
+        plotParaview(leftMesh,fNameLeft, err_left', 'x')
+        plotParaview(rightMesh,fNameRight, err_right', 'x')
+
+        % plotParaview(leftMesh,'Anal_left', u_anal_left', 'x')
+        % plotParaview(rightMesh,'Anal_right', u_anal_right', 'x')
     end
 end
 
-%     %% Error Analysis
-%     % L2 error
-%     if strcmp(flagTop, 'master')
-%         L2Master = (u_anal_top - u_left).^2;
-%         L2Slave = (u_anal_bot - u_right).^2;
-%     else
-%         L2Slave = (u_anal_top - u_left).^2;
-%         L2Master = (u_anal_bot - u_right).^2;
-%     end
-% 
-%     L2Slave(isinf(L2Slave)) = 0;
-%     L2Master(isinf(L2Master)) = 0;
-%     L2Slave(isnan(L2Slave)) = 0;
-%     L2Master(isnan(L2Master)) = 0;
-%     L2Slave = sqrt(L2Slave'*aNslave);
-%     L2Master = sqrt(L2Master'*aNmaster);
-%     brokenL2 = sqrt(L2Master^2 + L2Slave^2);
-% 
-%     % H1 error
-% 
-%     H1Master = zeros(masterMesh.nSurfaces,1);
-%     H1Slave = zeros(slaveMesh.nSurfaces,1);
-%     % Master surface
-%     for el = 1:masterMesh.nSurfaces
-%         top = masterMesh.surfaces(el, 1:masterMesh.surfaceNumVerts(el));
-%         N = getDerBasisF(elemsMaster.tri,el);
-%         vol = findVolume(elemsMaster.tri,el);
-%         if strcmp(flagTop,'master')
-%             u_ex = u_anal_top(top);
-%             u_h = u_left(top);
-%         else
-%             u_ex = u_anal_bot(top);
-%             u_h = u_right(top);
-%         end
-%         H1Master(el) = (N*(u_ex-u_h))'*(N*(u_ex-u_h));
-%         H1Master(el) = H1Master(el)*vol;
-%     end
-% 
-%     % Slave surface
-%     for el = 1:slaveMesh.nSurfaces
-%         top = slaveMesh.surfaces(el, 1:slaveMesh.surfaceNumVerts(el));
-%         N = getDerBasisF(elemsSlave.tri,el);
-%         vol = findVolume(elemsSlave.tri,el);
-%         if strcmp(flagTop,'master')
-%             u_ex = u_anal_bot(top);
-%             u_h = u_right(top);
-%         else
-%             u_ex = u_anal_top(top);
-%             u_h = u_left(top);
-%         end
-%         H1Slave(el) = (N*(u_ex-u_h))'*(N*(u_ex-u_h));
-%         H1Slave(el) = H1Slave(el)*vol;
-%     end
-% 
-%     %H1 seminorms squared
-%     H1Slave = sqrt(sum(H1Slave));
-%     H1Master = sqrt(sum(H1Master));
-%     % H1Slave = sqrt(H1Slave+L2Slave^2);
-%     % H1Master = sqrt(H1Master+L2Master^2);
-%     brokenH1 = sqrt(H1Master^2 + H1Slave^2);
+    %% Error Analysis
+    % L2 error
+    if strcmp(flagLeft, 'master')
+        L2Master = (u_anal_left - u_left).^2;
+        L2Slave = (u_anal_right - u_right).^2;
+    else
+        L2Slave = (u_anal_left - u_left).^2;
+        L2Master = (u_anal_right - u_right).^2;
+    end
+    
+    % L2 error
+    L2Slave(isinf(L2Slave)) = 0;
+    L2Master(isinf(L2Master)) = 0;
+    L2Slave(isnan(L2Slave)) = 0;
+    L2Master(isnan(L2Master)) = 0;
+    L2Slave = sqrt(L2Slave'*vNslave);
+    L2Master = sqrt(L2Master'*vNmaster);
+    brokenL2 = sqrt(L2Master^2 + L2Slave^2);
+
+    % L2 error at the interfaces
+    % get area of master interface
+    elemIntMaster = Elements(intMaster, gauss);
+    elemIntSlave = Elements(intSlave, gauss);
+    aMaster = zeros(length(nodesMaster),1);
+    aSlave = zeros(length(nodesSlave),1);
+    for el = 1:intMaster.nSurfaces
+        nodes = intMaster.surfaces(el,:);
+        aMaster(nodes) = aMaster(nodes) + elemIntMaster.quad.findNodeArea(el);
+    end
+    for el = 1:intSlave.nSurfaces
+        nodes = intSlave.surfaces(el,:);
+        aSlave(nodes) = aSlave(nodes) + elemIntSlave.quad.findNodeArea(el);
+    end
+
+    
+    if strcmp(flagLeft, 'master')
+        L2MasterInt = (u_anal_left(nodesMaster) - u_left(nodesMaster)).^2;
+        L2SlaveInt = (u_anal_right(nodesSlave) - u_right(nodesSlave)).^2;
+    else
+        L2SlaveInt = (u_anal_left(nodesSlave) - u_left(nodesSlave)).^2;
+        L2MasterInt = (u_anal_right(nodesMaster) - u_right(nodesMaster)).^2;
+    end
+
+    L2SlaveInt(isinf(L2SlaveInt)) = 0;
+    L2MasterInt(isinf(L2MasterInt)) = 0;
+    L2SlaveInt(isnan(L2SlaveInt)) = 0;
+    L2MasterInt(isnan(L2MasterInt)) = 0;
+    L2SlaveInt = sqrt(L2SlaveInt'*aSlave);
+    L2MasterInt = sqrt(L2MasterInt'*aMaster);
+
+
+    % 
+    % H1 error
+    H1Master = zeros(masterMesh.nCells,1);
+    H1Slave = zeros(slaveMesh.nCells,1);
+    % Master surface
+    for el = 1:masterMesh.nSurfaces
+        top = masterMesh.cells(el, 1:masterMesh.cellNumVerts(el));
+        [N,dJWeighed] = elemsMaster.hexa.getDerBasisFAndDet(el,1);
+        if strcmp(flagLeft,'master')
+            u_ex = u_anal_left(top);
+            u_h = u_left(top);
+        else
+            u_ex = u_anal_right(top);
+            u_h = u_right(top);
+        end
+        Nu_trans = pagemtimes(N,(u_ex-u_h));
+        Hs = pagemtimes(Nu_trans,'ctranspose',Nu_trans,'none');
+        Hs= Hs.*reshape(dJWeighed,1,1,[]);
+        H1Master(el) = sum(Hs,3);
+    end
+
+    % Slave surface
+    for el = 1:slaveMesh.nSurfaces
+        top = slaveMesh.cells(el, 1:slaveMesh.cellNumVerts(el));
+        [N,dJWeighed] = elemsSlave.hexa.getDerBasisFAndDet(el,1);
+        if strcmp(flagLeft,'master')
+            u_ex = u_anal_right(top);
+            u_h = u_right(top);
+        else
+            u_ex = u_anal_left(top);
+            u_h = u_left(top);
+        end
+        Nu_trans = pagemtimes(N,(u_ex-u_h));
+        Hs = pagemtimes(Nu_trans,'ctranspose',Nu_trans,'none');
+        Hs= Hs.*reshape(dJWeighed,1,1,[]);
+        H1Slave(el) = sum(Hs,3);
+    end
+
+    %H1 seminorms squared
+    H1Slave = sqrt(sum(H1Slave));
+    H1Master = sqrt(sum(H1Master));
+    brokenH1 = sqrt(H1Master^2 + H1Slave^2);
 % 
 %     % SAVING OUTPUT DATAS IN TEXT FILES
 %     if strcmp(integration,'RBF')
@@ -337,7 +395,8 @@ end
 %         fID1 = fopen(strcat(tmp,'L2_sb.txt'), 'a');
 %         fID2 = fopen(strcat(tmp,'H1_sb.txt'), 'a');
 %     elseif strcmp(integration, 'EB')
-%         fID1 = fopen(strcat(tmp,'L2_eb.txt'), 'a');
+%         fID1 = fopen(strcat(tmp,'L2_eb.tx);
+    %L2Master = sqrt(L2Master't'), 'a');
 %         fID2 = fopen(strcat(tmp,'H1_eb.txt'), 'a');
 %     end
 %     fprintf(fID1,'%2.5f %2.10f %2.10f %2.10f \n', h, brokenL2, L2Master, L2Slave);
