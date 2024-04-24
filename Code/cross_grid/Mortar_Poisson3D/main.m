@@ -19,14 +19,14 @@ fPlot = true;
 % selecting solution method
 % COND --> condansated approach
 % SP --> saddle point matrix
-sol_scheme = 'SP';
+sol_scheme = 'COND';
 
 % IMPORT MESHES
 leftMesh = Mesh();
 rightMesh = Mesh();
 
-leftMesh.importGMSHmesh('mesh/domainLeft_H1.msh');
-rightMesh.importGMSHmesh('mesh/domainRight_H1.msh');
+leftMesh.importGMSHmesh('mesh/domainLeftCurve_H1.msh');
+rightMesh.importGMSHmesh('mesh/domainRightCurve_H1.msh');
 
 % file Names for input meshes
 
@@ -85,7 +85,7 @@ for mCount = 1:nGrids
     % boundInt = boundInt(ismember(boundInt, nodesSlave));
     % 
     nGPrbf = 5;
-    nINTrbf = 6;
+    nINTrbf = 10;
     % compute mortar operator and matrices
     [E, M, D] = compute_mortar3D(intMaster, intSlave, cs.elemConnectivity, nGPrbf, nINTrbf);
 
@@ -278,15 +278,15 @@ for mCount = 1:nGrids
             strLeft = 'slaveLeft';
         end
 
-        fNameLeft = strcat(strLeft,'_SolLeft','_h',num2str(mCount));
-        fNameRight = strcat(strLeft,'_SolRight','_h',num2str(mCount));
+        fNameLeft = strcat(strLeft,'_SolLeftCurve','_h',num2str(mCount));
+        fNameRight = strcat(strLeft,'_SolRightCurve','_h',num2str(mCount));
         plotParaview(leftMesh,fNameLeft, u_left', 'x')
         plotParaview(rightMesh,fNameRight, u_right', 'x')
 
-        fNameLeft = strcat(strLeft,'_errLeft','_h',num2str(mCount));
-        fNameRight = strcat(strLeft,'_errRight','_h',num2str(mCount));
-        plotParaview(leftMesh,fNameLeft, err_left', 'x')
-        plotParaview(rightMesh,fNameRight, err_right', 'x')
+        fNameLeft = strcat(strLeft,'_errLeftCurve','_h',num2str(mCount));
+        fNameRight = strcat(strLeft,'_errRightCurve','_h',num2str(mCount));
+        plotParaview(leftMesh,fNameLeft, err_left_rel', 'x')
+        plotParaview(rightMesh,fNameRight, err_right_rel', 'x')
 
         % plotParaview(leftMesh,'Anal_left', u_anal_left', 'x')
         % plotParaview(rightMesh,'Anal_right', u_anal_right', 'x')

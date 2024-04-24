@@ -26,7 +26,7 @@ close all; clear
 tol = 1.e-2;
 
 % master and slave surfaces node position along X axis
-nMaster = 8;
+nMaster = 100;
 nSlave = 8;
 master = zeros(nMaster,2); % coordinates of master side
 slave = zeros(nSlave,2);
@@ -37,16 +37,16 @@ slave(:,1) = (linspace(-1,1,nSlave))';
 % we set the maximum overlapping to 1/10 of the grid size
 sm = abs(master(2)-master(1));
 ss = abs(slave(2)-slave(1));
-fact = 0;
+fact = 0.1;
 master(:,2) = -fact*sm*rand(nMaster,1)+fact*sm*rand(nMaster,1);
 slave(:,2) = -fact*ss*rand(nSlave,1)+fact*ss*rand(nSlave,1);
 
 
  % number of RBF interpolation points for each element
-nInt = 100;
+nInt = 5;
 
 % Number of integration points for RBF testing (GP class taken from GReS)
-nGP = 6;
+nGP = [6];
 
 % Inizialize output matrices
 D = zeros(length(slave), length(slave));
@@ -254,7 +254,7 @@ for el = 1:size(slavetop,1)
     lNod(n2) = lNod(n2) + l/2;
 end
 
-f = @(x) 3 + 0.000001*x;
+f = @(x) sin(5*x);
 fMaster = f(master(:,1)); % analytical function computed on master mesh
 plotSlave = (linspace(-1,1,100))';
 fplotSlave = f(plotSlave);
@@ -273,12 +273,15 @@ fEX = E_EX * fMaster;
 err2EX = (fSlave - fEX).^2;
 errNormEX = sqrt(sum(err2EX.*lNod));
 
-
+c = 0;
 %% PLOTTING INTERPOLATED FUNCTIONS
+if all(master(:,2)==0)
+    c = 0.1;
+end
 figure(1)
-plot(master(:,1), master(:,2), 'b.-', 'LineWidth', 1.5,'MarkerSize',18) % master grid
+plot(master(:,1), c + master(:,2), 'b.-', 'LineWidth', 1.5,'MarkerSize',18) % master grid
 hold on 
-plot(slave(:,1), 0.3 + slave(:,2), 'r.-', 'LineWidth', 1.5, 'MarkerSize',18)
+plot(slave(:,1), slave(:,2), 'r.-', 'LineWidth', 1.5, 'MarkerSize',18)
 ylim([-2 2])
 xlim([-2 2])
 % plot(master, 3+fMaster, 'b')
@@ -307,12 +310,9 @@ plot(nGP, errNormEB, 'ro-')
 xlabel('Number of Gauss Points')
 ylabel('Norm of interpolation error')
 legend('RBF integration', 'Element-based integration')
-
-
-
-
-
-
-
-
-
+set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 16);
+a = get(gca,'XTickLabel');
+set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
+% export figure with quality
+stmp = strcat('Images\', 'err_vs_gp', '.png');
+exportgraphics(gcf,stmp,'Resolution',400)
