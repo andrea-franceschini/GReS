@@ -14,7 +14,7 @@ for el = 1:mesh.nSurfaces
     switch mesh.surfaceVTKType(el)
         case 5 % Triangle
             N = getDerBasisF(elem.tri,el);
-            vol = findVolume(elem.tri,el);
+            vol = findArea(elem.tri,el);
             KLoc = N'*N*vol;
             s1 = 9;
     end

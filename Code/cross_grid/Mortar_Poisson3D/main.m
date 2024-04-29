@@ -12,51 +12,62 @@ u_anal = @(x,y,z) cos(pi*y).*cos(pi*z).*(2*x - x.^2 + sin(pi*x));
 h = @(x) -2-3*pi^2*sin(pi*x)-4*pi^2*x+2*pi^2*x.^2;
 fAn = @(x,y,z) -cos(pi*y).*cos(pi*z).*h(x);
 
-
-% flagPlot: true --> results to Paraview in this directory
-fPlot = true;
-
 % selecting solution method
 % COND --> condansated approach
 % SP --> saddle point matrix
-sol_scheme = 'COND';
+sol_scheme = 'SP';
+
+% Parameters
+nGrids = 1;
+fPlot = 'curve';
+nGP = 5;
+nInt = 5;
+brokenL2 = zeros(nGrids,1);
+brokenH1 = zeros(nGrids,1);
+h = zeros(nGrids,1);
 
 % IMPORT MESHES
-leftMesh = Mesh();
-rightMesh = Mesh();
+masterMesh = Mesh();
+slaveMesh = Mesh();
 
-leftMesh.importGMSHmesh('mesh/domainLeftCurve_H1.msh');
-rightMesh.importGMSHmesh('mesh/domainRightCurve_H1.msh');
+% leftMesh.importGMSHmesh('mesh/domainLeft_H1.msh');
+% rightMesh.importGMSHmesh('mesh/domainRight_H1.msh');
 
 % file Names for input meshes
 
-% fileNameTop = [];
-% fileNameBottom = [];
+% fileNameMaster = [];
+% fileNameSlave = [];
+
+fileNameMaster = 'meshCurve/LeftBlock_curve.msh';
+fileNameSlave = 'meshCurve/RightBlock_curve.msh';
 
 
+% Set the input file name
 % selecting master and slave domain
 flagLeft = 'master';
 if strcmp(flagLeft, 'master')
-    right = 'slave';
-    masterMesh = leftMesh;
-    slaveMesh = rightMesh;
+    % for k = 1:nGrids
+    %     fileNameMaster = [fileNameMaster; strcat('meshConv/LeftBlock_h',num2str(k),'.msh')];
+    %     fileNameSlave = [fileNameSlave; strcat('meshConv/RightBlock_h',num2str(k),'.msh')];
+    % end
+    strLeft = 'masterLeft';
 elseif strcmp(flagLeft, 'slave')
-    bottom = 'master';
-    masterMesh = rightMesh;
-    slaveMesh = leftMesh;
+    % for k = 1:nGrids
+    %     fileNameSlave = [fileNameSlave; strcat('Mesh_conv/LeftBlock_h',num2str(k),'.msh')];
+    %     fileNameMaster = [fileNameMaster; strcat('Mesh_conv/RightBlock_h',num2str(k),'.msh')];
+    % end
+    strLeft = 'slaveLeft';
 end
-
-nGrids = 1;
 
 % Gauss integration for stiffness matrix computation
 gauss = Gauss(12,3,3);
 
 for mCount = 1:nGrids
-    % p_str = strcat(integration,' integration - Mesh size h', num2str(mCount), ' \n');
+    fprintf('Grid h%i nGP = %i  nInt = %i \n',mCount, nGP, nInt);
     % fprintf(p_str)
     % % Import the mesh data into the Mesh object
-    % topMesh.importGMSHmesh(fileNameTop(mCount,:));
-    % bottomMesh.importGMSHmesh(fileNameBottom(mCount,:));
+    masterMesh.importGMSHmesh(fileNameMaster(mCount,:));
+    slaveMesh.importGMSHmesh(fileNameSlave(mCount,:));
     % Element class for further stiffness matrix computation
     elemsMaster = Elements(masterMesh, gauss);
     elemsSlave = Elements(slaveMesh, gauss);
@@ -76,19 +87,8 @@ for mCount = 1:nGrids
     % connectivity matrix between the interfaces
     cs = ContactSearching(intMaster,intSlave,18);
 
-    % h = 1/(length(nodesSlave)-1);
-
-    % get ID of interface nodes belonging to Dirichlet boundary
-    % Constant basis functions are considered for slave elements containing
-    % these nodes (actually this doesn't seem to affect the results)
-    % boundInt = unique(slaveMesh.edges(slaveMesh.edgeTag == 2,:));
-    % boundInt = boundInt(ismember(boundInt, nodesSlave));
-    % 
-    nGPrbf = 5;
-    nINTrbf = 10;
     % compute mortar operator and matrices
-    [E, M, D] = compute_mortar3D(intMaster, intSlave, cs.elemConnectivity, nGPrbf, nINTrbf);
-
+    [E, M, D] = compute_mortar3D(intMaster, intSlave, cs.elemConnectivity, nGP, nInt);
 
     % reordering the matrix of the system
     %
@@ -142,12 +142,12 @@ for mCount = 1:nGrids
 
     if strcmp(sol_scheme, 'SP')
         % complete saddle point matrix
-        K = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofIs));
-            zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofIs));
-            KmIm', zeros(length(dofIm),length(dofS)), KImIm, zeros(length(dofIm),length(dofIs)), -M';
-            zeros(length(dofIs), length(dofM)), KsIs', zeros(length(dofIs), length(dofIm)), KIsIs, D';
-            zeros(length(dofIs), length(dofM)), zeros(length(dofIs), length(dofS)), -M, D,  zeros(length(dofIs), length(dofIs))];
-
+        K = [Kmm, sparse(length(dofM),length(dofS)), KmIm, sparse(length(dofM),length(dofIs)), sparse(length(dofM),length(dofIs));
+            sparse(length(dofS),length(dofM)), Kss, sparse(length(dofS),length(dofIm)), KsIs, sparse(length(dofS),length(dofIs));
+            KmIm', sparse(length(dofIm),length(dofS)), KImIm, sparse(length(dofIm),length(dofIs)), -M';
+            sparse(length(dofIs),length(dofM)), KsIs', sparse(length(dofIs),length(dofIm)), KIsIs, D';
+            sparse(length(dofIs),length(dofM)), sparse(length(dofIs),length(dofS)), -M, D, sparse(length(dofIs),length(dofIs))];
+        %
         f = [f; zeros(length(dofIs),1)];
         listDofs = [dofM;dofS;dofIm; dofIs; dofIs];
     else
@@ -221,267 +221,133 @@ for mCount = 1:nGrids
     % end
 
 
-
-
     % -------------------------------- SOLVE SYSTEM --------------------------
 
     % solve linear system
     u = K\f;
-
+    u_master = zeros(masterMesh.nNodes,1);
+    u_slave = zeros(slaveMesh.nNodes,1);
     l = length(dofM)+length(dofS)+length(dofIm);
     if strcmp(sol_scheme,'SP')
-        u_slave = u(l+1:l+length(dofIs));
+        u_s = u(l+1:l+length(dofIs));
     else
-        u_slave = E*u(length(dofM)+length(dofS)+1:l);
+        u_s = E*u(length(dofM)+length(dofS)+1:l);
     end
 
-    u_left = zeros(leftMesh.nNodes,1);
-    u_right = zeros(rightMesh.nNodes,1);
+    %collect displacement of master domain and slave domain
+    u_master(dofM) = u(1:length(dofM));
+    u_master(dofIm) = u(length(dofM)+length(dofS)+1:length(dofM)+length(dofS)+length(dofIm));
+    u_slave(dofS) = u(length(dofM)+1:length(dofM)+length(dofS));
+    u_slave(dofIs) = u_s;
 
-    %collect displacement of master domain and slave domain, according to user assignment;
-    if strcmp(flagLeft, 'master')
-        u_left(dofM) = u(1:length(dofM));
-        u_left(dofIm) = u(length(dofM)+length(dofS)+1:length(dofM)+length(dofS)+length(dofIm));
-        u_right(dofS) = u(length(dofM)+1:length(dofM)+length(dofS));
-        u_right(dofIs) = u_slave;
-    elseif strcmp(flagLeft, 'slave')
-        u_right(dofM) = u(1:length(dofM));
-        u_right(dofIm) = u(length(dofM)+length(dofS)+1:length(dofM)+length(dofS)+length(dofIm));
-        u_left(dofS) = u(length(dofM)+1:length(dofM)+length(dofS));
-        u_left(dofIs) = u_slave;
-    end
-
-
-
-
-    % Computing errors
-    % analytical solution
-    u_anal_left = u_anal(leftMesh.coordinates(:,1), leftMesh.coordinates(:,2), leftMesh.coordinates(:,3));
-    u_anal_right = u_anal(rightMesh.coordinates(:,1), rightMesh.coordinates(:,2),  rightMesh.coordinates(:,3));
+    u_anal_master = u_anal(masterMesh.coordinates(:,1), masterMesh.coordinates(:,2), masterMesh.coordinates(:,3));
+    u_anal_slave = u_anal(slaveMesh.coordinates(:,1), slaveMesh.coordinates(:,2),  slaveMesh.coordinates(:,3));
 
     % Plotting point-wise error
-    err_left_rel = abs((u_anal_left - u_left)./u_anal_left);
-    err_right_rel = abs((u_anal_right - u_right)./u_anal_right);
-    err_left_rel(isinf(err_left_rel)) = 0;
-    err_right_rel(isinf(err_right_rel)) = 0;
-    err_left_rel(isnan(err_left_rel)) = 0;
-    err_right_rel(isnan(err_right_rel)) = 0;
-    %
-    err_left = abs(u_anal_left - u_left);
-    err_right = abs(u_anal_right - u_right);
+    postProcMaster = postProc(masterMesh, u_master, u_anal_master,gauss);
+    postProcSlave = postProc(slaveMesh, u_slave, u_anal_slave,gauss);
 
-    if fPlot
-        % Plot results to Paraview
-        if strcmp(flagLeft,'master')
-            strLeft = 'masterLeft';
-        else
-            strLeft = 'slaveLeft';
-        end
+    % % Plotting point-wise error
+    err_rel_master = computeRelError(postProcMaster);
+    err_rel_slave = computeRelError(postProcSlave);
 
-        fNameLeft = strcat(strLeft,'_SolLeftCurve','_h',num2str(mCount));
-        fNameRight = strcat(strLeft,'_SolRightCurve','_h',num2str(mCount));
-        plotParaview(leftMesh,fNameLeft, u_left', 'x')
-        plotParaview(rightMesh,fNameRight, u_right', 'x')
+    % if fPlot ==  true
+    %     fNameMaster = strcat(strLeft,'_SolMaster','_h',num2str(mCount));
+    %     fNameSlave = strcat(strLeft,'_SolSlave','_h',num2str(mCount));
+    %     plotParaview(masterMesh,fNameMaster, u_master', 'x')
+    %     plotParaview(slaveMesh,fNameSlave, u_slave', 'x')
+    % 
+    %     fNameMaster = strcat(strLeft,'_errMaster','_h',num2str(mCount));
+    %     fNameSlave = strcat(strLeft,'_errSlave','_h',num2str(mCount));
+    %     plotParaview(masterMesh,fNameMaster, err_rel_master', 'x')
+    %     plotParaview(slaveMesh,fNameSlave, err_rel_slave', 'x')
+    % end
 
-        fNameLeft = strcat(strLeft,'_errLeftCurve','_h',num2str(mCount));
-        fNameRight = strcat(strLeft,'_errRightCurve','_h',num2str(mCount));
-        plotParaview(leftMesh,fNameLeft, err_left_rel', 'x')
-        plotParaview(rightMesh,fNameRight, err_right_rel', 'x')
+    if strcmp(fPlot,'curve')
+        fNameMaster = strcat(strLeft,'_SolMasterCurve','_h',num2str(mCount));
+        fNameSlave = strcat(strLeft,'_SolSlaveCurve','_h',num2str(mCount));
+        plotParaview(masterMesh,fNameMaster, u_master', 'x')
+        plotParaview(slaveMesh,fNameSlave, u_slave', 'x')
 
-        % plotParaview(leftMesh,'Anal_left', u_anal_left', 'x')
-        % plotParaview(rightMesh,'Anal_right', u_anal_right', 'x')
+        fNameMaster = strcat(strLeft,'_errMasterCurve','_h',num2str(mCount));
+        fNameSlave = strcat(strLeft,'_errSlaveCurve','_h',num2str(mCount));
+        plotParaview(masterMesh,fNameMaster, err_rel_master', 'x')
+        plotParaview(slaveMesh,fNameSlave, err_rel_slave', 'x')
     end
+
+
+    % L2 error
+    L2Master = computeL2error(postProcMaster);
+    L2Slave = computeL2error(postProcSlave);
+    brokenL2(mCount) = sqrt(L2Master^2 + L2Slave^2);
+
+    % H1 error
+    H1Master = computeH1error(postProcMaster);
+    H1Slave = computeH1error(postProcSlave);
+    % Master surface
+    brokenH1(mCount) = sqrt(H1Master^2 + H1Slave^2);
+    h(mCount) = getGridSize(postProcMaster);
 end
 
-    %% Error Analysis
-    % L2 error
-    if strcmp(flagLeft, 'master')
-        L2Master = (u_anal_left - u_left).^2;
-        L2Slave = (u_anal_right - u_right).^2;
-    else
-        L2Slave = (u_anal_left - u_left).^2;
-        L2Master = (u_anal_right - u_right).^2;
+% create output structure (or appen to existing one) and write to file
+if ~isfile("Results.mat")
+    outStruct= struct('nGP', nGP, 'nInt', nInt,...
+        'MeshSizes', h, 'L2', brokenL2, 'H1', brokenH1);
+    save("Results.mat", "outStruct");
+else
+    out = load('Results.mat', "outStruct");
+    outStruct = out.outStruct; 
+    newStruct= struct('nGP', nGP, 'nInt', nInt,...
+        'MeshSizes', h, 'L2', brokenL2, 'H1', brokenH1);
+    outStruct = [outStruct; newStruct];
+    save("Results.mat", "outStruct");
+end
+
+%% PLOT CONVERGENCE PROFILES using struct datas
+out = load('Results.mat', "outStruct");
+outStruct = out.outStruct;
+outStruct = outStruct(1:end);
+results = struct2cell(outStruct);
+
+tiledlayout(2,1)
+axL2 = nexttile;
+axH1 = nexttile;
+axL2.NextPlot = "add";
+axH1.NextPlot = "add";
+
+param = 'nInt';
+marker = {'o', '^', 's', '*'};
+getFirst = @(v)v{1}; 
+getprop = @(options, idx)getFirst(circshift(options,-idx+1));
+
+% plot convergence profiles
+for ii = 1:size(results,2)
+    int = results{1,ii};
+    if strcmp(param, 'GP')
+        parm = results{1,ii};
+    else strcmp(param,'nInt')
+        parm = results{2,ii};
     end
-    
-    % L2 error
-    L2Slave(isinf(L2Slave)) = 0;
-    L2Master(isinf(L2Master)) = 0;
-    L2Slave(isnan(L2Slave)) = 0;
-    L2Master(isnan(L2Master)) = 0;
-    L2Slave = sqrt(L2Slave'*vNslave);
-    L2Master = sqrt(L2Master'*vNmaster);
-    brokenL2 = sqrt(L2Master^2 + L2Slave^2);
+    lgd = strcat(param,' = ',num2str(parm));
+    color = 'k';
+    mark = getprop(marker,ii);
+    loglog(axL2,results{3,ii}, results{4,ii},'Color',color,'Marker',mark,...
+        'DisplayName',lgd,'LineWidth', 1);
+    loglog(axH1,results{3,ii}, results{5,ii},'Color',color,'Marker',mark,...
+        'DisplayName',lgd,'LineWidth', 1);
+end
+set(axL2, 'YScale', 'log')
+set(axL2, 'XScale', 'log')
+set(axH1, 'YScale', 'log')
+set(axH1, 'XScale', 'log')
+legend(axL2);
+legend(axH1);
+xlabel('Mesh size');
+ylabel(axL2,'L2 norm of error')
+ylabel(axH1,'H1 norm of error')
 
-    % L2 error at the interfaces
-    % get area of master interface
-    elemIntMaster = Elements(intMaster, gauss);
-    elemIntSlave = Elements(intSlave, gauss);
-    aMaster = zeros(length(nodesMaster),1);
-    aSlave = zeros(length(nodesSlave),1);
-    for el = 1:intMaster.nSurfaces
-        nodes = intMaster.surfaces(el,:);
-        aMaster(nodes) = aMaster(nodes) + elemIntMaster.quad.findNodeArea(el);
-    end
-    for el = 1:intSlave.nSurfaces
-        nodes = intSlave.surfaces(el,:);
-        aSlave(nodes) = aSlave(nodes) + elemIntSlave.quad.findNodeArea(el);
-    end
-
-    
-    if strcmp(flagLeft, 'master')
-        L2MasterInt = (u_anal_left(nodesMaster) - u_left(nodesMaster)).^2;
-        L2SlaveInt = (u_anal_right(nodesSlave) - u_right(nodesSlave)).^2;
-    else
-        L2SlaveInt = (u_anal_left(nodesSlave) - u_left(nodesSlave)).^2;
-        L2MasterInt = (u_anal_right(nodesMaster) - u_right(nodesMaster)).^2;
-    end
-
-    L2SlaveInt(isinf(L2SlaveInt)) = 0;
-    L2MasterInt(isinf(L2MasterInt)) = 0;
-    L2SlaveInt(isnan(L2SlaveInt)) = 0;
-    L2MasterInt(isnan(L2MasterInt)) = 0;
-    L2SlaveInt = sqrt(L2SlaveInt'*aSlave);
-    L2MasterInt = sqrt(L2MasterInt'*aMaster);
-
-
-    % 
-    % H1 error
-    H1Master = zeros(masterMesh.nCells,1);
-    H1Slave = zeros(slaveMesh.nCells,1);
-    % Master surface
-    for el = 1:masterMesh.nSurfaces
-        top = masterMesh.cells(el, 1:masterMesh.cellNumVerts(el));
-        [N,dJWeighed] = elemsMaster.hexa.getDerBasisFAndDet(el,1);
-        if strcmp(flagLeft,'master')
-            u_ex = u_anal_left(top);
-            u_h = u_left(top);
-        else
-            u_ex = u_anal_right(top);
-            u_h = u_right(top);
-        end
-        Nu_trans = pagemtimes(N,(u_ex-u_h));
-        Hs = pagemtimes(Nu_trans,'ctranspose',Nu_trans,'none');
-        Hs= Hs.*reshape(dJWeighed,1,1,[]);
-        H1Master(el) = sum(Hs,3);
-    end
-
-    % Slave surface
-    for el = 1:slaveMesh.nSurfaces
-        top = slaveMesh.cells(el, 1:slaveMesh.cellNumVerts(el));
-        [N,dJWeighed] = elemsSlave.hexa.getDerBasisFAndDet(el,1);
-        if strcmp(flagLeft,'master')
-            u_ex = u_anal_right(top);
-            u_h = u_right(top);
-        else
-            u_ex = u_anal_left(top);
-            u_h = u_left(top);
-        end
-        Nu_trans = pagemtimes(N,(u_ex-u_h));
-        Hs = pagemtimes(Nu_trans,'ctranspose',Nu_trans,'none');
-        Hs= Hs.*reshape(dJWeighed,1,1,[]);
-        H1Slave(el) = sum(Hs,3);
-    end
-
-    %H1 seminorms squared
-    H1Slave = sqrt(sum(H1Slave));
-    H1Master = sqrt(sum(H1Master));
-    brokenH1 = sqrt(H1Master^2 + H1Slave^2);
-% 
-%     % SAVING OUTPUT DATAS IN TEXT FILES
-%     if strcmp(integration,'RBF')
-%         fID1 = fopen(strcat(tmp,'L2_rbf.txt'), 'a');
-%         fID2 = fopen(strcat(tmp,'H1_rbf.txt'), 'a');
-%     elseif strcmp(integration, 'SB')
-%         fID1 = fopen(strcat(tmp,'L2_sb.txt'), 'a');
-%         fID2 = fopen(strcat(tmp,'H1_sb.txt'), 'a');
-%     elseif strcmp(integration, 'EB')
-%         fID1 = fopen(strcat(tmp,'L2_eb.tx);
-    %L2Master = sqrt(L2Master't'), 'a');
-%         fID2 = fopen(strcat(tmp,'H1_eb.txt'), 'a');
-%     end
-%     fprintf(fID1,'%2.5f %2.10f %2.10f %2.10f \n', h, brokenL2, L2Master, L2Slave);
-%     fprintf(fID2,'%2.5f %2.10f %2.10f %2.10f \n', h, brokenH1, H1Master, H1Slave);
-% end
-% 
-% %% POST PROCESSING ---- PLOT CONVERGENCE PROFILES
-% 
-% fprintf('Plotting graphs \n')
-% % H1 error plot
-% leg_str = [];
-% figure(1)
-% if any(strcmp(int_str, 'RBF'))
-%     H1_RBF = load(strcat(tmp,'H1_rbf.txt'));
-%     loglog(H1_RBF(:,1), H1_RBF(:,2), '--ro', 'LineWidth', 1, 'MarkerSize', 8.5)
-%     hold on
-%     %loglog(H1_RBF(:,1), H1RBFgp4, '--r^', 'LineWidth', 1, 'MarkerSize', 8.5)
-%     % loglog(H1_RBF(:,1), H1RBFgp6, '--rs',  'LineWidth', 1, 'MarkerSize', 8.5)
-%     leg_str = [leg_str, "RBF integration"];
-% end
-% 
-% 
-% if any(strcmp(int_str, 'SB'))
-%     H1_SB = load(strcat(tmp,'H1_sb.txt'));
-%     loglog(H1_SB(:,1), H1_SB(:,2), '-ko',  'LineWidth', 1, 'MarkerSize', 8.5)
-%     hold on
-%     % loglog(H1_SB(:,1), H1_SB(:,3), '--k*')
-%     % loglog(H1_SB(:,1), H1_SB(:,4), '--ks')
-%     leg_str = [leg_str, "SB integration"];
-% end
-% 
-% if any(strcmp(int_str, 'EB'))
-%     H1_EB = load(strcat(tmp,'H1_eb.txt'));
-%     loglog(H1_EB(:,1), H1_EB(:,2), '-bo', 'LineWidth', 1, 'MarkerSize', 8.5)
-%     hold on
-%     % loglog(H1_EB(:,1), H1_EB(:,3), '--b*')
-%     % loglog(H1_EB(:,1), H1_EB(:,4), '--bs')
-%     leg_str = [leg_str, "EB integration"];
-% end
-% legend(leg_str, 'Location', 'northwest');
-% tit_str = strcat("H1 error plot with coarser top domain as ",flagTop);
-% title(tit_str);
-% xticks([])
-% xlabel('Mesh size')
-% ylabel('H1 energy broken error seminorm')
-% set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14);
-% a = get(gca,'XTickLabel');
-% set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 12)
-% 
-% % L2 error plot
-% leg_str = [];
-% figure(2)
-% if any(strcmp(int_str, 'RBF'))
-%     L2_RBF = load(strcat(tmp,'L2_rbf.txt'));
-%     loglog(L2_RBF(:,1), L2_RBF(:,2), '--ro', 'LineWidth', 1, 'MarkerSize', 8.5)
-%     hold on
-%     %loglog(H1_RBF(:,1), H1RBFgp4, '--r^', 'LineWidth', 1, 'MarkerSize', 8.5)
-%     % loglog(H1_RBF(:,1), H1RBFgp6, '--rs',  'LineWidth', 1, 'MarkerSize', 8.5)
-%     leg_str = [leg_str, "RBF integration"];
-% end
-% 
-% 
-% if any(strcmp(int_str, 'SB'))
-%     L2_SB = load(strcat(tmp,'L2_sb.txt'));
-%     loglog(L2_SB(:,1), L2_SB(:,2), '-ko',  'LineWidth', 1, 'MarkerSize', 8.5)
-%     hold on
-%     % loglog(H1_SB(:,1), H1_SB(:,3), '--k*')
-%     % loglog(H1_SB(:,1), H1_SB(:,4), '--ks')
-%     leg_str = [leg_str, "SB integration"];
-% end
-% 
-% if any(strcmp(int_str, 'EB'))
-%     L2_EB = load(strcat(tmp,'L2_eb.txt'));
-%     loglog(L2_EB(:,1), L2_EB(:,2), '-bo', 'LineWidth', 1, 'MarkerSize', 8.5)
-%     hold on
-%     % loglog(H1_EB(:,1), H1_EB(:,3), '--b*')
-%     % loglog(H1_EB(:,1), H1_EB(:,4), '--bs')
-%     leg_str = [leg_str, "EB integration"];
-% end
-% legend(leg_str, 'Location', 'northwest');
-% tit_str = strcat("L2 error plot with coarser top domain as ",flagTop);
-% title(tit_str);
-% xticks([])
-% xlabel('Mesh size')
-% ylabel('L2 broken error norm')
-% set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14);
-% a = get(gca,'XTickLabel');
-% set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 12)
+set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 12);
+a = get(axL2,'XTickLabel');
+set(axL2,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 9)
+a = get(axH1,'XTickLabel');
+set(axH1,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 9)
