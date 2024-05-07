@@ -67,7 +67,8 @@ D = D(nodesSlave, nodesSlave);
 %% Approximate cross matrix computation
 
 switch tagMethod
-    case "RBF"
+    case "RBF_node" 
+        % rbf interpolation is applied to the entire support of a master nodes
         for i = nodesMaster'
             % get element of the support
             [master_elems,~] = find(mastertop == i);
@@ -123,6 +124,63 @@ switch tagMethod
                 % populate cross matrix
                 M(i,slavetop(j,1)) = M(i,slavetop(j,1)) + intVal(1);
                 M(i,slavetop(j,2)) = M(i,slavetop(j,2)) + intVal(2);
+            end
+        end
+    case "RBF"
+        % rbf interpolation is applied to a single element for each of its
+        % nodes
+        for i = 1:size(mastertop,1)
+            % get shape function values and interpolation points
+            % coordinates
+            [vals, ptsInt] = computeBasisF1D(i, nInt, mastertop, master);
+            % compute interpolation matrix
+            fiMM = zeros(length(ptsInt), length(ptsInt));
+            % compute RBF weight of interpolant
+            % circumradius of the master element
+            r = sqrt((max(ptsInt(:,1)) - min(ptsInt(:,1)))^2 + (max(ptsInt(:,2)) - min(ptsInt(:,2)))^2);
+            for ii = 1:length(ptsInt)
+                d = sqrt((ptsInt(:,1) - ptsInt(ii,1)).^2 + ((ptsInt(:,2)) - ptsInt(ii,2)).^2);
+                rbf = pos(1-d./r).^4.*(1+d./r);
+                fiMM(ii,:) = rbf;
+            end
+            % solve local system to get weight of interpolant
+            weightF = fiMM\vals;
+            weight1 = fiMM\ones(size(ptsInt,1),1);
+            % get slave elements connected to the master
+            slave_elems = find(elem_connectivity(i,:));
+            % loop trough connected slave elements
+            for j = slave_elems
+                % get nodes of slave elements
+                a = slave(slavetop(j,1),:);
+                b = slave(slavetop(j,2),:);
+                % get Gauss Points position in the real space
+                ptsGauss = ref2nod(gpRef, a, b);
+                fiNM = zeros(size(ptsGauss,1), size(ptsInt,1));
+                % compute interpolant on local Gauss points
+                for jj = 1:size(ptsGauss,1)
+                    d = sqrt((ptsInt(:,1) - ptsGauss(jj,1)).^2 + ((ptsInt(:,2)) - ptsGauss(jj,2)).^2);
+                    rbf = pos(1-d./r).^4.*(1+d./r);
+                    fiNM(jj,:) = rbf;
+                end
+                NMaster = (fiNM*weightF)./(fiNM*weight1);
+                NMaster(isnan(NMaster)) = 0;
+                NMaster(NMaster < 0) = 0;
+                NMaster(NMaster > 1) = 0;
+                % get basis function on Gauss points
+                if any(ismember(edgeDir,j))
+                    NSlave = ones(length(gpRef),2);
+                else
+                    NSlave = 0.5 + gpRef.*[-0.5 0.5];
+                end
+                % Compute local M matrix using Gauss integration
+                Mloc = NMaster'*(NSlave.*gpWeight);
+                % Apply the determinant of the jacobian (lenght of the
+                % segment)
+                Mloc = Mloc*(0.5*sqrt((b(1)-a(1))^2 + (b(2)-a(2))^2));
+                % populate cross matrix
+                idMaster = [mastertop(i,1); mastertop(i,2)];
+                idSlave = [slavetop(j,1); slavetop(j,2)];
+                M(idMaster, idSlave) = M(idMaster, idSlave) + Mloc;
             end
         end
     case "SB"
@@ -200,6 +258,11 @@ end
 M = M(nodesMaster, nodesSlave);
 M = M';
 E = D\M;
+if strcmp(tagMethod,'RBF_node') 
+    % rescaling the rows of the Mortar operator to improve convergence
+    % in the case of node-wise interpolation
+    E = E./sum(E,2);
+end
 end
 
 

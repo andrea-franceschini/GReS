@@ -38,12 +38,12 @@ classdef Triangle < handle
     end
     
     %   Elements volume calculation
-    function vol = findVolume(obj,idTetra)
-      vol = zeros(length(idTetra),1);
+    function vol = findArea(obj,idTri)
+      vol = zeros(length(idTri),1);
 %       obj.volSign = ones(obj.mesh.nCells,1);
 %       obj.volNod = zeros(obj.mesh.nNodes,1);
       i = 0;
-      for el = idTetra
+      for el = idTri
         i = i + 1;
         top = obj.mesh.surfaces(el,1:3);
         vol(i) = 0.5*det([1 obj.mesh.coordinates(top(1),1:2);

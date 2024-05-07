@@ -3,7 +3,7 @@
 Mesh.Format = 1; // msh output format
 Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 
-lc = 0.01875;
+lc = 0.0625;
 // This variable can then be used in the definition of Gmsh's simplest
 // `elementary entity', a `Point'. A Point is uniquely identified by a tag (a
 // strictly positive integer; here `1') and defined by a list of four numbers:
@@ -31,5 +31,5 @@ Physical Curve("External_boundary",2) = {2,3,4};
 Physical Surface("Domain_2",1)={1};
 
 Mesh 2;
-Save "TopBlock_tetra_h4.msh";
+Save "TopBlock_tetra_h3.msh";
 

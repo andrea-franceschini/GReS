@@ -16,6 +16,9 @@
 % changing the number of interpolation points for the RBF interpolation and
 % changing the number of Gauss Points for the element-based discontinous
 % integration
+% This script uses quadratic basis function for both primal variables and
+% Lagrange multipliers
+% The nodal based approach with scaling has been dropped 
 
 %% INPUT DATAS
 

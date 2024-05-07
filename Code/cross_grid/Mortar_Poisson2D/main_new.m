@@ -27,7 +27,7 @@ fileNameMaster = [];
 fileNameSlave = [];
 
 % Set the input file name
-nGrids = 4;
+nGrids = 5;
 % selecting master and slave domain
 flagTop = 'master';
 if strcmp(flagTop, 'master')
@@ -47,9 +47,9 @@ end
 % selecting integration approach
 integration = 'RBF';  % SB, RBF, EB
 nInt = 10;
-nGP = 15;
+nGP = 4;
 tmp = strcat(flagTop,'TOP');
-nGrids = 4;
+nGrids = 5;
 brokenL2 = zeros(nGrids,1);
 brokenH1 = zeros(nGrids,1);
 h = zeros(nGrids,1);
@@ -267,7 +267,7 @@ axL2.NextPlot = "add";
 axH1.NextPlot = "add";
 
 
-param = 'GP';
+param = 'nInt';
 marker = {'o', '^', 's', '*'};
 getFirst = @(v)v{1}; 
 getprop = @(options, idx)getFirst(circshift(options,-idx+1));
