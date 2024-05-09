@@ -57,9 +57,9 @@ classdef TabularCurve < handle
           varargout{3}(xOutL) = 0;
           %
           % compute histogram columns for second derivative
-          tmp = [obj.tabW(1:end-1,1) obj.tabW(2:end,1)];
-          tmp = mean(tmp,2);
-          [~,~,binID] = histcounts(x(xIn),tmp);
+          nPts = length(obj.tabW);
+          tabWinterp = (interp1(linspace(0,1,nPts),obj.tabW(:,1),linspace(0,1,nPts-1)))';
+          [~,~,binID] = histcounts(x(xIn),tabWinterp);
           varargout{3}(xIn) = obj.derivW2(binID);
           %
           varargout{3}(idOutR) = 0;

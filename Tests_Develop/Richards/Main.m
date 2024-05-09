@@ -158,3 +158,6 @@ set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
 % export figure with quality
 stmp = strcat('Images\', 'Richards_staturation', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
+
+%% Plot capillary and Rel perm curve
+

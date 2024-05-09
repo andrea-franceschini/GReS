@@ -19,7 +19,6 @@ classdef SimulationParameters < handle
     sTarget = 0.4
     NLSolver = 'Newton'
     verbosity = 2
-    goOnBackstep = 0 % if 1 when min tStep is reached, simulation goes on 
   end
   
   methods (Access = public)

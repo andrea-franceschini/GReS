@@ -9,8 +9,8 @@ PorousRock                        % material model
 0                                 % water residual saturation
 
 CapillaryCurve
-./Materials/pcCurveSand_200.dat
+./Materials/pcCurve_400.dat
 
 RelativePermCurve
-./Materials/krCurveSand_200.dat
+./Materials/krCurve_400.dat
 End
