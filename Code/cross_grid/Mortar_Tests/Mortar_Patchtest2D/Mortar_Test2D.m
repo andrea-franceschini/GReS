@@ -38,7 +38,7 @@ fileNameTop = [];
 fileNameBottom = [];
 
 % Set the input file name
-for k = 1:5
+for k = 1:2
     fileNameTop = [fileNameTop; strcat('Mesh_flat_convergenceTest/TopBlock_tetra_h',num2str(k),'.msh')];
     fileNameBottom = [fileNameBottom; strcat('Mesh_flat_convergenceTest/BottomBlock_tetra_h',num2str(k),'.msh')];
 end
@@ -65,7 +65,7 @@ for integration = int_str
         fopen('H1_eb.txt','w');
     end
 
-    for mCount = 1:5
+    for mCount = 1:2
         p_str = strcat(integration,' integration - Mesh size h', num2str(mCount), ' \n');
         fprintf(p_str)
         % Import the mesh data into the Mesh object
@@ -105,11 +105,11 @@ for integration = int_str
 
         % compute mortar operator
         if strcmp(integration,'RBF')
-            [Etmp, Mtmp, Dtmp] = compute_mortar(masterMesh, slaveMesh, boundInt, 15, 15, 1, 1, "RBF");
+            [Etmp, Mtmp, Dtmp] = compute_mortar(masterMesh, slaveMesh, boundInt, 15, 15, 1, 1, "RBF",1);
         elseif strcmp(integration, 'SB')
-            [Etmp, Mtmp, Dtmp] = compute_mortar(masterMesh, slaveMesh, boundInt, 10, 3, 1, 1, "SB");
+            [Etmp, Mtmp, Dtmp] = compute_mortar(masterMesh, slaveMesh, boundInt, 10, 3, 1, 1, "SB",1);
         elseif strcmp(integration, 'EB')
-            [Etmp, Mtmp, Dtmp] = compute_mortar(masterMesh, slaveMesh, boundInt, 10, 6, 1, 1, "EB");
+            [Etmp, Mtmp, Dtmp] = compute_mortar(masterMesh, slaveMesh, boundInt, 10, 6, 1, 1, "EB",1);
             %[Etmp] = compute_mortar_EB(masterMesh, slaveMesh, gaussEB, 1, 1);
         end        
 
@@ -329,13 +329,13 @@ for integration = int_str
         % master mesh
         for el = 1:masterMesh.nSurfaces
             top = masterMesh.surfaces(el, 1:masterMesh.surfaceNumVerts(el));
-            volNodMaster(top) = volNodMaster(top) + elemsMaster.tri.findVolume(el)/masterMesh.surfaceNumVerts(el);
+            volNodMaster(top) = volNodMaster(top) + elemsMaster.tri.findArea(el)/masterMesh.surfaceNumVerts(el);
         end
         %
         % slave mesh
         for el = 1:slaveMesh.nSurfaces
             top = slaveMesh.surfaces(el, 1:slaveMesh.surfaceNumVerts(el));
-            volNodSlave(top) = volNodSlave(top) + elemsSlave.tri.findVolume(el)/slaveMesh.surfaceNumVerts(el);
+            volNodSlave(top) = volNodSlave(top) + elemsSlave.tri.findArea(el)/slaveMesh.surfaceNumVerts(el);
         end
 
         if strcmp(flagTop, 'master')
@@ -364,7 +364,7 @@ for integration = int_str
         for el = 1:masterMesh.nSurfaces
             top = masterMesh.surfaces(el, 1:masterMesh.surfaceNumVerts(el));
             N = getDerBasisF(elemsMaster.tri,el);
-            vol = findVolume(elemsMaster.tri,el);
+            vol = findArea(elemsMaster.tri,el);
             B = zeros(3,6);
             B(elemsMaster.indB2D(1:12,2)) = N(elemsMaster.indB2D(1:12,1));
             if strcmp(flagTop,'master')
@@ -381,7 +381,7 @@ for integration = int_str
         for el = 1:slaveMesh.nSurfaces
             top = slaveMesh.surfaces(el, 1:slaveMesh.surfaceNumVerts(el));
             N = getDerBasisF(elemsSlave.tri,el);
-            vol = findVolume(elemsSlave.tri,el);
+            vol = findArea(elemsSlave.tri,el);
             B = zeros(3,6);
             B(elemsSlave.indB2D(1:12,2)) = N(elemsSlave.indB2D(1:12,1));
             if strcmp(flagTop,'master')

@@ -5,6 +5,12 @@ function [N, pos] = computeBasisF1D(elem_ID, nInts, topol, nodes, degree)
 intPts = [-1 -0.99 0.99 1];
 intPts = unique([intPts, linspace(intPts(2), intPts(4), nInts)]);
 switch degree
+    case 0 % linear interpolation of 2nd order elements for contact detection
+        N = zeros(nInts+2,2);
+        N(:,1) = 0.5 - 0.5*intPts';
+        N(:,2) = 0.5 + 0.5*intPts';
+        i1 = nodes(topol(elem_ID,1),:);
+        i2 = nodes(topol(elem_ID,3),:);
     case 1
         N = zeros(nInts+2,2);
         N(:,1) = 0.5 - 0.5*intPts';

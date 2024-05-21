@@ -22,12 +22,12 @@
 close all; clear
 
 % INPUT
-
+degree = 1;
 tol = 1.e-4;
 
 % master and slave surfaces node position along X axis
 
-nSizes = 7;
+nSizes = 1;
 errNormRBF_scale = zeros(nSizes,1);
 nMnodes = 12; % number of nodes for the first mesh refinment
 errNormEX = errNormRBF_scale;
@@ -49,13 +49,13 @@ for sizeCount = 1:nSizes
     % we set the maximum overlapping to 1/10 of the grid size
     sm = abs(master(2)-master(1));
     ss = abs(slave(2)-slave(1));
-    fact = 0;
+    fact = 0.5;
     master(:,2) = -fact*sm*rand(nMaster,1)+fact*sm*rand(nMaster,1);
     slave(:,2) = -fact*ss*rand(nSlave,1)+fact*ss*rand(nSlave,1);
 
 
     % number of RBF interpolation points for each element
-    nInt = 6;
+    nInt = 5;
 
     % Number of integration points for RBF testing (GP class taken from GReS)
     nGP = 4;
@@ -170,7 +170,7 @@ for sizeCount = 1:nSizes
     for i = 1:size(mastertop,1)
         % get shape function values and interpolation points
         % coordinates
-        [vals, ptsInt] = computeBasisF1D(i, 2*nInt, mastertop, master);
+        [vals, ptsInt] = computeBasisF1D(i, 2*nInt, mastertop, master, degree);
         % compute interpolation matrix
         fiMM = zeros(length(ptsInt), length(ptsInt));
         % compute RBF weight of interpolant
@@ -305,6 +305,7 @@ for sizeCount = 1:nSizes
     E_RBF_noScale = D\M_RBF';
     E_RBF_scale = E_RBF_noScale./sum(E_RBF_noScale,2);
     E_RBF_elem = D\M_RBF_elem';
+    E_RBF_elem = E_RBF_elem./sum(E_RBF_elem,2);
     E_EB = D\M_EB';
     E_EX = D\M_EX';
 
@@ -328,24 +329,45 @@ for sizeCount = 1:nSizes
 
     errNormRBF_scale(sizeCount) = computeInterpError(E_RBF_scale,fMaster,fSlave,lNod);
     errNormRBF_noScale(sizeCount) = computeInterpError(E_RBF_noScale,fMaster,fSlave,lNod);
-    errNormRBF_elem(sizeCount) = computeInterpError(E_RBF_elem,fMaster,fSlave,lNod);
+    [errNormRBF_elem(sizeCount), fRBF] = computeInterpError(E_RBF_elem,fMaster,fSlave,lNod);
     errNormEB(sizeCount) = computeInterpError(E_EB,fMaster,fSlave,lNod);
     errNormEX(sizeCount) = computeInterpError(E_EX,fMaster,fSlave,lNod);
 end
 
+fName = strcat('errRBFint',num2str(nInt));
+f = fopen(fName,"w");
+fprintf(f, '%2.5e \n',errNormRBF_elem);
+
 %%
 
 limit_RBF = mean(sum(E_RBF_scale,2)-1);
-
+errRBF2 = load('errRBFint2');
+errRBF4 = load('errRBFint4');
+errRBF8 = load('errRBFint8');
 % plot convergence of the interpolation
 h = 1./(nMnodes*2.^(0:nSizes-1));
 loglog(h,errNormEX,'r-o')
 hold on
 loglog(h,errNormEB,'g-o')
-loglog(h,errNormRBF_scale,'b-o')
-loglog(h,errNormRBF_noScale,'b--o')
+%loglog(h,errNormRBF_scale,'b-o')
+%loglog(h,errNormRBF_noScale,'b--o')
 loglog(h,errNormRBF_elem,'k-^')
-legend('SB', 'EB', 'RBF - Node No scale', 'RBF - Node Scale', 'RBF - Elem')
+legend('SB', 'EB', 'RBF - Elem')
+
+% errRBF2 = load('errRBFint2');
+% errRBF4 = load('errRBFint4');
+% errRBF8 = load('errRBFint8');
+% % plot convergence of the interpolation
+% h = 1./(nMnodes*2.^(0:nSizes-1));
+% %oglog(h,errNormEX,'r-o')
+% %loglog(h,errNormEB,'g-o')
+% loglog(h,errRBF2,'r-o')
+% hold on
+% loglog(h,errRBF4,'b-o')
+% loglog(h,errRBF8,'k-o')
+% %loglog(h,errNormRBF_noScale,'b--o')
+% %loglog(h,errNormRBF_elem,'k-^')
+% legend('nInt = 2','nInt = 4', 'nInt = 8')
 
 
 % 
@@ -367,27 +389,28 @@ legend('SB', 'EB', 'RBF - Node No scale', 'RBF - Node Scale', 'RBF - Elem')
 
 
 %% PLOTTING INTERPOLATED FUNCTIONS using MAT FILE
-% if all(master(:,2)==0)
-%     c = 0.1;
-% end
-% figure(3)
-% plot(master(:,1), c + master(:,2), 'b.-', 'LineWidth', 1.5,'MarkerSize',18) % master grid
-% hold on 
-% plot(slave(:,1), slave(:,2), 'r.-', 'LineWidth', 1.5, 'MarkerSize',18)
-% ylim([-2 2])
-% xlim([-2 2])
-% plot(master, 3+fMaster, 'b')
-% figure(2)
-% plot(plotSlave, fplotSlave, 'k-', 'LineWidth', 1.2)
-% hold on
-% %plot(slave(:,1), fEX, 'k--')
-% plot(slave(:,1), fRBF, 'bs', 'MarkerSize', 10, 'MarkerFaceColor','b')
-% if all(master(:,2)==0)
-% plot(slave(:,1), fEX, 'r^', 'MarkerSize', 10)
-% plot(slave(:,1), fEB, 'gs', 'MarkerSize', 10)
-% end
-% legend('Exact function', 'RBF integration', 'Segment-based integration','Element-based integration','Location','southeast')
-% 
+c = 0;
+if all(master(:,2)==0)
+    c = 0.1;
+end
+figure(3)
+plot(master(:,1), c + master(:,2), 'b.-', 'LineWidth', 1.5,'MarkerSize',18) % master grid
+hold on 
+plot(slave(:,1), slave(:,2), 'r.-', 'LineWidth', 1.5, 'MarkerSize',18)
+ylim([-2 2])
+xlim([-2 2])
+%plot(master, fMaster, 'b')
+figure(2)
+plot(plotSlave, fplotSlave, 'k-', 'LineWidth', 1.2)
+hold on
+%plot(slave(:,1), fEX, 'k--')
+plot(slave(:,1), fRBF, 'bs', 'MarkerSize', 10, 'MarkerFaceColor','b')
+if all(master(:,2)==0)
+plot(slave(:,1), fEX, 'r^', 'MarkerSize', 10)
+plot(slave(:,1), fEB, 'gs', 'MarkerSize', 10)
+end
+legend('Exact function', 'RBF integration', 'Segment-based integration','Element-based integration','Location','southeast')
+
 % set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 16);
 % a = get(gca,'XTickLabel');
 % set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)

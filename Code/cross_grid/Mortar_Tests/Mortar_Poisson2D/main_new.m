@@ -21,6 +21,7 @@ slaveMesh = Mesh();
 % topMesh.importGMSHmesh('Mesh/TopBlock_curve.msh');
 % bottomMesh.importGMSHmesh('Mesh/BottomBlock_curve.msh');
 
+degree = 1;
 % file Names for input meshes
 
 fileNameMaster = [];
@@ -29,7 +30,7 @@ fileNameSlave = [];
 % Set the input file name
 nGrids = 5;
 % selecting master and slave domain
-flagTop = 'master';
+flagTop = 'slave';
 if strcmp(flagTop, 'master')
     for k = 1:nGrids
         fileNameMaster = [fileNameMaster; strcat('Mesh_conv/TopBlock_tetra_h',num2str(k),'.msh')];
@@ -46,7 +47,7 @@ end
 
 % selecting integration approach
 integration = 'RBF';  % SB, RBF, EB
-nInt = 10;
+nInt = 4;
 nGP = 4;
 tmp = strcat(flagTop,'TOP');
 nGrids = 5;
@@ -80,9 +81,18 @@ for mCount = 1:nGrids
     % boundInt = boundInt(ismember(boundInt, nodesSlave));
 
     % compute mortar operator
-    % and matrices
-    [E, M, D] = compute_mortar(masterMesh, slaveMesh, [], nInt, nGP, 1, 1, integration);
-
+    mortar = Mortar1D(1,masterMesh,1,slaveMesh,1);
+    D = mortar.D;
+    switch integration
+        case 'RBF'
+            [E,M] = mortar.computeMortarRBF(nGP,nInt);
+        case 'EB'
+            [E,M] = mortar.computeMortarElementBased(nGP);
+        case 'SB'
+            [E,M] = mortar.computeMortarSegmentBased(nGP);
+    end
+    %[E, M, D] = compute_mortar(masterMesh, slaveMesh, [], nInt, nGP, 1, 1, integration, degree);
+    
 
     % reordering the matrix of the system
     %
@@ -239,7 +249,7 @@ for mCount = 1:nGrids
 end
 
 
-% create output structure (or appen to existing one) and write to file
+% create output structure (or append to existing one) and write to file
 if ~isfile("Results.mat")
     outStruct= struct('IntegrationType', integration, 'nGP', nGP, 'nInt', nInt,...
         'MeshSizes', h, 'L2', brokenL2, 'H1', brokenH1);

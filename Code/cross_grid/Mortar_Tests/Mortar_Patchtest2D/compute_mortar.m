@@ -1,9 +1,9 @@
-function [E, M, D] = compute_mortar(masterInt, slaveInt, dirNod, nInt, nGP, tagMaster, tagSlave, tagMethod)
+function [E, M, D] = compute_mortar(masterInt, slaveInt, dirNod, nInt, nGP, tagMaster, tagSlave, tagMethod, degree)
 % compute mortar matrix given from a pair of interfaces.
 % INPUT: mesh objects, gauss class, edge tag for master and slave
 % interfaces
 
-tolInt = 1.e-3;
+%tolInt = 1.e-3;
 
 % Gauss integration parameters
 gauss = Gauss(12,nGP,1);
@@ -67,7 +67,7 @@ D = D(nodesSlave, nodesSlave);
 %% Approximate cross matrix computation
 
 switch tagMethod
-    case "RBF_node" 
+    case "RBF_node"
         % rbf interpolation is applied to the entire support of a master nodes
         for i = nodesMaster'
             % get element of the support
@@ -126,13 +126,14 @@ switch tagMethod
                 M(i,slavetop(j,2)) = M(i,slavetop(j,2)) + intVal(2);
             end
         end
-    case "RBF"
+    case "RBF_elem"
+        matGP = zeros(nGP,size(slavetop,1));
         % rbf interpolation is applied to a single element for each of its
         % nodes
         for i = 1:size(mastertop,1)
             % get shape function values and interpolation points
             % coordinates
-            [vals, ptsInt] = computeBasisF1D(i, nInt, mastertop, master);
+            [vals, ptsInt] = computeBasisF1D(i, nInt, mastertop, master, degree);
             % compute interpolation matrix
             fiMM = zeros(length(ptsInt), length(ptsInt));
             % compute RBF weight of interpolant
@@ -163,9 +164,9 @@ switch tagMethod
                     fiNM(jj,:) = rbf;
                 end
                 NMaster = (fiNM*weightF)./(fiNM*weight1);
-                NMaster(isnan(NMaster)) = 0;
-                NMaster(NMaster < 0) = 0;
-                NMaster(NMaster > 1) = 0;
+                id = any([isnan(NMaster), NMaster < 0, NMaster > 1, matGP(:,j)],2);
+                matGP(:,j) = ~id;
+                NMaster(id,:) = 0;
                 % get basis function on Gauss points
                 if any(ismember(edgeDir,j))
                     NSlave = ones(length(gpRef),2);
@@ -181,6 +182,71 @@ switch tagMethod
                 idMaster = [mastertop(i,1); mastertop(i,2)];
                 idSlave = [slavetop(j,1); slavetop(j,2)];
                 M(idMaster, idSlave) = M(idMaster, idSlave) + Mloc;
+            end
+        end
+    case "RBF"
+        nElMaster = length(mastertop);
+        wFMat = zeros(nInt+2,nElMaster*2);
+        w1Mat = zeros(nInt+2,nElMaster);
+        ptsIntMat = zeros(nInt+2,nElMaster*2);
+        for i = 1:size(mastertop,1)
+            % get shape function values and interpolation points
+            % coordinates
+            [vals, ptsInt] = computeBasisF1D(i, nInt, mastertop, master, degree);
+            % compute interpolation matrix
+            fiMM = zeros(length(ptsInt), length(ptsInt));
+            % compute RBF weight of interpolant
+            % circumradius of the master element
+            r = sqrt((max(ptsInt(:,1)) - min(ptsInt(:,1)))^2 + (max(ptsInt(:,2)) - min(ptsInt(:,2)))^2);
+            for ii = 1:length(ptsInt)
+                d = sqrt((ptsInt(:,1) - ptsInt(ii,1)).^2 + ((ptsInt(:,2)) - ptsInt(ii,2)).^2);
+                rbf = pos(1-d./r).^4.*(1+d./r);
+                fiMM(ii,:) = rbf;
+            end
+            % solve local system to get weight of interpolant. Store
+            % interpolation results into matrices
+            wFMat(:,[2*i-1 2*i]) = fiMM\vals;
+            w1Mat(:,i) = fiMM\ones(size(ptsInt,1),1);
+            ptsIntMat(:,[2*i-1 2*i]) = ptsInt;
+        end
+        % Loop trough slave elements
+        for j = 1:length(slavetop)
+            % Gauss parameters
+            gpPos = gpRef;
+            gpW = gpWeight;
+            % nodes of slave element
+            s1 = slave(slavetop(j,1),:);
+            s2 = slave(slavetop(j,2),:);
+            idSlave = [slavetop(j,1); slavetop(j,2)];
+            % Real position of Gauss points
+            ptsGauss = ref2nod(gpPos, s1, s2);
+            % Get connected master elements
+            master_elems = find(elem_connectivity(:,j));
+            % Loop troug master elements
+            for jm = master_elems'
+                ptsInt = ptsIntMat(:,[2*jm-1 2*jm]);
+                fiNM = zeros(size(ptsGauss,1), size(ptsInt,1));
+                idMaster = [mastertop(jm,1); mastertop(jm,2)];
+                % compute interpolant on local Gauss points
+                for jj = 1:size(ptsGauss,1)
+                    d = sqrt((ptsInt(:,1) - ptsGauss(jj,1)).^2 + ((ptsInt(:,2)) - ptsGauss(jj,2)).^2);
+                    rbf = pos(1-d./r).^4.*(1+d./r);
+                    fiNM(jj,:) = rbf;
+                end
+                NMaster = (fiNM*wFMat(:,[2*jm-1 2*jm]))./(fiNM*w1Mat(:,jm));
+                % automatically detect GP inside the master support
+                id = all([NMaster >= 0, NMaster <= 1],2);
+                if any(id)
+                    NMaster = NMaster(id,:);
+                    NSlave = (compute1DBasisF(gpPos(id)'))';
+                    matVal = NMaster'*(NSlave.*gpW(id));
+                    matVal = matVal*(0.5*sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2));
+                    M(idMaster, idSlave) = M(idMaster, idSlave) + matVal;
+                    % sort out Points already projected
+                    gpPos = gpPos(~id);    % errNormEB(sizeCount) = computeInterpError(E_EB,fMaster,fSlave,lNod);~id);
+                    gpW = gpW(~id);
+                    ptsGauss = ptsGauss(~id,:);
+                end
             end
         end
     case "SB"
@@ -221,36 +287,32 @@ switch tagMethod
             end
         end
     case "EB"
-        for i = 1:size(mastertop,1)
-            % get element of the support
-            a = master(mastertop(i,1),:);
-            b = master(mastertop(i,2),:);
-            % get shape function values and interpolation points coordinate
-            slave_elems = find(elem_connectivity(i,:));
-            % loop trough connected slave elements
-            for j = slave_elems
-                % get nodes
-                c = slave(slavetop(j,1),:);
-                d = slave(slavetop(j,2),:);
-                % compute basis functions on master GP
-                gSlave = ref2nod(gpRef,c,d);
-                if any(ismember(edgeDir,j))
-                    basisSlave = ones(length(gpRef),2);
-                else
-                    basisSlave = 0.5 + gpRef.*[-0.5 0.5];
+        n = computeNodalNormal(slavetop,slave);
+        for i = 1:length(slavetop)
+            % get nodes
+            gpPos = gpRef;
+            gpW = gpWeight;
+            s1 = slave(slavetop(i,1),:);
+            s2 = slave(slavetop(i,2),:);
+            xSlave = ref2nod(gpPos, s1, s2);
+            master_elems = find(elem_connectivity(:,i));
+            %id = true(length(gpRef),1);
+            for m = master_elems'
+                [xiM] = projectGP(master,mastertop,slavetop,m,i,gpPos,n,xSlave);
+                id = all([xiM >= -1, xiM <= 1],2);
+                if any(id)
+                    NMaster = (compute1DBasisF(xiM(id)'))';
+                    NSlave = (compute1DBasisF(gpPos(id)'))';
+                    matVal = NMaster'*(NSlave.*gpW(id));
+                    matVal = matVal*(0.5*sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2));
+                    idMaster = [mastertop(m,1); mastertop(m,2)];
+                    idSlave = [slavetop(i,1); slavetop(i,2)];
+                    M(idMaster, idSlave) = M(idMaster, idSlave) + matVal;
+                    % sort out Points already projected
+                    gpPos = gpPos(~id);
+                    gpW = gpW(~id);
+                    xSlave = xSlave(~id,:);
                 end
-                % get Gauss Points in master reference coordinates
-                gMasterRef = nod2ref(gSlave, a, b);
-                basisMaster = 0.5 + gMasterRef*[-0.5 0.5];
-                % check master GP that are not lying in the slave
-                id = any([gMasterRef < -1-tolInt gMasterRef > 1+tolInt],2);
-                basisMaster(id,:) = 0;
-                basisSlave = basisSlave.*gpWeight;
-                matVal = basisMaster'*basisSlave;
-                matVal = matVal.*abs(0.5*(c(1)-d(1)));
-                idMaster = [mastertop(i,1); mastertop(i,2)];
-                idSlave = [slavetop(j,1); slavetop(j,2)];
-                M(idMaster, idSlave) = M(idMaster, idSlave) + matVal;
             end
         end
 end
@@ -258,11 +320,11 @@ end
 M = M(nodesMaster, nodesSlave);
 M = M';
 E = D\M;
-if strcmp(tagMethod,'RBF_node') 
-    % rescaling the rows of the Mortar operator to improve convergence
-    % in the case of node-wise interpolation
-    E = E./sum(E,2);
-end
+% if strcmp(tagMethod,'RBF_node')
+%     % rescaling the rows of the Mortar operator to improve convergence
+%     % in the case of node-wise interpolation
+%     E = E./sum(E,2);
+% end
 end
 
 

@@ -12,12 +12,15 @@ classdef RBF_interpolation < handle
     end
     
     methods
-        function obj = RBF_interpolation(mshIn, mshOut, nLinks)
+        function obj = RBF_interpolation(mshIn, mshOut, nLinks, type)
             obj.meshIn = mshIn;      % Origin discretization
             obj.meshOut = mshOut;    % Destination discretization
-            obj.computeFiMM(nLinks); % Interpolation matrix (return local radius if nLinks = 1) 
-            obj.computeCrossMat();   
-            obj.computeCircumRadius();   % maximum edge length of each cell 
+            switch type
+                case 'Wendland'
+                    obj.computeFiMM(nLinks); % Interpolation matrix (return local radius if nLinks = 1)
+                    obj.computeCrossMat();
+                    obj.computeCircumRadius();   % maximum edge length of each cell
+            end
         end
 
         function fOut = interpolate(obj,fIn)

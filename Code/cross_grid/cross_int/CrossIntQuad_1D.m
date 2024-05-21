@@ -27,7 +27,7 @@ close all; clear
 % INPUT
 degree = 2;
 tol = 1.e-4;
-nSizes = 7;
+nSizes = 9;
 errNormRBF = zeros(nSizes,1);
 % master and slave surfaces node position along X axis
 nMnodes = 9; % number of nodes for the first mesh refinment
@@ -35,6 +35,9 @@ errNormEX = errNormRBF;
 errNormEB = errNormRBF;
 for sizeCount = 1:nSizes
     nMaster = nMnodes*(2^(sizeCount-1));
+    if mod(nMaster,2) == 0
+        nMaster = nMaster+1;
+    end
     nSlave = round((2/3)*nMaster);
     if mod(nSlave,2) == 0
         nSlave = nSlave+1;
@@ -56,10 +59,10 @@ for sizeCount = 1:nSizes
 
 
     % number of RBF interpolation points for each element
-    nInt = 6;
+    nInt = 10;
 
     % Number of integration points for RBF testing (GP class taken from GReS)
-    nGP = 4;
+    nGP = 4 ;
 
     % Inizialize output matrices
     D = zeros(length(slave), length(slave));
@@ -67,7 +70,6 @@ for sizeCount = 1:nSizes
     % initializing mortar matrix resulting from RBF computation
 
     M_RBF = zeros(length(master), length(slave));
-    M_RBF_elem = zeros(length(master), length(slave));
     M_EB = zeros(length(master), length(slave));
     M_EX = zeros(size(master,1), size(slave,1));
     % Build a topology matrix for master/slave surfs based on nodes position
@@ -92,9 +94,9 @@ for sizeCount = 1:nSizes
 
     %% COMPUTE SLAVE MATRIX D
     % use Gauss integration with 3 Gauss points
-    gEx = Gauss(12,3,1);
-    gpRef = gEx.coord;
-    gpWeight = gEx.weight;
+    g = Gauss(12,nGP,1);
+    gpRef = g.coord;
+    gpWeight = g.weight;
     for sID = 1:size(slavetop,1)
         % elem length
         i1 = slavetop(sID,1);
@@ -102,7 +104,7 @@ for sizeCount = 1:nSizes
         i3 = slavetop(sID,3);
         h = norm(slave(i1,:)-slave(i3,:));
         N = computeQuadraticSF(gpRef);
-        Dloc = h*(N'*N);
+        Dloc = 0.5*h*N'*(N.*gpWeight);
         D([i1 i2 i3], [i1 i2 i3]) = D([i1 i2 i3], [i1 i2 i3]) + Dloc;
     end
 
@@ -115,23 +117,31 @@ for sizeCount = 1:nSizes
     % for the rescaling, only one system is solved for each element
     for i = 1:size(mastertop,1)
         % get toy linear shape functions for detecting the intersections
-        [valsLin, ptsLin] = computeBasisF1D(i, 2, mastertop, master, degree-1);
+        [valsLin, ptsLin] = computeBasisF1D(i, 4, mastertop, master, degree-2);
         % get actual shape function values and interpolation points
         % coordinates
-        [vals, ptsInt] = computeBasisF1D(i, 2*nInt, mastertop, master, degree);
-        % compute interpolation matrix
+        [vals, ptsInt] = computeBasisF1D(i, nInt, mastertop, master, degree);
         fiMM = zeros(length(ptsInt), length(ptsInt));
-        % compute RBF weight of interpolant
+        fiMMLin = zeros(length(ptsLin), length(ptsLin));
         % circumradius of the master element
         r = sqrt((max(ptsInt(:,1)) - min(ptsInt(:,1)))^2 + (max(ptsInt(:,2)) - min(ptsInt(:,2)))^2);
+        % compute interpolation matrix for quadratic function
         for ii = 1:length(ptsInt)
             d = sqrt((ptsInt(:,1) - ptsInt(ii,1)).^2 + ((ptsInt(:,2)) - ptsInt(ii,2)).^2);
             rbf = pos(1-d./r).^4.*(1+d./r);
             fiMM(ii,:) = rbf;
         end
+        % compute interpolation matrix for linear functions
+        rLin = sqrt((max(ptsLin(:,1)) - min(ptsLin(:,1)))^2 + (max(ptsLin(:,2)) - min(ptsLin(:,2)))^2);
+        for ii = 1:length(ptsLin)
+            d = sqrt((ptsLin(:,1) - ptsLin(ii,1)).^2 + ((ptsLin(:,2)) - ptsLin(ii,2)).^2);
+            rbf = pos(1-d./rLin).^4.*(1+d./rLin);
+            fiMMLin(ii,:) = rbf;
+        end
         % solve local system to get weight of interpolant
-        weightFLin = fiMM\valsLin;
-        weight1Lin = fiMM\ones(size(ptsLin,1),1);
+        % compute RBF weight of interpolant
+        weightFLin = fiMMLin\valsLin;
+        weight1Lin = fiMMLin\ones(size(ptsLin,1),1);
         weightF = fiMM\vals;
         weight1 = fiMM\ones(size(ptsInt,1),1);
         % get slave elements connected to the master
@@ -144,19 +154,26 @@ for sizeCount = 1:nSizes
             % get Gauss Points position in the real space
             ptsGauss = ref2nod(gpRef, a, b);
             fiNM = zeros(size(ptsGauss,1), size(ptsInt,1));
-            % compute interpolant on local Gauss points
+            fiNMLin = zeros(size(ptsGauss,1), size(ptsLin,1));
+            % compute interpolant of quadratic basis on local Gauss points
             for jj = 1:size(ptsGauss,1)
                 d = sqrt((ptsInt(:,1) - ptsGauss(jj,1)).^2 + ((ptsInt(:,2)) - ptsGauss(jj,2)).^2);
                 rbf = pos(1-d./r).^4.*(1+d./r);
                 fiNM(jj,:) = rbf;
             end
-            Ntmp = (fiNM*weightFLin)./(fiNM*weight1Lin);
+            % compute interpolant of linear basis on local Gauss points
+            for jj = 1:size(ptsGauss,1)
+                d = sqrt((ptsLin(:,1) - ptsGauss(jj,1)).^2 + ((ptsLin(:,2)) - ptsGauss(jj,2)).^2);
+                rbf = pos(1-d./rLin).^4.*(1+d./rLin);
+                fiNMLin(jj,:) = rbf;
+            end
+            Ntmp = (fiNMLin*weightFLin)./(fiNMLin*weight1Lin);
             NMaster = (fiNM*weightF)./(fiNM*weight1);
             %NMaster = fiNM*weightF;
-            % automatically detect GP outside the master support
-            NMaster(isnan(Ntmp)) = 0;
-            NMaster(Ntmp < 0) = 0;
-            NMaster(Ntmp > 1) = 0;
+            % automatically detect GP outside the master support using
+            % cheap linear interpolation
+            id = any([Ntmp < 0, Ntmp > 1, isnan(Ntmp)],2);
+            NMaster(id,:) = 0;
             % get basis function on Gauss points
             NSlave = computeQuadraticSF(gpRef);
             % Compute local M matrix using Gauss integration
@@ -165,8 +182,8 @@ for sizeCount = 1:nSizes
             % segment)
             Mloc = Mloc*(0.5*sqrt((b(1)-a(1))^2 + (b(2)-a(2))^2));
             % populate cross matrix
-            idMaster = [mastertop(i,1); mastertop(i,2)];
-            idSlave = [slavetop(j,1); slavetop(j,2)];
+            idMaster = [mastertop(i,1); mastertop(i,2); mastertop(i,3)];
+            idSlave = [slavetop(j,1); slavetop(j,2); slavetop(j,3)];
             M_RBF(idMaster, idSlave) = M_RBF(idMaster, idSlave) + Mloc;
         end
     end
@@ -208,39 +225,36 @@ for sizeCount = 1:nSizes
     end
 
     %% ELEMENT-BASED CROSS MATRIX COMPUTATION (valid for flat interfaces)
-
     if all(master(:,2)==0)
-        for gc = 1:length(nGP)
-            gEx = Gauss(12,nGP,1);
-            gpRef = gEx.coord;
-            gpWeight = gEx.weight;
-            for i = 1:size(mastertop,1)
-                % get element of the support
-                a = master(mastertop(i,1),:);
-                b = master(mastertop(i,3),:);
-                % get shape function values and interpolation points coordinate
-                slave_elems = find(elem_connectivity(i,:));
-                % loop trough connected slave elements
-                for j = slave_elems
-                    % get nodes
-                    c = slave(slavetop(j,1),:);
-                    d = slave(slavetop(j,3),:);
-                    % compute basis functions on master GP
-                    gSlave = ref2nod(gpRef,c,d);
-                    basisSlave = computeQuadraticSF(gSlave);
-                    % get Gauss Points in master reference coordinates
-                    gMasterRef = nod2ref(gSlave, a, b);
-                    basisMaster = computeQuadraticSF(gMasterRef);
-                    % check master GP that are not lying in the slave
-                    id = any([gMasterRef < -1-tol gMasterRef > 1+tol], 2);
-                    basisMaster(id,:) = 0;
-                    basisSlave = basisSlave.*gpWeight;
-                    matVal = basisMaster'*basisSlave;
-                    matVal = matVal*0.5*abs(c(1)-d(1));
-                    idMaster = [mastertop(i,1); mastertop(i,2); mastertop(i,3)];
-                    idSlave = [slavetop(j,1); slavetop(j,2); slavetop(j,3)];
-                    M_EB(idMaster, idSlave) = M_EB(idMaster, idSlave) + matVal;
-                end
+        gEx = Gauss(12,nGP,1);
+        gpRef = gEx.coord;
+        gpWeight = gEx.weight;
+        for i = 1:size(mastertop,1)
+            % get element of the support
+            a = master(mastertop(i,1),:);
+            b = master(mastertop(i,3),:);
+            % get shape function values and interpolation points coordinate
+            slave_elems = find(elem_connectivity(i,:));
+            % loop trough connected slave elements
+            for j = slave_elems
+                % get nodes
+                c = slave(slavetop(j,1),:);
+                d = slave(slavetop(j,3),:);
+                % compute basis functions on master GP
+                gSlave = ref2nod(gpRef,c,d);
+                basisSlave = computeQuadraticSF(gpRef);
+                % get Gauss Points in master reference coordinates
+                gMasterRef = nod2ref(gSlave, a, b);
+                basisMaster = computeQuadraticSF(gMasterRef);
+                % check master GP that are not lying in the slave
+                id = any([gMasterRef < -1-tol gMasterRef > 1+tol], 2);
+                basisMaster(id,:) = 0;
+                basisSlave = basisSlave.*gpWeight;
+                matVal = basisMaster'*basisSlave;
+                matVal = matVal*0.5*abs(c(1)-d(1));
+                idMaster = [mastertop(i,1); mastertop(i,2); mastertop(i,3)];
+                idSlave = [slavetop(j,1); slavetop(j,2); slavetop(j,3)];
+                M_EB(idMaster, idSlave) = M_EB(idMaster, idSlave) + matVal;
             end
         end
     end
@@ -258,12 +272,14 @@ for sizeCount = 1:nSizes
         % get length of the element
         n1 = slavetop(el,1);
         n2 = slavetop(el,2);
-        l = sqrt((slave(n1,1) - slave(n2,1))^2+(slave(n1,2) - slave(n2,2))^2);
-        lNod(n1) = lNod(n1) + l/2;
+        n3 = slavetop(el,3);
+        l = sqrt((slave(n1,1) - slave(n3,1))^2+(slave(n1,2) - slave(n3,2))^2);
+        lNod(n1) = lNod(n1) + l/4;
         lNod(n2) = lNod(n2) + l/2;
+        lNod(n3) = lNod(n3) + l/4;
     end
 
-    f = @(x) sin(3*x) + exp(2*x);
+    f = @(x) sin(4*x);
     fMaster = f(master(:,1)); % analytical function computed on master mesh
     plotSlave = (linspace(x1,x2,100))';
     fplotSlave = f(plotSlave);
@@ -276,15 +292,15 @@ end
 
 %%
 
-limit_RBF = mean(sum(E_RBF_scale,2)-1);
+% limit_RBF = mean(sum(E_RBF_scale,2)-1);
 
 % plot convergence of the interpolation
-h = 1./(nMnodes*2.^(0:nSizes-1));
+h = 1./(nMnodes*(2.^(0:nSizes-1))-1);
 loglog(h,errNormEX,'r-o')
 hold on
 loglog(h,errNormEB,'g-o')
-loglog(h,errNormRBF_elem,'k-^')
-legend('SB', 'EB', 'RBF - Node No scale', 'RBF - Node Scale', 'RBF - Elem')
+loglog(h,errNormRBF,'k-^')
+legend('SB', 'EB', 'RBF')
 
 
 % 
@@ -320,12 +336,12 @@ legend('SB', 'EB', 'RBF - Node No scale', 'RBF - Node Scale', 'RBF - Elem')
 % plot(plotSlave, fplotSlave, 'k-', 'LineWidth', 1.2)
 % hold on
 % %plot(slave(:,1), fEX, 'k--')
-% plot(slave(:,1), fRBF, 'bs', 'MarkerSize', 10, 'MarkerFaceColor','b')
+% plot(slave(:,1), E_EX*fMaster, 'bs', 'MarkerSize', 10, 'MarkerFaceColor','b')
 % if all(master(:,2)==0)
-% plot(slave(:,1), fEX, 'r^', 'MarkerSize', 10)
-% plot(slave(:,1), fEB, 'gs', 'MarkerSize', 10)
+% plot(slave(:,1), E_EB*fMaster, 'r^', 'MarkerSize', 10)
+% plot(slave(:,1), E_RBF*fMaster, 'gs', 'MarkerSize', 10)
 % end
-% legend('Exact function', 'RBF integration', 'Segment-based integration','Element-based integration','Location','southeast')
+% legend('Exact function', 'SB integration', 'EB integration','RBF integration','Location','southeast')
 % 
 % set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 16);
 % a = get(gca,'XTickLabel');
