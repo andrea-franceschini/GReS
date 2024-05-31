@@ -1,11 +1,16 @@
 clear
 close all
 %% contact search algorithm
+% msh1 = Mesh();
+% msh2 = Mesh();
+% msh1.importGMSHmesh('3Dmesh/Mesh_coarseFlat.msh');
+% msh2.importGMSHmesh('3Dmesh/Mesh_fineFlat.msh');
+
+
 msh1 = Mesh();
 msh2 = Mesh();
-msh1.importGMSHmesh('3Dmesh/Mesh_coarseFlat.msh');
-msh2.importGMSHmesh('3Dmesh/Mesh_fineFlat.msh');
-
+msh1.createCartesianGrid(2,[0 1],[0 1],10,10)
+msh2.createCartesianGrid(2,[0 1],[0 1],14,14)
 % get element connectivity between the teo meshes
 cs = ContactSearching(msh1,msh2,18);
 

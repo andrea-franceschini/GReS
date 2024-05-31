@@ -81,11 +81,11 @@ for mCount = 1:nGrids
     % boundInt = boundInt(ismember(boundInt, nodesSlave));
 
     % compute mortar operator
-    mortar = Mortar1D(1,masterMesh,1,slaveMesh,1);
-    D = mortar.D;
+    mortar = Mortar2D(1,masterMesh,1,slaveMesh,1);
+    %D = mortar.D;
     switch integration
         case 'RBF'
-            [E,M] = mortar.computeMortarRBF(nGP,nInt);
+            [E,M] = mortar.computeMortarRBF(nGP,nInt,'gauss');
         case 'EB'
             [E,M] = mortar.computeMortarElementBased(nGP);
         case 'SB'

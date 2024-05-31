@@ -1,87 +1,92 @@
-%% RBF TEST (1d case) discontinous linear shape function integrated within the domain
+%% RBF TEST: accuracy and condition number vs. radius
 clear;
 close all;
 
 % kink position in the interval -1;1
 
 
-% gauss points class
-% g = Gauss(12,15,1);
-% sample points for RBF interpolation
-%pts = unique([g.coord' -1 k 1]);
-%pts = linspace(-1,1,11);
-
-nInt = 4; % number of interpolation points over each element (excluding nodes)
-tol = 1e-5;
+nInt = 7; % number of interpolation points over each element (excluding nodes)
 
 %% CASE 1 - interpolate basis function on a single element
 a = -1;
 b = 1;
 %d = (b-a)/1000;
 ptsX = linspace(a,b,nInt); 
-ptsY = 0.2*ptsX;
+ptsY = 0*ptsX;
 %ptsY = 2*ones(legnth(ptsX))
 %ptsY = zeros(length(ptsX),1);
-%N = @(x) 1-x.^2;
 %N = @(x) -0.5*x+0.5;
+N = @(x) 0.5*x.*(1+x);
 %N = @(x) sin(x);
-vals= N(ptsX);
+%vals= N(ptsX);
+vals = ones(1,length(ptsX));
 
 type = 'gauss';
 %% INTERPOLATE USING SELECTED RBF
 %r = b-a;
 %r = sqrt((max(ptsX)-min(ptsX)).^2 + (max(ptsY)-min(ptsY)).^2);
-r = 50;
-fiMM = zeros(length(ptsX),length(ptsX));
-PM = zeros(length(ptsX),3);
+%rad = (2/length(ptsX))*linspace(0.5,20,100);
+n_cond = zeros(length(rad),1);
+L2 = zeros(length(rad),1);
+for ii = 1:length(rad)
+r = rad(ii);
+iiVec = []; jjVec =[]; rbfVec = [];
 for i = 1:length(ptsX)
     dist = (ptsX - ptsX(i)).^2 + (ptsY - ptsY(i)).^2;
     dist = sqrt(dist);
     rbf = computeRBFentries(dist,type,r);
-    fiMM(:,i) = rbf;
+    iiVec = [iiVec; repmat(i,length(ptsX),1)];
+    jjVec = [jjVec; (1:length(ptsX))'];
+    rbfVec = [rbfVec; rbf'];
 end
+fiMM = sparse(iiVec,jjVec,rbfVec,length(ptsX),length(ptsX));
 
-% polynomial term
-for i = 1:length(ptsX)
-    PM(i,:) = [1 ptsX(i) ptsY(i)];
-end
-
-mat = [fiMM PM;
-    PM' zeros(3,3)];
-w = mat\[vals';zeros(3,1)];
-wf = w(1:length(ptsX));
-alpha = w(length(ptsX)+1:end);
-%w1 = fiMM\ones(length(ptsX),1);
+wf = fiMM\vals';
+w1 = fiMM\ones(length(ptsX),1);
 % sample2 = linspace(-1,1,100);
 
-% compute normal 
+% compute normal
 n = [1,-1];
 k = 0.5;
 
 % curved slave sample to check the effect of non aligned mesh
-sampX = linspace(-1.2,1.2,20);
+sampX = linspace(-1,1,200);
 sampleX = sampX;
 sampleY = 0*sampX;
 iiVec = []; jjVec =[]; rbfVec = [];
-fiNM = zeros(length(sampX),length(ptsX));
-PN = zeros(length(sampX),3);
 for i = 1:length(sampleX)
     dist = sqrt((ptsX - sampleX(i)).^2 + (ptsY - sampleY(i)).^2);
     rbf = computeRBFentries(dist,type,r);
-    fiNM(i,:) = rbf;
+    iiVec = [iiVec; repmat(i,length(ptsX),1)];
+    jjVec = [jjVec; (1:length(ptsX))'];
+    rbfVec = [rbfVec; rbf'];
 end
-for i = 1:length(ptsX)
-    PM(i,:) = [1 sampleX(i) sampleY(i)];
-end
-
-mat2 = [fiNM PN];
-
-%fiNM = sparse(iiVec,jjVec,rbfVec,length(sampleX),length(ptsX));
-%valsOut = (fiNM*wf)./(fiNM*w1);
-vals = (mat2*w);
-valsOut = vals(1:end-2);
+fiNM = sparse(iiVec,jjVec,rbfVec,length(sampleX),length(ptsX));
+valsOut = (fiNM*wf)./(fiNM*w1);
+%valsOut = (fiNM*wf);
 %vals2_noRL = (fiNM*wf);
 %pts_c1 = pts;
+y = N(sampX');
+
+%% measure L2 error
+L2(ii) = norm(2/length(sampX)*(valsOut - y),2);
+n_cond(ii) = cond(fiMM);
+end
+figure(1)
+semilogy(rad/(2/length(ptsX)),n_cond,'r')
+xlabel('r/h')
+ylabel('condition number')
+figure(2)
+semilogy(rad/(2/length(ptsX)),L2,'r')
+xlabel('r/h')
+ylabel('L2 approximation error')
+
+figure(3)
+plot(ptsX,vals,'o')
+hold on
+plot(sampX,valsOut,'-')
+
+
 
 
 
@@ -178,19 +183,16 @@ valsOut = vals(1:end-2);
 
 
 %% plot 
-xval = linspace(-1,1,100);
-yval = N(xval);
-%plot(ptsX, vals, 'o', 'LineWidth',1)
-plot(xval,yval,'k-')
-hold on
-plot(sampleX,valsOut, 'r*')
+% xval = linspace(-1,1,100);
+% yval = N(xval);
+% %plot(ptsX, vals, 'o', 'LineWidth',1)
+% plot(xval,yval,'k-')
+% hold on
+% plot(sampleX,valsOut, 'r*')
 %plot(sample_c1,vals2_noRL, 'g*')
 % plot(sample_c2,vals2_c2, 'b^')
 % plot(sample_c3,vals2_c3, 'gs')
-y = N(sampX');
 
-%% measure L2 error
-L2 = norm(2/length(xval)*(valsOut - y),2);
 
 %% error comparison 
 

@@ -100,6 +100,7 @@
     function N1Mat = getBasisFinGPoints(obj)
       N1Mat = obj.N1;
     end
+
     
 %     function mat = getDerBasisF(obj,el)
 %       obj.J = pagemtimes(obj.J1,obj.mesh.coordinates(obj.mesh.cells(el,:),:));
@@ -143,6 +144,18 @@
       end
     end
 
+    function n = computeNormal(obj,idQuad)
+        % compute normal vector of cell idQuad
+        n = zeros(length(idQuad),3);
+        for el = idQuad
+            nodeCoord = obj.mesh.coordinates(obj.mesh.surfaces(el,:),:);
+            v1 = nodeCoord(1,:) - nodeCoord(2,:);
+            v2 = nodeCoord(2,:) - nodeCoord(3,:);
+            n(el,:) = cross(v1,v2);
+            n(el,:) = n(el,:)/norm(n(el,:));
+        end
+    end
+
     function gPCoordinates = getGPointsLocation(obj,el)
         % Get the location of the Gauss points in the element in the physical
         % space
@@ -150,12 +163,28 @@
     end
 
     function N = computeBasisF(obj, list)
-        % Find the value the basis functions take at some points defined in
+        % Find the value the basis functions take at some  reference points defined in
         % a list
         N = bsxfun(@(i,j) 1/4*(1+obj.coordLoc(j,1).*list(i,1)).* ...
             (1+obj.coordLoc(j,2).*list(i,2)), ...
-            (1:length(list))',1:obj.mesh.surfaceNumVerts(1));
+            (1:size(list,1))',1:obj.mesh.surfaceNumVerts(1));
     end
+
+    function dN = computeDerBasisF(obj, list)
+        % Compute derivatives in the reference space for all Gauss points
+        % d(N)/d\csi
+        d1 = bsxfun(@(i,j) 1/4*obj.coordLoc(j,1).* ...
+            (1+obj.coordLoc(j,2).*list(i,2)), ...
+            (1:size(list,1)),1:obj.mesh.surfaceNumVerts(1));
+        %
+        % d(N)/d\eta
+        d2 = bsxfun(@(i,j) 1/4*obj.coordLoc(j,2).* ...
+            (1+obj.coordLoc(j,1).*list(i,1)), ...
+            (1:size(list,1)),1:obj.mesh.surfaceNumVerts(1));
+        %
+        dN = [d1';d2'];
+    end
+
   end
 
   methods (Access = private)

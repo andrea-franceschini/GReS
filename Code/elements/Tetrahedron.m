@@ -39,8 +39,9 @@ classdef Tetrahedron < handle
     end
     
     %   Elements volume calculation
-    function vol = findVolume(obj,idTetra)
+    function [vol,volNod] = findVolume(obj,idTetra)
       vol = zeros(length(idTetra),1);
+      volNod = zeros(3*length(idTetra),1);
 %       obj.volSign = ones(obj.mesh.nCells,1);
 %       obj.volNod = zeros(obj.mesh.nNodes,1);
       i = 0;
@@ -55,9 +56,9 @@ classdef Tetrahedron < handle
 %           obj.volSign(el) = -1;
           vol(i) = -vol(i);
         end
-%         for i=1:obj.mesh.cellNumVerts(el)
-%           obj.volNod(top(i)) = obj.volNod(top(i)) + obj.vol(el)/obj.mesh.cellNumVerts(el);
-%         end
+        % for i=1:obj.mesh.cellNumVerts(el)
+        %   volNod(top(i)) = volNod(top(i)) + vol(el)/obj.mesh.cellNumVerts(el);
+        % end
       end
       % Although it has no for loop, the following solution takes more
       % time!

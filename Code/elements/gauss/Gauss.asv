@@ -126,10 +126,8 @@ classdef Gauss < handle
                 tab = load('G20');
                 c1D = tab(:,3);
                 w = tab(:,2);
-                [c1D,i] = sort(c1D);
-                w = w(i);
-                obj.coord1D = c1D;
-                obj.weight1D = w;
+                obj.coord1D = [-c1D;flip(c1D)];
+                obj.weight1D = [w];
             otherwise
                 error('Number of 1D nodes not supported yet');
         end

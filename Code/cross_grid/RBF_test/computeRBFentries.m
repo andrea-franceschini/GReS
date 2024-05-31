@@ -6,6 +6,10 @@ switch type
     case 'tps'
         dist(dist == 0) = eps;
         rbf_row = ((dist/r).^2).*log(dist/r);
+    case 'gauss'
+        rbf_row = exp(-dist.^2/r^2);
+    case 'imq'
+        rbf_row = (dist.^2+r^2).^(-0.5);
 end
 end
 

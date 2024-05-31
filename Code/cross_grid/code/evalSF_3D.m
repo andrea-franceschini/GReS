@@ -2,7 +2,7 @@ function [vals, pos] = evalSF_3D(nodeID, elem_list, nInts, mastertop, master, el
 % evaluate shape function in the real space and return position of
 % integration points in the real space (extended to x,y)
 % already ordered to perform RBF interpolation
-intPts = [-0.999 0.999]; % ad-hoc interpolation
+intPts = [-0.99 0.99]; % ad-hoc interpolation
 intPts = unique([intPts, linspace(intPts(1), intPts(2), nInts)]);
 [y, x] = meshgrid(intPts, intPts);
 intPts = [x(:), y(:)];
