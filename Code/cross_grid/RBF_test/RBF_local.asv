@@ -10,7 +10,7 @@ g = Gauss(12,nInt,1);
 a = -1;
 b = 1;
 %d = (b-a)/1000;
-ptsX = linspace(a,b,nInt); 
+%ptsX = linspace(a,b,nInt+2); 
 %ptsX = [a linspace(a+0.1,b-0.1,nInt) b]; 
 %ptsX = (unique([-1;1;g.coord]))';
 ptsY = ptsX;
@@ -22,10 +22,7 @@ N = @(x) -0.5*x+0.5;
 vals= N(ptsX);
 %vals = ones(1,length(ptsX));
 
-ptsX = 1*ptsX;
-ptsY = ptsX;
-
-type = 'wendland';
+type = 'gauss';
 %% INTERPOLATE USING SELECTED RBF
 %r = b-a;
 %r = sqrt((max(ptsX)-min(ptsX)).^2 + (max(ptsY)-min(ptsY)).^2);
@@ -33,7 +30,7 @@ type = 'wendland';
 %n_cond = zeros(length(rad),1);
 % L2 = zeros(length(rad),1);
 %r = b-a;
-r = 3;
+r = 10;
 iiVec = []; jjVec =[]; rbfVec = [];
 for i = 1:length(ptsX)
     dist = (ptsX - ptsX(i)).^2 + (ptsY - ptsY(i)).^2;
@@ -51,10 +48,10 @@ w1 = fiMM\ones(length(ptsX),1);
 
 % compute normal
 n = [-1,1];
-k = 0.8;
+k = 0;
 
 % curved slave sample to check the effect of non aligned mesh
-sampX = 1*linspace(-1,1,200);
+sampX = linspace(-1,1,200);
 sampleX = sampX+n(1)*k;
 sampleY = sampX+n(2)*k;
 iiVec = []; jjVec =[]; rbfVec = [];
@@ -73,7 +70,7 @@ valsOut = (fiNM*wf)./(fiNM*w1);
 y = N(sampX');
 
 % %% measure L2 error
-L2 = norm(1/length(sampX)*(valsOut - y),2);
+L2 = norm(2/length(sampX)*(valsOut - y),2);
 % n_cond(ii) = cond(fiMM);
 
 

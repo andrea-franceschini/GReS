@@ -19,11 +19,11 @@ a = -1;
 b = 1;
 %d = (b-a)/1000;
 ptsX = linspace(a,b,nInt); 
-ptsY = 0.2*ptsX;
+ptsY = ptsX;
 %ptsY = 2*ones(legnth(ptsX))
 %ptsY = zeros(length(ptsX),1);
 %N = @(x) 1-x.^2;
-%N = @(x) -0.5*x+0.5;
+N = @(x) -0.5*x+0.5;
 %N = @(x) sin(x);
 vals= N(ptsX);
 
@@ -60,8 +60,8 @@ k = 0.5;
 
 % curved slave sample to check the effect of non aligned mesh
 sampX = linspace(-1.2,1.2,20);
-sampleX = sampX;
-sampleY = 0*sampX;
+sampleX = sampX+k*n(1);
+sampleY = sampX + k*n(2);
 iiVec = []; jjVec =[]; rbfVec = [];
 fiNM = zeros(length(sampX),length(ptsX));
 PN = zeros(length(sampX),3);

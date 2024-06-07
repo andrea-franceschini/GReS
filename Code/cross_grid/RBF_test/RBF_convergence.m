@@ -7,10 +7,10 @@ close all;
 %% CASE 1 - interpolate basis function on a single element
 a = -1;
 b = 1;
-n_refs = 7;
-L2 = zeros(n_refs,1);
-n_cond = zeros(n_refs,1);
-nInts = [4 8 16 32 64 128 256];
+nInts = [4 8 16 32 64 128 256 512 1028];
+n_cond = zeros(length(nInts),1);
+L2 = zeros(length(nInts),1);
+%n_refs = length(n);
 %d = (b-a)/1000;
 for ii=1:length(nInts)
     nInt = nInts(ii);
@@ -23,7 +23,7 @@ for ii=1:length(nInts)
     %N = @(x) sin(x);
     vals= N(ptsX);
     %vals = ones(1,length(ptsX));
-    type = 'gauss';
+    type = 'wendland';
     %% INTERPOLATE USING SELECTED RBF
     %r = b-a;
     %r = sqrt((max(ptsX)-min(ptsX)).^2 + (max(ptsY)-min(ptsY)).^2);
@@ -73,38 +73,38 @@ for ii=1:length(nInts)
     n_cond(ii) = cond(fiMM);
 end
 figure(1)
-semilogy(4*2.^(1:n_refs),L2,'k-o', 'LineWidth',1)
+loglog(nInts,L2,'k-o', 'LineWidth',1)
 xlabel('nPoints')
 ylabel('L2 approximation error')
 
 figure(2)
-semilogy(4*2.^(1:n_refs),n_cond,'k-o','LineWidth',1)
+loglog(nInts,n_cond,'k-o','LineWidth',1)
 xlabel('nPoints')
 ylabel('Condtion numb. interpolation mat')
 
 %%
-g = load("gauss.mat");
-w = load("wendland.mat");
-L2_g = g.L2;
-L2_w = w.L2;
-cond_g = g.n_cond;
-cond_w = w.n_cond;
-
-figure(1)
-loglog(4*2.^(1:n_refs),L2_g,'r-o','LineWidth',1)
-hold on
-loglog(4*2.^(1:n_refs),L2_w,'b-o','LineWidth',1)
-xlabel('nPoints')
-ylabel('L2 interp. error')
-legend('gauss','wendland')
-
-figure(2)
-loglog(4*2.^(1:n_refs),cond_g,'r-o','LineWidth',1)
-hold on
-loglog(4*2.^(1:n_refs),cond_w,'b-o','LineWidth',1)
-xlabel('nPoints')
-ylabel('condition number')
-legend('gauss','wendland')
+% g = load("gauss.mat");
+% w = load("wendland.mat");
+% L2_g = g.L2;
+% L2_w = w.L2;
+% cond_g = g.n_cond;
+% cond_w = w.n_cond;
+% 
+% figure(1)
+% loglog(nInts,L2_g,'r-o','LineWidth',1)
+% hold on
+% loglog(4*2.^(1:n_refs),L2_w,'b-o','LineWidth',1)
+% xlabel('nPoints')
+% ylabel('L2 interp. error')
+% legend('gauss','wendland')
+% 
+% figure(2)
+% loglog(4*2.^(1:n_refs),cond_g,'r-o','LineWidth',1)
+% hold on
+% loglog(4*2.^(1:n_refs),cond_w,'b-o','LineWidth',1)
+% xlabel('nPoints')
+% ylabel('condition number')
+% legend('gauss','wendland')
 
 
 

@@ -124,7 +124,7 @@ classdef ContactSearching < handle
             % increase slightly the size of the k-top (useful in 3D
             % setting)
             red = max(abs(ktopVals(1,:) - ktopVals(2,:)));
-            ktopVals = ktopVals - [0.02*red; -0.02*red];
+            ktopVals = ktopVals - [0.5*red; -0.5*red];
                         
             if length(surfID) > 1
                 % split using cutting plane 

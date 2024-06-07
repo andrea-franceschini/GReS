@@ -10,6 +10,8 @@ switch type
         rbf_row = exp(-dist.^2/r^2);
     case 'imq'
         rbf_row = (dist.^2+r^2).^(-0.5);
+    case 'cubic'
+        rbf_row = dist.^4;
 end
 end
 
