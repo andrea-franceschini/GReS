@@ -77,6 +77,87 @@ stmp = strcat('plots/', nameOut, '.pdf');
 % exportgraphics(gcf,stmp,'Resolution',400)
 exportgraphics(gcf,stmp,'ContentType','vector')
 
+%% BASIS Function sketch 
+t = tiledlayout(1,2);
+%t.TileSpacing = 'compact';
+t.Padding = 'compact';
+nexttile
+
+x = linspace(-1,1,50);
+bf1 = @(x) 0.5*x.*(1+x);
+plot(x,bf1(x),'b-','LineWidth',2);
+%colormap
+xs = linspace(-1,1,5);
+hold on
+plot([-1 0 1],[0 0 0],'k.-','Linewidth',2,'MarkerSize',30)
+scatter(xs,zeros(length(xs),1),"red")
+scatter(xs,bf1(xs),"filled","red")
+for i=1:length(xs)
+    plot([xs(i);xs(i)],[0 bf1(xs(i))],'r-','LineWidth',0.5)
+end
+xlim([-1.2 1.2])
+ylim([-0.3 1.1])
+set(gca,'XTick',[])
+set(gca,'YTick',[])
+
+str = {'-1','0','+1'};
+text([-1.15 0 1.05],-0.05*ones(3,1),str,'FontName','Liberation Serif','FontSize', 12)
+
+nexttile
+[X,Y] = meshgrid(-1:.01:1);
+bf2 = @(x,y) 0.5*(1-x.^2).*(1+y);
+Z = bf2(X,Y);
+s = surf(X,Y,Z);
+s.EdgeColor = 'none';
+s.FaceLighting = "gouraud";
+hold on
+[xs,ys] = meshgrid(linspace(-1,1,6));
+%scatter3([xs(i) xs(i)],[ys(i) ys(i)],[-0.4 bf2(xs(i),ys(i))],"filled","red")
+coordLoc = [-1 -1;
+   0 -1;
+    1 -1;
+    1 0;
+    1 1;
+    0 1;
+    -1 1;
+    -1 0
+    -1 -1];
+xp = xs(:);
+yp = ys(:);
+% for i=1:length(xp)
+%     plot3([xp(i) xp(i)],[yp(i) yp(i)],[-0.4 bf2(xp(i),yp(i))],'r-','LineWidth',0.25)
+% end
+plot3(coordLoc(:,1),coordLoc(:,2),-0.4*ones(length(coordLoc)),'.k-','LineWidth',2,'MarkerSize',30)
+scatter3(xs,ys,-0.4*ones(size(xs,1)),"red")
+scatter3(xs,ys,bf2(xs,ys),"filled","red")
+str = {'(-1,-1)';'(0,-1)';'(+1,-1)';'(1,0)';'(+1,+1)';'(0,+1)';'(-1,+1)';'(-1,0)'};
+cLoc = [-1.2 -1;
+   0 -1 ;
+    1 -1;
+    1.1 0;
+    1.1 1.1;
+    0 1.4;
+    -1.2 1;
+    -1.2 0];
+text(cLoc(:,1),cLoc(:,2),-0.45*ones(length(cLoc),1),str,'FontName','Liberation Serif','FontSize', 12)
+set(gca,'XTick',[])
+set(gca,'YTick',[])
+set(gca,'ZTick',[])
+xlim([-1.4 1.4])
+ylim([-1.1 1.1])
+zlim([-0.6 1.2])
+
+allAxes = findall(t, 'Type', 'Axes');
+for i = 1:length(allAxes)
+    set(allAxes(i), 'FontName', 'Liberation Serif', 'FontSize', 10); % Change 'Arial' to your desired font and 14 to your desired size
+    % Update title, xlabel, and ylabel specifically
+    % set(get(allAxes(i), 'XLabel'), 'FontName', 'Times', 'FontSize', 12);
+    % set(get(allAxes(i), 'YLabel'), 'FontName', 'Times', 'FontSize', 12);
+end
+stmp = strcat('plots/', 'basisF_sketch', '.png');
+% exportgraphics(gcf,stmp,'Resolution',400)
+exportgraphics(gcf,stmp,'Resolution',600,'ContentType','image')
+
 
 
 

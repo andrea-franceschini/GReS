@@ -1,0 +1,20 @@
+//Gmsh project created on Fri Mar 15 135835 2024
+
+Mesh.Format = 1;  //msh output format
+Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
+
+
+Point(1) = {0, 0, 0};
+Point(2) = {1, 0, 0};
+
+//Circle center
+Line(1) = {1, 2};
+
+Extrude {0, 1, 0} {Line{1}; Layers{1}; Recombine;}
+
+
+//Transfinite Surface {1};
+
+
+Mesh 2;
+Save "quad8.msh";

@@ -97,7 +97,11 @@ classdef Elements < handle
           obj.tri = Triangle(obj.mesh);
       end
       if obj.nSurfByType(2) > 0
-          obj.quad = Quadrilateral(obj.mesh,obj.GaussPts);
+          if any(obj.mesh.surfaceNumVerts==4)
+              obj.quad = Quadrilateral(obj.mesh,obj.GaussPts);
+          elseif any(obj.mesh.surfaceNumVerts==8)
+              obj.quad = Quad8(obj.mesh,obj.GaussPts);
+          end
       end
 
       if obj.nSurfByType(2) == 0

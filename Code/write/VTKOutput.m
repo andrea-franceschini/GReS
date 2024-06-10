@@ -275,8 +275,16 @@ classdef VTKOutput < handle
           mxVTKWriter(fname, time, obj.mesh.coordinates, obj.mesh.cells, obj.mesh.cellVTKType, ...
               obj.mesh.cellNumVerts, pointData3D, cellData3D);
       else
+          if obj.mesh.surfaceNumVerts(1) == 8
+              % reorder topology of 8-node hexa
+              surf = obj.mesh.surfaces;
+              surf = surf(:,[1 5 2 6 3 7 4 8]);
+              mxVTKWriter(fname, time, obj.mesh.coordinates, surf, obj.mesh.surfaceVTKType, ...
+                  obj.mesh.surfaceNumVerts, pointData2D, cellData2D);
+          else
           mxVTKWriter(fname, time, obj.mesh.coordinates, obj.mesh.surfaces, obj.mesh.surfaceVTKType, ...
               obj.mesh.surfaceNumVerts, pointData2D, cellData2D);
+          end
       end
 
       if (obj.hasFaults)

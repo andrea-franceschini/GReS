@@ -6,8 +6,11 @@ msh1 = Mesh();
 msh2 = Mesh();
 nM = 8;
 nS = 12;
-msh1.createCartesianGrid(2,[-1 1],[-1 1],nM,nM);
-msh2.createCartesianGrid(2,[-1 1],[-1 1],nS,nS);
+msh1.createCartesianGrid(2,2,[-1 1],[-1 1],6,4);
+
+plotFunction(msh1, 'test', ones(msh1.nNodes,1))
+
+msh2.createCartesianGrid(2,2,[-1 1],[-1 1],nS,nS);
 
 % change the shape of the surfaces with z = f(x,y)
 % k=0.5;
@@ -54,6 +57,8 @@ plotFunction(msh2, 'out_slaveRBF_g', fOutRBF_g)
 plotFunction(msh2, 'out_slave_eb', fOutEB)
 plotFunction(msh2, 'out_slaveExact', fOutEx)
 %plotFunction(msh2, 'out_RelErr', rel_g)
+
+
 
 
 

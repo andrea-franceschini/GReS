@@ -77,18 +77,18 @@ end
 %legend(typeStr)
 
 %%
-% x = linspace(-1,1,50);
-% bf = @(x) 0.5*x.*(1+x);
-% plot(x,bf(x),'b-','LineWidth',1.5);
-% %colormap
-% xs = linspace(-1,1,6);
-% hold on
-% scatter(xs,zeros(length(xs),1),"red")
-% scatter(xs,bf(xs),"filled","red")
-% xlim([-1.2 1.2])
-% ylim([-0.2 1.2])
-% set(gca,'XTick',[])
-% set(gca,'YTick',[])
+x = linspace(-1,1,50);
+bf = @(x) 0.5*x.*(1+x);
+plot(x,bf(x),'b-','LineWidth',1.5);
+%colormap
+xs = linspace(-1,1,6);
+hold on
+scatter(xs,zeros(length(xs),1),"red")
+scatter(xs,bf(xs),"filled","red")
+xlim([-1.2 1.2])
+ylim([-0.2 1.2])
+set(gca,'XTick',[])
+set(gca,'YTick',[])
 
 
 
