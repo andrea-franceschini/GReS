@@ -8,8 +8,8 @@ close all
 % msh2.importGMSHmesh('3Dmesh/Mesh_fineFlat.msh');
 gauss = Gauss(12,3,2);
 nM0 = 6;
-nSizes = 4;
-ratio = 0.6;
+nSizes = 5;
+ratio = 0.3;
 L2_eb = zeros(nSizes,1);
 L2_rbf_w = L2_eb;
 L2_rbf_g = L2_eb;
@@ -22,14 +22,14 @@ for i = 0:nSizes-1
     nM = nM0*2^i;
     nS = round(ratio*nM);
 
-    msh1.createCartesianGrid(2,1,[0 1],[0 1],nM,nM);
-    msh2.createCartesianGrid(2,1,[0 1],[0 1],nS,nS);
+    msh1.createCartesianGrid(2,2,[0 1],[0 1],nM,nM);
+    msh2.createCartesianGrid(2,2,[0 1],[0 1],nS,nS);
     plotFunction(msh1, 'test_master', ones(msh1.nNodes,1))
     plotFunction(msh2, 'test_slave', ones(msh2.nNodes))
     % Define object of 3D Mortar class
     mortar = Mortar3D(1,msh1,msh2);
     %
-    nG = 4;
+    nG = 3;
     nInt = 4;
 
     %[E_RBF_g,Mg,~,t1] = mortar.computeMortarRBF(nG,nInt,'gauss');

@@ -1,7 +1,6 @@
 clear
 close all
 
-
 type = 'gauss';
 msh1 = Mesh();
 msh2 = Mesh();
@@ -9,7 +8,7 @@ nM = 10;
 nS = 14;
 msh1.createCartesianGrid(2,1,[-1 1],[-1 1],nM,nM);
 
-%plotFunction(msh1, 'test', ones(msh1.nNodes,1))
+plotFunction(msh1, 'test', ones(msh1.nNodes,1))
 
 msh2.createCartesianGrid(2,1,[-1 1],[-1 1],nS,nS);
 

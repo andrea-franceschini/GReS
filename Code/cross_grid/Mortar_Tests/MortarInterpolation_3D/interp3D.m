@@ -7,9 +7,9 @@ close all
 % msh1.importGMSHmesh('3Dmesh/Mesh_fineUnstruct.msh');
 % msh2.importGMSHmesh('3Dmesh/Mesh_fineFlat.msh');
 gauss = Gauss(12,3,3);
-nM0 = 6;
-nSizes = 5;
-ratio = 0.6;
+nM0 = 8;
+nSizes = 4;
+ratio = 0.4;
 L2_eb = zeros(nSizes,1);
 L2_rbf_w = L2_eb;
 L2_rbf_g = L2_eb;
@@ -27,11 +27,11 @@ for i = 0:nSizes-1
     % Define object of 3D Mortar class
     mortar = Mortar3D(1,msh1,msh2);
     %
-    nG = 4;
+    nG = 15;
     nInt = 4;
 
     [E_RBF_g,Mg,~,t1] = mortar.computeMortarRBF(nG,nInt,'gauss');
-    [E_RBF_w,Mw,M1,t2] = mortar.computeMortarRBF(nG,nInt,'wendland');
+    [E_RBF_w,Mw,~,t2] = mortar.computeMortarRBF(nG,nInt,'wendland');
     %[E2,M_eb,M2,tEB] = mortar.computeMortarElementBased(nG);
 
     % analytical function on the master mesh
@@ -54,12 +54,14 @@ h = 1./(2.^(0:nSizes-1));
 loglog(h,L2_rbf_g,'r-^')
 hold on
 loglog(h,L2_rbf_w,'b-^')
-%loglog(h,L2_eb,'g-^')
+loglog(h,L2_eb,'g-^')
 legend('RBF - Rescaled Gauss', 'RBF - Rescaled Wendland','EB')
 xlabel('mesh size')
 ylabel('Quadratic error of interpolation')
 
-ratio = L2_rbf_g(1:end-1)./L2_rbf_g(2:end);
+ratioW = L2_rbf_w(1:end-1)./L2_rbf_w(2:end);
+ratioEB = L2_eb(1:end-1)./L2_eb(2:end);
+ratioG = L2_rbf_g(1:end-1)./L2_rbf_g(2:end);
 % plotFunction(msh1, 'out_master', fIn)
 % plotFunction(msh2, 'out_slaveRBF', fOutRBF_g)
 % plotFunction(msh2, 'out_slaveEB', fOutEB)
