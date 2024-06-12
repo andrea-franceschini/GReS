@@ -11,7 +11,7 @@ warning('off','MATLAB:nearlySingularMatrix');
 type = 'gauss';
 
 nSizes = 10; % number of uniform refinment for convergence analysis
-nMnodes = 8; % number of nodes for the first mesh refinment
+nMnodes = 6; % number of nodes for the first mesh refinment
 errNormRBF = zeros(nSizes,1);
 errNormSB = errNormRBF;
 errNormEB = errNormRBF;
@@ -41,10 +41,10 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
     slave(:,2) = curve(slave(:,1));
 
     % number of RBF interpolation points for each element
-    nInt = 4;
+    nInt = 6;
 
     % Number of integration points for RBF testing (GP class taken from GReS)
-    nGP = 5;
+    nGP = 15;
 
     % Build a topology matrix for master/slave surfs based on nodes position
     mastertop = build_topol_quad(master(:,1));

@@ -26,12 +26,18 @@ bf = computeBasisF(elem.quad,ptsRef);
 pts = bf*mshM.coordinates;
 r = sqrt((max(pts(:,1)) - min(pts(:,1)))^2 + (max(pts(:,2)) - min(pts(:,2)))^2 + (max(pts(:,3)) - min(pts(:,3)))^2);
 fiMM = zeros(length(pts),length(pts));
+% distance matrix
+
 % build the 4 by 4 matrix
 for ii = 1:length(pts)
     dist = (pts(:,1) - pts(ii,1)).^2 + (pts(:,2) - pts(ii,2)).^2 + (pts(:,3) - pts(ii,3)).^2;
     dist = sqrt(dist);
     fiMM(ii,:) = computeRBFentries(dist,type,r);
 end
+
+dmat = sqrt((pts(:,1) - pts(:,1)').^2 + (pts(:,2) - pts(:,2)').^2 + (pts(:,3) - pts(:,3)').^2);
+fiMMnew = computeRBFentries(dmat,type,r);
+
 % computing weights for support detection
 wf = fiMM\bf(:,[1 3]);
 w1 = fiMM\ones(length(wf),1);

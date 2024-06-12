@@ -6,7 +6,7 @@ type = 'gauss';
 msh1 = Mesh();
 msh2 = Mesh();
 nM = 10;
-nS = 14;
+nS = 2;
 msh1.createCartesianGrid(2,1,[-1 1],[-1 1],nM,nM);
 
 %plotFunction(msh1, 'test', ones(msh1.nNodes,1))
@@ -52,11 +52,11 @@ L2_rbf_w = computeL2error(postProc(msh2,fOutEx,fOutRBF_w,gauss));
 L2_rbf_g = computeL2error(postProc(msh2,fOutEx,fOutRBF_g,gauss));
 
 
-plotFunction(msh1, 'out_master', fIn)
-plotFunction(msh2, 'out_slaveRBF_w', fOutRBF_w)
-plotFunction(msh2, 'out_slaveRBF_g', fOutRBF_g)
-plotFunction(msh2, 'out_slave_eb', fOutEB)
-plotFunction(msh2, 'out_slaveExact', fOutEx)
+% plotFunction(msh1, 'out_master', fIn)
+% plotFunction(msh2, 'out_slaveRBF_w', fOutRBF_w)
+% plotFunction(msh2, 'out_slaveRBF_g', fOutRBF_g)
+% plotFunction(msh2, 'out_slave_eb', fOutEB)
+% plotFunction(msh2, 'out_slaveExact', fOutEx)
 %plotFunction(msh2, 'out_RelErr', rel_g)
 
 
