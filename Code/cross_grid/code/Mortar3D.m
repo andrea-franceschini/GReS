@@ -20,6 +20,7 @@ classdef Mortar3D < handle
         nMMat
         intMaster
         intSlave
+        nNelem
     end
 
     methods
@@ -31,6 +32,11 @@ classdef Mortar3D < handle
             % non empty varargin: meshMaster, id master interface,
             % meshSlave, id slave interface
             obj.degree = deg;
+            if deg == 1
+                obj.nNelem = 4;
+            else
+                obj.nNelem = 8;
+            end
             switch  nargin
                 case 5
                     masterTop = varargin{1}.surfaces;
@@ -71,7 +77,15 @@ classdef Mortar3D < handle
             end
             % Contact search algorithm to get connectivity between surface
             % meshes
-            cs = ContactSearching(obj.intMaster,obj.intSlave,18);
+            switch obj.degree
+                case 1
+                    cs = ContactSearching(obj.intMaster,obj.intSlave,18);
+                case 2 % perform contact searching based on a quad4 mesh
+                    intM = obj.intMaster.getQuad4mesh();
+                    intS = obj.intSlave.getQuad4mesh();
+                    cs = ContactSearching(intM,intS,18);
+            end
+
             obj.elemConnectivity = cs.elemConnectivity;
             computeSlaveMatrix(obj);
         end
@@ -164,32 +178,42 @@ classdef Mortar3D < handle
             D = zeros(obj.nSMat,obj.nSMat);
             % Perform interpolation on the master side (computing weights
             % and interpolation coordinates)
+            tic
             [wFMat,w1Mat,ptsIntMat] = getWeights(obj,'master',nInt,elemMaster,type);
-            [wFMatS,w1MatS,ptsIntMatS] = getWeights(obj,'slave',nInt,elemSlave,type);
+            %[wFMatS,w1MatS,ptsIntMatS] = getWeights(obj,'slave',nInt,elemSlave,type);
             % Interpolation for support detection
-            [wFSupp,w1Supp] = getSuppWeight(obj);
+            %[wFSupp,w1Supp] = getSuppWeight(obj);
+            tInterp = toc;
+            tic
             % Loop trough slave elements
             for j = 1:obj.nElSlave
                 % Compute Slave quantities
-                %NSlave = getBasisFinGPoints(elemSlave.quad); % Slave basis functions
+                NSlave = getBasisFinGPoints(elemSlave.quad); % Slave basis functions
                 dJWeighed = elemSlave.quad.getDerBasisFAndDet(j,3); % Weighted Jacobian
                 % get Gauss Points position in the real space
                 ptsGauss = getGPointsLocation(elemSlave.quad,j);
                 idSlave = obj.slaveTopol(j,:);
                 % compute slave basis function (still using radial basis
                 % interpolation)
-                ptsIntS = ptsIntMatS(:,[3*j-2 3*j-1 3*j]);
-                fiNMS = obj.computeRBFfiNM(ptsIntS,ptsGauss,type);
-                NSlave = (fiNMS*wFMatS(:,[4*j-3 4*j-2 4*j-1 4*j]))./(fiNMS*w1MatS(:,j));
+                %ptsIntS = ptsIntMatS(:,[3*j-2 3*j-1 3*j]);
+                %fiNMS = obj.computeRBFfiNM(ptsIntS,ptsGauss,type);
+                %NSlave = (fiNMS*wFMatS(:,[4*j-3 4*j-2 4*j-1 4*j]))./(fiNMS*w1MatS(:,j));
                 master_elems = find(obj.elemConnectivity(:,j));
                 for jm = master_elems'
                     idMaster = obj.masterTopol(jm,:);
-                    ptsInt = ptsIntMat(:,[3*jm-2 3*jm-1 3*jm]);              
-                    fiNM = obj.computeRBFfiNM(ptsInt,ptsGauss,type);          
-                    NMaster = (fiNM*wFMat(:,[4*jm-3 4*jm-2 4*jm-1 4*jm]))./(fiNM*w1Mat(:,jm));          
+                    ptsInt = ptsIntMat(:,repNum(3,jm));              
+                    [fiNM,id1] = obj.computeRBFfiNM(ptsInt,ptsGauss,type);
+                    switch obj.degree
+                        case 1
+                            NMaster = (fiNM*wFMat(:,repNum(obj.nNelem,jm)))./(fiNM*w1Mat(:,jm));
+                            Nsupp = NMaster(:,[1 3]);
+                        case 2
+                            Ntmp = (fiNM*wFMat(:,repNum(obj.nNelem+2,jm)))./(fiNM*w1Mat(:,jm));
+                            NMaster = Ntmp(:,1:obj.nNelem);
+                            Nsupp = Ntmp(:,[end-1 end]);
+                    end
                     % automatically detect supports computing interpolant
-                    % of planes
-                    id = detectSupports(obj,jm,ptsGauss,wFSupp(:,[2*jm-1 2*jm]),w1Supp(:,jm));
+                    id = all([Nsupp >= 0, Nsupp <= 1 id1],2);
                     Mdetect(jm,j) = sum(id);
                     if any(id)
                         NMaster = NMaster(id,:);
@@ -204,7 +228,7 @@ classdef Mortar3D < handle
                     end
                 end
             end
-            t = toc;
+            tInteg = toc;
             M = (M(obj.nodesMaster, obj.nodesSlave))';
             tic
             E = D\M;
@@ -215,11 +239,11 @@ classdef Mortar3D < handle
                 varargout{1} = M;
             elseif nargout == 4
                 varargout{1} = M;
-                varargout{2} = t;
-            elseif nargout == 5
-                varargout{1} = M;
-                varargout{2} = t;
-                varargout{3} = tSist;
+                varargout{2} = [tInterp,tInteg,tSist];
+            % elseif nargout == 5
+            %     varargout{1} = M;
+            %     varargout{2} = t;
+            %     varargout{w} = [tInterp,tInteg,tSist];
             end
         end
 
@@ -320,67 +344,95 @@ classdef Mortar3D < handle
     %
     %
         function fiMM = computeRBFfiMM(obj,ptsInt,type)
-            fiMM = zeros(length(ptsInt), length(ptsInt));
-            % compute RBF weight of interpolant
-            % local radius for radial basis function interpolation
             r = obj.computeRBFradius(ptsInt);
-            %r = sqrt((max(ptsInt(:,1)) - min(ptsInt(:,1)))^2 + (max(ptsInt(:,2)) - min(ptsInt(:,2)))^2 + (max(ptsInt(:,3)) - min(ptsInt(:,3)))^2);
-            for ii = 1:length(ptsInt)
-                d = sqrt((ptsInt(:,1) - ptsInt(ii,1)).^2 + ((ptsInt(:,2)) - ptsInt(ii,2)).^2 + ((ptsInt(:,3)) - ptsInt(ii,3)).^2);
-                rbf = obj.rbfInterp(d,r,type);
-                fiMM(ii,:) = rbf;
-            end
+            d = sqrt((ptsInt(:,1) - ptsInt(:,1)').^2 + (ptsInt(:,2) - ptsInt(:,2)').^2 + (ptsInt(:,3) - ptsInt(:,3)').^2);
+            fiMM = obj.rbfInterp(d,r,type);
         end
 
-        function fiNM = computeRBFfiNM(obj,ptsInt, ptsGauss, type)
-            fiNM = zeros(size(ptsGauss,1), size(ptsInt,1));
+        function [fiNM,id] = computeRBFfiNM(obj,ptsInt, ptsGauss, type)
+            % id: id of points that has a distance < r with at least one
+            % master points
+            d = sqrt((ptsGauss(:,1) - ptsInt(:,1)').^2 + (ptsGauss(:,2) - ptsInt(:,2)').^2 + (ptsGauss(:,3) - ptsInt(:,3)').^2);
             r = sqrt((max(ptsInt(:,1)) - min(ptsInt(:,1)))^2 + (max(ptsInt(:,2)) - min(ptsInt(:,2)))^2 + (max(ptsInt(:,3)) - min(ptsInt(:,3)))^2);
-            % compute RBF weight of interpolant
-            % local radius for radial basis function interpolation
-            for jj = 1:size(ptsGauss,1)
-                d = sqrt((ptsInt(:,1) - ptsGauss(jj,1)).^2 + ((ptsInt(:,2)) - ptsGauss(jj,2)).^2 + ((ptsInt(:,3)) - ptsGauss(jj,3)).^2); %%%% FIXXXXXXXXXXXXXXXX
-                rbf = obj.rbfInterp(d,r,type);
-                fiNM(jj,:) = rbf;
-            end
+            id = ~all(d>=r,2);
+            fiNM = obj.rbfInterp(d,r,type);
         end
 
         function [wF,w1] = getSuppWeight(obj)
-            wF = zeros(4,obj.nElMaster*2); % weights for support interesection
-            w1 = zeros(4,obj.nElMaster); % weight for rescaling of support interesection
+            wF = zeros(3,obj.nElMaster*4); % weights for support interesection
+            w1 = zeros(3,obj.nElMaster*2); % weight for rescaling of support interesection
+            n1 = [1 2 3];
+            n2 = [1 4 3];
+            b = [0 1; 0 0; 1 0];
             % loop trough master elements and interpolate Basis function
             for i = 1:obj.nElMaster
                 ptsInt = obj.masterCoord(obj.masterTopol(i,:),:); % get real coordinates of master nodes
                 fiMM = obj.computeRBFfiMM(ptsInt,'gauss');
                 % solve local system to get weight of interpolant
-                b = [1 1 0 0; 0 1 1 0];
-                wF(:,[2*i-1 2*i]) = fiMM\b';
-                w1(:,i) = fiMM\ones(size(ptsInt,1),1);
+                wF(:,[4*i-3 4*i-2 4*i-1 4*i]) = [fiMM(n1,n1)\b fiMM(n2,n2)\b]; 
+                w1(:,[2*i-1 2*i]) = [fiMM(n1,n1)\ones(3,1) fiMM(n2,n2)\ones(3,1)]; 
             end
         end
+        % 
+        % function id = detectSupports(obj,iM,wFMat,w1Mat,N) 
+        %     % detect slave points in ptsG lying in the support of master element iM
+        %     switch obj.degree
+        %         case 1 % simply use basis F already computed
+        %             id = all([N(:,[1 3]) >= 0, N(:,[1 3]) <= 1],2);
+        %         case 2 % use auxiliary basis functions on pair of opposite nodes
+        %             wF = wFMat(:,iM*obj.nNelem)
+        %             NSupp = [(fiNM(:,n1)*wF(:,[1 2]))./(fiNM(:,n1)*w1(:,1)),...
+        %     %     (fiNM(:,n2)*wF(:,[3 4]))./(fiNM(:,n2)*w1(:,2))];
+        % 
+        %     end
 
-        function id = detectSupports(obj,iM,ptsG,wF,w1)
-            ptsMaster = obj.masterCoord(obj.masterTopol(iM,:),:);
-            fiNM = obj.computeRBFfiNM(ptsMaster,ptsG,'gauss');
-            Nsupp = (fiNM*wF)./(fiNM*w1);
-            id = all([Nsupp >= 0, Nsupp <= 1],2);
-        end
+            % ptsMaster = obj.masterCoord(obj.masterTopol(iM,:),:);
+            % n1 = [1 2 3];
+            % n2 = [1 4 3];
+            % tol = -1e-2;
+            % fiNM = obj.computeRBFfiNM(ptsMaster,ptsG,'gauss');
+            % NSupp = [(fiNM(:,n1)*wF(:,[1 2]))./(fiNM(:,n1)*w1(:,1)),...
+            %     (fiNM(:,n2)*wF(:,[3 4]))./(fiNM(:,n2)*w1(:,2))];
+            % %Nsupp = (fiNM*wF)./(fiNM*w1); 
+            % id1 = ~any(NSupp<tol,2);
+            % id2 = all([N>=0, N<=1],2);
+            % id = all([id1,id2],2);
+            %id = all([Nsupp >= 0, Nsupp <= 1],2);
+        % end
+
+        
 
         function [wF,w1,pts] = getWeights(obj,interface,nInt,elem,type)
             numPts = (nInt)^2;
             switch interface
                 case 'master'
-                    wF = zeros(numPts,obj.nElMaster*4);
-                    w1 = zeros(numPts,obj.nElMaster);
-                    pts = zeros(numPts,obj.nElMaster*3);
-                    for i = 1:obj.nElMaster
-                        [f, ptsInt] = computeBasisF2D(i, nInt, obj.masterTopol, obj.masterCoord, elem);
-                        fiMM = obj.computeRBFfiMM(ptsInt,type);
-                        % solve local system to get weight of interpolant
-                        wF(:,[4*i-3 4*i-2 4*i-1 4*i]) = fiMM\f;
-                        w1(:,i) = fiMM\ones(size(ptsInt,1),1);
-                        pts(:,[3*i-2 3*i-1 3*i]) = ptsInt;
+                    switch obj.degree
+                        case 1
+                            wF = zeros(numPts,obj.nElMaster*obj.nNelem);
+                            w1 = zeros(numPts,obj.nElMaster);
+                            pts = zeros(numPts,obj.nElMaster*3);
+                            for i = 1:obj.nElMaster
+                                [f, ptsInt] = computeMortarBasisF(obj,i, nInt, obj.masterTopol, obj.masterCoord, elem);
+                                fiMM = obj.computeRBFfiMM(ptsInt,type);
+                                % solve local system to get weight of interpolant
+                                wF(:,repNum(obj.nNelem,i)) = fiMM\f;
+                                w1(:,i) = fiMM\ones(size(ptsInt,1),1);
+                                pts(:,repNum(3,i)) = ptsInt;
+                            end
+                        case 2 % second order interpolation (8 nodes + 2 aux)
+                            wF = zeros(numPts,obj.nElMaster*(obj.nNelem+2));
+                            w1 = zeros(numPts,obj.nElMaster);
+                            pts = zeros(numPts,obj.nElMaster*3);
+                            for i = 1:obj.nElMaster
+                                [f, ptsInt,fL] = computeMortarBasisF(obj,i, nInt, obj.masterTopol, obj.masterCoord, elem);
+                                fiMM = obj.computeRBFfiMM(ptsInt,type);
+                                % solve local system to get weight of interpolant
+                                wF(:,repNum(10,i)) = fiMM\[f,fL]; % 8 basis functions + 2 auxiliary for support detection
+                                w1(:,i) = fiMM\ones(size(ptsInt,1),1);
+                                pts(:,repNum(3,i)) = ptsInt;
+                            end
                     end
-                case 'slave'
+                case 'slave' % to get identity in the conforming case, one should interpolate also the slave basis functions
                     wF = zeros(numPts,obj.nElSlave*4);
                     w1 = zeros(numPts,obj.nElSlave);
                     pts = zeros(numPts,obj.nElSlave*3);
@@ -399,6 +451,32 @@ classdef Mortar3D < handle
         end
 
     end
+
+    methods (Access=private)
+        function [bf,pos,varargout] = computeMortarBasisF(obj,elemID, nInts, topol, coord, elem)
+            % evaluate shape function in the real space and return position of
+            % integration points in the real space (extended to x,y)
+            % already ordered to perform RBF interpolation
+            intPts = [-1 1]; % ad-hoc interpolation
+            intPts = linspace(intPts(1), intPts(2), nInts);
+            [y, x] = meshgrid(intPts, intPts);
+            intPts = [x(:), y(:)];
+
+            bf = computeBasisF(elem.quad,intPts);
+            % get coords of interpolation points in the real space
+            pos = bf*coord(topol(elemID,:),:);
+
+            % get basis functions of lower order element for support detection (only
+            % for quadrilateral elements)
+            if nargout==3
+                assert(obj.degree==2,'Incorrect number of outputs for basis functions of degree 1')
+                bfL = computeBasisF(elem.quadL,intPts);
+                varargout{1} = bfL(:,[1 3]);
+            end
+        end
+    end
+
+    
 
    
 

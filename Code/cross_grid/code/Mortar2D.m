@@ -254,8 +254,8 @@ classdef Mortar2D < handle
                     ptsInt = ptsIntMat(:,[2*jm-1 2*jm]);
                     idMaster = obj.masterTopol(jm,1:nN);
                     fiNM = computeRBFfiNM(obj,ptsInt,ptsGauss,type);
-                    %NMaster = (fiNM*wFMat(:,getWeightsID(obj,jm)))./(fiNM*w1Mat(:,jm));
-                    NMaster = fiNM*wFMat(:,getWeightsID(obj,jm));
+                    NMaster = (fiNM*wFMat(:,getWeightsID(obj,jm)))./(fiNM*w1Mat(:,jm));
+                    %NMaster = fiNM*wFMat(:,getWeightsID(obj,jm));
                     if obj.degree > 1
                         % do the contact checking for quadratic elements
                         p = ptsaux(:,[2*jm-1 2*jm]);
