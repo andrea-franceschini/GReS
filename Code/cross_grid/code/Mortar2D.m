@@ -254,8 +254,8 @@ classdef Mortar2D < handle
                     ptsInt = ptsIntMat(:,[2*jm-1 2*jm]);
                     idMaster = obj.masterTopol(jm,1:nN);
                     fiNM = computeRBFfiNM(obj,ptsInt,ptsGauss,type);
-                    %NMaster = (fiNM*wFMat(:,getWeightsID(obj,jm)))./(fiNM*w1Mat(:,jm));
-                    NMaster = fiNM*wFMat(:,getWeightsID(obj,jm));
+                    NMaster = (fiNM*wFMat(:,getWeightsID(obj,jm)))./(fiNM*w1Mat(:,jm));
+                    %NMaster = fiNM*wFMat(:,getWeightsID(obj,jm));
                     if obj.degree > 1
                         % do the contact checking for quadratic elements
                         p = ptsaux(:,[2*jm-1 2*jm]);
@@ -275,7 +275,7 @@ classdef Mortar2D < handle
                         M(idMaster, idSlave) = M(idMaster, idSlave) + Mloc;
                         D(idSlave, idSlave) = D(idSlave, idSlave) + Dloc;
                         % sort out Points already projected
-                        gpPos = gpPos(~id);    % errNormEB(sizeCount) = computeInterpError(E_EB,fMaster,fSlave,lNod);~id);
+                        gpPos = gpPos(~id);   
                         gpW = gpW(~id);
                         ptsGauss = ptsGauss(~id,:);
                     end
@@ -470,11 +470,11 @@ classdef Mortar2D < handle
             % (trivially done looking at the x-coordinates only)
             elemConnectivity = zeros(obj.nElMaster,obj.nElSlave);
             for i = 1:obj.nElMaster
-                tmp = sort([obj.masterCoord(obj.masterTopol(i,1),1),obj.masterCoord(obj.masterTopol(i,2),1)]);
+                tmp = sort([obj.masterCoord(obj.masterTopol(i,1),1),obj.masterCoord(obj.masterTopol(i,end),1)]);
                 a = tmp(1); b = tmp(2);
                 % loop trough master element to find connectivity
                 for j = 1:obj.nElSlave
-                    tmp = sort([obj.slaveCoord(obj.slaveTopol(j,1),1),obj.slaveCoord(obj.slaveTopol(j,2),1)]);
+                    tmp = sort([obj.slaveCoord(obj.slaveTopol(j,1),1),obj.slaveCoord(obj.slaveTopol(j,end),1)]);
                     c = tmp(1); d = tmp(2);
                     if ~any([a>d,c>b])
                         % intersecting

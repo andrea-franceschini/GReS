@@ -8,7 +8,7 @@ close all; clear
 degree = 1;
 
 
-nSizes = 12; % number of uniform refinment for convergence analysis
+nSizes = 10; % number of uniform refinment for convergence analysis
 nMnodes = 8; % number of nodes for the first mesh refinment
 errNormRBF_g = zeros(nSizes,1);
 errNormSB = errNormRBF_g;

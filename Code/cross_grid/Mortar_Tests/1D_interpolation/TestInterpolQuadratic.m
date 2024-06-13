@@ -44,7 +44,7 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
     nInt = 6;
 
     % Number of integration points for RBF testing (GP class taken from GReS)
-    nGP = 15;
+    nGP = 3;
 
     % Build a topology matrix for master/slave surfs based on nodes position
     mastertop = build_topol_quad(master(:,1));

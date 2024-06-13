@@ -20,7 +20,7 @@ switch degree
     case 2
         % the interpolation honor also the midpoint ( corresponding to
         % internal nodes)
-        intPts = unique([linspace(-1,0,nInts) linspace(0,1,nInts)]);
+        intPts = linspace(-1,1,nInts);
         N = computeQuadraticSF(intPts');
         i1 = nodes(topol(elem_ID,1),:);
         i2 = nodes(topol(elem_ID,3),:);
