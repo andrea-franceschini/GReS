@@ -18,6 +18,7 @@ classdef Mortar2D < handle
         Dmat
         nSMat
         nMMat
+        nNelem
     end
     
     methods
@@ -29,6 +30,11 @@ classdef Mortar2D < handle
             % non empty varargin: meshMaster, id master interface,
             % meshSlave, id slave interface
             obj.degree = deg;
+            if deg == 1
+                obj.nNelem = 2;
+            else
+                obj.nNelem = 3;
+            end
             if  nargin == 5
                 obj.mshMaster = varargin{1};
                 obj.mshSlave = varargin{3};
@@ -168,8 +174,8 @@ classdef Mortar2D < handle
                     [xiM] = obj.projectGP(m,i,gpPos,n,xSlave);
                     id = all([xiM >= -1, xiM <= 1],2);
                     if any(id)
-                        NMaster = computeBasis(obj,xiM(id));
-                        NSlave = computeBasis(obj,gpPos(id));
+                        NMaster = computeBasis1D(xiM(id),obj.degree);
+                        NSlave = computeBasis1D(gpPos(id),obj.degree);
                         Mloc = NMaster'*(NSlave.*gpW(id));
                         Mloc = Mloc*(0.5*sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2));
                         Dloc = NSlave'*(NSlave.*gpW(id));
@@ -199,78 +205,43 @@ classdef Mortar2D < handle
             % type: family of Radial Basis function to use
             tic
             g = Gauss(12,nGP,1);
-            gpRef = g.coord;
-            gpWeight = g.weight;
             M = zeros(obj.nMMat,obj.nSMat);
             D = zeros(obj.nSMat,obj.nSMat);
-            n = nInt;
-            nN = 2; % numb. nodes per element
-            if obj.degree > 1
-                n = 2*nInt-1;
-                nN = 3;
-            end
-            wFMat = zeros(n,obj.nElMaster*nN);
-            w1Mat = zeros(n,obj.nElMaster);
-            ptsIntMat = zeros(n,obj.nElMaster*2);
-            if obj.degree > 1
-                wFaux = zeros(4,obj.nElMaster);
-                w1aux = zeros(4,obj.nElMaster);
-                ptsaux = zeros(4,obj.nElMaster*2);
-            end
-            for i = 1:obj.nElMaster
-                % get shape function values and interpolation points
-                % coordinates
-                [vals, ptsInt] = computeBasisF1D(i, nInt, obj.masterTopol, obj.masterCoord, obj.degree);
-                % auxiliary interpolation for contact detection
-                if obj.degree > 1
-                    [v,p] = computeBasisF1D(i, nInt, obj.masterTopol, obj.masterCoord, 0);
-                    fiMMaux = computeRBFfiMM(obj,p,type);
-                    wFaux(:,i) = fiMMaux\v;
-                    w1aux(:,i) = fiMMaux\ones(size(p,1),1);
-                    ptsaux(:,[2*i-1 2*i]) = p;
-                end
-                fiMM = computeRBFfiMM(obj,ptsInt,type);
-                % solve local system to get weight of interpolant. Store
-                % interpolation results into matrices
-                wFMat(:,getWeightsID(obj,i)) = fiMM\vals;
-                w1Mat(:,i) = fiMM\ones(size(ptsInt,1),1);
-                ptsIntMat(:,[2*i-1 2*i]) = ptsInt;
-            end
+            [wFMat,w1Mat,ptsIntMat] = getWeights(obj,nInt,type);
             % Loop trough slave elements
             for j = 1:obj.nElSlave
-                % Gauss parameters
-                gpPos = gpRef;
-                gpW = gpWeight;
+                gpPos = g.coord;
+                gpW = g.weight;
                 % nodes of slave element
                 s1 = obj.slaveCoord(obj.slaveTopol(j,1),:);
-                s2 = obj.slaveCoord(obj.slaveTopol(j,nN),:);
-                idSlave = obj.slaveTopol(j,1:nN);
+                s2 = obj.slaveCoord(obj.slaveTopol(j,end),:);
+                idSlave = obj.slaveTopol(j,1:obj.nNelem);
                 % Real position of Gauss points
                 ptsGauss = ref2nod(gpPos, s1, s2);
                 % Get connected master elements
                 master_elems = find(obj.elemConnectivity(:,j));
+                NSlave = computeBasis1D(gpPos,obj.degree);
                 % Loop troug master elements
                 for jm = master_elems'
-                    ptsInt = ptsIntMat(:,[2*jm-1 2*jm]);
-                    idMaster = obj.masterTopol(jm,1:nN);
-                    fiNM = computeRBFfiNM(obj,ptsInt,ptsGauss,type);
-                    NMaster = (fiNM*wFMat(:,getWeightsID(obj,jm)))./(fiNM*w1Mat(:,jm));
+                    ptsInt = ptsIntMat(:,repNum(2,jm));
+                    idMaster = obj.masterTopol(jm,1:obj.nNelem);
+                    fiNM = obj.computeRBFfiNM(ptsInt,ptsGauss,type);
                     %NMaster = fiNM*wFMat(:,getWeightsID(obj,jm));
-                    if obj.degree > 1
-                        % do the contact checking for quadratic elements
-                        p = ptsaux(:,[2*jm-1 2*jm]);
-                        fiNMaux = computeRBFfiNM(obj,p,ptsGauss,type);
-                        Naux = (fiNMaux*wFaux(:,jm))./(fiNMaux*w1aux(:,jm));
-                        id = all([Naux >= 0, Naux <= 1],2); % contact detection
-                    else
-                        id = all([NMaster >= 0, NMaster <= 1],2); % contact detection
+                    switch obj.degree
+                        case 1
+                            NMaster = (fiNM*wFMat(:,repNum(obj.nNelem,jm)))./(fiNM*w1Mat(:,jm));
+                            NSupp = NMaster(:,1);
+                        case 2
+                            Ntmp = (fiNM*wFMat(:,repNum(obj.nNelem+1,jm)))./(fiNM*w1Mat(:,jm));
+                            NMaster = Ntmp(:,1:obj.nNelem);
+                            NSupp = Ntmp(:,end);
                     end
+                    id = all([NSupp >= 0, NSupp <= 1],2);
                     if any(id)
                         NMaster = NMaster(id,:);
-                        NSlave = computeBasis(obj,gpPos(id));
-                        Mloc = NMaster'*(NSlave.*gpW(id));
+                        Mloc = NMaster'*(NSlave(id,:).*gpW(id));
                         Mloc = Mloc*(0.5*sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2));
-                        Dloc = NSlave'*(NSlave.*gpW(id));
+                        Dloc = NSlave(id,:)'*(NSlave(id,:).*gpW(id));
                         Dloc = Dloc*(0.5*sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2));
                         M(idMaster, idSlave) = M(idMaster, idSlave) + Mloc;
                         D(idSlave, idSlave) = D(idSlave, idSlave) + Dloc;
@@ -278,6 +249,7 @@ classdef Mortar2D < handle
                         gpPos = gpPos(~id);   
                         gpW = gpW(~id);
                         ptsGauss = ptsGauss(~id,:);
+                        NSlave = NSlave(~id,:);
                     end
                 end
             end
@@ -306,13 +278,6 @@ classdef Mortar2D < handle
             end
         end
 
-        function N = computeBasis(obj,pos)
-            if obj.degree > 1
-                N = computeQuadraticSF(pos);
-            else
-                N = compute1DBasisF(pos);
-            end
-        end
 
         function xiMaster = projectGP(obj,elM,elS,xi,n,xInt)
             xiMaster = zeros(length(xi),1);
@@ -325,8 +290,8 @@ classdef Mortar2D < handle
             for ii = 1:length(xi)
                 iter = 0;
                 w = 0;
-                Nslave = computeBasis(obj,xi(ii));
-                Nmaster = computeBasis(obj,xiMaster(ii));
+                Nslave = computeBasis1D(xi(ii),obj.degree);
+                Nmaster = computeBasis1D(xiMaster(ii),obj.degree);
                 % evaluate normal at integration point
                 rhs1 = Nmaster*coord(nodeM,:);
                 nS = Nslave*n(nodeS,:);
@@ -340,7 +305,7 @@ classdef Mortar2D < handle
                     ds = J\(-rhs);
                     xiMaster(ii) = xiMaster(ii) + ds(1);
                     w = w + ds(2);
-                    Nmaster = computeBasis(obj,xiMaster(ii));
+                    Nmaster = computeBasis1D(xiMaster(ii),obj.degree);
                     % evaluate normal at integration point
                     rhs1 = Nmaster*coord(nodeM,:);
                     rhs = rhs1' - w*nS' - xInt(ii,:)';
@@ -396,6 +361,53 @@ classdef Mortar2D < handle
         end
         %
 
+        function [wF,w1,pts] = getWeights(obj,nInt,type)
+            switch obj.degree
+                case 1
+                    wF = zeros(nInt,obj.nElMaster*obj.nNelem);
+                    w1 = zeros(nInt,obj.nElMaster);
+                    pts = zeros(nInt,obj.nElMaster*2);
+                    for i = 1:obj.nElMaster
+                        [f, ptsInt] = computeMortarBasisF(obj,i, nInt, obj.masterTopol, obj.masterCoord,type);
+                        fiMM = obj.computeRBFfiMM(ptsInt,type);
+                        % solve local system to get weight of interpolant
+                        wF(:,repNum(obj.nNelem,i)) = fiMM\f;
+                        w1(:,i) = fiMM\ones(size(ptsInt,1),1);
+                        pts(:,repNum(2,i)) = ptsInt;
+                    end
+                case 2
+                    wF = zeros(nInt,obj.nElMaster*(obj.nNelem+1));
+                    w1 = zeros(nInt,obj.nElMaster);
+                    pts = zeros(nInt,obj.nElMaster*2);
+                    for i = 1:obj.nElMaster
+                        [f,ptsInt,fL] = computeMortarBasisF(obj,i, nInt, obj.masterTopol, obj.masterCoord,type);
+                        fiMM = obj.computeRBFfiMM(ptsInt,type);
+                        % solve local system to get weight of interpolant
+                        wF(:,repNum(obj.nNelem+1,i)) = fiMM\[f,fL];
+                        w1(:,i) = fiMM\ones(size(ptsInt,1),1);
+                        pts(:,repNum(2,i)) = ptsInt;
+                    end
+            end
+        end
+
+        function [bf,pos,varargout] = computeMortarBasisF(obj,elemID,nInt,top,coord,type)
+            intPts = [-1 1];
+            intPts = linspace(intPts(1), intPts(2), nInt);
+            % if strcmp(type,'wendland')
+            %     intPts = sin(pi*intPts/2);
+            % end
+            bf = computeBasis1D(intPts,obj.degree);
+            i1 = coord(top(elemID,1),:);
+            i2 = coord(top(elemID,end),:);
+            pos = ref2nod(intPts, i1, i2);
+            if nargout == 3
+                assert(obj.degree==2,'Incorrect number of outputs for basis functions of degree 1')
+                bfL = computeBasis1D(intPts,1);
+                varargout{1} = bfL(:,1);
+            end
+        end
+        
+
         function [errNorm, fInt] = computeInterpError(obj,E,f)
             if E == 0
                 errNorm = 0;
@@ -412,49 +424,6 @@ classdef Mortar2D < handle
             errNorm = sqrt(sum(err2.*lNod));
         end
         %
-
-        function rbf = rbfInterp(obj,d,r,type)
-            % compute row of rbf interpolation matrix
-            switch type
-                case 'wendland'
-                    rbf = pos(1-d./r).^4.*(1+d./r);
-                case 'gauss'
-                    rbf = exp(-d.^2/r^2);
-                case 'imq'
-                    rbf = (d.^2+r^2).^(-0.5);
-            end
-        end
-
-        function r1 = computeRBFRadius(obj,ptsInt)
-            r1 = sqrt((max(ptsInt(:,1)) - min(ptsInt(:,1)))^2 + (max(ptsInt(:,2)) - min(ptsInt(:,2)))^2);
-            r2 = (5/(length(ptsInt)-1))*r1;
-            r = min(r1,r2);
-        end
-
-        function fiMM = computeRBFfiMM(obj,ptsInt,type)
-            % compute interpolation matrix
-            fiMM = zeros(length(ptsInt), length(ptsInt));
-            % compute RBF weight of interpolant
-            % radius of RBF interpolation
-            r = computeRBFRadius(obj,ptsInt);
-            for ii = 1:length(ptsInt)
-                d = sqrt((ptsInt(:,1) - ptsInt(ii,1)).^2 + ((ptsInt(:,2)) - ptsInt(ii,2)).^2);
-                rbf = obj.rbfInterp(d,r,type);
-                fiMM(ii,:) = rbf;
-            end
-        end
-
-        function fiNM = computeRBFfiNM(obj,ptsInt, ptsGauss, type)
-            % compute interpolation matrix
-            fiNM = zeros(size(ptsGauss,1), size(ptsInt,1));
-            % compute interpolant on local Gauss points
-            r = computeRBFRadius(obj,ptsInt);
-            for jj = 1:size(ptsGauss,1)
-                d = sqrt((ptsInt(:,1) - ptsGauss(jj,1)).^2 + ((ptsInt(:,2)) - ptsGauss(jj,2)).^2);
-                rbf = obj.rbfInterp(d,r,type);
-                fiNM(jj,:) = rbf;
-            end
-        end
 
         function id = getWeightsID(obj,i)
             switch obj.degree
@@ -512,6 +481,45 @@ classdef Mortar2D < handle
             end
         end
         %
+
+
+
+    end
+
+
+    methods (Static)
+        function r1 = computeRBFRadius(ptsInt)
+            r1 = sqrt((max(ptsInt(:,1)) - min(ptsInt(:,1)))^2 + (max(ptsInt(:,2)) - min(ptsInt(:,2)))^2);
+            r2 = (10/(length(ptsInt)-1))*r1;
+            r = min(r1,r2);
+        end
+
+        function fiMM = computeRBFfiMM(ptsInt,type)
+            r =  Mortar2D.computeRBFRadius(ptsInt);
+            d = sqrt((ptsInt(:,1) - ptsInt(:,1)').^2 + (ptsInt(:,2) - ptsInt(:,2)').^2);
+            fiMM = Mortar2D.rbfInterp(d,r,type);
+        end
+
+        function [fiNM] = computeRBFfiNM(ptsInt,ptsGauss,type)
+            % id: id of points that has a distance < r with at least one
+            % master points
+            d = sqrt((ptsGauss(:,1) - ptsInt(:,1)').^2 + (ptsGauss(:,2) - ptsInt(:,2)').^2);
+            r = sqrt((max(ptsInt(:,1)) - min(ptsInt(:,1)))^2 + (max(ptsInt(:,2)) - min(ptsInt(:,2)))^2);
+            fiNM =  Mortar2D.rbfInterp(d,r,type);
+        end
+
+        function rbf = rbfInterp(d,r,type)
+            % compute row of rbf interpolation matrix
+            switch type
+                case 'wendland'
+                    rbf = pos(1-d./r).^4.*(1+d./r);
+                case 'gauss'
+                    rbf = exp(-d.^2/r^2);
+                case 'imq'
+                    rbf = (d.^2+r^2).^(-0.5);
+            end
+        end
+
     end
 end
 

@@ -8,16 +8,16 @@ warning('off','MATLAB:nearlySingularMatrix');
 %% INPUT DATAS
 
 % INPUT PARAMETERS
-type = 'gauss';
+type = 'wendland';
 
-nSizes = 10; % number of uniform refinment for convergence analysis
-nMnodes = 6; % number of nodes for the first mesh refinment
+nSizes = 9; % number of uniform refinment for convergence analysis
+nMnodes = 8; % number of nodes for the first mesh refinment
 errNormRBF = zeros(nSizes,1);
 errNormSB = errNormRBF;
 errNormEB = errNormRBF;
 for sizeCount = 1:nSizes  % loop trough different mesh refinments
     nMaster = nMnodes*(2^(sizeCount-1));
-    nSlave = round(0.8*nMaster);
+    nSlave = round(1.5*nMaster);
     % setting odd number of nodes
     if mod(nMaster,2) == 0
         nMaster = nMaster+1;
@@ -41,7 +41,7 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
     slave(:,2) = curve(slave(:,1));
 
     % number of RBF interpolation points for each element
-    nInt = 6;
+    nInt = 8;
 
     % Number of integration points for RBF testing (GP class taken from GReS)
     nGP = 3;
@@ -57,7 +57,7 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
     %[E_SB] = mortar.computeMortarSegmentBased(nGP);
 
     % Analytical function to interpolate
-    f = @(x) sin(3*x) + exp(2*x);
+    f = @(x) sin(4*x) + x.^2;
 
     % Compute interpolation error
     %errNormSB(sizeCount) = mortar.computeInterpError(E_SB,f);
@@ -66,10 +66,19 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
 end
 
 %% PLOT CONVERGENCE PROFILE AND INTERPOLATED FUNCTION
+name = strcat('L2_',type,'_Int',num2str(nInt));
+fID = fopen(strcat('Results\',name,'.dat'),'w');
+fprintf(fID,'%2.6e \n',errNormRBF);
+
+fID = fopen(strcat('Results\L2_eb.dat'),'w');
+fprintf(fID,'%2.6e \n',errNormEB);
+
 
 
 figure(1)
 h = 1./(nMnodes*2.^(0:nSizes-1));
+fID = fopen(strcat('Results\h.dat'),'w');
+fprintf(fID,'%2.6e \n',h);
 %loglog(h,errNormSB,'r-o')
 loglog(h,errNormRBF,'b-s')
 hold on

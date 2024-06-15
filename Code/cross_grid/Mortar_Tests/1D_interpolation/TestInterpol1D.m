@@ -7,16 +7,16 @@ close all; clear
 % INPUT PARAMETERS
 degree = 1;
 
+type = 'gauss';
 
-nSizes = 10; % number of uniform refinment for convergence analysis
+nSizes = 9; % number of uniform refinment for convergence analysis
 nMnodes = 8; % number of nodes for the first mesh refinment
-errNormRBF_g = zeros(nSizes,1);
-errNormSB = errNormRBF_g;
-errNormEB = errNormRBF_g;
-errNormRBF_w = errNormRBF_g;
+errNormRBF = zeros(nSizes,1);
+errNormSB = errNormRBF;
+errNormEB = errNormRBF;
 for sizeCount = 1:nSizes  % loop trough different mesh refinments
     nMaster = nMnodes*(2^(sizeCount-1));
-    nSlave = round(0.6*nMaster);
+    nSlave = round(1.5*nMaster);
     master = zeros(nMaster,2); % coordinates of master side
     slave = zeros(nSlave,2);
     x1 = -1;
@@ -33,10 +33,10 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
     slave(:,2) = curve(slave(:,1));
 
     % number of RBF interpolation points for each element
-    nInt = 4;
+    nInt = 8;
 
     % Number of integration points for RBF testing (GP class taken from GReS)
-    nGP = 4;
+    nGP = 2;
 
     % Build a topology matrix for master/slave surfs based on nodes position
     mastertop = build_topol(master(:,1));
@@ -44,32 +44,40 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
 
     % Compute mortar operator
     mortar = Mortar2D(1,'set',mastertop,slavetop,master,slave);
-    [E_RBF_g,~,~] = mortar.computeMortarRBF(nGP,nInt,'gauss');
-    [E_RBF_w,~,tRBF] = mortar.computeMortarRBF(nGP,nInt,'wendland');
+    [E_RBF,~,~] = mortar.computeMortarRBF(nGP,nInt,type);
     [E_EB,~,tEB] = mortar.computeMortarElementBased(nGP);
     %[E_SB] = mortar.computeMortarSegmentBased(nGP);
 
     % Analytical function to interpolate
-    f = @(x) sin(3*x) + exp(2*x);
+    f = @(x) sin(4*x) + x.^2;
 
     % Compute interpolation error
     %errNormSB(sizeCount) = mortar.computeInterpError(E_SB,f);
     errNormEB(sizeCount) = mortar.computeInterpError(E_EB,f);
-    errNormRBF_g(sizeCount) = mortar.computeInterpError(E_RBF_g,f);
-    errNormRBF_w(sizeCount) = mortar.computeInterpError(E_RBF_w,f);
+    errNormRBF(sizeCount) = mortar.computeInterpError(E_RBF,f);
+    %errNormRBF_w(sizeCount) = mortar.computeInterpError(E_RBF_w,f);
 end
 
 %% PLOT CONVERGENCE PROFILE AND INTERPOLATED FUNCTION
 
+name = strcat('L2_',type,'_Int',num2str(nInt));
+fID = fopen(strcat('Results_lin\',name,'.dat'),'w');
+fprintf(fID,'%2.6e \n',errNormRBF);
+
+fID = fopen(strcat('Results_lin\L2_eb.dat'),'w');
+fprintf(fID,'%2.6e \n',errNormEB);
+
+
 % convergence profile
 figure(1)
 h = 1./(nMnodes*2.^(0:nSizes-1));
+fID = fopen(strcat('Results_lin\h.dat'),'w');
+fprintf(fID,'%2.6e \n',h);
 %loglog(h,errNormSB,'r-o')
-loglog(h,errNormRBF_g,'b-s')
+loglog(h,errNormRBF,'b-s')
 hold on
-loglog(h,errNormRBF_w,'r-^')
 loglog(h,errNormEB,'g-^')
-legend('RBF - Rescaled Gauss', 'RBF - Rescaled Wendland', 'Element-based')
+legend('RBF','Element-based')
 
 
 

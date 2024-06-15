@@ -14,7 +14,7 @@ hold on
 semilogy(N,L2_c1(:,2),'k','LineWidth',1,'Marker','^','MarkerSize',6)
 semilogy(N,L2_c1(:,3),'k','LineWidth',1,'Marker','*','MarkerSize',6)
 grid on
-xlabel('M')
+xlabel('n. points per dimension')
 ylabel('RMSE')
 ylim([1e-10 1e-1])
 xlim([4 24])
@@ -28,7 +28,7 @@ hold on
 semilogy(N,nc_c1(:,2),'k','LineWidth',1,'Marker','^','MarkerSize',6)
 semilogy(N,nc_c1(:,3),'k','LineWidth',1,'Marker','*','MarkerSize',6)
 grid on
-xlabel('M')
+xlabel('n. points per dimension')
 ylabel('Condition number')
 ylim([1e0 1e22])
 xlim([4 24])
@@ -41,7 +41,7 @@ hold on
 semilogy(N,L2_c2(:,2),'k','LineWidth',1,'Marker','^','MarkerSize',6)
 semilogy(N,L2_c2(:,3),'k','LineWidth',1,'Marker','*','MarkerSize',6)
 grid on
-xlabel('M')
+xlabel('n. points per dimension')
 ylabel('RMSE')
 ylim([1e-10 1e-1])
 xlim([4 24])
@@ -54,7 +54,7 @@ hold on
 semilogy(N,nc_c2(:,2),'k','LineWidth',1,'Marker','^','MarkerSize',6)
 semilogy(N,nc_c2(:,3),'k','LineWidth',1,'Marker','*','MarkerSize',6)
 grid on
-xlabel('M')
+xlabel('n. points per dimension')
 ylabel('Condition number')
 ylim([1e0 1e22])
 xlim([4 24])
@@ -191,7 +191,7 @@ semilogy(N,L2w(:,1),'k','LineWidth',1,'Marker','s','MarkerSize',9)
 hold on
 semilogy(N,L2w(:,2),'k','LineWidth',1,'Marker','*','MarkerSize',9)
 grid on
-xlabel('M')
+xlabel('n. points per dimension')
 ylabel('RMSE')
 ylim([1e-9 1e-2])
 xlim([4 24])
@@ -211,7 +211,7 @@ ylim([1e-9 1e-2])
 xlim([4 24])
 xticks(4:4:24)
 grid on
-xlabel('M')
+xlabel('n. points per dimension')
 ylabel('RMSE')
 % set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 12);
 % ax = get(gca,'XTickLabel');
@@ -296,4 +296,8 @@ nameOut = 'radius';
 stmp = strcat('plots/', nameOut, '.pdf');
 % exportgraphics(gcf,stmp,'Resolution',400)
 exportgraphics(gcf,stmp,'ContentType','vector')
+
+
+
+
 

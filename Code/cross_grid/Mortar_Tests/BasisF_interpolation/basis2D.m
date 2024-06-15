@@ -11,6 +11,7 @@ warning('off','MATLAB:nearlySingularMatrix');
 a = -1; b = 1; 
 N = 4:2:24;
 f = @(x) 0.5*(1-x(:,1).^2).*(1+x(:,2));
+%f = @(x) 0.25*(x(:,1).^2-x(:,1)).*(x(:,2).^2-x(:,2));
 %f = @(x) 0.25*(1+x(:,1)).*(1+x(:,2)) + 0*x(:,3);
 typeStr = ["gauss","imq","wendland"];
 L2 = zeros(numel(N),numel(typeStr));
@@ -29,16 +30,10 @@ for type = typeStr
         intPts = [x(:), y(:), z(:)];
         vals= f(intPts);
         intPts(:,2) = fac*intPts(:,2);
-        r = sqrt(1+fac^2)*(b-a);
-        fiMM = zeros(length(intPts),length(intPts));
-        for ii = 1:length(intPts)
-            dist = (intPts(:,1) - intPts(ii,1)).^2 + (intPts(:,2) - intPts(ii,2)).^2 + (intPts(:,3) - intPts(ii,3)).^2;
-            dist = sqrt(dist);
-            fiMM(ii,:) = computeRBFentries(dist,type,r);
-        end
+        fiMM = Mortar2D.computeRBFfiMM(intPts,type);
         wf = fiMM\vals;
         w1 = fiMM\ones(length(intPts),1);
-        
+        %
         nh = 40;
         h = haltonset(2,'Skip',1e3,'Leap',1e2); % ad-hoc interpolation
         xy = net(h,nh);
@@ -47,12 +42,7 @@ for type = typeStr
         z = xy(:,1)*0;
         samp = [xy, z(:)];
         %samp(:,2) = fac*samp(:,2);
-        fiNM = zeros(length(samp),length(intPts));
-        for ii = 1:length(samp)
-            dist = (intPts(:,1) - samp(ii,1)).^2 + (intPts(:,2) - samp(ii,2)).^2 + (intPts(:,3) - samp(ii,3)).^2;
-            dist = sqrt(dist);
-            fiNM(ii,:) = computeRBFentries(dist,type,r);
-        end
+        fiNM = Mortar2D.computeRBFfiNM(intPts,samp,type);
         valsOut = (fiNM*wf)./(fiNM*w1);
         %valsOut = (fiNM*wf);
         y = f(samp);

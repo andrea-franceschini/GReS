@@ -52,7 +52,7 @@ classdef ContactSearching < handle
             BBtree = zeros(2*msh.nSurfaces-1, 2);
             treeNodes = zeros(2*msh.nSurfaces-1, 2*size(obj.polytop,2));
             % store root polytop
-            elemMap = sparse(msh.nSurfaces, size(BBtree,1));
+            elemMap = zeros(msh.nSurfaces, size(BBtree,1));
             elemMap(:,1) = 1;
             leaf2elem = zeros(size(BBtree,1),1);
             k = 1;
@@ -107,7 +107,7 @@ classdef ContactSearching < handle
             % OUTPUT: k primitives defining the bounding polytop of the
             %         Cells belonging to left and right child (if any)
             nNodes = size(msh.surfaces,2);
-            surfCentroid = zeros(msh.nSurfaces,nNodes);
+            surfCentroid = zeros(msh.nSurfaces,3);
             % compute surface centroids
             for i = 1:3
                 tmp = msh.coordinates(msh.surfaces',i);
