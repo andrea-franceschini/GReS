@@ -1,5 +1,7 @@
 %% fig INFLUENCE OF RBF type
 N = 4:2:24;
+x_tick = 4:4:24;
+x_tick2 = x_tick.^2;
 L2_c1 = load("c1_L2");
 L2_c2 = load("c2_L2.dat");
 nc_c1 = load("c1_cond.dat");
