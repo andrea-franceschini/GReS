@@ -315,6 +315,20 @@ classdef Mesh < handle
         surfMesh.surfaceNumVerts = obj.surfaceNumVerts(obj.surfaceTag == surfTag);
         surfMesh.nDim = 3;
     end
+
+    function msh = getQuad4mesh(obj)
+        assert(obj.cartGrid,'This method is valid only for Cartesian grids');
+        msh = Mesh();
+        msh.surfaces = obj.surfaces(:,1:4);
+        msh.nSurfaces = size(msh.surfaces,1);
+        msh.nNodes = max(msh.surfaces,[],"all");
+        msh.coordinates = obj.coordinates(1:msh.nNodes,:);
+        msh.surfaceNumVerts = obj.surfaceNumVerts;
+        msh.surfaceNumVerts(:) = 4;
+        msh.surfaceVTKType = obj.surfaceVTKType;
+        msh.nDim = obj.nDim;
+        %
+    end
   end
 
   methods (Access = private)

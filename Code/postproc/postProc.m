@@ -81,7 +81,7 @@ classdef postProc
                             vol = findVolume(obj.element.tetra,el);
                             semiH1(el) = (N*(obj.u_ex(top)-obj.u(top)))'*(N*(obj.u_ex(top)-obj.u(top)));
                             semiH1(el) = semiH1(el)*vol;
-                        case 12 % Hexahedrs
+                        case 12 % Hexahedra
                             top = obj.mesh.cells(el, :);
                             [N,dJWeighed] = obj.element.hexa.getDerBasisFAndDet(el,1);
                             Nu_trans = pagemtimes(N,(obj.u_ex(top)-obj.u(top)));

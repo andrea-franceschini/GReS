@@ -5,8 +5,8 @@ close all
 type = 'gauss';
 msh1 = Mesh();
 msh2 = Mesh();
-nM = 10;
-nS = 2;
+nM = 6;
+nS = 14;
 msh1.createCartesianGrid(2,1,[-1 1],[-1 1],nM,nM);
 
 %plotFunction(msh1, 'test', ones(msh1.nNodes,1))
@@ -31,33 +31,33 @@ gauss = Gauss(12,3,2);
 %Define object of 3D Mortar class
 mortar = Mortar3D(1,msh1,msh2);
 
-nG = 4;
+nG = 2;
 nInt = 4;
 
-[E_RBF_g,Mg,~,tg] = mortar.computeMortarRBF(nG,nInt,'gauss');
-[E_RBF_w,Mw,~,tw] = mortar.computeMortarRBF(nG,nInt,'wendland');
-[E2,Meb,M2,t2] = mortar.computeMortarElementBased(nG);
+[D_rbf,M_rbf] = mortar.computeMortarRBF(nG,nInt,'gauss');
+%[E_RBF_w,Mw,~,tw] = mortar.computeMortarRBF(nG,nInt,'wendland');
+[D_eb,M_eb] = mortar.computeMortarElementBased(nG);
 
 %analytical function on the master mesh
-testFunc = @(x,y,z)  sin(3*x)+cos(3*y);
+testFunc = @(x,y,z)  sin(x)+cos(y);
 fIn = testFunc(msh1.coordinates(:,1), msh1.coordinates(:,2), msh1.coordinates(:,3));
 fOutEx = testFunc(msh2.coordinates(:,1), msh2.coordinates(:,2), msh2.coordinates(:,3));
 % fID = fopen('out_nInt.dat', 'w');
-fOutRBF_w = E_RBF_w*fIn;
-fOutRBF_g = E_RBF_g*fIn;
-fOutEB = E2*fIn;
+%fOutRBF_w = E_RBF_w*fIn;
+fOutRBF_g = D_rbf\(M_rbf*fIn);
+fOutEB = D_eb\(M_eb*fIn);
 % compute L2 interpolation error
 L2_eb = computeL2error(postProc(msh2,fOutEx,fOutEB,gauss));
-L2_rbf_w = computeL2error(postProc(msh2,fOutEx,fOutRBF_w,gauss));
+%L2_rbf_w = computeL2error(postProc(msh2,fOutEx,fOutRBF_w,gauss));
 L2_rbf_g = computeL2error(postProc(msh2,fOutEx,fOutRBF_g,gauss));
 
-
-% plotFunction(msh1, 'out_master', fIn)
+rel = 100*abs(L2_eb-L2_rbf_g)/L2_eb;
+plotFunction(msh1, 'out_master', fIn)
 % plotFunction(msh2, 'out_slaveRBF_w', fOutRBF_w)
-% plotFunction(msh2, 'out_slaveRBF_g', fOutRBF_g)
-% plotFunction(msh2, 'out_slave_eb', fOutEB)
-% plotFunction(msh2, 'out_slaveExact', fOutEx)
-%plotFunction(msh2, 'out_RelErr', rel_g)
+plotFunction(msh2, 'out_slaveRBF_g', fOutRBF_g)
+plotFunction(msh2, 'out_slaveEB', fOutEB)
+%plotFunction(msh2, 'out_slaveRBF_g', fOutRBF_g)
+
 
 
 

@@ -6,7 +6,7 @@ close all
 % the rhs is f = 32x(1-x) + 32y(1-y);
 
 % flagPlot: true --> results to Paraview in this directory
-fPlot = false;
+fPlot = true;
 
 % selecting solution method
 % COND --> condansated approach
@@ -46,9 +46,9 @@ elseif strcmp(flagTop, 'slave')
 end
 
 % selecting integration approach
-integration = 'RBF';  % SB, RBF, EB
+type = 'gauss';  % SB, RBF, EB
 nInt = 4;
-nGP = 4;
+nGP = 2;
 tmp = strcat(flagTop,'TOP');
 nGrids = 5;
 brokenL2 = zeros(nGrids,1);
@@ -56,7 +56,7 @@ brokenH1 = zeros(nGrids,1);
 h = zeros(nGrids,1);
 
 for mCount = 1:nGrids
-    fprintf('Grid h%i nGP = %i  nInt = %i  Integration: %s \n',mCount, nGP, nInt, integration);
+    fprintf('Grid h%i nGP = %i  nInt = %i  Integration: %s \n',mCount, nGP, nInt, type);
     % Import the mesh data into the Mesh object
     masterMesh.importGMSHmesh(fileNameMaster(mCount,:));
     slaveMesh.importGMSHmesh(fileNameSlave(mCount,:));
@@ -83,13 +83,13 @@ for mCount = 1:nGrids
     % compute mortar operator
     mortar = Mortar2D(1,masterMesh,1,slaveMesh,1);
     %D = mortar.D;
-    switch integration
-        case 'RBF'
-            [E,M] = mortar.computeMortarRBF(nGP,nInt,'gauss');
-        case 'EB'
-            [E,M] = mortar.computeMortarElementBased(nGP);
-        case 'SB'
-            [E,M] = mortar.computeMortarSegmentBased(nGP);
+    switch type
+        case 'gauss'
+            [D,M,~,E] = mortar.computeMortarRBF(nGP,nInt,'gauss');
+        case 'eb'
+            [D,M,E] = mortar.computeMortarElementBased(nGP);
+        % case 'SB'
+        %     [E,M] = mortar.computeMortarSegmentBased(nGP);
     end
     %[E, M, D] = compute_mortar(masterMesh, slaveMesh, [], nInt, nGP, 1, 1, integration, degree);
     
@@ -222,18 +222,18 @@ for mCount = 1:nGrids
     postProcSlave = postProc(slaveMesh, u_slave, u_anal_slave);
 
     % % Plotting point-wise error
-    err_rel_master = computeRelError(postProcMaster);
-    err_rel_slave = computeRelError(postProcSlave);
+    % err_rel_master = computeRelError(postProcMaster);
+    % err_rel_slave = computeRelError(postProcSlave);
     %
     if fPlot
-        fNameMaster = strcat(strTop,'_SolMaster','_',integration,'_h',num2str(mCount));
-        fNameSlave = strcat(strTop,'_SolSlave','_',integration,'_h',num2str(mCount));
+        fNameMaster = strcat(strTop,'_SolMaster','_',type,'_h',num2str(mCount));
+        fNameSlave = strcat(strTop,'_SolSlave','_',type,'_h',num2str(mCount));
         plotParaview(masterMesh,fNameMaster, u_master', 'x')
         plotParaview(slaveMesh,fNameSlave, u_slave', 'x')
-        fNameMaster = strcat(strTop,'_errMaster','_',integration,'_h',num2str(mCount));
-        fNameBottom = strcat(strTop,'_errSlave','_',integration,'_h',num2str(mCount));
-        plotParaview(topMesh,fNameMaster, err_top_rel', 'x')
-        plotParaview(slaveMesh,fNameSlave, err_bot_rel', 'x')
+        % fNameMaster = strcat(strTop,'_errMaster','_',integration,'_h',num2str(mCount));
+        % fNameBottom = strcat(strTop,'_errSlave','_',integration,'_h',num2str(mCount));
+        % plotParaview(topMesh,fNameMaster, err_top_rel', 'x')
+        % plotParaview(slaveMesh,fNameSlave, err_bot_rel', 'x')
     end
 
     %% Error analysis
@@ -248,79 +248,99 @@ for mCount = 1:nGrids
     brokenH1(mCount) = sqrt(H1Master^2 + H1Slave^2);
 end
 
+switch type
+    case 'gauss'
+        name = strcat(flagTop,'L2_',type,'_Int',num2str(nInt));
+        fID = fopen(strcat('Results\',name,'.dat'),'w');
+        fprintf(fID,'%2.6e \n',brokenL2);
+
+        name = strcat(flagTop,'H1_',type,'_Int',num2str(nInt));
+        fID = fopen(strcat('Results\',name,'.dat'),'w');
+        fprintf(fID,'%2.6e \n',brokenH1);
+    case 'eb'
+        name = strcat(flagTop,'L2_eb');
+        fID = fopen(strcat('Results\',name,'.dat'),'w');
+        fprintf(fID,'%2.6e \n',brokenL2);
+
+        name = strcat(flagTop,'H1_eb');
+        fID = fopen(strcat('Results\',name,'.dat'),'w');
+        fprintf(fID,'%2.6e \n',brokenH1);
+end
+
+
 
 % create output structure (or append to existing one) and write to file
-if ~isfile("Results.mat")
-    outStruct= struct('IntegrationType', integration, 'nGP', nGP, 'nInt', nInt,...
-        'MeshSizes', h, 'L2', brokenL2, 'H1', brokenH1);
-    save("Results.mat", "outStruct");
-else
-    out = load('Results.mat', "outStruct");
-    outStruct = out.outStruct; 
-    newStruct= struct('IntegrationType', integration, 'nGP', nGP, 'nInt', nInt,...
-        'MeshSizes', h, 'L2', brokenL2, 'H1', brokenH1);
-    outStruct = [outStruct; newStruct];
-    save("Results.mat", "outStruct");
-end
+% if ~isfile("Results.mat")
+%     outStruct= struct('IntegrationType', integration, 'nGP', nGP, 'nInt', nInt,...
+%         'MeshSizes', h, 'L2', brokenL2, 'H1', brokenH1);
+%     save("Results.mat", "outStruct");
+% else
+%     out = load('Results.mat', "outStruct");
+%     outStruct = out.outStruct; 
+%     newStruct= struct('IntegrationType', integration, 'nGP', nGP, 'nInt', nInt,...
+%         'MeshSizes', h, 'L2', brokenL2, 'H1', brokenH1);
+%     outStruct = [outStruct; newStruct];
+%     save("Results.mat", "outStruct");
+% end
 
 %% PLOT CONVERGENCE PROFILES using struct datas
-out = load('Results.mat', "outStruct");
-outStruct = out.outStruct;
-outStruct = outStruct(1:end);
-results = struct2cell(outStruct);
-
-
-tiledlayout(2,1)
-axL2 = nexttile;
-axH1 = nexttile;
-axL2.NextPlot = "add";
-axH1.NextPlot = "add";
-
-
-param = 'nInt';
-marker = {'o', '^', 's', '*'};
-getFirst = @(v)v{1}; 
-getprop = @(options, idx)getFirst(circshift(options,-idx+1));
-
-% plot convergence profiles
-for ii = 1:size(results,2)
-    int = results{1,ii};
-    if strcmp(param, 'GP')
-        parm = results{2,ii};
-    else strcmp(param,'nInt')
-        parm = results{3,ii};
-    end
-    switch int
-        case 'RBF'
-            lgd = strcat(int,' - ',param, ' = ',num2str(parm));
-            color = 'b';
-            mark = getprop(marker,ii);
-        case 'SB'
-            lgd = strcat(int);
-            color = 'r';
-            mark = 'o';
-        case 'EB'
-            lgd = strcat(int);
-            color = 'g';
-            mark = 'o';
-    end
-    loglog(axL2,results{4,ii}, results{5,ii},'Color',color,'Marker',...
-        mark,'DisplayName',lgd,'LineWidth', 1);
-    loglog(axH1,results{4,ii}, results{6,ii},'Color',color,'Marker',...
-        mark,'DisplayName',lgd,'LineWidth',1);
-end
-set(axL2, 'YScale', 'log')
-set(axL2, 'XScale', 'log')
-set(axH1, 'YScale', 'log')
-set(axH1, 'XScale', 'log')
-legend(axL2);
-legend(axH1);
-xlabel('Mesh size');
-ylabel(axL2,'L2 norm of error')
-ylabel(axH1,'H1 norm of error')
-
-set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 12);
-a = get(axL2,'XTickLabel');
-set(axL2,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 9)
-a = get(axH1,'XTickLabel');
-set(axH1,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 9)
+% out = load('Results.mat', "outStruct");
+% outStruct = out.outStruct;
+% outStruct = outStruct(1:end);
+% results = struct2cell(outStruct);
+% 
+% 
+% tiledlayout(2,1)
+% axL2 = nexttile;
+% axH1 = nexttile;
+% axL2.NextPlot = "add";
+% axH1.NextPlot = "add";
+% 
+% 
+% param = 'nInt';
+% marker = {'o', '^', 's', '*'};
+% getFirst = @(v)v{1}; 
+% getprop = @(options, idx)getFirst(circshift(options,-idx+1));
+% 
+% % plot convergence profiles
+% for ii = 1:size(results,2)
+%     int = results{1,ii};
+%     if strcmp(param, 'GP')
+%         parm = results{2,ii};
+%     else strcmp(param,'nInt')
+%         parm = results{3,ii};
+%     end
+%     switch int
+%         case 'RBF'
+%             lgd = strcat(int,' - ',param, ' = ',num2str(parm));
+%             color = 'b';
+%             mark = getprop(marker,ii);
+%         case 'SB'
+%             lgd = strcat(int);
+%             color = 'r';
+%             mark = 'o';
+%         case 'EB'
+%             lgd = strcat(int);
+%             color = 'g';
+%             mark = 'o';
+%     end
+%     loglog(axL2,results{4,ii}, results{5,ii},'Color',color,'Marker',...
+%         mark,'DisplayName',lgd,'LineWidth', 1);
+%     loglog(axH1,results{4,ii}, results{6,ii},'Color',color,'Marker',...
+%         mark,'DisplayName',lgd,'LineWidth',1);
+% end
+% set(axL2, 'YScale', 'log')
+% set(axL2, 'XScale', 'log')
+% set(axH1, 'YScale', 'log')
+% set(axH1, 'XScale', 'log')
+% legend(axL2);
+% legend(axH1);
+% xlabel('Mesh size');
+% ylabel(axL2,'L2 norm of error')
+% ylabel(axH1,'H1 norm of error')
+% 
+% set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 12);
+% a = get(axL2,'XTickLabel');
+% set(axL2,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 9)
+% a = get(axH1,'XTickLabel');
+% set(axH1,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 9)

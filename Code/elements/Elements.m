@@ -12,6 +12,7 @@ classdef Elements < handle
     hexa
     tri
     quad
+    quadL
     indB
     indB2D
   end
@@ -101,6 +102,9 @@ classdef Elements < handle
               obj.quad = Quadrilateral(obj.mesh,obj.GaussPts);
           elseif any(obj.mesh.surfaceNumVerts==8)
               obj.quad = Quad8(obj.mesh,obj.GaussPts);
+              if obj.mesh.cartGrid
+                  obj.quadL = Quadrilateral(getQuad4mesh(obj.mesh),obj.GaussPts);
+              end
           end
       end
 

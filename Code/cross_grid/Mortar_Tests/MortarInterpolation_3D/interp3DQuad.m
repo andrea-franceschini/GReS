@@ -1,75 +1,66 @@
 clear
 close all
 warning('off','MATLAB:nearlySingularMatrix');
-%type = 'gauss';
-% msh1 = Mesh();
-% msh2 = Mesh();
-% msh1.importGMSHmesh('3Dmesh/Mesh_fineUnstruct.msh');
-% msh2.importGMSHmesh('3Dmesh/Mesh_fineFlat.msh');
+%
+type = 'gauss';
 gauss = Gauss(12,3,2);
-nM0 = 8;
-nSizes = 4;
-ratio = 0.4;
+nM0 = 2;
+nSizes = 7;
+ratio = 1.5;
 L2_eb = zeros(nSizes,1);
-L2_rbf_w = L2_eb;
-L2_rbf_g = L2_eb;
+L2_rbf = L2_eb;
+
+% Algortihm parameters
+nG = 3;
+nInt = 4;
 
 for i = 0:nSizes-1
-
     msh1 = Mesh();
     msh2 = Mesh();
-
     nM = nM0*2^i;
     nS = round(ratio*nM);
-
+    %
     msh1.createCartesianGrid(2,2,[0 1],[0 1],nM,nM);
     msh2.createCartesianGrid(2,2,[0 1],[0 1],nS,nS);
-    % plotFunction(msh1, 'test_master', ones(msh1.nNodes,1))
-    % plotFunction(msh2, 'test_slave', ones(msh2.nNodes))
     % Define object of 3D Mortar class
     mortar = Mortar3D(2,msh1,msh2);
     %
-    nG = 4;
-    nInt = 6;
-
-    [E_RBF_g,Mg,~,t1] = mortar.computeMortarRBF(nG,nInt,'gauss');
-    %[E_RBF_w,Mw,M1,t2] = mortar.computeMortarRBF(nG,nInt,'wendland');
-    [E2,M_eb,M2,tEB] = mortar.computeMortarElementBased(nG);
+    [Drbf,Mrbf,t_rbf] = mortar.computeMortarRBF(nG,nInt,type);
+    %[Deb,Meb,t_eb] = mortar.computeMortarElementBased(nG);
 
     % analytical function on the master mesh
-    testFunc = @(x,y,z)  sin(3*x);
+    testFunc = @(x,y,z)  sin(4*x).*cos(4*y);
     fIn = testFunc(msh1.coordinates(:,1), msh1.coordinates(:,2), msh1.coordinates(:,3));
     fOutEx = testFunc(msh2.coordinates(:,1), msh2.coordinates(:,2), msh2.coordinates(:,3));
-    fID = fopen('out_nInt.dat', 'w');
-    %fOutRBF_w = E_RBF_w*fIn;
-    fOutRBF_g = E_RBF_g*fIn;
-    fOutEB = E2*fIn;
+    fOutRBF = Drbf\(Mrbf*fIn);
+    %fOutEB = Deb\(Meb*fIn);
     % compute L2 interpolation error
-    mshSlavePost = getQuad4mesh(msh2);
-    nN = mshSlavePost.nNodes;
-    L2_eb(i+1) = computeL2error(postProc(mshSlavePost,fOutEx(1:nN),fOutEB(1:nN),gauss));
-    %L2_rbf_w(i+1) = computeL2error(postProc(msh2,fOutEx,fOutRBF_w,gauss));
-    L2_rbf_g(i+1) = computeL2error(postProc(msh2,fOutEx,fOutRBF_g,gauss));
+    %L2_eb(i+1) = computeL2error(postProc(msh2,fOutEx,fOutEB,gauss));
+    L2_rbf(i+1) = computeL2error(postProc(msh2,fOutEx,fOutRBF,gauss));
 end
 
+%% Save results in text file
+name = strcat('L2_',type,'_Int',num2str(nInt));
+fID = fopen(strcat('Results_quad\',name,'.dat'),'w');
+fprintf(fID,'%2.6e \n',L2_rbf);
+% fID = fopen(strcat('Results_quad\L2_eb.dat'),'w');
+% fprintf(fID,'%2.6e \n',L2_eb);
+
 %% plot convergence profiles
-
-% compute convergence ratio
-ratioEB = L2_eb(1:end-1)./L2_eb(2:end);
-ratioG = L2_rbf_g(1:end-1)./L2_rbf_g(2:end);
-
-% h = 1./(2.^(0:nSizes-1));
-% loglog(h,L2_rbf_g,'r-^')
+L2_eb = load('Results_quad\L2_eb.dat');
+h = 1./(ratio*nM0*2.^(0:8));
+fID = fopen('Results_lin\h.dat','w');
+fprintf(fID,'%2.6e \n',h);
+% loglog(h,L2_rbf,'r-^')
 % hold on
-% loglog(h,L2_rbf_w,'b-^')
-% %loglog(h,L2_eb,'g-^')
-% legend('RBF - Rescaled Gauss', 'RBF - Rescaled Wendland','EB')
+% loglog(h,L2_eb,'g-^')
+% legend('RBF - Rescaled Gauss','EB')
 % xlabel('mesh size')
 % ylabel('Quadratic error of interpolation')
 % 
-% plotFunction(msh1, 'out_master', fIn)
-% plotFunction(msh2, 'out_slaveRBF', fOutRBF_g)
-% plotFunction(msh2, 'out_slaveEB', fOutEB)
-
-
-
+% %ratioW = L2_rbf_w(1:end-1)./L2_rbf_w(2:end);
+% ratioEB = L2_eb(1:end-1)./L2_eb(2:end);
+% ratioRBF = L2_rbf(1:end-1)./L2_rbf(2:end);
+% % plotFunction(msh1, 'out_master', fIn)
+% % plotFunction(msh2, 'out_slaveRBF', fOutRBF_g)
+% % plotFunction(msh2, 'out_slaveEB', fOutEB)

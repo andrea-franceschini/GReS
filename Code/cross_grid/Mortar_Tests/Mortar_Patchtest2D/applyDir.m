@@ -8,7 +8,9 @@ f = f - K(:,dofs)*vals;
 % set rhs vals to dir vals
 f(dofs) = vals;
 K(:,dofs) = 0;
-for i = 1:length(dofs)
-    K(dofs(i),dofs(i)) = 1;
+% modify diagonal entries of K (avoiding for loop and accessing)
+Kdiag = diag(K);
+Kdiag(dofs) = 1;
+K = K - diag(diag(K)) + diag(Kdiag);
 end
 

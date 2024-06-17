@@ -19,9 +19,9 @@ sol_scheme = 'SP';
 
 % Parameters
 nGrids = 1;
-fPlot = 'curve';
-nGP = 5;
-nInt = 5;
+fPlot = 'false';
+nGP = 2;
+nInt = 4;
 brokenL2 = zeros(nGrids,1);
 brokenH1 = zeros(nGrids,1);
 h = zeros(nGrids,1);
@@ -35,32 +35,32 @@ slaveMesh = Mesh();
 
 % file Names for input meshes
 
-% fileNameMaster = [];
-% fileNameSlave = [];
+fileNameMaster = [];
+fileNameSlave = [];
 
-fileNameMaster = 'meshCurve/LeftBlock_curve.msh';
-fileNameSlave = 'meshCurve/RightBlock_curve.msh';
+% fileNameMaster = 'meshCurve/LeftBlock_curve.msh';
+% fileNameSlave = 'meshCurve/RightBlock_curve.msh';
 
 
 % Set the input file name
 % selecting master and slave domain
 flagLeft = 'master';
 if strcmp(flagLeft, 'master')
-    % for k = 1:nGrids
-    %     fileNameMaster = [fileNameMaster; strcat('meshConv/LeftBlock_h',num2str(k),'.msh')];
-    %     fileNameSlave = [fileNameSlave; strcat('meshConv/RightBlock_h',num2str(k),'.msh')];
-    % end
+    for k = 1:nGrids
+        fileNameMaster = [fileNameMaster; strcat('meshConv/LeftBlock_h',num2str(k),'.msh')];
+        fileNameSlave = [fileNameSlave; strcat('meshConv/RightBlock_h',num2str(k),'.msh')];
+    end
     strLeft = 'masterLeft';
 elseif strcmp(flagLeft, 'slave')
-    % for k = 1:nGrids
-    %     fileNameSlave = [fileNameSlave; strcat('Mesh_conv/LeftBlock_h',num2str(k),'.msh')];
-    %     fileNameMaster = [fileNameMaster; strcat('Mesh_conv/RightBlock_h',num2str(k),'.msh')];
-    % end
+    for k = 1:nGrids
+        fileNameSlave = [fileNameSlave; strcat('Mesh_conv/LeftBlock_h',num2str(k),'.msh')];
+        fileNameMaster = [fileNameMaster; strcat('Mesh_conv/RightBlock_h',num2str(k),'.msh')];
+    end
     strLeft = 'slaveLeft';
 end
 
 % Gauss integration for stiffness matrix computation
-gauss = Gauss(12,3,3);
+gauss = Gauss(12,2,3);
 
 for mCount = 1:nGrids
     fprintf('Grid h%i nGP = %i  nInt = %i \n',mCount, nGP, nInt);
@@ -72,7 +72,7 @@ for mCount = 1:nGrids
     elemsMaster = Elements(masterMesh, gauss);
     elemsSlave = Elements(slaveMesh, gauss);
 
-    % computing Stiffness matrix on top and bottom domainall
+    % computing Stiffness matrix on top and bottom domain
     [KMaster, vNmaster] = stiffPoisson3D(masterMesh, elemsMaster);
     [KSlave, vNslave] = stiffPoisson3D(slaveMesh, elemsSlave);
 

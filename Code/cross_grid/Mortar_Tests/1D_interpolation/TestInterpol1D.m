@@ -36,7 +36,7 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
     nInt = 8;
 
     % Number of integration points for RBF testing (GP class taken from GReS)
-    nGP = 2;
+    nGP = 3;
 
     % Build a topology matrix for master/slave surfs based on nodes position
     mastertop = build_topol(master(:,1));
@@ -44,15 +44,16 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
 
     % Compute mortar operator
     mortar = Mortar2D(1,'set',mastertop,slavetop,master,slave);
-    [E_RBF,~,~] = mortar.computeMortarRBF(nGP,nInt,type);
-    [E_EB,~,tEB] = mortar.computeMortarElementBased(nGP);
-    %[E_SB] = mortar.computeMortarSegmentBased(nGP);
-
+    [D_RBF,M_RBF] = mortar.computeMortarRBF(nGP,nInt,type);
+    [E_EB,M_EB] = mortar.computeMortarElementBased(nGP);
+    [D_SB,M_SB,E_SB] = mortar.computeMortarSegmentBased(nGP);
+    
+    E_RBF = D_RBF\M_RBF;
     % Analytical function to interpolate
     f = @(x) sin(4*x) + x.^2;
-
+    
     % Compute interpolation error
-    %errNormSB(sizeCount) = mortar.computeInterpError(E_SB,f);
+    errNormSB(sizeCount) = mortar.computeInterpError(E_SB,f);
     errNormEB(sizeCount) = mortar.computeInterpError(E_EB,f);
     errNormRBF(sizeCount) = mortar.computeInterpError(E_RBF,f);
     %errNormRBF_w(sizeCount) = mortar.computeInterpError(E_RBF_w,f);
