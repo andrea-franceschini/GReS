@@ -75,7 +75,7 @@ printUtils.printState(resState);
 %
 % ---------------------------- SOLUTION -------------------------------
 %
-
+%
 % Create the object handling the (nonlinear) solution of the problem
 NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
 %
