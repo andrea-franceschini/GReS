@@ -1,6 +1,6 @@
-classdef NonLinearSolver < handle
-  %UNTITLED Summary of this class goes here
-  %   Detailed explanation goes here
+classdef NonLinearSolverMultiDomain < handle
+  % Multi domain version of standard non linear solver class
+  
   
   properties (Access = private)
     %
@@ -27,7 +27,7 @@ classdef NonLinearSolver < handle
   end
   
   methods (Access = public)
-      function obj = NonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin)
+      function obj = NonLinearSolverMultiDomain(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin)
       obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin);
     end
 

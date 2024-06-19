@@ -1,0 +1,38 @@
+% Input file for multi-domain simulation
+
+% First domain
+<Domain>
+<Name>
+Top_block
+<Geometry>
+Top/TopBlock.msh
+<Gauss>
+12 2 3
+<Material>
+materialsList.dat
+<DoFManager>
+Top/dof.dat
+<BoundaryConditions>
+1
+Top/neuSurfTopFace.dat
+<OutState>
+outTime.dat
+<EndDomain>
+
+% Bottom domain
+<Domain>
+<Name>
+Bottom_block
+<Geometry> 
+Bottom/BottomBlock.msh
+<Gauss>
+12 2 3
+<Material>
+materialsList.dat
+<BoundaryConditions>
+1
+Bottom/dirNodBotFace.dat
+<OutState>
+outTime.dat
+<EndDomain>
+

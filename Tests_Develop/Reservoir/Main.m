@@ -41,17 +41,16 @@ elems = Elements(topology,GaussPts);
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);
 %
-% Wrap Mesh, Elements and Faces objects in a structure
-grid = struct('topology',topology,'cells',elems,'faces',faces);
-%
-%----------------------------- DOF MANAGER -----------------------------
+%----------------------------- DOF MANAGER ----------------------------
 fileName = 'dof.dat';
 if strcmp(fileName,'dof.dat')
     dofmanager = DoFManager(topology, model, fileName);
 else
     dofmanager = DoFManager(topology, model);
 end
-
+% Wrap Mesh, Elements, Faces and dofManager objects in a structure
+grid = struct('topology',topology,'cells',elems,'faces',faces);
+%
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
 % Set the input file
@@ -68,16 +67,17 @@ bound = Boundaries(fileName,model,grid,dofmanager);
 resState = State(model,grid,mat,GaussPts);
 
 % Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat');
+printUtils = OutState(model,mat,grid,'outTime.dat','testDir',GaussPts);
 %
 % Print the reservoir initial state
 printUtils.printState(resState);
 %
 % ---------------------------- SOLUTION -------------------------------
 %
+linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 %
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,linSyst,GaussPts);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();

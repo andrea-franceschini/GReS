@@ -1,0 +1,7 @@
+NodeBC                            % BC item
+Dir                               % BC type
+Poro                              % Physics
+botFace                           % BC name
+dirNodBotFace/list
+0.000000 dirNodBotFace/time0.dat
+End
