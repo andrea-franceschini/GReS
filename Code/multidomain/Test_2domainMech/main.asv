@@ -3,7 +3,7 @@ close all
 
 %% Testing multidomain model and inherent novel methods
 fileName = "simParam.dat";
-model = ModelType(["Poromechanics_FEM","SinglePhaseFlow_FEM"]);
+model = ModelType("Poromechanics_FEM");
 simParam = SimulationParameters(model,fileName);
 
 fileName = "domains.dat";

@@ -6,11 +6,11 @@ classdef Gauss < handle
     coord;
     weight;
     nNode;
+    nNode1D;
   end
   
   properties (Access = private)
     nDim;
-    nNode1D;
     cellType;   % According to VTK classification
     coord1D;
     weight1D;

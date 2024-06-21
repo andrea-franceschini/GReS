@@ -41,8 +41,14 @@ classdef Poromechanics < handle
 
         function computeMat(obj,varargin)
             % Compute Stiffness matrix for mechanical problem 
-            state = varargin{1};
-            dt = varargin{3};
+            n = sum(~cellfun(@isempty,varargin));
+            if n == 2
+              state = varargin{1};
+              dt = varargin{2};
+            elseif n == 3
+              state = varargin{1};
+              dt = varargin{3};
+            end
             subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'Poro'));
             [subCells, ~] = find(obj.dofm.subCells(:,subInd));
             nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]);
@@ -139,10 +145,14 @@ classdef Poromechanics < handle
         end
 
         function out = isLinear(obj)
-            out = false;
+            out = true;
+              for i = 1:obj.mesh.nCellTag
+                out = isa(obj.material.getMaterial(i).ConstLaw,"Elastic");
+                if ~out
+                  return;
+                end
+              end
         end
-
-
     end
 end
 

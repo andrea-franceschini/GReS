@@ -39,11 +39,11 @@ classdef Mesh < handle
     edges
     % 1D elements' tag (region)
     edgeTag
-
+    % Flag for Cartesian grids
+    cartGrid = false;
     % Regions
     cellRegions;
     surfaceRegions;
-
     % 3D element VTK type tag
     cellVTKType;
     % 2D element VTK type tag
@@ -82,7 +82,11 @@ classdef Mesh < handle
       
       % STORING DATA INSIDE OBJECT'S PROPERTIES
       % 3D ELEMENT DATA
-      obj.nDim = size(obj.coordinates,2);
+      if any(obj.coordinates(:,3) ~= 0)
+          obj.nDim = 3;
+      else 
+          obj.nDim = 2;
+      end
       obj.nNodes = size(obj.coordinates,1);
       % cellsID = 3D element tag for readGMSHmesh.cpp
       cellsID = [4, 5, 6, 7];
@@ -219,6 +223,193 @@ classdef Mesh < handle
       ID = obj.surfaceTag == val;
     end
 
+
+    function createCartesianGrid(obj,dim,deg,varargin)
+        % Generate Cartesian mesh of quadrilateral elements
+        assert(isempty(obj.coordinates),['A mesh hase been' ...
+            'already defined for this object istance'])
+        switch dim
+            case 2
+                assert(nargin==7,['Incorrect number of input arguments for' ...
+                    '2D cartesian mesh'])
+                [x,y,nx,ny] = deal(varargin{1},varargin{2},varargin{3},varargin{4});
+                genCartGrid2D(obj,deg,x,y,nx,ny);
+            case 3
+                assert(nargin==9,['Incorrect number of input arguments for ' ...
+                    '3D cartesian mesh'])
+                genCartGrid3D(obj,deg,varargin);
+        end
+        obj.cartGrid = true;
+    end
+
+    function setCartGridFace(obj,faceTag,id)      
+        assert(obj.cartGrid, 'The mesh object is not a Cartesian Grid');
+        % Assign a tag to specific edges/surfaces for a cartesian grid
+        assert(length(faceTag) == length(id), "Number of faces does not" + ...
+            "match number of id" );
+        if obj.nDim < 3
+            fStr = ['north','south','west','east'];
+            assert(any(strcmpi(fStr,faceTag)),['Undefined face Tag: ' ...
+                'Admitted tags are: north,south,west,east']);
+
+        else
+            fStr = ['top','bottom','north','south','west','east'];
+                        assert(any(strcmpi(fStr,faceTag)),['Undefined face Tag: ' ...
+                            'Admitted tags are: top,bottom,north,south,west,east']);
+        end
+        [x,y,z] = deal(obj.coordinates(:,1),obj.coordinates(:,2),obj.coordinates(:,3));
+        % Retrieve list of nodes of the face based on the coordinates 
+        for i = 1:length(id)
+            switch faceTag(i)
+                case 'north'
+                    nodeList = sort(find(y == max(y)));
+                case 'south'
+                    nodeList = sort(find(y == min(y)));
+                case 'east'
+                    nodeList = sort(find(x == max(x)));
+                case 'west'
+                    nodeList = sort(find(x == min(x)));
+                case 'top'
+                    nodeList = sort(find(z == max(z)));
+                case 'bottom'
+                    nodeList = sort(find(z == min(z)));
+            end
+
+            % build face topology
+            if obj.nDim < 3
+                topol = [nodeList(1) repelem(nodeList(2:end-1),2), nodeList(end)];
+                topol = (reshape(topol, 2, []))';
+                obj.edges = [obj.edges; topol];
+                obj.edgeTag = [obj.edgeTag id(i)*ones(size(obj.edges,1))];
+            else
+                 
+            end
+
+        end
+
+    end
+
+    
+
+    function surfMesh = getSurfaceMesh(obj, surfTag)
+        % Function to build a 2D mesh object based on the surfaceTag of a 3D
+        % mesh
+        % initialize Mesh object
+        surfMesh = Mesh();
+        surfTopol = obj.surfaces(obj.surfaceTag == surfTag,:);
+        % renumber the nodes starting from 1;
+        surfTopol = surfTopol(:);
+        % ordered list of unique nodes in the topology matrix
+        surfOrd = unique(surfTopol);
+        mapping = containers.Map(surfOrd, 1:numel(surfOrd));
+        for i = 1:length(surfTopol)
+            surfTopol(i) = mapping(surfTopol(i));
+        end
+        surfMesh.surfaces = (reshape(surfTopol, [], 4));
+        surfMesh.coordinates = obj.coordinates(surfOrd,:);
+        surfMesh.nNodes = length(surfMesh.coordinates);
+        surfMesh.nSurfaces = length(surfMesh.surfaces);
+        surfMesh.surfaceTag = repmat(surfTag, surfMesh.nSurfaces,1);
+        surfMesh.nSurfaceTag = 1;
+        surfMesh.surfaceVTKType = obj.surfaceVTKType(obj.surfaceTag == surfTag);
+        surfMesh.surfaceNumVerts = obj.surfaceNumVerts(obj.surfaceTag == surfTag);
+        surfMesh.nDim = 3;
+    end
+
+    function msh = getQuad4mesh(obj)
+        assert(obj.cartGrid,'This method is valid only for Cartesian grids');
+        msh = Mesh();
+        msh.surfaces = obj.surfaces(:,1:4);
+        msh.nSurfaces = size(msh.surfaces,1);
+        msh.nNodes = max(msh.surfaces,[],"all");
+        msh.coordinates = obj.coordinates(1:msh.nNodes,:);
+        msh.surfaceNumVerts = obj.surfaceNumVerts;
+        msh.surfaceNumVerts(:) = 4;
+        msh.surfaceVTKType = obj.surfaceVTKType;
+        msh.nDim = obj.nDim;
+        %
+    end
   end
+
+  methods (Access = private)
+      function obj = genCartGrid2D(obj,deg,x,y,nx,ny)
+          % Node coordinates
+          switch deg
+              case 1
+                  nNodElem = 4;
+                  xc = linspace(x(1),x(2),nx+1);
+                  yc = linspace(y(1),y(2),ny+1);
+                  [X,Y] = meshgrid(xc,yc);
+                  X = X'; Y=Y';
+                  obj.nNodes = length(xc)*length(yc);
+                  obj.coordinates = zeros(obj.nNodes,3);
+                  obj.coordinates(:,1:2) = [X(:) Y(:)];
+                  % Topology
+                  s1 = [1 2 length(xc)+2 length(xc)+1];
+                  s2 = reshape(0:((nx+1)*ny-1),nx+1,[]);
+                  s2 = s2(1:end-1,:);
+                  obj.surfaces = s1+s2(:);
+              case 2
+                  nNodElem = 8;
+                  xc = linspace(x(1),x(2),nx+1);
+                  yc = linspace(y(1),y(2),ny+1);
+                  [X,Y] = meshgrid(xc,yc);
+                  X = X'; Y=Y';
+                  coord1 = [X(:) Y(:)]; % grid of angle nodes
+                  dx = 0.5*(x(2)-x(1))/nx;
+                  dy = 0.5*(y(2)-y(1))/ny;
+                  xc = linspace(x(1)+dx,x(2)-dx,nx);
+                  yc = linspace(y(1),y(2),ny+1);
+                  [X,Y] = meshgrid(xc,yc); X = X'; Y=Y';
+                  coord2 = [X(:) Y(:)]; % grid of horizontal edge nodes
+                  xc = linspace(x(1),x(2),nx+1);
+                  yc = linspace(y(1)+dy,y(2)-dy,ny);
+                  [X,Y] = meshgrid(xc,yc); X = X'; Y=Y';
+                  coord3 = [X(:) Y(:)]; % grid of vertical edge nodes
+                  obj.nNodes = size(coord1,1)+size(coord2,1)+size(coord3,1);
+                  obj.coordinates = zeros(obj.nNodes,3);
+                  obj.coordinates(:,1:2) = [coord1;coord2;coord3];
+                  % TOPOLOGY
+                  k = 0;
+                  top = zeros(nx*ny,8);
+                  for iy = 1:ny
+                      for ix = 1:nx
+                          k = k+1;
+                          n = ix+(iy-1)*(nx+1); 
+                          n1 = [n n+1 n+nx+2 n+nx+1]; %nodes 1 2 3 4
+                          n2 = size(coord1,1)+[ix+(iy-1)*nx ix+iy*nx]; %nodes 5 7
+                          n3 = size(coord1,1)+size(coord2,1)+...
+                              [ix+(iy-1)*(nx+1)+1 ix+(iy-1)*(nx+1)]; %nodes 6 8
+                          top(k,:) = [n1 n2(1) n3(1) n2(2) n3(2)];
+                      end
+                  end
+                  obj.surfaces = top;
+          end
+
+          if any(obj.coordinates(:,3) ~= 0)
+              obj.nDim = 3;
+          else
+              obj.nDim = 2;
+          end
+
+          obj.nSurfaces = size(obj.surfaces,1);
+          obj.surfaceNumVerts = nNodElem*ones(obj.nSurfaces,1);
+          obj.surfaceVTKType = 9*ones(obj.nSurfaces,1);
+          obj.surfaceTag = ones(obj.nSurfaceTag,1); 
+          % surfaceTag property can be modified using specifc method for
+          % CartGrids
+
+          % 1D ELEMENT DATA
+          % cellsID = 2D surface tag for readGMSHmesh.cpp
+          obj.nEdges = 0;
+          % Edge datas for CartGrid are introduced using the setGridFace method 
+          obj.nSurfaceTag = max(obj.surfaceTag);
+      end
+      
+    
+
+  end
+
+
 
 end

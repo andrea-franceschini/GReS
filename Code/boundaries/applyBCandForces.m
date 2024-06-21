@@ -2,7 +2,7 @@ function applyBCandForces(model, grid, bound, material, t, syst, state)
   % Apply Boundary condition to the block partitioned system.  
   % Block dof indexing is used. 
   % Impose BC to the linearized system (Jacobian matrix + RHS)
-  % The Penalty method is used for the Dirichlet conditions
+  % Penalty method is employed for Dirichlet BCs
   keys = bound.db.keys;
   for i = 1 : length(keys)
       dirVal = []; % if stays empty Penalty method is used

@@ -89,11 +89,61 @@ classdef Discretizer < handle
             for i = 1:length(obj.fields)
                 fld = obj.fields{i};
                 if ~isLinear(obj.db(fld))
-                    obj.getField(fld).computeMat(stateTmp,statek,dt);
+                  obj.getField(fld).computeMat(stateTmp,statek,dt);
                 end
                 obj.getField(fld).computeRhs(stateTmp,statek,dt);
             end
         end
+
+
+        function varargout = getMat(obj,fld,varargin)
+          data = cell(1,3);
+          if nargin > 2
+            data{1} = varargin{1};
+            data{2} = 1; % provisional value for delta_t when not needed
+          end
+          if nargin > 3
+            data{2} = varargin{2};
+          end
+          if nargin > 4
+            data{3} = varargin{3};
+          end
+
+          switch fld
+            case 'Poro'
+              obj.getField(fld).computeMat(data{1:end});
+              varargout{1} = obj.getField(fld).K;
+            case 'Flow'
+              obj.getField(fld).computeMat(data{1:end});
+              varargout{1} = obj.getField(fld).H;
+              varargout{1} = obj.getField(fld).P;
+            case 'Biot'
+              obj.getField(fld).computeMat(data{1:end});
+              varargout{1} = obj.getField(fld).Q;
+          end
+        end
+
+        % 
+        % function getMat(obj,fld,varargin)
+        %   if nargin < 4
+        %     stateTmp = varargin{1};
+        %     dt = 1; % provisional value for delta_t when not needed
+        %   end
+        %   if nargin < 5
+        %     dt = varargin{2};
+        %   end
+        %   if nargin < 6
+        %     statek = varargin{3};
+        %   end
+        % 
+        %   switch fld
+        %     case 'Poro'
+        %     case 'Flow'
+        %     case 'Biot'
+        %   end
+        % end
+        % 
+
 
     end
 

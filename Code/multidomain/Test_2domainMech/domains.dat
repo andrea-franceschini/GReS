@@ -4,12 +4,16 @@
 <Domain>
 <Name>
 Top_block
+<Model>
+Poromechanics_FEM
+<SimulationParameters>
+simParam.dat
 <Geometry>
 Top/TopBlock.msh
 <Gauss>
 12 2 3
 <Material>
-materialsList.dat
+Top/materialsList.dat
 <DoFManager>
 Top/dof.dat
 <BoundaryConditions>
@@ -23,12 +27,18 @@ outTime.dat
 <Domain>
 <Name>
 Bottom_block
+<Model>
+SinglePhaseFlow_FEM
+<SimulationParameters>
+simParam.dat
 <Geometry> 
 Bottom/BottomBlock.msh
 <Gauss>
 12 2 3
 <Material>
-materialsList.dat
+Bottom/materialsList.dat
+<DoFManager>
+Bottom/dof.dat
 <BoundaryConditions>
 1
 Bottom/dirNodBotFace.dat
