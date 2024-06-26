@@ -66,8 +66,6 @@ classdef Mortar3D < handle
                 otherwise
                     error('Wrong number of inputs for class Mortar1D')
             end
-            % obj.nodesMaster = unique(obj.masterTopol);
-            % obj.nodesSlave = unique(obj.slaveTopol);
             obj.nElMaster = size(obj.masterTopol,1);
             obj.nElSlave = size(obj.slaveTopol,1);
             obj.nNodesMaster = size(obj.masterCoord,1);
@@ -78,32 +76,33 @@ classdef Mortar3D < handle
             % Contact search algorithm to get connectivity between surface
             % meshes
             if nargin == 3 && length(unique(obj.masterCoord(:,3)))<2
-              if obj.degree < 2
-                mshM = varargin{1};
-                mshS = varargin{2};
-              else
-                mshM = getQuad4mesh(varargin{1});
-                mshS = getQuad4mesh(varargin{2});
-              end
-              obj.elemConnectivity = cartConn(obj,mshM,mshS);
+                if obj.degree < 2
+                    mshM = varargin{1};
+                    mshS = varargin{2};
+                else
+                    mshM = getQuad4mesh(varargin{1});
+                    mshS = getQuad4mesh(varargin{2});
+                end
+                obj.elemConnectivity = cartConn(obj,mshM,mshS);
             else
-              if length(unique(obj.masterCoord(:,3)))<2
-                kdop = 8;
-              else
-                kdop = 18;
-              end
-              switch obj.degree
-                case 1
-                  cs = ContactSearching(obj.intMaster,obj.intSlave,kdop);
-                case 2 % perform contact searching based on a quad4 mesh
-                  intM = obj.intMaster.getQuad4mesh();
-                  intS = obj.intSlave.getQuad4mesh();
-                  cs = ContactSearching(intM,intS,kdop);
-              end
-              obj.elemConnectivity = cs.elemConnectivity;
-              [m,s]= find(obj.elemConnectivity);
-              obj.nodesSlave = unique(obj.slaveTopol(unique(s),:));
-              obj.nodesMaster = unique(obj.masterTopol(unique(m),:));
+                if length(unique(obj.masterCoord(:,3)))<2
+                    kdop = 8;
+                else
+                    kdop = 18;
+                end
+                switch obj.degree
+                    case 1
+                        cs = ContactSearching(obj.intMaster,obj.intSlave,kdop);
+                    case 2 % perform contact searching based on a quad4 mesh
+                        intM = obj.intMaster.getQuad4mesh();
+                        intS = obj.intSlave.getQuad4mesh();
+                        cs = ContactSearching(intM,intS,kdop);
+                end
+
+                obj.elemConnectivity = cs.elemConnectivity;
+                % get list of nodes lying on shared interfaces
+                obj.nodesMaster = unique(obj.masterTopol);
+                obj.nodesSlave = unique(obj.slaveTopol);
             end
             %
             computeSlaveMatrix(obj);
@@ -509,6 +508,7 @@ classdef Mortar3D < handle
                 elems = find(any(ismember(topol,i),2));
                 n_n(i,:) = (area(elems)'*elem_normal(elems,:))/sum(area(elems));
             end
+            n_n = n_n./vecnorm
         end
         %
 

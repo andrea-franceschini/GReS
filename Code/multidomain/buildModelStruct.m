@@ -1,4 +1,4 @@
-function modStruct = buildModelStruct(simParam,fName)
+function modStruct = buildModelStruct(fName)
 % build a structure array containing istances of all classes for different
 % domains
 fID = openReadOnlyFile(fName);
@@ -17,7 +17,7 @@ while ~feof(fID)
             case '<Name>'
                name = readToken(fID,fName);
                l = l+1;
-            case '<Model>'
+            case '<ModelType>'
                mods = convertCharsToStrings(readToken(fID,fName));
                l = l+1;
                mods = (split(mods))';
@@ -39,7 +39,6 @@ while ~feof(fID)
             case '<Material>'
                matFile = readToken(fID,fName);
                l = l+1;
-               mat = Materials(model,matFile);
             case '<DoFManager>'
                dofFile = readToken(fID,fName);
                l = l+1;
@@ -72,6 +71,8 @@ while ~feof(fID)
          assert(strcmp(nextline([1,end]),'<>'),'Syntax error or unexpected text in line %i of file %s',l,fName);
       end
       model = ModelType(mods);
+      simParam = SimulationParameters(model,sim);
+      mat = Materials(model,matFile);
       if ~isempty(dofFile)
          dof = DoFManager(topology,model,dofFile);
       else
@@ -88,9 +89,10 @@ while ~feof(fID)
       state = State(model,grid,mat,gauss);
       printUtils = OutState(model,mat,grid,outFile,name,gauss);
       linSyst = Discretizer(model,simParam,dof,grid,mat,gauss);
-      modStruct = [modStruct;struct('id',c,'DomainName',name,'Grid',grid,...
-         'Material',mat,'Gauss',gauss,'DoFManager',dof,...
-         'BoundaryConditions',bc,'State',state,'OutState',printUtils,'Discretizer',linSyst)];
+      modStruct = [modStruct;struct('id',c,'DomainName',name,'ModelType',model,...
+         'SimParams',simParam,'Grid',grid,'Material',mat,'Gauss',gauss,...
+         'DoFManager',dof,'BoundaryConditions',bc,'State',state,'OutState',printUtils,...
+         'Discretizer',linSyst)];
    end
 end
 end

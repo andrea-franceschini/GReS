@@ -474,40 +474,46 @@ classdef Mortar3D < handle
 
                 % project Gauss Point
                 while (norm(rhs,2) > tol) && (iter < itMax)
-                    % compute Jacobian of the projection
-                    iter = iter + 1;
-                    % get local derivatives of basis functions
-                    dN = elem.quad.computeDerBasisF(xiMaster(ii,:));
-                    J1 = dN*coord(nodeM,:);
-                    J = [J1', -nS];
-                    ds = J\(-rhs);
-                    xiMaster(ii,:) = xiMaster(ii,:) + ds(1:2)';
-                    w = w + ds(3);
-                    Nmaster = elem.quad.computeBasisF(xiMaster(ii,:));
-                    % evaluate normal at integration point
-                    rhs1 = coord(nodeM,:)'*Nmaster;
-                    rhs = rhs1 - w*nS - xInt(ii,:)';
+                   % compute Jacobian of the projection
+                   iter = iter + 1;
+                   % get local derivatives of basis functions
+                   dN = elem.quad.computeDerBasisF(xiMaster(ii,:));
+                   J1 = dN*coord(nodeM,:);
+                   J = [J1', -nS];
+                   ds = J\(-rhs);
+                   xiMaster(ii,:) = xiMaster(ii,:) + ds(1:2)';
+                   w = w + ds(3);
+                   Nmaster = elem.quad.computeBasisF(xiMaster(ii,:));
+                   % evaluate normal at integration point
+                   rhs1 = coord(nodeM,:)'*Nmaster;
+                   rhs = rhs1 - w*nS - xInt(ii,:)';
                 end
 
                 if iter >= itMax
-                    xiMaster(ii) = nan;
-                    % mark gauss point that did not converge
+                   xiMaster(ii) = nan;
+                   % mark gauss point that did not converge
                 end
             end
         end
         %
 
-        function n_n = computeNodalNormal(obj,elem)
-            % Return vector n of weighted normals
-            n_n = zeros(obj.intSlave.nNodes,3);
-            area = elem.quad.findAreaAndCentroid(1:obj.intSlave.nSurfaces); % area of each cell
-            elem_normal = elem.quad.computeNormal(1:obj.intSlave.nSurfaces);
-            topol = obj.slaveTopol;
-            for i = 1:length(obj.slaveCoord)
-                % get elements sharing node i
-                elems = find(any(ismember(topol,i),2));
-                n_n(i,:) = (area(elems)'*elem_normal(elems,:))/sum(area(elems));
-            end
+        function [n_n,varargout] = computeNodalNormal(obj,elem)
+           % Return vector n of weighted normals
+           n_n = zeros(length(obj.intSlave.coordinates),3);
+           area = elem.quad.findAreaAndCentroid(1:obj.intSlave.nSurfaces); % area of each cell
+           elem_normal = elem.quad.computeNormal(1:obj.intSlave.nSurfaces);
+           topol = obj.intSlave.surfaces;
+           for i = 1:length(obj.intSlave.coordinates)
+              % get elements sharing node i
+              elems = find(any(ismember(topol,i),2));
+              n_n(i,:) = (area(elems)'*elem_normal(elems,:))/sum(area(elems));
+           end
+           n_n = n_n./vecnorm(n_n,2,2);
+           if nargout > 1
+              areaNod = elem.quad.computeAreaNod(obj.intSlave);
+              n_a = n_n.*areaNod;
+              varargout{1} = n_a;
+           end
         end
         %
 

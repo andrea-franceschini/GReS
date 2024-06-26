@@ -144,6 +144,7 @@
       end
     end
 
+
     function n = computeNormal(obj,idQuad)
         % compute normal vector of cell idQuad
         n = zeros(length(idQuad),3);
@@ -154,6 +155,15 @@
             n(el,:) = cross(v1,v2);
             n(el,:) = n(el,:)/norm(n(el,:));
         end
+    end
+
+    function n_a = computeAreaNod(obj,surfMsh)
+       % compute area associated to each node of a surface mesh
+       n_a = zeros(max(surfMsh.surfaces,[],'all'),1);
+       for i = 1:length(surfMsh.surfaces)
+          n_a(surfMsh.surfaces(i,:)) = n_a(surfMsh.surfaces(i,:)) + findNodeArea(obj,i);
+       end
+       n_a = n_a(unique(surfMsh.surfaces));
     end
 
     function gPCoordinates = getGPointsLocation(obj,el)

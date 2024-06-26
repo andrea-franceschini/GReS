@@ -52,7 +52,7 @@ classdef ContactSearching < handle
             BBtree = zeros(2*msh.nSurfaces-1, 2);
             treeNodes = zeros(2*msh.nSurfaces-1, 2*size(obj.polytop,2));
             % store root polytop
-            elemMap = zeros(msh.nSurfaces, size(BBtree,1));
+            elemMap = false(msh.nSurfaces, size(BBtree,1));
             elemMap(:,1) = 1;
             leaf2elem = zeros(size(BBtree,1),1);
             k = 1;

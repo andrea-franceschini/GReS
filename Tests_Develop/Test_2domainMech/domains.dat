@@ -4,8 +4,8 @@
 <Domain>
 <Name>
 Top_block
-<Model>
-Poromechanics_FEM
+<ModelType>
+SinglePhaseFlow_FEM
 <SimulationParameters>
 simParam.dat
 <Geometry>
@@ -27,8 +27,8 @@ outTime.dat
 <Domain>
 <Name>
 Bottom_block
-<Model>
-SinglePhaseFlow_FEM
+<ModelType>
+Poromechanics_FEM
 <SimulationParameters>
 simParam.dat
 <Geometry> 

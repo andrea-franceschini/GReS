@@ -2,14 +2,11 @@ clear
 close all
 
 %% Testing multidomain model and inherent novel methods
-fileName = "simParam.dat";
-model = ModelType("Poromechanics_FEM");
-simParam = SimulationParameters(model,fileName);
 
 fileName = "domains.dat";
 % All the preprocessing is performed on different domains
 % All istances of the classes are collected in a structure array
-mod= buildModelStruct(model,simParam,fileName);
+mod= buildModelStruct(fileName);
 
 % SOLUTION ALGORITHM
 fileName = 'testIntFile';

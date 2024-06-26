@@ -1,0 +1,40 @@
+% Input for multidomain simulations 
+% Domain 1 
+<Domain> 
+<Name> 
+<ModelType> 
+<SimulationParameters> 
+<Geometry> 
+<Gauss> 
+<Material> 
+<DoFManager> 
+<BoundaryConditions> 
+<OutState> 
+<EndDomain> 
+ 
+% Domain 2 
+<Domain> 
+<Name> 
+<ModelType> 
+<SimulationParameters> 
+<Geometry> 
+<Gauss> 
+<Material> 
+<DoFManager> 
+<BoundaryConditions> 
+<OutState> 
+<EndDomain> 
+ 
+% Domain 3 
+<Domain> 
+<Name> 
+<ModelType> 
+<SimulationParameters> 
+<Geometry> 
+<Gauss> 
+<Material> 
+<DoFManager> 
+<BoundaryConditions> 
+<OutState> 
+<EndDomain> 
+ 
