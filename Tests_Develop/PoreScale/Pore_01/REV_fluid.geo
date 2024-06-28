@@ -10,19 +10,12 @@ SetFactory("OpenCASCADE");
 
 // create box 
 Box(1) = {0,0,0,1,1,1};
-Sphere(2) = {0,0,0,0.2};
-Sphere(3) = {1,1,1,0.4};
-BooleanIntersection(4) = { Volume{1};}{ Volume{2}; Delete;};
-BooleanIntersection(5) = { Volume{1}; Delete;}{ Volume{3}; Delete;};
+Sphere(2) = {0,0,0,0.7};
+Sphere(3) = {1,1,1,0.5};
+BooleanDifference{ Volume{1}; Delete;}{ Volume{2}; Delete;};
+BooleanDifference{ Volume{1}; Delete;}{ Volume{3}; Delete;};
 
-//Mesh.RecombinationAlgorithm = 2;
-//Transfinite Surface {:};
-Recombine Surface {:};
-//MeshSize {:} = 0.15;
-//Mesh 3;
-//RecombineMesh;
-Mesh.SubdivisionAlgorithm = 3;
-//RecombineMesh;
-//Mesh.Algorithm = 8;
-MeshSize {:} = 0.12;
+//Recombine Surface {:};
+MeshSize {:} = 0.1;
 Mesh 3;
+Save "Fluid.msh";

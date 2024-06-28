@@ -18,8 +18,3 @@ scatter3(x1,y1,z1)
 hold on
 scatter3(x2,y2,z2)
 plot3(p(1),p(2),p(3),'ro')
-
-%% testing input file reading of grains
-s = [0,0,0,0.2;
-   1,1,1,0.4];
-genGrain([0,0,0,1,1,1],s)

@@ -178,6 +178,9 @@
         N = bsxfun(@(i,j) 1/4*(1+obj.coordLoc(j,1).*list(i,1)).* ...
             (1+obj.coordLoc(j,2).*list(i,2)), ...
             (1:size(list,1))',1:obj.mesh.surfaceNumVerts(1));
+        if size(N,2) ~= obj.mesh.surfaceNumVerts(1)
+           N = N';
+        end
     end
 
     function dN = computeDerBasisF(obj, list)

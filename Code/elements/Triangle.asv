@@ -41,7 +41,7 @@ classdef Triangle < handle
          mat = inv_A(2:3,:);
       end
  
-      function dN = computeDerBasisF(obj,varargin)
+      function dN = computeDerBasisF(obj)
          dN = obj.J1;
       end
 
@@ -68,11 +68,11 @@ classdef Triangle < handle
          switch flOut
             case 1
                outVar1 = mat;
-               outVar2 = obj.detJ*obj.GaussPts.weight';
+               outVar2 = obj.detJ*obj.GaussPts.weight;
             case 2
                outVar1 = mat;
             case 3
-               outVar1 = obj.detJ*obj.GaussPts.weight';
+               outVar1 = obj.detJ*obj.GaussPts.weight;
          end
       end
 
@@ -84,12 +84,12 @@ classdef Triangle < handle
          % Find the value the basis functions take at some  reference points defined in
          % a list
          if size(list,1) > 1
-            N = zeros(size(list,1),3);
+            N = zeros(obj.GaussPts.nNode,3);
             N(:,1) = 1-list(:,1)-list(:,2);
             N(:,2) = list(:,1);
             N(:,3) = list(:,2);
          else
-            N = zeros(1,3);
+            N = zeros(3,1);
             N(1) = 1-list(1)-list(2);
             N(2) = list(1);
             N(3) = list(2);
@@ -193,7 +193,7 @@ classdef Triangle < handle
 
       function findLocDerBasisF(obj, varargin)
          % Find the value the basis functions take at the Gauss points
-         obj.J1 = [-1 1 0; -1 0 1];
+         obj.J1 = [-1 -1; 1 ]
       end
 
       function computeCellCentroid(obj)

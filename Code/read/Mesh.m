@@ -297,6 +297,12 @@ classdef Mesh < handle
         % initialize Mesh object
         surfMesh = Mesh();
         surfTopol = obj.surfaces(obj.surfaceTag == surfTag,:);
+        switch obj.surfaceVTKType(1)
+           case 5
+              nN = 3;
+           case 9
+              nN = 4;
+        end
         % renumber the nodes starting from 1;
         surfTopol = surfTopol(:);
         % ordered list of unique nodes in the topology matrix
@@ -305,7 +311,7 @@ classdef Mesh < handle
         for i = 1:length(surfTopol)
             surfTopol(i) = mapping(surfTopol(i));
         end
-        surfMesh.surfaces = (reshape(surfTopol, [], 4));
+        surfMesh.surfaces = (reshape(surfTopol, [], nN));
         surfMesh.coordinates = obj.coordinates(surfOrd,:);
         surfMesh.nNodes = length(surfMesh.coordinates);
         surfMesh.nSurfaces = length(surfMesh.surfaces);

@@ -5,7 +5,7 @@
 <Name>
 Top_block
 <ModelType>
-SinglePhaseFlow_FEM
+Poromechanics_FEM
 <SimulationParameters>
 simParam.dat
 <Geometry>
@@ -14,8 +14,6 @@ Top/TopBlock.msh
 12 2 3
 <Material>
 Top/materialsList.dat
-<DoFManager>
-Top/dof.dat
 <BoundaryConditions>
 1
 Top/neuSurfTopFace.dat
@@ -28,7 +26,7 @@ outTime.dat
 <Name>
 Bottom_block
 <ModelType>
-Poromechanics_FEM
+SinglePhaseFlow_FEM
 <SimulationParameters>
 simParam.dat
 <Geometry> 
@@ -37,8 +35,6 @@ Bottom/BottomBlock.msh
 12 2 3
 <Material>
 Bottom/materialsList.dat
-<DoFManager>
-Bottom/dof.dat
 <BoundaryConditions>
 1
 Bottom/dirNodBotFace.dat
