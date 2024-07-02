@@ -41,13 +41,11 @@ classdef MeshGlue < handle
             otherwise
               error('Invalid tag for integration scheme in %s',fName);
           end
-          g = Gauss(12,nGP,2);
-          el = Elements(mortar.intSlave,g);
-          [~,n_a] = mortar.computeNodalNormal(el);
+          [~,n_a] = mortar.computeNodalNormal(getElem(mortar,Gauss(mortar.slaveCellType,3,2),'slave'));
           % set interface structure
           intStruct = [intStruct; struct('Master',d(1),'Slave',d(2),...
             'masterSet',mortar.nodesMaster,'slaveSet',mortar.nodesSlave,...
-            'nodeNormal',n_a,'InterpOperator',D\M)];
+            'nodeNormal',n_a,'InterpOperator',D\M,'mortar',mortar)];
         end
       end
       obj.interfaces = intStruct;

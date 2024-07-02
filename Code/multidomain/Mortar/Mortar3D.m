@@ -20,7 +20,8 @@ classdef Mortar3D < handle
         nMMat
         intMaster
         intSlave
-        nNelem % number of nodes per elements in master mesh
+        nNmaster % number of nodes per elements in master mesh
+        nNslave % number of nodes per elements in master mesh
         masterCellType
         slaveCellType
     end
@@ -66,22 +67,21 @@ classdef Mortar3D < handle
           if deg == 1
              switch obj.intMaster.surfaceVTKType(1)
                 case 5 % Triangle mesh Master
-                   obj.nNelem = 3;
+                   obj.nNmaster = 3;
                    obj.masterCellType = 10;
                 case 9 % Quad mesh Master
-                   obj.nNelem = 4;
+                   obj.nNmaster = 4;
                    obj.masterCellType = 12;
              end
           else
              assert(obj.intMaster.surfaceVTKType(1)==9,['Quadratic triangle not' ...
                 'yet implemented in Mortar class'])
-             obj.nNelem = 8;
+             obj.nNmaster = 8;
           end
-          switch obj.intMaster.surfaceVTKType(1)
+          switch obj.intSlave.surfaceVTKType(1)
              case 5 % Triangle mesh Master
                 obj.slaveCellType = 10;
              case 9 % Quad mesh Master
-                obj.nNelem = 4;
                 obj.slaveCellType = 12;
           end
           obj.nElMaster = size(obj.masterTopol,1);
@@ -157,8 +157,8 @@ classdef Mortar3D < handle
           elemMaster = getElem(obj,g,'master');
           %gpWeight = g.weight;
           n = computeNodalNormal(obj,elemSlave);
-          [imVec,jmVec,Mvec] = deal(zeros(nnz(obj.elemConnectivity)*obj.nNelem^2,1));
-          [isVec,jsVec,Dvec] = deal(zeros(nnz(obj.elemConnectivity)*obj.nNelem^2,1));
+          [imVec,jmVec,Mvec] = deal(zeros(nnz(obj.elemConnectivity)*obj.nNmaster^2,1));
+          [isVec,jsVec,Dvec] = deal(zeros(nnz(obj.elemConnectivity)*obj.nNslave^2,1));
           cs = 0;
           cm = 0;
           for i = 1:obj.nElSlave
@@ -175,7 +175,7 @@ classdef Mortar3D < handle
                 Mdetect(m,i) = sum(id);
                 if any(id)
                    idMaster = obj.masterTopol(m,:);
-                   NMaster = elemSlave.computeBasisF(xiM(id,:));
+                   NMaster = elemMaster.computeBasisF(xiM(id,:));
                    Mloc = NSlave(id,:)'*(NMaster.*dJWeighed(id)');
                    Dloc = NSlave(id,:)'*(NSlave(id,:).*dJWeighed(id)');
                    nm = numel(Mloc);
@@ -183,8 +183,10 @@ classdef Mortar3D < handle
                    % keeping M and D sparse to improve performance
                    [jjM,iiM] = meshgrid(idMaster,idSlave);
                    [jjS,iiS] = meshgrid(idSlave,idSlave);
-                   imVec(cm+1:cm+nm) = iiM(:); jmVec(cm+1:cm+nm) = jjM(:);
-                   isVec(cs+1:cs+ns) = iiS(:); jsVec(cs+1:cs+ns) = jjS(:);
+                   imVec(cm+1:cm+nm) = iiM(:); 
+                   jmVec(cm+1:cm+nm) = jjM(:);
+                   isVec(cs+1:cs+ns) = iiS(:); 
+                   jsVec(cs+1:cs+ns) = jjS(:);
                    Mvec(cm+1:cm+nm) = Mloc(:);
                    Dvec(cs+1:cs+ns) = Dloc(:);
                    % sort out Points already projected
@@ -227,8 +229,8 @@ classdef Mortar3D < handle
             gS = Gauss(obj.slaveCellType,nGP,2); % gauss class for slave integration
             elemMaster = getElem(obj,gM,'master');
             elemSlave = getElem(obj,gS,'slave');
-            [imVec,jmVec,Mvec] = deal(zeros(nnz(obj.elemConnectivity)*obj.nNelem^2,1));
-            [isVec,jsVec,Dvec] = deal(zeros(nnz(obj.elemConnectivity)*obj.nNelem^2,1));
+            [imVec,jmVec,Mvec] = deal(zeros(nnz(obj.elemConnectivity)*obj.nNmaster^2,1));
+            [isVec,jsVec,Dvec] = deal(zeros(nnz(obj.elemConnectivity)*obj.nNmaster^2,1));
             % Perform interpolation on the master side (computing weights
             % and interpolation coordinates)
             tic
@@ -260,11 +262,11 @@ classdef Mortar3D < handle
                     [fiNM,id1] = obj.computeRBFfiNM(ptsInt,ptsGauss,type);
                     switch obj.degree
                         case 1
-                            NMaster = (fiNM*wFMat(:,repNum(obj.nNelem,jm)))./(fiNM*w1Mat(:,jm));
+                            NMaster = (fiNM*wFMat(:,repNum(obj.nNmaster,jm)))./(fiNM*w1Mat(:,jm));
                             Nsupp = NMaster(:,[1 2 3]);
                         case 2
-                            Ntmp = (fiNM*wFMat(:,repNum(obj.nNelem+2,jm)))./(fiNM*w1Mat(:,jm));
-                            NMaster = Ntmp(:,1:obj.nNelem);
+                            Ntmp = (fiNM*wFMat(:,repNum(obj.nNmaster+2,jm)))./(fiNM*w1Mat(:,jm));
+                            NMaster = Ntmp(:,1:obj.nNmaster);
                             Nsupp = Ntmp(:,[end-1 end]);
                     end
                     % automatically detect supports computing interpolant
@@ -333,9 +335,9 @@ classdef Mortar3D < handle
             xiMaster = zeros(size(xi,1),2);
             tol = 1e-8;
             itMax = 10;
-            nodeM = obj.masterTopol(elM,:);
-            nodeS = obj.slaveTopol(elS,:);
-            coord = obj.masterCoord;
+            nodeM = obj.intMaster.surfaces(elM,:);
+            nodeS = obj.intSlave.surfaces(elS,:);
+            coord = obj.intMaster.coordinates;
             % loop trough each integration point to project
             for ii = 1:size(xi,1)
                 iter = 0;
@@ -488,19 +490,19 @@ classdef Mortar3D < handle
               case 'master'
                  switch obj.degree
                     case 1
-                       wF = zeros(numPts,obj.nElMaster*obj.nNelem);
+                       wF = zeros(numPts,obj.nElMaster*obj.nNmaster);
                        w1 = zeros(numPts,obj.nElMaster);
                        pts = zeros(numPts,obj.nElMaster*3);
                        for i = 1:obj.nElMaster
                           [f, ptsInt] = computeMortarBasisF(obj,i, nInt, obj.masterTopol, obj.masterCoord, elem);
                           fiMM = obj.computeRBFfiMM(ptsInt,type);
                           % solve local system to get weight of interpolant
-                          wF(:,repNum(obj.nNelem,i)) = fiMM\f;
+                          wF(:,repNum(obj.nNmaster,i)) = fiMM\f;
                           w1(:,i) = fiMM\ones(size(ptsInt,1),1);
                           pts(:,repNum(3,i)) = ptsInt;
                        end
                     case 2 % second order interpolation (8 nodes + 2 aux)
-                       wF = zeros(numPts,obj.nElMaster*(obj.nNelem+2));
+                       wF = zeros(numPts,obj.nElMaster*(obj.nNmaster+2));
                        w1 = zeros(numPts,obj.nElMaster);
                        pts = zeros(numPts,obj.nElMaster*3);
                        for i = 1:obj.nElMaster
@@ -525,11 +527,28 @@ classdef Mortar3D < handle
                     pts(:,[3*i-2 3*i-1 3*i]) = ptsInt;
                  end
            end
-
            % loop trough master elements and interpolate Basis function
-
         end
 
+        function elem = getElem(obj,gauss,side)
+           % get istance of element class based on cell type
+           switch side
+              case 'master'
+                 elem_tmp = Elements(obj.intMaster,gauss);
+                 if obj.intMaster.surfaceVTKType(1) == 5
+                    elem = elem_tmp.tri;
+                 elseif obj.intMaster.surfaceVTKType(1) == 9
+                    elem = elem_tmp.quad;
+                 end
+              case 'slave'
+                 elem_tmp = Elements(obj.intSlave,gauss);
+                 if obj.intSlave.surfaceVTKType(1) == 5
+                    elem = elem_tmp.tri;
+                 elseif obj.intSlave.surfaceVTKType(1) == 9
+                    elem = elem_tmp.quad;
+                 end
+           end
+        end
     end
 
     methods (Access=private)
@@ -550,26 +569,6 @@ classdef Mortar3D < handle
              assert(obj.degree==2,'Incorrect number of outputs for basis functions of degree 1')
              bfL = computeBasisF(elem.quadL,intPts);
              varargout{1} = bfL(:,[1 3]);
-          end
-       end
-
-       function elem = getElem(obj,gauss,side)
-          % get istance of element class based on cell type
-          switch side
-             case 'master'
-                elem_tmp = Elements(obj.intMaster,gauss);
-                if obj.intMaster.surfaceVTKType(1) == 5
-                   elem = elem_tmp.tri;
-                elseif obj.intMaster.surfaceVTKType(1) == 9
-                   elem = elem_tmp.quad;
-                end
-             case 'slave'
-                elem_tmp = Elements(obj.intSlave,gauss);
-                if obj.intSlave.surfaceVTKType(1) == 5
-                   elem = elem_tmp.tri;
-                elseif obj.intSlave.surfaceVTKType(1) == 9
-                   elem = elem_tmp.quad;
-                end
           end
        end
 

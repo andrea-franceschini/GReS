@@ -142,13 +142,15 @@ classdef OutState < handle
 
     methods (Access = private)
         function setOutState(obj,symMod,mat,grid,fileName,data)
-            for i = 1:length(data)
-                if isa(data{i},'Gauss')
-                    obj.GaussPts = data{1};
-                else
+           for i = 1:length(data)
+              if isa(data{i},'Gauss')
+                 obj.GaussPts = data{1};
+              else
+                 if ~isempty(data{i})
                     foldName = data{i};
-                end
-            end
+                 end
+              end
+           end
             obj.model = symMod;
             obj.material = mat;
             obj.mesh = grid.topology;

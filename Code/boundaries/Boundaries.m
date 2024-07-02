@@ -730,7 +730,7 @@ classdef Boundaries < handle
       id = 0;
       while (~feof(fid))
         line = fgetl(fid);
-        if (strcmp(line, 'End'))
+        if (strcmpi(line, 'End'))
           break;
         end
         word = sscanf(line, '%s', 1);

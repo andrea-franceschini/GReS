@@ -1,0 +1,5 @@
+Box(1) = {0,0,0,100,100,100};
+Sphere(2) = {20,50,5,60};
+Sphere(3) = {90,50,110,60};
+BooleanDifference{ Volume{1}; Delete;}{ Volume{2}; Delete;};
+BooleanDifference{ Volume{1}; Delete;}{ Volume{3}; Delete;};

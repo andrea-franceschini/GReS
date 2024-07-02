@@ -14,7 +14,7 @@ f = Mesh();
 f.importGMSHmesh('Mesh/Fluid.msh');
 
 writeBCfiles('dir_bot_flow','SurfBC','Dir','Flow',[],'botFix',0,5e4,f,1);
-writeBCfiles('dir_top_flow','SurfBC','Dir','Flow',[],'topFix',0,5.1e4,f,2);
+writeBCfiles('dir_top_flow','SurfBC','Dir','Flow',[],'topFix',0,5,f,2);
 
 
 g = Mesh();
@@ -38,11 +38,9 @@ for i = 1:model(1).Grid.topology.nCells
 end
 alpha = 0; 
 poro = 0;
+%%
+%plotFunction(f,'testChannel',K,'elem');
 
-%% Solution algorithm
-% Get flow stiffness matrix
-solvePoro(model,mG.interfaces,K,poro,alpha);
-model(1).OutState.finalize();
-model(2).OutState.finalize();
-
-
+% compute flow equation calling discretizer class
+model(1).Discretizer.getField('Flow').computeMat(K,poro,alpha)
+Hmat = model(1).Discretizer.getField('Flow').H;

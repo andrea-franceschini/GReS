@@ -14,6 +14,7 @@ classdef ContactSearching < handle
         leaf2elem2
         elemConnectivity
         dim
+        scale = 0.3;
     end
     
     methods
@@ -124,24 +125,30 @@ classdef ContactSearching < handle
             % increase slightly the size of the k-top (useful in 3D
             % setting)
             red = max(abs(ktopVals(1,:) - ktopVals(2,:)));
-            ktopVals = ktopVals - [0.1*red; -0.1*red];
+            ktopVals = ktopVals - [obj.scale*red; -obj.scale*red];
                         
-            if length(surfID) > 1
-                % split using cutting plane 
-                % oriented like axis i 
-                % passing trough point m
-                [~,i] = max(abs(ktopVals(1,:) - ktopVals(2,:)));
-                m = median(prim(:,i));
-                ktopVals = (ktopVals(:))';
-                surfPrim = surfCentroid(surfID,1:obj.dim)*obj.polytop(:,i);
-                id = surfPrim < m;
-                lCells = surfID(id);
-                rCells = surfID(~id);
-                assert(length(lCells)+length(rCells) == length(surfID), 'Some elements left out from splitting procedure');
+            if numel(surfID) > 2
+               % split using cutting plane
+               % oriented like axis i
+               % passing trough point m
+               [~,i] = max(abs(ktopVals(1,:) - ktopVals(2,:)));
+               m = median(prim(:,i));
+               ktopVals = (ktopVals(:))';
+               surfPrim = surfCentroid(surfID,1:obj.dim)*obj.polytop(:,i);
+               id = surfPrim < m;
+               lCells = surfID(id);
+               rCells = surfID(~id);
+               assert(length(lCells)+length(rCells) == length(surfID), 'Some elements left out from splitting procedure');
+               assert(~isempty(lCells),'Empty leaf cells');
+               assert(~isempty(rCells),'Empty leaf cells');
+            elseif numel(surfID) > 1
+               ktopVals = (ktopVals(:))';
+               lCells = surfID(1);
+               rCells = surfID(2);
             else
-                ktopVals = (ktopVals(:))';
-                lCells = [];
-                rCells = [];
+               ktopVals = (ktopVals(:))';
+               lCells = [];
+               rCells = [];
             end
         end
 

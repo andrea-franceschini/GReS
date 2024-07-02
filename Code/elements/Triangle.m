@@ -21,13 +21,10 @@ classdef Triangle < handle
       % Class constructor method
       function obj = Triangle(mesh,varargin)
          % Calling the function to set element data
-         switch nargin
-            case 1
-               obj.setTriangle(mesh);
-            case 2
-               obj.setTriangle(mesh,varargin{1});
-            otherwise
-               error('Too many input arguments for class Triangle');
+         if isempty(varargin{1})
+            obj.setTriangle(mesh);
+         else
+            obj.setTriangle(mesh,varargin{1});
          end
          %       computeCellCentroid(obj);
       end
@@ -158,6 +155,17 @@ classdef Triangle < handle
             n(el,:) = n(el,:)/norm(n(el,:));
          end
       end
+
+      function n_a = computeAreaNod(obj,surfMsh)
+         % compute area associated to each node of a surface mesh
+         n_a = zeros(max(surfMsh.surfaces,[],'all'),1);
+         for i = 1:length(surfMsh.surfaces)
+            a = findAreaAndCentroid(obj,i);
+            n_a(surfMsh.surfaces(i,:)) = n_a(surfMsh.surfaces(i,:)) + a/3;
+         end
+         n_a = n_a(unique(surfMsh.surfaces));
+      end
+
 
 
       %     function v = getVolume(obj,el)

@@ -2,7 +2,7 @@ function modStruct = buildModelStruct(fName)
 % build a structure array containing istances of all classes for different
 % domains
 fID = openReadOnlyFile(fName);
-dofFile = []; bcList = []; bc = [];
+dofFile = []; bcList = []; bc = []; gauss = [];
 l = 0; c = 0;
 modStruct = [];
 while ~feof(fID)
@@ -90,7 +90,7 @@ while ~feof(fID)
       printUtils = OutState(model,mat,grid,outFile,name,gauss);
       linSyst = Discretizer(model,simParam,dof,grid,mat,gauss);
       modStruct = [modStruct;struct('id',c,'DomainName',name,'ModelType',model,...
-         'SimParams',simParam,'Grid',grid,'Material',mat,'Gauss',gauss,...
+         'SimParams',simParam,'Grid',grid,'Material',mat,...
          'DoFManager',dof,'BoundaryConditions',bc,'State',state,'OutState',printUtils,...
          'Discretizer',linSyst)];
    end

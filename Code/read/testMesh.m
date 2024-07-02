@@ -2,7 +2,7 @@ close all;
 clear;
 
 % Setting the input file name
-filevtk = 'BottomBlock_tetra.vtk';
+filevtk = 'meshVTK.vtk';
 
 % Creation of an object of "Mesh"
 mesh = Mesh();

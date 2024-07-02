@@ -1,0 +1,41 @@
+% Input file for multi-domain simulation
+
+% First domain - Flow matrix
+<Domain>
+<Name>
+Flow_mat
+<ModelType>
+SinglePhaseFlow_FEM
+<SimulationParameters>
+simParam.dat
+<Geometry>
+Mesh/Fluid.msh
+<Material>
+Fluid/materialsList.dat
+<BoundaryConditions>
+2
+Fluid/dir_bot_flow.dat
+Fluid/dir_top_flow.dat
+<OutState>
+outTime.dat
+<EndDomain>
+
+% Second domain - Grains
+<Domain>
+<Name>
+Grains
+<ModelType>
+Poromechanics_FEM
+<SimulationParameters>
+simParam.dat
+<Geometry> 
+Mesh/Grain.msh
+<Material>
+Grain/materialsList.dat
+<BoundaryConditions>
+1
+Grain/dir_fix_poro.dat
+<OutState>
+outTime.dat
+<EndDomain>
+

@@ -156,7 +156,7 @@ classdef Mesh < handle
       obj.nSurfaceTag = max(obj.surfaceTag);
     end
 
-    function vtkStruct = importVTKmesh(obj, fileName)
+    function importVTKmesh(obj, fileName)
         % reading VTK file using VTK toolkit
         vtkStruct = vtkRead(fileName);
         % STORING DATA INSIDE OBJECT PROPERTIES
@@ -401,7 +401,7 @@ classdef Mesh < handle
           obj.nSurfaces = size(obj.surfaces,1);
           obj.surfaceNumVerts = nNodElem*ones(obj.nSurfaces,1);
           obj.surfaceVTKType = 9*ones(obj.nSurfaces,1);
-          obj.surfaceTag = ones(obj.nSurfaceTag,1); 
+          obj.surfaceTag = ones(obj.nSurfaces,1); 
           % surfaceTag property can be modified using specifc method for
           % CartGrids
 

@@ -64,7 +64,7 @@ classdef SPFlow < handle
         function computeMat(obj,varargin)
             if isempty(obj.H) && isempty(obj.P)
                 if obj.model.isFEMBased('Flow')
-                    computeMatFEM(obj);
+                    computeMatFEM(obj,varargin{:});
                 elseif obj.model.isFVTPFABased('Flow')
                     mu = obj.material.getFluid().getDynViscosity();
                     computeStiffMatFV(obj,1/mu);
@@ -73,7 +73,19 @@ classdef SPFlow < handle
             end
         end
 
-        function computeMatFEM(obj) %provisional method exploiting dof manager workflow
+        function computeMatFEM(obj,varargin) %provisional method exploiting dof manager workflow
+            % dealing with input params
+            if ~isempty(varargin)
+               K = varargin{1};
+               poro = varargin{2};
+               alpha = varargin{3};
+               if numel(poro)==1
+                  porosity = repmat(poro,obj.mesh.nCells,1);
+               end
+               if numel(poro)==1
+                  rockComp = repmat(alpha,obj.mesh.nCells,1);
+               end
+            end
             subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'SPFlow'));
             [subCells, ~] = find(obj.dofm.subCells(:,subInd));
             %nSubCells = length(subCells); %number of cells in subdomain
@@ -93,14 +105,20 @@ classdef SPFlow < handle
             %
             l1 = 0;
             for el = subCells'
-                % Get the rock permeability, porosity and compressibility
-                permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
-                poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
-                if  any(strcmp(obj.dofm.subDomains(subInd).physics,'Poro'))
-                    alpha = 0; %this term is not needed in coupled formulation
-                else
-                    alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
-                    %solid skeleton contribution to storage term as oedometric compressibility .
+                % Get the rock permeability, porosity and compressibility 
+                if isempty(varargin) % input from PorousRock class 
+                   permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+                   poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
+                   if  any(strcmp(obj.dofm.subDomains(subInd).physics,'Poro'))
+                      alpha = 0; %this term is not needed in coupled formulation
+                   else
+                      alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
+                      %solid skeleton contribution to storage term as oedometric compressibility .
+                   end
+                else % direct input
+                   permMat = diag(repmat(K(el),3,1));
+                   poro = porosity(el);
+                   alpha = rockComp(el);
                 end
                 % Compute the element matrices based on the element type
                 % (tetrahedra vs. hexahedra)
