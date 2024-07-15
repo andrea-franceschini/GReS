@@ -16,12 +16,14 @@ BooleanIntersection(4) = { Volume{1};}{ Volume{2}; Delete;};
 BooleanIntersection(5) = { Volume{1}; Delete;}{ Volume{3}; Delete;};
 Physical Volume("g1", 1) = {4};
 Physical Volume("g2",2)={5};
-Physical Surface("fix",1) = {9,10,12,13,14,15,16,18};
-Physical Surface("int1",2) = {11};
-Physical Surface("int2",3) = {17};
+Physical Surface("DX",1) = {9,15};
+Physical Surface("DY",2) = {10,12,14,18};
+Physical Surface("DZ",3) = {13,16};
+Physical Surface("int1",4) = {11};
+Physical Surface("int2",5) = {17};
 
 
 //Recombine Surface {:};
-MeshSize {:} = 40;
+MeshSize {:} = 25;
 Mesh 3;
 Save "Grain.msh";
