@@ -169,9 +169,11 @@ classdef Mesh < handle
         obj.cells = double(vtkStruct.cells(ID,:));
         obj.cellVTKType = double(vtkStruct.cellTypes(ID));
         flds = fieldnames(vtkStruct.cellData);
-        obj.cellTag = vtkStruct.cellData.(flds{1});
-        obj.cellTag = double(obj.cellTag(ID));
-        obj.nCells = length(obj.cellTag);
+        if ~isempty(fieldnames(vtkStruct.cellData))
+           obj.cellTag = vtkStruct.cellData.(flds{1});
+           obj.cellTag = double(obj.cellTag(ID));
+        end
+        obj.nCells = length(obj.cells);
         %
         % Check for unsupported elements
         if any(~ismember(obj.cellVTKType,[10 12]))
@@ -183,10 +185,12 @@ classdef Mesh < handle
         % 2D ELEMENT DATA
         cellsID = [5,9];
         ID = ismember(vtkStruct.cellTypes, cellsID);
-        obj.surfaces = vtkStruct.cells(ID,:);
+        obj.surfaces = double(vtkStruct.cells(ID,:));
         obj.surfaceVTKType = double(vtkStruct.cellTypes(ID));
-        obj.surfaceTag = vtkStruct.cellData.(flds{1});
-        obj.surfaceTag = double(obj.surfaceTag(ID));
+        if ~isempty(fieldnames(vtkStruct.cellData))
+           obj.surfaceTag = vtkStruct.cellData.(flds{1});
+           obj.surfaceTag = double(obj.surfaceTag(ID));
+        end
         obj.nSurfaces = length(obj.surfaceTag);
         % Check for unsupported elements
         if any(~ismember(obj.surfaceVTKType,[5 9]))
