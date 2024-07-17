@@ -11,8 +11,9 @@ clear
 close all
 
 % 
-% t = Mesh();
-% t.importVTKmesh('Mesh/mesh.vtk');
+
+t = Mesh();
+t.importVTKmesh('Mesh/mesh.vtk');
 %%
 f = Mesh();
 f.importGMSHmesh('Mesh/Fluid.msh');
@@ -47,8 +48,9 @@ alpha = 0;
 poro = 0;
 
 %% Solution algorithm
-% Get flow stiffness matrix
 solvePoro(model,mG.interfaces,K,poro,alpha);
+
+% Finilize print utilities
 model(1).OutState.finalize();
 model(2).OutState.finalize();
 

@@ -6,22 +6,22 @@ classdef Mortar3D < handle
         masterTopol
         slaveTopol
         masterCoord
-        slaveCoord
-        nElMaster
-        nElSlave
-        nNodesMaster
-        nNodesSlave
-        elemConnectivity
-        degree 
-        nodesMaster
-        nodesSlave
+        slaveCoord            
+        nElMaster             % number of master elements
+        nElSlave              % number of slave elements
+        nNodesMaster          % number of master nodes
+        nNodesSlave           % number of slave nodes
+        elemConnectivity      % connectivity matrix
+        degree                % degree of interpolation of mortar 
+        nodesMaster           % master side node subset
+        nodesSlave            % slave side node subset
         %Dmat
         nSMat
         nMMat
-        intMaster
-        intSlave
-        nNmaster % number of nodes per elements in master mesh
-        nNslave % number of nodes per elements in master mesh
+        intMaster             % 2D mesh object refering to the master side
+        intSlave              % 2D mesh object refering to the slave side
+        nNmaster              % number of nodes per elements in master mesh
+        nNslave               % number of nodes per elements in master mesh
         masterCellType
         slaveCellType
     end
@@ -116,12 +116,15 @@ classdef Mortar3D < handle
                    intS = obj.intSlave.getQuad4mesh();
                    cs = ContactSearching(intM,intS,kdop);
              end
-
              obj.elemConnectivity = cs.elemConnectivity;
-             % get list of nodes lying on shared interfaces
           end
-          obj.nodesMaster = unique(obj.masterTopol);
-          obj.nodesSlave = unique(obj.slaveTopol);
+          % connected master and slave surfaces (find non empty rows and
+          % columns of connectivity matrix)
+          idM = sum(obj.elemConnectivity,2) > 0;
+          idS = sum(obj.elemConnectivity,1) > 0;
+          % get list of nodes that actually belong to elements in contact
+          obj.nodesMaster = unique(obj.masterTopol(idM,:));
+          obj.nodesSlave = unique(obj.slaveTopol(idS,:));
           %
           %computeSlaveMatrix(obj);
        end

@@ -13,6 +13,8 @@ classdef Mortar2D < handle
         nNodesSlave
         elemConnectivity
         degree 
+        elemsMaster
+        elemsSlave
         nodesMaster
         nodesSlave
         Dmat
@@ -52,13 +54,22 @@ classdef Mortar2D < handle
             else
                 error('Wrong number of inputs for class Mortar1D')
             end
-            obj.nodesMaster = unique(obj.masterTopol);
-            obj.nodesSlave = unique(obj.slaveTopol);
+            % obj.nodesMaster = unique(obj.masterTopol);
+            % obj.nodesSlave = unique(obj.slaveTopol);
             obj.nElMaster = size(obj.masterTopol,1);
             obj.nElSlave = size(obj.slaveTopol,1);
             obj.nNodesMaster = size(obj.masterCoord,1);
             obj.nNodesSlave = size(obj.slaveCoord,1);
             obj.elemConnectivity = computeElementConnectivity(obj);
+            % connected master and slave surfaces (find non empty rows and
+            % columns of connectivity matrix)
+            idM = sum(obj.elemConnectivity,2) > 0;
+            idS = sum(obj.elemConnectivity,1) > 0;
+            % get list of nodes that actually belong to elements in contact
+            obj.elemsMaster = find(idM);
+            obj.elemsSlave = find(idS);
+            obj.nodesMaster = unique(obj.masterTopol(idM,:));
+            obj.nodesSlave = unique(obj.slaveTopol(idS,:));
             getMatricesSize(obj);
             computeSlaveMatrix(obj);
         end
@@ -132,7 +143,7 @@ classdef Mortar2D < handle
                     % compute basis function on slave elements points
                     gSlave = nod2ref(gPts, c, d);
                     basisSlave = computeBasis1D(gSlave,obj.degree);
-                    Mloc = basisMaster'*(basisSlave.*gpWeight);
+                    Mloc = basisSlave'*(basisMaster.*gpWeight);
                     Dloc = basisSlave'*(basisSlave.*gpWeight);
                     Mloc = Mloc*(0.5*(i2(1)-i1(1)));
                     Dloc = Dloc*(0.5*(i2(1)-i1(1)));
@@ -197,58 +208,98 @@ classdef Mortar2D < handle
         end
 
         function [D,M,varargout] = computeMortarRBF(obj,nGP,nInt,type)
-            % type: family of Radial Basis function to use
-            tic
-            g = Gauss(12,nGP,1);
-            M = zeros(obj.nSMat,obj.nMMat);
-            D = zeros(obj.nSMat,obj.nSMat);
-            [wFMat,w1Mat,ptsIntMat] = getWeights(obj,nInt,type);
-            % Loop trough slave elements
-            for j = 1:obj.nElSlave
-                gpPos = g.coord;
-                gpW = g.weight;
-                % nodes of slave element
-                s1 = obj.slaveCoord(obj.slaveTopol(j,1),:);
-                s2 = obj.slaveCoord(obj.slaveTopol(j,end),:);
-                idSlave = obj.slaveTopol(j,1:obj.nNelem);
-                % Real position of Gauss points
-                ptsGauss = ref2nod(gpPos, s1, s2);
-                % Get connected master elements
-                master_elems = find(obj.elemConnectivity(:,j));
-                NSlave = computeBasis1D(gpPos,obj.degree);
-                % Loop troug master elements
-                for jm = master_elems'
+           % type: family of Radial Basis function to use
+           tic
+           g = Gauss(12,nGP,1);
+           M = zeros(obj.nSMat,obj.nMMat);
+           D = zeros(obj.nSMat,obj.nSMat);
+           [wFMat,w1Mat,ptsIntMat] = getWeights(obj,nInt,type);
+           % Loop trough slave elements
+           for j = 1:obj.nElSlave
+              Mtmp = M;
+              Dtmp = D;
+              gpPos = g.coord;
+              gpW = g.weight;
+              % nodes of slave element
+              s1 = obj.slaveCoord(obj.slaveTopol(j,1),:);
+              s2 = obj.slaveCoord(obj.slaveTopol(j,end),:);
+              h = sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2);
+              idSlave = obj.slaveTopol(j,1:obj.nNelem);
+              % Real position of Gauss points
+              ptsGauss = ref2nod(gpPos, s1, s2);
+              % Get connected master elements
+              master_elems = find(obj.elemConnectivity(:,j));
+              NSlave = computeBasis1D(gpPos,obj.degree);
+              % Loop troug master elements
+              for jm = master_elems'
+                 ptsInt = ptsIntMat(:,repNum(2,jm));
+                 idMaster = obj.masterTopol(jm,1:obj.nNelem);
+                 fiNM = obj.computeRBFfiNM(ptsInt,ptsGauss,type);
+                 %NMaster = fiNM*wFMat(:,getWeightsID(obj,jm));
+                 switch obj.degree
+                    case 1
+                       NMaster = (fiNM*wFMat(:,repNum(obj.nNelem,jm)))./(fiNM*w1Mat(:,jm));
+                       NSupp = NMaster(:,1);
+                    case 2
+                       Ntmp = (fiNM*wFMat(:,repNum(obj.nNelem+1,jm)))./(fiNM*w1Mat(:,jm));
+                       NMaster = Ntmp(:,1:obj.nNelem);
+                       NSupp = Ntmp(:,end);
+                 end
+                 id = all([NSupp >= 0, NSupp <= 1],2);
+                 if any(id)
+                    NMaster = NMaster(id,:);
+                    Mloc = NSlave(id,:)'*(NMaster.*gpW(id));
+                    Mloc = Mloc*(0.5*h);
+                    Dloc = NSlave(id,:)'*(NSlave(id,:).*gpW(id));
+                    Dloc = Dloc*(0.5*h);
+                    M(idSlave, idMaster) = M(idSlave, idMaster) + Mloc;
+                    D(idSlave, idSlave) = D(idSlave, idSlave) + Dloc;
+                    % sort out Points already projected
+                    gpPos = gpPos(~id);
+                    gpW = gpW(~id);
+                    ptsGauss = ptsGauss(~id,:);
+                    NSlave = NSlave(~id,:);
+                 end
+              end
+              if any(id==0) % All GP have been sorted out
+                 % BOUNDARY ELEMENTS (midpoint rule)
+                 % discard previous integration
+                 M = Mtmp;
+                 D = Dtmp;
+                 n = 50; % number of mid points
+                 posMP = linspace(-1+1/n,1-1/n,n);
+                 ptsMP = ref2nod(posMP, s1, s2);
+                 NSlave = computeBasis1D(posMP',obj.degree);
+                 for jm = master_elems'
                     ptsInt = ptsIntMat(:,repNum(2,jm));
                     idMaster = obj.masterTopol(jm,1:obj.nNelem);
-                    fiNM = obj.computeRBFfiNM(ptsInt,ptsGauss,type);
-                    %NMaster = fiNM*wFMat(:,getWeightsID(obj,jm));
+                    fiNM = obj.computeRBFfiNM(ptsInt,ptsMP,type);
                     switch obj.degree
-                        case 1
-                            NMaster = (fiNM*wFMat(:,repNum(obj.nNelem,jm)))./(fiNM*w1Mat(:,jm));
-                            NSupp = NMaster(:,1);
-                        case 2
-                            Ntmp = (fiNM*wFMat(:,repNum(obj.nNelem+1,jm)))./(fiNM*w1Mat(:,jm));
-                            NMaster = Ntmp(:,1:obj.nNelem);
-                            NSupp = Ntmp(:,end);
+                       case 1
+                          NMaster = (fiNM*wFMat(:,repNum(obj.nNelem,jm)))./(fiNM*w1Mat(:,jm));
+                          NSupp = NMaster(:,1);
+                       case 2
+                          Ntmp = (fiNM*wFMat(:,repNum(obj.nNelem+1,jm)))./(fiNM*w1Mat(:,jm));
+                          NMaster = Ntmp(:,1:obj.nNelem);
+                          NSupp = Ntmp(:,end);
                     end
                     id = all([NSupp >= 0, NSupp <= 1],2);
                     if any(id)
-                        NMaster = NMaster(id,:);
-                        Mloc = NSlave(id,:)'*(NMaster.*gpW(id));
-                        Mloc = Mloc*(0.5*sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2));
-                        Dloc = NSlave(id,:)'*(NSlave(id,:).*gpW(id));
-                        Dloc = Dloc*(0.5*sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2));
-                        M(idSlave, idMaster) = M(idSlave, idMaster) + Mloc;
-                        D(idSlave, idSlave) = D(idSlave, idSlave) + Dloc;
-                        % sort out Points already projected
-                        gpPos = gpPos(~id);   
-                        gpW = gpW(~id);
-                        ptsGauss = ptsGauss(~id,:);
-                        NSlave = NSlave(~id,:);
+                       NMaster = NMaster(id,:);
+                       Mloc = NSlave(id,:)'*(NMaster);
+                       Mloc = Mloc*(h/n);
+                       Dloc = NSlave(id,:)'*(NSlave(id,:));
+                       Dloc = Dloc*(h/n);
+                       M(idSlave, idMaster) = M(idSlave, idMaster) + Mloc;
+                       D(idSlave, idSlave) = D(idSlave, idSlave) + Dloc;
+                       % sort out Points already projected
+                       NSlave = NSlave(~id,:);
+                       ptsMP = ptsMP(~id,:);
                     end
-                end
-            end
-            t = toc;
+                 end
+              end
+           end
+           t = toc;
             M = M(obj.nodesSlave, obj.nodesMaster);
             D = D(obj.nodesSlave, obj.nodesSlave);
             if nargout == 3
@@ -404,22 +455,22 @@ classdef Mortar2D < handle
         
 
         function [errNorm, fInt] = computeInterpError(obj,E,f)
+           % f: function handle for analytical solution
             if E == 0
                 errNorm = 0;
                 fInt = 0;
                 return
             end
             % compute quadratic error of interpolation on the slave side
-            fM = f(obj.masterCoord(:,1)); % analytical function computed on master mesh
-            fS = f(obj.slaveCoord(:,1)); % analytical function computed on master mesh
+            fM = f(obj.masterCoord(obj.nodesMaster,1)); % analytical function computed on master mesh
+            fS = f(obj.slaveCoord(obj.nodesSlave,1)); % analytical function computed on master mesh
             lNod = computeLengthNodes(obj);
             % Quadratic error of interpolation for 1D mortar benchmarks
             fInt = E * fM;
             err2 = (fS - fInt).^2;
-            errNorm = sqrt(sum(err2.*lNod));
+            errNorm = sqrt(sum(err2.*lNod(obj.nodesSlave)));
         end
         %
-
         function id = getWeightsID(obj,i)
             switch obj.degree
                 case 1
@@ -453,7 +504,7 @@ classdef Mortar2D < handle
             slave = obj.slaveCoord;
             switch obj.degree
                 case 1
-                    for el = 1:obj.nElSlave
+                    for el = obj.elemsSlave
                         % get length of the element
                         n1 = obj.slaveTopol(el,1);
                         n2 = obj.slaveTopol(el,2);
