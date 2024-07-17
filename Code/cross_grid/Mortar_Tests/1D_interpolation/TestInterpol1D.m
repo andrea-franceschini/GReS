@@ -9,8 +9,8 @@ degree = 1;
 
 type = 'gauss';
 
-nSizes = 9; % number of uniform refinment for convergence analysis
-nMnodes = 8; % number of nodes for the first mesh refinment
+nSizes = 1; % number of uniform refinment for convergence analysis
+nMnodes = 2; % number of nodes for the first mesh refinment
 errNormRBF = zeros(nSizes,1);
 errNormSB = errNormRBF;
 errNormEB = errNormRBF;
@@ -21,9 +21,11 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
     slave = zeros(nSlave,2);
     x1 = -1;
     x2 = 1;
+    x3 = -1;
+    x4 = 1.35;
     % x-coordinates
     master(:,1) = (linspace(x1,x2,nMaster))';
-    slave(:,1) = (linspace(x1,x2,nSlave))';
+    slave(:,1) = (linspace(x3,x4,nSlave))';
 
     % y-coordinates - k controls the curvature of each grid (non
     % conformity)
@@ -33,7 +35,7 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
     slave(:,2) = curve(slave(:,1));
 
     % number of RBF interpolation points for each element
-    nInt = 8;
+    nInt = 4;
 
     % Number of integration points for RBF testing (GP class taken from GReS)
     nGP = 3;
@@ -45,7 +47,7 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
     % Compute mortar operator
     mortar = Mortar2D(1,'set',mastertop,slavetop,master,slave);
     [D_RBF,M_RBF] = mortar.computeMortarRBF(nGP,nInt,type);
-    [E_EB,M_EB] = mortar.computeMortarElementBased(nGP);
+    [D_EB,M_EB, E_EB] = mortar.computeMortarElementBased(nGP);
     [D_SB,M_SB,E_SB] = mortar.computeMortarSegmentBased(nGP);
     
     E_RBF = D_RBF\M_RBF;
@@ -79,6 +81,8 @@ loglog(h,errNormRBF,'b-s')
 hold on
 loglog(h,errNormEB,'g-^')
 legend('RBF','Element-based')
+
+%% Plot results of analytical function
 
 
 

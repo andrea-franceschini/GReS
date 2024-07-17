@@ -1,0 +1,40 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/usr/local/MATLAB/R2023a/extern/include/matrix.h
+stdlib.h
+-
+stddef.h
+-
+tmwtypes.h
+/usr/local/MATLAB/R2023a/extern/include/tmwtypes.h
+assert.h
+-
+
+/usr/local/MATLAB/R2023a/extern/include/mex.h
+stdio.h
+-
+matrix.h
+/usr/local/MATLAB/R2023a/extern/include/matrix.h
+
+/usr/local/MATLAB/R2023a/extern/include/tmwtypes.h
+mwstdint.h
+/usr/local/MATLAB/R2023a/extern/include/mwstdint.h
+limits.h
+-
+stdbool.h
+-
+float.h
+-
+stddef.h
+-
+
+/usr/local/MATLAB/R2023a/extern/version/c_mexapi_version.c
+mex.h
+-
+

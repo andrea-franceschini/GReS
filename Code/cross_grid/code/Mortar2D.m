@@ -132,7 +132,7 @@ classdef Mortar2D < handle
                     % compute basis function on slave elements points
                     gSlave = nod2ref(gPts, c, d);
                     basisSlave = computeBasis1D(gSlave,obj.degree);
-                    Mloc = basisMaster'*(basisSlave.*gpWeight);
+                    Mloc = basisSlave'*(basisMaster.*gpWeight);
                     Dloc = basisSlave'*(basisSlave.*gpWeight);
                     Mloc = Mloc*(0.5*(i2(1)-i1(1)));
                     Dloc = Dloc*(0.5*(i2(1)-i1(1)));
@@ -202,51 +202,96 @@ classdef Mortar2D < handle
             g = Gauss(12,nGP,1);
             M = zeros(obj.nSMat,obj.nMMat);
             D = zeros(obj.nSMat,obj.nSMat);
+            % Perform RBF interpolation on master elements
             [wFMat,w1Mat,ptsIntMat] = getWeights(obj,nInt,type);
             % Loop trough slave elements
             for j = 1:obj.nElSlave
-                gpPos = g.coord;
-                gpW = g.weight;
-                % nodes of slave element
-                s1 = obj.slaveCoord(obj.slaveTopol(j,1),:);
-                s2 = obj.slaveCoord(obj.slaveTopol(j,end),:);
-                idSlave = obj.slaveTopol(j,1:obj.nNelem);
-                % Real position of Gauss points
-                ptsGauss = ref2nod(gpPos, s1, s2);
-                % Get connected master elements
-                master_elems = find(obj.elemConnectivity(:,j));
-                NSlave = computeBasis1D(gpPos,obj.degree);
-                % Loop troug master elements
-                for jm = master_elems'
-                    ptsInt = ptsIntMat(:,repNum(2,jm));
-                    idMaster = obj.masterTopol(jm,1:obj.nNelem);
-                    fiNM = obj.computeRBFfiNM(ptsInt,ptsGauss,type);
-                    %NMaster = fiNM*wFMat(:,getWeightsID(obj,jm));
-                    switch obj.degree
+               Mtmp = M;
+               Dtmp = D;
+               % Gauss integration parameters
+               gpPos = g.coord;
+               gpW = g.weight;
+               % nodes of slave element
+               s1 = obj.slaveCoord(obj.slaveTopol(j,1),:);
+               s2 = obj.slaveCoord(obj.slaveTopol(j,end),:);
+               idSlave = obj.slaveTopol(j,1:obj.nNelem);
+               % Real position of Gauss points
+               ptsGauss = ref2nod(gpPos, s1, s2);
+               h = 0.5*sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2);
+               % Get connected master elements
+               master_elems = find(obj.elemConnectivity(:,j));
+               % Evaluate slave basis function at all integration points
+               NSlave = computeBasis1D(gpPos,obj.degree);
+               % Loop trough connected master elements and perform element
+               % based integration
+               for jm = master_elems'
+                  ptsInt = ptsIntMat(:,repNum(2,jm));
+                  idMaster = obj.masterTopol(jm,1:obj.nNelem);
+                  fiNM = obj.computeRBFfiNM(ptsInt,ptsGauss,type);
+                  %NMaster = fiNM*wFMat(:,getWeightsID(obj,jm));
+                  switch obj.degree
+                     case 1
+                        NMaster = (fiNM*wFMat(:,repNum(obj.nNelem,jm)))./(fiNM*w1Mat(:,jm));
+                        NSupp = NMaster(:,1);
+                     case 2
+                        Ntmp = (fiNM*wFMat(:,repNum(obj.nNelem+1,jm)))./(fiNM*w1Mat(:,jm));
+                        NMaster = Ntmp(:,1:obj.nNelem);
+                        NSupp = Ntmp(:,end);
+                  end
+                  id = all([NSupp >= 0, NSupp <= 1],2);
+                  if any(id)
+                     NMaster = NMaster(id,:);
+                     Mloc = NSlave(id,:)'*(NMaster.*gpW(id));
+                     Mloc = Mloc*h;
+                     Dloc = NSlave(id,:)'*(NSlave(id,:).*gpW(id));
+                     Dloc = Dloc*h;
+                     M(idSlave, idMaster) = M(idSlave, idMaster) + Mloc;
+                     D(idSlave, idSlave) = D(idSlave, idSlave) + Dloc;
+                     % sort out Points already projected
+                     gpPos = gpPos(~id);
+                     gpW = gpW(~id);
+                     ptsGauss = ptsGauss(~id,:);
+                     NSlave = NSlave(~id,:);
+                  end
+               end
+               %%% boundary element (some GP not belonging to master element)
+               if any(id==0) 
+                  % discard previous integration
+                  M = Mtmp;
+                  D = Dtmp;
+                  %%% perform finer integration with midpoint rule
+                  n = 20; % number of points for midpoint rule
+                  dual = linspace(-1+1/(n),1-1/(n),n);
+                  NSlave = computeBasis1D(dual',obj.degree);
+                  ptsInteg = ref2nod(dual, s1, s2);
+                  for jm = master_elems'
+                     fiNM = obj.computeRBFfiNM(ptsInt,ptsInteg,type); % RBF reproduction on the slave side
+                     %NMaster = fiNM*wFMat(:,getWeightsID(obj,jm));
+                     % evaluate master function on midpoint rule points
+                     switch obj.degree
                         case 1
-                            NMaster = (fiNM*wFMat(:,repNum(obj.nNelem,jm)))./(fiNM*w1Mat(:,jm));
-                            NSupp = NMaster(:,1);
+                           NMaster = (fiNM*wFMat(:,repNum(obj.nNelem,jm)))./(fiNM*w1Mat(:,jm));
+                           NSupp = NMaster(:,1);
                         case 2
-                            Ntmp = (fiNM*wFMat(:,repNum(obj.nNelem+1,jm)))./(fiNM*w1Mat(:,jm));
-                            NMaster = Ntmp(:,1:obj.nNelem);
-                            NSupp = Ntmp(:,end);
-                    end
-                    id = all([NSupp >= 0, NSupp <= 1],2);
-                    if any(id)
+                           Ntmp = (fiNM*wFMat(:,repNum(obj.nNelem+1,jm)))./(fiNM*w1Mat(:,jm));
+                           NMaster = Ntmp(:,1:obj.nNelem);
+                           NSupp = Ntmp(:,end);
+                     end
+                     % perform element based integration on dual grid
+                     id = all([NSupp >= 0, NSupp <= 1],2);
+                     if any(id)
                         NMaster = NMaster(id,:);
-                        Mloc = NSlave(id,:)'*(NMaster.*gpW(id));
-                        Mloc = Mloc*(0.5*sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2));
-                        Dloc = NSlave(id,:)'*(NSlave(id,:).*gpW(id));
-                        Dloc = Dloc*(0.5*sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2));
+                        Mloc = NSlave(id,:)'*(NMaster);
+                        Mloc = Mloc*(2*h/(n));
+                        Dloc = NSlave(id,:)'*(NSlave(id,:));
+                        Dloc = Dloc*(2*h/n);
                         M(idSlave, idMaster) = M(idSlave, idMaster) + Mloc;
                         D(idSlave, idSlave) = D(idSlave, idSlave) + Dloc;
                         % sort out Points already projected
-                        gpPos = gpPos(~id);   
-                        gpW = gpW(~id);
-                        ptsGauss = ptsGauss(~id,:);
                         NSlave = NSlave(~id,:);
-                    end
-                end
+                     end
+                  end
+               end
             end
             t = toc;
             M = M(obj.nodesSlave, obj.nodesMaster);
