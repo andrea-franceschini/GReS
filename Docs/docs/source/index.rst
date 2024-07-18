@@ -13,5 +13,8 @@ Contents
 --------
 
 .. toctree::
+   :maxdepth: 2
+
 GettingStarted
-./..../../../Tests_Develop/Terzaghi_Biot/docs/Terzaghi
+
+./../../../../Tests_Develop/Terzaghi_Biot/docs/Terzaghi
