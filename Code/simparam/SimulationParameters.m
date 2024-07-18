@@ -19,6 +19,7 @@ classdef SimulationParameters < handle
     sTarget = 0.4
     NLSolver = 'Newton'
     verbosity = 2
+    goOnBackstep = 0;
   end
   
   methods (Access = public)

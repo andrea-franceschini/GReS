@@ -1,34 +1,15 @@
-Usage
-=====
+Terzaghi Benchmark
+==================
 
-.. _installation:
-
-Installation
+Introduction
 ------------
 
-To use Lumache, first install it using pip:
+This tutorial describes how to set up a simple model for Terzaghi Benchmark.
 
-.. code-block:: console
+This benchamark solves coupled poromechanics equations.
 
-   (.venv) $ pip install lumache
-
-Creating recipes
-----------------
-
-To retrieve a list of random ingredients,
-you can use the ``lumache.get_random_ingredients()`` function:
-
-.. autofunction:: lumache.get_random_ingredients
-
-The ``kind`` parameter should be either ``"meat"``, ``"fish"``,
-or ``"veggies"``. Otherwise, :py:func:`lumache.get_random_ingredients`
-will raise an exception.
-
-.. autoexception:: lumache.InvalidKindError
-
-For example:
-
->>> import lumache
->>> lumache.get_random_ingredients()
-['shells', 'gorgonzola', 'parsley']
+Mesh
+------------
+GReS is able to read .VTK and .msh files. First create an object of the ``Mesh()`` class.
+Then call either the method ``readGMSHmesh`` or ``readVTKmesh`` depending on your mesh file format.  
 

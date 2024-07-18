@@ -62,16 +62,20 @@ fName = "iniPressure.dat";
 resState = State(model,grid,mat,fName,GaussPts);
 %
 % Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat');
+printUtils = OutState(model,mat,grid,'outTime.dat','Output');
 %
 % Print the reservoir initial state
 printUtils.printState(resState);
 %
 % ---------------------------- SOLUTION -------------------------------
-%
+% Create the object which computes all discretized quantities to form the
+% resulting Linearized system
+linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
+
+
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam, dofmanager,grid,mat,bound, ...
-  printUtils,resState,GaussPts);
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound, ...
+  printUtils,resState,linSyst,GaussPts);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();
@@ -108,7 +112,7 @@ end
 press = printUtils.m.expPress;
 sw = printUtils.m.expSw;
 t = printUtils.m.expTime;
-tind = 1:length(t);
+tind = 2:length(t);
 t_max = t(end);
 t = t(tind)/t_max;
 
@@ -136,12 +140,12 @@ ylabel('z/H')
 xlim([0 10])
 legend(tstr)
 grid on
-% set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
-% a = get(gca,'XTickLabel');
-% set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
-% % export figure with quality
-% stmp = strcat('Images\', 'Richards_pressure', '.png');
-% exportgraphics(gcf,stmp,'Resolution',400)
+set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
+a = get(gca,'XTickLabel');
+set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
+% export figure with quality
+stmp = strcat('Images\', 'Richards_pressure', '.png');
+exportgraphics(gcf,stmp,'Resolution',400)
 
 figure(2)
 plot(swplot,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);

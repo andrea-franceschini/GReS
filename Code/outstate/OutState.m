@@ -148,6 +148,8 @@ classdef OutState < handle
               else
                  if ~isempty(data{i})
                     foldName = data{i};
+                 else
+                    foldName = 'OUT';
                  end
               end
            end
