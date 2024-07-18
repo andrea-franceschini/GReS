@@ -3,7 +3,7 @@ Welcome to GReS's documentation!
 
 **GReS** (Geomechanical Reservoir Simulator)
 
-Check out the :doc:`usage` for an introductory tutorial of a Terzaghi benchmark
+Check out the :doc:`Terzaghi` for an introductory tutorial of a Terzaghi benchmark
 
 .. note::
 
@@ -17,4 +17,4 @@ Contents
 
 GettingStarted
 
-./../../../../Tests_Develop/Terzaghi_Biot/docs/Terzaghi
+Terzaghi
