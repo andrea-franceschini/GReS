@@ -7,13 +7,9 @@ build:
 
 python:
   install:
-<<<<<<< Updated upstream
-    - requirements: Docs/requirements.txt
-=======
     - requirements: docs/requirements.txt 
     - method: pip
       path: .
->>>>>>> Stashed changes
 
 sphinx:
-  configuration: Docs/conf.py
+  configuration: docs/conf.py
