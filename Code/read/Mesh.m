@@ -2,7 +2,7 @@ classdef Mesh < handle
   % MESH General mesh class, can be subclassed for specialized types
 
   properties (SetAccess = public, GetAccess = public)
-
+    
     % GENERAL INFO:
     % Mesh dimension
     nDim = 0
