@@ -1,4 +1,3 @@
-
 Code Components
 =====================
 
@@ -26,4 +25,12 @@ Mesh
 .. mat:autoclass:: Mesh
     :show-inheritance:
     :members:
+
+Materials
+----------------------
+.. mat:autoclass:: Materials
+    :show-inheritance:
+    :members:
+
+
 

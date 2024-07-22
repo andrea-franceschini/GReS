@@ -18,11 +18,11 @@
         <script src="../_static/documentation_options.js?v=2709fde1"></script>
         <script src="../_static/doctools.js?v=9a2dae69"></script>
         <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Code Components" href="codeComponents.html" />
-    <link rel="prev" title="GReS documentation" href="../index.html" /> 
+    <link rel="prev" title="Input files" href="InputFiles.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -46,12 +46,14 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="codeComponents.html">Code Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="InputFiles.html">Input files</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Terzaghi benchmark</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#mesh">Mesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#problem-description">Problem Description</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#creating-the-mesh">Creating the Mesh</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="codeComponents.html">Code Components</a></li>
 </ul>
 
         </div>
@@ -83,13 +85,84 @@
 <section id="introduction">
 <h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
 <p>This is the simplest test case to get in touch with most of the features
-currently available in GReS.</p>
+currently available in GReS.
+Terzaghi problem is a well problem benchmark which describes the 1D consolidation process of a fully saturated porous media
+column subjected to a sudden constant load.
+The governing equations are the Biot consolidation equations, which couple the equilibrium equations for the
+displacement field with the continuity equation for the pore pressure.</p>
+</section>
+<section id="problem-description">
+<h2>Problem Description<a class="headerlink" href="#problem-description" title="Link to this heading"></a></h2>
+<p>Consider a homogeneous, isotropic, fully saturated soil layer of thickness ( H ) subjected to a sudden uniform load <span class="math notranslate nohighlight">\(p_T\)</span> applied at the top surface.</p>
+<p>The domain is a simple 1x1x10 m sample discretized with regular cubes of size <span class="math notranslate nohighlight">\(0.5\times0.5\times0.5.\)</span>.</p>
 <figure class="align-center">
 <a class="reference internal image-reference" href="../_images/Setting_Terzaghi.png"><img alt="../_images/Setting_Terzaghi.png" src="../_images/Setting_Terzaghi.png" style="width: 500px;" /></a>
 </figure>
+<ul class="simple">
+<li><p><strong>Governing equations</strong></p></li>
+</ul>
+<ol class="arabic">
+<li><p>Equilibrium equation</p>
+<div class="math notranslate nohighlight">
+\[\nabla \cdot \sigma = - \mathbf{F}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\sigma\)</span> is the total stress tensor and <span class="math notranslate nohighlight">\(\mathbf F\)</span> is a volume force (e.g gravity).</p>
+<p>The constitutive relationship</p>
+<div class="math notranslate nohighlight">
+\[\sigma = C : \varepsilon - \alpha p \mathbf{I}\]</div>
+<p>relates the stress tensor to strain <span class="math notranslate nohighlight">\(\varepsilon\)</span> and pressure <span class="math notranslate nohighlight">\(p\)</span> according to Biot’s theory.
+Coefficient <span class="math notranslate nohighlight">\(\alpha\)</span> is Biot coefficient and is typically set equal to <span class="math notranslate nohighlight">\(1\)</span>.</p>
+</li>
+<li><p>Flow mass conservation</p>
+<p>Single phase fully saturated flow is governed by a mass balance equation</p>
+<div class="math notranslate nohighlight">
+\[\nabla \cdot \bigg( \dfrac{K}{\mu} \nabla p \bigg) - \alpha \dfrac{\partial \epsilon}{\partial t} - \dfrac{1}{M} \dfrac{\partial p}{\partial t} = q\]</div>
+<p>where <span class="math notranslate nohighlight">\(K\)</span> is the permeability tensor, <span class="math notranslate nohighlight">\(M\)</span> is Biot modulus, <span class="math notranslate nohighlight">\(\epsilon = tr(\varepsilon)\)</span> is the volumetric strain and
+<span class="math notranslate nohighlight">\(q\)</span> is the volumetric flux.</p>
+</li>
+</ol>
+<ul>
+<li><p><strong>Boundary conditions</strong></p>
+<blockquote>
+<div><p>The following boundary conditions are applied:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+&amp;\mathbf u = 0      \ \ \  \text{at} z = 0 \\
+&amp;\mathbf u \cdot n = 0   \ \ \     \text{at} \ x = [0,1] \ || \ y = [0,1] \\
+&amp;p = 0 \ \ \ \text{at} \ z = H \\
+&amp;q = 0 \ \ \ \text{at} \ x = [0,1] \ || \ y = [0,1] \ || \ z = 0;
+\end{align}\end{split}\]</div>
+</div></blockquote>
+</li>
+<li><p><strong>Initial conditions</strong></p>
+<blockquote>
+<div><p>Since the load is assumed to be applied suddenly, inhomogeneous initial conditions apply
+for both pressure and vertical displacements.</p>
+<blockquote>
+<div><div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+&amp; p_0 = \dfrac{\alpha M}{K_u + 4 \mu / 3}p_T \\
+&amp;    u_0(z) = \dfrac{1}{K_u+4\mu/3}p_T(H-z)
+\end{align}\end{split}\]</div>
+</div></blockquote>
+</div></blockquote>
+</li>
+<li><p><strong>Analytical Solution</strong></p>
+<blockquote>
+<div><p>The analytical solution for the Terzaghi problem in terms of pore pressure is given by:</p>
+<div class="math notranslate nohighlight">
+\[p(z, t) = \frac{4p_0}{\pi} \sum_{n=0}^{\infty} \frac{1}{2n+1} \exp \left( -\frac{(2n+1)^2 \pi^2 c_v t}{4H^2} \right) \cos \left( \frac{(2n+1) \pi z}{2H} \right)\]</div>
+<p>While vertical displecement are given by:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{split}
+ u(z,t) = c_M p_0 &amp; \bigg\{ (H-z) - \dfrac{8H}{\pi^2} \sum_{m=0}^\infty \dfrac{1}{(2m+1)^2} \\
+ &amp;\exp \bigg( \bigg[ \dfrac{-2(m+1)^2 \pi^2 c \,t}{4H^2}\bigg]\bigg) \, \cos \bigg[\dfrac{(2m+1)\pi z}{2H}\bigg]\bigg\}+u_0
+\end{split}\end{split}\]</div>
+</div></blockquote>
+</li>
+</ul>
 </section>
-<section id="mesh">
-<h2>Mesh<a class="headerlink" href="#mesh" title="Link to this heading"></a></h2>
+<section id="creating-the-mesh">
+<h2>Creating the Mesh<a class="headerlink" href="#creating-the-mesh" title="Link to this heading"></a></h2>
 <p>The mesh can be read in <cite>vtk</cite> or <cite>gmsh</cite> creating an object
 of <code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code> class:</p>
 <dl class="mat class">
@@ -104,8 +177,7 @@ of <code class="xref py py-class docutils literal notranslate"><span class="pre"
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="../index.html" class="btn btn-neutral float-left" title="GReS documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="codeComponents.html" class="btn btn-neutral float-right" title="Code Components" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="InputFiles.html" class="btn btn-neutral float-left" title="Input files" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>

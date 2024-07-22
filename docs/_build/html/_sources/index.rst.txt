@@ -22,7 +22,8 @@ Feel free to reach out with any questions or feedback - we are here to support y
    :maxdepth: 2
    :caption: Contents:
 
-   docs/Terzaghi
    docs/codeComponents
+   docs/InputFiles
+   docs/Terzaghi
       
 
