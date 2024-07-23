@@ -6,17 +6,18 @@ L2_c1 = load("c1_L2");
 L2_c2 = load("c2_L2.dat");
 nc_c1 = load("c1_cond.dat");
 nc_c2 = load("c2_cond.dat");
+ms = 6;
 % gauss imq wendland
 t = tiledlayout(2,2);
 %t.TileSpacing = 'compact';
 t.Padding = 'compact';
 nexttile
-semilogy(N,L2_c1(:,1),'k','LineWidth',1,'Marker','s','MarkerSize',6)
+semilogy(N,L2_c1(:,1),'k','LineWidth',1,'Marker','s','MarkerSize',ms)
 hold on
-semilogy(N,L2_c1(:,2),'k','LineWidth',1,'Marker','^','MarkerSize',6)
-semilogy(N,L2_c1(:,3),'k','LineWidth',1,'Marker','*','MarkerSize',6)
+semilogy(N,L2_c1(:,2),'k','LineWidth',1,'Marker','^','MarkerSize',ms)
+semilogy(N,L2_c1(:,3),'k','LineWidth',1,'Marker','*','MarkerSize',ms)
 grid on
-xlabel('n. points per dimension')
+xlabel('n_M')
 ylabel('RMSE')
 ylim([1e-10 1e-1])
 xlim([4 24])
@@ -25,12 +26,12 @@ yticks([1e-10 1e-5 1e-1])
 
 
 nexttile
-semilogy(N,nc_c1(:,1),'k','LineWidth',1,'Marker','s','MarkerSize',6)
+semilogy(N,nc_c1(:,1),'k','LineWidth',1,'Marker','s','MarkerSize',ms)
 hold on
-semilogy(N,nc_c1(:,2),'k','LineWidth',1,'Marker','^','MarkerSize',6)
-semilogy(N,nc_c1(:,3),'k','LineWidth',1,'Marker','*','MarkerSize',6)
+semilogy(N,nc_c1(:,2),'k','LineWidth',1,'Marker','^','MarkerSize',ms)
+semilogy(N,nc_c1(:,3),'k','LineWidth',1,'Marker','*','MarkerSize',ms)
 grid on
-xlabel('n. points per dimension')
+xlabel('n_M')
 ylabel('Condition number')
 ylim([1e0 1e22])
 xlim([4 24])
@@ -38,12 +39,12 @@ xticks(4:4:24)
 yticks([1e0 1e5 1e10 1e15 1e20])
 
 nexttile
-semilogy(N,L2_c2(:,1),'k','LineWidth',1,'Marker','s','MarkerSize',6)
+semilogy(N,L2_c2(:,1),'k','LineWidth',1,'Marker','s','MarkerSize',ms)
 hold on
-semilogy(N,L2_c2(:,2),'k','LineWidth',1,'Marker','^','MarkerSize',6)
-semilogy(N,L2_c2(:,3),'k','LineWidth',1,'Marker','*','MarkerSize',6)
+semilogy(N,L2_c2(:,2),'k','LineWidth',1,'Marker','^','MarkerSize',ms)
+semilogy(N,L2_c2(:,3),'k','LineWidth',1,'Marker','*','MarkerSize',ms)
 grid on
-xlabel('n. points per dimension')
+xlabel('n_M')
 ylabel('RMSE')
 ylim([1e-10 1e-1])
 xlim([4 24])
@@ -51,12 +52,12 @@ xticks(4:4:24)
 yticks([1e-10 1e-5 1e-1])
 
 nexttile
-semilogy(N,nc_c2(:,1),'k','LineWidth',1,'Marker','s','MarkerSize',6)
+semilogy(N,nc_c2(:,1),'k','LineWidth',1,'Marker','s','MarkerSize',ms)
 hold on
-semilogy(N,nc_c2(:,2),'k','LineWidth',1,'Marker','^','MarkerSize',6)
-semilogy(N,nc_c2(:,3),'k','LineWidth',1,'Marker','*','MarkerSize',6)
+semilogy(N,nc_c2(:,2),'k','LineWidth',1,'Marker','^','MarkerSize',ms)
+semilogy(N,nc_c2(:,3),'k','LineWidth',1,'Marker','*','MarkerSize',ms)
 grid on
-xlabel('n. points per dimension')
+xlabel('n_M')
 ylabel('Condition number')
 ylim([1e0 1e22])
 xlim([4 24])
@@ -65,7 +66,7 @@ yticks([1e0 1e5 1e10 1e15 1e20])
 
 allAxes = findall(t, 'Type', 'Axes');
 for i = 1:length(allAxes)
-    set(allAxes(i), 'FontName', 'Liberation Serif', 'FontSize', 10); % Change 'Arial' to your desired font and 14 to your desired size
+    set(allAxes(i), 'FontName', 'Liberation Serif', 'FontSize', 11); % Change 'Arial' to your desired font and 14 to your desired size
     % Update title, xlabel, and ylabel specifically
     % set(get(allAxes(i), 'XLabel'), 'FontName', 'Times', 'FontSize', 12);
     % set(get(allAxes(i), 'YLabel'), 'FontName', 'Times', 'FontSize', 12);
@@ -193,7 +194,7 @@ semilogy(N,L2w(:,1),'k','LineWidth',1,'Marker','s','MarkerSize',9)
 hold on
 semilogy(N,L2w(:,2),'k','LineWidth',1,'Marker','*','MarkerSize',9)
 grid on
-xlabel('n. points per dimension')
+xlabel('n_M')
 ylabel('RMSE')
 ylim([1e-9 1e-2])
 xlim([4 24])
@@ -213,7 +214,7 @@ ylim([1e-9 1e-2])
 xlim([4 24])
 xticks(4:4:24)
 grid on
-xlabel('n. points per dimension')
+xlabel('n_M')
 ylabel('RMSE')
 % set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 12);
 % ax = get(gca,'XTickLabel');
@@ -222,7 +223,7 @@ ylabel('RMSE')
 % Set the font name and size for all text in the tiled layout
 allAxes = findall(t, 'Type', 'Axes');
 for i = 1:length(allAxes)
-    set(allAxes(i), 'FontName', 'Liberation Serif', 'FontSize', 12); % Change 'Arial' to your desired font and 14 to your desired size
+    set(allAxes(i), 'FontName', 'Liberation Serif', 'FontSize', 14); % Change 'Arial' to your desired font and 14 to your desired size
     % Update title, xlabel, and ylabel specifically
     % set(get(allAxes(i), 'XLabel'), 'FontName', 'Times', 'FontSize', 12);
     % set(get(allAxes(i), 'YLabel'), 'FontName', 'Times', 'FontSize', 12);
@@ -233,6 +234,11 @@ legend boxoff
 legend('Orientation','horizontal')
 nameOut = 'dataset';
 stmp = strcat('plots/', nameOut, '.pdf');
+x0=10;
+y0=10;
+width=700;
+height=400;
+set(gcf,'position',[x0,y0,width,height])
 % exportgraphics(gcf,stmp,'Resolution',400)
 exportgraphics(gcf,stmp,'ContentType','vector')
 
@@ -265,18 +271,18 @@ fix1G = load("graph_rad/fix1g.dat");
 fill2G = load("graph_rad/fill2G.dat");
 fill4G = load("graph_rad/fill4G.dat");
 fill8G = load("graph_rad/fill8G.dat");
-semilogy(N,fill2G,'k--','LineWidth',1.2,'Marker','s','MarkerSize',markS)
+semilogy(N(1:7),fill2G(1:7),'k--','LineWidth',1.2,'Marker','s','MarkerSize',markS)
 hold on
-semilogy(N,fill4G,'k--','LineWidth',1.2,'Marker','o','MarkerSize',markS)
-semilogy(N,fill8G,'k--','LineWidth',1.2,'Marker','^','MarkerSize',markS)
-semilogy(N,fix1G,'k-','LineWidth',1.2,'Marker','*','MarkerSize',markS)
+semilogy(N(1:7),fill4G(1:7),'k--','LineWidth',1.2,'Marker','o','MarkerSize',markS)
+semilogy(N(1:7),fill8G(1:7),'k--','LineWidth',1.2,'Marker','^','MarkerSize',markS)
+semilogy(N(1:7),fix1G(1:7),'k-','LineWidth',1.2,'Marker','*','MarkerSize',markS)
 legend('r = 2 \cdot h_{\Xi}','r = 4 \cdot h_{\Xi}','r = 8 \cdot h_{\Xi}','r = h_{M}')
 %axis tight
-ylim([1e-10 5e-2])
+ylim([1e-10 1e-1])
 xlim([4 16])
 xticks(4:4:16)
 grid on
-xlabel('M')
+xlabel('n_M')
 ylabel('RMSE')
 set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 12);
 ax = get(gca,'XTickLabel');
