@@ -1,2 +1,0 @@
-/usr/bin/ar qc libvtkMatlab.a  CMakeFiles/vtkMatlab.dir/libvtkMatlab/common.cxx.o CMakeFiles/vtkMatlab.dir/libvtkMatlab/vtkToStruct.cxx.o CMakeFiles/vtkMatlab.dir/libvtkMatlab/structToVtk.cxx.o
-/usr/bin/ranlib libvtkMatlab.a

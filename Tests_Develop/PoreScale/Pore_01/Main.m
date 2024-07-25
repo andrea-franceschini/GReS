@@ -1,6 +1,6 @@
 %% PORE SCALE SIMULATION
 % Single phase flow with permeability depending on the channel size
-% Pressure acting a surface load on deformable grains
+% Pressure acting as a surface load on deformable grains
 % Displacement of grains affecting the permeability change (loop)
 % Mortar operators allow to transfer information from pressure to grains
 
@@ -11,9 +11,8 @@ clear
 close all
 
 % 
-
-t = Mesh();
-t.importVTKmesh('Mesh/mesh.vtk');
+% t = Mesh();
+% t.importMesh('Mesh/mesh.vtk');
 %%
 f = Mesh();
 f.importGMSHmesh('Mesh/Fluid.msh');

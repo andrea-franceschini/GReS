@@ -159,7 +159,7 @@ classdef Mesh < handle
 
      function importMesh(obj, fileName)
       % Import grid topology;
-      % Admitted grid formats: vtk (unstructured grids), gmsh;
+      % Admitted grid format: vtk (unstructured grids), gmsh;
       
       % calling MEX functions depending on file extension
       str = split(fileName,'.');
@@ -182,7 +182,7 @@ classdef Mesh < handle
           obj.nDim = 2;
       end
       obj.nNodes = size(obj.coordinates,1);
-      % Convert gmsh element type index into VTK
+      % cellsID = 3D element tag for readGMSHmesh.cpp
       if strcmp(extension,'msh')
          elems(:,1) = obj.typeMapping(elems(:,1));
       end
@@ -217,12 +217,15 @@ classdef Mesh < handle
 
       % 2D ELEMENT DATA
       % cellsID = 2D surface tag for readGMSHmesh.cpp
-      cellsID = [5,9];
+      cellsID = [2, 3];
       ID = ismember(elems(:,1), cellsID);
       obj.surfaceNumVerts = elems(ID,3);
       nVerts = max(obj.surfaceNumVerts);
       obj.surfaces = elems(ID,4:nVerts+3);
       obj.surfaceVTKType = elems(ID,1);
+      if strcmp(extension,'msh')
+         obj.surfaceVTKType = obj.typeMapping(obj.surfaceVTKType);
+      end
       obj.surfaceTag = elems(ID,2);
       obj.nSurfaces = length(obj.surfaceTag);
       %

@@ -1,0 +1,73 @@
+# Usare con make -f Makefile_standalone
+
+
+CXX            = g++
+
+
+
+INCLUDE       = -I.
+CXXFLAGS        = $(INCLUDE) -std=c++11 -O2 -fPIC
+CXXFLAGS        = $(INCLUDE) -std=c++11 -g -Wall -fPIC
+
+DEST	      = .
+
+EXTHDRS	      =
+
+HDRS	      = readGMSHmesh.hpp
+
+LIBS   	       = -L. 
+LDFLAGS         = -std=c++11 -O2
+
+LINKER	      = $(CXX)
+
+MAKEFILE      = Makefile
+
+OBJS	      = mxImportGMSHmesh.o readGMSHmesh.o
+
+PRINT	      = pr
+
+CAT	      = cat
+
+PROGRAM	      = gmesh_read
+
+SRCS	      = mxImportGMSHmesh.cpp readGMSHmesh.cpp
+
+all:		$(PROGRAM)
+
+$(PROGRAM):     $(OBJS)
+		$(LINKER) -o $(PROGRAM) $(LDFLAGS) $(OBJS) $(LIBS)
+
+check: $(PRJS)
+		ftnchek -noverbose -declare $(PRJS) -project -noextern -library > $(PROGRAM).ftn
+
+profile:;       @make "FFLAGS=$(PFLAGS) $(MODEL) $(OPENMP)" "CFLAGS=$(PFLAGS) $(MODEL) $(OPENMP)" "LDFLAGS=$(PFLAGS) $(LDFLAGS)" $(PROGRAM)
+
+debug:;         @make "FFLAGS=$(DFLAGS) $(MODEL) $(OPENMP) $(INCLUDE)" "LDFLAGS=$(DFLAGS) $(LDFLAGS)" $(PROGRAM)
+
+clean:;		rm -f $(OBJS) $(PROGRAM).cat $(PROGRAM).ftn *.mod *genmod*
+
+clobber:;	rm -f $(OBJS) $(PROGRAM).cat $(PROGRAM).ftn $(PROGRAM)
+
+depend:;	mkmf -f $(MAKEFILE) PROGRAM=$(PROGRAM) DEST=$(DEST)
+
+index:;		ctags -wx $(HDRS) $(SRCS)
+
+install:	$(PROGRAM)
+		install -s $(PROGRAM) $(DEST)
+
+print:;		$(PRINT) $(HDRS) $(SRCS)
+
+cat:;		$(CAT) $(HDRS) $(SRCS) > $(PROGRAM).cat
+
+program:        $(PROGRAM)
+
+profile:        $(PROFILE)
+
+tags:           $(HDRS) $(SRCS); ctags $(HDRS) $(SRCS)
+
+update:		$(DEST)/$(PROGRAM)
+
+### Dependencies ###
+###
+mxImportGMSHmesh.o: readGMSHmesh.hpp
+readGMSHmesh.o: readGMSHmesh.hpp
