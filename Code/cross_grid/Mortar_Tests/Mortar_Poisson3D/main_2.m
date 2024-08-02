@@ -22,7 +22,7 @@ nGrids = 4;
 fPlot = true;
 nGP = 2;
 nInt = 4;
-type = 'gauss';
+type = 'eb';
 brokenL2 = zeros(nGrids,1);
 brokenH1 = zeros(nGrids,1);
 h = zeros(nGrids,1);
@@ -54,8 +54,8 @@ if strcmp(flagLeft, 'master')
     strLeft = 'masterLeft';
 elseif strcmp(flagLeft, 'slave')
     for k = 1:nGrids
-        fileNameSlave = [fileNameSlave; strcat('MeshConv/LeftBlock_h',num2str(k),'.msh')];
-        fileNameMaster = [fileNameMaster; strcat('MeshConv/RightBlock_h',num2str(k),'.msh')];
+        fileNameSlave = [fileNameSlave; strcat('meshConv/LeftBlock_h',num2str(k),'.msh')];
+        fileNameMaster = [fileNameMaster; strcat('meshConv/RightBlock_h',num2str(k),'.msh')];
     end
     strLeft = 'slaveLeft';
 end
@@ -63,7 +63,7 @@ end
 % Gauss integration for stiffness matrix computation
 gauss = Gauss(12,2,3);
 
-for mCount = 1:nGrids
+for mCount = 2
     fprintf('Grid h%i nGP = %i  nInt = %i \n',mCount, nGP, nInt);
     % fprintf(p_str)
     % % Import the mesh data into the Mesh object
@@ -248,15 +248,21 @@ for mCount = 1:nGrids
     err_rel_slave = computeRelError(postProcSlave);
 
     if fPlot ==  true
-        fNameMaster = strcat(strLeft,'_SolMaster','_h',num2str(mCount));
-        fNameSlave = strcat(strLeft,'_SolSlave','_h',num2str(mCount));
+        % solution
+        fNameMaster = strcat(strLeft,'_SolMaster','_h',num2str(mCount),'_',type);
+        fNameSlave = strcat(strLeft,'_SolSlave','_h',num2str(mCount),'_',type);
         plotParaview(masterMesh,fNameMaster, u_master', 'x')
         plotParaview(slaveMesh,fNameSlave, u_slave', 'x')
-
-        % fNameMaster = strcat(strLeft,'_errMaster','_h',num2str(mCount));
-        % fNameSlave = strcat(strLeft,'_errSlave','_h',num2str(mCount));
-        % plotParaview(masterMesh,fNameMaster, err_rel_master', 'x')
-        % plotParaview(slaveMesh,fNameSlave, err_rel_slave', 'x')
+        % relative error
+        fNameMaster = strcat(strLeft,'_errRelMaster','_h',num2str(mCount),'_',type);
+        fNameSlave = strcat(strLeft,'_errRelSlave','_h',num2str(mCount),'_',type);
+        plotParaview(masterMesh,fNameMaster, err_rel_master', 'x')
+        plotParaview(slaveMesh,fNameSlave, err_rel_slave', 'x')
+        % absolute error
+        fNameMaster = strcat(strLeft,'_errAbsMaster','_h',num2str(mCount),'_',type);
+        fNameSlave = strcat(strLeft,'_errAbsSlave','_h',num2str(mCount),'_',type);
+        plotParaview(masterMesh,fNameMaster, abs(u_anal_master'-u_master'), 'x')
+        plotParaview(slaveMesh,fNameSlave, abs(u_anal_slave'-u_slave'), 'x')
     end
 
     % if strcmp(fPlot,'curve')

@@ -1,12 +1,13 @@
 clear
 close all
 
+cd '/scratches/russel3/moretto/GReS/Code/cross_grid/Mortar_Tests/MortarInterpolation_3D'
 
 type = 'gauss';
 msh1 = Mesh();
 msh2 = Mesh();
-nM = 6;
-nS = 14;
+nM = 13;
+nS = 3;
 msh1.createCartesianGrid(2,1,[-1 1],[-1 1],nM,nM);
 
 %plotFunction(msh1, 'test', ones(msh1.nNodes,1))
@@ -41,22 +42,36 @@ nInt = 4;
 %analytical function on the master mesh
 testFunc = @(x,y,z)  sin(x)+cos(y);
 fIn = testFunc(msh1.coordinates(:,1), msh1.coordinates(:,2), msh1.coordinates(:,3));
-fOutEx = testFunc(msh2.coordinates(:,1), msh2.coordinates(:,2), msh2.coordinates(:,3));
+fOutEX = testFunc(msh2.coordinates(:,1), msh2.coordinates(:,2), msh2.coordinates(:,3)); % exact slave reproduction
 % fID = fopen('out_nInt.dat', 'w');
 %fOutRBF_w = E_RBF_w*fIn;
 fOutRBF_g = D_rbf\(M_rbf*fIn);
 fOutEB = D_eb\(M_eb*fIn);
 % compute L2 interpolation error
-L2_eb = computeL2error(postProc(msh2,fOutEx,fOutEB,gauss));
+L2_eb = computeL2error(postProc(msh2,fOutEX,fOutEB,gauss));
 %L2_rbf_w = computeL2error(postProc(msh2,fOutEx,fOutRBF_w,gauss));
-L2_rbf_g = computeL2error(postProc(msh2,fOutEx,fOutRBF_g,gauss));
+L2_rbf_g = computeL2error(postProc(msh2,fOutEX,fOutRBF_g,gauss));
 
 rel = 100*abs(L2_eb-L2_rbf_g)/L2_eb;
-plotFunction(msh1, 'out_master', fIn)
+if nM > nS
+    str = 'sCoarse';
+else
+    str = 'sFine';
+end
+
+errEB = abs(fOutEX-fOutEB);
+errRBF = abs(fOutEX-fOutRBF_g);
+
+errRelEB = abs((fOutEX-fOutEB)./fOutEX);
+errRelRBF = abs((fOutEX-fOutRBF_g)./fOutEX);
+
+plotFunction(msh1, strcat('out_master_',str), fIn);
 % plotFunction(msh2, 'out_slaveRBF_w', fOutRBF_w)
+plotFunction(msh2, strcat('out_eb_',str), fOutRBF_g);
+plotFunction(msh2, strcat('out_rbf_',str), fOutEB);
 plotFunction(msh2, 'out_slaveRBF_g', fOutRBF_g)
-plotFunction(msh2, 'out_slaveEB', fOutEB)
-%plotFunction(msh2, 'out_slaveRBF_g', fOutRBF_g)
+plotFunction(msh2, strcat('out_eb_RelError_',str), errRelEB);
+plotFunction(msh2, strcat('out_rbf_RelError_',str), errRelRBF);
 
 
 

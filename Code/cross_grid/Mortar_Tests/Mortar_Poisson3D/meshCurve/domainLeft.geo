@@ -1,7 +1,7 @@
 Mesh.Format = 1;
 Mesh.MshFileVersion = 2.2; 
 
-h = 0.625;
+h = 0.16;
 
 Point(1) = {0,0,0,h};
 Point(2) = {1,0,0,h};
@@ -17,7 +17,7 @@ Line(4) = {4, 1};
 Curve Loop(1) = {1,2,3,4};
 
 Plane Surface(1) = {1};
-//Transfinite Surface {1};
+Transfinite Surface {1};
 Recombine Surface {1};
 
 Extrude {0,0,1} {Surface{1}; Layers{8}; Recombine;}

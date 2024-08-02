@@ -39,9 +39,9 @@ elseif strcmp(flagTop, 'slave')
 end
 
 % selecting integration approach
-integration = 'EB';  % SB, RBF, EB
+type = 'eb';  % SB, RBF, EB
 nInt = 4;
-nGP = 4;
+nGP = 2;
 tmp = strcat(flagTop,'TOP');
 
 
@@ -68,9 +68,15 @@ nodesSlave = unique(slaveMesh.edges(slaveMesh.edgeTag == 1,:));
 % boundInt = boundInt(ismember(boundInt, nodesSlave));
 
 % compute mortar operator
-% and matrices
-[E, M, D] = compute_mortar(masterMesh, slaveMesh, [], nInt, nGP, 1, 1, integration, degree);
-
+mortar = Mortar2D(1,masterMesh,1,slaveMesh,1);
+switch type
+    case 'gauss'
+        [D,M,~,E] = mortar.computeMortarRBF(nGP,nInt,'gauss');
+    case 'eb'
+        [D,M,E] = mortar.computeMortarElementBased(nGP);
+        % case 'SB'
+        %     [E,M] = mortar.computeMortarSegmentBased(nGP);
+end
 
 % reordering the matrix of the system
 %
@@ -204,14 +210,21 @@ err_rel_master = computeRelError(postProcMaster);
 err_rel_slave = computeRelError(postProcSlave);
 %
 if fPlot
-    fNameMaster = strcat(strTop,'_SolMaster','_',integration);
-    fNameSlave = strcat(strTop,'_SolSlave','_',integration);
+    dir = 'curve';
+    fNameMaster = strcat(dir,strTop,'_SolMaster','_',type);
+    fNameSlave = strcat(dir,strTop,'_SolSlave','_',type);
     plotParaview(masterMesh,fNameMaster, u_master', 'x')
     plotParaview(slaveMesh,fNameSlave, u_slave', 'x')
-    fNameMaster = strcat(strTop,'_errMaster','_',integration);
-    fNameSlave = strcat(strTop,'_errSlave','_',integration);
+    fNameMaster = strcat(dir,strTop,'_errRelMaster','_',type);
+    fNameSlave = strcat(dir,strTop,'_errRwlSlave','_',type);
     plotParaview(masterMesh,fNameMaster, err_rel_master', 'x')
     plotParaview(slaveMesh,fNameSlave, err_rel_slave', 'x')
+    fNameMaster = strcat(dir,strTop,'_errAbsMaster','_',type);
+    fNameSlave = strcat(dir,strTop,'_errAbsSlave','_',type);
+    plotParaview(masterMesh,fNameMaster, abs(u_anal_master'-u_master'), 'x')
+    plotParaview(slaveMesh,fNameSlave, abs(u_anal_slave'-u_slave'), 'x')
+    %     plotParaview(masterMesh,fNameMaster, err_rel_master', 'x')
+    %     plotParaview(slaveMesh,fNameSlave, err_rel_slave', 'x')
 end
 
 %% Error analysis

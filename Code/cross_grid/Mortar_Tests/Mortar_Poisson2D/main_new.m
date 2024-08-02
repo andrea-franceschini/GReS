@@ -11,7 +11,7 @@ fPlot = true;
 % selecting solution method
 % COND --> condansated approach
 % SP --> saddle point matrix
-sol_scheme = 'SP';
+sol_scheme = 'COND';
 
 % IMPORT MESHES
 masterMesh = Mesh();
@@ -54,8 +54,8 @@ nGrids = 5;
 brokenL2 = zeros(nGrids,1);
 brokenH1 = zeros(nGrids,1);
 h = zeros(nGrids,1);
-
-for mCount = 1:nGrids
+grids = 2; % row vector for selecting in which to compute pointwise error
+for mCount = 3
     fprintf('Grid h%i nGP = %i  nInt = %i  Integration: %s \n',mCount, nGP, nInt, type);
     % Import the mesh data into the Mesh object
     masterMesh.importGMSHmesh(fileNameMaster(mCount,:));
@@ -222,52 +222,54 @@ for mCount = 1:nGrids
     postProcSlave = postProc(slaveMesh, u_slave, u_anal_slave);
 
     % % Plotting point-wise error
-    % err_rel_master = computeRelError(postProcMaster);
-    % err_rel_slave = computeRelError(postProcSlave);
+    err_rel_master = computeRelError(postProcMaster);
+    err_rel_slave = computeRelError(postProcSlave);
     %
     if fPlot
         fNameMaster = strcat(strTop,'_SolMaster','_',type,'_h',num2str(mCount));
         fNameSlave = strcat(strTop,'_SolSlave','_',type,'_h',num2str(mCount));
         plotParaview(masterMesh,fNameMaster, u_master', 'x')
         plotParaview(slaveMesh,fNameSlave, u_slave', 'x')
-        % fNameMaster = strcat(strTop,'_errMaster','_',integration,'_h',num2str(mCount));
-        % fNameBottom = strcat(strTop,'_errSlave','_',integration,'_h',num2str(mCount));
-        % plotParaview(topMesh,fNameMaster, err_top_rel', 'x')
-        % plotParaview(slaveMesh,fNameSlave, err_bot_rel', 'x')
+        fNameMaster = strcat(strTop,'_errMaster','_',type,'_h',num2str(mCount));
+        fNameSlave = strcat(strTop,'_errSlave','_',type,'_h',num2str(mCount));
+        plotParaview(masterMesh,fNameMaster, err_rel_master', 'x')
+        plotParaview(slaveMesh,fNameSlave, err_rel_slave', 'x')
+        plotParaview(masterMesh,strcat(strTop,'_absErr_master_',type), abs(u_anal_master'-u_master'), 'x')
+        plotParaview(slaveMesh,strcat(strTop,'_absErr_slave_',type), abs(u_anal_slave'-u_slave'), 'x')
     end
 
-    %% Error analysis
-    L2Master = computeL2error(postProcMaster);
-    L2Slave = computeL2error(postProcSlave);
-    brokenL2(mCount) = sqrt(L2Master^2 + L2Slave^2);
-
-    % H1 error
-    H1Master = computeH1error(postProcMaster);
-    H1Slave = computeH1error(postProcSlave);
-    % Master surface
-    brokenH1(mCount) = sqrt(H1Master^2 + H1Slave^2);
+%     %% Error analysis
+%     L2Master = computeL2error(postProcMaster);
+%     L2Slave = computeL2error(postProcSlave);
+%     brokenL2(mCount) = sqrt(L2Master^2 + L2Slave^2);
+% 
+%     % H1 error
+%     H1Master = computeH1error(postProcMaster);
+%     H1Slave = computeH1error(postProcSlave);
+%     % Master surface
+%     brokenH1(mCount) = sqrt(H1Master^2 + H1Slave^2);
+% end
+% 
+% switch type
+%     case 'gauss'
+%         name = strcat(flagTop,'L2_',type,'_Int',num2str(nInt));
+%         fID = fopen(strcat('Results\',name,'.dat'),'w');
+%         fprintf(fID,'%2.6e \n',brokenL2);
+% 
+%         name = strcat(flagTop,'H1_',type,'_Int',num2str(nInt));
+%         fID = fopen(strcat('Results\',name,'.dat'),'w');
+%         fprintf(fID,'%2.6e \n',brokenH1);
+%     case 'eb'
+%         name = strcat(flagTop,'L2_eb');
+%         fID = fopen(strcat('Results\',name,'.dat'),'w');
+%         fprintf(fID,'%2.6e \n',brokenL2);
+% 
+%         name = strcat(flagTop,'H1_eb');
+%         fID = fopen(strcat('Results\',name,'.dat'),'w');
+%         fprintf(fID,'%2.6e \n',brokenH1);
+% end
+% 
 end
-
-switch type
-    case 'gauss'
-        name = strcat(flagTop,'L2_',type,'_Int',num2str(nInt));
-        fID = fopen(strcat('Results\',name,'.dat'),'w');
-        fprintf(fID,'%2.6e \n',brokenL2);
-
-        name = strcat(flagTop,'H1_',type,'_Int',num2str(nInt));
-        fID = fopen(strcat('Results\',name,'.dat'),'w');
-        fprintf(fID,'%2.6e \n',brokenH1);
-    case 'eb'
-        name = strcat(flagTop,'L2_eb');
-        fID = fopen(strcat('Results\',name,'.dat'),'w');
-        fprintf(fID,'%2.6e \n',brokenL2);
-
-        name = strcat(flagTop,'H1_eb');
-        fID = fopen(strcat('Results\',name,'.dat'),'w');
-        fprintf(fID,'%2.6e \n',brokenH1);
-end
-
-
 
 % create output structure (or append to existing one) and write to file
 % if ~isfile("Results.mat")

@@ -1,7 +1,7 @@
 Mesh.Format = 1;
 Mesh.MshFileVersion = 2.2; 
 
-h = 0.15625;
+h = 0.0325;
 
 Point(1) = {0,0,0,h};
 Point(2) = {1,0,0,h};
