@@ -9,7 +9,7 @@ SinglePhaseFlow_FEM
 <SimulationParameters>
 simParam.dat
 <Geometry>
-Mesh/Fluid.msh
+Mesh/Fluid_m.msh
 <Material>
 Fluid/materialsList.dat
 <BoundaryConditions>
@@ -29,7 +29,7 @@ Poromechanics_FEM
 <SimulationParameters>
 simParam.dat
 <Geometry> 
-Mesh/Grain.msh
+Mesh/Grain_m.msh
 <Material>
 Grain/materialsList.dat
 <BoundaryConditions>

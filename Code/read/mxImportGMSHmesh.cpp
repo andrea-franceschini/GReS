@@ -1,6 +1,6 @@
 #include "readGMSHmesh.hpp"
 
-//#define MEX_FUNCTION
+#define MEX_FUNCTION
 
 #ifdef MEX_FUNCTION
 

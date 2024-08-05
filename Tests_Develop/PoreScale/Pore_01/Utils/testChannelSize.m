@@ -21,13 +21,13 @@ plot3(p(1),p(2),p(3),'ro')
 
 %% roughly predicting change in permeability given a grain compressibility and a pressure
 
-kg = 2.5e-8; %[kPa-1]
+kg = 1e-8; %[kPa-1]
 p = 5e4;   % [kPa]
-c = 5; % initial channel size (micron)
-dg = 200; %[diameter of sandy grain in micron]
+c = 5e-6; % initial channel size (micron)
+dg = 500e-6; %[diameter of sandy grain in micron]
 V = 4/3*pi*(dg/2)^3;
 r = dg/2;
-K = (c^3/12)*1e-12; % initial permeability
+K = (c^3/12); % initial permeability
 
 
 dV = kg*p;

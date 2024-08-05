@@ -45,11 +45,6 @@ classdef NonLinearSolver < handle
       % Loop over time
       while obj.t < obj.simParameters.tMax
         % Update the simulation time and time step ID
-        if (obj.t > 4) && (obj.t < 5.5)
-            absTol = 1.e-6;
-        else 
-            absTol = obj.simParameters.absTol;
-        end
         obj.tStep = obj.tStep + 1;
         %new time update to fit the outTime list
         [obj.t, delta_t] = obj.updateTime(flConv, delta_t);

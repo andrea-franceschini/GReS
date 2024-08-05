@@ -1,7 +1,7 @@
-function d = computeChannelSize(p,msh1,msh2)
+function d = computeChannelSize(p,msh1,msh2,nseg)
 % Given a pair of surface mesh, compute a reasonable value for the channel
 % opening
-nseg = 40; % number of segments picked for comparison
+% nseg: number of segments picked for comparison
 d1 = msh1.coordinates - p;
 d2 = msh2.coordinates - p;
 % compute angle between each pair of distances
@@ -13,8 +13,8 @@ n1 = min(numel(id1),nseg);
 n2 = min(numel(id2),nseg);
 id1 = id1(1:n1);
 id2 = id2(1:n2);
-l1 = l1(id1); % pick only 20 distances
-l2 = l2(id2); % pick only 20 distances
+l1 = l1(id1); % pick only nseg distances
+l2 = l2(id2); % pick only nseg distances
 d1 = d1(id1,:);
 d2 = d2(id2,:);
 
@@ -29,7 +29,7 @@ for i = 1:n1
    end
 end
 ang = ang*180/pi;
-ind = all([ang(:)>=90 ang(:)<=220],2);
+ind = all([ang(:)>=90 ang(:)<=200],2);
 L = L(:);
 L = L(ind);
 % keep matrix of valid channels and find smalles

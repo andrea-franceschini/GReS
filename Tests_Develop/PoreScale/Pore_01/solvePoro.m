@@ -1,4 +1,4 @@
-function solvePoro(model,interfaces,K,poro,alpha)
+function solvePoro(model,interfF2S,interfS2F,K,poro,alpha)
 % Sequential algorithm to solve the Pore scale problem
 % 1) solve flow
 % LOOP UNTIL REL.PRESSURE CHANGE < TOL
@@ -60,14 +60,15 @@ while t < model(1).SimParams.tMax
 
         % employ interpolation operators to transfer pressure to the grains
         % compute forcing term due to fluid pressure
-        for i = 1:numel(interfaces)
-            p = model(1).State.pressure(interfaces(i).masterSet);
-            E = interfaces(i).InterpOperator;
+        for i = 1:numel(interfF2S)
+            Ep = interfF2S(i).InterpOperator;
+            %Eu = interfaces(i).InterpS2M;
+            p = model(1).State.pressure(interfF2S(i).masterSet);
             % interpolation
-            pInt = E*p;
+            pInt = Ep*p;
             % compute nodal forces
-            F = (interfaces(i).nodeNormal.*pInt)';
-            dofs = model(2).DoFManager.getDoF('Poro',interfaces(i).slaveSet);
+            F = (interfF2S(i).nodeNormal.*pInt)';
+            dofs = model(2).DoFManager.getDoF('Poro',interfF2S(i).slaveSet);
             dofs = glob2blockDoF(model(2).DoFManager,dofs);
             % update rhs with forcing terms
             model(2).Discretizer.rhs{1}(dofs) = model(2).Discretizer.rhs{1}(dofs) + F(:);
@@ -78,16 +79,16 @@ while t < model(1).SimParams.tMax
         model(2).State.updateState(du,model(2).DoFManager);
         % Update coordinates of grains
         du_mat = reshape(du,3,[])';
-        for i = 1:numel(interfaces)
-            interfaces(i).mortar.intSlave.coordinates = ...
-                interfaces(i).mortar.intSlave.coordinates + du_mat(interfaces(i).slaveSet,:);
+        for i = 1:numel(interfF2S)
+            interfF2S(i).mortar.intSlave.coordinates = ...
+                interfF2S(i).mortar.intSlave.coordinates + du_mat(interfF2S(i).slaveSet,:);
         end
         Kold = K;
         K = zeros(model(1).Grid.topology.nCells,1);
         for i = 1:model(1).Grid.topology.nCells
             % compute channel size
             centroid = model(1).Grid.cells.cellCentroid(i,:);
-            d(i) = computeChannelSize(centroid,interfaces(1).mortar.intSlave,interfaces(2).mortar.intSlave);
+            d(i) = computeChannelSize(centroid,interfF2S(1).mortar.intSlave,interfF2S(2).mortar.intSlave);
             K(i) = ((d(i))^3/12);
         end
         normK = norm((K-Kold)./Kold);
