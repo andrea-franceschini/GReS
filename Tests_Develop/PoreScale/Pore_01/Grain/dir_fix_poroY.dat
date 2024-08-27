@@ -1,0 +1,7 @@
+SurfBC            % BC item 
+Dir            % BC type 
+Poro            % Physics 
+fixY            % BC name 
+Grain/dir_fix_poroY/list 
+0.000000 Grain/dir_fix_poroY/time0.dat 
+end

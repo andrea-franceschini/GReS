@@ -68,7 +68,8 @@ while ~feof(fID)
          end
          nextline = readToken(fID,fName);
          l = l+1;
-         assert(strcmp(nextline([1,end]),'<>'),'Syntax error or unexpected text in line %i of file %s',l,fName);
+         assert(strcmp(nextline([1,end]),'<>'),['Syntax error or unexpected text in line %i of file %s: check that the ...' ...
+             'number of BCs is correct'],l,fName);
       end
       model = ModelType(mods);
       simParam = SimulationParameters(model,sim);

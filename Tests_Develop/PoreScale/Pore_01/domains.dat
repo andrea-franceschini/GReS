@@ -33,8 +33,10 @@ Mesh/Grain_m.msh
 <Material>
 Grain/materialsList.dat
 <BoundaryConditions>
-1
-Grain/dir_fix_poro.dat
+3
+Grain/dir_fix_poroX.dat
+Grain/dir_fix_poroY.dat
+Grain/dir_fix_poroZ.dat
 <OutState>
 outTime.dat
 <EndDomain>

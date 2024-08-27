@@ -62,14 +62,12 @@ classdef SPFlow < handle
 
 
         function computeMat(obj,varargin)
-            if isempty(obj.H) && isempty(obj.P)
-                if obj.model.isFEMBased('Flow')
-                    computeMatFEM(obj,varargin{:});
-                elseif obj.model.isFVTPFABased('Flow')
-                    mu = obj.material.getFluid().getDynViscosity();
-                    computeStiffMatFV(obj,1/mu);
-                    computeCapMatFV(obj);
-                end
+            if obj.model.isFEMBased('Flow')
+                computeMatFEM(obj,varargin{:});
+            elseif obj.model.isFVTPFABased('Flow')
+                mu = obj.material.getFluid().getDynViscosity();
+                computeStiffMatFV(obj,1/mu);
+                computeCapMatFV(obj);
             end
         end
 
