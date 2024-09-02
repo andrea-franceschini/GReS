@@ -16,6 +16,7 @@ elseif strcmpi(varargin{1},'elem')
    else
       outVTK.writeVTKFile(0, [], [], [], pointData);
    end
+end
    outVTK.finalize()
 end
 

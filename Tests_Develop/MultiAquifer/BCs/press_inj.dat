@@ -1,0 +1,7 @@
+NodeBC            % BC item 
+Dir            % BC type 
+Flow            % Physics 
+inj            % BC name 
+press_inj/list 
+0.000000 press_inj/time0.dat 
+end

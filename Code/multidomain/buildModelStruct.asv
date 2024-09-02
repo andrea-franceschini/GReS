@@ -1,4 +1,4 @@
-function modStruct = buildModelStruct(fName)
+function modStruct = buildModelStruct(fName,sim)
 % build a structure array containing istances of all classes for different
 % domains
 fID = openReadOnlyFile(fName);
@@ -22,9 +22,9 @@ while ~feof(fID)
                mods = convertCharsToStrings(mods);
                l = l+1;
                mods = split(mods,",");
-            case '<SimulationParameters>'
-               sim = readToken(fID,fName);
-               l = l+1;
+%             case '<SimulationParameters>'
+%                sim = readToken(fID,fName);
+%                l = l+1;
             case '<Geometry>'
                topology = Mesh();
                mshline = readToken(fID,fName);

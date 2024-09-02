@@ -2,7 +2,7 @@ function writeBCfiles(fName,item,type,physic,dir,bcName,time,vals,varargin)
 % utility to write BC input files (only constant BC for each time step are allowed)
 % Entities are identified by surface ID or by direct assignment
 % Example
-% writeBCfiles('SurfBC','Dir','Flow','fix_bot','dirBot','1',[0 5 10],[1 2 3],msh,1)
+% writeBCfiles('SurfBC','Dir','Flow','fix_bot','1',[0 5 10],[1 2 3],msh,1)
 assert(length(time)==length(vals),'Bc times and value sets must have equal size');
 % writing general file
 fID = fopen(strcat(fName,'.dat'),'w');

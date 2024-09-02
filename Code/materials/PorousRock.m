@@ -73,9 +73,12 @@ classdef PorousRock < handle
     % Assigning material parameters (check also the Materials class)
     % to object properties
     function readMaterialParameters(obj, model, fID, matFileName)
-      tmpVec = readDataInLine(fID, matFileName, 2);
+      tmpVec = readDataInLine(fID, matFileName, 3);
       obj.poro = tmpVec(1);
       obj.specGrav = tmpVec(2);
+      if model.isFlow() && model.isPoromechanics()
+          obj.biot = tmpVec(3);
+      end
       KTmp = zeros(6,1);
       tmpVec = readDataInLine(fID, matFileName, 3);
       KTmp(1:3) = tmpVec;
@@ -83,9 +86,6 @@ classdef PorousRock < handle
       KTmp(4:5) = tmpVec;
       tmpVec = readDataInLine(fID, matFileName, 1);
       KTmp(6) = tmpVec;
-      if model.isFlow() && model.isPoromechanics()
-          obj.biot = readDataInLine(fID, matFileName, 1);
-      end
       if model.isVariabSatFlow()
         obj.Swr = readDataInLine(fID, matFileName, 1);
       end

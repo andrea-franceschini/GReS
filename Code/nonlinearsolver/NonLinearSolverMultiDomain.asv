@@ -3,20 +3,17 @@ classdef NonLinearSolverMultiDomain < handle
   
   
   properties (Access = private)
-      %
-      nDom
-      nInt
-      models
-      interface
-      %
-      t = 0
-      tStep = 0
-      iter
-      dt
-  end
-
-  properties (Access = public)
-      state
+    %
+    nDom
+    nInt
+    models
+    state
+    interface
+    %
+    t = 0
+    tStep = 0
+    iter
+    dt
   end
   
   methods (Access = public)
@@ -24,7 +21,8 @@ classdef NonLinearSolverMultiDomain < handle
       obj.setNonLinearSolver(models,interfaces);
     end
 
-    function NonLinearLoop(obj)
+    function [simStat] = NonLinearLoop(obj)
+      simStat = 1;
       % Initialize the time step increment
       obj.dt = obj.simParameters.dtIni;  
       delta_t = obj.dt; % dynamic time step
@@ -129,94 +127,94 @@ classdef NonLinearSolverMultiDomain < handle
         %
     end
   end
-
+  
   methods (Access = private)
       function setNonLinearSolver(obj,models,interface)
-          obj.models = models;
-          obj.interface = interface;
-          obj.nDom = numel(obj.models);
-          obj.nInt = numel(obj.interface);
-          obj.state = repmat(struct('prev',{},'curr',{}),obj.nDom,1);
-          for i = 1:obj.nDom
-              obj.state(i).prev = obj.models(i).State;
-              obj.state(i).curr = copy(obj.state(i).prev);
-          end
+      obj.models = models;
+      obj.interface = interface;
+      nDom = numel(obj.models);
+      nInt = numel(obj.interface);
+      obj.statek = stateIni;
+      obj.stateTmp = copy(stateIni);
+      obj.linSyst = linearSyst;
+      if ~isempty(data)
+        obj.GaussPts = data{1};
       end
+    end
+    function [t, dt] = updateTime(obj,conv,dt)
+        if obj.printUtil.modTime
+            tmp = find(obj.t<obj.printUtil.timeList(),1,'first');
+            if ~conv       
+                t = min([obj.t + obj.dt, obj.t + dt, obj.printUtil.timeList(tmp)]);
+            else 
+                t = min([obj.t + obj.dt, obj.printUtil.timeList(tmp)]);
+            end
+        else
+        t = obj.t + obj.dt;
+        end
+        dt = t - obj.t; 
+    end
 
-      function [t, dt] = updateTime(obj,conv,dt)
-          if obj.printUtil.modTime
-              tmp = find(obj.t<obj.printUtil.timeList(),1,'first');
-              if ~conv
-                  t = min([obj.t + obj.dt, obj.t + dt, obj.printUtil.timeList(tmp)]);
-              else
-                  t = min([obj.t + obj.dt, obj.printUtil.timeList(tmp)]);
-              end
-          else
-              t = obj.t + obj.dt;
-          end
-          dt = t - obj.t;
-      end
-
-      function [locRhsNorm, globRhsNorm] = computeRhsNorm(obj,syst)
-          %Return maximum norm of all Rhs block
-          nRhs = length(syst.dofm.subList);
-          locRhsNorm = zeros(nRhs,1);
-          for i = 1:nRhs
-              locRhsNorm(i) = norm(syst.rhs{i}, obj.simParameters.pNorm);
-          end
-          globRhsNorm = sqrt(sum(locRhsNorm.^2));
-      end
+    function [locRhsNorm, globRhsNorm] = computeRhsNorm(obj,syst)
+        %Return maximum norm of all Rhs block
+        nRhs = length(syst.dofm.subList);
+        locRhsNorm = zeros(nRhs,1);
+        for i = 1:nRhs
+            locRhsNorm(i) = norm(syst.rhs{i}, obj.simParameters.pNorm);
+        end
+        globRhsNorm = sqrt(sum(locRhsNorm.^2));
+    end
 
 
-      function [dt] = manageNextTimeStep(obj,dt,flConv)
-          if ~flConv   % Perform backstep
-              transferState(obj.statek,obj.stateTmp);
-              obj.t = obj.t - obj.dt;
-              obj.tStep = obj.tStep - 1;
-              dt = dt/obj.simParameters.divFac;
-              obj.dt = obj.dt/obj.simParameters.divFac;  % Time increment chop
-              if min(dt,obj.dt) < obj.simParameters.dtMin
-                  if obj.simParameters.goOnBackstep == 1
-                      flConv = 1;
-                  elseif obj.simParameters.goOnBackstep == 0
-                      error('Minimum time step reached')
-                  end
-              elseif obj.simParameters.verbosity > 0
-                  fprintf('\n %s \n','BACKSTEP');
-              end
-          end
-          if flConv % Go on if converged
-              tmpVec = obj.simParameters.multFac;
-              if isFlow(obj.model)
-                  dpMax = max(abs(obj.stateTmp.pressure - obj.statek.pressure));
-                  tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
-                      obj.simParameters.pTarget/(dpMax + obj.simParameters.relaxFac* ...
-                      obj.simParameters.pTarget)];
-                  %           if isVariabSatFlow(obj.model)
-                  %             dSwMax = max(abs(obj.stateTmp.watSat-obj.statek.watSat));
-                  %             tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
-                  %             obj.simParameters.sTarget/(dSwMax + obj.simParameters.relaxFac* ...
-                  %             obj.simParameters.sTarget)];
-                  %           end
-              end
-              obj.dt = min([obj.dt * min(tmpVec),obj.simParameters.dtMax]);
-              obj.dt = max([obj.dt obj.simParameters.dtMin]);
-              %         if obj.dt < obj.simParameters.dtMin
-              %           obj.dt = obj.simParameters.dtMin;
-              %         end
-              %find interval on printUtil's timeList which contains obj.t
-              %         tmp = find(obj.t<obj.printUtil.timeList(1),1,'first');
-              %         if ((obj.t + obj.dt) > obj.printUtil.timeList(tmp))
-              %             obj.dt = obj.printUtil.timeList(tmp) - obj.t;
-              %         end
-              %
+    function [dt] = manageNextTimeStep(obj,dt,flConv)
+        if ~flConv   % Perform backstep
+            transferState(obj.statek,obj.stateTmp);
+            obj.t = obj.t - obj.dt;
+            obj.tStep = obj.tStep - 1;
+            dt = dt/obj.simParameters.divFac;
+            obj.dt = obj.dt/obj.simParameters.divFac;  % Time increment chop
+            if min(dt,obj.dt) < obj.simParameters.dtMin
+                if obj.simParameters.goOnBackstep == 1
+                    flConv = 1;
+                elseif obj.simParameters.goOnBackstep == 0
+                    error('Minimum time step reached')
+                end
+            elseif obj.simParameters.verbosity > 0
+                fprintf('\n %s \n','BACKSTEP');
+            end
+        end
+        if flConv % Go on if converged
+            tmpVec = obj.simParameters.multFac;
+            if isFlow(obj.model)
+                dpMax = max(abs(obj.stateTmp.pressure - obj.statek.pressure));
+                tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
+                    obj.simParameters.pTarget/(dpMax + obj.simParameters.relaxFac* ...
+                    obj.simParameters.pTarget)];
+                %           if isVariabSatFlow(obj.model)
+                %             dSwMax = max(abs(obj.stateTmp.watSat-obj.statek.watSat));
+                %             tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
+                %             obj.simParameters.sTarget/(dSwMax + obj.simParameters.relaxFac* ...
+                %             obj.simParameters.sTarget)];
+                %           end
+            end
+            obj.dt = min([obj.dt * min(tmpVec),obj.simParameters.dtMax]);
+            obj.dt = max([obj.dt obj.simParameters.dtMin]);
+            %         if obj.dt < obj.simParameters.dtMin
+            %           obj.dt = obj.simParameters.dtMin;
+            %         end
+            %find interval on printUtil's timeList which contains obj.t
+            %         tmp = find(obj.t<obj.printUtil.timeList(1),1,'first');
+            %         if ((obj.t + obj.dt) > obj.printUtil.timeList(tmp))
+            %             obj.dt = obj.printUtil.timeList(tmp) - obj.t;
+            %         end
+            %
 
-              transferState(obj.stateTmp,obj.statek);
-              %
-              if ((obj.t + obj.dt) > obj.simParameters.tMax)
-                  obj.dt = obj.simParameters.tMax - obj.t;
-              end
-          end
-      end
+            transferState(obj.stateTmp,obj.statek);
+            %
+            if ((obj.t + obj.dt) > obj.simParameters.tMax)
+                obj.dt = obj.simParameters.tMax - obj.t;
+            end
+        end
+    end
   end
 end

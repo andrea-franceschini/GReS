@@ -22,6 +22,8 @@ dt = model(1).SimParams.dtIni;
 statFlow = copy(model(1).State);
 rhsP = zeros(itMax,1);
 rhsU = zeros(itMax,1);
+rhsP2 = zeros(itMax,1);
+rhsU2 = zeros(itMax,1);
 while t < model(1).SimParams.tMax
     t = t + dt;
     tStep = tStep + 1;
@@ -45,9 +47,11 @@ while t < model(1).SimParams.tMax
     model(1).State.updateState(dp,model(1).DoFManager);
     pnew = model(1).State.pressure;
     iter = 0;
-    rhsNormU = 2*tol;
+    %rhsNormU = 2*tol;
     rhsP(iter+1) = rhsNormP;
-    while iter < itMax
+    resU = 2*tol;
+    resP = 2*tol;
+    while (iter < itMax) && (resP > tol && resU > tol)
         iter = iter+1;
         % Mechanical domain
         %statPoro = copy(model(2).State);
@@ -82,7 +86,7 @@ while t < model(1).SimParams.tMax
         % apply BCs
         s2 = struct2cell(model(2));
         applyBCandForces(s2{[3,5,8,6]},0,s2{[11,9]})
-
+        
         rhsNormU = norm(model(2).Discretizer.rhs{1});
         rhsU(iter) = rhsNormU;
 
@@ -131,8 +135,18 @@ while t < model(1).SimParams.tMax
         model(1).State.updateState(dp,model(1).DoFManager);
         pold = pnew;
         pnew = model(1).State.pressure;
+
         % control convergence of pressure solution
         resP = norm(pnew-pold)/norm(pold);
+        if iter > 1
+            uold = unew;
+            unew = model(2).State.dispCurr;
+            resU = norm(unew-uold)/norm(uold);
+        else
+            unew = model(2).State.dispCurr;
+        end
+        rhsP2(iter+1) = resP;
+        rhsU2(iter+1) = resU;
     end
     model(2).State.dispConv = model(2).State.dispCurr;
     % print results

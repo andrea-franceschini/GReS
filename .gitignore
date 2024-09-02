@@ -42,8 +42,12 @@
 # Output folders with vtk files
 /Tests_Develop/*/vtkOutput/
 /Tests_Release/*/vtkOutput/
+
 # Temporary folders with external classes
 /Code/cross_grid/
+
 # Manual
 /Manual/
+
+# Compiler  builds
 /ThirdPartLibs/*/build

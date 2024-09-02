@@ -58,6 +58,12 @@ poro = 0;
 model(1).OutState.finalize();
 model(2).OutState.finalize();
 
+%% plot norm of displacements
+u = reshape(model(2).State.dispCurr,3,[]);
+u_norm = 1e6*(sqrt(sum(u.^2,1)));
+
+plotFunction(g,'total_disp',u_norm')
+
 %% convergence profiles on solutions at the first time step (ABSOLUTE RESIDUALS)
 
 
@@ -75,13 +81,13 @@ figure(2)
 set(0,'defaulttextinterpreter','latex')
 set(0,'DefaultTextFontname', 'CMU Serif')
 set(0,'DefaultAxesFontName', 'CMU Serif')
-semilogy(1:length(rhsU),rhsU./rhsU(1),'r',LineWidth=1,Marker='s',MarkerSize=8, MarkerFaceColor='r')
+semilogy(1:length(rhsU)-1,rhsU(1:end-1)./rhsU(1),'r',LineWidth=1,Marker='s',MarkerSize=8, MarkerFaceColor='r')
 hold on
-semilogy(1:length(rhsP)-1,rhsP(1:end-1)./rhsP(1),'b',LineWidth=1,Marker='^',MarkerSize=8, MarkerFaceColor='b')
+semilogy(1:length(rhsP)-2,rhsP(1:end-2)./rhsP(1),'b',LineWidth=1,Marker='^',MarkerSize=8, MarkerFaceColor='b')
 xticks([1 2 3 4 5])
-xlabel('iteration')
+xlabel('Iteration')
 ylabel('Relative residual $$L^2$$ norm')
 l = legend('Mechanics','Flow');
 a = get(gca,'XTickLabel');
-set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
-exportgraphics(gcf,'conv_profile.pdf','ContentType','vector')
+set(gca,'XTickLabel',a,'FontName', 'cmr10', 'FontSize', 12)
+exportgraphics(gcf,'conv_profile2.pdf','ContentType','vector')
