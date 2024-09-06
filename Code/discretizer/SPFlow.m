@@ -63,7 +63,7 @@ classdef SPFlow < handle
 
         function computeMat(obj,varargin)
             if obj.model.isFEMBased('Flow')
-                computeMatFEM(obj,varargin{:});
+                computeMatFEM(obj);
             elseif obj.model.isFVTPFABased('Flow')
                 mu = obj.material.getFluid().getDynViscosity();
                 computeStiffMatFV(obj,1/mu);
@@ -71,7 +71,7 @@ classdef SPFlow < handle
             end
         end
 
-        function computeMatFEM(obj,varargin) %provisional method exploiting dof manager workflow
+        function computeMatFEM(obj,varargin) 
             % dealing with input params
             if ~isempty(varargin)
                K = varargin{1};

@@ -1,4 +1,4 @@
-function modStruct = buildModelStruct(fName)
+function modStruct = buildModelStruct(fName,simParam)
 % build a structure array containing istances of all classes for different
 % domains
 fID = openReadOnlyFile(fName);
@@ -22,9 +22,6 @@ while ~feof(fID)
                mods = convertCharsToStrings(mods);
                l = l+1;
                mods = split(mods,",");
-            case '<SimulationParameters>'
-               sim = readToken(fID,fName);
-               l = l+1;
             case '<Geometry>'
                topology = Mesh();
                mshline = readToken(fID,fName);
@@ -73,7 +70,6 @@ while ~feof(fID)
              'number of BCs is correct'],l,fName);
       end
       model = ModelType(mods);
-      simParam = SimulationParameters(model,sim);
       mat = Materials(model,matFile);
       if ~isempty(dofFile)
          dof = DoFManager(topology,model,dofFile);
@@ -92,8 +88,8 @@ while ~feof(fID)
       printUtils = OutState(model,mat,grid,outFile,name,gauss);
       linSyst = Discretizer(model,simParam,dof,grid,mat,gauss);
       modStruct = [modStruct;struct('id',c,'DomainName',name,'ModelType',model,...
-         'SimParams',simParam,'Grid',grid,'Material',mat,...
-         'DoFManager',dof,'BoundaryConditions',bc,'State',state,'OutState',printUtils,...
+         'Grid',grid,'Material',mat,'DoFManager',dof,...
+         'BoundaryConditions',bc,'State',state,'OutState',printUtils,...
          'Discretizer',linSyst)];
    end
 end

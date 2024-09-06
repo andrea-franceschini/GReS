@@ -1,0 +1,9 @@
+VolumeForce            % BC item 
+Flow            % Physics 
+flux_bc            % BC name 
+flux/list 
+0.000000 flux/time0.dat 
+1.000000 flux/time1.dat 
+5.000000 flux/time2.dat 
+100.000000 flux/time3.dat 
+End

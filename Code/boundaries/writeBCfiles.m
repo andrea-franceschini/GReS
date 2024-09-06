@@ -7,7 +7,9 @@ assert(length(time)==length(vals),'Bc times and value sets must have equal size'
 % writing general file
 fID = fopen(strcat(fName,'.dat'),'w');
 fprintf(fID,'%s            %% BC item \n',item);
-fprintf(fID,'%s            %% BC type \n',type);
+if ~strcmp(item,'VolumeForce')
+   fprintf(fID,'%s            %% BC type \n',type);
+end
 fprintf(fID,'%s            %% Physics \n',physic);
 fprintf(fID,'%s            %% BC name \n',bcName);
 listName = strcat(fName,'/list');
@@ -15,13 +17,13 @@ fprintf(fID,'%s \n',listName);
 for i = 0:length(time)-1
    fprintf(fID,'%2.6f %s/time%i.dat \n',time(i+1),fName,i);
 end
-fprintf(fID,'end');
+fprintf(fID,'End');
 
 if(strcmp(physic,'Flow'))
    dir = [];
 end
 
-if ~exist(fName, 'dir')
+if ~isfolder(fName)
    mkdir(fName);
 end
 

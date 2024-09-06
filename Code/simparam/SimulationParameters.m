@@ -23,8 +23,8 @@ classdef SimulationParameters < handle
   end
   
   methods (Access = public)
-    function obj = SimulationParameters(model,fileName)
-      obj.setSimulationParameters(model,fileName);
+    function obj = SimulationParameters(fileName)
+      obj.setSimulationParameters(fileName);
     end
     
     function status = isNewtonNLSolver(obj)
@@ -43,7 +43,7 @@ classdef SimulationParameters < handle
   end
   
   methods (Access = private)
-    function setSimulationParameters(obj,model,fileName)
+    function setSimulationParameters(obj,fileName)
       fid = fopen(fileName,'r');
       if fid == -1
         error('File %s not opened correctly',fileName);
@@ -51,15 +51,16 @@ classdef SimulationParameters < handle
       %
       % Read the model parameters
       %
+      readSPFParameters(obj,fid,fileName);
       % Single-phase Flow
-      if model.isSinglePhaseFlow()
-        readSPFParameters(obj,fid,fileName);
-      elseif model.isVariabSatFlow()
-        readVSFParameters(obj,fid,fileName);
-      elseif model.isPoromechanics()
-%         readPoromechParameters(obj,fid,fileName);
-        readSPFParameters(obj,fid,fileName);
-      end
+%       if model.isSinglePhaseFlow()
+%         readSPFParameters(obj,fid,fileName);
+%       elseif model.isVariabSatFlow()
+%         readVSFParameters(obj,fid,fileName);
+%       elseif model.isPoromechanics()
+% %         readPoromechParameters(obj,fid,fileName);
+%         readSPFParameters(obj,fid,fileName);
+%       end
       token = SimulationParameters.readToken(fid,fileName);
       if ~strcmp(token,'End')
         error('Missing End statement at the end of Simulation settings file %s',fileName);

@@ -4,10 +4,9 @@ classdef DoFManager < handle
     %   associates a degree of freedom to nodes
     %test
     properties (Access = private)
-        physicsList = ""    %list of activated physics in the model
-        ncomp               %number of components for every physic in physicsList
+        physicsList = ""    %list of activated physics in the model                            
         model 
-        
+        ncomp               % number of components for every physic in physicsList
     end
 
     properties (Access = public)
@@ -19,7 +18,7 @@ classdef DoFManager < handle
         subPhysics      % list of physics in the global solution vector
         subList         % subDomain corresponding to every subPhysic
         subCells        % list of cells of every subdomain
-        glob2block     % map global dofs to field Tag
+        glob2block      % map global dofs to field Tag
     end
     
     methods
@@ -253,6 +252,13 @@ classdef DoFManager < handle
                 col = 1:obj.ncomp(i);   
             else
                 col = (1:obj.ncomp(i))+sum(obj.ncomp(1:i-1));
+            end
+        end
+
+        function n = getNumbComp(obj,physic)
+            n = obj.ncomp(strcmp(obj.physicsList,physic));
+            if isempty(n)
+                 error('Invalid input physic');
             end
         end
                 

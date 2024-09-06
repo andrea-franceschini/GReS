@@ -44,6 +44,7 @@ classdef NonLinearSolver < handle
       %
       % Loop over time
       while obj.t < obj.simParameters.tMax
+         absTol = obj.simParameters.absTol;
         % Update the simulation time and time step ID
         obj.tStep = obj.tStep + 1;
         %new time update to fit the outTime list

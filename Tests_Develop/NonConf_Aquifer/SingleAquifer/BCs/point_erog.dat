@@ -1,0 +1,10 @@
+NodeBC            % BC item 
+Dir            % BC type 
+Flow            % Physics 
+dir_flow            % BC name 
+point_erog/list 
+0.000000 point_erog/time0.dat 
+1.000000 point_erog/time1.dat 
+5.000000 point_erog/time2.dat 
+100.000000 point_erog/time3.dat 
+end
