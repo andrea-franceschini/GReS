@@ -10,6 +10,7 @@ classdef MeshGlue < handle
       model                % model setup
       MD_struct            % multidomain info to retrieve linsyst
       domainConn           % domain connectivity
+      countDoF
    end
 
    methods
@@ -101,9 +102,9 @@ classdef MeshGlue < handle
                         list = obj.interfaces(r(j)).masterSet;
                         tag = 'master';
                      else
-                        nS = nS + 1;
-                        list = obj.interfaces(r(j)).slaveSet;
-                        tag = 'slave';
+                         nS = nS + 1;
+                         list = obj.interfaces(r(j)).slaveSet;
+                         tag = 'slave';
                      end
                      obj.MD_struct(k).set = obj.model(i).DoFManager.getDoF(phList(ph),list);
                      obj.MD_struct(k).entities = list;
@@ -123,14 +124,24 @@ classdef MeshGlue < handle
                obj.MD_struct(k-kk).physic = phList(ph);
             end
          end
+
+         fields = ~strcmp(extractfield(obj.MD_struct,'type'),'slave');
+         nFlds = numel(obj.MD_struct);
+         cntDoF = zeros(nFlds,1);
+         for ii = 1:nFlds
+             cntDoF(ii) = numel(obj.MD_struct(ii).set);
+         end
+         cntDoF(~fields) = 0; 
+         cntDoF = cumsum(cntDoF);
+         obj.countDoF = [0;cntDoF(1:end-1)];
       end
 
       function [mat,rhs] = buildMDsyst(obj)
-         % loop trough the blocks of the final mortar matrix and build blocks
-         % 1 by 1
-         flds = find(~strcmp(extractfield(obj.MD_struct,'type'),'slave'));
-         nflds = length(flds);
-         mat = cell(nflds);
+          % loop trough the blocks of the final mortar matrix and build blocks
+          % 1 by 1
+          flds = find(~strcmp(extractfield(obj.MD_struct,'type'),'slave'));
+          nflds = length(flds);
+          mat = cell(nflds);
          rhs = cell(nflds,1);
          ii = 1;
          % loop on the matrix
@@ -220,6 +231,11 @@ classdef MeshGlue < handle
             c = nc*idCol - k;
             E_exp(r,c) = E;
          end
+      end
+
+      function dofs = getDofs_MD(obj,i)
+          dofs = 1+obj.countDoF(i):obj.countDoF(i+1);
+          dofs = dofs';
       end
 
 

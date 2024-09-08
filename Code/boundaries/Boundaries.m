@@ -126,88 +126,134 @@ classdef Boundaries < handle
         if any(list == 0)
             error('Boundary conditions %s not supported from subdomain',identifier)
         end
-
     end
 
-    function list = getLocDofs(obj, identifier)
-      %return loaded DOFS for the specified BC in global indexing
-      %list = obj.getData(identifier).data.entities; OLD VERSION
-      %%%%update to getDofs method
-      col = obj.dof.getColTable(obj.getPhysics(identifier));
-      if strcmp(obj.getCond(identifier),'NodeBC') | strcmp(obj.getCond(identifier),'ElementBC') 
-            nEnts = obj.getData(identifier).data.nEntities;
-            entities = obj.getData(identifier).data.entities;
-            i1 = 1;
-            for i = 1:length(nEnts)
-              i2 = i1 + nEnts(i);
-              if strcmp(obj.getCond(identifier),'NodeBC') % Node BC ---> Node Dof
-                list(i1:i2-1) = obj.dof.nodeDofTable(entities(i1:i2-1),col(i),2);
-              elseif strcmp(obj.getCond(identifier),'ElementBC') % Element BC ---> Element Dof
-                list(i1:i2-1) = obj.dof.elemDofTable(entities(i1:i2-1),col(i));  
-              end
-              i1 = i2;
-            end
-      elseif strcmp(obj.getCond(identifier),'SurfBC')
-          % SurfBC ---> Node Dof
-          if isFEMBased(obj.model,obj.getPhysics(identifier))
-              if strcmp(obj.getType(identifier),'Neu')
-                  loadedEnts = obj.getLoadedEntities(identifier);
-                  if strcmp(obj.getPhysics(identifier),'Poro')
-                      direction = obj.getDirection(identifier);
-                      switch direction
-                          case 'x'
-                            list = obj.dof.nodeDofTable(loadedEnts,col(1),2);
-                          case 'y'
-                            list = obj.dof.nodeDofTable(loadedEnts,col(2),2);
-                          case 'z'
-                            list = obj.dof.nodeDofTable(loadedEnts,col(3),2);
-                      end
-                  elseif strcmp(obj.getPhysics(identifier),'Flow')
-                      list = obj.dof.nodeDofTable(loadedEnts,col);
-                  end
-              elseif strcmp(obj.getType(identifier),'Dir')           
-                nEnts = obj.getNumbLoadedEntities(identifier);
+    % function list = getLocDofs(obj, identifier)
+    %   %return loaded DOFS for the specified BC in global indexing
+    %   %list = obj.getData(identifier).data.entities; OLD VERSION
+    %   %%%%update to getDofs method
+    %   col = obj.dof.getColTable(obj.getPhysics(identifier));
+    %   if strcmp(obj.getCond(identifier),'NodeBC') | strcmp(obj.getCond(identifier),'ElementBC') 
+    %         nEnts = obj.getData(identifier).data.nEntities;
+    %         entities = obj.getData(identifier).data.entities;
+    %         i1 = 1;
+    %         for i = 1:length(nEnts)
+    %           i2 = i1 + nEnts(i);
+    %           if strcmp(obj.getCond(identifier),'NodeBC') % Node BC ---> Node Dof
+    %             list(i1:i2-1) = obj.dof.nodeDofTable(entities(i1:i2-1),col(i),2);
+    %           elseif strcmp(obj.getCond(identifier),'ElementBC') % Element BC ---> Element Dof
+    %             list(i1:i2-1) = obj.dof.elemDofTable(entities(i1:i2-1),col(i));  
+    %           end
+    %           i1 = i2;
+    %         end
+    %   elseif strcmp(obj.getCond(identifier),'SurfBC')
+    %       % SurfBC ---> Node Dof
+    %       if isFEMBased(obj.model,obj.getPhysics(identifier))
+    %           if strcmp(obj.getType(identifier),'Neu')
+    %               loadedEnts = obj.getLoadedEntities(identifier);
+    %               if strcmp(obj.getPhysics(identifier),'Poro')
+    %                   direction = obj.getDirection(identifier);
+    %                   switch direction
+    %                       case 'x'
+    %                         list = obj.dof.nodeDofTable(loadedEnts,col(1),2);
+    %                       case 'y'
+    %                         list = obj.dof.nodeDofTable(loadedEnts,col(2),2);
+    %                       case 'z'
+    %                         list = obj.dof.nodeDofTable(loadedEnts,col(3),2);
+    %                   end
+    %               elseif strcmp(obj.getPhysics(identifier),'Flow')
+    %                   list = obj.dof.nodeDofTable(loadedEnts,col);
+    %               end
+    %           elseif strcmp(obj.getType(identifier),'Dir')           
+    %             nEnts = obj.getNumbLoadedEntities(identifier);
+    %             ents = obj.getLoadedEntities(identifier);
+    %             i1 = 1;
+    %             for i = 1:length(nEnts)
+    %               i2 = i1 + nEnts(i);
+    %               list(i1:i2-1) = obj.dof.nodeDofTable(ents(i1:i2-1),col(i),2);
+    %               i1 = i2;
+    %             end
+    %           end
+    %         elseif isFVTPFA(obj.model,bound.getPhysics(identifier))
+    %       % SurfBC ---> Element Dof
+    %             if  strcmp(obj.getPhysics(identifier),'Poro')
+    %                 direction = obj.getDirection(identifier);
+    %                 switch direction
+    %                     case 'x'
+    %                         list = obj.dof.elemDofTable(loadedEnts,col(1),2);
+    %                     case 'y'
+    %                         list = obj.dof.elemDofTable(loadedEnts,col(2),2);
+    %                     case 'z'
+    %                         list = obj.dof.elemDofTable(loadedEnts,col(3),2);
+    %                 end
+    %             elseif strcmp(obj.getPhysics(identifier),'Flow')
+    %                 list = obj.dof.elemDofTable(loadedEnts,col,2);
+    %             end
+    %       end
+    %   elseif strcmp(obj.getCond(identifier),'VolumeForce')
+    %       % Volume Force ---> Node Dof
+    %       %VolumeForce are available only for flow model
+    %       if isFEMBased(obj.model,translatePhysic(obj.getPhysics(identifier),obj.model))
+    %           loadedEnts = obj.getLoadedEntities(identifier);
+    %           list = obj.dof.nodeDofTable(loadedEnts,col,2);
+    %       elseif isFVTPFABased(obj.model,translatePhysic(obj.getPhysics(identifier),obj.model))
+    %       % Volume Force ---> Element Dof
+    %           ents = obj.getData(identifier).data.entities;
+    %           list = obj.dof.elemDofTable(ents,col,2);
+    %       end
+    %   end
+    %   if any(list == 0)
+    %       error('Boundary conditions %s not supported from subdomain',identifier)
+    %   end     
+    % end
+
+    function list = getDofs_MD(obj,identifier,mG,d)
+        % get BC Dofs in multidomain numbering
+        ph = obj.getPhysics(identifier);
+        list = [];
+        nEnts = 1;
+        % retrieve entities
+        switch obj.getCond(identifier)
+            case {'NodeBC','ElementBC'}
+                nEnts = obj.getData(identifier).data.nEntities;
+                ents = obj.getData(identifier).data.entities;
+            case 'SurfBC'
                 ents = obj.getLoadedEntities(identifier);
-                i1 = 1;
-                for i = 1:length(nEnts)
-                  i2 = i1 + nEnts(i);
-                  list(i1:i2-1) = obj.dof.nodeDofTable(ents(i1:i2-1),col(i),2);
-                  i1 = i2;
+                if strcmp(obj.getType(identifier),'Dir')
+                    nEnts = obj.getNumbLoadedEntities(identifier);
                 end
-              end
-            elseif isFVTPFA(obj.model,bound.getPhysics(identifier))
-          % SurfBC ---> Element Dof
-                if  strcmp(obj.getPhysics(identifier),'Poro')
-                    direction = obj.getDirection(identifier);
-                    switch direction
-                        case 'x'
-                            list = obj.dof.elemDofTable(loadedEnts,col(1),2);
-                        case 'y'
-                            list = obj.dof.elemDofTable(loadedEnts,col(2),2);
-                        case 'z'
-                            list = obj.dof.elemDofTable(loadedEnts,col(3),2);
-                    end
-                elseif strcmp(obj.getPhysics(identifier),'Flow')
-                    list = obj.dof.elemDofTable(loadedEnts,col,2);
+            case 'VolumeForce'
+                if isFEMBased(obj.model,ph)
+                    ents = obj.getLoadedEntities(identifier);
+                elseif isFVTPFABased(obj.model,ph)
+                    % Volume Force ---> Element Dof
+                    ents = obj.getData(identifier).data.entities;
                 end
-          end
-      elseif strcmp(obj.getCond(identifier),'VolumeForce')
-          % Volume Force ---> Node Dof
-          %VolumeForce are available only for flow model
-          if isFEMBased(obj.model,translatePhysic(obj.getPhysics(identifier),obj.model))
-              loadedEnts = obj.getLoadedEntities(identifier);
-              list = obj.dof.nodeDofTable(loadedEnts,col,2);
-          elseif isFVTPFABased(obj.model,translatePhysic(obj.getPhysics(identifier),obj.model))
-          % Volume Force ---> Element Dof
-              ents = obj.getData(identifier).data.entities;
-              list = obj.dof.elemDofTable(ents,col,2);
-          end
-      end
-      if any(list == 0)
-          error('Boundary conditions %s not supported from subdomain',identifier)
-      end
-               
+        end
+
+        
+        % get component-wise numbering
+        if nEnts > 1
+            comps = length(nEnts);
+            %handle multicomponents dof
+            i1 = 1;
+            for ii = 1:comps
+                i2 = i1 + nEnts(ii);
+                add_ents = find(ismembc(mG.MD_struct(d).entities,ents(i1:i2-1)));
+                add_ents = comps*(add_ents-1)+ii;
+                list = [list;add_ents];
+                i1 = i2;
+            end
+        else
+            if strcmp(ph,'Poro')
+                ents = find(ismembc(mG.MD_struct(d).entities,ents));
+                c = find(strcmp(["x","y","z"],obj.getDirection(identifier)));
+                list = 3*(ents-1)+c;
+            end
+        end
+
     end
+
     
     function cond = getCond(obj, identifier)
       cond = obj.getData(identifier).cond;
@@ -250,21 +296,16 @@ classdef Boundaries < handle
      function ents = getLoadedEntities(obj, identifier,varargin)
       % return loaded entities for Volume or Surface BCs
       % if varargin not empty, return loaded ents with component
-      % multiplication
+      % multiplication (according to direction
       ents = obj.getData(identifier).loadedEnts;
-      if ~isempty(varargin)
-          nEnts = obj.getNumbLoadedEntities(identifier);
-          comps = length(nEnts);
-          i1 = 1;
-          for i = 1:comps
-              i2 = i1 + nEnts(i);
-              ents(i1:i2-1) = comps*(ents(i1:i2-1)-1)+i;
-              i1 = i2;
-          end
+      if ~isempty(varargin) && strcmp(obj.getPhysics(identifier),'Poro')
+          c = find(strcmp(["x","y","z"],obj.getDirection(identifier)));
+          ents = 3*(ents-1)+c;
       end
-          
+     end
 
-    end
+     % function getEntitiesDof
+     % end
 
     function ent = getNumbLoadedEntities(obj, identifier)
       ent = obj.getData(identifier).nloadedEnts;

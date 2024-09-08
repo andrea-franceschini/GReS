@@ -58,18 +58,19 @@ classdef NonLinearSolverMultiDomain < handle
 
                % compute block Jacobian and block Rhs
                obj.models(i).Discretizer.computeBlockJacobianAndRhs(delta_t);
+            end
 
-               % Apply BCs to the block-wise system
-               if ~isempty(obj.models(i).BoundaryConditions)
-                  applyBCandForces(obj.models(i).ModelType, obj.models(i).Grid,...
-                     obj.models(i).BoundaryConditions,obj.models(i).Material,...
-                     obj.t, obj.models(i).Discretizer, obj.state(i).curr);
-               end
+            % Get unique multidomain solution system
+            [J,rhs] = obj.meshGlue.getMDlinSyst();
+
+            % Apply BCs to global linear system
+            for i = 1:obj.nDom
+                [J,rhs] = applyBCAndForces_MD(i, obj.meshGlue, obj.t, obj.state(i).curr, J, rhs);
             end
 
             % compute Rhs norm
-            rhsNorm = computeRhsNorm(obj);
-            % consider output of local field rhs contribution
+            rhsNorm = norm(rhs,2);
+
             if obj.simParameters.verbosity > 0
                fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t);
                fprintf('-----------------------------------------------------------\n');
@@ -90,8 +91,6 @@ classdef NonLinearSolverMultiDomain < handle
                   && (rhsNorm > absTol)) || obj.iter == 0
                obj.iter = obj.iter + 1;
                %
-               % Get unique multidomain solution system
-               [J,rhs] = obj.meshGlue.getMDlinSyst();
                du = J\-rhs;
                % update solution vector for each model
                obj.updateStateMD(du);
@@ -211,18 +210,18 @@ classdef NonLinearSolverMultiDomain < handle
             if any(strcmp(obj.meshGlue.MD_struct(i).type,["inner","master"]))
                switch ph
                   case 'Poro'
-                     obj.state(domID).curr.dispCurr(ent_dof) = du(obj.meshGlue.MD_struct(i).set);
+                     obj.state(domID).curr.dispCurr(ent_dof) = du(obj.meshGlue.getDofs_MD(i));
                   case 'SPFlow'
-                     obj.state(domID).curr.pressure(ent_dof) = du(obj.meshGlue.MD_struct(i).set);
+                     obj.state(domID).curr.pressure(ent_dof) = du(obj.meshGlue.getDofs_MD(i));
                end
             else
                idM = getMaster(obj.meshGlue,i);
                switch ph
                   case 'Poro'
                      E = expandMortarOperator(obj.meshGlue,i);
-                     obj.state(domID).curr.dispCurr(ent_dof) = E*du(obj.meshGlue.MD_struct(idM).set);
+                     obj.state(domID).curr.dispCurr(ent_dof) = E*du(obj.meshGlue.getDofs_MD(idM));
                   case 'SPFlow'
-                     obj.state(domID).curr.pressure(ent_dof) = E*du(obj.meshGlue.MD_struct(idM).set);
+                     obj.state(domID).curr.pressure(ent_dof) = E*du(obj.meshGlue.getDofs_MD(idM));
                end
             end
          end

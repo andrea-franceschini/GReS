@@ -1,0 +1,35 @@
+% Input for multidomain simulations 
+% Domain 1 
+<Domain> 
+<Name> 
+Top
+<ModelType>
+Poromechanics_FEM 
+<Geometry> 
+Mesh/Top.msh 
+<Material>
+Materials/BurdensList.dat 
+<BoundaryConditions> 
+1
+load.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+ 
+% Domain 2 
+<Domain> 
+<Name> 
+Bottom
+<ModelType> 
+Poromechanics_FEM
+<Geometry> 
+Mesh/Bottom.msh
+<Material>  
+Materials/BurdensList.dat
+<BoundaryConditions> 
+1
+fix.dat
+<OutState>
+outTime.dat 
+<EndDomain> 
+ 
