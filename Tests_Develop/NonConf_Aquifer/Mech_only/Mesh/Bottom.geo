@@ -19,6 +19,6 @@ Physical Surface("Bottom_fixed",2) = {5};
 
 
 //Recombine Surface {:};
-MeshSize {:} = 300;
+MeshSize {:} = 50;
 Mesh 3;
 Save "Bottom.msh";

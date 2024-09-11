@@ -24,8 +24,9 @@ Mesh/Reservoir.msh
 <Material> 
 Materials/Reservoir_list.dat
 <BoundaryConditions> 
-1
-BCs/point_erog.dat
+2
+BCs/press_erog.dat
+BCs/press_inj.dat
 <OutState> 
 outTime.dat
 <EndDomain> 

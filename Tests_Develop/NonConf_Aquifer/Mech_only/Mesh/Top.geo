@@ -19,6 +19,6 @@ Physical Surface("Top_load",2) = {6};
 
 
 //Recombine Surface {:};
-MeshSize {:} = 400;
+MeshSize {:} = 80;
 Mesh 3;
 Save "Top.msh";

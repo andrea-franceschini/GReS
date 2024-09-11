@@ -66,7 +66,7 @@ for i = 1 : length(keys)
     bcDofs = [];
     for j = fields
         % get constrained DoF in global multidomain system
-        if mG.MD_struct(j).dom == domID
+        if mG.MD_struct(j).dom == domID && strcmp(ph_mod,mG.MD_struct(j).physic)
         bcDofs = bc.getDofs_MD(keys{i},mG,j);
         bcDofs = bcDofs + mG.countDoF(j);
         end
@@ -85,6 +85,7 @@ for i = 1 : length(keys)
                     rhs(bcDofs) = rhs(bcDofs) + rhsVal;
             end
         end
+        bcDofs = [];
     end
 end
 end

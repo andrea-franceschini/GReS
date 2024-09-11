@@ -191,9 +191,14 @@ classdef Mesh < handle
       obj.cellNumVerts = elems(ID,3);
       nVerts = max(obj.cellNumVerts);
       obj.cells = elems(ID,4:nVerts+3);
+      obj.cellVTKType = elems(ID,1);
       obj.cellTag = elems(ID,2);
       obj.nCells = length(obj.cellTag);
-      obj.cellVTKType = elems(ID,1);
+      if all(obj.cellTag==0)
+         obj.cellTag = obj.cellTag + 1;
+         obj.nCellTag = 1;
+      end
+
       %
       % Check for unsupported elements
       if any(~ismember(obj.cellVTKType,[10 12]))
@@ -264,6 +269,11 @@ classdef Mesh < handle
         % STORING DATA INSIDE OBJECT PROPERTIES
         % 3D ELEMENT DATA
         obj.coordinates = vtkStruct.points;
+        if any(obj.coordinates(:,3) ~= 0)
+           obj.nDim = 3;
+        else
+           obj.nDim = 2;
+        end
         obj.nNodes = size(obj.coordinates,1);
         cellsID = [10, 11, 12, 13, 14];
         ID = ismember(vtkStruct.cellTypes,cellsID);
@@ -307,6 +317,9 @@ classdef Mesh < handle
         % but region are not used in the current version of the code
 
     end
+
+
+
 
     
     % Function for call 3D elements' region based on their cellTag
@@ -427,6 +440,27 @@ classdef Mesh < handle
         surfMesh.surfaceNumVerts = obj.surfaceNumVerts(obj.surfaceTag == surfTag);
         surfMesh.nDim = 3;
     end
+
+    function addSurface(obj,id,topol)
+       % add a surface to mesh object given the surface topology
+       surf = load(topol); % standard topology file
+       obj.surfaces = [obj.surfaces; surf];
+       if any(obj.surfaceTag==id)
+          error('Surface iD already been defined')
+       else
+          obj.surfaceTag = [obj.surfaceTag; id*ones(size(surf,1),1)];
+       end
+
+       if isempty(obj.nSurfaceTag)
+          obj.nSurfaceTag = 1;
+       else
+          obj.nSurfaceTag = obj.nSurfaceTag + 1;
+       end
+       obj.surfaceNumVerts = [obj.surfaceNumVerts; sum(surf > 0,2)];
+       obj.surfaceVTKType(obj.surfaceNumVerts == 3) = 5;
+       obj.surfaceVTKType(obj.surfaceNumVerts == 4) = 8;
+    end
+
 
     function msh = getQuad4mesh(obj)
         assert(obj.cartGrid,'This method is valid only for Cartesian grids');

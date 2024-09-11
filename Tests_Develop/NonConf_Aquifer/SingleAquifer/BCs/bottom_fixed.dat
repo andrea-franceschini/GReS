@@ -1,4 +1,4 @@
-SurfBC            % BC item 
+NodeBC            % BC item 
 Dir            % BC type 
 Poro            % Physics 
 botFix            % BC name 

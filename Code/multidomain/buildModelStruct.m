@@ -2,10 +2,11 @@ function modStruct = buildModelStruct(fName,simParam)
 % build a structure array containing istances of all classes for different
 % domains
 fID = openReadOnlyFile(fName);
-dofFile = []; bcList = []; bc = []; gauss = [];
+% dofFile = []; bcList = []; bc = []; gauss = [];
 l = 0; c = 0;
 modStruct = [];
 while ~feof(fID)
+   dofFile = []; bcList = []; bc = []; gauss = [];
    line = readToken(fID,fName);
    l = l+1;
    if ~isempty(line) && ~strcmp(line(1),'%')
@@ -26,11 +27,12 @@ while ~feof(fID)
                topology = Mesh();
                mshline = readToken(fID,fName);
                l = l+1;
-               if contains(mshline,'.msh')
-                  topology.importGMSHmesh(mshline);
-               elseif contains(mshline,'.vtk')
-                  topology.importVTKmesh(Mesh(),mshline);
-               end
+               topology.importMesh(mshline);
+               % if contains(mshline,'.msh')
+               %    topology.importGMSHmesh(mshline);
+               % elseif contains(mshline,'.vtk')
+               %    topology.importVTKmesh(mshline);
+               % end
             case '<Gauss>'
                p = fscanf(fID,'%f');
                gauss = Gauss(p(1),p(2),p(3));

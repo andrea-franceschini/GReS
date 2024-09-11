@@ -2,6 +2,8 @@ NodeBC            % BC item
 Dir            % BC type 
 Flow            % Physics 
 erog            % BC name 
-press_erog/list 
-0.000000 press_erog/time0.dat 
-end
+BCs/press_erog/list 
+0.000000 BCs/press_erog/time0.dat 
+1.000000 BCs/press_erog/time1.dat 
+100.000000 BCs/press_erog/time2.dat 
+End

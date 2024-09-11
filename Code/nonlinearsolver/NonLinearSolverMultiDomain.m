@@ -31,8 +31,9 @@ classdef NonLinearSolverMultiDomain < handle
 
          % Compute matrices of Linear models (once for the entire simulation)
          for i = 1:obj.nDom
-            computeLinearMatrices(obj.models(i).Discretizer,obj.state(i).curr,obj.state(i).prev,obj.dt)
+            computeLinearMatrices(obj.meshGlue.model(i).Discretizer,obj.state(i).curr,obj.state(i).prev,obj.dt)
          end
+         fprintf('Done Linear matrices computation \n')
          %
          flConv = true; %convergence flag
          %
@@ -47,17 +48,17 @@ classdef NonLinearSolverMultiDomain < handle
 
             for i = 1:obj.nDom
                % Apply the Dirichlet condition value to the solution vector
-               if ~isempty(obj.models(i).BoundaryConditions)
-                  applyDirVal(obj.models(i).ModelType,obj.models(i).BoundaryConditions,...
+               if ~isempty(obj.meshGlue.model(i).BoundaryConditions)
+                  applyDirVal(obj.meshGlue.model(i).ModelType,obj.meshGlue.model(i).BoundaryConditions,...
                      obj.t, obj.state(i).curr);
                end
                %
                % Compute Rhs and matrices of NonLinear models
-               computeNLMatricesAndRhs(obj.models(i).Discretizer,...
+               computeNLMatricesAndRhs(obj.meshGlue.model(i).Discretizer,...
                   obj.state(i).curr,obj.state(i).prev,obj.dt);
-
+               
                % compute block Jacobian and block Rhs
-               obj.models(i).Discretizer.computeBlockJacobianAndRhs(delta_t);
+               obj.meshGlue.model(i).Discretizer.computeBlockJacobianAndRhs(delta_t);
             end
 
             % Get unique multidomain solution system
@@ -65,7 +66,9 @@ classdef NonLinearSolverMultiDomain < handle
 
             % Apply BCs to global linear system
             for i = 1:obj.nDom
-                [J,rhs] = applyBCAndForces_MD(i, obj.meshGlue, obj.t, obj.state(i).curr, J, rhs);
+               if ~isempty(obj.meshGlue.model(i).BoundaryConditions)
+                  [J,rhs] = applyBCAndForces_MD(i, obj.meshGlue, obj.t, obj.state(i).curr, J, rhs);
+               end
             end
 
             % compute Rhs norm
@@ -95,54 +98,56 @@ classdef NonLinearSolverMultiDomain < handle
                % update solution vector for each model
                obj.updateStateMD(du);
                for i = 1:obj.nDom
-                  obj.models(i).Discretizer.resetJacobianAndRhs();
+                  obj.meshGlue.model(i).Discretizer.resetJacobianAndRhs();
                   % Update tmpState
-                  computeNLMatricesAndRhs(obj.models(i).Discretizer,...
+                  computeNLMatricesAndRhs(obj.meshGlue.model(i).Discretizer,...
                      obj.state(i).curr,obj.state(i).prev,obj.dt);
                   % compute block Jacobian and block Rhs
-                  obj.models(i).Discretizer.computeBlockJacobianAndRhs(delta_t);
-                  % Apply BCs to the block-wise system
-                  % Apply BCs to the block-wise system
-                  if ~isempty(obj.models(i).BoundaryConditions)
-                     applyBCandForces(obj.models(i).ModelType, obj.models(i).Grid,...
-                        obj.models(i).BoundaryConditions,obj.models(i).Material,...
-                        obj.t, obj.models(i).Discretizer, obj.state(i).curr);
-                  end
+                  obj.meshGlue.model(i).Discretizer.computeBlockJacobianAndRhs(delta_t);
                end
 
-               % compute Rhs norm
-               rhsNorm = computeRhsNorm(obj);
+
+            % Get unique multidomain solution system
+            [J,rhs] = obj.meshGlue.getMDlinSyst();
+
+            % Apply BCs to global linear system
+            for i = 1:obj.nDom
+               if ~isempty(obj.meshGlue.model(i).BoundaryConditions)
+                  [J,rhs] = applyBCAndForces_MD(i, obj.meshGlue, obj.t, obj.state(i).curr, J, rhs);
+               end
+            end
+
+            % compute Rhs norm
+            rhsNorm = norm(rhs,2);
                if obj.simParameters.verbosity > 1
                   fprintf('%d     %e\n',obj.iter,rhsNorm);
                end
             end
             %
             % Check for convergence
-            %flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
-            flConv = true;
+            flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
             if flConv % Convergence
                for i = 1:obj.nDom
                   obj.state(i).curr.t = obj.t;
                   % Print the solution, if needed
-                  if isPoromechanics(obj.models(i).ModelType)
+                  if isPoromechanics(obj.meshGlue.model(i).ModelType)
                      obj.state(i).curr.advanceState();
                   end
-                  if isVariabSatFlow(obj.models(i).ModelType)
+                  if isVariabSatFlow(obj.meshGlue.model(i).ModelType)
                      obj.state(i).curr.updateSaturation()
                   end
                end
                if obj.t > obj.simParameters.tMax   % For Steady State
                   for i = 1:obj.nDom
-                     printState(obj.models(i).OutState,obj.state(i).curr);
+                     printState(obj.meshGlue.model(i).OutState,obj.state(i).curr);
                   end
                else
                   for i = 1:obj.nDom
-                     printState(obj.models(i).OutState,obj.state(i).prev,obj.state(i).curr);
+                     printState(obj.meshGlue.model(i).OutState,obj.state(i).prev,obj.state(i).curr);
                   end
                end
             end
 
-            return
             %
             % Manage next time step
             delta_t = manageNextTimeStep(obj,delta_t,flConv);
@@ -160,7 +165,7 @@ classdef NonLinearSolverMultiDomain < handle
          obj.nInt = numel(obj.meshGlue.interfaces);
          obj.state = repmat(struct('prev',{},'curr',{}),obj.nDom,1);
          for i = 1:obj.nDom
-            obj.state(i).prev = obj.models(i).State;
+            obj.state(i).prev = obj.meshGlue.model(i).State;
             obj.state(i).curr = copy(obj.state(i).prev);
          end
       end
@@ -169,12 +174,12 @@ classdef NonLinearSolverMultiDomain < handle
          t = obj.simParameters.tMax;
          told = t;
          for i = 1:obj.nDom
-            if obj.models(i).OutState.modTime
-               tmp = find(obj.t<obj.models(i).outState.timeList(),1,'first');
+            if obj.meshGlue.model(i).OutState.modTime
+               tmp = find(obj.t<obj.meshGlue.model(i).outState.timeList(),1,'first');
                if ~conv
-                  t = min([obj.t + obj.dt, obj.t + dt, obj.models(i).OutState.timeList(tmp)]);
+                  t = min([obj.t + obj.dt, obj.t + dt, obj.meshGlue.model(i).OutState.timeList(tmp)]);
                else
-                  t = min([obj.t + obj.dt, obj.models(i).OutState.timeList(tmp)]);
+                  t = min([obj.t + obj.dt, obj.meshGlue.model(i).OutState.timeList(tmp)]);
                end
             else
                t = obj.t + obj.dt;
@@ -190,10 +195,10 @@ classdef NonLinearSolverMultiDomain < handle
          %Return maximum norm of the entire domain
          rhsNorm = zeros(obj.nDom,1);
          for i = 1:obj.nDom
-            nRhs = length(obj.models(i).DoFManager.subList);
+            nRhs = length(obj.meshGlue.model(i).DoFManager.subList);
             rhsNorm_loc = zeros(nRhs,1);
             for j = 1:nRhs
-               rhsNorm_loc(j) = norm(obj.models(i).Discretizer.rhs{j}, obj.simParameters.pNorm);
+               rhsNorm_loc(j) = norm(obj.meshGlue.model(i).Discretizer.rhs{j}, obj.simParameters.pNorm);
             end
             rhsNorm(i) = sqrt(sum(rhsNorm_loc.^2));
          end
@@ -210,18 +215,18 @@ classdef NonLinearSolverMultiDomain < handle
             if any(strcmp(obj.meshGlue.MD_struct(i).type,["inner","master"]))
                switch ph
                   case 'Poro'
-                     obj.state(domID).curr.dispCurr(ent_dof) = du(obj.meshGlue.getDofs_MD(i));
+                     obj.state(domID).curr.dispCurr(ent_dof) = obj.state(domID).curr.dispCurr(ent_dof) + du(obj.meshGlue.getDofs_MD(i));
                   case 'SPFlow'
-                     obj.state(domID).curr.pressure(ent_dof) = du(obj.meshGlue.getDofs_MD(i));
+                     obj.state(domID).curr.pressure(ent_dof) = obj.state(domID).curr.pressure(ent_dof) + du(obj.meshGlue.getDofs_MD(i));
                end
             else
                idM = getMaster(obj.meshGlue,i);
                switch ph
                   case 'Poro'
                      E = expandMortarOperator(obj.meshGlue,i);
-                     obj.state(domID).curr.dispCurr(ent_dof) = E*du(obj.meshGlue.getDofs_MD(idM));
+                     obj.state(domID).curr.dispCurr(ent_dof) = obj.state(domID).curr.dispCurr(ent_dof) + E*du(obj.meshGlue.getDofs_MD(idM));
                   case 'SPFlow'
-                     obj.state(domID).curr.pressure(ent_dof) = E*du(obj.meshGlue.getDofs_MD(idM));
+                     obj.state(domID).curr.pressure(ent_dof) = obj.state(domID).curr.pressure(ent_dof) + E*du(obj.meshGlue.getDofs_MD(idM));
                end
             end
          end
@@ -250,7 +255,7 @@ classdef NonLinearSolverMultiDomain < handle
          if flConv % Go on if converged
             tmpVec = obj.simParameters.multFac;
             for i =1:obj.nDom
-               if isFlow(obj.models(i).ModelType)
+               if isFlow(obj.meshGlue.model(i).ModelType)
                   dpMax = max(abs(obj.state(i).curr.pressure - obj.state(i).prev.pressure));
                   tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
                      obj.simParameters.pTarget/(dpMax + obj.simParameters.relaxFac* ...

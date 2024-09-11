@@ -231,6 +231,9 @@ classdef Boundaries < handle
                 end
         end
 
+        % check if any entity belong to requested field
+        %if ~any(ismembc(ents,))
+
         
         % get component-wise numbering
         if nEnts > 1
@@ -249,6 +252,8 @@ classdef Boundaries < handle
                 ents = find(ismembc(mG.MD_struct(d).entities,ents));
                 c = find(strcmp(["x","y","z"],obj.getDirection(identifier)));
                 list = 3*(ents-1)+c;
+            else
+               list = ents;
             end
         end
 

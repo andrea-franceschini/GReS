@@ -2,7 +2,7 @@ function [coord,elems] = importVTKmesh(fileName)
 % Read VTK mesh calling MEX-file and post-processing output structure
 % Cell data handling still missing
 
-out = mx_vtkRead(fileName); % call to mex file
+out = vtkRead(fileName); % call to mex file
 
 % collecting data struct in GReS format
 coord = out.points;

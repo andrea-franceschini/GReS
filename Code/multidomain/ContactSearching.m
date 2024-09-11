@@ -14,7 +14,7 @@ classdef ContactSearching < handle
         leaf2elem2
         elemConnectivity
         dim
-        scale = 0.3;
+        scale = 0.3;   % bounding box expansion (ratio w.r.t elem max dim)
     end
     
     methods
@@ -130,12 +130,12 @@ classdef ContactSearching < handle
             if numel(surfID) > 2
                % split using cutting plane
                % oriented like axis i
-               % passing trough point m
+               % passing trough point m (median of centroid coords)
                [~,i] = max(abs(ktopVals(1,:) - ktopVals(2,:)));
-               m = median(prim(:,i));
+               %m = median(prim(:,i));
                ktopVals = (ktopVals(:))';
                surfPrim = surfCentroid(surfID,1:obj.dim)*obj.polytop(:,i);
-               id = surfPrim < m;
+               id = surfPrim < median(surfPrim); 
                lCells = surfID(id);
                rCells = surfID(~id);
                assert(length(lCells)+length(rCells) == length(surfID), 'Some elements left out from splitting procedure');
