@@ -9,20 +9,21 @@ degree = 1;
 
 type = 'gauss';
 
-nSizes = 1; % number of uniform refinment for convergence analysis
-nMnodes = 2; % number of nodes for the first mesh refinment
+nSizes = 8; % number of uniform refinment for convergence analysis
+nMnodes = 5; % number of nodes for the first mesh refinment
 errNormRBF = zeros(nSizes,1);
 errNormSB = errNormRBF;
 errNormEB = errNormRBF;
+errNormRBF_lump = errNormRBF;
 for sizeCount = 1:nSizes  % loop trough different mesh refinments
     nMaster = nMnodes*(2^(sizeCount-1));
-    nSlave = round(1.5*nMaster);
+    nSlave = round(1.3*nMaster);
     master = zeros(nMaster,2); % coordinates of master side
     slave = zeros(nSlave,2);
     x1 = -1;
     x2 = 1;
     x3 = -1;
-    x4 = 1.35;
+    x4 = 1;
     % x-coordinates
     master(:,1) = (linspace(x1,x2,nMaster))';
     slave(:,1) = (linspace(x3,x4,nSlave))';
@@ -51,6 +52,14 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
     [D_SB,M_SB,E_SB] = mortar.computeMortarSegmentBased(nGP);
     
     E_RBF = D_RBF\M_RBF;
+
+    D_RBF_lump = diag(sum(D_RBF,2));
+    E_RBF_lump = D_RBF_lump\M_RBF;
+    
+    % remove useless components to make it sparse
+    E_RBF(abs(E_RBF) < 1e-4) = 0;
+    E_RBF = E_RBF./sum(E_RBF,2);
+    spE_RBF = nnz(E_RBF)/numel(E_RBF);
     % Analytical function to interpolate
     f = @(x) sin(4*x) + x.^2;
     
@@ -58,6 +67,7 @@ for sizeCount = 1:nSizes  % loop trough different mesh refinments
     errNormSB(sizeCount) = mortar.computeInterpError(E_SB,f);
     errNormEB(sizeCount) = mortar.computeInterpError(E_EB,f);
     errNormRBF(sizeCount) = mortar.computeInterpError(E_RBF,f);
+    errNormRBF_lump(sizeCount) = mortar.computeInterpError(E_RBF_lump,f);
     %errNormRBF_w(sizeCount) = mortar.computeInterpError(E_RBF_w,f);
 end
 
@@ -80,7 +90,8 @@ fprintf(fID,'%2.6e \n',h);
 loglog(h,errNormRBF,'b-s')
 hold on
 loglog(h,errNormEB,'g-^')
-legend('RBF','Element-based')
+loglog(h,errNormRBF_lump,'r-o')
+legend('RBF','Element-based','lumped RBF')
 
 %% Plot results of analytical function
 

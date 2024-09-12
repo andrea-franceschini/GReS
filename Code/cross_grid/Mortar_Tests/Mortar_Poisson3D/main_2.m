@@ -22,7 +22,7 @@ nGrids = 4;
 fPlot = true;
 nGP = 2;
 nInt = 4;
-type = 'eb';
+type = 'gauss';
 brokenL2 = zeros(nGrids,1);
 brokenH1 = zeros(nGrids,1);
 h = zeros(nGrids,1);
@@ -45,7 +45,7 @@ fileNameSlave = [];
 
 % Set the input file name
 % selecting master and slave domain
-flagLeft = 'slave';
+flagLeft = 'master';
 if strcmp(flagLeft, 'master')
     for k = 1:nGrids
         fileNameMaster = [fileNameMaster; strcat('meshConv/LeftBlock_h',num2str(k),'.msh')];
