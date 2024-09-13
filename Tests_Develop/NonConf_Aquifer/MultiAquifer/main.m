@@ -9,12 +9,12 @@ close all
 fprintf('MULTIAQUIFER MODEL \n')
 fprintf('___________________\n\n')
 %% Define mesh objects
-% [d1,d2,d3,d4,d5] = deal(Mesh(),Mesh(),Mesh(),Mesh(),Mesh());
-% d1.importVTKmesh('model-2km/output_001.vtk');
-% d2.importVTKmesh('model-2km/output_002.vtk');
-% d3.importVTKmesh('model-2km/output_003.vtk');
-% d4.importVTKmesh('model-2km/output_004.vtk');
-% d5.importVTKmesh('model-2km/output_005.vtk');
+[d1,d2,d3,d4,d5] = deal(Mesh(),Mesh(),Mesh(),Mesh(),Mesh());
+d1.importVTKmesh('model-2km/output_001.vtk');
+d2.importVTKmesh('model-2km/output_002.vtk');
+d3.importVTKmesh('model-2km/output_003.vtk');
+d4.importVTKmesh('model-2km/output_004.vtk');
+d5.importVTKmesh('model-2km/output_005.vtk');
 
 %%
 % n1 = find(all([d2.coordinates(:,1)==0, d2.coordinates(:,2)==0],2));
@@ -52,9 +52,8 @@ model(5).Grid.topology.addSurface(1,'model-2km/vol_5_surf_1.topol');
 
 %% Load mesh glue structure (avoid recomputing mortar every time)
 fprintf('Computing mortar utils \n')
-tic
-mG = MeshGlue(model,'interfaces_slaveFlow.dat');
-fprintf('Done computing mortar utils t = %1.4f \n',toc)
+mG = MeshGlue(model,'interfaces.dat');
+fprintf('Done computing mortar utils\n')
 
 %meshGlueStruct = load("meshGlue_aquiferSlave.mat");
 %mG = meshGlueStruct.mG;
@@ -68,7 +67,6 @@ for i = 1:numel(mG.interfaces)
     E = E./sum(E,2);
     mG.interfaces(i).InterpOperator = sparse(E);
 end
-clear E
 
 fprintf('Model Setup completed \n')
 % fName = 'interfaces_slaveFlow.dat';

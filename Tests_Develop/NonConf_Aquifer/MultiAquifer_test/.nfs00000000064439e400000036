@@ -1,7 +1,0 @@
-NodeBC            % BC item 
-Dir            % BC type 
-Poro            % Physics 
-fixed_bottom            % BC name 
-bot_fix_L5/list 
-0.000000 bot_fix_L5/time0.dat 
-End
