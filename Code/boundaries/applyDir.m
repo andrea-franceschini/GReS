@@ -1,7 +1,9 @@
 function [mat, rhs] = applyDir(dofs, vals, mat, rhs)
 % Apply Dirichlet BCs to a linear system (no penalty)
 % set Dir rows to zero
-mat(dofs,:) = 0;
+mat = mat';
+mat(:,dofs) = 0; % setting columns is much faster
+mat = mat';
 % Update rhs with columns to be removed
 rhs = rhs - mat(:,dofs)*vals;
 % set rhs vals to dir vals

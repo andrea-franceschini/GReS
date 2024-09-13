@@ -6,4 +6,6 @@ Step by step modeling
 
 3) Single_aquifer
 
-3) MultiAquifer
+4) MultiAquifer
+
+5) MultiAquifer: final model with 150k dofs (62k in condensated lin syst with coarse master sides)

@@ -25,6 +25,15 @@ model = buildModelStruct('domains.dat',simParam);
 %% Setup computations between non conforming domains
 mG = MeshGlue(model,'interfaces.dat');
 
+%% modify interpolation operator to be sparse
+for i = 1:numel(mG.interfaces)
+    E = mG.interfaces(i).InterpOperator;
+    E(abs(E) < 1e-4) = 0;
+    E = E./sum(E,2);
+    mG.interfaces(i).InterpOperator = sparse(E);
+end
+
+
 %% MULTIDOMAIN SOLUTION STRATEGY
 NSolv_MD = NonLinearSolverMultiDomain(simParam,model,mG);
 % Solution loop
