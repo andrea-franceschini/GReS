@@ -25,7 +25,7 @@ Line(4) = {4,1};
 Curve Loop(1) = {1,2,3,4};
 Plane Surface(1) = {1};
 
-Extrude{0,0,-60} {Surface{1};Layers{4};}
+Extrude{0,0,-60} {Surface{1};Layers{2};}
 
 
 Physical Volume("L4", 1) = {1};
