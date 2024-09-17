@@ -77,7 +77,7 @@ fprintf('Model Setup completed \n')
 %% MULTIDOMAIN SOLUTION STRATEGY
 NSolv_MD = NonLinearSolverMultiDomain(simParam,model,mG);
 %Solution loop
-NSolv_MD.NonLinearLoop_multiAquifer();
+NSolv_MD.NonLinearLoop();
 
 %%
 for i = 1:numel(model) 

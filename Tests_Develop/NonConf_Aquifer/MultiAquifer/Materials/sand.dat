@@ -1,5 +1,5 @@
 Elastic                           % material model
-1500000      0.3                   % E [kPa], nu
+150000      0.3                   % E [kPa], nu
 
 PorousRock                        % material model
 0.3      21      1.0              % porosity, specific weight (kPa), biot coefficient
