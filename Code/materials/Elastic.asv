@@ -81,28 +81,27 @@ classdef Elastic < handle
                   %deformazione plastica e zero
                   p = sum(sigmaIn(i, 1:3)); %calcolo di p
                   force = q/1.732 + obj.alpha*p-obj.epsilon*(obj.co);
-                  
-                  while force > 1e-10
-                      %fprintf("force is positive \n");
+                  while force > 0
+                      fprintf("force is positive \n");
                       sigma = sigmaIn;
                       G = obj.E/(2*(1+obj.nu));
                       K = obj.E/(3*(1+obj.nu));
                       %s = sigmaIn(i, 1:3)- p/3;
-                      n = (1.5/q).*(sigma(i, 1:6)- p/3);
-                      %fprintf("%.18f \n", force);
+                      n = (1.5/q).*(sigma(i, 1:3)- p/3);
+                      fprintf("%.18f \n", sigma(i, 1:3));
                       % Δλ
-                      lambdac = max(0, force/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));% fprintf("%.16f | lambdac \n", lambdac);
-                      p = p-lambdac*K*obj.beta;%fprintf("%.16f | p \n", p);
+                      lambdac = max(0, force/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h)); fprintf("%.16f | lambdac \n", lambdac);
+                      p = p-lambdac*K*obj.beta;fprintf("%.16f | p \n", p);
                       if q-lambdac*1.732*G < 0
-                          %fprintf("q = 0 \n");
-                          %force = obj.alpha*p - obj.epsilon*(obj.co);fprintf("%.22f \n", force); %no shear force 
+                          fprintf("q = 0 \n");
+                          force = obj.alpha*p - obj.epsilon*(obj.co); %no shear force
                           sigma(i, 1:6) = (p-lambdac*K*obj.beta).*ones(1,6);
                       else
-                          q = q-lambdac*1.732*G;%fprintf("%.16f | q \n", q);
-                          force = q/1.732 + obj.alpha*p-obj.epsilon*(obj.co);% fprintf("%.22f \n", force);
-                          sigma(i, 1:6) = sigma(i, 1:6) - lambdac.*((2*G/1.732).*n+K*obj.beta);
+                          q = q-lambdac*1.732*G;fprintf("%.16f | q \n", q);
+                          force = q/1.732 + obj.alpha*p-obj.epsilon*(obj.co); 
+                          sigma(i, 1:6) = sigma(i, 1:6) - lambdac*((2*G/1.732).*n+K*obj.beta);
                       end
-                      %fprintf("%.16f | sigma \n", sigma);
+                      fprintf("%.16f | sigma \n", sigma);
                   end
                end
         end

@@ -1,5 +1,5 @@
 Elastic                           % material model
-100000      0.25                  % E [kPa], nu
+100000      0.25       10   20 0    0                % E [kPa], nu, psi, phi, c0, h
 
 PorousRock                        % material model
 0.375      21                       % porosity, compressibility (alpha) in kPa, specific weight kPa
