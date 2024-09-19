@@ -9,6 +9,11 @@ Written in MATLAB, GReS offers maximum flexibility and has been designed to lowe
 
 We invite you to explore GReS and leverage its powerful capabilities for your geomechanical reservoir simulation needs. Feel free to reach out with any questions or feedback - we are here to support you on your simulation journey.
 
+## Publications ##
+
+ArXiv link to a publication describing a novel interpolation strategy fot the mortar method:
+http://arxiv.org/abs/2409.11735
+
 ## Main contributors ##
 
 The code is developed by the research group in Numerical Analysis at University of Padova, under the leadership of Prof. Massimiliano Ferronato. The active members dedicated to this project are:
