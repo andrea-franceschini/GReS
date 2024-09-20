@@ -248,11 +248,17 @@ classdef Mortar3D < handle
             cm = 0;
             for j = 1:obj.nElSlave
                 % Compute Slave quantities
-                NSlave = getBasisFinGPoints(elemSlave); % Slave basis functions
                 dJWeighed = elemSlave.getDerBasisFAndDet(j,3); % Weighted Jacobian
                 % get Gauss Points position in the real space
                 ptsGauss = getGPointsLocation(elemSlave,j);
                 idSlave = obj.slaveTopol(j,:);
+                NSlave = getBasisFinGPoints(elemSlave); % Slave basis functions
+%                 switch mult_type
+%                     case 'standard'
+%                         NSlaveMult = NSlave; % Slave basis functions
+%                     case 'dual'
+%                         NSlaveMult = computeDualBasisF(obj,elemSlave,ptsGauss,dJWeighed);
+%                 end
                 % compute slave basis function (still using radial basis
                 % interpolation)
                 %ptsIntS = ptsIntMatS(:,[3*j-2 3*j-1 3*j]);
@@ -555,6 +561,8 @@ classdef Mortar3D < handle
     end
 
     methods (Access=private)
+
+        
        function [bf,pos,varargout] = computeMortarBasisF(obj,elemID,nInt,topol,coord,elem)
           % evaluate shape function in the real space and return position of
           % integration points in the real space (extended to x,y)

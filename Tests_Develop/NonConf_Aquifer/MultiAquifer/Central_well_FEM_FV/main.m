@@ -8,11 +8,11 @@ close all
 fprintf('MULTIAQUIFER MODEL \n')
 fprintf('___________________\n\n')
 %% Define mesh objects
-% [d1,d2,d3,d4,d5] = deal(Mesh(),Mesh(),Mesh(),Mesh(),Mesh());
-% d1.importMesh('model-mixed/output_001.vtk');
-% d2.importMesh('model-mixed/output_002.vtk');
+%[d1,d2,d3,d4,d5] = deal(Mesh(),Mesh(),Mesh(),Mesh(),Mesh());
+%d1.importMesh('model-mixed/output_001.vtk');
+%d2.importMesh('model-mixed/output_002.vtk');
 % d3.importMesh('model-mixed/output_003.vtk');
-% d4.importMesh('model-mixed/output_004.vtk');
+%d4.importMesh('model-mixed/output_004.vtk');
 % d5.importMesh('model-mixed/output_005.vtk');
 
 %%
@@ -26,8 +26,22 @@ fprintf('___________________\n\n')
 
 %% Utils
 % bot_nodes = load('bot_nodes');
-% writeBCfiles('press_L2','NodeBC','Dir','Flow',[],'injection_L2',[0 1 5 6 100],[0 100 100 0 0],[403 405]);
-% writeBCfiles('press_L2_nod','NodeBC','Dir','Flow',[],'press_L2',[0 1],[0 -100],[397,403]);
+% cL2inj = 9409:9412;
+% cL2erog = 193:196; 
+% nL2inj = unique(d2.cells(cL2inj,:));
+% nL2erog = unique(d2.cells(cL2erog,:));
+% cL4inj = 9409:9412;
+% cL4erog = 193:196; 
+% nL4inj = unique(d4.cells(cL4inj,:));
+% nL4erog = unique(d4.cells(cL4erog,:));
+% writeBCfiles('inj_L2_nod','NodeBC','Dir','Flow',[],'injection_L2',[0 1 5 6 100],[0 100 100 0 0],nL2inj);
+% writeBCfiles('erog_L2_nod','NodeBC','Dir','Flow',[],'erog_L2',[0 1 5 6 100],[0 -100 -100 0 0],nL2erog);
+% writeBCfiles('inj_L4_nod','NodeBC','Dir','Flow',[],'injection_L4',[0 1 5 6 100],[0 100 100 0 0],nL4inj);
+% writeBCfiles('erog_L4_nod','NodeBC','Dir','Flow',[],'erog_L4',[0 1 5 6 100],[0 -100 -100 0 0],nL4erog);
+% writeBCfiles('inj_L2_elem','ElementBC','Dir','Flow',[],'injection_L2',[0 1 5 6 100],[0 100 100 0 0],cL2inj);
+% writeBCfiles('erog_L2_elem','ElementBC','Dir','Flow',[],'erog_L2',[0 1 5 6 100],[0 -100 -100 0 0],cL2erog);
+% writeBCfiles('inj_L4_elem','ElementBC','Dir','Flow',[],'injection_L4',[0 1 5 6 100],[0 100 100 0 0],cL4inj);
+% writeBCfiles('erog_L4_elem','ElementBC','Dir','Flow',[],'erog_L4',[0 1 5 6 100],[0 -100 -100 0 0],cL4erog);
 % writeBCfiles('press_L4_nod','NodeBC','Dir','Flow',[],'press_L4',[0 1],[0 -100],[397,403]);
 % writeBCfiles('press_L2_elem','ElementBC','Dir','Flow',[],'press_L2',[0 1],[0 -100],[9412,193]);
 % writeBCfiles('press_L4_elem','ElementBC','Dir','Flow',[],'press_L4',[0 1],[0 -100],[9412,196]);

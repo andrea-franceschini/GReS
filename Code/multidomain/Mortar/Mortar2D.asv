@@ -234,6 +234,7 @@ classdef Mortar2D < handle
               switch mult_type
                   case 'standard'
                       NSlaveMult = NSlave;
+                      NSla
                   case 'dual'
                       % compute dual basis function
                       NSlaveMult = computeDualBasisF(obj,gpW,gpPos,h);
@@ -258,7 +259,7 @@ classdef Mortar2D < handle
                     NMaster = NMaster(id,:);
                     Mloc = NSlaveMult(id,:)'*(NMaster.*gpW(id));
                     Mloc = Mloc*(0.5*h);
-                    Dloc = NSlaveMult(id,:)'*(NSlave(id,:).*gpW(id));
+                    Dloc = NSlaveM(id,:)'*(NSlave(id,:).*gpW(id));
                     Dloc = Dloc*(0.5*h);
                     M(idSlave, idMaster) = M(idSlave, idMaster) + Mloc;
                     D(idSlave, idSlave) = D(idSlave, idSlave) + Dloc;
@@ -267,7 +268,6 @@ classdef Mortar2D < handle
                     gpW = gpW(~id);
                     ptsGauss = ptsGauss(~id,:);
                     NSlave = NSlave(~id,:);
-                    NSlaveMult = NSlaveMult(~id,:);
                  end
               end
               if any(id==0) % All GP have been sorted out
@@ -311,10 +311,6 @@ classdef Mortar2D < handle
            t = toc;
             M = M(obj.nodesSlave, obj.nodesMaster);
             D = D(obj.nodesSlave, obj.nodesSlave);
-            if strcmp(mult_type,'dual')
-                % make sure D is diagonal
-                D = diag(diag(D));
-            end
             if nargout == 3
                 varargout{1} = t;
             elseif nargout == 4

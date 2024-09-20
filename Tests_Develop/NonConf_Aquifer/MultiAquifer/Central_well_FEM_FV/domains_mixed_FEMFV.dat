@@ -26,8 +26,9 @@ model-mixed/output_002.vtk
 <Material> 
 Materials/aquifer.dat
 <BoundaryConditions> 
-1
-BCs/press_L2_elem.dat
+2
+BCs/inj_L2_elem.dat
+BCs/erog_L2_elem.dat
 <OutState> 
 outTime.dat
 <EndDomain> 
@@ -59,8 +60,9 @@ model-mixed/output_004.vtk
 <Material> 
 Materials/aquifer.dat
 <BoundaryConditions> 
-1
-BCs/press_L4_elem.dat
+2
+BCs/inj_L4_elem.dat
+BCs/erog_L4_elem.dat
 <OutState> 
 outTime.dat
 <EndDomain> 

@@ -5,14 +5,14 @@ close all
 clc
 
 type = 'gauss';
-nGP = 3;
+nGP = 4;
 nInt = 4;
 f = @(x) sin(3*x);
 
 % interpolate variable from quad mesh to triangular mesh
 nMaster0 = 3;
 r = 0.6;
-ndim = 8;
+ndim = 5;
 err_standard = zeros(ndim,1);
 err_dual = zeros(ndim,1);
 hs = err_dual;
@@ -33,22 +33,15 @@ for i = 1:ndim
     slave_top = build_topol(slave(:,1));
 
     mortar = Mortar2D(1,'set',master_top,slave_top,master,slave);
-    tic
     [D_RBF_standard,M_RBF_standard] = mortar.computeMortarRBF(nGP,nInt,type,'standard');
-    t_st = toc;
     E_RBF_standard = D_RBF_standard\M_RBF_standard;
-    tic
     [D_RBF_dual,M_RBF_dual] = mortar.computeMortarRBF(nGP,nInt,type,'dual');
-    t_dual = toc;
     E_RBF_dual = D_RBF_dual\M_RBF_dual;
     err_standard(i) = computeInterpError(mortar,E_RBF_standard,f);
     err_dual(i) = computeInterpError(mortar,E_RBF_dual,f);
 end
 
-loglog(hs,err_standard)
-hold on
-loglog(hs,err_dual)
-legend('standard','dual')
+plot()
 
 
 
