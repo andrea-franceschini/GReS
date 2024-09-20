@@ -25,6 +25,8 @@ classdef Mesh < handle
     nCellTag
     % Number of nodes for each 3D element
     cellNumVerts
+    % Centroid coordinates of each cell
+    cellCentroid
     % Surface to node mapping:
     % 2D elements' nodes sequences
     surfaces
@@ -194,6 +196,7 @@ classdef Mesh < handle
       obj.cellVTKType = elems(ID,1);
       obj.cellTag = elems(ID,2);
       obj.nCells = length(obj.cellTag);
+      obj.cellCentroid = obj.getCellCentroids();
       if all(obj.cellTag==0)
          obj.cellTag = obj.cellTag + 1;
          obj.nCellTag = 1;
@@ -275,8 +278,8 @@ classdef Mesh < handle
            obj.nDim = 2;
         end
         obj.nNodes = size(obj.coordinates,1);
-        cellsID = [10, 11, 12, 13, 14];
-        ID = ismember(vtkStruct.cellTypes,cellsID);
+        cellsID = [10, 12];
+        ID = ismember(vtkStruct.cellTypes ,cellsID);
         obj.cellNumVerts = nnz(ID);
         obj.cells = double(vtkStruct.cells(ID,:));
         obj.cellVTKType = double(vtkStruct.cellTypes(ID));
@@ -441,6 +444,14 @@ classdef Mesh < handle
         surfMesh.nDim = 3;
     end
 
+    function centroids = getCellCentroids(obj)
+       centroids = zeros(obj.nCells,3);
+       for i = 1:obj.nCells
+          coord = obj.coordinates(obj.cells(i,:),:);
+          centroids(i,:) = sum(coord,1)/size(coord,1);
+       end
+    end
+
     function addSurface(obj,id,topol)
        % add a surface to mesh object given the surface topology
        surf = load(topol); % standard topology file
@@ -458,7 +469,7 @@ classdef Mesh < handle
        end
        obj.surfaceNumVerts = [obj.surfaceNumVerts; sum(surf > 0,2)];
        obj.surfaceVTKType(obj.surfaceNumVerts == 3) = 5;
-       obj.surfaceVTKType(obj.surfaceNumVerts == 4) = 8;
+       obj.surfaceVTKType(obj.surfaceNumVerts == 4) = 9;
     end
 
 

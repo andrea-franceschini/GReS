@@ -89,9 +89,14 @@ classdef MeshGlue < handle
             obj.domainConn{i} = unique(map(r,c_adj),'stable');
             %
             for ph = 1:nPh
+               ph_mod = translatePhysic(phList(ph),obj.model(i).ModelType);
                k = k+1;
                kk = 0;
-               inner_nodes = true(obj.model(i).Grid.topology.nNodes,1);
+               if obj.model(i).ModelType.isFEMBased(ph_mod)
+                   inner_ents = true(obj.model(i).Grid.topology.nNodes,1);
+               elseif obj.model(i).ModelType.isFVTPFABased(ph_mod)
+                   inner_ents = true(obj.model(i).Grid.topology.nCells,1);
+               end
                for j = 1:length(r)
                   if isMortarField(obj,i,r(j),phList(ph))
                      k = k + 1;
@@ -112,12 +117,12 @@ classdef MeshGlue < handle
                      obj.MD_struct(k).tag = r(j);
                      obj.MD_struct(k).dom = i;
                      obj.MD_struct(k).physic = phList(ph);
-                     inner_nodes(list) = 0;
+                     inner_ents(list) = 0;
                   end
                end
                % store inner nodes
-               obj.MD_struct(k-kk).set = obj.model(i).DoFManager.getDoF(phList(ph),find(inner_nodes));
-               obj.MD_struct(k-kk).entities = find(inner_nodes);
+               obj.MD_struct(k-kk).set = obj.model(i).DoFManager.getDoF(phList(ph),find(inner_ents));
+               obj.MD_struct(k-kk).entities = find(inner_ents);
                obj.MD_struct(k-kk).type = 'inner';
                obj.MD_struct(k-kk).tag = 0;
                obj.MD_struct(k-kk).dom = i;

@@ -1,0 +1,84 @@
+% Input for multidomain simulations 
+% Domain 1 
+<Domain> 
+<Name> 
+L1_mixed_FEM
+<ModelType>
+Poromechanics_FEM 
+<Geometry> 
+model-mixed/output_001.vtk
+<Material> 
+Materials/aquitard.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+ 
+% Domain 2 
+<Domain> 
+<Name> 
+L2_mixed_FEM
+<ModelType>
+Poromechanics_FEM,SinglePhaseFlow_FEM
+<Geometry> 
+model-mixed/output_002.vtk
+<Gauss>
+12 2 3
+<Material> 
+Materials/aquifer.dat
+<BoundaryConditions> 
+1
+BCs/press_L2_nod.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+ 
+% Domain 3 
+<Domain> 
+<Name> 
+L3_mixed_FEM
+<ModelType>
+Poromechanics_FEM 
+<Geometry> 
+model-mixed/output_003.vtk
+<Material> 
+Materials/aquitard.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+
+% Domain 4 
+<Domain> 
+<Name> 
+L4_mixed_FEM
+<ModelType>
+Poromechanics_FEM,SinglePhaseFlow_FEM
+<Geometry> 
+model-mixed/output_004.vtk
+<Gauss>
+12 2 3
+<Material> 
+Materials/aquifer.dat
+<BoundaryConditions> 
+1
+BCs/press_L4_nod.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+
+% Domain 5 
+<Domain> 
+<Name> 
+L5_mixed_FEM
+<ModelType>
+Poromechanics_FEM 
+<Geometry> 
+model-mixed/output_005.vtk
+<Material> 
+Materials/aquitard.dat
+<BoundaryConditions> 
+1
+BCs/bot_fix_L5.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+ 

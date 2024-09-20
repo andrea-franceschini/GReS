@@ -242,7 +242,7 @@ classdef Boundaries < handle
             i1 = 1;
             for ii = 1:comps
                 i2 = i1 + nEnts(ii);
-                add_ents = find(ismembc(mG.MD_struct(d).entities,ents(i1:i2-1)));
+                add_ents = find(ismember(mG.MD_struct(d).entities,ents(i1:i2-1)));
                 add_ents = comps*(add_ents-1)+ii;
                 list = [list;add_ents];
                 i1 = i2;
@@ -275,38 +275,46 @@ classdef Boundaries < handle
     function physics = getPhysics(obj, identifier)
       physics = obj.getData(identifier).physics;
     end
+
+    function ents = getCompEntities(obj,identifier,ents)
+       % map entities number to component dof
+       % consider solution components
+       nEnts = obj.getData(identifier).data.nEntities;
+       comps = length(nEnts);
+       i1 = 1;
+       for i = 1:comps
+          i2 = i1 + nEnts(i);
+          ents(i1:i2-1) = comps*(ents(i1:i2-1)-1)+i;
+          i1 = i2;
+       end
+    end
+
+    function ents = getEntities(obj, identifier)
+       % notempty varargin ---> return entities with component multiplication
+       %this method return the index of constrained entities inside solution vectors
+       %needed for applying Dirichlet BCs
+       %(pressure, displacement)...
+       ents = obj.getData(identifier).data.entities;
+    end
     
-    function ents = getEntities(obj, identifier, varargin)
-      % notempty varargin ---> return entities with component multiplication
-      %this method return the index of constrained entities inside solution vectors
-      %needed for applying Dirichlet BCs
-      %(pressure, displacement)...  
-      ents = obj.getData(identifier).data.entities; 
-      % consider solution components
-      if ~isempty(varargin)
-          nEnts = obj.getData(identifier).data.nEntities;
-          comps = length(nEnts);
-          %return consistent entitity with discretization DoF
-          %Example FEM - SurfBC ---> NodeBC 
-          %handle multicomponents dof
-          i1 = 1;
-          for i = 1:comps
-              i2 = i1 + nEnts(i);
-              ents(i1:i2-1) = comps*(ents(i1:i2-1)-1)+i;
-              i1 = i2;
-          end
-      end
+     function ents = getLoadedEntities(obj, identifier)
+        % return loaded entities for Volume or Surface BCs
+        % if varargin not empty, return loaded ents with component
+        % multiplication (according to specified direction)
+        ents = obj.getData(identifier).loadedEnts;
      end
-    
-     function ents = getLoadedEntities(obj, identifier,varargin)
-      % return loaded entities for Volume or Surface BCs
-      % if varargin not empty, return loaded ents with component
-      % multiplication (according to direction
-      ents = obj.getData(identifier).loadedEnts;
-      if ~isempty(varargin) && strcmp(obj.getPhysics(identifier),'Poro')
-          c = find(strcmp(["x","y","z"],obj.getDirection(identifier)));
-          ents = 3*(ents-1)+c;
-      end
+
+     function ents = getCompLoadedEntities(obj, identifier)
+        % return loaded entities for Volume or Surface BCs
+        % if varargin not empty, return loaded ents with component
+        % multiplication (according to specified direction)
+        ents = obj.getData(identifier).loadedEnts;
+        if strcmp(obj.getType(identifier),'Dir')
+           ents = obj.getCompEntities(identifier,ents);
+        else
+           c = find(strcmp(["x","y","z"],obj.getDirection(identifier)));
+           ents = 3*(ents-1)+c;
+        end
      end
 
      % function getEntitiesDof

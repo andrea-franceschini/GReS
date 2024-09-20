@@ -9,7 +9,7 @@ addpath(genpath(pwd));
 %%
 tic
 % -------------------------- SET THE PHYSICS -------------------------
-model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
+model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";

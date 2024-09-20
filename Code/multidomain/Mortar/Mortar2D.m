@@ -207,8 +207,9 @@ classdef Mortar2D < handle
             end
         end
 
-        function [D,M,varargout] = computeMortarRBF(obj,nGP,nInt,type)
+        function [D,M,varargout] = computeMortarRBF(obj,nGP,nInt,type,mult_type)
            % type: family of Radial Basis function to use
+           % mult_type: 
            tic
            g = Gauss(12,nGP,1);
            M = zeros(obj.nSMat,obj.nMMat);

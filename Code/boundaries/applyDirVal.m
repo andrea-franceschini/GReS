@@ -10,8 +10,8 @@ function applyDirVal(mod, bound, t, resState)
       if strcmp(bound.getPhysics(keys{i}), 'Flow')
         resState.pressure(bound.getEntities(keys{i})) = bound.getVals(keys{i}, t);
       elseif strcmp(bound.getPhysics(keys{i}), 'Poro')
-        resState.dispConv(bound.getEntities(keys{i},'comp')) = bound.getVals(keys{i}, t);
-        resState.dispCurr(bound.getEntities(keys{i},'comp')) = bound.getVals(keys{i}, t);
+        resState.dispConv(bound.getEntities(keys{i})) = bound.getVals(keys{i}, t);
+        resState.dispCurr(bound.getEntities(keys{i})) = bound.getVals(keys{i}, t);
       end
 %       end
     end
@@ -22,12 +22,12 @@ function applyDirVal(mod, bound, t, resState)
        if strcmp(bound.getPhysics(keys{i}), 'Flow') && isFEMBased(mod,'Flow')
           surfVal = bound.getVals(keys{i}, t);
           nodMap = bound.getEntitiesInfluence(keys{i});
-          resState.pressure(bound.getLoadedEntities(keys{i},'comp')) = nodMap*surfVal;
+          resState.pressure(bound.getCompLoadedEntities(keys{i})) = nodMap*surfVal;
        elseif strcmp(bound.getPhysics(keys{i}), 'Poro') && isFEMBased(mod,'Poro')
           surfVal = bound.getVals(keys{i}, t);
           nodMap = bound.getEntitiesInfluence(keys{i});
-          resState.dispConv(bound.getLoadedEntities(keys{i},'comp')) = nodMap*surfVal;
-          resState.dispCurr(bound.getLoadedEntities(keys{i},'comp')) = nodMap*surfVal;
+          resState.dispConv(bound.getCompLoadedEntities(keys{i})) = nodMap*surfVal;
+          resState.dispCurr(bound.getCompLoadedEntities(keys{i})) = nodMap*surfVal;
        end
     end
   end

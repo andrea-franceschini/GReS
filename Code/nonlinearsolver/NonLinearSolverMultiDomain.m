@@ -44,6 +44,7 @@ classdef NonLinearSolverMultiDomain < handle
 
             [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
             for i = 1:obj.nDom
+               obj.meshGlue.model(i).Discretizer.resetJacobianAndRhs(); 
                % Apply the Dirichlet condition value to the solution vector
                if ~isempty(obj.meshGlue.model(i).BoundaryConditions)
                   applyDirVal(obj.meshGlue.model(i).ModelType,obj.meshGlue.model(i).BoundaryConditions,...
@@ -372,7 +373,7 @@ classdef NonLinearSolverMultiDomain < handle
        function [dt] = manageNextTimeStep(obj,dt,flConv)
            if ~flConv   % Perform backstep
                for i = 1:obj.nDom
-                   transferState(obj.state(i).prev,obj.state(i).curr);
+                   transferState(obj.state(i).curr,obj.state(i).prev);
                end
                obj.t = obj.t - obj.dt;
                obj.tStep = obj.tStep - 1;
@@ -401,7 +402,7 @@ classdef NonLinearSolverMultiDomain < handle
                obj.dt = min([obj.dt * min(tmpVec),obj.simParameters.dtMax]);
                obj.dt = max([obj.dt obj.simParameters.dtMin]);
                for i = 1:obj.nDom
-                   transferState(obj.state(i).prev,obj.state(i).curr);
+                   transferState(obj.state(i).curr,obj.state(i).prev);
                end
                %
                if ((obj.t + obj.dt) > obj.simParameters.tMax)

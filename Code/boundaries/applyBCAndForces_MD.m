@@ -14,6 +14,7 @@ for i = 1 : length(keys)
     % Get BC dofs and values
     dirVal = []; % if stays empty Penalty method is used
     rhsVal = []; % if stays empty Penalty method is used
+    type = 'tmp';
     cond = bc.getCond(keys{i});
     ph = bc.getPhysics(keys{i});
     ph_mod = translatePhysic(ph,model);
