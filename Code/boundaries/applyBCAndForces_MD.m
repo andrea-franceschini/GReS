@@ -60,7 +60,8 @@ for i = 1 : length(keys)
                 q = bc.getVals(keys{i}, t);
                 rhsVal = - entitiesInfl*q;
             elseif isFVTPFABased(model, ph)
-                rhsVal = - bc.getVals(keys{i}, t).*grid.cells.vol(bc.getEntities(keys{i}));
+                vol = mG.model(domID).Grid.cells.vol(bc.getEntities(keys{i}));
+                rhsVal = - bc.getVals(keys{i}, t).*vol;
             end
     end
 

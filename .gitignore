@@ -39,6 +39,9 @@
 # Matlab files
 *.mat
 
+# asv files
+*.asv
+
 # Output folders with vtk files
 /Tests_Develop/*/vtkOutput/
 /Tests_Release/*/vtkOutput/
