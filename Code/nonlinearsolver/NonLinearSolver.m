@@ -66,6 +66,7 @@ classdef NonLinearSolver < handle
         fprintf('Iter     ||rhs||\n');
         %
         % Compute Rhs and matrices of NonLinear models
+        
         for i = 1:length(linSyst.fields)
             fld = linSyst.fields{i};
             if ~isLinear(linSyst.db(fld))

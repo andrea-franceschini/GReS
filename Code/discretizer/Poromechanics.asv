@@ -85,6 +85,10 @@ classdef Poromechanics < handle
                             state.conv.stress(l2+1:l2+obj.GaussPts.nNode,:), ...
                             state.curr.strain(l2+1:l2+obj.GaussPts.nNode,:), ...
                             dt,state.conv.status(l2+1:l2+obj.GaussPts.nNode,:), el, state.t);
+                        % fileID = fopen('DKPlastics.txt','w'); 
+                        % fprintf(fileID,'%.6f\n','sigma');
+                        % fclose(fileID);
+                        
                         state.curr.status(l2+1:l2+obj.GaussPts.nNode,:) = status;
                         state.curr.stress((l2+1):(l2+obj.GaussPts.nNode),:) = sigma;
                         Ks = pagemtimes(pagemtimes(B,'ctranspose',D,'none'),B);

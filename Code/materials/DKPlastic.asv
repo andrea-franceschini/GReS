@@ -100,7 +100,27 @@ classdef DKPlastic < handle
                           lambdac = max(0, f/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));fprintf('q < 0 and f is %+.5E | lambda is %+.5E | p is %+.5E \n ', f, lambdac, p);
                           sigma(i, 1:6) = sigma(i, 1:6) - lambdac.*((2*G/sqrt(3)).*n+K*obj.beta);                          
                       end
+                      pause(0.5);
                   end
+                  % while f > 0
+                  %     p = p-lambdac*K*obj.beta;
+                  %     q = q-lambdac*sqrt(3)*G;
+                  %     fprintf('p is %.16f | q is %.16f \n', p, q);
+                  %     if q < 0
+                  %       q = 0;
+                  %     end
+                  %     f = q/sqrt(3) + obj.alpha*p-obj.epsilon*obj.co;
+                  %     fprintf('f is %+.5E \n', f);
+                  %     lambdac = max(0, f/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
+                  %     fprintf('lambdacorrected is %+.5E \n', lambdac);
+                  %     %pause(2.0);
+                  % end
+                  % n = (1.5/q).*(sigma(i, 1:6)- p/3.*[1 1 1 0 0 0]);
+                  % if q < 0 
+                  %     sigma(i, 1:6) = (p-lambdac*K*obj.beta).*ones(1,6);
+                  % else
+                  %     sigma(i, 1:6) = sigma(i, 1:6) - lambdac.*((2*G/sqrt(3)).*n+K*obj.beta);
+                  % end
                end
         end
   end

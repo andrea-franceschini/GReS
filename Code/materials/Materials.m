@@ -204,6 +204,8 @@ classdef Materials < handle
         % Calling the specific material class based on the
         % material name
         switch propName
+          case 'DKPlastic'
+            matProp.ConstLaw = DKPlastic(fID, matFileName);
           case 'Elastic'
             matProp.ConstLaw = Elastic(fID, matFileName);
           case 'HypoElastic'
