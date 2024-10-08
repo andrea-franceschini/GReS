@@ -71,10 +71,12 @@ function applyBCandForces(model, grid, bound, material, t, syst, state)
             for j = unique(phDofs)'
                 dof = locDofs(phDofs == j);
                 nrows = size(syst.J{j,j},1);
-                if isempty(rhsVal) && isempty(dirVal) % penalty method
-                    maxVal = max(syst.J{j,j}, [], "all");
-                    syst.J{j,j}(nrows*(dof-1) + dof) = maxVal*1.e10;
-                    syst.rhs{j}(dof) = 0;
+                if isempty(rhsVal) && isempty(dirVal) 
+%                     maxVal = max(syst.J{j,j}, [], "all");
+%                     syst.J{j,j}(nrows*(dof-1) + dof) = maxVal*1.e10;
+%                     syst.rhs{j}(dof) = 0;
+                    vals = zeros(numel(dof),1);
+                    [syst.J,syst.rhs] = applyDirBlock(dof,vals,syst.J,syst.rhs,j);
                 else
                     syst.J{j,j}(nrows*(dof-1) + dof) = syst.J{j,j}(nrows*(dof-1) + dof) + dirVal(ind);
                     syst.rhs{j}(dof) = syst.rhs{j}(dof) + rhsVal(ind);
