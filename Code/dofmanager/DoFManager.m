@@ -261,6 +261,12 @@ classdef DoFManager < handle
                  error('Invalid input physic');
             end
         end
+
+        function numbDof = getNumbDof(obj,physic)
+            % get total number of active dofs for each physic
+            id = strcmp(obj.subPhysics,physic);
+            numbDof = sum(obj.numDof(id));
+        end
                 
          function table = getDofTables(obj)
              table.elemTable = obj.elem2dof;

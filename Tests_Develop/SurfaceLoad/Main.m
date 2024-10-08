@@ -6,7 +6,7 @@ model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
-simParam = SimulationParameters(model,fileName);
+simParam = SimulationParameters(fileName);
 %
 % ------------------------------  MESH -------------------------------
 % Create the Mesh object
@@ -43,7 +43,7 @@ dofmanager = DoFManager(topology,model);
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
 % Set the input file
-fileName = ["dir_Poro_fixed.dat","neuSurf_Poro_topLoad.dat","dir_Poro_Sym.dat","dir_Flow_TopDrained.dat"];
+fileName = ["dir_Poro_fixed.dat","neuSurf_Poro_TopLoad.dat","dir_Poro_Sym.dat","dir_Flow_TopDrained.dat"];
 %
 bound = Boundaries(fileName,model,grid,dofmanager);
 %
@@ -58,9 +58,9 @@ printUtils.printState(resState);
 %
 % ---------------------------- SOLUTION -------------------------------
 %
-
+linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,linSyst,GaussPts);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();

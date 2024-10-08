@@ -42,7 +42,7 @@ elems = Elements(topology,GaussPts);
 faces = Faces(model, topology);
 %
 %----------------------------- DOF MANAGER ----------------------------
-%fileName = 'dof.dat';
+fileName = 'dof.dat';
 if strcmp(fileName,'dof.dat')
     dofmanager = DoFManager(topology, model, fileName);
 else

@@ -441,6 +441,30 @@ classdef State < matlab.mixin.Copyable
             if strcmp(physics,"Poro")
                 obj.dispCurr(dofs) = vals;
                 obj.dispConv(dofs) = vals;
+                %
+                du = obj.dispCurr;
+                %
+                % Initialize strain
+                l = 0;
+                for el=1:obj.mesh.nCells
+                    dof = getDoFID(obj.mesh,el);
+                    switch obj.mesh.cellVTKType(el)
+                        case 10 % Tetra
+                            N = getDerBasisF(obj.elements.tetra,el);
+                            B = zeros(6,4*obj.mesh.nDim);
+                            B(obj.elements.indB(1:36,2)) = N(obj.elements.indB(1:36,1));
+                            obj.curr.strain(l+1,:) = (B*du(dof))';
+                            l = l + 1;
+                        case 12 % Hexa
+                            N = getDerBasisFAndDet(obj.elements.hexa,el,2);
+                            B = zeros(6,8*obj.mesh.nDim,obj.GaussPts.nNode);
+                            B(obj.elements.indB(:,2)) = N(obj.elements.indB(:,1));
+                            obj.curr.strain((l+1):(l+obj.GaussPts.nNode),:) = ...
+                                reshape(pagemtimes(B,du(dof)),6,obj.GaussPts.nNode)';
+                            l = l + obj.GaussPts.nNode;
+                    end
+                end
+                obj.conv.strain = obj.curr.strain;
             elseif strcmp(physics,"Flow")
                 obj.pressure(dofs) = vals;
             end
