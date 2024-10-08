@@ -61,7 +61,7 @@ end
 resState = State(model,grid,mat,file,GaussPts);
 
 % Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat');
+printUtils = OutState(model,mat,grid,'outTime.dat','printOn');
 %
 % Print the reservoir initial state
 printUtils.printState(resState);

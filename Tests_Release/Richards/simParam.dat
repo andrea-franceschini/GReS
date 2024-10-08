@@ -10,6 +10,5 @@ Default               % Theta parameter for Newmark method (time integration)
 1.e-5                 % Relative tolerance for the nonlinear solver
 1.e-6                 % Absolute tolerance for the nonlinear solver
 Default               % p-value for the residual norm
-Newton               % Nonlinear solver (Picard, Newton)
 10                    % Maximum number of nonlinear iterations before chopping
 End

@@ -6,7 +6,7 @@ model = ModelType("VariabSatFlow_FVTPFA");
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
-simParam = SimulationParameters(model,fileName);
+simParam = SimulationParameters(fileName);
 %
 % ------------------------------  MESH -------------------------------
 % Create the Mesh object
@@ -62,7 +62,7 @@ fName = "iniPressure.dat";
 resState = State(model,grid,mat,fName,GaussPts);
 %
 % Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat','Output');
+printUtils = OutState(model,mat,grid,'outTime.dat','printOn','Output');
 %
 % Print the reservoir initial state
 printUtils.printState(resState);

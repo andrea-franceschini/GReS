@@ -16,7 +16,7 @@ classdef Poromechanics < handle
         GaussPts
         K               % stiffness matrix
         rhs             % residual
-        fInt
+        fInt            % internal forces
     end
 
     methods (Access = public)

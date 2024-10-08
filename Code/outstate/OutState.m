@@ -15,16 +15,16 @@ classdef OutState < handle
         mesh
         timeID = 1
         VTK
-        flOutData = true
+        flOutData
         material
         %     flPrint = true
     end
 
     methods (Access = public)
-        function obj = OutState(symMod,mat,grid,fileName,varargin)
+        function obj = OutState(symMod,mat,grid,fileName,printFlag,varargin)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
-            obj.setOutState(symMod,mat,grid,fileName,varargin)
+            obj.setOutState(symMod,mat,grid,fileName,printFlag,varargin)
         end
 
         function finalize(obj)
@@ -141,8 +141,18 @@ classdef OutState < handle
     end
 
     methods (Access = private)
-       function setOutState(obj,symMod,mat,grid,fileName,data)
+        function setOutState(obj,symMod,mat,grid,fileName,print,data)
           foldName = 'output';
+          if strcmp(print,'printOn')
+              obj.flOutData = true;
+          elseif strcmp(print,'printOff')
+              obj.flOutData = false;
+          else
+              error(['Unreconized print flag for class OutState' ...
+                  'Accepted values are' ...
+                  '- "printOn": print solution to matFile ' ...
+                  '- "printOff": do not print solution'])
+          end
           %foldName = [];
           for i = 1:length(data)
              if isa(data{i},'Gauss')

@@ -8,7 +8,7 @@ model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
-simParam = SimulationParameters(model,fileName);
+simParam = SimulationParameters(fileName);
 %
 % ------------------------------  MESH -------------------------------
 % Create the Mesh object
@@ -59,15 +59,16 @@ file = ["iniDisp.dat","iniPressure.dat"];
 resState = State(model,grid,mat,file,GaussPts);
 %
 % Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat');
+printUtils = OutState(model,mat,grid,'outTime.dat','printOn');
 %
 % Print the reservoir initial state
 printUtils.printState(resState);
 %
 % ---------------------------- SOLUTION -------------------------------
 %
+linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,linSyst,GaussPts);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();
