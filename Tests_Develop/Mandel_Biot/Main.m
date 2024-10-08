@@ -8,7 +8,7 @@ model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
-simParam = SimulationParameters(model,fileName);
+simParam = SimulationParameters(fileName);
 %
 % ------------------------------  MESH -------------------------------
 % Create the Mesh object
@@ -65,8 +65,9 @@ printUtils.printState(resState);
 %
 % ---------------------------- SOLUTION -------------------------------
 %
+linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 % Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,linSyst,GaussPts);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();

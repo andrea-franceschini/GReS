@@ -73,7 +73,7 @@ function applyBCandForces(model, grid, bound, material, t, syst, state)
                 nrows = size(syst.J{j,j},1);
                 if isempty(rhsVal) && isempty(dirVal) % penalty method
                     maxVal = max(syst.J{j,j}, [], "all");
-                    syst.J{j,j}(nrows*(dof-1) + dof) = maxVal*1.e14;
+                    syst.J{j,j}(nrows*(dof-1) + dof) = maxVal*1.e10;
                     syst.rhs{j}(dof) = 0;
                 else
                     syst.J{j,j}(nrows*(dof-1) + dof) = syst.J{j,j}(nrows*(dof-1) + dof) + dirVal(ind);

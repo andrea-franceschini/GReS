@@ -6,7 +6,7 @@ model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
-simParam = SimulationParameters(model,fileName);
+simParam = SimulationParameters(fileName);
 %
 % ------------------------------  MESH -------------------------------
 % Create the Mesh object
@@ -40,7 +40,7 @@ else
 end
 
 %calling analytical solution script
-terzaghi_analytical;
+%Terzaghi_analytical(topology, mat, 10)
 
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);
@@ -96,6 +96,8 @@ nodesU = find(topology.coordinates(:,1)+topology.coordinates(:,2)==0);
 [~,ind] = sort(topology.coordinates(nodesU,3));
 nodesU = nodesU(ind);
 
+load("Terzaghi_Analytical.mat");
+
 
 % elem vector containing elements centroid along vertical axis
 if isFEMBased(model,'Flow')
@@ -123,7 +125,7 @@ end
 figure(1)
 plotObj1 = plot(pressplot,ptsY,'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
-plotObj2 = plot(pfem(nodesP,:),ptsY,'k', 'LineWidth', 1);
+plotObj2 = plot(pressplot(nodesP,:),ptsY,'k', 'LineWidth', 1);
 grid on
 xlabel('Pressure (kPa)')
 ylabel('z (m)')

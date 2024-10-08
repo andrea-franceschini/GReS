@@ -15,7 +15,7 @@ classdef OutState < handle
         mesh
         timeID = 1
         VTK
-        flOutData = false
+        flOutData = true
         material
         %     flPrint = true
     end
@@ -142,8 +142,8 @@ classdef OutState < handle
 
     methods (Access = private)
        function setOutState(obj,symMod,mat,grid,fileName,data)
-          %foldName = 'output';
-          foldName = [];
+          foldName = 'output';
+          %foldName = [];
           for i = 1:length(data)
              if isa(data{i},'Gauss')
                 obj.GaussPts = data{1};

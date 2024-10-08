@@ -6,7 +6,7 @@ model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
-simParam = SimulationParameters(model,fileName);
+simParam = SimulationParameters(fileName);
 %
 % ------------------------------  MESH -------------------------------
 % Create the Mesh object

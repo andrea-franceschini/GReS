@@ -53,7 +53,7 @@ classdef Boundaries < handle
         %%%%update to getDofs method
         ph = obj.getPhysics(identifier);
         col = obj.dof.getColTable(translatePhysic(ph, obj.model));
-        if strcmp(obj.getCond(identifier),'NodeBC') | strcmp(obj.getCond(identifier),'ElementBC')
+        if strcmp(obj.getCond(identifier),'NodeBC') || strcmp(obj.getCond(identifier),'ElementBC')
             nEnts = obj.getData(identifier).data.nEntities;
             entities = obj.getData(identifier).data.entities;
             i1 = 1;
@@ -279,7 +279,7 @@ classdef Boundaries < handle
     function ents = getCompEntities(obj,identifier,ents)
        % map entities number to component dof
        % consider solution components
-       nEnts = obj.getData(identifier).data.nEntities;
+       nEnts = obj.getNumbLoadedEntities(identifier);
        comps = length(nEnts);
        i1 = 1;
        for i = 1:comps
