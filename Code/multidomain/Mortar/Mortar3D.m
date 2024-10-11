@@ -153,6 +153,7 @@ classdef Mortar3D < handle
 
        function [D,M,varargout] = computeMortarElementBased(obj,nGP)
           tic
+          c_ns = 0;
           Mdetect = zeros(obj.nElMaster,obj.nElSlave);
           g = Gauss(obj.slaveCellType,nGP,2);
           %gpRef = g.coord;
@@ -201,6 +202,10 @@ classdef Mortar3D < handle
                    cm = cm+nm;
                 end
              end
+             if ~all(id)
+                fprintf('GP not sorted for slave elem %i \n',i);
+                c_ns = c_ns + 1;
+             end
           end
           t = toc;
             imVec = imVec(1:cm); jmVec = jmVec(1:cm);
@@ -221,10 +226,12 @@ classdef Mortar3D < handle
                 varargout{2} = Mdetect;
                 varargout{3} = D\M;
             end
+            fprintf('Points not sorted out: %i \n',c_ns)
        end
 
        function [D,M,varargout] = computeMortarRBF_new(obj,nGP,nInt,type,mult_type)
-            % this code work only for hexa 8 (quad 4 on the interface)
+            tol = 1e-8;
+            c_ns = 0;
             Mdetect = zeros(obj.nElMaster,obj.nElSlave);
             % set Gauss class
             gM = Gauss(obj.masterCellType,3,2); % gauss class for Master element interpolation
@@ -256,6 +263,7 @@ classdef Mortar3D < handle
                     case 'dual'
                         NSlaveMult = obj.computeDualBasisF(NSlave,dJWeighed);
                 end
+                Dloc_total = NSlaveMult'*(NSlave.*dJWeighed');
                 % compute slave basis function (still using radial basis
                 % interpolation)
                 %ptsIntS = ptsIntMatS(:,[3*j-2 3*j-1 3*j]);
@@ -276,7 +284,7 @@ classdef Mortar3D < handle
                             Nsupp = Ntmp(:,[end-1 end]);
                     end
                     % automatically detect supports computing interpolant
-                    id = all([Nsupp >= 0, Nsupp <= 1 id1],2);
+                    id = all([Nsupp >= 0 - tol id1],2);
                     Mdetect(jm,j) = sum(id);
                     if any(id)
                         NMaster = NMaster(id,:);
@@ -300,6 +308,10 @@ classdef Mortar3D < handle
                         cm = cm+nm;
                     end
                 end
+                if ~all(id)
+                   fprintf('GP not sorted for slave elem %i \n',j);
+                   c_ns = c_ns + 1;
+                end
             end
             tInteg = toc;
             imVec = imVec(1:cm); jmVec = jmVec(1:cm);
@@ -309,9 +321,9 @@ classdef Mortar3D < handle
             M = M(obj.nodesSlave, obj.nodesMaster);
             D = sparse(isVec,jsVec,Dvec,obj.nNodesSlave,obj.nNodesSlave);
             D = D(obj.nodesSlave,obj.nodesSlave);
-            if strcmp(mult_type,'dual')
-                D = diag(diag(D)); % make sure D is diagonal
-            end
+            % if strcmp(mult_type,'dual')
+            %     D = diag(sum(D,2)); % make sure D is diagonal by lumping
+            % end
             %scale projection operator to recover partition of unity
             %E = E./sum(E,2);
             if nargout == 3
@@ -326,6 +338,7 @@ classdef Mortar3D < handle
                 tSist = toc;
                 varargout{1} = [tInterp,tInteg,tSist];
             end
+            fprintf('Points not sorted out: %i \n',c_ns)
         end
 
         function [D,M,varargout] = computeMortarRBF(obj,nGP,nInt,type)

@@ -10,9 +10,9 @@ nInt = 4;
 f = @(x) sin(3*x);
 
 % interpolate variable from quad mesh to triangular mesh
-nMaster0 = 3;
-r = 0.6;
-ndim = 8;
+nMaster0 = 2;
+r = 3;
+ndim = 7;
 err_standard = zeros(ndim,1);
 err_dual = zeros(ndim,1);
 hs = err_dual;
@@ -45,11 +45,11 @@ for i = 1:ndim
     err_dual(i) = computeInterpError(mortar,E_RBF_dual,f);
 end
 
-loglog(hs,err_standard)
+loglog(hs,err_standard,'r-o')
 hold on
-loglog(hs,err_dual)
+loglog(hs,err_dual,'g--s')
 legend('standard','dual')
-
+rat_stand = err_standard(1:end-1)./err_standard(2:end);
 
 
 
