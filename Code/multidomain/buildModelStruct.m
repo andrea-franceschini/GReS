@@ -87,7 +87,7 @@ while ~feof(fID)
          bc = Boundaries(bcList,model,grid,dof);
       end
       state = State(model,grid,mat,gauss);
-      printUtils = OutState(model,mat,grid,outFile,name,'printOff',gauss);
+      printUtils = OutState(model,mat,grid,outFile,'printOff',name,gauss);
       linSyst = Discretizer(model,simParam,dof,grid,mat,gauss);
       modStruct = [modStruct;struct('id',c,'DomainName',name,'ModelType',model,...
          'Grid',grid,'Material',mat,'DoFManager',dof,...

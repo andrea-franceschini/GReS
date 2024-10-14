@@ -44,12 +44,12 @@ fprintf('Done computing mortar utils \n')
 
 
 %% modify interpolation operator to be sparse
-for i = 1:numel(mG.interfaces)
-    E = mG.interfaces(i).InterpOperator;
-    E(abs(E) < 1e-4) = 0;
-    E = E./sum(E,2);
-    mG.interfaces(i).InterpOperator = sparse(E);
-end
+% for i = 1:numel(mG.interfaces)
+%     E = mG.interfaces(i).InterpOperator;
+%     E(abs(E) < 1e-4) = 0;
+%     E = E./sum(E,2);
+%     mG.interfaces(i).InterpOperator = sparse(E);
+% end
 
 fprintf('Model Setup completed \n')
 % fName = 'interfaces_slaveFlow.dat';

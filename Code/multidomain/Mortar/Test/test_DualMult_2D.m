@@ -6,9 +6,9 @@ clc
 
 type = 'gauss';
 gauss = Gauss(12,3,2);
-nM0 = 3;
+nM0 = 4;
 nSizes = 4;
-ratio = 0.75;
+ratio = 0.8;
 L2_rbf_stand = zeros(nSizes,1);
 L2_rbf_dual = L2_rbf_stand;
 L2_eb = L2_rbf_stand;
@@ -27,7 +27,7 @@ for i = 0:nSizes-1
     % Define object of 3D Mortar class
     mortar = Mortar3D(1,msh1,msh2);
     %
-    nG = 3;
+    nG = 4;
     nInt = 4;
 
     % analytical function on the master mesh
@@ -41,8 +41,8 @@ for i = 0:nSizes-1
     fprintf('EB meshRef %i \n',i)
     [D_eb,M_eb] = mortar.computeMortarElementBased(nG);
     fprintf('________________________________ \n');
-    Dtest = full(Drbf_dual);
-    %[Deb,Meb] = mortar.computeMortarElementBased(nG);
+    % Dtest = full(Drbf_dual);
+    [Deb,Meb] = mortar.computeMortarElementBased(nG);
     Erbf_stand =  Drbf_stand\Mrbf_stand;
     Erbf_dual =  Drbf_dual\Mrbf_dual;
     E_eb = D_eb\M_eb;
@@ -68,7 +68,7 @@ end
 % fprintf(fID,'%2.6e \n',L2_eb);
 %% plot convergence profiles
 h = 1./(ratio*nM0*2.^(0:nSizes-1));
-fID = fopen('Results_lin\h.dat','w');
+fID = fopen('Results_lin_h.dat','w');
 fprintf(fID,'%2.6e \n',h);
 loglog(h,L2_rbf_stand,'r-^')
 hold on

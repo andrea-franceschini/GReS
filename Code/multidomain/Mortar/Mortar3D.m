@@ -229,8 +229,8 @@ classdef Mortar3D < handle
             fprintf('Points not sorted out: %i \n',c_ns)
        end
 
-       function [D,M,varargout] = computeMortarRBF_new(obj,nGP,nInt,type,mult_type)
-            tol = 1e-8;
+       function [D,M,varargout] = computeMortarRBF(obj,nGP,nInt,type,mult_type)
+            tol = 1e-3;
             c_ns = 0;
             Mdetect = zeros(obj.nElMaster,obj.nElSlave);
             % set Gauss class
@@ -263,7 +263,6 @@ classdef Mortar3D < handle
                     case 'dual'
                         NSlaveMult = obj.computeDualBasisF(NSlave,dJWeighed);
                 end
-                Dloc_total = NSlaveMult'*(NSlave.*dJWeighed');
                 % compute slave basis function (still using radial basis
                 % interpolation)
                 %ptsIntS = ptsIntMatS(:,[3*j-2 3*j-1 3*j]);
@@ -284,7 +283,7 @@ classdef Mortar3D < handle
                             Nsupp = Ntmp(:,[end-1 end]);
                     end
                     % automatically detect supports computing interpolant
-                    id = all([Nsupp >= 0 - tol id1],2);
+                    id = all([Nsupp >= 0-tol id1],2);
                     Mdetect(jm,j) = sum(id);
                     if any(id)
                         NMaster = NMaster(id,:);
@@ -321,9 +320,9 @@ classdef Mortar3D < handle
             M = M(obj.nodesSlave, obj.nodesMaster);
             D = sparse(isVec,jsVec,Dvec,obj.nNodesSlave,obj.nNodesSlave);
             D = D(obj.nodesSlave,obj.nodesSlave);
-            % if strcmp(mult_type,'dual')
-            %     D = diag(sum(D,2)); % make sure D is diagonal by lumping
-            % end
+            if strcmp(mult_type,'dual')
+                D = diag(sum(D,2)); % make sure D is diagonal by lumping
+            end
             %scale projection operator to recover partition of unity
             %E = E./sum(E,2);
             if nargout == 3
@@ -341,109 +340,109 @@ classdef Mortar3D < handle
             fprintf('Points not sorted out: %i \n',c_ns)
         end
 
-        function [D,M,varargout] = computeMortarRBF(obj,nGP,nInt,type)
-            % this code work only for hexa 8 (quad 4 on the interface)
-            Mdetect = zeros(obj.nElMaster,obj.nElSlave);
-            tic
-            % set Gauss class
-            gM = Gauss(obj.masterCellType,3,2); % gauss class for Master element interpolation
-            gS = Gauss(obj.slaveCellType,nGP,2); % gauss class for slave integration
-            elemMaster = getElem(obj,gM,'master');
-            elemSlave = getElem(obj,gS,'slave');
-            [imVec,jmVec,Mvec] = deal(zeros(nnz(obj.elemConnectivity)*obj.nNmaster^2,1));
-            [isVec,jsVec,Dvec] = deal(zeros(nnz(obj.elemConnectivity)*obj.nNmaster^2,1));
-            % Perform interpolation on the master side (computing weights
-            % and interpolation coordinates)
-            tic
-            [wFMat,w1Mat,ptsIntMat] = getWeights(obj,'master',nInt,elemMaster,type);
-            %[wFMatS,w1MatS,ptsIntMatS] = getWeights(obj,'slave',nInt,elemSlave,type);
-            % Interpolation for support detection
-            %[wFSupp,w1Supp] = getSuppWeight(obj);
-            tInterp = toc;
-            tic
-            % Loop trough slave elements
-            cs = 0;
-            cm = 0;
-            for j = 1:obj.nElSlave
-                % Compute Slave quantities
-                dJWeighed = elemSlave.getDerBasisFAndDet(j,3); % Weighted Jacobian
-                % get Gauss Points position in the real space
-                ptsGauss = getGPointsLocation(elemSlave,j);
-                idSlave = obj.slaveTopol(j,:);
-                NSlave = getBasisFinGPoints(elemSlave); % Slave basis functions
-%                 switch mult_type
-%                     case 'standard'
-%                         NSlaveMult = NSlave; % Slave basis functions
-%                     case 'dual'
-%                         NSlaveMult = computeDualBasisF(obj,elemSlave,ptsGauss,dJWeighed);
+%         function [D,M,varargout] = computeMortarRBF(obj,nGP,nInt,type)
+%             % this code work only for hexa 8 (quad 4 on the interface)
+%             Mdetect = zeros(obj.nElMaster,obj.nElSlave);
+%             tic
+%             % set Gauss class
+%             gM = Gauss(obj.masterCellType,3,2); % gauss class for Master element interpolation
+%             gS = Gauss(obj.slaveCellType,nGP,2); % gauss class for slave integration
+%             elemMaster = getElem(obj,gM,'master');
+%             elemSlave = getElem(obj,gS,'slave');
+%             [imVec,jmVec,Mvec] = deal(zeros(nnz(obj.elemConnectivity)*obj.nNmaster^2,1));
+%             [isVec,jsVec,Dvec] = deal(zeros(nnz(obj.elemConnectivity)*obj.nNmaster^2,1));
+%             % Perform interpolation on the master side (computing weights
+%             % and interpolation coordinates)
+%             tic
+%             [wFMat,w1Mat,ptsIntMat] = getWeights(obj,'master',nInt,elemMaster,type);
+%             %[wFMatS,w1MatS,ptsIntMatS] = getWeights(obj,'slave',nInt,elemSlave,type);
+%             % Interpolation for support detection
+%             %[wFSupp,w1Supp] = getSuppWeight(obj);
+%             tInterp = toc;
+%             tic
+%             % Loop trough slave elements
+%             cs = 0;
+%             cm = 0;
+%             for j = 1:obj.nElSlave
+%                 % Compute Slave quantities
+%                 dJWeighed = elemSlave.getDerBasisFAndDet(j,3); % Weighted Jacobian
+%                 % get Gauss Points position in the real space
+%                 ptsGauss = getGPointsLocation(elemSlave,j);
+%                 idSlave = obj.slaveTopol(j,:);
+%                 NSlave = getBasisFinGPoints(elemSlave); % Slave basis functions
+% %                 switch mult_type
+% %                     case 'standard'
+% %                         NSlaveMult = NSlave; % Slave basis functions
+% %                     case 'dual'
+% %                         NSlaveMult = computeDualBasisF(obj,elemSlave,ptsGauss,dJWeighed);
+% %                 end
+%                 % compute slave basis function (still using radial basis
+%                 % interpolation)
+%                 %ptsIntS = ptsIntMatS(:,[3*j-2 3*j-1 3*j]);
+%                 %fiNMS = obj.computeRBFfiNM(ptsIntS,ptsGauss,type);
+%                 %NSlave = (fiNMS*wFMatS(:,[4*j-3 4*j-2 4*j-1 4*j]))./(fiNMS*w1MatS(:,j));
+%                 master_elems = find(obj.elemConnectivity(:,j));
+%                 for jm = master_elems'
+%                     idMaster = obj.masterTopol(jm,:);
+%                     ptsInt = ptsIntMat(:,repNum(3,jm));              
+%                     [fiNM,id1] = obj.computeRBFfiNM(ptsInt,ptsGauss,type);
+%                     switch obj.degree
+%                         case 1
+%                             NMaster = (fiNM*wFMat(:,repNum(obj.nNmaster,jm)))./(fiNM*w1Mat(:,jm));
+%                             Nsupp = NMaster(:,[1 2 3]);
+%                         case 2
+%                             Ntmp = (fiNM*wFMat(:,repNum(obj.nNmaster+2,jm)))./(fiNM*w1Mat(:,jm));
+%                             NMaster = Ntmp(:,1:obj.nNmaster);
+%                             Nsupp = Ntmp(:,[end-1 end]);
+%                     end
+%                     % automatically detect supports computing interpolant
+%                     id = all([Nsupp >= 0, Nsupp <= 1 id1],2);
+%                     Mdetect(jm,j) = sum(id);
+%                     if any(id)
+%                         NMaster = NMaster(id,:);
+%                         Mloc = NSlave(id,:)'*(NMaster.*dJWeighed(id)');
+%                         Dloc = NSlave(id,:)'*(NSlave(id,:).*dJWeighed(id)');
+%                         nm = numel(Mloc);
+%                         ns = numel(Dloc);
+%                         % keeping M and D sparse to improve performance
+%                         [jjM,iiM] = meshgrid(idMaster,idSlave);
+%                         [jjS,iiS] = meshgrid(idSlave,idSlave);
+%                         imVec(cm+1:cm+nm) = iiM(:); jmVec(cm+1:cm+nm) = jjM(:);
+%                         isVec(cs+1:cs+ns) = iiS(:); jsVec(cs+1:cs+ns) = jjS(:);
+%                         Mvec(cm+1:cm+nm) = Mloc(:);
+%                         Dvec(cs+1:cs+ns) = Dloc(:);
+%                         % sort out Points already projected
+%                         dJWeighed = dJWeighed(~id);    
+%                         ptsGauss = ptsGauss(~id,:);
+%                         NSlave = NSlave(~id,:);
+%                         cs = cs+ns;
+%                         cm = cm+nm;
+%                     end
 %                 end
-                % compute slave basis function (still using radial basis
-                % interpolation)
-                %ptsIntS = ptsIntMatS(:,[3*j-2 3*j-1 3*j]);
-                %fiNMS = obj.computeRBFfiNM(ptsIntS,ptsGauss,type);
-                %NSlave = (fiNMS*wFMatS(:,[4*j-3 4*j-2 4*j-1 4*j]))./(fiNMS*w1MatS(:,j));
-                master_elems = find(obj.elemConnectivity(:,j));
-                for jm = master_elems'
-                    idMaster = obj.masterTopol(jm,:);
-                    ptsInt = ptsIntMat(:,repNum(3,jm));              
-                    [fiNM,id1] = obj.computeRBFfiNM(ptsInt,ptsGauss,type);
-                    switch obj.degree
-                        case 1
-                            NMaster = (fiNM*wFMat(:,repNum(obj.nNmaster,jm)))./(fiNM*w1Mat(:,jm));
-                            Nsupp = NMaster(:,[1 2 3]);
-                        case 2
-                            Ntmp = (fiNM*wFMat(:,repNum(obj.nNmaster+2,jm)))./(fiNM*w1Mat(:,jm));
-                            NMaster = Ntmp(:,1:obj.nNmaster);
-                            Nsupp = Ntmp(:,[end-1 end]);
-                    end
-                    % automatically detect supports computing interpolant
-                    id = all([Nsupp >= 0, Nsupp <= 1 id1],2);
-                    Mdetect(jm,j) = sum(id);
-                    if any(id)
-                        NMaster = NMaster(id,:);
-                        Mloc = NSlave(id,:)'*(NMaster.*dJWeighed(id)');
-                        Dloc = NSlave(id,:)'*(NSlave(id,:).*dJWeighed(id)');
-                        nm = numel(Mloc);
-                        ns = numel(Dloc);
-                        % keeping M and D sparse to improve performance
-                        [jjM,iiM] = meshgrid(idMaster,idSlave);
-                        [jjS,iiS] = meshgrid(idSlave,idSlave);
-                        imVec(cm+1:cm+nm) = iiM(:); jmVec(cm+1:cm+nm) = jjM(:);
-                        isVec(cs+1:cs+ns) = iiS(:); jsVec(cs+1:cs+ns) = jjS(:);
-                        Mvec(cm+1:cm+nm) = Mloc(:);
-                        Dvec(cs+1:cs+ns) = Dloc(:);
-                        % sort out Points already projected
-                        dJWeighed = dJWeighed(~id);    
-                        ptsGauss = ptsGauss(~id,:);
-                        NSlave = NSlave(~id,:);
-                        cs = cs+ns;
-                        cm = cm+nm;
-                    end
-                end
-            end
-            tInteg = toc;
-            imVec = imVec(1:cm); jmVec = jmVec(1:cm);
-            isVec = isVec(1:cs); jsVec = jsVec(1:cs);
-            Mvec = Mvec(1:cm); Dvec = Dvec(1:cs);
-            M = sparse(imVec,jmVec,Mvec,obj.nNodesSlave,obj.nNodesMaster);
-            M = M(obj.nodesSlave, obj.nodesMaster);
-            D = sparse(isVec,jsVec,Dvec,obj.nNodesSlave,obj.nNodesSlave);
-            D = D(obj.nodesSlave,obj.nodesSlave);
-            %scale projection operator to recover partition of unity
-            %E = E./sum(E,2);
-            if nargout == 3
-                varargout{1} = [tInterp,tInteg];
-            elseif nargout == 4
-                varargout{1} = [tInterp,tInteg];
-                varargout{2} = Mdetect;
-            elseif nargout == 5
-                tic
-                varargout{2} = Mdetect;
-                varargout{3} = D\M;
-                tSist = toc;
-                varargout{1} = [tInterp,tInteg,tSist];
-            end
-        end
+%             end
+%             tInteg = toc;
+%             imVec = imVec(1:cm); jmVec = jmVec(1:cm);
+%             isVec = isVec(1:cs); jsVec = jsVec(1:cs);
+%             Mvec = Mvec(1:cm); Dvec = Dvec(1:cs);
+%             M = sparse(imVec,jmVec,Mvec,obj.nNodesSlave,obj.nNodesMaster);
+%             M = M(obj.nodesSlave, obj.nodesMaster);
+%             D = sparse(isVec,jsVec,Dvec,obj.nNodesSlave,obj.nNodesSlave);
+%             D = D(obj.nodesSlave,obj.nodesSlave);
+%             %scale projection operator to recover partition of unity
+%             %E = E./sum(E,2);
+%             if nargout == 3
+%                 varargout{1} = [tInterp,tInteg];
+%             elseif nargout == 4
+%                 varargout{1} = [tInterp,tInteg];
+%                 varargout{2} = Mdetect;
+%             elseif nargout == 5
+%                 tic
+%                 varargout{2} = Mdetect;
+%                 varargout{3} = D\M;
+%                 tSist = toc;
+%                 varargout{1} = [tInterp,tInteg,tSist];
+%             end
+%         end
 
         function getMatricesSize(obj,varargin)
             if isempty(varargin)
@@ -700,11 +699,12 @@ classdef Mortar3D < handle
        end
 
        function id = detectSupportEB(obj,xi)
+          tol = 1e-6;
           switch obj.masterCellType
              case 10
-                id = all([xi >= 0, xi <= 1],2);
+                id = all([xi >= 0-tol, xi <= 1+tol],2);
              case 12
-                id = all([xi >= -1, xi <= 1],2);
+                id = all([xi >= -1-tol, xi <= 1+tol],2);
           end
        end
 
@@ -749,12 +749,12 @@ classdef Mortar3D < handle
              ctmp = cm(mshMaster.surfaces(im,:),1:2);
              [x1,x2] = deal(min(ctmp(:,1)),max(ctmp(:,1)));
              [y1,y2] = deal(min(ctmp(:,2)),max(ctmp(:,2)));
-             i1 = fix((x1-xmin)/dsX)+1;
-             elX = fix((x2-x1)/dsX);
-             lX = i1:i1+elX;
-             i2 = fix((y1-ymin)/dsY)+1;
-             elY = fix((y2-y1)/dsX);
-             lY = i2:i2+elY;
+             i1x = fix((x1-xmin)/dsX)+1;
+             i2x = ceil((x2-xmin)/dsX);
+             lX = i1x:i2x;
+             i1y = fix((y1-ymin)/dsY)+1;
+             i2y = ceil((y2-ymin)/dsX);
+             lY = i1y:i2y;
              [lX,lY] = meshgrid(lX,lY);
              el = sub2ind([sqrt(nS) sqrt(nS)],lX,lY);
              n = numel(el);
