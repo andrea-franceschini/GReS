@@ -15,6 +15,18 @@ d3.importMesh('model-mixed/output_003.vtk');
 d4.importMesh('model-mixed/output_004.vtk');
 d5.importMesh('model-mixed/output_005.vtk');
 
+s = 3;
+d1.coordinates(:,3) = s*d1.coordinates(:,3); 
+d2.coordinates(:,3) = s*d2.coordinates(:,3); 
+d3.coordinates(:,3) = s*d3.coordinates(:,3); 
+d4.coordinates(:,3) = s*d4.coordinates(:,3); 
+d5.coordinates(:,3) = s*d5.coordinates(:,3); 
+D = {d1 d2 d3 d4 d5};
+
+for i = 1:5
+   plotFunction(D{i},strcat('deform_',num2str(i)),zeros(D{i}.nNodes,1))
+end
+
 % trans = 1000;
 % C = {d1 d2 d3 d4 d5};
 % totNod = 0;
@@ -88,8 +100,11 @@ model(5).Grid.topology.addSurface(1,'model-mixed/vol_5_surf_1.topol');
 %save('model.mat',"model")
 %% Load mesh glue structure (avoid recomputing mortar every time)
 fprintf('Computing mortar utils \n')
+tic
 mG = MeshGlue(model,'interfaces_slaveFlow.dat');
-fprintf('Done computing mortar utils\n')
+telaps = toc;
+fprintf('Done computing mortar utils t = %1.4f\n',telaps)
+
 
 %meshGlueStruct = load("meshGlue_aquiferSlave.mat");
 %mG = meshGlueStruct.mG;

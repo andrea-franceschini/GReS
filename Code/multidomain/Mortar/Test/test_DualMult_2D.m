@@ -7,8 +7,8 @@ clc
 type = 'gauss';
 gauss = Gauss(12,3,2);
 nM0 = 4;
-nSizes = 4;
-ratio = 0.8;
+nSizes = 3;
+ratio = 0.6;
 L2_rbf_stand = zeros(nSizes,1);
 L2_rbf_dual = L2_rbf_stand;
 L2_eb = L2_rbf_stand;
@@ -23,7 +23,7 @@ for i = 0:nSizes-1
     nS = round(ratio*nM);
 
     msh1.createCartesianGrid(2,1,[0 1],[0 1],nM,nM);
-    msh2.createCartesianGrid(2,1,[0 1],[0 1],nS,nS);
+    msh2.createCartesianGrid(2,1,[0.1 1.01],[0.1 1.05],nS,nS);
     % Define object of 3D Mortar class
     mortar = Mortar3D(1,msh1,msh2);
     %
@@ -33,10 +33,10 @@ for i = 0:nSizes-1
     % analytical function on the master mesh
     testFunc = @(x,y,z)  sin(4*x).*cos(4*y);
     fprintf('Standard meshRef %i \n',i)
-    [Drbf_stand,Mrbf_stand] = mortar.computeMortarRBF_new(nG,nInt,type,'standard');
+    [Drbf_stand,Mrbf_stand] = mortar.computeMortarRBF(nG,nInt,type,'standard');
     fprintf('________________________________ \n');
     fprintf('Dual meshRef %i \n',i)
-    [Drbf_dual,Mrbf_dual] = mortar.computeMortarRBF_new(nG,nInt,type,'dual');
+    [Drbf_dual,Mrbf_dual] = mortar.computeMortarRBF(nG,nInt,type,'dual');
     fprintf('________________________________ \n');
     fprintf('EB meshRef %i \n',i)
     [D_eb,M_eb] = mortar.computeMortarElementBased(nG);

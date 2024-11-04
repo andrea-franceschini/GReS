@@ -286,14 +286,14 @@ classdef Mortar3D < handle
                     id = all([Nsupp >= 0-tol id1],2);
                     Mdetect(jm,j) = sum(id);
                     if any(id)
-                        NMaster = NMaster(id,:);
-                        Mloc = NSlaveMult(id,:)'*(NMaster.*dJWeighed(id)');
-                        Dloc = NSlaveMult(id,:)'*(NSlave(id,:).*dJWeighed(id)');
-                        nm = numel(Mloc);
-                        ns = numel(Dloc);
-                        % keeping M and D sparse to improve performance
-                        [jjM,iiM] = meshgrid(idMaster,idSlave);
-                        [jjS,iiS] = meshgrid(idSlave,idSlave);
+                       NMaster = NMaster(id,:);
+                       Mloc = NSlaveMult(id,:)'*(NMaster.*dJWeighed(id)');
+                       Dloc = NSlaveMult(id,:)'*(NSlave(id,:).*dJWeighed(id)');
+                       nm = numel(Mloc);
+                       ns = numel(Dloc);
+                       % keeping M and D sparse to improve performance
+                       [jjM,iiM] = meshgrid(idMaster,idSlave);
+                       [jjS,iiS] = meshgrid(idSlave,idSlave);
                         imVec(cm+1:cm+nm) = iiM(:); jmVec(cm+1:cm+nm) = jjM(:);
                         isVec(cs+1:cs+ns) = iiS(:); jsVec(cs+1:cs+ns) = jjS(:);
                         Mvec(cm+1:cm+nm) = Mloc(:);
