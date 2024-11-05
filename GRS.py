@@ -6,6 +6,31 @@ import gmsh
 import faulthandler
 faulthandler.enable()
 
+#------------------------------------------------------------------------------------------------------------------------------------------------------
+#################################### GRES MODIFIER ####################################################################################################
+#------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Questa è un GUI progettata per poter aggiornare, con il minimo impegno da parte dell'utente:
+# 1. I parametri della simualzione
+# 2. La classe con la quale vengono aggiornate le tensioni (Drucker Prager o Elastic)
+# 3. I tempi, sia per le condizioni di Dirichlet che per quelle di Neumann
+# 4. Il modello
+#
+# Ciò viene effettuato leggendo i giusti file nelle varie cartelle e modificandoli opportunamente, muovendosi con diversi bottoni all'interno della 
+# finestra. 
+# Tutto è progettato per essere il più dinamico possibile, aggiungendo o togliendo tempi e modelli e aggiornando automaticamente tutti le condizioni 
+# attaccate: ad esempio, basta poter caricare un modello in un apposita cartella e premere su 'Change Model' perchè vengano autimaticamente aggiornati 
+# i file list, i tempi collegati e la linea di codice all'interno del file Main.m che richiama il modello.
+# 
+# La GUI è ancora una prima verione: questo significa che è largamente poco ottimizzata e che, al momento, è strettamente inerente a Tests: Mechanics_dp
+# (per poterla utilizzare con altri test è necessario cambiare alcuni parametri).
+# Durante tutto il processo viene fatto riferimento agli absolute paths che rimandano alla posizione dei file all'interno del computer, che vanno 
+# ovviamente aggiornati per utenti diversi dall'autore.
+
+#------------------------------------------------------------------------------------------------------------------------------------------------------
+#######################################################################################################################################################
+#------------------------------------------------------------------------------------------------------------------------------------------------------
+
 path_to_simParam = '/Users/alessandrodoro/Downloads/GReS/GReS/Tests/mechanics_dp/simParam.dat'
 path_to_materialsList2 = '/Users/alessandrodoro/Downloads/GReS/GReS/Tests/mechanics_dp/materialsList2.dat'
 path_to_dirBCSurf = '/Users/alessandrodoro/Downloads/GReS/GReS/Tests/mechanics_dp/dir_BCSurf_poro_tetra.dat'
