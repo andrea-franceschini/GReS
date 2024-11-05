@@ -49,7 +49,7 @@ classdef DKPlastic < handle
 %         DAll(:,:,i) = D;
 %       end
       sigmaOut0 = sigmaIn + epsilon*D;
-      sigmaOut = lambdacorr(obj, sigmaOut0, nptGauss);
+      [sigmaOut, D] = lambdacorr(obj, sigmaOut0, nptGauss, D);
       %fprintf('%+.5E \n',sigmaOut-sigmaOut0);
       DAll = repmat(D,[1, 1, nptGauss]);
     end
@@ -74,33 +74,44 @@ classdef DKPlastic < handle
       cM = obj.cM;
     end
 
-    function sigma = lambdacorr(obj, sigmaIn, nptGauss)
+    function [sigma, D] = lambdacorr(obj, sigmaIn, nptGauss, D)
               for i = 1:nptGauss
                   q = sqrt(0.5*(((sigmaIn(i, 1)-sigmaIn(i, 2))^2+(sigmaIn(i, 1)- ...
                       sigmaIn(i, 3))^2+(sigmaIn(i, 2)-sigmaIn(i, 3))^2))+ ...
-                      sigmaIn(i, 4)^2+sigmaIn(i, 5)^2+sigmaIn(i, 6)^2);
+                      3*(sigmaIn(i, 4)^2+sigmaIn(i, 5)^2+sigmaIn(i, 6)^2));
                   p = sum(sigmaIn(i, 1:3)); 
                   f = q/sqrt(3) + obj.alpha*p-obj.epsilon*(obj.co);
                   G = obj.E/(2*(1+obj.nu));
                   K = obj.E/(3*(1-2*obj.nu)); 
                   lambdac = max(0, f/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
-                  fprintf('initial lambdac %+.5E \n', lambdac);
-                  sigma = sigmaIn;   
-                  while f > 0
-                      sigma = sigmaIn;
+                  sigma = sigmaIn;
+                  I = [1 1 1 0 0 0];
+                  if f > 0 
                       p = p-lambdac*K*obj.beta;
                       q = q-lambdac*sqrt(3)*G;
-                      if q < 0 %q <0 e non ha maniera di correggersi
+                      if q < 0 %apex return
                           f = obj.alpha*p - obj.epsilon*(obj.co);
-                          lambdac = max(0, f/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));fprintf('q < 0 and f is %+.5E | lambda is %+.5E | p is %+.5E \n ', f, lambdac, p);
-                          sigma(i, 1:6) = (p-lambdac*K*obj.beta).*ones(1,6);    
+                          lambdac = max(0, f/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
+                          sigma(i, 1:6) = (p-lambdac*K*obj.beta).*I;
+                          D = K*(1-(obj.alpha*obj.beta*K)/(obj.alpha*obj.beta*K+obj.epsilon^2*obj.h)).*(I.*I');
                       else
                           f = q/sqrt(3) + obj.alpha*p-obj.epsilon*obj.co; 
-                          n = (1.5/q).*(sigma(i, 1:6)- p/3.*[1 1 1 0 0 0]);
-                          lambdac = max(0, f/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));fprintf('q < 0 and f is %+.5E | lambda is %+.5E | p is %+.5E \n ', f, lambdac, p);
-                          sigma(i, 1:6) = sigma(i, 1:6) - lambdac.*((2*G/sqrt(3)).*n+K*obj.beta);                          
+                          n = (1.5/q).*(sigma(i, 1:6)- p/3.*I);
+                          lambdac = max(0, f/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
+                          sigma(i, 1:6) = sigma(i, 1:6) - lambdac.*((2*G/sqrt(3)).*n+K*obj.beta.*I);
+                          var1 = lambdac*(2*sqrt(3)*G^2)/(q);
+                          var2 = sigma(i, 1:6)- p/3.*I - (2/3).*(n.*n');
+                          var3 = (2*G)/(sqrt(3)).*n+K*obj.beta.*I;
+                          var4 = (2*G)/(sqrt(3)).*n+obj.alpha*K.*I;
+                          var5 = G+obj.alpha*obj.beta*K+obj.epsilon^2*obj.h;
+                          D = D-var1.*var2-var3.*((var4)/(var5));
+                          %D-((lambdac*2*sqrt(3)*G^2)/q).*(I-(2/3).*(n*n))-((2*G/sqrt(3)).*n+K*obj.beta.*I)*(((2*G/sqrt(3)).*n+obj.alpha*K.*I)/(G+obj.alpha*obj.beta*K+obj.epsilon^2*obj.h));
                       end
+                        
+                  else
+                      sigma = sigmaIn;
                   end
+
                end
         end
   end

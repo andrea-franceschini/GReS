@@ -1,5 +1,5 @@
-1800.01                % Simulation end time
-0.1              % Initial time step size
+30.01                % Simulation end time
+0.2              % Initial time step size
 1.e-5                 % Minimum time step size
 10                % Maximum time step size
 1.01         % Time step increment augmentation factor (multiplicative)

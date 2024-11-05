@@ -230,6 +230,12 @@ classdef DoFManager < handle
             end
         end
 
+        function numbDof = getNumbDof(obj,physic)
+            % get total number of active dofs for each physic
+            id = strcmp(obj.subPhysics,physic);
+            numbDof = sum(obj.numDof(id));
+        end
+
         function tags = getSubCells(obj,physic)
             tags = [];
             for i = 1:length(obj.subDomains)

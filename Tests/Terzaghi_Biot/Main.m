@@ -13,6 +13,7 @@ simParam = SimulationParameters(model,fileName);
 topology = Mesh();
 %
 % Set the input file name
+%fileName = 'TerzaghiH05_hexa.msh';
 fileName = 'TerzaghiH05_hexa.msh';
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);

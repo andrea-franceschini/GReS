@@ -16,7 +16,7 @@ classdef Poromechanics < handle
         GaussPts
         K               % stiffness matrix
         rhs             % residual
-        
+        fInt            % internal forces
     end
 
     methods (Access = public)
@@ -36,21 +36,28 @@ classdef Poromechanics < handle
             if ~isempty(data)
                 obj.GaussPts = data{1};
             end
-            
             %
             obj.nEntryKLoc = (obj.mesh.nDim^2)*(obj.elements.nNodesElem).^2;
         end
 
         function computeMat(obj,varargin)
             % Compute Stiffness matrix for mechanical problem 
-            state = varargin{1};
-            dt = varargin{3};
+            n = sum(~cellfun(@isempty,varargin));
+            if n == 2
+              state = varargin{1};
+              dt = varargin{2};
+            elseif n == 3
+              state = varargin{1};
+              dt = varargin{3};
+            end
             subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'Poro'));
             [subCells, ~] = find(obj.dofm.subCells(:,subInd));
             nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]);
             iiVec = zeros(obj.nEntryKLoc*nSubCellsByType,1);
             jjVec = zeros(obj.nEntryKLoc*nSubCellsByType,1);
             KVec = zeros(obj.nEntryKLoc*nSubCellsByType,1);
+            nDof = obj.dofm.getNumbDof('Poro');
+            obj.fInt = zeros(nDof,1); % reset internal forces
             %
             l1 = 0;
             l2 = 0;
@@ -74,7 +81,7 @@ classdef Poromechanics < handle
                         %
                         %             if obj.flCompRHS
                         sz = sigma - state.iniStress(l2+1,:);
-                        %fLoc = (B')*sz'*vol;
+                        fLoc = (B')*sz'*vol;
                         s2 = 1;
                         %             end
                     case 12 % Hexahedra
@@ -94,9 +101,9 @@ classdef Poromechanics < handle
                         s1 = obj.nEntryKLoc(2);
                         sz = sigma - state.iniStress(l2+1:l2+obj.GaussPts.nNode,:);
                         sz = reshape(sz',6,1,obj.GaussPts.nNode);
-                        % fTmp = pagemtimes(B,'ctranspose',sz,'none');
-                        % fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
-                        % fLoc = sum(fTmp,3);
+                        fTmp = pagemtimes(B,'ctranspose',sz,'none');
+                        fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
+                        fLoc = sum(fTmp,3);
                         s2 = obj.GaussPts.nNode;
                 end
                 % get global DoF
@@ -107,6 +114,7 @@ classdef Poromechanics < handle
                 KVec(l1+1:l1+s1) = KLoc(:);
                 l1 = l1 + s1;
                 l2 = l2 + s2;
+                obj.fInt(dof) = obj.fInt(dof)+fLoc;
             end
             % populate stiffness matrix
             obj.K = sparse(iiVec, jjVec, KVec);
@@ -115,11 +123,15 @@ classdef Poromechanics < handle
 
         function computeRhs(obj,varargin)
             stateTmp = varargin{1};
-            % computing rhs for poromechanics field
-            ents = obj.dofm.field2ent('Poro');
-            theta = obj.simParams.theta;
-            obj.rhs = theta*obj.K*stateTmp.dispCurr(ents) + ...
-                (1-theta)*obj.K*stateTmp.dispConv(ents);
+            %computing rhs for poromechanics field
+            if isLinear(obj) % linear case
+                ents = obj.dofm.field2ent('Poro');
+                theta = obj.simParams.theta;
+                obj.rhs = theta*obj.K*stateTmp.dispCurr(ents) + ...
+                    (1-theta)*obj.K*stateTmp.dispConv(ents);
+            else % non linear case: rhs computed with internal forces (B^T*sigma)
+                obj.rhs = obj.fInt; % provisional assuming theta = 1;
+            end
         end
 
         function blk = blockJacobian(obj,varargin)
@@ -141,10 +153,13 @@ classdef Poromechanics < handle
         end
 
         function out = isLinear(obj)
-            out = false;
+            out = true;
+              for i = 1:obj.mesh.nCellTag
+                out = isa(obj.material.getMaterial(i).ConstLaw,"Elastic");
+                if ~out
+                  return;
+                end
+              end
         end
-
-
     end
 end
-
