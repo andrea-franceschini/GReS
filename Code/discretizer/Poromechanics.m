@@ -133,7 +133,7 @@ classdef Poromechanics < handle
                  % Get the right material stiffness for each element
                  switch obj.mesh.cellVTKType(el)
                     case 10 % Tetrahedra
-                       stateTmp.curr.stress(l1+1,:) = stateTmp.curr.stress(l1+1,:)+stateTmp.curr.strain.stress(l1+1,:)*D;
+                       stateTmp.curr.stress(l1+1,:) = stateTmp.curr.stress(l1+1,:)+stateTmp.curr.strain(l1+1,:)*D;
                        s1 = 1;
                     case 12 % Hexahedra
                        stateTmp.curr.stress((l1+1):(l1+obj.GaussPts.nNode),:) = ...

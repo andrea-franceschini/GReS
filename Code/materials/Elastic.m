@@ -29,14 +29,6 @@ classdef Elastic < handle
     % Material stiffness matrix calculation using the object properties
     function [DAll, sigmaOut, status] = getStiffnessMatrix(obj, sigmaIn, epsilon, dt, status)
       nptGauss = size(sigmaIn,1);
-%       sigmaOut = zeros(nptGauss,6);    % MODIFICA SN
-      % Stiffness matrix
-%       DAll = zeros(6,6,nptGauss);      % MODIFICA SN
-      % MODIFICA SN
-%       for i = 1 : nptGauss
-%         sigmaOut(i,:) = sigmaIn(i,:) + epsilon(i,:)*D;
-%         DAll(:,:,i) = D;
-%       end
       sigmaOut = sigmaIn + epsilon*obj.Dmat;
       DAll = repmat(obj.Dmat,[1, 1, nptGauss]);
     end
