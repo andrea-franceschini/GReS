@@ -85,7 +85,7 @@ classdef Discretizer < handle
         flds = unique(obj.fieldMap);
         for i = 1:obj.nField
             for j = 1:length(flds)
-                obj.rhs{i} = obj.rhs{i} + obj.getField(flds{j}).blockRhs(i);
+                obj.rhs{i} = obj.rhs{i} + obj.getField(flds{j}).blockRhs(i); %il problema e questo? a quanto pare si
             end
         end
 

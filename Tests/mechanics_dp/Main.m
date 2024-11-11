@@ -14,7 +14,7 @@ topology = Mesh();
 %
 % Set the input file name
 %fileName = 'TerzaghiH05_hexa.msh';
-fileName = 'Terzaghi_box_1.msh';
+fileName = 'TerzaghiH05_hexa.msh';
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
 %
@@ -46,8 +46,8 @@ dofmanager = DoFManager(topology,model);
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
 % Set the input file
-%fileName = ["dir_BCSurf_poro_tetra.dat","neuSurf_BC_poro_tetra.dat","neuSurf_BC_poro_x.dat"];
-fileName = ["dir_BCSurf_poro_tetra.dat","neuSurf_BC_poro_tetra.dat"];
+fileName = ["dir_BCSurf_poro_tetra.dat","neuSurf_BC_poro_tetra.dat","neuSurf_BC_poro_x.dat"];
+%fileName = ["dir_BCSurf_poro_tetra.dat","neuSurf_BC_poro_tetra.dat"];
 %
 % Create an object of the "Boundaries" class and read the boundary
 % conditions

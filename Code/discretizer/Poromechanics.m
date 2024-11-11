@@ -88,10 +88,12 @@ classdef Poromechanics < handle
                         [N,dJWeighed] = getDerBasisFAndDet(obj.elements.hexa,el,1);
                         B = zeros(6,8*obj.mesh.nDim,obj.GaussPts.nNode);
                         B(obj.elements.indB(:,2)) = N(obj.elements.indB(:,1));
+
                         [D, sigma, status] = obj.material.updateMaterial(obj.mesh.cellTag(el), ...
                             state.conv.stress(l2+1:l2+obj.GaussPts.nNode,:), ...
                             state.curr.strain(l2+1:l2+obj.GaussPts.nNode,:), ...
                             dt,state.conv.status(l2+1:l2+obj.GaussPts.nNode,:), el, state.t);
+                        
                         state.curr.status(l2+1:l2+obj.GaussPts.nNode,:) = status;
                         state.curr.stress((l2+1):(l2+obj.GaussPts.nNode),:) = sigma;
                         Ks = pagemtimes(pagemtimes(B,'ctranspose',D,'none'),B);
@@ -130,7 +132,8 @@ classdef Poromechanics < handle
                 obj.rhs = theta*obj.K*stateTmp.dispCurr(ents) + ...
                     (1-theta)*obj.K*stateTmp.dispConv(ents);
             else % non linear case: rhs computed with internal forces (B^T*sigma)
-                obj.rhs = obj.fInt; % provisional assuming theta = 1;
+                obj.rhs = obj.fInt;% provisional assuming theta = 1;
+               
             end
         end
 

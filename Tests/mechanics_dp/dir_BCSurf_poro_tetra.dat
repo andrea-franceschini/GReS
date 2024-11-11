@@ -4,4 +4,5 @@ Poro                              % Physics
 dir_poro                             % BC name
 modified_dir_BCSurf_poro_tetra/list
 0.0 modified_dir_BCSurf_poro_tetra/time0.dat
+1.0 modified_dir_BCSurf_poro_tetra/time1.dat
 End
