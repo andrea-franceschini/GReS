@@ -10,6 +10,7 @@ classdef Elastic < handle
     M
     % Vertical compressibility Cm
     cM
+    Dmat
   end
 
   methods (Access = public)
@@ -80,6 +81,11 @@ classdef Elastic < handle
       %
       % Compute vertical compressibility
       obj.cM = (1+obj.nu)*(1-2*obj.nu)/(obj.E*(1-obj.nu));
+      D = zeros(6);
+      D([1 8 15]) = 1-obj.nu;
+      D([2 3 7 9 13 14]) = obj.nu;
+      D([22 29 36]) = (1-2*obj.nu)/2;
+      obj.Dmat = obj.E/((1+obj.nu)*(1-2*obj.nu))*D;
     end
   end
 end
