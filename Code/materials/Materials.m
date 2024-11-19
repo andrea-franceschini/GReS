@@ -11,11 +11,12 @@ classdef Materials < handle
 
   methods (Access = public)
     % Class constructor method   
-    function obj = Materials(model,fListName)
+    function obj = Materials(model,fListName)  
       obj.db = containers.Map('KeyType','double','ValueType','any');
       % Calling the function to read input data from file
       obj.matMap = zeros(100,100);
       obj.readInputFiles(model,fListName)
+      
     end
 
     % Get the material defined by matIdentifier and check if it is a

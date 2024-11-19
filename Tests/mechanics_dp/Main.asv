@@ -1,6 +1,10 @@
 close all;
 clear;
 
+fileID = fopen('/Users/alessandrodoro/Downloads/GReS/GReS/Tests/mechanics_dp/outputs', 'a');
+fprintf(fileID, '3 Conditions\n');
+fclose(fileID);
+
 % -------------------------- SET THE PHYSICS -------------------------
 model = ModelType("Poromechanics_FEM");
 %

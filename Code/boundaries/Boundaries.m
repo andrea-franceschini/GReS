@@ -284,9 +284,10 @@ classdef Boundaries < handle
     
     function computeBoundaryProperties(obj,model,grid)
       keys = obj.db.keys;
+      
       for i = 1 : length(keys)
         if strcmp(obj.getCond(keys{i}), 'VolumeForce') && ...
-            isFEMBased(model,obj.getPhysics(keys{i})) 
+            isFEMBased(model,obj.getPhysics(keys{i}))
           dofs = obj.getEntities(keys{i});
           tmpMat = grid.topology.cells(dofs,:)';
           [loadedEnts] = unique(tmpMat(tmpMat ~= 0));
@@ -321,6 +322,7 @@ classdef Boundaries < handle
         elseif strcmp(obj.getCond(keys{i}), 'SurfBC') && ...
           isFEMBased(model,obj.getPhysics(keys{i})) && ...
           strcmp(obj.getType(keys{i}),'Neu')
+          %fprintf(fileID, 'SurfBC Neu \n');
           dofs = obj.getEntities(keys{i});
           tmpMat = grid.topology.surfaces(dofs,:)';
           [loadedEnts] = unique(tmpMat(tmpMat ~= 0));
@@ -398,7 +400,12 @@ classdef Boundaries < handle
           tmpDbEntry.nloadedEnts = nLoadEnts;
           obj.db(keys{i}) = tmpDbEntry;
         end
+        
       end
+
+      
+      
+
     end
     
 %     function iniBC(obj,BCList,state)

@@ -115,7 +115,7 @@ classdef Poromechanics < handle
                 l2 = l2 + s2;
                 obj.fInt(dof) = obj.fInt(dof)+fLoc;
             end
-            % populate stiffness matrix
+            % % populate stiffness matrix
             obj.K = sparse(iiVec, jjVec, KVec);
         end
 
@@ -133,7 +133,7 @@ classdef Poromechanics < handle
                  % Get the right material stiffness for each element
                  switch obj.mesh.cellVTKType(el)
                     case 10 % Tetrahedra
-                       stateTmp.curr.stress(l1+1,:) = stateTmp.curr.stress(l1+1,:)+stateTmp.curr.strain.stress(l1+1,:)*D;
+                       stateTmp.curr.stress(l1+1,:) = stateTmp.curr.stress(l1+1,:)+stateTmp.curr.strain(l1+1,:)*D;
                        s1 = 1;
                     case 12 % Hexahedra
                        stateTmp.curr.stress((l1+1):(l1+obj.GaussPts.nNode),:) = ...
@@ -147,9 +147,10 @@ classdef Poromechanics < handle
                  theta = obj.simParams.theta;
                  obj.rhs = theta*obj.K*stateTmp.dispCurr(ents) + ...
                   (1-theta)*obj.K*stateTmp.dispConv(ents);
+                
             else % non linear case: rhs computed with internal forces (B^T*sigma)
                 obj.rhs = obj.fInt; % provisional assuming theta = 1;
-            end
+           end
         end
 
         function blk = blockJacobian(obj,varargin)

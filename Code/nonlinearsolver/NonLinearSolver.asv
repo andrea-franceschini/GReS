@@ -31,6 +31,9 @@ classdef NonLinearSolver < handle
     end
 
     function [simStat] = NonLinearLoop(obj)
+      fileID = fopen('/Users/alessandrodoro/Downloads/GReS/GReS/Tests/mechanics_dp/outputs', 'a');
+      fprintf(fileID, 'rhsNorm | %.16f\n', rhsNorm);
+      flclose(fileID);
 
       simStat = 1;
       
@@ -55,6 +58,7 @@ classdef NonLinearSolver < handle
       %
       % Loop over time
       while obj.t < obj.simParameters.tMax
+        fileID = fopen('/Users/alessandrodoro/Downloads/GReS/GReS/Tests/mechanics_dp/outputs', 'a');
         % Update the simulation time and time step ID
         obj.tStep = obj.tStep + 1;
         %new time update to fit the outTime list
@@ -91,13 +95,17 @@ classdef NonLinearSolver < handle
         obj.iter = 0;
         %
         fprintf('0     %e\n',rhsNorm);
+
+        fprintf(fileID, 'rhsNorm | %.16f\n', rhsNorm);
+        
         while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
             && (rhsNorm > obj.simParameters.absTol)) || obj.iter == 0
           obj.iter = obj.iter + 1;
+          
+          
           %
           % Solve system with increment
           du = solve(linSyst);
-          % fprintf(fileID, 'du | %.16f\n',du);
           % Reset global Jacobian and Rhs
           linSyst.resetJacobianAndRhs(); 
           % Update tmpState
@@ -121,6 +129,8 @@ classdef NonLinearSolver < handle
           % compute residual norm
           [~, rhsNorm] = computeRhsNorm(obj,linSyst);
           fprintf('%d     %e\n',obj.iter,rhsNorm);
+          fileID = fopen('/Users/alessandrodoro/Downloads/GReS/GReS/Tests/mechanics_dp/outputs', 'a');
+          fprintf(fileID, 'rhsNorm | %.16f\n', rhsNorm);
         end
         
         %
@@ -141,6 +151,7 @@ classdef NonLinearSolver < handle
             printState(obj.printUtil,obj.statek,obj.stateTmp);
           end
         end
+        fclose(fileID);
         %
         % Manage next time step
         delta_t = manageNextTimeStep(obj,delta_t,flConv);

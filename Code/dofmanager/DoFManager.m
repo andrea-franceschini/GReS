@@ -253,7 +253,7 @@ classdef DoFManager < handle
              end
         end
         
-        function col = getColTable(obj,physic)     
+        function col = getColTable(obj,physic)
             i = find(obj.physicsList == physic);
             if i==1
                 col = 1:obj.ncomp(i);   

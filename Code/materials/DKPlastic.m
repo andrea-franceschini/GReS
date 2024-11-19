@@ -37,6 +37,7 @@ classdef DKPlastic < handle
 %       sigmaOut = zeros(nptGauss,6);    % MODIFICA SN
       % Stiffness matrix
 %       DAll = zeros(6,6,nptGauss);      % MODIFICA SN
+      
       D = zeros(6);
       D([1 8 15]) = 1-obj.nu;
       D([2 3 7 9 13 14]) = obj.nu;
@@ -51,7 +52,6 @@ classdef DKPlastic < handle
       DAll = repmat(D,[1, 1, nptGauss]);
       sigmaOut0 = sigmaIn + epsilon*D;
       [sigmaOut, DAll] = lambdacorr(obj, sigmaOut0, nptGauss, DAll);
-      %fprintf('%+.5E \n',sigmaOut-sigmaOut0);
       
     end
     %
@@ -78,12 +78,10 @@ classdef DKPlastic < handle
     function [sigma, D] = lambdacorr(obj, sigmaIn, nptGauss, D)
               sigma = sigmaIn;
               for i = 1:nptGauss
-                  
                   q = sqrt(0.5*(((sigmaIn(i, 1)-sigmaIn(i, 2))^2+(sigmaIn(i, 1)- ...
                       sigmaIn(i, 3))^2+(sigmaIn(i, 2)-sigmaIn(i, 3))^2))+ ...
                       3*(sigmaIn(i, 4)^2+sigmaIn(i, 5)^2+sigmaIn(i, 6)^2));
                   p = sum(sigmaIn(i, 1:3));
-                  
                   f = q/sqrt(3) + obj.alpha*p-obj.epsilon*(obj.co);
                   G = obj.E/(2*(1+obj.nu));
                   K = obj.E/(3*(1-2*obj.nu)); 
@@ -95,30 +93,29 @@ classdef DKPlastic < handle
                       if q < 0 %apex return
                           q = 0;
                           f = obj.alpha*p - obj.epsilon*(obj.co);
-                          lambdac = max(0, f/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
-                          sigma(i, 1:6) = (p-lambdac*K*obj.beta).*I;
-                          D(:,:,i) = K*(1-(obj.alpha*obj.beta*K)/(obj.alpha*obj.beta*K+obj.epsilon^2*obj.h)).*(I'*I);
-
+                          lambdac = max(0, f/(obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
+                          sigma(i, 1:6) = p.*I;
+                          p = p-lambdac*K*obj.beta; %%
+                          f = obj.alpha*p - obj.epsilon*(obj.co); %%
+                          %sigma(i, 1:6) = p.*I;
+                          D(:,:,i) = K*((1-(obj.alpha*obj.beta*K)/(obj.alpha*obj.beta*K+obj.epsilon^2*obj.h))).*(I'*I);
                       else
                           f = q/sqrt(3) + obj.alpha*p-obj.epsilon*obj.co; 
                           n = ((1.5/q).*(sigma(i, 1:6)- p/3.*I))';
                           lambdac = max(0, f/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
                           sigma(i, 1:6) = sigma(i, 1:6) - lambdac.*((2*G/sqrt(3)).*n'+K*obj.beta.*I);
-                          var1 = lambdac*(2*sqrt(3)*G^2)/(q); %ok
+                          var1 = lambdac*(2*sqrt(3)*G^2)/(q); 
                           var2 = eye(6) - 1/3*(I'*I) - (2/3).*(n*n');
                           var3 = (2*G)/(sqrt(3)).*n+K*obj.beta.*I';
                           var4 = (2*G)/(sqrt(3)).*n+obj.alpha*K.*I';
                           var5 = G+obj.alpha*obj.beta*K+obj.epsilon^2*obj.h;
                           D(:,:,i) = D(:,:,i) - var1*var2-var3*((var4)/(var5))';
-                      end
-                     
+                      end   
                   else
-                      
                       continue
-                      
                   end
-                  %fprintf('p %.f | q %.f finale \n', p, q);
               end
+              
         end
   end
 

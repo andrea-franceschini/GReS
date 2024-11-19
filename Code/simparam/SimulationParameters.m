@@ -22,7 +22,7 @@ classdef SimulationParameters < handle
   
   methods (Access = public)
     function obj = SimulationParameters(model,fileName)
-      obj.setSimulationParameters(model,fileName);
+        obj.setSimulationParameters(model,fileName);
     end
     
     function status = isNewtonNLSolver(obj)
