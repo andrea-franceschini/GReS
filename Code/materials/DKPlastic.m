@@ -76,7 +76,6 @@ classdef DKPlastic < handle
     function cM = getRockCompressibility(obj)
       cM = obj.cM;
     end
-
     function [sigma, D] = lambdacorr(obj, sigmaIn, nptGauss, D)
               sigma = sigmaIn;
               for i = 1:nptGauss
@@ -84,7 +83,7 @@ classdef DKPlastic < handle
                       sigmaIn(i, 3))^2+(sigmaIn(i, 2)-sigmaIn(i, 3))^2))+ ...
                       3*(sigmaIn(i, 4)^2+sigmaIn(i, 5)^2+sigmaIn(i, 6)^2));
                   p = sum(sigmaIn(i, 1:3));
-                  f = q/sqrt(3) + obj.alpha*p-obj.epsilon*(obj.co+obj.k);
+                  f = q/sqrt(3) + obj.alpha*p-obj.epsilon*(obj.co);
                   G = obj.E/(2*(1+obj.nu));
                   K = obj.E/(3*(1-2*obj.nu)); 
                   lambdac = max(0, f/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
@@ -92,24 +91,21 @@ classdef DKPlastic < handle
                   if f > 0 
                       p = p-lambdac*K*obj.beta;
                       q = q-lambdac*sqrt(3)*G;
-                      kk = obj.k +lambdac*obj.epsilon;
                       if q < 0 %apex return
-                          continue
-                          % f = obj.alpha*p - obj.epsilon*(obj.co+kk);
-                          % lambdac = max(0, f/(obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
-                          % sigma(i, 1:6) = p.*I;
-                          % p = p-lambdac*K*obj.beta; %%
-                          % f = obj.alpha*p - obj.epsilon*(obj.co+kk); %%
-                          % %sigma(i, 1:6) = p.*I;
-                          % D(:,:,i) = K*((1-(obj.alpha*obj.beta*K)/(obj.alpha*obj.beta*K+obj.epsilon^2*obj.h))).*(I'*I);
+                          f = obj.alpha*p - obj.epsilon*(obj.co);
+                          lambdac = max(0, f/(obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
+                          sigma(i, 1:6) = p.*I;
+                          p = p-lambdac*K*obj.beta; %%
+                          f = obj.alpha*p - obj.epsilon*(obj.co); %%
+                          %sigma(i, 1:6) = p.*I;
+                          D(:,:,i) = K*((1-(obj.alpha*obj.beta*K)/(obj.alpha*obj.beta*K+obj.epsilon^2*obj.h))).*(I'*I);
                       else
-                          f = q/sqrt(3) + obj.alpha*p-obj.epsilon*(obj.co+kk); 
+                          f = q/sqrt(3) + obj.alpha*p-obj.epsilon*(obj.co); 
                           n = ((1.5/q).*(sigma(i, 1:6)- p/3.*I))';
                           lambdac = max(0, f/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
                           sigma(i, 1:6) = sigma(i, 1:6) - lambdac.*((2*G/sqrt(3)).*n'+K*obj.beta.*I);
                           var1 = lambdac*(2*sqrt(3)*G^2)/(q); 
-                          %var2 = eye(6) - 1/3*(I'*I) - (2/3).*(n*n');
-                          var2 = diag([1 1 1 0.5 0.5 0.5])-(I'*I)-(2/3).*(n*n');
+                          var2 = diag([1 1 1 0.5 0.5 0.5])-(1/3)*(I'*I)-(2/3).*(n*n');
                           var3 = (2*G)/(sqrt(3)).*n+K*obj.beta.*I';
                           var4 = (2*G)/(sqrt(3)).*n+obj.alpha*K.*I';
                           var5 = G+obj.alpha*obj.beta*K+obj.epsilon^2*obj.h;
@@ -121,6 +117,7 @@ classdef DKPlastic < handle
               end
               
         end
+
   end
 
   methods (Access = private)

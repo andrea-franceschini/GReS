@@ -1,5 +1,5 @@
 DKPlastic                           % material model
-100000      0.25       10   20 0    0                % E [kPa], nu, psi, phi, c0, h
+100000      0.25       10   20 0.5    0 0                % E [kPa], nu, psi, phi, c0, h, varepsilon
 End
 
 
