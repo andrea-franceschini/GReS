@@ -322,7 +322,6 @@ classdef Boundaries < handle
         elseif strcmp(obj.getCond(keys{i}), 'SurfBC') && ...
           isFEMBased(model,obj.getPhysics(keys{i})) && ...
           strcmp(obj.getType(keys{i}),'Neu')
-          %fprintf(fileID, 'SurfBC Neu \n');
           dofs = obj.getEntities(keys{i});
           tmpMat = grid.topology.surfaces(dofs,:)';
           [loadedEnts] = unique(tmpMat(tmpMat ~= 0));

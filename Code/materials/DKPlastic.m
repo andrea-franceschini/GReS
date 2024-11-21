@@ -116,7 +116,7 @@ classdef DKPlastic < handle
     % Assigning material parameters (check also the Materials class)
     % to object properties
     function readMaterialParameters(obj, fID, matFileName)
-      tmpVec = readDataInLine(fID, matFileName, 7);
+      tmpVec = readDataInLine(fID, matFileName, 6);
       %
       obj.E = tmpVec(1);
       obj.nu = tmpVec(2);
@@ -130,11 +130,11 @@ classdef DKPlastic < handle
       obj.phi = tmpVec(4);
       obj.co = tmpVec(5); %coesione
       obj.h = tmpVec(6); %hardening parameter
-      obj.varepsilon = tmpVec(7); %isotropic scalar hardening variable
-      obj.alpha = (3*tan(deg2rad(obj.phi)))/(sqrt(9+12*tan(deg2rad(obj.phi))^2));
+      %obj.varepsilon = tmpVec(7); %isotropic scalar hardening variable
+      obj.alpha = (3*tan(deg2rad(obj.phi)))/(sqrt(9+12*tan(deg2rad(obj.phi))^2)); 
       obj.beta = (3*tan(deg2rad(obj.psi)))/(sqrt(9+12*tan(deg2rad(obj.psi))^2));
       obj.epsilon = 3/(sqrt(9+12*tan(deg2rad(obj.phi))^2));
-      obj.k = obj.h*obj.varepsilon;
+      %obj.k = obj.h*obj.varepsilon;
     end
   end
 end
