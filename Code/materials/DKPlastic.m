@@ -92,13 +92,14 @@ classdef DKPlastic < handle
                       p = p-lambdac*K*obj.beta;
                       q = q-lambdac*sqrt(3)*G;
                       if q < 0 %apex return
-                          f = obj.alpha*p - obj.epsilon*(obj.co);
-                          lambdac = max(0, f/(obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
-                          sigma(i, 1:6) = p.*I;
-                          p = p-lambdac*K*obj.beta; %%
-                          f = obj.alpha*p - obj.epsilon*(obj.co); %%
-                          %sigma(i, 1:6) = p.*I;
-                          D(:,:,i) = K*((1-(obj.alpha*obj.beta*K)/(obj.alpha*obj.beta*K+obj.epsilon^2*obj.h))).*(I'*I);
+                          continue
+                          % f = obj.alpha*p - obj.epsilon*(obj.co);
+                          % lambdac = max(0, f/(obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
+                          % sigma(i, 1:6) = p.*I;
+                          % p = p-lambdac*K*obj.beta; %%
+                          % f = obj.alpha*p - obj.epsilon*(obj.co); %%
+                          % %sigma(i, 1:6) = p.*I;
+                          % D(:,:,i) = K*((1-(obj.alpha*obj.beta*K)/(obj.alpha*obj.beta*K+obj.epsilon^2*obj.h))).*(I'*I);
                       else
                           f = q/sqrt(3) + obj.alpha*p-obj.epsilon*(obj.co); 
                           n = ((1.5/q).*(sigma(i, 1:6)- p/3.*I))';
@@ -109,7 +110,7 @@ classdef DKPlastic < handle
                           var3 = (2*G)/(sqrt(3)).*n+K*obj.beta.*I';
                           var4 = (2*G)/(sqrt(3)).*n+obj.alpha*K.*I';
                           var5 = G+obj.alpha*obj.beta*K+obj.epsilon^2*obj.h;
-                          D(:,:,i) = D(:,:,i) - var1*var2-var3*((var4)/(var5))';
+                          %D(:,:,i) = D(:,:,i) - var1*var2-var3*((var4)/(var5))';
                       end   
                   else
                       continue
@@ -124,7 +125,7 @@ classdef DKPlastic < handle
     % Assigning material parameters (check also the Materials class)
     % to object properties
     function readMaterialParameters(obj, fID, matFileName)
-      tmpVec = readDataInLine(fID, matFileName, 7);
+      tmpVec = readDataInLine(fID, matFileName, 6);
       %
       obj.E = tmpVec(1);
       obj.nu = tmpVec(2);
@@ -138,11 +139,11 @@ classdef DKPlastic < handle
       obj.phi = tmpVec(4);
       obj.co = tmpVec(5); %coesione
       obj.h = tmpVec(6); %hardening parameter
-      obj.varepsilon = tmpVec(7); %isotropic scalar hardening variable
+      %obj.varepsilon = tmpVec(7); %isotropic scalar hardening variable
       obj.alpha = (3*tan(deg2rad(obj.phi)))/(sqrt(9+12*tan(deg2rad(obj.phi))^2)); 
       obj.beta = (3*tan(deg2rad(obj.psi)))/(sqrt(9+12*tan(deg2rad(obj.psi))^2));
       obj.epsilon = 3/(sqrt(9+12*tan(deg2rad(obj.phi))^2));
-      obj.k = obj.h*obj.varepsilon;
+      %obj.k = obj.h*obj.varepsilon;
     end
   end
 end
