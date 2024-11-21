@@ -2,6 +2,6 @@ NodeBC            % BC item
 Dir            % BC type 
 Poro            % Physics 
 bottom_fix            % BC name 
-bottom_fix/list 
-0.000000 bottom_fix/time0.dat 
+BCs/bottom_fix/list 
+0.000000 BCs/bottom_fix/time0.dat 
 End

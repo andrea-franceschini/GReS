@@ -3,7 +3,7 @@ Neu            % BC type
 Poro            % Physics 
 x 
 top_shearLoad            % BC name 
-load_x/list 
-0.000000 load_x/time0.dat 
-1.000000 load_x/time1.dat 
+BCs/load_x/list 
+0.000000 BCs/load_x/time0.dat 
+1.000000 BCs/load_x/time1.dat 
 End
