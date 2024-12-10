@@ -92,6 +92,7 @@ classdef DKPlastic < handle
         if f > 0
             p = p-lambdac*K*obj.beta;
             q = q-lambdac*sqrt(3)*G;
+            obj.varepsilon = obj.varepsilon+lambdac*obj.epsilon; 
             if q < 0 %apex return
                 sigma(i, 1:6) = (p*I)';
                 D(:,:,i) = K*((1-(obj.alpha*obj.beta*K)/(obj.alpha*obj.beta*K+obj.epsilon^2*obj.h)))*(I*I');
