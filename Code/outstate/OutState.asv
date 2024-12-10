@@ -141,7 +141,7 @@ classdef OutState < handle
   
   methods (Access = private)
     function setOutState(obj,symMod,mat,grid,fileName,data)
-      foldName = 'output';
+      foldName = 'ou'
       % if ~isempty(data)
       %   obj.GaussPts = data{1};
       % end
@@ -197,7 +197,7 @@ classdef OutState < handle
       end
       fclose(fid);
       %
-      obj.VTK = VTKOutput(obj.mesh, foldName);
+      obj.VTK = VTKOutput(obj.mesh);
       %
       % TO DO: Here we are printing everything; consider adding the
       % possibility of printing only the results of a portion of the domain

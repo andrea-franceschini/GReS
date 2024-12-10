@@ -34,6 +34,7 @@ topology.importGMSHmesh(fileName);
 %----------------------------- MATERIALS -----------------------------
 %
 % Set the input file name
+%
 %fileName = 'Materials/MaterialsList.dat';
 fileName = 'Materials/materialsList2.dat';
 %

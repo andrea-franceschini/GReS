@@ -36,7 +36,6 @@ classdef Elastic < handle
       D([2 3 7 9 13 14]) = obj.nu;
       D([22 29 36]) = (1-2*obj.nu)/2;
       D = obj.E/((1+obj.nu)*(1-2*obj.nu))*D;
-      
       % MODIFICA SN
 %       for i = 1 : nptGauss
 %         sigmaOut(i,:) = sigmaIn(i,:) + epsilon(i,:)*D;

@@ -87,6 +87,7 @@ fprintf('LINEAR ELASTIC SIMULATION \n')
 %
 % Finalize the print utility
 printUtils.finalize()
+OutState(model,mat,grid,'outTime.dat','vtkElastic');
 %
 % store solution in mat file
 dispElastic = printUtils.m.expDispl;
@@ -148,6 +149,7 @@ fprintf('DRUCKER PRAGER SIMULATION \n')
 %
 % Finalize the print utility
 printUtils.finalize()
+OutState(model,mat,grid,'outTime.dat','vtkDP');
 %
 % store solution in mat file
 dispDP = printUtils.m.expDispl;
