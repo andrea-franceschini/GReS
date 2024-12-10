@@ -54,7 +54,10 @@ classdef DKPlastic < handle
       DAll = repmat(D,[1, 1, nptGauss]);
       sigmaOut0 = sigmaIn + epsilon*D;
       [sigmaOut, DAll] = lambdacorr(obj, sigmaOut0, nptGauss, DAll);
-      print(si)
+<<<<<<< HEAD
+      
+=======
+>>>>>>> 32c0638dcff6e379d9350cafb3b6ce53b83e3e16
 
     end
     %
@@ -87,6 +90,7 @@ classdef DKPlastic < handle
         p = sum(sigmaIn(i, 1:3))/3;
         I = [1;1;1;0;0;0];
         n = ((1.5/q)*(sigmaIn(i, 1:6)'- p*I));
+
         f = q/sqrt(3) + obj.alpha*p-obj.epsilon*(obj.co+obj.k);
         G = obj.E/(2*(1+obj.nu));
         K = obj.E/(3*(1-2*obj.nu));

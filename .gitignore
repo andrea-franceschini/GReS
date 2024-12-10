@@ -38,3 +38,7 @@
 
 # Matlab files
 *.mat
+*.asv
+
+# MacOS
+.DS_Store

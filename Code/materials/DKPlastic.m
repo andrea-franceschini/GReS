@@ -54,8 +54,6 @@ classdef DKPlastic < handle
       DAll = repmat(D,[1, 1, nptGauss]);
       sigmaOut0 = sigmaIn + epsilon*D;
       [sigmaOut, DAll] = lambdacorr(obj, sigmaOut0, nptGauss, DAll);
-      
-
     end
     %
     % Material stiffness matrix calculation using the object properties

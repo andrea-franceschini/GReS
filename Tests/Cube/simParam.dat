@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 0.99                    % Simulation end time
 0.1                     % Initial time step size
+=======
+0.99                   % Simulation end time
+0.1                    % Initial time step size
+>>>>>>> 32c0638dcff6e379d9350cafb3b6ce53b83e3e16
 1.e-5                 % Minimum time step size
 0.1                     % Maximum time step size
 Default               % Time step increment augmentation factor (multiplicative)
