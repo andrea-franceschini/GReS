@@ -18,7 +18,7 @@ bottomMesh = Mesh();
 
 % Elastic properties and constitutive tensor
 E = 100000;
-nu = 0.25;
+nu = 0.3;
 D = zeros(3);
 D([1 5]) = 1-nu;
 D([2 4]) = nu;
@@ -29,7 +29,7 @@ Ku = (E*(1-nu))/((1+nu)*(1-2*nu));
 % external force
 F = -100;
 % gauss class for 1D element integration
-nG = 16;
+nG = 6;
 
 fileNameTop = [];
 fileNameBottom = [];
@@ -46,7 +46,7 @@ ini_str = strcat("2D MORTAR METHOD: top coarser mesh as ",flagTop, '\n');
 fprintf(ini_str)
 
 
-int_str = ["EB"]; % RBF or SB
+int_str = ["RBF"]; % RBF or SB
 
 solution_scheme = "SP"; % SP (saddle point) % COND (condensated) 
 
@@ -103,14 +103,11 @@ for integration = int_str
         mortar = Mortar2D(1,masterMesh,1,slaveMesh,1);
         % compute mortar operator
         if strcmp(integration,'RBF')
-           [Dtmp, Mtmp] = mortar.computeMortarRBF(nG,4,'gauss');
+            [Etmp, Mtmp, Dtmp] = mortar.computeMortarRBF(nG,)
         elseif strcmp(integration, 'EB')
-           [Dtmp, Mtmp] = mortar.computeMortarElementBased(nG);
-        elseif strcmp(integration, 'SB')
-           [Dtmp, Mtmp] = mortar.computeMortarSegmentBased(nG);
-        end
-         
-        Etmp = Dtmp\Mtmp;
+            [Etmp, Mtmp, Dtmp] = compute_mortar(masterMesh, slaveMesh, boundInt, 10, 6, 1, 1, "EB",1);
+        end        
+
         % reordering the matrix of the system
         %
         % | dofM = nodi interni master      |
@@ -213,9 +210,9 @@ for integration = int_str
         % dofLatMaster = getGlobalDofs(dofLatMaster,dofM,dofS,dofIm,dofIs,'master');
         % % Apply penalty method
         % [K,f] = applyDir(dofLatMaster, zeros(length(dofLatMaster),1), K, f);
-        % % 
-        % % 
-        % % % get nodes in the master interface
+        % 
+        % 
+        % % get nodes in the master interface
         % nodesLatMaster = unique(masterMesh.edges(masterMesh.edgeTag == 3,:));
         % nodesLatInt = nodesLatMaster(ismember(nodesLatMaster, nodesMaster));
         % dofLatInt = 2*nodesLatInt-1;
@@ -234,7 +231,7 @@ for integration = int_str
         % end
         % 
         % % get nodes in the slave domain (not in the interface)
-        % get nodes from master domain (not in the interface)
+        % % get nodes from master domain (not in the interface)
         % nodesLatSlave = unique(slaveMesh.edges(slaveMesh.edgeTag == 3,:));
         % % extract nodes not belonging to the interface
         % nodesLatSlave = nodesLatSlave(~ismember(nodesLatSlave, nodesSlave));
