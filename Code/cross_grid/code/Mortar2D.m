@@ -95,7 +95,7 @@ classdef Mortar2D < handle
 
 
 
-      function [D,M,varargout] = computeMortarSegmentBased(obj,nGP)
+      function [D,M,varargout] = computeMortarSegmentBased(obj,nGP,mult_type)
          if length(unique(obj.slaveCoord(obj.nodesSlave,2))) ~= 1
             if nargout > 2
                varargout{1} = 0;
@@ -124,6 +124,7 @@ classdef Mortar2D < handle
                tmp = sort([a(1) b(1) c(1) d(1)]);
                i1 = [tmp(2) 0];
                i2 = [tmp(3) 0];
+               h = i2(1)-i1(1);
                % get GP in the intersection element
                gPts = ref2nod(gpRef, i1, i2);
                % compute basis function on master element points
@@ -132,8 +133,15 @@ classdef Mortar2D < handle
                % compute basis function on slave elements points
                gSlave = nod2ref(gPts, c, d);
                basisSlave = computeBasis1D(gSlave,obj.degree);
-               Mloc = basisSlave'*(basisMaster.*gpWeight);
-               Dloc = basisSlave'*(basisSlave.*gpWeight);
+               switch mult_type
+                  case 'standard'
+                     basisSlaveMult = basisSlave;
+                  case 'dual'
+                     % compute dual basis function
+                     basisSlaveMult = computeDualBasisF(obj,gSlave);
+               end
+               Mloc = basisSlaveMult'*(basisMaster.*gpWeight);
+               Dloc = basisSlaveMult'*(basisSlave.*gpWeight);
                Mloc = Mloc*(0.5*(i2(1)-i1(1)));
                Dloc = Dloc*(0.5*(i2(1)-i1(1)));
                idSlave = obj.slaveTopol(j,1:end);
@@ -307,6 +315,16 @@ classdef Mortar2D < handle
       function [D,M,varargout] = computeMortarRBF(obj,nGP,nInt,type,mult_type)
          % type: family of Radial Basis function to use
          % mult_type:
+
+         % treating elements on the interface boundary
+         % costant basis for these elements
+         n1 = find(obj.slaveCoord(:,1)==0);
+         n2 = find(obj.slaveCoord(:,1)==1);
+         n1 = n1(ismember(n1,obj.nodesSlave));
+         n2 = n2(ismember(n2,obj.nodesSlave));
+         el1 = find(any(ismember(obj.slaveTopol,n1),2));
+         el2 = find(any(ismember(obj.slaveTopol,n2),2));
+
          g = Gauss(12,nGP,1);
          M = zeros(obj.nSMat,obj.nMMat);
          D = zeros(obj.nSMat,obj.nSMat);
@@ -331,8 +349,19 @@ classdef Mortar2D < handle
                   NSlaveMult = NSlave;
                case 'dual'
                   % compute dual basis function
-                  NSlaveMult = computeDualBasisF(obj,gpW,gpPos,h);
+                  NSlaveMult = computeDualBasisF(obj,gpPos);
             end
+
+            %handle boundary elements
+            % if ismember(j,[el1 el2])
+            %    NSlaveMult = ones(size(NSlaveMult,1),1); % constant basis function
+            %    idSlaveMult = idSlave(ismember(idSlave,[n1 n2]));
+            % else
+            %    idSlaveMult = idSlave;
+            % end
+
+            idSlaveMult = idSlave;
+
             % Loop trough master elements and store projected master
             % basis functions
             for jm = master_elems'
@@ -357,8 +386,8 @@ classdef Mortar2D < handle
                   Mloc = Mloc*(0.5*h);
                   Dloc = NSlaveMult(id,:)'*(NSlave(id,:).*gpW(id));
                   Dloc = Dloc*(0.5*h);
-                  M(idSlave, idMaster) = M(idSlave, idMaster) + Mloc;
-                  D(idSlave, idSlave) = D(idSlave, idSlave) + Dloc;
+                  M(idSlaveMult, idMaster) = M(idSlaveMult, idMaster) + Mloc;
+                  D(idSlaveMult, idSlave) = D(idSlaveMult, idSlave) + Dloc;
                   % sort out Points already projected
                   gpPos = gpPos(~id);
                   gpW = gpW(~id);
@@ -598,16 +627,12 @@ classdef Mortar2D < handle
          end
       end
       %
-      function Nslave_dual = computeDualBasisF(obj,gpW,gpPos,h)
+      function Nslave_dual = computeDualBasisF(obj,gpPos)
          % compute dual basis function on slave GPs
-         % get matrix of BF phi = Nslave*A
-         % A = M\D
-         Nslave = computeBasis1D(gpPos,obj.degree);
-         M = Nslave'*(Nslave.*gpW);
-         M = M*(0.5*h);
-         D = diag(Nslave'*gpW)*(0.5*h);
-         A = M\D;
-         Nslave_dual = Nslave*A;
+         % formula from Popp thesis
+         Nslave_dual = zeros(numel(gpPos),2);
+         Nslave_dual(:,1) = 0.5*(1-3*gpPos);
+         Nslave_dual(:,2) = 0.5*(1+3*gpPos);
       end
 
 
