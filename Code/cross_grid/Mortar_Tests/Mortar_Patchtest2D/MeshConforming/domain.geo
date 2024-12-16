@@ -6,9 +6,9 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 Xsize = 1;
 Ysize = 2;
 
-nX = 200; // number of nodes along X direction
-nY = 50; // number of nodes long Y direction
-thin = 0.075; // size of first line of element above bottom boundary
+nX = 100; // number of nodes along X direction
+nY = 40; // number of nodes long Y direction
+thin = 0.02; // size of first line of element above bottom boundary
 dY = thin*Ysize/(nY-1);
 // Define points
 Point(1) = {0, 0, 0};

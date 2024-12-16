@@ -1,4 +1,4 @@
-function [s_x,s_y] = RunConfPatchTest(Fx,Fy,Dmat)
+function [s_x,s_y,u_x] = RunConfPatchTest(Fx,Fy,Dmat)
 % Run a conforming 2 block patch test with standard or dual lagrange
 % multipliers
 
@@ -38,7 +38,7 @@ f(2*n_ext) = Fy*lx/2;
 f(2*n_int) = Fy*lx;
 
 %-------------------------LATERAL LOAD BCS ------------------------
-nodesLoad = find(all([abs(mesh.coordinates(:,1)-0)<1e-3, mesh.coordinates(:,2)>1-1e-3],2));
+nodesLoad = find(all([abs(mesh.coordinates(:,1)-0)<1e-3, abs(mesh.coordinates(:,2))>1-1e-3],2));
 [yC,id] = sort(mesh.coordinates(nodesLoad,2),'ascend');
 ly1 = yC(end)-yC(end-1);
 ly2 = yC(2)-yC(1);
@@ -57,6 +57,7 @@ f(2*n3-1) = Fx*ly2/2;
 % y bottom constraint
 dirNod = find(abs(mesh.coordinates(:,2)-0)<1e-3);
 [K,f] = applyDir(2*dirNod, zeros(length(dirNod),1), K, f);
+%[K,f] = applyDir(2*dirNod-1, zeros(length(dirNod),1), K, f);
 
 % -------------------LATERAL CONSTRAINT BCS-----------------------
 % get nodes on right edge of master domain
@@ -79,5 +80,10 @@ cellInterf = find(mesh.surfaceTag==2);
 
 s_x = stress(cellInterf(id),3);
 s_y = stress(cellInterf(id),2);
+
+% get id of nodes on the interface
+intNod = find(abs(mesh.coordinates(:,2)-1)<1e-3);
+[~,id] = sort(mesh.coordinates(intNod,1),'ascend');
+u_x = u(2*intNod(id)-1);
 end
 

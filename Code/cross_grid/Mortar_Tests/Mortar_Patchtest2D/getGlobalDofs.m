@@ -9,5 +9,7 @@ switch flag
         doflist = length(dofM) + length(dofS) + find(ismember(dofIm,list));
     case 'interfaceSlave'
         doflist = length(dofM) + length(dofS) + length(dofIm) + find(ismember(dofIs,list));
+    case 'lagrange'
+        doflist = length(dofM) + length(dofS) + length(dofIm) + length(dofIs) + find(ismember(dofIs,list));
 end
 
