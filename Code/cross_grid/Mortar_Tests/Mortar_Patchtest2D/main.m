@@ -1,5 +1,5 @@
-Fx = 0; %[kPa]
-Fy = -10;
+Fx = 10; %[kPa]
+Fy = 0;
 % Elastic properties and constitutive tensor
 E = 100000;
 nu = 0.25;
@@ -9,11 +9,13 @@ D([2 4]) = nu;
 D(9) = 0.5*(1-2*nu);
 D = (E/((1+nu)*(1-2*nu)))*D;
 Dmat = D;
+
+stab = 'unstab';
 %%
 fprintf('Processing non conforming with dual multipliers \n')
-[dual_tx,dual_ty,dual_ux] = RunNonConfPatchTest('dual',Fx,Fy,Dmat);
+[dual_tx,dual_ty,dual_ux] = RunNonConfPatchTest('dual',Fx,Fy,Dmat,stab);
 fprintf('Processing non conforming with standard multipliers \n')
-[standard_tx,standard_ty,standard_ux] = RunNonConfPatchTest('standard',Fx,Fy,Dmat);
+[standard_tx,standard_ty,standard_ux] = RunNonConfPatchTest('standard',Fx,Fy,Dmat,stab);
 fprintf('Processing conforming \n')
 [tx_anal,ty_anal,conf_ux] = RunConfPatchTest(Fx,Fy,Dmat);
 
@@ -29,7 +31,8 @@ plot(xNode,standard_tx,'r.-','LineWidth',1,'MarkerSize',10)
 plot(xCell,tx_anal,'b--','LineWidth',1)
 xlabel('x (m)')
 ylabel('t_x (kPa)')
-legend('dual','standard','anal')
+legend('dual','standard','anal','Location','best')
+
 
 nexttile
 plot(xNode,dual_ty,'k.-','LineWidth',1,'MarkerSize',10)
@@ -38,7 +41,8 @@ plot(xNode,standard_ty,'r.-','LineWidth',1,'MarkerSize',10)
 plot(xCell,ty_anal,'b--','LineWidth',1)
 xlabel('x (m)')
 ylabel('t_y (kPa)')
-legend('dual','standard','anal')
+legend('dual','standard','anal','Location','best')
+%ylim([-11 -9])
 
 nexttile
 plot(xNode,dual_ux,'k.','LineWidth',1,'MarkerSize',10)
@@ -46,5 +50,9 @@ hold on
 plot(xNode,standard_ux,'r.','LineWidth',1,'MarkerSize',10)
 plot(xNodeAnal,conf_ux,'b--','LineWidth',1)
 xlabel('x (m)')
-ylabel('t_y (kPa)')
-legend('dual','standard','anal')
+ylabel('u_x (kPa)')
+legend('dual','standard','anal','Location','best')
+
+set(gcf,'Units','inches','Position',[1 1 20 10])
+name = 'Plots/PatchTest_05';
+exportgraphics(gcf,strcat(name,stab,'.pdf'),'ContentType','vector')

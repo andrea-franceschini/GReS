@@ -34,10 +34,10 @@ nodesLoad = find(abs(mesh.coordinates(:,2)-2)<1e-3);
 lx = xC(2)-xC(1);
 n_ext = nodesLoad(id([1 end]));
 n_int = nodesLoad(id(2:end-1));
-f(2*n_ext) = Fy*lx/2;
-f(2*n_int) = Fy*lx;
+f(2*n_ext-1) = Fy*lx/2;
+f(2*n_int-1) = Fy*lx;
 
-%-------------------------LATERAL LOAD BCS ------------------------
+%-------------------------LATERAL LOAD BCS (top only) ---------------------
 nodesLoad = find(all([abs(mesh.coordinates(:,1)-0)<1e-3, abs(mesh.coordinates(:,2))>1-1e-3],2));
 [yC,id] = sort(mesh.coordinates(nodesLoad,2),'ascend');
 ly1 = yC(end)-yC(end-1);
@@ -47,22 +47,38 @@ n1 = nodesLoad(id(end));
 nIn = nodesLoad(id(3:end-1));
 n2 = nodesLoad(id(2));
 n3 = nodesLoad(id(1));
-f(2*n1-1) = Fx*ly1/2;
+%f(2*n1-1) = Fx*ly1/2;
+%f(2*nIn-1) = Fx*ly1;
+%f(2*n2-1) = Fx*(ly2/2+ly1/2);
+% f(2*n3-1) = Fx*ly2/2;
+
+%-------------------------LATERAL LOAD BCS whole lateral side -------------
+nodesLoad = find(abs(mesh.coordinates(:,1)-0)<1e-3);
+[yC,id] = sort(mesh.coordinates(nodesLoad,2),'ascend');
+% get node on the interface
+id2 = find(abs(mesh.coordinates(nodesLoad,2)-1)<1e-3);
+ly1 = max(yC(2:end)-yC(1:end-1));
+ly2 = min(yC(2:end)-yC(1:end-1));
+% get top node (it has half of the entities influence)
+nOut = nodesLoad(id([1 end]));
+%nBot = nodesLoad(id(end-1));
+nHalf = [nodesLoad(id2)-1; nodesLoad(id2)];
+nIn = nodesLoad(~ismember(nodesLoad,[nHalf;nOut]));
+f(2*nOut-1) = Fx*ly1/2;
+f(2*nHalf-1) = Fx*(ly1/2+ly2/2);
 f(2*nIn-1) = Fx*ly1;
-f(2*n2-1) = Fx*(ly2/2+ly1/2);
-f(2*n3-1) = Fx*ly2/2;
 
 %------------------- BOTTOM FIXED BCS -----------------------------
 % get fixed dofs on bottom edge
 % y bottom constraint
 dirNod = find(abs(mesh.coordinates(:,2)-0)<1e-3);
 [K,f] = applyDir(2*dirNod, zeros(length(dirNod),1), K, f);
-%[K,f] = applyDir(2*dirNod-1, zeros(length(dirNod),1), K, f);
+[K,f] = applyDir(2*dirNod-1, zeros(length(dirNod),1), K, f);
 
 % -------------------LATERAL CONSTRAINT BCS-----------------------
 % get nodes on right edge of master domain
 nodesFixX = find(abs(mesh.coordinates(:,1)-1)<1e-3);
-[K,f] = applyDir(2*nodesFixX-1, zeros(length(nodesFixX),1), K, f);
+%[K,f] = applyDir(2*nodesFixX-1, zeros(length(nodesFixX),1), K, f);
 
 
 % solve linear system
@@ -84,6 +100,6 @@ s_y = stress(cellInterf(id),2);
 % get id of nodes on the interface
 intNod = find(abs(mesh.coordinates(:,2)-1)<1e-3);
 [~,id] = sort(mesh.coordinates(intNod,1),'ascend');
-u_x = u(2*intNod(id)-1);
+u_x = u(2*intNod(id));
 end
 

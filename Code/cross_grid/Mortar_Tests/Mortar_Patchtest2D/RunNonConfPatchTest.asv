@@ -155,13 +155,13 @@ nodesLoad = find(abs(topMesh.coordinates(:,1)-0)<1e-3);
 l1 = abs(yC(end)-yC(end-1));
 l2 = abs(yC(2)-yC(1));
 n1 = nodesLoad(id(end));
-%f(getGlobalDofs(2*n1-1,dofM,dofS,dofIm,dofIs,flagTop)) = Fx*l1/2;
+f(getGlobalDofs(2*n1-1,dofM,dofS,dofIm,dofIs,flagTop)) = Fx*l1/2;
 nIn = nodesLoad(id(3:end-1));
-%f(getGlobalDofs(2*nIn-1,dofM,dofS,dofIm,dofIs,flagTop)) = Fx*l1;
+f(getGlobalDofs(2*nIn-1,dofM,dofS,dofIm,dofIs,flagTop)) = Fx*l1;
 n2 = nodesLoad(id(2));
-%f(getGlobalDofs(2*n2-1,dofM,dofS,dofIm,dofIs,'slave')) = Fx*(l1/2+l2/2);
+f(getGlobalDofs(2*n2-1,dofM,dofS,dofIm,dofIs,'slave')) = Fx*(l1/2+l2/2);
 n3 = nodesLoad(id(1));
-%f(getGlobalDofs(2*n3-1,dofM,dofS,dofIm,dofIs,'interfaceSlave')) = Fx*l2/2;
+f(getGlobalDofs(2*n3-1,dofM,dofS,dofIm,dofIs,'interfaceSlave')) = Fx*l2/2;
 % 
 % % LATERAL LOAD ALSO TO MASTER SIDE (BOTTOM)
 %get top node (it has half of the entities influence)
