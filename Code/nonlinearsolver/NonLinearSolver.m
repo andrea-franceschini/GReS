@@ -31,7 +31,6 @@ classdef NonLinearSolver < handle
     end
 
     function [simStat] = NonLinearLoop(obj)
-
       simStat = 1;
       
       if obj.elements.nCellsByType(2) > 0  % There is at least one hexahedron

@@ -10,7 +10,7 @@ SetFactory("OpenCASCADE");
 
 
 // create box 
-Box(1) = {0,0,0,1,1,1};
+Box(1) = {0,0,0,3,3,0.5};
 Physical Volume("cube", 1) = {1};
 Physical Surface("bottom",1) = {5};
 Physical Surface("top",2) = {6};
@@ -18,7 +18,7 @@ Physical Surface("top",2) = {6};
 Transfinite Surface {1,2,3,4,5,6};
 
 
-Recombine Surface {:};
-MeshSize {:} = 0.5;
+//Recombine Surface {:};
+MeshSize {:} = 0.2;
 Mesh 3;
 Save "Cube_hexa.msh";

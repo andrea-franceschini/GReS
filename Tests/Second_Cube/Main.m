@@ -22,7 +22,7 @@ simParam = SimulationParameters(model,fileName);
 topology = Mesh();
 %
 % Set the input file name
-fileName = 'Mesh/Cube.msh';
+fileName = 'Mesh/Cube_hexa.msh';
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
 
@@ -71,7 +71,7 @@ bound = Boundaries(fileName,model,grid,dofmanager);
 resState = State(model,grid,mat,GaussPts);
 
 % Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat');
+printUtils = OutState(model,mat,grid,'outTime.dat','vtkElastic');
 %
 % Print model initial state
 printUtils.printState(resState);
@@ -87,7 +87,6 @@ fprintf('LINEAR ELASTIC SIMULATION \n')
 %
 % Finalize the print utility
 printUtils.finalize()
-OutState(model,mat,grid,'outTime.dat','vtkElastic');
 %
 % store solution in mat file
 dispElastic = printUtils.m.expDispl;
@@ -133,7 +132,7 @@ bound = Boundaries(fileName,model,grid,dofmanager);
 resState = State(model,grid,mat,GaussPts);
 
 % Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat');
+printUtils = OutState(model,mat,grid,'outTime.dat','vtkDP');
 %
 % Print model initial state
 printUtils.printState(resState);
@@ -149,7 +148,7 @@ fprintf('DRUCKER PRAGER SIMULATION \n')
 %
 % Finalize the print utility
 printUtils.finalize()
-OutState(model,mat,grid,'outTime.dat','vtkDP');
+
 %
 % store solution in mat file
 dispDP = printUtils.m.expDispl;
@@ -161,9 +160,29 @@ d = topology.coordinates-[1,0.5,1];
 [~,id] = min(sum(d.^2,2));
 
 t = printUtils.m.expTime;
-plot(t(2:end),dispElastic(3*id,2:end),'b-')
+figure(1);
+plot(t(2:end),dispElastic(3*(id-1)+1,2:end),'b-')
 hold on
-plot(t(2:end),dispDP(3*id,2:end),'r-')
+plot(t(2:end),dispDP(3*(id-1)+1,2:end),'r-')
 legend('Elastic','Drucker Prager')
 title('Displacement in X direction for node [1,0.5,1]')
-saveas(gcf, 'ElasticVSdp.pdf');
+hold off
+saveas(gcf, 'ElasticVSdpX.pdf');
+
+figure(2);
+plot(t(2:end),dispElastic(3*(id-1)+2,2:end),'b-')
+hold on
+plot(t(2:end),dispDP(3*(id-1)+2,2:end),'r-')
+legend('Elastic','Drucker Prager')
+title('Displacement in Y direction for node [1,0.5,1]')
+hold off
+saveas(gcf, 'ElasticVSdpY.pdf');
+
+figure(3);
+plot(t(2:end),dispElastic(3*(id-1)+3,2:end),'b-')
+hold on
+plot(t(2:end),dispDP(3*(id-1)+3,2:end),'r-')
+legend('Elastic','Drucker Prager')
+title('Displacement in Z direction for node [1,0.5,1]')
+hold off
+saveas(gcf, 'ElasticVSdpZ.pdf');
