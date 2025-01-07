@@ -1,26 +1,24 @@
-function [mult_x,mult_y,ux_slave,uy_slave,coordInt] = RunNonConfPatchTest(mult_type,Fx,Fy,Dmat,patch,stab,nXs,nYs,nXm,nYm,nTip)
+function [mult_x,mult_y,ux_slave,uy_slave,coordInt] = RunConfPatch2(Fx,Fy,Dmat,patch,stab,nX,nY,nTip)
 % Run a 2 non conforming block patch test with standard or dual lagrange
 % multipliers
 
 % plots solution to paraview
 % output: multipliers on the interface
 
-% gauss class for 1D element integration
-nG = 16;
+% DEFINE MODEL
+
+% IMPORT MESHES
+if nTip==0
+    masterMesh = getMesh('Mesh_flat/bottomBlock.geo','bottom',nX,nY);
+    slaveMesh = getMesh('Mesh_flat/topBlock.geo','top',nX,nY);
+else
+    masterMesh = getMesh('Mesh_flat/bottomBlockTip.geo','bottom',nX,nY,nX,nTip);
+    slaveMesh = getMesh('Mesh_flat/topBlockTip.geo','top',nX,nY,nX,nTip);
+end
 
 % Set the input file name
 gaussQuad = Gauss(12,2,2);
 
-integration = "SB"; % RBF or SB
-solution_scheme = "SP"; % SP (saddle point) % COND (condensated)
-
-if nTip==0
-    masterMesh = getMesh('Mesh_flat/bottomBlock.geo','bottom',nXm,nYm);
-    slaveMesh = getMesh('Mesh_flat/topBlock.geo','top',nXs,nYs);
-else
-    masterMesh = getMesh('Mesh_flat/bottomBlockTip.geo','bottom',nXm,nYm,nXs,nTip);
-    slaveMesh = getMesh('Mesh_flat/topBlockTip.geo','top',nXs,nYs,nXs,nTip);
-end
 
 % Element class for further stiffness matrix computation
 elemsMaster = Elements(masterMesh,gaussQuad);
@@ -35,25 +33,13 @@ nodesMaster = unique(masterMesh.edges(masterMesh.edgeTag == 1,:));
 nodesSlave = unique(slaveMesh.edges(slaveMesh.edgeTag == 1,:));
 
 
+% % remove extreme nodes in contact with the boundary
 mortar = Mortar2D(1,masterMesh,1,slaveMesh,1);
-% compute mortar operator
-if strcmp(integration,'RBF')
-   [Dtmp, Mtmp] = mortar.computeMortarRBF(nG,4,'gauss',mult_type);
-elseif strcmp(integration, 'EB')
-   [Dtmp, Mtmp] = mortar.computeMortarElementBased(nG);
-elseif strcmp(integration, 'SB')
-   [Dtmp, Mtmp] = mortar.computeMortarSegmentBased(3,mult_type);
-end
+% compute cross grid conforming operator
+[HMtmp,HDtmp] = mortar.computeConfCrossGridMat();
 
-if(strcmp(mult_type,'dual'))
-    Dtmp = diag(sum(Dtmp,2));
-end
-
-
-Etmp = Dtmp\Mtmp;
 % reordering the matrix of the system
 %
-
 % | dofM = nodi interni master      |
 % | dofS = nodi interni slave       |
 % | dofIm = nodi interfaccia master |
@@ -76,49 +62,33 @@ KIsIs = KSlave(dofIs,dofIs);
 % expanding the mortar operator also to the y direction
 nM = length(nodesMaster);
 nS = length(nodesSlave);
-E = zeros(2*nS,2*nM);
-M = zeros(2*nS,2*nM);
-D = zeros(2*nS,2*nS);
-E(2*(1:nS)'-1,2*(1:nM)'-1) = Etmp;
-E(2*(1:nS)',2*(1:nM)') = Etmp;
-M(2*(1:nS)'-1,2*(1:nM)'-1) = Mtmp;
-M(2*(1:nS)',2*(1:nM)') = Mtmp;
-D(2*(1:nS)'-1,2*(1:nS)'-1) = Dtmp;
-D(2*(1:nS)',2*(1:nS)') = Dtmp;
-
-% condensated stiffness matrix
-KCOND = [Kmm, zeros(length(dofM),length(dofS)), KmIm;
-   zeros(length(dofS),length(dofM)), Kss, KsIs*E;
-   KmIm', E'*KsIs', KImIm+E'*KIsIs*E];
+assert(nM==nS,'Meshes are not conforming!')
+HD = zeros(2*nS,2*nS);
+HM = zeros(2*nS,2*nM);
+HD(2*(1:nS)'-1,2*(1:nS)'-1) = HDtmp;
+HD(2*(1:nS)',2*(1:nS)') = HDtmp;
+HM(2*(1:nS)'-1,2*(1:nM)'-1) = HMtmp;
+HM(2*(1:nS)',2*(1:nM)') = HMtmp;
 
 % complete saddle point matrix
-KSP = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofIs));
+K = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofIs));
    zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofIs)) ;
-   KmIm', zeros(length(dofIm),length(dofS)), KImIm, zeros(length(dofIm),length(dofIs)), -M';
-   zeros(length(dofIs), length(dofM)), KsIs', zeros(length(dofIs), length(dofIm)), KIsIs, D';
-   zeros(length(dofIs), length(dofM)), zeros(length(dofIs), length(dofS)), -M, D,  zeros(length(dofIs), length(dofIs))
+   KmIm', zeros(length(dofIm),length(dofS)), KImIm, zeros(length(dofIm),length(dofIs)), -HM';
+   zeros(length(dofIs), length(dofM)), KsIs', zeros(length(dofIs), length(dofIm)), KIsIs, HD';
+   zeros(length(dofIs), length(dofM)), zeros(length(dofIs), length(dofS)), -HM, HD,  zeros(length(dofIs), length(dofIs))
    ];
 
 % creating global dof array and initializing forcing vector
-listDofsCOND = [dofM';dofS';dofIm'];
 listDofsSP = [dofM';dofS';dofIm'; dofIs'; dofIs'];
-nCond = numel(listDofsCOND);
-nSP = numel(listDofsSP);
-f = zeros(length(listDofsSP),1);
+nDofs = numel(listDofsSP);
+f = zeros(nDofs,1);
 
-if strcmp(solution_scheme, "SP")
-   K = KSP;
-   nf = nSP;
-else
-   K = KCOND;
-   nf = nCond;
-end
 % ------------------- APPLY BCS -------------------------------
 
 %------------------- TOP LOAD BCS -----------------------------
+% get Loaded dofs on top edge
 switch patch
     case 1
-        % get Loaded dofs on top edge
         nodesLoad = unique(slaveMesh.edges(slaveMesh.edgeTag == 2,:));
         % special treatment of infextreme points (having force 1/2)
         n_ext = nodesLoad(ismember(slaveMesh.coordinates(nodesLoad,1),[0; 1]));
@@ -149,16 +119,15 @@ switch patch
         %
         % % LATERAL LOAD ALSO TO MASTER SIDE (BOTTOM)
         %get top node (it has half of the entities influence)
-
-        nodesLoad = find(abs(masterMesh.coordinates(:,1)-0)<1e-3);
-        [yC,id] = sort(masterMesh.coordinates(nodesLoad,2),'descend');
-        l = abs(yC(end)-yC(end-1));
-        n1 = nodesLoad(id(1));
-        %f(getGlobalDofs(2*n1-1,dofM,dofS,dofIm,dofIs,'interfaceMaster')) = Fx*l/2;
-        nIn = nodesLoad(id(2:end-1));
-        %f(getGlobalDofs(2*nIn-1,dofM,dofS,dofIm,dofIs,'master')) = Fx*l;
-        n2 = nodesLoad(id(end));
-        %f(getGlobalDofs(2*n2-1,dofM,dofS,dofIm,dofIs,'master')) = Fx*l/2;
+%         nodesLoad = find(abs(masterMesh.coordinates(:,1)-0)<1e-3);
+%         [yC,id] = sort(masterMesh.coordinates(nodesLoad,2),'descend');
+%         l = abs(yC(end)-yC(end-1));
+%         n1 = nodesLoad(id(1));
+%         f(getGlobalDofs(2*n1-1,dofM,dofS,dofIm,dofIs,'interfaceMaster')) = Fx*l/2;
+%         nIn = nodesLoad(id(2:end-1));
+%         f(getGlobalDofs(2*nIn-1,dofM,dofS,dofIm,dofIs,'master')) = Fx*l;
+%         n2 = nodesLoad(id(end));
+%         f(getGlobalDofs(2*n2-1,dofM,dofS,dofIm,dofIs,'master')) = Fx*l/2;
 end
 
 %------------------- BOTTOM FIXED BCS -----------------------------
@@ -167,40 +136,41 @@ end
 dirNod = find(abs(masterMesh.coordinates(:,2)-0)<1e-3);
 dirBotDoFY = getGlobalDofs(2*dirNod,dofM,dofS,dofIm,dofIs,'master');
 dirBotDoFX = getGlobalDofs(2*dirNod-1,dofM,dofS,dofIm,dofIs,'master');
-[K,f(1:nf)] = applyDir(dirBotDoFY, zeros(length(dirBotDoFY),1), K, f(1:nf));
+[K,f] = applyDir(dirBotDoFY, zeros(length(dirBotDoFY),1), K, f);
 switch patch
     case {1,2}
-        [K,f(1:nf)] = applyDir(dirBotDoFX, zeros(length(dirBotDoFX),1), K, f(1:nf));
+        [K,f] = applyDir(dirBotDoFX, zeros(length(dirBotDoFX),1), K, f);
 end
 
 
 % -------------------LATERAL CONSTRAINT BCS-----------------------
-% get nodes on right edge of slave domain
 switch patch
     case 3
+        % get nodes on right edge of slave domain
         nodesFixX = find(abs(slaveMesh.coordinates(:,1)-1)<1e-3);
         dirXDoF = getGlobalDofs(2*nodesFixX-1,dofM,dofS,dofIm,dofIs,'slave');
         id = abs(slaveMesh.coordinates(nodesFixX,2)-1)<1e-3;
         dirXIntDoF = getGlobalDofs(2*nodesFixX(id)-1,dofM,dofS,dofIm,dofIs,'interfaceSlave');
-        [K,f(1:nf)] = applyDir(dirXDoF, zeros(length(dirXDoF),1), K, f(1:nf));
+        [K,f] = applyDir(dirXDoF, zeros(length(dirXDoF),1), K, f);
         if strcmp(stab,'stable')
-            [K,f(1:nf)] = applyDir(dirXIntDoF, zeros(length(dirXIntDoF),1), K, f(1:nf));
+            [K,f] = applyDir(dirXIntDoF, zeros(length(dirXIntDoF),1), K, f);
         end
+
         % get nodes on right edge of master domain
         nodesFixX = find(abs(masterMesh.coordinates(:,1)-1)<1e-3);
         dirXDoF = getGlobalDofs(2*nodesFixX-1,dofM,dofS,dofIm,dofIs,'master');
         id = abs(masterMesh.coordinates(nodesFixX,2)-1)<1e-3;
         dirXIntDoF = getGlobalDofs(2*nodesFixX(id)-1,dofM,dofS,dofIm,dofIs,'interfaceMaster');
-        [K,f(1:nf)] = applyDir(dirXDoF, zeros(length(dirXDoF),1), K, f(1:nf));
-        [K,f(1:nf)] = applyDir(dirXIntDoF, zeros(length(dirXIntDoF),1), K, f(1:nf));
+        [K,f] = applyDir(dirXDoF, zeros(length(dirXDoF),1), K, f);
+        [K,f] = applyDir(dirXIntDoF, zeros(length(dirXIntDoF),1), K, f);
 end
-
 % remove lagrange multipliers belonging to the interface (then use constant
 % interpolation and extend the adjacent value)
 % get boundary nodes and adjacent node id
 if strcmp(stab,'stable')
     [K,f] = handleEndPoints(slaveMesh,nodesSlave,dofM,dofS,dofIm,dofIs,K,f);
 end
+
 % solve linear system
 u = K\f;
 
@@ -211,7 +181,6 @@ end
 n = length(dofM)+length(dofS);
 l = length(dofM)+length(dofS)+length(dofIm);
 % get slave side solution
-
 u_slave = u(l+1:l+length(dofIs));
 mult = u(l+numel(dofIs)+1:end);
 % plot solution (use the plot_function already used for the RBF stand alone
@@ -230,13 +199,10 @@ u_top(dofIs) = u_slave;
 stressMaster = computeStress(masterMesh,elemsMaster,Dmat,u_bottom,gaussQuad);
 stressSlave = computeStress(slaveMesh,elemsSlave,Dmat,u_top,gaussQuad);
 %
-plotSolution(slaveMesh,strcat(mult_type,'_top'),u_top,stressSlave);
-plotSolution(masterMesh,strcat(mult_type,'_bottom'),u_bottom,stressMaster);
+plotSolution(slaveMesh,'topConf',u_top,stressSlave);
+plotSolution(masterMesh,'bottomConf',u_bottom,stressMaster);
 %
-% get stress on slave interface
-cellInterf = any(ismember(slaveMesh.surfaces,nodesSlave),2);
-s_x = stressSlave(cellInterf,3);
-s_y = stressSlave(cellInterf,2);
+
 
 % plot lagrange multipliers in matlab
 % compute multipliers

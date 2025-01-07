@@ -9,8 +9,8 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 // strictly positive integer; here `1') and defined by a list of four numbers:
 // three coordinates (X, Y and Z) and the target mesh size (lc) close to the
 // point:
-nX = 20;
-nY = 20;
+nX = 51;
+nY = 26;
 
 Point(1) = {0, 0, 0};
 Point(2) = {1, 0, 0};
@@ -37,6 +37,6 @@ Physical Curve("Fixed_bottom",2) = {1};
 Physical Curve("Lateral_fixed",3) = {2,4};
 Physical Surface("Domain_2",1)={1};
 
-Mesh 2;
-Save "BottomBlock_hexa.msh";
+//Mesh 2;
+//Save "bottom.msh";
 

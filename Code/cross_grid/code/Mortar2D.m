@@ -64,96 +64,138 @@ classdef Mortar2D < handle
       end
 
       function obj = computeSlaveMatrix(obj)
-         D = zeros(obj.nSMat,obj.nSMat);
-         if obj.degree < 2
-            for sID = 1:obj.nElSlave
-               % elem length
-               i1 = obj.slaveTopol(sID,1);
-               i2 = obj.slaveTopol(sID,2);
-               h = norm(obj.slaveCoord(i1,:)-obj.slaveCoord(i2,:));
-               Dloc = (h/6)*[2 1; 1 2];
-               D([i1 i2], [i1 i2]) = D([i1 i2], [i1 i2]) + Dloc;
-            end
-         else
-            g = Gauss(12,2,1);
-            gpRef = g.coord;
-            gpWeight = g.weight;
-            for sID = 1:size(obj.slaveTopol,1)
-               % elem length
-               i1 = obj.slaveTopol(sID,1);
-               i2 = obj.slaveTopol(sID,2);
-               i3 = obj.slaveTopol(sID,3);
-               h = norm(obj.slaveCoord(i1,:)-obj.slaveCoord(i3,:));
-               N = computeQuadraticSF(gpRef);
-               Dloc = 0.5*h*N'*(N.*gpWeight);
-               D([i1 i2 i3], [i1 i2 i3]) = D([i1 i2 i3], [i1 i2 i3]) + Dloc;
-            end
-         end
-         % extract only mass matrix entries belonging to the interface
-         obj.Dmat = D(obj.nodesSlave, obj.nodesSlave);
+          D = zeros(obj.nSMat,obj.nSMat);
+          if obj.degree < 2
+              for sID = 1:obj.nElSlave
+                  % elem length
+                  i1 = obj.slaveTopol(sID,1);
+                  i2 = obj.slaveTopol(sID,2);
+                  h = norm(obj.slaveCoord(i1,:)-obj.slaveCoord(i2,:));
+                  Dloc = (h/6)*[2 1; 1 2];
+                  D([i1 i2], [i1 i2]) = D([i1 i2], [i1 i2]) + Dloc;
+              end
+          else
+              g = Gauss(12,2,1);
+              gpRef = g.coord;
+              gpWeight = g.weight;
+              for sID = 1:size(obj.slaveTopol,1)
+                  % elem length
+                  i1 = obj.slaveTopol(sID,1);
+                  i2 = obj.slaveTopol(sID,2);
+                  i3 = obj.slaveTopol(sID,3);
+                  h = norm(obj.slaveCoord(i1,:)-obj.slaveCoord(i3,:));
+                  N = computeQuadraticSF(gpRef);
+                  Dloc = 0.5*h*N'*(N.*gpWeight);
+                  D([i1 i2 i3], [i1 i2 i3]) = D([i1 i2 i3], [i1 i2 i3]) + Dloc;
+              end
+          end
+          % extract only mass matrix entries belonging to the interface
+          obj.Dmat = D(obj.nodesSlave, obj.nodesSlave);
+      end
+
+
+
+      function [HM,HS] = computeConfCrossGridMat(obj)
+          HS = zeros(obj.nSMat,obj.nSMat);
+          HM = zeros(obj.nSMat,obj.nMMat);
+          if obj.degree < 2
+              for im = 1:obj.nElMaster
+                  % get element of the support
+                  im1 = obj.masterTopol(im,1);
+                  im2 = obj.masterTopol(im,2);
+                  if obj.masterCoord(im1,1)>obj.masterCoord(im2,1)
+                      tmp = im1;
+                      im1 = im2;
+                      im2 = tmp;
+                  end
+                  % get shape function values and interpolation points coordinate
+                  slave_elems = find(obj.elemConnectivity(im,:));
+                  assert(numel(slave_elems)<2,'Meshes are non conforming!')
+                  % loop trough connected slave elements
+                  for jS = slave_elems
+                      % elem length
+                      is1 = obj.slaveTopol(jS,1);
+                      is2 = obj.slaveTopol(jS,2);
+                      if obj.slaveCoord(is1,1)>obj.slaveCoord(is2,1)
+                          tmp = is1;
+                          is1 = is2;
+                          is2 = tmp;
+                      end
+                      h = norm(obj.slaveCoord(is1,:)-obj.slaveCoord(is2,:));
+                      Hloc = (h/8)*[3 1; 1 3];
+                      HM([is1 is2], [im1 im2]) = HM([is1 is2], [im1 im2]) + Hloc;
+                      HS([is1 is2],[is1 is2]) = HS([is1 is2],[is1 is2]) + Hloc; 
+                  end
+              end
+          end
+          % extract only mass matrix entries belonging to the interface
+          HM = HM(obj.nodesSlave, obj.nodesMaster);
+          HS = HS(obj.nodesSlave, obj.nodesSlave);
       end
 
 
 
       function [D,M,varargout] = computeMortarSegmentBased(obj,nGP,mult_type)
-         if length(unique(obj.slaveCoord(obj.nodesSlave,2))) ~= 1
-            if nargout > 2
-               varargout{1} = 0;
-            end
-            return
-         end
-         g = Gauss(12,nGP,1);
-         gpRef = g.coord;
-         gpWeight = g.weight;
-         M = zeros(obj.nSMat,obj.nMMat);
-         D = zeros(obj.nSMat,obj.nSMat);
-         for i = 1:obj.nElMaster
-            % get element of the support
-            a = obj.masterCoord(obj.masterTopol(i,1),:);
-            b = obj.masterCoord(obj.masterTopol(i,end),:);
-            idMaster = obj.masterTopol(i,1:end);
-            % get shape function values and interpolation points coordinate
-            slave_elems = find(obj.elemConnectivity(i,:));
-            % loop trough connected slave elements
-            for j = slave_elems
-               % get nodes
-               c = obj.slaveCoord(obj.slaveTopol(j,1),:);
-               d = obj.slaveCoord(obj.slaveTopol(j,end),:);
-               % find intersection between master and slave (just looking at the
-               % x-projection)
-               tmp = sort([a(1) b(1) c(1) d(1)]);
-               i1 = [tmp(2) 0];
-               i2 = [tmp(3) 0];
-               h = i2(1)-i1(1);
-               % get GP in the intersection element
-               gPts = ref2nod(gpRef, i1, i2);
-               % compute basis function on master element points
-               gMaster = nod2ref(gPts, a, b);
-               basisMaster = computeBasis1D(gMaster,obj.degree);
-               % compute basis function on slave elements points
-               gSlave = nod2ref(gPts, c, d);
-               basisSlave = computeBasis1D(gSlave,obj.degree);
-               switch mult_type
-                  case 'standard'
-                     basisSlaveMult = basisSlave;
-                  case 'dual'
-                     % compute dual basis function
-                     basisSlaveMult = computeDualBasisF(obj,gSlave);
-               end
-               Mloc = basisSlaveMult'*(basisMaster.*gpWeight);
-               Dloc = basisSlaveMult'*(basisSlave.*gpWeight);
-               Mloc = Mloc*(0.5*(i2(1)-i1(1)));
-               Dloc = Dloc*(0.5*(i2(1)-i1(1)));
-               idSlave = obj.slaveTopol(j,1:end);
-               M(idSlave, idMaster) = M(idSlave, idMaster) + Mloc;
-               D(idSlave,idSlave) = D(idSlave,idSlave) + Dloc;
-            end
-         end
-         M = M(obj.nodesSlave, obj.nodesMaster);
-         D = D(obj.nodesSlave, obj.nodesSlave);
-         if nargout == 3
-            varargout{1} = D\M;
-         end
+          obj.masterTopol = flipud(fliplr(obj.masterTopol));
+          obj.elemConnectivity = fliplr(obj.elemConnectivity);
+          if length(unique(obj.slaveCoord(obj.nodesSlave,2))) ~= 1
+              if nargout > 2
+                  varargout{1} = 0;
+              end
+              return
+          end
+          g = Gauss(12,nGP,1);
+          gpRef = g.coord;
+          gpWeight = g.weight;
+          M = zeros(obj.nSMat,obj.nMMat);
+          D = zeros(obj.nSMat,obj.nSMat);
+          for i = 1:obj.nElMaster
+              % get element of the support
+              a = obj.masterCoord(obj.masterTopol(i,1),:);
+              b = obj.masterCoord(obj.masterTopol(i,end),:);
+              idMaster = obj.masterTopol(i,1:end);
+              % get shape function values and interpolation points coordinate
+              slave_elems = find(obj.elemConnectivity(i,:));
+              % loop trough connected slave elements
+              for j = slave_elems
+                  % get nodes
+                  c = obj.slaveCoord(obj.slaveTopol(j,1),:);
+                  d = obj.slaveCoord(obj.slaveTopol(j,end),:);
+                  % find intersection between master and slave (just looking at the
+                  % x-projection)
+                  tmp = sort([a(1) b(1) c(1) d(1)]);
+                  i1 = [tmp(2) 0];
+                  i2 = [tmp(3) 0];
+                  h = i2(1)-i1(1);
+                  % get GP in the intersection element
+                  gPts = ref2nod(gpRef, i1, i2);
+                  % compute basis function on master element points
+                  gMaster = nod2ref(gPts, a, b);
+                  basisMaster = computeBasis1D(gMaster,obj.degree);
+                  % compute basis function on slave elements points
+                  gSlave = nod2ref(gPts, c, d);
+                  basisSlave = computeBasis1D(gSlave,obj.degree);
+                  switch mult_type
+                      case 'standard'
+                          basisSlaveMult = basisSlave;
+                      case 'dual'
+                          % compute dual basis function
+                          basisSlaveMult = computeDualBasisF(obj,gSlave);
+                  end
+                  Mloc = basisSlaveMult'*(basisMaster.*gpWeight);
+                  Dloc = basisSlaveMult'*(basisSlave.*gpWeight);
+                  Mloc = Mloc*(0.5*(i2(1)-i1(1)));
+                  Dloc = Dloc*(0.5*(i2(1)-i1(1)));
+                  idSlave = obj.slaveTopol(j,1:end);
+                  M(idSlave, idMaster) = M(idSlave, idMaster) + Mloc;
+                  D(idSlave,idSlave) = D(idSlave,idSlave) + Dloc;
+              end
+          end
+          M = M(obj.nodesSlave, obj.nodesMaster);
+          D = D(obj.nodesSlave, obj.nodesSlave);
+          if nargout == 3
+              varargout{1} = D\M;
+          end
       end
 
       function [D,M,varargout] = computeMortarElementBased(obj,nGP)
@@ -583,6 +625,7 @@ classdef Mortar2D < handle
       function elemConnectivity = computeElementConnectivity(obj)
          % find connectivity of 1D interfaces
          % (trivially done looking at the x-coordinates only)
+         tol = 1e-3;
          elemConnectivity = zeros(obj.nElMaster,obj.nElSlave);
          for i = 1:obj.nElMaster
             tmp = sort([obj.masterCoord(obj.masterTopol(i,1),1),obj.masterCoord(obj.masterTopol(i,end),1)]);
@@ -591,7 +634,7 @@ classdef Mortar2D < handle
             for j = 1:obj.nElSlave
                tmp = sort([obj.slaveCoord(obj.slaveTopol(j,1),1),obj.slaveCoord(obj.slaveTopol(j,end),1)]);
                c = tmp(1); d = tmp(2);
-               if ~any([a>d,c>b])
+               if ~any([a>d-tol,c>b-tol])
                   % intersecting
                   elemConnectivity(i,j) = 1;
                end

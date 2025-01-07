@@ -5,9 +5,9 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 
 Xsize = 1;
 Ysize = 1;
-nX = 30; // number of nodes along X direction
-nY = 30; // number of nodes long Y direction
-thin = 0.2; // size of first line of element above bottom boundary
+nX = 51;
+nY = 26;
+thin = 1; // size of first line of element above bottom boundary
 dY = thin*Ysize/(nY-1);
 // Define points
 Point(1) = {0, 1, 0};
@@ -45,10 +45,11 @@ Recombine Surface {1,2};
 
 // Define physical groups
 Physical Curve("Interface_top2bot", 1) = {1};
-Physical Curve("Load_edge", 2) = {4};
-Physical Curve("Lateral_fixed", 3) = {2, 3};
+Physical Curve("Top_load", 2) = {4};
+Physical Curve("Lateral_load", 3) = {5};
+Physical Curve("Lateral_fixed", 4) = {2,3};
 Physical Surface("Domain_1", 1) = {1,2};
 
 // Mesh and save
-Mesh 2;
-Save "TopBlock_hexa.msh";
+//Mesh 2;
+//Save "top.msh";
