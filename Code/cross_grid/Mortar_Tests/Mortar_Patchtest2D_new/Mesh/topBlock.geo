@@ -5,8 +5,8 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 
 Xsize = 1;
 Ysize = 1;
-nX = 5;
-nY = 5;
+nX = 51;
+nY = 51;
 //thin = 1; // size of first line of element above bottom boundary
 //dY = thin*Ysize/(nY-1);
 // Define points
@@ -36,7 +36,7 @@ Recombine Surface {1};
 Physical Curve("Interface_top2bot", 1) = {1};
 Physical Curve("Top_load", 2) = {3};
 Physical Curve("Lateral_load", 3) = {4};
-Physical Curve("Lateral_fixed", 4) = {3};
+Physical Curve("Lateral_fixed", 4) = {2};
 Physical Surface("Domain_1", 1) = {1};
 
 // Mesh and save

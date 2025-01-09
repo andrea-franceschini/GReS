@@ -1,0 +1,45 @@
+% inspect convergence of multipliers (affected from instabilities)
+
+
+% run non conforming model, with multipliers in correct order
+patch = 3;
+switch patch
+    case 1
+        Fx = 0; %[kPa]
+        Fy = -10;
+        nu = 0;
+    case {2,3}
+        Fx = 10; %[kPa]
+        Fy = 0;
+        nu = 0.25;
+end
+% Elastic properties and constitutive tensor
+E = 100000;
+D = zeros(3);
+D([1 5]) = 1-nu;
+D([2 4]) = nu;
+D(9) = 0.5*(1-2*nu);
+D = (E/((1+nu)*(1-2*nu)))*D;
+Dmat = D;
+stab = 'unstable';
+mult = load('mult_fine.dat');
+multFine = mult(:,2);
+N = 3;
+L2 = zeros(N+1,1);
+% get multipliers coinciding with correct mesh 
+for i = 0:N
+    nel = 7*2^i;
+    nXs = nel+1;
+    rat = 1/2;
+    nYs = round(nXs);
+    nXm = round(nel*rat+1);
+    nYm = round(nXm);
+    %%
+    [tx_conf,ty_conf,conf_us,conf_um] = RunConfPatch(Fx,Fy,Dmat,patch,stab,nXs,nYs,nYm);
+    laff = [0.5/nel; repmat(1/nel,nXs-2,1); 0.5/nel];
+    entries = linspac
+    multAnal = mult(1:)
+
+end
+
+

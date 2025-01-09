@@ -8,13 +8,9 @@ function [mult_x,mult_y,ux_slave,uy_slave,coordInt] = RunConfPatch2(Fx,Fy,Dmat,p
 % DEFINE MODEL
 
 % IMPORT MESHES
-if nTip==0
-    masterMesh = getMesh('Mesh_flat/bottomBlock.geo','bottom',nX,nY);
-    slaveMesh = getMesh('Mesh_flat/topBlock.geo','top',nX,nY);
-else
-    masterMesh = getMesh('Mesh_flat/bottomBlockTip.geo','bottom',nX,nY,nX,nTip);
-    slaveMesh = getMesh('Mesh_flat/topBlockTip.geo','top',nX,nY,nX,nTip);
-end
+
+masterMesh = getMesh('Mesh_flat/bottom.geo','bottom',nX,nY);
+slaveMesh = getMesh('Mesh_flat/top.geo','top',nX,nY);
 
 % Set the input file name
 gaussQuad = Gauss(12,2,2);

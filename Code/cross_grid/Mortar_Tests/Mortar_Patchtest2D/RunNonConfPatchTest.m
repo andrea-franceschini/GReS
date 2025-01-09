@@ -1,4 +1,4 @@
-function [mult_x,mult_y,ux_slave,uy_slave,coordInt] = RunNonConfPatchTest(mult_type,Fx,Fy,Dmat,patch,stab,nXs,nYs,nXm,nYm,nTip)
+function [mult_x,mult_y,ux_slave,uy_slave,uy_master,coordInt] = RunNonConfPatchTest(mult_type,Fx,Fy,Dmat,patch,stab,nXs,nYs,nXm,nYm,nTip)
 % Run a 2 non conforming block patch test with standard or dual lagrange
 % multipliers
 
@@ -203,6 +203,16 @@ if strcmp(stab,'stable')
 end
 % solve linear system
 u = K\f;
+
+% get entries to keep from linSyst
+masterDof = getGlobalDofs([2*nodesMaster(3:end)-1 2*nodesMaster(3:end)],dofM,dofS,dofIm,dofIs,'interfaceMaster');
+slaveDof = getGlobalDofs([2*nodesSlave(3:end)-1 2*nodesSlave(3:end)],dofM,dofS,dofIm,dofIs,'interfaceSlave');
+lagDof = getGlobalDofs([2*nodesSlave(3:end)-1 2*nodesSlave(3:end)],dofM,dofS,dofIm,dofIs,'lagrange');
+A = K([masterDof slaveDof],[masterDof slaveDof]);
+B = K([masterDof slaveDof],lagDof);
+S = -(B')*(inv(A)*B);
+[V,E] = eig(full(S));
+
 
 if strcmp(stab,'stable')
     u = addSolToEndPoints(slaveMesh,nodesSlave,dofM,dofS,dofIm,dofIs,u);

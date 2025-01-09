@@ -18,15 +18,14 @@ D(9) = 0.5*(1-2*nu);
 D = (E/((1+nu)*(1-2*nu)))*D;
 Dmat = D;
 
-nel = 50;
+nel = 4;
 nXs = nel+1;
 rat = 1/2;
-nYs = round(nXs/2);
+nYs = round(nXs);
 nXm = round(nel*rat+1);
-nYm = round(nXm/2);
+nYm = round(nXm);
 
 stab = 'unstable';
-nTip = 0;
 %%
 fprintf('Processing non conforming with dual multipliers \n')
 [dual_tx,dual_ty,dual_ux,dual_uy,xNode] = RunNonConfPatchTest('dual',Fx,Fy,Dmat,patch,stab,nXs,nYs,nXm,nYm,nTip);
