@@ -1,4 +1,4 @@
-patch = 2;
+patch = 3;
 switch patch
     case 1
         Fx = 0; %[kPa]
@@ -16,7 +16,7 @@ D = zeros(3);
 D([1 5]) = 1-nu;
 D([2 4]) = nu;
 D(9) = 0.5*(1-2*nu);
-D = (E/((1+nu)*(1-2*nu)))*D;
+D = (E1/((1+nu)*(1-2*nu)))*D;
 DmatM = D;
 
 E2 = 10000;
@@ -27,9 +27,9 @@ D(9) = 0.5*(1-2*nu);
 D = (E2/((1+nu)*(1-2*nu)))*D;
 DmatS = D;
 
-nel = 50;
+nel = 30;
 nXs = nel+1;
-rat = 0.4;
+rat = 0.3;
 nYs = round(nXs);
 nXm = round(nel*rat+1);
 nYm = round(nXm);

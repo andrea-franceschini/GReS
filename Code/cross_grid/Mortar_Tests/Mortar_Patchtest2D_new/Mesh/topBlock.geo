@@ -5,8 +5,8 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 
 Xsize = 1;
 Ysize = 1;
-nX = 51;
-nY = 51;
+nX = 31;
+nY = 31;
 //thin = 1; // size of first line of element above bottom boundary
 //dY = thin*Ysize/(nY-1);
 // Define points

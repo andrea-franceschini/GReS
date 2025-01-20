@@ -179,6 +179,7 @@ if strcmp(stab,'stable')
    u = addSolToEndPoints(slaveMesh,nodesSlave,u,dof);
 end
 
+
 n = length(dofM)+length(dofS);
 l = length(dofM)+length(dofS)+length(dofIm);
 % get slave side solution
@@ -187,6 +188,7 @@ u_slave = u(l+1:l+length(dofIs));
 mult = u(l+numel(dofIs)+1:end);
 % plot solution (use the plot_function already used for the RBF stand alone
 % tests!)
+
 
 u_top = zeros(slaveMesh.nNodes,1);
 u_bottom = zeros(masterMesh.nNodes,1);
@@ -209,15 +211,6 @@ plotSolution(masterMesh,strcat(mult_type,'_bottom'),u_bottom,stressMaster);
 % s_x = stressSlave(cellInterf,3);
 % s_y = stressSlave(cellInterf,2);
 
-% lagrange multipliers post processing
-% [Htmp,h] = mortar.computeWeighMat(mult_type);
-% nh = numel(h);
-% H = zeros(2*nh,2*nh);
-% h = repelem(h,2,1);
-% H(2*(1:nh)'-1,2*(1:nh)'-1) = Htmp;
-% H(2*(1:nh)',2*(1:nh)') = Htmp;
-% H = H./h;
-%mult = H*mult;
 
 % invert master and slave for post-processing
 mortarSwap = Mortar2D(1,slaveMesh,1,masterMesh,1);
@@ -242,13 +235,11 @@ u_master = [u_master(2*id-1) u_master(2*id)];
 
 
 [~,id] = sort(slaveMesh.coordinates(mortar.nodesSlave,1));
-mult_x = mult(2*id-1);
-mult_y = mult(2*id);
 u_slave = [u_slave(2*id-1) u_slave(2*id)];
 Esw = zeros(2*nM,2*nS);
 Esw(2*(1:nM)'-1,2*(1:nS)'-1) = Eswap;
 Esw(2*(1:nM)',2*(1:nS)') = Eswap;
-%mult = E*(Esw*mult);
+%mult = (E*Esw)*mult;
 mult_x = mult(2*id-1);
 mult_y = mult(2*id);
 
