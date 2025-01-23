@@ -4,7 +4,7 @@ clear;
 warning('off','MATLAB:nearlySingularMatrix');
 
 % -------------------------- SET THE PHYSICS -------------------------
-model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
+model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
@@ -40,7 +40,7 @@ faces = Faces(model, topology);
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
 %----------------------------- DOF MANAGER -----------------------------
-%fileName = 'dof.dat';
+fileName = 'dof.dat';
 if strcmp(fileName,'dof.dat')
     dofmanager = DoFManager(topology, model, fileName);
 else

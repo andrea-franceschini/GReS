@@ -50,7 +50,6 @@ classdef State < matlab.mixin.Copyable
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here
             %solution vectors update will exploit the DofManager map
-
             if isPoromechanics(obj.model)
                 glob = dofm.getDoF('Poro');
                 loc = dofm.getEntities('Poro');

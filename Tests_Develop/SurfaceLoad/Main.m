@@ -38,7 +38,7 @@ faces = Faces(model, topology);
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
-dofmanager = DoFManager(topology,model);
+dofmanager = DoFManager_new(topology,model,'dof.dat');
 %
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %

@@ -49,8 +49,8 @@ faces = Faces(model, topology);
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
 % Degree of freedom manager 
-fname = 'dof.dat';
-dofmanager = DoFManager(topology,model,fname);
+%fname = 'dof.dat';
+dofmanager = DoFManager_new(topology,model);
 
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
@@ -71,7 +71,7 @@ end
 resState = State(model,grid,mat,file,GaussPts);
 
 % Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat');
+printUtils = OutState(model,mat,grid,'outTime.dat','printOn');
 %
 % Print the reservoir initial state
 printUtils.printState(resState);

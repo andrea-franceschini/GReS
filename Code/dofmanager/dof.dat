@@ -1,0 +1,20 @@
+<SubDomain>
+<CellTag>
+1                              % cellTags in SubDomain
+<Field>
+Poromechanics SPFlow                 % Physics in SubDomain
+</SubDomain>
+
+<SubDomain>
+<CellTag>
+3   
+<Field>                        % cellTags in SubDomain
+Poromechanics          % Physics in SubDomain
+</SubDomain>
+
+<SubDomain>
+<CellTag>
+2   
+<Field>                        % cellTags in SubDomain
+SPFlow         % Physics in SubDomain
+</SubDomain>
