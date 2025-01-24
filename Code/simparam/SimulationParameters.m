@@ -20,6 +20,7 @@ classdef SimulationParameters < handle
     NLSolver = 'Newton'
     verbosity = 2
     goOnBackstep = 0;
+    isTimeDependent = true;
   end
   
   methods (Access = public)
@@ -39,6 +40,10 @@ classdef SimulationParameters < handle
       if strcmp(obj.NLSolver,'Picard')
         status = true;
       end
+    end
+
+    function setTimeDependence(obj,flag)
+       obj.isTimeDependent = flag;
     end
   end
   

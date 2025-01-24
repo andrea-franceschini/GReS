@@ -6,14 +6,14 @@ model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
-simParam = SimulationParameters(model,fileName);
+simParam = SimulationParameters(fileName);
 %
 % ------------------------------  MESH -------------------------------
 % Create the Mesh object
 topology = Mesh();
 %
 % Set the input file name
-fileName = 'TerzaghiH05_hexa.msh';
+fileName = 'Column.msh';
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
 %
@@ -40,11 +40,8 @@ else
 end
 
 %calling analytical solution script
-terzaghi_analytical;
+%Terzaghi_analytical(topology, mat, 10)
 
-%saving coordinates for later use
-%save depht_H05.dat zvector  -ascii
-%
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);
 %
@@ -52,52 +49,62 @@ faces = Faces(model, topology);
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
 % Degree of freedom manager 
-fname = 'dof.dat';
-dofmanager = DoFManager(topology,model);
+%fname = 'dof.dat';
+dofmanager = DoFManager_new(topology,model);
 
 %------------------------ BOUNDARY CONDITIONS ------------------------
-%
-% Set the input file
+% Write BC files (use user friendly function to write them)
+F = -10; % vertical force
+% Top no flow
+writeBCfiles('BCs/dirFlowTop.dat','SurfBC','Dir','Flow','NoFlowTop',0,0,topology,2);
+% Top load
+writeBCfiles('BCs/newPorotop.dat','SurfBC','Neu',{'Poro','z'},'TopLoad',0,F,topology,2);
+% Lateral roller
+writeBCfiles('BCs/dirPoroLatY.dat','NodeBC','Dir',{'Poro','y'},'LatFixedY',0,0,topology,3);
+writeBCfiles('BCs/dirPoroLatX.dat','NodeBC','Dir',{'Poro','x'},'LatFixedX',0,0,topology,4);
+% Bottom fixed
+writeBCfiles('BCs/dirPoroBottom.dat','NodeBC','Dir',{'Poro','x','y','z'},'BotFixed',0,0,topology,1);
+
+% Collect input files input file
 fileName = ["dir_BC_flow_tetra.dat","dir_BCSurf_poro_tetra.dat","neuSurf_BC_poro_tetra.dat"];
 %
-% Create an object of the "Boundaries" class and read the boundary
-% conditions
-bound = Boundaries(fileName,model,grid,dofmanager);
-%
-%-------------------------- PREPROCESSING ----------------------------
-%
-% Some preprocessing stuff
-%PreProc class has been removed in the last version
-%indB is now defined in Elements Class
-%getStiffMatrix is now a method of material SubClasses (Elastic, SSCM...)
-%getDoFID is an external function in Discretizer repository
-%pre = PreProc(grid,mat);
-%
-%reading vectors containing initial conditions for each node
-% u0 = load('uIni05.dat');
-% p0 = load('pIni05.dat');
 
-% Set the "State" object. It contains all the vectors describing the state
-% of the reservoir in terms of pressure, displacement, stress, ...
+
 %file = 'initialconditions';
-file = ["iniDisp.dat","iniPressure.dat"];
-resState = State(model,grid,mat,file,GaussPts);
+if isFEMBased(model,'Flow')
+    file = ["iniDisp.dat","iniPressureFEM.dat"];
+else
+    file = ["iniDisp.dat","iniPressure.dat"];
+end
 
-%manually assigning initial conditions before proper implementation
-% resState.dispConv(3:3:end) = -u0fem'; %only DZ is fixed initially
-% resState.dispCurr(3:3:end) = -u0fem'; %only DZ is fixed initially
-% resState.pressure = p0fem;
-%
 % Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat');
+printUtils = OutState(model,mat,grid,'outTime.dat','printOn');
 %
-% Print the reservoir initial state
-printUtils.printState(resState);
+
 %
 % ---------------------------- SOLUTION -------------------------------
-%
-% Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver_new(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
+% Create object handling construction of Jacobian and rhs of the model
+linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
+
+% Build a structure storing variable fields at each time step
+state = linSyst.setState();
+% Print model initial state
+%printUtils.printState(state);
+
+
+% Create an object of the "Boundaries" class 
+bound = Boundaries(fileName,model,grid);
+
+% In this version of the code, the user can assign initial conditions only
+% manually by directly modifying the entries of the state structure. 
+% In this example, we use a user defined function to apply Terzaghi initial
+% conditions to the state structure
+applyTerzaghiIC(state);
+
+% Built-in fully implict solution scheme 
+% The modular structure of the discretizer class allow the user to design
+% its own version of the solution scheme
+NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,linSyst,GaussPts);
 %
 % Solve the problem
 [simState] = NSolv.NonLinearLoop();
@@ -105,7 +112,6 @@ NSolv = NonLinearSolver_new(model,simParam,dofmanager,grid,mat,bound,printUtils,
 % Finalize the print utility
 printUtils.finalize()
 %
-
 %%
 % -------------------------- BENCHMARK ------------------------------
 
@@ -114,6 +120,8 @@ printUtils.finalize()
 nodesU = find(topology.coordinates(:,1)+topology.coordinates(:,2)==0);
 [~,ind] = sort(topology.coordinates(nodesU,3));
 nodesU = nodesU(ind);
+
+load("Terzaghi_Analytical.mat");
 
 
 % elem vector containing elements centroid along vertical axis
@@ -140,25 +148,40 @@ else
     ptsY = topology.coordinates(nodesP,3);
 end
 figure(1)
-plotObj1 = plot(pressplot,ptsY,'ko');
+plotObj1 = plot(pressplot,ptsY,'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
-plotObj2 = plot(pfem(nodesP,:),ptsY,'k');
+plotObj2 = plot(pressplot(nodesP,:),ptsY,'k', 'LineWidth', 1);
 grid on
-xlabel('Pressione (kPa)')
+xlabel('Pressure (kPa)')
 ylabel('z (m)')
-legend([plotObj1(1),plotObj2(1)],{'Numerica','Analitica'});
-title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
+legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'}, 'Location', 'northeast');
+%title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
+axis tight
+xlim([0 10.2])
+
+set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14);
+a = get(gca,'XTickLabel');
+set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 12)
+% export figure with quality
+stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images', 'Terzaghi_pressure', '.png');
+exportgraphics(gcf,stmp,'Resolution',400)
 
 figure(2)
-plotObj1 = plot(-dispplot,topology.coordinates(nodesU,3),'ko');
+plotObj1 = plot(-dispplot,topology.coordinates(nodesU,3),'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
-plotObj2 = plot(ufem(nodesU,:),topology.coordinates(nodesU,3),'k');
+plotObj2 = plot(ufem(nodesU,:),topology.coordinates(nodesU,3),'k',  'LineWidth', 1);
 grid on
-xlabel('Spostamenti verticali (m)')
+xlabel('Vertical displacements (mm)')
 ylabel('z (m)')
-title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
-legend([plotObj1(1),plotObj2(1)],{'Numerica','Analitica'});
+%title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
+legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'}, 'Location', 'southeast');
 
+set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
+a = get(gca,'XTickLabel');
+set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
+% export figure with quality
+stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'Terzaghi_disp', '.png');
+exportgraphics(gcf,stmp,'Resolution',400)
 %%
 %Checking error norm 
 % Compute the volume connected to each node
@@ -188,81 +211,3 @@ errNormpressure = sqrt(errpress2'*elems.vol);
 %displacement_error
 errdisp2 = (ufem - disp(3:3:end,2:end)).^2;
 errNormdisp = sqrt(errdisp2'*volNod);
-
-%%
-
-
-
-
-
-
-
-
-
-
-
-
-%
-% % Compute the volume connected to each node
-% volNod = zeros(topology.nNodes,1);
-% if any(topology.cellVTKType == 12)
-%   N1 = getBasisFinGPoints(elements.hexa);
-% end
-% for el=1:topology.nCells
-%   top = topology.cells(el,1:topology.cellNumVerts(el));
-%   if topology.cellVTKType(el) == 10 % Tetra
-%     volNod(top) = volNod(top) + elems.vol(el)/topology.cellNumVerts(el);
-%   elseif topology.cellVTKType(el) == 12 % Hexa
-%     dJWeighed = getDerBasisFAndDet(elems.hexa,el,3);
-%     volNod(top) = volNod(top)+ N1'*dJWeighed';
-%   end
-% end
-% %
-% % Edge length
-% % ledge = zeros(topology.nCells,1);
-% % for el = 1:topology.nCells
-% %   comb = nchoosek(topology.cells(el,:),2);
-% %   ledgeLoc = sqrt((topology.coordinates(comb(:,1),1)-topology.coordinates(comb(:,2),1)).^2 + ...
-% %     (topology.coordinates(comb(:,1),2)-topology.coordinates(comb(:,2),2)).^2 + ...
-% %     (topology.coordinates(comb(:,1),3)-topology.coordinates(comb(:,2),3)).^2);
-% %   ledge(el) = max(ledgeLoc);
-% % end
-% %
-% 
-% % Analytical solution for flow problem
-% %load('expData.mat');
-% 
-% qS = bound.getVals('neu_down', 1);
-% qB = -qS(1);
-% permMat = mat.getMaterial(2).getPermMatrix();
-% kB = permMat(1,1);
-% % fVec = bound.getVals('distrSource', 1);
-% % fB = -fVec(1);
-% fB = 0;
-% pVec = bound.getVals('dir_top', 1);
-% pB = pVec(1);
-% len = max(topology.coordinates(:,3));
-% pAnal = fB/(2*kB)*topology.coordinates(:,3).^2 + ...
-%   qB/kB*topology.coordinates(:,3) + (pB-1/kB*((len^2)/2*fB+len*qB));
-% errflow = (resState.pressure - pAnal).^2;
-% errNormflow = sqrt(errflow'*volNod);
-% 
-% % Analytical solution_1D truss
-% %load('expData.mat');
-% fS = bound.getVals('neu_top', 1);
-% fB = -fS(1);
-% %permMat = mat.getMaterial(2).getPermMatrix();
-% %kB = permMat(1,1);
-% % fVec = bound.getVals('distrSource', 1);
-% % fB = -fVec(1);
-% E = mat.getMaterial(1).E;
-% uVec = bound.getVals('dir_down', 1);
-% uB = uVec(1);
-% len = max(topology.coordinates(:,3));
-% uAnal = fB/E*topology.coordinates(:,3);
-% uz = resState.displ(3:3:end);
-% errporo = (uz - uAnal).^2;
-% errNormporo = sqrt(errporo'*volNod);
-% 
-% 
-% delete(bound);

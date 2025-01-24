@@ -26,7 +26,7 @@ classdef Materials < handle
       % since it is highly expensive
 %       if (obj.db.isKey(matID))
         [matID,~] = find(obj.matMap == cellID);
-        assert(length(matID)==1,['Zero or Multiple materials assigned to elements',...
+        assert(isscalar(matID),['Zero or Multiple materials assigned to elements',...
             ' with cellTags %i'], cellID)
         mat = obj.db(matID);
 %       else

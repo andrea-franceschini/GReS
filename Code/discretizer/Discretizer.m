@@ -1,209 +1,160 @@
 classdef Discretizer < handle
-    % General discretizer class
-    % Database for all models activated in the simulation
-    properties (Access = private)
-        nField
-    end
+   % General discretizer class
+   properties (Access = public)
+      solver      % database for physics solvers in the model
+      dofm        % dofManager 
+      numSolvers  % number of solvers discretized
+   end
 
-    properties (Access = public)
-        J
-        rhs
-        fields
-        db
-    end
-
-    properties (Access = public)
-        model
-        simParams
-        dofm
-        material
-        fieldMap
-    end
-
-    methods (Access = public)
-        function obj = Discretizer(symmod,simParams,dofManager,grid,mat,varargin)
-            %UNTITLED Construct an instance of this class
-            %   Detailed explanation goes here
-            obj.db = containers.Map('KeyType','char','ValueType','any');
-            obj.setDiscretizer(symmod,simParams,dofManager,grid,mat,varargin);
-        end
-
-        function computeBlockJacobianAndRhs(obj, dt)
-            % compute blocks of Jacobian matrix
-            for i = 1:obj.nField
-                for j = 1:obj.nField
-                    obj.J{i,j} = obj.getField(obj.fieldMap{i,j}).blockJacobian(i,j,dt);
-                end
-            end
-            % compute blocks of Rhs
-            flds = unique(obj.fieldMap);
-            for i = 1:obj.nField
-                for j = 1:length(flds)
-                    obj.rhs{i} = obj.rhs{i} + obj.getField(flds{j}).blockRhs(i);
-                end
-            end
-        end
-
-        function resetJacobianAndRhs(obj)
-            %reset Jacobian and Rhs to zero
-            obj.J = cell(obj.nField,obj.nField);
-            obj.rhs = cell(obj.nField,1);
-            % set rhs block to zero arrays
-            for i = 1:obj.nField
-                obj.rhs{i} = zeros(obj.dofm.numDof(i),1);
-            end
-        end
-
-        function dSol = solve(obj)
-            dSol = cell2mat(obj.J)\(-cell2mat(obj.rhs));
-        end
-
-        function out = getFlow(obj)
-            out = obj.db('Flow');
-        end
-
-        function out = getPoro(obj)
-            out = obj.db('Poro');
-        end
-
-        function out = getBiot(obj)
-            out = obj.db('Biot');
-        end
-
-
-        function out = getField(obj,fld)
-            out = obj.db(fld);
-        end
-
-        function computeLinearMatrices(obj,stateTmp,statek,dt)
-            for i = 1:length(obj.fields)
-                fld = obj.fields{i};
-                if isLinear(obj.db(fld))
-                    obj.getField(fld).computeMat(stateTmp,statek,dt);
-                end
-            end
-        end
-
-        function computeNLMatricesAndRhs(obj,stateTmp,statek,dt)
-            for i = 1:length(obj.fields)
-                fld = obj.fields{i};
-                if ~isLinear(obj.db(fld))
-                  obj.getField(fld).computeMat(stateTmp,statek,dt);
-                end
-                obj.getField(fld).computeRhs(stateTmp,statek,dt);
-            end
-        end
-
-
-        function varargout = getMat(obj,fld,varargin)
-          data = cell(1,3);
-          if nargin > 2
-            data{1} = varargin{1};
-            data{2} = 1; % provisional value for delta_t when not needed
-          end
-          if nargin > 3
-            data{2} = varargin{2};
-          end
-          if nargin > 4
-            data{3} = varargin{3};
-          end
-
-          switch fld
-            case 'Poro'
-              obj.getField(fld).computeMat(data{1:end});
-              varargout{1} = obj.getField(fld).K;
-            case 'Flow'
-              obj.getField(fld).computeMat(data{1:end});
-              varargout{1} = obj.getField(fld).H;
-              varargout{1} = obj.getField(fld).P;
-            case 'Biot'
-              obj.getField(fld).computeMat(data{1:end});
-              varargout{1} = obj.getField(fld).Q;
-          end
-        end
-
-        % 
-        % function getMat(obj,fld,varargin)
-        %   if nargin < 4
-        %     stateTmp = varargin{1};
-        %     dt = 1; % provisional value for delta_t when not needed
-        %   end
-        %   if nargin < 5
-        %     dt = varargin{2};
-        %   end
-        %   if nargin < 6
-        %     statek = varargin{3};
-        %   end
-        % 
-        %   switch fld
-        %     case 'Poro'
-        %     case 'Flow'
-        %     case 'Biot'
-        %   end
-        % end
-        % 
-
-
-    end
-
-    methods(Access = private)
-        function setDiscretizer(obj,symmod,params,dofManager,grid,mat,data)
-          obj.model = symmod;
-          obj.simParams = params;
-          obj.dofm = dofManager;
-          obj.material = mat;
-          modMap = getModelMap(obj);
-          obj.nField = length(dofManager.numDof);
-          fldMap = cell(obj.nField, obj.nField);
-          for i = 1:obj.nField
-              for j = 1:obj.nField
-                  ph1 = translatePhysic(dofManager.subPhysics(i));
-                  ph2 = translatePhysic(dofManager.subPhysics(j));
-                  str = convertStringsToChars(strcat(ph1,ph2));
-                  fldMap{i,j} = modMap(str);
-              end
-          end
-          obj.fieldMap = fldMap;
-          obj.fields = unique(fldMap);
-          % initialize block Jacobian and rhs
-          obj.J = cell(obj.nField, obj.nField);
-          obj.rhs = cell(obj.nField,1);
-          % set rhs block to zero arrays
-          for i = 1:obj.nField
-              obj.rhs{i} = zeros(obj.dofm.numDof(i),1);
-          end
-          % build model subclasses
-          mods = convertCharsToStrings(unique(obj.fieldMap));
-          for i = 1:length(mods)
-              switch mods(i)
-                  case 'Poro'
-                      obj.db('Poro') = Poromechanics(symmod,params,dofManager,grid,mat,data);
-                  case 'Flow'
-                      if isSinglePhaseFlow(obj.model)
-                          obj.db('Flow') = SPFlow(symmod,params,dofManager,grid,mat,data);
-                      end
-                      if isVariabSatFlow(obj.model)
-                          obj.db('Flow') = VSFlow(symmod,params,dofManager,grid,mat,data);
-                      end
-                  case 'Biot'
-                      if isSinglePhaseFlow(obj.model)
-                          obj.db('Biot') = Biot(symmod,params,dofManager,grid,mat,data);
-                      end
-                      if isVariabSatFlow(obj.model)
-                          obj.db('Biot') = BiotVS(symmod,params,dofManager,grid,mat,data);
-                      end
-              end
-          end
-          
-    
-      function mp = getModelMap(obj)
-          mp = containers.Map('KeyType','char','ValueType','any');
-          mp('PoroPoro') = 'Poro';
-          mp('PoroFlow') = 'Biot';
-          mp('FlowPoro') = 'Biot';
-          mp('FlowFlow') = 'Flow';
+   methods (Access = public)
+      function obj = Discretizer(symmod,simParams,dofManager,grid,mat,varargin)
+         %UNTITLED Construct an instance of this class
+         %   Detailed explanation goes here
+         obj.dofm = dofManager;
+         obj.solver = containers.Map('KeyType','double','ValueType','any');
+         obj.setDiscretizer(symmod,simParams,dofManager,grid,mat,varargin);
+         obj.checkTimeDependence(symmod,mat,simParams);
       end
-  end
 
-  end
+      function J = assembleJacobian(obj)
+         % put together jacobian blocks of SinglePhysicsSolver and
+         % CoupledSolver in the model
+         % According to the ordering specified in DoF manager class         
+      end
+
+      function rhs = assembleRhs(obj)
+         % put together rhs blocks of SinglePhysicsSolver and
+         % CoupledSolver in the model
+      end
+
+
+      function dSol = solve(obj)
+         % assemble and solve linear system
+         J = assembleJacobian(obj);
+         rhs = assembleRhs(obj);
+         dSol = J\-rhs;
+      end
+
+
+      function out = getSolver(obj,fldList)
+         % map single field or pair of field to db position
+         if isscalar(getFieldList(obj.dofm)) % singlePhysic model
+            v = 0;
+         else
+            nF = numel(getFieldList(obj.dofm)); % multiPhysic model
+            cs = cumsum(nF:-1:1);
+            v = [0 cs(1:end-1)];
+         end
+         % get solver from database
+         if isscalar(fldList) % query to single physic solver
+            fldId = obj.dofm.getFieldId(fldList);
+            id = 1+v(fldId);
+         else                 % query to coupled solver
+            fldId = obj.dofm.getFieldId(fldList);
+            fldId = sort(fldId);
+            id = v(fldId(1))+fldId(2);
+         end
+         out = obj.solver(id);
+      end
+
+      function computeLinearMatrices(obj,stateTmp,statek,dt)
+         % loop trough solver database and compute costant jacobian blocks
+         for i = 1:obj.numSolvers
+            if isLinear(obj.solver(i))
+               obj.solver(i).computeMat(stateTmp,statek,dt);
+            end
+         end
+      end
+
+      function computeNLMatricesAndRhs(obj,stateTmp,statek,dt)
+         % loop trough solver database and compute non-costant jacobian
+         % blocks and rhs block
+         for i = 1:obj.numSolvers
+            if ~isLinear(obj.solver(i))
+               obj.solver(id).computeMat(stateTmp,statek,dt);
+            end
+            obj.solver(id).computeRhs(stateTmp,statek,dt);
+         end
+      end
+
+      function out = isCoupled(obj,field1,field2)
+         % check if input fields are coupled, i.e exist cells having both
+         % fields activated
+         sub1 = getActiveSubdomain(obj.dofm,field1);
+         sub2 = getActiveSubdomain(obj.dofm,field2);
+         out = any(intersect(sub1,sub2));
+      end
+
+      function state = setState(obj)
+         % loop trough active single physics solver and update the state class
+         % accordingly
+         state = struct();
+         state.t = 0;
+         fldList = getFieldList(obj.dofm);
+         for i = 1:numel(fldList)
+            % loop trough active fields and update the state structure
+            setState(obj.getSolver(fldList(i)),state);
+         end
+      end       
+   end
+
+   methods(Access = private)
+      function setDiscretizer(obj,symmod,params,dofManager,grid,mat,data)
+         fields = getFieldList(obj.dofm); 
+         nF = numel(fields);
+         % loop over all fields and define corresponding models
+         k = 0;
+         for i = 1:nF
+            for j = i:nF
+               k = k+1;
+               addSolver(obj,k,fields(i),fields(j),symmod,params,dofManager,grid,mat,data);
+            end
+         end
+         obj.numSolvers = k;
+      end
+
+      function checkTimeDependence(obj,mod,mat,parm)
+         % check if there is any time dependence in the input model
+         % no time dependence in absence of flow and
+         % incompressible single phase flow model.
+         if ~isSinglePhaseFlow(mod)
+            % Biot model is time dependent
+            setTimeDependence(parm,false);
+            return
+         else
+            % check if fluid is incompressible
+            beta = getFluidCompressibility(mat.getFluid());
+            if beta < eps
+               setTimeDependence(parm,false);
+            end
+         end
+      end
+
+      function addSolver(obj,id,f1,f2,mod,parm,dof,grid,mat,data)
+         % Add new key to solver database
+         % Prepare input fields for solver definition
+         if ~isCoupled(obj,f1,f2)
+            return
+         end
+         f = sort({char(f1),char(f2)});
+         f = join(f,'_');
+         switch f{:}
+            case 'SPFlow_SPFlow'
+               if isSinglePhaseFlow(mod)
+                  obj.solver(id) = SPFlow(mod,parm,dof,grid,mat,data);
+               elseif isVariabSatFlow(mod)
+                  obj.solver(id) = VSFlow(mod,parm,dof,grid,mat,data);
+               end
+            case 'Poromechanics_Poromechanics'
+               obj.solver(id) = Poromechanics(mod,parm,dof,grid,mat,data);
+            case 'Poromechanics_SPFlow'
+               assert(isSinglePhaseFlow(mod),['Coupling between' ...
+                  'poromechanics and unsaturated flow is not yet implemented']);
+               obj.solver(id) = Biot(mod,parm,dof,grid,mat,data);
+            otherwise
+               error('Solver coupling %s with %s does not exist!',f1,f2)
+         end
+      end
+
+   end
 end

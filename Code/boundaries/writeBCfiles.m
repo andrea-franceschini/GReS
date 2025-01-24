@@ -1,33 +1,64 @@
-function writeBCfiles(fName,item,type,physic,dir,bcName,time,vals,varargin)
+function writeBCfiles(fName,item,type,physic,bcName,time,vals,varargin)
 % utility to write BC input files (only constant BC for each time step are allowed)
 % Entities are identified by surface ID or by direct assignment
 % Example
-% writeBCfiles('SurfBC','Dir','Flow','fix_bot','1',[0 5 10],[1 2 3],msh,1)
-assert(length(time)==length(vals),'Bc times and value sets must have equal size');
-% writing general file
+% writeBCfiles('BCs/dirFlow','SurfBC','Dir','Flow','flowBCname',0,0,mesh,1)
+% writeBCfiles('BCs/dirPoroXY','SurfBC','Dir',{Poro,x,y},'poroBCname',0,0,mesh,1)
+
+assert(length(time)==length(vals),'BC times and values sets must have equal size');
+
+% Writing general BCs file
 fID = fopen(strcat(fName,'.dat'),'w');
+
+% item ('NodeBC','SurfBC','VolumeForce')
 fprintf(fID,'%s            %% BC item \n',item);
+
 if ~strcmp(item,'VolumeForce')
    fprintf(fID,'%s            %% BC type \n',type);
 end
-fprintf(fID,'%s            %% Physics \n',physic);
+
+% Physic
+physic = string(physic);
+if numel(physic)>1
+   assert(strcmp(physic(1),'Poro'),['Direction specification is allowed' ...
+      'only for Poromechanics']);
+   ph = physic(1);
+else
+   ph = physic;
+end
+
+fprintf(fID,'%s            %% Physics \n',physic(1));
+
+% Direction
+if strcmp(physic(1),'Poro')
+   if strcmp(type,'Neu')
+      assert(numel(physic)==2,['Only one direction at time is allowed for' ...
+         ' Poromechanics Neumann BCs ']);
+   end
+   dir = physic(2:end);
+   fprintf(fID,'%s \n',dir);
+end
+
+% BC Name
 fprintf(fID,'%s            %% BC name \n',bcName);
+
+% BC list file name
 listName = strcat(fName,'/list');
 fprintf(fID,'%s \n',listName);
+
+% BC time file
 for i = 0:length(time)-1
    fprintf(fID,'%2.6f %s/time%i.dat \n',time(i+1),fName,i);
 end
-fprintf(fID,'End');
 
-if(strcmp(physic,'Flow'))
-   dir = [];
-end
+% End file
+fprintf(fID,'End');
 
 if ~isfolder(fName)
    mkdir(fName);
 end
 
-% writing BC list
+% Writing BC list of constrained entities
 fList = fopen(listName,'w');
 if length(varargin) < 2 % direct assignment
    list = varargin{1};
@@ -42,18 +73,24 @@ else
    end
 end
 
-if isempty(dir)
+if strcmp(ph,'Flow')
    fprintf(fList,'%i         %% Number of fixed entities \n',length(list));
    fprintf(fList,'%i \n',list);
 else
-   tmp = ismember(["x","y","z"],dir);
-   fprintf(fList,'%i ',tmp*length(list));
-   fprintf(fList,'   %% Number of fixed entities \n');
-   list = repmat(list,sum(tmp),1);
-   fprintf(fList,'%i \n',list);
+   if strcmp(type,'Dir')
+      tmp = ismember(["x","y","z"],dir);
+      fprintf(fList,'%i ',tmp*length(list));
+      fprintf(fList,'   %% Number of fixed entities \n');
+      list = repmat(list,sum(tmp),1);
+      fprintf(fList,'%i \n',list);
+   elseif strcmp(type,'Neu')
+      fprintf(fList,'%i ',length(list));
+      fprintf(fList,'   %% Number of fixed entities \n');
+      fprintf(fList,'%i \n',list);
+   end
 end
 
-% writing BC vals for each time step
+% Writing BC vals for each time step
 for i = 1:length(time)
    t_name = strcat(fName,'/time',num2str(i-1),'.dat');
    ft = fopen(t_name,'w');

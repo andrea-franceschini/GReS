@@ -88,7 +88,7 @@ function applyBCandForces(model, grid, bound, material, t, syst, state)
                 dof = locDofs(ind);
                 syst.rhs{j}(dof) = syst.rhs{j}(dof) + rhsVal(ind);
             end
-        otherwise
+       otherwise
             for j = unique(phDofs)'
                 ind = phDofs == j;
                 dof = locDofs(ind);

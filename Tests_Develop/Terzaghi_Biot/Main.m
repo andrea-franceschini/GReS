@@ -13,7 +13,7 @@ simParam = SimulationParameters(fileName);
 topology = Mesh();
 %
 % Set the input file name
-fileName = 'TerzaghiH05_hexa.msh';
+fileName = 'Mesh/Column.msh';
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
 %
@@ -52,33 +52,48 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %fname = 'dof.dat';
 dofmanager = DoFManager_new(topology,model);
 
-%------------------------ BOUNDARY CONDITIONS ------------------------
-%
-% Set the input file
-fileName = ["dir_BC_flow_tetra.dat","dir_BCSurf_poro_tetra.dat","neuSurf_BC_poro_tetra.dat"];
-%
-% Create an object of the "Boundaries" class and read the boundary
-% conditions
-bound = Boundaries(fileName,model,grid,dofmanager);
-
-%file = 'initialconditions';
-if isFEMBased(model,'Flow')
-    file = ["iniDisp.dat","iniPressureFEM.dat"];
-else
-    file = ["iniDisp.dat","iniPressure.dat"];
-end
-
-resState = State(model,grid,mat,file,GaussPts);
 
 % Create and set the print utility
 printUtils = OutState(model,mat,grid,'outTime.dat','printOn');
 %
-% Print the reservoir initial state
-printUtils.printState(resState);
-%
-% ---------------------------- SOLUTION -------------------------------
+
+% Create object handling construction of Jacobian and rhs of the model
 linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
-% Create the object handling the (nonlinear) solution of the problem
+
+% Build a structure storing variable fields at each time step
+state = linSyst.setState();
+% Print model initial state
+%printUtils.printState(state);
+
+%------------------------ BOUNDARY CONDITIONS ------------------------
+% Write BC files (employ user friendly function to write them)
+F = -10; % vertical force
+% Top no flow
+writeBCfiles('BCs/dirFlowTop','SurfBC','Dir','Flow','NoFlowTop',0,0,topology,2);
+% Top load
+writeBCfiles('BCs/newPorotop','SurfBC','Neu',{'Poro','z'},'TopLoad',0,F,topology,2);
+% Lateral roller
+writeBCfiles('BCs/dirPoroLatY','NodeBC','Dir',{'Poro','y'},'LatFixedY',0,0,topology,3);
+writeBCfiles('BCs/dirPoroLatX','NodeBC','Dir',{'Poro','x'},'LatFixedX',0,0,topology,4);
+% Bottom fixed
+writeBCfiles('BCs/dirPoroBottom','NodeBC','Dir',{'Poro','x','y','z'},'BotFixed',0,0,topology,1);
+
+% Collect BC input file in a list
+fileName = ["BCs/dirFlowTop.dat","BCs/newPorotop.dat",...
+   "BCs/dirPoroLatY.dat","BCs/dirPoroLatX.dat","BCs/dirPoroBottom.dat"];
+%
+% Create an object of the "Boundaries" class 
+bound = Boundaries(fileName,model,grid);
+
+% In this version of the code, the user can assign initial conditions only
+% manually, by directly modifying the entries of the state structure. 
+% In this example, we use a user defined function to apply Terzaghi initial
+% conditions to the state structure
+applyTerzaghiIC(state,mat,topology,F);
+
+% Built-in fully implict solution scheme 
+% The modular structure of the discretizer class allow the user to design
+% its own version of the solution scheme
 NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,linSyst,GaussPts);
 %
 % Solve the problem

@@ -154,6 +154,10 @@ classdef Mesh < handle
         obj.surfaceRegions = setfield(obj.surfaceRegions, regions(ID(i)).name, regions(ID(i)).ID);
       end
       %
+      % Set all cells to tag 1 if no physical volume Tag is specified in gmsh
+      if all(obj.cellTag==0)
+         obj.cellTag = obj.cellTag + 1;
+      end
       obj.nCellTag = max(obj.cellTag);
       obj.nSurfaceTag = max(obj.surfaceTag);
     end
@@ -162,7 +166,6 @@ classdef Mesh < handle
      function importMesh(obj, fileName)
       % Import grid topology;
       % Admitted grid formats: vtk (unstructured grids), gmsh;
-      
       % calling MEX functions depending on file extension
       str = split(fileName,'.');
       extension = str{2};
@@ -186,7 +189,8 @@ classdef Mesh < handle
       obj.nNodes = size(obj.coordinates,1);
       % Convert gmsh element type index into VTK
       if strcmp(extension,'msh')
-         elems(:,1) = obj.typeMapping(elems(:,1));
+         ID = ismember(elems(:,1), [4, 5, 6, 7]);
+         elems(ID,1) = obj.typeMapping(elems(ID,1));
       end
       cellsID = [10, 11, 12, 13, 14];
       ID = ismember(elems(:,1), cellsID);
@@ -201,7 +205,6 @@ classdef Mesh < handle
          obj.cellTag = obj.cellTag + 1;
          obj.nCellTag = 1;
       end
-
       %
       % Check for unsupported elements
       if any(~ismember(obj.cellVTKType,[10 12]))

@@ -1,5 +1,6 @@
-classdef NonLinearSolver < handle
-  % Old version of non linear solver
+classdef FCSolver < handle
+  % Built in fully coupled solver
+  % All equations are solved once using Newton Raphson
   
   properties (Access = private)
     %
@@ -26,7 +27,7 @@ classdef NonLinearSolver < handle
   end
   
   methods (Access = public)
-      function obj = NonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin)
+      function obj = FCSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin)
       obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin);
     end
 

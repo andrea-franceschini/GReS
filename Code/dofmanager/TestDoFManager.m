@@ -25,3 +25,4 @@ dofmanager = DoFManager_new(topology,model,fname);
 % Testing DoF manager
 out1 = dofmanager.getDoF("Poromechanics");
 out2 = dofmanager.getDoF("SPFlow");
+cTags = dofmanager.getFieldTags("Poromechanics");

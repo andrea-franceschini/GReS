@@ -1,0 +1,8 @@
+NodeBC            % BC item 
+Dir            % BC type 
+Poro            % Physics 
+x 
+LatFixedX            % BC name 
+BCs/dirPoroLatX/list 
+0.000000 BCs/dirPoroLatX/time0.dat 
+End

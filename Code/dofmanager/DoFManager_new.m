@@ -7,10 +7,12 @@ classdef DoFManager_new < handle
    % Domain-based ordering 
    properties (Access = private)
       model
+      cellTags
       domainFields
       tag2subDomain
+      fieldList
    end
-   properties
+   properties (Access = public)
       numEntsField
       numEntsSubdomain
       fields
@@ -21,6 +23,7 @@ classdef DoFManager_new < handle
    methods
       function obj = DoFManager_new(mesh,model,varargin)
          obj.model = model;
+         obj.cellTags = mesh.cellTag;
          obj.fields = struct('field',[],'subdomainEnts',[],...
             'subID',[],'scheme',[],'entCount',[]);
          obj.tag2subDomain = zeros(mesh.nCellTag,1);
@@ -156,8 +159,9 @@ classdef DoFManager_new < handle
                obj.fields(i).isEntActive(ents) = true; % activate entities
                obj.fields(i).subdomainEnts{sub} = ents(idActiveEnt);
                obj.fields(i).entCount(sub) = sum(idActiveEnt);
-               obj.numEntsSubdomain(sub) = obj.numEntsSubdomain(sub) + obj.fields(i).entCount(sub);
+               obj.numEntsSubdomain(obj.fields(i).subID(sub)) = obj.numEntsSubdomain(sub) + obj.fields(i).entCount(sub);
                obj.numEntsField(i) = obj.numEntsField(i) + obj.fields(i).entCount(sub);
+               obj.fieldList = string({obj.fields.field});
             end
          end
       end
@@ -165,8 +169,9 @@ classdef DoFManager_new < handle
       function dofs = getDoF(obj,field,varargin)
          % varargin: entity list, if empty all dofs are returned
          % return global DoF numbering based on entity ID and field
-         existingFields = string({obj.fields.field});
-         fldId = find(strcmp(existingFields,field));
+         assert(isscalar(field),['Only one input field is allowed when ' ...
+            'calling getDoF method']);
+         fldId = getFieldId(obj,field);
          nc = obj.nComp(fldId);
          % get local numbering within the field
          switch obj.ordering
@@ -175,7 +180,7 @@ classdef DoFManager_new < handle
                   % all dofs of input field
                   dofs = dofId((1:obj.numEntsField(fldId))',nc);
                else
-                  dofs = getLocalDoF(obj,varargin{1},fldId);
+                  dofs = getLocalDoF(obj,varargin{1},field);
                end
                nDoF = obj.nComp.*obj.numEntsField;
                dofs = dofs+sum(nDoF(1:fldId-1));
@@ -183,12 +188,9 @@ classdef DoFManager_new < handle
                error('Domain-based ordering of DoF not yet implemented')
          end
       end
-
-   end
-
-   methods (Access = private)
-
-      function dofList = getLocalDoF(obj,entList,fldId)
+      % 
+      function dofList = getLocalDoF(obj,entList,field)
+         fldId = obj.getFieldId(field);
          assert(size(entList,2)==1,['Entity list must be a ' ...
             'single integer or a column vector']);
          nc = obj.nComp(fldId);
@@ -203,6 +205,58 @@ classdef DoFManager_new < handle
             k = k+nc;
          end
       end
+
+      function activeSubs = getActiveSubdomain(obj,fieldList)
+         % get subdomains where 1 or more subdomain are activated at the
+         % same time
+         activeSubs = (1:max(obj.tag2subDomain))';
+         for f = string(fieldList)
+            fldId = getFieldId(obj,f);
+            subField = obj.fields(fldId).subID;
+            activeSubs = intersect(activeSubs,subField);
+         end
+      end
+
+      function fldList = getFieldList(obj)
+         fldList = obj.fieldList;
+      end
+
+      function fldId = getFieldId(obj,flds)
+         % get field id associated to input fields
+         fldId = find(strcmp(obj.fieldList,flds));
+      end
+
+      function cTags = getFieldCellTags(obj,field)
+         % get cell ID where input field is active
+         activeSubs = getActiveSubdomain(obj,field);
+         cTags = find(ismember(obj.tag2subDomain,activeSubs));
+      end
+      
+      function cellsID = getFieldCells(obj,field)
+         cTags = getFieldCellTags(obj,field);
+         cellsID = find(ismember(obj.cellTags,cTags));
+      end
+
+      function nComp = getDoFperEnt(obj,field)
+         fldId = obj.getFieldId(field);
+         nComp = obj.nComp(fldId);
+      end
+
+      function ents = getActiveEnts(obj,field)
+         nc = obj.getDoFperEnt(field);
+         id = obj.getFieldId(field);
+         ents = dofId(find(obj.fields(id).isEntActive),nc);
+      end
+
+      function numDoF = getNumDoF(obj,field)
+         fldId = obj.getFieldId(field);
+         numEnts = obj.numEntsField(fldId);
+         nc = obj.nComp(fldId);
+         numDoF = nc*numEnts;
+      end
+   end
+
+   methods (Access = private)
    end
 end
 
