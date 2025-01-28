@@ -2,6 +2,8 @@ classdef Biot < CouplingSolver
     % Biot model subclass
     % Coupled poromechanics with:
     % SinglePhase flow 
+    % field1: Poromechanics
+    % field2: SPFlow
 
     properties
         Q
@@ -19,7 +21,9 @@ classdef Biot < CouplingSolver
             %
         end
 
-        function computeMat(obj,varargin)
+        function state = computeMat(obj,varargin)
+           state = varargin{1};
+           dt = varargin{3};
             % call method according to the discretization technique chosen
             if isFEMBased(obj.model, 'Flow')
                 computeMatFEM_FEM(obj);
@@ -34,19 +38,13 @@ classdef Biot < CouplingSolver
 
         function computeMatFEM_FEM(obj)
             % get domain ID with active Poro and Flow field
-            nSub = length(obj.dofm.subDomains);
-            subInd = zeros(nSub,1);
-            for i = 1:length(obj.dofm.subDomains)
-                if all(ismember(["Poro"; obj.flowScheme], obj.dofm.subDomains(i).physics))
-                    subInd(i) = i;
-                end
-            end
-            subInd = sort(nonzeros(subInd));
-            [subCells, ~] = find(obj.dofm.subCells(:,subInd));
+            subCells = obj.dofm.getFieldCells(obj.fields);
             nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]);
-            iivec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
-            jjvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+            iiVec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+            jjVec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
             Qvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+            nDoF1 = obj.dofm.getNumDoF(obj.fields{1});
+            nDoF2 = obj.dofm.getNumDoF(obj.fields{2});
             %
             l1 = 0;
             if nSubCellsByType(2) > 0
@@ -76,26 +74,27 @@ classdef Biot < CouplingSolver
                         s1 = obj.elements.nNodesElem(2)^2*obj.mesh.nDim;
                 end
                 %assembly Coupling Matrix
-                dofrow = obj.dofm.ent2field('Poro',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
-                dofcol = obj.dofm.ent2field(obj.flowScheme,obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+                dofrow = getLocalDoF(obj.dofm,obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)),obj.fields{1});
+                dofcol = getLocalDoF(obj.dofm,obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)),obj.fields{2});
                 [jjloc,iiloc] = meshgrid(dofcol,dofrow);
-                iivec(l1+1:l1+s1) = iiloc(:);
-                jjvec(l1+1:l1+s1) = jjloc(:);
+                iiVec(l1+1:l1+s1) = iiloc(:);
+                jjVec(l1+1:l1+s1) = jjloc(:);
                 Qvec(l1+1:l1+s1) = Qloc(:);
                 l1 = l1+s1;
             end
-            nDofPoro = sum(obj.dofm.numDof(strcmp(obj.dofm.subPhysics,'Poro')));
-            nDofFlow = sum(obj.dofm.numDof(strcmp(obj.dofm.subPhysics,obj.flowScheme)));
-            obj.Q = sparse(iivec, jjvec, Qvec, nDofPoro, nDofFlow);
+            obj.Q = sparse(iiVec, jjVec, Qvec, nDoF1, nDoF2);
         end
 
         function computeMatFEM_FV(obj)
             % get domain ID with active Poro and Flow field
             subCells = obj.dofm.getFieldCells(obj.fields);
             nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]);
-            iivec = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
-            jjvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
+            iiVec = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
+            jjVec = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
             Qvec = zeros((obj.mesh.nDim*obj.elements.nNodesElem)*nSubCellsByType,1);
+            nDoF1 = obj.dofm.getNumDoF(obj.fields{1});
+            nDoF2 = obj.dofm.getNumDoF(obj.fields{2});
+            nCompPoro = obj.dofm.getDoFperEnt(obj.fields{1});
             %
             l1 = 0;
             if nSubCellsByType(2) > 0
@@ -122,28 +121,36 @@ classdef Biot < CouplingSolver
                 end
                 %
                 %assembly Coupling Matrix
-                dofrow = obj.dofm.ent2field('Poro',obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
-                dofcol = obj.dofm.ent2field(obj.flowScheme,el);
+                dofrow = getLocalDoF(obj.dofm,obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)),obj.fields{1});
+                dofcol = getLocalDoF(obj.dofm,el,obj.fields{2});
                 [jjloc,iiloc] = meshgrid(dofcol,dofrow);
-                iivec(l1+1:l1+s1) = iiloc(:);
-                jjvec(l1+1:l1+s1) = jjloc(:);
+                iiVec(l1+1:l1+s1) = iiloc(:);
+                jjVec(l1+1:l1+s1) = jjloc(:);
                 Qvec(l1+1:l1+s1) = Qloc(:);
                 l1 = l1+s1;
             end
-            nDofPoro = sum(obj.dofm.numDof(strcmp(obj.dofm.subPhysics,'Poro')));
-            nDofFlow = sum(obj.dofm.numDof(strcmp(obj.dofm.subPhysics,obj.flowScheme)));
-            obj.Q = sparse(iivec, jjvec, Qvec, nDofPoro, nDofFlow);
+            obj.Q = sparse(iiVec, jjVec, Qvec, nDoF1, nDoF2);
         end
 
-        function computeRhs(obj,stateTmp,statek,dt)
+        function stateTmp = computeRhs(obj,stateTmp,statek,dt)
             % compute Biot rhs contribute
             theta = obj.simParams.theta;
             % select active coefficients of solution vectors
-            entsPoro = obj.dofm.getActiveEnts('Poromechanics');
-            entsFlow = obj.dofm.getActiveEnts('SPFlow');
+            entsPoro = obj.dofm.getActiveEnts(obj.fields{1});
+            entsFlow = obj.dofm.getActiveEnts(obj.fields{2});
             obj.rhs{1} = -theta*obj.Q*stateTmp.pressure(entsFlow) - ...
                 (1-theta)*(obj.Q*statek.pressure(entsFlow));
             obj.rhs{2} = (obj.Q/dt)'*(stateTmp.dispCurr(entsPoro) - stateTmp.dispConv(entsPoro));
+        end
+
+        function applyDirBC(obj,field,ents,varargin)
+           if strcmp(field,obj.fields{2}) && isFVTPFABased(obj.model,'Flow')
+              % FV Dirichlet BC does not affect coupling blocks
+              return
+           else
+              % call base implementation of dirichlet imposition
+              applyDirBC@CouplingSolver(obj,field,ents);
+           end
         end
 
 

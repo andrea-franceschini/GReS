@@ -1,6 +1,5 @@
 function str = translatePhysic(str,model)
-%Translate physics string in order to correctly query different classes
-%   Detailed explanation goes here
+% Translate physics string in order to correctly query different classes
 switch str
     case "Poromechanics"
         str = "Poro";
@@ -14,5 +13,7 @@ switch str
         elseif isVariabSatFlow(model)
             str = "VSFlow";
         end
+   case "Poro"
+      str = "Poromechanics";
 end
 end

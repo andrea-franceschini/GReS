@@ -14,12 +14,13 @@ classdef Boundaries < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = Boundaries(fileNames,model,grid) %,model,grid
+    function obj = Boundaries(fileNames,model,grid,dofm) %,model,grid
       % MATLAB evaluates the assignment expression for each instance, which
       % ensures that each instance has a unique value
       obj.db = containers.Map('KeyType','char','ValueType','any');
       obj.model = model;
       obj.grid = grid;
+      obj.dof = dofm;
       % Calling the function to read input data from file
       obj.readInputFiles(fileNames);
       obj.computeBoundaryProperties(model,grid);
@@ -45,142 +46,7 @@ classdef Boundaries < handle
     function vals = getVals(obj, identifier, t)
       vals = obj.getData(identifier).data.getValues(t);
     end
-
-    function list = getDofs(obj, identifier)
-        %return loaded DOFS for the specified BC in global indexing
-        %list = obj.getData(identifier).data.entities; OLD VERSION
-        %%%%update to getDofs method
-        ph = obj.getPhysics(identifier);
-        col = obj.dof.getColTable(translatePhysic(ph, obj.model));
-        if strcmp(obj.getCond(identifier),'NodeBC') || strcmp(obj.getCond(identifier),'ElementBC')
-            nEnts = obj.getData(identifier).data.nEntities;
-            entities = obj.getData(identifier).data.entities;
-            i1 = 1;
-            for i = 1:length(nEnts)
-                i2 = i1 + nEnts(i);
-                if strcmp(obj.getCond(identifier),'NodeBC') % Node BC ---> Node Dof
-                    list(i1:i2-1) = obj.dof.nod2dof(entities(i1:i2-1),col(i));
-                elseif strcmp(obj.getCond(identifier),'ElementBC') % Element BC ---> Element Dof
-                    list(i1:i2-1) = obj.dof.elem2dof(entities(i1:i2-1),col(i));
-                end
-                i1 = i2;
-            end
-        elseif strcmp(obj.getCond(identifier),'SurfBC')
-            % SurfBC ---> Node Dof
-            if isFEMBased(obj.model,ph)
-                if strcmp(obj.getType(identifier),'Neu')
-                    loadedEnts = obj.getLoadedEntities(identifier);
-                    if strcmp(ph,'Poro')
-                        direction = obj.getDirection(identifier);
-                        switch direction
-                            case 'x'
-                                list = obj.dof.nod2dof(loadedEnts,col(1));
-                            case 'y'
-                                list = obj.dof.nod2dof(loadedEnts,col(2));
-                            case 'z'
-                                list = obj.dof.nod2dof(loadedEnts,col(3));
-                        end
-                    elseif strcmp(ph,'Flow')
-                        list = obj.dof.nod2dof(loadedEnts,col);
-                    end
-                elseif strcmp(obj.getType(identifier),'Dir')
-                    nEnts = obj.getNumbLoadedEntities(identifier);
-                    ents = obj.getLoadedEntities(identifier);
-                    i1 = 1;
-                    for i = 1:length(nEnts)
-                        i2 = i1 + nEnts(i);
-                        list(i1:i2-1) = obj.dof.nod2dof(ents(i1:i2-1),col(i));
-                        i1 = i2;
-                    end
-                end
-            elseif isFVTPFA(obj.model, ph)
-                % SurfBC ---> Element Dof
-                loadedEnts = obj.getLoadedEntities(identifier);
-                if  strcmp(ph, 'Poro')
-                    direction = obj.getDirection(identifier);
-                    switch direction
-                        case 'x'
-                            list = obj.dof.elem2dof(loadedEnts,col(1));
-                        case 'y'
-                            list = obj.dof.elem2dof(loadedEnts,col(2));
-                        case 'z'
-                            list = obj.dof.elem2dof(loadedEnts,col(3));
-                    end
-                elseif strcmp(ph,'Flow')
-                    list = obj.dof.elem2dof(loadedEnts,col);
-                end
-            end
-        elseif strcmp(obj.getCond(identifier),'VolumeForce')
-            % Volume Force ---> Node Dof
-            %VolumeForce are available only for flow model
-            if isFEMBased(obj.model,ph)
-                loadedEnts = obj.getLoadedEntities(identifier);
-                list = obj.dof.nod2dof(loadedEnts,col);
-            elseif isFVTPFABased(obj.model,ph)
-                % Volume Force ---> Element Dof
-                ents = obj.getData(identifier).data.entities;
-                list = obj.dof.elem2dof(ents,col);
-            end
-        end
-        if any(list == 0)
-            error('Boundary conditions %s not supported from subdomain',identifier)
-        end
-    end
-
-
-    function list = getDofs_MD(obj,identifier,mG,d)
-        % get BC Dofs in multidomain numbering
-        ph = obj.getPhysics(identifier);
-        list = [];
-        nEnts = 1;
-        % retrieve entities
-        switch obj.getCond(identifier)
-            case {'NodeBC','ElementBC'}
-                nEnts = obj.getData(identifier).data.nEntities;
-                ents = obj.getData(identifier).data.entities;
-            case 'SurfBC'
-                ents = obj.getLoadedEntities(identifier);
-                if strcmp(obj.getType(identifier),'Dir')
-                    nEnts = obj.getNumbLoadedEntities(identifier);
-                end
-            case 'VolumeForce'
-                if isFEMBased(obj.model,ph)
-                    ents = obj.getLoadedEntities(identifier);
-                elseif isFVTPFABased(obj.model,ph)
-                    % Volume Force ---> Element Dof
-                    ents = obj.getData(identifier).data.entities;
-                end
-        end
-
-        % check if any entity belong to requested field
-        %if ~any(ismembc(ents,))
-
-        
-        % get component-wise numbering
-        if nEnts > 1
-            comps = length(nEnts);
-            %handle multicomponents dof
-            i1 = 1;
-            for ii = 1:comps
-                i2 = i1 + nEnts(ii);
-                add_ents = find(ismember(mG.MD_struct(d).entities,ents(i1:i2-1)));
-                add_ents = comps*(add_ents-1)+ii;
-                list = [list;add_ents];
-                i1 = i2;
-            end
-        else
-            if strcmp(ph,'Poro')
-                ents = find(ismembc(mG.MD_struct(d).entities,ents));
-                c = find(strcmp(["x","y","z"],obj.getDirection(identifier)));
-                list = 3*(ents-1)+c;
-            else
-               list = ents;
-            end
-        end
-
-    end
-
-    
+ 
     function cond = getCond(obj, identifier)
       cond = obj.getData(identifier).cond;
     end
@@ -196,50 +62,35 @@ classdef Boundaries < handle
     function physics = getPhysics(obj, identifier)
       physics = obj.getData(identifier).physics;
     end
-
-    function ents = getCompEntities(obj,identifier,ents)
-       % map entities number to component dof
-       % consider solution components
-       nEnts = obj.getNumbLoadedEntities(identifier);
-       comps = length(nEnts);
+   
+    function dofs = getDoF(obj,identifier,field)
+       ents = getEntities(obj,identifier);
+       dofs = obj.dof.getLocalEnts(ents,field);
+       nEnts = getNumbEntities(obj,identifier);
+       % component multiplication of BC entities
+       dim = length(nEnts);
        i1 = 1;
-       for i = 1:comps
+       for i = 1 : dim
           i2 = i1 + nEnts(i);
-          ents(i1:i2-1) = comps*(ents(i1:i2-1)-1)+i;
+          dofs(i1:i2-1) = dim*(dofs(i1:i2-1)-1) + i;
           i1 = i2;
+          % obj.entities should follow the dofManager table
        end
     end
 
-    function ents = getEntities(obj, identifier)
-       % notempty varargin ---> return entities with component multiplication
-       %this method return the index of constrained entities inside solution vectors
-       %needed for applying Dirichlet BCs
-       %(pressure, displacement)...
+    function ents = getEntities(obj,identifier)
        ents = obj.getData(identifier).data.entities;
     end
     
      function ents = getLoadedEntities(obj, identifier)
         % return loaded entities for Volume or Surface BCs
-        % if varargin not empty, return loaded ents with component
-        % multiplication (according to specified direction)
         ents = obj.getData(identifier).loadedEnts;
      end
 
-     function ents = getCompLoadedEntities(obj, identifier)
-        % return loaded entities for Volume or Surface BCs
-        % if varargin not empty, return loaded ents with component
-        % multiplication (according to specified direction)
-        ents = obj.getData(identifier).loadedEnts;
-        if strcmp(obj.getType(identifier),'Dir')
-           ents = obj.getCompEntities(identifier,ents);
-        else
-           c = find(strcmp(["x","y","z"],obj.getDirection(identifier)));
-           ents = 3*(ents-1)+c;
-        end
+     function nEnts = getNumbEntities(obj,identifier)
+        nEnts = obj.getData(identifier).data.nEntities;
      end
 
-     % function getEntitiesDof
-     % end
 
     function ent = getNumbLoadedEntities(obj, identifier)
       ent = obj.getData(identifier).nloadedEnts;
@@ -449,82 +300,7 @@ classdef Boundaries < handle
         readInputFile(obj,fileNames(i));
       end
     end
-    
-%     % Set Boundaries class
-%     function setBoundaries(obj,symmod,grid)
-%       obj.model = symmod;
-%       obj.mesh = grid.topology;
-%       obj.elements = grid.cells;
-%     end
-    % Reading boundary input file
-%     function readInputFile(obj,fileName)
-%       nBC = length(fileName);
-%       assert(nBC > 0,'No boundary conditions are to be imposed');
-% %       BCType = lower(BCType);
-% %       if ~ismember(BCType,["dir", "neu"])
-% %         error('%s boundary condition is not admitted\n Accepted types are: dir -> Dirichlet, neu -> Neumann',BCType);
-% %       end
-%       %
-%       for i=1:nBC
-%         fid = fopen(fileName(i), 'r');
-%         if fid == -1
-%           error('File %s not opened correctly',fileName(i));
-%         end
-%         block = '';
-%         [flEof,line] = Boundaries.readLine(fid);
-%         % Reading the BC
-%         while (~isempty(line))
-%           if flEof == 1
-%             error('End of file while reading BC in file %s',fileName(i));
-%           end
-%           line = strtrim(strtok(line,'%'));
-%           block = [block, line, ' '];
-%           [flEof,line] = Boundaries.readLine(fid);
-%         end
-%         blockSplt = strsplit(string(deblank(block)));
-%         % Calling the specific BC class based on the BC name
-%         %
-%         % Structure of blockSplt (see also setBC):
-%         %       blockSplt(1) -> label defining the discrete item on which 
-%         %                       the BC is applied
-%         %       blockSplt(2) -> type of BC (Dir = Dirichlet, Neu = Neumann)
-%         %       blockSplt(3) -> physical process for which the BC is
-%         %                       specified (Poro = poromechanics, 1PFlow = 
-%         %                       single-phase flow)
-%         %       blockSplt(4) -> BC name
-%         if ~isnan(str2double(blockSplt(1)))
-%           error('The first entry in %s must be a string',fileName(i));
-%         end
-%         switch lower(blockSplt(1))
-%           case 'nodebc'
-%             pos = 1:4;
-%           case 'volumeforce'
-%             pos = 1:3;
-%           otherwise
-%             error('Condition %s not available', blockSplt(1));
-%         end
-%         %
-%         if ~all(isnan(str2double(blockSplt(pos(2:end)))))
-%           error('The first %d entries in %s must be strings',pos(end),fileName(i));
-%         end
-%         blockSplt(pos) = lower(blockSplt(pos));
-%         if obj.db.isKey(blockSplt(pos(end)))
-%           error('%s condition already defined',blockSplt(pos(end)));
-%         end
-%         %
-%         switch blockSplt(1)
-%           case 'nodebc'
-%             obj.db(blockSplt(pos(end))) = NodeBC(fid,blockSplt);
-%           case 'volumeforce'
-%             obj.db(blockSplt(pos(end))) = VolumeForce(fid,blockSplt);
-%         end
-%         cond = getBC(obj,blockSplt(pos(end)));
-%         % Read the BC values at t=0 and at the end of the event
-%         Boundaries.readStep(cond,1);
-%         Boundaries.readStep(cond,2);
-% %         fclose(fid);
-%       end
-%     end
+ 
   end
   
   methods(Static = true)
@@ -565,51 +341,5 @@ classdef Boundaries < handle
       data = data(1:id);
       times = times(1:id);
     end
-    
-%     function checkAndUpdateCond(cond,t)
-%       % Check if we move to the next event
-%       while max(cond.timeInt(1,:)) < t
-%         if cond.timeInt(1,1) < cond.timeInt(1,2)
-% %         pos = 1;
-%           cond.timeInt(2,1) = 2;
-%           cond.timeInt(2,2) = 1;
-%         else
-% %         pos = 2;
-%           cond.timeInt(2,1) = 1;
-%           cond.timeInt(2,2) = 2;
-%         end
-%         Boundaries.readStep(cond,cond.timeInt(2,2));
-%       end
-%     end
- 
-%     function readStep(cond,pos)
-%       % Read the BC values in the next event
-%       try
-%       cond.timeInt(1,pos) = fscanf(cond.fID,['TIME' '%e'],[1 1]);
-%       catch
-%         error('Wrong format of the TIME header in %s %s BC at time %f', ...
-%           cond.boundPhysics,cond.boundType,cond.timeInt(1,pos))
-%       end
-%       try
-%         cond.boundVal(:,pos) = fscanf(cond.fID,'%e\n',[1 length(cond.boundDof)]);
-%       catch
-%         error('Wrong number of values in %s %s BC at time %f', ...
-%         cond.boundPhysics,cond.boundType,cond.timeInt(1,pos))
-%       end
-% %       if ~feof(obj.fID); tmpLine = fgetl(obj.fID); end
-%     end
-    
-%     % Read the next line and check for eof
-%     function [flEof,line] = readLine(fid)
-%       flEof = feof(fid);   % end-of-file flag
-%       if flEof == 1
-%         line = '';
-%       else
-%         line = deblank(fgetl(fid));
-% %         if isempty(line)
-% %           error('No blank lines are admitted in BC file')
-% %         end
-%       end  
-%     end
   end
 end

@@ -1,9 +1,6 @@
 NodeBC            % BC item 
 Dir            % BC type 
 Poro            % Physics 
-x 
-y 
-z 
 BotFixed            % BC name 
 BCs/dirPoroBottom/list 
 0.000000 BCs/dirPoroBottom/time0.dat 

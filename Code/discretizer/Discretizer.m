@@ -16,6 +16,26 @@ classdef Discretizer < handle
          obj.checkTimeDependence(symmod,mat,simParams);
       end
 
+      function applyBC(obj,type,field,ents,vals,state)
+         % Apply boundary condition to blocks of physical solver
+         % ents: id of constrained entity
+         % vals: value to assign to each entity
+         fieldList = getFieldList(obj.dofm);
+         for f = fieldList
+            if ~isCoupled(obj,field,f)
+               continue
+            end
+            switch type
+               case 'Dir'
+                  applyDirBC(obj.getSolver({field,f}),field,ents,vals,state);
+               case 'Neu'
+                  applyNeuBC(obj.getSolver({field,f}),ents,vals);
+               case 'VolumeForce'
+                  applyVolumeForceBC(obj.getSolver({field,f}),ents,vals)
+            end
+         end
+      end
+
       function J = assembleJacobian(obj)
          % put together jacobian blocks of SinglePhysicsSolver and
          % CoupledSolver in the model
@@ -37,6 +57,7 @@ classdef Discretizer < handle
 
 
       function out = getSolver(obj,fldList)
+         fldList = string(fldList);
          % map single field or pair of field to db position
          if isscalar(getFieldList(obj.dofm)) % singlePhysic model
             v = 0;
@@ -45,6 +66,7 @@ classdef Discretizer < handle
             cs = cumsum(nF:-1:1);
             v = [0 cs(1:end-1)];
          end
+         fldList = unique(fldList);          
          % get solver from database
          if isscalar(fldList) % query to single physic solver
             fldId = obj.dofm.getFieldId(fldList);
@@ -57,23 +79,23 @@ classdef Discretizer < handle
          out = obj.solver(id);
       end
 
-      function computeLinearMatrices(obj,stateTmp,statek,dt)
+      function stateTmp = computeLinearMatrices(obj,stateTmp,statek,dt)
          % loop trough solver database and compute costant jacobian blocks
          for i = 1:obj.numSolvers
             if isLinear(obj.solver(i))
-               obj.solver(i).computeMat(stateTmp,statek,dt);
+               stateTmp = computeMat(obj.solver(i),stateTmp,statek,dt);
             end
          end
       end
 
-      function computeNLMatricesAndRhs(obj,stateTmp,statek,dt)
+      function stateTmp = computeNLMatricesAndRhs(obj,stateTmp,statek,dt)
          % loop trough solver database and compute non-costant jacobian
          % blocks and rhs block
          for i = 1:obj.numSolvers
             if ~isLinear(obj.solver(i))
-               obj.solver(id).computeMat(stateTmp,statek,dt);
+               stateTmp = obj.solver(i).computeMat(stateTmp,statek,dt);
             end
-            obj.solver(id).computeRhs(stateTmp,statek,dt);
+            stateTmp = obj.solver(i).computeRhs(stateTmp,statek,dt);
          end
       end
 
@@ -93,7 +115,7 @@ classdef Discretizer < handle
          fldList = getFieldList(obj.dofm);
          for i = 1:numel(fldList)
             % loop trough active fields and update the state structure
-            setState(obj.getSolver(fldList(i)),state);
+            state = setState(obj.getSolver(fldList(i)),state);
          end
       end       
    end

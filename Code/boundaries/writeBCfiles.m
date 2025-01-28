@@ -31,12 +31,12 @@ fprintf(fID,'%s            %% Physics \n',physic(1));
 
 % Direction
 if strcmp(physic(1),'Poro')
+   dir = physic(2:end);
    if strcmp(type,'Neu')
       assert(numel(physic)==2,['Only one direction at time is allowed for' ...
          ' Poromechanics Neumann BCs ']);
+      fprintf(fID,'%s \n',dir);
    end
-   dir = physic(2:end);
-   fprintf(fID,'%s \n',dir);
 end
 
 % BC Name

@@ -26,7 +26,7 @@ classdef SPFlow < SinglePhysicSolver
             computeRHSGravTerm(obj);
         end
 
-        function setState(obj,state)
+        function state = setState(obj,state)
            if isFEMBased(obj.model,'Flow')
               n = obj.mesh.nNodes;
            elseif isFVTPFABased(obj.model,'Flow')
@@ -53,8 +53,9 @@ classdef SPFlow < SinglePhysicSolver
         end
 
 
-        function computeMat(obj,varargin)
-           dt = varargin{1};
+        function state = computeMat(obj,varargin)
+           state = varargin{1};
+           dt = varargin{3};
             if obj.model.isFEMBased('Flow')
                 computeMatFEM(obj);
             elseif obj.model.isFVTPFABased('Flow')
@@ -62,7 +63,7 @@ classdef SPFlow < SinglePhysicSolver
                 computeStiffMatFV(obj,1/mu);
                 computeCapMatFV(obj);
             end
-            if isTimeDependent(obj.simParams)
+            if obj.simParams.isTimeDependent
                obj.J = obj.simParams.theta*obj.H + obj.P/dt;
             else
                obj.J = obj.H;
@@ -127,7 +128,7 @@ classdef SPFlow < SinglePhysicSolver
                         PLoc = (alpha+poro*beta)*(N1'*diag(dJWeighed)*N1);
                 end
                 %Getting dof associated to Flow subphysic
-                dof = obj.dofm.ent2field(obj.field,obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
+                dof = dofId(obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)),1);
                 [jjLoc,iiLoc] = meshgrid(dof,dof);
                 iiVec(l1+1:l1+s1) = iiLoc(:);
                 jjVec(l1+1:l1+s1) = jjLoc(:);
@@ -135,9 +136,13 @@ classdef SPFlow < SinglePhysicSolver
                 PVec(l1+1:l1+s1) = PLoc(:);
                 l1 = l1 + s1;
             end
+            % renumber indices according to active nodes
+            [~,~,iiVec] = unique(iiVec);
+            [~,~,jjVec] = unique(jjVec);
+            nDoF = obj.dofm.getNumDoF(obj.field);
             % Assemble H and P matrices defined as new fields of
-            obj.H = sparse(iiVec, jjVec, HVec);
-            obj.P = sparse(iiVec, jjVec, PVec);
+            obj.H = sparse(iiVec, jjVec, HVec, nDoF, nDoF);
+            obj.P = sparse(iiVec, jjVec, PVec, nDoF, nDoF);
         end
 
 
@@ -146,21 +151,21 @@ classdef SPFlow < SinglePhysicSolver
             subCells = obj.dofm.getFieldCells('Poromechanics');
             nSubCells = length(subCells); 
             %get pairs of faces that contribute to the subdomain
-            intFaces = any(obj.isIntFaces(:,subInd),2);
-            neigh1 = obj.faces.faceNeighbors(intFaces,1);
-            neigh2 = obj.faces.faceNeighbors(intFaces,2);
-            neigh1dof = obj.dofm.ent2field(obj.field,neigh1);
-            neigh2dof = obj.dofm.ent2field(obj.field,neigh2);
+            neigh1 = obj.faces.faceNeighbors(obj.isIntFaces,1);
+            neigh2 = obj.faces.faceNeighbors(obj.isIntFaces,2);
             % Transmissibility of internal faces
-            tmpVec = lw.*obj.trans(intFaces);
+            tmpVec = lw.*obj.trans(obj.isIntFaces);
             % tmpVec = lw.*tmpVec;
-            sumDiagTrans = accumarray([neigh1dof; neigh2dof], ...
+            sumDiagTrans = accumarray([neigh1; neigh2], ...
                 repmat(tmpVec,[2,1]),[nSubCells,1]);
             % Assemble H matrix
-            obj.H = sparse([neigh1dof; neigh2dof; (1:nSubCells)'], ...
-                [neigh2dof; neigh1dof; (1:nSubCells)'], ...
+            nDoF = obj.dofm.getNumDoF(obj.field);
+            [~,~,neigh1] = unique(neigh1); 
+            [~,~,neigh2] = unique(neigh2); 
+            obj.H = sparse([neigh1; neigh2; (1:nSubCells)'], ...
+                [neigh2; neigh1; (1:nSubCells)'], ...
                 [-tmpVec; -tmpVec; ...
-                sumDiagTrans]);
+                sumDiagTrans],nDoF,nDoF);
         end
 
 
@@ -172,7 +177,7 @@ classdef SPFlow < SinglePhysicSolver
             alphaMat = zeros(nSubCells,1);
             beta = obj.material.getFluid().getFluidCompressibility();
             for m = 1:obj.mesh.nCellTag
-                if ~any(strcmp(obj.dofm.subDomains(subInd).physics,'Poro'))
+                if ~ismember(m,obj.dofm.getFieldCellTags({obj.field,'Poromechanics'}))
                     % compute alpha only if there's no coupling in the
                     % subdomain
                     alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
@@ -182,19 +187,24 @@ classdef SPFlow < SinglePhysicSolver
             % (alpha+poro*beta)
             PVal = alphaMat(obj.mesh.cellTag(subCells)) + beta*poroMat(obj.mesh.cellTag(subCells));
             PVal = PVal.*obj.elements.vol(subCells);
-            dof = obj.dofm.ent2field(obj.field, subCells);
-            obj.P = sparse(dof,dof,PVal);
+            nDoF = obj.dofm.getNumDoF(obj.field);
+            [~,~,dof] = unique(subCells);
+            obj.P = sparse(dof,dof,PVal,nDoF,nDoF);
         end
 
 
-        function computeRhs(obj,stateTmp,statek,dt)
+        function stateTmp = computeRhs(obj,stateTmp,statek,dt)
             % Compute the residual of the flow problem
             lw = obj.material.getFluid().getDynViscosity();
-            theta = obj.simParams.theta;
             ents = obj.dofm.getActiveEnts(obj.field);
-            rhsStiff = theta*obj.H*stateTmp.pressure(ents) + (1-theta)*obj.H*statek.pressure(ents);
-            rhsCap = (obj.P/dt)*(stateTmp.pressure(ents) - statek.pressure(ents));
-            obj.rhs = rhsStiff + rhsCap;
+            if obj.simParams.isTimeDependent
+               obj.rhs = obj.H*stateTmp.pressure(ents);
+            else
+               theta = obj.simParams.theta;
+               rhsStiff = theta*obj.H*stateTmp.pressure(ents) + (1-theta)*obj.H*statek.pressure(ents);
+               rhsCap = (obj.P/dt)*(stateTmp.pressure(ents) - statek.pressure(ents));
+               obj.rhs = rhsStiff + rhsCap;
+            end
             gamma = obj.material.getFluid().getFluidSpecWeight();
             %adding gravity rhs contribute
             if gamma > 0
@@ -243,11 +253,52 @@ classdef SPFlow < SinglePhysicSolver
             % remove inactive components of rhs vector 
         end
 
-        function gTerm = finalizeRHSGravTerm(obj,lw)            
+        function gTerm = finalizeRHSGravTerm(obj,lw) 
+            nCells = obj.dofm.getNumDoF(obj.field);
             neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
             gTerm = accumarray(neigh(:),[lw.*obj.rhsGrav; ...
-                 -lw.*obj.rhsGrav],[nSubCells,1]);
+                 -lw.*obj.rhsGrav],[nCells,1]);
             gTerm = gTerm(obj.dofm.getActiveEnts(obj.field));
+        end
+
+        function applyDirBC(obj,~,ents,vals,state)
+           % apply Dirichlet BCs
+           % ents: id of constrained faces without any dof mapping applied
+           if isFVTPFABased(obj.model,'Flow')
+              % BCs imposition for finite volumes
+              neigh = sum(obj.faces.faceNeighbors(ents,:),2);
+              % deal with cells having > 1 constrained faces
+              [neigh,~,ind] = unique(neigh);    
+              gamma = obj.material.getFluid().getFluidSpecWeight();
+              mu = obj.material.getFluid().getDynViscosity();
+              tr = obj.getFaceTransmissibilities(ents);
+              q = 1/mu*tr.*((state.pressure(neigh) - vals)...
+                 + gamma*(obj.elements.cellCentroid(neigh,3) - obj.faces.faceCentroid(ents,3)));
+              rhsVals = accumarray(ind,q);
+              JVals = 1/mu*tr;
+              dofs = obj.dofm.getLocalDoF(neigh,obj.field); % get dof numbering 
+              nDoF = obj.dofm.getNumDoF(obj.field);
+              obj.J(nDoF*(dofs-1) + nDoF) = obj.J(nDoF*(dofs-1) + nDoF) + JVals;
+              obj.rhs(dofs) = obj.rhs(dofs) + rhsVals;
+           else
+              applyDirBC@SinglePhysicSolver(obj,ents)
+           end
+        end
+
+        function applyNeuBC(obj,ents,vals)
+           if isFVTPFABased(obj.model,'Flow')
+           area = vecnorm(obj.faces.faceNormal(ents,:),2,2).*vals;
+           rhsVals = accumarray(ind, area);
+           end
+           applyNeuBC@SinglePhysicSolver(obj,ents,rhsVals)
+        end
+
+        function applyVolumeForceBC(obj,dofs,vals)
+           % map local dof numbering to global entitities numbering
+           entID = obj.dofm.getFieldDoF(dofs,obj.field);
+           vols = obj.elements.vol(entID);
+           rhsVals = vals.*vols;
+           obj.rhs(dofs) = obj.rhs(dofs)- rhsVals;
         end
 
 

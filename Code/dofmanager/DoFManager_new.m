@@ -73,7 +73,7 @@ classdef DoFManager_new < handle
                         cTag = sscanf(fgetl(fID), '%i');
                         l = l+1;
                      case '<Field>'
-                        fieldList = convertCharsToStrings(split(strip((strtok(fgetl(fID),'%')))));
+                        fldList = convertCharsToStrings(split(strip((strtok(fgetl(fID),'%')))));
                         l = l+1;                
                      otherwise
                         if ~isempty(nextline)
@@ -90,7 +90,7 @@ classdef DoFManager_new < handle
                   ' %i: CellTag already defined'],subID);
                obj.tag2subDomain(cTag) = subID;
                % add field to DoFManager
-               for field = fieldList'
+               for field = fldList'
                   addField(obj,mesh,subID,field);
                end
             end
@@ -188,22 +188,43 @@ classdef DoFManager_new < handle
                error('Domain-based ordering of DoF not yet implemented')
          end
       end
-      % 
+      %
       function dofList = getLocalDoF(obj,entList,field)
          fldId = obj.getFieldId(field);
-         assert(size(entList,2)==1,['Entity list must be a ' ...
-            'single integer or a column vector']);
          nc = obj.nComp(fldId);
-         dofList = zeros(numel(entList),1);
          % get local DoF numbering for entities within a field
-         k = 0;
-         for ent = entList'
-            assert(obj.fields(fldId).isEntActive(ent),['Inactive field for ' ...
-               'input entity %i'],ent);
-            entLoc = sum(obj.fields(fldId).isEntActive(1:ent));
-            dofList(k+1:k+nc) = dofId(entLoc,nc);
-            k = k+nc;
+         ents = getLocalEnts(obj,entList,field);
+         dofList = dofId(ents,nc);
+      end
+
+      function dofList = getLocalEnts(obj,entList,field)
+         % renumber entity id skipping inactive entities 
+         fldId = obj.getFieldId(field);
+         entList = reshape(entList,[],1);
+         dofList = zeros(numel(entList),1);
+         if ~all(obj.fields(fldId).isEntActive(entList))
+            error('Inactive entity for field %s in input list',field);
          end
+         % sorting entity list is way more efficient
+         [entList,idSort] = sort(entList); 
+         s = 0;
+         k = 0;
+         iPrev = 0;
+         actEnt = obj.fields(fldId).isEntActive;
+         for j = idSort'
+            s = s+sum(actEnt(iPrev+1:entList(k+1)));
+            iPrev = entList(k+1);
+            dofList(j) = s;
+            k = k+1;
+         end
+      end
+
+      function fldDofs = getFieldDoF(obj,dofs,field)
+         % recover active entitity indices from local dof numbering
+         fldId = obj.getFieldId(field);
+         actEnt = obj.fields(fldId).isEntActive;
+         actDofs = find(actEnt);
+         fldDofs = actDofs(dofs);
       end
 
       function activeSubs = getActiveSubdomain(obj,fieldList)

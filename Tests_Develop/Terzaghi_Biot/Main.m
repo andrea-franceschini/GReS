@@ -1,6 +1,15 @@
 close all;
 clear;
 
+% Get the full path of the currently executing file
+scriptFullPath = mfilename('fullpath');
+
+% Extract the directory containing the script
+scriptDir = fileparts(scriptFullPath);
+
+% Change the current directory to the script's directory
+cd(scriptDir);
+
 % -------------------------- SET THE PHYSICS -------------------------
 model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 %
@@ -69,35 +78,35 @@ state = linSyst.setState();
 % Write BC files (employ user friendly function to write them)
 F = -10; % vertical force
 % Top no flow
-writeBCfiles('BCs/dirFlowTop','SurfBC','Dir','Flow','NoFlowTop',0,0,topology,2);
-% Top load
-writeBCfiles('BCs/newPorotop','SurfBC','Neu',{'Poro','z'},'TopLoad',0,F,topology,2);
-% Lateral roller
-writeBCfiles('BCs/dirPoroLatY','NodeBC','Dir',{'Poro','y'},'LatFixedY',0,0,topology,3);
-writeBCfiles('BCs/dirPoroLatX','NodeBC','Dir',{'Poro','x'},'LatFixedX',0,0,topology,4);
-% Bottom fixed
-writeBCfiles('BCs/dirPoroBottom','NodeBC','Dir',{'Poro','x','y','z'},'BotFixed',0,0,topology,1);
+% writeBCfiles('BCs/dirFlowTop','SurfBC','Dir','Flow','NoFlowTop',0,0,topology,2);
+% % Top load
+% writeBCfiles('BCs/newPorotop','SurfBC','Neu',{'Poro','z'},'TopLoad',0,F,topology,2);
+% % Lateral roller
+% writeBCfiles('BCs/dirPoroLatY','NodeBC','Dir',{'Poro','y'},'LatFixedY',0,0,topology,3);
+% writeBCfiles('BCs/dirPoroLatX','NodeBC','Dir',{'Poro','x'},'LatFixedX',0,0,topology,4);
+% % Bottom fixed
+% writeBCfiles('BCs/dirPoroBottom','NodeBC','Dir',{'Poro','x','y','z'},'BotFixed',0,0,topology,1);
 
 % Collect BC input file in a list
 fileName = ["BCs/dirFlowTop.dat","BCs/newPorotop.dat",...
    "BCs/dirPoroLatY.dat","BCs/dirPoroLatX.dat","BCs/dirPoroBottom.dat"];
 %
 % Create an object of the "Boundaries" class 
-bound = Boundaries(fileName,model,grid);
+bound = Boundaries(fileName,model,grid,dofmanager);
 
 % In this version of the code, the user can assign initial conditions only
 % manually, by directly modifying the entries of the state structure. 
 % In this example, we use a user defined function to apply Terzaghi initial
 % conditions to the state structure
-applyTerzaghiIC(state,mat,topology,F);
+state = applyTerzaghiIC(state,mat,topology,F);
 
 % Built-in fully implict solution scheme 
 % The modular structure of the discretizer class allow the user to design
 % its own version of the solution scheme
-NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,linSyst,GaussPts);
+Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
 %
 % Solve the problem
-[simState] = NSolv.NonLinearLoop();
+[simState] = Solver.NonLinearLoop();
 %
 % Finalize the print utility
 printUtils.finalize()

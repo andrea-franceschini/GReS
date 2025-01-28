@@ -31,128 +31,125 @@ classdef FCSolver < handle
       obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin);
     end
 
-    function [simStat] = NonLinearLoop(obj)
+   function [simStat] = NonLinearLoop(obj)
       simStat = 1;
       % Initialize the time step increment
       obj.dt = obj.simParameters.dtIni;  
       delta_t = obj.dt; % dynamic time step
 
       % Compute matrices of Linear models (once for the entire simulation)
-      computeLinearMatrices(obj.linSyst,obj.stateTmp,obj.statek,obj.dt)
+      obj.stateTmp = computeLinearMatrices(obj.linSyst,obj.stateTmp,obj.statek,obj.dt);
       %
       flConv = true; %convergence flag
       %
       % Loop over time
       while obj.t < obj.simParameters.tMax
          absTol = obj.simParameters.absTol;
-        % Update the simulation time and time step ID
-        obj.tStep = obj.tStep + 1;
-        %new time update to fit the outTime list
-        [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
-        %obj.t = obj.t + obj.dt;
+         % Update the simulation time and time step ID
+         obj.tStep = obj.tStep + 1;
+         %new time update to fit the outTime list
+         [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
+         %obj.t = obj.t + obj.dt;
 
-        % Apply the Dirichlet condition value to the solution vector
-        applyDirVal(obj.model, obj.bound, obj.t, obj.stateTmp);
-        %
-        if obj.simParameters.verbosity > 0
-        fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t);
-        fprintf('-----------------------------------------------------------\n');
-        end
-        if obj.simParameters.verbosity > 1
-        fprintf('Iter     ||rhs||\n');
-        end
-        %
-        % Compute Rhs and matrices of NonLinear models
-        computeNLMatricesAndRhs(obj.linSyst,obj.stateTmp,obj.statek,obj.dt)
-    
-        % compute block Jacobian and block Rhs
-        obj.linSyst.computeBlockJacobianAndRhs(delta_t);
+         % Apply the Dirichlet condition value to the solution vector
+         applyDirVal(obj.model, obj.bound, obj.t, obj.stateTmp);
+         %
+         if obj.simParameters.verbosity > 0
+            fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t);
+            fprintf('-----------------------------------------------------------\n');
+         end
+         if obj.simParameters.verbosity > 1
+            fprintf('Iter     ||rhs||\n');
+         end
+         %
+         % Compute Rhs and matrices of NonLinear models
+         obj.stateTmp = computeNLMatricesAndRhs(obj.linSyst,obj.stateTmp,obj.statek,obj.dt);
 
-        % Apply BCs to the block-wise system
-        applyBCandForces(obj.model, obj.grid, obj.bound, obj.material, ...
-          obj.t, obj.linSyst, obj.stateTmp);
+         % Apply BCs to the blocks of the linear system
+         applyBC(obj.model, obj.bound, obj.t, obj.linSyst, obj.stateTmp);
 
-        % compute Rhs norm
-        [~, rhsNorm] = computeRhsNorm(obj,obj.linSyst);
-        % consider output of local field rhs contribution
+         
 
-        tolWeigh = obj.simParameters.relTol*rhsNorm;
-        obj.iter = 0;
-        %
-        if obj.simParameters.verbosity > 1
-        fprintf('0     %e\n',rhsNorm);
-        end
-        while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
-            && (rhsNorm > absTol)) || obj.iter == 0
-          obj.iter = obj.iter + 1;
-          %
-          % Solve system with increment
-          du = solve(obj.linSyst);
-          % Reset global Jacobian and Rhs
-          obj.linSyst.resetJacobianAndRhs(); 
-          % Update tmpState
-          obj.stateTmp.updateState(du,obj.dofManager);
+         % compute Rhs norm
+         [~, rhsNorm] = computeRhsNorm(obj,obj.linSyst);
+         % consider output of local field rhs contribution
 
-          % Compute Rhs and Matrices of NonLinear models
-          computeNLMatricesAndRhs(obj.linSyst,obj.stateTmp,obj.statek,obj.dt)
+         tolWeigh = obj.simParameters.relTol*rhsNorm;
+         obj.iter = 0;
+         %
+         if obj.simParameters.verbosity > 1
+            fprintf('0     %e\n',rhsNorm);
+         end
+         while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
+               && (rhsNorm > absTol)) || obj.iter == 0
+            obj.iter = obj.iter + 1;
+            %
+            % Solve system with increment
+            du = solve(obj.linSyst);
+            % Reset global Jacobian and Rhs
+            obj.linSyst.resetJacobianAndRhs();
+            % Update tmpState
+            obj.stateTmp.updateState(du,obj.dofManager);
 
-          % compute block Jacobian and block Rhs
-          obj.linSyst.computeBlockJacobianAndRhs(delta_t);
-          %
-          applyBCandForces(obj.model, obj.grid, obj.bound, obj.material, ...
-            obj.t, obj.linSyst, obj.stateTmp);
-          
-          % compute residual norm
-          [~, rhsNorm] = computeRhsNorm(obj,obj.linSyst);
-          if obj.simParameters.verbosity > 1
-          fprintf('%d     %e\n',obj.iter,rhsNorm);
-          end
-        end
-        %
-        % Check for convergence
-        flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
-        if flConv % Convergence
-          obj.stateTmp.t = obj.t;
-          % Print the solution, if needed
-          if isPoromechanics(obj.model)
-            obj.stateTmp.advanceState();
-          end
-          if isVariabSatFlow(obj.model)
-            obj.stateTmp.updateSaturation()
-          end
-          if obj.t > obj.simParameters.tMax   % For Steady State
-            printState(obj.printUtil,obj.stateTmp);
-          else
-            printState(obj.printUtil,obj.statek,obj.stateTmp);
-          end
-        end
-        %
-        % Manage next time step
-        delta_t = manageNextTimeStep(obj,delta_t,flConv);
+            % Compute Rhs and Matrices of NonLinear models
+            computeNLMatricesAndRhs(obj.linSyst,obj.stateTmp,obj.statek,obj.dt)
+
+            % compute block Jacobian and block Rhs
+            obj.linSyst.computeBlockJacobianAndRhs(delta_t);
+            %
+            applyBC(obj.model, obj.grid, obj.bound, obj.material, ...
+               obj.t, obj.linSyst, obj.stateTmp);
+
+            % compute residual norm
+            [~, rhsNorm] = computeRhsNorm(obj,obj.linSyst);
+            if obj.simParameters.verbosity > 1
+               fprintf('%d     %e\n',obj.iter,rhsNorm);
+            end
+         end
+         %
+         % Check for convergence
+         flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
+         if flConv % Convergence
+            obj.stateTmp.t = obj.t;
+            % Print the solution, if needed
+            if isPoromechanics(obj.model)
+               obj.stateTmp.advanceState();
+            end
+            if isVariabSatFlow(obj.model)
+               obj.stateTmp.updateSaturation()
+            end
+            if obj.t > obj.simParameters.tMax   % For Steady State
+               printState(obj.printUtil,obj.stateTmp);
+            else
+               printState(obj.printUtil,obj.statek,obj.stateTmp);
+            end
+         end
+         %
+         % Manage next time step
+         delta_t = manageNextTimeStep(obj,delta_t,flConv);
       end
-        %
-    end
+      %
+   end
   end
   
   methods (Access = private)
-      function setNonLinearSolver(obj,symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linearSyst,data)
-      obj.model = symmod;
-      obj.simParameters = simParam;
-      obj.dofManager = dofManager;
-      obj.grid = grid;
-      obj.mesh = grid.topology;
-      obj.elements = grid.cells;
-      obj.material = mat;
-      obj.bound = bc;
-%       obj.BCName = BName;
-      obj.printUtil = prtUtil;
-      obj.statek = stateIni;
-      obj.stateTmp = copy(stateIni);
-      obj.linSyst = linearSyst;
-      if ~isempty(data)
-        obj.GaussPts = data{1};
-      end
-    end
+     function setNonLinearSolver(obj,symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linearSyst,data)
+        obj.model = symmod;
+        obj.simParameters = simParam;
+        obj.dofManager = dofManager;
+        obj.grid = grid;
+        obj.mesh = grid.topology;
+        obj.elements = grid.cells;
+        obj.material = mat;
+        obj.bound = bc;
+        obj.printUtil = prtUtil;
+        obj.statek = stateIni;
+        obj.stateTmp = stateIni;
+        obj.linSyst = linearSyst;
+        if ~isempty(data)
+           obj.GaussPts = data{1};
+        end
+     end
     function [t, dt] = updateTime(obj,conv,dt)
         if obj.printUtil.modTime
             tmp = find(obj.t<obj.printUtil.timeList(),1,'first');

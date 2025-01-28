@@ -37,7 +37,7 @@ classdef NonLinearSolver < handle
       delta_t = obj.dt; % dynamic time step
 
       % Compute matrices of Linear models (once for the entire simulation)
-      computeLinearMatrices(obj.linSyst,obj.stateTmp,obj.statek,obj.dt)
+      obj.stateTmp = computeLinearMatrices(obj.linSyst,obj.stateTmp,obj.statek,obj.dt);
       %
       flConv = true; %convergence flag
       %
@@ -62,7 +62,7 @@ classdef NonLinearSolver < handle
         end
         %
         % Compute Rhs and matrices of NonLinear models
-        computeNLMatricesAndRhs(obj.linSyst,obj.stateTmp,obj.statek,obj.dt)
+        obj.stateTmp = computeNLMatricesAndRhs(obj.linSyst,obj.stateTmp,obj.statek,obj.dt);
     
         % compute block Jacobian and block Rhs
         obj.linSyst.computeBlockJacobianAndRhs(delta_t);
@@ -146,7 +146,7 @@ classdef NonLinearSolver < handle
 %       obj.BCName = BName;
       obj.printUtil = prtUtil;
       obj.statek = stateIni;
-      obj.stateTmp = copy(stateIni);
+      obj.stateTmp = stateIni;
       obj.linSyst = linearSyst;
       if ~isempty(data)
         obj.GaussPts = data{1};
