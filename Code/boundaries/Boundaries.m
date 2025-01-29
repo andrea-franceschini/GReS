@@ -63,18 +63,17 @@ classdef Boundaries < handle
       physics = obj.getData(identifier).physics;
     end
    
-    function dofs = getDoF(obj,identifier,field)
-       ents = getEntities(obj,identifier);
-       dofs = obj.dof.getLocalEnts(ents,field);
-       nEnts = getNumbEntities(obj,identifier);
+    function dofs = getCompEntities(obj,identifier,ents)
+       % get component dof of Dirichlet BC loaded entities
+       nEnts = getNumbLoadedEntities(obj,identifier);
        % component multiplication of BC entities
        dim = length(nEnts);
        i1 = 1;
+       dofs = zeros(numel(ents),1);
        for i = 1 : dim
           i2 = i1 + nEnts(i);
-          dofs(i1:i2-1) = dim*(dofs(i1:i2-1)-1) + i;
+          dofs(i1:i2-1) = dim*(ents(i1:i2-1)-1) + i;
           i1 = i2;
-          % obj.entities should follow the dofManager table
        end
     end
 
@@ -91,10 +90,16 @@ classdef Boundaries < handle
         nEnts = obj.getData(identifier).data.nEntities;
      end
 
-
-    function ent = getNumbLoadedEntities(obj, identifier)
-      ent = obj.getData(identifier).nloadedEnts;
-    end
+     function ents = getNumbLoadedEntities(obj, identifier)
+        bc = obj.getData(identifier);
+        if isfield(bc,'nloadedEnts')
+           % Surface BC
+           ents = bc.nloadedEnts;
+        else
+           % Node BC
+           ents = bc.data.nEntities;
+        end
+     end
     
     function infl = getEntitiesInfluence(obj, identifier)
       infl = obj.getData(identifier).entitiesInfl;

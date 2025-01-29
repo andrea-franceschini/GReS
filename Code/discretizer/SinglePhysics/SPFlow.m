@@ -35,7 +35,7 @@ classdef SPFlow < SinglePhysicSolver
            state.pressure = zeros(n,1);
         end
 
-        function updateState(obj,state,dSol)
+        function state = updateState(obj,state,dSol)
            ents = obj.dofm.getActiveEnts(obj.field);
            state.pressure(ents) = state.pressure(ents) + dSol(obj.dofm.getDoF(obj.field));
         end
@@ -261,46 +261,85 @@ classdef SPFlow < SinglePhysicSolver
             gTerm = gTerm(obj.dofm.getActiveEnts(obj.field));
         end
 
-        function applyDirBC(obj,~,ents,vals,state)
+        function [dof,vals] = getBC(obj,bc,id,t,state)
+           switch bc.getCond(id)
+              case {'NodeBC','ElementBC'}
+                 ents = bc.getEntities(id);
+                 vals = bound.getVals(id,t);
+              case 'SurfBC'
+                 v = bc.getVals(id,t);
+                 if isFVTPFABased(obj.model,'Flow')
+                    faceID = bc.getEntities(id);
+                    ents = sum(obj.faces.faceNeighbors(faceID,:),2);
+                    [ents,~,ind] = unique(ents);
+                    switch bc.getType(id)
+                       case 'Neu'
+                          area = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
+                          vals = accumarray(ind, area);
+                       case 'Dir'
+                          gamma = obj.material.getFluid().getFluidSpecWeight();
+                          mu = obj.material.getFluid().getDynViscosity();
+                          tr = obj.getFaceTransmissibilities(faceID);
+                          q = 1/mu*tr.*((state.pressure(ents) - v)...
+                             + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
+                          vals = [1/mu*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
+                    end
+                 elseif isFEMBased(obj.model,'Flow')
+                    ents = bc.getEntities(id);
+                    entitiesInfl = bc.getEntitiesInfluence(id);
+                    vals = entitiesInfl*v;
+                 end
+              case 'VolumeForce'
+                 v = bc.getVals(id,t);
+                 ents = bc.getEntities(id);
+                 if isFVTPFABased(obj.model,'Flow')
+                    vals = -v.*obj.elements.vol(ents);
+                 elseif isFEMBased(obj.model,'Flow')
+                    entitiesInfl = bc.getEntitiesInfluence(id);
+                    vals = entitiesInfl*v;
+                 end
+           end
+           % get local dof numbering
+           dof = obj.dofm.getLocalDoF(ents,obj.field);
+        end
+
+        function state = applyDirVal(obj,bc,id,t,state)
+           if isFVTPFABased(obj.model,'Flow')
+              % Dirichlet BCs cannot be directly applied to the solution
+              % vector
+              return
+           end
+           switch bc.getCond(id)
+              case 'NodeBC'
+                 ents = bc.getEntities(id);
+                 vals = bc.getVals(id,t);
+              case 'SurfBC'
+                 ents = bc.getLoadedEntities(id);
+                 s2n = bc.getEntitiesInfluence(id);
+                 vals = s2n*bc.getVals(id,t);
+                 % node id contained by constrained surface
+              otherwise
+                 error('BC type %s is not available for %s field',cond,obj.field);
+           end
+           dof = bc.getCompEntities(id,ents);
+           state.pressure(dof) = vals;
+        end
+
+        function applyDirBC(obj,~,ents,vals)
            % apply Dirichlet BCs
            % ents: id of constrained faces without any dof mapping applied
+           % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
            if isFVTPFABased(obj.model,'Flow')
               % BCs imposition for finite volumes
-              neigh = sum(obj.faces.faceNeighbors(ents,:),2);
-              % deal with cells having > 1 constrained faces
-              [neigh,~,ind] = unique(neigh);    
-              gamma = obj.material.getFluid().getFluidSpecWeight();
-              mu = obj.material.getFluid().getDynViscosity();
-              tr = obj.getFaceTransmissibilities(ents);
-              q = 1/mu*tr.*((state.pressure(neigh) - vals)...
-                 + gamma*(obj.elements.cellCentroid(neigh,3) - obj.faces.faceCentroid(ents,3)));
-              rhsVals = accumarray(ind,q);
-              JVals = 1/mu*tr;
-              dofs = obj.dofm.getLocalDoF(neigh,obj.field); % get dof numbering 
+              assert(size(vals,2)==2,'Invalid matrix size for BC values');
               nDoF = obj.dofm.getNumDoF(obj.field);
-              obj.J(nDoF*(dofs-1) + nDoF) = obj.J(nDoF*(dofs-1) + nDoF) + JVals;
-              obj.rhs(dofs) = obj.rhs(dofs) + rhsVals;
+              obj.J(nDoF*(ents-1) + ents) = obj.J(nDoF*(ents-1) + ents) + vals(:,1);
+              obj.rhs(ents) = obj.rhs(ents) + vals(:,2);
            else
+              % strong nodal BCs imposition
               applyDirBC@SinglePhysicSolver(obj,ents)
            end
         end
-
-        function applyNeuBC(obj,ents,vals)
-           if isFVTPFABased(obj.model,'Flow')
-           area = vecnorm(obj.faces.faceNormal(ents,:),2,2).*vals;
-           rhsVals = accumarray(ind, area);
-           end
-           applyNeuBC@SinglePhysicSolver(obj,ents,rhsVals)
-        end
-
-        function applyVolumeForceBC(obj,dofs,vals)
-           % map local dof numbering to global entitities numbering
-           entID = obj.dofm.getFieldDoF(dofs,obj.field);
-           vols = obj.elements.vol(entID);
-           rhsVals = vals.*vols;
-           obj.rhs(dofs) = obj.rhs(dofs)- rhsVals;
-        end
-
 
         function out = isLinear(obj)
             out = true;
@@ -312,29 +351,66 @@ classdef SPFlow < SinglePhysicSolver
         end
 
         function computeTrans(obj)   % Inspired by MRST
-            % Compute first the vector connecting each cell centroid to the
-            % half-face
-            r = [1, 1, 1, 2, 2, 2, 3, 3, 3];
-            c = [1, 2, 3, 1, 2, 3, 1, 2, 3];
-            hf2Cell = repelem((1:obj.mesh.nCells)',diff(obj.faces.mapF2E));
-            L = obj.faces.faceCentroid(obj.faces.faces2Elements(:,1),:) - obj.elements.cellCentroid(hf2Cell,:);
-            sgn = 2*(hf2Cell == obj.faces.faceNeighbors(obj.faces.faces2Elements(:,1))) - 1;
-            N = bsxfun(@times,sgn,obj.faces.faceNormal(obj.faces.faces2Elements(:,1),:));
-            KMat = zeros(obj.mesh.nCellTag,9);
-            for i=1:obj.mesh.nCellTag
-                KMat(i,:) = obj.material.getMaterial(i).PorousRock.getPermVector();
-            end
-            hT = zeros(length(hf2Cell),1);
-            for k=1:length(r)
-                hT = hT + L(:,r(k)) .* KMat(obj.mesh.cellTag(hf2Cell),k) .* N(:,c(k));
-            end
-            hT = hT./sum(L.*L,2);
-            %       mu = obj.material.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();
-            %       hT = hT/mu;
-            %
-            obj.trans = 1 ./ accumarray(obj.faces.faces2Elements(:,1),1 ./ hT,[obj.faces.nFaces,1]);
+           % Compute first the vector connecting each cell centroid to the
+           % half-face
+           r = [1, 1, 1, 2, 2, 2, 3, 3, 3];
+           c = [1, 2, 3, 1, 2, 3, 1, 2, 3];
+           hf2Cell = repelem((1:obj.mesh.nCells)',diff(obj.faces.mapF2E));
+           L = obj.faces.faceCentroid(obj.faces.faces2Elements(:,1),:) - obj.elements.cellCentroid(hf2Cell,:);
+           sgn = 2*(hf2Cell == obj.faces.faceNeighbors(obj.faces.faces2Elements(:,1))) - 1;
+           N = bsxfun(@times,sgn,obj.faces.faceNormal(obj.faces.faces2Elements(:,1),:));
+           KMat = zeros(obj.mesh.nCellTag,9);
+           for i=1:obj.mesh.nCellTag
+              KMat(i,:) = obj.material.getMaterial(i).PorousRock.getPermVector();
+           end
+           hT = zeros(length(hf2Cell),1);
+           for k=1:length(r)
+              hT = hT + L(:,r(k)) .* KMat(obj.mesh.cellTag(hf2Cell),k) .* N(:,c(k));
+           end
+           hT = hT./sum(L.*L,2);
+           %       mu = obj.material.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();
+           %       hT = hT/mu;
+           %
+           obj.trans = 1 ./ accumarray(obj.faces.faces2Elements(:,1),1 ./ hT,[obj.faces.nFaces,1]);
         end
 
+    end
+
+    methods (Access=private)
+       % function dof = getBCdofs(obj,bc,id)
+       %    switch bc.getCond(id)
+       %       case 'NodeBC'
+       %          ents = bc.getEntities(id,obj.field);
+       %       case 'SurfBC'
+       %          ents = bc.getLoadedEntities(id);
+       %          % node id contained by constrained surface
+       %       otherwise
+       %          error('BC type %s is not available for %s field',cond,obj.field);
+       %    end
+       %    % map entities dof to local dof numbering
+       %    dof = obj.dofm.getLocalDoF(ents,obj.field);
+       %    switch bc.getType(id)
+       %       case 'Dir'
+       %          % component multiplication of BC dofs
+       %          dof = bc.getCompEntities(id,dof);
+       %       case 'Neu'
+       %          dir = obj.getDirection(identifier);
+       %          c = find(strcmp(['x','y','z'],dir));
+       %          dof = c*dof;
+       %    end
+       % end
+       % 
+       % function vals = getBCVals(obj,bc,id,t)
+       %    if strcmp(bc.getType(id),'Dir')
+       %       vals = [];
+       %       return
+       %    end
+       %    vals = bc.getVals(id,t);
+       %    if strcmp(bc.getCond(id),'SurfBC')
+       %       entInfl = bc.getEntitiesInfluence(id);
+       %       vals = entInfl*vals;
+       %    end
+       % end
     end
 end
 

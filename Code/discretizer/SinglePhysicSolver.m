@@ -1,7 +1,9 @@
 classdef SinglePhysicSolver < handle
-   properties
+   properties (Access = public)
       J
       rhs
+   end
+   properties
       field
       model
       simParams
@@ -55,6 +57,14 @@ classdef SinglePhysicSolver < handle
          Jdiag = diag(obj.J);
          Jdiag(dofs) = 1;
          obj.J = obj.J - diag(diag(obj.J)) + diag(Jdiag);
+      end
+
+      function J = getJacobian(obj,varargin)
+         J = obj.J;
+      end
+
+      function rhs = getRhs(obj,varargin)
+         rhs = obj.rhs;
       end
    end
 end

@@ -37,7 +37,7 @@ classdef FCSolver < handle
       obj.dt = obj.simParameters.dtIni;  
       delta_t = obj.dt; % dynamic time step
 
-      % Compute matrices of Linear models (once for the entire simulation)
+      % Compute Jacobian matrices of Linear models (once for the entire simulation)
       obj.stateTmp = computeLinearMatrices(obj.linSyst,obj.stateTmp,obj.statek,obj.dt);
       %
       flConv = true; %convergence flag
@@ -52,7 +52,7 @@ classdef FCSolver < handle
          %obj.t = obj.t + obj.dt;
 
          % Apply the Dirichlet condition value to the solution vector
-         applyDirVal(obj.model, obj.bound, obj.t, obj.stateTmp);
+         obj.stateTmp = applyDirVal(obj.linSyst,obj.bound,obj.t,obj.stateTmp);
          %
          if obj.simParameters.verbosity > 0
             fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t);
@@ -66,12 +66,13 @@ classdef FCSolver < handle
          obj.stateTmp = computeNLMatricesAndRhs(obj.linSyst,obj.stateTmp,obj.statek,obj.dt);
 
          % Apply BCs to the blocks of the linear system
-         applyBC(obj.model, obj.bound, obj.t, obj.linSyst, obj.stateTmp);
-
+         applyBC(obj.linSyst,obj.bound,obj.t,obj.stateTmp);
          
+         J = assembleJacobian(obj.linSyst);
+         rhs = assembleRhs(obj.linSyst);
 
          % compute Rhs norm
-         [~, rhsNorm] = computeRhsNorm(obj,obj.linSyst);
+         rhsNorm = norm(rhs,2);
          % consider output of local field rhs contribution
 
          tolWeigh = obj.simParameters.relTol*rhsNorm;
@@ -85,23 +86,24 @@ classdef FCSolver < handle
             obj.iter = obj.iter + 1;
             %
             % Solve system with increment
-            du = solve(obj.linSyst);
-            % Reset global Jacobian and Rhs
-            obj.linSyst.resetJacobianAndRhs();
-            % Update tmpState
-            obj.stateTmp.updateState(du,obj.dofManager);
+            du = J\-rhs;
+
+            clear J; clear rhs;
+
+            % Update current model state
+            obj.stateTmp = updateState(obj.linSyst,obj.stateTmp,du);
+
 
             % Compute Rhs and Matrices of NonLinear models
-            computeNLMatricesAndRhs(obj.linSyst,obj.stateTmp,obj.statek,obj.dt)
+            obj.stateTmp = computeNLMatricesAndRhs(obj.linSyst,obj.stateTmp,obj.statek,obj.dt);
 
-            % compute block Jacobian and block Rhs
-            obj.linSyst.computeBlockJacobianAndRhs(delta_t);
-            %
-            applyBC(obj.model, obj.grid, obj.bound, obj.material, ...
-               obj.t, obj.linSyst, obj.stateTmp);
+            % Apply BCs to the blocks of the linear system
+            applyBC(obj.linSyst,obj.bound,obj.t,obj.stateTmp);
 
-            % compute residual norm
-            [~, rhsNorm] = computeRhsNorm(obj,obj.linSyst);
+            rhs = assembleRhs(obj.linSyst);
+            % compute Rhs norm
+            rhsNorm = norm(rhs,2);
+            
             if obj.simParameters.verbosity > 1
                fprintf('%d     %e\n',obj.iter,rhsNorm);
             end

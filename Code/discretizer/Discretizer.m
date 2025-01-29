@@ -4,65 +4,112 @@ classdef Discretizer < handle
       solver      % database for physics solvers in the model
       dofm        % dofManager 
       numSolvers  % number of solvers discretized
+      mod
+      fields
    end
 
    methods (Access = public)
       function obj = Discretizer(symmod,simParams,dofManager,grid,mat,varargin)
          %UNTITLED Construct an instance of this class
          %   Detailed explanation goes here
+         obj.mod = symmod;
          obj.dofm = dofManager;
          obj.solver = containers.Map('KeyType','double','ValueType','any');
          obj.setDiscretizer(symmod,simParams,dofManager,grid,mat,varargin);
          obj.checkTimeDependence(symmod,mat,simParams);
       end
-
-      function applyBC(obj,type,field,ents,vals,state)
+      
+      function applyBC(obj,bound,t,state)
          % Apply boundary condition to blocks of physical solver
          % ents: id of constrained entity
          % vals: value to assign to each entity
-         fieldList = getFieldList(obj.dofm);
-         for f = fieldList
-            if ~isCoupled(obj,field,f)
+         bcList = bound.db.keys;
+         % get entities and values of boundary condition
+         for bc = string(bcList)
+            field = translatePhysic(bound.getPhysics(bc),obj.mod);
+            % get id of constrained entities and corresponding BC values
+            [bcEnts,bcVals] = getSolver(obj,field).getBC(bound,bc,t,state);
+            % apply Boundary conditions to each Jacobian/rhs block
+            for f = obj.fields
+               if ~isCoupled(obj,field,f)
+                  continue
+                  % skip pair of uncoupled physics
+               end
+               switch bound.getType(bc)
+                  case 'Dir'
+                     applyDirBC(obj.getSolver({field,f}),field,bcEnts,bcVals);
+                  case {'Neu','VolumeForce'}
+                     applyNeuBC(obj.getSolver({field,f}),bcEnts,bcVals);
+               end
+            end
+         end
+      end
+
+      function state = applyDirVal(obj,bound,t,state)
+         % Apply boundary condition to blocks of physical solver
+         % ents: id of constrained entity
+         % vals: value to assign to each entity
+         bcList = bound.db.keys;
+         % get entities and values of boundary condition
+         for bc = string(bcList)
+            if ~strcmp(bound.getType(bc),'Dir')
                continue
             end
-            switch type
-               case 'Dir'
-                  applyDirBC(obj.getSolver({field,f}),field,ents,vals,state);
-               case 'Neu'
-                  applyNeuBC(obj.getSolver({field,f}),ents,vals);
-               case 'VolumeForce'
-                  applyVolumeForceBC(obj.getSolver({field,f}),ents,vals)
-            end
+            field = translatePhysic(bound.getPhysics(bc),obj.mod);
+            state = getSolver(obj,field).applyDirVal(bound,bc,t,state);
          end
       end
 
       function J = assembleJacobian(obj)
          % put together jacobian blocks of SinglePhysicsSolver and
          % CoupledSolver in the model
-         % According to the ordering specified in DoF manager class         
+         % Use the ordering specified in DoF manager class   
+         switch obj.dofm.ordering
+            case 'field'
+               nFld = numel(obj.fields);
+               J = cell(nFld,nFld);
+               for i = 1:nFld
+                  for j = 1:nFld
+                     J{i,j} = getJacobian(obj.getSolver({obj.fields(i),obj.fields(j)}),obj.fields(i));
+                  end
+               end
+            otherwise
+               error('Invalid DoF manager ordering')
+         end
+         % convert cell to matrix
+         J = cell2mat(J);
       end
 
       function rhs = assembleRhs(obj)
          % put together rhs blocks of SinglePhysicsSolver and
          % CoupledSolver in the model
+         nFld = numel(obj.fields);
+         rhs = cell(nFld,1);
+         for i = 1:nFld
+            rhs{i} = zeros(getNumDoF(obj.dofm,obj.fields(i)),1);
+            for j = 1:nFld
+               rhs{i} = rhs{i} + ...
+                  getRhs(getSolver(obj,{obj.fields(i),obj.fields(j)}),obj.fields(i));
+            end  
+         end
+         rhs = cell2mat(rhs);
       end
 
-
-      function dSol = solve(obj)
-         % assemble and solve linear system
-         J = assembleJacobian(obj);
-         rhs = assembleRhs(obj);
-         dSol = J\-rhs;
-      end
+      % function dSol = solve(obj,J,rhs)
+      %    % assemble and solve whole linear system
+      %    J = assembleJacobian(obj);
+      %    rhs = assembleRhs(obj);
+      %    dSol = J\-rhs;
+      % end
 
 
       function out = getSolver(obj,fldList)
          fldList = string(fldList);
          % map single field or pair of field to db position
-         if isscalar(getFieldList(obj.dofm)) % singlePhysic model
+         if isscalar(obj.fields) % singlePhysic model
             v = 0;
          else
-            nF = numel(getFieldList(obj.dofm)); % multiPhysic model
+            nF = numel(obj.fields); % multiPhysic model
             cs = cumsum(nF:-1:1);
             v = [0 cs(1:end-1)];
          end
@@ -99,6 +146,9 @@ classdef Discretizer < handle
          end
       end
 
+      function state = advanceState(obj)
+      end
+
       function out = isCoupled(obj,field1,field2)
          % check if input fields are coupled, i.e exist cells having both
          % fields activated
@@ -112,26 +162,33 @@ classdef Discretizer < handle
          % accordingly
          state = struct();
          state.t = 0;
-         fldList = getFieldList(obj.dofm);
-         for i = 1:numel(fldList)
+         for i = 1:numel(obj.fields)
             % loop trough active fields and update the state structure
-            state = setState(obj.getSolver(fldList(i)),state);
+            state = setState(obj.getSolver(obj.fields(i)),state);
          end
-      end       
+      end
+
+      function state = updateState(obj,state,du)
+         % update current state
+         for i = 1:numel(obj.fields)
+            state = obj.getSolver(obj.fields(i)).updateState(state,du);
+         end
+      end
    end
 
    methods(Access = private)
       function setDiscretizer(obj,symmod,params,dofManager,grid,mat,data)
-         fields = getFieldList(obj.dofm); 
-         nF = numel(fields);
+         flds = getFieldList(obj.dofm); 
+         nF = numel(flds);
          % loop over all fields and define corresponding models
          k = 0;
          for i = 1:nF
             for j = i:nF
                k = k+1;
-               addSolver(obj,k,fields(i),fields(j),symmod,params,dofManager,grid,mat,data);
+               addSolver(obj,k,flds(i),flds(j),symmod,params,dofManager,grid,mat,data);
             end
          end
+         obj.fields = flds;
          obj.numSolvers = k;
       end
 

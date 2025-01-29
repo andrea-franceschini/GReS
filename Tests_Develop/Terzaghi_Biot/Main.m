@@ -100,9 +100,9 @@ bound = Boundaries(fileName,model,grid,dofmanager);
 % conditions to the state structure
 state = applyTerzaghiIC(state,mat,topology,F);
 
-% Built-in fully implict solution scheme 
-% The modular structure of the discretizer class allow the user to design
-% its own version of the solution scheme
+% The modular structure of the discretizer class allow the user to easily
+% customize the solution scheme. 
+% Here, a built-in fully implict solution scheme is adopted
 Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
 %
 % Solve the problem

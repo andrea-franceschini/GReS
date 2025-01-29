@@ -169,7 +169,7 @@ classdef DoFManager_new < handle
       function dofs = getDoF(obj,field,varargin)
          % varargin: entity list, if empty all dofs are returned
          % return global DoF numbering based on entity ID and field
-         assert(isscalar(field),['Only one input field is allowed when ' ...
+         assert(isscalar(string(field)),['Only one input field is allowed when ' ...
             'calling getDoF method']);
          fldId = getFieldId(obj,field);
          nc = obj.nComp(fldId);

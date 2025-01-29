@@ -35,6 +35,8 @@ classdef CouplingSolver < handle
          % It is ovverridden by subclasses: e.g Biot does not call this
          % method if flow is discretized with TPFA 
          Jid = strcmp(obj.fields,field);
+         % set obj.rhs vals to dir vals
+         obj.rhs{Jid}(dofs) = 0;
          % set row of J to 0
          obj.J{Jid} = (obj.J{Jid})';
          obj.J{Jid}(:,dofs) = 0;
@@ -46,6 +48,20 @@ classdef CouplingSolver < handle
       function applyNeuBC(varargin)
          % Neumann BCs are not applied to Coupling solvers
          return
+      end
+
+      function J = getJacobian(obj,fld)
+         id = find(strcmp(obj.fields,fld));
+         assert(any(id),['Invalid field identifier %s for Coupling Solver' ...
+            'class'],fld);
+         J = obj.J{id};
+      end
+
+      function rhs = getRhs(obj,fld)
+         id = strcmp(obj.fields,fld);
+         assert(any(id),['Invalid field identifier %s for Coupling Solver' ...
+            'class'],fld);
+         rhs = obj.rhs{id};
       end
    end
 end

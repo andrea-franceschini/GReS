@@ -1,4 +1,4 @@
-function applyDirVal(mod, bound, t, resState)
+function state = applyDirVal(mod, bound, t, state)
   % Apply Dirichlet conditions to the solution vector
   keys = bound.db.keys;
   for i = 1 : length(keys)
@@ -8,10 +8,10 @@ function applyDirVal(mod, bound, t, resState)
        strcmp(bound.getCond(keys{i}), 'ElementBC')
 %       if strcmp(bound.getType(keys{i}), 'Dir')  % Apply Dirichlet conditions
       if strcmp(bound.getPhysics(keys{i}), 'Flow')
-        resState.pressure(bound.getEntities(keys{i})) = bound.getVals(keys{i}, t);
+        state.pressure(bound.getEntities(keys{i})) = bound.getVals(keys{i}, t);
       elseif strcmp(bound.getPhysics(keys{i}), 'Poro')
-        resState.dispConv(bound.getEntities(keys{i})) = bound.getVals(keys{i}, t);
-        resState.dispCurr(bound.getEntities(keys{i})) = bound.getVals(keys{i}, t);
+        state.dispConv(bound.getEntities(keys{i})) = bound.getVals(keys{i}, t);
+        state.dispCurr(bound.getEntities(keys{i})) = bound.getVals(keys{i}, t);
       end
 %       end
     end
@@ -22,12 +22,12 @@ function applyDirVal(mod, bound, t, resState)
        if strcmp(bound.getPhysics(keys{i}), 'Flow') && isFEMBased(mod,'Flow')
           surfVal = bound.getVals(keys{i}, t);
           nodMap = bound.getEntitiesInfluence(keys{i});
-          resState.pressure(bound.getCompLoadedEntities(keys{i})) = nodMap*surfVal;
+          state.pressure(bound.getCompLoadedEntities(keys{i})) = nodMap*surfVal;
        elseif strcmp(bound.getPhysics(keys{i}), 'Poro') && isFEMBased(mod,'Poro')
           surfVal = bound.getVals(keys{i}, t);
           nodMap = bound.getEntitiesInfluence(keys{i});
-          resState.dispConv(bound.getCompLoadedEntities(keys{i})) = nodMap*surfVal;
-          resState.dispCurr(bound.getCompLoadedEntities(keys{i})) = nodMap*surfVal;
+          state.dispConv(bound.getCompLoadedEntities(keys{i})) = nodMap*surfVal;
+          state.dispCurr(bound.getCompLoadedEntities(keys{i})) = nodMap*surfVal;
        end
     end
   end

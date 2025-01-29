@@ -170,6 +170,29 @@ classdef Poromechanics < SinglePhysicSolver
            end
         end
 
+        function [dof,vals] = getBC(obj,bc,id,t,~)
+          dof = obj.getBCdofs(bc,id);
+          vals = obj.getBCVals(bc,id,t);
+        end
+
+        function state = applyDirVal(obj,bc,id,t,state)
+           switch bc.getCond(id)
+              case 'NodeBC'
+                 ents = bc.getEntities(id);
+                 vals = bc.getVals(id,t);
+              case 'SurfBC'
+                 ents = bc.getLoadedEntities(id);
+                 s2n = bc.getEntitiesInfluence(id);
+                 vals = s2n*bc.getVals(id,t);
+                 % node id contained by constrained surface
+              otherwise
+                 error('BC type %s is not available for %s field',cond,obj.field);
+           end
+           dof = bc.getCompEntities(id,ents);
+           state.dispConv(dof) = vals;
+           state.dispCurr(dof) = vals;
+        end
+
 
         function stateTmp = computeRhs(obj,varargin)
            stateTmp = varargin{1};
@@ -233,6 +256,43 @@ classdef Poromechanics < SinglePhysicSolver
                 end
               end
         end
+    end
+
+    methods (Access=private)
+       function dof = getBCdofs(obj,bc,id)
+          switch bc.getCond(id)
+             case 'NodeBC'
+                ents = bc.getEntities(id);
+             case 'SurfBC'
+                ents = bc.getLoadedEntities(id);
+                % node id contained by constrained surface
+             otherwise
+                error('BC type %s is not available for %s field',cond,obj.field);
+          end
+          % map entities dof to local dof numbering
+          dof = obj.dofm.getLocalEnts(ents,obj.field);
+          switch bc.getType(id)
+             case 'Dir'
+                % component multiplication of Dirichlet BC dofs
+                dof = bc.getCompEntities(id,dof);
+             case 'Neu'
+                dir = bc.getDirection(id);
+                c = find(strcmp(["x","y","z"],dir));
+                dof = c*dof;
+          end
+       end
+
+       function vals = getBCVals(obj,bc,id,t)
+          if strcmp(bc.getType(id),'Dir')
+             vals = [];
+             return
+          end
+          vals = bc.getVals(id,t);
+          if strcmp(bc.getCond(id),'SurfBC')
+             entInfl = bc.getEntitiesInfluence(id);
+             vals = entInfl*vals;
+          end
+       end
     end
 end
 
