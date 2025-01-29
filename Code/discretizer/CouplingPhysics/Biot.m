@@ -1,7 +1,6 @@
 classdef Biot < CouplingSolver
     % Biot model subclass
-    % Coupled poromechanics with:
-    % SinglePhase flow 
+    % Coupled poromechanics with Flow models
     % field1: Poromechanics
     % field2: SPFlow
 
@@ -24,15 +23,17 @@ classdef Biot < CouplingSolver
         function state = computeMat(obj,varargin)
            state = varargin{1};
            dt = varargin{3};
-            % call method according to the discretization technique chosen
-            if isFEMBased(obj.model, 'Flow')
-                computeMatFEM_FEM(obj);
-            elseif isFVTPFABased(obj.model,'Flow')
-                computeMatFEM_FV(obj);
-            end
-            % J{1}: momentum balance   J{2}: mass balance equations 
-            obj.J{1} = -obj.simParams.theta*obj.Q;
-            obj.J{2} = obj.Q'/dt;
+           % call method according to the discretization technique chosen
+           if isempty(obj.J{1}) || ~isLinear(obj)
+              if isFEMBased(obj.model, 'Flow')
+                 computeMatFEM_FEM(obj);
+              elseif isFVTPFABased(obj.model,'Flow')
+                 computeMatFEM_FV(obj);
+              end
+           end
+           % J{1}: momentum balance   J{2}: mass balance equations
+           obj.J{1} = -obj.simParams.theta*obj.Q;
+           obj.J{2} = obj.Q'/dt;
         end
 
 

@@ -366,6 +366,7 @@ classdef Faces < handle
     end
     
     function insertInPackedData(obj,r,c)
+       warning('off', 'all');
     %Insert c into row r of packed array (data, pos)
     %
     % SYNOPSIS:
@@ -422,6 +423,7 @@ classdef Faces < handle
        newData(i, :) = obj.faces2Elements;
        newData(ix,1:size(new,2)) = new;
        obj.faces2Elements = newData;
+       warning('on', 'all');
     end
   end
   

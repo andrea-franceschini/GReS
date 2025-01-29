@@ -37,11 +37,8 @@ classdef FCSolver < handle
       obj.dt = obj.simParameters.dtIni;  
       delta_t = obj.dt; % dynamic time step
 
-      % Compute Jacobian matrices of Linear models (once for the entire simulation)
-      obj.stateTmp = computeLinearMatrices(obj.linSyst,obj.stateTmp,obj.statek,obj.dt);
-      %
       flConv = true; %convergence flag
-      %
+
       % Loop over time
       while obj.t < obj.simParameters.tMax
          absTol = obj.simParameters.absTol;
@@ -50,7 +47,6 @@ classdef FCSolver < handle
          %new time update to fit the outTime list
          [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
          %obj.t = obj.t + obj.dt;
-
          % Apply the Dirichlet condition value to the solution vector
          obj.stateTmp = applyDirVal(obj.linSyst,obj.bound,obj.t,obj.stateTmp);
          %
@@ -63,12 +59,12 @@ classdef FCSolver < handle
          end
          %
          % Compute Rhs and matrices of NonLinear models
-         obj.stateTmp = computeNLMatricesAndRhs(obj.linSyst,obj.stateTmp,obj.statek,obj.dt);
+         % Loop over available linear models and compute the jacobian
+         obj.stateTmp = computeMatricesAndRhs(obj.linSyst,obj.stateTmp,obj.statek,obj.dt);
 
          % Apply BCs to the blocks of the linear system
          applyBC(obj.linSyst,obj.bound,obj.t,obj.stateTmp);
          
-         J = assembleJacobian(obj.linSyst);
          rhs = assembleRhs(obj.linSyst);
 
          % compute Rhs norm
@@ -86,16 +82,16 @@ classdef FCSolver < handle
             obj.iter = obj.iter + 1;
             %
             % Solve system with increment
+            J = assembleJacobian(obj.linSyst);
+            
             du = J\-rhs;
 
-            clear J; clear rhs;
 
             % Update current model state
             obj.stateTmp = updateState(obj.linSyst,obj.stateTmp,du);
 
-
             % Compute Rhs and Matrices of NonLinear models
-            obj.stateTmp = computeNLMatricesAndRhs(obj.linSyst,obj.stateTmp,obj.statek,obj.dt);
+            obj.stateTmp = computeMatricesAndRhs(obj.linSyst,obj.stateTmp,obj.statek,obj.dt);
 
             % Apply BCs to the blocks of the linear system
             applyBC(obj.linSyst,obj.bound,obj.t,obj.stateTmp);
@@ -103,7 +99,7 @@ classdef FCSolver < handle
             rhs = assembleRhs(obj.linSyst);
             % compute Rhs norm
             rhsNorm = norm(rhs,2);
-            
+
             if obj.simParameters.verbosity > 1
                fprintf('%d     %e\n',obj.iter,rhsNorm);
             end
@@ -113,17 +109,15 @@ classdef FCSolver < handle
          flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
          if flConv % Convergence
             obj.stateTmp.t = obj.t;
-            % Print the solution, if needed
+            % Advance state of non linear models
             if isPoromechanics(obj.model)
-               obj.stateTmp.advanceState();
+               obj.stateTmp = Poromechanics.advanceState(obj.stateTmp);
             end
-            if isVariabSatFlow(obj.model)
-               obj.stateTmp.updateSaturation()
-            end
+            
             if obj.t > obj.simParameters.tMax   % For Steady State
-               printState(obj.printUtil,obj.stateTmp);
+               printState_new(obj.printUtil,obj.stateTmp);
             else
-               printState(obj.printUtil,obj.statek,obj.stateTmp);
+               printState_new(obj.printUtil,obj.linSyst,obj.statek,obj.stateTmp);
             end
          end
          %
@@ -166,20 +160,9 @@ classdef FCSolver < handle
         dt = t - obj.t; 
     end
 
-    function [locRhsNorm, globRhsNorm] = computeRhsNorm(obj,syst)
-        %Return maximum norm of all Rhs block
-        nRhs = length(syst.dofm.subList);
-        locRhsNorm = zeros(nRhs,1);
-        for i = 1:nRhs
-            locRhsNorm(i) = norm(syst.rhs{i}, obj.simParameters.pNorm);
-        end
-        globRhsNorm = sqrt(sum(locRhsNorm.^2));
-    end
-
-
     function [dt] = manageNextTimeStep(obj,dt,flConv)
         if ~flConv   % Perform backstep
-            transferState(obj.statek,obj.stateTmp);
+            obj.stateTmp = obj.statek;
             obj.t = obj.t - obj.dt;
             obj.tStep = obj.tStep - 1;
             dt = dt/obj.simParameters.divFac;
@@ -201,26 +184,10 @@ classdef FCSolver < handle
                 tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
                     obj.simParameters.pTarget/(dpMax + obj.simParameters.relaxFac* ...
                     obj.simParameters.pTarget)];
-                %           if isVariabSatFlow(obj.model)
-                %             dSwMax = max(abs(obj.stateTmp.watSat-obj.statek.watSat));
-                %             tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
-                %             obj.simParameters.sTarget/(dSwMax + obj.simParameters.relaxFac* ...
-                %             obj.simParameters.sTarget)];
-                %           end
             end
             obj.dt = min([obj.dt * min(tmpVec),obj.simParameters.dtMax]);
             obj.dt = max([obj.dt obj.simParameters.dtMin]);
-            %         if obj.dt < obj.simParameters.dtMin
-            %           obj.dt = obj.simParameters.dtMin;
-            %         end
-            %find interval on printUtil's timeList which contains obj.t
-            %         tmp = find(obj.t<obj.printUtil.timeList(1),1,'first');
-            %         if ((obj.t + obj.dt) > obj.printUtil.timeList(tmp))
-            %             obj.dt = obj.printUtil.timeList(tmp) - obj.t;
-            %         end
-            %
-
-            transferState(obj.stateTmp,obj.statek);
+            obj.statek = obj.stateTmp;
             %
             if ((obj.t + obj.dt) > obj.simParameters.tMax)
                 obj.dt = obj.simParameters.tMax - obj.t;

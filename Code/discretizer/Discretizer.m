@@ -1,6 +1,6 @@
 classdef Discretizer < handle
    % General discretizer class
-   properties (Access = public)
+   properties (GetAccess=public, SetAccess=private)
       solver      % database for physics solvers in the model
       dofm        % dofManager 
       numSolvers  % number of solvers discretized
@@ -126,27 +126,14 @@ classdef Discretizer < handle
          out = obj.solver(id);
       end
 
-      function stateTmp = computeLinearMatrices(obj,stateTmp,statek,dt)
-         % loop trough solver database and compute costant jacobian blocks
-         for i = 1:obj.numSolvers
-            if isLinear(obj.solver(i))
-               stateTmp = computeMat(obj.solver(i),stateTmp,statek,dt);
-            end
-         end
-      end
 
-      function stateTmp = computeNLMatricesAndRhs(obj,stateTmp,statek,dt)
+      function stateTmp = computeMatricesAndRhs(obj,stateTmp,statek,dt)
          % loop trough solver database and compute non-costant jacobian
          % blocks and rhs block
          for i = 1:obj.numSolvers
-            if ~isLinear(obj.solver(i))
-               stateTmp = obj.solver(i).computeMat(stateTmp,statek,dt);
-            end
+            stateTmp = obj.solver(i).computeMat(stateTmp,statek,dt);
             stateTmp = obj.solver(i).computeRhs(stateTmp,statek,dt);
          end
-      end
-
-      function state = advanceState(obj)
       end
 
       function out = isCoupled(obj,field1,field2)

@@ -52,17 +52,38 @@ classdef SPFlow < SinglePhysicSolver
            end
         end
 
+        function [cellData,pointData] = printState(obj,sOld,sNew,t)
+           % append state variable to output structure
+           switch nargin
+              case 2
+                 fluidPot = finalizeState(obj,sOld);
+                 pressure = sOld.pressure;
+              case 4
+                 % linearly interpolate state variables containing print time
+                 fac = (t - sOld.t)/(sNew.t - sOld.t);
+                 fluidPotOld = finalizeState(obj,sOld);
+                 fluidPotNew = finalizeState(obj,sNew);
+                 fluidPot = fluidPotNew*fac+fluidPotOld*(1-fac);
+                 pressure = sNew.pressure*fac+sOld.pressure*(1-fac);
+              otherwise
+                 error('Wrong number of input arguments');
+           end
+           [cellData,pointData] = SPFlow.buildPrintStruct(obj.model,pressure,fluidPot);
+        end
 
         function state = computeMat(obj,varargin)
            state = varargin{1};
            dt = varargin{3};
-            if obj.model.isFEMBased('Flow')
-                computeMatFEM(obj);
-            elseif obj.model.isFVTPFABased('Flow')
-                mu = obj.material.getFluid().getDynViscosity();
-                computeStiffMatFV(obj,1/mu);
-                computeCapMatFV(obj);
-            end
+           % recompute elementary matrices only if the model is linear
+           if ~isLinear(obj) || isempty(obj.J)
+              if obj.model.isFEMBased('Flow')
+                 computeMatFEM(obj);
+              elseif obj.model.isFVTPFABased('Flow')
+                 mu = obj.material.getFluid().getDynViscosity();
+                 computeStiffMatFV(obj,1/mu);
+                 computeCapMatFV(obj);
+              end
+           end
             if obj.simParams.isTimeDependent
                obj.J = obj.simParams.theta*obj.H + obj.P/dt;
             else
@@ -197,7 +218,7 @@ classdef SPFlow < SinglePhysicSolver
             % Compute the residual of the flow problem
             lw = obj.material.getFluid().getDynViscosity();
             ents = obj.dofm.getActiveEnts(obj.field);
-            if obj.simParams.isTimeDependent
+            if ~obj.simParams.isTimeDependent
                obj.rhs = obj.H*stateTmp.pressure(ents);
             else
                theta = obj.simParams.theta;
@@ -411,6 +432,26 @@ classdef SPFlow < SinglePhysicSolver
        %       vals = entInfl*vals;
        %    end
        % end
+    end
+
+    methods (Static)
+       function [cellStr,pointStr] = buildPrintStruct(mod,press,pot)
+          if isFEMBased(mod,'Flow')
+             cellStr = [];
+             pointStr = repmat(struct('name', 1, 'data', 1), 2, 1);
+             pointStr(1).name = 'pressure';
+             pointStr(1).data = press;
+             pointStr(2).name = 'potential';
+             pointStr(2).data = pot;
+          elseif isFVTPFABased(mod,'Flow')
+             pointStr = [];
+             cellStr = repmat(struct('name', 1, 'data', 1), 2, 1);
+             cellStr(1).name = 'pressure';
+             cellStr(1).data = press;
+             cellStr(2).name = 'potential';
+             cellStr(2).data = pot;
+          end
+       end
     end
 end
 

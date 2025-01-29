@@ -39,13 +39,6 @@ classdef State < matlab.mixin.Copyable
             obj.iniState(fileName);
         end
 
-        function advanceState(obj)
-            obj.dispConv = obj.dispCurr;
-            obj.curr.strain = 0.0*obj.curr.strain;
-            obj.conv.stress = obj.curr.stress;
-            obj.conv.status = obj.curr.status;
-        end
-
         function updateState(obj,dSol,dofm)
             %METHOD1 Summary of this method goes here
             %   Detailed explanation goes here

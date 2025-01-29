@@ -61,31 +61,20 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %fname = 'dof.dat';
 dofmanager = DoFManager_new(topology,model);
 
-
-% Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat','printOn');
-%
-
 % Create object handling construction of Jacobian and rhs of the model
 linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 
 % Build a structure storing variable fields at each time step
 state = linSyst.setState();
-% Print model initial state
-%printUtils.printState(state);
+
+% Create and set the print utility
+printUtils = OutState_new(model,topology,'outTime.dat','folderName','Output_Terzaghi');
+
 
 %------------------------ BOUNDARY CONDITIONS ------------------------
-% Write BC files (employ user friendly function to write them)
+% Write BC files programmatically with function utility 
 F = -10; % vertical force
-% Top no flow
-% writeBCfiles('BCs/dirFlowTop','SurfBC','Dir','Flow','NoFlowTop',0,0,topology,2);
-% % Top load
-% writeBCfiles('BCs/newPorotop','SurfBC','Neu',{'Poro','z'},'TopLoad',0,F,topology,2);
-% % Lateral roller
-% writeBCfiles('BCs/dirPoroLatY','NodeBC','Dir',{'Poro','y'},'LatFixedY',0,0,topology,3);
-% writeBCfiles('BCs/dirPoroLatX','NodeBC','Dir',{'Poro','x'},'LatFixedX',0,0,topology,4);
-% % Bottom fixed
-% writeBCfiles('BCs/dirPoroBottom','NodeBC','Dir',{'Poro','x','y','z'},'BotFixed',0,0,topology,1);
+setTerzaghiBC('BCs',F,topology);
 
 % Collect BC input file in a list
 fileName = ["BCs/dirFlowTop.dat","BCs/newPorotop.dat",...
@@ -100,9 +89,13 @@ bound = Boundaries(fileName,model,grid,dofmanager);
 % conditions to the state structure
 state = applyTerzaghiIC(state,mat,topology,F);
 
+% Print model initial state
+printUtils.printState_new(linSyst,state);
+
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme. 
-% Here, a built-in fully implict solution scheme is adopted
+% Here, a built-in fully implict solution scheme is adopted with class
+% FCSolver. This could be simply be replaced by a function
 Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
 %
 % Solve the problem
@@ -134,8 +127,8 @@ end
 
 
 %Getting pressure and displacement solution for specified time from MatFILE
-press = printUtils.m.expPress;
-disp = printUtils.m.expDispl;
+press = printUtils.results.expPress;
+disp = printUtils.results.expDispl;
 pressplot = press(nodesP,2:end);
 dispplot = disp(3*nodesU,2:end);
 
