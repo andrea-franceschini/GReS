@@ -55,7 +55,11 @@ classdef Boundaries < handle
     end
 
     function type = getType(obj, identifier)
-      type = obj.getData(identifier).type;
+       if ~strcmp(obj.getCond(identifier),'VolumeForce')
+          type = obj.getData(identifier).type;
+       else
+          type = 'VolumeForce';
+       end
     end
 
     function physics = getPhysics(obj, identifier)

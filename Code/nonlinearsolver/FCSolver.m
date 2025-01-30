@@ -115,9 +115,9 @@ classdef FCSolver < handle
             end
             
             if obj.t > obj.simParameters.tMax   % For Steady State
-               printState_new(obj.printUtil,obj.stateTmp);
+               printState(obj.printUtil,obj.stateTmp);
             else
-               printState_new(obj.printUtil,obj.linSyst,obj.statek,obj.stateTmp);
+               printState(obj.printUtil,obj.linSyst,obj.statek,obj.stateTmp);
             end
          end
          %

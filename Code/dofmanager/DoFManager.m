@@ -49,7 +49,7 @@ classdef DoFManager < handle
                error('Too many input arguments for class DoFManager');
          end
          % finilize DoF Manager construction
-         obj.finilizeDoFManager(mesh);
+         obj.finalizeDoFManager(mesh);
       end
       
       function readInputFile(obj,mesh,fName)
@@ -139,15 +139,16 @@ classdef DoFManager < handle
          end
       end
 
-      function finilizeDoFManager(obj,mesh)
+      function finalizeDoFManager(obj,mesh)
          % updated DoF structure with entitiy list for each subdomain
          for i = 1:numel(obj.fields)
             nSub = numel(obj.fields(i).subID);
             obj.fields(i).entCount = zeros(1,nSub);
             obj.fields(i).subdomainEnts = cell(nSub,1);
             obj.nComp(i) = componentNumber(mesh,obj.fields(i).field);
-            for sub = 1:nSub
-               cTags = find(obj.tag2subDomain == obj.fields(i).subID(sub));
+            for j = 1:nSub
+               subID = obj.fields(i).subID(j);
+               cTags = find(obj.tag2subDomain == subID);
                switch obj.fields(i).scheme
                   case 'FEM'
                      ents = unique(mesh.cells(ismember(mesh.cellTag,cTags),:));
@@ -157,10 +158,10 @@ classdef DoFManager < handle
                % store only entities not already assigned to a subdomain
                idActiveEnt = obj.fields(i).isEntActive(ents) == false;
                obj.fields(i).isEntActive(ents) = true; % activate entities
-               obj.fields(i).subdomainEnts{sub} = ents(idActiveEnt);
-               obj.fields(i).entCount(sub) = sum(idActiveEnt);
-               obj.numEntsSubdomain(obj.fields(i).subID(sub)) = obj.numEntsSubdomain(sub) + obj.fields(i).entCount(sub);
-               obj.numEntsField(i) = obj.numEntsField(i) + obj.fields(i).entCount(sub);
+               obj.fields(i).subdomainEnts{j} = ents(idActiveEnt);
+               obj.fields(i).entCount(j) = sum(idActiveEnt);
+               obj.numEntsSubdomain(subID) = obj.numEntsSubdomain(subID) + obj.fields(i).entCount(j);
+               obj.numEntsField(i) = obj.numEntsField(i) + obj.fields(i).entCount(j);
                obj.fieldList = string({obj.fields.field});
             end
          end

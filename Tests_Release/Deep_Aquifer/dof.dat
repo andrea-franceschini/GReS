@@ -1,13 +1,13 @@
-<Subdomain>
+<SubDomain>
 <CellTag>
 1                              % cellTags in SubDomain
 <Field>
 Poromechanics                  % Physics in SubDomain
-</Subdomain>
+</SubDomain>
 
-<Subdomain>
+<SubDomain>
 <CellTag>
 2 3   
 <Field>                        % cellTags in SubDomain
 Poromechanics SPFlow          % Physics in SubDomain
-</Subdomain>
+</SubDomain>

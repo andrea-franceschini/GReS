@@ -10,43 +10,30 @@ scriptDir = fileparts(scriptFullPath);
 % Change the current directory to the script's directory
 cd(scriptDir);
 
-% -------------------------- SET THE PHYSICS -------------------------
-model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
-%
-% ----------------------- SIMULATION PARAMETERS ----------------------
+% Set physical models 
+model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
+
+% Set parameters of the simulation
 fileName = "simParam.dat";
 simParam = SimulationParameters(fileName);
-%
-% ------------------------------  MESH -------------------------------
+
 % Create the Mesh object
 topology = Mesh();
-%
-% Set the input file name
+
+% Set the mesh input file name
 fileName = 'Mesh/Column.msh';
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
-%
-%----------------------------- MATERIALS -----------------------------
-%
-% Set the input file name
-fileName = 'materialsList.dat';
-%
+
 % Create an object of the Materials class and read the materials file
+fileName = 'materialsList.dat';
 mat = Materials(model,fileName);
-%
-%------------------------------ ELEMENTS -----------------------------
-%
+
+% Create object handling gauss point integration
 GaussPts = Gauss(12,2,3);
+
 % Create an object of the "Elements" class and process the element properties
 elems = Elements(topology,GaussPts);
-
-%saving z_vector coordinates for analytical solution calculation
-nodez = topology.coordinates(:,3);
-if isFVTPFABased(model,'Flow')
-    cellz = elems.cellCentroid(:,3);
-else
-    cellz = nodez;
-end
 
 %calling analytical solution script
 Terzaghi_analytical(topology, mat, 10)
@@ -71,7 +58,6 @@ state = linSyst.setState();
 printUtils = OutState(model,topology,'outTime.dat','folderName','Output_Terzaghi');
 
 
-%------------------------ BOUNDARY CONDITIONS ------------------------
 % Write BC files programmatically with function utility 
 F = -10; % vertical force
 setTerzaghiBC('BCs',F,topology);
@@ -81,7 +67,7 @@ fileName = ["BCs/dirFlowTop.dat","BCs/newPorotop.dat",...
    "BCs/dirPoroLatY.dat","BCs/dirPoroLatX.dat","BCs/dirPoroBottom.dat"];
 %
 % Create an object of the "Boundaries" class 
-bound = Boundaries(fileName,model,grid,dofmanager);
+bound = Boundaries(fileName,model,grid);
 
 % In this version of the code, the user can assign initial conditions only
 % manually, by directly modifying the entries of the state structure. 
@@ -90,7 +76,7 @@ bound = Boundaries(fileName,model,grid,dofmanager);
 state = applyTerzaghiIC(state,mat,topology,F);
 
 % Print model initial state
-printUtils.printState_new(linSyst,state);
+printUtils.printState(linSyst,state);
 
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme. 
@@ -104,8 +90,8 @@ Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linS
 % Finalize the print utility
 printUtils.finalize()
 %
-%%
-% -------------------------- BENCHMARK ------------------------------
+%% POST PROCESSING
+
 image_dir = strcat(pwd,'/Images');
 if isfolder(image_dir)
     rmdir(image_dir,"s")
@@ -116,7 +102,7 @@ end
 
 load("Terzaghi_Analytical.mat");
 %Post processing using MAT-FILE 
-%nodes vector contain list of nodes along vertical axis (with x,y=0)
+% obtain vector contain list of nodes along vertical axis (with x,y=0)
 nodesU = find(topology.coordinates(:,1)+topology.coordinates(:,2)==0);
 [~,ind] = sort(topology.coordinates(nodesU,3));
 nodesU = nodesU(ind);

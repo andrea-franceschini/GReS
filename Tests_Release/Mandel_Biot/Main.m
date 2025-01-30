@@ -1,83 +1,91 @@
 close all;
 clear;
 
-warning('off','MATLAB:nearlySingularMatrix');
+% Get the full path of the currently executing file
+scriptFullPath = mfilename('fullpath');
 
-% -------------------------- SET THE PHYSICS -------------------------
+% Extract the directory containing the script
+scriptDir = fileparts(scriptFullPath);
+
+% Change the current directory to the script's directory
+cd(scriptDir);
+
+% Set physical models 
 model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
-%
-% ----------------------- SIMULATION PARAMETERS ----------------------
+
+% Set parameters of the simulation
 fileName = "simParam.dat";
 simParam = SimulationParameters(fileName);
-%
-% ------------------------------  MESH -------------------------------
+
 % Create the Mesh object
 topology = Mesh();
-%
-% Set the input file name
+
+% Set the mesh input file name
 fileName = 'Mandel_Mesh.msh';
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
-%
-%----------------------------- MATERIALS -----------------------------
-%
-% Set the input file name
-fileName = 'materialsList.dat';
-%
+
 % Create an object of the Materials class and read the materials file
+fileName = 'materialsList.dat';
 mat = Materials(model,fileName);
-%
-Mandel_Analytical(topology, mat, 10)
-%------------------------------ ELEMENTS -----------------------------
-%
-% Define Gauss points
+
+% Create object handling gauss point integration
 GaussPts = Gauss(12,2,3);
+
 % Create an object of the "Elements" class and process the element properties
 elems = Elements(topology,GaussPts);
-%
+
+%calling analytical solution script
+%Mandel_Analytical(topology, mat, 10)
+
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);
 %
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
+% Degree of freedom manager 
+%fname = 'dof.dat';
 dofmanager = DoFManager(topology,model);
-%------------------------ BOUNDARY CONDITIONS ------------------------
-%
-% Set the input file
-fileName = ["dirBotFixed.dat","dirLatFaceYPoro.dat","dirLatFaceXPoro.dat",...
-    "topLoad.dat","dirFreeFaceFlow.dat"];
-%
-bound = Boundaries(fileName,model,grid,dofmanager);
-%
-%-------------------------- PREPROCESSING ----------------------------
-%
-% Set the "State" object. It contains all the vectors describing the state
-% of the reservoir in terms of pressure, displacement, stress, ...
-file = ["iniDisp.dat","iniPressure.dat"];
-%
-resState = State(model,grid,mat,file,GaussPts);
-%
-% Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat','printOn');
-%
-% Print the reservoir initial state
-printUtils.printState(resState);
-%
-% ---------------------------- SOLUTION -------------------------------
-%
+
+% Create object handling construction of Jacobian and rhs of the model
 linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
-% Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,linSyst,GaussPts);
+
+% Build a structure storing variable fields at each time step
+state = linSyst.setState();
+
+% Create and set the print utility
+printUtils = OutState(model,topology,'outTime.dat','folderName','Output_Mandel');
+
+
+% Write BC files programmatically with function utility 
+F = -10; % vertical force
+bcList = setMandelBC('BCs',F,topology);
+
+% Create an object of the "Boundaries" class 
+bound = Boundaries(bcList,model,grid);
+
+% In this version of the code, the user can assign initial conditions only
+% manually, by directly modifying the entries of the state structure. 
+% In this example, we use a user defined function to apply Terzaghi initial
+% conditions to the state structure
+state = applyMandelIC(state,mat,topology,F);
+
+% Print model initial state
+printUtils.printState(linSyst,state);
+
+% The modular structure of the discretizer class allow the user to easily
+% customize the solution scheme. 
+% Here, a built-in fully implict solution scheme is adopted with class
+% FCSolver. This could be simply be replaced by a function
+Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
 %
 % Solve the problem
-[simState] = NSolv.NonLinearLoop();
+[simState] = Solver.NonLinearLoop();
 %
 % Finalize the print utility
 printUtils.finalize()
-%
-%%
-% -------------------------- BENCHMARK ------------------------------
+%% POST PROCESSING
 
 image_dir = strcat(pwd,'/Images');
 if isfolder(image_dir)
@@ -107,8 +115,8 @@ nodesX = nodesX(ind);
 nodesZ = nodesZ(ind);
 
 %Getting pressure and displacement solution for specified output times from MatFILE
-press = printUtils.m.expPress;
-disp = printUtils.m.expDispl;
+press = printUtils.results.expPress;
+disp = printUtils.results.expDispl;
 pressNum = press(elemP,2:end);
 dispXNum = disp(3*nodesX-2,2:end);
 dispZNum = disp(3*nodesZ,2:end);

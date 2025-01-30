@@ -37,7 +37,7 @@ classdef OutState < handle
          obj.VTK.finalize();
       end
 
-      function printState_new(obj,solv,stateOld,stateNew)
+      function printState(obj,solv,stateOld,stateNew)
          % print solution of the model according to the print time in the
          % list
          % Initialize input structure for VTK output
@@ -105,94 +105,122 @@ classdef OutState < handle
             end
          end
       end
-    end
+   end
 
-    methods (Access = private)
-        function setOutState(obj,model,mesh,fileName,foldName)
-           obj.model = model;
-          %
-          readTimeList(obj,fileName);
-          %
-          obj.VTK = VTKOutput(mesh,foldName);
-          % Write solution to matfile. This feature will be extended in a
-          % future version of the code
-          if obj.writeSolution
-             if isfile('expData.mat')
-                delete 'expData.mat'
-             end
-             obj.results = matfile('expData.mat','Writable',true);
-             setMatFile(obj,mesh);
-          end
-       end
-       %
+   methods (Access = private)
+      function setOutState(obj,model,mesh,fileName,foldName)
+         obj.model = model;
+         %
+         obj.timeList = OutState.readTime(fileName);
+         %
+         obj.VTK = VTKOutput(mesh,foldName);
+         % Write solution to matfile. This feature will be extended in a
+         % future version of the code
+         if obj.writeSolution
+            if isfile('expData.mat')
+               delete 'expData.mat'
+            end
+            obj.results = matfile('expData.mat','Writable',true);
+            setMatFile(obj,mesh);
+         end
+      end
+      %
 
-       function readTimeList(obj,fileName)
-          fid = fopen(fileName,'r');
-          [flEof,line] = OutState.readLine(fid);
-          if isempty(sscanf(line,'%f'))
-             line = strtok(line);
-             if strcmpi(line,'on')
-                obj.modTime = true;
-             elseif strcmpi(line,'off')
-                obj.modTime = false;
-             end
-             if ~strcmpi(line,'end')
-                [flEof,line] = OutState.readLine(fid);
-             end
-          end
-          %
-          block = '';
-          while ~strcmp(line,'End')
-             line = strtrim(line);
-             if isempty(line)
-                error('Blank line encountered while reading the print times in file %s',fileName);
-             elseif flEof == 1
-                error('End of file while reading the print times in file %s',fileName);
-             end
-             block = [block, line, ' '];
-             [flEof,line] = OutState.readLine(fid);
-          end
-          blockSplt = strsplit(string(deblank(block)));
-          if ~(blockSplt == "")
-             obj.timeList = str2double(blockSplt);
-             if any(isnan(obj.timeList))
-                error('There are invalid entries in the list of output times')
-             end
-          else
-             obj.timeList = [];
-          end
-          fclose(fid);
-       end
+      function tList = readTimeList(obj,fileName)
+         fid = fopen(fileName,'r');
+         [flEof,line] = OutState.readLine(fid);
+         if isempty(sscanf(line,'%f'))
+            line = strtok(line);
+            if ~strcmpi(line,'end')
+               [flEof,line] = OutState.readLine(fid);
+            end
+         end
+         %
+         block = '';
+         while ~strcmp(line,'End')
+            line = strtrim(line);
+            if isempty(line)
+               error('Blank line encountered while reading the print times in file %s',fileName);
+            elseif flEof == 1
+               error('End of file while reading the print times in file %s',fileName);
+            end
+            block = [block, line, ' '];
+            [flEof,line] = OutState.readLine(fid);
+         end
+         blockSplt = strsplit(string(deblank(block)));
+         if ~(blockSplt == "")
+            tList = str2double(blockSplt);
+            if any(isnan(obj.timeList))
+               error('There are invalid entries in the list of output times')
+            end
+         else
+            tList = [];
+         end
+         fclose(fid);
+      end
 
-       function setMatFile(obj,msh)
-          l = length(obj.timeList) + 1;
-          obj.results.expTime = zeros(l,1);
-          if isFlow(obj.model)
-             if isFEMBased(obj.model,'Flow')
-                obj.results.expPress = zeros(msh.nNodes,l);
-             elseif isFVTPFABased(obj.model,'Flow')
-                obj.results.expPress = zeros(msh.nCells,l);
-                if isVariabSatFlow(obj.model)
-                   obj.results.expSw = zeros(msh.nCells,l);
-                end
-             end
-          end
-          if isPoromechanics(obj.model)
-             obj.results.expDispl = zeros(msh.nDim*msh.nNodes,l);
-             % Maybe consider adding other output properties
-          end
-       end
-    end
+      function setMatFile(obj,msh)
+         l = length(obj.timeList) + 1;
+         obj.results.expTime = zeros(l,1);
+         if isFlow(obj.model)
+            if isFEMBased(obj.model,'Flow')
+               obj.results.expPress = zeros(msh.nNodes,l);
+            elseif isFVTPFABased(obj.model,'Flow')
+               obj.results.expPress = zeros(msh.nCells,l);
+               if isVariabSatFlow(obj.model)
+                  obj.results.expSw = zeros(msh.nCells,l);
+               end
+            end
+         end
+         if isPoromechanics(obj.model)
+            obj.results.expDispl = zeros(msh.nDim*msh.nNodes,l);
+            % Maybe consider adding other output properties
+         end
+      end
+   end
 
-    methods (Static = true)
-       % Read the next line and check for eof
-       function [flEof,line] = readLine(fid)
-          flEof = feof(fid);   % end-of-file flag
-          if flEof == 1
-             line = '';
-          else
-             line = strtrim(fgetl(fid));
-          end
-       end
-    end
+   methods (Static = true)
+      % Read the next line and check for eof
+      function [flEof,line] = readLine(fid)
+         flEof = feof(fid);   % end-of-file flag
+         if flEof == 1
+            line = '';
+         else
+            line = strtrim(fgetl(fid));
+         end
+      end
+
+      function tList = readTime(fileName)
+         fid = fopen(fileName,'r');
+         [flEof,line] = OutState.readLine(fid);
+         if isempty(sscanf(line,'%f'))
+            line = strtok(line);
+            if ~strcmpi(line,'end')
+               [flEof,line] = OutState.readLine(fid);
+            end
+         end
+         %
+         block = '';
+         while ~strcmp(line,'End')
+            line = strtrim(line);
+            if isempty(line)
+               error('Blank line encountered while reading the print times in file %s',fileName);
+            elseif flEof == 1
+               error('End of file while reading the print times in file %s',fileName);
+            end
+            block = [block, line, ' '];
+            [flEof,line] = OutState.readLine(fid);
+         end
+         blockSplt = strsplit(string(deblank(block)));
+         if ~(blockSplt == "")
+            tList = str2double(blockSplt);
+            if any(isnan(tList))
+               error('There are invalid entries in the list of output times')
+            end
+         else
+            tList = [];
+         end
+         fclose(fid);
+      end
+   end
 end

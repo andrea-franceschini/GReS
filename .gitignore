@@ -43,8 +43,8 @@
 *.asv
 
 # Output folders with vtk files
-/Tests_Develop/*/vtkOutput/
-/Tests_Release/*/vtkOutput/
+/Tests_Develop/
+
 
 # Temporary folders with external classes
 /Code/cross_grid/

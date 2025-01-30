@@ -1,8 +1,0 @@
-NodeBC            % BC item 
-Dir            % BC type 
-Flow            % Physics 
-press_L4            % BC name 
-press_L4_nod/list 
-0.000000 press_L4_nod/time0.dat 
-1.000000 press_L4_nod/time1.dat 
-End

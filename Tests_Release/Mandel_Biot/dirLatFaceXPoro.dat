@@ -1,7 +1,0 @@
-SurfBC                            % BC item
-Dir                               % BC type
-Poro                              % Physics
-Xconstraint                          % BC name
-dirNodLatFaceXPoro/list
-0.000000 dirNodLatFaceXPoro/time0.dat
-End

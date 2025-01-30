@@ -28,7 +28,7 @@ classdef Discretizer < handle
          for bc = string(bcList)
             field = translatePhysic(bound.getPhysics(bc),obj.mod);
             % get id of constrained entities and corresponding BC values
-            [bcEnts,bcVals] = getSolver(obj,field).getBC(bound,bc,t,state);
+            [bcEnts,bcVals] = getBC(getSolver(obj,field),bound,bc,t,state);
             % apply Boundary conditions to each Jacobian/rhs block
             for f = obj.fields
                if ~isCoupled(obj,field,f)
@@ -131,8 +131,8 @@ classdef Discretizer < handle
          % loop trough solver database and compute non-costant jacobian
          % blocks and rhs block
          for i = 1:obj.numSolvers
-            stateTmp = obj.solver(i).computeMat(stateTmp,statek,dt);
-            stateTmp = obj.solver(i).computeRhs(stateTmp,statek,dt);
+            stateTmp = computeMat(obj.solver(i),stateTmp,statek,dt);
+            stateTmp = computeRhs(obj.solver(i),stateTmp,statek,dt);
          end
       end
 

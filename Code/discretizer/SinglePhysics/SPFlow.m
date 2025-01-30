@@ -160,7 +160,7 @@ classdef SPFlow < SinglePhysicSolver
 
         function computeStiffMatFV(obj,lw)
             % Inspired by MRST
-            subCells = obj.dofm.getFieldCells('Poromechanics');
+            subCells = obj.dofm.getFieldCells(obj.field);
             nSubCells = length(subCells); 
             %get pairs of faces that contribute to the subdomain
             neigh1 = obj.faces.faceNeighbors(obj.isIntFaces,1);
@@ -168,12 +168,12 @@ classdef SPFlow < SinglePhysicSolver
             % Transmissibility of internal faces
             tmpVec = lw.*obj.trans(obj.isIntFaces);
             % tmpVec = lw.*tmpVec;
+            [~,~,neigh1] = unique(neigh1);
+            [~,~,neigh2] = unique(neigh2);
             sumDiagTrans = accumarray([neigh1; neigh2], ...
                 repmat(tmpVec,[2,1]),[nSubCells,1]);
             % Assemble H matrix
             nDoF = obj.dofm.getNumDoF(obj.field);
-            [~,~,neigh1] = unique(neigh1); 
-            [~,~,neigh2] = unique(neigh2); 
             obj.H = sparse([neigh1; neigh2; (1:nSubCells)'], ...
                 [neigh2; neigh1; (1:nSubCells)'], ...
                 [-tmpVec; -tmpVec; ...
@@ -305,7 +305,7 @@ classdef SPFlow < SinglePhysicSolver
                  v = bc.getVals(id,t);
                  ents = bc.getEntities(id);
                  if isFVTPFABased(obj.model,'Flow')
-                    vals = -v.*obj.elements.vol(ents);
+                    vals = v.*obj.elements.vol(ents);
                  elseif isFEMBased(obj.model,'Flow')
                     entitiesInfl = bc.getEntitiesInfluence(id);
                     vals = entitiesInfl*v;

@@ -1,7 +1,0 @@
-NodeBC            % BC item 
-Dir            % BC type 
-Flow            % Physics 
-imp_L4            % BC name 
-nod_imp_L4/list 
-0.000000 nod_imp_L4/time0.dat 
-End

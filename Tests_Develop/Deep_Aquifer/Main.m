@@ -1,6 +1,9 @@
 close all;
 clear;
 
+scriptFullPath = mfilename('fullpath');
+scriptDir = fileparts(scriptFullPath);
+cd(scriptDir);
 warning('off','MATLAB:nearlySingularMatrix');
 
 % List the physical models activated in the simulation and their
@@ -63,7 +66,7 @@ bound = Boundaries(fileName,model,grid);
 
 % perform a fully coupled simulation
 solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
-[simState] = Solver.NonLinearLoop();
+[simState] = solver.NonLinearLoop();
 
 % Finalize the print utility
 printUtils.finalize()
