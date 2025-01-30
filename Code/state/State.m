@@ -1,6 +1,6 @@
 classdef State < matlab.mixin.Copyable
-    %UNTITLED Summary of this class goes here
-    %   Detailed explanation goes here
+    % DEPRECATED STATE CLASS
+    % This class has been replaced by a simple struct variable
 
     properties (Access = public)
         t = 0

@@ -71,9 +71,7 @@ classdef SPFlow < SinglePhysicSolver
            [cellData,pointData] = SPFlow.buildPrintStruct(obj.model,pressure,fluidPot);
         end
 
-        function state = computeMat(obj,varargin)
-           state = varargin{1};
-           dt = varargin{3};
+        function state = computeMat(obj,state,~,dt)
            % recompute elementary matrices only if the model is linear
            if ~isLinear(obj) || isempty(obj.J)
               if obj.model.isFEMBased('Flow')
@@ -91,79 +89,72 @@ classdef SPFlow < SinglePhysicSolver
             end
         end
 
-        function computeMatFEM(obj) 
-            % dealing with input params
-            subCells = obj.dofm.getFieldCells(obj.field);
-            nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]);
-            % Compute the stiffness (H) and mass (P) matrices for the flow problem by FEM
-            iiVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
-            jjVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
-            HVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
-            PVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
-            % Get the fluid compressibility
-            beta = obj.material.getFluid().getFluidCompressibility();
-            if nSubCellsByType(2) > 0
-                N1 = obj.elements.hexa.getBasisFinGPoints();
-            end
-            % Get the fluid dynamic viscosity
-            mu = obj.material.getFluid().getDynViscosity();
-            %
-            l1 = 0;
-            for el = subCells'
-                % Get the rock permeability, porosity and compressibility 
-                if isempty(varargin) % input from PorousRock class 
-                   permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
-                   poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
-                   if  any(strcmp(obj.dofm.subDomains(subInd).physics,'Poro'))
-                      alpha = 0; %this term is not needed in coupled formulation
-                   else
-                      alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
-                      %solid skeleton contribution to storage term as oedometric compressibility .
-                   end
-                else % direct input
-                   permMat = diag(repmat(K(el),3,1));
-                   poro = porosity(el);
-                   alpha = rockComp(el);
-                end
-                % Compute the element matrices based on the element type
-                % (tetrahedra vs. hexahedra)
-                switch obj.mesh.cellVTKType(el)
-                    case 10 % Tetrahedra
-                        % Computing the H matrix contribution
-                        N = obj.elements.tetra.getDerBasisF(el);
-                        %               vol = getVolume(obj.elements,el);
-                        HLoc = N'*permMat*N*obj.elements.vol(el)/mu;
-                        s1 = obj.elements.nNodesElem(1)^2;
-                        % Computing the P matrix contribution
-                        PLoc = ((alpha + poro*beta)*obj.elements.vol(el)/20)*(ones(obj.elements.nNodesElem(1))...
-                            + eye(obj.elements.nNodesElem(1)));
-                    case 12 % Hexa
-                        [N,dJWeighed] = obj.elements.hexa.getDerBasisFAndDet(el,1);
-                        permMat = permMat/mu;
-                        Hs = pagemtimes(pagemtimes(N,'ctranspose',permMat,'none'),N);
-                        Hs = Hs.*reshape(dJWeighed,1,1,[]);
-                        HLoc = sum(Hs,3);
-                        clear Hs;
-                        s1 = obj.elements.nNodesElem(2)^2;
-                        % Computing the P matrix contribution
-                        PLoc = (alpha+poro*beta)*(N1'*diag(dJWeighed)*N1);
-                end
-                %Getting dof associated to Flow subphysic
-                dof = dofId(obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)),1);
-                [jjLoc,iiLoc] = meshgrid(dof,dof);
-                iiVec(l1+1:l1+s1) = iiLoc(:);
-                jjVec(l1+1:l1+s1) = jjLoc(:);
-                HVec(l1+1:l1+s1) = HLoc(:);
-                PVec(l1+1:l1+s1) = PLoc(:);
-                l1 = l1 + s1;
-            end
-            % renumber indices according to active nodes
-            [~,~,iiVec] = unique(iiVec);
-            [~,~,jjVec] = unique(jjVec);
-            nDoF = obj.dofm.getNumDoF(obj.field);
-            % Assemble H and P matrices defined as new fields of
-            obj.H = sparse(iiVec, jjVec, HVec, nDoF, nDoF);
-            obj.P = sparse(iiVec, jjVec, PVec, nDoF, nDoF);
+        function computeMatFEM(obj)
+           % dealing with input params
+           subCells = obj.dofm.getFieldCells(obj.field);
+           nSubCellsByType = histc(obj.mesh.cellVTKType(subCells),[10, 12, 13, 14]);
+           % Compute the stiffness (H) and mass (P) matrices for the flow problem by FEM
+           iiVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+           jjVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+           HVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+           PVec = zeros((obj.elements.nNodesElem.^2)*nSubCellsByType,1);
+           % Get the fluid compressibility
+           beta = obj.material.getFluid().getFluidCompressibility();
+           if nSubCellsByType(2) > 0
+              N1 = obj.elements.hexa.getBasisFinGPoints();
+           end
+           % Get the fluid dynamic viscosity
+           mu = obj.material.getFluid().getDynViscosity();
+           %
+           l1 = 0;
+           for el = subCells'
+              permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+              poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
+              if ismember(obj.mesh.cellTag(el),getFieldCellTags(obj.dofm,{"Poromechanics","SPFlow"}))
+                 alpha = 0; %this term is not needed in coupled formulation
+              else
+                 alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
+                 %solid skeleton contribution to storage term as oedometric compressibility .
+              end
+              % Compute the element matrices based on the element type
+              % (tetrahedra vs. hexahedra)
+              switch obj.mesh.cellVTKType(el)
+                 case 10 % Tetrahedra
+                    % Computing the H matrix contribution
+                    N = obj.elements.tetra.getDerBasisF(el);
+                    %               vol = getVolume(obj.elements,el);
+                    HLoc = N'*permMat*N*obj.elements.vol(el)/mu;
+                    s1 = obj.elements.nNodesElem(1)^2;
+                    % Computing the P matrix contribution
+                    PLoc = ((alpha + poro*beta)*obj.elements.vol(el)/20)*(ones(obj.elements.nNodesElem(1))...
+                       + eye(obj.elements.nNodesElem(1)));
+                 case 12 % Hexa
+                    [N,dJWeighed] = obj.elements.hexa.getDerBasisFAndDet(el,1);
+                    permMat = permMat/mu;
+                    Hs = pagemtimes(pagemtimes(N,'ctranspose',permMat,'none'),N);
+                    Hs = Hs.*reshape(dJWeighed,1,1,[]);
+                    HLoc = sum(Hs,3);
+                    clear Hs;
+                    s1 = obj.elements.nNodesElem(2)^2;
+                    % Computing the P matrix contribution
+                    PLoc = (alpha+poro*beta)*(N1'*diag(dJWeighed)*N1);
+              end
+              %Getting dof associated to Flow subphysic
+              dof = dofId(obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)),1);
+              [jjLoc,iiLoc] = meshgrid(dof,dof);
+              iiVec(l1+1:l1+s1) = iiLoc(:);
+              jjVec(l1+1:l1+s1) = jjLoc(:);
+              HVec(l1+1:l1+s1) = HLoc(:);
+              PVec(l1+1:l1+s1) = PLoc(:);
+              l1 = l1 + s1;
+           end
+           % renumber indices according to active nodes
+           [~,~,iiVec] = unique(iiVec);
+           [~,~,jjVec] = unique(jjVec);
+           nDoF = obj.dofm.getNumDoF(obj.field);
+           % Assemble H and P matrices defined as new fields of
+           obj.H = sparse(iiVec, jjVec, HVec, nDoF, nDoF);
+           obj.P = sparse(iiVec, jjVec, PVec, nDoF, nDoF);
         end
 
 
@@ -306,7 +297,7 @@ classdef SPFlow < SinglePhysicSolver
                           vals = [1/mu*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
                     end
                  elseif isFEMBased(obj.model,'Flow')
-                    ents = bc.getEntities(id);
+                    ents = bc.getLoadedEntities(id);
                     entitiesInfl = bc.getEntitiesInfluence(id);
                     vals = entitiesInfl*v;
                  end
@@ -358,7 +349,7 @@ classdef SPFlow < SinglePhysicSolver
               obj.rhs(ents) = obj.rhs(ents) + vals(:,2);
            else
               % strong nodal BCs imposition
-              applyDirBC@SinglePhysicSolver(obj,ents)
+              applyDirBC@SinglePhysicSolver(obj,obj.field,ents)
            end
         end
 

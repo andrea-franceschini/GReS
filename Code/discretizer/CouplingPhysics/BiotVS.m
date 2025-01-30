@@ -1,7 +1,5 @@
 classdef BiotVS < handle
-    % Biot model subclass
-    % Coupled poromechanics with:
-    % Varibly Saturated flow 
+    % WORK IN PROGRESS
 
     properties
         model

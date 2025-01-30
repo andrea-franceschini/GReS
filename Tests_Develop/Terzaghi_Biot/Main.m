@@ -11,7 +11,7 @@ scriptDir = fileparts(scriptFullPath);
 cd(scriptDir);
 
 % -------------------------- SET THE PHYSICS -------------------------
-model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
+model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
@@ -49,7 +49,7 @@ else
 end
 
 %calling analytical solution script
-%Terzaghi_analytical(topology, mat, 10)
+Terzaghi_analytical(topology, mat, 10)
 
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);
@@ -59,7 +59,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
 % Degree of freedom manager 
 %fname = 'dof.dat';
-dofmanager = DoFManager_new(topology,model);
+dofmanager = DoFManager(topology,model);
 
 % Create object handling construction of Jacobian and rhs of the model
 linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
@@ -68,7 +68,7 @@ linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 state = linSyst.setState();
 
 % Create and set the print utility
-printUtils = OutState_new(model,topology,'outTime.dat','folderName','Output_Terzaghi');
+printUtils = OutState(model,topology,'outTime.dat','folderName','Output_Terzaghi');
 
 
 %------------------------ BOUNDARY CONDITIONS ------------------------
@@ -142,7 +142,7 @@ end
 figure(1)
 plotObj1 = plot(pressplot,ptsY,'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
-plotObj2 = plot(pressplot(nodesP,:),ptsY,'k', 'LineWidth', 1);
+plotObj2 = plot(p,z','k', 'LineWidth', 1);
 grid on
 xlabel('Pressure (kPa)')
 ylabel('z (m)')
@@ -154,26 +154,18 @@ xlim([0 10.2])
 set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14);
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 12)
-% export figure with quality
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images', 'Terzaghi_pressure', '.png');
-exportgraphics(gcf,stmp,'Resolution',400)
+
 
 figure(2)
 plotObj1 = plot(-dispplot,topology.coordinates(nodesU,3),'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
-plotObj2 = plot(ufem(nodesU,:),topology.coordinates(nodesU,3),'k',  'LineWidth', 1);
+plotObj2 = plot(u,z','k',  'LineWidth', 1);
 grid on
 xlabel('Vertical displacements (mm)')
 ylabel('z (m)')
 %title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
 legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'}, 'Location', 'southeast');
 
-set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
-a = get(gca,'XTickLabel');
-set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
-% export figure with quality
-stmp = strcat('C:\Users\Moretto\Documents\PHD\GReS\Reports\Presentation\Images\', 'Terzaghi_disp', '.png');
-exportgraphics(gcf,stmp,'Resolution',400)
 %%
 %Checking error norm 
 % Compute the volume connected to each node
@@ -197,9 +189,9 @@ end
 % errRelpress = errpress./normanal;
 
 %pressure_error
-errpress2 = (pfem - press(:,2:end)).^2;
-errNormpressure = sqrt(errpress2'*elems.vol);
-
-%displacement_error
-errdisp2 = (ufem - disp(3:3:end,2:end)).^2;
-errNormdisp = sqrt(errdisp2'*volNod);
+% errpress2 = (pfem - press(:,2:end)).^2;
+% errNormpressure = sqrt(errpress2'*elems.vol);
+% 
+% %displacement_error
+% errdisp2 = (ufem - disp(3:3:end,2:end)).^2;
+% errNormdisp = sqrt(errdisp2'*volNod);

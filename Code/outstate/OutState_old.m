@@ -1,112 +1,35 @@
-classdef OutState_new < handle
-   % Class for printing results to VTK
-   % Input: OutState(model,mesh,fNameList)
-   % Optional parameters:
-   % 'writeMat',true/false: print result to mat-file
-   % 'outFolder','folderName': specify name of output folder
+classdef OutState < handle
+    %UNTITLED Summary of this class goes here
+    %   Detailed explanation goes here
 
+    properties (Access = public)
+        modTime = false %flag for time step size matching timeList
+        timeList
+        m
+    end
 
+    properties (Access = private)
+        model
+        GaussPts
+        printPath
+        mesh
+        timeID = 1
+        VTK
+        flOutData
+        material
+        %     flPrint = true
+    end
 
-   properties (Access = public)
-      modTime = false %flag for time step size matching timeList
-      timeList
-      results
-      model
-      writeSolution
-   end
+    methods (Access = public)
+        function obj = OutState(symMod,mat,grid,fileName,printFlag,varargin)
+            %UNTITLED Construct an instance of this class
+            %   Detailed explanation goes here
+            obj.setOutState(symMod,mat,grid,fileName,printFlag,varargin)
+        end
 
-   properties (Access = private)
-      timeID = 1
-      VTK
-   end
-
-   methods (Access = public)
-      function obj = OutState_new(model,mesh,fileName,options)
-         arguments
-            model (1,1) ModelType
-            mesh (1,1) Mesh
-            fileName (1,1) string
-            options.flagMatFile logical = true
-            options.folderName string = "vtkOutput"
-         end
-         % deal variable input
-         obj.writeSolution = options.flagMatFile;
-         foldName = options.folderName;
-         obj.setOutState(model,mesh,fileName,foldName)
-      end
-
-      function finalize(obj)
-         obj.VTK.finalize();
-      end
-
-      function printState_new(obj,solv,stateOld,stateNew)
-         % print solution of the model according to the print time in the
-         % list
-         % Initialize input structure for VTK output
-         cellData3D = [];
-         pointData3D = [];
-         if nargin == 3
-            time = stateOld.t;
-            % print result to mat-file (to be updated in future version of
-            % the code)
-            if obj.writeSolution
-               obj.results.expTime(obj.timeID,1) = time;
-               if isPoromechanics(obj.model)
-                  obj.results.expDispl(:,obj.timeID) = stateOld.dispConv;
-               end
-               if isFlow(obj.model)
-                  obj.results.expPress(:,obj.timeID) = stateOld.pressure;
-               end
-               if isVariabSatFlow(obj.model)
-                  obj.results.expSw(:,obj.timeID) = stateOld.Sw;
-               end
-            end
-            for fld = solv.fields
-               [cellData,pointData] = printState(solv.getSolver(fld),stateOld);
-               cellData3D = [cellData3D; cellData];
-               pointData3D = [pointData3D; pointData];
-            end
-            obj.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
-            % update the print structure
-         elseif nargin == 4
-            if obj.timeID <= length(obj.timeList)
-               while (obj.timeList(obj.timeID) <= stateNew.t)
-                  assert(obj.timeList(obj.timeID) > stateOld.t, ...
-                     'Print time %f out of range (%f - %f)',obj.timeList(obj.timeID), ...
-                     stateOld.t,stateNew.t);
-                  assert(stateNew.t - stateOld.t > eps('double'),'Dt too small for printing purposes');
-                  %
-                  time = obj.timeList(obj.timeID);
-                  if obj.writeSolution
-                     % print solution to mat-file
-                     fac = (time - stateOld.t)/(stateNew.t - stateOld.t);
-                     obj.results.expTime(obj.timeID+1,1) = time;
-                     if isPoromechanics(obj.model)
-                        obj.results.expDispl(:,obj.timeID+1) = stateNew.dispConv*fac+stateOld.dispConv*(1-fac);
-                     end
-                     if isFlow(obj.model)
-                        obj.results.expPress(:,obj.timeID+1) = stateNew.pressure*fac+stateOld.pressure*(1-fac);
-                     end
-                     if isVariabSatFlow(obj.model)
-                        obj.results.expSw(:,obj.timeID) = stateNew.watSat*fac+stateOld.watSat*(1-fac);
-                     end
-                  end
-                  % Write output structure looping trough available models
-                  for fld = solv.fields
-                     [cellData,pointData] = printState(solv.getSolver(fld),...
-                        stateOld, stateNew, time);
-                     cellData3D = [cellData3D; cellData];
-                     pointData3D = [pointData3D; pointData];
-                  end
-                  obj.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
-                  obj.timeID = obj.timeID + 1;
-                  if obj.timeID > length(obj.timeList)
-                     break
-                  end
-               end
-            end
-         end
-      end
+        function finalize(obj)
+            obj.VTK.finalize();
+        end
 
         function printState(obj,stateOld,stateNew)
             if nargin == 2
@@ -117,8 +40,8 @@ classdef OutState_new < handle
                 %           printProp = struct('time',stateOld.t,'displ',stateOld.displ, ...
                 %             'stress',avStressOld,'strain',avStrainOld, ...
                 %             'pressure',stateOld.pressure,'potential',fluidPotOld);
-                if obj.writeSolution
-                    obj.results.expTime(obj.timeID,1) = printProp.time;
+                if obj.flOutData
+                    obj.m.expTime(obj.timeID,1) = printProp.time;
                 end
                 if isPoromechanics(obj.model)
                     [avStressOld,avStrainOld] = finalizeStatePoro(stateOld);
@@ -127,8 +50,8 @@ classdef OutState_new < handle
                     printProp.dispConv = stateOld.dispConv;
                     printProp.stress = avStressOld;
                     printProp.strain = avStrainOld;
-                    if obj.writeSolution
-                        obj.results.expDispl(:,obj.timeID) = printProp.dispConv;
+                    if obj.flOutData
+                        obj.m.expDispl(:,obj.timeID) = printProp.dispConv;
                     end
                 end
                 if isFlow(obj.model)
@@ -140,10 +63,10 @@ classdef OutState_new < handle
                     if isVariabSatFlow(obj.model)
                         printProp.Sw = stateOld.watSat;
                     end
-                    if obj.writeSolution
-                        obj.results.expPress(:,obj.timeID) = printProp.pressure;
+                    if obj.flOutData
+                        obj.m.expPress(:,obj.timeID) = printProp.pressure;
                         if isVariabSatFlow(obj.model)
-                            obj.results.expSw(:,obj.timeID) = printProp.Sw;
+                            obj.m.expSw(:,obj.timeID) = printProp.Sw;
                         end
                     end
                 end
@@ -170,8 +93,8 @@ classdef OutState_new < handle
                         %                 'strain',avStrainNew*fac+avStrainOld*(1-fac), ...
                         %                 'pressure',stateNew.pressure*fac+stateOld.pressure*(1-fac), ...
                         %                 'potential',fluidPotNew*fac+fluidPotOld*(1-fac));
-                        if obj.writeSolution
-                            obj.results.expTime(obj.timeID+1,1) = printProp.time;
+                        if obj.flOutData
+                            obj.m.expTime(obj.timeID+1,1) = printProp.time;
                         end
                         if isPoromechanics(obj.model)
                             [avStressOld,avStrainOld] = finalizeStatePoro(stateOld);
@@ -183,8 +106,8 @@ classdef OutState_new < handle
                             printProp.dispConv = stateNew.dispConv*fac+stateOld.dispConv*(1-fac);
                             printProp.stress = avStressNew*fac+avStressOld*(1-fac);
                             printProp.strain = avStrainNew*fac+avStrainOld*(1-fac);
-                            if obj.writeSolution
-                                obj.results.expDispl(:,obj.timeID+1) = printProp.dispConv;
+                            if obj.flOutData
+                                obj.m.expDispl(:,obj.timeID+1) = printProp.dispConv;
                             end
                         end
                         if isFlow(obj.model)
@@ -195,14 +118,14 @@ classdef OutState_new < handle
                             %                 'potential',fluidPotNew*fac+fluidPotOld*(1-fac));
                             printProp.pressure = stateNew.pressure*fac+stateOld.pressure*(1-fac);
                             printProp.potential = fluidPotNew*fac+fluidPotOld*(1-fac);
-                            if obj.writeSolution
-                                obj.results.expPress(:,obj.timeID+1) = printProp.pressure;
+                            if obj.flOutData
+                                obj.m.expPress(:,obj.timeID+1) = printProp.pressure;
                             end
                             if isVariabSatFlow(obj.model)
                                 %                 printProp.Sw = stateNew.watSat*fac+stateOld.watSat*(1-fac);
                                 printProp.Sw = obj.material.computeSwAnddSw(obj.mesh,printProp.pressure);
-                                if obj.writeSolution
-                                    obj.results.expSw(:,obj.timeID+1) = printProp.Sw;
+                                if obj.flOutData
+                                    obj.m.expSw(:,obj.timeID+1) = printProp.Sw;
                                 end
                             end
                         end
@@ -218,27 +141,103 @@ classdef OutState_new < handle
     end
 
     methods (Access = private)
-        function setOutState(obj,model,mesh,fileName,foldName)
-           obj.model = model;
+        function setOutState(obj,symMod,mat,grid,fileName,print,data)
+          foldName = 'output';
+          if strcmp(print,'printOn')
+              obj.flOutData = true;
+          elseif strcmp(print,'printOff')
+              obj.flOutData = false;
+          else
+              error(['Unreconized print flag for class OutState' ...
+                  'Accepted values are' ...
+                  '- "printOn": print solution to matFile ' ...
+                  '- "printOff": do not print solution'])
+          end
+          %foldName = [];
+          for i = 1:length(data)
+             if isa(data{i},'Gauss')
+                obj.GaussPts = data{1};
+             else
+                if ~isempty(data{i})
+                   foldName = data{i};
+                end
+             end
+          end
+          obj.model = symMod;
+          obj.material = mat;
+          obj.mesh = grid.topology;
           %
-          readTimeList(obj,fileName);
+          fid = fopen(fileName,'r');
+          [flEof,line] = OutState.readLine(fid);
+          if isempty(sscanf(line,'%f'))
+             line = strtok(line);
+             if strcmpi(line,'on')
+                obj.modTime = true;
+             elseif strcmpi(line,'off')
+                obj.modTime = false;
+             end
+             if ~strcmpi(line,'end')
+                [flEof,line] = OutState.readLine(fid);
+             end
+          end
+
           %
-          obj.VTK = VTKOutput(mesh,foldName);
-          % Write solution to matfile. This feature will be extended in a
-          % future version of the code
-          if obj.writeSolution
+          block = '';
+          while ~strcmp(line,'End')
+             line = strtrim(line);
+             if isempty(line)
+                error('Blank line encountered while reading the print times in file %s',fileName);
+             elseif flEof == 1
+                error('End of file while reading the print times in file %s',fileName);
+             end
+             block = [block, line, ' '];
+             [flEof,line] = OutState.readLine(fid);
+          end
+          blockSplt = strsplit(string(deblank(block)));
+          if ~(blockSplt == "")
+             obj.timeList = str2double(blockSplt);
+             if any(isnan(obj.timeList))
+                error('There are invalid entries in the list of output times')
+             end
+          else
+             obj.timeList = [];
+          end
+          fclose(fid);
+          %
+          obj.VTK = VTKOutput(obj.mesh,foldName);
+          %
+          % TO DO: Here we are printing everything; consider adding the
+          % possibility of printing only the results of a portion of the domain
+          if obj.flOutData
              if isfile('expData.mat')
                 delete 'expData.mat'
              end
-             obj.results = matfile('expData.mat','Writable',true);
-             setMatFile(obj,mesh);
+             obj.m = matfile('expData.mat','Writable',true);
+             l = length(obj.timeList) + 1;
+             obj.m.expTime = zeros(l,1);
+             if isFlow(obj.model)
+                if isFEMBased(obj.model,'Flow')
+                   obj.m.expPress = zeros(obj.mesh.nNodes,l);
+                elseif isFVTPFABased(obj.model,'Flow')
+                   obj.m.expPress = zeros(obj.mesh.nCells,l);
+                   if isVariabSatFlow(obj.model)
+                      obj.m.expSw = zeros(obj.mesh.nCells,l);
+                   end
+                end
+             end
+             if isPoromechanics(obj.model)
+                obj.m.expDispl = zeros(obj.mesh.nDim*obj.mesh.nNodes,l);
+                % Maybe consider adding other output properties
+             end
           end
        end
        %
 
 
+
        function buildPrintStruct(obj,printProp)
-         
+          nPointProp = 0;
+          nCellProp = 0;
           %       if isCoupFlowPoro(obj.model)
           %         % Poromechanics
           %         nPointProp = 3;
@@ -341,64 +340,6 @@ classdef OutState_new < handle
           %       elseif isSinglePhaseFlow(obj.model)
           %         obj.VTK.writeVTKFile(printProp.time, pointData3D, [], [], []);
           %       end
-       end
-
-       function readTimeList(obj,fileName)
-          fid = fopen(fileName,'r');
-          [flEof,line] = OutState.readLine(fid);
-          if isempty(sscanf(line,'%f'))
-             line = strtok(line);
-             if strcmpi(line,'on')
-                obj.modTime = true;
-             elseif strcmpi(line,'off')
-                obj.modTime = false;
-             end
-             if ~strcmpi(line,'end')
-                [flEof,line] = OutState.readLine(fid);
-             end
-          end
-
-          %
-          block = '';
-          while ~strcmp(line,'End')
-             line = strtrim(line);
-             if isempty(line)
-                error('Blank line encountered while reading the print times in file %s',fileName);
-             elseif flEof == 1
-                error('End of file while reading the print times in file %s',fileName);
-             end
-             block = [block, line, ' '];
-             [flEof,line] = OutState.readLine(fid);
-          end
-          blockSplt = strsplit(string(deblank(block)));
-          if ~(blockSplt == "")
-             obj.timeList = str2double(blockSplt);
-             if any(isnan(obj.timeList))
-                error('There are invalid entries in the list of output times')
-             end
-          else
-             obj.timeList = [];
-          end
-          fclose(fid);
-       end
-
-       function setMatFile(obj,msh)
-          l = length(obj.timeList) + 1;
-          obj.results.expTime = zeros(l,1);
-          if isFlow(obj.model)
-             if isFEMBased(obj.model,'Flow')
-                obj.results.expPress = zeros(msh.nNodes,l);
-             elseif isFVTPFABased(obj.model,'Flow')
-                obj.results.expPress = zeros(msh.nCells,l);
-                if isVariabSatFlow(obj.model)
-                   obj.results.expSw = zeros(msh.nCells,l);
-                end
-             end
-          end
-          if isPoromechanics(obj.model)
-             obj.results.expDispl = zeros(msh.nDim*msh.nNodes,l);
-             % Maybe consider adding other output properties
-          end
        end
     end
 
