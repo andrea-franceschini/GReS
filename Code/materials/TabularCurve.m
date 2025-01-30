@@ -1,5 +1,4 @@
 classdef TabularCurve < handle
-  % ELASTIC ISOTROPIC material class
 
   properties (Access = private)
     tabW

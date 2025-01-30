@@ -163,12 +163,8 @@ classdef Materials < handle
     end
     
     function [D, sigma, status] = updateMaterial(obj, cTag, sigma, epsilon, dt, status, el, t)
-      mat = obj.getMaterial(cTag).ConstLaw;
-      if class(mat) == "HypoElastic"
-       [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status, el, t);
-      else
-       [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status);
-      end
+       mat = obj.getMaterial(cTag).ConstLaw;
+       [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status, el);
     end
     
 %     function [Sw,dSw,lw,dlw] = computeSwAndLambda(obj,mesh,upElem,pkpt)

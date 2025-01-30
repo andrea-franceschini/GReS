@@ -199,7 +199,7 @@ classdef Poromechanics < SinglePhysicSolver
             subCells = obj.dofm.getFieldCells(obj.field);
             l1 = 0;
             for el=subCells'
-               D = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.Dmat;
+               D = getElasticTensor(obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw);
                % Get the right material stiffness for each element
                switch obj.mesh.cellVTKType(el)
                   case 10 % Tetrahedra

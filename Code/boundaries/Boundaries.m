@@ -14,13 +14,12 @@ classdef Boundaries < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = Boundaries(fileNames,model,grid,dofm) %,model,grid
+    function obj = Boundaries(fileNames,model,grid) %,model,grid
       % MATLAB evaluates the assignment expression for each instance, which
       % ensures that each instance has a unique value
       obj.db = containers.Map('KeyType','char','ValueType','any');
       obj.model = model;
       obj.grid = grid;
-      obj.dof = dofm;
       % Calling the function to read input data from file
       obj.readInputFiles(fileNames);
       obj.computeBoundaryProperties(model,grid);

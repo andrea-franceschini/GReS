@@ -81,7 +81,7 @@ fileName = ["BCs/dirFlowTop.dat","BCs/newPorotop.dat",...
    "BCs/dirPoroLatY.dat","BCs/dirPoroLatX.dat","BCs/dirPoroBottom.dat"];
 %
 % Create an object of the "Boundaries" class 
-bound = Boundaries(fileName,model,grid,dofmanager);
+bound = Boundaries(fileName,model,grid);
 
 % In this version of the code, the user can assign initial conditions only
 % manually, by directly modifying the entries of the state structure. 
@@ -106,14 +106,20 @@ printUtils.finalize()
 %
 %%
 % -------------------------- BENCHMARK ------------------------------
+image_dir = strcat(pwd,'/Images');
+if isfolder(image_dir)
+    rmdir(image_dir,"s")
+    mkdir Images
+else
+    mkdir Images
+end
 
+load("Terzaghi_Analytical.mat");
 %Post processing using MAT-FILE 
-%nodes vector contain list of nodes along vertical axis (with x,y=0) 
+%nodes vector contain list of nodes along vertical axis (with x,y=0)
 nodesU = find(topology.coordinates(:,1)+topology.coordinates(:,2)==0);
 [~,ind] = sort(topology.coordinates(nodesU,3));
 nodesU = nodesU(ind);
-
-load("Terzaghi_Analytical.mat");
 
 
 % elem vector containing elements centroid along vertical axis
@@ -125,12 +131,14 @@ else
     nodesP = nodesP(ind);
 end
 
-
 %Getting pressure and displacement solution for specified time from MatFILE
 press = printUtils.results.expPress;
 disp = printUtils.results.expDispl;
 pressplot = press(nodesP,2:end);
 dispplot = disp(3*nodesU,2:end);
+
+H = max(topology.coordinates(:,3));
+p0 = max(press(:,1));
 
 
 %Plotting solution
@@ -140,58 +148,36 @@ else
     ptsY = topology.coordinates(nodesP,3);
 end
 figure(1)
-plotObj1 = plot(pressplot,ptsY,'k.', 'LineWidth', 1, 'MarkerSize', 15);
+plotObj1 = plot(pressplot/p0,ptsY/H,'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
-plotObj2 = plot(p,z','k', 'LineWidth', 1);
+plotObj2 = plot(p/p0,z/H,'k-', 'LineWidth', 1);
 grid on
-xlabel('Pressure (kPa)')
-ylabel('z (m)')
+xlabel('p/p_0')
+ylabel('z/H')
 legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'}, 'Location', 'northeast');
 %title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
 axis tight
-xlim([0 10.2])
-
+xlim([0 1.02])
 set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14);
 a = get(gca,'XTickLabel');
-set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 12)
-
+set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10)
+% export figure with quality
+stmp = strcat('Images\', 'Terzaghi_pressure', '.png');
+exportgraphics(gcf,stmp,'Resolution',400)
 
 figure(2)
-plotObj1 = plot(-dispplot,topology.coordinates(nodesU,3),'k.', 'LineWidth', 1, 'MarkerSize', 15);
+plotObj1 = plot(-dispplot/H,topology.coordinates(nodesU,3)/H,'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
-plotObj2 = plot(u,z','k',  'LineWidth', 1);
+plotObj2 = plot(u/H,z/H,'k-',  'LineWidth', 1);
 grid on
-xlabel('Vertical displacements (mm)')
-ylabel('z (m)')
+xlabel('u_z/H')
+ylabel('z/H')
 %title('h = 0.5 m \Delta t = 0.1 s \theta = 1.0')
 legend([plotObj1(1),plotObj2(1)],{'Numerical','Analytical'}, 'Location', 'southeast');
 
-%%
-%Checking error norm 
-% Compute the volume connected to each node
-volNod = zeros(topology.nNodes,1);
-if any(topology.cellVTKType == 12)
-  N1 = getBasisFinGPoints(elems.hexa);
-end
-for el=1:topology.nCells
-  top = topology.cells(el,1:topology.cellNumVerts(el));
-  if topology.cellVTKType(el) == 10 % Tetra
-    volNod(top) = volNod(top) + elems.vol(el)/topology.cellNumVerts(el);
-  elseif topology.cellVTKType(el) == 12 % Hexa
-    dJWeighed = getDerBasisFAndDet(elems.hexa,el,3);
-    volNod(top) = volNod(top)+ N1'*dJWeighed';
-  end
-end
-
-
-% errpress = sqrt(sum((analpress - press(:,2:end)).^2));
-% normanal = sqrt(sum(analpress.^2));
-% errRelpress = errpress./normanal;
-
-%pressure_error
-% errpress2 = (pfem - press(:,2:end)).^2;
-% errNormpressure = sqrt(errpress2'*elems.vol);
-% 
-% %displacement_error
-% errdisp2 = (ufem - disp(3:3:end,2:end)).^2;
-% errNormdisp = sqrt(errdisp2'*volNod);
+set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
+a = get(gca,'XTickLabel');
+set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 10)
+% export figure with quality
+stmp = strcat('Images\', 'Terzaghi_disp', '.png');
+exportgraphics(gcf,stmp,'Resolution',400)

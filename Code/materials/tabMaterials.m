@@ -15,7 +15,7 @@ classdef tabMaterials < handle
 
     % Get the material defined by matIdentifier and check if it is a
     % key of the Map db
-    function mat = getMaterial(obj,cTag)
+    function mat = getMaterial(obj,~)
        mat = obj.solid;
       % 
     end
@@ -120,7 +120,7 @@ classdef tabMaterials < handle
     end
 
     function [D, sigma, status] = updateMaterial(obj, cTag, sigma, epsilon, dt, status, el, t)
-       mat = getMaterial(obj).ConstLaw;
+       mat = getMaterial(obj,cTag).ConstLaw;
        [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status, el);
     end
   end

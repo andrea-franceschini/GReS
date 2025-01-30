@@ -15,7 +15,7 @@ simParam = SimulationParameters(fileName);
 topology = Mesh();
 %
 % Set the input file name
-fileName = 'Mandel_H01.msh';
+fileName = 'Mandel_Mesh.msh';
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
 %
