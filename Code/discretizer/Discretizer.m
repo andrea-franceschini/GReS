@@ -172,7 +172,7 @@ classdef Discretizer < handle
          for i = 1:nF
             for j = i:nF
                k = k+1;
-               addSolver(obj,k,flds(i),flds(j),symmod,params,dofManager,grid,mat,data);
+               addPhysics(obj,k,flds(i),flds(j),symmod,params,dofManager,grid,mat,data);
             end
          end
          obj.fields = flds;
@@ -196,7 +196,7 @@ classdef Discretizer < handle
          end
       end
 
-      function addSolver(obj,id,f1,f2,mod,parm,dof,grid,mat,data)
+      function addPhysics(obj,id,f1,f2,mod,parm,dof,grid,mat,data)
          % Add new key to solver database
          % Prepare input fields for solver definition
          if ~isCoupled(obj,f1,f2)
@@ -206,19 +206,17 @@ classdef Discretizer < handle
          f = join(f,'_');
          switch f{:}
             case 'SPFlow_SPFlow'
-               if isSinglePhaseFlow(mod)
-                  obj.solver(id) = SPFlow(mod,parm,dof,grid,mat,data);
-               elseif isVariabSatFlow(mod)
-                  obj.solver(id) = VSFlow(mod,parm,dof,grid,mat,data);
-               end
+               obj.solver(id) = SPFlow(mod,parm,dof,grid,mat,data);
             case 'Poromechanics_Poromechanics'
                obj.solver(id) = Poromechanics(mod,parm,dof,grid,mat,data);
             case 'Poromechanics_SPFlow'
                assert(isSinglePhaseFlow(mod),['Coupling between' ...
                   'poromechanics and unsaturated flow is not yet implemented']);
                obj.solver(id) = Biot(mod,parm,dof,grid,mat,data);
+            case 'VSFlow_VSFlow'
+               obj.solver(id) = VSFlow(mod,parm,dof,grid,mat,data,'VSFlow');
             otherwise
-               error('Solver coupling %s with %s does not exist!',f1,f2)
+               error('A physical module coupling %s with %s is not available!',f1,f2)
          end
       end
 

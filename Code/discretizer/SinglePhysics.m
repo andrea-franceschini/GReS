@@ -1,10 +1,12 @@
-classdef SinglePhysicSolver < handle
+classdef SinglePhysics < handle
    properties (Access = public)
       J
       rhs
    end
-   properties
+   properties (SetAccess = private)
       field
+   end
+   properties
       model
       simParams
       dofm
@@ -16,8 +18,8 @@ classdef SinglePhysicSolver < handle
    end
    
    methods
-      function obj = SinglePhysicSolver(field,symmod,params,dofManager,grid,mat,data)
-         obj.field = field;
+      function obj = SinglePhysics(fld,symmod,params,dofManager,grid,mat,data)
+         obj.field = fld;
          obj.model = symmod;
          obj.simParams = params;
          obj.dofm = dofManager;
@@ -25,6 +27,7 @@ classdef SinglePhysicSolver < handle
          obj.elements = grid.cells;
          obj.faces = grid.faces;
          obj.material = mat;
+         % obj.field = 
          if ~isempty(data)
             obj.GaussPts = data{1};
          end

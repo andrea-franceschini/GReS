@@ -44,6 +44,7 @@ classdef Materials < handle
     end
     
     function varargout = computeSwAnddSw(obj,mesh,pkpt)
+      % Consider moving this method to a more appropriate location
       % varargout{1} -> Sw
       % varargout{2} -> dSw
       % varargout{2} -> d2Sw
@@ -75,33 +76,10 @@ classdef Materials < handle
             varargout{3}(isElMat) = (1-Swr)*varargout{3}(isElMat);
         end
       end
-      % end
-      %
-      %
-      %
-      % if 5<1
-      % varargout{1} = ones(mesh.nCells,1);
-      % if nargout == 2
-      %   varargout{2} = zeros(mesh.nCells,1);
-      % end
-      % n = 3.1769;
-      % pEntry = 2.7840;
-      % m = 1 - 1/n;
-      % pkpt = -pkpt;
-      % isPos = pkpt >= 0;
-      % SeFun = @(p) (1 + (p./pEntry).^n).^(-m);
-      % dSeFun = @(p) -m.*(1 + (p./pEntry).^n).^(-m-1).*n./pEntry.*(p./pEntry).^(n-1);
-      % varargout{1}(isPos) = SeFun(pkpt(isPos));
-      % Swr = obj.getMaterial(1).PorousRock.getWaterResSat();
-      % varargout{1} = Swr + (1-Swr)*varargout{1};
-      % if nargout == 2
-      %   varargout{2}(isPos) = dSeFun(pkpt(isPos));
-      %   varargout{2} = (1-Swr)*varargout{2};
-      % end
-      % end
     end
     
     function varargout = computeLwAnddLw(obj,mesh,upElem,pkpt)
+      % Consider moving this method to a more appropriate location
       % varargout{1} -> lw
       % varargout{2} -> dlw
       % if 5<1
@@ -166,32 +144,7 @@ classdef Materials < handle
        mat = obj.getMaterial(cTag).ConstLaw;
        [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status, el);
     end
-    
-%     function [Sw,dSw,lw,dlw] = computeSwAndLambda(obj,mesh,upElem,pkpt)
-%       % kr, dkr -> computed for every internal face
-%       % Sw, dSw -> computed for every element
-%       nIntFaces = length(upElem);
-%       Sw = zeros(mesh.nCells,1);
-%       dSw = zeros(mesh.nCells,1);
-%       lw = zeros(nIntFaces,1);
-%       dlw = zeros(nIntFaces,1);
-%       matUpElem = mesh.cellTag(upElem);
-%       for m = 1:mesh.nCellTag
-%         isElMat = matUpElem == m;
-%         p = pkpt(upElem(isElMat));
-%         [lw(isElMat), dlw(isElMat)] = obj.getMaterial(m).RelativePermCurve.interpTable(p);
-%         clear isElMat p
-%         isElMat = mesh.cellTag == m;
-%         p = pkpt(isElMat);
-%         [Sw(isElMat), dSw(isElMat)] = obj.getMaterial(m).CapillaryCurve.interpTable(p);
-%         Swr = obj.getMaterial(m).PorousRock.getWaterResSat();
-%         Sw(isElMat) = Swr + (1-Swr)*Sw(isElMat);
-%         dSw(isElMat) = (1-Swr)*dSw(isElMat);
-%       end
-%       mu = obj.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();
-%       lw = lw/mu;
-%       dlw = dlw/mu;
-%     end
+
     %
     % Destructor
     function delete(obj)
@@ -248,49 +201,7 @@ classdef Materials < handle
       obj.db(matID) = matProp;
       fclose(fID);
     end
-      
-      
-      
-%       % flBlock: flag reporting the reading status
-%       %          0 -> the material block has been read correctly
-%       %          1 -> error while reading the material block
-%       %               (end-of-file before the 'End' statement
-%       %          2 -> end of file reached
-%       flBlock = 0;
-%       % Number of blocks counter
-%       nBlock = 0;
-%       while (flBlock == 0)
-%         % Update the counter
-%         nBlock = nBlock + 1;
-%         % Reading the material block
-%         [flBlock,block] = Materials.readBlock(fid);
-%         if flBlock == 0
-%           if ~isnan(str2double(block(1)))
-%               error('The first entry in block %d of Materials file %s must be strings',nBlock,matFileName);
-%           end
-%           % Calling the specific material class based on the
-%           % material name
-%           switch lower(block(1))
-%             case 'elastic'
-%               obj.db(nBlock) = Elastic(block);
-%             case 'hypoelastic'
-%               obj.db(nBlock) = HypoElastic(block);
-%             case 'transvelastic'
-%               obj.db(nBlock) = TransvElastic(block);
-%             case 'porousrock'
-%               obj.db(nBlock) = PorousRock(block);
-%             case 'fluid'
-%               obj.db(nBlock) = Fluid(block);
-%             otherwise
-%               error('Material %s not available (block %d of Materials)', block(1),nBlock);
-%           end
-%         elseif flBlock == 1
-%           error('Error encountered while reading block %d of Material file',nBlock);
-%         end
-%       end
-%       fclose(fid);
-%     end
-    
+         
     % Reading boundary input file
     function readInputFiles(obj, model, fListName)
       fID = Materials.openReadOnlyFile(fListName);
@@ -316,47 +227,5 @@ classdef Materials < handle
       end
     end
 
-    % Read the material block
-%     function [flBlock,block] = readBlock(fid)
-%       block = [];
-%       % flBegBlock: flag marking the beginning of a material block
-%       flBegBlock = false;
-%       [flEof,line] = Materials.readLine(fid);
-%       % Dealing with the initial blank lines, if any
-%       % flEof: end-of-file flag
-%       %        1 -> end of file reached
-%       %        0 -> otherwise
-%       while (isempty(strtrim(line)) && flEof == 0)
-%         [flEof,line] = Materials.readLine(fid);
-%       end
-%       %
-%       if flEof == 0
-%         flBegBlock = true;
-%       end
-%       % Reading the material block
-%       while (~strcmp(line,'End') && flEof == 0)
-%         line = string(strtrim(strtok(line,'%')));
-%         block = [block; line];
-%         [flEof,line] = Materials.readLine(fid);
-%       end
-%       %
-%       if flEof == 0 && flBegBlock
-%         flBlock = 0;   % block read correctly
-%       elseif flEof == 1 && flBegBlock
-%         flBlock = 1;   % end of file while reading
-%       elseif flEof == 1 && ~flBegBlock
-%         flBlock = 2;   % end of file reached
-%       end
-%     end
-
-    % Read the next line and check for eof
-%     function [flEof,line] = readLine(fid)
-%       flEof = feof(fid);   % end-of-file flag
-%       if flEof == 1
-%         line = '';
-%       else
-%         line = strtrim(fgetl(fid));
-%       end  
-%     end
   end
 end

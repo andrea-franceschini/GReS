@@ -1,4 +1,4 @@
-classdef CouplingSolver < handle
+classdef CouplingPhysics < handle
    % General coupling solver   
    properties 
       fields
@@ -15,7 +15,7 @@ classdef CouplingSolver < handle
    end
    
    methods
-      function obj = CouplingSolver(field1,field2,symmod,params,dofManager,grid,mat,data)
+      function obj = CouplingPhysics(field1,field2,symmod,params,dofManager,grid,mat,data)
          obj.fields = {field1,field2};
          obj.model = symmod;
          obj.simParams = params;
