@@ -56,7 +56,7 @@ classdef OutState < handle
                   obj.results.expPress(:,obj.timeID) = stateOld.pressure;
                end
                if isVariabSatFlow(obj.model)
-                  obj.results.expSw(:,obj.timeID) = stateOld.Sw;
+                  obj.results.expSat(:,obj.timeID) = stateOld.saturation;
                end
             end
             for fld = solv.fields
@@ -86,15 +86,16 @@ classdef OutState < handle
                         obj.results.expPress(:,obj.timeID+1) = stateNew.pressure*fac+stateOld.pressure*(1-fac);
                      end
                      if isVariabSatFlow(obj.model)
-                        obj.results.expSw(:,obj.timeID) = stateNew.watSat*fac+stateOld.watSat*(1-fac);
+                        obj.results.expSat(:,obj.timeID+1) = stateNew.saturation*fac+stateOld.saturation*(1-fac);
                      end
                   end
                   % Write output structure looping trough available models
                   for fld = solv.fields
                      [cellData,pointData] = printState(solv.getSolver(fld),...
                         stateOld, stateNew, time);
-                     cellData3D = [cellData3D; cellData];
-                     pointData3D = [pointData3D; pointData];
+                     % merge new fields
+                     cellData3D = OutState.mergeOutFields(cellData3D,cellData);
+                     pointData3D = OutState.mergeOutFields(pointData3D,pointData);
                   end
                   obj.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
                   obj.timeID = obj.timeID + 1;
@@ -168,59 +169,75 @@ classdef OutState < handle
             elseif isFVTPFABased(obj.model,'Flow')
                obj.results.expPress = zeros(msh.nCells,l);
                if isVariabSatFlow(obj.model)
-                  obj.results.expSw = zeros(msh.nCells,l);
+                  obj.results.expSat = zeros(msh.nCells,l);
                end
             end
          end
          if isPoromechanics(obj.model)
             obj.results.expDispl = zeros(msh.nDim*msh.nNodes,l);
-            % Maybe consider adding other output properties
+            % Consider adding other output properties
          end
       end
    end
 
    methods (Static = true)
-      % Read the next line and check for eof
-      function [flEof,line] = readLine(fid)
-         flEof = feof(fid);   % end-of-file flag
-         if flEof == 1
-            line = '';
-         else
-            line = strtrim(fgetl(fid));
-         end
-      end
 
-      function tList = readTime(fileName)
-         fid = fopen(fileName,'r');
-         [flEof,line] = OutState.readLine(fid);
-         if isempty(sscanf(line,'%f'))
-            line = strtok(line);
-            if ~strcmpi(line,'end')
+       function mergeStruct = mergeOutFields(strA,strB)
+           % Merge output variable coming from a field to the global output
+           % structure
+           % Concatenate the two structure arrays
+           if isempty(strA)
+               mergeStruct = strB;
+               return
+           end
+           mergeStruct = [strA; strB];
+           names = {mergeStruct.name};
+           [~, uniqueIdx] = unique(names, 'stable');
+           % Create the merged structure using the unique indices
+           mergeStruct = mergeStruct(uniqueIdx);
+       end
+
+       function [flEof,line] = readLine(fid)
+           % Read the next line and check for eof
+           flEof = feof(fid);   % end-of-file flag
+           if flEof == 1
+               line = '';
+           else
+               line = strtrim(fgetl(fid));
+           end
+       end
+
+       function tList = readTime(fileName)
+           fid = fopen(fileName,'r');
+           [flEof,line] = OutState.readLine(fid);
+           if isempty(sscanf(line,'%f'))
+               line = strtok(line);
+               if ~strcmpi(line,'end')
+                   [flEof,line] = OutState.readLine(fid);
+               end
+           end
+           %
+           block = '';
+           while ~strcmp(line,'End')
+               line = strtrim(line);
+               if isempty(line)
+                   error('Blank line encountered while reading the print times in file %s',fileName);
+               elseif flEof == 1
+                   error('End of file while reading the print times in file %s',fileName);
+               end
+               block = [block, line, ' '];
                [flEof,line] = OutState.readLine(fid);
-            end
-         end
-         %
-         block = '';
-         while ~strcmp(line,'End')
-            line = strtrim(line);
-            if isempty(line)
-               error('Blank line encountered while reading the print times in file %s',fileName);
-            elseif flEof == 1
-               error('End of file while reading the print times in file %s',fileName);
-            end
-            block = [block, line, ' '];
-            [flEof,line] = OutState.readLine(fid);
-         end
-         blockSplt = strsplit(string(deblank(block)));
-         if ~(blockSplt == "")
-            tList = str2double(blockSplt);
-            if any(isnan(tList))
-               error('There are invalid entries in the list of output times')
-            end
-         else
-            tList = [];
-         end
-         fclose(fid);
-      end
+           end
+           blockSplt = strsplit(string(deblank(block)));
+           if ~(blockSplt == "")
+               tList = str2double(blockSplt);
+               if any(isnan(tList))
+                   error('There are invalid entries in the list of output times')
+               end
+           else
+               tList = [];
+           end
+           fclose(fid);
+       end
    end
 end

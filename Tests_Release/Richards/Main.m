@@ -13,7 +13,7 @@ simParam = SimulationParameters(fileName);
 topology = Mesh();
 %
 % Set the input file name
-fileName = 'Bench1D_hexa.msh';
+fileName = 'Column.msh';
 %
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -40,53 +40,38 @@ faces = Faces(model,topology);
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
-%------------------------ BOUNDARY CONDITIONS ------------------------
-%
-% Set the input file
-% fileName = ["neuSurfLeftFace_hexa2.dat","dirNodRightFace_hexa2.dat", ...
-%   "volFBody_hexa2.dat"];
-fileName = "dirBottom.dat";
-%
-% Create an object of the "Boundaries" class and read the boundary
-% conditions
+% Degree of freedom manager 
+%fname = 'dof.dat';
 dofmanager = DoFManager(topology,model);
 
-bound = Boundaries(fileName,model,grid, dofmanager);
-%linkBoundSurf2TPFAFace(model,bound,grid);
-%
-%-------------------------- PREPROCESSING ----------------------------
-%
-% Set the "State" object. It contains all the vectors describing the state
-% of the reservoir in terms of pressure, displacement, stress, ...
-fName = "iniPressure.dat";
-resState = State(model,grid,mat,fName,GaussPts);
-%
-% Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat','printOn','Output');
-%
-% Print the reservoir initial state
-printUtils.printState(resState);
-%
-% ---------------------------- SOLUTION -------------------------------
-% Create the object which computes all discretized quantities to form the
-% resulting Linearized system
+% Create object handling construction of Jacobian and rhs of the model
 linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 
+% Build a structure storing variable fields at each time step
+state = linSyst.setState();
 
-% Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound, ...
-  printUtils,resState,linSyst,GaussPts);
+% set initial conditions directly modifying the state object
+z = elems.cellCentroid(:,3);
+gamma_w = getFluid(mat).getFluidSpecWeight();
+wLev = 9; % level of the water table
+state.pressure = gamma_w*(9-z);
+
+% Create and set the print utility
+printUtils = OutState(model,topology,'outTime.dat','folderName','Output_Richards');
+
+fileName = "dirBottom.dat";
+bound = Boundaries(fileName,model,grid);
+
+Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
 %
 % Solve the problem
-[simState] = NSolv.NonLinearLoop();
+[simState] = Solver.NonLinearLoop();
 %
 % Finalize the print utility
 printUtils.finalize()
 %
-% -------------------------- BENCHMARK ------------------------------
-%
-delete(bound);
-%% -------------------------- BENCHMARK ------------------------------
+
+%% POST PROCESSING
 
 image_dir = strcat(pwd,'/Images');
 if isfolder(image_dir)
@@ -109,9 +94,9 @@ else
     nodesP = nodesP(ind);
 end
 
-press = printUtils.m.expPress;
-sw = printUtils.m.expSw;
-t = printUtils.m.expTime;
+press = printUtils.results.expPress;
+sw = printUtils.results.expSat;
+t = printUtils.results.expTime;
 tind = 2:length(t);
 t_max = t(end);
 t = t(tind)/t_max;
@@ -124,7 +109,6 @@ swplot = sw(nodesP,tind);
 
 % Values for normalized plots
 H = 10;
-%ptop = -8.58375;
 
 %Plotting solution
 if isFVTPFABased(model,'Flow')
@@ -137,7 +121,6 @@ plot(-pressplot,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);
 hold on
 xlabel('p/p_{top}')
 ylabel('z/H')
-xlim([0 10])
 legend(tstr)
 grid on
 set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
@@ -153,7 +136,6 @@ hold on
 xlabel('Saturation S_w')
 ylabel('z/H')
 legend(tstr, 'Location', 'southwest')
-xlim([0 1])
 str = strcat('t = ',tstr);
 grid on
 set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
@@ -162,21 +144,3 @@ set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
 % export figure with quality
 stmp = strcat('Images\', 'Richards_staturation', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
-
-figure(3)
-pc = load('Materials/pcCurveSand_200.dat');
-pcx = pc(:,1);
-pcy = pc(:,2);
-plot(pcx,pcy)
-grid on
-xlim([0 4])
-title('Effective Sat')
-
-figure(4)
-kr = load('Materials/krCurveSand_200.dat');
-krx = kr(:,1);
-kry = kr(:,2);
-plot(krx,kry)
-xlim([0 4])
-grid on
-title('Rel perm')

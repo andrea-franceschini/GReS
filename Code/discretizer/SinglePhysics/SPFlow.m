@@ -1,4 +1,4 @@
-classdef SPFlow < SinglePhysicSolver
+classdef SPFlow < SinglePhysics
    %POROMECHANICS
    % Subclass of Discretizer
    % Implement Poromechanics methods to assemble the stiffness matrix and
@@ -19,7 +19,7 @@ classdef SPFlow < SinglePhysicSolver
          else
             fieldName = varargin{1};
          end
-         obj@SinglePhysicSolver(fieldName,symmod,params,dofManager,grid,mat,data);
+         obj@SinglePhysics(fieldName,symmod,params,dofManager,grid,mat,data);
          if obj.model.isFVTPFABased('Flow')
             obj.computeTrans;
             %get cells with active flow model
@@ -358,7 +358,7 @@ classdef SPFlow < SinglePhysicSolver
             obj.rhs(ents) = obj.rhs(ents) + vals(:,2);
          else
             % strong nodal BCs imposition
-            applyDirBC@SinglePhysicSolver(obj,obj.field,ents)
+            applyDirBC@SinglePhysics(obj,obj.field,ents)
          end
       end
 

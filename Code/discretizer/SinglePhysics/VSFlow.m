@@ -12,11 +12,11 @@ classdef VSFlow < SPFlow
 
     methods (Access = public)
         function obj = VSFlow(symmod,params,dofManager,grid,mat,data)
-           % initialize as SPFlow class
+            % initialize as SPFlow class
             obj@SPFlow(symmod,params,dofManager,grid,mat,data,'VSFlow');
         end
 
-        function computeMat(obj,stateTmp,statek,dt)
+        function stateTmp = computeMat(obj,stateTmp,statek,dt)
             pkpt = obj.simParams.theta*stateTmp.pressure + ...
                 (1 - obj.simParams.theta)*statek.pressure;
             [Swkpt,dSwkpt,d2Swkpt, obj.lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt);
@@ -29,8 +29,7 @@ classdef VSFlow < SPFlow
             end
         end
 
-
-        function computeRhs(obj,stateTmp,statek,dt)
+        function stateTmp = computeRhs(obj,stateTmp,statek,dt)
             % Compute the residual of the flow problem
             theta = obj.simParams.theta;
             ents = obj.dofm.getActiveEnts(obj.field);
@@ -48,49 +47,46 @@ classdef VSFlow < SPFlow
             end
         end
 
-        function gTerm = finalizeRHSGravTerm(obj,lw)            
-            subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'VSFlow'));
-            nSubCells = nnz(obj.dofm.subCells(:,subInd));
-            intFaces = any(obj.isIntFaces(:,subInd),2);
-            neigh = obj.faces.faceNeighbors(intFaces,:);
-            neigh = obj.dofm.ent2field('VSFlow',neigh(:));
-            gTerm = accumarray(neigh,[lw.*obj.rhsGrav; ...
-                 -lw.*obj.rhsGrav],[nSubCells,1]);
+        function state = setState(obj,state)
+            n = obj.mesh.nCells;
+            state.pressure = zeros(n,1);
+            state.saturation = zeros(n,1);
         end
 
-        function blk = blockJacobian(obj,varargin)
-            fRow = varargin{1}; 
-            fCol = varargin{2};
-            dt = varargin{3};
-            locRow = obj.dofm.field2block(fRow);
-            locCol = obj.dofm.field2block(fCol);
-            if isNewtonNLSolver(obj.simParams)
-                blk = obj.simParams.theta*obj.H(locRow,locCol) + obj.P(locRow,locCol)/dt + ...
-                    obj.JNewt(locRow,locCol);
-            else
-                blk = obj.simParams.theta*obj.H(locRow,locCol) + obj.P(locRow,locCol)/dt;
-
-            end
+        function state = updateState(obj,state,dSol)
+            ents = obj.dofm.getActiveEnts(obj.field);
+            state.pressure(ents) = state.pressure(ents) + dSol(obj.dofm.getDoF(obj.field));
+            state.saturation = obj.material.computeSwAnddSw(obj.mesh,state.pressure);
         end
 
-        function blk = blockRhs(obj, fld)
-            if ~strcmp(obj.dofm.subPhysics(fld), 'VSFlow')
-                % no contribution to non poro fields
-                blk = 0;
-            else
-                dofs = obj.dofm.field2block(fld);
-                blk = obj.rhs(dofs);
+        function [cellData,pointData] = printState(obj,sOld,sNew,t)
+            % append state variable to output structure
+            switch nargin
+                case 2
+                    fluidPot = finalizeState(obj,sOld);
+                    pressure = sOld.pressure;
+                case 4
+                    % linearly interpolate state variables containing print time
+                    fac = (t - sOld.t)/(sNew.t - sOld.t);
+                    fluidPotOld = finalizeState(obj,sOld);
+                    fluidPotNew = finalizeState(obj,sNew);
+                    fluidPot = fluidPotNew*fac+fluidPotOld*(1-fac);
+                    pressure = sNew.pressure*fac+sOld.pressure*(1-fac);
+                otherwise
+                    error('Wrong number of input arguments');
             end
+            saturation = obj.material.computeSwAnddSw(obj.mesh,pressure);
+            [cellData,pointData] = VSFlow.buildPrintStruct(pressure,fluidPot,saturation);
         end
 
         function out = isLinear(obj)
             out = false;
         end
-
-
+    end
+    methods (Access = private)
         function [Swkpt,dSwkpt,d2Swkpt,lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt)
             % compute upstream elements for each face
-            % interpolate effective saturation and relative permeability 
+            % interpolate effective saturation and relative permeability
             % and first derivatives
             % compute also second derivative for saturation
             neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
@@ -111,16 +107,14 @@ classdef VSFlow < SPFlow
         end
 
         function computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,d2Swkpt,dlwkpt)
-            subInd = obj.dofm.subList(ismember(obj.dofm.subPhysics, 'VSFlow'));
-            [subCells, ~] = find(obj.dofm.subCells(:,subInd));
+            subCells = obj.dofm.getFieldCells(obj.field);
             nSubCells = length(subCells);
-            intFaces = any(obj.isIntFaces(:,subInd),2);
             % compute matrices J1 and J2 (gathering non linear terms)
-            neigh = obj.faces.faceNeighbors(intFaces,:);
+            neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
             zVec = obj.elements.cellCentroid(:,3);
             zNeigh = zVec(neigh);
             gamma = obj.material.getFluid().getFluidSpecWeight();
-            tmpVec1 = (dlwkpt.*obj.trans(intFaces)).*(pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
+            tmpVec1 = (dlwkpt.*obj.trans(obj.isIntFaces)).*(pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
             %
             poroMat = zeros(obj.mesh.nCellTag,1);
             alphaMat = zeros(obj.mesh.nCellTag,1);
@@ -131,13 +125,26 @@ classdef VSFlow < SPFlow
             end
             tmpVec2 = alphaMat(obj.mesh.cellTag) + beta*poroMat(obj.mesh.cellTag);
             tmpVec2 = 1/dt*((tmpVec2(subCells).*dSwkpt(subCells) + poroMat(obj.mesh.cellTag).*d2Swkpt(subCells)).*(stateTmp.pressure(subCells) - statek.pressure(subCells))).*obj.elements.vol(subCells);
-            neigh1dof = obj.dofm.ent2field('VSFlow',neigh(:,1));
-            neigh2dof = obj.dofm.ent2field('VSFlow',neigh(:,2));
-            upElemdof = obj.dofm.ent2field('VSFlow',obj.upElem);
-            obj.JNewt = sparse([neigh1dof; neigh2dof; (1:nSubCells)'], ...
+            [~,~,neigh1] = unique(neigh(:,1));
+            [~,~,neigh2] = unique(neigh(:,2));
+            [~,~,upElemdof] = unique(obj.upElem);
+            obj.JNewt = sparse([neigh1; neigh2; (1:nSubCells)'], ...
                 [repmat(upElemdof,[2,1]);  (1:nSubCells)'], ...
                 [tmpVec1; -tmpVec1; tmpVec2],nSubCells,nSubCells);
             obj.JNewt = obj.simParams.theta*obj.JNewt;
+        end
+    end
+
+    methods (Static)
+        function [cellStr,pointStr] = buildPrintStruct(press,pot,sat)
+            pointStr = [];
+            cellStr = repmat(struct('name', 1, 'data', 1), 3, 1);
+            cellStr(1).name = 'pressure';
+            cellStr(1).data = press;
+            cellStr(2).name = 'potential';
+            cellStr(2).data = pot;
+            cellStr(3).name = 'saturation';
+            cellStr(3).data = sat;
         end
     end
 end

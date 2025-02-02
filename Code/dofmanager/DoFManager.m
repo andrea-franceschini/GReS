@@ -231,6 +231,11 @@ classdef DoFManager < handle
       function activeSubs = getActiveSubdomain(obj,fieldList)
          % get subdomains where 1 or more subdomain are activated at the
          % same time
+         % return [] if an input field is not available
+         if ~all(ismember(fieldList,obj.fieldList))
+             activeSubs = [];
+             return
+         end
          activeSubs = (1:max(obj.tag2subDomain))';
          for f = string(fieldList)
             fldId = getFieldId(obj,f);

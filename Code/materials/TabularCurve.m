@@ -102,7 +102,9 @@ classdef TabularCurve < handle
       curveFname = readToken(fID, matFileName);
       obj.tabW = load(curveFname);
       obj.nPoints = size(obj.tabW,1);
+      % first derivative
       obj.derivW = diff(obj.tabW(:,2))./diff(obj.tabW(:,1));
+      % second derivative (central differences)
       obj.derivW2 = ((obj.tabW(3:end,2)-obj.tabW(2:end-1,2))./(obj.tabW(3:end,1)-obj.tabW(2:end-1,1)) - ...
           (obj.tabW(2:end-1,2)-obj.tabW(1:end-2,2))./(obj.tabW(2:end-1,1)-obj.tabW(1:end-2,1)))./(0.5*...
           (obj.tabW(3:end,1)-obj.tabW(1:end-2,1)));

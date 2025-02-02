@@ -214,7 +214,7 @@ classdef Discretizer < handle
                   'poromechanics and unsaturated flow is not yet implemented']);
                obj.solver(id) = Biot(mod,parm,dof,grid,mat,data);
             case 'VSFlow_VSFlow'
-               obj.solver(id) = VSFlow(mod,parm,dof,grid,mat,data,'VSFlow');
+               obj.solver(id) = VSFlow(mod,parm,dof,grid,mat,data);
             otherwise
                error('A physical module coupling %s with %s is not available!',f1,f2)
          end

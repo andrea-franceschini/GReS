@@ -1,4 +1,4 @@
-classdef Biot < CouplingSolver
+classdef Biot < CouplingPhysics
     % Biot model subclass
     % Coupled poromechanics with Flow models
     % field1: Poromechanics
@@ -11,7 +11,7 @@ classdef Biot < CouplingSolver
 
     methods (Access = public)
         function obj = Biot(symmod,params,dofManager,grid,mat,data)
-            obj@CouplingSolver('Poromechanics','SPFlow',symmod,params,dofManager,grid,mat,data);
+            obj@CouplingPhysics('Poromechanics','SPFlow',symmod,params,dofManager,grid,mat,data);
             if isSinglePhaseFlow(obj.model)
                 obj.flowScheme = 'SPFlow';
             elseif isVariabSatFlow(obj.model)
@@ -150,7 +150,7 @@ classdef Biot < CouplingSolver
               return
            else
               % call base implementation of dirichlet imposition
-              applyDirBC@CouplingSolver(obj,field,ents);
+              applyDirBC@CouplingPhysics(obj,field,ents);
            end
         end
 

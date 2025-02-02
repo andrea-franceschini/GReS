@@ -1,4 +1,4 @@
-classdef Poromechanics < SinglePhysicSolver
+classdef Poromechanics < SinglePhysics
    %POROMECHANICS
    properties
       nEntryKLoc      % Entries of local stiffness matrix
@@ -7,7 +7,7 @@ classdef Poromechanics < SinglePhysicSolver
 
    methods (Access = public)
       function obj = Poromechanics(symmod,params,dofManager,grid,mat,data)
-         obj@SinglePhysicSolver('Poromechanics',symmod,params,dofManager,grid,mat,data);
+         obj@SinglePhysics('Poromechanics',symmod,params,dofManager,grid,mat,data);
          obj.nEntryKLoc = (obj.mesh.nDim^2)*(obj.elements.nNodesElem).^2;
       end
 
