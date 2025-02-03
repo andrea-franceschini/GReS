@@ -1,82 +1,73 @@
 close all;
 clear;
 
+scriptFullPath = mfilename('fullpath');
+scriptDir = fileparts(scriptFullPath);
+cd(scriptDir);
 warning('off','MATLAB:nearlySingularMatrix');
 
-% -------------------------- SET THE PHYSICS -------------------------
+% List the physical models activated in the simulation and their
+% discretization scheme
 model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
-%
-% ----------------------- SIMULATION PARAMETERS ----------------------
+
+% Create object containing simulation parameters
 fileName = "simParam.dat";
-simParam = SimulationParameters(model,fileName);
-%
-% ------------------------------  MESH -------------------------------
+simParam = SimulationParameters(fileName,model);
+
 % Create the Mesh object
 topology = Mesh();
-%
+
 % Set the input file name
 fileName = 'ReservoirTest_Hexa.msh';
+
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
-%
-%----------------------------- MATERIALS -----------------------------
-%
-% Set the input file name
+
+% Set the material input file name
 fileName = 'materialsListElastic.dat';
 %
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
-%
-%------------------------------ ELEMENTS -----------------------------
-%
+
 % Define Gauss points
 GaussPts = Gauss(12,2,3);
+
 % Create an object of the "Elements" class and process the element properties
 elems = Elements(topology,GaussPts);
+
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);
 %
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
-%----------------------------- DOF MANAGER -----------------------------
-fileName = 'dof.dat';
-if strcmp(fileName,'dof.dat')
-    dofmanager = DoFManager(topology, model, fileName);
-else
-    dofmanager = DoFManager(topology, model);
-end
+% create a DoFManager object
+DoFfileName = 'dof.dat';
+dofmanager = DoFManager(topology, model, DoFfileName);
 
-%------------------------ BOUNDARY CONDITIONS ------------------------
-%
-% Set the input file
-if strcmp(fileName, 'dof.dat')
-    fileName = ["bottom_fixed.dat","flux.dat","lateral_fix.dat","Impermeable.dat"];
-else
-    fileName = ["bottom_fixed.dat","flux.dat","lateral_fix.dat","Impermeable.dat", "top_drained.dat"];
-end
-%
-bound = Boundaries(fileName,model,grid,dofmanager);
+% Create object handling construction of Jacobian and rhs of the model
+linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 
-% Set the "State" object. It contains all the vectors describing the state
-% of the reservoir in terms of pressure, displacement, stress, ...
-resState = State(model,grid,mat,GaussPts);
+% Build a structure storing variable fields at each time step
+state = linSyst.setState();
 
 % Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat');
-%
-% Print the reservoir initial state
-printUtils.printState(resState);
-%
-% ---------------------------- SOLUTION -------------------------------
-%
+printUtils = OutState(model,topology,'outTime.dat','folderName','Output_DeepAquifer');
 
-% Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,resState,GaussPts);
-%
-% Solve the problem
-[simState] = NSolv.NonLinearLoop();
-%
+% Write BC files programmatically with function utility 
+%fileName = setDeepAquiferBC('BCs',time,flux,topology,DoFfileName);
+if ~isempty(DoFfileName)
+    fileName = ["BCs/bottom_fixed.dat","BCs/flux.dat","BCs/lateral_fix.dat","BCs/Impermeable.dat"];
+else
+    fileName = ["BCs/bottom_fixed.dat","BCs/flux.dat","BCs/lateral_fix.dat","BCs/Impermeable.dat", "BCs/top_drained.dat"];
+end
+
+bound = Boundaries(fileName,model,grid);
+
+% perform a fully coupled simulation
+solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
+[simState] = solver.NonLinearLoop();
+
 % Finalize the print utility
 printUtils.finalize()
 
@@ -90,9 +81,9 @@ else
     mkdir Images
 end
 
-expPress = printUtils.m.expPress;
-expDispl = printUtils.m.expDispl;
-expTime = printUtils.m.expTime;
+expPress = printUtils.results.expPress;
+expDispl = printUtils.results.expDispl;
+expTime = printUtils.results.expTime;
 
 %find nodes in vertical symmetry axis
 tmp1=topology.coordinates(:,1)<500.1;

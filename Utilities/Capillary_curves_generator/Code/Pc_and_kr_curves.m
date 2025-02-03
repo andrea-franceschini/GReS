@@ -58,5 +58,5 @@ data.setVGMParameters('Sand', 'SpecWeight', 9.81);
 %   model (for instance, 10^(-5) < p < 10^3 is [-5, 3]
 % * nPoints -> number of points for the approximation of the pc and kr
 %   curves.
-fName = ["../OUT/pcCurve.dat", "../OUT/krCurve.dat"];
-data.makeCurves('fileName', fName, 'range', [-6,2], 'nPoints', 100);
+fName = ["../OUT/pcCurve_400.dat", "../OUT/krCurve_400.dat"];
+data.makeCurves('fileName', fName, 'range', [-6,2], 'nPoints', 400);

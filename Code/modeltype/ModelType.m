@@ -74,6 +74,16 @@ classdef ModelType < handle
         out = true;
       end
     end
+
+    function physics = getAvailPhysics(obj)
+       % using cellfun to vectorize the checks on active physical modules
+       physicsList = {
+          "Poromechanics", @isPoromechanics
+          "SPFlow", @isSinglePhaseFlow;
+          "VSFlow", @isVariabSatFlow;
+          };
+       physics = physicsList(cellfun(@(f) f(obj), physicsList(:, 2)), 1);
+    end
   end
   
   methods (Access = private)

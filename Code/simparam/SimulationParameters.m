@@ -18,11 +18,14 @@ classdef SimulationParameters < handle
     pTarget
     sTarget = 0.4
     NLSolver = 'Newton'
+    verbosity = 2
+    goOnBackstep = 0;
+    isTimeDependent = true;
   end
   
   methods (Access = public)
-    function obj = SimulationParameters(model,fileName)
-      obj.setSimulationParameters(model,fileName);
+    function obj = SimulationParameters(fileName,model)
+      obj.setSimulationParameters(fileName,model);
     end
     
     function status = isNewtonNLSolver(obj)
@@ -38,10 +41,14 @@ classdef SimulationParameters < handle
         status = true;
       end
     end
+
+    function setTimeDependence(obj,flag)
+       obj.isTimeDependent = flag;
+    end
   end
   
   methods (Access = private)
-    function setSimulationParameters(obj,model,fileName)
+    function setSimulationParameters(obj,fileName,model)
       fid = fopen(fileName,'r');
       if fid == -1
         error('File %s not opened correctly',fileName);
@@ -49,14 +56,12 @@ classdef SimulationParameters < handle
       %
       % Read the model parameters
       %
+      %readSPFParameters(obj,fid,fileName);
       % Single-phase Flow
-      if model.isSinglePhaseFlow()
-        readSPFParameters(obj,fid,fileName);
-      elseif model.isVariabSatFlow()
-        readVSFParameters(obj,fid,fileName);
-      elseif model.isPoromechanics()
-%         readPoromechParameters(obj,fid,fileName);
-        readSPFParameters(obj,fid,fileName);
+      if model.isVariabSatFlow()
+         readVSFParameters(obj,fid,fileName);
+      else
+         readSPFParameters(obj,fid,fileName);
       end
       token = SimulationParameters.readToken(fid,fileName);
       if ~strcmp(token,'End')

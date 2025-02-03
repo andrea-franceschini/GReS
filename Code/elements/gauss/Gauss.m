@@ -6,11 +6,11 @@ classdef Gauss < handle
     coord;
     weight;
     nNode;
+    nNode1D;
   end
   
   properties (Access = private)
     nDim;
-    nNode1D;
     cellType;   % According to VTK classification
     coord1D;
     weight1D;
@@ -30,36 +30,51 @@ classdef Gauss < handle
   
   methods (Access = private)
     
-    function findGaussPoints(obj)
-      %METHOD1 Summary of this method goes here
-      %   Detailed explanation goes here
-      switch obj.cellType
-        case 10 % Tetrahedron
-          error('Gauss points for tetrahedra not yet implemented.');
-        case 12 % Hexahedra
-          points1D(obj);
-          switch obj.nDim
-            case 1 % 1D
-              obj.coord = obj.coord1D;
-              obj.weight = obj.weight1D;
-              obj.nNode = obj.nNode1D;
-            case 2 % 2D
-              [y, x] = meshgrid(obj.coord1D,obj.coord1D);
-              obj.coord = [x(:), y(:)];
-              obj.weight = bsxfun(@(a,b) a*b,obj.weight1D,(obj.weight1D)');
-              obj.weight = obj.weight(:);
-              obj.nNode = (obj.nNode1D)^2;
-            case 3 % 3D
-              [y, x, z] = meshgrid(obj.coord1D,obj.coord1D,obj.coord1D);
-              obj.coord = [x(:), y(:), z(:)];
-              weightGaussTmp = bsxfun(@(a,b) a*b,obj.weight1D,(obj.weight1D)');
-              obj.weight = bsxfun(@(a,b) a*b,weightGaussTmp(:),(obj.weight1D)');
-              obj.weight = obj.weight(:);
-              obj.nNode = (obj.nNode1D)^3;
-          end
-        otherwise
-          error('Gauss points for VTK element type %d not yet implemented.',obj.cellType);
-      end
+     function findGaussPoints(obj)
+        %METHOD1 Summary of this method goes here
+        %   Detailed explanation goes here
+        switch obj.cellType
+           case 10 % Tetrahedron
+              % implementing Gauss class for triangles
+              switch obj.nDim
+                 case 1 % 1D
+                    points1D(obj);
+                    obj.coord = obj.coord1D;
+                    obj.weight = obj.weight1D;
+                    obj.nNode = obj.nNode1D;
+                 case 2
+                    t = [ 0 0; 1 0; 0 1]; % reference triangle
+                    g = quadtriangle(obj.nNode1D,'Domain',t); % external lib
+                    obj.coord = g.Points;
+                    obj.weight = g.Weights;
+                    obj.nNode = numel(obj.weight);
+                 otherwise
+                     error('Gauss points for VTK element type %d not yet implemented in 3D.',obj.cellType);
+              end
+           case 12 % Hexahedra
+              points1D(obj);
+              switch obj.nDim
+                 case 1 % 1D
+                    obj.coord = obj.coord1D;
+                    obj.weight = obj.weight1D;
+                    obj.nNode = obj.nNode1D;
+                 case 2 % 2D
+                    [y, x] = meshgrid(obj.coord1D,obj.coord1D);
+                    obj.coord = [x(:), y(:)];
+                    obj.weight = bsxfun(@(a,b) a*b,obj.weight1D,(obj.weight1D)');
+                    obj.weight = obj.weight(:);
+                    obj.nNode = (obj.nNode1D)^2;
+                 case 3 % 3D
+                    [y, x, z] = meshgrid(obj.coord1D,obj.coord1D,obj.coord1D);
+                    obj.coord = [x(:), y(:), z(:)];
+                    weightGaussTmp = bsxfun(@(a,b) a*b,obj.weight1D,(obj.weight1D)');
+                    obj.weight = bsxfun(@(a,b) a*b,weightGaussTmp(:),(obj.weight1D)');
+                    obj.weight = obj.weight(:);
+                    obj.nNode = (obj.nNode1D)^3;
+              end
+           otherwise
+              error('Gauss points for VTK element type %d not yet implemented.',obj.cellType);
+        end
     end
     
     function points1D(obj)

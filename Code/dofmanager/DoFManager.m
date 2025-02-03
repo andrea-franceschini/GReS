@@ -1,284 +1,289 @@
 classdef DoFManager < handle
-    %DOFMANAGER Summary of this class goes here
-    %   general subdomain manager
-    %   associates a degree of freedom to nodes
-    %test
-    properties (Access = private)
-        physicsList = ""    %list of activated physics in the model
-        ncomp               %number of components for every physic in physicsList
-        model 
-        
-    end
-
-    properties (Access = public)
-        subDomains      % subDomain database
-        elem2dof        % table map elements ---> dof
-        face2dof        % table map faces ---> dof
-        nod2dof         % table nodes elements ---> dof
-        numDof          % array of total dofs for every subPhysic
-        subPhysics      % list of physics in the global solution vector
-        subList         % subDomain corresponding to every subPhysic
-        subCells        % list of cells of every subdomain
-        glob2block     % map global dofs to field Tag
-    end
-    
-    methods
-        function obj = DoFManager(mesh, model, varargin)
-            obj.model = model;
-            if isempty(varargin)
-                fileName = [];
-            else
-                fileName = varargin{1};
-            end
-            obj.readInputFile(fileName,mesh); 
-            obj.buildDofTable(mesh)
-        end
-        
-        function readInputFile(obj,file,mesh)
-            %building the subDomains structure and feature properties
-            %in future some error messages will be added
-            nSubMax = 10;
-            obj.subDomains = repmat(struct('regions',[],'physics',[]),nSubMax,1);
-            if ~isempty(file)
-                fID = obj.openReadOnlyFile(file);            
-                assert(~feof(fID),'No SubDomain defined in the model');
-                subID = 0;
-                token  = [];
-                while ~strcmp(token,'End')
-                     subID = subID +1;
-                     line = fgetl(fID);
-                     domainRegions = sscanf(line, '%i');
-                     assert(all(ismember(domainRegions, mesh.cellTag)), ['Invalid' ...
-                         'Region tag for subDomain %i'], subID)
-                     physics = convertCharsToStrings(split(strip((strtok(fgetl(fID),'%')))));
-                     if (~ismember(physics, ["Poromechanics","SPFlow","VSFlow"]))
-                         error(['Unknown physics in %s input file\n', ...
-                         'Accepted physics for DoF Manager input file are: \n',...
-                         'Poromechanics, SPFlow, VSFlow'], file);
-                     end
-                     physics = rename(physics);
-                     obj.subDomains(subID).regions = domainRegions;
-                     obj.subDomains(subID).physics = physics;
-                     tmp = ~ismember(physics,obj.physicsList);
-                     obj.physicsList = [obj.physicsList; physics(tmp)];
-                     token = fgetl(fID);
-                end
-                    obj.physicsList = obj.physicsList(2:end);
-                    obj.subDomains =  obj.subDomains(1:subID); 
-            else 
-                    tmp = [isPoromechanics(obj.model); isSinglePhaseFlow(obj.model); isVariabSatFlow(obj.model)];
-                    physics = ["Poro";"SPFlow";"VSFlow"];
-                    physics = physics(tmp);
-                    obj.physicsList = physics;
-                    obj.subDomains(1).physics = physics;
-                    obj.subDomains(1).regions = (1:mesh.nCellTag)';                    
-                    obj.subDomains = obj.subDomains(1);
-            end
-            obj.ncomp = ones(length(obj.physicsList),1)+(mesh.nDim-1)*ismember(obj.physicsList,"Poro");
-            checkModelCompatibility(obj)
-        end
-            
-        function buildDofTable(obj, mesh)
-            %building matrices that map any entity (elements, faces,
-            %nodes) with the corresponing DoF in the final system.
-            %code has to deal with "overlapping" subDomain physics
-            % row index --> entity tag
-            % column index --> component tag
-            % entry (~,1:end) --> global DoF
-            nPh = length(obj.physicsList) + (mesh.nDim-1)*any(obj.physicsList == "Poro");
-            %convert the following matrix in sparse format (after
-            %testing)
-            obj.subCells = sparse(mesh.nCells, length(obj.subDomains));
-            obj.elem2dof = zeros(mesh.nCells,nPh);
-            obj.nod2dof = zeros(mesh.nNodes,nPh);
-            numDofTable = zeros(length(obj.subDomains),length(obj.physicsList));
-            dofCount = 0;
-            for subID = 1:length(obj.subDomains)
-                obj.subCells(:,subID) = ismember(mesh.cellTag,obj.subDomains(subID).regions);
-                for i=1:length(obj.physicsList)
-                    %get column of dofTable taken by physics(i)
-                    if any(obj.subDomains(subID).physics == obj.physicsList(i))
-                        col = obj.getColTable(obj.physicsList(i));
-                        if isFEMBased(obj.model,translatePhysic(obj.physicsList(i), obj.model)) %node centered discretization
-                            %count number of zero entries for the nodesList for
-                            %the specified physics in DofTable
-                            nodesList = unique(mesh.cells(ismember(mesh.cellTag,obj.subDomains(subID).regions),:));
-                            nodesList = nodesList(obj.nod2dof(nodesList, col(1))==0); %removing nodes with DOF already assigned
-                            if ~isempty(nodesList)
-                                numDofTable(subID,i) = length(nodesList)*obj.ncomp(i);
-                                globalDofs = dofCount + reshape(1:numDofTable(subID,i),obj.ncomp(i),length(nodesList));
-                                obj.nod2dof(nodesList,col) = globalDofs';
-                            end
-                        elseif isFVTPFABased(obj.model,translatePhysic(obj.physicsList(i),obj.model))
-                            elemList = find(ismember(mesh.cellTag,obj.subDomains(subID).regions));
-                            if ~isempty(elemList)
-                                numDofTable(subID,i) = length(elemList)*obj.ncomp(i);
-                                globalDofs = dofCount + reshape(1:numDofTable(subID,i),obj.ncomp(i),length(elemList));
-                                obj.elem2dof(elemList,col) = globalDofs';
-                            end
+   % Degree of freedom manager
+   % Map each entity to a corresponding degree of freedom in the solution
+   % system
+   % 2 ordering can be specified in input:
+   % Field-based ordering (default)
+   % Domain-based ordering 
+   properties (Access = private)
+      model
+      cellTags
+      domainFields
+      tag2subDomain
+      fieldList
+   end
+   properties (Access = public)
+      numEntsField
+      numEntsSubdomain
+      fields
+      ordering
+      nComp
+   end
+   
+   methods
+      function obj = DoFManager(mesh,model,varargin)
+         obj.model = model;
+         obj.cellTags = mesh.cellTag;
+         obj.fields = struct('field',[],'subdomainEnts',[],...
+            'subID',[],'scheme',[],'entCount',[]);
+         obj.tag2subDomain = zeros(mesh.nCellTag,1);
+         % deal with variable imput
+         switch nargin
+            case 2 % no subdomains defined
+               obj.ordering = 'field';
+               obj.tag2subDomain(:) = 1; % only one subdomain
+               availFields = obj.model.getAvailPhysics();
+               for field = (string(availFields))'
+                  % assign all available fields to one subdomain
+                  addField(obj,mesh,1,field);
+               end
+               obj.numEntsField = zeros(1,numel(obj.fields));
+               obj.numEntsSubdomain = 0;
+            case 3 % no ordering specification
+               obj.ordering = 'field';
+               obj.readInputFile(mesh,varargin{1});
+            case 4
+               obj.ordering = varargin{1};
+               obj.readInputFile(mesh,varargin{2});
+            otherwise 
+               error('Too many input arguments for class DoFManager');
+         end
+         % finilize DoF Manager construction
+         obj.finalizeDoFManager(mesh);
+      end
+      
+      function readInputFile(obj,mesh,fName)
+         % Read DoF manager and update field informations
+         fID = openReadOnlyFile(fName);
+         l = 0;
+         subID = 0;
+         while ~feof(fID)
+            line = readToken(fID,fName);
+            l = l+1;
+            if ~isempty(line) && ~strcmp(line(1),'%')
+               assert(strcmp(line,'<SubDomain>'),['Error in DoFManager' ...
+                  'input file %s at line %i of input file: unexpected ' ...
+                  'instruction'])
+               subID = subID+1;
+               nextline = readToken(fID,fName);
+               l = l+1;
+               while ~strcmp(nextline,'</SubDomain>')
+                  switch nextline
+                     case '<CellTag>'
+                        cTag = sscanf(fgetl(fID), '%i');
+                        l = l+1;
+                     case '<Field>'
+                        fldList = convertCharsToStrings(split(strip((strtok(fgetl(fID),'%')))));
+                        l = l+1;                
+                     otherwise
+                        if ~isempty(nextline)
+                           error('Invalid block name in %s DoFmanager input file',fName);
+                        else
+                           error(['Error in %s input file: Invalid blank line ' ...
+                              'in <Domain> block'],fName);
                         end
-                        dofCount = dofCount + numDofTable(subID,i);
-                    end
-                end
+                  end
+                  nextline = readToken(fID,fName);
+                  l = l+1;
+               end
+               assert(all(obj.tag2subDomain(cTag)==0),['Error in subdomain' ...
+                  ' %i: CellTag already defined'],subID);
+               obj.tag2subDomain(cTag) = subID;
+               % add field to DoFManager
+               for field = fldList'
+                  addField(obj,mesh,subID,field);
+               end
             end
-            [tmprow,tmpcol] = find(numDofTable' ~= 0);
-            obj.subPhysics = obj.physicsList(tmprow);
-            obj.subList = tmpcol;
-            obj.numDof = nonzeros(numDofTable');
-            obj.glob2block = repelem(1:length(obj.subPhysics), obj.numDof)';
-        end
-        
-        function dofs = getDoF(obj,physic,varargin)
-            %Return Global DOFs associated to entities
-            %Needed to map global Dofs with local solution arrays
-            col = obj.getColTable(physic);
-            physic = translatePhysic(physic, obj.model);
-            if isFEMBased(obj.model,physic) 
-                if isempty(varargin)
-                    dofs = (obj.nod2dof(:,col))';
-                else
-                    entities = varargin{1};
-                    dofs = (obj.nod2dof(entities,col))';
-                end
-            elseif isFVTPFABased(obj.model,physic)
-                if isempty(varargin)
-                    dofs = (obj.elem2dof(:,col))';
-                else 
-                    entities = varargin{1};
-                    dofs = (obj.elem2dof(entities,col))';
-                end
-            end
-            dofs = dofs(:);
-            dofs = nonzeros(dofs);
-        end
-
-        function fldDofs = ent2field(obj, fld, ents)
-            % INPUT: entity ID, physic
-            % OUTPUT: field dof numbering
-            glob = obj.getDoF(fld, ents);
-            k = cumsum(obj.numDof.*(~strcmp(obj.subPhysics, fld)));
-            blkID = obj.glob2block(glob);
-            tmp = [0; k(1:end-1)];
-            fldDofs = glob - tmp(blkID);
-        end
-
-        function dofs = field2block(obj,fld)
-            % INPUT: field ID
-            % OUTPUT: block dof numbering corresponding to input field
-            tmp = strcmp(obj.subPhysics, obj.subPhysics(fld));
-            s = zeros(length(obj.numDof),1);
-            s(tmp) = cumsum(obj.numDof(tmp));
-            s = [0; s];
-            dofs = ((s(fld)+1):(s(fld)+obj.numDof(fld)))';
-        end
+         end
+         obj.numEntsField = zeros(1,numel(obj.fields));
+         obj.numEntsSubdomain = zeros(1,subID);
+         obj.nComp = zeros(1,numel(obj.fields));
+      end
 
 
-        function dofs = glob2blockDoF(obj, list)
-            list = list(:); % make sure is a column vector
-            % Return block numbering from global dof numbering
-            s = cumsum(obj.numDof);
-            s = [0; s(1:end-1)];
-            dofs = list - s(obj.glob2block(list));
-        end
-
-        % function dofs = field2dof(obj,field)
-        %     dofs = find(ismember(obj.glob2block,field));
-        % end
-
-        function ents = field2ent(obj, field)
-            % INPUT: field string
-            % OUTPUT: state array indices
-            col = obj.getColTable(field);
-            field = translatePhysic(field, obj.model);
-            ncom = length(col);
-            if isFEMBased(obj.model, field)
-                ents = find(obj.nod2dof(:,col(1))); % non ordered active ents
-                [~, i] = sort(nonzeros(obj.nod2dof(:,col(1))));
-                ents = ents(i);
-            elseif isFVTPFABased(obj.model, field)
-                ents = find(obj.elem2dof(:,col(1))); % non ordered ents
-                [~, i] = sort(nonzeros(obj.elem2dof(:,col(1))));
-                ents = ents(i);
-            end
-            tmp = [0;1;2];
-            tmp = tmp(1:ncom);
-            ents = repelem(ents(:)*ncom,ncom)-repmat(flip(tmp),length(unique(ents)),1);
-        end
-        
-        function ents = getEntities(obj, physic, varargin)
-            %return indices of solution vector associated to input physic
-            % or field (varargin)
-            col = obj.getColTable(translatePhysic(physic, obj.model));
-            ncom = length(col);
-            if isFEMBased(obj.model,physic)
-                [ents,~] = find(obj.nod2dof(:,col) > 0);
-            elseif isFVTPFABased(obj.model,physic)
-                [ents,~] = find(obj.elem2dof(:,col) > 0);
-            end
-            ents = (reshape(ents,[],ncom))';
-            tmp = [0;1;2];
-            tmp = tmp(1:ncom);
-            ents = ents(:)*length(tmp)-repmat(flip(tmp),size(ents,2),1);     
-        end
-
-        function tags = getCellTag(obj,physic)
-            tags = [];
-            for i = 1:length(obj.subDomains)
-                if any(strcmp(obj.subDomains(i).physics,physic))
-                    tags = [tags; obj.subDomains.regions(:)];
-                end
-            end
-        end
-
-        function tags = getSubCells(obj,physic)
-            tags = [];
-            for i = 1:length(obj.subDomains)
-                if any(strcmp(obj.subDomains(i).physics,physic))
-                    tags = [tags; obj.subDomains.regions(:)];
-                end
-            end
-        end
-            
-        
-        function fID = openReadOnlyFile(obj,fName)
-            fID = fopen(fName, 'r');
-             if fID == -1
-               error('File %s does not exist in the directory',fName);
-             end
-        end
-        
-        function col = getColTable(obj,physic)     
-            i = find(obj.physicsList == physic);
-            if i==1
-                col = 1:obj.ncomp(i);   
+      function addField(obj,mesh,subIDs,field)
+         % prepare fields structure from input file informations
+         isField = false;
+         if isscalar(obj.fields)
+            if(isempty(obj.fields.field))
+               nFields = 0;
+               fl = false;
             else
-                col = (1:obj.ncomp(i))+sum(obj.ncomp(1:i-1));
+               fl = true;
             end
-        end
-                
-         function table = getDofTables(obj)
-             table.elemTable = obj.elem2dof;
-             table.nodeTable = obj.nod2dof;
+         else
+            fl = true;
          end
-         
-         function checkModelCompatibility(obj)
-             for i = 1:length(obj.physicsList)
-                 switch obj.physicsList(i)
-                     case "Poro"
-                         assert(isPoromechanics(obj.model),['Poromechanics physical ',...
-                             'model not defined in ModelType class']);
-
-                     case "SPFlow"
-                         assert(isSinglePhaseFlow(obj.model),['Single Phase Flow physical ',...
-                             'model not defined in ModelType class']);
-
-                     case "VSFlow"
-                         assert(isVariabSatFlow(obj.model),['Variably Saturated Flow physical ',...
-                             'model not defined in ModelType class']);
-                 end
-             end
+         if fl
+            existingFields = string({obj.fields.field});
+            nFields = numel(existingFields);
+            isField = ismember(existingFields,field);
          end
+         if any(isField)         
+            % field aleady defined - add cell tag to list
+            k = find(isField);
+            assert(~ismember(obj.fields(k).subID,subIDs));
+            obj.fields(k).subID = [obj.fields(k).subID subIDs]; 
+         else % defining new field - initialize structure
+            k = nFields+1;
+            obj.fields(k).field = field;
+            obj.fields(k).subID = subIDs;
+            if isFEMBased(obj.model,translatePhysic(field))
+               nEnts = mesh.nNodes;
+               obj.fields(k).scheme = 'FEM';
+            elseif isFVTPFABased(obj.model,translatePhysic(field))
+               nEnts = mesh.nCells;
+               obj.fields(k).scheme = 'FV';
+            end
+            obj.fields(k).isEntActive = false(nEnts,1);
+         end
+      end
 
-    end
+      function finalizeDoFManager(obj,mesh)
+         % updated DoF structure with entitiy list for each subdomain
+         for i = 1:numel(obj.fields)
+            nSub = numel(obj.fields(i).subID);
+            obj.fields(i).entCount = zeros(1,nSub);
+            obj.fields(i).subdomainEnts = cell(nSub,1);
+            obj.nComp(i) = componentNumber(mesh,obj.fields(i).field);
+            for j = 1:nSub
+               subID = obj.fields(i).subID(j);
+               cTags = find(obj.tag2subDomain == subID);
+               switch obj.fields(i).scheme
+                  case 'FEM'
+                     ents = unique(mesh.cells(ismember(mesh.cellTag,cTags),:));
+                  case 'FV'
+                     ents = find(ismember(mesh.cellTag,cTags));
+               end
+               % store only entities not already assigned to a subdomain
+               idActiveEnt = obj.fields(i).isEntActive(ents) == false;
+               obj.fields(i).isEntActive(ents) = true; % activate entities
+               obj.fields(i).subdomainEnts{j} = ents(idActiveEnt);
+               obj.fields(i).entCount(j) = sum(idActiveEnt);
+               obj.numEntsSubdomain(subID) = obj.numEntsSubdomain(subID) + obj.fields(i).entCount(j);
+               obj.numEntsField(i) = obj.numEntsField(i) + obj.fields(i).entCount(j);
+               obj.fieldList = string({obj.fields.field});
+            end
+         end
+      end
+
+      function dofs = getDoF(obj,field,varargin)
+         % varargin: entity list, if empty all dofs are returned
+         % return global DoF numbering based on entity ID and field
+         assert(isscalar(string(field)),['Only one input field is allowed when ' ...
+            'calling getDoF method']);
+         fldId = getFieldId(obj,field);
+         nc = obj.nComp(fldId);
+         % get local numbering within the field
+         switch obj.ordering
+            case 'field'
+               if isempty(varargin) 
+                  % all dofs of input field
+                  dofs = dofId((1:obj.numEntsField(fldId))',nc);
+               else
+                  dofs = getLocalDoF(obj,varargin{1},field);
+               end
+               nDoF = obj.nComp.*obj.numEntsField;
+               dofs = dofs+sum(nDoF(1:fldId-1));
+            case 'domain'
+               error('Domain-based ordering of DoF not yet implemented')
+         end
+      end
+      %
+      function dofList = getLocalDoF(obj,entList,field)
+         fldId = obj.getFieldId(field);
+         nc = obj.nComp(fldId);
+         % get local DoF numbering for entities within a field
+         ents = getLocalEnts(obj,entList,field);
+         dofList = dofId(ents,nc);
+      end
+
+      function dofList = getLocalEnts(obj,entList,field)
+         % renumber entity id skipping inactive entities 
+         fldId = obj.getFieldId(field);
+         entList = reshape(entList,[],1);
+         dofList = zeros(numel(entList),1);
+         if ~all(obj.fields(fldId).isEntActive(entList))
+            error('Inactive entity for field %s in input list',field);
+         end
+         % sorting entity list is way more efficient
+         [entList,idSort] = sort(entList); 
+         s = 0;
+         k = 0;
+         iPrev = 0;
+         actEnt = obj.fields(fldId).isEntActive;
+         for j = idSort'
+            s = s+sum(actEnt(iPrev+1:entList(k+1)));
+            iPrev = entList(k+1);
+            dofList(j) = s;
+            k = k+1;
+         end
+      end
+
+      function fldDofs = getFieldDoF(obj,dofs,field)
+         % recover active entitity indices from local dof numbering
+         fldId = obj.getFieldId(field);
+         actEnt = obj.fields(fldId).isEntActive;
+         actDofs = find(actEnt);
+         fldDofs = actDofs(dofs);
+      end
+
+      function activeSubs = getActiveSubdomain(obj,fieldList)
+         % get subdomains where 1 or more subdomain are activated at the
+         % same time
+         % return [] if an input field is not available
+         if ~all(ismember(fieldList,obj.fieldList))
+             activeSubs = [];
+             return
+         end
+         activeSubs = (1:max(obj.tag2subDomain))';
+         for f = string(fieldList)
+            fldId = getFieldId(obj,f);
+            subField = obj.fields(fldId).subID;
+            activeSubs = intersect(activeSubs,subField);
+         end
+      end
+
+      function fldList = getFieldList(obj)
+         fldList = obj.fieldList;
+      end
+
+      function fldId = getFieldId(obj,flds)
+         % get field id associated to input fields
+         fldId = find(strcmp(obj.fieldList,flds));
+      end
+
+      function cTags = getFieldCellTags(obj,field)
+         % get cell ID where input field is active
+         activeSubs = getActiveSubdomain(obj,field);
+         cTags = find(ismember(obj.tag2subDomain,activeSubs));
+      end
+      
+      function cellsID = getFieldCells(obj,field)
+         cTags = getFieldCellTags(obj,field);
+         cellsID = find(ismember(obj.cellTags,cTags));
+      end
+
+      function nComp = getDoFperEnt(obj,field)
+         fldId = obj.getFieldId(field);
+         nComp = obj.nComp(fldId);
+      end
+
+      function ents = getActiveEnts(obj,field)
+         nc = obj.getDoFperEnt(field);
+         id = obj.getFieldId(field);
+         ents = dofId(find(obj.fields(id).isEntActive),nc);
+      end
+
+      function numDoF = getNumDoF(obj,field)
+         fldId = obj.getFieldId(field);
+         numEnts = obj.numEntsField(fldId);
+         nc = obj.nComp(fldId);
+         numDoF = nc*numEnts;
+      end
+   end
+
+   methods (Access = private)
+   end
 end
 
