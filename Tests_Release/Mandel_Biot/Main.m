@@ -15,7 +15,7 @@ model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 
 % Set parameters of the simulation
 fileName = "simParam.dat";
-simParam = SimulationParameters(fileName);
+simParam = SimulationParameters(fileName,model);
 
 % Create the Mesh object
 topology = Mesh();
@@ -36,7 +36,7 @@ GaussPts = Gauss(12,2,3);
 elems = Elements(topology,GaussPts);
 
 %calling analytical solution script
-%Mandel_Analytical(topology, mat, 10)
+Mandel_Analytical(topology, mat, 10)
 
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);

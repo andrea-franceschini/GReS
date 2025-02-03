@@ -11,23 +11,23 @@ warning('off','MATLAB:nearlySingularMatrix');
 model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 
 % Create object containing simulation parameters
-DoFfileName = "simParam.dat";
-simParam = SimulationParameters(DoFfileName);
+fileName = "simParam.dat";
+simParam = SimulationParameters(fileName,model);
 
 % Create the Mesh object
 topology = Mesh();
 
 % Set the input file name
-DoFfileName = 'ReservoirTest_Hexa.msh';
+fileName = 'ReservoirTest_Hexa.msh';
 
 % Import the mesh data into the Mesh object
-topology.importGMSHmesh(DoFfileName);
+topology.importGMSHmesh(fileName);
 
 % Set the material input file name
-DoFfileName = 'materialsListElastic.dat';
+fileName = 'materialsListElastic.dat';
 %
 % Create an object of the Materials class and read the materials file
-mat = Materials(model,DoFfileName);
+mat = Materials(model,fileName);
 
 % Define Gauss points
 GaussPts = Gauss(12,2,3);

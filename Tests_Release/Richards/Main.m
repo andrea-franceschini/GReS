@@ -6,7 +6,7 @@ model = ModelType("VariabSatFlow_FVTPFA");
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
-simParam = SimulationParameters(fileName);
+simParam = SimulationParameters(fileName,model);
 %
 % ------------------------------  MESH -------------------------------
 % Create the Mesh object

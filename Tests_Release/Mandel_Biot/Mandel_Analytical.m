@@ -2,7 +2,7 @@ function Mandel_Analytical(mesh, mat, F)
 % Compute Mandel analytical solution for specified time_steps
 % Save results in MAT-FILE for postprocessing
 
-fprintf('\n Computing Mandel Analytical solution \n');
+fprintf('\n Computing Mandel Analytical solution... \n');
 
 % Get model geometry
 nx = 50; %numb. of calc.points along axis x
@@ -54,7 +54,7 @@ z = linspace(0,b,nz);
 [p,ux,uz,~] = mandelSol(alphan,x,t,c,p0,F,nu,nuU,mu,z);
 save('Mandel_Analytical.mat','p','ux','uz','x','z','t')
 
-fprintf('\n Done Computing Mandel Analytical solution \n');
+fprintf('Done Computing Mandel Analytical solution. \n');
 end
 
 
