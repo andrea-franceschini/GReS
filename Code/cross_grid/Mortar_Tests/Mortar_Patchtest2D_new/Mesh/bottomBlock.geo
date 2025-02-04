@@ -10,7 +10,7 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 // three coordinates (X, Y and Z) and the target mesh size (lc) close to the
 // point:
 nX = 31;
-nY = 10;
+nY = 16;
 
 Point(1) = {0, 0, 0};
 Point(2) = {1, 0, 0};

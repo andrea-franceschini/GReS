@@ -213,19 +213,19 @@ plotSolution(masterMesh,strcat(mult_type,'_bottom'),u_bottom,stressMaster);
 
 
 % invert master and slave for post-processing
-mortarSwap = Mortar2D(1,slaveMesh,1,masterMesh,1);
-if strcmp(integration,'RBF')
-   [Dswap, Mtmp] = mortarSwap.computeMortarRBF(2,4,'gauss',mult_type);
-elseif strcmp(integration, 'EB')
-   [Dswap, Mtmp] = mortarSwap.computeMortarElementBased(nG);
-elseif strcmp(integration, 'SB')
-   [Dswap, Mtmp] = mortarSwap.computeMortarSegmentBased(2,mult_type);
-end
-
-if(strcmp(mult_type,'dual'))
-   Dswap = diag(sum(Dswap,2));
-end
-Eswap = Dswap\Mtmp;
+% mortarSwap = Mortar2D(1,slaveMesh,1,masterMesh,1);
+% if strcmp(integration,'RBF')
+%    [Dswap, Mtmp] = mortarSwap.computeMortarRBF(2,4,'gauss',mult_type);
+% elseif strcmp(integration, 'EB')
+%    [Dswap, Mtmp] = mortarSwap.computeMortarElementBased(nG);
+% elseif strcmp(integration, 'SB')
+%    [Dswap, Mtmp] = mortarSwap.computeMortarSegmentBased(2,mult_type);
+% end
+% 
+% if(strcmp(mult_type,'dual'))
+%    Dswap = diag(sum(Dswap,2));
+% end
+% Eswap = Dswap\Mtmp;
 
 
 % plot lagrange multipliers in matlab
@@ -236,10 +236,7 @@ u_master = [u_master(2*id-1) u_master(2*id)];
 
 [~,id] = sort(slaveMesh.coordinates(mortar.nodesSlave,1));
 u_slave = [u_slave(2*id-1) u_slave(2*id)];
-Esw = zeros(2*nM,2*nS);
-Esw(2*(1:nM)'-1,2*(1:nS)'-1) = Eswap;
-Esw(2*(1:nM)',2*(1:nS)') = Eswap;
-%mult = (E*Esw)*mult;
+
 mult_x = mult(2*id-1);
 mult_y = mult(2*id);
 

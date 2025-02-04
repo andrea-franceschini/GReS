@@ -1,4 +1,4 @@
-patch = 3;
+patch = 2;
 switch patch
     case 1
         Fx = 0; %[kPa]
@@ -11,7 +11,7 @@ switch patch
 end
 % Elastic properties and constitutive tensor
 
-E1 = 10000;
+E1 = 100000;
 D = zeros(3);
 D([1 5]) = 1-nu;
 D([2 4]) = nu;
@@ -19,7 +19,7 @@ D(9) = 0.5*(1-2*nu);
 D = (E1/((1+nu)*(1-2*nu)))*D;
 DmatM = D;
 
-E2 = 10000;
+E2 = 100000;
 D = zeros(3);
 D([1 5]) = 1-nu;
 D([2 4]) = nu;
@@ -29,7 +29,7 @@ DmatS = D;
 
 nel = 30;
 nXs = nel+1;
-rat = 0.3;
+rat = 0.5;
 nYs = round(nXs);
 nXm = round(nel*rat+1);
 nYm = round(nXm);
@@ -47,47 +47,67 @@ fprintf('Processing conforming \n')
 xNodeM = linspace(0,1,size(dual_um,1));
 xNodeS = linspace(0,1,size(dual_us,1));
 xNodeConf = linspace(0,1,size(conf_us,1));
+
+norm = false;
+if norm
+   dual_ty = dual_ty./ty_conf;
+   dual_tx = dual_tx./tx_conf;
+   dual_tx(abs(dual_tx)>10)=0;
+   dual_ty(abs(dual_ty)>10)=0;
+   standard_ty = standard_ty./ty_conf;
+   standard_tx = standard_tx./tx_conf;
+end
 %% plotting
+set(groot,'defaultAxesTickLabelInterpreter','latex')
+set(groot,'defaultAxesFontName','Times')
+
+ms = 4.5;
 figure(1)
-tiledlayout(1,4)
+tiledlayout(1,2)
 nexttile
-plot(xNodeS,dual_tx,'k.-','LineWidth',1,'MarkerSize',10)
+plot(xNodeS,dual_tx,'ko','LineWidth',1,'MarkerSize',ms)
 hold on
-plot(xNodeS,standard_tx,'r.-','LineWidth',1,'MarkerSize',10)
-plot(xNodeConf,tx_conf,'b--','LineWidth',1)
-xlabel('x (m)')
-ylabel('t_x (kPa)')
-legend('dual','standard','anal','Location','best')
+plot(xNodeS,standard_tx,'ko','LineWidth',1,'MarkerSize',ms,'MarkerFaceColor','k')
+plot(xNodeConf,tx_conf,'k-','LineWidth',1)
+xlabel('x (m)','Interpreter','latex')
+ylabel('$t_x$ (kPa)','Interpreter','latex')
+legend('Dual','standard','Conforming','Location','best','Interpreter','latex')
+if patch==1
+   ylim([-0.1 0.1])
+end
 
 nexttile
-plot(xNodeS,dual_ty,'k.-','LineWidth',1,'MarkerSize',10)
+plot(xNodeS,dual_ty,'ko','LineWidth',1,'MarkerSize',ms)
 hold on
-plot(xNodeS,standard_ty,'r.-','LineWidth',1,'MarkerSize',10)
-plot(xNodeConf,ty_conf,'b--','LineWidth',1)
-xlabel('x (m)')
-ylabel('t_y (kPa)')
-legend('dual','standard','anal','Location','best')
+plot(xNodeS,standard_ty,'ks','LineWidth',1,'MarkerSize',ms,'MarkerFaceColor','k')
+plot(xNodeConf,ty_conf,'k-','LineWidth',1)
+xlabel('x (m)','Interpreter','latex')
+ylabel('$t_y$ (kPa)','Interpreter','latex')
+legend('Dual','Standard','Conforming','Location','best','Interpreter','latex')
+if patch==1
+   ylim([-10.01 -9.99])
+end
 
 % comparing displacements
-nexttile
-plot(xNodeS,dual_us(:,2),'k.-','LineWidth',1,'MarkerSize',10)
-hold on
-plot(xNodeM,dual_um(:,2),'rs-','LineWidth',1,'MarkerSize',8)
-plot(xNodeConf,conf_us(:,2),'b^-','LineWidth',1,'MarkerSize',8)
-xlabel('x (m)')
-ylabel('u_y (kPa)')
-legend('dual_slave','dual_master','conforming')
-title('dual u_y')
-
-nexttile
-plot(xNodeS,dual_us(:,1),'k.-','LineWidth',1,'MarkerSize',10)
-hold on
-plot(xNodeM,dual_um(:,1),'rs-','LineWidth',1,'MarkerSize',10)
-plot(xNodeConf,conf_us(:,1),'b^-','LineWidth',1,'MarkerSize',8)
-xlabel('x (m)')
-ylabel('u_x (kPa)')
-legend('standard slave','standard master','conforming')
-title('dual u_x')
+% nexttile
+% plot(xNodeS,dual_us(:,2),'ko','LineWidth',1,'MarkerSize',ms)
+% hold on
+% plot(xNodeM,dual_um(:,2),'ks','LineWidth',1,'MarkerSize',ms,'Ma0rkerFaceColor','k')
+% plot(xNodeConf,conf_us(:,2),'k-','LineWidth',1,'MarkerSize',ms)
+% xlabel('x (m)')
+% ylabel('u_y (kPa)')
+% legend('dual_slave','dual_master','conforming')
+% title('dual u_y')
+% 
+% nexttile
+% plot(xNodeS,dual_us(:,1),'ko','LineWidth',1,'MarkerSize',ms)
+% hold on
+% plot(xNodeM,dual_um(:,1),'ks','LineWidth',1,'MarkerSize',ms,'MarkerFaceColor','k')
+% plot(xNodeConf,conf_us(:,1),'k-','LineWidth',1,'MarkerSize',ms)
+% xlabel('x (m)')
+% ylabel('u_x (kPa)')
+% legend('standard slave','standard master','conforming')
+% title('dual u_x')
 
 
 
@@ -100,8 +120,8 @@ title('dual u_x')
 % xlabel('x (m)')
 % ylabel('u_x (kPa)')
 
-set(gcf, 'Position', [100, 100, 1000, 400])
-%exportgraphics(gcf,strcat('Plots/Solution_Patch_',num2str(patch),'_',stab,'.png'),'Resolution',300)
+set(gcf, 'Position', [100, 100, 600, 400])
+%exportgraphics(gcf,strcat('Results/Solution_Patch_',num2str(patch),'.png'),'Resolution',400)
 
 
 %exportgraphics(gcf,strcat('Plots/Rel_error_Patch_',num2str(patch),'_',stab,'.png'),'Resolution',300)
