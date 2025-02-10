@@ -118,7 +118,6 @@ classdef VTKOutput < handle
 
       function fileName = writeVTMFile(obj)
          outName = setOutputName(obj);
-
          docNode = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
          toc = docNode.getDocumentElement;
          toc.setAttribute('type', 'vtkMultiBlockDataSet');
