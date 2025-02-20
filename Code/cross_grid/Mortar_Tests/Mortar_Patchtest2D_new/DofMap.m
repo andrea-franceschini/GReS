@@ -50,5 +50,14 @@ classdef DofMap
             end
         end
     end
+
+    methods (Static)
+       function dofList = getCompDoF(list)
+          % map dof numbering to component numbering
+          dofList = zeros(2*numel(list),1);
+          dofList(1:2:end) = 2*list-1;
+          dofList(2:2:end) = 2*list;
+       end
+    end
 end
 

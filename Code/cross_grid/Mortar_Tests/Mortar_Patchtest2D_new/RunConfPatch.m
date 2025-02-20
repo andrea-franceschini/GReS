@@ -43,11 +43,11 @@ mortar = Mortar2D(1,masterMesh,1,slaveMesh,1);
 % dof Lagrange multiplier not needed
 
 % build an easy to access dof map
-dofIm = getDoF(nodesMaster');
-dofM = getDoF(1:masterMesh.nNodes);
+dofIm = DofMap.getCompDoF(nodesMaster);
+dofM = DofMap.getCompDoF((1:masterMesh.nNodes)');
 dofM = dofM(~ismember(dofM,dofIm));
-dofIs = getDoF(nodesSlave');
-dofS = getDoF(1:slaveMesh.nNodes);
+dofIs = DofMap.getCompDoF(nodesSlave);
+dofS = DofMap.getCompDoF((1:slaveMesh.nNodes)');
 dofS = dofS(~ismember(dofS,dofIs));
 Kmm = KMaster(dofM,dofM);
 KmIm = KMaster(dofM,dofIm);
@@ -75,7 +75,7 @@ K = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofI
    ];
 
 % creating global dof array and initializing forcing vector
-listDofsSP = [dofM';dofS';dofIm'; dofIs'; dofIs'];
+listDofsSP = [dofM;dofS;dofIm; dofIs; dofIs];
 nDofs = numel(listDofsSP);
 f = zeros(nDofs,1);
 

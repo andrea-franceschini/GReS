@@ -31,7 +31,7 @@ for el = 1:mesh.nSurfaces
     % node indices
     nodes = mesh.surfaces(el,:);
     % dof corresponding to dofs
-    dof = getDoF(nodes);
+    dof = DofMap.getCompDoF(nodes);
     [jjLoc,iiLoc] = meshgrid(dof',dof');
     iiVec(l1+1:l1+s1) = iiLoc(:);
     jjVec(l1+1:l1+s1) = jjLoc(:);

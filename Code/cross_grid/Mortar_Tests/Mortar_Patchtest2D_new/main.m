@@ -1,4 +1,4 @@
-patch = 2;
+patch = 3;
 switch patch
     case 1
         Fx = 0; %[kPa]
@@ -27,65 +27,62 @@ D(9) = 0.5*(1-2*nu);
 D = (E2/((1+nu)*(1-2*nu)))*D;
 DmatS = D;
 
-nel = 30;
+nel = 10;
 nXs = nel+1;
-rat = 0.5;
+rat = 0.4;
 nYs = round(nXs);
 nXm = round(nel*rat+1);
 nYm = round(nXm);
+h = 1/nel;
+alpha = 100;
+gamma = alpha*h/E1;
+
 
 stab = 'unstable';
 nTip = 0;
 %%
 fprintf('Processing non conforming with dual multipliers \n')
-[dual_tx,dual_ty,dual_us,dual_um] = RunNonConfPatchTest('dual',Fx,Fy,DmatS,DmatM,patch,stab,nXs,nYs,nXm,nYm);
+[dual_tx,dual_ty,dual_us,dual_um] = RunNonConfPatchTest('standard',Fx,Fy,DmatS,DmatM,patch,stab,nXs,nYs,nXm,nYm);
 fprintf('Processing non conforming with standard multipliers \n')
-[standard_tx,standard_ty,standard_us,standard_um] = RunNonConfPatchTest('standard',Fx,Fy,DmatS,DmatM,patch,stab,nXs,nYs,nXm,nYm);
+[standard_tx,standard_ty,standard_us,standard_um,x] = RunNonConfConstant(Fx,Fy,DmatS,DmatM,patch,nXs,nYs,nXm,nYm,E1,E2);
 fprintf('Processing conforming \n')
-[tx_conf,ty_conf,conf_us,conf_um] = RunConfPatch(Fx,Fy,DmatS,DmatM,patch,stab,nXs,nYs,nYm);
+[tx_conf,ty_conf,conf_us,conf_um] = RunConfPatch(Fx,Fy,DmatS,DmatM,patch,'unstable',nXs,nYs,nYm);
 
 xNodeM = linspace(0,1,size(dual_um,1));
 xNodeS = linspace(0,1,size(dual_us,1));
 xNodeConf = linspace(0,1,size(conf_us,1));
 
-norm = false;
-if norm
-   dual_ty = dual_ty./ty_conf;
-   dual_tx = dual_tx./tx_conf;
-   dual_tx(abs(dual_tx)>10)=0;
-   dual_ty(abs(dual_ty)>10)=0;
-   standard_ty = standard_ty./ty_conf;
-   standard_tx = standard_tx./tx_conf;
-end
+
+
 %% plotting
 set(groot,'defaultAxesTickLabelInterpreter','latex')
 set(groot,'defaultAxesFontName','Times')
 
-ms = 4.5;
+ms = 12;
 figure(1)
 tiledlayout(1,2)
 nexttile
-plot(xNodeS,dual_tx,'ko','LineWidth',1,'MarkerSize',ms)
+plot(xNodeS,dual_tx,'b.-','LineWidth',1,'MarkerSize',ms)
 hold on
-plot(xNodeS,standard_tx,'ko','LineWidth',1,'MarkerSize',ms,'MarkerFaceColor','k')
+plot(x,standard_tx,'r.-','LineWidth',1,'MarkerSize',ms)
 plot(xNodeConf,tx_conf,'k-','LineWidth',1)
 xlabel('x (m)','Interpreter','latex')
 ylabel('$t_x$ (kPa)','Interpreter','latex')
-legend('Dual','standard','Conforming','Location','best','Interpreter','latex')
+legend('Dual','Constant','Conforming','Location','best','Interpreter','latex')
 if patch==1
    ylim([-0.1 0.1])
 end
 
 nexttile
-plot(xNodeS,dual_ty,'ko','LineWidth',1,'MarkerSize',ms)
+plot(xNodeS,dual_ty,'b.-','LineWidth',1,'MarkerSize',ms)
 hold on
-plot(xNodeS,standard_ty,'ks','LineWidth',1,'MarkerSize',ms,'MarkerFaceColor','k')
+plot(x,standard_ty,'r.-','LineWidth',1,'MarkerSize',ms)
 plot(xNodeConf,ty_conf,'k-','LineWidth',1)
 xlabel('x (m)','Interpreter','latex')
 ylabel('$t_y$ (kPa)','Interpreter','latex')
-legend('Dual','Standard','Conforming','Location','best','Interpreter','latex')
+legend('Dual','Constant','Conforming','Location','best','Interpreter','latex')
 if patch==1
-   ylim([-10.01 -9.99])
+   ylim([-11 -9])
 end
 
 % comparing displacements

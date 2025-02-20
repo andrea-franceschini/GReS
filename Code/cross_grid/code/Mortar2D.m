@@ -52,13 +52,18 @@ classdef Mortar2D < handle
          else
             error('Wrong number of inputs for class Mortar1D')
          end
+         obj.elemConnectivity = computeElementConnectivity(obj);
+         isMaster = any(obj.elemConnectivity,2);
+         isSlave = any(obj.elemConnectivity,1);
+         obj.elemConnectivity = obj.elemConnectivity(isMaster,isSlave);
+         obj.slaveTopol = obj.slaveTopol(isSlave,:);
+         obj.masterTopol = obj.masterTopol(isMaster,:);
          obj.nodesMaster = unique(obj.masterTopol);
          obj.nodesSlave = unique(obj.slaveTopol);
-         obj.nElMaster = size(obj.masterTopol,1);
-         obj.nElSlave = size(obj.slaveTopol,1);
-         obj.nNodesMaster = size(obj.masterCoord,1);
-         obj.nNodesSlave = size(obj.slaveCoord,1);
-         obj.elemConnectivity = computeElementConnectivity(obj);
+         obj.nElMaster = sum(isMaster);
+         obj.nElSlave = sum(isSlave);
+         obj.nNodesMaster = numel(obj.nodesMaster);
+         obj.nNodesSlave = numel(obj.nodesSlave);
          getMatricesSize(obj);
          computeSlaveMatrix(obj);
       end
@@ -91,6 +96,38 @@ classdef Mortar2D < handle
           end
           % extract only mass matrix entries belonging to the interface
           obj.Dmat = D(obj.nodesSlave, obj.nodesSlave);
+      end
+
+
+      function H = computePressureJumpMat(obj)
+         % compute pressure-jump stabilization matrix
+         H = zeros(obj.nElSlave);
+         for n = obj.nodesSlave'
+            % get edges sharing node n
+            edgeID = any(ismember(obj.slaveTopol,n),2);
+            if sum(edgeID)<2
+               % boundary node
+               continue
+            else
+               e = find(edgeID);
+               H(e,e) = H(e,e)+[1 -1;-1 1];
+            end
+         end
+      end
+
+      function H = computeL2Proj(obj)
+         % stabilization matrix for the L2 projection of nodal entries
+         H = zeros(obj.nNodesSlave);
+         for sID = 1:obj.nElSlave
+            i1 = obj.slaveTopol(sID,1);
+            i2 = obj.slaveTopol(sID,2);
+            h = norm(obj.slaveCoord(i1,:)-obj.slaveCoord(i2,:));
+            M = (h/6)*[2 1; 1 2];
+            q = [0.5;0.5];
+            Hloc = M-h*(q*q');
+            H([i1 i2],[i1 i2]) = H([i1 i2],[i1 i2]) + Hloc;
+         end
+         H = H(obj.nodesSlave,obj.nodesSlave);
       end
 
 
@@ -191,6 +228,7 @@ classdef Mortar2D < handle
                   D(idSlave,idSlave) = D(idSlave,idSlave) + Dloc;
               end
           end
+          D(abs(D)<eps) = 0;
           M = M(obj.nodesSlave, obj.nodesMaster);
           D = D(obj.nodesSlave, obj.nodesSlave);
           if nargout == 3
@@ -243,6 +281,71 @@ classdef Mortar2D < handle
          M = M(obj.nodesSlave, obj.nodesMaster);
          if nargout == 3
             varargout{1} = D\M;
+         end
+      end
+
+      function [D,M,varargout] = computeMortarConstant(obj,nGP,nInt)
+         % mortar matrices for piecewise constant multipliers
+         g = Gauss(12,nGP,1);
+         M = zeros(obj.nElSlave,obj.nMMat);
+         D = zeros(obj.nElSlave,obj.nSMat);
+         Dpartial = zeros(obj.nElSlave,obj.nSMat);
+         [wFMat,w1Mat,ptsIntMat] = getWeights(obj,nInt,'gauss');
+         % Loop trough slave elements
+         for j = 1:obj.nElSlave
+            gpPos = g.coord;
+            gpW = g.weight;
+            % nodes of slave element
+            s1 = obj.slaveCoord(obj.slaveTopol(j,1),:);
+            s2 = obj.slaveCoord(obj.slaveTopol(j,end),:);
+            h = sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2);
+            % Real position of Gauss points
+            ptsGauss = ref2nod(gpPos, s1, s2);
+            % Get connected master elements
+            master_elems = find(obj.elemConnectivity(:,j));
+            NSlave = computeBasis1D(gpPos,obj.degree);
+            proj_GP = 1:g.nNode; % list of GP to project
+            idSlave = obj.slaveTopol(j,:);
+            D(j,idSlave) = [h/2 h/2];
+            % Loop trough master elements and store projected master
+            % basis functions
+            for jm = master_elems'
+               ptsInt = ptsIntMat(:,repNum(2,jm));
+               idMaster = obj.masterTopol(jm,1:obj.nNelem);
+               fiNM = obj.computeRBFfiNM(ptsInt,ptsGauss,'gauss');
+               %NMaster = fiNM*wFMat(:,getWeightsID(obj,jm));
+               switch obj.degree
+                  case 1
+                     NMaster = (fiNM*wFMat(:,repNum(obj.nNelem,jm)))./(fiNM*w1Mat(:,jm));
+                     NSupp = NMaster(:,1);
+                  case 2
+                     Ntmp = (fiNM*wFMat(:,repNum(obj.nNelem+1,jm)))./(fiNM*w1Mat(:,jm));
+                     NMaster = Ntmp(:,1:obj.nNelem);
+                     NSupp = Ntmp(:,end);
+               end
+               id = all([NSupp >= 0, NSupp <= 1],2);
+               proj_GP = proj_GP(~id);
+               if any(id)
+                  NMaster = NMaster(id,:);
+                  Mloc = sum(NMaster.*gpW(id),1);
+                  Mloc = Mloc*(0.5*h);
+                  DpartLoc = sum(NSlave(id,:).*gpW(id),1);
+                  DpartLoc = DpartLoc*(0.5*h);
+                  M(j, idMaster) = M(j, idMaster) + Mloc;
+                  Dpartial(j,idSlave) = Dpartial(j,idSlave) + DpartLoc;
+                  % sort out Points already projected
+                  gpPos = gpPos(~id);
+                  gpW = gpW(~id);
+                  NSlave = NSlave(~id,:);
+                  ptsGauss = ptsGauss(~id,:);
+               end
+            end
+         end
+         D = D(:,obj.nodesSlave);
+         M = M(:, obj.nodesMaster);
+         Dpartial = Dpartial(:,obj.nodesSlave);
+         if nargout > 2
+            varargout{1} = Dpartial;
          end
       end
 
@@ -654,12 +757,14 @@ classdef Mortar2D < handle
          % find connectivity of 1D interfaces
          % (trivially done looking at the x-coordinates only)
          tol = 1e-3;
-         elemConnectivity = zeros(obj.nElMaster,obj.nElSlave);
-         for i = 1:obj.nElMaster
+         nM = size(obj.masterTopol,1);
+         nS = size(obj.slaveTopol,1);
+         elemConnectivity = zeros(nM,nS);
+         for i = 1:nM
             tmp = sort([obj.masterCoord(obj.masterTopol(i,1),1),obj.masterCoord(obj.masterTopol(i,end),1)]);
             a = tmp(1); b = tmp(2);
             % loop trough master element to find connectivity
-            for j = 1:obj.nElSlave
+            for j = 1:nS
                tmp = sort([obj.slaveCoord(obj.slaveTopol(j,1),1),obj.slaveCoord(obj.slaveTopol(j,end),1)]);
                c = tmp(1); d = tmp(2);
                if ~any([a>d-tol,c>b-tol])
@@ -743,6 +848,7 @@ classdef Mortar2D < handle
                     rbf = (d.^2+r^2).^(-0.5);
             end
         end
+
 
     end
 end

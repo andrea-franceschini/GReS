@@ -11,7 +11,7 @@ fPlot = true;
 % selecting solution method
 % COND --> condansated approach
 % SP --> saddle point matrix
-sol_scheme = 'COND';
+sol_scheme = 'SP';
 
 % IMPORT MESHES
 masterMesh = Mesh();
@@ -83,16 +83,16 @@ for mCount = 3
     % compute mortar operator
     mortar = Mortar2D(1,masterMesh,1,slaveMesh,1);
     %D = mortar.D;
-    switch type
-        case 'gauss'
-            [D,M,~,E] = mortar.computeMortarRBF(nGP,nInt,'gauss');
-        case 'eb'
-            [D,M,E] = mortar.computeMortarElementBased(nGP);
-        % case 'SB'
-        %     [E,M] = mortar.computeMortarSegmentBased(nGP);
-    end
+    % switch type
+    %     case 'gauss'
+    %         [D,M,~,E] = mortar.computeMortarRBF(nGP,nInt,'gauss');
+    %     case 'eb'
+    %         [D,M,E] = mortar.computeMortarElementBased(nGP);
+    %     % case 'SB'
+    %     %     [E,M] = mortar.computeMortarSegmentBased(nGP);
+    % end
     %[E, M, D] = compute_mortar(masterMesh, slaveMesh, [], nInt, nGP, 1, 1, integration, degree);
-    
+    [D,M] = mortar.computeMortarConstant(nGP,nInt);
 
     % reordering the matrix of the system
     %
@@ -114,6 +114,9 @@ for mCount = 3
     KsIs = KSlave(dofS, dofIs);
     KImIm = KMaster(dofIm,dofIm);
     KIsIs = KSlave(dofIs,dofIs);
+    
+    hM = h(mCount);
+    H = hM*mortar.computePressureJumpMat();
 
 
     % compute forcing vector (from analytical solution)
@@ -146,7 +149,7 @@ for mCount = 3
             zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofIs)) ;
             KmIm', zeros(length(dofIm),length(dofS)), KImIm, zeros(length(dofIm),length(dofIs)), -M';
             zeros(length(dofIs), length(dofM)), KsIs', zeros(length(dofIs), length(dofIm)), KIsIs, D';
-            zeros(length(dofIs), length(dofM)), zeros(length(dofIs), length(dofS)), -M, D,  zeros(length(dofIs), length(dofIs))];
+            zeros(length(dofIs), length(dofM)), zeros(length(dofIs), length(dofS)), -M, D,  -H];
 
         f = [f; zeros(length(dofIs),1)];
         listDofs = [dofM;dofS;dofIm; dofIs; dofIs];

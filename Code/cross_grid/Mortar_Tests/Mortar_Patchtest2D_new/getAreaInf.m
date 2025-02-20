@@ -4,7 +4,7 @@ function [nId,lInf] = getAreaInf(mesh,tag)
 % lInf: length influence for each node
 nList = unique(mesh.edges(mesh.edgeTag == tag,:));
 % get distance from origin as measure for sorting
-dist = sqrt(mesh.coordinates(nList,1).^2+mesh.coordinates(nList,2).^2);
+dist = mesh.coordinates(nList,1)+mesh.coordinates(nList,2);
 [~,id] = sort(dist,'ascend');
 diffPos = diff(mesh.coordinates(nList(id),:));
 lInf = sqrt(diffPos(:,1).^2+diffPos(:,2).^2+diffPos(:,3).^2);
