@@ -31,7 +31,7 @@ classdef DofMap
                 obj.nNMaster+obj.nNSlave+obj.nNIntMaster;
         end
 
-        function dofList = getDoF(obj,list,side,varargin)
+        function dofList = getDoF(obj,list,side,c,varargin)
             switch side
                 case 'master'
                     nodList = obj.nodeMapMaster(list);
@@ -41,8 +41,7 @@ classdef DofMap
                     nodList = obj.nodeMapSlave(list)+obj.nNIntSlave;
             end
             if isempty(varargin)
-                dofList = ([2*nodList-1 2*nodList])';
-                dofList = dofList(:);
+                dofList = obj.getCompDoF(nodList,c);
             elseif strcmp(varargin{1},'x')
                 dofList = 2*nodList-1;
             elseif strcmp(varargin{1},'y')
@@ -52,11 +51,16 @@ classdef DofMap
     end
 
     methods (Static)
-       function dofList = getCompDoF(list)
+       function dofList = getCompDoF(list,varargin)
           % map dof numbering to component numbering
-          dofList = zeros(2*numel(list),1);
-          dofList(1:2:end) = 2*list-1;
-          dofList(2:2:end) = 2*list;
+          c = 2;
+          if nargin > 1
+             c = varargin{1};
+          end
+          dofList = zeros(c*numel(list),1);
+          for i = 1:c
+          dofList(i:c:end) = c*list+i-c;
+          end
        end
     end
 end

@@ -10,10 +10,10 @@ clear; close all;
 % all boundary nodes have fixed displacements.
 % each element has fixed size
 
-nG = 20;
+nG = 6;
 E = 1; 
 nu = 0.25;
-integration = "s"; % RBF,SB,P0
+integration = "SB"; % RBF,SB,P0
 
 Dmat = zeros(3);
 Dmat([1 5]) = 1-nu;
@@ -24,8 +24,8 @@ Dmat = (E/((1+nu)*(1-2*nu)))*Dmat;
 % Set the input file name
 gaussQuad = Gauss(12,2,2);
 
-NM = 3;
-NS = 3;
+NM = ;
+NS = 200;
 % read mesh
 getPatchMesh('Mesh/master.geo','master',NM);
 getPatchMesh('Mesh/slave.geo','slave',NS);
@@ -46,7 +46,7 @@ mortar = Mortar2D(1,masterMesh,1,slaveMesh,1);
 dof = DofMap(masterMesh,mortar.nodesMaster,slaveMesh,mortar.nodesSlave);
 
 
-% compute mortar operator
+% compute mortar operator1.2
 [Drbf, Mrbf] = mortar.computeMortarRBF(nG,4,'gauss','dual');
 [Dsb, Msb] = mortar.computeMortarSegmentBased(nG,'dual');
 [Dconst,Mconst,Dconsistent] = mortar.computeMortarConstant(nG,4);
@@ -93,9 +93,9 @@ K = [r1;r2;r3;r4;r5];
 
 % Fix displacements BCS
 dirNod = unique(slaveMesh.edges(slaveMesh.edgeTag == 2,:));
-dirDoFSlave = dof.getDoF(dirNod,'slave');
+dirDoFSlave = dof.getDoF(dirNod,'slave',2);
 dirNod = unique(masterMesh.edges(masterMesh.edgeTag == 2,:));
-dirDoFMaster = dof.getDoF(dirNod,'master');
+dirDoFMaster = dof.getDoF(dirNod,'master',2);
 dirDoF = [dirDoFMaster;dirDoFSlave];
 K = full(K);
 K(dirDoF,:) = [];
@@ -117,8 +117,12 @@ if ~strcmp(integration,'P0')
    % delete multipliers on the tip
    K(end-numel(dofMult)+1,:) = [];
    K(end-numel(dofMult)+2,:) = [];
+   K(end-numel(dofMult)+3,:) = [];
+   K(end-numel(dofMult)+4,:) = [];
    K(:,end-numel(dofMult)+1) = [];
    K(:,end-numel(dofMult)+2) = [];
+   K(:,end-numel(dofMult)+3) = [];
+   K(:,end-numel(dofMult)+4) = [];
    nMult = nMult-4;
 end
 
@@ -133,3 +137,5 @@ S = 0.5*(S+S');
 e1 = -((1+nu)*(1-2*nu)/(E*(1-nu)));
 e2 = 3/(2+(1-2*nu)/(1-nu));
 e = e1*e2;
+fprintf('Condition number of Schur complement matrix: %2.5e \n',cond(S));
+fprintf('Smallest eigenvalue: %2.5e \n',min(diag(abs(lambda))));

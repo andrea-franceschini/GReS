@@ -45,7 +45,7 @@ end
 
 % selecting integration approach
 int_str = ["SB"];
-np = [4];
+np = 4;
 tmp = strcat(flagTop,'TOP');
 % open files for writing convergence results
 for integration = int_str

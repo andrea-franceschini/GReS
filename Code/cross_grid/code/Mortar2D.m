@@ -133,41 +133,55 @@ classdef Mortar2D < handle
 
 
       function [HM,HS] = computeConfCrossGridMat(obj)
-          HS = zeros(obj.nSMat,obj.nSMat);
-          HM = zeros(obj.nSMat,obj.nMMat);
-          if obj.degree < 2
-              for im = 1:obj.nElMaster
-                  % get element of the support
-                  im1 = obj.masterTopol(im,1);
-                  im2 = obj.masterTopol(im,2);
-                  if obj.masterCoord(im1,1)>obj.masterCoord(im2,1)
-                      tmp = im1;
-                      im1 = im2;
-                      im2 = tmp;
+         n1 = find(obj.slaveCoord(:,1)==0);
+         n2 = find(obj.slaveCoord(:,1)==1);
+         n1 = n1(ismember(n1,obj.nodesSlave));
+         n2 = n2(ismember(n2,obj.nodesSlave));
+         el1 = find(any(ismember(obj.slaveTopol,n1),2));
+         el2 = find(any(ismember(obj.slaveTopol,n2),2));
+         HS = zeros(obj.nSMat,obj.nSMat);
+         HM = zeros(obj.nSMat,obj.nMMat);
+         if obj.degree < 2
+            for iM = 1:obj.nElMaster
+               % get element of the support
+               im1 = obj.masterTopol(iM,1);
+               im2 = obj.masterTopol(iM,2);
+               if obj.masterCoord(im1,1)>obj.masterCoord(im2,1)
+                  tmp = im1;
+                  im1 = im2;
+                  im2 = tmp;
+               end
+               im = [im1 im2];
+               % get shape function values and interpolation points coordinate
+               slave_elems = find(obj.elemConnectivity(iM,:));
+               assert(numel(slave_elems)<2,'Meshes are non conforming!')
+               % loop trough connected slave elements
+               for jS = slave_elems
+                  % elem length
+                  is1 = obj.slaveTopol(jS,1);
+                  is2 = obj.slaveTopol(jS,2);
+                  h = norm(obj.slaveCoord(is1,:)-obj.slaveCoord(is2,:));
+                  if obj.slaveCoord(is1,1)>obj.slaveCoord(is2,1)
+                     tmp = is1;
+                     is1 = is2;
+                     is2 = tmp;
                   end
-                  % get shape function values and interpolation points coordinate
-                  slave_elems = find(obj.elemConnectivity(im,:));
-                  assert(numel(slave_elems)<2,'Meshes are non conforming!')
-                  % loop trough connected slave elements
-                  for jS = slave_elems
-                      % elem length
-                      is1 = obj.slaveTopol(jS,1);
-                      is2 = obj.slaveTopol(jS,2);
-                      if obj.slaveCoord(is1,1)>obj.slaveCoord(is2,1)
-                          tmp = is1;
-                          is1 = is2;
-                          is2 = tmp;
-                      end
-                      h = norm(obj.slaveCoord(is1,:)-obj.slaveCoord(is2,:));
-                      Hloc = (h/8)*[3 1; 1 3];
-                      HM([is1 is2], [im1 im2]) = HM([is1 is2], [im1 im2]) + Hloc;
-                      HS([is1 is2],[is1 is2]) = HS([is1 is2],[is1 is2]) + Hloc; 
+                  Hloc = (h/8)*[3 1; 1 3];
+                  is = [is1 is2];
+                  isMult = is;
+                  %handle end points
+                  if ismember(jS,[el1 el2])
+                     isMult = is(ismember(is,[n1 n2]));
+                     Hloc = (h/2)*[1 1];
                   end
-              end
-          end
-          % extract only mass matrix entries belonging to the interface
-          HM = HM(obj.nodesSlave, obj.nodesMaster);
-          HS = HS(obj.nodesSlave, obj.nodesSlave);
+                  HM(isMult, im) = HM(isMult, im) + Hloc;
+                  HS(isMult, is) = HS(isMult, is) + Hloc;
+               end
+            end
+         end
+         % extract only mass matrix entries belonging to the interface
+         HM = HM(obj.nodesSlave, obj.nodesMaster);
+         HS = HS(obj.nodesSlave, obj.nodesSlave);
       end
 
 
@@ -488,7 +502,6 @@ classdef Mortar2D < handle
       function [D,M,varargout] = computeMortarRBF(obj,nGP,nInt,type,mult_type)
          % type: family of Radial Basis function to use
          % mult_type:
-
          % treating elements on the interface boundary
          % costant basis for these elements
          n1 = find(obj.slaveCoord(:,1)==0);
@@ -526,14 +539,12 @@ classdef Mortar2D < handle
             end
 
             %handle boundary elements
-            % if ismember(j,[el1 el2])
-            %    NSlaveMult = ones(size(NSlaveMult,1),1); % constant basis function
-            %    idSlaveMult = idSlave(ismember(idSlave,[n1 n2]));
-            % else
-            %    idSlaveMult = idSlave;
-            % end
-
-            idSlaveMult = idSlave;
+            if ismember(j,[el1 el2])
+               NSlaveMult = ones(size(NSlaveMult,1),1); % constant basis function
+               idSlaveMult = idSlave(ismember(idSlave,[n1 n2]));
+            else
+               idSlaveMult = idSlave;
+            end
 
             % Loop trough master elements and store projected master
             % basis functions

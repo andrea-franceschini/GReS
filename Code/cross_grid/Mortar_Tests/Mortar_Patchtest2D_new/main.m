@@ -1,4 +1,4 @@
-patch = 3;
+patch = 1;
 switch patch
     case 1
         Fx = 0; %[kPa]

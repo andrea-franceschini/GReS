@@ -89,7 +89,7 @@ classdef Elements < handle
             % 2D elements (triangles, quadrilateral)
             obj.nSurfByType = histc(obj.mesh.surfaceVTKType,[5, 9]);
             if obj.nSurfByType(1) > 0
-                obj.tri = Triangle(obj.mesh,obj.GaussPts);
+                obj.tri = Triangle(obj.mesh);
             end
             if obj.nSurfByType(2) > 0
                 if any(obj.mesh.surfaceNumVerts==4)

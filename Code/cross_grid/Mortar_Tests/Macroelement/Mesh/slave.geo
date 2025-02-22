@@ -3,7 +3,7 @@
 Mesh.Format = 1; // msh output format
 Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 
-N = 10;
+N = 2;
 xMin = 0;
 xMax = 2;
 yMin = 0;

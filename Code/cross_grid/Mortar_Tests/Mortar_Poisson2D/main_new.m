@@ -74,33 +74,18 @@ for mCount = 3
 
     h(mCount) = 1/(length(nodesSlave)-1);
 
-    % get ID of interface nodes belonging to Dirichlet boundary
-    % Constant basis functions are considered for slave elements containing
-    % these nodes (actually this doesn't seem to affect the results)
-    % boundInt = unique(slaveMesh.edges(slaveMesh.edgeTag == 2,:));
-    % boundInt = boundInt(ismember(boundInt, nodesSlave));
+
 
     % compute mortar operator
     mortar = Mortar2D(1,masterMesh,1,slaveMesh,1);
     %D = mortar.D;
-    % switch type
-    %     case 'gauss'
-    %         [D,M,~,E] = mortar.computeMortarRBF(nGP,nInt,'gauss');
-    %     case 'eb'
-    %         [D,M,E] = mortar.computeMortarElementBased(nGP);
-    %     % case 'SB'
-    %     %     [E,M] = mortar.computeMortarSegmentBased(nGP);
-    % end
-    %[E, M, D] = compute_mortar(masterMesh, slaveMesh, [], nInt, nGP, 1, 1, integration, degree);
-    [D,M] = mortar.computeMortarConstant(nGP,nInt);
+    switch type
+       case 'dual'
+          [D,M] = mortar.computeMortarRBF(nGP,nInt,'gauss','dual');
+       case 'constant'
+          [D,M] = mortar.computeMortarConstant(nGP,nInt);
+    end
 
-    % reordering the matrix of the system
-    %
-    % | dofM = nodi interni master      |
-    % | dofS = nodi interni slave       |
-    % | dofIm = nodi interfaccia master |
-    % | dofIs = nodi interfaccia slave  |
-    % dof Lagrange multiplier not needed
 
     dofIm = nodesMaster;
     dofM = (1:masterMesh.nNodes)';

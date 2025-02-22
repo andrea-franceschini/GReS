@@ -24,8 +24,8 @@ Dmat = (E/((1+nu)*(1-2*nu)))*Dmat;
 % Set the input file name
 gaussQuad = Gauss(12,2,2);
 
-NM = 8;
-NS = 10;
+NM = 2;
+NS = 2;
 % read mesh
 getPatchMesh('Mesh/master.geo','master',NM);
 getPatchMesh('Mesh/slave.geo','slave',NS);
@@ -93,9 +93,9 @@ K = [r1;r2;r3;r4;r5];
 
 % Fix displacements BCS
 dirNod = unique(slaveMesh.edges(slaveMesh.edgeTag == 2,:));
-dirDoFSlave = dof.getDoF(dirNod,'slave');
+dirDoFSlave = dof.getDoF(dirNod,'slave',2);
 dirNod = unique(masterMesh.edges(masterMesh.edgeTag == 2,:));
-dirDoFMaster = dof.getDoF(dirNod,'master');
+dirDoFMaster = dof.getDoF(dirNod,'master',2);
 dirDoF = [dirDoFMaster;dirDoFSlave];
 K = full(K);
 K(dirDoF,:) = [];

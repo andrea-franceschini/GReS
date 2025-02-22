@@ -86,14 +86,14 @@ if patch == 1
    % get Loaded dofs on top edge
    [nodesLoad,lInf] = getAreaInf(slaveMesh,2);
    % special treatment of extreme points (having force 1/2)
-   loadDoF = dof.getDoF(nodesLoad,'slave','y');
+   loadDoF = dof.getDoF(nodesLoad,'slave',2,'y');
    f(loadDoF) = Fy*lInf;
 end
 
 %-------------------------LATERAL LOAD BCS ------------------------
 if patch == 2 || patch == 3
    [nodesLoad,lInf] = getAreaInf(slaveMesh,3);
-   loadDoF = dof.getDoF(nodesLoad,'slave','x');
+   loadDoF = dof.getDoF(nodesLoad,'slave',2,'x');
    f(loadDoF) = Fx*lInf;
 end
 
@@ -103,9 +103,9 @@ end
 % y bottom constraint
 dirNod = unique(masterMesh.edges(masterMesh.edgeTag == 2,:));
 if patch == 1 || patch == 2
-   dirBotDoF = dof.getDoF(dirNod,'master');
+   dirBotDoF = dof.getDoF(dirNod,'master',2);
 elseif patch == 3
-   dirBotDoF = dof.getDoF(dirNod,'master','y');
+   dirBotDoF = dof.getDoF(dirNod,'master',2,'y');
 end
 [K,f] = applyDir(dirBotDoF, zeros(length(dirBotDoF),1), K, f);
 
@@ -113,11 +113,11 @@ end
 if patch == 3
    dirNod = unique(slaveMesh.edges(slaveMesh.edgeTag == 4,:));
    % remove interface slave node for unstabilized version
-   dirDoF = dof.getDoF(dirNod,'slave','x');
+   dirDoF = dof.getDoF(dirNod,'slave',2,'x');
    [K,f] = applyDir(dirDoF, zeros(length(dirDoF),1), K, f);
    %
    dirNod = unique(masterMesh.edges(masterMesh.edgeTag == 3,:));
-   dirDoF = dof.getDoF(dirNod,'master','x');
+   dirDoF = dof.getDoF(dirNod,'master',2,'x');
    [K,f] = applyDir(dirDoF, zeros(length(dirDoF),1), K, f);
 end
 
