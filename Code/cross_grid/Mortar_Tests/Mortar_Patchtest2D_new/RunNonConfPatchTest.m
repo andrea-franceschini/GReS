@@ -11,7 +11,7 @@ nG = 6;
 % Set the input file name
 gaussQuad = Gauss(12,2,2);
 
-integration = "SB"; % RBF or SB
+integration = "RBF"; % RBF or SB
 solution_scheme = "SP"; % SP (saddle point) % COND (condensated)
 
 masterMesh = getMesh('Mesh/bottomBlock.geo','bottom',nXm,nYm);

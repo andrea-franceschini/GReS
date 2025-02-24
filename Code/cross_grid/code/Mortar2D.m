@@ -298,7 +298,8 @@ classdef Mortar2D < handle
          end
       end
 
-      function [D,M,varargout] = computeMortarConstant(obj,nGP,nInt)
+      function [D,M,S,varargout] = computeMortarConstant(obj,nGP,nInt)
+         % K 
          % mortar matrices for piecewise constant multipliers
          g = Gauss(12,nGP,1);
          M = zeros(obj.nElSlave,obj.nMMat);
@@ -358,7 +359,7 @@ classdef Mortar2D < handle
          D = D(:,obj.nodesSlave);
          M = M(:, obj.nodesMaster);
          Dpartial = Dpartial(:,obj.nodesSlave);
-         if nargout > 2
+         if nargout > 3
             varargout{1} = Dpartial;
          end
       end

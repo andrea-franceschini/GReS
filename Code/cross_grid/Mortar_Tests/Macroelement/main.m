@@ -71,6 +71,7 @@ KIsIs = KSlave(dofIs,dofIs);
 % expanding the mortar operator also to the y direction
 Erbf = Drbf\Mrbf;
 Esb = Dsb\Msb;
+H = zeros(numel(dofMult),numel(dofMult));
 switch integration
    case 'RBF'
       D = expandMat(Drbf,2);
@@ -81,13 +82,15 @@ switch integration
    case 'P0'
       D = expandMat(Dconsistent,2);
       M = expandMat(Mconst,2);
+      H = mortar.computePressureJumpMat();
+      H = (1/NS)*expandMat(H,2);
 end
 % complete saddle point matrix
 r1 = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofMult))];
 r2 = [zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofMult))] ;
 r3 = [KmIm', zeros(length(dofIm),length(dofS)), KImIm, zeros(length(dofIm),length(dofIs)), -M'];
 r4 = [zeros(length(dofIs), length(dofM)), KsIs', zeros(length(dofIs), length(dofIm)), KIsIs, D'];
-r5 = [zeros(length(dofMult), length(dofM)), zeros(length(dofMult), length(dofS)), -M, D, zeros(numel(dofMult),numel(dofMult))];
+r5 = [zeros(length(dofMult), length(dofM)), zeros(length(dofMult), length(dofS)), -M, D, -H];
 K = [r1;r2;r3;r4;r5];
 
 

@@ -1,4 +1,4 @@
-patch = 1;
+patch = 3;
 switch patch
     case 1
         Fx = 0; %[kPa]
@@ -27,26 +27,30 @@ D(9) = 0.5*(1-2*nu);
 D = (E2/((1+nu)*(1-2*nu)))*D;
 DmatS = D;
 
-nel = 10;
+nel = 30;
 nXs = nel+1;
-rat = 0.4;
+rat = 0.3;
 nYs = round(nXs);
 nXm = round(nel*rat+1);
 nYm = round(nXm);
 h = 1/nel;
 alpha = 100;
-gamma = alpha*h/E1;
+gamma = alpha/E1;
 
 
 stab = 'unstable';
 nTip = 0;
 %%
-fprintf('Processing non conforming with dual multipliers \n')
-[dual_tx,dual_ty,dual_us,dual_um] = RunNonConfPatchTest('standard',Fx,Fy,DmatS,DmatM,patch,stab,nXs,nYs,nXm,nYm);
 fprintf('Processing non conforming with standard multipliers \n')
-[standard_tx,standard_ty,standard_us,standard_um,x] = RunNonConfConstant(Fx,Fy,DmatS,DmatM,patch,nXs,nYs,nXm,nYm,E1,E2);
+[standard_tx,standard_ty,standard_us,standard_um] = RunNonConfPatchTest('standard',Fx,Fy,DmatS,DmatM,patch,stab,nXs,nYs,nXm,nYm);
+fprintf('Processing non conforming with dual multipliers \n')
+[dual_tx,dual_ty,dual_us,dual_um] = RunNonConfPatchTest('dual',Fx,Fy,DmatS,DmatM,patch,stab,nXs,nYs,nXm,nYm);
+fprintf('Processing Unbiased \n')
+[const_tx,const_ty,const_us,const_um,x] = RunNonConfConstant(Fx,Fy,DmatS,DmatM,patch,nXs,nYs,nXm,nYm,E1,E2);
+fprintf('Processing Unbiased \n')
+[ub_tx,ub_ty,ub_us,ub_um] = RunPuso2020(Fx,Fy,DmatS,DmatM,gamma,patch,nXs,nYs,nXm,nYm);
 fprintf('Processing conforming \n')
-[tx_conf,ty_conf,conf_us,conf_um] = RunConfPatch(Fx,Fy,DmatS,DmatM,patch,'unstable',nXs,nYs,nYm);
+[conf_tx,conf_ty,conf_us,conf_um] = RunConfPatch(Fx,Fy,DmatS,DmatM,patch,'unstable',nXs,nYs,nYm);
 
 xNodeM = linspace(0,1,size(dual_um,1));
 xNodeS = linspace(0,1,size(dual_us,1));
@@ -61,64 +65,40 @@ set(groot,'defaultAxesFontName','Times')
 ms = 12;
 figure(1)
 tiledlayout(1,2)
+
+% Plot tx
 nexttile
-plot(xNodeS,dual_tx,'b.-','LineWidth',1,'MarkerSize',ms)
+plot(xNodeS, dual_tx, 'b.-', 'LineWidth', 1, 'MarkerSize', ms)
 hold on
-plot(x,standard_tx,'r.-','LineWidth',1,'MarkerSize',ms)
-plot(xNodeConf,tx_conf,'k-','LineWidth',1)
-xlabel('x (m)','Interpreter','latex')
-ylabel('$t_x$ (kPa)','Interpreter','latex')
-legend('Dual','Constant','Conforming','Location','best','Interpreter','latex')
-if patch==1
+plot(xNodeS, standard_tx, 'r.-', 'LineWidth', 1, 'MarkerSize', ms)
+plot(x, const_tx, 'g.-', 'LineWidth', 1, 'MarkerSize', ms)
+plot(xNodeS, ub_tx, 'm.-', 'LineWidth', 1, 'MarkerSize', ms)
+plot(xNodeConf, conf_tx, 'k-', 'LineWidth', 1.5)
+xlabel('x (m)', 'Interpreter', 'latex')
+ylabel('$t_x$ (kPa)', 'Interpreter', 'latex')
+legend('Dual', 'Standard', 'Constant', 'Unbiased', 'Conforming', 'Location', 'best', 'Interpreter', 'latex')
+grid on
+title('$t_x$ distribution', 'Interpreter', 'latex')
+if patch == 1
    ylim([-0.1 0.1])
 end
 
+% Plot ty
 nexttile
-plot(xNodeS,dual_ty,'b.-','LineWidth',1,'MarkerSize',ms)
+plot(xNodeS, dual_ty, 'b.-', 'LineWidth', 1, 'MarkerSize', ms)
 hold on
-plot(x,standard_ty,'r.-','LineWidth',1,'MarkerSize',ms)
-plot(xNodeConf,ty_conf,'k-','LineWidth',1)
-xlabel('x (m)','Interpreter','latex')
-ylabel('$t_y$ (kPa)','Interpreter','latex')
-legend('Dual','Constant','Conforming','Location','best','Interpreter','latex')
-if patch==1
+plot(xNodeS, standard_ty, 'r.-', 'LineWidth', 1, 'MarkerSize', ms)
+plot(x, const_ty, 'g.-', 'LineWidth', 1, 'MarkerSize', ms)
+plot(xNodeS, ub_ty, 'm.-', 'LineWidth', 1, 'MarkerSize', ms)
+plot(xNodeConf, conf_ty, 'k-', 'LineWidth', 1)
+xlabel('x (m)', 'Interpreter', 'latex')
+ylabel('$t_y$ (kPa)', 'Interpreter', 'latex')
+legend('Dual', 'Standard', 'Constant', 'Unbiased', 'Conforming', 'Location', 'best', 'Interpreter', 'latex')
+grid on
+title('$t_y$ distribution', 'Interpreter', 'latex')
+if patch == 1
    ylim([-11 -9])
 end
 
-% comparing displacements
-% nexttile
-% plot(xNodeS,dual_us(:,2),'ko','LineWidth',1,'MarkerSize',ms)
-% hold on
-% plot(xNodeM,dual_um(:,2),'ks','LineWidth',1,'MarkerSize',ms,'Ma0rkerFaceColor','k')
-% plot(xNodeConf,conf_us(:,2),'k-','LineWidth',1,'MarkerSize',ms)
-% xlabel('x (m)')
-% ylabel('u_y (kPa)')
-% legend('dual_slave','dual_master','conforming')
-% title('dual u_y')
-% 
-% nexttile
-% plot(xNodeS,dual_us(:,1),'ko','LineWidth',1,'MarkerSize',ms)
-% hold on
-% plot(xNodeM,dual_um(:,1),'ks','LineWidth',1,'MarkerSize',ms,'MarkerFaceColor','k')
-% plot(xNodeConf,conf_us(:,1),'k-','LineWidth',1,'MarkerSize',ms)
-% xlabel('x (m)')
-% ylabel('u_x (kPa)')
-% legend('standard slave','standard master','conforming')
-% title('dual u_x')
+hold off
 
-
-
-
-% nexttile
-% plot(xNode,dual_ux,'k.','LineWidth',1,'MarkerSize',10)
-% hold on
-% plot(xNode,standard_ux,'r.','LineWidth',1,'MarkerSize',10)
-% plot(xNodeAnal,conf_ux,'b--','LineWidth',1)
-% xlabel('x (m)')
-% ylabel('u_x (kPa)')
-
-set(gcf, 'Position', [100, 100, 600, 400])
-%exportgraphics(gcf,strcat('Results/Solution_Patch_',num2str(patch),'.png'),'Resolution',400)
-
-
-%exportgraphics(gcf,strcat('Plots/Rel_error_Patch_',num2str(patch),'_',stab,'.png'),'Resolution',300)

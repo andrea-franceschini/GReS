@@ -57,9 +57,9 @@ KsIs = KSlave(dofS, dofIs);
 KImIm = KMaster(dofIm,dofIm);
 KIsIs = KSlave(dofIs,dofIs);
 
-stab = 0.5*(hM+hS)/E;
-%H = stab*H;
-H = zeros(numel(dofMult),numel(dofMult));
+stab = 0.5*hS/E;
+H = stab*H;
+%H = zeros(numel(dofMult),numel(dofMult));
 
 % pressure-jump stabilization matrix ( regular matrix with homogeneous
 % material)

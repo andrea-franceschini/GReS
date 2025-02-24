@@ -22,13 +22,14 @@ degree = 1;
 
 fileNameMaster = [];
 fileNameSlave = [];
+mult_type = 'dual';
 
 % Set the input file name
-nGrids = 1;
+nGrids = 3;
 % selecting master and slave domain
 
 % selecting integration approach
-for type = ["DUAL","P0","CONF"]
+for type = ["DUAL","P0","CONF","UNBIASED"]
    nInt = 4;
    nGP = 4;
    switch type
@@ -44,8 +45,8 @@ for type = ["DUAL","P0","CONF"]
    end
    h = zeros(nGrids,1);
    %grids = 2; % row vector for selecting in which to compute pointwise error
-   NX0 = 8; % Initial number of elements in the top mesh
-   rat = 2.8;
+   NX0 = 4; % Initial number of elements in the top mesh
+   rat = 2;
    for mCount = 1:nGrids
       NelX = NX0*(2^(mCount-1)); 
       fprintf('Grid h%i nGP = %i  nInt = %i  Integration: %s \n',mCount, nGP, nInt, type);
@@ -68,11 +69,16 @@ for type = ["DUAL","P0","CONF"]
       %D = mortar.D;
       switch type
          case 'DUAL'
-            [D,M] = mortar.computeMortarRBF(nGP,nInt,'gauss','standard');
+            [D,M] = mortar.computeMortarRBF(nGP,nInt,'gauss',mult_type);
          case 'P0'
             [D,M] = mortar.computeMortarConstant(nGP,nInt);
          case 'CONF'
-            [D,M] = mortar.computeConfCrossGridMat(); 
+            [D,M] = mortar.computeConfCrossGridMat();
+         case 'UNBIASED'
+            mortar1 = Mortar2D(1,masterMesh,1,slaveMesh,1);
+            mortar2 = Mortar2D(1,slaveMesh,1,masterMesh,1);
+            [D1,M1] = mortar1.computeMortarRBF(nGP,4,'gauss',mult_type);
+            [D2,M2] = mortar2.computeMortarRBF(nGP,4,'gauss',mult_type);
       end
       dof = DofMap(masterMesh,mortar.nodesMaster,slaveMesh,mortar.nodesSlave);
       dofIm = DofMap.getCompDoF(mortar.nodesMaster,1);
@@ -99,13 +105,14 @@ for type = ["DUAL","P0","CONF"]
       KIsIs = KSlave(dofIs,dofIs);
 
       hM = h(mCount);
+      hS = 1/mortar.nElSlave;
       if strcmp(type,'P0')
          H = hM*mortar.computePressureJumpMat();
       else
          H = zeros(length(dofMult),length(dofMult));
       end
 
-      H = zeros(length(dofMult),length(dofMult));
+      %H = zeros(length(dofMult),length(dofMult));
 
       % get dofs coordinates
       xM = [masterMesh.coordinates(dofM,1);
@@ -131,14 +138,27 @@ for type = ["DUAL","P0","CONF"]
          f(length(dofM)+length(dofIm)+length(dofS)+1:end)];
 
       % complete saddle point matrix
-      r1 = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofMult))];
-      r2 = [zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofMult))] ;
-      r3 = [KmIm', zeros(length(dofIm),length(dofS)), KImIm, zeros(length(dofIm),length(dofIs)), -M'];
-      r4 = [zeros(length(dofIs), length(dofM)), KsIs', zeros(length(dofIs), length(dofIm)), KIsIs, D'];
-      r5 = [zeros(length(dofMult), length(dofM)), zeros(length(dofMult), length(dofS)), -M, D, -H];
-      K = [r1;r2;r3;r4;r5];
-
-      f = [f; zeros(length(dofMult),1)];
+      switch type
+         case 'UNBIASED'
+            s = 5*(hM);
+            r1 = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofIm)), zeros(length(dofM),length(dofIs))];
+            r2 = [zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofIm)), zeros(length(dofS),length(dofIs))] ;
+            r3 =  [KmIm', zeros(length(dofIm),length(dofS)), KImIm, zeros(length(dofIm),length(dofIs)), 0.5*D2', -0.5*M1'];
+            r4 = [zeros(length(dofIs), length(dofM)), KsIs', zeros(length(dofIs), length(dofIm)), KIsIs, -0.5*M2', 0.5*D1'];
+            r5 = [zeros(length(dofIm), length(dofM)), zeros(length(dofIm), length(dofS)), 0.5*D2, -0.5*M2,  s*D2, s*M2];
+            r6 = [zeros(length(dofIs), length(dofM)), zeros(length(dofIs), length(dofS)), -0.5*M1, 0.5*D1,  s*M1, s*D1];
+            K = [r1;r2;r3;r4;r5;r6];
+            K = [r1;r2;r3;r4;r5;r6];
+            f = [f; zeros(length(dofIm)+length(dofIs),1)];
+         otherwise
+            r1 = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofMult))];
+            r2 = [zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofMult))] ;
+            r3 = [KmIm', zeros(length(dofIm),length(dofS)), KImIm, zeros(length(dofIm),length(dofIs)), -M'];
+            r4 = [zeros(length(dofIs), length(dofM)), KsIs', zeros(length(dofIs), length(dofIm)), KIsIs, D'];
+            r5 = [zeros(length(dofMult), length(dofM)), zeros(length(dofMult), length(dofS)), -M, D, -H];
+            K = [r1;r2;r3;r4;r5];
+            f = [f; zeros(length(dofMult),1)];
+      end
 
       % ------------------------------ APPLY BCS -------------------------------
       % homogeneous Dirichlet BCs
@@ -222,10 +242,21 @@ for type = ["DUAL","P0","CONF"]
       end
    end
 
-   % plot multipliers along the interface
    mult = u(end-numel(dofMult)+1:end);
+
+   % Stabilization trough projection
+   if strcmp(type,'DUAL')
+      E = D\M;
+      mortarSwap = Mortar2D(1,slaveMesh,1,masterMesh,1);
+      [Dsw, Msw] = mortarSwap.computeMortarSegmentBased(2,mult_type);
+      Esw = Dsw\Msw;
+      mult = E*(Esw*mult);
+   end
+
+   % plot multipliers along the interface
+
    switch type
-      case {'DUAL','CONF'}
+      case {'DUAL','CONF','UNBIASED'}
          [x,id] = sort(slaveMesh.coordinates(mortar.nodesSlave,1));
       case 'P0'
          c = [slaveMesh.coordinates(mortar.slaveTopol(:,1),1), slaveMesh.coordinates(mortar.slaveTopol(:,2),1)];
