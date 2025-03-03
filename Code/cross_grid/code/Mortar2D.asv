@@ -19,6 +19,8 @@ classdef Mortar2D < handle
       nSMat
       nMMat
       nNelem
+      f2cMaster
+      f2cSlave
    end
 
    methods
@@ -64,6 +66,7 @@ classdef Mortar2D < handle
          obj.nElSlave = sum(isSlave);
          obj.nNodesMaster = numel(obj.nodesMaster);
          obj.nNodesSlave = numel(obj.nodesSlave);
+         [obj.f2cMaster,obj.f2cSlave] = obj.buildFace2CellMap();
          getMatricesSize(obj);
          computeSlaveMatrix(obj);
       end
@@ -115,6 +118,38 @@ classdef Mortar2D < handle
          end
       end
 
+      function H = computeStabilizationMatrix(obj,KM,KS,D,M)
+         % correct mapping bewteen global coord and interface node ID
+         % use the algebraic approach to compute the stabilization matrix
+         % without a scalar parameter
+         H = zeros(obj.nElSlave);
+         for n = obj.nodesSlave'
+            % get edges sharing node n
+            edgeID = any(ismember(obj.slaveTopol,n),2);
+            if sum(edgeID)<2
+               % boundary node
+               continue
+            else
+               eS = find(edgeID); % slave cell ID in contact
+               nS = unique(obj.slaveTopol(eS,:));
+               % get master elements in contact
+               eM = [find(obj.elemConnectivity(:,eS(1)));find(obj.elemConnectivity(:,eS(2)))];
+               % list of nodes in contact
+               nM = unique(obj.masterTopol(eM,:));
+               nSid = ismember(obj.nodesSlave,nS);
+               nMid = ismember(obj.nodesMaster,nM);
+               % 
+               C = [-M(eS,nMid) D(eS,nSid)];
+               % swap rows and change sign
+               C = flipud(C);
+               C(2,:) = -C(2,:);
+               Kloc = diag([1./KM(nM);1./KS(nS)]);
+               Hloc = C*(Kloc*C');
+               H(eS,eS) = H(eS,eS)+Hloc;
+            end
+         end
+      end
+
       function H = computeL2Proj(obj)
          % stabilization matrix for the L2 projection of nodal entries
          H = zeros(obj.nNodesSlave);
@@ -132,13 +167,13 @@ classdef Mortar2D < handle
 
 
 
-      function [HM,HS] = computeConfCrossGridMat(obj)
-         n1 = find(obj.slaveCoord(:,1)==0);
-         n2 = find(obj.slaveCoord(:,1)==1);
-         n1 = n1(ismember(n1,obj.nodesSlave));
-         n2 = n2(ismember(n2,obj.nodesSlave));
-         el1 = find(any(ismember(obj.slaveTopol,n1),2));
-         el2 = find(any(ismember(obj.slaveTopol,n2),2));
+      function [HS,HM] = computeConfCrossGridMat(obj)
+         % n1 = find(obj.slaveCoord(:,1)==0);
+         % n2 = find(obj.slaveCoord(:,1)==1);
+         % n1 = n1(ismember(n1,obj.nodesSlave));
+         % n2 = n2(ismember(n2,obj.nodesSlave));
+         % el1 = find(any(ismember(obj.slaveTopol,n1),2));
+         % el2 = find(any(ismember(obj.slaveTopol,n2),2));
          HS = zeros(obj.nSMat,obj.nSMat);
          HM = zeros(obj.nSMat,obj.nMMat);
          if obj.degree < 2
@@ -170,10 +205,10 @@ classdef Mortar2D < handle
                   is = [is1 is2];
                   isMult = is;
                   %handle end points
-                  if ismember(jS,[el1 el2])
-                     isMult = is(ismember(is,[n1 n2]));
-                     Hloc = (h/2)*[1 1];
-                  end
+                  % if ismember(jS,[el1 el2])
+                  %    isMult = is(ismember(is,[n1 n2]));
+                  %    Hloc = (h/2)*[1 1];
+                  % end
                   HM(isMult, im) = HM(isMult, im) + Hloc;
                   HS(isMult, is) = HS(isMult, is) + Hloc;
                end
@@ -298,7 +333,7 @@ classdef Mortar2D < handle
          end
       end
 
-      function [D,M,S,varargout] = computeMortarConstant(obj,nGP,nInt,K)
+      function [D,M,varargout] = computeMortarConstant(obj,nGP,nInt)
          % K 
          % mortar matrices for piecewise constant multipliers
          g = Gauss(12,nGP,1);
@@ -354,12 +389,13 @@ classdef Mortar2D < handle
                   NSlave = NSlave(~id,:);
                   ptsGauss = ptsGauss(~id,:);
                end
+               % gather entries of D and M for stabilization contribution
             end
          end
          D = D(:,obj.nodesSlave);
          M = M(:, obj.nodesMaster);
          Dpartial = Dpartial(:,obj.nodesSlave);
-         if nargout > 3
+         if nargout > 2
             varargout{1} = Dpartial;
          end
       end
@@ -540,12 +576,11 @@ classdef Mortar2D < handle
             end
 
             %handle boundary elements
-            if ismember(j,[el1 el2])
-               NSlaveMult = ones(size(NSlaveMult,1),1); % constant basis function
-               idSlaveMult = idSlave(ismember(idSlave,[n1 n2]));
-            else
-               idSlaveMult = idSlave;
-            end
+            idSlaveMult = idSlave;
+            % if ismember(j,[el1 el2])
+            %    NSlaveMult = ones(size(NSlaveMult,1),1); % constant basis function
+            %    idSlaveMult = idSlave(ismember(idSlave,[n1 n2]));
+            % end
 
             % Loop trough master elements and store projected master
             % basis functions
@@ -821,6 +856,28 @@ classdef Mortar2D < handle
          Nslave_dual = zeros(numel(gpPos),2);
          Nslave_dual(:,1) = 0.5*(1-3*gpPos);
          Nslave_dual(:,2) = 0.5*(1+3*gpPos);
+      end
+
+      function [masterMap,slaveMap] = buildFace2CellMap(obj)
+         % get cell ID containing a face
+         mf2c = zeros(obj.nElMaster,1);
+         sf2c = zeros(obj.nElSlave,1);
+         listCell = (1:obj.nElSlave)';
+         for i = 1:obj.nElSlave
+            idMat = ismember(obj.mshSlave(listCell,:),obj.slaveTopol);
+            idMat = sum(idMat,2);
+            id = find(idMat==2);
+            listCell(id) = [];
+            assert(isscalar(id),'Invalid connectivity between face and cells');
+            sf2c(i) = listCell(id;
+         end
+
+         for i = 1:obj.nElMaster
+            idMat = ismember(obj.slaveTopol,obj.mshSlave);
+            id = find(all(idMat,2));
+            assert(isscalar(id),'Invalid connectivity between face and cells');
+            sf2c(i) = id;
+         end
       end
 
 

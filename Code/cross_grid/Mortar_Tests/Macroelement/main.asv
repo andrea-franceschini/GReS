@@ -13,7 +13,7 @@ clear; close all;
 nG = 6;
 E = 1; 
 nu = 0.25;
-integration = "P0"; % RBF,SB,P0
+integration = "SB"; % RBF,SB,P0
 
 Dmat = zeros(3);
 Dmat([1 5]) = 1-nu;
@@ -26,7 +26,7 @@ gaussQuad = Gauss(12,2,2);
 
 NM0 = 2;
 rat = 2;
-nR = 1;
+nR = 4;
 h = zeros(nR,1);
 inf = zeros(nR,1);
 sup = inf;
@@ -57,8 +57,8 @@ dof = DofMap(masterMesh,mortar.nodesMaster,slaveMesh,mortar.nodesSlave);
 
 
 % compute mortar operator1
-[Drbf, Mrbf] = mortar.computeMortarRBF(nG,4,'gauss','standard');
-[Dsb, Msb] = mortar.computeMortarSegmentBased(nG,'standard');
+[Drbf, Mrbf] = mortar.computeMortarRBF(nG,4,'gauss','dual');
+[Dsb, Msb] = mortar.computeMortarSegmentBased(nG,'dual');
 [Dconst,Mconst,Dconsistent] = mortar.computeMortarConstant(nG,4);
 
 dofIm = DofMap.getCompDoF(mortar.nodesMaster);
@@ -71,7 +71,6 @@ dofMult = dofIs;
 switch integration 
    case 'P0'
       dofMult = DofMap.getCompDoF((1:mortar.nElSlave)');
-      nMult = numel(dofMult);
 end
 Kmm = KMaster(dofM,dofM);
 KmIm = KMaster(dofM,dofIm);
@@ -82,6 +81,7 @@ KIsIs = KSlave(dofIs,dofIs);
 % expanding the mortar operator also to the y direction
 Erbf = Drbf\Mrbf;
 Esb = Dsb\Msb;
+H = zeros(numel(dofMult),numel(dofMult));
 switch integration
    case 'RBF'
       D = expandMat(Drbf,2);
@@ -96,17 +96,14 @@ switch integration
       H = (1/NS)*expandMat(H,2);
 end
 
-if ~strcmp(integration,'P0')
-   D([5 6],:) = D([5 6],:) + D([1 2],:);
-   D([end end-1],:) = D([end end-1],:) + D([3 4],:);
-   M([5 6],:) = M([5 6],:) + M([1 2],:);
-   M([end end-1],:) = M([end end-1],:) + M([3 4],:);
-   D([1 2 3 4],:) = [];
-   M([1 2 3 4],:) = [];
-   dofMult = DofMap.getCompDoF(mortar.nodesSlave(3:end),2);
-   nMult = numel(dofMult);
-   H = zeros(nMult,nMult);
-end
+if ~s
+D(3,:) = D(3,:) + D(1,:);
+D(end,:) = D(end,:) + D(2,:);
+M(3,:) = M(3,:) + M(1,:);
+M(end,:) = M(end,:) + M(2,:);
+D(1,:) = []; D(1,:) = [];
+M(1,:) = []; M(1,:) = [];
+dofMult = DofMap.getCompDoF(mortar.nodesSlave(3:end),1);
 
 % complete saddle point matrix
 r1 = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofMult))];
@@ -119,6 +116,7 @@ K = [r1;r2;r3;r4;r5];
 
 % Fix displacements BCS
 dirNod = unique(slaveMesh.edges(slaveMesh.edgeTag == 2,:));
+
 dirDoFSlave = dof.getDoF(dirNod,'slave',2);
 dirNod = unique(masterMesh.edges(masterMesh.edgeTag == 2,:));
 dirDoFMaster = dof.getDoF(dirNod,'master',2);
@@ -127,42 +125,49 @@ dirDoF = [dirDoFMaster;dirDoFSlave];
 K(dirDoF,:) = [];
 K(:,dirDoF) = [];
 
-%u = K\f;
+nMult = numel(dofMult);
+% eliminate multipliers on fault tip (only for nodal multipliers)
+if ~strcmp(integration,'P0')
+   %sum columns in B^t
+   K(:,end-numel(dofMult)+5) = K(:,end-numel(dofMult)+5)+K(:,end-numel(dofMult)+1);
+   K(:,end-1) = K(:,end-1)+K(:,end-numel(dofMult)+3);
+   K(:,end-numel(dofMult)+6) = K(:,end-numel(dofMult)+6)+K(:,end-numel(dofMult)+2);
+   K(:,end) = K(:,end)+K(:,end-numel(dofMult)+4);
+   %sum rows in B
+   K(end-numel(dofMult)+5,:) = K(end-numel(dofMult)+5,:)+K(end-numel(dofMult)+1,:);
+   K(end-1,:) = K(end-1,:)+K(end-numel(dofMult)+3,:);
+   K(end-numel(dofMult)+6,:) = K(end-numel(dofMult)+6,:)+K(end-numel(dofMult)+2,:);
+   K(end,:) = K(end,:)+K(end-numel(dofMult)+4,:);
+   %delete multipliers on the tip
+   % remove multipliers in the tip
+   d = (size(K,2)-nMult+1:size(K,2)-nMult+4);
+   K(d,:) = [];
+   K(:,d) = [];
+   nMult = nMult-4;
+end
+
 
 % Eigen-decomposition of Schur complement matrix
-A = K(1:end-nMult,1:end-nMult);
+%A = K(1:end-nMult,1:end-nMult);
 B = K(end-nMult+1:end,1:end-nMult);
-tic 
-X = A\B';
-S = B*X;
-
-% extract only some row/cols from B
-id = sum(full(B) ~= 0,1)==0;
-Bred = B(:,~id);
-Ared = A(~id,~id);
-Xred = Ared\Bred';
-Sred = Bred*Xred;
+id = sum(B,1)~=0;
+B = B(:,id);
 
 % Bt = B;
 % Bt(:,[1 2]) = B(:,[3 4]); 
 % Bt(:,[3 4]) = B(:,[1 2]);
 % Bt = -Bt;
 % H1 = Bt'*Bt;
-
+% S = -B*inv(A)*B';
 % B(:,)
-[vS,eS] = eig(full(S));
-inf(iref) = sqrt(min(abs(diag(eS))));
-sup(iref) = sqrt(max(abs(diag(eS))));
+[vB,eB] = svd(full(B));
+inf(iref) = min(diag(eB));
+sup(iref) = max(diag(eB));
 end
 %S = 0.5*(S+S');
-loglog(h, inf, 'k-o') % Grafico log-log
+loglog(h,inf,'k-o')
 hold on
-
-for i = 1:length(inf)-1
-    ratio = inf(i+1) / inf(i); % Calcola il rapporto tra due valori consecutivi
-    text(h(i+1), inf(i+1), sprintf('%.2f', ratio), 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
-end
-
+loglog(h,sup,'r-o')
 % [vs,lambdaS] = eig(S);
 % [vh,lambdaH] = eig(full(H));
 % e1 = -((1+nu)*(1-2*nu)/(E*(1-nu)));

@@ -5,7 +5,7 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 
 N = 2;
 xMin = 0;
-xMax = 2;
+xMax = 1;
 yMin = 1;
 yMax = 2;
 
@@ -23,9 +23,9 @@ Curve Loop(1) = {1, 2, 3, 4};
 Plane Surface(1) = {1};
 
 Transfinite Line{1} = N+1;
-Transfinite Line{2} = 2;
+Transfinite Line{2} = N+1;
 Transfinite Line{3} = N+1;
-Transfinite Line{4} = 2;
+Transfinite Line{4} = N+1;
 Transfinite Surface {1};
 Recombine Surface {1};
 

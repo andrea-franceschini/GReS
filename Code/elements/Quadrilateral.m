@@ -124,7 +124,7 @@
       area = zeros(length(idHexa),1);
       cellCentroid = zeros(length(idHexa),3);
       i = 0;
-      for el = idHexa
+      for el = idQuad
         i = i + 1;
         dJWeighed = getDerBasisFAndDet(obj,el,3);
         area(i) = sum(dJWeighed);
