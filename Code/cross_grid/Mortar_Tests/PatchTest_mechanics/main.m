@@ -1,7 +1,7 @@
 % 2D linear mechanics patch test
 
 % INPUT
-nG = 6;
+nG = 15;
 nInt = 4;
 gaussQuad = Gauss(12,2,2);
 
@@ -27,7 +27,7 @@ D(9) = 0.5*(1-2*nu);
 D = (E1/((1+nu)*(1-2*nu)))*D;
 DmatM = D;
 % Slave side
-E2 = 100000;
+E2 = 10000;
 D = zeros(3);
 D([1 5]) = 1-nu;
 D([2 4]) = nu;
@@ -36,8 +36,8 @@ D = (E2/((1+nu)*(1-2*nu)))*D;
 DmatS = D;
 
 
-nel = 10;   % number of elements on the slave interface
-rat = 0.75;  % numb master / numb slave elems
+nel = 60;   % number of elements on the slave interface
+rat = 0.3;  % numb master / numb slave elems
 
 %fig = figure('Visible', 'off');
 fig.Position = [100,100,800,600];
@@ -61,18 +61,21 @@ hold on
 
 for scheme = ["DUAL","STANDARD","CONFORMING","P0"] % accomodate UNBIASED in the future!!!
 nXs = nel+1;
-nYs = round(nXs);
+nYs = round(1*nXs);
 nXm = round(nel*rat+1);
 if strcmp(scheme,'CONFORMING')
    nXm = nXs;
 end
-nYm = round(nXm);
+nYm = round(1*nXm);
 % Import the mesh data into the Mesh object
 masterMesh = getMesh('Mesh/bottomBlock.geo','bottom',nXm,nYm);
 slaveMesh = getMesh('Mesh/topBlock.geo','top',nXs,nYs);
 % Element class for further stiffness matrix computation
 elemsMaster = Elements(masterMesh,gaussQuad);
 elemsSlave = Elements(slaveMesh,gaussQuad);
+
+Emaster = E1*ones(masterMesh.nSurfaces,1); 
+Eslave = E2*ones(slaveMesh.nSurfaces,1); 
 
 % Mesh size
 h = 1/nXs;
@@ -130,9 +133,10 @@ KImIm = KMaster(dofIm,dofIm);
 KIsIs = KSlave(dofIs,dofIs);
 
 if strcmp(scheme,'P0')
-   H1 = (h^2/E1)*mortar.computePressureJumpMat();
-   H2 = mortar.computeStabilizationMatrix(diag(KMaster),diag(KSlave),D,M);
-   H = expandMat(H1,2);
+   H1 = (h/E1)*mortar.computePressureJumpMat();
+   H1 = full(expandMat(H1,2));
+   H2 = mortar.computeStabilizationMatrix(Emaster,Eslave);
+   H = H2;
    % h = vecnorm(H2,2,2);
    %H = diag(h)*H1;
 else
@@ -217,6 +221,7 @@ u = K\f;
 mult = u(end-nMult+1:end);
 
 
+
 switch scheme
    case {'DUAL','CONFORMING','UNBIASED','STANDARD'}
       [x,id] = sort(slaveMesh.coordinates(mortar.nodesSlave(3:end),1));
@@ -224,6 +229,12 @@ switch scheme
       c = [slaveMesh.coordinates(mortar.slaveTopol(:,1),1), slaveMesh.coordinates(mortar.slaveTopol(:,2),1)];
       x = 0.5*sum(c,2);
       [x,id] = sort(x);
+      %collect displacement of master domain and slave domain, according to user assignment;
+      u_master = u(DofMap.getCompDoF(dof.nodeMapMaster));
+      u_slave = u(DofMap.getCompDoF(dof.nodeMapSlave));
+      plotSolution(slaveMesh,'slaveOut',u_slave);
+      plotSolution(masterMesh,'masterOut',u_master);
+      %
 end
 
 tx = mult(1:2:end);
@@ -281,7 +292,7 @@ set(legend, 'Interpreter', 'latex'); % Set legend to LaTeX
 legend('Location', 'best');
 
 fig.Visible = "on";
-exportgraphics(fig, strcat('Plots/Patch_',num2str(patch),'.pdf'), 'Resolution', 300); % High resolution
+%exportgraphics(fig, strcat('Plots/Patch_',num2str(patch),'.pdf'), 'Resolution', 300); % High resolution
 
 
 function mat = handleEndPoints(mat,mortar)

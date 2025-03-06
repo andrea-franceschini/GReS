@@ -1,12 +1,6 @@
-classdef Hexahedron < handle
+ classdef Hexahedron < handle
   % HEXAHEDRON element class
-
-  properties (Access = public)
-%     vol
-%     volNod
-%     cellCentroid
-  end
-  
+ 
   properties (Access = private)   % PRIVATE
 %
 % NODE ORDERING ASSUMPTION (same as Gmsh output):
@@ -36,23 +30,15 @@ classdef Hexahedron < handle
     GaussPts
     J1
     mesh
-%     vol
     J
     detJ
-%     invJ;
     N1
   end
 
   methods (Access = public)
     % Class constructor method
     function obj = Hexahedron(msh,GPoints)
-       % Calling the function to set element data
-%        obj.setElementData(data);
-       % ALLOCATE j
        obj.setHexahedron(msh,GPoints);
-%        findVolumeAndCentroid(obj);
-%        obj.J = zeros(3,3,obj.GaussPts.nNode);
-%        obj.detJ = zeros(obj.GaussPts.nNode,1);
     end
        
     function [outVar1,outVar2] = getDerBasisFAndDet(obj,el,flOut)   % mat,dJWeighed
@@ -87,33 +73,10 @@ classdef Hexahedron < handle
       end
    
     
-%     function findJacAndDet(obj,el)
-%       % Find the Jacobian matrix of the isoparametric map and its determinant
-%       obj.J = pagemtimes(obj.J1,obj.mesh.coordinates(obj.mesh.cells(el,:),:));
-%       obj.detJ = arrayfun(@(x) det(obj.J(:,:,x)),1:obj.GaussPts.nNode);
-%     end
-    
-    
     function N1Mat = getBasisFinGPoints(obj)
       N1Mat = obj.N1;
     end
     
-%     function mat = getDerBasisF(obj,el)
-%       obj.J = pagemtimes(obj.J1,obj.mesh.coordinates(obj.mesh.cells(el,:),:));
-%       invJTmp = arrayfun(@(x) inv(obj.J(:,:,x)),1:obj.GaussPts.nNode,'UniformOutput',false);
-%       obj.invJ = reshape(cell2mat(invJTmp),obj.mesh.nDim,obj.mesh.nDim,obj.GaussPts.nNode); %possibly we can overwrite J
-%       clear invJTmp
-%       mat = pagemtimes(obj.invJ,obj.J1);
-%     end
-%     
-%     function dJWeighed = getJacDet(obj)
-%       obj.detJ = arrayfun(@(x) det(obj.J(:,:,x)),1:obj.GaussPts.nNode);
-%       dJWeighed = obj.detJ.*(obj.GaussPts.weight)';
-%     end
-    
-%     function v = getVolume(obj,el)
-%       v = obj.vol(el);
-%     end
     function [vol,cellCentroid] = findVolumeAndCentroid(obj,idHexa)
       % Find the volume of the cells using the determinant of the Jacobian
       % of the isoparameric transformation
@@ -123,19 +86,9 @@ classdef Hexahedron < handle
       i = 0;
       for el = idHexa
         i = i + 1;
-%         findJacAndDet(obj,el)
-% % %         obj.J = pagemtimes(obj.J1,obj.mesh.coordinates(obj.mesh.cells(el,:),:));
-% % %         obj.detJ = arrayfun(@(x) det(obj.J(:,:,x)),1:obj.GaussPts.nNode);
-% % %         vol(i) = (obj.detJ) * (obj.GaussPts.weight);
         dJWeighed = getDerBasisFAndDet(obj,el,3);
         vol(i) = sum(dJWeighed);
         assert(vol(i)>0,'Volume less than 0');
-%         top = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
-%         obj.volNod(top) = obj.volNod(top) + obj.vol(el)/obj.mesh.cellNumVerts(el);
-%         for i=1:obj.mesh.cellNumVerts(el)
-%           obj.volNod(top(i)) = obj.volNod(top(i)) + obj.vol(el)/obj.mesh.cellNumVerts(el);
-%         end
-        %
         gPCoordinates = getGPointsLocation(obj,el);
         cellCentroid(i,:) = obj.detJ * gPCoordinates/vol(i);
       end

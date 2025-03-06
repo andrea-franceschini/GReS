@@ -9,8 +9,8 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 // strictly positive integer; here `1') and defined by a list of four numbers:
 // three coordinates (X, Y and Z) and the target mesh size (lc) close to the
 // point:
-nX = 9;
-nY = 9;
+nX = 19;
+nY = 19;
 
 Point(1) = {0, 0, 0};
 Point(2) = {1, 0, 0};
@@ -29,7 +29,7 @@ Transfinite Line{1} = nX;
 Transfinite Line{2} = nY;
 Transfinite Line{3} = nX;
 Transfinite Line{4} = nY;
-Transfinite Surface {1};
+//Transfinite Surface {1};
 Recombine Surface {1};
 
 Physical Curve("Interface_bot2top",1) = {3};

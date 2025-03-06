@@ -21,6 +21,7 @@ classdef Mortar2D < handle
       nNelem
       f2cMaster
       f2cSlave
+      areaMap
    end
 
    methods
@@ -69,6 +70,7 @@ classdef Mortar2D < handle
          [obj.f2cMaster,obj.f2cSlave] = obj.buildFace2CellMap();
          getMatricesSize(obj);
          computeSlaveMatrix(obj);
+         getAreaMapMatrix(obj);
       end
 
       function obj = computeSlaveMatrix(obj)
@@ -118,12 +120,15 @@ classdef Mortar2D < handle
          end
       end
 
-      function H = computeStabilizationMatrix(obj,KM,KS,D,M)
+      function H = computeStabilizationMatrix(obj,Em,Es)
          % correct mapping bewteen global coord and interface node ID
          % use the algebraic approach to compute the stabilization matrix
          % without a scalar parameter
-         H = zeros(obj.nElSlave);
+         % Ispired by Franceschini 2022 (eq. 10)
+         H = zeros(2*obj.nElSlave);
          for n = obj.nodesSlave'
+            Kmaster = zeros(2,2);
+            Kslave = zeros(2,2);
             % get edges sharing node n
             edgeID = any(ismember(obj.slaveTopol,n),2);
             if sum(edgeID)<2
@@ -131,21 +136,27 @@ classdef Mortar2D < handle
                continue
             else
                eS = find(edgeID); % slave cell ID in contact
-               nS = unique(obj.slaveTopol(eS,:));
+               l1 = getLength(obj,eS(1));
+               l2 = getLength(obj,eS(2));
+               for e = eS'
+                  % add stiffness contribution
+                  Kslave = Kslave + obj.computeSlaveStabStiff(e,Es);
+               end
                % get master elements in contact
-               eM = [find(obj.elemConnectivity(:,eS(1)));find(obj.elemConnectivity(:,eS(2)))];
-               % list of nodes in contact
-               nM = unique(obj.masterTopol(eM,:));
-               nSid = ismember(obj.nodesSlave,nS);
-               nMid = ismember(obj.nodesMaster,nM);
-               % 
-               C = [-M(eS,nMid) D(eS,nSid)];
-               % swap rows and change sign
-               C = flipud(C);
-               C(2,:) = -C(2,:);
-               Kloc = diag([1./KM(nM);1./KS(nS)]);
-               Hloc = C*(Kloc*C');
-               H(eS,eS) = H(eS,eS)+Hloc;
+               eM = unique([find(obj.elemConnectivity(:,eS(1)));find(obj.elemConnectivity(:,eS(2)))]);
+               for e = eM'
+                  Kmaster = Kmaster + obj.computeMasterStabStiff(e,eS,Em);
+               end
+               % normalize stiffness contribution to non-uniform mesh sizes
+               % mesh size ratio
+               % we assume that the mesh size is uniform in neighboring
+               % cells
+               
+               K = inv(Kmaster)+inv(Kslave); % 2 by 2 diagonal matrix
+
+               Hloc = (0.25*l1*l2)*[K -K; -K K];
+               dof = DofMap.getCompDoF(eS);
+               H(dof,dof) = H(dof,dof)+Hloc;
             end
          end
       end
@@ -858,30 +869,101 @@ classdef Mortar2D < handle
          Nslave_dual(:,2) = 0.5*(1+3*gpPos);
       end
 
-      function [masterMap,slaveMap] = buildFace2CellMap(obj)
+      function [mf2c,sf2c] = buildFace2CellMap(obj)
          % get cell ID containing a face
          mf2c = zeros(obj.nElMaster,1);
          sf2c = zeros(obj.nElSlave,1);
-         listCell = (1:obj.nElSlave)';
+         listCell = (1:obj.mshSlave.nSurfaces)';
          for i = 1:obj.nElSlave
-            idMat = ismember(obj.mshSlave(listCell,:),obj.slaveTopol);
+            idMat = ismember(obj.mshSlave.surfaces(listCell,:),obj.slaveTopol(i,:));
             idMat = sum(idMat,2);
             id = find(idMat==2);
+            assert(isscalar(id),'Invalid connectivity between face and cells');
+            sf2c(i) = listCell(id);
             listCell(id) = [];
-            assert(isscalar(id),'Invalid connectivity between face and cells');
-            sf2c(i) = listCell(id;
          end
-
+         listCell = (1:obj.mshMaster.nSurfaces)';
          for i = 1:obj.nElMaster
-            idMat = ismember(obj.slaveTopol,obj.mshSlave);
-            id = find(all(idMat,2));
+            idMat = ismember(obj.mshMaster.surfaces(listCell,:),obj.masterTopol(i,:));
+            idMat = sum(idMat,2);
+            id = find(idMat==2);
             assert(isscalar(id),'Invalid connectivity between face and cells');
-            sf2c(i) = id;
+            mf2c(i) = listCell(id);
+            listCell(id) = [];
          end
+      end
+
+      function K = computeSlaveStabStiff(obj,el,E)
+         c = obj.f2cSlave(el);
+         A = obj.mshSlave.surfArea(c);
+         % size of the bounding box
+         x = obj.mshSlave.coordinates(obj.mshSlave.surfaces(c,:),1);
+         y = obj.mshSlave.coordinates(obj.mshSlave.surfaces(c,:),2);
+         lx = abs(max(x) - min(x));
+         ly = abs(max(y) - min(y));
+         Ecell = E(c);
+         K = diag((Ecell*A)./([lx;ly]));
       end
 
 
 
+      function K = computeMasterStabStiff(obj,elM,elS,E)
+         % get master element area sharing support with slave element pair
+         r = sum(obj.areaMap(elM,elS),"all"); % effective area of m
+         c = obj.f2cMaster(elM);
+         A = obj.mshMaster.surfArea(c);
+         % size of the bounding box
+         x = obj.mshMaster.coordinates(obj.mshMaster.surfaces(c,:),1);
+         y = obj.mshMaster.coordinates(obj.mshMaster.surfaces(c,:),2);
+         lx = abs(max(x) - min(x));
+         ly = abs(max(y) - min(y));
+         Ecell = E(c);
+
+         K = diag(r*(Ecell*A)./([lx;ly]));
+      end
+
+      function getAreaMapMatrix(obj)
+         % matrix computing the area shared between each pair of master and
+         % slave elements (useful to weight the stiffness contribution in
+         % the stabilization parameter)
+         iVec = zeros(nnz(obj.elemConnectivity),1);
+         jVec = iVec; 
+         aVec = iVec;
+         k = 0;
+         for i = 1:obj.nElMaster
+            % get element of the support
+            a = obj.masterCoord(obj.masterTopol(i,1),:);
+            b = obj.masterCoord(obj.masterTopol(i,end),:);
+            % get shape function values and interpolation points coordinate
+            slave_elems = find(obj.elemConnectivity(i,:));
+            % loop trough connected slave elements
+            for j = slave_elems
+               % get nodes
+               c = obj.slaveCoord(obj.slaveTopol(j,1),:);
+               d = obj.slaveCoord(obj.slaveTopol(j,end),:);
+               % find intersection between master and slave (just looking at the
+               % x-projection)
+               tmp = sort([a(1) b(1) c(1) d(1)]);
+               i1 = [tmp(2) 0];
+               i2 = [tmp(3) 0];
+               h = i2(1)-i1(1);                         % intersection size
+               % get GP in the intersection element
+               iVec(k+1) = i;
+               jVec(k+1) = j;
+               aVec(k+1) = h;
+               k = k + 1;
+            end
+         end
+         A = sparse(iVec,jVec,aVec);
+         obj.areaMap = A./sum(A,2);
+      end
+
+      function l = getLength(obj,el)
+         n = obj.slaveTopol(el,:);
+         x = obj.slaveCoord(n,1);
+         y = obj.slaveCoord(n,2);
+         l = sqrt((x(1)-x(2))^2+(y(1)-y(2))^2);
+      end
    end
 
 

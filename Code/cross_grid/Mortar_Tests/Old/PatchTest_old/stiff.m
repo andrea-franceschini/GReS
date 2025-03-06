@@ -5,6 +5,20 @@ nSurfByType = histc(mesh.surfaceVTKType,[5, 9]);
 iiVec = zeros(nEntryKLoc*nSurfByType,1);
 jjVec = zeros(nEntryKLoc*nSurfByType,1);
 KVec = zeros(nEntryKLoc*nSurfByType,1);
+
+
+if nSurfByType(2) == 0
+   l1 = 3;
+else
+   l1 = 4*gauss.nNode;
+end
+% Matrix of derivatives of the basis functions for 2D elements
+indB2D = zeros(4*l1,2);
+indB2D(:,1) = repmat([1, 2, 2, 1],[1,l1]);
+indB2D(:,2) = repmat([1, 3, 5, 6],[1,l1]);
+indB2D(:,1) = indB2D(:,1) + repelem(2*(0:(l1-1))',4);
+indB2D(:,2) = indB2D(:,2) + repelem(6*(0:(l1-1))',4);
+
 %
 l1 = 0;
 l2 = 0;
@@ -15,13 +29,13 @@ for el = 1:mesh.nSurfaces
             N = getDerBasisF(elem.tri,el);
             vol = findArea(elem.tri,el);
             B = zeros(3,6);
-            B(elem.indB2D(1:12,2)) = N(elem.indB2D(1:12,1));
+            B(indB2D(1:12,2)) = N(indB2D(1:12,1));
             KLoc = B'*D*B*vol;
             s1 = nEntryKLoc(1);
         case 9 % Hexahedra % CHECK LATER!
             [N,dJWeighed] = getDerBasisFAndDet(elem.quad,el,1);
             B = zeros(3,8,gauss.nNode);
-            B(elem.indB2D(:,2)) = N(elem.indB2D(:,1));
+            B(indB2D(:,2)) = N(indB2D(:,1));
             Ks = pagemtimes(pagemtimes(B,'ctranspose',D,'none'),B);
             Ks = Ks.*reshape(dJWeighed,1,1,[]);
             KLoc = sum(Ks,3);
