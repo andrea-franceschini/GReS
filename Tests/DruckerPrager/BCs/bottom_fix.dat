@@ -1,7 +1,7 @@
-SurfBC            % BC item 
-Dir            % BC type 
-Poro            % Physics 
-bottom_fix            % BC name 
-BCs/bottom_fix/list 
-0.000000 BCs/bottom_fix/time0.dat 
+SurfBC                               % BC item
+Dir                                  % BC type
+Poro                                 % Physics
+bottom_fix                           % BC name
+BCs/bottom_fix/list
+0.000000 BCs/bottom_fix/time0.dat
 End

@@ -30,12 +30,6 @@ fileName = 'Mesh/column.msh';
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
 
-
-% UTILITY TO WRITE BC FILES (check Code/boundaries folder in github feature/moretto)
-% writeBCfiles('bottom_fix','NodeBC','Dir','Poro',["x","y","z"],'bottom_fix',0,0,topology,1);
-% writeBCfiles('load_z','SurfBC','Neu','Poro',"z",'top_vertLoad',[0 1],[0 -100],topology,2);
-%writeBCfiles('load_x','SurfBC','Neu','Poro',"x",'top_shearLoad',[0 1],[0 10],topology,2);
-%%
 %----------------------------- MATERIALS -----------------------------
 %
 % Set the input file name
@@ -73,7 +67,7 @@ printUtils = OutState(model,topology,'outTime.dat','folderName','vtkOutput');
 %------------------------ BOUNDARY CONDITIONS ------------------------
 %
 % Set the input file
-fileName = ["BCs/bottom_fix.dat","BCs/load_z.dat"];
+fileName = ["BCs/bottom_fix.dat", "BCs/load_z.dat"];
 %
 % Create an object of the "Boundaries" class and read the boundary
 % conditions
