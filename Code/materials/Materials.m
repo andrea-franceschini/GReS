@@ -169,6 +169,8 @@ classdef Materials < handle
             matProp.ConstLaw = HypoElastic(fID, matFileName);
           case 'TransvElastic'
             matProp.ConstLaw = TransvElastic(fID, matFileName);
+          case 'DruckerPrager'
+            matProp.ConstLaw = DruckerPrager(fID, matFileName);
           case 'SSCM'
             matProp.ConstLaw = SSCM(fID, matFileName);
           case 'PorousRock'
