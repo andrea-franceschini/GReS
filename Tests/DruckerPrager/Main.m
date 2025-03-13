@@ -73,12 +73,33 @@ fileName = ["BCs/bottom_fix.dat", "BCs/load_z.dat"];
 % conditions
 bound = Boundaries(fileName,model,grid);
 
+% Set initial stress state
+nu = mat.db(1).ConstLaw.nu;
+z0 = -1000; % average depth
+gamma = 12000; % N/m^3
+M1 = 0.50; %nu / (1-nu);
+M2 = 0.50; %nu / (1-nu);
+cells = dofmanager.getFieldCells("Poromechanics");
+for el = cells'
+  switch topology.cellVTKType(el)
+    case 10
+      z = z0 + elems.cellCentroid(el,2);
+      sigmaz = gamma * z;
+      sigmax = M1 * sigmaz;
+      sigmay = M2 * sigmaz;
+      state.iniStress(el,1) = sigmax;
+      state.iniStress(el,2) = sigmay;
+      state.iniStress(el,3) = sigmaz;
+  end
+end
+state.conv.stress = state.iniStress;
+
 %
 % ---------------------------- SOLUTION -------------------------------
 %
 % Create the object handling the (nonlinear) solution of the problem
 solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
-[simState] = solver.NonLinearLoop();
+[simState, endState] = solver.NonLinearLoop();
 %
 % Finalize the print utility
 printUtils.finalize()

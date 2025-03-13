@@ -27,11 +27,11 @@ classdef FCSolver < handle
   end
   
   methods (Access = public)
-      function obj = FCSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin)
+    function obj = FCSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin)
       obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin);
     end
 
-   function [simStat] = NonLinearLoop(obj)
+    function [simStat, statek] = NonLinearLoop(obj)
       simStat = 1;
       % Initialize the time step increment
       obj.dt = obj.simParameters.dtIni;  
@@ -68,14 +68,15 @@ classdef FCSolver < handle
          rhs = assembleRhs(obj.linSyst);
 
          % compute Rhs norm
-         rhsNorm = norm(rhs,2);
+         rhsNorm0 = norm(rhs,2);
+         rhsNorm = rhsNorm0;
          % consider output of local field rhs contribution
 
-         tolWeigh = obj.simParameters.relTol*rhsNorm;
+         tolWeigh = obj.simParameters.relTol*rhsNorm0;
          obj.iter = 0;
          %
          if obj.simParameters.verbosity > 1
-            fprintf('0     %e\n',rhsNorm);
+            fprintf('0     %e\n',1.0);
          end
          while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
                && (rhsNorm > absTol)) || obj.iter == 0
@@ -101,7 +102,7 @@ classdef FCSolver < handle
             rhsNorm = norm(rhs,2);
 
             if obj.simParameters.verbosity > 1
-               fprintf('%d     %e\n',obj.iter,rhsNorm);
+               fprintf('%d     %e\n',obj.iter,rhsNorm/rhsNorm0);
             end
          end
          %
@@ -124,8 +125,9 @@ classdef FCSolver < handle
          % Manage next time step
          delta_t = manageNextTimeStep(obj,delta_t,flConv);
       end
+      statek = obj.statek;
       %
-   end
+    end
   end
   
   methods (Access = private)
