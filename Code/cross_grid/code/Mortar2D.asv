@@ -520,9 +520,9 @@ classdef Mortar2D < handle
       % end
 
       function H = computeMassMat(obj,mult_type)
-         % type: family of Radial Basis function to use
-         % mult_type:
          g = Gauss(12,3,1);
+         if strcmp(mult_type)
+            
          H = zeros(obj.nSMat,obj.nSMat);
          % Loop trough slave elements
          for j = 1:obj.nElSlave
@@ -540,9 +540,12 @@ classdef Mortar2D < handle
                case 'dual'
                   % compute dual basis function
                   NSlaveMult = computeDualBasisF(obj,gpPos);
+               case 'P0'
+                  idSlave = j;
+                  NSlaveMult = ones(size(NSlave,1),1);
             end
-            Hloc = 0.25*ones(2);
-            H(idSlave, idSlave) = H(idSlave, idSlave) + Hloc;
+            Hloc = NSlaveMult'*(NSlaveMult.*gpW);
+            H(idSlave, idSlave) = H(idSlave, idSlave) + (0.5*h)*Hloc;
          end
          H = H(obj.nodesSlave, obj.nodesSlave);
       end
@@ -909,7 +912,7 @@ classdef Mortar2D < handle
 
       function K = computeMasterStabStiff(obj,elM,elS,E)
          % get master element area sharing support with slave element pair
-         r = sum(obj.areaMap(elM,elS),"all"); % effective area of m
+         r = sum(obj.areaMap(elM,elS),"all"); % effective area of master
          c = obj.f2cMaster(elM);
          A = obj.mshMaster.surfArea(c);
          % size of the bounding box

@@ -62,7 +62,7 @@ classdef postProc
                         case 5 % Triangle
                             top = obj.mesh.surfaces(el, 1:obj.mesh.surfaceNumVerts(el));
                             N = getDerBasisF(obj.element.tri,el);
-                            vol = findArea(obj.element.tri,el);
+                            [vol,~] = findAreaAndCentroid(obj.element.tri,el);
                             semiH1(el) = (N*(obj.u_ex(top)-obj.u(top)))'*(N*(obj.u_ex(top)-obj.u(top)));
                             semiH1(el) = semiH1(el)*vol;
                         case 9 % Quadrilateral
@@ -148,7 +148,8 @@ classdef postProc
                 nodes = obj.mesh.surfaces(el,:);
                 switch obj.mesh.surfaceVTKType(el)
                     case 5
-                        a(nodes) = a(nodes) + obj.element.tri.findArea(el)/3;
+                       [A,~] = obj.element.tri.findAreaAndCentroid(el);
+                        a(nodes) = a(nodes) + A/3;
                     case 9
                         a(nodes) = a(nodes) + obj.element.quad.findNodeArea(el);
                 end

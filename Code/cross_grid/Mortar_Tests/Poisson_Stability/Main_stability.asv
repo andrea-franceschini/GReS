@@ -8,6 +8,9 @@ close all
 % flagPlot: true --> results to Paraview in this directory
 fPlot = true;
 
+constraint_type = 'red';
+% full: do not remove end-point lagrange multipliers
+% red: remove endpoint multipliers
 
 % IMPORT MESHES
 masterMesh = Mesh();
@@ -22,14 +25,14 @@ degree = 1;
 
 fileNameMaster = [];
 fileNameSlave = [];
-mult_type = 'dual';
+mult_type = 'standard';
 
 % Set the input file name
 nGrids = 1;
 % selecting master and slave domain
 
 % selecting integration approach
-for type = ["DUAL","CONF","P0"]
+for type = ["DUAL""P0"]
    nInt = 4;
    nGP = 4;
    switch type
@@ -37,6 +40,10 @@ for type = ["DUAL","CONF","P0"]
          brokenL2_RBF = zeros(nGrids,1);
          brokenH1_RBF = zeros(nGrids,1);
          leg = 'Dual';
+      case 'STANDARD'
+         brokenL2_STAND = zeros(nGrids,1);
+         brokenH1_STAND = zeros(nGrids,1);
+         leg = 'Standard';
       case 'P0'
          brokenL2_P0 = zeros(nGrids,1);
          brokenH1_P0 = zeros(nGrids,1);
@@ -50,8 +57,8 @@ for type = ["DUAL","CONF","P0"]
    end
    h = zeros(nGrids,1);
    %grids = 2; % row vector for selecting in which to compute pointwise error
-   NX0 = 10; % Initial number of elements in the top mesh
-   rat = 2;
+   NX0 = 20; % Initial number of elements in the top mesh
+   rat = 0.5;
    for mCount = 1:nGrids
       NelX = NX0*(2^(mCount-1)); 
       fprintf('Grid h%i nGP = %i  nInt = %i  Integration: %s \n',mCount, nGP, nInt, type);
@@ -73,7 +80,9 @@ for type = ["DUAL","CONF","P0"]
       %D = mortar.D;
       switch type
          case 'DUAL'
-            [D,M] = mortar.computeMortarRBF(nGP,nInt,'gauss',mult_type);
+            [D,M] = mortar.computeMortarRBF(nGP,nInt,'gauss','dual');
+         case 'STANDARD'
+            [D,M] = mortar.computeMortarRBF(nGP,nInt,'gauss','standard');
          case 'P0'
             [D,M] = mortar.computeMortarConstant(nGP,nInt);
          case 'CONF'
@@ -91,13 +100,26 @@ for type = ["DUAL","CONF","P0"]
       dofIs = DofMap.getCompDoF(mortar.nodesSlave,1);
       dofS = DofMap.getCompDoF((1:slaveMesh.nNodes)',1);
       dofS = dofS(~ismember(dofS,dofIs));
-      dofMult = dofIs;
       switch type
          case 'P0'
             dofMult = DofMap.getCompDoF((1:mortar.nElSlave)',1);
+         case {'DUAL','CONF','STANDARD'}
+            E = D\M;
+            % handle end points
+            if strcmp(constraint_type,'red')
+               D(3,:) = D(3,:) + D(1,:);
+               D(end,:) = D(end,:) + D(2,:);
+               M(3,:) = M(3,:) + M(1,:);
+               M(end,:) = M(end,:) + M(2,:);
+               D(1,:) = []; D(1,:) = [];
+               M(1,:) = []; M(1,:) = [];
+               dofMult = DofMap.getCompDoF(mortar.nodesSlave(3:end),1);
+            else
+               dofMult = DofMap.getCompDoF(mortar.nodesSlave(1:end),1);
+            end
+            
       end
-
-      % computing Stiffness matrix on top and bottom domainall
+      % computing Stiffness matrix on top and bottom domain
       [KMaster, aNmaster] = stiffPoisson(masterMesh, elemsMaster);
       [KSlave, aNslave] = stiffPoisson(slaveMesh, elemsSlave);
       % get id of nodes belonging to master and slave interfaces
@@ -111,7 +133,8 @@ for type = ["DUAL","CONF","P0"]
       hM = h(mCount);
       hS = 1/mortar.nElSlave;
       if strcmp(type,'P0')
-         H = hM*mortar.computePressureJumpMat();
+         %H = hM*mortar.computePressureJumpMat();
+         H = zeros(length(dofMult),length(dofMult));
       else
          H = zeros(length(dofMult),length(dofMult));
       end
@@ -177,7 +200,12 @@ for type = ["DUAL","CONF","P0"]
       [K,f] = applyDir(dofLatMaster, zeros(length(dofLatMaster),1), K, f);
       % slave domain
       nodesLatSlave = unique(slaveMesh.edges(slaveMesh.edgeTag == 2,:));
-      %nodesLatSlave = nodesLatSlave(~ismember(nodesLatSlave, mortar.nodesSlave));
+      switch type
+         case {'DUAL','STANDARD'}
+            if strcmp(constraint_type,'full')
+            nodesLatSlave = nodesLatSlave(~ismember(nodesLatSlave, mortar.nodesSlave));
+            end
+      end
       %
       % get corresponding DoFs in the linear system
       dofLatSlave = dof.getDoF(nodesLatSlave,'slave',1);
@@ -186,7 +214,6 @@ for type = ["DUAL","CONF","P0"]
 
       %
       % -------------------------------- SOLVE SYSTEM --------------------------
-
       % solve linear system
       u = K\f;
       u_master = zeros(masterMesh.nNodes,1);
@@ -223,6 +250,9 @@ for type = ["DUAL","CONF","P0"]
          case 'DUAL'
             brokenL2_RBF(mCount) = bL2;
             brokenH1_RBF(mCount) = bH1;
+         case 'STANDARD'
+            brokenL2_STAND(mCount) = bL2;
+            brokenH1_STAND(mCount) = bH1;
          case 'P0'
             brokenL2_P0(mCount) = bL2;
             brokenH1_P0(mCount) = bH1;
@@ -238,8 +268,12 @@ for type = ["DUAL","CONF","P0"]
    % plot multipliers along the interface
 
    switch type
-      case {'DUAL','CONF','UNBIASED'}
-         [x,id] = sort(slaveMesh.coordinates(mortar.nodesSlave,1));
+      case {'DUAL','STANDARD','CONF','UNBIASED'}
+         if strcmp(constraint_type,'full')
+            [x,id] = sort(slaveMesh.coordinates(mortar.nodesSlave(1:end),1));
+         else
+            [x,id] = sort(slaveMesh.coordinates(mortar.nodesSlave(3:end),1));
+         end
       case 'P0'
          c = [slaveMesh.coordinates(mortar.slaveTopol(:,1),1), slaveMesh.coordinates(mortar.slaveTopol(:,2),1)];
          x = 0.5*sum(c,2);
@@ -250,15 +284,20 @@ for type = ["DUAL","CONF","P0"]
    xlabel('x-coordinate interface')
    ylabel('Multiplier')
    hold on
-      % Stabilization trough projection
-   if strcmp(type,'DUAL')
-      E = D\M;
-      mortarSwap = Mortar2D(1,slaveMesh,1,masterMesh,1);
-      [Dsw, Msw] = mortarSwap.computeMortarSegmentBased(2,mult_type);
-      Esw = Dsw\Msw;
-      mult = E*(Esw*mult);
-      plot(x,mult(id),'s-','LineWidth',1,'DisplayName','Naive projection')
-   end
+      %Stabilization trough projection
+   % if strcmp(type,'DUAL')
+   %    % expand the solution to deleted multipliers
+   %    mult2 = zeros(numel(dofMult)+2,1);
+   %    mult2(1) = mult(1);
+   %    mult2(2) = mult(end);
+   %    mult2(3:end) = mult;
+   %    mortarSwap = Mortar2D(1,slaveMesh,1,masterMesh,1);
+   %    [Dsw, Msw] = mortarSwap.computeMortarSegmentBased(2,mult_type);
+   %    Esw = Dsw\Msw;
+   %   % mult = E*(Esw*mult2);
+   %    [x,id] = sort(slaveMesh.coordinates(mortar.nodesSlave,1));
+   %    plot(x,mult(id),'s-','LineWidth',1,'DisplayName','Naive projection')
+   % end
 
    if fPlot
       plotParaview(masterMesh,strcat('SOLmaster_',type,'_h',num2str(mCount)), u_master', 'x')
@@ -271,34 +310,36 @@ end
 figure(1)
 % plot([0 1],[0 0],'k-','LineWidth',1,'Exact')
 legend show
+exportgraphics(figure(1), strcat('Plots/instab_sides','.pdf'), 'Resolution', 300); % High resolution
 
-figure(2)
-tiledlayout(1,1) % Crea un layout 1x2
+
+% figure(2)
+% tiledlayout(1,1) % Crea un layout 1x2
 
 % Primo plot: Broken L2 norm
-nexttile
-loglog(h, brokenL2_RBF, 'b-o', 'LineWidth', 1.5, 'MarkerSize', 8, 'DisplayName', 'DUAL - Broken L2 Norm') % RBF in blu
-hold on
-loglog(h, brokenL2_P0, 'r-s', 'LineWidth', 1.5, 'MarkerSize', 8, 'DisplayName', 'P0 - Broken L2 Norm') % P0 in rosso
-loglog(h, brokenL2_CONF, 'k-d', 'LineWidth', 1.5, 'MarkerSize', 8, 'DisplayName', 'CONFORMING - Broken L2 Norm') % CONF in nero
-
-% Linea di riferimento h^2 spostata verso il basso
-loglog(h, 0.5 * h.^2 * (brokenL2_RBF(1)/h(1)^2), 'K-.', 'LineWidth', 1, 'DisplayName', 'h^2')
-
-% Miglioramenti grafici
-legend('Location', 'southwest', 'FontSize', 12) % Sposta la legenda
-xlabel('h', 'FontSize', 12, 'FontWeight', 'bold')
-ylabel('Error', 'FontSize', 12, 'FontWeight', 'bold')
-title('Broken L2 Norm', 'FontSize', 14, 'FontWeight', 'bold')
-
-% Secondo plot: Broken H1 norm
 % nexttile
-% loglog(h, brokenH1_RBF, 'b-o', 'DisplayName', 'DUAL - Broken H1 Norm') % RBF in blu
+% loglog(h, brokenL2_RBF, 'b-o', 'LineWidth', 1.5, 'MarkerSize', 8, 'DisplayName', 'DUAL - Broken L2 Norm') % RBF in blu
 % hold on
-% loglog(h, brokenH1_P0, 'r-s', 'DisplayName', 'P0 - Broken H1 Norm') % P0 in rosso
-% loglog(h, brokenH1_CONF, 'k-s', 'DisplayName', 'CONFORMING - Broken L2 Norm') % P0 in rosso
-% loglog(h, h * (brokenH1_RBF(1)/h(1)), 'k-.', 'DisplayName', 'h') % Riferimento
-% legend show
-% xlabel('h')
-% ylabel('Error')
-% title('Broken H1 Norm')
+% loglog(h, brokenL2_P0, 'r-s', 'LineWidth', 1.5, 'MarkerSize', 8, 'DisplayName', 'P0 - Broken L2 Norm') % P0 in rosso
+% loglog(h, brokenL2_CONF, 'k-d', 'LineWidth', 1.5, 'MarkerSize', 8, 'DisplayName', 'CONFORMING - Broken L2 Norm') % CONF in nero
+% 
+% % Linea di riferimento h^2 spostata verso il basso
+% loglog(h, 0.5 * h.^2 * (brokenL2_RBF(1)/h(1)^2), 'K-.', 'LineWidth', 1, 'DisplayName', 'h^2')
+% 
+% % Miglioramenti grafici
+% legend('Location', 'southwest', 'FontSize', 12) % Sposta la legenda
+% xlabel('h', 'FontSize', 12, 'FontWeight', 'bold')
+% ylabel('Error', 'FontSize', 12, 'FontWeight', 'bold')
+% title('Broken L2 Norm', 'FontSize', 14, 'FontWeight', 'bold')
+% 
+% % Secondo plot: Broken H1 norm
+% % nexttile
+% % loglog(h, brokenH1_RBF, 'b-o', 'DisplayName', 'DUAL - Broken H1 Norm') % RBF in blu
+% % hold on
+% % loglog(h, brokenH1_P0, 'r-s', 'DisplayName', 'P0 - Broken H1 Norm') % P0 in rosso
+% % loglog(h, brokenH1_CONF, 'k-s', 'DisplayName', 'CONFORMING - Broken L2 Norm') % P0 in rosso
+% % loglog(h, h * (brokenH1_RBF(1)/h(1)), 'k-.', 'DisplayName', 'h') % Riferimento
+% % legend show
+% % xlabel('h')
+% % ylabel('Error')
+% % title('Broken H1 Norm')

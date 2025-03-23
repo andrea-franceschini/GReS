@@ -520,8 +520,6 @@ classdef Mortar2D < handle
       % end
 
       function H = computeMassMat(obj,mult_type)
-         % type: family of Radial Basis function to use
-         % mult_type:
          g = Gauss(12,3,1);
          H = zeros(obj.nSMat,obj.nSMat);
          % Loop trough slave elements
@@ -541,10 +539,21 @@ classdef Mortar2D < handle
                   % compute dual basis function
                   NSlaveMult = computeDualBasisF(obj,gpPos);
             end
-            Hloc = 0.25*ones(2);
-            H(idSlave, idSlave) = H(idSlave, idSlave) + Hloc;
+            Hloc = NSlaveMult'*(NSlaveMult.*gpW);
+            H(idSlave, idSlave) = H(idSlave, idSlave) + (0.5*h)*Hloc;
          end
          H = H(obj.nodesSlave, obj.nodesSlave);
+      end
+
+      function H = computeMassMatP0(obj)
+         H = zeros(obj.nElSlave,obj.nElSlave);
+         for j = 1:obj.nElSlave
+            % nodes of slave element
+            s1 = obj.slaveCoord(obj.slaveTopol(j,1),:);
+            s2 = obj.slaveCoord(obj.slaveTopol(j,end),:);
+            h = sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2);
+            H(j,j) = H(j,j) + h;
+         end
       end
 
       function [D,M,varargout] = computeMortarRBF(obj,nGP,nInt,type,mult_type)

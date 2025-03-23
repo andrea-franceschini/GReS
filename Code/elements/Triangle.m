@@ -136,8 +136,10 @@ classdef Triangle < handle
          i = 0;
          for el = idTri
             i = i + 1;
-            dJWeighed = getDerBasisFAndDet(obj,el,3);
-            area(i) = sum(dJWeighed);
+            top = obj.mesh.surfaces(el,1:3);
+            e1 = obj.mesh.coordinates(top(3),:)-obj.mesh.coordinates(top(1),:);
+            e2 = obj.mesh.coordinates(top(3),:)-obj.mesh.coordinates(top(2),:);
+            area(i) = 0.5*norm(cross(e1,e2));
             assert(area(i)>0,'Volume less than 0');
             coord = obj.mesh.coordinates(obj.mesh.surfaces(idTri,:),:);
             cellCentroid(i,:) = 1/3*(sum(coord));
