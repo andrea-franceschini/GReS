@@ -41,7 +41,7 @@ classdef VGMCurves < handle
       %
       figure(1)
       fplot(SeFun,[10^(discrInput.range(1)),10^(discrInput.range(2))],'r-');
-      set(gca,'XScale','log');
+      %set(gca,'XScale','log');
       hold on
       plot(points(2:end),SePoints(2:end),'r*');
       title('Capillary curve');
@@ -53,7 +53,7 @@ classdef VGMCurves < handle
       %
       figure(2)
       fplot(krFun,[10^(discrInput.range(1)),10^(discrInput.range(2))],'r-');
-      set(gca,'XScale','log','YScale','log');
+      %set(gca,'XScale','log','YScale','log');
       hold on
       plot(points(2:end),krPoints(2:end),'r*');
       title('Relative permeability curve');

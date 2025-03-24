@@ -1,45 +1,43 @@
 close all;
 clear;
 
-% -------------------------- SET THE PHYSICS -------------------------
+%% -------------------------- SET THE PHYSICS -------------------------
 model = ModelType("VariabSatFlow_FVTPFA");
-%
-% ----------------------- SIMULATION PARAMETERS ----------------------
+
+%% ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
 simParam = SimulationParameters(fileName,model);
-%
-% ------------------------------  MESH -------------------------------
+
+%% ------------------------------  MESH -------------------------------
 % Create the Mesh object
 topology = Mesh();
-%
+
 % Set the input file name
 fileName = 'Column.msh';
-%
+
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
-%
-%----------------------------- MATERIALS -----------------------------
-%
+
+%% ----------------------------- MATERIALS -----------------------------
 % Set the input file name
 fileName = 'materialsList.dat';
-%
+
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
-%
-%------------------------------ ELEMENTS -----------------------------
-%
+
+%% ------------------------------ ELEMENTS -----------------------------
 % Define Gauss points
 GaussPts = Gauss(12,2,3);
-%
+
 % Create an object of the "Elements" class and process the element properties
 elems = Elements(topology,GaussPts);
-%
+
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model,topology);
-%
+
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
-%
+
 % Degree of freedom manager 
 %fname = 'dof.dat';
 dofmanager = DoFManager(topology,model);
@@ -59,17 +57,18 @@ state.pressure = gamma_w*(9-z);
 % Create and set the print utility
 printUtils = OutState(model,topology,'outTime.dat','folderName','Output_Richards');
 
+printState(printUtils,state)
+
 fileName = "dirBottom.dat";
 bound = Boundaries(fileName,model,grid);
 
 Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
-%
+
 % Solve the problem
 [simState] = Solver.NonLinearLoop();
-%
+
 % Finalize the print utility
 printUtils.finalize()
-%
 
 %% POST PROCESSING
 

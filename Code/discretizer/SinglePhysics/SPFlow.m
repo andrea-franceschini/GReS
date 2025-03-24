@@ -168,21 +168,27 @@ classdef SPFlow < SinglePhysics
          subCells = obj.dofm.getFieldCells(obj.field);
          nSubCells = length(subCells);
          %get pairs of faces that contribute to the subdomain
-         neigh1 = obj.faces.faceNeighbors(obj.isIntFaces,1);
-         neigh2 = obj.faces.faceNeighbors(obj.isIntFaces,2);
+         neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+         % neigh1 = obj.faces.faceNeighbors(obj.isIntFaces,1);
+         % neigh2 = obj.faces.faceNeighbors(obj.isIntFaces,2);
          % Transmissibility of internal faces
          tmpVec = lw.*obj.trans(obj.isIntFaces);
          % tmpVec = lw.*tmpVec;
-         [~,~,neigh1] = unique(neigh1);
-         [~,~,neigh2] = unique(neigh2);
-         sumDiagTrans = accumarray([neigh1; neigh2], ...
-            repmat(tmpVec,[2,1]),[nSubCells,1]);
+         [~,~,neigh] = unique([neigh(:,1); neigh(:,2)]);
+         sumDiagTrans = accumarray(neigh,repmat(tmpVec,[2,1]),[nSubCells,1]);
+         % [~,~,neigh1] = unique(neigh1);
+         % [~,~,neigh2] = unique(neigh2);
+         % sumDiagTrans = accumarray([neigh1; neigh2], ...
+         %    repmat(tmpVec,[2,1]),[nSubCells,1]);        
          % Assemble H matrix
          nDoF = obj.dofm.getNumDoF(obj.field);
-         obj.H = sparse([neigh1; neigh2; (1:nSubCells)'], ...
-            [neigh2; neigh1; (1:nSubCells)'], ...
-            [-tmpVec; -tmpVec; ...
-            sumDiagTrans],nDoF,nDoF);
+         obj.H = sparse([neigh;(1:nSubCells)'], [neigh; (1:nSubCells)'],...
+             [-tmpVec;-tmpVec;sumDiagTrans], nDoF, nDoF);
+         % obj.H = sparse([neigh1; neigh2; (1:nSubCells)'], ...
+         %    [neigh2; neigh1; (1:nSubCells)'], ...
+         %    [-tmpVec; -tmpVec; ...
+         %    sumDiagTrans],nDoF,nDoF);
+         % spy(obj.H);
       end
 
 

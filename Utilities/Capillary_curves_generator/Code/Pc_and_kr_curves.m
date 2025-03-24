@@ -50,6 +50,7 @@ data.setVGMParameters('Sand', 'SpecWeight', 9.81);
 %    Syntax:
 %    data.setVGMParameters('User_defined','n', 2, 'pEntry', 10);
 % data.setVGMParameters('User_defined','n', 2, 'pEntry', 10);
+% data.setVGMParameters('User_defined','n', 3, 'pEntry', 1);
 %
 %% Compute and print the VGM curves in a tabular format.
 % Please specify the following:
@@ -58,5 +59,6 @@ data.setVGMParameters('Sand', 'SpecWeight', 9.81);
 %   model (for instance, 10^(-5) < p < 10^3 is [-5, 3]
 % * nPoints -> number of points for the approximation of the pc and kr
 %   curves.
-fName = ["../OUT/pcCurve_400.dat", "../OUT/krCurve_400.dat"];
-data.makeCurves('fileName', fName, 'range', [-6,2], 'nPoints', 400);
+% fName = ["../OUT/pcCurve_400.dat", "../OUT/krCurve_400.dat"];
+fName = ["../OUT/pcCurve_800.dat", "../OUT/krCurve_800.dat"];
+data.makeCurves('fileName', fName, 'range', [-1,1], 'nPoints', 800);

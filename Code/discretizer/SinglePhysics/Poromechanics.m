@@ -323,45 +323,53 @@ classdef Poromechanics < SinglePhysics
       end
 
       function [cellStr,pointStr] = buildPrintStruct(disp,stress,strain)
-         nCellData = 12;
-         nPointData = 3;
+         % nCellData = 12;
+         % nPointData = 3;
+         nCellData = 2;
+         nPointData = 1;
          pointStr = repmat(struct('name', 1, 'data', 1), nPointData, 1);
          cellStr = repmat(struct('name', 1, 'data', 1), nCellData, 1);
          % Displacement
-         pointStr(1).name = 'ux';
-         pointStr(1).data = disp(1:3:end);
-         pointStr(2).name = 'uy';
-         pointStr(2).data = disp(2:3:end);
-         pointStr(3).name = 'uz';
-         pointStr(3).data = disp(3:3:end);
+         % pointStr(1).name = 'ux';
+         % pointStr(1).data = disp(1:3:end);
+         % pointStr(2).name = 'uy';
+         % pointStr(2).data = disp(2:3:end);
+         % pointStr(3).name = 'uz';
+         % pointStr(3).data = disp(3:3:end);
+         pointStr(1).name = 'disp';
+         pointStr(1).data = [disp(1:3:end),disp(2:3:end),disp(3:3:end)];
          %
          % Stress
-         cellStr(1).name = 'sx';
-         cellStr(1).data = stress(:,1);
-         cellStr(2).name = 'sy';
-         cellStr(2).data = stress(:,2);
-         cellStr(3).name = 'sz';
-         cellStr(3).data = stress(:,3);
-         cellStr(4).name = 'txy';
-         cellStr(4).data = stress(:,4);
-         cellStr(5).name = 'tyz';
-         cellStr(5).data = stress(:,5);
-         cellStr(6).name = 'txz';
-         cellStr(6).data = stress(:,6);
+         % cellStr(1).name = 'sx';
+         % cellStr(1).data = stress(:,1);
+         % cellStr(2).name = 'sy';
+         % cellStr(2).data = stress(:,2);
+         % cellStr(3).name = 'sz';
+         % cellStr(3).data = stress(:,3);
+         % cellStr(4).name = 'txy';
+         % cellStr(4).data = stress(:,4);
+         % cellStr(5).name = 'tyz';
+         % cellStr(5).data = stress(:,5);
+         % cellStr(6).name = 'txz';
+         % cellStr(6).data = stress(:,6);
+         cellStr(1).name = 'stress';
+         cellStr(1).data = stress;
          %
          % Strain
-         cellStr(7).name = 'ex';
-         cellStr(7).data = strain(:,1);
-         cellStr(8).name = 'ey';
-         cellStr(8).data = strain(:,2);
-         cellStr(9).name = 'ez';
-         cellStr(9).data = strain(:,3);
-         cellStr(10).name = 'gxy';
-         cellStr(10).data = strain(:,4);
-         cellStr(11).name = 'gyz';
-         cellStr(11).data = strain(:,5);
-         cellStr(12).name = 'gxz';
-         cellStr(12).data = strain(:,6);
+         % cellStr(7).name = 'ex';
+         % cellStr(7).data = strain(:,1);
+         % cellStr(8).name = 'ey';
+         % cellStr(8).data = strain(:,2);
+         % cellStr(9).name = 'ez';
+         % cellStr(9).data = strain(:,3);
+         % cellStr(10).name = 'gxy';
+         % cellStr(10).data = strain(:,4);
+         % cellStr(11).name = 'gyz';
+         % cellStr(11).data = strain(:,5);
+         % cellStr(12).name = 'gxz';
+         % cellStr(12).data = strain(:,6);
+         cellStr(2).name = 'strain';
+         cellStr(2).data = strain;
       end
    end
 end

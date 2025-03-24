@@ -27,11 +27,11 @@ classdef FCSolver < handle
   end
   
   methods (Access = public)
-      function obj = FCSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin)
+    function obj = FCSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin)
       obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin);
     end
 
-   function [simStat] = NonLinearLoop(obj)
+    function [simStat] = NonLinearLoop(obj)
       simStat = 1;
       % Initialize the time step increment
       obj.dt = obj.simParameters.dtIni;  
@@ -83,9 +83,8 @@ classdef FCSolver < handle
             %
             % Solve system with increment
             J = assembleJacobian(obj.linSyst);
-            
-            du = J\-rhs;
 
+            du = J\-rhs;
 
             % Update current model state
             obj.stateTmp = updateState(obj.linSyst,obj.stateTmp,du);
@@ -125,11 +124,11 @@ classdef FCSolver < handle
          delta_t = manageNextTimeStep(obj,delta_t,flConv);
       end
       %
-   end
+    end
   end
   
   methods (Access = private)
-     function setNonLinearSolver(obj,symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linearSyst,data)
+    function setNonLinearSolver(obj,symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linearSyst,data)
         obj.model = symmod;
         obj.simParameters = simParam;
         obj.dofManager = dofManager;
@@ -145,7 +144,8 @@ classdef FCSolver < handle
         if ~isempty(data)
            obj.GaussPts = data{1};
         end
-     end
+    end
+    
     function [t, dt] = updateTime(obj,conv,dt)
         if obj.printUtil.modTime
             tmp = find(obj.t<obj.printUtil.timeList(),1,'first');
