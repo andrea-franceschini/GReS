@@ -75,78 +75,22 @@ classdef Materials < handle
                 % varargout{2}(isElMat) = (Sws-Swr)*varargout{2}(isElMat);
             elseif nargout == 3
                 [varargout{1}(isElMat), varargout{2}(isElMat), varargout{3}(isElMat)] = obj.getMaterial(m).Curves.computeSwAnddSw(p,Swr,Sws);
-                % [varargout{1}(isElMat), varargout{2}(isElMat), varargout{3}(isElMat)] = obj.getMaterial(m).CapillaryCurve.interpTable(p);
-                % varargout{1}(isElMat) = Swr + (Sws-Swr)*varargout{1}(isElMat);
-                % varargout{2}(isElMat) = (Sws-Swr)*varargout{2}(isElMat);
-                % varargout{3}(isElMat) = (Sws-Swr)*varargout{3}(isElMat);                
-
-                % [St, dSt, ddSt] = obj.getMaterial(m).CapillaryCurve.interpTable(p);
-                % St = Swr + (Sws-Swr)*St;
-                % dSt = (Sws-Swr)*dSt;
-                % ddSt = (Sws-Swr)*ddSt;
-                % [Sa, dSa, ddSa] = obj.getMaterial(m).Curves.computeSwAnddSw(p,Swr,Sws);
-                % es(1)=sum(Sa-St);
-                % es(2)=sum(dSa-dSt);
-                % es(3)=sum(ddSa-ddSt);
-                % en(1)=norm(Sa-St);
-                % en(2)=norm(dSa-dSt);
-                % en(3)=norm(ddSa-ddSt);
-                % 
-                % xx = linspace(-10,-0.75,400);
-                % xx = linspace(-1000/980.66,-75/980.66,400);
-                % xx = linspace(-1000,-75,400);
-                % % xx = linspace(-100,-1e-5,400);
-                % % [St, dSt, ddSt] = obj.getMaterial(m).CapillaryCurve.interpTable(xx);
-                % % St = Swr + (Sws-Swr)*St;
-                % % dSt = (Sws-Swr)*dSt;
-                % % ddSt = (Sws-Swr)*ddSt;
+                
+                % xx = linspace(-10*9.8066e3,-0.75*9.8066e3,400);
                 % [Sa, dSa, ddSa] = obj.getMaterial(m).Curves.computeSwAnddSw(xx,Swr,Sws);
                 % figure();
                 % hold on;
-                % plot(xx,Sa,'b', 'LineWidth', 2, 'MarkerSize', 10);
-                % % plot(-xx,ddSt,'r', 'LineWidth', 2, 'MarkerSize', 10);
+                % plot(xx/9.8066e3,Sa,'b', 'LineWidth', 2, 'MarkerSize', 10);
+                % % plot(xx,Sa,'b', 'LineWidth', 2, 'MarkerSize', 10);
                 % xlabel('Pressure');
                 % ylabel('Saturation');
-                % legend('Analytical','Tabular')
-                % xlim([min(xx),max(xx)]);
+                % xlim([min(xx)/9.8066e3,max(xx)/9.8066e3]);
+                % % xlim([min(xx),max(xx)]);
                 % ylim([Swr,Sws]);
+                % ylim([0.102,0.2]);
                 % grid on
-                % % axes('Position',[.35 .65 .2 .2])
-                % axes('Position',[.25 .25 .3 .3])
-                % box on
                 % hold on
-                % plot(-xx,ddSa,'b', 'LineWidth', 2, 'MarkerSize', 10);
-                % plot(-xx,ddSt,'r', 'LineWidth', 2, 'MarkerSize', 10);
-                % % xlim([10,12]);
-                % xlim([10,15]);
-                % hold off
-                % set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
-                % a = get(gca,'XTickLabel');
-                % set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
-                % % xlim([-1000,-75]);
-                % % ylim([0.102,0.2]);
-                % % xticks([-1000,-800,-600,-400,-200]); % Set x-axis ticks
-                % % yticks([0.12,0.14,0.16,0.18,0.2]); % Set y-axis ticks
-                % % 
-                % % hold off;
-                % % figure();
-                % % hold on;
-                % % plot(-xx,Sa-St','b');
-                % % plot(-xx,dSa-dSt','r');
-                % % plot(-xx,ddSa-ddSt','g');
-                % % xlabel('Pressure');
-                % % ylabel('Error');
-                % % legend('Saturation','First Derivative','Second Derivative');
-                % % hold off;
-                % % es(1)=sum(Sa-St');
-                % % es(2)=sum(dSa-dSt');
-                % % es(3)=sum(ddSa-ddSt');
-                % % en(1)=norm(Sa-St');
-                % % en(2)=norm(dSa-dSt');
-                % % en(3)=norm(ddSa-ddSt');
             end
-            
-            
         end
     end
     
@@ -170,62 +114,36 @@ classdef Materials < handle
           [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).Curves.computeRelativePermeability(p);
           % [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).RelativePermCurve.interpTable(p);          
 
-          % [ka, dka] = obj.getMaterial(m).Curves.computeRelativePermeability(p);
-          % [kt, dkt] = obj.getMaterial(m).RelativePermCurve.interpTable(p);          
-          % es(1)=sum(ka-kt);
-          % es(2)=sum(dka-dkt);
-          % en(1)=norm(ka-kt);
-          % en(2)=norm(dka-dkt);
-          % 
-          % xx = linspace(-10,-0.75,400);
-          % % xx = linspace(-1000,-0.1,400);
-          % % xx = linspace(-100,-1e-5,400);
-          % [ka, dka] = obj.getMaterial(m).Curves.computeRelativePermeability(xx);
-          % % [kt, dkt] = obj.getMaterial(m).RelativePermCurve.interpTable(xx); 
-          % figure();
-          % hold on;
-          % plot(xx,ka,'b', 'LineWidth', 2, 'MarkerSize', 10);
-          % % plot(-xx,dkt,'r', 'LineWidth', 2, 'MarkerSize', 10);
-          % xlabel('Pressure');
-          % ylabel('Relative Permeability');
-          % legend('Analytical','Tabular');
-          % xlim([min(xx),max(xx)]);
-          % grid on;
-          % hold on;
-          % axes('Position',[.25 .5 .3 .3])
-          % box on
-          % hold on
-          % plot(-xx,dka,'b', 'LineWidth', 2, 'MarkerSize', 10);
+          unitSys = 9.8066e2; % SI-9.8066e3 cm-9.8066e2
+          mx = -1e4; % SI-1e1 cm-1e4
+          mn = -7.5e+1; % SI-7.5e-1 cm-7.5e1
+          xx = linspace(mx*unitSys,mn*unitSys,400);
+          [ka, dka] = obj.getMaterial(m).Curves.computeRelativePermeability(xx);
+          figure();
+          hold on;
+          plot(xx/unitSys,ka,'b', 'LineWidth', 2, 'MarkerSize', 10);
           % plot(-xx,dkt,'r', 'LineWidth', 2, 'MarkerSize', 10);
-          % xlim([10,12]);
-          % % xlim([-1000,-75]);
-          % % ylim([0,3.e-3]);
-          % set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
-          % a = get(gca,'XTickLabel');
-          % set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
-          % hold off;
-
-          % figure();
-          % hold on;
-          % plot(-xx,ka-kt','b');
-          % plot(-xx,dka-dkt','r');
-          % xlabel('Pressure');
-          % ylabel('Error');
-          % legend('Relative Permeability','First Derivative');
-          % hold off;
-          % es(1)=sum(ka-kt');
-          % es(2)=sum(dka-dkt');
-          % en(1)=norm(ka-kt');
-          % en(2)=norm(dka-dkt');
+          xlabel('Pressure');
+          ylabel('Relative Permeability');
+          legend('Analytical','Tabular');
+          xlim([mx,mn]);
+          grid on;
+        
         end
       end
-      if (max(p)>-75)
-          % pause;
-      end
+      % if (max(p)>-75)
+      %     % pause;
+      % end
 
       mu = obj.getFluid().getDynViscosity();
       varargout{1} = varargout{1}/mu;
       varargout{2} = varargout{2}/mu;
+    end
+
+    function [krel, dkrel] = computeRelativePermeability(obj,pres,mat)
+        %COMPUTERELATIVEPERMEABILITY compute the relative permeability of
+        % a material by a given pressure.
+        [krel, dkrel] = obj.getMaterial(mat).Curves.computeRelativePermeability(pres);
     end
     
     function [status] = initializeStatus(obj,cTag,sigma)

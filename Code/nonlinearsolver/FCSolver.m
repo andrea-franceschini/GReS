@@ -55,7 +55,7 @@ classdef FCSolver < handle
             fprintf('-----------------------------------------------------------\n');
          end
          if obj.simParameters.verbosity > 1
-            fprintf('Iter     ||rhs||\n');
+            fprintf('Iter     ||rhs||     ||rhs||/||rhs_0||\n');
          end
          %
          % Compute Rhs and matrices of NonLinear models
@@ -69,16 +69,19 @@ classdef FCSolver < handle
 
          % compute Rhs norm
          rhsNorm = norm(rhs,2);
+         rhsNormIt0 = rhsNorm;
+         
          % consider output of local field rhs contribution
-
          tolWeigh = obj.simParameters.relTol*rhsNorm;
          obj.iter = 0;
          %
          if obj.simParameters.verbosity > 1
-            fprintf('0     %e\n',rhsNorm);
+            fprintf('0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
          end
-         while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
-               && (rhsNorm > absTol)) || obj.iter == 0
+         % while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
+         %       && (rhsNorm > absTol)) || obj.iter == 0
+         while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR)) ...
+                 || obj.iter == 0
             obj.iter = obj.iter + 1;
             %
             % Solve system with increment
@@ -100,12 +103,13 @@ classdef FCSolver < handle
             rhsNorm = norm(rhs,2);
 
             if obj.simParameters.verbosity > 1
-               fprintf('%d     %e\n',obj.iter,rhsNorm);
+               fprintf('%d     %e     %e\n',obj.iter,rhsNorm,rhsNorm/rhsNormIt0);
             end
          end
          %
          % Check for convergence
          flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
+         % flConv = (rhsNorm < tolWeigh);
          if flConv % Convergence
             obj.stateTmp.t = obj.t;
             % Advance state of non linear models

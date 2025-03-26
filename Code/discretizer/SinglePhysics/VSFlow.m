@@ -26,11 +26,11 @@ classdef VSFlow < SPFlow
             computeCapMatFV(obj,Swkpt,dSwkpt);
             obj.J = theta*obj.H + obj.P/dt;
             if isNewtonNLSolver(obj.simParams)
-                % JNewt = computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,d2Swkpt,dlwkpt)
+                % JNewt2 = computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,d2Swkpt,dlwkpt);
                 % [Jh,Jp] = computeNewtPartOfJacobian2(obj,dt,stateTmp.pressure,statek.pressure,dSwkpt,d2Swkpt,dlwkpt);
-                Jh = computeJacobianPartJhNewton(obj,pkpt,dlwkpt);
+                % Jh = computeJacobianPartJhNewton(obj,pkpt,dlwkpt);
                 Jp = computeJacobianPartJpNewton(obj,dt,stateTmp.pressure,statek.pressure,Swkpt,dSwkpt,d2Swkpt);
-                obj.JNewt = Jh + Jp; % or JNewt;
+                obj.JNewt = Jp;%+Jh; % or JNewt2;
                 obj.J = obj.J + obj.JNewt;
                 % l1 = normest(Jp);
                 % l2 = normest(Jpp);
@@ -84,7 +84,10 @@ classdef VSFlow < SPFlow
                     error('Wrong number of input arguments');
             end
             saturation = obj.material.computeSwAnddSw(obj.mesh,pressure);
-            [cellData,pointData] = VSFlow.buildPrintStruct(pressure,fluidPot,saturation);
+            % [cellData,pointData] = VSFlow.buildPrintStruct(pressure,fluidPot,saturation);
+            % In pressure head
+            % [cellData,pointData] = VSFlow.buildPrintStruct(pressure/9.8066e3,fluidPot,saturation); %SI
+            [cellData,pointData] = VSFlow.buildPrintStruct(pressure/9.8066e2,fluidPot,saturation); %cm
         end
 
         function out = isLinear(obj)
@@ -109,13 +112,16 @@ classdef VSFlow < SPFlow
                             case 'Dir'
                                 v = bc.getVals(id,t);
                                 gamma = obj.material.getFluid().getFluidSpecWeight();
-                                mu = obj.material.getFluid().getDynViscosity();
-                                mob = obj.computeMobilityFace(state.pressure(ents),v,faceID);
+                                % mu = obj.material.getFluid().getDynViscosity();
+                                % mob = obj.computeMobilityFace(v,faceID);
+                                mob = obj.computeMobilityBoundary(state.pressure(ents),v,faceID);
                                 tr = obj.getFaceTransmissibilities(faceID);
                                 % q = 1/mu*tr.*((state.pressure(ents) - v)...
-                                q = (mob/mu).*tr.*((state.pressure(ents) - v)...
+                                % q = (mob/mu).*tr.*((state.pressure(ents) - v)...
+                                % mob = 1;
+                                q = mob.*tr.*((state.pressure(ents) - v)...
                                     + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
-                                vals = [(mob/mu).*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
+                                vals = [mob.*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
                             case 'Spg'
                                 zbc = obj.elements.cellCentroid(ents,:);
                                 href = bc.getVals(id,t);
@@ -215,31 +221,34 @@ classdef VSFlow < SPFlow
             dlpt = - dlpt;
         end
 
-        function lpt = computeMobilityFace(obj,pcells,pface,faceID)
-            % COMPUTESATURATION compute the mobility for the upstream
-            % elements for the face
-            elms = obj.faces.mapF2E(faceID);
+        function lpt = computeMobilityBoundary(obj,pcells,pface,faceID)
+            % COMPUTESATURATIONBOUNDARY compute the mobility for the
+            % upstream elements in the boundary
+            elms = obj.faces.faceNeighbors(faceID,:);
+            elms = elms(elms~=0);
             materials = obj.mesh.cellTag(elms);
 
             % Find the direction of the flux;
             gamma = obj.material.getFluid().getFluidSpecWeight();
             if gamma > 0
                 zfaces = obj.faces.faceCentroid(faceID,3);
-                
+
                 cellz = obj.elements.cellCentroid(elms,3);
-                lElemIsUp = pcells - pface + gamma*(cellz - zfaces) >= 0;
+                lElemIsUp = pcells - pface + gamma*(cellz- zfaces) >= 0;
             else
                 lElemIsUp = pcells >= pface;
             end
 
             % Find the upstream pressure.
             pres = zeros(length(lElemIsUp),1);
-            pres(lElemIsUp)  = pcells(lElemIsUp);
+            pres(lElemIsUp) = pcells(lElemIsUp);
             pres(~lElemIsUp) = pface(~lElemIsUp);
-
-            lpt = zeros(length(lElemIsUp),1);            
+            % pres = pcells;
+            mu = obj.material.getFluid().getDynViscosity();
+            lpt = zeros(length(pcells),1);
             for i=1:length(materials)
-                [lpt(i), ~] = obj.material.getMaterial(materials(i)).Curves.computeRelativePermeability(pres(i));
+                [krel,~] = obj.material.computeRelativePermeability(pres(i),materials(i));
+                lpt(i) = krel/mu;
             end
         end
 
@@ -264,12 +273,19 @@ classdef VSFlow < SPFlow
             end
             tmpVec2 = alphaMat(obj.mesh.cellTag) + beta*poroMat(obj.mesh.cellTag);
             tmpVec2 = 1/dt*((tmpVec2(subCells).*dSwkpt(subCells) + poroMat(obj.mesh.cellTag).*d2Swkpt(subCells)).*(stateTmp.pressure(subCells) - statek.pressure(subCells))).*obj.elements.vol(subCells);
-            [~,~,neigh1] = unique(neigh(:,1));
-            [~,~,neigh2] = unique(neigh(:,2));
-            [~,~,upElemdof] = unique(obj.upElem);
-            JNewt = sparse([neigh1; neigh2; (1:nSubCells)'], ...
-                [repmat(upElemdof,[2,1]);  (1:nSubCells)'], ...
+            [~,~,reordercells] = unique([neigh(:,1);neigh(:,2);obj.upElem';subCells]);
+
+            JNewt = sparse([reordercells(1:numel(neigh)); (1:nSubCells)'], ...
+                [repmat(reordercells(numel(neigh)+1:end-nSubCells),[2,1]);  (1:nSubCells)'], ...
                 [tmpVec1; -tmpVec1; tmpVec2],nSubCells,nSubCells);
+
+            % [~,~,neigh1] = unique(neigh(:,1));
+            % [~,~,neigh2] = unique(neigh(:,2));
+            % [~,~,upElemdof] = unique(obj.upElem);
+            % JNewt = sparse([neigh1; neigh2; (1:nSubCells)'], ...
+            %     [repmat(upElemdof,[2,1]);  (1:nSubCells)'], ...
+            %     [tmpVec1; -tmpVec1; tmpVec2],nSubCells,nSubCells);
+
             JNewt = obj.simParams.theta*JNewt;
         end
 
@@ -339,18 +355,22 @@ classdef VSFlow < SPFlow
             zVec = obj.elements.cellCentroid(:,3);
             zNeigh = zVec(neigh);
             pTau = pTau(neigh);
-            [~,~,neigh] = unique([neigh(:,1);neigh(:,2)]);
+            nneigh = length(pTau);
+            [~,~,reorder] = unique([neigh(:,1); neigh(:,2); subCells]);
+            % [~,~,neigh] = unique([neigh(:,1);neigh(:,2)]);
+            
 
             % Transmissibility of internal faces            
             Jh = theta*dMob.*obj.trans(obj.isIntFaces);
             Jh = Jh.*(pTau(:,1) - pTau(:,2) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
             
             % Computing the Jacobian Part.
-            sumDiagTrans = accumarray(neigh,repmat(Jh,[2,1]),[nSubCells,1]);
+            sumDiagTrans = accumarray(reorder(1:numel(neigh)),repmat(Jh,[2,1]),[nSubCells,1]);
+            % sumDiagTrans = accumarray(neigh,repmat(Jh,[2,1]),[nSubCells,1]);
             nDoF = obj.dofm.getNumDoF(obj.field);
             Jh = sparse( ...
-                [neigh; (1:nDoF)'], ...
-                [neigh; (1:nDoF)'], ...
+                [reorder(1:numel(neigh)); subCells], ...
+                [reorder(nneigh+1:2*nneigh); reorder(1:nneigh); subCells], ...
                 [-Jh; -Jh; sumDiagTrans], ...
                 nDoF,nDoF);
         end

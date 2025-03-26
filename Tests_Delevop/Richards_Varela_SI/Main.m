@@ -16,7 +16,7 @@ topology = Mesh();
 
 % Set the input file name
 % fileName = strcat(input_dir,'Column.msh');
-fileName = strcat(input_dir,'Mesh/Column160.msh');
+fileName = strcat(input_dir,'Mesh/Column30.msh');
 
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -52,7 +52,7 @@ linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 state = linSyst.setState();
 
 % set initial conditions directly modifying the state object
-state.pressure(:) = -10./9.8066;
+state.pressure(:) = -10*9.8066e3;
 
 % Create and set the print utility
 printUtils = OutState(model,topology,strcat(input_dir,'outTime.dat'), ...
@@ -66,12 +66,12 @@ cond(1).name = 'Bottom';
 cond(1).type = 'Dir';
 cond(1).field = "bot";
 cond(1).times = 0.;
-cond(1).values = -10./9.8066;
+cond(1).values = -10*9.8066e3;
 cond(2).name = 'Top';
 cond(2).type = 'Dir';
 cond(2).field = "top";
 cond(2).times = 0.;
-cond(2).values = -0.75/9.8066;
+cond(2).values = -0.75*9.8066e3;
 
 fileName = setRichardsBC('Inputs',grid,cond);
 bound = Boundaries(fileName,model,grid);
