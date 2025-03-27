@@ -173,13 +173,15 @@ classdef SPFlow < SinglePhysics
          tmpVec = lw.*obj.trans(obj.isIntFaces);
          nneigh = length(tmpVec);
          [~,~,reorder] = unique([neigh(:,1); neigh(:,2); subCells]);
-         sumDiagTrans = accumarray([reorder(1:nneigh);reorder(nneigh+1:2*nneigh)],...
-             repmat(tmpVec,[2,1]),[nSubCells,1]);
+         neigh1 = reorder(1:nneigh);
+         neigh2 = reorder(nneigh+1:2*nneigh);
+         sumDiagTrans = accumarray( [neigh1;neigh2], repmat(tmpVec,[2,1]), ...
+             [nSubCells,1]);
          % Assemble H matrix
          nDoF = obj.dofm.getNumDoF(obj.field);
-         obj.H = sparse([reorder(1:numel(neigh)); subCells],...
-             [reorder(nneigh+1:2*nneigh); reorder(1:nneigh); subCells],...
-             [-tmpVec;-tmpVec;sumDiagTrans], nDoF, nDoF);
+         obj.H = sparse([neigh1; neigh2; subCells],...
+             [neigh2; neigh1; subCells],...
+             [-tmpVec; -tmpVec; sumDiagTrans], nDoF, nDoF);
       end
 
 

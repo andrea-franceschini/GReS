@@ -26,14 +26,14 @@ classdef VSFlow < SPFlow
             computeCapMatFV(obj,Swkpt,dSwkpt);
             obj.J = theta*obj.H + obj.P/dt;
             if isNewtonNLSolver(obj.simParams)
+                Jh = computeJacobianPartJhNewton(obj,pkpt,dlwkpt);
+                Jp = computeJacobianPartJpNewton(obj,dt,stateTmp.pressure,statek.pressure,Swkpt,dSwkpt,d2Swkpt);
+                obj.JNewt = Jp+Jh;
+                obj.J = obj.J + obj.JNewt;
                 % JNewt2 = computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,d2Swkpt,dlwkpt);
                 % [Jh,Jp] = computeNewtPartOfJacobian2(obj,dt,stateTmp.pressure,statek.pressure,dSwkpt,d2Swkpt,dlwkpt);
-                % Jh = computeJacobianPartJhNewton(obj,pkpt,dlwkpt);
-                Jp = computeJacobianPartJpNewton(obj,dt,stateTmp.pressure,statek.pressure,Swkpt,dSwkpt,d2Swkpt);
-                obj.JNewt = Jp;%+Jh; % or JNewt2;
-                obj.J = obj.J + obj.JNewt;
-                % l1 = normest(Jp);
-                % l2 = normest(Jpp);
+                % l1 = normest(Jh);
+                % l2 = normest(Jp);
             end
         end
 
@@ -86,8 +86,8 @@ classdef VSFlow < SPFlow
             saturation = obj.material.computeSwAnddSw(obj.mesh,pressure);
             % [cellData,pointData] = VSFlow.buildPrintStruct(pressure,fluidPot,saturation);
             % In pressure head
-            % [cellData,pointData] = VSFlow.buildPrintStruct(pressure/9.8066e3,fluidPot,saturation); %SI
-            [cellData,pointData] = VSFlow.buildPrintStruct(pressure/9.8066e2,fluidPot,saturation); %cm
+            [cellData,pointData] = VSFlow.buildPrintStruct(pressure/9.8066e3,fluidPot,saturation); %SI
+            % [cellData,pointData] = VSFlow.buildPrintStruct(pressure/9.8066e2,fluidPot,saturation); %cm
         end
 
         function out = isLinear(obj)
@@ -112,16 +112,19 @@ classdef VSFlow < SPFlow
                             case 'Dir'
                                 v = bc.getVals(id,t);
                                 gamma = obj.material.getFluid().getFluidSpecWeight();
-                                % mu = obj.material.getFluid().getDynViscosity();
-                                % mob = obj.computeMobilityFace(v,faceID);
-                                mob = obj.computeMobilityBoundary(state.pressure(ents),v,faceID);
+                                [mob, dmob] = obj.computeMobilityBoundary(state.pressure(ents),v,faceID);
                                 tr = obj.getFaceTransmissibilities(faceID);
-                                % q = 1/mu*tr.*((state.pressure(ents) - v)...
-                                % q = (mob/mu).*tr.*((state.pressure(ents) - v)...
-                                % mob = 1;
-                                q = mob.*tr.*((state.pressure(ents) - v)...
-                                    + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
-                                vals = [mob.*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
+                                potential = state.pressure(ents) - v ...
+                                    + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3));
+                                dirJ = mob.*tr;
+                                q = dirJ.*potential;
+                                if isNewtonNLSolver(obj.simParams)
+                                    % Contibution of Jh part in the boundary
+                                    theta = obj.simParams.theta;
+                                    dirJh = theta*dmob.*tr.*potential;
+                                    dirJ = dirJ + dirJh;
+                                end
+                                vals = [dirJ,accumarray(ind,q)]; % {JacobianVal,rhsVal]
                             case 'Spg'
                                 zbc = obj.elements.cellCentroid(ents,:);
                                 href = bc.getVals(id,t);
@@ -159,7 +162,6 @@ classdef VSFlow < SPFlow
             % get local dof numbering
             dof = obj.dofm.getLocalDoF(ents,obj.field);
         end
-
     end
 
     methods (Access = private)
@@ -185,44 +187,8 @@ classdef VSFlow < SPFlow
             dlwkpt = - dlwkpt;
         end
 
-        function [Swkpt,dSwkpt,d2Swkpt] = computeSaturation(obj,pkpt)
-            % COMPUTESATURATION compute the effective saturation and it's
-            % derivatives for the upstream elements for each face
-            neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-            gamma = obj.material.getFluid().getFluidSpecWeight();
-            if gamma > 0
-                zVec = obj.elements.cellCentroid(:,3);
-                zNeigh = zVec(neigh);
-                lElemIsUp = pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
-            else
-                lElemIsUp = pkpt(neigh(:,1)) >= pkpt(neigh(:,2));
-            end
-            obj.upElem(lElemIsUp) = neigh(lElemIsUp,1);
-            obj.upElem(~lElemIsUp) = neigh(~lElemIsUp,2);
-            [Swkpt,dSwkpt,d2Swkpt] = obj.material.computeSwAnddSw(obj.mesh,pkpt);
-            dSwkpt = - dSwkpt;
-        end
-
-        function [lpt,dlpt] = computeMobility(obj,pkpt)
-            % COMPUTESATURATION compute the mobility and it's derivatives
-            % for the upstream elements for each face
-            neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-            gamma = obj.material.getFluid().getFluidSpecWeight();
-            if gamma > 0
-                zVec = obj.elements.cellCentroid(:,3);
-                zNeigh = zVec(neigh);
-                lElemIsUp = pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
-            else
-                lElemIsUp = pkpt(neigh(:,1)) >= pkpt(neigh(:,2));
-            end
-            obj.upElem(lElemIsUp) = neigh(lElemIsUp,1);
-            obj.upElem(~lElemIsUp) = neigh(~lElemIsUp,2);
-            [lpt,dlpt] = obj.material.computeLwAnddLw(obj.mesh,obj.upElem,pkpt);
-            dlpt = - dlpt;
-        end
-
-        function lpt = computeMobilityBoundary(obj,pcells,pface,faceID)
-            % COMPUTESATURATIONBOUNDARY compute the mobility for the
+        function [lpt, dlpt] = computeMobilityBoundary(obj,pcells,pface,faceID)
+            % COMPUTEMOBILITYBOUNDARY compute the mobility for the
             % upstream elements in the boundary
             elms = obj.faces.faceNeighbors(faceID,:);
             elms = elms(elms~=0);
@@ -246,93 +212,15 @@ classdef VSFlow < SPFlow
             % pres = pcells;
             mu = obj.material.getFluid().getDynViscosity();
             lpt = zeros(length(pcells),1);
+            dlpt = zeros(length(pcells),1);
             for i=1:length(materials)
-                [krel,~] = obj.material.computeRelativePermeability(pres(i),materials(i));
+                [krel,dkrel] = obj.material.computeRelativePermeability(pres(i),materials(i));
                 lpt(i) = krel/mu;
+                dlpt(i) = -dkrel/mu;
             end
+            dlpt = dlpt.*lElemIsUp;
         end
-
         
-
-        function JNewt = computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,d2Swkpt,dlwkpt)
-            subCells = obj.dofm.getFieldCells(obj.field);
-            nSubCells = length(subCells);
-            % compute matrices J1 and J2 (gathering non linear terms)
-            neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-            zVec = obj.elements.cellCentroid(:,3);
-            zNeigh = zVec(neigh);
-            gamma = obj.material.getFluid().getFluidSpecWeight();
-            tmpVec1 = (dlwkpt.*obj.trans(obj.isIntFaces)).*(pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
-            %
-            poroMat = zeros(obj.mesh.nCellTag,1);
-            alphaMat = zeros(obj.mesh.nCellTag,1);
-            beta = obj.material.getFluid().getFluidCompressibility();
-            for m = 1:obj.mesh.nCellTag
-                poroMat(m) = obj.material.getMaterial(m).PorousRock.getPorosity();
-                alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
-            end
-            tmpVec2 = alphaMat(obj.mesh.cellTag) + beta*poroMat(obj.mesh.cellTag);
-            tmpVec2 = 1/dt*((tmpVec2(subCells).*dSwkpt(subCells) + poroMat(obj.mesh.cellTag).*d2Swkpt(subCells)).*(stateTmp.pressure(subCells) - statek.pressure(subCells))).*obj.elements.vol(subCells);
-            [~,~,reordercells] = unique([neigh(:,1);neigh(:,2);obj.upElem';subCells]);
-
-            JNewt = sparse([reordercells(1:numel(neigh)); (1:nSubCells)'], ...
-                [repmat(reordercells(numel(neigh)+1:end-nSubCells),[2,1]);  (1:nSubCells)'], ...
-                [tmpVec1; -tmpVec1; tmpVec2],nSubCells,nSubCells);
-
-            % [~,~,neigh1] = unique(neigh(:,1));
-            % [~,~,neigh2] = unique(neigh(:,2));
-            % [~,~,upElemdof] = unique(obj.upElem);
-            % JNewt = sparse([neigh1; neigh2; (1:nSubCells)'], ...
-            %     [repmat(upElemdof,[2,1]);  (1:nSubCells)'], ...
-            %     [tmpVec1; -tmpVec1; tmpVec2],nSubCells,nSubCells);
-
-            JNewt = obj.simParams.theta*JNewt;
-        end
-
-        function [Jh, Jp] = computeNewtPartOfJacobian2(obj,dt,pTmp,pOld,dSwkpt,d2Swkpt,dlwkpt)
-            % Initial considerations.
-            subCells = obj.dofm.getFieldCells(obj.field);
-            nSubCells = length(subCells);
-            cellTag = obj.mesh.cellTag(subCells);
-            nCellTag = obj.mesh.nCellTag;
-            neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-
-            theta = obj.simParams.theta;
-            gamma = obj.material.getFluid().getFluidSpecWeight();
-            beta = obj.material.getFluid().getFluidCompressibility();
-
-            pTau = theta*pTmp+(1-theta)*pOld;
-            pTmp = pTmp(subCells);
-            pOld = pOld(subCells);
-
-            % compute matrices J1 and J2 (gathering non linear terms)
-            % Computing Jh term
-            zVec = obj.elements.cellCentroid(:,3);
-            zNeigh = zVec(neigh);
-            pTau = pTau(neigh);
-            Jh = theta*dlwkpt.*obj.trans(obj.isIntFaces);
-            Jh = Jh.*(pTau(:,1) - pTau(:,2) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
-
-            % Computing Jp term
-            poroMat = zeros(nCellTag,1);
-            alphaMat = zeros(nCellTag,1);            
-            for m = 1:nCellTag
-                poroMat(m) = obj.material.getMaterial(m).PorousRock.getPorosity();
-                alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
-            end
-            Jp = alphaMat(cellTag) + beta*poroMat(cellTag);
-            Jp = 1/dt*((Jp(subCells).*dSwkpt(subCells) + poroMat(cellTag).*d2Swkpt(subCells)).*(pTmp - pOld)).*obj.elements.vol(subCells);
-
-            % Making the matrix's.
-            [~,~,neigh] = unique([neigh(:,1);neigh(:,2)]);
-            sumDiagTrans = accumarray(neigh,repmat(Jh,[2,1]),[nSubCells,1]);
-            Jh = sparse([neigh; subCells], ...
-                [neigh; subCells], ...
-                [-Jh;-Jh;sumDiagTrans], nSubCells, nSubCells);
-
-            Jp = sparse(subCells,subCells,Jp,nSubCells,nSubCells);
-        end
-
         function Jh = computeJacobianPartJhNewton(obj,pTau,dMob)
             % COMPUTEJACOBIANFORNEWTONJFPART Method to compute the Jh part
             % of the jacobian used in the Newton-Raphson.
@@ -348,31 +236,26 @@ classdef VSFlow < SPFlow
             gamma = obj.material.getFluid.getFluidSpecWeight();
 
             subCells = obj.dofm.getFieldCells(obj.field);
-            nSubCells = length(subCells);
 
             % Get pairs of faces that contribute to the subdomain
             neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
             zVec = obj.elements.cellCentroid(:,3);
             zNeigh = zVec(neigh);
             pTau = pTau(neigh);
-            nneigh = length(pTau);
-            [~,~,reorder] = unique([neigh(:,1); neigh(:,2); subCells]);
-            % [~,~,neigh] = unique([neigh(:,1);neigh(:,2)]);
-            
+            nneigh = length(dMob);
+            [~,~,reorder] = unique([neigh(:,1); neigh(:,2); obj.upElem'; subCells]);
+            neigh1 = reorder(1:nneigh);
+            neigh2 = reorder(nneigh+1:2*nneigh);
+            neighU = reorder(2*nneigh+1:3*nneigh);
 
             % Transmissibility of internal faces            
             Jh = theta*dMob.*obj.trans(obj.isIntFaces);
             Jh = Jh.*(pTau(:,1) - pTau(:,2) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
             
             % Computing the Jacobian Part.
-            sumDiagTrans = accumarray(reorder(1:numel(neigh)),repmat(Jh,[2,1]),[nSubCells,1]);
-            % sumDiagTrans = accumarray(neigh,repmat(Jh,[2,1]),[nSubCells,1]);
             nDoF = obj.dofm.getNumDoF(obj.field);
-            Jh = sparse( ...
-                [reorder(1:numel(neigh)); subCells], ...
-                [reorder(nneigh+1:2*nneigh); reorder(1:nneigh); subCells], ...
-                [-Jh; -Jh; sumDiagTrans], ...
-                nDoF,nDoF);
+            Jh = sparse( [neigh1; neigh2], [neighU; neighU], ...
+                [Jh; -Jh], nDoF, nDoF);
         end
 
         function Jp = computeJacobianPartJpNewton(obj,dt,pTmp,pOld,Stau,dStau,ddStau)
@@ -416,7 +299,6 @@ classdef VSFlow < SPFlow
             [~,~,dof] = unique(subCells);
             Jp = sparse(dof,dof,Jp,nDoF,nDoF);
         end
-
     end
 
     methods (Static)
@@ -430,6 +312,127 @@ classdef VSFlow < SPFlow
             cellStr(3).name = 'saturation';
             cellStr(3).data = sat;
         end
+    end
+
+    methods (Access = private)
+        % function [Swkpt,dSwkpt,d2Swkpt] = computeSaturation(obj,pkpt)
+        %     % COMPUTESATURATION compute the effective saturation and it's
+        %     % derivatives for the upstream elements for each face
+        %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+        %     gamma = obj.material.getFluid().getFluidSpecWeight();
+        %     if gamma > 0
+        %         zVec = obj.elements.cellCentroid(:,3);
+        %         zNeigh = zVec(neigh);
+        %         lElemIsUp = pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
+        %     else
+        %         lElemIsUp = pkpt(neigh(:,1)) >= pkpt(neigh(:,2));
+        %     end
+        %     obj.upElem(lElemIsUp) = neigh(lElemIsUp,1);
+        %     obj.upElem(~lElemIsUp) = neigh(~lElemIsUp,2);
+        %     [Swkpt,dSwkpt,d2Swkpt] = obj.material.computeSwAnddSw(obj.mesh,pkpt);
+        %     dSwkpt = - dSwkpt;
+        % end
+
+        % function [lpt,dlpt] = computeMobility(obj,pkpt)
+        %     % COMPUTEMOBILITY compute the mobility and it's derivatives
+        %     % for the upstream elements for each face
+        %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+        %     gamma = obj.material.getFluid().getFluidSpecWeight();
+        %     if gamma > 0
+        %         zVec = obj.elements.cellCentroid(:,3);
+        %         zNeigh = zVec(neigh);
+        %         lElemIsUp = pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
+        %     else
+        %         lElemIsUp = pkpt(neigh(:,1)) >= pkpt(neigh(:,2));
+        %     end
+        %     obj.upElem(lElemIsUp) = neigh(lElemIsUp,1);
+        %     obj.upElem(~lElemIsUp) = neigh(~lElemIsUp,2);
+        %     [lpt,dlpt] = obj.material.computeLwAnddLw(obj.mesh,obj.upElem,pkpt);
+        %     dlpt = - dlpt;
+        % end
+
+        % function JNewt = computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,d2Swkpt,dlwkpt)
+        %     subCells = obj.dofm.getFieldCells(obj.field);
+        %     nSubCells = length(subCells);
+        %     % compute matrices J1 and J2 (gathering non linear terms)
+        %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+        %     zVec = obj.elements.cellCentroid(:,3);
+        %     zNeigh = zVec(neigh);
+        %     gamma = obj.material.getFluid().getFluidSpecWeight();
+        %     tmpVec1 = (dlwkpt.*obj.trans(obj.isIntFaces)).*(pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
+        %     %
+        %     poroMat = zeros(obj.mesh.nCellTag,1);
+        %     alphaMat = zeros(obj.mesh.nCellTag,1);
+        %     beta = obj.material.getFluid().getFluidCompressibility();
+        %     for m = 1:obj.mesh.nCellTag
+        %         poroMat(m) = obj.material.getMaterial(m).PorousRock.getPorosity();
+        %         alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
+        %     end
+        %     tmpVec2 = alphaMat(obj.mesh.cellTag) + beta*poroMat(obj.mesh.cellTag);
+        %     tmpVec2 = 1/dt*((tmpVec2(subCells).*dSwkpt(subCells) + poroMat(obj.mesh.cellTag).*d2Swkpt(subCells)).*(stateTmp.pressure(subCells) - statek.pressure(subCells))).*obj.elements.vol(subCells);
+        %     [~,~,reordercells] = unique([neigh(:,1);neigh(:,2);obj.upElem';subCells]);
+        % 
+        %     nneigh = length(tmpVec1);
+        %     neigh1 = reordercells(1:nneigh);
+        %     neigh2 = reordercells(nneigh+1:2*nneigh);
+        %     neighU = reordercells(2*nneigh+1:3*nneigh);
+        %     JNewt = sparse([neigh1; neigh2; SubCells], ...
+        %         [neighU; neighU; SubCells], ...
+        %         [tmpVec1; -tmpVec1; tmpVec2],nSubCells,nSubCells);
+        % 
+        %     % [~,~,neigh1] = unique(neigh(:,1));
+        %     % [~,~,neigh2] = unique(neigh(:,2));
+        %     % [~,~,upElemdof] = unique(obj.upElem);
+        %     % JNewt = sparse([neigh1; neigh2; (1:nSubCells)'], ...
+        %     %     [repmat(upElemdof,[2,1]);  (1:nSubCells)'], ...
+        %     %     [tmpVec1; -tmpVec1; tmpVec2],nSubCells,nSubCells);
+        % 
+        %     JNewt = obj.simParams.theta*JNewt;
+        % end
+
+        % function [Jh, Jp] = computeNewtPartOfJacobian2(obj,dt,pTmp,pOld,dSwkpt,d2Swkpt,dlwkpt)
+        %     % Initial considerations.
+        %     subCells = obj.dofm.getFieldCells(obj.field);
+        %     nSubCells = length(subCells);
+        %     cellTag = obj.mesh.cellTag(subCells);
+        %     nCellTag = obj.mesh.nCellTag;
+        %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+        % 
+        %     theta = obj.simParams.theta;
+        %     gamma = obj.material.getFluid().getFluidSpecWeight();
+        %     beta = obj.material.getFluid().getFluidCompressibility();
+        % 
+        %     pTau = theta*pTmp+(1-theta)*pOld;
+        %     pTmp = pTmp(subCells);
+        %     pOld = pOld(subCells);
+        % 
+        %     % compute matrices J1 and J2 (gathering non linear terms)
+        %     % Computing Jh term
+        %     zVec = obj.elements.cellCentroid(:,3);
+        %     zNeigh = zVec(neigh);
+        %     pTau = pTau(neigh);
+        %     Jh = theta*dlwkpt.*obj.trans(obj.isIntFaces);
+        %     Jh = Jh.*(pTau(:,1) - pTau(:,2) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
+        % 
+        %     % Computing Jp term
+        %     poroMat = zeros(nCellTag,1);
+        %     alphaMat = zeros(nCellTag,1);            
+        %     for m = 1:nCellTag
+        %         poroMat(m) = obj.material.getMaterial(m).PorousRock.getPorosity();
+        %         alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
+        %     end
+        %     Jp = alphaMat(cellTag) + beta*poroMat(cellTag);
+        %     Jp = 1/dt*((Jp(subCells).*dSwkpt(subCells) + poroMat(cellTag).*d2Swkpt(subCells)).*(pTmp - pOld)).*obj.elements.vol(subCells);
+        % 
+        %     % Making the matrix's.
+        %     [~,~,neigh] = unique([neigh(:,1);neigh(:,2)]);
+        %     sumDiagTrans = accumarray(neigh,repmat(Jh,[2,1]),[nSubCells,1]);
+        %     Jh = sparse([neigh; subCells], ...
+        %         [neigh; subCells], ...
+        %         [-Jh;-Jh;sumDiagTrans], nSubCells, nSubCells);
+        % 
+        %     Jp = sparse(subCells,subCells,Jp,nSubCells,nSubCells);
+        % end
     end
 end
 

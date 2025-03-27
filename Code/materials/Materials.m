@@ -61,9 +61,7 @@ classdef Materials < handle
             isElMat = mesh.cellTag == m;
             p = pkpt(isElMat);
             Sws = obj.getMaterial(m).PorousRock.getMaxSaturation();
-            Swr = obj.getMaterial(m).PorousRock.getResidualSaturation();            
-            % Sws = 1.;
-            % Sws = 0.368;
+            Swr = obj.getMaterial(m).PorousRock.getResidualSaturation();
             if nargout == 1
                 [varargout{1}(isElMat), ~, ~] = obj.getMaterial(m).Curves.computeSwAnddSw(p,Swr,Sws);
                 % varargout{1}(isElMat) = obj.getMaterial(m).CapillaryCurve.interpTable(p);
@@ -75,21 +73,22 @@ classdef Materials < handle
                 % varargout{2}(isElMat) = (Sws-Swr)*varargout{2}(isElMat);
             elseif nargout == 3
                 [varargout{1}(isElMat), varargout{2}(isElMat), varargout{3}(isElMat)] = obj.getMaterial(m).Curves.computeSwAnddSw(p,Swr,Sws);
-                
-                % xx = linspace(-10*9.8066e3,-0.75*9.8066e3,400);
+
+                % unitSys = 9.8066e2; % SI-9.8066e3 cm-9.8066e2
+                % mx = -1e3; % SI-1e1 cm-1e4
+                % mn = -7.5e+1; % SI-7.5e-1 cm-7.5e1
+                % xx = linspace(mx*unitSys,mn*unitSys,400);
                 % [Sa, dSa, ddSa] = obj.getMaterial(m).Curves.computeSwAnddSw(xx,Swr,Sws);
                 % figure();
                 % hold on;
-                % plot(xx/9.8066e3,Sa,'b', 'LineWidth', 2, 'MarkerSize', 10);
+                % plot(xx/unitSys,Sa,'b', 'LineWidth', 2, 'MarkerSize', 10);
                 % % plot(xx,Sa,'b', 'LineWidth', 2, 'MarkerSize', 10);
                 % xlabel('Pressure');
                 % ylabel('Saturation');
-                % xlim([min(xx)/9.8066e3,max(xx)/9.8066e3]);
-                % % xlim([min(xx),max(xx)]);
+                % xlim([mx,mn]);
                 % ylim([Swr,Sws]);
                 % ylim([0.102,0.2]);
                 % grid on
-                % hold on
             end
         end
     end
@@ -113,21 +112,21 @@ classdef Materials < handle
         elseif nargout == 2
           [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).Curves.computeRelativePermeability(p);
           % [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).RelativePermCurve.interpTable(p);          
-
-          unitSys = 9.8066e2; % SI-9.8066e3 cm-9.8066e2
-          mx = -1e4; % SI-1e1 cm-1e4
-          mn = -7.5e+1; % SI-7.5e-1 cm-7.5e1
-          xx = linspace(mx*unitSys,mn*unitSys,400);
-          [ka, dka] = obj.getMaterial(m).Curves.computeRelativePermeability(xx);
-          figure();
-          hold on;
-          plot(xx/unitSys,ka,'b', 'LineWidth', 2, 'MarkerSize', 10);
-          % plot(-xx,dkt,'r', 'LineWidth', 2, 'MarkerSize', 10);
-          xlabel('Pressure');
-          ylabel('Relative Permeability');
-          legend('Analytical','Tabular');
-          xlim([mx,mn]);
-          grid on;
+          % 
+          % unitSys = 9.8066e2; % SI-9.8066e3 cm-9.8066e2
+          % mx = -1e3; % SI-1e1 cm-1e4
+          % mn = -7.5e+1; % SI-7.5e-1 cm-7.5e1
+          % xx = linspace(mx*unitSys,mn*unitSys,400);
+          % [ka, dka] = obj.getMaterial(m).Curves.computeRelativePermeability(xx);
+          % figure();
+          % hold on;
+          % plot(xx/unitSys,ka,'b', 'LineWidth', 2, 'MarkerSize', 10);
+          % % plot(-xx,dkt,'r', 'LineWidth', 2, 'MarkerSize', 10);
+          % xlabel('Pressure');
+          % ylabel('Relative Permeability');
+          % legend({'Analytical'},'Location','northwest');
+          % xlim([mx,mn]);
+          % grid on;
         
         end
       end

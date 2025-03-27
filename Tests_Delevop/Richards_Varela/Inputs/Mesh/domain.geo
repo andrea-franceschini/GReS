@@ -9,9 +9,9 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 lc = 1e-2;
 
 // Models dimension
-x_len = 100; // 0.1 / 1
-y_len = 100; // 0.1 / 1
-z_len = 100; // 0.1 / 10
+x_len = 100;
+y_len = 100;
+z_len = 100;
 
 // Mesh partition
 x_elm =  2;

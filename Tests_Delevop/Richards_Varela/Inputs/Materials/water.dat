@@ -1,3 +1,5 @@
 Fluid                               % material model
-9.8066e2      4.5e-11     0.01        % specif weight (g cm-2 s-1), compressibility-beta (gcm-1s-2)-1, dynamic viscosity (gcm-1s-1)
+9.8066e2      0.     0.01        % specif weight (g cm-2 s-1), compressibility-beta (gcm-1s-2)-1, dynamic viscosity (gcm-1s-1)
 End
+
+9.8066e2      4.5e-11     0.01        % specif weight (g cm-2 s-1), compressibility-beta (gcm-1s-2)-1, dynamic viscosity (gcm-1s-1)

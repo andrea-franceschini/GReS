@@ -10,5 +10,5 @@ PorousRock                        % material model
 
 VanGenuchten                      % Capillary and Relative Permeabilities Curves
 Mualem                            % Type of model (Mualem or Burdine) or type of soil
-2. 3.416e-6 0.5
+2. 3.416e-5 0.5
 End

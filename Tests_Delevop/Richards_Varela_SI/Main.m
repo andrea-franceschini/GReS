@@ -16,7 +16,7 @@ topology = Mesh();
 
 % Set the input file name
 % fileName = strcat(input_dir,'Column.msh');
-fileName = strcat(input_dir,'Mesh/Column30.msh');
+fileName = strcat(input_dir,'Mesh/Column160.msh');
 
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -85,43 +85,57 @@ Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linS
 printUtils.finalize()
 
 %% POST PROCESSING
-if false
+postproc=true;
+if postproc
     image_dir = strcat(pwd,'/',output_dir,'Images');
-    if isfolder(image_dir)
-        rmdir(image_dir,"s")
-        mkdir(image_dir)
-    else
+    if ~isfolder(image_dir)
         mkdir(image_dir)
     end
 
-    %Post processing using MAT-FILE
+    % Saving a temporary variabel.
+    pressure = printUtils.results.expPress;
+    saturation = printUtils.results.expSat;
 
-    % elem vector containing elements centroid along vertical axis
-    if isFEMBased(model,'Flow')
-        nodesP = nodesU;
-    else
-        numb = 0.125;
-        tol = 0.01;
-        nodesP = find(abs(elems.cellCentroid(:,1)-numb) < tol & abs(elems.cellCentroid(:,2)-numb) < tol);
-        [~,ind] = sort(elems.cellCentroid(nodesP,3));
-        nodesP = nodesP(ind);
-    end
-
-    press = printUtils.results.expPress;
-    sw = printUtils.results.expSat;
+    % Ajusting the time position.
     t = printUtils.results.expTime;
     tind = 2:length(t);
     t_max = t(end);
-    t = t(tind)/t_max;
+    t = t(tind)/86400;
+    tstr = strcat(num2str(t),' Days');
 
+    % Location a column to be the plot position.
 
-    tstr = strcat(num2str(t),' T');
     %Getting pressure and saturation solution for specified time from MatFILE
-    pressplot = press(nodesP,tind);
-    swplot = sw(nodesP,tind);
+    numb = 0.;
+    tol = 0.01;
+    nodesP = find(abs(elems.cellCentroid(:,1)-numb) < tol & abs(elems.cellCentroid(:,2)-numb) < tol);
+    pressplot = pressure(nodesP,tind);
+    swplot = saturation(nodesP,tind);
 
     % Values for normalized plots
     H = max(topology.coordinates(:,3));
+
+    %Plotting solution
+    ptsZ = topology.coordinates(nodesP,3);
+
+    figure(1)
+    plot(-pressplot,ptsZ/H,'.-', 'LineWidth', 2, 'MarkerSize', 14);
+    hold on
+    xlabel('p/p_{top}')
+    ylabel('z/H')
+    legend(tstr)
+    % grid on
+    set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 16);
+    a = get(gca,'XTickLabel');
+    set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 14)
+    % export figure with quality
+    stmp = strcat(output_dir,'Images/','Varelha_head_pressure','.png');
+    exportgraphics(gcf,stmp,'Resolution',400)
+
+end
+
+if false
+    %Post processing using MAT-FILE
 
     %Plotting solution
     if isFVTPFABased(model,'Flow')

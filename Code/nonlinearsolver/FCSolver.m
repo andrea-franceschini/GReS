@@ -108,8 +108,8 @@ classdef FCSolver < handle
          end
          %
          % Check for convergence
-         flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
-         % flConv = (rhsNorm < tolWeigh);
+         % flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
+         flConv = (rhsNorm < tolWeigh);
          if flConv % Convergence
             obj.stateTmp.t = obj.t;
             % Advance state of non linear models
