@@ -84,10 +84,7 @@ classdef VSFlow < SPFlow
                     error('Wrong number of input arguments');
             end
             saturation = obj.material.computeSwAnddSw(obj.mesh,pressure);
-            % [cellData,pointData] = VSFlow.buildPrintStruct(pressure,fluidPot,saturation);
-            % In pressure head
-            [cellData,pointData] = VSFlow.buildPrintStruct(pressure/9.8066e3,fluidPot,saturation); %SI
-            % [cellData,pointData] = VSFlow.buildPrintStruct(pressure/9.8066e2,fluidPot,saturation); %cm
+            [cellData,pointData] = VSFlow.buildPrintStruct(pressure,fluidPot,saturation);
         end
 
         function out = isLinear(obj)
@@ -235,7 +232,7 @@ classdef VSFlow < SPFlow
             theta = obj.simParams.theta;
             gamma = obj.material.getFluid.getFluidSpecWeight();
 
-            subCells = obj.dofm.getFieldCells(obj.field);
+            % subCells = obj.dofm.getFieldCells(obj.field);
 
             % Get pairs of faces that contribute to the subdomain
             neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
@@ -243,7 +240,8 @@ classdef VSFlow < SPFlow
             zNeigh = zVec(neigh);
             pTau = pTau(neigh);
             nneigh = length(dMob);
-            [~,~,reorder] = unique([neigh(:,1); neigh(:,2); obj.upElem'; subCells]);
+            % [~,~,reorder] = unique([neigh(:,1); neigh(:,2); obj.upElem'; subCells]);
+            [~,~,reorder] = unique([neigh(:,1); neigh(:,2); obj.upElem']);
             neigh1 = reorder(1:nneigh);
             neigh2 = reorder(nneigh+1:2*nneigh);
             neighU = reorder(2*nneigh+1:3*nneigh);

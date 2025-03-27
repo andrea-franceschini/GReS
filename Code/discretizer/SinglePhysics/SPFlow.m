@@ -172,7 +172,8 @@ classdef SPFlow < SinglePhysics
          % Transmissibility of internal faces
          tmpVec = lw.*obj.trans(obj.isIntFaces);
          nneigh = length(tmpVec);
-         [~,~,reorder] = unique([neigh(:,1); neigh(:,2); subCells]);
+         % [~,~,reorder] = unique([neigh(:,1); neigh(:,2); subCells]);
+         [~,~,reorder] = unique([neigh(:,1); neigh(:,2)]);
          neigh1 = reorder(1:nneigh);
          neigh2 = reorder(nneigh+1:2*nneigh);
          sumDiagTrans = accumarray( [neigh1;neigh2], repmat(tmpVec,[2,1]), ...

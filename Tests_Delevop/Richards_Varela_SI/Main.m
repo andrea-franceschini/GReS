@@ -2,6 +2,7 @@ close all;
 clear;
 input_dir = 'Inputs/';
 output_dir = 'Outputs/';
+figures_dir = 'Figs/';
 
 %% -------------------------- SET THE PHYSICS -------------------------
 model = ModelType("VariabSatFlow_FVTPFA");
@@ -87,7 +88,7 @@ printUtils.finalize()
 %% POST PROCESSING
 postproc=true;
 if postproc
-    image_dir = strcat(pwd,'/',output_dir,'Images');
+    image_dir = strcat(pwd,'/',figures_dir);
     if ~isfolder(image_dir)
         mkdir(image_dir)
     end
@@ -103,8 +104,6 @@ if postproc
     t = t(tind)/86400;
     tstr = strcat(num2str(t),' Days');
 
-    % Location a column to be the plot position.
-
     %Getting pressure and saturation solution for specified time from MatFILE
     numb = 0.;
     tol = 0.01;
@@ -114,62 +113,33 @@ if postproc
 
     % Values for normalized plots
     H = max(topology.coordinates(:,3));
+    weight = mat.getFluid().getFluidSpecWeight();
 
-    %Plotting solution
-    ptsZ = topology.coordinates(nodesP,3);
+    % Location a column to be the plot position.
+    ptsZ = elems.cellCentroid(nodesP,3);
 
+    %Plotting pressure head
     figure(1)
-    plot(-pressplot,ptsZ/H,'.-', 'LineWidth', 2, 'MarkerSize', 14);
+    plot(-pressplot/weight,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
     hold on
-    xlabel('p/p_{top}')
-    ylabel('z/H')
+    xlabel('pressure (m)')
+    ylabel('height (m)')
     legend(tstr)
-    % grid on
-    set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 16);
-    a = get(gca,'XTickLabel');
-    set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 14)
+    set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
     % export figure with quality
-    stmp = strcat(output_dir,'Images/','Varelha_head_pressure','.png');
+    stmp = strcat(image_dir,'Varelha_head_pressure','.png');
     exportgraphics(gcf,stmp,'Resolution',400)
 
-end
-
-if false
-    %Post processing using MAT-FILE
-
-    %Plotting solution
-    if isFVTPFABased(model,'Flow')
-        ptsY = elems.cellCentroid(nodesP,3);
-    else
-        ptsY = topology.coordinates(nodesP,3);
-    end
-    figure(1)
-    plot(-pressplot,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);
-    hold on
-    xlabel('p/p_{top}')
-    ylabel('z/H')
-    legend(tstr)
-    % grid on
-    set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
-    a = get(gca,'XTickLabel');
-    set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
-    % export figure with quality
-    stmp = strcat(output_dir,'Images/','Richards_pressure_old','.png');
-    exportgraphics(gcf,stmp,'Resolution',400)
-
+    %Plotting saturation
     figure(2)
-    plot(swplot,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);
+    plot(swplot,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
     hold on
-    xlabel('Saturation S_w')
-    ylabel('z/H')
-    legend(tstr, 'Location', 'southwest')
+    xlabel('Saturation')
+    ylabel('height (m)')
+    legend(tstr, 'Location', 'northwest')
     str = strcat('t = ',tstr);
-    % grid on
-    set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
-    a = get(gca,'XTickLabel');
-    set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
+    set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
     % export figure with quality
-    stmp = strcat(output_dir,'Images/', 'Richards_staturation_old', '.png');
+    stmp = strcat(image_dir, 'Varelha_saturation', '.png');
     exportgraphics(gcf,stmp,'Resolution',400)
-
 end

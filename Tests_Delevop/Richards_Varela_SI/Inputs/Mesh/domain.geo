@@ -16,7 +16,7 @@ z_len = 1;
 // Mesh partition
 x_elm =  1;
 y_elm =  1;
-z_elm = 30;
+z_elm = 80;
 
 // Model creation
 // Points

@@ -2,6 +2,7 @@ close all;
 clear;
 input_dir = 'Inputs/';
 output_dir = 'Outputs/';
+figures_dir = 'Figs/';
 
 %% -------------------------- SET THE PHYSICS -------------------------
 model = ModelType("VariabSatFlow_FVTPFA");
@@ -16,7 +17,7 @@ topology = Mesh();
 
 % Set the input file name
 % fileName = strcat(input_dir,'Column.msh');
-fileName = strcat(input_dir,'Mesh/Column2x160.msh');
+fileName = strcat(input_dir,'Mesh/Column160.msh');
 
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -85,77 +86,60 @@ Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linS
 printUtils.finalize()
 
 %% POST PROCESSING
-if false
-    image_dir = strcat(pwd,'/',output_dir,'Images');
-    if isfolder(image_dir)
-        rmdir(image_dir,"s")
-        mkdir(image_dir)
-    else
+postproc=true;
+if postproc
+    image_dir = strcat(pwd,'/',figures_dir);
+    if ~isfolder(image_dir)
         mkdir(image_dir)
     end
 
-    %Post processing using MAT-FILE
+    % Saving a temporary variabel.
+    pressure = printUtils.results.expPress;
+    saturation = printUtils.results.expSat;
 
-    % elem vector containing elements centroid along vertical axis
-    if isFEMBased(model,'Flow')
-        nodesP = nodesU;
-    else
-        numb = 0.125;
-        tol = 0.01;
-        nodesP = find(abs(elems.cellCentroid(:,1)-numb) < tol & abs(elems.cellCentroid(:,2)-numb) < tol);
-        [~,ind] = sort(elems.cellCentroid(nodesP,3));
-        nodesP = nodesP(ind);
-    end
-
-    press = printUtils.results.expPress;
-    sw = printUtils.results.expSat;
+    % Ajusting the time position.
     t = printUtils.results.expTime;
     tind = 2:length(t);
     t_max = t(end);
-    t = t(tind)/t_max;
+    t = t(tind)/86400;
+    tstr = strcat(num2str(t),' Days');
 
-
-    tstr = strcat(num2str(t),' T');
     %Getting pressure and saturation solution for specified time from MatFILE
-    pressplot = press(nodesP,tind);
-    swplot = sw(nodesP,tind);
+    numb = 0.;
+    tol = 0.01;
+    nodesP = find(abs(elems.cellCentroid(:,1)-numb) < tol & abs(elems.cellCentroid(:,2)-numb) < tol);
+    pressplot = pressure(nodesP,tind);
+    swplot = saturation(nodesP,tind);
 
     % Values for normalized plots
     H = max(topology.coordinates(:,3));
+    weight = mat.getFluid().getFluidSpecWeight();
 
-    %Plotting solution
-    if isFVTPFABased(model,'Flow')
-        ptsY = elems.cellCentroid(nodesP,3);
-    else
-        ptsY = topology.coordinates(nodesP,3);
-    end
+    % Location a column to be the plot position.
+    ptsZ = elems.cellCentroid(nodesP,3);
+
+    %Plotting pressure head
     figure(1)
-    plot(-pressplot,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);
+    plot(-pressplot/weight,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
     hold on
-    xlabel('p/p_{top}')
-    ylabel('z/H')
+    xlabel('Pressure (cm)')
+    ylabel('Height (cm)')
     legend(tstr)
-    % grid on
-    set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
-    a = get(gca,'XTickLabel');
-    set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
+    set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
     % export figure with quality
-    stmp = strcat(output_dir,'Images/','Richards_pressure_old','.png');
+    stmp = strcat(image_dir,'Varelha_head_pressure','.png');
     exportgraphics(gcf,stmp,'Resolution',400)
 
+    %Plotting saturation
     figure(2)
-    plot(swplot,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);
+    plot(swplot,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
     hold on
-    xlabel('Saturation S_w')
-    ylabel('z/H')
-    legend(tstr, 'Location', 'southwest')
+    xlabel('Saturation (-)')
+    ylabel('Height (cm)')
+    legend(tstr, 'Location', 'northwest')
     str = strcat('t = ',tstr);
-    % grid on
-    set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
-    a = get(gca,'XTickLabel');
-    set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
+    set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
     % export figure with quality
-    stmp = strcat(output_dir,'Images/', 'Richards_staturation_old', '.png');
+    stmp = strcat(image_dir, 'Varelha_saturation', '.png');
     exportgraphics(gcf,stmp,'Resolution',400)
-
 end
