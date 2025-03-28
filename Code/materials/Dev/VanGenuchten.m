@@ -65,35 +65,77 @@ classdef VanGenuchten < handle
     end
 
     properties (Access = private)
-        mod=true;        % type of the model => true - Mualem | false - Burdine
+        % modelType=true;  % type of the model => true - Mualem | false - Burdine
         betaCor=false;   % Flag to indicated the necessity of correction for the beta.
-        presCor=true;   % Flag to indicated the necessity of correction for the pressure.
+        presCor=true;    % Flag to indicated the necessity of correction for the pressure.
+        modelType;       % Flag to use analitical or tabular curve to th 
+        retantionCurve;  % Storage the retantion curve.
+        relPermCurve;    % Storage the relative permability curve.
     end
 
     methods (Access = public)
         function obj = VanGenuchten(fID,matFileName)
             %VanGenuchtenMualem Construct an instance of this class
             modType = readToken(fID,matFileName);
-            if strcmp(modType,'Mualem')
-                tmpVec = readDataInLine(fID, matFileName, 3);
+            switch modType
+                case 'Mualem'
+                    tmpVec = readDataInLine(fID, matFileName, 3);
             
-                % Assign object properties
-                obj.n = tmpVec(1);
-                obj.beta = tmpVec(2);
-                obj.kappa = tmpVec(3);
-            elseif strcmp(modType,'Burdine')
-                tmpVec = readDataInLine(fID, matFileName, 2);
-            
-                % Assign object properties
-                obj.mod = false;
-                obj.n = tmpVec(1);
-                obj.beta = tmpVec(2);
-            else
-                % Assign object properties from a table
-                obj.readMaterialParametersFromTable(modType);
-                obj.betaCor = true;
-                obj.presCor = true;
+                    % Assign object properties
+                    obj.n = tmpVec(1);
+                    obj.beta = tmpVec(2);
+                    obj.kappa = tmpVec(3);
+
+                    obj.modelType = 'Mualem';
+                case 'Burdine'
+                    tmpVec = readDataInLine(fID, matFileName, 2);
+
+                    % Assign object properties
+                    % obj.modelType = false;
+                    obj.n = tmpVec(1);
+                    obj.beta = tmpVec(2);
+
+                    obj.modelType = 'Burdine';
+                case 'Tabular'
+                    obj.modelType = 'Tabular';
+                    obj.retantionCurve = TabularCurve(fID, matFileName);
+                    obj.relPermCurve = TabularCurve(fID, matFileName);
+                otherwise
+                    % Assign object properties from a table
+                    obj.readMaterialParametersFromTable(modType);
+                    obj.betaCor = true;
+                    obj.presCor = true;
+                    obj.modelType = 'Mualem';
             end
+            % if strcmp(modType,'Mualem')
+            %     tmpVec = readDataInLine(fID, matFileName, 3);
+            % 
+            %     % Assign object properties
+            %     obj.n = tmpVec(1);
+            %     obj.beta = tmpVec(2);
+            %     obj.kappa = tmpVec(3);
+            % 
+            %     obj.curveType = false;
+            % elseif strcmp(modType,'Burdine')
+            %     tmpVec = readDataInLine(fID, matFileName, 2);
+            % 
+            %     % Assign object properties
+            %     obj.modelType = false;
+            %     obj.n = tmpVec(1);
+            %     obj.beta = tmpVec(2);
+            % 
+            %     obj.curveType = false;
+            % elseif strcmp(modType,'Table')
+            %     obj.curveType = true;
+            %     obj.retantionCurve = TabularCurve(fID, matFileName);
+            %     obj.relPermCurve = TabularCurve(fID, matFileName);
+            % else
+            %     % Assign object properties from a table
+            %     obj.readMaterialParametersFromTable(modType);
+            %     obj.betaCor = true;
+            %     obj.presCor = true;
+            %     obj.curveType = false;
+            % end
         end
 
         function [Sw, dSw, ddSw] = computeSwAnddSw(obj,pres,Sr,Ss)
@@ -101,8 +143,12 @@ classdef VanGenuchten < handle
             % it's derivatives
             
             % Compute the effective or normalized saturation.
-            p = obj.presCorrection(pres);
-            [Sw, dSw, ddSw] = obj.computeSaturation(p);
+            if strcmp(obj.modelType,'Tabular')
+                [Sw, dSw, ddSw] = obj.retantionCurve.interpTable(pres);
+            else
+                p = obj.presCorrection(pres);
+                [Sw, dSw, ddSw] = obj.computeSaturation(p);
+            end
 
             % Compute the fluid saturation.
             Sw   = (Ss-Sr)*Sw + Sr;
@@ -114,12 +160,23 @@ classdef VanGenuchten < handle
             %computeLwAnddLw Method to compute the relative permeability
 
             % Compute the relative permeability.
-            p = obj.presCorrection(pres);
-            if obj.mod
-                [Kr, dKr] = obj.computeRelativePermeabilityMualem(p);
-            else
-                [Kr, dKr] = obj.computeRelativePermeabilityBurdine(p);
+            switch obj.modelType
+                case 'Mualem'
+                    p = obj.presCorrection(pres);
+                    [Kr, dKr] = obj.computeRelativePermeabilityMualem(p);
+                case 'Burdine'
+                    p = obj.presCorrection(pres);
+                    [Kr, dKr] = obj.computeRelativePermeabilityBurdine(p);
+                case 'Tabular'
+                    [Kr, dKr, ~] = obj.relPermCurve.interpTable(pres);
+                otherwise
             end
+            % p = obj.presCorrection(pres);
+            % if obj.modelType
+            %     [Kr, dKr] = obj.computeRelativePermeabilityMualem(p);
+            % else
+            %     [Kr, dKr] = obj.computeRelativePermeabilityBurdine(p);
+            % end
         end
     end
 
@@ -127,7 +184,7 @@ classdef VanGenuchten < handle
         function mm = getm(obj)
             %GETM - return the empirical value of m in the van genuchten
             % curves.
-            if (obj.mod)
+            if (obj.modelType)
                 mm = 1-1/obj.n;
             else
                 mm = 1-2/obj.n;

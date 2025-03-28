@@ -1,7 +1,8 @@
 close all;
-clear;
+% clear;
 input_dir = 'Inputs/';
 output_dir = 'Outputs/';
+figures_dir = 'Figs/';
 
 %% -------------------------- SET THE PHYSICS -------------------------
 model = ModelType("VariabSatFlow_FVTPFA");
@@ -16,7 +17,7 @@ topology = Mesh();
 
 % Set the input file name
 % fileName = strcat(input_dir,'Column.msh');
-fileName = strcat(input_dir,'Mesh/Column.msh');
+fileName = strcat(input_dir,'Mesh/Column4x4x40.msh');
 
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -65,39 +66,11 @@ printState(printUtils,state)
 
 % Creating and Appling boundaries conditions.
 cond = struct('name',[],'type',[],'field',[],'values',[],'times',[]);
-% % Old mesh file.
-% cond(1).name = 'Bottom';
-% cond(1).type = 'Dir';
-% cond(1).field = "lFace";
-% cond(1).times = [0. 5. 10.];
-% cond(1).values = [87. 0. 0.];
-% cond(2).name = 'Top';
-% cond(2).type = 'Dir';
-% cond(2).field = "lFace";
-% cond(2).times = [0. 5. 10.];
-% cond(2).values = [87. 0. 0.];
-
-% % New gmsh file.
 cond(1).name = 'Bottom';
 cond(1).type = 'Dir';
 cond(1).field = "bot";
 cond(1).times = [0. 5. 10.];
 cond(1).values = [87. 0. 0.];
-% cond(2).name = 'Countors';
-% cond(2).type = 'Neu';
-% cond(2).field = ["latXM","latYM","latX0","latY0"];
-% cond(2).times = 0.;
-% cond(2).values = 0.;
-% cond(3).name = 'Top';
-% cond(3).type = 'Dir';
-% cond(3).field = "top";
-% cond(3).times = 0.;
-% cond(3).values = 0.;
-% cond(4).name = 'Spg';
-% cond(4).type = 'Spg';
-% cond(4).field = ["latXM","latYM","latX0","latY0"];
-% cond(4).times = [0. 5. 10.];
-% cond(4).values = [87. 0. 0.];
 
 fileName = setRichardsBC('Inputs',grid,cond);
 bound = Boundaries(fileName,model,grid);
@@ -111,12 +84,13 @@ Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linS
 printUtils.finalize()
 
 %% POST PROCESSING
+if false
 
-image_dir = strcat(pwd,'/',output_dir,'Images');
-if isfolder(image_dir)
-    rmdir(image_dir,"s")
-    mkdir(image_dir)
-else
+image_dir = strcat(pwd,'/',figures_dir);
+if ~isfolder(image_dir)
+    % rmdir(image_dir,"s")
+    % mkdir(image_dir)
+% else
     mkdir(image_dir)
 end
 
@@ -140,46 +114,44 @@ tind = 2:length(t);
 t_max = t(end);
 t = t(tind)/t_max;
 
-
 tstr = strcat(num2str(t),' T');
 %Getting pressure and saturation solution for specified time from MatFILE
 pressplot = press(nodesP,tind);
 swplot = sw(nodesP,tind);
 
-% Values for normalized plots
-H = max(topology.coordinates(:,3));
-
-%Plotting solution
+% Vertical position of the column
 if isFVTPFABased(model,'Flow')
-    ptsY = elems.cellCentroid(nodesP,3);
+    ptsZ = elems.cellCentroid(nodesP,3);
 else
-    ptsY = topology.coordinates(nodesP,3);
+    ptsZ = topology.coordinates(nodesP,3);
 end
+
+% Values for normalized plots
+pos = find(ptsZ == max(ptsZ));
+H = max(topology.coordinates(:,3));
+ptsZ = ptsZ/H;
+
 figure(1)
-plot(-pressplot,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);
 hold on
+plot(pressplot./(pressplot(pos,:)),ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
 xlabel('p/p_{top}')
 ylabel('z/H')
-legend(tstr)
-% grid on
-set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
-a = get(gca,'XTickLabel');
-set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
+legend(tstr, 'Location', 'southeast')
+set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
 % export figure with quality
-stmp = strcat(output_dir,'Images/','Richards_pressure_old','.png');
+stmp = strcat(image_dir,'Richards_pressure','.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 figure(2)
-plot(swplot,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);
+plot(swplot,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
 hold on
 xlabel('Saturation S_w')
 ylabel('z/H')
 legend(tstr, 'Location', 'southwest')
 str = strcat('t = ',tstr);
-% grid on
-set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
-a = get(gca,'XTickLabel');
-set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
+set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
 % export figure with quality
-stmp = strcat(output_dir,'Images/', 'Richards_staturation_old', '.png');
+stmp = strcat(image_dir,'Richards_staturation', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
+
+end
