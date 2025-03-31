@@ -56,7 +56,7 @@ classdef FCSolver < handle
         obj.statek = stateIni;
         obj.stateTmp = stateIni;
         obj.linSyst = linSyst;
-        saveStasticts = [false,false,false];
+        saveStasticts = false(3,1);
         for k = 1:(nargin-9)/2
             pos = 2*(k-1)+1;
             switch varargin{pos}

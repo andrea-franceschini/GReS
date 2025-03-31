@@ -75,7 +75,7 @@ cond(1).values = [87. 0. 0.];
 fileName = setRichardsBC('Inputs',grid,cond);
 bound = Boundaries(fileName,model,grid);
 
-Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
+Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,'GaussPts',GaussPts,'SaveRelError',true,'SaveBStepInf',true);
 
 % Solve the problem
 [simState] = Solver.NonLinearLoop();

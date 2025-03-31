@@ -84,7 +84,8 @@ for i=1:length(meshList)
     fileName = setRichardsBC('Inputs',grid,cond);
     bound = Boundaries(fileName,model,grid);
 
-    Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
+    % Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
+    Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,'GaussPts',GaussPts,'SaveRelError',true);
 
     % Solve the problem
     [simState] = Solver.NonLinearLoop();
