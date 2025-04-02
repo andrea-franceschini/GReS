@@ -911,7 +911,7 @@ classdef Mortar2D < handle
          lx = abs(max(x) - min(x));
          ly = abs(max(y) - min(y));
          Ecell = E(c);
-         K = diag((Ecell*A)./([lx;ly]));
+         K = diag((Ecell*A)./([lx^2;ly^2]));
       end
 
 
@@ -927,8 +927,7 @@ classdef Mortar2D < handle
          lx = abs(max(x) - min(x));
          ly = abs(max(y) - min(y));
          Ecell = E(c);
-
-         K = diag(r*(Ecell*A)./([lx;ly]));
+         K = diag(r*(Ecell*A)./([lx^2;ly^2]));
       end
 
       function getAreaMapMatrix(obj)

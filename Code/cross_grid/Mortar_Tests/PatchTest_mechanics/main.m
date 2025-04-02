@@ -5,7 +5,7 @@ nG = 15;
 nInt = 4;
 gaussQuad = Gauss(12,2,2);
 
-patch = 3;       % chose patch test case
+patch = 2;       % chose patch test case
 switch patch
     case 1
         Fx = 0; %[kPa]
@@ -19,7 +19,7 @@ end
 
 % Elastic properties and constitutive tensor
 % Mortar side
-E1 = 100000;
+E1 = 10000;
 D = zeros(3);
 D([1 5]) = 1-nu;
 D([2 4]) = nu;
@@ -36,7 +36,7 @@ D = (E2/((1+nu)*(1-2*nu)))*D;
 DmatS = D;
 
 
-nel = 60;   % number of elements on the slave interface
+nel = 20;   % number of elements on the slave interface
 rat = 0.3;  % numb master / numb slave elems
 
 %fig = figure('Visible', 'off');
@@ -47,14 +47,14 @@ nexttile(1)
 xlabel('$x$', 'Interpreter', 'latex')
 ylabel('$t_x$', 'Interpreter', 'latex')
 if patch == 1
-   ylim([-0.01 0.01])
+   %ylim([-0.01 0.01])
 end
 hold on
 nexttile(2)
 xlabel('$x$', 'Interpreter', 'latex')
 ylabel('$t_y$', 'Interpreter', 'latex')
 if patch == 1
-   ylim([-10.01 -9.99])
+   %ylim([-10.01 -9.99])
 end
 hold on
 
@@ -216,6 +216,19 @@ end
 
 % solve linear system
 u = K\f;
+
+% compute Schur complement
+if nel < 13 && strcmp(scheme,'P0')
+   A = K(1:end-nMult,1:end-nMult);
+   B = K(end-nMult+1:end,1:end-nMult);
+   X = A\B';
+   S = B*X;
+   % compare with norm of the stabilization matrix to see if the order of
+   % magnitude is caputured
+   normS = norm(S,'fro');
+   normH = norm(H,'fro');
+   fprintf('Norm S = %1.4e     |     Norm H = %1.4e \n',normS,normH);
+end
 
 % get multipliers on the interface
 mult = u(end-nMult+1:end);

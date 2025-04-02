@@ -11,9 +11,9 @@
 % each element has fixed size
 
 nG = 6;
-E = 1; 
+E = 10000; 
 nu = 0.25;
-integration = "SB"; % RBF,SB,P0
+integration = "P0"; % RBF,SB,P0
 mult_type = 'standard';
 bound = false;
 
@@ -27,11 +27,11 @@ Dmat = (E/((1+nu)*(1-2*nu)))*Dmat;
 % Set the input file name
 gaussQuad = Gauss(12,2,2);
 
-NM0X = 4;
-NS0X = 2;
+NM0X = 5;
+NS0X = 5;
 NM0Y = 1;
 NS0Y = 1;
-nR = 4;
+nR = 1;
 h = zeros(nR,1);
 beta1 = zeros(nR,1);
 beta2 = zeros(nR,1);
@@ -188,8 +188,8 @@ beta1(iref) = e;
 % A = K(1:end-nMult,1:end-nMult);
 % B = K(end-nMult+1:end,1:end-nMult);
 % tic 
-% X = A\B';
-% S = B*X;
+X = A\B';
+S = B*X;
 % eS = min(real(eig(full(S))));
 % eA = max(real(eig(full(A))));
 % beta3(iref) = sqrt(eS/eA);

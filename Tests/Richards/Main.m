@@ -74,7 +74,7 @@ NSolv = NonLinearSolver(model,simParam, dofmanager,grid,mat,bound, ...
   printUtils,resState,GaussPts);
 %
 % Solve the problem
-[simState] = NSolv.NonLinearLoop();
+[NL_info] = NSolv.NonLinearLoop();
 %
 % Finalize the print utility
 printUtils.finalize()

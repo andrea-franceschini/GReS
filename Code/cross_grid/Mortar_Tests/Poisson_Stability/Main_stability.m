@@ -1,5 +1,5 @@
 clc
-clear
+%clear
 close all
 % Mortar solution of a simple Poisson problem on a unit square domain
 % exact solution is: u_ex = 16xy(1-x)(1-y);
@@ -25,14 +25,14 @@ degree = 1;
 
 fileNameMaster = [];
 fileNameSlave = [];
-mult_type = 'standard';
+mult_type = 'RED';
 
 % Set the input file name
 nGrids = 1;
 % selecting master and slave domain
 
 % selecting integration approach
-for type = ["DUAL","P0"]
+for type = ["P0"]
    nInt = 4;
    nGP = 4;
    switch type
@@ -56,9 +56,11 @@ for type = ["DUAL","P0"]
          leg = 'Unbiased (Puso stabilization)';
    end
    h = zeros(nGrids,1);
+   multL2 = zeros(nGrids,1);
+   multDualNorm = multL2;
    %grids = 2; % row vector for selecting in which to compute pointwise error
-   NX0 = 20; % Initial number of elements in the top mesh
-   rat = 2;
+   NX0 = 8; % Initial number of elements in the top mesh
+   rat = 0.5;
    for mCount = 1:nGrids
       NelX = NX0*(2^(mCount-1)); 
       fprintf('Grid h%i nGP = %i  nInt = %i  Integration: %s \n',mCount, nGP, nInt, type);
@@ -76,7 +78,7 @@ for type = ["DUAL","P0"]
       elemsSlave = Elements(slaveMesh);
       % instance of 2D mortar class
       mortar = Mortar2D(1,masterMesh,1,slaveMesh,1);
-      h(mCount) = 1/NelX;
+      h(mCount) = 1/(rat*NelX);
       %D = mortar.D;
       switch type
          case 'DUAL'
@@ -133,8 +135,8 @@ for type = ["DUAL","P0"]
       hM = h(mCount);
       hS = 1/mortar.nElSlave;
       if strcmp(type,'P0')
-         %H = hM*mortar.computePressureJumpMat();
-         H = zeros(length(dofMult),length(dofMult));
+         H = hM*mortar.computePressureJumpMat();
+         %H = zeros(length(dofMult),length(dofMult));
       else
          H = zeros(length(dofMult),length(dofMult));
       end
@@ -260,9 +262,32 @@ for type = ["DUAL","P0"]
             brokenL2_CONF(mCount) = bL2;
             brokenH1_CONF(mCount) = bH1;
       end
+      mult = u(end-numel(dofMult)+1:end);
+      mInt = (mult.^2)*h(mCount);
+      multL2(mCount) = sqrt(sum(mInt));
+      multDualNorm(mCount) = sqrt(h(mCount))*multL2(mCount);
    end
 
-   mult = u(end-numel(dofMult)+1:end);
+   %%
+   
+   figure(1)
+   loglog(h, multDualNorm, 'k-s')
+   hold on
+   loglog(h, multL2, 'r-s');
+
+   % Adding reference lines
+   h_ref = [min(h), max(h)];  % Define reference h values
+
+   % Black line for h^2 convergence
+   loglog(h_ref, (h_ref/h_ref(1)).^(3/2) * multDualNorm(1), 'k--')
+
+   % Red line for h convergence
+   loglog(h_ref, (h_ref/h_ref(1)) * multL2(1), 'r--')
+
+   hold off
+   legend('Mult Dual Norm', 'Mult L2', 'h^2 reference', 'h reference', 'Location', 'Best')
+
+
 
 
    % plot multipliers along the interface
@@ -279,25 +304,25 @@ for type = ["DUAL","P0"]
          x = 0.5*sum(c,2);
          [x,id] = sort(x);
    end
-   figure(1)
+   figure(2)
    plot(x,mult(id),'s-','LineWidth',1,'DisplayName',leg)
    xlabel('x-coordinate interface')
    ylabel('Multiplier')
    hold on
       %Stabilization trough projection
-   % if strcmp(type,'DUAL')
-   %    % expand the solution to deleted multipliers
-   %    mult2 = zeros(numel(dofMult)+2,1);
-   %    mult2(1) = mult(1);
-   %    mult2(2) = mult(end);
-   %    mult2(3:end) = mult;
-   %    mortarSwap = Mortar2D(1,slaveMesh,1,masterMesh,1);
-   %    [Dsw, Msw] = mortarSwap.computeMortarSegmentBased(2,mult_type);
-   %    Esw = Dsw\Msw;
-   %   % mult = E*(Esw*mult2);
-   %    [x,id] = sort(slaveMesh.coordinates(mortar.nodesSlave,1));
-   %    plot(x,mult(id),'s-','LineWidth',1,'DisplayName','Naive projection')
-   % end
+   if strcmp(type,'DUAL')
+      % expand the solution to deleted multipliers
+      mult2 = zeros(numel(dofMult)+2,1);
+      mult2(1) = mult(1);
+      mult2(2) = mult(end);
+      mult2(3:end) = mult;
+      mortarSwap = Mortar2D(1,slaveMesh,1,masterMesh,1);
+      [Dsw, Msw] = mortarSwap.computeMortarSegmentBased(2,mult_type);
+      Esw = Dsw\Msw;
+     % mult = E*(Esw*mult2);
+      [x,id] = sort(slaveMesh.coordinates(mortar.nodesSlave,1));
+      plot(x,mult(id),'s-','LineWidth',1,'DisplayName','Naive projection')
+   end
 
    if fPlot
       plotParaview(masterMesh,strcat('SOLmaster_',type,'_h',num2str(mCount)), u_master', 'x')

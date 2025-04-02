@@ -1,0 +1,307 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<META http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      -->
+<title>plotting</title>
+<meta name="generator" content="MATLAB 24.2">
+<link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
+<meta name="DC.date" content="2025-03-27">
+<meta name="DC.source" content="plotting.m">
+<style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; }
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+span.typesection { color:#A0522D }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style>
+</head>
+<body>
+<div class="content">
+<h2>Contents</h2>
+<div>
+<ul>
+<li>
+<a href="#2">Third Figure - finer slave - instabilities</a>
+</li>
+<li>
+<a href="#3">fig. 4 - multipliers convergence profile</a>
+</li>
+<li>
+<a href="#4">fig 5: non integer resolution ratio</a>
+</li>
+</ul>
+</div>
+<pre class="codeinput">x = load(<span class="string">"xCoord.mat"</span>);
+x_p0 = x.P0;
+x_m1 = x.m1;
+x_m2 = x.m2;
+m1 = load(<span class="string">"method1.mat"</span>);
+m2 = load(<span class="string">"method2.mat"</span>);
+P0 = m1.P0;
+dual_1 = m1.DUAL;
+standard_1 = m1.STANDARD;
+dual_2 = m2.DUAL;
+standard_2 = m2.STANDARD;
+
+<span class="comment">% First Figure</span>
+figure(1)
+plot(x_p0, P0, <span class="string">'k-s'</span>, <span class="string">'LineWidth'</span>, 1)
+hold <span class="string">on</span>
+plot(x_m1, dual_1, <span class="string">'r-s'</span>, <span class="string">'LineWidth'</span>, 1)
+plot(x_m1, standard_1, <span class="string">'b-s'</span>, <span class="string">'LineWidth'</span>, 1)
+
+ylim([-2 5]);
+
+legend(<span class="string">'Constant'</span>, <span class="string">'Dual'</span>, <span class="string">'Standard'</span>, <span class="string">'Interpreter'</span>, <span class="string">'latex'</span>, <span class="string">'Location'</span>, <span class="string">'best'</span>, <span class="string">'FontSize'</span>, 12);
+xlabel(<span class="string">'$x$'</span>, <span class="string">'Interpreter'</span>, <span class="string">'latex'</span>, <span class="string">'FontSize'</span>, 12);
+ylabel(<span class="string">'$t$'</span>, <span class="string">'Interpreter'</span>, <span class="string">'latex'</span>, <span class="string">'FontSize'</span>, 12);
+
+<span class="comment">% Set axis numbers to LaTeX font and increase font size</span>
+ax = gca;
+ax.TickLabelInterpreter = <span class="string">'latex'</span>;
+ax.FontSize = 12;
+
+<span class="comment">% Second Figure</span>
+figure(2)
+plot(x_m2, dual_2, <span class="string">'r-s'</span>, <span class="string">'LineWidth'</span>, 1)
+hold <span class="string">on</span>
+plot(x_m2, standard_2, <span class="string">'b-s'</span>, <span class="string">'LineWidth'</span>, 1)
+
+ylim([-2 5]);
+
+legend(<span class="string">'Dual'</span>, <span class="string">'Standard'</span>, <span class="string">'Interpreter'</span>, <span class="string">'latex'</span>, <span class="string">'Location'</span>, <span class="string">'best'</span>, <span class="string">'FontSize'</span>, 12);
+xlabel(<span class="string">'$x$'</span>, <span class="string">'Interpreter'</span>, <span class="string">'latex'</span>, <span class="string">'FontSize'</span>, 12);
+ylabel(<span class="string">'$t$'</span>, <span class="string">'Interpreter'</span>, <span class="string">'latex'</span>, <span class="string">'FontSize'</span>, 12);
+
+<span class="comment">% Set axis numbers to LaTeX font and increase font size</span>
+ax = gca;
+ax.TickLabelInterpreter = <span class="string">'latex'</span>;
+ax.FontSize = 12;
+</pre>
+<img vspace="5" hspace="5" src="plotting_01.png" alt=""> <img vspace="5" hspace="5" src="plotting_02.png" alt=""> <h2 id="2">Third Figure - finer slave - instabilities</h2>
+<pre class="codeinput">figure(3)
+xCoord2 = load(<span class="string">'xCoord2.mat'</span>);
+out = load(<span class="string">'out.mat'</span>);
+x_p0 = xCoord2.p0;
+x_col = xCoord2.colocated;
+dual = out.dual;
+standard = out.standard;
+p0 = out.p0;
+plot(x_p0, p0, <span class="string">'k-s'</span>, <span class="string">'LineWidth'</span>, 1)
+hold <span class="string">on</span>
+plot(x_col, standard, <span class="string">'r-s'</span>, <span class="string">'LineWidth'</span>, 1)
+plot(x_col, dual, <span class="string">'b-s'</span>, <span class="string">'LineWidth'</span>, 1)
+
+ylim([-2 5]);
+
+legend(<span class="string">'Constant'</span>, <span class="string">'Dual'</span>, <span class="string">'Standard'</span>, <span class="string">'Interpreter'</span>, <span class="string">'latex'</span>, <span class="string">'Location'</span>, <span class="string">'best'</span>, <span class="string">'FontSize'</span>, 12);
+xlabel(<span class="string">'$x$'</span>, <span class="string">'Interpreter'</span>, <span class="string">'latex'</span>, <span class="string">'FontSize'</span>, 12);
+ylabel(<span class="string">'$t$'</span>, <span class="string">'Interpreter'</span>, <span class="string">'latex'</span>, <span class="string">'FontSize'</span>, 12);
+
+<span class="comment">% Set axis numbers to LaTeX font and increase font size</span>
+ax = gca;
+ax.TickLabelInterpreter = <span class="string">'latex'</span>;
+ax.FontSize = 12;
+</pre>
+<img vspace="5" hspace="5" src="plotting_03.png" alt=""> <h2 id="3">fig. 4 - multipliers convergence profile</h2>
+<pre class="codeinput">figure(4)
+out = load(<span class="string">'outConv.mat'</span>);
+h = out.h(1:end-1);
+dual = out.L2dual;
+standard = out.L2stand;
+loglog(h, dual, <span class="string">'k-s'</span>, <span class="string">'LineWidth'</span>, 1,<span class="string">'MarkerSize'</span>,10)
+hold <span class="string">on</span>
+loglog(h, standard, <span class="string">'k-^'</span>, <span class="string">'LineWidth'</span>, 1,<span class="string">'MarkerSize'</span>,10)
+
+legend(<span class="string">'Dual'</span>, <span class="string">'Standard'</span>, <span class="string">'Interpreter'</span>, <span class="string">'latex'</span>, <span class="string">'Location'</span>, <span class="string">'best'</span>, <span class="string">'FontSize'</span>, 12);
+xlabel(<span class="string">'$h_1$'</span>, <span class="string">'Interpreter'</span>, <span class="string">'latex'</span>, <span class="string">'FontSize'</span>, 12);
+ylabel(<span class="string">'$\|t\|_{0,\Gamma_{f_1}}$'</span>, <span class="string">'Interpreter'</span>, <span class="string">'latex'</span>, <span class="string">'FontSize'</span>, 12);
+
+<span class="comment">% Set axis numbers to LaTeX font and increase font size</span>
+ax = gca;
+ax.TickLabelInterpreter = <span class="string">'latex'</span>;
+ax.FontSize = 12;
+
+<span class="comment">% Slightly increase axis limits</span>
+xlim([min(h) * 0.9, max(h) * 1.1]);  <span class="comment">% Expanding x limits</span>
+ylim([min([dual; standard]) * 0.9, max([dual; standard]) * 1.1]);  <span class="comment">% Expanding y limits</span>
+
+<span class="comment">% Export high-resolution figure</span>
+<span class="comment">% exportgraphics(figure(1), 'method1.pdf', 'Resolution', 300);</span>
+<span class="comment">% exportgraphics(figure(2), 'method2.pdf', 'Resolution', 300);</span>
+exportgraphics(figure(4), <span class="string">'conv_profile.pdf'</span>, <span class="string">'Resolution'</span>, 300);
+</pre>
+<img vspace="5" hspace="5" src="plotting_04.png" alt=""> <h2 id="4">fig 5: non integer resolution ratio</h2>
+<p class="footer">
+<br>
+<a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2024b</a>
+<br>
+</p>
+</div>
+<!--
+##### SOURCE BEGIN #####
+x = load("xCoord.mat");
+x_p0 = x.P0;
+x_m1 = x.m1;
+x_m2 = x.m2;
+m1 = load("method1.mat");
+m2 = load("method2.mat");
+P0 = m1.P0;
+dual_1 = m1.DUAL;
+standard_1 = m1.STANDARD;
+dual_2 = m2.DUAL;
+standard_2 = m2.STANDARD;
+
+% First Figure
+figure(1)
+plot(x_p0, P0, 'k-s', 'LineWidth', 1)
+hold on
+plot(x_m1, dual_1, 'r-s', 'LineWidth', 1)
+plot(x_m1, standard_1, 'b-s', 'LineWidth', 1)
+
+ylim([-2 5]);
+
+legend('Constant', 'Dual', 'Standard', 'Interpreter', 'latex', 'Location', 'best', 'FontSize', 12);
+xlabel('$x$', 'Interpreter', 'latex', 'FontSize', 12);
+ylabel('$t$', 'Interpreter', 'latex', 'FontSize', 12);
+
+% Set axis numbers to LaTeX font and increase font size
+ax = gca;
+ax.TickLabelInterpreter = 'latex';
+ax.FontSize = 12;
+
+% Second Figure
+figure(2)
+plot(x_m2, dual_2, 'r-s', 'LineWidth', 1)
+hold on
+plot(x_m2, standard_2, 'b-s', 'LineWidth', 1)
+
+ylim([-2 5]);
+
+legend('Dual', 'Standard', 'Interpreter', 'latex', 'Location', 'best', 'FontSize', 12);
+xlabel('$x$', 'Interpreter', 'latex', 'FontSize', 12);
+ylabel('$t$', 'Interpreter', 'latex', 'FontSize', 12);
+
+% Set axis numbers to LaTeX font and increase font size
+ax = gca;
+ax.TickLabelInterpreter = 'latex';
+ax.FontSize = 12;
+
+%% Third Figure - finer slave - instabilities
+figure(3)
+xCoord2 = load('xCoord2.mat');
+out = load('out.mat');
+x_p0 = xCoord2.p0;
+x_col = xCoord2.colocated;
+dual = out.dual;
+standard = out.standard;
+p0 = out.p0;
+plot(x_p0, p0, 'k-s', 'LineWidth', 1)
+hold on
+plot(x_col, standard, 'r-s', 'LineWidth', 1)
+plot(x_col, dual, 'b-s', 'LineWidth', 1)
+
+ylim([-2 5]);
+
+legend('Constant', 'Dual', 'Standard', 'Interpreter', 'latex', 'Location', 'best', 'FontSize', 12);
+xlabel('$x$', 'Interpreter', 'latex', 'FontSize', 12);
+ylabel('$t$', 'Interpreter', 'latex', 'FontSize', 12);
+
+% Set axis numbers to LaTeX font and increase font size
+ax = gca;
+ax.TickLabelInterpreter = 'latex';
+ax.FontSize = 12;
+
+%% fig. 4 - multipliers convergence profile
+figure(4)
+out = load('outConv.mat');
+h = out.h(1:end-1);
+dual = out.L2dual;
+standard = out.L2stand;
+loglog(h, dual, 'k-s', 'LineWidth', 1,'MarkerSize',10)
+hold on
+loglog(h, standard, 'k-^', 'LineWidth', 1,'MarkerSize',10)
+
+legend('Dual', 'Standard', 'Interpreter', 'latex', 'Location', 'best', 'FontSize', 12);
+xlabel('$h_1$', 'Interpreter', 'latex', 'FontSize', 12);
+ylabel('$\|t\|_{0,\Gamma_{f_1}}$', 'Interpreter', 'latex', 'FontSize', 12);
+
+% Set axis numbers to LaTeX font and increase font size
+ax = gca;
+ax.TickLabelInterpreter = 'latex';
+ax.FontSize = 12;
+
+% Slightly increase axis limits
+xlim([min(h) * 0.9, max(h) * 1.1]);  % Expanding x limits
+ylim([min([dual; standard]) * 0.9, max([dual; standard]) * 1.1]);  % Expanding y limits
+
+% Export high-resolution figure
+% exportgraphics(figure(1), 'method1.pdf', 'Resolution', 300);
+% exportgraphics(figure(2), 'method2.pdf', 'Resolution', 300);
+exportgraphics(figure(4), 'conv_profile.pdf', 'Resolution', 300);
+
+%% fig 5: non integer resolution ratio
+
+##### SOURCE END #####
+-->
+</body>
+</html>

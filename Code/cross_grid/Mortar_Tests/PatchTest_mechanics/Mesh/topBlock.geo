@@ -5,8 +5,8 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 
 Xsize = 1;
 Ysize = 1;
-nX = 61;
-nY = 61;
+nX = 21;
+nY = 21;
 //thin = 1; // size of first line of element above bottom boundary
 //dY = thin*Ysize/(nY-1);
 // Define points
@@ -29,7 +29,7 @@ Plane Surface(1) = {1};
 // Apply transfinite meshing
 Transfinite Line{1,3} = nX;
 Transfinite Line{2,4} = nY;
-//Transfinite Surface {1};
+Transfinite Surface {1};
 Recombine Surface {1};
 
 // Define physical groups

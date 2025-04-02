@@ -1,7 +1,7 @@
 % 2D linear mechanics patch test
 
 % INPUT
-nG = 6;
+nG = 15;
 nInt = 4;
 gaussQuad = Gauss(12,2,2);
 
@@ -19,7 +19,7 @@ end
 
 % Elastic properties and constitutive tensor
 % Mortar side
-E1 = 100000;
+E1 = 10000;
 D = zeros(3);
 D([1 5]) = 1-nu;
 D([2 4]) = nu;
@@ -27,7 +27,7 @@ D(9) = 0.5*(1-2*nu);
 D = (E1/((1+nu)*(1-2*nu)))*D;
 DmatM = D;
 % Slave side
-E2 = 100000;
+E2 = 10000;
 D = zeros(3);
 D([1 5]) = 1-nu;
 D([2 4]) = nu;
@@ -36,8 +36,8 @@ D = (E2/((1+nu)*(1-2*nu)))*D;
 DmatS = D;
 
 
-nel = 10;   % number of elements on the slave interface
-rat = 0.75;  % numb master / numb slave elems
+nel = 25;   % number of elements on the slave interface
+rat = 1;  % numb master / numb slave elems
 
 %fig = figure('Visible', 'off');
 fig.Position = [100,100,800,600];
@@ -47,26 +47,26 @@ nexttile(1)
 xlabel('$x$', 'Interpreter', 'latex')
 ylabel('$t_x$', 'Interpreter', 'latex')
 if patch == 1
-   ylim([-0.01 0.01])
+   %ylim([-0.01 0.01])
 end
 hold on
 nexttile(2)
 xlabel('$x$', 'Interpreter', 'latex')
 ylabel('$t_y$', 'Interpreter', 'latex')
 if patch == 1
-   ylim([-10.01 -9.99])
+   %ylim([-10.01 -9.99])
 end
 hold on
 
 
 for scheme = ["DUAL","STANDARD","CONFORMING","P0"] % accomodate UNBIASED in the future!!!
 nXs = nel+1;
-nYs = round(nXs);
+nYs = round(1*nXs);
 nXm = round(nel*rat+1);
 if strcmp(scheme,'CONFORMING')
    nXm = nXs;
 end
-nYm = round(nXm);
+nYm = round(1*nXm);
 % Import the mesh data into the Mesh object
 masterMesh = getMesh('Mesh/bottomBlock.geo','bottom',nXm,nYm);
 slaveMesh = getMesh('Mesh/topBlock.geo','top',nXs,nYs);
@@ -75,7 +75,7 @@ elemsMaster = Elements(masterMesh,gaussQuad);
 elemsSlave = Elements(slaveMesh,gaussQuad);
 
 Emaster = E1*ones(masterMesh.nSurfaces,1); 
-Emaster = E1*ones(masterMesh.nSurfaces,1); 
+Eslave = E2*ones(slaveMesh.nSurfaces,1); 
 
 % Mesh size
 h = 1/nXs;
@@ -133,9 +133,10 @@ KImIm = KMaster(dofIm,dofIm);
 KIsIs = KSlave(dofIs,dofIs);
 
 if strcmp(scheme,'P0')
-   H1 = (h^2/E1)*mortar.computePressureJumpMat();
-   H2 = mortar.computeStabilizationMatrix(diag(KMaster),diag(KSlave),D,M);
-   H = expandMat(H1,2);
+   H1 = (h/E1)*mortar.computePressureJumpMat();
+   H1 = full(expandMat(H1,2));
+   H2 = mortar.computeStabilizationMatrix(Emaster,Eslave);
+   H = H2;
    % h = vecnorm(H2,2,2);
    %H = diag(h)*H1;
 else
@@ -176,7 +177,7 @@ if patch == 1
    % get Loaded dofs on top edge
    [nodesLoad,lInf] = getAreaInf(slaveMesh,2);
    % special treatment of extreme points (having force 1/2)
-   loadDoF = dof.getDoF(nodesLoad,'slave',2,'y');
+   loadDoF = dof.getDoF(nodesLoad,'slave',2,'x');
    f(loadDoF) = Fy*lInf;
 end
 
@@ -216,8 +217,12 @@ end
 % solve linear system
 u = K\f;
 
+% compute Schur complement
+if 
+
 % get multipliers on the interface
 mult = u(end-nMult+1:end);
+
 
 
 switch scheme
@@ -227,6 +232,12 @@ switch scheme
       c = [slaveMesh.coordinates(mortar.slaveTopol(:,1),1), slaveMesh.coordinates(mortar.slaveTopol(:,2),1)];
       x = 0.5*sum(c,2);
       [x,id] = sort(x);
+      %collect displacement of master domain and slave domain, according to user assignment;
+      u_master = u(DofMap.getCompDoF(dof.nodeMapMaster));
+      u_slave = u(DofMap.getCompDoF(dof.nodeMapSlave));
+      plotSolution(slaveMesh,'slaveOut',u_slave);
+      plotSolution(masterMesh,'masterOut',u_master);
+      %
 end
 
 tx = mult(1:2:end);
@@ -284,7 +295,7 @@ set(legend, 'Interpreter', 'latex'); % Set legend to LaTeX
 legend('Location', 'best');
 
 fig.Visible = "on";
-exportgraphics(fig, strcat('Plots/Patch_',num2str(patch),'.pdf'), 'Resolution', 300); % High resolution
+%exportgraphics(fig, strcat('Plots/Patch_',num2str(patch),'.pdf'), 'Resolution', 300); % High resolution
 
 
 function mat = handleEndPoints(mat,mortar)

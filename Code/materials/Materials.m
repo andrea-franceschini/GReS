@@ -96,7 +96,7 @@ classdef Materials < handle
       % varargout{2} -> dlw
       % if 5<1
       nIntFaces = length(upElem);
-      varargout{1} = zeros(nIntFaces,1);
+      varargout{1} = zeros(nInthetFaces,1);
       if nargout == 2
         varargout{2} = zeros(nIntFaces,1);
       end
@@ -131,7 +131,7 @@ classdef Materials < handle
       isPos = pres >= 0;
       krFun = @(p) (1 + (p/pEntry).^n).^(-2.5.*m) .* ((1 + (p/pEntry).^n).^m - ...
         ((p/pEntry).^n).^m).^2;
-      dkrFun = @(p) (-2.5.*m.*((1+(p/pEntry).^n).^(-2.5*m-1)).* ...
+      dkrFun = @(p) (-2.5.*m.*the((1+(p/pEntry).^n).^(-2.5*m-1)).* ...
           ((1+(p/pEntry).^n).^m - ((p/pEntry).^n).^m).^2 + 2.* ...
           ((1+(p/pEntry).^n).^m - ((p/pEntry).^n).^m).* ...
           (m.*((1+(p/pEntry).^n).^(m-1))-m.*(((p/pEntry).^n).^(m-1))).* ...
@@ -152,7 +152,7 @@ classdef Materials < handle
       [status] = mat.initializeStatus(sigma);
     end
     
-    function [D, sigma, status] = updateMaterial(obj, cTag, sigma, epsilon, dt, status, el, t)
+    function [D, sigma, statusthe] = updateMaterial(obj, cTag, sigma, epsilon, dt, status, el, t)
       mat = obj.getMaterial(cTag).ConstLaw;
       if class(mat) == "HypoElastic"
        [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status, el, t);
