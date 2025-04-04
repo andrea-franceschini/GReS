@@ -152,9 +152,99 @@ classdef Mortar2D < handle
                % we assume that the mesh size is uniform in neighboring
                % cells
                
-               K = inv(Kmaster)+inv(Kslave); % 2 by 2 diagonal matrix
+               K = (0.25*l1*l2)*inv(Kmaster)+(0.25*l1*l2)*inv(Kslave); % 2 by 2 diagonal matrix
 
-               Hloc = (0.25*l1*l2)*[K -K; -K K];
+               Hloc = [K -K; -K K];
+               dof = DofMap.getCompDoF(eS);
+               H(dof,dof) = H(dof,dof)+Hloc;
+            end
+         end
+      end
+
+      function H = computeStabilizationMatrix2(obj,D,M,Kmaster,Kslave)
+         % correct mapping bewteen global coord and interface node ID
+         % use the algebraic approach to compute the stabilization matrix
+         % without a scalar parameter
+         % Ispired by Franceschini 2022 (eq. 10)
+         H = zeros(2*obj.nElSlave);
+         for n = obj.nodesSlave'
+            % get edges sharing node n
+            edgeID = any(ismember(obj.slaveTopol,n),2);
+            if sum(edgeID)<2
+               % boundary node
+               continue
+            else
+               eS = find(edgeID); % id of slave edges 
+               % node list for these edges
+               nSglob = unique(obj.slaveTopol(eS,:));
+               nSdof = DofMap.getCompDoF(nSglob);
+               nS = ismember(obj.nodesSlave,nSglob); % local numbering of slave nodes
+               % get master elements in contact
+               eM = unique([find(obj.elemConnectivity(:,eS(1)));find(obj.elemConnectivity(:,eS(2)))]);
+               nMglob = unique(obj.masterTopol(eM,:));
+               nMdof = DofMap.getCompDoF(nMglob);
+               nM = ismember(obj.nodesMaster,nMglob); % local numbering of slave nodes
+               Km = Kmaster(nMdof,nMdof);
+               Ks = Kslave(nSdof,nSdof);
+               Dloc = D(eS,nS);
+               Mloc = M(eS,nM);
+               Dloc = expandMat(Dloc,2);
+               Mloc = expandMat(Mloc,2);
+               V = [Dloc'; -Mloc'];
+               V = [V(:,3:4) -V(:,1:2)];
+               Kloc = diag([1./diag(Km);1./diag(Ks)]);
+               Hloc = full(diag(V'*(Kloc*V)));
+               K = diag([mean(Hloc([1 3])); mean(Hloc([2 4]))]); 
+               Hloc = [K -K; -K K];
+               dof = DofMap.getCompDoF(eS);
+               H(dof,dof) = H(dof,dof)+Hloc;
+            end
+         end
+      end
+
+      function H = computeStabilizationMatrix3(obj,D,M,Kmaster,Kslave)
+         % consider macroelement looping on pair of master elements
+         % (instead of slave)
+         % this is to check an alternative way to define the stabilization
+         % parameter
+         H = zeros(2*obj.nElSlave);
+         for n = obj.nodesMaster'
+            % get edges sharing node n
+            edgeID = any(ismember(obj.masterTopol,n),2);
+            if sum(edgeID)<2
+               % boundary node
+               continue
+            else
+               eM = find(edgeID); % master cell ID in contact
+               % get slave elements in contact
+               eS = unique([find(obj.elemConnectivity(eM(1),:));find(obj.elemConnectivity(eM(2),:))]);
+               % node list for these edges
+               nSfull = obj.slaveTopol(eS,:);
+               [nSglob, ~, ~] = unique(nSfull(:));
+               counts = histc(nSfull(:), nSglob);
+               % Elements that appear at least two times
+               nSglob = nSglob(counts >= 2);
+               nSdof = DofMap.getCompDoF(nSglob);
+               nS = ismember(obj.nodesSlave,nSglob); % local numbering of slave nodes
+               nMfull = obj.masterTopol(eM,:);
+               [nMglob, ~, ~] = unique(nMfull(:));
+               counts = histc(nMfull(:), nMglob);
+               % Elements that appear at least two times
+               nMglob = nMglob(counts >= 2);
+               nMdof = DofMap.getCompDoF(nMglob);
+               nM = ismember(obj.nodesMaster,nMglob); % local numbering of slave nodes
+               Km = Kmaster(nMdof,nMdof);
+               Ks = Kslave(nSdof,nSdof);
+               Dloc = D(eS,nS);
+               Mloc = M(eS,nM);
+               V = [Dloc'; -Mloc'];
+               Vtilde = zeros(size(V));
+               % swapping columns to get orthogonal matrix
+               Vtilde(:,1:2:end) = -V(:,2:2:end);
+               Vtilde(:,2:2:end) = V(:,1:2:end);
+               %Vtilde = expandMat(Vtilde,2);
+               Kloc = diag([1./diag(Ks);1./diag(Km)]);
+               Hloc = full(Vtilde'*(Kloc*Vtilde));
                dof = DofMap.getCompDoF(eS);
                H(dof,dof) = H(dof,dof)+Hloc;
             end

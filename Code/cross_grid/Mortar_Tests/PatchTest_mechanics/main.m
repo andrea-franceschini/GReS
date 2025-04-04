@@ -37,7 +37,7 @@ DmatS = D;
 
 
 nel = 20;   % number of elements on the slave interface
-rat = 0.3;  % numb master / numb slave elems
+rat = 0.5;  % numb master / numb slave elems
 
 %fig = figure('Visible', 'off');
 fig.Position = [100,100,800,600];
@@ -133,10 +133,12 @@ KImIm = KMaster(dofIm,dofIm);
 KIsIs = KSlave(dofIs,dofIs);
 
 if strcmp(scheme,'P0')
-   H1 = (h/E1)*mortar.computePressureJumpMat();
-   H1 = full(expandMat(H1,2));
-   H2 = mortar.computeStabilizationMatrix(Emaster,Eslave);
-   H = H2;
+   mortarFlip = Mortar2D(1,slaveMesh,1,masterMesh,1);
+   [Dstab,Mstab] = mortar.computeMortarConstant(nG,nInt);
+   H1 = mortar.computeStabilizationMatrix(Emaster,Eslave);
+   H2 = mortar.computeStabilizationMatrix2(D,M,KMaster,KSlave);
+   H3 = mortar.computeStabilizationMatrix3(D,M,KMaster,KSlave);
+   H = H3;
    % h = vecnorm(H2,2,2);
    %H = diag(h)*H1;
 else

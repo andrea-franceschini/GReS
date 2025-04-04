@@ -5,7 +5,7 @@ nG = 15;
 nInt = 4;
 gaussQuad = Gauss(12,2,2);
 
-patch = 3;       % chose patch test case
+patch = 2;       % chose patch test case
 switch patch
     case 1
         Fx = 0; %[kPa]
@@ -36,8 +36,8 @@ D = (E2/((1+nu)*(1-2*nu)))*D;
 DmatS = D;
 
 
-nel = 25;   % number of elements on the slave interface
-rat = 1;  % numb master / numb slave elems
+nel = 40;   % number of elements on the slave interface
+rat = 0.2;  % numb master / numb slave elems
 
 %fig = figure('Visible', 'off');
 fig.Position = [100,100,800,600];
@@ -133,9 +133,8 @@ KImIm = KMaster(dofIm,dofIm);
 KIsIs = KSlave(dofIs,dofIs);
 
 if strcmp(scheme,'P0')
-   H1 = (h/E1)*mortar.computePressureJumpMat();
-   H1 = full(expandMat(H1,2));
-   H2 = mortar.computeStabilizationMatrix(Emaster,Eslave);
+   H1 = mortar.computeStabilizationMatrix(Em,)
+   H2 = mortar.computeStabilizationMatrix2(D,M,KMaster,KSlave);
    H = H2;
    % h = vecnorm(H2,2,2);
    %H = diag(h)*H1;
@@ -177,7 +176,7 @@ if patch == 1
    % get Loaded dofs on top edge
    [nodesLoad,lInf] = getAreaInf(slaveMesh,2);
    % special treatment of extreme points (having force 1/2)
-   loadDoF = dof.getDoF(nodesLoad,'slave',2,'x');
+   loadDoF = dof.getDoF(nodesLoad,'slave',2,'y');
    f(loadDoF) = Fy*lInf;
 end
 
@@ -218,7 +217,17 @@ end
 u = K\f;
 
 % compute Schur complement
-if 
+if nel < 13 && strcmp(scheme,'P0')
+   A = K(1:end-nMult,1:end-nMult);
+   B = K(end-nMult+1:end,1:end-nMult);
+   X = A\B';
+   S = B*X;
+   % compare with norm of the stabilization matrix to see if the order of
+   % magnitude is caputured
+   normS = norm(S,'fro');
+   normH = norm(H,'fro');
+   fprintf('Norm S = %1.4e     |     Norm H = %1.4e \n',normS,normH);
+end
 
 % get multipliers on the interface
 mult = u(end-nMult+1:end);
