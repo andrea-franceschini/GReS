@@ -238,13 +238,15 @@ classdef Mortar2D < handle
                Dloc = D(eS,nS);
                Mloc = M(eS,nM);
                V = [Dloc'; -Mloc'];
-               Vtilde = zeros(size(V));
-               % swapping columns to get orthogonal matrix
-               Vtilde(:,1:2:end) = -V(:,2:2:end);
-               Vtilde(:,2:2:end) = V(:,1:2:end);
-               %Vtilde = expandMat(Vtilde,2);
+               % Vtilde = zeros(size(V));
+               % % swapping columns to get orthogonal matrix
+               % Vtilde(:,1:2:end) = -V(:,2:2:end);
+               % Vtilde(:,2:2:end) = V(:,1:2:end);
+               V = expandMat(V,2);
                Kloc = diag([1./diag(Ks);1./diag(Km)]);
-               Hloc = full(Vtilde'*(Kloc*Vtilde));
+               Hloc = V'*(Kloc*V);
+               Hloc = diag(Hloc).*repmat([1 -1],size(Hloc,1),1);
+               % assemble stabilization matrix 
                dof = DofMap.getCompDoF(eS);
                H(dof,dof) = H(dof,dof)+Hloc;
             end
