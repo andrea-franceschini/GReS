@@ -4,16 +4,16 @@ Mesh.Format = 1; // msh output format
 Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 
 Xsize = 1;
-Ysize = 1;
-nX = 21;
-nY = 21;
+Ysize = 0.5;
+nX = 16;
+nY = 16;
 //thin = 1; // size of first line of element above bottom boundary
 //dY = thin*Ysize/(nY-1);
 // Define points
-Point(1) = {0, 1, 0};
-Point(2) = {Xsize, 1, 0};
-Point(3) = {Xsize, 1+Ysize, 0};
-Point(4) = {0, 1+Ysize, 0};
+Point(1) = {0, 0.5, 0};
+Point(2) = {Xsize, 0.5, 0};
+Point(3) = {Xsize, 0.5+Ysize, 0};
+Point(4) = {0, 0.5+Ysize, 0};
 
 // Define lines
 Line(1) = {1, 2}; 

@@ -144,17 +144,21 @@ classdef Mortar2D < handle
                end
                % get master elements in contact
                eM = unique([find(obj.elemConnectivity(:,eS(1)));find(obj.elemConnectivity(:,eS(2)))]);
+               lM = zeros(length(eM),1);
                for e = eM'
                   Kmaster = Kmaster + obj.computeMasterStabStiff(e,eS,Em);
+                  lM = getLength(obj,e,'master');
                end
                % normalize stiffness contribution to non-uniform mesh sizes
                % mesh size ratio
                % we assume that the mesh size is uniform in neighboring
-               % cells
-               
-               K = (0.25*l1*l2)*inv(Kmaster)+(0.25*l1*l2)*inv(Kslave); % 2 by 2 diagonal matrix
-
+               % cells    
+               K = (0.5*l1*l2)*inv(Kslave); % 2 by 2 diagonal matrix
                Hloc = [K -K; -K K];
+               % scale the stiffness to account for the mesh size ratio
+               lS = mean([l1,l2]);
+               lM = mean(lM);
+               ratio = lM/lS;
                dof = DofMap.getCompDoF(eS);
                H(dof,dof) = H(dof,dof)+Hloc;
             end
@@ -217,7 +221,7 @@ classdef Mortar2D < handle
             else
                eM = find(edgeID); % master cell ID in contact
                % get slave elements in contact
-               eS = unique([find(obj.elemConnectivity(eM(1),:));find(obj.elemConnectivity(eM(2),:))]);
+               eS = unique([find(obj.elemConnectivity(eM(1),:)),find(obj.elemConnectivity(eM(2),:))]);
                % node list for these edges
                nSfull = obj.slaveTopol(eS,:);
                [nSglob, ~, ~] = unique(nSfull(:));
@@ -245,10 +249,82 @@ classdef Mortar2D < handle
                V = expandMat(V,2);
                Kloc = diag([1./diag(Ks);1./diag(Km)]);
                Hloc = V'*(Kloc*V);
-               Hloc = diag(Hloc).*repmat([1 -1],size(Hloc,1),1);
+               Hlump = diag(Hloc);
+               lM1 = getLength(obj,eM(1),'master');
+               lM2 = getLength(obj,eM(2),'master');
+               lM = 0.5*(lM1+lM2);
                % assemble stabilization matrix 
+               for nsLoc = nSglob'
+                  esLoc = find(any(ismember(obj.slaveTopol(eS,:),nsLoc),2));
+                  K1 = diag(Hlump([2*esLoc(1)-1 2*esLoc(1)]));
+                  K2 = diag(Hlump([2*esLoc(2)-1 2*esLoc(2)]));
+                  K = 0.5*(K1+K2);
+                  dof1 = [2*esLoc(1)-1 2*esLoc(1)];
+                  dof2 = [2*esLoc(2)-1 2*esLoc(2)];
+                  Knew = 0.5*(Hloc(dof1,dof1)+Hloc(dof2,dof2));
+                  dof = DofMap.getCompDoF(eS(esLoc));
+                  lS1 = getLength(obj,eS(esLoc(1)),'slave');
+                  lS2 = getLength(obj,eS(esLoc(2)),'slave');
+                  lS = 0.5*(lS1+lS2);
+                  H(dof,dof) = H(dof,dof) + (lM/lS)*[K -K;-K K];
+               end
+            end
+         end
+      end
+
+
+      function H = computeStabilizationMatrix4(obj,D,M,Kmaster,Kslave)
+         % consider macroelement looping on pair of master elements
+         % (instead of slave)
+         % this is to check an alternative way to define the stabilization
+         % parameter
+         H = zeros(2*obj.nElSlave);
+         for n = obj.nodesMaster'
+            % get edges sharing node n
+            edgeID = any(ismember(obj.masterTopol,n),2);
+            if sum(edgeID)<2
+               % boundary node
+               continue
+            else
+               eM = find(edgeID); % master cell ID in contact
+               % get slave elements in contact
+               eS = unique([find(obj.elemConnectivity(eM(1),:));find(obj.elemConnectivity(eM(2),:))]);
+               % node list for these edges
+               nSfull = obj.slaveTopol(eS,:);
+               [nSglob, ~, ~] = unique(nSfull(:));
+               counts = histc(nSfull(:), nSglob);
+               % Elements that appear at least two times
+               nSglob = nSglob(counts >= 2);
+               nSdof = DofMap.getCompDoF(nSglob);
+               nS = ismember(obj.nodesSlave,nSglob); % local numbering of slave nodes
+               nMfull = obj.masterTopol(eM,:);
+               [nMglob, ~, ~] = unique(nMfull(:));
+               counts = histc(nMfull(:), nMglob);
+               % Elements that appear at least two times
+               nMglob = nMglob(counts >= 2);
+               nMdof = DofMap.getCompDoF(nMglob);
+               nM = ismember(obj.nodesMaster,nMglob); % local numbering of slave nodes
+               Km = Kmaster(nMdof,nMdof);
+               Ks = Kslave(nSdof,nSdof);
+               Dloc = D(eS,nS);
+               Mloc = M(eS,nM);
+               V = [Dloc'; -Mloc'];
+               Vtilde = zeros(size(V));
+               Vtilde(:,1:2:end) = -V(:,2:2:end);
+               Vtilde(:,2:2:end) = V(:,1:2:end);
+               % % swapping columns to get orthogonal matrix
+               Vtilde = expandMat(Vtilde,2);
+               Kloc = diag([1./diag(Ks);1./diag(Km)]);
+               Hloc = Vtilde'*(Kloc*Vtilde);
+               v = (-1).^(0:size(Hloc,1)/2-1);
+               v = expandMat(v,2);
+               %Hloc = diag(Hloc).*(v'*v);
                dof = DofMap.getCompDoF(eS);
-               H(dof,dof) = H(dof,dof)+Hloc;
+               jumpMat = -ones(size(V));
+               jumpMat = jumpMat - diag(diag(jumpMat)) + diag(size(V,1)*ones(size(V,1),1));
+               Hloc = Hloc.*expandMat(jumpMat,2);
+               H(dof,dof) = H(dof,dof) + Hloc;
+               % assemble stabilization matrix
             end
          end
       end
@@ -1010,7 +1086,7 @@ classdef Mortar2D < handle
 
       function K = computeMasterStabStiff(obj,elM,elS,E)
          % get master element area sharing support with slave element pair
-         r = sum(obj.areaMap(elM,elS),"all"); % effective area of master
+         %r = sum(obj.areaMap(elM,elS),"all"); % effective area of master
          c = obj.f2cMaster(elM);
          A = obj.mshMaster.surfArea(c);
          % size of the bounding box
@@ -1019,7 +1095,7 @@ classdef Mortar2D < handle
          lx = abs(max(x) - min(x));
          ly = abs(max(y) - min(y));
          Ecell = E(c);
-         K = diag(r*(Ecell*A)./([lx^2;ly^2]));
+         K = diag((Ecell*A)./([lx^2;ly^2]));
       end
 
       function getAreaMapMatrix(obj)
@@ -1058,11 +1134,18 @@ classdef Mortar2D < handle
          obj.areaMap = A./sum(A,2);
       end
 
-      function l = getLength(obj,el)
-         n = obj.slaveTopol(el,:);
-         x = obj.slaveCoord(n,1);
-         y = obj.slaveCoord(n,2);
-         l = sqrt((x(1)-x(2))^2+(y(1)-y(2))^2);
+      function l = getLength(obj,el,varargin)
+         if isempty(varargin) || strcmp(varargin{1},'slave')
+            n = obj.slaveTopol(el,:);
+            x = obj.slaveCoord(n,1);
+            y = obj.slaveCoord(n,2);
+            l = sqrt((x(1)-x(2))^2+(y(1)-y(2))^2);
+         elseif strcmp(varargin{1},'master')
+            n = obj.masterTopol(el,:);
+            x = obj.masterCoord(n,1);
+            y = obj.masterCoord(n,2);
+            l = sqrt((x(1)-x(2))^2+(y(1)-y(2))^2);
+         end
       end
    end
 

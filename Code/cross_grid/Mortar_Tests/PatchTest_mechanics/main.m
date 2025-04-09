@@ -36,8 +36,8 @@ D = (E2/((1+nu)*(1-2*nu)))*D;
 DmatS = D;
 
 
-nel = 20;   % number of elements on the slave interface
-rat = 0.5;  % numb master / numb slave elems
+nel = 20;   % number of elements on the master interface
+rat = 2;  % numb master / numb slave elems
 
 %fig = figure('Visible', 'off');
 fig.Position = [100,100,800,600];
@@ -59,14 +59,14 @@ end
 hold on
 
 
-for scheme = ["DUAL","STANDARD","CONFORMING","P0"] % accomodate UNBIASED in the future!!!
-nXs = nel+1;
-nYs = round(1*nXs);
-nXm = round(nel*rat+1);
-if strcmp(scheme,'CONFORMING')
-   nXm = nXs;
-end
+for scheme = ["P0","CONFORMING","DUAL","STANDARD"] % accomodate UNBIASED in the future!!!
+nXm = nel+1;
 nYm = round(1*nXm);
+nXs = round(nel*rat+1);
+if strcmp(scheme,'CONFORMING')
+   nXs = nXm;
+end
+nYs = round(1*nXs);
 % Import the mesh data into the Mesh object
 masterMesh = getMesh('Mesh/bottomBlock.geo','bottom',nXm,nYm);
 slaveMesh = getMesh('Mesh/topBlock.geo','top',nXs,nYs);
@@ -87,12 +87,15 @@ switch scheme
       [D,M] = mortar.computeMortarSegmentBased(nG,'dual');
       leg = 'Dual';
    case 'STANDARD'
-      [D,M] = mortar.computeMortarSegmentBased(nG,'standard');
+      [D,M] = mortar.computeMortarRBF(6,4,'gauss','standard');
       leg = 'Standard';
    case 'P0'
       [D,M] = mortar.computeMortarConstant(nG,nInt);
       leg = 'P0';
    case 'CONFORMING'
+      [D,M] = mortar.computeConfCrossGridMat();
+      leg = 'Conforming';
+   case 'UNBIASED'
       [D,M] = mortar.computeConfCrossGridMat();
       leg = 'Conforming';
 end
@@ -101,7 +104,7 @@ nMult = 2*numel(mortar.nodesSlave);
 
 % handle lagrange multipliers at the interface boundary
 switch scheme
-   case {'DUAL','STANDARD','CONFORMING'}
+   case {'DUAL','STANDARD','CONFORMING','UNBIASED'}
       E = D\M;
       D = handleEndPoints(D,mortar);
       M = handleEndPoints(M,mortar);
@@ -136,8 +139,9 @@ if strcmp(scheme,'P0')
    mortarFlip = Mortar2D(1,slaveMesh,1,masterMesh,1);
    [Dstab,Mstab] = mortar.computeMortarConstant(nG,nInt);
    H1 = mortar.computeStabilizationMatrix(Emaster,Eslave);
-   H2 = mortar.computeStabilizationMatrix2(D,M,KMaster,KSlave);
+   %H2 = mortar.computeStabilizationMatrix2(D,M,KMaster,KSlave);
    H3 = mortar.computeStabilizationMatrix3(D,M,KMaster,KSlave);
+   H4 = mortar.computeStabilizationMatrix4(D,M,KMaster,KSlave);
    H = H3;
    % h = vecnorm(H2,2,2);
    %H = diag(h)*H1;
@@ -152,7 +156,7 @@ f = zeros(size(KMaster,1)+size(KSlave,1),1);
 
 switch scheme
    case 'UNBIASED'
-      s = (hM);
+      s = h/E1;
       r1 = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofIm)), zeros(length(dofM),length(dofIs))];
       r2 = [zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofIm)), zeros(length(dofS),length(dofIs))] ;
       r3 =  [KmIm', zeros(length(dofIm),length(dofS)), KImIm, zeros(length(dofIm),length(dofIs)), 0.5*D2', -0.5*M1'];

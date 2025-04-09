@@ -17,7 +17,6 @@ integration = "P0"; % RBF,SB,P0
 mult_type = 'standard';
 bound = false;
 
-
 Dmat = zeros(3);
 Dmat([1 5]) = 1-nu;
 Dmat([2 4]) = nu;
@@ -28,9 +27,9 @@ Dmat = (E/((1+nu)*(1-2*nu)))*Dmat;
 gaussQuad = Gauss(12,2,2);
 
 NM0X = 2;
-NS0X = 20;
 NM0Y = 2;
-NS0Y = 20;
+NS0X = 8;
+NS0Y = 2;
 nR = 1;
 h = zeros(nR,1);
 beta1 = zeros(nR,1);
@@ -50,6 +49,8 @@ getPatchMesh('Mesh/slave.geo','slave',NSX,NSY);
 slaveMesh.importGMSHmesh('Mesh/slave.msh')
 masterMesh.importGMSHmesh('Mesh/master.msh');
 
+Em = E*ones(masterMesh.nSurfaces,1); 
+Es = E*ones(slaveMesh.nSurfaces,1); 
 % Element class for further stiffness matrix computation
 elemsMaster = Elements(masterMesh,gaussQuad);
 elemsSlave = Elements(slaveMesh,gaussQuad);
@@ -101,8 +102,6 @@ switch integration
    case 'P0'
       D = expandMat(Dconsistent,2);
       M = expandMat(Mconst,2);
-      H = mortar.computePressureJumpMat();
-      H = (1/NSX)*expandMat(H,2);
 end
 
 % removing endpoint nodal multipliers
@@ -120,13 +119,17 @@ else
    dofMult = DofMap.getCompDoF(mortar.nodesSlave(1:end),2);
 end
 nMult = numel(dofMult);
+%H = zeros(nMult,nMult);
 switch integration 
    case 'P0'
       dofMult = DofMap.getCompDoF((1:mortar.nElSlave)');
       nMult = numel(dofMult);
+      H1 = computeStabilizationMatrix(mortar,Em,Es);
+      [Dp0,Mp0,Dcp0] = mortar.computeMortarConstant(nG,4);
+      H3 = computeStabilizationMatrix3(mortar,Dp0,Mp0,KMaster,KSlave);
+      H4 = computeStabilizationMatrix4(mortar,Dp0,Mp0,KMaster,KSlave);
 end
 H = zeros(nMult,nMult);
-%H = zeros(nMult,nMult);
 % complete saddle point matrix
 r1 = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofMult))];
 r2 = [zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofMult))] ;
@@ -190,12 +193,17 @@ beta1(iref) = e;
 % tic 
 X = A\B';
 S = B*X;
-[vS,eS] = eig(full(S));
+S = full(S);
+[vS,eS] = eig(S);
 eigS = eS(eS>1e-9);
 maxE = max(eigS); 
 minE = min(eigS);
-estEig = (1/E)*(1/NSX)^2;
-fprintf('max: %1.4e | min: %1.4e | estimate: %1.4e | ratio: %1.4e \n',maxE,minE,estEig,maxE/estEig);
+[vH1,eigH1] = eig(H1);
+maxEH1 = max(diag(eigH1));
+[vH3,eigH3] = eig(H3);
+maxEH3 = max(diag(eigH3));
+[v_stab,e_stab] = eig(S-H3);
+fprintf('max: %1.4e | min: %1.4e | stab 1: %1.4e | stab 3:%1.4e | ratio 1: %1.4e | ratio 3: %1.4e \n',maxE,minE,maxEH1,maxEH3,maxE/maxEH1,maxE/maxEH3);
 % eS = min(real(eig(full(S))));
 % eA = max(real(eig(full(A))));
 % beta3(iref) = sqrt(eS/eA);
