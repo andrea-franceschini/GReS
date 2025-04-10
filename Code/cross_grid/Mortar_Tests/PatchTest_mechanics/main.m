@@ -36,8 +36,8 @@ D = (E2/((1+nu)*(1-2*nu)))*D;
 DmatS = D;
 
 
-nel = 20;   % number of elements on the master interface
-rat = 2;  % numb master / numb slave elems
+nel = 100;   % number of elements on the master interface
+rat = 1;  % numb master / numb slave elems
 
 %fig = figure('Visible', 'off');
 fig.Position = [100,100,800,600];
@@ -61,12 +61,12 @@ hold on
 
 for scheme = ["P0","CONFORMING","DUAL","STANDARD"] % accomodate UNBIASED in the future!!!
 nXm = nel+1;
-nYm = round(1*nXm);
+nYm = round(0.1*nXm);
 nXs = round(nel*rat+1);
 if strcmp(scheme,'CONFORMING')
    nXs = nXm;
 end
-nYs = round(1*nXs);
+nYs = round(0.1*nXs);
 % Import the mesh data into the Mesh object
 masterMesh = getMesh('Mesh/bottomBlock.geo','bottom',nXm,nYm);
 slaveMesh = getMesh('Mesh/topBlock.geo','top',nXs,nYs);
@@ -99,6 +99,9 @@ switch scheme
       [D,M] = mortar.computeConfCrossGridMat();
       leg = 'Conforming';
 end
+% scaling the coarse grid
+D = (rat^2)*D;
+M = (rat^2)*M;
 
 nMult = 2*numel(mortar.nodesSlave);
 
