@@ -1,0 +1,7 @@
+SurfBC                            % BC item 
+Neu                               % BC type 
+Flow                              % Physics 
+LateralC                           % BC name 
+Inputs/Boundary/List_LateralC 
+0.00 Inputs/Boundary/Time_LateralC_0.dat 
+End

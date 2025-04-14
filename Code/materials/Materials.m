@@ -1,12 +1,34 @@
 classdef Materials < handle
   % MATERIAL - General material class
+  % 
+  % Details - Store capabilities:
+  % - for solid materials, you can have only one type material for each
+  % subdomain, but you can have the same material defined in more than one
+  % subdomain.
+  % - for fluid materials (phase), you can have one material define in
+  % diferent subdomain, and the subdomain can have more than one material
+  % (limit by then physics defined for that subdomain).
+  % 
+  % This approx still leave the possibility of two subdomain adjacent to
+  % each other have different fluid material defined, which can represents
+  % a different physics for this subdomains (One that combine all the
+  % different phases present).
 
   properties (Access = public)
     % Creation of a Dictionary object (faster than map)
     %db = configureDictionary("double","struct"); 
     % configureDictionary is not supported before 2023b
-    db 
+    db
     matMap
+    % *DB - the database for store the proprieties of the material.
+    % *Mat - map the associate the material and which subdomain is defined.
+    % *Cell - map the associate the subdomail and which material is defined.
+    solidDB
+    solidMat2Cell
+    solidCell2Mat
+    fluidDB
+    fluidMat2Cell
+    fluidCell2Mat
   end
 
   methods (Access = public)
@@ -15,7 +37,13 @@ classdef Materials < handle
       obj.db = containers.Map('KeyType','double','ValueType','any');
       % Calling the function to read input data from file
       obj.matMap = zeros(100,100);
-      obj.readInputFiles(model,fListName)
+      [~, ~, extension] = fileparts(fListName);
+      switch extension
+          case '.xml'
+              obj.readXMLList(model,fListName);
+          otherwise
+              obj.readInputFiles(model,fListName);
+      end      
     end
 
     % Get the material defined by matIdentifier and check if it is a
@@ -228,12 +256,101 @@ classdef Materials < handle
       fclose(fID);
 
       % Test necessity of beta correction in Van Genuchten object.
-      if obj.getFluid().isvalid || obj.getMaterial(1).Curves.isvalid
-          if obj.getMaterial(1).Curves.needBetaCor()
-            specWeight = obj.getFluid().getFluidSpecWeight();
-            obj.db(1).Curves.betaCorrection(specWeight);
+      if model.isVariabSatFlow()
+          if obj.getFluid().isvalid || obj.getMaterial(1).Curves.isvalid
+              if obj.getMaterial(1).Curves.needBetaCor()
+                  specWeight = obj.getFluid().getFluidSpecWeight();
+                  obj.db(1).Curves.betaCorrection(specWeight);
+              end
           end
       end
+    end
+
+    function readXMLList(obj, model, fListName)
+        %READXMLFILE - function to read the material information file in
+        %xml and construct the class object.
+
+        fdata = readstruct(fListName,AttributeSuffix="");
+        if ~isfield(fdata,'Solid')
+            error('Necessary pass material proprieties to at least one type of Solid Material.')
+        end
+
+        % SOLID - Creating the datbase.
+        % obj.solidDB = dictionary(uint64.empty,struct.empty);
+        obj.solidDB = containers.Map('KeyType','uint64','ValueType','any');
+        % Store the information for the Solid class.
+        nsolmat = length(fdata.Solid);
+        obj.solidMat2Cell = repmat(struct('matID', [], 'cellTag', []), nsolmat, 1);
+        for mat=1:nsolmat
+            if isnumeric(fdata.Solid(mat).cellTag)
+                cellTags = fdata.Solid(mat).cellTag;
+            else
+                cellTags = sscanf(fdata.Solid(mat).cellTag, '%i,');
+            end
+            obj.solidMat2Cell(mat).matID = mat;
+            obj.solidMat2Cell(mat).cellTag = cellTags;
+            [~, ~, extension] = fileparts(fdata.Solid(mat).path);
+            switch extension
+                case '.xml'
+                    material = Materials.readXMLSolid(fdata.Solid(mat).path);
+                otherwise
+                    % obj.readInputFiles(model,fListName);
+            end
+            obj.solidDB(mat) = material;
+        end
+        % Make the map with with subdomain(cellTag) and it's material.
+        % obj.solidCell2Mat = dictionary(uint64.empty,uint64.empty);
+        obj.solidCell2Mat = containers.Map('KeyType','uint64','ValueType','uint64');
+        for mat=1:nsolmat
+            temp=obj.solidMat2Cell(mat).cellTag;
+            for cells=1:length(temp)
+                if ~isKey(obj.solidCell2Mat,temp(cells))
+                    obj.solidCell2Mat(temp(cells))=mat;
+                else
+                    if obj.solidCell2Mat(temp(cells)) ~= mat
+                        error('More than one type of solid for the same subdomain!');
+                    end
+                end
+            end
+        end
+
+        % FLUID - Creating the datbase.
+        % obj.fluidDB = dictionary(uint64.empty,struct.empty);
+        obj.fluidDB = containers.Map('KeyType','uint64','ValueType','any');
+        % Store the information for the fluid class.
+        nflumat = length(fdata.Fluid);
+        obj.fluidMat2Cell = repmat(struct('matID', 1, 'cellTag', 1), nflumat, 1);
+        for mat=1:nflumat
+            fFlowNeed = model.isSinglePhaseFlow() || model.isVariabSatFlow();
+            if fFlowNeed && isfield(fdata,'Fluid')
+                if isnumeric(fdata.Fluid(mat).cellTag)
+                    cellTags = fdata.Fluid(mat).cellTag;
+                else
+                    cellTags = sscanf(fdata.Fluid(mat).cellTag, '%i,');
+                end
+                obj.fluidMat2Cell(mat).matID = mat;
+                obj.fluidMat2Cell(mat).cellTag = cellTags;
+                switch extension
+                    case '.xml'
+                        material = Materials.readXMLFluid(fdata.Fluid(mat).path);
+                    otherwise
+                        % obj.readInputFiles(model,fListName);
+                end
+                obj.fluidDB(mat) = material;
+            end
+        end
+        % Make the map with with subdomain(cellTag) and it's material.
+        obj.fluidCell2Mat = containers.Map('KeyType','uint64','ValueType','any');
+        scells = unique(vertcat(obj.fluidMat2Cell.cellTag));
+        for cel=1:length(scells)
+            mats=[];
+            for mat=1:nflumat
+                if ismember(scells(cel),obj.fluidMat2Cell(mat).cellTag)
+                    mats=[mats mat];
+                end
+            end
+            obj.fluidCell2Mat(scells(cel)) = mats;
+        end
     end
   end
 
@@ -245,6 +362,46 @@ classdef Materials < handle
         error('File %s does not exist in the directory',fName);
       end
     end
+
+    function material = readXMLSolid(fileName)
+        %readXMLSolid - function to read the material information relate to
+        % the solid part of the model.
+
+        material = struct();
+        fdata = readstruct(fileName,AttributeSuffix="");
+        fnames = fieldnames(fdata);
+        for mat=1:length(fnames)
+            switch string(fnames(mat))
+                case 'Elastic'
+                    material.ConstLaw = 0;
+                    % material.ConstLaw = Elastic(fID, matFileName);
+                case 'HypoElastic'
+                    % material.ConstLaw = HypoElastic(fID, matFileName);
+                case 'TransvElastic'
+                    % material.ConstLaw = TransvElastic(fID, matFileName);
+                case 'SSCM'
+                    % material.ConstLaw = SSCM(fID, matFileName);
+                case 'PorousRock'
+                    % material.PorousRock = PorousRock(fID, model, matFileName);
+                case 'CapillaryCurve'
+                    % material.CapillaryCurve = TabularCurve(fID, matFileName);
+                case 'RelativePermCurve'
+                    % material.RelativePermCurve = TabularCurve(fID, matFileName);
+                case 'VanGenuchten'
+                    % material.Curves = VanGenuchten(fID, matFileName);
+            end
+        end
+    end
+
+
+
+    function material = readXMLFluid(fileName)
+        %readXMLFluid - function to read the material information relate to
+        % the fluid part of the model.
+        material = struct();
+    end
+
+
 
   end
 end

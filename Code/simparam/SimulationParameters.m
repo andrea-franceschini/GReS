@@ -253,7 +253,7 @@ classdef SimulationParameters < handle
         %READXMLFILE - function to read the simulation parameters file in
         %xml and construct the class object.
 
-        fdata = readstruct(fileName);
+        fdata = readstruct(fileName,AttributeSuffix="");
 
         obj.tIni = obj.checkSlotXML(fdata,'Time','Start',0.);
         obj.tMax = obj.checkSlotXML(fdata,'Time','End',1.);

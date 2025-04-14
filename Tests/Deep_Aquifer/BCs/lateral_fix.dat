@@ -2,6 +2,6 @@ SurfBC                            % BC item
 Dir                               % BC type
 Poro                              % Physics
 lateral                             % BC name
-lateral_fix/list
-0.000000 lateral_fix/time0.dat
+BCs/lateral_fix/list
+0.000000 BCs/lateral_fix/time0.dat
 End

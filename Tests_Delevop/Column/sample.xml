@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+
+<Problem>
+    <BlockA
+        someAttribute="1.234">
+
+        <!-- Some comment -->
+        <BlockB
+          name="firstNamedBlock"
+          anotherAttribute="0"/>
+        <BlockB
+          name="secondNamedBlock"
+          anotherAttribute="1"/>
+    </BlockA>
+</Problem>
