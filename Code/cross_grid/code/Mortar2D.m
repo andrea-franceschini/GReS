@@ -242,7 +242,7 @@ classdef Mortar2D < handle
                Dloc = D(eS,nS);
                Mloc = M(eS,nM);
                V = [Dloc'; -Mloc'];
-               Vtilde = zeros(size(V));
+               %Vtilde = zeros(size(V));
                % % swapping columns to get orthogonal matrix
                % Vtilde(:,1:2:end) = -V(:,2:2:end);
                % Vtilde(:,2:2:end) = V(:,1:2:end);
@@ -266,7 +266,7 @@ classdef Mortar2D < handle
                   lS1 = getLength(obj,eS(esLoc(1)),'slave');
                   lS2 = getLength(obj,eS(esLoc(2)),'slave');
                   lS = 0.5*(lS1+lS2);
-                  H(dof,dof) = H(dof,dof) + [K -K;-K K];
+                  H(dof,dof) = H(dof,dof) + (lM/lS)*[K -K;-K K];
                end
             end
          end

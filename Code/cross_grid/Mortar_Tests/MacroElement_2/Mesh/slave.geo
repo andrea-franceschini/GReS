@@ -8,7 +8,7 @@ NY = 1;
 xMin = 0;
 xMax = 1;
 yMin = 0;
-yMax = 1;
+yMax = 1/NX;
 
 Point(1) = {xMin, yMin, 0};
 Point(2) = {xMax, yMin, 0};

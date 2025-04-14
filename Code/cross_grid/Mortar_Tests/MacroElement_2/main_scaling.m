@@ -26,9 +26,9 @@ Dmat = (E/((1+nu)*(1-2*nu)))*Dmat;
 % Set the input file name
 gaussQuad = Gauss(12,2,2);
 
-NM0X = 4;
+NM0X = 2;
 NM0Y = 1;
-NS0X = 4;
+NS0X = 8;
 NS0Y = 1;
 nR = 1;
 h = zeros(nR,1);
@@ -51,10 +51,12 @@ slaveMesh.importGMSHmesh('Mesh/slave.msh')
 masterMesh.importGMSHmesh('Mesh/master.msh');
 
 %scale the y-coordinate to force hx == hy
-rS = NSY/NSX;
-slaveMesh.coordinates(:,2) = slaveMesh.coordinates(:,2)*rS; 
-rM = NMY/NMX;
-masterMesh.coordinates(:,2) = masterMesh.coordinates(:,2)*rM; 
+yMax = max(slaveMesh.coordinates(:,2));
+masterMesh.coordinates(:,2) = masterMesh.coordinates(:,2) + yMax; 
+% rS = NSY/NSX;
+% slaveMesh.coordinates(:,2) = slaveMesh.coordinates(:,2)*rS; 
+% rM = NMY/NMX;
+% 
 
 
 Em = E*ones(masterMesh.nSurfaces,1); 
@@ -101,32 +103,11 @@ KIsIs = KSlave(dofIs,dofIs);
 Erbf = Drbf\Mrbf;
 Esb = Dsb\Msb;
 switch integration
-   case 'RBF'
-      D = expandMat(Drbf,2);
-      M = expandMat(Mrbf,2);
-   case 'SB'
-      D = expandMat(Dsb,2);
-      M = expandMat(Msb,2);
    case 'P0'
       D = expandMat(Dconsistent,2);
       M = expandMat(Mconst,2);
 end
 
-% removing endpoint nodal multipliers
-if bound && ~strcmp(integration,'P0')
-   D([5 6],:) = D([5 6],:) + D([1 2],:);
-   D([end end-1],:) = D([end end-1],:) + D([3 4],:);
-   M([5 6],:) = M([5 6],:) + M([1 2],:);
-   M([end end-1],:) = M([end end-1],:) + M([3 4],:);
-   D([1 2 3 4],:) = [];
-   M([1 2 3 4],:) = [];
-   P([1 2 3 4],:) = [];
-   P(:,[1 2 3 4]) = [];
-   dofMult = DofMap.getCompDoF(mortar.nodesSlave(3:end),2);
-else
-   dofMult = DofMap.getCompDoF(mortar.nodesSlave(1:end),2);
-end
-nMult = numel(dofMult);
 %H = zeros(nMult,nMult);
 switch integration 
    case 'P0'
@@ -202,22 +183,12 @@ beta1(iref) = e;
 X = A\B';
 S = B*X;
 S = full(S);
-[vS,eS] = eig(S);
-eigS = eS(eS>1e-9);
-maxE = max(eigS); 
-minE = min(eigS);
-[vH1,eigH1] = eig(H1);
-maxEH1 = max(diag(eigH1));
-% [vH3,eigH3] = eig(H3);
-% maxEH3 = max(diag(eigH3));
-% [v_stab,e_stab] = eig(S-H3);
-%fprintf('max: %1.4e | min: %1.4e | stab 1: %1.4e | stab 3:%1.4e | ratio 1: %1.4e | ratio 3: %1.4e \n',maxE,minE,maxEH1,maxEH3,maxE/maxEH1,maxE/maxEH3);
-% eS = min(real(eig(full(S))));
-% eA = max(real(eig(full(A))));
-% beta3(iref) = sqrt(eS/eA);
-C = H1./abs(min(H1,[],2)); % standard pressure jump stabilization matrix
-C = (hS^2)*C;
+
+%C = H1./abs(min(H1,[],2)); % standard pressure jump stabilization matrix
+%C = (hS^2)*C;
+C = H3;
 q = (sum(D,2));
+Q = hS*diag(q);
 invQ = full(diag(1./(hS*q))); % scaled by the length for proper dual norm bound
 list = -10:0.02:10;
 c = zeros(length(list),1);
@@ -228,13 +199,13 @@ for k = 1:length(list)
    c(k) = cond(mat);
 end
 
-betaMaster = ((1/NMX)^2)/E;
-mat = invQ*(S+betaMaster*C);
-cM = cond(mat);
-
-betaSlave = ((1/NSX)^2)/E;
-mat = invQ*(S+betaSlave*C);
-cS = cond(mat);
+% betaMaster = ((1/NMX)^2)/E;
+% mat = invQ*(S+betaMaster*C);
+% cM = cond(mat);
+% 
+% betaSlave = ((1/NSX)^2)/E;
+% mat = invQ*(S+betaSlave*C);
+% cS = cond(mat);
 
 
 
@@ -252,10 +223,58 @@ fprintf('Beta for minimum condition number: %1.4e \n',betaMin)
 % fprintf('Computed beta with master element length: %1.4e \n',betaMaster)
 
 % elman estimate
-Gamma = max(eig(invQ*S));
-Delta = max(eig(invQ*C));
+Gamma = max(eig(S));
+Delta = max(eig(C));
 betaOpt = Gamma/Delta;
 fprintf('Optimal beta value: %1.4e \n',betaOpt)
+
+
+% check effect of schur complement and stabilization matrix
+p = linspace(0,1,size(S,1)/2);
+Sx = S(1:2:end,1:2:end); 
+Cx = C(1:2:end,1:2:end);
+
+xS = p*(Sx*p');
+xC = p*(Cx*p');
+fprintf('Difference in stabilization power: %1.4f \n',xS/xC);
+
+% check property of the stabilization (moving the pressure mode to 1 with
+% the scaled stabilized schur complement)
+N = 0.5*size(S,1);
+pcb = (-1).^(0:N-1);
+pcb = repelem(pcb,2);
+k1= (pcb*(S)*pcb')/(pcb*Q*pcb');
+k2 = pcb*((S+C))*pcb'/(pcb*Q*pcb');
+fprintf('stabilized eigenvalue: %1.4e \n',k2);
+
+
+% % check scaling for local jump
+Sloc = S(1:4,1:4);
+Qloc = Q(1:4,1:4);
+Cloc = C(1:4,1:4);
+N = 0.5*size(Sloc,1);
+pcb = (-1).^(0:N-1);
+pcb = repelem(pcb,2);
+k1loc = (pcb*(Sloc)*pcb')/(pcb*Qloc*pcb');
+k2loc = pcb*((Sloc+Cloc))*pcb'/(pcb*Qloc*pcb');
+fprintf('stabilized eigenvalue k2loc: %1.4e \n',k2loc);
+
+
+% check eigenvector of schur complement vs local jump operator
+eS = max(eig(S));
+eC = max(eig(Cloc));
+
+
+% lumping the schur complement vs diagonal of the stabilization matrix
+Slump = sum(S,2);
+Hlump = diag(C);
+
+
+
+% GammaLoc = max(eig(invQloc*Sloc));
+% DeltaLoc = max(eig(invQloc*Cloc));
+% betaOptLoc = GammaLoc/DeltaLoc;
+% fprintf('Optimal beta value locally: %1.4e \n',betaOptLoc)
 % 0.25 is the optimal beta for a 2x2 macroelement, to which the
 % pressure-jump stabilization is a natural extension...
 
@@ -264,9 +283,9 @@ fprintf('Optimal beta value: %1.4e \n',betaOpt)
 % distortion
 % according to analytical derivation from Franceschini 2020
 
-ref = 0.5*gridCorr;
-fprintf('Correct beta scaling: %1.4e \n',betaOpt/0.5)
-fprintf('Ratio between grids: %1.4e \n',NSX/NMX)
+%ref = 0.5*gridCorr;
+%fprintf('Correct beta scaling: %1.4e \n',betaOpt/0.5)
+%fprintf('Ratio between grids: %1.4e \n',NSX/NMX)
 
 % elman more recent estimate
 % betaNew = 1/(max(eig(invQ*C)))^2;

@@ -3,7 +3,7 @@
 Mesh.Format = 1; // msh output format
 Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 
-NX = 2;
+NX = 8;
 NY = 1;
 xMin = 0;
 xMax = 1;
@@ -30,12 +30,11 @@ Transfinite Line{4} = NY+1;
 Transfinite Surface {1};
 Recombine Surface {1};
 
-Physical Curve("Interface",1) = {1};
+Physical Curve("Interface",1) = {3};
 Physical Curve("Fix_x",2) = {2,4};
-Physical Curve("Fix_y",3) = {3};
-Physical Surface("master_top",1)={1};
+Physical Curve("Fix_y",3) = {1};
+Physical Surface("slave_bot",1)={1};
 
 //Mesh 2;
 //Save "slave.msh";
-
 

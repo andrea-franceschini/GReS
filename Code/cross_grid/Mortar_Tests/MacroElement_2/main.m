@@ -51,10 +51,10 @@ slaveMesh.importGMSHmesh('Mesh/slave.msh')
 masterMesh.importGMSHmesh('Mesh/master.msh');
 
 %scale the y-coordinate to force hx == hy
-rS = NSY/NSX;
-slaveMesh.coordinates(:,2) = slaveMesh.coordinates(:,2)*rS; 
-rM = NMY/NMX;
-masterMesh.coordinates(:,2) = masterMesh.coordinates(:,2)*rM; 
+% rS = NSY/NSX;
+% slaveMesh.coordinates(:,2) = slaveMesh.coordinates(:,2)*rS; 
+% rM = NMY/NMX;
+% masterMesh.coordinates(:,2) = masterMesh.coordinates(:,2)*rM; 
 
 
 Em = E*ones(masterMesh.nSurfaces,1); 

@@ -9,8 +9,8 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 // strictly positive integer; here `1') and defined by a list of four numbers:
 // three coordinates (X, Y and Z) and the target mesh size (lc) close to the
 // point:
-nX = 101;
-nY = 10;
+nX = 21;
+nY = 6;
 
 Point(1) = {0, 0, 0};
 Point(2) = {1, 0, 0};
