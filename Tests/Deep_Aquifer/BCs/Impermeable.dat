@@ -2,6 +2,6 @@ SurfBC                            % BC item
 Neu                               % BC type
 Flow                              % Physics
 Impermeable                             % BC name
-Impermeable/list
-0.000000 Impermeable/time0.dat
+BCs/Impermeable/list
+0.000000 BCs/Impermeable/time0.dat
 End
