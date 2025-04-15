@@ -8,7 +8,7 @@ warning('off','MATLAB:nearlySingularMatrix');
 
 % List the physical models activated in the simulation and their
 % discretization scheme
-model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
+model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
 
 % Create object containing simulation parameters
 fileName = "simParam.dat";

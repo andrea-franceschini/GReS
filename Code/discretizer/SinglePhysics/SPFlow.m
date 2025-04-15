@@ -115,7 +115,7 @@ classdef SPFlow < SinglePhysics
          for el = subCells'
             permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
             poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
-            if ismember(obj.mesh.cellTag(el),getFieldCellTags(obj.dofm,{"Poromechanics","SPFlow"}))
+            if ismember(obj.mesh.cellTag(el),getFieldCellTags(obj.dofm,{obj.field,'Poromechanics'}))
                alpha = 0; %this term is not needed in coupled formulation
             else
                alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
@@ -312,10 +312,11 @@ classdef SPFlow < SinglePhysics
                end
             case 'VolumeForce'
                v = bc.getVals(id,t);
-               ents = bc.getEntities(id);
                if isFVTPFABased(obj.model,'Flow')
+                  ents = bc.getEntities(id);
                   vals = v.*obj.elements.vol(ents);
                elseif isFEMBased(obj.model,'Flow')
+                  ents = bc.getLoadedEntities(id);
                   entitiesInfl = bc.getEntitiesInfluence(id);
                   vals = entitiesInfl*v;
                end

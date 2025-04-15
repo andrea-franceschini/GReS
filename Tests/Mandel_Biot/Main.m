@@ -98,9 +98,12 @@ end
 %Post processing using MAT-FILE
 %list of nodes along vertical axis (with x,y=0)
 tol = 0.001;
-elemP1 = find(abs(elems.cellCentroid(:,3) - 0.05) < tol);
-elemP2 = find(abs(elems.cellCentroid(:,2) - 0.025) < tol);
+elemP1 = find(abs(elems.cellCentroid(:,2) - 0.025) < tol);
+elemP2 = find(abs(elems.cellCentroid(:,3) - 0.55) < tol);
 elemP = intersect(elemP1, elemP2);
+nodesP1 = find(abs(topology.coordinates(:,2)-0.05)<tol) ;
+nodesP2 = find(abs(topology.coordinates(:,3)-0.5)<tol);
+nodesP = intersect(nodesP1,nodesP2);
 nodesX1 = find(abs(topology.coordinates(:,2)-0.05)<tol) ;
 nodesX2 = find(abs(topology.coordinates(:,3)-0.7)<tol);
 nodesX = intersect(nodesX1,nodesX2);
@@ -117,7 +120,13 @@ nodesZ = nodesZ(ind);
 %Getting pressure and displacement solution for specified output times from MatFILE
 press = printUtils.results.expPress;
 disp = printUtils.results.expDispl;
-pressNum = press(elemP,2:end);
+if isFVTPFABased(model,'Flow')
+   pressNum = press(elemP,2:end);
+   xP = elems.cellCentroid(elemP,1);
+elseif isFEMBased(model,'Flow')
+   xP = topology.coordinates(nodesP,1);
+   pressNum = press(nodesP,2:end);
+end
 dispXNum = disp(3*nodesX-2,2:end);
 dispZNum = disp(3*nodesZ,2:end);
 
@@ -127,7 +136,7 @@ load("Mandel_Analytical.mat");
 %Plotting solution
 %Pressure
 figure(1)
-plotObj1 = plot(elems.cellCentroid(elemP,1),pressNum,'k.', 'LineWidth', 1, 'MarkerSize', 15);
+plotObj1 = plot(xP,pressNum,'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
 plotObj2 = plot(x,p,'k-', 'LineWidth', 1);
 xlabel('x (m)')
