@@ -1,0 +1,7 @@
+SurfBC                            % BC item 
+Dir                               % BC type 
+Flow                              % Physics 
+Top                           % BC name 
+Inputs/Case2Varela/BC/List_Top 
+0.00 Inputs/Case2Varela/BC/Time_Top_0.dat 
+End

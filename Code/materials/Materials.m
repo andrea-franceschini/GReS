@@ -38,7 +38,7 @@ classdef Materials < handle
       % Calling the function to read input data from file
       obj.matMap = zeros(100,100);
       [~, ~, extension] = fileparts(fListName);
-      assert(isempty(extension),['the %s need to have an extension to', ...
+      assert(~isempty(extension),['the %s need to have an extension to', ...
                 ' be read the material class'], fListName);
       switch extension
           case '.xml'
