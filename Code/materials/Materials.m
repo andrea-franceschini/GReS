@@ -7,6 +7,15 @@ classdef Materials < handle
     % configureDictionary is not supported before 2023b
     db 
     matMap
+    % *DB - the database for store the proprieties of the material.
+    % *Mat2Cell - map the associate the material and which subdomain is defined.
+    % *Cell2Mat - map the associate the subdomain and which material is defined.
+    solidDB
+    solidMat2Cell
+    solidCell2Mat
+    fluidDB
+    fluidMat2Cell
+    fluidCell2Mat
   end
 
   methods (Access = public)
@@ -15,7 +24,15 @@ classdef Materials < handle
       obj.db = containers.Map('KeyType','double','ValueType','any');
       % Calling the function to read input data from file
       obj.matMap = zeros(100,100);
-      obj.readInputFiles(model,fListName)
+      [~, ~, extension] = fileparts(fListName);
+      assert(isempty(extension),['the %s need to have an extension to', ...
+                ' be read the material class'], fListName);
+      switch extension
+          case '.xml'
+              obj.readXMLList(model,fListName);
+          otherwise
+              obj.readInputFiles(model,fListName);
+      end
     end
 
     % Get the material defined by matIdentifier and check if it is a
@@ -226,6 +243,62 @@ classdef Materials < handle
         error('File %s does not exist in the directory',fName);
       end
     end
+
+    function material = readXMLSolid(fileName)
+        %readXMLSolid - function to read the material information relate to
+        % the solid part of the model.
+
+        material = struct();
+        fdata = readstruct(fileName,AttributeSuffix="");
+        fnames = fieldnames(fdata);
+        for mat=1:length(fnames)
+            switch string(fnames(mat))
+                case 'Elastic'
+                    material.ConstLaw = 0;
+                    youngMod = checkField(fdata.Elastic.young,1);
+                    nu = fdata.Elastic.poisson;
+                    % material.ConstLaw = Elastic(fID, matFileName);
+                case 'HypoElastic'
+                    % material.ConstLaw = HypoElastic(fID, matFileName);
+                case 'TransvElastic'
+                    % material.ConstLaw = TransvElastic(fID, matFileName);
+                case 'SSCM'
+                    % material.ConstLaw = SSCM(fID, matFileName);
+                case 'PorousRock'
+                    % material.PorousRock = PorousRock(fID, model, matFileName);
+                case 'CapillaryCurve'
+                    % material.CapillaryCurve = TabularCurve(fID, matFileName);
+                case 'RelativePermCurve'
+                    % material.RelativePermCurve = TabularCurve(fID, matFileName);
+                case 'VanGenuchten'
+                    % material.Curves = VanGenuchten(fID, matFileName);
+            end
+        end
+    end
+
+
+
+    function material = readXMLFluid(fileName)
+        %readXMLFluid - function to read the material information relate to
+        % the fluid part of the model.
+        material = struct();
+    end
+
+    function vec = checkField(stData,npos)
+        %CHECKFIELD - function to check if the field inside a struct is a
+        % number or a path and return the information.
+        if isnumeric(stData)
+            vec = stData;
+        else
+            [~, ~, extension] = fileparts(stData);
+            assert(isempty(extension),['the %s need to have an extension to', ...
+                ' be read as a list of values. Error in the definition of ', ...
+                'XML file for the material class'], stData);
+            % read the file.
+            vec = 0.;
+        end
+    end
+
 
   end
 end

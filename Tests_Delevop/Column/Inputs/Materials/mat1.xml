@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Solid>
+    <!-- *Remark
+          - If you have more than one definition for the same material,
+            the last one will be the one defined.
+          - If you pass a path in the field marked if (*), the code will
+            read that file and pass a vector to that propriety
+          - Each material class will have its own way of dealing with a
+            property defined with vector  -->
+    <Elastic>
+        <!-- Store the Elastic information
+             young(*) = Young's modulus (Pa)
+             nu = Poisson's ratio (adm) -->
+        <young> 9.4706e7 </young>
+        <poisson> 0.15 </poisson>
+    </Elastic>
+    <Elastic>
+        <young> "Inputs/Materials/mat1.xml" </young>
+        <poisson> 0.15 </poisson>
+    </Elastic>
+    <PorousRock>
+        <!-- poro = rock porosity (adm) [0,1]
+             specweig = rock specific weight (Pa)
+             perm = rock permeability (m-2) [symmetric tensor]
+             sr = residual fluid saturation (adm) [0,1]
+             sm = maximun fluid saturation (adm) [0,1]--> 
+        <poro> 1.0 </poro>
+        <specweig> 2.1e4 </specweig>
+        <sr></sr>
+        <sm></sm>
+        <perm>
+            <!-- if xx(*) is a path, it will ignore the rests -->
+            <xx> 9.4018e-12 </xx>
+            <yy> 9.4018e-12 </yy>
+            <zz> 9.4018e-12 </zz>
+            <xy> 0. </xy>
+            <xz> 0. </xz>
+            <yz> 0. </yz>
+        </perm>
+    </PorousRock>
+    <VanGenuchten>
+        <!-- model = type the retentation and saturation curve, from:
+                 Maulem  - Maulem analitical model
+                 Burdine - Burdine analitical model
+                 Table - passing the curves using a table
+                 Sand,... - using Maulem model for a table of values.
+             n = experimental parameters for the analitical formula (adm)
+             alpha = average pores size (Pa-1)
+             kappa = experimental coefficient for Maulem formula-->
+        <model> Mualem </model>
+        <n> 2 </n>
+        <alpha> 3.416e-04 </alpha>
+        <kappa> 0.5 </kappa>
+    </VanGenuchten>
+</Solid>
