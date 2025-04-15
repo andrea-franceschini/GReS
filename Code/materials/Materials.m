@@ -21,8 +21,8 @@ classdef Materials < handle
     db
     matMap
     % *DB - the database for store the proprieties of the material.
-    % *Mat - map the associate the material and which subdomain is defined.
-    % *Cell - map the associate the subdomail and which material is defined.
+    % *Mat2Cell - map the associate the material and which subdomain is defined.
+    % *Cell2Mat - map the associate the subdomain and which material is defined.
     solidDB
     solidMat2Cell
     solidCell2Mat
@@ -38,12 +38,14 @@ classdef Materials < handle
       % Calling the function to read input data from file
       obj.matMap = zeros(100,100);
       [~, ~, extension] = fileparts(fListName);
+      assert(isempty(extension),['the %s need to have an extension to', ...
+                ' be read the material class'], fListName);
       switch extension
           case '.xml'
               obj.readXMLList(model,fListName);
           otherwise
               obj.readInputFiles(model,fListName);
-      end      
+      end
     end
 
     % Get the material defined by matIdentifier and check if it is a
@@ -374,6 +376,8 @@ classdef Materials < handle
             switch string(fnames(mat))
                 case 'Elastic'
                     material.ConstLaw = 0;
+                    youngMod = checkField(fdata.Elastic.young,1);
+                    nu = fdata.Elastic.poisson;
                     % material.ConstLaw = Elastic(fID, matFileName);
                 case 'HypoElastic'
                     % material.ConstLaw = HypoElastic(fID, matFileName);
@@ -400,7 +404,20 @@ classdef Materials < handle
         % the fluid part of the model.
         material = struct();
     end
-
+    function vec = checkField(stData,npos)
+        %CHECKFIELD - function to check if the field inside a struct is a
+        % number or a path and return the information.
+        if isnumeric(stData)
+            vec = stData;
+        else
+            [~, ~, extension] = fileparts(stData);
+            assert(isempty(extension),['the %s need to have an extension to', ...
+                ' be read as a list of values. Error in the definition of ', ...
+                'XML file for the material class'], stData);
+            % read the file.
+            vec = 0.;
+        end
+    end
 
 
   end
