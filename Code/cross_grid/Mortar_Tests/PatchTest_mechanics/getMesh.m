@@ -1,9 +1,7 @@
-function meshOut = getMesh(fIn,meshName,nx,ny,varargin)
+function meshOut = getMesh(dir,fIn,meshName,nx,ny,varargin)
 % Read and modify a geo file by setting number of nodes in each dimension
-geoFile = fIn; % name of the geo file
-fInsplt = strsplit(fIn,'/');
-dirName = fInsplt{1};
-
+dirName = dir;
+geoFile = strcat(dir,'/',fIn); % name of the geo file
 % ntip is the number of non mortar nodes before the lateral boundary
 
 

@@ -27,7 +27,7 @@ D(9) = 0.5*(1-2*nu);
 D = (E1/((1+nu)*(1-2*nu)))*D;
 DmatM = D;
 % Slave side
-E2 = 10000;
+E2 = 50000;
 D = zeros(3);
 D([1 5]) = 1-nu;
 D([2 4]) = nu;
@@ -36,8 +36,8 @@ D = (E2/((1+nu)*(1-2*nu)))*D;
 DmatS = D;
 
 
-nel = 20;   % number of elements on the master interface
-rat = 4;  % numb master / numb slave elems
+nel = 80;   % number of elements on the master interface
+rat = 1;  % numb master / numb slave elems
 
 %fig = figure('Visible', 'off');
 fig.Position = [100,100,800,600];
@@ -59,23 +59,31 @@ end
 hold on
 
 
-for scheme = ["P0","CONFORMING","DUAL","STANDARD"] % accomodate UNBIASED in the future!!!
-nXm = nel+1;
-nYm = round(0.3*nXm);
-nXs = round(nel*rat+1);
+for scheme = ["CONFORMING"] % accomodate UNBIASED in the future!!!
+nXm = nel;
+nYm = round(1*nXm);
+nXs = round(nel*rat);
 if strcmp(scheme,'CONFORMING')
-   nXs = nXm;
+   nXm = nXs;
 end
-nYs = round(0.3*nXs);
+nYs = round(1*nXs);
 % Import the mesh data into the Mesh object
-masterMesh = getMesh('Mesh/bottomBlock.geo','bottom',nXm,nYm);
-slaveMesh = getMesh('Mesh/topBlock.geo','top',nXs,nYs);
+dir = 'Mesh/PatchMechanics_analysis';
+masterMesh = getMesh(dir,'bottomBlock.geo','bottom',nXm,nYm);
+slaveMesh = getMesh(dir,'topBlock.geo','top',nXs,nYs);
 % Element class for further stiffness matrix computation
 elemsMaster = Elements(masterMesh,gaussQuad);
 elemsSlave = Elements(slaveMesh,gaussQuad);
 
-Emaster = E1*ones(masterMesh.nSurfaces,1); 
-Eslave = E2*ones(slaveMesh.nSurfaces,1); 
+Emaster = zeros(masterMesh.nSurfaces,1); 
+Eslave = zeros(slaveMesh.nSurfaces,1);
+
+Emaster(masterMesh.surfaceTag == 1) = E1;
+Emaster(masterMesh.surfaceTag == 2) = E2;
+Eslave(slaveMesh.surfaceTag == 1) = E2;
+Eslave(slaveMesh.surfaceTag == 2) = E1;
+
+% apply different young modulus to different regions
 
 % Mesh size
 h = 1/nXs;
@@ -141,10 +149,10 @@ KIsIs = KSlave(dofIs,dofIs);
 if strcmp(scheme,'P0')
    mortarFlip = Mortar2D(1,slaveMesh,1,masterMesh,1);
    [Dstab,Mstab] = mortar.computeMortarConstant(nG,nInt);
-   H1 = mortar.computeStabilizationMatrix(Emaster,Eslave);
+   %H1 = mortar.computeStabilizationMatrix(Emaster,Eslave);
    %H2 = mortar.computeStabilizationMatrix2(D,M,KMaster,KSlave);
    H3 = mortar.computeStabilizationMatrix3(D,M,KMaster,KSlave);
-   H4 = mortar.computeStabilizationMatrix4(D,M,KMaster,KSlave);
+   %H4 = mortar.computeStabilizationMatrix4(D,M,KMaster,KSlave);
    H = H3;
    % h = vecnorm(H2,2,2);
    %H = diag(h)*H1;
@@ -270,6 +278,26 @@ hold on
 nexttile(2)
 plot(x,ty(id),'s-','LineWidth',1,'DisplayName',leg)
 hold on
+
+% store results in structure
+switch scheme
+   case 'CONFORMING'
+      OUT.conforming.x = x;
+      OUT.conforming.tx = tx;
+      OUT.conforming.ty = ty;
+   case 'DUAL'
+      OUT.dual.x = x;
+      OUT.dual.tx = tx;
+      OUT.dual.ty = ty;
+   case 'STANDARD'
+      OUT.standard.x = x;
+      OUT.standard.tx = tx;
+      OUT.standard.ty = ty;
+   case 'P0'
+      OUT.P0.x = x;
+      OUT.P0.tx = tx;
+      OUT.P0.ty = ty;
+end
 
 % naive projection of nodal multipliers
 % switch scheme
