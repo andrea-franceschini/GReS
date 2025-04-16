@@ -23,10 +23,10 @@ ax.FontSize = 12;
 exportgraphics(figure(1), 'Figures/patchTest1.pdf', 'Resolution', 300);
 
 %% PLOT RESULTS OF MECHANICAL PATCH TEST 2
-ms = 3.5;
-lwThick = 2;
-lwThin = 0.35;
-out = load('out3.mat');
+ms = 5;
+lwThick = 1.5;
+lwThin = 0.5;
+out = load('out1.mat');
 figure(1)
 hold on
 x = out.conforming.x;
@@ -41,24 +41,27 @@ plot(x, tx, 'r-o', 'LineWidth', lwThin,'MarkerSize',ms,'MarkerEdgeColor','r','Ma
 x = out.standard.x;
 tx = out.standard.tx;
 plot(x, tx, 'b-o', 'LineWidth', lwThin,'MarkerSize',ms,'MarkerEdgeColor','b','MarkerFaceColor','b')
-
-%legend('Standard Conforming', 'P0', 'Dual', 'Standard', 'Interpreter', 'latex', 'Location', 'best', 'FontSize', 12);
+ylim([0 7.1])
+legend('Standard Conforming', 'P0', 'Dual', 'Standard', 'Interpreter', 'latex', 'Location', 'best', 'FontSize', 12);
 xlabel('$x$', 'Interpreter', 'latex', 'FontSize', 12);
 ylabel('$t_x$', 'Interpreter', 'latex', 'FontSize', 12);
 
 % Set axis numbers to LaTeX font and increase font size
 ax = gca;
 ax.TickLabelInterpreter = 'latex';
-ax.FontSize = 15;
+ax.FontSize = 12;
 
-exportgraphics(figure(1), 'Figures/patchTest2_tx3.pdf', 'Resolution', 300);
+exportgraphics(figure(1), 'Figures/patchTest2_tx1.pdf', 'Resolution', 300);
 
 % ty
 
 figure(2)
+x = out.P0.x;
+ty = out.P0.ty;
+hold on
 hold on
 x = out.conforming.x;
-ty = out.conforming.ty;
+tx = out.conforming.tx;
 plot(x, ty, 'k-', 'LineWidth', lwThick)
 x = out.P0.x;
 ty = out.P0.ty;
@@ -70,13 +73,13 @@ x = out.standard.x;
 ty = out.standard.ty;
 plot(x, ty, 'b-o', 'LineWidth', lwThin,'MarkerSize',ms,'MarkerEdgeColor','b','MarkerFaceColor','b')
 
-%legend('P0', 'Standard Conforming', 'Dual', 'Standard', 'Interpreter', 'latex', 'Location', 'best', 'FontSize', 12);
+legend('P0', 'Standard Conforming', 'Dual', 'Standard', 'Interpreter', 'latex', 'Location', 'best', 'FontSize', 12);
 xlabel('$x$', 'Interpreter', 'latex', 'FontSize', 12);
 ylabel('$t_y$', 'Interpreter', 'latex', 'FontSize', 12);
 
 % Set axis numbers to LaTeX font and increase font size
 ax = gca;
 ax.TickLabelInterpreter = 'latex';
-ax.FontSize = 15;
+ax.FontSize = 12;
 
-exportgraphics(figure(2), 'Figures/patchTest2_ty3.pdf', 'Resolution', 300);
+exportgraphics(figure(1), 'Figures/patchTest2_ty1.pdf', 'Resolution', 300);

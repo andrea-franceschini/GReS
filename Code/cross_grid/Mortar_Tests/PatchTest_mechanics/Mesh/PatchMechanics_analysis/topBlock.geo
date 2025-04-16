@@ -5,8 +5,8 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 
 Xsize = 1;
 Ysize = 0.5;
-nX = 80;
-nY = 80;
+nX = 60;
+nY = 60;
 
 // Define points
 Point(1) = {0, Ysize, 0};

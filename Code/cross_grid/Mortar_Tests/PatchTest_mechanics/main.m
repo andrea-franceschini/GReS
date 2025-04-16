@@ -36,8 +36,8 @@ D = (E2/((1+nu)*(1-2*nu)))*D;
 DmatS = D;
 
 
-nel = 80;   % number of elements on the master interface
-rat = 1;  % numb master / numb slave elems
+nel = 20;   % number of elements on the master interface
+rat = 3;  % numb master / numb slave elems
 
 %fig = figure('Visible', 'off');
 fig.Position = [100,100,800,600];
@@ -270,6 +270,7 @@ end
 tx = mult(1:2:end);
 ty = mult(2:2:end);
 
+
 % PLOT MULTIPLIER
 nexttile(1)
 plot(x,tx(id),'s-','LineWidth',1,'DisplayName',leg)
@@ -283,20 +284,20 @@ hold on
 switch scheme
    case 'CONFORMING'
       OUT.conforming.x = x;
-      OUT.conforming.tx = tx;
-      OUT.conforming.ty = ty;
+      OUT.conforming.tx = tx(id);
+      OUT.conforming.ty = ty(id);
    case 'DUAL'
       OUT.dual.x = x;
-      OUT.dual.tx = tx;
-      OUT.dual.ty = ty;
+      OUT.dual.tx = tx(id);
+      OUT.dual.ty = ty(id);
    case 'STANDARD'
       OUT.standard.x = x;
-      OUT.standard.tx = tx;
-      OUT.standard.ty = ty;
+      OUT.standard.tx = tx(id);
+      OUT.standard.ty = ty(id);
    case 'P0'
       OUT.P0.x = x;
-      OUT.P0.tx = tx;
-      OUT.P0.ty = ty;
+      OUT.P0.tx = tx(id);
+      OUT.P0.ty = ty(id);
 end
 
 % naive projection of nodal multipliers
