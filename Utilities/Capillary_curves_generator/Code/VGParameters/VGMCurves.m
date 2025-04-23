@@ -34,7 +34,8 @@ classdef VGMCurves < handle
       krFun = @(p) (1 + (p/obj.soilVGMParams.pEntry).^obj.soilVGMParams.n).^(-2.5.*m) .* ...
         ((1 + (p/obj.soilVGMParams.pEntry).^obj.soilVGMParams.n).^m - ...
         ((p/obj.soilVGMParams.pEntry).^obj.soilVGMParams.n).^m).^2;
-      points = logspace(discrInput.range(1),discrInput.range(2),discrInput.nPoints);
+      % points = logspace(discrInput.range(1),discrInput.range(2),discrInput.nPoints);
+      points = linspace(10^discrInput.range(1),10^discrInput.range(2),discrInput.nPoints);
       points = [0 points];
       SePoints = SeFun(points);
       krPoints = krFun(points);
@@ -75,8 +76,8 @@ classdef VGMCurves < handle
       end
       %
       for i=1:length(points)
-        fprintf(fIdPC,'%12.5e    %12.5e\n',points(i),SePoints(i));
-        fprintf(fIdkr,'%12.5e    %12.5e\n',points(i),krPoints(i));
+        fprintf(fIdPC,'%25.15e    %25.15e\n',points(i),SePoints(i));
+        fprintf(fIdkr,'%25.15e    %25.15e\n',points(i),krPoints(i));
       end
       fclose(fIdPC);
       fclose(fIdkr);

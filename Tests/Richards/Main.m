@@ -1,11 +1,14 @@
 close all;
-clear;
+% clear;
+input_dir = 'Inputs/';
+output_dir = 'Outputs/';
+figures_dir = 'Figs/';
 
 %% -------------------------- SET THE PHYSICS -------------------------
 model = ModelType("VariabSatFlow_FVTPFA");
 
 %% ----------------------- SIMULATION PARAMETERS ----------------------
-fileName = "simParam.dat";
+fileName = strcat(input_dir,'simParam.dat');
 simParam = SimulationParameters(fileName,model);
 
 %% ------------------------------  MESH -------------------------------
@@ -13,14 +16,15 @@ simParam = SimulationParameters(fileName,model);
 topology = Mesh();
 
 % Set the input file name
-fileName = 'Column.msh';
+% fileName = strcat(input_dir,'Mesh/Column.msh');
+fileName = strcat(input_dir,'Mesh/Column4x4x40.msh');
 
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
 
 %% ----------------------------- MATERIALS -----------------------------
 % Set the input file name
-fileName = 'materialsList.dat';
+fileName = strcat(input_dir,'materialsList.dat');
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
@@ -51,18 +55,27 @@ state = linSyst.setState();
 % set initial conditions directly modifying the state object
 z = elems.cellCentroid(:,3);
 gamma_w = getFluid(mat).getFluidSpecWeight();
-wLev = 9; % level of the water table
-state.pressure = gamma_w*(9-z);
+wLev = 9.; % level of the water table
+state.pressure = gamma_w*(wLev-z);
 
 % Create and set the print utility
-printUtils = OutState(model,topology,'outTime.dat','folderName','Output_Richards');
+printUtils = OutState(model,topology,strcat(input_dir,'outTime.dat'), ...
+    'folderName','Outputs');
 
 printState(printUtils,state)
 
-fileName = "dirBottom.dat";
+% Creating and Appling boundaries conditions.
+cond = struct('name',[],'type',[],'field',[],'values',[],'times',[]);
+cond(1).name = 'Bottom';
+cond(1).type = 'Dir';
+cond(1).field = "bot";
+cond(1).times = [0. 5. 10.];
+cond(1).values = [87. 0. 0.];
+
+fileName = setRichardsBC('Inputs',grid,cond);
 bound = Boundaries(fileName,model,grid);
 
-Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
+Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,'GaussPts',GaussPts,'SaveRelError',true,'SaveBStepInf',true);
 
 % Solve the problem
 [simState] = Solver.NonLinearLoop();
@@ -71,13 +84,14 @@ Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linS
 printUtils.finalize()
 
 %% POST PROCESSING
+if true
 
-image_dir = strcat(pwd,'/Images');
-if isfolder(image_dir)
-    rmdir(image_dir,"s")
-    mkdir Images
-else
-    mkdir Images
+image_dir = strcat(pwd,'/',figures_dir);
+if ~isfolder(image_dir)
+    % rmdir(image_dir,"s")
+    % mkdir(image_dir)
+% else
+    mkdir(image_dir)
 end
 
 %Post processing using MAT-FILE 
@@ -100,46 +114,71 @@ tind = 2:length(t);
 t_max = t(end);
 t = t(tind)/t_max;
 
-
 tstr = strcat(num2str(t),' T');
 %Getting pressure and saturation solution for specified time from MatFILE
 pressplot = press(nodesP,tind);
 swplot = sw(nodesP,tind);
 
-% Values for normalized plots
-H = 10;
-
-%Plotting solution
+% Vertical position of the column
 if isFVTPFABased(model,'Flow')
-    ptsY = elems.cellCentroid(nodesP,3);
+    ptsZ = elems.cellCentroid(nodesP,3);
 else
-    ptsY = topology.coordinates(nodesP,3);
+    ptsZ = topology.coordinates(nodesP,3);
 end
+
+% Values for normalized plots
+pos = find(ptsZ == max(ptsZ));
+H = max(topology.coordinates(:,3));
+ptsZ = ptsZ/H;
+
 figure(1)
-plot(-pressplot,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);
 hold on
+plot(pressplot./(pressplot(pos,:)),ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
 xlabel('p/p_{top}')
 ylabel('z/H')
-legend(tstr)
-grid on
-set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
-a = get(gca,'XTickLabel');
-set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
+legend(tstr, 'Location', 'southeast')
+set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
 % export figure with quality
-stmp = strcat('Images\', 'Richards_pressure', '.png');
+stmp = strcat(image_dir,'Richards_pressure','.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 figure(2)
-plot(swplot,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);
+plot(swplot,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
 hold on
 xlabel('Saturation S_w')
 ylabel('z/H')
 legend(tstr, 'Location', 'southwest')
 str = strcat('t = ',tstr);
-grid on
-set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
-a = get(gca,'XTickLabel');
-set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
+set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
 % export figure with quality
-stmp = strcat('Images\', 'Richards_staturation', '.png');
+stmp = strcat(image_dir,'Richards_staturation', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
+
+% save("output1B.mat","pressplot","ptsZ","pos","swplot")
+
+end
+% 
+% pressplotA=pressplot;
+% swplotA=swplot;
+% 
+% pressplotC=pressplot;
+% swplotC=swplot;
+% 
+% figure(1)
+% hold on
+% plot(pressplotA./(pressplotA(pos,:)),ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
+% plot(pressplotC./(pressplotC(pos,:)),ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
+% xlabel('p/p_{top}')
+% ylabel('z/H')
+% legend(tstr, 'Location', 'southeast')
+% set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
+% 
+% figure(2)
+% hold on
+% plot(swplotA,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
+% plot(swplotC,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
+% xlabel('Saturation S_w')
+% ylabel('z/H')
+% legend(tstr, 'Location', 'southwest')
+% str = strcat('t = ',tstr);
+% set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')

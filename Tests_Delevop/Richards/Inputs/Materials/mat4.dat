@@ -10,6 +10,6 @@ PorousRock                        % material model
 
 VanGenuchten                      % Capillary and Relative Permeabilities Curves
 Tabular                           % Type of model (Mualem or Burdine) or type of soil
-./Inputs/Materials/pcCurve_1000.dat
-./Inputs/Materials/krCurve_1000.dat
+./Inputs/Materials/pcCurve3_2000.dat
+./Inputs/Materials/krCurve3_2000.dat
 End

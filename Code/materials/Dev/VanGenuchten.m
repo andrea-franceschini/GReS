@@ -65,81 +65,27 @@ classdef VanGenuchten < handle
     end
 
     properties (Access = private)
-        % modelType=true;  % type of the model => true - Mualem | false - Burdine
         betaCor=false;   % Flag to indicated the necessity of correction for the beta.
         presCor=true;    % Flag to indicated the necessity of correction for the pressure.
-        modelType;       % Flag to use analitical or tabular curve to th 
+        modelType;       % Flag to indicated the model type
         retantionCurve;  % Storage the retantion curve.
         relPermCurve;    % Storage the relative permability curve.
     end
 
     methods (Access = public)
-        function obj = VanGenuchten(fID,matFileName)
+        function obj = VanGenuchten(fID,matFileName,varargin)
             %VanGenuchtenMualem Construct an instance of this class
-            modType = readToken(fID,matFileName);
-            switch modType
-                case 'Mualem'
-                    tmpVec = readDataInLine(fID, matFileName, 3);
-            
-                    % Assign object properties
-                    obj.n = tmpVec(1);
-                    obj.beta = tmpVec(2);
-                    obj.kappa = tmpVec(3);
 
-                    obj.modelType = 'Mualem';
-                case 'Burdine'
-                    tmpVec = readDataInLine(fID, matFileName, 2);
-
-                    % Assign object properties
-                    % obj.modelType = false;
-                    obj.n = tmpVec(1);
-                    obj.beta = tmpVec(2);
-
-                    obj.modelType = 'Burdine';
-                case 'Tabular'
-                    obj.modelType = 'Tabular';
-                    obj.retantionCurve = TabularCurve(fID, matFileName);
-                    obj.relPermCurve = TabularCurve(fID, matFileName);
-                otherwise
-                    % Assign object properties from a table
-                    obj.readMaterialParametersFromTable(modType);
-                    obj.betaCor = true;
-                    obj.presCor = true;
-                    obj.modelType = 'Mualem';
+            % If number of arguments is greater than 2, passing values.
+            if (nargin>2) && (nargin<7)
+                obj.passingData(varargin{:});
+            else
+                obj.readFromFile(fID,matFileName);
             end
-            % if strcmp(modType,'Mualem')
-            %     tmpVec = readDataInLine(fID, matFileName, 3);
-            % 
-            %     % Assign object properties
-            %     obj.n = tmpVec(1);
-            %     obj.beta = tmpVec(2);
-            %     obj.kappa = tmpVec(3);
-            % 
-            %     obj.curveType = false;
-            % elseif strcmp(modType,'Burdine')
-            %     tmpVec = readDataInLine(fID, matFileName, 2);
-            % 
-            %     % Assign object properties
-            %     obj.modelType = false;
-            %     obj.n = tmpVec(1);
-            %     obj.beta = tmpVec(2);
-            % 
-            %     obj.curveType = false;
-            % elseif strcmp(modType,'Table')
-            %     obj.curveType = true;
-            %     obj.retantionCurve = TabularCurve(fID, matFileName);
-            %     obj.relPermCurve = TabularCurve(fID, matFileName);
-            % else
-            %     % Assign object properties from a table
-            %     obj.readMaterialParametersFromTable(modType);
-            %     obj.betaCor = true;
-            %     obj.presCor = true;
-            %     obj.curveType = false;
-            % end
         end
 
-        function [Sw, dSw, ddSw] = computeSwAnddSw(obj,pres,Sr,Ss)
-            % COMPUTESWANDDSW Method to compute the water saturation and
+        function [Sw, dSw, ddSw] = computeSwAnddSw(obj,pres)
+            % COMPUTESWANDDSW Method to compute the relative saturation and
             % it's derivatives
             
             % Compute the effective or normalized saturation.
@@ -149,11 +95,6 @@ classdef VanGenuchten < handle
                 p = obj.presCorrection(pres);
                 [Sw, dSw, ddSw] = obj.computeSaturation(p);
             end
-
-            % Compute the fluid saturation.
-            Sw   = (Ss-Sr)*Sw + Sr;
-            dSw  = (Ss-Sr)*dSw;
-            ddSw = (Ss-Sr)*ddSw;
         end
 
         function [Kr, dKr] = computeRelativePermeability(obj,pres)
@@ -208,6 +149,73 @@ classdef VanGenuchten < handle
     end
 
     methods (Access = private)
+        function readFromFile(obj,fID,matFileName)
+            %readFromFile function to read from the file and constructed
+            % the material class.
+
+            modType = readToken(fID,matFileName);
+            switch modType
+                case 'Mualem'
+                    tmpVec = readDataInLine(fID, matFileName, 3);
+
+                    % Assign object properties
+                    obj.n = tmpVec(1);
+                    obj.beta = tmpVec(2);
+                    obj.kappa = tmpVec(3);
+
+                    obj.modelType = 'Mualem';
+                case 'Burdine'
+                    tmpVec = readDataInLine(fID, matFileName, 2);
+
+                    % Assign object properties
+                    % obj.modelType = false;
+                    obj.n = tmpVec(1);
+                    obj.beta = tmpVec(2);
+
+                    obj.modelType = 'Burdine';
+                case 'Tabular'
+                    obj.modelType = 'Tabular';
+                    obj.retantionCurve = TabularCurve(fID, matFileName);
+                    obj.relPermCurve = TabularCurve(fID, matFileName);
+                otherwise
+                    % Assign object properties from a table
+                    obj.readMaterialParametersFromTable(modType);
+                    obj.betaCor = true;
+                    obj.presCor = true;
+                    obj.modelType = 'Mualem';
+            end
+        end
+
+        function passingData(obj,varargin)
+            %readFromFile function to read from the file and constructed
+            % the material class.
+
+            modType=varargin{1};
+            switch modType
+                case 'Mualem'
+                    % Assign object properties
+                    obj.modelType = 'Mualem';
+                    obj.n = varargin{2};
+                    obj.beta = varargin{3};
+                    obj.kappa = varargin{4};
+                case 'Burdine'
+                    % Assign object properties
+                    obj.modelType = 'Burdine';
+                    obj.n = varargin{2};
+                    obj.beta = varargin{3};
+                case 'Tabular'
+                    obj.modelType = 'Tabular';
+                    obj.retantionCurve = TabularCurve(varargin{2}, varargin{3});
+                    obj.relPermCurve = TabularCurve(varargin{2}, varargin{3});
+                otherwise
+                    % Assign object properties from a table
+                    obj.modelType = 'Mualem';
+                    obj.readMaterialParametersFromTable(modType);
+                    obj.betaCor = true;
+                    obj.presCor = true;                    
+            end
+        end
+
         function readMaterialParametersFromTable(obj,soil)
             %readMaterialParametersFromTable Assigning a table with some
             % types of soil and it's correspondent experimental values.

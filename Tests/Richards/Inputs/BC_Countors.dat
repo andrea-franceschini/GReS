@@ -1,0 +1,7 @@
+SurfBC                            % BC item 
+Neu                               % BC type 
+Flow                              % Physics 
+Countors                           % BC name 
+Inputs/BC/List_Countors 
+0.00 Inputs/BC/Time_Countors_0.dat 
+End

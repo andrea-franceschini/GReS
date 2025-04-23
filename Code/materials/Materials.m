@@ -91,32 +91,20 @@ classdef Materials < handle
             Sws = obj.getMaterial(m).PorousRock.getMaxSaturation();
             Swr = obj.getMaterial(m).PorousRock.getResidualSaturation();
             if nargout == 1
-                [varargout{1}(isElMat), ~, ~] = obj.getMaterial(m).Curves.computeSwAnddSw(p,Swr,Sws);
+                [varargout{1}(isElMat), ~, ~] = obj.getMaterial(m).Curves.computeSwAnddSw(p);
                 % varargout{1}(isElMat) = obj.getMaterial(m).CapillaryCurve.interpTable(p);
-                % varargout{1}(isElMat) = Swr + (Sws-Swr)*varargout{1}(isElMat);
+                varargout{1}(isElMat) = Swr + (Sws-Swr)*varargout{1}(isElMat);
             elseif nargout == 2
-                [varargout{1}(isElMat), varargout{2}(isElMat), ~] = obj.getMaterial(m).Curves.computeSwAnddSw(p,Swr,Sws);
+                [varargout{1}(isElMat), varargout{2}(isElMat), ~] = obj.getMaterial(m).Curves.computeSwAnddSw(p);
                 % [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).CapillaryCurve.interpTable(p);
-                % varargout{1}(isElMat) = Swr + (Sws-Swr)*varargout{1}(isElMat);
-                % varargout{2}(isElMat) = (Sws-Swr)*varargout{2}(isElMat);
+                varargout{1}(isElMat) = Swr + (Sws-Swr)*varargout{1}(isElMat);
+                varargout{2}(isElMat) = (Sws-Swr)*varargout{2}(isElMat);
             elseif nargout == 3
-                [varargout{1}(isElMat), varargout{2}(isElMat), varargout{3}(isElMat)] = obj.getMaterial(m).Curves.computeSwAnddSw(p,Swr,Sws);
-
-                % unitSys = 9.8066e2; % SI-9.8066e3 cm-9.8066e2
-                % mx = -1e3; % SI-1e1 cm-1e4
-                % mn = -7.5e+1; % SI-7.5e-1 cm-7.5e1
-                % xx = linspace(mx*unitSys,mn*unitSys,400);
-                % [Sa, dSa, ddSa] = obj.getMaterial(m).Curves.computeSwAnddSw(xx,Swr,Sws);
-                % figure();
-                % hold on;
-                % plot(xx/unitSys,Sa,'b', 'LineWidth', 2, 'MarkerSize', 10);
-                % % plot(xx,Sa,'b', 'LineWidth', 2, 'MarkerSize', 10);
-                % xlabel('Pressure');
-                % ylabel('Saturation');
-                % xlim([mx,mn]);
-                % ylim([Swr,Sws]);
-                % ylim([0.102,0.2]);
-                % grid on
+                [varargout{1}(isElMat), varargout{2}(isElMat), varargout{3}(isElMat)] = obj.getMaterial(m).Curves.computeSwAnddSw(p);
+                % [varargout{1}(isElMat), varargout{2}(isElMat), varargout{3}(isElMat)] = obj.getMaterial(m).CapillaryCurve.interpTable(p);
+                varargout{1}(isElMat) = Swr + (Sws-Swr)*varargout{1}(isElMat);
+                varargout{2}(isElMat) = (Sws-Swr)*varargout{2}(isElMat);
+                varargout{3}(isElMat) = (Sws-Swr)*varargout{3}(isElMat);
             end
         end
     end
@@ -393,15 +381,11 @@ classdef Materials < handle
         end
     end
 
-
-
     function material = readXMLFluid(fileName)
         %readXMLFluid - function to read the material information relate to
         % the fluid part of the model.
         material = struct();
     end
-
-
 
   end
 end

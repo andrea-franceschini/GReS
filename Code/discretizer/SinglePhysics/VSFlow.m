@@ -64,7 +64,8 @@ classdef VSFlow < SPFlow
         function state = updateState(obj,state,dSol)
             ents = obj.dofm.getActiveEnts(obj.field);
             state.pressure(ents) = state.pressure(ents) + dSol(obj.dofm.getDoF(obj.field));
-            state.saturation = obj.material.computeSwAnddSw(obj.mesh,state.pressure);
+            % state.saturation = obj.material.computeSwAnddSw(obj.mesh,state.pressure);
+            state.saturation = computeSaturation(obj,state.pressure);
         end
 
         function [cellData,pointData] = printState(obj,sOld,sNew,t)
@@ -83,7 +84,8 @@ classdef VSFlow < SPFlow
                 otherwise
                     error('Wrong number of input arguments');
             end
-            saturation = obj.material.computeSwAnddSw(obj.mesh,pressure);
+            % saturation = obj.material.computeSwAnddSw(obj.mesh,pressure);
+            saturation = computeSaturation(obj,pressure);
             [cellData,pointData] = VSFlow.buildPrintStruct(pressure,fluidPot,saturation);
         end
 
@@ -162,26 +164,59 @@ classdef VSFlow < SPFlow
     end
 
     methods (Access = private)
-        function [Swkpt,dSwkpt,d2Swkpt,lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt)
-            % compute upstream elements for each face
-            % interpolate effective saturation and relative permeability
-            % and first derivatives
-            % compute also second derivative for saturation
-            neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-            gamma = obj.material.getFluid().getFluidSpecWeight();
-            if gamma > 0
-                zVec = obj.elements.cellCentroid(:,3);
-                zNeigh = zVec(neigh);
-                lElemIsUp = pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
-            else
-                lElemIsUp = pkpt(neigh(:,1)) >= pkpt(neigh(:,2));
+        function [Swkpt,dSwkpt,d2Swkpt] = computeSaturation(obj,pkpt)
+            % COMPUTESATURATION compute the saturation and it's derivatives
+            Swkpt = zeros(obj.mesh.nCells,1);
+            dSwkpt = zeros(obj.mesh.nCells,1);
+            d2Swkpt = zeros(obj.mesh.nCells,1);
+            for m = 1:obj.mesh.nCellTag
+                isElMat = obj.mesh.cellTag == m;
+                p = pkpt(isElMat);
+                Sws = obj.material.getMaterial(m).PorousRock.getMaxSaturation();
+                Swr = obj.material.getMaterial(m).PorousRock.getResidualSaturation();
+                [Swkpt(isElMat), dSwkpt(isElMat), d2Swkpt(isElMat)] = obj.material.getMaterial(m).Curves.computeSwAnddSw(p);
+                % [Swkpt(isElMat), dSwkptisElMat), d2Swkpt(isElMat)] = obj.material.getMaterial(m).CapillaryCurve.interpTable(p);
+                Swkpt(isElMat) = Swr + (Sws-Swr)*Swkpt(isElMat);
+                dSwkpt(isElMat) = (Sws-Swr)*dSwkpt(isElMat);
+                d2Swkpt(isElMat) = (Sws-Swr)*d2Swkpt(isElMat);
+
+                % [Ana,dAna,ddAna] = obj.material.getMaterial(m).Curves.computeSwAnddSw(p);
+                % [Tab,dTab,ddTab] = obj.material.getMaterial(m).CapillaryCurve.interpTable(p);
+                % Tab(isElMat) = Swr + (Sws-Swr)*Tab(isElMat);
+                % dTab(isElMat) = (Sws-Swr)*dTab(isElMat);
+                % ddTab(isElMat) = (Sws-Swr)*ddTab(isElMat);
+                % Ana(isElMat) = Swr + (Sws-Swr)*Ana(isElMat);
+                % dAna(isElMat) = (Sws-Swr)*dAna(isElMat);
+                % ddAna(isElMat) = (Sws-Swr)*ddAna(isElMat);
+                % 
+                % fileID = fopen('dados.txt', 'a');
+                % fprintf(fileID,'%e %e %e ' ,  norm(Ana,"inf"),  norm(Tab,"inf"),norm(Tab-Ana,"inf"));
+                % fprintf(fileID,'%e %e %e ' , norm(dAna,"inf"), norm(dTab,"inf"),norm(dTab-dAna,"inf"));
+                % fprintf(fileID,'%e %e %e\n',norm(ddAna,"inf"),norm(ddTab,"inf"),norm(ddTab-ddAna,"inf"));
+                % fclose(fileID);
+                % 
+                % fprintf('Analytical Sw- %f dSw- %f ddSw- %f\n',norm(Ana,"inf"),norm(dAna,"inf"),norm(ddAna,"inf"));
+                % fprintf('Tabular    Sw- %f dSw- %f ddSw- %f\n',norm(Tab,"inf"),norm(dTab,"inf"),norm(ddTab,"inf"));
+                % fprintf('Diferance  Sw- %f dSw- %f ddSw- %f\n',norm(Tab-Ana,"inf"),norm(dTab-dAna,"inf"),norm(ddTab-ddAna,"inf"));
             end
-            obj.upElem(lElemIsUp) = neigh(lElemIsUp,1);
-            obj.upElem(~lElemIsUp) = neigh(~lElemIsUp,2);
-            [Swkpt,dSwkpt,d2Swkpt] = obj.material.computeSwAnddSw(obj.mesh,pkpt);
-            dSwkpt = - dSwkpt;
-            [lwkpt,dlwkpt] = obj.material.computeLwAnddLw(obj.mesh,obj.upElem,pkpt);
-            dlwkpt = - dlwkpt;
+        end
+
+        function [lwkpt,dlwkpt] = computeMobility(obj,pkpt)
+            % COMPUTEMOBILITY compute the mobility and it's derivatives
+            % for the upstream elements for each face
+            nIntFaces = length(obj.upElem);
+            lwkpt = zeros(nIntFaces,1);
+            dlwkpt = zeros(nIntFaces,1);
+            matUpElem = obj.mesh.cellTag(obj.upElem);
+            for m = 1:obj.mesh.nCellTag
+                isElMat = matUpElem == m;
+                p = pkpt(obj.upElem(isElMat));
+                [lwkpt(isElMat), dlwkpt(isElMat)] = obj.material.getMaterial(m).Curves.computeRelativePermeability(p);
+                % [lwkpt(isElMat), dlwkpt(isElMat)] = obj.material.getMaterial(m).RelativePermCurve.interpTable(p);
+            end
+            mu = obj.material.getFluid().getDynViscosity();
+            lwkpt = lwkpt/mu;
+            dlwkpt = dlwkpt/mu;
         end
 
         function [lpt, dlpt] = computeMobilityBoundary(obj,pcells,pface,faceID)
@@ -211,13 +246,38 @@ classdef VSFlow < SPFlow
             lpt = zeros(length(pcells),1);
             dlpt = zeros(length(pcells),1);
             for i=1:length(materials)
-                [krel,dkrel] = obj.material.computeRelativePermeability(pres(i),materials(i));
+                % [krel,dkrel] = obj.material.computeRelativePermeability(pres(i),materials(i));
+                [krel,dkrel] = obj.material.getMaterial(materials(i)).Curves.computeRelativePermeability(pres(i));
                 lpt(i) = krel/mu;
                 dlpt(i) = -dkrel/mu;
             end
             dlpt = dlpt.*lElemIsUp;
         end
-        
+
+        function [Swkpt,dSwkpt,d2Swkpt,lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt)
+            % compute upstream elements for each face
+            % interpolate effective saturation and relative permeability
+            % and first derivatives
+            % compute also second derivative for saturation
+            neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+            gamma = obj.material.getFluid().getFluidSpecWeight();
+            if gamma > 0
+                zVec = obj.elements.cellCentroid(:,3);
+                zNeigh = zVec(neigh);
+                lElemIsUp = pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
+            else
+                lElemIsUp = pkpt(neigh(:,1)) >= pkpt(neigh(:,2));
+            end
+            obj.upElem(lElemIsUp) = neigh(lElemIsUp,1);
+            obj.upElem(~lElemIsUp) = neigh(~lElemIsUp,2);
+            % [Swkpt,dSwkpt,d2Swkpt] = obj.material.computeSwAnddSw(obj.mesh,pkpt);
+            [Swkpt,dSwkpt,d2Swkpt] = computeSaturation(obj,pkpt);
+            dSwkpt = - dSwkpt;
+            % [lwkpt,dlwkpt] = obj.material.computeLwAnddLw(obj.mesh,obj.upElem,pkpt);
+            [lwkpt,dlwkpt] = computeMobility(obj,pkpt);
+            dlwkpt = - dlwkpt;
+        end
+
         function Jh = computeJacobianPartJhNewton(obj,pTau,dMob)
             % COMPUTEJACOBIANFORNEWTONJFPART Method to compute the Jh part
             % of the jacobian used in the Newton-Raphson.
@@ -313,42 +373,6 @@ classdef VSFlow < SPFlow
     end
 
     methods (Access = private)
-        % function [Swkpt,dSwkpt,d2Swkpt] = computeSaturation(obj,pkpt)
-        %     % COMPUTESATURATION compute the effective saturation and it's
-        %     % derivatives for the upstream elements for each face
-        %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-        %     gamma = obj.material.getFluid().getFluidSpecWeight();
-        %     if gamma > 0
-        %         zVec = obj.elements.cellCentroid(:,3);
-        %         zNeigh = zVec(neigh);
-        %         lElemIsUp = pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
-        %     else
-        %         lElemIsUp = pkpt(neigh(:,1)) >= pkpt(neigh(:,2));
-        %     end
-        %     obj.upElem(lElemIsUp) = neigh(lElemIsUp,1);
-        %     obj.upElem(~lElemIsUp) = neigh(~lElemIsUp,2);
-        %     [Swkpt,dSwkpt,d2Swkpt] = obj.material.computeSwAnddSw(obj.mesh,pkpt);
-        %     dSwkpt = - dSwkpt;
-        % end
-
-        % function [lpt,dlpt] = computeMobility(obj,pkpt)
-        %     % COMPUTEMOBILITY compute the mobility and it's derivatives
-        %     % for the upstream elements for each face
-        %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-        %     gamma = obj.material.getFluid().getFluidSpecWeight();
-        %     if gamma > 0
-        %         zVec = obj.elements.cellCentroid(:,3);
-        %         zNeigh = zVec(neigh);
-        %         lElemIsUp = pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
-        %     else
-        %         lElemIsUp = pkpt(neigh(:,1)) >= pkpt(neigh(:,2));
-        %     end
-        %     obj.upElem(lElemIsUp) = neigh(lElemIsUp,1);
-        %     obj.upElem(~lElemIsUp) = neigh(~lElemIsUp,2);
-        %     [lpt,dlpt] = obj.material.computeLwAnddLw(obj.mesh,obj.upElem,pkpt);
-        %     dlpt = - dlpt;
-        % end
-
         % function JNewt = computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,d2Swkpt,dlwkpt)
         %     subCells = obj.dofm.getFieldCells(obj.field);
         %     nSubCells = length(subCells);
