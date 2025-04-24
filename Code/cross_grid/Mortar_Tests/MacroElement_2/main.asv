@@ -35,7 +35,6 @@ h = zeros(nR,1);
 beta1 = zeros(nR,1);
 beta2 = zeros(nR,1);
 beta3 = zeros(nR,1);
-betaElman = beta1;
 
 for iref = 1:nR
 % read mesh

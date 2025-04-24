@@ -40,7 +40,7 @@ nel = 20;   % number of elements on the master interface
 rat = 3;  % numb master / numb slave elems
 
 %fig = figure('Visible', 'off');
-fig.Position = [100,100,800,600];
+%fig.Position = [100,100,800,600];
 
 t = tiledlayout(1,2);
 nexttile(1)

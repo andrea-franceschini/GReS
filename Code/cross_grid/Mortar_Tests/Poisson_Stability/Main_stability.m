@@ -28,7 +28,7 @@ fileNameSlave = [];
 mult_type = 'RED';
 
 % Set the input file name
-nGrids = 1;
+nGrids = 6;
 % selecting master and slave domain
 
 % selecting integration approach
@@ -59,8 +59,8 @@ for type = ["P0"]
    multL2 = zeros(nGrids,1);
    multDualNorm = multL2;
    %grids = 2; % row vector for selecting in which to compute pointwise error
-   NX0 = 8; % Initial number of elements in the top mesh
-   rat = 0.5;
+   NX0 = 5; % Initial number of elements in the top mesh
+   rat = 1.5;
    for mCount = 1:nGrids
       NelX = NX0*(2^(mCount-1)); 
       fprintf('Grid h%i nGP = %i  nInt = %i  Integration: %s \n',mCount, nGP, nInt, type);
@@ -141,7 +141,7 @@ for type = ["P0"]
          H = zeros(length(dofMult),length(dofMult));
       end
 
-      %H = zeros(length(dofMult),length(dofMult));
+      H = zeros(length(dofMult),length(dofMult));
 
       % get dofs coordinates
       xM = [masterMesh.coordinates(dofM,1);

@@ -9,7 +9,7 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 // three coordinates (X, Y and Z) and the target mesh size (lc) close to the
 // point:
 
-NX = 9;
+NX = 161;
 NY = Floor(0.5*NX + 0.5);
 
 
