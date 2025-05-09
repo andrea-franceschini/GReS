@@ -131,54 +131,31 @@ pos = find(ptsZ == max(ptsZ));
 H = max(topology.coordinates(:,3));
 ptsZ = ptsZ/H;
 
-figure(1)
+figure('Position', [100, 100, 700, 700])
 hold on
 plot(pressplot./(pressplot(pos,:)),ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
 xlabel('p/p_{top}')
 ylabel('z/H')
-legend(tstr, 'Location', 'southeast')
+legend(tstr, 'Location', 'northwest')
+% legend(tstr, 'Location', 'southeast')
 set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
 % export figure with quality
-stmp = strcat(image_dir,'Richards_pressure','.png');
+stmp = strcat(image_dir,'pressure','.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
-figure(2)
+figure('Position', [100, 100, 700, 700])
 plot(swplot,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
 hold on
-xlabel('Saturation S_w')
+xlabel('S_w')
 ylabel('z/H')
-legend(tstr, 'Location', 'southwest')
+legend(tstr, 'Location', 'northeast')
+% legend(tstr, 'Location', 'southwest')
 str = strcat('t = ',tstr);
 set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
 % export figure with quality
-stmp = strcat(image_dir,'Richards_staturation', '.png');
+stmp = strcat(image_dir,'saturation', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 % save("output1B.mat","pressplot","ptsZ","pos","swplot")
 
 end
-% 
-% pressplotA=pressplot;
-% swplotA=swplot;
-% 
-% pressplotC=pressplot;
-% swplotC=swplot;
-% 
-% figure(1)
-% hold on
-% plot(pressplotA./(pressplotA(pos,:)),ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
-% plot(pressplotC./(pressplotC(pos,:)),ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
-% xlabel('p/p_{top}')
-% ylabel('z/H')
-% legend(tstr, 'Location', 'southeast')
-% set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
-% 
-% figure(2)
-% hold on
-% plot(swplotA,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
-% plot(swplotC,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
-% xlabel('Saturation S_w')
-% ylabel('z/H')
-% legend(tstr, 'Location', 'southwest')
-% str = strcat('t = ',tstr);
-% set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')

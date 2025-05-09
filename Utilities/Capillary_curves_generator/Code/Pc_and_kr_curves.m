@@ -61,4 +61,4 @@ data.setVGMParameters('Sand', 'SpecWeight', 9.81);
 %   curves.
 % fName = ["../OUT/pcCurve_400.dat", "../OUT/krCurve_400.dat"];
 fName = ["../OUT/pcCurve_2000.dat", "../OUT/krCurve_2000.dat"];
-data.makeCurves('fileName', fName, 'range', [-2,1], 'nPoints', 2000);
+data.makeCurves('fileName', fName, 'range', [-2,1], 'nPoints', 200);

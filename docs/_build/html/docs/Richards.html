@@ -1,0 +1,483 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Richards benchmark &mdash; GReS 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=e031e9a9"></script>
+      <script src="../_static/doctools.js?v=888ff710"></script>
+      <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Terzaghi benchmark" href="Terzaghi.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            GReS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="codeComponents.html">Code Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="InputFiles.html">Input files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Terzaghi.html">Terzaghi benchmark</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Richards benchmark</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#TabularCurve"><code class="docutils literal notranslate"><span class="pre">TabularCurve</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#experiment-1">Experiment 1</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#experiment-2">Experiment 2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reference">Reference</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">GReS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Richards benchmark</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/docs/Richards.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="richards-benchmark">
+<h1>Richards benchmark<a class="headerlink" href="#richards-benchmark" title="Permalink to this heading"></a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this heading"></a></h2>
+<p>This is the simplest test case to get in touch with how to describe
+unsaturated flow in a porous media using Richards modulo currently available
+in GReS.
+This benchmark has been organized as short overview of the model,
+followed by two experiments.</p>
+<ul class="simple">
+<li><p><strong>Governing equations</strong></p></li>
+</ul>
+<p>The mass balance equation for a single phase flow on a unsaturated porous
+media is given by</p>
+<div class="math notranslate nohighlight">
+\[\sigma(S) \dfrac{\partial p}{\partial t} + \nabla \cdot \bigg( \lambda(S) K \nabla ( p + \gamma z)\bigg)= q\]</div>
+<p>where <span class="math notranslate nohighlight">\(\sigma(S)\)</span> is the store coefficient, <span class="math notranslate nohighlight">\(\lambda(S)\)</span>
+is the fluid mobility, <span class="math notranslate nohighlight">\(K\)</span> is the permeability tensor and <span class="math notranslate nohighlight">\(q\)</span>
+is the volumetric flux.
+The store coefficient is given by</p>
+<div class="math notranslate nohighlight">
+\[\sigma(S) = S\bigg(\alpha+\beta\phi\bigg) + \phi\dfrac{dS}{dp}\]</div>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(S\)</span> is the fluid saturation.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\alpha\)</span> is the rock compressibility.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\beta\)</span> is the fluid compressibility.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\phi\)</span> is the porosity of the media.</p></li>
+</ul>
+<p>Meanwhile, the saturation is described as</p>
+<div class="math notranslate nohighlight">
+\[S_{e} = \dfrac{S-S_{r}}{S_{s}-S_{r}}\]</div>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(S_{e}\)</span> is the effective saturation.</p></li>
+<li><p><span class="math notranslate nohighlight">\(S_{r}\)</span> is the residual saturation.</p></li>
+<li><p><span class="math notranslate nohighlight">\(S_{s}\)</span> is the maximum saturation for the fluid.</p></li>
+</ul>
+<p>The fluid mobility is given by</p>
+<div class="math notranslate nohighlight">
+\[\lambda(S) = \dfrac{k_{r}(S)}{\mu}\]</div>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(k_{r}(S)\)</span> is relative permeability of the fluid.</p></li>
+<li><p><span class="math notranslate nohighlight">\(\mu\)</span> is the dynamic viscosity of the fluid.</p></li>
+</ul>
+<p>The variables <span class="math notranslate nohighlight">\(S_{e}\)</span> and <span class="math notranslate nohighlight">\(k_{r}\)</span> depend on pressure, and the
+code is designed to handle their relationships in two different ways: through
+tabulated data or via a function, the van Genuchten model <a class="reference internal" href="#vang80" id="id1"><span>[VanG80]</span></a>,
+<a class="reference internal" href="#vang85" id="id2"><span>[VanG85]</span></a>, <a class="reference internal" href="#mrst" id="id3"><span>[MRST]</span></a>.</p>
+<ul class="simple">
+<li><p><strong>Tabular Data</strong></p></li>
+</ul>
+<p>In this case, the variables <span class="math notranslate nohighlight">\(S_{e}\)</span> and <span class="math notranslate nohighlight">\(k_{r}\)</span> are store
+in a table that contains the information about the variable and it’s correspondent
+pressure (see <a class="reference internal" href="#fig-tabular-curves">fig:Tabular Curves</a>).</p>
+<blockquote id="fig-tabular-curves">
+<div><div class="figures docutils container">
+<a class="reference internal image-reference" href="../_images/Tab_CapCurve200.png" id="capilarycurve"><img alt="../_images/Tab_CapCurve200.png" id="capilarycurve" src="../_images/Tab_CapCurve200.png" style="width: 49%;" /></a>
+<a class="reference internal image-reference" href="../_images/Tab_RelPerm200.png" id="relativecurve"><img alt="../_images/Tab_RelPerm200.png" id="relativecurve" src="../_images/Tab_RelPerm200.png" style="width: 49%;" /></a>
+</div>
+<p><strong>Tabular Curves</strong>: Example of tabular curves for the effective saturation and the
+relative permeability.</p>
+</div></blockquote>
+<dl class="py class">
+<dt class="sig sig-object py" id="TabularCurve">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">TabularCurve</span></span><a class="headerlink" href="#TabularCurve" title="Permalink to this definition"></a></dt>
+<dd><p>Class to represent the <span class="math notranslate nohighlight">\(S_{e}\)</span> or <span class="math notranslate nohighlight">\(k_{r}\)</span> variable and
+it’s dependence on pressure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Variables<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tabW</strong> – a list of points with the values of <span class="math notranslate nohighlight">\(S_{e}\)</span> or <span class="math notranslate nohighlight">\(k_{r}\)</span> and it’s respective pressure associated.</p></li>
+<li><p><strong>derivW</strong> – a list of first derivative, computed using foward differenciating, for the tabW values.</p></li>
+<li><p><strong>derivW2</strong> – a list of second derivative, computed using foward differenciating, for the derivW values.</p></li>
+<li><p><strong>nPoints</strong> – number of points descibring tabW.</p></li>
+</ul>
+</dd>
+</dl>
+<p>In this object class, the <span class="math notranslate nohighlight">\(S_{e}\)</span> or <span class="math notranslate nohighlight">\(k_{r}\)</span> value and it’s derivatives
+at a specific pressure is obtained through linear interpolations of the point
+lists (tabW, derivW, derivW2).</p>
+</dd></dl>
+
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>The data stored in this class assumes that the pressure is strictly positive.</p></li>
+<li><p>The forward differentiation process creates a list with one fewer point than the original.</p></li>
+<li><p>The pressure position of this derivative is at the midpoint between the points used in thi process.</p></li>
+<li><p>Two extrapolation regions are always necessary due to this differentiation process.</p></li>
+<li><p>One region covers pressures greater than the maximum defined in the list.</p></li>
+<li><p>The other covers values between zero and the first defined pressure value.</p></li>
+<li><p>It is recommended to be cautious with these extrapolation regions, as they can interfere with the convergence of the non-linear solver.</p></li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><strong>Van Genuchten Model</strong></p></li>
+</ul>
+<p>The relationship between capillary pressure and water saturation is</p>
+<div class="math notranslate nohighlight">
+\[S_{e} = \bigg(1+(\epsilon p)^{n}\bigg)^{-m}\]</div>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\epsilon\)</span> is related to the average size of pores</p></li>
+<li><p><span class="math notranslate nohighlight">\(n\)</span> and <span class="math notranslate nohighlight">\(m\)</span> are experimental parameters.</p></li>
+</ul>
+<p>The relative permeability be given by the van Genuchten–Mualem model,</p>
+<div class="math notranslate nohighlight">
+\[k_{r} = S_{e}^{k}\bigg[1-\bigg(1 - S_{e}^{1/m}\bigg)^{m}\bigg]^{2},
+\quad m=1-1/n\]</div>
+<p>or by the van Genuchten-Burdine</p>
+<div class="math notranslate nohighlight">
+\[k_{r} = S_{e}^{2}\bigg[1-\bigg(1 - S_{e}^{1/m}\bigg)^{m}\bigg],
+\quad m=1-2/n\]</div>
+<p>and the <span class="math notranslate nohighlight">\(k\)</span> is a connectivity factor, usually 0.5.</p>
+</section>
+<section id="experiment-1">
+<h2>Experiment 1<a class="headerlink" href="#experiment-1" title="Permalink to this heading"></a></h2>
+<p>This experiment consist in a simulation of a pressure dropping inside a column.
+The boundary and initial conditions are describe in <a class="reference internal" href="#fig-exp-1-conditions">fig:Exp 1 - Conditions</a></p>
+<blockquote id="fig-exp-1-conditions">
+<div><a class="reference internal image-reference" href="../_images/Exp1_Boundary.png"><img alt="../_images/Exp1_Boundary.png" class="align-center" src="../_images/Exp1_Boundary.png" style="width: 168.5px; height: 250.0px;" /></a>
+<p><strong>Conditions</strong>: Initial and Boundary condition for this experiment.</p>
+</div></blockquote>
+<p>The proprieties for this model are</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"></th>
+<th class="head"><p>Value</p></th>
+<th class="head"><p>unit</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Dimensions</p></td>
+<td><p>1x1x10</p></td>
+<td><p>m</p></td>
+</tr>
+<tr class="row-odd"><td><p>Partitions</p></td>
+<td><p>4x4x40</p></td>
+<td><p>cells</p></td>
+</tr>
+<tr class="row-even"><td><p>Permeability</p></td>
+<td><p>1e-13</p></td>
+<td><p>m²</p></td>
+</tr>
+<tr class="row-odd"><td><p>Porosity</p></td>
+<td><p>0.3</p></td>
+<td><p>adm</p></td>
+</tr>
+<tr class="row-even"><td><p>Rock Specific Weight</p></td>
+<td><p>21</p></td>
+<td><p>KPa</p></td>
+</tr>
+<tr class="row-odd"><td><p>Water Specific Weight</p></td>
+<td><p>9.81</p></td>
+<td><p>KPa</p></td>
+</tr>
+<tr class="row-even"><td><p>Water Compressibility</p></td>
+<td><p>0</p></td>
+<td><p>KPa</p></td>
+</tr>
+<tr class="row-odd"><td><p>Viscosity</p></td>
+<td><p>1.157e-11</p></td>
+<td><p>KPa m</p></td>
+</tr>
+<tr class="row-even"><td><p>Gravity</p></td>
+<td><p>9.81</p></td>
+<td><p>m/s²</p></td>
+</tr>
+<tr class="row-odd"><td><p>Residual Saturation</p></td>
+<td><p>0</p></td>
+<td><p>adm</p></td>
+</tr>
+<tr class="row-even"><td><p>Maximum Saturation</p></td>
+<td><p>1</p></td>
+<td><p>adm</p></td>
+</tr>
+</tbody>
+</table>
+<p>and <span class="math notranslate nohighlight">\(S_{e}\)</span> and <span class="math notranslate nohighlight">\(k_{r}\)</span> are given and two different forms, by a
+table with the files “pcCurve*.dat” and “KrCurve*.dat”, and by the proposed
+function, where <span class="math notranslate nohighlight">\(\epsilon = 0.3592\ (1/KPa)\)</span>, <span class="math notranslate nohighlight">\(k = 0.5\)</span>,
+<span class="math notranslate nohighlight">\(n = 3.1769\)</span> and <span class="math notranslate nohighlight">\(m = 0.6852\)</span>.</p>
+<p>The profile for capillary pressure and water saturation for the initial condition is
+describe in the <a class="reference internal" href="#fig-exp-1-profile">fig:Exp 1 - Profile</a>.</p>
+<blockquote id="fig-exp-1-profile">
+<div><figure class="align-center">
+<a class="reference internal image-reference" href="../_images/Exp1_Perfil.png"><img alt="../_images/Exp1_Perfil.png" src="../_images/Exp1_Perfil.png" style="width: 288.0px; height: 174.0px;" /></a>
+</figure>
+<p><strong>Profile for the initial condition</strong>: Illustrated the profile for the capillary
+pressure and the saturation in the initial condition.</p>
+</div></blockquote>
+<p>With this settings, the script “Main.m” run simulation of the Richards equations
+for this model.</p>
+<blockquote id="fig-exp-1-results">
+<div><div class="figures docutils container">
+<a class="reference internal image-reference" href="../_images/Exp1_pressure.png"><img alt="../_images/Exp1_pressure.png" src="../_images/Exp1_pressure.png" style="width: 49%;" /></a>
+<a class="reference internal image-reference" href="../_images/Exp1_saturation.png"><img alt="../_images/Exp1_saturation.png" src="../_images/Exp1_saturation.png" style="width: 49%;" /></a>
+</div>
+<p><strong>Results</strong>: admensional pressure and saturation fields for three different time
+instance.</p>
+</div></blockquote>
+<p>In <a class="reference internal" href="#fig-exp-1-results">fig:Exp 1 - Results</a>, we observe a pressure drop throughout the entire domain
+as time progresses.
+This leads to a decrease in saturation, as also illustrated in the figure.</p>
+<p>To validate the two approaches for representing <span class="math notranslate nohighlight">\(S_{e}\)</span> and <span class="math notranslate nohighlight">\(k_{r}\)</span>, using
+either a table or an function, we executed the script “Main.m” for both cases under
+identical conditions.
+The simulation results were saved and can be compared by running the script
+“Validation.m”, which provides a direct visualization of the differences
+between the two methods.</p>
+<blockquote id="fig-exp-1-validation">
+<div><div class="figures docutils container">
+<a class="reference internal image-reference" href="../_images/Exp1_pressure_validation.png"><img alt="../_images/Exp1_pressure_validation.png" src="../_images/Exp1_pressure_validation.png" style="width: 49%;" /></a>
+<a class="reference internal image-reference" href="../_images/Exp1_saturation_validation.png"><img alt="../_images/Exp1_saturation_validation.png" src="../_images/Exp1_saturation_validation.png" style="width: 49%;" /></a>
+</div>
+<p><strong>Validation</strong>: Comparison between the solution using a tabular curve and a
+analytical function for the variables <span class="math notranslate nohighlight">\(S_{e}\)</span> and <span class="math notranslate nohighlight">\(k_{r}\)</span>.</p>
+</div></blockquote>
+<p>In <a class="reference internal" href="#fig-exp-1-validation">fig:Exp 1 - Validation</a>, we observe an agreement between the results, which
+was expected and validate both methods.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>The number of points is a important factor for the performance of the non-linear solver, as demonstrated in this experiment. When using 200 points to describe the variables <span class="math notranslate nohighlight">\(S_{e}\)</span> and <span class="math notranslate nohighlight">\(k_{r}\)</span> under the conditions defined for this study, it becomes necessary to reduce the time step as the simulation progresses. However, this adjustment is not required when using tables with 2000 points.</p></li>
+<li><p>To compare the solution obtained using table and function, it’s necessary to impose the same conditions.  However, achieving a meaningful comparison is necessary to use the same time steps in the non-linear solver.</p></li>
+</ul>
+</div>
+</section>
+<section id="experiment-2">
+<h2>Experiment 2<a class="headerlink" href="#experiment-2" title="Permalink to this heading"></a></h2>
+<p>This second experiment compares methodology code in GReS with one present
+in <a class="reference internal" href="#varela" id="id4"><span>[Varela]</span></a> for the MRST code.
+The simulation comprises of one-dimensional soil block with an
+residual moisture content and a total length of 1 m.
+A pressure head is imposed at the top boundary, initiating downward
+water infiltration.
+As a result, an infiltration front develops and progresses through the
+block over time.</p>
+<p>The proprieties for this model are describe as</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"></th>
+<th class="head"><p>Value</p></th>
+<th class="head"><p>unit</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Dimensions</p></td>
+<td><p>1x1x1</p></td>
+<td><p>m</p></td>
+</tr>
+<tr class="row-odd"><td><p>Partitions</p></td>
+<td><p>1x1x30</p></td>
+<td><p>cells</p></td>
+</tr>
+<tr class="row-even"><td><p>Permeability</p></td>
+<td><p>9.4018e-12</p></td>
+<td><p>m²</p></td>
+</tr>
+<tr class="row-odd"><td><p>Porosity</p></td>
+<td><p>1.0</p></td>
+<td><p>adm</p></td>
+</tr>
+<tr class="row-even"><td><p>Rock Specific Weight</p></td>
+<td><p>2.1e4</p></td>
+<td><p>N/m³</p></td>
+</tr>
+<tr class="row-odd"><td><p>Water Specific Weight</p></td>
+<td><p>9.8066e3</p></td>
+<td><p>N/m³</p></td>
+</tr>
+<tr class="row-even"><td><p>Water Compressibility</p></td>
+<td><p>0</p></td>
+<td><p>N/m³</p></td>
+</tr>
+<tr class="row-odd"><td><p>Viscosity</p></td>
+<td><p>1e-3</p></td>
+<td><p>mPa s</p></td>
+</tr>
+<tr class="row-even"><td><p>Gravity</p></td>
+<td><p>9.8066</p></td>
+<td><p>m/s²</p></td>
+</tr>
+<tr class="row-odd"><td><p>Residual Saturation</p></td>
+<td><p>0.102</p></td>
+<td><p>adm</p></td>
+</tr>
+<tr class="row-even"><td><p>Maximum Saturation</p></td>
+<td><p>0.368</p></td>
+<td><p>adm</p></td>
+</tr>
+</tbody>
+</table>
+<p>where the parameters to Van Genuchten model are: <span class="math notranslate nohighlight">\(\epsilon = 0.3592\ (1/KPa)\)</span>,
+<span class="math notranslate nohighlight">\(k = 0.5\)</span>, <span class="math notranslate nohighlight">\(n = 3.1769\)</span> and <span class="math notranslate nohighlight">\(m = 0.6852\)</span>.</p>
+<p>No-flow (Neumann) boundary conditions are imposed along the lateral sides of
+the block and Dirichlet boundary conditions are applied at the top and bottom
+boundaries, as detailed in Table</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"></th>
+<th class="head"><p>Value</p></th>
+<th class="head"><p>unit</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Boundary condition (Top)</p></td>
+<td><p>-0.75</p></td>
+<td><p>m</p></td>
+</tr>
+<tr class="row-odd"><td><p>Boundary condition (Bottom)</p></td>
+<td><p>-10.0</p></td>
+<td><p>m</p></td>
+</tr>
+<tr class="row-even"><td><p>Initial condition (Top)</p></td>
+<td><p>-10.0</p></td>
+<td><p>m</p></td>
+</tr>
+</tbody>
+</table>
+<p>The simulations are run using identical conditions for both cases, and the results
+of a 3 days simulation is show in <a class="reference internal" href="#fig-exp-2-validation">fig:Exp 2 - Validation</a>.</p>
+<blockquote id="fig-exp-2-validation">
+<div><div class="figures docutils container">
+<a class="reference internal image-reference" href="../_images/Exp2_GReSxMRST_head_pressure.png"><img alt="../_images/Exp2_GReSxMRST_head_pressure.png" src="../_images/Exp2_GReSxMRST_head_pressure.png" style="width: 49%;" /></a>
+<a class="reference internal image-reference" href="../_images/Exp2_GReSxMRST_saturation.png"><img alt="../_images/Exp2_GReSxMRST_saturation.png" src="../_images/Exp2_GReSxMRST_saturation.png" style="width: 49%;" /></a>
+</div>
+<p><strong>Validation</strong>: Comparison between the solution using GReS an MRST</p>
+</div></blockquote>
+<p>The curves illustrate the evolution of pressure head, capturing the progression
+of the infiltration process and the associated changes in saturation within the
+block.
+A high degree of similarity is observed between the results, indicating that
+the GReS model produces outcomes comparable to those of the MRST model.</p>
+</section>
+<section id="reference">
+<h2>Reference<a class="headerlink" href="#reference" title="Permalink to this heading"></a></h2>
+<div role="list" class="citation-list">
+<div class="citation" id="vang80" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">VanG80</a><span class="fn-bracket">]</span></span>
+<p>M. Th. van Genuchten.
+A Closed-form Equation for Predicting the Hydraulic Conductivity
+of Unsaturated Soils.
+In: Soil Science Society of America Journal 44.5 (1980), pp. 892–898.
+doi: <a class="reference external" href="https://doi.org/10.2136/sssaj1980.03615995004400050002x">https://doi.org/10.2136/sssaj1980.03615995004400050002x</a></p>
+</div>
+<div class="citation" id="vang85" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">VanG85</a><span class="fn-bracket">]</span></span>
+<p>Martinus Van Genuchten and D.R. Nielsen.
+On Describing and Predicting the Hydraulic Properties of Unsaturated Soils.
+In: Annales Geophysicae 3 (Jan. 1985), pp. 615–628.</p>
+</div>
+<div class="citation" id="mrst" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">MRST</a><span class="fn-bracket">]</span></span>
+<p>Knut-Andreas Lie.
+An Introduction to Reservoir Simulation Using MATLAB/GNU Octave:
+User Guide for the MATLAB Reservoir Simulation Toolbox (MRST).
+Cambridge University Press, 2019</p>
+</div>
+<div class="citation" id="varela" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id4">Varela</a><span class="fn-bracket">]</span></span>
+<p>Varela, Jhabriel.
+Implementation of an MPFA/MPSA-FV solver for the unsaturated flow in deformable porous media.
+(2018).</p>
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Terzaghi.html" class="btn btn-neutral float-left" title="Terzaghi benchmark" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, University of Padova.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

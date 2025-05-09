@@ -25,5 +25,6 @@ Feel free to reach out with any questions or feedback - we are here to support y
    docs/codeComponents
    docs/InputFiles
    docs/Terzaghi
+   docs/Richards
       
 
