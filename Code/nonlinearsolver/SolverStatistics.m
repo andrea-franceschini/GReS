@@ -24,12 +24,6 @@ classdef SolverStatistics < handle
     methods (Access = public)
         function obj = SolverStatistics(maxIt,tolRel,tolAbs,flags)
             %SOLVERSTATISTICS Construct an instance of this class
-            arguments
-                maxIt {mustBePositive}
-                tolRel double {mustBePositive}
-                tolAbs double {mustBePositive}
-                flags (3,1) logical
-            end
             obj.itMaxNR = maxIt;
             obj.relTol = tolRel;
             obj.absTol = tolAbs;
@@ -200,7 +194,7 @@ classdef SolverStatistics < handle
 
         function plotNIterTime(obj)
             %PLOTNITERTIME plot a graphic with the number of iteration
-            % against the time of the simulation.
+            % against the time simulated.
 
             % Check if the information is saved.
             if obj.checkNActive()
@@ -243,7 +237,7 @@ classdef SolverStatistics < handle
             %of the time step
 
             % Check if the information is saved.
-            if (obj.checkNActive() || obj.saveBackStep)
+            if (obj.checkNActive() && obj.saveBackStep)
                 return
             end
 
@@ -255,6 +249,29 @@ classdef SolverStatistics < handle
             % Plot the graphic.
             figure();
             plot(listPos,backsteps,'-','LineWidth',2,'MarkerSize',14);
+            xlabel('Time Step')
+            ylabel('Number of Back Steps')
+            set(gca,'FontName','Liberation Serif','FontSize',16,'XGrid','on','YGrid','on')
+        end
+
+        function plotBackStepsTime(obj)
+            %PLOTBACKSTEPS plot the location of the back step in relation
+            %of the time simulated.
+
+            % Check if the information is saved.
+            if (obj.checkNActive() && obj.saveBackStep)
+                return
+            end
+
+            listPos = linspace(0,length(obj.listTimeStep),length(obj.listTimeStep)+1);
+            backsteps = zeros(1,length(obj.listTimeStep)+1);
+            [~, pos] = ismember(obj.listPosBackStep, listPos);
+            backsteps(pos) = obj.listNumBackStep;
+
+            % Plot the graphic.
+            figure();
+            plot([0; obj.listTimeStep],backsteps,'-','LineWidth',2,'MarkerSize',14);
+            % plot(listPos,backsteps,'-','LineWidth',2,'MarkerSize',14);
             xlabel('Time Step')
             ylabel('Number of Back Steps')
             set(gca,'FontName','Liberation Serif','FontSize',16,'XGrid','on','YGrid','on')

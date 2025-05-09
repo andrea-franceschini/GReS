@@ -1,23 +1,21 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" data-content_root="../">
+<html class="writer-html5" lang="en">
 <head>
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Code Components &mdash; GReS 0.1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
   
-  <!--[if lt IE 9]>
-    <script src="../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script src="../_static/jquery.js?v=5d32c60e"></script>
-        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="../_static/documentation_options.js?v=2709fde1"></script>
-        <script src="../_static/doctools.js?v=9a2dae69"></script>
-        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=e031e9a9"></script>
+      <script src="../_static/doctools.js?v=888ff710"></script>
+      <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -50,10 +48,12 @@
 <li class="toctree-l2"><a class="reference internal" href="#modeltype">ModelType</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#simulationparameters">SimulationParameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#mesh">Mesh</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#materials">Materials</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="InputFiles.html">Input files</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Terzaghi.html">Terzaghi benchmark</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Richards.html">Richards benchmark</a></li>
 </ul>
 
         </div>
@@ -81,174 +81,209 @@
            <div itemprop="articleBody">
              
   <section id="code-components">
-<h1>Code Components<a class="headerlink" href="#code-components" title="Link to this heading"></a></h1>
+<h1>Code Components<a class="headerlink" href="#code-components" title="Permalink to this heading"></a></h1>
 <p>Ths page helps you exploring the most important modules implemented in GReS.
 <code class="xref py py-attr docutils literal notranslate"><span class="pre">coordinates</span></code></p>
 <section id="modeltype">
-<h2>ModelType<a class="headerlink" href="#modeltype" title="Link to this heading"></a></h2>
+<h2>ModelType<a class="headerlink" href="#modeltype" title="Permalink to this heading"></a></h2>
 <dl class="mat class">
 <dt class="sig sig-object mat" id="ModelType">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">ModelType</span></span><a class="headerlink" href="#ModelType" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">ModelType</span></span><a class="headerlink" href="#ModelType" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">handle</span></code></p>
 <p>UNTITLED Summary of this class goes here
 Detailed explanation goes here</p>
+<div class="members docutils container">
+<dl>
+<dt>Method Summary</dt><dd><dl class="mat method">
+<dt class="sig sig-object mat" id="ModelType.getAvailPhysics">
+<span class="sig-name descname"><span class="pre">getAvailPhysics</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ModelType.getAvailPhysics" title="Permalink to this definition"></a></dt>
+<dd><p>using cellfun to vectorize the checks on active physical modules</p>
+</dd></dl>
+
+</dd>
+</dl>
+</div>
 </dd></dl>
 
 </section>
 <section id="simulationparameters">
-<h2>SimulationParameters<a class="headerlink" href="#simulationparameters" title="Link to this heading"></a></h2>
+<h2>SimulationParameters<a class="headerlink" href="#simulationparameters" title="Permalink to this heading"></a></h2>
 <dl class="mat class">
 <dt class="sig sig-object mat" id="SimulationParameters">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">SimulationParameters</span></span><a class="headerlink" href="#SimulationParameters" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">SimulationParameters</span></span><a class="headerlink" href="#SimulationParameters" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">handle</span></code></p>
 <p>UNTITLED2 Summary of this class goes here
 Detailed explanation goes here</p>
+<div class="members docutils container">
+<dl>
+<dt>Method Summary</dt><dd><dl class="mat staticmethod">
+<dt class="sig sig-object mat" id="SimulationParameters.checkSlotXML">
+<em class="property"><span class="pre">static</span> </em><span class="sig-name descname"><span class="pre">checkSlotXML</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">stname</span></em>, <em class="sig-param"><span class="pre">root</span></em>, <em class="sig-param"><span class="pre">varname</span></em>, <em class="sig-param"><span class="pre">default</span></em><span class="sig-paren">)</span><a class="headerlink" href="#SimulationParameters.checkSlotXML" title="Permalink to this definition"></a></dt>
+<dd><p>CHECKSLOTXML - check the field is defined for the xml struct and
+return the value or a default value.</p>
+</dd></dl>
+
+</dd>
+</dl>
+</div>
 </dd></dl>
 
 </section>
 <section id="mesh">
-<h2>Mesh<a class="headerlink" href="#mesh" title="Link to this heading"></a></h2>
+<h2>Mesh<a class="headerlink" href="#mesh" title="Permalink to this heading"></a></h2>
 <dl class="mat class">
 <dt class="sig sig-object mat" id="Mesh">
-<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Mesh</span></span><a class="headerlink" href="#Mesh" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Mesh</span></span><a class="headerlink" href="#Mesh" title="Permalink to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">handle</span></code></p>
 <p>MESH General mesh class, can be subclassed for specialized types</p>
 <div class="members docutils container">
 <dl>
 <dt>Property Summary</dt><dd><dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.cartGrid">
-<span class="sig-name descname"><span class="pre">cartGrid</span></span><em class="property"> <span class="pre">=</span> <span class="pre">false</span></em><a class="headerlink" href="#Mesh.cartGrid" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">cartGrid</span></span><em class="property"> <span class="pre">=</span> <span class="pre">false</span></em><a class="headerlink" href="#Mesh.cartGrid" title="Permalink to this definition"></a></dt>
 <dd><p>Flag for Cartesian grids</p>
 </dd></dl>
 
 <dl class="mat attribute">
+<dt class="sig sig-object mat" id="Mesh.cellCentroid">
+<span class="sig-name descname"><span class="pre">cellCentroid</span></span><a class="headerlink" href="#Mesh.cellCentroid" title="Permalink to this definition"></a></dt>
+<dd><p>Centroid coordinates of each cell</p>
+</dd></dl>
+
+<dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.cellNumVerts">
-<span class="sig-name descname"><span class="pre">cellNumVerts</span></span><a class="headerlink" href="#Mesh.cellNumVerts" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">cellNumVerts</span></span><a class="headerlink" href="#Mesh.cellNumVerts" title="Permalink to this definition"></a></dt>
 <dd><p>Number of nodes for each 3D element</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.cellRegions">
-<span class="sig-name descname"><span class="pre">cellRegions</span></span><a class="headerlink" href="#Mesh.cellRegions" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">cellRegions</span></span><a class="headerlink" href="#Mesh.cellRegions" title="Permalink to this definition"></a></dt>
 <dd><p>Regions</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.cellTag">
-<span class="sig-name descname"><span class="pre">cellTag</span></span><a class="headerlink" href="#Mesh.cellTag" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">cellTag</span></span><a class="headerlink" href="#Mesh.cellTag" title="Permalink to this definition"></a></dt>
 <dd><p>3D elements’ tag (region)</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.cellVTKType">
-<span class="sig-name descname"><span class="pre">cellVTKType</span></span><a class="headerlink" href="#Mesh.cellVTKType" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">cellVTKType</span></span><a class="headerlink" href="#Mesh.cellVTKType" title="Permalink to this definition"></a></dt>
 <dd><p>3D element VTK type tag</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.cells">
-<span class="sig-name descname"><span class="pre">cells</span></span><a class="headerlink" href="#Mesh.cells" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">cells</span></span><a class="headerlink" href="#Mesh.cells" title="Permalink to this definition"></a></dt>
 <dd><p>Cell to node mapping:
 3D elements’ nodes sequences</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.coordinates">
-<span class="sig-name descname"><span class="pre">coordinates</span></span><a class="headerlink" href="#Mesh.coordinates" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">coordinates</span></span><a class="headerlink" href="#Mesh.coordinates" title="Permalink to this definition"></a></dt>
 <dd><p>Nodes’ coordinates</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.edgeTag">
-<span class="sig-name descname"><span class="pre">edgeTag</span></span><a class="headerlink" href="#Mesh.edgeTag" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">edgeTag</span></span><a class="headerlink" href="#Mesh.edgeTag" title="Permalink to this definition"></a></dt>
 <dd><p>1D elements’ tag (region)</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.edges">
-<span class="sig-name descname"><span class="pre">edges</span></span><a class="headerlink" href="#Mesh.edges" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">edges</span></span><a class="headerlink" href="#Mesh.edges" title="Permalink to this definition"></a></dt>
 <dd><p>Edge to node mapping (Required for 2D problems):
 1D elements’ nodes sequences</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.nCellTag">
-<span class="sig-name descname"><span class="pre">nCellTag</span></span><a class="headerlink" href="#Mesh.nCellTag" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">nCellTag</span></span><a class="headerlink" href="#Mesh.nCellTag" title="Permalink to this definition"></a></dt>
 <dd><p>Number of elements’ tag</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.nCells">
-<span class="sig-name descname"><span class="pre">nCells</span></span><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#Mesh.nCells" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">nCells</span></span><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#Mesh.nCells" title="Permalink to this definition"></a></dt>
 <dd><p>Total number of mesh 3D elements</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.nDim">
-<span class="sig-name descname"><span class="pre">nDim</span></span><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#Mesh.nDim" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">nDim</span></span><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#Mesh.nDim" title="Permalink to this definition"></a></dt>
 <dd><p>GENERAL INFO:
 Mesh dimension</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.nEdges">
-<span class="sig-name descname"><span class="pre">nEdges</span></span><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#Mesh.nEdges" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">nEdges</span></span><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#Mesh.nEdges" title="Permalink to this definition"></a></dt>
 <dd><p>Total number of mesh 1D elements</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.nNodes">
-<span class="sig-name descname"><span class="pre">nNodes</span></span><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#Mesh.nNodes" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">nNodes</span></span><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#Mesh.nNodes" title="Permalink to this definition"></a></dt>
 <dd><p>Total number of mesh nodes</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.nSurfaceTag">
-<span class="sig-name descname"><span class="pre">nSurfaceTag</span></span><a class="headerlink" href="#Mesh.nSurfaceTag" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">nSurfaceTag</span></span><a class="headerlink" href="#Mesh.nSurfaceTag" title="Permalink to this definition"></a></dt>
 <dd><p>Number of surfaces’ tag</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.nSurfaces">
-<span class="sig-name descname"><span class="pre">nSurfaces</span></span><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#Mesh.nSurfaces" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">nSurfaces</span></span><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#Mesh.nSurfaces" title="Permalink to this definition"></a></dt>
 <dd><p>Total number of mesh 2D elements</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.surfaceNumVerts">
-<span class="sig-name descname"><span class="pre">surfaceNumVerts</span></span><a class="headerlink" href="#Mesh.surfaceNumVerts" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">surfaceNumVerts</span></span><a class="headerlink" href="#Mesh.surfaceNumVerts" title="Permalink to this definition"></a></dt>
 <dd><p>Number of nodes of the 2D element</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.surfaceTag">
-<span class="sig-name descname"><span class="pre">surfaceTag</span></span><a class="headerlink" href="#Mesh.surfaceTag" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">surfaceTag</span></span><a class="headerlink" href="#Mesh.surfaceTag" title="Permalink to this definition"></a></dt>
 <dd><p>2D elements’ tag (region)</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.surfaceVTKType">
-<span class="sig-name descname"><span class="pre">surfaceVTKType</span></span><a class="headerlink" href="#Mesh.surfaceVTKType" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">surfaceVTKType</span></span><a class="headerlink" href="#Mesh.surfaceVTKType" title="Permalink to this definition"></a></dt>
 <dd><p>2D element VTK type tag</p>
 </dd></dl>
 
 <dl class="mat attribute">
 <dt class="sig sig-object mat" id="Mesh.surfaces">
-<span class="sig-name descname"><span class="pre">surfaces</span></span><a class="headerlink" href="#Mesh.surfaces" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">surfaces</span></span><a class="headerlink" href="#Mesh.surfaces" title="Permalink to this definition"></a></dt>
 <dd><p>Surface to node mapping:
 2D elements’ nodes sequences</p>
 </dd></dl>
 
 </dd>
 <dt>Method Summary</dt><dd><dl class="mat method">
+<dt class="sig sig-object mat" id="Mesh.addSurface">
+<span class="sig-name descname"><span class="pre">addSurface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">id</span></em>, <em class="sig-param"><span class="pre">topol</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Mesh.addSurface" title="Permalink to this definition"></a></dt>
+<dd><p>add a surface to mesh object given the surface topology</p>
+</dd></dl>
+
+<dl class="mat method">
 <dt class="sig sig-object mat" id="Mesh.createCartesianGrid">
-<span class="sig-name descname"><span class="pre">createCartesianGrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">dim</span></em>, <em class="sig-param"><span class="pre">deg</span></em>, <em class="sig-param"><span class="pre">varargin</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Mesh.createCartesianGrid" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">createCartesianGrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">dim</span></em>, <em class="sig-param"><span class="pre">deg</span></em>, <em class="sig-param"><span class="pre">varargin</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Mesh.createCartesianGrid" title="Permalink to this definition"></a></dt>
 <dd><p>Generate Cartesian mesh of quadrilateral elements</p>
 </dd></dl>
 
 <dl class="mat method">
 <dt class="sig sig-object mat" id="Mesh.getSurfaceMesh">
-<span class="sig-name descname"><span class="pre">getSurfaceMesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">surfTag</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Mesh.getSurfaceMesh" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">getSurfaceMesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">surfTag</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Mesh.getSurfaceMesh" title="Permalink to this definition"></a></dt>
 <dd><p>Function to build a 2D mesh object based on the surfaceTag of a 3D
 mesh
 initialize Mesh object</p>
@@ -256,14 +291,117 @@ initialize Mesh object</p>
 
 <dl class="mat method">
 <dt class="sig sig-object mat" id="Mesh.importGMSHmesh">
-<span class="sig-name descname"><span class="pre">importGMSHmesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">fileName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Mesh.importGMSHmesh" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">importGMSHmesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">fileName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Mesh.importGMSHmesh" title="Permalink to this definition"></a></dt>
 <dd><p>Reading input file</p>
 </dd></dl>
 
 <dl class="mat method">
-<dt class="sig sig-object mat" id="Mesh.importVTKmesh">
-<span class="sig-name descname"><span class="pre">importVTKmesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">fileName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Mesh.importVTKmesh" title="Link to this definition"></a></dt>
-<dd><p>reading VTK file using VTK toolkit</p>
+<dt class="sig sig-object mat" id="Mesh.importMesh">
+<span class="sig-name descname"><span class="pre">importMesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">fileName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Mesh.importMesh" title="Permalink to this definition"></a></dt>
+<dd><p>Import grid topology;
+Admitted grid formats: vtk (unstructured grids), gmsh;
+calling MEX functions depending on file extension</p>
+</dd></dl>
+
+</dd>
+</dl>
+</div>
+</dd></dl>
+
+</section>
+<section id="materials">
+<h2>Materials<a class="headerlink" href="#materials" title="Permalink to this heading"></a></h2>
+<dl class="mat class">
+<dt class="sig sig-object mat" id="Materials">
+<em class="property"><span class="pre">class</span> </em><span class="sig-name descname"><span class="pre">Materials</span></span><a class="headerlink" href="#Materials" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">handle</span></code></p>
+<p>MATERIAL - General material class</p>
+<p>Details - Store capabilities:
+- for solid materials, you can have only one type material for each
+subdomain, but you can have the same material defined in more than one
+subdomain.
+- for fluid materials (phase), you can have one material define in
+diferent subdomain, and the subdomain can have more than one material
+(limit by then physics defined for that subdomain).</p>
+<p>This approx still leave the possibility of two subdomain adjacent to
+each other have different fluid material defined, which can represents
+a different physics for this subdomains (One that combine all the
+different phases present).</p>
+<div class="members docutils container">
+<dl>
+<dt>Property Summary</dt><dd><dl class="mat attribute">
+<dt class="sig sig-object mat" id="Materials.db">
+<span class="sig-name descname"><span class="pre">db</span></span><a class="headerlink" href="#Materials.db" title="Permalink to this definition"></a></dt>
+<dd><p>Creation of a Dictionary object (faster than map)
+db = configureDictionary(“double”,”struct”);</p>
+<blockquote>
+<div><p>configureDictionary is not supported before 2023b</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="mat attribute">
+<dt class="sig sig-object mat" id="Materials.solidDB">
+<span class="sig-name descname"><span class="pre">solidDB</span></span><a class="headerlink" href="#Materials.solidDB" title="Permalink to this definition"></a></dt>
+<dd><p><a href="#id1"><span class="problematic" id="id2">*</span></a>DB - the database for store the proprieties of the material.
+<a href="#id3"><span class="problematic" id="id4">*</span></a>Mat - map the associate the material and which subdomain is defined.
+<a href="#id5"><span class="problematic" id="id6">*</span></a>Cell - map the associate the subdomail and which material is defined.</p>
+</dd></dl>
+
+</dd>
+<dt>Method Summary</dt><dd><dl class="mat method">
+<dt class="sig sig-object mat" id="Materials.computeLwAnddLw">
+<span class="sig-name descname"><span class="pre">computeLwAnddLw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">mesh</span></em>, <em class="sig-param"><span class="pre">upElem</span></em>, <em class="sig-param"><span class="pre">pkpt</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Materials.computeLwAnddLw" title="Permalink to this definition"></a></dt>
+<dd><p>Consider moving this method to a more appropriate location
+varargout{1} -&gt; lw
+varargout{2} -&gt; dlw</p>
+</dd></dl>
+
+<dl class="mat method">
+<dt class="sig sig-object mat" id="Materials.computeRelativePermeability">
+<span class="sig-name descname"><span class="pre">computeRelativePermeability</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">pres</span></em>, <em class="sig-param"><span class="pre">mat</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Materials.computeRelativePermeability" title="Permalink to this definition"></a></dt>
+<dd><p>COMPUTERELATIVEPERMEABILITY compute the relative permeability of
+a material by a given pressure.</p>
+</dd></dl>
+
+<dl class="mat method">
+<dt class="sig sig-object mat" id="Materials.computeSwAnddSw">
+<span class="sig-name descname"><span class="pre">computeSwAnddSw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">mesh</span></em>, <em class="sig-param"><span class="pre">pkpt</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Materials.computeSwAnddSw" title="Permalink to this definition"></a></dt>
+<dd><p>Consider moving this method to a more appropriate location
+varargout{1} -&gt; Sw
+varargout{2} -&gt; dSw
+varargout{3} -&gt; d2Sw
+if 5&lt;1</p>
+</dd></dl>
+
+<dl class="mat method">
+<dt class="sig sig-object mat" id="Materials.getFluid">
+<span class="sig-name descname"><span class="pre">getFluid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Materials.getFluid" title="Permalink to this definition"></a></dt>
+<dd><p>fluid materials corresponds to null rows in materials map. 
+Fluid are not assigned to any cellTag</p>
+</dd></dl>
+
+<dl class="mat method">
+<dt class="sig sig-object mat" id="Materials.getMaterial">
+<span class="sig-name descname"><span class="pre">getMaterial</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">cellID</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Materials.getMaterial" title="Permalink to this definition"></a></dt>
+<dd><p>The preliminary check whether matID is key of db has been commented
+since it is highly expensive</p>
+<blockquote>
+<div><p>if (obj.db.isKey(matID))</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="mat staticmethod">
+<dt class="sig sig-object mat" id="Materials.readXMLFluid">
+<em class="property"><span class="pre">static</span> </em><span class="sig-name descname"><span class="pre">readXMLFluid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">fileName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Materials.readXMLFluid" title="Permalink to this definition"></a></dt>
+<dd><p>readXMLFluid - function to read the material information relate to
+the fluid part of the model.</p>
+</dd></dl>
+
+<dl class="mat staticmethod">
+<dt class="sig sig-object mat" id="Materials.readXMLSolid">
+<em class="property"><span class="pre">static</span> </em><span class="sig-name descname"><span class="pre">readXMLSolid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">fileName</span></em><span class="sig-paren">)</span><a class="headerlink" href="#Materials.readXMLSolid" title="Permalink to this definition"></a></dt>
+<dd><p>readXMLSolid - function to read the material information relate to
+the solid part of the model.</p>
 </dd></dl>
 
 </dd>

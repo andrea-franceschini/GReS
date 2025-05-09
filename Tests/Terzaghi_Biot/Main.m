@@ -30,7 +30,7 @@ fileName = 'materialsList.dat';
 mat = Materials(model,fileName);
 
 % Create object handling gauss point integration
-GaussPts = Gaus0s(12,2,3);
+GaussPts = Gauss(12,2,3);
 
 % Create an object of the "Elements" class and process the element properties
 elems = Elements(topology,GaussPts);

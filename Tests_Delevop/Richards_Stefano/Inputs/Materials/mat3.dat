@@ -12,8 +12,8 @@ VanGenuchten                      % Capillary and Relative Permeabilities Curves
 Sand                              % Type of model (Mualem or Burdine) or type of soil
 
 CapillaryCurve
-./Inputs/Materials/pcCurve_400.dat
+./Inputs/Materials/pcCurve4_2000.dat
 
 RelativePermCurve
-./Inputs/Materials/krCurve_400.dat
+./Inputs/Materials/krCurve4_2000.dat
 End

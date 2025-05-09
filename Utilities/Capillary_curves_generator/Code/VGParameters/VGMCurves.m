@@ -34,33 +34,36 @@ classdef VGMCurves < handle
       krFun = @(p) (1 + (p/obj.soilVGMParams.pEntry).^obj.soilVGMParams.n).^(-2.5.*m) .* ...
         ((1 + (p/obj.soilVGMParams.pEntry).^obj.soilVGMParams.n).^m - ...
         ((p/obj.soilVGMParams.pEntry).^obj.soilVGMParams.n).^m).^2;
-      points = logspace(discrInput.range(1),discrInput.range(2),discrInput.nPoints);
+      % points = logspace(discrInput.range(1),discrInput.range(2),discrInput.nPoints);
+      points = linspace(10^discrInput.range(1),10^discrInput.range(2),discrInput.nPoints);
       points = [0 points];
       SePoints = SeFun(points);
       krPoints = krFun(points);
       %
-      figure(1)
+      figure('Position', [100, 100, 700, 700])
       fplot(SeFun,[10^(discrInput.range(1)),10^(discrInput.range(2))],'r-');
       %set(gca,'XScale','log');
       hold on
-      plot(points(2:end),SePoints(2:end),'r*');
+      plot(points(2:end),SePoints(2:end),'r*', 'MarkerSize', 14);
       title('Capillary curve');
       xlabel('Pressure');
       ylabel('S_e');
       xlim([10^(discrInput.range(1)),10^(discrInput.range(2))]);
       ylim([-0.01, 1.01]);
+      set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
       hold off
       %
-      figure(2)
+      figure('Position', [100, 100, 700, 700])
       fplot(krFun,[10^(discrInput.range(1)),10^(discrInput.range(2))],'r-');
       %set(gca,'XScale','log','YScale','log');
       hold on
-      plot(points(2:end),krPoints(2:end),'r*');
+      plot(points(2:end),krPoints(2:end),'r*', 'MarkerSize', 14);
       title('Relative permeability curve');
       xlabel('Pressure');
       ylabel('k_r');
       xlim([10^(discrInput.range(1)),10^(discrInput.range(2))]);
       ylim([0, 1]);
+      set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
       hold off
       %
       % Print curves
@@ -75,8 +78,8 @@ classdef VGMCurves < handle
       end
       %
       for i=1:length(points)
-        fprintf(fIdPC,'%12.5e    %12.5e\n',points(i),SePoints(i));
-        fprintf(fIdkr,'%12.5e    %12.5e\n',points(i),krPoints(i));
+        fprintf(fIdPC,'%25.15e    %25.15e\n',points(i),SePoints(i));
+        fprintf(fIdkr,'%25.15e    %25.15e\n',points(i),krPoints(i));
       end
       fclose(fIdPC);
       fclose(fIdkr);

@@ -84,8 +84,8 @@ classdef FCSolver < handle
       flConv = true; % convergence flag
 
       % Loop over time
-      % absTol = obj.simParameters.absTol;
-      error = zeros(obj.simParameters.itMaxNR+1,2);
+      absTol = obj.simParameters.absTol;
+      residual = zeros(obj.simParameters.itMaxNR+1,2);
       while obj.t < obj.simParameters.tMax
          % Update the simulation time and time step ID
          obj.tStep = obj.tStep + 1;
@@ -115,8 +115,8 @@ classdef FCSolver < handle
          % compute Rhs norm
          rhsNorm = norm(rhs,2);
          rhsNormIt0 = rhsNorm;
-         error(1,1) = rhsNormIt0;
-         error(1,2) = 1.;
+         residual(1,1) = rhsNormIt0;
+         residual(1,2) = 1.;
          
          % consider output of local field rhs contribution
          tolWeigh = obj.simParameters.relTol*rhsNorm;
@@ -125,10 +125,10 @@ classdef FCSolver < handle
          if obj.simParameters.verbosity > 1
             fprintf('0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
          end
-         % while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
-         %       && (rhsNorm > absTol)) || obj.iter == 0
-         while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR)) ...
-                 || obj.iter == 0
+         while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
+               && (rhsNorm > absTol)) || obj.iter == 0
+         % while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR)) ...
+         %         || obj.iter == 0
             obj.iter = obj.iter + 1;
             %
             % Solve system with increment
@@ -149,16 +149,16 @@ classdef FCSolver < handle
             % compute Rhs norm
             rhsNorm = norm(rhs,2);
 
-            error(obj.iter+1,1)=rhsNorm;
-            error(obj.iter+1,2)=rhsNorm/rhsNormIt0;
+            residual(obj.iter+1,1)=rhsNorm;
+            residual(obj.iter+1,2)=rhsNorm/rhsNormIt0;
             if obj.simParameters.verbosity > 1
-               fprintf('%d     %e     %e\n',obj.iter,error(obj.iter+1,1),error(obj.iter+1,1));
+               fprintf('%d     %e     %e\n',obj.iter,residual(obj.iter+1,1),residual(obj.iter+1,2));
             end            
          end
          %
          % Check for convergence
-         % flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
-         flConv = (rhsNorm < tolWeigh);
+         flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
+         % flConv = (rhsNorm < tolWeigh);
          if flConv % Convergence
             obj.stateTmp.t = obj.t;
             % Advance state of non linear models
@@ -171,7 +171,7 @@ classdef FCSolver < handle
             else
                printState(obj.printUtil,obj.linSyst,obj.statek,obj.stateTmp);
             end
-            obj.solStatistics.saveIt(obj.t,error(1:obj.iter+1,1),error(1:obj.iter+1,2));
+            obj.solStatistics.saveIt(obj.t,residual(1:obj.iter+1,1),residual(1:obj.iter+1,2));
          else
              obj.solStatistics.saveBackIt();
          end

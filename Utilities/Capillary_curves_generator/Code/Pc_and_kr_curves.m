@@ -60,5 +60,5 @@ data.setVGMParameters('Sand', 'SpecWeight', 9.81);
 % * nPoints -> number of points for the approximation of the pc and kr
 %   curves.
 % fName = ["../OUT/pcCurve_400.dat", "../OUT/krCurve_400.dat"];
-fName = ["../OUT/pcCurve_800.dat", "../OUT/krCurve_800.dat"];
-data.makeCurves('fileName', fName, 'range', [-1,1], 'nPoints', 800);
+fName = ["../OUT/pcCurve_2000.dat", "../OUT/krCurve_2000.dat"];
+data.makeCurves('fileName', fName, 'range', [-2,1], 'nPoints', 200);
