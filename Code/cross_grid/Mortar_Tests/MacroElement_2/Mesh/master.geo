@@ -3,12 +3,12 @@
 Mesh.Format = 1; // msh output format
 Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 
-NX = 2;
-NY = 1;
+NX = 16;
+NY = 16;
 xMin = 0;
 xMax = 1;
 yMin = 0;
-yMax = 1/NX;
+yMax = 1;
 
 Point(1) = {xMin, yMin, 0};
 Point(2) = {xMax, yMin, 0};

@@ -13,9 +13,9 @@ clear; close all;
 nG = 6;
 E = 1; 
 nu = 0;
-integration = "P0"; % RBF,SB,P0
+integration = "SB"; % RBF,SB,P0
 mult_type = 'standard';
-bound = false;
+bound = true;
 
 Dmat = zeros(3);
 Dmat([1 5]) = 1-nu;
@@ -28,9 +28,9 @@ gaussQuad = Gauss(12,2,2);
 
 NM0X = 2;
 NM0Y = 1;
-NS0X = 6;
+NS0X = 4;
 NS0Y = 1;
-nR = 1;
+nR = 5;
 h = zeros(nR,1);
 beta1 = zeros(nR,1);
 beta2 = zeros(nR,1);
@@ -124,11 +124,12 @@ if bound && ~strcmp(integration,'P0')
    P([1 2 3 4],:) = [];
    P(:,[1 2 3 4]) = [];
    dofMult = DofMap.getCompDoF(mortar.nodesSlave(3:end),2);
+   nMult = numel(dofMult);
+   H = zeros(nMult,nMult);   
 else
    dofMult = DofMap.getCompDoF(mortar.nodesSlave(1:end),2);
 end
-nMult = numel(dofMult);
-%H = zeros(nMult,nMult);
+
 switch integration 
    case 'P0'
       dofMult = DofMap.getCompDoF((1:mortar.nElSlave)');
@@ -137,9 +138,8 @@ switch integration
       [Dp0,Mp0,Dcp0] = mortar.computeMortarConstant(nG,4);
       H3 = computeStabilizationMatrix3(mortar,Dp0,Mp0,KMaster,KSlave);
       %H4 = computeStabilizationMatrix4(mortar,Dp0,Mp0,KMaster,KSlave);
+      H = H3;
 end
-H = zeros(nMult,nMult);
-%H = H3;
 % complete saddle point matrix
 r1 = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofMult))];
 r2 = [zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofMult))] ;
@@ -188,7 +188,7 @@ P = P + H;
 PB = P\B;
 G = (1/hS)*(B'*PB);
 % solve the generalized eigenvalue problem computing only necessary eigs
-e_sparse = real(eigs(G,A,size(B,1),'la'));
+e_sparse = sqrtreal(eigs(G,A,size(B,1),'la'));
 
 id = abs(e_sparse)<1e-13;
 k = sum(id)+size(G,1)-size(B,1);
@@ -197,73 +197,74 @@ kpm = k-(m-n); % compute the number of spurious pressure modes
 e = sqrt(min(e_sparse(~id)));
 beta1(iref) = e;
 
-% Inf-sup test: trying using proper fractional norms
-% A = K(1:end-nMult,1:end-nMult);
-% B = K(end-nMult+1:end,1:end-nMult);
-% tic 
-X = A\B';
-S = B*X;
-S = full(S);
-[vS,eS] = eig(S);
-eigS = eS(eS>1e-9);
-maxE = max(eigS); 
-minE = min(eigS);
-[vH1,eigH1] = eig(H1);
-maxEH1 = max(diag(eigH1));
-% [vH3,eigH3] = eig(H3);
-% maxEH3 = max(diag(eigH3));
-% [v_stab,e_stab] = eig(S-H3);
-%fprintf('max: %1.4e | min: %1.4e | stab 1: %1.4e | stab 3:%1.4e | ratio 1: %1.4e | ratio 3: %1.4e \n',maxE,minE,maxEH1,maxEH3,maxE/maxEH1,maxE/maxEH3);
-% eS = min(real(eig(full(S))));
-% eA = max(real(eig(full(A))));
-% beta3(iref) = sqrt(eS/eA);
-C = H1./abs(min(H1,[],2)); % standard pressure jump stabilization matrix
-C = (hS^2)*C;
-q = (sum(D,2));
-invQ = full(diag(1./(hS*q))); % scaled by the length for proper dual norm bound
-
-betaElman
-
-list = -10:0.02:10;
-c = zeros(length(list),1);
-for k = 1:length(list)
-   beta = 2^list(k);
-   mat = invQ*(S+beta*C);
-   e = eig(mat);
-   c(k) = cond(mat);
-end
-
-betaMaster = ((1/NMX)^2)/E;
-mat = invQ*(S+betaMaster*C);
-cM = cond(mat);
-
-betaSlave = ((1/NSX)^2)/E;
-mat = invQ*(S+betaSlave*C);
-cS = cond(mat);
-
-
-
-% figure(1)
-% loglog(2.^list,c,'k-')
-% hold on
-% loglog(betaMaster,cM,'ro','MarkerSize',8)
-% loglog(betaSlave,cS,'bo','MarkerSize',8)
-
-% get beta for minimum eigenvalue (give an idea on how the spectrum move)
-[~,id] = min(c);
-betaMin = 2^list(id);
-fprintf('Beta for minimum condition number: %1.4e \n',betaMin)
-% fprintf('Computed beta with slave element length: %1.4e \n',betaSlave)
-% fprintf('Computed beta with master element length: %1.4e \n',betaMaster)
-
-% elman estimate
-Gamma = max(eig(invQ*S));
-Delta = max(eig(invQ*C));
-
-betaOpt = Gamma/Delta;
-
-betaH3 = Gamma/max(eig(invQ*H3));
-fprintf('Optimal beta value: %1.4e \n',betaOpt)
+% % Inf-sup test: trying using proper fractional norms
+% % A = K(1:end-nMult,1:end-nMult);
+% % B = K(end-nMult+1:end,1:end-nMult);
+% % tic 
+% X = A\B';
+% S = B*X;
+% S = full(S);
+% % [vS,eS] = eig(S);
+% % eigS = eS(eS>1e-9);
+% % maxE = max(eigS); 
+% % minE = min(eigS);
+% % [vH1,eigH1] = eig(H1);
+% % maxEH1 = max(diag(eigH1));
+% % [vH3,eigH3] = eig(H3);
+% % maxEH3 = max(diag(eigH3));
+% % [v_stab,e_stab] = eig(S-H3);
+% %fprintf('max: %1.4e | min: %1.4e | stab 1: %1.4e | stab 3:%1.4e | ratio 1: %1.4e | ratio 3: %1.4e \n',maxE,minE,maxEH1,maxEH3,maxE/maxEH1,maxE/maxEH3);
+% % eS = min(real(eig(full(S))));
+% % eA = max(real(eig(full(A))));
+% % beta3(iref) = sqrt(eS/eA);
+% C = H1./abs(min(H1,[],2)); % standard pressure jump stabilization matrix
+% C = (hS^2)*C;
+% 
+% q = (sum(D,2));
+% invQ = full(diag(1./(hS*q))); % scaled by the length for proper dual norm bound
+% 
+% betaElman(iref) = sqrt(min(eig(invQ*(S+H))));
+% 
+% list = -10:0.02:10;
+% c = zeros(length(list),1);
+% for k = 1:length(list)
+%    beta = 2^list(k);
+%    mat = invQ*(S+beta*C);
+%    e = eig(mat);
+%    c(k) = cond(mat);
+% end
+% 
+% betaMaster = ((1/NMX)^2)/E;
+% mat = invQ*(S+betaMaster*C);
+% cM = cond(mat);
+% 
+% betaSlave = ((1/NSX)^2)/E;
+% mat = invQ*(S+betaSlave*C);
+% cS = cond(mat);
+% 
+% 
+% 
+% % figure(1)
+% % loglog(2.^list,c,'k-')
+% % hold on
+% % loglog(betaMaster,cM,'ro','MarkerSize',8)
+% % loglog(betaSlave,cS,'bo','MarkerSize',8)
+% 
+% % get beta for minimum eigenvalue (give an idea on how the spectrum move)
+% [~,id] = min(c);
+% betaMin = 2^list(id);
+% fprintf('Beta for minimum condition number: %1.4e \n',betaMin)
+% % fprintf('Computed beta with slave element length: %1.4e \n',betaSlave)
+% % fprintf('Computed beta with master element length: %1.4e \n',betaMaster)
+% 
+% % elman estimate
+% Gamma = max(eig(invQ*S));
+% Delta = max(eig(invQ*C));
+% 
+% betaOpt = Gamma/Delta;
+% 
+% betaH3 = Gamma/max(eig(invQ*H3));
+% fprintf('Optimal beta value: %1.4e \n',betaOpt)
 % 0.25 is the optimal beta for a 2x2 macroelement, to which the
 % pressure-jump stabilization is a natural extension...
 

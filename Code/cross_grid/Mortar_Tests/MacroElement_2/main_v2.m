@@ -1,4 +1,4 @@
-clear; close all; 
+%clear; close all; 
 
 %% MacroElement approach to spot violation of inf-sup condition
 
@@ -13,9 +13,9 @@ clear; close all;
 nG = 6;
 E = 1; 
 nu = 0;
-integration = "P0"; % RBF,SB,P0
-mult_type = 'standard';
-bound = false;
+integration = "SB"; % RBF,SB,P0
+mult_type = 'dual';
+bound = true;
 
 Dmat = zeros(3);
 Dmat([1 5]) = 1-nu;
@@ -27,14 +27,12 @@ Dmat = (E/((1+nu)*(1-2*nu)))*Dmat;
 gaussQuad = Gauss(12,2,2);
 
 NM0X = 2;
-NM0Y = 1;
-NS0X = 6;
-NS0Y = 1;
-nR = 1;
+NM0Y = 2;
+NS0X = 4;
+NS0Y = 4;
+nR = 4;
 h = zeros(nR,1);
-beta1 = zeros(nR,1);
-beta2 = zeros(nR,1);
-beta3 = zeros(nR,1);
+infSup = zeros(nR,1);
 
 for iref = 1:nR
 % read mesh
@@ -43,18 +41,13 @@ NSX = NS0X*2^(iref-1);
 NMY = NM0Y*2^(iref-1);
 NSY = NS0Y*2^(iref-1);
 h(iref) = 1/NSX;
-hS = 1/NSX;
 getPatchMesh('Mesh/master.geo','master',NMX,NMY);
 getPatchMesh('Mesh/slave.geo','slave',NSX,NSY);
 [slaveMesh,masterMesh] = deal(Mesh(),Mesh()); 
 slaveMesh.importGMSHmesh('Mesh/slave.msh')
 masterMesh.importGMSHmesh('Mesh/master.msh');
-
-%scale the y-coordinate to force hx == hy
-% rS = NSY/NSX;
-% slaveMesh.coordinates(:,2) = slaveMesh.coordinates(:,2)*rS; 
-% rM = NMY/NMX;
-% masterMesh.coordinates(:,2) = masterMesh.coordinates(:,2)*rM; 
+yMax = max(slaveMesh.coordinates(:,2));
+masterMesh.coordinates(:,2) = masterMesh.coordinates(:,2) + yMax;
 
 
 Em = E*ones(masterMesh.nSurfaces,1); 
@@ -71,13 +64,6 @@ KSlave = stiff(slaveMesh, elemsSlave, Dmat, gaussQuad);
 mortar = Mortar2D(1,masterMesh,1,slaveMesh,1);
 dof = DofMap(masterMesh,mortar.nodesMaster,slaveMesh,mortar.nodesSlave);
 
-switch integration
-   case 'SB'
-      P = mortar.computeMassMat(mult_type);
-   case 'P0'
-      P = mortar.computeMassMatP0();
-end
-P = expandMat(P,2);
 
 % compute mortar operator1
 [Drbf, Mrbf] = mortar.computeMortarRBF(nG,4,'gauss','standard');
@@ -120,14 +106,13 @@ if bound && ~strcmp(integration,'P0')
    M([end end-1],:) = M([end end-1],:) + M([3 4],:);
    D([1 2 3 4],:) = [];
    M([1 2 3 4],:) = [];
-   P([1 2 3 4],:) = [];
-   P(:,[1 2 3 4]) = [];
    dofMult = DofMap.getCompDoF(mortar.nodesSlave(3:end),2);
+   nMult = numel(dofMult);
+   H = zeros(nMult,nMult);   
 else
    dofMult = DofMap.getCompDoF(mortar.nodesSlave(1:end),2);
 end
-nMult = numel(dofMult);
-%H = zeros(nMult,nMult);
+
 switch integration 
    case 'P0'
       dofMult = DofMap.getCompDoF((1:mortar.nElSlave)');
@@ -136,9 +121,8 @@ switch integration
       [Dp0,Mp0,Dcp0] = mortar.computeMortarConstant(nG,4);
       H3 = computeStabilizationMatrix3(mortar,Dp0,Mp0,KMaster,KSlave);
       %H4 = computeStabilizationMatrix4(mortar,Dp0,Mp0,KMaster,KSlave);
+      H = H3;
 end
-H = zeros(nMult,nMult);
-%H = H3;
 % complete saddle point matrix
 r1 = [Kmm, zeros(length(dofM),length(dofS)), KmIm, zeros(length(dofM),length(dofIs)), zeros(length(dofM),length(dofMult))];
 r2 = [zeros(length(dofS),length(dofM)), Kss, zeros(length(dofS),length(dofIm)), KsIs, zeros(length(dofS),length(dofMult))] ;
@@ -177,138 +161,55 @@ end
 K(dirDoF,:) = [];
 K(:,dirDoF) = [];
 
-%u = K\f;
-
-% Inf-sup test : BATHE-CHAPELLE
+% Inf-sup test: Elman 
+% tic 
 A = K(1:end-nMult,1:end-nMult);
 B = K(end-nMult+1:end,1:end-nMult);
 hS = 1/NSX;
-P = P + H;
-PB = P\B;
-G = (1/hS)*(B'*PB);
-% solve the generalized eigenvalue problem computing only necessary eigs
-e_sparse = real(eigs(G,A,size(B,1),'la'));
-
-id = abs(e_sparse)<1e-13;
-k = sum(id)+size(G,1)-size(B,1);
-m = size(B,2); n = size(B,1);
-kpm = k-(m-n); % compute the number of spurious pressure modes
-e = sqrt(min(e_sparse(~id)));
-beta1(iref) = e;
-
-% Inf-sup test: trying using proper fractional norms
-% A = K(1:end-nMult,1:end-nMult);
-% B = K(end-nMult+1:end,1:end-nMult);
-% tic 
 X = A\B';
 S = B*X;
 S = full(S);
-[vS,eS] = eig(S);
-eigS = eS(eS>1e-9);
-maxE = max(eigS); 
-minE = min(eigS);
-[vH1,eigH1] = eig(H1);
-maxEH1 = max(diag(eigH1));
-% [vH3,eigH3] = eig(H3);
-% maxEH3 = max(diag(eigH3));
-% [v_stab,e_stab] = eig(S-H3);
-%fprintf('max: %1.4e | min: %1.4e | stab 1: %1.4e | stab 3:%1.4e | ratio 1: %1.4e | ratio 3: %1.4e \n',maxE,minE,maxEH1,maxEH3,maxE/maxEH1,maxE/maxEH3);
-% eS = min(real(eig(full(S))));
-% eA = max(real(eig(full(A))));
-% beta3(iref) = sqrt(eS/eA);
-C = H1./abs(min(H1,[],2)); % standard pressure jump stabilization matrix
-C = (hS^2)*C;
 q = (sum(D,2));
+%H = zeros(nMult,nMult);  
 invQ = full(diag(1./(hS*q))); % scaled by the length for proper dual norm bound
-
-betaElman
-
-list = -10:0.02:10;
-c = zeros(length(list),1);
-for k = 1:length(list)
-   beta = 2^list(k);
-   mat = invQ*(S+beta*C);
-   e = eig(mat);
-   c(k) = cond(mat);
+eS = eig(invQ*(S+H));
+infSup(iref) = sqrt(min(eig(invQ*(S+H))));
 end
 
-betaMaster = ((1/NMX)^2)/E;
-mat = invQ*(S+betaMaster*C);
-cM = cond(mat);
+%% inf-sup constant for stabilized formulation
+% Plotting the results of the inf-sup test on the macroelement
+h = [1/4; 1/8; 1/16; 1/32; 1/64];
+out = load("outStab.mat");
 
-betaSlave = ((1/NSX)^2)/E;
-mat = invQ*(S+betaSlave*C);
-cS = cond(mat);
+out1 = out.case1;
+out2 = out.case2;
+out3 = out.case3;
+
+% Create figure
+figure(1)
+hold on
+grid on
+
+% Plot coarse mesh data
+plot(log(h), out1, 'k-s', 'LineWidth', 1, 'DisplayName', 'r_h = 1/2$');
+hold on 
+plot(log(h), out2, 'k-s', 'LineWidth', 1, 'DisplayName', 'r_h = 1/3$');
+plot(log(h), out3, 'k-s', 'LineWidth', 1, 'DisplayName', 'r_h = 1/3$');
+
+% Labels and title with LaTeX
+xlabel('$\log(h)$', 'Interpreter', 'latex');
+ylabel('$\beta_h^{\star}$', 'Interpreter', 'latex');
+% legend.show()
+%title('Inf-Sup Test Results', 'Interpreter', 'latex');
+%ylim([-0.3 0.1])
+
+xlabel('$\log(h)$', 'Interpreter', 'latex');
+ylabel('$\log(\beta_h^{\star})$', 'Interpreter', 'latex');
+ax = gca;
+ax.TickLabelInterpreter = 'latex';
+ax.FontSize = 12;
 
 
+% Export high-resolution figure
+exportgraphics(figure(1), 'infSup_stabilized.pdf', 'Resolution', 300);
 
-% figure(1)
-% loglog(2.^list,c,'k-')
-% hold on
-% loglog(betaMaster,cM,'ro','MarkerSize',8)
-% loglog(betaSlave,cS,'bo','MarkerSize',8)
-
-% get beta for minimum eigenvalue (give an idea on how the spectrum move)
-[~,id] = min(c);
-betaMin = 2^list(id);
-fprintf('Beta for minimum condition number: %1.4e \n',betaMin)
-% fprintf('Computed beta with slave element length: %1.4e \n',betaSlave)
-% fprintf('Computed beta with master element length: %1.4e \n',betaMaster)
-
-% elman estimate
-Gamma = max(eig(invQ*S));
-Delta = max(eig(invQ*C));
-
-betaOpt = Gamma/Delta;
-
-betaH3 = Gamma/max(eig(invQ*H3));
-fprintf('Optimal beta value: %1.4e \n',betaOpt)
-% 0.25 is the optimal beta for a 2x2 macroelement, to which the
-% pressure-jump stabilization is a natural extension...
-
-% make beta agnostic of mesh size (at least try)
-% grid correction to handle the eigenvalue modification due to grid
-% distortion
-% according to analytical derivation from Franceschini 2020
-% 
-% ref = 0.5*gridCorr;
-% fprintf('Correct beta scaling: %1.4e \n',betaOpt/0.5)
-% fprintf('Ratio between grids: %1.4e \n',NSX/NMX)
-
-% elman more recent estimate
-% betaNew = 1/(max(eig(invQ*C)))^2;
-% fprintf('Optimal new beta value: %1.4e \n',betaNew);
-
-% % Inf-sup test : BOFFI-BREZZI-FIRTIN
-% svd of matrix B modified with suitable norm matrices...
-% smallest positive singular value of Sy*B*Sy where
-% [V, D] = eigs(P, size(P,1));
-% Sy = (hS^(-1/4))*(V * sqrt(D) * V');
-% [V, D] = eigs(A, size(A,1));
-% 
-% Sx = V * sqrt(D) * V';
-% e2 = svd(Sy*(B*Sx));
-% beta2(iref) = min(e2);
-% Sy = sqrtm(P);
-% Sx = sqrt(A);
-% figure(2)
-% plot(log(h),log(beta1), 'k-o') 
-% hold on
-% % plot(log(h),log(beta2), 'r-o')
-% % plot(log(h),log(beta3), 'b-o')
-% legend('Bathe-Chapelle','Brezzi')
-end
-
-%%
-% for i = 1:length(inf)-1
-%     ratio = inf(i+1) / inf(i); % Calcola il rapporto tra due valori consecutivi
-%     text(h(i+1), inf(i+1), sprintf('%.2f', ratio), 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'right');
-% end
-
-% [vs,lambdaS] = eig(S);
-% [vh,lambdaH] = eig(full(H));
-% e1 = -((1+nu)*(1-2*nu)/(E*(1-nu)));
-% e2 = 3/(2+(1-2*nu)/(1-nu));
-% e = e1*e2;
-% fprintf('Condition number of Schur complement matrix: %2.5e \n',cond(S));
-% fprintf('Smallest eigenvalue: %2.5e \n',min(diag(abs(lambdaS))));
