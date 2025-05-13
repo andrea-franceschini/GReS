@@ -13,7 +13,7 @@
 nG = 6;
 E = 1; 
 nu = 0;
-integration = "SB"; % RBF,SB,P0
+integration = "P0"; % RBF,SB,P0
 mult_type = 'dual';
 bound = true;
 
@@ -26,11 +26,11 @@ Dmat = (E/((1+nu)*(1-2*nu)))*Dmat;
 % Set the input file name
 gaussQuad = Gauss(12,2,2);
 
-NM0X = 2;
-NM0Y = 2;
-NS0X = 4;
-NS0Y = 4;
-nR = 4;
+NM0X = 4;
+NM0Y = 4;
+NS0X = 8;
+NS0Y = 8;
+nR = 3;
 h = zeros(nR,1);
 infSup = zeros(nR,1);
 
@@ -170,7 +170,7 @@ X = A\B';
 S = B*X;
 S = full(S);
 q = (sum(D,2));
-%H = zeros(nMult,nMult);  
+H = zeros(nMult,nMult);  
 invQ = full(diag(1./(hS*q))); % scaled by the length for proper dual norm bound
 eS = eig(invQ*(S+H));
 infSup(iref) = sqrt(min(eig(invQ*(S+H))));

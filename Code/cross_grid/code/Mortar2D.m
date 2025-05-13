@@ -809,7 +809,7 @@ classdef Mortar2D < handle
          D = D(obj.nodesSlave, obj.nodesSlave);
          D(abs(D)<eps) = 0;
          %end
-         t = toc;
+%          t = toc;
          if nargout == 3
             varargout{1} = t;
          elseif nargout == 4

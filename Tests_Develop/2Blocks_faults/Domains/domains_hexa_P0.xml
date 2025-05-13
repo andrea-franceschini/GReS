@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<SimulationParams>
+  <!-- Domain 1 -->
+  <Domain>
+    <Name>Left_block_hexa_P0</Name>
+    <ModelType>Poromechanics_FEM</ModelType>
+    <Geometry>Mesh/LeftBlock_hexa.msh</Geometry>
+    <Gauss cellType="12" numbPoints="2" gridDimension="3"/>
+    <Material>Materials/MaterialsList.dat</Material>
+    <BoundaryConditions count="3">
+      <File>BCs/leftBot.dat</File>
+      <File>BCs/leftLat.dat</File>
+      <File>BCs/leftYFix.dat</File>
+    </BoundaryConditions>
+    <OutState>outTime.dat</OutState>
+  </Domain>
+
+  <!-- Domain 2 -->
+  <Domain>
+    <Name>Right_block_hexa_P0</Name>
+    <ModelType>Poromechanics_FEM</ModelType>
+    <Geometry>Mesh/RightBlock_hexa.msh</Geometry>
+    <Gauss cellType="12" numbPoints="2" gridDimension="3"/>
+    <Material>Materials/MaterialsList.dat</Material>
+    <BoundaryConditions count="4">
+      <File>BCs/rightBot.dat</File>
+      <File>BCs/rightYFix.dat</File>
+      <File>BCs/rightLatLoad.dat</File>
+      <File>BCs/rightTopLoad.dat</File>
+    </BoundaryConditions>
+    <OutState>outTime.dat</OutState>
+  </Domain>
+</SimulationParams>
+ 

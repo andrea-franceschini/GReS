@@ -49,7 +49,12 @@ fclose(fid);
 
 % run the .geo file to produce the .msh file
 meshFile =strcat(dirName,'/',meshName,'.msh');
-command = strcat("LD_LIBRARY_PATH=; gmsh -2 ",geoFile," -o ",meshFile);
+if isunix
+  command = strcat("LD_LIBRARY_PATH=; gmsh -2 ",geoFile," -o ",meshFile);
+elseif ispc
+  command = strcat("C:\Users\dmoretto\Downloads\gmsh-4.13.1-Windows64\gmsh-4.13.1-Windows64\gmsh.exe -2 ",geoFile," -o ",meshFile);
+end
+
 status = system(command);
 
 end

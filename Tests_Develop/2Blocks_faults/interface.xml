@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Interfaces>
+    <!-- Input file for multidomain interfaces (aquifer as slave sides) -->
+    <Interface>
+        <Master id="1" surfaceTag="2" />
+        <Slave id="2" surfaceTag="1" />
+        <Quadrature type = "RBF" nInt = "4" /> 
+        <!-- type: Either RBF or EB nInt: RBF interpolation points x element --> 
+        <nGP> 16 </nGP> <!-- Gauss points for mortar quadrature -->
+        <!-- Assuming P0 as default (and only available) multiplier type-->
+        <Type> MeshTying </Type> <!-- Type: Either MeshTying or faults --> 
+        <Physics> Poromechanics </Physics> <!-- Available only with FEM -->
+    </Interface>
+</Interfaces>
