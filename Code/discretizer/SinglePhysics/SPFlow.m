@@ -115,13 +115,12 @@ classdef SPFlow < SinglePhysics
          for el = subCells'
             permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
             poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
-            if ismember(obj.mesh.cellTag(el),getFieldCellTags(obj.dofm,{"Poromechanics","SPFlow"}))
+            if ismember(obj.mesh.cellTag(el),getFieldCellTags(obj.dofm,{obj.field,'Poromechanics'}))
                alpha = 0; %this term is not needed in coupled formulation
             else
                alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
                %solid skeleton contribution to storage term as oedometric compressibility .
-            end
-            % Compute the element matrices based on the element type
+            end             % Compute the element matrices based on the element type
             % (tetrahedra vs. hexahedra)
             switch obj.mesh.cellVTKType(el)
                case 10 % Tetrahedra
@@ -289,21 +288,20 @@ classdef SPFlow < SinglePhysics
                if isFVTPFABased(obj.model,'Flow')
                   faceID = bc.getEntities(id);
                   ents = sum(obj.faces.faceNeighbors(faceID,:),2);
-                  [ents,~,ind] = unique(ents);
+                  %[ents,~,ind] = unique(ents1);
                   switch bc.getType(id)
                      case 'Neu'
-                        area = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
-                        vals = accumarray(ind, area);
+                        vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
                      case 'Dir'
-                        gamma = obj.material.getFluid().getFluidSpecWeight();
-                        mu = obj.material.getFluid().getDynViscosity();
-                        tr = obj.getFaceTransmissibilities(faceID);
-                        q(ind) = 1/mu*tr.*((state.pressure(ents) - v)...
-                           + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID(ind),3)));
-                        vals = [1/mu*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
-                        % q = 1/mu*tr.*((state.pressure(ents) - v)...
-                        %    + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
-                        % vals = [1/mu*tr,accumarray(sort(ind),q)]; % {JacobianVal,rhsVal]
+                       gamma = obj.material.getFluid().getFluidSpecWeight();
+                       mu = obj.material.getFluid().getDynViscosity();
+                       tr = obj.getFaceTransmissibilities(faceID);
+                       % q(ind) = 1/mu*tr.*((state.pressure(ents) - v)...
+                       % + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID(ind),3)));
+                       q = 1/mu*tr.*((state.pressure(ents) - v)...
+                         + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
+                       %vals = [1/mu*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
+                       vals = [1/mu*tr,q];
                   end
                elseif isFEMBased(obj.model,'Flow')
                   ents = bc.getLoadedEntities(id);
