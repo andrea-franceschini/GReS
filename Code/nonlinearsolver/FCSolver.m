@@ -134,6 +134,7 @@ classdef FCSolver < handle
             % Solve system with increment
             J = assembleJacobian(obj.linSyst);
 
+            rhs
             du = J\-rhs;
 
             % Update current model state

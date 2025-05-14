@@ -1,14 +1,17 @@
 close all;
-% clear;
+clear;
 input_dir = 'Inputs/';
 output_dir = 'Outputs/';
 figures_dir = 'Figs/';
 
 %% -------------------------- SET THE PHYSICS -------------------------
-model = ModelType("VariabSatFlow_FVTPFA");
+% model = ModelType("SinglePhaseFlow_FVTPFA");
+model = ModelType("SinglePhaseFlow_FEM");
 
 %% ----------------------- SIMULATION PARAMETERS ----------------------
-fileName = strcat(input_dir,'simParam.dat');
+% fileName = strcat(input_dir,'simParam.dat');
+fileName = strcat(input_dir,'simParam.xml');
+% fileName = strcat(input_dir,'simParam2.xml');
 simParam = SimulationParameters(fileName,model);
 
 %% ------------------------------  MESH -------------------------------
@@ -16,8 +19,7 @@ simParam = SimulationParameters(fileName,model);
 topology = Mesh();
 
 % Set the input file name
-% fileName = strcat(input_dir,'Column.msh');
-fileName = strcat(input_dir,'Mesh/Column30.msh');
+fileName = strcat(input_dir,'Mesh/Fault.msh');
 
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -25,6 +27,7 @@ topology.importGMSHmesh(fileName);
 %% ----------------------------- MATERIALS -----------------------------
 % Set the input file name
 fileName = strcat(input_dir,'materialsList.dat');
+% fileName = strcat(input_dir,'materials.xml');
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
@@ -53,7 +56,8 @@ linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 state = linSyst.setState();
 
 % set initial conditions directly modifying the state object
-state.pressure(:) = -10*9.8066e3;
+state.pressure(:) = 1.e5;
+% state.potential(:) = state.pressure+ mat.getFluid().getFluidSpecWeight()*topology.elements.cellCentroid(:,3);
 
 % Create and set the print utility
 printUtils = OutState(model,topology,strcat(input_dir,'outTime.dat'), ...
@@ -63,18 +67,18 @@ printState(printUtils,state)
 
 % Creating and Appling boundaries conditions.
 cond = struct('name',[],'type',[],'field',[],'values',[],'times',[]);
-cond(1).name = 'Bottom';
+cond(1).name = 'BoundA';
 cond(1).type = 'Dir';
-cond(1).field = "bot";
+cond(1).field = "latY0";
 cond(1).times = 0.;
-cond(1).values = -10*9.8066e3;
-cond(2).name = 'Top';
+cond(1).values = 1e6;
+cond(2).name = 'BoundB';
 cond(2).type = 'Dir';
-cond(2).field = "top";
+cond(2).field = "latYM";
 cond(2).times = 0.;
-cond(2).values = -0.75*9.8066e3;
+cond(2).values = 1e5;
 
-fileName = setRichardsBC('Inputs',grid,cond);
+fileName = setBoundaryC('Inputs',grid,cond);
 bound = Boundaries(fileName,model,grid);
 
 % Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
@@ -96,7 +100,6 @@ if postproc
 
     % Saving a temporary variabel.
     pressure = printUtils.results.expPress;
-    saturation = printUtils.results.expSat;
 
     % Ajusting the time position.
     t = printUtils.results.expTime;
@@ -110,7 +113,6 @@ if postproc
     tol = 0.01;
     nodesP = find(abs(elems.cellCentroid(:,1)-numb) < tol & abs(elems.cellCentroid(:,2)-numb) < tol);
     pressplot = pressure(nodesP,tind);
-    swplot = saturation(nodesP,tind);
 
     % Values for normalized plots
     H = max(topology.coordinates(:,3));
@@ -120,34 +122,14 @@ if postproc
     ptsZ = elems.cellCentroid(nodesP,3);
 
     %Plotting pressure head
-    figure('Position', [100, 100, 700, 700])
-    plot(pressplot/weight,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
+    figure(1)
+    plot(-pressplot/weight,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
     hold on
-    xlabel('Head Pressure (m)')
-    ylabel('Height (m)')
-    legend(tstr, 'Location', 'northwest')
+    xlabel('pressure (m)')
+    ylabel('height (m)')
+    legend(tstr)
     set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
     % export figure with quality
-    stmp = strcat(image_dir,'pressure','.png');
+    stmp = strcat(image_dir,'Varelha_head_pressure','.png');
     exportgraphics(gcf,stmp,'Resolution',400)
-
-    %Plotting saturation
-    figure('Position', [100, 100, 700, 700])
-    plot(swplot,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
-    hold on
-    xlabel('Saturation')
-    ylabel('Height (m)')
-    legend(tstr, 'Location', 'northwest')
-    str = strcat('t = ',tstr);
-    set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
-    % export figure with quality
-    stmp = strcat(image_dir, 'saturation', '.png');
-    exportgraphics(gcf,stmp,'Resolution',400)
-
-    % To save the information necessary to compare the solution of GReS and MRST.
-    % GReS_time = printUtils.results.expTime(tind,1);
-    % GReS_pres = pressplot/weight;
-    % GReS_satu = swplot;
-    % GReS_elev = ptsZ;
-    % save('Inputs/Solution/GReS_30.mat', 'GReS_time', 'GReS_pres', 'GReS_satu', 'GReS_elev');
 end

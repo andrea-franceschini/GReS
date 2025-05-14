@@ -1,5 +1,5 @@
 close all;
-clear;
+% clear;
 
 % Get the full path of the currently executing file
 scriptFullPath = mfilename('fullpath');

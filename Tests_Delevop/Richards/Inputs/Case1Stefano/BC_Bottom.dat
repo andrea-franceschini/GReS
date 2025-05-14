@@ -1,9 +1,0 @@
-SurfBC                            % BC item 
-Dir                               % BC type 
-Flow                              % Physics 
-Bottom                           % BC name 
-Inputs/Case1Stefano/BC/List_Bottom 
-0.00 Inputs/Case1Stefano/BC/Time_Bottom_0.dat 
-5.00 Inputs/Case1Stefano/BC/Time_Bottom_1.dat 
-10.00 Inputs/Case1Stefano/BC/Time_Bottom_2.dat 
-End

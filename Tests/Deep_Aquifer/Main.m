@@ -1,5 +1,5 @@
 close all;
-clear;
+% clear;
 
 scriptFullPath = mfilename('fullpath');
 scriptDir = fileparts(scriptFullPath);

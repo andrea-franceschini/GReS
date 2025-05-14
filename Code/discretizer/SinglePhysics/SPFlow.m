@@ -162,7 +162,6 @@ classdef SPFlow < SinglePhysics
          obj.P = sparse(iiVec, jjVec, PVec, nDoF, nDoF);
       end
 
-
       function computeStiffMatFV(obj,lw)
          % Inspired by MRST
          subCells = obj.dofm.getFieldCells(obj.field);
@@ -184,8 +183,6 @@ classdef SPFlow < SinglePhysics
              [neigh2; neigh1; (1:nSubCells)'],...
              [-tmpVec; -tmpVec; sumDiagTrans], nDoF, nDoF);
       end
-
-
 
       function computeCapMatFV(obj,varargin)
          subCells = obj.dofm.getFieldCells(obj.field);
@@ -213,13 +210,13 @@ classdef SPFlow < SinglePhysics
          obj.P = sparse(dof,dof,PVal,nDoF,nDoF);
       end
 
-
       function stateTmp = computeRhs(obj,stateTmp,statek,dt)
          % Compute the residual of the flow problem
          lw = obj.material.getFluid().getDynViscosity();
          ents = obj.dofm.getActiveEnts(obj.field);
          if ~obj.simParams.isTimeDependent
             obj.rhs = obj.H*stateTmp.pressure(ents);
+            obj.rhs
          else
             theta = obj.simParams.theta;
             rhsStiff = theta*obj.H*stateTmp.pressure(ents) + (1-theta)*obj.H*statek.pressure(ents);
@@ -261,7 +258,7 @@ classdef SPFlow < SinglePhysics
                   end
                   %
                   entsId = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
-                  rhsTmp = rhsTmp(entsId) + rhsLoc;
+                  rhsTmp(entsId) = rhsTmp(entsId) + rhsLoc;
                end
                obj.rhsGrav = rhsTmp(obj.dofm.getActiveEnts(obj.field));
             elseif isFVTPFABased(obj.model,'Flow')
@@ -301,9 +298,12 @@ classdef SPFlow < SinglePhysics
                         gamma = obj.material.getFluid().getFluidSpecWeight();
                         mu = obj.material.getFluid().getDynViscosity();
                         tr = obj.getFaceTransmissibilities(faceID);
-                        q = 1/mu*tr.*((state.pressure(ents) - v)...
-                           + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
+                        q(ind) = 1/mu*tr.*((state.pressure(ents) - v)...
+                           + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID(ind),3)));
                         vals = [1/mu*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
+                        % q = 1/mu*tr.*((state.pressure(ents) - v)...
+                        %    + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
+                        % vals = [1/mu*tr,accumarray(sort(ind),q)]; % {JacobianVal,rhsVal]
                   end
                elseif isFEMBased(obj.model,'Flow')
                   ents = bc.getLoadedEntities(id);
@@ -366,7 +366,6 @@ classdef SPFlow < SinglePhysics
          out = true;
       end
 
-
       function trans = getFaceTransmissibilities(obj,faceID)
          trans = obj.trans(faceID);
       end
@@ -393,6 +392,15 @@ classdef SPFlow < SinglePhysics
          %       hT = hT/mu;
          %
          obj.trans = 1 ./ accumarray(obj.faces.faces2Elements(:,1),1 ./ hT,[obj.faces.nFaces,1]);
+      end
+
+      function flux = computeFlux(obj,pressure)
+          %COMPUTEFLUX - compute the flux for the cell or element.
+          if isFEMBased(obj.model,'Flow')
+            flux = fluidPot + gamma*obj.mesh.coordinates(:,3);
+          elseif isFVTPFABased(obj.model,'Flow')
+            flux = fluidPot + gamma*obj.elements.cellCentroid(:,3);
+          end
       end
 
    end
@@ -435,7 +443,7 @@ classdef SPFlow < SinglePhysics
    end
 
    methods (Static)
-      function [cellStr,pointStr] = buildPrintStruct(mod,press,pot)
+      function [cellStr,pointStr] = buildPrintStruct(mod,press,pot,flux)
          if isFEMBased(mod,'Flow')
             cellStr = [];
             pointStr = repmat(struct('name', 1, 'data', 1), 2, 1);
@@ -450,6 +458,8 @@ classdef SPFlow < SinglePhysics
             cellStr(1).data = press;
             cellStr(2).name = 'potential';
             cellStr(2).data = pot;
+            % cellStr(3).name = 'flux';
+            % cellStr(3).data = flux;
          end
       end
    end
