@@ -1,0 +1,14 @@
+Elastic                           % material model
+9.4706e8      0.15              % E [gcm-1s-2], nu
+
+PorousRock                        % material model
+1.0      2.1e5                    % porosity, specific weight(gcm-1s-2)
+9.4018e-8    0      0             % permeability matrix (upper part)
+       9.4018e-8    0
+              9.4018e-8
+0.102       0.368                 % residual and maximun saturation
+
+VanGenuchten                      % Capillary and Relative Permeabilities Curves
+Mualem                            % Type of model (Mualem or Burdine) or type of soil
+2. 3.416e-5 0.5
+End

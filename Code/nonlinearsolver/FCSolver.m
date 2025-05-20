@@ -25,23 +25,68 @@ classdef FCSolver < handle
     iter
     dt
   end
+
+  properties (Access = public)
+      solStatistics
+  end
   
   methods (Access = public)
-      function obj = FCSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin)
-      obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin);
+    function obj = FCSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin)
+        % arguments
+        %     symmod ModelType
+        %     simParam SimulationParameters
+        %     dofManager DoFManager
+        %     grid struct
+        %     mat Materials
+        %     bc Boundaries
+        %     prtUtil OutState
+        %     stateIni struct
+        %     linSyst Discretizer
+        %     varargin cell
+        % end
+        obj.model = symmod;
+        obj.simParameters = simParam;
+        obj.dofManager = dofManager;
+        obj.grid = grid;
+        obj.mesh = grid.topology;
+        obj.elements = grid.cells;
+        obj.material = mat;
+        obj.bound = bc;
+        obj.printUtil = prtUtil;
+        obj.statek = stateIni;
+        obj.stateTmp = stateIni;
+        obj.linSyst = linSyst;
+        saveStasticts = false(3,1);
+        for k = 1:(nargin-9)/2
+            pos = 2*(k-1)+1;
+            switch varargin{pos}
+                case 'GaussPts'
+                    obj.GaussPts = varargin{pos+1};
+                case 'SaveRelError'
+                    saveStasticts(1) = varargin{pos+1};
+                case 'SaveAbsError'
+                    saveStasticts(2) = varargin{pos+1};
+                case 'SaveBStepInf'
+                    saveStasticts(3) = varargin{pos+1};
+                otherwise
+            end
+        end
+        obj.solStatistics = SolverStatistics(simParam.itMaxNR,simParam.relTol,simParam.absTol,saveStasticts);
+      % obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin);
     end
 
-   function [simStat] = NonLinearLoop(obj)
+    function [simStat] = NonLinearLoop(obj)
       simStat = 1;
       % Initialize the time step increment
       obj.dt = obj.simParameters.dtIni;  
       delta_t = obj.dt; % dynamic time step
 
-      flConv = true; %convergence flag
+      flConv = true; % convergence flag
 
       % Loop over time
+      absTol = obj.simParameters.absTol;
+      residual = zeros(obj.simParameters.itMaxNR+1,2);
       while obj.t < obj.simParameters.tMax
-         absTol = obj.simParameters.absTol;
          % Update the simulation time and time step ID
          obj.tStep = obj.tStep + 1;
          %new time update to fit the outTime list
@@ -55,7 +100,7 @@ classdef FCSolver < handle
             fprintf('-----------------------------------------------------------\n');
          end
          if obj.simParameters.verbosity > 1
-            fprintf('Iter     ||rhs||\n');
+            fprintf('Iter     ||rhs||     ||rhs||/||rhs_0||\n');
          end
          %
          % Compute Rhs and matrices of NonLinear models
@@ -69,23 +114,27 @@ classdef FCSolver < handle
 
          % compute Rhs norm
          rhsNorm = norm(rhs,2);
+         rhsNormIt0 = rhsNorm;
+         residual(1,1) = rhsNormIt0;
+         residual(1,2) = 1.;
+         
          % consider output of local field rhs contribution
-
          tolWeigh = obj.simParameters.relTol*rhsNorm;
          obj.iter = 0;
          %
          if obj.simParameters.verbosity > 1
-            fprintf('0     %e\n',rhsNorm);
+            fprintf('0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
          end
          while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
                && (rhsNorm > absTol)) || obj.iter == 0
+         % while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR)) ...
+         %         || obj.iter == 0
             obj.iter = obj.iter + 1;
             %
             % Solve system with increment
             J = assembleJacobian(obj.linSyst);
-            
-            du = J\-rhs;
 
+            du = J\-rhs;
 
             % Update current model state
             obj.stateTmp = updateState(obj.linSyst,obj.stateTmp,du);
@@ -100,13 +149,16 @@ classdef FCSolver < handle
             % compute Rhs norm
             rhsNorm = norm(rhs,2);
 
+            residual(obj.iter+1,1)=rhsNorm;
+            residual(obj.iter+1,2)=rhsNorm/rhsNormIt0;
             if obj.simParameters.verbosity > 1
-               fprintf('%d     %e\n',obj.iter,rhsNorm);
-            end
+               fprintf('%d     %e     %e\n',obj.iter,residual(obj.iter+1,1),residual(obj.iter+1,2));
+            end            
          end
          %
          % Check for convergence
          flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
+         % flConv = (rhsNorm < tolWeigh);
          if flConv % Convergence
             obj.stateTmp.t = obj.t;
             % Advance state of non linear models
@@ -119,17 +171,20 @@ classdef FCSolver < handle
             else
                printState(obj.printUtil,obj.linSyst,obj.statek,obj.stateTmp);
             end
+            obj.solStatistics.saveIt(obj.t,residual(1:obj.iter+1,1),residual(1:obj.iter+1,2));
+         else
+             obj.solStatistics.saveBackIt();
          end
          %
          % Manage next time step
          delta_t = manageNextTimeStep(obj,delta_t,flConv);
       end
       %
-   end
+    end
   end
   
   methods (Access = private)
-     function setNonLinearSolver(obj,symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linearSyst,data)
+    function setNonLinearSolver(obj,symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linearSyst,data)
         obj.model = symmod;
         obj.simParameters = simParam;
         obj.dofManager = dofManager;
@@ -145,7 +200,8 @@ classdef FCSolver < handle
         if ~isempty(data)
            obj.GaussPts = data{1};
         end
-     end
+    end
+    
     function [t, dt] = updateTime(obj,conv,dt)
         if obj.printUtil.modTime
             tmp = find(obj.t<obj.printUtil.timeList(),1,'first');

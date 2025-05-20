@@ -407,24 +407,24 @@ private:
 
         os << "</DataArray>\n";
 
-        for( int j = 0; j < m_numComponents; ++j )
-        {
-          os << "<DataArray type=\"" << m_numeric_type << "\" Name=\"" << m_name << "_" << j
-             << "\" NumberOfComponents=\"" << 1 << "\" format=\"ascii\">\n";
-          for( int i = 0; i < m_size; ++i )
-          {
-            os << m_data[i+j*m_size];
-            if( ( ( i+j*m_size+1 ) / VALUES_IN_COLUMN ) * VALUES_IN_COLUMN == i+j*m_size+1 )
-            {
-              os << "\n";
-            }
-            else
-            {
-              os << " ";
-            }
-          }
-          os << "</DataArray>\n";
-        }
+        // for( int j = 0; j < m_numComponents; ++j )
+        // {
+        //   os << "<DataArray type=\"" << m_numeric_type << "\" Name=\"" << m_name << "_" << j
+        //      << "\" NumberOfComponents=\"" << 1 << "\" format=\"ascii\">\n";
+        //   for( int i = 0; i < m_size; ++i )
+        //   {
+        //     os << m_data[i+j*m_size];
+        //     if( ( ( i+j*m_size+1 ) / VALUES_IN_COLUMN ) * VALUES_IN_COLUMN == i+j*m_size+1 )
+        //     {
+        //       os << "\n";
+        //     }
+        //     else
+        //     {
+        //       os << " ";
+        //     }
+        //   }
+        //   os << "</DataArray>\n";
+        // }
       }
     }
 

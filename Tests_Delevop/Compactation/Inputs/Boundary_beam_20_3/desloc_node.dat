@@ -1,0 +1,7 @@
+NodeBC                            % BC item 
+Dir                               % BC type 
+Poro                              % Physics 
+desloc                           % BC name 
+Inputs/Boundary_beam_20_3/desloc_node/List 
+0.00 Inputs/Boundary_beam_20_3/desloc_node/Time_0.dat 
+End

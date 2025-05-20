@@ -1,0 +1,7 @@
+SurfBC                            % BC item 
+Dir                               % BC type 
+Poro                              % Physics 
+TopE                           % BC name 
+Inputs/Boundary/List_TopE 
+0.00 Inputs/Boundary/Time_TopE_0.dat 
+End

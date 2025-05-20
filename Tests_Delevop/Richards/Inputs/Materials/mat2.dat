@@ -1,0 +1,20 @@
+Elastic                           % material model
+94706      0.15                   % E [kPa], nu
+
+PorousRock                        % material model
+0.3      21                       % porosity, specific weight kPa
+1.e-13    0      0                % permeability matrix (upper part)
+       1.e-13    0
+              1.e-13
+0.      1.0                         % residual and maximum saturation
+
+VanGenuchten                      % Capillary and Relative Permeabilities Curves
+Mualem                            % Mualem or Burdine Relative Permeabilities Model
+0.502  -1.453  1.e-2              % n, alpha, factor correction
+
+CapillaryCurve
+./Inputs/Materials/pcCurve_400.dat
+
+RelativePermCurve
+./Inputs/Materials/krCurve_400.dat
+End

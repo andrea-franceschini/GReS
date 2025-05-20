@@ -1,0 +1,7 @@
+SurfBC                            % BC item
+Dir                               % BC type
+Poro                              % Physics
+dir_Poro_fixed                             % BC name
+Inputs/BC/dir_Poro_fixed/list
+0.000000 Inputs/BC/dir_Poro_fixed/time0.dat
+End
