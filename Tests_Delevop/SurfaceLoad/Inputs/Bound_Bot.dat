@@ -1,7 +1,0 @@
-SurfBC                            % BC item 
-Dir                               % BC type 
-Poro                              % Physics 
-Bot                           % BC name 
-Inputs/Boundary/List_Bot 
-0.00 Inputs/Boundary/Time_Bot_0.dat 
-End

@@ -1,7 +1,0 @@
-SurfBC                            % BC item
-Neu                               % BC type
-Flow                              % Physics
-neuSurf_Flow_Impermeable                             % BC name
-Inputs/BC/neuSurf_Flow_Impermeable/list
-0.000000 Inputs/BC/neuSurf_Flow_Impermeable/time0.dat
-End

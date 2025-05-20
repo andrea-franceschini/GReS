@@ -1,9 +1,0 @@
-SurfBC                            % BC item 
-Dir                               % BC type 
-Poro                              % Physics 
-TopI                           % BC name 
-Inputs/Boundary/List_TopI 
-0.00 Inputs/Boundary/Time_TopI_0.dat 
-3.00 Inputs/Boundary/Time_TopI_1.dat 
-100.00 Inputs/Boundary/Time_TopI_2.dat 
-End

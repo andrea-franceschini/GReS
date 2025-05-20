@@ -1,7 +1,0 @@
-SurfBC                            % BC item 
-Neu                               % BC type 
-Flow                              % Physics 
-LateralX                           % BC name 
-Inputs/Boundary/List_LateralX 
-0.00 Inputs/Boundary/Time_LateralX_0.dat 
-End

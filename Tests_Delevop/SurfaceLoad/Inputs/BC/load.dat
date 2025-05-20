@@ -1,7 +1,0 @@
-SurfBC            % BC item 
-Neu            % BC type 
-Poro            % Physics 
-top_load            % BC name 
-Inputs/BC/load/list 
-0.000000 Inputs/BC/load/time0.dat 
-End

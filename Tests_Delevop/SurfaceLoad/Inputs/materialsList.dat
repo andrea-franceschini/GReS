@@ -1,6 +1,0 @@
-1 Inputs/Materials/Silt.dat                    % cell Tag,    material input file
-2 Inputs/Materials/LowerSiltyClay.dat
-3 Inputs/Materials/Sand.dat
-4 Inputs/Materials/UpperSiltyClay.dat
-Inputs/Materials/Water.dat
-End

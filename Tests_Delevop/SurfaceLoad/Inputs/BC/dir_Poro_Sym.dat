@@ -1,7 +1,0 @@
-SurfBC                            % BC item
-Dir                               % BC type
-Poro                              % Physics
-dir_Poro_Sym                             % BC name
-Inputs/BC/dir_Poro_Sym/list
-0.000000 Inputs/BC/dir_Poro_Sym/time0.dat
-End
