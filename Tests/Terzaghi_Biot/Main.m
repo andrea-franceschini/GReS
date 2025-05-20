@@ -165,5 +165,5 @@ set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 10)
 % export figure with quality
-stmp = strcat('Images\', 'Terzaghi_disp', '.png');
-exportgraphics(gcf,stmp,'Resolution',400)
+% stmp = strcat('Images\', 'Terzaghi_disp', '.png');
+% exportgraphics(gcf,stmp,'Resolution',400)
