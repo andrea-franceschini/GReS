@@ -9,22 +9,22 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 lc = 1e-2;
 
 // Domain dimension
-Dim[1] = 100;
-Dim[2] = 100;
-Dim[3] = 100;
+Dim[1] = 10;
+Dim[2] = 10;
+Dim[3] = 10;
 
-Elms[1] = 2;
-Elms[2] = 4;
-Elms[3] = 4;
+Elms[1] = 16; // 2  16
+Elms[2] = 16; // 2  16
+Elms[3] = 32; // 4  32
 
 // Fault partition
 PlaPer = 0.5;  // percent
-PlaEsp = 0.1;
+PlaEsp = 1;
 PlaAlp = (30./90.)*Pi;
 PlaGam = Pi/2.-PlaAlp;
 
-ElmSF[1] = 1;
-ElmSF[2] = 1;
+ElmSF[1] = 16; // 2   16
+ElmSF[2] = 8; // 1    8
 ElmSF[3] = Elms[3];
 
 compY = Cos(PlaAlp)*Dim[2];

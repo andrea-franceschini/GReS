@@ -5,8 +5,8 @@ output_dir = 'Outputs/';
 figures_dir = 'Figs/';
 
 %% -------------------------- SET THE PHYSICS -------------------------
-% model = ModelType("SinglePhaseFlow_FVTPFA");
-model = ModelType("SinglePhaseFlow_FEM");
+model = ModelType("SinglePhaseFlow_FVTPFA");
+% model = ModelType("SinglePhaseFlow_FEM");
 
 %% ----------------------- SIMULATION PARAMETERS ----------------------
 % fileName = strcat(input_dir,'simParam.dat');
@@ -91,7 +91,7 @@ Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linS
 printUtils.finalize()
 
 %% POST PROCESSING
-postproc=true;
+postproc=false;
 if postproc
     image_dir = strcat(pwd,'/',figures_dir);
     if ~isfolder(image_dir)

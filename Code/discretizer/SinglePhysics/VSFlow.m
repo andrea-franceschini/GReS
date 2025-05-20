@@ -68,25 +68,36 @@ classdef VSFlow < SPFlow
             state.saturation = computeSaturation(obj,state.pressure);
         end
 
+        function state = finalizeState(obj,state)
+            % Compute the posprocessing variables for the module.
+            state.potential = computePotential(obj,state.pressure);
+            state.perm = printPermeab(obj);
+            state.saturation = computeSaturation(obj,state.pressure);
+        end
+
         function [cellData,pointData] = printState(obj,sOld,sNew,t)
             % append state variable to output structure
+            state = VSFlow.buildState([]);
             switch nargin
                 case 2
-                    fluidPot = finalizeState(obj,sOld);
-                    pressure = sOld.pressure;
+                    % fluidPot = finalizeState(obj,sOld);
+                    state.pressure = sOld.pressure;
                 case 4
                     % linearly interpolate state variables containing print time
                     fac = (t - sOld.t)/(sNew.t - sOld.t);
-                    fluidPotOld = finalizeState(obj,sOld);
-                    fluidPotNew = finalizeState(obj,sNew);
-                    fluidPot = fluidPotNew*fac+fluidPotOld*(1-fac);
-                    pressure = sNew.pressure*fac+sOld.pressure*(1-fac);
+                    state.pressure = sNew.pressure*fac+sOld.pressure*(1-fac);
+                    % fluidPotOld = finalizeState(obj,sOld);
+                    % fluidPotNew = finalizeState(obj,sNew);
+                    % fluidPot = fluidPotNew*fac+fluidPotOld*(1-fac);
+                    % pressure = sNew.pressure*fac+sOld.pressure*(1-fac);
                 otherwise
                     error('Wrong number of input arguments');
             end
+            % posprocessing the structure of VSFlow.
+            state = finalizeState(obj,state);
             % saturation = obj.material.computeSwAnddSw(obj.mesh,pressure);
-            saturation = computeSaturation(obj,pressure);
-            [cellData,pointData] = VSFlow.buildPrintStruct(pressure,fluidPot,saturation);
+            % saturation = computeSaturation(obj,pressure);
+            [cellData,pointData] = VSFlow.buildPrintStruct(state);
         end
 
         function out = isLinear(obj)
@@ -360,15 +371,23 @@ classdef VSFlow < SPFlow
     end
 
     methods (Static)
-        function [cellStr,pointStr] = buildPrintStruct(press,pot,sat)
+        function state = buildState(state)
+         % Constructor for the all variables avaible in this module
+         state = SPFlow.buildState(state);
+         state.saturation = [];
+        end
+
+        function [cellStr,pointStr] = buildPrintStruct(state)
             pointStr = [];
             cellStr = repmat(struct('name', 1, 'data', 1), 3, 1);
             cellStr(1).name = 'pressure';
-            cellStr(1).data = press;
+            cellStr(1).data = state.pressure;
             cellStr(2).name = 'potential';
-            cellStr(2).data = pot;
+            cellStr(2).data = state.potential;
             cellStr(3).name = 'saturation';
-            cellStr(3).data = sat;
+            cellStr(3).data = state.saturation;
+            cellStr(4).name = 'permeability';
+            cellStr(4).data = state.perm;
         end
     end
 
