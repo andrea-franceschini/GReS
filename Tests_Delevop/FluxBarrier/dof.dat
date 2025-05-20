@@ -1,6 +1,0 @@
-<SubDomain>
-<CellTag>
-1                              % cellTags in SubDomain
-<Field>
-SPFlow                         % Physics in SubDomain
-</SubDomain>

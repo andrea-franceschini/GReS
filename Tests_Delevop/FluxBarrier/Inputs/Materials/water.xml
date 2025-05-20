@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<Fluid>
-    <Incompressible specweig = "9.8066e3" 
-                    beta = "0."
-                    visco = "1e-3"/>
-    <!-- specweig = specif weight (N/m3)
-         beta = fluid compressibility (Pa-1)
-         visco = dynamic viscosity (Pa/s) -->
-</Fluid>
