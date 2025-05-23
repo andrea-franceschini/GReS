@@ -63,7 +63,7 @@ state.pressure(:) = 1.e5;
 printUtils = OutState(model,topology,strcat(input_dir,'outTime.dat'), ...
     'folderName','Outputs');
 
-printState(printUtils,state)
+% printState(printUtils,state)
 
 % Creating and Appling boundaries conditions.
 cond = struct('name',[],'type',[],'field',[],'values',[],'times',[]);

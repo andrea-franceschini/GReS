@@ -166,11 +166,11 @@ classdef FCSolver < handle
             if isPoromechanics(obj.model)
                obj.stateTmp = Poromechanics.advanceState(obj.stateTmp);
             end
-            
+
             if obj.t > obj.simParameters.tMax   % For Steady State
-               printState(obj.printUtil,obj.stateTmp);
+               printState(obj.printUtil,obj.bound,obj.stateTmp);
             else
-               printState(obj.printUtil,obj.linSyst,obj.statek,obj.stateTmp);
+               printState(obj.printUtil,obj.linSyst,obj.bound,obj.statek,obj.stateTmp);
             end
             obj.solStatistics.saveIt(obj.t,residual(1:obj.iter+1,1),residual(1:obj.iter+1,2));
          else

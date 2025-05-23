@@ -254,13 +254,13 @@ classdef Poromechanics < SinglePhysics
          end
       end
 
-      function [cellData,pointData] = printState(obj,sOld,sNew,t)
+      function [cellData,pointData] = printState(obj,bound,sOld,sNew,t)
          % append state variable to output structure
          switch nargin
-            case 2
+            case 3
                [stress,strain] = finalizeState(obj,sOld);
                displ = sOld.dispConv;
-            case 4
+            case 5
                % linearly interpolate state variables containing print time
                fac = (t - sOld.t)/(sNew.t - sOld.t);
                [avStressOld,avStrainOld] = finalizeState(obj,sOld);

@@ -10,6 +10,7 @@ classdef Faces < handle
     faceNeighbors    % IDs of the cells to the left and right of each face (nf x 2 matrix)
     faceCentroid     % Centroid coordinates of each face
     faceNormal       % Normal to each face (the magnitude of the vector is equal to the area)
+    neighNormal      % Normal between the cells in faceNeighbors (in the boundary is the center of the face)
     nFaces           % # of faces
   end
   
@@ -106,6 +107,7 @@ classdef Faces < handle
       if obj.model.isFVTPFABased('Flow')
         obj.setupFaceTopology;
         obj.computeFaceProperties;
+        obj.addNeighborsNormal;
       end
     end
         
@@ -256,6 +258,29 @@ classdef Faces < handle
       obj.mapN2F = [1; cumsum(nnodes)+1];
       
       addFaces(obj, nnodes, hftag);
+    end
+
+    function addNeighborsNormal(obj)
+        % ADDNEIGHBORSNORMAL - function to compute the normal between two
+        % neighbors cells.
+        c1e0 = find(~obj.faceNeighbors(:,1));
+        c2e0 = find(~obj.faceNeighbors(:,2));
+        c1ed = find(obj.faceNeighbors(:,1));
+        c2ed = find(obj.faceNeighbors(:,2));
+        vecA = zeros(obj.nFaces,3);
+        vecB = zeros(obj.nFaces,3);
+        vecA(c1e0,:)=obj.faceCentroid(c1e0,:);
+        vecB(c2e0,:)=obj.faceCentroid(c2e0,:);
+        node2elem = [obj.mesh.cells(:) repelem((1:obj.mesh.nCells),obj.mesh.cellNumVerts)'];
+        pos = obj.mesh.coordinates(node2elem(:,1),:);
+        axis = ones(size(pos,1),1);
+        cellCenter = accumarray([[node2elem(:,2) axis]; [node2elem(:,2) 2*axis]; ...
+                  [node2elem(:,2) 3*axis]], pos(:));
+        vecA(c1ed,:)=cellCenter(obj.faceNeighbors(c1ed,1),:);
+        vecB(c2ed,:)=cellCenter(obj.faceNeighbors(c2ed,2),:);
+
+        obj.neighNormal = vecA - vecB;
+        obj.neighNormal = obj.neighNormal./vecnorm(obj.neighNormal,2,2);
     end
     
     function addFaces (obj, nnodes, tags)

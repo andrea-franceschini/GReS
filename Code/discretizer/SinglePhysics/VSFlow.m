@@ -75,7 +75,7 @@ classdef VSFlow < SPFlow
             state.saturation = computeSaturation(obj,state.pressure);
         end
 
-        function [cellData,pointData] = printState(obj,sOld,sNew,t)
+        function [cellData,pointData] = printState(obj,bound,sOld,sNew,t)
             % append state variable to output structure
             state = VSFlow.buildState([]);
             switch nargin
