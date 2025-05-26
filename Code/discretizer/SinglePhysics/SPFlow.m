@@ -50,8 +50,7 @@ classdef SPFlow < SinglePhysics
          % Compute the posprocessing variables for the module.
          state.potential = computePotential(obj,state.pressure);
 
-         mu = (1/obj.material.getFluid().getDynViscosity())*ones(obj.faces.nFaces,1);
-         mu = mu(obj.isIntFaces);
+         mu = (1/obj.material.getFluid().getDynViscosity());
          state.perm = printPermeab(obj);
          state.flux = computeFlux(obj,mu,bound,state.potential,state.t);
       end
@@ -418,7 +417,7 @@ classdef SPFlow < SinglePhysics
 
               fluxFaces = zeros(obj.faces.nFaces,1);              
               fluxFaces(obj.isIntFaces) = pot(neigh(:,1))-pot(neigh(:,2));
-              fluxFaces(obj.isIntFaces) = mob.*obj.trans(obj.isIntFaces).*fluxFaces(obj.isIntFaces);
+              fluxFaces(obj.isIntFaces) = mob*obj.trans(obj.isIntFaces).*fluxFaces(obj.isIntFaces);
 
               faceUnit = obj.faces.faceNormal./vecnorm(obj.faces.faceNormal,2,2);
               % faceUnit = obj.faces.neighNormal;
@@ -439,7 +438,7 @@ classdef SPFlow < SinglePhysics
               for bc = string(bcList)
                   field = translatePhysic(bound.getPhysics(bc),obj.model);
                   for f = field
-                      if (field == "SPFlow") || (field == "VSFlow")
+                      if field == "SPFlow"
                           v = bound.getVals(bc,t);
                           switch bound.getCond(bc)
                               case {'NodeBC','ElementBC'}
@@ -452,7 +451,7 @@ classdef SPFlow < SinglePhysics
                                           ents = sum(obj.faces.faceNeighbors(faceID,:),2);
                                           gamma = obj.material.getFluid().getFluidSpecWeight();
                                           potBd = pot(ents)-(v+gamma*obj.faces.faceCentroid(faceID,3));
-                                          vals = mob(ents).*obj.trans(faceID).*potBd;
+                                          vals = mob*obj.trans(faceID).*potBd;
                                   end
                                   vals = sgn(faceID).*vals./areaSq(faceID).*faceUnit(faceID,:);
                                   % sml = nnodesBfaces(faceID);
