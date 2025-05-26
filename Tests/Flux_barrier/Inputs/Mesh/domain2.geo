@@ -20,7 +20,7 @@ Elms[3] = 32; // 4  32
 // Fault partition
 PlaPer = 0.5;  // percent
 PlaEsp = 1;
-PlaAlp = (30./90.)*Pi; // (30./90.)*Pi Pi/2
+PlaAlp = Pi/2; // (30./90.)*Pi Pi/2
 PlaGam = Pi/2.-PlaAlp;
 
 ElmSF[1] = 16; // 2   16

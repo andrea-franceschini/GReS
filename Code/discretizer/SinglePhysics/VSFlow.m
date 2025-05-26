@@ -68,24 +68,28 @@ classdef VSFlow < SPFlow
             state.saturation = computeSaturation(obj,state.pressure);
         end
 
-        function state = finalizeState(obj,state)
+        function state = finalizeState(obj,bound,state)
             % Compute the posprocessing variables for the module.
             state.potential = computePotential(obj,state.pressure);
             state.perm = printPermeab(obj);
             state.saturation = computeSaturation(obj,state.pressure);
+            [lw,~] = computeMobility(obj,state.pressure);
+            state.flux = computeFlux(obj,lw,bound,state.potential,state.t);
         end
 
         function [cellData,pointData] = printState(obj,bound,sOld,sNew,t)
             % append state variable to output structure
             state = VSFlow.buildState([]);
             switch nargin
-                case 2
+                case 3
                     % fluidPot = finalizeState(obj,sOld);
                     state.pressure = sOld.pressure;
-                case 4
+                    state.t = sOld.t;
+                case 5
                     % linearly interpolate state variables containing print time
                     fac = (t - sOld.t)/(sNew.t - sOld.t);
                     state.pressure = sNew.pressure*fac+sOld.pressure*(1-fac);
+                    state.t = sNew.t*fac+sOld.t*(1-fac);
                     % fluidPotOld = finalizeState(obj,sOld);
                     % fluidPotNew = finalizeState(obj,sNew);
                     % fluidPot = fluidPotNew*fac+fluidPotOld*(1-fac);
@@ -94,7 +98,7 @@ classdef VSFlow < SPFlow
                     error('Wrong number of input arguments');
             end
             % posprocessing the structure of VSFlow.
-            state = finalizeState(obj,state);
+            state = finalizeState(obj,bound,state);
             % saturation = obj.material.computeSwAnddSw(obj.mesh,pressure);
             % saturation = computeSaturation(obj,pressure);
             [cellData,pointData] = VSFlow.buildPrintStruct(state);
@@ -172,6 +176,93 @@ classdef VSFlow < SPFlow
             % get local dof numbering
             dof = obj.dofm.getLocalDoF(ents,obj.field);
         end
+
+      %   function flux = computeFlux(obj,mob,bound,pot,t)
+      %     %COMPUTEFLUX - compute the flux at the faces, than accumulate
+      %     %the value at the nodes.
+      %     flux = zeros(obj.mesh.nNodes,3);
+      %     if isFEMBased(obj.model,'Flow')
+      %         % flux = fluidPot + gamma*obj.mesh.coordinates(:,3);
+      %     elseif isFVTPFABased(obj.model,'Flow')
+      %         nnodesBfaces = diff(obj.faces.mapN2F);
+      %         neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+      % 
+      %         fluxFaces = zeros(obj.faces.nFaces,1);              
+      %         fluxFaces(obj.isIntFaces) = pot(neigh(:,1))-pot(neigh(:,2));
+      %         fluxFaces(obj.isIntFaces) = mob.*obj.trans(obj.isIntFaces).*fluxFaces(obj.isIntFaces);
+      % 
+      %         faceUnit = obj.faces.faceNormal./vecnorm(obj.faces.faceNormal,2,2);
+      %         % faceUnit = obj.faces.neighNormal;
+      %         areaSq = vecnorm(obj.faces.faceNormal,2,2);
+      %         areaSq = areaSq.*nnodesBfaces;
+      %         fluxFaces = fluxFaces./areaSq;
+      %         fluxFaces = fluxFaces.*faceUnit;  % flux at the faces
+      % 
+      %         % Contribution
+      %         fluxFaces = repelem(fluxFaces,nnodesBfaces,1);
+      %         axis = ones(length(obj.faces.nodes2Faces),1);
+      %         flux = accumarray([[obj.faces.nodes2Faces axis]; ...
+      %             [obj.faces.nodes2Faces 2*axis]; ...
+      %             [obj.faces.nodes2Faces 3*axis]], fluxFaces(:));
+      % 
+      %         % add boundary condition
+      %         Node2Face = repelem((1:obj.faces.nFaces)',nnodesBfaces);
+      %         sgn = 2*(obj.faces.faceNeighbors(:,1)==0) - 1;
+      %         bcList = bound.db.keys;
+      %         for bc = string(bcList)
+      %             field = translatePhysic(bound.getPhysics(bc),obj.model);
+      %             for f = field
+      %                 if field == "VSFlow"
+      %                     v = bound.getVals(bc,t);
+      %                     switch bound.getCond(bc)
+      %                         case {'NodeBC','ElementBC'}
+      %                         case 'SurfBC'
+      %                             faceID = bound.getEntities(bc);
+      %                             switch bound.getType(bc)
+      %                                 case 'Neu'
+      %                                     vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
+      %                                 case 'Dir'
+      %                                     ents = sum(obj.faces.faceNeighbors(faceID,:),2);
+      %                                     gamma = obj.material.getFluid().getFluidSpecWeight();
+      %                                     potBd = pot(ents)-(v+gamma*obj.faces.faceCentroid(faceID,3));
+      %                                     vals = mob.*obj.trans(faceID).*potBd;
+      %                             end
+      %                             vals = sgn(faceID).*vals./areaSq(faceID).*faceUnit(faceID,:);
+      %                             % sml = nnodesBfaces(faceID);
+      %                             vals = -repelem(vals,nnodesBfaces(faceID),1);
+      %                             nodes = obj.faces.nodes2Faces(ismember(Node2Face,faceID));
+      %                             [loc,~,pos] = unique(nodes);
+      %                             axis = ones(length(nodes),1);
+      %                             fluxB = accumarray([[pos axis]; [pos 2*axis]; ...
+      %                                 [pos 3*axis]], vals(:));
+      %                             flux(loc,:)=fluxB;
+      %                         case 'VolumeForce'
+      %                             % Find the cell to apply the boundary condition
+      %                             cellID = bound.getEntities(bc);
+      %                             vals = v.*obj.elements.vol(cellID);
+      %                             facesBcell = diff(obj.faces.mapF2E);
+      % 
+      %                             % Find the faces to distribute the contribution.
+      %                             vals = vals./facesBcell(cellID);
+      %                             vals = repelem(vals,facesBcell(cellID),1);
+      % 
+      %                             hf2Cell = repelem((1:obj.mesh.nCells)',facesBcell);                                  
+      %                             faceID = obj.faces.faces2Elements(hf2Cell == cellID,1);
+      % 
+      %                             vals = sgn(faceID).*vals./areaSq(faceID).*faceUnit(faceID,:);
+      %                             vals = -repelem(vals,nnodesBfaces(faceID),1);
+      %                             nodes = obj.faces.nodes2Faces(ismember(Node2Face,faceID));
+      %                             [loc,~,pos] = unique(nodes);
+      %                             axis = ones(length(nodes),1);
+      %                             fluxB = accumarray([[pos axis]; [pos 2*axis]; ...
+      %                                 [pos 3*axis]], vals(:));
+      %                             flux(loc,:)=flux(loc,:)+fluxB;
+      %                     end
+      %                 end
+      %             end
+      %         end
+      %     end
+      % end
     end
 
     methods (Access = private)
@@ -378,7 +469,9 @@ classdef VSFlow < SPFlow
         end
 
         function [cellStr,pointStr] = buildPrintStruct(state)
-            pointStr = [];
+            pointStr(1).name = 'flux';
+            pointStr(1).data = state.flux;
+            % pointStr = [];
             cellStr = repmat(struct('name', 1, 'data', 1), 3, 1);
             cellStr(1).name = 'pressure';
             cellStr(1).data = state.pressure;

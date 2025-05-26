@@ -50,9 +50,10 @@ classdef SPFlow < SinglePhysics
          % Compute the posprocessing variables for the module.
          state.potential = computePotential(obj,state.pressure);
 
-         mu = obj.material.getFluid().getDynViscosity();
+         mu = (1/obj.material.getFluid().getDynViscosity())*ones(obj.faces.nFaces,1);
+         mu = mu(obj.isIntFaces);
          state.perm = printPermeab(obj);
-         state.flux = computeFlux(obj,1/mu,bound,state.potential,state.t);
+         state.flux = computeFlux(obj,mu,bound,state.potential,state.t);
       end
 
       function [cellData,pointData] = printState(obj,bound,sOld,sNew,t)
@@ -412,6 +413,8 @@ classdef SPFlow < SinglePhysics
           elseif isFVTPFABased(obj.model,'Flow')
               nnodesBfaces = diff(obj.faces.mapN2F);
               neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+              Node2Face = repelem((1:obj.faces.nFaces)',nnodesBfaces);
+              sgn = 2*(obj.faces.faceNeighbors(:,1)==0) - 1;
 
               fluxFaces = zeros(obj.faces.nFaces,1);              
               fluxFaces(obj.isIntFaces) = pot(neigh(:,1))-pot(neigh(:,2));
@@ -431,14 +434,12 @@ classdef SPFlow < SinglePhysics
                   [obj.faces.nodes2Faces 2*axis]; ...
                   [obj.faces.nodes2Faces 3*axis]], fluxFaces(:));
 
-              % add boundary condition
-              Node2Face = repelem((1:obj.faces.nFaces)',nnodesBfaces);
-              sgn = 2*(obj.faces.faceNeighbors(:,1)==0) - 1;
+              % add boundary condition              
               bcList = bound.db.keys;
               for bc = string(bcList)
                   field = translatePhysic(bound.getPhysics(bc),obj.model);
                   for f = field
-                      if field == "SPFlow"
+                      if (field == "SPFlow") || (field == "VSFlow")
                           v = bound.getVals(bc,t);
                           switch bound.getCond(bc)
                               case {'NodeBC','ElementBC'}
@@ -451,7 +452,7 @@ classdef SPFlow < SinglePhysics
                                           ents = sum(obj.faces.faceNeighbors(faceID,:),2);
                                           gamma = obj.material.getFluid().getFluidSpecWeight();
                                           potBd = pot(ents)-(v+gamma*obj.faces.faceCentroid(faceID,3));
-                                          vals = mob.*obj.trans(faceID).*potBd;
+                                          vals = mob(ents).*obj.trans(faceID).*potBd;
                                   end
                                   vals = sgn(faceID).*vals./areaSq(faceID).*faceUnit(faceID,:);
                                   % sml = nnodesBfaces(faceID);
