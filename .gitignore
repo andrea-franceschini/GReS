@@ -38,8 +38,6 @@
 
 # Matlab files
 *.mat
-<<<<<<< HEAD
-=======
 
 # asv files
 *.asv
@@ -56,4 +54,3 @@
 
 # Compiler  builds
 /ThirdPartLibs/*/build
->>>>>>> feature/moretto
