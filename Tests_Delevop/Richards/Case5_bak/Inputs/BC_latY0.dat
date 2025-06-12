@@ -1,0 +1,7 @@
+SurfBC                            % BC item 
+Dir                               % BC type 
+Flow                              % Physics 
+latY0                           % BC name 
+Inputs/BC/List_latY0 
+0.00 Inputs/BC/Time_latY0_0.dat 
+End

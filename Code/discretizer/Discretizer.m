@@ -36,7 +36,7 @@ classdef Discretizer < handle
                   % skip pair of uncoupled physics
                end
                switch bound.getType(bc)
-                  case 'Dir'
+                  case {'Dir','Spg'}
                      applyDirBC(obj.getSolver({field,f}),field,bcEnts,bcVals);
                   case {'Neu','VolumeForce'}
                      applyNeuBC(obj.getSolver({field,f}),bcEnts,bcVals);

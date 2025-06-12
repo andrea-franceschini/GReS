@@ -16,8 +16,8 @@ simParam = SimulationParameters(fileName,model);
 topology = Mesh();
 
 % Set the input file name
-% fileName = strcat(input_dir,'Mesh/Column.msh');
-fileName = strcat(input_dir,'Mesh/Column4x4x40.msh');
+fileName = strcat(input_dir,'Mesh/Column.msh');
+% fileName = strcat(input_dir,'Mesh/Column4x4x40.msh');
 
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -84,7 +84,7 @@ Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linS
 printUtils.finalize()
 
 %% POST PROCESSING
-if true
+if false
 
 image_dir = strcat(pwd,'/',figures_dir);
 if ~isfolder(image_dir)

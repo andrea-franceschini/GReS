@@ -23,8 +23,7 @@ classdef VSFlow < SPFlow
             %     (1 - obj.simParams.theta)*statek.pressure;
             [Swkpt,dSwkpt,d2Swkpt, obj.lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt);
             computeStiffMatFV(obj,obj.lwkpt);
-            computeCapMatFV(obj,Swkpt,dSwkpt);
-            obj.J = theta*obj.H + obj.P/dt;
+            obj.J = theta*obj.H;
             if isNewtonNLSolver(obj.simParams)
                 Jh = computeJacobianPartJhNewton(obj,pkpt,dlwkpt);
                 Jp = computeJacobianPartJpNewton(obj,dt,stateTmp.pressure,statek.pressure,Swkpt,dSwkpt,d2Swkpt);
@@ -35,6 +34,19 @@ classdef VSFlow < SPFlow
                 % l1 = normest(Jh);
                 % l2 = normest(Jp);
             end
+            computeCapMatFV(obj,Swkpt,dSwkpt);
+            obj.J = obj.J + obj.P/dt;
+            % obj.J = theta*obj.H + obj.P/dt;
+            % % % if isNewtonNLSolver(obj.simParams)
+            % % %     Jh = computeJacobianPartJhNewton(obj,pkpt,dlwkpt);
+            % % %     Jp = computeJacobianPartJpNewton(obj,dt,stateTmp.pressure,statek.pressure,Swkpt,dSwkpt,d2Swkpt);
+            % % %     obj.JNewt = Jp+Jh;
+            % % %     obj.J = obj.J + obj.JNewt;
+            % % %     % JNewt2 = computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,d2Swkpt,dlwkpt);
+            % % %     % [Jh,Jp] = computeNewtPartOfJacobian2(obj,dt,stateTmp.pressure,statek.pressure,dSwkpt,d2Swkpt,dlwkpt);
+            % % %     % l1 = normest(Jh);
+            % % %     % l2 = normest(Jp);
+            % % % end
         end
 
         function stateTmp = computeRhs(obj,stateTmp,statek,dt)
@@ -44,6 +56,9 @@ classdef VSFlow < SPFlow
             rhsStiff = theta*obj.H*stateTmp.pressure(ents) + (1-theta)*obj.H*statek.pressure(ents);
             rhsCap = (obj.P/dt)*(stateTmp.pressure(ents) - statek.pressure(ents));
             obj.rhs = rhsStiff + rhsCap;
+            if isNewtonNLSolver(obj.simParams)
+               obj.rhs = obj.rhs + diag(obj.J);
+            end
             gamma = obj.material.getFluid().getFluidSpecWeight();
             %adding gravity rhs contribute
             if gamma > 0
@@ -51,6 +66,7 @@ classdef VSFlow < SPFlow
                     obj.rhs = obj.rhs + obj.rhsGrav;
                 elseif isFVTPFABased(obj.model,'Flow')
                     obj.rhs = obj.rhs + finalizeRHSGravTerm(obj,obj.lwkpt);
+                    
                 end
             end
         end
@@ -68,40 +84,33 @@ classdef VSFlow < SPFlow
             state.saturation = computeSaturation(obj,state.pressure);
         end
 
-        function state = finalizeState(obj,bound,state)
+        function [potential,flux,saturation,mass] = finalizeState(obj,bound,pressure,t)
             % Compute the posprocessing variables for the module.
-            state.potential = computePotential(obj,state.pressure);
-            state.perm = printPermeab(obj);
-            state.saturation = computeSaturation(obj,state.pressure);
-            % [lw,~] = computeMobility(obj,state.pressure);
-            state.flux = computeFlux(obj,bound,state.potential,state.pressure,state.t);
+            potential = computePotential(obj,pressure);
+            saturation = computeSaturation(obj,pressure);
+            [mob ,~] = computeMobility(obj,pressure);
+            flux = computeFlux(obj,mob,potential);
+            flux = computeFluxBound(obj,flux,bound,potential,pressure,t);
+            mass = checkMassCons(obj,mob,potential);
         end
 
         function [cellData,pointData] = printState(obj,bound,sOld,sNew,t)
             % append state variable to output structure
-            state = VSFlow.buildState([]);
+            outPrint = [];
             switch nargin
                 case 3
-                    % fluidPot = finalizeState(obj,sOld);
-                    state.pressure = sOld.pressure;
-                    state.t = sOld.t;
+                    outPrint.pressure = sOld.pressure;
                 case 5
                     % linearly interpolate state variables containing print time
                     fac = (t - sOld.t)/(sNew.t - sOld.t);
-                    state.pressure = sNew.pressure*fac+sOld.pressure*(1-fac);
-                    state.t = sNew.t*fac+sOld.t*(1-fac);
-                    % fluidPotOld = finalizeState(obj,sOld);
-                    % fluidPotNew = finalizeState(obj,sNew);
-                    % fluidPot = fluidPotNew*fac+fluidPotOld*(1-fac);
-                    % pressure = sNew.pressure*fac+sOld.pressure*(1-fac);
+                    outPrint.pressure = sNew.pressure*fac+sOld.pressure*(1-fac);
                 otherwise
                     error('Wrong number of input arguments');
             end
             % posprocessing the structure of VSFlow.
-            state = finalizeState(obj,bound,state);
-            % saturation = obj.material.computeSwAnddSw(obj.mesh,pressure);
-            % saturation = computeSaturation(obj,pressure);
-            [cellData,pointData] = VSFlow.buildPrintStruct(state);
+            [outPrint.potential,outPrint.flux,outPrint.saturation,outPrint.mass] = finalizeState(obj,bound,outPrint.pressure,t);
+            outPrint.perm = printPermeab(obj);
+            [cellData,pointData] = VSFlow.buildPrintStruct(outPrint);
         end
 
         function out = isLinear(obj)
@@ -115,17 +124,54 @@ classdef VSFlow < SPFlow
                     vals = bound.getVals(id,t);
                 case 'SurfBC'
                     if isFVTPFABased(obj.model,'Flow')
-                        faceID = bc.getEntities(id);
+                        % faceID = bc.getEntities(id);
+                        [faceID, faceOrder] = sort(bc.getEntities(id));
                         ents = sum(obj.faces.faceNeighbors(faceID,:),2);
                         [ents,~,ind] = unique(ents);
                         switch bc.getType(id)
                             case 'Neu'
-                                v = bc.getVals(id,t);
+                                % v = bc.getVals(id,t);
+                                v(faceOrder,1) = bc.getVals(id,t);
                                 area = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
                                 vals = accumarray(ind, area);
                             case 'Dir'
-                                v = bc.getVals(id,t);
+                                % v = bc.getVals(id,t);
+                                v(faceOrder,1) = bc.getVals(id,t);
                                 gamma = obj.material.getFluid().getFluidSpecWeight();
+                                [mob, dmob] = obj.computeMobilityBoundary(state.pressure(ents),v,faceID);
+                                tr = obj.getFaceTransmissibilities(faceID);
+                                potential = state.pressure(ents) - v ...
+                                    + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3));
+                                % sgn = 2*(potential<=0) - 1; %% Upwind
+                                dirJ = mob.*tr;
+                                q = dirJ.*potential;
+                                if isNewtonNLSolver(obj.simParams)
+                                    % Contibution of Jh part in the boundary
+                                    theta = obj.simParams.theta;
+                                    % q=q+theta*sgn.*dirJ;
+                                    dirJh = theta*dmob.*tr;
+                                    % ql = dirJh.*(state.pressure(ents) - v);
+                                    dirJ = dirJ + dirJh.*potential;% + sgn.*dirJh;
+                                    % dirJ = dirJ + dirJh.*(state.pressure(ents) - v);% + dirJh;
+                                    % q=q+dirJh;
+                                    % q=q-dirJh.*(state.pressure(ents) - v);
+                                    % q=q+dirJ+dirJh.*(state.pressure(ents) - v);
+                                    % q=q+dirJh.*potential-dirJh;
+                                    % q=q+ql;
+                                    % q = dirJ.*potential;
+                                    q=q+dirJh.*(state.pressure(ents)./v);
+                                end
+                                vals = [dirJ,accumarray(ind,q)]; % {JacobianVal,rhsVal]
+                            case 'Spg'
+                                zbc = obj.faces.faceCentroid(faceID,3);
+                                href = bc.getVals(id,t);
+                                gamma = obj.material.getFluid().getFluidSpecWeight();
+                                v = gamma*(href(1)-zbc);
+                                pos=v>=0;
+                                % v(v<=0)=0;  % Atmosferic pressure
+                                % resize the number of boundary condition.
+                                [ents,~,ind] = unique(ents(pos));
+                                v=v(pos); faceID = faceID(pos);
                                 [mob, dmob] = obj.computeMobilityBoundary(state.pressure(ents),v,faceID);
                                 tr = obj.getFaceTransmissibilities(faceID);
                                 potential = state.pressure(ents) - v ...
@@ -139,23 +185,6 @@ classdef VSFlow < SPFlow
                                     dirJ = dirJ + dirJh;
                                 end
                                 vals = [dirJ,accumarray(ind,q)]; % {JacobianVal,rhsVal]
-                            case 'Spg'
-                                zbc = obj.elements.cellCentroid(ents,:);
-                                href = bc.getVals(id,t);
-                                v=zeros(length(zbc));
-                                for jj=1:length(zbc)
-                                    if zbc(:,3)<href(1,3)
-                                        v(jj)=0.;
-                                    else
-                                        v(jj)=zbc(jj,3)-href(jj,3);
-                                    end
-                                end
-                                gamma = obj.material.getFluid().getFluidSpecWeight();
-                                mu = obj.material.getFluid().getDynViscosity();
-                                tr = obj.getFaceTransmissibilities(faceID);
-                                q = 1/mu*tr.*((state.pressure(ents) - v)...
-                                    + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
-                                vals = [1/mu*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
                         end
                     elseif isFEMBased(obj.model,'Flow')
                         v = bc.getVals(id,t);
@@ -177,10 +206,10 @@ classdef VSFlow < SPFlow
             dof = obj.dofm.getLocalDoF(ents,obj.field);
         end
 
-        function flux = computeFlux(obj,bound,pot,pres,t)
+        function flux = computeFluxBound(obj,flux,bound,pot,pres,t)
             %COMPUTEFLUX - compute the flux at the faces, than accumulate
             %the value at the nodes.
-            flux = zeros(obj.mesh.nNodes,3);
+            % flux = zeros(obj.mesh.nNodes,3);
             if isFEMBased(obj.model,'Flow')
                 % flux = fluidPot + gamma*obj.mesh.coordinates(:,3);
             elseif isFVTPFABased(obj.model,'Flow')
@@ -189,25 +218,9 @@ classdef VSFlow < SPFlow
                 Node2Face = repelem((1:obj.faces.nFaces)',nnodesBfaces);
                 sgn = 2*(obj.faces.faceNeighbors(:,1)==0) - 1;
 
-                [mob ,~] = computeMobility(obj,pres);
-
-                fluxFaces = zeros(obj.faces.nFaces,1);
-                fluxFaces(obj.isIntFaces) = pot(neigh(:,1))-pot(neigh(:,2));
-                fluxFaces(obj.isIntFaces) = mob.*obj.trans(obj.isIntFaces).*fluxFaces(obj.isIntFaces);
-
-                faceUnit = obj.faces.faceNormal./vecnorm(obj.faces.faceNormal,2,2);
-                % faceUnit = obj.faces.neighNormal;
                 areaSq = vecnorm(obj.faces.faceNormal,2,2);
+                faceUnit = obj.faces.faceNormal./areaSq;
                 areaSq = areaSq.*nnodesBfaces;
-                fluxFaces = fluxFaces./areaSq;
-                fluxFaces = fluxFaces.*faceUnit;  % flux at the faces
-
-                % Contribution
-                fluxFaces = repelem(fluxFaces,nnodesBfaces,1);
-                axis = ones(length(obj.faces.nodes2Faces),1);
-                flux = accumarray([[obj.faces.nodes2Faces axis]; ...
-                    [obj.faces.nodes2Faces 2*axis]; ...
-                    [obj.faces.nodes2Faces 3*axis]], fluxFaces(:));
 
                 % add boundary condition
                 bcList = bound.db.keys;
@@ -219,25 +232,40 @@ classdef VSFlow < SPFlow
                             switch bound.getCond(bc)
                                 case {'NodeBC','ElementBC'}
                                 case 'SurfBC'
-                                    faceID = bound.getEntities(bc);
+                                    faceID = sort(bound.getEntities(bc));
+                                    gamma = obj.material.getFluid().getFluidSpecWeight();
                                     switch bound.getType(bc)
                                         case 'Neu'
                                             vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
                                         case 'Dir'
                                             ents = sum(obj.faces.faceNeighbors(faceID,:),2);
-                                            gamma = obj.material.getFluid().getFluidSpecWeight();
+                                            potBd = pot(ents)-(v+gamma*obj.faces.faceCentroid(faceID,3));
+                                            mob = computeMobilityBoundary(obj,pres(ents),v,faceID);
+                                            vals = -mob.*obj.trans(faceID).*potBd;
+                                        case 'Spg'
+                                            ents = sum(obj.faces.faceNeighbors(faceID,:),2);
+                                            % zbc = obj.faces.faceCentroid(faceID,3);
+                                            % v= gamma*(v(1)-zbc);
+
+                                            Datum = max(obj.mesh.coordinates);
+                                            zbc = Datum(3)-obj.faces.faceCentroid(faceID,3);
+                                            href = Datum(3)-v(1);
+                                            v = gamma*(zbc-href(1));
+
+                                            v(v<=0)=0.;                                            
                                             potBd = pot(ents)-(v+gamma*obj.faces.faceCentroid(faceID,3));
                                             mob = computeMobilityBoundary(obj,pres(ents),v,faceID);
                                             vals = mob.*obj.trans(faceID).*potBd;
+                                            vals(:) = 0.; % after find the error, delete this line.
                                     end
-                                    vals = sgn(faceID).*vals./areaSq(faceID).*faceUnit(faceID,:);
-                                    % sml = nnodesBfaces(faceID);
-                                    vals = -repelem(vals,nnodesBfaces(faceID),1);
+                                    dir = sgn(faceID).*faceUnit(faceID,:);
+                                    vals = vals./areaSq(faceID).*dir;
+                                    vals = repelem(vals,nnodesBfaces(faceID),1);
                                     nodes = obj.faces.nodes2Faces(ismember(Node2Face,faceID));
                                     [loc,~,pos] = unique(nodes);
                                     axis = ones(length(nodes),1);
                                     fluxB = accumarray([[pos axis]; [pos 2*axis]; ...
-                                        [pos 3*axis]], vals(:));
+                                       [pos 3*axis]], vals(:));
                                     flux(loc,:)=fluxB;
                                 case 'VolumeForce'
                                     % Find the cell to apply the boundary condition
@@ -266,6 +294,110 @@ classdef VSFlow < SPFlow
                 end
             end
         end
+
+
+        % % % % function flux = computeFlux(obj,bound,pot,pres,t)
+        % % % %     %COMPUTEFLUX - compute the flux at the faces, than accumulate
+        % % % %     %the value at the nodes.
+        % % % %     flux = zeros(obj.mesh.nNodes,3);
+        % % % %     if isFEMBased(obj.model,'Flow')
+        % % % %         % flux = fluidPot + gamma*obj.mesh.coordinates(:,3);
+        % % % %     elseif isFVTPFABased(obj.model,'Flow')
+        % % % %         nnodesBfaces = diff(obj.faces.mapN2F);
+        % % % %         neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+        % % % %         Node2Face = repelem((1:obj.faces.nFaces)',nnodesBfaces);
+        % % % %         sgn = 2*(obj.faces.faceNeighbors(:,1)==0) - 1;
+        % % % % 
+        % % % %         [mob ,~] = computeMobility(obj,pres);
+        % % % % 
+        % % % %         fluxFaces = zeros(obj.faces.nFaces,1);
+        % % % %         fluxFaces(obj.isIntFaces) = pot(neigh(:,1))-pot(neigh(:,2));
+        % % % %         fluxFaces(obj.isIntFaces) = mob.*obj.trans(obj.isIntFaces).*fluxFaces(obj.isIntFaces);
+        % % % % 
+        % % % %         faceUnit = obj.faces.faceNormal./vecnorm(obj.faces.faceNormal,2,2);
+        % % % %         % faceUnit = obj.faces.neighNormal;
+        % % % %         areaSq = vecnorm(obj.faces.faceNormal,2,2);
+        % % % %         areaSq = areaSq.*nnodesBfaces;
+        % % % %         fluxFaces = fluxFaces./areaSq;
+        % % % %         fluxFaces = fluxFaces.*faceUnit;  % flux at the faces
+        % % % % 
+        % % % %         % Contribution
+        % % % %         fluxFaces = repelem(fluxFaces,nnodesBfaces,1);
+        % % % %         axis = ones(length(obj.faces.nodes2Faces),1);
+        % % % %         flux = accumarray([[obj.faces.nodes2Faces axis]; ...
+        % % % %             [obj.faces.nodes2Faces 2*axis]; ...
+        % % % %             [obj.faces.nodes2Faces 3*axis]], fluxFaces(:));
+        % % % % 
+        % % % %         % add boundary condition
+        % % % %         bcList = bound.db.keys;
+        % % % %         for bc = string(bcList)
+        % % % %             field = translatePhysic(bound.getPhysics(bc),obj.model);
+        % % % %             for f = field
+        % % % %                 if field == "VSFlow"
+        % % % %                     v = bound.getVals(bc,t);
+        % % % %                     switch bound.getCond(bc)
+        % % % %                         case {'NodeBC','ElementBC'}
+        % % % %                         case 'SurfBC'
+        % % % %                             faceID = bound.getEntities(bc);
+        % % % %                             switch bound.getType(bc)
+        % % % %                                 case 'Neu'
+        % % % %                                     vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
+        % % % %                                 case 'Dir'
+        % % % %                                     ents = sum(obj.faces.faceNeighbors(faceID,:),2);
+        % % % %                                     gamma = obj.material.getFluid().getFluidSpecWeight();
+        % % % %                                     potBd = pot(ents)-(v+gamma*obj.faces.faceCentroid(faceID,3));
+        % % % %                                     mob = computeMobilityBoundary(obj,pres(ents),v,faceID);
+        % % % %                                     vals = mob.*obj.trans(faceID).*potBd;
+        % % % %                                 case 'Spg'
+        % % % %                                     zbc = obj.faces.faceCentroid(faceID,3);
+        % % % %                                     href = v(1);
+        % % % %                                     gamma = obj.material.getFluid().getFluidSpecWeight();
+        % % % %                                     v= gamma*(href-zbc);
+        % % % %                                     ents = sum(obj.faces.faceNeighbors(faceID,:),2);
+        % % % %                                     gamma = obj.material.getFluid().getFluidSpecWeight();
+        % % % %                                     potBd = pot(ents)-(v+gamma*obj.faces.faceCentroid(faceID,3));
+        % % % %                                     mob = computeMobilityBoundary(obj,pres(ents),v,faceID);
+        % % % %                                     vals = mob.*obj.trans(faceID).*potBd;
+        % % % %                             end
+        % % % %                             vals = sgn(faceID).*vals./areaSq(faceID).*faceUnit(faceID,:);
+        % % % %                             % sml = nnodesBfaces(faceID);
+        % % % %                             vals = -repelem(vals,nnodesBfaces(faceID),1);
+        % % % %                             nodes = obj.faces.nodes2Faces(ismember(Node2Face,faceID));
+        % % % %                             [loc,~,pos] = unique(nodes);
+        % % % %                             axis = ones(length(nodes),1);
+        % % % %                             fluxB = accumarray([[pos axis]; [pos 2*axis]; ...
+        % % % %                                 [pos 3*axis]], vals(:));
+        % % % %                             flux(loc,:)=fluxB;
+        % % % %                         case 'VolumeForce'
+        % % % %                             % Find the cell to apply the boundary condition
+        % % % %                             cellID = bound.getEntities(bc);
+        % % % %                             vals = v.*obj.elements.vol(cellID);
+        % % % %                             facesBcell = diff(obj.faces.mapF2E);
+        % % % % 
+        % % % %                             % Find the faces to distribute the contribution.
+        % % % %                             vals = vals./facesBcell(cellID);
+        % % % %                             vals = repelem(vals,facesBcell(cellID),1);
+        % % % % 
+        % % % %                             hf2Cell = repelem((1:obj.mesh.nCells)',facesBcell);
+        % % % %                             faceID = obj.faces.faces2Elements(hf2Cell == cellID,1);
+        % % % % 
+        % % % %                             vals = sgn(faceID).*vals./areaSq(faceID).*faceUnit(faceID,:);
+        % % % %                             vals = -repelem(vals,nnodesBfaces(faceID),1);
+        % % % %                             nodes = obj.faces.nodes2Faces(ismember(Node2Face,faceID));
+        % % % %                             [loc,~,pos] = unique(nodes);
+        % % % %                             axis = ones(length(nodes),1);
+        % % % %                             fluxB = accumarray([[pos axis]; [pos 2*axis]; ...
+        % % % %                                 [pos 3*axis]], vals(:));
+        % % % %                             flux(loc,:)=flux(loc,:)+fluxB;
+        % % % %                     end
+        % % % %                 end
+        % % % %             end
+        % % % %         end
+        % % % %     end
+        % % % % end
+
+        
+    
     end
 
     methods (Access = private)
@@ -337,7 +469,7 @@ classdef VSFlow < SPFlow
                 zfaces = obj.faces.faceCentroid(faceID,3);
 
                 cellz = obj.elements.cellCentroid(elms,3);
-                lElemIsUp = pcells - pface + gamma*(cellz- zfaces) >= 0;
+                lElemIsUp = (pcells - pface) + gamma*(cellz- zfaces) >= 0;
             else
                 lElemIsUp = pcells >= pface;
             end
@@ -369,7 +501,7 @@ classdef VSFlow < SPFlow
             if gamma > 0
                 zVec = obj.elements.cellCentroid(:,3);
                 zNeigh = zVec(neigh);
-                lElemIsUp = pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
+                lElemIsUp = (pkpt(neigh(:,1)) - pkpt(neigh(:,2))) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
             else
                 lElemIsUp = pkpt(neigh(:,1)) >= pkpt(neigh(:,2));
             end
@@ -421,6 +553,45 @@ classdef VSFlow < SPFlow
                 [Jh; -Jh], nDoF, nDoF);
         end
 
+
+        % % % % % % function Jh = computeJacobianPartJhNewton(obj,pTau,dMob)
+        % % % % % %     % COMPUTEJACOBIANFORNEWTONJFPART Method to compute the Jh part
+        % % % % % %     % of the jacobian used in the Newton-Raphson.
+        % % % % % %     %% Equation for the part.
+        % % % % % %     % $$ J_{h} = \theta p_{\tau}^{m}
+        % % % % % %     % \frac{\partial\lambda_{u}^{t+dt,m}}{\partial p_{t+dt}} \mathbf{T}$$
+        % % % % % %     % $$ J_{f} = \theta \gamma
+        % % % % % %     % \frac{\partial\lambda_{u}^{t+dt,m}}{\partial p_{t+dt}} \mathbf{T}$$
+        % % % % % %     % $$ J_{hf} = J_{h} + J_{f}$$
+        % % % % % % 
+        % % % % % %     % Define some values.
+        % % % % % %     theta = obj.simParams.theta;
+        % % % % % %     gamma = obj.material.getFluid.getFluidSpecWeight();
+        % % % % % % 
+        % % % % % %     % subCells = obj.dofm.getFieldCells(obj.field);
+        % % % % % % 
+        % % % % % %     % Get pairs of faces that contribute to the subdomain
+        % % % % % %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+        % % % % % %     zVec = obj.elements.cellCentroid(:,3);
+        % % % % % %     zNeigh = zVec(neigh);
+        % % % % % %     pTau = pTau(neigh);
+        % % % % % %     nneigh = length(dMob);
+        % % % % % %     % [~,~,reorder] = unique([neigh(:,1); neigh(:,2); obj.upElem'; subCells]);
+        % % % % % %     [~,~,reorder] = unique([neigh(:,1); neigh(:,2); obj.upElem']);
+        % % % % % %     neigh1 = reorder(1:nneigh);
+        % % % % % %     neigh2 = reorder(nneigh+1:2*nneigh);
+        % % % % % %     neighU = reorder(2*nneigh+1:3*nneigh);
+        % % % % % % 
+        % % % % % %     % Transmissibility of internal faces            
+        % % % % % %     Jh = theta*dMob.*obj.trans(obj.isIntFaces);
+        % % % % % %     Jh = Jh.*(pTau(:,1) - pTau(:,2) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
+        % % % % % % 
+        % % % % % %     % Computing the Jacobian Part.
+        % % % % % %     nDoF = obj.dofm.getNumDoF(obj.field);
+        % % % % % %     Jh = sparse( [neigh1; neigh2], [neighU; neighU], ...
+        % % % % % %         [Jh; -Jh], nDoF, nDoF);
+        % % % % % % end
+
         function Jp = computeJacobianPartJpNewton(obj,dt,pTmp,pOld,Stau,dStau,ddStau)
             % COMPUTEJACOBIANFORNEWTONPPART Method to compute the Jp part
             % of the jacobian used in the Newton-Raphson.
@@ -461,16 +632,11 @@ classdef VSFlow < SPFlow
             nDoF = obj.dofm.getNumDoF(obj.field);
             [~,~,dof] = unique(subCells);
             Jp = sparse(dof,dof,Jp,nDoF,nDoF);
+            % obj.H = obj.H + Jp;%---------------------
         end
     end
 
     methods (Static)
-        function state = buildState(state)
-         % Constructor for the all variables avaible in this module
-         state = SPFlow.buildState(state);
-         state.saturation = [];
-        end
-
         function [cellStr,pointStr] = buildPrintStruct(state)
             pointStr(1).name = 'flux';
             pointStr(1).data = state.flux;
@@ -484,92 +650,9 @@ classdef VSFlow < SPFlow
             cellStr(3).data = state.saturation;
             cellStr(4).name = 'permeability';
             cellStr(4).data = state.perm;
+            cellStr(4).name = 'mass_cons';
+            cellStr(4).data = state.mass;
         end
-    end
-
-    methods (Access = private)
-        % function JNewt = computeNewtPartOfJacobian(obj,dt,statek,stateTmp,pkpt,dSwkpt,d2Swkpt,dlwkpt)
-        %     subCells = obj.dofm.getFieldCells(obj.field);
-        %     nSubCells = length(subCells);
-        %     % compute matrices J1 and J2 (gathering non linear terms)
-        %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-        %     zVec = obj.elements.cellCentroid(:,3);
-        %     zNeigh = zVec(neigh);
-        %     gamma = obj.material.getFluid().getFluidSpecWeight();
-        %     tmpVec1 = (dlwkpt.*obj.trans(obj.isIntFaces)).*(pkpt(neigh(:,1)) - pkpt(neigh(:,2)) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
-        %     %
-        %     poroMat = zeros(obj.mesh.nCellTag,1);
-        %     alphaMat = zeros(obj.mesh.nCellTag,1);
-        %     beta = obj.material.getFluid().getFluidCompressibility();
-        %     for m = 1:obj.mesh.nCellTag
-        %         poroMat(m) = obj.material.getMaterial(m).PorousRock.getPorosity();
-        %         alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
-        %     end
-        %     tmpVec2 = alphaMat(obj.mesh.cellTag) + beta*poroMat(obj.mesh.cellTag);
-        %     tmpVec2 = 1/dt*((tmpVec2(subCells).*dSwkpt(subCells) + poroMat(obj.mesh.cellTag).*d2Swkpt(subCells)).*(stateTmp.pressure(subCells) - statek.pressure(subCells))).*obj.elements.vol(subCells);
-        %     [~,~,reordercells] = unique([neigh(:,1);neigh(:,2);obj.upElem';subCells]);
-        % 
-        %     nneigh = length(tmpVec1);
-        %     neigh1 = reordercells(1:nneigh);
-        %     neigh2 = reordercells(nneigh+1:2*nneigh);
-        %     neighU = reordercells(2*nneigh+1:3*nneigh);
-        %     JNewt = sparse([neigh1; neigh2; SubCells], ...
-        %         [neighU; neighU; SubCells], ...
-        %         [tmpVec1; -tmpVec1; tmpVec2],nSubCells,nSubCells);
-        % 
-        %     % [~,~,neigh1] = unique(neigh(:,1));
-        %     % [~,~,neigh2] = unique(neigh(:,2));
-        %     % [~,~,upElemdof] = unique(obj.upElem);
-        %     % JNewt = sparse([neigh1; neigh2; (1:nSubCells)'], ...
-        %     %     [repmat(upElemdof,[2,1]);  (1:nSubCells)'], ...
-        %     %     [tmpVec1; -tmpVec1; tmpVec2],nSubCells,nSubCells);
-        % 
-        %     JNewt = obj.simParams.theta*JNewt;
-        % end
-
-        % function [Jh, Jp] = computeNewtPartOfJacobian2(obj,dt,pTmp,pOld,dSwkpt,d2Swkpt,dlwkpt)
-        %     % Initial considerations.
-        %     subCells = obj.dofm.getFieldCells(obj.field);
-        %     nSubCells = length(subCells);
-        %     cellTag = obj.mesh.cellTag(subCells);
-        %     nCellTag = obj.mesh.nCellTag;
-        %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-        % 
-        %     theta = obj.simParams.theta;
-        %     gamma = obj.material.getFluid().getFluidSpecWeight();
-        %     beta = obj.material.getFluid().getFluidCompressibility();
-        % 
-        %     pTau = theta*pTmp+(1-theta)*pOld;
-        %     pTmp = pTmp(subCells);
-        %     pOld = pOld(subCells);
-        % 
-        %     % compute matrices J1 and J2 (gathering non linear terms)
-        %     % Computing Jh term
-        %     zVec = obj.elements.cellCentroid(:,3);
-        %     zNeigh = zVec(neigh);
-        %     pTau = pTau(neigh);
-        %     Jh = theta*dlwkpt.*obj.trans(obj.isIntFaces);
-        %     Jh = Jh.*(pTau(:,1) - pTau(:,2) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
-        % 
-        %     % Computing Jp term
-        %     poroMat = zeros(nCellTag,1);
-        %     alphaMat = zeros(nCellTag,1);            
-        %     for m = 1:nCellTag
-        %         poroMat(m) = obj.material.getMaterial(m).PorousRock.getPorosity();
-        %         alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
-        %     end
-        %     Jp = alphaMat(cellTag) + beta*poroMat(cellTag);
-        %     Jp = 1/dt*((Jp(subCells).*dSwkpt(subCells) + poroMat(cellTag).*d2Swkpt(subCells)).*(pTmp - pOld)).*obj.elements.vol(subCells);
-        % 
-        %     % Making the matrix's.
-        %     [~,~,neigh] = unique([neigh(:,1);neigh(:,2)]);
-        %     sumDiagTrans = accumarray(neigh,repmat(Jh,[2,1]),[nSubCells,1]);
-        %     Jh = sparse([neigh; subCells], ...
-        %         [neigh; subCells], ...
-        %         [-Jh;-Jh;sumDiagTrans], nSubCells, nSubCells);
-        % 
-        %     Jp = sparse(subCells,subCells,Jp,nSubCells,nSubCells);
-        % end
     end
 end
 

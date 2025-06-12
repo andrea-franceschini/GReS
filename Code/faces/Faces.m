@@ -281,6 +281,8 @@ classdef Faces < handle
 
         obj.neighNormal = vecA - vecB;
         obj.neighNormal = obj.neighNormal./vecnorm(obj.neighNormal,2,2);
+        % sgn = 2*(dot(obj.neighNormal,obj.faceNormal,2)>=0) - 1;
+        % obj.neighNormal = sgn.*obj.neighNormal;
     end
     
     function addFaces (obj, nnodes, tags)

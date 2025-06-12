@@ -9,14 +9,14 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 lc = 1e-2;
 
 // Models dimension
-x_len = 1; // 0.1 / 1
-y_len = 20; // 0.1 / 1
-z_len = 10; // 0.1 / 10
+x_len = 5; // 0.1 / 1
+y_len = 5; // 0.1 / 1
+z_len = 5; // 0.1 / 10
 
 // Mesh partition
-x_elm =  1; //  1 /  4
+x_elm = 20; //  1 /  4
 y_elm = 20; //  1 /  4
-z_elm = 10; // 30 / 40
+z_elm = 20; // 30 / 40
 
 // Model creation
 // Points
@@ -46,7 +46,7 @@ Recombine Surface {1}; // using hexahedra
 // extruding mesh along the z direction
 Extrude {0, 0, z_len} { Surface{1}; Layers{z_elm}; Recombine;}
 
-Physical Volume("domain", 1) = {1};
+Physical Volume("column", 1) = {1};
 Physical Surface("top",2) = {26};
 Physical Surface("bot",1) = {1};
 Physical Surface("latX0",5) = {21};
@@ -55,4 +55,4 @@ Physical Surface("latXM",3) = {13};
 Physical Surface("latYM",4) = {17};
 
 Mesh 3;
-Save "domain.msh";
+Save "Column.msh";

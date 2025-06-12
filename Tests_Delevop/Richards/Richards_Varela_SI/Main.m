@@ -16,8 +16,8 @@ simParam = SimulationParameters(fileName,model);
 topology = Mesh();
 
 % Set the input file name
-% fileName = strcat(input_dir,'Column.msh');
-fileName = strcat(input_dir,'Mesh/Column160.msh');
+fileName = strcat(input_dir,'Mesh/Column.msh');
+% fileName = strcat(input_dir,'Mesh/Column160.msh');
 
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);

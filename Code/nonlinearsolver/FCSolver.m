@@ -24,6 +24,7 @@ classdef FCSolver < handle
     tStep = 0
     iter
     dt
+    toGrow
   end
 
   properties (Access = public)
@@ -72,7 +73,8 @@ classdef FCSolver < handle
             end
         end
         obj.solStatistics = SolverStatistics(simParam.itMaxNR,simParam.relTol,simParam.absTol,saveStasticts);
-      % obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin);
+        % obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin);
+        % obj.toGrow = adapgrid(grid);
     end
 
     function [simStat] = NonLinearLoop(obj)

@@ -20,11 +20,11 @@ Elms[3] = 32; // 4  32
 // Fault partition
 PlaPer = 0.5;  // percent
 PlaEsp = 1;
-PlaAlp = Pi/2; // (30./90.)*Pi Pi/2
+PlaAlp = (90./180.)*Pi; // (30./90.)*Pi Pi/2
 PlaGam = Pi/2.-PlaAlp;
 
 ElmSF[1] = 16; // 2   16
-ElmSF[2] = 8; // 1    8
+ElmSF[2] = 4; // 1    8
 ElmSF[3] = Elms[3];
 
 compY = Cos(PlaAlp)*Dim[2];
