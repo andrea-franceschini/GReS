@@ -168,7 +168,7 @@ classdef Mesh < handle
       % Admitted grid formats: vtk (unstructured grids), gmsh;
       % calling MEX functions depending on file extension
       str = split(fileName,'.');
-      extension = str{2};
+      extension = str{end};
       switch extension
          case 'vtk'
             [obj.coordinates, elems] = mxImportVTKmesh(fileName);
@@ -227,7 +227,13 @@ classdef Mesh < handle
 
       % 2D ELEMENT DATA
       % cellsID = 2D surface tag for readGMSHmesh.cpp
+      % 2D ELEMENT DATA
+      % cellsID = 2D surface tag for readGMSHmesh.cpp
       cellsID = [5,9];
+      if strcmp(extension,'msh')
+        ID = ismember(elems(:,1), [2,3]);
+        elems(ID,1) = obj.typeMapping(elems(ID,1));
+      end
       ID = ismember(elems(:,1), cellsID);
       obj.surfaceNumVerts = elems(ID,3);
       nVerts = max(obj.surfaceNumVerts);
