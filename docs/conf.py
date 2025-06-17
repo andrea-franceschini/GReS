@@ -29,3 +29,6 @@ matlab_short_links = True
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
+
+# -- A few new commands -------------------------------------------------
+numfig = True

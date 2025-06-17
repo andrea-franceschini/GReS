@@ -45,35 +45,35 @@ classdef SPFlow < SinglePhysics
          state.pressure(ents) = state.pressure(ents) + dSol(obj.dofm.getDoF(obj.field));
       end
 
-      function fluidPot = finalizeState(obj,state)
-         fluidPot = state.pressure;
-         gamma = obj.material.getFluid().getFluidSpecWeight();
-         if gamma > 0
-            if isFEMBased(obj.model,'Flow')
-               fluidPot = fluidPot + gamma*obj.mesh.coordinates(:,3);
-            elseif isFVTPFABased(obj.model,'Flow')
-               fluidPot = fluidPot + gamma*obj.elements.cellCentroid(:,3);
-            end
-         end
+      function state = finalizeState(obj,state)
+         state.potential = computePotential(obj,state.pressure);
+         state.perm = printPermeab(obj);
+         % gamma = obj.material.getFluid().getFluidSpecWeight();
+         % if gamma > 0
+         %    if isFEMBased(obj.model,'Flow')
+         %       state.potential = state.potential + gamma*obj.mesh.coordinates(:,3);
+         %    elseif isFVTPFABased(obj.model,'Flow')
+         %       state.potential = state.potential + gamma*obj.elements.cellCentroid(:,3);
+         %    end
+         % end
       end
 
       function [cellData,pointData] = printState(obj,sOld,sNew,t)
          % append state variable to output structure
+         state = SPFlow.buildState([]);
          switch nargin
             case 2
-               fluidPot = finalizeState(obj,sOld);
-               pressure = sOld.pressure;
+               state.pressure = sOld.pressure;
             case 4
                % linearly interpolate state variables containing print time
                fac = (t - sOld.t)/(sNew.t - sOld.t);
-               fluidPotOld = finalizeState(obj,sOld);
-               fluidPotNew = finalizeState(obj,sNew);
-               fluidPot = fluidPotNew*fac+fluidPotOld*(1-fac);
-               pressure = sNew.pressure*fac+sOld.pressure*(1-fac);
+               state.pressure = sNew.pressure*fac+sOld.pressure*(1-fac);
             otherwise
                error('Wrong number of input arguments');
          end
-         [cellData,pointData] = SPFlow.buildPrintStruct(obj.model,pressure,fluidPot);
+         % posprocessing the structure of VSFlow.
+         state = finalizeState(obj,state);
+         [cellData,pointData] = SPFlow.buildPrintStruct(obj.model,state);
       end
 
       function state = computeMat(obj,state,~,dt)
@@ -168,21 +168,21 @@ classdef SPFlow < SinglePhysics
          subCells = obj.dofm.getFieldCells(obj.field);
          nSubCells = length(subCells);
          %get pairs of faces that contribute to the subdomain
-         neigh1 = obj.faces.faceNeighbors(obj.isIntFaces,1);
-         neigh2 = obj.faces.faceNeighbors(obj.isIntFaces,2);
+         neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
          % Transmissibility of internal faces
          tmpVec = lw.*obj.trans(obj.isIntFaces);
-         % tmpVec = lw.*tmpVec;
-         [~,~,neigh1] = unique(neigh1);
-         [~,~,neigh2] = unique(neigh2);
-         sumDiagTrans = accumarray([neigh1; neigh2], ...
-            repmat(tmpVec,[2,1]),[nSubCells,1]);
+         nneigh = length(tmpVec);
+         % [~,~,reorder] = unique([neigh(:,1); neigh(:,2); subCells]);
+         [~,~,reorder] = unique([neigh(:,1); neigh(:,2)]);
+         neigh1 = reorder(1:nneigh);
+         neigh2 = reorder(nneigh+1:2*nneigh);
+         sumDiagTrans = accumarray( [neigh1;neigh2], repmat(tmpVec,[2,1]), ...
+             [nSubCells,1]);
          % Assemble H matrix
          nDoF = obj.dofm.getNumDoF(obj.field);
-         obj.H = sparse([neigh1; neigh2; (1:nSubCells)'], ...
-            [neigh2; neigh1; (1:nSubCells)'], ...
-            [-tmpVec; -tmpVec; ...
-            sumDiagTrans],nDoF,nDoF);
+         obj.H = sparse([neigh1; neigh2; (1:nSubCells)'],...
+             [neigh2; neigh1; (1:nSubCells)'],...
+             [-tmpVec; -tmpVec; sumDiagTrans], nDoF, nDoF);
       end
 
 
@@ -261,7 +261,7 @@ classdef SPFlow < SinglePhysics
                   end
                   %
                   entsId = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
-                  rhsTmp = rhsTmp(entsId) + rhsLoc;
+                  rhsTmp(entsId) = rhsTmp(entsId) + rhsLoc;
                end
                obj.rhsGrav = rhsTmp(obj.dofm.getActiveEnts(obj.field));
             elseif isFVTPFABased(obj.model,'Flow')
@@ -292,18 +292,20 @@ classdef SPFlow < SinglePhysics
                if isFVTPFABased(obj.model,'Flow')
                   faceID = bc.getEntities(id);
                   ents = sum(obj.faces.faceNeighbors(faceID,:),2);
-                  [ents,~,ind] = unique(ents);
+                  %[ents,~,ind] = unique(ents1);
                   switch bc.getType(id)
                      case 'Neu'
-                        area = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
-                        vals = accumarray(ind, area);
+                        vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
                      case 'Dir'
                         gamma = obj.material.getFluid().getFluidSpecWeight();
                         mu = obj.material.getFluid().getDynViscosity();
                         tr = obj.getFaceTransmissibilities(faceID);
+                       % q(ind) = 1/mu*tr.*((state.pressure(ents) - v)...
+                       % + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID(ind),3)));
                         q = 1/mu*tr.*((state.pressure(ents) - v)...
                            + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
-                        vals = [1/mu*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
+                       %vals = [1/mu*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
+                       vals = [1/mu*tr,q];
                   end
                elseif isFEMBased(obj.model,'Flow')
                   ents = bc.getLoadedEntities(id);
@@ -396,6 +398,37 @@ classdef SPFlow < SinglePhysics
          obj.trans = 1 ./ accumarray(obj.faces.faces2Elements(:,1),1 ./ hT,[obj.faces.nFaces,1]);
       end
 
+      function potential = computePotential(obj,pressure)
+          %COMPUTEFLUX - compute the potential for the cell or element.
+          potential = pressure;
+          gamma = obj.material.getFluid().getFluidSpecWeight();
+          if gamma > 0
+              if isFEMBased(obj.model,'Flow')
+                  potential = potential + gamma*obj.mesh.coordinates(:,3);
+              elseif isFVTPFABased(obj.model,'Flow')
+                  potential = potential + gamma*obj.elements.cellCentroid(:,3);
+              end
+          end
+   end
+
+      function perm = printPermeab(obj)
+          %printPropState - print the potential for the cell or element.
+          if isFEMBased(obj.model,'Flow')
+            % flux = fluidPot + gamma*obj.mesh.coordinates(:,3);
+          elseif isFVTPFABased(obj.model,'Flow')
+              perm = zeros(obj.mesh.nCells,6);
+              for el=1:obj.mesh.nCells
+                  ktmp = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+                  perm(el,1)=ktmp(1,1);
+                  perm(el,2)=ktmp(2,2);
+                  perm(el,3)=ktmp(3,3);
+                  perm(el,4)=ktmp(1,2);
+                  perm(el,5)=ktmp(2,3);
+                  perm(el,6)=ktmp(1,3);
+              end
+          end
+      end
+
    end
 
    methods (Access=private)
@@ -436,21 +469,30 @@ classdef SPFlow < SinglePhysics
    end
 
    methods (Static)
-      function [cellStr,pointStr] = buildPrintStruct(mod,press,pot)
+      function state = buildState(state)
+         % Constructor for the all variables avaible in this module
+         state.pressure = [];
+         state.potential = [];
+         state.perm = [];
+      end
+
+      function [cellStr,pointStr] = buildPrintStruct(mod,state)
          if isFEMBased(mod,'Flow')
             cellStr = [];
             pointStr = repmat(struct('name', 1, 'data', 1), 2, 1);
             pointStr(1).name = 'pressure';
-            pointStr(1).data = press;
+            pointStr(1).data = state.pressure;
             pointStr(2).name = 'potential';
-            pointStr(2).data = pot;
+            pointStr(2).data = state.potential;
          elseif isFVTPFABased(mod,'Flow')
             pointStr = [];
-            cellStr = repmat(struct('name', 1, 'data', 1), 2, 1);
+            cellStr = repmat(struct('name', 1, 'data', 1), 3, 1);
             cellStr(1).name = 'pressure';
-            cellStr(1).data = press;
+            cellStr(1).data = state.pressure;
             cellStr(2).name = 'potential';
-            cellStr(2).data = pot;
+            cellStr(2).data = state.potential;
+            cellStr(3).name = 'permeability';
+            cellStr(3).data = state.perm;
          end
       end
    end

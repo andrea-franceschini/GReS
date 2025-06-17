@@ -47,7 +47,8 @@ classdef tabMaterials < handle
           elseif nargout == 3
               [varargout{1}(isElMat), varargout{2}(isElMat), varargout{3}(isElMat)] = obj.getMaterial(m).CapillaryCurve.interpTable(p);
           end
-        Swr = obj.getMaterial(m).PorousRock.getWaterResSat();
+        % Swr = obj.getMaterial(m).PorousRock.getWaterResSat();
+        Swr = obj.getFluid().getResidualSaturation();
         varargout{1}(isElMat) = Swr + (1-Swr)*varargout{1}(isElMat);
         if nargout > 1
             varargout{2}(isElMat) = (1-Swr)*varargout{2}(isElMat);
