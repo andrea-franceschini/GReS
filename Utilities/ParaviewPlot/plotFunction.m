@@ -4,6 +4,7 @@ function  plotFunction(mesh, foldName, funct, varargin)
 outVTK = VTKOutput(mesh, foldName); % create VTK object
 pointData.name = 'solution';
 pointData.data = funct;
+outVTK.writeVTKFile(0, [], [], [], []);
 if isempty(varargin) || strcmpi(varargin{1},'node')
    if ~isempty(mesh.cells)
       outVTK.writeVTKFile(0, pointData, [], [], []);
