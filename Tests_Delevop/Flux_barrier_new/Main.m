@@ -20,7 +20,6 @@ topology = Mesh();
 
 % Set the input file name
 fileName = strcat(input_dir,'Mesh/Fault.msh');
-% fileName = strcat(input_dir,'Mesh/Pillar.msh');
 
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -57,30 +56,27 @@ linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 state = linSyst.setState();
 
 % set initial conditions directly modifying the state object
-state.pressure(:) = 0;%1.e5;
+state.pressure(:) = 1.e5;
 % state.potential(:) = state.pressure+ mat.getFluid().getFluidSpecWeight()*topology.elements.cellCentroid(:,3);
 
 % Create and set the print utility
 printUtils = OutState(model,topology,strcat(input_dir,'outTime.dat'), ...
     'folderName','Outputs');
 
-% printState(printUtils,state)
-
 % Creating and Appling boundaries conditions.
-% cond = struct('name',[],'type',[],'field',[],'values',[],'times',[]);
-% cond(1).name = 'BoundA';
-% cond(1).type = 'Dir';
-% cond(1).field = "latY0";
-% cond(1).times = 0.;
-% cond(1).values = 1e6;
-% cond(2).name = 'BoundB';
-% cond(2).type = 'Dir';
-% cond(2).field = "latYM";
-% cond(2).times = 0.;
-% cond(2).values = 1e5;
-% 
-% fileName = setBoundaryC('Inputs',grid,cond);
-fileName = ["Inputs/BC_BoundA.dat","Inputs/BC_BoundB.dat"];
+cond = struct('name',[],'type',[],'field',[],'values',[],'times',[]);
+cond(1).name = 'BoundA';
+cond(1).type = 'Dir';
+cond(1).field = "latY0";
+cond(1).times = 0.;
+cond(1).values = 1e6;
+cond(2).name = 'BoundB';
+cond(2).type = 'Dir';
+cond(2).field = "latYM";
+cond(2).times = 0.;
+cond(2).values = 1e5;
+
+fileName = setBoundaryC('Inputs',grid,cond);
 bound = Boundaries(fileName,model,grid);
 
 % Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);

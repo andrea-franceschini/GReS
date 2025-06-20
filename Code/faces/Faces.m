@@ -10,8 +10,8 @@ classdef Faces < handle
     faceNeighbors    % IDs of the cells to the left and right of each face (nf x 2 matrix)
     faceCentroid     % Centroid coordinates of each face
     faceNormal       % Normal to each face (the magnitude of the vector is equal to the area)
-    neighNormal      % Normal between the cells in faceNeighbors (in the boundary is the center of the face)
     nFaces           % # of faces
+    % neighNormal      % Normal between the cells in faceNeighbors (in the boundary is the center of the face)
   end
   
   properties (Access = private)
@@ -25,7 +25,7 @@ classdef Faces < handle
       %   Detailed explanation goes here
       obj.setFaces(simmod,msh);
     end
-    %     Triangle:
+%     Triangle:
 % 
 %     v
 %     ^
@@ -82,7 +82,6 @@ classdef Faces < handle
     function setFaces(obj,simmod,msh)
       obj.mesh = msh;
       obj.model = simmod;
-      %
 % % %       if obj.mesh.nSurfaces > 0
 % % %         obj.nFaces = obj.mesh.nSurfaces;
 % % %         areaSurf = zeros(obj.mesh.nSurfaces,1);
@@ -103,11 +102,10 @@ classdef Faces < handle
 % % %         aNod = repelem(areaSurf,obj.mesh.surfaceNumVerts); %./obj.mesh.surfaceNumVerts;
 % % %         obj.nodeArea = sparse(rowID,colID,aNod,length(obj.loadedNodesSurf),obj.mesh.nSurfaces);
 % % %       end
-      %
       if obj.model.isFVTPFABased('Flow')
         obj.setupFaceTopology;
         obj.computeFaceProperties;
-        obj.addNeighborsNormal;
+        % obj.addNeighborsNormal;
       end
     end
         
@@ -172,7 +170,7 @@ classdef Faces < handle
         obj.mesh.coordinates(obj.nodes2Faces(ptr),:) + repelem(obj.faceCentroid,nNF,1))/3;
       obj.faceCentroid = reshape(sum(reshape((areaTri.*centroidTri)',3,4,[]),2),3,[])';
       obj.faceCentroid = obj.faceCentroid.*(1./faceArea);
-      %
+
       obj.faceNormal = obj.faceNormal./(vecnorm(obj.faceNormal,2,2)).*faceArea;
 
 %       nNF = diff(obj.mapN2F);
@@ -445,7 +443,7 @@ classdef Faces < handle
        r   = unique(r);
        ix  = Faces.mcolon(obj.mapF2E(r)+num(r), obj.mapF2E(r+1)-1);
        newData = zeros(size(obj.faces2Elements, 1)+size(new, 1), size(obj.faces2Elements, 2));
-       i    = (1:size(newData))';
+       i    = (1:size(newData,1))';  % IN WINDOWS, THIS LINE GIVE AN ERROR IF NOT SPECIFIED THE POSITION IN "SIZE"
        i(ix)=[];
        newData(i, :) = obj.faces2Elements;
        newData(ix,1:size(new,2)) = new;
