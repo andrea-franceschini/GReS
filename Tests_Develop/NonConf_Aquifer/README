@@ -1,0 +1,11 @@
+Step by step modeling
+
+1) Mech_only: 1 interface and 1 physic (poromechanics);
+
+2) Mech+flow: 1 interface. 1 domain only poro, the other with flow;
+
+3) Single_aquifer
+
+4) MultiAquifer
+
+5) MultiAquifer: final model with 150k dofs (62k in condensated lin syst with coarse master sides)

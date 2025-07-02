@@ -1,0 +1,15 @@
+180                  % Simulation end time
+0.2                % Initial time step size
+1.e-5                % Minimum time step size
+5                   % Maximum time step size
+Default               % Time step increment augmentation factor (multiplicative)
+Default               % Time step increment chopping factor (multiplicative)
+100000000000          % Pressure increment target between consecutive time steps
+Default               % Relaxation factor for time step increment
+Default               % Theta parameter for Newmark method (time integration)
+1.e-6                 % Relative tolerance for the nonlinear solver
+1.e-9                 % Absolute tolerance for the nonlinear solver
+Default               % p-value for the residual norm
+Newton                % Nonlinear solver (Picard, Newton)
+7                    % Maximum number of nonlinear iterations before chopping
+End

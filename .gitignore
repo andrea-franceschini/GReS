@@ -1,0 +1,56 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# VTK files
+*.vtu
+*.vtm
+*.pvd
+
+# Matlab files
+#*.mat
+
+# asv files
+*.asv
+
+# Output folders with vtk files
+#/Tests_Develop/
+
+
+# Temporary folders with external classes
+/Code/cross_grid/
+
+# Manual
+/Manual/
+
+# Compiler  builds
+/ThirdPartLibs/*/build

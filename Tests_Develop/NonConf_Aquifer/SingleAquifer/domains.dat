@@ -1,0 +1,50 @@
+% Input for multidomain simulations 
+% Domain 1 
+<Domain> 
+<Name> 
+Overburden
+<ModelType>
+Poromechanics_FEM 
+<Geometry> 
+Mesh/Overburden.msh
+<Material> 
+Materials/BurdensList.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+ 
+% Domain 2 
+<Domain> 
+<Name> 
+Reservoir
+<ModelType>
+Poromechanics_FEM,SinglePhaseFlow_FEM
+<Geometry> 
+Mesh/Reservoir.msh
+<Material> 
+Materials/Reservoir_list.dat
+<BoundaryConditions> 
+2
+BCs/press_erog.dat
+BCs/press_inj.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+ 
+% Domain 3 
+<Domain> 
+<Name> 
+Underburden
+<ModelType>
+Poromechanics_FEM 
+<Geometry> 
+Mesh/Underburden.msh
+<Material> 
+BurdensList.dat
+<BoundaryConditions> 
+1
+BCs/bottom_fixed.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+ 

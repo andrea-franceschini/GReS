@@ -1,0 +1,40 @@
+% Input for multidomain simulations 
+% Domain 1 
+<Domain> 
+<Name> 
+Left_block_tetra_dual
+<ModelType> 
+Poromechanics_FEM
+<Geometry> 
+Mesh/LeftBlock_tetra.msh
+<Material> 
+Materials/MaterialsList.dat
+<BoundaryConditions> 
+3
+BCs/leftBot.dat
+BCs/leftLat.dat
+BCs/leftYFix.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+ 
+% Domain 2 
+<Domain> 
+<Name> 
+Right_block_tetra_dual
+<ModelType> 
+Poromechanics_FEM
+<Geometry> 
+Mesh/RightBlock_tetra.msh
+<Material> 
+Materials/MaterialsList.dat
+<BoundaryConditions> 
+4
+BCs/rightBot.dat
+BCs/rightYFix.dat
+BCs/rightLatLoad.dat
+BCs/rightTopLoad.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+ 

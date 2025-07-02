@@ -1,0 +1,67 @@
+_____________________________________________________________________
+Running convergence analysis with RBF integration - 6 GP 
+_____________________________________________________________________
+Using 5 interpolation points _____________________________________________________________________
+Running mesh refinement 1 
+_____________________________________________________________________
+convergence_analysis
+[Warning: File not found or permission denied] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D_twoDomain_curve\convergence_analysis.m', 5)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D_twoDomain_curve\convergence_analysis.m',5,0)">line 5</a>)] 
+_____________________________________________________________________
+Running convergence analysis with RBF integration - 6 GP 
+_____________________________________________________________________
+Using 5 interpolation points _____________________________________________________________________
+Running mesh refinement 1 
+_____________________________________________________________________
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.0938 s 
+0     5.015536e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.1406 s 
+1     1.954056e-15
+Max absolute error is: 1.025093e-02 
+_____________________________________________________________________
+Running mesh refinement 2 
+_____________________________________________________________________
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.6250 s 
+0     4.509109e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.6875 s 
+1     2.518193e-15
+Max absolute error is: 1.084791e-03 
+_____________________________________________________________________
+Running mesh refinement 3 
+_____________________________________________________________________
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 2.9844 s 
+0     4.418873e+00
+Solving linear system...
+{Error using <a href="matlab:matlab.internal.language.introspective.errorDocCallback('ichol')" style="font-weight:bold">ichol</a>
+Input must be structurally nonsingular with structurally nonzero diagonal.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/solve', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 198)" style="font-weight:bold">MultidomainFCSolver/solve</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',198,0)">line 198</a>)
+          L = ichol(J);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/NonLinearLoop', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 86)" style="font-weight:bold">MultidomainFCSolver/NonLinearLoop</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',86,0)">line 86</a>)
+          du = solve(obj,J,rhs);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D_twoDomain_curve\convergence_analysis.m', 131)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D_twoDomain_curve\convergence_analysis.m',131,0)">line 131</a>)
+        solver.NonLinearLoop();
+} 
+convergence_analysis

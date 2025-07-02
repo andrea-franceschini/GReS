@@ -1,0 +1,7 @@
+NodeBC                             % BC item
+Dir                                % BC type
+Flow                               % Physics
+prodDirElem                        % BC name
+prodDirElem/list
+0.0000  prodDirElem/time0.dat
+End

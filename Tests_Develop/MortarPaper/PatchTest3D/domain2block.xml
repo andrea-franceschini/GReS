@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<struct>
+    <Domain>
+        <Name>Cube_bot</Name>
+        <ModelType>Poromechanics_FEM</ModelType>
+        <Gauss>2</Gauss>
+      <Material>Materials/MaterialsList.dat</Material>
+        <BoundaryConditions count="1">
+            <File>BCs/bc_bot.dat</File>
+        </BoundaryConditions>
+        <OutState>outTime.dat</OutState>
+        <Geometry>Mesh/bottom.vtk</Geometry>
+    </Domain>
+    <Domain>
+        <Name>Cube_TOP</Name>
+        <ModelType>Poromechanics_FEM</ModelType>
+        <Gauss>2</Gauss>
+        <BoundaryConditions count="1">
+            <File>BCs/bc_top.dat</File>
+        </BoundaryConditions>
+       <Material>Materials/MaterialsList.dat</Material>
+        <OutState>outTime.dat</OutState>
+        <Geometry>Mesh/top.vtk</Geometry>
+    </Domain>
+</struct>

@@ -1,0 +1,7 @@
+SurfBC            % BC item 
+Dir            % BC type 
+Flow            % Physics 
+topFix            % BC name 
+Fluid/dir_top_flow/list 
+0.000000 Fluid/dir_top_flow/time0.dat 
+end

@@ -1,0 +1,50 @@
+% Input for multidomain simulations 
+% Domain 3 
+<Domain> 
+<Name> 
+L3_test
+<ModelType>
+Poromechanics_FEM 
+<Geometry> 
+Mesh/L3.msh
+<Material> 
+Materials/aquitard.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+
+% Domain 4 
+<Domain> 
+<Name> 
+L4_test
+<ModelType>
+Poromechanics_FEM,SinglePhaseFlow_FEM
+<Geometry> 
+Mesh/L4.msh
+<Material> 
+Materials/aquifer.dat
+<BoundaryConditions> 
+2
+BCs/inj_L4.dat
+BCs/erog_L4.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+
+% Domain 5 
+<Domain> 
+<Name> 
+L5_test
+<ModelType>
+Poromechanics_FEM 
+<Geometry> 
+Mesh/L5.msh
+<Material> 
+Materials/aquitard.dat
+<BoundaryConditions> 
+1
+BCs/bot_fix_L5.dat
+<OutState> 
+outTime.dat
+<EndDomain> 
+ 

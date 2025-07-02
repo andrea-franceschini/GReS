@@ -1,0 +1,7 @@
+SSCM                              % material model
+0.3 0.61e-01 0.84e-02 0.11e-02 2.73785e-03 0.0 0.133000e+01 0.523599e+00 1.39
+End
+
+Elastic                           % material model
+1.5e3      0.3                    % E [kPa], nu
+End

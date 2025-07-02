@@ -1,0 +1,7 @@
+SurfBC                            % BC item
+Neu                               % BC type
+SinglePhaseFlow                   % Physics
+Impermeable                       % BC name
+Impermeable/list
+0.000000 Impermeable/time0.dat
+End

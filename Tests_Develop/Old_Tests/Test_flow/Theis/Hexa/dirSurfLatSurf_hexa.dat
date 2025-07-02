@@ -1,0 +1,19 @@
+SurfBC                            % BC item
+Dir                               % BC type
+Flow                              % Physics
+latSurf                           % BC name
+dirSurfLatSurf_hexa/list
+0.000000 dirSurfLatSurf_hexa/time0.dat
+0.500000 dirSurfLatSurf_hexa/time1.dat
+1.000000 dirSurfLatSurf_hexa/time2.dat
+10.000000 dirSurfLatSurf_hexa/time3.dat
+20.000000 dirSurfLatSurf_hexa/time4.dat
+40.000000 dirSurfLatSurf_hexa/time5.dat
+60.000000 dirSurfLatSurf_hexa/time6.dat
+80.000000 dirSurfLatSurf_hexa/time7.dat
+100.000000 dirSurfLatSurf_hexa/time8.dat
+125.000000 dirSurfLatSurf_hexa/time9.dat
+150.000000 dirSurfLatSurf_hexa/time10.dat
+175.000000 dirSurfLatSurf_hexa/time11.dat
+200.000000 dirSurfLatSurf_hexa/time12.dat
+End
