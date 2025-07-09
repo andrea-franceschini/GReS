@@ -44,7 +44,7 @@ setBCfiles(leftMesh,rightMesh);
 domainFile = 'Domains/domains.xml';
 interfFile = 'interface.xml';
 simParam = SimulationParameters('simParam.dat');
-domains = buildModelStruct_new(domainFile,simParam);
+domains = buildModelStruct(domainFile,simParam);
 %scale domain size to millimiters
 [interfaces,domains] = Mortar.buildInterfaceStruct(interfFile,domains);
 

@@ -36,21 +36,22 @@ classdef Triangle < FEM
 
       if isscalar(in)
         % 3D setting
-        coord = obj.mesh.coordinates(obj.mesh.surfaces(in,:),1:obj.mesh.nDim);
-        J = pagemtimes(obj.Jref,coord);
+        outVar1 = getDerBasisF(obj,in);
         % jacobian is constant in a simplex
-        obj.detJ = norm(cross(J(1,:,1),J(2,:,1)),2);
-        outVar1 = obj.detJ.*(obj.GaussPts.weight)';
+        obj.detJ = det([1 obj.mesh.coordinates(obj.mesh.surfaces(in,1),1:2);
+        1 obj.mesh.coordinates(obj.mesh.surfaces(in,2),1:2);
+        1 obj.mesh.coordinates(obj.mesh.surfaces(in,3),1:2)]);
+        outVar2 = obj.detJ.*(obj.GaussPts.weight)';
       else
         % 2D setting: 'in' is a given list of x-y coordinates
-        J = pagemtimes(obj.Jref,in);
-        obj.detJ = det(J);
+        inv_A = inv([ones(3,1), in]);
+        mat = inv_A(2:3,:);
+        v1 = norm(in(1,:)-in(2,:));
+        v2 = norm(in(1,:)-in(3,:));
+        obj.detJ = v1*v2;
         % jacobian is constant in a simplex
         if nargout == 2
-          for i=1:obj.GaussPts.nNode
-            J(:,:,i) = inv(J(:,:,i));
-          end
-          outVar1 = pagemtimes(J,obj.Jref);
+          outVar1 = mat;
           outVar2 = obj.detJ.*(obj.GaussPts.weight)';
         else
           outVar1 = obj.detJ*(obj.GaussPts.weight)';
@@ -101,7 +102,7 @@ classdef Triangle < FEM
       i = 0;
       for el = idTri'
         i = i + 1;
-        dJWeighed = getDerBasisFAndDet(obj,el);
+        [~,dJWeighed] = getDerBasisFAndDet(obj,el);
         area(i) = sum(dJWeighed);
         assert(area(i)>0,'Volume less than 0');
         coord = obj.mesh.coordinates(obj.mesh.surfaces(idTri,:),:);
@@ -124,7 +125,7 @@ classdef Triangle < FEM
 
     function areaNod = findNodeArea(obj,el)
       areaNod = (1/obj.nNode)*obj.mesh.surfaceArea(el);
-      areaNod = repelem(areaNod,obj.nNode);
+      areaNod = repelem(areaNod,obj.nNode,1);
     end
 
     function n_a = computeAreaNod(obj,surfMsh)

@@ -47,6 +47,8 @@ classdef Mesh < handle
     edges
     % 1D elements' tag (region)
     edgeTag
+    % Number of nodes of the 2D element
+    edgeNumVerts
     % Flag for Cartesian grids
     cartGrid = false;
     % Regions
@@ -56,6 +58,9 @@ classdef Mesh < handle
     cellVTKType;
     % 2D element VTK type tag
     surfaceVTKType;
+    % 1D element VTK type tag
+    edgeVTKType
+    %
     meshType = 'Unstructured'
   end
 
@@ -80,7 +85,8 @@ classdef Mesh < handle
 
     % Available types in gmsh
     cellVTK = [10, 12, 29];
-    surfaceVTK = [5, 9, 28]
+    surfaceVTK = [5, 9, 28];
+    edgeVTK = [3,21];
   end
 
   methods (Access = public)
@@ -241,13 +247,6 @@ classdef Mesh < handle
       obj.nSurfaces = length(obj.surfaceTag);
       obj.nSurfaceTag = max(obj.surfaceTag);
       %
-
-      %       % 1D ELEMENT DATA
-      %       % cellsID = 2D surface tag for readGMSHmesh.cpp
-      %       ID = ismember(elems(:,1), cellsID);
-      %       obj.edges = elems(ID,4:5);
-      %       obj.edgeTag = elems(ID,2);
-      %       obj.nEdges = length(obj.edgeTag);
       %       %
       % REGIONS DATA FOR 2D ELEMENT
       if exist("regions",'var')
@@ -261,6 +260,16 @@ classdef Mesh < handle
         end
         %
       end
+
+      % 1D ELEMENT DATA
+      % cellsID = 2D surface tag for readGMSHmesh.cpp
+      ID = ismember(elems(:,1), obj.edgeVTK);
+      obj.edgeNumVerts = elems(ID,3);
+      nVerts = max(obj.edgeNumVerts);
+      obj.edges = elems(ID,4:nVerts+3);
+      obj.edgeTag = elems(ID,2);
+      obj.edgeVTKType = elems(ID,1);
+      obj.nEdges = length(obj.edgeTag);
     end
 
 

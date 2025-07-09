@@ -220,6 +220,9 @@ classdef Discretizer < handle
       end
 
       function checkTimeDependence(obj,mod,mat,parm)
+        if isempty(parm)
+          return
+        end
         % check if there is any time dependence in the input model
         % no time dependence in absence of flow and
         % incompressible single phase flow model.

@@ -185,7 +185,6 @@ classdef MultidomainFCSolver < handle
 
 
     function sol = solve(obj,J,rhs)
-
       % solve unstabilized system
       J = FCSolver.cell2matJac(J);
       rhs = cell2mat(rhs);

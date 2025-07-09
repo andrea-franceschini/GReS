@@ -63,8 +63,8 @@ classdef QuadrilateralQuadratic < FEM
         % 2D - in is a given list of x-y coordinates for nodes
         J = pagemtimes(obj.Jref,in);
         for i=1:obj.GaussPts.nNode
-          J(:,:,i) = inv(J(:,:,i));
           obj.detJ(i) = det(J(:,:,i));
+          J(:,:,i) = inv(J(:,:,i));
         end
         outVar1 = pagemtimes(J,obj.Jref);
         outVar2 = obj.detJ.*(obj.GaussPts.weight)';

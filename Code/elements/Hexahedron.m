@@ -95,7 +95,7 @@ classdef Hexahedron < FEM
         for i=1:obj.GaussPts.nNode
           J(:,:,i) = inv(J(:,:,i));
         end
-        outVar1 = pagemtimes(J,obj.Jb);
+        outVar1 = pagemtimes(J,obj.Jref);
       end
     end
 

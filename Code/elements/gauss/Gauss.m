@@ -25,6 +25,9 @@ classdef Gauss < handle
       %METHOD1 Summary of this method goes here
       %   Detailed explanation goes here
       switch cType
+        case {3,21} % 1D gauss rule
+           [obj.coord,obj.weight] = Gauss.points1D(nG);
+           obj.nNode = numel(obj.weight);
         case 5 % Triangle
           [c,w] = Gauss.pointsTriangle(nG);
           obj.coord = c;

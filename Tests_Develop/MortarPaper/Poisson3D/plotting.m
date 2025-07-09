@@ -44,7 +44,7 @@ for i_t = integration_type
         fname = fname + "_" + num2str(n_i);
       end
       fname = fname+".mat";
-      out = load(fullfile("OUT_HEXA27",fname));
+      out = load(fullfile("Output/OUT_HEXA27_2",fname));
       L2 = out.L2norm;
       H1 = out.H1norm;
       nref = numel(L2);

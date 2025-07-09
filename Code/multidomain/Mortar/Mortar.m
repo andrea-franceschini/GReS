@@ -39,7 +39,12 @@ classdef Mortar < handle
           nInt = inputStruct.Quadrature.nIntAttribute;
           obj.elements = [Elements(obj.mesh.msh(1),nG),...
             Elements(obj.mesh.msh(2),nG)];
-          obj.quadrature = RBFquadrature(obj,nInt);
+          if isfield(inputStruct.Quadrature,"rbfAttribute")
+            type = inputStruct.Quadrature.rbfAttribute;
+            obj.quadrature = RBFquadrature(obj,nInt,type);
+          else
+            obj.quadrature = RBFquadrature(obj,nInt);
+          end
         case 'ElementBased'
            nG = inputStruct.Quadrature.nGPAttribute;
           obj.elements = [Elements(obj.mesh.msh(1),nG),...

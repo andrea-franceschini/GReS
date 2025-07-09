@@ -11,6 +11,7 @@ classdef RBFquadrature < handle
     wSupp     % weight for support detection in higher order elements
     ptsRBF    % position of interpolation points
     vecPts    % pointer of each element to location in ptsRBF
+    rbfType = 'gauss'
   end
 
   properties (Access = private)
@@ -21,14 +22,17 @@ classdef RBFquadrature < handle
     tempNs
     tempNmult
     tempNbubble
-    suppFlag       
+    suppFlag
   end
 
   methods
-    function obj = RBFquadrature(mortar,nInt)
+    function obj = RBFquadrature(mortar,nInt,type)
       %
       obj.mortar = mortar;
       obj.nInt = nInt;
+      if nargin > 2
+        obj.rbfType = type;
+      end
       getWeights(obj); % interpolation weights for master basis function
     end
 
@@ -108,7 +112,7 @@ classdef RBFquadrature < handle
       Nm = (fiNM*obj.wF(:,v(1)+1:v(1)+nN))./(fiNM*obj.w1(:,v(3)));
 
       % automatically detect supports computing interpolant
-      tol = 1e-4;
+      tol = 1e-3;
       if size(Nm,2) > 4
         % higher order elements
         Nsupp = (fiNM*obj.wSupp(1:v(2),3*v(3)-[2 1 0]))./(fiNM*obj.w1(:,v(3)));
@@ -222,7 +226,7 @@ classdef RBFquadrature < handle
     function fiMM = computeRBFfiMM(obj,ptsInt)
       r = obj.computeRBFradius(ptsInt);
       d = sqrt((ptsInt(:,1) - ptsInt(:,1)').^2 + (ptsInt(:,2) - ptsInt(:,2)').^2 + (ptsInt(:,3) - ptsInt(:,3)').^2);
-      fiMM = obj.rbfInterp(d,r);
+      fiMM = obj.rbfInterp(d,r,obj.rbfType);
     end
 
     function [fiNM,id] = computeRBFfiNM(obj,ptsInt,ptsGauss)
@@ -232,7 +236,7 @@ classdef RBFquadrature < handle
       d = sqrt((ptsGauss(:,1) - ptsInt(:,1)').^2 + (ptsGauss(:,2) - ptsInt(:,2)').^2 + (ptsGauss(:,3) - ptsInt(:,3)').^2);
       r = sqrt((max(ptsInt(:,1)) - min(ptsInt(:,1)))^2 + (max(ptsInt(:,2)) - min(ptsInt(:,2)))^2 + (max(ptsInt(:,3)) - min(ptsInt(:,3)))^2);
       id = ~all(d>=r,2);
-      fiNM = obj.rbfInterp(d,r);
+      fiNM = obj.rbfInterp(d,r,obj.rbfType);
     end
 
     function [bf,pos,bfSupp] = computeMortarBasisF(obj,id)
@@ -300,9 +304,16 @@ classdef RBFquadrature < handle
 
   methods (Static)
 
-    function rbf = rbfInterp(d,r)
+    function rbf = rbfInterp(d,r,type)
       % compute row of rbf interpolation matrix
-      rbf = exp(-d.^2/r^2);
+      switch type
+        case 'gauss'
+          rbf = exp(-d.^2/r^2);
+        case 'wendland'
+          v = 1-d./r;
+          v(v<0) = 0;
+          rbf = v.^4.*(1+d./r);
+      end
     end
 
     function r = computeRBFradius(ptsInt)

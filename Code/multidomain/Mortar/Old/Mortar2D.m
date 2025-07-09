@@ -71,7 +71,7 @@ classdef Mortar2D < handle
             obj.nodesMaster = unique(obj.masterTopol(idM,:));
             obj.nodesSlave = unique(obj.slaveTopol(idS,:));
             getMatricesSize(obj);
-            computeSlaveMatrix(obj);
+            %computeSlaveMatrix(obj);
         end
 
         function obj = computeSlaveMatrix(obj)
@@ -106,32 +106,32 @@ classdef Mortar2D < handle
 
 
 
-        function [D,M,varargout] = computeMortarSegmentBased(obj,nGP)
+        function [D,M,varargout] = computeMortarSegmentBased(obj,nGP,mult_type)
             if length(unique(obj.slaveCoord(obj.nodesSlave,2))) ~= 1
                 if nargout > 2
                     varargout{1} = 0;
                 end
                 return
             end
-            g = Gauss(12,nGP,1);
-            gpRef = g.coord;
-            gpWeight = g.weight;
             M = zeros(obj.nSMat,obj.nMMat);
             D = zeros(obj.nSMat,obj.nSMat);
             for i = 1:obj.nElMaster
                 % get element of the support
                 a = obj.masterCoord(obj.masterTopol(i,1),:);
-                b = obj.masterCoord(obj.masterTopol(i,end),:);
+                b = obj.masterCoord(obj.masterTopol(i,2),:);
                 idMaster = obj.masterTopol(i,1:end);
                 % get shape function values and interpolation points coordinate
                 slave_elems = find(obj.elemConnectivity(i,:));
                 % loop trough connected slave elements
                 for j = slave_elems
-                    % get nodes
-                    c = obj.slaveCoord(obj.slaveTopol(j,1),:);
-                    d = obj.slaveCoord(obj.slaveTopol(j,end),:);
-                    % find intersection between master and slave (just looking at the
-                    % x-projection)
+                  % get nodes
+                  g = Gauss(obj.mshSlave.edgeVTKType(j),nGP);
+                  gpRef = g.coord;
+                  gpWeight = g.weight;
+                  c = obj.slaveCoord(obj.slaveTopol(j,1),:);
+                  d = obj.slaveCoord(obj.slaveTopol(j,2),:);
+                  % find intersection between master and slave (just looking at the
+                  % x-projection)
                     tmp = sort([a(1) b(1) c(1) d(1)]);
                     i1 = [tmp(2) 0];
                     i2 = [tmp(3) 0];
@@ -139,12 +139,19 @@ classdef Mortar2D < handle
                     gPts = ref2nod(gpRef, i1, i2);
                     % compute basis function on master element points
                     gMaster = nod2ref(gPts, a, b);
-                    basisMaster = computeBasis1D(gMaster,obj.degree);
+                    Nmaster = computeBasis1D(gMaster,obj.degree);
                     % compute basis function on slave elements points
                     gSlave = nod2ref(gPts, c, d);
-                    basisSlave = computeBasis1D(gSlave,obj.degree);
-                    Mloc = basisSlave'*(basisMaster.*gpWeight);
-                    Dloc = basisSlave'*(basisSlave.*gpWeight);
+                    Nslave = computeBasis1D(gSlave,obj.degree);
+                    switch mult_type
+                      case 'standard'
+                        Nmult = Nslave;
+                      case 'dual'
+                        % compute dual basis function
+                        Nmult = computeDualBasisF(obj,gSlave);
+                    end
+                    Mloc = Nmult'*(Nmaster.*gpWeight);
+                    Dloc = Nmult'*(Nslave.*gpWeight);
                     Mloc = Mloc*(0.5*(i2(1)-i1(1)));
                     Dloc = Dloc*(0.5*(i2(1)-i1(1)));
                     idSlave = obj.slaveTopol(j,1:end);
@@ -159,10 +166,7 @@ classdef Mortar2D < handle
             end
         end
 
-        function [D,M,varargout] = computeMortarElementBased(obj,nGP)
-            g = Gauss(12,nGP,1);
-            gpRef = g.coord;
-            gpWeight = g.weight;
+        function [D,M,varargout] = computeMortarElementBased(obj,nGP,mult_type)
             n = computeNodalNormal(obj);
             M = zeros(obj.nSMat,obj.nMMat);
             D = zeros(obj.nSMat,obj.nSMat);
@@ -172,10 +176,13 @@ classdef Mortar2D < handle
             end
             for i = 1:obj.nElSlave
                 % get nodes
+                g = Gauss(obj.mshSlave.edgeVTKType(i),nGP);
+                gpRef = g.coord;
+                gpWeight = g.weight;
                 gpPos = gpRef;
                 gpW = gpWeight;
                 s1 = obj.slaveCoord(obj.slaveTopol(i,1),:);
-                s2 = obj.slaveCoord(obj.slaveTopol(i,nN),:);
+                s2 = obj.slaveCoord(obj.slaveTopol(i,2),:);
                 idSlave = obj.slaveTopol(i,1:nN);
                 xSlave = ref2nod(gpPos, s1, s2);
                 master_elems = find(obj.elemConnectivity(:,i));
@@ -186,9 +193,16 @@ classdef Mortar2D < handle
                    if any(id)
                       NMaster = computeBasis1D(xiM(id),obj.degree);
                       NSlave = computeBasis1D(gpPos(id),obj.degree);
-                      Mloc = NSlave'*(NMaster.*gpW(id));
+                      switch mult_type
+                        case 'standard'
+                          Nmult = NSlave;
+                        case 'dual'
+                          % compute dual basis function
+                          Nmult = computeDualBasisF(obj,gpPos(id));
+                      end
+                      Mloc = Nmult'*(NMaster.*gpW(id));
                       Mloc = Mloc*(0.5*sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2));
-                      Dloc = NSlave'*(NSlave.*gpW(id));
+                      Dloc = Nmult'*(NSlave.*gpW(id));
                       Dloc = Dloc*(0.5*sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2));
                       idMaster = obj.masterTopol(m,:);
                       M(idSlave, idMaster) = M(idSlave, idMaster) + Mloc;
@@ -210,35 +224,35 @@ classdef Mortar2D < handle
         function [D,M,varargout] = computeMortarRBF(obj,nGP,nInt,type,mult_type)
            % type: family of Radial Basis function to use
            % mult_type:
-           idBound = false(obj.nElSlave,1);
-           tic
-           g = Gauss(12,nGP,1);
+           tol = 1e-3;
            M = zeros(obj.nSMat,obj.nMMat);
            D = zeros(obj.nSMat,obj.nSMat);
            [wFMat,w1Mat,ptsIntMat] = getWeights(obj,nInt,type);
            % Loop trough slave elements
            for j = 1:obj.nElSlave
-              Mtmp = M;
-              Dtmp = D;
-              gpPos = g.coord;
-              gpW = g.weight;
-              % nodes of slave element
-              s1 = obj.slaveCoord(obj.slaveTopol(j,1),:);
-              s2 = obj.slaveCoord(obj.slaveTopol(j,end),:);
+             if j>1 && ~all(id)
+               %error('%i GP not projected for element %i',sum(~id),j-1)
+             end
+             g = Gauss(obj.mshSlave.edgeVTKType(j),nGP);
+             gpRef = g.coord;
+             gpW = g.weight;
+             % nodes of slave element
+             s1 = obj.slaveCoord(obj.slaveTopol(j,1),:);
+             s2 = obj.slaveCoord(obj.slaveTopol(j,2),:);
               h = sqrt((s1(1)-s2(1))^2 + (s1(2)-s2(2))^2);
               idSlave = obj.slaveTopol(j,1:obj.nNelem);
               % Real position of Gauss points
-              ptsGauss = ref2nod(gpPos, s1, s2);
+              ptsGauss = ref2nod(gpRef, s1, s2);
               % Get connected master elements
               master_elems = find(obj.elemConnectivity(:,j));
-              NSlave = computeBasis1D(gpPos,obj.degree);
+              NSlave = computeBasis1D(gpRef,obj.degree);
               proj_GP = 1:g.nNode; % list of GP to project
               switch mult_type
                  case 'standard'
                     NSlaveMult = NSlave;
                  case 'dual'
                     % compute dual basis function
-                    NSlaveMult = computeDualBasisF(obj,gpW,gpPos,h);
+                    NSlaveMult = computeDualBasisF(obj,gpRef);
               end
               % Loop trough master elements and store projected master
               % basis functions
@@ -256,7 +270,7 @@ classdef Mortar2D < handle
                        NMaster = Ntmp(:,1:obj.nNelem);
                        NSupp = Ntmp(:,end);
                  end
-                 id = all([NSupp >= 0, NSupp <= 1],2);
+                 id = all([NSupp >= 0 - tol, NSupp <= 1 + tol],2);
                  proj_GP = proj_GP(~id);
                  if any(id)
                     NMaster = NMaster(id,:);
@@ -267,80 +281,19 @@ classdef Mortar2D < handle
                     M(idSlave, idMaster) = M(idSlave, idMaster) + Mloc;
                     D(idSlave, idSlave) = D(idSlave, idSlave) + Dloc;
                     % sort out Points already projected
-                    gpPos = gpPos(~id);
+                    gpRef = gpRef(~id);
                     gpW = gpW(~id);
                     ptsGauss = ptsGauss(~id,:);
                     NSlave = NSlave(~id,:);
                     NSlaveMult = NSlaveMult(~id,:);
                  end
               end
-              % if ~isempty(proj_GP) && strcmp(mult_type,'dual')
-              %    fprintf('BOUNDARY SLAVE DETECTED! \n') 
-              %    % perform again integration using standard multipliers
-              %    % store nodes for D matrix clustering
-              %    idBound(j) = true;
-              %    % refresh matrices and Gp parameters
-              %    M = Mtmp;
-              %    D = Dtmp;
-              %    gpPos = g.coord;
-              %    gpW = g.weight;
-              %    % remove gp not projected
-              %    gpPos = gpPos(~ismember(1:nGP,proj_GP));
-              %    gpW = gpW(~ismember(1:nGP,proj_GP));
-              %    % Real position of Gauss points
-              %    ptsGauss = ref2nod(gpPos, s1, s2);
-              %    NSlave = computeBasis1D(gpPos,obj.degree);
-              %    for jm = master_elems'
-              %       ptsInt = ptsIntMat(:,repNum(2,jm));
-              %       idMaster = obj.masterTopol(jm,1:obj.nNelem);
-              %       fiNM = obj.computeRBFfiNM(ptsInt,ptsGauss,type);
-              %       switch obj.degree
-              %          case 1
-              %             NMaster = (fiNM*wFMat(:,repNum(obj.nNelem,jm)))./(fiNM*w1Mat(:,jm));
-              %             NSupp = NMaster(:,1);
-              %          case 2
-              %             Ntmp = (fiNM*wFMat(:,repNum(obj.nNelem+1,jm)))./(fiNM*w1Mat(:,jm));
-              %             NMaster = Ntmp(:,1:obj.nNelem);
-              %             NSupp = Ntmp(:,end);
-              %       end
-              %       id = all([NSupp >= 0, NSupp <= 1],2);
-              %       proj_GP = proj_GP(~id);
-              %       if any(id)
-              %          NMaster = NMaster(id,:);
-              %          Mloc = NSlave(id,:)'*(NMaster.*gpW(id));
-              %          Mloc = Mloc*(0.5*h);
-              %          Dloc = NSlave(id,:)'*(NSlave(id,:).*gpW(id));
-              %          Dloc = Dloc*(0.5*h);
-              %          M(idSlave, idMaster) = M(idSlave, idMaster) + Mloc;
-              %          D(idSlave, idSlave) = D(idSlave, idSlave) + Dloc;
-              %          % sort out GP already projected
-              %          gpPos = gpPos(~id);
-              %          gpW = gpW(~id);
-              %          ptsGauss = ptsGauss(~id,:);
-              %          NSlave = NSlave(~id,:);
-              %       end
-              %    end
-              % end
            end
-           % if strcmp(mult_type,'dual')
-           %    % cluster D matrix separating internal nodes and boundary
-           %    % nodes
-           %    el_bound = find(idBound);
-           %    tmp = obj.slaveTopol(el_bound,:);
-           %    nod_bound = unique(tmp(:));
-           %    nod_list = [find(~ismember(obj.nodesSlave,nod_bound)); nod_bound];
-           %    [~,sortBound] = sort(nod_list);
-           %    D = D(nod_list,nod_list);
-           %    M = M(nod_list,obj.nodesMaster);
-           %    D(abs(D)<eps) = 0;
-           %    E = D\M;
-           %    E = E(sortBound,:);
-           % else
               M = M(obj.nodesSlave, obj.nodesMaster);
               D = D(obj.nodesSlave, obj.nodesSlave);
               D(abs(D)<eps) = 0;
            %end
-           t = toc;
+           %t = toc;
            if nargout == 3
               varargout{1} = t;
            elseif nargout == 4
@@ -559,21 +512,35 @@ classdef Mortar2D < handle
                     dN = [-0.5;0.5];
                     J = c'*dN;
                 case 2
-                    dN = [-0.5+xi;-2*xi;0.5+xi];
+                    dN = [-0.5+xi;0.5+xi;-2*xi];
                     J = c'*dN;
             end
         end
 
-        function Nslave_dual = computeDualBasisF(obj,gpW,gpPos,h)
+        function Ndual = computeDualBasisF(obj,gpCoord)
             % compute dual basis function on slave GPs
             % get matrix of BF phi = Nslave*A
             % A = M\D
-            Nslave = computeBasis1D(gpPos,obj.degree);
-            M = Nslave'*(Nslave.*gpW);
-            M = M*(0.5*h);
-            D = diag(Nslave'*gpW)*(0.5*h);
-            A = M\D;
-            Nslave_dual = Nslave*A;   
+%             Nslave = computeBasis1D(gpPos,obj.degree);
+%             M = Nslave'*(Nslave.*gpW);
+%             M = M*(0.5*h);
+%             D = diag(Nslave'*gpW)*(0.5*h);
+%             A = M\D;
+%             Nslave_dual = Nslave*A;   
+             % use analytical definition from Popp et. al (only for planar
+             % interfaces)
+             switch obj.degree
+               case 1
+                 Ndual(:,1) = 0.5*(1-3*gpCoord);
+                 Ndual(:,2) = 0.5*(1+3*gpCoord);
+               case 2
+                 N1 = @(x) 0.5*x.*(x-1);
+                 N2 = @(x) 0.5*x.*(x+1);
+                 N3 = @(x) (1-x).*(1+x);
+                 Ndual(:,1) = N1(gpCoord) - 3/4*N3(gpCoord) + 0.5;
+                 Ndual(:,2) = N2(gpCoord) -3/4*N3(gpCoord) + 0.5;
+                 Ndual(:,3) = 5/2*N3(gpCoord) - 1;
+             end
         end
 
         function n_n = computeNodalNormal(obj)
@@ -639,7 +606,7 @@ classdef Mortar2D < handle
             % end
             bf = computeBasis1D(intPts,obj.degree);
             i1 = coord(top(elemID,1),:);
-            i2 = coord(top(elemID,end),:);
+            i2 = coord(top(elemID,2),:);
             pos = ref2nod(intPts, i1, i2);
             if nargout == 3
                 assert(obj.degree==2,'Incorrect number of outputs for basis functions of degree 1')
@@ -680,11 +647,11 @@ classdef Mortar2D < handle
             % (trivially done looking at the x-coordinates only)
             elemConnectivity = zeros(obj.nElMaster,obj.nElSlave);
             for i = 1:obj.nElMaster
-                tmp = sort([obj.masterCoord(obj.masterTopol(i,1),1),obj.masterCoord(obj.masterTopol(i,end),1)]);
+                tmp = sort([obj.masterCoord(obj.masterTopol(i,1),1),obj.masterCoord(obj.masterTopol(i,2),1)]);
                 a = tmp(1); b = tmp(2);
                 % loop trough master element to find connectivity
                 for j = 1:obj.nElSlave
-                    tmp = sort([obj.slaveCoord(obj.slaveTopol(j,1),1),obj.slaveCoord(obj.slaveTopol(j,end),1)]);
+                    tmp = sort([obj.slaveCoord(obj.slaveTopol(j,1),1),obj.slaveCoord(obj.slaveTopol(j,2),1)]);
                     c = tmp(1); d = tmp(2);
                     if ~any([a>d,c>b])
                         % intersecting
@@ -753,7 +720,9 @@ classdef Mortar2D < handle
             % compute row of rbf interpolation matrix
             switch type
                 case 'wendland'
-                    rbf = pos(1-d./r).^4.*(1+d./r);
+                  v = 1-d./r;
+                  v(v<0) = 0;
+                    rbf = v.^4.*(1+d./r);
                 case 'gauss'
                     rbf = exp(-d.^2/r^2);
                 case 'imq'

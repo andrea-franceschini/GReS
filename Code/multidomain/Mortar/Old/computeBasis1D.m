@@ -6,8 +6,8 @@ switch deg
         N(:,2) = 0.5 + 0.5*pts;
     case 2 % quadratic basis functions
         N(:,1) = -0.5*pts.*(1-pts);
-        N(:,2) = 1-pts.^2;
-        N(:,3) = 0.5*pts.*(1+pts);
+        N(:,2) = 0.5*pts.*(1+pts);
+        N(:,3) = 1-pts.^2;
 end
 end
 
