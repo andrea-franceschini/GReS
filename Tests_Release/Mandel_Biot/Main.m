@@ -11,7 +11,7 @@ scriptDir = fileparts(scriptFullPath);
 cd(scriptDir);
 
 % Set physical models 
-model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
+model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 
 % Set parameters of the simulation
 fileName = "simParam.dat";
@@ -49,7 +49,7 @@ dofmanager = DoFManager(topology,model);
 linSyst = Discretizer(model,simParam,dofmanager,grid,mat);
 
 % Build a structure storing variable fields at each time step
-linSyst.setState();
+linSyst.initState();
 
 % Create and set the print utility
 printUtils = OutState(model,topology,'outTime.dat','folderName','Output_Mandel','flagMatFile',true);

@@ -6,8 +6,8 @@ classdef Biot < CouplingPhysics
 
     properties
         Q
-        flowModel   % Discretization scheme used for Flow
-        flowScheme
+        flowModel   % Model used for Flow
+        flowScheme  % Discretization scheme used for flow
     end
 
     properties (Constant)
@@ -20,7 +20,7 @@ classdef Biot < CouplingPhysics
             if isSinglePhaseFlow(obj.model)
                 obj.flowModel = 'SinglePhaseFlow';
             elseif isVariabSatFlow(obj.model)
-                obj.flowModel = 'VaraiblySsaturatedFlow';
+                obj.flowModel = 'VaraiblySaturatedFlow';
             end
             obj.flowScheme = obj.dofm.getScheme(obj.fields(2));
             %

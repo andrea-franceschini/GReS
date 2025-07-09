@@ -226,7 +226,9 @@ classdef Mortar < handle
     end
 
     function finalizeOutput(obj)
-      obj.outStruct.VTK.finalize();
+      if ~isempty(obj.outStruct)
+        obj.outStruct.VTK.finalize();
+      end
     end
 
     function printState(obj,tOld,tNew)
@@ -290,6 +292,7 @@ classdef Mortar < handle
     end
 
     function checkInterfaceDisjoint(obj)
+      % check that the nodes of mortar and slave side are disjoint
       if obj.idDomain(1)==obj.idDomain(2)
         % interface defined within the same domain 
         out = setdiff(obj.mesh.local2glob{1},obj.mesh.local2glob{2});
@@ -351,9 +354,9 @@ classdef Mortar < handle
 
 
     function Nout = reshapeBasisF(basis,nc)
-      % reshape basis functions to obtain displacement shape function
-      % input: nG x nN matrix
-      % output: 3 x nN x nG
+      % reshape basis functions to match number of components of the
+      % physics
+      % output: nc x nN x nG
       [ng,nn,nt] = size(basis);
       Nout = zeros(nc,nc*nn,ng,nt);
       for i = 1:nt

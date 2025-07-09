@@ -47,7 +47,7 @@ dofmanager = DoFManager(topology, model, DoFfileName);
 linSyst = Discretizer(model,simParam,dofmanager,grid,mat);
 
 % Build a structure storing variable fields at each time step
-linSyst.setState();
+linSyst.initState();
 
 % Create and set the print utility
 printUtils = OutState(model,topology,'outTime.dat','folderName','Output_DeepAquifer','flagMatFile',true);

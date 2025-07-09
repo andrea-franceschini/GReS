@@ -57,7 +57,13 @@ function modStr = getModelStruct(str,simParam)
 
   % output manager
   if isfield(str,"OutState")
-    printUtils = OutState(model,topology,str.OutState,"folderName",name,"writeVtk",false);
+    if isfield(str.OutState,"printAttribute")
+      printFlag = str.OutState.printAttribute;
+    else
+      printFlag = false;
+    end
+    printUtils = OutState(model,topology,str.OutState.outFileAttribute,...
+      "folderName",name,"writeVtk",printFlag);
   else
     printUtils = [];
   end

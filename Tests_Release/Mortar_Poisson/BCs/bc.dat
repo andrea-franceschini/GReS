@@ -2,6 +2,6 @@ NodeBC            % BC item
 Dir            % BC type 
 Poisson            % Physics 
 manufactured_bc            % BC name 
-bc/list 
-0.000000 bc/time0.dat 
+BCs/bc/list 
+0.000000 BCs/bc/time0.dat 
 End

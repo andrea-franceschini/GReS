@@ -141,18 +141,6 @@ classdef RBFquadrature < handle
       mat = mat.*reshape(dJWeighed,1,1,[]);
       mat = sum(mat,3);
     end
-
-
-%     function [Nm,id] = getMasterBubbleBasisF(obj,idMaster,posGP)
-%       % return interpolated master basis function into slave domain
-%       tol = 1e-4;
-%       ptsInt = obj.ptsRBF(:,repNum(3,idMaster));
-%       [fiNM,id1] = obj.computeRBFfiNM(ptsInt,posGP);
-%       Nm = (fiNM*obj.wF(:,repNum(obj.mortar.mesh.nN(1),idMaster)))./(fiNM*obj.w1(:,idMaster));
-%       Nsupp = Nm(:,[1 2 3]);
-%       % automatically detect supports computing interpolant
-%       id = all([Nsupp >= 0-tol id1],2);
-%     end
   end
 
   methods (Access = private)

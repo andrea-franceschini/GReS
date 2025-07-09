@@ -31,44 +31,15 @@ classdef Poromechanics < SinglePhysics
         % recompute matrix if the model is non linear
         assembler = @(elemId,counter) computeLocalStiff(obj,elemId,dt,counter);
         % define size of output matrix
-        computeStiffMat3(obj,assembler);
+        computeStiffMat(obj,assembler);
       end
       if obj.simParams.isTimeDependent
         obj.J = obj.simParams.theta*obj.J;
       end
     end
 
-    function computeStiffMat(obj,LocalAssembler)
-      % general sparse assembly loop over elements for Poromechanics
-      subCells = obj.dofm.getFieldCells(obj.field);
-      n = sum((obj.mesh.nDim^2)*(obj.mesh.cellNumVerts(subCells)).^2);
-      [iiVec,jjVec,matVec] = deal(zeros(n,1));
-      l1 = 0;
-      l2 = 0;
-      Ndof = obj.dofm.getNumDoF(obj.field);
-      obj.fInt = zeros(Ndof,1);
-      % loop over cells
-      for el = subCells'
-        % get dof id and local matrix
-        [dofRow,dofCol,locMat,dsigma,status] = LocalAssembler(el,l2);
-        [jjLoc,iiLoc] = meshgrid(dofCol,dofRow);
-        s1 = numel(locMat(:));
-        s2 = size(dsigma,1);
-        iiVec(l1+1:l1+s1) = iiLoc(:);
-        jjVec(l1+1:l1+s1) = jjLoc(:);
-        matVec(l1+1:l1+s1) = locMat(:);
-        obj.state.data.curr.status(l2+1:l2+s2,:) = status;
-        obj.state.data.curr.stress((l2+1):(l2+s2),:) = dsigma;
-        obj.cell2stress(el) = l2;
-        l1 = l1 + s1;
-        l2 = l2 + s2;
-      end
-      % populate stiffness matrix
-      obj.J = sparse(iiVec, jjVec, matVec, Ndof,Ndof);
-    end
 
-
-    function computeStiffMat3(obj,assembleKloc)
+    function computeStiffMat(obj,assembleKloc)
       % general sparse assembly loop over elements for Poromechanics
       subCells = obj.dofm.getFieldCells(obj.field);
       n = sum((obj.mesh.nDim^2)*(obj.mesh.cellNumVerts(subCells)).^2);

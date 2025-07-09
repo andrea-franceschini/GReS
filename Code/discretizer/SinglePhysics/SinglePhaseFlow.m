@@ -380,42 +380,6 @@ classdef SinglePhaseFlow < SinglePhysics
 
    end
 
-   methods (Access=private)
-      % function dof = getBCdofs(obj,bc,id)
-      %    switch bc.getCond(id)
-      %       case 'NodeBC'
-      %          ents = bc.getEntities(id,obj.field);
-      %       case 'SurfBC'
-      %          ents = bc.getLoadedEntities(id);
-      %          % node id contained by constrained surface
-      %       otherwise
-      %          error('BC type %s is not available for %s field',cond,obj.field);
-      %    end
-      %    % map entities dof to local dof numbering
-      %    dof = obj.dofm.getLocalDoF(ents,obj.field);
-      %    switch bc.getType(id)
-      %       case 'Dir'
-      %          % component multiplication of BC dofs
-      %          dof = bc.getCompEntities(id,dof);
-      %       case 'Neu'
-      %          dir = obj.getDirection(identifier);
-      %          c = find(strcmp(['x','y','z'],dir));
-      %          dof = c*dof;
-      %    end
-      % end
-      %
-      % function vals = getBCVals(obj,bc,id,t)
-      %    if strcmp(bc.getType(id),'Dir')
-      %       vals = [];
-      %       return
-      %    end
-      %    vals = bc.getVals(id,t);
-      %    if strcmp(bc.getCond(id),'SurfBC')
-      %       entInfl = bc.getEntitiesInfluence(id);
-      %       vals = entInfl*vals;
-      %    end
-      % end
-   end
 
    methods (Static)
       function [cellStr,pointStr] = buildPrintStruct(mod,press,pot)
