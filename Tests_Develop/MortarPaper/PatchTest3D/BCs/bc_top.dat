@@ -1,7 +1,0 @@
-SurfBC            % BC item 
-Neu            % BC type 
-Poromechanics            % Physics 
-top_load            % BC name 
-BCs/bc_top/list 
-0.000000 BCs/bc_top/time0.dat 
-End

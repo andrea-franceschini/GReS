@@ -1,7 +1,0 @@
-NodeBC            % BC item 
-Dir            % BC type 
-Poisson            % Physics 
-manufactured_solution_bot            % BC name 
-BCs/bc_bot/list 
-0.000000 BCs/bc_bot/time0.dat 
-End

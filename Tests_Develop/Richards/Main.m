@@ -6,14 +6,14 @@ model = ModelType("VariabSatFlow_FVTPFA");
 %
 % ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = "simParam.dat";
-simParam = SimulationParameters(model,fileName);
+simParam = SimulationParameters(fileName,model);
 %
 % ------------------------------  MESH -------------------------------
 % Create the Mesh object
 topology = Mesh();
 %
 % Set the input file name
-fileName = 'meshes/Richards_refined.msh';
+fileName = 'Column.msh';
 %
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -40,49 +40,38 @@ faces = Faces(model,topology);
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
-%------------------------ BOUNDARY CONDITIONS ------------------------
-%
-% Set the input file
-% fileName = ["neuSurfLeftFace_hexa2.dat","dirNodRightFace_hexa2.dat", ...
-%   "volFBody_hexa2.dat"];
-fileName = "dirBottom.dat";
-%
-% Create an object of the "Boundaries" class and read the boundary
-% conditions
+% Degree of freedom manager 
+%fname = 'dof.dat';
 dofmanager = DoFManager(topology,model);
 
-bound = Boundaries(fileName,model,grid, dofmanager);
-%linkBoundSurf2TPFAFace(model,bound,grid);
-%
-%-------------------------- PREPROCESSING ----------------------------
-%
-% Set the "State" object. It contains all the vectors describing the state
-% of the reservoir in terms of pressure, displacement, stress, ...
-fName = "iniPressure.dat";
-resState = State(model,grid,mat,fName,GaussPts);
-%
+% Create object handling construction of Jacobian and rhs of the model
+linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
+
+% Build a structure storing variable fields at each time step
+state = linSyst.setState();
+
+% set initial conditions directly modifying the state object
+z = elems.cellCentroid(:,3);
+gamma_w = getFluid(mat).getFluidSpecWeight();
+wLev = 9; % level of the water table
+state.pressure = gamma_w*(9-z);
+
 % Create and set the print utility
-printUtils = OutState(model,mat,grid,'outTime.dat');
-%
-% Print the reservoir initial state
-printUtils.printState(resState);
-%
-% ---------------------------- SOLUTION -------------------------------
-%
-% Create the object handling the (nonlinear) solution of the problem
-NSolv = NonLinearSolver(model,simParam, dofmanager,grid,mat,bound, ...
-  printUtils,resState,GaussPts);
+printUtils = OutState(model,topology,'outTime.dat','folderName','Output_Richards');
+
+fileName = "dirBottom.dat";
+bound = Boundaries(fileName,model,grid);
+
+Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
 %
 % Solve the problem
-[simState] = NSolv.NonLinearLoop();
+[simState] = Solver.NonLinearLoop();
 %
 % Finalize the print utility
 printUtils.finalize()
 %
-% -------------------------- BENCHMARK ------------------------------
-%
-delete(bound);
-%% -------------------------- BENCHMARK ------------------------------
+
+%% POST PROCESSING
 
 image_dir = strcat(pwd,'/Images');
 if isfolder(image_dir)
@@ -98,18 +87,18 @@ end
 if isFEMBased(model,'Flow')
     nodesP = nodesU;
 else
-    numb = 0.0625;
+    numb = 0.125;
     tol = 0.01;
     nodesP = find(abs(elems.cellCentroid(:,1)-numb) < tol & abs(elems.cellCentroid(:,2)-numb) < tol);
     [~,ind] = sort(elems.cellCentroid(nodesP,3));
     nodesP = nodesP(ind);
 end
 
-press = printUtils.m.expPress;
-sw = printUtils.m.expSw;
-t = printUtils.m.expTime;
-tind = [3;4;5;6;20;29;37];
-t_max = t(37);
+press = printUtils.results.expPress;
+sw = printUtils.results.expSat;
+t = printUtils.results.expTime;
+tind = 2:length(t);
+t_max = t(end);
 t = t(tind)/t_max;
 
 
@@ -120,7 +109,6 @@ swplot = sw(nodesP,tind);
 
 % Values for normalized plots
 H = 10;
-ptop = -8.58375;
 
 %Plotting solution
 if isFVTPFABased(model,'Flow')
@@ -129,11 +117,10 @@ else
     ptsY = topology.coordinates(nodesP,3);
 end
 figure(1)
-plot(pressplot/ptop,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);
+plot(-pressplot,ptsY/H,'.-', 'LineWidth', 1, 'MarkerSize', 10);
 hold on
 xlabel('p/p_{top}')
 ylabel('z/H')
-xlim([-0.2 1])
 legend(tstr)
 grid on
 set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
@@ -149,7 +136,6 @@ hold on
 xlabel('Saturation S_w')
 ylabel('z/H')
 legend(tstr, 'Location', 'southwest')
-xlim([0 1])
 str = strcat('t = ',tstr);
 grid on
 set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14);
@@ -158,6 +144,3 @@ set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 12)
 % export figure with quality
 stmp = strcat('Images\', 'Richards_staturation', '.png');
 exportgraphics(gcf,stmp,'Resolution',400)
-
-%% Plot capillary and Rel perm curve
-
