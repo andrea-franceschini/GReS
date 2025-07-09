@@ -1,6 +1,6 @@
 function out = componentNumber(mesh,in)
    switch in
-      case {'Poromechanics',translatePhysic('Poromechanics')}
+      case {'Poromechanics'}
          out = mesh.nDim;
       otherwise
          out = 1;

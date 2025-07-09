@@ -1,0 +1,9 @@
+SurfBC                            % BC item
+Dir                               % BC type
+Flow                              % Physics
+bFace                             % BC name
+dirBottom/list
+0.000000 dirBottom/time0.dat
+5.000000 dirBottom/time1.dat
+10.00000 dirBottom/time2.dat
+End

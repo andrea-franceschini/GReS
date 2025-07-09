@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="641fe65a-7be7-4e90-8ca8-3b43f7f42f55" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../../../../Code/elements/mex/mxComputeBasisFQuad4.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../Code/elements/mex/mxComputeBasisFQuad4.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Code/elements/mex/mxComputeBasisFQuad9.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../Code/elements/mex/mxComputeBasisFQuad9.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Code/elements/mex/mxComputeDerBasisFQuad4.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../Code/elements/mex/mxComputeDerBasisFQuad4.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Code/elements/mex/mxComputeDerBasisFQuad9.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../Code/elements/mex/mxComputeDerBasisFQuad9.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Code/elements/mex/mxGetDerBasisAndDet.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../Code/elements/mex/mxGetDerBasisAndDet.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Code/multidomain/buildModelStruct_new.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../Code/multidomain/buildModelStruct_new.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Code/outstate/OutState.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../Code/outstate/OutState.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Code/read/Mesh.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../Code/read/Mesh.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Code/read/mxImportGMSHmesh.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../Code/read/mxImportGMSHmesh.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Code/read/mxImportVTKmesh.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../Code/read/mxImportVTKmesh.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Code/write/mxVTKWriter.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../Code/write/mxVTKWriter.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Tests_Delevop/Flux_barrier/expData.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Tests_Delevop/Richards/Case3/expData.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Tests_Delevop/Richards/Case5/expData.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../Tests_Delevop/Richards/Richards_Varela/expData.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/.convergence_analysis.m.swp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Domains/domain1block.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Domains/domain2block.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Mesh/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Mesh/.idea/Mesh.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Mesh/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Mesh/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Mesh/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Mesh/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Mesh/domain.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Mesh/domain_2blocks.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Mesh/domain_curve.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Mesh/domain_left.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Mesh/domain_right.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Mesh/prova.vtk.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/Mesh/testCurve.vtk.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA/ElementBased_16.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA/ElementBased_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA/ElementBased_6.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA/RBF_16_3.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA/RBF_16_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA/RBF_16_5.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA/RBF_4_3.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA/RBF_4_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA/RBF_4_5.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA/RBF_6_3.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA/RBF_6_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA/RBF_6_5.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA/SegmentBased_7.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/ElementBased_16.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/ElementBased_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/ElementBased_6.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/RBF_16.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/RBF_16_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/RBF_16_5.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/RBF_16_6.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/RBF_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/RBF_4_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/RBF_4_5.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/RBF_4_6.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/RBF_6.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/RBF_6_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/RBF_6_5.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/RBF_6_6.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/OUT_HEXA27/SegmentBased_7.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/bc.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/bc/list" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/bc/time0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/bc_left.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/bc_left/list" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/bc_left/time0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/bc_right.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/bc_right/list" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/bc_right/time0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/ElementBased_16.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/ElementBased_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/ElementBased_6.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/RBF_16.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/RBF_16_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/RBF_16_5.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/RBF_16_6.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/RBF_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/RBF_4_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/RBF_4_5.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/RBF_4_6.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/RBF_6.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/RBF_6_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/RBF_6_5.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/RBF_6_6.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convHEXA27/SegmentBased_7.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/convergence_analysis.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/diary" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_1.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_2.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_3.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_4.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_5.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_6.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_7.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_hexa8_1.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_hexa8_2.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_hexa8_3.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_hexa8_4.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_hexa8_5.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_hexa8_6.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_hexa8_7.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_left_1.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/domain_right_1.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/getMesh.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/interface.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/interfaces_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/logConvAnalysis" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/logConvHexa8" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/mainPois1domain.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/mainPois2domain.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/outTime.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/plotting.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/runPoisson.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain/simParam.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/Domains/domain1block.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/Domains/domain2block.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/Mesh/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/Mesh/.idea/Mesh.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/Mesh/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/Mesh/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/Mesh/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/Mesh/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/Mesh/domain_curve.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/OUT_HEXA27/ElementBased_16.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/OUT_HEXA27/ElementBased_4.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/OUT_HEXA27/ElementBased_6.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/OUT_HEXA27/RBF_16_5.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/OUT_HEXA27/RBF_4_5.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/OUT_HEXA27/RBF_6_5.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/OUT_HEXA27/SegmentBased_7.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/bc.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/bc/list" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/bc/time0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/bc_left.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/bc_left/list" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/bc_left/time0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/bc_right.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/bc_right/list" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/bc_right/time0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/convergence_analysis.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/diary" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/domain_1.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/domain_2.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/domain_3.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/domain_4.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/domain_5.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/domain_6.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/domain_7.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/domain_left_1.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/domain_right_1.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/getMesh.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/interface.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/interfaces_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/logConvAnalysis" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/logConvHexa8" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/mainPois1domain.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/mainPois2domain.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/outTime.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/plotting.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Poisson3D_twoDomain_curve/simParam.dat" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../../../.." />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4
+}</component>
+  <component name="ProjectId" id="2z4U6fLFt3nkXqFDQOMIEng6O8E" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.patchMesh.executor&quot;: &quot;Debug&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feature/mortar&quot;,
+    &quot;last_opened_file_path&quot;: &quot;M:/Codes/GReS/Tests_Develop/MortarPaper/PatchTest3D/Mesh&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="M:\Codes\GReS\Tests_Develop\MortarPaper\PatchTest3D\Mesh" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-b26f3e71634d-JavaScript-PY-251.26094.141" />
+        <option value="bundled-python-sdk-9f8e2b94138c-36ea0e71a18c-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.26094.141" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="641fe65a-7be7-4e90-8ca8-3b43f7f42f55" name="Changes" comment="" />
+      <created>1750989664992</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1750989664992</updated>
+      <workItem from="1750989666142" duration="5635000" />
+      <workItem from="1751302825020" duration="1248000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/../../Poisson3D/Mesh/scripts/domain.py</url>
+          <line>133</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/Mesh$patchMesh.coverage" NAME="patchMesh Coverage Results" MODIFIED="1750990668805" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+  </component>
+</project>

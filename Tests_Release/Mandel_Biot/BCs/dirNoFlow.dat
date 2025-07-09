@@ -1,6 +1,6 @@
 SurfBC            % BC item 
 Dir            % BC type 
-Flow            % Physics 
+SinglePhaseFlow            % Physics 
 LatNoFlow            % BC name 
 BCs/dirNoFlow/list 
 0.000000 BCs/dirNoFlow/time0.dat 

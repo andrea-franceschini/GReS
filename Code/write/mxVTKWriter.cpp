@@ -74,9 +74,11 @@ void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
   for( int i = 0; i < nCells; ++i )
   {
     if( cellVTKTypeInt[i] != VTK_TRIANGLE &&
-        cellVTKTypeInt[i] != VTK_QUAD &&
-        cellVTKTypeInt[i] != VTK_TETRA &&
-        cellVTKTypeInt[i] != VTK_HEXAHEDRON )
+       cellVTKTypeInt[i] != VTK_QUAD &&
+       cellVTKTypeInt[i] != VTK_TETRA &&
+       cellVTKTypeInt[i] != VTK_HEXAHEDRON &&
+       cellVTKTypeInt[i] != VTK_HEXAHEDRON2 &&
+       cellVTKTypeInt[i] != VTK_QUAD2)
     {
       mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:cellType", "Element type not yet supported." );
     }

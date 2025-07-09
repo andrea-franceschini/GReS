@@ -3,9 +3,7 @@ classdef SinglePhysics < handle
       J
       rhs
    end
-   properties (SetAccess = private)
-      field
-   end
+
    properties
       model
       simParams
@@ -14,12 +12,12 @@ classdef SinglePhysics < handle
       elements
       faces
       material
-      GaussPts
+      state
+      fldId
    end
    
    methods
-      function obj = SinglePhysics(fld,symmod,params,dofManager,grid,mat,data)
-         obj.field = fld;
+      function obj = SinglePhysics(symmod,params,dofManager,grid,mat,state)
          obj.model = symmod;
          obj.simParams = params;
          obj.dofm = dofManager;
@@ -27,10 +25,9 @@ classdef SinglePhysics < handle
          obj.elements = grid.cells;
          obj.faces = grid.faces;
          obj.material = mat;
-         % obj.field = 
-         if ~isempty(data)
-            obj.GaussPts = data{1};
-         end
+         obj.state = state;
+         fld = feval([class(obj) '.getField']);
+         obj.fldId = obj.dofm.getFieldId(fld);
       end
 
       function applyNeuBC(obj,dofs,vals)
@@ -63,11 +60,20 @@ classdef SinglePhysics < handle
       end
 
       function J = getJacobian(obj,varargin)
-         J = obj.J;
+        J = obj.J;
       end
 
       function rhs = getRhs(obj,varargin)
-         rhs = obj.rhs;
+        rhs = obj.rhs;
       end
+   end
+
+   methods (Static)
+     function map = registerSolver(map,solverName)
+       % update map of available solvers
+       fld = eval([solverName '.getField']);
+       map(fld) = str2func(solverName);
+     end
+
    end
 end

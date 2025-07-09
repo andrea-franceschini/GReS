@@ -1,95 +1,126 @@
-classdef Tetrahedron < handle
+classdef Tetrahedron < FEM
   % TETRAHEDRON element class
 
-  properties (Access = private)
-    mesh
-%     vol
-%     volSign
-%     volNod
+    properties (Constant)
+    centroid = [0.25,0.25,0.25]
+    coordLoc = [0 0 0;
+      1 0 0;
+      0 1 0;
+      0 0 1];
+    vtkType = 10
+    nNode = 4
+    nFace = 3
   end
   
-  properties (Access = public)
-    cellCentroid;
-  end
 
   methods (Access = public)
     % Class constructor method
-    function obj = Tetrahedron(mesh)
-      % Calling the function to set element data
-      obj.setTetrahedron(mesh);
-%       computeCellCentroid(obj);
-    end
-    %
-    function [mat] = getDerBasisF(obj,el)
-      %       for el = 1:obj.mesh.nCells
-%       top = obj.mesh.cells(el,:);
-      %         i = obj.mesh.cells(el,1);
-      %         j = obj.mesh.cells(el,2);
-      %         k = obj.mesh.cells(el,3);
-      %         m = obj.mesh.cells(el,4);
+      function [outVar1,outVar2] = getDerBasisFAndDet(obj,el,flOut)   % mat,dJWeighed
+      %       findJacAndDet(obj,el);  % OUTPUT: J and obj.detJ
+      % Find the Jacobian matrix of the isoparametric map and its determinant
       %
-      inv_A = inv([1 obj.mesh.coordinates(obj.mesh.cells(el,1),:);
+      % Possible ways of calling this function are:
+      %    1) [mat,dJWeighed] = getDerBasisFAndDet(obj,el,1)
+      %    2) mat = getDerBasisFAndDet(obj,el,2)
+      %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
+      
+      if obj.GaussPts.nNode < 2
+        % faster version 
+        mat = [1 obj.mesh.coordinates(obj.mesh.cells(el,1),:);
                    1 obj.mesh.coordinates(obj.mesh.cells(el,2),:);
                    1 obj.mesh.coordinates(obj.mesh.cells(el,3),:);
-                   1 obj.mesh.coordinates(obj.mesh.cells(el,4),:)]);
-      mat = inv_A(2:4,:);
-      %
-      %         vol = (obj.mesh.coordinates(top,1)')*mat(2,:)';
-      %       end
-    end
-    
-    %   Elements volume calculation
-    function vol = findVolume(obj,idTetra)
-      vol = zeros(length(idTetra),1);
-%       obj.volSign = ones(obj.mesh.nCells,1);
-%       obj.volNod = zeros(obj.mesh.nNodes,1);
-      i = 0;
-      for el = idTetra
-        i = i + 1;
-        top = obj.mesh.cells(el,1:4);
-        vol(i) = det([1 obj.mesh.coordinates(top(1),:);
-                      1 obj.mesh.coordinates(top(2),:);
-                      1 obj.mesh.coordinates(top(3),:);
-                      1 obj.mesh.coordinates(top(4),:)])/6;
-        if vol(i) < 0
-%           obj.volSign(el) = -1;
-          vol(i) = -vol(i);
-        end
-%         for i=1:obj.mesh.cellNumVerts(el)
-%           obj.volNod(top(i)) = obj.volNod(top(i)) + obj.vol(el)/obj.mesh.cellNumVerts(el);
-%         end
+                   1 obj.mesh.coordinates(obj.mesh.cells(el,4),:)];
+        obj.detJ = det(mat);
+        dJw = obj.GaussPts.weight*obj.detJ;
+        invMat = inv(mat);
+        N = invMat(2:obj.nNode,:);
+      else
+        coords = obj.mesh.coordinates(obj.mesh.cells(el,:),:);
+        [N, dJw] = mxGetDerBasisAndDet(obj.Jref,coords,obj.GaussPts.weight);
       end
-      % Although it has no for loop, the following solution takes more
-      % time!
-%       obj.vol = arrayfun(@(e) det([1 obj.mesh.coordinates(obj.mesh.cells(e,1),:);
-%                                    1 obj.mesh.coordinates(obj.mesh.cells(e,2),:);
-%                                    1 obj.mesh.coordinates(obj.mesh.cells(e,3),:);
-%                                    1 obj.mesh.coordinates(obj.mesh.cells(e,4),:)])/6,1:obj.mesh.nCells);
+
+      switch flOut
+        case 1
+          outVar1 = N;
+          outVar2 = dJw';
+        case 2
+          outVar1 = N;
+        case 3
+          outVar1 = dJw';
+      end
+      if (flOut == 1 || flOut == 3) && obj.GaussPts.nNode > 1
+        obj.detJ = (dJw./obj.GaussPts.weight)';
+      end
+      end
+
+      function N = getBasisFinGPoints(obj)
+        N = obj.Nref;
+      end
+
+      function computeProperties(obj)
+        idTetra = find(obj.mesh.cellVTKType == obj.vtkType);
+        [vol,cellCent] = findVolumeAndCentroid(obj,idTetra);
+        obj.mesh.cellCentroid(idTetra,:) = cellCent;
+        obj.mesh.cellVolume(idTetra,:) = vol;
+      end
+
+      %   Elements volume calculation
+      function [vol,cellCentroid] = findVolumeAndCentroid(obj,idTetra)
+        vol = zeros(length(idTetra),1);
+        cellCentroid = zeros(length(idTetra),3);
+        %       obj.volSign = ones(obj.mesh.nCells,1);
+        %       obj.volNod = zeros(obj.mesh.nNodes,1);
+        i = 0;
+        for el = idTetra'
+          i = i + 1;
+          top = obj.mesh.cells(el,1:obj.nNode);
+          coordMat = obj.mesh.coordinates(top,:);
+          vol(i) = det([ones(obj.nNode,1) coordMat])/6;
+          if vol(i) < 0
+            %           obj.volSign(el) = -1;
+            vol(i) = -vol(i);
+          end
+          cellCentroid(i,:) = sum(coordMat,1)/obj.nNode;
+        end
+      end
+
+      function gPCoordinates = getGPointsLocation(obj,el)
+        % Get the location of the Gauss points in the element in the physical
+        % space
+        gPCoordinates = obj.Nref*obj.mesh.coordinates(obj.mesh.cells(el,:),:);
+      end
+
+      function volNod = findNodeVolume(obj,el)
+        volNod = 0.25*obj.mesh.cellVolume(el);
+        volNod = repelem(volNod,obj.nNode);      
+      end
+      %     end
+  end
+
+  methods (Access = protected)
+    function findLocBasisF(obj)
+      g = obj.GaussPts.coord;
+      ng = obj.GaussPts.nNode;
+      obj.Nref = zeros(ng,obj.nNode);
+      obj.Nref(:,1) = arrayfun(@(i) 1-g(i,1)-g(i,2)-g(i,3),1:ng);
+      obj.Nref(:,2) = arrayfun(@(i) g(i,1),1:ng);
+      obj.Nref(:,3) = arrayfun(@(i) g(i,2),1:ng);
+      obj.Nref(:,4) = arrayfun(@(i) g(i,3),1:ng);
     end
 
-%     function v = getVolume(obj,el)
-%       v = obj.vol(el);
-%     end
-%     
-%     function vS = getVolumeSign(obj,el)
-%       vS = obj.volSign(el);
-%     end
-  end
-  
-  methods (Access = private)
-    function setTetrahedron(obj,mesh)
-      obj.mesh = mesh;
-      if any(obj.mesh.cellNumVerts == 10)
-        error('Quadratic tetrahedron not available');
-      end
-%       findVolume(obj);
+    function findLocDerBasisF(obj)
+      obj.Jref = [-1 1 0 0;
+        -1 0 1 0;
+        -1 0 0 1];
+      obj.Jref = repmat(obj.Jref,1,1,obj.GaussPts.nNode);
     end
-    
-    function computeCellCentroid(obj)
-      obj.cellCentroid = sparse(repelem(1:obj.mesh.nCells,obj.mesh.cellNumVerts), ...
-          nonzeros((obj.mesh.cells)'),repelem((obj.mesh.cellNumVerts).^(-1), ...
-          obj.mesh.cellNumVerts),obj.mesh.nCells,obj.mesh.nNodes) ...
-          * obj.mesh.coordinates;
+
+    function setElement(obj)
+      obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
+      obj.detJ = zeros(1,obj.GaussPts.nNode);
+      findLocBasisF(obj);
+      findLocDerBasisF(obj);
+      FiniteElementLagrangian.setStrainMatrix(obj)
     end
   end
 end

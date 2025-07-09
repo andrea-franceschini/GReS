@@ -24,7 +24,12 @@ classdef SimulationParameters < handle
   end
   
   methods (Access = public)
-    function obj = SimulationParameters(fileName,model)
+      function obj = SimulationParameters(fileName,varargin)
+          if isempty(varargin)
+             model = [];
+          else 
+             model = varargin{1};
+          end
       obj.setSimulationParameters(fileName,model);
     end
     
@@ -56,12 +61,15 @@ classdef SimulationParameters < handle
       %
       % Read the model parameters
       %
-      %readSPFParameters(obj,fid,fileName);
-      % Single-phase Flow
-      if model.isVariabSatFlow()
-         readVSFParameters(obj,fid,fileName);
+      if isempty(model)
+        readSPFParameters(obj,fid,fileName);
       else
-         readSPFParameters(obj,fid,fileName);
+        % Single-phase Flow
+        if model.isVariabSatFlow()
+          readVSFParameters(obj,fid,fileName);
+        else
+          readSPFParameters(obj,fid,fileName);
+        end
       end
       token = SimulationParameters.readToken(fid,fileName);
       if ~strcmp(token,'End')

@@ -1,0 +1,25 @@
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+_____________________________________________________________________
+Running mesh refinement 1 
+_____________________________________________________________________
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.9688 s 
+0     5.015536e+00
+mean(du)
+{Unrecognized function or variable 'du'.
+} 
+mean(sol)
+
+ans =
+
+   5.2660e-05
+
+if system_dependent('IsDebugMode')==1, dbquit; end
+convergence_analysis

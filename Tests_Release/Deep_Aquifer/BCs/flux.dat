@@ -1,5 +1,5 @@
 VolumeForce                       % BC item
-Flow                              % Physics
+SinglePhaseFlow                   % Physics
 flux                              % BC name
 flux/list
 0.000000 flux/time0.dat

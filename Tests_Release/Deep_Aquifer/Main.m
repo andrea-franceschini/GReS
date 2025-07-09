@@ -1,6 +1,7 @@
 close all;
 clear;
 
+profile on
 scriptFullPath = mfilename('fullpath');
 scriptDir = fileparts(scriptFullPath);
 cd(scriptDir);
@@ -29,11 +30,8 @@ fileName = 'materialsListElastic.dat';
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
 
-% Define Gauss points
-GaussPts = Gauss(12,2,3);
-
 % Create an object of the "Elements" class and process the element properties
-elems = Elements(topology,GaussPts);
+elems = Elements(topology,2);
 
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model, topology);
@@ -46,13 +44,13 @@ DoFfileName = 'dof.dat';
 dofmanager = DoFManager(topology, model, DoFfileName);
 
 % Create object handling construction of Jacobian and rhs of the model
-linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
+linSyst = Discretizer(model,simParam,dofmanager,grid,mat);
 
 % Build a structure storing variable fields at each time step
-state = linSyst.setState();
+linSyst.initState();
 
 % Create and set the print utility
-printUtils = OutState(model,topology,'outTime.dat','folderName','Output_DeepAquifer');
+printUtils = OutState(model,topology,'outTime.dat','folderName','Output_DeepAquifer','flagMatFile',true);
 
 % Write BC files programmatically with function utility 
 %fileName = setDeepAquiferBC('BCs',time,flux,topology,DoFfileName);
@@ -65,11 +63,12 @@ end
 bound = Boundaries(fileName,model,grid);
 
 % perform a fully coupled simulation
-solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
+solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,linSyst);
 [simState] = solver.NonLinearLoop();
 
 % Finalize the print utility
 printUtils.finalize()
+
 
 %% POST PROCESSING
 
@@ -96,13 +95,13 @@ vertNod = find(tmpNod == 4);
 
 
 %find elemes in vertical symmetry axis
-tmp1 = elems.cellCentroid(:,1)<450.1;
-tmp2 = elems.cellCentroid(:,1)>449.9;
-tmp3 = elems.cellCentroid(:,2)<550.1;
-tmp4 = elems.cellCentroid(:,2)>449.9;
+tmp1 = topology.cellCentroid(:,1)<450.1;
+tmp2 = topology.cellCentroid(:,1)>449.9;
+tmp3 = topology.cellCentroid(:,2)<550.1;
+tmp4 = topology.cellCentroid(:,2)>449.9;
 tmpEl = tmp1+tmp2+tmp3+tmp4;
 vertEl = find(tmpEl == 4);
-[vertElZ,indEl] = sort(elems.cellCentroid(vertEl,3));
+[vertElZ,indEl] = sort(topology.cellCentroid(vertEl,3));
 
 timesInd = [2;3;4];
 time_string = "Year  " + expTime(timesInd);

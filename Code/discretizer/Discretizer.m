@@ -1,51 +1,75 @@
 classdef Discretizer < handle
    % General discretizer class
    properties (GetAccess=public, SetAccess=private)
-      solver      % database for physics solvers in the model
-      dofm        % dofManager 
-      numSolvers  % number of solvers discretized
-      mod
-      fields
+     solver      % database for physics solvers in the model
+     dofm        % dofManager
+     numSolvers  % number of solvers discretized
+     mod
+     fields
+     grid
+   end
+
+   properties (GetAccess=public, SetAccess=public)
+     interfaceList = []; 
+     interfaces = []
+     interfaceSurf            % surfaceTag in each surface of interfaceSurf
+     % empty - single domain simulation
+     % not empty - call to mesh glue instances 
+     state
+   end
+
+   properties (Access = private)
+     solverMap
    end
 
    methods (Access = public)
-      function obj = Discretizer(symmod,simParams,dofManager,grid,mat,varargin)
+      function obj = Discretizer(symmod,simParams,dofManager,grid,mat)
          %UNTITLED Construct an instance of this class
          %   Detailed explanation goes here
          obj.mod = symmod;
          obj.dofm = dofManager;
+         obj.grid = grid;
          obj.solver = containers.Map('KeyType','double','ValueType','any');
-         obj.setDiscretizer(symmod,simParams,dofManager,grid,mat,varargin);
+         obj.setDiscretizer(symmod,simParams,dofManager,grid,mat);
          obj.checkTimeDependence(symmod,mat,simParams);
       end
       
-      function applyBC(obj,bound,t,state)
-         % Apply boundary condition to blocks of physical solver
-         % ents: id of constrained entity
-         % vals: value to assign to each entity
-         bcList = bound.db.keys;
-         % get entities and values of boundary condition
-         for bc = string(bcList)
-            field = translatePhysic(bound.getPhysics(bc),obj.mod);
-            % get id of constrained entities and corresponding BC values
-            [bcEnts,bcVals] = getBC(getSolver(obj,field),bound,bc,t,state);
-            % apply Boundary conditions to each Jacobian/rhs block
-            for f = obj.fields
-               if ~isCoupled(obj,field,f)
-                  continue
-                  % skip pair of uncoupled physics
-               end
-               switch bound.getType(bc)
-                  case 'Dir'
-                     applyDirBC(obj.getSolver({field,f}),field,bcEnts,bcVals);
-                  case {'Neu','VolumeForce'}
-                     applyNeuBC(obj.getSolver({field,f}),bcEnts,bcVals);
-               end
+      function applyBC(obj,bound,t,idDom)
+        % Apply boundary condition to blocks of physical solver
+        % ents: id of constrained entity
+        % vals: value to assign to each entity
+        bcList = bound.db.keys;
+        % get entities and values of boundary condition
+        for bc = string(bcList)
+          field = bound.getPhysics(bc);
+          % get id of constrained entities and corresponding BC values
+          [bcEnts,bcVals] = getBC(getSolver(obj,field),bound,bc,t);
+
+          %removeInterfaceBC(obj,bcEnts,bcVals)
+          % apply Boundary conditions to each Jacobian/rhs block
+          for f = obj.fields
+            if ~isCoupled(obj,field,f)
+              continue
+              % skip pair of uncoupled physics
             end
-         end
+            switch bound.getType(bc)
+              case 'Dir'
+                if nargin > 3
+                  assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
+                    'invalid domain id input for single domain BC imposition']);
+                  for i = 1:length(obj.interfaceList)
+                    [bcEnts,bcVals] = obj.interfaces(i).removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
+                  end
+                end
+                applyDirBC(obj.getSolver({field,f}),field,bcEnts,bcVals);
+              case {'Neu','VolumeForce'}
+                applyNeuBC(obj.getSolver({field,f}),bcEnts,bcVals);
+            end
+          end
+        end
       end
 
-      function state = applyDirVal(obj,bound,t,state)
+      function applyDirVal(obj,bound,t,idDom)
          % Apply boundary condition to blocks of physical solver
          % ents: id of constrained entity
          % vals: value to assign to each entity
@@ -55,8 +79,16 @@ classdef Discretizer < handle
             if ~strcmp(bound.getType(bc),'Dir')
                continue
             end
-            field = translatePhysic(bound.getPhysics(bc),obj.mod);
-            state = getSolver(obj,field).applyDirVal(bound,bc,t,state);
+            field = bound.getPhysics(bc);
+            [bcEnts,bcVals] = getBC(getSolver(obj,field),bound,bc,t);
+            if nargin > 3
+              assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
+                'invalid domain id input for single domain BC imposition']);
+              for i = 1:length(obj.interfaceList)
+                [bcEnts,bcVals] = obj.interfaces(i).removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
+              end
+            end
+            getSolver(obj,field).applyDirVal(bcEnts,bcVals);
          end
       end
 
@@ -76,8 +108,6 @@ classdef Discretizer < handle
             otherwise
                error('Invalid DoF manager ordering')
          end
-         % convert cell to matrix
-         J = cell2mat(J);
       end
 
       function rhs = assembleRhs(obj)
@@ -92,7 +122,6 @@ classdef Discretizer < handle
                   getRhs(getSolver(obj,{obj.fields(i),obj.fields(j)}),obj.fields(i));
             end  
          end
-         rhs = cell2mat(rhs);
       end
 
       % function dSol = solve(obj,J,rhs)
@@ -127,12 +156,20 @@ classdef Discretizer < handle
       end
 
 
-      function stateTmp = computeMatricesAndRhs(obj,stateTmp,statek,dt)
+      function addInterface(obj,interfId,interf)
+        if ~ismember(interfId,obj.interfaceList)
+          obj.interfaceList = sort([obj.interfaceList interfId]);
+          obj.interfaces = [obj.interfaces interf];
+        end
+      end
+
+
+      function computeMatricesAndRhs(obj,stateOld,dt)
          % loop trough solver database and compute non-costant jacobian
          % blocks and rhs block
          for i = 1:obj.numSolvers
-            stateTmp = computeMat(obj.solver(i),stateTmp,statek,dt);
-            stateTmp = computeRhs(obj.solver(i),stateTmp,statek,dt);
+           computeMat(obj.solver(i),stateOld,dt);
+           computeRhs(obj.solver(i),stateOld,dt);
          end
       end
 
@@ -144,81 +181,132 @@ classdef Discretizer < handle
          out = any(intersect(sub1,sub2));
       end
 
-      function state = setState(obj)
+      function initState(obj)
          % loop trough active single physics solver and update the state class
          % accordingly
-         state = struct();
-         state.t = 0;
          for i = 1:numel(obj.fields)
             % loop trough active fields and update the state structure
-            state = setState(obj.getSolver(obj.fields(i)),state);
+            initState(obj.getSolver(obj.fields(i)));
          end
       end
 
-      function state = updateState(obj,state,du)
+      function updateState(obj,du)
          % update current state
          for i = 1:numel(obj.fields)
-            state = obj.getSolver(obj.fields(i)).updateState(state,du);
+            obj.getSolver(obj.fields(i)).updateState(du);
          end
       end
    end
 
    methods(Access = private)
-      function setDiscretizer(obj,symmod,params,dofManager,grid,mat,data)
-         flds = getFieldList(obj.dofm); 
-         nF = numel(flds);
-         % loop over all fields and define corresponding models
-         k = 0;
-         for i = 1:nF
-            for j = i:nF
-               k = k+1;
-               addPhysics(obj,k,flds(i),flds(j),symmod,params,dofManager,grid,mat,data);
-            end
-         end
-         obj.fields = flds;
-         obj.numSolvers = k;
+      function setDiscretizer(obj,symmod,params,dofManager,grid,mat)
+        obj.setSolverMap();
+        flds = getFieldList(obj.dofm);
+        nF = numel(flds);
+        % loop over all fields and define corresponding models
+        k = 0;
+        % create the handle to state object that will be shared across all physical
+        % modules
+        stat = State();
+        for i = 1:nF
+          for j = i:nF
+            k = k+1;
+            addPhysics(obj,k,flds(i),flds(j),symmod,params,dofManager,grid,mat,stat);
+          end
+        end
+        obj.state = stat;
+        obj.fields = flds;
+        obj.numSolvers = k;
       end
 
       function checkTimeDependence(obj,mod,mat,parm)
-         % check if there is any time dependence in the input model
-         % no time dependence in absence of flow and
-         % incompressible single phase flow model.
-         if ~isSinglePhaseFlow(mod)
-            % Biot model is time dependent
+        if isempty(parm)
+          return
+        end
+        % check if there is any time dependence in the input model
+        % no time dependence in absence of flow and
+        % incompressible single phase flow model.
+        if ~isSinglePhaseFlow(mod)
+          % Biot model is time dependent
+          setTimeDependence(parm,false);
+          return
+        else
+          % check if fluid is incompressible
+          beta = getFluidCompressibility(mat.getFluid());
+          if beta < eps
             setTimeDependence(parm,false);
-            return
-         else
-            % check if fluid is incompressible
-            beta = getFluidCompressibility(mat.getFluid());
-            if beta < eps
-               setTimeDependence(parm,false);
-            end
-         end
+          end
+        end
       end
 
-      function addPhysics(obj,id,f1,f2,mod,parm,dof,grid,mat,data)
-         % Add new key to solver database
-         % Prepare input fields for solver definition
-         if ~isCoupled(obj,f1,f2)
-            return
-         end
-         f = sort({char(f1),char(f2)});
-         f = join(f,'_');
-         switch f{:}
-            case 'SPFlow_SPFlow'
-               obj.solver(id) = SPFlow(mod,parm,dof,grid,mat,data);
-            case 'Poromechanics_Poromechanics'
-               obj.solver(id) = Poromechanics(mod,parm,dof,grid,mat,data);
-            case 'Poromechanics_SPFlow'
-               assert(isSinglePhaseFlow(mod),['Coupling between' ...
-                  'poromechanics and unsaturated flow is not yet implemented']);
-               obj.solver(id) = Biot(mod,parm,dof,grid,mat,data);
-            case 'VSFlow_VSFlow'
-               obj.solver(id) = VSFlow(mod,parm,dof,grid,mat,data);
-            otherwise
-               error('A physical module coupling %s with %s is not available!',f1,f2)
-         end
+      function addPhysics(obj,id,f1,f2,mod,parm,dof,grid,mat,state)
+        % Add new key to solver database
+        % Prepare input fields for solver definition
+        if ~isCoupled(obj,f1,f2)
+          return
+        end
+        f = join(unique(sort({char(f1),char(f2)})));
+
+        if ~obj.solverMap.isKey(string(f{:}))
+          error('A physical module coupling %s with %s is not available.',f1,f2)
+        else
+          solv = obj.solverMap(f{:});
+        end
+
+        obj.solver(id) = solv(mod,parm,dof,grid,mat,state);
       end
 
+      function setSolverMap(obj)
+
+        obj.solverMap = containers.Map('KeyType','char','ValueType','any');
+
+        subClasses = [findSubClasses('SinglePhysics','SinglePhysics'), ...
+          findSubClasses('CouplingPhysics','CouplingPhysics')];
+
+        for i = 1:numel(subClasses)
+          obj.solverMap = feval([subClasses{i} '.registerSolver'],...
+            obj.solverMap,subClasses{i});
+        end
+      end
+
+   end
+
+   methods (Static)
+%      function [row,col,val,c] = computeLocalMatrix(mat,row,col,val,c,w,dofRow,dofCol)
+%        % shortcut for assemblying local matrix contributions in sparse format
+%        mat = mat.*reshape(w,1,1,[]);
+%        mat = sum(mat,3);
+%        n = numel(mat);
+%        [J, I] = meshgrid(1:size(mat,2), 1:size(mat,1));
+%        row(c+1:c+n) = dofRow(I);
+%        col(c+1:c+n) = dofCol(J);
+%        val(c+1:c+n) = mat(:);
+%        c = c+n;
+%      end
+
+     function mat_new = expandMat(mat,n)
+       % Get the size of the original matrix
+       [s1, s2] = size(mat);
+
+       % Initialize the sparse matrix: row indices, column indices, and values
+       rows = [];
+       cols = [];
+       values = [];
+
+       % Loop through the original matrix and populate the sparse matrix
+       for s = n-1:-1:0
+         % Get the row and column indices for the block
+         r1 = n*(1:s1) - s;
+         r2 = n*(1:s2) - s;
+         [colIdx,rowIdx]  = meshgrid(r2,r1);
+         % Add the values from the original matrix to the sparse matrix
+         rows = [rows; rowIdx(:)];
+         cols = [cols; colIdx(:)];
+         values = [values; mat(:)];
+       end
+
+       % Create the sparse matrix directly from the row, column indices, and values
+       mat_new = sparse(rows, cols, values, s1 * n, s2 * n);
+     end
    end
 end

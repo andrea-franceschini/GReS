@@ -1,0 +1,977 @@
+{Error using <a href="matlab:matlab.internal.language.introspective.errorDocCallback('readstruct')" style="font-weight:bold">readstruct</a>
+Unable to find or open 'interfaces_1.xml'. Check the path and filename or file permissions.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 29)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',29,0)">line 29</a>)
+strInterf = readstruct(interfFile);
+} 
+convergence_analysis
+{Error using <a href="matlab:matlab.internal.language.introspective.errorDocCallback('readstruct')" style="font-weight:bold">readstruct</a>
+All parameters must have an associated value.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 27)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',27,0)">line 27</a>)
+strDomain = readstruct('Domains','interfaces_1.xml');
+} 
+opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',27,0)
+opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',27,0)
+convergence_analysis
+{Error using <a href="matlab:matlab.internal.language.introspective.errorDocCallback('readstruct')" style="font-weight:bold">readstruct</a>
+All parameters must have an associated value.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 27)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',27,0)">line 27</a>)
+strDomain = readstruct('Domains','interfaces_1.xml');
+} 
+convergence_analysis
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 1.1094 s 
+0     1.170359e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.5781 s 
+1     2.810042e-16
+Max absolute error is: 1.050680e-01 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 2.4219 s 
+0     2.365938e+00
+Computing mortar matrices...
+Done computing mortar matrix in 2.1250 s 
+1     6.258831e-16
+Max absolute error is: 2.254920e-02 
+Running mesh refinement 3 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 4.5312 s 
+0     2.582583e+00
+Computing mortar matrices...
+Done computing mortar matrix in 3.0625 s 
+1     9.213630e-16
+Max absolute error is: 5.694728e-03 
+{Error using <a href="matlab:matlab.internal.language.introspective.errorDocCallback('save')" style="font-weight:bold">save</a>
+Cannot create 'SegmentBased_7.mat' because 'OUT_HEXA_2' does not exist.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 152)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',152,0)">line 152</a>)
+      save(fullfile(outDir,strcat(fname,'.mat')),'-struct',"out_str");
+} 
+mkdir OUT_HEXA_2
+mkdir OUT_HEXA27_2
+convergence_analysis
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.2031 s 
+0     1.170359e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.2500 s 
+1     2.810042e-16
+Max absolute error is: 1.050680e-01 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.9219 s 
+0     2.365938e+00
+Computing mortar matrices...
+Done computing mortar matrix in 1.6562 s 
+1     6.258831e-16
+Max absolute error is: 2.254920e-02 
+Running mesh refinement 3 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 5.9531 s 
+0     2.582583e+00
+Computing mortar matrices...
+Done computing mortar matrix in 5.0625 s 
+{Operation terminated by user during <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Poisson/computeAnal')" style="font-weight:bold">Poisson/computeAnal</a>
+
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Poisson/computeForcingTerm', 'M:\Codes\GReS\Code\discretizer\SinglePhysics\Poisson.m', 180)" style="font-weight:bold">Poisson/computeForcingTerm</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\discretizer\SinglePhysics\Poisson.m',180,0)">line 180</a>)
+        f_gp = computeAnal(obj,c_gp,'f',1);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Poisson/computeRhs', 'M:\Codes\GReS\Code\discretizer\SinglePhysics\Poisson.m', 51)" style="font-weight:bold">Poisson/computeRhs</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\discretizer\SinglePhysics\Poisson.m',51,0)">line 51</a>)
+      f = computeForcingTerm(obj);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/computeMatricesAndRhs', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 397)" style="font-weight:bold">MultidomainFCSolver/computeMatricesAndRhs</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',397,0)">line 397</a>)
+          computeRhs(discretizer.solver(j), obj.state(i).prev, obj.dt);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/NonLinearLoop', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 91)" style="font-weight:bold">MultidomainFCSolver/NonLinearLoop</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',91,0)">line 91</a>)
+          computeMatricesAndRhs(obj);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 122)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',122,0)">line 122</a>)
+        solver.NonLinearLoop();
+} 
+convergence_analysis
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.1875 s 
+0     1.170359e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.2031 s 
+1     2.810042e-16
+Max absolute error is: 1.050680e-01 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 1.2812 s 
+0     2.365938e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.7500 s 
+1     6.258831e-16
+Max absolute error is: 2.254920e-02 
+Running mesh refinement 3 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 4.4219 s 
+0     2.582583e+00
+Computing mortar matrices...
+Done computing mortar matrix in 2.9531 s 
+1     9.213630e-16
+Max absolute error is: 5.694728e-03 
+_____________________________________________________________________
+Running convergence analysis with RBF integration - 3 GP 
+_____________________________________________________________________
+Using 5 interpolation points Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.1250 s 
+0     1.170305e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.0625 s 
+1     2.463388e-16
+Max absolute error is: 9.752802e-02 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.2500 s 
+0     2.365933e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.3438 s 
+1     6.190351e-16
+Max absolute error is: 2.348318e-02 
+Running mesh refinement 3 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 1.4375 s 
+0     2.582582e+00
+Computing mortar matrices...
+Done computing mortar matrix in 1.2812 s 
+1     9.398460e-16
+Max absolute error is: 8.316369e-03 
+_____________________________________________________________________
+Running convergence analysis with RBF integration - 6 GP 
+_____________________________________________________________________
+Using 5 interpolation points Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.1875 s 
+0     1.170362e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.2188 s 
+1     3.812537e-16
+Max absolute error is: 1.059012e-01 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.4062 s 
+0     2.365938e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.4062 s 
+1     6.568767e-16
+Max absolute error is: 2.266328e-02 
+Running mesh refinement 3 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 1.8906 s 
+0     2.582583e+00
+Computing mortar matrices...
+Done computing mortar matrix in 1.7656 s 
+1     8.723805e-16
+Max absolute error is: 5.718066e-03 
+_____________________________________________________________________
+Running convergence analysis with RBF integration - 16 GP 
+_____________________________________________________________________
+Using 5 interpolation points Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.1406 s 
+0     1.170359e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.1875 s 
+1     3.477287e-16
+Max absolute error is: 1.051817e-01 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.5156 s 
+0     2.365938e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.5625 s 
+1     6.183000e-16
+Max absolute error is: 2.254805e-02 
+Running mesh refinement 3 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 2.2031 s 
+0     2.582583e+00
+Computing mortar matrices...
+Done computing mortar matrix in 2.2188 s 
+1     9.193485e-16
+Max absolute error is: 5.697508e-03 
+_____________________________________________________________________
+Running convergence analysis with ElementBased integration - 3 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.1719 s 
+0     1.170338e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.1875 s 
+1     2.610493e-16
+Max absolute error is: 9.899662e-02 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.6719 s 
+0     2.365935e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.6094 s 
+1     6.263926e-16
+Max absolute error is: 2.158413e-02 
+Running mesh refinement 3 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 2.0000 s 
+0     2.582582e+00
+Computing mortar matrices...
+Done computing mortar matrix in 1.6719 s 
+1     8.935575e-16
+Max absolute error is: 5.557230e-03 
+_____________________________________________________________________
+Running convergence analysis with ElementBased integration - 6 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.1406 s 
+0     1.170362e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.1406 s 
+1     3.733237e-16
+Max absolute error is: 1.059239e-01 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.6562 s 
+0     2.365938e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.6250 s 
+1     6.461016e-16
+Max absolute error is: 2.268568e-02 
+Running mesh refinement 3 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 2.5625 s 
+0     2.582583e+00
+Computing mortar matrices...
+Done computing mortar matrix in 2.5469 s 
+1     9.098472e-16
+Max absolute error is: 5.724299e-03 
+_____________________________________________________________________
+Running convergence analysis with ElementBased integration - 16 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.5938 s 
+0     1.170359e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.6094 s 
+1     3.113577e-16
+Max absolute error is: 1.051986e-01 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 2.6094 s 
+0     2.365938e+00
+Computing mortar matrices...
+Done computing mortar matrix in 2.6562 s 
+1     5.941424e-16
+Max absolute error is: 2.257002e-02 
+Running mesh refinement 3 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 11.2656 s 
+0     2.582583e+00
+Computing mortar matrices...
+Done computing mortar matrix in 11.3906 s 
+1     9.095653e-16
+Max absolute error is: 5.697418e-03 
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.3438 s 
+0     4.255328e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.4219 s 
+1     7.872821e-16
+Max absolute error is: 5.902582e-02 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 1.2656 s 
+0     4.945398e+00
+Computing mortar matrices...
+Done computing mortar matrix in 3.0000 s 
+1     1.521907e-15
+Max absolute error is: 1.074560e-02 
+_____________________________________________________________________
+Running convergence analysis with RBF integration - 3 GP 
+_____________________________________________________________________
+Using 5 interpolation points Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.0938 s 
+0     4.255328e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.0156 s 
+1     1.132624e-15
+Max absolute error is: 5.680659e-02 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.1562 s 
+0     4.945399e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.2812 s 
+1     1.736826e-15
+Max absolute error is: 1.200903e-02 
+_____________________________________________________________________
+Running convergence analysis with RBF integration - 6 GP 
+_____________________________________________________________________
+Using 5 interpolation points Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.0312 s 
+0     4.255328e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.0781 s 
+1     1.448849e-15
+Max absolute error is: 5.926177e-02 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.1719 s 
+0     4.945398e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.2031 s 
+1     1.746565e-15
+Max absolute error is: 1.088841e-02 
+_____________________________________________________________________
+Running convergence analysis with RBF integration - 16 GP 
+_____________________________________________________________________
+Using 5 interpolation points Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.0938 s 
+0     4.255328e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.1094 s 
+1     9.593910e-16
+Max absolute error is: 5.913375e-02 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.3750 s 
+0     4.945398e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.2656 s 
+1     1.530143e-15
+Max absolute error is: 1.073411e-02 
+_____________________________________________________________________
+Running convergence analysis with ElementBased integration - 3 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.1094 s 
+0     4.255328e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.0312 s 
+1     1.351034e-15
+Max absolute error is: 5.611236e-02 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.1875 s 
+0     4.945399e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.2500 s 
+1     1.565446e-15
+Max absolute error is: 8.804990e-03 
+_____________________________________________________________________
+Running convergence analysis with ElementBased integration - 6 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.0625 s 
+0     4.255328e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.0625 s 
+1     1.241520e-15
+Max absolute error is: 5.905822e-02 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.1406 s 
+0     4.945398e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.2344 s 
+1     1.951771e-15
+Max absolute error is: 1.094844e-02 
+_____________________________________________________________________
+Running convergence analysis with ElementBased integration - 16 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.2344 s 
+0     4.255328e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.2656 s 
+1     1.056818e-15
+Max absolute error is: 5.890923e-02 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.6719 s 
+0     4.945398e+00
+Computing mortar matrices...
+Done computing mortar matrix in 1.0000 s 
+1     1.349550e-15
+Max absolute error is: 1.077505e-02 
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbquit; end
+convergence_analysis
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+if system_dependent('IsDebugMode')==1, dbstep; end
+{Error using <a href="matlab:matlab.internal.language.introspective.errorDocCallback('mxImportVTKmesh')" style="font-weight:bold">mxImportVTKmesh</a>
+Usage: readVTKmesh(fileName)
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Mesh/importMesh', 'M:\Codes\GReS\Code\read\Mesh.m', 186)" style="font-weight:bold">Mesh/importMesh</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\read\Mesh.m',186,0)">line 186</a>)
+          [obj.coordinates, elems] = mxImportVTKmesh(fileName);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 88)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',88,0)">line 88</a>)
+        mesh.importMesh(meshFile);
+} 
+convergence_analysis
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.5781 s 
+0     4.255328e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.4219 s 
+1     7.872821e-16
+Max absolute error is: 5.902582e-02 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 3.8750 s 
+0     4.945398e+00
+Computing mortar matrices...
+{Operation terminated by user during <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Quadrilateral/findLocBasisF')" style="font-weight:bold">Quadrilateral/findLocBasisF</a>
+
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Quadrilateral/setElement', 'M:\Codes\GReS\Code\elements\Quadrilateral.m', 151)" style="font-weight:bold">Quadrilateral/setElement</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\elements\Quadrilateral.m',151,0)">line 151</a>)
+      findLocBasisF(obj);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('FEM', 'M:\Codes\GReS\Code\elements\FEM.m', 25)" style="font-weight:bold">FEM</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\elements\FEM.m',25,0)">line 25</a>)
+      setElement(obj);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Quadrilateral')" style="font-weight:bold">Quadrilateral</a>
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('QuadrilateralQuadratic/createSubElement', 'M:\Codes\GReS\Code\elements\QuadrilateralQuadratic.m', 172)" style="font-weight:bold">QuadrilateralQuadratic/createSubElement</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\elements\QuadrilateralQuadratic.m',172,0)">line 172</a>)
+      subElement = Quadrilateral(obj.nGP);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('QuadrilateralQuadratic/computeCentroid', 'M:\Codes\GReS\Code\elements\QuadrilateralQuadratic.m', 131)" style="font-weight:bold">QuadrilateralQuadratic/computeCentroid</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\elements\QuadrilateralQuadratic.m',131,0)">line 131</a>)
+        quad = createSubElement(obj);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('SegmentBasedQuadrature/computeAuxiliaryPlane', 'M:\Codes\GReS\Code\multidomain\Mortar\SegmentBasedQuadrature.m', 206)" style="font-weight:bold">SegmentBasedQuadrature/computeAuxiliaryPlane</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\multidomain\Mortar\SegmentBasedQuadrature.m',206,0)">line 206</a>)
+        P = obj.elems(2).computeCentroid(el,subID);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('SegmentBasedQuadrature/segmentBasedCouple', 'M:\Codes\GReS\Code\multidomain\Mortar\SegmentBasedQuadrature.m', 132)" style="font-weight:bold">SegmentBasedQuadrature/segmentBasedCouple</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\multidomain\Mortar\SegmentBasedQuadrature.m',132,0)">line 132</a>)
+          [P0,nP] = computeAuxiliaryPlane(obj,elSlave,iS);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('SegmentBasedQuadrature/getMortarBasisFunctions', 'M:\Codes\GReS\Code\multidomain\Mortar\SegmentBasedQuadrature.m', 29)" style="font-weight:bold">SegmentBasedQuadrature/getMortarBasisFunctions</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\multidomain\Mortar\SegmentBasedQuadrature.m',29,0)">line 29</a>)
+      [xiSlave,xiMaster,obj.dJw] = segmentBasedCouple(obj,is,im);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Mortar/computeMortarMatrices', 'M:\Codes\GReS\Code\multidomain\Mortar\Mortar.m', 173)" style="font-weight:bold">Mortar/computeMortarMatrices</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\multidomain\Mortar\Mortar.m',173,0)">line 173</a>)
+            getMortarBasisFunctions(obj.quadrature,is,im);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MeshGlue/computeMat', 'M:\Codes\GReS\Code\multidomain\MeshGlue.m', 97)" style="font-weight:bold">MeshGlue/computeMat</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\multidomain\MeshGlue.m',97,0)">line 97</a>)
+      computeMortarMatrices(obj);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/computeMatricesAndRhs', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 390)" style="font-weight:bold">MultidomainFCSolver/computeMatricesAndRhs</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',390,0)">line 390</a>)
+        computeMat(obj.interfaces{j}, obj.dt);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/NonLinearLoop', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 91)" style="font-weight:bold">MultidomainFCSolver/NonLinearLoop</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',91,0)">line 91</a>)
+          computeMatricesAndRhs(obj);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 122)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',122,0)">line 122</a>)
+        solver.NonLinearLoop();
+} 
+convergence_analysis
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Running mesh refinement 2 
+Running mesh refinement 3 
+Running mesh refinement 4 
+Running mesh refinement 5 
+Running mesh refinement 6 
+{Index exceeds the number of array elements. Index must not exceed 6.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 75)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',75,0)">line 75</a>)
+        N_i_l = N_l(i);
+} 
+opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',75,0)
+convergence_analysis
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Running mesh refinement 2 
+Running mesh refinement 3 
+Running mesh refinement 4 
+Running mesh refinement 5 
+Running mesh refinement 6 
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 3.9062 s 
+0     5.572201e+00
+Computing mortar matrices...
+Done computing mortar matrix in 3.7344 s 
+1     2.133831e-15
+Max absolute error is: 1.006901e-02 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 12.5625 s 
+0     4.570748e+00
+Computing mortar matrices...
+Done computing mortar matrix in 9.4219 s 
+1     2.328992e-15
+Max absolute error is: 1.068795e-03 
+Running mesh refinement 3 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 24.9375 s 
+0     4.331155e+00
+Solving linear system...
+if system_dependent('IsDebugMode')==1, dbcont; end
+Linear system solved in 7.0203 s 
+Computing mortar matrices...
+Done computing mortar matrix in 21.8906 s 
+1     3.969936e-09
+Max absolute error is: 1.487943e-04 
+Running mesh refinement 4 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 51.1875 s 
+0     4.265186e+00
+Solving linear system...
+Linear system solved in 3.3348 s 
+Computing mortar matrices...
+Done computing mortar matrix in 50.5000 s 
+1     2.961785e-09
+Max absolute error is: 4.759251e-05 
+Running mesh refinement 5 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 88.9688 s 
+0     4.235652e+00
+Solving linear system...
+Linear system solved in 9.4555 s 
+Computing mortar matrices...
+Done computing mortar matrix in 87.7031 s 
+1     3.673629e-09
+Max absolute error is: 2.153971e-05 
+_____________________________________________________________________
+Running convergence analysis with ElementBased integration - 6 GP 
+_____________________________________________________________________
+Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.5312 s 
+0     5.573441e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.4531 s 
+1     1.791668e-15
+Max absolute error is: 9.964405e-03 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 1.6719 s 
+0     4.570624e+00
+Computing mortar matrices...
+Done computing mortar matrix in 1.2031 s 
+1     2.723027e-15
+Max absolute error is: 1.050133e-03 
+Running mesh refinement 3 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 4.3281 s 
+0     4.331030e+00
+Solving linear system...
+Linear system solved in 0.6969 s 
+Computing mortar matrices...
+Done computing mortar matrix in 3.3438 s 
+1     3.968356e-09
+Max absolute error is: 2.239733e-04 
+Running mesh refinement 4 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 9.1719 s 
+0     4.265091e+00
+Solving linear system...
+Linear system solved in 3.1946 s 
+Computing mortar matrices...
+Done computing mortar matrix in 8.5000 s 
+1     2.961273e-09
+Max absolute error is: 1.593992e-04 
+Running mesh refinement 5 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 12.5938 s 
+0     4.235577e+00
+Solving linear system...
+Linear system solved in 9.4062 s 
+Computing mortar matrices...
+Done computing mortar matrix in 12.4062 s 
+1     3.673059e-09
+Max absolute error is: 1.230153e-04 
+_____________________________________________________________________
+Running convergence analysis with RBF integration - 6 GP 
+_____________________________________________________________________
+Using 5 interpolation points Running mesh refinement 1 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.1406 s 
+0     5.574313e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.1406 s 
+1     1.735486e-15
+Max absolute error is: 9.956053e-03 
+Running mesh refinement 2 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.7656 s 
+0     4.570822e+00
+Computing mortar matrices...
+Done computing mortar matrix in 0.7656 s 
+1     2.409763e-15
+Max absolute error is: 1.066085e-03 
+Running mesh refinement 3 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 2.9375 s 
+0     4.331125e+00
+Solving linear system...
+Linear system solved in 0.6953 s 
+Computing mortar matrices...
+Done computing mortar matrix in 1.9688 s 
+1     3.968301e-09
+Max absolute error is: 2.241454e-04 
+Running mesh refinement 4 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 4.5469 s 
+{Operation terminated by user during <a href="matlab:matlab.internal.language.introspective.errorDocCallback('SinglePhysics/applyDirBC')" style="font-weight:bold">SinglePhysics/applyDirBC</a>
+
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Discretizer/applyBC', 'M:\Codes\GReS\Code\discretizer\Discretizer.m', 64)" style="font-weight:bold">Discretizer/applyBC</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\discretizer\Discretizer.m',64,0)">line 64</a>)
+                applyDirBC(obj.getSolver({field,f}),field,bcEnts,bcVals);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/applyBC', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 442)" style="font-weight:bold">MultidomainFCSolver/applyBC</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',442,0)">line 442</a>)
+        applyBC(discretizer, bc, obj.t, i);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/NonLinearLoop', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 68)" style="font-weight:bold">MultidomainFCSolver/NonLinearLoop</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',68,0)">line 68</a>)
+        applyBC(obj);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 124)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',124,0)">line 124</a>)
+        solver.NonLinearLoop();
+} 
+convergence_analysis
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 5 
+convergence_analysis
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 6 
+convergence_analysis
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 7 
+convergence_analysis

@@ -1,4 +1,4 @@
-mkdir build
-cd build
-system('cmake ..');
-system('make');
+% mkdir build
+% cd build
+% system('cmake ..');
+% system('make');
