@@ -46,9 +46,11 @@ classdef Triangle < FEM
         % 2D setting: 'in' is a given list of x-y coordinates
         inv_A = inv([ones(3,1), in]);
         mat = inv_A(2:3,:);
-        v1 = norm(in(1,:)-in(2,:));
-        v2 = norm(in(1,:)-in(3,:));
-        obj.detJ = v1*v2;
+        %v1 = norm(in(1,:)-in(2,:));
+        %v2 = norm(in(1,:)-in(3,:));
+        e1 = [in(1,:)-in(2,:), 0];
+        e2 = [in(1,:)-in(3,:), 0];
+        obj.detJ = norm(cross(e1',e2'));
         % jacobian is constant in a simplex
         if nargout == 2
           outVar1 = mat;
