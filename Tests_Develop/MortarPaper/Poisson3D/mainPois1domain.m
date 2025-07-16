@@ -39,12 +39,12 @@ N_0_l = 4;
 N_0_r = 6;
 
 % number of refinement
-nref = 7;
+nref = 4;
 [h,L2,H1] = deal(zeros(nref,1));
 
 % study parameters
-elem_type = "hexa27";                 % hexa,hexa27
-integration_type = 'RBF';    % SegmentBased (7 gp),ElementBased,RBF
+elem_type = "hexa";                 % hexa,hexa27
+integration_type = 'SegmentBased';    % SegmentBased (7 gp),ElementBased,RBF
 nG = 16;           
 if strcmp(integration_type,'SegmentBased')
   nG = 7;
@@ -56,7 +56,7 @@ N_l = [4 8 16 24 32 36 40];
 N_r = [6 12 24 36 48 54 60];
 
 %% convergence loop
-for i = 6
+for i = 1:nref
   N_i_l = N_l(i);
   N_i_r = N_r(i);
 
@@ -100,7 +100,7 @@ for i = 6
 
  
   % processing Poisson problem
-  domains = buildModelStruct_new(domainFile,simParam);
+  domains = buildModelStruct(domainFile,simParam);
   domains.Discretizer.getSolver('Poisson').setAnalSolution(anal,f,gradx,grady,gradz);
   
   [interfaces,domains] = Mortar.buildInterfaceStruct(interfFile,domains);

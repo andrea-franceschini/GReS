@@ -329,11 +329,11 @@ classdef MultidomainFCSolver < handle
         for iF = 1:obj.nfldDom(iD)
           for iI = discr.interfaceList
             pos = find(strcmp(obj.interfaces{iI}.physics,discr.fields(iF)));
-            jj = obj.systSize(2)+obj.nfldInt(iI)-obj.nfldInt(1)+pos;
+            jj = obj.systSize(2)+sum(obj.nfldInt(1:iI))-obj.nfldInt(1)+pos;
             [J{iF+f,jj},J{jj,iF+f}] = getJacobian(...
-              obj.interfaces{iF},pos,iD);
+              obj.interfaces{iI},pos,iD);
             [J{jj,jj}] = getJacobian(...
-              obj.interfaces{iF},pos,iD);
+              obj.interfaces{iI},pos,iD);
           end
         end
         f = f + obj.nfldDom(iD);  % update field counter
@@ -371,17 +371,22 @@ classdef MultidomainFCSolver < handle
         rhs{f+1:f+obj.nfldDom(iD)} = discr.assembleRhs();
         for iF = 1:obj.nfldDom(iD)
           for iI = discr.interfaceList
-            pos = find(strcmp(obj.interfaces{iI}.physics,discr.fields(iF)));
-            rhs{f+iF} = rhs{f+iF}{:} + getRhs(...
-              obj.interfaces{iF},pos,iD);
-            iMult = obj.systSize(2)+sum(obj.nfldInt(2:iI))+pos;
+            posI = find(strcmp(obj.interfaces{iI}.physics,discr.fields(iF)));
+            posD = find(strcmp(discr.fields(iF),obj.interfaces{iI}.physics));
+            rhs{f+iF}{posD} = rhs{f+iF}{posD} + getRhs(...
+              obj.interfaces{iI},posI,iD);
+            iMult = obj.systSize(2)+sum(obj.nfldInt(2:iI))+posI;
             if isempty(rhs{iMult})
               % dont compute rhsMult twice: 1field -> 1 interface
-              rhs{iMult} = getRhs(obj.interfaces{iF},pos);
+              rhs{iMult} = getRhs(obj.interfaces{iI},posI);
             end
           end
           f = f + 1;
         end
+      end
+
+      for i = 1:obj.nDom
+      rhs{i} = cell2mat(rhs{i});
       end
     end
 

@@ -74,7 +74,7 @@ for i_t = integration_type
     writeBCfiles('BCs/bc_bot','NodeBC','Dir','Poisson','manufactured_solution_bot',0,0,nodes,vals);
  
     % processing Poisson problem
-    domains = buildModelStruct_new('domain2block.xml',simParam);
+    domains = buildModelStruct('domain2block.xml',simParam);
     domains(1).Discretizer.getSolver('Poisson').setAnalSolution(anal,f,gradx,grady,gradz);
     domains(2).Discretizer.getSolver('Poisson').setAnalSolution(anal,f,gradx,grady,gradz);
 

@@ -3,7 +3,7 @@
     <Interface>
         <Master id="1" surfaceTag="2"/>
         <Slave id="2" surfaceTag="2"/>
-        <Type>MeshTyingCondensation</Type>
+        <Type>MeshTying</Type>
         <Quadrature type="SegmentBased" nGP="7" nInt="4"/>
         <Print name="interf_SegmentBased"/>
         <Physics>Poisson</Physics>
