@@ -69,13 +69,14 @@ classdef FCSolver < handle
                     saveStasticts(2) = varargin{pos+1};
                 case 'SaveBStepInf'
                     saveStasticts(3) = varargin{pos+1};
+                case 'SaveConverg'
+                    saveStasticts(:) = varargin{pos+1};
                 otherwise
             end
         end
         obj.solStatistics = SolverStatistics(simParam.itMaxNR,simParam.relTol,simParam.absTol,saveStasticts);
         % obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin);
-        obj.toGrow = adapgrid(grid);
-        obj.toGrow.addCell(grid,2,6);
+        obj.toGrow = adapgrid(obj.linSyst);        
     end
 
     function [simStat] = NonLinearLoop(obj)
@@ -86,10 +87,20 @@ classdef FCSolver < handle
 
       flConv = true; % convergence flag
 
+      % [obj.statek,obj.stateTmp]=obj.toGrow.addCell(obj.linSyst,1,2,6,obj.statek,obj.stateTmp);
+      % [obj.statek,obj.stateTmp]=obj.toGrow.addCells(obj.linSyst,1,[2 4 6 8],6,obj.statek,obj.stateTmp);
+
+
       % Loop over time
       absTol = obj.simParameters.absTol;
       residual = zeros(obj.simParameters.itMaxNR+1,2);
       while obj.t < obj.simParameters.tMax
+
+         % add cells
+         % if obj.t>50 && obj.t<65
+         %    [obj.statek,obj.stateTmp]=obj.toGrow.addCells(obj.linSyst,1,[2 4 6 8],6,obj.statek,obj.stateTmp);
+         % end
+
          % Update the simulation time and time step ID
          obj.tStep = obj.tStep + 1;
          %new time update to fit the outTime list

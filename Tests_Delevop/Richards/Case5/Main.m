@@ -4,11 +4,18 @@ input_dir = 'Inputs/';
 output_dir = 'Outputs/';
 figures_dir = 'Figs/';
 
+% isSPF = true;
+isSPF = false;
+
 %% -------------------------- SET THE PHYSICS -------------------------
-model = ModelType("VariabSatFlow_FVTPFA");
+if isSPF
+   model = ModelType("SinglePhaseFlow_FVTPFA");
+else
+   model = ModelType("VariabSatFlow_FVTPFA");
+end
 
 %% ----------------------- SIMULATION PARAMETERS ----------------------
-fileName = strcat(input_dir,'simParam.dat');
+fileName = strcat(input_dir,'simParam.xml');
 simParam = SimulationParameters(fileName,model);
 
 %% ------------------------------  MESH -------------------------------
@@ -17,14 +24,17 @@ topology = Mesh();
 
 % Set the input file name
 fileName = strcat(input_dir,'Mesh/Column.msh');
-% fileName = strcat(input_dir,'Mesh/Column.msh');
 
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
 
 %% ----------------------------- MATERIALS -----------------------------
 % Set the input file name
-fileName = strcat(input_dir,'materialsList.dat');
+if isSPF
+   fileName = strcat(input_dir,'SPF_materialsList.dat');
+else
+   fileName = strcat(input_dir,'materialsList.dat');
+end
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
@@ -53,7 +63,7 @@ linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 state = linSyst.setState();
 
 % set initial conditions directly modifying the state object
-state.pressure(:) = -10*9.8066e3;
+state.pressure(:) = 1e4;%-10*9.8066e3;%1e4;%-10*9.8066e3;
 
 % Create and set the print utility
 printUtils = OutState(model,topology,strcat(input_dir,'outTime.dat'), ...
@@ -65,20 +75,20 @@ printState(printUtils,state)
 cond = struct('name',[],'type',[],'field',[],'values',[],'times',[]);
 cond(1).name = 'Bottom';
 cond(1).type = 'Dir';
-cond(1).field = "bot";
+cond(1).field = "latY0";%"bot";%"latY0";
 cond(1).times = 0.;
-cond(1).values = -10*9.8066e3;
+cond(1).values = 1e4;%-10*9.8066e3;%1e4;%-10*9.8066e3;
 cond(2).name = 'Top';
 cond(2).type = 'Dir';
-cond(2).field = "top";
+cond(2).field = "latYM";%"top";%"latYM";
 cond(2).times = 0.;
-cond(2).values = -0.75*9.8066e3;
+cond(2).values = 1e3;%-0.75*9.8066e3;%1e3;%-0.75*9.8066e3;
 
 fileName = setRichardsBC('Inputs',grid,cond);
 bound = Boundaries(fileName,model,grid);
 
-% Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
-Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,'GaussPts',GaussPts,'SaveRelError',true);
+Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,...
+   printUtils,state,linSyst,'GaussPts',GaussPts,'SaveConverg',true);
 
 % Solve the problem
 [simState] = Solver.NonLinearLoop();

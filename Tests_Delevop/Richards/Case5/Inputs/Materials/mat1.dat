@@ -13,11 +13,6 @@ Mualem                            % Type of model (Mualem or Burdine) or type of
 2. 3.416e-04 0.5
 End
 
+0.102       0.368                 % residual and maximun saturation
 
-VanGenuchten                      % Capillary and Relative Permeabilities Curves
-Mualem                            % Type of model (Mualem or Burdine) or type of soil
-2. 0.0335 0.5
-2. 3.416e-5 0.5
-2. 3.285e+1 0.5
-
-2. 3.2852e4 0.5
+0.000        1.000                % residual and maximun saturation

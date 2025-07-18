@@ -16,9 +16,9 @@ z_len = 4;
 y_per = 0.01;
 
 // Mesh partition
-x_elm = 2;      //  4;  2;  1
-y_elm = 20;     // 40; 20; 10
-z_elm = 20;     // 40; 20; 10
+x_elm = 1;      //  4;  2;  1
+y_elm = 5;     // 40; 20; 10
+z_elm = 5;     // 40; 20; 10
 
 // Model creation
 // Points

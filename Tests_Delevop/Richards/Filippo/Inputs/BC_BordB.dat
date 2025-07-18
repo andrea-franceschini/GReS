@@ -1,0 +1,7 @@
+SurfBC                            % BC item 
+Dir                               % BC type 
+Flow                              % Physics 
+BordB                           % BC name 
+Inputs/BC/List_BordB 
+0.00 Inputs/BC/Time_BordB_0.dat 
+End

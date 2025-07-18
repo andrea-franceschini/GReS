@@ -33,7 +33,7 @@ classdef OutState < handle
          obj.writeVtk = options.writeVtk;
          obj.writeSolution = options.flagMatFile;
          foldName = options.folderName;
-         obj.setOutState(model,mesh,fileName,foldName)
+         obj.setOutState(model,mesh,fileName,foldName);
       end
 
       function finalize(obj)
@@ -88,15 +88,19 @@ classdef OutState < handle
                   if obj.writeSolution
                      % print solution to mat-file
                      fac = (time - stateOld.t)/(stateNew.t - stateOld.t);
-                     obj.results.expTime(obj.timeID+1,1) = time;
+                     % obj.results.expTime(obj.timeID+1,1) = time;
+                     obj.results(obj.timeID+1).expTime = time;
                      if isPoromechanics(obj.model)
-                        obj.results.expDispl(:,obj.timeID+1) = stateNew.dispConv*fac+stateOld.dispConv*(1-fac);
+                        % obj.results.expDispl(:,obj.timeID+1) = stateNew.dispConv*fac+stateOld.dispConv*(1-fac);
+                        obj.results(obj.timeID+1).expDispl = stateNew.dispConv*fac+stateOld.dispConv*(1-fac);
                      end
                      if isFlow(obj.model)
-                        obj.results.expPress(:,obj.timeID+1) = stateNew.pressure*fac+stateOld.pressure*(1-fac);
+                        % obj.results.expPress(:,obj.timeID+1) = stateNew.pressure*fac+stateOld.pressure*(1-fac);
+                        obj.results(obj.timeID+1).expPress = stateNew.pressure*fac+stateOld.pressure*(1-fac);
                      end
                      if isVariabSatFlow(obj.model)
-                        obj.results.expSat(:,obj.timeID+1) = stateNew.saturation*fac+stateOld.saturation*(1-fac);
+                        % obj.results.expSat(:,obj.timeID+1) = stateNew.saturation*fac+stateOld.saturation*(1-fac);
+                        obj.results(obj.timeID+1).expSat = stateNew.saturation*fac+stateOld.saturation*(1-fac);
                      end
                   end
                   % Write output structure looping trough available models
@@ -176,21 +180,34 @@ classdef OutState < handle
 
       function setMatFile(obj,msh)
          l = length(obj.timeList) + 1;
-         obj.results.expTime = zeros(l,1);
-         if isFlow(obj.model)
-            if isFEMBased(obj.model,'Flow')
-               obj.results.expPress = zeros(msh.nNodes,l);
-            elseif isFVTPFABased(obj.model,'Flow')
-               obj.results.expPress = zeros(msh.nCells,l);
+         obj.results = repmat(struct('expTime', 0),l,1);
+         for i=1:l
+            if isFlow(obj.model)
+               obj.results(i).expPress=[];
                if isVariabSatFlow(obj.model)
-                  obj.results.expSat = zeros(msh.nCells,l);
+                  obj.results(i).expSat=[];
                end
             end
+            if isPoromechanics(obj.model)
+               obj.results(i).expDispl = [];
+            end
          end
-         if isPoromechanics(obj.model)
-            obj.results.expDispl = zeros(msh.nDim*msh.nNodes,l);
-            % Consider adding other output properties
-         end
+
+         % obj.results.expTime = zeros(l,1);
+         % if isFlow(obj.model)
+         %    if isFEMBased(obj.model,'Flow')
+         %       obj.results.expPress = zeros(msh.nNodes,l);
+         %    elseif isFVTPFABased(obj.model,'Flow')
+         %       obj.results.expPress = zeros(msh.nCells,l);
+         %       if isVariabSatFlow(obj.model)
+         %          obj.results.expSat = zeros(msh.nCells,l);
+         %       end
+         %    end
+         % end
+         % if isPoromechanics(obj.model)
+         %    obj.results.expDispl = zeros(msh.nDim*msh.nNodes,l);
+         %    % Consider adding other output properties
+         % end
       end
    end
 

@@ -281,6 +281,10 @@ classdef DoFManager < handle
          nc = obj.nComp(fldId);
          numDoF = nc*numEnts;
       end
+
+      function addCellTag(obj,tag)
+         obj.cellTags = [obj.cellTags; tag];
+      end
    end
 
    methods (Access = private)
