@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<struct>
+    <Domain>
+        <Name>patch</Name>
+        <Geometry>Mesh/meshes/testPatchMerge.vtk</Geometry>
+      <ModelType>Poromechanics_FEM</ModelType>
+      <Material>Materials/MaterialsList.dat</Material>
+        <Gauss>3</Gauss>
+        <BoundaryConditions count="2">
+          <File>BCs/bot_fix.dat</File>
+          <File>BCs/top_load.dat</File>
+        </BoundaryConditions>
+        <OutState outFile="outTime.dat" print = "1"/>
+    </Domain>
+</struct>

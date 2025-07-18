@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <struct>
     <Interface>
-        <Master id="1" surfaceTag="1"/>
-        <Slave id="1" surfaceTag="3"/>
+        <Master id="1" surfaceTag="3"/>
+        <Slave id="1" surfaceTag="1"/>
         <Type>MeshTying</Type>
         <Quadrature type="RBF" nGP="16" nInt="5"/>
         <Multiplier type="dual"/>
@@ -17,8 +17,8 @@
         <Physics>Poromechanics</Physics>
       </Interface>
       <Interface>
-        <Master id="1" surfaceTag="5"/>
-        <Slave id="1" surfaceTag="7"/>
+        <Master id="1" surfaceTag="7"/>
+        <Slave id="1" surfaceTag="5"/>
         <Type>MeshTying</Type>
         <Quadrature type="RBF" nGP="16" nInt="5"/>
         <Multiplier type="dual"/>

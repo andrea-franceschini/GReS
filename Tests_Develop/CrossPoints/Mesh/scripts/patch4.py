@@ -55,17 +55,17 @@ gmsh.model.occ.synchronize()
 
 gmsh.model.mesh.setRecombine(2, bot_1)
 
-gmsh.model.mesh.set_transfinite_curve(L1,N1+1)
-gmsh.model.mesh.set_transfinite_curve(L2,N1+1)
-gmsh.model.mesh.set_transfinite_curve(L3,N1+1)
-gmsh.model.mesh.set_transfinite_curve(L4,N1+1)
+gmsh.model.mesh.set_transfinite_curve(L1,1+1)
+gmsh.model.mesh.set_transfinite_curve(L2,1+1)
+gmsh.model.mesh.set_transfinite_curve(L3,1+1)
+gmsh.model.mesh.set_transfinite_curve(L4,1+1)
 
 gmsh.model.mesh.set_transfinite_surface(loop_1)
 
 top_1 = outExt[0][1]
 
-gmsh.model.addPhysicalGroup(2, [outExt[2 + L2 - L1][1]], 1, name="interf_x_1")
-gmsh.model.addPhysicalGroup(2, [outExt[2 + L3 - L1][1]], 2, name="interf_y_1")
+interf_1_x = outExt[2 + L2 - L1][1]
+interf_1_y = outExt[2 + L3 - L1][1]
 
 gmsh.model.addPhysicalGroup(outExt[1][0], [outExt[1][1]],1, name="cube1")
 
@@ -98,18 +98,18 @@ gmsh.model.occ.synchronize()
 
 gmsh.model.mesh.setRecombine(2, bot_2)
 
-gmsh.model.mesh.set_transfinite_curve(L1,N2+1)
-gmsh.model.mesh.set_transfinite_curve(L2,N2+1)
-gmsh.model.mesh.set_transfinite_curve(L3,N2+1)
-gmsh.model.mesh.set_transfinite_curve(L4,N2+1)
+gmsh.model.mesh.set_transfinite_curve(L1,1+1)
+gmsh.model.mesh.set_transfinite_curve(L2,1+1)
+gmsh.model.mesh.set_transfinite_curve(L3,1+1)
+gmsh.model.mesh.set_transfinite_curve(L4,1+1)
 
 gmsh.model.mesh.set_transfinite_surface(loop_2)
 
 
 top_2 = outExt[0][1]
 
-gmsh.model.addPhysicalGroup(2, [outExt[2 + L4 - L1][1]], 3, name="interf_x_2")
-gmsh.model.addPhysicalGroup(2, [outExt[2 + L3 - L1][1]], 4, name="interf_y_2")
+interf_2_x = outExt[2 + L4 - L1][1]
+interf_2_y = outExt[2 + L3 - L1][1]
 
 gmsh.model.addPhysicalGroup(outExt[1][0], [outExt[1][1]],2, name="cube2")
 
@@ -142,16 +142,15 @@ gmsh.model.occ.synchronize()
 
 gmsh.model.mesh.setRecombine(2, bot_3)
 
-gmsh.model.mesh.set_transfinite_curve(L1,N3+1)
-gmsh.model.mesh.set_transfinite_curve(L2,N3+1)
-gmsh.model.mesh.set_transfinite_curve(L3,N3+1)
-gmsh.model.mesh.set_transfinite_curve(L4,N3+1)
+gmsh.model.mesh.set_transfinite_curve(L1,1+1)
+gmsh.model.mesh.set_transfinite_curve(L2,1+1)
+gmsh.model.mesh.set_transfinite_curve(L3,1+1)
+gmsh.model.mesh.set_transfinite_curve(L4,1+1)
 
 gmsh.model.mesh.set_transfinite_surface(loop_3)
 
-gmsh.model.addPhysicalGroup(2, [outExt[2 + L4 - L1][1]], 5, name="interf_x_3")
-gmsh.model.addPhysicalGroup(2, [outExt[2 + L1 - L1][1]], 6, name="interf_y_3")
-
+interf_3_x = outExt[2 + L4 - L1][1]
+interf_3_y = outExt[2 + L1 - L1][1]
 
 gmsh.model.addPhysicalGroup(outExt[1][0], [outExt[1][1]],3, name="cube3")
 
@@ -184,24 +183,37 @@ gmsh.model.occ.synchronize()
 
 gmsh.model.mesh.setRecombine(2, bot_4)
 
-gmsh.model.mesh.set_transfinite_curve(L1,N4+1)
-gmsh.model.mesh.set_transfinite_curve(L2,N4+1)
-gmsh.model.mesh.set_transfinite_curve(L3,N4+1)
-gmsh.model.mesh.set_transfinite_curve(L4,N4+1)
+gmsh.model.mesh.set_transfinite_curve(L1,1+1)
+gmsh.model.mesh.set_transfinite_curve(L2,1+1)
+gmsh.model.mesh.set_transfinite_curve(L3,1+1)
+gmsh.model.mesh.set_transfinite_curve(L4,1+1)
 
 gmsh.model.mesh.set_transfinite_surface(loop_4)
 
-gmsh.model.addPhysicalGroup(2, [outExt[2 + L2 - L1][1]], 7, name="interf_x_4")
-gmsh.model.addPhysicalGroup(2, [outExt[2 + L1 - L1][1]], 8, name="interf_y_4")
+interf_4_x = outExt[2 + L2 - L1][1]
+interf_4_y = outExt[2 + L1 - L1][1]
+
 
 
 gmsh.model.addPhysicalGroup(outExt[1][0], [outExt[1][1]],4, name="cube4")
 
+# set slave interface 1
+gmsh.model.addPhysicalGroup(2, [interf_1_x,interf_1_y], 1, name="slave_1")
+
+# set slave interface 2
+gmsh.model.addPhysicalGroup(2, [interf_3_x,interf_3_y], 2, name="slave_2")
+
+# set master interface 1
+gmsh.model.addPhysicalGroup(2, [interf_2_x,interf_4_y], 3, name="master_1")
+
+# set master interface 2
+gmsh.model.addPhysicalGroup(2, [interf_4_x,interf_2_y], 4, name="master_2")
+
 # set bottom surface (fixed)
-gmsh.model.addPhysicalGroup(2, [bot_1,bot_2,bot_3,bot_4], 9, name="bottom_fixed")
+gmsh.model.addPhysicalGroup(2, [bot_1,bot_2,bot_3,bot_4], 5, name="bottom_fixed")
 
 # set top surface (loaded)
-gmsh.model.addPhysicalGroup(2, [top_1,top_2,top_3,top_4], 10, name="top_load")
+gmsh.model.addPhysicalGroup(2, [top_1,top_2,top_3,top_4], 6, name="top_load")
 
 # generate mesh
 
