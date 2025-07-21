@@ -120,10 +120,15 @@ classdef Hexahedron < FEM
         i = i + 1;
         dJWeighed = getDerBasisFAndDet(obj,el,3);
         vol(i) = sum(dJWeighed);
-        assert(vol(i)>0,'Volume less than 0');
-        gPCoordinates = getGPointsLocation(obj,el);
-        cellCentroid(i,:) = (dJWeighed * gPCoordinates)./vol(i);
+        %c = FEM.getElementCoords(obj,el);
+%         if vol(i) < 0
+%           clf
+%           Hexahedron.plot_hexahedron(c);
+%         end
       end
+      assert(vol(i)>0,'Volume less than 0 in element %i',el);
+      gPCoordinates = getGPointsLocation(obj,el);
+      cellCentroid(i,:) = (dJWeighed * gPCoordinates)./vol(i);
     end
 
     function nodeVol = findNodeVolume(obj,el)
@@ -261,6 +266,59 @@ classdef Hexahedron < FEM
       findLocDerBubbleBasisF(obj);
       FEM.setStrainMatrix(obj);
     end
+  end
+
+  methods (Static)
+    function plot_hexahedron(coords) % for provisional testing
+      % PLOT_HEXAHEDRON - Plot a hexahedron given its 8 vertex coordinates.
+      %
+      % Input:
+      %   coords - 8x3 matrix where each row is the [x y z] coordinate of a vertex.
+      %            Vertices must follow standard VTK/Gmsh/FE node ordering:
+      %
+      %            Node order:
+      %              7-------6
+      %             /|      /|
+      %            4-------5 |
+      %            | |     | |
+      %            | 3-----|-2
+      %            |/      |/
+      %            0-------1
+
+      % Define the 12 edges as pairs of node indices
+      edges = [0 1; 1 2; 2 3; 3 0;  % bottom face
+        4 5; 5 6; 6 7; 7 4;  % top face
+        0 4; 1 5; 2 6; 3 7]; % vertical edges
+
+      % Shift to 1-based indexing for MATLAB
+      edges = edges + 1;
+
+      figure;
+      hold on;
+      axis equal;
+      view(3);
+      grid on;
+      xlabel('X'); ylabel('Y'); zlabel('Z');
+
+      % Plot edges
+      for i = 1:size(edges, 1)
+        pts = coords(edges(i,:), :);
+        plot3(pts(:,1), pts(:,2), pts(:,3), 'k-', 'LineWidth', 2);
+      end
+
+      % Plot vertices
+      plot3(coords(:,1), coords(:,2), coords(:,3), 'ro', 'MarkerSize', 8, 'MarkerFaceColor', 'r');
+
+      % Label vertices
+      for i = 1:8
+        text(coords(i,1), coords(i,2), coords(i,3), sprintf('  %d', i-1), 'FontSize', 12, 'Color', 'b');
+      end
+
+      view([1 1 0.5]);  % Look from positive x and y toward the origin
+
+      title('Hexahedron with Vertex Labels and Edges');
+    end
+
   end
 
 end

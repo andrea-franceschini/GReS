@@ -61,7 +61,11 @@ classdef (Abstract) FEM < handle
 
 
     function coords = getElementCoords(elem,id)
-      nodes = elem.mesh.surfaces(id,1:elem.nNode);
+      if elem.nFace == 1 % 2D
+        nodes = elem.mesh.surfaces(id,1:elem.nNode);
+      else %  3D
+        nodes = elem.mesh.cells(id,1:elem.nNode);
+      end
       coords = elem.mesh.coordinates(nodes,:);
     end
 

@@ -120,7 +120,7 @@ classdef Tetrahedron < FEM
       obj.detJ = zeros(1,obj.GaussPts.nNode);
       findLocBasisF(obj);
       findLocDerBasisF(obj);
-      FiniteElementLagrangian.setStrainMatrix(obj)
+      FEM.setStrainMatrix(obj)
     end
   end
 end
