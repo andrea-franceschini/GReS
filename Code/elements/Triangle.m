@@ -38,9 +38,10 @@ classdef Triangle < FEM
         % 3D setting
         outVar1 = getDerBasisF(obj,in);
         % jacobian is constant in a simplex
-        obj.detJ = det([1 obj.mesh.coordinates(obj.mesh.surfaces(in,1),1:2);
-        1 obj.mesh.coordinates(obj.mesh.surfaces(in,2),1:2);
-        1 obj.mesh.coordinates(obj.mesh.surfaces(in,3),1:2)]);
+        coord = FEM.getElementCoords(obj,in);
+        v1 = coord(1,:) - coord(2,:);
+        v2 = coord(1,:) - coord(3,:);
+        obj.detJ = norm(cross(v1,v2));
         outVar2 = obj.detJ.*(obj.GaussPts.weight)';
       else
         % 2D setting: 'in' is a given list of x-y coordinates
@@ -107,7 +108,7 @@ classdef Triangle < FEM
         [~,dJWeighed] = getDerBasisFAndDet(obj,el);
         area(i) = sum(dJWeighed);
         assert(area(i)>0,'Volume less than 0');
-        coord = obj.mesh.coordinates(obj.mesh.surfaces(idTri,:),:);
+        coord = FEM.getElementCoords(obj,el);
         cellCentroid(i,:) = 1/3*(sum(coord,1));
       end
     end

@@ -372,10 +372,18 @@ classdef Mesh < handle
         % renumber the nodes starting from 1;
         surfTopol = surfTopol(:);
         % ordered list of unique nodes in the topology matrix
-        surfOrd = unique(surfTopol);
-        mapping = containers.Map(surfOrd, 1:numel(surfOrd));
+        [surfOrd] = unique(surfTopol);
+        if surfOrd(1) == 0
+          val = 0:numel(surfOrd)-1;
+        else
+          val = 1:numel(surfOrd);
+        end
+        mapping = containers.Map(surfOrd, val);
         for i = 1:length(surfTopol)
             surfTopol(i) = mapping(surfTopol(i));
+        end
+        if surfOrd(1) == 0
+          surfOrd = surfOrd(2:end);
         end
         surfMesh.surfaceNumVerts = obj.surfaceNumVerts(id);
         nNmax = max(surfMesh.surfaceNumVerts);
