@@ -366,7 +366,7 @@ classdef Mesh < handle
         % Function to build a 2D mesh object based on the surfaceTag of a 3D
         % mesh
         % initialize Mesh object
-        id = obj.surfaceTag == surfTag;
+        id = ismember(obj.surfaceTag,surfTag);
         surfMesh = Mesh();
         surfTopol = obj.surfaces(id,:);
         % renumber the nodes starting from 1;
@@ -395,9 +395,9 @@ classdef Mesh < handle
         surfMesh.nSurfaceTag = 1;
         surfMesh.surfaceVTKType = obj.surfaceVTKType(id);
         surfMesh.nDim = 3;
-        surfMesh.surfaceNumVerts = obj.surfaceNumVerts(id);
-        surfMesh.surfaceCentroid = obj.surfaceCentroid(id,:);
-        surfMesh.surfaceArea = obj.surfaceArea(id);
+        surfMesh.surfaceNumVerts = Mesh.copyField(obj.surfaceNumVerts,id);
+        surfMesh.surfaceCentroid = Mesh.copyField(obj.surfaceCentroid,id);
+        surfMesh.surfaceArea = Mesh.copyField(obj.surfaceArea,id);
     end
 
 %     function centroids = getCellCentroids(obj)
@@ -540,6 +540,18 @@ classdef Mesh < handle
 
 
 
+  end
+
+  methods (Static)
+
+    function out = copyField(fld,id)
+      if ~isempty(fld)
+        out = fld(id,:);
+      else
+        out = [];
+      end
+
+    end
   end
 
 

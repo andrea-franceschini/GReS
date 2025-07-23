@@ -32,6 +32,7 @@ classdef Discretizer < handle
          obj.solver = containers.Map('KeyType','double','ValueType','any');
          obj.setDiscretizer(symmod,simParams,dofManager,grid,mat);
          obj.checkTimeDependence(symmod,mat,simParams);
+         obj.initState();
       end
       
       function applyBC(obj,bound,t,idDom)

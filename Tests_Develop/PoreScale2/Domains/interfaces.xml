@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<struct>
+    <Interface>
+        <Type>MeshTyingCondensation</Type>
+        <Quadrature type="SegmentBased" nGP="7"/>
+        <Multiplier type="dual"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="3  4"/>
+        <Slave id="1" surfaceTag="1"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTyingCondensation</Type>
+        <Quadrature type="SegmentBased" nGP="7"/>
+        <Multiplier type="dual"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="3  5  6"/>
+        <Slave id="1" surfaceTag="2"/>
+    </Interface>
+</struct>

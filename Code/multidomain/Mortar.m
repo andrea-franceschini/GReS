@@ -27,8 +27,16 @@ classdef Mortar < handle
       obj.solvers = [domains(1).Discretizer,domains(2).Discretizer];
       obj.idDomain = [inputStruct.Master.idAttribute;
                 inputStruct.Slave.idAttribute];
-      surfId = {inputStruct.Master.surfaceTagAttribute;
-        inputStruct.Slave.surfaceTagAttribute};
+      masterSurf = inputStruct.Master.surfaceTagAttribute;
+      if isstring(masterSurf)
+        masterSurf = str2num(masterSurf); 
+      end
+      slaveSurf = inputStruct.Slave.surfaceTagAttribute;
+      if isstring(slaveSurf)
+        slaveSurf = str2num(slaveSurf);
+      end
+
+      surfId = {masterSurf; slaveSurf};
       obj.mesh = interfaceMesh(domains,surfId);
       checkInterfaceDisjoint(obj);
       obj.dofm = [domains(1).DoFManager;

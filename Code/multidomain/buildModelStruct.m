@@ -1,4 +1,4 @@
-function modelStruct = buildModelStruct_new(fileName,simParam)
+function modelStruct = buildModelStruct(fileName,simParam)
 % % build a structure array containing istances of all classes for different
 % noncofnorming domains in the simulation
 outStruct = readstruct(fileName,FileType="xml");
@@ -70,7 +70,7 @@ function modStr = getModelStruct(str,simParam)
 
   linSyst = Discretizer(model,simParam,dof,grid,material);
 
-  linSyst.initState();
+  
 
   modStr = struct( ...
     'DomainName',         name, ...
