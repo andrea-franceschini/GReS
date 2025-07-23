@@ -4,9 +4,17 @@ input_dir = 'Inputs/';
 output_dir = 'Outputs/';
 figures_dir = 'Figs/';
 
+% isSPF = true;
+isSPF = false;
+% createBC = true;
+createBC = false;
+
 %% -------------------------- SET THE PHYSICS -------------------------
-% model = ModelType("VariabSatFlow_FVTPFA");
-model = ModelType("SinglePhaseFlow_FVTPFA");
+if isSPF
+   model = ModelType("SinglePhaseFlow_FVTPFA");
+else
+   model = ModelType("VariabSatFlow_FVTPFA");
+end
 
 %% ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = strcat(input_dir,'simParam.xml');
@@ -24,8 +32,11 @@ topology.importGMSHmesh(fileName);
 
 %% ----------------------------- MATERIALS -----------------------------
 % Set the input file name
-% fileName = strcat(input_dir,'materialsList.dat');
-fileName = strcat(input_dir,'SPF_materialsList.dat');
+if isSPF
+   fileName = strcat(input_dir,'SPF_materialsList.dat');
+else
+   fileName = strcat(input_dir,'materialsList.dat');
+end
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
@@ -55,7 +66,7 @@ state = linSyst.setState();
 
 % set initial conditions directly modifying the state object
 % state.pressure(:) = -10*9.8066e3;
-state.pressure(:) = 0.0001;
+state.pressure(:) = 0.;%1e3;
 
 % Create and set the print utility
 printUtils = OutState(model,topology,strcat(input_dir,'outTime.dat'), ...
@@ -64,19 +75,23 @@ printUtils = OutState(model,topology,strcat(input_dir,'outTime.dat'), ...
 printState(printUtils,state)
 
 % Creating and Appling boundaries conditions.
-cond = struct('name',[],'type',[],'field',[],'values',[],'times',[]);
-cond(1).name = 'BordA';
-cond(1).type = 'Dir';
-cond(1).field = "Y0";
-cond(1).times = 0.;
-cond(1).values = 80e6;%-10*9.8066e3;
-cond(2).name = 'BordB';
-cond(2).type = 'Dir';
-cond(2).field = "Ym";
-cond(2).times = 0.0001;
-cond(2).values = 0;%-0.75*9.8066e3;
+if createBC
+   cond = struct('name',[],'type',[],'field',[],'values',[],'times',[]);
+   cond(1).name = 'BordA';
+   cond(1).type = 'Dir';
+   cond(1).field = "Y0";
+   cond(1).times = 0.;
+   cond(1).values = 8e5;%-10*9.8066e3;
+   cond(2).name = 'BordB';
+   cond(2).type = 'Dir';
+   cond(2).field = "Ym";
+   cond(2).times = 0;
+   cond(2).values = 8e4;%-0.75*9.8066e3;
 
-fileName = setRichardsBC('Inputs',grid,cond);
+   fileName = setRichardsBC('Inputs/BC',grid,cond);
+else
+   fileName = ["Inputs/BC/BC_SPG_BordA.dat","Inputs/BC/BC_SPG_BordB.dat"];
+end
 bound = Boundaries(fileName,model,grid);
 
 % Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);

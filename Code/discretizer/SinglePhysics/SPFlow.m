@@ -311,9 +311,9 @@ classdef SPFlow < SinglePhysics
                         %    + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
                         % vals = [1/mu*tr,q];
                         dirJ = 1/mu*tr;
-                        press = state.pressure(ents) - v;
-                        gravT =  gamma*(obj.elements.cellCentroid(ents,3) ...
-                          - obj.faces.faceCentroid(faceID,3));
+                        % press = state.pressure(ents) - v;
+                        % gravT =  gamma*(obj.elements.cellCentroid(ents,3) ...
+                        %   - obj.faces.faceCentroid(faceID,3));
                         potential = (state.pressure(ents) - v) ...
                            + gamma*(obj.elements.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3));
                         q = dirJ.*potential;

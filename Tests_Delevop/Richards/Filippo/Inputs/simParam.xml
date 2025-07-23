@@ -2,13 +2,13 @@
 <simParam>
    <Time>
       <Start></Start>
-      <End> 100. </End>
-      <DtInic> 1.e+0 </DtInic>
-      <DtMin> 1.e+0 </DtMin>
-      <DtMax> 1.e+1 </DtMax>
+      <End> 259200. </End>
+      <DtInic> 5.e+3 </DtInic>
+      <DtMin> 1.e-1 </DtMin>
+      <DtMax> 1.e+4 </DtMax>
    </Time>
    <TimeStepControl>
-      <IncAugmentation> 1.0 </IncAugmentation>
+      <IncAugmentation> 1.5 </IncAugmentation>
       <IncChopping> Default </IncChopping>
       <RelaxationFac> Default </RelaxationFac>
    </TimeStepControl>
@@ -21,6 +21,6 @@
    <Solver>
       <Type> Default </Type>
       <Theta> Default </Theta>
-      <MaxIteration> 20 </MaxIteration>
+      <MaxIteration> 12 </MaxIteration>
    </Solver>
 </simParam>

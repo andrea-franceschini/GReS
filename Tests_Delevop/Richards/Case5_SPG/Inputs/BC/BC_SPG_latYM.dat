@@ -1,0 +1,13 @@
+SurfBC                            % BC item 
+Spg                               % BC type 
+Flow                              % Physics 
+latYM                           % BC name 
+Inputs/BC/BC_SPG/List_latYM 
+0.00 Inputs/BC/BC_SPG/Time_latYM_0.dat
+40000.00 Inputs/BC/BC_SPG/Time_latYM_1.dat 
+80000.00 Inputs/BC/BC_SPG/Time_latYM_2.dat 
+120000.00 Inputs/BC/BC_SPG/Time_latYM_3.dat 
+160000.00 Inputs/BC/BC_SPG/Time_latYM_4.dat 
+200000.00 Inputs/BC/BC_SPG/Time_latYM_5.dat 
+240000.00 Inputs/BC/BC_SPG/Time_latYM_6.dat 
+End

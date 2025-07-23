@@ -105,7 +105,7 @@ classdef FCSolver < handle
          obj.tStep = obj.tStep + 1;
          %new time update to fit the outTime list
          [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
-         %obj.t = obj.t + obj.dt;
+
          % Apply the Dirichlet condition value to the solution vector
          obj.stateTmp = applyDirVal(obj.linSyst,obj.bound,obj.t,obj.stateTmp);
          %
@@ -141,8 +141,6 @@ classdef FCSolver < handle
          end
          while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
                && (rhsNorm > absTol)) || obj.iter == 0
-         % while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR)) ...
-         %         || obj.iter == 0
             obj.iter = obj.iter + 1;
             %
             % Solve system with increment

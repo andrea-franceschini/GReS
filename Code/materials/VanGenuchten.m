@@ -255,13 +255,7 @@ classdef VanGenuchten < handle
                 p = -pres;
                 obj.nonNegPressure = p<=0;
                 p(obj.nonNegPressure) = 1e-15;
-                % pres(pres<=1e-15) = 1e-15;                
-                % p=pres;
-                % p(pres<=0) = 1e-15;
-                % p=-p;
-                % loc = pres>=0;
-                % p(loc) = -pres(loc);
-                % p(~loc) = -1e-15;
+                % p(p>1e4)=1e4;
             else
                 p=pres;
             end

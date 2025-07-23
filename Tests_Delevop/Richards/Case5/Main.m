@@ -63,7 +63,7 @@ linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 state = linSyst.setState();
 
 % set initial conditions directly modifying the state object
-state.pressure(:) = 1e4;%-10*9.8066e3;%1e4;%-10*9.8066e3;
+state.pressure(:) = 1e3;%-10*9.8066e3;%1e4;%-10*9.8066e3;
 
 % Create and set the print utility
 printUtils = OutState(model,topology,strcat(input_dir,'outTime.dat'), ...
@@ -76,8 +76,10 @@ cond = struct('name',[],'type',[],'field',[],'values',[],'times',[]);
 cond(1).name = 'Bottom';
 cond(1).type = 'Dir';
 cond(1).field = "latY0";%"bot";%"latY0";
-cond(1).times = 0.;
-cond(1).values = 1e4;%-10*9.8066e3;%1e4;%-10*9.8066e3;
+% cond(1).times = 0.;
+% cond(1).values = 1e4;%-10*9.8066e3;%1e4;%-10*9.8066e3;
+cond(1).times = [0.;51840;77760.;129600.;259200.];
+cond(1).values = [1e4;9e3;8e3;7e3;6e3;];%-10*9.8066e3;%1e4;%-10*9.8066e3;
 cond(2).name = 'Top';
 cond(2).type = 'Dir';
 cond(2).field = "latYM";%"top";%"latYM";
