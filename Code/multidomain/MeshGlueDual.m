@@ -58,7 +58,13 @@ classdef MeshGlueDual < MeshGlue
 
     function computeMat(obj,~)
       solvSlave = obj.solvers(2).getSolver(obj.physics);
-      computeMortarMatrices(obj);
+      if ~obj.isMatrixComputed()
+        % mesh glue matrices are constant troughout the simulation
+        % compute only once!
+        computeMortarMatrices(obj);
+      end
+      obj.Jmaster{1} = obj.M;
+      obj.Jslave{1} = obj.D;
       obj.Jinterf = solvSlave.J;
       obj.E = computeMortarOperator(obj);
       getCouplingMat(obj);
@@ -78,7 +84,7 @@ classdef MeshGlueDual < MeshGlue
 
       % update master block with condensation term
       solvMaster = obj.solvers(1).getSolver(obj.physics);
-      solvMaster.J = solvMaster.J + obj.E'*obj.Jinterf*obj.E; 
+      solvMaster.J = solvMaster.J + obj.E'*(obj.Jinterf*obj.E); 
     end
 
     function computeRhs(obj)
@@ -117,7 +123,7 @@ classdef MeshGlueDual < MeshGlue
     end
 
     function updateState(obj,du)
-      % get interface slave dof with mortar operator
+      % get interface slave dof using mortar operator
       u_master = getState(obj.solvers(1).getSolver(obj.physics));
       u_slave = obj.E*u_master;
       solvSlave = obj.solvers(2).getSolver(obj.physics);
@@ -127,7 +133,7 @@ classdef MeshGlueDual < MeshGlue
       solvSlave.updateState();
       % update multipliers
       var = getState(solvSlave);
-      D = diag(obj.Jslave{1}(:,dofSlave));
+      D = sum(obj.Jslave{1},2);
       obj.multipliers(1).curr = (1./D).*(obj.f2(dofSlave)-obj.Jinterf(dofSlave,:)*var);
     end
   end
@@ -153,19 +159,20 @@ classdef MeshGlueDual < MeshGlue
       solvSlave = obj.solvers(2).getSolver(obj.physics);
       entsSlave = obj.dofm(2).getActiveEnts(obj.physics(i));
       varSlave = getState(solvSlave);
-      obj.f2 = solvSlave.rhs - solvSlave.J*varSlave(entsSlave);
-      obj.rhsMaster{i} =  obj.rhsMaster{i} + obj.E'*obj.f2;  % (f_1 + E'*f_2)
+      obj.f2 = solvSlave.rhs - solvSlave.J*varSlave(entsSlave); % this is just the forcing term
+      obj.rhsMaster{i} =  obj.rhsMaster{i} + obj.E'*obj.f2;  % ... + E'*f_Gamma2
       % remove slave rhs contribution of interface slave dofs
       dofInter = getInterfSlaveDoF(obj);
       v = varSlave;
       varSlave(dofInter) = 2*varSlave(dofInter);
-      varSlave = varSlave - v;          % heep only interface slave rhs
-      solvSlave.rhs = solvSlave.rhs - solvSlave.J*varSlave;
+      varSlave = varSlave - v;          % keep only interface slave rhs
+      % remove rhs contribution of interface dof that will be removed
+      solvSlave.rhs = solvSlave.rhs - solvSlave.J*varSlave; 
     end
 
     function dof = getInterfSlaveDoF(obj)
-      fld = obj.dofm(2).getFieldId(obj.physics);
-      dof = obj.dofm(2).getLocalDoF(obj.mesh.local2glob{2},fld);
+      nodeInterf = obj.mesh.local2glob{2}(obj.multNodes);
+      dof = obj.dofm(2).getLocalDoF(nodeInterf,obj.physics);
     end
   end
 

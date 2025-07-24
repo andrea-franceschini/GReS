@@ -238,7 +238,7 @@ classdef SegmentBasedQuadrature < handle
     end
 
     function x = projectNodes(obj,P,n,coord)
-
+      % Project nodes of triangle pair into auxiliary plane
       % get 2D direction of plane
       % Choose arbitrary vector not parallel to n
       if abs(n(1)) < 0.9

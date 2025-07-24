@@ -15,7 +15,8 @@ classdef Triangle < FEM
 
     function [mat] = getDerBasisF(obj,el)
       % compute derivatives of the basis functions for element in real
-      % space
+      % space 
+      % this work only in 2D!
       inv_A = inv([1 obj.mesh.coordinates(obj.mesh.surfaces(el,1),1:2);
         1 obj.mesh.coordinates(obj.mesh.surfaces(el,2),1:2);
         1 obj.mesh.coordinates(obj.mesh.surfaces(el,3),1:2)]);
@@ -26,8 +27,8 @@ classdef Triangle < FEM
       dN = obj.Jref;
     end
 
-     function [outVar1,outVar2] = getDerBasisFAndDet(obj,in)   % mat,dJWeighed
-      %       findJacAndDet(obj,el);  % OUTPUT: J and obj.detJ
+     function varargout = getDerBasisFAndDet(obj,in)   % mat,dJWeighed
+      % findJacAndDet(obj,el);  % OUTPUT: J and obj.detJ
       % way to call this method: if el is a scalar (element idx) the 3D
       % coordinates are retrieved by the corresponding mesh object. Only
       % the determinant is returned
@@ -36,25 +37,29 @@ classdef Triangle < FEM
 
       if isscalar(in)
         % 3D setting
-        outVar1 = getDerBasisF(obj,in);
+        assert(nargout==1,['Too many output argument. If input is scalar' ...
+          ' 3D setting is assumed and only element jacobian is returned'])
         % jacobian is constant in a simplex
-        obj.detJ = det([1 obj.mesh.coordinates(obj.mesh.surfaces(in,1),1:2);
-        1 obj.mesh.coordinates(obj.mesh.surfaces(in,2),1:2);
-        1 obj.mesh.coordinates(obj.mesh.surfaces(in,3),1:2)]);
-        outVar2 = obj.detJ.*(obj.GaussPts.weight)';
+        coord = FEM.getElementCoords(obj,in);
+        v1 = coord(1,:) - coord(2,:);
+        v2 = coord(1,:) - coord(3,:);
+        obj.detJ = norm(cross(v1,v2));
+        varargout{1} = obj.detJ.*(obj.GaussPts.weight)';
       else
         % 2D setting: 'in' is a given list of x-y coordinates
         inv_A = inv([ones(3,1), in]);
         mat = inv_A(2:3,:);
-        v1 = norm(in(1,:)-in(2,:));
-        v2 = norm(in(1,:)-in(3,:));
-        obj.detJ = v1*v2;
+        %v1 = norm(in(1,:)-in(2,:));
+        %v2 = norm(in(1,:)-in(3,:));
+        e1 = [in(1,:)-in(2,:), 0];
+        e2 = [in(1,:)-in(3,:), 0];
+        obj.detJ = norm(cross(e1',e2'));
         % jacobian is constant in a simplex
         if nargout == 2
-          outVar1 = mat;
-          outVar2 = obj.detJ.*(obj.GaussPts.weight)';
+          varargout{1} = mat;
+          varargout{2} = obj.detJ.*(obj.GaussPts.weight)';
         else
-          outVar1 = obj.detJ*(obj.GaussPts.weight)';
+          varargout{1} = obj.detJ*(obj.GaussPts.weight)';
         end
       end
     end
@@ -80,7 +85,8 @@ classdef Triangle < FEM
     end
 
     function Nb = computeBubbleBasisF(obj,coordList)
-      Nb = arrayfun(@(i) (1-coordList(i,1)-coordList(i,2)).*coordList(i,1).*coordList(i,2));
+      Nb = arrayfun(@(i) (1-coordList(i,1)-coordList(i,2)).*coordList(i,1).*coordList(i,2),...
+        (1:size(coordList,1)));
       Nb = Nb';
     end
 
@@ -105,27 +111,24 @@ classdef Triangle < FEM
         dJWeighed = getDerBasisFAndDet(obj,el);
         area(i) = sum(dJWeighed);
         assert(area(i)>0,'Volume less than 0');
-        coord = obj.mesh.coordinates(obj.mesh.surfaces(idTri,:),:);
+        coord = FEM.getElementCoords(obj,el);
         cellCentroid(i,:) = 1/3*(sum(coord,1));
       end
     end
 
-    function n = computeNormal(obj,idTri)
-      % compute normal vector of a cell in specific location of the element
-      n = zeros(length(idTri),3);
-      for el = idTri
-        % normal is connstant for triangles
-        nodeCoord = obj.mesh.coordinates(obj.mesh.surfaces(el,:),:);
-        v1 = nodeCoord(1,:) - nodeCoord(2,:);
-        v2 = nodeCoord(2,:) - nodeCoord(3,:);
-        n(el,:) = cross(v1,v2);
-        n(el,:) = n(el,:)/norm(n(el,:));
-      end
+    function n = computeNormal(obj,idTri,varargin)
+      % compute normal vector of triangle
+      assert(isscalar(idTri),'Input id must be a scalar positive integer')
+      nodeCoord = FEM.getElementCoords(obj,idTri);
+      v1 = nodeCoord(1,:) - nodeCoord(2,:);
+      v2 = nodeCoord(2,:) - nodeCoord(3,:);
+      n = cross(v1',v2');
+      n = n/norm(n);
     end
 
     function areaNod = findNodeArea(obj,el)
       areaNod = (1/obj.nNode)*obj.mesh.surfaceArea(el);
-      areaNod = repelem(areaNod,obj.nNode);
+      areaNod = repelem(areaNod,obj.nNode,1);
     end
 
     function n_a = computeAreaNod(obj,surfMsh)

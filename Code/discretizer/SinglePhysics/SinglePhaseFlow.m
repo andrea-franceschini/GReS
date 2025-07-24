@@ -121,12 +121,7 @@ classdef SinglePhaseFlow < SinglePhysics
         for el = subCells'
           permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
           poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
-          if ismember(obj.mesh.cellTag(el),getFieldCellTags(obj.dofm,{obj.field,'Poromechanics'}))
-            alpha = 0; %this term is not needed in coupled formulation
-          else
-            alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
-            %solid skeleton contribution to storage term as oedometric compressibility .
-          end
+          alpha = getRockCompressibility(obj,el);
           % Compute the element matrices based on the element type
           % (tetrahedra vs. hexahedra)
           elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
@@ -281,7 +276,7 @@ classdef SinglePhaseFlow < SinglePhysics
          switch bc.getCond(id)
             case {'NodeBC','ElementBC'}
                ents = bc.getEntities(id);
-               vals = bound.getVals(id,t);
+               vals = bc.getVals(id,t);
             case 'SurfBC'
                v = bc.getVals(id,t);
                if isFVTPFABased(obj.model,'Flow')
@@ -376,6 +371,19 @@ classdef SinglePhaseFlow < SinglePhysics
          %       hT = hT/mu;
          %
          obj.trans = 1 ./ accumarray(obj.faces.faces2Elements(:,1),1 ./ hT,[obj.faces.nFaces,1]);
+      end
+
+      function alpha = getRockCompressibility(obj,el)
+        if ismember(obj.mesh.cellTag(el),getFieldCellTags(obj.dofm,{obj.field,'Poromechanics'}))
+          alpha = 0; %this term is not needed in coupled formulation
+        else
+          if isfield(obj.material.getMaterial(obj.mesh.cellTag(el)),"ConstLaw")
+            %solid skeleton contribution to storage term as oedometric compressibility .
+            alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
+          else
+            alpha = 0;
+          end
+        end
       end
 
    end

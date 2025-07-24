@@ -254,7 +254,9 @@ classdef MultidomainFCSolver < handle
         tmpVec = obj.simParameters.multFac;
         for i = 1:obj.nDom
           if isFlow(obj.domains(i).ModelType)
-            dpMax = max(abs(obj.stateTmp.pressure - obj.statek.pressure));
+            pnew = obj.state(i).curr.data.pressure;
+            pold = obj.state(i).prev.data.pressure;
+            dpMax = max(abs(pnew-pold));
             tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
               obj.simParameters.pTarget/(dpMax + obj.simParameters.relaxFac* ...
               obj.simParameters.pTarget)];

@@ -184,37 +184,40 @@ classdef DoFManager < handle
          nc = obj.nComp(fldId);
          % get local numbering within the field
          switch obj.ordering
-            case 'field'
-               if isempty(varargin) 
-                  % all dofs of input field
-                  dofs = dofId((1:obj.numEntsField(fldId))',nc);
-               else
-                  dofs = getLocalDoF(obj,varargin{1},fldId);
-               end
-               nDoF = obj.nComp.*obj.numEntsField;
-               dofs = dofs+sum(nDoF(1:fldId-1));
-            case 'domain'
-               error('Domain-based ordering of DoF not yet implemented')
+           case 'field'
+             if isempty(varargin)
+               % all dofs of input field
+               dofs = dofId((1:obj.numEntsField(fldId))',nc);
+             else
+               dofs = getLocalDoF(obj,varargin{1},fldId);
+             end
+             nDoF = obj.nComp.*obj.numEntsField;
+             dofs = dofs+sum(nDoF(1:fldId-1));
+           case 'domain'
+             error('Domain-based ordering of DoF not yet implemented')
          end
       end
       %
       function dofList = getLocalDoF(obj,entList,fldId)
         % get local DoF numbering for entities within a field
-         nc = obj.nComp(fldId);
-         ents = obj.entMap{fldId}(entList);
-         if ~all(ents)
-           error('dofError:inactiveEntity','Inactive entity for input field')
-         end
-         dofList = dofId(ents,nc);
+        if ~isnumeric(fldId)
+          fldId = getFieldId(obj,fldId);
+        end
+        nc = obj.nComp(fldId);
+        ents = obj.entMap{fldId}(entList);
+        if ~all(ents)
+          error('Inactive entity for input field')
+        end
+        dofList = dofId(ents,nc);
       end
 
       function entList = getLocalEnts(obj,entList,fldId)
-         % renumber entity id skipping inactive entities
-         assert(~isempty(fldId),'Missing field id');
-         entList = obj.entMap{fldId}(entList);
-         if ~all(entList)
-           error('Inactive entity for input field')
-         end
+        % renumber entity id skipping inactive entities
+        assert(~isempty(fldId),'Missing field id');
+        entList = obj.entMap{fldId}(entList);
+        if ~all(entList)
+          error('Inactive entity for input field')
+        end
       end
 
       function getDoFMap(obj,id)

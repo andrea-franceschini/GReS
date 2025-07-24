@@ -20,6 +20,8 @@ classdef Mortar < handle
     mortarMatrix
     elements
     multiplierType = 'dual'
+    D               % slave matrix without bcs applied
+    M               % master matrix without bc applied
   end
 
   methods
@@ -27,8 +29,16 @@ classdef Mortar < handle
       obj.solvers = [domains(1).Discretizer,domains(2).Discretizer];
       obj.idDomain = [inputStruct.Master.idAttribute;
                 inputStruct.Slave.idAttribute];
-      surfId = {inputStruct.Master.surfaceTagAttribute;
-        inputStruct.Slave.surfaceTagAttribute};
+      masterSurf = inputStruct.Master.surfaceTagAttribute;
+      if isstring(masterSurf)
+        masterSurf = str2num(masterSurf); 
+      end
+      slaveSurf = inputStruct.Slave.surfaceTagAttribute;
+      if isstring(slaveSurf)
+        slaveSurf = str2num(slaveSurf);
+      end
+
+      surfId = {masterSurf; slaveSurf};
       obj.mesh = interfaceMesh(domains,surfId);
       checkInterfaceDisjoint(obj);
       obj.dofm = [domains(1).DoFManager;
@@ -103,8 +113,7 @@ classdef Mortar < handle
       n = obj.dofm(sideID).getDoFperEnt(field);
       dofMult = dofId(1:obj.mesh.nEl(2),n);
       dof = obj.mesh.local2glob{sideID}(1:size(obj.mortarMatrix{sideID},2));
-      fld = obj.dofm(sideID).getFieldId(field);
-      dof = obj.dofm(sideID).getLocalDoF(dof,fld);
+      dof = obj.dofm(sideID).getLocalDoF(dof,field);
       [j,i] = meshgrid(dof,dofMult);
       nr = n*obj.mesh.nEl(2);
       nc = obj.dofm(sideID).getNumDoF(field);
@@ -146,7 +155,7 @@ classdef Mortar < handle
       % get number of dofs for each block
       nDofMaster = obj.dofm(1).getNumDoF(obj.physics);
       nDofSlave = obj.dofm(2).getNumDoF(obj.physics);
-      nDofMult = getNumbMultipliers(obj);
+      [~,nDofMult] = getNumbMultipliers(obj);
 
       % define matrix assemblers
       locM = @(imult,imaster,Nmult,Nmaster) ...
@@ -197,11 +206,17 @@ classdef Mortar < handle
         asbD.localAssembly(i,is,Dloc);
       end
 
-      obj.Jmaster{1} = asbM.sparseAssembly();
-      obj.Jslave{1} = asbD.sparseAssembly();
+      obj.M = asbM.sparseAssembly();
+      obj.D = asbD.sparseAssembly();
 
       % check satisfaction of partition of unity (mortar consistency)
-      pu = sum([obj.Jmaster{1} obj.Jslave{1}],2);
+      
+      % remove rows of inactive multipliers from Jmaster and Jslave
+      dofMult = getMultiplierDoF(obj);
+      obj.M = obj.M(dofMult,:); 
+      obj.D = obj.D(dofMult,:); 
+
+      pu = sum([obj.M obj.D],2);
       assert(norm(pu)<1e-6,'Partiition of unity violated');
       fprintf('Done computing mortar matrix in %.4f s \n',cputime-tIni)
     end

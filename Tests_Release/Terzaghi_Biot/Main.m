@@ -11,7 +11,7 @@ scriptDir = fileparts(scriptFullPath);
 cd(scriptDir);
 
 % Set physical models 
-model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
+model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
 
 % Set parameters of the simulation
 fileName = "simParam.dat";
