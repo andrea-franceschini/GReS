@@ -1,6 +1,7 @@
 classdef Poromechanics < SinglePhysics
 
   properties        
+    K
     fInt            % internal forces
     cell2stress     % map cell ID to position in stress/strain matrix
   end
