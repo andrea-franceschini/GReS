@@ -25,7 +25,7 @@ classdef Tetrahedron < FEM
       %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
       
       if obj.GaussPts.nNode < 2
-        % faster version 
+        % faster version for single GP rule
         mat = [1 obj.mesh.coordinates(obj.mesh.cells(el,1),:);
                    1 obj.mesh.coordinates(obj.mesh.cells(el,2),:);
                    1 obj.mesh.coordinates(obj.mesh.cells(el,3),:);
