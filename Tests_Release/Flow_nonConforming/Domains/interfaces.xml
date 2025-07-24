@@ -27,6 +27,8 @@ and must be known in advance during the mesh generation
  
   <Physics> specifies the physics that we want to transfer across the non conforming interface
   <Print> specifies the name of the output files for the interface
+
+  <Type> and <Multiplier> specify some algorithmic details regarding the mortar algorithm
   -->
 
 

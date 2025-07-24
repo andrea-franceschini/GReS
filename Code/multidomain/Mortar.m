@@ -122,7 +122,7 @@ classdef Mortar < handle
     end
 
     function computeMortarMatrices(obj,~)
-      fprintf('Computing mortar matrices...\n')
+      %fprintf('Computing mortar matrices...\n')
       tIni = cputime;
       % assumption: each element has only one bubble face
       % loop over slave faces and:
@@ -218,7 +218,7 @@ classdef Mortar < handle
 
       pu = sum([obj.M obj.D],2);
       assert(norm(pu)<1e-6,'Partiition of unity violated');
-      fprintf('Done computing mortar matrix in %.4f s \n',cputime-tIni)
+%       fprintf('Done computing mortar matrix in %.4f s \n',cputime-tIni)
     end
 
 

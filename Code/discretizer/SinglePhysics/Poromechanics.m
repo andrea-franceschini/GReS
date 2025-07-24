@@ -34,9 +34,12 @@ classdef Poromechanics < SinglePhysics
         computeStiffMat(obj,assembler);
       end
       if obj.simParams.isTimeDependent
-        obj.J = obj.simParams.theta*obj.J;
+        obj.J = obj.simParams.theta*obj.K;
+      else
+        obj.J = obj.K;
       end
     end
+
 
     function computeStiffMat(obj,assembleKloc)
       % general sparse assembly loop over elements for Poromechanics
@@ -57,7 +60,7 @@ classdef Poromechanics < SinglePhysics
         l = l + s;
       end
       % populate stiffness matrix
-      obj.J = assembleK.sparseAssembly();
+      obj.K = assembleK.sparseAssembly();
     end
 
     function [dofr,dofc,KLoc,sigma,status] = computeLocalStiff(obj,elID,dt,l)
@@ -162,6 +165,7 @@ classdef Poromechanics < SinglePhysics
       % Update state structure with last solution increment
       ents = obj.dofm.getActiveEnts(obj.field);
       if nargin > 1
+        % apply newton update to current displacements
         obj.state.data.dispCurr(ents) = obj.state.data.dispCurr(ents) + dSol(getDoF(obj.dofm,obj.field));
       end
       du = obj.state.data.dispCurr - obj.state.data.dispConv;
@@ -213,6 +217,11 @@ classdef Poromechanics < SinglePhysics
         stateIn = varargin{1};
         var = stateIn.data.dispCurr;
       end
+    end
+
+    function setState(obj,id,vals)
+      % set values of the primary variable  
+      obj.state.data.dispCurr(id) = vals; 
     end
 
     function [dof,vals] = getBC(obj,bc,id,t,~)

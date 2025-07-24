@@ -40,8 +40,10 @@ classdef SinglePhaseFlow < SinglePhysics
       end
 
       function updateState(obj,dSol)
-         ents = obj.dofm.getActiveEnts(obj.field);
-         obj.state.data.pressure(ents) = obj.state.data.pressure(ents) + dSol(obj.dofm.getDoF(obj.field));
+        if nargin > 1
+          ents = obj.dofm.getActiveEnts(obj.field);
+          obj.state.data.pressure(ents) = obj.state.data.pressure(ents) + dSol(obj.dofm.getDoF(obj.field));
+        end
       end
 
       function fluidPot = finalizeState(obj,stateIn)
@@ -65,6 +67,11 @@ classdef SinglePhaseFlow < SinglePhysics
           stateIn = varargin{1};
           var = stateIn.data.pressure;
         end
+      end
+
+      function setState(obj,id,vals)
+        % set values of the primary variable
+        obj.state.data.pressure(id) = vals;
       end
 
       function [cellData,pointData] = printState(obj,sOld,sNew,t)

@@ -16,6 +16,7 @@ classdef MeshGlueDual < MeshGlue
       assert(isfield(inputStruct,"Physics"), ...
         'Missing Physics field for interface %i',id);
       assert(strcmp(obj.multiplierType,'dual'), 'Multiplier type must be dual');
+      assert(strcmp(obj.physics,'Poisson'),'Static condensation is available only with Poisson problem')
       obj.totMult = 0;        % multipliers are condensed 
     end
     %
@@ -159,7 +160,7 @@ classdef MeshGlueDual < MeshGlue
       solvSlave = obj.solvers(2).getSolver(obj.physics);
       entsSlave = obj.dofm(2).getActiveEnts(obj.physics(i));
       varSlave = getState(solvSlave);
-      obj.f2 = solvSlave.rhs - solvSlave.J*varSlave(entsSlave); % this is just the forcing term
+      obj.f2 = solvSlave.rhs; % - solvSlave.J*varSlave(entsSlave); % this is just the forcing term
       obj.rhsMaster{i} =  obj.rhsMaster{i} + obj.E'*obj.f2;  % ... + E'*f_Gamma2
       % remove slave rhs contribution of interface slave dofs
       dofInter = getInterfSlaveDoF(obj);
