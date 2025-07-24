@@ -163,6 +163,7 @@ classdef Poromechanics < SinglePhysics
       % Update state structure with last solution increment
       ents = obj.dofm.getActiveEnts(obj.field);
       if nargin > 1
+        % apply newton update to current displacements
         obj.state.data.dispCurr(ents) = obj.state.data.dispCurr(ents) + dSol(getDoF(obj.dofm,obj.field));
       end
       du = obj.state.data.dispCurr - obj.state.data.dispConv;
@@ -214,6 +215,11 @@ classdef Poromechanics < SinglePhysics
         stateIn = varargin{1};
         var = stateIn.data.dispCurr;
       end
+    end
+
+    function setState(obj,id,vals)
+      % set values of the primary variable  
+      obj.state.data.dispCurr(id) = vals; 
     end
 
     function [dof,vals] = getBC(obj,bc,id,t,~)

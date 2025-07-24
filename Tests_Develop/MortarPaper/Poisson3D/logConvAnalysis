@@ -1,39 +1,291 @@
 _____________________________________________________________________
 Running convergence analysis with SegmentBased integration - 7 GP 
 _____________________________________________________________________
-Running mesh refinement 1 - SegmentBased 7 GP 
-convergence_analysis
-[Warning: File not found or permission denied] 
-[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 6)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',6,0)">line 6</a>)] 
-_____________________________________________________________________
-Running convergence analysis with SegmentBased integration - 7 GP 
-_____________________________________________________________________
 Running mesh refinement 2 - SegmentBased 7 GP 
-convergence_analysis
-[Warning: File not found or permission denied] 
-[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 6)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',6,0)">line 6</a>)] 
-_____________________________________________________________________
-Running convergence analysis with SegmentBased integration - 7 GP 
-_____________________________________________________________________
-Running mesh refinement 3 - SegmentBased 7 GP 
-convergence_analysis
-[Warning: File not found or permission denied] 
-[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 6)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',6,0)">line 6</a>)] 
-_____________________________________________________________________
-Running convergence analysis with SegmentBased integration - 7 GP 
-_____________________________________________________________________
-Running mesh refinement 4 - SegmentBased 7 GP 
-convergence_analysis
-[Warning: File not found or permission denied] 
-[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 6)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',6,0)">line 6</a>)] 
-_____________________________________________________________________
-Running convergence analysis with SegmentBased integration - 7 GP 
-_____________________________________________________________________
-Running mesh refinement 5 - SegmentBased 7 GP 
-convergence_analysis
-[Warning: File not found or permission denied] 
-[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('convergence_analysis', 'M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m', 6)" style="font-weight:bold">convergence_analysis</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',6,0)">line 6</a>)] 
-_____________________________________________________________________
-Running convergence analysis with SegmentBased integration - 7 GP 
-_____________________________________________________________________
-Running mesh refinement 6 - SegmentBased 7 GP 
+Mortar initialization... 
+<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\MortarPaper\Poisson3D\convergence_analysis.m',130,1)">130 </a>        solver.NonLinearLoop();
+if system_dependent('IsDebugMode')==1, dbstep in; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+if system_dependent('IsDebugMode')==1, dbstep; end
+-----------------------------------------------------------
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+Iter     ||rhs||
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep in; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+Computing mortar matrices...
+Done computing mortar matrix in 2.3281 s 
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep in; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbquit; end
+poreScale_main
+[Warning: Removed 'M:\Codes\GReS\Tests_Develop\PoreScale2\out_1\output_00000' from the MATLAB path for this MATLAB session.
+	See 'doc path' for more information.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/createVTKFolder', 'M:\Codes\GReS\Code\write\VTKOutput.m', 87)" style="font-weight:bold">VTKOutput/createVTKFolder</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',87,0)">line 87</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTUFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 183)" style="font-weight:bold">VTKOutput/writeVTUFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',183,0)">line 183</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTKFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 62)" style="font-weight:bold">VTKOutput/writeVTKFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',62,0)">line 62</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('plotFunction', 'M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m', 11)" style="font-weight:bold">plotFunction</a> (<a href="matlab: opentoline('M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m',11,0)">line 11</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 30)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',30,0)">line 30</a>)] 
+[Warning: Removed 'M:\Codes\GReS\Tests_Develop\PoreScale2\out_1' from the MATLAB path for this MATLAB session.
+	See 'doc path' for more information.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/createVTKFolder', 'M:\Codes\GReS\Code\write\VTKOutput.m', 87)" style="font-weight:bold">VTKOutput/createVTKFolder</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',87,0)">line 87</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTUFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 183)" style="font-weight:bold">VTKOutput/writeVTUFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',183,0)">line 183</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTKFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 62)" style="font-weight:bold">VTKOutput/writeVTKFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',62,0)">line 62</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('plotFunction', 'M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m', 11)" style="font-weight:bold">plotFunction</a> (<a href="matlab: opentoline('M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m',11,0)">line 11</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 30)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',30,0)">line 30</a>)] 
+[Warning: Removed 'M:\Codes\GReS\Tests_Develop\PoreScale2\out_2\output_00000' from the MATLAB path for this MATLAB session.
+	See 'doc path' for more information.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/createVTKFolder', 'M:\Codes\GReS\Code\write\VTKOutput.m', 87)" style="font-weight:bold">VTKOutput/createVTKFolder</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',87,0)">line 87</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTUFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 183)" style="font-weight:bold">VTKOutput/writeVTUFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',183,0)">line 183</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTKFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 62)" style="font-weight:bold">VTKOutput/writeVTKFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',62,0)">line 62</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('plotFunction', 'M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m', 11)" style="font-weight:bold">plotFunction</a> (<a href="matlab: opentoline('M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m',11,0)">line 11</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 30)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',30,0)">line 30</a>)] 
+[Warning: Removed 'M:\Codes\GReS\Tests_Develop\PoreScale2\out_2' from the MATLAB path for this MATLAB session.
+	See 'doc path' for more information.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/createVTKFolder', 'M:\Codes\GReS\Code\write\VTKOutput.m', 87)" style="font-weight:bold">VTKOutput/createVTKFolder</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',87,0)">line 87</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTUFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 183)" style="font-weight:bold">VTKOutput/writeVTUFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',183,0)">line 183</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTKFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 62)" style="font-weight:bold">VTKOutput/writeVTKFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',62,0)">line 62</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('plotFunction', 'M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m', 11)" style="font-weight:bold">plotFunction</a> (<a href="matlab: opentoline('M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m',11,0)">line 11</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 30)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',30,0)">line 30</a>)] 
+[Warning: Removed 'M:\Codes\GReS\Tests_Develop\PoreScale2\out_3\output_00000' from the MATLAB path for this MATLAB session.
+	See 'doc path' for more information.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/createVTKFolder', 'M:\Codes\GReS\Code\write\VTKOutput.m', 87)" style="font-weight:bold">VTKOutput/createVTKFolder</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',87,0)">line 87</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTUFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 183)" style="font-weight:bold">VTKOutput/writeVTUFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',183,0)">line 183</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTKFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 62)" style="font-weight:bold">VTKOutput/writeVTKFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',62,0)">line 62</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('plotFunction', 'M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m', 11)" style="font-weight:bold">plotFunction</a> (<a href="matlab: opentoline('M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m',11,0)">line 11</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 30)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',30,0)">line 30</a>)] 
+[Warning: Removed 'M:\Codes\GReS\Tests_Develop\PoreScale2\out_3' from the MATLAB path for this MATLAB session.
+	See 'doc path' for more information.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/createVTKFolder', 'M:\Codes\GReS\Code\write\VTKOutput.m', 87)" style="font-weight:bold">VTKOutput/createVTKFolder</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',87,0)">line 87</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTUFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 183)" style="font-weight:bold">VTKOutput/writeVTUFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',183,0)">line 183</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTKFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 62)" style="font-weight:bold">VTKOutput/writeVTKFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',62,0)">line 62</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('plotFunction', 'M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m', 11)" style="font-weight:bold">plotFunction</a> (<a href="matlab: opentoline('M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m',11,0)">line 11</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 30)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',30,0)">line 30</a>)] 
+[Warning: Removed 'M:\Codes\GReS\Tests_Develop\PoreScale2\out_4\output_00000' from the MATLAB path for this MATLAB session.
+	See 'doc path' for more information.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/createVTKFolder', 'M:\Codes\GReS\Code\write\VTKOutput.m', 87)" style="font-weight:bold">VTKOutput/createVTKFolder</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',87,0)">line 87</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTUFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 183)" style="font-weight:bold">VTKOutput/writeVTUFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',183,0)">line 183</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTKFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 62)" style="font-weight:bold">VTKOutput/writeVTKFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',62,0)">line 62</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('plotFunction', 'M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m', 11)" style="font-weight:bold">plotFunction</a> (<a href="matlab: opentoline('M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m',11,0)">line 11</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 30)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',30,0)">line 30</a>)] 
+[Warning: Removed 'M:\Codes\GReS\Tests_Develop\PoreScale2\out_4' from the MATLAB path for this MATLAB session.
+	See 'doc path' for more information.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/createVTKFolder', 'M:\Codes\GReS\Code\write\VTKOutput.m', 87)" style="font-weight:bold">VTKOutput/createVTKFolder</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',87,0)">line 87</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTUFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 183)" style="font-weight:bold">VTKOutput/writeVTUFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',183,0)">line 183</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTKFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 62)" style="font-weight:bold">VTKOutput/writeVTKFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',62,0)">line 62</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('plotFunction', 'M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m', 11)" style="font-weight:bold">plotFunction</a> (<a href="matlab: opentoline('M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m',11,0)">line 11</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 30)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',30,0)">line 30</a>)] 
+[Warning: Removed 'M:\Codes\GReS\Tests_Develop\PoreScale2\out_5\output_00000' from the MATLAB path for this MATLAB session.
+	See 'doc path' for more information.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/createVTKFolder', 'M:\Codes\GReS\Code\write\VTKOutput.m', 87)" style="font-weight:bold">VTKOutput/createVTKFolder</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',87,0)">line 87</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTUFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 183)" style="font-weight:bold">VTKOutput/writeVTUFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',183,0)">line 183</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTKFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 62)" style="font-weight:bold">VTKOutput/writeVTKFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',62,0)">line 62</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('plotFunction', 'M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m', 11)" style="font-weight:bold">plotFunction</a> (<a href="matlab: opentoline('M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m',11,0)">line 11</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 30)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',30,0)">line 30</a>)] 
+[Warning: Removed 'M:\Codes\GReS\Tests_Develop\PoreScale2\out_5' from the MATLAB path for this MATLAB session.
+	See 'doc path' for more information.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/createVTKFolder', 'M:\Codes\GReS\Code\write\VTKOutput.m', 87)" style="font-weight:bold">VTKOutput/createVTKFolder</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',87,0)">line 87</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTUFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 183)" style="font-weight:bold">VTKOutput/writeVTUFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',183,0)">line 183</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTKFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 62)" style="font-weight:bold">VTKOutput/writeVTKFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',62,0)">line 62</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('plotFunction', 'M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m', 11)" style="font-weight:bold">plotFunction</a> (<a href="matlab: opentoline('M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m',11,0)">line 11</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 30)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',30,0)">line 30</a>)] 
+[Warning: Removed 'M:\Codes\GReS\Tests_Develop\PoreScale2\out_6\output_00000' from the MATLAB path for this MATLAB session.
+	See 'doc path' for more information.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/createVTKFolder', 'M:\Codes\GReS\Code\write\VTKOutput.m', 87)" style="font-weight:bold">VTKOutput/createVTKFolder</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',87,0)">line 87</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTUFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 183)" style="font-weight:bold">VTKOutput/writeVTUFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',183,0)">line 183</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTKFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 62)" style="font-weight:bold">VTKOutput/writeVTKFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',62,0)">line 62</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('plotFunction', 'M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m', 11)" style="font-weight:bold">plotFunction</a> (<a href="matlab: opentoline('M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m',11,0)">line 11</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 30)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',30,0)">line 30</a>)] 
+[Warning: Removed 'M:\Codes\GReS\Tests_Develop\PoreScale2\out_6' from the MATLAB path for this MATLAB session.
+	See 'doc path' for more information.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/createVTKFolder', 'M:\Codes\GReS\Code\write\VTKOutput.m', 87)" style="font-weight:bold">VTKOutput/createVTKFolder</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',87,0)">line 87</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTUFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 183)" style="font-weight:bold">VTKOutput/writeVTUFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',183,0)">line 183</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('VTKOutput/writeVTKFile', 'M:\Codes\GReS\Code\write\VTKOutput.m', 62)" style="font-weight:bold">VTKOutput/writeVTKFile</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\write\VTKOutput.m',62,0)">line 62</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('plotFunction', 'M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m', 11)" style="font-weight:bold">plotFunction</a> (<a href="matlab: opentoline('M:\Codes\GReS\Utilities\ParaviewPlot\plotFunction.m',11,0)">line 11</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 30)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',30,0)">line 30</a>)] 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.7344 s 
+Computing mortar matrices...
+Done computing mortar matrix in 0.4375 s 
+{Unrecognized method, property, or field 'multNodes' for class 'MeshGlueDual'.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MeshGlueDual/getInterfSlaveDoF', 'M:\Codes\GReS\Code\multidomain\MeshGlueDual.m', 168)" style="font-weight:bold">MeshGlueDual/getInterfSlaveDoF</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\multidomain\MeshGlueDual.m',168,0)">line 168</a>)
+      nodeInterf = obj.mesh.local2glob{2}(obj.multNodes);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MeshGlueDual/computeRhsMaster', 'M:\Codes\GReS\Code\multidomain\MeshGlueDual.m', 140)" style="font-weight:bold">MeshGlueDual/computeRhsMaster</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\multidomain\MeshGlueDual.m',140,0)">line 140</a>)
+      dofSlave = getInterfSlaveDoF(obj);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MeshGlueDual/computeRhs', 'M:\Codes\GReS\Code\multidomain\MeshGlueDual.m', 89)" style="font-weight:bold">MeshGlueDual/computeRhs</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\multidomain\MeshGlueDual.m',89,0)">line 89</a>)
+        computeRhsMaster(obj,i);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/computeMatricesAndRhs', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 435)" style="font-weight:bold">MultidomainFCSolver/computeMatricesAndRhs</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',435,0)">line 435</a>)
+        computeRhs(obj.interfaces{j});
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/NonLinearLoop', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 67)" style="font-weight:bold">MultidomainFCSolver/NonLinearLoop</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',67,0)">line 67</a>)
+        computeMatricesAndRhs(obj);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 96)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',96,0)">line 96</a>)
+solver.NonLinearLoop();
+} 
+opentoline('M:\Codes\GReS\Code\multidomain\MeshGlueDual.m',168,0)
+poreScale_main
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.2812 s 
+Computing mortar matrices...
+Done computing mortar matrix in 0.2969 s 
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep in; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep out; end
+if system_dependent('IsDebugMode')==1, dbstep out; end
+if system_dependent('IsDebugMode')==1, dbstep out; end
+if system_dependent('IsDebugMode')==1, dbstep out; end
+if system_dependent('IsDebugMode')==1, dbstep out; end
+if system_dependent('IsDebugMode')==1, dbstep out; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbquit; end
+poreScale_main
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.7188 s 
+Computing mortar matrices...
+Done computing mortar matrix in 0.3906 s 
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep out; end
+if system_dependent('IsDebugMode')==1, dbstep out; end
+if system_dependent('IsDebugMode')==1, dbstep out; end
+if system_dependent('IsDebugMode')==1, dbstep out; end
+0     5.883537e+00
+[Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.147817e-16.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/solve', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 211)" style="font-weight:bold">MultidomainFCSolver/solve</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',211,0)">line 211</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/NonLinearLoop', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 86)" style="font-weight:bold">MultidomainFCSolver/NonLinearLoop</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',86,0)">line 86</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 96)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',96,0)">line 96</a>)
+] 
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep out; end
+if system_dependent('IsDebugMode')==1, dbcont; end
+Computing mortar matrices...
+Done computing mortar matrix in 0.5312 s 
+Computing mortar matrices...
+Done computing mortar matrix in 0.3594 s 
+1     3.048728e+01
+Computing mortar matrices...
+Done computing mortar matrix in 0.0781 s 
+Computing mortar matrices...
+Done computing mortar matrix in 0.2344 s 
+2     8.079220e-08
+Computing mortar matrices...
+Done computing mortar matrix in 0.1875 s 
+Computing mortar matrices...
+Done computing mortar matrix in 0.6094 s 
+3     8.051358e-08
+Computing mortar matrices...
+Done computing mortar matrix in 0.1719 s 
+Computing mortar matrices...
+Done computing mortar matrix in 0.3906 s 
+4     8.023739e-08
+Computing mortar matrices...
+Done computing mortar matrix in 0.2031 s 
+Computing mortar matrices...
+Done computing mortar matrix in 0.5469 s 
+5     7.996359e-08
+Computing mortar matrices...
+Done computing mortar matrix in 0.0625 s 
+Computing mortar matrices...
+{Operation terminated by user during <a href="matlab:matlab.internal.language.introspective.errorDocCallback('assembler/localAssembly')" style="font-weight:bold">assembler/localAssembly</a>
+
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Mortar/computeMortarMatrices', 'M:\Codes\GReS\Code\multidomain\Mortar.m', 197)" style="font-weight:bold">Mortar/computeMortarMatrices</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\multidomain\Mortar.m',197,0)">line 197</a>)
+          asbM.localAssembly(i,im,-Nmult,Nmaster);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MeshGlueDual/computeMat', 'M:\Codes\GReS\Code\multidomain\MeshGlueDual.m', 61)" style="font-weight:bold">MeshGlueDual/computeMat</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\multidomain\MeshGlueDual.m',61,0)">line 61</a>)
+      computeMortarMatrices(obj);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/computeMatricesAndRhs', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 422)" style="font-weight:bold">MultidomainFCSolver/computeMatricesAndRhs</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',422,0)">line 422</a>)
+        computeMat(obj.interfaces{j}, obj.dt);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/NonLinearLoop', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 91)" style="font-weight:bold">MultidomainFCSolver/NonLinearLoop</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',91,0)">line 91</a>)
+          computeMatricesAndRhs(obj);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 96)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',96,0)">line 96</a>)
+solver.NonLinearLoop();
+} 
+poreScale_main
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 0.2344 s 
+Computing mortar matrices...
+Done computing mortar matrix in 0.4531 s 
+0     5.883537e+00
+[Warning: Matrix is close to singular or badly scaled. Results may be inaccurate. RCOND =  2.147817e-16.] 
+[> In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/solve', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 211)" style="font-weight:bold">MultidomainFCSolver/solve</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',211,0)">line 211</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/NonLinearLoop', 'M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 86)" style="font-weight:bold">MultidomainFCSolver/NonLinearLoop</a> (<a href="matlab: opentoline('M:\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',86,0)">line 86</a>)
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('poreScale_main', 'M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m', 96)" style="font-weight:bold">poreScale_main</a> (<a href="matlab: opentoline('M:\Codes\GReS\Tests_Develop\PoreScale2\poreScale_main.m',96,0)">line 96</a>)
+] 
+Computing mortar matrices...
+Done computing mortar matrix in 0.1406 s 
+Computing mortar matrices...
+Done computing mortar matrix in 0.4844 s 

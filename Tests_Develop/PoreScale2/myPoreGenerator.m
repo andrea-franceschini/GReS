@@ -58,12 +58,20 @@ C = [X, Y, Z];
 
 [C,R] = getRadius(C);
 
+%%
+R(1) = 1.05*R(1);
+R(3) = 1.1*R(3);
+
 plotSpheres(C,R);
 
 
 % printfiles
 writematrix(R, 'rad.txt', 'Delimiter', ' ');
 writematrix(C, 'pts.txt', 'Delimiter', ' ');
+
+%% generate mesh
+command = "python Mesh/PoreMech.py";
+system(command)
 
 
 function p = genPoints1D(dmin,dmax,N)

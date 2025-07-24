@@ -111,8 +111,7 @@ classdef Mortar < handle
       n = obj.dofm(sideID).getDoFperEnt(field);
       dofMult = dofId(1:obj.mesh.nEl(2),n);
       dof = obj.mesh.local2glob{sideID}(1:size(obj.mortarMatrix{sideID},2));
-      fld = obj.dofm(sideID).getFieldId(field);
-      dof = obj.dofm(sideID).getLocalDoF(dof,fld);
+      dof = obj.dofm(sideID).getLocalDoF(dof,field);
       [j,i] = meshgrid(dof,dofMult);
       nr = n*obj.mesh.nEl(2);
       nc = obj.dofm(sideID).getNumDoF(field);
@@ -154,7 +153,7 @@ classdef Mortar < handle
       % get number of dofs for each block
       nDofMaster = obj.dofm(1).getNumDoF(obj.physics);
       nDofSlave = obj.dofm(2).getNumDoF(obj.physics);
-      nDofMult = getNumbMultipliers(obj);
+      [~,nDofMult] = getNumbMultipliers(obj);
 
       % define matrix assemblers
       locM = @(imult,imaster,Nmult,Nmaster) ...
@@ -209,6 +208,12 @@ classdef Mortar < handle
       obj.Jslave{1} = asbD.sparseAssembly();
 
       % check satisfaction of partition of unity (mortar consistency)
+      
+      % remove rows of inactive multipliers from Jmaster and Jslave
+      dofMult = getMultiplierDoF(obj);
+      obj.Jmaster{1} = obj.Jmaster{1}(dofMult,:); 
+      obj.Jslave{1} = obj.Jslave{1}(dofMult,:); 
+
       pu = sum([obj.Jmaster{1} obj.Jslave{1}],2);
       assert(norm(pu)<1e-6,'Partiition of unity violated');
       fprintf('Done computing mortar matrix in %.4f s \n',cputime-tIni)

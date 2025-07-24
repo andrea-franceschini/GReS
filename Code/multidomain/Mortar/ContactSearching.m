@@ -14,7 +14,7 @@ classdef ContactSearching < handle
     leaf2elem2
     elemConnectivity % master- slave connectivity
     dim
-    scale = 0.02;   % bounding box expansion (ratio w.r.t elem max dim)
+    scale = 0.025;   % bounding box expansion (ratio w.r.t elem max dim)
   end
 
   methods
@@ -136,6 +136,12 @@ classdef ContactSearching < handle
         lCells = surfID(id);
         rCells = surfID(~id);
         assert(length(lCells)+length(rCells) == length(surfID), 'Some elements left out from splitting procedure');
+        % avoid unlucky cases due to use of median
+        if any([isempty(lCells) isempty(rCells)])
+          id = surfPrim < mean(surfPrim);
+          lCells = surfID(id);
+          rCells = surfID(~id);
+        end
         assert(~isempty(lCells),'Empty leaf cells');
         assert(~isempty(rCells),'Empty leaf cells');
       elseif numel(surfID) > 1

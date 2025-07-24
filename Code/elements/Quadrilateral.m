@@ -102,7 +102,7 @@ classdef Quadrilateral < FEM
       nodeCoord = obj.mesh.coordinates(obj.mesh.surfaces(idQuad,:),:);
       tang = dN*nodeCoord;
       crossTang = cross(tang(1,:)',tang(2,:)');
-      n = crossTang/norm(crossTang);
+      n = crossTang/norm(crossTang); % normalize
     end
 
 

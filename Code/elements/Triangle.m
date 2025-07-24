@@ -85,7 +85,8 @@ classdef Triangle < FEM
     end
 
     function Nb = computeBubbleBasisF(obj,coordList)
-      Nb = arrayfun(@(i) (1-coordList(i,1)-coordList(i,2)).*coordList(i,1).*coordList(i,2));
+      Nb = arrayfun(@(i) (1-coordList(i,1)-coordList(i,2)).*coordList(i,1).*coordList(i,2),...
+        (1:size(coordList,1)));
       Nb = Nb';
     end
 
@@ -116,16 +117,13 @@ classdef Triangle < FEM
     end
 
     function n = computeNormal(obj,idTri,varargin)
-      % compute normal vector of triangle 
-      n = zeros(length(idTri),3);
-      for el = idTri
-        % normal is connstant for triangles
-        nodeCoord = obj.mesh.coordinates(obj.mesh.surfaces(el,:),:);
-        v1 = nodeCoord(1,:) - nodeCoord(2,:);
-        v2 = nodeCoord(2,:) - nodeCoord(3,:);
-        n(el,:) = cross(v1,v2);
-        n(el,:) = n(el,:)/norm(n(el,:));
-      end
+      % compute normal vector of triangle
+      assert(isscalar(idTri),'Input id must be a scalar positive integer')
+      nodeCoord = FEM.getElementCoords(obj,idTri);
+      v1 = nodeCoord(1,:) - nodeCoord(2,:);
+      v2 = nodeCoord(2,:) - nodeCoord(3,:);
+      n = cross(v1',v2');
+      n = n/norm(n);
     end
 
     function areaNod = findNodeArea(obj,el)

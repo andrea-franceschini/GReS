@@ -74,7 +74,7 @@ for i_t = integration_type
         fprintf('Using %i interpolation points %i \n',n_i)
       end
       % refinement loop
-      for i = 1:nref
+      for i = 2
 
         N_i_l = N_l(i);
         N_i_r = N_r(i);
@@ -120,7 +120,7 @@ for i_t = integration_type
         writestruct(strInterf,interfFile);
 
         % processing Poisson problem
-        domains = buildModelStruct_new(domainFile,simParam);
+        domains = buildModelStruct(domainFile,simParam);
         domains.Discretizer.getSolver('Poisson').setAnalSolution(anal,f,gradx,grady,gradz);
 
         [interfaces,domains] = Mortar.buildInterfaceStruct(interfFile,domains);

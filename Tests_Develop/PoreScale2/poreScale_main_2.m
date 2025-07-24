@@ -11,7 +11,10 @@ clc
 
 % read the grain mesh ( only volumes)
 grainMesh = Mesh();
-grainMesh.importMesh('Mesh/pores.vtk');
+grainMesh.importMesh('Mesh/many_grains.vtk');
+grainMesh.cellTag = grainMesh.cellTag + 1;
+grainMesh.nCellTag = grainMesh.nCellTag + 1;
+
 
 % generate surface mesh for each grain
 grainMesh = setSurfaces(grainMesh);
@@ -25,22 +28,26 @@ elems = Elements(grainMesh,4);
 
 interfFile = 'Domains/interfaces.xml';
 
-for i = 1:grainMesh.nSurfaceTag
-  mshTmp = getSurfaceMesh(grainMesh,i);
-  plotFunction(mshTmp,strcat('out_',num2str(i)),ones(mshTmp.nNodes,1))
-end
+plotFunction(grainMesh,'domain',ones(grainMesh.nNodes,1))
+
+% for i = 1:grainMesh.nSurfaceTag
+%   mshTmp = getSurfaceMesh(grainMesh,i);
+%   plotFunction(mshTmp,strcat('out_',num2str(i)),ones(mshTmp.nNodes,1))
+% end
 
 conn = getGrainConnectivity(grainMesh);
 
 % ensure that if a grain is not connect to any other grain, then at least
 % lies on the dirichlet boundary (unit cube bounding box)
-% just need to check that at least one node has one coordinate equal to 0
-% or 1
+% just need to check that at least one node has one coordinate equal to max
+% or min coordinates of the domain
 isFree = find(~ismember(1:grainMesh.nSurfaceTag,unique(conn)));
 
 for i = isFree
   c = grainMesh.coordinates(grainMesh.surfaces(grainMesh.surfaceTag==i,:),:);
-  isDir =  any(c==0,"all") & any(c==1,"all");
+  tol = 1e-3;
+
+  isDir =  any(abs(c-min(c))<tol,"all") & any(abs(c-max(c))<tol,"all");
   assert(isDir,'Grain %i is floating \n',i)
 end
 
@@ -50,8 +57,8 @@ writeInterfaceFile(interfFile,conn);
 
 
 
-nodesTop = find(grainMesh.coordinates(:,3) == 1);
-nodesBot = find(grainMesh.coordinates(:,3)==0);
+nodesTop = find(abs(grainMesh.coordinates(:,3)-0.85)<tol);
+nodesBot = find(abs(grainMesh.coordinates(:,3)-0.15)<tol);
 
 writeBCfiles('BCs/moveTop','NodeBC','Dir',{'Poromechanics','z'},'MovingTop',0,-0.01,nodesTop);
 writeBCfiles('BCs/fixBot','NodeBC','Dir',{'Poromechanics','x','y','z'},'FixedBottom',0,0,nodesBot);
@@ -91,7 +98,7 @@ domains = struct( ...
 % setup mortar interfaces
 [interfaces,domains] = Mortar.buildInterfaceStruct(interfFile,domains);
 
-% solve problem
+%% solve problem
 solver = MultidomainFCSolver(simParam,domains,interfaces);
 solver.NonLinearLoop();
 solver.finalizeOutput();
@@ -153,10 +160,16 @@ msh.surfaceNumVerts = 3*ones(msh.nSurfaces,1);
 end
 
 
-function conn = getGrainConnectivity(msh)
+function conn = getGrainConnectivity(msh,varargin)
   conn = [];
   ng = msh.nSurfaceTag;
-  for i = 1:ng
+  if isempty(varargin)
+    list = 1:ng; 
+  else
+    list = varargin{1};
+  end
+  for i = list
+    fprintf('Processing connectivity of grain %i \n',i)
     for j = i+1:ng
       % rough screen using bounding box expaned
       if ~doBBIntersect(msh,i,j)
@@ -187,7 +200,7 @@ function out = doBBIntersect(msh,i1,i2)
   min2 = min2 - 0.025*d;
   max2 = max2 + 0.025*d;
 
-  out = all(max1 >= min2) && all(max2 >= min1);
+  out = all(max1 >= min2) & all(max2 >= min1);
 
 end
 
@@ -200,11 +213,13 @@ end
 
 function writeInterfaceFile(fname,conn)
 
-N = numel(unique(conn(:,1)));
+slaves = unique(conn(:,1));
+N = numel(slaves);
 % setup base structure
 interfBase.Type = 'MeshTyingCondensation';
 interfBase.Quadrature.typeAttribute = 'SegmentBased';
 interfBase.Quadrature.nGPAttribute = 7;
+interfBase.Quadrature.nIntAttribute = 5;
 interfBase.Multiplier.typeAttribute = 'dual';
 interfBase.Physics = 'Poromechanics';
 interfBase.Master.idAttribute = num2str(1);
@@ -214,10 +229,10 @@ Interface = repmat(interfBase,N,1);
 
 for i = 1:N
   % get list of masters for each slave
-  id = conn(:,1)==i;
+  id = conn(:,1)==slaves(i);
   m = num2str(reshape(conn(id,2),1,[]));
   Interface(i).Master.surfaceTagAttribute = m;
-  Interface(i).Slave.surfaceTagAttribute = num2str(i);
+  Interface(i).Slave.surfaceTagAttribute = num2str(slaves(i));
 end
 
 str.Interface = Interface;

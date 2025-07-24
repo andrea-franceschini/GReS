@@ -1,0 +1,14 @@
+_____________________________________________________________________
+Running convergence analysis with SegmentBased integration - 7 GP 
+_____________________________________________________________________
+Running mesh refinement 2 - SegmentBased 7 GP 
+Mortar initialization... 
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||
+Computing mortar matrices...
+Done computing mortar matrix in 2.9219 s 
+<a href="matlab: opentoline('M:\Codes\GReS\Code\multidomain\MeshGlueDual.m',156,1)">156 </a>      obj.f2 = solvSlave.rhs - solvSlave.J*varSlave(entsSlave);
+if system_dependent('IsDebugMode')==1, dbquit; end
+convergence_analysis
