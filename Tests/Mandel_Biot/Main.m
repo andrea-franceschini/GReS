@@ -115,8 +115,19 @@ nodesX = nodesX(ind);
 nodesZ = nodesZ(ind);
 
 %Getting pressure and displacement solution for specified output times from MatFILE
-press = printUtils.results.expPress;
-disp = printUtils.results.expDispl;
+% Small modification - for the growning grid
+nrep = length(printUtils.results(:,:));
+nvars = length(printUtils.results(2,:).expPress);
+press = zeros(nvars,nrep);
+nvars = length(printUtils.results(2,:).expDispl);
+disp = zeros(nvars,nrep);
+for i=2:nrep
+   press(:,i) = printUtils.results(i,:).expPress;
+   disp(:,i) = printUtils.results(i,:).expDispl;
+end
+
+% press = printUtils.results.expPress;
+% disp = printUtils.results.expDispl;
 pressNum = press(elemP,2:end);
 dispXNum = disp(3*nodesX-2,2:end);
 dispZNum = disp(3*nodesZ,2:end);

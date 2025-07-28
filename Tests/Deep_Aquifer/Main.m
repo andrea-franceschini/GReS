@@ -82,9 +82,25 @@ else
     mkdir Images
 end
 
-expPress = printUtils.results.expPress;
-expDispl = printUtils.results.expDispl;
-expTime = printUtils.results.expTime;
+% expPress = printUtils.results.expPress;
+% expDispl = printUtils.results.expDispl;
+% expTime = printUtils.results.expTime;
+
+% Small modification - for the growning grid
+nrep = length(printUtils.results(:,:));
+nvars = length(printUtils.results(2,:).expPress);
+expPress = zeros(nvars,nrep);
+nvars = length(printUtils.results(2,:).expDispl);
+expDispl = zeros(nvars,nrep);
+nvars = length(printUtils.results(2,:).expTime);
+expTime = zeros(nvars,nrep);
+for i=2:nrep
+   expPress(:,i) = printUtils.results(i,:).expPress;
+   expDispl(:,i) = printUtils.results(i,:).expDispl;
+   expTime(:,i) = printUtils.results(i,:).expTime;
+end
+
+
 
 %find nodes in vertical symmetry axis
 tmp1=topology.coordinates(:,1)<500.1;

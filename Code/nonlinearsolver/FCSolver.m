@@ -76,7 +76,7 @@ classdef FCSolver < handle
         end
         obj.solStatistics = SolverStatistics(simParam.itMaxNR,simParam.relTol,simParam.absTol,saveStasticts);
         % obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin);
-        obj.toGrow = adapgrid(obj.linSyst);        
+        % obj.toGrow = adapgrid(obj.linSyst);        
     end
 
     function [simStat] = NonLinearLoop(obj)

@@ -94,16 +94,22 @@ for i=1:length(meshList)
     printUtils.finalize()
 
     % Retriving the analisys information
-    pressure = printUtils.results.expPress;
-    saturation = printUtils.results.expSat;
+    % pressure = printUtils.results.expPress;
+    % saturation = printUtils.results.expSat;
+
+    % Small modification - for the growning grid
+    pressure = printUtils.results(2,:).expPress;
+    saturation = printUtils.results(2,:).expSat;
 
     %Getting pressure and saturation solution for specified time from MatFILE
     numb = 0.;
     tol = 0.01;
     nodesP = find(abs(elems.cellCentroid(:,1)-numb) < tol & abs(elems.cellCentroid(:,2)-numb) < tol);
-    result(i).pressure = pressure(nodesP,2);
-    result(i).saturation = saturation(nodesP,2);
+    % result(i).pressure = pressure(nodesP,2);
+    % result(i).saturation = saturation(nodesP,2);
     result(i).height = elems.cellCentroid(nodesP,3);
+    result(i).pressure = pressure(nodesP);
+    result(i).saturation = saturation(nodesP);
 end
 
 %% POST PROCESSING

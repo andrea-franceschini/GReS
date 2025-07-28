@@ -10,6 +10,7 @@ isSPF = false;
 %% -------------------------- SET THE PHYSICS -------------------------
 if isSPF
    model = ModelType("SinglePhaseFlow_FVTPFA");
+   % model = ModelType("SinglePhaseFlow_FEM");
 else
    model = ModelType("VariabSatFlow_FVTPFA");
 end

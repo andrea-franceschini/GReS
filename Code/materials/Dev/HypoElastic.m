@@ -19,7 +19,6 @@ classdef HypoElastic < handle
         szvec = []
         % save simulation time step
         time = []
-
     end
 
     methods (Access = public)

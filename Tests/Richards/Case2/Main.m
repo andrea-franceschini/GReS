@@ -94,12 +94,26 @@ if postproc
         mkdir(image_dir)
     end
 
+    % Small modification - for the growning grid
+    nrep = length(printUtils.results(:,:));
+    nvars = length(printUtils.results(2,:).expPress);
+    pressure = zeros(nvars,nrep);
+    nvars = length(printUtils.results(2,:).expSat);
+    saturation = zeros(nvars,nrep);
+    nvars = length(printUtils.results(2,:).expTime);
+    t = zeros(nvars,nrep);
+    for i=2:nrep
+       pressure(:,i) = printUtils.results(i,:).expPress;
+       saturation(:,i) = printUtils.results(i,:).expSat;
+       t(:,i) = printUtils.results(i,:).expTime;
+    end
+
     % Saving a temporary variabel.
-    pressure = printUtils.results.expPress;
-    saturation = printUtils.results.expSat;
+    % pressure = printUtils.results.expPress;
+    % saturation = printUtils.results.expSat;
 
     % Ajusting the time position.
-    t = printUtils.results.expTime;
+    % t = printUtils.results.expTime;
     tind = 2:length(t);
     t_max = t(end);
     t = t(tind)/86400;

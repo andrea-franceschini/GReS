@@ -53,107 +53,107 @@ classdef Materials < handle
         fluidMat = obj.db(f);
     end
     
-    function varargout = computeSwAnddSw(obj,mesh,pkpt)
-        % Consider moving this method to a more appropriate location
-        % varargout{1} -> Sw
-        % varargout{2} -> dSw
-        % varargout{3} -> d2Sw
-        % if 5<1
-        varargout{1} = zeros(mesh.nCells,1);
-        if nargout == 2
-            varargout{2} = zeros(mesh.nCells,1);
-        end
-        if nargout == 3
-            varargout{2} = zeros(mesh.nCells,1);
-            varargout{3} = zeros(mesh.nCells,1);
-        end
-        for m = 1:mesh.nCellTag
-            isElMat = mesh.cellTag == m;
-            p = pkpt(isElMat);
-            Sws = obj.getMaterial(m).PorousRock.getMaxSaturation();
-            Swr = obj.getMaterial(m).PorousRock.getResidualSaturation();
-            if nargout == 1
-                [varargout{1}(isElMat), ~, ~] = obj.getMaterial(m).Curves.computeSwAnddSw(p,Swr,Sws);
-                % varargout{1}(isElMat) = obj.getMaterial(m).CapillaryCurve.interpTable(p);
-                % varargout{1}(isElMat) = Swr + (Sws-Swr)*varargout{1}(isElMat);
-            elseif nargout == 2
-                [varargout{1}(isElMat), varargout{2}(isElMat), ~] = obj.getMaterial(m).Curves.computeSwAnddSw(p,Swr,Sws);
-                % [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).CapillaryCurve.interpTable(p);
-                % varargout{1}(isElMat) = Swr + (Sws-Swr)*varargout{1}(isElMat);
-                % varargout{2}(isElMat) = (Sws-Swr)*varargout{2}(isElMat);
-            elseif nargout == 3
-                [varargout{1}(isElMat), varargout{2}(isElMat), varargout{3}(isElMat)] = obj.getMaterial(m).Curves.computeSwAnddSw(p,Swr,Sws);
+    % % % % function varargout = computeSwAnddSw(obj,mesh,pkpt)
+    % % % %     % Consider moving this method to a more appropriate location
+    % % % %     % varargout{1} -> Sw
+    % % % %     % varargout{2} -> dSw
+    % % % %     % varargout{3} -> d2Sw
+    % % % %     % if 5<1
+    % % % %     varargout{1} = zeros(mesh.nCells,1);
+    % % % %     if nargout == 2
+    % % % %         varargout{2} = zeros(mesh.nCells,1);
+    % % % %     end
+    % % % %     if nargout == 3
+    % % % %         varargout{2} = zeros(mesh.nCells,1);
+    % % % %         varargout{3} = zeros(mesh.nCells,1);
+    % % % %     end
+    % % % %     for m = 1:mesh.nCellTag
+    % % % %         isElMat = mesh.cellTag == m;
+    % % % %         p = pkpt(isElMat);
+    % % % %         Sws = obj.getMaterial(m).PorousRock.getMaxSaturation();
+    % % % %         Swr = obj.getMaterial(m).PorousRock.getResidualSaturation();
+    % % % %         if nargout == 1
+    % % % %             [varargout{1}(isElMat), ~, ~] = obj.getMaterial(m).Curves.computeSwAnddSw(p,Swr,Sws);
+    % % % %             % varargout{1}(isElMat) = obj.getMaterial(m).CapillaryCurve.interpTable(p);
+    % % % %             % varargout{1}(isElMat) = Swr + (Sws-Swr)*varargout{1}(isElMat);
+    % % % %         elseif nargout == 2
+    % % % %             [varargout{1}(isElMat), varargout{2}(isElMat), ~] = obj.getMaterial(m).Curves.computeSwAnddSw(p,Swr,Sws);
+    % % % %             % [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).CapillaryCurve.interpTable(p);
+    % % % %             % varargout{1}(isElMat) = Swr + (Sws-Swr)*varargout{1}(isElMat);
+    % % % %             % varargout{2}(isElMat) = (Sws-Swr)*varargout{2}(isElMat);
+    % % % %         elseif nargout == 3
+    % % % %             [varargout{1}(isElMat), varargout{2}(isElMat), varargout{3}(isElMat)] = obj.getMaterial(m).Curves.computeSwAnddSw(p,Swr,Sws);
+    % % % % 
+    % % % %             % unitSys = 9.8066e2; % SI-9.8066e3 cm-9.8066e2
+    % % % %             % mx = -1e3; % SI-1e1 cm-1e4
+    % % % %             % mn = -7.5e+1; % SI-7.5e-1 cm-7.5e1
+    % % % %             % xx = linspace(mx*unitSys,mn*unitSys,400);
+    % % % %             % [Sa, dSa, ddSa] = obj.getMaterial(m).Curves.computeSwAnddSw(xx,Swr,Sws);
+    % % % %             % figure();
+    % % % %             % hold on;
+    % % % %             % plot(xx/unitSys,Sa,'b', 'LineWidth', 2, 'MarkerSize', 10);
+    % % % %             % % plot(xx,Sa,'b', 'LineWidth', 2, 'MarkerSize', 10);
+    % % % %             % xlabel('Pressure');
+    % % % %             % ylabel('Saturation');
+    % % % %             % xlim([mx,mn]);
+    % % % %             % ylim([Swr,Sws]);
+    % % % %             % ylim([0.102,0.2]);
+    % % % %             % grid on
+    % % % %         end
+    % % % %     end
+    % % % % end
 
-                % unitSys = 9.8066e2; % SI-9.8066e3 cm-9.8066e2
-                % mx = -1e3; % SI-1e1 cm-1e4
-                % mn = -7.5e+1; % SI-7.5e-1 cm-7.5e1
-                % xx = linspace(mx*unitSys,mn*unitSys,400);
-                % [Sa, dSa, ddSa] = obj.getMaterial(m).Curves.computeSwAnddSw(xx,Swr,Sws);
-                % figure();
-                % hold on;
-                % plot(xx/unitSys,Sa,'b', 'LineWidth', 2, 'MarkerSize', 10);
-                % % plot(xx,Sa,'b', 'LineWidth', 2, 'MarkerSize', 10);
-                % xlabel('Pressure');
-                % ylabel('Saturation');
-                % xlim([mx,mn]);
-                % ylim([Swr,Sws]);
-                % ylim([0.102,0.2]);
-                % grid on
-            end
-        end
-    end
-    
-    function varargout = computeLwAnddLw(obj,mesh,upElem,pkpt)
-      % Consider moving this method to a more appropriate location
-      % varargout{1} -> lw
-      % varargout{2} -> dlw
-      nIntFaces = length(upElem);
-      varargout{1} = zeros(nIntFaces,1);
-      if nargout == 2
-        varargout{2} = zeros(nIntFaces,1);
-      end
-      matUpElem = mesh.cellTag(upElem);
-      for m = 1:mesh.nCellTag
-        isElMat = matUpElem == m;
-        p = pkpt(upElem(isElMat));
-        if nargout == 1
-          [varargout{1}(isElMat), ~] = obj.getMaterial(m).Curves.computeRelativePermeability(p);
-          % varargout{1}(isElMat) = obj.getMaterial(m).RelativePermCurve.interpTable(p);
-        elseif nargout == 2
-          [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).Curves.computeRelativePermeability(p);
-          % [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).RelativePermCurve.interpTable(p);          
-          % 
-          % unitSys = 9.8066e2; % SI-9.8066e3 cm-9.8066e2
-          % mx = -1e3; % SI-1e1 cm-1e4
-          % mn = -7.5e+1; % SI-7.5e-1 cm-7.5e1
-          % xx = linspace(mx*unitSys,mn*unitSys,400);
-          % [ka, dka] = obj.getMaterial(m).Curves.computeRelativePermeability(xx);
-          % figure();
-          % hold on;
-          % plot(xx/unitSys,ka,'b', 'LineWidth', 2, 'MarkerSize', 10);
-          % % plot(-xx,dkt,'r', 'LineWidth', 2, 'MarkerSize', 10);
-          % xlabel('Pressure');
-          % ylabel('Relative Permeability');
-          % legend({'Analytical'},'Location','northwest');
-          % xlim([mx,mn]);
-          % grid on;
-        
-        end
-      end
-      % if (max(p)>-75)
-      %     % pause;
-      % end
+    % % % function varargout = computeLwAnddLw(obj,mesh,upElem,pkpt)
+    % % %   % Consider moving this method to a more appropriate location
+    % % %   % varargout{1} -> lw
+    % % %   % varargout{2} -> dlw
+    % % %   nIntFaces = length(upElem);
+    % % %   varargout{1} = zeros(nIntFaces,1);
+    % % %   if nargout == 2
+    % % %     varargout{2} = zeros(nIntFaces,1);
+    % % %   end
+    % % %   matUpElem = mesh.cellTag(upElem);
+    % % %   for m = 1:mesh.nCellTag
+    % % %     isElMat = matUpElem == m;
+    % % %     p = pkpt(upElem(isElMat));
+    % % %     if nargout == 1
+    % % %       [varargout{1}(isElMat), ~] = obj.getMaterial(m).Curves.computeRelativePermeability(p);
+    % % %       % varargout{1}(isElMat) = obj.getMaterial(m).RelativePermCurve.interpTable(p);
+    % % %     elseif nargout == 2
+    % % %       [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).Curves.computeRelativePermeability(p);
+    % % %       % [varargout{1}(isElMat), varargout{2}(isElMat)] = obj.getMaterial(m).RelativePermCurve.interpTable(p);          
+    % % %       % 
+    % % %       % unitSys = 9.8066e2; % SI-9.8066e3 cm-9.8066e2
+    % % %       % mx = -1e3; % SI-1e1 cm-1e4
+    % % %       % mn = -7.5e+1; % SI-7.5e-1 cm-7.5e1
+    % % %       % xx = linspace(mx*unitSys,mn*unitSys,400);
+    % % %       % [ka, dka] = obj.getMaterial(m).Curves.computeRelativePermeability(xx);
+    % % %       % figure();
+    % % %       % hold on;
+    % % %       % plot(xx/unitSys,ka,'b', 'LineWidth', 2, 'MarkerSize', 10);
+    % % %       % % plot(-xx,dkt,'r', 'LineWidth', 2, 'MarkerSize', 10);
+    % % %       % xlabel('Pressure');
+    % % %       % ylabel('Relative Permeability');
+    % % %       % legend({'Analytical'},'Location','northwest');
+    % % %       % xlim([mx,mn]);
+    % % %       % grid on;
+    % % % 
+    % % %     end
+    % % %   end
+    % % %   % if (max(p)>-75)
+    % % %   %     % pause;
+    % % %   % end
+    % % % 
+    % % %   mu = obj.getFluid().getDynViscosity();
+    % % %   varargout{1} = varargout{1}/mu;
+    % % %   varargout{2} = varargout{2}/mu;
+    % % % end
 
-      mu = obj.getFluid().getDynViscosity();
-      varargout{1} = varargout{1}/mu;
-      varargout{2} = varargout{2}/mu;
-    end
-
-    function [krel, dkrel] = computeRelativePermeability(obj,pres,mat)
-        %COMPUTERELATIVEPERMEABILITY compute the relative permeability of
-        % a material by a given pressure.
-        [krel, dkrel] = obj.getMaterial(mat).Curves.computeRelativePermeability(pres);
-    end
+    % % % function [krel, dkrel] = computeRelativePermeability(obj,pres,mat)
+    % % %     %COMPUTERELATIVEPERMEABILITY compute the relative permeability of
+    % % %     % a material by a given pressure.
+    % % %     [krel, dkrel] = obj.getMaterial(mat).Curves.computeRelativePermeability(pres);
+    % % % end
     
     function [status] = initializeStatus(obj,cTag,sigma)
       mat = obj.getMaterial(cTag).ConstLaw;
@@ -315,8 +315,12 @@ classdef Materials < handle
     end
 
     function readXMLSolid(obj,fileName,material,celltags)
-        %readXMLSolid - function to read the material information relate to
-        % the solid part of the model.
+       %readXMLSolid - function to read the material information relate to
+       % the solid part of the model.
+       fdata = readstruct(fileName,AttributeSuffix="");
+
+
+
     end
 
     function readXMLFluid(obj,fileName,material,celltags)

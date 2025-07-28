@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Materials>
+   <!--<item num='0' path = "Inputs/Materials/mat1.xml">
+<type material = 'Solid'/>
+<cell Tag = '1'/>
+<cell Tag = '2'/>
+</item>
+
+<Solid mat = '1' path = "Inputs/Materials/mat1.xml">
+<cell Tag = '1'/>
+<cell Tag = '2'/>
+</Solid> -->
+   <SubRegionTags>
+      1, 2,
+      3, 4
+      Ab ty
+   </SubRegionTags>
+   <Solid subregion = '1, 2' name = 'clay' path = "Inputs/solid_1.xml"/>
+   <Solid name = 'sand' path = "Inputs/solid_1.xml"/>
+   <Solid name = 'sandstone' path = "Inputs/solid_1.xml"/>
+   <Fluid name = 'water' path = "Inputs/fluid_water.xml"/>
+   <Fluid name = 'oil' path = "Inputs/fluid_water.xml"/>
+   <CoDB name = 'clay' fluid = 'water' path = "Inputs/CoDb_1.xml"/>
+   <CoDB name = 'clay' fluid = 'oil' path = "Inputs/CoDb_1.xml"/>
+   <CoDB name = 'sand' fluid = 'water' path = "Inputs/CoDb_1.xml"/>
+   <CoDB name = 'sand' fluid = 'oil' path = "Inputs/CoDb_1.xml"/>
+   <CoDB name = 'sandstone' fluid = 'water' path = "Inputs/CoDb_1.xml"/>
+   <CoDB name = 'sandstone' fluid = 'oil' path = "Inputs/CoDb_1.xml"/>
+</Materials>

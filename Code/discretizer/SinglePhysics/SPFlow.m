@@ -716,12 +716,13 @@ classdef SPFlow < SinglePhysics
             % pointStr = [];
 
             cellStr = repmat(struct('name', 1, 'data', 1), 3, 1);
-            cellStr(1).name = 'pressure';
-            cellStr(1).data = state.pressure;
-            cellStr(2).name = 'potential';
-            cellStr(2).data = state.potential;
-            cellStr(3).name = 'permeability';
-            cellStr(3).data = state.perm;
+            cellStr(1).name = 'permeability';
+            cellStr(1).data = state.perm;
+            cellStr(2).name = 'pressure';
+            cellStr(2).data = state.pressure;
+            cellStr(3).name = 'potential';
+            cellStr(3).data = state.potential;
+            
             % cellStr(4).name = 'flux';
             % cellStr(4).data = state.flux;
          end

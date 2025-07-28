@@ -488,8 +488,8 @@ classdef VSFlow < SPFlow
             cellStr(3).data = state.saturation;
             cellStr(4).name = 'permeability';
             cellStr(4).data = state.perm;
-            cellStr(4).name = 'mass_cons';
-            cellStr(4).data = state.mass;
+            cellStr(5).name = 'mass_cons';
+            cellStr(5).data = state.mass;
         end
     end
 end

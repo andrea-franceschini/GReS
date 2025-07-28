@@ -59,7 +59,7 @@ classdef VanGenuchten < handle
     % unsaturated soils - M.Th.Van Genuchten and D.R. Nielsen, 1985
 
     properties
-        n;               % Empiricalvalue - adimensional
+        n;               % Empirical value - adimensional
         beta;            % Empirical value - need to be the same dimension as pressure.
         kappa;           % Empirical value para van Genuchten-Mualem permeability curve.
     end

@@ -98,11 +98,21 @@ if postproc
         mkdir(image_dir)
     end
 
+    nrep = length(printUtils.results(:,:));
+    nvars = length(printUtils.results(2,:).expPress);
+    pressure = zeros(nvars,nrep);
+    nvars = length(printUtils.results(2,:).expTime);
+    t = zeros(nvars,nrep);
+    for i=2:nrep
+       pressure(:,i) = printUtils.results(i,:).expPress;
+       t(:,i) = printUtils.results(i,:).expTime;
+    end
+
     % Saving a temporary variabel.
-    pressure = printUtils.results.expPress;
+    % pressure = printUtils.results.expPress;
 
     % Ajusting the time position.
-    t = printUtils.results.expTime;
+    % t = printUtils.results.expTime;
     tind = 2:length(t);
     t_max = t(end);
     t = t(tind)/86400;

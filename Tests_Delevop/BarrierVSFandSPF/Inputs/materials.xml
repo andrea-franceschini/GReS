@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Materials>
+    <!--<item num='0' path = "Inputs/Materials/mat1.xml">
+        <type material = 'Solid'/>
+        <cell Tag = '1'/>
+        <cell Tag = '2'/>
+    </item>
+
+    <Solid mat = '1' path = "Inputs/Materials/mat1.xml">
+        <cell Tag = '1'/>
+        <cell Tag = '2'/>
+    </Solid> -->
+    <Solid cellTag = '1,2' path = "Inputs/Materials/mat1.xml"/>
+    <Solid cellTag = '3' path = "Inputs/Materials/mat2.xml"/>
+    <Solid cellTag = '4' path = "Inputs/Materials/mat2.xml"/>
+    <Fluid cellTag = '1,2' path = "Inputs/Materials/water.xml"/>
+    <Fluid cellTag = '1,2' path = "Inputs/Materials/water.xml"/>
+</Materials>
