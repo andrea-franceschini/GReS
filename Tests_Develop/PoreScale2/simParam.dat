@@ -7,8 +7,8 @@ Default               % Time step increment chopping factor (multiplicative)
 100000          % Pressure increment target between consecutive time steps
 Default               % Relaxation factor for time step increment
 Default               % Theta parameter for Newmark method (time integration)
-1e2               % Relative tolerance for the nonlinear solver
-1e2               % Absolute tolerance for the nonlinear solver
+1e9               % Relative tolerance for the nonlinear solver
+1e9               % Absolute tolerance for the nonlinear solver
 Default               % p-value for the residual norm
 Default               % Maximum number of nonlinear iterations before chopping
 End

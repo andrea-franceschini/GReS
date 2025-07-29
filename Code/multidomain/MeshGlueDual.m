@@ -16,6 +16,7 @@ classdef MeshGlueDual < MeshGlue
       assert(isfield(inputStruct,"Physics"), ...
         'Missing Physics field for interface %i',id);
       assert(strcmp(obj.multiplierType,'dual'), 'Multiplier type must be dual');
+      %assert(strcmp(obj.physics,'Poisson'),'Static condensation is available only with Poisson problem')
       obj.totMult = 0;        % multipliers are condensed 
     end
     %
@@ -32,6 +33,13 @@ classdef MeshGlueDual < MeshGlue
       for i = 1:nargout
         varargout{i} = [];
       end
+    end
+
+    function d = getDiagSlave(obj)
+      d = sum(obj.D,2);
+      % d=0 for nodes belonging to slave element that are not really in
+      % contact with the master side
+      d(d==0) = 1;
     end
 
     function rhs = getRhs(obj,fldId,varargin)
@@ -58,7 +66,13 @@ classdef MeshGlueDual < MeshGlue
 
     function computeMat(obj,~)
       solvSlave = obj.solvers(2).getSolver(obj.physics);
-      computeMortarMatrices(obj);
+      if ~obj.isMatrixComputed()
+        % mesh glue matrices are constant troughout the simulation
+        % compute only once!
+        computeMortarMatrices(obj);
+      end
+      obj.Jmaster{1} = obj.M;
+      obj.Jslave{1} = obj.D;
       obj.Jinterf = solvSlave.J;
       obj.E = computeMortarOperator(obj);
       getCouplingMat(obj);
@@ -127,7 +141,7 @@ classdef MeshGlueDual < MeshGlue
       solvSlave.updateState();
       % update multipliers
       var = getState(solvSlave);
-      D = sum(obj.Jslave{1},2);
+      D = getDiagSlave(obj);
       obj.multipliers(1).curr = (1./D).*(obj.f2(dofSlave)-obj.Jinterf(dofSlave,:)*var);
     end
   end
@@ -153,7 +167,7 @@ classdef MeshGlueDual < MeshGlue
       solvSlave = obj.solvers(2).getSolver(obj.physics);
       entsSlave = obj.dofm(2).getActiveEnts(obj.physics(i));
       varSlave = getState(solvSlave);
-      obj.f2 = solvSlave.rhs - solvSlave.J*varSlave(entsSlave); % this is just the forcing term
+      obj.f2 = solvSlave.rhs; % - solvSlave.J*varSlave(entsSlave); % this is just the forcing term
       obj.rhsMaster{i} =  obj.rhsMaster{i} + obj.E'*obj.f2;  % ... + E'*f_Gamma2
       % remove slave rhs contribution of interface slave dofs
       dofInter = getInterfSlaveDoF(obj);
@@ -165,7 +179,7 @@ classdef MeshGlueDual < MeshGlue
     end
 
     function dof = getInterfSlaveDoF(obj)
-      nodeInterf = obj.mesh.local2glob{2}(obj.multNodes);
+      nodeInterf = obj.mesh.local2glob{2}(obj.multEnts);
       dof = obj.dofm(2).getLocalDoF(nodeInterf,obj.physics);
     end
   end
@@ -173,7 +187,7 @@ classdef MeshGlueDual < MeshGlue
   methods (Access = public)
 
     function out = isMatrixComputed(obj)
-      out = all(cellfun(@(x) ~isempty(x), [obj.Jmaster(:); obj.Jslave(:)]));
+       out = all([~isempty(obj.D) ~isempty(obj.M)]);
     end
 
   end

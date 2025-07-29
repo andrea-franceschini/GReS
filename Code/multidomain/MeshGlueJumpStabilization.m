@@ -10,7 +10,7 @@ classdef MeshGlueJumpStabilization < MeshGlue
       obj@MeshGlue(id,inputStruct,domains);
       if isfield(inputStruct.Stabilization,"scaleAttribute")
         obj.scale = inputStruct.Stabilization.scaleAttribute;
-      else 
+      else
         obj.scale = 1.0;
       end
       obj.multiplierType = 'P0';
@@ -18,9 +18,7 @@ classdef MeshGlueJumpStabilization < MeshGlue
 
     function computeMat(obj,dt)
       computeMat@MeshGlue(obj,dt);
-      if isMatrixComputed(obj)
-        return
-      end
+
       for i = 1:obj.nFld
         % map local mortar matrices to global indices
         if isStabReady(obj)
@@ -30,10 +28,10 @@ classdef MeshGlueJumpStabilization < MeshGlue
     end
 
 
-    function out = isMatrixComputed(obj)
-      out = all(cellfun(@(x) ~isempty(x), ...
-        [obj.Jmaster(:); obj.Jslave(:); obj.Jmult(:)]));
-    end
+%     function out = isMatrixComputed(obj)
+%       out = all(cellfun(@(x) ~isempty(x), ...
+%         [obj.Jmaster(:); obj.Jslave(:); obj.Jmult(:)]));
+%     end
   end
 
 

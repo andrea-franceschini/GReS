@@ -1,6 +1,7 @@
 classdef Poromechanics < SinglePhysics
 
   properties        
+    K
     fInt            % internal forces
     cell2stress     % map cell ID to position in stress/strain matrix
   end
@@ -34,7 +35,9 @@ classdef Poromechanics < SinglePhysics
         computeStiffMat(obj,assembler);
       end
       if obj.simParams.isTimeDependent
-        obj.J = obj.simParams.theta*obj.J;
+        obj.J = obj.simParams.theta*obj.K;
+      else
+        obj.J = obj.K;
       end
     end
 
@@ -58,7 +61,7 @@ classdef Poromechanics < SinglePhysics
         l = l + s;
       end
       % populate stiffness matrix
-      obj.J = assembleK.sparseAssembly();
+      obj.K = assembleK.sparseAssembly();
     end
 
     function [dofr,dofc,KLoc,sigma,status] = computeLocalStiff(obj,elID,dt,l)

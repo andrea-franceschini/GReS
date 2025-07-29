@@ -85,6 +85,8 @@ classdef MultidomainFCSolver < handle
 
           du = solve(obj,J,rhs);
 
+          du(isnan(du)) = 0;
+
           % update primary variables and multipliers
           updateState(obj,du);
 
@@ -92,6 +94,8 @@ classdef MultidomainFCSolver < handle
           applyBC(obj);
           rhs = assembleRhs(obj);
           rhsNorm = norm(cell2mat(rhs),2);
+
+          rhsNorm = 0;
 
 
           if obj.simParameters.verbosity > 1
@@ -472,6 +476,7 @@ classdef MultidomainFCSolver < handle
 
       % update interface state
       for j = 1:obj.nInterf
+        fprintf('Updating state of interface %i \n',j)
         N = obj.interfaces{j}.totMult;
         if N == 0
           du = dSol_fix;

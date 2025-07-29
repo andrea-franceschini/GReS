@@ -37,7 +37,7 @@ plotFunction(grainMesh,'domain',ones(grainMesh.nNodes,1))
 
 conn = getGrainConnectivity(grainMesh);
 
-% ensure that if a grain is not connect to any other grain, then at least
+% ensure that if a grain is not connected to any other grain, then at least
 % lies on the dirichlet boundary (unit cube bounding box)
 % just need to check that at least one node has one coordinate equal to max
 % or min coordinates of the domain
@@ -45,6 +45,9 @@ isFree = find(~ismember(1:grainMesh.nSurfaceTag,unique(conn)));
 
 for i = isFree
   c = grainMesh.coordinates(grainMesh.surfaces(grainMesh.surfaceTag==i,:),:);
+  if isempty(c)
+    continue
+  end
   tol = 1e-3;
 
   isDir =  any(abs(c-min(c))<tol,"all") & any(abs(c-max(c))<tol,"all");
@@ -55,13 +58,20 @@ end
 writeInterfaceFile(interfFile,conn);
 
 
-
+%%
 
 nodesTop = find(abs(grainMesh.coordinates(:,3)-0.85)<tol);
 nodesBot = find(abs(grainMesh.coordinates(:,3)-0.15)<tol);
+nodesNorth = find(abs(grainMesh.coordinates(:,2)-0.85)<tol);
+nodesSouth = find(abs(grainMesh.coordinates(:,2)-0.15)<tol);
+nodesEast = find(abs(grainMesh.coordinates(:,1)-0.15)<tol);
+nodesWest = find(abs(grainMesh.coordinates(:,1)-0.85)<tol);
+
 
 writeBCfiles('BCs/moveTop','NodeBC','Dir',{'Poromechanics','z'},'MovingTop',0,-0.01,nodesTop);
-writeBCfiles('BCs/fixBot','NodeBC','Dir',{'Poromechanics','x','y','z'},'FixedBottom',0,0,nodesBot);
+writeBCfiles('BCs/fixBot','NodeBC','Dir',{'Poromechanics','z'},'FixedBottom',0,0,nodesBot);
+writeBCfiles('BCs/fixX','NodeBC','Dir',{'Poromechanics','x'},'FixedX',0,0,[nodesWest;nodesEast]);
+writeBCfiles('BCs/fixY','NodeBC','Dir',{'Poromechanics','y'},'FixedY',0,0,[nodesSouth;nodesNorth]);
 
 %% MODEL
 simParam = SimulationParameters('simParam.dat');
@@ -77,9 +87,9 @@ material = Materials(model,'Materials/MaterialsList.dat');
 
 dof = DoFManager(grainMesh,model);
 
-bc = Boundaries(["BCs/moveTop.dat","BCs/fixBot.dat"],model,grid);
+bc = Boundaries(["BCs/moveTop.dat","BCs/fixBot.dat", "BCs/fixX.dat", "BCs/fixY.dat"],model,grid);
 
-printUtils = OutState(model,grainMesh,'outTime.dat','writeVtk',true,'folderName','OUT');
+printUtils = OutState(model,grainMesh,'outTime.dat','writeVtk',true,'folderName','OUT_p0');
 
 linSyst = Discretizer(model,simParam,dof,grid,material);
 
@@ -98,7 +108,6 @@ domains = struct( ...
 % setup mortar interfaces
 [interfaces,domains] = Mortar.buildInterfaceStruct(interfFile,domains);
 
-%% solve problem
 solver = MultidomainFCSolver(simParam,domains,interfaces);
 solver.NonLinearLoop();
 solver.finalizeOutput();
@@ -146,12 +155,29 @@ for i = 1:msh.nCellTag
   s3 = sub2ind([N 3],(1:N)',k3);
   s_u = s_u(isFaceBound,:);
   surfs = [s_u(s1) s_u(s2) s_u(s3)];
-  
+
+  % remove surfaces lying on the bounding box (avoid issues with bcs)
+  % get centroid of each cell
   msh.surfaces = [msh.surfaces;...
                   surfs];
   msh.surfaceTag = [msh.surfaceTag;...
                      i*ones(N,1)];
 end
+
+centr = zeros(size(msh.surfaces,1),3);
+for jj = 1:size(centr,1)
+  xc = mean(msh.coordinates(msh.surfaces(jj,:),1));
+  yc = mean(msh.coordinates(msh.surfaces(jj,:),2));
+  zc = mean(msh.coordinates(msh.surfaces(jj,:),3));
+  centr(jj,:) = [xc yc zc];
+end
+tol = 1e-3;
+M = max(msh.coordinates,[],'all');
+m = min(msh.coordinates,[],'all');
+id = any([any(abs(centr-M)<tol,2), any(abs(centr-m)<tol,2)],2);
+msh.surfaces(id,:) = [];
+msh.surfaceTag(id) = [];
+
 
 msh.nSurfaces = numel(msh.surfaceTag);
 msh.surfaceVTKType = 5*ones(msh.nSurfaces,1);
@@ -205,8 +231,12 @@ function out = doBBIntersect(msh,i1,i2)
 end
 
 function out = checkIntersect(msh,i1,i2)
+ out = false;
  s1 = getSurfaceMesh(msh,i1);
  s2 = getSurfaceMesh(msh,i2);
+ if any([isempty(s1) isempty(s2)])
+   return
+ end
  cs = ContactSearching(s1,s2);
  out = sum(cs.elemConnectivity,'all')>0;
 end
@@ -216,10 +246,11 @@ function writeInterfaceFile(fname,conn)
 slaves = unique(conn(:,1));
 N = numel(slaves);
 % setup base structure
-interfBase.Type = 'MeshTyingCondensation';
+interfBase.Type = 'MeshTying';
 interfBase.Quadrature.typeAttribute = 'SegmentBased';
 interfBase.Quadrature.nGPAttribute = 7;
 interfBase.Quadrature.nIntAttribute = 5;
+%interfBase.Stabilization.typeAttribute = "Jump";
 interfBase.Multiplier.typeAttribute = 'dual';
 interfBase.Physics = 'Poromechanics';
 interfBase.Master.idAttribute = num2str(1);

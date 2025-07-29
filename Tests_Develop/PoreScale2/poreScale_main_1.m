@@ -214,11 +214,12 @@ function writeInterfaceFile(fname,conn)
 slaves = unique(conn(:,1));
 N = numel(slaves);
 % setup base structure
-interfBase.Type = 'MeshTyingCondensation';
+interfBase.Type = 'MeshTying';
 interfBase.Quadrature.typeAttribute = 'SegmentBased';
 interfBase.Quadrature.nGPAttribute = 7;
 interfBase.Quadrature.nIntAttribute = 5;
-interfBase.Multiplier.typeAttribute = 'dual';
+interfBase.Stabilization.typeAttribute = 'Jump';
+interfBase.Multiplier.typeAttribute = 'P0';
 interfBase.Physics = 'Poromechanics';
 interfBase.Master.idAttribute = num2str(1);
 interfBase.Slave.idAttribute = num2str(1);

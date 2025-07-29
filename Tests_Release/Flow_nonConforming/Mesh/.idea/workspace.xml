@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="a78b7d45-53cc-4e1e-b48b-8df87b542bc3" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/../../Code/read/Mesh.m" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Mesh/bottomLayer.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Mesh/topLayer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../Tests_Release/Deep_Aquifer/Images/DeepAcquifer_pressure.png" beforeDir="false" afterPath="$PROJECT_DIR$/../../Tests_Release/Deep_Aquifer/Images/DeepAcquifer_pressure.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../Tests_Release/Deep_Aquifer/Images/DeepAcquifer_vertDisplacements.png" beforeDir="false" afterPath="$PROJECT_DIR$/../../Tests_Release/Deep_Aquifer/Images/DeepAcquifer_vertDisplacements.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../Tests_Release/Deep_Aquifer/expData.mat" beforeDir="false" afterPath="$PROJECT_DIR$/../../Tests_Release/Deep_Aquifer/expData.mat" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 3
+}]]></component>
+  <component name="ProjectId" id="30KYpkwqZNGTlm5BLQ78i8NVLeF" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.bottomLayer.executor": "Run",
+    "Python.topLayer.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "feature/moretto",
+    "last_opened_file_path": "M:/Codes/GReS/Tests_Develop/Flow_nonConforming/Mesh"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="M:\Codes\GReS\Tests_Develop\Flow_nonConforming\Mesh" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-4c141bd692a7-e2d783800521-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-251.26927.90" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="a78b7d45-53cc-4e1e-b48b-8df87b542bc3" name="Changes" comment="" />
+      <created>1753377916745</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1753377916745</updated>
+    </task>
+    <servers />
+  </component>
+</project>

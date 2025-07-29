@@ -367,6 +367,10 @@ classdef Mesh < handle
         % mesh
         % initialize Mesh object
         id = ismember(obj.surfaceTag,surfTag);
+        if sum(id)==0
+          surfMesh = [];
+          return
+        end
         surfMesh = Mesh();
         surfTopol = obj.surfaces(id,:);
         % renumber the nodes starting from 1;

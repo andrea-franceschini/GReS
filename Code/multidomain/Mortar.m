@@ -20,6 +20,8 @@ classdef Mortar < handle
     mortarMatrix
     elements
     multiplierType = 'dual'
+    D               % slave matrix without bcs applied
+    M               % master matrix without bcs applied
   end
 
   methods
@@ -120,8 +122,8 @@ classdef Mortar < handle
     end
 
     function computeMortarMatrices(obj,~)
-      fprintf('Computing mortar matrices...\n')
-      tIni = cputime;
+      %fprintf('Computing mortar matrices...\n')
+      %tIni = cputime;
       % assumption: each element has only one bubble face
       % loop over slave faces and:
       % 1) compute Aub, Abu and Abb local matrix from the neighbor cell
@@ -141,7 +143,7 @@ classdef Mortar < handle
       switch obj.multiplierType
         case 'P0'
           N1 = sum(nNmaster(cellsSlave));
-          N2 = sum(obj.mesh(2).surfaceNumVerts(cellsSlave));
+          N2 = sum(obj.mesh.msh(2).surfaceNumVerts(cellsSlave));
         otherwise
           N1 = nNmaster*obj.mesh.msh(2).surfaceNumVerts;
           N2 = sum(obj.mesh.msh(2).surfaceNumVerts(cellsSlave).^2);
@@ -204,19 +206,19 @@ classdef Mortar < handle
         asbD.localAssembly(i,is,Dloc);
       end
 
-      obj.Jmaster{1} = asbM.sparseAssembly();
-      obj.Jslave{1} = asbD.sparseAssembly();
+      obj.M = asbM.sparseAssembly();
+      obj.D = asbD.sparseAssembly();
 
       % check satisfaction of partition of unity (mortar consistency)
       
       % remove rows of inactive multipliers from Jmaster and Jslave
       dofMult = getMultiplierDoF(obj);
-      obj.Jmaster{1} = obj.Jmaster{1}(dofMult,:); 
-      obj.Jslave{1} = obj.Jslave{1}(dofMult,:); 
+      obj.M = obj.M(dofMult,:); 
+      obj.D = obj.D(dofMult,:); 
 
-      pu = sum([obj.Jmaster{1} obj.Jslave{1}],2);
+      pu = sum([obj.M obj.D],2);
       assert(norm(pu)<1e-6,'Partiition of unity violated');
-      fprintf('Done computing mortar matrix in %.4f s \n',cputime-tIni)
+%       fprintf('Done computing mortar matrix in %.4f s \n',cputime-tIni)
     end
 
 
@@ -331,13 +333,13 @@ classdef Mortar < handle
         type = interfStr(i).Type;
         switch type
           case 'MeshTying'
-            if (~isfield(interfStr,"Stabilization"))
+            if (~isfield(interfStr(i),"Stabilization"))
               % standard mesh tying with dual multipliers
               interfaceStruct{i} = MeshGlue(i,interfStr(i),modelStruct([idMaster,idSlave]));
-            elseif strcmp(interfStr.Stabilization.typeAttribute,'Jump')
+            elseif strcmp(interfStr(i).Stabilization.typeAttribute,'Jump')
               interfaceStruct{i} = MeshGlueJumpStabilization(i,interfStr(i), ...
                 modelStruct([idMaster,idSlave]));
-            elseif strcmp(interfStr.Stabilization.typeAttribute,'Bubble')
+            elseif strcmp(interfStr(i).Stabilization.typeAttribute,'Bubble')
               interfaceStruct{i} = MeshGlueBubbleStabilization(i,interfStr(i), ...
                 modelStruct([idMaster,idSlave]));
             else
