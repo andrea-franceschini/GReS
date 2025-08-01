@@ -122,31 +122,25 @@ classdef Mortar < handle
     end
 
     function computeMortarMatrices(obj,~)
-      %fprintf('Computing mortar matrices...\n')
-      %tIni = cputime;
-      % assumption: each element has only one bubble face
-      % loop over slave faces and:
-      % 1) compute Aub, Abu and Abb local matrix from the neighbor cell
-      % 2) compute local M, D and Db
-      % 3) assemble static condensation blocks and Jmult
 
-      % differently from the base method of the mortar class, here global
-      % dof indexing is used for the assembled matrices
-
+      % number of components per dof of interpolated physics
       ncomp = obj.dofm(2).getDoFperEnt(obj.physics);
+
+      % logical index to track slave and master elements that do not really
+      % participate to the mortar surface (fake connectivity)
+      isInactiveSlave = false(obj.mesh.msh(2).nSurfaces,1);
 
       % get number of index entries for sparse matrices
       % overestimate number of sparse indices assuming all quadrilaterals
-      cellsSlave = obj.mesh.getActiveCells(2);
-      %cellsMaster = obj.mesh.getActiveCells(1);
       nNmaster = obj.mesh.msh(1).surfaceNumVerts'*obj.mesh.elemConnectivity;
+
       switch obj.multiplierType
         case 'P0'
-          N1 = sum(nNmaster(cellsSlave));
-          N2 = sum(obj.mesh.msh(2).surfaceNumVerts(cellsSlave));
+          N1 = sum(nNmaster);
+          N2 = sum(obj.mesh.msh(2).surfaceNumVerts);
         otherwise
           N1 = nNmaster*obj.mesh.msh(2).surfaceNumVerts;
-          N2 = sum(obj.mesh.msh(2).surfaceNumVerts(cellsSlave).^2);
+          N2 = sum(obj.mesh.msh(2).surfaceNumVerts.^2);
       end
 
       nm = (ncomp^2)*N1;
@@ -155,7 +149,7 @@ classdef Mortar < handle
       % get number of dofs for each block
       nDofMaster = obj.dofm(1).getNumDoF(obj.physics);
       nDofSlave = obj.dofm(2).getNumDoF(obj.physics);
-      [~,nDofMult] = getNumbMultipliers(obj);
+      nDofMult = getNumbMultipliers(obj);
 
       % define matrix assemblers
       locM = @(imult,imaster,Nmult,Nmaster) ...
@@ -166,8 +160,8 @@ classdef Mortar < handle
       asbM = assembler(nm,locM,nDofMult,nDofMaster);
       asbD = assembler(ns,locD,nDofMult,nDofSlave);
 
-      for i = 1:obj.mesh.nEl(2)
-        is = cellsSlave(i);
+      for is = 1:obj.mesh.msh(2).nSurfaces
+
         masterElems = find(obj.mesh.elemConnectivity(:,is));
         if isempty(masterElems)
           continue
@@ -196,26 +190,36 @@ classdef Mortar < handle
           [Nslave,Nmaster,Nmult] = ...
             obj.reshapeBasisFunctions(ncomp,Nslave,Nmaster,Nmult);
 
-          asbM.localAssembly(i,im,-Nmult,Nmaster);
+          asbM.localAssembly(is,im,-Nmult,Nmaster);
 
           Dloc = Dloc + ...
             obj.quadrature.integrate(@(a,b) pagemtimes(a,'ctranspose',b,'none'),...
             Nmult,Nslave);
         end
 
-        asbD.localAssembly(i,is,Dloc);
+        % if Dloc is empty, the current slave element is inactive remove
+        % also corresponding master elements if it is not connected to any
+        % other element
+        if all(Dloc==0,"all")
+          isInactiveSlave(is) = true;
+        end
+
+        asbD.localAssembly(is,is,Dloc);
       end
+  
+      % remove inactive slave elements
+      removeMortarSurface(obj.mesh,2,isInactiveSlave);
+
+      % find unconnected master elements
+      isInactiveMaster = all(obj.mesh.elemConnectivity==0,2);
+      % remove unconnected elements
+      removeMortarSurface(obj.mesh,1,isInactiveMaster);
 
       obj.M = asbM.sparseAssembly();
       obj.D = asbD.sparseAssembly();
 
       % check satisfaction of partition of unity (mortar consistency)
       
-      % remove rows of inactive multipliers from Jmaster and Jslave
-      dofMult = getMultiplierDoF(obj);
-      obj.M = obj.M(dofMult,:); 
-      obj.D = obj.D(dofMult,:); 
-
       pu = sum([obj.M obj.D],2);
       assert(norm(pu)<1e-6,'Partiition of unity violated');
 %       fprintf('Done computing mortar matrix in %.4f s \n',cputime-tIni)
@@ -300,7 +304,7 @@ classdef Mortar < handle
           'VTK',[]);
 
         out.name = str.Print.nameAttribute;
-        out.VTK = VTKOutput(obj.mesh.msh(2),out.name);
+        %out.VTK = VTKOutput(obj.mesh.msh(2),out.name);
         out.tList = outState.timeList;
         obj.outStruct = out;
       end
@@ -328,6 +332,7 @@ classdef Mortar < handle
       nInterfaces = numel(interfStr);
       interfaceStruct = cell(nInterfaces,1);
       for i = 1:nInterfaces
+        fprintf('Processing interface %i \n', i)
         idMaster = interfStr(i).Master.idAttribute;
         idSlave = interfStr(i).Slave.idAttribute;
         type = interfStr(i).Type;

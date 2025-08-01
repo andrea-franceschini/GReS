@@ -20,7 +20,7 @@ classdef SinglePhaseFlow < SinglePhysics
       function obj = SinglePhaseFlow(symmod,params,dofManager,grid,mat,state)
          obj@SinglePhysics(symmod,params,dofManager,grid,mat,state);
          if obj.model.isFVTPFABased('Flow')
-            obj.computeTrans;
+            obj.computeTrans();
             %get cells with active flow model
             flowCells = obj.dofm.getFieldCells(obj.field);
             % Find internal faces (i.e. shared by two cells with active
@@ -40,8 +40,10 @@ classdef SinglePhaseFlow < SinglePhysics
       end
 
       function updateState(obj,dSol)
-         ents = obj.dofm.getActiveEnts(obj.field);
-         obj.state.data.pressure(ents) = obj.state.data.pressure(ents) + dSol(obj.dofm.getDoF(obj.field));
+        if nargin > 1
+          ents = obj.dofm.getActiveEnts(obj.field);
+          obj.state.data.pressure(ents) = obj.state.data.pressure(ents) + dSol(obj.dofm.getDoF(obj.field));
+        end
       end
 
       function fluidPot = finalizeState(obj,stateIn)
@@ -65,6 +67,11 @@ classdef SinglePhaseFlow < SinglePhysics
           stateIn = varargin{1};
           var = stateIn.data.pressure;
         end
+      end
+
+      function setState(obj,id,vals)
+        % set values of the primary variable
+        obj.state.data.pressure(id) = vals;
       end
 
       function [cellData,pointData] = printState(obj,sOld,sNew,t)
@@ -121,12 +128,7 @@ classdef SinglePhaseFlow < SinglePhysics
         for el = subCells'
           permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
           poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
-          if ismember(obj.mesh.cellTag(el),getFieldCellTags(obj.dofm,{obj.field,'Poromechanics'}))
-            alpha = 0; %this term is not needed in coupled formulation
-          else
-            alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
-            %solid skeleton contribution to storage term as oedometric compressibility .
-          end
+          alpha = getRockCompressibility(obj,obj.mesh.cellTag(el));
           % Compute the element matrices based on the element type
           % (tetrahedra vs. hexahedra)
           elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
@@ -168,8 +170,10 @@ classdef SinglePhaseFlow < SinglePhysics
          % Transmissibility of internal faces
          tmpVec = lw.*obj.trans(obj.isIntFaces);
          % tmpVec = lw.*tmpVec;
-         [~,~,neigh1] = unique(neigh1);
-         [~,~,neigh2] = unique(neigh2);
+         %[~,~,neigh1] = unique(neigh1);
+         %[~,~,neigh2] = unique(neigh2);
+         neigh1 = getLocalDoF(obj.dofm,neigh1,obj.fldId);
+         neigh2 = getLocalDoF(obj.dofm,neigh2,obj.fldId);
          sumDiagTrans = accumarray([neigh1; neigh2], ...
             repmat(tmpVec,[2,1]),[nSubCells,1]);
          % Assemble H matrix
@@ -189,11 +193,7 @@ classdef SinglePhaseFlow < SinglePhysics
          alphaMat = zeros(nSubCells,1);
          beta = obj.material.getFluid().getFluidCompressibility();
          for m = 1:obj.mesh.nCellTag
-            if ~ismember(m,obj.dofm.getFieldCellTags({obj.field,'Poromechanics'}))
-               % compute alpha only if there's no coupling in the
-               % subdomain
-               alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
-            end
+            alphaMat(m) = getRockCompressibility(obj,m);
             poroMat(m) = obj.material.getMaterial(m).PorousRock.getPorosity();
          end
          % (alpha+poro*beta)
@@ -281,7 +281,7 @@ classdef SinglePhaseFlow < SinglePhysics
          switch bc.getCond(id)
             case {'NodeBC','ElementBC'}
                ents = bc.getEntities(id);
-               vals = bound.getVals(id,t);
+               vals = bc.getVals(id,t);
             case 'SurfBC'
                v = bc.getVals(id,t);
                if isFVTPFABased(obj.model,'Flow')
@@ -376,6 +376,19 @@ classdef SinglePhaseFlow < SinglePhysics
          %       hT = hT/mu;
          %
          obj.trans = 1 ./ accumarray(obj.faces.faces2Elements(:,1),1 ./ hT,[obj.faces.nFaces,1]);
+      end
+
+      function alpha = getRockCompressibility(obj,cTag)
+        if ismember(cTag,getFieldCellTags(obj.dofm,{obj.field,'Poromechanics'}))
+          alpha = 0; %this term is not needed in coupled formulation
+        else
+          if isfield(obj.material.getMaterial(cTag),"ConstLaw")
+            %solid skeleton contribution to storage term as oedometric compressibility .
+            alpha = obj.material.getMaterial(cTag).ConstLaw.getRockCompressibility();
+          else
+            alpha = 0;
+          end
+        end
       end
 
    end

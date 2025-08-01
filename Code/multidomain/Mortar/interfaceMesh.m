@@ -2,11 +2,6 @@ classdef interfaceMesh < handle
   % Manager for topological information and operation on interfaces between
   % meshes
 
-  properties (Access = public)
-    activeCells
-  end
-
-  
   properties
     % prop{1} -> master     prop{2} -> slave 
     msh
@@ -28,42 +23,73 @@ classdef interfaceMesh < handle
     function obj = interfaceMesh(domains,surf)
       mshMaster = domains(1).Grid.topology;
       mshSlave = domains(2).Grid.topology;
-      % extrad 2d surface mesh from parent domain
+      % extract 2d surface mesh from parent domain to perform contact
+      % search
+
       obj.msh = [mshMaster.getSurfaceMesh(surf{1});
                  mshSlave.getSurfaceMesh(surf{2})];
       getCellTypes(obj);
       getConnectivityMatrix(obj);
-      mapLocalNod2Glob(obj,1,mshMaster,surf{1});
-      mapLocalNod2Glob(obj,2,mshSlave,surf{2});
-      setupEdgeTopology(obj,1);
-      setupEdgeTopology(obj,2);
-      obj.buildFace2CellMap([mshMaster mshSlave]);
-      obj.computeAverageNodalNormal();
+      [obj.msh(1),globNodes1] = mshMaster.getSurfaceMesh(surf{1},any(obj.elemConnectivity,2));
+      [obj.msh(2),globNodes2] = mshSlave.getSurfaceMesh(surf{2},any(obj.elemConnectivity,1));
+
+      % shrink connectivity matrix
+      obj.elemConnectivity = obj.elemConnectivity( ...
+                              any(obj.elemConnectivity,2),...
+                              any(obj.elemConnectivity,1));
+
+      % map local node indices to global nodes
+      obj.local2glob{1}(obj.msh(1).surfaces(:)) = globNodes1(:);
+      obj.local2glob{2}(obj.msh(2).surfaces(:)) = globNodes2(:);
     end
 
     function getConnectivityMatrix(obj)
       cs = ContactSearching(obj.msh(1),obj.msh(2));
       obj.elemConnectivity = cs.elemConnectivity;
-      obj.activeCells{2} = find(any(obj.elemConnectivity,1));
-      obj.activeCells{1} = reshape(find(any(obj.elemConnectivity,2)),1,[]);
-      obj.nEl(2) = numel(obj.activeCells{2});
-      obj.nEl(1) = sum(any(obj.elemConnectivity,2));
     end
 
-    function list = getActiveCells(obj,side,id)
-      % side: 1 -> master side:2 -> slave
-      if nargin == 2
-        list = obj.activeCells{side};
-      elseif nargin == 3
-        list = obj.activeCells{side}(id);
-      else
-        error('Too many input arguments')
-      end
+    function finalizeInterface(obj,solvers)
+
+      % finalize geometry and connectivity once the slave interface is
+      % precisely defined
+      setupEdgeTopology(obj,1);
+      setupEdgeTopology(obj,2);
+      mshMaster = solvers(1).grid.topology;
+      mshSlave = solvers(2).grid.topology;
+      obj.buildFace2CellMap([mshMaster mshSlave]);
+      obj.computeAverageNodalNormal();
     end
+
+    function removeMortarSurface(obj,side,id)
+      % update the interface mesh object considering only the actual slave
+      % elements in contact
+
+      if ~any(id)
+        return
+      end
+
+      % check nodes to be removed from local2global list
+      nList = unique(obj.msh(side).surfaces(id,:));
+      nList = nList(~ismember(nList,obj.msh(side).surfaces(~id,:)));
+      obj.local2glob{side}(nList) = [];
+      
+      % id: logical index of unconnected surface to be removed
+      assert(numel(id)==obj.msh(side).nSurfaces,['Side of Logical indices of ' ...
+        'surfaces must be same as current number of surfaces'])
+      obj.msh(side) = getSurfaceMesh(obj.msh(side),~id);
+
+      if side==1 % remove master
+        obj.elemConnectivity(id,:) = [];
+      elseif side==2 %remove slave
+        obj.elemConnectivity(:,id) = [];
+      end
+
+    end
+
   end
 
 
-  methods (Access = private)
+  methods (Access = public)
 
     function setupEdgeTopology(obj, sideID)
       % Extended to handle both triangular and quadrilateral faces
@@ -158,11 +184,10 @@ classdef interfaceMesh < handle
     end
 
 
-    function mapLocalNod2Glob(obj,side,msh,surf)
+    function mapLocalNod2Glob(obj,side,msh,actSurf)
       % return array where local node numbering map to node id in the full
       % 3D grid
-      surfGlob2loc = find(ismember(msh.surfaceTag,surf));
-      globNodes = (msh.surfaces(surfGlob2loc,:))';
+      globNodes = (msh.surfaces(actSurf,:))';
       globNodes = globNodes(:);
       obj.local2glob{side} = zeros(obj.msh(side).nNodes,1);
       locNodes = (obj.msh(side).surfaces)';
@@ -174,7 +199,7 @@ classdef interfaceMesh < handle
 
       for i = [1 2]
         top = obj.local2glob{i}(obj.msh(i).surfaces);  % global face node IDs
-        nFaces = obj.nEl(i);
+        nFaces = obj.msh(i).nSurfaces;
         nFaceNodes = size(top, 2);
 
         % Initialize face-to-cell mapping
@@ -241,6 +266,8 @@ classdef interfaceMesh < handle
         obj.avgNodNormal{side} = avNorm./(normN);
       end
     end
+
+
 
 
   end

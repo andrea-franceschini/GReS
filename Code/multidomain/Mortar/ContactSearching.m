@@ -53,18 +53,28 @@ classdef ContactSearching < handle
       BBtree = zeros(2*msh.nSurfaces-1, 2);
       treeNodes = zeros(2*msh.nSurfaces-1, 2*size(obj.polytop,2));
       % store root polytop
-      elemMap = false(msh.nSurfaces, size(BBtree,1));
-      elemMap(:,1) = 1;
+%       elemMap = false(msh.nSurfaces, size(BBtree,1));
+%       elemMap(:,1) = 1;
+      nS = msh.nSurfaces; Ns = ceil(nS*(log2(nS)+1));
+      surfs = zeros(Ns,1);
+      numSurfs = zeros(size(BBtree,1)-1,1);
+      surfs(1:nS) = 1:nS;
+      numSurfs(1) = nS;
       leaf2elem = zeros(size(BBtree,1),1);
       k = 1;
+      j = 0;
+      l = nS;
       for i = 1:size(BBtree,1)
         % get elements of i-th node of the bounding volume tree
-        surfList = find(elemMap(:,i));
+        surfList = surfs(j+1:j+numSurfs(i));
         [treeNodes(i,:), leftCells, rightCells] = populateTreeNode(obj,msh,surfList);
+        j = j + numSurfs(i);
         if ~isempty(leftCells) % TreeNode is not a leaf Node
           BBtree(i,:) = [2*k 2*k+1];
-          elemMap(leftCells,2*k) = 1;
-          elemMap(rightCells,2*k+1) = 1;
+          numSurfs(2*k) = numel(leftCells);
+          numSurfs(2*k+1) = numel(rightCells);
+          surfs(l+1:l+numSurfs(2*k)+numSurfs(2*k+1)) = [leftCells;rightCells];
+          l = l+numSurfs(2*k)+numSurfs(2*k+1);
           k = k + 1;
         else % Tree node is a leaf
           leaf2elem(i) = surfList;

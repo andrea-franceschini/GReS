@@ -179,7 +179,7 @@ classdef MeshGlueDual < MeshGlue
     end
 
     function dof = getInterfSlaveDoF(obj)
-      nodeInterf = obj.mesh.local2glob{2}(obj.multEnts);
+      nodeInterf = obj.mesh.local2glob{2};
       dof = obj.dofm(2).getLocalDoF(nodeInterf,obj.physics);
     end
   end

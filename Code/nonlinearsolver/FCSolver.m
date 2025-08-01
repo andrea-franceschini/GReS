@@ -124,6 +124,10 @@ classdef FCSolver < handle
       end
       %
    end
+
+   function state = getState(obj)
+     state = obj.stateTmp;
+   end 
   end
   
   methods (Access = private)
@@ -195,7 +199,29 @@ classdef FCSolver < handle
     function sol = solve(J,rhs)
       J = FCSolver.cell2matJac(J);
       rhs = cell2mat(rhs);
-      sol = J\(-rhs);
+      
+      if size(J,1)>1e4
+        tic
+        fprintf('Solving linear system...\n')
+        if norm(J-J','fro') < 1e-10
+          % matrix is practically symmetric
+          J = 0.5 * (J + J');
+          J = J + speye(size(J)) * 1e-10;  % Regularize diagonal
+          opts.type = 'ict';        % incomplete Cholesky with threshold
+          opts.droptol = 1e-3;       % drop tolerance
+          opts.diagcomp = 1e-3;      % diagonal compensation
+          L = ichol(J,opts);
+          [sol,fl2,rr2,it2,rv2] = pcg(J,-rhs,1e-9,300,L,L');
+        else
+          p = symamd(J);
+          sol = J(p,p) \ -rhs(p);
+          sol(p) = sol;
+        end
+        fprintf('Linear system solved in %.4f s \n',toc)
+      else
+        %direct solver
+        sol = J\(-rhs);
+      end
     end
 
     function mat = cell2matJac(mat)

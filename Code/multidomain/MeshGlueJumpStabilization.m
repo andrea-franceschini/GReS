@@ -64,6 +64,8 @@ classdef MeshGlueJumpStabilization < MeshGlue
         assert(numel(fM)==2,['Unexpected number of connected faces for' ...
           'master edge %i. Expected 2.'], ieM);
 
+        %if isempty(ismember())
+
         % get slave faces sharing support with master faces
         fS = unique([find(obj.mesh.elemConnectivity(fM(1),:)),...
           find(obj.mesh.elemConnectivity(fM(2),:))]);
@@ -103,7 +105,7 @@ classdef MeshGlueJumpStabilization < MeshGlue
 
       id1 = id1(1:c); id2 = id2(1:c); vals = vals(1:c);
       % assemble sparse matrix
-      nmult = nc*obj.mesh.nEl(2);
+      nmult = getNumbMultipliers(obj);
       stabMat = sparse(id1,id1,vals,nmult,nmult)+...
         sparse(id1,id2,-vals,nmult,nmult)+...
         sparse(id2,id2,vals,nmult,nmult);

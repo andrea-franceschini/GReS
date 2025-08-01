@@ -95,7 +95,7 @@ classdef MultidomainFCSolver < handle
           rhs = assembleRhs(obj);
           rhsNorm = norm(cell2mat(rhs),2);
 
-          rhsNorm = 0;
+          %rhsNorm = 0;
 
 
           if obj.simParameters.verbosity > 1

@@ -26,36 +26,39 @@ classdef MeshGlue < Mortar
         'Missing Physics field for interface %i',id);
       obj.physics = split(inputStruct.Physics);
       obj.nFld = numel(obj.physics);
-            assert(isfield(inputStruct,"Multiplier"),['XML:erorr' ...
-              ''])
-        obj.multiplierType = inputStruct.Multiplier.typeAttribute;
-        actCells = getActiveCells(obj.mesh,2);
-        switch obj.multiplierType
-          case 'P0'
-            obj.multEnts = actCells;
-          otherwise
-            obj.multEnts = (unique(obj.mesh.msh(2).surfaces(actCells,:)));
-        end
-        %initializeJacobianAndRhs(obj);
-        isFldMaster = isField(obj.dofm(1),obj.physics);
-        isFldSlave = isField(obj.dofm(2),obj.physics);
-        assert(isFldMaster,['MeshGlue physic not available for ' ...
-          'master domain %i'],obj.idDomain(1));
-        assert(isFldSlave,['MeshGlue physic not available for ' ...
-          'slave domain %i'],obj.idDomain(2));
+      assert(isfield(inputStruct,"Multiplier"),['XML:erorr' ...
+        ''])
 
-        % computing mortar matrix and updating list of slave entitities
-        computeMortarMatrices(obj);
-        id = find(all(obj.D==0,2));
-        ncomp = obj.dofm(2).getDoFperEnt(obj.physics);
-        id2 = id(ncomp:ncomp:end)/ncomp;
-        obj.multEnts(id2) = [];
-        obj.D(id,:) = [];
-        obj.M(id,:) = [];
-        initializeJacobianAndRhs(obj)
+      obj.multiplierType = inputStruct.Multiplier.typeAttribute;
+      isFldMaster = isField(obj.dofm(1),obj.physics);
+      isFldSlave = isField(obj.dofm(2),obj.physics);
+      assert(isFldMaster,['MeshGlue physic not available for ' ...
+        'master domain %i'],obj.idDomain(1));
+      assert(isFldSlave,['MeshGlue physic not available for ' ...
+        'slave domain %i'],obj.idDomain(2));
+
+      % computing mortar matrices D and M and updating list of slave entitities
+      computeMortarMatrices(obj);
+
+      % remove inacive multipliers from D and M
+      id = find(all(obj.D==0,2));
+      obj.D(id,:) = [];
+      obj.M(id,:) = [];
+
+      % initialize Jacobian and rhs for the interface (now that active
+      % multipliers are known)
+      initializeJacobianAndRhs(obj)
+
+      finalizeInterface(obj.mesh,obj.solvers);
+      
+
+      % use the updated mesh object for the output of the interface
+      if ~isempty(obj.outStruct)
+        obj.outStruct.VTK = VTKOutput(obj.mesh.msh(2),obj.outStruct.name);
+      end
     end
 
-    
+
     %
   end
 
@@ -115,13 +118,13 @@ classdef MeshGlue < Mortar
       if ~obj.isMatrixComputed()
         % mesh glue matrices are constant troughout the simulation
         % compute only once!
-         computeMortarMatrices(obj);
-         % remove inactive multipliers from D and M
+        computeMortarMatrices(obj);
+        % remove inactive multipliers from D and M
       end
 
       obj.Jmaster{1} = obj.M;
       obj.Jslave{1} = obj.D;
-%      
+      %
       %       for i = 1:obj.nFld
       %         % map local mortar matrices to global indices
       %         obj.Jmaster{i} = obj.getMatrix(1,obj.physics(i));
@@ -133,7 +136,7 @@ classdef MeshGlue < Mortar
       % compute rhs contributions for a specified input field
       for i = 1:obj.nFld
         % reset rhs multiplier
-        [nMult,~] = getNumbMultipliers(obj);
+        nMult = getNumbMultipliers(obj);
         obj.rhsMult{i} = zeros(nMult,1);
         computeRhsMaster(obj,i);
         computeRhsSlave(obj,i);
@@ -178,14 +181,14 @@ classdef MeshGlue < Mortar
       for i = 1:obj.nFld
         nDofMaster = getNumDoF(obj.dofm(1),obj.physics(i));
         nDofSlave = getNumDoF(obj.dofm(2),obj.physics(i));
-        [nDofMultAct,nDofMult] = getNumbMultipliers(obj);
+        nDofMult = getNumbMultipliers(obj);
         obj.rhsMaster{i} = zeros(nDofMaster,1);
         obj.rhsSlave{i} = zeros(nDofSlave,1);
-        obj.rhsMult{i} = zeros(nDofMultAct,1);
+        obj.rhsMult{i} = zeros(nDofMult,1);
         obj.multipliers(i).curr = zeros(nDofMult,1);
         obj.multipliers(i).prev = obj.multipliers(i).curr;
         obj.iniMultipliers{i} = obj.multipliers(i).curr;
-        obj.totMult = obj.totMult + nDofMultAct;
+        obj.totMult = obj.totMult + nDofMult;
       end
     end
 
@@ -297,41 +300,37 @@ classdef MeshGlue < Mortar
       end
     end
 
-    function [nDofAct,nDofTot] = getNumbMultipliers(obj)
-      % nDoFAct -> number of currently active multipliers in the interface
-      % nDoFTot -> total number of dof in the whole interface
+    function nDof = getNumbMultipliers(obj)
+      % nDoF: number of currently active multipliers in the interface
 
       nc = obj.dofm(2).getDoFperEnt(obj.physics);
       switch obj.multiplierType
-        case 'P0' 
-          nDofAct = nc*numel(obj.multEnts);
-          nDofTot = nc*obj.mesh.msh(2).nSurfaces;
+        case 'P0'
+          nDof = nc*obj.mesh.msh(2).nSurfaces;
         case {'dual','standard'} % nodal multipliers
           % get number of nodes in active cells
-          nDofAct = nc*numel(obj.multEnts);
-          nDofTot = nc*obj.mesh.msh(2).nNodes;
+          nDof = nc*obj.mesh.msh(2).nNodes;
       end
     end
 
-    function dofs = getMultiplierDoF(obj,id)
-      % return global indices associated to active multipliers to access
-      % the multiplier vector and temporarily assemble Jmaster and Jslave
-      % id - local index of active cell in slave side
+    function dofs = getMultiplierDoF(obj,is)
+      % return multiplier dofs associated with slave element #is inside
+      % obj.mesh.msh(2)
+
       nc = obj.dofm(2).getDoFperEnt(obj.physics);
       if nargin > 1
-        assert(isscalar(id),'Input id must be a scalar integer \n')
+        assert(isscalar(is),'Input id must be a scalar integer \n')
         if strcmp(obj.multiplierType,'P0')
-          dofs = dofId(id,nc);
+          dofs = dofId(is,nc);
         else
-          is = obj.mesh.activeCells{2}(id);
           nodes = obj.mesh.msh(2).surfaces(is,:);
           dofs = dofId(nodes,nc);
         end
       else
         if strcmp(obj.multiplierType,'P0')
-          dofs = dofId(getActiveCells(obj.mesh,2),nc);
+          dofs = dofId((1:obj.mesh.msh(2).nSurfaces)',nc);
         else
-          dofs = dofId(obj.multEnts,nc);
+          dofs = dofId((1:obj.mesh.msh(2).nNodes)',nc);
         end
       end
     end
@@ -343,12 +342,12 @@ classdef MeshGlue < Mortar
         'with dual multipliers only']);
       E = sparse(size(obj.Jslave{1},2),size(obj.Jmaster{1},2));
       % get global index of slave nodes carrying multipliers
-      slaveNodes = obj.mesh.local2glob{2}(obj.multEnts);
+      slaveNodes = obj.mesh.local2glob{2};
       slavedof = obj.dofm(2).getLocalDoF(slaveNodes,obj.physics);
       d = getDiagSlave(obj);
       E(slavedof,:) = -obj.Jmaster{1}.*(1./d);
       % expand E
-      
+
 
     end
 
@@ -380,7 +379,7 @@ classdef MeshGlue < Mortar
       end
 
       % get list of nodal slave dofs in the interface
-      nodSlave = obj.mesh.local2glob{2}(obj.multEnts);
+      nodSlave = obj.mesh.local2glob{2};
       % keep only active multipliers
       fldId = obj.dofm(2).getFieldId(bcPhysics);
       dofSlave = getLocalDoF(obj.dofm(2),nodSlave,fldId);

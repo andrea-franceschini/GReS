@@ -121,14 +121,14 @@ classdef Hexahedron < FEM
         dJWeighed = getDerBasisFAndDet(obj,el,3);
         vol(i) = sum(dJWeighed);
         %c = FEM.getElementCoords(obj,el);
-%         if vol(i) < 0
-%           clf
-%           Hexahedron.plot_hexahedron(c);
-%         end
+        %         if vol(i) < 0
+        %           clf
+        %           Hexahedron.plot_hexahedron(c);
+        %         end
+        assert(vol(i)>0,'Volume less than 0 in element %i',el);
+        gPCoordinates = getGPointsLocation(obj,el);
+        cellCentroid(i,:) = (dJWeighed * gPCoordinates)./vol(i);
       end
-      assert(vol(i)>0,'Volume less than 0 in element %i',el);
-      gPCoordinates = getGPointsLocation(obj,el);
-      cellCentroid(i,:) = (dJWeighed * gPCoordinates)./vol(i);
     end
 
     function nodeVol = findNodeVolume(obj,el)

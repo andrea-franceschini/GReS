@@ -178,6 +178,7 @@ classdef Materials < handle
           case 'RelativePermCurve'
             matProp.RelativePermCurve = TabularCurve(fID, matFileName);
           case 'Fluid'
+            assert(isempty(cellTags),'Fluid material do not require cellTag')
             matProp = Fluid(fID, matFileName);
           otherwise
             error('Error in file %s\nMaterial property %s not available', matFileName, propName);
@@ -191,12 +192,6 @@ classdef Materials < handle
         elseif strcmp(token,'End')
           break
         end
-      end
-      if isfield(matProp,'ConstLaw')
-          %check if non-fluid material has cellTags assigned
-          assert(~isempty(cellTags),"Undefined cellTags for material #%i", matID)
-      else
-          assert(isempty(cellTags),"Fluid material do not require any cellTag", matID)
       end
       obj.db(matID) = matProp;
       fclose(fID);
