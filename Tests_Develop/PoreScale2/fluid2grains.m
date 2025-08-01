@@ -37,6 +37,13 @@ domains(2) = struct( ...
 % setup mortar interfaces
 [interfaces,domains] = Mortar.buildInterfaceStruct('Domains/fluid2grain.xml',domains);
 
+if isempty(interfaces{1}.mesh.elemConnectivity)
+  % use connectivity matrix already stored
+  cm = load("connectivityMatrix.mat");
+  interfaces{1}.mesh.elemConnectivity = cm.elemConn;
+end
+  
+
 
 
 

@@ -68,7 +68,7 @@ classdef Mortar < handle
           obj.elements = [Elements(obj.mesh.msh(1),nG),...
             Elements(obj.mesh.msh(2),nG)];
       end
-      setPrintUtils(obj,inputStruct,domains(2).OutState);
+      %setPrintUtils(obj,inputStruct,domains(2).OutState);
     end
 
     function [r,c,v] = allocateMatrix(obj,sideID)

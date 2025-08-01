@@ -43,9 +43,15 @@ classdef ContactSearching < handle
         otherwise
           error('%i - top discrete polytop is not supported',k);
       end
+
       [obj.BBtree1,obj.treeNodes1, obj.leaf2elem1] = obj.buildBBtree(msh1);
       [obj.BBtree2,obj.treeNodes2, obj.leaf2elem2] = obj.buildBBtree(msh2);
-      obj.contactSearch();
+
+      if size(obj.BBtree1,1)+size(obj.BBtree2,1)<1e5
+        obj.contactSearch();
+      end
+      fprintf('Elapsed time for contact search: %3.2f s \n',toc)
+
     end
 
     function [BBtree, treeNodes, leaf2elem] = buildBBtree(obj,msh)
@@ -166,14 +172,11 @@ classdef ContactSearching < handle
     end
 
     function out = checkIntersection(obj, t1, t2)
-      % check intersection between 2 polytops
-      % if any of the primitives interval do not intersect, then
-      % there's no intersection
-      ktop1 = obj.treeNodes1(t1,:);
-      ktop2 = obj.treeNodes2(t2,:);
-      ktop1 = reshape(ktop1,2,[]);
-      ktop2 = reshape(ktop2,2,[]);
-      out = ~any([ktop1(1,:) > ktop2(2,:), ktop2(1,:) > ktop1(2,:)]);
+      % Extract bounding box coordinates
+      ktop1 = reshape(obj.treeNodes1(t1,:), 2, []);
+      ktop2 = reshape(obj.treeNodes2(t2,:), 2, []);
+
+      out = all(ktop1(1,:) <= ktop2(2,:)) && all(ktop2(1,:) <= ktop1(2,:));
     end
   end
 end

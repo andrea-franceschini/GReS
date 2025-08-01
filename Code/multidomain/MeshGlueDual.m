@@ -167,7 +167,8 @@ classdef MeshGlueDual < MeshGlue
       solvSlave = obj.solvers(2).getSolver(obj.physics);
       entsSlave = obj.dofm(2).getActiveEnts(obj.physics(i));
       varSlave = getState(solvSlave);
-      obj.f2 = solvSlave.rhs; % - solvSlave.J*varSlave(entsSlave); % this is just the forcing term
+      obj.f2 = solvSlave.rhs - solvSlave.J*varSlave(entsSlave); % this is just the forcing term
+      %obj.f2 = solvSlave.rhs; % - solvSlave.J*varSlave(entsSlave); % this is just the forcing term
       obj.rhsMaster{i} =  obj.rhsMaster{i} + obj.E'*obj.f2;  % ... + E'*f_Gamma2
       % remove slave rhs contribution of interface slave dofs
       dofInter = getInterfSlaveDoF(obj);
