@@ -1,47 +1,112 @@
-% wrap fluid model 
-model = ModelType("SinglePhaseFlow_FEM");
+%wrap fluid model 
+% model = ModelType("SinglePhaseFlow_FEM");
+% dofFluid = DoFManager(gridFluid.topology,model);
+% material = Materials(model,'Materials/materialsFlow.dat');
+% linSystFluid = Discretizer(model,simParam,dofFluid,gridFluid,material);
+% 
+% domains(1) = struct( ...
+%   'DomainName',         'Fluid', ...
+%   'ModelType',          model, ...
+%   'Grid',               gridFluid, ...
+%   'DoFManager',         dofFluid, ...
+%   'Discretizer',        linSystFluid ...
+%   );
+% 
+% 
+% % wrap grains model
+% grainMesh = Mesh();
+% grainMesh.importMesh('Mesh/many_grains.vtk');
+% 
+% % merge all cell tags into unique one
+% grainMesh.cellTag = ones(grainMesh.nCells,1);
+% grainMesh = setSurfacesGrain(grainMesh,'P0');
+% model = ModelType("SinglePhaseFlow_FEM");
+% 
+% elems = Elements(grainMesh,4);
+% faces = Faces(model,grainMesh);
+% grid = struct('topology',grainMesh,'cells',elems,'faces',faces);
+% dof = DoFManager(grainMesh,model);
+% material = Materials(model,'Materials/materialsFlow.dat');
+% linSyst = Discretizer(model,simParam,dof,grid,material);
+% domains(2) = struct( ...
+%   'DomainName',         'Grains', ...
+%   'ModelType',          ModelType("SinglePhaseFlow_FEM"), ...
+%   'Grid',               grid, ...
+%   'DoFManager',         dof, ...
+%   'Discretizer',        linSyst ...
+%   );
+% 
+% % setup mortar interfaces
+% [interfaces,domains] = Mortar.buildInterfaceStruct('Domains/fluid2grain.xml',domains);
+
+%%
+
+interf = load("Interface.mat","interfaces");
+interfaces{1} = interf.interfaces{1};
+
+%interfaces{1}.computeMortarMatrices();
+
+interfaces{1}.computeMat();
+
+E = interfaces{1}.E;
+
+% get active nodes in the flow domain (remove nodes belonging to floating
+% cells)
+actEnts = interfaces{1}.solvers(1).dofm.fields.isEntActive;
 
 
-domains(1) = struct( ...
-  'DomainName',         'Fluid', ...
-  'ModelType',          model, ...
-  'Grid',               gridFluid, ...
-  'DoFManager',         dofFluid, ...
-  'Discretizer',        linSystFluid ...
-  );
-
-
-% wrap grains model 
-grainMesh = Mesh();
-grainMesh.importMesh('Mesh/many_grains.vtk');
-
-% merge all cell tags into unique one
-grainMesh.cellTag = ones(grainMesh.nCells,1);
-grainMesh = setSurfacesGrain(grainMesh,'P0');
-model = ModelType("SinglePhaseFlow_FEM");
-
-elems = Elements(grainMesh,4);
-faces = Faces(model,grainMesh);
-grid = struct('topology',grainMesh,'cells',elems,'faces',faces);
-dof = DoFManager(grainMesh,model);
-material = Materials(model,'Materials/materialsFlow.dat');
-linSyst = Discretizer(model,simParam,dof,grid,material);
-domains(2) = struct( ...
-  'DomainName',         'Grains', ...
-  'ModelType',          ModelType("SinglePhaseFlow_FEM"), ...
-  'Grid',               grid, ...
-  'DoFManager',         dof, ...
-  'Discretizer',        linSyst ...
-  );
-
-% setup mortar interfaces
-[interfaces,domains] = Mortar.buildInterfaceStruct('Domains/fluid2grain.xml',domains);
-
-if isempty(interfaces{1}.mesh.elemConnectivity)
-  % use connectivity matrix already stored
-  cm = load("connectivityMatrix.mat");
-  interfaces{1}.mesh.elemConnectivity = cm.elemConn;
+% interpolate cell pressure into node using node area
+mshFlow = interfaces{1}.solvers(1).grid.topology;
+mshGrain = interfaces{1}.solvers(2).grid.topology;
+cellFlow =interfaces{1}.solvers(1).grid.cells;
+cellGrain = interfaces{1}.solvers(2).grid.cells;
+press_node = zeros(mshFlow.nNodes,1);
+vol_node = zeros(mshFlow.nNodes,1);
+for i = 1:mshFlow.nCells
+  nId = mshFlow.cells(i,:);
+  volNod = findNodeVolume(cellFlow,i);
+  press_node(nId) = press_node(nId) + press(i)*volNod; 
+  vol_node(nId) = vol_node(nId) + volNod; 
 end
+
+
+area_node = zeros(mshGrain.nNodes);
+for i = 1:mshGrain.nSurfaces
+  nId = mshGrain.surfaces(i,:);
+  areaNod = findNodeArea(cellGrain,i);
+  area_node(nId) = area_node(nId) + areaNod'; 
+end
+
+
+
+press_node = press_node./vol_node;
+
+% interpolate pressure from flow mesh to grain surfaces
+press_grain = E*press_node(actEnts);
+
+% get id of elements where D matrix has crazy value (due to diagonal
+% approximation for partially integrated slave)
+id = any([press_grain > 11 , press_grain < -1],2); 
+
+idD = find(ismember(interfaces{1}.mesh.local2glob{2},find(id)));
+
+a = area_node(id);
+E(id,:) = interfaces{1}.Jmaster{1}(idD,:).*a;
+press_grain = E*press_node(actEnts);
+
+
+% modify the grain mesh removing surfaces that lies on the external
+% boundary % print and processing purposes
+
+
+tol = 1e-3;
+% get surfaces having only boundary nodes
+boundSurf = any([abs(mshGrain.surfaceCentroid-0.15)<tol,abs(mshGrain.surfaceCentroid-0.85)<tol],2);
+mshGrain.surfaceTag(boundSurf) = 2;
+mshGrain.nSurfaceTag = mshGrain.nSurfaceTag + 1;
+[mshGrain,gnodes] = mshGrain.getSurfaceMesh(1);
+
+press_grain = press_grain(unique(gnodes));
   
 
 

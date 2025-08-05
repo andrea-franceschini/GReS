@@ -88,11 +88,13 @@ classdef MeshGlueDual < MeshGlue
 %       solvSlave = obj.solvers(2).getSolver(obj.physics);
 
       % coupling block between one domain and the other
-      obj.Jcoupling = obj.Jinterf*obj.E;
+      if ~isempty(obj.Jinterf)
+        obj.Jcoupling = obj.Jinterf*obj.E;
 
-      % update master block with condensation term
-      solvMaster = obj.solvers(1).getSolver(obj.physics);
-      solvMaster.J = solvMaster.J + obj.E'*(obj.Jinterf*obj.E); 
+        % update master block with condensation term
+        solvMaster = obj.solvers(1).getSolver(obj.physics);
+        solvMaster.J = solvMaster.J + obj.E'*(obj.Jinterf*obj.E);
+      end
     end
 
     function computeRhs(obj)

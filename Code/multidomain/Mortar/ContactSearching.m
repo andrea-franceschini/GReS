@@ -47,9 +47,9 @@ classdef ContactSearching < handle
       [obj.BBtree1,obj.treeNodes1, obj.leaf2elem1] = obj.buildBBtree(msh1);
       [obj.BBtree2,obj.treeNodes2, obj.leaf2elem2] = obj.buildBBtree(msh2);
 
-      if size(obj.BBtree1,1)+size(obj.BBtree2,1)<1e5
+      %if size(obj.BBtree1,1)+size(obj.BBtree2,1)<1e5
         obj.contactSearch();
-      end
+      %end
       fprintf('Elapsed time for contact search: %3.2f s \n',toc)
 
     end

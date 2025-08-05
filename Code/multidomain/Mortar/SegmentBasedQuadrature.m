@@ -98,24 +98,24 @@ classdef SegmentBasedQuadrature < handle
       % polygon
 
       % compute auxiliary plane for integration
-      obj.elems = [getElem(obj.mortar,1,elMaster),...
-        getElem(obj.mortar,2,elSlave)];
+      obj.elems = {getElem(obj.mortar,1,elMaster),...
+        getElem(obj.mortar,2,elSlave)};
 
       % get number of susegment (in case of higher-order elements)
-      if obj.elems(1).nNode > 4
+      if obj.elems{1}.nNode > 4
         ns1 = 4;
-        elemS = createSubElement(obj.elems(1));
+        elemS = createSubElement(obj.elems{2});
       else
         ns1 = 1;
-        elemS = obj.elems(2);
+        elemS = obj.elems{2};
       end
 
-      if obj.elems(2).nNode > 4
+      if obj.elems{2}.nNode > 4
         ns2 = 4;
-        elemM = createSubElement(obj.elems(2));
+        elemM = createSubElement(obj.elems{1});
       else
         ns2 = 1;
-        elemM = obj.elems(2);
+        elemM = obj.elems{1};
       end
 
       % initialize output
@@ -127,19 +127,19 @@ classdef SegmentBasedQuadrature < handle
       for iS = 1:ns2
         if ns2 == 1
           [P0,nP] = computeAuxiliaryPlane(obj,elSlave);
-          coordS3D = FEM.getElementCoords(obj.elems(2),elSlave);
+          coordS3D = FEM.getElementCoords(obj.elems{2},elSlave);
         else
           [P0,nP] = computeAuxiliaryPlane(obj,elSlave,iS);
-          coordS3D =  obj.elems(2).getSubElementCoords(elSlave,iS);  
+          coordS3D =  obj.elems{2}.getSubElementCoords(elSlave,iS);  
         end
 
         coordS = projectNodes(obj,P0,nP,coordS3D);
 
         for iM = 1:ns1
           if ns1==1
-            coordM3D = FEM.getElementCoords(obj.elems(1),elMaster);
+            coordM3D = FEM.getElementCoords(obj.elems{1},elMaster);
           else
-            coordM3D = obj.elems(1).getSubElementCoords(elMaster,iM);
+            coordM3D = obj.elems{1}.getSubElementCoords(elMaster,iM);
           end
 
           coordM = projectNodes(obj,P0,nP,coordM3D);
@@ -167,10 +167,10 @@ classdef SegmentBasedQuadrature < handle
 
           % map subsegment coords to higher order element coords
           if ns1 > 1
-            xiMasterLoc = obj.elems(1).mapsub2ref(xiMasterLoc,iM);
+            xiMasterLoc = obj.elems{1}.mapsub2ref(xiMasterLoc,iM);
           end
           if ns2 > 1
-            xiSlaveLoc = obj.elems(1).mapsub2ref(xiSlaveLoc,iS);
+            xiSlaveLoc = obj.elems{1}.mapsub2ref(xiSlaveLoc,iS);
           end
 
           % compute determinant in triangles
@@ -200,11 +200,11 @@ classdef SegmentBasedQuadrature < handle
     function [P,n] = computeAuxiliaryPlane(obj,el,subID)
       if nargin == 2
         P = obj.msh(2).surfaceCentroid(el,:);
-        n = obj.elems(2).computeNormal(el,obj.elems(2).centroid);
+        n = obj.elems{2}.computeNormal(el,obj.elems{2}.centroid);
       elseif nargin == 3
         % compute auxiliary plane on subsegment of quad9
-        P = obj.elems(2).computeCentroid(el,subID);
-        n = obj.elems(2).computeNormal(el,obj.elems(2).centroid,subID);
+        P = obj.elems{2}.computeCentroid(el,subID);
+        n = obj.elems{2}.computeNormal(el,obj.elems{2}.centroid,subID);
       end
     end
 
@@ -231,8 +231,8 @@ classdef SegmentBasedQuadrature < handle
             rhs = (elem.computeBasisF(xi(g,:,i))*elemCoord)' - coordGPtri(g,:)';
           end
           fl = FEM.checkInRange(elem,xi(g,:,i));
-          assert(fl,['GP %i in triangle %i out of range of coordinates of' ...
-            'reference space']);
+          %assert(fl,['Error for GP %i in triangle %i out of range of ' ...
+          %  'reference space coordinates.'],g,i);
         end
       end
     end

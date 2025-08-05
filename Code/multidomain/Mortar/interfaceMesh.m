@@ -27,9 +27,12 @@ classdef interfaceMesh < handle
       % search
 
       obj.msh = [mshMaster.getSurfaceMesh(surf{1});
-                 mshSlave.getSurfaceMesh(surf{2})];
+        mshSlave.getSurfaceMesh(surf{2})];
       getCellTypes(obj);
+
       getConnectivityMatrix(obj);
+
+
       [obj.msh(1),globNodes1] = mshMaster.getSurfaceMesh(surf{1},any(obj.elemConnectivity,2));
       [obj.msh(2),globNodes2] = mshSlave.getSurfaceMesh(surf{2},any(obj.elemConnectivity,1));
 

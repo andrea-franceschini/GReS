@@ -37,11 +37,11 @@ classdef MeshGlue < Mortar
       assert(isFldSlave,['MeshGlue physic not available for ' ...
         'slave domain %i'],obj.idDomain(2));
 
-      % computing mortar matrices D and M and updating list of slave entitities
+      %computing mortar matrices D and M and updating list of slave entitities
       computeMortarMatrices(obj);
 
-      % remove inacive multipliers from D and M
-      id = find(all(obj.D==0,2));
+      %remove inacive multipliers from D and M
+      id = find(~any(obj.D,2));
       obj.D(id,:) = [];
       obj.M(id,:) = [];
 
@@ -125,11 +125,11 @@ classdef MeshGlue < Mortar
       obj.Jmaster{1} = obj.M;
       obj.Jslave{1} = obj.D;
       %
-      %       for i = 1:obj.nFld
-      %         % map local mortar matrices to global indices
-      %         obj.Jmaster{i} = obj.getMatrix(1,obj.physics(i));
-      %         obj.Jslave{i} = obj.getMatrix(2,obj.physics(i));
-      %       end
+      for i = 1:obj.nFld
+        % map local mortar matrices to global indices
+        obj.Jmaster{i} = obj.getMatrix(1,obj.physics(i));
+        obj.Jslave{i} = obj.getMatrix(2,obj.physics(i));
+      end
     end
 
     function computeRhs(obj)

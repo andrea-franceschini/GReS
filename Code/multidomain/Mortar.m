@@ -159,8 +159,14 @@ classdef Mortar < handle
 
       asbM = assembler(nm,locM,nDofMult,nDofMaster);
       asbD = assembler(ns,locD,nDofMult,nDofSlave);
+      
+      iPrint = 0; 
 
       for is = 1:obj.mesh.msh(2).nSurfaces
+        if obj.mesh.msh(1).nSurfaces > 1e5 && is-iPrint > 1000
+          iPrint = is;
+          fprintf('Integrating slave element %i \n',is)
+        end
 
         masterElems = find(obj.mesh.elemConnectivity(:,is));
         if isempty(masterElems)
@@ -211,7 +217,7 @@ classdef Mortar < handle
       removeMortarSurface(obj.mesh,2,isInactiveSlave);
 
       % find unconnected master elements
-      isInactiveMaster = all(obj.mesh.elemConnectivity==0,2);
+      isInactiveMaster = ~any(obj.mesh.elemConnectivity, 2);
       % remove unconnected elements
       removeMortarSurface(obj.mesh,1,isInactiveMaster);
 
