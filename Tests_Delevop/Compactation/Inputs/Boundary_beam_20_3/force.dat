@@ -1,0 +1,8 @@
+SurfBC                            % BC item 
+Neu                               % BC type 
+Poro                              % Physics
+y                                 % Direction 
+force                           % BC name 
+Inputs/Boundary_beam_20_3/force/List 
+0.00 Inputs/Boundary_beam_20_3/force/Time_0.dat 
+End

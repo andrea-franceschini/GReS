@@ -24,6 +24,7 @@ classdef FCSolver < handle
     tStep = 0
     iter
     dt
+    toGrow
   end
 
   properties (Access = public)
@@ -68,11 +69,14 @@ classdef FCSolver < handle
                     saveStasticts(2) = varargin{pos+1};
                 case 'SaveBStepInf'
                     saveStasticts(3) = varargin{pos+1};
+                case 'SaveConverg'
+                    saveStasticts(:) = varargin{pos+1};
                 otherwise
             end
         end
         obj.solStatistics = SolverStatistics(simParam.itMaxNR,simParam.relTol,simParam.absTol,saveStasticts);
-      % obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin);
+        obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,stateIni,linSyst,varargin);
+        % obj.toGrow = GrowningDomain(obj.linSyst,obj.bound);
     end
 
     function [simStat] = NonLinearLoop(obj)
@@ -83,15 +87,25 @@ classdef FCSolver < handle
 
       flConv = true; % convergence flag
 
+      % [obj.statek,obj.stateTmp]=obj.toGrow.addCell(obj.linSyst,1,2,6,obj.statek,obj.stateTmp);
+      % [obj.statek,obj.stateTmp]=obj.toGrow.addCells(obj.linSyst,1,[2 4 6 8],6,obj.statek,obj.stateTmp);
+
+
       % Loop over time
       absTol = obj.simParameters.absTol;
       residual = zeros(obj.simParameters.itMaxNR+1,2);
       while obj.t < obj.simParameters.tMax
+
+         % add cells
+         % if obj.t>50 && obj.t<65
+         %    [obj.statek,obj.stateTmp]=obj.toGrow.addCells(obj.linSyst,1,[2 4 6 8],6,obj.statek,obj.stateTmp);
+         % end
+
          % Update the simulation time and time step ID
          obj.tStep = obj.tStep + 1;
          %new time update to fit the outTime list
          [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
-         %obj.t = obj.t + obj.dt;
+
          % Apply the Dirichlet condition value to the solution vector
          obj.stateTmp = applyDirVal(obj.linSyst,obj.bound,obj.t,obj.stateTmp);
          %
@@ -127,13 +141,12 @@ classdef FCSolver < handle
          end
          while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
                && (rhsNorm > absTol)) || obj.iter == 0
-         % while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR)) ...
-         %         || obj.iter == 0
             obj.iter = obj.iter + 1;
             %
             % Solve system with increment
             J = assembleJacobian(obj.linSyst);
 
+            % rhs
             du = J\-rhs;
 
             % Update current model state
@@ -165,11 +178,11 @@ classdef FCSolver < handle
             if isPoromechanics(obj.model)
                obj.stateTmp = Poromechanics.advanceState(obj.stateTmp);
             end
-            
+
             if obj.t > obj.simParameters.tMax   % For Steady State
-               printState(obj.printUtil,obj.stateTmp);
+               printState(obj.printUtil,obj.bound,obj.stateTmp);
             else
-               printState(obj.printUtil,obj.linSyst,obj.statek,obj.stateTmp);
+               printState(obj.printUtil,obj.linSyst,obj.bound,obj.statek,obj.stateTmp);
             end
             obj.solStatistics.saveIt(obj.t,residual(1:obj.iter+1,1),residual(1:obj.iter+1,2));
          else

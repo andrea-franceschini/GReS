@@ -1,5 +1,5 @@
 close all;
-clear;
+% clear;
 
 % Get the full path of the currently executing file
 scriptFullPath = mfilename('fullpath');
@@ -11,7 +11,7 @@ scriptDir = fileparts(scriptFullPath);
 cd(scriptDir);
 
 % Set physical models 
-model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
+model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 
 % Set parameters of the simulation
 fileName = "simParam.dat";
@@ -118,13 +118,27 @@ else
 end
 
 %Getting pressure and displacement solution for specified time from MatFILE
-press = printUtils.results.expPress;
-disp = printUtils.results.expDispl;
+% Small modification - for the growning grid
+nrep = length(printUtils.results(:,:));
+nvars = length(printUtils.results(2,:).expPress);
+press = zeros(nvars,nrep);
+nvars = length(printUtils.results(2,:).expDispl);
+disp = zeros(nvars,nrep);
+% nvars = length(printUtils.results(2,:).expTime);
+% expTime = zeros(nvars,nrep);
+for i=2:nrep
+   press(:,i) = printUtils.results(i,:).expPress;
+   disp(:,i) = printUtils.results(i,:).expDispl;
+   % expTime(:,i) = printUtils.results(i,:).expTime;
+end
+
+% press = printUtils.results.expPress;
+% disp = printUtils.results.expDispl;
 pressplot = press(nodesP,2:end);
 dispplot = disp(3*nodesU,2:end);
 
 H = max(topology.coordinates(:,3));
-p0 = max(press(:,1));
+p0 = max(press(:,2));
 
 
 %Plotting solution
@@ -165,5 +179,5 @@ set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif', 'FontSize', 14
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 10)
 % export figure with quality
-stmp = strcat('Images\', 'Terzaghi_disp', '.png');
-exportgraphics(gcf,stmp,'Resolution',400)
+% stmp = strcat('Images\', 'Terzaghi_disp', '.png');
+% exportgraphics(gcf,stmp,'Resolution',400)

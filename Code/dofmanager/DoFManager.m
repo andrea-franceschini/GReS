@@ -229,7 +229,7 @@ classdef DoFManager < handle
       end
 
       function activeSubs = getActiveSubdomain(obj,fieldList)
-         % get subdomains where 1 or more fields are activated at the
+         % get subdomains where 1 or more subdomain are activated at the
          % same time
          % return [] if an input field is not available
          if ~all(ismember(fieldList,obj.fieldList))
@@ -280,6 +280,10 @@ classdef DoFManager < handle
          numEnts = obj.numEntsField(fldId);
          nc = obj.nComp(fldId);
          numDoF = nc*numEnts;
+      end
+
+      function addCellTag(obj,tag)
+         obj.cellTags = [obj.cellTags; tag];
       end
    end
 

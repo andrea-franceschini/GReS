@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CoDB>
+    <Saturation residual = "0." maximun = "1."/>
+   <!-- residual fluid saturation (adm) [0,1]
+        maximun fluid saturation (adm) [0,1]-->
+   <VanGenuchten>
+        <!-- model = type the retentation and saturation curve, from:
+                 Maulem  - Maulem analitical model
+                 Burdine - Burdine analitical model
+                 Table - passing the curves using a table
+                 Sand,... - using Maulem model for a table of values.
+             n = experimental parameters for the analitical formula (adm)
+             alpha = average pores size (Pa-1)
+             kappa = experimental coefficient for Maulem formula-->
+        <model> Mualem </model>
+        <n> 2 </n>
+        <alpha> 3.416e-04 </alpha>
+        <kappa> 0.5 </kappa>
+    </VanGenuchten>
+</CoDB>

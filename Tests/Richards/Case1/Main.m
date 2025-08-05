@@ -107,9 +107,23 @@ else
     nodesP = nodesP(ind);
 end
 
-press = printUtils.results.expPress;
-sw = printUtils.results.expSat;
-t = printUtils.results.expTime;
+% Small modification - for the growning grid
+nrep = length(printUtils.results(:,:));
+nvars = length(printUtils.results(2,:).expPress);
+press = zeros(nvars,nrep);
+nvars = length(printUtils.results(2,:).expSat);
+sw = zeros(nvars,nrep);
+nvars = length(printUtils.results(2,:).expTime);
+t = zeros(nvars,nrep);
+for i=2:nrep
+   press(:,i) = printUtils.results(i,:).expPress;
+   sw(:,i) = printUtils.results(i,:).expSat;
+   t(:,i) = printUtils.results(i,:).expTime;
+end
+% 
+% press = printUtils.results.expPress;
+% sw = printUtils.results.expSat;
+% t = printUtils.results.expTime;
 tind = 2:length(t);
 t_max = t(end);
 t = t(tind)/t_max;
