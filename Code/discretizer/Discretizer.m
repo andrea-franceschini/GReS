@@ -269,6 +269,9 @@ classdef Discretizer < handle
         end
       end
 
+      function readInput(obj,inputList)
+      end
+
    end
 
    methods (Static)

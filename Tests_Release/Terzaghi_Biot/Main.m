@@ -47,12 +47,6 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %fname = 'dof.dat';
 dofmanager = DoFManager(topology,model);
 
-% Create object handling construction of Jacobian and rhs of the model
-linSyst = Discretizer(model,simParam,dofmanager,grid,mat);
-
-% Build a structure storing variable fields at each time step
-linSyst.initState();
-
 % Create and set the print utility
 printUtils = OutState(model,topology,'outTime.dat','folderName','Output_Terzaghi_tetra','flagMatFile',true);
 
@@ -67,6 +61,13 @@ fileName = ["BCs/dirFlowTop.dat","BCs/neuPorotop.dat",...
 %
 % Create an object of the "Boundaries" class 
 bound = Boundaries(fileName,model,grid);
+
+
+% Create object handling construction of Jacobian and rhs of the model
+linSyst = Discretizer(model,simParam,dofmanager,grid,mat,bound,printUtils);
+
+% Build a structure storing variable fields at each time step
+linSyst.initState();
 
 % In this version of the code, the user can assign initial conditions only
 % manually, by directly modifying the entries of the state structure. 
