@@ -14,10 +14,11 @@ classdef SinglePhysics < handle
       material
       state
       fldId
+      bcs
    end
    
    methods
-      function obj = SinglePhysics(symmod,params,dofManager,grid,mat,state)
+      function obj = SinglePhysics(symmod,params,dofManager,grid,mat,bc,state)
          obj.model = symmod;
          obj.simParams = params;
          obj.dofm = dofManager;
@@ -25,6 +26,7 @@ classdef SinglePhysics < handle
          obj.elements = grid.cells;
          obj.faces = grid.faces;
          obj.material = mat;
+         obj.bcs = bc;
          obj.state = state;
          fld = feval([class(obj) '.getField']);
          obj.fldId = obj.dofm.getFieldId(fld);

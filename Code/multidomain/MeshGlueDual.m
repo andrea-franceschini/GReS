@@ -98,17 +98,17 @@ classdef MeshGlueDual < MeshGlue
       end
     end
 
-    function applyBCmaster(obj,bound,bc,t)
-      physic = bound.getPhysics(bc);
-      [bcEnts,~] = getBC(obj.solvers(1).getSolver(physic),bound,bc,t);
+    function applyBCmaster(obj,bc,t)
+      physic = obj.solvers(1).bcs.getPhysics(bc);
+      [bcEnts,~] = getBC(obj.solvers(1).getSolver(physic),bc,t);
       i = strcmp(obj.physics,physic);
       obj.rhsMaster{i}(bcEnts) = 0;
       obj.Jcoupling(:,bcEnts) = 0;
     end
 
-    function applyBCslave(obj,bound,bc,t)
-      physic = bound.getPhysics(bc);
-      [bcEnts,~] = getBC(obj.solvers(2).getSolver(physic),bound,bc,t);
+    function applyBCslave(obj,bc,t)
+      physic = obj.solvers(1).bcs.getPhysics(bc);
+      [bcEnts,~] = getBC(obj.solvers(2).getSolver(physic),bc,t);
       bcEnts = removeSlaveBCdofs(obj,physic,bcEnts);
       i = strcmp(obj.physics,physic);
       obj.rhsSlave{i}(bcEnts) = 0;

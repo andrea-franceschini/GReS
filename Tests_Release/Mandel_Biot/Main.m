@@ -46,12 +46,6 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %fname = 'dof.dat';
 dofmanager = DoFManager(topology,model);
 
-% Create object handling construction of Jacobian and rhs of the model
-linSyst = Discretizer(model,simParam,dofmanager,grid,mat);
-
-% Build a structure storing variable fields at each time step
-linSyst.initState();
-
 % Create and set the print utility
 printUtils = OutState(model,topology,'outTime.dat','folderName','Output_Mandel','flagMatFile',true);
 
@@ -63,20 +57,31 @@ bcList = setMandelBC('BCs',F,topology);
 % Create an object of the "Boundaries" class 
 bound = Boundaries(bcList,model,grid);
 
+
+% Create object handling construction of Jacobian and rhs of the model
+domain = Discretizer('ModelType',model,...
+                     'SimulationParameters',simParam,...
+                     'DoFManager',dofmanager,...
+                     'Boundaries',bound,...
+                     'OutState',printUtils,...
+                     'Materials',mat,...
+                     'Grid',grid);
+
+
 % In this version of the code, the user can assign initial conditions only
 % manually, by directly modifying the entries of the state structure. 
 % In this example, we use a user defined function to apply Terzaghi initial
 % conditions to the state structure
-state = applyMandelIC(linSyst.state,mat,topology,F);
+state = applyMandelIC(domain.state,mat,topology,F);
 
 % Print model initial state
-printState(printUtils,linSyst);
+printState(domain);
 
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme. 
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,linSyst);
+Solver = FCSolver(domain);
 %
 % Solve the problem
 [simState] = Solver.NonLinearLoop();

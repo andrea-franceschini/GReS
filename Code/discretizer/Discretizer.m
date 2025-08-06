@@ -3,8 +3,12 @@ classdef Discretizer < handle
    properties (GetAccess=public, SetAccess=private)
      solver      % database for physics solvers in the model
      dofm        % dofManager
+     simparams
+     bcs
+     outstate
+     materials
      numSolvers  % number of solvers discretized
-     mod
+     model
      fields
      grid
    end
@@ -23,27 +27,25 @@ classdef Discretizer < handle
    end
 
    methods (Access = public)
-      function obj = Discretizer(symmod,simParams,dofManager,grid,mat)
+     function obj = Discretizer(varargin)
          %UNTITLED Construct an instance of this class
          %   Detailed explanation goes here
-         obj.mod = symmod;
-         obj.dofm = dofManager;
-         obj.grid = grid;
          obj.solver = containers.Map('KeyType','double','ValueType','any');
-         obj.setDiscretizer(symmod,simParams,dofManager,grid,mat);
-         obj.checkTimeDependence(symmod,mat,simParams);
+         obj.setDiscretizer(varargin{:});
+         obj.initState();
+         obj.checkTimeDependence();
       end
       
-      function applyBC(obj,bound,t,idDom)
+      function applyBC(obj,t,idDom)
         % Apply boundary condition to blocks of physical solver
         % ents: id of constrained entity
         % vals: value to assign to each entity
-        bcList = bound.db.keys;
+        bcList = obj.bcs.db.keys;
         % get entities and values of boundary condition
-        for bc = string(bcList)
-          field = bound.getPhysics(bc);
+        for bcId = string(bcList)
+          field = obj.bcs.getPhysics(bcId);
           % get id of constrained entities and corresponding BC values
-          [bcEnts,bcVals] = getBC(getSolver(obj,field),bound,bc,t);
+          [bcEnts,bcVals] = getBC(getSolver(obj,field),bcId,t);
 
           %removeInterfaceBC(obj,bcEnts,bcVals)
           % apply Boundary conditions to each Jacobian/rhs block
@@ -52,7 +54,7 @@ classdef Discretizer < handle
               continue
               % skip pair of uncoupled physics
             end
-            switch bound.getType(bc)
+            switch obj.bcs.getType(bcId)
               case 'Dir'
                 if nargin > 3
                   assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
@@ -69,18 +71,18 @@ classdef Discretizer < handle
         end
       end
 
-      function applyDirVal(obj,bound,t,idDom)
+      function applyDirVal(obj,t,idDom)
          % Apply boundary condition to blocks of physical solver
          % ents: id of constrained entity
          % vals: value to assign to each entity
-         bcList = bound.db.keys;
+         bcList = obj.bcs.db.keys;
          % get entities and values of boundary condition
-         for bc = string(bcList)
-            if ~strcmp(bound.getType(bc),'Dir')
+         for bcId = string(bcList)
+            if ~strcmp(obj.bcs.getType(bcId),'Dir')
                continue
             end
-            field = bound.getPhysics(bc);
-            [bcEnts,bcVals] = getBC(getSolver(obj,field),bound,bc,t);
+            field = obj.bcs.getPhysics(bcId);
+            [bcEnts,bcVals] = getBC(getSolver(obj,field),bcId,t);
             if nargin > 3
               assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
                 'invalid domain id input for single domain BC imposition']);
@@ -101,28 +103,31 @@ classdef Discretizer < handle
                nFld = numel(obj.fields);
                J = cell(nFld,nFld);
                for i = 1:nFld
-                  for j = 1:nFld
-                     J{i,j} = getJacobian(obj.getSolver({obj.fields(i),obj.fields(j)}),obj.fields(i));
-                  end
+                 for j = 1:nFld
+                   J{i,j} = getJacobian(obj.getSolver({obj.fields(i),obj.fields(j)}),obj.fields(i));
+                 end
                end
-            otherwise
-               error('Invalid DoF manager ordering')
+           otherwise
+             error('Invalid DoF manager ordering')
          end
       end
 
       function rhs = assembleRhs(obj)
-         % put together rhs blocks of SinglePhysicsSolver and
-         % CoupledSolver in the model
-         nFld = numel(obj.fields);
-         rhs = cell(nFld,1);
-         for i = 1:nFld
-            rhs{i} = zeros(getNumDoF(obj.dofm,obj.fields(i)),1);
-            for j = 1:nFld
-               rhs{i} = rhs{i} + ...
-                  getRhs(getSolver(obj,{obj.fields(i),obj.fields(j)}),obj.fields(i));
-            end  
-         end
+        % put together rhs blocks of SinglePhysicsSolver and
+        % CoupledSolver in the model
+        nFld = numel(obj.fields);
+        rhs = cell(nFld,1);
+        for i = 1:nFld
+          rhs{i} = zeros(getNumDoF(obj.dofm,obj.fields(i)),1);
+          for j = 1:nFld
+            rhs{i} = rhs{i} + ...
+              getRhs(getSolver(obj,{obj.fields(i),obj.fields(j)}),obj.fields(i));
+          end
+        end
       end
+
+
+
 
       % function dSol = solve(obj,J,rhs)
       %    % assemble and solve whole linear system
@@ -132,12 +137,88 @@ classdef Discretizer < handle
       % end
 
 
+      function printState(obj,stateOld)
+        % print solution of the model according to the print time in the
+        % list
+        % Initialize input structure for VTK output
+        cellData3D = [];
+        pointData3D = [];
+        if nargin == 1
+          time = obj.state.t;
+          % print result to mat-file
+          % this is not modular and will be updated in future version of the code
+          if obj.outstate.writeSolution
+            obj.outstate.results.expTime(obj.outstate.timeID,1) = time;
+            if isPoromechanics(obj.model)
+              obj.outstate.results.expDispl(:,obj.outstate.timeID) = obj.state.data.dispConv;
+            end
+            if isFlow(obj.model)
+              obj.outstate.results.expPress(:,obj.outstate.timeID) = obj.state.data.pressure;
+            end
+            if isVariabSatFlow(obj.model)
+              obj.outstate.results.expSat(:,obj.outstate.timeID) = obj.state.data.saturation;
+            end
+          end
+          for fld = obj.fields
+            [cellData,pointData] = printState(obj.getSolver(fld),obj.state);
+            cellData3D = [cellData3D; cellData];
+            pointData3D = [pointData3D; pointData];
+          end
+          if obj.outstate.writeVtk
+            obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
+          end
+          % update the print structure
+        elseif nargin == 2
+          stateNew = obj.state;
+          if obj.outstate.timeID <= length(obj.outstate.timeList)
+            while (obj.outstate.timeList(obj.outstate.timeID) <= stateNew.t)
+              assert(obj.outstate.timeList(obj.outstate.timeID) > stateOld.t, ...
+                'Print time %f out of range (%f - %f)',obj.outstate.timeList(obj.outstate.timeID), ...
+                stateOld.t,stateNew.t);
+              assert(stateNew.t - stateOld.t > eps('double'),'Dt too small for printing purposes');
+              %
+              time = obj.outstate.timeList(obj.outstate.timeID);
+              if obj.outstate.writeSolution
+                % print solution to mat-file
+                fac = (time - stateOld.t)/(stateNew.t - stateOld.t);
+                obj.outstate.results.expTime(obj.outstate.timeID+1,1) = time;
+                if isPoromechanics(obj.model)
+                  obj.outstate.results.expDispl(:,obj.outstate.timeID+1) = stateNew.data.dispConv*fac+stateOld.data.dispConv*(1-fac);
+                end
+                if isFlow(obj.model)
+                  obj.outstate.results.expPress(:,obj.outstate.timeID+1) = stateNew.data.pressure*fac+stateOld.data.pressure*(1-fac);
+                end
+                if isVariabSatFlow(obj.model)
+                  obj.outstate.results.expSat(:,obj.outstate.timeID+1) = stateNew.data.saturation*fac+stateOld.data.saturation*(1-fac);
+                end
+              end
+              % Write output structure looping through available models
+              for fld = obj.fields
+                [cellData,pointData] = printState(obj.getSolver(fld),...
+                  stateOld, stateNew, time);
+                % merge new fields
+                cellData3D = OutState.mergeOutFields(cellData3D,cellData);
+                pointData3D = OutState.mergeOutFields(pointData3D,pointData);
+              end
+              if obj.outstate.writeVtk
+                obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
+              end
+              obj.outstate.timeID = obj.outstate.timeID + 1;
+              if obj.outstate.timeID > length(obj.outstate.timeList)
+                break
+              end
+            end
+          end
+        end
+      end
+
+
       function out = getSolver(obj,fldList)
-         fldList = string(fldList);
-         % map single field or pair of field to db position
-         if isscalar(obj.fields) % singlePhysic model
-            v = 0;
-         else
+        fldList = string(fldList);
+        % map single field or pair of field to db position
+        if isscalar(obj.fields) % singlePhysic model
+          v = 0;
+        else
             nF = numel(obj.fields); % multiPhysic model
             cs = cumsum(nF:-1:1);
             v = [0 cs(1:end-1)];
@@ -157,6 +238,7 @@ classdef Discretizer < handle
 
 
       function addInterface(obj,interfId,interf)
+        % add mortar interface to current domain
         if ~ismember(interfId,obj.interfaceList)
           obj.interfaceList = sort([obj.interfaceList interfId]);
           obj.interfaces = [obj.interfaces interf];
@@ -199,47 +281,100 @@ classdef Discretizer < handle
    end
 
    methods(Access = private)
-      function setDiscretizer(obj,symmod,params,dofManager,grid,mat)
-        obj.setSolverMap();
-        flds = getFieldList(obj.dofm);
-        nF = numel(flds);
-        % loop over all fields and define corresponding models
-        k = 0;
-        % create the handle to state object that will be shared across all physical
-        % modules
-        stat = State();
-        for i = 1:nF
-          for j = i:nF
-            k = k+1;
-            addPhysics(obj,k,flds(i),flds(j),symmod,params,dofManager,grid,mat,stat);
-          end
-        end
-        obj.state = stat;
-        obj.fields = flds;
-        obj.numSolvers = k;
-      end
+     function setDiscretizer(obj,varargin)
+        
+       setInput(obj,varargin{:});
+    
 
-      function checkTimeDependence(obj,mod,mat,parm)
-        if isempty(parm)
+       obj.setSolverMap();
+       flds = getFieldList(obj.dofm);
+       nF = numel(flds);
+       % loop over all fields and define corresponding models
+       k = 0;
+       % create the handle to state object that will be shared across all physical
+       % modules
+       stat = State();
+       for i = 1:nF
+         for j = i:nF
+           k = k+1;
+           addPhysics(obj,k,flds(i),flds(j),stat);
+         end
+       end
+       obj.state = stat;
+       obj.fields = flds;
+       obj.numSolvers = k;
+     end
+
+     function setInput(obj, varargin)
+
+       msg = 'Invalid key-value pair for Discretizer class \n';
+
+       % Check that we have an even number of inputs
+       if mod(length(varargin), 2) ~= 0
+         error('Arguments must come in key-value pairs.');
+       end
+
+       % Loop through the key-value pairs
+       for k = 1:2:length(varargin)
+         key = varargin{k};
+         value = varargin{k+1};
+
+         if ~ischar(key) && ~isstring(key)
+           error('Keys must be strings');
+         end
+
+         switch lower(key)
+           case 'modeltype'
+             assert(isa(value, 'ModelType')|| isempty(value),msg)
+               obj.model = value;
+           case 'simulationparameters'
+             assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
+               obj.simparams = value;
+           case 'dofmanager'
+             assert(isa(value, 'DoFManager') || isempty(value),msg)
+             obj.dofm = value;
+           case 'grid'
+             assert(isstruct(value),msg)
+             obj.grid = value;
+           case 'materials'
+             assert(isa(value, 'Materials') || isempty(value),msg)
+             obj.materials = value;
+           case 'boundaries'
+             assert(isa(value, 'Boundaries') || isempty(value),msg)
+             obj.bcs = value;
+           case 'outstate'
+             assert(isa(value, 'OutState') || isempty(value),msg)
+             obj.outstate = value;
+           otherwise
+             error('Unknown input %s for Discretier \n', key);
+         end
+       end
+
+       % check that grid has been defined
+       assert(~isempty(obj.grid),['Grid structure with a topology field ' ...
+         'is required for Discretizer class']);
+     end
+
+     function checkTimeDependence(obj)
+       if isempty(obj.simparams)
           return
         end
         % check if there is any time dependence in the input model
-        % no time dependence in absence of flow and
-        % incompressible single phase flow model.
-        if ~isSinglePhaseFlow(mod)
+        % this must be moved into the single physics models
+        if ~isSinglePhaseFlow(obj.model)
           % Biot model is time dependent
-          setTimeDependence(parm,false);
+          setTimeDependence(obj.simparams,false);
           return
         else
           % check if fluid is incompressible
-          beta = getFluidCompressibility(mat.getFluid());
+          beta = getFluidCompressibility(obj.materials.getFluid());
           if beta < eps
-            setTimeDependence(parm,false);
+            setTimeDependence(obj.simparams,false);
           end
         end
       end
 
-      function addPhysics(obj,id,f1,f2,mod,parm,dof,grid,mat,state)
+      function addPhysics(obj,id,f1,f2,state)
         % Add new key to solver database
         % Prepare input fields for solver definition
         if ~isCoupled(obj,f1,f2)
@@ -253,7 +388,8 @@ classdef Discretizer < handle
           solv = obj.solverMap(f{:});
         end
 
-        obj.solver(id) = solv(mod,parm,dof,grid,mat,state);
+        obj.solver(id) = solv(obj.model,obj.simparams,obj.dofm,...
+          obj.grid,obj.materials,obj.bcs,state);
       end
 
       function setSolverMap(obj)
@@ -267,9 +403,6 @@ classdef Discretizer < handle
           obj.solverMap = feval([subClasses{i} '.registerSolver'],...
             obj.solverMap,subClasses{i});
         end
-      end
-
-      function readInput(obj,inputList)
       end
 
    end

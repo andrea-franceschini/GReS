@@ -1,32 +1,28 @@
 classdef Mortar < handle
-  % This class implement some basic operation for mortar interpolation
+  % Base class for non conforming interfaces
   
   properties
-    outStruct   
-    solvers
-    mesh         % instance of interfaceMesh class
-    idDomain
-    Jmaster
-    Jslave
-    Jmult
-    rhsMaster
-    rhsSlave
-    rhsMult
-    quadrature % integration scheme used for the interface
-    quadrature2
-    % (RBF or ElementBased)
-    dofm
-    nFld          
-    mortarMatrix
-    elements
+    solvers         % instance of domains connected by the interface
+    mesh            % instance of interfaceMesh class
+    idDomain        % id of connected domains
+    Jmaster         % Jacobian block associated with master
+    Jslave          % Jacobian block associated with slave
+    Jmult           % Jacobian block associated with multipliers
+    rhsMaster       % master rhs
+    rhsSlave        % slave rhs
+    rhsMult         % multiplier rhs
+    quadrature      % mortar integration scheme used for the interface
+    dofm            % dof manager instance of connected domains
+    elements        % instance of Elements for the 2D interfaces
     multiplierType = 'dual'
-    D               % slave matrix without bcs applied
-    M               % master matrix without bc applied
+    D               % slave mortar matrix
+    M               % master mortar matrix
+    outStruct       % wrapper for print utilities (mimics OutState)
   end
 
   methods
     function [obj] = Mortar(inputStruct,domains)
-      obj.solvers = [domains(1).Discretizer,domains(2).Discretizer];
+      obj.solvers = domains;
       obj.idDomain = [inputStruct.Master.idAttribute;
                 inputStruct.Slave.idAttribute];
       masterSurf = inputStruct.Master.surfaceTagAttribute;
@@ -41,8 +37,8 @@ classdef Mortar < handle
       surfId = {masterSurf; slaveSurf};
       obj.mesh = interfaceMesh(domains,surfId);
       checkInterfaceDisjoint(obj);
-      obj.dofm = [domains(1).DoFManager;
-                        domains(2).DoFManager];
+      obj.dofm = [domains(1).dofm;
+                        domains(2).dofm];
       switch inputStruct.Quadrature.typeAttribute
         case 'RBF'
           nG = inputStruct.Quadrature.nGPAttribute;
@@ -68,7 +64,7 @@ classdef Mortar < handle
           obj.elements = [Elements(obj.mesh.msh(1),nG),...
             Elements(obj.mesh.msh(2),nG)];
       end
-      setPrintUtils(obj,inputStruct,domains(2).OutState);
+      setPrintUtils(obj,inputStruct,domains(2).outstate);
     end
 
     function [r,c,v] = allocateMatrix(obj,sideID)
@@ -81,21 +77,21 @@ classdef Mortar < handle
     function applyBC(obj,idDomain,bound,t)
       bcList = bound.db.keys;
 
-      for bc = string(bcList)
-        field = bound.getPhysics(bc);
+      for bcId = string(bcList)
+        field = bound.getPhysics(bcId);
         if ~ismember(field,obj.physics)
           continue
         end
 
-        if ~strcmp(bound.getType(bc),'Dir')
+        if ~strcmp(bound.getType(bcId),'Dir')
           continue
           % only dirichlet bc has to be enforced to mortar blocks
         else
           if idDomain == obj.idDomain(1)
-            applyBCmaster(obj,bound,bc,t)
+            applyBCmaster(obj,bcId,t)
           end
           if idDomain == obj.idDomain(2)
-            applyBCslave(obj,bound,bc,t)
+            applyBCslave(obj,bcId,t)
           end
         end
       end
@@ -109,17 +105,17 @@ classdef Mortar < handle
       elem = obj.elements(sideID).getElement(type);
     end
 
-    function mat = getMatrix(obj,sideID,field)
-      n = obj.dofm(sideID).getDoFperEnt(field);
-      dofMult = dofId(1:obj.mesh.nEl(2),n);
-      dof = obj.mesh.local2glob{sideID}(1:size(obj.mortarMatrix{sideID},2));
-      dof = obj.dofm(sideID).getLocalDoF(dof,field);
-      [j,i] = meshgrid(dof,dofMult);
-      nr = n*obj.mesh.nEl(2);
-      nc = obj.dofm(sideID).getNumDoF(field);
-      vals = Discretizer.expandMat(obj.mortarMatrix{sideID},n);
-      mat = sparse(i(:),j(:),vals(:),nr,nc); % minus sign!
-    end
+%     function mat = getMatrix(obj,sideID,field)
+%       n = obj.dofm(sideID).getDoFperEnt(field);
+%       dofMult = dofId(1:obj.mesh.nEl(2),n);
+%       dof = obj.mesh.local2glob{sideID}(1:size(obj.mortarMatrix{sideID},2));
+%       dof = obj.dofm(sideID).getLocalDoF(dof,field);
+%       [j,i] = meshgrid(dof,dofMult);
+%       nr = n*obj.mesh.nEl(2);
+%       nc = obj.dofm(sideID).getNumDoF(field);
+%       vals = Discretizer.expandMat(obj.mortarMatrix{sideID},n);
+%       mat = sparse(i(:),j(:),vals(:),nr,nc); % minus sign!
+%     end
 
     function computeMortarMatrices(obj,~)
       %fprintf('Computing mortar matrices...\n')
@@ -320,7 +316,7 @@ classdef Mortar < handle
 
 
   methods (Static)
-    function [interfaceStruct,modelStruct] = buildInterfaceStruct(fileName,modelStruct)
+    function [interfaceStruct,domains] = buildInterfaceStruct(fileName,domains)
       fprintf('Mortar initialization... \n')
       % read interface file and construct array of MeshGlue objects
       interfStr = readstruct(fileName);
@@ -335,13 +331,13 @@ classdef Mortar < handle
           case 'MeshTying'
             if (~isfield(interfStr,"Stabilization"))
               % standard mesh tying with dual multipliers
-              interfaceStruct{i} = MeshGlue(i,interfStr(i),modelStruct([idMaster,idSlave]));
+              interfaceStruct{i} = MeshGlue(i,interfStr(i),domains([idMaster,idSlave]));
             elseif strcmp(interfStr.Stabilization.typeAttribute,'Jump')
               interfaceStruct{i} = MeshGlueJumpStabilization(i,interfStr(i), ...
-                modelStruct([idMaster,idSlave]));
+                domains([idMaster,idSlave]));
             elseif strcmp(interfStr.Stabilization.typeAttribute,'Bubble')
               interfaceStruct{i} = MeshGlueBubbleStabilization(i,interfStr(i), ...
-                modelStruct([idMaster,idSlave]));
+                domains([idMaster,idSlave]));
             else
               error('Invalid input argument for interface %i',i)
             end
@@ -349,13 +345,13 @@ classdef Mortar < handle
             % not yet implemented!
             interfaceStruct{i} = Fault();
           case 'MeshTyingCondensation'
-            interfaceStruct{i} = MeshGlueDual(i,interfStr(i),modelStruct([idMaster,idSlave]));
+            interfaceStruct{i} = MeshGlueDual(i,interfStr(i),domains([idMaster,idSlave]));
           otherwise
             error(['Invalid interface law type for interface %i in file' ...
               '%s. \nAvailable types are: \nMeshTying \nFault'],i,fileName);
         end
-        addInterface(modelStruct(idMaster).Discretizer,i,interfaceStruct{i});
-        addInterface(modelStruct(idSlave).Discretizer,i,interfaceStruct{i});
+        addInterface(domains(idMaster),i,interfaceStruct{i});
+        addInterface(domains(idSlave),i,interfaceStruct{i});
       end
     end
 

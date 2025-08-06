@@ -19,8 +19,6 @@ gradz = @(X) -pi*cos(pi*X(2)).*sin(pi*X(3)).*(2*X(1)-X(1).^2 + sin(pi*X(1)));
 h = @(x) -2-3*pi^2*sin(pi*x)-4*pi^2*x+2*pi^2*x.^2;
 f = @(X) cos(pi*X(2)).*cos(pi*X(3)).*h(X(1));
 
-simParam = SimulationParameters('simParam.dat');
-
 
 meshFile = fullfile('Mesh','domain.vtk');
 mesh = Mesh();
@@ -37,13 +35,13 @@ clear mesh
 
 % build model and set up Poisson manufactured solution
 domainFile = fullfile('Domains','domain.xml');
-domains = buildModelStruct(domainFile,simParam);
-domains.Discretizer.getSolver('Poisson').setAnalSolution(anal,f,gradx,grady,gradz);
+domains = buildModel(domainFile);
+domains.getSolver('Poisson').setAnalSolution(anal,f,gradx,grady,gradz);
 
 % build interface structure
 interfFile = fullfile('Domains','interfaces.xml');
 [interfaces,domains] = Mortar.buildInterfaceStruct(interfFile,domains);
 
-solver = MultidomainFCSolver(simParam,domains,interfaces);
+solver = MultidomainFCSolver(domains,interfaces);
 solver.NonLinearLoop();
 solver.finalizeOutput();

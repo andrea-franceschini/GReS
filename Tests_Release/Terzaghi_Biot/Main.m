@@ -64,31 +64,35 @@ bound = Boundaries(fileName,model,grid);
 
 
 % Create object handling construction of Jacobian and rhs of the model
-linSyst = Discretizer(model,simParam,dofmanager,grid,mat,bound,printUtils);
+domain = Discretizer('ModelType',model,...
+                     'SimulationParameters',simParam,...
+                     'DoFManager',dofmanager,...
+                     'Boundaries',bound,...
+                     'OutState',printUtils,...
+                     'Materials',mat,...
+                     'Grid',grid);
 
-% Build a structure storing variable fields at each time step
-linSyst.initState();
 
 % In this version of the code, the user can assign initial conditions only
 % manually, by directly modifying the entries of the state structure. 
 % In this example, we use a user defined function to apply Terzaghi initial
 % conditions to the state structure
-applyTerzaghiIC(linSyst.state,mat,topology,F);
+applyTerzaghiIC(domain.state,mat,topology,F);
 
 % Print model initial state
-printState(printUtils,linSyst);
+printState(domain);
 
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme. 
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,linSyst);
+Solver = FCSolver(domain);
 %
 % Solve the problem
 [simState] = Solver.NonLinearLoop();
 %
 % Finalize the print utility
-printUtils.finalize()
+domain.outstate.finalize()
 %
 %% POST PROCESSING
 

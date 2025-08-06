@@ -61,7 +61,7 @@ simParam = SimulationParameters('simParam.dat');
 % build model using domains input file (a shortcut to programmatically
 % initialize separate model objects for each domain)
 domainFile = fullfile('Domains','domain.xml');
-domains = buildModelStruct(domainFile,simParam);
+domains = buildModel(domainFile);
 
 % Initialize the mortar utilities
 interfFile = fullfile('Domains','interfaces.xml');
@@ -70,6 +70,6 @@ interfFile = fullfile('Domains','interfaces.xml');
 
 %% RUN MODEL  
 % A different solver is needed for models with non conforming domains
-solver = MultidomainFCSolver(simParam,domains,interfaces);
+solver = MultidomainFCSolver(domains,interfaces);
 solver.NonLinearLoop();
 solver.finalizeOutput();

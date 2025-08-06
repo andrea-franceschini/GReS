@@ -15,8 +15,8 @@ classdef Biot < CouplingPhysics
     end
 
     methods (Access = public)
-        function obj = Biot(symmod,params,dofManager,grid,mat,state)
-            obj@CouplingPhysics(symmod,params,dofManager,grid,mat,state);
+        function obj = Biot(symmod,params,dofManager,grid,mat,bc,state)
+            obj@CouplingPhysics(symmod,params,dofManager,grid,mat,bc,state);
             if isSinglePhaseFlow(obj.model)
                 obj.flowModel = 'SinglePhaseFlow';
             elseif isVariabSatFlow(obj.model)

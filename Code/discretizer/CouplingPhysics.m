@@ -16,10 +16,11 @@ classdef CouplingPhysics < handle
       GaussPts
       state
       fldId
+      bcs
    end
    
    methods
-      function obj = CouplingPhysics(symmod,params,dofManager,grid,mat,state)
+      function obj = CouplingPhysics(symmod,params,dofManager,grid,mat,bc,state)
          obj.model = symmod;
          obj.simParams = params;
          obj.dofm = dofManager;
@@ -29,6 +30,7 @@ classdef CouplingPhysics < handle
          obj.material = mat;
          obj.state = state;
          obj.fldId = zeros(2,1);
+         obj.bcs = bc;
          fld = feval([class(obj) '.getField']);
          obj.fldId(1) = obj.dofm.getFieldId(fld(1));
          obj.fldId(2) = obj.dofm.getFieldId(fld(2));

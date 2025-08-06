@@ -11,8 +11,8 @@ classdef Poromechanics < SinglePhysics
   end
 
   methods (Access = public)
-    function obj = Poromechanics(symmod,params,dofManager,grid,mat,state)
-      obj@SinglePhysics(symmod,params,dofManager,grid,mat,state);
+    function obj = Poromechanics(symmod,params,dofManager,grid,mat,bc,state)
+      obj@SinglePhysics(symmod,params,dofManager,grid,mat,bc,state);
       setPoromechanics(obj)
     end
 
@@ -225,9 +225,9 @@ classdef Poromechanics < SinglePhysics
       obj.state.data.dispCurr(id) = vals; 
     end
 
-    function [dof,vals] = getBC(obj,bc,id,t,~)
-      dof = obj.getBCdofs(bc,id);
-      vals = obj.getBCVals(bc,id,t);
+    function [dof,vals] = getBC(obj,id,t,~)
+      dof = obj.getBCdofs(id);
+      vals = obj.getBCVals(id,t);
     end
 
     function applyDirVal(obj,dof,vals)
@@ -315,25 +315,25 @@ classdef Poromechanics < SinglePhysics
   end
 
   methods (Access=private)
-    function dof = getBCdofs(obj,bc,id)
-      switch bc.getCond(id)
+    function dof = getBCdofs(obj,id)
+      switch obj.bcs.getCond(id)
         case 'NodeBC'
-          ents = bc.getEntities(id);
+          ents = obj.bcs.getEntities(id);
         case 'SurfBC'
-          ents = bc.getLoadedEntities(id);
+          ents = obj.bcs.getLoadedEntities(id);
           % node id contained by constrained surface
         otherwise
           error('BC type %s is not available for %s field',cond,obj.field);
       end
       % map entities dof to local dof numbering
       dof = obj.dofm.getLocalEnts(ents,obj.fldId);
-      dof = bc.getCompEntities(id,dof);
+      dof = obj.bcs.getCompEntities(id,dof);
     end
 
-    function vals = getBCVals(obj,bc,id,t)
-      vals = bc.getVals(id,t);
-      if strcmp(bc.getCond(id),'SurfBC')
-        entInfl = bc.getEntitiesInfluence(id);
+    function vals = getBCVals(obj,id,t)
+      vals = obj.bcs.getVals(id,t);
+      if strcmp(obj.bcs.getCond(id),'SurfBC')
+        entInfl = obj.bcs.getEntitiesInfluence(id);
         vals = entInfl*vals;
       end
     end

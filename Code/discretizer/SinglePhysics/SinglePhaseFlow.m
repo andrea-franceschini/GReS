@@ -17,8 +17,8 @@ classdef SinglePhaseFlow < SinglePhysics
    end
 
    methods (Access = public)
-      function obj = SinglePhaseFlow(symmod,params,dofManager,grid,mat,state)
-         obj@SinglePhysics(symmod,params,dofManager,grid,mat,state);
+      function obj = SinglePhaseFlow(symmod,params,dofManager,grid,mat,bc,state)
+         obj@SinglePhysics(symmod,params,dofManager,grid,mat,bc,state);
          if obj.model.isFVTPFABased('Flow')
             obj.computeTrans;
             %get cells with active flow model
@@ -279,18 +279,18 @@ classdef SinglePhaseFlow < SinglePhysics
          gTerm = gTerm(obj.dofm.getActiveEnts(obj.field));
       end
 
-      function [dof,vals] = getBC(obj,bc,id,t)
-         switch bc.getCond(id)
+      function [dof,vals] = getBC(obj,id,t)
+         switch obj.bcs.getCond(id)
             case {'NodeBC','ElementBC'}
-               ents = bc.getEntities(id);
-               vals = bc.getVals(id,t);
+               ents = obj.bcs.getEntities(id);
+               vals = obj.bcs.getVals(id,t);
             case 'SurfBC'
-               v = bc.getVals(id,t);
+               v = obj.bcs.getVals(id,t);
                if isFVTPFABased(obj.model,'Flow')
-                  faceID = bc.getEntities(id);
+                  faceID = obj.bcs.getEntities(id);
                   ents = sum(obj.faces.faceNeighbors(faceID,:),2);
                   [ents,~,ind] = unique(ents);
-                  switch bc.getType(id)
+                  switch obj.bcs.getType(id)
                      case 'Neu'
                         area = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
                         vals = accumarray(ind, area);
@@ -303,18 +303,18 @@ classdef SinglePhaseFlow < SinglePhysics
                         vals = [1/mu*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
                   end
                elseif isFEMBased(obj.model,'Flow')
-                  ents = bc.getLoadedEntities(id);
-                  entitiesInfl = bc.getEntitiesInfluence(id);
+                  ents = obj.bcs.getLoadedEntities(id);
+                  entitiesInfl = obj.bcs.getEntitiesInfluence(id);
                   vals = entitiesInfl*v;
                end
            case 'VolumeForce'
-             v = bc.getVals(id,t);
+             v = obj.bcs.getVals(id,t);
              if isFVTPFABased(obj.model,'Flow')
-               ents = bc.getEntities(id);
+               ents = obj.bcs.getEntities(id);
                vals = v.*obj.mesh.cellVolume(ents);
              elseif isFEMBased(obj.model,'Flow')
-               ents = bc.getLoadedEntities(id);
-               entitiesInfl = bc.getEntitiesInfluence(id);
+               ents = obj.bcs.getLoadedEntities(id);
+               entitiesInfl = obj.bcs.getEntitiesInfluence(id);
                vals = entitiesInfl*v;
              end
          end

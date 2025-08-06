@@ -1,28 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- This XML input file is a shortcut to preprocess the model for each domain 
+<!-- This XML input file is a shortcut to preprocess the model for each domain
 in a nonConforming simulation.
 -->
 <struct>
-    <Domain>
-      <Name>TopLayer</Name>
-        <Geometry>Mesh/topLayer.vtk</Geometry>
-        <ModelType>SinglePhaseFlow_FEM</ModelType>
-        <Gauss>1</Gauss> 
-        <Material> Materials/materialsListTop.dat </Material>
-        <BoundaryConditions count="1">
-        <File>BCs/bcTop.dat</File>
-        </BoundaryConditions>
-        <OutState outFile="outTime.dat"  print="1" />
-    </Domain>
-    <Domain>
-      <Name>BottomLayer</Name>
-        <Geometry>Mesh/bottomLayer.vtk</Geometry>
-        <ModelType>SinglePhaseFlow_FEM</ModelType>
-        <Gauss>1</Gauss>
-        <Material> Materials/materialsListBottom.dat </Material>
-        <BoundaryConditions count="1">
-            <File>BCs/bcBot.dat</File>
-        </BoundaryConditions>
-        <OutState outFile="outTime.dat"  print="1" />
-    </Domain>
+  <Domain>
+    <Name>TopLayer</Name>
+    <Geometry>Mesh/topLayer.vtk</Geometry>
+    <ModelType>SinglePhaseFlow_FEM</ModelType>
+    <SimParameters> simParam.dat </SimParameters>
+    <Gauss>1</Gauss>
+    <Material> Materials/materialsListTop.dat </Material>
+    <BoundaryConditions count="1">
+      <File>BCs/bcTop.dat</File>
+    </BoundaryConditions>
+    <OutState outFile="outTime.dat"  print="1" />
+  </Domain>
+  <Domain>
+    <Name>BottomLayer</Name>
+    <Geometry>Mesh/bottomLayer.vtk</Geometry>
+    <ModelType>SinglePhaseFlow_FEM</ModelType>
+    <SimParameters> simParam.dat </SimParameters>
+    <Gauss>1</Gauss>
+    <Material> Materials/materialsListBottom.dat </Material>
+    <BoundaryConditions count="1">
+      <File>BCs/bcBot.dat</File>
+    </BoundaryConditions>
+    <OutState outFile="outTime.dat"  print="1" />
+  </Domain>
 </struct>

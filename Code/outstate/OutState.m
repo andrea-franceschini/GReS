@@ -11,12 +11,13 @@ classdef OutState < handle
     results
     model
     writeSolution
-  end
-
-  properties (Access = private)
     timeID = 1
     VTK
     writeVtk
+  end
+
+  properties (Access = private)
+    %
   end
 
   methods (Access = public)
@@ -39,82 +40,6 @@ classdef OutState < handle
     function finalize(obj)
       if obj.writeVtk
         obj.VTK.finalize();
-      end
-    end
-
-    function printState(obj,solv,stateOld)
-      % print solution of the model according to the print time in the
-      % list
-      % Initialize input structure for VTK output
-      cellData3D = [];
-      pointData3D = [];
-      if nargin == 2
-        state = solv.state;
-        time = state.t;
-        % print result to mat-file
-        % this is not modular and will be updated in future version of the code
-        if obj.writeSolution
-          obj.results.expTime(obj.timeID,1) = time;
-          if isPoromechanics(obj.model)
-            obj.results.expDispl(:,obj.timeID) = state.data.dispConv;
-          end
-          if isFlow(obj.model)
-            obj.results.expPress(:,obj.timeID) = state.data.pressure;
-          end
-          if isVariabSatFlow(obj.model)
-            obj.results.expSat(:,obj.timeID) = state.data.saturation;
-          end
-        end
-        for fld = solv.fields
-          [cellData,pointData] = printState(solv.getSolver(fld),state);
-          cellData3D = [cellData3D; cellData];
-          pointData3D = [pointData3D; pointData];
-        end
-        if obj.writeVtk
-          obj.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
-        end
-        % update the print structure
-      elseif nargin == 3
-        stateNew = solv.state;
-        if obj.timeID <= length(obj.timeList)
-          while (obj.timeList(obj.timeID) <= stateNew.t)
-            assert(obj.timeList(obj.timeID) > stateOld.t, ...
-              'Print time %f out of range (%f - %f)',obj.timeList(obj.timeID), ...
-              stateOld.t,stateNew.t);
-            assert(stateNew.t - stateOld.t > eps('double'),'Dt too small for printing purposes');
-            %
-            time = obj.timeList(obj.timeID);
-            if obj.writeSolution
-              % print solution to mat-file
-              fac = (time - stateOld.t)/(stateNew.t - stateOld.t);
-              obj.results.expTime(obj.timeID+1,1) = time;
-              if isPoromechanics(obj.model)
-                obj.results.expDispl(:,obj.timeID+1) = stateNew.data.dispConv*fac+stateOld.data.dispConv*(1-fac);
-              end
-              if isFlow(obj.model)
-                obj.results.expPress(:,obj.timeID+1) = stateNew.data.pressure*fac+stateOld.data.pressure*(1-fac);
-              end
-              if isVariabSatFlow(obj.model)
-                obj.results.expSat(:,obj.timeID+1) = stateNew.data.saturation*fac+stateOld.data.saturation*(1-fac);
-              end
-            end
-            % Write output structure looping trough available models
-            for fld = solv.fields
-              [cellData,pointData] = printState(solv.getSolver(fld),...
-                stateOld, stateNew, time);
-              % merge new fields
-              cellData3D = OutState.mergeOutFields(cellData3D,cellData);
-              pointData3D = OutState.mergeOutFields(pointData3D,pointData);
-            end
-            if obj.writeVtk
-              obj.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
-            end
-            obj.timeID = obj.timeID + 1;
-            if obj.timeID > length(obj.timeList)
-              break
-            end
-          end
-        end
       end
     end
   end

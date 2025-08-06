@@ -1,7 +1,5 @@
 classdef MeshGlueBubbleStabilization < MeshGlue
-  % Mesh glue class implementing pressure jump stabilization (on the slave
-  % side
-  % will become FaultBubbleStabilization in the future
+  % Mesh glue class implementing bubble stabilization 
 
   properties
     localFaceIndex % slave faces with local index in neighboring cell

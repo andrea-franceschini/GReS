@@ -4,21 +4,9 @@ classdef FCSolver < handle
   
   properties (Access = private)
     %
-    model
-    simParameters
-    dofManager
-    grid
-    mesh
-    elements
-%     faces
-    material
-    bound
-%     BCName
-    GaussPts
-    printUtil
     statek
     stateTmp
-    linSyst
+    domain
     %
     t = 0
     tStep = 0
@@ -27,78 +15,78 @@ classdef FCSolver < handle
   end
   
   methods (Access = public)
-      function obj = FCSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,linSyst)
-      obj.setNonLinearSolver(symmod,simParam,dofManager,grid,mat,bc,prtUtil,linSyst);
+      function obj = FCSolver(linSyst)
+      obj.setNonLinearSolver(linSyst);
     end
 
    function [simStat] = NonLinearLoop(obj)
       simStat = 1;
       % Initialize the time step increment
-      obj.dt = obj.simParameters.dtIni;  
+      obj.dt = obj.domain.simparams.dtIni;  
       delta_t = obj.dt; % dynamic time step
 
       flConv = true; %convergence flag
 
       % Loop over time
-      while obj.t < obj.simParameters.tMax
-         absTol = obj.simParameters.absTol;
+      while obj.t < obj.domain.simparams.tMax
+         absTol = obj.domain.simparams.absTol;
          % Update the simulation time and time step ID
          obj.tStep = obj.tStep + 1;
          %new time update to fit the outTime list
          [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
          %obj.t = obj.t + obj.dt;
          % Apply the Dirichlet condition value to the solution vector
-         applyDirVal(obj.linSyst,obj.bound,obj.t);
+         applyDirVal(obj.domain,obj.t);
          %
-         if obj.simParameters.verbosity > 0
+         if obj.domain.simparams.verbosity > 0
             fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t);
             fprintf('-----------------------------------------------------------\n');
          end
-         if obj.simParameters.verbosity > 1
+         if obj.domain.simparams.verbosity > 1
             fprintf('Iter     ||rhs||\n');
          end
          %
          % Compute Rhs and matrices of NonLinear models
          % Loop over available linear models and compute the jacobian
-         computeMatricesAndRhs(obj.linSyst,obj.statek,obj.dt);
+         computeMatricesAndRhs(obj.domain,obj.statek,obj.dt);
 
          % Apply BCs to the blocks of the linear system
-         applyBC(obj.linSyst,obj.bound,obj.t);
+         applyBC(obj.domain,obj.t);
          
-         rhs = assembleRhs(obj.linSyst);
+         rhs = assembleRhs(obj.domain);
 
          % compute Rhs norm
          rhsNorm = norm(cell2mat(rhs),2);
          % consider output of local field rhs contribution
 
-         tolWeigh = obj.simParameters.relTol*rhsNorm;
+         tolWeigh = obj.domain.simparams.relTol*rhsNorm;
          obj.iter = 0;
          %
-         if obj.simParameters.verbosity > 1
+         if obj.domain.simparams.verbosity > 1
             fprintf('0     %e\n',rhsNorm);
          end
-         while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
+         while ((rhsNorm > tolWeigh) && (obj.iter < obj.domain.simparams.itMaxNR) ...
                && (rhsNorm > absTol)) || obj.iter == 0
             obj.iter = obj.iter + 1;
             %
             % Solve system with increment
-            J = assembleJacobian(obj.linSyst);
+            J = assembleJacobian(obj.domain);
             
             du = FCSolver.solve(J,rhs);
             % Update current model state
-            updateState(obj.linSyst,du);
+            updateState(obj.domain,du);
 
             % Compute Rhs and Matrices of NonLinear models
-            computeMatricesAndRhs(obj.linSyst,obj.statek,obj.dt);
+            computeMatricesAndRhs(obj.domain,obj.statek,obj.dt);
 
             % Apply BCs to the blocks of the linear system
-            applyBC(obj.linSyst,obj.bound,obj.t);
+            applyBC(obj.domain,obj.t);
 
-            rhs = assembleRhs(obj.linSyst);
+            rhs = assembleRhs(obj.domain);
             % compute Rhs norm
             rhsNorm = norm(cell2mat(rhs),2);
 
-            if obj.simParameters.verbosity > 1
+            if obj.domain.simparams.verbosity > 1
                fprintf('%d     %e\n',obj.iter,rhsNorm);
             end
          end
@@ -108,14 +96,14 @@ classdef FCSolver < handle
          if flConv % Convergence
             obj.stateTmp.t = obj.t;
             % Advance state of non linear models
-            if isPoromechanics(obj.model)
-               advanceState(getSolver(obj.linSyst,'Poromechanics'));
+            if isPoromechanics(obj.domain.model)
+               advanceState(getSolver(obj.domain,'Poromechanics'));
             end
             
-            if obj.t > obj.simParameters.tMax   % For Steady State
-               printState(obj.printUtil,obj.linSyst);
+            if obj.t > obj.domain.simparams.tMax   % For Steady State
+               printState(obj.domain);
             else
-               printState(obj.printUtil,obj.linSyst,obj.statek);
+               printState(obj.domain,obj.statek);
             end
          end
          %
@@ -127,27 +115,22 @@ classdef FCSolver < handle
   end
   
   methods (Access = private)
-     function setNonLinearSolver(obj,symmod,simParam,dofManager,grid,mat,bc,prtUtil,linearSyst)
-        obj.model = symmod;
-        obj.simParameters = simParam;
-        obj.dofManager = dofManager;
-        obj.grid = grid;
-        obj.mesh = grid.topology;
-        obj.elements = grid.cells;
-        obj.material = mat;
-        obj.bound = bc;
-        obj.printUtil = prtUtil;
+
+     function setNonLinearSolver(obj,linearSyst)
+        assert(numel(linearSyst)==1,['Multidomain models is not supported' ...
+          'by FCSolver class'])
         obj.stateTmp = linearSyst.state;
         obj.statek = copy(obj.stateTmp);
-        obj.linSyst = linearSyst;
+        obj.domain = linearSyst;
      end
+
     function [t, dt] = updateTime(obj,conv,dt)
-        if obj.printUtil.modTime
-            tmp = find(obj.t<obj.printUtil.timeList(),1,'first');
+        if obj.domain.outstate.modTime
+            tmp = find(obj.t<obj.domain.outstate.timeList(),1,'first');
             if ~conv       
-                t = min([obj.t + obj.dt, obj.t + dt, obj.printUtil.timeList(tmp)]);
+                t = min([obj.t + obj.dt, obj.t + dt, obj.domain.outstate.timeList(tmp)]);
             else 
-                t = min([obj.t + obj.dt, obj.printUtil.timeList(tmp)]);
+                t = min([obj.t + obj.dt, obj.domain.outstate.timeList(tmp)]);
             end
         else
         t = obj.t + obj.dt;
@@ -160,32 +143,32 @@ classdef FCSolver < handle
             obj.stateTmp = copy(obj.statek);
             obj.t = obj.t - obj.dt;
             obj.tStep = obj.tStep - 1;
-            dt = dt/obj.simParameters.divFac;
-            obj.dt = obj.dt/obj.simParameters.divFac;  % Time increment chop
-            if min(dt,obj.dt) < obj.simParameters.dtMin
-                if obj.simParameters.goOnBackstep == 1
+            dt = dt/obj.domain.simparams.divFac;
+            obj.dt = obj.dt/obj.domain.simparams.divFac;  % Time increment chop
+            if min(dt,obj.dt) < obj.domain.simparams.dtMin
+                if obj.domain.simparams.goOnBackstep == 1
                     flConv = 1;
-                elseif obj.simParameters.goOnBackstep == 0
+                elseif obj.domain.simparams.goOnBackstep == 0
                     error('Minimum time step reached')
                 end
-            elseif obj.simParameters.verbosity > 0
+            elseif obj.domain.simparams.verbosity > 0
                 fprintf('\n %s \n','BACKSTEP');
             end
         end
         if flConv % Go on if converged
-            tmpVec = obj.simParameters.multFac;
-            if isFlow(obj.model)
+            tmpVec = obj.domain.simparams.multFac;
+            if isFlow(obj.domain.model)
                 dpMax = max(abs(obj.stateTmp.data.pressure - obj.statek.data.pressure));
-                tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
-                  obj.simParameters.pTarget/(dpMax + obj.simParameters.relaxFac* ...
-                  obj.simParameters.pTarget)];
+                tmpVec = [tmpVec, (1+obj.domain.simparams.relaxFac)* ...
+                  obj.domain.simparams.pTarget/(dpMax + obj.domain.simparams.relaxFac* ...
+                  obj.domain.simparams.pTarget)];
             end
-            obj.dt = min([obj.dt * min(tmpVec),obj.simParameters.dtMax]);
-            obj.dt = max([obj.dt obj.simParameters.dtMin]);
+            obj.dt = min([obj.dt * min(tmpVec),obj.domain.simparams.dtMax]);
+            obj.dt = max([obj.dt obj.domain.simparams.dtMin]);
             obj.statek = copy(obj.stateTmp);
             %
-            if ((obj.t + obj.dt) > obj.simParameters.tMax)
-              obj.dt = obj.simParameters.tMax - obj.t;
+            if ((obj.t + obj.dt) > obj.domain.simparams.tMax)
+              obj.dt = obj.domain.simparams.tMax - obj.t;
             end
         end
     end

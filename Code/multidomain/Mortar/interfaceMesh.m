@@ -26,8 +26,8 @@ classdef interfaceMesh < handle
   
   methods
     function obj = interfaceMesh(domains,surf)
-      mshMaster = domains(1).Grid.topology;
-      mshSlave = domains(2).Grid.topology;
+      mshMaster = domains(1).grid.topology;
+      mshSlave = domains(2).grid.topology;
       % extrad 2d surface mesh from parent domain
       obj.msh = [mshMaster.getSurfaceMesh(surf{1});
                  mshSlave.getSurfaceMesh(surf{2})];

@@ -2,7 +2,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
     % Variably Saturated flow
     % Subclass of SPFlow
     % Implements Richards equations for unsaturated flow in vadose region
-    % It is subclass of SPFlow since most of the method are the same
+    % It is subclass of SPFlow since most of the methods are the same
 
     properties
         lwkpt           % mobility
@@ -11,9 +11,9 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
     end
 
     methods (Access = public)
-        function obj = VariablySaturatedFlow(symmod,params,dofManager,grid,mat,state)
+        function obj = VariablySaturatedFlow(symmod,params,dofManager,grid,mat,bc,state)
             % initialize as SPFlow class
-            obj@SinglePhaseFlow(symmod,params,dofManager,grid,mat,state);
+            obj@SinglePhaseFlow(symmod,params,dofManager,grid,mat,bc,state);
         end
 
         function computeMat(obj,stateOld,dt)

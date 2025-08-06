@@ -12,8 +12,8 @@ classdef Poisson < SinglePhysics
   end
 
   methods
-    function obj = Poisson(symmod,params,dofManager,grid,mat,state)
-      obj@SinglePhysics(symmod,params,dofManager,grid,mat,state)
+    function obj = Poisson(symmod,params,dofManager,grid,mat,bc,state)
+      obj@SinglePhysics(symmod,params,dofManager,grid,mat,bc,state)
     end
 
     function computeMat(obj,varargin)
@@ -86,17 +86,17 @@ classdef Poisson < SinglePhysics
       end
     end
 
-    function [dof,vals] = getBC(obj,bc,id,t,~)
-      switch bc.getCond(id)
+    function [dof,vals] = getBC(obj,id,t,~)
+      switch obj.bcs.getCond(id)
         case 'NodeBC'
-          ents = bc.getEntities(id);
+          ents = obj.bcs.getEntities(id);
         otherwise
           error('BC type %s is not available for %s field',cond,obj.field);
       end
       % map entities dof to local dof numbering
       dof = obj.dofm.getLocalEnts(ents,obj.fldId);
-      dof = bc.getCompEntities(id,dof);
-      vals = bc.getVals(id,t);
+      dof = obj.bcs.getCompEntities(id,dof);
+      vals = obj.bcs.getVals(id,t);
     end
 
     function applyDirVal(obj,dof,vals)
