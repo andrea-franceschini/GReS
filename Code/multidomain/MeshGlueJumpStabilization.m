@@ -21,12 +21,10 @@ classdef MeshGlueJumpStabilization < MeshGlue
       if isMatrixComputed(obj)
         return
       end
-      for i = 1:obj.nFld
         % map local mortar matrices to global indices
         if isStabReady(obj)
-          obj.Jmult{i} = -computeStabilizationMatrix(obj,obj.physics(i));
+          obj.Jmult = -computeStabilizationMatrix(obj,obj.physics);
         end
-      end
     end
 
 

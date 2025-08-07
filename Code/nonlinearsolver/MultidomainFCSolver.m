@@ -285,11 +285,8 @@ classdef MultidomainFCSolver < handle
         Ndof(1) = Ndof(1) + obj.domains(i).dofm.totDoF;
       end
       Nfld = N;
-      for i = 1:obj.nInterf
-        N = N + obj.interfaces{i}.nFld;
-      end
-      Ninterf = N - Nfld;
-      obj.systSize = [N,Nfld,Ninterf];
+      N = N + obj.nInterf;
+      obj.systSize = [N,Nfld];
       obj.nDof = Ndof; % number of primary variable dofs
     end
 
@@ -298,9 +295,6 @@ classdef MultidomainFCSolver < handle
     function getNumField(obj)
       for i = 1:obj.nDom
         obj.nfldDom(i) = numel(obj.domains(i).fields);
-      end
-      for i =1:obj.nInterf
-        obj.nfldInt(i) = obj.interfaces{i}.nFld;
       end
     end
 
@@ -323,24 +317,27 @@ classdef MultidomainFCSolver < handle
       % assemble blocks of jacobian matrix for multidomain system
       %[N,Nf,Ni] = deal(obj.systSize(1),obj.systSize(2),obj.systSize(3));
       J = cell(obj.systSize(1));
-      f = 0;
+      k = 0;
       % populate jacobian with inner domain blocks
-      for iD = 1:obj.nDom
-        discr = obj.domains(iD);
-        J(f+1:f+obj.nfldDom(iD),f+1:f+obj.nfldDom(iD)) = ...
+      for iDom = 1:obj.nDom
+        discr = obj.domains(iDom);
+        J(k+1:k+obj.nfldDom(iDom),k+1:k+obj.nfldDom(iDom)) = ...
           discr.assembleJacobian();
-        for iF = 1:obj.nfldDom(iD)
+        for iFld = 1:obj.nfldDom(iDom)
+          fld = discr.fields(iFld);
           for iI = discr.interfaceList
-            jj = obj.systSize(2)+obj.nfldInt(iI);
-            [J{iF+f,jj},J{jj,iF+f}] = getJacobian(...
-              obj.interfaces{iF},iD);
+            jj = obj.systSize(2)+iI;
+            [J{iFld+k,jj},J{jj,iFld+k}] = getJacobian(...
+              obj.interfaces{iI},iDom,fld);
             [J{jj,jj}] = getJacobian(...
-              obj.interfaces{iF},iD);
+              obj.interfaces{iI},iDom,fld);
           end
         end
+        k = k+obj.nfldDom(iDom);
       end 
 
       % provisional assembly of static condensation coupling block
+      % this work only with single physics mortar coupling
       for iI = 1:obj.nInterf
         %
         interf = obj.interfaces{iI};
@@ -369,16 +366,16 @@ classdef MultidomainFCSolver < handle
 
       for iD = 1:obj.nDom
         discr = obj.domains(iD);
-        rhs{f+1:f+obj.nfldDom(iD)} = discr.assembleRhs();
+        rhs(f+1:f+obj.nfldDom(iD)) = discr.assembleRhs();
         for iF = 1:obj.nfldDom(iD)
+          fld = discr.fields(iF);
           for iI = discr.interfaceList
-            pos = find(strcmp(obj.interfaces{iI}.physics,discr.fields(iF)));
-            rhs{f+iF} = rhs{f+iF}{:} + getRhs(...
-              obj.interfaces{iF},pos,iD);
-            iMult = obj.systSize(2)+sum(obj.nfldInt(2:iI))+pos;
+            rhs{f+iF} = rhs{f+iF} + getRhs(...
+              obj.interfaces{iI},fld,iD);
+            iMult = obj.systSize(2)+iI;
             if isempty(rhs{iMult})
               % dont compute rhsMult twice: 1field -> 1 interface
-              rhs{iMult} = getRhs(obj.interfaces{iF},pos);
+              rhs{iMult} = getRhs(obj.interfaces{iI},fld);
             end
           end
           f = f + 1;

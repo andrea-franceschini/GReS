@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<struct>
+    <Domain>
+        <Name>Cube_ElementBased_3</Name>
+        <SimParameters>simParam.dat</SimParameters>
+        <Geometry>Mesh\meshes\domain_hexa27_3.vtk</Geometry>
+        <ModelType>Poisson_FEM</ModelType>
+        <Gauss>3</Gauss>
+        <BoundaryConditions count="1">
+            <File>BCs/bc.dat</File>
+        </BoundaryConditions>
+        <OutState outFile="outTime.dat"/>
+    </Domain>
+</struct>

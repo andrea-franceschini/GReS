@@ -362,13 +362,39 @@ classdef Mesh < handle
 
     
 
-    function surfMesh = getSurfaceMesh(obj, surfTag)
-        % Function to build a 2D mesh object based on the surfaceTag of a 3D
-        % mesh
+    function [surfMesh,varargout] = getSurfaceMesh(obj, surfTag, varargin)
+        % Function to build a separate 2D mesh object based on the
+        % surfaceTag of another object
+        % there are 3 was to call this method
+        % 1) in1 = surfaceTag(s)
+        % 2) in1 = surfaceTags in2= logical index of active surfaceTags
+        % 3) in1 = logical index of active surfaces
+
+        % optional output: global node indices of surface mesh
         % initialize Mesh object
-        id = ismember(obj.surfaceTag,surfTag);
+        if nargin>2
+          assert(~isempty(varargin{1}));
+          id = find(ismember(obj.surfaceTag,surfTag));
+          id = id(varargin{1});
+        else
+          if ~islogical(surfTag)
+            id = ismember(obj.surfaceTag,surfTag);
+          else
+            assert(numel(surfTag) == obj.nSurfaces,['Logical ' ...
+              'index array must have the same size of available surfaces'])
+            id = surfTag;
+          end
+        end
+        if sum(id)==0
+          surfMesh = [];
+          return
+        end
         surfMesh = Mesh();
         surfTopol = obj.surfaces(id,:);
+        if nargout > 1
+          % global node index ordered per column
+          varargout{1} = surfTopol;
+        end
         % renumber the nodes starting from 1;
         surfTopol = surfTopol(:);
         % ordered list of unique nodes in the topology matrix
@@ -385,17 +411,17 @@ classdef Mesh < handle
         if surfOrd(1) == 0
           surfOrd = surfOrd(2:end);
         end
-        surfMesh.surfaceNumVerts = obj.surfaceNumVerts(id);
+
+        surfMesh.surfaceNumVerts = Mesh.copyField(obj.surfaceNumVerts,id);
         nNmax = max(surfMesh.surfaceNumVerts);
         surfMesh.surfaces = (reshape(surfTopol, [], nNmax));
         surfMesh.coordinates = obj.coordinates(surfOrd,:);
         surfMesh.nNodes = length(surfMesh.coordinates);
         surfMesh.nSurfaces = size(surfMesh.surfaces,1);
-        surfMesh.surfaceTag = repmat(surfTag, surfMesh.nSurfaces,1);
+        surfMesh.surfaceTag = obj.surfaceTag(id);
         surfMesh.nSurfaceTag = 1;
-        surfMesh.surfaceVTKType = obj.surfaceVTKType(id);
+        surfMesh.surfaceVTKType = Mesh.copyField(obj.surfaceVTKType,id);
         surfMesh.nDim = 3;
-        surfMesh.surfaceNumVerts = Mesh.copyField(obj.surfaceNumVerts,id);
         surfMesh.surfaceCentroid = Mesh.copyField(obj.surfaceCentroid,id);
         surfMesh.surfaceArea = Mesh.copyField(obj.surfaceArea,id);
     end

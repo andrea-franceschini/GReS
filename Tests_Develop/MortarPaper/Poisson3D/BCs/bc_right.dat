@@ -1,0 +1,7 @@
+NodeBC            % BC item 
+Dir            % BC type 
+Poisson            % Physics 
+manufactured_bc            % BC name 
+bc_right/list 
+0.000000 bc_right/time0.dat 
+End

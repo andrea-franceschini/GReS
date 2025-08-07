@@ -50,6 +50,10 @@ classdef SimulationParameters < handle
     function setTimeDependence(obj,flag)
        obj.isTimeDependent = flag;
     end
+
+    function setVerbosity(obj,val)
+      obj.verbosity = val;
+    end
   end
   
   methods (Access = private)

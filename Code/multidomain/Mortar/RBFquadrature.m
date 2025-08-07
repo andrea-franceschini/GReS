@@ -150,9 +150,9 @@ classdef RBFquadrature < handle
       elem = obj.mortar.elements(1);
       msh = obj.mortar.mesh.msh(1);
 
-      cells = obj.mortar.mesh.getActiveCells(1);
+      nElM = msh.nSurfaces;
 
-      obj.vecPts = zeros(max(cells),3);
+      obj.vecPts = zeros(nElM,3);
 
       numPtsQ = (obj.nInt)^2;
       numPtsT = sum(1:obj.nInt);
@@ -162,17 +162,16 @@ classdef RBFquadrature < handle
         numPts = numPtsQ;
       end
       
-      N = sum(msh.surfaceNumVerts(cells));
+      N = sum(msh.surfaceNumVerts);
      
       weighF = zeros(numPts,N);
-      weigh1 = zeros(numPts,obj.mortar.mesh.nEl(1));
+      weigh1 = zeros(numPts,nElM);
       weighB = weigh1;
-      pts = zeros(numPts,obj.mortar.mesh.nEl(1)*3);
-      weighSupp = zeros(numPts,obj.mortar.mesh.nEl(1)*3);
+      pts = zeros(numPts,nElM*3);
+      weighSupp = zeros(numPts,nElM*3);
 
       k = 0;
-      for i = 1:obj.mortar.mesh.nEl(1)
-        im = obj.mortar.mesh.activeCells{1}(i);
+      for im = 1:nElM
         [f, ptsInt, fSupp] = computeMortarBasisF(obj,im);
         nptInt = size(ptsInt,1);
         nN = getElem(obj.mortar,1,im).nNode;
@@ -191,16 +190,16 @@ classdef RBFquadrature < handle
           x = fiMM\[f ones(size(ptsInt,1),1) fSupp];
         end
         weighF(1:nptInt,k+1:k+nN) = x(:,1:nN);
-        weigh1(1:nptInt,i) = x(:,nN+1);
-        weighB(1:nptInt,i) = x(:,nN+2);
+        weigh1(1:nptInt,im) = x(:,nN+1);
+        weighB(1:nptInt,im) = x(:,nN+2);
         if size(x,2)>nN+2
           % higher order elements
-          weighSupp(1:nptInt,[3*i-2 3*i-1 3*i]) = x(:,end-2:end) ;
+          weighSupp(1:nptInt,[3*im-2 3*im-1 3*im]) = x(:,end-2:end) ;
         end
-        pts(1:nptInt,[3*i-2 3*i-1 3*i]) = ptsInt;
+        pts(1:nptInt,[3*im-2 3*im-1 3*im]) = ptsInt;
         obj.vecPts(im,1) = k;
         obj.vecPts(im,2) = nptInt;      % store number of interpolation points (changes between quad and tri)
-        obj.vecPts(im,3) = i;           % maps global id of master elements with list of local elements
+        obj.vecPts(im,3) = im;           % maps global id of master elements with list of local elements
         k = k+nN;
       end
       obj.wF = weighF;

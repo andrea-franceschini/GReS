@@ -206,7 +206,7 @@ classdef DoFManager < handle
         nc = obj.nComp(fldId);
         ents = obj.entMap{fldId}(entList);
         if ~all(ents)
-          error('Inactive entity for input field')
+          error('dofError:inactiveEntity','Inactive entity for input field')
         end
         dofList = dofId(ents,nc);
       end
@@ -216,7 +216,7 @@ classdef DoFManager < handle
         assert(~isempty(fldId),'Missing field id');
         entList = obj.entMap{fldId}(entList);
         if ~all(entList)
-          error('Inactive entity for input field')
+          error('dofError:inactiveEntity','Inactive entity for input field')
         end
       end
 
