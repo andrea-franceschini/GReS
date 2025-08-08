@@ -98,6 +98,9 @@ press_grain = E*press_node(actEnts);
 % modify the grain mesh removing surfaces that lies on the external
 % boundary % print and processing purposes
 
+% avarage node pressure to get surface pressure
+press_surf = press_grain(mshGrain.surfaces);
+press_surf = sum(press_surf,2)/3;
 
 tol = 1e-3;
 % get surfaces having only boundary nodes
@@ -106,7 +109,10 @@ mshGrain.surfaceTag(boundSurf) = 2;
 mshGrain.nSurfaceTag = mshGrain.nSurfaceTag + 1;
 [mshGrain,gnodes] = mshGrain.getSurfaceMesh(1);
 
-press_grain = press_grain(unique(gnodes));
+press_grain_inner = press_grain(unique(gnodes));
+
+
+
   
 
 

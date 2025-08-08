@@ -1,0 +1,7 @@
+NodeBC            % BC item 
+Neu            % BC type 
+Poromechanics            % Physics 
+LoadZ            % BC name 
+BCs/pressureZ/list 
+0.000000 BCs/pressureZ/time0.dat 
+End

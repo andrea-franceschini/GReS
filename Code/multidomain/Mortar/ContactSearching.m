@@ -50,7 +50,7 @@ classdef ContactSearching < handle
       %if size(obj.BBtree1,1)+size(obj.BBtree2,1)<1e5
         obj.contactSearch();
       %end
-      fprintf('Elapsed time for contact search: %3.2f s \n',toc)
+      %fprintf('Elapsed time for contact search: %3.2f s \n',toc)
 
     end
 

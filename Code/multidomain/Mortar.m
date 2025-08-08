@@ -189,7 +189,7 @@ classdef Mortar < handle
 
           if isempty(Nmaster)
             % refine connectivity matrix
-            %obj.mesh.elemConnectivity(im,is) = 0;
+            obj.mesh.elemConnectivity(im,is) = 0;
             continue
           end
 

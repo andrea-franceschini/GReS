@@ -6,6 +6,7 @@ classdef interfaceMesh < handle
     % prop{1} -> master     prop{2} -> slave 
     msh
     local2glob
+    activeCells         % mark active mortar cells in input surfaces
     elemConnectivity
     nN
     nEl

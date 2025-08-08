@@ -367,7 +367,7 @@ classdef Mesh < handle
         % surfaceTag of another object
         % there are 3 was to call this method
         % 1) in1 = surfaceTags
-        % 2) in1 = surfaceTags in2= logical index of active surfaceTags
+        % 2) in1 = surfaceTags in2 = logical index of active surfaceTags
         % 3) in1 = logical index of active surfaces
 
         % initialize Mesh object

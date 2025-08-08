@@ -86,6 +86,7 @@ classdef MultidomainFCSolver < handle
           du = solve(obj,J,rhs);
 
           du(isnan(du)) = 0;
+          du(abs(du)>1e-3) = 0; 
 
           % update primary variables and multipliers
           updateState(obj,du);
@@ -95,8 +96,8 @@ classdef MultidomainFCSolver < handle
           rhs = assembleRhs(obj);
           rhsNorm = norm(cell2mat(rhs),2);
 
-          %rhsNorm = 0;
-
+          rhsNorm = 0;
+          
 
           if obj.simParameters.verbosity > 1
             fprintf('%d     %e\n',obj.iter,rhsNorm);
