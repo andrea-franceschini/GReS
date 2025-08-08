@@ -418,7 +418,7 @@ classdef Faces < handle
        r   = unique(r);
        ix  = Faces.mcolon(obj.mapF2E(r)+num(r), obj.mapF2E(r+1)-1);
        newData = zeros(size(obj.faces2Elements, 1)+size(new, 1), size(obj.faces2Elements, 2));
-       i    = (1:size(newData))';
+       i    = (1:size(newData,1))';
        i(ix)=[];
        newData(i, :) = obj.faces2Elements;
        newData(ix,1:size(new,2)) = new;
