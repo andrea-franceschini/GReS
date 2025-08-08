@@ -1,6 +1,6 @@
 function writeBCfiles(fName,item,type,physic,bcName,time,vals,varargin)
-% utility to write BC input files (only constant BC for each time step are allowed)
-% Entities are identified by surface ID or by direct assignment
+% utility to write BC input files (only constant BC for each time step are
+% allowed) Entities are identified by surface ID or by direct assignment
 % Example
 % writeBCfiles('BCs/dirFlow','SurfBC','Dir','Flow','flowBCname',0,0,mesh,1)
 % writeBCfiles('BCs/dirPoroXY','SurfBC','Dir',{Poro,x,y},'poroBCname',0,0,mesh,1)

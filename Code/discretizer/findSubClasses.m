@@ -10,7 +10,7 @@ function classes = findSubClasses(superclassName, folder)
             continue;
         end
         if inheritsFrom(mc, superclassName)
-            classes{end+1} = name; %#ok<AGROW>
+            classes{end+1} = name; 
         end
     end
 end
