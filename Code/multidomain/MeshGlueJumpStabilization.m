@@ -18,28 +18,18 @@ classdef MeshGlueJumpStabilization < MeshGlue
 
     function computeMat(obj,dt)
       computeMat@MeshGlue(obj,dt);
-      if isMatrixComputed(obj)
-        return
+      if isStabMatrixReady(obj)
+        %obj.Jmult = -computeStabilizationMatrix(obj,obj.physic);
       end
-        % map local mortar matrices to global indices
-        if isStabReady(obj)
-          obj.Jmult = -computeStabilizationMatrix(obj,obj.physics);
-        end
     end
 
-
-    function out = isMatrixComputed(obj)
-      out = all(cellfun(@(x) ~isempty(x), ...
-        [obj.Jmaster(:); obj.Jslave(:); obj.Jmult(:)]));
-    end
   end
 
 
 
   methods(Access = private)
-    function out = isStabReady(obj)
-      out = all(...
-        [~cellfun(@isempty, obj.Jslave), ~cellfun(@isempty, obj.Jmaster)]);
+    function out = isStabMatrixReady(obj)
+      out = all([~isempty(obj.Jmaster) ~isempty(obj.Jslave)]);
     end
 
     function stabMat = computeStabilizationMatrix(obj,fld)
@@ -124,8 +114,8 @@ classdef MeshGlueJumpStabilization < MeshGlue
 
 
       % get local mortar matrices
-      Dloc = obj.Jslave{1}(dofId(fs,3),dofS);
-      Mloc = obj.Jmaster{1}(dofId(fs,3),dofM);
+      Dloc = obj.Jslave(dofId(fs,3),dofS);
+      Mloc = obj.Jmaster(dofId(fs,3),dofM);
       V = [Dloc, Mloc];              % minus sign!
       %V = Discretizer.expandMat(V,nc);
 

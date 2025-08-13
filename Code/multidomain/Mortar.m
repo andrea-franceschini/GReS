@@ -5,13 +5,7 @@ classdef Mortar < handle
     solvers         % instance of domains connected by the interface
     mesh            % instance of interfaceMesh class
     idDomain        % id of connected domains
-    Jmaster         % Jacobian block associated with master
-    Jslave          % Jacobian block associated with slave
-    Jmult           % Jacobian block associated with multipliers
-    rhsMaster       % master rhs
-    rhsSlave        % slave rhs
-    rhsMult         % multiplier rhs
-    quadrature      % mortar integration scheme used for the interface
+    quadrature      % mortar integration object
     dofm            % dof manager instance of connected domains
     elements        % instance of Elements for the 2D interfaces
     multiplierType = 'dual'
@@ -91,6 +85,12 @@ classdef Mortar < handle
 %     end
 
     function computeMortarMatrices(obj,~)
+
+      % This method computes the cross grid mortar matrices between
+      % connected interfaces
+
+      % Also remove inactive slave/master elements after performing first
+      % round of mortar integration
 
        % number of components per dof of interpolated physics
       if ~isempty(obj.dofm)

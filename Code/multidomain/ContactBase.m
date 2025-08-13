@@ -1,14 +1,16 @@
-classdef Fault < MeshGlue
-  %FAULT Summary of this class goes here
-  %   Detailed explanation goes here
+classdef ContactBase < handle
+  
+  % General helper for contact algorithms  
+  % Local rotation matrix computation
+  % activeSet update
 
   properties
     Property1
   end
   
   methods
-    function obj = Fault(inputArg1,inputArg2)
-      %FAULT Construct an instance of this class
+    function obj = ContactBase(inputArg1,inputArg2)
+      %CONTACTBASE Construct an instance of this class
       %   Detailed explanation goes here
       obj.Property1 = inputArg1 + inputArg2;
     end

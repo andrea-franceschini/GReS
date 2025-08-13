@@ -1,22 +1,21 @@
 classdef MeshGlue < Mortar
-  % subclass of Mortar implementing mesh tying between different domains
-  % mesh tying enforces continuity between primary variables
-  % current limitation: each interface ties a variable field separately
-  % do tie different variable fields, create different interfaces
 
-  properties (Access = private)
-    dofCount
-  end
+  % Subclass of Mortar implementing mesh tying between different domains
+  % mesh tying enforces continuity between primary variables
+  % Current limitation: each interface ties a variable field separately
+  % To tie different variable fields, create different interfaces
 
   properties (Access = public)
-    physic
+    Jmaster               % Jacobian block associated with master
+    Jslave                % Jacobian block associated with slave
+    Jmult                 % Jacobian block associated with multipliers
+    rhsMaster             % master rhs
+    rhsSlave              % slave rhs
+    rhsMult               % multiplier rhs
+    physic                % string id of mortar field
     multipliers
     iniMultipliers
     totMult
-  end
-
-  properties (Access = protected)
-    %multEnts
   end
 
   methods
@@ -47,7 +46,7 @@ classdef MeshGlue < Mortar
 
       % initialize Jacobian and rhs for the interface (now that active
       % multipliers are known)
-      initializeJacobianAndRhs(obj)
+      initializeInterface(obj)
 
       finalizeInterface(obj.mesh,obj.solvers);
       
@@ -132,7 +131,6 @@ classdef MeshGlue < Mortar
       end
       obj.Jmaster = obj.M;
       obj.Jslave = obj.D;
-
     end
 
     function computeRhs(obj)
@@ -169,7 +167,7 @@ classdef MeshGlue < Mortar
 
   methods (Access = private)
 
-    function initializeJacobianAndRhs(obj)
+    function initializeInterface(obj)
       obj.multipliers = struct('prev',[],'curr',[]);
       obj.totMult = 0;
 
@@ -197,8 +195,7 @@ classdef MeshGlue < Mortar
     function computeRhsSlave(obj)
       actMult = getMultiplierDoF(obj);
       multIncrement = obj.multipliers.curr(actMult)-obj.iniMultipliers(actMult);
-      obj.rhsSlave = ...
-        obj.Jslave'*multIncrement;
+      obj.rhsSlave = obj.Jslave'*multIncrement;
       var = getState(obj.solvers(2).getSolver(obj.physic));
       ents = obj.dofm(2).getActiveEnts(obj.physic);
       obj.rhsMult = obj.rhsMult + obj.Jslave*var(ents);
@@ -262,9 +259,9 @@ classdef MeshGlue < Mortar
         obj.multipliers.curr = obj.multipliers.prev;
     end
 
-    function setDoFcount(obj,ndof)
-      obj.dofCount = ndof(obj.idDomain);
-    end
+%     function setDoFcount(obj,ndof)
+%       obj.dofCount = ndof(obj.idDomain);
+%     end
 
 
     function out = isMatrixComputed(obj)

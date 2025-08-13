@@ -1,8 +1,8 @@
-classdef MultidomainFCSolver < handle
-  % Class for solving non linear problem involving multiple non conforming
-  % domains
+classdef ActiveSetContactSolver < MultidomainFCSolver
+  % Class for solving non linear contact problem involving multiple non conforming
+  % domains using the mortar method
 
-  properties (Access = protected)
+  properties (Access = private)
     %
     nDom
     nInterf
