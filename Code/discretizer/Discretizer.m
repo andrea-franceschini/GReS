@@ -56,7 +56,7 @@ classdef Discretizer < handle
             end
             switch obj.bcs.getType(bcId)
               case 'Dir'
-                if nargin > 3
+                if nargin > 2
                   assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
                     'invalid domain id input for single domain BC imposition']);
                   for i = 1:length(obj.interfaceList)
@@ -83,7 +83,7 @@ classdef Discretizer < handle
             end
             field = obj.bcs.getPhysics(bcId);
             [bcEnts,bcVals] = getBC(getSolver(obj,field),bcId,t);
-            if nargin > 3
+            if nargin > 2
               assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
                 'invalid domain id input for single domain BC imposition']);
               for i = 1:length(obj.interfaceList)

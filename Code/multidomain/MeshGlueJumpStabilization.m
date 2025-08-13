@@ -18,26 +18,17 @@ classdef MeshGlueJumpStabilization < MeshGlue
 
     function computeMat(obj,dt)
       computeMat@MeshGlue(obj,dt);
-      if isMatrixComputed(obj)
-        return
-      end
-        % map local mortar matrices to global indices
-        if isStabReady(obj)
-          obj.Jmult = -computeStabilizationMatrix(obj,obj.physics);
-        end
+
+      % map local mortar matrices to global indices
+      obj.Jmult = -computeStabilizationMatrix(obj,obj.physic);
     end
 
-
-    function out = isMatrixComputed(obj)
-      out = all(cellfun(@(x) ~isempty(x), ...
-        [obj.Jmaster(:); obj.Jslave(:); obj.Jmult(:)]));
-    end
-  end
+end
 
 
 
   methods(Access = private)
-    function out = isStabReady(obj)
+    function out = isStabMatrixReady(obj)
       out = all(...
         [~cellfun(@isempty, obj.Jslave), ~cellfun(@isempty, obj.Jmaster)]);
     end
@@ -83,8 +74,11 @@ classdef MeshGlueJumpStabilization < MeshGlue
         nS = unique(obj.mesh.e2n{2}(eS,:));
 
         % compute local schur complement approximation
-        S = computeSchurLocal(obj,nM,nS,fS,fld);
-        S = [mean(S(1:3:end));mean(S(2:3:end));mean(S(3:3:end))];
+        Stmp = computeSchurLocal(obj,nM,nS,fS,fld);
+        S = zeros(nc,1);
+        for i = 1:nc
+          S(i) = mean(Stmp(i:nc:end));
+        end
 
         % apply scaling due to relative grid size
         Am = mean(obj.mesh.msh(1).surfaceArea(fM));
@@ -103,7 +97,7 @@ classdef MeshGlueJumpStabilization < MeshGlue
 
       id1 = id1(1:c); id2 = id2(1:c); vals = vals(1:c);
       % assemble sparse matrix
-      nmult = nc*obj.mesh.nEl(2);
+      nmult = nc*obj.mesh.msh(2).nSurfaces;
       stabMat = sparse(id1,id1,vals,nmult,nmult)+...
         sparse(id1,id2,-vals,nmult,nmult)+...
         sparse(id2,id2,vals,nmult,nmult);
@@ -121,11 +115,12 @@ classdef MeshGlueJumpStabilization < MeshGlue
       fldS = getFieldId(obj.dofm(2),field);
       dofS = obj.dofm(2).getLocalDoF(obj.mesh.local2glob{2}(ns),fldS);
       dofM = obj.dofm(1).getLocalDoF(obj.mesh.local2glob{1}(nm),fldM);
+      nc = obj.dofm(1).getDoFperEnt(field);
 
 
       % get local mortar matrices
-      Dloc = obj.Jslave{1}(dofId(fs,3),dofS);
-      Mloc = obj.Jmaster{1}(dofId(fs,3),dofM);
+      Dloc = obj.Jslave(dofId(fs,nc),dofS);
+      Mloc = obj.Jmaster(dofId(fs,nc),dofM);
       V = [Dloc, Mloc];              % minus sign!
       %V = Discretizer.expandMat(V,nc);
 
