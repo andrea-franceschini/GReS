@@ -226,6 +226,10 @@ classdef ElementBasedQuadrature < handle
       mat = mat.*reshape(dJWeighed,1,1,[]);
       mat = sum(mat,3);
     end
+
+    function gpId = getActiveGP(obj)
+      gpId = obj.flagProj;
+    end
     
   end
 end

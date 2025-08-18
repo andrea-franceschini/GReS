@@ -137,6 +137,11 @@ classdef Elements < handle
       element = obj.elems{obj.mapVTK2elem(vtkId)};
     end
 
+    function element = getSurfElementByID(obj,id)
+      vtkId = obj.mesh.surfaceVTKType(id);
+      element = obj.elems{obj.mapVTK2elem(vtkId)};
+    end
+
     function areaNod = findNodeArea(obj,el)
       i = obj.mesh.surfaceVTKType(el);
       areaNod = findNodeArea(getElement(obj,i),el);

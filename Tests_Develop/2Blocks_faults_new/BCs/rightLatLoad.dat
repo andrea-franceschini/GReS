@@ -1,0 +1,11 @@
+SurfBC            % BC item 
+Neu            % BC type 
+Poromechanics            % Physics 
+right_latLoad            % BC name 
+BCs/rightLatLoad/list 
+0.000000 BCs/rightLatLoad/time0.dat 
+1.000000 BCs/rightLatLoad/time1.dat 
+6.000000 BCs/rightLatLoad/time2.dat 
+15.000000 BCs/rightLatLoad/time3.dat 
+20.000000 BCs/rightLatLoad/time4.dat 
+End

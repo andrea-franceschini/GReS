@@ -95,11 +95,17 @@ classdef Quadrilateral < FEM
 
 
 
-    function n = computeNormal(obj,idQuad,pos)
+    function n = computeNormal(obj,idQuad,varargin)
+      if isempty(varargin)
+        pos = Quadrilateral.centroid;
+      else
+        pos = varargin{1};
+      end
       % compute normal vector of quadrilatral in specific reference point
       assert(isscalar(idQuad),'Input id must be a scalar positive integer')
       dN = obj.computeDerBasisF(pos);
-      nodeCoord = obj.mesh.coordinates(obj.mesh.surfaces(idQuad,:),:);
+      %nodeCoord = obj.mesh.coordinates(obj.mesh.surfaces(idQuad,:),:);
+      nodeCoord = FEM.getElementCoords(obj,idQuad);
       tang = dN*nodeCoord;
       crossTang = cross(tang(1,:)',tang(2,:)');
       n = crossTang/norm(crossTang);

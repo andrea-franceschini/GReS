@@ -19,7 +19,7 @@ classdef MeshGlueJumpStabilization < MeshGlue
     function computeMat(obj,dt)
       computeMat@MeshGlue(obj,dt);
       if isStabMatrixReady(obj)
-        %obj.Jmult = -computeStabilizationMatrix(obj,obj.physic);
+        obj.Jmult = -computeStabilizationMatrix(obj,obj.physic);
       end
     end
 
@@ -93,7 +93,7 @@ classdef MeshGlueJumpStabilization < MeshGlue
 
       id1 = id1(1:c); id2 = id2(1:c); vals = vals(1:c);
       % assemble sparse matrix
-      nmult = nc*obj.mesh.nEl(2);
+      nmult = nc*obj.mesh.msh(2).nSurfaces;
       stabMat = sparse(id1,id1,vals,nmult,nmult)+...
         sparse(id1,id2,-vals,nmult,nmult)+...
         sparse(id2,id2,vals,nmult,nmult);

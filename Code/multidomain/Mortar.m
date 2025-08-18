@@ -2,16 +2,19 @@ classdef Mortar < handle
   % Base class for non conforming interfaces
   
   properties
+    id              % interface identifier
     solvers         % instance of domains connected by the interface
     mesh            % instance of interfaceMesh class
     idDomain        % id of connected domains
     quadrature      % mortar integration object
     dofm            % dof manager instance of connected domains
     elements        % instance of Elements for the 2D interfaces
-    multiplierType = 'dual'
+    multiplierType
     D               % slave mortar matrix
     M               % master mortar matrix
     outStruct       % wrapper for print utilities (mimics OutState)
+    physic          % string id of mortar field
+    totMult
   end
 
   methods
@@ -34,11 +37,11 @@ classdef Mortar < handle
       end
     end
 
-    function [r,c,v] = allocateMatrix(obj,sideID)
-      nEntries = nnz(obj.mesh.elemConnectivity)...
-        *obj.mesh.nN(sideID);
-      [r,c,v] = deal(zeros(nEntries,1));
-    end
+%     function [r,c,v] = allocateMatrix(obj,sideID)
+%       nEntries = nnz(obj.mesh.elemConnectivity)...
+%         *obj.mesh.nN(sideID);
+%       [r,c,v] = deal(zeros(nEntries,1));
+%     end
 
 
     function applyBC(obj,idDomain,bound,t)
@@ -64,12 +67,91 @@ classdef Mortar < handle
       end
     end
 
+
+    function [bcDofs,bcVals] = removeSlaveBCdofs(obj,bcPhysics,bcData,domId)
+      % this method updates the list of bc dofs and values removing dofs on
+      % the slave interface (only for nodal multipliers)
+      % this avoid possible overconstraint and solvability issues
+
+      % bcData: nDofBC x 2 matrix.
+      % first column -> dofs
+      % second columns -> vals (optional)
+
+      bcDofs = bcData(:,1);
+      if size(bcData,2) > 1
+        bcVals = bcData(:,2);
+      else
+        bcVals = [];
+      end
+
+      if strcmp(obj.multiplierType,'P0')
+        return
+      end
+
+      if nargin > 3
+        if ~(domId == obj.idDomain(2))
+          % not slave side
+          return
+        end
+      end
+
+      % get list of nodal slave dofs in the interface
+      nodSlave = obj.mesh.local2glob{2};
+      % keep only active multipliers
+      fldId = obj.dofm(2).getFieldId(bcPhysics);
+      dofSlave = getLocalDoF(obj.dofm(2),nodSlave,fldId);
+      isBCdof = ismember(bcData(:,1),dofSlave);
+      bcDofs = bcDofs(~isBCdof);
+      if ~isempty(bcVals)
+        bcVals = bcVals(~isBCdof);
+      end
+    end
+
+
     function elem = getElem(obj,sideID,id)
       % get instance of element class on one the sides of the interface
       % Assumption: same element type in the entire interface
       % get istance of element class based on cell type
       type = obj.mesh.msh(sideID).surfaceVTKType(id);
       elem = obj.elements(sideID).getElement(type);
+    end
+
+
+    function dofs = getMultiplierDoF(obj,is)
+      % return multiplier dofs associated with slave element #is inside
+      % obj.mesh.msh(2)
+
+      nc = obj.dofm(2).getDoFperEnt(obj.physic);
+      if nargin > 1
+        assert(isscalar(is),'Input id must be a scalar integer \n')
+        if strcmp(obj.multiplierType,'P0')
+          dofs = dofId(is,nc);
+        else
+          nodes = obj.mesh.msh(2).surfaces(is,:);
+          dofs = dofId(nodes,nc);
+        end
+      else
+        if strcmp(obj.multiplierType,'P0')
+          dofs = dofId((1:obj.mesh.msh(2).nSurfaces)',nc);
+        else
+          dofs = dofId((1:obj.mesh.msh(2).nNodes)',nc);
+        end
+      end
+    end
+
+
+    function nDof = getNumbMultipliers(obj)
+      % nDoFAct -> number of currently active multipliers in the interface
+      % nDoFTot -> total number of dof in the whole interface
+
+      nc = obj.dofm(2).getDoFperEnt(obj.physic);
+      switch obj.multiplierType
+        case 'P0'
+          nDof = nc*obj.mesh.msh(2).nSurfaces;
+        case {'dual','standard'} % nodal multipliers
+          % get number of nodes in active cells
+          nDof = nc*obj.mesh.msh(2).nNodes;
+      end
     end
 
 %     function mat = getMatrix(obj,sideID,field)
@@ -229,12 +311,30 @@ classdef Mortar < handle
       end
     end
 
+    function Nmult = computeMultiplierBasisF(obj,el,NslaveIn)
+      elem = obj.getElem(2,el);
+      switch obj.multiplierType
+        case 'P0'
+          Nmult = ones(size(NslaveIn,1),1);
+        case 'standard'
+          Nmult = NslaveIn;
+        case 'dual'
+          Ns = getBasisFinGPoints(elem);
+          gpW = getDerBasisFAndDet(elem,el);
+          Ml = Ns'*(Ns.*gpW');
+          Dl = diag(Ns'*gpW');
+          A = Ml\Dl;
+          Nmult = NslaveIn*A;
+      end
+    end
+
     function [dofr,dofc,mat] = computeLocMaster(obj,imult,im,Nmult,Nmaster)
       mat = obj.quadrature.integrate(@(a,b) pagemtimes(a,'ctranspose',b,'none'),...
         Nmult,Nmaster);
       nodeMaster = obj.mesh.local2glob{1}(obj.mesh.msh(1).surfaces(im,:));
-      dofc = nodeMaster;
-      dofr = imult;
+      fld = obj.dofm(1).getFieldId(obj.physic);
+      dofc = obj.dofm(1).getLocalDoF(nodeMaster,fld);
+      dofr = getMultiplierDoF(obj,imult);
     end
 
     function [dofr,dofc,mat] = computeLocSlave(obj,imult,is,mat)
@@ -243,8 +343,9 @@ classdef Mortar < handle
         mat = diag(sum(mat,2));
       end
       nodeSlave = obj.mesh.local2glob{2}(obj.mesh.msh(2).surfaces(is,:));
-      dofc = nodeSlave;
-      dofr = imult;
+      fld = obj.dofm(2).getFieldId(obj.physic);
+      dofc = obj.dofm(2).getLocalDoF(nodeSlave,fld);
+      dofr = getMultiplierDoF(obj,imult);
     end
 
     function finalizeOutput(obj)
@@ -261,11 +362,9 @@ classdef Mortar < handle
       pointData2D = [];
       if nargin == 2
         t = tOld;
-        for i = 1:obj.nFld
-          [cellData,pointData] = buildPrintStruct(obj,i);
-          cellData2D = OutState.mergeOutFields(cellData2D,cellData);
-          pointData2D = OutState.mergeOutFields(pointData2D,pointData);
-        end
+        [cellData,pointData] = buildPrintStruct(obj);
+        cellData2D = OutState.mergeOutFields(cellData2D,cellData);
+        pointData2D = OutState.mergeOutFields(pointData2D,pointData);
         obj.VTK.writeVTKFile(t, [], [], pointData2D, cellData2D);
       elseif nargin == 3
         tList = obj.outStruct.tList;
@@ -408,9 +507,9 @@ classdef Mortar < handle
             else
               error('Invalid input argument for interface %i',i)
             end
-          case 'Fault'
+          case 'ContactMortar'
             % not yet implemented!
-            interfaceStruct{i} = Fault();
+            interfaceStruct{i} = ContactMortar(i,interfStr(i),domains([idMaster,idSlave]));
           case 'MeshTyingCondensation'
             interfaceStruct{i} = MeshGlueDual(i,interfStr(i),domains([idMaster,idSlave]));
           otherwise

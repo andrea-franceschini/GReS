@@ -141,6 +141,10 @@ classdef RBFquadrature < handle
       mat = mat.*reshape(dJWeighed,1,1,[]);
       mat = sum(mat,3);
     end
+
+    function gpId = getActiveGP(obj)
+      gpId = obj.suppFlag;
+    end
   end
 
   methods (Access = private)

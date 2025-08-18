@@ -11,10 +11,8 @@ classdef MultidomainFCSolver < handle
     tStep = 0
     iter
     dt
-    statek
-    stateTmp
     systSize % [num_blocks, num_field_domain, num_field_interface]
-    nfldInt
+    %nfldInt
     nfldDom
   end
 
@@ -30,6 +28,7 @@ classdef MultidomainFCSolver < handle
 
 
   methods (Access = public)
+    
     function obj = MultidomainFCSolver(domains,interfaces)
       obj.setNonLinearSolver(domains,interfaces);
     end
@@ -135,7 +134,7 @@ classdef MultidomainFCSolver < handle
 
 
 
-  methods (Access = private)
+  methods (Access = protected)
     function setNonLinearSolver(obj,dom,interf)
       % assumption: same set of simulation parameters for each domain
       obj.simParameters = dom(1).simparams;
@@ -328,16 +327,13 @@ classdef MultidomainFCSolver < handle
           for iI = discr.interfaceList
             jj = obj.systSize(2)+iI;
             [J{iFld+k,jj},J{jj,iFld+k}] = getJacobian(...
-              obj.interfaces{iI},iDom,fld);
-            [J{jj,jj}] = getJacobian(...
-              obj.interfaces{iI},iDom,fld);
+              obj.interfaces{iI},fld,iDom);
           end
         end
         k = k+obj.nfldDom(iDom);
       end 
 
-      % provisional assembly of static condensation coupling block
-      % this work only with single physics mortar coupling
+      % assembly multiplier blocks and static condensation terms
       for iI = 1:obj.nInterf
         %
         interf = obj.interfaces{iI};
@@ -353,6 +349,10 @@ classdef MultidomainFCSolver < handle
           else
             J{id(2),id(1)} = J{id(2),id(1)} + interf.Jcoupling;
           end
+        else
+          jj = obj.systSize(2)+iI;
+          [J{jj,jj}] = getJacobian(...
+            obj.interfaces{iI},fld);
         end
       end
 

@@ -12,16 +12,16 @@ classdef MeshGlue < Mortar
     rhsMaster             % master rhs
     rhsSlave              % slave rhs
     rhsMult               % multiplier rhs
-    physic                % string id of mortar field
     multipliers
     iniMultipliers
-    totMult
   end
 
   methods
 
     function obj = MeshGlue(id,inputStruct,domains)
       obj@Mortar(inputStruct,domains);
+
+      obj.id = id;
       assert(isfield(inputStruct,"Physics"), ...
         'Missing Physics field for interface %i',id);
       obj.physic = split(inputStruct.Physics);
@@ -60,7 +60,7 @@ classdef MeshGlue < Mortar
 
   methods (Access=public)
     %
-    function varargout = getJacobian(obj,domId,field)
+    function varargout = getJacobian(obj,field,domId)
       % get jacobian blocks associated to specific field and specific
       % domain
       % if nargout = 2 -> get master/slave pair of jacobian blocks
@@ -161,7 +161,7 @@ classdef MeshGlue < Mortar
       actMult = getMultiplierDoF(obj);
       n = numel(actMult);
       obj.multipliers.curr(actMult) = obj.multipliers.curr(actMult) + du(1:n);
-      du = du(n+1:end);
+      %du = du(n+1:end);
     end
   end
 
@@ -208,34 +208,14 @@ classdef MeshGlue < Mortar
 
   methods (Access = public)
 
-    function [dofr,dofc,mat] = computeLocMaster(obj,imult,im,Nmult,Nmaster)
-      mat = obj.quadrature.integrate(@(a,b) pagemtimes(a,'ctranspose',b,'none'),...
-        Nmult,Nmaster);
-      nodeMaster = obj.mesh.local2glob{1}(obj.mesh.msh(1).surfaces(im,:));
-      fld = obj.dofm(1).getFieldId(obj.physic);
-      dofc = obj.dofm(1).getLocalDoF(nodeMaster,fld);
-      dofr = getMultiplierDoF(obj,imult);
-    end
-
-    function [dofr,dofc,mat] = computeLocSlave(obj,imult,is,mat)
-      if strcmp(obj.multiplierType,'dual')
-        % lump local D matrix
-        mat = diag(sum(mat,2));
-      end
-      nodeSlave = obj.mesh.local2glob{2}(obj.mesh.msh(2).surfaces(is,:));
-      fld = obj.dofm(2).getFieldId(obj.physic);
-      dofc = obj.dofm(2).getLocalDoF(nodeSlave,fld);
-      dofr = getMultiplierDoF(obj,imult);
-    end
-
 
     function [cellStr,pointStr] = buildPrintStruct(obj,fac)
 
       nCellData = obj.dofm(1).getDoFperEnt(obj.physic);
       cellStr = repmat(struct('name', 1, 'data', 1), nCellData, 1);
-      if nargin ==2
+      if nargin == 1
         outVar = obj.multipliers.prev;
-      elseif nargin == 3
+      elseif nargin == 2
         outVar = fac*obj.multipliers.curr + ...
           (1-fac)*obj.multipliers.prev;
       else
@@ -268,60 +248,6 @@ classdef MeshGlue < Mortar
       out = all([~isempty(obj.D) ~isempty(obj.M)]);
     end
 
-    function Nmult = computeMultiplierBasisF(obj,el,NslaveIn)
-      elem = obj.getElem(2,el);
-      switch obj.multiplierType
-        case 'P0'
-          Nmult = ones(size(NslaveIn,1),1);
-        case 'standard'
-          Nmult = NslaveIn;
-        case 'dual'
-          Ns = getBasisFinGPoints(elem);
-          gpW = getDerBasisFAndDet(elem,el);
-          M = Ns'*(Ns.*gpW');
-          D = diag(Ns'*gpW');
-          A = M\D;
-          Nmult = NslaveIn*A;
-      end
-    end
-
-    function nDof = getNumbMultipliers(obj)
-      % nDoFAct -> number of currently active multipliers in the interface
-      % nDoFTot -> total number of dof in the whole interface
-
-      nc = obj.dofm(2).getDoFperEnt(obj.physic);
-      switch obj.multiplierType
-        case 'P0'
-          nDof = nc*obj.mesh.msh(2).nSurfaces;
-        case {'dual','standard'} % nodal multipliers
-          % get number of nodes in active cells
-          nDof = nc*obj.mesh.msh(2).nNodes;
-      end
-    end
-
-    function dofs = getMultiplierDoF(obj,is)
-      % return multiplier dofs associated with slave element #is inside
-      % obj.mesh.msh(2)
-
-      nc = obj.dofm(2).getDoFperEnt(obj.physic);
-      if nargin > 1
-        assert(isscalar(is),'Input id must be a scalar integer \n')
-        if strcmp(obj.multiplierType,'P0')
-          dofs = dofId(is,nc);
-        else
-          nodes = obj.mesh.msh(2).surfaces(is,:);
-          dofs = dofId(nodes,nc);
-        end
-      else
-        if strcmp(obj.multiplierType,'P0')
-          dofs = dofId((1:obj.mesh.msh(2).nSurfaces)',nc);
-        else
-          dofs = dofId((1:obj.mesh.msh(2).nNodes)',nc);
-        end
-      end
-    end
-
-
     function E = computeMortarOperator(obj)
       % provide mortar interpolation operator for nodal multipliers
 
@@ -336,44 +262,6 @@ classdef MeshGlue < Mortar
       % expand E
     end
 
-    function [bcDofs,bcVals] = removeSlaveBCdofs(obj,bcPhysics,bcData,domId)
-      % this method updates the list of bc dofs and values removing dofs on
-      % the slave interface (only for nodal multipliers)
-      % this avoid overconstraint and solvability issues
-
-      % bcData: nDofBC x 2 matrix.
-      % first column -> dofs
-      % second columns -> vals (optional)
-
-      bcDofs = bcData(:,1);
-      if size(bcData,2) > 1
-        bcVals = bcData(:,2);
-      else
-        bcVals = [];
-      end
-
-      if strcmp(obj.multiplierType,'P0')
-        return
-      end
-
-      if nargin > 3
-        if ~(domId == obj.idDomain(2))
-          % not slave side
-          return
-        end
-      end
-
-      % get list of nodal slave dofs in the interface
-      nodSlave = obj.mesh.local2glob{2};
-      % keep only active multipliers
-      fldId = obj.dofm(2).getFieldId(bcPhysics);
-      dofSlave = getLocalDoF(obj.dofm(2),nodSlave,fldId);
-      isBCdof = ismember(bcData(:,1),dofSlave);
-      bcDofs = bcDofs(~isBCdof);
-      if ~isempty(bcVals)
-        bcVals = bcVals(~isBCdof);
-      end
-    end
   end
 end
 

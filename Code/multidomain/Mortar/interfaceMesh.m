@@ -69,8 +69,9 @@ classdef interfaceMesh < handle
     end
 
     function removeMortarSurface(obj,side,id)
-      % update the interface mesh object considering only the actual slave
+      % update the interface mesh object keeping only the actual slave
       % elements in contact
+      % this is done after a first round of mortar computations, 
 
       if ~any(id)
         return
@@ -80,6 +81,10 @@ classdef interfaceMesh < handle
       nList = unique(obj.msh(side).surfaces(id,:));
       nList = nList(~ismember(nList,obj.msh(side).surfaces(~id,:)));
       obj.local2glob{side}(nList) = [];
+
+      % remove average nodal normal of inactive nodes
+      obj.avgNodNormal{side}(nList) = [];
+
       
       % id: logical index of unconnected surface to be removed
       assert(numel(id)==obj.msh(side).nSurfaces,['Side of Logical indices of ' ...
@@ -91,6 +96,8 @@ classdef interfaceMesh < handle
       elseif side==2 %remove slave
         obj.elemConnectivity(:,id) = [];
       end
+
+
 
     end
 
