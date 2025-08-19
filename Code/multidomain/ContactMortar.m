@@ -76,6 +76,8 @@ classdef ContactMortar < Mortar
 
     function computeContactMortarMatrices(obj)
 
+      k = 0;
+
       % Compute contact matrices and rhs
 
       % the syntax of the comments matrices is inspired by the appendix of
@@ -124,7 +126,7 @@ classdef ContactMortar < Mortar
         trac = obj.traction.curr(tDof);
         % equilibrium equation and stabilization work with delta traction
         dTrac = trac - obj.iniTraction(tDof);
-        %Rloc = getRotationMatrix(obj.contact,is); 
+        R_el = getRotationMatrix(obj.contact,is);
 
         for im = masterElems'
 
@@ -150,17 +152,17 @@ classdef ContactMortar < Mortar
           normal = pagemtimes(Ns,normal_nodes);
 
           % get rotation matrix at each gauss point
-          R = getRotationMatrix(obj.contact,normal);
+          R_nod = getRotationMatrix(obj.contact,normal);
 
           % apply rotation matrix to multiplier bf matrices
-          Nmult = pagemtimes(Nmult,-R);
+          Nmult = pagemtimes(Nmult,R_nod);
   
           % Reduce the dimension of multiplier basis functions exploiting
           % the local definition of degrees of freedome 
 
           % The scalar normal component in global coordinates
           % coincide with the first component in local coordinates
-          Nmult_n = Nmult(1,1,:,:);
+          Nmult_n = -Nmult(1,1,:,:);      % minus sign!
 
           % the 3D tangential vector in global coordinates only depends the 2nd
           % and 3rd tangential local coordinates
@@ -192,31 +194,40 @@ classdef ContactMortar < Mortar
           % assemble jacobian and rhs of traction equations
 
           % A_us 
-          Aus_m =  obj.quadrature.integrate(f1,Nm,Nmult);
-          Aus_s =  obj.quadrature.integrate(f1,Ns,Nmult);
-          asbMu.localAssembly(-Aus_m,umDof,tDof);
-          asbDu.localAssembly(Aus_s,usDof,tDof);
+          Aun_m =  obj.quadrature.integrate(f1,Nm,Nmult_n);
+          Aun_m = Aun_m(:,1);
+          Aun_s =  obj.quadrature.integrate(f1,Ns,Nmult_n);
+          Aun_s = Aun_s(:,1);
+          asbMu.localAssembly(-Aun_m,umDof,tDof(1));
+          asbDu.localAssembly(Aun_s,usDof,tDof(1));
+
+          Aut_m =  obj.quadrature.integrate(f1,Nm,Nmult_t);
+          Aut_s =  obj.quadrature.integrate(f1,Ns,Nmult_t);
+          asbMu.localAssembly(-Aut_m,umDof,tDof(2:3));
+          asbDu.localAssembly(Aut_s,usDof,tDof(2:3));
 
           % rhs (jump(eta),t)
-          obj.rhsUm(umDof) = obj.rhsUm(umDof) - Aus_m*dTrac;
-          obj.rhsUs(usDof) = obj.rhsUs(usDof) + Aus_s*dTrac;
+          obj.rhsUm(umDof) = obj.rhsUm(umDof) - Aun_m*dTrac(1);
+          obj.rhsUs(usDof) = obj.rhsUs(usDof) + Aun_s*dTrac(1);
+          obj.rhsUm(umDof) = obj.rhsUm(umDof) - Aut_m*dTrac(2:3);
+          obj.rhsUs(usDof) = obj.rhsUs(usDof) + Aut_s*dTrac(2:3);
 
           % assemble jacobian and rhs of traction balance equations
 
           % STICK MODE
           if isStick(obj.contact,is)
 
-            % A_su
-            % recall: g_N = -n*[jump(u)]
-            asbMt.localAssembly(-Aus_m',tDof,umDof);
-            asbDt.localAssembly(Aus_s',tDof,usDof);
+            asbMt.localAssembly(-Aun_m',tDof(1),umDof);
+            asbDt.localAssembly(Aun_s',tDof(1),usDof);
+            asbMt.localAssembly(-Aut_m',tDof(2:3),umDof);
+            asbDt.localAssembly(Aut_s',tDof(2:3),usDof);
 
             % (mu_n,g_n)
-            obj.rhsT(tDof(1)) = obj.rhsT(tDof(1)) + ...
-              obj.quadrature.integrate(f1,Nmult_n,g_n);
+            obj.rhsT(tDof(1)) = obj.rhsT(tDof(1)) ...
+              + obj.quadrature.integrate(f1,Nmult_n,g_n);
             % (mu_t,delta_g_t)
-            obj.rhsT(tDof(2:3)) = obj.rhsT(tDof(2:3)) + ...
-              obj.quadrature.integrate(f1,Nmult_t,dgt);
+            obj.rhsT(tDof(2:3)) = obj.rhsT(tDof(2:3))  ...
+              + obj.quadrature.integrate(f1,Nmult_t,dgt);
           end
 
           % SLIP MODE
@@ -229,35 +240,46 @@ classdef ContactMortar < Mortar
             asbDt.localAssembly(Anu_s,tDof(1),usDof);
 
             % A_tu (non linear term)
-            if isSlip(obj.contact,is) && norm(dgt) > obj.contact.tol.slidingTol
-              dtdgt = computeDerTracGap(obj,trac,dgt);
+            if norm(dgt,'fro') > obj.contact.tol.sliding
+              % compute only on slip terms with sliding large enough
+              dtdgt = computeDerTracGap(obj,trac(1),dgt);
               Atu_m = obj.quadrature.integrate(f2, Nmult_t,dtdgt,Nm_t);
               Atu_s = obj.quadrature.integrate(f2, Nmult_t,dtdgt,Ns_t);
               asbMt.localAssembly(Atu_m,tDof(2:3),umDof);
               asbDt.localAssembly(-Atu_s,tDof(2:3),usDof);
+
+              % A_tn (non linear term)
+              dtdtn = computeDerTracTn(obj,is,dgt);
+              Atn = obj.quadrature.integrate(f2,Nmult_t,dtdtn,Nmult_n);
+              asbQ.localAssembly(-Atn,tDof(2:3),tDof(1));
             end
 
-            % A_tn (non linear term)
-            dtdtn = computeDerTracTn(obj,is,dgt);
-            Atn = obj.quadrature.integrate(f2, Nmult(2:3,:,:),dtdtn,Nmult(1,:,:));
-            asbQ.localAssembly(-Atn,tDof(2:3),tDof(1));
-
             % A_tt
-            Att = obj.quadrature.integrate(f1, Nmult(2:3,:,:),Nmult(2:3,:,:));
+            Att = obj.quadrature.integrate(f1,Nmult_t,Nmult_t);
             asbQ.localAssembly(Att,tDof(2:3),tDof(2:3));
 
+         
             % rhs (mu_n,g_n)
             obj.rhsT(tDof(1)) = obj.rhsT(tDof(1)) + ...
-              obj.quadrature.integrate(f1,Nmult(1,1,:,:),g_n);
+              obj.quadrature.integrate(f1,Nmult_n,g_n);
 
-            % rhs (mu_t,t_T)
-            obj.rhsT(tDof(2:3)) = obj.rhsT(tDof(2:3)) + ...
-              obj.quadrature.integrate(f1,Nmult(2:3,2:3,:,:),dTrac(2:3));
+
+            % rhs (mu_t,tT) tT and tT_lim in local coordinates (to be consistent with dof definition) 
+            obj.rhsT(tDof(2:3)) = obj.rhsT(tDof(2:3)) + Att*trac(2:3);
 
             % rhs -(mu_t,t*_T) (non linear term)
-            tT_lim = computeLimitTraction(obj,trac(1),is,d_g_t,trac(2:3));
+            tT_lim = computeLimitTraction(obj,is,dgt,trac);
+            % reconvert in local coordinates
+%             tT_lim = pagemtimes(R_el,'ctranspose',tT_lim,'none');
             obj.rhsT(tDof(2:3)) = obj.rhsT(tDof(2:3)) - ...
-              obj.quadrature.integrate(f1,Nmult(2:3,:,:),tT_lim);
+              obj.quadrature.integrate(f1,Nmult_t,tT_lim);
+
+            if obj.solvers(2).simparams.verbosity > 2 && k <2
+              k = k+1;
+              fprintf('element %i- rhsT: %5.3e %5.3e \n',is,Att*trac(2:3))
+              fprintf('element %i- rhsTlim: %5.3e %5.3e \n',is,obj.quadrature.integrate(f1,Nmult_t,tT_lim))
+            end
+
           end
 
           % OPEN MODE
@@ -316,13 +338,16 @@ classdef ContactMortar < Mortar
     function computeMat(obj,~)
       resetRhs(obj);
       computeContactMortarMatrices(obj);
-      obj.stabMat = computeStabilizationMatrix(obj);    % traction-jump stabilization
+      computeStabilizationMatrix(obj);    % traction-jump stabilization
     end
 
 
     function computeRhs(obj)
       % the contact rhs is assembled directly in
       % computeMortarContactMatrices()
+      [~,rhsStab] = getStabilizationMatrixAndRhs(obj); 
+      fprintf('Rhs norm for stabilization: %4.3e \n', norm(rhsStab));
+      obj.rhsT = obj.rhsT + rhsStab;
       if obj.solvers(2).simparams.verbosity > 2
         % print rhs terms for each fracture state
         N = 1:numel(obj.contact.activeSet);
@@ -352,7 +377,8 @@ classdef ContactMortar < Mortar
 
       switch nargout
         case 1
-          varargout{1} = obj.Jtt - obj.stabMat;
+          [H,~] = getStabilizationMatrixAndRhs(obj); 
+          varargout{1} = obj.Jtt - H;
           % 0.5 is needed because the multiplier matrix is retrieved twice
         case 2
           % assign master/slave mortar matrix
@@ -446,7 +472,7 @@ classdef ContactMortar < Mortar
         d = da(oldActiveSet==1);
         assert(~any(d==2));
         fprintf('%i elements from stick to new slip \n',sum(d==1));
-        fprintf('%i elements from stick to open \n',sum(d==1));
+        fprintf('%i elements from stick to open \n',sum(d==3));
         d= da(oldActiveSet==2);
         fprintf('%i elements from new slip to stick \n',sum(d==-1));
         fprintf('%i elements from new slip to slip \n',sum(d==1));
@@ -468,7 +494,6 @@ classdef ContactMortar < Mortar
 
       % update gap
       computeGap(obj);
-
     end
 
     function goOnState(obj)
@@ -576,13 +601,26 @@ classdef ContactMortar < Mortar
       um = obj.solvers(1).state.data.dispCurr;
       us = obj.solvers(2).state.data.dispCurr;
 
+      umOld = obj.solvers(1).state.data.dispConv;
+      usOld = obj.solvers(2).state.data.dispConv;
+
       % stabilization contribution to the gap
-      stabGap = obj.stabMat*(obj.traction.curr - obj.iniTraction);
+      [H,~] = getStabilizationMatrixAndRhs(obj);
+      stabGap = H*(obj.traction.curr - obj.iniTraction);
 
       % recover variationally consistent gap
-      obj.dispJump.curr = (obj.Jst*us + obj.Jmt*um - stabGap)./sum(obj.D,2);
-%       gapOld = (obj.D*us_old - obj.M*um_old - stabGap)./sum(obj.D,2);
+      currGap = obj.D*us + obj.M*um;
+      prevGap = obj.D*usOld + obj.M*umOld;
+      obj.dispJump.curr = (currGap - stabGap)./sum(obj.D,2);
 
+%       if obj.solvers(2).simparams.verbosity > 2
+%         m = max(abs(stabGap./(obj.Jst*us)));
+%         fprintf('Maximum gap deviation due to stabilization: %4.1f %% \n',100*m)
+%       end
+
+      slipIncrement = (currGap - prevGap - stabGap)./sum(obj.D,2);
+
+%       gapOld = (obj.D*us_old - obj.M*um_old - stabGap)./sum(obj.D,2);
 
       nS = obj.mesh.msh(2).nSurfaces;
       for i = 1:nS
@@ -590,15 +628,26 @@ classdef ContactMortar < Mortar
         n = getNormal(obj.contact,i);
         id = getMultiplierDoF(obj,i);
         locJump = obj.dispJump.curr(id);
-        locOldJump = obj.dispJump.prev(id);
         obj.normalGap.curr(i) = n'*locJump;
 
         % tangential projector
-        T = eye(3) - n'*n; 
-
-        d_gt = T*(locJump-locOldJump);
+        T = eye(3) - n*n'; 
+        d_gt = T*(slipIncrement(id));
         obj.slip.curr(i) = norm(d_gt);
       end
+    end
+
+    function [H,rhsH] = getStabilizationMatrixAndRhs(obj)
+      H = obj.stabMat;
+      elList = (1:obj.mesh.msh(2).nSurfaces);
+      % remove row/columns not requiring stabilization
+      elOpen = find(isOpen(obj.contact,elList));
+      dofOpen = dofId(elOpen,3);
+      elSlip = [find(isSlip(obj.contact,elList));find(isNewSlip(obj.contact,elList))];
+      dofSlip = [3*elSlip-1; 3*elSlip];
+      H([dofOpen,dofSlip],:) = 0;
+      H(:,[dofOpen,dofSlip]) = 0;
+      rhsH = -H*(obj.traction.curr-obj.iniTraction);
     end
 
 
@@ -641,14 +690,14 @@ classdef ContactMortar < Mortar
       % gt = obj.g_T(get_dof(nodeId));
 
       sz = size(dgt);
-      dtdgt = zeros(sz);
+      dtdgt = zeros(3,3,sz(3),sz(4));
       if numel(sz)<4
         sz = [sz,1];
       end
 
       nG = sz(3);
 
-      tauLim = obj.coes - tan(deg2rad(obj.phi))*sigma_n;
+      tauLim = obj.cohesion - tan(deg2rad(obj.phi))*sigma_n;
 
       for i = 1:sz(4) % subtriangle loop
         for j = 1:nG  % gp loop
@@ -669,49 +718,58 @@ classdef ContactMortar < Mortar
         sz = [sz,1];
       end
 
-      if isSlip(obj.contact,is)
+      %if obj.slip.curr(is) > obj.contact.tol.sliding
         % use available gap to properly compute traction
-
         for i = 1:sz(4)
           for j = 1:sz(3) % gp loop
             g = dgt(:,:,j,i);
             dtdtn(:,:,i) = -tanPhi*(g/norm(g));
           end
         end
-
-      elseif isNewSlip(obj.contact,is)
-        t = obj.traction.curr(2:3);
-        dtdtn = repmat(-tanPhi*(t/norm(t)),1,1,sz(3),sz(4));
-      end
+     % else
+%         Rloc = obj.contact.getRotationMatrix(is);
+%         t = Rloc*obj.traction.curr(getMultiplierDoF(obj,is));
+%         % convert to global reference system
+%         dtdtn = repmat(-tanPhi*(t/norm(t)),1,1,sz(3),sz(4));
+     % end
     end
 
 
-    function tracLim = computeLimitTraction(obj,is,dgt,t_T)
+    function tracLim = computeLimitTraction(obj,is,dgt,t)
 
       sz = size(dgt);
       tracLim = zeros(sz);
-      t_N = t_T(1);
-      tauLim = obj.coes - tan(deg2rad(obj.phi))*t_N;
+      t_N = t(1);
+      tauLim = obj.cohesion - tan(deg2rad(obj.phi))*t_N;
 
       if numel(sz)<4
         sz = [sz,1];
       end
 
-      if isSlip(obj.contact,is)
+      if norm(dgt,'fro') > obj.contact.tol.sliding
         for i = 1:sz(4) % sub triangle loop (for segment based)
           for j = 1:sz(3) % gp loop
             g = dgt(:,:,j,i);
             tracLim(:,:,j,i) = tauLim*(g/norm(g));
           end
         end
-      elseif isNewSlip(obj.contact,is)
-        t_T = t(2:3);
-        tracLim =  repmat(tauLim*(t_T/norm(t_T)),1,1,sz(3),sz(4));
+      else
+        % compute tangential traction in global coordinates
+        R = obj.contact.getRotationMatrix(is);
+        Rt = R(:,2:3);
+        t = Rt*t(2:3);
+        tracLim =  repmat(tauLim*(t/norm(t)),1,1,sz(3),sz(4));
       end
     end
 
 
-    function stabMat = computeStabilizationMatrix(obj)
+    function computeStabilizationMatrix(obj)
+
+      if ~isempty(obj.stabMat)
+        % compute stabilization matrix only once for all edges
+        % retrieve row-col needing stabilization at each time step
+        return
+      end
 
       % get number of components of input field
       nc = obj.dofm(1).getDoFperEnt(obj.physic);
@@ -763,22 +821,10 @@ classdef ContactMortar < Mortar
         % assemble stabilization matrix component
         for iesLoc = ieS'
           f = obj.mesh.e2f{2}(iesLoc,:);
-
-          % select indices requiring stabilization
-          if isStick(obj.contact,f(1)) && isStick(obj.contact,f(2))
-            id1(c+1:c+nc) = dofId(f(1),nc);
-            id2(c+1:c+nc) = dofId(f(2),nc);
-            vals(c+1:c+nc) = S(:);
-            c = c+nc;
-          elseif isSlip(obj.contact,f(1)) || isSlip(obj.contact,f(2))
-            id1(c+1) = 3*f(1)-2;
-            id2(c+1) = 3*f(2)-2;
-            vals(c+1) = S(1); 
-            c = c+1;
-          else
-            continue
-          end
-
+          id1(c+1:c+nc) = dofId(f(1),nc);
+          id2(c+1:c+nc) = dofId(f(2),nc);
+          vals(c+1:c+nc) = S(:);
+          c = c+nc;
         end
       end
 
@@ -788,19 +834,12 @@ classdef ContactMortar < Mortar
       % keep only index of stick elements
 
       nmult = nc*obj.mesh.msh(2).nSurfaces;
-      stabMat = sparse(id1,id1,vals,nmult,nmult)+...
+      stabM = sparse(id1,id1,vals,nmult,nmult)+...
         sparse(id1,id2,-vals,nmult,nmult)+...
         sparse(id2,id2,vals,nmult,nmult);
-      stabMat = stabMat + stabMat' - diag(diag(stabMat));
+      obj.stabMat = stabM + stabM' - diag(diag(stabM));
 
-      assert(norm(sum(stabMat,2))<1e2*eps, 'Stabilization matrix is not locally conservative')
-
-      rhsStab = -stabMat*(obj.traction.curr-obj.iniTraction);
-      obj.rhsT = obj.rhsT + rhsStab;
-
-      if obj.solvers(2).simparams.verbosity > 2
-        fprintf('Rhs norm for stabilization: %4.3e \n', norm(rhsStab));
-      end
+      assert(norm(sum(obj.stabMat,2))<100*eps, 'Stabilization matrix is not locally conservative')
     end
 
     function S = computeSchurLocal(obj,nm,ns,fs,field)

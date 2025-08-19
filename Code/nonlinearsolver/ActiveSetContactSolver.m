@@ -115,15 +115,13 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
             end
 
             printState(obj);
-          end
-          %
-          %updateResults(obj);
-          % Manage next time step
+          end % end newton loop
+          
           delta_t = manageNextTimeStep(obj,delta_t,flConv,hasActiveSetChanged);
-        end % end inner NR loop
-      end % end out AS loop
+        end % outer active set loop
+      end % time marching
       %
-    end % end time step loop
+    end 
 
   end
 

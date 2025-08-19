@@ -1,4 +1,4 @@
-2                    % Simulation end time
+4                    % Simulation end time
 1                   % Initial time step size
 1                     % Minimum time step size
 1                     % Maximum time step size

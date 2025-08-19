@@ -70,12 +70,14 @@ classdef SegmentBasedQuadrature < handle
       % check input
       assert(nargin(func)==numel(varargin),['Number of specified input (%i)' ...
         'not matching the integrand input (%i)'],numel(varargin),nargin(func));
-      size4 = cellfun(@(x) size(x, 4), varargin);
+      size4 = cellfun(@(x) size(x,4), varargin);
       if ~all(size4 == obj.nTri)
-        error('All inputs must have the same size along dimension 3.');
+        
+        error('All inputs must have the same size along dimension 4.');
       end
 
       % segment based loop over triangular pallets
+
 
       for i = 1:obj.nTri
         args = cellfun(@(x) x(:, :, :, i), varargin, 'UniformOutput', false);
