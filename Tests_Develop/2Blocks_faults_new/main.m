@@ -41,7 +41,7 @@ setBCfiles(leftMesh,rightMesh);
 
 domainFile = 'Domains/domains.xml';
 interfFile = 'Domains/interface.xml';
-domains = buildModel(domainFile);
+domains = buildModel(domainFile); 
 [interfaces,domains] = Mortar.buildInterfaces(interfFile,domains);
 
 % setting initial normal traction
@@ -51,7 +51,7 @@ interfaces{1}.traction.curr(1:3:end) = -1;
 interfaces{1}.traction.prev(1:3:end) = -1; 
 
 % set verbosity 
-domains(2).simparams.setVerbosity(3);
+domains(2).simparams.setVerbosity(2);
 
 solver = ActiveSetContactSolver(domains,interfaces);
 solver.NonLinearLoop();

@@ -149,7 +149,8 @@ classdef ContactHelper < handle
       obj.tol.sliding = 1e-4;
       obj.tol.normalGap = 1e-5;
       obj.tol.normalTrac = 1e-3;
-      obj.tol.slidingCheck = 5e-2;
+      obj.tol.slidingCheck = 3e-2;
+      obj.tol.areaTol = 1e-2;
     end
   end
 

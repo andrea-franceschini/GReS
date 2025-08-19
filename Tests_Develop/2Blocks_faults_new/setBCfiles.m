@@ -4,8 +4,8 @@ mkdir BCs
 writeBCfiles('BCs/leftLat','SurfBC','Dir',{'Poromechanics','x'},'left_lateral_roller',0,0,leftMesh,3); % left block lateral fix
 writeBCfiles('BCs/leftBot','SurfBC','Dir',{'Poromechanics','z'},'left_bottom_fix',0,0,leftMesh,2); % left block bottom fix
 writeBCfiles('BCs/rightBot','SurfBC','Dir',{'Poromechanics','z'},'right_bottom',0,0,rightMesh,2); % right block bottom fix
-writeBCfiles('BCs/rightLatLoad','SurfBC','Neu',{'Poromechanics','x'},'right_latLoad',[0 1 6 15 20],[0 -5 -5 0 0],rightMesh,3); % right block lateral load
-writeBCfiles('BCs/rightTopLoad','SurfBC','Neu',{'Poromechanics','z'},'right_topLoad',[0 1 6 15 20],[0 0 -18 -18 0],rightMesh,4); % right block vertical load
+writeBCfiles('BCs/rightLatLoad','SurfBC','Neu',{'Poromechanics','x'},'right_latLoad',[0 1 6 11 16],[0 -5 -5 0 0],rightMesh,3); % right block lateral load
+writeBCfiles('BCs/rightTopLoad','SurfBC','Neu',{'Poromechanics','z'},'right_topLoad',[0 1 6 11 16],[0 0 -18 -18 0],rightMesh,4); % right block vertical load
 % fix y direction in the symmetry vertical axis
 tol = 1e-2;
 nL = find(all([abs(leftMesh.coordinates(:,2)-5)<tol,leftMesh.coordinates(:,3)<tol],2));

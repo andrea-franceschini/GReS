@@ -29,32 +29,39 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
       % Loop over time
       while obj.t < obj.simParameters.tMax
 
+
         % Update the simulation time and time step ID
         absTol = obj.simParameters.absTol;
         obj.tStep = obj.tStep + 1;
         %new time update to fit the outTime list
 
+        if obj.simParameters.verbosity > 0
+          fprintf('\n-----------------------------------------------------------\n');
+          fprintf('TIME STEP %i\n',obj.tStep)
+        end
+
         % reset active set iteration counter
         itAS = 0;
 
-        hasActiveSetChanged = false;
+        hasActiveSetChanged = true;
 
         [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
 
-        if obj.simParameters.verbosity > 0
-          fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t);
-          fprintf('-----------------------------------------------------------\n');
-        end
-        if obj.simParameters.verbosity > 1
-          fprintf('Iter     ||rhs||\n');
-        end
 
         applyDirVal(obj);
 
-        while hasActiveSetChanged || itAS == 0
+        while hasActiveSetChanged && itAS < obj.maxActiveSetIters
           % outer active set loop
 
+          if obj.simParameters.verbosity > 0
+            fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t);
+          end
+
           fprintf('Active set iteration n. %i \n', itAS)
+
+          if obj.simParameters.verbosity > 1
+            fprintf('Iter     ||rhs||\n');
+          end
 
           computeMatricesAndRhs(obj);
           applyBC(obj);
@@ -104,23 +111,26 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
             itAS = itAS + 1;
 
             if ~hasActiveSetChanged
-              for i = 1:obj.nDom
-                obj.state(i).curr.t = obj.t;
-                if isPoromechanics(obj.domains(i).model)
-                  obj.domains(i).getSolver('Poromechanics').advanceState();
-                end
+            for i = 1:obj.nDom
+              obj.state(i).curr.t = obj.t;
+              if isPoromechanics(obj.domains(i).model)
+                obj.domains(i).getSolver('Poromechanics').advanceState();
               end
             end
-
-            if itAS > obj.maxActiveSetIters
-              fprintf('Reached maximum number of active set iterations \n');
-              hasActiveSetChanged = false;
             end
 
+            if itAS == obj.maxActiveSetIters
+              fprintf('Reached maximum number of active set iterations \n');
+              flConv = false;
+            end
+          end
+
+          if flConv
             printState(obj);
-          end % end newton loop
-          
+          end
+
           delta_t = manageNextTimeStep(obj,delta_t,flConv,hasActiveSetChanged);
+
         end % outer active set loop
       end % time marching
       %
@@ -195,18 +205,16 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
         goBackState(obj);
         obj.t = obj.t - obj.dt;
         obj.tStep = obj.tStep - 1;
-        if ~newtonConv        % backstep if newton did not converged
-          dt = dt/obj.simParameters.divFac;
-          obj.dt = obj.dt/obj.simParameters.divFac;  % Time increment chop
-          if min(dt,obj.dt) < obj.simParameters.dtMin
-            if obj.simParameters.goOnBackstep == 1
-              newtonConv = true;
-            elseif obj.simParameters.goOnBackstep == 0
-              error('Minimum time step reached')
-            end
-          elseif obj.simParameters.verbosity > 0
-            fprintf('\n %s \n','BACKSTEP');
+        dt = dt/obj.simParameters.divFac;
+        obj.dt = obj.dt/obj.simParameters.divFac;  % Time increment chop
+        if min(dt,obj.dt) < obj.simParameters.dtMin
+          if obj.simParameters.goOnBackstep == 1
+            newtonConv = true;
+          elseif obj.simParameters.goOnBackstep == 0
+            error('Minimum time step reached')
           end
+        elseif obj.simParameters.verbosity > 0
+          fprintf('\n %s \n','BACKSTEP');
         end
       end
       if newtonConv && ~activeSetChanged  % converged time step

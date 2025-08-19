@@ -76,8 +76,6 @@ classdef ContactMortar < Mortar
 
     function computeContactMortarMatrices(obj)
 
-      k = 0;
-
       % Compute contact matrices and rhs
 
       % the syntax of the comments matrices is inspired by the appendix of
@@ -126,7 +124,12 @@ classdef ContactMortar < Mortar
         trac = obj.traction.curr(tDof);
         % equilibrium equation and stabilization work with delta traction
         dTrac = trac - obj.iniTraction(tDof);
-        R_el = getRotationMatrix(obj.contact,is);
+
+        % displacement increment to check if this is the first newton
+        % iteration
+        usDiff = norm(us(usDof) - us_old(usDof));
+        
+        %R_el = getRotationMatrix(obj.contact,is);
 
         for im = masterElems'
 
@@ -172,10 +175,10 @@ classdef ContactMortar < Mortar
           % displacements
           T = eye(3) - pagemtimes(normal,'none',normal,'transpose');
           % normal and tangential component of displacement basis functions
-          Nm_n = pagemtimes(normal,'transpose',Nm,'none');
+          Nm_n = -pagemtimes(normal,'transpose',Nm,'none');
           Nm_t = pagemtimes(T,Nm);
           %Nm_t = 
-          Ns_n = pagemtimes(normal,'transpose',Ns,'none');
+          Ns_n = -pagemtimes(normal,'transpose',Ns,'none');
           Ns_t = pagemtimes(T,Ns);
           
 
@@ -188,8 +191,8 @@ classdef ContactMortar < Mortar
 
 
           % normal gap
-          g_n = - pagemtimes(Ns_n,us(usDof)) ...
-            + pagemtimes(Nm_n,um(umDof));
+          g_n = pagemtimes(Ns_n,us(usDof)) ...
+            - pagemtimes(Nm_n,um(umDof));
 
           % assemble jacobian and rhs of traction equations
 
@@ -236,11 +239,11 @@ classdef ContactMortar < Mortar
             % A_nu
             Anu_m = obj.quadrature.integrate(f1, Nmult_n, Nm_n);
             Anu_s = obj.quadrature.integrate(f1, Nmult_n, Ns_n);
-            asbMt.localAssembly(Anu_m,tDof(1),umDof);
-            asbDt.localAssembly(-Anu_s,tDof(1),usDof);
+            asbMt.localAssembly(-Anu_m,tDof(1),umDof);
+            asbDt.localAssembly(Anu_s,tDof(1),usDof);
 
             % A_tu (non linear term)
-            if obj.slip.curr(is) > obj.contact.tol.sliding
+            if obj.slip.curr(is) > obj.contact.tol.sliding && usDiff > 100*eps
               % compute only on slip terms with sliding large enough
               dtdgt = computeDerTracGap(obj,trac(1),dgt);
               Atu_m = obj.quadrature.integrate(f2, Nmult_t,dtdgt,Nm_t);
@@ -268,7 +271,7 @@ classdef ContactMortar < Mortar
             obj.rhsT(tDof(2:3)) = obj.rhsT(tDof(2:3)) + Att*trac(2:3);
 
             % rhs -(mu_t,t*_T) (non linear term)
-            tT_lim = computeLimitTraction(obj,is,dgt,trac);
+            tT_lim = computeLimitTraction(obj,is,dgt,trac,usDiff);
             % reconvert in local coordinates
 %             tT_lim = pagemtimes(R_el,'ctranspose',tT_lim,'none');
             obj.rhsT(tDof(2:3)) = obj.rhsT(tDof(2:3)) - ...
@@ -346,14 +349,14 @@ classdef ContactMortar < Mortar
       % the contact rhs is assembled directly in
       % computeMortarContactMatrices()
       [~,rhsStab] = getStabilizationMatrixAndRhs(obj); 
-      fprintf('Rhs norm for stabilization: %4.3e \n', norm(rhsStab));
       obj.rhsT = obj.rhsT + rhsStab;
-      if obj.solvers(2).simparams.verbosity > 2
+      if obj.solvers(2).simparams.verbosity > 1
         % print rhs terms for each fracture state
         N = 1:numel(obj.contact.activeSet);
         dof_stick = dofId(find(isStick(obj.contact,N')),3);
         dof_slip = [dofId(find(isSlip(obj.contact,N')),3); dofId(find(isNewSlip(obj.contact,N')),3)]; 
         dof_open = dofId(find(isOpen(obj.contact,N')),3);
+        fprintf('Rhs norm for stabilization: %4.3e \n', norm(rhsStab));
         fprintf('Rhs norm for stick dofs: %4.3e \n', norm(obj.rhsT(dof_stick)))
         fprintf('Rhs norm for slip dofs: %4.3e \n', norm(obj.rhsT(dof_slip)))
         fprintf('Rhs norm for open dofs: %4.3e \n', norm(obj.rhsT(dof_open)))
@@ -464,9 +467,25 @@ classdef ContactMortar < Mortar
       end
 
       % check if active set changed
-      hasChanged = any(obj.contact.activeSet - oldActiveSet);
+      diffState = obj.contact.activeSet - oldActiveSet;
+      idNewSlipToSlip = all([oldActiveSet==2 diffState==1],2);   
+      diffState(idNewSlipToSlip) = 0;
+      hasChangedElem = diffState~=0;
+      hasChanged = any(diffState);
+      if hasChanged
+        % check if area of fracture changing state is small 
+        areaChanged = sum(obj.mesh.msh(2).surfaceArea(hasChangedElem));
+        totArea = sum(obj.mesh.msh(2).surfaceArea);
+        if areaChanged/totArea < obj.contact.tol.areaTol
+          hasChanged = false;
+          if  obj.solvers(2).simparams.verbosity > 1
+            fprinft(['Active set update suppressed due to small fracture change:' ...
+              ' areaChange/areaTot = %3.2e \n'],areaChanged/totArea);
+          end
+        end
+      end
 
-      if obj.solvers(2).simparams.verbosity > 2
+      if obj.solvers(2).simparams.verbosity > 1
         % report active set changes
         da = obj.contact.activeSet - oldActiveSet;
         d = da(oldActiveSet==1);
@@ -738,7 +757,7 @@ classdef ContactMortar < Mortar
     end
 
 
-    function tracLim = computeLimitTraction(obj,is,dgt,t)
+    function tracLim = computeLimitTraction(obj,is,dgt,t,duNorm)
 
       sz = size(dgt);
       tracLim = zeros(sz);
@@ -749,7 +768,7 @@ classdef ContactMortar < Mortar
         sz = [sz,1];
       end
 
-      if obj.slip.curr(is) > obj.contact.tol.sliding
+      if obj.slip.curr(is) > obj.contact.tol.sliding && duNorm > 100*eps 
         for i = 1:sz(4) % sub triangle loop (for segment based)
           for j = 1:sz(3) % gp loop
             g = dgt(:,:,j,i);
