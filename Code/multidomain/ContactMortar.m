@@ -236,11 +236,11 @@ classdef ContactMortar < Mortar
             % A_nu
             Anu_m = obj.quadrature.integrate(f1, Nmult_n, Nm_n);
             Anu_s = obj.quadrature.integrate(f1, Nmult_n, Ns_n);
-            asbMt.localAssembly(-Anu_m,tDof(1),umDof);
-            asbDt.localAssembly(Anu_s,tDof(1),usDof);
+            asbMt.localAssembly(Anu_m,tDof(1),umDof);
+            asbDt.localAssembly(-Anu_s,tDof(1),usDof);
 
             % A_tu (non linear term)
-            if norm(dgt,'fro') > obj.contact.tol.sliding
+            if obj.slip.curr(is) > obj.contact.tol.sliding
               % compute only on slip terms with sliding large enough
               dtdgt = computeDerTracGap(obj,trac(1),dgt);
               Atu_m = obj.quadrature.integrate(f2, Nmult_t,dtdgt,Nm_t);
@@ -446,7 +446,7 @@ classdef ContactMortar < Mortar
           tau = norm(t(2:3));
           tauLimit = obj.cohesion - tan(deg2rad(obj.phi))*t(1);
           % relax stick/sliding transition
-          if isStick(obj.contact,is) && tau >= tauLimit 
+          if isStick(obj.contact,is) && tau >= tauLimit
             tau = tau*(1-obj.contact.tol.slidingCheck);
           elseif ~isStick(obj.contact,is)  && tau <=tauLimit
             tau = tau*(1+obj.contact.tol.slidingCheck);
@@ -484,6 +484,7 @@ classdef ContactMortar < Mortar
         fprintf('%i elements from open to stick \n',sum(d==-3));
       end
     end
+
 
     function updateState(obj,du)
 
@@ -609,8 +610,8 @@ classdef ContactMortar < Mortar
       stabGap = H*(obj.traction.curr - obj.iniTraction);
 
       % recover variationally consistent gap
-      currGap = obj.D*us + obj.M*um;
-      prevGap = obj.D*usOld + obj.M*umOld;
+      currGap = obj.Jsu'*us + obj.Jmu'*um;
+      prevGap = obj.Jsu'*usOld + obj.Jmu'*umOld;
       obj.dispJump.curr = (currGap - stabGap)./sum(obj.D,2);
 
 %       if obj.solvers(2).simparams.verbosity > 2
@@ -649,6 +650,8 @@ classdef ContactMortar < Mortar
       H(:,[dofOpen,dofSlip]) = 0;
       rhsH = -H*(obj.traction.curr-obj.iniTraction);
     end
+
+
 
 
 
@@ -723,7 +726,7 @@ classdef ContactMortar < Mortar
         for i = 1:sz(4)
           for j = 1:sz(3) % gp loop
             g = dgt(:,:,j,i);
-            dtdtn(:,:,i) = -tanPhi*(g/norm(g));
+            dtdtn(:,:,j,i) = -tanPhi*(g/norm(g));
           end
         end
      % else
@@ -746,7 +749,7 @@ classdef ContactMortar < Mortar
         sz = [sz,1];
       end
 
-      if norm(dgt,'fro') > obj.contact.tol.sliding
+      if obj.slip.curr(is) > obj.contact.tol.sliding
         for i = 1:sz(4) % sub triangle loop (for segment based)
           for j = 1:sz(3) % gp loop
             g = dgt(:,:,j,i);

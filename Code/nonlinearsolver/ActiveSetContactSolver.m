@@ -96,18 +96,21 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
           if flConv % Newton Convergence
             % Advance state of non linear models
-            for i = 1:obj.nDom
-              obj.state(i).curr.t = obj.t;
-              if isPoromechanics(obj.domains(i).model)
-                obj.domains(i).getSolver('Poromechanics').advanceState();
-              end
-            end
 
             for i = obj.contactInterf
               hasActiveSetChanged = updateActiveSet(obj.interfaces{i});
             end
 
             itAS = itAS + 1;
+
+            if ~hasActiveSetChanged
+              for i = 1:obj.nDom
+                obj.state(i).curr.t = obj.t;
+                if isPoromechanics(obj.domains(i).model)
+                  obj.domains(i).getSolver('Poromechanics').advanceState();
+                end
+              end
+            end
 
             if itAS > obj.maxActiveSetIters
               fprintf('Reached maximum number of active set iterations \n');
@@ -188,7 +191,7 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 %     end
 
     function [dt] = manageNextTimeStep(obj,dt,newtonConv,activeSetChanged)
-      if ~newtonConv || activeSetChanged   % time step not converged
+      if ~newtonConv    % time step not converged
         goBackState(obj);
         obj.t = obj.t - obj.dt;
         obj.tStep = obj.tStep - 1;
