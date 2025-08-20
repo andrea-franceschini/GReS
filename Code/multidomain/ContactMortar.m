@@ -277,10 +277,10 @@ classdef ContactMortar < Mortar
             obj.rhsT(tDof(2:3)) = obj.rhsT(tDof(2:3)) - ...
               obj.quadrature.integrate(f1,Nmult_t,tT_lim);
 
-            if obj.solvers(2).simparams.verbosity > 2 && k <2
-              k = k+1;
-              fprintf('element %i- rhsT: %5.3e %5.3e \n',is,Att*trac(2:3))
+            if obj.solvers(2).simparams.verbosity > 2
+              fprintf('\nelement %i- rhsT: %5.3e %5.3e \n',is,Att*trac(2:3))
               fprintf('element %i- rhsTlim: %5.3e %5.3e \n',is,obj.quadrature.integrate(f1,Nmult_t,tT_lim))
+              fprintf('------------------------------------ \n')
             end
 
           end
@@ -352,7 +352,7 @@ classdef ContactMortar < Mortar
       obj.rhsT = obj.rhsT + rhsStab;
       if obj.solvers(2).simparams.verbosity > 1
         % print rhs terms for each fracture state
-        N = 1:numel(obj.contact.activeSet);
+        N = 1:numel(obj.contact.activeSet.curr);
         dof_stick = dofId(find(isStick(obj.contact,N')),3);
         dof_slip = [dofId(find(isSlip(obj.contact,N')),3); dofId(find(isNewSlip(obj.contact,N')),3)]; 
         dof_open = dofId(find(isOpen(obj.contact,N')),3);
@@ -431,9 +431,17 @@ classdef ContactMortar < Mortar
 
     function hasChanged = updateActiveSet(obj)
 
-      oldActiveSet = obj.contact.activeSet;
+      oldActiveSet = obj.contact.activeSet.curr;
 
-      for is = 1:numel(obj.contact.activeSet)
+      for is = 1:numel(obj.contact.activeSet.curr)
+
+        % force boundary element to stick state
+        nodes = obj.mesh.msh(2).surfaces(is,:);
+        dofs = dofId(obj.mesh.local2glob{2}(nodes),3);
+        if any(ismember(dofs,obj.dirDofs))
+          % boundary element 
+          continue
+        end
 
         id = dofId(is,3);
 
@@ -467,7 +475,7 @@ classdef ContactMortar < Mortar
       end
 
       % check if active set changed
-      diffState = obj.contact.activeSet - oldActiveSet;
+      diffState = obj.contact.activeSet.curr - oldActiveSet;
       idNewSlipToSlip = all([oldActiveSet==2 diffState==1],2);   
       diffState(idNewSlipToSlip) = 0;
       hasChangedElem = diffState~=0;
@@ -487,7 +495,7 @@ classdef ContactMortar < Mortar
 
       if obj.solvers(2).simparams.verbosity > 1
         % report active set changes
-        da = obj.contact.activeSet - oldActiveSet;
+        da = obj.contact.activeSet.curr - oldActiveSet;
         d = da(oldActiveSet==1);
         assert(~any(d==2));
         fprintf('%i elements from stick to new slip \n',sum(d==1));
@@ -517,16 +525,18 @@ classdef ContactMortar < Mortar
     end
 
     function goOnState(obj)
-      % update the value of the multipliers
+      % advance state to new time step
       obj.traction.prev = obj.traction.curr;
       obj.dispJump.prev = obj.dispJump.curr;
       obj.slip.prev = obj.slip.curr;
     end
 
     function goBackState(obj)
+      % reset state to beginning of time step
       obj.traction.curr = obj.traction.prev;
       obj.dispJump.curr = obj.dispJump.prev;
       obj.slip.curr = obj.slip.prev;
+      obj.contact.activeSet.curr = obj.contact.activeSet.prev;
     end
 
 

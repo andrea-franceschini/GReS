@@ -37,7 +37,8 @@ classdef ContactHelper < handle
       % 3 - slip
       % 4 - open
       nMult = mortar.mesh.msh(2).nSurfaces;
-      obj.activeSet = ones(nMult,1);      % all stick at the beginning
+      obj.activeSet.curr = ones(nMult,1);      % all stick at the beginning
+      obj.activeSet.prev = obj.activeSet.curr;
     end
 
     function R = getRotationMatrix(obj,in)
@@ -113,35 +114,35 @@ classdef ContactHelper < handle
     end
 
     function out = isStick(obj,elID)
-      out = obj.activeSet(elID)==1;
+      out = obj.activeSet.curr(elID)==1;
     end
 
     function out = isOpen(obj,elID)
-      out = obj.activeSet(elID)==4;
+      out = obj.activeSet.curr(elID)==4;
     end
 
     function out = isSlip(obj,elID)
-      out = obj.activeSet(elID)==3;
+      out = obj.activeSet.curr(elID)==3;
     end
 
     function out = isNewSlip(obj,elID)
-      out = obj.activeSet(elID)==2;
+      out = obj.activeSet.curr(elID)==2;
     end
 
     function setSlip(obj,elID)
-      obj.activeSet(elID) = 3;
+      obj.activeSet.curr(elID) = 3;
     end
 
     function setNewSlip(obj,elID)
-      obj.activeSet(elID) = 2;
+      obj.activeSet.curr(elID) = 2;
     end
 
     function setStick(obj,elID)
-      obj.activeSet(elID) = 1;
+      obj.activeSet.curr(elID) = 1;
     end
 
     function setOpen(obj,elID)
-      obj.activeSet(elID) = 4;
+      obj.activeSet.curr(elID) = 4;
     end
 
     function defineTolerances(obj)

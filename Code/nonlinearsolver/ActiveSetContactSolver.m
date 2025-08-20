@@ -101,6 +101,9 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
           % Check for convergence
           flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
 
+          % set active set not changed by default
+          hasActiveSetChanged = false;
+
           if flConv % Newton Convergence
             % Advance state of non linear models
 
@@ -203,10 +206,10 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
     function [dt] = manageNextTimeStep(obj,dt,newtonConv,activeSetChanged)
       if ~newtonConv    % time step not converged
         goBackState(obj);
-        obj.t = obj.t - obj.dt;
-        obj.tStep = obj.tStep - 1;
         dt = dt/obj.simParameters.divFac;
+        obj.t = obj.t - obj.dt;
         obj.dt = obj.dt/obj.simParameters.divFac;  % Time increment chop
+        obj.tStep = obj.tStep - 1;
         if min(dt,obj.dt) < obj.simParameters.dtMin
           if obj.simParameters.goOnBackstep == 1
             newtonConv = true;
@@ -216,8 +219,7 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
         elseif obj.simParameters.verbosity > 0
           fprintf('\n %s \n','BACKSTEP');
         end
-      end
-      if newtonConv && ~activeSetChanged  % converged time step
+      elseif newtonConv && ~activeSetChanged  % converged time step
         tmpVec = obj.simParameters.multFac;
         for i = 1:obj.nDom
           if isFlow(obj.domains(i).model)

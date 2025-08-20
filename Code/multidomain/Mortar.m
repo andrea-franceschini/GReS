@@ -15,6 +15,7 @@ classdef Mortar < handle
     outStruct       % wrapper for print utilities (mimics OutState)
     physic          % string id of mortar field
     totMult
+    dirDofs        % list of nodes with dirichlet bcs enforced
   end
 
   methods
@@ -84,9 +85,6 @@ classdef Mortar < handle
         bcVals = [];
       end
 
-      if strcmp(obj.multiplierType,'P0')
-        return
-      end
 
       if nargin > 3
         if ~(domId == obj.idDomain(2))
@@ -101,6 +99,15 @@ classdef Mortar < handle
       fldId = obj.dofm(2).getFieldId(bcPhysics);
       dofSlave = getLocalDoF(obj.dofm(2),nodSlave,fldId);
       isBCdof = ismember(bcData(:,1),dofSlave);
+      % update list of dirichlet nodes
+      obj.dirDofs = unique([obj.dirDofs; bcDofs(isBCdof)]);
+
+      if strcmp(obj.multiplierType,'P0')
+        return
+      end
+
+      % remove slave dofs only for nodal multipliers on slave side
+
       bcDofs = bcDofs(~isBCdof);
       if ~isempty(bcVals)
         bcVals = bcVals(~isBCdof);
