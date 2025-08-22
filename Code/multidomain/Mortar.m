@@ -422,7 +422,7 @@ classdef Mortar < handle
       if obj.idDomain(1)==obj.idDomain(2)
         % interface defined within the same domain 
         out = setdiff(obj.mesh.local2glob{1},obj.mesh.local2glob{2});
-        if ~all(out==obj.mesh.local2glob{1})
+        if ~all(ismember(obj.mesh.local2glob{1},out))
           error('Nodes of master and slave side are not disjoint');
         end
       end
@@ -502,13 +502,13 @@ classdef Mortar < handle
         type = interfStr(i).Type;
         switch type
           case 'MeshTying'
-            if (~isfield(interfStr,"Stabilization"))
+            if (~isfield(interfStr(i),"Stabilization")) || ismissing(interfStr(i).Stabilization)
               % standard mesh tying with dual multipliers
               interfaceStruct{i} = MeshGlue(i,interfStr(i),domains([idMaster,idSlave]));
-            elseif strcmp(interfStr.Stabilization.typeAttribute,'Jump')
+            elseif strcmp(interfStr(i).Stabilization.typeAttribute,'Jump')
               interfaceStruct{i} = MeshGlueJumpStabilization(i,interfStr(i), ...
                 domains([idMaster,idSlave]));
-            elseif strcmp(interfStr.Stabilization.typeAttribute,'Bubble')
+            elseif strcmp(interfStr(i).Stabilization.typeAttribute,'Bubble')
               interfaceStruct{i} = MeshGlueBubbleStabilization(i,interfStr(i), ...
                 domains([idMaster,idSlave]));
             else

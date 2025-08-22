@@ -7,6 +7,7 @@ classdef ContactHelper < handle
   properties
     activeSet
     tol      % tolerances for active set check
+    forceStickBoundary = false
   end
 
   properties (Access = private)
@@ -14,6 +15,7 @@ classdef ContactHelper < handle
     normals                 % element normal/slave normals   
     node_normals
     elem
+
   end
 
  
@@ -151,6 +153,7 @@ classdef ContactHelper < handle
       obj.tol.normalGap = 1e-5;
       obj.tol.normalTrac = 1e-3;
       obj.tol.slidingCheck = 3e-2;
+      obj.tol.minLimitTraction = 1e-4;  % below this value, the limit traction is set to 0
       obj.tol.areaTol = 1e-2;
     end
   end
@@ -164,7 +167,7 @@ classdef ContactHelper < handle
       norm_m1 = norm(m1);
       norm_m2 = norm(m2);
 
-      if norm_m1 + eps > norm_m2
+      if norm_m1 + 1e2*eps > norm_m2
         m2 = cross(n,m1);
         m1 = m1/norm(m1);
         m2 = m2/norm(m2);
@@ -176,7 +179,7 @@ classdef ContactHelper < handle
 
       R = [n',m1',m2'];
 
-      assert(abs(det(R)-1.0)<10*eps,'Rotation matrix non unit determinant')
+      assert(abs(det(R)-1.0)<1e3*eps,'Rotation matrix non unit determinant')
     end
   end
 

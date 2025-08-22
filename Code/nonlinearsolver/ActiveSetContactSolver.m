@@ -3,15 +3,18 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
   properties (Access = private)
     %
-    maxActiveSetIters = 6
+    maxActiveSetIters = 10
     contactInterf
   end
 
 
   methods (Access = public)
-    function obj = ActiveSetContactSolver(domains,interfaces)
+    function obj = ActiveSetContactSolver(domains,interfaces,varargin)
       obj@MultidomainFCSolver(domains,interfaces)
       setContactInterfaces(obj);
+      if ~isempty(varargin)
+        obj.maxActiveSetIters = varargin{1};
+      end
     end
 
 
@@ -50,7 +53,7 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
         applyDirVal(obj);
 
-        while hasActiveSetChanged && itAS < obj.maxActiveSetIters
+        while hasActiveSetChanged && itAS <= obj.maxActiveSetIters
           % outer active set loop
 
           if obj.simParameters.verbosity > 0
@@ -122,8 +125,18 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
             end
             end
 
+%             % this happen also if obj.maxActiveSetIters = 0, break loop
+%             if itAS >= obj.maxActiveSetIters 
+%               obj.state(1).curr.t = obj.t;
+%               obj.state(2).curr.t = obj.t;
+%               printState(obj);
+%               delta_t = manageNextTimeStep(obj,delta_t,flConv,hasActiveSetChanged);
+%               break
+%             end
+
             if itAS == obj.maxActiveSetIters
               fprintf('Reached maximum number of active set iterations \n');
+              hasActiveSetChanged = false;
               flConv = false;
             end
           end
@@ -205,21 +218,25 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
     function [dt] = manageNextTimeStep(obj,dt,newtonConv,activeSetChanged)
       if ~newtonConv    % time step not converged
-        goBackState(obj);
         dt = dt/obj.simParameters.divFac;
-        obj.t = obj.t - obj.dt;
         obj.dt = obj.dt/obj.simParameters.divFac;  % Time increment chop
-        obj.tStep = obj.tStep - 1;
+
         if min(dt,obj.dt) < obj.simParameters.dtMin
           if obj.simParameters.goOnBackstep == 1
             newtonConv = true;
           elseif obj.simParameters.goOnBackstep == 0
             error('Minimum time step reached')
           end
-        elseif obj.simParameters.verbosity > 0
-          fprintf('\n %s \n','BACKSTEP');
+        else
+          if obj.simParameters.verbosity > 0
+            fprintf('\n %s \n','BACKSTEP');
+            goBackState(obj);
+            obj.t = obj.t - obj.dt;
+            obj.tStep = obj.tStep - 1;
+          end
         end
-      elseif newtonConv && ~activeSetChanged  % converged time step
+      end
+      if newtonConv && ~activeSetChanged  % converged time step
         tmpVec = obj.simParameters.multFac;
         for i = 1:obj.nDom
           if isFlow(obj.domains(i).model)

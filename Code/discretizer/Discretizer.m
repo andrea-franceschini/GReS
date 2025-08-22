@@ -1,6 +1,6 @@
 classdef Discretizer < handle
    % General discretizer class
-   properties (GetAccess=public, SetAccess=private)
+   properties (GetAccess=public, SetAccess=public)
      solver      % database for physics solvers in the model
      dofm        % dofManager
      simparams
@@ -60,7 +60,7 @@ classdef Discretizer < handle
                   assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
                     'invalid domain id input for single domain BC imposition']);
                   for i = 1:length(obj.interfaceList)
-                    [bcEnts,bcVals] = obj.interfaces(i).removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
+                    [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
                   end
                 end
                 applyDirBC(obj.getSolver({field,f}),field,bcEnts,bcVals);
@@ -87,7 +87,7 @@ classdef Discretizer < handle
               assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
                 'invalid domain id input for single domain BC imposition']);
               for i = 1:length(obj.interfaceList)
-                [bcEnts,bcVals] = obj.interfaces(i).removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
+                [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
               end
             end
             getSolver(obj,field).applyDirVal(bcEnts,bcVals);
@@ -241,7 +241,7 @@ classdef Discretizer < handle
         % add mortar interface to current domain
         if ~ismember(interfId,obj.interfaceList)
           obj.interfaceList = sort([obj.interfaceList interfId]);
-          obj.interfaces = [obj.interfaces interf];
+          obj.interfaces{end+1} = interf;
         end
       end
 
@@ -303,6 +303,7 @@ classdef Discretizer < handle
        obj.state = stat;
        obj.fields = flds;
        obj.numSolvers = k;
+       obj.interfaces = cell(0);
      end
 
      function setInput(obj, varargin)

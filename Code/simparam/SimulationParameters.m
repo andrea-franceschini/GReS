@@ -54,6 +54,10 @@ classdef SimulationParameters < handle
     function setVerbosity(obj,val)
       obj.verbosity = val;
     end
+
+    function setBackstepSkipFlag(obj,val)
+      obj.goOnBackstep = val;
+    end
   end
   
   methods (Access = private)

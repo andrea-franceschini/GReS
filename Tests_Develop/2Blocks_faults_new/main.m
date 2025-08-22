@@ -53,7 +53,11 @@ interfaces{1}.traction.prev(1:3:end) = -1;
 % set verbosity 
 domains(2).simparams.setVerbosity(2);
 
+interfaces{1}.contact.forceStickBoundary = true;
+
 solver = ActiveSetContactSolver(domains,interfaces);
+
+
 solver.NonLinearLoop();
 solver.finalizeOutput();
 
