@@ -235,40 +235,35 @@ classdef SinglePhaseFlow < SinglePhysics
       end
 
       function computeRHSGravTerm(obj)
-         % Compute the gravity contribution
-         % Get the fluid specific weight and viscosity'
-         rhsTmp = zeros(obj.dofm.getNumDoF(obj.field),1);
-         gamma = obj.material.getFluid().getFluidSpecWeight();
-         if gamma > 0
-            subCells = obj.dofm.getFieldCells(obj.field);
-            if isFEMBased(obj.model,'Flow')
-               for el = subCells'
-                  % Get the material permeability
-                  permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
-                  %             permMat = permMat/mu;
-                  switch obj.mesh.cellVTKType(el)
-                     case 10 % Tetrahedra
-                        N = obj.elements.tetra.getDerBasisF(el);
-                        rhsLoc = (N'*permMat(:,3))*obj.mesh.cellVolume(el)*gamma;
-                     case 12 % Hexa
-                        [N,dJWeighed] = obj.elements.hexa.getDerBasisFAndDet(el,1);
-                        fs = pagemtimes(N,'ctranspose',permMat(:,3),'none');
-                        fs = fs.*reshape(dJWeighed,1,1,[]);
-                        rhsLoc = sum(fs,3)*gamma;
-                  end
-                  %
-                  entsId = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
-                  rhsTmp = rhsTmp(entsId) + rhsLoc;
-               end
-               obj.rhsGrav = rhsTmp(obj.dofm.getActiveEnts(obj.field));
-            elseif isFVTPFABased(obj.model,'Flow')
-               neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-               zVec = obj.mesh.cellCentroid(:,3);
-               zNeigh = zVec(neigh);
-               obj.rhsGrav = gamma*obj.trans(obj.isIntFaces).*(zNeigh(:,1) - zNeigh(:,2));
+        % Compute the gravity contribution
+        % Get the fluid specific weight and viscosity'
+        rhsTmp = zeros(obj.dofm.getNumDoF(obj.field),1);
+        gamma = obj.material.getFluid().getFluidSpecWeight();
+        if gamma > 0
+          subCells = obj.dofm.getFieldCells(obj.field);
+          if isFEMBased(obj.model,'Flow')
+            for el = subCells'
+              % Get the material permeability
+              permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+              %             permMat = permMat/mu;
+              elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
+              [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
+              fs = pagemtimes(N,'ctranspose',permMat(:,3),'none');
+              fs = fs.*reshape(dJWeighed,1,1,[]);
+              rhsLoc = sum(fs,3)*gamma;
+              %
+              entsId = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
+              rhsTmp(entsId) = rhsTmp(entsId) + rhsLoc;
             end
-         end
-         % remove inactive components of rhs vector
+            obj.rhsGrav = rhsTmp(obj.dofm.getActiveEnts(obj.field));
+          elseif isFVTPFABased(obj.model,'Flow')
+            neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+            zVec = obj.mesh.cellCentroid(:,3);
+            zNeigh = zVec(neigh);
+            obj.rhsGrav = gamma*obj.trans(obj.isIntFaces).*(zNeigh(:,1) - zNeigh(:,2));
+          end
+        end
+        % remove inactive components of rhs vector
       end
 
       function gTerm = finalizeRHSGravTerm(obj,lw)

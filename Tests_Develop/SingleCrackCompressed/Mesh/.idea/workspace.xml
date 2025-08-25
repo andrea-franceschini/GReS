@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="6efc9a27-cedb-4be1-b93d-541e6b1a6265" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../../../Code/multidomain/ContactHelper.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Code/multidomain/ContactHelper.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Code/multidomain/ContactMortar.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Code/multidomain/ContactMortar.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Code/nonlinearsolver/ActiveSetContactSolver.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Code/nonlinearsolver/ActiveSetContactSolver.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Code/simparam/SimulationParameters.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Code/simparam/SimulationParameters.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/leftBot.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/leftBot/list" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/leftBot/time0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/leftLat.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/leftLat/list" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/leftLat/time0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/leftYFix.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/leftYFix/list" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/leftYFix/time0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightBot.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightBot/list" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightBot/time0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightLatLoad.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightLatLoad/list" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightLatLoad/time0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightLatLoad/time1.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightLatLoad/time2.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightLatLoad/time3.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightLatLoad/time4.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightTopLoad.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightTopLoad/list" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightTopLoad/time0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightTopLoad/time1.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightTopLoad/time2.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightTopLoad/time3.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightTopLoad/time4.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightYFix.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightYFix/list" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/BCs/rightYFix/time0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Code/NonLinearSolverFaults.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Code/addBlockJ.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Code/applyBCFaults.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Code/applyDirFault.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Code/compareSet.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Code/get_dof.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Code/mortarFaults.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Code/mortarFaultsP0.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Code/mortarFaults_old.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Code/plotStep.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Domains/domains.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Domains/domains_hexa_P0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Domains/domains_hexa_dual.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Domains/domains_hexa_standard.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Domains/domains_tetra.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Domains/domains_tetra_dual.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Domains/domains_tetra_standard.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Materials/MaterialsList.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Materials/Solid.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Mesh/LeftBlockHexa.geo" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Mesh/LeftBlockHexa.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Mesh/LeftBlockTetra.geo" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Mesh/LeftBlock_hexa.msh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Mesh/LeftBlock_tetra.msh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Mesh/RightBlockHexa.geo" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Mesh/RightBlockHexa.msh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Mesh/RightBlockHexa.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Mesh/RightBlockTetra.geo" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Mesh/RightBlock_hexa.msh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Mesh/RightBlock_hexa.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Mesh/RightBlock_tetra.msh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Mesh/test.vtk" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Presentation/2blockDomain.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Traction_results/outConforming.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Traction_results/outDual.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Traction_results/outP0.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/Traction_results/outP0_v1.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/computeDtDg.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/expand.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/getMesh.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/getSymSurf.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/interface.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/interface_P0.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/interface_dual.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/interface_standard.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/main.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/outConforming.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/outDual.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/outP0.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/outP0_v1.mat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/outTime.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/plotting.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/rhs1.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/setBCfiles.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/simParam.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/testDualInterp.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/test_face_match_efficiency.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults/tmp.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults_new/main.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../2Blocks_faults_new/main.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../2Blocks_faults_test/outP0_v1.mat" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../../.." />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 0
+}]]></component>
+  <component name="ProjectId" id="31cUFDVcw4z0LAx9DTAXqzOS0dl" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "feature/contact",
+    "last_opened_file_path": "M:/Codes/GReS/Tests_Develop/SingleCrackCompressed/Mesh"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="M:\Codes\GReS\Tests_Develop\SingleCrackCompressed\Mesh" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-4c141bd692a7-e2d783800521-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-251.26927.90" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="6efc9a27-cedb-4be1-b93d-541e6b1a6265" name="Changes" comment="" />
+      <created>1755822748264</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1755822748264</updated>
+    </task>
+    <servers />
+  </component>
+</project>
