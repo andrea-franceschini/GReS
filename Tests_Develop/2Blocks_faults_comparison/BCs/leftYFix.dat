@@ -1,0 +1,7 @@
+NodeBC            % BC item 
+Dir            % BC type 
+Poromechanics            % Physics 
+left_yfix            % BC name 
+BCs/leftYFix/list 
+0.000000 BCs/leftYFix/time0.dat 
+End

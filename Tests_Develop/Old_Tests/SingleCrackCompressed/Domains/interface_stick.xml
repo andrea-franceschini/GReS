@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Interfaces>
+  <!-- Interfaces to couple outer block with inner block -->
+  <Interface>
+    <Master id="1" surfaceTag="4" />
+    <Slave id="1" surfaceTag="5" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <Multiplier type="dual"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "TiedInterf1"/>
+  </Interface>
+
+  <Interface>
+    <Master id="1" surfaceTag="6" />
+    <Slave id="1" surfaceTag="7" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <Multiplier type="dual"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "TiedInterf2"/>
+  </Interface>
+
+   <!-- Fault -->
+  <Interface>
+    <Master id="1" surfaceTag="8" />
+    <Slave id="1" surfaceTag="9 10" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <Coulomb phi="30.0" cohesion="0.0"/>
+    <Multiplier type="dual"/>
+    <!--<Stabilization scale="1.0" type="Jump"/>-->
+    <Physics> Poromechanics </Physics>
+    <Print name = "Fault"/>
+  </Interface>
+</Interfaces>
