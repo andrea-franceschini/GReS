@@ -1,5 +1,6 @@
 import gmsh
 import sys
+import math
 
 from share.doc.gmsh.examples.api.plugin import numElements
 
@@ -14,15 +15,27 @@ NXt = int(sys.argv[4])
 NYt = int(sys.argv[5])
 nz = int(sys.argv[6])
 
-
+c = 0.7
+c2 = 0.85
 
 gmsh.model.add('domainOuter')
 
+Nout = 11
+Nout_inter = 5
+
+
+# define coordinates of model
+cOut = 15 # size of outer grid
+xIn = 2 # X size of inner grid
+yIn = 1 # Y size of inner grid
+slope = 20 # crack slope in deg
+rad = math.radians(slope)
+
 # rectangle 1
-P1 = gmsh.model.occ.addPoint(-10,     -10,     -0.5)
-P2 = gmsh.model.occ.addPoint(10,   -10,     -0.5)
-P3 = gmsh.model.occ.addPoint(10,   -1,   -0.5)
-P4 = gmsh.model.occ.addPoint(-10,     -1,   -0.5)
+P1 = gmsh.model.occ.addPoint(-cOut,     -cOut,     -0.5)
+P2 = gmsh.model.occ.addPoint(cOut,   -cOut,     -0.5)
+P3 = gmsh.model.occ.addPoint(cOut,   -yIn,   -0.5)
+P4 = gmsh.model.occ.addPoint(-cOut,     -yIn,   -0.5)
 
 L11 = gmsh.model.occ.addLine(P1, P2)
 L12 = gmsh.model.occ.addLine(P2, P3)
@@ -33,10 +46,10 @@ loop = gmsh.model.occ.addCurveLoop([L11, L12, L13, L14])
 r1 = gmsh.model.occ.addPlaneSurface([loop])
 
 # rectangle 2
-P1 = gmsh.model.occ.addPoint(-10,     1,     -0.5)
-P2 = gmsh.model.occ.addPoint(10,   1,     -0.5)
-P3 = gmsh.model.occ.addPoint(10,   10,   -0.5)
-P4 = gmsh.model.occ.addPoint(-10,     10,   -0.5)
+P1 = gmsh.model.occ.addPoint(-cOut,     yIn,     -0.5)
+P2 = gmsh.model.occ.addPoint(cOut,   yIn,     -0.5)
+P3 = gmsh.model.occ.addPoint(cOut,   cOut,   -0.5)
+P4 = gmsh.model.occ.addPoint(-cOut,     cOut,   -0.5)
 
 L21 = gmsh.model.occ.addLine(P1, P2)
 L22 = gmsh.model.occ.addLine(P2, P3)
@@ -47,10 +60,10 @@ loop = gmsh.model.occ.addCurveLoop([L21, L22, L23, L24])
 r2 = gmsh.model.occ.addPlaneSurface([loop])
 
 # rectangle 3
-P1 = gmsh.model.occ.addPoint(-10,     -1,     -0.5)
-P2 = gmsh.model.occ.addPoint(-1.5,   -1,     -0.5)
-P3 = gmsh.model.occ.addPoint(-1.5,   1,   -0.5)
-P4 = gmsh.model.occ.addPoint(-10,     1,   -0.5)
+P1 = gmsh.model.occ.addPoint(-cOut,     -yIn,     -0.5)
+P2 = gmsh.model.occ.addPoint(-xIn,   -yIn,     -0.5)
+P3 = gmsh.model.occ.addPoint(-xIn,   yIn,   -0.5)
+P4 = gmsh.model.occ.addPoint(-cOut,     yIn,   -0.5)
 
 L31 = gmsh.model.occ.addLine(P1, P2)
 L32 = gmsh.model.occ.addLine(P2, P3)
@@ -62,10 +75,10 @@ r3 = gmsh.model.occ.addPlaneSurface([loop])
 
 
 # rectangle 4
-P1 = gmsh.model.occ.addPoint(1.5,     -1,     -0.5)
-P2 = gmsh.model.occ.addPoint(10,   -1,     -0.5)
-P3 = gmsh.model.occ.addPoint(10,   1,   -0.5)
-P4 = gmsh.model.occ.addPoint(1.5,     1,   -0.5)
+P1 = gmsh.model.occ.addPoint(xIn,     -yIn,     -0.5)
+P2 = gmsh.model.occ.addPoint(cOut,   -yIn,     -0.5)
+P3 = gmsh.model.occ.addPoint(cOut,   yIn,   -0.5)
+P4 = gmsh.model.occ.addPoint(xIn,     yIn,   -0.5)
 
 L41 = gmsh.model.occ.addLine(P1, P2)
 L42 = gmsh.model.occ.addLine(P2, P3)
@@ -88,35 +101,35 @@ for s in [r1, r2, r3, r4]:
     gmsh.model.mesh.setRecombine(2, s)
 
 
-gmsh.model.mesh.set_transfinite_curve(L11,11)
-gmsh.model.mesh.set_transfinite_curve(L12,5)
-gmsh.model.mesh.set_transfinite_curve(L13,11)
-gmsh.model.mesh.set_transfinite_curve(L14,5)
+gmsh.model.mesh.set_transfinite_curve(L11,Nout)
+gmsh.model.mesh.set_transfinite_curve(L12,round(0.5*Nout))
+gmsh.model.mesh.set_transfinite_curve(L13,Nout)
+gmsh.model.mesh.set_transfinite_curve(L14,round(0.5*Nout))
 
-gmsh.model.mesh.set_transfinite_curve(L21,11)
-gmsh.model.mesh.set_transfinite_curve(L22,5)
-gmsh.model.mesh.set_transfinite_curve(L23,11)
-gmsh.model.mesh.set_transfinite_curve(L24,5)
+gmsh.model.mesh.set_transfinite_curve(L21,Nout)
+gmsh.model.mesh.set_transfinite_curve(L22,round(0.5*Nout))
+gmsh.model.mesh.set_transfinite_curve(L23,Nout)
+gmsh.model.mesh.set_transfinite_curve(L24,round(0.5*Nout))
 
-gmsh.model.mesh.set_transfinite_curve(L31,6)
-gmsh.model.mesh.set_transfinite_curve(L32,3)
-gmsh.model.mesh.set_transfinite_curve(L33,6)
-gmsh.model.mesh.set_transfinite_curve(L34,3)
+gmsh.model.mesh.set_transfinite_curve(L31,2*Nout_inter)
+gmsh.model.mesh.set_transfinite_curve(L32,Nout_inter)
+gmsh.model.mesh.set_transfinite_curve(L33,2*Nout_inter)
+gmsh.model.mesh.set_transfinite_curve(L34,Nout_inter)
 
-gmsh.model.mesh.set_transfinite_curve(L41,6)
-gmsh.model.mesh.set_transfinite_curve(L42,3)
-gmsh.model.mesh.set_transfinite_curve(L43,6)
-gmsh.model.mesh.set_transfinite_curve(L44,3)
+gmsh.model.mesh.set_transfinite_curve(L41,2*Nout_inter)
+gmsh.model.mesh.set_transfinite_curve(L42,Nout_inter)
+gmsh.model.mesh.set_transfinite_curve(L43,2*Nout_inter)
+gmsh.model.mesh.set_transfinite_curve(L44,Nout_inter)
 
 for s in [r1, r2, r3, r4]:
     gmsh.model.mesh.set_transfinite_surface(s)
 
 
 
-P1 = gmsh.model.occ.addPoint(-1.5,     -1,     -0.5)
-P2 = gmsh.model.occ.addPoint(1.5,   -1,     -0.5)
-P3 = gmsh.model.occ.addPoint(1.5,   0.5460,   -0.5)
-P4 = gmsh.model.occ.addPoint(-1.5,     -0.5460,   -0.5)
+P1 = gmsh.model.occ.addPoint(-xIn,     -yIn,     -0.5)
+P2 = gmsh.model.occ.addPoint(xIn,   -yIn,     -0.5)
+P3 = gmsh.model.occ.addPoint(xIn,   xIn*math.tan(rad),   -0.5)
+P4 = gmsh.model.occ.addPoint(-xIn,     -xIn*math.tan(rad),   -0.5)
 
 L11 = gmsh.model.occ.addLine(P1, P2)
 L12 = gmsh.model.occ.addLine(P2, P3)
@@ -128,10 +141,10 @@ r_bot = gmsh.model.occ.addPlaneSurface([loop])
 
 e1 = gmsh.model.occ.extrude([(2, r_bot)], 0, 0, 1, numElements=[nz], recombine=True)
 
-P1 = gmsh.model.occ.addPoint(-1.5,     -0.5460,     -0.5)
-P2 = gmsh.model.occ.addPoint(1.5,   0.5460,     -0.5)
-P3 = gmsh.model.occ.addPoint(1.5,   1,   -0.5)
-P4 = gmsh.model.occ.addPoint(-1.5,     1,   -0.5)
+P1 = gmsh.model.occ.addPoint(-xIn, -xIn*math.tan(rad),     -0.5)
+P2 = gmsh.model.occ.addPoint(xIn,   xIn*math.tan(rad),     -0.5)
+P3 = gmsh.model.occ.addPoint(xIn,   yIn,   -0.5)
+P4 = gmsh.model.occ.addPoint(-xIn,     yIn,   -0.5)
 
 L21 = gmsh.model.occ.addLine(P1, P2)
 L22 = gmsh.model.occ.addLine(P2, P3)
@@ -145,18 +158,18 @@ e2 = gmsh.model.occ.extrude([(2, r_top)], 0, 0, 1, numElements=[nz], recombine=T
 
 gmsh.model.occ.synchronize()
 
-gmsh.model.mesh.set_transfinite_curve(L11,NXb)
-gmsh.model.mesh.set_transfinite_curve(L12,NYb)
-gmsh.model.mesh.set_transfinite_curve(L13,NXb)
-gmsh.model.mesh.set_transfinite_curve(L14,NYb)
+gmsh.model.mesh.set_transfinite_curve(L11,NXb,"Bump",c)
+gmsh.model.mesh.set_transfinite_curve(L12,NYb,"Progression",c2)
+gmsh.model.mesh.set_transfinite_curve(L13,NXb,"Bump",c)
+gmsh.model.mesh.set_transfinite_curve(L14,NYb,"Progression",1/c2)
 
 gmsh.model.mesh.set_transfinite_surface(r_bot)
 
 
-gmsh.model.mesh.set_transfinite_curve(L21,NXt)
-gmsh.model.mesh.set_transfinite_curve(L22,NYt)
-gmsh.model.mesh.set_transfinite_curve(L23,NXt)
-gmsh.model.mesh.set_transfinite_curve(L24,NYt)
+gmsh.model.mesh.set_transfinite_curve(L21,NXt,"Bump",c)
+gmsh.model.mesh.set_transfinite_curve(L22,NYt,"Progression",1/c2)
+gmsh.model.mesh.set_transfinite_curve(L23,NXt,"Bump",c)
+gmsh.model.mesh.set_transfinite_curve(L24,NYt,"Progression",c2)
 
 gmsh.model.mesh.set_transfinite_surface(r_top)
 

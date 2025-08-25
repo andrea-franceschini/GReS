@@ -487,7 +487,7 @@ classdef ContactMortar < Mortar
         if areaChanged/totArea < obj.contact.tol.areaTol
           hasChanged = false;
           if  obj.solvers(2).simparams.verbosity > 1
-            fprinft(['Active set update suppressed due to small fracture change:' ...
+            fprintf(['Active set update suppressed due to small fracture change:' ...
               ' areaChange/areaTot = %3.2e \n'],areaChanged/totArea);
           end
         end

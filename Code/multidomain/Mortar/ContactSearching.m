@@ -136,12 +136,25 @@ classdef ContactSearching < handle
         lCells = surfID(id);
         rCells = surfID(~id);
         assert(length(lCells)+length(rCells) == length(surfID), 'Some elements left out from splitting procedure');
-        % avoid unlucky cases due to use of median
+
+        % avoid unlucky cases due to use of median - use mean
         if any([isempty(lCells) isempty(rCells)])
           id = surfPrim < mean(surfPrim);
           lCells = surfID(id);
           rCells = surfID(~id);
         end
+
+        % if also mean does not work, split left and right cells manually
+        if any([isempty(lCells) isempty(rCells)])
+          n = numel(surfID);
+          id = false(1,n);              % preallocate logical array
+          id(1:ceil(n/2)) = true;
+          lCells = surfID(id);
+          rCells = surfID(~id);
+        end
+
+
+
         assert(~isempty(lCells),'Empty leaf cells');
         assert(~isempty(rCells),'Empty leaf cells');
       elseif numel(surfID) > 1

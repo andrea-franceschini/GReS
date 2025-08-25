@@ -13,18 +13,19 @@ writeBCfiles('BCs/loadRight','SurfBC','Neu',{'Poromechanics','x'},'right_load',0
 
 % fix X and Y at centered node locations in the outer boundary
 tol = 1e-3;
-nY = find(all([abs(mesh.coordinates(:,1)-10)<tol,...
+C = max(mesh.coordinates,[],"all");
+nY = find(all([abs(mesh.coordinates(:,1)-C)<tol,...
                abs(mesh.coordinates(:,2))<tol],2));
 
-nY = [nY; find(all([abs(mesh.coordinates(:,1)+10)<tol,...
+nY = [nY; find(all([abs(mesh.coordinates(:,1)+C)<tol,...
                abs(mesh.coordinates(:,2))<tol],2))];
 
 nX = find(all([abs(mesh.coordinates(:,1)) <tol,...
-               abs(mesh.coordinates(:,2) - 10) < tol],2));
+               abs(mesh.coordinates(:,2) - C) < tol],2));
 
 
 nX = [nX;find(all([abs(mesh.coordinates(:,1)) <tol,...
-               abs(mesh.coordinates(:,2) + 10) < tol],2))];
+               abs(mesh.coordinates(:,2) + C) < tol],2))];
 
 if isempty(nX) || isempty(nY)
    error(['Check for odd number of nodes in the outer boundary to' ...

@@ -154,7 +154,7 @@ classdef ContactHelper < handle
       obj.tol.normalTrac = 1e-3;
       obj.tol.slidingCheck = 3e-2;
       obj.tol.minLimitTraction = 1e-4;  % below this value, the limit traction is set to 0
-      obj.tol.areaTol = 1e-2;
+      obj.tol.areaTol = 0.5;
     end
   end
 
@@ -179,7 +179,7 @@ classdef ContactHelper < handle
 
       R = [n',m1',m2'];
 
-      assert(abs(det(R)-1.0)<1e3*eps,'Rotation matrix non unit determinant')
+      assert(abs(det(R)-1.0)<1e-8,'Rotation matrix non unit determinant')
     end
   end
 

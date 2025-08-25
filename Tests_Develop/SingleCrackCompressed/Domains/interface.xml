@@ -21,10 +21,20 @@
     <Print name = "TiedInterf2"/>
   </Interface>
 
+   <Interface>
+    <Master id="1" surfaceTag="8" />
+    <Slave id="1" surfaceTag="10" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <Multiplier type="dual"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "TiedInterf3"/>
+  </Interface>
+
    <!-- Fault -->
   <Interface>
     <Master id="1" surfaceTag="8" />
-    <Slave id="1" surfaceTag="9 10" />
+    <Slave id="1" surfaceTag="9" />
     <Type> ContactMortar </Type>
     <Quadrature type = "SegmentBased" nGP="7"/>
     <Coulomb phi="30.0" cohesion="0.0"/>
