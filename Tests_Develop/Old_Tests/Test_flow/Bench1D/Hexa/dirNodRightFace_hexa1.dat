@@ -1,7 +1,0 @@
-NodeBC                            % BC item
-Dir                               % BC type
-Flow                              % Physics
-rFace                             % BC name
-dirNodRightFace_hexa1/list
-0.000000 dirNodRightFace_hexa1/time0.dat
-End

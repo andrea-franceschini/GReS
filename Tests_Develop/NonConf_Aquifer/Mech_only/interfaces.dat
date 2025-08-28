@@ -1,3 +1,0 @@
-% Input file for multidomain interfaces
-% (Master_ID,SurfaceTag)  (Slave_ID,SurfaceTag) type nGP nInt
-(1,1) (2,1) RBF 3 4   

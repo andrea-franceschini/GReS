@@ -1,7 +1,0 @@
-NodeBC                            % BC item
-Neu                               % BC type
-Flow                              % Physics
-lateralUndrained                           % BC name
-neuNodTopBotLatFlow/list
-0.000000 neuNodTopBotLatFlow/time0.dat
-End

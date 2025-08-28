@@ -9,7 +9,9 @@ classdef PorousRock < handle
         biot                 % Biot coefficient
         %     alpha                % Rock compressibility (can be replaced by the oedometer test compressibility Cm)
         specGrav             % Specific gravity of rock
-        Swr                  % Residual saturation of water
+        % Swr                  % Residual saturation of water
+        Sr=0.;             % Residual saturation
+        Ss=1.;             % Maximum saturation
     end
 
     methods (Access = public)
@@ -25,8 +27,18 @@ classdef PorousRock < handle
         end
 
         % Function to get material porosity
-        function Swr = getWaterResSat(obj)
-            Swr = obj.Swr;
+        % function Swr = getWaterResSat(obj)
+        %     Swr = obj.Swr;
+        % end
+
+        function Ss = getMaxSaturation(obj)
+            %GETSS Function to get the maximun saturation of the fluid.
+            Ss = obj.Ss;
+        end
+
+        function Sr = getResidualSaturation(obj)
+            %GETSS Function to get the residual saturation of the fluid.
+            Sr = obj.Sr;
         end
 
         function specGrav = getSpecificGravity(obj)
@@ -88,7 +100,9 @@ classdef PorousRock < handle
             tmpVec = readDataInLine(fID, matFileName, 1);
             KTmp(6) = tmpVec;
             if model.isVariabSatFlow()
-                obj.Swr = readDataInLine(fID, matFileName, 1);
+                tmpVec = readDataInLine(fID, matFileName, 2);
+                obj.Sr = tmpVec(1);
+                obj.Ss = tmpVec(2);
             end
             %       % Preliminary check on the number of rows in each material block
             %       % and the number of parameters

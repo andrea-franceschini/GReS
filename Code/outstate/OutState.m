@@ -17,7 +17,9 @@ classdef OutState < handle
   end
 
   properties (Access = private)
-    %
+    % timeID = 1
+    % VTK
+    % writeVtk
   end
 
   methods (Access = public)
@@ -47,10 +49,10 @@ classdef OutState < handle
   methods (Access = private)
     function setOutState(obj,model,mesh,fileName,foldName)
       obj.model = model;
-      %
       obj.timeList = OutState.readTime(fileName);
-      %
-      obj.VTK = VTKOutput(mesh,foldName);
+      % if obj.writeVtk
+        obj.VTK = VTKOutput(mesh,foldName);
+      % end
       % Write solution to matfile. This feature will be extended in a
       % future version of the code
       if obj.writeSolution
@@ -61,7 +63,6 @@ classdef OutState < handle
         setMatFile(obj,mesh);
       end
     end
-    %
 
     function tList = readTimeList(obj,fileName)
       fid = fopen(fileName,'r');
@@ -96,24 +97,46 @@ classdef OutState < handle
       fclose(fid);
     end
 
+    % function setMatFile(obj,msh)
+    %   l = length(obj.timeList) + 1;
+    %   obj.results.expTime = zeros(l,1);
+    %   if isFlow(obj.model)
+    %     if isFEMBased(obj.model,'Flow')
+    %       obj.results.expPress = zeros(msh.nNodes,l);
+    %     elseif isFVTPFABased(obj.model,'Flow')
+    %       obj.results.expPress = zeros(msh.nCells,l);
+    %       if isVariabSatFlow(obj.model)
+    %         obj.results.expSat = zeros(msh.nCells,l);
+    %       end
+    %     end
+    %   end
+    %   if isPoromechanics(obj.model)
+    %     obj.results.expDispl = zeros(msh.nDim*msh.nNodes,l);
+    %     % Consider adding other output properties
+    %   end
+    % end
+
     function setMatFile(obj,msh)
       l = length(obj.timeList) + 1;
-      obj.results.expTime = zeros(l,1);
-      if isFlow(obj.model)
-        if isFEMBased(obj.model,'Flow')
-          obj.results.expPress = zeros(msh.nNodes,l);
-        elseif isFVTPFABased(obj.model,'Flow')
-          obj.results.expPress = zeros(msh.nCells,l);
-          if isVariabSatFlow(obj.model)
-            obj.results.expSat = zeros(msh.nCells,l);
+      obj.results = repmat(struct('expTime', 0),l,1);
+      for i=1:l
+        if isFlow(obj.model)
+          if isFEMBased(obj.model,'Flow')
+            obj.results(i).expPress = [];
+          elseif isFVTPFABased(obj.model,'Flow')
+            obj.results(i).expPress = [];
+            if isVariabSatFlow(obj.model)
+              obj.results(i).expSat = [];
+            end
           end
         end
-      end
-      if isPoromechanics(obj.model)
-        obj.results.expDispl = zeros(msh.nDim*msh.nNodes,l);
-        % Consider adding other output properties
+        if isPoromechanics(obj.model)
+          obj.results(i).expDispl = [];
+          % Consider adding other output properties
+        end
       end
     end
+
   end
 
   methods (Static = true)

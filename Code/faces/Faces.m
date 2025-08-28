@@ -11,6 +11,7 @@ classdef Faces < handle
     faceCentroid     % Centroid coordinates of each face
     faceNormal       % Normal to each face (the magnitude of the vector is equal to the area)
     nFaces           % # of faces
+    % neighNormal      % Normal between the cells in faceNeighbors (in the boundary is the center of the face)
   end
   
   properties (Access = private)
@@ -24,7 +25,7 @@ classdef Faces < handle
       %   Detailed explanation goes here
       obj.setFaces(simmod,msh);
     end
-    %     Triangle:
+%     Triangle:
 % 
 %     v
 %     ^
@@ -81,7 +82,6 @@ classdef Faces < handle
     function setFaces(obj,simmod,msh)
       obj.mesh = msh;
       obj.model = simmod;
-      %
 % % %       if obj.mesh.nSurfaces > 0
 % % %         obj.nFaces = obj.mesh.nSurfaces;
 % % %         areaSurf = zeros(obj.mesh.nSurfaces,1);
@@ -102,10 +102,10 @@ classdef Faces < handle
 % % %         aNod = repelem(areaSurf,obj.mesh.surfaceNumVerts); %./obj.mesh.surfaceNumVerts;
 % % %         obj.nodeArea = sparse(rowID,colID,aNod,length(obj.loadedNodesSurf),obj.mesh.nSurfaces);
 % % %       end
-      %
       if obj.model.isFVTPFABased('Flow')
         obj.setupFaceTopology;
         obj.computeFaceProperties;
+        % obj.addNeighborsNormal;
       end
     end
         
@@ -170,7 +170,7 @@ classdef Faces < handle
         obj.mesh.coordinates(obj.nodes2Faces(ptr),:) + repelem(obj.faceCentroid,nNF,1))/3;
       obj.faceCentroid = reshape(sum(reshape((areaTri.*centroidTri)',3,4,[]),2),3,[])';
       obj.faceCentroid = obj.faceCentroid.*(1./faceArea);
-      %
+
       obj.faceNormal = obj.faceNormal./(vecnorm(obj.faceNormal,2,2)).*faceArea;
 
 %       nNF = diff(obj.mapN2F);
@@ -256,6 +256,31 @@ classdef Faces < handle
       obj.mapN2F = [1; cumsum(nnodes)+1];
       
       addFaces(obj, nnodes, hftag);
+    end
+
+    function addNeighborsNormal(obj)
+        % ADDNEIGHBORSNORMAL - function to compute the normal between two
+        % neighbors cells.
+        c1e0 = find(~obj.faceNeighbors(:,1));
+        c2e0 = find(~obj.faceNeighbors(:,2));
+        c1ed = find(obj.faceNeighbors(:,1));
+        c2ed = find(obj.faceNeighbors(:,2));
+        vecA = zeros(obj.nFaces,3);
+        vecB = zeros(obj.nFaces,3);
+        vecA(c1e0,:)=obj.faceCentroid(c1e0,:);
+        vecB(c2e0,:)=obj.faceCentroid(c2e0,:);
+        node2elem = [obj.mesh.cells(:) repelem((1:obj.mesh.nCells),obj.mesh.cellNumVerts)'];
+        pos = obj.mesh.coordinates(node2elem(:,1),:);
+        axis = ones(size(pos,1),1);
+        cellCenter = accumarray([[node2elem(:,2) axis]; [node2elem(:,2) 2*axis]; ...
+                  [node2elem(:,2) 3*axis]], pos(:));
+        vecA(c1ed,:)=cellCenter(obj.faceNeighbors(c1ed,1),:);
+        vecB(c2ed,:)=cellCenter(obj.faceNeighbors(c2ed,2),:);
+
+        obj.neighNormal = vecA - vecB;
+        obj.neighNormal = obj.neighNormal./vecnorm(obj.neighNormal,2,2);
+        % sgn = 2*(dot(obj.neighNormal,obj.faceNormal,2)>=0) - 1;
+        % obj.neighNormal = sgn.*obj.neighNormal;
     end
     
     function addFaces (obj, nnodes, tags)
@@ -418,7 +443,7 @@ classdef Faces < handle
        r   = unique(r);
        ix  = Faces.mcolon(obj.mapF2E(r)+num(r), obj.mapF2E(r+1)-1);
        newData = zeros(size(obj.faces2Elements, 1)+size(new, 1), size(obj.faces2Elements, 2));
-       i    = (1:size(newData,1))';
+       i    = (1:size(newData,1))';  % IN WINDOWS, THIS LINE GIVE AN ERROR IF NOT SPECIFIED THE POSITION IN "SIZE"
        i(ix)=[];
        newData(i, :) = obj.faces2Elements;
        newData(ix,1:size(new,2)) = new;

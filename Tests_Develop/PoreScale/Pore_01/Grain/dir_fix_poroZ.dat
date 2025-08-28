@@ -1,7 +1,0 @@
-SurfBC            % BC item 
-Dir            % BC type 
-Poro            % Physics 
-fixZ            % BC name 
-Grain/dir_fix_poroZ/list 
-0.000000 Grain/dir_fix_poroZ/time0.dat 
-end

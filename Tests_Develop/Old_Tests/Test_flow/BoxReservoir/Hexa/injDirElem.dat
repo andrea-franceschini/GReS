@@ -1,7 +1,0 @@
-NodeBC                            % BC item
-Dir                               % BC type
-Flow                              % Physics
-injDirElem                        % BC name
-injDirElem/list
-0.0000  injDirElem/time0.dat
-End

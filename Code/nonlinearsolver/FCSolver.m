@@ -12,29 +12,63 @@ classdef FCSolver < handle
     tStep = 0
     iter
     dt
+    toGrow
+  end
+
+  properties (Access = public)
+      solStatistics
   end
   
   methods (Access = public)
-      function obj = FCSolver(linSyst)
-      obj.setNonLinearSolver(linSyst);
+      function obj = FCSolver(linSyst,varargin)
+        obj.setNonLinearSolver(linSyst);
+        saveStasticts = false(3,1);
+        for k = 1:(nargin-1)/2
+            pos = 2*(k-1)+1;
+            switch varargin{pos}
+                case 'SaveRelError'
+                    saveStasticts(1) = varargin{pos+1};
+                case 'SaveAbsError'
+                    saveStasticts(2) = varargin{pos+1};
+                case 'SaveBStepInf'
+                    saveStasticts(3) = varargin{pos+1};
+                case 'SaveConverg'
+                    saveStasticts(:) = varargin{pos+1};
+                otherwise
+            end
+        end
+        obj.solStatistics = SolverStatistics(linSyst.simparams.itMaxNR,linSyst.simparams.relTol,linSyst.simparams.absTol,saveStasticts);
+        % obj.toGrow = GrowningDomain(obj.linSyst,obj.bound);
     end
 
-   function [simStat] = NonLinearLoop(obj)
+    function [simStat] = NonLinearLoop(obj)
       simStat = 1;
       % Initialize the time step increment
       obj.dt = obj.domain.simparams.dtIni;  
       delta_t = obj.dt; % dynamic time step
 
-      flConv = true; %convergence flag
+      flConv = true; % convergence flag
+
+      % [obj.statek,obj.stateTmp]=obj.toGrow.addCell(obj.linSyst,1,2,6,obj.statek,obj.stateTmp);
+      % [obj.statek,obj.stateTmp]=obj.toGrow.addCells(obj.linSyst,1,[2 4 6 8],6,obj.statek,obj.stateTmp);
 
       % Loop over time
       while obj.t < obj.domain.simparams.tMax
          absTol = obj.domain.simparams.absTol;
+         residual = zeros(obj.domain.simparams.itMaxNR+1,2);
+
+         % =======
+         % % add cells
+         % % if obj.t>50 && obj.t<65
+         % %    [obj.statek,obj.stateTmp]=obj.toGrow.addCells(obj.linSyst,1,[2 4 6 8],6,obj.statek,obj.stateTmp);
+         % % end
+         % >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
+
          % Update the simulation time and time step ID
          obj.tStep = obj.tStep + 1;
          %new time update to fit the outTime list
          [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
-         %obj.t = obj.t + obj.dt;
+
          % Apply the Dirichlet condition value to the solution vector
          applyDirVal(obj.domain,obj.t);
          %
@@ -43,9 +77,10 @@ classdef FCSolver < handle
             fprintf('-----------------------------------------------------------\n');
          end
          if obj.domain.simparams.verbosity > 1
-            fprintf('Iter     ||rhs||\n');
+            % fprintf('Iter     ||rhs||\n');
+            fprintf('Iter     ||rhs||     ||rhs||/||rhs_0||\n');
          end
-         %
+
          % Compute Rhs and matrices of NonLinear models
          % Loop over available linear models and compute the jacobian
          computeMatricesAndRhs(obj.domain,obj.statek,obj.dt);
@@ -57,22 +92,31 @@ classdef FCSolver < handle
 
          % compute Rhs norm
          rhsNorm = norm(cell2mat(rhs),2);
-         % consider output of local field rhs contribution
+         rhsNormIt0 = rhsNorm;
+         residual(1,1) = rhsNormIt0;
+         residual(1,2) = 1.;
 
+         % consider output of local field rhs contribution
          tolWeigh = obj.domain.simparams.relTol*rhsNorm;
          obj.iter = 0;
          %
          if obj.domain.simparams.verbosity > 1
-            fprintf('0     %e\n',rhsNorm);
+            % fprintf('0     %e\n',rhsNorm);
+            fprintf('0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
          end
          while ((rhsNorm > tolWeigh) && (obj.iter < obj.domain.simparams.itMaxNR) ...
                && (rhsNorm > absTol)) || obj.iter == 0
             obj.iter = obj.iter + 1;
             %
             % Solve system with increment
-            J = assembleJacobian(obj.domain);
-            
+            J = assembleJacobian(obj.domain);            
             du = FCSolver.solve(J,rhs);
+
+            % =======
+            % J = assembleJacobian(obj.linSyst);
+            % du = J\-rhs;
+            % >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
+
             % Update current model state
             updateState(obj.domain,du);
 
@@ -85,14 +129,17 @@ classdef FCSolver < handle
             rhs = assembleRhs(obj.domain);
             % compute Rhs norm
             rhsNorm = norm(cell2mat(rhs),2);
+            residual(obj.iter+1,1)=rhsNorm;
+            residual(obj.iter+1,2)=rhsNorm/rhsNormIt0;
 
             if obj.domain.simparams.verbosity > 1
-               fprintf('%d     %e\n',obj.iter,rhsNorm);
+               fprintf('%d     %e     %e\n',obj.iter,residual(obj.iter+1,1),residual(obj.iter+1,2));
             end
          end
          %
          % Check for convergence
          flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
+         % flConv = (rhsNorm < tolWeigh);
          if flConv % Convergence
             obj.stateTmp.t = obj.t;
             % Advance state of non linear models
@@ -104,18 +151,26 @@ classdef FCSolver < handle
                printState(obj.domain);
             else
                printState(obj.domain,obj.statek);
+            % =======
+            % if obj.t > obj.simParameters.tMax   % For Steady State
+            %    printState(obj.printUtil,obj.bound,obj.stateTmp);
+            % else
+            %    printState(obj.printUtil,obj.linSyst,obj.bound,obj.statek,obj.stateTmp);
+            % >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
             end
+            obj.solStatistics.saveIt(obj.t,residual(1:obj.iter+1,1),residual(1:obj.iter+1,2));
+         else
+             obj.solStatistics.saveBackIt();
          end
          %
          % Manage next time step
          delta_t = manageNextTimeStep(obj,delta_t,flConv);
       end
       %
-   end
+    end
   end
   
   methods (Access = private)
-
      function setNonLinearSolver(obj,linearSyst)
         assert(numel(linearSyst)==1,['Multidomain models is not supported' ...
           'by FCSolver class'])

@@ -1,7 +1,0 @@
-NodeBC            % BC item 
-Dir            % BC type 
-Flow            % Physics 
-injection_L2            % BC name 
-imp_L2/list 
-0.000000 imp_L2/time0.dat 
-End

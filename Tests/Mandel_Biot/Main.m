@@ -13,7 +13,6 @@ cd(scriptDir);
 % Set physical models 
 model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 
-
 % Set parameters of the simulation
 fileName = "simParam.dat";
 simParam = SimulationParameters(fileName,model);
@@ -119,8 +118,8 @@ nodesX = nodesX(ind);
 nodesZ = nodesZ(ind);
 
 %Getting pressure and displacement solution for specified output times from MatFILE
-press = printUtils.results.expPress;
-disp = printUtils.results.expDispl;
+press = [printUtils.results.expPress];
+disp = [printUtils.results.expDispl];
 pressNum = press(elemP,2:end);
 dispXNum = disp(3*nodesX-2,2:end);
 dispZNum = disp(3*nodesZ,2:end);

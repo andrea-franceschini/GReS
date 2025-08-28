@@ -18,5 +18,11 @@ state.data.pressure = state.data.pressure+(biot*M*abs(pL))/(Ku+4*G/3);
 zu = mesh.coordinates(:,3);
 state.data.dispConv(3:3:end) = arrayfun(@(zu) 1/(Ku+4*G/3)*pL*(zu),zu);
 state.data.dispCurr = state.data.dispConv;
+% =======
+% stateIn.pressure = stateIn.pressure+(biot*M*abs(pL))/(Ku+4*G/3);
+% zu = mesh.coordinates(:,3);
+% stateIn.dispConv(3:3:end) = arrayfun(@(zu) 1/(Ku+4*G/3)*pL*(zu),zu);
+% stateIn.dispCurr = stateIn.dispConv;
+% >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
 end
 

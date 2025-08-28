@@ -42,3 +42,4 @@ Physical Surface("latY",3) = {13,21};
 
 Mesh 3;
 Save "Column_hexa.msh";
+//Save "Column.msh";

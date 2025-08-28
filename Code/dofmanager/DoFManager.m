@@ -296,9 +296,14 @@ classdef DoFManager < handle
          numDoF = nc*numEnts;
       end
 
+% <<<<<<< HEAD
       function scheme = getScheme(obj,fld)
         fldId = obj.getFieldId(fld);
         scheme = obj.fields(fldId).scheme;
+% =======
+%       function addCellTag(obj,tag)
+%          obj.cellTags = [obj.cellTags; tag];
+% >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
       end
    end
 

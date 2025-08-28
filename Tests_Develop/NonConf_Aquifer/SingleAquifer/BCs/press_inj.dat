@@ -1,9 +1,0 @@
-NodeBC            % BC item 
-Dir            % BC type 
-Flow            % Physics 
-inj            % BC name 
-BCs/press_inj/list 
-0.000000 BCs/press_inj/time0.dat 
-1.000000 BCs/press_inj/time1.dat 
-100.000000 BCs/press_inj/time2.dat 
-End

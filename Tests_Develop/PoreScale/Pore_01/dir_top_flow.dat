@@ -1,7 +1,0 @@
-SurfBC            % BC item 
-Dir            % BC type 
-Flow            % Physics 
-topFix            % BC name 
-dir_top_flow/list 
-0.000000 dir_top_flow/time0.dat 
-end

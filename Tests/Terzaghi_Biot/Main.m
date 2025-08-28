@@ -122,8 +122,8 @@ else
 end
 
 %Getting pressure and displacement solution for specified time from MatFILE
-press = printUtils.results.expPress;
-disp = printUtils.results.expDispl;
+press = [printUtils.results.expPress];
+disp = [printUtils.results.expDispl];
 pressplot = press(nodesP,2:end);
 dispplot = disp(3*nodesU,2:end);
 

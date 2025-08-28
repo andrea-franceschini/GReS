@@ -1,5 +1,0 @@
-Box(1) = {0,0,0,500,500,500};
-Sphere(2) = {100,240,30,220};
-Sphere(3) = {450,260,550,180};
-BooleanDifference{ Volume{1}; Delete;}{ Volume{2}; Delete;};
-BooleanDifference{ Volume{1}; Delete;}{ Volume{3}; Delete;};

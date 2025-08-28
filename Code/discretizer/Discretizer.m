@@ -36,6 +36,7 @@ classdef Discretizer < handle
          obj.checkTimeDependence();
       end
       
+% <<<<<<< HEAD
       function applyBC(obj,t,idDom)
         % Apply boundary condition to blocks of physical solver
         % ents: id of constrained entity
@@ -53,6 +54,30 @@ classdef Discretizer < handle
             if ~isCoupled(obj,field,f)
               continue
               % skip pair of uncoupled physics
+% =======
+%       function applyBC(obj,bound,t,state)
+%          % Apply boundary condition to blocks of physical solver
+%          % ents: id of constrained entity
+%          % vals: value to assign to each entity
+%          bcList = bound.db.keys;
+%          % get entities and values of boundary condition
+%          for bc = string(bcList)
+%             field = translatePhysic(bound.getPhysics(bc),obj.mod);
+%             % get id of constrained entities and corresponding BC values
+%             [bcEnts,bcVals] = getBC(getSolver(obj,field),bound,bc,t,state);
+%             % apply Boundary conditions to each Jacobian/rhs block
+%             for f = obj.fields
+%                if ~isCoupled(obj,field,f)
+%                   continue
+%                   % skip pair of uncoupled physics
+%                end
+%                switch bound.getType(bc)
+%                   case {'Dir','Spg'}
+%                      applyDirBC(obj.getSolver({field,f}),field,bcEnts,bcVals);
+%                   case {'Neu','VolumeForce'}
+%                      applyNeuBC(obj.getSolver({field,f}),bcEnts,bcVals);
+%                end
+% >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
             end
             switch obj.bcs.getType(bcId)
               case 'Dir'
@@ -137,6 +162,81 @@ classdef Discretizer < handle
       % end
 
 
+      % function printState(obj,stateOld)
+      %   % print solution of the model according to the print time in the
+      %   % list
+      %   % Initialize input structure for VTK output
+      %   cellData3D = [];
+      %   pointData3D = [];
+      %   if nargin == 1
+      %     time = obj.state.t;
+      %     % print result to mat-file
+      %     % this is not modular and will be updated in future version of the code
+      %     if obj.outstate.writeSolution
+      %       obj.outstate.results.expTime(obj.outstate.timeID,1) = time;
+      %       if isPoromechanics(obj.model)
+      %         obj.outstate.results.expDispl(:,obj.outstate.timeID) = obj.state.data.dispConv;
+      %       end
+      %       if isFlow(obj.model)
+      %         obj.outstate.results.expPress(:,obj.outstate.timeID) = obj.state.data.pressure;
+      %       end
+      %       if isVariabSatFlow(obj.model)
+      %         obj.outstate.results.expSat(:,obj.outstate.timeID) = obj.state.data.saturation;
+      %       end
+      %     end
+      %     for fld = obj.fields
+      %       [cellData,pointData] = printState(obj.getSolver(fld),obj.state);
+      %       cellData3D = [cellData3D; cellData];
+      %       pointData3D = [pointData3D; pointData];
+      %     end
+      %     if obj.outstate.writeVtk
+      %       obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
+      %     end
+      %     % update the print structure
+      %   elseif nargin == 2
+      %     stateNew = obj.state;
+      %     if obj.outstate.timeID <= length(obj.outstate.timeList)
+      %       while (obj.outstate.timeList(obj.outstate.timeID) <= stateNew.t)
+      %         assert(obj.outstate.timeList(obj.outstate.timeID) > stateOld.t, ...
+      %           'Print time %f out of range (%f - %f)',obj.outstate.timeList(obj.outstate.timeID), ...
+      %           stateOld.t,stateNew.t);
+      %         assert(stateNew.t - stateOld.t > eps('double'),'Dt too small for printing purposes');
+      %         %
+      %         time = obj.outstate.timeList(obj.outstate.timeID);
+      %         if obj.outstate.writeSolution
+      %           % print solution to mat-file
+      %           fac = (time - stateOld.t)/(stateNew.t - stateOld.t);
+      %           obj.outstate.results.expTime(obj.outstate.timeID+1,1) = time;
+      %           if isPoromechanics(obj.model)
+      %             obj.outstate.results.expDispl(:,obj.outstate.timeID+1) = stateNew.data.dispConv*fac+stateOld.data.dispConv*(1-fac);
+      %           end
+      %           if isFlow(obj.model)
+      %             obj.outstate.results.expPress(:,obj.outstate.timeID+1) = stateNew.data.pressure*fac+stateOld.data.pressure*(1-fac);
+      %           end
+      %           if isVariabSatFlow(obj.model)
+      %             obj.outstate.results.expSat(:,obj.outstate.timeID+1) = stateNew.data.saturation*fac+stateOld.data.saturation*(1-fac);
+      %           end
+      %         end
+      %         % Write output structure looping through available models
+      %         for fld = obj.fields
+      %           [cellData,pointData] = printState(obj.getSolver(fld),...
+      %             stateOld, stateNew, time);
+      %           % merge new fields
+      %           cellData3D = OutState.mergeOutFields(cellData3D,cellData);
+      %           pointData3D = OutState.mergeOutFields(pointData3D,pointData);
+      %         end
+      %         if obj.outstate.writeVtk
+      %           obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
+      %         end
+      %         obj.outstate.timeID = obj.outstate.timeID + 1;
+      %         if obj.outstate.timeID > length(obj.outstate.timeList)
+      %           break
+      %         end
+      %       end
+      %     end
+      %   end
+      % end
+
       function printState(obj,stateOld)
         % print solution of the model according to the print time in the
         % list
@@ -148,15 +248,19 @@ classdef Discretizer < handle
           % print result to mat-file
           % this is not modular and will be updated in future version of the code
           if obj.outstate.writeSolution
-            obj.outstate.results.expTime(obj.outstate.timeID,1) = time;
+            % obj.outstate.results.expTime(obj.outstate.timeID,1) = time;
+            obj.outstate.results(obj.outstate.timeID).expTime = time;
             if isPoromechanics(obj.model)
-              obj.outstate.results.expDispl(:,obj.outstate.timeID) = obj.state.data.dispConv;
+              % obj.outstate.results.expDispl(:,obj.outstate.timeID) = obj.state.data.dispConv;
+              obj.outstate.results(obj.outstate.timeID).expDispl = obj.state.data.dispConv;
             end
             if isFlow(obj.model)
-              obj.outstate.results.expPress(:,obj.outstate.timeID) = obj.state.data.pressure;
+              % obj.outstate.results.expPress(:,obj.outstate.timeID) = obj.state.data.pressure;
+              obj.outstate.results(obj.outstate.timeID).expPress = obj.state.data.pressure;
             end
             if isVariabSatFlow(obj.model)
-              obj.outstate.results.expSat(:,obj.outstate.timeID) = obj.state.data.saturation;
+              % obj.outstate.results.expSat(:,obj.outstate.timeID) = obj.state.data.saturation;
+              obj.outstate.results(obj.outstate.timeID).expSat = obj.state.data.saturation;
             end
           end
           for fld = obj.fields
@@ -167,7 +271,7 @@ classdef Discretizer < handle
           if obj.outstate.writeVtk
             obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
           end
-          % update the print structure
+        % update the print structure
         elseif nargin == 2
           stateNew = obj.state;
           if obj.outstate.timeID <= length(obj.outstate.timeList)
@@ -181,15 +285,19 @@ classdef Discretizer < handle
               if obj.outstate.writeSolution
                 % print solution to mat-file
                 fac = (time - stateOld.t)/(stateNew.t - stateOld.t);
-                obj.outstate.results.expTime(obj.outstate.timeID+1,1) = time;
+                % obj.outstate.results.expTime(obj.outstate.timeID+1,1) = time;
+                obj.outstate.results(obj.outstate.timeID+1).expTime = time;
                 if isPoromechanics(obj.model)
-                  obj.outstate.results.expDispl(:,obj.outstate.timeID+1) = stateNew.data.dispConv*fac+stateOld.data.dispConv*(1-fac);
+                  % obj.outstate.results.expDispl(:,obj.outstate.timeID+1) = stateNew.data.dispConv*fac+stateOld.data.dispConv*(1-fac);
+                  obj.outstate.results(obj.outstate.timeID+1).expDispl = stateNew.data.dispConv*fac+stateOld.data.dispConv*(1-fac);
                 end
                 if isFlow(obj.model)
-                  obj.outstate.results.expPress(:,obj.outstate.timeID+1) = stateNew.data.pressure*fac+stateOld.data.pressure*(1-fac);
+                  % obj.outstate.results.expPress(:,obj.outstate.timeID+1) = stateNew.data.pressure*fac+stateOld.data.pressure*(1-fac);
+                  obj.outstate.results(obj.outstate.timeID+1).expPress = stateNew.data.pressure*fac+stateOld.data.pressure*(1-fac);
                 end
                 if isVariabSatFlow(obj.model)
-                  obj.outstate.results.expSat(:,obj.outstate.timeID+1) = stateNew.data.saturation*fac+stateOld.data.saturation*(1-fac);
+                  % obj.outstate.results.expSat(:,obj.outstate.timeID+1) = stateNew.data.saturation*fac+stateOld.data.saturation*(1-fac);
+                  obj.outstate.results(obj.outstate.timeID+1).expSat = stateNew.data.saturation*fac+stateOld.data.saturation*(1-fac);
                 end
               end
               % Write output structure looping through available models
@@ -210,6 +318,11 @@ classdef Discretizer < handle
             end
           end
         end
+
+
+
+
+
       end
 
 
