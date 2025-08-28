@@ -85,8 +85,8 @@ classdef MultidomainFCSolver < handle
 
           du = solve(obj,J,rhs);
 
-          du(isnan(du)) = 0;
-          du(abs(du)>1e-3) = 0; 
+%           du(isnan(du)) = 0;
+%           du(abs(du)>1e-3) = 0; 
 
           % update primary variables and multipliers
           updateState(obj,du);
@@ -96,7 +96,7 @@ classdef MultidomainFCSolver < handle
           rhs = assembleRhs(obj);
           rhsNorm = norm(cell2mat(rhs),2);
 
-          rhsNorm = 0;
+          %rhsNorm = 0;
           
 
           if obj.simParameters.verbosity > 1
@@ -204,7 +204,7 @@ classdef MultidomainFCSolver < handle
           %           opts.droptol = 1e-3;       % drop tolerance
           %           opts.diagcomp = 1e-3;      % diagonal compensation
           L = ichol(J);
-          [sol,fl2,rr2,it2,rv2] = pcg(J,-rhs,1e-9,300,L,L');
+          [sol,fl2,rr2,it2,rv2] = pcg(J,-rhs,1e-11,400,L,L');
         else
           p = symamd(J);
           sol = J(p,p) \ -rhs(p);

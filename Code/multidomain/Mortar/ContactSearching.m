@@ -14,7 +14,7 @@ classdef ContactSearching < handle
     leaf2elem2
     elemConnectivity % master- slave connectivity
     dim
-    scale = 0.025;   % bounding box expansion (ratio w.r.t elem max dim)
+    scale = 0.01;   % bounding box expansion (ratio w.r.t elem max dim)
   end
 
   methods
