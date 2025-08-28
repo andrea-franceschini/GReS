@@ -41,7 +41,7 @@
 
 %%
 
-interf = load("Interface.mat","interfaces");
+interf = load("Interface_fluid2grain.mat","interfaces");
 interfaces{1} = interf.interfaces{1};
 
 %interfaces{1}.computeMortarMatrices();
