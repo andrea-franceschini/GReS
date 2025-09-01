@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+<struct>
+  <Domain>
+    <Name>TopLayer</Name>
+    <Geometry>Mesh/prova_sup.vtk</Geometry>
+    <ModelType>SinglePhaseFlow_FEM</ModelType>
+    <SimParameters> simParam.dat </SimParameters>
+    <Gauss>1</Gauss>
+    <Material> Materials/materialsListTop.dat </Material>
+    <BoundaryConditions count="2">
+      <File>BCs/bcSup_1.dat</File>
+      <File>BCs/bcSup_2.dat</File>
+    </BoundaryConditions>
+    <OutState outFile="outTime.dat"  print="1" />
+  </Domain>
+  <Domain>
+    <Name>BottomLayer</Name>
+    <Geometry>Mesh/prova_inf.vtk</Geometry>
+    <ModelType>SinglePhaseFlow_FEM</ModelType>
+    <SimParameters> simParam.dat </SimParameters>
+    <Gauss>1</Gauss>
+    <Material> Materials/materialsListBottom.dat </Material>
+    <BoundaryConditions count="2">
+      <File>BCs/bcInf_1.dat</File>
+      <File>BCs/bcInf_2.dat</File>
+    </BoundaryConditions>
+    <OutState outFile="outTime.dat"  print="1" />
+  </Domain>
+</struct>

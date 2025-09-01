@@ -19,7 +19,7 @@ PresFigs = true;
 SatuFigs = false;
 TimeConv = true;
 MeshConv = false;
-exportFigs = false;
+exportFigs = true;
 
 %% CONVERGENCY IN TIME
 if TimeConv

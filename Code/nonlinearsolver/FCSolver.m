@@ -142,6 +142,7 @@ classdef FCSolver < handle
          % flConv = (rhsNorm < tolWeigh);
          if flConv % Convergence
             obj.stateTmp.t = obj.t;
+            obj.domain.state.t = obj.t;
             % Advance state of non linear models
             if isPoromechanics(obj.domain.model)
                advanceState(getSolver(obj.domain,'Poromechanics'));
@@ -149,14 +150,10 @@ classdef FCSolver < handle
             
             if obj.t > obj.domain.simparams.tMax   % For Steady State
                printState(obj.domain);
+               % printState(obj.printUtil,obj.bound,obj.stateTmp);
             else
                printState(obj.domain,obj.statek);
-            % =======
-            % if obj.t > obj.simParameters.tMax   % For Steady State
-            %    printState(obj.printUtil,obj.bound,obj.stateTmp);
-            % else
-            %    printState(obj.printUtil,obj.linSyst,obj.bound,obj.statek,obj.stateTmp);
-            % >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
+               % printState(obj.printUtil,obj.linSyst,obj.bound,obj.statek,obj.stateTmp);
             end
             obj.solStatistics.saveIt(obj.t,residual(1:obj.iter+1,1),residual(1:obj.iter+1,2));
          else

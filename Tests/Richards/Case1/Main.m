@@ -17,8 +17,8 @@ topology = Mesh();
 
 % Set the input file name
 % fileName = strcat(input_dir,'Mesh/Column.msh');
-% fileName = strcat(input_dir,'Mesh/Column4x4x40.msh');
-fileName = strcat(input_dir,'Mesh/Column1x1x10.msh');
+fileName = strcat(input_dir,'Mesh/Column4x4x40.msh');
+% fileName = strcat(input_dir,'Mesh/Column1x1x10.msh');
 
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -36,7 +36,7 @@ mat = Materials(model,fileName);
 
 % Create an object of the "Elements" class and process the element properties
 % elems = Elements(topology,GaussPts);
-elems = Elements(topology);
+elems = Elements(topology,2);
 
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model,topology);
@@ -51,7 +51,7 @@ dofmanager = DoFManager(topology,model);
 
 % Create and set the print utility
 printUtils = OutState(model,topology,strcat(input_dir,'outTime.dat'), ...
-    'folderName','Outputs');
+    'folderName','Outputs','flagMatFile',true);
 
 %% ----------------------- Boundary Condition -----------------------------
 % Creating and Appling boundaries conditions.
@@ -120,23 +120,23 @@ if isFEMBased(model,'Flow')
 else
     numb = 0.125;
     tol = 0.01;
-    nodesP = find(abs(elems.cellCentroid(:,1)-numb) < tol & abs(elems.cellCentroid(:,2)-numb) < tol);
-    [~,ind] = sort(elems.cellCentroid(nodesP,3));
+    nodesP = find(abs(elems.mesh.cellCentroid(:,1)-numb) < tol & abs(elems.mesh.cellCentroid(:,2)-numb) < tol);
+    [~,ind] = sort(elems.mesh.cellCentroid(nodesP,3));
     nodesP = nodesP(ind);
 end
 
 % Small modification - for the growning grid
-nrep = length(printUtils.results(:,:));
-nvars = length(printUtils.results(2,:).expPress);
+nrep = length(printUtils.results);
+nvars = length(printUtils.results(2).expPress);
+% nvars = length(printUtils.results(2).expSat);
+% nvars = length(printUtils.results(2).expTime);
 press = zeros(nvars,nrep);
-nvars = length(printUtils.results(2,:).expSat);
 sw = zeros(nvars,nrep);
-nvars = length(printUtils.results(2,:).expTime);
-t = zeros(nvars,nrep);
+t = zeros(1,nrep);
 for i=2:nrep
-   press(:,i) = printUtils.results(i,:).expPress;
-   sw(:,i) = printUtils.results(i,:).expSat;
-   t(:,i) = printUtils.results(i,:).expTime;
+   press(:,i) = printUtils.results(i).expPress;
+   sw(:,i) = printUtils.results(i).expSat;
+   t(i) = printUtils.results(i).expTime;
 end
 % 
 % press = printUtils.results.expPress;
@@ -148,12 +148,12 @@ t = t(tind)/t_max;
 
 tstr = strcat(num2str(t),' T');
 %Getting pressure and saturation solution for specified time from MatFILE
-pressplot = press(nodesP,tind);
+pressplot = press(nodesP,tind');
 swplot = sw(nodesP,tind);
 
 % Vertical position of the column
 if isFVTPFABased(model,'Flow')
-    ptsZ = elems.cellCentroid(nodesP,3);
+    ptsZ = elems.mesh.cellCentroid(nodesP,3);
 else
     ptsZ = topology.coordinates(nodesP,3);
 end

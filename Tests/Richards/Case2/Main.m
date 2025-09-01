@@ -102,7 +102,7 @@ printUtils.finalize()
 
 %% POST PROCESSING
 postproc = true;
-printFigs = false;
+printFigs = true;
 if postproc
     image_dir = strcat(pwd,'/',figures_dir);
     if ~isfolder(image_dir)
@@ -173,11 +173,11 @@ if postproc
     end
 
     % To save the information necessary to compare the solution of GReS and MRST.
-    GReS_time = [printUtils.results(tind).expTime];
-    GReS_pres = pressplot/weight;
-    GReS_satu = swplot;
-    GReS_elev = ptsZ;
-    save('Inputs/Solution/GReS_30.mat', 'GReS_time', 'GReS_pres', 'GReS_satu', 'GReS_elev');
+    % GReS_time = [printUtils.results(tind).expTime];
+    % GReS_pres = pressplot/weight;
+    % GReS_satu = swplot;
+    % GReS_elev = ptsZ;
+    % save('Inputs/Solution/GReS_30.mat', 'GReS_time', 'GReS_pres', 'GReS_satu', 'GReS_elev');
 end
 
-run("Validation.m")
+% run("Validation.m")

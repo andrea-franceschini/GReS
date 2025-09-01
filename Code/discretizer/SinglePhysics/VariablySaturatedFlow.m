@@ -89,7 +89,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
             states.potential = computePotential(obj,pressure);
             states.saturation = computeSaturation(obj,pressure);
             [mob ,~] = computeMobility(obj,pressure);
-            states.flux = computeFlux(obj,mob,pressure);
+            % states.flux = computeFlux(obj,mob,pressure);
             % flux = computeFluxBound(obj,flux,bound,potential,pressure,t);
             % mass = checkMassCons(obj,mob,potential);
             states.perm = printPermeab(obj);
@@ -124,9 +124,10 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
                  ents = obj.bcs.getEntities(id);
                  vals = obj.bcs.getVals(id,t);
               case 'SurfBC'
-                 % faceID = bc.getEntities(id);
+                 % faceID = obj.bcs.getEntities(id);
                  % ents = sum(obj.faces.faceNeighbors(faceID,:),2);
-                 % v = bc.getVals(id,t);
+                 % v = obj.bcs.getVals(id,t);
+                 % [ents,~,ind] = unique(ents);
 
                  [faceID, faceOrder] = sort(obj.bcs.getEntities(id));
                  ents = sum(obj.faces.faceNeighbors(faceID,:),2);
@@ -543,9 +544,9 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
 
     methods (Static)
         function [cellStr,pointStr] = buildPrintStruct(state)
-            pointStr(1).name = 'flux';
-            pointStr(1).data = state.flux;
-            % pointStr = [];
+            % pointStr(1).name = 'flux';
+            % pointStr(1).data = state.flux;
+            pointStr = [];
             cellStr = repmat(struct('name', 1, 'data', 1), 3, 1);
             cellStr(1).name = 'pressure';
             cellStr(1).data = state.pressure;
