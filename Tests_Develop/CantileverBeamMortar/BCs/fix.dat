@@ -1,0 +1,7 @@
+SurfBC            % BC item 
+Dir            % BC type 
+Poromechanics            % Physics 
+1fix            % BC name 
+BCs/fix/list 
+0.000000 BCs/fix/time0.dat 
+End

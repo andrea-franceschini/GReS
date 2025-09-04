@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <SimulationInput>
+  <?xml version="1.0" encoding="UTF-8"?>
+<SimulationInput>
   <!-- Domain 1 -->
   <Domain>
     <Name>TopBlock</Name>

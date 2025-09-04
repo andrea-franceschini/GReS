@@ -1,0 +1,3 @@
+Elastic                           % material model
+210      0.3                    % E [GPa], nu
+End
