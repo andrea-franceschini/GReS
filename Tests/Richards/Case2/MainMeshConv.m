@@ -1,19 +1,19 @@
 close all;
 clear;
-input_dir = 'Inputs/';
-output_dir = 'Outputs/';
-figures_dir = 'Figs/';
+input_dir = 'Inputs';
+output_dir = 'Outputs';
+figures_dir = 'Figs';
 
 %% -------------------------- SET THE PHYSICS -----------------------------
 model = ModelType("VariabSatFlow_FVTPFA");
 
 %% ----------------------- SIMULATION PARAMETERS --------------------------
-fileName = strcat(input_dir,'simParamMesh.dat');
+fileName = fullfile(input_dir,'simParamMesh.dat');
 simParam = SimulationParameters(fileName,model);
 
 %% ----------------------------- MATERIALS --------------------------------
 % Set the input file name
-fileMaterial = strcat(input_dir,'materialsList.dat');
+fileMaterial = fullfile(input_dir,'materialsList.dat');
 
 %% ------------------------------ ELEMENTS --------------------------------
 % Define Gauss points
@@ -33,7 +33,7 @@ cond(2).times = 0.;
 cond(2).values = -0.75*9.8066e3;
 
 %% ------------------------------ MESH ------------------------------------
-meshDir = 'Mesh/';
+meshDir = 'Mesh';
 meshName = 'Column';
 meshList = [10 20 40 80 160];
 
@@ -45,7 +45,8 @@ for i=1:length(meshList)
     topology = Mesh();
 
     % Set the input file name
-    fileName = strcat(input_dir,meshDir,meshName,int2str(meshList(i)),'.msh');
+    fileName = fullfile(input_dir,meshDir,strcat(meshName,int2str(meshList(i)),'.msh'));
+    % fileName = strcat(input_dir,meshDir,meshName,int2str(meshList(i)),'.msh');
 
     % Import mesh data into the Mesh object
     topology.importGMSHmesh(fileName);
@@ -120,7 +121,7 @@ for i=1:length(meshList)
 end
 
 %% POST PROCESSING
-image_dir = strcat(pwd,'/',figures_dir);
+image_dir = fullfile(pwd,figures_dir);
 if ~isfolder(image_dir)
     mkdir(image_dir)
 end
@@ -142,7 +143,7 @@ ylabel('Height (m)')
 legend(tstr, 'Location', 'northwest')
 set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
 % export figure with quality
-stmp = strcat(figures_dir,'mesh_pressure','.png');
+stmp = fullfile(image_dir,'mesh_pressure.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 %Plotting saturation
@@ -157,7 +158,7 @@ legend(tstr, 'Location', 'northwest')
 str = strcat('t = ',tstr);
 set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
 % export figure with quality
-stmp = strcat(figures_dir, 'mesh_saturation', '.png');
+stmp = fullfile(image_dir,'mesh_saturation.png');
 exportgraphics(gcf,stmp,'Resolution',400)
 
 % To save the information necessary to compare the solution of GReS and MRST.

@@ -1,7 +1,0 @@
-SurfBC                            % BC item 
-Spg                               % BC type 
-Flow                              % Physics 
-BordA                           % BC name 
-Inputs/BC/BC_SPG/List_BordA 
-0.00 Inputs/BC/BC_SPG/Time_BordA_0.dat 
-End

@@ -12,7 +12,7 @@ classdef FCSolver < handle
     tStep = 0
     iter
     dt
-    toGrow
+    % toGrow
   end
 
   properties (Access = public)
@@ -58,10 +58,10 @@ classdef FCSolver < handle
          residual = zeros(obj.domain.simparams.itMaxNR+1,2);
 
          % =======
-         % % add cells
-         % % if obj.t>50 && obj.t<65
-         % %    [obj.statek,obj.stateTmp]=obj.toGrow.addCells(obj.linSyst,1,[2 4 6 8],6,obj.statek,obj.stateTmp);
-         % % end
+         % add cells
+         % if obj.t>50 && obj.t<65
+         %    [obj.statek,obj.stateTmp]=obj.toGrow.addCells(obj.linSyst,1,[2 4 6 8],6,obj.statek,obj.stateTmp);
+         % end
          % >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
 
          % Update the simulation time and time step ID
@@ -107,15 +107,10 @@ classdef FCSolver < handle
          while ((rhsNorm > tolWeigh) && (obj.iter < obj.domain.simparams.itMaxNR) ...
                && (rhsNorm > absTol)) || obj.iter == 0
             obj.iter = obj.iter + 1;
-            %
+            
             % Solve system with increment
             J = assembleJacobian(obj.domain);            
             du = FCSolver.solve(J,rhs);
-
-            % =======
-            % J = assembleJacobian(obj.linSyst);
-            % du = J\-rhs;
-            % >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
 
             % Update current model state
             updateState(obj.domain,du);

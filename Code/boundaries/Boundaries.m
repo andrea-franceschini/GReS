@@ -835,9 +835,11 @@ classdef Boundaries < handle
       
       % - Seepage condition is only compatible to flow in a surfBC, check
       % to allow only in this condition.
-      if (type=="Spg") && ~(token=="SurfBC") && ~ismember(physics, ["Flow","SinglePhaseFlow","VariablySaturatedFlow"])
-        error(['Seepage boundary condition (Spg) is only admitted for flow' ...
-          ' applied in a surface (SurfBC)']);
+      if (token=="SurfBC")
+        if (type=="Spg") &&  ~ismember(physics, ["Flow","SinglePhaseFlow","VariablySaturatedFlow"])
+          error(['Seepage boundary condition (Spg) is only admitted for flow' ...
+            ' applied in a surface (SurfBC)']);
+        end
       end
 
 

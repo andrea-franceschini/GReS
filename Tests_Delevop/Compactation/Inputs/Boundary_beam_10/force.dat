@@ -1,8 +1,0 @@
-SurfBC                            % BC item 
-Neu                               % BC type 
-Poro                              % Physics
-y                                 % Direction 
-force                           % BC name 
-Inputs/Boundary_beam_10/force/List 
-0.00 Inputs/Boundary_beam_10/force/Time_0.dat 
-End

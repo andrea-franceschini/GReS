@@ -1,7 +1,0 @@
-SurfBC            % BC item 
-Dir            % BC type 
-SinglePhaseFlow            % Physics 
-top_pressure_2            % BC name 
-BCs/bcSup_2/list 
-0.000000 BCs/bcSup_2/time0.dat 
-End

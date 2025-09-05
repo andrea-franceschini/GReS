@@ -1,3 +1,0 @@
-% Input file for multidomain interfaces (aquifer as slave sides)
-% (Master_ID,SurfaceTag)  (Slave_ID,SurfaceTag) type nGP nInt multType
-(1,2) (2,1) RBF 16 4 standard

@@ -1,7 +1,0 @@
-SurfBC                            % BC item 
-Dir                               % BC type 
-Poro                              % Physics 
-desloc                           % BC name 
-Inputs/Boundary_beam_10/desloc/List 
-0.00 Inputs/Boundary_beam_10/desloc/Time_0.dat 
-End

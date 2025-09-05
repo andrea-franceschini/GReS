@@ -1,8 +1,8 @@
 100.01                  % Simulation end time
-2.e-2                    % Initial time step size
-1.e-4                    % Minimum time step size
+1.e-1                    % Initial time step size
+1.e-1                    % Minimum time step size
 1.e+1                    % Maximum time step size
-1.5                      % Time step increment augmentation factor (multiplicative)
+1.                      % Time step increment augmentation factor (multiplicative)
 Default                 % Time step increment chopping factor (multiplicative)
 100000000000            % Pressure increment target between consecutive time steps
 Default                 % Relaxation factor for time step increment

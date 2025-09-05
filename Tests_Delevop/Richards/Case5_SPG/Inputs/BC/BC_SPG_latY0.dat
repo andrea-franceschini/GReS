@@ -1,7 +1,0 @@
-SurfBC                            % BC item 
-Spg                               % BC type 
-Flow                              % Physics 
-latY0                           % BC name 
-Inputs/BC/BC_SPG/List_latY0 
-0.00 Inputs/BC/BC_SPG/Time_latY0_0.dat 
-End

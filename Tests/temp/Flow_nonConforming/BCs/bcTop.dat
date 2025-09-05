@@ -1,7 +1,0 @@
-NodeBC            % BC item 
-Dir            % BC type 
-SinglePhaseFlow            % Physics 
-topCorner_pressure            % BC name 
-BCs/bcTop/list 
-0.000000 BCs/bcTop/time0.dat 
-End

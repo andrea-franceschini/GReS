@@ -1,6 +1,0 @@
-PorousRock                        % material model
-0.1      21  1.0                    % porosity 0.375 , compressibility (alpha) in kPa, specific weight kPa
-5.91e-12     0      0                % intrinsic permeability matrix (upper part) 
-       5.91e-12     0
-              5.91e-13
-End

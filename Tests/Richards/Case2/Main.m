@@ -1,14 +1,14 @@
 close all;
 % clear;
-input_dir = 'Inputs/';
-output_dir = 'Outputs/';
-figures_dir = 'Figs/';
+input_dir = 'Inputs';
+output_dir = 'Outputs';
+figures_dir = 'Figs';
 
 %% -------------------------- SET THE PHYSICS -------------------------
 model = ModelType("VariabSatFlow_FVTPFA");
 
 %% ----------------------- SIMULATION PARAMETERS ----------------------
-fileName = strcat(input_dir,'simParam.dat');
+fileName = fullfile(input_dir,'simParam.dat');
 simParam = SimulationParameters(fileName,model);
 
 %% ------------------------------  MESH -------------------------------
@@ -16,15 +16,15 @@ simParam = SimulationParameters(fileName,model);
 topology = Mesh();
 
 % Set the input file name
-% fileName = strcat(input_dir,'Column.msh');
-fileName = strcat(input_dir,'Mesh/Column30.msh');
+% fileName = fullfile(input_dir,'Mesh','Column.msh');
+fileName = fullfile(input_dir,'Mesh','Column30.msh');
 
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
 
 %% ----------------------------- MATERIALS -----------------------------
 % Set the input file name
-fileName = strcat(input_dir,'materialsList.dat');
+fileName = fullfile(input_dir,'materialsList.dat');
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(model,fileName);
@@ -49,7 +49,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 dofmanager = DoFManager(topology,model);
 
 % Create and set the print utility
-printUtils = OutState(model,topology,strcat(input_dir,'outTime.dat'), ...
+printUtils = OutState(model,topology,fullfile(input_dir,'outTime.dat'), ...
     'folderName','Outputs','flagMatFile',true);
 
 %% ----------------------- Boundary Condition -----------------------------
@@ -104,7 +104,7 @@ printUtils.finalize()
 postproc = true;
 printFigs = true;
 if postproc
-    image_dir = strcat(pwd,'/',figures_dir);
+  image_dir = fullfile(pwd,figures_dir);
     if ~isfolder(image_dir)
         mkdir(image_dir)
     end
@@ -128,7 +128,7 @@ if postproc
     tind = 2:length(t);
     t_max = t(end);
     t = t(tind)/86400;
-    tstr = strcat(num2str(t),' Days');
+    tstr = strcat(num2str(t'),' Days');
 
     %Getting pressure and saturation solution for specified time from MatFILE
     numb = 0.;
@@ -155,7 +155,7 @@ if postproc
       legend(tstr, 'Location', 'northwest')
       set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
       % export figure with quality
-      stmp = strcat(image_dir,'pressure','.png');
+      stmp = fullfile(image_dir,'pressure.png');
       exportgraphics(gcf,stmp,'Resolution',400)
 
       %Plotting saturation
@@ -168,7 +168,7 @@ if postproc
       str = strcat('t = ',tstr);
       set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
       % export figure with quality
-      stmp = strcat(image_dir, 'saturation', '.png');
+      stmp = fullfile(image_dir,'saturation.png');
       exportgraphics(gcf,stmp,'Resolution',400)
     end
 
