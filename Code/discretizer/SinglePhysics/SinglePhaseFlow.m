@@ -62,7 +62,7 @@ classdef SinglePhaseFlow < SinglePhysics
         obj.state.data.pressure(id) = vals;
       end
 
-      function states = finalizeState(obj,states,t)
+      function states = finalizeState(obj,states)
         % Compute the posprocessing variables for the module.
         pressure = states.pressure;
         states.potential = computePotential(obj,pressure);
@@ -86,7 +86,7 @@ classdef SinglePhaseFlow < SinglePhysics
             otherwise
                error('Wrong number of input arguments');
          end
-         outPrint = finalizeState(obj,outPrint,t);
+         outPrint = finalizeState(obj,outPrint);
          [cellData,pointData] = SinglePhaseFlow.buildPrintStruct(obj.model,outPrint);
       end
 

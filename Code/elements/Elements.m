@@ -37,6 +37,7 @@ classdef Elements < handle
         if nargin < 2
           nGaussPt = 1;
         end
+
         setElementData(obj,mesh,nGaussPt);
     end
 
@@ -61,6 +62,7 @@ classdef Elements < handle
       end
       obj.elems{k}.computeProperties();
     end
+
   end
 
   methods (Access = private)

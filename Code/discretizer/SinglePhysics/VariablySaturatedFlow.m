@@ -83,7 +83,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
         %     mass = checkMassCons(obj,mob,potential);
         % end
 
-        function states = finalizeState(obj,states,t)
+        function states = finalizeState(obj,states)
             % Compute the posprocessing variables for the module.
             pressure = states.pressure;
             states.potential = computePotential(obj,pressure);
@@ -110,7 +110,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
             end
             % posprocessing the structure of VSFlow.
             % [outPrint.potential,outPrint.flux,outPrint.saturation,outPrint.mass] = finalizeState(obj,bound,outPrint.pressure,t);
-            outPrint = finalizeState(obj,outPrint,t);
+            outPrint = finalizeState(obj,outPrint);
             [cellData,pointData] = VariablySaturatedFlow.buildPrintStruct(outPrint);
         end
 

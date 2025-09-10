@@ -253,6 +253,10 @@ classdef Hexahedron < FEM
     end
 
     function setElement(obj)
+       if obj.nGP == 1
+        warning('Reduced Hexahedra integration is not admitted: Number of gauss points has been increased.');
+        obj.nGP = obj.nGP + 1;
+      end
       obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
       obj.detJ = zeros(1,obj.GaussPts.nNode);
       findLocBasisF(obj);

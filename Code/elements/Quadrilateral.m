@@ -142,10 +142,15 @@ classdef Quadrilateral < FEM
       obj.mesh.surfaceCentroid(idQuad,:) = cellCent;
       obj.mesh.surfaceArea(idQuad,:) = area;
     end
+
   end
 
   methods (Access = protected)
     function setElement(obj)
+      if obj.nGP == 1
+        warning('Reduced Quadrilateral integration is not admitted: Number of gauss points has been increased.');
+        obj.nGP = obj.nGP + 1;
+      end
       obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
       obj.detJ = zeros(1,obj.GaussPts.nNode);
       findLocBasisF(obj);

@@ -21,7 +21,7 @@ ref = load('referenceSol.mat');
 comp = domain.outstate.results;
 
 tol = 1e-3;
-assert(norm(ref.expDispl-comp.expDispl)<tol)
-assert(norm(ref.expPress-comp.expPress)<tol)
+assert(norm(ref.expDispl(:,2:end)-[comp.expDispl])<tol)
+assert(norm(ref.expPress(:,2:end)-[comp.expPress])<tol)
 
 

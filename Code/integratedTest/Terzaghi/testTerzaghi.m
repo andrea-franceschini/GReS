@@ -7,8 +7,10 @@ analyticalSol = load('Terzaghi_Analytical.mat');
 zAn = analyticalSol.z;
 zNodes = domain.grid.topology.coordinates(:,3);
 zCells = domain.grid.topology.cellCentroid(:,3);
-pNum = domain.outstate.results.expPress(:,2:end);
-uzNum = domain.outstate.results.expDispl(3:3:end,2:end);
+pNum = [domain.outstate.results.expPress];
+pNum = pNum(:,2:end);
+uNum = [domain.outstate.results.expDispl];
+uzNum = uNum(3:3:end,2:end);
 
 
 for i = 1:numel(analyticalSol.t)
@@ -35,8 +37,10 @@ clearvars -except domain
 analyticalSol = load('Terzaghi_Analytical.mat');
 zAn = analyticalSol.z;
 zNodes = domain.grid.topology.coordinates(:,3);
-pNum = domain.outstate.results.expPress(:,2:end);
-uzNum = domain.outstate.results.expDispl(3:3:end,2:end);
+pNum = [domain.outstate.results.expPress];
+pNum = pNum(:,2:end);
+uNum = [domain.outstate.results.expDispl];
+uzNum = uNum(3:3:end,2:end);
 
 
 for i = 1:numel(analyticalSol.t)

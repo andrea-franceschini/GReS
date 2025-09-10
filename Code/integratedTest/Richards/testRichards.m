@@ -11,7 +11,7 @@ simParam = SimulationParameters(fullfile('simParam.xml'),model);
 % Create the topology object
 topology = Mesh();
 topology.importGMSHmesh(fullfile('Mesh','Column.msh'));
-elems = Elements(topology);
+elems = Elements(topology,2);
 faces = Faces(model,topology);
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
