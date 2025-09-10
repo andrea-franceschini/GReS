@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SimulationInput>
+  <!-- Only one domain -->
+    <Domain>
+      <Name>Grains</Name>
+      <ModelType>Poisson_FEM</ModelType>
+      <Gauss>3</Gauss>
+      <BoundaryConditions count="2">
+        <File>BCs/fixBot.dat</File>
+        <File>BCs/moveTop.dat</File>
+        </BoundaryConditions>
+        <OutState outFile="outTime.dat" print = "1" />
+    </Domain>
+</SimulationInput>
+ 
