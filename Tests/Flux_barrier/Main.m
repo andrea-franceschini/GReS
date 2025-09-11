@@ -35,7 +35,7 @@ mat = Materials(model,fileName);
 
 % Create an object of the "Elements" class and process the element properties
 % elems = Elements(topology,GaussPts);
-elems = Elements(topology);
+elems = Elements(topology,2);
 
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model,topology);
