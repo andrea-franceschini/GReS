@@ -8,7 +8,6 @@ classdef VTKOutput < handle
    end
 
    properties (Access = private)
-
       mesh;
       hasFaults = false;
       surfaceList;
@@ -30,7 +29,6 @@ classdef VTKOutput < handle
       nDataMax = 100;
       IDdata = 0;
       data;
-
    end
 
    methods (Access = public)
@@ -270,10 +268,10 @@ classdef VTKOutput < handle
          end
 
          fname = sprintf('%s/%s/%s', obj.folderName, outName, obj.cellFileName);
-         if any(obj.mesh.coordinates(:,3)~=0)
+         if ~all(isempty([cellData3DNames pointData3DNames]))
             mxVTKWriter(fname, time, obj.mesh.coordinates, obj.mesh.cells, obj.mesh.cellVTKType, ...
                obj.mesh.cellNumVerts, pointData3D, cellData3D);
-         else
+         elseif ~all(isempty([cellData2DNames pointData2DNames]))
             mxVTKWriter(fname, time, obj.mesh.coordinates, obj.mesh.surfaces, obj.mesh.surfaceVTKType, ...
                obj.mesh.surfaceNumVerts, pointData2D, cellData2D);
          end

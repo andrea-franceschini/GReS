@@ -1,10 +1,10 @@
 VolumeForce                       % BC item
-Flow                              % Physics
+SinglePhaseFlow                   % Physics
 flux                              % BC name
-BCs/flux/list
-0.000000 BCs/flux/time0.dat
-1.000000 BCs/flux/timeMax.dat
-6.000000 BCs/flux/timeMax.dat
-7.000000 BCs/flux/time0.dat
-100.000000 BCs/flux/time0.dat
+flux/list
+0.000000 flux/time0.dat
+1.000000 flux/timeMax.dat
+6.000000 flux/timeMax.dat
+7.000000 flux/time0.dat
+100.000000 flux/time0.dat
 End

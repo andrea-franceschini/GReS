@@ -1,0 +1,1236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<struct>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="3   12   56   59   94   98  108  111  124  129  134  135  147  150  165  178  179  192  195  197  201  207  225  226"/>
+        <Slave id="1" surfaceTag="1"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="16   47   50   60   88   92  128  142  144  163  168  215  218"/>
+        <Slave id="1" surfaceTag="2"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="12   24  100  129  143  150  179  206  234"/>
+        <Slave id="1" surfaceTag="3"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="29   46   65   84   90   91   92  105  113  117  144  151  157  171  172  184  186  190  198  199  224"/>
+        <Slave id="1" surfaceTag="4"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="55   93  101  111  119  127  180  188  216  226"/>
+        <Slave id="1" surfaceTag="5"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="38   58   74   87   89   93  104  185  191  197  219  226  233"/>
+        <Slave id="1" surfaceTag="6"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="45   61   62   64   66   72   86   91  116  118  119  120  131  149  159  196  214"/>
+        <Slave id="1" surfaceTag="7"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="13   21   60  168  202  212"/>
+        <Slave id="1" surfaceTag="8"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="30   89   90  116  127  190  200  232"/>
+        <Slave id="1" surfaceTag="9"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="22   27   50   62   64   66   69   95   96  106  112  114  128  137  149  182  189  194  196  201  206  208  217  218  227  229  231  239"/>
+        <Slave id="1" surfaceTag="10"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="114  140  164  174  181  239"/>
+        <Slave id="1" surfaceTag="11"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="107  110  178"/>
+        <Slave id="1" surfaceTag="12"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="77  139  168"/>
+        <Slave id="1" surfaceTag="13"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="42  115  123  170  233"/>
+        <Slave id="1" surfaceTag="14"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="18  37  41"/>
+        <Slave id="1" surfaceTag="15"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="46  218"/>
+        <Slave id="1" surfaceTag="16"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="54   81  112  137  173  194"/>
+        <Slave id="1" surfaceTag="17"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="34   41   80   85  108  141  154  178  210"/>
+        <Slave id="1" surfaceTag="18"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="33  44  88"/>
+        <Slave id="1" surfaceTag="19"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="120"/>
+        <Slave id="1" surfaceTag="20"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="28   94  103  104  130  156"/>
+        <Slave id="1" surfaceTag="21"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="229"/>
+        <Slave id="1" surfaceTag="22"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="151  193"/>
+        <Slave id="1" surfaceTag="23"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="173  175  217  231"/>
+        <Slave id="1" surfaceTag="24"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="94   99  139  147  150  156  161  192  223"/>
+        <Slave id="1" surfaceTag="25"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="117  171"/>
+        <Slave id="1" surfaceTag="26"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="34  107  121  178  196  220  231"/>
+        <Slave id="1" surfaceTag="27"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="65  130  163  172  185  195  198  225  238"/>
+        <Slave id="1" surfaceTag="28"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="33  171"/>
+        <Slave id="1" surfaceTag="29"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="35  74"/>
+        <Slave id="1" surfaceTag="30"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="52   75   89  103  105  151  172  185  190  233"/>
+        <Slave id="1" surfaceTag="31"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="36   43   57   83  169"/>
+        <Slave id="1" surfaceTag="32"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="193  224"/>
+        <Slave id="1" surfaceTag="33"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="121  131  135  165  188  196  210"/>
+        <Slave id="1" surfaceTag="34"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="74  101  136"/>
+        <Slave id="1" surfaceTag="35"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="133  208"/>
+        <Slave id="1" surfaceTag="37"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="115  219"/>
+        <Slave id="1" surfaceTag="38"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="69  112  133"/>
+        <Slave id="1" surfaceTag="39"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="85  131  177  210"/>
+        <Slave id="1" surfaceTag="40"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="121  141"/>
+        <Slave id="1" surfaceTag="41"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="74  148"/>
+        <Slave id="1" surfaceTag="42"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="88  151  193  202  224"/>
+        <Slave id="1" surfaceTag="44"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="63  118  216"/>
+        <Slave id="1" surfaceTag="45"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="152  157  171"/>
+        <Slave id="1" surfaceTag="46"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="57   76  142  189  194  206  234  236"/>
+        <Slave id="1" surfaceTag="47"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="207"/>
+        <Slave id="1" surfaceTag="49"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="132  176  194"/>
+        <Slave id="1" surfaceTag="50"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="97  104  147  167  183  191  197"/>
+        <Slave id="1" surfaceTag="51"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="233"/>
+        <Slave id="1" surfaceTag="52"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="124  178  207"/>
+        <Slave id="1" surfaceTag="53"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="69  217"/>
+        <Slave id="1" surfaceTag="54"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="119  216"/>
+        <Slave id="1" surfaceTag="55"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="97  134  192  221"/>
+        <Slave id="1" surfaceTag="56"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="132  169  222"/>
+        <Slave id="1" surfaceTag="57"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="197  226"/>
+        <Slave id="1" surfaceTag="58"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="110  124  192"/>
+        <Slave id="1" surfaceTag="59"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="125  168"/>
+        <Slave id="1" surfaceTag="60"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="66   72  164  174"/>
+        <Slave id="1" surfaceTag="62"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="145"/>
+        <Slave id="1" surfaceTag="63"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="72   84  157  186  211"/>
+        <Slave id="1" surfaceTag="64"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="84  106  189  211  225  238"/>
+        <Slave id="1" surfaceTag="65"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="126  147  158  183  221"/>
+        <Slave id="1" surfaceTag="68"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="112  122  133  208  217"/>
+        <Slave id="1" surfaceTag="69"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="121  149  196"/>
+        <Slave id="1" surfaceTag="70"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="98  106  127  195  198  225"/>
+        <Slave id="1" surfaceTag="71"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="157  159"/>
+        <Slave id="1" surfaceTag="72"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="151"/>
+        <Slave id="1" surfaceTag="73"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="180  219  232"/>
+        <Slave id="1" surfaceTag="74"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="77   79  100  142  234"/>
+        <Slave id="1" surfaceTag="76"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="150"/>
+        <Slave id="1" surfaceTag="77"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="169"/>
+        <Slave id="1" surfaceTag="79"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="162"/>
+        <Slave id="1" surfaceTag="81"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="88  125"/>
+        <Slave id="1" surfaceTag="82"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="106  186  200  211"/>
+        <Slave id="1" surfaceTag="84"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="210"/>
+        <Slave id="1" surfaceTag="85"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="90  91"/>
+        <Slave id="1" surfaceTag="86"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="104"/>
+        <Slave id="1" surfaceTag="87"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="144  215"/>
+        <Slave id="1" surfaceTag="88"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="185  195  198  232"/>
+        <Slave id="1" surfaceTag="89"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="91  190  199  235"/>
+        <Slave id="1" surfaceTag="90"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="186"/>
+        <Slave id="1" surfaceTag="91"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="171"/>
+        <Slave id="1" surfaceTag="92"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="226"/>
+        <Slave id="1" surfaceTag="93"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="100  130"/>
+        <Slave id="1" surfaceTag="94"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="208"/>
+        <Slave id="1" surfaceTag="95"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="239"/>
+        <Slave id="1" surfaceTag="96"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="106  127  135  160  214"/>
+        <Slave id="1" surfaceTag="98"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="192"/>
+        <Slave id="1" surfaceTag="99"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="142  150  212  238"/>
+        <Slave id="1" surfaceTag="100"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="216"/>
+        <Slave id="1" surfaceTag="101"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="137  227"/>
+        <Slave id="1" surfaceTag="102"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="172  202"/>
+        <Slave id="1" surfaceTag="103"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="147  161  191"/>
+        <Slave id="1" surfaceTag="104"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="113  190"/>
+        <Slave id="1" surfaceTag="105"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="160  201  225"/>
+        <Slave id="1" surfaceTag="106"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="178  209  230  231"/>
+        <Slave id="1" surfaceTag="107"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="124  150"/>
+        <Slave id="1" surfaceTag="110"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="162  182"/>
+        <Slave id="1" surfaceTag="112"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="157"/>
+        <Slave id="1" surfaceTag="114"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="136  216"/>
+        <Slave id="1" surfaceTag="116"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="177  188  216"/>
+        <Slave id="1" surfaceTag="119"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="145"/>
+        <Slave id="1" surfaceTag="120"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="210"/>
+        <Slave id="1" surfaceTag="121"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="133  208  230  231"/>
+        <Slave id="1" surfaceTag="122"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="190"/>
+        <Slave id="1" surfaceTag="123"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="195  214"/>
+        <Slave id="1" surfaceTag="127"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="211"/>
+        <Slave id="1" surfaceTag="128"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="179  189  206  225  238"/>
+        <Slave id="1" surfaceTag="129"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="185  195"/>
+        <Slave id="1" surfaceTag="130"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="160  188"/>
+        <Slave id="1" surfaceTag="135"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="229  239"/>
+        <Slave id="1" surfaceTag="140"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="210"/>
+        <Slave id="1" surfaceTag="141"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="169  212"/>
+        <Slave id="1" surfaceTag="142"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="172  202  224"/>
+        <Slave id="1" surfaceTag="144"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="161"/>
+        <Slave id="1" surfaceTag="147"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="196"/>
+        <Slave id="1" surfaceTag="149"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="229"/>
+        <Slave id="1" surfaceTag="152"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="187"/>
+        <Slave id="1" surfaceTag="154"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="211"/>
+        <Slave id="1" surfaceTag="157"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="164  181  205"/>
+        <Slave id="1" surfaceTag="159"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="201"/>
+        <Slave id="1" surfaceTag="160"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="202  212"/>
+        <Slave id="1" surfaceTag="163"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="188"/>
+        <Slave id="1" surfaceTag="165"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="239"/>
+        <Slave id="1" surfaceTag="166"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="197"/>
+        <Slave id="1" surfaceTag="167"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="233"/>
+        <Slave id="1" surfaceTag="170"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="217  236"/>
+        <Slave id="1" surfaceTag="173"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="239"/>
+        <Slave id="1" surfaceTag="174"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="218"/>
+        <Slave id="1" surfaceTag="176"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="201  231"/>
+        <Slave id="1" surfaceTag="179"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="195"/>
+        <Slave id="1" surfaceTag="185"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="206  238"/>
+        <Slave id="1" surfaceTag="189"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="236"/>
+        <Slave id="1" surfaceTag="194"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="214"/>
+        <Slave id="1" surfaceTag="200"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="237"/>
+        <Slave id="1" surfaceTag="210"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="229"/>
+        <Slave id="1" surfaceTag="218"/>
+    </Interface>
+    <Interface>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
+        <Stabilization type="Jump"/>
+        <Multiplier type="P0"/>
+        <Physics>Poromechanics</Physics>
+        <Master id="1" surfaceTag="236"/>
+        <Slave id="1" surfaceTag="222"/>
+    </Interface>
+</struct>

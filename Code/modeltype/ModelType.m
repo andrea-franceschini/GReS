@@ -3,7 +3,7 @@ classdef ModelType < handle
   %   Detailed explanation goes here
   
   properties (Access = private)
-    ModSettings = zeros(3,1); % [Poromechanics; Flow; Thermal]
+    ModSettings = zeros(3,1); % [Poromechanics; Flow; Poisson]
     % ModSettings(1) -> Poromechanics
     %    0   -> The model is inactive
     %  10-19 -> Continuous mechanics
@@ -12,6 +12,10 @@ classdef ModelType < handle
     %    0   -> The model is inactive
     %  10-19 -> Single-phase flow
     %  20-29 -> Variably saturated flow (Richards eq.)
+
+    % ModSettings(3) -> Poisson
+    %    0   -> The model is inactive
+    %  10-19 -> Poisson problem with non homogeneous bcs
     %   ...
     %
     % Discretization schemes:
@@ -34,6 +38,13 @@ classdef ModelType < handle
     function out = isFlow(obj)
       out = false;
       if obj.ModSettings(2) > 0
+        out = true;
+      end
+    end
+
+    function out = isPoisson(obj)
+      out = false;
+      if obj.ModSettings(3) > 0
         out = true;
       end
     end
@@ -79,12 +90,26 @@ classdef ModelType < handle
        % using cellfun to vectorize the checks on active physical modules
        physicsList = {
           "Poromechanics", @isPoromechanics
-          "SPFlow", @isSinglePhaseFlow;
-          "VSFlow", @isVariabSatFlow;
+          "SinglePhaseFlow", @isSinglePhaseFlow;
+          "VariablySaturatedFlow", @isVariabSatFlow;
+          "Poisson", @isPoisson;
           };
        physics = physicsList(cellfun(@(f) f(obj), physicsList(:, 2)), 1);
     end
+
+  function checkAvailPhysics(obj,physic)
+    % check if input physic is available in the model or correctly typed
+    phList = string(getAvailPhysics(obj));
+    check = ismember(physic,phList);
+    if check
+      return
+    else
+      error(['Input physic %s is not available in the model.\n' ...
+        'Available physics are:' ...
+        ' %s'],physic,strjoin(phList,','));
+    end
   end
+end
   
   methods (Access = private)
     function setModelType(obj,str)
@@ -101,10 +126,13 @@ classdef ModelType < handle
           case 'VariabSatFlow'
             r = 2;
             v = 20;
+          case 'Poisson'
+            r = 3;
+            v = 10;
           otherwise
             error(['%s model is invalid\n', ...
               'Accepted physics are: Poromechanics, SinglePhaseFlow,\n', ...
-              'VariabSatFlow'],spltStr(1));
+              'VariabSatFlow, Poisson'],spltStr(1));
         end
         if obj.ModSettings(r) ~= 0
           s = ModelType.findPhysicsFromID(r);
@@ -139,11 +167,11 @@ classdef ModelType < handle
   methods (Static = true)
     function r = findIDPhysics(str)
       switch str
-        case 'Poro'
+        case 'Poromechanics'
           r = 1;
-        case 'Flow'
+        case {'Flow','SinglePhaseFlow','VariablySaturatedFlow'}
           r = 2;
-        case 'Thermal'
+        case 'Poisson'
           r = 3;
         otherwise
           error(['%s model is invalid\n', ...
@@ -158,7 +186,7 @@ classdef ModelType < handle
         case 2
           s = 'Flow';
         case 3
-          s = 'Thermal';
+          s = 'Poisson';
       end
     end
   end

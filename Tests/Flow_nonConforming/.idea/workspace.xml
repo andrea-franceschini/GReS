@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="7b6bca4f-9357-4ee2-9c60-eaa2411c0c2e" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../../Code/elements/mex/mxComputeBasisFQuad4.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../Code/elements/mex/mxComputeBasisFQuad4.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../Code/elements/mex/mxComputeBasisFQuad9.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../Code/elements/mex/mxComputeBasisFQuad9.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../Code/elements/mex/mxComputeDerBasisFQuad4.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../Code/elements/mex/mxComputeDerBasisFQuad4.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../Code/elements/mex/mxComputeDerBasisFQuad9.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../Code/elements/mex/mxComputeDerBasisFQuad9.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../Code/elements/mex/mxGetDerBasisAndDet.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../Code/elements/mex/mxGetDerBasisAndDet.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../Code/read/mxImportGMSHmesh.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../Code/read/mxImportGMSHmesh.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../Code/read/mxImportVTKmesh.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../Code/read/mxImportVTKmesh.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../Code/write/mxVTKWriter.mexw64" beforeDir="false" afterPath="$PROJECT_DIR$/../../Code/write/mxVTKWriter.mexw64" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Mesh/bottomLayer.py" beforeDir="false" afterPath="$PROJECT_DIR$/Mesh/bottomLayer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Mesh/topLayer.py" beforeDir="false" afterPath="$PROJECT_DIR$/Mesh/topLayer.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 4
+}]]></component>
+  <component name="ProjectId" id="30sFPurYUVcYX1dgSKIquVbM4GC" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
+    "git-widget-placeholder": "feature/moretto",
+    "last_opened_file_path": "M:/Codes/GReS/Tests_Release/Flow_nonConforming"
+  }
+}]]></component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-4c141bd692a7-e2d783800521-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-251.26927.90" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="7b6bca4f-9357-4ee2-9c60-eaa2411c0c2e" name="Changes" comment="" />
+      <created>1754408352788</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1754408352788</updated>
+    </task>
+    <servers />
+  </component>
+</project>

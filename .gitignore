@@ -25,6 +25,7 @@
 *.la
 *.a
 *.lib
+# *.mexw64
 
 # Executables
 *.exe
@@ -37,13 +38,13 @@
 *.pvd
 
 # Matlab files
-*.mat
+#*.mat
 
 # asv files
 *.asv
 
 # Output folders with vtk files
-/Tests_Develop/
+# /Tests_Develop/
 
 
 # Temporary folders with external classes
