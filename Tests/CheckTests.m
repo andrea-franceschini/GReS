@@ -13,8 +13,8 @@ classdef CheckTests < matlab.unittest.TestCase
         function Deep_Aquifer(testCase)
             cd("Deep_Aquifer/");
             run('Main.m');
-            Sol_Press = printUtils.results.expPress;
-            Sol_Displ = printUtils.results.expDispl;
+            Sol_Press = [domain.outstate.results.expPress];
+            Sol_Displ = [domain.outstate.results.expDispl];
             load("expData.mat")
             testCase.verifyEqual(Sol_Press,expPress);
             testCase.verifyEqual(Sol_Displ,expDispl);
@@ -25,8 +25,8 @@ classdef CheckTests < matlab.unittest.TestCase
         function Mandel_Biot(testCase)
             cd("Mandel_Biot/");
             run('Main.m');
-            Sol_Press = printUtils.results.expPress;
-            Sol_Displ = printUtils.results.expDispl;
+            Sol_Press = [domain.outstate.results.expPress];
+            Sol_Displ = [domain.outstate.results.expDispl];
             load("expData.mat")
             testCase.verifyEqual(Sol_Press,expPress);
             testCase.verifyEqual(Sol_Displ,expDispl);

@@ -16,9 +16,6 @@ if any(flRenum)
   % nodes
   %
   faceTop = reshape(grid.faces.nodes2Faces,max(diff(grid.faces.mapN2F)),grid.faces.nFaces);
-%   ptrBFace = sum(grid.faces.faceNeighbors ~= 0,2) == 1;
-%   idBFace = find(ptrBFace);
-%   faceBound = faceTop(:,ptrBFace);
   idBFace = find(sum(grid.faces.faceNeighbors ~= 0,2) == 1);
   faceBound = faceTop(:,idBFace);
   faceBound = sort(faceBound',2);

@@ -17,8 +17,8 @@ topology = Mesh();
 
 % Set the input file name
 % fileName = fullfile(input_dir,'Mesh','Column.msh');
-fileName = fullfile(input_dir,'Mesh','Column1x1x10.msh');
-% fileName = fullfile(input_dir,'Mesh','Column4x4x40.msh');
+% fileName = fullfile(input_dir,'Mesh','Column1x1x10.msh');
+fileName = fullfile(input_dir,'Mesh','Column4x4x40.msh');
 
 % Import mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
@@ -32,8 +32,7 @@ mat = Materials(model,fileName);
 
 %% ------------------------------ ELEMENTS -----------------------------
 % Create an object of the "Elements" class and process the element properties
-elems = Elements(topology);
-% elems = Elements(topology,2);
+elems = Elements(topology,2);
 
 % Create an object of the "Faces" class and process the face properties
 faces = Faces(model,topology);
@@ -99,22 +98,15 @@ printUtils.finalize()
 if true
   image_dir = fullfile(pwd,figures_dir);
   if ~isfolder(image_dir)
-    % rmdir(image_dir,"s")
-    % mkdir(image_dir)
-    % else
     mkdir(image_dir)
   end
 
   % elem vector containing elements centroid along vertical axis
-  if isFEMBased(model,'Flow')
-    nodesP = nodesU;
-  else
-    numb = 0.125;
-    tol = 0.01;
-    nodesP = find(abs(elems.mesh.cellCentroid(:,1)-numb) < tol & abs(elems.mesh.cellCentroid(:,2)-numb) < tol);
-    [~,ind] = sort(elems.mesh.cellCentroid(nodesP,3));
-    nodesP = nodesP(ind);
-  end
+  numb = 0.125;
+  tol = 0.01;
+  nodesP = find(abs(topology.cellCentroid(:,1)-numb) < tol & abs(topology.cellCentroid(:,2)-numb) < tol);
+  [~,ind] = sort(topology.cellCentroid(nodesP,3));
+  nodesP = nodesP(ind);
 
   nrep = length(printUtils.results);
   nvars = length(printUtils.results(2).expPress);

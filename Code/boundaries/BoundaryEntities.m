@@ -74,16 +74,6 @@ classdef BoundaryEntities < handle
       if (obj.totEnts == 0)
         error('No boundary conditions are prescribed for %s BC', name);
       end
-      %the following instructions are not consistent with new DoF Manager: UPDATE! 
-      %here DoF manager should be called
-%       sysSize = length(obj.nEntities);
-%       i1 = 1;    
-%       for i = 1 : sysSize
-%         i2 = i1 + obj.nEntities(i);
-%         obj.entities(i1:i2-1) = sysSize*(obj.entities(i1:i2-1)-1) + i;
-%         i1 = i2;
-%         % obj.entities should follow the dofManager table
-%       end
       obj.availVals = zeros(obj.totEnts,2);
       obj.availSteps = zeros(2,1);
     end

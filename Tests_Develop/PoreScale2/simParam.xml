@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <simParam>
     <Time Start="0."
-          End ="1.0001e4"
+          End ="1.0001e5"
           DtInic= "1.e0"
           DtMin ="1.e-1"
           DtMax ="1.e+2"/>

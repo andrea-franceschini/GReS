@@ -73,16 +73,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
           end
         end
 
-        % function [potential,flux,saturation,mass] = computePosProcStates(obj,pressure,t)
-        %     % Compute the posprocessing variables for the module.
-        %     potential = computePotential(obj,pressure);
-        %     saturation = computeSaturation(obj,pressure);
-        %     [mob ,~] = computeMobility(obj,pressure);
-        %     flux = computeFlux(obj,mob,potential);
-        %     flux = computeFluxBound(obj,flux,bound,potential,pressure,t);
-        %     mass = checkMassCons(obj,mob,potential);
-        % end
-
         function states = finalizeState(obj,states)
             % Compute the posprocessing variables for the module.
             pressure = states.pressure;
@@ -109,7 +99,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
                     error('Wrong number of input arguments');
             end
             % posprocessing the structure of VSFlow.
-            % [outPrint.potential,outPrint.flux,outPrint.saturation,outPrint.mass] = finalizeState(obj,bound,outPrint.pressure,t);
             outPrint = finalizeState(obj,outPrint);
             [cellData,pointData] = VariablySaturatedFlow.buildPrintStruct(outPrint);
         end
@@ -311,29 +300,9 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
                 Sws = obj.material.getMaterial(m).PorousRock.getMaxSaturation();
                 Swr = obj.material.getMaterial(m).PorousRock.getResidualSaturation();
                 [Swkpt(isElMat), dSwkpt(isElMat), d2Swkpt(isElMat)] = obj.material.getMaterial(m).Curves.computeSwAnddSw(p);
-                % [Swkpt(isElMat), dSwkptisElMat), d2Swkpt(isElMat)] = obj.material.getMaterial(m).CapillaryCurve.interpTable(p);
                 Swkpt(isElMat) = Swr + (Sws-Swr)*Swkpt(isElMat);
                 dSwkpt(isElMat) = (Sws-Swr)*dSwkpt(isElMat);
                 d2Swkpt(isElMat) = (Sws-Swr)*d2Swkpt(isElMat);
-
-                % [Ana,dAna,ddAna] = obj.material.getMaterial(m).Curves.computeSwAnddSw(p);
-                % [Tab,dTab,ddTab] = obj.material.getMaterial(m).CapillaryCurve.interpTable(p);
-                % Tab(isElMat) = Swr + (Sws-Swr)*Tab(isElMat);
-                % dTab(isElMat) = (Sws-Swr)*dTab(isElMat);
-                % ddTab(isElMat) = (Sws-Swr)*ddTab(isElMat);
-                % Ana(isElMat) = Swr + (Sws-Swr)*Ana(isElMat);
-                % dAna(isElMat) = (Sws-Swr)*dAna(isElMat);
-                % ddAna(isElMat) = (Sws-Swr)*ddAna(isElMat);
-                % 
-                % fileID = fopen('dados.txt', 'a');
-                % fprintf(fileID,'%e %e %e ' ,  norm(Ana,"inf"),  norm(Tab,"inf"),norm(Tab-Ana,"inf"));
-                % fprintf(fileID,'%e %e %e ' , norm(dAna,"inf"), norm(dTab,"inf"),norm(dTab-dAna,"inf"));
-                % fprintf(fileID,'%e %e %e\n',norm(ddAna,"inf"),norm(ddTab,"inf"),norm(ddTab-ddAna,"inf"));
-                % fclose(fileID);
-                % 
-                % fprintf('Analytical Sw- %f dSw- %f ddSw- %f\n',norm(Ana,"inf"),norm(dAna,"inf"),norm(ddAna,"inf"));
-                % fprintf('Tabular    Sw- %f dSw- %f ddSw- %f\n',norm(Tab,"inf"),norm(dTab,"inf"),norm(ddTab,"inf"));
-                % fprintf('Diferance  Sw- %f dSw- %f ddSw- %f\n',norm(Tab-Ana,"inf"),norm(dTab-dAna,"inf"),norm(ddTab-ddAna,"inf"));
             end
         end
 
@@ -405,58 +374,11 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
             end
             obj.upElem(lElemIsUp) = neigh(lElemIsUp,1);
             obj.upElem(~lElemIsUp) = neigh(~lElemIsUp,2);
-            % [Swkpt,dSwkpt,d2Swkpt] = obj.material.computeSwAnddSw(obj.mesh,pkpt);
             [Swkpt,dSwkpt,d2Swkpt] = computeSaturation(obj,pkpt);
             dSwkpt = - dSwkpt;
-            % [lwkpt,dlwkpt] = obj.material.computeLwAnddLw(obj.mesh,obj.upElem,pkpt);
             [lwkpt,dlwkpt] = computeMobility(obj,pkpt);
             dlwkpt = - dlwkpt;
         end
-
-        % function computeNewtPartOfJacobian(obj,dt,stateOld,pkpt,dSwkpt,d2Swkpt,dlwkpt)
-        %     subCells = obj.dofm.getFieldCells(obj.getField());
-        %     nSubCells = length(subCells);
-        %     % compute matrices J1 and J2 (gathering non linear terms)
-        %   %   =======
-        %   % function Jh = computeJacobianPartJhNewton(obj,pTau,dMob)
-        %   %   % COMPUTEJACOBIANFORNEWTONJFPART Method to compute the Jh part
-        %   %   % of the jacobian used in the Newton-Raphson.
-        %   %   %% Equation for the part.
-        %   %   % $$ J_{h} = \theta p_{\tau}^{m}
-        %   %   % \frac{\partial\lambda_{u}^{t+dt,m}}{\partial p_{t+dt}} \mathbf{T}$$
-        %   %   % $$ J_{f} = \theta \gamma
-        %   %   % \frac{\partial\lambda_{u}^{t+dt,m}}{\partial p_{t+dt}} \mathbf{T}$$
-        %   %   % $$ J_{hf} = J_{h} + J_{f}$$
-        %   % 
-        %   %   % Define some values.
-        %   %   % theta = obj.simParams.theta;
-        %   %   gamma = obj.material.getFluid.getFluidSpecWeight();
-        %   % 
-        %   %   % subCells = obj.dofm.getFieldCells(obj.getField());
-        %   % 
-        %   %   % Get pairs of faces that contribute to the subdomain
-        %   %   >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391:Code/discretizer/SinglePhysics/VSFlow.m
-        %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-        %     zVec = obj.elements.cellCentroid(:,3);
-        %     zNeigh = zVec(neigh);
-        %     pTau = pTau(neigh);
-        %     nneigh = length(dMob);
-        %     % [~,~,reorder] = unique([neigh(:,1); neigh(:,2); obj.upElem'; subCells]);
-        %     [~,~,reorder] = unique([neigh(:,1); neigh(:,2); obj.upElem']);
-        %     neigh1 = reorder(1:nneigh);
-        %     neigh2 = reorder(nneigh+1:2*nneigh);
-        %     neighU = reorder(2*nneigh+1:3*nneigh);
-        % 
-        %     % Transmissibility of internal faces            
-        %     % Jh = theta*dMob.*obj.trans(obj.isIntFaces);
-        %     Jh = dMob.*obj.trans(obj.isIntFaces);
-        %     Jh = Jh.*(pTau(:,1) - pTau(:,2) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
-        % 
-        %     % Computing the Jacobian Part.
-        %     nDoF = obj.dofm.getNumDoF(obj.getField());
-        %     Jh = sparse( [neigh1; neigh2], [neighU; neighU], ...
-        %         [Jh; -Jh], nDoF, nDoF);
-        % end
 
         function Jh = computeJacobianPartJhNewton(obj,pTau,dMob)
           % COMPUTEJACOBIANFORNEWTONJFPART Method to compute the Jh part

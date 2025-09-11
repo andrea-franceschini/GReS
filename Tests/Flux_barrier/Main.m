@@ -5,8 +5,8 @@ output_dir = 'Outputs/';
 figures_dir = 'Figs/';
 
 %% -------------------------- SET THE PHYSICS -------------------------
-%model = ModelType("SinglePhaseFlow_FVTPFA");
-model = ModelType("SinglePhaseFlow_FEM");
+model = ModelType("SinglePhaseFlow_FVTPFA");
+% model = ModelType("SinglePhaseFlow_FEM");
 
 %% ----------------------- SIMULATION PARAMETERS ----------------------
 fileName = fullfile(input_dir,'simParam.xml');
