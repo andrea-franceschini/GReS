@@ -1,7 +1,0 @@
-NodeBC            % BC item 
-Neu            % BC type 
-Poromechanics            % Physics 
-LoadY            % BC name 
-BCs/pressureY/list 
-0.000000 BCs/pressureY/time0.dat 
-End

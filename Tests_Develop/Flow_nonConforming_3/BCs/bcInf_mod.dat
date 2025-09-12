@@ -1,7 +1,0 @@
-SurfBC            % BC item 
-Dir            % BC type 
-SinglePhaseFlow            % Physics 
-bottom_pressure_            % BC name 
-BCs/bcInf_mod/list 
-0.000000 BCs/bcInf_mod/time0.dat 
-End

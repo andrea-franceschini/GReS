@@ -1,7 +1,0 @@
-NodeBC            % BC item 
-Dir            % BC type 
-Poromechanics            % Physics 
-MovingTop            % BC name 
-BCs/moveTop/list 
-0.000000 BCs/moveTop/time0.dat 
-End

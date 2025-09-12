@@ -1,6 +1,2 @@
 # Figures
 *.png
-
-# Folders to not be saved
-/Mortar_Poisson/
-/PoreScale2/
