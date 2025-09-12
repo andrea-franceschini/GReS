@@ -1,6 +1,10 @@
 NodeBC            % BC item 
 Dir            % BC type 
+<<<<<<< HEAD
 Poro            % Physics 
+=======
+Poromechanics            % Physics 
+>>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
 LatFixedY            % BC name 
 BCs/dirPoroLatY/list 
 0.000000 BCs/dirPoroLatY/time0.dat 

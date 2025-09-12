@@ -8,8 +8,8 @@ Poromechanics                  % Physics in SubDomain
 <SubDomain>
 <CellTag>
 2 3   
-<Field>                        % cellTags in SubDomain
-Poromechanics SPFlow          % Physics in SubDomain
+<Field>                                % cellTags in SubDomain
+Poromechanics SinglePhaseFlow          % Physics in SubDomain
 </SubDomain>
 
 

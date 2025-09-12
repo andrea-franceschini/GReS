@@ -1,7 +1,6 @@
 SurfBC            % BC item 
 Neu            % BC type 
-Poro            % Physics 
-z 
+Poromechanics            % Physics 
 TopLoad            % BC name 
 BCs/topLoad/list 
 0.000000 BCs/topLoad/time0.dat 

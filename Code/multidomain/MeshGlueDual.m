@@ -17,7 +17,7 @@ classdef MeshGlueDual < MeshGlue
         'Missing Physics field for interface %i',id);
       assert(strcmp(obj.multiplierType,'dual'), 'Multiplier type must be dual');
       assert(strcmp(obj.physic,'Poisson'),'Static condensation is available only with Poisson problem')
-      obj.totMult = 0;        % multipliers are condensed
+      obj.totMult = 0;        % multipliers are condensed 
     end
     %
   end
@@ -84,7 +84,7 @@ classdef MeshGlueDual < MeshGlue
         return
       end
 
-      %       solvSlave = obj.solvers(2).getSolver(obj.physic);
+%       solvSlave = obj.solvers(2).getSolver(obj.physic);
 
       % coupling block between one domain and the other
       obj.Jcoupling = obj.Jinterf*obj.E;
@@ -115,7 +115,7 @@ classdef MeshGlueDual < MeshGlue
       bcEnts = removeSlaveBCdofs(obj,physic,bcEnts);
       obj.rhsSlave(bcEnts) = 0;
       obj.Jcoupling(bcEnts,:) = 0;
-      % remove interface slave dofs from matrix system (force zero)
+      % remove interface slave dofs from matrix system (force zero) 
       dofSlave = getInterfSlaveDoF(obj);
       obj.Jcoupling(dofSlave,:) = 0;
       solvSlave =  obj.solvers(2).getSolver(obj.physic);
@@ -178,7 +178,7 @@ classdef MeshGlueDual < MeshGlue
       varSlave(dofInter) = 2*varSlave(dofInter);
       varSlave = varSlave - v;          % keep only interface slave rhs
       % remove rhs contribution of interface dof that will be removed
-      solvSlave.rhs = solvSlave.rhs - solvSlave.J*varSlave;
+      solvSlave.rhs = solvSlave.rhs - solvSlave.J*varSlave; 
     end
 
     function dof = getInterfSlaveDoF(obj)
@@ -190,8 +190,9 @@ classdef MeshGlueDual < MeshGlue
   methods (Access = public)
 
     function out = isMatrixComputed(obj)
-      out = all([~isempty(obj.D) ~isempty(obj.M)]);
+       out = all([~isempty(obj.D) ~isempty(obj.M)]);
     end
 
   end
 end
+

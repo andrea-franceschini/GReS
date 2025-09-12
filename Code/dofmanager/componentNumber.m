@@ -6,3 +6,4 @@ function out = componentNumber(mesh,in)
          out = 1;
    end
 end
+

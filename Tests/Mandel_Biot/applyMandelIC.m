@@ -17,9 +17,9 @@ nuU = (3*nu+alpha*B*(1-2*nu))/(3-alpha*B*(1-2*nu));
 x = msh.coordinates(:,1);
 z = msh.coordinates(:,3);
 
-state.pressure = state.pressure+(1/(3*max(x)))*B*(1+nuU)*F;
-state.dispConv(1:3:end) = -F*nuU*x/(2*mu*max(x));
-state.dispConv(3:3:end) = F*(1-nuU)*z/(2*mu*max(x));
-state.dispCurr = state.dispConv;
+state.data.pressure = state.data.pressure+(1/(3*max(x)))*B*(1+nuU)*F;
+state.data.dispConv(1:3:end) = -F*nuU*x/(2*mu*max(x));
+state.data.dispConv(3:3:end) = F*(1-nuU)*z/(2*mu*max(x));
+state.data.dispCurr = state.data.dispConv;
 end
 

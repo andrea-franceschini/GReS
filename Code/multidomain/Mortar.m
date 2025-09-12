@@ -1,6 +1,6 @@
 classdef Mortar < handle
   % Base class for non conforming interfaces
-
+  
   properties
     solvers         % instance of domains connected by the interface
     mesh            % instance of interfaceMesh class
@@ -22,9 +22,9 @@ classdef Mortar < handle
 
   methods
     function [obj] = Mortar(varargin)
-
+      
       assert(nargin==2,'Wrong number of input arguments for mortar class')
-
+      
       if isstruct(varargin{1})
         % complete mortar definition with input file
         inputStruct = varargin{1};
@@ -78,21 +78,21 @@ classdef Mortar < handle
       elem = obj.elements(sideID).getElement(type);
     end
 
-    %     function mat = getMatrix(obj,sideID,field)
-    %       n = obj.dofm(sideID).getDoFperEnt(field);
-    %       dofMult = dofId(1:obj.mesh.nEl(2),n);
-    %       dof = obj.mesh.local2glob{sideID}(1:size(obj.mortarMatrix{sideID},2));
-    %       dof = obj.dofm(sideID).getLocalDoF(dof,field);
-    %       [j,i] = meshgrid(dof,dofMult);
-    %       nr = n*obj.mesh.nEl(2);
-    %       nc = obj.dofm(sideID).getNumDoF(field);
-    %       vals = Discretizer.expandMat(obj.mortarMatrix{sideID},n);
-    %       mat = sparse(i(:),j(:),vals(:),nr,nc); % minus sign!
-    %     end
+%     function mat = getMatrix(obj,sideID,field)
+%       n = obj.dofm(sideID).getDoFperEnt(field);
+%       dofMult = dofId(1:obj.mesh.nEl(2),n);
+%       dof = obj.mesh.local2glob{sideID}(1:size(obj.mortarMatrix{sideID},2));
+%       dof = obj.dofm(sideID).getLocalDoF(dof,field);
+%       [j,i] = meshgrid(dof,dofMult);
+%       nr = n*obj.mesh.nEl(2);
+%       nc = obj.dofm(sideID).getNumDoF(field);
+%       vals = Discretizer.expandMat(obj.mortarMatrix{sideID},n);
+%       mat = sparse(i(:),j(:),vals(:),nr,nc); % minus sign!
+%     end
 
     function computeMortarMatrices(obj,~)
 
-      % number of components per dof of interpolated physics
+       % number of components per dof of interpolated physics
       if ~isempty(obj.dofm)
         ncomp = obj.dofm(2).getDoFperEnt(obj.physic);
       else
@@ -124,7 +124,7 @@ classdef Mortar < handle
         nDofSlave = obj.dofm(2).getNumDoF(obj.physic);
         nDofMult = getNumbMultipliers(obj);
       else
-        obj.multiplierType = 'dual';
+        obj.multiplierType = 'dual'; 
         nDofMaster = obj.mesh.msh(1).nNodes;
         nDofSlave = obj.mesh.msh(2).nNodes;
         nDofMult = nDofSlave;
@@ -197,7 +197,7 @@ classdef Mortar < handle
       obj.D = asbD.sparseAssembly();
 
       % check satisfaction of partition of unity (mortar consistency)
-
+      
       % remove rows of inactive multipliers from Jmaster and Jslave
       if ~isempty(obj.solvers)
         dofMult = getMultiplierDoF(obj);
@@ -207,7 +207,7 @@ classdef Mortar < handle
 
       pu = sum([obj.M obj.D],2);
       assert(norm(pu)<1e-6,'Partiition of unity violated');
-      %       fprintf('Done computing mortar matrix in %.4f s \n',cputime-tIni)
+%       fprintf('Done computing mortar matrix in %.4f s \n',cputime-tIni)
     end
 
 
@@ -294,7 +294,7 @@ classdef Mortar < handle
   methods (Access = private)
 
     function setPrintUtils(obj,str,outState)
-
+      
       if ~isfield(str,'Print')
         return
       else
@@ -314,7 +314,7 @@ classdef Mortar < handle
     function checkInterfaceDisjoint(obj)
       % check that the nodes of mortar and slave side are disjoint
       if obj.idDomain(1)==obj.idDomain(2)
-        % interface defined within the same domain
+        % interface defined within the same domain 
         out = setdiff(obj.mesh.local2glob{1},obj.mesh.local2glob{2});
         if ~all(out==obj.mesh.local2glob{1})
           error('Nodes of master and slave side are not disjoint');
@@ -449,3 +449,4 @@ classdef Mortar < handle
 
   end
 end
+

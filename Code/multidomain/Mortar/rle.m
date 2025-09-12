@@ -9,3 +9,4 @@ count = diff([firstIdx; size(inMat,1) + 1]);
 % Restore original order of indices
 %indices = sortIdx(firstIdx);
 end
+

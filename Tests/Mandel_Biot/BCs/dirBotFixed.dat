@@ -1,6 +1,6 @@
 SurfBC            % BC item 
 Dir            % BC type 
-Poro            % Physics 
+Poromechanics            % Physics 
 BotFix            % BC name 
 BCs/dirBotFixed/list 
 0.000000 BCs/dirBotFixed/time0.dat 
