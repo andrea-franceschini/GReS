@@ -1,5 +1,5 @@
 classdef MeshGlueBubbleStabilization < MeshGlue
-  % Mesh glue class implementing bubble stabilization 
+  % Mesh glue class implementing bubble stabilization
 
   properties
     localFaceIndex % slave faces with local index in neighboring cell
@@ -22,7 +22,7 @@ classdef MeshGlueBubbleStabilization < MeshGlue
         % 1) compute Aub, Abu and Abb local matrix from the neighbor cell
         % 2) compute local M, D and Db
         % 3) assemble static condensation blocks and Jmult
-        
+
         % differently from the base method of the mortar class, here global
         % dof indexing is used for the assembled matrices
 
@@ -77,7 +77,7 @@ classdef MeshGlueBubbleStabilization < MeshGlue
           if isempty(masterElems)
             continue
           end
-        
+
           Dloc = zeros(3,3*getElem(obj,2,is).nNode);
           Dbloc = zeros(3,3);
           %Lloc = zeros(3,3);
@@ -109,7 +109,7 @@ classdef MeshGlueBubbleStabilization < MeshGlue
             Mb = obj.quadrature.integrate(@(a,b) pagemtimes(a,'ctranspose',b,'none'),...
               Nmult,Nbmaster);
             asbMcond.localAssembly(+Mb*(invKbb)*Kub',dofMult,dofRow);
-            asbMb.localAssembly(Mb,dofMult,dofId(im,3));            
+            asbMb.localAssembly(Mb,dofMult,dofId(im,3));
 
             if ~masterFlag(im)
               asbKm.localAssembly(-Kub*invKbb*Kub',dofRow,dofCol);
@@ -126,9 +126,9 @@ classdef MeshGlueBubbleStabilization < MeshGlue
 
             Dbloc = Dbloc + ...
               obj.quadrature.integrate(@(a,b) pagemtimes(a,'ctranspose',b,'none'),...
-              Nmult,Nbslave); 
+              Nmult,Nbslave);
           end
-          
+
 
           % bubble stabilization on the slave side
           cellId = obj.mesh.f2c{2}(is);
@@ -137,7 +137,7 @@ classdef MeshGlueBubbleStabilization < MeshGlue
           Kub = Kub(:,faceId);
           Kbb = Kbb(faceId,faceId);
           invKbb = inv(Kbb);
-          
+
           % assemble local stabilization contribution
           asbD.localAssembly(i,is,Dloc);
           asbKs.localAssembly(-Kub*invKbb*Kub',dofRow,dofCol);
@@ -154,7 +154,7 @@ classdef MeshGlueBubbleStabilization < MeshGlue
 
         obj.Jmaster{1} = asbM.sparseAssembly(); + KubCond;
         obj.Jslave{1} = asbD.sparseAssembly() + asbDcond.sparseAssembly();
-        obj.Jmult{1} = asbLag.sparseAssembly(); + multMasterCond; 
+        obj.Jmult{1} = asbLag.sparseAssembly(); + multMasterCond;
         poroSlave.J = poroSlave.J + asbKs.sparseAssembly();
         %poroMaster.J = poroMaster.J + asbKm.sparseAssembly();
       end
@@ -381,56 +381,56 @@ classdef MeshGlueBubbleStabilization < MeshGlue
     %         [obj.Jmaster(:); obj.Jslave(:); obj.Jmult(:)]));
     %     end
 
-%         function updateState(obj,dSol)
-%           % get Poromechanics object
-%           solv = obj.solvers(2).getSolver(obj.physics);
-%     
-%           % get increment of displacement
-%           du = solv.state.data.dispCurr - solv.state.data.dispConv;
-%     
-%           % update multipliers
-%           updateState@MeshGlue(obj,dSol);
-%           dmult = obj.multipliers(1).curr - obj.multipliers(1).prev;
-%     
-%           % Enhance strain with bubble contribution
-%           for i = 1:obj.mesh.nEl(2)
-%     
-%             % get index of surface and neighbor cell
-%             surf = obj.mesh.getActiveCells(2,i);
-%             el = obj.mesh.f2c{2}(surf);
-%     
-%              l = solv.cell2stress(el);
-%     
-%             % get index of cell displacement dofs in du
-%             dof = getDoFID(solv.mesh,el);
-%     
-%                vtkId = obj.mesh.cellVTKType(el);
-%             elem = getElement(obj.elements,vtkId);
-%     
-%                 N = getDerBasisF(obj.elements.tetra,el);
-%                 B = zeros(6,4*obj.mesh.nDim);
-%                 B(obj.indBtetra(:,2)) = N(obj.indBtetra(:,1));
-%                 obj.state.data.curr.strain(l+1,:) = (B*dSol(dof))';
-%                 l = l + 1;
-%               case 12 % Hexa
-%                 % get local Db matrix
-%                 Db = diag(repelem(obj.Dbubble(i),3));
-%                 % the last input is the time increment. consider adding it as a
-%                 % property of State.m
-%                 [~,~,Kub,Kbb,Bb] = computeLocalStiffBubble(solv,el,0,'Bb');
-%                 faceId = dofId(obj.localFaceIndex{2}(surf),3);
-%                 Kub = Kub(:,faceId);
-%                 Kbb = Kbb(faceId,faceId);
-%                 % get bubble dof
-%                 duLoc = du(dof);
-%                 dmultLoc = dmult(dofId(surf,3));
-%                 duBub = -Kbb\(Kub'*duLoc + Db'*dmultLoc);
-%                 strainBubble = pagemtimes(Bb(:,faceId,:),duBub);
-%                 solv.state.data.curr.strain((l+1):(l+solv.GaussPts.nNode),:) = ...
-%                   solv.state.data.curr.strain((l+1):(l+solv.GaussPts.nNode),:) + ...
-%                   reshape(strainBubble,6,solv.GaussPts.nNode)';
-%             end
-%           end
+    %         function updateState(obj,dSol)
+    %           % get Poromechanics object
+    %           solv = obj.solvers(2).getSolver(obj.physics);
+    %
+    %           % get increment of displacement
+    %           du = solv.state.data.dispCurr - solv.state.data.dispConv;
+    %
+    %           % update multipliers
+    %           updateState@MeshGlue(obj,dSol);
+    %           dmult = obj.multipliers(1).curr - obj.multipliers(1).prev;
+    %
+    %           % Enhance strain with bubble contribution
+    %           for i = 1:obj.mesh.nEl(2)
+    %
+    %             % get index of surface and neighbor cell
+    %             surf = obj.mesh.getActiveCells(2,i);
+    %             el = obj.mesh.f2c{2}(surf);
+    %
+    %              l = solv.cell2stress(el);
+    %
+    %             % get index of cell displacement dofs in du
+    %             dof = getDoFID(solv.mesh,el);
+    %
+    %                vtkId = obj.mesh.cellVTKType(el);
+    %             elem = getElement(obj.elements,vtkId);
+    %
+    %                 N = getDerBasisF(obj.elements.tetra,el);
+    %                 B = zeros(6,4*obj.mesh.nDim);
+    %                 B(obj.indBtetra(:,2)) = N(obj.indBtetra(:,1));
+    %                 obj.state.data.curr.strain(l+1,:) = (B*dSol(dof))';
+    %                 l = l + 1;
+    %               case 12 % Hexa
+    %                 % get local Db matrix
+    %                 Db = diag(repelem(obj.Dbubble(i),3));
+    %                 % the last input is the time increment. consider adding it as a
+    %                 % property of State.m
+    %                 [~,~,Kub,Kbb,Bb] = computeLocalStiffBubble(solv,el,0,'Bb');
+    %                 faceId = dofId(obj.localFaceIndex{2}(surf),3);
+    %                 Kub = Kub(:,faceId);
+    %                 Kbb = Kbb(faceId,faceId);
+    %                 % get bubble dof
+    %                 duLoc = du(dof);
+    %                 dmultLoc = dmult(dofId(surf,3));
+    %                 duBub = -Kbb\(Kub'*duLoc + Db'*dmultLoc);
+    %                 strainBubble = pagemtimes(Bb(:,faceId,:),duBub);
+    %                 solv.state.data.curr.strain((l+1):(l+solv.GaussPts.nNode),:) = ...
+    %                   solv.state.data.curr.strain((l+1):(l+solv.GaussPts.nNode),:) + ...
+    %                   reshape(strainBubble,6,solv.GaussPts.nNode)';
+    %             end
+    %           end
   end
 
 
@@ -488,4 +488,3 @@ classdef MeshGlueBubbleStabilization < MeshGlue
     end
   end
 end
-

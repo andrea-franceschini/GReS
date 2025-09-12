@@ -1,5 +1,5 @@
 classdef Boundaries < handle
-    % BOUNDARY CONDITIONS - General boundary conditions class
+  % BOUNDARY CONDITIONS - General boundary conditions class
 
   properties (Access = public)
     % Creation of a Map object for the boundary conditions
@@ -252,119 +252,46 @@ classdef Boundaries < handle
         readInputFile(obj,fileNames(i));
       end
     end
-
-    methods (Access = private)
-        % Reading boundary input file
-        function readInputFile(obj,fileName)
-            fid = fopen(fileName, 'r');
-            if (fid == -1)
-                error('File %s not opened correctly',fileName);
-            end
-            token = Boundaries.readToken(fid);
-            if (~ismember(convertCharsToStrings(token), ["NodeBC", "SurfBC", "VolumeForce","ElementBC"]))
-                error(['%s condition is unknown\n', ...
-                    'Accepted types are: NodeBC   -> Boundary cond. on nodes\n',...
-                    '                    SurfBC   -> Boundary cond. on surfaces\n',...
-                    '                    ElementBC   -> Boundary cond. on elements\n',...
-                    '                    VolumeForce -> Volume force on elements'], token);
-            end
-            if ismember(convertCharsToStrings(token), ["NodeBC", "SurfBC", "ElementBC"])
-                type = Boundaries.readToken(fid);
-                if (~ismember(type, ['Dir', 'Neu', 'Spg']))
-                    error(['%s boundary condition is not admitted\n', ...
-                        'Accepted types are: Dir -> Dirichlet, Neu -> Neumann, Spg -> Seepage'], type);
-                end
-            end
-            physics = Boundaries.readToken(fid);
-
-            if strcmp(physics,'Poro') && strcmp(token,'SurfBC') && strcmp(type,'Neu')
-                direction = Boundaries.readToken(fid);
-                if ~ismember(direction,['x','y','z'])
-                    error(['%s is an invalid direction of the distributed load\n', ...
-                        'Accepted directions are: x, y, and z'],direction);
-                end
-            end
-            name = Boundaries.readToken(fid);
-            setFile = Boundaries.readToken(fid);
-            [times, dataFiles] = Boundaries.readDataFiles(fid);
-            fclose(fid);
-            if obj.db.isKey(name)
-                error('%s boundary condition name already defined', name);
-            end
-            switch token
-                case {'NodeBC', 'ElementBC'}
-                    obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
-                        'cond',token,'type', type, 'physics', physics);
-                case 'SurfBC'
-                    switch physics
-                        case 'Flow'
-                            obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
-                                'cond',token,'type', type, 'physics', physics);
-                        case 'Poro'
-                            switch type
-                                case 'Neu'
-                                    obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
-                                        'cond', token,'direction', direction, 'type', type, 'physics', physics);
-                                case 'Dir'
-                                    obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
-                                        'cond', token,'type', type, 'physics', physics);
-                            end
-                    end
-                case 'VolumeForce'
-                    obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
-                        'cond',token, 'physics', physics);
-            end
-            %
-        end
-
-        % Reading boundary input file
-        function readInputFiles(obj,fileNames)
-            n = length(fileNames);
-            assert(n > 0,'No boundary conditions are to be imposed');
-            for i = 1 : n
-                readInputFile(obj,fileNames(i));
-            end
-        end
-
+ 
+  end
+  
+  methods(Static = true)
+    % Read the next token and check for eof
+    function [token] = readToken(fid)
+      flEof = feof(fid);   % end-of-file flag
+      if flEof == 1
+        error('No token available in boundary condition file.');
+      else
+        token = sscanf(fgetl(fid), '%s', 1);
+      end
     end
-
-    methods(Static = true)
-        % Read the next token and check for eof
-        function [token] = readToken(fid)
-            flEof = feof(fid);   % end-of-file flag
-            if flEof == 1
-                error('No token available in boundary condition file.');
-            else
-                token = sscanf(fgetl(fid), '%s', 1);
-            end
+    
+    function [times, data] = readDataFiles(fid)
+      nDataMax = 100;
+      data = repmat(struct('time', 0, 'fileName', []), nDataMax, 1);
+      times = zeros(nDataMax,1);
+      id = 0;
+      while (~feof(fid))
+        line = fgetl(fid);
+        if (strcmpi(line, 'End'))
+          break;
         end
-
-        function [times, data] = readDataFiles(fid)
-            nDataMax = 100;
-            data = repmat(struct('time', 0, 'fileName', []), nDataMax, 1);
-            times = zeros(nDataMax,1);
-            id = 0;
-            while (~feof(fid))
-                line = fgetl(fid);
-                if (strcmpi(line, 'End'))
-                    break;
-                end
-                word = sscanf(line, '%s', 1);
-                if (~strcmp(word(1), '%'))
-                    [time, ~, ~, pos] = sscanf(line, '%e', 1);
-                    id = id + 1;
-                    if (id > nDataMax)
-                        nDataMax = 2*nDataMax;
-                        data(nDataMax) = data(1);
-                        times(nDataMax) = 0.0;
-                    end
-                    times(id) = time;
-                    data(id).time = time;
-                    data(id).fileName = strtrim(line(pos:end));
-                end
-            end
-            data = data(1:id);
-            times = times(1:id);
+        word = sscanf(line, '%s', 1);
+        if (~strcmp(word(1), '%'))
+          [time, ~, ~, pos] = sscanf(line, '%e', 1);
+          id = id + 1;
+          if (id > nDataMax)
+            nDataMax = 2*nDataMax;
+            data(nDataMax) = data(1);
+            times(nDataMax) = 0.0;
+          end
+          times(id) = time;
+          data(id).time = time;
+          data(id).fileName = strtrim(line(pos:end));
         end
+      end
+      data = data(1:id);
+      times = times(1:id);
     end
+  end
 end

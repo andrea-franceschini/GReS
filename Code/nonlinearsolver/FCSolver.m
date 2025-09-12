@@ -18,10 +18,6 @@ classdef FCSolver < handle
   properties (Access = public)
       solStatistics
   end
-
-  properties (Access = public)
-      solStatistics
-  end
   
   methods (Access = public)
       function obj = FCSolver(linSyst,varargin)
@@ -110,8 +106,6 @@ classdef FCSolver < handle
          end
          while ((rhsNorm > tolWeigh) && (obj.iter < obj.domain.simparams.itMaxNR) ...
                && (rhsNorm > absTol)) || obj.iter == 0
-         % while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR)) ...
-         %         || obj.iter == 0
             obj.iter = obj.iter + 1;
             
             % Solve system with increment

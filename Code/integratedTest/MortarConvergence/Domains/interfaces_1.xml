@@ -4,7 +4,7 @@
         <Master id="1" surfaceTag="1"/>
         <Slave id="1" surfaceTag="3"/>
         <Type>MeshTyingCondensation</Type>
-        <Quadrature type="ElementBased" nGP="6" nInt="5"/>
+        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
         <Multiplier type="dual"/>
         <Physics>Poisson</Physics>
     </Interface>

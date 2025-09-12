@@ -126,5 +126,3 @@ classdef Biot < CouplingPhysics
     end
 
 end
-
-

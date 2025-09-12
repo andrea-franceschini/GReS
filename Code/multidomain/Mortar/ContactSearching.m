@@ -167,4 +167,3 @@ classdef ContactSearching < handle
     end
   end
 end
-

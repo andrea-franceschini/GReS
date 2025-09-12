@@ -262,4 +262,3 @@ classdef SegmentBasedQuadrature < handle
     end
   end
 end
-

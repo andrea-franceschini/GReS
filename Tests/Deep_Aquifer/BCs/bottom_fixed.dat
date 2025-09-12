@@ -1,7 +1,7 @@
 SurfBC                            % BC item
 Dir                               % BC type
-Poro                              % Physics
+Poromechanics                              % Physics
 bottom                             % BC name
-BCs/bottom_fixed/list
-0.000000 BCs/bottom_fixed/time0.dat
+bottom_fixed/list
+0.000000 bottom_fixed/time0.dat
 End

@@ -1,18 +1,5 @@
 classdef Materials < handle
   % MATERIAL - General material class
-  % 
-  % Details - Store capabilities:
-  % - for solid materials, you can have only one type material for each
-  % subdomain, but you can have the same material defined in more than one
-  % subdomain.
-  % - for fluid materials (phase), you can have one material define in
-  % diferent subdomain, and the subdomain can have more than one material
-  % (limit by then physics defined for that subdomain).
-  % 
-  % This approx still leave the possibility of two subdomain adjacent to
-  % each other have different fluid material defined, which can represents
-  % a different physics for this subdomains (One that combine all the
-  % different phases present).
 
   properties (Access = public)
     % Creation of a Dictionary object (faster than map)
@@ -20,15 +7,6 @@ classdef Materials < handle
     % configureDictionary is not supported before 2023b
     db
     matMap
-    % *DB - the database for store the proprieties of the material.
-    % *Mat - map the associate the material and which subdomain is defined.
-    % *Cell - map the associate the subdomail and which material is defined.
-    solidDB
-    solidMat2Cell
-    solidCell2Mat
-    fluidDB
-    fluidMat2Cell
-    fluidCell2Mat
   end
 
   methods (Access = public)
@@ -245,42 +223,6 @@ classdef Materials < handle
       if fID == -1
         error('File %s does not exist in the directory',fName);
       end
-    end
-
-    function material = readXMLSolid(fileName)
-        %readXMLSolid - function to read the material information relate to
-        % the solid part of the model.
-
-        material = struct();
-        fdata = readstruct(fileName,AttributeSuffix="");
-        fnames = fieldnames(fdata);
-        for mat=1:length(fnames)
-            switch string(fnames(mat))
-                case 'Elastic'
-                    material.ConstLaw = 0;
-                    % material.ConstLaw = Elastic(fID, matFileName);
-                case 'HypoElastic'
-                    % material.ConstLaw = HypoElastic(fID, matFileName);
-                case 'TransvElastic'
-                    % material.ConstLaw = TransvElastic(fID, matFileName);
-                case 'SSCM'
-                    % material.ConstLaw = SSCM(fID, matFileName);
-                case 'PorousRock'
-                    % material.PorousRock = PorousRock(fID, model, matFileName);
-                case 'CapillaryCurve'
-                    % material.CapillaryCurve = TabularCurve(fID, matFileName);
-                case 'RelativePermCurve'
-                    % material.RelativePermCurve = TabularCurve(fID, matFileName);
-                case 'VanGenuchten'
-                    % material.Curves = VanGenuchten(fID, matFileName);
-            end
-        end
-    end
-
-    function material = readXMLFluid(fileName)
-        %readXMLFluid - function to read the material information relate to
-        % the fluid part of the model.
-        material = struct();
     end
 
   end

@@ -16,16 +16,16 @@ classdef Poromechanics < SinglePhysics
       setPoromechanics(obj)
     end
 
-    % function state = computeMatOld(obj,state,~,dt)
-    %   if ~isLinear(obj) || isempty(obj.J)
-    %     % recompute matrix if the model is non linear
-        
-    %     obj.computeStiffMat(dt);
-    %   end
-    %   if obj.simParams.isTimeDependent
-    %     obj.J = obj.simParams.theta*obj.J;
-    %   end
-    % end
+%     function state = computeMatOld(obj,state,~,dt)
+%       if ~isLinear(obj) || isempty(obj.J)
+%         % recompute matrix if the model is non linear
+%         
+%         obj.computeStiffMat(dt);
+%       end
+%       if obj.simParams.isTimeDependent
+%         obj.J = obj.simParams.theta*obj.J;
+%       end
+%     end
 
     function computeMat(obj,~,dt)
       if ~isLinear(obj) || isempty(obj.J)
@@ -230,6 +230,7 @@ classdef Poromechanics < SinglePhysics
       vals = obj.getBCVals(id,t);
     end
 
+% <<<<<<< HEAD
     function applyDirVal(obj,dof,vals)
       obj.state.data.dispConv(dof) = vals;
       obj.state.data.dispCurr(dof) = vals;
@@ -264,6 +265,24 @@ classdef Poromechanics < SinglePhysics
         obj.rhs = obj.fInt; % provisional assuming theta = 1;
       end
     end
+% 
+%     function blk = blockJacobian(obj,varargin)
+%       fRow = varargin{1};
+%       fCol = varargin{2};
+%       locRow = obj.dofm.field2block(fRow);
+%       locCol = obj.dofm.field2block(fCol);
+%       blk = obj.simParams.theta*obj.K(locRow,locCol);
+%     end
+% 
+%     function blk = blockRhs(obj, fld)
+%       if ~strcmp(obj.dofm.subPhysics(fld), 'Poro')
+%         % no contribution to non poro fields
+%         blk = 0;
+%       else
+%         dofs = obj.dofm.field2block(fld);
+%         blk = obj.rhs(dofs);
+%       end
+%     end
 
     function out = isLinear(obj)
       out = false;
@@ -272,48 +291,71 @@ classdef Poromechanics < SinglePhysics
         if ~out
           return;
         end
+% =======
+%       function [cellData,pointData] = printState(obj,bound,sOld,sNew,t)
+%          % append state variable to output structure
+%          outPrint = [];
+%          switch nargin
+%             case 3
+%                [outPrint.stress,outPrint.strain] = finalizeState(obj,sOld);
+%                outPrint.displ = sOld.dispConv;
+%             case 5
+%                % linearly interpolate state variables containing print time
+%                fac = (t - sOld.t)/(sNew.t - sOld.t);
+%                [avStressOld,avStrainOld] = finalizeState(obj,sOld);
+%                [avStressNew,avStrainNew] = finalizeState(obj,sNew);
+%                outPrint.stress = avStressNew*fac+avStressOld*(1-fac);
+%                outPrint.strain = avStrainNew*fac+avStrainOld*(1-fac);
+%                outPrint.displ = sNew.dispConv*fac+sOld.dispConv*(1-fac);
+%             otherwise
+%                error('Wrong number of input arguments');
+%          end
+%          outPrint.elast = printElastic(obj);
+%          % [cellData,pointData] = Poromechanics.buildPrintStruct(displ,stress,strain);
+%          [cellData,pointData] = Poromechanics.buildPrintStruct(outPrint);
+%       end
+% 
+%       function elast = printElastic(obj)
+%           %printPropState - print the potential for the cell or element.
+%           elast = zeros(obj.mesh.nCells,6);
+%           for el=1:obj.mesh.nCells
+%               ktmp = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+%               elast(el,1)=ktmp(1,1);
+%               elast(el,2)=ktmp(2,2);
+%               elast(el,3)=ktmp(3,3);
+%               elast(el,4)=ktmp(1,2);
+%               elast(el,5)=ktmp(2,3);
+%               elast(el,6)=ktmp(1,3);
+%           end
+%       end
+% 
+%    end
+% 
+%    methods (Access=private)
+%       function dof = getBCdofs(obj,bc,id)
+%          switch bc.getCond(id)
+%             case 'NodeBC'
+%                ents = bc.getEntities(id);
+%             case 'SurfBC'
+%                ents = bc.getLoadedEntities(id);
+%                % node id contained by constrained surface
+%             otherwise
+%                error('BC type %s is not available for %s field',cond,obj.field);
+%          end
+%          % map entities dof to local dof numbering
+%          dof = obj.dofm.getLocalEnts(ents,obj.field);
+%          switch bc.getType(id)
+%             case 'Dir'
+%                % component multiplication of Dirichlet BC dofs
+%                dof = bc.getCompEntities(id,dof);
+%             case 'Neu'
+%                dir = bc.getDirection(id);
+%                c = find(strcmp(["x","y","z"],dir));
+%                dof = 3*dof+c-3;
+%          end
+% >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
       end
     end
-  %     function [cellData,pointData] = printState(obj,bound,sOld,sNew,t)
-  %        % append state variable to output structure
-  %        outPrint = [];
-  %        switch nargin
-  %           case 3
-  %              [outPrint.stress,outPrint.strain] = finalizeState(obj,sOld);
-  %              outPrint.displ = sOld.dispConv;
-  %           case 5
-  %              % linearly interpolate state variables containing print time
-  %              fac = (t - sOld.t)/(sNew.t - sOld.t);
-  %              [avStressOld,avStrainOld] = finalizeState(obj,sOld);
-  %              [avStressNew,avStrainNew] = finalizeState(obj,sNew);
-  %              outPrint.stress = avStressNew*fac+avStressOld*(1-fac);
-  %              outPrint.strain = avStrainNew*fac+avStrainOld*(1-fac);
-  %              outPrint.displ = sNew.dispConv*fac+sOld.dispConv*(1-fac);
-  %           otherwise
-  %              error('Wrong number of input arguments');
-  %        end
-  %        outPrint.elast = printElastic(obj);
-  %        % [cellData,pointData] = Poromechanics.buildPrintStruct(displ,stress,strain);
-  %        [cellData,pointData] = Poromechanics.buildPrintStruct(outPrint);
-  %     end
-
-  %     function elast = printElastic(obj)
-  %         %printPropState - print the potential for the cell or element.
-  %         elast = zeros(obj.mesh.nCells,6);
-  %         for el=1:obj.mesh.nCells
-  %             ktmp = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
-  %             elast(el,1)=ktmp(1,1);
-  %             elast(el,2)=ktmp(2,2);
-  %             elast(el,3)=ktmp(3,3);
-  %             elast(el,4)=ktmp(1,2);
-  %             elast(el,5)=ktmp(2,3);
-  %             elast(el,6)=ktmp(1,3);
-  %         end
-  %     end
-
-  %  end
-
-
 
     function [cellData,pointData] = printState(obj,sOld,sNew,t)
       % append state variable to output structure
@@ -352,11 +394,74 @@ classdef Poromechanics < SinglePhysics
       dof = obj.bcs.getCompEntities(id,dof);
     end
 
+% <<<<<<< HEAD
     function vals = getBCVals(obj,id,t)
       vals = obj.bcs.getVals(id,t);
       if strcmp(obj.bcs.getCond(id),'SurfBC')
         entInfl = obj.bcs.getEntitiesInfluence(id);
         vals = entInfl*vals;
+% =======
+%       function [cellStr,pointStr] = buildPrintStruct(outPrint)
+%          pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);
+%          pointStr(1).name = 'disp';
+%          pointStr(1).data = [outPrint.displ(1:3:end),outPrint.displ(2:3:end),outPrint.displ(3:3:end)];
+% 
+%          cellStr = repmat(struct('name', 1, 'data', 1), 3, 1);         
+%          cellStr(1).name = 'stress';
+%          cellStr(1).data = outPrint.stress;
+%          cellStr(2).name = 'strain';
+%          cellStr(2).data = outPrint.strain;
+%          cellStr(3).name = 'elastic';
+%          cellStr(3).data = outPrint.elast;
+%       % function [cellStr,pointStr] = buildPrintStruct(disp,stress,strain)
+%          % nCellData = 12;
+%          % nPointData = 3;
+%          % nCellData = 2;
+%          % nPointData = 1;
+%          % pointStr = repmat(struct('name', 1, 'data', 1), nPointData, 1);
+%          % cellStr = repmat(struct('name', 1, 'data', 1), nCellData, 1);
+%          % Displacement
+%          % pointStr(1).name = 'ux';
+%          % pointStr(1).data = disp(1:3:end);
+%          % pointStr(2).name = 'uy';
+%          % pointStr(2).data = disp(2:3:end);
+%          % pointStr(3).name = 'uz';
+%          % pointStr(3).data = disp(3:3:end);
+%          % pointStr(1).name = 'disp';
+%          % pointStr(1).data = [disp(1:3:end),disp(2:3:end),disp(3:3:end)];
+%          %
+%          % Stress
+%          % cellStr(1).name = 'sx';
+%          % cellStr(1).data = stress(:,1);
+%          % cellStr(2).name = 'sy';
+%          % cellStr(2).data = stress(:,2);
+%          % cellStr(3).name = 'sz';
+%          % cellStr(3).data = stress(:,3);
+%          % cellStr(4).name = 'txy';
+%          % cellStr(4).data = stress(:,4);
+%          % cellStr(5).name = 'tyz';
+%          % cellStr(5).data = stress(:,5);
+%          % cellStr(6).name = 'txz';
+%          % cellStr(6).data = stress(:,6);
+%          % cellStr(1).name = 'stress';
+%          % cellStr(1).data = stress;
+%          %
+%          % Strain
+%          % cellStr(7).name = 'ex';
+%          % cellStr(7).data = strain(:,1);
+%          % cellStr(8).name = 'ey';
+%          % cellStr(8).data = strain(:,2);
+%          % cellStr(9).name = 'ez';
+%          % cellStr(9).data = strain(:,3);
+%          % cellStr(10).name = 'gxy';
+%          % cellStr(10).data = strain(:,4);
+%          % cellStr(11).name = 'gyz';
+%          % cellStr(11).data = strain(:,5);
+%          % cellStr(12).name = 'gxz';
+%          % cellStr(12).data = strain(:,6);
+%          % cellStr(2).name = 'strain';
+%          % cellStr(2).data = strain;
+% >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
       end
     end
 
@@ -406,18 +511,6 @@ classdef Poromechanics < SinglePhysics
       cellStr(11).data = strain(:,5);
       cellStr(12).name = 'gxz';
       cellStr(12).data = strain(:,6);
-      % function [cellStr,pointStr] = buildPrintStruct(outPrint)
-      %    pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);
-      %    pointStr(1).name = 'disp';
-      %    pointStr(1).data = [outPrint.displ(1:3:end),outPrint.displ(2:3:end),outPrint.displ(3:3:end)];
-
-      %    cellStr = repmat(struct('name', 1, 'data', 1), 3, 1);         
-      %    cellStr(1).name = 'stress';
-      %    cellStr(1).data = outPrint.stress;
-      %    cellStr(2).name = 'strain';
-      %    cellStr(2).data = outPrint.strain;
-      %    cellStr(3).name = 'elastic';
-      %    cellStr(3).data = outPrint.elast;
     end
 
     function indB = setStrainMatIndex(N)
@@ -442,4 +535,3 @@ classdef Poromechanics < SinglePhysics
     end
   end
 end
-

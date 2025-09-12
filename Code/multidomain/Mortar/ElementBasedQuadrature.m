@@ -229,4 +229,3 @@ classdef ElementBasedQuadrature < handle
     
   end
 end
-

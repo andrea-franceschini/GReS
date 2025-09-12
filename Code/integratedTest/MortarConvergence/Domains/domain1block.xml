@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <struct>
     <Domain>
-        <Name>Cube_ElementBased_2</Name>
+        <Name>Cube_SegmentBased_1</Name>
         <SimParameters>simParam.dat</SimParameters>
-        <Geometry>Mesh/meshes/domain_hexa27_2.vtk</Geometry>
+        <Geometry>Mesh/meshes/domain_hexa_1.vtk</Geometry>
         <ModelType>Poisson_FEM</ModelType>
         <Gauss>3</Gauss>
         <BoundaryConditions count="1">

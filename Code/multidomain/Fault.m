@@ -20,4 +20,3 @@ classdef Fault < MeshGlue
     end
   end
 end
-

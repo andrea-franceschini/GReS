@@ -10,7 +10,7 @@ classdef MeshGlueJumpStabilization < MeshGlue
       obj@MeshGlue(id,inputStruct,domains);
       if isfield(inputStruct.Stabilization,"scaleAttribute")
         obj.scale = inputStruct.Stabilization.scaleAttribute;
-      else 
+      else
         obj.scale = 1.0;
       end
       obj.multiplierType = 'P0';
@@ -23,7 +23,7 @@ classdef MeshGlueJumpStabilization < MeshGlue
       obj.Jmult = -computeStabilizationMatrix(obj,obj.physic);
     end
 
-end
+  end
 
 
 
@@ -134,4 +134,3 @@ end
 
   end
 end
-
