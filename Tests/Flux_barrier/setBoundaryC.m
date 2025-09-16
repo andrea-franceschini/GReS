@@ -17,7 +17,7 @@ function fileNames = setBoundaryC(foldName,grid,faces)
         fID = fopen(fileName,'w');
         fprintf(fID,'SurfBC                            %% BC item \n');        
         fprintf(fID,'%s                               %% BC type \n',faces(ii).type);
-        fprintf(fID,'Flow                              %% Physics \n');
+        fprintf(fID,'SinglePhaseFlow                              %% Physics \n');
         fprintf(fID,'%s                           %% BC name \n',faces(ii).name);
         item = strcat(fName,'/List_',faces(ii).name);
         fprintf(fID,'%s \n',item);

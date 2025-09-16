@@ -1,7 +1,7 @@
 #include <vector>
 #include <string>
 
-#define MAX_NUM_VERTICES 8
+#define MAX_NUM_VERTICES 27
 
 struct Point
 {

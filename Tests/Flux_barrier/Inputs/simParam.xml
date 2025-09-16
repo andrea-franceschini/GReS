@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <simParam>
     <Time Start="0."
-          End ="1e1"
-          DtInic= "1.e1"
+          End ="1.e1"
+          DtInic= "1.e+1"
           DtMax ="1.e+1"
           DtMin ="1.e+1"/>
     <TimeStepControl IncAugmentation = "1.5e+0"

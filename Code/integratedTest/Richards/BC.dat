@@ -1,0 +1,9 @@
+SurfBC                            % BC item 
+Dir                               % BC type 
+VariablySaturatedFlow            % Physics 
+Bottom                           % BC name 
+BC/List_Bottom 
+0.00 BC/Time_Bottom_0.dat 
+5.00 BC/Time_Bottom_1.dat 
+10.00 BC/Time_Bottom_2.dat 
+End

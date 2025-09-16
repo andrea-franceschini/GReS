@@ -1,0 +1,7 @@
+SurfBC                           % BC item 
+Dir                              % BC type 
+VariablySaturatedFlow            % Physics 
+Bottom_pressure                  % BC name 
+BCs/press_bot/list 
+0.000000 BCs/press_bot/time0.dat 
+End

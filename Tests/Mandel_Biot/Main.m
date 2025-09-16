@@ -29,11 +29,8 @@ topology.importGMSHmesh(fileName);
 fileName = 'materialsList.dat';
 mat = Materials(model,fileName);
 
-% Create object handling gauss point integration
-GaussPts = Gauss(12,2,3);
-
 % Create an object of the "Elements" class and process the element properties
-elems = Elements(topology,GaussPts);
+elems = Elements(topology,2);
 
 %calling analytical solution script
 Mandel_Analytical(topology, mat, 10)
@@ -48,14 +45,8 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %fname = 'dof.dat';
 dofmanager = DoFManager(topology,model);
 
-% Create object handling construction of Jacobian and rhs of the model
-linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
-
-% Build a structure storing variable fields at each time step
-state = linSyst.setState();
-
 % Create and set the print utility
-printUtils = OutState(model,topology,'outTime.dat','folderName','Output_Mandel');
+printUtils = OutState(model,topology,'outTime.dat','folderName','Output_Mandel','flagMatFile',true);
 
 
 % Write BC files programmatically with function utility 
@@ -65,26 +56,38 @@ bcList = setMandelBC('BCs',F,topology);
 % Create an object of the "Boundaries" class 
 bound = Boundaries(bcList,model,grid);
 
+
+% Create object handling construction of Jacobian and rhs of the model
+domain = Discretizer('ModelType',model,...
+                     'SimulationParameters',simParam,...
+                     'DoFManager',dofmanager,...
+                     'Boundaries',bound,...
+                     'OutState',printUtils,...
+                     'Materials',mat,...
+                     'Grid',grid);
+
+
 % In this version of the code, the user can assign initial conditions only
 % manually, by directly modifying the entries of the state structure. 
 % In this example, we use a user defined function to apply Terzaghi initial
 % conditions to the state structure
-state = applyMandelIC(state,mat,topology,F);
+state = applyMandelIC(domain.state,mat,topology,F);
 
 % Print model initial state
-printUtils.printState(linSyst,state);
+printState(domain);
 
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme. 
 % Here, a built-in fully implict solution scheme is adopted with class
-% FCSolver. This could be simply be replaced by a function
-Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
+% FCSolver. This could be simply be replaced by a user defined function
+Solver = FCSolver(domain);
 %
 % Solve the problem
 [simState] = Solver.NonLinearLoop();
 %
 % Finalize the print utility
 printUtils.finalize()
+%
 %% POST PROCESSING
 
 image_dir = strcat(pwd,'/Images');
@@ -98,19 +101,16 @@ end
 %Post processing using MAT-FILE
 %list of nodes along vertical axis (with x,y=0)
 tol = 0.001;
-elemP1 = find(abs(elems.cellCentroid(:,2) - 0.025) < tol);
-elemP2 = find(abs(elems.cellCentroid(:,3) - 0.55) < tol);
+elemP1 = find(abs(topology.cellCentroid(:,3) - 0.05) < tol);
+elemP2 = find(abs(topology.cellCentroid(:,2) - 0.025) < tol);
 elemP = intersect(elemP1, elemP2);
-nodesP1 = find(abs(topology.coordinates(:,2)-0.05)<tol) ;
-nodesP2 = find(abs(topology.coordinates(:,3)-0.5)<tol);
-nodesP = intersect(nodesP1,nodesP2);
 nodesX1 = find(abs(topology.coordinates(:,2)-0.05)<tol) ;
 nodesX2 = find(abs(topology.coordinates(:,3)-0.7)<tol);
 nodesX = intersect(nodesX1,nodesX2);
 nodesZ1 = find(abs(topology.coordinates(:,1)-0.6)<tol);
 nodesZ2 = find(abs(topology.coordinates(:,2)-0.05)<tol);
 nodesZ = intersect(nodesZ1,nodesZ2);
-[coordsP,ind] = sort(elems.cellCentroid(elemP,1));
+[coordsP,ind] = sort(topology.cellCentroid(elemP,1));
 elemP = elemP(ind);
 [coordsX,ind] = sort(topology.coordinates(nodesX,1));
 nodesX = nodesX(ind);
@@ -118,15 +118,9 @@ nodesX = nodesX(ind);
 nodesZ = nodesZ(ind);
 
 %Getting pressure and displacement solution for specified output times from MatFILE
-press = printUtils.results.expPress;
-disp = printUtils.results.expDispl;
-if isFVTPFABased(model,'Flow')
-   pressNum = press(elemP,2:end);
-   xP = elems.cellCentroid(elemP,1);
-elseif isFEMBased(model,'Flow')
-   xP = topology.coordinates(nodesP,1);
-   pressNum = press(nodesP,2:end);
-end
+press = [printUtils.results.expPress];
+disp = [printUtils.results.expDispl];
+pressNum = press(elemP,2:end);
 dispXNum = disp(3*nodesX-2,2:end);
 dispZNum = disp(3*nodesZ,2:end);
 
@@ -136,7 +130,7 @@ load("Mandel_Analytical.mat");
 %Plotting solution
 %Pressure
 figure(1)
-plotObj1 = plot(xP,pressNum,'k.', 'LineWidth', 1, 'MarkerSize', 15);
+plotObj1 = plot(topology.cellCentroid(elemP,1),pressNum,'k.', 'LineWidth', 1, 'MarkerSize', 15);
 hold on
 plotObj2 = plot(x,p,'k-', 'LineWidth', 1);
 xlabel('x (m)')

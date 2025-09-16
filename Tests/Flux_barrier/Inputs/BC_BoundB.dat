@@ -1,6 +1,6 @@
 SurfBC                            % BC item 
 Dir                               % BC type 
-Flow                              % Physics 
+SinglePhaseFlow                              % Physics 
 BoundB                           % BC name 
 Inputs/BC/List_BoundB 
 0.00 Inputs/BC/Time_BoundB_0.dat 

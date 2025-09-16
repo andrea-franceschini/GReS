@@ -10,6 +10,7 @@ classdef DoFManager < handle
       cellTags
       domainFields
       tag2subDomain
+      entMap      % collection of maps of domain entities to local dof
       fieldList
    end
    properties (Access = public)
@@ -18,6 +19,7 @@ classdef DoFManager < handle
       fields
       ordering
       nComp
+      totDoF
    end
    
    methods
@@ -31,7 +33,7 @@ classdef DoFManager < handle
          switch nargin
             case 2 % no subdomains defined
                obj.ordering = 'field';
-               obj.tag2subDomain(:) = 1; % only one subdomain
+               obj.tag2subDomain = ones(mesh.nCellTag,1); % only one subdomain
                availFields = obj.model.getAvailPhysics();
                for field = (string(availFields))'
                   % assign all available fields to one subdomain
@@ -95,13 +97,15 @@ classdef DoFManager < handle
                end
             end
          end
-         obj.numEntsField = zeros(1,numel(obj.fields));
+         nFld = numel(obj.fields);
+         obj.numEntsField = zeros(1,nFld);
          obj.numEntsSubdomain = zeros(1,subID);
-         obj.nComp = zeros(1,numel(obj.fields));
+         obj.nComp = zeros(1,nFld);
       end
 
 
       function addField(obj,mesh,subIDs,field)
+         checkAvailPhysics(obj.model,field);
          % prepare fields structure from input file informations
          isField = false;
          if isscalar(obj.fields)
@@ -128,10 +132,10 @@ classdef DoFManager < handle
             k = nFields+1;
             obj.fields(k).field = field;
             obj.fields(k).subID = subIDs;
-            if isFEMBased(obj.model,translatePhysic(field))
+            if isFEMBased(obj.model,field)
                nEnts = mesh.nNodes;
                obj.fields(k).scheme = 'FEM';
-            elseif isFVTPFABased(obj.model,translatePhysic(field))
+            elseif isFVTPFABased(obj.model,field)
                nEnts = mesh.nCells;
                obj.fields(k).scheme = 'FV';
             end
@@ -140,8 +144,10 @@ classdef DoFManager < handle
       end
 
       function finalizeDoFManager(obj,mesh)
+        nFld = numel(obj.fields);
+        obj.entMap = cell(nFld,1);
          % updated DoF structure with entitiy list for each subdomain
-         for i = 1:numel(obj.fields)
+         for i = 1:nFld
             nSub = numel(obj.fields(i).subID);
             obj.fields(i).entCount = zeros(1,nSub);
             obj.fields(i).subdomainEnts = cell(nSub,1);
@@ -163,8 +169,10 @@ classdef DoFManager < handle
                obj.numEntsSubdomain(subID) = obj.numEntsSubdomain(subID) + obj.fields(i).entCount(j);
                obj.numEntsField(i) = obj.numEntsField(i) + obj.fields(i).entCount(j);
                obj.fieldList = string({obj.fields.field});
-            end
+            end 
+            getDoFMap(obj,i);
          end
+         obj.totDoF = obj.nComp*obj.numEntsField';
       end
 
       function dofs = getDoF(obj,field,varargin)
@@ -176,52 +184,53 @@ classdef DoFManager < handle
          nc = obj.nComp(fldId);
          % get local numbering within the field
          switch obj.ordering
-            case 'field'
-               if isempty(varargin) 
-                  % all dofs of input field
-                  dofs = dofId((1:obj.numEntsField(fldId))',nc);
-               else
-                  dofs = getLocalDoF(obj,varargin{1},field);
-               end
-               nDoF = obj.nComp.*obj.numEntsField;
-               dofs = dofs+sum(nDoF(1:fldId-1));
-            case 'domain'
-               error('Domain-based ordering of DoF not yet implemented')
+           case 'field'
+             if isempty(varargin)
+               % all dofs of input field
+               dofs = dofId((1:obj.numEntsField(fldId))',nc);
+             else
+               dofs = getLocalDoF(obj,varargin{1},fldId);
+             end
+             nDoF = obj.nComp.*obj.numEntsField;
+             dofs = dofs+sum(nDoF(1:fldId-1));
+           case 'domain'
+             error('Domain-based ordering of DoF not yet implemented')
          end
       end
       %
-      function dofList = getLocalDoF(obj,entList,field)
-         fldId = obj.getFieldId(field);
-         nc = obj.nComp(fldId);
-         % get local DoF numbering for entities within a field
-         ents = getLocalEnts(obj,entList,field);
-         dofList = dofId(ents,nc);
+      function dofList = getLocalDoF(obj,entList,fldId)
+        % get local DoF numbering for entities within a field
+        if ~isnumeric(fldId)
+          fldId = getFieldId(obj,fldId);
+        end
+        nc = obj.nComp(fldId);
+        ents = obj.entMap{fldId}(entList);
+        if ~all(ents)
+          error('dofError:inactiveEntity','Inactive entity for input field')
+        end
+        dofList = dofId(ents,nc);
       end
 
-      function dofList = getLocalEnts(obj,entList,field)
-         % renumber entity id skipping inactive entities 
-         fldId = obj.getFieldId(field);
-         entList = reshape(entList,[],1);
-         dofList = zeros(numel(entList),1);
-         if ~all(obj.fields(fldId).isEntActive(entList))
-            error('Inactive entity for field %s in input list',field);
-         end
-         % sorting entity list is way more efficient
-         [entList,idSort] = sort(entList); 
-         s = 0;
-         k = 0;
-         iPrev = 0;
-         actEnt = obj.fields(fldId).isEntActive;
-         for j = idSort'
-            s = s+sum(actEnt(iPrev+1:entList(k+1)));
-            iPrev = entList(k+1);
-            dofList(j) = s;
-            k = k+1;
-         end
+      function entList = getLocalEnts(obj,entList,fldId)
+        % renumber entity id skipping inactive entities
+        assert(~isempty(fldId),'Missing field id');
+        entList = obj.entMap{fldId}(entList);
+        if ~all(entList)
+          error('dofError:inactiveEntity','Inactive entity for input field')
+        end
+      end
+
+      function getDoFMap(obj,id)
+        % renumber entity id skipping inactive entities
+        %entList = 1:size();
+        dofMap = zeros(numel(obj.fields(id).isEntActive),1);
+        dofMap(obj.fields(id).isEntActive) = 1:sum(obj.fields(id).isEntActive);
+        dofMap(~obj.fields(id).isEntActive) = 0;
+        obj.entMap{id} = dofMap;
       end
 
       function fldDofs = getFieldDoF(obj,dofs,field)
-         % recover active entitity indices from local dof numbering
+         % get entity id from dof identifier within a field
          fldId = obj.getFieldId(field);
          actEnt = obj.fields(fldId).isEntActive;
          actDofs = find(actEnt);
@@ -229,7 +238,7 @@ classdef DoFManager < handle
       end
 
       function activeSubs = getActiveSubdomain(obj,fieldList)
-         % get subdomains where 1 or more fields are activated at the
+         % get subdomains where 1 or more subdomain are activated at the
          % same time
          % return [] if an input field is not available
          if ~all(ismember(fieldList,obj.fieldList))
@@ -248,8 +257,13 @@ classdef DoFManager < handle
          fldList = obj.fieldList;
       end
 
+      function out = isField(obj,fields)
+        out = all(ismember(fields,obj.fieldList));
+      end
+
       function fldId = getFieldId(obj,flds)
          % get field id associated to input fields
+         checkAvailPhysics(obj.model,flds);
          fldId = find(strcmp(obj.fieldList,flds));
       end
 
@@ -280,6 +294,16 @@ classdef DoFManager < handle
          numEnts = obj.numEntsField(fldId);
          nc = obj.nComp(fldId);
          numDoF = nc*numEnts;
+      end
+
+% <<<<<<< HEAD
+      function scheme = getScheme(obj,fld)
+        fldId = obj.getFieldId(fld);
+        scheme = obj.fields(fldId).scheme;
+% =======
+%       function addCellTag(obj,tag)
+%          obj.cellTags = [obj.cellTags; tag];
+% >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
       end
    end
 

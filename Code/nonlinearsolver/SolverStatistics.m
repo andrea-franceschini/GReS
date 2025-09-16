@@ -135,27 +135,34 @@ classdef SolverStatistics < handle
             if ~obj.saveRelError
                 return
             end
+            figure();
+            hold on;
 
             % Check if the iteration is validy.
             niter = length(obj.listIterByTimeStep);
-            if it>niter && it>0
-                return
+            checkAval = it>niter;
+            labels = {};
+            list=[];
+            for plIt = 1:length(it)
+               if checkAval(plIt) && it(plIt)>0
+                  continue
+               end
+               list(end+1)=it(plIt);
+               % Find the interval to plot.
+               [values, ~] = findIntervalValues(obj,it(plIt),false);
+
+               % Plot the graphic.
+               plot(values,'LineWidth',2,'MarkerSize',14);
+               labels{end+1}=sprintf('TSTEP - %d', it(plIt));
             end
-
-            % Find the interval to plot.
-            [values, ~] = findIntervalValues(obj,it,false);
-
-            % Plot the graphic.
-            figure();
-            semilogy(values,'black','LineWidth',2,'MarkerSize',14);
-            hold on;
-            semilogy([1;obj.listIterByTimeStep(it)],[obj.relTol;obj.relTol],'black--','LineWidth',2,'MarkerSize',14);
+            plot([1;max(obj.listIterByTimeStep(list))],[obj.absTol;obj.absTol],'black--', ...
+               'LineWidth',2,'MarkerSize',14);
             xlabel('Number of Iteration')
             ylabel('Relative Error')
-            xlim([1,obj.listIterByTimeStep(it)]);
-            % ylim([obj.relTol,1e0]);
-            % legend(tstr, 'Location', 'northeast')
             set(gca,'FontName','Liberation Serif','FontSize',16,'XGrid','on','YGrid','on')
+            yscale('log');
+            labels{end+1}=sprintf('Rel. Tol.');            
+            legend(labels, 'Location', 'northeast');
             hold off;
         end
 
@@ -167,28 +174,34 @@ classdef SolverStatistics < handle
             if ~obj.saveAbsError
                 return
             end
+            figure();
+            hold on;
 
             % Check if the iteration is validy.
             niter = length(obj.listIterByTimeStep);
-            if it>niter && it>0
-                return
+            checkAval = it>niter;
+            labels = {};
+            list=[];
+            for plIt = 1:length(it)
+               if checkAval(plIt) && it(plIt)>0
+                  continue
+               end
+               list(end+1)=it(plIt);
+               % Find the interval to plot.
+               [values, ~] = findIntervalValues(obj,it(plIt),true);
+
+               % Plot the graphic.
+               plot(values,'LineWidth',2,'MarkerSize',14);
+               labels{end+1}=sprintf('TSTEP - %d', it(plIt));
             end
-
-            % Find the interval to plot.
-            [values, ~] = findIntervalValues(obj,it,true);
-
-            % Plot the graphic.
-            figure();
-            semilogy(values,'black','LineWidth',2,'MarkerSize',14);
-            % semilogy(obj.listAbsError(posI:posF),'black','LineWidth',2,'MarkerSize',14);
-            hold on;
-            semilogy([1;obj.listIterByTimeStep(it)],[obj.absTol;obj.absTol],'black--','LineWidth',2,'MarkerSize',14);
+            plot([1;max(obj.listIterByTimeStep(list))],[obj.absTol;obj.absTol],'black--', ...
+               'LineWidth',2,'MarkerSize',14);
             xlabel('Number of Iteration')
             ylabel('Absolute Error')
-            xlim([1,obj.listIterByTimeStep(it)]);
-            % ylim([obj.relTol,1e0]);
-            % legend(tstr, 'Location', 'northeast')
             set(gca,'FontName','Liberation Serif','FontSize',16,'XGrid','on','YGrid','on')
+            yscale('log');
+            labels{end+1}=sprintf('Abs. Tol.');            
+            legend(labels, 'Location', 'northeast');
             hold off;
         end
 

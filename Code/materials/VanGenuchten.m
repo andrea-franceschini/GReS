@@ -59,7 +59,7 @@ classdef VanGenuchten < handle
     % unsaturated soils - M.Th.Van Genuchten and D.R. Nielsen, 1985
 
     properties
-        n;               % Empiricalvalue - adimensional
+        n;               % Empirical value - adimensional
         beta;            % Empirical value - need to be the same dimension as pressure.
         kappa;           % Empirical value para van Genuchten-Mualem permeability curve.
     end
@@ -70,6 +70,7 @@ classdef VanGenuchten < handle
         modelType;       % Flag to indicated the model type
         retantionCurve;  % Storage the retantion curve.
         relPermCurve;    % Storage the relative permability curve.
+        nonNegPressure;  % Storage a flag for the non negative pressure.
     end
 
     methods (Access = public)
@@ -94,6 +95,8 @@ classdef VanGenuchten < handle
             else
                 p = obj.presCorrection(pres);
                 [Sw, dSw, ddSw] = obj.computeSaturation(p);
+                dSw = varCorrection(obj,dSw);
+                ddSw = varCorrection(obj,ddSw);
             end
         end
 
@@ -105,19 +108,15 @@ classdef VanGenuchten < handle
                 case 'Mualem'
                     p = obj.presCorrection(pres);
                     [Kr, dKr] = obj.computeRelativePermeabilityMualem(p);
+                    dKr = varCorrection(obj,dKr);
                 case 'Burdine'
                     p = obj.presCorrection(pres);
                     [Kr, dKr] = obj.computeRelativePermeabilityBurdine(p);
+                    dKr = varCorrection(obj,dKr);
                 case 'Tabular'
                     [Kr, dKr, ~] = obj.relPermCurve.interpTable(pres);
                 otherwise
             end
-            % p = obj.presCorrection(pres);
-            % if obj.modelType
-            %     [Kr, dKr] = obj.computeRelativePermeabilityMualem(p);
-            % else
-            %     [Kr, dKr] = obj.computeRelativePermeabilityBurdine(p);
-            % end
         end
     end
 
@@ -254,14 +253,9 @@ classdef VanGenuchten < handle
             % positive and non-negative.
             if (obj.presCor)
                 p = -pres;
-                p(p<=0) = 1e-15;
-                % pres(pres<=1e-15) = 1e-15;                
-                % p=pres;
-                % p(pres<=0) = 1e-15;
-                % p=-p;
-                % loc = pres>=0;
-                % p(loc) = -pres(loc);
-                % p(~loc) = -1e-15;
+                obj.nonNegPressure = p<=0;
+                p(obj.nonNegPressure) = 1e-15;
+                % p(p>1e4)=1e4;
             else
                 p=pres;
             end
@@ -317,6 +311,13 @@ classdef VanGenuchten < handle
             dKr = -(mm*nn*(p.^(-1))) .* ((1+(b.*p).^nn).^(-3.*mm-1)) ...
                 .* (2.*((b.*p).^nn).*((1+(b.*p).^nn).^mm) + ...
                 (b*p).^(mm.*nn) - 2.*(b.*p).^(nn.*mm+nn));
+        end
+
+        function var = varCorrection(obj,var)
+            % VARCORRECTION Method to correct the derivative of a variable.
+            if (obj.presCor)
+                var(obj.nonNegPressure) = 0.;
+            end
         end
     end
 end
