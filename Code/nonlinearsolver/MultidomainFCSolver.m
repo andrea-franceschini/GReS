@@ -189,7 +189,7 @@ classdef MultidomainFCSolver < handle
       J = FCSolver.cell2matJac(J);
       rhs = cell2mat(rhs);
       tic
-      if size(J,1)>1e5
+      if size(J,1)>1e7
         fprintf('Solving linear system...\n')
         if norm(J-J','fro') < 1e-10
           % matrix is practically symmetric

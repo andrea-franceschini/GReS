@@ -33,7 +33,7 @@ L14 = gmsh.model.occ.addLine(P4, P1)
 loop = gmsh.model.occ.addCurveLoop([L11, L12, L13, L14])
 surf1 = gmsh.model.occ.addPlaneSurface([loop])
 
-outExtrude1 = gmsh.model.occ.extrude([(2, surf1)], 0, 0, 1, numElements=[2], recombine=flagRecombine)
+outExtrude1 = gmsh.model.occ.extrude([(2, surf1)], 0, 0, 1, numElements=[6], recombine=flagRecombine)
 
 gmsh.model.occ.synchronize()
 
@@ -41,10 +41,10 @@ if flagRecombine:
     gmsh.model.mesh.setRecombine(2, surf1)
 
 
-gmsh.model.mesh.set_transfinite_curve(L11,5)
-gmsh.model.mesh.set_transfinite_curve(L12,3)
-gmsh.model.mesh.set_transfinite_curve(L13,5)
-gmsh.model.mesh.set_transfinite_curve(L14,3)
+gmsh.model.mesh.set_transfinite_curve(L11,31)
+gmsh.model.mesh.set_transfinite_curve(L12,7)
+gmsh.model.mesh.set_transfinite_curve(L13,31)
+gmsh.model.mesh.set_transfinite_curve(L14,7)
 
 gmsh.model.mesh.set_transfinite_surface(surf1)
 
@@ -67,7 +67,7 @@ L24 = gmsh.model.occ.addLine(P4, P1)
 loop = gmsh.model.occ.addCurveLoop([L21, L22, L23, L24])
 surf2 = gmsh.model.occ.addPlaneSurface([loop])
 
-outExtrude2 = gmsh.model.occ.extrude([(2, surf2)], 0, 0, 1, numElements=[3], recombine=flagRecombine)
+outExtrude2 = gmsh.model.occ.extrude([(2, surf2)], 0, 0, 1, numElements=[10], recombine=flagRecombine)
 
 gmsh.model.occ.synchronize()
 
@@ -75,10 +75,10 @@ if flagRecombine:
     gmsh.model.mesh.setRecombine(2, surf2)
 
 
-gmsh.model.mesh.set_transfinite_curve(L21,5)
-gmsh.model.mesh.set_transfinite_curve(L22,4)
-gmsh.model.mesh.set_transfinite_curve(L23,5)
-gmsh.model.mesh.set_transfinite_curve(L24,4)
+gmsh.model.mesh.set_transfinite_curve(L21,41)
+gmsh.model.mesh.set_transfinite_curve(L22,11)
+gmsh.model.mesh.set_transfinite_curve(L23,41)
+gmsh.model.mesh.set_transfinite_curve(L24,11)
 
 gmsh.model.mesh.set_transfinite_surface(surf2)
 
