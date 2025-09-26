@@ -78,7 +78,7 @@ else
   end
 end
 
-if ismember(ph,["SinglePhaseFlow","Poisson","VariablySaturatedFlow"])
+if ismember(ph,["SinglePhaseFlow","Poisson","VariablySaturatedFlow"]) || strcmp(item,'VolumeForce')
   fprintf(fList,'%i         %% Number of fixed entities \n',length(list));
   fprintf(fList,'%i \n',list);
 else

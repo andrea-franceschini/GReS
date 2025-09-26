@@ -1,0 +1,10 @@
+ElementBC            % BC item 
+Dir            % BC type 
+SinglePhaseFlow            % Physics 
+wells            % BC name 
+BCs/wells_press/list 
+0.000000 BCs/wells_press/time0.dat 
+3.000000 BCs/wells_press/time1.dat 
+7.000000 BCs/wells_press/time2.dat 
+10.000000 BCs/wells_press/time3.dat 
+End

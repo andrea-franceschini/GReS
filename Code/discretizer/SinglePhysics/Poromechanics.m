@@ -328,13 +328,41 @@ classdef Poromechanics < SinglePhysics
       % map entities dof to local dof numbering
       dof = obj.dofm.getLocalEnts(ents,obj.fldId);
       dof = obj.bcs.getCompEntities(id,dof);
+      if strcmp(obj.bcs.getCond(id),'VolumeForce')
+        dof = dofId(dof,3);
+      end
     end
 
     function vals = getBCVals(obj,id,t)
       vals = obj.bcs.getVals(id,t);
-      if strcmp(obj.bcs.getCond(id),'SurfBC') || strcmp(obj.bcs.getCond(id),'VolumeForce') 
+      if strcmp(obj.bcs.getCond(id),'SurfBC')
         entInfl = obj.bcs.getEntitiesInfluence(id);
         vals = entInfl*vals;
+      elseif strcmp(obj.bcs.getCond(id),'VolumeForce')
+        % biot logic
+        valsCell = vals;
+        cells = obj.bcs.getEntities(id);
+        nNodes = obj.bcs.getNumbLoadedEntities(id);
+        vals = zeros(3*nNodes,1);
+        k = 0;
+        for i = 1:numel(cells)
+          % local coupling to map cell pressure to nodal force (as in Biot)
+          el = cells(i);
+          elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
+          nG = elem.GaussPts.nNode;
+          n = 3*elem.nNode;
+          [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
+          B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
+          B(elem.indB(:,2)) = N(elem.indB(:,1));
+          kron = [1;1;1;0;0;0];
+          iN = repmat(kron,1,1,nG);
+          Qs = pagemtimes(B,'ctranspose',iN,'none'); % unit biot param
+          Qs = Qs.*reshape(dJWeighed,1,1,[]);
+          Qloc = sum(Qs,3);
+          vals(k+1:k+n) = Qloc*valsCell(i);
+          k = k+n;
+        end
+
       end
     end
 

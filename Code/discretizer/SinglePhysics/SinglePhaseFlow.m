@@ -289,7 +289,7 @@ classdef SinglePhaseFlow < SinglePhysics
                if isFVTPFABased(obj.model,'Flow')
                   faceID = obj.bcs.getEntities(id);
                   ents = sum(obj.faces.faceNeighbors(faceID,:),2);
-                  [ents,~,ind] = unique(ents);
+                  %[ents,~,ind] = unique(ents);
                   switch obj.bcs.getType(id)
                      case 'Neu'
                         area = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
@@ -298,9 +298,11 @@ classdef SinglePhaseFlow < SinglePhysics
                         gamma = obj.material.getFluid().getFluidSpecWeight();
                         mu = obj.material.getFluid().getDynViscosity();
                         tr = obj.getFaceTransmissibilities(faceID);
-                        q = 1/mu*tr.*((obj.state.data.pressure(ents) - v)...
-                           + gamma*(obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
-                        vals = [1/mu*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
+                        dirJ = 1/mu*tr;
+                        potential = (obj.state.data.pressure(ents) - v) ...
+                          + gamma*(obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3));
+                        q = dirJ.*potential;
+                        vals = [dirJ,q]; % {JacobianVal,rhsVal]
                   end
                elseif isFEMBased(obj.model,'Flow')
                   ents = obj.bcs.getLoadedEntities(id);
@@ -323,20 +325,20 @@ classdef SinglePhaseFlow < SinglePhysics
       end
 
       function applyDirVal(obj,dof,vals)
-         if isFVTPFABased(obj.model,'Flow')
-            % Dirichlet BCs cannot be directly applied to the solution
+         if isFVTPFABased(obj.model,'Flow') && strcmp(obj.bcs.getCond(bcId),'SurfBC')
+            % Dirichlet surface BCs cannot be directly applied to the solution
             % vector
             return
          end
          obj.state.data.pressure(dof) = vals;
       end
 
-      function applyDirBC(obj,~,ents,vals)
+      function applyDirBC(obj,~,ents,vals,bcId)
          % apply Dirichlet BCs
          % ents: id of constrained faces without any dof mapping applied
          % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
-         if isFVTPFABased(obj.model,'Flow')
-            % BCs imposition for finite volumes
+         if isFVTPFABased(obj.model,'Flow') && strcmp(obj.bcs.getCond(bcId),'SurfBC')
+            % BCs imposition for finite volumes with surface bc
             assert(size(vals,2)==2,'Invalid matrix size for BC values');
             nDoF = obj.dofm.getNumDoF(obj.field);
             obj.J(nDoF*(ents-1) + ents) = obj.J(nDoF*(ents-1) + ents) + vals(:,1);
