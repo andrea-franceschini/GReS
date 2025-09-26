@@ -1,0 +1,9 @@
+Elastic                           % material model
+9.4706e7      0.15                % E [Pa], nu
+
+PorousRock                        % material model
+0.25      2.1e6                    % porosity, specific weight 
+7.10e-11    0      0               % permeability matrix (m-2)
+       7.10e-11    0
+              7.10e-12
+End

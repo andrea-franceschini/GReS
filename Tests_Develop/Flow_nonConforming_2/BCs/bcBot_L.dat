@@ -1,0 +1,7 @@
+SurfBC            % BC item 
+Dir            % BC type 
+SinglePhaseFlow            % Physics 
+Bottom_lower_pressure            % BC name 
+BCs/bcBot_L/list 
+0.000000 BCs/bcBot_L/time0.dat 
+End
