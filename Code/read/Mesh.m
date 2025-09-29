@@ -27,6 +27,12 @@ classdef Mesh < handle
     cellNumVerts
     % Centroid coordinates of each cell
     cellCentroid
+    % Centroid coordinates of each cell
+    surfaceCentroid
+    % volume of cells
+    cellVolume
+    % area of surfaces
+    surfaceArea
     % Surface to node mapping:
     % 2D elements' nodes sequences
     surfaces
@@ -41,6 +47,8 @@ classdef Mesh < handle
     edges
     % 1D elements' tag (region)
     edgeTag
+    % Number of nodes of the 2D element
+    edgeNumVerts
     % Flag for Cartesian grids
     cartGrid = false;
     % Regions
@@ -50,58 +58,69 @@ classdef Mesh < handle
     cellVTKType;
     % 2D element VTK type tag
     surfaceVTKType;
+    % 1D element VTK type tag
+    edgeVTKType
+    %
     meshType = 'Unstructured'
   end
 
   properties (Access = private)
 
-    %  1 VTK_VERTEX
-    %  2 VTK_POLY_VERTEX
-    %  3 VTK_LINE
-    %  4 VTK_POLY_LINE
-    %  5 VTK_TRIANGLE
-    %  6 VTK_TRIANGLE_STRIP
-    %  7 VTK_POLYGON
-    %  8 VTK_PIXEL
-    %  9 VTK_QUAD
-    % 10 VTK_TETRA
-    % 11 VTK_VOXEL
-    % 12 VTK_HEXAHEDRON
-    % 13 VTK_WEDGE
-    % 14 VTK_PYRAMID
-    typeMapping = [3; 5; 9; 10; 12; 13; 14];
+    %  1  VTK_VERTEX
+    %  2  VTK_POLY_VERTEX
+    %  3  VTK_LINE
+    %  4  VTK_POLY_LINE
+    %  5  VTK_TRIANGLE
+    %  6  VTK_TRIANGLE_STRIP
+    %  7  VTK_POLYGON
+    %  8  VTK_PIXEL
+    %  9  VTK_QUAD
+    % 10  VTK_TETRA
+    % 11  VTK_VOXEL
+    % 12  VTK_HEXAHEDRON
+    % 13  VTK_WEDGE
+    % 14  VTK_PYRAMID
+    % 28  VTK_BIQUADRATIC_QUAD
+    % 29  VTK_TRIQUADRATIC_HEXAHEDRON
 
+    % Available types in gmsh
+    cellVTK = [10, 12, 29];
+    surfaceVTK = [5, 9, 28];
+    edgeVTK = [3,21];
   end
 
   methods (Access = public)
 
-    % Function to read mesh data and store this data inside the properties 
+    % Function to read mesh data and store this data inside the properties
     % of the object created with the class "Mesh"
     function importGMSHmesh(obj, fileName)
-      % Reading input file 
+      % Reading input file
       [obj.coordinates, elems, regions] = mxImportGMSHmesh(fileName);
       elems = double(elems);
-      
+
+      % Available types in gmsh
+      cellGMSH = [4,5,12];
+      surfaceGMSH = [2,3,10];
+
       % STORING DATA INSIDE OBJECT'S PROPERTIES
       % 3D ELEMENT DATA
       if any(obj.coordinates(:,3) ~= 0)
-          obj.nDim = 3;
-      else 
-          obj.nDim = 2;
+        obj.nDim = 3;
+      else
+        obj.nDim = 2;
       end
       obj.nNodes = size(obj.coordinates,1);
       % cellsID = 3D element tag for readGMSHmesh.cpp
-      cellsID = [4, 5, 6, 7];
-      ID = ismember(elems(:,1), cellsID);
+      ID = ismember(elems(:,1), cellGMSH);
       obj.cellNumVerts = elems(ID,3);
       nVerts = max(obj.cellNumVerts);
       obj.cells = elems(ID,4:nVerts+3);
-      obj.cellVTKType = obj.typeMapping(elems(ID,1));
+      obj.cellVTKType = mapGMSHtoVTK(obj,elems(ID,1));
       obj.cellTag = elems(ID,2);
       obj.nCells = length(obj.cellTag);
       %
       % Check for unsupported elements
-      if any(~ismember(obj.cellVTKType,[10 12]))
+      if any(~ismember(obj.cellVTKType,[10,12]))
         error(['There are unsupported elements in the mesh.\n', ...
           'Supported elements are: - 4-node tetrahedra (VTKType = %d)\n', ...
           '                        - 8-node hexahedra  (VTKType = %d)'],10,12);
@@ -120,29 +139,28 @@ classdef Mesh < handle
 
       % 2D ELEMENT DATA
       % cellsID = 2D surface tag for readGMSHmesh.cpp
-      cellsID = [2, 3];
-      ID = ismember(elems(:,1), cellsID);
+      ID = ismember(elems(:,1), surfaceGMSH);
       obj.surfaceNumVerts = elems(ID,3);
       nVerts = max(obj.surfaceNumVerts);
       obj.surfaces = elems(ID,4:nVerts+3);
-      obj.surfaceVTKType = obj.typeMapping(elems(ID,1));
+      obj.surfaceVTKType = mapGMSHtoVTK(obj,elems(ID,1));
       obj.surfaceTag = elems(ID,2);
       obj.nSurfaces = length(obj.surfaceTag);
       %
       % Check for unsupported elements
-      if any(~ismember(obj.surfaceVTKType,[5 9]))
-          error(['There are unsupported surfaces in the mesh.\n', ...
-              'Supported surfaces are: - 3-node triangles       (VTKType = %d)\n', ...
-              '                        - 4-node quadrilaterals  (VTKType = %d)'],5,9);
+      if any(~ismember(obj.surfaceVTKType,[5,9]))
+        error(['There are unsupported surfaces in the mesh.\n', ...
+          'Supported surfaces are: - 3-node triangles       (VTKType = %d)\n', ...
+          '                        - 4-node quadrilaterals  (VTKType = %d)'],5,9);
       end
 
-      % 1D ELEMENT DATA
-      % cellsID = 2D surface tag for readGMSHmesh.cpp
-      cellsID = 1;
-      ID = ismember(elems(:,1), cellsID);
-      obj.edges = elems(ID,4:5);
-      obj.edgeTag = elems(ID,2);
-      obj.nEdges = length(obj.edgeTag);
+      %       % 1D ELEMENT DATA
+      %       % cellsID = 2D surface tag for readGMSHmesh.cpp
+      %       cellsID = 1;
+      %       ID = ismember(elems(:,1), cellsID);
+      %       obj.edges = elems(ID,4:5);
+      %       obj.edgeTag = elems(ID,2);
+      %       obj.nEdges = length(obj.edgeTag);
       %
       % REGIONS DATA FOR 2D ELEMENT
       dims = zeros(nRegions,1);
@@ -156,116 +174,102 @@ classdef Mesh < handle
       %
       % Set all cells to tag 1 if no physical volume Tag is specified in gmsh
       if all(obj.cellTag==0)
-         obj.cellTag = obj.cellTag + 1;
+        obj.cellTag = obj.cellTag + 1;
       end
       obj.nCellTag = max(obj.cellTag);
       obj.nSurfaceTag = max(obj.surfaceTag);
     end
 
 
-     function importMesh(obj, fileName)
+    function importMesh(obj, fileName)
       % Import grid topology;
       % Admitted grid formats: vtk (unstructured grids), gmsh;
       % calling MEX functions depending on file extension
       str = split(fileName,'.');
       extension = str{2};
       switch extension
-         case 'vtk'
-            [obj.coordinates, elems] = mxImportVTKmesh(fileName);
-         case 'msh'
-            [obj.coordinates, elems, regions] = mxImportGMSHmesh(fileName);
+        case 'vtk'
+          [obj.coordinates, elems] = mxImportVTKmesh(char(fileName));
+        case 'msh'
+          importGMSHmesh(obj,fileName);
+          return;
       end
-     
       elems = double(elems);
-      
+
       % STORING DATA INSIDE OBJECT'S PROPERTIES
       % 3D ELEMENT DATA
       if any(obj.coordinates(:,3) ~= 0)
-          obj.nDim = 3;
-      else 
-          obj.nDim = 2;
+        obj.nDim = 3;
+      else
+        obj.nDim = 2;
       end
       obj.nNodes = size(obj.coordinates,1);
-      % Convert gmsh element type index into VTK
-      if strcmp(extension,'msh')
-         ID = ismember(elems(:,1), [4, 5, 6, 7]);
-         elems(ID,1) = obj.typeMapping(elems(ID,1));
-      end
-      cellsID = [10, 11, 12, 13, 14];
-      ID = ismember(elems(:,1), cellsID);
+
+      ID = ismember(elems(:,1), obj.cellVTK);
       obj.cellNumVerts = elems(ID,3);
       nVerts = max(obj.cellNumVerts);
       obj.cells = elems(ID,4:nVerts+3);
       obj.cellVTKType = elems(ID,1);
       obj.cellTag = elems(ID,2);
       obj.nCells = length(obj.cellTag);
-      obj.cellCentroid = obj.getCellCentroids();
       if all(obj.cellTag==0)
-         obj.cellTag = obj.cellTag + 1;
-         obj.nCellTag = 1;
+        obj.cellTag = obj.cellTag + 1;
+        obj.nCellTag = 1;
+      else
+        obj.nCellTag = max(obj.cellTag);
       end
       %
-      % Check for unsupported elements
-      if any(~ismember(obj.cellVTKType,[10 12]))
-        error(['There are unsupported elements in the mesh.\n', ...
-          'Supported elements are: - 4-node tetrahedra (VTKType = %d)\n', ...
-          '                        - 8-node hexahedra  (VTKType = %d)'],10,12);
-      end
       %
+
       % REGIONS DATA FOR 3D ELEMENT
       if exist('regions','var')
-         nRegions = length(regions);
-         dims = zeros(nRegions,1);
-         for i = 1 : nRegions
-            dims(i) = regions(i).dim;
-         end
-         ID = find(dims == 3);
-         for i = 1 : length(ID)
-            obj.cellRegions = setfield(obj.cellRegions, regions(ID(i)).name, regions(ID(i)).ID);
-         end
+        nRegions = length(regions);
+        dims = zeros(nRegions,1);
+        for i = 1 : nRegions
+          dims(i) = regions(i).dim;
+        end
+        ID = find(dims == 3);
+        for i = 1 : length(ID)
+          obj.cellRegions = setfield(obj.cellRegions, regions(ID(i)).name, regions(ID(i)).ID);
+        end
       end
 
       % 2D ELEMENT DATA
       % cellsID = 2D surface tag for readGMSHmesh.cpp
-      cellsID = [5,9];
-      ID = ismember(elems(:,1), cellsID);
+
+      ID = ismember(elems(:,1), obj.surfaceVTK);
       obj.surfaceNumVerts = elems(ID,3);
       nVerts = max(obj.surfaceNumVerts);
       obj.surfaces = elems(ID,4:nVerts+3);
       obj.surfaceVTKType = elems(ID,1);
       obj.surfaceTag = elems(ID,2);
       obj.nSurfaces = length(obj.surfaceTag);
+      obj.nSurfaceTag = max(obj.surfaceTag);
       %
-      % Check for unsupported elements
-      if any(~ismember(obj.surfaceVTKType,[5 9]))
-          error(['There are unsupported surfaces in the mesh.\n', ...
-              'Supported surfaces are: - 3-node triangles       (VTKType = %d)\n', ...
-              '                        - 4-node quadrilaterals  (VTKType = %d)'],5,9);
+      %       %
+      % REGIONS DATA FOR 2D ELEMENT
+      if exist("regions",'var')
+        dims = zeros(nRegions,1);
+        for i = 1 : nRegions
+          dims(i) = regions(i).dim;
+        end
+        ID = find(dims == 2);
+        for i = 1 : length(ID)
+          obj.surfaceRegions = setfield(obj.surfaceRegions, regions(ID(i)).name, regions(ID(i)).ID);
+        end
+        %
       end
 
       % 1D ELEMENT DATA
       % cellsID = 2D surface tag for readGMSHmesh.cpp
-      cellsID = 1;
-      ID = ismember(elems(:,1), cellsID);
-      obj.edges = elems(ID,4:5);
+      ID = ismember(elems(:,1), obj.edgeVTK);
+      obj.edgeNumVerts = elems(ID,3);
+      nVerts = max(obj.edgeNumVerts);
+      obj.edges = elems(ID,4:nVerts+3);
       obj.edgeTag = elems(ID,2);
+      obj.edgeVTKType = elems(ID,1);
       obj.nEdges = length(obj.edgeTag);
-      %
-      % REGIONS DATA FOR 2D ELEMENT
-      if exist("regions",'var')
-         dims = zeros(nRegions,1);
-         for i = 1 : nRegions
-            dims(i) = regions(i).dim;
-         end
-         ID = find(dims == 2);
-         for i = 1 : length(ID)
-            obj.surfaceRegions = setfield(obj.surfaceRegions, regions(ID(i)).name, regions(ID(i)).ID);
-         end
-         %
-         obj.nCellTag = max(obj.cellTag);
-         obj.nSurfaceTag = max(obj.surfaceTag);
-      end
-     end
+    end
 
 
     
@@ -357,44 +361,85 @@ classdef Mesh < handle
 
     
 
-    function surfMesh = getSurfaceMesh(obj, surfTag)
-        % Function to build a 2D mesh object based on the surfaceTag of a 3D
-        % mesh
+    function [surfMesh,varargout] = getSurfaceMesh(obj, surfTag, varargin)
+        % Function to build a separate 2D mesh object based on the
+        % surfaceTag of another object
+        % there are 3 was to call this method
+        % 1) in1 = surfaceTag(s)
+        % 2) in1 = surfaceTags in2= logical index of active surfaceTags
+        % 3) in1 = logical index of active surfaces
+
+        % optional output: global node indices of surface mesh
         % initialize Mesh object
+        if nargin>2
+          assert(~isempty(varargin{1}));
+          id = find(ismember(obj.surfaceTag,surfTag));
+          id = id(varargin{1});
+        else
+          if ~islogical(surfTag)
+            id = ismember(obj.surfaceTag,surfTag);
+          else
+            assert(numel(surfTag) == obj.nSurfaces,['Logical ' ...
+              'index array must have the same size of available surfaces'])
+            id = surfTag;
+          end
+        end
+        if sum(id)==0
+          surfMesh = [];
+          return
+        end
         surfMesh = Mesh();
-        surfTopol = obj.surfaces(obj.surfaceTag == surfTag,:);
-        switch obj.surfaceVTKType(1)
-           case 5
-              nN = 3;
-           case 9
-              nN = 4;
+        surfTopol = obj.surfaces(id,:);
+        if nargout > 1
+          % global node index ordered per column
+          varargout{1} = surfTopol;
         end
         % renumber the nodes starting from 1;
         surfTopol = surfTopol(:);
         % ordered list of unique nodes in the topology matrix
-        surfOrd = unique(surfTopol);
-        mapping = containers.Map(surfOrd, 1:numel(surfOrd));
+        [surfOrd] = unique(surfTopol);
+        if surfOrd(1) == 0
+          val = 0:numel(surfOrd)-1;
+        else
+          val = 1:numel(surfOrd);
+        end
+        mapping = containers.Map(surfOrd, val);
         for i = 1:length(surfTopol)
             surfTopol(i) = mapping(surfTopol(i));
         end
-        surfMesh.surfaces = (reshape(surfTopol, [], nN));
+        if surfOrd(1) == 0
+          surfOrd = surfOrd(2:end);
+        end
+
+        surfMesh.surfaceNumVerts = Mesh.copyField(obj.surfaceNumVerts,id);
+        nNmax = max(surfMesh.surfaceNumVerts);
+        surfMesh.surfaces = (reshape(surfTopol, [], nNmax));
         surfMesh.coordinates = obj.coordinates(surfOrd,:);
         surfMesh.nNodes = length(surfMesh.coordinates);
-        surfMesh.nSurfaces = length(surfMesh.surfaces);
-        surfMesh.surfaceTag = repmat(surfTag, surfMesh.nSurfaces,1);
+        surfMesh.nSurfaces = size(surfMesh.surfaces,1);
+        surfMesh.surfaceTag = obj.surfaceTag(id);
         surfMesh.nSurfaceTag = 1;
-        surfMesh.surfaceVTKType = obj.surfaceVTKType(obj.surfaceTag == surfTag);
-        surfMesh.surfaceNumVerts = obj.surfaceNumVerts(obj.surfaceTag == surfTag);
+        surfMesh.surfaceVTKType = Mesh.copyField(obj.surfaceVTKType,id);
         surfMesh.nDim = 3;
+        surfMesh.surfaceCentroid = Mesh.copyField(obj.surfaceCentroid,id);
+        surfMesh.surfaceArea = Mesh.copyField(obj.surfaceArea,id);
     end
 
-    function centroids = getCellCentroids(obj)
-       centroids = zeros(obj.nCells,3);
-       for i = 1:obj.nCells
-          coord = obj.coordinates(obj.cells(i,:),:);
-          centroids(i,:) = sum(coord,1)/size(coord,1);
-       end
-    end
+%     function centroids = getCellCentroids(obj)
+%        centroids = zeros(obj.nCells,3);
+%        for i = 1:obj.nCells
+%           coord = obj.coordinates(obj.cells(i,:),:);
+%           centroids(i,:) = sum(coord,1)/size(coord,1);
+%        end
+%     end
+% 
+%     function centroids = getSurfaceCentroids(obj)
+%       centroids = zeros(obj.nSurfaces,3);
+%       for i = 1:obj.nSurfaces
+%         coord = obj.coordinates(obj.surfaces(i,:),:);
+%         centroids(i,:) = sum(coord,1)/size(coord,1);
+%       end
+%     end
 
     function addSurface(obj,id,topol)
        % add a surface to mesh object given the surface topology
@@ -506,9 +551,32 @@ classdef Mesh < handle
           % Edge datas for CartGrid are introduced using the setGridFace method 
           obj.nSurfaceTag = max(obj.surfaceTag);
       end
-      
-    
 
+      function outList = mapGMSHtoVTK(obj,list)
+        % map a list of gmsh id to corresponding vtk id
+        gmshId = [2,3,10,4,5,12];
+        vtkId = [obj.surfaceVTK obj.cellVTK];
+        outList = zeros(length(list),1);
+        for i = 1:length(gmshId)
+          id = list == gmshId(i);
+          outList(id) = vtkId(i);
+        end
+      end
+
+
+
+  end
+
+  methods (Static)
+
+    function out = copyField(fld,id)
+      if ~isempty(fld)
+        out = fld(id,:);
+      else
+        out = [];
+      end
+
+    end
   end
 
 

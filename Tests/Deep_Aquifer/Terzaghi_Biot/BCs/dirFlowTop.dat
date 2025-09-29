@@ -1,6 +1,10 @@
 SurfBC            % BC item 
 Dir            % BC type 
+<<<<<<< HEAD
 Flow            % Physics 
+=======
+SinglePhaseFlow            % Physics 
+>>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
 NoFlowTop            % BC name 
 BCs/dirFlowTop/list 
 0.000000 BCs/dirFlowTop/time0.dat 

@@ -124,6 +124,16 @@ int readGMSHmesh( std::string const & fileName,
             elemNodes = 5;
             break;
           }
+          case (10): // quadrilateral 9-node
+          {
+            elemNodes = 27;  
+            break;  
+          }
+          case (12): // hexahedron 27-node
+          {
+            elemNodes = 27;  
+            break;  
+          }
           default:
           {
             usedElem = false;

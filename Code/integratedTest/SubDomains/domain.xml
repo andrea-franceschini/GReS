@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+<struct>
+  <Domain>
+    <Name>DeepAquifer</Name>
+    <Geometry>ReservoirTest_Hexa.msh</Geometry>
+    <ModelType>
+      SinglePhaseFlow_FVTPFA 
+      Poromechanics_FEM
+    </ModelType>
+    <SimParameters>simParam.dat</SimParameters>
+    <DoFManager> dof.dat </DoFManager>
+    <Gauss>2</Gauss>
+    <Material>materialsListElastic.dat </Material>
+    <BoundaryConditions count="4">
+      <File>BCs/bottom_fixed.dat</File>
+      <File>BCs/flux.dat</File>
+      <File>BCs/lateral_fix.dat</File>
+      <File>BCs/Impermeable.dat</File>
+    </BoundaryConditions>
+    <OutState outFile="outTime.dat"  print="0" matFile = "1"/>
+  </Domain>
+</struct>

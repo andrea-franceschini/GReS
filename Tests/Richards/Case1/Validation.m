@@ -8,11 +8,11 @@ clear;
 clc;
 figures_dir = 'Figs/';
 image_dir = strcat(pwd,'/',figures_dir);
-load("Inputs/Solution/output1.mat")
+load("Inputs/Solution/output1B.mat")
 pressplotA=pressplot;
 swplotA=swplot;
 
-load("Inputs/Solution/output3.mat")
+load("Inputs/Solution/output3B.mat")
 pressplotC=pressplot;
 swplotC=swplot;
 

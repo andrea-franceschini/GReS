@@ -28,14 +28,19 @@ void readVTKmesh(const std::string& filename, std::vector<Point>& points, std::v
 
     // Read POINTS
     int numPoints;
-    file >> line >> numPoints;
-    if (line != "POINTS") {
+    std::string dataType;
+
+    std::getline(file, line); // POINTS 4092 double
+    std::istringstream iss(line);
+    std::string keyword;
+    iss >> keyword >> numPoints >> dataType;
+    if (keyword != "POINTS") {
         throw std::runtime_error("Error: Expected POINTS section.");
     }
-
+    
     points.resize(numPoints);
-    std::string dataType;
-    file >> dataType; // Read data type
+    
+    //file >> dataType; // Read data type
     for (int i = 0; i < numPoints; i++) {
         file >> points[i].x >> points[i].y >> points[i].z;
     }

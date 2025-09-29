@@ -1,0 +1,11 @@
+SurfBC                            % BC item 
+Dir                               % BC type 
+VariablySaturatedFlow                              % Physics 
+Bottom                           % BC name 
+Inputs/BC/List_Bottom 
+0.00 Inputs/BC/Time_Bottom_0.dat 
+51840.00 Inputs/BC/Time_Bottom_1.dat 
+77760.00 Inputs/BC/Time_Bottom_2.dat 
+129600.00 Inputs/BC/Time_Bottom_3.dat 
+259200.00 Inputs/BC/Time_Bottom_4.dat 
+End

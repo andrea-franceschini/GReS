@@ -1,6 +1,12 @@
+<<<<<<< HEAD
 NodeBC            % BC item 
 Dir            % BC type 
 Poro            % Physics 
+=======
+SurfBC            % BC item 
+Dir            % BC type 
+Poromechanics            % Physics 
+>>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
 BotFixed            % BC name 
 BCs/dirPoroBottom/list 
 0.000000 BCs/dirPoroBottom/time0.dat 

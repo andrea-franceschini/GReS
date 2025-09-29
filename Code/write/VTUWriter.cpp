@@ -147,9 +147,11 @@ void VTUWriter::write_cells( int const numCells,
         "RangeMin=\""
      << n_vertices[0] << "\" RangeMax=\"" << numConnections << "\">\n";
 
-  int acc = n_vertices[0];
+  // fixed bug here
+  int acc = 0;
   for (int i = 0; i < numCells; ++i)
   {
+    acc += n_vertices[i];
     os << acc;
     if( ( ( i+1 ) / VALUES_IN_COLUMN ) * VALUES_IN_COLUMN == i+1 )
     {
@@ -159,7 +161,6 @@ void VTUWriter::write_cells( int const numCells,
     {
       os << " ";
     }
-    acc += n_vertices[i];
   }
 
   os << "</DataArray>\n";

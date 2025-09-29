@@ -17,6 +17,18 @@ classdef GrowningDomain < handle
       obj.initBoundary(bound);
     end
 
+    function [state1,state2]=addCells(obj,linSyst,nsyst,cell,dir,state1,state2)
+      %ADDCELL Use a surface as reference, and create cells above this
+      % surface
+      for i=1:length(cell)
+        [state1,state2]=obj.addCell(linSyst,nsyst,cell(i),dir,state1,state2);
+      end
+      temp=linSyst.solver(1);
+      temp.H=[];
+      temp.P=[];
+      temp.J=[];
+    end
+
     function [state1,state2]=addCell(obj,linSyst,nsyst,cell,dir,state1,state2)
       %ADDCELL Add a cell in the grid and update the mesh
 
@@ -42,17 +54,49 @@ classdef GrowningDomain < handle
       end
     end
 
-    function [state1,state2]=addCells(obj,linSyst,nsyst,cell,dir,state1,state2)
+
+
+
+    
+    function grow(obj,nsyst,cell,dir,domain,state1,state2)
       %ADDCELL Use a surface as reference, and create cells above this
       % surface
       for i=1:length(cell)
-        [state1,state2]=obj.addCell(linSyst,nsyst,cell(i),dir,state1,state2);
+        obj.addCellB(domain.solver(nsyst),nsyst,cell(i),dir,state1,state2);
       end
-      temp=linSyst.solver(1);
-      temp.H=[];
-      temp.P=[];
-      temp.J=[];
+      map = domain.solver(nsyst);
+      map.H=[];
+      map.P=[];
+      map.J=[];
     end
+
+    function addCellB(obj,linSyst,nsyst,cell,dir,state1,state2)
+      %ADDCELL Add a cell in the grid and update the mesh
+
+      % Find the position to where to grow the mesh.
+      [n_cells,n_ijk] = obj.grids(nsyst).findNeighborhod( ...
+        obj.grids(nsyst).ijk(cell,:));
+      if obj.canGrow(dir,n_cells)
+        % Find the information about the cell to be created.
+        ijk_newCell=n_ijk(dir,:);
+        ncell = obj.grids(nsyst).newCellData(...
+          linSyst.mesh, linSyst.faces, ...
+          ijk_newCell,dir,0.5,cell);
+
+        % Update the mesh
+        obj.updateCell(linSyst,ijk_newCell,ncell);
+
+        % Update the states.
+        [state1,state2]=obj.updateState(cell,state1,state2);
+
+        % Update the IJK information.
+        obj.grids(nsyst).updateIJK(ijk_newCell,ncell.gtCell+1, ...
+          ncell.gtNode+ncell.nNodes,ncell.gtFace+ncell.nFaces);
+      end
+    end
+
+
+
 
   end
 
@@ -64,7 +108,7 @@ classdef GrowningDomain < handle
       numSol = linSyst.numSolvers;
       countfield = 0;
       for i=1:numSol
-        if linSyst(i).dofm.fields.field == "SPFlow" ...
+        if linSyst(i).dofm.fields.field == "SinglePhaseFlow" ...
             && linSyst(i).dofm.fields.scheme == "FV"
           countfield=countfield+1;
           tmpSolver = linSyst.solver(i);
@@ -80,7 +124,7 @@ classdef GrowningDomain < handle
       obj.bound = containers.Map('KeyType','char','ValueType','any');
       for i=1:length(bkeys)
         it = bord.db(bkeys{i});
-        if it.physics == 'Flow'
+        if it.physics == 'SinglePhaseFlow'
           obj.bound(bkeys{i})=GrowingBoundary(it.cond,it.data,'Constant');
         end
       end
@@ -212,8 +256,8 @@ classdef GrowningDomain < handle
 
       % UPDATE THE GRID STRUCT.
       grid.nCellsByType(2) = grid.nCellsByType(2) + 1;
-      grid.cellCentroid = [grid.cellCentroid;center];
-      grid.vol = [grid.vol; vol];
+      grid.mesh.cellCentroid = [grid.mesh.cellCentroid;center];
+      grid.mesh.cellVolume = [grid.mesh.cellVolume; vol];
     end
 
     function updateMesh(obj,mesh,ncell,cellTag)
@@ -242,6 +286,11 @@ classdef GrowningDomain < handle
           mesh.surfaceTag(end+1,:)=mesh.surfaceTag(refFaceGL);
           mesh.surfaceNumVerts(end+1,:)=4;
           mesh.surfaceVTKType(end+1,:)=9;
+
+          % % TODO -> acrescentar essas duas informacoes no computo da celula
+          % mesh.surfaceArea(end+1,:) = ncell.surfaceArea(i);
+          % mesh.surfaceCentroid(end+1,:) = ncell.surfaceCentroid(i,:);
+
           % Correcting in case a boundary in the different tag group.
           if (ncell.refBound(i)~=0)
             mesh.surfaceTag(end,:)=mesh.surfaceTag(ncell.refBound(i));
@@ -282,6 +331,7 @@ classdef GrowningDomain < handle
     % Functions related to update the degree of freedom's
     function updateDOFM(obj,linSys,cell)
       linSys.numEntsField =linSys.numEntsField+1;
+      linSys.totDoF = linSys.totDoF+1;
       linSys.numEntsSubdomain = linSys.numEntsSubdomain+1;
       linSys.fields.entCount = linSys.fields.entCount+1;
       linSys.fields.subdomainEnts{1}=[linSys.fields.subdomainEnts{1};cell.gtCell+1];
@@ -307,8 +357,12 @@ classdef GrowningDomain < handle
 
     % Functions related to the states
     function [state1,state2]=updateState(cell,state1,state2)
-      state1.pressure = [state1.pressure; state1.pressure(cell)];
-      state2.pressure = [state2.pressure; state2.pressure(cell)];
+      labels = fieldnames(state1.data);
+      for label=1:length(labels)
+        data = getfield(state1.data,labels{label});
+        state1.data=setfield(state1.data,labels{label},[data; data(cell)]);
+        state2.data=setfield(state2.data,labels{label},[data; data(cell)]);
+      end
     end
 
   end
