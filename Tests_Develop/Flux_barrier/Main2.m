@@ -9,9 +9,7 @@ model = ModelType("SinglePhaseFlow_FVTPFA");
 % model = ModelType("SinglePhaseFlow_FEM");
 
 %% ----------------------- SIMULATION PARAMETERS ----------------------
- fileName = strcat(input_dir,'simParam.dat');
-% fileName = strcat(input_dir,'simParam.xml');
-% fileName = strcat(input_dir,'simParam2.xml');
+fileName = strcat(input_dir,'simParam.xml');
 simParam = SimulationParameters(fileName,model);
 
 %% ------------------------------  MESH -------------------------------
@@ -29,7 +27,7 @@ topology.importGMSHmesh(fileName);
 
 %% ----------------------------- MATERIALS -----------------------------
 % Set the input file name
-fileName = strcat(input_dir,'materialsList.dat');
+fileName = strcat(input_dir,'materialsList2.dat');
 % fileName = strcat(input_dir,'materials.xml');
 
 % Create an object of the Materials class and read the materials file

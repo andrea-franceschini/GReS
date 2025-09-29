@@ -50,21 +50,17 @@ classdef FCSolver < handle
 
       flConv = true; % convergence flag
 
-      % [obj.statek,obj.stateTmp]=obj.toGrow.addCell(obj.linSyst,1,2,6,obj.statek,obj.stateTmp);
-      % [obj.statek,obj.stateTmp]=obj.toGrow.addCells(obj.linSyst,1,[2 4 6 8],6,obj.statek,obj.stateTmp);
-
       % Loop over time
       while obj.t < obj.domain.simparams.tMax
          absTol = obj.domain.simparams.absTol;
          residual = zeros(obj.domain.simparams.itMaxNR+1,2);
 
-
          % add cells
-         if obj.t>50 && obj.t<65
-            % [obj.statek,obj.stateTmp]=obj.toGrow.addCells(obj.domain,1,[2 4 6 8],6,obj.statek,obj.stateTmp);
-            obj.toGrow.grow(1,[2 4 6 8],6,obj.domain,obj.statek,obj.stateTmp);
-         end
-
+         % obj.toGrow.addCell( 1,        2,6,obj.domain,obj.statek,obj.stateTmp);
+         % obj.toGrow.addCells(1,[2 4 6 8],6,obj.domain,obj.statek,obj.stateTmp);         
+         % if obj.t>50 && obj.t<65
+         %    obj.toGrow.grow(1,[2 4 6 8],6,obj.domain,obj.statek,obj.stateTmp);
+         % end
 
          % Update the simulation time and time step ID
          obj.tStep = obj.tStep + 1;

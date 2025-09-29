@@ -87,7 +87,7 @@ classdef GrowningDomain < handle
         obj.updateCell(linSyst,ijk_newCell,ncell);
 
         % Update the states.
-        [state1,state2]=obj.updateState(cell,state1,state2);
+        obj.updateState(cell,state1,state2);
 
         % Update the IJK information.
         obj.grids(nsyst).updateIJK(ijk_newCell,ncell.gtCell+1, ...
@@ -232,35 +232,22 @@ classdef GrowningDomain < handle
       end
     end
 
-    function updateElements(obj,grid,ncell)
-      %UPDATEFACES update the elements information to add the new cell
-      center = mean(ncell.coord);
 
-      tets = [ 1 2 4 5;
-        2 3 4 7;
-        2 5 6 7;
-        4 5 7 8;
-        2 4 5 7 ];
 
-      vol = 0;
-      for i = 1:size(tets,1)
-        A = ncell.coord(tets(i,1),:);
-        B = ncell.coord(tets(i,2),:);
-        C = ncell.coord(tets(i,3),:);
-        D = ncell.coord(tets(i,4),:);
 
-        % Compute volume of tetrahedron
-        tet_vol = abs(dot(B - A, cross(C - A, D - A))) / 6;
-        vol = vol + tet_vol;
-      end
+  end
 
-      % UPDATE THE GRID STRUCT.
-      grid.nCellsByType(2) = grid.nCellsByType(2) + 1;
-      grid.mesh.cellCentroid = [grid.mesh.cellCentroid;center];
-      grid.mesh.cellVolume = [grid.mesh.cellVolume; vol];
+
+  methods(Static, Access = private)
+    % Functions to check the mesh
+    function flag = canGrow(dir,n_cells)
+      %CANGROW Function to check if a cell can be add in the mesh, for
+      %the direction specified.
+      flag = n_cells(dir)==0;
     end
 
-    function updateMesh(obj,mesh,ncell,cellTag)
+    % Functions related to update the mesh
+    function updateMesh(mesh,ncell,cellTag)
       %UPDATEMESH update the face information to add the new cell
       coord(1:ncell.nNodes,1:3)=0;
       for i=1:ncell.nNodes
@@ -318,18 +305,45 @@ classdef GrowningDomain < handle
       mesh.cellVTKType = [mesh.cellVTKType;12];
     end
 
-    function updateTrans(obj,linSys,cell,trans)
+    % Functions related to update the element
+    function updateElements(grid,ncell)
+      %UPDATEFACES update the elements information to add the new cell
+      center = mean(ncell.coord);
+
+      tets = [ 1 2 4 5;
+        2 3 4 7;
+        2 5 6 7;
+        4 5 7 8;
+        2 4 5 7 ];
+
+      vol = 0;
+      for i = 1:size(tets,1)
+        A = ncell.coord(tets(i,1),:);
+        B = ncell.coord(tets(i,2),:);
+        C = ncell.coord(tets(i,3),:);
+        D = ncell.coord(tets(i,4),:);
+
+        % Compute volume of tetrahedron
+        tet_vol = abs(dot(B - A, cross(C - A, D - A))) / 6;
+        vol = vol + tet_vol;
+      end
+
+      % UPDATE THE GRID STRUCT.
+      grid.nCellsByType(2) = grid.nCellsByType(2) + 1;
+      grid.mesh.cellCentroid = [grid.mesh.cellCentroid;center];
+      grid.mesh.cellVolume = [grid.mesh.cellVolume; vol];
+    end
+
+    % Functions related to update the transmissibility
+    function updateTrans(linSys,cell,trans)
       cut = (cell.face>cell.gtFace);
       linSys.trans = [linSys.trans; trans(cut)];
       linSys.isIntFaces = [linSys.isIntFaces; false(cell.nFaces,1)];
       linSys.isIntFaces(cell.face(~cut)) = true;
     end
 
-
-
-
     % Functions related to update the degree of freedom's
-    function updateDOFM(obj,linSys,cell)
+    function updateDOFM(linSys,cell)
       linSys.numEntsField =linSys.numEntsField+1;
       linSys.totDoF = linSys.totDoF+1;
       linSys.numEntsSubdomain = linSys.numEntsSubdomain+1;
@@ -342,21 +356,8 @@ classdef GrowningDomain < handle
 
 
 
-
-
-  end
-
-
-  methods(Static, Access = private)
-    % Functions to check the mesh
-    function flag = canGrow(dir,n_cells)
-      %CANGROW Function to check if a cell can be add in the mesh, for
-      %the direction specified.
-      flag = n_cells(dir)==0;
-    end
-
     % Functions related to the states
-    function [state1,state2]=updateState(cell,state1,state2)
+    function updateState(cell,state1,state2)
       labels = fieldnames(state1.data);
       for label=1:length(labels)
         data = getfield(state1.data,labels{label});
@@ -364,6 +365,9 @@ classdef GrowningDomain < handle
         state2.data=setfield(state2.data,labels{label},[data; data(cell)]);
       end
     end
+
+
+
 
   end
 end
