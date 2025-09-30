@@ -40,7 +40,7 @@ rightMesh.importMesh(outFileRight + ".vtk");
 setBCfiles(leftMesh,rightMesh);
 
 domainFile = 'Domains/domains.xml';
-interfFile = 'Domains/interface_stick.xml';
+interfFile = 'Domains/interface.xml';
 domains = buildModel(domainFile); 
 [interfaces,domains] = Mortar.buildInterfaces(interfFile,domains);
 

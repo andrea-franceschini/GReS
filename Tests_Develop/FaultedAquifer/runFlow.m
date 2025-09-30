@@ -18,10 +18,10 @@ fprintf('___________________\n\n')
 % get mesh file
 mshStr = load("cornerPoint.mat","mesh");
 mesh = mshStr.mesh;
-mesh.nCellTag = 1;
+% mesh.nCellTag = 1;
 
 % set surfaces and return location of wells
-wellsId = setAquiferSurfaces(mesh);
+wellsId = setAquiferMesh(mesh);
 
 % Set physical models 
 model = ModelType("SinglePhaseFlow_FVTPFA");
@@ -32,7 +32,7 @@ simParam = SimulationParameters(fileName,model);
 
 
 % Create an object of the Materials class and read the materials file
-fileName = 'materialsList.dat';
+fileName = 'Materials/materialsListFlow.dat';
 mat = Materials(model,fileName);
 
 
@@ -90,20 +90,22 @@ solver = FCSolver(domain);
 %solver.simParameters.setBackstepSkipFlag(1);
 
 solver.NonLinearLoop();
-solver.finalizeOutput();
+
+domain.outstate.finalize()
+% solver.finalizeOutput();
 
 %% plot profiles of multipliers along vertical axis (avoid opening paraview)
 %plotStep(solver.results,2);
 
 function setBCflow(mesh,wellsId)
 
-writeBCfiles('BCs/fix_press','SurfBC','Dir','SinglePhaseFlow','fix_press',0,0,mesh,[3,4,5,6,7,8]);
-writeBCfiles('BCs/wells_press','ElementBC','Dir','SinglePhaseFlow','wells',[0,3,7,10],[0,0.12,0.44,0.75], wellsId);
+writeBCfiles('BCs/fix_press','SurfBC','Dir','SinglePhaseFlow','fix_press',0,0,mesh,[7,8]);
+writeBCfiles('BCs/wells_press','ElementBC','Dir','SinglePhaseFlow','wells',[0,3,7,10],[0,120,440,750], wellsId);
 
 end
 
 
-function wellsId = setAquiferSurfaces(mesh)
+function wellsId = setAquiferMesh(mesh)
 
 % find external surfaces on the grid and fix them
 
@@ -165,6 +167,37 @@ wellsId = zeros(2,1);
 wellsId(1) = sub2ind([34,40,14], i1(1), i1(2), i1(3));
 wellsId(2) = sub2ind([34,40,14], i2(1), i2(2), i2(3));
 
+
+% assign cell tags for rock, clay sand
+rock = [1,4; 1,40; 1,14];
+clay = [5,34; 1,40; 10,14];
+sand = [5,34; 1,40; 1,9];
+
+cells = cell(3,1);
+
+ic = 0;
+
+for mat = {rock,clay,sand}
+  m = mat{1};
+  cellList = zeros(prod(m(:,2)-m(:,1)),1);
+  kk = 0;
+  for i=m(3,1):m(3,2)
+    for j=m(2,1):m(2,2)
+      for k=m(1,1):m(1,2)
+        kk = kk+1;
+        cellList(kk) = sub2ind([34,40,14], k,j,i); 
+      end
+    end
+  end
+  cells{ic+1} = cellList;
+  ic = ic+1;
+end
+
+for i = 1:3
+  mesh.cellTag(cells{i}) = i;
+end
+
+mesh.nCellTag = max(mesh.cellTag);
 
 
 

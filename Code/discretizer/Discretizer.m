@@ -63,7 +63,7 @@ classdef Discretizer < handle
                     [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
                   end
                 end
-                applyDirBC(obj.getSolver({field,f}),field,bcEnts,bcVals);
+                applyDirBC(obj.getSolver({field,f}),field,bcEnts,bcVals,bcId);
               case {'Neu','VolumeForce'}
                 applyNeuBC(obj.getSolver({field,f}),bcEnts,bcVals);
             end
@@ -90,7 +90,7 @@ classdef Discretizer < handle
                 [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
               end
             end
-            getSolver(obj,field).applyDirVal(bcEnts,bcVals);
+            getSolver(obj,field).applyDirVal(bcEnts,bcVals,bcId);
          end
       end
 
@@ -164,6 +164,9 @@ classdef Discretizer < handle
             cellData3D = [cellData3D; cellData];
             pointData3D = [pointData3D; pointData];
           end
+          % add the cellTag to the cellData
+          cellData3D = OutState.printMeshData(obj.grid.topology,cellData3D);
+
           if obj.outstate.writeVtk
             obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
           end
@@ -200,6 +203,7 @@ classdef Discretizer < handle
                 cellData3D = OutState.mergeOutFields(cellData3D,cellData);
                 pointData3D = OutState.mergeOutFields(pointData3D,pointData);
               end
+              cellData3D = OutState.printMeshData(obj.grid.topology,cellData3D);
               if obj.outstate.writeVtk
                 obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
               end

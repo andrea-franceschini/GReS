@@ -128,7 +128,7 @@ classdef SinglePhaseFlow < SinglePhysics
         for el = subCells'
           permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
           poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
-          alpha = getRockCompressibility(obj,el);
+          alpha = getRockCompressibility(obj,obj.mesh.cellTag(el));
           % Compute the element matrices based on the element type
           % (tetrahedra vs. hexahedra)
           elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
@@ -165,13 +165,14 @@ classdef SinglePhaseFlow < SinglePhysics
          subCells = obj.dofm.getFieldCells(obj.field);
          nSubCells = length(subCells);
          %get pairs of faces that contribute to the subdomain
-         neigh1 = obj.faces.faceNeighbors(obj.isIntFaces,1);
-         neigh2 = obj.faces.faceNeighbors(obj.isIntFaces,2);
+         neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
          % Transmissibility of internal faces
          tmpVec = lw.*obj.trans(obj.isIntFaces);
+         nneigh = length(tmpVec);
          % tmpVec = lw.*tmpVec;
-         [~,~,neigh1] = unique(neigh1);
-         [~,~,neigh2] = unique(neigh2);
+         [~,~,reorder] = unique([neigh(:,1); neigh(:,2)]);
+         neigh1 = reorder(1:nneigh);
+         neigh2 = reorder(nneigh+1:2*nneigh);
          sumDiagTrans = accumarray([neigh1; neigh2], ...
             repmat(tmpVec,[2,1]),[nSubCells,1]);
          % Assemble H matrix
@@ -186,15 +187,15 @@ classdef SinglePhaseFlow < SinglePhysics
 
       function computeCapMatFV(obj,varargin)
          subCells = obj.dofm.getFieldCells(obj.field);
-         nSubCells = length(subCells);
-         poroMat = zeros(nSubCells,1);
-         alphaMat = zeros(nSubCells,1);
+         %nSubCells = length(subCells);
+         poroMat = zeros(obj.mesh.nCellTag,1);
+         alphaMat = zeros(obj.mesh.nCellTag,1);
          beta = obj.material.getFluid().getFluidCompressibility();
          for m = 1:obj.mesh.nCellTag
             if ~ismember(m,obj.dofm.getFieldCellTags({obj.field,'Poromechanics'}))
                % compute alpha only if there's no coupling in the
                % subdomain
-               alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
+               alphaMat(m) = obj.getRockCompressibility(m);
             end
             poroMat(m) = obj.material.getMaterial(m).PorousRock.getPorosity();
          end
@@ -324,8 +325,8 @@ classdef SinglePhaseFlow < SinglePhysics
          dof = obj.dofm.getLocalDoF(ents,obj.fldId);
       end
 
-      function applyDirVal(obj,dof,vals)
-         if isFVTPFABased(obj.model,'Flow') && strcmp(obj.bcs.getCond(bcId),'SurfBC')
+      function applyDirVal(obj,dof,vals,bcId)
+         if isFVTPFABased(obj.model,'Flow') && strcmp(obj.bcs.getCond(bcId),"SurfBC")
             % Dirichlet surface BCs cannot be directly applied to the solution
             % vector
             return
@@ -337,7 +338,7 @@ classdef SinglePhaseFlow < SinglePhysics
          % apply Dirichlet BCs
          % ents: id of constrained faces without any dof mapping applied
          % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
-         if isFVTPFABased(obj.model,'Flow') && strcmp(obj.bcs.getCond(bcId),'SurfBC')
+         if isFVTPFABased(obj.model,'Flow') && strcmp(obj.bcs.getCond(bcId),"SurfBC")
             % BCs imposition for finite volumes with surface bc
             assert(size(vals,2)==2,'Invalid matrix size for BC values');
             nDoF = obj.dofm.getNumDoF(obj.field);
@@ -382,13 +383,13 @@ classdef SinglePhaseFlow < SinglePhysics
          obj.trans = 1 ./ accumarray(obj.faces.faces2Elements(:,1),1 ./ hT,[obj.faces.nFaces,1]);
       end
 
-      function alpha = getRockCompressibility(obj,el)
-        if ismember(obj.mesh.cellTag(el),getFieldCellTags(obj.dofm,{obj.field,'Poromechanics'}))
+      function alpha = getRockCompressibility(obj,cTag)
+        if ismember(cTag,getFieldCellTags(obj.dofm,{obj.field,'Poromechanics'}))
           alpha = 0; %this term is not needed in coupled formulation
         else
-          if isfield(obj.material.getMaterial(obj.mesh.cellTag(el)),"ConstLaw")
+          if isfield(obj.material.getMaterial(cTag),"ConstLaw")
             %solid skeleton contribution to storage term as oedometric compressibility .
-            alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
+            alpha = obj.material.getMaterial(cTag).ConstLaw.getRockCompressibility();
           else
             alpha = 0;
           end

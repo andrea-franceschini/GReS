@@ -424,6 +424,7 @@ classdef ContactMortar < Mortar
       end
     end
 
+
     function hasChanged = updateActiveSet(obj)
 
       oldActiveSet = obj.contact.activeSet.curr;
@@ -853,7 +854,7 @@ classdef ContactMortar < Mortar
 
       obj.stabMat = asbH.sparseAssembly();
 
-      assert(norm(sum(obj.stabMat,2))<100*eps, 'Stabilization matrix is not locally conservative')
+      assert(norm(sum(obj.stabMat,2))<1e-8, 'Stabilization matrix is not locally conservative')
     end
 
     function S = computeSchurLocal(obj,nm,ns,fs,field)

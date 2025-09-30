@@ -159,27 +159,61 @@ classdef ContactHelper < handle
   end
 
   methods (Static)
-    function R = computeRot(n)
-      n = reshape(n,1,[]);
-      % candidate orthogonal basis guess
-      m1 = [n(3),0,-n(1)];
-      m2 = [0,n(3),-n(2)];
-      norm_m1 = norm(m1);
-      norm_m2 = norm(m2);
+    %     function R = computeRot(n)
+    %       n = reshape(n,1,[]);
+    %       % candidate orthogonal basis guess
+    %       m1 = [n(3),0,-n(1)];
+    %       m2 = [0,n(3),-n(2)];
+    %       norm_m1 = norm(m1);
+    %       norm_m2 = norm(m2);
+    %
+    %       if norm_m1 + 1e2*eps > norm_m2
+    %         m2 = cross(n,m1);
+    %         m1 = m1/norm(m1);
+    %         m2 = m2/norm(m2);
+    %       else
+    %         m1 = cross(n,m2);
+    %         m1 = -m1/norm(m1);
+    %         m2 = m2/norm(m2);
+    %       end
+    %
+    %       R = [n',m1',m2'];
+    %
+    %       assert(abs(det(R)-1.0)<1e-8,'Rotation matrix non unit determinant')
+    %     end
 
-      if norm_m1 + 1e2*eps > norm_m2
-        m2 = cross(n,m1);
-        m1 = m1/norm(m1);
-        m2 = m2/norm(m2);
+
+    function R = computeRot(n)
+
+      n = reshape(n,1,[]);
+      n = n / norm(n);   % normalize input normal
+
+      % Pick a vector not parallel to n (to start Gram–Schmidt)
+      if abs(n(1)) < 0.9
+        tmp = [1,0,0];
       else
-        m1 = cross(n,m2);
-        m1 = -m1/norm(m1);
-        m2 = m2/norm(m2);
+        tmp = [0,1,0];
       end
 
-      R = [n',m1',m2'];
+      % First tangent: orthogonalize tmp against n
+      m1 = tmp - dot(tmp,n)*n;
+      m1 = m1 / norm(m1);
 
-      assert(abs(det(R)-1.0)<1e-8,'Rotation matrix non unit determinant')
+      % Second tangent: orthogonal to both
+      m2 = cross(n,m1);
+      m2 = m2 / norm(m2);
+
+      % Assemble rotation matrix
+      R = [n', m1', m2'];
+
+      % Check orientation: enforce det=+1 (right-handed)
+      if det(R) < 0
+        m1 = -m1;
+        R = [n', m1', m2'];
+      end
+
+      assert(abs(det(R)-1.0) < 1e-12, ...
+        'Rotation matrix not orthogonal to machine precision');
     end
   end
 

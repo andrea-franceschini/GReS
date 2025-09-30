@@ -156,9 +156,15 @@ classdef SegmentBasedQuadrature < handle
           assert(numel(clipX)==1,['Non unique clip polygon for master/slave pair' ...
             ' %i/%i \n'],elMaster,elSlave)
 
+
           % perform delaunay triangulation on clip polygon
           % assumption: only one clip polygon results from intersection
           coordClip = [clipX{:} clipY{:}];
+
+          if ~SegmentBasedQuadrature.isClipValid(coordClip)
+            % skip if the polygon is degenerate or has very small area
+            continue
+          end
           topolClip = delaunay(coordClip(:,1),coordClip(:,2));
           nTriLoc = size(topolClip,1);
 
@@ -262,6 +268,22 @@ classdef SegmentBasedQuadrature < handle
       x = (projC - P)*[d1 d2];
 
     end
+  end
+
+  methods (Static)
+
+
+    function isValid = isClipValid(clip)
+      tol = 1e-4;
+      clip = round(clip/tol)*tol;
+      clipUnique = unique(clip,'rows');
+      isValid = true;
+      if size(clipUnique,1) < 3
+        isValid = false;
+      end
+
+    end
+
   end
 end
 

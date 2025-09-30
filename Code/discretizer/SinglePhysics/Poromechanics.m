@@ -230,7 +230,7 @@ classdef Poromechanics < SinglePhysics
       vals = obj.getBCVals(id,t);
     end
 
-    function applyDirVal(obj,dof,vals)
+    function applyDirVal(obj,dof,vals,varargin)
       obj.state.data.dispConv(dof) = vals;
       obj.state.data.dispCurr(dof) = vals;
     end
@@ -342,8 +342,9 @@ classdef Poromechanics < SinglePhysics
         % biot logic
         valsCell = vals;
         cells = obj.bcs.getEntities(id);
-        nNodes = obj.bcs.getNumbLoadedEntities(id);
-        vals = zeros(3*nNodes,1);
+        % preallocate vector for later assembly
+        vals = zeros(3*sum(obj.mesh.cellNumVerts),1);
+        dofs = zeros(3*sum(obj.mesh.cellNumVerts),1);
         k = 0;
         for i = 1:numel(cells)
           % local coupling to map cell pressure to nodal force (as in Biot)
@@ -360,10 +361,15 @@ classdef Poromechanics < SinglePhysics
           Qs = Qs.*reshape(dJWeighed,1,1,[]);
           Qloc = sum(Qs,3);
           vals(k+1:k+n) = Qloc*valsCell(i);
+          dofs(k+1:k+n) = dofId(obj.mesh.cells(el,:),3);
           k = k+n;
         end
-
+        % accumulate results
+        vals = accumarray(dofs,vals,[3*obj.mesh.nNodes 1]);
+        dof = obj.getBCdofs(id);
+        vals = -vals(dof);
       end
+
     end
 
     function setPoromechanics(obj)
