@@ -68,7 +68,7 @@ classdef MeshGlueDual < MeshGlue
       if ~obj.isMatrixComputed()
         % mesh glue matrices are constant troughout the simulation
         % compute only once!
-        computeMortarMatricesNew(obj);
+        computeMortarMatrices(obj);
       end
       obj.Jmaster = obj.M;
       obj.Jslave = obj.D;

@@ -36,14 +36,6 @@ classdef MeshGlue < Mortar
       assert(isFldSlave,['MeshGlue physic not available for ' ...
         'slave domain %i'],obj.idDomain(2));
 
-%       %computing mortar matrices D and M and updating list of slave entitities
-%       computeMortarMatrices(obj);
-% 
-%       %remove inacive multipliers from D and M
-%       id = find(~any(obj.D,2));
-%       obj.D(id,:) = [];
-%       obj.M(id,:) = [];
-
       % initialize Jacobian and rhs for the interface (now that active
       % multipliers are known)
       initializeInterface(obj)
@@ -127,14 +119,14 @@ classdef MeshGlue < Mortar
       if ~obj.isMatrixComputed()
         % mesh glue matrices are constant troughout the simulation
         % compute only once!
-         computeMortarMatricesNew(obj);
+         computeMortarMatrices(obj);
       end
       obj.Jmaster = obj.M;
       obj.Jslave = obj.D;
     end
 
 
-    function computeMortarMatricesNew(obj)
+    function computeMortarMatrices(obj)
 
       % This method computes the cross grid mortar matrices between
       % connected interfaces
@@ -223,14 +215,6 @@ classdef MeshGlue < Mortar
       fld = obj.dofm(side).getFieldId(obj.physic);
       dofc = obj.dofm(side).getLocalDoF(nodes,fld);
       dofr = getMultiplierDoF(obj,imult);
-    end
-
-    function [Nslave, Nmaster, Nmult] = getMortarBasisFunctions(obj,im,is,xiMaster,xiSlave)
-      elemMaster = obj.getElem(1,im);
-      elemSlave = obj.getElem(2,is);
-      Nmaster = elemMaster.computeBasisF(xiMaster);
-      Nslave = elemSlave.computeBasisF(xiSlave);
-      Nmult = obj.computeMultiplierBasisF(is,Nslave);
     end
 
 

@@ -51,11 +51,9 @@ classdef ContactHelper < handle
       else
         % input is a 3D/4D array of normals in each GP
         sz = size(in);
-        R = zeros(3,3,sz(3),sz(4));
-        for i = 1:sz(4)
-          for j = 1:sz(3)
-            R(:,:,j,i) = obj.computeRot(in(:,:,j,i));
-          end
+        R = zeros(3,3,sz(3));
+        for i = 1:sz(3)
+          R(:,:,i) = obj.computeRot(in(:,:,i));
         end
       end
     end

@@ -5,10 +5,10 @@
     <Master id="1" surfaceTag="4 6" />
     <Slave id="1" surfaceTag="5 7" />
     <Type> MeshTying </Type>
-    <Quadrature type = "SegmentBased" nGP="7"/>
+    <Quadrature type = "SegmentBased" nGP="4"/>
     <Coulomb phi="30.0" cohesion="0.0"/>
-    <Multiplier type="P0"/>
-    <Stabilization scale="1.0" type="Jump"/>
+    <Multiplier type="dual"/>
+    <!--<Stabilization scale="1.0" type="Jump"/>-->
     <Physics> Poromechanics </Physics>
     <Print name = "Fault"/>
   </Interface>

@@ -34,6 +34,17 @@ classdef (Abstract) MortarQuadrature < handle
     xiSlave = getSlaveGPCoords(obj,idPair);
   end
 
+  methods (Static)
+
+    function mat = integrate(func,varargin)
+      dJw = varargin{end};
+      mat = func(varargin{1:end-1});
+      mat = mat.*reshape(dJw,1,1,[]);
+      mat = sum(mat,3);
+    end
+    
+  end
+
     
 end
 

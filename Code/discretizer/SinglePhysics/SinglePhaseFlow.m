@@ -293,8 +293,7 @@ classdef SinglePhaseFlow < SinglePhysics
                   %[ents,~,ind] = unique(ents);
                   switch obj.bcs.getType(id)
                      case 'Neu'
-                        area = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
-                        vals = accumarray(ind, area);
+                        vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
                      case 'Dir'
                         gamma = obj.material.getFluid().getFluidSpecWeight();
                         mu = obj.material.getFluid().getDynViscosity();

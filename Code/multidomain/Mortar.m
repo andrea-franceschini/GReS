@@ -123,6 +123,111 @@ classdef Mortar < handle
       elem = obj.elements(sideID).getElement(type);
     end
 
+    function computeMortarMatrices(obj)
+
+      % This method computes the cross grid mortar matrices between
+      % connected interfaces
+
+      % Also remove inactive slave/master elements after performing first
+      % round of mortar integration
+
+      % number of components per dof of interpolated physics
+      if ~isempty(obj.dofm)
+        ncomp = obj.dofm(2).getDoFperEnt(obj.physic);
+      else
+        ncomp = 1;
+      end
+
+      % get number of index entries for sparse matrices
+      % overestimate number of sparse indices assuming all quadrilaterals
+      nNmaster = obj.mesh.msh(1).surfaceNumVerts'*obj.mesh.elemConnectivity;
+
+      switch obj.multiplierType
+        case 'P0'
+          N1 = sum(nNmaster);
+          N2 = sum(obj.mesh.msh(2).surfaceNumVerts);
+        otherwise
+          N1 = nNmaster*obj.mesh.msh(2).surfaceNumVerts;
+          N2 = sum(obj.mesh.msh(2).surfaceNumVerts.^2);
+      end
+
+      nm = (ncomp^2)*N1;
+      ns = ncomp^2*N2;
+
+      if ~isempty(obj.solvers)
+        nDofMaster = obj.dofm(1).getNumDoF(obj.physic);
+        nDofSlave = obj.dofm(2).getNumDoF(obj.physic);
+        nDofMult = getNumbMultipliers(obj);
+      else
+        obj.multiplierType = 'dual';
+        nDofMaster = obj.mesh.msh(1).nNodes;
+        nDofSlave = obj.mesh.msh(2).nNodes;
+        nDofMult = nDofSlave;
+      end
+
+      % define matrix assemblers
+      locM = @(imult,imaster,Nmult,Nmaster,dJw) ...
+        computeLocMortar(obj,1,imult,imaster,Nmult,Nmaster,dJw);
+      locD = @(imult,islave,Nmult,Nslave,dJw) ...
+        computeLocMortar(obj,2,imult,islave,Nmult,Nslave,dJw);
+
+      asbM = assembler(nm,locM,nDofMult,nDofMaster);
+      asbD = assembler(ns,locD,nDofMult,nDofSlave);
+
+      for iPair = 1:obj.quadrature.numbMortarPairs
+
+        is = obj.quadrature.mortarPairs(iPair,1);
+        im = obj.quadrature.mortarPairs(iPair,2);
+
+        % retrieve mortar integration data
+        xiMaster = obj.quadrature.getMasterGPCoords(iPair);
+        xiSlave = obj.quadrature.getSlaveGPCoords(iPair);
+        dJw = obj.quadrature.getIntegrationWeights(iPair);
+
+        [Nslave,Nmaster,Nmult] = ...
+          getMortarBasisFunctions(obj,im,is,xiMaster,xiSlave);
+
+        [Nslave,Nmaster,Nmult] = ...
+          obj.reshapeBasisFunctions(ncomp,Nslave,Nmaster,Nmult);
+
+        asbM.localAssembly(is,im,-Nmult,Nmaster,dJw);
+        asbD.localAssembly(is,is,Nmult,Nslave,dJw);
+
+      end
+
+      obj.M = asbM.sparseAssembly();
+      obj.D = asbD.sparseAssembly();
+
+      pu = sum([obj.M obj.D],2);
+      assert(norm(pu)<1e-6,'Partiition of unity violated');
+
+    end
+
+
+    function [dofr,dofc,mat] = computeLocMortar(obj,side,imult,iu,Nmult,Nu,dJw)
+      mat = pagemtimes(Nmult,'ctranspose',Nu,'none');
+      mat = mat.*reshape(dJw,1,1,[]);
+      mat = sum(mat,3);
+      nodes = obj.mesh.local2glob{side}(obj.mesh.msh(side).surfaces(iu,:));
+      fld = obj.dofm(side).getFieldId(obj.physic);
+      dofc = obj.dofm(side).getLocalDoF(nodes,fld);
+      dofr = getMultiplierDoF(obj,imult);
+    end
+
+    function [Nslave, Nmaster, Nmult, varargout] = getMortarBasisFunctions(obj,im,is,xiMaster,xiSlave)
+      elemMaster = obj.getElem(1,im);
+      elemSlave = obj.getElem(2,is);
+      Nmaster = elemMaster.computeBasisF(xiMaster);
+      Nslave = elemSlave.computeBasisF(xiSlave);
+      Nmult = obj.computeMultiplierBasisF(is,Nslave);
+
+      if nargout ==4
+        % outout the bubble function on the slave side
+        varargout{1} = elemSlave.computeBubbleBasisF(xiSlave);
+      end
+    end
+
+
 
     function dofs = getMultiplierDoF(obj,is)
       % return multiplier dofs associated with slave element #is inside
@@ -179,145 +284,6 @@ classdef Mortar < handle
       obj.mesh.removeMortarSurface(2,inactiveSlave);
 
 
-    end
-
-    %     function mat = getMatrix(obj,sideID,field)
-    %       n = obj.dofm(sideID).getDoFperEnt(field);
-    %       dofMult = dofId(1:obj.mesh.nEl(2),n);
-    %       dof = obj.mesh.local2glob{sideID}(1:size(obj.mortarMatrix{sideID},2));
-    %       dof = obj.dofm(sideID).getLocalDoF(dof,field);
-    %       [j,i] = meshgrid(dof,dofMult);
-    %       nr = n*obj.mesh.nEl(2);
-    %       nc = obj.dofm(sideID).getNumDoF(field);
-    %       vals = Discretizer.expandMat(obj.mortarMatrix{sideID},n);
-    %       mat = sparse(i(:),j(:),vals(:),nr,nc); % minus sign!
-    %     end
-
- 
-    function computeMortarMatrices(obj,~)
-
-      % This method computes the cross grid mortar matrices between
-      % connected interfaces
-
-      % Also remove inactive slave/master elements after performing first
-      % round of mortar integration
-
-       % number of components per dof of interpolated physics
-      if ~isempty(obj.dofm)
-        ncomp = obj.dofm(2).getDoFperEnt(obj.physic);
-      else
-        ncomp = 1;
-      end
-
-      % logical index to track slave and master elements that do not really
-      % participate to the mortar surface (fake connectivity)
-      isInactiveSlave = false(obj.mesh.msh(2).nSurfaces,1);
-
-      % get number of index entries for sparse matrices
-      % overestimate number of sparse indices assuming all quadrilaterals
-      nNmaster = obj.mesh.msh(1).surfaceNumVerts'*obj.mesh.elemConnectivity;
-
-      switch obj.multiplierType
-        case 'P0'
-          N1 = sum(nNmaster);
-          N2 = sum(obj.mesh.msh(2).surfaceNumVerts);
-        otherwise
-          N1 = nNmaster*obj.mesh.msh(2).surfaceNumVerts;
-          N2 = sum(obj.mesh.msh(2).surfaceNumVerts.^2);
-      end
-
-      nm = (ncomp^2)*N1;
-      ns = ncomp^2*N2;
-
-      if ~isempty(obj.solvers)
-        nDofMaster = obj.dofm(1).getNumDoF(obj.physic);
-        nDofSlave = obj.dofm(2).getNumDoF(obj.physic);
-        nDofMult = getNumbMultipliers(obj);
-      else
-        obj.multiplierType = 'dual'; 
-        nDofMaster = obj.mesh.msh(1).nNodes;
-        nDofSlave = obj.mesh.msh(2).nNodes;
-        nDofMult = nDofSlave;
-      end
-
-      % define matrix assemblers
-      locM = @(imult,imaster,Nmult,Nmaster) ...
-        computeLocMaster(obj,imult,imaster,Nmult,Nmaster);
-      locD = @(imult,islave,Dloc) ...
-        computeLocSlave(obj,imult,islave,Dloc);
-
-      asbM = assembler(nm,locM,nDofMult,nDofMaster);
-      asbD = assembler(ns,locD,nDofMult,nDofSlave);
-
-      for is = 1:obj.mesh.msh(2).nSurfaces
-        masterElems = find(obj.mesh.elemConnectivity(:,is));
-        if isempty(masterElems)
-          continue
-        end
-
-        elSlave = getElem(obj,2,is);
-        nN = elSlave.nNode;
-        switch obj.multiplierType
-          case 'P0'
-            Dloc = zeros(ncomp,ncomp*nN);
-          otherwise
-            Dloc = zeros(ncomp*nN,ncomp*nN);
-        end
-
-        for im = masterElems'
-
-          [Nslave,Nmaster,Nmult] = ...
-            getMortarBasisFunctions(obj.quadrature,is,im);
-
-          if isempty(Nmaster)
-            % refine connectivity matrix
-            %obj.mesh.elemConnectivity(im,is) = 0;
-            continue
-          end
-
-          [Nslave,Nmaster,Nmult] = ...
-            obj.reshapeBasisFunctions(ncomp,Nslave,Nmaster,Nmult);
-
-          asbM.localAssembly(is,im,-Nmult,Nmaster);
-
-          Dloc = Dloc + ...
-            obj.quadrature.integrate(@(a,b) pagemtimes(a,'ctranspose',b,'none'),...
-            Nmult,Nslave);
-        end
-
-        % if Dloc is empty, the current slave element is inactive remove
-        % also corresponding master elements if it is not connected to any
-        % other element
-        if all(Dloc==0,"all")
-          isInactiveSlave(is) = true;
-        end
-
-        asbD.localAssembly(is,is,Dloc);
-      end
-
-      % remove inactive slave elements
-      removeMortarSurface(obj.mesh,2,isInactiveSlave);
-
-      % find unconnected master elements
-      isInactiveMaster = ~any(obj.mesh.elemConnectivity, 2);
-      % remove unconnected elements
-      removeMortarSurface(obj.mesh,1,isInactiveMaster);
-
-      obj.M = asbM.sparseAssembly();
-      obj.D = asbD.sparseAssembly();
-
-      % check satisfaction of partition of unity (mortar consistency)
-      
-      % remove rows of inactive multipliers from Jmaster and Jslave
-      if ~isempty(obj.solvers)
-        dofMult = getMultiplierDoF(obj);
-        obj.M = obj.M(dofMult,:);
-        obj.D = obj.D(dofMult,:);
-      end
-
-      pu = sum([obj.M obj.D],2);
-      assert(norm(pu)<1e-6,'Partiition of unity violated');
-%       fprintf('Done computing mortar matrix in %.4f s \n',cputime-tIni)
     end
 
 
@@ -475,11 +441,11 @@ classdef Mortar < handle
         case 'RBF'
           assert(~isempty(nInt),['Missing number of interpolation points for' ...
             'RBF quadrature'])
-          obj.quadrature = RBFquadratureNew(obj,nG,nInt);
+          obj.quadrature = RBFquadrature(obj,nG,nInt);
         case 'SegmentBased'
-          obj.quadrature = SegmentBasedQuadratureNew(obj,nG);
+          obj.quadrature = SegmentBasedQuadrature(obj,nG);
         case 'ElementBased'
-          obj.quadrature = ElementBasedQuadratureNew(obj,nG);
+          obj.quadrature = ElementBasedQuadrature(obj,nG);
       end
     end
 

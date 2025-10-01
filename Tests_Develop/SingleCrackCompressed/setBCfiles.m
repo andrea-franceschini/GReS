@@ -3,12 +3,12 @@ mkdir BCs
 % custom BCs
 
 % fix Z - plain strain condition
-writeBCfiles('BCs/z_fix','SurfBC','Dir',{'Poromechanics','z'},'z_fix_out',0,0,mesh,3); 
+writeBCfiles('BCs/z_fix','SurfBC','Dir',{'Poromechanics','z'},'z_fix_out',0,0,mesh,1); 
 
 
 % neumann condition for constant compressive stress
-writeBCfiles('BCs/loadLeft','SurfBC','Neu',{'Poromechanics','x'},'left_load',0,100,mesh,1); 
-writeBCfiles('BCs/loadRight','SurfBC','Neu',{'Poromechanics','x'},'right_load',0,-100,mesh,2); 
+writeBCfiles('BCs/loadLeft','SurfBC','Neu',{'Poromechanics','x'},'left_load',0,100,mesh,2); 
+writeBCfiles('BCs/loadRight','SurfBC','Neu',{'Poromechanics','x'},'right_load',0,-100,mesh,3); 
 
 
 % fix X and Y at centered node locations in the outer boundary
