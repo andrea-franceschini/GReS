@@ -42,29 +42,29 @@ solver.finalizeOutput();
 %plotStep(solver.results,2);
 
 
-matrixGEOS = load("systemMatrix.mtx");
-
-nMult = 100;
-
-r = matrixGEOS(2:end,1);
-c = matrixGEOS(2:end,2);
-v = matrixGEOS(2:end,3);
-
-mat = sparse(r,c,v);
-figure(1)
-%title("traction_bubble")
-spy(mat)
-
-nDof = size(mat,1);
-
-tDof = nDof-nMult*3*3;
-
-bDof = nDof-nMult*2*3;
-
-% get the Atb block (probably the wrong one)
-Abt_geos = mat(tDof+1:tDof+nMult*3, bDof+1:bDof+nMult*3);
-Abb_geos = mat(bDof+1:bDof+nMult*3,bDof+1:bDof+nMult*3);
-
+% matrixGEOS = load("systemMatrix.mtx");
+% 
+% nMult = 100;
+% 
+% r = matrixGEOS(2:end,1);
+% c = matrixGEOS(2:end,2);
+% v = matrixGEOS(2:end,3);
+% 
+% mat = sparse(r,c,v);
+% figure(1)
+% %title("traction_bubble")
+% spy(mat)
+% 
+% nDof = size(mat,1);
+% 
+% tDof = nDof-nMult*3*3;
+% 
+% bDof = nDof-nMult*2*3;
+% 
+% % get the Atb block (probably the wrong one)
+% Abt_geos = mat(tDof+1:tDof+nMult*3, bDof+1:bDof+nMult*3);
+% Abb_geos = mat(bDof+1:bDof+nMult*3,bDof+1:bDof+nMult*3);
+% 
 
 
 

@@ -6,9 +6,9 @@ Mortar and slave interfaces can be difference surfaceTag of the same domain-->
         <Master id="1" surfaceTag="1"/>
         <Slave id="1" surfaceTag="3"/>
         <Type>MeshTying</Type>
-        <Quadrature type="SegmentBased" nGP="7" nInt="5"/>
-        <Stabilization type="Jump" />
-        <Multiplier type="P0"/>
+        <Quadrature type="SegmentBased" nGP="4" nInt="5"/>
+        <!--<Stabilization type="Jump" />-->
+        <Multiplier type="dual"/>
       <Physics>Poisson</Physics>
       <Print name = "interface"/>
     </Interface>

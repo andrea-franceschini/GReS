@@ -29,7 +29,7 @@ nref = 2;
 
 nG = 6;           
 if strcmp(integration_type,'SegmentBased')
-  nG = 7;
+  nG = 4;
 end
 
 nInt = 5;

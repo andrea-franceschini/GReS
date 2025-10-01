@@ -178,4 +178,22 @@ classdef Triangle < FEM
     end
 
   end
+
+  methods (Static)
+
+    function area = computeArea(coords)
+      assert(all(size(coords)==[3 2]), ['Wrong size for input matrix of vertex coordinates. ' ...
+        ' Expected size is 3 x 2']);
+
+      x1 = coords(1,1); y1 = coords(1,2);
+      x2 = coords(2,1); y2 = coords(2,2);
+      x3 = coords(3,1); y3 = coords(3,2);
+
+      area = 0.5 * abs( x1*(y2 - y3) + x2*(y3 - y1) + x3*(y1 - y2) );
+
+    end
+  end
+
+
+
 end

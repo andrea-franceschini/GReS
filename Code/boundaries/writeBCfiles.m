@@ -94,8 +94,10 @@ for i = 1:length(time)
   t_name = strcat(fName,'/time',num2str(i-1),'.dat');
   ft = fopen(t_name,'w');
   fprintf(ft,'%%Time %2.4f \n',time(i));
-  if isscalar(vals(i))
+  if length(vals) == length(time)
+    if (isscalar(vals(i)))
     fprintf(ft,'%1.6e \n',repelem(vals(i),length(list)));
+    end
   else
     fprintf(ft,'%1.6e \n',vals);
   end

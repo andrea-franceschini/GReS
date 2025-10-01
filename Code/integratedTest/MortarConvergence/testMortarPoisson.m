@@ -1,6 +1,6 @@
 % study parameters
 for elem_type = ["hexa","hexa27"]
-  for integration_type = ["SegmentBased","RBF","ElementBased"]
+  for integration_type = ["SegmentBased","RBF", "ElementBased"]
     runConvPoisson;
     msg = "Error for %s element with %s mortar quadrature scheme";
     switch elem_type

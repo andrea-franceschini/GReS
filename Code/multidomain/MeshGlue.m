@@ -36,13 +36,13 @@ classdef MeshGlue < Mortar
       assert(isFldSlave,['MeshGlue physic not available for ' ...
         'slave domain %i'],obj.idDomain(2));
 
-      %computing mortar matrices D and M and updating list of slave entitities
-      computeMortarMatrices(obj);
-
-      %remove inacive multipliers from D and M
-      id = find(~any(obj.D,2));
-      obj.D(id,:) = [];
-      obj.M(id,:) = [];
+%       %computing mortar matrices D and M and updating list of slave entitities
+%       computeMortarMatrices(obj);
+% 
+%       %remove inacive multipliers from D and M
+%       id = find(~any(obj.D,2));
+%       obj.D(id,:) = [];
+%       obj.M(id,:) = [];
 
       % initialize Jacobian and rhs for the interface (now that active
       % multipliers are known)
@@ -127,11 +127,112 @@ classdef MeshGlue < Mortar
       if ~obj.isMatrixComputed()
         % mesh glue matrices are constant troughout the simulation
         % compute only once!
-         computeMortarMatrices(obj);
+         computeMortarMatricesNew(obj);
       end
       obj.Jmaster = obj.M;
       obj.Jslave = obj.D;
     end
+
+
+    function computeMortarMatricesNew(obj)
+
+      % This method computes the cross grid mortar matrices between
+      % connected interfaces
+
+      % Also remove inactive slave/master elements after performing first
+      % round of mortar integration
+
+      % number of components per dof of interpolated physics
+      if ~isempty(obj.dofm)
+        ncomp = obj.dofm(2).getDoFperEnt(obj.physic);
+      else
+        ncomp = 1;
+      end
+
+      % get number of index entries for sparse matrices
+      % overestimate number of sparse indices assuming all quadrilaterals
+      nNmaster = obj.mesh.msh(1).surfaceNumVerts'*obj.mesh.elemConnectivity;
+
+      switch obj.multiplierType
+        case 'P0'
+          N1 = sum(nNmaster);
+          N2 = sum(obj.mesh.msh(2).surfaceNumVerts);
+        otherwise
+          N1 = nNmaster*obj.mesh.msh(2).surfaceNumVerts;
+          N2 = sum(obj.mesh.msh(2).surfaceNumVerts.^2);
+      end
+
+      nm = (ncomp^2)*N1;
+      ns = ncomp^2*N2;
+
+      if ~isempty(obj.solvers)
+        nDofMaster = obj.dofm(1).getNumDoF(obj.physic);
+        nDofSlave = obj.dofm(2).getNumDoF(obj.physic);
+        nDofMult = getNumbMultipliers(obj);
+      else
+        obj.multiplierType = 'dual';
+        nDofMaster = obj.mesh.msh(1).nNodes;
+        nDofSlave = obj.mesh.msh(2).nNodes;
+        nDofMult = nDofSlave;
+      end
+
+      % define matrix assemblers
+      locM = @(imult,imaster,Nmult,Nmaster,dJw) ...
+        computeLocMortar(obj,1,imult,imaster,Nmult,Nmaster,dJw);
+      locD = @(imult,islave,Nmult,Nslave,dJw) ...
+        computeLocMortar(obj,2,imult,islave,Nmult,Nslave,dJw);
+
+      asbM = assembler(nm,locM,nDofMult,nDofMaster);
+      asbD = assembler(ns,locD,nDofMult,nDofSlave);
+
+      for iPair = 1:obj.quadrature.numbMortarPairs
+
+        is = obj.quadrature.mortarPairs(iPair,1);
+        im = obj.quadrature.mortarPairs(iPair,2);
+
+        % retrieve mortar integration data
+        xiMaster = obj.quadrature.getMasterGPCoords(iPair);
+        xiSlave = obj.quadrature.getSlaveGPCoords(iPair);
+        dJw = obj.quadrature.getIntegrationWeights(iPair);
+
+        [Nslave,Nmaster,Nmult] = ...
+          getMortarBasisFunctions(obj,im,is,xiMaster,xiSlave);
+
+        [Nslave,Nmaster,Nmult] = ...
+          obj.reshapeBasisFunctions(ncomp,Nslave,Nmaster,Nmult);
+
+        asbM.localAssembly(is,im,-Nmult,Nmaster,dJw);
+        asbD.localAssembly(is,is,Nmult,Nslave,dJw);
+
+      end
+
+      obj.M = asbM.sparseAssembly();
+      obj.D = asbD.sparseAssembly();
+
+      pu = sum([obj.M obj.D],2);
+      assert(norm(pu)<1e-6,'Partiition of unity violated');
+
+    end
+
+
+    function [dofr,dofc,mat] = computeLocMortar(obj,side,imult,iu,Nmult,Nu,dJw)
+      mat = pagemtimes(Nmult,'ctranspose',Nu,'none');
+      mat = mat.*reshape(dJw,1,1,[]);
+      mat = sum(mat,3);
+      nodes = obj.mesh.local2glob{side}(obj.mesh.msh(side).surfaces(iu,:));
+      fld = obj.dofm(side).getFieldId(obj.physic);
+      dofc = obj.dofm(side).getLocalDoF(nodes,fld);
+      dofr = getMultiplierDoF(obj,imult);
+    end
+
+    function [Nslave, Nmaster, Nmult] = getMortarBasisFunctions(obj,im,is,xiMaster,xiSlave)
+      elemMaster = obj.getElem(1,im);
+      elemSlave = obj.getElem(2,is);
+      Nmaster = elemMaster.computeBasisF(xiMaster);
+      Nslave = elemSlave.computeBasisF(xiSlave);
+      Nmult = obj.computeMultiplierBasisF(is,Nslave);
+    end
+
 
     function computeRhs(obj)
       % compute rhs contributions

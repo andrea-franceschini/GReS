@@ -99,7 +99,7 @@ classdef Poisson < SinglePhysics
       vals = obj.bcs.getVals(id,t);
     end
 
-    function applyDirVal(obj,dof,vals)
+    function applyDirVal(obj,dof,vals,varargin)
       obj.state.data.u(dof) = vals;
     end
 

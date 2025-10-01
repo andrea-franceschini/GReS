@@ -161,18 +161,39 @@ classdef Mortar < handle
       end
     end
 
-%     function mat = getMatrix(obj,sideID,field)
-%       n = obj.dofm(sideID).getDoFperEnt(field);
-%       dofMult = dofId(1:obj.mesh.nEl(2),n);
-%       dof = obj.mesh.local2glob{sideID}(1:size(obj.mortarMatrix{sideID},2));
-%       dof = obj.dofm(sideID).getLocalDoF(dof,field);
-%       [j,i] = meshgrid(dof,dofMult);
-%       nr = n*obj.mesh.nEl(2);
-%       nc = obj.dofm(sideID).getNumDoF(field);
-%       vals = Discretizer.expandMat(obj.mortarMatrix{sideID},n);
-%       mat = sparse(i(:),j(:),vals(:),nr,nc); % minus sign!
-%     end
 
+    function computeMortarInterpolation(obj)
+
+      processMortarPairs(obj.quadrature); 
+
+      inactiveMaster = find(~ismember(1:obj.mesh.msh(1).nSurfaces,...
+        obj.quadrature.mortarPairs(:,2)));
+
+      inactiveSlave = find(~ismember(1:obj.mesh.msh(2).nSurfaces,...
+        obj.quadrature.mortarPairs(:,1)));
+
+      % remove master elements
+      obj.mesh.removeMortarSurface(1,inactiveMaster);
+
+      % remove slave elements
+      obj.mesh.removeMortarSurface(2,inactiveSlave);
+
+
+    end
+
+    %     function mat = getMatrix(obj,sideID,field)
+    %       n = obj.dofm(sideID).getDoFperEnt(field);
+    %       dofMult = dofId(1:obj.mesh.nEl(2),n);
+    %       dof = obj.mesh.local2glob{sideID}(1:size(obj.mortarMatrix{sideID},2));
+    %       dof = obj.dofm(sideID).getLocalDoF(dof,field);
+    %       [j,i] = meshgrid(dof,dofMult);
+    %       nr = n*obj.mesh.nEl(2);
+    %       nc = obj.dofm(sideID).getNumDoF(field);
+    %       vals = Discretizer.expandMat(obj.mortarMatrix{sideID},n);
+    %       mat = sparse(i(:),j(:),vals(:),nr,nc); % minus sign!
+    %     end
+
+ 
     function computeMortarMatrices(obj,~)
 
       % This method computes the cross grid mortar matrices between
@@ -335,26 +356,6 @@ classdef Mortar < handle
       end
     end
 
-    function [dofr,dofc,mat] = computeLocMaster(obj,imult,im,Nmult,Nmaster)
-      mat = obj.quadrature.integrate(@(a,b) pagemtimes(a,'ctranspose',b,'none'),...
-        Nmult,Nmaster);
-      nodeMaster = obj.mesh.local2glob{1}(obj.mesh.msh(1).surfaces(im,:));
-      fld = obj.dofm(1).getFieldId(obj.physic);
-      dofc = obj.dofm(1).getLocalDoF(nodeMaster,fld);
-      dofr = getMultiplierDoF(obj,imult);
-    end
-
-    function [dofr,dofc,mat] = computeLocSlave(obj,imult,is,mat)
-      if strcmp(obj.multiplierType,'dual')
-        % lump local D matrix
-        mat = diag(sum(mat,2));
-      end
-      nodeSlave = obj.mesh.local2glob{2}(obj.mesh.msh(2).surfaces(is,:));
-      fld = obj.dofm(2).getFieldId(obj.physic);
-      dofc = obj.dofm(2).getLocalDoF(nodeSlave,fld);
-      dofr = getMultiplierDoF(obj,imult);
-    end
-
     function finalizeOutput(obj)
       if ~isempty(obj.outStruct)
         obj.outStruct.VTK.finalize();
@@ -429,6 +430,7 @@ classdef Mortar < handle
     end
 
     function setMortar(obj,inputStruct,domains)
+      
       obj.solvers = domains;
       obj.idDomain = [inputStruct.Master.idAttribute;
         inputStruct.Slave.idAttribute];
@@ -446,6 +448,7 @@ classdef Mortar < handle
 
       % check that master and slave node sets are disjoint
       checkInterfaceDisjoint(obj);
+
       obj.dofm = [domains(1).dofm;
         domains(2).dofm];
 
@@ -456,9 +459,13 @@ classdef Mortar < handle
       else
         nInt = [];
       end
+
       obj.setQuadrature(quadType,nG,nInt)
 
+      computeMortarInterpolation(obj)
+
       setPrintUtils(obj,inputStruct,domains(2).outstate);
+
     end
 
     function setQuadrature(obj,quadType,nG,nInt)
@@ -466,20 +473,13 @@ classdef Mortar < handle
 
       switch quadType
         case 'RBF'
-          obj.elements = [Elements(obj.mesh.msh(1),nG),...
-            Elements(obj.mesh.msh(2),nG)];
           assert(~isempty(nInt),['Missing number of interpolation points for' ...
             'RBF quadrature'])
-          obj.quadrature = RBFquadrature(obj,nInt);
+          obj.quadrature = RBFquadratureNew(obj,nG,nInt);
         case 'SegmentBased'
-          obj.quadrature = SegmentBasedQuadrature(obj,nG);
-          nG = 3;
-          obj.elements = [Elements(obj.mesh.msh(1),nG),...
-            Elements(obj.mesh.msh(2),nG)];
+          obj.quadrature = SegmentBasedQuadratureNew(obj,nG);
         case 'ElementBased'
-          obj.elements = [Elements(obj.mesh.msh(1),nG),...
-            Elements(obj.mesh.msh(2),nG)];
-          obj.quadrature = ElementBasedQuadrature(obj,nG);
+          obj.quadrature = ElementBasedQuadratureNew(obj,nG);
       end
     end
 

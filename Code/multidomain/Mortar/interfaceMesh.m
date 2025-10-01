@@ -28,6 +28,7 @@ classdef interfaceMesh < handle
         getConnectivityMatrix(obj);
         [obj.msh(1),globNodes1] = mshMaster.getSurfaceMesh(any(obj.elemConnectivity,2));
         [obj.msh(2),globNodes2] = mshSlave.getSurfaceMesh(any(obj.elemConnectivity,1));
+        
       elseif nargin == 4
         % input is 3D mesh from which we extract the surface meshes
         surfMaster = varargin{1};
@@ -44,11 +45,9 @@ classdef interfaceMesh < handle
       obj.elemConnectivity(~any(obj.elemConnectivity,2),:) = [];
       obj.elemConnectivity(:,~any(obj.elemConnectivity,1)) = [];
 
-
-      
       getCellTypes(obj);
 
-      % map local node indices to global nodes FIX!
+      % map local node indices to global nodes
       obj.local2glob{1}(obj.msh(1).surfaces(:)) = globNodes1(:);
       obj.local2glob{2}(obj.msh(2).surfaces(:)) = globNodes2(:);
       

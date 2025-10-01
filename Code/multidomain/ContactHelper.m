@@ -154,7 +154,7 @@ classdef ContactHelper < handle
       obj.tol.normalTrac = 1e-3;
       obj.tol.slidingCheck = 3e-2;
       obj.tol.minLimitTraction = 1e-4;  % below this value, the limit traction is set to 0
-      obj.tol.areaTol = 0.5;
+      obj.tol.areaTol = 2e-2;
     end
   end
 

@@ -491,6 +491,7 @@ classdef ContactMortar < Mortar
             fprintf(['Active set update suppressed due to small fracture change:' ...
               ' areaChange/areaTot = %3.2e \n'],areaChanged/totArea);
           end
+          return
         end
       end
 
