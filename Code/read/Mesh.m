@@ -167,6 +167,7 @@ classdef Mesh < handle
       for i = 1 : nRegions
         dims(i) = regions(i).dim;
       end
+
       ID = find(dims == 2);
       for i = 1 : length(ID)
         obj.surfaceRegions = setfield(obj.surfaceRegions, regions(ID(i)).name, regions(ID(i)).ID);

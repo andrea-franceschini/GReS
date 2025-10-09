@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+<struct>
+  <Domain>
+    <Name> TwoSpheres </Name>
+    <Geometry> Mesh/two_spheres.vtk </Geometry>
+    <ModelType> SinglePhaseFlow_FEM </ModelType>
+    <SimParameters> simParam.dat </SimParameters>
+    <Gauss> 1 </Gauss>
+    <Material> Materials/materialsList_Zhang2007.dat </Material>
+    <BoundaryConditions count="2">
+        <File> BCs/LeftSphere_gal.dat </File>
+        <File> BCs/RightSphere_gal.dat </File>
+    </BoundaryConditions>
+    <OutState outFile="outTime.dat"  print="1" />
+  </Domain>
+  <Domain>
+    <Name> TwoSpheres </Name>
+    <Geometry> Mesh/two_spheres.vtk </Geometry>
+    <ModelType> Poromechanics_FEM </ModelType>
+    <SimParameters> simParam.dat </SimParameters>
+    <Gauss> 1 </Gauss>
+    <Material> Materials/materialsList_Zhang2007.dat </Material>
+    <BoundaryConditions count="0">
+    </BoundaryConditions>
+    <OutState outFile="outTime.dat"  print="1" />
+  </Domain>
+</struct>

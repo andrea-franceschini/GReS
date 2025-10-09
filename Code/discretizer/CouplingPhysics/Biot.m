@@ -34,7 +34,7 @@ classdef Biot < CouplingPhysics
            end
            % J{1}: momentum balance   J{2}: mass balance equations
            obj.J{1} = -obj.simParams.theta*obj.Q;
-           obj.J{2} = obj.Q'/dt;
+           obj.J{2} = 0*obj.Q'/dt; % MULTIPLYING BY 0 TO ENSURE ONE WAY COUPLING
         end
 
 
@@ -99,7 +99,7 @@ classdef Biot < CouplingPhysics
             entsFlow = obj.dofm.getActiveEnts(obj.fields(2));
             obj.rhs{1} = -theta*obj.Q*obj.state.data.pressure(entsFlow) - ...
                 (1-theta)*(obj.Q*stateOld.data.pressure(entsFlow));
-            obj.rhs{2} = (obj.Q/dt)'*(obj.state.data.dispCurr(entsPoro) - obj.state.data.dispConv(entsPoro));
+            obj.rhs{2} = 0*(obj.Q/dt)'*(obj.state.data.dispCurr(entsPoro) - obj.state.data.dispConv(entsPoro));
         end
 
         function applyDirBC(obj,field,ents,varargin)

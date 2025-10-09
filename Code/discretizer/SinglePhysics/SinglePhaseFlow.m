@@ -62,13 +62,15 @@ classdef SinglePhaseFlow < SinglePhysics
       obj.state.data.pressure(id) = vals;
     end
 
-    function states = finalizeState(obj,states,t)
+    function states = finalizeState(obj,states)
       % Compute the posprocessing variables for the module.
-      states.potential = computePotential(obj,states.pressure);
-      mob = (1/obj.material.getFluid().getDynViscosity());
-      states.flux = computeFlux(obj,states.potential,mob,t);
+      pressure = states.pressure;
+      states.potential = computePotential(obj,pressure);
+
+      % mu = (1/obj.material.getFluid().getDynViscosity());
+      % states.flux = computeFlux(obj,pressure);
+      % flux = computeFluxBound(obj,flux,mu,bound,potential,t);
       states.perm = printPermeab(obj);
-      % states.mass = checkMassCons(obj,mob,potential);
     end
 
     function [cellData,pointData] = printState(obj,sOld,sNew,t)
@@ -84,7 +86,7 @@ classdef SinglePhaseFlow < SinglePhysics
         otherwise
           error('Wrong number of input arguments');
       end
-      outPrint = finalizeState(obj,outPrint,t);
+      outPrint = finalizeState(obj,outPrint);
       [cellData,pointData] = SinglePhaseFlow.buildPrintStruct(obj.model,outPrint);
     end
 
@@ -103,8 +105,13 @@ classdef SinglePhaseFlow < SinglePhysics
       end
       if obj.simParams.isTimeDependent
         obj.J = obj.simParams.theta*obj.H + obj.P/dt;
+        % disp(['The Frobenius norm of theta*H term is ', ...
+        %     num2str(norm(obj.simParams.theta*obj.H, 'fro'))]);
+        % disp(['The Frobenius norm of P/dt term is ', ...
+        %     num2str(norm(obj.P/dt, 'fro'))]);
       else
         obj.J = obj.H;
+        % disp(['The Frobenius norm of B is ', num2str(norm(obj.J, 'fro'))]);
       end
     end
 
@@ -479,94 +486,214 @@ classdef SinglePhaseFlow < SinglePhysics
       end
     end
 
-    function flux = computeFlux(obj,pot,mob,t)
-      %COMPUTEFLUX - compute the flux at the faces, than accumulate
-      %the value at the nodes (The contribution of the boundary is done
-      % in another function).
-      flux = zeros(obj.mesh.nNodes,3);
-      if isFEMBased(obj.model,'Flow') & false
-        % TODO - This part is still need some work.
-      elseif isFVTPFABased(obj.model,'Flow')
-        % Compute the fluxes inside the domain.
-        nnodesBfaces = diff(obj.faces.mapN2F);
-        neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-        % isIntNode = repelem(obj.isIntFaces,nnodesBfaces);
+      % function flux = computeFlux(obj,pres)
+      %   %COMPUTEFLUX - compute the flux at the faces, than accumulate
+      %   %the value at the nodes (The contribution of the boundary is done
+      %   % in another function).
+      %   flux = zeros(obj.mesh.nNodes,3);
+      %   pot = computePotential(obj,pres);
+      %   if isFEMBased(obj.model,'Flow') & false
+      %     % TODO - This part is still need some work.
+      %   elseif isFVTPFABased(obj.model,'Flow')
+      %     [mob,~] = computeMobility(obj,pres);
+      %
+      %     % Compute the fluxes inside the domain.
+      %     nnodesBfaces = diff(obj.faces.mapN2F);
+      %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+      %     % isIntNode = repelem(obj.isIntFaces,nnodesBfaces);
+      %
+      %     fluxFaces = zeros(obj.faces.nFaces,1);
+      %     fluxFaces(obj.isIntFaces) = pot(neigh(:,1))-pot(neigh(:,2));
+      %     fluxFaces(obj.isIntFaces) = mob.*obj.trans(obj.isIntFaces).*fluxFaces(obj.isIntFaces);
+      %     % fluxFaces = pot(neigh(:,1))-pot(neigh(:,2));
+      %     % fluxFaces = mob.*obj.trans(obj.isIntFaces).*fluxFaces;
+      %
+      %     areaSq = vecnorm(obj.faces.faceNormal,2,2);
+      %     faceUnit = obj.faces.faceNormal./areaSq;
+      %     areaSq = areaSq.*nnodesBfaces;
+      %     fluxFaces = fluxFaces./areaSq;
+      %     fluxFaces = fluxFaces.*faceUnit;
+      %     % flux at the faces
+      %     % fluxFaces = fluxFaces./areaSq(obj.isIntFaces);
+      %     % fluxFaces = fluxFaces.*faceUnit(obj.isIntFaces,:);  % flux at the faces
+      %
+      %     % Contribution
+      %     fluxFaces = repelem(fluxFaces,nnodesBfaces,1);
+      %     axis = ones(length(obj.faces.nodes2Faces),1);
+      %     flux = accumarray([[obj.faces.nodes2Faces axis]; ...
+      %       [obj.faces.nodes2Faces 2*axis]; ...
+      %       [obj.faces.nodes2Faces 3*axis]], fluxFaces(:));
+      %
+      %     % fluxFaces = repelem(fluxFaces,nnodesBfaces(obj.isIntFaces),1);
+      %     % axis = ones(size(fluxFaces,1),1);
+      %     % flux = accumarray([[obj.faces.nodes2Faces(isIntNode) axis]; ...
+      %     %    [obj.faces.nodes2Faces(isIntNode) 2*axis]; ...
+      %     %    [obj.faces.nodes2Faces(isIntNode) 3*axis]], fluxFaces(:));
+      %
+      %
+      %
+      %     % Compute the fluxes at the boundary of the domain.
+      %     Node2Face = repelem((1:obj.faces.nFaces)',nnodesBfaces);
+      %     sgn = 2*(obj.faces.faceNeighbors(:,1)==0) - 1;
+      %
+      %     areaSq = vecnorm(obj.faces.faceNormal,2,2);
+      %     faceUnit = obj.faces.faceNormal./areaSq;
+      %     areaSq = areaSq.*nnodesBfaces;
+      %
+      %     % add boundary condition
+      %     bcList = bound.db.keys;
+      %     for bc = string(bcList)
+      %       field = translatePhysic(bound.getPhysics(bc),obj.model);
+      %       for f = field
+      %         if field == "SPFlow"
+      %           v = bound.getVals(bc,t);
+      %           switch bound.getCond(bc)
+      %             case {'NodeBC','ElementBC'}
+      %             case 'SurfBC'
+      %               faceID = sort(bound.getEntities(bc));
+      %               gamma = obj.material.getFluid().getFluidSpecWeight();
+      %               switch bound.getType(bc)
+      %                 case 'Neu'
+      %                   vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
+      %                 case 'Dir'
+      %                   ents = sum(obj.faces.faceNeighbors(faceID,:),2);
+      %                   potBd = pot(ents)-(v+gamma*obj.faces.faceCentroid(faceID,3));
+      %                   vals = -mob*obj.trans(faceID).*potBd;
+      %                 case 'Spg'  % Still have some error here.
+      %                   ents = sum(obj.faces.faceNeighbors(faceID,:),2);
+      %                   % zbc = obj.faces.faceCentroid(faceID,3);
+      %                   % v = gamma*(v(1)-zbc);
+      %
+      %                   Datum = max(obj.mesh.coordinates);
+      %                   zbc = Datum(3)-obj.faces.faceCentroid(faceID,3);
+      %                   href = Datum(3)-v(1);
+      %                   v = gamma*(zbc-href(1));
+      %
+      %                   v(v<=0)=0.;
+      %                   vals = -mob*obj.trans(faceID).*(pot(ents)-v);
+      %                   vals(:) = 0.; % after find the error, delete this line.
+      %               end
+      %               dir = sgn(faceID).*faceUnit(faceID,:);
+      %               vals = vals./areaSq(faceID).*dir;
+      %               vals = repelem(vals,nnodesBfaces(faceID),1);
+      %               nodes = obj.faces.nodes2Faces(ismember(Node2Face,faceID));
+      %               [loc,~,pos] = unique(nodes);
+      %               axis = ones(length(nodes),1);
+      %               fluxB = accumarray([[pos axis]; [pos 2*axis]; ...
+      %                 [pos 3*axis]], vals(:));
+      %               flux(loc,:)=fluxB;
+      %             case 'VolumeForce'
+      %               % Find the cell to apply the boundary condition
+      %               cellID = sort(bound.getEntities(bc));
+      %               vals = v.*obj.elements.vol(cellID);
+      %               facesBcell = diff(obj.faces.mapF2E);
+      %
+      %               % Find the faces to distribute the contribution.
+      %               vals = vals./facesBcell(cellID);
+      %               vals = repelem(vals,facesBcell(cellID),1);
+      %
+      %               hf2Cell = repelem((1:obj.mesh.nCells)',facesBcell);
+      %               faceID = obj.faces.faces2Elements(hf2Cell == cellID,1);
+      %
+      %               vals = sgn(faceID).*vals./areaSq(faceID).*faceUnit(faceID,:);
+      %               vals = -repelem(vals,nnodesBfaces(faceID),1);
+      %               nodes = obj.faces.nodes2Faces(ismember(Node2Face,faceID));
+      %               [loc,~,pos] = unique(nodes);
+      %               axis = ones(length(nodes),1);
+      %               fluxB = accumarray([[pos axis]; [pos 2*axis]; ...
+      %                 [pos 3*axis]], vals(:));
+      %               flux(loc,:)=flux(loc,:)+fluxB;
+      %           end
+      %         end
+      %       end
+      %     end
+      %
+      %
+      %   end
+      % end
 
-        fluxFaces = zeros(obj.faces.nFaces,1);
-        fluxFaces(obj.isIntFaces) = pot(neigh(:,1))-pot(neigh(:,2));
-        fluxFaces(obj.isIntFaces) = mob.*obj.trans(obj.isIntFaces).*fluxFaces(obj.isIntFaces);
-        % fluxFaces = pot(neigh(:,1))-pot(neigh(:,2));
-        % fluxFaces = mob.*obj.trans(obj.isIntFaces).*fluxFaces;
-
-        areaSq = vecnorm(obj.faces.faceNormal,2,2);
-        faceUnit = obj.faces.faceNormal./areaSq;
-        areaSq = areaSq.*nnodesBfaces;
-        fluxFaces = fluxFaces./areaSq;
-        fluxFaces = fluxFaces.*faceUnit;
-        % flux at the faces
-        % fluxFaces = fluxFaces./areaSq(obj.isIntFaces);
-        % fluxFaces = fluxFaces.*faceUnit(obj.isIntFaces,:);  % flux at the faces
-
-        % Contribution
-        fluxFaces = repelem(fluxFaces,nnodesBfaces,1);
-        axis = ones(length(obj.faces.nodes2Faces),1);
-        flux = accumarray([[obj.faces.nodes2Faces axis]; ...
-          [obj.faces.nodes2Faces 2*axis]; ...
-          [obj.faces.nodes2Faces 3*axis]], fluxFaces(:));
-
-        % fluxFaces = repelem(fluxFaces,nnodesBfaces(obj.isIntFaces),1);
-        % axis = ones(size(fluxFaces,1),1);
-        % flux = accumarray([[obj.faces.nodes2Faces(isIntNode) axis]; ...
-        %    [obj.faces.nodes2Faces(isIntNode) 2*axis]; ...
-        %    [obj.faces.nodes2Faces(isIntNode) 3*axis]], fluxFaces(:));
-
-        % Compute the fluxes at the boundary of the domain.
-        Node2Face = repelem((1:obj.faces.nFaces)',nnodesBfaces);
-        sgn = 2*(obj.faces.faceNeighbors(:,1)==0) - 1;
-
-        areaSq = vecnorm(obj.faces.faceNormal,2,2);
-        faceUnit = obj.faces.faceNormal./areaSq;
-        areaSq = areaSq.*nnodesBfaces;
-
-        % add boundary condition
-        
-        bcList = obj.bcs.db.keys;
-        for bc = string(bcList)
-          if strcmp(obj.model.findPhysicsFromID(obj.model.findIDPhysics(obj.bcs.getPhysics(bc))),'Flow')
-            [~,vals] = getBC(obj,bc,t);
-            [ents, ~] = sort(obj.bcs.getEntities(bc));
-            switch obj.bcs.getCond(bc)
-              case {'NodeBC','ElementBC'}
-              case 'SurfBC'
-                if strcmp(obj.bcs.getType(bc),'Dir') || strcmp(obj.bcs.getType(bc),'Spg')
-                  vals=vals(:,2);
-                end
-                dir = sgn(ents).*faceUnit(ents,:);
-                vals = vals(:)./areaSq(ents).*dir;
-                vals = repelem(vals,nnodesBfaces(ents),1);
-              case 'VolumeForce'
-                facesBcell = diff(obj.faces.mapF2E);
-
-                % Find the faces to distribute the contribution.
-                vals = vals(:)./facesBcell(ents);
-                vals = repelem(vals,facesBcell(ents),1);
-
-                hf2Cell = repelem((1:obj.mesh.nCells)',facesBcell);
-                ents = obj.faces.faces2Elements(hf2Cell == ents,1);
-
-                vals = sgn(ents).*vals./areaSq(ents).*faceUnit(ents,:);
-                vals = -repelem(vals,nnodesBfaces(ents),1);
-            end
-            nodes = obj.faces.nodes2Faces(ismember(Node2Face,ents));
-            [loc,~,pos] = unique(nodes);
-            axis = ones(length(nodes),1);
-            fluxB = accumarray([[pos axis]; [pos 2*axis]; ...
-              [pos 3*axis]], vals(:));
-            flux(loc,:)=fluxB;
-          end
-        end
-      end
-    end
+      % function flux = computeFluxBound(obj,flux,mob,bound,pot,t)
+      %    %COMPUTEFLUX - compute the flux at the boundary of the domain.
+      %    if isFEMBased(obj.model,'Flow') & false % This part is still need some work.
+      %
+      %    elseif isFVTPFABased(obj.model,'Flow')
+      %       nnodesBfaces = diff(obj.faces.mapN2F);
+      %       Node2Face = repelem((1:obj.faces.nFaces)',nnodesBfaces);
+      %       sgn = 2*(obj.faces.faceNeighbors(:,1)==0) - 1;
+      %
+      %       areaSq = vecnorm(obj.faces.faceNormal,2,2);
+      %       faceUnit = obj.faces.faceNormal./areaSq;
+      %       areaSq = areaSq.*nnodesBfaces;
+      %
+      %       % add boundary condition
+      %       bcList = bound.db.keys;
+      %       for bc = string(bcList)
+      %          field = translatePhysic(bound.getPhysics(bc),obj.model);
+      %          for f = field
+      %             if field == "SPFlow"
+      %                v = bound.getVals(bc,t);
+      %                switch bound.getCond(bc)
+      %                   case {'NodeBC','ElementBC'}
+      %                   case 'SurfBC'
+      %                      faceID = sort(bound.getEntities(bc));
+      %                      gamma = obj.material.getFluid().getFluidSpecWeight();
+      %                      switch bound.getType(bc)
+      %                         case 'Neu'
+      %                            vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
+      %                         case 'Dir'
+      %                            ents = sum(obj.faces.faceNeighbors(faceID,:),2);
+      %                            potBd = pot(ents)-(v+gamma*obj.faces.faceCentroid(faceID,3));
+      %                            vals = -mob*obj.trans(faceID).*potBd;
+      %                         case 'Spg'  % Still have some error here.
+      %                            ents = sum(obj.faces.faceNeighbors(faceID,:),2);
+      %                            % zbc = obj.faces.faceCentroid(faceID,3);
+      %                            % v = gamma*(v(1)-zbc);
+      %
+      %                            Datum = max(obj.mesh.coordinates);
+      %                            zbc = Datum(3)-obj.faces.faceCentroid(faceID,3);
+      %                            href = Datum(3)-v(1);
+      %                            v = gamma*(zbc-href(1));
+      %
+      %                            v(v<=0)=0.;
+      %                            vals = -mob*obj.trans(faceID).*(pot(ents)-v);
+      %                            vals(:) = 0.; % after find the error, delete this line.
+      %                      end
+      %                      dir = sgn(faceID).*faceUnit(faceID,:);
+      %                      vals = vals./areaSq(faceID).*dir;
+      %                      vals = repelem(vals,nnodesBfaces(faceID),1);
+      %                      nodes = obj.faces.nodes2Faces(ismember(Node2Face,faceID));
+      %                      [loc,~,pos] = unique(nodes);
+      %                      axis = ones(length(nodes),1);
+      %                      fluxB = accumarray([[pos axis]; [pos 2*axis]; ...
+      %                         [pos 3*axis]], vals(:));
+      %                      flux(loc,:)=fluxB;
+      %                   case 'VolumeForce'
+      %                      % Find the cell to apply the boundary condition
+      %                      cellID = sort(bound.getEntities(bc));
+      %                      vals = v.*obj.elements.vol(cellID);
+      %                      facesBcell = diff(obj.faces.mapF2E);
+      %
+      %                      % Find the faces to distribute the contribution.
+      %                      vals = vals./facesBcell(cellID);
+      %                      vals = repelem(vals,facesBcell(cellID),1);
+      %
+      %                      hf2Cell = repelem((1:obj.mesh.nCells)',facesBcell);
+      %                      faceID = obj.faces.faces2Elements(hf2Cell == cellID,1);
+      %
+      %                      vals = sgn(faceID).*vals./areaSq(faceID).*faceUnit(faceID,:);
+      %                      vals = -repelem(vals,nnodesBfaces(faceID),1);
+      %                      nodes = obj.faces.nodes2Faces(ismember(Node2Face,faceID));
+      %                      [loc,~,pos] = unique(nodes);
+      %                      axis = ones(length(nodes),1);
+      %                      fluxB = accumarray([[pos axis]; [pos 2*axis]; ...
+      %                         [pos 3*axis]], vals(:));
+      %                      flux(loc,:)=flux(loc,:)+fluxB;
+      %                end
+      %             end
+      %          end
+      %       end
+      %    end
+      % end
 
       % function mass = checkMassCons(obj,mob,pot)
       %   %CHECKMASSCONS - check the mass conservation in all elements.
@@ -588,7 +715,7 @@ classdef SinglePhaseFlow < SinglePhysics
     end
 
     methods (Access = private)
-      function [lwkpt,dlwkpt] = computeMobilityBoundary(obj)
+      function [lwkpt,dlwkpt] = computeMobility(obj,~)
         % COMPUTEMOBILITY compute the mobility and it's derivatives
         mu = obj.material.getFluid().getDynViscosity();
         if mu==0
@@ -614,10 +741,10 @@ classdef SinglePhaseFlow < SinglePhysics
           pointStr(2).name = 'potential';
           pointStr(2).data = state.potential;
         elseif isFVTPFABased(mod,'Flow')
-          pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);
-          pointStr(1).name = 'flux';
-          pointStr(1).data = state.flux;
-          % pointStr = [];
+          % pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);
+          % pointStr(1).name = 'flux';
+          % pointStr(1).data = state.flux;
+          pointStr = [];
 
           cellStr = repmat(struct('name', 1, 'data', 1), 3, 1);
           cellStr(1).name = 'permeability';

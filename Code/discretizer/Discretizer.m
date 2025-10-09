@@ -55,7 +55,7 @@ classdef Discretizer < handle
               % skip pair of uncoupled physics
             end
             switch obj.bcs.getType(bcId)
-              case {'Dir','Spg'}
+              case 'Dir'
                 if nargin > 2
                   assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
                     'invalid domain id input for single domain BC imposition']);

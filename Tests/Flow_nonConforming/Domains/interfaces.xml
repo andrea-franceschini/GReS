@@ -9,7 +9,7 @@ and must be known in advance during the mesh generation
         <Master id="1" surfaceTag="1"/>
         <Slave id="2" surfaceTag="1"/>
         <Type>MeshTying</Type>
-        <Quadrature type="RBF" nGP="6" nInt = "5"/>
+        <Quadrature type="SegmentBased" nGP="4" nInt = "5"/>
         <Multiplier type="dual"/>
       <Physics>SinglePhaseFlow</Physics>
       <Print name = "interface"/>

@@ -247,7 +247,7 @@ classdef Boundaries < handle
     % Reading boundary input file
     function readInputFiles(obj,fileNames)
       n = length(fileNames);
-      assert(n > 0,'No boundary conditions are to be imposed');
+      % assert(n > 0,'No boundary conditions are to be imposed');
       for i = 1 : n
         readInputFile(obj,fileNames(i));
       end
