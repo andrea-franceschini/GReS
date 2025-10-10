@@ -283,8 +283,10 @@ classdef SimulationParameters < handle
         obj.pTarget = obj.checkSlotXML(fdata,'Tolerance','PresIncTarget',1.e6);
 
         obj.NLSolver = obj.checkSlotXML(fdata,'Solver','Type','Newton');
+        if ~isempty(model)
         if ~model.isVariabSatFlow()
             obj.NLSolver = 'Newton';
+        end
         end
         obj.theta = obj.checkSlotXML(fdata,'Solver','Theta',1.);
         obj.itMaxNR = obj.checkSlotXML(fdata,'Solver','MaxIteration',10);

@@ -43,7 +43,7 @@
 # asv files
 *.asv
 
-# Output folders with vtk files
+# Develop Experiments folders
 /Tests_Develop/
 
 
