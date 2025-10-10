@@ -25,7 +25,7 @@
 *.la
 *.a
 *.lib
-# *.mexw64
+*.mexw64
 
 # Executables
 *.exe
@@ -38,7 +38,7 @@
 *.pvd
 
 # Matlab files
-#*.mat
+*.mat
 
 # asv files
 *.asv
