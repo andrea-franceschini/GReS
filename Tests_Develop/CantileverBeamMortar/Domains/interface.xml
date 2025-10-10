@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Interfaces>
+  <!-- Input file for contact mechanics interface -->
+  <Interface>
+    <Master id="1" surfaceTag="1" />
+    <Slave id="1" surfaceTag="2" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7" nInt="5"/>
+    <Multiplier type="dual"/>
+    <!--<Stabilization type="Bubble" scale="1.0"/>-->
+    <Print name = "Beam_interface"/>
+    <Physics> Poromechanics </Physics>
+  </Interface>
+</Interfaces>

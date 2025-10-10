@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<struct>
+    <Interface>
+        <Master id="1" surfaceTag="2"/>
+        <Slave id="2" surfaceTag="1"/>
+        <Type>MeshTying</Type>
+        <Quadrature type="RBF" nGP="16" nInt="2"/>
+        <Print name="interf_RBF"/>
+        <Physics>Poromechanics</Physics>
+        <Multiplier type="dual"/>
+    </Interface>
+</struct>

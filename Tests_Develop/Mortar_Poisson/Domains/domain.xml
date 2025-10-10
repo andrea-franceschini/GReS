@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<struct>
+    <Domain>
+      <Name>Cube</Name>
+        <Geometry>Mesh\domain.vtk</Geometry>
+        <ModelType>Poisson_FEM</ModelType>
+        <Gauss>3</Gauss>
+        <BoundaryConditions count="1">
+            <File>BCs/bc.dat</File>
+        </BoundaryConditions>
+        <OutState outFile="outTime.dat"  print="1" />
+    </Domain>
+</struct>

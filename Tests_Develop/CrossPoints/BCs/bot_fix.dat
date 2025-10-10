@@ -1,0 +1,7 @@
+NodeBC            % BC item 
+Dir            % BC type 
+Poromechanics            % Physics 
+bot_fix            % BC name 
+BCs/bot_fix/list 
+0.000000 BCs/bot_fix/time0.dat 
+End

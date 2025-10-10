@@ -1,0 +1,7 @@
+NodeBC                            % BC item
+Dir                               % BC type
+Flow                              % Physics
+rFace                             % BC name
+dirRightFace_hexa3/list
+0.000000 dirRightFace_hexa3/time0.dat
+End

@@ -1,0 +1,7 @@
+SurfBC            % BC item 
+Dir            % BC type 
+Poro            % Physics 
+botFix            % BC name 
+bottom_fixed/list 
+0.000000 bottom_fixed/time0.dat 
+End

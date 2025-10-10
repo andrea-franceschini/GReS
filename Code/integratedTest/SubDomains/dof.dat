@@ -1,0 +1,16 @@
+<SubDomain>
+<CellTag>
+1                              % cellTags in SubDomain
+<Field>
+Poromechanics                  % Physics in SubDomain
+</SubDomain>
+
+<SubDomain>
+<CellTag>
+2 3   
+<Field>                                % cellTags in SubDomain
+Poromechanics SinglePhaseFlow          % Physics in SubDomain
+</SubDomain>
+
+
+

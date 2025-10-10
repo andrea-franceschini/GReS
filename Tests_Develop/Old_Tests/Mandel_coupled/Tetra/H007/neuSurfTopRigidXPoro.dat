@@ -1,0 +1,8 @@
+SurfBC                            % BC item
+Neu                               % BC type
+Poro                              % Physics
+x                                 % Direction
+topFaceX                           % BC name
+neuSurfTopRigidXPoro/list
+0.000000 neuSurfTopRigidXPoro/time0.dat
+End

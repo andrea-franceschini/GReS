@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="f8bedf01-1ad4-425d-83a7-263211571872" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/leftBlock.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/rightBlock.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Code/elements/Quadrilateral.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Code/elements/Quadrilateral.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Code/multidomain/ContactBase.m" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Code/multidomain/ContactMortar.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Code/multidomain/ContactMortar.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Code/multidomain/MeshGlue.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Code/multidomain/MeshGlue.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Code/multidomain/MeshGlueJumpStabilization.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Code/multidomain/MeshGlueJumpStabilization.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Code/multidomain/Mortar.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Code/multidomain/Mortar.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Code/multidomain/Mortar/ElementBasedQuadrature.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Code/multidomain/Mortar/ElementBasedQuadrature.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Code/multidomain/Mortar/RBFquadrature.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Code/multidomain/Mortar/RBFquadrature.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Code/multidomain/Mortar/interfaceMesh.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Code/multidomain/Mortar/interfaceMesh.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Code/nonlinearsolver/ActiveSetContactSolver.m" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Code/nonlinearsolver/ActiveSetContactSolver.m" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Tests/Mortar_Poisson/BCs/bc/time0.dat" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Tests/Mortar_Poisson/BCs/bc/time0.dat" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../Tests/Mortar_Poisson/Domains/interfaces.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../../../Tests/Mortar_Poisson/Domains/interfaces.xml" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../../.." />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 6
+}]]></component>
+  <component name="ProjectId" id="31Kd4JFBxbBzBkUELqGem0o56lA" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "feature/contact",
+    "last_opened_file_path": "M:/Codes/GReS/Tests_Develop/2Blocks_faults_new/Mesh"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="M:\Codes\GReS\Tests_Develop\2Blocks_faults_new\Mesh" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-4c141bd692a7-e2d783800521-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-251.26927.90" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="f8bedf01-1ad4-425d-83a7-263211571872" name="Changes" comment="" />
+      <created>1755276505980</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1755276505980</updated>
+    </task>
+    <servers />
+  </component>
+</project>

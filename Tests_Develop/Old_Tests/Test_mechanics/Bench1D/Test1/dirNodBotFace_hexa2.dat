@@ -1,0 +1,7 @@
+NodeBC                            % BC item
+Dir                               % BC type
+Poro                              % Physics
+botFace                           % BC name
+dirNodBotFace_hexa2/list
+0.000000 dirNodBotFace_hexa2/time0.dat
+End

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Interfaces>
+  <!-- Input file for contact mechanics interface -->
+  <Interface>
+    <Master id="2" surfaceTag="3" />
+    <Slave id="1" surfaceTag="1" />
+    <Type> ContactMortar </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <Coulomb phi="5.71" cohesion="0.0"/>
+    <Stabilization scale="5.0"/>
+    <Print name = "Fault"/>
+  </Interface>
+</Interfaces>

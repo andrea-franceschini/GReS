@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Interfaces>
+  <!-- Input file for contact mechanics interface -->
+  <Interface>
+    <Master id="1" surfaceTag="1" />
+    <Slave id="2" surfaceTag="1" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <!--<Coulomb phi="30.0" cohesion="0.0"/>-->
+    <Multiplier type="P0"/>
+    <Stabilization  type="Jump" scale = "1.0"/>-->
+    <Physics> Poromechanics </Physics>
+    <Print name = "Fault_2"/>
+  </Interface>
+</Interfaces>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A mortar model can be defined using only one mesh.
+Mortar and slave interfaces can be difference surfaceTag of the same domain-->
+<struct>
+    <Interface>
+        <Master id="1" surfaceTag="1"/>
+        <Slave id="1" surfaceTag="3"/>
+        <Type>MeshTying</Type>
+        <Quadrature type="SegmentBased" nGP="4" nInt="5"/>
+        <!--<Stabilization type="Jump" />-->
+        <Multiplier type="dual"/>
+      <Physics>Poisson</Physics>
+      <Print name = "interface"/>
+    </Interface>
+</struct>
