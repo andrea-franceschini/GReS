@@ -6,24 +6,14 @@ in a nonConforming simulation.
   <Domain>
     <Name> TwoSpheres </Name>
     <Geometry> Mesh/two_spheres.vtk </Geometry>
-    <ModelType> SinglePhaseFlow_FEM </ModelType>
+    <ModelType> SinglePhaseFlow_FEM Poromechanics_FEM </ModelType>
     <SimParameters> simParam.dat </SimParameters>
     <Gauss> 1 </Gauss>
     <Material> Materials/materialsList_Zhang2007.dat </Material>
-    <BoundaryConditions count="2">
-        <File> BCs/LeftSphere_gal.dat </File>
-        <File> BCs/RightSphere_gal.dat </File>
-    </BoundaryConditions>
-    <OutState outFile="outTime.dat"  print="1" />
-  </Domain>
-  <Domain>
-    <Name> TwoSpheres </Name>
-    <Geometry> Mesh/two_spheres.vtk </Geometry>
-    <ModelType> Poromechanics_FEM </ModelType>
-    <SimParameters> simParam.dat </SimParameters>
-    <Gauss> 1 </Gauss>
-    <Material> Materials/materialsList_Zhang2007.dat </Material>
-    <BoundaryConditions count="0">
+    <BoundaryConditions count="3">
+        <File> BCs/LeftSphere_cmax.dat </File>
+        <File> BCs/RightSphere_cmax.dat </File>
+        <File> BCs/FixLeftSphere.dat </File>
     </BoundaryConditions>
     <OutState outFile="outTime.dat"  print="1" />
   </Domain>

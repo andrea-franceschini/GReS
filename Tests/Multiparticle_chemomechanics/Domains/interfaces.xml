@@ -10,7 +10,8 @@ and must be known in advance during the mesh generation
         <Slave id="1" surfaceTag="4"/>
         <Type>MeshTying</Type>
         <Quadrature type="SegmentBased" nGP="4" nInt = "5"/>
-        <Multiplier type="dual"/>
+        <Multiplier type="P0"/>
+        <Stabilization type="Jump" scale="1.0"/>
       <Physics> Poromechanics </Physics>
       <Print name = "interface"/>
     </Interface>

@@ -40,7 +40,9 @@ classdef interfaceMesh < handle
         [obj.msh(2),globNodes2] = mshSlave.getSurfaceMesh(surfSlave,any(obj.elemConnectivity,1));
       end
 
-
+      % remove empty row/cols from connectivity matrix
+      obj.elemConnectivity(~any(obj.elemConnectivity,2),:) = [];
+      obj.elemConnectivity(:,~any(obj.elemConnectivity,1)) = [];
       
       getCellTypes(obj);
 

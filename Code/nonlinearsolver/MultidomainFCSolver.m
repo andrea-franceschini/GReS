@@ -326,6 +326,9 @@ classdef MultidomainFCSolver < handle
         for iFld = 1:obj.nfldDom(iDom)
           fld = discr.fields(iFld);
           for iI = discr.interfaceList
+            if ~strcmp(obj.interfaces{iI}.physic,fld)
+                continue
+            end
             jj = obj.systSize(2)+iI;
             [J{iFld+k,jj},J{jj,iFld+k}] = getJacobian(...
               obj.interfaces{iI},iDom,fld);

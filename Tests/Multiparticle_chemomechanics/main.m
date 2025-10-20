@@ -1,14 +1,30 @@
 close all
 clear
+tic;
 
 % Set some model parameters not included in the parameters file
-c_max = 2.29e4;                     % maximum concentration [mol.m-3]
-D = 7.08e-15;                        % diffusion coefficient [m2.s-1]
-F = 96485;                          % Faraday constant [C.mol-1]
-Rp = 5e-6;                          % particle radius [m]
-Crate = 1;                          % C-rate for charge
-i_n = F*Crate/3600 * c_max * Rp/3;  % Normal current density [A.m-2]
-I = i_n*Rp / (D*c_max*F);           % Nondimensional normal current density
+material_switch = 0; % 0 for [Zhang,2007], 1 for Si
+% Make sure to also switch Omega_d in Poromechanics.m
+if material_switch == 0
+    c_max = 2.29e4;                     % maximum concentration [mol.m-3]
+    D = 7.08e-15;                       % diffusion coefficient [m2.s-1]
+    F = 96485;                          % Faraday constant [C.mol-1]
+    Rp = 5e-6;                          % particle radius [m]
+    Crate = 1;                          % C-rate for charge
+    i_n = F*Crate/3600 * c_max * Rp/3;  % Normal current density [A.m-2]
+    I = i_n*Rp / (D*c_max*F);           % Nondimensional normal current density
+elseif material_switch == 1
+    c_max = 2.95e5;                     % maximum concentration [mol.m-3]
+    D = 1.0e-16;                        % diffusion coefficient [m2.s-1]
+    F = 96485;                          % Faraday constant [C.mol-1]
+    Rp = 500e-9;                        % particle radius [m]
+    Crate = 1;                          % C-rate for charge
+    i_n = F*Crate/3600 * c_max * Rp/3;  % Normal current density [A.m-2]
+    I = i_n*Rp / (D*c_max*F);           % Nondimensional normal current density
+else
+    error(['Please provide a valid material_switch (0 for [Zhang,2007]', ...
+        'and 1 for Si)']);
+end
 
 %% PREPROCESSING TO WRITE BCS FILE PROGRAMMATICALLY
 
@@ -20,17 +36,34 @@ mesh.importMesh(meshFile);
 % get dirichlet node index (X = MIN, Y = MAX, Z = MAX)
 tol = 1e-3;
 
-[cx,cy,cz] = deal(mesh.coordinates(:,1),...
-                  mesh.coordinates(:,2),...
-                  mesh.coordinates(:,3));
-ContactPoint = find(all(abs([cx, cy cz]) < tol,2));
-mesh.surfaceTag(ContactPoint) = NaN; % Remove ContactPoint from surfaces
-writeBCfiles('BCs/LeftSphere_gal', 'SurfBC', 'Neu', 'SinglePhaseFlow', ...
-    'Left_1C', 0, I, 3);
-writeBCfiles('BCs/RightSphere_gal', 'SurfBC', 'Neu', 'SinglePhaseFlow', ...
-    'Right_1C', 0, I, 4);
-clear mesh
+% Fix the left sphere
+[cx,cy,cz] = deal( mesh.coordinates(:,1), ...
+                   mesh.coordinates(:,2), ...
+                   mesh.coordinates(:,3) ...
+                   );
 
+% Poromechanics boundary condition (fix sphere centers)
+[XL, YL, ZL] = deal(-1, 0, 0);
+LeftSphereCenter = find(all(abs([cx-XL, cy-YL cz-ZL]) < tol,2));
+writeBCfiles('BCs/FixLeftSphere', 'NodeBC', 'Dir', {'Poromechanics', ...
+    'x', 'y', 'z'}, 'FixLeftSphereCenter', 0, 0, LeftSphereCenter);
+[XR, YR, ZR] = deal(1, 0, 0);
+RightSphereCenter = find(all(abs([cx-XR, cy-YR cz-ZR]) < tol,2));
+writeBCfiles('BCs/FixRightSphere', 'NodeBC', 'Dir', {'Poromechanics', ...
+    'x', 'y', 'z'}, 'FixRightSphereCenter', 0, 0, LeftSphereCenter);
+
+% SinglePhaseFlow boundary conditions (galvanostatic)
+writeBCfiles('BCs/LeftSphere_gal', 'SurfBC', 'Neu', 'SinglePhaseFlow', ...
+    'Left_1C', 0, 10*I, mesh, 3);
+writeBCfiles('BCs/RightSphere_gal', 'SurfBC', 'Neu', 'SinglePhaseFlow', ...
+    'Right_1C', 0, 10*I, mesh, 4);
+
+% SinglePhaseFlow boundary conditions (c = c_max)
+writeBCfiles('BCs/LeftSphere_cmax', 'SurfBC', 'Dir', 'SinglePhaseFlow', ...
+    'Left_cmax', 0, 1, mesh, 3);
+writeBCfiles('BCs/RightSphere_cmax', 'SurfBC', 'Dir', 'SinglePhaseFlow', ...
+    'Right_cmax', 0, 1, mesh, 4);
+clear mesh
 
 %% BUILD MODEL
 % For now, simulation parameters are shared by all domains
@@ -45,8 +78,12 @@ domains = buildModel(domainFile);
 interfFile = fullfile('Domains','interfaces.xml');
 [interfaces,domains] = Mortar.buildInterfaces(interfFile,domains);
 
+% % write Bc logic and prepare files to manually redefine the boundaries
+% domains.bcs = Boundaries();
+
 %% RUN MODEL  
 % A different solver is needed for models with non conforming domains
 solver = MultidomainFCSolver(domains,interfaces);
 solver.NonLinearLoop();
 solver.finalizeOutput();
+toc;
