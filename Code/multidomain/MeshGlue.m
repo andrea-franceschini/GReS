@@ -99,7 +99,7 @@ classdef MeshGlue < Mortar
       % return rhs block associated to master/slave/multiplier field
       
       if ~strcmp(fld,obj.physic)
-        rhs = [];
+        rhs = 0;
         return
       end
 
