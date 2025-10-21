@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <SimulationInput>
-  <?xml version="1.0" encoding="UTF-8"?>
-<SimulationInput>
   <!-- Domain 1 -->
   <Domain>
     <Name>TopBlock</Name>
@@ -30,7 +28,7 @@
       <File>BCs/y_fixed.dat</File>
       <File>BCs/x_fixed.dat</File>
     </BoundaryConditions>
-     <OutState outFile="outTime.dat"  print="1" />
+    <OutState outFile="outTime.dat"  print="1" />
   </Domain>
 </SimulationInput>
  
