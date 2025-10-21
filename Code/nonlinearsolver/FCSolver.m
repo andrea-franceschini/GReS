@@ -38,7 +38,6 @@ classdef FCSolver < handle
             end
         end
         obj.solStatistics = SolverStatistics(linSyst.simparams.itMaxNR,linSyst.simparams.relTol,linSyst.simparams.absTol,saveStasticts);
-        % obj.toGrow = GrowningDomain(obj.linSyst,obj.bound);
     end
 
     function [simStat] = NonLinearLoop(obj)
@@ -49,20 +48,15 @@ classdef FCSolver < handle
 
       flConv = true; % convergence flag
 
-      % [obj.statek,obj.stateTmp]=obj.toGrow.addCell(obj.linSyst,1,2,6,obj.statek,obj.stateTmp);
-      % [obj.statek,obj.stateTmp]=obj.toGrow.addCells(obj.linSyst,1,[2 4 6 8],6,obj.statek,obj.stateTmp);
+      % initialize the state object
+      applyDirVal(obj.domain,obj.t);
+      obj.stateTmp = obj.domain.state;
+      obj.statek =  copy(obj.stateTmp);
 
       % Loop over time
       while obj.t < obj.domain.simparams.tMax
          absTol = obj.domain.simparams.absTol;
          residual = zeros(obj.domain.simparams.itMaxNR+1,2);
-
-         % =======
-         % add cells
-         % if obj.t>50 && obj.t<65
-         %    [obj.statek,obj.stateTmp]=obj.toGrow.addCells(obj.linSyst,1,[2 4 6 8],6,obj.statek,obj.stateTmp);
-         % end
-         % >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
 
          % Update the simulation time and time step ID
          obj.tStep = obj.tStep + 1;
