@@ -445,6 +445,10 @@ classdef Mortar < handle
 
     function checkInterfaceDisjoint(obj)
       % check that the nodes of mortar and slave side are disjoint
+      if strcmp(obj.multiplierType,"P0")
+        return
+      end
+      
       if obj.idDomain(1)==obj.idDomain(2)
         % interface defined within the same domain 
         out = setdiff(obj.mesh.local2glob{1},obj.mesh.local2glob{2});
