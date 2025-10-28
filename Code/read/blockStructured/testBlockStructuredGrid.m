@@ -8,12 +8,15 @@ clc
 % the number of macro-block on each direction
 % the maximum refinement level
 % Refinement is achieved with an octree strategy
-blockMesh = BlockStructuredMesh([0 1;0 1;0,0.25],[3,3,1],3);
+fprintf('Processing the block structured mesh')
+blockMesh = BlockStructuredMesh([0 1;0 1;0,0.25],[3,3,1],4);
 
 % OPTION 1: refine recursively all children of target macro block
 blockMesh.refineRecursive([2,2,1],2);
 blockMesh.refineRecursive([2,2,1],3,3);
 blockMesh.refineRecursive([2,2,1],3,7);
+% blockMesh.refineRecursive([1,2,1],3);
+% blockMesh.refineRecursive([3,1,1],2);
 % blockMesh.refineRecursive([3,3,1],1);
 
 % OPTION 2: refine around a target point until the maximum refinement level
