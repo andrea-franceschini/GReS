@@ -16,21 +16,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Setup MATLAB
-      #    (This uses the official MathWorks action to set up MATLAB)
+      # 2. Setup MATLAB (handles licensing automatically)
       - name: Setup MATLAB
         uses: matlab-actions/setup-matlab@v2
 
-      # 3. Run your main test script
-      - name: Run MATLAB test script
-        run: |
-          matlab -batch "try, run('Tests/folder_names/Main.m'); catch ME, disp(getReport(ME)); exit(1); end"
+      # 3. Run setup scripts and main test script
+      - name: Initialize, compile, and run tests
+        uses: matlab-actions/run-command@v2
+        with:
+          command: |
+            try
+                initGReS;
 
-      # 4. (Optional) If you have multiple folders of tests, loop through them
-      #    Example of running all Main.m files under Tests/**/
-      # - name: Run all test scripts in subfolders
-      #   run: |
-      #     find Tests -type f -name "Main.m" | while read testfile; do
-      #       echo "Running $testfile"
-      #       matlab -batch "try, run('$testfile'); catch ME, disp(getReport(ME)); exit(1); end"
-      #     done
+                compileAll;
+
+                runIntegratedTest;
+            catch ME
+                disp(getReport(ME));
+                exit(1); % fail CI
+            end
