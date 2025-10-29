@@ -77,7 +77,6 @@ classdef SinglePhaseFlow < SinglePhysics
       switch nargin
         case 2
           outPrint.pressure = sOld.data.pressure;
-          t = sOld.t;
         case 4
           % linearly interpolate state variables containing print time
           fac = (t - sOld.t)/(sNew.t - sOld.t);
