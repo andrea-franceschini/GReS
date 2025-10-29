@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<simParam>
+    <Time Start="0."
+          End ="10.1e+0"
+          DtInic= "1.e-2"
+          DtMin ="1.e-4"
+          DtMax ="1.e+1"
+          />
+    <TimeStepControl IncAugmentation = "1.2e+0"
+                     IncChopping = "Default" 
+                     RelaxationFac = "Default"/>
+    <Tolerance Norm = "Default"
+               Absolute = "1.e-9"
+               Relative = "1.e-8"
+               PresIncTarget = "100000000000"/>
+    <Solver Type ="Picard"
+            Theta = "Default"
+            MaxIteration = "20"/>
+</simParam>

@@ -28,13 +28,14 @@ classdef Hexahedron < FEM
 
   properties (Constant)
     centroid = [0,0,0]
-    coordLoc = [-1 -1 -1;
-      1 -1 -1;
-      1  1 -1;
+    coordLoc = [
+      -1 -1 -1;
+       1 -1 -1;
+       1  1 -1;
       -1  1 -1;
       -1 -1  1;
-      1 -1  1;
-      1  1  1;
+       1 -1  1;
+       1  1  1;
       -1  1  1]
     vtkType = 12
     nNode = 8

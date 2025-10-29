@@ -38,8 +38,9 @@ classdef FCSolver < handle
                 otherwise
             end
         end
-        obj.solStatistics = SolverStatistics(linSyst.simparams.itMaxNR,linSyst.simparams.relTol,linSyst.simparams.absTol,saveStasticts);
-        obj.toGrow = GrowningDomain(linSyst,linSyst.bcs);
+        obj.solStatistics = SolverStatistics(linSyst.simparams.itMaxNR, ...
+          linSyst.simparams.relTol,linSyst.simparams.absTol,saveStasticts);
+        obj.toGrow = DomainGrow(linSyst);
     end
 
     function [simStat] = NonLinearLoop(obj)
@@ -54,18 +55,30 @@ classdef FCSolver < handle
       while obj.t < obj.domain.simparams.tMax
          absTol = obj.domain.simparams.absTol;
          residual = zeros(obj.domain.simparams.itMaxNR+1,2);
-
-         % add cells
-         % obj.toGrow.addCell( 1,        2,6,obj.domain,obj.statek,obj.stateTmp);
-         % obj.toGrow.addCells(1,[2 4 6 8],6,obj.domain,obj.statek,obj.stateTmp);         
-         % if obj.t>50 && obj.t<65
-         %    obj.toGrow.grow(1,[2 4 6 8],6,obj.domain,obj.statek,obj.stateTmp);
-         % end
-
+         
          % Update the simulation time and time step ID
          obj.tStep = obj.tStep + 1;
          %new time update to fit the outTime list
          [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
+
+         % if mod(obj.tStep,2) == 1
+         % if obj.tStep > 1
+         %   % if obj.tStep == 1
+         %   obj.toGrow.grow("Top",obj.statek,obj.stateTmp);
+         %   % else
+         %   % obj.toGrow.grow("BoundB",obj.statek,obj.stateTmp);
+         % end
+         if obj.tStep > 1
+
+         if mod(obj.tStep,2)== 1
+           % if obj.tStep == 1
+           % obj.toGrow.grow("Bot",obj.statek,obj.stateTmp);
+           % obj.toGrow.grow("Top",obj.statek,obj.stateTmp);
+           obj.toGrow.grow("BoundB",obj.statek,obj.stateTmp);
+         else
+           obj.toGrow.grow("Top",obj.statek,obj.stateTmp);
+         end
+         end
 
          % Apply the Dirichlet condition value to the solution vector
          applyDirVal(obj.domain,obj.t);
@@ -134,6 +147,13 @@ classdef FCSolver < handle
          flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
          % flConv = (rhsNorm < tolWeigh);
          if flConv % Convergence
+            % After convergence, first step, update the mesh
+            % if obj.tStep > 1 
+            % % if obj.tStep == 1
+            %   % obj.toGrow.grow("Bot",obj.statek,obj.stateTmp);
+            %   obj.toGrow.grow("Top",obj.statek,obj.stateTmp);
+            % end
+
             obj.stateTmp.t = obj.t;
             obj.domain.state.t = obj.t;
             % Advance state of non linear models

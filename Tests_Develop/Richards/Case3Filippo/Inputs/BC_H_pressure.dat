@@ -1,0 +1,7 @@
+SurfBC                            % BC item 
+Spg                               % BC type 
+VariablySaturatedFlow            % Physics 
+H_pressure                           % BC name 
+Inputs/BC/List_H_pressure 
+0.00 Inputs/BC/Time_H_pressure_0.dat 
+End

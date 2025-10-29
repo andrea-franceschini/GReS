@@ -25,6 +25,7 @@ classdef BoundaryEntities < handle
   
   properties (Access = private)
       dof
+      load = false
   end
 
   methods (Access = public)
@@ -35,17 +36,57 @@ classdef BoundaryEntities < handle
     end
 
     function vals = getValues(obj, t)
+      % Load the boundary parameters
+      [i1, i2] = bin_search(obj, t);
+      if (~obj.load) & ~isequal(obj.availSteps,[i1;i2])
+        obj.loadValues(t);
+      end
       if (obj.nTimes == 1)
-        vals = readDataSet(obj.dataFiles(1).fileName, obj.totEnts);
+        vals = obj.availVals(:,1);
+      else
+        fac = (t - obj.times(1)) / (obj.times(2) - obj.times(1));
+        vals = fac*(obj.availVals(:,2) - obj.availVals(:,1)) + obj.availVals(:,1);
+      end
+    end
+
+    % function vals = getValues(obj, t)
+    %   if (obj.nTimes == 1)
+    %     vals = readDataSet(obj.dataFiles(1).fileName, obj.totEnts);
+    %   else
+    %     [i1, i2] = bin_search(obj, t);
+    %     p1 = find(obj.availSteps == i1);
+    %     p2 = find(obj.availSteps == i2);
+    %     if (isempty(p1) && isempty(p2))
+    %       p1 = 1;
+    %       obj.availVals(:,1) = readDataSet(obj.dataFiles(i1).fileName, obj.totEnts);
+    %       obj.availSteps(1) = i1;
+    %       p2 = 2;
+    %       obj.availVals(:,2) = readDataSet(obj.dataFiles(i2).fileName, obj.totEnts);
+    %       obj.availSteps(2) = i2;
+    %     elseif (~isempty(p1) && isempty(p2))
+    %       p2 = 3 - p1;
+    %       obj.availVals(:,p2) = readDataSet(obj.dataFiles(i2).fileName, obj.totEnts);
+    %       obj.availSteps(p2) = i2;
+    %     elseif (~isempty(p2) && isempty(p1))
+    %       p1 = 3 - p2;
+    %       obj.availVals(:,p1) = readDataSet(obj.dataFiles(i1).fileName, obj.totEnts);
+    %       obj.availSteps(p1) = i1;
+    %     end
+    %     fac = (t - obj.times(i1)) / (obj.times(i2) - obj.times(i1));
+    %     vals = fac*(obj.availVals(:,p2) - obj.availVals(:,p1)) + obj.availVals(:,p1);
+    %   end
+    % end
+
+    function loadValues(obj, t)
+      if (obj.nTimes == 1)
+        obj.availVals(:,1) = readDataSet(obj.dataFiles(1).fileName, obj.totEnts);
       else
         [i1, i2] = bin_search(obj, t);
         p1 = find(obj.availSteps == i1);
         p2 = find(obj.availSteps == i2);
         if (isempty(p1) && isempty(p2))
-          p1 = 1;
           obj.availVals(:,1) = readDataSet(obj.dataFiles(i1).fileName, obj.totEnts);
           obj.availSteps(1) = i1;
-          p2 = 2;
           obj.availVals(:,2) = readDataSet(obj.dataFiles(i2).fileName, obj.totEnts);
           obj.availSteps(2) = i2;
         elseif (~isempty(p1) && isempty(p2))
@@ -57,10 +98,12 @@ classdef BoundaryEntities < handle
           obj.availVals(:,p1) = readDataSet(obj.dataFiles(i1).fileName, obj.totEnts);
           obj.availSteps(p1) = i1;
         end
-        fac = (t - obj.times(i1)) / (obj.times(i2) - obj.times(i1));
-        vals = fac*(obj.availVals(:,p2) - obj.availVals(:,p1)) + obj.availVals(:,p1);
       end
+      obj.load = true;
     end
+
+
+
   end
 
   methods (Access = private)
@@ -93,5 +136,6 @@ classdef BoundaryEntities < handle
         pos = floor((i1+i2)/2);
       end
     end
+
   end
 end

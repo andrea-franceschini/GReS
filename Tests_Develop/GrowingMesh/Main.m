@@ -59,15 +59,39 @@ if createBC
   cond(1).field = "latY0";
   cond(1).times = 0.;
   cond(1).values = 1e6;
+  % cond(1).times = [0. 1. 2. 3.];
+  % cond(1).values = [1e6 1e6 1e6 1e6];
+
+  % cond(2).name = 'Top';
   cond(2).name = 'BoundB';
   cond(2).type = 'Dir';
   cond(2).field = "latYM";
   cond(2).times = 0.;
   cond(2).values = 1e5;
+  % cond(2).times = [0. 10. 20. 30.] ;
+  % cond(2).values = [1e5 2e5 1e5 2e5];
+
+  % cond(2).name = 'BoundB';
+  % cond(2).type = 'Spg';
+  % cond(2).field = "latYM";
+  % cond(2).times = 0.;
+  % cond(2).values = 1;
+
+  cond(3).name = 'Top';
+  cond(3).type = 'Neu';
+  cond(3).field = "latZM";
+  cond(3).times = 0.;
+  cond(3).values = 0.;
+
+  cond(4).name = 'Bot';
+  cond(4).type = 'Neu';
+  cond(4).field = "latZ0";
+  cond(4).times = 0.;
+  cond(4).values = 0.;
 
   fileName = setBoundaryC('Inputs',grid,cond,physics);
 else
-  fileName = ["Inputs/BC/BC_SPG_BordA.dat","Inputs/BC/BC_SPG_BordB.dat"];
+  fileName = ["Inputs/BC_BoundA.dat","Inputs/BC_BoundB.dat","Inputs/BC_Top.dat"];
 end
 bound = Boundaries(fileName,model,grid);
 

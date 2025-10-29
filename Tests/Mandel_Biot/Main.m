@@ -1,6 +1,8 @@
 close all;
 % clear;
 
+profile on
+
 % Get the full path of the currently executing file
 scriptFullPath = mfilename('fullpath');
 
@@ -74,7 +76,7 @@ domain = Discretizer('ModelType',model,...
 state = applyMandelIC(domain.state,mat,topology,F);
 
 % Print model initial state
-printState(domain);
+% printState(domain);
 
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme. 

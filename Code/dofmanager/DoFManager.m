@@ -303,8 +303,13 @@ classdef DoFManager < handle
 
       
 
-      function addCellTag(obj,tag)
+      function addCell(obj,tag,ent)
          obj.cellTags = [obj.cellTags; tag];
+         for i=obj.tag2subDomain
+           % lnk=obj.entMap{i};
+           obj.entMap{i}=[obj.entMap{i};ent];
+         % obj.entMap{i} = [obj.entMap; ent];
+         end
       end
 
 

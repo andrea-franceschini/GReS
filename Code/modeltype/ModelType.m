@@ -3,24 +3,21 @@ classdef ModelType < handle
   %   Detailed explanation goes here
   
   properties (Access = private)
-    ModSettings = zeros(3,1); % [Poromechanics; Flow; Poisson]
-    % ModSettings(1) -> Poromechanics
-    %    0   -> The model is inactive
-    %  10-19 -> Continuous mechanics
+    % ModSettings(X): An array designed to simplify the storage of the
+    % physics model and discretization type.
     %
-    % ModSettings(2) -> Flow
-    %    0   -> The model is inactive
-    %  10-19 -> Single-phase flow
-    %  20-29 -> Variably saturated flow (Richards eq.)
-
-    % ModSettings(3) -> Poisson
-    %    0   -> The model is inactive
-    %  10-19 -> Poisson problem with non homogeneous bcs
-    %   ...
-    %
+    % The array entries are ordered as follows:
+    % (0) Poromechanics Models =  0 -> The model is inactive
+    %                            1Y -> Continuous Mechanics
+    % (1) Fluid Flow Models =  0 -> The model is inactive
+    %                         1Y -> Single-Phase Flow
+    %                         2Y -> Variably saturated flow (Richards eq.)
+    % (2) Poisson Models =  0 -> The model is inactive
+    %                      1Y -> Poisson problem with non homogeneous bcs
     % Discretization schemes:
-    %    0   -> FEM      (Finite Element Method)
-    %    1   -> FV-TPFA  (Finite Volume with Two-Point Flux Approximation)
+    %  Y = 0 -> FEM      (Finite Element Method)
+    %  Y = 1 -> FV-TPFA  (Finite Volume with Two-Point Flux Approximation)
+    ModSettings = zeros(3,1);
   end
   
   methods (Access = public)

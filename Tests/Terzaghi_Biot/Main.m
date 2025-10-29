@@ -80,7 +80,7 @@ domain = Discretizer('ModelType',model,...
 applyTerzaghiIC(domain.state,mat,topology,F);
 
 % Print model initial state
-printState(domain);
+% printState(domain);
 
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme. 
