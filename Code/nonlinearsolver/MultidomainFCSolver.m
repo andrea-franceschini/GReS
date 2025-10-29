@@ -413,8 +413,9 @@ classdef MultidomainFCSolver < handle
       % Compute domain matrices
       for i = 1:obj.nDom
         discretizer = obj.domains(i);
-        for j = 1:discretizer.numSolvers
-          computeMat(discretizer.solver(j), obj.state(i).prev, obj.dt);
+        for j = 1:numel(discretizer.solverNames)
+          s = discretizer.solverNames{j};
+          computeMat(discretizer.solver(s), obj.state(i).prev, obj.dt);
         end
       end
 
@@ -426,8 +427,9 @@ classdef MultidomainFCSolver < handle
       % Compute domain rhs
       for i = 1:obj.nDom
         discretizer = obj.domains(i);
-        for j = 1:discretizer.numSolvers
-          computeRhs(discretizer.solver(j), obj.state(i).prev, obj.dt);
+        for j = 1:numel(discretizer.solverNames)
+          s = discretizer.solverNames{j};
+          computeRhs(discretizer.solver(s), obj.state(i).prev, obj.dt);
         end
       end
 
@@ -436,9 +438,9 @@ classdef MultidomainFCSolver < handle
         computeRhs(obj.interfaces{j});
       end
       % Compute matrices and residuals for individual models of
-        % the i-th domain
-%         computeMatricesAndRhs(...
-%           discretizer, obj.state(i).prev, obj.dt);
+      % the i-th domain
+      %         computeMatricesAndRhs(...
+      %           discretizer, obj.state(i).prev, obj.dt);
     end
 
 
@@ -455,8 +457,6 @@ classdef MultidomainFCSolver < handle
         end
       end
     end
-
-
 
 
     function updateState(obj,dSol)

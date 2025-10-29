@@ -1,3 +1,6 @@
-1                               % cellTags in Subdomain
-Poromechanics SPFlow            % Physics in subdomain
-End
+<SubDomain>
+<CellTag>
+1                              % cellTags in SubDomain
+<Field>
+Poromechanics SinglePhaseFlow                  % Physics in SubDomain
+</SubDomain>
