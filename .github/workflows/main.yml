@@ -7,30 +7,46 @@ on:
     branches: [ main ]
 
 jobs:
-  matlab-tests:
-    name: Run MATLAB Tests
-    runs-on: ubuntu-latest
+  gres_tests:
+    name: ${{ matrix.display_name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            display_name: Linux (Ubuntu Latest, GCC 11)
+          - os: windows-latest
+            display_name: Windows (Windows 2022, MSVC 2022)
+
+    runs-on: ${{ matrix.os }}
 
     steps:
-      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Setup MATLAB
-      #    (This uses the official MathWorks action to set up MATLAB)
       - name: Setup MATLAB
         uses: matlab-actions/setup-matlab@v2
 
-      # 3. Run your main test script
-      - name: Run MATLAB test script
+      - name: Ensure GCC 11 is active on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          matlab -batch "try, run('Tests/folder_names/Main.m'); catch ME, disp(getReport(ME)); exit(1); end"
+          sudo apt update
+          sudo apt install -y gcc-11 g++-11
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100
+          gcc --version
+          g++ --version
 
-      # 4. (Optional) If you have multiple folders of tests, loop through them
-      #    Example of running all Main.m files under Tests/**/
-      # - name: Run all test scripts in subfolders
-      #   run: |
-      #     find Tests -type f -name "Main.m" | while read testfile; do
-      #       echo "Running $testfile"
-      #       matlab -batch "try, run('$testfile'); catch ME, disp(getReport(ME)); exit(1); end"
-      #     done
+      - name: Initialize GReS, compile MEX, and run tests
+        uses: matlab-actions/run-command@v2
+        with:
+          command: |
+            try
+                initGReS;
+                compileAll;
+                run("Code/unittest/runUnitTests.m");
+                run("Code/integratedTest/runIntegratedTests.m");
+            catch ME
+                disp(getReport(ME));
+                exit(1); % Mark job as failed
+            end
