@@ -13,8 +13,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-20.04
-            display_name: Linux (Ubuntu 20.04, GCC 9)
+          - os: ubuntu-latest
+            display_name: Linux (Ubuntu Latest, GCC 11)
           - os: windows-latest
             display_name: Windows (Windows 2022, MSVC 2022)
 
@@ -26,6 +26,16 @@ jobs:
 
       - name: Setup MATLAB
         uses: matlab-actions/setup-matlab@v2
+
+      - name: Ensure GCC 11 is active on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 100
+          sudo update-alternatives --config gcc
+          sudo update-alternatives --config g++
+          gcc --version
+          g++ --version
 
       - name: Initialize GReS, compile MEX, and run tests
         uses: matlab-actions/run-command@v2
