@@ -7,21 +7,27 @@ on:
     branches: [ main ]
 
 jobs:
-  matlab-tests:
-    name: Run GReS tests
-    runs-on: ubuntu-latest
+  gres_tests:
+    name: ${{ matrix.display_name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-20.04
+            display_name: Linux (Ubuntu 20.04, GCC 9)
+          - os: windows-latest
+            display_name: Windows (Windows 2022, MSVC 2022)
+
+    runs-on: ${{ matrix.os }}
 
     steps:
-      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Setup MATLAB (handles licensing automatically)
       - name: Setup MATLAB
         uses: matlab-actions/setup-matlab@v2
 
-      # 3. Run setup scripts and main test script
-      - name: Initialize, compile MEX and run tests
+      - name: Initialize GReS, compile MEX, and run tests
         uses: matlab-actions/run-command@v2
         with:
           command: |
@@ -32,5 +38,5 @@ jobs:
                 run("Code/integratedTest/runIntegratedTests.m");
             catch ME
                 disp(getReport(ME));
-                exit(1); % fail CI
+                exit(1); % Mark job as failed
             end
