@@ -45,7 +45,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
 % Degree of freedom manager 
 %fname = 'dof.dat';
-dofmanager = DoFManager(topology,model);
+dofmanager = DoFManager(topology,model,'dof.dat');
 
 % Create and set the print utility
 printUtils = OutState(model,topology,'outTime.dat','folderName','Output_Terzaghi_tetra','flagMatFile',true);
