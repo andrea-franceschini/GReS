@@ -1,5 +1,5 @@
 classdef VariablySaturatedFlow < SinglePhaseFlow
-  % Variably Saturated flow
+  % Variably Saturated Flow
   % Subclass of SPFlow
   % Implements Richards equations for unsaturated flow in vadose region
   % It is subclass of SPFlow since most of the methods are the same
