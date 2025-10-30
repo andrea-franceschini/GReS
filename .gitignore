@@ -26,6 +26,7 @@
 *.a
 *.lib
 *.mexw64
+*.mexa64
 
 # Executables
 *.exe
