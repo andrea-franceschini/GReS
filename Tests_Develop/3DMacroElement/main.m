@@ -99,13 +99,30 @@ K = blkdiag(K2,K1);
 
 S = B'*(K\B);
 
+computeMat(interfaces{1},"Poromechanics"); 
+H = interfaces{1}.Jmult;
+
+nH = null(full(H));
+nS = null(full(S));
+
+
 % test kernel 
-v = [1;0;0;-1;zeros(size(S,1)-4,1)];
+% checkered kernel
+v1 = [1;0;0;-1;0;0;1;0;0;0;0;0];
+v2 = [0;0;0;-1;0;0;0;0;0;1;0;0];
+v = [v1;v2;v1;v2];
 % 
 % [v,e] = eig(S);
 % v = real(v); e = real(e);
 
 fprintf("norm(S*v) = %2.4e \n",norm(S*v))
+
+for i = 1:size(nS,2)
+  r1 = nS(:,i)'*nH(:,1);
+  r2 = nS(:,i)'*nH(:,2);
+  r3 = nS(:,i)'*nH(:,3);
+  fprintf('%1.4e %1.4e %1.4e \n',r1,r2,r3);
+end
 
 
 
