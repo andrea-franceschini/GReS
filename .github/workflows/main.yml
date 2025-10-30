@@ -1,4 +1,4 @@
-name: MATLAB CI
+name: Management MATLAB CI
 
 on:
   push:
