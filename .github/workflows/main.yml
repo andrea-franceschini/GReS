@@ -52,7 +52,7 @@ jobs:
             end
 
   aggregate:
-    name: all_test_passed
+    name: check_all_tests_passed
     runs-on: ubuntu-latest
     needs: [gres_tests]
     steps:
