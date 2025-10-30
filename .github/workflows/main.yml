@@ -52,7 +52,7 @@ jobs:
             end
 
   aggregate:
-    name: Management MATLAB CI
+    name: all_test_passed
     runs-on: ubuntu-latest
     needs: [gres_tests]
     steps:
