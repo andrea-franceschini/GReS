@@ -50,3 +50,11 @@ jobs:
                 disp(getReport(ME));
                 exit(1); % Mark job as failed
             end
+
+  aggregate:
+    name: Management MATLAB CI
+    runs-on: ubuntu-latest
+    needs: [gres_tests]
+    steps:
+      - name: All platform tests passed
+        run: echo "All tests succeeded on all platforms"
