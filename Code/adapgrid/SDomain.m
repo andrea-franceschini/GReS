@@ -79,7 +79,7 @@ classdef SDomain < handle
 
       % Functions to update the structure.
       function flag = updateIJK(obj,ijk,ncells,nnodes,nfaces)
-         % Update this class, incresing one cell.
+         % Update this class, increasing one cell.
          obj.grid(end+1,:)=ijk;
          obj.numCells=ncells;
          obj.numNodes=nnodes;

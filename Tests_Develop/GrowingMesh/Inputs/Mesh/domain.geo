@@ -9,12 +9,12 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 lc = 1e-2;
 
 // Domain dimension
-Dim[1] = 1;
-Dim[2] = 1;
+Dim[1] = 4;
+Dim[2] = 10;
 Dim[3] = 1;
 
-Elms[1] = 2;
-Elms[2] = 2;
+Elms[1] = 5;
+Elms[2] = 20;
 Elms[3] = 2;
 
 // Domain creation

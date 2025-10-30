@@ -68,17 +68,21 @@ classdef FCSolver < handle
          %   % else
          %   % obj.toGrow.grow("BoundB",obj.statek,obj.stateTmp);
          % end
-         if obj.tStep > 1
-
+         % if obj.tStep > 0
          if mod(obj.tStep,2)== 1
-           % if obj.tStep == 1
-           % obj.toGrow.grow("Bot",obj.statek,obj.stateTmp);
-           % obj.toGrow.grow("Top",obj.statek,obj.stateTmp);
-           obj.toGrow.grow("BoundB",obj.statek,obj.stateTmp);
+         % if obj.tStep == 1
+           % obj.toGrow.grow("Bot",obj.statek,obj.stateTmp,obj.t);
+           % obj.toGrow.grow("Top",obj.statek,obj.stateTmp,obj.t);
+           obj.toGrow.grow("BoundB",obj.statek,obj.stateTmp,obj.t);
          else
-           obj.toGrow.grow("Top",obj.statek,obj.stateTmp);
+           obj.toGrow.grow("Top",obj.statek,obj.stateTmp,obj.t);
+         % end
+         % lnk = obj.domain.solver(obj.domain.numSolvers);
+         % bcs = lnk.bcs.db;
+         % bcsk = bcs.keys;
          end
-         end
+
+         
 
          % Apply the Dirichlet condition value to the solution vector
          applyDirVal(obj.domain,obj.t);

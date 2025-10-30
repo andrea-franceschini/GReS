@@ -33,22 +33,26 @@ classdef DomainGrow < handle
       
     end
 
-    function grow(obj,boundary,state1,state2)
+    function grow(obj,boundary,state1,state2,time)
       % XXXX % Updates the domain mesh structure by adding cells outward
       % from the reference surface.
 
-      [cell,direction] = obj.findBorderCell(boundary);
-
-      for i=1:length(cell)
-        obj.addCell(cell(i),direction(i),state1,state2);
-      end
       lnk = obj.simData.solver(obj.nsolver);
+
+      [cell,direction] = obj.findBorderCell(boundary);
+      for i=1:length(cell)
+        % if mod(i,2)==1 - teste
+        obj.addCell(cell(i),direction(i),state1,state2,time);
+        % end
+      end      
       lnk.H=[];
       lnk.P=[];
       lnk.J=[];
+      % bcs = lnk.bcs.db;
+      % bcsk = bcs.keys;
     end
 
-    function addCell(obj,refCell,dir,state1,state2)
+    function addCell(obj,refCell,dir,state1,state2,time)
       %ADDCELL Add a cell in the grid and update the mesh
 
       lnk = obj.simData.solver(obj.nsolver);
@@ -69,16 +73,18 @@ classdef DomainGrow < handle
         % Update the states.
         obj.updateState(cell,state1,state2);
 
-        obj.updateBoundary();
+        obj.updateBoundary(time);
       end
     end
 
-    function updateBoundary(obj)
+    function updateBoundary(obj,time)
       lnkDm = obj.simData.solver(obj.nsolver);
       keys = string(obj.sdomain.boundaries.keys);
       for i=keys
         lnkBc = obj.sdomain.boundaries(i);
-        lnkBc.updateBorder(lnkDm.bcs.db(i));
+        lnkUpdate = lnkDm.bcs.db(i);        
+        lnkUpdate.data.loadValues(time);
+        lnkBc.updateBorder(lnkUpdate);
       end
     end
 
@@ -135,6 +141,7 @@ classdef DomainGrow < handle
       % trans = lnk.computeTransCell(ncell);
       trans = ncell.computeTrans(lnk.material.getMaterial(ncell.tag).PorousRock.getPermVector());      
       lnk.trans = [lnk.trans; trans(ncell.facesNew)];
+      lnk.trans(ncell.faces(~ncell.facesNew))=1./((1./lnk.trans(ncell.faces(~ncell.facesNew)))+(1./trans(~ncell.facesNew)));
       lnk.isIntFaces = [lnk.isIntFaces; false(ncell.newFaces,1)];
       lnk.isIntFaces(ncell.faces(~ncell.facesNew)) = true;
 

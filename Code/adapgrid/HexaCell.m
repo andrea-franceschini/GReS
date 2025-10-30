@@ -74,7 +74,7 @@ classdef HexaCell < handle
       obj.copyExistData(mesh,faces,neigh); % --- Parece OK.
 
       % Create the coordinates for the missing nodes.
-      obj.createCoords(direction,len);      
+      obj.createCoords(len);      
 
       % Creating Faces.
       if obj.newFaces~=0
@@ -209,7 +209,7 @@ classdef HexaCell < handle
       obj.newFaces = sum(obj.faces==0);
     end
 
-    function createCoords(obj,direction,len)
+    function createCoords(obj,len)
       % ijk_dir = mod(ceil(direction/2)-1, 3) + 1;
       ijk_dir = mod(ceil(obj.faceGrow/2)-1, 3) + 1;
 

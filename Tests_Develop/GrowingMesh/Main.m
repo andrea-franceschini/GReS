@@ -59,6 +59,7 @@ if createBC
   cond(1).field = "latY0";
   cond(1).times = 0.;
   cond(1).values = 1e6;
+  % cond(1).values = 3;
   % cond(1).times = [0. 1. 2. 3.];
   % cond(1).values = [1e6 1e6 1e6 1e6];
 
@@ -68,6 +69,7 @@ if createBC
   cond(2).field = "latYM";
   cond(2).times = 0.;
   cond(2).values = 1e5;
+  % cond(2).values = 2;
   % cond(2).times = [0. 10. 20. 30.] ;
   % cond(2).values = [1e5 2e5 1e5 2e5];
 
@@ -88,6 +90,18 @@ if createBC
   cond(4).field = "latZ0";
   cond(4).times = 0.;
   cond(4).values = 0.;
+
+  % cond(5).name = 'LatA';
+  % cond(5).type = 'Neu';
+  % cond(5).field = "latXM";
+  % cond(5).times = 0.;
+  % cond(5).values = 0.;
+  % 
+  % cond(6).name = 'LatB';
+  % cond(6).type = 'Neu';
+  % cond(6).field = "latX0";
+  % cond(6).times = 0.;
+  % cond(6).values = 0.;
 
   fileName = setBoundaryC('Inputs',grid,cond,physics);
 else
