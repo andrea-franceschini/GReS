@@ -1,6 +1,6 @@
 classdef Poromechanics < SinglePhysics
 
-  properties
+  properties        
     K
     fInt            % internal forces
     cell2stress     % map cell ID to position in stress/strain matrix
@@ -16,23 +16,22 @@ classdef Poromechanics < SinglePhysics
       setPoromechanics(obj)
     end
 
-    %     function state = computeMatOld(obj,state,~,dt)
-    %       if ~isLinear(obj) || isempty(obj.J)
-    %         % recompute matrix if the model is non linear
-    %
-    %         obj.computeStiffMat(dt);
-    %       end
-    %       if obj.simParams.isTimeDependent
-    %         obj.J = obj.simParams.theta*obj.J;
-    %       end
-    %     end
+%     function state = computeMatOld(obj,state,~,dt)
+%       if ~isLinear(obj) || isempty(obj.J)
+%         % recompute matrix if the model is non linear
+%         
+%         obj.computeStiffMat(dt);
+%       end
+%       if obj.simParams.isTimeDependent
+%         obj.J = obj.simParams.theta*obj.J;
+%       end
+%     end
 
     function computeMat(obj,~,dt)
       if ~isLinear(obj) || isempty(obj.J)
         % recompute matrix if the model is non linear
-        assembler = @(elemId,counter) computeLocalStiff(obj,elemId,dt,counter);
         % define size of output matrix
-        computeStiffMat(obj,assembler);
+        computeStiffMat(obj,dt);
       end
       if obj.simParams.isTimeDependent
         obj.J = obj.simParams.theta*obj.K;
@@ -41,14 +40,19 @@ classdef Poromechanics < SinglePhysics
       end
     end
 
-    function computeStiffMat(obj,assembleKloc)
+
+    function computeStiffMat(obj,dt)
       % general sparse assembly loop over elements for Poromechanics
+
+      % define local assembler
+      assembleKloc = @(elemId,counter) computeLocalStiff(obj,elemId,dt,counter);
+
       subCells = obj.dofm.getFieldCells(obj.field);
       n = sum((obj.mesh.nDim^2)*(obj.mesh.cellNumVerts(subCells)).^2);
       l = 0;
       Ndof = obj.dofm.getNumDoF(obj.field);
       obj.fInt = zeros(Ndof,1);
-      assembleK = assembler(n,assembleKloc,Ndof,Ndof);
+      assembleK = assembler(n,Ndof,Ndof,assembleKloc);
       % loop over cells
       for el = subCells'
         % get dof id and local matrix
@@ -89,6 +93,7 @@ classdef Poromechanics < SinglePhysics
       % assemble internal forces
       obj.fInt(dof) = obj.fInt(dof)+fLoc;
     end
+
 
     function [dofr,dofc,Kub,Kbb,varargout] = computeLocalStiffBubble(obj,el,dt,varargin)
       % compute local stiffness matrix contribution due to bubble basis
@@ -219,8 +224,8 @@ classdef Poromechanics < SinglePhysics
     end
 
     function setState(obj,id,vals)
-      % set values of the primary variable
-      obj.state.data.dispCurr(id) = vals;
+      % set values of the primary variable  
+      obj.state.data.dispCurr(id) = vals; 
     end
 
     function [dof,vals] = getBC(obj,id,t,~)
@@ -228,7 +233,7 @@ classdef Poromechanics < SinglePhysics
       vals = obj.getBCVals(id,t);
     end
 
-    function applyDirVal(obj,dof,vals)
+    function applyDirVal(obj,dof,vals,varargin)
       obj.state.data.dispConv(dof) = vals;
       obj.state.data.dispCurr(dof) = vals;
     end
@@ -262,24 +267,24 @@ classdef Poromechanics < SinglePhysics
         obj.rhs = obj.fInt; % provisional assuming theta = 1;
       end
     end
-
-    %     function blk = blockJacobian(obj,varargin)
-    %       fRow = varargin{1};
-    %       fCol = varargin{2};
-    %       locRow = obj.dofm.field2block(fRow);
-    %       locCol = obj.dofm.field2block(fCol);
-    %       blk = obj.simParams.theta*obj.K(locRow,locCol);
-    %     end
-    %
-    %     function blk = blockRhs(obj, fld)
-    %       if ~strcmp(obj.dofm.subPhysics(fld), 'Poro')
-    %         % no contribution to non poro fields
-    %         blk = 0;
-    %       else
-    %         dofs = obj.dofm.field2block(fld);
-    %         blk = obj.rhs(dofs);
-    %       end
-    %     end
+% 
+%     function blk = blockJacobian(obj,varargin)
+%       fRow = varargin{1};
+%       fCol = varargin{2};
+%       locRow = obj.dofm.field2block(fRow);
+%       locCol = obj.dofm.field2block(fCol);
+%       blk = obj.simParams.theta*obj.K(locRow,locCol);
+%     end
+% 
+%     function blk = blockRhs(obj, fld)
+%       if ~strcmp(obj.dofm.subPhysics(fld), 'Poro')
+%         % no contribution to non poro fields
+%         blk = 0;
+%       else
+%         dofs = obj.dofm.field2block(fld);
+%         blk = obj.rhs(dofs);
+%       end
+%     end
 
     function out = isLinear(obj)
       out = false;
@@ -291,95 +296,33 @@ classdef Poromechanics < SinglePhysics
       end
     end
 
-    % function [cellData,pointData] = printState(obj,bound,sOld,sNew,t)
-    %   % append state variable to output structure
-    %   outPrint = [];
-    %   switch nargin
-    %     case 3
-    %       [outPrint.stress,outPrint.strain] = finalizeState(obj,sOld);
-    %       outPrint.displ = sOld.dispConv;
-    %     case 5
-    %       % linearly interpolate state variables containing print time
-    %       fac = (t - sOld.t)/(sNew.t - sOld.t);
-    %       [avStressOld,avStrainOld] = finalizeState(obj,sOld);
-    %       [avStressNew,avStrainNew] = finalizeState(obj,sNew);
-    %       outPrint.stress = avStressNew*fac+avStressOld*(1-fac);
-    %       outPrint.strain = avStrainNew*fac+avStrainOld*(1-fac);
-    %       outPrint.displ = sNew.dispConv*fac+sOld.dispConv*(1-fac);
-    %     otherwise
-    %       error('Wrong number of input arguments');
-    %   end
-    %   outPrint.elast = printElastic(obj);
-    %   % [cellData,pointData] = Poromechanics.buildPrintStruct(displ,stress,strain);
-    %   [cellData,pointData] = Poromechanics.buildPrintStruct(outPrint);
-    % end    
-
     function [cellData,pointData] = printState(obj,sOld,sNew,t)
       % append state variable to output structure
       switch nargin
         case 2
-          [outPrint.stress,outPrint.strain] = finalizeState(obj,sOld);
-          outPrint.displ = sOld.data.dispConv;
+          [stress,strain] = finalizeState(obj,sOld);
+          displ = sOld.data.dispConv;
         case 4
           % linearly interpolate state variables containing print time
           fac = (t - sOld.t)/(sNew.t - sOld.t);
           [avStressOld,avStrainOld] = finalizeState(obj,sOld);
           [avStressNew,avStrainNew] = finalizeState(obj,sNew);
-          outPrint.stress = avStressNew*fac+avStressOld*(1-fac);
-          outPrint.strain = avStrainNew*fac+avStrainOld*(1-fac);
-          outPrint.displ = sNew.data.dispConv*fac+sOld.data.dispConv*(1-fac);
+          stress = avStressNew*fac+avStressOld*(1-fac);
+          strain = avStrainNew*fac+avStrainOld*(1-fac);
+          displ = sNew.data.dispConv*fac+sOld.data.dispConv*(1-fac);
         otherwise
           error('Wrong number of input arguments');
       end
-      outPrint.elast = printElastic(obj);
-      % [cellData,pointData] = Poromechanics.buildPrintStruct(displ,stress,strain);
-      [cellData,pointData] = Poromechanics.buildPrintStruct(outPrint);
+      [cellData,pointData] = Poromechanics.buildPrintStruct(displ,stress,strain);
     end
-
-    function elast = printElastic(obj)
-      %printPropState - print the potential for the cell or element.
-      elast = zeros(obj.mesh.nCells,6);
-      for el=1:obj.mesh.nCells
-        ktmp = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
-        elast(el,1)=ktmp(1,1);
-        elast(el,2)=ktmp(2,2);
-        elast(el,3)=ktmp(3,3);
-        elast(el,4)=ktmp(1,2);
-        elast(el,5)=ktmp(2,3);
-        elast(el,6)=ktmp(1,3);
-      end
-    end
-
   end
 
   methods (Access=private)
-    % function dof = getBCdofs(obj,bc,id)
-    %   switch bc.getCond(id)
-    %     case 'NodeBC'
-    %       ents = bc.getEntities(id);
-    %     case 'SurfBC'
-    %       ents = bc.getLoadedEntities(id);
-    %       % node id contained by constrained surface
-    %     otherwise
-    %       error('BC type %s is not available for %s field',cond,obj.field);
-    %   end
-    %   % map entities dof to local dof numbering
-    %   dof = obj.dofm.getLocalEnts(ents,obj.field);
-    %   switch bc.getType(id)
-    %     case 'Dir'
-    %       % component multiplication of Dirichlet BC dofs
-    %       dof = bc.getCompEntities(id,dof);
-    %     case 'Neu'
-    %       dir = bc.getDirection(id);
-    %       c = find(strcmp(["x","y","z"],dir));
-    %       dof = 3*dof+c-3;
-    %   end
-
     function dof = getBCdofs(obj,id)
       switch obj.bcs.getCond(id)
         case 'NodeBC'
           ents = obj.bcs.getEntities(id);
-        case 'SurfBC'
+        case {'SurfBC','VolumeForce'}
           ents = obj.bcs.getLoadedEntities(id);
           % node id contained by constrained surface
         otherwise
@@ -388,6 +331,9 @@ classdef Poromechanics < SinglePhysics
       % map entities dof to local dof numbering
       dof = obj.dofm.getLocalEnts(ents,obj.fldId);
       dof = obj.bcs.getCompEntities(id,dof);
+      if strcmp(obj.bcs.getCond(id),'VolumeForce')
+        dof = dofId(dof,3);
+      end
     end
 
     function vals = getBCVals(obj,id,t)
@@ -395,7 +341,38 @@ classdef Poromechanics < SinglePhysics
       if strcmp(obj.bcs.getCond(id),'SurfBC')
         entInfl = obj.bcs.getEntitiesInfluence(id);
         vals = entInfl*vals;
+      elseif strcmp(obj.bcs.getCond(id),'VolumeForce')
+        % biot logic
+        valsCell = vals;
+        cells = obj.bcs.getEntities(id);
+        % preallocate vector for later assembly
+        vals = zeros(3*sum(obj.mesh.cellNumVerts),1);
+        dofs = zeros(3*sum(obj.mesh.cellNumVerts),1);
+        k = 0;
+        for i = 1:numel(cells)
+          % local coupling to map cell pressure to nodal force (as in Biot)
+          el = cells(i);
+          elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
+          nG = elem.GaussPts.nNode;
+          n = 3*elem.nNode;
+          [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
+          B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
+          B(elem.indB(:,2)) = N(elem.indB(:,1));
+          kron = [1;1;1;0;0;0];
+          iN = repmat(kron,1,1,nG);
+          Qs = pagemtimes(B,'ctranspose',iN,'none'); % unit biot param
+          Qs = Qs.*reshape(dJWeighed,1,1,[]);
+          Qloc = sum(Qs,3);
+          vals(k+1:k+n) = Qloc*valsCell(i);
+          dofs(k+1:k+n) = dofId(obj.mesh.cells(el,:),3);
+          k = k+n;
+        end
+        % accumulate results
+        vals = accumarray(dofs,vals,[3*obj.mesh.nNodes 1]);
+        dof = obj.getBCdofs(id);
+        vals = -vals(dof);
       end
+
     end
 
     function setPoromechanics(obj)
@@ -404,61 +381,47 @@ classdef Poromechanics < SinglePhysics
   end
 
   methods (Static)
-    function [cellStr,pointStr] = buildPrintStruct(outPrint)
-      pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);
-      pointStr(1).name = 'disp';
-      pointStr(1).data = [outPrint.displ(1:3:end),outPrint.displ(2:3:end),outPrint.displ(3:3:end)];
-
-      cellStr = repmat(struct('name', 1, 'data', 1), 3, 1);
-      cellStr(1).name = 'stress';
-      cellStr(1).data = outPrint.stress;
-      cellStr(2).name = 'strain';
-      cellStr(2).data = outPrint.strain;
-      cellStr(3).name = 'elastic';
-      cellStr(3).data = outPrint.elast;
+    function [cellStr,pointStr] = buildPrintStruct(disp,stress,strain)
+      nCellData = 12;
+      nPointData = 3;
+      pointStr = repmat(struct('name', 1, 'data', 1), nPointData, 1);
+      cellStr = repmat(struct('name', 1, 'data', 1), nCellData, 1);
+      % Displacement
+      pointStr(1).name = 'ux';
+      pointStr(1).data = disp(1:3:end);
+      pointStr(2).name = 'uy';
+      pointStr(2).data = disp(2:3:end);
+      pointStr(3).name = 'uz';
+      pointStr(3).data = disp(3:3:end);
+      %
+      % Stress
+      cellStr(1).name = 'sx';
+      cellStr(1).data = stress(:,1);
+      cellStr(2).name = 'sy';
+      cellStr(2).data = stress(:,2);
+      cellStr(3).name = 'sz';
+      cellStr(3).data = stress(:,3);
+      cellStr(4).name = 'txy';
+      cellStr(4).data = stress(:,4);
+      cellStr(5).name = 'tyz';
+      cellStr(5).data = stress(:,5);
+      cellStr(6).name = 'txz';
+      cellStr(6).data = stress(:,6);
+      %
+      % Strain
+      cellStr(7).name = 'ex';
+      cellStr(7).data = strain(:,1);
+      cellStr(8).name = 'ey';
+      cellStr(8).data = strain(:,2);
+      cellStr(9).name = 'ez';
+      cellStr(9).data = strain(:,3);
+      cellStr(10).name = 'gxy';
+      cellStr(10).data = strain(:,4);
+      cellStr(11).name = 'gyz';
+      cellStr(11).data = strain(:,5);
+      cellStr(12).name = 'gxz';
+      cellStr(12).data = strain(:,6);
     end
-
-    % function [cellStr,pointStr] = buildPrintStruct(outPrint)
-    %   nCellData = 12;
-    %   nPointData = 3;
-    %   pointStr = repmat(struct('name', 1, 'data', 1), nPointData, 1);
-    %   cellStr = repmat(struct('name', 1, 'data', 1), nCellData, 1);
-    %   % Displacement
-    %   pointStr(1).name = 'ux';
-    %   pointStr(1).data = outPrint.displ(1:3:end);
-    %   pointStr(2).name = 'uy';
-    %   pointStr(2).data = outPrint.displ(2:3:end);
-    %   pointStr(3).name = 'uz';
-    %   pointStr(3).data = outPrint.displ(3:3:end);
-    %   %
-    %   % Stress
-    %   cellStr(1).name = 'sx';
-    %   cellStr(1).data = outPrint.stress(:,1);
-    %   cellStr(2).name = 'sy';
-    %   cellStr(2).data = outPrint.stress(:,2);
-    %   cellStr(3).name = 'sz';
-    %   cellStr(3).data = outPrint.stress(:,3);
-    %   cellStr(4).name = 'txy';
-    %   cellStr(4).data = outPrint.stress(:,4);
-    %   cellStr(5).name = 'tyz';
-    %   cellStr(5).data = outPrint.stress(:,5);
-    %   cellStr(6).name = 'txz';
-    %   cellStr(6).data = outPrint.stress(:,6);
-    %   %
-    %   % Strain
-    %   cellStr(7).name = 'ex';
-    %   cellStr(7).data = outPrint.strain(:,1);
-    %   cellStr(8).name = 'ey';
-    %   cellStr(8).data = outPrint.strain(:,2);
-    %   cellStr(9).name = 'ez';
-    %   cellStr(9).data = outPrint.strain(:,3);
-    %   cellStr(10).name = 'gxy';
-    %   cellStr(10).data = outPrint.strain(:,4);
-    %   cellStr(11).name = 'gyz';
-    %   cellStr(11).data = outPrint.strain(:,5);
-    %   cellStr(12).name = 'gxz';
-    %   cellStr(12).data = outPrint.strain(:,6);
-    % end
 
     function indB = setStrainMatIndex(N)
       % Preapare indices of strain matrix for direct assignment of shape
@@ -469,6 +432,7 @@ classdef Poromechanics < SinglePhysics
       indB(:,1) = indB(:,1) + repelem(3*(0:(N-1))',9);
       indB(:,2) = indB(:,2) + repelem(18*(0:(N-1))',9);
     end
+
 
     function Kloc = computeKloc(a,b,c,dJW)
       Ks = pagemtimes(pagemtimes(a,'ctranspose',b,'none'),c);

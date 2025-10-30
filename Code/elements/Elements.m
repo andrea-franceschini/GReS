@@ -37,7 +37,6 @@ classdef Elements < handle
         if nargin < 2
           nGaussPt = 1;
         end
-
         setElementData(obj,mesh,nGaussPt);
     end
 
@@ -62,7 +61,6 @@ classdef Elements < handle
       end
       obj.elems{k}.computeProperties();
     end
-
   end
 
   methods (Access = private)
@@ -136,6 +134,11 @@ classdef Elements < handle
 
     function element = getElementByID(obj,id)
       vtkId = obj.mesh.cellVTKType(id);
+      element = obj.elems{obj.mapVTK2elem(vtkId)};
+    end
+
+    function element = getSurfElementByID(obj,id)
+      vtkId = obj.mesh.surfaceVTKType(id);
       element = obj.elems{obj.mapVTK2elem(vtkId)};
     end
 
