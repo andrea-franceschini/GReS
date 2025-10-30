@@ -28,6 +28,13 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
       %
       flConv = true; %convergence flag
 
+      % initialize the state object
+      applyDirVal(obj);
+      for i = 1:obj.nDom
+        obj.state(i).curr = obj.domains(i).state;
+        obj.state(i).prev =  copy(obj.state(i).curr);
+      end
+
 
       % Loop over time
       while obj.t < obj.simParameters.tMax

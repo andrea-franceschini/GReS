@@ -44,8 +44,9 @@ solver = ActiveSetContactSolver(domains,interfaces,5);
 solver.NonLinearLoop();
 solver.finalizeOutput();
 
-%% plot profiles of multipliers along vertical axis (avoid opening paraview)
-%plotStep(solver.results,2);
+% get tangential gap
+gt = interfaces{1}.tangentialGap.curr;
+assert(all(abs(gt - anGt)<tol),"Analytical solution is not matched")
 
 
 
