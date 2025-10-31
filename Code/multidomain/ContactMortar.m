@@ -891,8 +891,10 @@ classdef ContactMortar < Mortar
       currGap = obj.D*us + obj.M*um;
       prevGap = obj.D*usOld + obj.M*umOld;
 
-      gap = (currGap - stabGap)./sum(obj.D,2);
-      slipIncrement = (currGap - prevGap - stabGap)./sum(obj.D,2);
+      areaSlave = repelem(obj.mesh.msh(2).surfaceArea,3); 
+
+      gap = (currGap - stabGap)./areaSlave;
+      slipIncrement = (currGap - prevGap - stabGap)./areaSlave;
       slipIncrement(1:3:end) = [];
 
       obj.normalGap.curr = -gap(1:3:end);

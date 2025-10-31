@@ -60,7 +60,7 @@ classdef Discretizer < handle
                   assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
                     'invalid domain id input for single domain BC imposition']);
                   for i = 1:length(obj.interfaceList)
-                    [bcEnts,bcVals] = obj.interfaces(i).removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
+                    [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
                   end
                 end
                 applyDirBC(obj.getSolver({field,f}),field,bcEnts,bcVals);
@@ -87,7 +87,7 @@ classdef Discretizer < handle
               assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
                 'invalid domain id input for single domain BC imposition']);
               for i = 1:length(obj.interfaceList)
-                [bcEnts,bcVals] = obj.interfaces(i).removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
+                [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
               end
             end
             getSolver(obj,field).applyDirVal(bcEnts,bcVals);
@@ -197,6 +197,7 @@ classdef Discretizer < handle
                 cellData3D = OutState.mergeOutFields(cellData3D,cellData);
                 pointData3D = OutState.mergeOutFields(pointData3D,pointData);
               end
+              cellData3D = OutState.printMeshData(obj.grid.topology,cellData3D);
               if obj.outstate.writeVtk
                 obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
               end
@@ -243,7 +244,7 @@ classdef Discretizer < handle
         % add mortar interface to current domain
         if ~ismember(interfId,obj.interfaceList)
           obj.interfaceList = sort([obj.interfaceList interfId]);
-          obj.interfaces = [obj.interfaces interf];
+          obj.interfaces{end+1} = interf;
         end
       end
 
@@ -305,6 +306,7 @@ classdef Discretizer < handle
        obj.state = stat;
        obj.fields = flds;
        obj.numSolvers = k;
+       obj.interfaces = cell(0);
      end
 
      function setInput(obj, varargin)

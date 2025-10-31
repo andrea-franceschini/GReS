@@ -1,41 +1,15 @@
-clear
-close all
-clc
-
-
-scriptFullPath = mfilename('fullpath');
-% Extract the directory of the script
-scriptDir = fileparts(scriptFullPath);
-% Change to the script's directory
-cd(scriptDir);
-%str_mod_ver = '2km'; % '2km' or '3km'
-
-
-% write mesh files
-elem_type = "hexa";
 outFileTop = "topBlock";
 outFileBottom = "bottomBlock";
 
 
-[topMesh,bottomMesh] = deal(Mesh(),Mesh());
-
-topMesh.importMesh(outFileTop + ".vtk");
-bottomMesh.importMesh(outFileBottom + ".vtk");
-% 
-plotFunction(topMesh,'out_top',zeros(topMesh.nNodes,1));
-plotFunction(bottomMesh,'out_bottom',zeros(bottomMesh.nNodes,1));
-
-% write BC files
-setBCfiles(topMesh,bottomMesh);
-
 domainFile = 'Domains/domains.xml';
 interfFile = 'Domains/interface.xml';
 domains = buildModel(domainFile); 
-% set verbosity 
+% set verbosity
+domains(1).simparams.setVerbosity(0);
+domains(2).simparams.setVerbosity(0);
+
 [interfaces,domains] = Mortar.buildInterfaces(interfFile,domains);
-
-
-interfaces{1}.solvers(2).simparams.setVerbosity(2);
 
 solver = ActiveSetContactSolver(domains,interfaces,5);
 
@@ -46,6 +20,8 @@ solver.finalizeOutput();
 
 % get tangential gap
 gt = interfaces{1}.tangentialGap.curr;
+anGt = 0.1*sqrt(2);
+tol = 1e-6;
 assert(all(abs(gt - anGt)<tol),"Analytical solution is not matched")
 
 

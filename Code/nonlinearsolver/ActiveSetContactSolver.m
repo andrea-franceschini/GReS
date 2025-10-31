@@ -67,7 +67,9 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
             fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t);
           end
 
-          fprintf('Active set iteration n. %i \n', itAS)
+          if obj.simParameters.verbosity > 0
+            fprintf('Active set iteration n. %i \n', itAS)
+          end
 
           if obj.simParameters.verbosity > 1
             fprintf('Iter     ||rhs||\n');
