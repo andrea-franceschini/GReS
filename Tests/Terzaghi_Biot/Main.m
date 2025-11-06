@@ -14,8 +14,7 @@ cd(scriptDir);
 model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 
 % Set parameters of the simulation
-fileName = "simParam.dat";
-simParam = SimulationParameters(fileName,model);
+simParam = SimulationParameters("simParam.xml");
 
 % Create the Mesh object
 topology = Mesh();
