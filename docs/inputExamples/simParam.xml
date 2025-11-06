@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<model>
-  <simParam>
+<simParam>
     <Time Start="0."
           End ="1.e1"
           DtInic= "1.e+1"
           DtMax ="1.e+1"
           DtMin ="1.e+1"/>
     <TimeStepControl IncAugmentation = "1.5e+0"
-                     IncChopping = "Default"
+                     IncChopping = "Default" 
                      RelaxationFac = "Default"/>
     <Tolerance Norm = "Default"
                Absolute = "1.e-9"
@@ -16,5 +15,4 @@
     <Solver Type ="Default"
             Theta = "Default"
             MaxIteration = "10"/>
-  </simParam>
-</model>
+</simParam>

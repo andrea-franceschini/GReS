@@ -267,29 +267,34 @@ classdef SimulationParameters < handle
 
         fdata = readstruct(fileName,AttributeSuffix="");
 
-        obj.tIni = obj.checkSlotXML(fdata,'Time','Start',0.);
-        obj.tMax = obj.checkSlotXML(fdata,'Time','End',1.);
-        obj.dtIni = obj.checkSlotXML(fdata,'Time','DtInic',1.);
-        obj.dtMin = obj.checkSlotXML(fdata,'Time','DtMin',1.);
-        obj.dtMax = obj.checkSlotXML(fdata,'Time','DtMax',1.);
+        if isfield(fdata,'simParam')
+          fdata = fdata.simParam;
+        end
 
-        obj.multFac = obj.checkSlotXML(fdata,'TimeStepControl','IncAugmentation',1.1);
-        obj.divFac = obj.checkSlotXML(fdata,'TimeStepControl','IncChopping',2.);
-        obj.relaxFac = obj.checkSlotXML(fdata,'TimeStepControl','RelaxationFac',0.);
+        obj.tIni = getXMLData(fdata,0,'Time','Start');
+        obj.tMax = getXMLData(fdata,[],'Time','End');
+        obj.dtIni = getXMLData(fdata,[],'Time','DtInic');
+        obj.dtMin = getXMLData(fdata,[],'Time','DtMin');
+        obj.dtMax = getXMLData(fdata,[],'Time','DtMax');
 
-        obj.pNorm = obj.checkSlotXML(fdata,'Tolerance','PresIncTarget',2);
-        obj.absTol = obj.checkSlotXML(fdata,'Tolerance','Absolute',1.e-10);
-        obj.relTol = obj.checkSlotXML(fdata,'Tolerance','Relative',1.e-6);
-        obj.pTarget = obj.checkSlotXML(fdata,'Tolerance','PresIncTarget',1.e6);
+        obj.multFac = getXMLData(fdata,1.1,'TimeStepControl','IncAugmentation',1.1);
+        obj.divFac = getXMLData(fdata,2.,'TimeStepControl','IncChopping',2.);
+        obj.relaxFac = getXMLData(fdata,0.,'TimeStepControl','RelaxationFac',0.);
 
-        obj.NLSolver = obj.checkSlotXML(fdata,'Solver','Type','Newton');
+        obj.pNorm = getXMLData(fdata,2.,'Tolerance','PresIncTarget');
+        obj.absTol = getXMLData(fdata,1e-10,'Tolerance','Absolute');
+        obj.relTol = getXMLData(fdata,1e-6','Tolerance','Relative');
+        obj.pTarget = getXMLData(fdata,1e6,'Tolerance','PresIncTarget');
+
+        obj.NLSolver = getXMLData(fdata,'Newton','Solver','Type');
+
         if ~isempty(model)
         if ~model.isVariabSatFlow()
             obj.NLSolver = 'Newton';
         end
         end
-        obj.theta = obj.checkSlotXML(fdata,'Solver','Theta',1.);
-        obj.itMaxNR = obj.checkSlotXML(fdata,'Solver','MaxIteration',10);
+        obj.theta = getXMLData(fdata,1.,'Solver','Theta');
+        obj.itMaxNR = getXMLData(fdata,10,'Solver','MaxIteration');
     end
 
   end
@@ -338,24 +343,7 @@ classdef SimulationParameters < handle
         end
       end
     end
-  
-    function data = checkSlotXML(stname,root,varname,default)
-        %CHECKSLOTXML - check the field is defined for the xml struct and
-        %return the value or a default value.
-        if isfield(stname,root)
-            if isfield(stname.(root),varname)
-                if strcmp(stname.(root).(varname),"") || strcmp(stname.(root).(varname),"Default")
-                    data = default;
-                else
-                    data = stname.(root).(varname);
-                end
-            else
-                data = default;
-            end
-        else
-            data=default;
-        end
-    end
+
 
   end
 end
