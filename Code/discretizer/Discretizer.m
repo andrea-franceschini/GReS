@@ -60,7 +60,7 @@ classdef Discretizer < handle
                 assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
                   'invalid domain id input for single domain BC imposition']);
                 for i = 1:length(obj.interfaceList)
-                   [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
+                  [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
                 end
               end
               applyDirBC(obj.getSolver(field,f),field,bcEnts,bcVals);
@@ -126,7 +126,7 @@ classdef Discretizer < handle
       end
     end
 
-    function printState(obj,stateOld)
+     function printState(obj,stateOld)
       % print solution of the model according to the print time in the
       % list
       % Initialize input structure for VTK output
@@ -209,11 +209,6 @@ classdef Discretizer < handle
           end
         end
       end
-
-
-
-
-
     end
 
 
@@ -364,7 +359,7 @@ classdef Discretizer < handle
       end
     end
 
-     function addPhysics(obj,f1,f2,state)
+    function addPhysics(obj,f1,f2,state)
       % Add new key to solver database
       % Prepare input fields for solver definition
       if ~isCoupled(obj,f1,f2)
