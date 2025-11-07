@@ -1,0 +1,7 @@
+SurfBC            % BC item 
+Dir            % BC type 
+Poromechanics            % Physics 
+left_lateral_roller            % BC name 
+BCs/leftLat/list 
+0.000000 BCs/leftLat/time0.dat 
+End

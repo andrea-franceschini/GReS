@@ -1,4 +1,4 @@
-classdef SegmentBasedQuadrature < handle
+classdef SegmentBasedQuadrature < MortarQuadrature
   % Implement utilities to perform segment based integration given a pair
   % of master and slave element in contact
   % Can be equipped with the RBF scheme to cheaply sort out elements that
@@ -8,92 +8,109 @@ classdef SegmentBasedQuadrature < handle
   % deformation solid mechanics
   
   properties
-    msh       % instance of InterfaceMesh class
-    mortar
-    nGtri
+    detJtri
+    ngTri
+  end
+
+  properties (Access = private)
     elems     % provisional elems instances for each master/slave pair
-    dJw
-    nTri
-    maxTri = 30;
+    wTri      % store weight for gauss integration on triangles
+    maxTriPerPair
   end
   
   methods
-    function obj = SegmentBasedQuadrature(mortar,nGtri)
-      obj.mortar = mortar;
-      obj.msh = obj.mortar.mesh.msh;
-      obj.nGtri = nGtri;
+    function obj = SegmentBasedQuadrature(mortar,ng)
+
+      obj@MortarQuadrature(mortar,3);
+      obj.ngTri = ng;
+
+      gaussTri = Gauss(5,ng); % 5 is the vtk type of triangles
+      obj.wTri = gaussTri.weight;
+
+      isQuadratic = [~isempty(obj.mortar.elements(1).getElement(28));
+                     ~isempty(obj.mortar.elements(2).getElement(28))];
+
+      if sum(isQuadratic)==0 % no quadratic elements
+        obj.maxTriPerPair = 6;
+      elseif sum(isQuadratic)==1
+        obj.maxTriPerPair = 24;
+      elseif sum(isQuadratic)==2
+        obj.maxTriPerPair = 96;
+      end
+
+
     end
 
-    function [Ns,Nm,Nmult,NbubSlave,NbubMaster] = getMortarBasisFunctions(obj,is,im)
-      assert(nargout >=3, 'Not enough output arguments');
-      [xiSlave,xiMaster,obj.dJw] = segmentBasedCouple(obj,is,im);
+    function processMortarPairs(obj)
+
+      % initialize the maps to store mortar quadrature infos
+      nConnections = nnz(obj.mortar.mesh.elemConnectivity);
+      totTri = nConnections*obj.maxTriPerPair;
+      obj.gpCoords = {zeros(totTri,obj.ngTri,2);
+        zeros(totTri,obj.ngTri,2)};
+      obj.mortarPairs = zeros(totTri,2);
+      obj.detJtri = zeros(totTri,1);
+
+      nM = full(sum(obj.mortar.mesh.elemConnectivity,1));
+      nM = [0 cumsum(nM)];
+
+      for is = 1:obj.msh(2).nSurfaces
+
+        imList = find(obj.mortar.mesh.elemConnectivity(:,is));
+
+        for j = 1:numel(imList)
+          im = imList(j);
+          k = nM(is)+ j;
+          % k (global index to write without race conditions)
+          processMortarPair(obj,is,im,k);
+        end
+      end
+
+      finalizeMortarMaps(obj);
+
+    end
+
+    function isPairActive = processMortarPair(obj,is,im,k)
+
+      isPairActive = true;
+
+      [xiSlave,xiMaster,detJ] = segmentBasedCouple(obj,is,im);
       if isempty(xiSlave)
-        [Ns,Nm,Nmult,NbubSlave,NbubMaster] = deal([]);
+        isPairActive = false;
         return
       end
-      elemSlave = obj.mortar.getElem(2,is);
-      elemMaster = obj.mortar.getElem(1,im);
 
-      Nm = zeros(obj.nGtri, elemMaster.nNode,obj.nTri);
-      Ns = zeros(obj.nGtri,elemSlave.nNode,obj.nTri);
-      if strcmp(obj.mortar.multiplierType,'P0')
-        d2 = 1;
-      else
-        d2 = elemSlave.nNode;
-      end
-      Nmult = zeros(obj.nGtri,d2,obj.nTri);
+      nTri = numel(detJ);
 
-      if nargout > 3
-        [NbubSlave,NbubMaster] = deal(zeros(obj.nGtri,1,obj.nTri));
-      end
-
-      for i = 1:obj.nTri
-        xiM = xiMaster(:,:,i);
-        xiS = xiSlave(:,:,i);
-        Nm(:,:,i) = elemMaster.computeBasisF(xiM);
-        Ns(:,:,i) = elemSlave.computeBasisF(xiS);
-        Nmult(:,:,i) = computeMultiplierBasisF(obj.mortar,is,Ns(:,:,i));
-        if nargout > 3
-          NbubSlave(:,:,i) = elemSlave.computeBubbleBasisF(xiS);
-          NbubMaster(:,:,i) = elemMaster.computeBubbleBasisF(xiM);
-        end
+      for i = 1:nTri
+        idTri = (k-1)*obj.maxTriPerPair + i;
+        obj.mortarPairs(idTri,:) = [is im];
+        obj.gpCoords{2}(idTri,:,1) = xiSlave(:,1,i);
+        obj.gpCoords{2}(idTri,:,2) = xiSlave(:,2,i);
+        obj.gpCoords{1}(idTri,:,1) = xiMaster(:,1,i);
+        obj.gpCoords{1}(idTri,:,2) = xiMaster(:,2,i);
+        obj.detJtri(idTri) = detJ(i);
       end
     end
 
 
-    function mat = integrate(obj,func,varargin)
-      % perform segment based integration
-      % func: handle to the integrand
-      % varargin: list of integrand inputs
-      % each integrand is a 4D matrix of size: ndofRow,ndofcol,nG,nTri
-
-      % check input
-      assert(nargin(func)==numel(varargin),['Number of specified input (%i)' ...
-        'not matching the integrand input (%i)'],numel(varargin),nargin(func));
-      size4 = cellfun(@(x) size(x, 4), varargin);
-      if ~all(size4 == obj.nTri)
-        error('All inputs must have the same size along dimension 3.');
+    function finalizeMortarMaps(obj)
+      % remove useless entries after mortar preallocation
+      id = obj.detJtri == 0;
+      obj.detJtri = obj.detJtri(~id);
+      for i = 1:2
+      obj.gpCoords{i}(id,:,:) = [];
       end
+      obj.mortarPairs(id,:) = [];
 
-      % segment based loop over triangular pallets
+      obj.numbMortarPairs = size(obj.mortarPairs,1);
+    end
 
-      for i = 1:obj.nTri
-        args = cellfun(@(x) x(:, :, :, i), varargin, 'UniformOutput', false);
-        matloc = func(args{:});
-        matloc = matloc.*reshape(obj.dJw(:,i),1,1,[]);
-        matloc = sum(matloc,3);
-        if i ==1
-          mat = matloc;
-        else
-          mat = mat + matloc;
-        end
-      end
-    end 
     
-    function [xiSlave,xiMaster,dJwTri] = segmentBasedCouple(obj,elSlave,elMaster)
+    function [xiSlave,xiMaster,dJTri] = segmentBasedCouple(obj,elSlave,elMaster)
       % output: nGx2xnT matrices of reference coordinate in slave and
       % master side to perform segment based integration
-      % dJwTri: weighed jacobian determinant for each pallet. size nGxnTri
+      % dJTri: determinant for each pallet
       % nT: numb. of triangles from delaunay triangulation on clipping
       % polygon
 
@@ -119,9 +136,9 @@ classdef SegmentBasedQuadrature < handle
       end
 
       % initialize output
-      obj.nTri = 0;
-      [xiMaster,xiSlave] = deal(zeros(obj.nGtri,2,obj.maxTri));
-      dJwTri = zeros(obj.nGtri,obj.maxTri);
+      nTri = 0;
+      [xiMaster,xiSlave] = deal(zeros(obj.ngTri,2,obj.maxTriPerPair));
+      dJTri = zeros(obj.maxTriPerPair,1);
 
       % double loop over slave and master subsegments
       for iS = 1:ns2
@@ -154,9 +171,15 @@ classdef SegmentBasedQuadrature < handle
           assert(numel(clipX)==1,['Non unique clip polygon for master/slave pair' ...
             ' %i/%i \n'],elMaster,elSlave)
 
+
           % perform delaunay triangulation on clip polygon
           % assumption: only one clip polygon results from intersection
           coordClip = [clipX{:} clipY{:}];
+
+          if ~SegmentBasedQuadrature.isClipValid(coordClip)
+            % skip if the polygon is degenerate or has very small area
+            continue
+          end
           topolClip = delaunay(coordClip(:,1),coordClip(:,2));
           nTriLoc = size(topolClip,1);
 
@@ -173,27 +196,25 @@ classdef SegmentBasedQuadrature < handle
             xiSlaveLoc = obj.elems(1).mapsub2ref(xiSlaveLoc,iS);
           end
 
-          % compute determinant in triangles
-          tri = Triangle(obj.nGtri);
           for iT = 1:nTriLoc
             triVert = coordClip(topolClip(iT,:),:);
-            dJwTri(:,obj.nTri+iT) = getDerBasisFAndDet(tri,triVert);
+            dJTri(nTri+iT) = 2 * Triangle.computeArea(triVert);
           end
 
-          xiMaster(:,:,obj.nTri+1:obj.nTri+nTriLoc) = xiMasterLoc;
-          xiSlave(:,:,obj.nTri+1:obj.nTri+nTriLoc) = xiSlaveLoc;
+          xiMaster(:,:,nTri+1:nTri+nTriLoc) = xiMasterLoc;
+          xiSlave(:,:,nTri+1:nTri+nTriLoc) = xiSlaveLoc;
 
-          obj.nTri = obj.nTri + nTriLoc;
+          nTri = nTri + nTriLoc;
         end
       end
 
       % cut outputs
-      if obj.nTri == 0
-        [xiSlave,xiMaster,dJwTri] = deal([]);
+      if nTri == 0
+        [xiSlave,xiMaster,dJTri] = deal([]);
       end
-      xiMaster = xiMaster(:,:,1:obj.nTri);
-      xiSlave = xiSlave(:,:,1:obj.nTri);
-      dJwTri = dJwTri(:,1:obj.nTri);
+      xiMaster = xiMaster(:,:,1:nTri);
+      xiSlave = xiSlave(:,:,1:nTri);
+      dJTri = dJTri(1:nTri);
 
     end
     
@@ -212,15 +233,15 @@ classdef SegmentBasedQuadrature < handle
       % return reference coordinates in master/slave space for GP in
       % triangle facets after intersection
       % output is a 3D matrices of size nGx2xnTri
-      xi = zeros(obj.nGtri,2,size(topolTri,1));
+      xi = zeros(obj.ngTri,2,size(topolTri,1));
       % netwon params
       itMax = 10;
       tol = 1e-9;
-      tri = Triangle(obj.nGtri);                % define reference triangle
+      tri = Triangle(obj.ngTri);                % define reference triangle
       for i = 1:size(topolTri,1)
         coordTri = clipCoord(topolTri(i,:),:);
         coordGPtri = getGPointsLocation(tri,coordTri);
-        for g = 1:obj.nGtri
+        for g = 1:obj.ngTri
           rhs = (elem.computeBasisF(xi(g,:,i))*elemCoord)' - coordGPtri(g,:)';
           iter = 0;
           while (norm(rhs,2) > tol) && (iter < itMax)
@@ -260,6 +281,42 @@ classdef SegmentBasedQuadrature < handle
       x = (projC - P)*[d1 d2];
 
     end
+
+
+    function dJw = getIntegrationWeights(obj,kPair)
+
+      dJ = obj.detJtri(kPair);
+      dJw = dJ*obj.wTri;
+
+    end
+
+    function gpCoords = getSlaveGPCoords(obj,kPair)
+      gpCoords = obj.gpCoords{2}(kPair,:,:);
+      gpCoords = reshape(gpCoords,[],2);
+    end
+
+    function gpCoords = getMasterGPCoords(obj,kPair)
+      gpCoords = obj.gpCoords{1}(kPair,:,:);
+      gpCoords = reshape(gpCoords,[],2);
+    end
+
+
+  end
+
+  methods (Static)
+
+
+    function isValid = isClipValid(clip)
+      tol = 1e-4;
+      clip = round(clip/tol)*tol;
+      clipUnique = unique(clip,'rows');
+      isValid = true;
+      if size(clipUnique,1) < 3
+        isValid = false;
+      end
+
+    end
+
   end
 end
 

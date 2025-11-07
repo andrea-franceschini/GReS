@@ -194,6 +194,7 @@ classdef Mesh < handle
           importGMSHmesh(obj,fileName);
           return;
       end
+
       elems = double(elems);
 
       % STORING DATA INSIDE OBJECT'S PROPERTIES

@@ -2,22 +2,21 @@ classdef Mortar < handle
   % Base class for non conforming interfaces
   
   properties
+    id              % interface identifier
     solvers         % instance of domains connected by the interface
     mesh            % instance of interfaceMesh class
     idDomain        % id of connected domains
-    Jmaster         % Jacobian block associated with master
-    Jslave          % Jacobian block associated with slave
-    Jmult           % Jacobian block associated with multipliers
-    rhsMaster       % master rhs
-    rhsSlave        % slave rhs
-    rhsMult         % multiplier rhs
-    quadrature      % mortar integration scheme used for the interface
+    quadrature      % mortar integration object
     dofm            % dof manager instance of connected domains
     elements        % instance of Elements for the 2D interfaces
-    multiplierType = 'dual'
+    multiplierType
     D               % slave mortar matrix
     M               % master mortar matrix
     outStruct       % wrapper for print utilities (mimics OutState)
+    physic          % string id of mortar field
+    totMult
+    dirDofs        % list of nodes with dirichlet bcs enforced
+    contactHelper
   end
 
   methods
@@ -29,6 +28,11 @@ classdef Mortar < handle
         % complete mortar definition with input file
         inputStruct = varargin{1};
         domains = varargin{2};
+        if ~isfield(inputStruct,"Multiplier")
+          obj.multiplierType = "P0";
+        else
+          obj.multiplierType = inputStruct.Multiplier.typeAttribute;
+        end
         setMortar(obj,inputStruct,domains);
       else
         % simple mortar definition with 2 surfaces already defined
@@ -38,13 +42,14 @@ classdef Mortar < handle
         mshSlave = varargin{2};
         obj.mesh = interfaceMesh(mshMaster,mshSlave);
       end
+      obj.contactHelper = ContactHelper(obj);
     end
 
-    function [r,c,v] = allocateMatrix(obj,sideID)
-      nEntries = nnz(obj.mesh.elemConnectivity)...
-        *obj.mesh.nN(sideID);
-      [r,c,v] = deal(zeros(nEntries,1));
-    end
+%     function [r,c,v] = allocateMatrix(obj,sideID)
+%       nEntries = nnz(obj.mesh.elemConnectivity)...
+%         *obj.mesh.nN(sideID);
+%       [r,c,v] = deal(zeros(nEntries,1));
+%     end
 
 
     function applyBC(obj,idDomain,bound,t)
@@ -70,6 +75,53 @@ classdef Mortar < handle
       end
     end
 
+
+    function [bcDofs,bcVals] = removeSlaveBCdofs(obj,bcPhysics,bcData,domId)
+      % this method updates the list of bc dofs and values removing dofs on
+      % the slave interface (only for nodal multipliers)
+      % this avoid possible overconstraint and solvability issues
+
+      % bcData: nDofBC x 2 matrix.
+      % first column -> dofs
+      % second columns -> vals (optional)
+
+      bcDofs = bcData(:,1);
+      if size(bcData,2) > 1
+        bcVals = bcData(:,2);
+      else
+        bcVals = [];
+      end
+
+
+      if nargin > 3
+        if ~(domId == obj.idDomain(2))
+          % not slave side
+          return
+        end
+      end
+
+      % get list of nodal slave dofs in the interface
+      nodSlave = obj.mesh.local2glob{2};
+      % keep only active multipliers
+      fldId = obj.dofm(2).getFieldId(bcPhysics);
+      dofSlave = getLocalDoF(obj.dofm(2),nodSlave,fldId);
+      isBCdof = ismember(bcData(:,1),dofSlave);
+      % update list of dirichlet nodes
+      obj.dirDofs = unique([obj.dirDofs; bcDofs(isBCdof)]);
+
+      if strcmp(obj.multiplierType,'P0')
+        return
+      end
+
+      % remove slave dofs only for nodal multipliers on slave side
+
+      bcDofs = bcDofs(~isBCdof);
+      if ~isempty(bcVals)
+        bcVals = bcVals(~isBCdof);
+      end
+    end
+
+
     function elem = getElem(obj,sideID,id)
       % get instance of element class on one the sides of the interface
       % Assumption: same element type in the entire interface
@@ -78,30 +130,20 @@ classdef Mortar < handle
       elem = obj.elements(sideID).getElement(type);
     end
 
-%     function mat = getMatrix(obj,sideID,field)
-%       n = obj.dofm(sideID).getDoFperEnt(field);
-%       dofMult = dofId(1:obj.mesh.nEl(2),n);
-%       dof = obj.mesh.local2glob{sideID}(1:size(obj.mortarMatrix{sideID},2));
-%       dof = obj.dofm(sideID).getLocalDoF(dof,field);
-%       [j,i] = meshgrid(dof,dofMult);
-%       nr = n*obj.mesh.nEl(2);
-%       nc = obj.dofm(sideID).getNumDoF(field);
-%       vals = Discretizer.expandMat(obj.mortarMatrix{sideID},n);
-%       mat = sparse(i(:),j(:),vals(:),nr,nc); % minus sign!
-%     end
+    function computeMortarMatrices(obj)
 
-    function computeMortarMatrices(obj,~)
+      % This method computes the cross grid mortar matrices between
+      % connected interfaces
 
-       % number of components per dof of interpolated physics
+      % Also remove inactive slave/master elements after performing first
+      % round of mortar integration
+
+      % number of components per dof of interpolated physics
       if ~isempty(obj.dofm)
         ncomp = obj.dofm(2).getDoFperEnt(obj.physic);
       else
         ncomp = 1;
       end
-
-      % logical index to track slave and master elements that do not really
-      % participate to the mortar surface (fake connectivity)
-      isInactiveSlave = false(obj.mesh.msh(2).nSurfaces,1);
 
       % get number of index entries for sparse matrices
       % overestimate number of sparse indices assuming all quadrilaterals
@@ -124,90 +166,183 @@ classdef Mortar < handle
         nDofSlave = obj.dofm(2).getNumDoF(obj.physic);
         nDofMult = getNumbMultipliers(obj);
       else
-        obj.multiplierType = 'dual'; 
+        obj.multiplierType = 'dual';
         nDofMaster = obj.mesh.msh(1).nNodes;
         nDofSlave = obj.mesh.msh(2).nNodes;
         nDofMult = nDofSlave;
       end
 
-      % define matrix assemblers
-      locM = @(imult,imaster,Nmult,Nmaster) ...
-        computeLocMaster(obj,imult,imaster,Nmult,Nmaster);
-      locD = @(imult,islave,Dloc) ...
-        computeLocSlave(obj,imult,islave,Dloc);
+      fldM = obj.dofm(1).getFieldId(obj.physic);
+      fldS = obj.dofm(2).getFieldId(obj.physic);
 
-      asbM = assembler(nm,locM,nDofMult,nDofMaster);
-      asbD = assembler(ns,locD,nDofMult,nDofSlave);
+      asbM = assembler(nm,nDofMult,nDofMaster);
+      asbD = assembler(ns,nDofMult,nDofSlave);
 
-      for is = 1:obj.mesh.msh(2).nSurfaces
-        masterElems = find(obj.mesh.elemConnectivity(:,is));
-        if isempty(masterElems)
-          continue
+      f = @(a,b) pagemtimes(a,'ctranspose',b,'none');
+
+      for iPair = 1:obj.quadrature.numbMortarPairs
+
+        is = obj.quadrature.mortarPairs(iPair,1);
+        im = obj.quadrature.mortarPairs(iPair,2);
+
+        nodeSlave = obj.mesh.local2glob{2}(obj.mesh.msh(2).surfaces(is,:));
+        usDof = obj.dofm(2).getLocalDoF(nodeSlave,fldS);
+        nodeMaster = obj.mesh.local2glob{1}(obj.mesh.msh(1).surfaces(im,:));
+        umDof = obj.dofm(1).getLocalDoF(nodeMaster,fldM);
+        tDof = getMultiplierDoF(obj,is);
+
+        % retrieve mortar integration data
+        xiMaster = obj.quadrature.getMasterGPCoords(iPair);
+        xiSlave = obj.quadrature.getSlaveGPCoords(iPair);
+        dJw = obj.quadrature.getIntegrationWeights(iPair);
+
+        [Ns,Nm,Nmult] = ...
+          getMortarBasisFunctions(obj,im,is,xiMaster,xiSlave);
+
+        [Ns,Nm,Nmult] = ...
+          obj.reshapeBasisFunctions(ncomp,Ns,Nm,Nmult);
+
+        if ncomp > 1
+          % vector field, local reference needed
+          normIdx = 1:3:length(tDof);
+          tangIdx = setdiff(1:length(tDof), 1:3:length(tDof));
+
+
+          % rotation of multipliers
+          R = getRotationMatrix(obj.contactHelper,is);
+          NmultR = pagemtimes(Nmult,R);
+
+          % Reduce the dimension of multiplier basis functions exploiting
+          % the local definition of degrees of freedom
+
+          % the normal component of the multipliers basis
+          Nmult_n = -Nmult(1,normIdx,:);
+          % tangential component of multiplier basis
+          Nmult_t = NmultR(:,tangIdx,:);
+
+          % get normal at the gauss points (for warped facets...?)
+          normalNodes = obj.contactHelper.getNodalNormal(is);
+          normal = pagemtimes(Ns,normalNodes);
+
+          % operator selecting only tangential components of the
+          % displacements
+          T = eye(3) - pagemtimes(normal,'none',normal,'transpose');
+
+          % normal and tangential component of displacement basis functions
+          Nm_n = pagemtimes(normal,'transpose',Nm,'none');
+          Nm_t = pagemtimes(T,Nm);
+          Ns_n = pagemtimes(normal,'transpose',Ns,'none');
+          Ns_t = pagemtimes(T,Ns);
+
+          Atm_n =  MortarQuadrature.integrate(f,Nmult_n,Nm_n,dJw);
+          Ats_n =  MortarQuadrature.integrate(f,Nmult_n,Ns_n,dJw);
+
+          Atm_t =  MortarQuadrature.integrate(f,Nmult_t,Nm_t,dJw);
+          Ats_t =  MortarQuadrature.integrate(f,Nmult_t,Ns_t,dJw);
+
+          asbM.localAssembly(tDof(normIdx),umDof,-Atm_n);
+          asbM.localAssembly(tDof(tangIdx),umDof,-Atm_t);
+          asbD.localAssembly(tDof(normIdx),usDof,Ats_n);
+          asbD.localAssembly(tDof(tangIdx),usDof,Ats_t);
+
+        else
+          Mloc = MortarQuadrature.integrate(f,Nmult,Nm,dJw);
+          Dloc = MortarQuadrature.integrate(f,Nmult,Ns,dJw);
+          asbM.localAssembly(tDof,umDof,-Mloc);
+          asbD.localAssembly(tDof,usDof,Dloc);
         end
 
-        elSlave = getElem(obj,2,is);
-        nN = elSlave.nNode;
-        switch obj.multiplierType
-          case 'P0'
-            Dloc = zeros(ncomp,ncomp*nN);
-          otherwise
-            Dloc = zeros(ncomp*nN,ncomp*nN);
-        end
-
-        for im = masterElems'
-
-          [Nslave,Nmaster,Nmult] = ...
-            getMortarBasisFunctions(obj.quadrature,is,im);
-
-          if isempty(Nmaster)
-            % refine connectivity matrix
-            %obj.mesh.elemConnectivity(im,is) = 0;
-            continue
-          end
-
-          [Nslave,Nmaster,Nmult] = ...
-            obj.reshapeBasisFunctions(ncomp,Nslave,Nmaster,Nmult);
-
-          asbM.localAssembly(is,im,-Nmult,Nmaster);
-
-          Dloc = Dloc + ...
-            obj.quadrature.integrate(@(a,b) pagemtimes(a,'ctranspose',b,'none'),...
-            Nmult,Nslave);
-        end
-
-        % if Dloc is empty, the current slave element is inactive remove
-        % also corresponding master elements if it is not connected to any
-        % other element
-        if all(Dloc==0,"all")
-          isInactiveSlave(is) = true;
-        end
-
-        asbD.localAssembly(is,is,Dloc);
       end
-
-      % remove inactive slave elements
-      removeMortarSurface(obj.mesh,2,isInactiveSlave);
-
-      % find unconnected master elements
-      isInactiveMaster = ~any(obj.mesh.elemConnectivity, 2);
-      % remove unconnected elements
-      removeMortarSurface(obj.mesh,1,isInactiveMaster);
 
       obj.M = asbM.sparseAssembly();
       obj.D = asbD.sparseAssembly();
 
-      % check satisfaction of partition of unity (mortar consistency)
-      
-      % remove rows of inactive multipliers from Jmaster and Jslave
-      if ~isempty(obj.solvers)
-        dofMult = getMultiplierDoF(obj);
-        obj.M = obj.M(dofMult,:);
-        obj.D = obj.D(dofMult,:);
-      end
-
       pu = sum([obj.M obj.D],2);
       assert(norm(pu)<1e-6,'Partiition of unity violated');
-%       fprintf('Done computing mortar matrix in %.4f s \n',cputime-tIni)
+
+    end
+
+
+    function [dofr,dofc,mat] = computeLocMortar(obj,side,imult,iu,Nmult,Nu,dJw)
+      mat = pagemtimes(Nmult,'ctranspose',Nu,'none');
+      mat = mat.*reshape(dJw,1,1,[]);
+      mat = sum(mat,3);
+      nodes = obj.mesh.local2glob{side}(obj.mesh.msh(side).surfaces(iu,:));
+      fld = obj.dofm(side).getFieldId(obj.physic);
+      dofc = obj.dofm(side).getLocalDoF(nodes,fld);
+      dofr = getMultiplierDoF(obj,imult);
+    end
+
+    function [Nslave, Nmaster, Nmult, varargout] = getMortarBasisFunctions(obj,im,is,xiMaster,xiSlave)
+      elemMaster = obj.getElem(1,im);
+      elemSlave = obj.getElem(2,is);
+      Nmaster = elemMaster.computeBasisF(xiMaster);
+      Nslave = elemSlave.computeBasisF(xiSlave);
+      Nmult = obj.computeMultiplierBasisF(is,Nslave);
+
+      if nargout ==4
+        % outout the bubble function on the slave side
+        varargout{1} = elemSlave.computeBubbleBasisF(xiSlave);
+      end
+    end
+
+
+
+    function dofs = getMultiplierDoF(obj,is)
+      % return multiplier dofs associated with slave element #is inside
+      % obj.mesh.msh(2)
+
+      nc = obj.dofm(2).getDoFperEnt(obj.physic);
+      if nargin > 1
+        assert(isscalar(is),'Input id must be a scalar integer \n')
+        if strcmp(obj.multiplierType,'P0')
+          dofs = dofId(is,nc);
+        else
+          nodes = obj.mesh.msh(2).surfaces(is,:);
+          dofs = dofId(nodes,nc);
+        end
+      else
+        if strcmp(obj.multiplierType,'P0')
+          dofs = dofId((1:obj.mesh.msh(2).nSurfaces)',nc);
+        else
+          dofs = dofId((1:obj.mesh.msh(2).nNodes)',nc);
+        end
+      end
+    end
+
+
+    function nDof = getNumbMultipliers(obj)
+      % nDoFAct -> number of currently active multipliers in the interface
+      % nDoFTot -> total number of dof in the whole interface
+
+      nc = obj.dofm(2).getDoFperEnt(obj.physic);
+      switch obj.multiplierType
+        case 'P0'
+          nDof = nc*obj.mesh.msh(2).nSurfaces;
+        case {'dual','standard'} % nodal multipliers
+          % get number of nodes in active cells
+          nDof = nc*obj.mesh.msh(2).nNodes;
+      end
+    end
+
+
+    function computeMortarInterpolation(obj)
+
+      processMortarPairs(obj.quadrature); 
+
+      inactiveMaster = find(~ismember(1:obj.mesh.msh(1).nSurfaces,...
+        obj.quadrature.mortarPairs(:,2)));
+
+      inactiveSlave = find(~ismember(1:obj.mesh.msh(2).nSurfaces,...
+        obj.quadrature.mortarPairs(:,1)));
+
+      % remove master elements
+      obj.mesh.removeMortarSurface(1,inactiveMaster);
+
+      % remove slave elements
+      obj.mesh.removeMortarSurface(2,inactiveSlave);
+
+
     end
 
 
@@ -229,22 +364,21 @@ classdef Mortar < handle
       end
     end
 
-    function [dofr,dofc,mat] = computeLocMaster(obj,imult,im,Nmult,Nmaster)
-      mat = obj.quadrature.integrate(@(a,b) pagemtimes(a,'ctranspose',b,'none'),...
-        Nmult,Nmaster);
-      nodeMaster = obj.mesh.local2glob{1}(obj.mesh.msh(1).surfaces(im,:));
-      dofc = nodeMaster;
-      dofr = imult;
-    end
-
-    function [dofr,dofc,mat] = computeLocSlave(obj,imult,is,mat)
-      if strcmp(obj.multiplierType,'dual')
-        % lump local D matrix
-        mat = diag(sum(mat,2));
+    function Nmult = computeMultiplierBasisF(obj,el,NslaveIn)
+      elem = obj.getElem(2,el);
+      switch obj.multiplierType
+        case 'P0'
+          Nmult = ones(size(NslaveIn,1),1);
+        case 'standard'
+          Nmult = NslaveIn;
+        case 'dual'
+          Ns = getBasisFinGPoints(elem);
+          gpW = getDerBasisFAndDet(elem,el);
+          Ml = Ns'*(Ns.*gpW');
+          Dl = diag(Ns'*gpW');
+          A = Ml\Dl;
+          Nmult = NslaveIn*A;
       end
-      nodeSlave = obj.mesh.local2glob{2}(obj.mesh.msh(2).surfaces(is,:));
-      dofc = nodeSlave;
-      dofr = imult;
     end
 
     function finalizeOutput(obj)
@@ -261,11 +395,9 @@ classdef Mortar < handle
       pointData2D = [];
       if nargin == 2
         t = tOld;
-        for i = 1:obj.nFld
-          [cellData,pointData] = buildPrintStruct(obj,i);
-          cellData2D = OutState.mergeOutFields(cellData2D,cellData);
-          pointData2D = OutState.mergeOutFields(pointData2D,pointData);
-        end
+        [cellData,pointData] = buildPrintStruct(obj);
+        cellData2D = OutState.mergeOutFields(cellData2D,cellData);
+        pointData2D = OutState.mergeOutFields(pointData2D,pointData);
         obj.VTK.writeVTKFile(t, [], [], pointData2D, cellData2D);
       elseif nargin == 3
         tList = obj.outStruct.tList;
@@ -316,13 +448,14 @@ classdef Mortar < handle
       if obj.idDomain(1)==obj.idDomain(2)
         % interface defined within the same domain 
         out = setdiff(obj.mesh.local2glob{1},obj.mesh.local2glob{2});
-        if ~all(out==obj.mesh.local2glob{1})
+        if ~all(ismember(obj.mesh.local2glob{1},out))
           error('Nodes of master and slave side are not disjoint');
         end
       end
     end
 
     function setMortar(obj,inputStruct,domains)
+      
       obj.solvers = domains;
       obj.idDomain = [inputStruct.Master.idAttribute;
         inputStruct.Slave.idAttribute];
@@ -340,6 +473,7 @@ classdef Mortar < handle
 
       % check that master and slave node sets are disjoint
       checkInterfaceDisjoint(obj);
+
       obj.dofm = [domains(1).dofm;
         domains(2).dofm];
 
@@ -350,9 +484,13 @@ classdef Mortar < handle
       else
         nInt = [];
       end
+
       obj.setQuadrature(quadType,nG,nInt)
 
+      computeMortarInterpolation(obj)
+
       setPrintUtils(obj,inputStruct,domains(2).outstate);
+
     end
 
     function setQuadrature(obj,quadType,nG,nInt)
@@ -360,19 +498,12 @@ classdef Mortar < handle
 
       switch quadType
         case 'RBF'
-          obj.elements = [Elements(obj.mesh.msh(1),nG),...
-            Elements(obj.mesh.msh(2),nG)];
           assert(~isempty(nInt),['Missing number of interpolation points for' ...
             'RBF quadrature'])
-          obj.quadrature = RBFquadrature(obj,nInt);
+          obj.quadrature = RBFquadrature(obj,nG,nInt);
         case 'SegmentBased'
           obj.quadrature = SegmentBasedQuadrature(obj,nG);
-          nG = 3;
-          obj.elements = [Elements(obj.mesh.msh(1),nG),...
-            Elements(obj.mesh.msh(2),nG)];
         case 'ElementBased'
-          obj.elements = [Elements(obj.mesh.msh(1),nG),...
-            Elements(obj.mesh.msh(2),nG)];
           obj.quadrature = ElementBasedQuadrature(obj,nG);
       end
     end
@@ -396,21 +527,21 @@ classdef Mortar < handle
         type = interfStr(i).Type;
         switch type
           case 'MeshTying'
-            if (~isfield(interfStr,"Stabilization"))
+            if (~isfield(interfStr(i),"Stabilization")) || ismissing(interfStr(i).Stabilization)
               % standard mesh tying with dual multipliers
               interfaceStruct{i} = MeshGlue(i,interfStr(i),domains([idMaster,idSlave]));
-            elseif strcmp(interfStr.Stabilization.typeAttribute,'Jump')
+            elseif strcmp(interfStr(i).Stabilization.typeAttribute,'Jump')
               interfaceStruct{i} = MeshGlueJumpStabilization(i,interfStr(i), ...
                 domains([idMaster,idSlave]));
-            elseif strcmp(interfStr.Stabilization.typeAttribute,'Bubble')
+            elseif strcmp(interfStr(i).Stabilization.typeAttribute,'Bubble')
               interfaceStruct{i} = MeshGlueBubbleStabilization(i,interfStr(i), ...
                 domains([idMaster,idSlave]));
             else
               error('Invalid input argument for interface %i',i)
             end
-          case 'Fault'
+          case 'ContactMortar'
             % not yet implemented!
-            interfaceStruct{i} = Fault();
+            interfaceStruct{i} = ContactMortar(i,interfStr(i),domains([idMaster,idSlave]));
           case 'MeshTyingCondensation'
             interfaceStruct{i} = MeshGlueDual(i,interfStr(i),domains([idMaster,idSlave]));
           otherwise

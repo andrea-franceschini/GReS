@@ -1,4 +1,4 @@
-classdef ElementBasedQuadrature < handle
+classdef ElementBasedQuadrature < MortarQuadrature
   % Implement utilities to perform element based integration given a pair
   % of master and slave element in contact
   % Can be equipped with the RBF scheme to cheaply sort out elements that
@@ -6,176 +6,137 @@ classdef ElementBasedQuadrature < handle
 
   % REFS: Puso,2004, A mortar segment-to-segment contact method for large
   % deformation solid mechanics
-  
+
   properties
-    msh       % instance of InterfaceMesh class
-    mortar
-    nGP
+    activeGPmap        % index map to access gp related information
+    nGP                % number of gauss points in input
+    detJw
   end
 
   properties (Access = private)
-    % temporary properties for element-based sort out process
-    idSlave = 0       % current id of slave element
-    tempGPloc         % full list of gp location
-    tempdJw           % full list of jacobian determinant
-    tempNs            % full list of slave basis functions
-    tempNmult         % full list of multiplier basis functions
-    tempNbubble       % full list of bubble basis function
-    gptoProj          % mark gp still to be projected for current m/s couple
-    flagProj          % projected gp for current master/slave couple
+    % element based infos
+    idSlave          % current slave element being processed
+    gpsCoord     % current list of 3D gp coordinates for RBF interpolation
+    gpsCoordLoc  % current list of local gp coordinates
+    dJwSlave
+    suppFlag
+    countGP
+    maxGP
   end
 
   methods
-    function obj = ElementBasedQuadrature(mortar,nG)
-      obj.mortar = mortar;
-      obj.msh = obj.mortar.mesh.msh;
-      obj.nGP = nG;
+    function obj = ElementBasedQuadrature(mortar,nGP)
+      obj@MortarQuadrature(mortar,nGP);
+      obj.nGP = nGP;
     end
 
-    function [Ns,Nm,Nmult,NbubSlave,NbubMaster] = getMortarBasisFunctions(obj,is,im)
 
-      elemSlave = obj.mortar.getElem(2,is);
-      elemMaster = obj.mortar.getElem(1,im);
+    function processMortarPairs(obj)
 
-      % new slave element
-      if obj.idSlave ~= is
-        if ~isempty(obj.gptoProj)
-          if any(obj.gptoProj)
-            warning('% i GP not projected for element %i',...
-              sum(obj.gptoProj),obj.idSlave)
-          end
-        end
+      % initialize the maps to store mortar quadrature info
+      obj.maxGP = obj.nGP^2;
+      %       nConnections = nnz(obj.mortar.mesh.elemConnectivity);
+      totGP = obj.msh(2).nSurfaces*obj.maxGP;
+      obj.gpCoords = {zeros(totGP,2);
+        zeros(totGP,2)};
+
+      nConnections = nnz(obj.mortar.mesh.elemConnectivity);
+
+      obj.mortarPairs = zeros(nConnections,2);
+      obj.detJw = zeros(totGP,1);
+
+      obj.activeGPmap = zeros(nConnections+1,1);
+
+      nM = full(sum(obj.mortar.mesh.elemConnectivity,1));
+      nM = [0 cumsum(nM)];
+
+      for is = 1:obj.msh(2).nSurfaces
+
+        % reset slave element based info
+        elemSlave = obj.mortar.getElem(2,is);
         obj.idSlave = is;
-        obj.tempdJw = getDerBasisFAndDet(elemSlave,is);
-        obj.tempNs = getBasisFinGPoints(elemSlave);
-        obj.tempNmult = computeMultiplierBasisF(obj.mortar,is,obj.tempNs);
-        obj.tempGPloc = elemSlave.GaussPts.coord;
-        obj.gptoProj = true(size(obj.tempNs,1),1);
-        if nargout > 3
-          obj.tempNbubble = getBubbleBasisFinGPoints(elemSlave);
+        obj.countGP = 0;
+        obj.gpsCoord = getGPointsLocation(elemSlave,is);
+        obj.gpsCoordLoc = elemSlave.GaussPts.coord;
+        obj.dJwSlave = getDerBasisFAndDet(elemSlave,is);
+
+        imList = find(obj.mortar.mesh.elemConnectivity(:,is));
+
+        for j = 1:numel(imList)
+          im = imList(j);
+          k = nM(is)+ j;
+          % k (global index to write without race conditions)
+          isPairActive = processMortarPair(obj,is,im,k);
+          if ~isPairActive
+            obj.activeGPmap(k+1) = obj.activeGPmap(k);
+            continue
+          end
+
+          % sort out gauss points already projected
+          obj.activeGPmap(k+1) = obj.activeGPmap(k) + sum(obj.suppFlag);
+          obj.gpsCoord = obj.gpsCoord(~obj.suppFlag,:);
+          obj.gpsCoordLoc = obj.gpsCoordLoc(~obj.suppFlag,:);
+          obj.dJwSlave = obj.dJwSlave(~obj.suppFlag);
+          obj.countGP = obj.countGP + sum(obj.suppFlag);
+
+
         end
-      else         % old slave element, sort out gp
-        if ~any(obj.gptoProj)
-          % gp already projected on all previous elements
-          [Ns,Nm,Nmult,NbubSlave,NbubMaster] = deal([]);
-          return
+
+        if obj.countGP ~= elemSlave.GaussPts.nNode
+          warning("Some gauss point not projected for element %i",is)
         end
-% 
-%         obj.tempNs = obj.tempNs(~obj.suppFlag,:);
-%         obj.tempNmult = obj.tempNmult(~obj.suppFlag,:);
-%         if nargout > 3
-%           obj.tempNbubble = obj.tempNbubble(~obj.suppFlag,:);
-%         end
-%         obj.tempGPloc = obj.tempGPloc(~obj.suppFlag,:);
-%         obj.tempdJw = obj.tempdJw(~obj.suppFlag);
+
       end
 
-      % reset list of projected gp
-      obj.flagProj = false(size(obj.tempNs,1),1);
-      % get master basis and gp in slave support
-      xiProj = projectGP(obj,is,im);
-      % remove projected gp from list
-      obj.gptoProj(obj.flagProj,:) = false;
-      Nm = elemMaster.computeBasisF(xiProj);
+      finalizeMortarMaps(obj);
 
-      if nargout > 4
-        NbubMaster = elemMaster.computeBubbleBasisF(xiProj);  
-        NbubMaster = NbubMaster(obj.flagProj,:);
-      end
+    end
 
-      if all(obj.gptoProj)
-        % no detected intersection
-        [Ns,Nm,Nmult,NbubSlave,NbubMaster] = deal([]);
+
+
+    function isPairActive = processMortarPair(obj,is,im,k)
+
+      isPairActive = true;
+
+      % compute interpolated gp coordinates and update supportFlag
+      xiMaster = projectGP(obj,is,im);
+
+
+      if ~any(obj.suppFlag)
+        isPairActive = false;
         return
       end
 
-      %Nm = Nm(obj.suppFlag,:);
+      % store infos in maps
+      obj.mortarPairs(k,:) = [is im];
 
-      % return basis function in active gp
-      Ns = obj.tempNs(obj.flagProj,:);
-      Nmult = obj.tempNmult(obj.flagProj,:);
-      if nargout > 3
-        NbubSlave = obj.tempNbubble(obj.flagProj,:);
-      end
+      nGsupp = sum(obj.suppFlag);
+      gpId = (is-1)*obj.maxGP + obj.countGP;
+      obj.gpCoords{1}(gpId+1:gpId+nGsupp,1) = xiMaster(obj.suppFlag,1);
+      obj.gpCoords{1}(gpId+1:gpId+nGsupp,2) = xiMaster(obj.suppFlag,2);
+      obj.gpCoords{2}(gpId+1:gpId+nGsupp,1) = obj.gpsCoordLoc(obj.suppFlag,1);
+      obj.gpCoords{2}(gpId+1:gpId+nGsupp,2) = obj.gpsCoordLoc(obj.suppFlag,2);
+      obj.detJw(gpId+1:gpId+nGsupp) = obj.dJwSlave(obj.suppFlag);
+
     end
 
-%     function [xiM, gpProjected] = par_projectGP(obj, is, im)
-%       elM = getElem(obj.mortar,1,im);
-%       elS = getElem(obj.mortar,2,is);
-%       nodeS = obj.msh(2).surfaces(is,:);
-%       coordS = obj.msh(2).coordinates(nodeS,:);
-%       X = elS.Nref(obj.gptoProj,:) * coordS;
-%       xiS = obj.tempGPloc(obj.gptoProj,:);
-%       ngp = size(xiS,1);
-%       xiM_all = zeros(ngp, 2);       % results
-%       fl = false(ngp,1);             % flags
-%       tol = 1e-9;
-%       itMax = 8;
-%       k = find(obj.gptoProj);        % global indices of GP to project
-% 
-%       nodeM = obj.msh(1).surfaces(im,:);
-%       coordM = obj.msh(1).coordinates(nodeM,:);
-%       normals = obj.mortar.mesh.avgNodNormal{2}(nodeS,:);
-% 
-%       % Create local copies of elements (safe for parallel)
-%       elMcopy = elM;
-%       elScopy = elS;
-% 
-%       parfor i = 1:ngp
-%         xiMi = elScopy.centroid;
-%         xiSi = xiS(i,:);
-%         Xi = X(i,:);
-%         Ns = elScopy.computeBasisF(xiSi);
-%         ng = Ns * normals;
-%         ng = ng / norm(ng);
-% 
-%         iter = 0;
-%         w = 0;
-%         Nm = elMcopy.computeBasisF(xiMi);
-%         rhs = (Nm * coordM - w * ng - Xi)';
-% 
-%         while norm(rhs,2) > tol && iter < itMax
-%           iter = iter + 1;
-%           dN = elMcopy.computeDerBasisF(xiMi);
-%           J1 = dN * coordM;
-%           J = [J1' -ng'];
-%           ds = J \ (-rhs);
-%           xiMi = xiMi + ds(1:2)';
-%           w = w + ds(3);
-%           Nm = elMcopy.computeBasisF(xiMi);
-%           rhs = (Nm * coordM - w * ng - Xi)';
-%         end
-% 
-%         if FEM.checkInRange(elMcopy, xiMi)
-%           xiM_all(i,:) = xiMi;
-%           fl(i) = true;
-%         end
-%       end
-% 
-%       xiM = xiM_all(fl,:);
-%       gpProjected = fl;
-% 
-%       % Safe to update obj.flagProj *after* the loop
-%       obj.flagProj(k(fl)) = true;
-%     end
-
-
-    function [xiM,gpProjected] = projectGP(obj,is,im)
+    function xiM = projectGP(obj,is,im)
       % xi: reference coordinates of the gauss point
       % get nodal normal
       elM = getElem(obj.mortar,1,im);
       elS = getElem(obj.mortar,2,is);
       nodeS = obj.msh(2).surfaces(is,:);
-      coordS = obj.msh(2).coordinates(nodeS,:);
-      X = elS.Nref(obj.gptoProj,:)*coordS;                    % real position of gauss pts
-      xiS = obj.tempGPloc(obj.gptoProj,:);
+      X = obj.gpsCoord;                    % real position of gauss pts
+      xiS = obj.gpsCoordLoc;
+
       ngp = size(xiS,1);
+
+      obj.suppFlag = false(ngp,1);
+
       xiM = zeros(ngp,2);
       itMax = 8;
-      tol = 1e-14;
-      gpProjected = false(size(obj.gptoProj,1),1);
-      fl = false(ngp,1);
-      k = find(obj.gptoProj); % index of gp to project
+      tol = 1e-10;
+
       for i = 1:ngp
         Ns = elS.computeBasisF(xiS(i,:));
         ng = Ns*obj.mortar.mesh.avgNodNormal{2}(nodeS,:); % slave normal at GP
@@ -199,34 +160,51 @@ classdef ElementBasedQuadrature < handle
           Nm =  elM.computeBasisF(xiM(i,:));
           rhs = (Nm*coordM - w*ng - X(i,:))';
         end
-        % check if gp lies in master reference space and update gp flag 
+
+        % check if gp lies in master reference space and update gp flag
         if FEM.checkInRange(elM,xiM(i,:))
-          % turn off gp that fall in master 
-          % turn on flag for projected gp
-          obj.flagProj(k(i)) = true;
-          fl(i) = true;
-          % store result in projected gp
+          obj.suppFlag(i) = true;
         end
       end
-      xiM = xiM(fl,:);
     end
 
 
-    function mat = integrate(obj,func,varargin)
-      % element based integration
-      % check input
-      assert(nargin(func)==numel(varargin),['Number of specified input (%i)' ...
-        'not matching the integrand input (%i)'],numel(varargin),nargin(func));
-      size3 = cellfun(@(x) size(x, 3), varargin);
-      if ~all(size3 == size3(1))
-        error('All inputs must have the same size along dimension 3.');
+    function gpCoords = getSlaveGPCoords(obj,kPair)
+      i1 = obj.activeGPmap(kPair);
+      i2 = obj.activeGPmap(kPair+1);
+      gpCoords = obj.gpCoords{2}(i1+1:i2,:);
+    end
+
+    function gpCoords = getMasterGPCoords(obj,kPair)
+      i1 = obj.activeGPmap(kPair);
+      i2 = obj.activeGPmap(kPair+1);
+      gpCoords = obj.gpCoords{1}(i1+1:i2,:);
+    end
+
+
+    function dJweighed = getIntegrationWeights(obj,kPair)
+      i1 = obj.activeGPmap(kPair);
+      i2 = obj.activeGPmap(kPair+1);
+      dJweighed = obj.detJw(i1+1:i2);
+    end
+
+
+    function finalizeMortarMaps(obj)
+      % remove useless entries after mortar preallocation
+      id = ~any(obj.mortarPairs,2);
+      id2 = obj.detJw == 0;
+
+      obj.activeGPmap([false;id]) = [];
+      obj.mortarPairs(id,:) = [];
+
+      for i = 1:2
+        obj.gpCoords{i}(id2,:) = [];
       end
-      dJWeighed = obj.tempdJw(obj.flagProj);
-      mat = func(varargin{:});
-      mat = mat.*reshape(dJWeighed,1,1,[]);
-      mat = sum(mat,3);
+
+      obj.numbMortarPairs = size(obj.mortarPairs,1);
     end
-    
+
+
   end
 end
 

@@ -28,6 +28,7 @@ classdef interfaceMesh < handle
         getConnectivityMatrix(obj);
         [obj.msh(1),globNodes1] = mshMaster.getSurfaceMesh(any(obj.elemConnectivity,2));
         [obj.msh(2),globNodes2] = mshSlave.getSurfaceMesh(any(obj.elemConnectivity,1));
+        
       elseif nargin == 4
         % input is 3D mesh from which we extract the surface meshes
         surfMaster = varargin{1};
@@ -43,10 +44,10 @@ classdef interfaceMesh < handle
       % remove empty row/cols from connectivity matrix
       obj.elemConnectivity(~any(obj.elemConnectivity,2),:) = [];
       obj.elemConnectivity(:,~any(obj.elemConnectivity,1)) = [];
-      
+
       getCellTypes(obj);
 
-      % map local node indices to global nodes FIX!
+      % map local node indices to global nodes
       obj.local2glob{1}(obj.msh(1).surfaces(:)) = globNodes1(:);
       obj.local2glob{2}(obj.msh(2).surfaces(:)) = globNodes2(:);
       
@@ -71,8 +72,9 @@ classdef interfaceMesh < handle
     end
 
     function removeMortarSurface(obj,side,id)
-      % update the interface mesh object considering only the actual slave
+      % update the interface mesh object keeping only the actual slave
       % elements in contact
+      % this is done after a first round of mortar computations, 
 
       if ~any(id)
         return
@@ -82,6 +84,10 @@ classdef interfaceMesh < handle
       nList = unique(obj.msh(side).surfaces(id,:));
       nList = nList(~ismember(nList,obj.msh(side).surfaces(~id,:)));
       obj.local2glob{side}(nList) = [];
+
+      % remove average nodal normal of inactive nodes
+      obj.avgNodNormal{side}(nList) = [];
+
       
       % id: logical index of unconnected surface to be removed
       assert(numel(id)==obj.msh(side).nSurfaces,['Side of Logical indices of ' ...
@@ -93,6 +99,8 @@ classdef interfaceMesh < handle
       elseif side==2 %remove slave
         obj.elemConnectivity(:,id) = [];
       end
+
+
 
     end
 

@@ -337,9 +337,7 @@ classdef MultidomainFCSolver < handle
             end
             jj = obj.systSize(2)+iI;
             [J{iFld+k,jj},J{jj,iFld+k}] = getJacobian(...
-              obj.interfaces{iI},iDom,fld);
-            [J{jj,jj}] = getJacobian(...
-              obj.interfaces{iI},iDom,fld);
+              obj.interfaces{iI},fld,iDom);
           end
         end
         k = k+obj.nfldDom(iDom);
@@ -362,6 +360,10 @@ classdef MultidomainFCSolver < handle
           else
             J{id(2),id(1)} = J{id(2),id(1)} + interf.Jcoupling;
           end
+        else
+          jj = obj.systSize(2)+iI;
+          [J{jj,jj}] = getJacobian(...
+              obj.interfaces{iI},fld,iDom);
         end
       end
 
@@ -413,8 +415,9 @@ classdef MultidomainFCSolver < handle
       % Compute domain matrices
       for i = 1:obj.nDom
         discretizer = obj.domains(i);
-        for j = 1:discretizer.numSolvers
-          computeMat(discretizer.solver(j), obj.state(i).prev, obj.dt);
+        for j = 1:numel(discretizer.solverNames)
+          s = discretizer.solverNames{j};
+          computeMat(discretizer.solver(s), obj.state(i).prev, obj.dt);
         end
       end
 
@@ -426,8 +429,9 @@ classdef MultidomainFCSolver < handle
       % Compute domain rhs
       for i = 1:obj.nDom
         discretizer = obj.domains(i);
-        for j = 1:discretizer.numSolvers
-          computeRhs(discretizer.solver(j), obj.state(i).prev, obj.dt);
+        for j = 1:numel(discretizer.solverNames)
+          s = discretizer.solverNames{j};
+          computeRhs(discretizer.solver(s), obj.state(i).prev, obj.dt);
         end
       end
 
@@ -436,9 +440,9 @@ classdef MultidomainFCSolver < handle
         computeRhs(obj.interfaces{j});
       end
       % Compute matrices and residuals for individual models of
-        % the i-th domain
-%         computeMatricesAndRhs(...
-%           discretizer, obj.state(i).prev, obj.dt);
+      % the i-th domain
+      %         computeMatricesAndRhs(...
+      %           discretizer, obj.state(i).prev, obj.dt);
     end
 
 
@@ -455,8 +459,6 @@ classdef MultidomainFCSolver < handle
         end
       end
     end
-
-
 
 
     function updateState(obj,dSol)
