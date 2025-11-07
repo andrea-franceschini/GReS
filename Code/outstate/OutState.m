@@ -156,6 +156,15 @@ classdef OutState < handle
       mergeStruct = mergeStruct(uniqueIdx);
     end
 
+    function outData = printMeshData(mesh,data)
+      cellStr = repmat(struct('name', 1, 'data', 1), 1, 1);
+      % Displacement
+      cellStr(1).name = 'cellTag';
+      cellStr(1).data = mesh.cellTag;
+      outData = OutState.mergeOutFields(data,cellStr);
+    end
+
+
     function [flEof,line] = readLine(fid)
       % Read the next line and check for eof
       flEof = feof(fid);   % end-of-file flag

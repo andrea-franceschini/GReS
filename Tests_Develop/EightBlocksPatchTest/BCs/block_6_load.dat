@@ -1,0 +1,7 @@
+SurfBC            % BC item 
+Neu            % BC type 
+Poromechanics            % Physics 
+load            % BC name 
+BCs/block_6_load/list 
+0.000000 BCs/block_6_load/time0.dat 
+End

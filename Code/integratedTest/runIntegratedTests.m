@@ -5,7 +5,9 @@ clc
 testFiles = {fullfile('Terzaghi','testTerzaghi.m');...
              fullfile('SubDomains','testSubDomains.m');...
              fullfile('MortarConvergence','testMortarPoisson.m');...
-             fullfile('Richards','testRichards.m')};
+             fullfile('Richards','testRichards.m')
+             fullfile('ConstantSliding','testConstantSliding.m')
+             fullfile('SingleCrackCompressed','testSingleCrackCompressed.m')};
 
 results = runtests(testFiles);
 

@@ -27,7 +27,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
 dofmanager = DoFManager(topology,model);
 % Create and set the print utility
-printUtils = OutState(model,topology,'outTime.dat','flagMatFile',true,'writeVtk',false);
+printUtils = OutState(model,topology,'outTime.dat','flagMatFile',true,'writeVtk',true);
 %
 F = -10; % vertical force
 setTerzaghiBC('BCs',F,topology);

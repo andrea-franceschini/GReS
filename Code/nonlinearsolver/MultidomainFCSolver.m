@@ -337,9 +337,7 @@ classdef MultidomainFCSolver < handle
             end
             jj = obj.systSize(2)+iI;
             [J{iFld+k,jj},J{jj,iFld+k}] = getJacobian(...
-              obj.interfaces{iI},iDom,fld);
-            [J{jj,jj}] = getJacobian(...
-              obj.interfaces{iI},iDom,fld);
+              obj.interfaces{iI},fld,iDom);
           end
         end
         k = k+obj.nfldDom(iDom);
@@ -362,6 +360,10 @@ classdef MultidomainFCSolver < handle
           else
             J{id(2),id(1)} = J{id(2),id(1)} + interf.Jcoupling;
           end
+        else
+          jj = obj.systSize(2)+iI;
+          [J{jj,jj}] = getJacobian(...
+              obj.interfaces{iI},fld,iDom);
         end
       end
 

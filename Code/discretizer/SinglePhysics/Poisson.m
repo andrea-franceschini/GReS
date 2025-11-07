@@ -24,7 +24,7 @@ classdef Poisson < SinglePhysics
       subCells = obj.dofm.getFieldCells(obj.field);
       n = sum(obj.mesh.cellNumVerts(subCells).^2);
       Ndof = obj.dofm.getNumDoF(obj.field);
-      asbJ = assembler(n,@(el) computeLocalMatrix(obj,el),Ndof,Ndof);
+      asbJ = assembler(n,Ndof,Ndof, @(el) computeLocalMatrix(obj,el));
       % loop over cells
       for el = subCells'
         % get dof id and local matrix
@@ -99,7 +99,7 @@ classdef Poisson < SinglePhysics
       vals = obj.bcs.getVals(id,t);
     end
 
-    function applyDirVal(obj,dof,vals)
+    function applyDirVal(obj,dof,vals,varargin)
       obj.state.data.u(dof) = vals;
     end
 
