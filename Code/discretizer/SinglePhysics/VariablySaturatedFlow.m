@@ -76,6 +76,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
     function states = finalizeState(obj,states,t)
       % Compute the posprocessing variables for the module.
       states.potential = computePotential(obj,states.pressure);
+      states.head = computePiezHead(obj,states.pressure);
       states.saturation = computeSaturation(obj,states.pressure);
       [mob ,~] = computeMobility(obj,states.pressure);
       states.flux = computeFlux(obj,states.potential,mob,t);
@@ -389,6 +390,8 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
       cellStr(3).data = state.saturation;
       cellStr(4).name = 'permeability';
       cellStr(4).data = state.perm;
+      cellStr(5).name = 'piezometric head';
+      cellStr(5).data = state.head;
       % cellStr(5).name = 'mass_cons';
       % cellStr(5).data = state.mass;
     end
