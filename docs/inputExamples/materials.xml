@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Materials>
   <Solid
-         name = "sand"
-         cellTags = "{1}">
+         cellTags = "1, 2, 3, 4, 5">
     <Constitutive>
       <Elastic
                youngModulus = "1e3"
                poissonRatio = "0.25"
                />
-      <VanGenutchen>
-        <Mualem
-                n = ""
-                beta = ""
-                kappa = ""
-                />
-        < Tabular
-                 relativePermeabilityPath = ""
-                 capillaryCurvePath = ""
-                 />
-        <Burdine
-                 n = ""
-                 beta = ""
-
-                 />
-        <Preset
-                 soilName = "Clay"
-                 />
-      </VanGenutchen>
-
     </Constitutive>
+    <Curves>
+      <Mualem
+              n = "1"
+              beta = "2"
+              kappa = "3"
+              />
+      <Tabular
+               relativePermeabilityPath = "../../Tests/Richards/Case1/Inputs/Materials/krCurve_200.dat"
+               capillaryCurvePath = "../../Tests/Richards/Case1/Inputs/Materials/pcCurve_200.dat"
+               />
+      <Burdine
+               n = "1"
+               beta = "2"
+
+               />
+      <Preset
+              soilName = "Clay"
+              />
+    </Curves>
+
     <PorousRock
                 porosity = "0.375"
                 permeability = "{1e-12,1e-12,1e-12}"
+                residualSaturation = "0.102"
+                maximumSaturation = "0.368"
                 />
   </Solid>
 
   <Fluid
-         name = "water"
          compressibility = "4.4e-7"
          dybamicViscosity = "1.0e-6"
          />
