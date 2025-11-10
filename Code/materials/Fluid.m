@@ -9,10 +9,10 @@ classdef Fluid < handle
     end
 
     methods (Access = public)
-        function obj = Fluid(fID, matFileName)
+      function obj = Fluid(inputStruct)
             %FLUID Class constructor method
             % Calling the function to set the material parameters
-            obj.readMaterialParameters(fID, matFileName);
+            obj.readMaterialParameters(inputStruct);
         end
 
         function gamma = getFluidSpecWeight(obj)
@@ -32,19 +32,13 @@ classdef Fluid < handle
     end
 
     methods (Access = private)
-        function readMaterialParameters(obj, fID, matFileName)
-            %READMATERIALPARAMETERS Assigning material parameters
-            % (check also the Materials class) to object properties
-            tmpVec = readDataInLine(fID, matFileName, 3);
+      function readMaterialParameters(obj,inputStruct)
+            
             % Assign object properties
-            obj.gamma = tmpVec(1);
-            obj.beta = tmpVec(2);
-            obj.mu = tmpVec(3);
-            % if model.isVariabSatFlow()
-            %     tmpVec = readDataInLine(fID, matFileName, 2);
-            %     obj.Sr = tmpVec(1);
-            %     obj.Ss = tmpVec(2);
-            % end            
+            obj.gamma = getXMLData(inputStruct,0,"specificWeight");
+            obj.beta = getXMLData(inputStruct,0,"compressibility");
+            obj.mu = getXMLData(inputStruct,[],"dynamicViscosity");
+     
         end
     end
 end

@@ -1,18 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<simParam>
-    <Time Start="0."
-          End ="1.e1"
-          DtInic= "1.e+1"
-          DtMax ="1.e+1"
-          DtMin ="1.e+1"/>
-    <TimeStepControl IncAugmentation = "1.5e+0"
-                     IncChopping = "Default" 
-                     RelaxationFac = "Default"/>
-    <Tolerance Norm = "Default"
-               Absolute = "1.e-9"
-               Relative = "1.e-8"
-               PresIncTarget = "100000000000"/>
-    <Solver Type ="Default"
+<model>
+  <!-- Simulation parameters common to all physical models -->
+  <simParam>
+    <Time 
+          Start="0."
+          End ="180"
+          DtInit= "0.5"
+          DtMax ="5"
+          DtMin ="0.5"
+          incrementFactor = "1.1"
+          choppingFactor = "Default" />
+
+    <Solver
             Theta = "Default"
-            MaxIteration = "10"/>
-</simParam>
+            MaxNLIteration = "10"
+            AbsoluteTolerance = "1.e-9"
+            RelativeTolerance = "1.e-8"/>
+  </simParam>
+</model>

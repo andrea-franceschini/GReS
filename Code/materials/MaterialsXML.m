@@ -19,15 +19,12 @@ classdef MaterialsXML < handle
 
     % Get the material defined by matIdentifier and check if it is a
     % key of the Map db
-    function mat = getMaterial(obj,cellID)
+    function mat = getMaterial(obj,cellTag)
       %
       % The preliminary check whether matID is key of db has been commented
       % since it is highly expensive
       %       if (obj.db.isKey(matID))
-      [matID,~] = find(obj.matMap == cellID);
-      assert(isscalar(matID),['Zero or Multiple materials assigned to elements',...
-        ' with cellTags %i'], cellID)
-      mat = obj.db(matID);
+      mat = obj.db(obj.matMap(cellTag));
       %       else
       %       Displaying error message if matIdentifier is not a key
       %       of the map
@@ -37,7 +34,7 @@ classdef MaterialsXML < handle
 
     function fluidMat = getFluid(obj)
       % fluid material is always stored as the last one in the database
-      fluidMat = obj.db(max(keys(obj.db)));
+      fluidMat = obj.db(max(cell2mat(keys(obj.db))));
     end
 
     function [status] = initializeStatus(obj,cTag,sigma)
@@ -52,9 +49,9 @@ classdef MaterialsXML < handle
     end
 
     % Destructor
-    function delete(obj)
-      remove(obj.db,keys(obj.db));
-    end
+    % function delete(obj)
+    %   remove(obj.db,keys(obj.db));
+    % end
   end
 
   methods (Access = private)
@@ -62,32 +59,40 @@ classdef MaterialsXML < handle
     function readInputFile(obj, fileName)
 
       input = readstruct(fileName,AttributeSuffix="");
-      input = input.materials;
+      if isfield(input,"Materials")
+        input = input.Materials;
+      end
 
       nSolid = 0;
       if isfield(input,"Solid")
-        nSolid = numel(input.solid);
-        maxCellTag = max([input.solid.cellTags]);
+        nSolid = numel(input.Solid);
+        maxCellTag = max(str2num(strjoin([input.Solid.cellTags]," ")));
         obj.matMap = zeros(maxCellTag,1);
         for i = 1:nSolid
-          cellTags = getXMLData(input.solid(i),[],"cellTags");
+          cellTags = str2num(getXMLData(input.Solid(i),[],"cellTags"));
           if any(obj.matMap(cellTags))
             existingCellTags = cellTags(obj.matMap(cellTags)~=0);
-            error("Multiple materials assigned to cellTags %s",...
+            gres_log().error("Multiple materials assigned to cellTags %s",...
               sprintf("%i ", existingCellTags));
           end
           obj.matMap(cellTags) = i;
-          if isfield(input,"Constitutive")
-            constLaws = fieldnames(input.constitutive);
-            % assumes that the XML field has the same name as the
-            % constitutive law class
-            mat.constLaw = feval(constLaws{1},input.constitutive);
+          if isfield(input.Solid(i),"Constitutive")
+            if ~ismissing(input.Solid(i).Constitutive)
+              constLaws = fieldnames(input.Solid(i).Constitutive);
+              % assumes that the XML field has the same name as the
+              % constitutive law class
+              mat.constLaw = feval(constLaws{1},input.Solid(i).Constitutive);
+            end
           end
-          if isfield(input,"PorousRock")
-            mat.PorousRock = PorousRock(input.PorousRock);
+          if isfield(input.Solid(i),"PorousRock")
+            if ~ismissing(input.Solid(i).PorousRock)
+              mat.PorousRock = PorousRock(input.Solid(i).PorousRock);
+            end
           end
-          if isfield(input,"Curves")
-            mat.Curves = VanGenuchten(input.Curves);
+          if isfield(input.Solid(i),"Curves")
+            if ~ismissing(input.Solid(i).Curves)
+              mat.Curves = VanGenuchten(input.Solid(i).Curves);
+            end
           end
           obj.db(i) = mat;
         end
@@ -101,10 +106,9 @@ classdef MaterialsXML < handle
       end
 
       if isfield(input,"Fluid")
-        obj.db(nSolid+1) = Fluid(input.fluid);
+        obj.db(nSolid+1) = Fluid(input.Fluid);
       end
 
-      fclose(fID);
     end
 
 

@@ -24,3 +24,6 @@ clear;
 fileName = gres_root + "/docs/inputExamples/materials.xml";
 
 m = MaterialsXML(fileName);
+
+getMaterial(m,1);
+getMaterial(m,2);

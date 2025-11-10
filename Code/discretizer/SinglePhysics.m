@@ -73,7 +73,6 @@ classdef (Abstract) SinglePhysics  < handle
       % entity can be Node,Face,Cell
     end
 
-
   end
 
   methods (Static)
