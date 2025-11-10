@@ -1,5 +1,6 @@
 Mesh.Format = 1; // msh output format
 Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
+// Mesh.Format = 16; // vtk output format
 
 // This variable can then be used in the definition of Gmsh's simplest
 // `elementary entity', a `Point'. A Point is uniquely identified by a tag (a
@@ -7,6 +8,8 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 // three coordinates (X, Y and Z) and the target mesh size (lc) close to the
 // point:
 lc = 1e-2;
+fileName = "Fault.msh";
+// fileName = "Fault.vtk";
 
 // Domain dimension
 Dim[1] = 5;
@@ -63,4 +66,4 @@ Physical Surface("latZ0",5) = {13};
 Physical Surface("latZM",6) = {21};
 
 Mesh 3;
-Save "Fault.msh";
+Save Sprintf(fileName);

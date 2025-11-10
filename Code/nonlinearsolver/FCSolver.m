@@ -41,6 +41,7 @@ classdef FCSolver < handle
         obj.solStatistics = SolverStatistics(linSyst.simparams.itMaxNR, ...
           linSyst.simparams.relTol,linSyst.simparams.absTol,saveStasticts);
         obj.toGrow = DomainGrow(linSyst);
+        % obj.solStatistics = SolverStatistics(linSyst.simparams.itMaxNR,linSyst.simparams.relTol,linSyst.simparams.absTol,saveStasticts);
     end
 
     function [simStat] = NonLinearLoop(obj)
@@ -51,11 +52,16 @@ classdef FCSolver < handle
 
       flConv = true; % convergence flag
 
+      % initialize the state object
+      applyDirVal(obj.domain,obj.t);
+      obj.stateTmp = obj.domain.state;
+      obj.statek =  copy(obj.stateTmp);
+
       % Loop over time
       while obj.t < obj.domain.simparams.tMax
          absTol = obj.domain.simparams.absTol;
          residual = zeros(obj.domain.simparams.itMaxNR+1,2);
-         
+
          % Update the simulation time and time step ID
          obj.tStep = obj.tStep + 1;
          %new time update to fit the outTime list

@@ -39,7 +39,7 @@
 *.pvd
 
 # Matlab files
-#*.mat
+*.mat
 
 # asv files
 *.asv

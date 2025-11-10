@@ -1,8 +1,15 @@
-//Mesh.Format = 16;
 Mesh.Format = 1; // msh output format
 Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
+// Mesh.Format = 16; // vtk output format
 
+// This variable can then be used in the definition of Gmsh's simplest
+// `elementary entity', a `Point'. A Point is uniquely identified by a tag (a
+// strictly positive integer; here `1') and defined by a list of four numbers:
+// three coordinates (X, Y and Z) and the target mesh size (lc) close to the
+// point:
 lc = 10;
+fileName = "Top_part_B1.msh";
+// fileName = "Top_part.vtk";
 
 // DISTANCES__________________________________________
 // X
@@ -192,5 +199,4 @@ Physical Surface("Z_0",5) = {1:360};    // BOTTOM INTERFACE
 // Physical Surface("Z_M",6) = {40381:48279:22};
 
 Mesh 3;
-Save "Top_part_B1.msh";
-//Save "Top_part.vtk";
+Save Sprintf(fileName);

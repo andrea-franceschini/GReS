@@ -22,7 +22,7 @@ classdef BoundaryEntities < handle
     % Time id of currently-stored boundary conditions
     availSteps
   end
-  
+
   properties (Access = private)
       dof
       load = false
@@ -122,18 +122,28 @@ classdef BoundaryEntities < handle
     end
 
     function [i1, i2] = bin_search(obj, t)
+      % Return the interval [i1, i2] such that obj.times(i1) <= t <= obj.times(i2)
+
+      if t <= obj.times(1)
+        i1 = 1;
+        i2 = 2;
+        return;
+      elseif t >= obj.times(end)
+        i1 = obj.nTimes - 1;
+        i2 = obj.nTimes;
+        return;
+      end
+
       i1 = 1;
       i2 = obj.nTimes;
-      pos = floor(i2/2);
-      while (i2-i1 > 1)
-        if (obj.times(pos) >= t)
-          % Left interval
+
+      while (i2 - i1 > 1)
+        pos = floor((i1 + i2)/2);
+        if obj.times(pos) > t
           i2 = pos;
         else
-          % Right interval
           i1 = pos;
         end
-        pos = floor((i1+i2)/2);
       end
     end
 

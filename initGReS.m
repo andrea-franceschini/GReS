@@ -1,4 +1,4 @@
-function initGRES()
+function initGReS()
 % List of folders to check
 foldList = ["Code","ThirdPartyLibs","Utilities"];
 

@@ -1,13 +1,15 @@
 Mesh.Format = 1; // msh output format
 Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
+// Mesh.Format = 16; // vtk output format
 
 // This variable can then be used in the definition of Gmsh's simplest
 // `elementary entity', a `Point'. A Point is uniquely identified by a tag (a
 // strictly positive integer; here `1') and defined by a list of four numbers:
 // three coordinates (X, Y and Z) and the target mesh size (lc) close to the
 // point:
-lc = 1e-1;
+lc = 1e-2;
 filename = "dam.msh";
+// filename = "dam.vtk";
 
 // Geometry
 //  XZ view

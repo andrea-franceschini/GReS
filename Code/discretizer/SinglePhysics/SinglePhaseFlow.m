@@ -65,6 +65,7 @@ classdef SinglePhaseFlow < SinglePhysics
     function states = finalizeState(obj,states,t)
       % Compute the posprocessing variables for the module.
       states.potential = computePotential(obj,states.pressure);
+      states.head = computePiezHead(obj,states.pressure);
       mob = (1/obj.material.getFluid().getDynViscosity());
       states.flux = computeFlux(obj,states.potential,mob,t);
       states.perm = printPermeab(obj);
@@ -77,6 +78,7 @@ classdef SinglePhaseFlow < SinglePhysics
       switch nargin
         case 2
           outPrint.pressure = sOld.data.pressure;
+          t = sOld.t;
         case 4
           % linearly interpolate state variables containing print time
           fac = (t - sOld.t)/(sNew.t - sOld.t);
@@ -474,6 +476,21 @@ classdef SinglePhaseFlow < SinglePhysics
       end
     end
 
+    function pzhead = computePiezHead(obj,pressure)
+      % COMPUTEPIEZHEAD - compute the piezometric head for the cell or element.
+      if isFEMBased(obj.model,'Flow')
+        zbc=obj.mesh.coordinates(:,3);
+      elseif isFVTPFABased(obj.model,'Flow')
+        zbc=obj.mesh.cellCentroid(:,3);
+      end
+      gamma = obj.material.getFluid().getFluidSpecWeight();
+      if gamma > 0.
+        pzhead = zbc+pressure/gamma;
+      else
+        pzhead = zeros(length(zbc),1);
+      end
+    end
+
     function potential = computePotential(obj,pressure)
       % COMPUTEFLUX - compute the potential for the cell or element.
       potential = pressure;
@@ -635,6 +652,8 @@ classdef SinglePhaseFlow < SinglePhysics
           pointStr(1).data = state.pressure;
           pointStr(2).name = 'potential';
           pointStr(2).data = state.potential;
+          pointStr(3).name = 'piezometric head';
+          pointStr(3).data = state.head;
         elseif isFVTPFABased(mod,'Flow')
           pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);
           pointStr(1).name = 'flux';
@@ -648,6 +667,8 @@ classdef SinglePhaseFlow < SinglePhysics
           cellStr(2).data = state.pressure;
           cellStr(3).name = 'potential';
           cellStr(3).data = state.potential;
+          cellStr(4).name = 'piezometric head';
+          cellStr(4).data = state.head;
         end
       end
 

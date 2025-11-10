@@ -1,8 +1,8 @@
 classdef MultidomainFCSolver < handle
   % Class for solving non linear problem involving multiple non conforming
-  % domains using the mortar method
+  % domains
 
-  properties (Access = private)
+  properties (Access = protected)
     %
     nDom
     nInterf
@@ -11,10 +11,8 @@ classdef MultidomainFCSolver < handle
     tStep = 0
     iter
     dt
-    statek
-    stateTmp
-    systSize % [num_blocks, num_field_domain, num_field_interface]
-    nfldInt
+    systSize % [num_blocks, num_field_domain, num_field_interface
+    %nfldInt
     nfldDom
   end
 
@@ -30,6 +28,7 @@ classdef MultidomainFCSolver < handle
 
 
   methods (Access = public)
+    
     function obj = MultidomainFCSolver(domains,interfaces)
       obj.setNonLinearSolver(domains,interfaces);
     end
@@ -44,6 +43,13 @@ classdef MultidomainFCSolver < handle
 
       %
       flConv = true; %convergence flag
+
+      % initialize the state object
+      applyDirVal(obj);
+      for i = 1:obj.nDom
+        obj.state(i).curr = obj.domains(i).state;
+        obj.state(i).prev =  copy(obj.state(i).curr);
+      end
 
 
       % Loop over time
@@ -135,7 +141,7 @@ classdef MultidomainFCSolver < handle
 
 
 
-  methods (Access = private)
+  methods (Access = protected)
     function setNonLinearSolver(obj,dom,interf)
       % assumption: same set of simulation parameters for each domain
       obj.simParameters = dom(1).simparams;
@@ -145,13 +151,13 @@ classdef MultidomainFCSolver < handle
       obj.nInterf = numel(interf);
       obj.state = repmat(struct('prev',{},'curr',{}),obj.nDom,1);
       % initialize a state structure for each domains
-      for i = 1:obj.nDom
-        obj.state(i).curr = obj.domains(i).state;
-        obj.state(i).prev =  copy(obj.state(i).curr);
-      end
+%       for i = 1:obj.nDom
+%         obj.state(i).curr = obj.domains(i).state;
+%         obj.state(i).prev =  copy(obj.state(i).curr);
+%       end
       getSystemSize(obj);
       getNumField(obj);
-      setDoFcounter(obj);
+      %setDoFcounter(obj);
     end
 
     function updateResults(obj)
@@ -190,7 +196,7 @@ classdef MultidomainFCSolver < handle
       J = FCSolver.cell2matJac(J);
       rhs = cell2mat(rhs);
       tic
-      if size(J,1)>1e10
+      if size(J,1)>1e7
         fprintf('Solving linear system...\n')
         if norm(J-J','fro') < 1e-10
           % matrix is practically symmetric
@@ -326,15 +332,16 @@ classdef MultidomainFCSolver < handle
         for iFld = 1:obj.nfldDom(iDom)
           fld = discr.fields(iFld);
           for iI = discr.interfaceList
+            if ~strcmp(obj.interfaces{iI}.physic,fld)
+              continue
+            end
             jj = obj.systSize(2)+iI;
             [J{iFld+k,jj},J{jj,iFld+k}] = getJacobian(...
-              obj.interfaces{iI},iDom,fld);
-            [J{jj,jj}] = getJacobian(...
-              obj.interfaces{iI},iDom,fld);
+              obj.interfaces{iI},fld,iDom);
           end
         end
         k = k+obj.nfldDom(iDom);
-      end 
+      end
 
       % provisional assembly of static condensation coupling block
       % this work only with single physics mortar coupling
@@ -353,6 +360,10 @@ classdef MultidomainFCSolver < handle
           else
             J{id(2),id(1)} = J{id(2),id(1)} + interf.Jcoupling;
           end
+        else
+          jj = obj.systSize(2)+iI;
+          [J{jj,jj}] = getJacobian(...
+              obj.interfaces{iI},fld,iDom);
         end
       end
 
@@ -404,8 +415,9 @@ classdef MultidomainFCSolver < handle
       % Compute domain matrices
       for i = 1:obj.nDom
         discretizer = obj.domains(i);
-        for j = 1:discretizer.numSolvers
-          computeMat(discretizer.solver(j), obj.state(i).prev, obj.dt);
+        for j = 1:numel(discretizer.solverNames)
+          s = discretizer.solverNames{j};
+          computeMat(discretizer.solver(s), obj.state(i).prev, obj.dt);
         end
       end
 
@@ -417,8 +429,9 @@ classdef MultidomainFCSolver < handle
       % Compute domain rhs
       for i = 1:obj.nDom
         discretizer = obj.domains(i);
-        for j = 1:discretizer.numSolvers
-          computeRhs(discretizer.solver(j), obj.state(i).prev, obj.dt);
+        for j = 1:numel(discretizer.solverNames)
+          s = discretizer.solverNames{j};
+          computeRhs(discretizer.solver(s), obj.state(i).prev, obj.dt);
         end
       end
 
@@ -427,9 +440,9 @@ classdef MultidomainFCSolver < handle
         computeRhs(obj.interfaces{j});
       end
       % Compute matrices and residuals for individual models of
-        % the i-th domain
-%         computeMatricesAndRhs(...
-%           discretizer, obj.state(i).prev, obj.dt);
+      % the i-th domain
+      %         computeMatricesAndRhs(...
+      %           discretizer, obj.state(i).prev, obj.dt);
     end
 
 
@@ -446,8 +459,6 @@ classdef MultidomainFCSolver < handle
         end
       end
     end
-
-
 
 
     function updateState(obj,dSol)

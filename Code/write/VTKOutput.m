@@ -198,22 +198,22 @@ classdef VTKOutput < handle
 
          % Add fake fields to all the meshes (2D and 3D) to be able to always visualize all of them
          if (isfield(pointData3D, 'name'))
-            pointData3DNames = extractfield(pointData3D, 'name');
+            pointData3DNames = {pointData3D.name};
          else
             pointData3DNames = [];
          end
          if (isfield(cellData3D, 'name'))
-            cellData3DNames = extractfield(cellData3D, 'name');
+            cellData3DNames = {cellData3D.name};
          else
             cellData3DNames = [];
          end
          if (isfield(pointData2D, 'name'))
-            pointData2DNames = extractfield(pointData2D, 'name');
+            pointData2DNames = {pointData2D.name};
          else
             pointData2DNames = [];
          end
          if (isfield(cellData2D, 'name'))
-            cellData2DNames = extractfield(cellData2D, 'name');
+            cellData2DNames = {cellData2D.name};
          else
             cellData2DNames = [];
          end

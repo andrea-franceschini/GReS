@@ -11,6 +11,10 @@ classdef DomainGrow < handle
     nsolver      % number of the solver related to the flow.
   end
 
+  properties(Constant)
+    for2physics = "SinglePhaseFlow";
+  end
+
   methods(Access = public)
     function obj = DomainGrow(data)
       %ADAPGRID Construct an instance of this class
@@ -19,25 +23,31 @@ classdef DomainGrow < handle
       obj.simData = data;
 
       % Create a skeleton structure to control the domain.
-      numSol = data.numSolvers;
-      for  i=1:numSol
-        acess = data.solver(i);
-        if acess.model.isFlow
-          if acess.model.isFVTPFABased(acess.field)
-            obj.sdomain = SDomain(acess);
-            obj.nsolver = i;
-            break;
-          end
-        end
+      lnk = data.solver(obj.for2physics);
+      if lnk.model.isFVTPFABased(obj.for2physics)
+        obj.sdomain = SDomain(lnk);
+        obj.nsolver = 1;
       end
-      
+
+      % numSol = data.numSolvers;
+      % for  i=1:numSol
+      %   acess = data.solver(i);
+      %   if acess.model.isFlow
+      %     if acess.model.isFVTPFABased(acess.field)
+      %       obj.sdomain = SDomain(acess);
+      %       obj.nsolver = i;
+      %       break;
+      %     end
+      %   end
+      % end      
     end
 
     function grow(obj,boundary,state1,state2,time)
       % XXXX % Updates the domain mesh structure by adding cells outward
       % from the reference surface.
 
-      lnk = obj.simData.solver(obj.nsolver);
+      % lnk = obj.simData.solver(obj.nsolver);
+      lnk = obj.simData.solver(obj.for2physics);
 
       [cell,direction] = obj.findBorderCell(boundary);
       for i=1:length(cell)
@@ -55,7 +65,8 @@ classdef DomainGrow < handle
     function addCell(obj,refCell,dir,state1,state2,time)
       %ADDCELL Add a cell in the grid and update the mesh
 
-      lnk = obj.simData.solver(obj.nsolver);
+      % lnk = obj.simData.solver(obj.nsolver);
+      lnk = obj.simData.solver(obj.for2physics);
 
       % Find the position to where to grow the mesh.
       [n_cells,n_ijk] = obj.sdomain.findNeighborhodOfCell(refCell);
@@ -78,7 +89,8 @@ classdef DomainGrow < handle
     end
 
     function updateBoundary(obj,time)
-      lnkDm = obj.simData.solver(obj.nsolver);
+      % lnkDm = obj.simData.solver(obj.nsolver);
+      lnkDm = obj.simData.solver(obj.for2physics);
       keys = string(obj.sdomain.boundaries.keys);
       for i=keys
         lnkBc = obj.sdomain.boundaries(i);
@@ -105,7 +117,9 @@ classdef DomainGrow < handle
       %UPDATECELL update the model.
 
       % Definition of some pointers 
-      lnk = obj.simData.solver(obj.nsolver);
+      % lnk = obj.simData.solver(obj.nsolver);
+      lnk = obj.simData.solver(obj.for2physics);
+
       face = lnk.faces;
       % elem = lnk.elements;
       mesh = lnk.mesh;
