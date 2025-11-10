@@ -1,146 +1,190 @@
-classdef RBFquadrature < handle
+classdef RBFquadrature < MortarQuadrature
   % Radial Basis Function class
   % Used to interpolate master basis functions into the slave side
 
   properties
-    mortar    % instance of mortar object (store mesh info)
-    nInt      % number of interpolation points per master element
-    wF        % weight of RBF for primary variable basis function
-    w1        % weight of rescaling RBF
-    wB        % weight of RBF for bubble basis functions
-    wSupp     % weight for support detection in higher order elements
-    ptsRBF    % position of interpolation points
-    vecPts    % pointer of each element to location in ptsRBF
+    activeGPmap        % index map to access gp related information
+    nInt               % number of interpolation points per master element
+    nGP                % number of gauss points in input
     rbfType = 'gauss'
+    detJw
   end
 
   properties (Access = private)
-    % temporary properties for element-based sort out process
-    idSlave = 0
-    tempGPloc
-    tempdJw
-    tempNs
-    tempNmult
-    tempNbubble
+    wF
+    w1
+    ptsRBF
+
+    % element based infos
+    idSlave          % current slave element being processed
+    gpsCoord     % current list of 3D gp coordinates for RBF interpolation
+    gpsCoordLoc  % current list of local gp coordinates 
+    dJwSlave
     suppFlag
+    countGP
+    maxGP
   end
 
+
   methods
-    function obj = RBFquadrature(mortar,nInt,type)
+    function obj = RBFquadrature(mortar,nGP,nInt,type)
       %
-      obj.mortar = mortar;
+      obj@MortarQuadrature(mortar,nGP);
+      obj.nGP = nGP;
       obj.nInt = nInt;
-      if nargin > 2
+      if nargin > 3
         obj.rbfType = type;
       end
-      getWeights(obj); % interpolation weights for master basis function
+      obj.getWeights();
     end
 
   end
   
   methods (Access = public)
 
-    function [Ns,Nm,Nmult,NbubSlave,NbubMaster] = getMortarBasisFunctions(obj,is,im)
+    function processMortarPairs(obj)
 
-      elemSlave = obj.mortar.getElem(2,is);
+      % initialize the maps to store mortar quadrature info
+      obj.maxGP = obj.nGP^2;
+%       nConnections = nnz(obj.mortar.mesh.elemConnectivity);
+      totGP = obj.msh(2).nSurfaces*obj.maxGP;
+      obj.gpCoords = {zeros(totGP,2);
+                      zeros(totGP,2)};
 
-      if obj.idSlave ~= is
-        % new slave element
-        if ~isempty(obj.suppFlag)
-          if ~all(obj.suppFlag)
-            warning('% i GP not projected for element %i',...
-              sum(obj.suppFlag),obj.idSlave)
-          end
-        end
+      nConnections = nnz(obj.mortar.mesh.elemConnectivity);
+
+      obj.mortarPairs = zeros(nConnections,2);
+      obj.detJw = zeros(totGP,1);
+
+      obj.activeGPmap = zeros(nConnections+1,1);
+
+      nM = full(sum(obj.mortar.mesh.elemConnectivity,1));
+      nM = [0 cumsum(nM)];
+
+      for is = 1:obj.msh(2).nSurfaces
+
+        % reset slave element based info
+        elemSlave = obj.mortar.getElem(2,is);
         obj.idSlave = is;
-        obj.tempdJw = getDerBasisFAndDet(elemSlave,is);
-        obj.tempNs = getBasisFinGPoints(elemSlave);
-        obj.tempNmult = computeMultiplierBasisF(obj.mortar,is,obj.tempNs);
-        obj.tempGPloc = getGPointsLocation(elemSlave,is);
-        if nargout > 3
-          obj.tempNbubble = getBubbleBasisFinGPoints(elemSlave);
-        end
-      else
-        % old slave element, sort out gp
-        if all(obj.suppFlag)
-          % gp already projected on all previous elements
-          [Ns,Nm,Nmult,NbubSlave,NbubMaster] = deal([]);
-          return
+        obj.countGP = 0;
+        obj.gpsCoord = getGPointsLocation(elemSlave,is);
+        obj.gpsCoordLoc = elemSlave.GaussPts.coord;
+        obj.dJwSlave = getDerBasisFAndDet(elemSlave,is);
+
+        imList = find(obj.mortar.mesh.elemConnectivity(:,is));
+
+        for j = 1:numel(imList)
+          im = imList(j);
+          k = nM(is)+ j;
+          % k (global index to write without race conditions)
+          isPairActive = processMortarPair(obj,is,im,k);
+          if ~isPairActive
+            obj.activeGPmap(k+1) = obj.activeGPmap(k);
+            continue
+          end
+
+          obj.activeGPmap(k+1) = obj.activeGPmap(k) + sum(obj.suppFlag);
+          obj.gpsCoord = obj.gpsCoord(~obj.suppFlag,:);
+          obj.gpsCoordLoc = obj.gpsCoordLoc(~obj.suppFlag,:);
+          obj.dJwSlave = obj.dJwSlave(~obj.suppFlag);
+          obj.countGP = obj.countGP + sum(obj.suppFlag);
+
+
         end
 
-        obj.tempNs = obj.tempNs(~obj.suppFlag,:);
-        obj.tempNmult = obj.tempNmult(~obj.suppFlag,:);
-        if nargout > 3
-          obj.tempNbubble = obj.tempNbubble(~obj.suppFlag,:);
+        if obj.countGP ~= elemSlave.GaussPts.nNode
+          warning("Some gauss point not projected for element %i",is)
         end
-        obj.tempGPloc = obj.tempGPloc(~obj.suppFlag,:);
-        obj.tempdJw = obj.tempdJw(~obj.suppFlag);
+
       end
 
-      % get master basis and gp in slave support
-      if nargout < 5
-        [Nm,obj.suppFlag] = getMasterBasisF(obj,im);
+      finalizeMortarMaps(obj);
+
+    end
+
+
+    function isPairActive = processMortarPair(obj,is,im,k)
+
+      isPairActive = true;
+
+      posGP = obj.gpsCoord;
+
+      elem = getElem(obj.mortar,1,im);
+
+      if class(elem)=="Triangle"
+        nIntPts = sum(1:obj.nInt);
+        xiMin = 0; xiMax = 1;
       else
-        [Nm,obj.suppFlag,NbubMaster] = getMasterBasisF(obj,im);
-        NbubMaster = NbubMaster(obj.suppFlag,:);
+        nIntPts = obj.nInt^2;
+        xiMin = -1;
+        xiMax = 1;
       end
+      
+      ptsInt = obj.ptsRBF(1:nIntPts,[3*im-2 3*im-1 3*im]);
+
+      [fiNM,id1] = obj.computeRBFfiNM(ptsInt,posGP);
+      % id1: flags gp that are too far from master support
+
+      % compute interpolated gp coordinates
+      xiMaster = (fiNM*obj.wF(:,[2*im-1 2*im]))./(fiNM*obj.w1(:,im));
+
+      % support detection
+      tol = 1e-3;
+      obj.suppFlag = all([xiMaster > xiMin - tol, xiMaster < xiMax + tol, id1],2);
 
       if ~any(obj.suppFlag)
-        % no detected intersection
-        [Ns,Nm,Nmult,NbubSlave,NbubMaster] = deal([]);
+        isPairActive = false;
         return
       end
 
-      Nm = Nm(obj.suppFlag,:);
+      % store infos in maps
+      obj.mortarPairs(k,:) = [is im];
 
-      % return basis function in active gp
-      Ns = obj.tempNs(obj.suppFlag,:);
-      Nmult = obj.tempNmult(obj.suppFlag,:);
-      if nargout > 3
-        NbubSlave = obj.tempNbubble(obj.suppFlag,:);
-      end
+      nGsupp = sum(obj.suppFlag);
+      gpId = (is-1)*obj.maxGP + obj.countGP;
+      obj.gpCoords{1}(gpId+1:gpId+nGsupp,1) = xiMaster(obj.suppFlag,1);
+      obj.gpCoords{1}(gpId+1:gpId+nGsupp,2) = xiMaster(obj.suppFlag,2);
+      obj.gpCoords{2}(gpId+1:gpId+nGsupp,1) = obj.gpsCoordLoc(obj.suppFlag,1);
+      obj.gpCoords{2}(gpId+1:gpId+nGsupp,2) = obj.gpsCoordLoc(obj.suppFlag,2);
+      obj.detJw(gpId+1:gpId+nGsupp) = obj.dJwSlave(obj.suppFlag);
+
     end
 
-    function [Nm,id,Nb] = getMasterBasisF(obj,idMaster)
-      % return interpolated master basis function into slave domain
-      posGP = obj.tempGPloc;
-      v = obj.vecPts(idMaster,:);
-      nN = getElem(obj.mortar,1,idMaster).nNode;
-      ptsInt = obj.ptsRBF(1:v(2),3*v(3)-[2 1 0]);
-      [fiNM,id1] = obj.computeRBFfiNM(ptsInt,posGP);
+    function finalizeMortarMaps(obj)
+      % remove useless entries after mortar preallocation
+      id = ~any(obj.mortarPairs,2);
+      id2 = obj.detJw == 0;
 
-      Nm = (fiNM*obj.wF(:,v(1)+1:v(1)+nN))./(fiNM*obj.w1(:,v(3)));
+      obj.activeGPmap([false;id]) = [];
+      obj.mortarPairs(id,:) = [];
 
-      % automatically detect supports computing interpolant
-      tol = 1e-3;
-      if size(Nm,2) > 4
-        % higher order elements
-        Nsupp = (fiNM*obj.wSupp(1:v(2),3*v(3)-[2 1 0]))./(fiNM*obj.w1(:,v(3)));
-      else
-        Nsupp = Nm(:,[1 2 3]);
+      for i = 1:2
+        obj.gpCoords{i}(id2,:) = [];
       end
-      % automatically detect supports computing interpolant
-      id = all([Nsupp > 0-tol id1],2);
+
+      obj.numbMortarPairs = size(obj.mortarPairs,1);
+    end
+
+
+    function gpCoords = getSlaveGPCoords(obj,kPair)
+      i1 = obj.activeGPmap(kPair);
+      i2 = obj.activeGPmap(kPair+1);
+      gpCoords = obj.gpCoords{2}(i1+1:i2,:);
+    end
+
+    function gpCoords = getMasterGPCoords(obj,kPair)
+      i1 = obj.activeGPmap(kPair);
+      i2 = obj.activeGPmap(kPair+1);
+      gpCoords = obj.gpCoords{1}(i1+1:i2,:);
+    end
+
     
-      if nargout > 2
-        % interpolated bubble basis function
-        Nb = (fiNM*obj.wB(:,v(3)))./(fiNM*obj.w1(:,v(3)));
-      end
+    function dJweighed = getIntegrationWeights(obj,kPair)
+      i1 = obj.activeGPmap(kPair);
+      i2 = obj.activeGPmap(kPair+1);
+      dJweighed = obj.detJw(i1+1:i2);
     end
 
-    function mat = integrate(obj,func,varargin)
-      % check input
-      assert(nargin(func)==numel(varargin),['Number of specified input (%i)' ...
-        'not matching the integrand input (%i)'],numel(varargin),nargin(func));
-      size3 = cellfun(@(x) size(x, 3), varargin);
-      if ~all(size3 == size3(1))
-        error('All inputs must have the same size along dimension 3.');
-      end
-      dJWeighed = obj.tempdJw(obj.suppFlag);
-      mat = func(varargin{:});
-      mat = mat.*reshape(dJWeighed,1,1,[]);
-      mat = sum(mat,3);
-    end
   end
 
   methods (Access = private)
@@ -152,8 +196,6 @@ classdef RBFquadrature < handle
 
       nElM = msh.nSurfaces;
 
-      obj.vecPts = zeros(nElM,3);
-
       numPtsQ = (obj.nInt)^2;
       numPtsT = sum(1:obj.nInt);
       if isempty(getElement(elem,9))
@@ -161,53 +203,37 @@ classdef RBFquadrature < handle
       else
         numPts = numPtsQ;
       end
-      
-      N = sum(msh.surfaceNumVerts);
      
-      weighF = zeros(numPts,N);
+      weighF = zeros(numPts,2*nElM);
       weigh1 = zeros(numPts,nElM);
-      weighB = weigh1;
+
       pts = zeros(numPts,nElM*3);
-      weighSupp = zeros(numPts,nElM*3);
 
       k = 0;
+
       for im = 1:nElM
-        [f, ptsInt, fSupp] = computeMortarBasisF(obj,im);
+
+        [f, ptsInt] = getRBFfunction(obj,im);
         nptInt = size(ptsInt,1);
-        nN = getElem(obj.mortar,1,im).nNode;
-        if nN < 5
-          bf = computeMortarBubbleBasisF(obj,im);
-        else
-          bf =  ones(size(ptsInt,1),1);
-          % to provisionally cope with bubble in quad9
-        end
+       
         fiMM = obj.computeRBFfiMM(ptsInt);
+
         % solve local system to get weight of interpolant
         warning('off','MATLAB:nearlySingularMatrix')
-        if nN < 5
-          x = fiMM\[f ones(size(ptsInt,1),1) bf];
-        else
-          x = fiMM\[f ones(size(ptsInt,1),1) fSupp];
-        end
-        weighF(1:nptInt,k+1:k+nN) = x(:,1:nN);
-        weigh1(1:nptInt,im) = x(:,nN+1);
-        weighB(1:nptInt,im) = x(:,nN+2);
-        if size(x,2)>nN+2
-          % higher order elements
-          weighSupp(1:nptInt,[3*im-2 3*im-1 3*im]) = x(:,end-2:end) ;
-        end
+
+        x = fiMM\[f ones(size(ptsInt,1),1)];
+
+        weighF(1:nptInt,k+1:k+2) = x(:,1:2);
+        weigh1(1:nptInt,im) = x(:,3);
+
         pts(1:nptInt,[3*im-2 3*im-1 3*im]) = ptsInt;
-        obj.vecPts(im,1) = k;
-        obj.vecPts(im,2) = nptInt;      % store number of interpolation points (changes between quad and tri)
-        obj.vecPts(im,3) = im;           % maps global id of master elements with list of local elements
-        k = k+nN;
+        k = k+2;
       end
+
       obj.wF = weighF;
       obj.w1 = weigh1;
-      obj.wB = weighB;
       obj.ptsRBF = pts;
-      obj.wSupp = weighSupp;
-      % loop trough master elements and interpolate Basis function
+
     end
 
     function fiMM = computeRBFfiMM(obj,ptsInt)
@@ -226,7 +252,7 @@ classdef RBFquadrature < handle
       fiNM = obj.rbfInterp(d,r,obj.rbfType);
     end
 
-    function [bf,pos,bfSupp] = computeMortarBasisF(obj,id)
+    function [intPts,pos] = getRBFfunction(obj,id)
       % evaluate shape function in the real space and return position of
       % integration points in the real space
       surfNodes = obj.mortar.mesh.msh(1).surfaces(id,:);
@@ -238,20 +264,8 @@ classdef RBFquadrature < handle
       % get coords of interpolation points in the real space
       pos = bf*coord;
 
-      if elem.nNode < 5
-        bfSupp = [];
-      else
-        % auxiliary function for support detection
-        bfSupp = Quadrilateral.computeBasisF(intPts);
-        bfSupp = bfSupp(:,1:end-1);
-      end
-    end
 
-    function bf = computeMortarBubbleBasisF(obj,id)
-      % place interpolation points in a regular grid
-       elem = obj.mortar.getElem(1,id);
-      intPts = getInterpolationPoints(obj,elem);
-      bf = computeBubbleBasisF(elem,intPts);
+
     end
 
     function intPts = getInterpolationPoints(obj,elem)
@@ -274,20 +288,8 @@ classdef RBFquadrature < handle
           intPts = [x(:), y(:)];
       end
     end
-
-    function id = detectSupport(obj,Nmaster,id1,fiNM)
-      % detect gp lying in the master domain checking value of basis functions
-      tol = 1e-4;
-      if size(Nmaster,2) > 4
-        % higher order elements
-        Nsupp = (fiNM*obj.wSupp(1:v(2),3*v(3)-[2 1 0]))./(fiNM*obj.w1(:,v(3)));
-      else
-        Nsupp = Nmaster(:,[1 3]);
-      end
-      % automatically detect supports computing interpolant
-      id = all([Nsupp >= 0-tol id1],2);
-    end
   end
+
 
   methods (Static)
 

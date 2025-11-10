@@ -12,13 +12,19 @@ classdef assembler < handle
   end
 
   methods
-    function obj = assembler(n,compLocal,nrows,ncols)
+    function obj = assembler(n,nrows,ncols,varargin)
       [obj.iVec,obj.jVec,obj.valsVec] = deal(zeros(n,1));
-      obj.computeLocal = compLocal;
-      if nargin > 2
-        assert(nargin == 4,'assembler: Wrong number of input arguments \n')
+      
+      if ~isempty(nrows) && ~isempty(ncols)
         obj.Nrows = nrows;
         obj.Ncols = ncols;
+      end
+
+      if ~isempty(varargin)
+        obj.computeLocal = varargin{1};
+      else
+        obj.computeLocal = @(dofR,dofC,mat)...
+        assembler.computeLocalBase(dofR,dofC,mat);
       end
     end
     
@@ -63,6 +69,14 @@ classdef assembler < handle
       end
 
     end
+  end
+
+  methods (Static)
+    function [dofr,dofc,mat] = computeLocalBase(dofr,dofc,mat)
+      % placeholder for internal assembly kernel when local matrix 
+      % and degree of freedom are already available
+    end
+
   end
 end
 
