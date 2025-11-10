@@ -13,21 +13,47 @@ classdef Logger < handle
       obj.verbosity = lev;
     end
 
-    function log(obj,loglevel,varargin)
+    function lev = getVerbosity(obj)
+      lev = obj.verbosity;
+    end
+
+    function log(obj,varargin)
+      if isnumeric(varargin{1})
+        loglevel = varargin{1};
+        a = 2;
+      else
+        loglevel = 0;
+        a = 1;
+      end
       if obj.verbosity > loglevel
-        fprinft(varargin{:});
+        fprintf(varargin{a:end});
+        fprintf("\n");
       end
     end
 
-    function error(obj,loglevel,varargin)
+    function error(obj,varargin)
+      if isnumeric(varargin{1})
+        loglevel = varargin{1};
+        a = 2;
+      else
+        loglevel = 0;
+        a = 1;
+      end
       if obj.verbosity > loglevel
-        error(varargin{:});
+        error(varargin{a:end});
       end
     end
 
-    function warning(obj,loglevel,varargin)
+    function warning(obj,varargin)
+      if isnumeric(varargin{1})
+        loglevel = varargin{1};
+        a = 2;
+      else
+        loglevel = 0;
+        a = 1;
+      end
       if obj.verbosity > loglevel
-        error(varargin{:});
+        warning(varargin{a:end});
       end
     end
 
@@ -35,10 +61,27 @@ classdef Logger < handle
 
   methods (Static)
     
-    function welcomeMsg(obj)
+    function welcomeMsg()
+      disp(' ')
+      disp('===============================================')
+      disp('              Welcome to GReS!                 ')
+      disp('===============================================')
+      disp(' ')
+      disp('To get started:')
+      disp(' ')
+      disp('Run  >> compileAll')
+      disp('     to compile all existing MEX files in the project.')
+      disp(' ')
+      disp('Check out the tutorials folder')
+      disp('     for hands-on guides and usage examples.')
+      disp(' ')
+      disp('Explore the Tests repository')
+      disp('     to check available simulations in GReS.')
+      disp(' ')
+      disp(' ')
     end
 
   end
-  
+
 end
 
