@@ -1,0 +1,286 @@
+classdef BoundariesNew < handle
+  % BOUNDARY CONDITIONS - General boundary conditions class
+
+  properties (Access = public)
+    % Creation of a Map object for the boundary conditions
+    db
+    dof
+  end
+
+  properties (Access = private)
+    model
+    grid
+  end
+
+  methods (Access = public)
+    % Class constructor method
+    function obj = BoundariesNew(fileName,model,grid) %,model,grid
+      % MATLAB evaluates the assignment expression for each instance, which
+      % ensures that each instance has a unique value
+      obj.db = containers.Map('KeyType','char','ValueType','any');
+      obj.model = model;
+      obj.grid = grid;
+      % Calling the function to read input data from file
+      obj.readInputFile(fileName);
+      obj.computeBoundaryProperties(model,grid);
+      linkBoundSurf2TPFAFace(model,obj,grid);
+    end
+
+    function delete(obj)
+      remove(obj.db,keys(obj.db));
+      obj.db = [];
+    end
+
+    % Check if the identifier defined by the user is a key of the Map object
+    function bc = getData(obj,identifier)
+      if (obj.db.isKey(identifier))
+        bc = obj.db(identifier);
+      else
+        % Displaying error message if the identifier does not refer
+        % to any existing class
+        error('Boundary condition %s not present', identifier);
+      end
+    end
+
+    function vals = getVals(obj, identifier, t)
+      vals = obj.getData(identifier).data.getValues(t);
+    end
+
+    function cond = getCond(obj, identifier)
+      cond = obj.getData(identifier).cond;
+    end
+
+    function name = getName(obj, identifier)
+      name = obj.getData(identifier).data.name;
+    end
+
+    function type = getType(obj, identifier)
+      if ~strcmp(obj.getCond(identifier),'VolumeForce')
+        type = obj.getData(identifier).type;
+      else
+        type = 'VolumeForce';
+      end
+    end
+
+    function physics = getPhysics(obj, identifier)
+      physics = obj.getData(identifier).physics;
+    end
+
+    function dofs = getCompEntities(obj,identifier,ents)
+      % get component dof of Dirichlet BC loaded entities
+      nEnts = getNumbLoadedEntities(obj,identifier);
+      % component multiplication of BC entities
+      dim = length(nEnts);
+      i1 = 1;
+      dofs = zeros(numel(ents),1);
+      for i = 1 : dim
+        i2 = i1 + nEnts(i);
+        dofs(i1:i2-1) = dim*(ents(i1:i2-1)-1) + i;
+        i1 = i2;
+      end
+    end
+
+    function ents = getEntities(obj,identifier)
+      ents = obj.getData(identifier).data.entities;
+    end
+
+    function ents = getLoadedEntities(obj, identifier)
+      % return loaded entities for Volume or Surface BCs
+      ents = obj.getData(identifier).loadedEnts;
+    end
+
+    function nEnts = getNumbEntities(obj,identifier)
+      nEnts = obj.getData(identifier).data.nEntities;
+    end
+
+    function ents = getNumbLoadedEntities(obj, identifier)
+      bc = obj.getData(identifier);
+      if isfield(bc,'nloadedEnts')
+        % Surface BC
+        ents = bc.nloadedEnts;
+      else
+        % Node BC
+        ents = bc.data.nEntities;
+      end
+    end
+
+    function infl = getEntitiesInfluence(obj, identifier)
+      infl = [];
+      if isfield(obj.getData(identifier),"entitiesInfl")
+        infl = obj.getData(identifier).entitiesInfl;
+      end
+    end
+
+    function setDofs(obj, identifier, list)
+      obj.getData(identifier).data.entities = list;
+    end
+
+    function computeBoundaryProperties(obj, model, grid)
+
+      % preprocess surface/volume boundary conditions
+
+      msh = grid.topology;
+      elem = grid.cells;
+
+      keys = obj.db.keys;
+
+      for bcId = 1:length(keys)
+        key = keys{bcId};
+        cond = obj.getCond(key);
+        phys = obj.getPhysics(key);
+        isFEM = isFEMBased(model, phys);
+
+        if any(strcmp(cond, ["VolumeForce","Surfaces"])) && isFEM
+
+          ents = obj.getEntities(key);
+          nEnts = obj.getData(key).data.nEntities;
+          nLoadEnts = zeros(numel(nEnts),1);
+          loadedEnts = [];
+          entsInfl = [];
+
+          N = 0;
+          for i = 1:numel(nEnts)
+            ents_i = ents(N+1:N+nEnts(i));
+            if strcmp(cond,'VolumeForce')
+              tmpMat = msh.cells(ents_i, :)';
+              nEntries = sum(msh.cellNumVerts(ents_i));
+            else
+              tmpMat = msh.surfaces(ents_i, :)';
+              nEntries = sum(msh.surfaceNumVerts(ents_i));
+            end
+
+            loadedEnts_i = unique(tmpMat(tmpMat ~= 0));
+            nLoadEnts(i) = numel(loadedEnts_i);
+
+            % Preallocate row,col,val indices for sparse assembly
+            %           n = sum(msh.cellNumVerts())
+            [r,c,v] = deal(zeros(nEntries,1));
+            k = 0;
+            for j = 1:nEnts(i)
+              el = ents_i(j);
+              if strcmp(cond,'VolumeForce')
+                nodInf = findNodeVolume(elem,el);
+                nodes = msh.cells(el,:);
+              else
+                nodInf = findNodeArea(elem,el);
+                nodes = msh.surfaces(el,:);
+              end
+              loadEntsLoc = find(ismember(loadedEnts_i,nodes));
+              nn = numel(nodInf);
+              r(k+1:k+nn) = loadEntsLoc;
+              c(k+1:k+nn) = repelem(j,nn);
+              v(k+1:k+nn) = nodInf;
+              k = k + nn;
+            end
+            entsInfl = blkdiag(entsInfl,sparse(r,c,v));
+            N = N + nEnts(i);
+            loadedEnts = [loadedEnts; loadedEnts_i];
+          end
+
+          if strcmp(obj.getType(key), 'Dir')
+            entsInfl = entsInfl./sum(entsInfl,2);
+          end
+
+          % update bc struct with additional properties
+          entry = obj.getData(key);
+          entry.entitiesInfl = entsInfl;
+          entry.loadedEnts = loadedEnts;
+          entry.nloadedEnts = nLoadEnts;
+          obj.db(key) = entry;
+        end
+      end
+
+    end
+  end
+
+  methods (Access = private)
+
+    % Read boundary condtions input file
+    function readInputFile(obj,fileName)
+
+      inputStruct = readstruct(fileName,AttributeSuffix="");
+
+      if isfield(inputStruct,"BoundaryConditions")
+        inputStruct = inputStruct.BoundaryConditions;
+      end
+
+      for i = 1:numel(inputStruct.BC)
+        % process each BC
+        in = inputStruct.BC(i);
+
+        entityType = getXMLData(in,[],"entityType");
+        if (~ismember(convertCharsToStrings(entityType), ["Nodes", "Surfaces", "Elements", "VolumeForce"]))
+          error(['%s condition is unknown\n', ...
+            'Accepted types are: Nodes   -> Boundary cond. on nodes\n',...
+            '                    Surfaces   -> Boundary cond. on surfaces\n',...
+            '                    Elements   -> Boundary cond. on elements\n',...
+            '                    VolumeForce -> Volume force on elements'], entityType);
+        end
+
+        type = getXMLData(in,[],"type");
+        if (~ismember(type, ["Dirichlet", "Neumann", "Seepage"]))
+          error(['%s boundary condition is not admitted\n', ...
+            'Accepted types are: Dirichlet, Neumann, Seepage'], type);
+        end
+
+        physics = getXMLData(in,[],"physics");
+        name = getXMLData(in,[],"name");
+
+        if ~isfield(in,"BCstep")
+          error("Missing field 'BCstep' for Boundary condition %s",name)
+        end
+        if ~isfield(in,"BCentities")
+          error("Missing field 'BCentities' for Boundary condition %s",name)
+        end
+
+        [times, bcData] = BoundariesNew.readDataFiles(in.BCstep);
+
+        if obj.db.isKey(name)
+          error('%s boundary condition name already defined', name);
+        end
+
+        switch entityType
+          case 'VolumeForce'
+            bc = struct('data', [], ...
+              'cond',entityType, 'physics', physics);
+          otherwise
+            bc = struct('data', [], ...
+              'cond',entityType,'type', type, 'physics', physics);
+        end
+
+        % set the BC entities
+        bcEnt = BoundaryEntitiesNew(name,times,bcData,entityType);
+        bcEnt.setBC(in.BCentities,obj.grid.topology);
+        bc.data = bcEnt;
+
+        % add BC to the database
+        obj.db(name) = bc;
+      end
+
+    end
+    
+  end
+  
+  methods(Static = true)
+    % Read the next token and check for eof
+ 
+    function [times, bcData] = readDataFiles(bcList)
+      % read times and values of input file
+      nData = numel(bcList);
+
+      bcData = repmat(struct('time', 0, 'value', []), nData, 1);
+      times = zeros(nData,1);
+
+      for i = 1:nData
+        times(i) = getXMLData(bcList(i),[],"time");
+        if ~isnumeric(times(i))
+          times(i) = [];
+        end
+        bcData(i).time = getXMLData(bcList(i),[],"time");
+        bcData(i).value = getXMLData(bcList(i),[],"value");
+      end
+     
+    end
+
+  end
+end

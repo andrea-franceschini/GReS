@@ -320,9 +320,9 @@ classdef Poromechanics < SinglePhysics
   methods (Access=private)
     function dof = getBCdofs(obj,id)
       switch obj.bcs.getCond(id)
-        case 'NodeBC'
+        case 'Nodes'
           ents = obj.bcs.getEntities(id);
-        case {'SurfBC','VolumeForce'}
+        case {'Surfaces','VolumeForce'}
           ents = obj.bcs.getLoadedEntities(id);
           % node id contained by constrained surface
         otherwise
@@ -338,7 +338,7 @@ classdef Poromechanics < SinglePhysics
 
     function vals = getBCVals(obj,id,t)
       vals = obj.bcs.getVals(id,t);
-      if strcmp(obj.bcs.getCond(id),'SurfBC')
+      if strcmp(obj.bcs.getCond(id),'Surfaces')
         entInfl = obj.bcs.getEntitiesInfluence(id);
         vals = entInfl*vals;
       elseif strcmp(obj.bcs.getCond(id),'VolumeForce')

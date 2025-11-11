@@ -191,7 +191,7 @@ classdef Mesh < handle
         case 'vtk'
           [obj.coordinates, elems] = mxImportVTKmesh(char(fileName));
         case 'msh'
-          importGMSHmesh(obj,fileName);
+          importGMSHmesh(obj,char(fileName));
           return;
       end
 

@@ -55,7 +55,7 @@ function val = getXMLValue(raw)
 
     % Try string array (split on spaces, commas, semicolons)
     if contains(str, [",", ";", " "])
-      parts = split(str, {",", ";", " "});
+      parts = regexp(str, '[,; ]+', 'split');
       parts = parts(parts ~= ""); % remove empties
       val = parts;
       return;
