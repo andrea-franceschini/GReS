@@ -1,13 +1,21 @@
-function vals = readDataSetNew(data, nVals)
+function vals = readDataSetNew(bc,varargin)
+
+nEnts = bc.nEntities;
+totEnts = bc.totEnts;
+
+if isempty(varargin)
+  assert(isscalar(bc.bcData),"The id of the boundary data needs to be specified")
+end
+
 
 % get array of BC values depending on the data
 
 if isnumeric(data) && isscalar(data)
-  % scalar value
+  % scalar value 
   vals = repmat(data,nVals,1);
 elseif isValidFunction(data)
-  % function handle
-  
+  % function of spacial coordinates (constant 
+
 else 
   % file with BC values
   vals = readValuesList(data);

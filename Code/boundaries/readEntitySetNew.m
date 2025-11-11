@@ -1,4 +1,4 @@
-function [nVals, vals] = readEntitySetNew(input,mesh, entityType)
+function [nEnts, ents, entsPosition] = readEntitySetNew(input,mesh, entityType)
 % read entity set (can be a scalar tag or a path to a file)
 
 if isfield(input,"entityList")
@@ -7,9 +7,12 @@ if isfield(input,"entityList")
     "A path to the entityList should be the unique input of the " + ...
     "BCentities field. ");
   entPath = getXMLData(input,[],"entityList");
-  [nVals, vals] = readListFile(entPath);
-  return
+  [nEnts, ents] = readListFile(entPath);
 
+  entsPosition = getLocation(ents,mesh,entityType);
+
+  return
+  
 else
   if isfield(input,"surfaceTags")
   % input is a surface tag with component specification
@@ -38,13 +41,15 @@ else
     compID =  ismember(["x","y","z"],dir);
   end
 
-  nVals = numel(entsID).*compID;
-  vals = repmat(entsID,sum(compID),1);
+  nEnts = numel(entsID).*compID;
+  ents = repmat(entsID,sum(compID),1);
+
+  entsPosition = getLocation(ents,mesh,entityType);
 
 end
 end
 
-function [nVals, vals] = readListFile(fileName)
+function [nEnts, ents] = readListFile(fileName)
 
 if (~exist(fileName, 'file'))
   error('File %s does not seem to exist. Please, check the provided file.', fileName);
@@ -79,4 +84,17 @@ while ~feof(fid)
 end
 fclose(fid);
 
+end
+
+
+function pos = getLocation(ents,mesh,entType)
+
+switch entType
+  case "Nodes"
+    pos = mesh.coordinates(ents,:);
+  case "Surfaces"
+    pos = mesh.surfaceCentroid(ents,:);
+  case {"Elements","VolumeForce"}
+    pos = mesh.cellCentroid(ents,:);
+end
 end

@@ -21,8 +21,10 @@ classdef BoundaryEntitiesNew < handle
     availVals
     % Time id of currently-stored boundary conditions
     availSteps
-    % the type of the entity where the BC is applied
+    % the type of the target entity where the BC is applied
     entityType
+    % the position in space of the target entities
+    entityPos
   end
 
   properties (Access = private)
@@ -44,28 +46,28 @@ classdef BoundaryEntitiesNew < handle
       if (obj.nTimes==0)
         % value must a function handle depending on time
         tScale = str2fun(['@(t)', obj.bcData.time]);
-        vals = readDataSetNew(obj.bcData.value, obj.totEnts);
+        vals = readDataSetNew(obj);
         vals = tScale*vals;
       elseif (obj.nTimes == 1)
-        vals = readDataSetNew(obj.bcData.value, obj.totEnts);
+        vals = readDataSetNew(obj);
       else
         [i1, i2] = bin_search(obj, t);
         p1 = find(obj.availSteps == i1);
         p2 = find(obj.availSteps == i2);
         if (isempty(p1) && isempty(p2))
           p1 = 1;
-          obj.availVals(:,1) = readDataSet(obj.bcData(i1).fileName, obj.totEnts);
+          obj.availVals(:,1) = readDataSetNew(obj,i1);
           obj.availSteps(1) = i1;
           p2 = 2;
-          obj.availVals(:,2) = readDataSet(obj.bcData(i2).fileName, obj.totEnts);
+          obj.availVals(:,2) = readDataSetNew(obj,i2);
           obj.availSteps(2) = i2;
         elseif (~isempty(p1) && isempty(p2))
           p2 = 3 - p1;
-          obj.availVals(:,p2) = readDataSet(obj.bcData(i2).fileName, obj.totEnts);
+          obj.availVals(:,p2) = readDataSetNew(obj,i2);
           obj.availSteps(p2) = i2;
         elseif (~isempty(p2) && isempty(p1))
           p1 = 3 - p2;
-          obj.availVals(:,p1) = readDataSet(obj.bcData(i1).fileName, obj.totEnts);
+          obj.availVals(:,p1) = readDataSetNew(obj,i1);
           obj.availSteps(p1) = i1;
         end
         fac = (t - obj.times(i1)) / (obj.times(i2) - obj.times(i1));
@@ -77,7 +79,7 @@ classdef BoundaryEntitiesNew < handle
   methods (Access = public)
     function setBC(obj, inputStruct, mesh)
       
-      [obj.nEntities, obj.entities] = readEntitySetNew(inputStruct,mesh,obj.entityType);
+      [obj.nEntities, obj.entities, obj.entityPos] = readEntitySetNew(inputStruct,mesh,obj.entityType);
 
       obj.totEnts = sum(obj.nEntities);
       if (obj.totEnts == 0)
