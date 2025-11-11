@@ -89,7 +89,7 @@ classdef PorousRock < handle
         obj.poro = getXMLData(inputStruct,[],"porosity");
         obj.specGrav = getXMLData(inputStruct,21,"specificGravity");
         obj.biot = getXMLData(inputStruct,1,"biotCoefficient");
-        Kvec = str2num(getXMLData(inputStruct,[],"permeability"));
+        Kvec = getXMLData(inputStruct,[],"permeability");
         nK = length(Kvec);
         if ~any([nK==1,nK==3,nK==6])
           gres_log().error("Wrong number of numeric " + ...

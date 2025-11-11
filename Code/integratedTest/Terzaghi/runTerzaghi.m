@@ -5,7 +5,7 @@ scriptDir = fileparts(scriptFullPath);
 % Change the current directory to the script's directory
 cd(scriptDir);
 % Set parameters of the simulation
-fileName = "simParam.dat";
+fileName = "simParam.xml";
 simParam = SimulationParameters(fileName,model);
 simParam.setVerbosity(0);
 % Create the Mesh object
@@ -15,8 +15,8 @@ fileName = 'Mesh/Column_hexa.msh';
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
 % Create an object of the Materials class and read the materials file
-fileName = 'materialsList.dat';
-mat = Materials(model,fileName);
+fileName = 'materials.xml';
+mat = Materials(fileName);
 % Create an object of the "Elements" class and process the element properties
 gaussOrder = 2;
 elems = Elements(topology,gaussOrder);

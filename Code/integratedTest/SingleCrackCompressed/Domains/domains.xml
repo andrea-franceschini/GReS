@@ -4,10 +4,10 @@
   <Domain>
     <Name>SingleCrackModel</Name>
     <ModelType>Poromechanics_FEM</ModelType>
-    <SimParameters> simParam.dat </SimParameters>
+    <SimParameters> simParam.xml </SimParameters>
     <Geometry>SingleCrack_grid.vtk</Geometry>
     <Gauss> 3 </Gauss>
-    <Material>Materials/MaterialsList.dat</Material>
+    <Material>materials.xml</Material>
     <BoundaryConditions count="5">
       <File>BCs/z_fix.dat</File>
       <File>BCs/x_fix.dat</File>

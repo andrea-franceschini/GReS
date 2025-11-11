@@ -64,7 +64,6 @@ classdef SimulationParameters < handle
         end
 
         time = fdata.("Time");
-        solver = fdata.("Solver");
 
         obj.tIni = getXMLData(time,0,'Start');
         obj.tMax = getXMLData(time,[],'End');
@@ -73,11 +72,14 @@ classdef SimulationParameters < handle
         obj.dtMax = getXMLData(time,[],'DtMax');
         obj.multFac = getXMLData(time,1.1,'incrementFactor');
         obj.divFac = getXMLData(time,2.,'choppingFactor');
-        
-        obj.absTol = getXMLData(solver,1e-10,'AbsoluteTolerance');
-        obj.relTol = getXMLData(solver,1e-6','RelativeTolerance');
-        obj.theta = getXMLData(solver,1.,'Theta');
-        obj.itMaxNR = getXMLData(solver,10,'MaxNLIteration');
+
+        if isfield(fdata,"Solver")
+          solver = fdata.("Solver");
+          obj.absTol = getXMLData(solver,1e-10,'AbsoluteTolerance');
+          obj.relTol = getXMLData(solver,1e-6','RelativeTolerance');
+          obj.theta = getXMLData(solver,1.,'Theta');
+          obj.itMaxNR = getXMLData(solver,10,'MaxNLIteration');
+        end
     end
 
   end

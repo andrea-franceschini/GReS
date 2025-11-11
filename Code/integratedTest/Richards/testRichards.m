@@ -6,7 +6,7 @@ testPath = mfilename('fullpath');
 cd(fileparts(testPath));
 
 model = ModelType("VariabSatFlow_FVTPFA");
-simParam = SimulationParameters(fullfile('simParam.xml'),model);
+simParam = SimulationParameters(fullfile('simParam.xml'));
 
 % Create the topology object
 topology = Mesh();
@@ -26,7 +26,7 @@ z = elems.mesh.cellCentroid(:,3);
 wLev = 9.;
 
 sol = struct('time', [], 'pressure', [],'saturation', []);
-listMat = ["matTab.dat" "matAna.dat"];
+listMat = ["matTab.xml" "matAnal.xml"];
 for sim = 1:numel(listMat)
   run("runRichards.m");
   sol(sim).time = [printUtils.results.expTime]';

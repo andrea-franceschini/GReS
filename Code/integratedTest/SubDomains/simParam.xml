@@ -4,13 +4,12 @@
   <simParam>
     <Time 
           Start="0."
-          End ="10.01"
-          DtInit= "1e-1"
-          DtMax ="1e1"
-          DtMin ="1e-2"
-          incrementFactor = "1.0"
-
-          />
+          End ="1.99"
+          DtInit= "0.5"
+          DtMax ="0.5"
+          DtMin ="1e-5"
+          incrementFactor = "Default"
+          choppingFactor = "Default" />
 
   </simParam>
 </model>

@@ -51,7 +51,7 @@ assert(err_tn < 1e0,"Normal traction not validated")
 
 % compare tangential gap
 err_gt = norm(gt-gt_anal);
-assert(err_gt < 1e-2,"Normal traction not validated")
+assert(err_gt < 1e-2,"Tangential gap not validated")
 
 function msh = setFaultSurface(msh)
   % get nodes belonging to current surface 3

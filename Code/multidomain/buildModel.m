@@ -16,7 +16,7 @@ function modStr = defineDomain(struc)
   topology = Mesh();
   topology.importMesh(char(struc.Geometry));
   if isfield(struc,"Material")
-    material = Materials(model,char(struc.Material));
+    material = Materials(char(struc.Material));
   else
     material = [];
   end

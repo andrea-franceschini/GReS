@@ -1,6 +1,6 @@
 
 % Create an object of the Materials class and read the materials file
-mat = Materials(model,listMat(sim));
+mat = Materials(listMat(sim));
 
 % Create and set the print utility
 printUtils = OutState(model,topology, ...
@@ -22,7 +22,7 @@ domain = Discretizer('ModelType',model,...
 % set initial conditions directly modifying the state object
 domain.state.data.pressure = getFluid(mat).getFluidSpecWeight()*(wLev-z);
 
-domain.simparams.setVerbosity(0);
+domain.simparams.setVerbosity(2);
 
 % Solve the problem
 Solver = FCSolver(domain);

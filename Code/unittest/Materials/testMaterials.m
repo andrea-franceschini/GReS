@@ -20,11 +20,11 @@ classdef testMaterials < matlab.unittest.TestCase
     % Test methods
 
     function readFile(testCase)
-      testCase.mat = MaterialsXML(testCase.pathToFile);
-      verifyEqual(testCase,getMaterial(testCase.mat,1).constLaw.E,1e3);
+      testCase.mat = Materials(testCase.pathToFile);
+      verifyEqual(testCase,getMaterial(testCase.mat,1).ConstLaw.E,1e3);
       K = diag([1e-12;1e-12;1e-12]);
       verifyEqual(testCase,getMaterial(testCase.mat,4).PorousRock.getPermMatrix(),K);
-      verifyEqual(testCase,getMaterial(testCase.mat,2).constLaw.phi,30);
+      verifyEqual(testCase,getMaterial(testCase.mat,2).ConstLaw.phi,30);
       verifyEqual(testCase,getFluid(testCase.mat).getFluidSpecWeight(),0);
       verifyEqual(testCase,getFluid(testCase.mat).getFluidCompressibility(),4.4e-7);
     end
