@@ -1,12 +1,12 @@
 function [nEnts, ents, entsPosition] = readEntitySetNew(input,mesh, entityType)
 % read entity set (can be a scalar tag or a path to a file)
 
-if isfield(input,"entityList")
+if isfield(input,"bcListFile")
   % input list is in a file
   assert(isscalar(fieldnames(input)), ...
     "A path to the entityList should be the unique input of the " + ...
     "BCentities field. ");
-  entPath = getXMLData(input,[],"entityList");
+  entPath = getXMLData(input,[],"bcListFile");
   [nEnts, ents] = readListFile(entPath);
 
   entsPosition = getLocation(ents,mesh,entityType);
@@ -18,16 +18,16 @@ else
   % input is a surface tag with component specification
   surfTags = getXMLData(input,[],"surfaceTags");
   switch entityType
-    case "Nodes"
+    case "NodeBC"
       entsID = unique(mesh.surfaces(ismember(mesh.surfaceTag,surfTags),:));
-    case "Surfaces"
+    case "SurfBC"
       entsID = find(ismember(mesh.surfaceTag,surfTags));
     otherwise
       error("XML field surfaceTags is not valid for BC of type %s", entityType)
   end
-  elseif isfield(input,"entities")
+  elseif isfield(input,"bcList")
     % direct entity assignment in the xml file
-    entsID = getXMLData(input,[],"entities");
+    entsID = getXMLData(input,[],"bcList");
   end
 
   if isempty(entsID)
@@ -61,15 +61,15 @@ while (~feof(fid) && ~header)
   word = sscanf(line, '%s');
   if (~strcmp(word(1), '%'))
     % If this is not a commented line (not starting with %)
-    nVals = sscanf(line, '%i');
+    nEnts = sscanf(line, '%i');
     header = true;
   end
 end
 if (~header)
   error('Missing header in readSet.');
 end
-nValMax = sum(nVals);
-vals = zeros(nValMax,1);
+nValMax = sum(nEnts);
+ents = zeros(nValMax,1);
 id = 1;
 while ~feof(fid)
   line = fgetl(fid);
@@ -78,7 +78,7 @@ while ~feof(fid)
     % If this is not a commented line (not starting with %)
     num = sscanf(line, '%i');
     nNum = length(num);
-    vals(id:id+nNum-1) = num;
+    ents(id:id+nNum-1) = num;
     id = id + nNum;
   end
 end
@@ -90,11 +90,11 @@ end
 function pos = getLocation(ents,mesh,entType)
 
 switch entType
-  case "Nodes"
+  case "NodeBC"
     pos = mesh.coordinates(ents,:);
-  case "Surfaces"
+  case "SurfBC"
     pos = mesh.surfaceCentroid(ents,:);
-  case {"Elements","VolumeForce"}
+  case {"ElementBC","VolumeForce"}
     pos = mesh.cellCentroid(ents,:);
 end
 end

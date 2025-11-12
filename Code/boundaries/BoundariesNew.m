@@ -130,7 +130,7 @@ classdef BoundariesNew < handle
         phys = obj.getPhysics(key);
         isFEM = isFEMBased(model, phys);
 
-        if any(strcmp(cond, ["VolumeForce","Surfaces"])) && isFEM
+        if any(strcmp(cond, ["VolumeForce","SurfBC"])) && isFEM
 
           ents = obj.getEntities(key);
           nEnts = obj.getData(key).data.nEntities;
@@ -209,11 +209,11 @@ classdef BoundariesNew < handle
         in = inputStruct.BC(i);
 
         entityType = getXMLData(in,[],"entityType");
-        if (~ismember(convertCharsToStrings(entityType), ["Nodes", "Surfaces", "Elements", "VolumeForce"]))
+        if (~ismember(convertCharsToStrings(entityType), ["NodeBC", "SurfBC", "ElementBC", "VolumeForce"]))
           error(['%s condition is unknown\n', ...
-            'Accepted types are: Nodes   -> Boundary cond. on nodes\n',...
-            '                    Surfaces   -> Boundary cond. on surfaces\n',...
-            '                    Elements   -> Boundary cond. on elements\n',...
+            'Accepted types are: NodeBC   -> Boundary cond. on nodes\n',...
+            '                    SurfBC   -> Boundary cond. on surfaces\n',...
+            '                    ElementBC   -> Boundary cond. on elements\n',...
             '                    VolumeForce -> Volume force on elements'], entityType);
         end
 
@@ -226,26 +226,29 @@ classdef BoundariesNew < handle
         physics = getXMLData(in,[],"physics");
         name = getXMLData(in,[],"name");
 
-        if ~isfield(in,"BCstep")
-          error("Missing field 'BCstep' for Boundary condition %s",name)
+        if ~isfield(in,"BCevent")
+          error("Missing at least one field 'BCevent' for Boundary condition '%s'",name)
         end
         if ~isfield(in,"BCentities")
-          error("Missing field 'BCentities' for Boundary condition %s",name)
+          error("Missing field 'BCentities' for Boundary condition '%s'",name)
         end
 
-        [times, bcData] = BoundariesNew.readDataFiles(in.BCstep);
+        [times, bcData] = BoundariesNew.readDataFiles(in.BCevent);
 
         if obj.db.isKey(name)
-          error('%s boundary condition name already defined', name);
+          error("'%s' boundary condition name already defined", name);
         end
 
         switch entityType
           case 'VolumeForce'
             bc = struct('data', [], ...
               'cond',entityType, 'physics', physics);
-          otherwise
+          case {'SurfBC','NodeBC','ElementBC'}
             bc = struct('data', [], ...
               'cond',entityType,'type', type, 'physics', physics);
+          otherwise
+            error('Unrecognized BC item %s for Boundary condition %s', ...
+              entityType, name)
         end
 
         % set the BC entities
@@ -272,13 +275,30 @@ classdef BoundariesNew < handle
       times = zeros(nData,1);
 
       for i = 1:nData
-        times(i) = getXMLData(bcList(i),[],"time");
-        if ~isnumeric(times(i))
-          times(i) = [];
+        tVal = getXMLData(bcList(i),[],"time");
+        if ~isnumeric(tVal)
+          times(i) = -1;
+        else
+          times(i) = tVal;
         end
-        bcData(i).time = getXMLData(bcList(i),[],"time");
+
+        if sum(times == -1)>0 && length(times) > 1
+          error("Multiple <BCevent> with time functions are " + ...
+            "not allowed")
+        end
+
+        bcData(i).time = tVal;
         bcData(i).value = getXMLData(bcList(i),[],"value");
       end
+
+      if length(unique(times))~=length(times)
+        error("Multiple <BCevent> with same time are" + ...
+          "not allowed")
+      end
+
+      % reorder time in ascending order
+      [~,s] = sort(times,"ascend");
+      bcData = bcData(s);
      
     end
 

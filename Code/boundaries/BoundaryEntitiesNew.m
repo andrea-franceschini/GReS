@@ -29,6 +29,7 @@ classdef BoundaryEntitiesNew < handle
 
   properties (Access = private)
     dof
+    readSetFlag = true
   end
 
   methods (Access = public)
@@ -37,41 +38,60 @@ classdef BoundaryEntitiesNew < handle
       % Calling the function to set object properties
       obj.name = name;
       obj.times = times;
-      obj.nTimes = length(times);
+      obj.nTimes = sum(times >= 0.0);
       obj.bcData = bcData;
       obj.entityType = entityType;
     end
 
+
     function vals = getValues(obj, t)
       if (obj.nTimes==0)
         % value must a function handle depending on time
-        tScale = str2fun(['@(t)', obj.bcData.time]);
-        vals = readDataSetNew(obj);
-        vals = tScale*vals;
+        tScale = str2func(['@(t)', char(obj.bcData.time)]);
+        if obj.readSetFlag
+          obj.availVals(:,1) = readDataSetNew(obj);
+          obj.readSetFlag = false;
+        end
+        vals = tScale(t)*obj.availVals(:,1); % scale by the time function
       elseif (obj.nTimes == 1)
-        vals = readDataSetNew(obj);
+        if obj.readSetFlag
+          obj.availVals(:,1) = readDataSetNew(obj);
+          obj.readSetFlag = false;
+        end
+        vals = obj.availVals(:,1);
       else
         [i1, i2] = bin_search(obj, t);
-        p1 = find(obj.availSteps == i1);
-        p2 = find(obj.availSteps == i2);
-        if (isempty(p1) && isempty(p2))
-          p1 = 1;
-          obj.availVals(:,1) = readDataSetNew(obj,i1);
-          obj.availSteps(1) = i1;
-          p2 = 2;
-          obj.availVals(:,2) = readDataSetNew(obj,i2);
-          obj.availSteps(2) = i2;
-        elseif (~isempty(p1) && isempty(p2))
-          p2 = 3 - p1;
-          obj.availVals(:,p2) = readDataSetNew(obj,i2);
-          obj.availSteps(p2) = i2;
-        elseif (~isempty(p2) && isempty(p1))
-          p1 = 3 - p2;
-          obj.availVals(:,p1) = readDataSetNew(obj,i1);
-          obj.availSteps(p1) = i1;
+        if i1 == i2
+          % outside range of available steps
+          if ~(obj.availSteps(:,1) == i1)
+            obj.availSteps(1) = i1;
+            obj.availVals(:,1) = readDataSetNew(obj,i1);
+          end
+          vals = obj.availVals(:,1);
+        else
+          p1 = find(obj.availSteps == i1);
+          p2 = find(obj.availSteps == i2);
+          if (isempty(p1) && isempty(p2))
+            p1 = 1;
+            obj.availVals(:,1) = readDataSetNew(obj,i1);
+            obj.availSteps(1) = i1;
+            p2 = 2;
+            obj.availVals(:,2) = readDataSetNew(obj,i2);
+            obj.availSteps(2) = i2;
+          elseif (~isempty(p1) && isempty(p2))
+            p2 = 3 - p1;
+            obj.availVals(:,p2) = readDataSetNew(obj,i2);
+            obj.availSteps(p2) = i2;
+          elseif (~isempty(p2) && isempty(p1))
+            p1 = 3 - p2;
+            obj.availVals(:,p1) = readDataSetNew(obj,i1);
+            obj.availSteps(p1) = i1;
+          end
+          fac = (t - obj.times(i1)) / (obj.times(i2) - obj.times(i1));
+          vals = fac*(obj.availVals(:,p2) - obj.availVals(:,p1)) + obj.availVals(:,p1);
         end
-        fac = (t - obj.times(i1)) / (obj.times(i2) - obj.times(i1));
-        vals = fac*(obj.availVals(:,p2) - obj.availVals(:,p1)) + obj.availVals(:,p1);
+
+
       end
     end
   end
@@ -95,10 +115,10 @@ classdef BoundaryEntitiesNew < handle
 
       if t <= obj.times(1)
         i1 = 1;
-        i2 = 2;
+        i2 = 1;
         return;
       elseif t >= obj.times(end)
-        i1 = obj.nTimes - 1;
+        i1 = obj.nTimes;
         i2 = obj.nTimes;
         return;
       end

@@ -1,38 +1,44 @@
 function vals = readDataSetNew(bc,varargin)
 
-nEnts = bc.nEntities;
-totEnts = bc.totEnts;
+%nEnts = bc.nEntities;
+%totEnts = bc.totEnts;
 
 if isempty(varargin)
-  assert(isscalar(bc.bcData),"The id of the boundary data needs to be specified")
+  assert(isscalar(bc.bcData.value),"The id of the boundary data needs to be specified")
+  bcVal = bc.bcData.value;
+else
+  bcVal = bc.bcData(varargin{1}).value;
 end
 
 
-% get array of BC values depending on the data
-
-if isnumeric(data) && isscalar(data)
+if isnumeric(bcVal) && isscalar(bcVal)
   % scalar value 
-  vals = repmat(data,nVals,1);
-elseif isValidFunction(data)
-  % function of spacial coordinates (constant 
-
+  vals = repmat(bcVal,bc.totEnts,1);
+elseif isValidFunction(bcVal)
+  % function of spatial coordinates
+  f = str2func(['@(x,y,z)', char(bcVal)]);
+  vals = f(bc.entityPos(:,1),bc.entityPos(:,2),bc.entityPos(:,3));
 else 
   % file with BC values
-  vals = readValuesList(data);
+  vals = readValuesList(bcVal,bc.totEnts);
 end
+
+assert(bc.totEnts == numel(vals),...
+  "Number of BC values not matching number of BC entities")
 end
 
 
 function tf = isValidFunction(expr)
     tf = true;
     try
-        str2func(['@(x,y,z)', expr]);
+        f = str2func(['@(x,y,z)', char(expr)]);
+        f(1,1,1);
     catch
         tf = false;
     end
 end
 
-function vals = readValuesList(fileName)
+function vals = readValuesList(fileName,nVals)
 % path to input file of numeric values
 if (~exist(fileName, 'file'))
   error('File %s does not seem to exist. Please, check the provided file.', fileName);
@@ -51,8 +57,10 @@ while ~feof(fid)
     id = id + nNum;
   end
 end
+vals = vals(1:id-1);
 if length(vals) ~= nVals
-  error('Number of values in %s not matching number of constrained entities',fileName)
+  error(['Number of values in %s not matching number of constrained' ...
+    'degrees of freedom'],fileName)
 end
 fclose(fid);
 end
