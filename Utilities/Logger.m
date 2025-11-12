@@ -71,6 +71,7 @@ classdef Logger < handle
       disp(' ')
       disp('Run  >> compileAll')
       disp('     to compile all existing MEX files in the project.')
+      disp('     You only need to run it once!')
       disp(' ')
       disp('Check out the tutorials folder')
       disp('     for hands-on guides and usage examples.')

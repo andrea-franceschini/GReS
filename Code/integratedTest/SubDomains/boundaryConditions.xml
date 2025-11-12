@@ -17,7 +17,7 @@ the surfaceTags to which the constrained entities belong
 a simple list of entities to be constrained in the specified components
 
 NOTE
-for the case of multi-component fields where 'bcList' or 'surfaceTags' 
+for the case of multi-component fields where 'bcList' or 'surfaceTags'
 are used, the user must also specify the 'component' attribute
 component = "x" or component = "x,y,z" or component = "y,z"
 
@@ -39,87 +39,78 @@ a function handle depending on space (x,y,z)
 
 
 <BoundaryConditions>
+  <!--
   <BC
-      name = "bc1"
+      name = "topDrained"
       type = "Dirichlet"
       entityType = "SurfBC"
       physics = "SinglePhaseFlow"
       >
 
     <BCentities
-                bcList = "1,13,168"
+                surfaceTags = "2"
+
                 />
 
     <BCevent
-            time = "2*t"
-            value = "10-z"
-            />
-  </BC>
+             time = "0"
+             value = "0"
+             />
+</BC>
+-->
 
   <BC
-      name = "bc2"
-      type = "Neumann"
+      name = "lateralFix"
+      type = "Dirichlet"
       entityType = "SurfBC"
       physics = "Poromechanics"
       >
 
     <BCentities
-                surfaceTags = "2"
-                components = "x, z"
+                bcListFile = "BCs/listLateralFix"
                 />
 
+    <BCevent
+             time = "0"
+             value = "0"
+             />
+
+  </BC>
+
+
+  <BC
+      name = "FluxCell"
+      entityType = "VolumeForce"
+      physics = "SinglePhaseFlow"
+      >
+
+    <!-- cell index -->
+    <BCentities
+                bcList = "1422"
+                />
+
+    <!-- Flux is given in m^3/year -->
+    <BCevent
+             time = "0"
+             value = "0"
+             />
     <BCevent
              time = "1"
-             value = "-10"
+             value = "-0.360"
+             />
+    <BCevent
+             time = "6"
+             value = "-0.360"
+             />
+    <BCevent
+             time = "7"
+             value = "0"
              />
 
-    <BCevent
-             time = "3"
-             value = "-5"
-             />
-    <BCevent
-             time = "8"
-             value = "z"
-             />
   </BC>
 
   <BC
-      name = "bc3"
-      type = "Dirichlet"
-      entityType = "NodeBC"
-      physics = "Poromechanics"
-      >
-
-    <BCentities
-                bcListFile = "entityList"
-                />
-
-    <BCevent
-            time = "1"
-            value = "5"
-            />
-  </BC>
-
-  <BC
-      name = "bc4"
-      type = "Dirichlet"
-      entityType = "NodeBC"
-      physics = "Poromechanics"
-      >
-
-    <BCentities
-                surfaceTags = "4"
-                components = "x"
-                />
-
-    <BCevent
-            time = "0"
-            value = "bcvals_list.dat"
-            />
-  </BC>
-
-  <BC
-      name = "bc5"
+      name = "BottomFixed"
       type = "Dirichlet"
       entityType = "SurfBC"
       physics = "Poromechanics"
@@ -131,9 +122,11 @@ a function handle depending on space (x,y,z)
                 />
 
     <BCevent
-            time = "0"
-            value = "0"
-            />
+             time = "0"
+             value = "0"
+             />
+
   </BC>
+
 
 </BoundaryConditions>

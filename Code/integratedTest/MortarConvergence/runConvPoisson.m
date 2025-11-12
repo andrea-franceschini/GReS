@@ -63,11 +63,11 @@ for i = 1:nref
   vals = reshape(vals,[],1);
   writeBCfiles('BCs/bc','NodeBC','Dir','Poisson','manufactured_bc',0,0,nodes,vals);
 
-  clear mesh
+  %clear mesh
 
   % write mesh to domain file
-  strDomain.Domain.Name = "Cube_"+integration_type+"_"+num2str(i);
-  strDomain.Domain.Geometry = fullfile('Mesh','meshes',fname+".vtk");
+  strDomain.Name = "Cube_"+integration_type+"_"+num2str(i);
+  strDomain.Geometry = fullfile('Mesh','meshes',fname+".vtk");
   domainFile = fullfile('Domains','domain1block.xml');
   writestruct(strDomain,domainFile);
 
@@ -83,7 +83,7 @@ for i = 1:nref
   % processing Poisson problem
   domains = buildModel(domainFile);
 
-  domains.simparams.setVerbosity(0);
+  domains.simparams.setVerbosity(2);
   domains.getSolver('Poisson').setAnalSolution(anal,f,gradx,grady,gradz);
 
   [interfaces,domains] = Mortar.buildInterfaces(interfFile,domains);

@@ -37,7 +37,8 @@ fileName = ["BCs/dirFlowTop.dat","BCs/neuPorotop.dat",...
    "BCs/dirPoroLatY.dat","BCs/dirPoroLatX.dat","BCs/dirPoroBottom.dat"];
 %
 % Create an object of the "Boundaries" class 
-bound = Boundaries(fileName,model,grid);
+bound = Boundaries('boundaryConditions.xml',model,grid);
+
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('ModelType',model,...
                      'SimulationParameters',simParam,...

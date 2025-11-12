@@ -1,4 +1,5 @@
-classdef BoundariesNew < handle
+
+classdef Boundaries < handle
   % BOUNDARY CONDITIONS - General boundary conditions class
 
   properties (Access = public)
@@ -14,14 +15,14 @@ classdef BoundariesNew < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = BoundariesNew(fileName,model,grid) %,model,grid
+    function obj = Boundaries(fileNames,model,grid) %,model,grid
       % MATLAB evaluates the assignment expression for each instance, which
       % ensures that each instance has a unique value
       obj.db = containers.Map('KeyType','char','ValueType','any');
       obj.model = model;
       obj.grid = grid;
       % Calling the function to read input data from file
-      obj.readInputFile(fileName);
+      obj.readInputFiles(fileNames);
       obj.computeBoundaryProperties(model,grid);
       linkBoundSurf2TPFAFace(model,obj,grid);
     end
@@ -105,10 +106,7 @@ classdef BoundariesNew < handle
     end
 
     function infl = getEntitiesInfluence(obj, identifier)
-      infl = [];
-      if isfield(obj.getData(identifier),"entitiesInfl")
-        infl = obj.getData(identifier).entitiesInfl;
-      end
+      infl = obj.getData(identifier).entitiesInfl;
     end
 
     function setDofs(obj, identifier, list)
@@ -194,113 +192,107 @@ classdef BoundariesNew < handle
   end
 
   methods (Access = private)
-
-    % Read boundary condtions input file
+    % Reading boundary input file
     function readInputFile(obj,fileName)
-
-      inputStruct = readstruct(fileName,AttributeSuffix="");
-
-      if isfield(inputStruct,"BoundaryConditions")
-        inputStruct = inputStruct.BoundaryConditions;
+      fid = fopen(fileName, 'r');
+      if (fid == -1)
+        error('File %s not opened correctly',fileName);
       end
-
-      for i = 1:numel(inputStruct.BC)
-        % process each BC
-        in = inputStruct.BC(i);
-
-        entityType = getXMLData(in,[],"entityType");
-        if (~ismember(convertCharsToStrings(entityType), ["NodeBC", "SurfBC", "ElementBC", "VolumeForce"]))
-          error(['%s condition is unknown\n', ...
-            'Accepted types are: NodeBC   -> Boundary cond. on nodes\n',...
-            '                    SurfBC   -> Boundary cond. on surfaces\n',...
-            '                    ElementBC   -> Boundary cond. on elements\n',...
-            '                    VolumeForce -> Volume force on elements'], entityType);
-        end
-
-        type = getXMLData(in,[],"type");
-        if (~ismember(type, ["Dirichlet", "Neumann", "Seepage"]))
+      token = Boundaries.readToken(fid);
+      if (~ismember(convertCharsToStrings(token), ["NodeBC", "SurfBC", "VolumeForce","ElementBC"]))
+        error(['%s condition is unknown\n', ...
+          'Accepted types are: NodeBC   -> Boundary cond. on nodes\n',...
+          '                    SurfBC   -> Boundary cond. on surfaces\n',...
+          '                    ElementBC   -> Boundary cond. on elements\n',...
+          '                    VolumeForce -> Volume force on elements'], token);
+      end
+      if ismember(convertCharsToStrings(token), ["NodeBC", "SurfBC", "ElementBC"])
+        type = Boundaries.readToken(fid);
+        if (~ismember(type, ['Dir', 'Neu', 'Spg']))
           error(['%s boundary condition is not admitted\n', ...
-            'Accepted types are: Dirichlet, Neumann, Seepage'], type);
+            'Accepted types are: Dir -> Dirichlet, Neu -> Neumann, Spg -> Seepage'], type);
         end
+      end
+      physics = Boundaries.readToken(fid);
 
-        physics = getXMLData(in,[],"physics");
-        name = getXMLData(in,[],"name");
-
-        if ~isfield(in,"BCevent")
-          error("Missing at least one field 'BCevent' for Boundary condition '%s'",name)
+      % Tests to prevent boundary conditions available only for a specific
+      % case from being available.
+      
+      % - Seepage condition is only compatible to flow in a surfBC, check
+      % to allow only in this condition.
+      if (token=="SurfBC")
+        if (type=="Spg") &&  ~ismember(physics, ["Flow","SinglePhaseFlow","VariablySaturatedFlow"])
+          error(['Seepage boundary condition (Spg) is only admitted for flow' ...
+            ' applied in a surface (SurfBC)']);
         end
-        if ~isfield(in,"BCentities")
-          error("Missing field 'BCentities' for Boundary condition '%s'",name)
-        end
-
-        [times, bcData] = BoundariesNew.readDataFiles(in.BCevent);
-
-        if obj.db.isKey(name)
-          error("'%s' boundary condition name already defined", name);
-        end
-
-        switch entityType
-          case 'VolumeForce'
-            bc = struct('data', [], ...
-              'cond',entityType, 'physics', physics);
-          case {'SurfBC','NodeBC','ElementBC'}
-            bc = struct('data', [], ...
-              'cond',entityType,'type', type, 'physics', physics);
-          otherwise
-            error('Unrecognized BC item %s for Boundary condition %s', ...
-              entityType, name)
-        end
-
-        % set the BC entities
-        bcEnt = BoundaryEntitiesNew(name,times,bcData,entityType);
-        bcEnt.setBC(in.BCentities,obj.grid.topology);
-        bc.data = bcEnt;
-
-        % add BC to the database
-        obj.db(name) = bc;
       end
 
+      name = Boundaries.readToken(fid);
+      setFile = Boundaries.readToken(fid);
+      [times, dataFiles] = Boundaries.readDataFiles(fid);
+      fclose(fid);
+      if obj.db.isKey(name)
+        error('%s boundary condition name already defined', name);
+      end
+      switch token
+        case {'NodeBC', 'ElementBC','SurfBC'}
+          obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
+            'cond',token,'type', type, 'physics', physics);
+        case 'VolumeForce'
+          obj.db(name) = struct('data', BoundaryEntities(name, setFile, times, dataFiles), ...
+            'cond',token, 'physics', physics);
+      end
+      %
     end
     
+    % Reading boundary input file
+    function readInputFiles(obj,fileNames)
+      n = length(fileNames);
+      assert(n > 0,'No boundary conditions are to be imposed');
+      for i = 1 : n
+        readInputFile(obj,fileNames(i));
+      end
+    end
+ 
   end
   
   methods(Static = true)
     % Read the next token and check for eof
- 
-    function [times, bcData] = readDataFiles(bcList)
-      % read times and values of input file
-      nData = numel(bcList);
-
-      bcData = repmat(struct('time', 0, 'value', []), nData, 1);
-      times = zeros(nData,1);
-
-      for i = 1:nData
-        tVal = getXMLData(bcList(i),[],"time");
-        if ~isnumeric(tVal)
-          times(i) = -1;
-        else
-          times(i) = tVal;
-        end
-
-        if sum(times == -1)>0 && length(times) > 1
-          error("Multiple <BCevent> with time functions are " + ...
-            "not allowed")
-        end
-
-        bcData(i).time = tVal;
-        bcData(i).value = getXMLData(bcList(i),[],"value");
+    function [token] = readToken(fid)
+      flEof = feof(fid);   % end-of-file flag
+      if flEof == 1
+        error('No token available in boundary condition file.');
+      else
+        token = sscanf(fgetl(fid), '%s', 1);
       end
-
-      if length(unique(times))~=length(times)
-        error("Multiple <BCevent> with same time are" + ...
-          "not allowed")
-      end
-
-      % reorder time in ascending order
-      [~,s] = sort(times,"ascend");
-      bcData = bcData(s);
-     
     end
-
+    
+    function [times, data] = readDataFiles(fid)
+      nDataMax = 100;
+      data = repmat(struct('time', 0, 'fileName', []), nDataMax, 1);
+      times = zeros(nDataMax,1);
+      id = 0;
+      while (~feof(fid))
+        line = fgetl(fid);
+        if (strcmpi(line, 'End'))
+          break;
+        end
+        word = sscanf(line, '%s', 1);
+        if (~strcmp(word(1), '%'))
+          [time, ~, ~, pos] = sscanf(line, '%e', 1);
+          id = id + 1;
+          if (id > nDataMax)
+            nDataMax = 2*nDataMax;
+            data(nDataMax) = data(1);
+            times(nDataMax) = 0.0;
+          end
+          times(id) = time;
+          data(id).time = time;
+          data(id).fileName = strtrim(line(pos:end));
+        end
+      end
+      data = data(1:id);
+      times = times(1:id);
+    end
   end
 end

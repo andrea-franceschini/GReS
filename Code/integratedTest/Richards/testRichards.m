@@ -19,7 +19,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 dofmanager = DoFManager(topology,model);
 
 % Creating boundaries conditions.
-bound = Boundaries("BC.dat",model,grid);
+bound = Boundaries("richardsBCs.xml",model,grid);
 
 % to set initial condition.
 z = elems.mesh.cellCentroid(:,3);

@@ -55,7 +55,7 @@ classdef Discretizer < handle
             % skip pair of uncoupled physics
           end
           switch obj.bcs.getType(bcId)
-            case {'Dir','Spg'}
+            case {'Dirichlet','Seepage'}
               if nargin > 2
                 assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
                   'invalid domain id input for single domain BC imposition']);
@@ -64,7 +64,7 @@ classdef Discretizer < handle
                 end
               end
               applyDirBC(obj.getSolver(field,f),field,bcEnts,bcVals);
-            case {'Neu','VolumeForce'}
+            case {'Neumann','VolumeForce'}
               applyNeuBC(obj.getSolver(field,f),bcEnts,bcVals);
           end
         end
@@ -78,7 +78,7 @@ classdef Discretizer < handle
       bcList = obj.bcs.db.keys;
       % get entities and values of boundary condition
       for bcId = string(bcList)
-        if ~strcmp(obj.bcs.getType(bcId),'Dir')
+        if ~strcmp(obj.bcs.getType(bcId),'Dirichlet')
           continue
         end
         field = obj.bcs.getPhysics(bcId);

@@ -1,11 +1,24 @@
 function domains = buildModel(fileName)
 % % build a structure array containing istances of all classes for different
 % noncofnorming domains in the simulation
-outStruct = readstruct(fileName,FileType="xml");
-domains = [];
-for i = 1:numel(outStruct.Domain)
-  domains = [domains; defineDomain(outStruct.Domain(i))];
+outStruct = readstruct(fileName,AttributeSuffix="");
+if isfield(outStruct,"Domains")
+  outStruct = outStruct.Domains;
 end
+
+if isfield(outStruct,"Domain")
+ outStruct = outStruct.Domain;
+end
+
+nD = numel(outStruct);
+domains = cell(nD,1);
+
+for i = 1:nD
+  domains{i} = defineDomain(outStruct(i));
+end
+
+domains = cell2mat(domains);
+
 end
 
 
@@ -33,9 +46,9 @@ function modStr = defineDomain(struc)
   end
 
 
-  gNPoints = getFieldAttribute(struc,'Gauss',[]);
+  gNPoints = getXMLData(struc,0,'Gauss');
 
-  if ~isempty(gNPoints)
+  if gNPoints~=0
     elems = Elements(topology,gNPoints);
   else
     elems = Elements(topology);
@@ -46,24 +59,19 @@ function modStr = defineDomain(struc)
 
   % boundary conditions
   if isfield(struc,'BoundaryConditions')
-    nBC = struc.BoundaryConditions.countAttribute;
-    bcList = strings(1,nBC);
-    for i = 1:nBC
-      bcList(i) = struc.BoundaryConditions.File(i);
-    end
-    bc = Boundaries(bcList,model,grid);
+    bcFile = getXMLData(struc,[],"BoundaryConditions");
+    bc = Boundaries(bcFile,model,grid);
   else
     bc = [];
   end
 
   % output manager
   if isfield(struc,"OutState")
-    printFlag = getFieldAttribute(struc.OutState,'printAttribute',0);
-    matFileFlag = getFieldAttribute(struc.OutState,'matFileAttribute',0);
-    printUtils = OutState(model,topology,struc.OutState.outFileAttribute,...
+    printFlag = getXMLData(struc.OutState,0,'print');
+    matFileFlag = getXMLData(struc.OutState,0,'matFile');
+    outFile = getXMLData(struc.OutState,[],'outFile');
+    printUtils = OutState(model,topology,outFile,...
       "folderName",name,"writeVtk",printFlag,"flagMatFile",matFileFlag);
-  else
-    printUtils = [];
   end
 
   modStr = Discretizer('ModelType',model,...
@@ -77,16 +85,3 @@ function modStr = defineDomain(struc)
 
 end
 
-function out = getFieldAttribute(str,attr,default)
-if isfield(str,attr)
-  out = str.(attr);
-else
-  if nargin > 2
-    out = default;
-  else
-    error('Missingrequired attribute %s in domain file \n', attr)
-  end
-end
-
-
-end
