@@ -13,6 +13,9 @@ classdef FCSolver < handle
     iter
     dt
     % toGrow
+    % to solve
+    linsolver
+    requestPrecComp;
   end
 
   properties (Access = public)
@@ -38,6 +41,14 @@ classdef FCSolver < handle
             end
         end
         obj.solStatistics = SolverStatistics(linSyst.simparams.itMaxNR,linSyst.simparams.relTol,linSyst.simparams.absTol,saveStasticts);
+
+        % Initialize the linear solver
+        chronos_xml = fullfile(gres_root,'Code','linearSolver','chronos_xml_setup.xml');
+        obj.linsolver = linearSolver(chronos_xml,obj.domain);
+
+        % Flag to request the computation of the preconditioner
+        obj.requestPrecComp = true;
+
     end
 
     function [simStat] = NonLinearLoop(obj)
@@ -104,7 +115,7 @@ classdef FCSolver < handle
             
             % Solve system with increment
             J = assembleJacobian(obj.domain);            
-            du = FCSolver.solve(J,rhs);
+            du = FCSolver.solve(obj,J,rhs,obj.iter);
 
             % Update current model state
             updateState(obj.domain,du);
@@ -216,10 +227,18 @@ classdef FCSolver < handle
   end
 
   methods (Static)
-    function sol = solve(J,rhs)
+    function sol = solve(obj,J,rhs,nonLinIter)
       J = FCSolver.cell2matJac(J);
       rhs = cell2mat(rhs);
-      sol = J\(-rhs);
+
+      % Have the linear solver compute the Preconditioner if necessary
+      if(obj.requestPrecComp)
+         obj.linsolver.computePrec(J);
+      end
+
+      [sol,~] = obj.linsolver.Solve(J,-rhs,nonLinIter);
+
+      %sol = J\(-rhs);
     end
 
     function mat = cell2matJac(mat)
@@ -251,3 +270,4 @@ classdef FCSolver < handle
     end
   end
 end
+
