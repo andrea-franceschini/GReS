@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<SimulationInput>
-  <!-- Domain 1 -->
+
+<Domains>
   <Domain>
     <Name>TopBlock</Name>
     <ModelType>Poromechanics_FEM</ModelType>
@@ -9,7 +9,10 @@
     <Gauss> 3 </Gauss>
     <Material>materials.xml</Material>
     <BoundaryConditions> constantSlidingTopBCs.xml </BoundaryConditions>
-    <OutState outFile="outTime.dat"  print="1" />
+    <OutState
+              outFile = "TopBlock"
+              printTimes = "1"
+              />
   </Domain>
 
   <!-- Domain 2 -->
@@ -21,7 +24,10 @@
     <Gauss> 3 </Gauss>
     <Material>materials.xml</Material>
     <BoundaryConditions> constantSlidingBottomBCs.xml </BoundaryConditions>
-    <OutState outFile="outTime.dat"  print="1" />
+    <OutState
+              outputFile = "TopBlock"
+              printTimes = "1"
+              />
   </Domain>
-</SimulationInput>
- 
+</Domains>
+

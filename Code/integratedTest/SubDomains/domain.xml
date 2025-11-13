@@ -25,7 +25,9 @@ in a nonConforming simulation.
     <BoundaryConditions> boundaryConditions.xml </BoundaryConditions>
 
 
-    <OutState outFile="outTime.dat"  print="0" matFile = "1"/>
+    <OutState 
+              printTimes= "0.5,1.5" 
+              saveHistory = "1"/>
     
   </Domain>
 </Domains>
