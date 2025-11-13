@@ -8,13 +8,7 @@
     <Geometry>SingleCrack_grid.vtk</Geometry>
     <Gauss> 3 </Gauss>
     <Material>materials.xml</Material>
-    <BoundaryConditions count="5">
-      <File>BCs/z_fix.dat</File>
-      <File>BCs/x_fix.dat</File>
-      <File>BCs/y_fix.dat</File>
-      <File>BCs/loadLeft.dat</File>
-      <File>BCs/loadRight.dat</File>
-    </BoundaryConditions>
+    <BoundaryConditions> singleCrackBCs.xml </BoundaryConditions>
     <OutState outFile="outTime.dat"  print="1" />
   </Domain>
 

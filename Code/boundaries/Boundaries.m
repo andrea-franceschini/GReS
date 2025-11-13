@@ -177,7 +177,7 @@ classdef Boundaries < handle
             loadedEnts = [loadedEnts; loadedEnts_i];
           end
 
-          if strcmp(obj.getType(key), 'Dir')
+          if strcmp(obj.getType(key), 'Dirichlet')
             entsInfl = entsInfl./sum(entsInfl,2);
           end
 

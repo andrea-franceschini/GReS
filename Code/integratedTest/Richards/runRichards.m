@@ -22,7 +22,7 @@ domain = Discretizer('ModelType',model,...
 % set initial conditions directly modifying the state object
 domain.state.data.pressure = getFluid(mat).getFluidSpecWeight()*(wLev-z);
 
-domain.simparams.setVerbosity(2);
+domain.simparams.setVerbosity(0);
 
 % Solve the problem
 Solver = FCSolver(domain);

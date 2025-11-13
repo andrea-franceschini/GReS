@@ -8,10 +8,7 @@
     <Geometry>topBlock.vtk</Geometry>
     <Gauss> 3 </Gauss>
     <Material>materials.xml</Material>
-    <BoundaryConditions count="2">
-      <File>BCs/z_fixed_top.dat</File>
-      <File>BCs/topLoad.dat</File>
-    </BoundaryConditions>
+    <BoundaryConditions> constantSlidingTopBCs.xml </BoundaryConditions>
     <OutState outFile="outTime.dat"  print="1" />
   </Domain>
 
@@ -23,11 +20,7 @@
     <Geometry>bottomBlock.vtk</Geometry>
     <Gauss> 3 </Gauss>
     <Material>materials.xml</Material>
-    <BoundaryConditions count = "3">
-      <File>BCs/z_fixed_bottom.dat</File>
-      <File>BCs/y_fixed.dat</File>
-      <File>BCs/x_fixed.dat</File>
-    </BoundaryConditions>
+    <BoundaryConditions> constantSlidingBottomBCs.xml </BoundaryConditions>
     <OutState outFile="outTime.dat"  print="1" />
   </Domain>
 </SimulationInput>

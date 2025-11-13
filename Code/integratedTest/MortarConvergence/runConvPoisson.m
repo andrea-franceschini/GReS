@@ -83,7 +83,7 @@ for i = 1:nref
   % processing Poisson problem
   domains = buildModel(domainFile);
 
-  domains.simparams.setVerbosity(2);
+  domains.simparams.setVerbosity(0);
   domains.getSolver('Poisson').setAnalSolution(anal,f,gradx,grady,gradz);
 
   [interfaces,domains] = Mortar.buildInterfaces(interfFile,domains);
