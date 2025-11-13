@@ -13,9 +13,12 @@ classdef FCSolver < handle
     iter
     dt
     % toGrow
+
     % to solve
     linsolver
-    requestPrecComp;
+    % to recompute the preconditioner
+    requestPrecComp
+    firstIterAfterPrecComp
   end
 
   properties (Access = public)
@@ -48,6 +51,7 @@ classdef FCSolver < handle
 
         % Flag to request the computation of the preconditioner
         obj.requestPrecComp = true;
+        firstIterAfterPrecComp = 1e10;
 
     end
 
@@ -236,9 +240,20 @@ classdef FCSolver < handle
          obj.linsolver.computePrec(J);
       end
 
+      % Actual solution of the system
       [sol,~] = obj.linsolver.Solve(J,-rhs,nonLinIter);
 
-      %sol = J\(-rhs);
+      % If the preconditioner has just been computed then do not compute it for the next iter
+      if(obj.requestPrecComp)
+         % Keep in memory the number of iter it did with the correct matrix
+         obj.firstIterAfterPrecComp = obj.linsolver.params.iter;
+         obj.requestPrecComp = false;
+      else
+         % If the number of iterations changes too much then recompute the preconditioner
+         if(obj.linsolver.params.iter > 1.2 * obj.firstIterAfterPrecComp)
+            obj.requestPrecComp = true;
+         end
+      end
     end
 
     function mat = cell2matJac(mat)
