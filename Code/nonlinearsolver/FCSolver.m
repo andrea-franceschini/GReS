@@ -198,12 +198,6 @@ classdef FCSolver < handle
         end
         if flConv % Go on if converged
             tmpVec = obj.domain.simparams.multFac;
-            if isFlow(obj.domain.model)
-                dpMax = max(abs(obj.stateTmp.data.pressure - obj.statek.data.pressure));
-                tmpVec = [tmpVec, (1+obj.domain.simparams.relaxFac)* ...
-                  obj.domain.simparams.pTarget/(dpMax + obj.domain.simparams.relaxFac* ...
-                  obj.domain.simparams.pTarget)];
-            end
             obj.dt = min([obj.dt * min(tmpVec),obj.domain.simparams.dtMax]);
             obj.dt = max([obj.dt obj.domain.simparams.dtMin]);
             obj.statek = copy(obj.stateTmp);

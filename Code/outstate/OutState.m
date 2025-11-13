@@ -23,21 +23,85 @@ classdef OutState < handle
   end
 
   methods (Access = public)
-    function obj = OutState(model,mesh,fileName,options)
-      arguments
-        model (1,1) ModelType
-        mesh (1,1) Mesh
-        fileName (1,1) string
-        options.flagMatFile logical = false
-        options.writeVtk logical = true
-        options.folderName string = "vtkOutput"
+
+    function obj = OutState(model, mesh, varargin)
+
+      % Default parameters
+      flagMatFile = false;
+      writeVtk = true;
+      folderName = "vtkOutput";
+      tList = [];
+
+      % ------------------------------------------------------------
+      % Detect input mode
+      % ------------------------------------------------------------
+      if isempty(varargin)
+        % no output
+        obj.writeVtk = false;
+        obj.writeSolution = false;
+        obj.model = model;
+        return
       end
-      % deal variable input
-      obj.writeVtk = options.writeVtk;
-      obj.writeSolution = options.flagMatFile;
-      foldName = options.folderName;
-      obj.setOutState(model,mesh,fileName,foldName)
+
+      firstArg = varargin{1};
+
+      if isscalar(varargin) && (ischar(firstArg) || isstring(firstArg) || isstruct(firstArg))
+        % ---------------- XML configuration mode ----------------
+        xml = firstArg;
+        if ~isstruct(xml)
+          xml = readstruct(xml, AttributeSuffix="");
+        end
+
+        flagMatFile = logical(getXMLData(xml, 0, "saveHistory"));
+        folderName  = getXMLData(xml, "vtkOutput", "outputFile");
+        tList       = getXMLData(xml, [], "printTimes");
+
+        % If no outputFile provided, disable VTK
+        writeVtk = isfield(xml, "outputFile");
+
+      else
+        % ---------------- Key-value pair mode ----------------
+        if mod(numel(varargin), 2) ~= 0
+          error('OutState:InvalidInput', ...
+            'Key-value pair inputs must come in pairs.');
+        end
+
+        opt = struct(varargin{:});
+        if isfield(opt, 'flagMatFile'), flagMatFile = logical(opt.flagMatFile); end
+        if isfield(opt, 'writeVtk'),    writeVtk    = logical(opt.writeVtk);    end
+        if isfield(opt, 'folderName'),  folderName  = string(opt.folderName);   end
+        if isfield(opt, 'timeList'),    tList       = opt.timeList;             end
+      end
+
+      % ------------------------------------------------------------
+      % Object setup
+      % ------------------------------------------------------------
+      obj.writeVtk = writeVtk;
+      obj.writeSolution = flagMatFile;
+      obj.model = model;
+      obj.VTK = VTKOutput(mesh, folderName);
+
+      % MAT-file output
+      if obj.writeSolution
+        if isfile('expData.mat'), delete 'expData.mat'; end
+        obj.results = matfile('expData.mat', 'Writable', true);
+        setMatFile(obj, mesh);
+      end
+
+      % Time list handling
+      if obj.writeVtk
+        assert(~isempty(tList), ...
+          "Print times have not been specified for output.");
+      end
+
+      if isnumeric(tList)
+        obj.timeList = reshape(tList, [], 1);
+      else
+        obj.timeList = obj.readTimeList(tList);
+      end
+
     end
+
 
     function finalize(obj)
       if obj.writeVtk
@@ -47,22 +111,6 @@ classdef OutState < handle
   end
 
   methods (Access = private)
-    function setOutState(obj,model,mesh,fileName,foldName)
-      obj.model = model;
-      obj.timeList = OutState.readTime(fileName);
-      % if obj.writeVtk
-        obj.VTK = VTKOutput(mesh,foldName);
-      % end
-      % Write solution to matfile. This feature will be extended in a
-      % future version of the code
-      if obj.writeSolution
-        if isfile('expData.mat')
-          delete 'expData.mat'
-        end
-        obj.results = matfile('expData.mat','Writable',true);
-        setMatFile(obj,mesh);
-      end
-    end
 
     function tList = readTimeList(obj,fileName)
       fid = fopen(fileName,'r');

@@ -27,6 +27,9 @@ for k = 1:numel(foldList)
   addpath(genpath(foldList(k)))
 end
 
+setappdata(0,'gres_log', Logger());
+gres_log().welcomeMsg()
+
 end
 
 

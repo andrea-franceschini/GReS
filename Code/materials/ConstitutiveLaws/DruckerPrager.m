@@ -31,13 +31,13 @@ classdef DruckerPrager < handle
 
   methods (Access = public)
      % Class constructor method
-     function obj = DruckerPrager(fID, matFileName, varargin)
+     function obj = DruckerPrager(inputStruct,varargin)
         % Calling the function to set the object properties
-        if nargin > 2
+        if nargin > 1
            obj.isTabular = true;
-           obj.readTabMaterialParameters(fID,matFileName,varargin{1});
+           obj.readTabMaterialParameters(inputStruct,varargin{1});
         else
-           obj.readMaterialParameters(fID, matFileName);
+           obj.readMaterialParameters(inputStruct);
         end
      end
 
@@ -124,27 +124,34 @@ classdef DruckerPrager < handle
   methods (Access = private)
     % Assigning material parameters (check also the Materials class)
     % to object properties
-    function readMaterialParameters(obj, fID, matFileName)
-      tmpVec = readDataInLine(fID, matFileName, 7);
-      %
-      obj.E = tmpVec(1);
-      obj.nu = tmpVec(2);
-      %
+    function readMaterialParameters(obj, inputStruct)
+
+      if isfield(inputStruct,class(obj))
+        inputStruct = inputStruct.(class(obj));
+      end
+
+      obj.E = getXMLData(inputStruct,[],"youngModulus");
+      obj.nu = getXMLData(inputStruct,[],"poissonRatio");
+
       % Compute the M factor
       obj.M = obj.nu/(1-obj.nu);
-      %
       % Compute vertical compressibility
       obj.cM = (1+obj.nu)*(1-2*obj.nu)/(obj.E*(1-obj.nu));
-      obj.psi = tmpVec(3);
-      obj.phi = tmpVec(4);
-      obj.co = tmpVec(5); %coesione
-      obj.h = tmpVec(6); %hardening parameter
-      obj.varepsilon = tmpVec(7); %isotropic scalar hardening variable
+
+      obj.psi = getXMLData(inputStruct,[],"dilatancy");
+      obj.phi = getXMLData(inputStruct,[],"frictionAngle");
+      obj.co = getXMLData(inputStruct,[],"cohesion");
+      obj.h = getXMLData(inputStruct,[],"hardeningParameter");
+      obj.varepsilon = getXMLData(inputStruct,0,"hardeningVariable");
+    
       obj.alpha = (3*tan(deg2rad(obj.phi)))/(sqrt(9+12*tan(deg2rad(obj.phi))^2)); 
       obj.beta = (3*tan(deg2rad(obj.psi)))/(sqrt(9+12*tan(deg2rad(obj.psi))^2));
       obj.epsilon = 3/(sqrt(9+12*tan(deg2rad(obj.phi))^2));
       obj.k = obj.h*obj.varepsilon;
+
     end
+
+
 
     function readTabMaterialParameters(obj,fID,fileName,mesh)
        % read parameters in tabular format 

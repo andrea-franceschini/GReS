@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Materials>
+  <Solid
+         cellTags = "4 5">
+    <Constitutive>
+      <Elastic
+               youngModulus = "1e3"
+               poissonRatio = "0.25"
+               />
+    </Constitutive>
+    <Curves>
+      <!--
+      <Mualem
+              n = "1"
+              beta = "2"
+              kappa = "3"
+              /> -->
+      <Tabular
+               relativePermeabilityPath = "Tests/Richards/Case1/Inputs/Materials/krCurve_200.dat"
+               capillaryCurvePath = "Tests/Richards/Case1/Inputs/Materials/pcCurve_200.dat"
+               />
+      <!--<Preset
+              soilName = "Clay"
+              />-->
+    </Curves>
+
+    <PorousRock
+                porosity = "0.375"
+                permeability = "1e-12, 1e-12, 1e-12"
+                residualSaturation = "0.102"
+                maximumSaturation = "0.368"
+                />
+  </Solid>
+
+  <Solid
+         cellTags = "1 2 3">
+    <Constitutive>
+      <DruckerPrager
+               youngModulus = "1e3"
+               poissonRatio = "0.25"
+               dilatancy = "10"
+               frictionAngle = "30"
+               cohesion = "10"
+               hardeningParameter = "1e4"
+               />
+    </Constitutive>
+    <Curves>
+      <Preset
+              soilName = "Clay"
+              />
+    </Curves>
+
+  </Solid>
+
+  <Fluid
+         compressibility = "4.4e-7"
+         dynamicViscosity = "1.0e-6"
+         />
+</Materials>

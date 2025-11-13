@@ -16,12 +16,12 @@ classdef Elastic < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = Elastic(fID, matFileName, varargin)
+    function obj = Elastic(inputStruct, varargin)
        if nargin > 2
           obj.isTabular = true;
           obj.readTabMaterialParameters(fID,matFileName,varargin{1});  
        else
-          obj.readMaterialParameters(fID, matFileName);
+          readMaterialParameters(obj,inputStruct);
        end
     end
     
@@ -69,11 +69,13 @@ classdef Elastic < handle
   methods (Access = private)
     % Assigning material parameters (check also the Materials class)
     % to object properties
-    function readMaterialParameters(obj, fID, matFileName)
-       tmpVec = readDataInLine(fID, matFileName, 2);
+    function readMaterialParameters(obj,inputStruct)
+      if isfield(inputStruct,"Elastic")
+        inputStruct = inputStruct.Elastic;
+      end
        %
-       obj.E = tmpVec(1);
-       obj.nu = tmpVec(2);
+       obj.E = getXMLData(inputStruct,[],"youngModulus");
+       obj.nu = getXMLData(inputStruct,[],"poissonRatio");
        %
        % Compute the M factor
        obj.M = obj.nu/(1-obj.nu);

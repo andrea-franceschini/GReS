@@ -61,7 +61,7 @@ classdef Mortar < handle
           continue
         end
 
-        if ~strcmp(bound.getType(bcId),'Dir')
+        if ~strcmp(bound.getType(bcId),'Dirichlet')
           continue
           % only dirichlet bc has to be enforced to mortar blocks
         else

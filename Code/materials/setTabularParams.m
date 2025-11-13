@@ -45,7 +45,7 @@ while c < nC
    availVals(c+1) = sscanf(line, '%e');
    c = c+1;
 end
-assert(feof(fID),'Too man parameters value in %s',fName);
+assert(feof(fID),'Too many parameters value in %s',fName);
 
 if numel(availVals) == mesh.nCells
    % neirest neighbor interpolation not needed

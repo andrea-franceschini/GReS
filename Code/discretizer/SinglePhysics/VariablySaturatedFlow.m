@@ -121,11 +121,11 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
           ents = sum(obj.faces.faceNeighbors(faceID,:),2);
           v(faceOrder,1) = obj.bcs.getVals(id,t);
           switch obj.bcs.getType(id)
-            case 'Neu'
+            case 'Neumann'
               vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
               % area = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
               % vals = accumarray(ind, area);
-            case 'Dir'
+            case 'Dirichlet'
               % theta = obj.simParams.theta;
               gamma = obj.material.getFluid().getFluidSpecWeight();
               [mob, dmob] = obj.computeMobilityBoundary(obj.state.data.pressure(ents),v,faceID);
@@ -142,7 +142,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
               end
               vals = [dirJ,q]; % {JacobianVal,rhsVal]
               % vals = [dirJ,accumarray(ind,q)]; % {JacobianVal,rhsVal]
-            case 'Spg'
+            case 'Seepage'
               gamma = obj.material.getFluid().getFluidSpecWeight();
               assert(gamma>0.,'To impose Seepage boundary condition is necessary the fluid specify weight be bigger than zero!');
 

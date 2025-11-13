@@ -5,7 +5,7 @@ scriptDir = fileparts(scriptFullPath);
 % Change the current directory to the script's directory
 cd(scriptDir);
 % Set parameters of the simulation
-fileName = "simParam.dat";
+fileName = "simParam.xml";
 simParam = SimulationParameters(fileName,model);
 simParam.setVerbosity(0);
 % Create the Mesh object
@@ -15,8 +15,8 @@ fileName = 'Mesh/Column_hexa.msh';
 % Import the mesh data into the Mesh object
 topology.importGMSHmesh(fileName);
 % Create an object of the Materials class and read the materials file
-fileName = 'materialsList.dat';
-mat = Materials(model,fileName);
+fileName = 'materials.xml';
+mat = Materials(fileName);
 % Create an object of the "Elements" class and process the element properties
 gaussOrder = 2;
 elems = Elements(topology,gaussOrder);
@@ -27,7 +27,8 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 %
 dofmanager = DoFManager(topology,model);
 % Create and set the print utility
-printUtils = OutState(model,topology,'outTime.dat','flagMatFile',true,'writeVtk',true);
+%printUtils = OutState(model,topology,'flagMatFile',true,'writeVtk',true,'timeList',[1,5,10]);
+printUtils = OutState(model,topology,'output.xml');
 %
 F = -10; % vertical force
 setTerzaghiBC('BCs',F,topology);
@@ -37,7 +38,8 @@ fileName = ["BCs/dirFlowTop.dat","BCs/neuPorotop.dat",...
    "BCs/dirPoroLatY.dat","BCs/dirPoroLatX.dat","BCs/dirPoroBottom.dat"];
 %
 % Create an object of the "Boundaries" class 
-bound = Boundaries(fileName,model,grid);
+bound = Boundaries('boundaryConditions.xml',model,grid);
+
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('ModelType',model,...
                      'SimulationParameters',simParam,...

@@ -1,4 +1,4 @@
-classdef SinglePhysics < handle
+classdef (Abstract) SinglePhysics  < handle
   properties (Access = public)
     J
     rhs
@@ -69,6 +69,9 @@ classdef SinglePhysics < handle
       rhs = obj.rhs;
     end
 
+    function registerDofs(obj,nComp,entity)
+      % entity can be Node,Face,Cell
+    end
 
   end
 
