@@ -178,20 +178,34 @@ classdef Poromechanics < SinglePhysics
         vtkId = obj.mesh.cellVTKType(el);
         elem = getElement(obj.elements,vtkId);
         nG = elem.GaussPts.nNode;
-        N = getDerBasisFAndDet(elem,el,2);
+        N = getBasisFinGPoints(elem);
+        gradN = getDerBasisFAndDet(elem,el,2);
         B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
-        B(elem.indB(:,2)) = N(elem.indB(:,1));
-        Omega_d = 0.0800813; % 0.0800813 for [Zhang,2007] & 3.36064 for Si
-        % strainChemo = Omega_d/3*reshape(pagemtimes(B, ...
-        %     obj.state.data.pressure(dof_pressure)),6,nG)';
-        p_gp = N * obj.state.data.pressure(top);  % pressure at Gauss points (nGx1)
-        % Construct isotropic chemomechanical strain at each Gauss point
-        strainChemo = zeros(nG,6);
-        for ig = 1:nG
-            strainChemo(ig,:) = (Omega_d/3) * p_gp(ig) * [1 1 1 0 0 0];
-        end
-        obj.state.data.curr.strain((l+1):(l+nG),:) = ...
-          reshape(pagemtimes(B,du(dof)),6,nG)' - strainChemo;
+        B(elem.indB(:,2)) = gradN(elem.indB(:,1));
+
+        % Exchange comments for including chemical strain:
+        % 1. Chemostrain removed from the strain update
+        %
+            Omega_d = 0.0800813; % 0.0800813 for [Zhang,2007] & 3.36064 for Si
+            % Extract pressures (nGx1) for current timestep
+            % Updating p (SinglePhaseFlow updates after Poromechanics)
+            p_temp = obj.state.data.pressure + dSol(getDoF(obj.dofm, "SinglePhaseFlow"));
+            dp_gp = N * (p_temp(top) - obj.state.data.pOld(top));
+            % Construct isotropic chemomechanical strain at each Gauss point
+            strainChemo = zeros(nG,6);
+            for ig = 1:nG
+                strainChemo(ig,:) = (Omega_d/3) * dp_gp(ig) * [1 1 1 0 0 0];
+            end
+            obj.state.data.curr.strain((l+1):(l+nG),:) = ...
+              reshape(pagemtimes(B,du(dof)),6,nG)' - strainChemo;
+        %
+
+        % 2. Don't remove the chemical strain (original code)
+        %
+            % obj.state.data.curr.strain((l+1):(l+nG),:) = ...
+            %   reshape(pagemtimes(B,du(dof)),6,nG)';
+        %
+
         l = l + nG;
       end
     end
@@ -210,8 +224,8 @@ classdef Poromechanics < SinglePhysics
         [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
         B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
         B(elem.indB(:,2)) = N(elem.indB(:,1));
-        avStress(el,:) = sum(diag(dJWeighed)* ...
-          stateIn.data.curr.stress((l+1):(l+nG),:))/vol;
+        stressGP = stateIn.data.curr.stress((l+1):(l+nG),:);
+        avStress(el,:) = reshape((1/vol)*sum(dJWeighed'.*stressGP,1),1,[]);
         dStrain = pagemtimes(B,stateIn.data.dispCurr(dof));
         dStrain = dStrain.*reshape(dJWeighed,1,1,[]);
         avStrain(el,:) = sum(dStrain,3)/vol;
@@ -301,69 +315,6 @@ classdef Poromechanics < SinglePhysics
         if ~out
           return;
         end
-% =======
-%       function [cellData,pointData] = printState(obj,bound,sOld,sNew,t)
-%          % append state variable to output structure
-%          outPrint = [];
-%          switch nargin
-%             case 3
-%                [outPrint.stress,outPrint.strain] = finalizeState(obj,sOld);
-%                outPrint.displ = sOld.dispConv;
-%             case 5
-%                % linearly interpolate state variables containing print time
-%                fac = (t - sOld.t)/(sNew.t - sOld.t);
-%                [avStressOld,avStrainOld] = finalizeState(obj,sOld);
-%                [avStressNew,avStrainNew] = finalizeState(obj,sNew);
-%                outPrint.stress = avStressNew*fac+avStressOld*(1-fac);
-%                outPrint.strain = avStrainNew*fac+avStrainOld*(1-fac);
-%                outPrint.displ = sNew.dispConv*fac+sOld.dispConv*(1-fac);
-%             otherwise
-%                error('Wrong number of input arguments');
-%          end
-%          outPrint.elast = printElastic(obj);
-%          % [cellData,pointData] = Poromechanics.buildPrintStruct(displ,stress,strain);
-%          [cellData,pointData] = Poromechanics.buildPrintStruct(outPrint);
-%       end
-% 
-%       function elast = printElastic(obj)
-%           %printPropState - print the potential for the cell or element.
-%           elast = zeros(obj.mesh.nCells,6);
-%           for el=1:obj.mesh.nCells
-%               ktmp = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
-%               elast(el,1)=ktmp(1,1);
-%               elast(el,2)=ktmp(2,2);
-%               elast(el,3)=ktmp(3,3);
-%               elast(el,4)=ktmp(1,2);
-%               elast(el,5)=ktmp(2,3);
-%               elast(el,6)=ktmp(1,3);
-%           end
-%       end
-% 
-%    end
-% 
-%    methods (Access=private)
-%       function dof = getBCdofs(obj,bc,id)
-%          switch bc.getCond(id)
-%             case 'NodeBC'
-%                ents = bc.getEntities(id);
-%             case 'SurfBC'
-%                ents = bc.getLoadedEntities(id);
-%                % node id contained by constrained surface
-%             otherwise
-%                error('BC type %s is not available for %s field',cond,obj.field);
-%          end
-%          % map entities dof to local dof numbering
-%          dof = obj.dofm.getLocalEnts(ents,obj.field);
-%          switch bc.getType(id)
-%             case 'Dir'
-%                % component multiplication of Dirichlet BC dofs
-%                dof = bc.getCompEntities(id,dof);
-%             case 'Neu'
-%                dir = bc.getDirection(id);
-%                c = find(strcmp(["x","y","z"],dir));
-%                dof = 3*dof+c-3;
-%          end
-% >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
       end
     end
 

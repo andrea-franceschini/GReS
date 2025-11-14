@@ -37,6 +37,7 @@ classdef SinglePhaseFlow < SinglePhysics
         n = obj.mesh.nCells;
       end
       obj.state.data.pressure = zeros(n,1);
+      obj.state.data.pOld = obj.state.data.pressure; % Added by Shaunak
     end
 
     function updateState(obj,dSol)
@@ -375,6 +376,11 @@ classdef SinglePhaseFlow < SinglePhysics
         return
       end
       obj.state.data.pressure(dof) = vals;
+
+      % Added by Shaunak - STARTS HERE
+      % Ensure that we are updating pOld initially with the pressure vector
+      obj.state.data.pOld = obj.state.data.pressure;
+      % Added by Shaunak - ENDS HERE
     end
 
     function applyDirBC(obj,~,ents,vals)

@@ -41,7 +41,7 @@ classdef Tetrahedron < FEM
 
       switch flOut
         case 1
-          outVar1 = N;
+          outVar1 = N; % here N is the gradient of shape functions
           outVar2 = dJw';
         case 2
           outVar1 = N;

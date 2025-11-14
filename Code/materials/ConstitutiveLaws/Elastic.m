@@ -48,10 +48,10 @@ classdef Elastic < handle
           D([22 29 36]) = (1-2*pois)/2;
           D = obj.E(cID)/((1+pois)*(1-2*pois))*D;
        else
-          D([1 8 15]) = 1-obj.nu;
-          D([2 3 7 9 13 14]) = obj.nu;
-          D([22 29 36]) = (1-2*obj.nu)/2;
-          D = obj.E/((1+obj.nu)*(1-2*obj.nu))*D;
+          D([1 8 15]) = 1-obj.nu; % (1,1), (2,2), (3,3)
+          D([2 3 7 9 13 14]) = obj.nu; % (1,2), (1,3), etc till (3,2)
+          D([22 29 36]) = (1-2*obj.nu)/2; % (4,4), (5,5), (6,6)
+          D = obj.E/((1+obj.nu)*(1-2*obj.nu))*D; % Multiply by prefactor
        end
     end
  

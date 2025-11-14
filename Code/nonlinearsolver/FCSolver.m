@@ -55,6 +55,7 @@ classdef FCSolver < handle
       % Loop over time
       while obj.t < obj.domain.simparams.tMax
          absTol = obj.domain.simparams.absTol;
+         % Initialize the residual vector
          residual = zeros(obj.domain.simparams.itMaxNR+1,2);
 
          % =======
@@ -104,6 +105,8 @@ classdef FCSolver < handle
             % fprintf('0     %e\n',rhsNorm);
             fprintf('0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
          end
+
+         % Entering the Newton iterations loop
          while ((rhsNorm > tolWeigh) && (obj.iter < obj.domain.simparams.itMaxNR) ...
                && (rhsNorm > absTol)) || obj.iter == 0
             obj.iter = obj.iter + 1;
@@ -142,6 +145,11 @@ classdef FCSolver < handle
             if isPoromechanics(obj.domain.model)
                advanceState(getSolver(obj.domain,'Poromechanics'));
             end
+
+             % Added by Shaunak - STARTS HERE
+             % Update pOld at the end of the current timestep
+             obj.domain.state.data.pOld = obj.domain.state.data.pressure;
+             % Added by Shaunak - ENDS HERE
             
             if obj.t > obj.domain.simparams.tMax   % For Steady State
                printState(obj.domain);

@@ -9,7 +9,7 @@ lc = 0.2;   // increase for coarser, decrease for finer mesh
 
 // define the two spheres
 Sphere(1) = {-1, 0, 0, R};    // left sphere centered at (-1, 0, 0)
-Sphere(2) = { 1.0001, 0, 0, R};    // right sphere centered at (1, 0, 0)
+Sphere(2) = { 1.000001, 0, 0, R};    // right sphere centered at (1, 0, 0)
 
 // make sure geometry is explicit (keeps separate volumes even if tangent)
 BooleanFragments{ Volume{1}; Delete; }{ Volume{2}; Delete; }

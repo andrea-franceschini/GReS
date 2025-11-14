@@ -12,6 +12,7 @@ fID = fopen(strcat(fName,'.dat'),'w');
 
 % item ('NodeBC','SurfBC','VolumeForce')
 fprintf(fID,'%s            %% BC item \n',item);
+% Space given in the middle for clarity in the data file
 
 if ~strcmp(item,'VolumeForce')
   fprintf(fID,'%s            %% BC type \n',type);
@@ -43,8 +44,8 @@ end
 fprintf(fID,'%s            %% BC name \n',bcName);
 
 % BC list file name
-listName = strcat(fName,'/list');
-fprintf(fID,'%s \n',listName);
+listName = strcat(fName,'/list'); % Create a list in a folder with fName
+fprintf(fID,'%s \n',listName); % Encode it in the bc data file
 
 % BC time file
 for i = 0:length(time)-1
@@ -84,20 +85,22 @@ if ismember(ph,["SinglePhaseFlow","Poisson","VariablySaturatedFlow"])
 else
   tmp = ismember(["x","y","z"],dir);
   fprintf(fList,'%i ',tmp*length(list));
-  fprintf(fList,'   %% Number of fixed entities \n');
-  list = repmat(list,sum(tmp),1);
-  fprintf(fList,'%i \n',list);
+  fprintf(fList,'   %% Number of fixed entities \n'); % just a comment in the output file
+  list = repmat(list,sum(tmp),1); % repeat the list for the number of coordinates specified in the input
+  fprintf(fList,'%i \n',list); % print the repeated list in the output file
 end
 
 % Writing BC vals for each time step
 for i = 1:length(time)
-  t_name = strcat(fName,'/time',num2str(i-1),'.dat');
+  t_name = strcat(fName,'/time',num2str(i-1),'.dat'); % loading time{i}.dat file
   ft = fopen(t_name,'w');
-  fprintf(ft,'%%Time %2.4f \n',time(i));
+  fprintf(ft,'%%Time %2.4f \n',time(i)); % Print time with 4 decimal points
   if isscalar(vals)
-    fprintf(ft,'%1.6e \n',repelem(vals(i),length(list)));
+    fprintf(ft,'%1.6e \n',repelem(vals(i),length(list))); 
+    % repeat the time value for each input in fList (all nodes for all
+    % specified coordinates) if there is only one time value given
   else
-    fprintf(ft,'%1.6e \n',vals);
+    fprintf(ft,'%1.6e \n',vals); % print the time value list - probably need to modify for multiple coordinates
   end
 end
 end

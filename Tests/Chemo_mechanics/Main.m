@@ -2,13 +2,25 @@ close all;
 clear;
 tic;
 % Set some model parameters not included in the parameters file
-c_max = 2.29e4;                     % maximum concentration [mol.m-3]
-D = 7.08e-15;                        % diffusion coefficient [m2.s-1]
-F = 96485;                          % Faraday constant [C.mol-1]
-Rp = 5e-6;                          % particle radius [m]
-Crate = 1;                          % C-rate for charge
-i_n = F*Crate/3600 * c_max * Rp/3;  % Normal current density [A.m-2]
-I = i_n*Rp / (D*c_max*F);           % Nondimensional normal current density
+params.E = 10e9;            % elastic modulus [N.m-2]
+params.nu = 0.3;            % Poisson's ratio
+params.D = 7.08e-15;        % diffusion coefficient [m2.s-1]
+params.Omega = 3.497e-6;    % partial molar volume [mol.m-3]
+params.c_max = 2.29e4;      % maximum concentration [mol.m-3]
+params.F = 96485;           % Faraday constant [C.mol-1]
+params.Rp = 5e-6;           % particle radius [m]
+params.Crate = 1;           % C-rate for charge
+% Normal current density [A.m-2]
+% params.i_n = params.F*params.Crate/3600 * params.c_max * params.Rp/3;
+params.i_n = 2; % for [Zhang,2007] validation
+% Nondimensional normal current density
+params.I = params.i_n*params.Rp / (params.D*params.c_max*params.F);
+
+params.E_d = params.E / params.E;
+params.G_d = params.E_d / (2*(1 + params.nu));
+params.lambda_d = params.nu*params.E_d/((1 + params.nu)*(1 - 2*params.nu));
+params.Omega_d = params.Omega * params.c_max;
+params.beta_d = params.Omega_d * (3*params.lambda_d + 2*params.G_d) / 3;
 
 % Set physical models 
 model = ModelType(["SinglePhaseFlow_FEM", "Poromechanics_FEM"]);
@@ -47,13 +59,25 @@ printUtils = OutState(model, topology, 'outTime.dat', 'folderName', ...
     'Output_chemomech_tetra', 'flagMatFile', true);
 
 % Write BC files programmatically with function utility
-% Fixing the particle center (ux=uy=uz=0)
-r = sqrt(sum(topology.coordinates.^2, 2)); % distance of each node from origin
-r0 = 0.12 * max(r); % threshold constraint (e.g., 5% of sphere radius)
-constrainIndices = find(r < r0); % all nodes within that small sphere
-writeBCfiles('BCs/chemomech_u_0', 'NodeBC', 'Dir', {'Poromechanics', ...
-    'x', 'y', 'z'}, 'Fixed center point', 0, 0, constrainIndices);
-% Outer boundary condition is natural (normal stress = 0)
+tol = 1e-1;
+[cx,cy,cz] = deal( topology.coordinates(:,1), ...
+                   topology.coordinates(:,2), ...
+                   topology.coordinates(:,3) ...
+                   );
+r0 = 0.2*max(sqrt(cx.^2 + cy.^2 + cz.^2)); % threshold constraint
+
+% Fix ux=uy=uz=0 at relevant points on the surface
+% 1. Fix ux=0 at (0,0,1) and uy=uz=0 at (1,0,0)
+    writeBCfiles_PointwiseConstraint(cx, cy, cz, tol);
+
+% 2. Fix ux=uy=uz=0 at all points r<r0
+    % writeBCfiles_FixCenterPoints(cx, cy, cz, r0);
+
+% % Add the required Neumann boundary conditions for stress
+biot = mat.getMaterial(1).PorousRock.getBiotCoefficient();
+sigma_n_corrective = 0; % biot * 1; % as c_max=1 is imposed for SinglePhaseFlow
+writeBCfile_sigma_nn('BCs/chemomech_sigma_n', 'Corrective_sigma_n', 0, ...
+    -sigma_n_corrective, topology, 2);
 
 % Potentiostatic boundary condition (constant c)
 writeBCfiles('BCs/chemomech_cmax', 'SurfBC', 'Dir', 'SinglePhaseFlow', ...
@@ -61,10 +85,18 @@ writeBCfiles('BCs/chemomech_cmax', 'SurfBC', 'Dir', 'SinglePhaseFlow', ...
 
 % Galvanostatic boundary condition (constant I)
 writeBCfiles('BCs/chemomech_gal', 'SurfBC', 'Neu', 'SinglePhaseFlow', ...
-    'c_outer_bc', 0, I, topology, 2);
+    'c_outer_bc', 0, params.I, topology, 2);
 
 % Collect BC input file in a list
-fileName = ["BCs/chemomech_gal.dat", "BCs/chemomech_u_0.dat"];
+% Case 1
+fileName = ["BCs/chemomech_gal.dat", "BCs/chemomech_u_0.dat", ...
+    "BCs/chemomech_u_x.dat", "BCs/chemomech_u_yz.dat", ...
+    "BCs/chemomech_sigma_n.dat"];
+
+% Case 2
+% fileName = ["BCs/chemomech_gal.dat", "BCs/chemomech_u_0.dat", ...
+%     "BCs/chemomech_sigma_n.dat"];
+% fileName = ["BCs/chemomech_cmax.dat", "BCs/chemomech_u_0.dat"];
 
 % Create an object of the "Boundaries" class
 bound = Boundaries(fileName,model,grid);
@@ -79,9 +111,12 @@ domain = Discretizer('ModelType',model,...
                      'Grid',grid);
 
 % Apply initial conditions
-c_in = 6195; % initial concentration value
-c_in_d = c_in / c_max; % nondimensional value of initial concentration
-domain.state.data.pressure = domain.state.data.pressure + c_in_d;
+params.c_in = 0; % 6195; % initial concentration value
+params.c_in_d = params.c_in / params.c_max; % nondimensional value of initial concentration
+domain.state.data.pressure = domain.state.data.pressure + params.c_in_d;
+% Ensure that pOld is getting updated with the pressure vector
+domain.state.data.pOld = domain.state.data.pressure;
+
 % Initial displacements are zero by default - no need to change
 
 % Print model initial state
@@ -92,10 +127,24 @@ printState(domain);
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
 Solver = FCSolver(domain);
-%
+
 % Solve the problem
 [simState] = Solver.NonLinearLoop();
-%
+
 % Finalize the print utility
 domain.outstate.finalize()
+
+% Post-process strains and stresses from printUtils.results
+output_times = [printUtils.results.expTime]'; % timesteps x 1
+p = [printUtils.results.expPress]'; % timesteps x nNodes
+u = [printUtils.results.expDispl]'; % timesteps x (3*nNodes)
+[strain, stress] = computeStrainsAndStresses(output_times, p, u, ...
+    topology, params);
+
+% Get nodal strains and stresses
+strain_nodal = celltonodeStress(strain, topology);
+stress_nodal = celltonodeStress(stress, topology);
+
+% Plotting
+run("plotting.m");
 toc;

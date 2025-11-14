@@ -1,7 +1,7 @@
 NodeBC            % BC item 
 Dir            % BC type 
 Poromechanics            % Physics 
-Fixed center point            % BC name 
+Fix_center            % BC name 
 BCs/chemomech_u_0/list 
 0.000000 BCs/chemomech_u_0/time0.dat 
 End
