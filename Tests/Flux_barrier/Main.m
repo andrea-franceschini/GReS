@@ -9,32 +9,21 @@ model = ModelType("SinglePhaseFlow_FVTPFA");
 % model = ModelType("SinglePhaseFlow_FEM");
 
 %% ----------------------- SIMULATION PARAMETERS ----------------------
-fileName = fullfile(input_dir,'simParam.xml');
-simParam = SimulationParameters(fileName,model);
+simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'),model);
 
 %% ------------------------------  MESH -------------------------------
 % Create the Mesh object
 topology = Mesh();
 
-% Set the input file name
-fileName = fullfile(input_dir,'Mesh','Fault.msh');
-
 % Import mesh data into the Mesh object
-topology.importGMSHmesh(fileName);
+topology.importMesh(fullfile(input_dir,'domain.msh'));
 
 %% ----------------------------- MATERIALS -----------------------------
-% Set the input file name
-fileName = fullfile(input_dir,'materialsList.dat');
-
 % Create an object of the Materials class and read the materials file
-mat = Materials(model,fileName);
+mat = Materials(fullfile(input_dir,'materials.xml'));
 
 %% ------------------------------ ELEMENTS -----------------------------
-% Define Gauss points
-% GaussPts = Gauss(12,2,3);
-
 % Create an object of the "Elements" class and process the element properties
-% elems = Elements(topology,GaussPts);
 elems = Elements(topology,2);
 
 % Create an object of the "Faces" class and process the face properties
@@ -44,36 +33,18 @@ faces = Faces(model,topology);
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 %% ----------------------- DOF Manager -----------------------------
-% Degree of freedom manager 
-%fname = 'dof.dat';
+% Degree of freedom manager
 dofmanager = DoFManager(topology,model);
 
 % Create and set the print utility
-printUtils = OutState(model,topology,fullfile(input_dir,'outTime.dat'), ...
-    'folderName','Outputs','flagMatFile',true);
+printUtils = OutState(model,topology,fullfile(input_dir,'output.xml'));
 
 %% ----------------------- Boundary Condition -----------------------------
-% Creating and Appling boundaries conditions.
-cond = struct('name',[],'type',[],'field',[],'values',[],'times',[]);
-cond(1).name = 'BoundA';
-cond(1).type = 'Dir';
-cond(1).field = "latY0";
-cond(1).times = 0.;
-cond(1).values = 1e6;
-cond(2).name = 'BoundB';
-cond(2).type = 'Dir';
-cond(2).field = "latYM";
-cond(2).times = 0.;
-cond(2).values = 1e5;
-
-fileName = setBoundaryC('Inputs',grid,cond);
-bound = Boundaries(fileName,model,grid);
+% Creating boundaries conditions.
+bound = Boundaries(fullfile(input_dir,'boundaries.xml'),model,grid);
 
 %% ----------------------- Discretizer -----------------------------
 % Create object handling construction of Jacobian and rhs of the model
-
-% Create object handling construction of Jacobian and rhs of the model
-% linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 domain = Discretizer('ModelType',model,...
                      'SimulationParameters',simParam,...
                      'DoFManager',dofmanager,...
@@ -83,9 +54,6 @@ domain = Discretizer('ModelType',model,...
                      'Grid',grid);
 
 %% ----------------------- Initial Condition -----------------------------
-% Build a structure storing variable fields at each time step
-% state = linSyst.setState();
-
 % set initial conditions directly modifying the state object
 domain.state.data.pressure(:) = 1.e5;
 % domain.state.data.potential(:) = domain.state.data.pressure+ mat.getFluid().getFluidSpecWeight()*topology.cellCentroid(:,3);
@@ -163,6 +131,5 @@ if postproc
     set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
     % export figure with quality
     stmp = fullfile(image_dir,'pressure.png');
-    % stmp = strcat(image_dir,'Varelha_head_pressure','.png');
     exportgraphics(gcf,stmp,'Resolution',400)
 end

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<Output 
-        saveHistory = "1"
-        printTimes = "1,5,10"
-  />
+<Output
+    outputFile = "Results"
+    saveHistory = "1"
+    printTimes = "180."
+/>
 
 <!-- 
 outputFile: the name of the Paraview output file. If the file is not provided, then nothing is printed
