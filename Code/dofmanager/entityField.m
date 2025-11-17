@@ -60,6 +60,22 @@ classdef entityField
       nEnts = numel(ents);
     end
 
+    function ents = getEntityFromElement(obj,mesh,el,nc)
+      switch obj
+        case entityField.node
+          ents = mesh.cells(el,1:mesh.cellNumVerts(el));
+        case entityField.cell
+          ents = el;
+        otherwise
+          error("Method not yet supported for entity of type %s");
+      end
+
+      if nargin > 3
+        ents = DoFManagerNew.dofExpand(ents,nc);
+      end
+
+    end
+
 
   end
 

@@ -1,0 +1,7 @@
+SurfBC            % BC item 
+Dir            % BC type 
+SinglePhaseFlow            % Physics 
+NoFlowTop            % BC name 
+BCs/dirFlowTop/list 
+0.000000 BCs/dirFlowTop/time0.dat 
+End

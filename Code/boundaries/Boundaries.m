@@ -62,8 +62,8 @@ classdef Boundaries < handle
       end
     end
 
-    function physics = getPhysics(obj, identifier)
-      physics = obj.getData(identifier).physics;
+    function variable = getVariable(obj, identifier)
+      variable = obj.getData(identifier).variable;
     end
 
     function dofs = getCompEntities(obj,identifier,ents)
@@ -127,7 +127,7 @@ classdef Boundaries < handle
       for bcId = 1:length(keys)
         key = keys{bcId};
         cond = obj.getCond(key);
-        phys = obj.getPhysics(key);
+        phys = obj.getVariable(key);
         isFEM = isFEMBased(model, phys);
 
         if any(strcmp(cond, ["VolumeForce","SurfBC"])) && isFEM
@@ -217,7 +217,7 @@ classdef Boundaries < handle
             '                    VolumeForce -> Volume force on elements'], entityType);
         end
 
-        physics = getXMLData(in,[],"physics");
+        variable = getXMLData(in,[],"variable");
         name = getXMLData(in,[],"name");
 
         if ~strcmp(entityType,"VolumeForce")
@@ -244,10 +244,10 @@ classdef Boundaries < handle
         switch entityType
           case 'VolumeForce'
             bc = struct('data', [], ...
-              'cond',entityType, 'physics', physics);
+              'cond',entityType, 'variable', variable);
           case {'SurfBC','NodeBC','ElementBC'}
             bc = struct('data', [], ...
-              'cond',entityType,'type', type, 'physics', physics);
+              'cond',entityType,'type', type, 'variable', variable);
           otherwise
             error('Unrecognized BC item %s for Boundary condition %s', ...
               entityType, name)

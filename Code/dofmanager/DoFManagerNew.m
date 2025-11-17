@@ -61,7 +61,8 @@ classdef DoFManagerNew < handle
         % the id is the result of a call to getVariableId(varName)
 
         if isscalar(id)
-          dofs = obj.dofMap{id}(ents) - nComp-1:1:1;
+          dofs = repelem(obj.dofMap{id}(ents),ncomp) + ...
+              repmat((0:ncomp(id)-1)',numel(ents),1);
         else
           assert(isempty(ents),"entity input in getDoF is admitted " + ...
             "only for single variable query")
@@ -91,14 +92,19 @@ classdef DoFManagerNew < handle
       end
 
 
-      function activeEnts = getActiveEntities(obj,varName)
+      function activeEnts = getActiveEntities(obj,varName,flagExpand)
         assert(isscalar(string(varName)),"The variable name must be a " + ...
           "string scalar or a character vector")
         id = obj.getVariableId(varName);
         activeEnts = find(obj.dofMap{id});
+
+        % expand to account for component
+        if flagExpand
+          activeEnts = obj.dofExpand(activeEnts,obj.numbComponents(id));
+        end
       end
 
-      function tags = getActiveTags(obj,varName)
+      function tags = getTargetRegions(obj,varName)
         id = obj.getVariableId(varName);
         tags = obj.fields(id).tags;
       end
@@ -125,6 +131,15 @@ classdef DoFManagerNew < handle
         end
       end
 
-      
+
+   end
+
+   methods (Static)
+
+     function dofOut = dofExpand(dofIn,nComp)
+       % make sure input is a column vector
+       dofIn = reshape(dofIn,[],1);     
+       dofOut = nComp*repelem(dofIn,nComp,1)-repmat((nComp-1:-1:0)',size(dofIn,1),1);
+     end
    end
 end

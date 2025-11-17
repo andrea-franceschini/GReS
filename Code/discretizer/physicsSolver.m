@@ -7,10 +7,8 @@ classdef (Abstract) physicsSolver < handle
   % simulation.
   %
   % Properties:
-  %   fields      - List of single physics modules implemented in the
-  %   solver.
-  %                 For coupled solvers, this is a string array containing
-  %                 all individual physical fields.
+  %   fields      - String array of variable fields that are going to be used by
+  %   the solver
   %
   %   J           - System Jacobian (abstract, must be implemented by
   %   subclass). rhs         - Right-hand side vector (abstract, must be
@@ -34,69 +32,105 @@ classdef (Abstract) physicsSolver < handle
     rhs
   end
 
+  properties (GetAccess=public, SetAccess=protected)
+    fields
+  end
+
 
   properties (GetAccess=public, SetAccess=protected)
-    dofm        % handle to dofManager
-    simparams   % handle to simulation parameters
-    bcs         % boundary conditions
-    outstate    % printing utilities
-    materials   % materials
-    grid        % topology, elements, faces
-    variables   % list of fields with the same order of the global system
+    dofm                % handle to dofManager
+    model               % handle to entire model
+    bcs                 % boundary conditions
+    outstate            % printing utilities
+    materials           % materials
+    mesh                % topology of the grid
+    elements            % db for finite elements
+    faces               % db for finite volumes
+    variables           % list of fields with the same order of the global system
+  end
+
+  properties
+    state               % the state object holding all variables in the model
+    stateOld            % the state object after the last converged time step
   end
 
   methods
-    function obj = physicsSolver(inputStruct)
+    function obj = physicsSolver(model,grid,mat,bcs,inputStruct)
 
-      % domain:  handle to the Discretizer object storing all the
-      % information of the model
+      % inputStruct: struct with additional solver-specific parameters
 
+      obj.model = model;
+      obj.mesh = grid.topology;
+      obj.elements = grid.elements;
+      obj.faces = grid.faces;
+      obj.materials = mat;
+      obj.bcs = bcs;
 
-      % read xml field that must have the same name of the class itself
-      obj.readInput(inputStruct.(class(obj)));
+      % create the DoFManager
+      obj.dofm = DoFManagerNew(grid);
+
+      % create the State object
+      obj.state = State();
+
+      % read xml fields that must have the same name of the class itself
+      % this is where the reading solver specific input from file
+      obj.registerSolver(solverInput);
+
     end
   end
 
   methods (Abstract)
 
-    readInput(obj,input);
-    setup(obj); 
-    % register the existing state variables and DoF fields
-    assembleSystem(obj); % compute the matrix and the rhs
-    updateState(obj); % update the state variables 
-    finalizeState(obj); % for post a processing variable
-    [cellData,pointData] = buildPrintStruct(obj); % save outuputs to structures
+    % mandatory methods that need to be implemented in the physicsSolver
 
+    % read the input data of the solver and assign variables to cell tags
+    registerSolver(obj,input);
+
+    % compute the jacobian and the rhs
+    assembleSystem(obj);
+
+    % get the boundary condition dofs and vals (solver specific)
+    [bcDofs,bcVals] = getBC(obj,bcId);
+
+    % update the state variables after solving the problem
+    updateState(obj,solution);
+
+    % advance the state variables after achieving solver convergence
+    advanceState(obj);
+
+    % update the output structres for printing purposes
+    [cellData,pointData] = printState(obj,t);
   end
 
 
-  methods 
+  methods
+
     function J = getJacobian(obj,varargin)
-    % GETJACOBIAN Return the system Jacobian matrix
-    %
-    % Usage:
-    %   J = getJacobian(obj)
-    %       Returns the full Jacobian matrix.
-    %
-    %   J = getJacobian(obj, fieldList)
-    %       Returns only the Jacobian blocks corresponding to the
-    %       specified fields. Assumes the same fields for both rows and columns.
-    %
-    %   J = getJacobian(obj, rowFields, colFields)
-    %       Returns the Jacobian blocks corresponding to the specified
-    %       fields for rows and columns separately.
-    %
-    % Inputs:
-    %   fieldList  - string or cell array of field names (for both rows and columns)
-    %   rowFields  - string or cell array of field names for rows
-    %   colFields  - string or cell array of field names for columns
-    %
-    % Output:
-    %   J          - the assembled Jacobian matrix
-    %
-    % Notes:
-    %   - If no input fields are provided, the full Jacobian is returned.
-    %   - Row and column fields must correspond to existing variables in the system.
+      % GETJACOBIAN Return the system Jacobian matrix
+      %
+      % Usage:
+      %   J = getJacobian(obj)
+      %       Returns the full Jacobian matrix.
+      %
+      %   J = getJacobian(obj, fieldList)
+      %       Returns only the Jacobian blocks corresponding to the
+      %       specified fields. Assumes the same fields for both rows and columns.
+      %
+      %   J = getJacobian(obj, rowFields, colFields)
+      %       Returns the Jacobian blocks corresponding to the specified
+      %       fields for rows and columns separately.
+      %
+      % Inputs:
+      %   fieldList  - string or cell array of field names (for both rows and columns)
+      %   rowFields  - string or cell array of field names for rows
+      %   colFields  - string or cell array of field names for columns
+      %
+      % Output:
+      %   J          - the assembled Jacobian matrix
+      %
+      % Notes:
+      %   - If no input fields are provided, the full Jacobian is returned.
+      %   - Row and column fields must correspond to existing variables in the system.
 
       if nargin == 1
         J = obj.J;
@@ -144,37 +178,77 @@ classdef (Abstract) physicsSolver < handle
       end
     end
 
-    function applyDirBC(obj,bcDofs,bcVariable,colVariable)
-      % Base application of boundary condition to the jacobian. This
-      % method only implements standard Dirichlet BCs on diagonal jacobian
-      % blocks, but can be overridden by specific implementations. This
-      % version works with incremental linear system (vals = 0). BC values
-      % for Dirichlet BC are zero (since the system is solved in
-      % incremental form) set Dir rows to zero
+ 
+    function applyDirVal(obj,bcDofs,bcVals,bcVariableName)
 
-      idRow = obj.dofm.getVariableId(bcVariable);
-
-      if isempty(colVariable)
-        idCol = idRow;
-      else
-        idCol = obj.dofm.getVariableId(colVariable);
-      end
-
-
-      
-      obj.J{idRow,idCol} = obj.J{idRow,idCol}';
-      obj.J{idRow,idCol}(:,bcDofs) = 0; % setting columns is much faster
-      obj.J{idRow,idCol} = obj.J{idRow,idCol}';
-      % Update rhs with columns to be removed
-      %obj.rhs = obj.rhs - obj.J(:,dofs)*vals;
-      % set obj.rhs vals to dir vals
-      obj.rhs(bcDofs) = 0;
-      obj.J{idRow,idCol}(:,bcDofs) = 0;
-      % modify diagonal entries of K (avoiding for loop and accessing)
-      Jdiag = diag(obj.J{idRow,idCol});
-      Jdiag(bcDofs) = 1;
-      obj.J{idRow,idCol} = obj.J{idRow,idCol} - diag(diag(obj.J{idRow,idCol})) + diag(Jdiag);
+      % apply Dirichlet BC values to state variables
+      obj.state.data.(bcVariableName)(bcDofs) = bcVals;
     end
 
+    function applyBCs(obj,t)
+      bcList = keys(obj.bcs.keys);
+
+      for bcId = string(bcList)
+        [bcDofs,bcVals] = getBC(obj,bcId,t); 
+        % TO DO: use model property to remove slave dofs in mortar
+        bcVar = obj.bcs.getVariable(bcId);
+        obj.applyBC(bcId,bcDofs,bcVals,bcVar)
+      end
+    end
+
+    function applyBC(obj,bcId,bcDofs,bcVals,bcVar)
+
+      % Base application of a Boundary condition
+      bcType = obj.bcs.getType(bcId);
+
+      switch bcType
+        case 'Dirichlet'
+          applyDirBC(obj,bcDofs,bcVals,bcVar);
+        case 'Neumann'
+          applyNeuBC(obj,bcDofs,bcVar);
+        otherwise
+          error("Error in %s: Boundary condition type '%s' is not " + ...
+            "available in the base version of applyBC(). Consider " + ...
+            "overriding this method for a specific implementation", ...
+            class(obj),bcType);
+      end
+    end
+
+    function applyNeuBC(obj,bcDofs,bcVals,bcVariableName)
+
+      % Base application of Neumann boundary condition to the rhs.
+      % bc values are subtracted since we solve du = J\(-rhs)
+      bcId = obj.dofm.getVariableId(bcVariableName);
+
+      obj.rhs{bcId}(bcDofs) = obj.rhs{bcId}(bcDofs) - bcVals;
+
+    end
+
+    function applyDirBC(obj,bcDofs,bcVariableName)
+
+      % Standard application of Dirichlet boundary condition to the jacobian.
+      % This method works with incremental linear system du = J\(-rhs)
+
+      % sort bcDofs to improve sparse access performance
+      bcDofs = sort(bcDofs);
+
+      bcId = obj.dofm.getVariableId(bcVariableName);
+
+      % zero out columns
+      for i = 1:numel(fields)
+        obj.J{i,bcId}(:,bcDofs) = 0;
+      end
+
+      % zero out rows (use transpose trick)
+      for j = 1:numel(fields)
+        obj.J{bcId,j} = obj.J{bcId,j}';
+        obj.J{bcId,j}(:,bcDofs) = 0;
+        obj.J{bcId,j} = obj.J{bcId,j}';
+      end
+
+      % add 1 to diagonal entry of diagonal block
+      obj.J{bcId,bcId}(sub2ind(size(obj.J{{bcId,bcId}}), bcDofs, bcDofs)) = 1;
+
+    end
   end
 end
