@@ -9,7 +9,7 @@ classdef OutState < handle
     modTime = false %flag for time step size matching timeList
     timeList
     results
-    model
+    % model
     writeSolution
     timeID = 1
     VTK
@@ -24,7 +24,7 @@ classdef OutState < handle
 
   methods (Access = public)
 
-    function obj = OutState(model, mesh, varargin)
+    function obj = OutState(mesh, varargin)
 
       % Default parameters
       flagMatFile = false;
@@ -39,7 +39,7 @@ classdef OutState < handle
         % no output
         obj.writeVtk = false;
         obj.writeSolution = false;
-        obj.model = model;
+        % obj.model = model;
         return
       end
 
@@ -47,17 +47,21 @@ classdef OutState < handle
 
       if isscalar(varargin) && (ischar(firstArg) || isstring(firstArg) || isstruct(firstArg))
         % ---------------- XML configuration mode ----------------
-        xml = firstArg;
-        if ~isstruct(xml)
-          xml = readstruct(xml, AttributeSuffix="");
+        input = firstArg;
+        if ~isstruct(input)
+          input = readstruct(input, AttributeSuffix="");
         end
 
-        flagMatFile = logical(getXMLData(xml, 0, "saveHistory"));
-        folderName  = getXMLData(xml, "vtkOutput", "outputFile");
-        tList       = getXMLData(xml, [], "printTimes");
+        if isfield(input,"Output")
+          input = input.Output;
+        end
+
+        flagMatFile = logical(getXMLData(input, 0, "saveHistory"));
+        folderName  = getXMLData(input, "vtkOutput", "outputFile");
+        tList       = getXMLData(input, [], "printTimes");
 
         % If no outputFile provided, disable VTK
-        writeVtk = isfield(xml, "outputFile");
+        writeVtk = isfield(input, "outputFile");
 
       else
         % ---------------- Key-value pair mode ----------------
@@ -78,14 +82,14 @@ classdef OutState < handle
       % ------------------------------------------------------------
       obj.writeVtk = writeVtk;
       obj.writeSolution = flagMatFile;
-      obj.model = model;
+      %obj.model = model;
       obj.VTK = VTKOutput(mesh, folderName);
 
       % MAT-file output
       if obj.writeSolution
         if isfile('expData.mat'), delete 'expData.mat'; end
         obj.results = matfile('expData.mat', 'Writable', true);
-        setMatFile(obj, mesh);
+        %setMatFile(obj, mesh);
       end
 
       % Time list handling
@@ -145,6 +149,7 @@ classdef OutState < handle
       fclose(fid);
     end
 
+    % move this logic into specific Physics solver
     % function setMatFile(obj,msh)
     %   l = length(obj.timeList) + 1;
     %   obj.results.expTime = zeros(l,1);
@@ -164,26 +169,26 @@ classdef OutState < handle
     %   end
     % end
 
-    function setMatFile(obj,msh)
-      l = length(obj.timeList) + 1;
-      obj.results = repmat(struct('expTime', 0),l,1);
-      for i=1:l
-        if isFlow(obj.model)
-          if isFEMBased(obj.model,'Flow')
-            obj.results(i).expPress = [];
-          elseif isFVTPFABased(obj.model,'Flow')
-            obj.results(i).expPress = [];
-            if isVariabSatFlow(obj.model)
-              obj.results(i).expSat = [];
-            end
-          end
-        end
-        if isPoromechanics(obj.model)
-          obj.results(i).expDispl = [];
-          % Consider adding other output properties
-        end
-      end
-    end
+    % function setMatFile(obj,msh)
+    %   l = length(obj.timeList) + 1;
+    %   obj.results = repmat(struct('expTime', 0),l,1);
+    %   for i=1:l
+    %     if isFlow(obj.model)
+    %       if isFEMBased(obj.model,'Flow')
+    %         obj.results(i).expPress = [];
+    %       elseif isFVTPFABased(obj.model,'Flow')
+    %         obj.results(i).expPress = [];
+    %         if isVariabSatFlow(obj.model)
+    %           obj.results(i).expSat = [];
+    %         end
+    %       end
+    %     end
+    %     if isPoromechanics(obj.model)
+    %       obj.results(i).expDispl = [];
+    %       % Consider adding other output properties
+    %     end
+    %   end
+    % end
 
   end
 

@@ -26,7 +26,7 @@ classdef DoFManagerNew < handle
       function registerVariable(obj,varName,fieldLocation,nComp,tags)
         % varName: the name of the variable field
         % fieldLocation: a enum of type entityField
-        % tags: the cellTag (or srufaceTag for lower dimensional fields) where the variable is actually present
+        % tags: the cellTag (or surfaceTag for lower dimensional fields) where the variable is actually present
         % numbComponents: the number of dofs per entitiy
 
         id = obj.nVars+1;

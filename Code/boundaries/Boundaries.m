@@ -8,22 +8,20 @@ classdef Boundaries < handle
   end
 
   properties (Access = private)
-    model
     grid
   end
 
   methods (Access = public)
     % Class constructor method
-    function obj = Boundaries(fileName,model,grid) %,model,grid
+    function obj = Boundaries(input,grid) % ,grid
       % MATLAB evaluates the assignment expression for each instance, which
       % ensures that each instance has a unique value
       obj.db = containers.Map('KeyType','char','ValueType','any');
-      obj.model = model;
       obj.grid = grid;
       % Calling the function to read input data from file
-      obj.readInputFile(fileName);
-      obj.computeBoundaryProperties(model,grid);
-      linkBoundSurf2TPFAFace(model,obj,grid);
+      obj.readInputFile(input);
+      obj.computeBoundaryProperties(grid);
+      % linkBoundSurf2TPFAFace(obj,grid);
     end
 
     function delete(obj)
@@ -115,7 +113,7 @@ classdef Boundaries < handle
       obj.getData(identifier).data.entities = list;
     end
 
-    function computeBoundaryProperties(obj, model, grid)
+    function computeBoundaryProperties(obj, grid)
 
       % preprocess surface/volume boundary conditions
 
@@ -128,9 +126,8 @@ classdef Boundaries < handle
         key = keys{bcId};
         cond = obj.getCond(key);
         phys = obj.getVariable(key);
-        isFEM = isFEMBased(model, phys);
 
-        if any(strcmp(cond, ["VolumeForce","SurfBC"])) && isFEM
+        if any(strcmp(cond, ["VolumeForce","SurfBC"]))
 
           ents = obj.getEntities(key);
           nEnts = obj.getData(key).data.nEntities;
@@ -196,12 +193,20 @@ classdef Boundaries < handle
   methods (Access = private)
 
     % Read boundary condtions input file
-    function readInputFile(obj,fileName)
+    function readInputFile(obj,inputStruct)
 
-      inputStruct = readstruct(fileName,AttributeSuffix="");
+      if ~isstruct(inputStruct)
+        inputStruct = readstruct(inputStruct,AttributeSuffix="");
+      end
 
       if isfield(inputStruct,"BoundaryConditions")
         inputStruct = inputStruct.BoundaryConditions;
+      end
+
+      if isfield(inputStruct,"fileName")
+        assert(isscalar(fieldnames(inputStruct)),"FileName, " + ...
+          " must be a unique parameter");
+        inputStruct = readstruct(inputStruct.fileName,AttributeSuffix="");
       end
 
       for i = 1:numel(inputStruct.BC)

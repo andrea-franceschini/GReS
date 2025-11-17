@@ -11,10 +11,10 @@ classdef Materials < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = Materials(fileName)
+    function obj = Materials(input)
       obj.db = containers.Map('KeyType','double','ValueType','any');
       % Calling the function to read input data from file
-      obj.readInputFile(fileName);
+      obj.readInputFile(input);
     end
 
     % Get the material defined by matIdentifier and check if it is a
@@ -56,11 +56,20 @@ classdef Materials < handle
 
   methods (Access = private)
     % Reading the input file by material blocks
-    function readInputFile(obj, fileName)
+    function readInputFile(obj, input)
 
-      input = readstruct(fileName,AttributeSuffix="");
+      if ~isstruct(input)
+        input = readstruct(fileName,AttributeSuffix="");
+      end
+
       if isfield(input,"Materials")
         input = input.Materials;
+      end
+
+      if isfield(input,"fileName")
+        assert(isscalar(fieldnames(inputstruct)),"FileName, " + ...
+          " must be a unique parameter.");
+        input = readstruct(input.fileName,AttributeSuffix="");
       end
 
       if isfield(input,"Fluid")

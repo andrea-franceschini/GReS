@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- Unique xml file to run a GReS simulation -->
+<Problem>
+
+<simParam>
+  <Time
+        Start="0."
+        End ="10"
+        DtInit= "0.5"
+        DtMax ="1.0"
+        DtMin ="1e-5"
+        />
+</simParam>
+
+<!-- Domain input -->
+
+<Domain
+        Geometry = "Mesh/Column_hexa.msh"
+        GaussPoints = "2"
+        >
+
+  <Materials>
+    <Solid
+           cellTags = " 1 ">
+      <Constitutive>
+        <Elastic
+                 youngModulus = "1e5"
+                 poissonRatio = "0.25"
+                 />
+      </Constitutive>
+
+      <PorousRock
+                  porosity = "0.375"
+                  specificGravity = "21"
+                  permeability = "1e-12, 1e-12, 1e-12"
+                  />
+    </Solid>
+
+
+    <Fluid
+           compressibility = "4.4e-7"
+           dynamicViscosity = "1.0e-6"
+           />
+  </Materials>
+
+
+
+  <Output
+          saveHistory = "1"
+          printTimes = "1,5,10"
+          />
+
+  <BoundaryConditions  
+                      fileName = "boundaryConditions.xml" 
+                      />
+
+
+  <Solver>
+
+    <Poromechanics
+                   cellTags = "1"
+                   />
+    <SinglePhaseFlow
+                     cellTags = "1"
+                     />
+
+  </Solver>
+
+</Domain>
+
+</Problem>

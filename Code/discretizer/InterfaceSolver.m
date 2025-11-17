@@ -1,4 +1,4 @@
-classdef (Abstract) interfaceSolver < handle
+classdef (Abstract) InterfaceSolver < handle
   % Interface to create an interface between domains in GReS
 
   % Any interfaceSolver should implemented everything needed to couple a
@@ -25,7 +25,7 @@ classdef (Abstract) interfaceSolver < handle
   end
 
   methods
-    function obj = interfaceSolver(domain, inputStruct)
+    function obj = InterfaceSolver(domain, inputStruct)
 
       % domain:  handle to the Discretizer object storing all the
       % information of the model

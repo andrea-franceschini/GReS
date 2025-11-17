@@ -1,6 +1,6 @@
-function linkBoundSurf2TPFAFace(model,bound,grid)
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
+function linkBoundSurf2TPFAFace(bound,grid)
+% TO DO: call this from within the SinglePhaseFlow solver!
+
 keys = bound.db.keys;
 flRenum = false(length(keys),1);
 for i = 1 : length(keys)

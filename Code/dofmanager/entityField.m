@@ -24,7 +24,7 @@ classdef entityField
             ents = unique(grid.topology.cells(:));
           else
             cellsID = ismember(grid.topology.cellTag, tags);
-            ents = unique(grid.cells(cellsID,:));
+            ents = unique(grid.topology.cells(cellsID,:));
           end
 
         case entityField.face
@@ -56,7 +56,11 @@ classdef entityField
     end
 
     function nEnts = getNumberOfEntities(obj,mesh,tags)
-      ents = getEntities(obj,mesh,tags);
+      if nargin < 3
+        ents = getEntities(obj,mesh);
+      else
+        ents = getEntities(obj,mesh,tags);
+      end
       nEnts = numel(ents);
     end
 

@@ -1,4 +1,4 @@
-classdef (Abstract) physicsSolver < handle
+classdef (Abstract) PhysicsSolver < handle
   % PHYSICSSOLVER Abstract interface for creating physics solvers in GReS
   %
   % This abstract class defines the interface for any physics solver in
@@ -27,53 +27,27 @@ classdef (Abstract) physicsSolver < handle
   %       with the same name as the class itself.
 
 
-  properties (Abstract, GetAccess=public, SetAccess=private)
+  properties (GetAccess=public, SetAccess=private)
     J
     rhs
   end
 
-  properties (GetAccess=public, SetAccess=protected)
+  properties (Abstract)
     fields
   end
 
 
   properties (GetAccess=public, SetAccess=protected)
-    dofm                % handle to dofManager
-    model               % handle to entire model
-    bcs                 % boundary conditions
-    outstate            % printing utilities
-    materials           % materials
-    mesh                % topology of the grid
-    elements            % db for finite elements
-    faces               % db for finite volumes
-    variables           % list of fields with the same order of the global system
-  end
-
-  properties
-    state               % the state object holding all variables in the model
-    stateOld            % the state object after the last converged time step
+    domain               % handle to domain
   end
 
   methods
-    function obj = physicsSolver(model,grid,mat,bcs,inputStruct)
+    function obj = PhysicsSolver(domain,solverInput)
 
       % inputStruct: struct with additional solver-specific parameters
+      obj.domain = domain;
 
-      obj.model = model;
-      obj.mesh = grid.topology;
-      obj.elements = grid.elements;
-      obj.faces = grid.faces;
-      obj.materials = mat;
-      obj.bcs = bcs;
-
-      % create the DoFManager
-      obj.dofm = DoFManagerNew(grid);
-
-      % create the State object
-      obj.state = State();
-
-      % read xml fields that must have the same name of the class itself
-      % this is where the reading solver specific input from file
+      % initialize the solver and read solver specific input in struct
       obj.registerSolver(solverInput);
 
     end
@@ -104,6 +78,29 @@ classdef (Abstract) physicsSolver < handle
 
 
   methods
+
+    % interface to get and set the state object from the solver
+
+    function stat = getState(obj,varName)
+      % get a copy of a state variable field
+      if isempty(varName)
+        stat = obj.domain.getState();
+      else
+        stat = obj.domain.getState().data.(varName);
+      end
+    end
+
+    function stat = getOldState(obj,varName)
+      % get a copy of a state variable field
+      if isempty(varName)
+        stat = obj.domain.getOldState();
+      else
+        stat = obj.domain.getOldState().data.(varName);
+      end
+    end
+
+
+
 
     function J = getJacobian(obj,varargin)
       % GETJACOBIAN Return the system Jacobian matrix
@@ -182,7 +179,8 @@ classdef (Abstract) physicsSolver < handle
     function applyDirVal(obj,bcDofs,bcVals,bcVariableName)
 
       % apply Dirichlet BC values to state variables
-      obj.state.data.(bcVariableName)(bcDofs) = bcVals;
+      obj.setState(bcVariableName,bcDofs,bcVals);
+
     end
 
     function applyBCs(obj,t)

@@ -1,4 +1,4 @@
-classdef Poromechanics < SinglePhysics
+classdef Poromechanics < PhysicsSolver
 
   properties        
     K
@@ -6,37 +6,52 @@ classdef Poromechanics < SinglePhysics
     cell2stress     % map cell ID to position in stress/strain matrix
   end
 
-  properties (Constant)
-    field = 'Poromechanics'
+  properties
+    fields = "displacements"
   end
 
   methods (Access = public)
-    function obj = Poromechanics(symmod,params,dofManager,grid,mat,bc,state)
-      obj@SinglePhysics(symmod,params,dofManager,grid,mat,bc,state);
-      setPoromechanics(obj)
+
+    function obj = Poromechanics(domain,inputStruct)
+
+      % call physicsSolver constructor
+      obj@PhysicsSolver(domain,inputStruct);
     end
 
-%     function state = computeMatOld(obj,state,~,dt)
-%       if ~isLinear(obj) || isempty(obj.J)
-%         % recompute matrix if the model is non linear
-%         
-%         obj.computeStiffMat(dt);
-%       end
-%       if obj.simParams.isTimeDependent
-%         obj.J = obj.simParams.theta*obj.J;
-%       end
-%     end
+    function registerSolver(obj,solverInput)
 
-    function computeMat(obj,~,dt)
+      nTags = obj.domain.grid.topology.nCellTag;
+
+      if ~isempty(solverInput)
+        targetRegions = getXMLData(solverInput,1:nTags,"targetRegions");
+      else
+        targetRegions = 1:nTags;
+      end
+
+      % register nodal displacements on target regions
+      obj.domain.dofm.registerVariable(obj.fields(1),entityField.node,3,targetRegions);
+
+      % set the state object
+      initState(obj);
+
+    end
+
+    function assembleSystem(obj)
+      obj.J = computeMat(obj);
+      obj.rhs = computeRhs(obj);
+    end
+
+
+    function Jmat = computeMat(obj,~,dt)
       if ~isLinear(obj) || isempty(obj.J)
         % recompute matrix if the model is non linear
         % define size of output matrix
         computeStiffMat(obj,dt);
       end
       if obj.simParams.isTimeDependent
-        obj.J = obj.simParams.theta*obj.K;
+        Jmat = obj.simParams.theta*obj.K;
       else
-        obj.J = obj.K;
+        Jmat = obj.K;
       end
     end
 
@@ -54,12 +69,15 @@ classdef Poromechanics < SinglePhysics
       obj.fInt = zeros(Ndof,1);
       assembleK = assembler(n,Ndof,Ndof,assembleKloc);
       % loop over cells
+
+      stateCurr = getState(obj);
+
       for el = subCells'
         % get dof id and local matrix
         [dsigma,status] = assembleK.localAssembly(el,l);
         s = size(dsigma,1);
-        obj.state.data.curr.status(l+1:l+s,:) = status;
-        obj.state.data.curr.stress((l+1):(l+s),:) = dsigma;
+        stateCurr.data.status(l+1:l+s,:) = status;
+        stateCurr.data.stress((l+1):(l+s),:) = dsigma;
         obj.cell2stress(el) = l;
         l = l + s;
       end
@@ -75,9 +93,9 @@ classdef Poromechanics < SinglePhysics
       B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
       B(elem.indB(:,2)) = N(elem.indB(:,1));
       [D, sigma, status] = obj.material.updateMaterial(obj.mesh.cellTag(elID), ...
-        obj.state.data.conv.stress(l+1:l+nG,:), ...
-        obj.state.data.curr.strain(l+1:l+nG,:), ...
-        dt,obj.state.data.conv.status(l+1:l+nG,:), elID, obj.state.t);
+        obj.stateOld.data.stress(l+1:l+nG,:), ...
+        obj.state.data.strain(l+1:l+nG,:), ...
+        dt,obj.stateOld.data.status(l+1:l+nG,:), elID, obj.state.t);
       %           obj.state.data.curr.status(l+1:l+obj.GaussPts.nNode,:) = status;
       %           obj.state.data.curr.stress(l+1:l+obj.GaussPts.nNode,:) = ones(8,6);
       KLoc = obj.computeKloc(B,D,B,dJWeighed);
@@ -114,11 +132,11 @@ classdef Poromechanics < SinglePhysics
       Bb = zeros(6,elem.nFace*obj.mesh.nDim,nG);
       Bb(elem.indBbubble(:,2)) = Nb(elem.indBbubble(:,1));
       [D, ~, ~] = obj.material.updateMaterial(obj.mesh.cellTag(el), ...
-        obj.state.data.conv.stress(l+1:l+nG,:), ...
-        obj.state.data.curr.strain(l+1:l+nG,:), ...
-        dt,obj.state.data.conv.status(l+1:l+nG,:), el, obj.state.t);
-      Kub = Poromechanics.computeKloc(Bu,D,Bb,dJWeighed);
-      Kbb = Poromechanics.computeKloc(Bb,D,Bb,dJWeighed);
+        obj.stateOld.data.stress(l+1:l+nG,:), ...
+        obj.state.data.strain(l+1:l+nG,:), ...
+        dt,obj.stateOld.data.status(l+1:l+nG,:), el, obj.state.t);
+      Kub = PoromechanicsNew.computeKloc(Bu,D,Bb,dJWeighed);
+      Kbb = PoromechanicsNew.computeKloc(Bb,D,Bb,dJWeighed);
 
       % important: right hand side in the unstabilized block already
       % considers the bubble contribution due to enhanced strain
@@ -145,46 +163,47 @@ classdef Poromechanics < SinglePhysics
     function initState(obj)
       % add poromechanics fields to state structure
       Ndata = getNumbCellData(obj.elements);
-      obj.state.data.conv = struct('strain', [], 'stress', [], 'status', []);
-      obj.state.data.curr = struct('strain', [], 'stress', [], 'status', []);
-      obj.state.data.curr.stress = zeros(Ndata,6);
-      obj.state.data.curr.strain = zeros(Ndata,6);
-      obj.state.data.curr.status = zeros(Ndata,2);
-      obj.state.data.conv = obj.state.data.curr;
-      obj.state.data.iniStress = zeros(Ndata,6);
-      obj.state.data.dispConv = zeros(obj.mesh.nDim*obj.mesh.nNodes,1);
-      obj.state.data.dispCurr = zeros(obj.mesh.nDim*obj.mesh.nNodes,1);
+      setState(obj,"stress",zeros(Ndata,6));
+      setState(obj,"strain",zeros(Ndata,6));
+      setState(obj,"status",zeros(Ndata,2));
+      setState(obj,"iniStress",zeros(Ndata,6));
+      setState(obj,"displacements",zeros(obj.mesh.nDim*obj.mesh.nNodes,1));
     end
 
     function advanceState(obj)
       % Set converged state to current state after newton convergence
-      obj.state.data.dispConv = obj.state.data.dispCurr;
-      % we store the incremental strain during the time step
-      obj.state.data.curr.strain = 0.0*obj.state.data.curr.strain;
-      obj.state.data.conv.stress = obj.state.data.curr.stress;
-      obj.state.data.conv.status = obj.state.data.curr.status;
+      setOldState(obj,"displacements",getState(obj,"displacements"));
+      setOldState(obj,"strain",0.0*getState(obj,"strain"));
+      setOldState(obj,"stress",getState(obj,"stress"));
+      setOldState(obj,"status",getState(obj,"status"));
     end
 
-    function updateState(obj,dSol)
+    function updateState(obj,solution)
       % Update state structure with last solution increment
-      ents = obj.dofm.getActiveEnts(obj.field);
+      ents = obj.dofm.getActiveEnts(obj.field,1);
+
+      stateCurr = obj.getState();
+      stateOld = obj.getOldState();
+
       if nargin > 1
         % apply newton update to current displacements
-        obj.state.data.dispCurr(ents) = obj.state.data.dispCurr(ents) + dSol(getDoF(obj.dofm,obj.field));
+        stateCurr.data.displacements = stateCurr.data.displacements + ...
+          solution(getDoF(obj.dofm,obj.field));
       end
-      du = obj.state.data.dispCurr - obj.state.data.dispConv;
+
+      du = stateCurr.data.displacements - stateOld.data.displacements;
+
       % Update strain
       l = 0;
       for el=1:obj.mesh.nCells
-        dof = getDoFID(obj.mesh,el);
+        dof = getEntityFromElement(entityField.node,obj.mesh,el);
         vtkId = obj.mesh.cellVTKType(el);
         elem = getElement(obj.elements,vtkId);
         nG = elem.GaussPts.nNode;
         N = getDerBasisFAndDet(elem,el,2);
         B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
         B(elem.indB(:,2)) = N(elem.indB(:,1));
-        obj.state.data.curr.strain((l+1):(l+nG),:) = ...
-          reshape(pagemtimes(B,du(dof)),6,nG)';
+        stateCurr.data.strain = reshape(pagemtimes(B,du(dof)),6,nG)';
         l = l + nG;
       end
     end
@@ -204,7 +223,7 @@ classdef Poromechanics < SinglePhysics
         B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
         B(elem.indB(:,2)) = N(elem.indB(:,1));
         avStress(el,:) = sum(diag(dJWeighed)* ...
-          stateIn.data.curr.stress((l+1):(l+nG),:))/vol;
+          stateIn.data.stress((l+1):(l+nG),:))/vol;
         dStrain = pagemtimes(B,stateIn.data.dispCurr(dof));
         dStrain = dStrain.*reshape(dJWeighed,1,1,[]);
         avStrain(el,:) = sum(dStrain,3)/vol;
@@ -228,7 +247,7 @@ classdef Poromechanics < SinglePhysics
       obj.state.data.dispCurr(id) = vals; 
     end
 
-    function [dof,vals] = getBC(obj,id,t,~)
+    function [dof,vals] = getBC(obj,id,t)
       dof = obj.getBCdofs(id);
       vals = obj.getBCVals(id,t);
     end
@@ -250,9 +269,9 @@ classdef Poromechanics < SinglePhysics
           vtk = obj.mesh.cellVTKType(el);
           elem = obj.elements.getElement(vtk);
           nG = elem.GaussPts.nNode;
-          obj.state.data.curr.stress((l1+1):(l1+nG),:) = ...
-            obj.state.data.curr.stress((l1+1):(l1+nG),:)+...
-            obj.state.data.curr.strain((l1+1):(l1+nG),:)*D;
+          obj.state.data.stress((l1+1):(l1+nG),:) = ...
+            obj.state.data.stress((l1+1):(l1+nG),:)+...
+            obj.state.data.strain((l1+1):(l1+nG),:)*D;
           l1 = l1+nG;
         end
         ents = obj.dofm.getActiveEnts(obj.getField());
@@ -296,28 +315,29 @@ classdef Poromechanics < SinglePhysics
       end
     end
 
-    function [cellData,pointData] = printState(obj,sOld,sNew,t)
+    function [cellData,pointData] = printState(obj,t)
       % append state variable to output structure
       switch nargin
         case 2
-          [stress,strain] = finalizeState(obj,sOld);
-          displ = sOld.data.dispConv;
+          [stress,strain] = finalizeState(obj,obj.stateOld);
+          displ = obj.stateOld.data.dispConv;
         case 4
           % linearly interpolate state variables containing print time
-          fac = (t - sOld.t)/(sNew.t - sOld.t);
-          [avStressOld,avStrainOld] = finalizeState(obj,sOld);
-          [avStressNew,avStrainNew] = finalizeState(obj,sNew);
+          fac = (t - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
+          [avStressOld,avStrainOld] = finalizeState(obj,obj.stateOld);
+          [avStressNew,avStrainNew] = finalizeState(obj,obj.state);
           stress = avStressNew*fac+avStressOld*(1-fac);
           strain = avStrainNew*fac+avStrainOld*(1-fac);
-          displ = sNew.data.dispConv*fac+sOld.data.dispConv*(1-fac);
+          displ = sNew.data.dispConv*fac+obj.stateOld.data.dispConv*(1-fac);
         otherwise
           error('Wrong number of input arguments');
       end
-      [cellData,pointData] = Poromechanics.buildPrintStruct(displ,stress,strain);
+      [cellData,pointData] = PoromechanicsNew.buildPrintStruct(displ,stress,strain);
     end
   end
 
   methods (Access=private)
+
     function dof = getBCdofs(obj,id)
       switch obj.bcs.getCond(id)
         case 'NodeBC'
@@ -441,7 +461,7 @@ classdef Poromechanics < SinglePhysics
     end
 
     function out = getField()
-      out = Poromechanics.field;
+      out = PoromechanicsNew.fields;
     end
   end
 end
