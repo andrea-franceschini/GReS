@@ -38,14 +38,23 @@ classdef (Abstract) PhysicsSolver < handle
 
 
   properties (GetAccess=public, SetAccess=protected)
-    domain               % handle to domain
+     % handle to domain properties
+    mesh              
+    elements
+    faces
+    bcs
+    materials
   end
 
   methods
     function obj = PhysicsSolver(domain,solverInput)
 
       % inputStruct: struct with additional solver-specific parameters
-      obj.domain = domain;
+      obj.mesh = domain.grid.topology;
+      obj.elements = domain.grid.cells;
+      obj.faces = domain.grid.faces;
+      obj.materials = domain.materials;
+      obj.bcs = domain.bcs;
 
       % initialize the solver and read solver specific input in struct
       obj.registerSolver(solverInput);

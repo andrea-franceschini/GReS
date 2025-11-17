@@ -6,11 +6,12 @@ classdef ModelManager < handle
 
 
   properties (GetAccess=private, SetAccess=private)
-    domains        % db for physics solver in the model
-    interfaces     % db for interface solvers in the model
-    simparams      % simulation parameters
-    t = 0          % simulation time
-    tStep = 0      % simulation time step
+    domains             % db for physics solver in the model
+    interfaces          % db for interface solvers in the model
+    solutionScheme
+    simparams           % simulation parameters
+    t = 0               % simulation time
+    tStep = 0           % simulation time step
   end
 
 
@@ -23,26 +24,27 @@ classdef ModelManager < handle
       if ~isempty(varargin)
         obj.simparams = varargin{1};
       end
-
     end
 
 
-    function runProblem(obj,solutionScheme)
+    function runProblem(obj)
 
       % this method implement the simulation time loop
-      % handle to a function implementing a specific type of solution
+      % solutionScheme is an handle to a function implementing a specific type of solution
       % strategy for each time step
 
-      while obj.t < obj.domainManager.simparams.tMax
+      while obj.t < obj.simparams.tMax
 
         % Update the simulation time and time step ID
         obj.tStep = obj.tStep + 1;
-        % new time update to fit the outTime list
+
         [obj.t, dt] = obj.updateTime(flConv, delta_t);
 
-        isConverged = solutionScheme(obj.t,dt);
+        % solve time step with chosen solution scheme
+        isConverged = obj.solutionScheme.solveTimeStep(obj.t,dt);
 
-        delta_t = manageNextTimeStep(obj,dt,flConv);
+        % manage the next time step depending on convergence
+        delta_t = manageNextTimeStep(obj,dt,isConverged);
         
       end
       %
@@ -60,12 +62,20 @@ classdef ModelManager < handle
       obj.simparams = SimulationParameters(fileName);
 
       for i = 1:numel(str.Domain)
-        createDomain(obj,str.Domain(i));
+        addDomain(obj,str.Domain(i));
+      end
+
+      if isfield(str,"SolutionStrategy")
+        strategy = fieldnames(str.SolutionStrategy);
+        obj.solutionScheme = feval(strategy{1},obj.simparams,str.SolutionStrategy);
+      else
+        % use general fully coupled solution strategy as the default one
+        obj.solutionScheme = FullyCoupled(obj,obj.simparams);
       end
 
       if isfield(str,"Interface")
         for iI = 1:numel(str.Interface)
-          addInterfaceSolver(obj,str.Interface(iD));
+          addInterface(obj,str.Interface(iD));
         end
       else
         if numel(str.Domain) > 1
@@ -76,12 +86,14 @@ classdef ModelManager < handle
     end
 
   
-    function createDomain(obj,varargin)
+    function addDomain(obj,varargin)
+
+      % add a domain
       n = numel(keys(obj.domains));
       obj.domains(n+1) = Domain(varargin{:});
     end
 
-    function addInterfaceSolver(obj,varargin)
+    function addInterface(obj,varargin)
 
       % TO DO 
     end
@@ -97,27 +109,4 @@ classdef ModelManager < handle
 
   end
 
-  methods (Static)
-
-    function solver = createSolverFromFile(fileName)
-
-      inputStruct = readstruct(fileName,AttributeSuffix="");
-
-      meshFile = getXMLData(inputStruct,[],"Geometry");
-      mesh = Mesh();
-      mesh.importMesh(meshFile);
-
-      ng = getXMLData(inputStruct,1,"GaussPoints");
-      
-      elements = Elements(mesh,ng);
-      faces = Faces(mesh)
-
-      mat = Materials()
-
-
-
-      
-    end
-
-  end
 end

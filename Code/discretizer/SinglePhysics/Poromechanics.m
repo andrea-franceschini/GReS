@@ -31,7 +31,7 @@ classdef Poromechanics < PhysicsSolver
       % register nodal displacements on target regions
       obj.domain.dofm.registerVariable(obj.fields(1),entityField.node,3,targetRegions);
 
-      % set the state object
+      % initialize the state object
       initState(obj);
 
     end
@@ -172,10 +172,11 @@ classdef Poromechanics < PhysicsSolver
 
     function advanceState(obj)
       % Set converged state to current state after newton convergence
-      setOldState(obj,"displacements",getState(obj,"displacements"));
-      setOldState(obj,"strain",0.0*getState(obj,"strain"));
-      setOldState(obj,"stress",getState(obj,"stress"));
-      setOldState(obj,"status",getState(obj,"status"));
+      stateOld = getOldState(obj);
+      stateOld.data.displacements = getState(obj,"displacements");
+      stateOld.data.strain = getState(obj,"strain");
+      stateOld.data.stress = getState(obj,"stress");
+      stateOld.data.status = getState(obj,"status");
     end
 
     function updateState(obj,solution)

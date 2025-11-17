@@ -50,15 +50,16 @@ classdef Domain < handle
       else 
         % input is a list of key-value pair
         nIn = numel(varargin);
-        assert(nIn == 6,"Error in setDomain(): " + ...
+        assert(nIn == 8,"Error in setDomain(): " + ...
           "Incorrect key-value inputs. Keys must be:" + ...
-          "'grid', 'materials', 'boundaryConditions'")
+          "'grid', 'materials', 'boundaryConditions', 'output'");
         fixedInput = struct(varargin{1:6});
 
         % read fixed input parameters
         obj.grid = fixedInput.grid;
         obj.materials = fixedInput.materials;
         obj.bcs = fixedInput.boundaryConditions;
+        obj.outstate = fixedInput.output;
 
         % create the DoFManager
         obj.dofm = DoFManagerNew(obj.grid);
