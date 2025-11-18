@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model>
+  <!-- Simulation parameters common to all physical models -->
+  <simParam>
+    <Time 
+        Start="0."
+        End ="2.592e+5"
+        DtInit= "1.e+1"
+        DtMin ="1.e+1"
+        DtMax ="1.e+3"          
+        incrementFactor = "1.1"
+        choppingFactor = "Default" />
+    <!--
+         The results of GReS are only comparable to MRST in cases where
+         incrementFactor is constant (1.0).
+    -->
+    <Solver
+        Theta = "Default"
+        MaxNLIteration = "20"
+        RelativeTolerance = "1.e-8"
+        AbsoluteTolerance = "1.e-9" />
+  </simParam>
+</model>

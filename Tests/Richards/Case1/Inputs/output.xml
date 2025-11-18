@@ -3,7 +3,7 @@
 <Output
     outputFile = "Results"
     saveHistory = "1"
-    printTimes = "10."
+    printTimes = "10,50,100."
 />
 
 <!-- 

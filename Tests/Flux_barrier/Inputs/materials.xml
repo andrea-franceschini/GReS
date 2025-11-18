@@ -35,7 +35,6 @@
   </Solid>
 
 
-  
   <Fluid
       specificWeight = "0.0"
       compressibility = "0.0"
@@ -43,14 +42,15 @@
   />
   <!-- specific weight (N/m3),
        fluid compressibility (Pa-1),
-       dynamic viscosity (Pa/s) -->
-
+       dynamic viscosity (Pa/s)
+  -->
+  
 
   <!-- Example of fluid with gravity contribution 
   <Fluid
       specificWeight = "9.8066e3"
       compressibility = "0.0"
-      dynamicViscosity = "1.1574e-11"
+      dynamicViscosity = "1e-3"
   />
   -->
   

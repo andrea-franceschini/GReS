@@ -1,28 +1,26 @@
 close all;
 % clear;
 input_dir = 'Inputs/';
-output_dir = 'Outputs/';
 figures_dir = 'Figs/';
 
-%% -------------------------- SET THE PHYSICS -------------------------
+%% ------------------------------------------------------------------------
+% Set the physics of the experiment
 model = ModelType("SinglePhaseFlow_FVTPFA");
 % model = ModelType("SinglePhaseFlow_FEM");
 
-%% ----------------------- SIMULATION PARAMETERS ----------------------
+% Set the simulation parameters for the non-linear solver.
 simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'),model);
 
-%% ------------------------------  MESH -------------------------------
+% Create an object of the Materials class and read the materials file
+mat = Materials(fullfile(input_dir,'materials.xml'));
+
+%% ------------------------------ Set up the Domain -----------------------
 % Create the Mesh object
 topology = Mesh();
 
 % Import mesh data into the Mesh object
 topology.importMesh(fullfile(input_dir,'domain.msh'));
 
-%% ----------------------------- MATERIALS -----------------------------
-% Create an object of the Materials class and read the materials file
-mat = Materials(fullfile(input_dir,'materials.xml'));
-
-%% ------------------------------ ELEMENTS -----------------------------
 % Create an object of the "Elements" class and process the element properties
 elems = Elements(topology,2);
 
@@ -32,18 +30,16 @@ faces = Faces(model,topology);
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
-%% ----------------------- DOF Manager -----------------------------
-% Degree of freedom manager
+% Set up the degree of freedom manager
 dofmanager = DoFManager(topology,model);
 
-% Create and set the print utility
-printUtils = OutState(model,topology,fullfile(input_dir,'output.xml'));
-
-%% ----------------------- Boundary Condition -----------------------------
 % Creating boundaries conditions.
 bound = Boundaries(fullfile(input_dir,'boundaries.xml'),model,grid);
 
-%% ----------------------- Discretizer -----------------------------
+%% ------------------ Set up and Calling the Solver -----------------------
+% Create and set the print utility for the solution
+printUtils = OutState(model,topology,fullfile(input_dir,'output.xml'));
+
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('ModelType',model,...
                      'SimulationParameters',simParam,...
@@ -53,12 +49,10 @@ domain = Discretizer('ModelType',model,...
                      'Materials',mat,...
                      'Grid',grid);
 
-%% ----------------------- Initial Condition -----------------------------
 % set initial conditions directly modifying the state object
 domain.state.data.pressure(:) = 1.e5;
 % domain.state.data.potential(:) = domain.state.data.pressure+ mat.getFluid().getFluidSpecWeight()*topology.cellCentroid(:,3);
 
-%% ----------------------- Solver -----------------------------
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme. 
 % Here, a built-in fully implict solution scheme is adopted with class
@@ -71,7 +65,7 @@ Solver = FCSolver(domain,'SaveRelError',true,'SaveBStepInf',true);
 % Finalize the print utility
 printUtils.finalize()
 
-%% POST PROCESSING
+%% --------------------- Post Processing the Results ----------------------
 postproc=true;
 if postproc
     image_dir = fullfile(pwd,figures_dir);

@@ -4,7 +4,7 @@
   <simParam>
     <Time 
           Start="0."
-          End ="180."
+          End ="10."
           DtInit= "0.5"
           DtMax ="5"
           DtMin ="0.5"
