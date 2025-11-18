@@ -4,97 +4,96 @@
    <preconditioner>AMG</preconditioner>
 
 	<!-- General parameters -->
-   <general>
-      <tol>1e-8</tol>
-      <maxit>1000</maxit>
-      <restart>100</restart>
-   </general>
+   <general
+      tol="1e-8"
+      maxit="1000"
+      restart="100"
+   />
 
 	<!-- AMG parameters -->
-   <amg>
-      <maxCoarseSZ>1000</maxCoarseSZ>
-      <nLevMax>10</nLevMax>
-   </amg>
+   <amg
+      maxCoarseSZ="1000"
+      nLevMax="10"
+   />
 
 	<!-- SMOOTHER parameters -->
 	<!-- missing DDWS parameters as well as the ones for ABFIC -->
-   <smoother>
-      <nthread>8</nthread>
-      <nupre>1</nupre>
-      <nupost>1</nupost>
-      <nstep>15</nstep>
-      <step_size>1</step_size>
-      <epsilon>1e-3</epsilon>
-	   <avg_nnzr>20</avg_nnzr>
-	   <tau_pref_1>5e-3</tau_pref_1>
-	   <power_1>100</power_1>
-	   <nnzr_max_1>300</nnzr_max_1>
-	   <tau_pref_2>1e-2</tau_pref_2>
-	   <power_2>100</power_2>
-	   <nnzr_max_2>50</nnzr_max_2>
-	   <tol_CGfsai>1e-5</tol_CGfsai>
-	   <niter_CGfsai>5</niter_CGfsai>
-	   <droptol>0.0</droptol>
-      <DDSW_method>1</DDSW_method>
-      <DDSW_apply_kind>1</DDSW_apply_kind>
-	   <method>afsai_cpp</method>
-   </smoother>
+   <smoother
+      nthread="20"
+      nupre="1"
+      nupost="1"
+      nstep="15"
+      step_size="1"
+      epsilon="1e-3"
+	   avg_nnzr="20"
+	   tau_pref_1="5e-3"
+	   power_1="100"
+	   nnzr_max_1="300"
+	   tau_pref_2="1e-2"
+	   power_2="100"
+	   nnzr_max_2="50"
+	   tol_CGfsai="1e-5"
+	   niter_CGfsai="5"
+	   droptol="0.0"
+      DDSW_method="1"
+      DDSW_apply_kind="1"
+	   method="afsai_cpp"
+   />
 
 	<!-- PROLONGATION parameters -->
-	<prolong>
-		<proltype>MEX_BAMG</proltype>
-		<prol_emin>EMIN</prol_emin>
-		<np>20</np>
-		<itmax_Vol>100</itmax_Vol>
-		<tol_Vol>0.01</tol_Vol>
-		<toll_res>1e-10</toll_res>
-		<dist_min>1</dist_min>
-		<dist_max>10</dist_max>
-		<maxcond>1e+13</maxcond>
-		<maxrownrm>5.0</maxrownrm>
-		<eps_prol>1e-10</eps_prol>
-		<updateCF>0</updateCF>
-		<patt_pow>2</patt_pow>
-		<patt_tau>1e-3</patt_tau>
-		<nnzr_max>30</nnzr_max>
-		<itmax_emin>10</itmax_emin>
-		<energ_tol>1e-3</energ_tol>
-		<condmax_emin>1e100</condmax_emin>
-		<maxwgt_emin>1e100</maxwgt_emin>
-		<prec_emin>1</prec_emin>
-		<solv_emin>4</solv_emin>
-		<min_lfil>0</min_lfil>
-		<max_lfil>20</max_lfil>
-		<D_lfil>5</D_lfil>
-	</prolong>
+	<prolong
+		proltype="MEX_BAMG"
+		prol_emin="EMIN"
+		np="20"
+		itmax_Vol="100"
+		tol_Vol="0.01"
+		toll_res="1e-10"
+		dist_min="1"
+		dist_max="10"
+		maxcond="1e+13"
+		maxrownrm="5.0"
+		eps_prol="1e-10"
+		updateCF="0"
+      patt_pow="2"
+		patt_tau="1e-3"
+		nnzr_max="20"
+		itmax_emin="10"
+		energ_tol="1e-2"
+		condmax_emin="1e100"
+		maxwgt_emin="1e100"
+		prec_emin="1"
+		solv_emin="4"
+		min_lfil="0"
+		max_lfil="20"
+		D_lfil="5"
+	/>
 
 	<!-- COARSENING parameters -->
-	<coarsen>
-		<SoC_type>DOM</SoC_type>
-		<tau>-10</tau>
-		<SoC_perc>20</SoC_perc>
-		<nl_agg>1</nl_agg>
-		<CR_iters>1</CR_iters>
-	</coarsen>
+	<coarsen
+		SoC_type="DOM"
+		tau="0.01"
+		SoC_perc="20"
+		nl_agg="0"
+		CR_iters="1"
+	/>
 
 	<!-- TEST SPACE parameters -->
-	<tspace>
-		<ntv>6</ntv>
-		<itmax>10</itmax>
-		<tol>1.e-8</tol>
-		<method>SRQCG</method>
-		<init_approx>5</init_approx>
-	</tspace>
+	<tspace
+		ntv="6"
+		itmax="10"
+		tol="1.e-8"
+		method="NONE"
+		init_approx="5"
+	/>
 
 	<!-- FILTERING parameters -->
-	<filter>
-		<filt_type>MEX_filt</filt_type>
-		<np>10</np>
-		<filt_wgt>150.0</filt_wgt>
-		<filt_tol>0.1</filt_tol>
-		<filt_tau>0.000</filt_tau>
-		<min_patt>0</min_patt>
-	</filter>
+	<filter
+		filt_type="MEX_filt"
+		np="20"
+		filt_wgt="150.0"
+		filt_tol="0.1"
+		filt_tau="0.000"
+		min_patt="0"
+	/>
 
 </Chronos>
-

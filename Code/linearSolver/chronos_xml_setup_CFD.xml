@@ -37,7 +37,7 @@
 	   droptol="0.0"
       DDSW_method="1"
       DDSW_apply_kind="1"
-	   method="afsai_cpp"
+	   method="jacobi"
    />
 
 	<!-- PROLONGATION parameters -->
