@@ -12,7 +12,7 @@ classdef Domain < handle
 
   % domain specific properties
   properties (GetAccess=public, SetAccess=private)
-    dofm
+    dofm                % degrees of freedom manager
     bcs                 % boundary conditions
     outstate            % printing utilities
     materials           % materials
@@ -23,9 +23,13 @@ classdef Domain < handle
     variables           % list of fields with the same order of the global system
   end
 
-  properties (GetAccess=private, SetAccess=public)
+  properties (GetAccess=public, SetAccess=public)
     state               % class holding any state variable in the domain
     stateOld            % class holding any state variable in the domain at the last converged time step
+
+    % block jacobian and rhs defined in the domain
+    J
+    rhs
   end
 
 
@@ -94,6 +98,11 @@ classdef Domain < handle
       n = numel(keys(obj.physicsSolvers));
       obj.physicsSolvers(n+1) = pSolv;
 
+      % redefine size of block jacobian and rhs for new added variables
+      nVars = getNumberOfVariables(obj.dofm);
+      obj.J = cell(nVars,nVars);
+      obj.rhs = cell(nVars,1);
+
     end
 
     function addInterfaceSolver(obj,varargin)
@@ -115,6 +124,75 @@ classdef Domain < handle
 
     function out = getOldState(obj)
       out = obj.stateOld;
+    end
+
+
+    function J = getJacobian(obj,varargin)
+      % GETJACOBIAN Return the system Jacobian matrix
+      %
+      % Usage:
+      %   J = getJacobian(obj)
+      %       Returns the full Jacobian matrix.
+      %
+      %   J = getJacobian(obj, fieldList)
+      %       Returns only the Jacobian blocks corresponding to the
+      %       specified fields. Assumes the same fields for both rows and columns.
+      %
+      %   J = getJacobian(obj, rowFields, colFields)
+      %       Returns the Jacobian blocks corresponding to the specified
+      %       fields for rows and columns separately.
+      %
+      % Inputs:
+      %   fieldList  - string or cell array of field names (for both rows and columns)
+      %   rowFields  - string or cell array of field names for rows
+      %   colFields  - string or cell array of field names for columns
+      %
+      % Output:
+      %   J          - the assembled Jacobian matrix
+      %
+      % Notes:
+      %   - If no input fields are provided, the full Jacobian is returned.
+      %   - Row and column fields must correspond to existing variables in the system.
+
+      if nargin == 1
+        J = obj.shrinkBlockMatrix(obj.J);
+      elseif nargin == 2
+        id = obj.dofm.getVariableId(varargin{1});
+        J = obj.J{id,id};
+      elseif nargin == 3
+        idRow = obj.dofm.getVariableId(varargin{1});
+        idCol = obj.dofm.getVariableId(varargin{2});
+        J = obj.J{idRow,idCol};
+      else
+        error("Too many input arguments")
+      end
+
+    end
+
+    function rhs = getRhs(obj,varargin)
+      % GETRHS Return the right-hand side vector
+      %
+      % Usage:
+      %   rhs = getRhs(obj)               - returns full RHS
+      %   rhs = getRhs(obj, fieldList)    - returns only specified fields
+      %
+      % Inputs:
+      %   fieldList - string or cell array of field names
+      %
+      % Output:
+      %   rhs       - RHS vector (subset or full)
+      %
+      % Notes:
+      %   Only one field list is allowed; multiple fields will be concatenated
+
+      if nargin == 1
+        rhs = obj.shrinkBlockMatrix(obj.rhs);
+      elseif nargin == 2
+        id = obj.dofm.getVariableId(varargin{1});
+        rhs = obj.rhs{dofList};
+      else
+        error("Too many input arguments")
+      end
     end
 
 
@@ -161,6 +239,64 @@ classdef Domain < handle
   end
 
   methods (Static)
+
+    function C = shrinkBlockMatrix(C)
+      % SHRINKMATRIX makes a sparse block cell array compatible with cell2mat.
+      %
+      % - Removes rows/columns that contain only empty cells.
+      % - Replaces empty cells in remaining rows/columns with sparse matrices
+      %   of the correct size for their block row and block column.
+
+      [nR, nC] = size(C);
+
+      % detect empty row and columns
+      hasRow = false(nR,1);
+      hasCol = false(1,nC);
+
+      for i = 1:nR
+        for j = 1:nC
+          if ~isempty(C{i,j})
+            hasRow(i) = true;
+            hasCol(j) = true;
+          end
+        end
+      end
+
+      % remove empty rows/cols
+      C = C(hasRow,hasCol);
+      [nR,nC] = size(C);
+
+      % determine block size
+      rowSize = zeros(nR,1);
+      for i = 1:nR
+        for j = 1:nC
+          if ~isempty(C{i,j})
+            [rowSize(i),~] = size(C{i,j});
+            break
+          end
+        end
+      end
+
+      % block column sizes (number of cols in each block column)
+      colSize = zeros(1,nC);
+      for j = 1:nC
+        for i = 1:nR
+          if ~isempty(C{i,j})
+            [~,colSize(j)] = size(C{i,j});
+            break
+          end
+        end
+      end
+
+      % replace empty blocks with empty sparse matrix
+      for i = 1:nR
+        for j = 1:nC
+          if isempty(C{i,j})
+            C{i,j} = sparse(rowSize(i), colSize(j));
+          end
+        end
+      end
+    end
 
   end
 end

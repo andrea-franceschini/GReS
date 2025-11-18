@@ -34,26 +34,40 @@ classdef DoFManagerNew < handle
 
       if any(strcmpi([obj.fields.variableName],varName))
         % variable field already exist
-        id = getVariableId(obj,varName);
-        assert(isempty(intersect(tags,obj.fields(id).tags)), ...
-          "Variable field %i has been already defined on specified tags", ...
-          tags);
 
-        % update the tags
-        obj.fields(id).tags = sort([obj.fields(id).tags tags]);
+        % This is a Phylosophical choice: we can register a variable field
+        % only one time for each domain. While we can still define more
+        % then one physicsSolver in each domain, those are required to act
+        % on disjoint sets of variable fields. 
+        % An obvious consequence is that we cannot define two istances of
+        % the same physicsSolver in a single domain.
 
-        % update the entities with only new entities
-        entList = getEntities(fieldLocation,obj.grid,tags);
-        isInactive = obj.dofMap{id}(entList) == 0;
-        nNewEnts = sum(isInactive);
-        maxEnt = max(obj.dofMap{id});
-        obj.dofMap{id}(entList(isInactive)) =  nComp*(maxEnt:maxEnts+nNewEnts)+1;
+        error("Variable %s has already been registered. GReS variables can" + ...
+          "only be registered once in each domain ", varName)
 
-        % update the ranges with new number of entities
-        obj.fields(id).range(2) = obj.fields(id).range(2) + nComp*nNewEnts;
-        for k = id+1:numel(obj.fields)
-          obj.fields(k).range = obj.fields(k).range + nComp*nNewEnts;
-        end
+        % the following  code make sense if we allow registering the same
+        % variable more than once
+          
+        % id = getVariableId(obj,varName);
+        % assert(isempty(intersect(tags,obj.fields(id).tags)), ...
+        %   "Variable field %i has been already defined on specified tags", ...
+        %   tags);
+
+        % % update the tags
+        % obj.fields(id).tags = sort([obj.fields(id).tags tags]);
+        % 
+        % % update the entities with only new entities
+        % entList = getEntities(fieldLocation,obj.grid,tags);
+        % isInactive = obj.dofMap{id}(entList) == 0;
+        % nNewEnts = sum(isInactive);
+        % maxEnt = max(obj.dofMap{id});
+        % obj.dofMap{id}(entList(isInactive)) =  nComp*(maxEnt:maxEnts+nNewEnts)+1;
+        % 
+        % % update the ranges with new number of entities
+        % obj.fields(id).range(2) = obj.fields(id).range(2) + nComp*nNewEnts;
+        % for k = id+1:numel(obj.fields)
+        %   obj.fields(k).range = obj.fields(k).range + nComp*nNewEnts;
+        % end
 
       else
         % new variable field 
@@ -85,7 +99,10 @@ classdef DoFManagerNew < handle
       % in isempty(varargin) all dofs are returned in correct order
       % the id is the result of a call to getVariableId(varName)
 
+
       if isscalar(id)
+        ncomp = obj.numbComponents(id);
+
         dofs = repelem(obj.dofMap{id}(ents),ncomp) + ...
           repmat((0:ncomp(id)-1)',numel(ents),1);
       else
@@ -96,6 +113,13 @@ classdef DoFManagerNew < handle
           dofs = [dofs; getLocalDoF(id(i))];
         end
       end
+    end
+
+    function ents = getLocalEnts(obj,id,ents)
+
+      % get entities without dof expansion
+      ncomp = obj.numbComponents(id);
+      ents = round(((ncomp-1)+obj.dofMap{id}(ents))/ncomp);
     end
 
     function dofs = getDoF(obj,id,ents)
@@ -154,6 +178,10 @@ classdef DoFManagerNew < handle
         r = obj.fields(id).range;
         numDof = r(2)-r(1)+1;
       end
+    end
+
+    function nVars = getNumberOfVariables(obj)
+      nVars = obj.nVars;
     end
 
 

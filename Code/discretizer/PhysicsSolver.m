@@ -10,9 +10,6 @@ classdef (Abstract) PhysicsSolver < handle
   %   fields      - String array of variable fields that are going to be used by
   %   the solver
   %
-  %   J           - System Jacobian (abstract, must be implemented by
-  %   subclass). rhs         - Right-hand side vector (abstract, must be
-  %   implemented by subclass).
   %
   % Coupled Solver Notes:
   %   - If the solver is coupled, 'fields' lists all the single physics
@@ -27,19 +24,17 @@ classdef (Abstract) PhysicsSolver < handle
   %       with the same name as the class itself.
 
 
-  properties (GetAccess=public, SetAccess=private)
-    J
-    rhs
-  end
-
   properties (Abstract)
+    % the fields modified by the solver
     fields
   end
 
 
   properties (GetAccess=public, SetAccess=protected)
-     % handle to domain properties
-    mesh              
+    % handle to domain properties
+    domain
+    dofm
+    mesh
     elements
     faces
     bcs
@@ -50,6 +45,7 @@ classdef (Abstract) PhysicsSolver < handle
     function obj = PhysicsSolver(domain,solverInput)
 
       % inputStruct: struct with additional solver-specific parameters
+      obj.dofm = domain.dofm;
       obj.mesh = domain.grid.topology;
       obj.elements = domain.grid.cells;
       obj.faces = domain.grid.faces;
@@ -73,12 +69,12 @@ classdef (Abstract) PhysicsSolver < handle
     assembleSystem(obj);
 
     % get the boundary condition dofs and vals (solver specific)
-    [bcDofs,bcVals] = getBC(obj,bcId);
+    %[bcDofs,bcVals] = getBC(obj,bcId,t);
 
-    % update the state variables after solving the problem
+    % update the state variables after solving the linear system
     updateState(obj,solution);
 
-    % advance the state variables after achieving solver convergence
+    % update the state variables after achieving solver convergence
     advanceState(obj);
 
     % update the output structres for printing purposes
@@ -108,82 +104,6 @@ classdef (Abstract) PhysicsSolver < handle
       end
     end
 
-
-
-
-    function J = getJacobian(obj,varargin)
-      % GETJACOBIAN Return the system Jacobian matrix
-      %
-      % Usage:
-      %   J = getJacobian(obj)
-      %       Returns the full Jacobian matrix.
-      %
-      %   J = getJacobian(obj, fieldList)
-      %       Returns only the Jacobian blocks corresponding to the
-      %       specified fields. Assumes the same fields for both rows and columns.
-      %
-      %   J = getJacobian(obj, rowFields, colFields)
-      %       Returns the Jacobian blocks corresponding to the specified
-      %       fields for rows and columns separately.
-      %
-      % Inputs:
-      %   fieldList  - string or cell array of field names (for both rows and columns)
-      %   rowFields  - string or cell array of field names for rows
-      %   colFields  - string or cell array of field names for columns
-      %
-      % Output:
-      %   J          - the assembled Jacobian matrix
-      %
-      % Notes:
-      %   - If no input fields are provided, the full Jacobian is returned.
-      %   - Row and column fields must correspond to existing variables in the system.
-
-      if nargin == 1
-        J = obj.J;
-      elseif nargin == 2
-        id = obj.dofm.getVariableId(varargin{1});
-        dofList = getDoF(obj.dofm,id);
-        J = obj.J(dofList,dofList);
-      elseif nargin == 3
-        idRow = obj.dofm.getVariableId(varargin{1});
-        idCol = obj.dofm.getVariableId(varargin{2});
-        dofsRow = getDoF(obj.dofm,idRow);
-        dofsCol = getDoF(obj.dofm,idCol);
-        obj.dofm.getVariableId(varargin{2});
-        J = obj.J(dofsRow,dofsCol);
-      else
-        error("Too many input arguments")
-      end
-
-    end
-
-    function rhs = getRhs(obj,varargin)
-      % GETRHS Return the right-hand side vector
-      %
-      % Usage:
-      %   rhs = getRhs(obj)               - returns full RHS
-      %   rhs = getRhs(obj, fieldList)    - returns only specified fields
-      %
-      % Inputs:
-      %   fieldList - string or cell array of field names
-      %
-      % Output:
-      %   rhs       - RHS vector (subset or full)
-      %
-      % Notes:
-      %   Only one field list is allowed; multiple fields will be concatenated
-
-      if nargin == 1
-        rhs = obj.rhs;
-      elseif nargin == 2
-        id = obj.dofm.getVariableId(varargin{1});
-        dofList = getDoF(obj.dofm,id);
-        rhs = obj.rhs(dofList);
-      else
-        error("Too many input arguments")
-      end
-    end
-
  
     function applyDirVal(obj,bcDofs,bcVals,bcVariableName)
 
@@ -196,14 +116,30 @@ classdef (Abstract) PhysicsSolver < handle
       bcList = keys(obj.bcs.keys);
 
       for bcId = string(bcList)
-        [bcDofs,bcVals] = getBC(obj,bcId,t); 
-        % TO DO: use model property to remove slave dofs in mortar
         bcVar = obj.bcs.getVariable(bcId);
-        obj.applyBC(bcId,bcDofs,bcVals,bcVar)
+
+        if any(strcmpi(obj.fields,bcVar))
+
+          % TO DO: use model property to remove slave dofs in mortar
+          obj.applyBC(t,bcId,bcVar)
+        end
       end
     end
 
-    function applyBC(obj,bcId,bcDofs,bcVals,bcVar)
+    % implement here a base getBC method
+    % function [bcDofs,bcVals] = getBC(obj,bcId,t)
+    % 
+    %   error("Error in %s: Boundary condition type '%s' is not " + ...
+    %     "available in the base version of applyBC(). Consider " + ...
+    %     "overriding this method for a specific implementation", ...
+    %     class(obj),bcType);
+    % 
+    % end
+
+    function applyBC(obj,t,bcId,bcVar)
+
+      % get bcDofs and bcVals (should be implemented by the physicsSolver)
+      [bcDofs,bcVals] = getBC(obj,bcId,t);
 
       % Base application of a Boundary condition
       bcType = obj.bcs.getType(bcId);
@@ -227,7 +163,7 @@ classdef (Abstract) PhysicsSolver < handle
       % bc values are subtracted since we solve du = J\(-rhs)
       bcId = obj.dofm.getVariableId(bcVariableName);
 
-      obj.rhs{bcId}(bcDofs) = obj.rhs{bcId}(bcDofs) - bcVals;
+      obj.domain.rhs{bcId}(bcDofs) = obj.domain.rhs{bcId}(bcDofs) - bcVals;
 
     end
 
@@ -242,19 +178,22 @@ classdef (Abstract) PhysicsSolver < handle
       bcId = obj.dofm.getVariableId(bcVariableName);
 
       % zero out columns
-      for i = 1:numel(fields)
-        obj.J{i,bcId}(:,bcDofs) = 0;
+      nV = getNumberOfVariables(obj.dofm);
+
+      for i = 1:nV
+        obj.domain.J{i,bcId}(:,bcDofs) = 0;
       end
 
       % zero out rows (use transpose trick)
-      for j = 1:numel(fields)
-        obj.J{bcId,j} = obj.J{bcId,j}';
-        obj.J{bcId,j}(:,bcDofs) = 0;
-        obj.J{bcId,j} = obj.J{bcId,j}';
+      for j = 1:nV
+        obj.domain.J{bcId,j} = obj.J{bcId,j}';
+        obj.domain.J{bcId,j}(:,bcDofs) = 0;
+        obj.domain.J{bcId,j} = obj.J{bcId,j}';
       end
 
       % add 1 to diagonal entry of diagonal block
-      obj.J{bcId,bcId}(sub2ind(size(obj.J{{bcId,bcId}}), bcDofs, bcDofs)) = 1;
+      obj.domain.J{bcId,bcId}...
+        (sub2ind(size(obj.domain.J{{bcId,bcId}}), bcDofs, bcDofs)) = 1;
 
     end
   end

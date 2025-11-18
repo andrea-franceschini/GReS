@@ -1,7 +1,7 @@
 classdef ModelManager < handle
   % General model class
   % This class stores all the information related to the problem at hand
-  % and store a map to existing domain solvers and 
+  % and store a map to existing domain solvers and
 
 
 
@@ -12,6 +12,9 @@ classdef ModelManager < handle
     simparams           % simulation parameters
     t = 0               % simulation time
     tStep = 0           % simulation time step
+    dt
+    nDom
+    nInterf
   end
 
 
@@ -29,6 +32,10 @@ classdef ModelManager < handle
 
     function runProblem(obj)
 
+      obj.nDom = numel(keys(obj.domains));
+      obj.nInterf = numel(keys(obj.domains));
+
+
       % this method implement the simulation time loop
       % solutionScheme is an handle to a function implementing a specific type of solution
       % strategy for each time step
@@ -38,14 +45,14 @@ classdef ModelManager < handle
         % Update the simulation time and time step ID
         obj.tStep = obj.tStep + 1;
 
-        [obj.t, dt] = obj.updateTime(flConv, delta_t);
+        obj.t = obj.t + obj.dt;
 
         % solve time step with chosen solution scheme
-        isConverged = obj.solutionScheme.solveTimeStep(obj.t,dt);
+        isConverged = obj.solutionScheme.solveTimeStep(obj.t,obj.dt);
 
         % manage the next time step depending on convergence
-        delta_t = manageNextTimeStep(obj,dt,isConverged);
-        
+        delta_t = manageNextTimeStep(obj,obj.dt,isConverged);
+
       end
       %
     end
@@ -85,7 +92,7 @@ classdef ModelManager < handle
       end
     end
 
-  
+
     function addDomain(obj,varargin)
 
       % add a domain
@@ -95,7 +102,7 @@ classdef ModelManager < handle
 
     function addInterface(obj,varargin)
 
-      % TO DO 
+      % TO DO
     end
 
     function out = getDomain(obj,id)
@@ -106,6 +113,79 @@ classdef ModelManager < handle
       out = obj.interfaces(id);
     end
 
+  end
+
+
+  methods (Access = private)
+    function dt = manageNextTimeStep(obj, dt, flConv)
+
+      % Time step did not converge - perform a backstep
+
+      if ~flConv
+        goBackState(obj);
+
+        % Roll back time
+        obj.t     = obj.t     - obj.dt;
+        obj.tStep = obj.tStep - 1;
+
+        % Reduce time step
+        dt    = dt    / obj.simparams.divFac;
+        obj.dt = obj.dt / obj.simparams.divFac;
+
+        % Check for minimum time step
+        if min(dt, obj.dt) < obj.simparams.dtMin
+          if obj.simparams.goOnBackstep == 1
+            flConv = 1;     % force convergence and move on
+          elseif obj.simparams.goOnBackstep == 0
+            error('Minimum time step reached');
+          end
+
+        % Optional verbosity
+        elseif obj.simparams.verbosity > 0
+          fprintf('\n %s \n', 'BACKSTEP');
+        end
+      end
+
+      % Time step converged - increase dt and advance
+
+      if flConv
+        tmpVec = obj.simparams.multFac;
+
+        % Increase dt but respect bounds
+        obj.dt = min([obj.dt * min(tmpVec), obj.simparams.dtMax]);
+        obj.dt = max(obj.dt, obj.simparams.dtMin);
+
+        goOnState(obj);
+
+        % Do not exceed final time
+        if obj.t + obj.dt > obj.simparams.tMax
+          obj.dt = obj.simparams.tMax - obj.t;
+        end
+      end
+    end
+
+
+    function goOnState(obj)
+      % transfer current state into previous state
+      for i = 1:obj.nDom
+        obj.domains(i).goOnState();
+      end
+
+      for i = 1:obj.nInterf
+        obj.interfaces(i).goOnState();
+      end
+    end
+
+    function goBackState(obj)
+      % transfer previous state into current state (backstep)
+      for i = 1:nueml
+        obj.domains(i).goBackState();
+      end
+
+      for i = 1:obj.nInterf
+        obj.interfaces(i).goBackState();
+      end
+    end
 
   end
 

@@ -1,7 +1,7 @@
 classdef Poromechanics < PhysicsSolver
 
   properties        
-    K
+    K               % the stiffness matrix free of boundary conditions
     fInt            % internal forces
     cell2stress     % map cell ID to position in stress/strain matrix
   end
@@ -37,8 +37,10 @@ classdef Poromechanics < PhysicsSolver
     end
 
     function assembleSystem(obj)
-      obj.J = computeMat(obj);
-      obj.rhs = computeRhs(obj);
+      % compute the displacement matrices and rhs in the domain
+      id = getVariableId(obj.dofm,obj.fields);
+      obj.J{id,id} = computeMat(obj);
+      obj.rhs{id} = computeRhs(obj);
     end
 
 
@@ -249,6 +251,7 @@ classdef Poromechanics < PhysicsSolver
     end
 
     function [dof,vals] = getBC(obj,id,t)
+
       dof = obj.getBCdofs(id);
       vals = obj.getBCVals(id,t);
     end
@@ -350,8 +353,11 @@ classdef Poromechanics < PhysicsSolver
           error('BC type %s is not available for %s field',cond,obj.field);
       end
       % map entities dof to local dof numbering
-      dof = obj.dofm.getLocalEnts(ents,obj.fldId);
-      dof = obj.bcs.getCompEntities(id,dof);
+      id = getVariableId(obj.dofm,obj.fields(1));
+
+      ents = obj.dofm.getLocalEnts(id,ents);
+      dof = obj.bcs.getCompEntities(id,ents);
+      
       if strcmp(obj.bcs.getCond(id),'VolumeForce')
         dof = dofId(dof,3);
       end
