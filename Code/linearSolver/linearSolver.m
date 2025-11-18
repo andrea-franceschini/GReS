@@ -26,6 +26,13 @@ classdef linearSolver < handle
 
       % starting vector
       x0
+
+      % Statistics
+      whenComputed
+      aTimeComp
+      aTimeSolve
+      nSolve
+      nComp
    end
 
    properties (Access = public)
@@ -82,10 +89,15 @@ classdef linearSolver < handle
             obj.ChronosFlag = true;
             addpath(genpath(ChronosDir));
 
-            % null value to the preconditioner for now,
-            obj.Prec = [];
-            obj.MfunL = [];
-            obj.MfunR = [];
+            % null value to the unsued stuff
+            obj.Prec   = [];
+            obj.MfunL  = [];
+            obj.MfunR  = [];
+            obj.nSolve = 0;
+            obj.nComp  = 0;
+            obj.aTimeSolve    = 0;
+            obj.aTimeComp     = 0;
+            obj.whenComputed  = [];
 
             % Get the solver type
             obj.SolverType = lower(data.solver);
@@ -132,15 +144,16 @@ classdef linearSolver < handle
       % Function for the solution of the system
       % note that the A passed here might be slightly different than the one passed in the computation
       % if the two As differ too much the preconditioner loses effectiveness. Must be recomputed
-      function [x,flag] = Solve(obj,A,b,nonLinIter)
+      function [x,flag] = Solve(obj,A,b,time)
          
          % Chronos does not exist, continue with matlab default
          if ~obj.ChronosFlag || size(A,1) < 1e4 
-            tic
+            startT = tic;
             % Solve the system
             x = A\b;
-            Tend = toc;
-            fprintf('Solve time %e\n',Tend);
+            Tend = toc(startT);
+            obj.aTimeSolve = obj.aTimeSolve + Tend;
+            obj.nSolve = obj.nSolve + 1;
             flag = 0;
             obj.params.iter = 0;
             return
@@ -149,6 +162,10 @@ classdef linearSolver < handle
          % Have the linear solver compute the Preconditioner if necessary
          if(obj.requestPrecComp || obj.params.iter > 500 || obj.params.lastRelres > obj.params.tol*1e3)
             obj.computePrec(A);
+            obj.whenComputed(length(obj.whenComputed) + 1) = time;
+            obj.params.iterSinceLastPrecComp = 0;
+         else
+            obj.params.iterSinceLastPrecComp = obj.params.iterSinceLastPrecComp + 1;
          end
 
          % Save the solver type
@@ -164,36 +181,39 @@ classdef linearSolver < handle
             end
          % end
 
+         startT = tic;
          switch obj.SolverType
             case 'gmres'
 
-               tic
                % Solve the system by GMRES
-               [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_LEFT(A,b,obj.params.restart,obj.params.tol,obj.params.maxit,obj.MfunL,obj.MfunR,obj.x0);
-               Tend = toc;
+               [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_LEFT(A,b,obj.params.restart,obj.params.tol,...
+                                                                        obj.params.maxit/obj.params.restart,obj.MfunL,obj.MfunR,obj.x0);
                obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
-               fprintf('Solve time %e\n',Tend);
-
-               % Store the new starting vector
-               obj.x0 = x;
 
             case 'sqmr'
 
                % Solve the system by SQMR
                Afun = @(x) A*x;
-               tic
                [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.params.tol,obj.params.maxit,obj.MfunL,obj.MfunR,obj.x0);
-               Tend = toc;
-               fprintf('Solve time %e\n',Tend);
+         end
 
-               % Store the new starting vector
-               obj.x0 = x;
+         Tend = toc(startT);
+         obj.aTimeSolve = obj.aTimeSolve + Tend;
+         obj.nSolve = obj.nSolve + 1;
 
+         % Did not converge, if prec not computed for it try again
+         if(flag == 1 && obj.params.iterSinceLastPrecComp > 0)
+            fprintf('Trying to recompute the preconditioner to see if it manages to converge\n');
+            obj.computePrec(A);
+            obj.params.iterSinceLastPrecComp = 0;
+            [x,flag] = obj.Solve(A,b,-1);
          end
 
          % Interesting problem
-         if(obj.params.iter > 500 && obj.params.lastRelres > 1)
-            save("new_problem.mat",'A','b','x0');
+         if(flag == 1)
+            x0 = obj.x0;
+            fprintf('Iterations since last preconditioner computation %d\n',obj.params.iterSinceLastPrecComp);
+            save('new_problem.mat','A','b','x0');
             error('Interesting problem spotted');
          end
 
@@ -211,6 +231,19 @@ classdef linearSolver < handle
                obj.requestPrecComp = true;
             end
          end
+
+         % Store the new starting vector
+         obj.x0 = x;
+      end
+
+      function printStats(obj)
+         fprintf('Average Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
+         fprintf('Average Solve time = %e\n',(obj.aTimeSolve/obj.nSolve));
+         fprintf('The preconditioner was computed at time(s):\n');
+         for i = 1:length(obj.whenComputed)
+            fprintf('             %d\t%e\n',i,obj.whenComputed(i));
+         end
+         fprintf('Total time for computation of the linear systems = %e\n',obj.aTimeComp+obj.aTimeSolve);
       end
    end
 
@@ -224,6 +257,7 @@ classdef linearSolver < handle
             obj.params.symm = true;
          end
 
+         time_start = tic;
          switch obj.PrecType
 
             % Compute the AMG preconditioner
@@ -243,10 +277,7 @@ classdef linearSolver < handle
                obj.set_DEBINFO();
 
                % Actually compute the AMG
-               time_start = tic;
                obj.Prec = cpt_aspAMG(obj.params,A,TV0);
-               T_setup = toc(time_start);
-               fprintf('Preconditioner Computation time %e\n',T_setup);
 
                % Define Mfun
                obj.MfunL = @(r) AMG_Vcycle(obj.Prec,A,r);
@@ -254,14 +285,14 @@ classdef linearSolver < handle
 
             % Compute the FSAI preconditioner
             case 'fsai'
-               tic
-               smootherOp = smoother(A,obj.params.smoother);
-               Tend = toc;
-               fprintf('Preconditioner Computation time %e\n',Tend);
+               smootherOp = smoother(A,obj.params.symm,obj.params.smoother);
 
                % Define Mfun
                [obj.MfunL,obj.MfunR] = obj.defineMfunFSAI(smootherOp);
          end
+         T_setup = toc(time_start);
+         obj.aTimeComp = obj.aTimeComp + T_setup;
+         obj.nComp = obj.nComp + 1;
       end
 
       % Function to determine how MfunL and MfunR are for each fsai preconditioner

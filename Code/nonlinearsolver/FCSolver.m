@@ -3,23 +3,23 @@ classdef FCSolver < handle
   % All equations are solved once using Newton Raphson
   
   properties (Access = private)
-    %
-    statek
-    stateTmp
-    domain
-    %
-    t = 0
-    tStep = 0
-    iter
-    dt
-    % toGrow
+     %
+     statek
+     stateTmp
+     domain
+     %
+     t = 0
+     tStep = 0
+     iter
+     dt
+     % toGrow
 
-    % to solve
-    linsolver
   end
 
   properties (Access = public)
-      solStatistics
+     solStatistics
+     % to solve
+     linsolver
   end
   
   methods (Access = public)
@@ -117,7 +117,7 @@ classdef FCSolver < handle
             
             % Solve system with increment
             J = assembleJacobian(obj.domain);            
-            du = FCSolver.solve(obj,J,rhs,obj.iter);
+            du = FCSolver.solve(obj,J,rhs);
 
             % Update current model state
             updateState(obj.domain,du);
@@ -229,12 +229,12 @@ classdef FCSolver < handle
   end
 
   methods (Static)
-    function sol = solve(obj,J,rhs,nonLinIter)
+    function sol = solve(obj,J,rhs)
       J = FCSolver.cell2matJac(J);
       rhs = cell2mat(rhs);
 
       % Actual solution of the system
-      [sol,~] = obj.linsolver.Solve(J,-rhs,nonLinIter);
+      [sol,~] = obj.linsolver.Solve(J,-rhs,obj.t);
 
     end
 
