@@ -300,9 +300,9 @@ classdef SinglePhaseFlow < SinglePhysics
             % % % ents = sum(obj.faces.faceNeighbors(faceID,:),2);
             % % % v(faceOrder,1) = obj.bcs.getVals(id,t);
             switch obj.bcs.getType(id)
-              case 'Neu'
+              case 'Neumann'
                 vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
-              case 'Dir'
+              case 'Dirichlet'
                 gamma = obj.material.getFluid().getFluidSpecWeight();
                 mu = obj.material.getFluid().getDynViscosity();
                 tr = obj.getFaceTransmissibilities(faceID);
@@ -320,7 +320,7 @@ classdef SinglePhaseFlow < SinglePhysics
                 q = dirJ.*potential;
                 vals = [dirJ,q];
 
-              case 'Spg'
+              case 'Seepage'
                 gamma = obj.material.getFluid().getFluidSpecWeight();
                 assert(gamma>0.,'To impose Seepage boundary condition is necessary the fluid specify weight be bigger than zero!');
 
@@ -555,7 +555,7 @@ classdef SinglePhaseFlow < SinglePhysics
             switch obj.bcs.getCond(bc)
               case {'NodeBC','ElementBC'}
               case 'SurfBC'
-                if strcmp(obj.bcs.getType(bc),'Dir') || strcmp(obj.bcs.getType(bc),'Spg')
+                if strcmp(obj.bcs.getType(bc),'Dirichlet') || strcmp(obj.bcs.getType(bc),'Seepage')
                   vals=vals(:,2);
                 end
                 dir = sgn(ents).*faceUnit(ents,:);

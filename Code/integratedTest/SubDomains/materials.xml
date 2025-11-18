@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Materials>
+  <Solid
+         cellTags = "1, 2">
+    <Constitutive>
+      <Elastic
+               youngModulus = "8.0e5"
+               poissonRatio = "0.3"
+               />
+    </Constitutive>
+
+    <PorousRock
+                porosity = "0.3"
+                specificGravity = "21"
+                permeability = "1e-17, 1e-17, 1e-17"
+                />
+  </Solid>
+
+    <Solid
+         cellTags = "3">
+    <Constitutive>
+      <Elastic
+               youngModulus = "1.5e6"
+               poissonRatio = "0.3"
+               />
+    </Constitutive>
+
+    <PorousRock
+                porosity = "0.30"
+                specificGravity = "21"
+                permeability = "1e-12, 1e-12, 1e-12"
+                />
+  </Solid>
+
+
+  <Fluid
+         compressibility = "4.59e-7"
+         dynamicViscosity = "3.1608e-14"
+         />
+</Materials>

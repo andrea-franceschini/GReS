@@ -1,34 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<SimulationInput>
-  <!-- Domain 1 -->
+
+<Domains>
   <Domain>
     <Name>TopBlock</Name>
     <ModelType>Poromechanics_FEM</ModelType>
-    <SimParameters> simParam.dat </SimParameters>
+    <SimParameters> simParam.xml </SimParameters>
     <Geometry>topBlock.vtk</Geometry>
     <Gauss> 3 </Gauss>
-    <Material>Materials/MaterialsList.dat</Material>
-    <BoundaryConditions count="2">
-      <File>BCs/z_fixed_top.dat</File>
-      <File>BCs/topLoad.dat</File>
-    </BoundaryConditions>
-    <OutState outFile="outTime.dat"  print="1" />
+    <Material>materials.xml</Material>
+    <BoundaryConditions> constantSlidingTopBCs.xml </BoundaryConditions>
+    <OutState
+              outFile = "TopBlock"
+              printTimes = "1"
+              />
   </Domain>
 
   <!-- Domain 2 -->
   <Domain>
     <Name>bottomBlock</Name>
     <ModelType>Poromechanics_FEM</ModelType>
-    <SimParameters> simParam.dat </SimParameters>
+    <SimParameters> simParam.xml </SimParameters>
     <Geometry>bottomBlock.vtk</Geometry>
     <Gauss> 3 </Gauss>
-    <Material>Materials/MaterialsList.dat</Material>
-    <BoundaryConditions count = "3">
-      <File>BCs/z_fixed_bottom.dat</File>
-      <File>BCs/y_fixed.dat</File>
-      <File>BCs/x_fixed.dat</File>
-    </BoundaryConditions>
-    <OutState outFile="outTime.dat"  print="1" />
+    <Material>materials.xml</Material>
+    <BoundaryConditions> constantSlidingBottomBCs.xml </BoundaryConditions>
+    <OutState
+              outputFile = "TopBlock"
+              printTimes = "1"
+              />
   </Domain>
-</SimulationInput>
- 
+</Domains>
+
