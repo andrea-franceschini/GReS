@@ -11,7 +11,7 @@ model = ModelType("VariabSatFlow_FVTPFA");
 simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'),model);
 
 % Create an object of the Materials class and read the materials file
-mat = Materials(fullfile(input_dir,"Material",'matTable.xml'));
+mat = Materials(fullfile(input_dir,"Materials",'matTable.xml'));
 
 %% ------------------------------ Set up the Domain -----------------------
 % Create the Mesh object

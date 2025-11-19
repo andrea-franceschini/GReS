@@ -17,8 +17,8 @@
               kappa = "3"
               /> -->
       <Tabular
-               relativePermeabilityPath = "Tests/Richards/Case1/Inputs/Materials/krCurve_200.dat"
-               capillaryCurvePath = "Tests/Richards/Case1/Inputs/Materials/pcCurve_200.dat"
+               relativePermeabilityPath = "Code/unittest/Materials/Input/krCurve_2000.dat"
+               capillaryCurvePath = "Code/unittest/Materials/Input/pcCurve_2000.dat"
                />
       <!--<Preset
               soilName = "Clay"
