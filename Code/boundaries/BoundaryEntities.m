@@ -25,6 +25,8 @@ classdef BoundaryEntities < handle
     entityType
     % the position in space of the target entities
     entityPos
+    % logical index to easily deactivate a bc entity
+    isActiveEntity
   end
 
   properties (Access = private)
@@ -91,17 +93,21 @@ classdef BoundaryEntities < handle
           vals = fac*(obj.availVals(:,p2) - obj.availVals(:,p1)) + obj.availVals(:,p1);
         end
 
-
       end
+
+      vals = vals(obj.isActiveEntity);
     end
   end
 
   methods (Access = public)
     function setBC(obj, inputStruct, mesh)
-      
+
       [obj.nEntities, obj.entities, obj.entityPos] = readEntitySet(inputStruct,mesh,obj.entityType,obj.name);
 
       obj.totEnts = sum(obj.nEntities);
+
+      obj.isActiveEntity = true(obj.totEnts,1);
+
       if (obj.totEnts == 0)
         error('No boundary conditions are prescribed for %s BC', obj.name);
       end
@@ -135,5 +141,7 @@ classdef BoundaryEntities < handle
         end
       end
     end
+
   end
-end
+  end
+  
