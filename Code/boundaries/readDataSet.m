@@ -4,16 +4,20 @@ function vals = readDataSet(bc,varargin)
 %totEnts = bc.totEnts;
 
 if isempty(varargin)
-  assert(isscalar(bc.bcData.value),"The id of the boundary data needs to be specified")
+  assert(isscalar(bc.bcData),"Error in BC %s The id of the boundary data needs to be specified",bc.name)
   bcVal = bc.bcData.value;
 else
   bcVal = bc.bcData(varargin{1}).value;
 end
 
 
-if isnumeric(bcVal) && isscalar(bcVal)
-  % scalar value 
-  vals = repmat(bcVal,bc.totEnts,1);
+if isnumeric(bcVal)
+  % scalar value
+  if isscalar(bcVal)
+    vals = repmat(bcVal,bc.totEnts,1);
+  else
+    vals = bcVal;
+  end
 elseif isValidFunction(bcVal)
   % function of spatial coordinates
   f = str2func(['@(x,y,z)', char(bcVal)]);
