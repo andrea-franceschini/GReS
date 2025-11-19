@@ -1,5 +1,5 @@
 close all;
-% clear;
+clear;
 input_dir = 'Inputs/';
 figures_dir = 'Figs/';
 
