@@ -4,17 +4,17 @@
   <simParam>
     <Time 
           Start="0."
-          End ="1e1"
-          DtInit= "0.5"
-          DtMax ="5"
+          End ="1.8e2"
+          DtInit="0.5"
           DtMin ="0.5"
+          DtMax ="5"          
           incrementFactor = "1.1"
           choppingFactor = "Default" />
 
     <Solver
             Theta = "Default"
             MaxNLIteration = "10"
-            AbsoluteTolerance = "1.e-9"
-            RelativeTolerance = "1.e-8"/>
+            RelativeTolerance = "1.e-8"
+            AbsoluteTolerance = "1.e-9" />
   </simParam>
 </model>
