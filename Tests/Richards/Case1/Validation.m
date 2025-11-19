@@ -45,7 +45,7 @@ sol = struct();
 ComparisonMaterials = ["matTable.xml","matTabular.xml"];
 for sim=1:length(ComparisonMaterials)
   % Create an object of the Materials class and read the materials file
-  mat = Materials(fullfile(input_dir,"Material",ComparisonMaterials(sim)));
+  mat = Materials(fullfile(input_dir,"Materials",ComparisonMaterials(sim)));
 
   % Create object handling construction of Jacobian and rhs of the model
   domain = Discretizer('ModelType',model,...

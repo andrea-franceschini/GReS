@@ -22,8 +22,8 @@
 
     <Curves>
       <Tabular
-          relativePermeabilityPath = "Tests/Richards/Case1/Inputs/Material/krCurve_2000.dat"
-          capillaryCurvePath = "Tests/Richards/Case1/Inputs/Material/pcCurve_2000.dat"
+          relativePermeabilityPath = "Tests/Richards/Case1/Inputs/Materials/krCurve_2000.dat"
+          capillaryCurvePath = "Tests/Richards/Case1/Inputs/Materials/pcCurve_2000.dat"
       />
     </Curves>
   </Solid>
