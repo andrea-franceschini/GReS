@@ -31,7 +31,7 @@ classdef Poromechanics < PhysicsSolver
       end
 
       % register nodal displacements on target regions
-      obj.dofm.registerVariable(obj.variableName,entityField.node,3,targetRegions);
+      obj.dofm.registerVariable(obj.getField(),entityField.node,3,targetRegions);
 
       % store the id of the field in the degree of freedom manager
       obj.fieldId = obj.dofm.getVariableId(obj.variableName);
@@ -241,17 +241,40 @@ classdef Poromechanics < PhysicsSolver
       end
     end
 
+    function applyBC(obj,t,bcId,bcVar)
+
+      assert(strcmp(bcVar,obj.getField()),"Boundary condition %s cannot " + ...
+        "be applied to variable %s in %s solver. Accepted variable is %s",...
+        obj.bcs.getName(bcId),bcVar,class(obj));
+
+      % get bcDofs and bcVals
+      [bcDofs,bcVals] = getBC(obj,bcId,t);
+
+      bcType = obj.bcs.getType(bcId);
+
+      switch bcType
+        case 'Dirichlet'
+          applyDirBC(obj,bcDofs,bcVals,bcVar);
+        case 'Neumann'
+          applyNeuBC(obj,bcDofs,bcVar);
+        otherwise
+          error("Error in %s: Boundary condition type '%s' is not " + ...
+            "available in %s",class(obj),bcType);
+      end
+    end
+
 
     function [dof,vals] = getBC(obj,bcId,t)
-
+      %
       dof = obj.getBCdofs(bcId);
       vals = obj.getBCVals(bcId,t);
     end
 
-    function 
-    end
 
-    function applyDirVal(obj,bcId,bcDofs,bcVals)
+    function applyDirVal(obj,bcId,t)
+
+      [bcDofs,bcVals] = getBC(obj,bcId,t);
+
       obj.state.data.dispConv(bcDofs) = bcVals;
       obj.state.data.dispCurr(bcDofs) = bcVals;
     end
@@ -285,24 +308,7 @@ classdef Poromechanics < PhysicsSolver
         obj.rhs = obj.fInt; % provisional assuming theta = 1;
       end
     end
-% 
-%     function blk = blockJacobian(obj,varargin)
-%       fRow = varargin{1};
-%       fCol = varargin{2};
-%       locRow = obj.dofm.field2block(fRow);
-%       locCol = obj.dofm.field2block(fCol);
-%       blk = obj.simParams.theta*obj.K(locRow,locCol);
-%     end
-% 
-%     function blk = blockRhs(obj, fld)
-%       if ~strcmp(obj.dofm.subPhysics(fld), 'Poro')
-%         % no contribution to non poro fields
-%         blk = 0;
-%       else
-%         dofs = obj.dofm.field2block(fld);
-%         blk = obj.rhs(dofs);
-%       end
-%     end
+
 
     function out = isLinear(obj)
       out = false;
@@ -312,6 +318,13 @@ classdef Poromechanics < PhysicsSolver
           return;
         end
       end
+    end
+
+    function out = isSymmetric(obj)
+  
+      % if the problem is linear, then Poromechanics is symmetric
+      out = isLinear(obj);
+
     end
 
     function [cellData,pointData] = printState(obj,t)
@@ -344,39 +357,46 @@ classdef Poromechanics < PhysicsSolver
   methods (Access=private)
 
     function dof = getBCdofs(obj,id)
-      switch obj.bcs.getCond(id)
-        case 'NodeBC'
-          ents = obj.bcs.getEntities(id);
-        case {'SurfBC','VolumeForce'}
-          ents = obj.bcs.getLoadedEntities(id);
-          % node id contained by constrained surface
-        otherwise
-          error('BC type %s is not available for %s field',cond,obj.fieldId);
-      end
-      % map entities dof to local dof numbering
 
+      % get BC entity
+      ents = obj.bcs.getBCentities(id);
+
+      % get local entity numbering
       ents = obj.dofm.getLocalEnts(obj.fieldId,ents);
+
+      % get component dof for multi-component bcs
       dof = obj.bcs.getCompEntities(obj.fieldId,ents);
 
+      % Volume forces are but isotropically act on all directions
       if strcmp(obj.bcs.getCond(id),'VolumeForce')
         dof = dofId(dof,3);
       end
+
     end
 
     function vals = getBCVals(obj,id,t)
+
       vals = obj.bcs.getVals(id,t);
+
       if strcmp(obj.bcs.getCond(id),'SurfBC')
+
+        % nodeArea*bcValue
         entInfl = obj.bcs.getEntitiesInfluence(id);
         vals = entInfl*vals;
+
       elseif strcmp(obj.bcs.getCond(id),'VolumeForce')
-        % biot logic
+        
+        % imposed volume pressure
         valsCell = vals;
         cells = obj.bcs.getEntities(id);
+
         % preallocate vector for later assembly
         vals = zeros(3*sum(obj.mesh.cellNumVerts),1);
         dofs = zeros(3*sum(obj.mesh.cellNumVerts),1);
         k = 0;
+
         for i = 1:numel(cells)
+
           % local coupling to map cell pressure to nodal force (as in Biot)
           el = cells(i);
           elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
@@ -393,7 +413,9 @@ classdef Poromechanics < PhysicsSolver
           vals(k+1:k+n) = Qloc*valsCell(i);
           dofs(k+1:k+n) = dofId(obj.mesh.cells(el,:),3);
           k = k+n;
+
         end
+
         % accumulate results
         vals = accumarray(dofs,vals,[3*obj.mesh.nNodes 1]);
         dof = obj.getBCdofs(id);

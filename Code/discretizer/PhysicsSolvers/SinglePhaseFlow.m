@@ -35,9 +35,9 @@ classdef SinglePhaseFlow < PhysicsSolver
 
       switch obj.scheme
         case "FiniteVolumesTPFA"
-          obj.dofm.registerVariable(obj.variableName,entityField.cell,1,targetRegions);
+          obj.dofm.registerVariable(obj.getField(),entityField.cell,1,targetRegions);
         case "FEM"
-          obj.dofm.registerVariable(obj.variableName,entityField.node,1,targetRegions);
+          obj.dofm.registerVariable(obj.getField(),entityField.node,1,targetRegions);
         otherwise
           error("Scheme %s for class %s is not a valid GReS scheme",...
             obj.scheme,class(obj));
@@ -278,7 +278,7 @@ classdef SinglePhaseFlow < PhysicsSolver
       gamma = obj.materials.getFluid().getFluidSpecWeight();
       if gamma > 0
         subCells = obj.dofm.getFieldCells(obj.fieldId);
-        if isFEMBased(obj.model,'Flow')
+        if isFEM(obj)
           for el = subCells'
             % Get the material permeability
             permMat = obj.materials.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
@@ -298,7 +298,7 @@ classdef SinglePhaseFlow < PhysicsSolver
             rhsTmp(entsId) = rhsTmp(entsId) + rhsLoc;
           end
           obj.rhsGrav = rhsTmp(obj.dofm.getActiveEnts(obj.fieldId));
-        elseif isFVTPFABased(obj.model,'Flow')
+        elseif isTPFA(obj)
           neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
           zVec = obj.mesh.cellCentroid(:,3);
           zNeigh = zVec(neigh);
@@ -325,6 +325,7 @@ classdef SinglePhaseFlow < PhysicsSolver
       % in the boundary, and it's assume as a datum the most elavated
       % point in the domain. (For future, have a way to pass this
       % information).
+
       switch obj.bcs.getCond(id)
 
         case {'NodeBC','ElementBC'}
@@ -333,9 +334,11 @@ classdef SinglePhaseFlow < PhysicsSolver
 
         case 'SurfBC'
           v = obj.bcs.getVals(id,t);
-          if isFVTPFABased(obj.model,'Flow')
+          if isTPFA(obj)
             faceID = obj.bcs.getEntities(id);
             ents = sum(obj.faces.faceNeighbors(faceID,:),2);
+
+            p = getState(obj,"pressure");
 
             % [ents,~,ind] = unique(ents);
             % % % [faceID, faceOrder] = sort(obj.bcs.getEntities(id));
@@ -360,8 +363,8 @@ classdef SinglePhaseFlow < PhysicsSolver
                 % % press = obj.state.data.pressure(ents) - v;
                 % % gravT =  gamma*(obj.mesh.cellCentroid(ents,3) ...
                 % %   - obj.faces.faceCentroid(faceID,3));
-                potential = (obj.state.data.pressure(ents) - v) ...
-                  + gamma*(obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3));
+                dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3);
+                potential = (p - v) + gamma*dz;
                 q = dirJ.*potential;
                 vals = [dirJ,q];
 
@@ -376,8 +379,8 @@ classdef SinglePhaseFlow < PhysicsSolver
                 v(v<=0)=0.;
                 mu = obj.materials.getFluid().getDynViscosity();
                 tr = obj.getFaceTransmissibilities(faceID);
-                q = 1/mu*tr.*((obj.state.data.pressure(ents) - v)...
-                  + gamma*(obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
+                dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3);
+                q = 1/mu*tr.*(p - v) + gamma*dz;
                 vals = [1/mu*tr,q];
             end
 
@@ -389,10 +392,10 @@ classdef SinglePhaseFlow < PhysicsSolver
 
         case 'VolumeForce'
           v = obj.bcs.getVals(id,t);
-          if isFVTPFABased(obj.model,'Flow')
+          if isTPFA(obj)
             ents = obj.bcs.getEntities(id);
             vals = v.*obj.mesh.cellVolume(ents);
-          elseif isFEMBased(obj.model,'Flow')
+          elseif isFEM(obj)
             ents = obj.bcs.getLoadedEntities(id);
             entitiesInfl = obj.bcs.getEntitiesInfluence(id);
             vals = entitiesInfl*v;
@@ -403,19 +406,21 @@ classdef SinglePhaseFlow < PhysicsSolver
 
     end
 
-    function applyDirVal(obj,dof,vals)
-      if isFVTPFABased(obj.model,'Flow')
+    function applyDirVal(obj,bcId,t)
+      if isTPFA(obj)
         % Dirichlet BCs cannot be directly applied to the solution
         % vector
         return
       end
+
+      [bcDofs,bcVals] = getBC(obj,bcId,t);
+
       state = getState(obj);
-      state.data.pressure(dof) = vals;
+      state.data.pressure(bcDofs) = bcVals;
     end
 
     function applyBC(obj,t,bcId,bcVar)
 
-      % get bcDofs and bcVals (should be implemented by the physicsSolver)
       [bcDofs,bcVals] = getBC(obj,bcId,t);
 
       % Base application of a Boundary condition
@@ -516,10 +521,10 @@ classdef SinglePhaseFlow < PhysicsSolver
 
     function pzhead = computePiezHead(obj,pressure)
       % COMPUTEPIEZHEAD - compute the piezometric head for the cell or element.
-      if isFEMBased(obj.model,'Flow')
-        zbc=obj.mesh.coordinates(:,3);
-      elseif isFVTPFABased(obj.model,'Flow')
-        zbc=obj.mesh.cellCentroid(:,3);
+      if isFEM(obj)
+        zbc = obj.mesh.coordinates(:,3);
+      elseif isTPFA(obj)
+        zbc = obj.mesh.cellCentroid(:,3);
       end
       gamma = obj.materials.getFluid().getFluidSpecWeight();
       if gamma > 0.
@@ -534,9 +539,9 @@ classdef SinglePhaseFlow < PhysicsSolver
       potential = pressure;
       gamma = obj.materials.getFluid().getFluidSpecWeight();
       if gamma > 0
-        if isFEMBased(obj.model,'Flow')
+        if isFEM(obj)
           potential = potential + gamma*obj.mesh.coordinates(:,3);
-        elseif isFVTPFABased(obj.model,'Flow')
+        elseif isTPFA(obj)
           potential = potential + gamma*obj.mesh.cellCentroid(:,3);
         end
       end
@@ -561,9 +566,9 @@ classdef SinglePhaseFlow < PhysicsSolver
       %the value at the nodes (The contribution of the boundary is done
       % in another function).
       flux = zeros(obj.mesh.nNodes,3);
-      if isFEMBased(obj.model,'Flow') & false
+      if isFEM(obj) & false
         % TODO - This part is still need some work.
-      elseif isFVTPFABased(obj.model,'Flow')
+      elseif isTPFA(obj)
         % Compute the fluxes inside the domain.
         nnodesBfaces = diff(obj.faces.mapN2F);
         neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
@@ -662,7 +667,7 @@ classdef SinglePhaseFlow < PhysicsSolver
     % function mass = checkMassCons(obj,mob,pot)
     %   %CHECKMASSCONS - check the mass conservation in all elements.
     %   mass = zeros(obj.mesh.nCells,1);
-    %   if isFVTPFABased(obj.model,'Flow')
+    %   if isTPFA(obj)
     %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
     %     sgn = 2*((obj.faces.faces2Elements(:,2)==1) +(obj.faces.faces2Elements(:,2)==3)+(obj.faces.faces2Elements(:,2)==5)) - 1;
     %
@@ -695,7 +700,7 @@ classdef SinglePhaseFlow < PhysicsSolver
 
   methods (Static)
     function [cellStr,pointStr] = buildPrintStruct(mod,state)
-      if isFEMBased(mod,'Flow')
+      if isFEM(obj)
         cellStr = repmat(struct('name', 1, 'data', 1), 1, 1);
         cellStr(1).name = 'permeability';
         cellStr(1).data = state.perm;

@@ -81,6 +81,14 @@ classdef Boundaries < handle
       ents = obj.getData(identifier).data.entities;
     end
 
+    function ents = getBCentities(obj,identifier)
+      if isfield(obj.getData(identifier),"loadedEnts")
+        ents = getLoadedEntities(obj,identifier);
+      else
+        ents = getEntities(obj,identifier);
+      end
+    end
+
     function ents = getLoadedEntities(obj, identifier)
       % return loaded entities for Volume or Surface BCs
       ents = obj.getData(identifier).loadedEnts;

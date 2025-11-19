@@ -21,10 +21,10 @@ classdef Domain < handle
     elements            % db for finite elements
     faces               % db for finite volumes
     variables           % list of fields with the same order of the global system
-    simparams
   end
 
   properties (GetAccess=public, SetAccess=public)
+    simparams
     state               % class holding any state variable in the domain
     stateOld            % class holding any state variable in the domain at the last converged time step
 

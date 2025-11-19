@@ -8,11 +8,11 @@ classdef DoFManagerNew < handle
   properties (Access = private)
     mesh
     dofMap                        % cell array with dof map for each variable field
-    fields                        % array of existing fields in the domain
     numbComponents
-    % fields = struct("variableName",[],...
-    %   "range",[],...
-    %   "tags",[]);
+    fields = struct("variableName",[],...
+                    "range",[],...
+                    "tags",[],...
+                    "location",[]);
     nVars = 0;
     totDofs
   end
@@ -24,7 +24,7 @@ classdef DoFManagerNew < handle
       obj.totDofs = 0;
     end
 
-    function variableField = registerVariable(obj,varName,fieldLocation,nComp,tags)
+    function registerVariable(obj,varName,fieldLocation,nComp,tags)
       % varName: the name of the variable field
       % fieldLocation: a enum of type entityField
       % tags: the cellTag (or surfaceTag for lower dimensional fields) where the variable is actually present
@@ -78,6 +78,7 @@ classdef DoFManagerNew < handle
 
         obj.fields(id).variableName = varName;
         obj.fields(id).tags = tags;
+        obj.fields(id).fieldLocation = tags;
         obj.numbComponents(end+1) = nComp;
 
         % return the entity of type fieldLocation for the given mesh tags
@@ -102,9 +103,10 @@ classdef DoFManagerNew < handle
 
 
     function dofs = getLocalDoF(obj,id,ents)
+
       % return the DoF numbering in global indexing for input entities
       % in isempty(varargin) all dofs are returned in correct order
-      % the id is the result of a call to getVariableId(varName)
+      % the input id is the result of a call to getVariableId(varName)
 
 
       if isscalar(id)
@@ -124,7 +126,7 @@ classdef DoFManagerNew < handle
 
     function ents = getLocalEnts(obj,id,ents)
 
-      % get entities without dof expansion
+      % same as getLocalDoF but without component expansion
       ncomp = obj.numbComponents(id);
       ents = round(((ncomp-1)+obj.dofMap{id}(ents))/ncomp);
     end
@@ -175,6 +177,14 @@ classdef DoFManagerNew < handle
     function cells = getFieldCells(obj,varId)
       tags = getTargetRegions(obj,varId);
       cells = getEntities(entityField.cell,obj.mesh,tags);
+    end
+
+    function location = getFieldLocation(obj,varId)
+
+      id = getVariableId(varId);
+      location = obj.fields(id).location;
+
+
     end
 
     function id = getVariableId(obj,varId)

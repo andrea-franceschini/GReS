@@ -1,22 +1,30 @@
 classdef entityField
-  % general class for handling a generic variable field in the problem
 
-  enumeration % the location of the field
+  % general class for handling a generic field in the problem
+
+  % the class is useful for both purely geometric information and also
+  % physical information for variable fields
+
+  % the location of the field
+  enumeration 
     node
     face
     cell
     surface
   end
 
-  properties
-    mesh
-    name
-    id      % the position of the field in the system matrix of the domain
-    numbComponents
-  end
+  % properties needed only for variable field
+  % properties
+  %   mesh
+  %   variableName
+  %   fieldId                % the position of the field in the system matrix of the domain
+  %   numbComponents
+  % end
 
 
   methods
+
+    
     function ents = getEntities(obj, mesh, tags)
       % GETENTITIES returns the entities of this type from the mesh
       % obj      : the enum instance (entityField.node, etc.)
@@ -88,15 +96,6 @@ classdef entityField
       end
 
     end
-
-    function id = getId(obj)
-      id = obj.id;
-    end
-
-    function nComp = getNumbComponents()
-      nComp = obj.nComp;
-    end
-
 
   end
 

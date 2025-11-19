@@ -60,7 +60,7 @@ classdef (Abstract) PhysicsSolver < handle
 
   methods (Abstract)
 
-    % mandatory methods that need to be implemented in the physicsSolver
+    % mandatory methods that need to be implemented in any physicsSolver
 
     % read the input data of the solver and assign variables to cell tags
     registerSolver(obj,input);
@@ -68,13 +68,19 @@ classdef (Abstract) PhysicsSolver < handle
     % compute the jacobian and the rhs
     assembleSystem(obj,varargin);
 
+    % apply the boundary condition to the jacobian and rhs
+    applyBC(obj,t,bcId,bcVariableName);
+
+    % apply the dirichlet values to the state object
+    applyDirVal(obj,t,bcId,bcVariableName);
+    
     % update the state variables after solving the linear system
     updateState(obj,solution);
 
     % update the state variables after achieving solver convergence
     advanceState(obj);
 
-    % update the output structres for printing purposes
+    % update the output structures for printing purposes
     [cellData,pointData] = printState(obj,t);
   end
 
@@ -88,6 +94,9 @@ classdef (Abstract) PhysicsSolver < handle
       if nargin < 2
         stat = obj.domain.getState();
       else
+        if ~isfield(obj.domain.getState().data,varName)
+          error("Variable %s does not exist in the State object",varName)
+        end
         stat = obj.domain.getState().data.(varName);
       end
     end
@@ -116,6 +125,7 @@ classdef (Abstract) PhysicsSolver < handle
       end
     end
 
+
     function applyDirVals(obj,t)
       bcList = keys(obj.bcs.keys);
 
@@ -130,44 +140,45 @@ classdef (Abstract) PhysicsSolver < handle
       end
     end
 
-    % implement here a base getBC method
-    % function [bcDofs,bcVals] = getBC(obj,bcId,t)
+
+    % function applyBC(obj,t,bcId,bcVar)
     % 
-    %   error("Error in %s: Boundary condition type '%s' is not " + ...
-    %     "available in the base version of applyBC(). Consider " + ...
-    %     "overriding this method for a specific implementation", ...
-    %     class(obj),bcType);
+    %   % get bcDofs and bcVals
+    %   [bcDofs,bcVals] = getBC(obj,bcId,t);
     % 
+    %   % Base application of a Boundary condition
+    %   bcType = obj.bcs.getType(bcId);
+    % 
+    %   switch bcType
+    %     case 'Dirichlet'
+    %       applyDirBC(obj,bcDofs,bcVals,bcVar);
+    %     case 'Neumann'
+    %       applyNeuBC(obj,bcDofs,bcVar);
+    %     otherwise
+    %       error("Error in %s: Boundary condition type '%s' is not " + ...
+    %         "available in the base version of applyBC(). Consider " + ...
+    %         "overriding this method for a specific implementation", ...
+    %         class(obj),bcType);
+    %   end
     % end
 
-    function applyBC(obj,t,bcId,bcVar)
-
-      % get bcDofs and bcVals
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
-
-      % Base application of a Boundary condition
-      bcType = obj.bcs.getType(bcId);
-
-      switch bcType
-        case 'Dirichlet'
-          applyDirBC(obj,bcDofs,bcVals,bcVar);
-        case 'Neumann'
-          applyNeuBC(obj,bcDofs,bcVar);
-        otherwise
-          error("Error in %s: Boundary condition type '%s' is not " + ...
-            "available in the base version of applyBC(). Consider " + ...
-            "overriding this method for a specific implementation", ...
-            class(obj),bcType);
-      end
-    end
-
-    function [bcDofs,bcVals] = getBC(obj,bcId,t)
-
-      % base method to get the BC dofs and BC values from the boundary
-      % conditions
-
-      
-    end
+    % function [bcDofs,bcVals] = getBC(obj,bcId,t)
+    % 
+    %   % base method to get the BC dofs and BC values from the boundary
+    %   % conditions
+    % 
+    %   ents = obj.bcs.getBCentities(bcId);
+    % 
+    %   % get local entity numbering
+    %   ents = obj.dofm.getLocalEnts(obj.fieldId,ents);
+    % 
+    %   % get component dof
+    %   bcDofs = obj.bcs.getCompEntities(obj.fieldId,ents);
+    % 
+    %   % get values
+    %   bcVals = obj.bcs.getBCVals(bcId,t);
+    % 
+    % end
 
     function applyNeuBC(obj,bcDofs,bcVals,bcVariableName)
 
@@ -189,12 +200,8 @@ classdef (Abstract) PhysicsSolver < handle
 
       bcId = obj.dofm.getVariableId(bcVariableName);
 
-      % zero out columns
-      nV = getNumberOfVariables(obj.dofm);
 
-      for i = 1:nV
-        obj.domain.J{i,bcId}(:,bcDofs) = 0;
-      end
+      nV = getNumberOfVariables(obj.dofm);
 
       % zero out rows (use transpose trick)
       for j = 1:nV
@@ -203,12 +210,30 @@ classdef (Abstract) PhysicsSolver < handle
         obj.domain.J{bcId,j} = obj.J{bcId,j}';
       end
 
+      % zero out columns only if the solver is symmetric (preserves
+      % symmetry)
+      if isSymmetric(obj)
+        for i = 1:nV
+          obj.domain.J{i,bcId}(:,bcDofs) = 0;
+        end
+      end
+
       % add 1 to diagonal entry of diagonal block
       obj.domain.J{bcId,bcId}...
         (sub2ind(size(obj.domain.J{{bcId,bcId}}), bcDofs, bcDofs)) = 1;
 
-      % rhs treatment
+    end
+  end
+
+
+  methods (Static)
+
+    function out = isSymmetric()
+
+      out = false;
+      % optional solver query to know if a solver is symmetric or not
 
     end
   end
+
 end

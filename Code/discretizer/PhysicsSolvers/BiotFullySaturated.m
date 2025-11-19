@@ -50,9 +50,15 @@ classdef BiotFullySaturated < PhysicsSolver
         % compute obj.Q
         computeMat(obj);
 
-        % assign coupling blocks
+        % assign coupling blocks to jacobian
         obj.J{objfldMech,obj.fldFlow} = -obj.simParams.theta*obj.Q;
         obj.J{obj.fldFlow,obj.fldMech} = obj.Q'/dt;
+
+        % add rhs from coupling contribution
+        [rhsMech,rhsFlow] = computeRhs(obj);
+        obj.rhs{obj.fldMech} = obj.rhs{obj.fldMech} + rhsMech;
+        obj.rhs{obj.fldMech} = obj.rhs{obj.fldMech} + rhsFlow;
+
 
 
 
@@ -129,22 +135,33 @@ classdef BiotFullySaturated < PhysicsSolver
             obj.Q = sparse(iiVec, jjVec, Qvec, nDoF1, nDoF2);
         end
 
-        function computeRhs(obj,stateOld,dt)
-            % compute Biot rhs contribute
+        function [rhsMech,rhsFlow] = computeRhs(obj,stateOld,dt)
+
             theta = obj.simParams.theta;
+
+            % retrieve State variables
+            pCurr = getState(obj,"pressure");
+            pOld = getStateOld(obj,"pressure");
+            uCurr = getState(obj,"displacements");
+            uOld = getStateOld(obj,"displacements");
+
             % select active coefficients of solution vectors
-            entsPoro = obj.dofm.getActiveEnts(obj.fldMech);
-            entsFlow = obj.dofm.getActiveEnts(obj.fldFlow);
-            obj.rhs{1} = -theta*obj.Q*obj.state.data.pressure(entsFlow) - ...
-                (1-theta)*(obj.Q*stateOld.data.pressure(entsFlow));
-            obj.rhs{2} = (obj.Q/dt)'*(obj.state.data.dispCurr(entsPoro) - obj.state.data.dispConv(entsPoro));
+            entsPoro = obj.dofm.getActiveEntities(obj.fldMech);
+            entsFlow = obj.dofm.getActiveEntities(obj.fldFlow);
+
+            % compute rhs
+            rhsMech = -theta*obj.Q*pCurr(entsFlow) - (1-theta)*(obj.Q*pOld(entsFlow));
+            rhsFlow = (obj.Q/dt)'*(uCurr(entsPoro) - uOld(entsPoro));
         end
 
         function applyBC(obj,t,bcId,bcVariable)
-          if strcmp(bcVariable,obj.flowSolver.getField())
-          elseif strcmp(bcVariable,obj.mech.getField())
-            obj.mechSolver
-          end
+          obj.flowSolver.applyBC(t,bcId,bcVariable);
+          obj.mechSolver.applyBC(t,bcId,bcVariable);
+        end
+
+        function applyDirVal(obj,t,bcId,bcVariable)
+          obj.flowSolver.applyDirVal(t,bcId,bcVariable);
+          obj.mechSolver.applyDirVal(t,bcId,bcVariable);
         end
 
 
@@ -181,6 +198,11 @@ classdef BiotFullySaturated < PhysicsSolver
         function out = getField()
           out = [Poromechanics.getField(), SinglePhaseFlow.getField()];
         end
+
+        function out = isSymmetric()
+          out = false;
+        end
+        
     end
 
 end

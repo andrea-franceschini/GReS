@@ -5,7 +5,7 @@ classdef ModelManager < handle
 
 
 
-  properties (GetAccess=private, SetAccess=private)
+  properties (GetAccess=public, SetAccess=private)
     domains             % db for physics solver in the model
     interfaces          % db for interface solvers in the model
     solutionScheme
@@ -100,7 +100,7 @@ classdef ModelManager < handle
       % add a domain
       n = numel(keys(obj.domains));
       obj.domains(n+1) = Domain(varargin{:});
-      obj.domains(n+1).simparams = obj.simparams;
+      obj.getDomain(n+1).simparams = obj.simparams;
       
     end
 
