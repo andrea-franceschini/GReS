@@ -126,21 +126,6 @@ classdef (Abstract) PhysicsSolver < handle
     end
 
 
-    function applyDirVals(obj,t)
-      bcList = keys(obj.bcs.keys);
-
-      for bcId = string(bcList)
-        bcVar = obj.bcs.getVariable(bcId);
-
-        if any(strcmpi(obj.getField(),bcVar))
-
-          obj.applyDirVal(t,bcId,bcVar);
-
-        end
-      end
-    end
-
-
     % function applyBC(obj,t,bcId,bcVar)
     % 
     %   % get bcDofs and bcVals

@@ -75,6 +75,10 @@ classdef Mortar < handle
       end
     end
 
+    function removeSlaveBCents(obj)
+      % to do
+    end
+
 
     function [bcDofs,bcVals] = removeSlaveBCdofs(obj,bcPhysics,bcData,domId)
       % this method updates the list of bc dofs and values removing dofs on
@@ -490,6 +494,9 @@ classdef Mortar < handle
       computeMortarInterpolation(obj)
 
       setPrintUtils(obj,inputStruct,domains(2).outstate);
+
+      % loop over BC and remove BC slave entities 
+      removeSlaveBCents(obj);
 
     end
 
