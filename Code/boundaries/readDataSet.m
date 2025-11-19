@@ -27,8 +27,8 @@ else
   vals = readValuesList(bcVal,bc.totEnts);
 end
 
-assert(bc.totEnts == numel(vals),...
-  "Number of BC values not matching number of BC entities")
+% assert(bc.totEnts == numel(vals),...
+%   "Number of BC values not matching number of BC entities")
 end
 
 

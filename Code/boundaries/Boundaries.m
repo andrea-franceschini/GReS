@@ -191,7 +191,59 @@ classdef Boundaries < handle
       end
 
     end
+
+
+    function removeBCentities(obj,bcId,list)
+      % remove BC entities that are contained in an input list
+      % ignores entries of list that are not valid entities
+
+      bc = getData(obj,bcId);
+
+      if isfield(bc,"loadedEnts")
+        % remove loaded entity
+        loadedEnts = getLoadedEntities(obj,bcId);
+        isEntActive = ~ismember(loadedEnts,list);
+        bc.loadedEnts = bc.loadedEnts(isEntActive);
+
+        % remove corresponding rows of entity influence matrix
+        bc.entitiesInfl(~isEntActive,:) = [];
+
+        % update the number of loaded entities
+        n = 0;
+        ncomp = numel(bc.nloadedEnts);
+        l = zeros(ncomp,1);
+        for i = 1:ncomp
+          l(i) = sum(isEntActive(n+1:bc.nloadedEnts(i)));
+          n = n + bc.nloadedEnts(i);
+        end
+
+        bc.nloadedEnts = l;
+
+      else
+        % remove entities
+        bcEnts = bc.data;
+        isEntActive = ~ismember(bcEnts.entities,list);
+        bcEnts.isActiveEntity(~isEntActive) = false;
+        bcEnts.entities(~isEntActive) = [];
+
+        % update the number of entities
+        n = 0;
+        ncomp = numel(bcEnts.nEntities);
+        l = zeros(ncomp,1);
+
+        for i = 1:ncomp
+          l(i) = sum(isEntActive(n+1:bcEnts.nEntities(i)));
+          n = n + bcEnts.nEntities(i);
+        end
+
+        bcEnts.nEntities = l;
+        bcEnts.totEnts = sum(bcEnts.nEntities);
+
+      end
+
+    end
   end
+
 
   methods (Access = private)
 
