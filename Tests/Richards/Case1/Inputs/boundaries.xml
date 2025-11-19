@@ -39,33 +39,29 @@ a function handle depending on space (x,y,z)
 
 
 <BoundaryConditions>
-
-  <BC
-      name = "bottomPressure"
+  <BC name = "BottomPressure"
       type = "Dirichlet"
       entityType = "SurfBC"
-      physics = "VariablySaturatedFlow"
-      >
+      physics = "VariablySaturatedFlow" >
 
     <BCentities
-                surfaceTags = "1"                
-                />
-    <!-- surfaceTags,bcList  = "1" -->
+        surfaceTags = "1"
+    />
 
     <BCevent
-             time = "0.0"
-             value = "87.0"
-             />
+        time = "0.0"
+        value = "87."
+    />
+    <BCevent
+        time = "5.0"
+        value = "0."
+    />
 
     <BCevent
-             time = "5.0"
-             value = "0"
-             />
-    <BCevent
-             time = "10.0"
-             value = "0"
-             />
+        time = "10.0"
+        value = "0."
+    />
 
-  </BC>
+</BC>
 
 </BoundaryConditions>
