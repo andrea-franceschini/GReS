@@ -47,7 +47,7 @@ classdef ModelManager < handle
 
         obj.t = obj.t + obj.dt;
 
-        % solve time step with chosen solution scheme
+        % solve time step with selected solution scheme
         isConverged = obj.solutionScheme.solveTimeStep(obj.t,obj.dt);
 
         % manage the next time step depending on convergence
@@ -72,14 +72,6 @@ classdef ModelManager < handle
         addDomain(obj,str.Domain(i));
       end
 
-      if isfield(str,"SolutionStrategy")
-        strategy = fieldnames(str.SolutionStrategy);
-        obj.solutionScheme = feval(strategy{1},obj.simparams,str.SolutionStrategy);
-      else
-        % use general fully coupled solution strategy as the default one
-        obj.solutionScheme = FullyCoupled(obj,obj.simparams);
-      end
-
       if isfield(str,"Interface")
         for iI = 1:numel(str.Interface)
           addInterface(obj,str.Interface(iD));
@@ -90,6 +82,16 @@ classdef ModelManager < handle
             "without any connecting interfaces");
         end
       end
+
+
+      if isfield(str,"SolutionStrategy")
+        strategy = fieldnames(str.SolutionStrategy);
+        assert(isscalar(strategy),"Only one solution strategy is allowed");
+        obj.solutionScheme = feval(strategy{1},obj.simparams,str.SolutionStrategy);
+      else
+        % use general fully coupled solution strategy as the default one
+        obj.solutionScheme = FullyCoupledGeneral(obj,obj.simparams);
+      end
     end
 
 
@@ -98,6 +100,8 @@ classdef ModelManager < handle
       % add a domain
       n = numel(keys(obj.domains));
       obj.domains(n+1) = Domain(varargin{:});
+      obj.domains(n+1).simparams = obj.simparams;
+      
     end
 
     function addInterface(obj,varargin)

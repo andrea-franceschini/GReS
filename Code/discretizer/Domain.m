@@ -21,6 +21,7 @@ classdef Domain < handle
     elements            % db for finite elements
     faces               % db for finite volumes
     variables           % list of fields with the same order of the global system
+    simparams
   end
 
   properties (GetAccess=public, SetAccess=public)
@@ -36,10 +37,10 @@ classdef Domain < handle
   methods (Access = public)
     function obj = Domain(varargin)
 
-      obj.setDomain(varargin{:})
-
       % the database for physicsSolvers in the domain
       obj.physicsSolvers = containers.Map('KeyType','char','ValueType','any');
+
+      obj.setDomain(varargin{:})
 
     end
 
@@ -92,11 +93,11 @@ classdef Domain < handle
       end
 
       % create solver
-      pSolv = feval(solverName,obj,solverInput);
+      pSolv = feval(solverName,obj);
+      pSolv.registerSolver(solverInput);
 
       % add solver to the database
-      n = numel(keys(obj.physicsSolvers));
-      obj.physicsSolvers(n+1) = pSolv;
+      obj.physicsSolvers(class(pSolv)) = pSolv;
 
       % redefine size of block jacobian and rhs for new added variables
       nVars = getNumberOfVariables(obj.dofm);
@@ -105,24 +106,15 @@ classdef Domain < handle
 
     end
 
-    function addInterfaceSolver(obj,varargin)
-
-      % TO DO
-    end
-
     function out = getPhysicsSolver(obj,id)
-      out = obj.domainSolvers(id);
-    end
-
-    function out = getInterfaceSolver(obj,id)
-      out = obj.interfaceSolvers(id);
+      out = obj.physicsSolvers(id);
     end
 
     function out = getState(obj)
       out = obj.state;
     end
 
-    function out = getOldState(obj)
+    function out = getStateOld(obj)
       out = obj.stateOld;
     end
 
@@ -217,7 +209,7 @@ classdef Domain < handle
       solvNames = fieldnames(solvers);
 
       % create the DoFManager
-      obj.dofm = DoFManagerNew(obj.grid);
+      obj.dofm = DoFManagerNew(obj.grid.topology);
 
       % create the State object
       obj.state = State();

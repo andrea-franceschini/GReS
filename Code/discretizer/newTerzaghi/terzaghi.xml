@@ -58,14 +58,21 @@
 
   <Solver>
 
-    <Poromechanics
-                   cellTags = "1"
-                   />
-    <SinglePhaseFlow
-                     cellTags = "1"
+    <BiotFullySaturated>
+
+      <Poromechanics
+                     cellTags = "1,2"
+
                      />
+      <SinglePhaseFlow
+                       cellTags = "1"
+                       scheme = "FiniteVolumesTPFA"
+                       />
+
+    </BiotFullySaturated>
 
   </Solver>
+
 
 </Domain>
 

@@ -26,7 +26,7 @@ classdef (Abstract) PhysicsSolver < handle
 
   properties (Abstract)
     % the fields modified by the solver
-    fields
+    %fields
   end
 
 
@@ -39,21 +39,21 @@ classdef (Abstract) PhysicsSolver < handle
     faces
     bcs
     materials
+    simparams
   end
 
   methods
-    function obj = PhysicsSolver(domain,solverInput)
+    function obj = PhysicsSolver(domain)
 
       % inputStruct: struct with additional solver-specific parameters
+      obj.domain = domain;
       obj.dofm = domain.dofm;
       obj.mesh = domain.grid.topology;
       obj.elements = domain.grid.cells;
       obj.faces = domain.grid.faces;
       obj.materials = domain.materials;
       obj.bcs = domain.bcs;
-
-      % initialize the solver and read solver specific input in struct
-      obj.registerSolver(solverInput);
+      obj.simparams = domain.simparams;
 
     end
   end
@@ -66,7 +66,7 @@ classdef (Abstract) PhysicsSolver < handle
     registerSolver(obj,input);
 
     % compute the jacobian and the rhs
-    assembleSystem(obj);
+    assembleSystem(obj,varargin);
 
     % get the boundary condition dofs and vals (solver specific)
     %[bcDofs,bcVals] = getBC(obj,bcId,t);
@@ -88,19 +88,19 @@ classdef (Abstract) PhysicsSolver < handle
 
     function stat = getState(obj,varName)
       % get a copy of a state variable field
-      if isempty(varName)
+      if nargin < 2
         stat = obj.domain.getState();
       else
         stat = obj.domain.getState().data.(varName);
       end
     end
 
-    function stat = getOldState(obj,varName)
+    function stat = getStateOld(obj,varName)
       % get a copy of a state variable field
       if isempty(varName)
-        stat = obj.domain.getOldState();
+        stat = obj.domain.getStateOld();
       else
-        stat = obj.domain.getOldState().data.(varName);
+        stat = obj.domain.getStateOld().data.(varName);
       end
     end
 
@@ -194,6 +194,8 @@ classdef (Abstract) PhysicsSolver < handle
       % add 1 to diagonal entry of diagonal block
       obj.domain.J{bcId,bcId}...
         (sub2ind(size(obj.domain.J{{bcId,bcId}}), bcDofs, bcDofs)) = 1;
+
+      % rhs treatment
 
     end
   end

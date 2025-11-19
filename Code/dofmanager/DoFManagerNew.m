@@ -6,7 +6,7 @@ classdef DoFManagerNew < handle
   % Field-based ordering (default)
   % Domain-based ordering
   properties (Access = private)
-    grid
+    mesh
     dofMap % cell array with dof map for each variable field
     numbComponents
     fields = struct("variableName",[],...
@@ -18,8 +18,8 @@ classdef DoFManagerNew < handle
 
 
   methods (Access = public)
-    function obj = DoFManagerNew(grid)
-      obj.grid = grid;
+    function obj = DoFManagerNew(mesh)
+      obj.mesh = mesh;
       obj.totDofs = 0;
     end
 
@@ -57,7 +57,7 @@ classdef DoFManagerNew < handle
         % obj.fields(id).tags = sort([obj.fields(id).tags tags]);
         % 
         % % update the entities with only new entities
-        % entList = getEntities(fieldLocation,obj.grid,tags);
+        % entList = getEntities(fieldLocation,obj.mesh,tags);
         % isInactive = obj.dofMap{id}(entList) == 0;
         % nNewEnts = sum(isInactive);
         % maxEnt = max(obj.dofMap{id});
@@ -77,8 +77,8 @@ classdef DoFManagerNew < handle
         obj.numbComponents(end+1) = nComp;
 
         % return the entity of type fieldLocation for the given mesh tags
-        entList = getEntities(fieldLocation,obj.grid,tags);
-        totEnts = getNumberOfEntities(fieldLocation,obj.grid);
+        entList = getEntities(fieldLocation,obj.mesh,tags);
+        totEnts = getNumberOfEntities(fieldLocation,obj.mesh);
         totActiveEnts = length(entList);
 
         % populate the dof map
@@ -86,7 +86,7 @@ classdef DoFManagerNew < handle
         obj.dofMap{id}(entList) = nComp*(0:totActiveEnts-1)'+1;
 
         % update number of variables and dof counter
-        obj.fields.range = [obj.totDofs+1,obj.totDofs+nComp*totActiveEnts];
+        obj.fields(id).range = [obj.totDofs+1,obj.totDofs+nComp*totActiveEnts];
         obj.totDofs = obj.totDofs + nComp*totActiveEnts;
         obj.nVars = obj.nVars+1;
       end
@@ -142,27 +142,47 @@ classdef DoFManagerNew < handle
 
 
     function activeEnts = getActiveEntities(obj,varName,flagExpand)
-      assert(isscalar(string(varName)),"The variable name must be a " + ...
-        "string scalar or a character vector")
+      
+      if ~isnumeric(varName)
+        varName = string(varName);
+      end
+
+      assert(isscalar(varName),"Input variable must be a scalar string or a" + ...
+        "character vector (or an integer)")
       id = obj.getVariableId(varName);
       activeEnts = find(obj.dofMap{id});
 
       % expand to account for component
-      if flagExpand
-        activeEnts = obj.dofExpand(activeEnts,obj.numbComponents(id));
+      if nargin > 2
+        if flagExpand
+          activeEnts = obj.dofExpand(activeEnts,obj.numbComponents(id));
+        end
       end
     end
 
     function tags = getTargetRegions(obj,varName)
       id = obj.getVariableId(varName);
-      tags = obj.fields(id).tags;
+      tags = [obj.fields(id).tags];
+    end
+
+    function cells = getFieldCells(obj,varName)
+      tags = getTargetRegions(obj,varName);
+      cells = getEntities(entityField.cell,obj.mesh,tags);
     end
 
     function id = getVariableId(obj,varName)
       % return the id of the requested input variable
-      assert(isVariable(obj,varName),"Requested variable is not available" + ...
-        "in the DoFManager")
-      id = find(any(strcmp([obj.fields.variableName],varName)));
+      if isnumeric(varName)
+        assert(all(varName > 0) && all(varName < numel(obj.fields)),"Input variable" + ...
+          "ID is not included in the domain")
+
+        id = varName;
+
+      else
+        assert(isVariable(obj,varName),"Requested variable is not available" + ...
+          "in the DoFManager")
+        id = find(strcmp([obj.fields.variableName],varName));
+      end
     end
 
     function fl = isVariable(obj,varName)
@@ -170,8 +190,8 @@ classdef DoFManagerNew < handle
       fl = any(varId);
     end
 
-    function numDof = getNumbDof(obj,varName)
-      if isempty(varname)
+    function numDof = getNumbDoF(obj,varName)
+      if isempty(varName)
         numDof = obj.totDofs;
       else
         id = getVariableId(obj,varName);

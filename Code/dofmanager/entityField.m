@@ -8,7 +8,7 @@ classdef entityField
 
 
   methods
-    function ents = getEntities(obj, grid, tags)
+    function ents = getEntities(obj, mesh, tags)
       % GETENTITIES returns the entities of this type from the mesh
       % obj      : the enum instance (entityField.node, etc.)
       % mesh     : mesh object containing cells, faces, etc.
@@ -21,10 +21,10 @@ classdef entityField
       switch obj
         case entityField.node
           if isempty(tags)
-            ents = unique(grid.topology.cells(:));
+            ents = unique(mesh.cells(:));
           else
-            cellsID = ismember(grid.topology.cellTag, tags);
-            ents = unique(grid.topology.cells(cellsID,:));
+            cellsID = ismember(mesh.cellTag, tags);
+            ents = unique(mesh.cells(cellsID,:));
           end
 
         case entityField.face
@@ -32,15 +32,15 @@ classdef entityField
           if isempty(tags)
             ents = 1:size(fN,1);  % all faces
           else
-            cellsID = ismember(grid.topology.cellTag, tags);
+            cellsID = ismember(mesh.cellTag, tags);
             ents = find(any(ismember(fN, find(cellsID)),2));
           end
 
         case entityField.cell
           if isempty(tags)
-            ents = 1:size(grid.cells,1);
+            ents = 1:size(mesh.cells,1);
           else
-            ents = find(ismember(grid.topology.cellTag, tags));
+            ents = find(ismember(mesh.cellTag, tags));
           end
 
         case entityField.surface
@@ -48,7 +48,7 @@ classdef entityField
           if isempty(tags)
             ents = 1:size(grid.surfaces,1);
           else
-            ents = find(ismember(grid.topology.surfaceTag, tags));
+            ents = find(ismember(mesh.surfaceTag, tags));
           end
         otherwise
           error('Unknown entityField type.');

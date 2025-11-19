@@ -6,21 +6,23 @@ classdef Poromechanics < PhysicsSolver
     cell2stress     % map cell ID to position in stress/strain matrix
   end
 
-  properties
-    fields = "displacements"
+  properties (Access = private)
+    fieldId
+    variableName = "displacements"
   end
 
   methods (Access = public)
 
-    function obj = Poromechanics(domain,inputStruct)
+    function obj = Poromechanics(domain)
 
       % call physicsSolver constructor
-      obj@PhysicsSolver(domain,inputStruct);
+      obj@PhysicsSolver(domain);
+
     end
 
     function registerSolver(obj,solverInput)
 
-      nTags = obj.domain.grid.topology.nCellTag;
+      nTags = obj.mesh.nCellTag;
 
       if ~isempty(solverInput)
         targetRegions = getXMLData(solverInput,1:nTags,"targetRegions");
@@ -29,22 +31,26 @@ classdef Poromechanics < PhysicsSolver
       end
 
       % register nodal displacements on target regions
-      obj.domain.dofm.registerVariable(obj.fields(1),entityField.node,3,targetRegions);
+      obj.dofm.registerVariable(obj.variableName,entityField.node,3,targetRegions);
+
+      % store the id of the field in the degree of freedom manager
+      obj.fieldId = obj.dofm.getVariableId(obj.variableName);
 
       % initialize the state object
       initState(obj);
+
+      obj.cell2stress = zeros(obj.mesh.nCells,1);
 
     end
 
     function assembleSystem(obj)
       % compute the displacement matrices and rhs in the domain
-      id = getVariableId(obj.dofm,obj.fields);
-      obj.J{id,id} = computeMat(obj);
-      obj.rhs{id} = computeRhs(obj);
+      obj.domain.J{obj.fieldId,obj.fieldId} = computeMat(obj,dt);
+      obj.domain.rhs{obj.fieldId} = computeRhs(obj);
     end
 
 
-    function Jmat = computeMat(obj,~,dt)
+    function Jmat = computeMat(obj,dt)
       if ~isLinear(obj) || isempty(obj.J)
         % recompute matrix if the model is non linear
         % define size of output matrix
@@ -64,10 +70,10 @@ classdef Poromechanics < PhysicsSolver
       % define local assembler
       assembleKloc = @(elemId,counter) computeLocalStiff(obj,elemId,dt,counter);
 
-      subCells = obj.dofm.getFieldCells(obj.field);
+      subCells = obj.dofm.getFieldCells(obj.fieldId);
       n = sum((obj.mesh.nDim^2)*(obj.mesh.cellNumVerts(subCells)).^2);
       l = 0;
-      Ndof = obj.dofm.getNumDoF(obj.field);
+      Ndof = obj.dofm.getNumDoF(obj.fieldId);
       obj.fInt = zeros(Ndof,1);
       assembleK = assembler(n,Ndof,Ndof,assembleKloc);
       % loop over cells
@@ -165,16 +171,17 @@ classdef Poromechanics < PhysicsSolver
     function initState(obj)
       % add poromechanics fields to state structure
       Ndata = getNumbCellData(obj.elements);
-      setState(obj,"stress",zeros(Ndata,6));
-      setState(obj,"strain",zeros(Ndata,6));
-      setState(obj,"status",zeros(Ndata,2));
-      setState(obj,"iniStress",zeros(Ndata,6));
-      setState(obj,"displacements",zeros(obj.mesh.nDim*obj.mesh.nNodes,1));
+      state = getState(obj);
+      state.data.stress = zeros(Ndata,6);
+      state.data.iniStress = zeros(Ndata,6);
+      state.data.status = zeros(Ndata,6);
+      state.data.strain = zeros(Ndata,6);
+      state.data.displacement = zeros(obj.mesh.nDim*obj.mesh.nNodes,1);
     end
 
     function advanceState(obj)
       % Set converged state to current state after newton convergence
-      stateOld = getOldState(obj);
+      stateOld = getStateOld(obj);
       stateOld.data.displacements = getState(obj,"displacements");
       stateOld.data.strain = getState(obj,"strain");
       stateOld.data.stress = getState(obj,"stress");
@@ -183,15 +190,15 @@ classdef Poromechanics < PhysicsSolver
 
     function updateState(obj,solution)
       % Update state structure with last solution increment
-      ents = obj.dofm.getActiveEnts(obj.field,1);
+      ents = obj.dofm.getActiveEntities(obj.fieldId,1);
 
       stateCurr = obj.getState();
-      stateOld = obj.getOldState();
+      stateOld = obj.getStateOld();
 
       if nargin > 1
         % apply newton update to current displacements
-        stateCurr.data.displacements = stateCurr.data.displacements + ...
-          solution(getDoF(obj.dofm,obj.field));
+        stateCurr.data.displacements(ents) = stateCurr.data.displacements(ents) + ...
+          solution(getDoF(obj.dofm,obj.fieldId));
       end
 
       du = stateCurr.data.displacements - stateOld.data.displacements;
@@ -234,26 +241,11 @@ classdef Poromechanics < PhysicsSolver
       end
     end
 
-    function var = getState(obj,varargin)
-      % input: state structure
-      % output: current primary variable
-      if isempty(varargin)
-        var = obj.state.data.dispCurr;
-      else
-        stateIn = varargin{1};
-        var = stateIn.data.dispCurr;
-      end
-    end
 
-    function setState(obj,id,vals)
-      % set values of the primary variable  
-      obj.state.data.dispCurr(id) = vals; 
-    end
+    function [dof,vals] = getBC(obj,bcId,t)
 
-    function [dof,vals] = getBC(obj,id,t)
-
-      dof = obj.getBCdofs(id);
-      vals = obj.getBCVals(id,t);
+      dof = obj.getBCdofs(bcId);
+      vals = obj.getBCVals(bcId,t);
     end
 
     function applyDirVal(obj,dof,vals,varargin)
@@ -265,7 +257,7 @@ classdef Poromechanics < PhysicsSolver
       %computing rhs for poromechanics field
       if isLinear(obj) % linear case
         % update elastic stress
-        subCells = obj.dofm.getFieldCells(obj.field);
+        subCells = obj.dofm.getFieldCells(obj.fieldId);
         l1 = 0;
         for el=subCells'
           D = getElasticTensor(obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw);
@@ -278,7 +270,7 @@ classdef Poromechanics < PhysicsSolver
             obj.state.data.strain((l1+1):(l1+nG),:)*D;
           l1 = l1+nG;
         end
-        ents = obj.dofm.getActiveEnts(obj.getField());
+        ents = obj.dofm.getActiveEnts(obj.fieldId);
         if obj.simParams.isTimeDependent
           theta = obj.simParams.theta;
           obj.rhs = obj.J*obj.state.data.dispCurr(ents) + ...
@@ -338,6 +330,12 @@ classdef Poromechanics < PhysicsSolver
       end
       [cellData,pointData] = PoromechanicsNew.buildPrintStruct(displ,stress,strain);
     end
+
+    % function fld = getField(obj)
+    % 
+    %   fld = obj.fieldId;
+    % 
+    % end
   end
 
   methods (Access=private)
@@ -350,14 +348,13 @@ classdef Poromechanics < PhysicsSolver
           ents = obj.bcs.getLoadedEntities(id);
           % node id contained by constrained surface
         otherwise
-          error('BC type %s is not available for %s field',cond,obj.field);
+          error('BC type %s is not available for %s field',cond,obj.fieldId);
       end
       % map entities dof to local dof numbering
-      id = getVariableId(obj.dofm,obj.fields(1));
 
-      ents = obj.dofm.getLocalEnts(id,ents);
-      dof = obj.bcs.getCompEntities(id,ents);
-      
+      ents = obj.dofm.getLocalEnts(obj.fieldId,ents);
+      dof = obj.bcs.getCompEntities(obj.fieldId,ents);
+
       if strcmp(obj.bcs.getCond(id),'VolumeForce')
         dof = dofId(dof,3);
       end
@@ -402,9 +399,6 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
-    function setPoromechanics(obj)
-      obj.cell2stress = zeros(obj.mesh.nCells,1);
-    end
   end
 
   methods (Static)
@@ -468,7 +462,7 @@ classdef Poromechanics < PhysicsSolver
     end
 
     function out = getField()
-      out = PoromechanicsNew.fields;
+      out = "displacements";
     end
   end
 end

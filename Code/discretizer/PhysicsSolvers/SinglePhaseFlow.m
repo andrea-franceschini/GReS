@@ -1,8 +1,6 @@
-classdef SinglePhaseFlow < SinglePhysics
-  %POROMECHANICS
-  % Subclass of Discretizer
-  % Implement Poromechanics methods to assemble the stiffness matrix and
-  % the residual contribution
+classdef SinglePhaseFlow < PhysicsSolver
+  %SINGLEPHASEFLOW
+
 
   properties
     trans
@@ -10,71 +8,103 @@ classdef SinglePhaseFlow < SinglePhysics
     rhsGrav         % gravity contribution to rhs
     H
     P
+    scheme = "FiniteVolumesTPFA"        % or FEM
   end
 
-  properties (Constant)
-    field = 'SinglePhaseFlow'
+  properties (Access = private)
+    fieldId
+    variableName = "pressure"
   end
 
   methods (Access = public)
-    function obj = SinglePhaseFlow(symmod,params,dofManager,grid,mat,bc,state)
-      obj@SinglePhysics(symmod,params,dofManager,grid,mat,bc,state);
-      if obj.model.isFVTPFABased('Flow')
-        obj.computeTrans;
-        %get cells with active flow model
-        flowCells = obj.dofm.getFieldCells(obj.getField());
-        % Find internal faces (i.e. shared by two cells with active
-        % flow)
-        obj.isIntFaces = all(ismember(obj.faces.faceNeighbors, flowCells), 2);
-      end
-      computeRHSGravTerm(obj);
+    function obj = SinglePhaseFlow(domain)
+      obj@PhysicsSolver(domain);
     end
 
-    function initState(obj)
-      if isFEMBased(obj.model,'Flow')
-        n = obj.mesh.nNodes;
-      elseif isFVTPFABased(obj.model,'Flow')
-        n = obj.mesh.nCells;
+    function registerSolver(obj,solverInput)
+
+      nTags = obj.mesh.nCellTag;
+
+      if ~isempty(solverInput)
+        targetRegions = getXMLData(solverInput,1:nTags,"targetRegions");
+        obj.scheme = getXMLData(solverInput,obj.scheme,"scheme");
+      else
+        targetRegions = 1:nTags;
       end
-      obj.state.data.pressure = zeros(n,1);
+
+
+      switch obj.scheme
+        case "FiniteVolumesTPFA"
+          obj.dofm.registerVariable(obj.variableName,entityField.cell,1,targetRegions);
+        case "FEM"
+          obj.dofm.registerVariable(obj.variableName,entityField.node,1,targetRegions);
+        otherwise
+          error("Scheme %s for class %s is not a valid GReS scheme",...
+            obj.scheme,class(obj));
+      end
+
+      obj.fieldId = obj.dofm.getVariableId(obj.variableName);
+
+      n = getNumbDoF(obj.dofm,obj.fields);
+
+      % initialize the state object with a pressure field
+      obj.domain.state.data.(obj.variableName) = zeros(n,1);
+
+      if strcmp(obj.scheme,'FiniteVolumesTPFA')
+        obj.computeTrans();
+        %get cells with active flow model
+        flowCells = obj.dofm.getActiveEntities(obj.fields);
+        % Find internal faces (i.e. shared by two active flow cells)
+        obj.isIntFaces = all(ismember(obj.faces.faceNeighbors, flowCells), 2);
+      end
+
+      computeRHSGravTerm(obj);
+
     end
+
+
+    function assembleSystem(obj,dt)
+
+      idFlow = getVariableId(obj.dofm,obj.fields);
+
+      obj.domain.J{idFlow,idFlow} = computeMat(obj,dt);
+
+      obj.domain.rhs{iFlow} = computeRhs(obj,dt);
+
+    end
+    %
+
 
     function updateState(obj,dSol)
       if nargin > 1
-        ents = obj.dofm.getActiveEnts(obj.getField());
-        obj.state.data.pressure(ents) = obj.state.data.pressure(ents) + dSol(obj.dofm.getDoF(obj.getField()));
+        ents = obj.dofm.getActiveEntities(obj.fieldId);
+        state = getState(obj);
+        state.data.pressure(ents) = state.data.pressure(ents) + dSol(obj.dofm.getDoF(obj.fields));
       end
     end
 
-    function var = getState(obj,varargin)
-      % input: state structure
-      % output: current primary variable
-      if isempty(varargin)
-        var = obj.state.data.pressure;
-      else
-        stateIn = varargin{1};
-        var = stateIn.data.pressure;
-      end
+    function advanceState(obj)
+      % does nothing for now, but needed to override the abstract
+      % physicsSolver method
     end
 
-    function setState(obj,id,vals)
-      % set values of the primary variable
-      obj.state.data.pressure(id) = vals;
-    end
 
     function states = finalizeState(obj,states,t)
       % Compute the posprocessing variables for the module.
       states.potential = computePotential(obj,states.pressure);
       states.head = computePiezHead(obj,states.pressure);
-      mob = (1/obj.material.getFluid().getDynViscosity());
+      mob = (1/obj.materials.getFluid().getDynViscosity());
       states.flux = computeFlux(obj,states.potential,mob,t);
       states.perm = printPermeab(obj);
       % states.mass = checkMassCons(obj,mob,potential);
     end
 
-    function [cellData,pointData] = printState(obj,sOld,sNew,t)
+    function [cellData,pointData] = printState(obj,t)
       % append state variable to output structure
       outPrint = [];
+      sOld = getStateOld(obj);
+      sNew = getState(obj);
+
       switch nargin
         case 2
           outPrint.pressure = sOld.data.pressure;
@@ -90,43 +120,45 @@ classdef SinglePhaseFlow < SinglePhysics
       [cellData,pointData] = SinglePhaseFlow.buildPrintStruct(obj.model,outPrint);
     end
 
-    function computeMat(obj,~,dt)
+
+    function J = computeMat(obj,dt)
+
       % recompute elementary matrices only if the model is linear
-      if ~isLinear(obj) || isempty(obj.J)
-        if obj.model.isFEMBased('Flow')
+      id = getVariableId(obj.dofm,obj.fields);
+      if ~isLinear(obj) || isempty(obj.J{id,id})
+        if isFEM(obj)
           computeMatFEM(obj);
-        elseif obj.model.isFVTPFABased('Flow')
-          % lw = computeMobility(obj);
-          % computeStiffMatFV(obj,lw);
-          mu = obj.material.getFluid().getDynViscosity();
+        elseif isTFPA(obj)
+          mu = obj.materials.getFluid().getDynViscosity();
           computeStiffMatFV(obj,1/mu);
           computeCapMatFV(obj);
         end
       end
-      if obj.simParams.isTimeDependent
-        obj.J = obj.simParams.theta*obj.H + obj.P/dt;
+
+      if obj.simparams.isTimeDependent
+        J = obj.simparams.theta*obj.H + obj.P/dt;
       else
-        obj.J = obj.H;
+        J = obj.H;
       end
     end
 
     function computeMatFEM(obj)
       % dealing with input params
-      subCells = obj.dofm.getFieldCells(obj.getField());
+      subCells = obj.dofm.getTargetRegions(obj.fields);
       nEntries = sum(obj.mesh.cellNumVerts(subCells).^2);
 
       [iiVec,jjVec,HVec,PVec] = deal(zeros(nEntries,1));
 
       % Get the fluid compressibility
-      beta = obj.material.getFluid().getFluidCompressibility();
+      beta = obj.materials.getFluid().getFluidCompressibility();
 
       % Get the fluid dynamic viscosity
-      mu = obj.material.getFluid().getDynViscosity();
+      mu = obj.materials.getFluid().getDynViscosity();
 
       l1 = 0;
       for el = subCells'
-        permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
-        poro = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
+        permMat = obj.materials.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+        poro = obj.materials.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
         alpha = getRockCompressibility(obj,el);
         % Compute the element matrices based on the element type
         % (tetrahedra vs. hexahedra)
@@ -152,7 +184,7 @@ classdef SinglePhaseFlow < SinglePhysics
         l1 = l1 + s1;
       end
       % renumber indices according to active nodes
-      nDoF = obj.dofm.getNumDoF(obj.getField());
+      nDoF = obj.dofm.getNumbDoF(obj.fields);
       % Assemble H and P matrices defined as new fields of
       obj.H = sparse(iiVec, jjVec, HVec, nDoF, nDoF);
       obj.P = sparse(iiVec, jjVec, PVec, nDoF, nDoF);
@@ -161,7 +193,7 @@ classdef SinglePhaseFlow < SinglePhysics
     function computeStiffMatFV(obj,lw)
       % Inspired by MRST
       % subCells =
-      subCells = obj.dofm.getFieldCells(obj.getField());
+      subCells = obj.dofm.getFieldCells(obj.fields);
       nSubCells = length(subCells);
       %get pairs of faces that contribute to the subdomain
       neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
@@ -175,25 +207,25 @@ classdef SinglePhaseFlow < SinglePhysics
       sumDiagTrans = accumarray( [neigh1;neigh2], repmat(tmpVec,[2,1]), ...
         [nSubCells,1]);
       % Assemble H matrix
-      nDoF = obj.dofm.getNumDoF(obj.getField());
+      nDoF = obj.dofm.getNumDoF(obj.fields);
       obj.H = sparse([neigh1; neigh2; (1:nSubCells)'],...
         [neigh2; neigh1; (1:nSubCells)'],...
         [-tmpVec; -tmpVec; sumDiagTrans], nDoF, nDoF);
     end
 
     function computeCapMatFV(obj,varargin)
-      subCells = obj.dofm.getFieldCells(obj.getField());
+      subCells = obj.dofm.getFieldCells(obj.fields);
       nSubCells = length(subCells);
       poroMat = zeros(nSubCells,1);
       alphaMat = zeros(nSubCells,1);
-      beta = obj.material.getFluid().getFluidCompressibility();
+      beta = obj.materials.getFluid().getFluidCompressibility();
       for m = 1:obj.mesh.nCellTag
-        if ~ismember(m,obj.dofm.getFieldCellTags({obj.getField(),'Poromechanics'}))
+        if ~ismember(m,obj.dofm.getTargetRegions([obj.fields,'displacements']))
           % compute alpha only if there's no coupling in the
           % subdomain
-          alphaMat(m) = obj.material.getMaterial(m).ConstLaw.getRockCompressibility();
+          alphaMat(m) = obj.materials.getMaterial(m).ConstLaw.getRockCompressibility();
         end
-        poroMat(m) = obj.material.getMaterial(m).PorousRock.getPorosity();
+        poroMat(m) = obj.materials.getMaterial(m).PorousRock.getPorosity();
       end
       % (alpha+poro*beta)
       PVal = alphaMat(obj.mesh.cellTag(subCells)) + beta*poroMat(obj.mesh.cellTag(subCells));
@@ -202,46 +234,56 @@ classdef SinglePhaseFlow < SinglePhysics
         PVal = PVal.*varargin{1} + poroMat(obj.mesh.cellTag(subCells)).*varargin{2};
       end
       PVal = PVal.*obj.mesh.cellVolume(subCells);
-      nDoF = obj.dofm.getNumDoF(obj.getField());
+      nDoF = obj.dofm.getNumbDoF(obj.fields);
       [~,~,dof] = unique(subCells);
       obj.P = sparse(dof,dof,PVal,nDoF,nDoF);
     end
 
-    function computeRhs(obj,stateOld,dt)
+    function rhs = computeRhs(obj,dt)
+
       % Compute the residual of the flow problem
-      lw = 1/obj.material.getFluid().getDynViscosity();
-      ents = obj.dofm.getActiveEnts(obj.getField());
-      if ~obj.simParams.isTimeDependent
-        obj.rhs = obj.H*obj.state.data.pressure(ents);
+
+      % get pressure state
+      p = getState(obj,obj.fields);
+      pOld = getStateOld(obj,obj.fields);
+
+      lw = 1/obj.materials.getFluid().getDynViscosity();
+      ents = obj.dofm.getActiveEnts(obj.fields);
+
+      if ~obj.simparams.isTimeDependent
+        rhs = obj.H*p(ents);
       else
-        theta = obj.simParams.theta;
-        rhsStiff = theta*obj.H*obj.state.data.pressure(ents) + (1-theta)*obj.H*stateOld.data.pressure(ents);
-        rhsCap = (obj.P/dt)*(obj.state.data.pressure(ents) - stateOld.data.pressure(ents));
-        obj.rhs = rhsStiff + rhsCap;
+        theta = obj.simparams.theta;
+        rhsStiff = theta*obj.H*p(ents) + (1-theta)*obj.H*pOld(ents);
+        rhsCap = (obj.P/dt)*(p(ents) - pOld(ents));
+        rhs = rhsStiff + rhsCap;
       end
-      gamma = obj.material.getFluid().getFluidSpecWeight();
+
       %adding gravity rhs contribute
+      gamma = obj.materials.getFluid().getFluidSpecWeight();
       if gamma > 0
-        if isFEMBased(obj.model,'Flow')
-          obj.rhs = obj.rhs + obj.rhsGrav;
-        elseif isFVTPFABased(obj.model,'Flow')
-          obj.rhs = obj.rhs + finalizeRHSGravTerm(obj,lw);
+        if isFEM(obj)
+          rhs = rhs + obj.rhsGrav;
+        elseif isTPFA(obj)
+          rhs = rhs + finalizeRHSGravTerm(obj,lw);
         end
       end
+
     end
 
+    % TO DO: update to new FEM logic
     function computeRHSGravTerm(obj)
       % Compute the gravity contribution
       % Get the fluid specific weight and viscosity'
-      rhsTmp = zeros(obj.dofm.getNumDoF(obj.getField()),1);
-      % rhsTmp = zeros(obj.dofm.getNumDoF(obj.getField()),1);
-      gamma = obj.material.getFluid().getFluidSpecWeight();
+      rhsTmp = zeros(obj.dofm.getNumbDoF(obj.fields),1);
+      % rhsTmp = zeros(obj.dofm.getNumDoF(obj.fields),1);
+      gamma = obj.materials.getFluid().getFluidSpecWeight();
       if gamma > 0
-        subCells = obj.dofm.getFieldCells(obj.getField());
+        subCells = obj.dofm.getFieldCells(obj.fields);
         if isFEMBased(obj.model,'Flow')
           for el = subCells'
             % Get the material permeability
-            permMat = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+            permMat = obj.materials.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
             %             permMat = permMat/mu;
             switch obj.mesh.cellVTKType(el)
               case 10 % Tetrahedra
@@ -257,7 +299,7 @@ classdef SinglePhaseFlow < SinglePhysics
             entsId = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
             rhsTmp(entsId) = rhsTmp(entsId) + rhsLoc;
           end
-          obj.rhsGrav = rhsTmp(obj.dofm.getActiveEnts(obj.getField()));
+          obj.rhsGrav = rhsTmp(obj.dofm.getActiveEnts(obj.fields));
         elseif isFVTPFABased(obj.model,'Flow')
           neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
           zVec = obj.mesh.cellCentroid(:,3);
@@ -269,11 +311,11 @@ classdef SinglePhaseFlow < SinglePhysics
     end
 
     function gTerm = finalizeRHSGravTerm(obj,lw)
-      nCells = obj.dofm.getNumDoF(obj.getField());
+      nCells = obj.dofm.getNumDoF(obj.fields);
       neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
       gTerm = accumarray(neigh(:),[lw.*obj.rhsGrav; ...
         -lw.*obj.rhsGrav],[nCells,1]);
-      gTerm = gTerm(obj.dofm.getActiveEnts(obj.getField()));
+      gTerm = gTerm(obj.dofm.getActiveEnts(obj.fields));
     end
 
     function [dof,vals] = getBC(obj,id,t)
@@ -286,9 +328,11 @@ classdef SinglePhaseFlow < SinglePhysics
       % point in the domain. (For future, have a way to pass this
       % information).
       switch obj.bcs.getCond(id)
+
         case {'NodeBC','ElementBC'}
           ents = obj.bcs.getEntities(id);
           vals = obj.bcs.getVals(id,t);
+
         case 'SurfBC'
           v = obj.bcs.getVals(id,t);
           if isFVTPFABased(obj.model,'Flow')
@@ -299,12 +343,15 @@ classdef SinglePhaseFlow < SinglePhysics
             % % % [faceID, faceOrder] = sort(obj.bcs.getEntities(id));
             % % % ents = sum(obj.faces.faceNeighbors(faceID,:),2);
             % % % v(faceOrder,1) = obj.bcs.getVals(id,t);
+
             switch obj.bcs.getType(id)
+
               case 'Neumann'
                 vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
+
               case 'Dirichlet'
-                gamma = obj.material.getFluid().getFluidSpecWeight();
-                mu = obj.material.getFluid().getDynViscosity();
+                gamma = obj.materials.getFluid().getFluidSpecWeight();
+                mu = obj.materials.getFluid().getDynViscosity();
                 tr = obj.getFaceTransmissibilities(faceID);
 
                 % q = 1/mu*tr.*((obj.state.data.pressure(ents) - v)...
@@ -321,33 +368,27 @@ classdef SinglePhaseFlow < SinglePhysics
                 vals = [dirJ,q];
 
               case 'Seepage'
-                gamma = obj.material.getFluid().getFluidSpecWeight();
+                gamma = obj.materials.getFluid().getFluidSpecWeight();
                 assert(gamma>0.,'To impose Seepage boundary condition is necessary the fluid specify weight be bigger than zero!');
 
-                % Datum = max(obj.mesh.coordinates);
-                % zbc = Datum(3)-obj.faces.faceCentroid(faceID,3);
-                % href = Datum(3)-bc.getVals(id,t);
-                % href = Datum(3)-href(1);
-                % v = gamma*(zbc-href);
-                % zbc = obj.faces.faceCentroid(faceID,3);
-                % href = bc.getVals(id,t);
-                % v = gamma*(href(1)-zbc);
                 zbc = obj.faces.faceCentroid(faceID,3);
                 href = v(1);
                 v = gamma*(href-zbc);
 
                 v(v<=0)=0.;
-                mu = obj.material.getFluid().getDynViscosity();
+                mu = obj.materials.getFluid().getDynViscosity();
                 tr = obj.getFaceTransmissibilities(faceID);
                 q = 1/mu*tr.*((obj.state.data.pressure(ents) - v)...
                   + gamma*(obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
                 vals = [1/mu*tr,q];
             end
-          elseif isFEMBased(obj.model,'Flow')
+
+          elseif isFEM(obj)
             ents = obj.bcs.getLoadedEntities(id);
             entitiesInfl = obj.bcs.getEntitiesInfluence(id);
             vals = entitiesInfl*v;
           end
+
         case 'VolumeForce'
           v = obj.bcs.getVals(id,t);
           if isFVTPFABased(obj.model,'Flow')
@@ -359,8 +400,11 @@ classdef SinglePhaseFlow < SinglePhysics
             vals = entitiesInfl*v;
           end
       end
-      % get local dof numbering
-      dof = obj.dofm.getLocalDoF(ents,obj.fldId);
+
+      idFlow = getVariableId(obj.dofm,obj.fields);
+      % convert bc entities in dof numbering
+      dof = obj.dofm.getLocalDoF(idFlow,ents);
+
     end
 
     function applyDirVal(obj,dof,vals)
@@ -369,22 +413,42 @@ classdef SinglePhaseFlow < SinglePhysics
         % vector
         return
       end
-      obj.state.data.pressure(dof) = vals;
+      state = getState(obj);
+      state.data.pressure(dof) = vals;
     end
 
-    function applyDirBC(obj,~,ents,vals)
+    function applyBC(obj,t,bcId,bcVar)
+
+      % get bcDofs and bcVals (should be implemented by the physicsSolver)
+      [bcDofs,bcVals] = getBC(obj,bcId,t);
+
+      % Base application of a Boundary condition
+      bcType = obj.bcs.getType(bcId);
+
+      switch bcType
+        case {'Dirichlet','Seepage'}
+          applyDirBC(obj,bcDofs,bcVals,bcVar);
+        case 'Neumann'
+          applyNeuBC(obj,bcDofs,bcVar);
+        otherwise
+          error("Error in %s: Boundary condition type '%s' is not " + ...
+            "available in applyBC()",class(obj),bcType)
+      end
+    end
+
+    function applyDirBC(obj,bcDofs,bcVals,bcVar)
       % apply Dirichlet BCs
       % ents: id of constrained faces without any dof mapping applied
       % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
-      if isFVTPFABased(obj.model,'Flow')
-        % BCs imposition for finite volumes
-        assert(size(vals,2)==2,'Invalid matrix size for BC values');
-        nDoF = obj.dofm.getNumDoF(obj.getField());
-        obj.J(nDoF*(ents-1) + ents) = obj.J(nDoF*(ents-1) + ents) + vals(:,1);
-        obj.rhs(ents) = obj.rhs(ents) + vals(:,2);
+      if isTPFA(obj)
+        % BCs imposition for finite volumes - boundary flux
+        assert(size(bcVals,2)==2,'Invalid matrix size for BC values');
+        nDoF = obj.dofm.getNumDoF(obj.fields);
+        obj.J(nDoF*(bcDofs-1) + bcDofs) = obj.J(nDoF*(bcDofs-1) + bcDofs) + bcVals(:,1);
+        obj.rhs(bcDofs) = obj.rhs(bcDofs) + bcVals(:,2);
       else
-        % strong nodal BCs imposition
-        applyDirBC@SinglePhysics(obj,obj.getField(),ents)
+        % FEM - strong BCs imposition
+        applyDirBC@PhysicsSolver(obj,bcDofs,bcVar)
       end
     end
 
@@ -407,14 +471,14 @@ classdef SinglePhaseFlow < SinglePhysics
       N = bsxfun(@times,sgn,obj.faces.faceNormal(obj.faces.faces2Elements(:,1),:));
       KMat = zeros(obj.mesh.nCellTag,9);
       for i=1:obj.mesh.nCellTag
-        KMat(i,:) = obj.material.getMaterial(i).PorousRock.getPermVector();
+        KMat(i,:) = obj.materials.getMaterial(i).PorousRock.getPermVector();
       end
       hT = zeros(length(hf2Cell),1);
       for k=1:length(r)
         hT = hT + L(:,r(k)) .* KMat(obj.mesh.cellTag(hf2Cell),k) .* N(:,c(k));
       end
       hT = hT./sum(L.*L,2);
-      %       mu = obj.material.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();
+      %       mu = obj.materials.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();
       %       hT = hT/mu;
       obj.trans = 1 ./ accumarray(obj.faces.faces2Elements(:,1),1 ./ hT,[obj.faces.nFaces,1]);
     end
@@ -432,7 +496,7 @@ classdef SinglePhaseFlow < SinglePhysics
       N = bsxfun(@times,sgn,obj.faces.faceNormal(ncell.face,:)')';
       KMat = zeros(obj.mesh.nCellTag,9);
       for i=1:obj.mesh.nCellTag
-        KMat(i,:) = obj.material.getMaterial(i).PorousRock.getPermVector();
+        KMat(i,:) = obj.materials.getMaterial(i).PorousRock.getPermVector();
       end
       hT = zeros(length(hf2Cell),1);
       for k=1:length(r)
@@ -442,12 +506,12 @@ classdef SinglePhaseFlow < SinglePhysics
     end
 
     function alpha = getRockCompressibility(obj,el)
-      if ismember(obj.mesh.cellTag(el),getFieldCellTags(obj.dofm,{obj.getField(),'Poromechanics'}))
-        alpha = 0; %this term is not needed in coupled formulation
+      if ismember(obj.mesh.cellTag(el),getTargetRegions(obj.dofm,["pressure","displacements"]));
+        alpha = 0; %this term is not needed in a coupled formulation
       else
-        if isfield(obj.material.getMaterial(obj.mesh.cellTag(el)),"ConstLaw")
+        if isfield(obj.materials.getMaterial(obj.mesh.cellTag(el)),"ConstLaw")
           %solid skeleton contribution to storage term as oedometric compressibility .
-          alpha = obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
+          alpha = obj.materials.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
         else
           alpha = 0;
         end
@@ -461,7 +525,7 @@ classdef SinglePhaseFlow < SinglePhysics
       elseif isFVTPFABased(obj.model,'Flow')
         zbc=obj.mesh.cellCentroid(:,3);
       end
-      gamma = obj.material.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getFluidSpecWeight();
       if gamma > 0.
         pzhead = zbc+pressure/gamma;
       else
@@ -472,7 +536,7 @@ classdef SinglePhaseFlow < SinglePhysics
     function potential = computePotential(obj,pressure)
       % COMPUTEFLUX - compute the potential for the cell or element.
       potential = pressure;
-      gamma = obj.material.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getFluidSpecWeight();
       if gamma > 0
         if isFEMBased(obj.model,'Flow')
           potential = potential + gamma*obj.mesh.coordinates(:,3);
@@ -486,7 +550,7 @@ classdef SinglePhaseFlow < SinglePhysics
       %printPropState - print the potential for the cell or element.
       perm = zeros(obj.mesh.nCells,6);
       for el=1:obj.mesh.nCells
-        ktmp = obj.material.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+        ktmp = obj.materials.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
         perm(el,1)=ktmp(1,1);
         perm(el,2)=ktmp(2,2);
         perm(el,3)=ktmp(3,3);
@@ -546,7 +610,7 @@ classdef SinglePhaseFlow < SinglePhysics
         areaSq = areaSq.*nnodesBfaces;
 
         % add boundary condition
-        
+
         bcList = obj.bcs.db.keys;
         for bc = string(bcList)
           if strcmp(obj.model.findPhysicsFromID(obj.model.findIDPhysics(obj.bcs.getPhysics(bc))),'Flow')
@@ -585,74 +649,86 @@ classdef SinglePhaseFlow < SinglePhysics
       end
     end
 
-      % function mass = checkMassCons(obj,mob,pot)
-      %   %CHECKMASSCONS - check the mass conservation in all elements.
-      %   mass = zeros(obj.mesh.nCells,1);
-      %   if isFVTPFABased(obj.model,'Flow')
-      %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-      %     sgn = 2*((obj.faces.faces2Elements(:,2)==1) +(obj.faces.faces2Elements(:,2)==3)+(obj.faces.faces2Elements(:,2)==5)) - 1;
-      %
-      %     fluxFaces = zeros(obj.faces.nFaces,1);
-      %     fluxFaces(obj.isIntFaces) = pot(neigh(:,1))-pot(neigh(:,2));
-      %     fluxFaces(obj.isIntFaces) = mob.*obj.trans(obj.isIntFaces).*fluxFaces(obj.isIntFaces);
-      %
-      %     % Contribution
-      %     massFace = sgn.*fluxFaces(obj.faces.faces2Elements(:,1));
-      %     elm = repelem(1:obj.mesh.nCells,diff(obj.faces.mapF2E));
-      %     mass = accumarray(elm',massFace);
-      %   end
-      % end
-    end
-
-    methods (Access = private)
-      function [lwkpt,dlwkpt] = computeMobilityBoundary(obj)
-        % COMPUTEMOBILITY compute the mobility and it's derivatives
-        mu = obj.material.getFluid().getDynViscosity();
-        if mu==0
-          lwkpt = 1;
-        else
-          lwkpt = 1/mu;
-        end
-        dlwkpt = 0;
+    function out = isFEM(obj)
+      out = false;
+      if strcmp(obj.scheme,"FEM")
+        out = true;
       end
     end
 
-
-    methods (Static)
-      function [cellStr,pointStr] = buildPrintStruct(mod,state)
-        if isFEMBased(mod,'Flow')
-          cellStr = repmat(struct('name', 1, 'data', 1), 1, 1);
-          cellStr(1).name = 'permeability';
-          cellStr(1).data = state.perm;
-
-          pointStr = repmat(struct('name', 1, 'data', 1), 2, 1);
-          pointStr(1).name = 'pressure';
-          pointStr(1).data = state.pressure;
-          pointStr(2).name = 'potential';
-          pointStr(2).data = state.potential;
-          pointStr(3).name = 'piezometric head';
-          pointStr(3).data = state.head;
-        elseif isFVTPFABased(mod,'Flow')
-          pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);
-          pointStr(1).name = 'flux';
-          pointStr(1).data = state.flux;
-          % pointStr = [];
-
-          cellStr = repmat(struct('name', 1, 'data', 1), 3, 1);
-          cellStr(1).name = 'permeability';
-          cellStr(1).data = state.perm;
-          cellStr(2).name = 'pressure';
-          cellStr(2).data = state.pressure;
-          cellStr(3).name = 'potential';
-          cellStr(3).data = state.potential;
-          cellStr(4).name = 'piezometric head';
-          cellStr(4).data = state.head;
-        end
+    function out = isTPFA(obj)
+      out = false;
+      if strcmp(obj.scheme,"FiniteVolumesTPFA")
+        out = true;
       end
+    end
 
-      function out = getField()
-        out = SinglePhaseFlow.field;
+    % function mass = checkMassCons(obj,mob,pot)
+    %   %CHECKMASSCONS - check the mass conservation in all elements.
+    %   mass = zeros(obj.mesh.nCells,1);
+    %   if isFVTPFABased(obj.model,'Flow')
+    %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+    %     sgn = 2*((obj.faces.faces2Elements(:,2)==1) +(obj.faces.faces2Elements(:,2)==3)+(obj.faces.faces2Elements(:,2)==5)) - 1;
+    %
+    %     fluxFaces = zeros(obj.faces.nFaces,1);
+    %     fluxFaces(obj.isIntFaces) = pot(neigh(:,1))-pot(neigh(:,2));
+    %     fluxFaces(obj.isIntFaces) = mob.*obj.trans(obj.isIntFaces).*fluxFaces(obj.isIntFaces);
+    %
+    %     % Contribution
+    %     massFace = sgn.*fluxFaces(obj.faces.faces2Elements(:,1));
+    %     elm = repelem(1:obj.mesh.nCells,diff(obj.faces.mapF2E));
+    %     mass = accumarray(elm',massFace);
+    %   end
+    % end
+  end
+
+  methods (Access = private)
+    function [lwkpt,dlwkpt] = computeMobilityBoundary(obj)
+      % COMPUTEMOBILITY compute the mobility and it's derivatives
+      mu = obj.materials.getFluid().getDynViscosity();
+      if mu==0
+        lwkpt = 1;
+      else
+        lwkpt = 1/mu;
       end
+      dlwkpt = 0;
     end
   end
 
+
+
+  methods (Static)
+    function [cellStr,pointStr] = buildPrintStruct(mod,state)
+      if isFEMBased(mod,'Flow')
+        cellStr = repmat(struct('name', 1, 'data', 1), 1, 1);
+        cellStr(1).name = 'permeability';
+        cellStr(1).data = state.perm;
+
+        pointStr = repmat(struct('name', 1, 'data', 1), 2, 1);
+        pointStr(1).name = 'pressure';
+        pointStr(1).data = state.pressure;
+        pointStr(2).name = 'potential';
+        pointStr(2).data = state.potential;
+        pointStr(3).name = 'piezometric head';
+        pointStr(3).data = state.head;
+      elseif isFVTPFABased(mod,'Flow')
+        pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);
+        pointStr(1).name = 'flux';
+        pointStr(1).data = state.flux;
+        % pointStr = [];
+
+        cellStr = repmat(struct('name', 1, 'data', 1), 3, 1);
+        cellStr(1).name = 'permeability';
+        cellStr(1).data = state.perm;
+        cellStr(2).name = 'pressure';
+        cellStr(2).data = state.pressure;
+        cellStr(3).name = 'potential';
+        cellStr(3).data = state.potential;
+        cellStr(4).name = 'piezometric head';
+        cellStr(4).data = state.head;
+      end
+    end
+
+  end
+
+end
