@@ -34,8 +34,8 @@ classdef BiotFullySaturated < PhysicsSolver
         obj.mechSolver = Poromechanics(obj.domain);
         registerSolver(obj.mechSolver,input.(class(obj.mechSolver)));
 
-        obj.fldMech = obj.dofm.getVariableId(obj.mechSolver.fields);
-        obj.fldFlow = obj.dofm.getVariableId(obj.flowSolver.fields);
+        obj.fldMech = obj.dofm.getVariableId(obj.flowSolver.getField());
+        obj.fldFlow = obj.dofm.getVariableId(obj.mechSolver.getField());
 
       end
 
@@ -51,8 +51,8 @@ classdef BiotFullySaturated < PhysicsSolver
         computeMat(obj);
 
         % assign coupling blocks
-        obj.J{fldMech,fldFlow} = -obj.simParams.theta*obj.Q;
-        obj.J{fldFlow,fldMech} = obj.Q'/dt;
+        obj.J{objfldMech,obj.fldFlow} = -obj.simParams.theta*obj.Q;
+        obj.J{obj.fldFlow,obj.fldMech} = obj.Q'/dt;
 
 
 
@@ -71,8 +71,8 @@ classdef BiotFullySaturated < PhysicsSolver
             % compute coupling matrix only where mechanics and flow are
             % active
 
-            cellTagFlow = obj.dofm.getTargetRegions(obj.flowSolver.fields);
-            cellTagMech = obj.dofm.getTargetRegions(obj.mechSolver.fields);
+            cellTagFlow = obj.dofm.getTargetRegions(obj.fldFlow);
+            cellTagMech = obj.dofm.getTargetRegions(obj.fldMech);
 
             cellTags = instersect(cellTagMech,cellTagFlow);
 
@@ -85,8 +85,8 @@ classdef BiotFullySaturated < PhysicsSolver
             end
 
             [iiVec,jjVec,Qvec] = deal(zeros(nEntries,1));
-            nDoF1 = obj.dofm.getNumbDoF(obj.mechSolver.fields);
-            nDoF2 = obj.dofm.getNumbDoF(obj.flowSolver.fields);
+            nDoF1 = obj.dofm.getNumbDoF(obj.fldMech);
+            nDoF2 = obj.dofm.getNumbDoF(obj.fldFlow);
             % consider replacing the string field with an integer
 
             l1 = 0;
@@ -133,22 +133,20 @@ classdef BiotFullySaturated < PhysicsSolver
             % compute Biot rhs contribute
             theta = obj.simParams.theta;
             % select active coefficients of solution vectors
-            entsPoro = obj.dofm.getActiveEnts(obj.fields(1));
-            entsFlow = obj.dofm.getActiveEnts(obj.fields(2));
+            entsPoro = obj.dofm.getActiveEnts(obj.fldMech);
+            entsFlow = obj.dofm.getActiveEnts(obj.fldFlow);
             obj.rhs{1} = -theta*obj.Q*obj.state.data.pressure(entsFlow) - ...
                 (1-theta)*(obj.Q*stateOld.data.pressure(entsFlow));
             obj.rhs{2} = (obj.Q/dt)'*(obj.state.data.dispCurr(entsPoro) - obj.state.data.dispConv(entsPoro));
         end
 
-        function applyDirBC(obj,field,ents,varargin)
-           if strcmp(field,obj.fields(2)) && isFVTPFABased(obj.model,'Flow')
-              % FV Dirichlet BC does not affect coupling blocks
-              return
-           else
-              % call base implementation of dirichlet imposition
-              applyDirBC@CouplingPhysics(obj,field,ents);
-           end
+        function applyBC(obj,t,bcId,bcVariable)
+          if strcmp(bcVariable,obj.flowSolver.getField())
+          elseif strcmp(bcVariable,obj.mech.getField())
+            obj.mechSolver
+          end
         end
+
 
         function updateState(obj,solution)
 
@@ -181,7 +179,7 @@ classdef BiotFullySaturated < PhysicsSolver
     methods (Static)
 
         function out = getField()
-          out = BiotFullySaturated.fields;
+          out = [Poromechanics.getField(), SinglePhaseFlow.getField()];
         end
     end
 

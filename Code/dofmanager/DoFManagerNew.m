@@ -7,11 +7,12 @@ classdef DoFManagerNew < handle
   % Domain-based ordering
   properties (Access = private)
     mesh
-    dofMap % cell array with dof map for each variable field
+    dofMap                        % cell array with dof map for each variable field
+    fields                        % array of existing fields in the domain
     numbComponents
-    fields = struct("variableName",[],...
-      "range",[],...
-      "tags",[]);
+    % fields = struct("variableName",[],...
+    %   "range",[],...
+    %   "tags",[]);
     nVars = 0;
     totDofs
   end
@@ -23,11 +24,14 @@ classdef DoFManagerNew < handle
       obj.totDofs = 0;
     end
 
-    function registerVariable(obj,varName,fieldLocation,nComp,tags)
+    function variableField = registerVariable(obj,varName,fieldLocation,nComp,tags)
       % varName: the name of the variable field
       % fieldLocation: a enum of type entityField
       % tags: the cellTag (or surfaceTag for lower dimensional fields) where the variable is actually present
       % numbComponents: the number of dofs per entitiy
+
+      % return an instance of the registeredVariable as an instance of
+      % entityField()
 
       id = obj.nVars+1;
 
@@ -91,6 +95,9 @@ classdef DoFManagerNew < handle
         obj.nVars = obj.nVars+1;
       end
 
+      % create the entity field
+
+
     end
 
 
@@ -141,15 +148,15 @@ classdef DoFManagerNew < handle
     end
 
 
-    function activeEnts = getActiveEntities(obj,varName,flagExpand)
+    function activeEnts = getActiveEntities(obj,varId,flagExpand)
       
-      if ~isnumeric(varName)
-        varName = string(varName);
+      if ~isnumeric(varId)
+        varId = string(varId);
       end
 
-      assert(isscalar(varName),"Input variable must be a scalar string or a" + ...
+      assert(isscalar(varId),"Input variable must be a scalar string or a" + ...
         "character vector (or an integer)")
-      id = obj.getVariableId(varName);
+      id = obj.getVariableId(varId);
       activeEnts = find(obj.dofMap{id});
 
       % expand to account for component
@@ -160,41 +167,41 @@ classdef DoFManagerNew < handle
       end
     end
 
-    function tags = getTargetRegions(obj,varName)
-      id = obj.getVariableId(varName);
+    function tags = getTargetRegions(obj,varId)
+      id = obj.getVariableId(varId);
       tags = [obj.fields(id).tags];
     end
 
-    function cells = getFieldCells(obj,varName)
-      tags = getTargetRegions(obj,varName);
+    function cells = getFieldCells(obj,varId)
+      tags = getTargetRegions(obj,varId);
       cells = getEntities(entityField.cell,obj.mesh,tags);
     end
 
-    function id = getVariableId(obj,varName)
+    function id = getVariableId(obj,varId)
       % return the id of the requested input variable
-      if isnumeric(varName)
-        assert(all(varName > 0) && all(varName < numel(obj.fields)),"Input variable" + ...
+      if isnumeric(varId)
+        assert(all(varId > 0) && all(varId <= numel(obj.fields)),"Input variable" + ...
           "ID is not included in the domain")
 
-        id = varName;
+        id = varId;
 
       else
-        assert(isVariable(obj,varName),"Requested variable is not available" + ...
+        assert(isVariable(obj,varId),"Requested variable is not available" + ...
           "in the DoFManager")
-        id = find(strcmp([obj.fields.variableName],varName));
+        id = find(strcmp([obj.fields.variableName],varId));
       end
     end
 
-    function fl = isVariable(obj,varName)
-      varId = strcmp([obj.fields.variableName],varName);
+    function fl = isVariable(obj,varId)
+      varId = strcmp([obj.fields.variableName],varId);
       fl = any(varId);
     end
 
-    function numDof = getNumbDoF(obj,varName)
-      if isempty(varName)
+    function numDof = getNumbDoF(obj,varId)
+      if nargin == 1
         numDof = obj.totDofs;
       else
-        id = getVariableId(obj,varName);
+        id = getVariableId(obj,varId);
         r = obj.fields(id).range;
         numDof = r(2)-r(1)+1;
       end

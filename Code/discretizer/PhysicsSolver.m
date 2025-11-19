@@ -68,9 +68,6 @@ classdef (Abstract) PhysicsSolver < handle
     % compute the jacobian and the rhs
     assembleSystem(obj,varargin);
 
-    % get the boundary condition dofs and vals (solver specific)
-    %[bcDofs,bcVals] = getBC(obj,bcId,t);
-
     % update the state variables after solving the linear system
     updateState(obj,solution);
 
@@ -105,23 +102,30 @@ classdef (Abstract) PhysicsSolver < handle
     end
 
  
-    function applyDirVal(obj,bcDofs,bcVals,bcVariableName)
-
-      % apply Dirichlet BC values to state variables
-      obj.setState(bcVariableName,bcDofs,bcVals);
-
-    end
-
     function applyBCs(obj,t)
       bcList = keys(obj.bcs.keys);
 
       for bcId = string(bcList)
         bcVar = obj.bcs.getVariable(bcId);
 
-        if any(strcmpi(obj.fields,bcVar))
+        if any(strcmpi(obj.getField(),bcVar))
 
-          % TO DO: use model property to remove slave dofs in mortar
+          % TO DO: mortar solver must remove slave BC ents BEFORE this call
           obj.applyBC(t,bcId,bcVar)
+        end
+      end
+    end
+
+    function applyDirVals(obj,t)
+      bcList = keys(obj.bcs.keys);
+
+      for bcId = string(bcList)
+        bcVar = obj.bcs.getVariable(bcId);
+
+        if any(strcmpi(obj.getField(),bcVar))
+
+          obj.applyDirVal(t,bcId,bcVar);
+
         end
       end
     end
@@ -138,7 +142,7 @@ classdef (Abstract) PhysicsSolver < handle
 
     function applyBC(obj,t,bcId,bcVar)
 
-      % get bcDofs and bcVals (should be implemented by the physicsSolver)
+      % get bcDofs and bcVals
       [bcDofs,bcVals] = getBC(obj,bcId,t);
 
       % Base application of a Boundary condition
@@ -155,6 +159,14 @@ classdef (Abstract) PhysicsSolver < handle
             "overriding this method for a specific implementation", ...
             class(obj),bcType);
       end
+    end
+
+    function [bcDofs,bcVals] = getBC(obj,bcId,t)
+
+      % base method to get the BC dofs and BC values from the boundary
+      % conditions
+
+      
     end
 
     function applyNeuBC(obj,bcDofs,bcVals,bcVariableName)

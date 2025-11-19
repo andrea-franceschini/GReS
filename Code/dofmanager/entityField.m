@@ -1,9 +1,18 @@
 classdef entityField
-  enumeration
+  % general class for handling a generic variable field in the problem
+
+  enumeration % the location of the field
     node
     face
     cell
     surface
+  end
+
+  properties
+    mesh
+    name
+    id      % the position of the field in the system matrix of the domain
+    numbComponents
   end
 
 
@@ -78,6 +87,14 @@ classdef entityField
         ents = DoFManagerNew.dofExpand(ents,nc);
       end
 
+    end
+
+    function id = getId(obj)
+      id = obj.id;
+    end
+
+    function nComp = getNumbComponents()
+      nComp = obj.nComp;
     end
 
 

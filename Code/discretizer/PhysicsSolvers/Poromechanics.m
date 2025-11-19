@@ -248,9 +248,12 @@ classdef Poromechanics < PhysicsSolver
       vals = obj.getBCVals(bcId,t);
     end
 
-    function applyDirVal(obj,dof,vals,varargin)
-      obj.state.data.dispConv(dof) = vals;
-      obj.state.data.dispCurr(dof) = vals;
+    function 
+    end
+
+    function applyDirVal(obj,bcId,bcDofs,bcVals)
+      obj.state.data.dispConv(bcDofs) = bcVals;
+      obj.state.data.dispCurr(bcDofs) = bcVals;
     end
 
     function computeRhs(obj,varargin)
@@ -464,6 +467,7 @@ classdef Poromechanics < PhysicsSolver
     function out = getField()
       out = "displacements";
     end
+
   end
 end
 

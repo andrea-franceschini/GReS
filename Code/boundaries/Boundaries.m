@@ -4,7 +4,6 @@ classdef Boundaries < handle
   properties (Access = public)
     % Creation of a Map object for the boundary conditions
     db
-    dof
   end
 
   properties (Access = private)

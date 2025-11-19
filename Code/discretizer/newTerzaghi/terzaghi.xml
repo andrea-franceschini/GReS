@@ -61,7 +61,7 @@
     <BiotFullySaturated>
 
       <Poromechanics
-                     cellTags = "1,2"
+                     cellTags = "1"
 
                      />
       <SinglePhaseFlow

@@ -45,7 +45,7 @@ classdef SinglePhaseFlow < PhysicsSolver
 
       obj.fieldId = obj.dofm.getVariableId(obj.variableName);
 
-      n = getNumbDoF(obj.dofm,obj.fields);
+      n = getNumbDoF(obj.dofm,obj.fieldId);
 
       % initialize the state object with a pressure field
       obj.domain.state.data.(obj.variableName) = zeros(n,1);
@@ -53,7 +53,7 @@ classdef SinglePhaseFlow < PhysicsSolver
       if strcmp(obj.scheme,'FiniteVolumesTPFA')
         obj.computeTrans();
         %get cells with active flow model
-        flowCells = obj.dofm.getActiveEntities(obj.fields);
+        flowCells = obj.dofm.getActiveEntities(obj.fieldId);
         % Find internal faces (i.e. shared by two active flow cells)
         obj.isIntFaces = all(ismember(obj.faces.faceNeighbors, flowCells), 2);
       end
@@ -65,11 +65,9 @@ classdef SinglePhaseFlow < PhysicsSolver
 
     function assembleSystem(obj,dt)
 
-      idFlow = getVariableId(obj.dofm,obj.fields);
+      obj.domain.J{obj.fieldId,obj.fieldId} = computeMat(obj,dt);
 
-      obj.domain.J{idFlow,idFlow} = computeMat(obj,dt);
-
-      obj.domain.rhs{iFlow} = computeRhs(obj,dt);
+      obj.domain.rhs{obj.fieldId} = computeRhs(obj,dt);
 
     end
     %
@@ -79,7 +77,7 @@ classdef SinglePhaseFlow < PhysicsSolver
       if nargin > 1
         ents = obj.dofm.getActiveEntities(obj.fieldId);
         state = getState(obj);
-        state.data.pressure(ents) = state.data.pressure(ents) + dSol(obj.dofm.getDoF(obj.fields));
+        state.data.pressure(ents) = state.data.pressure(ents) + dSol(obj.dofm.getDoF(obj.fieldId));
       end
     end
 
@@ -124,7 +122,7 @@ classdef SinglePhaseFlow < PhysicsSolver
     function J = computeMat(obj,dt)
 
       % recompute elementary matrices only if the model is linear
-      id = getVariableId(obj.dofm,obj.fields);
+      id = getVariableId(obj.dofm,obj.fieldId);
       if ~isLinear(obj) || isempty(obj.J{id,id})
         if isFEM(obj)
           computeMatFEM(obj);
@@ -144,7 +142,7 @@ classdef SinglePhaseFlow < PhysicsSolver
 
     function computeMatFEM(obj)
       % dealing with input params
-      subCells = obj.dofm.getTargetRegions(obj.fields);
+      subCells = obj.dofm.getTargetRegions(obj.fieldId);
       nEntries = sum(obj.mesh.cellNumVerts(subCells).^2);
 
       [iiVec,jjVec,HVec,PVec] = deal(zeros(nEntries,1));
@@ -175,7 +173,7 @@ classdef SinglePhaseFlow < PhysicsSolver
         PLoc = (alpha+poro*beta)*(N'*diag(dJWeighed)*N);
         %Getting dof associated to Flow subphysic
         nodes = (obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
-        dof = obj.dofm.getLocalDoF(nodes,obj.fldId);
+        dof = obj.dofm.getLocalDoF(nodes,obj.fieldId);
         [jjLoc,iiLoc] = meshgrid(dof,dof);
         iiVec(l1+1:l1+s1) = iiLoc(:);
         jjVec(l1+1:l1+s1) = jjLoc(:);
@@ -184,7 +182,7 @@ classdef SinglePhaseFlow < PhysicsSolver
         l1 = l1 + s1;
       end
       % renumber indices according to active nodes
-      nDoF = obj.dofm.getNumbDoF(obj.fields);
+      nDoF = obj.dofm.getNumbDoF(obj.fieldId);
       % Assemble H and P matrices defined as new fields of
       obj.H = sparse(iiVec, jjVec, HVec, nDoF, nDoF);
       obj.P = sparse(iiVec, jjVec, PVec, nDoF, nDoF);
@@ -193,7 +191,7 @@ classdef SinglePhaseFlow < PhysicsSolver
     function computeStiffMatFV(obj,lw)
       % Inspired by MRST
       % subCells =
-      subCells = obj.dofm.getFieldCells(obj.fields);
+      subCells = obj.dofm.getFieldCells(obj.fieldId);
       nSubCells = length(subCells);
       %get pairs of faces that contribute to the subdomain
       neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
@@ -207,20 +205,20 @@ classdef SinglePhaseFlow < PhysicsSolver
       sumDiagTrans = accumarray( [neigh1;neigh2], repmat(tmpVec,[2,1]), ...
         [nSubCells,1]);
       % Assemble H matrix
-      nDoF = obj.dofm.getNumDoF(obj.fields);
+      nDoF = obj.dofm.getNumDoF(obj.fieldId);
       obj.H = sparse([neigh1; neigh2; (1:nSubCells)'],...
         [neigh2; neigh1; (1:nSubCells)'],...
         [-tmpVec; -tmpVec; sumDiagTrans], nDoF, nDoF);
     end
 
     function computeCapMatFV(obj,varargin)
-      subCells = obj.dofm.getFieldCells(obj.fields);
+      subCells = obj.dofm.getFieldCells(obj.fieldId);
       nSubCells = length(subCells);
       poroMat = zeros(nSubCells,1);
       alphaMat = zeros(nSubCells,1);
       beta = obj.materials.getFluid().getFluidCompressibility();
       for m = 1:obj.mesh.nCellTag
-        if ~ismember(m,obj.dofm.getTargetRegions([obj.fields,'displacements']))
+        if ~ismember(m,obj.dofm.getTargetRegions([obj.fieldId,'displacements']))
           % compute alpha only if there's no coupling in the
           % subdomain
           alphaMat(m) = obj.materials.getMaterial(m).ConstLaw.getRockCompressibility();
@@ -234,7 +232,7 @@ classdef SinglePhaseFlow < PhysicsSolver
         PVal = PVal.*varargin{1} + poroMat(obj.mesh.cellTag(subCells)).*varargin{2};
       end
       PVal = PVal.*obj.mesh.cellVolume(subCells);
-      nDoF = obj.dofm.getNumbDoF(obj.fields);
+      nDoF = obj.dofm.getNumbDoF(obj.fieldId);
       [~,~,dof] = unique(subCells);
       obj.P = sparse(dof,dof,PVal,nDoF,nDoF);
     end
@@ -244,11 +242,11 @@ classdef SinglePhaseFlow < PhysicsSolver
       % Compute the residual of the flow problem
 
       % get pressure state
-      p = getState(obj,obj.fields);
-      pOld = getStateOld(obj,obj.fields);
+      p = getState(obj,obj.fieldId);
+      pOld = getStateOld(obj,obj.fieldId);
 
       lw = 1/obj.materials.getFluid().getDynViscosity();
-      ents = obj.dofm.getActiveEnts(obj.fields);
+      ents = obj.dofm.getActiveEnts(obj.fieldId);
 
       if ~obj.simparams.isTimeDependent
         rhs = obj.H*p(ents);
@@ -275,11 +273,11 @@ classdef SinglePhaseFlow < PhysicsSolver
     function computeRHSGravTerm(obj)
       % Compute the gravity contribution
       % Get the fluid specific weight and viscosity'
-      rhsTmp = zeros(obj.dofm.getNumbDoF(obj.fields),1);
-      % rhsTmp = zeros(obj.dofm.getNumDoF(obj.fields),1);
+      rhsTmp = zeros(obj.dofm.getNumbDoF(obj.fieldId),1);
+      % rhsTmp = zeros(obj.dofm.getNumDoF(obj.fieldId),1);
       gamma = obj.materials.getFluid().getFluidSpecWeight();
       if gamma > 0
-        subCells = obj.dofm.getFieldCells(obj.fields);
+        subCells = obj.dofm.getFieldCells(obj.fieldId);
         if isFEMBased(obj.model,'Flow')
           for el = subCells'
             % Get the material permeability
@@ -299,7 +297,7 @@ classdef SinglePhaseFlow < PhysicsSolver
             entsId = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
             rhsTmp(entsId) = rhsTmp(entsId) + rhsLoc;
           end
-          obj.rhsGrav = rhsTmp(obj.dofm.getActiveEnts(obj.fields));
+          obj.rhsGrav = rhsTmp(obj.dofm.getActiveEnts(obj.fieldId));
         elseif isFVTPFABased(obj.model,'Flow')
           neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
           zVec = obj.mesh.cellCentroid(:,3);
@@ -311,11 +309,11 @@ classdef SinglePhaseFlow < PhysicsSolver
     end
 
     function gTerm = finalizeRHSGravTerm(obj,lw)
-      nCells = obj.dofm.getNumDoF(obj.fields);
+      nCells = obj.dofm.getNumDoF(obj.fieldId);
       neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
       gTerm = accumarray(neigh(:),[lw.*obj.rhsGrav; ...
         -lw.*obj.rhsGrav],[nCells,1]);
-      gTerm = gTerm(obj.dofm.getActiveEnts(obj.fields));
+      gTerm = gTerm(obj.dofm.getActiveEnts(obj.fieldId));
     end
 
     function [dof,vals] = getBC(obj,id,t)
@@ -401,9 +399,7 @@ classdef SinglePhaseFlow < PhysicsSolver
           end
       end
 
-      idFlow = getVariableId(obj.dofm,obj.fields);
-      % convert bc entities in dof numbering
-      dof = obj.dofm.getLocalDoF(idFlow,ents);
+      dof = obj.dofm.getLocalDoF(obj.fieldId,ents);
 
     end
 
@@ -443,7 +439,7 @@ classdef SinglePhaseFlow < PhysicsSolver
       if isTPFA(obj)
         % BCs imposition for finite volumes - boundary flux
         assert(size(bcVals,2)==2,'Invalid matrix size for BC values');
-        nDoF = obj.dofm.getNumDoF(obj.fields);
+        nDoF = obj.dofm.getNumDoF(obj.fieldId);
         obj.J(nDoF*(bcDofs-1) + bcDofs) = obj.J(nDoF*(bcDofs-1) + bcDofs) + bcVals(:,1);
         obj.rhs(bcDofs) = obj.rhs(bcDofs) + bcVals(:,2);
       else
@@ -727,6 +723,13 @@ classdef SinglePhaseFlow < PhysicsSolver
         cellStr(4).name = 'piezometric head';
         cellStr(4).data = state.head;
       end
+    end
+
+
+
+    function out = getField()
+      out = "pressure";
+
     end
 
   end
