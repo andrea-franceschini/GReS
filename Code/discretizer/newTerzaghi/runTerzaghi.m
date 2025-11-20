@@ -26,15 +26,14 @@ printUtils = OutState(mesh,'output.xml');
 
 
 % create the Discretizer (key-value pair)
-domain = DiscretizerNew('simulationparameters',simparam,...
-                        'grid',grid,...
+domain = DiscretizerNew('grid',grid,...
                         'materials',mat,...
                         'boundaries',bc,...
                         'outstate',printUtils);
 
 domain.addPhysicsSolver('solver.xml');
 
-solv = FCSolver(domain);
+solv = FCSolver(simparams,domain);
 
 stat = solv.NonLinearLoop();
 

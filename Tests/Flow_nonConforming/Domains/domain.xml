@@ -3,6 +3,7 @@
 in a nonConforming simulation.
 -->
 <struct>
+  
   <Domain>
     <Name>TopLayer</Name>
     <Geometry>Mesh/topLayer.vtk</Geometry>
@@ -15,6 +16,7 @@ in a nonConforming simulation.
     </BoundaryConditions>
     <OutState outFile="outTime.dat"  print="1" />
   </Domain>
+
   <Domain>
     <Name>BottomLayer</Name>
     <Geometry>Mesh/bottomLayer.vtk</Geometry>
@@ -27,4 +29,5 @@ in a nonConforming simulation.
     </BoundaryConditions>
     <OutState outFile="outTime.dat"  print="1" />
   </Domain>
+
 </struct>

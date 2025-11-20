@@ -141,6 +141,76 @@ classdef DiscretizerNew < handle
 
     end
 
+
+
+    function J = getJacobian(obj,varargin)
+      % GETJACOBIAN Return the system Jacobian matrix
+      %
+      % Usage:
+      %   J = getJacobian(obj)
+      %       Returns the full Jacobian matrix.
+      %
+      %   J = getJacobian(obj, fieldList)
+      %       Returns only the Jacobian blocks corresponding to the
+      %       specified fields. Assumes the same fields for both rows and columns.
+      %
+      %   J = getJacobian(obj, rowFields, colFields)
+      %       Returns the Jacobian blocks corresponding to the specified
+      %       fields for rows and columns separately.
+      %
+      % Inputs:
+      %   fieldList  - string or cell array of field names (for both rows and columns)
+      %   rowFields  - string or cell array of field names for rows
+      %   colFields  - string or cell array of field names for columns
+      %
+      % Output:
+      %   J          - the assembled Jacobian matrix
+      %
+      % Notes:
+      %   - If no input fields are provided, the full Jacobian is returned.
+      %   - Row and column fields must correspond to existing variables in the system.
+
+      if nargin == 1
+        J = processCellMatrix(obj.J);
+      elseif nargin == 2
+        id = obj.dofm.getVariableId(varargin{1});
+        J = processCellMatrix(obj.J{id,id});
+      elseif nargin == 3
+        idRow = obj.dofm.getVariableId(varargin{1});
+        idCol = obj.dofm.getVariableId(varargin{2});
+        J = processCellMatrix(obj.J{idRow,idCol});
+      else
+        error("Too many input arguments")
+      end
+
+    end
+
+    function rhs = getRhs(obj,varargin)
+      % GETRHS Return the right-hand side vector
+      %
+      % Usage:
+      %   rhs = getRhs(obj)               - returns full RHS
+      %   rhs = getRhs(obj, fieldList)    - returns only specified fields
+      %
+      % Inputs:
+      %   fieldList - string or cell array of field names
+      %
+      % Output:
+      %   rhs       - RHS vector (subset or full)
+      %
+      % Notes:
+      %   Only one field list is allowed; multiple fields will be concatenated
+
+      if nargin == 1
+        rhs = obj.shrinkBlockMatrix(obj.rhs);
+      elseif nargin == 2
+        id = obj.dofm.getVariableId(varargin{1});
+        rhs = obj.rhs{dofList};
+      else
+        error("Too many input arguments")
+      end
+    end
+
   end
 
   methods(Access = private)
@@ -174,9 +244,9 @@ classdef DiscretizerNew < handle
         end
 
         switch lower(key)
-          case 'simulationparameters'
-            assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
-            obj.simparams = value;
+          % case 'simulationparameters'
+          %   assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
+          %   obj.simparams = value;
           case 'grid'
             assert(isstruct(value),msg)
             obj.grid = value;
