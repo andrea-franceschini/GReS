@@ -1,7 +1,0 @@
-SurfBC            % BC item 
-Dir            % BC type 
-Poromechanics            % Physics 
-fix            % BC name 
-BCs/block_1_fix/list 
-0.000000 BCs/block_1_fix/time0.dat 
-End
