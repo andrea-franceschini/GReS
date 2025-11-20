@@ -4,16 +4,16 @@ classdef DiscretizerNew < handle
 
     physicsSolvers      % physics solvers database
     dofm                % dofManager
-    simparams    
+    simparams
     bcs
     outstate
     materials
     solverNames
-    grid = struct('topology',[],'faces',[],'cells',[]) 
+    grid = struct('topology',[],'faces',[],'cells',[])
 
   end
 
-  properties (GetAccess=public, SetAccess=public)
+  properties (GetAccess=private, SetAccess=public)
     interfaceList = [];
     interfaces = []
     interfaceSurf            % surfaceTag in each surface of interfaceSurf
@@ -22,6 +22,9 @@ classdef DiscretizerNew < handle
 
     state
     stateOld
+  end
+
+  properties (GetAccess=private, SetAccess=public)
     J
     rhs
   end
@@ -33,90 +36,53 @@ classdef DiscretizerNew < handle
       %   Detailed explanation goes here
       obj.physicsSolvers = containers.Map('KeyType','char','ValueType','any');
       obj.setDiscretizer(varargin{:});
-      obj.initState();
-      obj.checkTimeDependence();
     end
 
-    function applyBC(obj,t,idDom)
-      % Apply boundary condition to blocks of physical solver
-      % ents: id of constrained entity
-      % vals: value to assign to each entity
-      bcList = obj.bcs.db.keys;
-      % get entities and values of boundary condition
-      for bcId = string(bcList)
-        field = obj.bcs.getPhysics(bcId);
-        % get id of constrained entities and corresponding BC values
-        [bcEnts,bcVals] = getBC(getSolver(obj,field),bcId,t);
-
-        %removeInterfaceBC(obj,bcEnts,bcVals)
-        % apply Boundary conditions to each Jacobian/rhs block
-        for f = obj.fields
-          if ~isCoupled(obj,field,f)
-            continue
-            % skip pair of uncoupled physics
-          end
-          switch obj.bcs.getType(bcId)
-            case {'Dirichlet','Seepage'}
-              if nargin > 2
-                assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
-                  'invalid domain id input for single domain BC imposition']);
-                for i = 1:length(obj.interfaceList)
-                  [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
-                end
-              end
-              applyDirBC(obj.getSolver(field,f),field,bcEnts,bcVals);
-            case {'Neumann','VolumeForce'}
-              applyNeuBC(obj.getSolver(field,f),bcEnts,bcVals);
-          end
-        end
-      end
-    end
-
-    function applyDirVal(obj,t,idDom)
-      
-      for solv = solverNames'
-        getPhysicsSolver(solv).applyDirVals(t)
-      end
-    end
-
-    function applyDirVals(obj,t)
+    function applyBC(obj,t)
       bcList = keys(obj.bcs.keys);
 
       for bcId = string(bcList)
+        % loop over available bcs
         bcVar = obj.bcs.getVariable(bcId);
 
-        if any(strcmpi(obj.getField(),bcVar))
+        for solv = obj.solverNames
+          % loop over available solvers
+          solver = obj.getPhysicsSolver(solv);
 
-          obj.applyDirVal(t,bcId,bcVar);
+          % check if BCs applies to the solver
+          if any(strcmpi(solver.getField(),bcVar))
+            solver.applyBC(t,bcId,bcVar)
+          end
 
         end
       end
+
     end
 
-    function applyDirVal(obj,t,idDom)
-      % Apply boundary condition to blocks of physical solver
-      % ents: id of constrained entity
-      % vals: value to assign to each entity
 
-      bcList = obj.bcs.db.keys;
-      % get entities and values of boundary condition
+    function applyDirVal(obj,t)
+      bcList = keys(obj.bcs.keys);
+
       for bcId = string(bcList)
-        if ~strcmp(obj.bcs.getType(bcId),'Dirichlet')
+        % discard non-Dirichlet BC
+        if ~strcmp(obj.bcs.getType(bcId),"Dirichlet")
           continue
         end
-        field = obj.bcs.getPhysics(bcId);
-        [bcEnts,bcVals] = getBC(getSolver(obj,field),bcId,t);
-        if nargin > 2
-          assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
-            'invalid domain id input for single domain BC imposition']);
-          for i = 1:length(obj.interfaceList)
-            error("Interfaces are not availble in this version of the code");
-            [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
+
+        bcVar = obj.bcs.getVariable(bcId);
+
+        for solv = obj.solverNames
+          % loop over available solvers
+          solver = obj.getPhysicsSolver(solv);
+
+          % check if BCs applies to the solver
+          if any(strcmpi(solver.getField(),bcVar))
+            solver.applyBDirVal(t,bcId,bcVar)
           end
         end
-        getSolver(obj,field).applyDirVal(bcEnts,bcVals);
       end
     end
+
 
     function out = getPhysicsSolver(obj,id)
       out = obj.physicsSolvers(id);
@@ -130,122 +96,51 @@ classdef DiscretizerNew < handle
       out = obj.stateOld;
     end
 
-    function J = assembleJacobian(obj)
-      % put together jacobian blocks of SinglePhysicsSolver and
-      % CoupledSolver in the model
-      % Use the ordering specified in DoF manager class
-      switch obj.dofm.ordering
-        case 'field'
-          nFld = numel(obj.fields);
-          J = cell(nFld,nFld);
-          for i = 1:nFld
-            for j = 1:nFld
-              J{i,j} = getJacobian(obj.getSolver(obj.fields(i),obj.fields(j)),obj.fields(i));
-            end
-          end
-        otherwise
-          error('Invalid DoF manager ordering')
-      end
-    end
 
-    function rhs = assembleRhs(obj)
-      % put together rhs blocks of SinglePhysicsSolver and
-      % CoupledSolver in the model
-      nFld = numel(obj.fields);
-      rhs = cell(nFld,1);
-      for i = 1:nFld
-        rhs{i} = zeros(getNumDoF(obj.dofm,obj.fields(i)),1);
-        for j = 1:nFld
-          rhs{i} = rhs{i} + ...
-            getRhs(getSolver(obj,obj.fields(i),obj.fields(j)),obj.fields(i));
-        end
-      end
-    end
-
-     function printState(obj,stateOld)
+    function printState(obj,t)
       % print solution of the model according to the print time in the
       % list
-      % Initialize input structure for VTK output
-      cellData3D = [];
-      pointData3D = [];
-      if nargin == 1
+
+      if t >= obj.simparams.tMax
+
         time = obj.state.t;
-        % print result to mat-file
-        % this is not modular and will be updated in future version of the code
-        if obj.outstate.writeSolution
-          % obj.outstate.results.expTime(obj.outstate.timeID,1) = time;
-          obj.outstate.results(obj.outstate.timeID).expTime = time;
-          if isPoromechanics(obj.model)
-            % obj.outstate.results.expDispl(:,obj.outstate.timeID) = obj.state.data.dispConv;
-            obj.outstate.results(obj.outstate.timeID).expDispl = obj.state.data.dispConv;
-          end
-          if isFlow(obj.model)
-            % obj.outstate.results.expPress(:,obj.outstate.timeID) = obj.state.data.pressure;
-            obj.outstate.results(obj.outstate.timeID).expPress = obj.state.data.pressure;
-          end
-          if isVariabSatFlow(obj.model)
-            % obj.outstate.results.expSat(:,obj.outstate.timeID) = obj.state.data.saturation;
-            obj.outstate.results(obj.outstate.timeID).expSat = obj.state.data.saturation;
-          end
-        end
-        for fld = obj.fields
-          [cellData,pointData] = printState(obj.getSolver(fld),obj.state);
-          cellData3D = [cellData3D; cellData];
-          pointData3D = [pointData3D; pointData];
-        end
-        cellData3D = OutState.printMeshData(obj.grid.topology,cellData3D);
-        if obj.outstate.writeVtk
-          obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
-        end
-        % update the print structure
-      elseif nargin == 2
-        stateNew = obj.state;
+
+        writeVTK(obj,time);
+
+        writeMatFile(obj,time);
+
+        % loop over print times
+      else
+
         if obj.outstate.timeID <= length(obj.outstate.timeList)
-          while (obj.outstate.timeList(obj.outstate.timeID) <= stateNew.t)
-            assert(obj.outstate.timeList(obj.outstate.timeID) > stateOld.t, ...
-              'Print time %f out of range (%f - %f)',obj.outstate.timeList(obj.outstate.timeID), ...
-              stateOld.t,stateNew.t);
-            assert(stateNew.t - stateOld.t > eps('double'),'Dt too small for printing purposes');
-            %
-            time = obj.outstate.timeList(obj.outstate.timeID);
-            if obj.outstate.writeSolution
-              % print solution to mat-file
-              fac = (time - stateOld.t)/(stateNew.t - stateOld.t);
-              % obj.outstate.results.expTime(obj.outstate.timeID+1,1) = time;
-              obj.outstate.results(obj.outstate.timeID+1).expTime = time;
-              if isPoromechanics(obj.model)
-                % obj.outstate.results.expDispl(:,obj.outstate.timeID+1) = stateNew.data.dispConv*fac+stateOld.data.dispConv*(1-fac);
-                obj.outstate.results(obj.outstate.timeID+1).expDispl = stateNew.data.dispConv*fac+stateOld.data.dispConv*(1-fac);
-              end
-              if isFlow(obj.model)
-                % obj.outstate.results.expPress(:,obj.outstate.timeID+1) = stateNew.data.pressure*fac+stateOld.data.pressure*(1-fac);
-                obj.outstate.results(obj.outstate.timeID+1).expPress = stateNew.data.pressure*fac+stateOld.data.pressure*(1-fac);
-              end
-              if isVariabSatFlow(obj.model)
-                % obj.outstate.results.expSat(:,obj.outstate.timeID+1) = stateNew.data.saturation*fac+stateOld.data.saturation*(1-fac);
-                obj.outstate.results(obj.outstate.timeID+1).expSat = stateNew.data.saturation*fac+stateOld.data.saturation*(1-fac);
-              end
-            end
-            % Write output structure looping through available models
-            for fld = obj.fields
-              [cellData,pointData] = printState(obj.getSolver(fld),...
-                stateOld, stateNew, time);
-              % merge new fields
-              cellData3D = OutState.mergeOutFields(cellData3D,cellData);
-              pointData3D = OutState.mergeOutFields(pointData3D,pointData);
-            end
-            cellData3D = OutState.printMeshData(obj.grid.topology,cellData3D);
-            if obj.outstate.writeVtk
-              obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
-            end
+
+          time = obj.outstate.timeList(obj.outstate.timeID);
+
+          while time <= obj.state.t
+
+            assert(time > obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
+              time, obj.stateOld.t, stateNew.t);
+
+            assert(obj.state.t - obj.stateOld.t > eps('double'),...
+              'Time step is too small for printing purposes');
+
+            writeVTK(obj,time);
+
+            writeMatFile(obj,time);
+
             obj.outstate.timeID = obj.outstate.timeID + 1;
-            if obj.outstate.timeID > length(obj.outstate.timeList)
-              break
-            end
+            
+            time = obj.outstate.timeList(obj.outstate.timeID);
+
           end
+
         end
       end
     end
+ 
+
+
+
 
 
     function out = getSolver(obj,varargin)
@@ -323,15 +218,9 @@ classdef DiscretizerNew < handle
         end
 
         switch lower(key)
-          case 'modeltype'
-            assert(isa(value, 'ModelType')|| isempty(value),msg)
-            obj.model = value;
           case 'simulationparameters'
             assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
             obj.simparams = value;
-          case 'dofmanager'
-            assert(isa(value, 'DoFManager') || isempty(value),msg)
-            obj.dofm = value;
           case 'grid'
             assert(isstruct(value),msg)
             obj.grid = value;
@@ -354,24 +243,6 @@ classdef DiscretizerNew < handle
         'is required for Discretizer class']);
     end
 
-    function checkTimeDependence(obj)
-      if isempty(obj.simparams)
-        return
-      end
-      % check if there is any time dependence in the input model
-      % this must be moved into the single physics models
-      if ~isSinglePhaseFlow(obj.model)
-        % Biot model is time dependent
-        setTimeDependence(obj.simparams,false);
-        return
-      else
-        % check if fluid is incompressible
-        beta = getFluidCompressibility(obj.materials.getFluid());
-        if beta < eps
-          setTimeDependence(obj.simparams,false);
-        end
-      end
-    end
 
     function addPhysicsSolver(obj,solverInput)
 
@@ -386,17 +257,53 @@ classdef DiscretizerNew < handle
         solverInput = solverInput.Solver;
       end
 
-      solverNames = fieldnames(solverInput);
+      obj.solverNames = string(fieldnames(solverInput));
 
-      for i = 1:numel(solverNames)
-
-        solvName = solverNames{i};
+      for i = 1:numel(obj.solverNames)
+        % create and register the solver
+        solvName = obj.solverNames(i);
         solv = feval(solvName,obj);
-        solv.registerSolver(solverInput)
-        obj.physicsSolver(solvName)
+        solv.registerSolver(solverInput.(solvName))
+        obj.physicsSolvers(solvName)
       end
 
 
+    end
+
+
+    function writeVTK(obj,time)
+
+      if obj.outstate.writeVtk
+
+        for solv = obj.solverNames
+          solver = getPhysicsSolver(obj,solv);
+
+          cellData3D = [];
+          pointData3D = [];
+          [cellData,pointData] = printVTK(solver,time);
+          cellData3D = OutState.mergeOutFields(cellData3D,cellData);
+          pointData3D = OutState.mergeOutFields(pointData3D,pointData);
+        end
+
+        cellData3D = OutState.printMeshData(obj.grid.topology,cellData3D);
+        obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
+      end
+
+    end
+
+    function writeMatFile(obj,time)
+      
+      % write to MAT-file
+      if obj.outstate.writeSolution
+
+        tID = obj.outstate.timeID;
+
+        for solv = obj.solverNames
+          solver = getPhysicsSolver(obj,solv);
+          writeMatFile(solver,tID,time);
+        end
+
+      end
     end
 
 
@@ -415,40 +322,31 @@ classdef DiscretizerNew < handle
     %        c = c+n;
     %      end
 
-    function f = getFieldString(varargin)
-      if numel(varargin) == 1
-        f = char(varargin{1});
-      elseif numel(varargin) == 2
-        f = join(unique(sort({char(varargin{1}),char(varargin{2})})));
-        f = f{:};
-      else
-        error('Too many input fields')
-      end
-    end
-
-    function mat_new = expandMat(mat,n)
-      % Get the size of the original matrix
-      [s1, s2] = size(mat);
-
-      % Initialize the sparse matrix: row indices, column indices, and values
-      rows = [];
-      cols = [];
-      values = [];
-
-      % Loop through the original matrix and populate the sparse matrix
-      for s = n-1:-1:0
-        % Get the row and column indices for the block
-        r1 = n*(1:s1) - s;
-        r2 = n*(1:s2) - s;
-        [colIdx,rowIdx]  = meshgrid(r2,r1);
-        % Add the values from the original matrix to the sparse matrix
-        rows = [rows; rowIdx(:)];
-        cols = [cols; colIdx(:)];
-        values = [values; mat(:)];
-      end
-
-      % Create the sparse matrix directly from the row, column indices, and values
-      mat_new = sparse(rows, cols, values, s1 * n, s2 * n);
-    end
+    % 
+    % 
+    % function mat_new = expandMat(mat,n)
+    %   % Get the size of the original matrix
+    %   [s1, s2] = size(mat);
+    % 
+    %   % Initialize the sparse matrix: row indices, column indices, and values
+    %   rows = [];
+    %   cols = [];
+    %   values = [];
+    % 
+    %   % Loop through the original matrix and populate the sparse matrix
+    %   for s = n-1:-1:0
+    %     % Get the row and column indices for the block
+    %     r1 = n*(1:s1) - s;
+    %     r2 = n*(1:s2) - s;
+    %     [colIdx,rowIdx]  = meshgrid(r2,r1);
+    %     % Add the values from the original matrix to the sparse matrix
+    %     rows = [rows; rowIdx(:)];
+    %     cols = [cols; colIdx(:)];
+    %     values = [values; mat(:)];
+    %   end
+    % 
+    %   % Create the sparse matrix directly from the row, column indices, and values
+    %   mat_new = sparse(rows, cols, values, s1 * n, s2 * n);
+    % end
   end
 end

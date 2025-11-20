@@ -81,7 +81,14 @@ classdef (Abstract) PhysicsSolver < handle
     advanceState(obj);
 
     % update the output structures for printing purposes
-    [cellData,pointData] = printState(obj,t);
+    [cellData,pointData] = printVTK(obj,t);
+
+
+    % write history to MAT-file
+    [cellData,pointData] = printMatFile(obj,t);
+
+    
+
   end
 
 
@@ -111,19 +118,19 @@ classdef (Abstract) PhysicsSolver < handle
     end
 
  
-    function applyBCs(obj,t)
-      bcList = keys(obj.bcs.keys);
-
-      for bcId = string(bcList)
-        bcVar = obj.bcs.getVariable(bcId);
-
-        if any(strcmpi(obj.getField(),bcVar))
-
-          % TO DO: mortar solver must remove slave BC ents BEFORE this call
-          obj.applyBC(t,bcId,bcVar)
-        end
-      end
-    end
+    % function applyBCs(obj,t)
+    %   bcList = keys(obj.bcs.keys);
+    % 
+    %   for bcId = string(bcList)
+    %     bcVar = obj.bcs.getVariable(bcId);
+    % 
+    %     if any(strcmpi(obj.getField(),bcVar))
+    % 
+    %       % TO DO: mortar solver must remove slave BC ents BEFORE this call
+    %       obj.applyBC(t,bcId,bcVar)
+    %     end
+    %   end
+    % end
 
 
     % function applyBC(obj,t,bcId,bcVar)

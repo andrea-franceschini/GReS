@@ -327,32 +327,38 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
-    function [cellData,pointData] = printState(obj,t)
-      % append state variable to output structure
-      switch nargin
-        case 2
-          [stress,strain] = finalizeState(obj,obj.stateOld);
-          displ = obj.stateOld.data.dispConv;
-        case 4
-          % linearly interpolate state variables containing print time
-          fac = (t - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
-          [avStressOld,avStrainOld] = finalizeState(obj,obj.stateOld);
-          [avStressNew,avStrainNew] = finalizeState(obj,obj.state);
-          stress = avStressNew*fac+avStressOld*(1-fac);
-          strain = avStrainNew*fac+avStrainOld*(1-fac);
-          displ = sNew.data.dispConv*fac+obj.stateOld.data.dispConv*(1-fac);
-        otherwise
-          error('Wrong number of input arguments');
-      end
-      [cellData,pointData] = PoromechanicsNew.buildPrintStruct(displ,stress,strain);
+    function writeMatFile(obj,t,tID)
+
+      uOld = getStateOld(obj,obj.variableName);
+      uCurr = getState(obj,obj.variableName); 
+      fac = (t - getState(obj).t)/(getState(obj).t - getStateOld(obj).t);
+
+      obj.outstate.results(tID+1).expDispl = uCurr*fac+uOld*(1-fac);
+
+      % TO DO: optional print of stresses as an input for the solver
+
     end
 
-    % function fld = getField(obj)
-    % 
-    %   fld = obj.fieldId;
-    % 
-    % end
-  end
+    function [cellData,pointData] = writeVTK(obj,t)
+
+      % append state variable to output structure
+      stateCurr = getState(obj);
+      stateOld = getStateOld(obj);
+      uOld = getStateOld(obj,obj.variableName);
+      uNew = getState(obj,obj.variableName);
+
+      fac = (t - stateOld.t)/(stateCurr.t - stateOld.t);
+
+      [avStressOld,avStrainOld] = finalizeState(obj,stateCurr);
+      [avStressNew,avStrainNew] = finalizeState(obj,stateOld);
+
+      stress = avStressNew*fac+avStressOld*(1-fac);
+      strain = avStrainNew*fac+avStrainOld*(1-fac);
+      displ = uNew*fac+uOld*(1-fac);
+
+      [cellData,pointData] = PoromechanicsOld.buildPrintStruct(displ,stress,strain);
+
+    end
 
   methods (Access=private)
 

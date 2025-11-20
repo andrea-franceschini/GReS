@@ -36,7 +36,7 @@ classdef Discretizer < handle
       obj.checkTimeDependence();
     end
 
-    function applyBC(obj,t,idDom)
+    function applyBC(obj,t)
       % Apply boundary condition to blocks of physical solver
       % ents: id of constrained entity
       % vals: value to assign to each entity
@@ -56,13 +56,13 @@ classdef Discretizer < handle
           end
           switch obj.bcs.getType(bcId)
             case {'Dirichlet','Seepage'}
-              if nargin > 2
-                assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
-                  'invalid domain id input for single domain BC imposition']);
-                for i = 1:length(obj.interfaceList)
-                  [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
-                end
-              end
+              % if nargin > 2
+              %   assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
+              %     'invalid domain id input for single domain BC imposition']);
+              %   for i = 1:length(obj.interfaceList)
+              %     [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
+              %   end
+              % end
               applyDirBC(obj.getSolver(field,f),field,bcEnts,bcVals);
             case {'Neumann','VolumeForce'}
               applyNeuBC(obj.getSolver(field,f),bcEnts,bcVals);
@@ -71,7 +71,7 @@ classdef Discretizer < handle
       end
     end
 
-    function applyDirVal(obj,t,idDom)
+    function applyDirVal(obj,t)
       % Apply boundary condition to blocks of physical solver
       % ents: id of constrained entity
       % vals: value to assign to each entity
@@ -83,13 +83,13 @@ classdef Discretizer < handle
         end
         field = obj.bcs.getPhysics(bcId);
         [bcEnts,bcVals] = getBC(getSolver(obj,field),bcId,t);
-        if nargin > 2
-          assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
-            'invalid domain id input for single domain BC imposition']);
-          for i = 1:length(obj.interfaceList)
-            [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
-          end
-        end
+        % if nargin > 2
+        %   assert(~isempty(obj.interfaceList),['Too many input arguments: ' ...
+        %     'invalid domain id input for single domain BC imposition']);
+        %   for i = 1:length(obj.interfaceList)
+        %     [bcEnts,bcVals] = obj.interfaces{i}.removeSlaveBCdofs(field,[bcEnts,bcVals],idDom);
+        %   end
+        % end
         getSolver(obj,field).applyDirVal(bcEnts,bcVals);
       end
     end
@@ -158,7 +158,7 @@ classdef Discretizer < handle
           pointData3D = [pointData3D; pointData];
         end
         cellData3D = OutState.printMeshData(obj.grid.topology,cellData3D);
-        if obj.outstate.writeVtk
+        if obj.outstate
           obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
         end
         % update the print structure

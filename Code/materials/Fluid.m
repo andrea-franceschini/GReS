@@ -3,6 +3,7 @@ classdef Fluid < handle
 
     properties (Access = private)
         %General properties:
+        name
         gamma;             % Fluid specific weight
         beta;              % Fluid compressibility
         mu;                % Fluid dynamic viscosity

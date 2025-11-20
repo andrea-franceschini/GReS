@@ -1,8 +1,16 @@
-
 clear
 clc
-runtests(fullfile('Mesh','testMesh.m'));
-runtests(fullfile('DoFManager','testDoFManager.m'));
-runtests('Simparam/testSimparam.m');
-runtests('Materials/testMaterials.m');
-runtests('BoundaryConditions/testBoundaries.m');
+testFiles = {fullfile('Mesh','testMesh.m');...
+             fullfile('DoFManager','testDoFManager.m');...
+             fullfile('Simparam','testSimparam.m');...
+             fullfile('Materials','testMaterials.m')
+             fullfile('BoundaryConditions','testBoundaries.m')
+             };
+
+results = runtests(testFiles);
+
+if any([results.Failed])
+  error("Some test not passed");
+else
+  disp("All test run successfully")
+end

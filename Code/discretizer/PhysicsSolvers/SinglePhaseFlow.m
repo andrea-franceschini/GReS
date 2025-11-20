@@ -97,25 +97,17 @@ classdef SinglePhaseFlow < PhysicsSolver
       % states.mass = checkMassCons(obj,mob,potential);
     end
 
-    function [cellData,pointData] = printState(obj,t)
+    function [cellData,pointData] = printVTK(obj,t)
       % append state variable to output structure
-      outPrint = [];
+
       sOld = getStateOld(obj);
       sNew = getState(obj);
 
-      switch nargin
-        case 2
-          outPrint.pressure = sOld.data.pressure;
-          t = sOld.t;
-        case 4
-          % linearly interpolate state variables containing print time
-          fac = (t - sOld.t)/(sNew.t - sOld.t);
-          outPrint.pressure = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
-        otherwise
-          error('Wrong number of input arguments');
-      end
-      outPrint = finalizeState(obj,outPrint,t);
-      [cellData,pointData] = SinglePhaseFlow.buildPrintStruct(obj.model,outPrint);
+      fac = (t - sOld.t)/(sNew.t - sOld.t);
+      p = sNew.data.pressure*fac + sOld.data.pressure*(1-fac);
+      outPrint = finalizeState(obj,p,t);
+      [cellData,pointData] = SinglePhaseFlow.buildPrintStruct(outPrint);
+
     end
 
 
@@ -437,6 +429,32 @@ classdef SinglePhaseFlow < PhysicsSolver
       end
     end
 
+
+    function [cellData,pointData] = writeVTK(obj,t)
+
+      % append state variable to output structure
+      sOld = getStateOld(obj);
+      sNew = getState(obj);
+
+      fac = (t - sOld.t)/(sNew.t - sOld.t);
+      p = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
+      outPrint = finalizeState(obj,p,t);
+      [cellData,pointData] = SinglePhaseFlow.buildPrintStruct(outPrint);
+    end
+
+    function writeMatFile(obj,t)
+
+      pOld = getStateOld(obj,obj.variableName);
+      pCurr = getState(obj,obj.variableName);
+      fac = (t - getState(obj).t)/(getState(obj).t - getStateOld(obj).t);
+
+      obj.outstate.results(tID+1).pressure = pCurr*fac+pOld*(1-fac);
+
+    end
+
+
+
+
     function applyDirBC(obj,bcDofs,bcVals,bcVar)
       % apply Dirichlet BCs
       % ents: id of constrained faces without any dof mapping applied
@@ -699,7 +717,7 @@ classdef SinglePhaseFlow < PhysicsSolver
 
 
   methods (Static)
-    function [cellStr,pointStr] = buildPrintStruct(mod,state)
+    function [cellStr,pointStr] = buildPrintStruct(state)
       if isFEM(obj)
         cellStr = repmat(struct('name', 1, 'data', 1), 1, 1);
         cellStr(1).name = 'permeability';
@@ -712,11 +730,10 @@ classdef SinglePhaseFlow < PhysicsSolver
         pointStr(2).data = state.potential;
         pointStr(3).name = 'piezometric head';
         pointStr(3).data = state.head;
-      elseif isFVTPFABased(mod,'Flow')
+      elseif isTPFA(obj)
         pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);
         pointStr(1).name = 'flux';
         pointStr(1).data = state.flux;
-        % pointStr = [];
 
         cellStr = repmat(struct('name', 1, 'data', 1), 3, 1);
         cellStr(1).name = 'permeability';

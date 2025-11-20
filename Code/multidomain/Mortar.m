@@ -76,54 +76,70 @@ classdef Mortar < handle
     end
 
     function removeSlaveBCents(obj)
-      % to do
-    end
-
-
-    function [bcDofs,bcVals] = removeSlaveBCdofs(obj,bcPhysics,bcData,domId)
-      % this method updates the list of bc dofs and values removing dofs on
-      % the slave interface (only for nodal multipliers)
-      % this avoid possible overconstraint and solvability issues
-
-      % bcData: nDofBC x 2 matrix.
-      % first column -> dofs
-      % second columns -> vals (optional)
-
-      bcDofs = bcData(:,1);
-      if size(bcData,2) > 1
-        bcVals = bcData(:,2);
-      else
-        bcVals = [];
-      end
-
-
-      if nargin > 3
-        if ~(domId == obj.idDomain(2))
-          % not slave side
-          return
-        end
-      end
-
-      % get list of nodal slave dofs in the interface
-      nodSlave = obj.mesh.local2glob{2};
-      % keep only active multipliers
-      fldId = obj.dofm(2).getFieldId(bcPhysics);
-      dofSlave = getLocalDoF(obj.dofm(2),nodSlave,fldId);
-      isBCdof = ismember(bcData(:,1),dofSlave);
-      % update list of dirichlet nodes
-      obj.dirDofs = unique([obj.dirDofs; bcDofs(isBCdof)]);
 
       if strcmp(obj.multiplierType,'P0')
         return
       end
 
-      % remove slave dofs only for nodal multipliers on slave side
+      % domain 2 is the slave
+      nodSlave = obj.mesh.local2glob{2};
 
-      bcDofs = bcDofs(~isBCdof);
-      if ~isempty(bcVals)
-        bcVals = bcVals(~isBCdof);
+      bc = obj.solvers(2).bcs;
+      bcList = bc.db.keys;
+
+      for bcId = string(bcList)
+        if strcmp(getType(bc,bcId),"Dirichlet")
+          bc.removeBCentities(bcId,nodSlave);
+        end
       end
+
     end
+
+
+    % function [bcDofs,bcVals] = removeSlaveBCdofs(obj,bcPhysics,bcData,domId)
+    %   % this method updates the list of bc dofs and values removing dofs on
+    %   % the slave interface (only for nodal multipliers)
+    %   % this avoid possible overconstraint and solvability issues
+    % 
+    %   % bcData: nDofBC x 2 matrix.
+    %   % first column -> dofs
+    %   % second columns -> vals (optional)
+    % 
+    %   bcDofs = bcData(:,1);
+    %   if size(bcData,2) > 1
+    %     bcVals = bcData(:,2);
+    %   else
+    %     bcVals = [];
+    %   end
+    % 
+    % 
+    %   if nargin > 3
+    %     if ~(domId == obj.idDomain(2))
+    %       % not slave side
+    %       return
+    %     end
+    %   end
+    % 
+    %   % get list of nodal slave dofs in the interface
+    %   nodSlave = obj.mesh.local2glob{2};
+    %   % keep only active multipliers
+    %   fldId = obj.dofm(2).getFieldId(bcPhysics);
+    %   dofSlave = getLocalDoF(obj.dofm(2),nodSlave,fldId);
+    %   isBCdof = ismember(bcData(:,1),dofSlave);
+    %   % update list of dirichlet nodes
+    %   obj.dirDofs = unique([obj.dirDofs; bcDofs(isBCdof)]);
+    % 
+    %   if strcmp(obj.multiplierType,'P0')
+    %     return
+    %   end
+    % 
+    %   % remove slave dofs only for nodal multipliers on slave side
+    % 
+    %   bcDofs = bcDofs(~isBCdof);
+    %   if ~isempty(bcVals)
+    %     bcVals = bcVals(~isBCdof);
+    %   end
+    % end
 
 
     function elem = getElem(obj,sideID,id)
@@ -489,14 +505,13 @@ classdef Mortar < handle
         nInt = [];
       end
 
-      obj.setQuadrature(quadType,nG,nInt)
+      obj.setQuadrature(quadType,nG,nInt);
+
+      removeSlaveBCents(obj);
 
       computeMortarInterpolation(obj)
 
       setPrintUtils(obj,inputStruct,domains(2).outstate);
-
-      % loop over BC and remove BC slave entities 
-      removeSlaveBCents(obj);
 
     end
 

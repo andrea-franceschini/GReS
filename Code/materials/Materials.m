@@ -59,7 +59,7 @@ classdef Materials < handle
     function readInputFile(obj, input)
 
       if ~isstruct(input)
-        input = readstruct(fileName,AttributeSuffix="");
+        input = readstruct(input,AttributeSuffix="");
       end
 
       if isfield(input,"Materials")
@@ -74,6 +74,7 @@ classdef Materials < handle
 
       if isfield(input,"Fluid")
          fluid = Fluid(input.Fluid);
+         fluid.name = getXMLData(input.Fluid,[],"name");
       end
 
       nSolid = 0;
@@ -86,6 +87,7 @@ classdef Materials < handle
         maxCellTag = max(cTags);
         obj.matMap = zeros(maxCellTag,1);
         for i = 1:nSolid
+          mat.name = getXMLData(input.Solid(i),[],"name");
           cellTags = getXMLData(input.Solid(i),[],"cellTags");
           if any(obj.matMap(cellTags))
             existingCellTags = cellTags(obj.matMap(cellTags)~=0);

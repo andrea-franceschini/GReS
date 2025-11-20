@@ -19,6 +19,7 @@ http://arxiv.org/abs/2409.11735
 The code is developed by the research group in Numerical Analysis at University of Padova, under the leadership of Prof. Massimiliano Ferronato. The active members dedicated to this project are:
 
 * Daniele Moretto (PhD student at University of Padova)
+* Eduardo da Silva Castro (PostDoc at University of Padova)
 * Andrea Franceschini (assistant professor at University of Padova)
 
 Past members:

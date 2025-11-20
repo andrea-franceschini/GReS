@@ -114,24 +114,37 @@ classdef Poisson < PhysicsSolver
 
     end
 
-    function applyDirVal(obj,dof,vals)
-      obj.state.data.u(dof) = vals;
+    function applyDirVal(obj,bcId,t)
+
+      [bcDofs,bcVals] = getBC(obj,bcId,t);
+
+      obj.state.data.u(bcDofs) = bcVals;
+
     end
 
-    function [cellData,pointData] = printState(obj,sOld,sNew,t)
-      % append state variable to output structure
-      switch nargin
-        case 2
-          var = sOld.data.u;
-        case 4
-          % linearly interpolate state variables containing print time
-          fac = (t - sOld.t)/(sNew.t - sOld.t);
-          var = sNew.data.u*fac+sOld.data.u*(1-fac);
-        otherwise
-          error('Wrong number of input arguments');
-      end
-      [cellData,pointData] = buildPrintStruct(obj,var);
+    function [cellData,pointData] = writeVTK(obj,t)
+
+      sOld = getStateOld(obj);
+      sNew = getState(obj);
+
+      fac = (t - sOld.t)/(sNew.t - sOld.t);
+      u = sNew.data.u*fac+sOld.data.u*(1-fac);
+
+      [cellData,pointData] = buildPrintStruct(obj,u);
+
     end
+
+    function writeMatFile(obj,t)
+
+      uOld = getStateOld(obj,obj.variableName);
+      uCurr = getState(obj,obj.variableName);
+      fac = (t - getState(obj).t)/(getState(obj).t - getStateOld(obj).t);
+
+      obj.outstate.results(tID+1).poissonVar = uCurr*fac+uOld*(1-fac);
+    
+    end
+
+
 
     function [cellStr,pointStr] = buildPrintStruct(obj,var)
       nPointData = 1;

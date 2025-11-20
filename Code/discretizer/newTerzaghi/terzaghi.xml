@@ -22,6 +22,7 @@
 
   <Materials>
     <Solid
+           name = "soil"
            cellTags = " 1 ">
       <Constitutive>
         <Elastic
@@ -39,6 +40,7 @@
 
 
     <Fluid
+           name = "water"
            compressibility = "4.4e-7"
            dynamicViscosity = "1.0e-6"
            />
@@ -62,11 +64,13 @@
 
       <Poromechanics
                      cellTags = "1"
+                     printStress = "1"
 
                      />
       <SinglePhaseFlow
                        cellTags = "1"
                        scheme = "FiniteVolumesTPFA"
+                       printFlux = "1"
                        />
 
     </BiotFullySaturated>

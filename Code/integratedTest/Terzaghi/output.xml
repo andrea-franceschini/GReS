@@ -6,7 +6,7 @@
   />
 
 <!-- 
-FileName: the name of the Paraview output file. If the file is not provided, then nothing is printed
+outputFile: the name of the Paraview output file. If the file is not provided, then nothing is printed
 
 saveHistory: save appropriate history output to mat file at specified printTimes. 
 Default "0": do not save history, "1": save history
