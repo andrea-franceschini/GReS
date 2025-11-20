@@ -404,7 +404,7 @@ classdef MultidomainFCSolver < handle
         if ~isempty(obj.domains(i).bcs)
 
           % Apply Dirichlet boundary values to i-th domain
-            applyDirVal(discretizer,obj.t,i);
+            applyDirVal(discretizer,obj.t);
         end
       end
     end
@@ -451,7 +451,7 @@ classdef MultidomainFCSolver < handle
       for i = 1:obj.nDom
         discretizer = obj.domains(i);
         % Apply BCs to the blocks of the linear system
-        applyBC(discretizer, obj.t, i);
+        applyBC(discretizer, obj.t);
 
         % Apply BC to coupling matrices
         for j = discretizer.interfaceList

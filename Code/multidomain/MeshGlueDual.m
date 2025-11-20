@@ -112,7 +112,6 @@ classdef MeshGlueDual < MeshGlue
     function applyBCslave(obj,bc,t)
       physic = obj.solvers(1).bcs.getPhysics(bc);
       [bcEnts,~] = getBC(obj.solvers(2).getSolver(physic),bc,t);
-      bcEnts = removeSlaveBCdofs(obj,physic,bcEnts);
       obj.rhsSlave(bcEnts) = 0;
       obj.Jcoupling(bcEnts,:) = 0;
       % remove interface slave dofs from matrix system (force zero) 
