@@ -1,5 +1,7 @@
 close all;
-clear;
+% clear;
+input_dir = 'Inputs';
+figures_dir = 'Images';
 
 % Get the full path of the currently executing file
 scriptFullPath = mfilename('fullpath');
@@ -15,10 +17,10 @@ scriptDir = fileparts(scriptFullPath);
 model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 
 % Set parameters of the simulation
-simParam = SimulationParameters(fullfile(scriptDir,"Inputs","simparam.xml"),model);
+simParam = SimulationParameters(fullfile(scriptDir,input_dir,"simparam.xml"),model);
 
 % Create an object of the Materials class and read the materials file
-mat = Materials(fullfile(scriptDir,"Inputs","materials.xml"));
+mat = Materials(fullfile(scriptDir,input_dir,"materials.xml"));
 
 %% ------------------------------ Set up the Domain -----------------------
 % Create the Mesh object
@@ -26,7 +28,7 @@ topology = Mesh();
 
 % Import mesh data into the Mesh object
 MeshFile = ["Column.msh","Column_hexa.msh","Column_tetra.msh"];
-topology.importMesh(fullfile(scriptDir,"Inputs","Mesh",MeshFile(2)));
+topology.importMesh(fullfile(scriptDir,input_dir,"Mesh",MeshFile(2)));
 
 % Create an object of the "Elements" class and process the element properties
 gaussOrder = 2;
@@ -38,16 +40,15 @@ faces = Faces(model, topology);
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
-% Degree of freedom manager 
-%fname = 'dof.dat';
+% Degree of freedom manager
 dofmanager = DoFManager(topology,model);
 
 % Creating boundaries conditions.
-bound = Boundaries(fullfile(scriptDir,"Inputs","boundaries.xml"),model,grid);
+bound = Boundaries(fullfile(scriptDir,input_dir,"boundaries.xml"),model,grid);
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility for the solution
-printUtils = OutState(model,topology,fullfile(scriptDir,"Inputs",'output.xml'));
+printUtils = OutState(model,topology,fullfile(scriptDir,input_dir,'output.xml'));
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('ModelType',model,...
@@ -83,12 +84,12 @@ Terzaghi_analytical(topology, mat, abs(F),[15,30,60,90,120,180])
 
 %% --------------------- Post Processing the Results ----------------------
 if true
-  image_dir = fullfile(pwd,'Images');
+  image_dir = fullfile(pwd,figures_dir);
   if isfolder(image_dir)
     rmdir(image_dir,"s")
-    mkdir Images
+    mkdir(figures_dir)
   else
-    mkdir Images
+    mkdir(figures_dir)
   end
 
   load("Terzaghi_Analytical.mat");
@@ -140,7 +141,7 @@ if true
   set(gca,'XTickLabel',a,'FontName', 'Liberation Serif','FontSize', 10, 'XGrid', 'on', 'YGrid', 'on')
 
   % export figure with quality
-  stmp = fullfile('Images','Terzaghi_pressure.png');
+  stmp = fullfile(figures_dir,'Terzaghi_pressure.png');
   exportgraphics(gcf,stmp,'Resolution',400)
 
   figure('Position', [100, 100, 700, 700])
@@ -157,6 +158,6 @@ if true
   set(gca,'XTickLabel',a,'FontName', 'Liberation Serif', 'FontSize', 10, 'XGrid', 'on', 'YGrid', 'on')
 
   % export figure with quality
-  stmp = fullfile('Images','Terzaghi_disp.png');
+  stmp = fullfile(figures_dir,'Terzaghi_disp.png');
   exportgraphics(gcf,stmp,'Resolution',400)
 end

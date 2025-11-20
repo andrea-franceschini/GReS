@@ -1,5 +1,5 @@
 close all;
-clear;
+% clear;
 input_dir = 'Inputs';
 figures_dir = 'Figs';
 
@@ -73,8 +73,11 @@ printUtils.finalize()
 %% --------------------- Post Processing the Results ----------------------
 if true
   image_dir = fullfile(pwd,figures_dir);
-  if ~isfolder(image_dir)
-    mkdir(image_dir)
+  if isfolder(image_dir)
+    rmdir(image_dir,"s")
+    mkdir(figures_dir)
+  else
+    mkdir(figures_dir)
   end
 
   % elem vector containing elements centroid along vertical axis
@@ -141,6 +144,4 @@ if true
   % export figure with quality
   stmp = fullfile(image_dir,'saturation.png');
   exportgraphics(gcf,stmp,'Resolution',400)
-
-  % save(fullfile(input_dir,'Solution','output1B.mat'),"pressplot","ptsZ","pos","swplot")
 end

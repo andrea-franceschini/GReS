@@ -4,7 +4,7 @@
 % relies on interpolated values from a table.
 
 close all;
-clear;
+% clear;
 input_dir = 'Inputs';
 figures_dir = 'Figs';
 
@@ -111,6 +111,9 @@ clearvars -except sol figures_dir
 
 %% --------------------- Post Processing the Results ----------------------
 image_dir = fullfile(pwd,figures_dir);
+if ~isfolder(image_dir)
+  mkdir(figures_dir)
+end
 
 t = [10 50 100];
 t_max = t(end);
@@ -128,7 +131,8 @@ ylabel('z/H')
 legend(tstr, 'Location', 'southeast', 'NumColumns', 2)
 set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
 % export figure with quality
-exportgraphics(gcf,fullfile(image_dir,'pressure_validation.png'),'Resolution',400)
+stmp = fullfile(image_dir,'pressure_validation.png');
+exportgraphics(gcf,stmp,'Resolution',400)
 
 figure('Position', [100, 100, 700, 700])
 hold on
@@ -139,4 +143,5 @@ ylabel('z/H')
 legend(tstr, 'Location', 'southwest', 'NumColumns', 2)
 set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
 % export figure with quality
-exportgraphics(gcf,fullfile(image_dir,'saturation_validation.png'),'Resolution',400)
+stmp = fullfile(image_dir,'saturation_validation.png');
+exportgraphics(gcf,stmp,'Resolution',400)

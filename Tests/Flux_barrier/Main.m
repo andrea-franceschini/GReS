@@ -1,5 +1,5 @@
 close all;
-clear;
+% clear;
 input_dir = 'Inputs/';
 figures_dir = 'Figs/';
 
@@ -42,19 +42,19 @@ printUtils = OutState(model,topology,fullfile(input_dir,'output.xml'));
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('ModelType',model,...
-                     'SimulationParameters',simParam,...
-                     'DoFManager',dofmanager,...
-                     'Boundaries',bound,...
-                     'OutState',printUtils,...
-                     'Materials',mat,...
-                     'Grid',grid);
+  'SimulationParameters',simParam,...
+  'DoFManager',dofmanager,...
+  'Boundaries',bound,...
+  'OutState',printUtils,...
+  'Materials',mat,...
+  'Grid',grid);
 
 % set initial conditions directly modifying the state object
 domain.state.data.pressure(:) = 1.e5;
 % domain.state.data.potential(:) = domain.state.data.pressure+ mat.getFluid().getFluidSpecWeight()*topology.cellCentroid(:,3);
 
 % The modular structure of the discretizer class allow the user to easily
-% customize the solution scheme. 
+% customize the solution scheme.
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
 Solver = FCSolver(domain,'SaveRelError',true,'SaveBStepInf',true);
@@ -68,62 +68,64 @@ printUtils.finalize()
 %% --------------------- Post Processing the Results ----------------------
 postproc=true;
 if postproc
-    image_dir = fullfile(pwd,figures_dir);
-    % image_dir = strcat(pwd,'/',figures_dir);
-    if ~isfolder(image_dir)
-        mkdir(image_dir)
-    end
+  image_dir = fullfile(pwd,figures_dir);
+  if isfolder(image_dir)
+    rmdir(image_dir,"s")
+    mkdir(figures_dir)
+  else
+    mkdir(figures_dir)
+  end
 
-    % Saving a temporary variabel.
-    pressure = [printUtils.results.expPress];
+  % Saving a temporary variabel.
+  pressure = [printUtils.results.expPress];
 
-    % Ajusting the time position.
-    t = [printUtils.results.expTime];
-    tind = 2:length(t);
-    t_max = t(end);
-    t = t(tind);
-    tstr = strcat(num2str(t'),' second');
+  % Ajusting the time position.
+  t = [printUtils.results.expTime];
+  tind = 2:length(t);
+  t_max = t(end);
+  t = t(tind);
+  tstr = strcat(num2str(t'),' second');
 
-    %Getting pressure and saturation solution for specified time from MatFILE
-    numbA = 5.;
-    numbB = 5.;
-    if isFEMBased(model,'Flow')
-      tol = 1e-3;
-      nodesP = find(abs(topology.coordinates(:,1)-numbA) < tol & abs(topology.coordinates(:,3)-numbB) < tol);
-      [~,ind] = sort(topology.coordinates(nodesP,2));
-      nodesP = nodesP(ind);
+  %Getting pressure and saturation solution for specified time from MatFILE
+  numbA = 5.;
+  numbB = 5.;
+  if isFEMBased(model,'Flow')
+    tol = 1e-3;
+    nodesP = find(abs(topology.coordinates(:,1)-numbA) < tol & abs(topology.coordinates(:,3)-numbB) < tol);
+    [~,ind] = sort(topology.coordinates(nodesP,2));
+    nodesP = nodesP(ind);
 
-      pressplot = pressure(nodesP);
+    pressplot = pressure(nodesP);
 
-      % Values for normalized plots
-      H = max(topology.coordinates(nodesP,2));
+    % Values for normalized plots
+    H = max(topology.coordinates(nodesP,2));
 
-      % Location a column to be the plot position.
-      pts = topology.coordinates(nodesP,2)/H;
-    else
-      tol = 0.4;
-      nodesP = find(abs(topology.cellCentroid(:,1)-numbA) < tol & abs(topology.cellCentroid(:,3)-numbB) < tol);
-      [~,ind] = sort(topology.cellCentroid(nodesP,2));
-      nodesP = nodesP(ind);
+    % Location a column to be the plot position.
+    pts = topology.coordinates(nodesP,2)/H;
+  else
+    tol = 0.4;
+    nodesP = find(abs(topology.cellCentroid(:,1)-numbA) < tol & abs(topology.cellCentroid(:,3)-numbB) < tol);
+    [~,ind] = sort(topology.cellCentroid(nodesP,2));
+    nodesP = nodesP(ind);
 
-      pressplot = pressure(nodesP);
+    pressplot = pressure(nodesP);
 
-      % Values for normalized plots
-      H = max(topology.cellCentroid(nodesP,2));
+    % Values for normalized plots
+    H = max(topology.cellCentroid(nodesP,2));
 
-      % Location a column to be the plot position.
-      pts = topology.cellCentroid(nodesP,2)/H;
-    end    
+    % Location a column to be the plot position.
+    pts = topology.cellCentroid(nodesP,2)/H;
+  end
 
-    %Plotting pressure head
-    figure(1)
-    plot(pts,pressplot,'.-', 'LineWidth', 2, 'MarkerSize', 14);
-    hold on
-    ylabel('pressure (Pa)')
-    xlabel('distance (%)')
-    legend(tstr)
-    set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
-    % export figure with quality
-    stmp = fullfile(image_dir,'pressure.png');
-    exportgraphics(gcf,stmp,'Resolution',400)
+  %Plotting pressure head
+  figure(1)
+  plot(pts,pressplot,'.-', 'LineWidth', 2, 'MarkerSize', 14);
+  hold on
+  ylabel('pressure (Pa)')
+  xlabel('distance (%)')
+  legend(tstr)
+  set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 'on')
+  % export figure with quality
+  stmp = fullfile(image_dir,'pressure.png');
+  exportgraphics(gcf,stmp,'Resolution',400)
 end
