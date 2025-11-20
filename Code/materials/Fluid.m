@@ -30,6 +30,10 @@ classdef Fluid < handle
             %GETDYNVISCOSITY Function to get fluid dynamic viscosity
             mu = obj.mu;
         end
+ 
+        function setName(obj,name)
+          obj.name = name;
+        end
     end
 
     methods (Access = private)

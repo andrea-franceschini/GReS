@@ -13,7 +13,6 @@ classdef SinglePhaseFlow < PhysicsSolver
 
   properties (Access = private)
     fieldId
-    variableName = "pressure"
   end
 
   methods (Access = public)
@@ -43,14 +42,17 @@ classdef SinglePhaseFlow < PhysicsSolver
             obj.scheme,class(obj));
       end
 
-      obj.fieldId = obj.dofm.getVariableId(obj.variableName);
+      obj.fieldId = obj.dofm.getVariableId(obj.getField());
 
       n = getNumbDoF(obj.dofm,obj.fieldId);
 
       % initialize the state object with a pressure field
-      obj.domain.state.data.(obj.variableName) = zeros(n,1);
+      obj.getState().data.(obj.getField()) = zeros(n,1);
 
       if strcmp(obj.scheme,'FiniteVolumesTPFA')
+
+        linkBoundSurf2TPFAFace(obj);
+
         obj.computeTrans();
         %get cells with active flow model
         flowCells = obj.dofm.getActiveEntities(obj.fieldId);
@@ -87,13 +89,14 @@ classdef SinglePhaseFlow < PhysicsSolver
     end
 
 
-    function states = finalizeState(obj,states,t)
+    function states = finalizeState(obj,p,t)
       % Compute the posprocessing variables for the module.
-      states.potential = computePotential(obj,states.pressure);
-      states.head = computePiezHead(obj,states.pressure);
+      states.potential = computePotential(obj,p);
+      states.head = computePiezHead(obj,p);
       mob = (1/obj.materials.getFluid().getDynViscosity());
-      states.flux = computeFlux(obj,states.potential,mob,t);
+      states.flux = computeFlux(obj,p,mob,t);
       states.perm = printPermeab(obj);
+      states.pressure = p;
       % states.mass = checkMassCons(obj,mob,potential);
     end
 
@@ -356,7 +359,7 @@ classdef SinglePhaseFlow < PhysicsSolver
                 % % gravT =  gamma*(obj.mesh.cellCentroid(ents,3) ...
                 % %   - obj.faces.faceCentroid(faceID,3));
                 dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3);
-                potential = (p - v) + gamma*dz;
+                potential = (p(ents) - v) + gamma*dz;
                 q = dirJ.*potential;
                 vals = [dirJ,q];
 
@@ -372,7 +375,7 @@ classdef SinglePhaseFlow < PhysicsSolver
                 mu = obj.materials.getFluid().getDynViscosity();
                 tr = obj.getFaceTransmissibilities(faceID);
                 dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3);
-                q = 1/mu*tr.*(p - v) + gamma*dz;
+                q = 1/mu*tr.*(p(ents) - v) + gamma*dz;
                 vals = [1/mu*tr,q];
             end
 
@@ -436,19 +439,23 @@ classdef SinglePhaseFlow < PhysicsSolver
       sOld = getStateOld(obj);
       sNew = getState(obj);
 
-      fac = (t - sOld.t)/(sNew.t - sOld.t);
-      p = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
+      if isempty(sOld)
+        p = sNew.data.pressure;
+      else
+        fac = (t - sOld.t)/(sNew.t - sOld.t);
+        p = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
+      end
+
       outPrint = finalizeState(obj,p,t);
-      [cellData,pointData] = SinglePhaseFlow.buildPrintStruct(outPrint);
+      [cellData,pointData] = buildPrintStruct(obj,outPrint);
     end
 
     function writeMatFile(obj,t)
 
-      pOld = getStateOld(obj,obj.variableName);
-      pCurr = getState(obj,obj.variableName);
-      fac = (t - getState(obj).t)/(getState(obj).t - getStateOld(obj).t);
-
-      obj.outstate.results(tID+1).pressure = pCurr*fac+pOld*(1-fac);
+        pOld = getStateOld(obj,obj.getField());
+        pCurr = getState(obj,obj.getField());
+        fac = (t - getState(obj).t)/(getState(obj).t - getStateOld(obj).t);
+        obj.outstate.results(tID+1).pressure = pCurr*fac+pOld*(1-fac);
 
     end
 
@@ -585,7 +592,7 @@ classdef SinglePhaseFlow < PhysicsSolver
       % in another function).
       flux = zeros(obj.mesh.nNodes,3);
       if isFEM(obj) & false
-        % TODO - This part is still need some work.
+        % TODO - This part still need some work.
       elseif isTPFA(obj)
         % Compute the fluxes inside the domain.
         nnodesBfaces = diff(obj.faces.mapN2F);
@@ -632,7 +639,7 @@ classdef SinglePhaseFlow < PhysicsSolver
 
         bcList = obj.bcs.db.keys;
         for bc = string(bcList)
-          if strcmp(obj.model.findPhysicsFromID(obj.model.findIDPhysics(obj.bcs.getPhysics(bc))),'Flow')
+          if strcmp(obj.bcs.getVariable(bc),obj.getField())
             [~,vals] = getBC(obj,bc,t);
             [ents, ~] = sort(obj.bcs.getEntities(bc));
             switch obj.bcs.getCond(bc)
@@ -657,6 +664,7 @@ classdef SinglePhaseFlow < PhysicsSolver
                 vals = sgn(ents).*vals./areaSq(ents).*faceUnit(ents,:);
                 vals = -repelem(vals,nnodesBfaces(ents),1);
             end
+
             nodes = obj.faces.nodes2Faces(ismember(Node2Face,ents));
             [loc,~,pos] = unique(nodes);
             axis = ones(length(nodes),1);
@@ -702,6 +710,7 @@ classdef SinglePhaseFlow < PhysicsSolver
   end
 
   methods (Access = private)
+
     function [lwkpt,dlwkpt] = computeMobilityBoundary(obj)
       % COMPUTEMOBILITY compute the mobility and it's derivatives
       mu = obj.materials.getFluid().getDynViscosity();
@@ -712,12 +721,8 @@ classdef SinglePhaseFlow < PhysicsSolver
       end
       dlwkpt = 0;
     end
-  end
 
-
-
-  methods (Static)
-    function [cellStr,pointStr] = buildPrintStruct(state)
+    function [cellStr,pointStr] = buildPrintStruct(obj,state)
       if isFEM(obj)
         cellStr = repmat(struct('name', 1, 'data', 1), 1, 1);
         cellStr(1).name = 'permeability';
@@ -747,7 +752,11 @@ classdef SinglePhaseFlow < PhysicsSolver
       end
     end
 
+  end
 
+
+
+  methods (Static)
 
     function out = getField()
       out = "pressure";

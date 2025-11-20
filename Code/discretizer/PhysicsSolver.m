@@ -81,11 +81,11 @@ classdef (Abstract) PhysicsSolver < handle
     advanceState(obj);
 
     % update the output structures for printing purposes
-    [cellData,pointData] = printVTK(obj,t);
+    [cellData,pointData] = writeVTK(obj,t);
 
 
     % write history to MAT-file
-    [cellData,pointData] = printMatFile(obj,t);
+    [cellData,pointData] = writeMatFile(obj,t);
 
     
 
@@ -110,9 +110,12 @@ classdef (Abstract) PhysicsSolver < handle
 
     function stat = getStateOld(obj,varName)
       % get a copy of a state variable field
-      if isempty(varName)
+      if nargin < 2
         stat = obj.domain.getStateOld();
       else
+        if ~isfield(obj.domain.getStateOld().data,varName)
+          error("Variable %s does not exist in the StateOld object",varName)
+        end
         stat = obj.domain.getStateOld().data.(varName);
       end
     end

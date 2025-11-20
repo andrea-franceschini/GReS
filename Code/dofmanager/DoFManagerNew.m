@@ -12,7 +12,7 @@ classdef DoFManagerNew < handle
     fields = struct("variableName",[],...
                     "range",[],...
                     "tags",[],...
-                    "location",[]);
+                    "fieldLocation",[]);
     nVars = 0;
     totDofs
   end
@@ -78,7 +78,7 @@ classdef DoFManagerNew < handle
 
         obj.fields(id).variableName = varName;
         obj.fields(id).tags = tags;
-        obj.fields(id).fieldLocation = tags;
+        obj.fields(id).fieldLocation = fieldLocation;
         obj.numbComponents(end+1) = nComp;
 
         % return the entity of type fieldLocation for the given mesh tags

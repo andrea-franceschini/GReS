@@ -34,8 +34,8 @@ classdef BiotFullySaturated < PhysicsSolver
         obj.mechSolver = Poromechanics(obj.domain);
         registerSolver(obj.mechSolver,input.(class(obj.mechSolver)));
 
-        obj.fldMech = obj.dofm.getVariableId(obj.flowSolver.getField());
-        obj.fldFlow = obj.dofm.getVariableId(obj.mechSolver.getField());
+        obj.fldFlow = obj.dofm.getVariableId(obj.flowSolver.getField());
+        obj.fldMech = obj.dofm.getVariableId(obj.mechSolver.getField());
 
       end
 
@@ -178,7 +178,12 @@ classdef BiotFullySaturated < PhysicsSolver
           [cellDataMech,pointDataMech] = obj.mechSolver.writeVTK(t);
 
           cellDataBiot = OutState.mergeOutFields(cellDataMech,cellDataFlow);
+
+          clear cellDataMech celDataFlow
+
           pointDataBiot = OutState.mergeOutFields(pointDataMech,pointDataFlow);
+
+          clear pointDataMech pointDataFlow
 
         end
 

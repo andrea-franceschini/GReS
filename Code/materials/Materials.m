@@ -74,7 +74,8 @@ classdef Materials < handle
 
       if isfield(input,"Fluid")
          fluid = Fluid(input.Fluid);
-         fluid.name = getXMLData(input.Fluid,[],"name");
+         name = getXMLData(input.Fluid,[],"name");
+         fluid.setName(name);
       end
 
       nSolid = 0;

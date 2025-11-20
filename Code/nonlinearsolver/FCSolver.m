@@ -4,8 +4,8 @@ classdef FCSolver < handle
   
   properties (Access = private)
     %
-    statek
-    stateTmp
+    % statek
+    % stateTmp
     domain
     %
     t = 0
@@ -77,12 +77,10 @@ classdef FCSolver < handle
 
          % Compute Rhs and matrices of NonLinear models
          % Loop over available linear models and compute the jacobian
-         computeMatricesAndRhs(obj.domain,obj.statek,obj.dt);
+         assembleSystem(obj.domain,obj.dt);
 
          % Apply BCs to the blocks of the linear system
          applyBC(obj.domain,obj.t);
-         
-         rhs = assembleRhs(obj.domain);
 
          % compute Rhs norm
          rhsNorm = norm(cell2mat(rhs),2);
@@ -98,12 +96,13 @@ classdef FCSolver < handle
             % fprintf('0     %e\n',rhsNorm);
             fprintf('0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
          end
+
          while ((rhsNorm > tolWeigh) && (obj.iter < obj.domain.simparams.itMaxNR) ...
                && (rhsNorm > absTol)) || obj.iter == 0
             obj.iter = obj.iter + 1;
             
             % Solve system with increment
-            J = assembleJacobian(obj.domain);            
+            J = cell2mat(obj.domain.J);            
             du = FCSolver.solve(J,rhs);
 
             % Update current model state
@@ -157,13 +156,15 @@ classdef FCSolver < handle
   end
   
   methods (Access = private)
-     function setNonLinearSolver(obj,linearSyst)
-        assert(numel(linearSyst)==1,['Multidomain models is not supported' ...
-          'by FCSolver class'])
-        obj.stateTmp = linearSyst.state;
-        obj.statek = copy(obj.stateTmp);
-        obj.domain = linearSyst;
-     end
+    function setNonLinearSolver(obj,domain)
+
+      assert(isscalar(domain),"FCSolver works only with one single domain")
+
+      obj.domain = domain;
+      obj.domain.stateOld = copy(domain.getState());
+
+    end
+
 
     function [t, dt] = updateTime(obj,conv,dt)
         if obj.domain.outstate.modTime
