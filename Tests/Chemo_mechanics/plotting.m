@@ -41,7 +41,7 @@ ylabel('Absolute displacement |u|');
 %% Figure 3 - Check stresses for the same timestep along the x-axis
 figure();
 hold on;
-sigma_xx = stress_nodal(:,:,3);
+sigma_xx = stress_nodal(:,:,1);
 sigma_xx_sorted = sigma_xx(:, plot_idx(sort_idx));
 for timestep = 1:length(output_times)
     plot(cx_sorted, sigma_xx_sorted(timestep, :), 'DisplayName', ...
@@ -49,4 +49,16 @@ for timestep = 1:length(output_times)
 end
 xlabel('x-coordinate along the x-axis');
 ylabel('\sigma_{xx}');
+% legend('show', 'location', 'best');
+
+figure();
+hold on;
+sigma_yy = stress_nodal(:,:,2);
+sigma_yy_sorted = sigma_yy(:, plot_idx(sort_idx));
+for timestep = 1:length(output_times)
+    plot(cx_sorted, sigma_yy_sorted(timestep, :), 'DisplayName', ...
+        num2str(timestep));
+end
+xlabel('x-coordinate along the x-axis');
+ylabel('\sigma_{yy}');
 % legend('show', 'location', 'best');

@@ -17,28 +17,34 @@ function [strain, stress] = computeStrainsAndStresses(output_times, p, ...
         stress_t = zeros(mesh.nCells, 6);
         for el = 1:mesh.nCells
             % Extract the nodes and their coordinates in the cell
-            el_nodes = mesh.cells(el,:); % (1x4)
-            el_coords = mesh.coordinates(el_nodes, :); % (4x3)
+            el_nodes = mesh.cells(el, 1:mesh.cellNumVerts(el));
+            el_coords = mesh.coordinates(el_nodes, :);
     
             % Get gradN from the cell coordinates
             gradN = computeShapeFunctionGradients(el_coords);
     
-            % Compute matrix B
-            B = zeros(6, 12);
-            for i = 1:4
+            % Compute matrix B (Voigt notation: [exx, eyy, ezz, 2*exy, 2*eyz, 2*exz])
+            nNodes = mesh.cellNumVerts(el);
+            B = zeros(6, mesh.nDim * nNodes);
+            for i = 1:nNodes
                 Bi = [ gradN(i,1)  0           0;
                        0            gradN(i,2)  0;
                        0            0           gradN(i,3);
                        gradN(i,2)   gradN(i,1)  0;
                        0            gradN(i,3)  gradN(i,2);
                        gradN(i,3)   0           gradN(i,1)];
-                B(:, (3*i-2):(3*i)) = Bi;
+                B(:, (mesh.nDim*(i-1)+1):(mesh.nDim*i)) = Bi;
             end
     
             % Extract displacement values for the selected cell
-            % a) Extracting dof for mesh.nDim dimensions
-            dof = repelem(mesh.nDim*el_nodes, mesh.nDim); % (4 x nDim)
-            dof = dof + repmat(-(mesh.nDim-1):0,1,mesh.cellNumVerts(el));
+            % Extract DOF indices for mesh.nDim dimensions
+            dof = zeros(1, mesh.nDim * mesh.cellNumVerts(el));
+            for i = 1:mesh.cellNumVerts(el)
+                base = (el_nodes(i)-1)*mesh.nDim;
+                dof(mesh.nDim*(i-1)+1:mesh.nDim*i) = base+1:base+mesh.nDim;
+            end
+            % dof = repelem(mesh.nDim*el_nodes, mesh.nDim); % (4 x nDim)
+            % dof = dof + repmat(-(mesh.nDim-1):0,1,mesh.cellNumVerts(el));
     
             % b) Extracting relevant values of displacements
             el_u = u(timestep, dof)';

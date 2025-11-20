@@ -475,7 +475,7 @@ classdef Poromechanics < SinglePhysics
     end
 
     function indB = setStrainMatIndex(N)
-      % Preapare indices of strain matrix for direct assignment of shape
+      % Prepare indices of strain matrix for direct assignment of shape
       % function derivatives
       indB = zeros(9*N,2);
       indB(:,1) = repmat([1, 2, 3, 2, 1, 3, 3, 2, 1],[1,N]);
