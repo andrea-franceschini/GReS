@@ -8,7 +8,7 @@
 % new model without requiring ModelType and DoFManager. Input file for physicsSolver
 % is required
 
-simparam = SimulationParameters('simparam.xml');
+simparams = SimulationParameters('simparam.xml');
 
 mesh = Mesh();
 mesh.importMesh('Mesh/Column_hexa.msh');
