@@ -4,6 +4,16 @@
 % 
 % model.runProblem();
 
+close all
+clc
+
+% Get the full path of the currently executing file
+scriptFullPath = mfilename('fullpath');
+% Extract the directory containing the script
+scriptDir = fileparts(scriptFullPath);
+
+cd(scriptDir);
+
 
 % new model without requiring ModelType and DoFManager. Input file for physicsSolver
 % is required
@@ -32,6 +42,10 @@ domain = DiscretizerNew('grid',grid,...
                         'outstate',printUtils);
 
 domain.addPhysicsSolver('solver.xml');
+
+% manually apply initial conditions
+state = domain.getState();
+applyTerzaghiIC(state,mat,mesh,-10);
 
 solv = FCSolver(simparams,domain);
 

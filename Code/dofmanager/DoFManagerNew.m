@@ -108,21 +108,23 @@ classdef DoFManagerNew < handle
       % in isempty(varargin) all dofs are returned in correct order
       % the input id is the result of a call to getVariableId(varName)
 
+      if nargin < 3
+        % return all dofs of id field
+        ents = find(obj.dofMap{id} > 0);
+      end
 
       if isscalar(id)
         ncomp = obj.numbComponents(id);
-
-        dofs = repelem(obj.dofMap{id}(ents),ncomp) + ...
-          repmat((0:ncomp(id)-1)',numel(ents),1);
+        dofs = obj.dofMap{id}(ents);
+        dofs =  repelem(dofs,ncomp) + ...
+          repmat((0:ncomp-1)',numel(ents),1);
       else
-        assert(isempty(ents),"entity input in getDoF is admitted " + ...
-          "only for single variable query")
-
         for i = 1:numel(id)
           dofs = [dofs; getLocalDoF(id(i))];
         end
       end
     end
+
 
     function ents = getLocalEnts(obj,id,ents)
 
@@ -133,17 +135,17 @@ classdef DoFManagerNew < handle
 
     function dofs = getDoF(obj,id,ents)
       % return the DoF numbering in global indexing for input entities
-      % in isempty(varargin) all dofs are returned in correct order
+      % if isempty(varargin) all dofs are returned in correct order
       % the id is the result of a call to getVariableId(varName)
 
       if isscalar(id)
-        dofs = getLocalDoF(obj,id) + obj.fields(id).range(1);
+        dofs = getLocalDoF(obj,id) + obj.fields(id).range(1) - 1;
       else
         assert(isempty(ents),"entity input in getDoF is admitted " + ...
           "only for single variable query")
 
         for i = 1:numel(id)
-          dofs = [dofs; getDoF(id(i))];
+          dofs = [dofs; getDoF(obj,id(i))];
         end
       end
 
@@ -171,7 +173,7 @@ classdef DoFManagerNew < handle
 
     function tags = getTargetRegions(obj,varId)
       id = obj.getVariableId(varId);
-      tags = [obj.fields(id).tags];
+      tags = unique([obj.fields(id).tags]);
     end
 
     function cells = getFieldCells(obj,varId)

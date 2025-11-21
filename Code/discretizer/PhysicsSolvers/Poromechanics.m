@@ -42,21 +42,22 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
-    function assembleSystem(obj)
-      % compute the displacement matrices and rhs in the domain
+    function assembleSystem(obj,dt)
+      % compute the displacements matrices and rhs in the domain
       obj.domain.J{obj.fieldId,obj.fieldId} = computeJacobian(obj,dt);
       obj.domain.rhs{obj.fieldId} = computeRhs(obj);
     end
 
 
     function Jmat = computeJacobian(obj,dt)
-      if ~isLinear(obj) || isempty(obj.J)
+      if ~isLinear(obj) || isempty(getJacobian(obj))
         % recompute matrix if the model is non linear
         % define size of output matrix
         computeStiffMat(obj,dt);
       end
-      if obj.simParams.isTimeDependent
-        Jmat = obj.simParams.theta*obj.K;
+
+      if obj.domain.simparams.isTimeDependent
+        Jmat = obj.domain.simparams.theta*obj.K;
       else
         Jmat = obj.K;
       end
@@ -72,49 +73,58 @@ classdef Poromechanics < PhysicsSolver
       subCells = obj.dofm.getFieldCells(obj.fieldId);
       n = sum((obj.mesh.nDim^2)*(obj.mesh.cellNumVerts(subCells)).^2);
       l = 0;
-      Ndof = obj.dofm.getNumDoF(obj.fieldId);
+      Ndof = obj.dofm.getNumbDoF(obj.fieldId);
       obj.fInt = zeros(Ndof,1);
       assembleK = assembler(n,Ndof,Ndof,assembleKloc);
-      % loop over cells
 
       stateCurr = getState(obj);
 
+      % loop over active mechanics cells
       for el = subCells'
-        % get dof id and local matrix
         [dsigma,status] = assembleK.localAssembly(el,l);
-        s = size(dsigma,1);
-        stateCurr.data.status(l+1:l+s,:) = status;
-        stateCurr.data.stress((l+1):(l+s),:) = dsigma;
+        ng = size(dsigma,1);
+        stateCurr.data.status(l+1:l+ng,:) = status;
+        stateCurr.data.stress((l+1):(l+ng),:) = dsigma;
         obj.cell2stress(el) = l;
-        l = l + s;
+        l = l + ng;
       end
       % populate stiffness matrix
       obj.K = assembleK.sparseAssembly();
     end
 
     function [dofr,dofc,KLoc,sigma,status] = computeLocalStiff(obj,elID,dt,l)
+
+      % get the state object
+      s = getState(obj);
+      sOld = getStateOld(obj);
+
       vtkId = obj.mesh.cellVTKType(elID);
       elem = getElement(obj.elements,vtkId);
       nG = elem.GaussPts.nNode;
       [N,dJWeighed] = getDerBasisFAndDet(elem,elID,1);
       B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
       B(elem.indB(:,2)) = N(elem.indB(:,1));
-      [D, sigma, status] = obj.material.updateMaterial(obj.mesh.cellTag(elID), ...
-        obj.stateOld.data.stress(l+1:l+nG,:), ...
-        obj.state.data.strain(l+1:l+nG,:), ...
-        dt,obj.stateOld.data.status(l+1:l+nG,:), elID, obj.state.t);
-      %           obj.state.data.curr.status(l+1:l+obj.GaussPts.nNode,:) = status;
-      %           obj.state.data.curr.stress(l+1:l+obj.GaussPts.nNode,:) = ones(8,6);
+
+      % constitutive update
+      [D, sigma, status] = obj.materials.updateMaterial( ...
+        obj.mesh.cellTag(elID), ...
+        sOld.data.stress(l+1:l+nG,:), ...
+        s.data.strain(l+1:l+nG,:), ...
+        dt, sOld.data.status(l+1:l+nG,:), elID, s.t);
+
+      % compute local stiffness and internal forces
       KLoc = obj.computeKloc(B,D,B,dJWeighed);
-      sz = sigma - obj.state.data.iniStress(l+1:l+nG,:);
+      sz = sigma - s.data.iniStress(l+1:l+nG,:);
       sz = reshape(sz',6,1,nG);
       fTmp = pagemtimes(B,'ctranspose',sz,'none');
       fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
       fLoc = sum(fTmp,3);
+
       % get global DoF
       nodes = obj.mesh.cells(elID,1:obj.mesh.cellNumVerts(elID));
-      dof = obj.dofm.getLocalDoF(nodes,obj.fldId);
+      dof = obj.dofm.getLocalDoF(obj.fieldId,nodes);
       dofr = dof; dofc = dof;
+
       % assemble internal forces
       obj.fInt(dof) = obj.fInt(dof)+fLoc;
     end
@@ -127,6 +137,10 @@ classdef Poromechanics < PhysicsSolver
       % faceId: local index of face holding bubble dof
       % assumption: the grid consist only of tetra or hexa, not mixed.
       % the unstabilized stiffness has been already assembled
+
+      s = getState(obj);
+      sOld = getOldState(obj);
+
       vtkId = obj.mesh.cellVTKType(el);
       elem = getElement(obj.elements,vtkId);
       nG = elem.GaussPts.nNode;
@@ -138,19 +152,23 @@ classdef Poromechanics < PhysicsSolver
       Bu(elem.indB(:,2)) = Nu(elem.indB(:,1));
       Bb = zeros(6,elem.nFace*obj.mesh.nDim,nG);
       Bb(elem.indBbubble(:,2)) = Nb(elem.indBbubble(:,1));
-      [D, ~, ~] = obj.material.updateMaterial(obj.mesh.cellTag(el), ...
-        obj.stateOld.data.stress(l+1:l+nG,:), ...
-        obj.state.data.strain(l+1:l+nG,:), ...
-        dt,obj.stateOld.data.status(l+1:l+nG,:), el, obj.state.t);
+      [D, ~, ~] = obj.materials.updateMaterial( ...
+        obj.mesh.cellTag(el), ...
+        sOld.data.stress(l+1:l+nG,:), ...
+        s.data.strain(l+1:l+nG,:), ...
+        dt,sOld.data.status(l+1:l+nG,:), el, obj.state.t);
+
       Kub = PoromechanicsNew.computeKloc(Bu,D,Bb,dJWeighed);
       Kbb = PoromechanicsNew.computeKloc(Bb,D,Bb,dJWeighed);
 
       % important: right hand side in the unstabilized block already
       % considers the bubble contribution due to enhanced strain
+
       % get global DoF
       nodes = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
-      dof = obj.dofm.getLocalDoF(nodes,obj.fldId);
+      dof = obj.dofm.getLocalDoF(nodes,obj.fieldId);
       dofr = dof; dofc = dof;
+
       % get variable output from matrix
       if ~isempty(varargin)
         varargout = cell(numel(varargin),1);
@@ -205,14 +223,14 @@ classdef Poromechanics < PhysicsSolver
       % Update strain
       l = 0;
       for el=1:obj.mesh.nCells
-        dof = getEntityFromElement(entityField.node,obj.mesh,el);
+        dof = getEntityFromElement(entityField.node,obj.mesh,el,3);
         vtkId = obj.mesh.cellVTKType(el);
         elem = getElement(obj.elements,vtkId);
         nG = elem.GaussPts.nNode;
         N = getDerBasisFAndDet(elem,el,2);
         B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
         B(elem.indB(:,2)) = N(elem.indB(:,1));
-        stateCurr.data.strain = reshape(pagemtimes(B,du(dof)),6,nG)';
+        stateCurr.data.strain(l+1:l+nG,:) = reshape(pagemtimes(B,du(dof)),6,nG)';
         l = l + nG;
       end
     end
@@ -241,11 +259,11 @@ classdef Poromechanics < PhysicsSolver
       end
     end
 
-    function applyBC(obj,t,bcId,bcVar)
+    function applyBC(obj,bcId,t)
 
-      assert(strcmp(bcVar,obj.getField()),"Boundary condition %s cannot " + ...
-        "be applied to variable %s in %s solver. Accepted variable is %s",...
-        obj.bcs.getName(bcId),bcVar,class(obj));
+      if ~BCapplies(obj,bcId)
+        return
+      end
 
       % get bcDofs and bcVals
       [bcDofs,bcVals] = getBC(obj,bcId,t);
@@ -254,9 +272,9 @@ classdef Poromechanics < PhysicsSolver
 
       switch bcType
         case 'Dirichlet'
-          applyDirBC(obj,bcDofs,bcVals,bcVar);
+          applyDirBC(obj,bcId,bcDofs);
         case 'Neumann'
-          applyNeuBC(obj,bcDofs,bcVar);
+          applyNeuBC(obj,bcId,bcDofs,bcVals);
         otherwise
           error("Error in %s: Boundary condition type '%s' is not " + ...
             "available in %s",class(obj),bcType);
@@ -273,6 +291,12 @@ classdef Poromechanics < PhysicsSolver
 
     function applyDirVal(obj,bcId,t)
 
+      bcVar = obj.bcs.getVariable(bcId);
+
+      if ~strcmp(bcVar,obj.getField())
+        return
+      end
+
       [bcDofs,bcVals] = getBC(obj,bcId,t);
 
       obj.getState().data.displacements(bcDofs) = bcVals;
@@ -282,35 +306,39 @@ classdef Poromechanics < PhysicsSolver
 
       if isLinear(obj) % linear case
 
+        J = getJacobian(obj);
+
+        s = obj.getState();
+        sOld = obj.getStateOld();
+
         % update elastic stress
         subCells = obj.dofm.getFieldCells(obj.fieldId);
         l1 = 0;
 
         for el=subCells'
 
-          D = getElasticTensor(obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw);
+          D = getElasticTensor(obj.materials.getMaterial(obj.mesh.cellTag(el)).ConstLaw);
 
           % Get the right material stiffness for each element
           vtk = obj.mesh.cellVTKType(el);
           elem = obj.elements.getElement(vtk);
           nG = elem.GaussPts.nNode;
-          obj.getState().data.stress((l1+1):(l1+nG),:) = ...
-            obj.getState().data.stress((l1+1):(l1+nG),:)+...
-            obj.getState().data.strain((l1+1):(l1+nG),:)*D;
+          s.data.stress((l1+1):(l1+nG),:) = ...
+            s.data.stress((l1+1):(l1+nG),:)+...
+            s.data.strain((l1+1):(l1+nG),:)*D;
           l1 = l1+nG;
         end
 
-        ents = obj.dofm.getActiveEnts(obj.fieldId);
+        ents = obj.dofm.getActiveEntities(obj.fieldId,1);
 
-        u = getState(obj,obj.getField());
-        uOld = getStateOld(obj,obj.getField());
+        u = s.data.(obj.getField());
+        uOld = sOld.data.(obj.getField());
 
-        if obj.simParams.isTimeDependent
-          theta = obj.simParams.theta;
-          obj.rhs = obj.J{obj.fldId,obj.fldId}*u(ents) + ...
-            (1/theta-1)*obj.J{obj.fldId,obj.fldId}*uOld(ents);
+        if obj.domain.simparams.isTimeDependent
+          theta = obj.domain.simparams.theta;
+          rhs = J*u(ents) + (1/theta-1)*J*uOld(ents);
         else
-          rhs = obj.J{obj.fldId,obj.fldId}*u(ents);
+          rhs = J*u(ents);
         end
       else % non linear case: rhs computed with internal forces (B^T*sigma)
         rhs = obj.fInt; % provisional assuming theta = 1;
@@ -321,7 +349,7 @@ classdef Poromechanics < PhysicsSolver
     function out = isLinear(obj)
       out = false;
       for i = 1:obj.mesh.nCellTag
-        out = isa(obj.material.getMaterial(i).ConstLaw,"Elastic");
+        out = isa(obj.materials.getMaterial(i).ConstLaw,"Elastic");
         if ~out
           return;
         end
@@ -341,7 +369,7 @@ classdef Poromechanics < PhysicsSolver
       uCurr = getState(obj,obj.getField());
       fac = (t - getState(obj).t)/(getState(obj).t - getStateOld(obj).t);
 
-      obj.outstate.results(tID+1).expDispl = uCurr*fac+uOld*(1-fac);
+      obj.domain.outstate.results(tID).expDispl = uCurr*fac+uOld*(1-fac);
 
       % TO DO: optional print of stresses as an input for the solver
 
@@ -378,19 +406,19 @@ classdef Poromechanics < PhysicsSolver
 
   methods (Access=private)
 
-    function dof = getBCdofs(obj,id)
+    function dof = getBCdofs(obj,bcId)
 
       % get BC entity
-      ents = obj.bcs.getBCentities(id);
+      ents = obj.bcs.getBCentities(bcId);
 
       % get local entity numbering
       ents = obj.dofm.getLocalEnts(obj.fieldId,ents);
 
       % get component dof for multi-component bcs
-      dof = obj.bcs.getCompEntities(obj.fieldId,ents);
+      dof = obj.bcs.getCompEntities(bcId,ents);
 
       % Volume forces are but isotropically act on all directions
-      if strcmp(obj.bcs.getCond(id),'VolumeForce')
+      if strcmp(obj.bcs.getCond(bcId),'VolumeForce')
         dof = dofId(dof,3);
       end
 
@@ -456,7 +484,7 @@ classdef Poromechanics < PhysicsSolver
       nPointData = 3;
       pointStr = repmat(struct('name', 1, 'data', 1), nPointData, 1);
       cellStr = repmat(struct('name', 1, 'data', 1), nCellData, 1);
-      % Displacement
+      % Displacements
       pointStr(1).name = 'ux';
       pointStr(1).data = disp(1:3:end);
       pointStr(2).name = 'uy';

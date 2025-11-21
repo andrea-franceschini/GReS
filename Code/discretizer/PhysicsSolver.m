@@ -69,10 +69,10 @@ classdef (Abstract) PhysicsSolver < handle
     assembleSystem(obj,varargin);
 
     % apply the boundary condition to the jacobian and rhs
-    applyBC(obj,t,bcId,bcVariableName);
+    applyBC(obj,t,bcId);
 
     % apply the dirichlet values to the state object
-    applyDirVal(obj,t,bcId,bcVariableName);
+    applyDirVal(obj,t,bcId);
     
     % update the state variables after solving the linear system
     updateState(obj,solution);
@@ -85,9 +85,14 @@ classdef (Abstract) PhysicsSolver < handle
 
 
     % write history to MAT-file
-    [cellData,pointData] = writeMatFile(obj,t);
+    [cellData,pointData] = writeMatFile(obj,t,tID);
 
-    
+  end
+
+  methods (Abstract, Static)
+
+    % get the list of variable fields affected by the solver
+    getField();
 
   end
 
@@ -175,49 +180,82 @@ classdef (Abstract) PhysicsSolver < handle
     % 
     % end
 
-    function applyNeuBC(obj,bcDofs,bcVals,bcVariableName)
+    function applyNeuBC(obj,bcId,bcDofs,bcVals)
+
+      if ~BCapplies(obj,bcId)
+        return
+      end
 
       % Base application of Neumann boundary condition to the rhs.
       % bc values are subtracted since we solve du = J\(-rhs)
-      bcId = obj.dofm.getVariableId(bcVariableName);
+      bcVar = obj.bcs.getVariable(bcId);
+      bcId = obj.dofm.getVariableId(bcVar);
 
       obj.domain.rhs{bcId}(bcDofs) = obj.domain.rhs{bcId}(bcDofs) - bcVals;
 
     end
 
-    function applyDirBC(obj,bcDofs,bcVariableName)
+    function applyDirBC(obj,bcId,bcDofs,bcVals)
 
       % Standard application of Dirichlet boundary condition to the jacobian.
       % This method works with incremental linear system du = J\(-rhs)
 
+      if ~BCapplies(obj,bcId)
+        return
+      end
+
       % sort bcDofs to improve sparse access performance
-      bcDofs = sort(bcDofs);
+      [bcDofs,sortId] = sort(bcDofs);
 
-      bcId = obj.dofm.getVariableId(bcVariableName);
-
+      bcVar = obj.bcs.getVariable(bcId);
+      bcVarId = obj.dofm.getVariableId(bcVar);
 
       nV = getNumberOfVariables(obj.dofm);
 
       % zero out rows (use transpose trick)
       for j = 1:nV
-        obj.domain.J{bcId,j} = obj.J{bcId,j}';
-        obj.domain.J{bcId,j}(:,bcDofs) = 0;
-        obj.domain.J{bcId,j} = obj.J{bcId,j}';
+        obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
+        obj.domain.J{bcVarId,j}(:,bcDofs) = 0;
+        obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
       end
 
       % zero out columns only if the solver is symmetric (preserves
       % symmetry)
-      if isSymmetric(obj)
-        for i = 1:nV
-          obj.domain.J{i,bcId}(:,bcDofs) = 0;
-        end
-      end
+      % if isSymmetric(obj)
+      %   for i = 1:nV
+      %     obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+      %   end
+      % end
 
       % add 1 to diagonal entry of diagonal block
-      obj.domain.J{bcId,bcId}...
-        (sub2ind(size(obj.domain.J{{bcId,bcId}}), bcDofs, bcDofs)) = 1;
+      obj.domain.J{bcVarId,bcVarId}...
+        (sub2ind(size(obj.domain.J{bcVarId,bcVarId}), bcDofs, bcDofs)) = 1;
+
+      if nargin > 3
+        obj.domain.rhs{bcVarId}(bcDofs) = bcVals(sortId);
+      else
+        obj.domain.rhs{bcVarId}(bcDofs) = 0;
+      end
 
     end
+
+    function J = getJacobian(obj,varargin)
+      % get the Jacobian blocks affected by the solver
+      if nargin < 2
+        J = obj.domain.getJacobian(obj.getField());
+      else
+        J = obj.domain.getJacobian(varargin{:});
+      end
+    end
+
+    function out = BCapplies(obj,bcId)
+
+      bcVar = obj.bcs.getVariable(bcId);
+      out = any(strcmp(obj.getField(),bcVar));
+
+    end
+    
+
   end
 
 

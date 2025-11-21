@@ -14,6 +14,8 @@ classdef OutState < handle
     timeID = 1
     VTK
     writeVtk
+    matFileName
+    vtkFileName
   end
 
   properties (Access = private)
@@ -29,7 +31,7 @@ classdef OutState < handle
       % Default parameters
       flagMatFile = false;
       writeVtk = true;
-      folderName = "vtkOutput";
+      folderName = "output";
       tList = [];
 
       % ------------------------------------------------------------
@@ -57,11 +59,14 @@ classdef OutState < handle
         end
 
         flagMatFile = logical(getXMLData(input, 0, "saveHistory"));
-        folderName  = getXMLData(input, "vtkOutput", "outputFile");
+        obj.vtkFileName  = getXMLData(input, folderName, "outputFile");
+        obj.matFileName = getXMLData(input, folderName, "matFile");
         tList       = getXMLData(input, [], "printTimes");
 
         % If no outputFile provided, disable VTK
         writeVtk = isfield(input, "outputFile");
+
+
 
       else
         % ---------------- Key-value pair mode ----------------
@@ -83,14 +88,7 @@ classdef OutState < handle
       obj.writeVtk = writeVtk;
       obj.writeSolution = flagMatFile;
       %obj.model = model;
-      obj.VTK = VTKOutput(mesh, folderName);
-
-      % MAT-file output
-      if obj.writeSolution
-        if isfile('expData.mat'), delete 'expData.mat'; end
-        obj.results = matfile('expData.mat', 'Writable', true);
-        %setMatFile(obj, mesh);
-      end
+      obj.VTK = VTKOutput(mesh, obj.vtkFileName);
 
       % Time list handling
       if obj.writeVtk
@@ -104,12 +102,25 @@ classdef OutState < handle
         obj.timeList = obj.readTimeList(tList);
       end
 
+      % MAT-file output
+      if obj.writeSolution
+        if isfile('expData.mat'), delete 'expData.mat'; end
+        %obj.results = matfile('expData.mat', 'Writable', true);
+        nT = length(obj.timeList);
+        obj.results = repmat(struct('time', 0),nT,1);
+      end
+
     end
 
 
     function finalize(obj)
       if obj.writeVtk
         obj.VTK.finalize();
+      end
+
+      if obj.writeSolution
+        output = obj.results;
+        save(strcat(obj.matFileName,'.mat'),"output")
       end
     end
   end

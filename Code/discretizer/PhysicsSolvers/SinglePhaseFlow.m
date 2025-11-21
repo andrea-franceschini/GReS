@@ -49,7 +49,7 @@ classdef SinglePhaseFlow < PhysicsSolver
       % initialize the state object with a pressure field
       obj.getState().data.(obj.getField()) = zeros(n,1);
 
-      if strcmp(obj.scheme,'FiniteVolumesTPFA')
+      if isTPFA(obj)
 
         linkBoundSurf2TPFAFace(obj);
 
@@ -117,19 +117,19 @@ classdef SinglePhaseFlow < PhysicsSolver
     function J = computeMat(obj,dt)
 
       % recompute elementary matrices only if the model is linear
-      id = getVariableId(obj.dofm,obj.fieldId);
-      if ~isLinear(obj) || isempty(obj.J{id,id})
+
+      if ~isLinear(obj) || isempty(getJacobian(obj))
         if isFEM(obj)
           computeMatFEM(obj);
-        elseif isTFPA(obj)
+        elseif isTPFA(obj)
           mu = obj.materials.getFluid().getDynViscosity();
           computeStiffMatFV(obj,1/mu);
           computeCapMatFV(obj);
         end
       end
 
-      if obj.simparams.isTimeDependent
-        J = obj.simparams.theta*obj.H + obj.P/dt;
+      if obj.domain.simparams.isTimeDependent
+        J = obj.domain.simparams.theta*obj.H + obj.P/dt;
       else
         J = obj.H;
       end
@@ -200,7 +200,7 @@ classdef SinglePhaseFlow < PhysicsSolver
       sumDiagTrans = accumarray( [neigh1;neigh2], repmat(tmpVec,[2,1]), ...
         [nSubCells,1]);
       % Assemble H matrix
-      nDoF = obj.dofm.getNumDoF(obj.fieldId);
+      nDoF = obj.dofm.getNumbDoF(obj.fieldId);
       obj.H = sparse([neigh1; neigh2; (1:nSubCells)'],...
         [neigh2; neigh1; (1:nSubCells)'],...
         [-tmpVec; -tmpVec; sumDiagTrans], nDoF, nDoF);
@@ -213,7 +213,7 @@ classdef SinglePhaseFlow < PhysicsSolver
       alphaMat = zeros(nSubCells,1);
       beta = obj.materials.getFluid().getFluidCompressibility();
       for m = 1:obj.mesh.nCellTag
-        if ~ismember(m,obj.dofm.getTargetRegions([obj.fieldId,'displacements']))
+        if ~ismember(m,obj.dofm.getTargetRegions([obj.getField(),"displacements"]))
           % compute alpha only if there's no coupling in the
           % subdomain
           alphaMat(m) = obj.materials.getMaterial(m).ConstLaw.getRockCompressibility();
@@ -237,16 +237,16 @@ classdef SinglePhaseFlow < PhysicsSolver
       % Compute the residual of the flow problem
 
       % get pressure state
-      p = getState(obj,obj.fieldId);
-      pOld = getStateOld(obj,obj.fieldId);
+      p = getState(obj,obj.getField());
+      pOld = getStateOld(obj,obj.getField());
 
       lw = 1/obj.materials.getFluid().getDynViscosity();
-      ents = obj.dofm.getActiveEnts(obj.fieldId);
+      ents = obj.dofm.getActiveEntities(obj.fieldId);
 
-      if ~obj.simparams.isTimeDependent
+      if ~obj.domain.simparams.isTimeDependent
         rhs = obj.H*p(ents);
       else
-        theta = obj.simparams.theta;
+        theta = obj.domain.simparams.theta;
         rhsStiff = theta*obj.H*p(ents) + (1-theta)*obj.H*pOld(ents);
         rhsCap = (obj.P/dt)*(p(ents) - pOld(ents));
         rhs = rhsStiff + rhsCap;
@@ -402,6 +402,13 @@ classdef SinglePhaseFlow < PhysicsSolver
     end
 
     function applyDirVal(obj,bcId,t)
+
+      bcVar = obj.bcs.getVariable(bcId);
+
+      if ~strcmp(bcVar,obj.getField()) 
+        return 
+      end
+
       if isTPFA(obj)
         % Dirichlet BCs cannot be directly applied to the solution
         % vector
@@ -414,7 +421,11 @@ classdef SinglePhaseFlow < PhysicsSolver
       state.data.pressure(bcDofs) = bcVals;
     end
 
-    function applyBC(obj,t,bcId,bcVar)
+    function applyBC(obj,bcId,t)
+
+      if ~BCapplies(obj,bcId)
+        return
+      end
 
       [bcDofs,bcVals] = getBC(obj,bcId,t);
 
@@ -423,9 +434,9 @@ classdef SinglePhaseFlow < PhysicsSolver
 
       switch bcType
         case {'Dirichlet','Seepage'}
-          applyDirBC(obj,bcDofs,bcVals,bcVar);
+          applyDirBC(obj,bcId,bcDofs,bcVals);
         case 'Neumann'
-          applyNeuBC(obj,bcDofs,bcVar);
+          applyNeuBC(obj,bcId,bcDofs,bcVar);
         otherwise
           error("Error in %s: Boundary condition type '%s' is not " + ...
             "available in applyBC()",class(obj),bcType)
@@ -450,31 +461,35 @@ classdef SinglePhaseFlow < PhysicsSolver
       [cellData,pointData] = buildPrintStruct(obj,outPrint);
     end
 
-    function writeMatFile(obj,t)
+    function writeMatFile(obj,t,tID)
 
-        pOld = getStateOld(obj,obj.getField());
-        pCurr = getState(obj,obj.getField());
-        fac = (t - getState(obj).t)/(getState(obj).t - getStateOld(obj).t);
-        obj.outstate.results(tID+1).pressure = pCurr*fac+pOld*(1-fac);
+      pOld = getStateOld(obj,obj.getField());
+      pCurr = getState(obj,obj.getField());
+      fac = (t - getStateOld(obj).t)/(getState(obj).t - getStateOld(obj).t);
+      obj.domain.outstate.results(tID).pressure = pCurr*fac+pOld*(1-fac);
 
     end
 
 
 
 
-    function applyDirBC(obj,bcDofs,bcVals,bcVar)
+    function applyDirBC(obj,bcId,bcDofs,bcVals)
       % apply Dirichlet BCs
       % ents: id of constrained faces without any dof mapping applied
       % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
       if isTPFA(obj)
         % BCs imposition for finite volumes - boundary flux
         assert(size(bcVals,2)==2,'Invalid matrix size for BC values');
-        nDoF = obj.dofm.getNumDoF(obj.fieldId);
-        obj.J(nDoF*(bcDofs-1) + bcDofs) = obj.J(nDoF*(bcDofs-1) + bcDofs) + bcVals(:,1);
-        obj.rhs(bcDofs) = obj.rhs(bcDofs) + bcVals(:,2);
+        nDoF = obj.dofm.getNumbDoF(obj.fieldId);
+        bcDofsJ = nDoF*(bcDofs-1) + bcDofs;
+        J = getJacobian(obj);
+        obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) = ...
+          J(bcDofsJ) + bcVals(:,1);
+        obj.domain.rhs{obj.fieldId}(bcDofs) = ...
+          obj.domain.rhs{obj.fieldId}(bcDofs) + bcVals(:,2);
       else
         % FEM - strong BCs imposition
-        applyDirBC@PhysicsSolver(obj,bcDofs,bcVar)
+        applyDirBC@PhysicsSolver(obj,bcId,bcDofs)
       end
     end
 

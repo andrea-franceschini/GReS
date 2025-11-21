@@ -1,10 +1,10 @@
 classdef DiscretizerNew < handle
   % General discretizer class
+
   properties (GetAccess=public, SetAccess=private)
 
     physicsSolvers      % physics solvers database
     dofm                % dofManager
-    simparams
     bcs
     outstate
     materials
@@ -13,7 +13,13 @@ classdef DiscretizerNew < handle
 
   end
 
-  properties (GetAccess=private, SetAccess=public)
+  properties
+    simparams
+    J
+    rhs
+  end
+
+  properties (GetAccess=public, SetAccess=public)
     interfaceList = [];
     interfaces = []
     interfaceSurf            % surfaceTag in each surface of interfaceSurf
@@ -22,12 +28,6 @@ classdef DiscretizerNew < handle
 
     state
     stateOld
-  end
-
-  properties (GetAccess=private, SetAccess=public)
-    % block jacobian and rhs for the domain
-    J
-    rhs
   end
 
 
@@ -40,7 +40,7 @@ classdef DiscretizerNew < handle
     end
 
     function applyBC(obj,t)
-      bcList = keys(obj.bcs.keys);
+      bcList = obj.bcs.db.keys;
 
       for bcId = string(bcList)
         % loop over available bcs
@@ -52,7 +52,7 @@ classdef DiscretizerNew < handle
 
           % check if BCs applies to the solver
           if any(strcmpi(solver.getField(),bcVar))
-            solver.applyBC(t,bcId,bcVar)
+            solver.applyBC(bcId,t)
           end
 
         end
@@ -62,7 +62,7 @@ classdef DiscretizerNew < handle
 
 
     function applyDirVal(obj,t)
-      bcList = keys(obj.bcs.keys);
+      bcList = obj.bcs.db.keys;
 
       for bcId = string(bcList)
         % discard non-Dirichlet BC
@@ -78,10 +78,28 @@ classdef DiscretizerNew < handle
 
           % check if BCs applies to the solver
           if any(strcmpi(solver.getField(),bcVar))
-            solver.applyBDirVal(t,bcId,bcVar)
+            solver.applyDirVal(bcId,t)
           end
         end
       end
+    end
+
+    function updateState(obj,du)
+
+      for solv = obj.solverNames
+        % loop over available solvers
+        obj.getPhysicsSolver(solv).updateState(du);
+      end
+
+    end
+
+    function advanceState(obj)
+      
+      for solv = obj.solverNames
+        % loop over available solvers
+        obj.getPhysicsSolver(solv).advanceState();
+      end
+
     end
 
 
@@ -111,13 +129,16 @@ classdef DiscretizerNew < handle
       % loop trough solver database and compute non-costant jacobian
       % blocks and rhs block
       for solver = obj.solverNames
-        assembleSystem(getPhysicsSolver(solver),dt);
+        assembleSystem(obj.getPhysicsSolver(solver),dt);
       end
     end
 
 
 
     function addPhysicsSolver(obj,solverInput)
+
+      assert(isempty(getJacobian(obj)),"Cannot add a physics solver " + ...
+        "after system has already been assembled");
 
       % Add a new solver to the Discretizer
       assert(nargin == 2,"Input must be an xml file or a scalar struct")
@@ -135,7 +156,10 @@ classdef DiscretizerNew < handle
       for solverName = obj.solverNames
         % create and register the solver
         solver = feval(solverName,obj);
-        solver.registerSolver(solverInput.(solverName))
+        solver.registerSolver(solverInput.(solverName));
+        nV = obj.dofm.getNumberOfVariables();
+        obj.J = cell(nV);
+        obj.rhs = cell(nV,1);
         obj.physicsSolvers(solverName) = solver;
       end
 
@@ -171,14 +195,14 @@ classdef DiscretizerNew < handle
       %   - Row and column fields must correspond to existing variables in the system.
 
       if nargin == 1
-        J = processCellMatrix(obj.J);
+        J = cell2matrix(obj.J);
       elseif nargin == 2
         id = obj.dofm.getVariableId(varargin{1});
-        J = processCellMatrix(obj.J{id,id});
+        J = cell2matrix(obj.J(id,id));
       elseif nargin == 3
         idRow = obj.dofm.getVariableId(varargin{1});
         idCol = obj.dofm.getVariableId(varargin{2});
-        J = processCellMatrix(obj.J{idRow,idCol});
+        J = cell2matrix(obj.J(idRow,idCol));
       else
         error("Too many input arguments")
       end
@@ -202,12 +226,51 @@ classdef DiscretizerNew < handle
       %   Only one field list is allowed; multiple fields will be concatenated
 
       if nargin == 1
-        rhs = obj.shrinkBlockMatrix(obj.rhs);
+        rhs = cell2matrix(obj.rhs);
       elseif nargin == 2
         id = obj.dofm.getVariableId(varargin{1});
-        rhs = obj.rhs{dofList};
+        rhs = cell2matrix(obj.rhs(id));
       else
         error("Too many input arguments")
+      end
+    end
+
+    function printState(obj)
+      % print solution of the model according to the print time in the
+      % list
+
+      if obj.state.t >= obj.simparams.tMax
+
+        time = getState(obj).t;
+        writeVTK(obj,time);
+        writeMatFile(obj,time,obj.outstate.timeID);
+
+      else
+
+        if obj.outstate.timeID <= length(obj.outstate.timeList)
+
+          time = obj.outstate.timeList(obj.outstate.timeID);
+
+          % loop over print times within last time step
+          while time <= obj.state.t
+
+            assert(time >= obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
+              time, obj.stateOld.t, obj.state.t);
+
+            assert(obj.state.t - obj.stateOld.t > eps('double'),...
+              'Time step is too small for printing purposes');
+
+            writeVTK(obj,time);
+
+            writeMatFile(obj,time,obj.outstate.timeID);
+
+            obj.outstate.timeID = obj.outstate.timeID + 1;
+
+            time = obj.outstate.timeList(obj.outstate.timeID);
+
+          end
+
+        end
       end
     end
 
@@ -274,46 +337,6 @@ classdef DiscretizerNew < handle
     end
 
 
-    function printState(obj,t)
-      % print solution of the model according to the print time in the
-      % list
-
-      if nargin == 1 || t >= obj.simparams.tMax
-
-        time = getState(obj).t;
-        writeVTK(obj,time);
-        writeMatFile(obj,time);
-
-        % loop over print times
-      else
-
-        if obj.outstate.timeID <= length(obj.outstate.timeList)
-
-          time = obj.outstate.timeList(obj.outstate.timeID);
-
-          while time <= obj.state.t
-
-            assert(time > obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
-              time, obj.stateOld.t, stateNew.t);
-
-            assert(obj.state.t - obj.stateOld.t > eps('double'),...
-              'Time step is too small for printing purposes');
-
-            writeVTK(obj,time);
-
-            writeMatFile(obj,time);
-
-            obj.outstate.timeID = obj.outstate.timeID + 1;
-
-            time = obj.outstate.timeList(obj.outstate.timeID);
-
-          end
-
-        end
-      end
-    end
-
-
     function writeVTK(obj,time)
       % write results to VTKoutput
 
@@ -336,16 +359,15 @@ classdef DiscretizerNew < handle
     end
 
 
-    function writeMatFile(obj,time)
+    function writeMatFile(obj,time,timeID)
       % write to MAT-file
 
       if obj.outstate.writeSolution
 
-        % tID = obj.outstate.timeID;
+        obj.outstate.results(timeID).time = obj.outstate.timeList(timeID);
 
         for solv = obj.solverNames
-          solver = getPhysicsSolver(obj,solv);
-          writeMatFile(solver,time);
+          getPhysicsSolver(obj,solv).writeMatFile(time,timeID);
         end
 
       end
