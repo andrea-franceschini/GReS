@@ -184,27 +184,26 @@ classdef Poromechanics < SinglePhysics
         B(elem.indB(:,2)) = gradN(elem.indB(:,1));
 
         % Exchange comments for including chemical strain:
-        % 1. Chemostrain removed from the strain update
-        %
-            Omega_d = 0.0800813; % 0.0800813 for [Zhang,2007] & 3.36064 for Si
-            % Extract pressures (nGx1) for current timestep
-            % Updating p (SinglePhaseFlow updates after Poromechanics)
-            p_temp = obj.state.data.pressure + dSol(getDoF(obj.dofm, "SinglePhaseFlow"));
-            dp_gp = N * (p_temp(top) - obj.state.data.pOld(top));
-            % Construct isotropic chemomechanical strain at each Gauss point
-            strainChemo = zeros(nG,6);
-            for ig = 1:nG
-                strainChemo(ig,:) = (Omega_d/3) * dp_gp(ig) * [1 1 1 0 0 0];
-            end
-            obj.state.data.curr.strain((l+1):(l+nG),:) = ...
-              reshape(pagemtimes(B,du(dof)),6,nG)' - strainChemo;
-        %
+        % % 1. Chemostrain removed from the strain update
+        % %
+        %     Omega_d = 0.0800813; % 0.0800813 for [Zhang,2007] & 3.36064 for Si
+        %     % Extract pressures (nGx1) for current timestep
+        %     % Updating p (SinglePhaseFlow updates after Poromechanics)
+        %     p_temp = obj.state.data.pressure + dSol(getDoF(obj.dofm, "SinglePhaseFlow"));
+        %     dp_gp = N * (p_temp(top) - obj.state.data.pOld(top));
+        %     % Construct isotropic chemomechanical strain at each Gauss point
+        %     strainChemo = zeros(nG,6);
+        %     for ig = 1:nG
+        %         strainChemo(ig,:) = (Omega_d/3) * dp_gp(ig) * [1 1 1 0 0 0];
+        %     end
+        %     obj.state.data.curr.strain((l+1):(l+nG),:) = ...
+        %       reshape(pagemtimes(B,du(dof)),6,nG)' - strainChemo;
+        % %
 
         % 2. Don't remove the chemical strain (original code)
-        %
-            % obj.state.data.curr.strain((l+1):(l+nG),:) = ...
-            %   reshape(pagemtimes(B,du(dof)),6,nG)';
-        %
+
+            obj.state.data.curr.strain((l+1):(l+nG),:) = ...
+              reshape(pagemtimes(B,du(dof)),6,nG)';
 
         l = l + nG;
       end
@@ -267,15 +266,34 @@ classdef Poromechanics < SinglePhysics
         subCells = obj.dofm.getFieldCells(obj.field);
         l1 = 0;
         for el=subCells'
-          D = getElasticTensor(obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw);
-          % Get the right material stiffness for each element
-          vtk = obj.mesh.cellVTKType(el);
-          elem = obj.elements.getElement(vtk);
-          nG = elem.GaussPts.nNode;
-          obj.state.data.curr.stress((l1+1):(l1+nG),:) = ...
-            obj.state.data.curr.stress((l1+1):(l1+nG),:)+...
-            obj.state.data.curr.strain((l1+1):(l1+nG),:)*D;
-          l1 = l1+nG;
+            D = getElasticTensor(obj.material.getMaterial(obj.mesh.cellTag(el)).ConstLaw);
+            % Get the right material stiffness for each element
+            vtk = obj.mesh.cellVTKType(el);
+            elem = obj.elements.getElement(vtk);
+            nG = elem.GaussPts.nNode;
+
+            % Added by Shaunak - STARTS HERE
+            top = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
+            N = getBasisFinGPoints(elem);
+            % Added by Shaunak - ENDS HERE
+
+            obj.state.data.curr.stress((l1+1):(l1+nG),:) = ...
+                obj.state.data.curr.stress((l1+1):(l1+nG),:) + ...
+                obj.state.data.curr.strain((l1+1):(l1+nG),:)*D;
+    
+            % Added by Shaunak - STARTS HERE
+            % Removing beta*c term from stresses
+            beta_d = 0.0667344167; % 0.0667344167 for [Zhang,2007], 2.0004 for Si
+            % Extract pressures (nGx1) for current timestep
+            % Updating p (SinglePhaseFlow updates after Poromechanics)
+            p_temp = obj.state.data.pressure;
+            dp_gp = N * (p_temp(top) - obj.state.data.pOld(top));
+            obj.state.data.curr.stress((l1+1):(l1+nG),:) = ...
+                obj.state.data.curr.stress((l1+1):(l1+nG),:) - ...
+                beta_d * dp_gp * [1 1 1 0 0 0];
+            % Added by Shaunak - ENDS HERE
+
+            l1 = l1+nG;
         end
         ents = obj.dofm.getActiveEnts(obj.getField());
         if obj.simParams.isTimeDependent

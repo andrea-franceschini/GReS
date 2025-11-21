@@ -1,7 +1,0 @@
-SurfBC            % BC item 
-Neu            % BC type 
-SinglePhaseFlow            % Physics 
-c_outer_bc            % BC name 
-BCs/chemomech_gal/list 
-0.000000 BCs/chemomech_gal/time0.dat 
-End
