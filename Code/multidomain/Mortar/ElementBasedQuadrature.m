@@ -162,7 +162,7 @@ classdef ElementBasedQuadrature < MortarQuadrature
         end
 
         % check if gp lies in master reference space and update gp flag
-        if FEM.checkInRange(elM,xiM(i,:))
+        if elM.checkInRange(xiM(i,:))
           obj.suppFlag(i) = true;
         end
       end
@@ -197,6 +197,7 @@ classdef ElementBasedQuadrature < MortarQuadrature
       obj.activeGPmap([false;id]) = [];
       obj.mortarPairs(id,:) = [];
 
+      obj.detJw(id2) = [];
       for i = 1:2
         obj.gpCoords{i}(id2,:) = [];
       end

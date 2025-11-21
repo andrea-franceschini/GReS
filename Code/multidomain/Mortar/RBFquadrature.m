@@ -113,11 +113,8 @@ classdef RBFquadrature < MortarQuadrature
 
       if class(elem)=="Triangle"
         nIntPts = sum(1:obj.nInt);
-        xiMin = 0; xiMax = 1;
       else
         nIntPts = obj.nInt^2;
-        xiMin = -1;
-        xiMax = 1;
       end
       
       ptsInt = obj.ptsRBF(1:nIntPts,[3*im-2 3*im-1 3*im]);
@@ -128,9 +125,7 @@ classdef RBFquadrature < MortarQuadrature
       % compute interpolated gp coordinates
       xiMaster = (fiNM*obj.wF(:,[2*im-1 2*im]))./(fiNM*obj.w1(:,im));
 
-      % support detection
-      tol = 1e-3;
-      obj.suppFlag = all([xiMaster > xiMin - tol, xiMaster < xiMax + tol, id1],2);
+      obj.suppFlag = elem.checkInRange(xiMaster,1e-3);
 
       if ~any(obj.suppFlag)
         isPairActive = false;
@@ -158,6 +153,7 @@ classdef RBFquadrature < MortarQuadrature
       obj.activeGPmap([false;id]) = [];
       obj.mortarPairs(id,:) = [];
 
+      obj.detJw(id2) = [];
       for i = 1:2
         obj.gpCoords{i}(id2,:) = [];
       end

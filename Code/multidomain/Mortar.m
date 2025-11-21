@@ -350,11 +350,17 @@ classdef Mortar < handle
 
       processMortarPairs(obj.quadrature); 
 
-      inactiveMaster = find(~ismember(1:obj.mesh.msh(1).nSurfaces,...
-        obj.quadrature.mortarPairs(:,2)));
+      inactiveMaster = ~ismember(1:obj.mesh.msh(1).nSurfaces,...
+        obj.quadrature.mortarPairs(:,2));
 
-      inactiveSlave = find(~ismember(1:obj.mesh.msh(2).nSurfaces,...
-        obj.quadrature.mortarPairs(:,1)));
+      [~, ~, obj.quadrature.mortarPairs(:,2)] = ...
+        unique(obj.quadrature.mortarPairs(:,2));
+
+      inactiveSlave = ~ismember(1:obj.mesh.msh(2).nSurfaces,...
+        obj.quadrature.mortarPairs(:,1));
+
+      [~, ~, obj.quadrature.mortarPairs(:,1)] = ...
+        unique(obj.quadrature.mortarPairs(:,1));
 
       % remove master elements
       obj.mesh.removeMortarSurface(1,inactiveMaster);

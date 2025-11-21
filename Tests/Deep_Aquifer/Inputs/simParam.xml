@@ -4,10 +4,10 @@
   <simParam>
     <Time 
           Start="0."
-          End ="1e1"
-          DtInit= "0.5"
-          DtMax ="5"
-          DtMin ="0.5"
+          End ="8.01e0"
+          DtInit="5.0e-1"
+          DtMin ="1.0e-5"
+          DtMax ="5.0e-1"
           incrementFactor = "1.1"
           choppingFactor = "Default" />
 

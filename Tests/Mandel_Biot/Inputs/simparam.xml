@@ -4,11 +4,11 @@
   <simParam>
     <Time 
           Start="0."
-          End ="1e1"
-          DtInit= "0.5"
-          DtMax ="5"
-          DtMin ="0.5"
-          incrementFactor = "1.1"
+          End ="5.01"
+          DtInit= "2.5e-2"          
+          DtMin ="1.e-5"
+          DtMax ="1.e-1"
+          incrementFactor = "1."
           choppingFactor = "Default" />
 
     <Solver

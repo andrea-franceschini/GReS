@@ -259,16 +259,6 @@ classdef MultidomainFCSolver < handle
       end
       if flConv % Go on if converged
         tmpVec = obj.simParameters.multFac;
-        for i = 1:obj.nDom
-          if isFlow(obj.domains(i).model)
-            pnew = obj.state(i).curr.data.pressure;
-            pold = obj.state(i).prev.data.pressure;
-            dpMax = max(abs(pnew-pold));
-            tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
-              obj.simParameters.pTarget/(dpMax + obj.simParameters.relaxFac* ...
-              obj.simParameters.pTarget)];
-          end
-        end
         obj.dt = min([obj.dt * min(tmpVec),obj.simParameters.dtMax]);
         obj.dt = max([obj.dt obj.simParameters.dtMin]);
         goOnState(obj);

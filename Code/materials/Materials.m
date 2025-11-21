@@ -74,8 +74,8 @@ classdef Materials < handle
 
       if isfield(input,"Fluid")
          fluid = Fluid(input.Fluid);
-         name = getXMLData(input.Fluid,[],"name");
-         fluid.setName(name);
+         %name = getXMLData(input.Fluid,[],"name");
+         %fluid.setName(name);
       end
 
       nSolid = 0;
@@ -88,7 +88,7 @@ classdef Materials < handle
         maxCellTag = max(cTags);
         obj.matMap = zeros(maxCellTag,1);
         for i = 1:nSolid
-          mat.name = getXMLData(input.Solid(i),[],"name");
+          %mat.name = getXMLData(input.Solid(i),[],"name");
           cellTags = getXMLData(input.Solid(i),[],"cellTags");
           if any(obj.matMap(cellTags))
             existingCellTags = cellTags(obj.matMap(cellTags)~=0);
