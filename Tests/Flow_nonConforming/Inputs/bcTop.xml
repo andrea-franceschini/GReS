@@ -45,12 +45,12 @@ a function handle depending on space (x,y,z)
       physics = "SinglePhaseFlow" >
 
     <BCentities
-        surfaceTags = "3"
+        bcList = "8"
     />
 
     <BCevent
         time = "0.0"
-        value = "1.0e+2*exp(-(y^2+z^2)/(2*0.1^2))"
+        value = "0.0"
     />
   </BC>
 

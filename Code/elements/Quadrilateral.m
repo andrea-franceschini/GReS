@@ -224,9 +224,27 @@ classdef Quadrilateral < FEM
       obj.Nb = zeros(obj.GaussPts.nNode,1);
       obj.Nb =  arrayfun(@(i) bub(i,1).*bub(i,2),1:obj.GaussPts.nNode);
     end
+
   end
 
   methods (Static)
+
+    function out = checkInRange(coord,tol)
+      % check if reference coordinate in input are inside the reference
+      % element
+
+      if nargin < 2
+        tol = 1e-5;
+      end
+
+      xi  = coord(:,1);
+      eta = coord(:,2);
+
+      out = (xi  >= -1 - tol) & (xi  <= 1 + tol) & ...
+        (eta >= -1 - tol) & (eta <= 1 + tol);
+
+    end
+
     function dN = computeDerBasisF(list)
       % Compute derivatives in the reference space for input list of
       % referencecoordinates

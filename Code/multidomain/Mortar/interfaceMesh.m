@@ -90,7 +90,7 @@ classdef interfaceMesh < handle
 
       
       % id: logical index of unconnected surface to be removed
-      assert(numel(id)==obj.msh(side).nSurfaces,['Side of Logical indices of ' ...
+      assert(numel(id)==obj.msh(side).nSurfaces,['Size of Logical indices of ' ...
         'surfaces must be same as current number of surfaces'])
       obj.msh(side) = getSurfaceMesh(obj.msh(side),~id);
 

@@ -2,7 +2,7 @@
 <struct>
     <Name>Cube_ElementBased_2</Name>
     <SimParameters>simParam.xml</SimParameters>
-    <Geometry>Mesh/meshes/domain_hexa27_2.vtk</Geometry>
+    <Geometry>Mesh\meshes\domain_hexa27_2.vtk</Geometry>
     <ModelType>Poisson_FEM</ModelType>
     <Gauss>3</Gauss>
     <BoundaryConditions>poissonMortarBCs.xml</BoundaryConditions>

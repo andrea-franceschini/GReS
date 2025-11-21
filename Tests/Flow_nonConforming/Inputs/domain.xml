@@ -10,8 +10,8 @@ in a nonConforming simulation.
     <Geometry>Inputs/Mesh/topLayer.vtk</Geometry>
     <Gauss>1</Gauss>
     <Material> Inputs/materialsListTop.xml </Material>
-    <BoundaryConditions> Inputs/boundaries.xml </BoundaryConditions>
-    <OutState> Inputs/output.xml </OutState>
+    <BoundaryConditions> Inputs/bcTop.xml </BoundaryConditions>
+    <OutState> Inputs/outTop.xml </OutState>
   </Domain>
 
   <Domain>
@@ -21,7 +21,7 @@ in a nonConforming simulation.
     <Geometry>Inputs/Mesh/bottomLayer.vtk</Geometry>    
     <Gauss>1</Gauss>
     <Material> Inputs/materialsListBottom.xml </Material>
-    <BoundaryConditions> Inputs/boundaries.xml </BoundaryConditions>
-    <OutState> Inputs/output.xml </OutState>
+    <BoundaryConditions> Inputs/bcBot.xml </BoundaryConditions>
+    <OutState> Inputs/outBottom.xml </OutState>
   </Domain>
 </struct>
