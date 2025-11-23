@@ -367,7 +367,7 @@ classdef Poromechanics < PhysicsSolver
 
       uOld = getStateOld(obj,obj.getField());
       uCurr = getState(obj,obj.getField());
-      fac = (t - getState(obj).t)/(getState(obj).t - getStateOld(obj).t);
+      fac = (t - getStateOld(obj).t)/(getState(obj).t - getStateOld(obj).t);
 
       obj.domain.outstate.results(tID).(obj.getField()) = uCurr*fac+uOld*(1-fac);
 
@@ -398,7 +398,7 @@ classdef Poromechanics < PhysicsSolver
 
       end
 
-      [cellData,pointData] = PoromechanicsOld.buildPrintStruct(displ,avStress,avStrain);
+      [cellData,pointData] = Poromechanics.buildPrintStruct(displ,avStress,avStrain);
 
     end
 

@@ -92,7 +92,7 @@ classdef entityField
       end
 
       if nargin > 3
-        ents = DoFManagerNew.dofExpand(ents,nc);
+        ents = DoFManager.dofExpand(ents,nc);
       end
 
     end

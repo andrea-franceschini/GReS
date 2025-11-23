@@ -139,11 +139,11 @@ classdef FCSolver < handle
 
           state.t = obj.t;
 
-          % advance the state after convergence 
-          advanceState(obj.domain);
-
           % print results at current time
           printState(obj.domain);
+
+          % advance the state after convergence
+          advanceState(obj.domain);
 
           % save solution statistics
           obj.solStatistics.saveIt(obj.t,residual(1:obj.iter+1,1),residual(1:obj.iter+1,2));

@@ -17,9 +17,9 @@ solver = FCSolver(simparams,domain);
 
 ref = load('referenceSol.mat');
 comp = domain.outstate.results;
-
+%%
 tol = 1e-3;
-assert(norm(ref.expDispl(:,2:end)-[comp.expDispl])<tol)
-assert(norm(ref.expPress(:,2:end)-[comp.expPress])<tol)
+assert(norm(ref.expDispl(:,1:end)-[comp.displacements])<tol)
+assert(norm(ref.expPress(:,1:end)-[comp.pressure])<tol)
 
 

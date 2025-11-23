@@ -20,7 +20,7 @@ in a nonConforming simulation.
 
     <Output
             outputFile = "output_DeepAquifer"
-            printTimes= "0.5,1.5"
+            printTimes= "0,0.5,1.5"
             saveHistory = "1"/>
 
     <Solver>
@@ -28,11 +28,11 @@ in a nonConforming simulation.
       <BiotFullySaturated>
 
         <Poromechanics
-                       cellTags = "1,2,3"
+                       targetRegions = "1,2,3"
                        />
 
         <SinglePhaseFlow
-                         cellTags = "2,3"
+                         targetRegions = "2,3"
                          scheme = "FiniteVolumesTPFA"
                          />
 

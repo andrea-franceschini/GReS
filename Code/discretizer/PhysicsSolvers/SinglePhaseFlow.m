@@ -35,16 +35,16 @@ classdef SinglePhaseFlow < PhysicsSolver
       switch obj.scheme
         case "FiniteVolumesTPFA"
           obj.dofm.registerVariable(obj.getField(),entityField.cell,1,targetRegions);
+          n = getNumberOfEntities(entityField.cell,obj.mesh);
         case "FEM"
           obj.dofm.registerVariable(obj.getField(),entityField.node,1,targetRegions);
+          n = getNumberOfEntities(entityField.node,obj.mesh);
         otherwise
           error("Scheme %s for class %s is not a valid GReS scheme",...
             obj.scheme,class(obj));
       end
 
       obj.fieldId = obj.dofm.getVariableId(obj.getField());
-
-      n = getNumbDoF(obj.dofm,obj.fieldId);
 
       % initialize the state object with a pressure field
       obj.getState().data.(obj.getField()) = zeros(n,1);
@@ -435,8 +435,8 @@ classdef SinglePhaseFlow < PhysicsSolver
       switch bcType
         case {'Dirichlet','Seepage'}
           applyDirBC(obj,bcId,bcDofs,bcVals);
-        case 'Neumann'
-          applyNeuBC(obj,bcId,bcDofs,bcVar);
+        case {'Neumann','VolumeForce'}
+          applyNeuBC(obj,bcId,bcDofs,bcVals);
         otherwise
           error("Error in %s: Boundary condition type '%s' is not " + ...
             "available in applyBC()",class(obj),bcType)

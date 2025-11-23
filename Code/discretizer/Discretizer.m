@@ -239,40 +239,44 @@ classdef Discretizer < handle
       % print solution of the model according to the print time in the
       % list
 
-      if obj.state.t >= obj.simparams.tMax
+      % if obj.state.t >= obj.simparams.tMax
+      %
+      %   time = getState(obj).t;
+      %   writeVTK(obj,time);
+      %   writeMatFile(obj,time,obj.outstate.timeID);
+      %
+      % else
 
-        time = getState(obj).t;
-        writeVTK(obj,time);
-        writeMatFile(obj,time,obj.outstate.timeID);
+      if obj.outstate.timeID <= length(obj.outstate.timeList)
 
-      else
+        time = obj.outstate.timeList(obj.outstate.timeID);
 
-        if obj.outstate.timeID <= length(obj.outstate.timeList)
+        % loop over print times within last time step
+        while time <= obj.state.t
 
-          time = obj.outstate.timeList(obj.outstate.timeID);
+          assert(time >= obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
+            time, obj.stateOld.t, obj.state.t);
 
-          % loop over print times within last time step
-          while time <= obj.state.t
+          assert(obj.state.t - obj.stateOld.t > eps('double'),...
+            'Time step is too small for printing purposes');
 
-            assert(time >= obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
-              time, obj.stateOld.t, obj.state.t);
+          writeVTK(obj,time);
 
-            assert(obj.state.t - obj.stateOld.t > eps('double'),...
-              'Time step is too small for printing purposes');
+          writeMatFile(obj,time,obj.outstate.timeID);
 
-            writeVTK(obj,time);
+          obj.outstate.timeID = obj.outstate.timeID + 1;
 
-            writeMatFile(obj,time,obj.outstate.timeID);
-
-            obj.outstate.timeID = obj.outstate.timeID + 1;
-
+          if obj.outstate.timeID > length(obj.outstate.timeList)
+            break
+          else
             time = obj.outstate.timeList(obj.outstate.timeID);
-
           end
 
         end
+
       end
     end
+    %end
 
   end
 
