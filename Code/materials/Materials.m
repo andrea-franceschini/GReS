@@ -67,7 +67,7 @@ classdef Materials < handle
       end
 
       if isfield(input,"fileName")
-        assert(isscalar(fieldnames(inputstruct)),"FileName, " + ...
+        assert(isscalar(fieldnames(input)),"FileName, " + ...
           " must be a unique parameter.");
         input = readstruct(input.fileName,AttributeSuffix="");
       end

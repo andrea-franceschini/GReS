@@ -57,13 +57,19 @@ classdef SimulationParameters < handle
         %READXMLFILE - function to read the simulation parameters file in
         %xml and construct the class object.
 
-        fdata = readstruct(fileName,AttributeSuffix="");
+        input = readstruct(fileName,AttributeSuffix="");
 
-        if isfield(fdata,'simParam')
-          fdata = fdata.simParam;
+        if isfield(input,'simParam')
+          input = input.simParam;
         end
 
-        time = fdata.("Time");
+        if isfield(input,"fileName")
+          assert(isscalar(fieldnames(input)),"FileName, " + ...
+            " must be a unique parameter.");
+          input = readstruct(input.fileName,AttributeSuffix="");
+        end
+
+        time = input.("Time");
 
         obj.tIni = getXMLData(time,0,'Start');
         obj.tMax = getXMLData(time,[],'End');
@@ -73,8 +79,8 @@ classdef SimulationParameters < handle
         obj.multFac = getXMLData(time,1.1,'incrementFactor');
         obj.divFac = getXMLData(time,2.,'choppingFactor');
 
-        if isfield(fdata,"Solver")
-          solver = fdata.("Solver");
+        if isfield(input,"Solver")
+          solver = input.("Solver");
           obj.absTol = getXMLData(solver,1e-10,'AbsoluteTolerance');
           obj.relTol = getXMLData(solver,1e-6','RelativeTolerance');
           obj.theta = getXMLData(solver,1.,'Theta');

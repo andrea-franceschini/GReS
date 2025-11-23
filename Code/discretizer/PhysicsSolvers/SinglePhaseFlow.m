@@ -137,7 +137,7 @@ classdef SinglePhaseFlow < PhysicsSolver
 
     function computeMatFEM(obj)
       % dealing with input params
-      subCells = obj.dofm.getTargetRegions(obj.fieldId);
+      subCells = obj.dofm.getFieldCells(obj.fieldId);
       nEntries = sum(obj.mesh.cellNumVerts(subCells).^2);
 
       [iiVec,jjVec,HVec,PVec] = deal(zeros(nEntries,1));

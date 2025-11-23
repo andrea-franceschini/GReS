@@ -1,313 +1,237 @@
 classdef DoFManager < handle
-   % Degree of freedom manager
-   % Map each entity to a corresponding degree of freedom in the solution
-   % system
-   % 2 ordering can be specified in input:
-   % Field-based ordering (default)
-   % Domain-based ordering 
-   properties (Access = private)
-      model
-      cellTags
-      domainFields
-      tag2subDomain
-      entMap      % collection of maps of domain entities to local dof
-      fieldList
-   end
-   properties (Access = public)
-      numEntsField
-      numEntsSubdomain
-      fields
-      ordering
-      nComp
-      totDoF
-   end
-   
-   methods
-      function obj = DoFManager(mesh,model,varargin)
-         obj.model = model;
-         obj.cellTags = mesh.cellTag;
-         obj.fields = struct('field',[],'subdomainEnts',[],...
-            'subID',[],'scheme',[],'entCount',[]);
-         obj.tag2subDomain = zeros(mesh.nCellTag,1);
-         % deal with variable imput
-         switch nargin
-            case 2 % no subdomains defined
-               obj.ordering = 'field';
-               obj.tag2subDomain = ones(mesh.nCellTag,1); % only one subdomain
-               availFields = obj.model.getAvailPhysics();
-               for field = (string(availFields))'
-                  % assign all available fields to one subdomain
-                  addField(obj,mesh,1,field);
-               end
-               obj.numEntsField = zeros(1,numel(obj.fields));
-               obj.numEntsSubdomain = 0;
-            case 3 % no ordering specification
-               obj.ordering = 'field';
-               obj.readInputFile(mesh,varargin{1});
-            case 4
-               obj.ordering = varargin{1};
-               obj.readInputFile(mesh,varargin{2});
-            otherwise 
-               error('Too many input arguments for class DoFManager');
-         end
-         % finilize DoF Manager construction
-         obj.finalizeDoFManager(mesh);
+  % Degree of freedom manager
+  % Map each entity to a corresponding degree of freedom in the solution
+  % system
+  % 2 ordering can be specified in input:
+  % Field-based ordering (default)
+  % Domain-based ordering
+  properties (Access = private)
+    mesh
+    dofMap                        % cell array with dof map for each variable field
+    numbComponents
+    fields = struct("variableName",[],...
+                    "range",[],...
+                    "tags",[],...
+                    "fieldLocation",[]);
+    nVars = 0;
+    totDofs
+  end
+
+
+  methods (Access = public)
+    function obj = DoFManager(mesh)
+      obj.mesh = mesh;
+      obj.totDofs = 0;
+    end
+
+    function registerVariable(obj,varName,fieldLocation,nComp,tags)
+      % varName: the name of the variable field
+      % fieldLocation: a enum of type entityField
+      % tags: the cellTag (or surfaceTag for lower dimensional fields) where the variable is actually present
+      % numbComponents: the number of dofs per entitiy
+
+      % return an instance of the registeredVariable as an instance of
+      % entityField()
+
+      id = obj.nVars+1;
+
+
+      if any(strcmpi([obj.fields.variableName],varName))
+        % variable field already exist
+
+        % This is a Phylosophical choice: we can register a variable field
+        % only one time for each domain. While we can still define more
+        % then one physicsSolver in each domain, those are required to act
+        % on disjoint sets of variable fields. 
+        % An obvious consequence is that we cannot define two istances of
+        % the same physicsSolver in a single domain.
+
+        error("Variable %s has already been registered. GReS variables can" + ...
+          "only be registered once in each domain ", varName)
+
+        % the following  code make sense if we allow registering the same
+        % variable more than once
+          
+        % id = getVariableId(obj,varName);
+        % assert(isempty(intersect(tags,obj.fields(id).tags)), ...
+        %   "Variable field %i has been already defined on specified tags", ...
+        %   tags);
+
+        % % update the tags
+        % obj.fields(id).tags = sort([obj.fields(id).tags tags]);
+        % 
+        % % update the entities with only new entities
+        % entList = getEntities(fieldLocation,obj.mesh,tags);
+        % isInactive = obj.dofMap{id}(entList) == 0;
+        % nNewEnts = sum(isInactive);
+        % maxEnt = max(obj.dofMap{id});
+        % obj.dofMap{id}(entList(isInactive)) =  nComp*(maxEnt:maxEnts+nNewEnts)+1;
+        % 
+        % % update the ranges with new number of entities
+        % obj.fields(id).range(2) = obj.fields(id).range(2) + nComp*nNewEnts;
+        % for k = id+1:numel(obj.fields)
+        %   obj.fields(k).range = obj.fields(k).range + nComp*nNewEnts;
+        % end
+
+      else
+        % new variable field 
+
+        obj.fields(id).variableName = varName;
+        obj.fields(id).tags = tags;
+        obj.fields(id).fieldLocation = fieldLocation;
+        obj.numbComponents(end+1) = nComp;
+
+        % return the entity of type fieldLocation for the given mesh tags
+        entList = getEntities(fieldLocation,obj.mesh,tags);
+        totEnts = getNumberOfEntities(fieldLocation,obj.mesh);
+        totActiveEnts = length(entList);
+
+        % populate the dof map
+        obj.dofMap{id} = zeros(totEnts,1);
+        obj.dofMap{id}(entList) = nComp*(0:totActiveEnts-1)'+1;
+
+        % update number of variables and dof counter
+        obj.fields(id).range = [obj.totDofs+1,obj.totDofs+nComp*totActiveEnts];
+        obj.totDofs = obj.totDofs + nComp*totActiveEnts;
+        obj.nVars = obj.nVars+1;
       end
+
+      % create the entity field
+
+
+    end
+
+
+    function dofs = getLocalDoF(obj,id,ents)
+
+      % return the DoF numbering in global indexing for input entities
+      % in isempty(varargin) all dofs are returned in correct order
+      % the input id is the result of a call to getVariableId(varName)
+
+      if nargin < 3
+        % return all dofs of id field
+        ents = find(obj.dofMap{id} > 0);
+      end
+
+      if isscalar(id)
+        ncomp = obj.numbComponents(id);
+        dofs = obj.dofMap{id}(ents);
+        dofs =  repelem(dofs,ncomp) + ...
+          repmat((0:ncomp-1)',numel(ents),1);
+      else
+        for i = 1:numel(id)
+          dofs = [dofs; getLocalDoF(id(i))];
+        end
+      end
+    end
+
+
+    function ents = getLocalEnts(obj,id,ents)
+
+      % same as getLocalDoF but without component expansion
+      ncomp = obj.numbComponents(id);
+      ents = round(((ncomp-1)+obj.dofMap{id}(ents))/ncomp);
+    end
+
+    function dofs = getDoF(obj,id,ents)
+      % return the DoF numbering in global indexing for input entities
+      % if isempty(varargin) all dofs are returned in correct order
+      % the id is the result of a call to getVariableId(varName)
+
+      if isscalar(id)
+        dofs = getLocalDoF(obj,id) + obj.fields(id).range(1) - 1;
+      else
+        assert(isempty(ents),"entity input in getDoF is admitted " + ...
+          "only for single variable query")
+
+        for i = 1:numel(id)
+          dofs = [dofs; getDoF(obj,id(i))];
+        end
+      end
+
+    end
+
+
+    function activeEnts = getActiveEntities(obj,varId,flagExpand)
       
-      function readInputFile(obj,mesh,fName)
-         % Read DoF manager and update field informations
-         fID = openReadOnlyFile(fName);
-         l = 0;
-         subID = 0;
-         while ~feof(fID)
-            line = readToken(fID,fName);
-            l = l+1;
-            if ~isempty(line) && ~strcmp(line(1),'%')
-               assert(strcmp(line,'<SubDomain>'),['Error in DoFManager' ...
-                  'input file %s at line %i of input file: unexpected ' ...
-                  'instruction'])
-               subID = subID+1;
-               nextline = readToken(fID,fName);
-               l = l+1;
-               while ~strcmp(nextline,'</SubDomain>')
-                  switch nextline
-                     case '<CellTag>'
-                        cTag = sscanf(fgetl(fID), '%i');
-                        l = l+1;
-                     case '<Field>'
-                        fldList = convertCharsToStrings(split(strip((strtok(fgetl(fID),'%')))));
-                        l = l+1;                
-                     otherwise
-                        if ~isempty(nextline)
-                           error('Invalid block name in %s DoFmanager input file',fName);
-                        else
-                           error(['Error in %s input file: Invalid blank line ' ...
-                              'in <Domain> block'],fName);
-                        end
-                  end
-                  nextline = readToken(fID,fName);
-                  l = l+1;
-               end
-               assert(all(obj.tag2subDomain(cTag)==0),['Error in subdomain' ...
-                  ' %i: CellTag already defined'],subID);
-               obj.tag2subDomain(cTag) = subID;
-               % add field to DoFManager
-               for field = fldList'
-                  addField(obj,mesh,subID,field);
-               end
-            end
-         end
-         nFld = numel(obj.fields);
-         obj.numEntsField = zeros(1,nFld);
-         obj.numEntsSubdomain = zeros(1,subID);
-         obj.nComp = zeros(1,nFld);
+      if ~isnumeric(varId)
+        varId = string(varId);
       end
 
+      assert(isscalar(varId),"Input variable must be a scalar string or a" + ...
+        "character vector (or an integer)")
+      id = obj.getVariableId(varId);
+      activeEnts = find(obj.dofMap{id});
 
-      function addField(obj,mesh,subIDs,field)
-         checkAvailPhysics(obj.model,field);
-         % prepare fields structure from input file informations
-         isField = false;
-         if isscalar(obj.fields)
-            if(isempty(obj.fields.field))
-               nFields = 0;
-               fl = false;
-            else
-               fl = true;
-            end
-         else
-            fl = true;
-         end
-         if fl
-            existingFields = string({obj.fields.field});
-            nFields = numel(existingFields);
-            isField = ismember(existingFields,field);
-         end
-         if any(isField)         
-            % field aleady defined - add cell tag to list
-            k = find(isField);
-            assert(~ismember(obj.fields(k).subID,subIDs));
-            obj.fields(k).subID = [obj.fields(k).subID subIDs]; 
-         else % defining new field - initialize structure
-            k = nFields+1;
-            obj.fields(k).field = field;
-            obj.fields(k).subID = subIDs;
-            if isFEMBased(obj.model,field)
-               nEnts = mesh.nNodes;
-               obj.fields(k).scheme = 'FEM';
-            elseif isFVTPFABased(obj.model,field)
-               nEnts = mesh.nCells;
-               obj.fields(k).scheme = 'FV';
-            end
-            obj.fields(k).isEntActive = false(nEnts,1);
-         end
-      end
-
-      function finalizeDoFManager(obj,mesh)
-        nFld = numel(obj.fields);
-        obj.entMap = cell(nFld,1);
-         % updated DoF structure with entitiy list for each subdomain
-         for i = 1:nFld
-            nSub = numel(obj.fields(i).subID);
-            obj.fields(i).entCount = zeros(1,nSub);
-            obj.fields(i).subdomainEnts = cell(nSub,1);
-            obj.nComp(i) = componentNumber(mesh,obj.fields(i).field);
-            for j = 1:nSub
-               subID = obj.fields(i).subID(j);
-               cTags = find(obj.tag2subDomain == subID);
-               switch obj.fields(i).scheme
-                  case 'FEM'
-                     ents = unique(mesh.cells(ismember(mesh.cellTag,cTags),:));
-                  case 'FV'
-                     ents = find(ismember(mesh.cellTag,cTags));
-               end
-               % store only entities not already assigned to a subdomain
-               idActiveEnt = obj.fields(i).isEntActive(ents) == false;
-               obj.fields(i).isEntActive(ents) = true; % activate entities
-               obj.fields(i).subdomainEnts{j} = ents(idActiveEnt);
-               obj.fields(i).entCount(j) = sum(idActiveEnt);
-               obj.numEntsSubdomain(subID) = obj.numEntsSubdomain(subID) + obj.fields(i).entCount(j);
-               obj.numEntsField(i) = obj.numEntsField(i) + obj.fields(i).entCount(j);
-               obj.fieldList = string({obj.fields.field});
-            end 
-            getDoFMap(obj,i);
-         end
-         obj.totDoF = obj.nComp*obj.numEntsField';
-      end
-
-      function dofs = getDoF(obj,field,varargin)
-         % varargin: entity list, if empty all dofs are returned
-         % return global DoF numbering based on entity ID and field
-         assert(isscalar(string(field)),['Only one input field is allowed when ' ...
-            'calling getDoF method']);
-         fldId = getFieldId(obj,field);
-         nc = obj.nComp(fldId);
-         % get local numbering within the field
-         switch obj.ordering
-           case 'field'
-             if isempty(varargin)
-               % all dofs of input field
-               dofs = dofId((1:obj.numEntsField(fldId))',nc);
-             else
-               dofs = getLocalDoF(obj,varargin{1},fldId);
-             end
-             nDoF = obj.nComp.*obj.numEntsField;
-             dofs = dofs+sum(nDoF(1:fldId-1));
-           case 'domain'
-             error('Domain-based ordering of DoF not yet implemented')
-         end
-      end
-      %
-      function dofList = getLocalDoF(obj,entList,fldId)
-        % get local DoF numbering for entities within a field
-        if ~isnumeric(fldId)
-          fldId = getFieldId(obj,fldId);
-        end
-        nc = obj.nComp(fldId);
-        ents = obj.entMap{fldId}(entList);
-        if ~all(ents)
-          error('dofError:inactiveEntity','Inactive entity for input field')
-        end
-        dofList = dofId(ents,nc);
-      end
-
-      function entList = getLocalEnts(obj,entList,fldId)
-        % renumber entity id skipping inactive entities
-        assert(~isempty(fldId),'Missing field id');
-        entList = obj.entMap{fldId}(entList);
-        if ~all(entList)
-          error('dofError:inactiveEntity','Inactive entity for input field')
+      % expand to account for component
+      if nargin > 2
+        if flagExpand
+          activeEnts = obj.dofExpand(activeEnts,obj.numbComponents(id));
         end
       end
+    end
 
-      function getDoFMap(obj,id)
-        % renumber entity id skipping inactive entities
-        %entList = 1:size();
-        dofMap = zeros(numel(obj.fields(id).isEntActive),1);
-        dofMap(obj.fields(id).isEntActive) = 1:sum(obj.fields(id).isEntActive);
-        dofMap(~obj.fields(id).isEntActive) = 0;
-        obj.entMap{id} = dofMap;
-      end
+    function tags = getTargetRegions(obj,varId)
+      id = obj.getVariableId(varId);
+      tags = unique([obj.fields(id).tags]);
+    end
 
-      function fldDofs = getFieldDoF(obj,dofs,field)
-         % get entity id from dof identifier within a field
-         fldId = obj.getFieldId(field);
-         actEnt = obj.fields(fldId).isEntActive;
-         actDofs = find(actEnt);
-         fldDofs = actDofs(dofs);
-      end
+    function cells = getFieldCells(obj,varId)
+      tags = getTargetRegions(obj,varId);
+      cells = getEntities(entityField.cell,obj.mesh,tags);
+    end
 
-      function activeSubs = getActiveSubdomain(obj,fieldList)
-         % get subdomains where 1 or more subdomain are activated at the
-         % same time
-         % return [] if an input field is not available
-         if ~all(ismember(fieldList,obj.fieldList))
-             activeSubs = [];
-             return
-         end
-         activeSubs = (1:max(obj.tag2subDomain))';
-         for f = string(fieldList)
-            fldId = getFieldId(obj,f);
-            subField = obj.fields(fldId).subID;
-            activeSubs = intersect(activeSubs,subField);
-         end
-      end
+    function location = getFieldLocation(obj,varId)
 
-      function fldList = getFieldList(obj)
-         fldList = obj.fieldList;
-      end
+      id = getVariableId(varId);
+      location = obj.fields(id).location;
 
-      function out = isField(obj,fields)
-        out = all(ismember(fields,obj.fieldList));
-      end
 
-      function fldId = getFieldId(obj,flds)
-         % get field id associated to input fields
-         checkAvailPhysics(obj.model,flds);
-         fldId = find(strcmp(obj.fieldList,flds));
-      end
+    end
 
-      function cTags = getFieldCellTags(obj,field)
-         % get cell ID where input field is active
-         activeSubs = getActiveSubdomain(obj,field);
-         cTags = find(ismember(obj.tag2subDomain,activeSubs));
-      end
-      
-      function cellsID = getFieldCells(obj,field)
-         cTags = getFieldCellTags(obj,field);
-         cellsID = find(ismember(obj.cellTags,cTags));
-      end
+    function id = getVariableId(obj,varId)
+      % return the id of the requested input variable
+      if isnumeric(varId)
+        assert(all(varId > 0) && all(varId <= numel(obj.fields)),"Input variable" + ...
+          "ID is not included in the domain")
 
-      function nComp = getDoFperEnt(obj,field)
-         fldId = obj.getFieldId(field);
-         nComp = obj.nComp(fldId);
-      end
+        id = varId;
 
-      function ents = getActiveEnts(obj,field)
-         nc = obj.getDoFperEnt(field);
-         id = obj.getFieldId(field);
-         ents = dofId(find(obj.fields(id).isEntActive),nc);
+      else
+        assert(isVariable(obj,varId),"Requested variable is not available" + ...
+          "in the DoFManager")
+        id = find(strcmp([obj.fields.variableName],varId));
       end
+    end
 
-      function numDoF = getNumDoF(obj,field)
-         fldId = obj.getFieldId(field);
-         numEnts = obj.numEntsField(fldId);
-         nc = obj.nComp(fldId);
-         numDoF = nc*numEnts;
+    function fl = isVariable(obj,varId)
+      varId = strcmp([obj.fields.variableName],varId);
+      fl = any(varId);
+    end
+
+    function numDof = getNumbDoF(obj,varId)
+      if nargin == 1
+        numDof = obj.totDofs;
+      else
+        id = getVariableId(obj,varId);
+        r = obj.fields(id).range;
+        numDof = r(2)-r(1)+1;
       end
+    end
 
-% <<<<<<< HEAD
-      function scheme = getScheme(obj,fld)
-        fldId = obj.getFieldId(fld);
-        scheme = obj.fields(fldId).scheme;
-% =======
-%       function addCellTag(obj,tag)
-%          obj.cellTags = [obj.cellTags; tag];
-% >>>>>>> 1dfffa00097f21a2e1d34699913ab58ea5431391
-      end
-   end
+    function nVars = getNumberOfVariables(obj)
+      nVars = obj.nVars;
+    end
 
-   methods (Access = private)
-   end
+
+  end
+
+  methods (Static)
+
+    function dofOut = dofExpand(dofIn,nComp)
+      % make sure input is a column vector
+      dofIn = reshape(dofIn,[],1);
+      dofOut = nComp*repelem(dofIn,nComp,1)-repmat((nComp-1:-1:0)',size(dofIn,1),1);
+    end
+  end
 end
-

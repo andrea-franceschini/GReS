@@ -38,9 +38,9 @@ analyticalSol = load('Terzaghi_Analytical.mat');
 zAn = analyticalSol.z;
 zNodes = domain.grid.topology.coordinates(:,3);
 pNum = [domain.outstate.results.pressure];
-pNum = pNum(:,2:end);
+pNum = pNum(:,1:end);
 uNum = [domain.outstate.results.displacements];
-uzNum = uNum(3:3:end,2:end);
+uzNum = uNum(3:3:end,1:end);
 
 
 for i = 1:numel(analyticalSol.t)
