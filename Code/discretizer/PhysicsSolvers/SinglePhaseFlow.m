@@ -168,7 +168,7 @@ classdef SinglePhaseFlow < PhysicsSolver
         PLoc = (alpha+poro*beta)*(N'*diag(dJWeighed)*N);
         %Getting dof associated to Flow subphysic
         nodes = (obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
-        dof = obj.dofm.getLocalDoF(nodes,obj.fieldId);
+        dof = obj.dofm.getLocalDoF(obj.fieldId,nodes);
         [jjLoc,iiLoc] = meshgrid(dof,dof);
         iiVec(l1+1:l1+s1) = iiLoc(:);
         jjVec(l1+1:l1+s1) = jjLoc(:);

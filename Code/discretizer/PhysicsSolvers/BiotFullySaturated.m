@@ -115,7 +115,7 @@ classdef BiotFullySaturated < PhysicsSolver
                   Np = reshape(Nref',1,elem.nNode,nG);
                   kron = repmat(kron,1,1,nG);
                   iN = pagemtimes(kron,Np);
-                  dofcol = getLocalDoF(obj.dofm,obj.fldFlow,ents);
+                  dofcol = getLocalDoF(obj.dofm,obj.fldFlow,nodes);
                 elseif isTPFA(obj.flowSolver)
                   iN = repmat(kron,1,1,nG);
                   dofcol = getLocalDoF(obj.dofm,obj.fldFlow,el);

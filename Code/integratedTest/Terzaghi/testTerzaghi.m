@@ -1,16 +1,16 @@
 %% Coupled FEM - FV
 
-model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
+solverFile = "solver_TPFA.xml";
 runTerzaghi;
 clearvars -except domain
 analyticalSol = load('Terzaghi_Analytical.mat');
 zAn = analyticalSol.z;
 zNodes = domain.grid.topology.coordinates(:,3);
 zCells = domain.grid.topology.cellCentroid(:,3);
-pNum = [domain.outstate.results.expPress];
-pNum = pNum(:,2:end);
-uNum = [domain.outstate.results.expDispl];
-uzNum = uNum(3:3:end,2:end);
+pNum = [domain.outstate.results.pressure];
+pNum = pNum(:,1:end);
+uNum = [domain.outstate.results.displacements];
+uzNum = uNum(3:3:end,1:end);
 
 
 for i = 1:numel(analyticalSol.t)
@@ -30,16 +30,16 @@ clear domain
 
 %% Coupled FEM - FEM
 
-model = ModelType(["SinglePhaseFlow_FEM","Poromechanics_FEM"]);
+solverFile = "solver_FEM.xml";
 runTerzaghi;
 clearvars -except domain
 
 analyticalSol = load('Terzaghi_Analytical.mat');
 zAn = analyticalSol.z;
 zNodes = domain.grid.topology.coordinates(:,3);
-pNum = [domain.outstate.results.expPress];
+pNum = [domain.outstate.results.pressure];
 pNum = pNum(:,2:end);
-uNum = [domain.outstate.results.expDispl];
+uNum = [domain.outstate.results.displacements];
 uzNum = uNum(3:3:end,2:end);
 
 

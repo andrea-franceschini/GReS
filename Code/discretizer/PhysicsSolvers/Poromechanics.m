@@ -369,7 +369,7 @@ classdef Poromechanics < PhysicsSolver
       uCurr = getState(obj,obj.getField());
       fac = (t - getState(obj).t)/(getState(obj).t - getStateOld(obj).t);
 
-      obj.domain.outstate.results(tID).expDispl = uCurr*fac+uOld*(1-fac);
+      obj.domain.outstate.results(tID).(obj.getField()) = uCurr*fac+uOld*(1-fac);
 
       % TO DO: optional print of stresses as an input for the solver
 
