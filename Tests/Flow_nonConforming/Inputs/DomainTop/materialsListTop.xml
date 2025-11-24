@@ -22,7 +22,7 @@
   <Fluid
       specificWeight = "0."
       compressibility = "4.59e-7"
-      dynamicViscosity = "3.1608e-14"
+      dynamicViscosity = "1e-6"
   />
   <!-- specific weight (N/m3),
        fluid compressibility (Pa-1) - 4.5e-10,

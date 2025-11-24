@@ -251,7 +251,7 @@ classdef SegmentBasedQuadrature < MortarQuadrature
             xi(g,:,i) = xi(g,:,i) + dxi';
             rhs = (elem.computeBasisF(xi(g,:,i))*elemCoord)' - coordGPtri(g,:)';
           end
-          fl = FEM.checkInRange(elem,xi(g,:,i));
+          fl = elem.checkInRange(xi(g,:,i));
           assert(fl,['GP %i in triangle %i out of range of coordinates of' ...
             'reference space']);
         end
