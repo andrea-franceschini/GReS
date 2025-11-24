@@ -12,7 +12,7 @@ and must be known in advance during the mesh generation
         <Quadrature type="RBF" nGP="12" nInt = "5"/>
         <Multiplier type="dual"/>
       <Physics>SinglePhaseFlow</Physics>
-      <Print name = "interface"/>
+      <Print name = "Output/interface"/>
     </Interface>
 </Interfaces>
 <!-- 
