@@ -27,7 +27,7 @@
           kappa = "0.5"
       />
       <!--
-      <Mualem 
+      <Burdine 
           n = "2."
           beta = "3.416e-04"
       />
