@@ -33,7 +33,7 @@ classdef MeshTying < InterfaceSolver
       end
 
       if ~isscalar(sharedVars)
-        error("Multiple variables are shared by the master and slave domain. " + ...
+        error("Multiple variables are shared by the master and slave domains. " + ...
           "The 'variable' attribute is required to define which of the " + ...
           "available variable has to be coupled. If you wish to couple more than one variable field," + ...
           "define a MeshTying interface for each variable.")
@@ -74,27 +74,21 @@ classdef MeshTying < InterfaceSolver
 
       computeConstraintMatrices(obj);
 
-      [rhsM,rhsS,rhsMult] = computeRhs(obj);
+      [rhsMaster,rhsSlave,rhsMult] = computeRhs(obj);
 
-      fldMaster = obj.domains(1).getVariableId(obj.coupledVariable);
-      fldSlave = obj.domains(2).getVariableId(obj.coupledVariable);
-
-      % write jacobian to domain coupling blocks
+      % write jacobian to domains coupling blocks
 
       % master side
-      obj.domain(1).Jum{obj.interfaceId(1)}{fldMaster} = obj.M';
-      obj.domain(1).Jmu{obj.interfaceId(1)}{fldMaster} = obj.M;
+      setJum(obj,MortarSide.master,obj.M');
+      setJmu(obj,MortarSide.master,obj.M);
 
       % slave side
-      obj.domain(2).Jum{obj.interfaceId(2)}{fldSlave} = obj.D';
-      obj.domain(2).Jmu{obj.interfaceId(2)}{fldSlave} = obj.D;
+      setJum(obj,MortarSide.slave,obj.D');
+      setJmu(obj,MortarSide.slave,obj.D);
 
-      rhsMaster = getRhs(obj.domain(1),fldMaster);
-      rhsSlave = getRhs(obj.domain(2),fldSlave);
-
-      obj.domain(1).rhs{obj.fldMaster} = rhsMaster + rhsM;
-      obj.domain(2).rhs{obj.fldSlave} = rhsSlave + rhsS;
-      obj.rhs = rhsMult;
+      addRhs(obj,MortarSide.master,rhsMaster);
+      addRhs(obj,MortarSide.slave,rhsSlave);
+      obj.rhsConstraint = rhsMult;
 
     end
 
@@ -128,8 +122,8 @@ classdef MeshTying < InterfaceSolver
       nm = (ncomp^2)*N1;
       ns = ncomp^2*N2;
 
-      nDofMaster = obj.dofm(1).getNumbDoF(obj.coupledVariable);
-      nDofSlave = obj.dofm(2).getNumbDoF(obj.coupledVariable);
+      nDofMaster = obj.domains(1).dofm.getNumbDoF(obj.coupledVariable);
+      nDofSlave = obj.domains(2).dofm.getNumbDoF(obj.coupledVariable);
       nDofMult = obj.nMult;
 
 
@@ -144,14 +138,14 @@ classdef MeshTying < InterfaceSolver
       % loop over pairs of connected master/slave elements
       for iPair = 1:obj.quadrature.numbMortarPairs
 
-        is = obj.quadrature.mortarPairs(iPair,1);
-        im = obj.quadrature.mortarPairs(iPair,2);
+        is = obj.quadrature.interfacePairs(iPair,1);
+        im = obj.quadrature.interfacePairs(iPair,2);
 
         % get dofs 
         nodeSlave = obj.interfMesh.local2glob{2}(obj.interfMesh.msh(2).surfaces(is,:));
-        usDof = obj.dofm(2).getLocalDoF(fldS,nodeSlave);
+        usDof = obj.domains(2).dofm.getLocalDoF(fldS,nodeSlave);
         nodeMaster = obj.interfMesh.local2glob{1}(obj.interfMesh.msh(1).surfaces(im,:));
-        umDof = obj.dofm(1).getLocalDoF(fldM,nodeMaster);
+        umDof = obj.domains(1).dofm.getLocalDoF(fldM,nodeMaster);
         tDof = getMultiplierDoF(obj,is);
 
         % retrieve mortar integration data
@@ -242,19 +236,20 @@ classdef MeshTying < InterfaceSolver
       mat = mat.*reshape(dJw,1,1,[]);
       mat = sum(mat,3);
       nodes = obj.interfMesh.local2glob{side}(obj.interfMesh.msh(side).surfaces(iu,:));
-      fld = obj.dofm(side).getFieldId(obj.physic);
-      dofc = obj.dofm(side).getLocalDoF(nodes,fld);
+      fld = obj.domains(side).dofm.getVariableId(obj.coupledVariable);
+      dofc = obj.domains(side).dofm.getLocalDoF(fld,nodes);
       dofr = getMultiplierDoF(obj,imult);
     end
 
 
     function [rhsMaster,rhsSlave,rhsMult] = computeRhs(obj)
 
+      JmuMaster = getJacobian(obj,)
       actMult = getMultiplierDoF(obj);
       obj.rhsMaster = ...
         obj.Jmaster'*(obj.multipliers.curr(actMult)-obj.iniMultipliers(actMult));
       var = getState(obj.solvers(1).getSolver(obj.physic));
-      ents = obj.dofm(1).getActiveEnts(obj.physic);
+      ents = obj.domains(1).dofm.getActiveEnts(obj.physic);
       obj.rhsMult = obj.rhsMult + obj.Jmaster*var(ents);
       
     end
@@ -265,7 +260,7 @@ classdef MeshTying < InterfaceSolver
     %   % return multiplier dofs associated with slave element #is inside
     %   % obj.interfMesh.msh(2)
     % 
-    %   nc = obj.dofm(2).getDoFperEnt(obj.physic);
+    %   nc = obj.domains.dofm(2).getDoFperEnt(obj.physic);
     %   if nargin > 1
     %     assert(isscalar(is),'Input id must be a scalar integer \n')
     %     if strcmp(obj.multiplierType,'P0')
@@ -288,7 +283,7 @@ classdef MeshTying < InterfaceSolver
     %   % nDoFAct -> number of currently active multipliers in the interface
     %   % nDoFTot -> total number of dof in the whole interface
     % 
-    %   nc = obj.dofm(2).getDoFperEnt(obj.physic);
+    %   nc = obj.domains.dofm(2).getDoFperEnt(obj.physic);
     %   switch obj.multiplierType
     %     case 'P0'
     %       nDof = nc*obj.interfMesh.msh(2).nSurfaces;
@@ -304,16 +299,16 @@ classdef MeshTying < InterfaceSolver
       processMortarPairs(obj.quadrature); 
 
       inactiveMaster = ~ismember(1:obj.interfMesh.msh(1).nSurfaces,...
-        obj.quadrature.mortarPairs(:,2));
+        obj.quadrature.interfacePairs(:,2));
 
-      [~, ~, obj.quadrature.mortarPairs(:,2)] = ...
-        unique(obj.quadrature.mortarPairs(:,2));
+      [~, ~, obj.quadrature.interfacePairs(:,2)] = ...
+        unique(obj.quadrature.interfacePairs(:,2));
 
       inactiveSlave = ~ismember(1:obj.interfMesh.msh(2).nSurfaces,...
-        obj.quadrature.mortarPairs(:,1));
+        obj.quadrature.interfacePairs(:,1));
 
-      [~, ~, obj.quadrature.mortarPairs(:,1)] = ...
-        unique(obj.quadrature.mortarPairs(:,1));
+      [~, ~, obj.quadrature.interfacePairs(:,1)] = ...
+        unique(obj.quadrature.interfacePairs(:,1));
 
       % remove master elements
       obj.interfMesh.removeMortarSurface(1,inactiveMaster);
@@ -327,7 +322,7 @@ classdef MeshTying < InterfaceSolver
 
     function sideStr = getSide(obj,idDomain)
       % get side of the interface 'master' or 'slave' based on the
-      % domain input id
+      % domains input id
       isMaster = obj.idDomain(1) == idDomain;
       isSlave = obj.idDomain(2) == idDomain;
       if isMaster
@@ -337,9 +332,9 @@ classdef MeshTying < InterfaceSolver
       elseif isMaster && isSlave
         sideStr = 'master'+'slave';
       else
-        % consider the case where both sides belong to the same domain,
+        % consider the case where both sides belong to the same domains,
         % something like 'master_slave'
-        error('Input domain not belonging to the interface');
+        error('Input domains not belonging to the interface');
       end
     end
 
@@ -409,7 +404,7 @@ classdef MeshTying < InterfaceSolver
     function checkInterfaceDisjoint(obj)
       % check that the nodes of mortar and slave side are disjoint
       if obj.idDomain(1)==obj.idDomain(2)
-        % interface defined within the same domain 
+        % interface defined within the same domains 
         out = setdiff(obj.interfMesh.local2glob{1},obj.interfMesh.local2glob{2});
         if ~all(ismember(obj.interfMesh.local2glob{1},out))
           error('Nodes of master and slave side are not disjoint');
@@ -437,7 +432,7 @@ classdef MeshTying < InterfaceSolver
       % check that master and slave node sets are disjoint
       checkInterfaceDisjoint(obj);
 
-      obj.dofm = [domains(1).dofm;
+      obj.domains.dofm = [domains(1).dofm;
         domains(2).dofm];
 
       quadType = inputStruct.Quadrature.typeAttribute;

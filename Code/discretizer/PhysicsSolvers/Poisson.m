@@ -76,8 +76,9 @@ classdef Poisson < PhysicsSolver
 
     function rhs = computeRhs(obj,varargin)
       ents = obj.dofm.getActiveEntities(obj.getField());
+      J = getJacobian(obj);
       f = computeForcingTerm(obj);
-      rhs = obj.J{obj.fieldId,obj.fieldId}*obj.domain.state.data.u(ents) + f(ents);
+      rhs = J*obj.domain.state.data.u(ents) + f(ents);
     end
 
     function initState(obj)
@@ -231,7 +232,7 @@ classdef Poisson < PhysicsSolver
       % classical
       % general sparse assembly loop over elements for Poromechanics
       subCells = obj.dofm.getFieldCells(obj.getField());
-      F = zeros(obj.dofm.getNumbDoF('Poisson'),1);
+      F = zeros(obj.dofm.getNumbDoF(obj.getField()),1);
       % loop over cells
       for el = subCells'
         % get dof id and local matrix

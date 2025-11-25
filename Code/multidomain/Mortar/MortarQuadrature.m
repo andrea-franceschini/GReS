@@ -53,7 +53,7 @@ classdef (Abstract) MortarQuadrature < handle
 
     function Nmult = computeMultiplierBasisF(obj,el,NslaveIn)
       elem = obj.getElem(2,el);
-      switch obj.multType
+      switch obj.multiplierType
         case 'P0'
           Nmult = ones(size(NslaveIn,1),1);
         case 'standard'

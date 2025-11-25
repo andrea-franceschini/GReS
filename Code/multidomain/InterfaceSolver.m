@@ -16,11 +16,11 @@ classdef (Abstract) InterfaceSolver < handle
 
   properties (GetAccess=public, SetAccess=public)
        
-    % jacobian block for the multipliers
-    Jmult
+    % constraint multiplier block
+    Jconstraint
 
-    % rhs block of the field equation
-    rhsMult
+    % rhs block of the constraint equation
+    rhsConstraint
 
     % object for non-conforming integration
     quadrature
@@ -70,7 +70,7 @@ classdef (Abstract) InterfaceSolver < handle
     initializeConstraint(obj);
 
     % assemble the constraint matrices
-    assembleConstraint(obj,dt);
+    assembleConstraint(obj);
 
     % update the state after solving a linear system
     updateState(obj,du);
@@ -178,24 +178,86 @@ classdef (Abstract) InterfaceSolver < handle
     function J = getJacobian(obj)
 
       % return the multiplier jacobian block
-      J = obj.Jmult;
+      J = obj.Jconstraint;
 
     end
 
-    function getMultiplierDof(obj,var,el)
+    function dofs = getMultiplierDoF(obj,el)
 
-      ncomp = obj.domains(2).dofm.getVariableId(var);
+      ncomp = obj.domains(2).dofm.getNumberOfComponents(obj.coupledVariable);
 
-      entityField.getEntityFromElement( obj.multiplierLocation,...
-                                        entityField.surface,...
-                                        obj.interfMesh.msh(2),...
-                                        el,...
-                                        ncomp);
+      dofs = getEntityFromElement( obj.multiplierLocation,...
+                                   entityField.surface,...
+                                   obj.interfMesh.msh(2),...
+                                   el,...
+                                   ncomp);
     end
 
     function nDoFs = getNumbDoF(obj)
 
       nDoFs = obj.nMult;
+    end
+
+
+    % set methods to ease the access to the domain coupling matrices
+
+    function setJum(obj,side,setVal,varargin)
+
+      s = getSide(side);
+      if nargin < 4
+        assert(isscalar(obj.coupledVariable),...
+          "The objace couples multiple variable field. " + ...
+          "Specify the varIable name.")
+        varId = getDoF(side).getVariableId(obj.coupledVariable);
+      else
+        varId = getDoF(side).getVariableId(varargin{1});
+      end
+
+      obj.domains(s).Jum{obj.interfaceId(s)}{varId} = setVal;
+    end
+
+
+    function setJmu(obj,side,setVal,varargin)
+
+      s = getSide(side);
+      if nargin < 4
+        assert(isscalar(obj.coupledVariable),...
+          "The objace couples multiple variable field. " + ...
+          "Specify the varIable name.")
+        varId = getDoF(side).getVariableId(obj.coupledVariable);
+      else
+        varId = getDoF(side).getVariableId(varargin{1});
+      end
+
+      obj.domains(s).Jmu{obj.interfaceId(s)}{varId} = setVal;
+
+    end
+
+    function addRhs(obj,side,setVal,varargin)
+
+      % shortcut to add a contribution to the coupling rhs 
+
+      s = getSide(side);
+      if nargin < 4
+        assert(isscalar(obj.coupledVariable),...
+          "The objace couples multiple variable field. " + ...
+          "Specify the varIable name.")
+        varId = getDoF(side).getVariableId(obj.coupledVariable);
+      else
+        varId = getDoF(side).getVariableId(varargin{1});
+      end
+
+      assert(~isempty(obj.domains(s).rhs{varId}),...
+        "Cannot add contribution to empty rhs block");
+
+      obj.domains(s).rhs{varId} = obj.domains(s).rhs{varId} + setVal;
+
+    end
+
+
+    function dofm = getDoF(side,interf)
+      s = getSide(side);
+      dofm = interf.domains(s).dofm;
     end
 
   end
