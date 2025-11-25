@@ -13,9 +13,9 @@ classdef MeshTying < InterfaceSolver
   end
 
   methods
-    function obj = MeshTying(domains,inputStruct)
+    function obj = MeshTying(id,domains,inputStruct)
       
-      obj@InterfaceSolver(domains,inputStruct);
+      obj@InterfaceSolver(id,domains,inputStruct);
 
     end
 
@@ -65,7 +65,7 @@ classdef MeshTying < InterfaceSolver
 
     function updateState(obj,du)
 
-      obj.multipliers.curr = obj.multipliers.curr + du(1:obj.nMult);
+      obj.state.multipliers = obj.state.multipliers + du(1:obj.nMult);
 
     end
 
@@ -74,21 +74,40 @@ classdef MeshTying < InterfaceSolver
 
       computeConstraintMatrices(obj);
 
-      [rhsMaster,rhsSlave,rhsMult] = computeRhs(obj);
-
       % write jacobian to domains coupling blocks
 
-      % master side
-      setJum(obj,MortarSide.master,obj.M');
-      setJmu(obj,MortarSide.master,obj.M);
+      % master and slave domain coincide
+      if obj.domainId(1) == obj.domainId(2)
 
-      % slave side
-      setJum(obj,MortarSide.slave,obj.D');
-      setJmu(obj,MortarSide.slave,obj.D);
+        setJum(obj,MortarSide.master,obj.M'+obj.D');
+        setJmu(obj,MortarSide.master,obj.M+obj.D);
 
-      addRhs(obj,MortarSide.master,rhsMaster);
-      addRhs(obj,MortarSide.slave,rhsSlave);
-      obj.rhsConstraint = rhsMult;
+        [rhsVar,~,rhsMult] = computeRhs(obj);
+
+        addRhs(obj,MortarSide.master,rhsVar);
+
+        % the multiplier rhs is computed twice for the same domain
+        % we have to divide by 2
+        obj.rhsConstraint = 0.5*rhsMult;
+
+      else
+
+        % master side
+        setJum(obj,MortarSide.master,obj.M');
+        setJmu(obj,MortarSide.master,obj.M);
+
+        % slave side
+        setJum(obj,MortarSide.slave,obj.D');
+        setJmu(obj,MortarSide.slave,obj.D);
+
+        [rhsMaster,rhsSlave,rhsMult] = computeRhs(obj);
+
+        addRhs(obj,MortarSide.master,rhsMaster);
+        addRhs(obj,MortarSide.slave,rhsSlave);
+
+        obj.rhsConstraint = rhsMult;
+
+      end
 
     end
 
@@ -97,6 +116,12 @@ classdef MeshTying < InterfaceSolver
 
       % This method computes the cross grid mortar matrices between
       % connected interfaces
+
+      meshMaster = getMesh(obj,MortarSide.master);
+      meshSlave = getMesh(obj,MortarSide.slave);
+
+      dofmMaster = getDoFManager(obj,MortarSide.master);
+      dofmSlave =  getDoFManager(obj,MortarSide.slave);
 
 
       % number of components per dof of interpolated physics
@@ -108,27 +133,27 @@ classdef MeshTying < InterfaceSolver
 
       % get number of index entries for sparse matrices
       % overestimate number of sparse indices assuming all quadrilaterals
-      nNmaster = obj.interfMesh.msh(1).surfaceNumVerts'*obj.interfMesh.elemConnectivity;
+      nNmaster = meshMaster.surfaceNumVerts'*obj.interfMesh.elemConnectivity;
 
       switch obj.multiplierLocation
         case entityField.cell
           N1 = sum(nNmaster);
-          N2 = sum(obj.interfMesh.msh(2).surfaceNumVerts);
+          N2 = sum(meshSlave.surfaceNumVerts);
         otherwise
-          N1 = nNmaster*obj.interfMesh.msh(2).surfaceNumVerts;
-          N2 = sum(obj.interfMesh.msh(2).surfaceNumVerts.^2);
+          N1 = nNmaster*meshSlave.surfaceNumVerts;
+          N2 = sum(meshSlave.surfaceNumVerts.^2);
       end
 
       nm = (ncomp^2)*N1;
       ns = ncomp^2*N2;
 
-      nDofMaster = obj.domains(1).dofm.getNumbDoF(obj.coupledVariable);
-      nDofSlave = obj.domains(2).dofm.getNumbDoF(obj.coupledVariable);
+      nDofMaster = dofmMaster.getNumbDoF(obj.coupledVariable);
+      nDofSlave = dofmSlave.getNumbDoF(obj.coupledVariable);
       nDofMult = obj.nMult;
 
 
-      fldM = obj.domains(1).dofm.getVariableId(obj.coupledVariable);
-      fldS = obj.domains(2).dofm.getVariableId(obj.coupledVariable);
+      fldM = dofmMaster.getVariableId(obj.coupledVariable);
+      fldS = dofmSlave.getVariableId(obj.coupledVariable);
 
       asbM = assembler(nm,nDofMult,nDofMaster);
       asbD = assembler(ns,nDofMult,nDofSlave);
@@ -142,10 +167,10 @@ classdef MeshTying < InterfaceSolver
         im = obj.quadrature.interfacePairs(iPair,2);
 
         % get dofs 
-        nodeSlave = obj.interfMesh.local2glob{2}(obj.interfMesh.msh(2).surfaces(is,:));
-        usDof = obj.domains(2).dofm.getLocalDoF(fldS,nodeSlave);
-        nodeMaster = obj.interfMesh.local2glob{1}(obj.interfMesh.msh(1).surfaces(im,:));
-        umDof = obj.domains(1).dofm.getLocalDoF(fldM,nodeMaster);
+        nodeSlave = obj.interfMesh.local2glob{2}(meshSlave.surfaces(is,:));
+        usDof = dofmSlave.getLocalDoF(fldS,nodeSlave);
+        nodeMaster = obj.interfMesh.local2glob{1}(meshMaster.surfaces(im,:));
+        umDof = dofmMaster.getLocalDoF(fldM,nodeMaster);
         tDof = getMultiplierDoF(obj,is);
 
         % retrieve mortar integration data
@@ -244,14 +269,28 @@ classdef MeshTying < InterfaceSolver
 
     function [rhsMaster,rhsSlave,rhsMult] = computeRhs(obj)
 
-      JmuMaster = getJacobian(obj,)
+      % retrieve jacobian blocks
+      JumMaster = getJum(obj,MortarSide.master);
+      JmuMaster = getJmu(obj,MortarSide.master);
+
+      JumSlave = getJum(obj,MortarSide.slave);
+      JmuSlave = getJmu(obj,MortarSide.slave);
+
+      % retrieve variable field arrays
+      varMaster = getVariableField(obj,MortarSide.master);
+      varSlave = getVariableField(obj,MortarSide.slave);
+
+      % retrieve active multipliers
       actMult = getMultiplierDoF(obj);
-      obj.rhsMaster = ...
-        obj.Jmaster'*(obj.multipliers.curr(actMult)-obj.iniMultipliers(actMult));
-      var = getState(obj.solvers(1).getSolver(obj.physic));
-      ents = obj.domains(1).dofm.getActiveEnts(obj.physic);
-      obj.rhsMult = obj.rhsMult + obj.Jmaster*var(ents);
-      
+      iniMult = obj.state.iniMultipliers(actMult);
+      mult = obj.state.multipliers(actMult);
+
+      % compute rhs terms
+      rhsMaster = JumMaster * (mult - iniMult);
+      rhsSlave = JumSlave * (mult - iniMult);
+
+      rhsMult = JmuMaster * varMaster + JmuSlave * varSlave;
+
     end
 
 

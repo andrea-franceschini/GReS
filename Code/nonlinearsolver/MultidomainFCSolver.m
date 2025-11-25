@@ -11,6 +11,7 @@ classdef MultidomainFCSolver < handle
     tStep = 0
     iter
     dt
+    nVars                 % total number of variable fields in the domains
   end
 
 
@@ -96,10 +97,6 @@ classdef MultidomainFCSolver < handle
 
           du = solve(obj,J,rhs);
 
-          % update primary variables and multipliers % consider getDoF
-          % logic
-
-
           c = 0;
 
           for i = 1:obj.nDom
@@ -121,7 +118,7 @@ classdef MultidomainFCSolver < handle
           end
 
           for i = 1:obj.nInterf
-            obj.interfaces{i}.assembleConstraint(obj.dt);
+            obj.interfaces{i}.assembleConstraint();
           end
 
           for i = 1:obj.nDom
@@ -141,20 +138,6 @@ classdef MultidomainFCSolver < handle
         % Check for convergence
         flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
 
-        if flConv % Convergence
-          % Advance state of non linear models
-          for i = 1:obj.nDom
-            obj.state(i).curr.t = obj.t;
-            if isPoromechanics(obj.domains(i).model)
-              obj.domains(i).getSolver('Poromechanics').advanceState();
-            end
-          end
-
-          printState(obj);
-        end
-        %
-        %updateResults(obj);
-        % Manage next time step
         manageNextTimeStep(obj,flConv);
       end
       %
@@ -182,6 +165,11 @@ classdef MultidomainFCSolver < handle
       obj.nDom = numel(dom);
       obj.interfaces = interf;
       obj.nInterf = numel(interf);
+
+      obj.nVars = 0;
+      for iD = 1:obj.nDom
+        obj.nVars = obj.nVars + obj.domains(iD).dofm.getNumberOfVariables();
+      end
     end
 
     function updateResults(obj)
@@ -217,9 +205,10 @@ classdef MultidomainFCSolver < handle
 
     function sol = solve(obj,J,rhs)
       % solve unstabilized system
-      J = FCSolver.cell2matJac(J);
-      rhs = cell2mat(rhs);
-      tic
+      J = cell2matrix(J);
+      rhs = cell2matrix(rhs);
+      %tic
+      
       if size(J,1)>1e7
         fprintf('Solving linear system...\n')
         if norm(J-J','fro') < 1e-10
@@ -265,6 +254,7 @@ classdef MultidomainFCSolver < handle
 
 
     function [dt] = manageNextTimeStep(obj,dt,flConv)
+      
       if ~flConv   % Perform backstep
         goBackState(obj);
         obj.t = obj.t - obj.dt;
@@ -295,90 +285,38 @@ classdef MultidomainFCSolver < handle
 
 
 
-    function getSystemSize(obj)
-      % assemble blocks of jacobian matrix for multidomain system
-      N = 0;
-      Ndof = 0;
-      for i = 1:obj.nDom
-        nf = numel(obj.domains(i).dofm.getFieldList());
-        N = N + nf;
-        Ndof(1) = Ndof(1) + obj.domains(i).dofm.totDoF;
-      end
-      Nfld = N;
-      N = N + obj.nInterf;
-      obj.systSize = [N,Nfld];
-      obj.nDof = Ndof; % number of primary variable dofs
-    end
-
-
-
-    function getNumField(obj)
-      for i = 1:obj.nDom
-        obj.nfldDom(i) = numel(obj.domains(i).fields);
-      end
-    end
-
-
-
-    function setDoFcounter(obj)
-      N = zeros(obj.nDom,1);
-      for i = 1:obj.nDom-1
-        N(i) = obj.domains(i).dofm.totDoF;
-      end
-      N = [0; cumsum(N)];
-      for i = 1:obj.nInterf
-        obj.interfaces{i}.setDoFcount(N);
-      end
-    end
-
-
-
     function J = assembleJacobian(obj)
-      % assemble blocks of jacobian matrix for multidomain system
-      %[N,Nf,Ni] = deal(obj.systSize(1),obj.systSize(2),obj.systSize(3));
-      J = cell(obj.systSize(1));
+
+      J = cell(obj.nVars + obj.nInterf);
+
       k = 0;
-      % populate jacobian with inner domain blocks
-      for iDom = 1:obj.nDom
-        discr = obj.domains(iDom);
-        J(k+1:k+obj.nfldDom(iDom),k+1:k+obj.nfldDom(iDom)) = ...
-          discr.assembleJacobian();
-        for iFld = 1:obj.nfldDom(iDom)
-          fld = discr.fields(iFld);
-          for iI = discr.interfaceList
-            if ~strcmp(obj.interfaces{iI}.physic,fld)
-              continue
-            end
-            jj = obj.systSize(2)+iI;
-            [J{iFld+k,jj},J{jj,iFld+k}] = getJacobian(...
-              obj.interfaces{iI},fld,iDom);
-          end
+
+      for iD = 1:obj.nDom
+
+        dom = obj.domains(iD);
+        nV = dom.dofm.getNumberOfVariables;
+
+        % inner domain blocks
+        J{k+1:k+nV} = getJacobian(dom);
+
+        for iI = 1:numel(dom.interfaceList)
+
+          q = dom.interfaceList(iI);
+
+          % domain coupling blocks
+          [J(k+1:k+nV,obj.nVars+q), J(obj.nVars+q,k+1:k+nV)] = ...
+            getInterfaceJacobian(dom,iI);
+
+          k = k + nV;
+
         end
-        k = k+obj.nfldDom(iDom);
+
       end
 
-      % provisional assembly of static condensation coupling block
-      % this work only with single physics mortar coupling
       for iI = 1:obj.nInterf
-        %
         interf = obj.interfaces{iI};
-        if isa(interf,'MeshGlueDual')
-          id = interf.idDomain;
-          if isempty(J{id(1),id(2)})
-            J{id(1),id(2)} = interf.Jcoupling';
-          else
-            J{id(1),id(2)} =  J{id(1),id(2)} + interf.Jcoupling';
-          end
-          if isempty(J{id(2),id(1)})
-            J{id(2),id(1)} = interf.Jcoupling;
-          else
-            J{id(2),id(1)} = J{id(2),id(1)} + interf.Jcoupling;
-          end
-        else
-          jj = obj.systSize(2)+iI;
-          [J{jj,jj}] = getJacobian(...
-              obj.interfaces{iI},fld,iDom);
-        end
+        % constraint blocks
+        J{obj.nVars+iI,obj.nVars+iI} = getJacobian(interf);
       end
 
     end
@@ -386,25 +324,24 @@ classdef MultidomainFCSolver < handle
 
     function rhs = assembleRhs(obj)
       % assemble blocks of rhs for multidomain system
-      rhs = cell(obj.systSize(1),1);
-      f = 0;
+
+      % each variable field of each domain represents a cell row
+      rhs = cell(obj.nVars + obj.nInterf,1);
+      
+      k = 0;
 
       for iD = 1:obj.nDom
-        discr = obj.domains(iD);
-        rhs(f+1:f+obj.nfldDom(iD)) = discr.assembleRhs();
-        for iF = 1:obj.nfldDom(iD)
-          fld = discr.fields(iF);
-          for iI = discr.interfaceList
-            rhs{f+iF} = rhs{f+iF} + getRhs(...
-              obj.interfaces{iI},fld,iD);
-            iMult = obj.systSize(2)+iI;
-            if isempty(rhs{iMult})
-              % dont compute rhsMult twice: 1field -> 1 interface
-              rhs{iMult} = getRhs(obj.interfaces{iI},fld);
-            end
-          end
-          f = f + 1;
-        end
+        nV = obj.domains(iD).dofm.getNumberOfVariables;
+        rhs{k+1:k+nV} = getRhs(obj.domains(iD));
+        k = k+nV;
+      end
+
+      for iI = 1:obj.nInterf
+
+        rhs{k+1} = getRhs(obj.interfaces{iI});
+
+        % each interface has one only multiplier field!
+        k = k+1;
       end
     end
 

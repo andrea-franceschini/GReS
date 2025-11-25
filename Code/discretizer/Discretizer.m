@@ -113,22 +113,38 @@ classdef Discretizer < handle
       out = obj.physicsSolvers(id);
     end
 
-    function out = getState(obj)
-      out = obj.state;
-    end
-
-    function out = getStateOld(obj)
-      out = obj.stateOld;
-    end
-
-
-    function addInterface(obj,interfId,interf)
-      % add mortar interface to current domain
-      if ~ismember(interfId,obj.interfaceList)
-        obj.interfaceList = sort([obj.interfaceList interfId]);
-        obj.interfaces{end+1} = interf;
+    function stat = getState(obj,varName)
+      % get a copy of a state variable field
+      if nargin < 2
+        stat = obj.state;
+      else
+        if ~isfield(obj.getState().data,varName)
+          error("Variable %s does not exist in the State object",varName)
+        end
+        stat = obj.getState().data.(varName);
       end
     end
+
+    function stat = getStateOld(obj,varName)
+      % get a copy of a state variable field
+      if nargin < 2
+        stat = obj.stateOld;
+      else
+        if ~isfield(obj.getStateOld().data,varName)
+          error("Variable %s does not exist in the StateOld object",varName)
+        end
+        stat = obj.getStateOld().data.(varName);
+      end
+    end
+
+
+    % function addInterface(obj,interfId,interf)
+    %   % add mortar interface to current domain
+    %   if ~ismember(interfId,obj.interfaceList)
+    %     obj.interfaceList = sort([obj.interfaceList interfId]);
+    %     obj.interfaces{end+1} = interf;
+    %   end
+    %end
 
 
     function assembleSystem(obj,dt)
@@ -200,7 +216,7 @@ classdef Discretizer < handle
       %   - Row and column fields must correspond to existing variables in the system.
 
       if nargin == 1
-        J = obj.J;
+        J = cell2matrix(obj.J);
       elseif nargin == 2
         id = obj.dofm.getVariableId(varargin{1});
         J = obj.J(id,id);
@@ -218,8 +234,6 @@ classdef Discretizer < handle
     function [Jum,Jmu] = getInterfaceJacobian(obj,interfaceId)
 
       % get the multidomain coupling blocks for a certain interface
-      interf = obj.interfaces(interfaceId);
-
       Jum = obj.Jum{interfaceId};
       Jmu = obj.Jmu{interfaceId};
 
@@ -246,7 +260,7 @@ classdef Discretizer < handle
         rhs = cell2matrix(obj.rhs);
       elseif nargin == 2
         id = obj.dofm.getVariableId(varargin{1});
-        rhs = cell2matrix(obj.rhs(id));
+        rhs = obj.rhs{id};
       else
         error("Too many input arguments")
       end

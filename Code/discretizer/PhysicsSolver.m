@@ -187,11 +187,16 @@ classdef (Abstract) PhysicsSolver < handle
         end
       end
 
+
       % zero out columns only if the solver is symmetric (preserves
       % symmetry)
-      % if isSymmetric(obj)
-      %   for i = 1:nV
-      %     obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+      % for i = 1:nV
+      %   obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+      % end
+      % 
+      % for iI = 1:numel(obj.domain.interfaces)
+      %   if ~isempty(obj.domain.Jum{bcVarId})
+      %     obj.domain.Jmu{iI}{bcVarId}(:,bcDofs) = 0;
       %   end
       % end
 

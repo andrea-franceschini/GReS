@@ -14,7 +14,7 @@
             <fileName>Mesh/meshes/domain_hexa_1.vtk</fileName>
         </Geometry>
         <Gauss>
-            <nGP>2</nGP>
+            <nGP>3</nGP>
         </Gauss>
         <BoundaryConditions>
             <fileName>poissonMortarBCs.xml</fileName>

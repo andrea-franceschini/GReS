@@ -1,19 +1,20 @@
 classdef MortarSide
-  %MORTARSIDE Summary of this class goes here
-  %   Detailed explanation goes here
+  % Enum class to access master/slave quantities
   
   enumeration
-    master (1)
-    slave (2)
+    master 
+    slave
   end
   
   methods
 
-    % additional logic for retrieving quantities from master and slave
-    % mortar side
-
-    function side = getSide(side)
-      side = double(side);
+    function side = getSide(obj)
+      switch obj
+        case MortarSide.master
+          side = 1;
+        case MortarSide.slave 
+          side = 2;
+      end
     end
 
   end
