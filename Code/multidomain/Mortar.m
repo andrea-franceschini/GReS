@@ -141,15 +141,6 @@ classdef Mortar < handle
     %   end
     % end
 
-
-    function elem = getElem(obj,sideID,id)
-      % get instance of element class on one the sides of the interface
-      % Assumption: same element type in the entire interface
-      % get istance of element class based on cell type
-      type = obj.mesh.msh(sideID).surfaceVTKType(id);
-      elem = obj.elements(sideID).getElement(type);
-    end
-
     function computeMortarMatrices(obj)
 
       % This method computes the cross grid mortar matrices between
@@ -293,20 +284,6 @@ classdef Mortar < handle
       dofr = getMultiplierDoF(obj,imult);
     end
 
-    function [Nslave, Nmaster, Nmult, varargout] = getMortarBasisFunctions(obj,im,is,xiMaster,xiSlave)
-      elemMaster = obj.getElem(1,im);
-      elemSlave = obj.getElem(2,is);
-      Nmaster = elemMaster.computeBasisF(xiMaster);
-      Nslave = elemSlave.computeBasisF(xiSlave);
-      Nmult = obj.computeMultiplierBasisF(is,Nslave);
-
-      if nargout ==4
-        % outout the bubble function on the slave side
-        varargout{1} = elemSlave.computeBubbleBasisF(xiSlave);
-      end
-    end
-
-
 
     function dofs = getMultiplierDoF(obj,is)
       % return multiplier dofs associated with slave element #is inside
@@ -387,23 +364,6 @@ classdef Mortar < handle
         % consider the case where both sides belong to the same domain,
         % something like 'master_slave'
         error('Input domain not belonging to the interface');
-      end
-    end
-
-    function Nmult = computeMultiplierBasisF(obj,el,NslaveIn)
-      elem = obj.getElem(2,el);
-      switch obj.multiplierType
-        case 'P0'
-          Nmult = ones(size(NslaveIn,1),1);
-        case 'standard'
-          Nmult = NslaveIn;
-        case 'dual'
-          Ns = getBasisFinGPoints(elem);
-          gpW = getDerBasisFAndDet(elem,el);
-          Ml = Ns'*(Ns.*gpW');
-          Dl = diag(Ns'*gpW');
-          A = Ml\Dl;
-          Nmult = NslaveIn*A;
       end
     end
 

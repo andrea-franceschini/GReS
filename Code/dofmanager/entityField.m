@@ -45,7 +45,9 @@ classdef entityField
           end
 
         case entityField.face
-          fN = grid.faces.faceNeighbors;
+          mesh = grid.topology;
+          faces = grid.faces;
+          fN = faces.faceNeighbors;
           if isempty(tags)
             ents = 1:size(fN,1);  % all faces
           else
@@ -63,7 +65,7 @@ classdef entityField
         case entityField.surface
           % Replace with your interface extraction logic
           if isempty(tags)
-            ents = 1:size(grid.surfaces,1);
+            ents = 1:size(mesh.surfaces,1);
           else
             ents = find(ismember(mesh.surfaceTag, tags));
           end
@@ -81,14 +83,34 @@ classdef entityField
       nEnts = numel(ents);
     end
 
-    function ents = getEntityFromElement(obj,mesh,el,nc)
-      switch obj
-        case entityField.node
-          ents = mesh.cells(el,1:mesh.cellNumVerts(el));
-        case entityField.cell
-          ents = el;
-        otherwise
-          error("Method not yet supported for entity of type %s");
+    function ents = getEntityFromElement(outEntity,sourceEntity,mesh,el,nc)
+
+      if sourceEntity == entityField.cell
+
+        switch outEntity
+          case entityField.node
+            ents = mesh.cells(el,1:mesh.cellNumVerts(el));
+          case entityField.cell
+            ents = el;
+          otherwise
+            error("Method not yet supported for entity of type %s");
+        end
+
+      elseif sourceEntity == entityField.surface
+
+        switch outEntity
+          case entityField.node
+            ents = mesh.surfaces(el,1:mesh.surfaceNumVerts(el));
+          case entityField.surface
+            ents = el;
+          otherwise
+            error("Method not yet supported for entity of type %s",outEntity);
+        end
+
+      else 
+        
+        error("Method not yet supported for source entity %s",sourceEntity)
+
       end
 
       if nargin > 3

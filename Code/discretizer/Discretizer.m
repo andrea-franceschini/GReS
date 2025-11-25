@@ -17,17 +17,23 @@ classdef Discretizer < handle
     simparams
     J
     rhs
+
+    % Jacobian blocks for multidomain coupling
+    Jum
+    Jmu
   end
 
   properties (GetAccess=public, SetAccess=public)
-    interfaceList = [];
-    interfaces = []
-    interfaceSurf            % surfaceTag in each surface of interfaceSurf
-    % empty - single domain simulation
-    % not empty - call to mesh glue instances
+
+    % handle to interface solver defined on the domain
+    interfaces
+    
+    % id of the interfaces defined on the domain
+    interfaceList
 
     state
     stateOld
+
   end
 
 
@@ -132,8 +138,7 @@ classdef Discretizer < handle
         assembleSystem(obj.getPhysicsSolver(solver),dt);
       end
     end
-
-
+    
 
     function addPhysicsSolver(obj,solverInput)
 
@@ -195,17 +200,29 @@ classdef Discretizer < handle
       %   - Row and column fields must correspond to existing variables in the system.
 
       if nargin == 1
-        J = cell2matrix(obj.J);
+        J = obj.J;
       elseif nargin == 2
         id = obj.dofm.getVariableId(varargin{1});
-        J = cell2matrix(obj.J(id,id));
+        J = obj.J(id,id);
       elseif nargin == 3
         idRow = obj.dofm.getVariableId(varargin{1});
         idCol = obj.dofm.getVariableId(varargin{2});
-        J = cell2matrix(obj.J(idRow,idCol));
+        J = obj.J(idRow,idCol);
       else
         error("Too many input arguments")
       end
+
+    end
+
+
+    function [Jum,Jmu] = getInterfaceJacobian(obj,interfaceId)
+
+      % get the multidomain coupling blocks for a certain interface
+      interf = obj.interfaces(interfaceId);
+
+      Jum = obj.Jum{interfaceId};
+      Jmu = obj.Jmu{interfaceId};
+
 
     end
 
@@ -275,6 +292,12 @@ classdef Discretizer < handle
         end
 
       end
+    end
+
+    function nDofs = getNumbDoF(obj,varargin)
+
+      nDofs = obj.dofm.getNumbDoF(varargin{:});
+
     end
     %end
 

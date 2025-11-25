@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<struct>
+    <simParam>
+        <Time>
+            <Start>0</Start>
+            <End>1</End>
+            <DtInit>1</DtInit>
+            <DtMax>1</DtMax>
+            <DtMin>1</DtMin>
+        </Time>
+    </simParam>
+    <Domain>
+        <Geometry>
+            <fileName>Mesh/meshes/domain_hexa_1.vtk</fileName>
+        </Geometry>
+        <Gauss>
+            <nGP>2</nGP>
+        </Gauss>
+        <BoundaryConditions>
+            <fileName>poissonMortarBCs.xml</fileName>
+        </BoundaryConditions>
+        <Solver>
+            <Poisson></Poisson>
+        </Solver>
+    </Domain>
+    <Interface>
+        <MeshTying>
+            <Master>
+                <domainId>1</domainId>
+                <surfaceTag>1</surfaceTag>
+            </Master>
+            <Slave>
+                <domainId>1</domainId>
+                <surfaceTag>3</surfaceTag>
+            </Slave>
+            <Quadrature>
+                <type>SegmentBasedQuadrature</type>
+                <nGP>6</nGP>
+                <multiplierType>dual</multiplierType>
+            </Quadrature>
+        </MeshTying>
+    </Interface>
+</struct>

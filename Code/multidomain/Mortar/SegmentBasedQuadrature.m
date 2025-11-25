@@ -19,16 +19,16 @@ classdef SegmentBasedQuadrature < MortarQuadrature
   end
   
   methods
-    function obj = SegmentBasedQuadrature(mortar,ng)
+    function obj = SegmentBasedQuadrature(interface,multType,input)
 
-      obj@MortarQuadrature(mortar,3);
-      obj.ngTri = ng;
+      obj@MortarQuadrature(interface,multType,input);
+      obj.ngTri = getXMLData(input,[],"nGP");
 
-      gaussTri = Gauss(5,ng); % 5 is the vtk type of triangles
+      gaussTri = Gauss(5,obj.ngTri); % 5 is the vtk type of triangles
       obj.wTri = gaussTri.weight;
 
-      isQuadratic = [~isempty(obj.mortar.elements(1).getElement(28));
-                     ~isempty(obj.mortar.elements(2).getElement(28))];
+      isQuadratic = [~isempty(obj.elements(1).getElement(28));
+                     ~isempty(obj.elements(2).getElement(28))];
 
       if sum(isQuadratic)==0 % no quadratic elements
         obj.maxTriPerPair = 6;
@@ -44,19 +44,19 @@ classdef SegmentBasedQuadrature < MortarQuadrature
     function processMortarPairs(obj)
 
       % initialize the maps to store mortar quadrature infos
-      nConnections = nnz(obj.mortar.mesh.elemConnectivity);
+      nConnections = nnz(obj.interface.interfMesh.elemConnectivity);
       totTri = nConnections*obj.maxTriPerPair;
       obj.gpCoords = {zeros(totTri,obj.ngTri,2);
         zeros(totTri,obj.ngTri,2)};
-      obj.mortarPairs = zeros(totTri,2);
+      obj.interfacePairs = zeros(totTri,2);
       obj.detJtri = zeros(totTri,1);
 
-      nM = full(sum(obj.mortar.mesh.elemConnectivity,1));
+      nM = full(sum(obj.interface.interfMesh.elemConnectivity,1));
       nM = [0 cumsum(nM)];
 
       for is = 1:obj.msh(2).nSurfaces
 
-        imList = find(obj.mortar.mesh.elemConnectivity(:,is));
+        imList = find(obj.interface.interfMesh.elemConnectivity(:,is));
 
         for j = 1:numel(imList)
           im = imList(j);
@@ -84,7 +84,7 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
       for i = 1:nTri
         idTri = (k-1)*obj.maxTriPerPair + i;
-        obj.mortarPairs(idTri,:) = [is im];
+        obj.interfacePairs(idTri,:) = [is im];
         obj.gpCoords{2}(idTri,:,1) = xiSlave(:,1,i);
         obj.gpCoords{2}(idTri,:,2) = xiSlave(:,2,i);
         obj.gpCoords{1}(idTri,:,1) = xiMaster(:,1,i);
@@ -101,9 +101,9 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       for i = 1:2
       obj.gpCoords{i}(id,:,:) = [];
       end
-      obj.mortarPairs(id,:) = [];
+      obj.interfacePairs(id,:) = [];
 
-      obj.numbMortarPairs = size(obj.mortarPairs,1);
+      obj.numbMortarPairs = size(obj.interfacePairs,1);
     end
 
     
@@ -115,8 +115,8 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       % polygon
 
       % compute auxiliary plane for integration
-      obj.elems = [getElem(obj.mortar,1,elMaster),...
-        getElem(obj.mortar,2,elSlave)];
+      obj.elems = [getElem(obj,1,elMaster),...
+                   getElem(obj,2,elSlave)];
 
       % get number of susegment (in case of higher-order elements)
       if obj.elems(1).nNode > 4

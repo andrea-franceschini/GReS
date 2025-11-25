@@ -6,7 +6,7 @@ classdef OutState < handle
   % 'folderName','folderName': specify name of output folder
 
   properties (Access = public)
-    modTime = false %flag for time step size matching timeList
+    modTime = false     %flag for time step size matching timeList
     timeList
     results
     % model
@@ -58,14 +58,18 @@ classdef OutState < handle
           input = input.Output;
         end
 
-        flagMatFile = logical(getXMLData(input, 0, "saveHistory"));
+        obj.writeSolution = logical(getXMLData(input, 0, "saveHistory"));
         obj.vtkFileName  = getXMLData(input, folderName, "outputFile");
         obj.matFileName = getXMLData(input, folderName, "matFile");
-        tList       = getXMLData(input, [], "printTimes");
 
         % If no outputFile provided, disable VTK
-        writeVtk = isfield(input, "outputFile");
+        obj.writeVtk = isfield(input, "outputFile");
 
+        if any([obj.writeSolution,obj.writeVtk])
+          tList = getXMLData(input, [], "printTimes");
+        else
+          return
+        end
 
 
       else
@@ -85,8 +89,7 @@ classdef OutState < handle
       % ------------------------------------------------------------
       % Object setup
       % ------------------------------------------------------------
-      obj.writeVtk = writeVtk;
-      obj.writeSolution = flagMatFile;
+
       %obj.model = model;
       obj.VTK = VTKOutput(mesh, obj.vtkFileName);
 

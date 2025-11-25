@@ -69,16 +69,14 @@ classdef (Abstract) PhysicsSolver < handle
     assembleSystem(obj,varargin);
 
     % apply the boundary condition to the jacobian and rhs
-    applyBC(obj,t,bcId);
+    applyBC(obj,bcId,t);
 
     % apply the dirichlet values to the state object
-    applyDirVal(obj,t,bcId);
+    applyDirVal(obj,bcId,t);
     
     % update the state variables after solving the linear system
     updateState(obj,solution);
 
-    % update the state variables after achieving solver convergence
-    advanceState(obj);
 
     % update the output structures for printing purposes
     [cellData,pointData] = writeVTK(obj,t);
@@ -125,60 +123,21 @@ classdef (Abstract) PhysicsSolver < handle
       end
     end
 
- 
-    % function applyBCs(obj,t)
-    %   bcList = keys(obj.bcs.keys);
-    % 
-    %   for bcId = string(bcList)
-    %     bcVar = obj.bcs.getVariable(bcId);
-    % 
-    %     if any(strcmpi(obj.getField(),bcVar))
-    % 
-    %       % TO DO: mortar solver must remove slave BC ents BEFORE this call
-    %       obj.applyBC(t,bcId,bcVar)
-    %     end
-    %   end
-    % end
+    function advanceState(obj)
 
+      % base method to advance the state after reaching convergence
+      % hard copy the new state object
 
-    % function applyBC(obj,t,bcId,bcVar)
-    % 
-    %   % get bcDofs and bcVals
-    %   [bcDofs,bcVals] = getBC(obj,bcId,t);
-    % 
-    %   % Base application of a Boundary condition
-    %   bcType = obj.bcs.getType(bcId);
-    % 
-    %   switch bcType
-    %     case 'Dirichlet'
-    %       applyDirBC(obj,bcDofs,bcVals,bcVar);
-    %     case 'Neumann'
-    %       applyNeuBC(obj,bcDofs,bcVar);
-    %     otherwise
-    %       error("Error in %s: Boundary condition type '%s' is not " + ...
-    %         "available in the base version of applyBC(). Consider " + ...
-    %         "overriding this method for a specific implementation", ...
-    %         class(obj),bcType);
-    %   end
-    % end
+      obj.domain.stateOld = copy(obj.domain.state);
 
-    % function [bcDofs,bcVals] = getBC(obj,bcId,t)
-    % 
-    %   % base method to get the BC dofs and BC values from the boundary
-    %   % conditions
-    % 
-    %   ents = obj.bcs.getBCentities(bcId);
-    % 
-    %   % get local entity numbering
-    %   ents = obj.dofm.getLocalEnts(obj.fieldId,ents);
-    % 
-    %   % get component dof
-    %   bcDofs = obj.bcs.getCompEntities(obj.fieldId,ents);
-    % 
-    %   % get values
-    %   bcVals = obj.bcs.getBCVals(bcId,t);
-    % 
-    % end
+    end
+
+    function goBackState(obj)
+
+      obj.domain.state = copy(obj.domain.stateOld);
+
+    end
+
 
     function applyNeuBC(obj,bcId,bcDofs,bcVals)
 
@@ -219,6 +178,15 @@ classdef (Abstract) PhysicsSolver < handle
         obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
       end
 
+      % apply BC to multi-domain jacobian coupling blocks
+      for iI = 1:numel(obj.domain.interfaces)
+        if ~isempty(obj.domain.Jum{bcVarId})
+          obj.domain.Jum{iI}{bcVarId} = obj.domain.Jum{iI}{bcVarId}';
+          obj.domain.Jum{iI}{bcVarId}(:,bcDofs) = 0;
+          obj.domain.Jum{iI}{bcVarId} = obj.domain.Jum{iI}{bcVarId}';
+        end
+      end
+
       % zero out columns only if the solver is symmetric (preserves
       % symmetry)
       % if isSymmetric(obj)
@@ -240,12 +208,16 @@ classdef (Abstract) PhysicsSolver < handle
     end
 
     function J = getJacobian(obj,varargin)
+
       % get the Jacobian blocks affected by the solver
       if nargin < 2
         J = obj.domain.getJacobian(obj.getField());
       else
         J = obj.domain.getJacobian(varargin{:});
       end
+
+      J = cell2matrix(J);
+
     end
 
     function out = BCapplies(obj,bcId)

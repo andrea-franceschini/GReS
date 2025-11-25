@@ -60,14 +60,14 @@ classdef interfaceMesh < handle
       obj.elemConnectivity = cs.elemConnectivity;
     end
 
-    function finalizeInterface(obj,solvers)
+    function finalizeInterfaceGeometry(obj,interface)
 
       % finalize geometry and connectivity once the slave interface is
       % precisely defined
       setupEdgeTopology(obj,1);
       setupEdgeTopology(obj,2);
-      mshMaster = solvers(1).grid.topology;
-      mshSlave = solvers(2).grid.topology;
+      mshMaster = interface.domains(1).grid.topology;
+      mshSlave = interface.domains(2).grid.topology;
       obj.buildFace2CellMap([mshMaster mshSlave]);
     end
 

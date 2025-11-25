@@ -70,6 +70,7 @@ classdef ModelManager < handle
 
       for i = 1:numel(str.Domain)
         addDomain(obj,str.Domain(i));
+
       end
 
       if isfield(str,"Interface")
@@ -99,14 +100,25 @@ classdef ModelManager < handle
 
       % add a domain
       n = numel(keys(obj.domains));
-      obj.domains(n+1) = Domain(varargin{:});
-      obj.getDomain(n+1).simparams = obj.simparams;
+      obj.domains(n+1) = Discretizer(varargin{:});
+      obj.domains(n+1).simparams = obj.simparams;
       
     end
 
     function addInterface(obj,varargin)
 
-      % TO DO
+      n = numel(keys(obj.interfaces));
+
+      interf = InterfaceSolver(varargin{:});
+
+      % make domains aware of the interface
+      interf.domains(1).interfaceList(end+1) = n+1;
+      interf.domains(2).interfaceList(end+1) = n+1;
+
+      interf.setInterface(varargin{:});
+
+      obj.interfaces(n+1) = interf;
+
     end
 
     function out = getDomain(obj,id)
