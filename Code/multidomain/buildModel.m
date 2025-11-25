@@ -1,11 +1,9 @@
-function [simparams,domains] = buildModel(fileName)
+function varargout = buildModel(fileName)
 
 % build a GReS simulation from a unique input file
 
 
 outStruct = readstruct(fileName,AttributeSuffix="");
-
-simparams = SimulationParameters(fileName);
 
 if isfield(outStruct,"Domain")
   outStruct = outStruct.Domain;
@@ -18,7 +16,12 @@ for i = 1:nD
   domains = [domains; defineDomain(outStruct(i))];
 end
 
-% domains = cell2mat(domains);
+varargout{1} = domains;
+
+if nargout > 1
+interfaces = buildInterfaces(fileName,domains);
+varargout{2} = interfaces;
+end
 
 end
 

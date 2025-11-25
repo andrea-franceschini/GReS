@@ -19,8 +19,8 @@ classdef FCSolver < handle
   end
 
   methods (Access = public)
-    function obj = FCSolver(simparams,linSyst,varargin)
-      obj.setNonLinearSolver(simparams,linSyst);
+    function obj = FCSolver(simparams,domain,varargin)
+      obj.setNonLinearSolver(simparams,domain);
       saveStasticts = false(3,1);
       for k = 1:(nargin-1)/2
         pos = 2*(k-1)+1;
@@ -47,13 +47,12 @@ classdef FCSolver < handle
       simStat = 1;
       % Initialize the time step increment
       obj.dt = obj.simparams.dtIni;
-      delta_t = obj.dt; % dynamic time step
 
       % initialize the state object
       applyDirVal(obj.domain,obj.t);
 
-      state = getState(obj.domain);
-      stateOld = getStateOld(obj.domain);
+      %state = getState(obj.domain);
+
 
       % Loop over time
       while obj.t < obj.simparams.tMax
@@ -69,7 +68,7 @@ classdef FCSolver < handle
         applyDirVal(obj.domain,obj.t);
         %
         if obj.simparams.verbosity > 0
-          fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t);
+          fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
           fprintf('-----------------------------------------------------------\n');
         end
         if obj.simparams.verbosity > 1
@@ -105,7 +104,7 @@ classdef FCSolver < handle
           obj.iter = obj.iter + 1;
 
           % Get system Jacobian
-          J = getJacobian(obj.domain);
+          J = cell2matrix(getJacobian(obj.domain));
 
           % Solve linear system
           du = FCSolver.solve(J,rhs);
@@ -133,23 +132,11 @@ classdef FCSolver < handle
 
         % Check for convergence
         flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
-        % flConv = (rhsNorm < tolWeigh);
 
-        if flConv % Convergence
-
-          state.t = obj.t;
-
-          % print results at current time
-          printState(obj.domain);
-
-          % advance the state after convergence
-          advanceState(obj.domain);
-
-          % save solution statistics
+        % save solution statistics
+        if flConv
           obj.solStatistics.saveIt(obj.t,residual(1:obj.iter+1,1),residual(1:obj.iter+1,2));
-
         else
-
           % save backstep info
           obj.solStatistics.saveBackIt();
         end
@@ -191,33 +178,45 @@ classdef FCSolver < handle
 
     function manageNextTimeStep(obj,flConv)
 
-      if ~flConv
+      if flConv % Convergence
 
-        % backstep
-        obj.domain.state = copy(obj.domain.stateOld);
-        obj.t = obj.t - obj.dt;
-        obj.tStep = obj.tStep - 1;
+        obj.domain.state.t = obj.t;
 
-        obj.dt = obj.dt/obj.simparams.divFac; 
+        % print results at current time
+        printState(obj.domain);
 
-        if obj.dt < obj.simparams.dtMin
-            error('Minimum time step reached')
-        elseif obj.simparams.verbosity > 0
-          fprintf('\n %s \n','BACKSTEP');
-        end
+        % advance the domain state after convergence
+        % here copy current state to old state
+        advanceState(obj.domain);
 
-      else
 
         % go to next time step
         tmpVec = obj.simparams.multFac;
         obj.dt = min([obj.dt * min(tmpVec), obj.simparams.dtMax]);
         obj.dt = max([obj.dt obj.simparams.dtMin]);
-        obj.domain.stateOld = copy(obj.domain.state);
-        
+
+
         % limit time step to end of simulation time
         if ((obj.t + obj.dt) > obj.simparams.tMax)
           obj.dt = obj.simparams.tMax - obj.t;
         end
+
+      else
+
+        % backstep
+        goBackState(obj.domain);
+
+        obj.t = obj.t - obj.dt;
+        obj.tStep = obj.tStep - 1;
+
+        obj.dt = obj.dt/obj.simparams.divFac;
+
+        if obj.dt < obj.simparams.dtMin
+          error('Minimum time step reached')
+        elseif obj.simparams.verbosity > 0
+          fprintf('\n %s \n','BACKSTEP');
+        end
+
       end
     end
 

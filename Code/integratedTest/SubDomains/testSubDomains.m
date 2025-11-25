@@ -9,7 +9,8 @@ warning('off','MATLAB:nearlySingularMatrix');
 
 % shortcut to define a model using a unique xml file
 % useful when dealing with many domains
-[simparams,domain] = buildModel('domain.xml');
+simparams = SimulationParameters('domain.xml');
+domain = buildModel('domain.xml');
 
 % perform a fully coupled simulation
 solver = FCSolver(simparams,domain);

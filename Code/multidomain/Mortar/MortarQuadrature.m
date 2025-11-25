@@ -5,19 +5,26 @@ classdef (Abstract) MortarQuadrature < handle
   
   properties
     msh       % instance of InterfaceMesh class
-    mortar    % instance of the mortar object 
-    mortarPairs
+    interface    % instance of the interface solver object 
+    interfacePairs
     gpCoords = cell(1,2);  % store local coordinates for each master and slave pair
     numbMortarPairs
+    elements
+    multiplierType
     
   end
 
   methods
-    function obj = MortarQuadrature(mortar,ng)
-      obj.mortar = mortar;
-      obj.msh = mortar.mesh.msh;
-      obj.mortar.elements = [Elements(mortar.mesh.msh(1),ng),...
-                             Elements(mortar.mesh.msh(2),ng)];
+    function obj = MortarQuadrature(interf,multType,input)
+
+      obj.interface = interf;
+      obj.msh = interf.interfMesh.msh;
+      obj.multiplierType = multType;
+
+      ng = getXMLData(input,[],"nGP");
+
+      obj.elements = [Elements(interf.interfMesh.msh(1),ng),...
+                      Elements(interf.interfMesh.msh(2),ng)];
     end
 
 
@@ -32,6 +39,53 @@ classdef (Abstract) MortarQuadrature < handle
     getIntegrationWeights(obj,idPair);
     xiMaster = getMasterGPCoords(obj,idPair);
     xiSlave = getSlaveGPCoords(obj,idPair);
+  end
+
+  methods
+
+    function elem = getElem(obj,sideID,id)
+      % get instance of element class on one the sides of the interface
+      % Assumption: same element type in the entire interface
+      % get istance of element class based on cell type
+      type = obj.msh(sideID).surfaceVTKType(id);
+      elem = obj.elements(sideID).getElement(type);
+    end
+
+    function Nmult = computeMultiplierBasisF(obj,el,NslaveIn)
+      elem = obj.getElem(2,el);
+      switch obj.multiplierType
+        case 'P0'
+          Nmult = ones(size(NslaveIn,1),1);
+        case 'standard'
+          Nmult = NslaveIn;
+        case 'dual'
+          Ns = getBasisFinGPoints(elem);
+          gpW = getDerBasisFAndDet(elem,el);
+          Ml = Ns'*(Ns.*gpW');
+          Dl = diag(Ns'*gpW');
+          A = Ml\Dl;
+          Nmult = NslaveIn*A;
+      end
+    end
+
+    function [Nslave, Nmaster, Nmult, varargout] = getMortarBasisFunctions(obj,im,is,xiMaster,xiSlave)
+      elemMaster = obj.getElem(1,im);
+      elemSlave = obj.getElem(2,is);
+      Nmaster = elemMaster.computeBasisF(xiMaster);
+      Nslave = elemSlave.computeBasisF(xiSlave);
+      Nmult = obj.computeMultiplierBasisF(is,Nslave);
+
+      if nargout ==4
+        % outout the bubble function on the slave side
+        varargout{1} = elemSlave.computeBubbleBasisF(xiSlave);
+      end
+    end
+
+
+
+
+
+
   end
 
   methods (Static)

@@ -6,7 +6,7 @@ classdef RBFquadrature < MortarQuadrature
     activeGPmap        % index map to access gp related information
     nInt               % number of interpolation points per master element
     nGP                % number of gauss points in input
-    rbfType = 'gauss'
+    rbfType
     detJw
   end
 
@@ -27,14 +27,12 @@ classdef RBFquadrature < MortarQuadrature
 
 
   methods
-    function obj = RBFquadrature(mortar,nGP,nInt,type)
+    function obj = RBFquadrature(mortar,multType,input)
       %
-      obj@MortarQuadrature(mortar,nGP);
-      obj.nGP = nGP;
-      obj.nInt = nInt;
-      if nargin > 3
-        obj.rbfType = type;
-      end
+      obj@MortarQuadrature(mortar,multType,nGP,input);
+      obj.nGP = getXMLData(input,[],"nGP");
+      obj.nInt = getXMLData(input,[],"nInt");
+      obj.rbfType = getXMLData(input,"gauss","type");
       obj.getWeights();
     end
 
@@ -46,32 +44,32 @@ classdef RBFquadrature < MortarQuadrature
 
       % initialize the maps to store mortar quadrature info
       obj.maxGP = obj.nGP^2;
-%       nConnections = nnz(obj.mortar.mesh.elemConnectivity);
+%       nConnections = nnz(obj.interface.interfMesh.elemConnectivity);
       totGP = obj.msh(2).nSurfaces*obj.maxGP;
       obj.gpCoords = {zeros(totGP,2);
                       zeros(totGP,2)};
 
-      nConnections = nnz(obj.mortar.mesh.elemConnectivity);
+      nConnections = nnz(obj.interface.interfMesh.elemConnectivity);
 
-      obj.mortarPairs = zeros(nConnections,2);
+      obj.interfacePairs = zeros(nConnections,2);
       obj.detJw = zeros(totGP,1);
 
       obj.activeGPmap = zeros(nConnections+1,1);
 
-      nM = full(sum(obj.mortar.mesh.elemConnectivity,1));
+      nM = full(sum(obj.interface.interfMesh.elemConnectivity,1));
       nM = [0 cumsum(nM)];
 
       for is = 1:obj.msh(2).nSurfaces
 
         % reset slave element based info
-        elemSlave = obj.mortar.getElem(2,is);
+        elemSlave = obj.interface.getElem(2,is);
         obj.idSlave = is;
         obj.countGP = 0;
         obj.gpsCoord = getGPointsLocation(elemSlave,is);
         obj.gpsCoordLoc = elemSlave.GaussPts.coord;
         obj.dJwSlave = getDerBasisFAndDet(elemSlave,is);
 
-        imList = find(obj.mortar.mesh.elemConnectivity(:,is));
+        imList = find(obj.interface.interfMesh.elemConnectivity(:,is));
 
         for j = 1:numel(imList)
           im = imList(j);
@@ -109,7 +107,7 @@ classdef RBFquadrature < MortarQuadrature
 
       posGP = obj.gpsCoord;
 
-      elem = getElem(obj.mortar,1,im);
+      elem = getElem(obj.interface,1,im);
 
       if class(elem)=="Triangle"
         nIntPts = sum(1:obj.nInt);
@@ -133,7 +131,7 @@ classdef RBFquadrature < MortarQuadrature
       end
 
       % store infos in maps
-      obj.mortarPairs(k,:) = [is im];
+      obj.interfacePairs(k,:) = [is im];
 
       nGsupp = sum(obj.suppFlag);
       gpId = (is-1)*obj.maxGP + obj.countGP;
@@ -147,18 +145,18 @@ classdef RBFquadrature < MortarQuadrature
 
     function finalizeMortarMaps(obj)
       % remove useless entries after mortar preallocation
-      id = ~any(obj.mortarPairs,2);
+      id = ~any(obj.interfacePairs,2);
       id2 = obj.detJw == 0;
 
       obj.activeGPmap([false;id]) = [];
-      obj.mortarPairs(id,:) = [];
+      obj.interfacePairs(id,:) = [];
 
       obj.detJw(id2) = [];
       for i = 1:2
         obj.gpCoords{i}(id2,:) = [];
       end
 
-      obj.numbMortarPairs = size(obj.mortarPairs,1);
+      obj.numbMortarPairs = size(obj.interfacePairs,1);
     end
 
 
@@ -187,8 +185,8 @@ classdef RBFquadrature < MortarQuadrature
     %
     function getWeights(obj)
 
-      elem = obj.mortar.elements(1);
-      msh = obj.mortar.mesh.msh(1);
+      elem = obj.interface.elements(1);
+      msh = obj.interface.interfMesh.msh(1);
 
       nElM = msh.nSurfaces;
 
@@ -251,9 +249,9 @@ classdef RBFquadrature < MortarQuadrature
     function [intPts,pos] = getRBFfunction(obj,id)
       % evaluate shape function in the real space and return position of
       % integration points in the real space
-      surfNodes = obj.mortar.mesh.msh(1).surfaces(id,:);
-      coord = obj.mortar.mesh.msh(1).coordinates(surfNodes,:);
-      elem = obj.mortar.getElem(1,id);
+      surfNodes = obj.interface.interfMesh.msh(1).surfaces(id,:);
+      coord = obj.interface.interfMesh.msh(1).coordinates(surfNodes,:);
+      elem = obj.interface.getElem(1,id);
       % place interpolation points in a regular grid
       intPts = getInterpolationPoints(obj,elem);
       bf = elem.computeBasisF(intPts);

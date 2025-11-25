@@ -1,4 +1,4 @@
-classdef BiotFullySaturated < PhysicsSolver
+classdef BiotFixedStressSplit < PhysicsSolver
     % Biot model subclass
     % Coupled Poromechanics with SinglePhaseFlow
 
@@ -20,14 +20,14 @@ classdef BiotFullySaturated < PhysicsSolver
     end
 
     methods (Access = public)
-      function obj = BiotFullySaturated(domain)
+      function obj = BiotFixedStressSplit(domain)
 
         obj@PhysicsSolver(domain);
 
       end
 
       function registerSolver(obj,input)
-
+        
         % setup the solver with custom input
         obj.flowSolver = SinglePhaseFlow(obj.domain);
         registerSolver(obj.flowSolver,input.(class(obj.flowSolver)));
@@ -202,10 +202,10 @@ classdef BiotFullySaturated < PhysicsSolver
 
         end
 
-        % function advanceState(obj,t)
-        %   obj.mechSolver.advanceState(t);
-        %   obj.flowSolver.advanceState(t);
-        % end
+        function advanceState(obj)
+          obj.mechSolver.advanceState();
+          obj.flowSolver.advanceState();
+        end
 
 
         function out = isLinear(obj)

@@ -196,14 +196,14 @@ classdef Poromechanics < PhysicsSolver
       state.data.(obj.getField()) = zeros(obj.mesh.nDim*obj.mesh.nNodes,1);
     end
 
-    function advanceState(obj)
-      % Set converged state to current state after newton convergence
-      stateOld = getStateOld(obj);
-      stateOld.data.displacements = getState(obj,"displacements");
-      stateOld.data.strain = getState(obj,"strain");
-      stateOld.data.stress = getState(obj,"stress");
-      stateOld.data.status = getState(obj,"status");
-    end
+    % function advanceState(obj)
+    %   % Set converged state to current state after newton convergence
+    %   stateOld = getStateOld(obj);
+    %   stateOld.data.displacements = getState(obj,"displacements");
+    %   stateOld.data.strain = getState(obj,"strain");
+    %   stateOld.data.stress = getState(obj,"stress");
+    %   stateOld.data.status = getState(obj,"status");
+    % end
 
     function updateState(obj,solution)
       % Update state structure with last solution increment
@@ -223,7 +223,7 @@ classdef Poromechanics < PhysicsSolver
       % Update strain
       l = 0;
       for el=1:obj.mesh.nCells
-        dof = getEntityFromElement(entityField.node,obj.mesh,el,3);
+        dof = getEntityFromElement(entityField.node,entityField.cell,obj.mesh,el,3);
         vtkId = obj.mesh.cellVTKType(el);
         elem = getElement(obj.elements,vtkId);
         nG = elem.GaussPts.nNode;
@@ -279,6 +279,7 @@ classdef Poromechanics < PhysicsSolver
           error("Error in %s: Boundary condition type '%s' is not " + ...
             "available in %s",class(obj),bcType);
       end
+      
     end
 
 

@@ -223,6 +223,17 @@ classdef DoFManager < handle
       nVars = obj.nVars;
     end
 
+    function varNames = getVariableNames(obj)
+
+      varNames = [obj.fields.variableName];
+
+    end
+
+    function ncomp = getNumberOfComponents(obj,varId)
+      id = getVariableId(obj,varId);
+      ncomp = obj.numbComponents(id);
+    end
+
 
   end
 
