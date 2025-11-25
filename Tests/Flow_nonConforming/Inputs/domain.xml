@@ -7,21 +7,21 @@ in a nonConforming simulation.
     <Name>TopLayer</Name>
     <ModelType>SinglePhaseFlow_FEM</ModelType>
     <SimParameters> Inputs/simparam.xml </SimParameters>
-    <Geometry>Inputs/Mesh/topLayer.vtk</Geometry>
+    <Geometry>Inputs/DomainTop/topLayer.vtk</Geometry>
     <Gauss>1</Gauss>
-    <Material> Inputs/materialsListTop.xml </Material>
-    <BoundaryConditions> Inputs/bcTop.xml </BoundaryConditions>
-    <OutState> Inputs/outTop.xml </OutState>
+    <Material> Inputs/DomainTop/materialsListTop.xml </Material>
+    <BoundaryConditions> Inputs/DomainTop/bcTop.xml </BoundaryConditions>
+    <OutState> Inputs/DomainTop/outTop.xml </OutState>
   </Domain>
 
   <Domain>
     <Name>BottomLayer</Name>
     <ModelType>SinglePhaseFlow_FEM</ModelType>
     <SimParameters> Inputs/simparam.xml </SimParameters>
-    <Geometry>Inputs/Mesh/bottomLayer.vtk</Geometry>    
+    <Geometry>Inputs/DomainBot/bottomLayer.vtk</Geometry>    
     <Gauss>1</Gauss>
-    <Material> Inputs/materialsListBottom.xml </Material>
-    <BoundaryConditions> Inputs/bcBot.xml </BoundaryConditions>
-    <OutState> Inputs/outBottom.xml </OutState>
+    <Material> Inputs/DomainBot/materialsListBottom.xml </Material>
+    <BoundaryConditions> Inputs/DomainBot/bcBot.xml </BoundaryConditions>
+    <OutState> Inputs/DomainBot/outBottom.xml </OutState>
   </Domain>
 </struct>
