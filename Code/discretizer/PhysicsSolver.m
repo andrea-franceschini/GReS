@@ -77,13 +77,11 @@ classdef (Abstract) PhysicsSolver < handle
     % update the state variables after solving the linear system
     updateState(obj,solution);
 
-
     % update the output structures for printing purposes
-    [cellData,pointData] = writeVTK(obj,t);
-
+    [cellData,pointData] = writeVTK(obj,interpolationFactor,t);
 
     % write history to MAT-file
-    [cellData,pointData] = writeMatFile(obj,t,tID);
+    writeMatFile(obj,interpolationFactor,tID);
 
   end
 
@@ -127,13 +125,12 @@ classdef (Abstract) PhysicsSolver < handle
 
       % base method to advance the state after reaching convergence
       % hard copy the new state object
-
       obj.domain.stateOld = copy(obj.domain.state);
 
     end
 
     function goBackState(obj)
-
+      % base method to move back the state when convergence is not reached
       obj.domain.state = copy(obj.domain.stateOld);
 
     end
@@ -215,6 +212,9 @@ classdef (Abstract) PhysicsSolver < handle
     function J = getJacobian(obj,varargin)
 
       % get the Jacobian blocks affected by the solver
+      % differently from the getJacobian() in Discretizer, this method
+      % returns a matrix ready to perform computations
+
       if nargin < 2
         J = obj.domain.getJacobian(obj.getField());
       else

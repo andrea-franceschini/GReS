@@ -60,9 +60,9 @@ classdef OutState < handle
 
         obj.writeSolution = logical(getXMLData(input, 0, "saveHistory"));
         obj.vtkFileName  = getXMLData(input, folderName, "outputFile");
-        obj.matFileName = getXMLData(input, folderName, "matFile");
+        obj.matFileName = getXMLData(input, folderName, "matFileName");
 
-        % If no outputFile provided, disable VTK
+        % If no outputFile name provided, disable VTK
         obj.writeVtk = isfield(input, "outputFile");
 
         if any([obj.writeSolution,obj.writeVtk])
@@ -212,12 +212,24 @@ classdef OutState < handle
       % Merge output variable coming from a field to the global output
       % structure
       % Concatenate the two structure arrays
-      if isempty(strA)
-        mergeStruct = strB;
-        return
+
+      try
+        mergeStruct = [strA; strB];
+      catch
+        unknownFields = setdiff(fieldnames(strB),fieldnames(strA));
+        error("Ouput structure must be an array of structures with 2 fields:" + ...
+          " 'name' and 'data'. \n" + ...
+          "Invalid fields: \n %s, ",unknownFields{:})
+
       end
-      mergeStruct = [strA; strB];
+
       names = {mergeStruct.name};
+
+      % remove empty 
+      isEmpty = cellfun(@isempty, names);
+      mergeStruct(isEmpty) = [];
+      names(isEmpty) = [];
+
       [~, uniqueIdx] = unique(names, 'stable');
       % Create the merged structure using the unique indices
       mergeStruct = mergeStruct(uniqueIdx);

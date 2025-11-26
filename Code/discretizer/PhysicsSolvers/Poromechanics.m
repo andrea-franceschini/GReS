@@ -364,11 +364,10 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
-    function writeMatFile(obj,t,tID)
+    function writeMatFile(obj,fac,tID)
 
       uOld = getStateOld(obj,obj.getField());
       uCurr = getState(obj,obj.getField());
-      fac = (t - getStateOld(obj).t)/(getState(obj).t - getStateOld(obj).t);
 
       obj.domain.outstate.results(tID).(obj.getField()) = uCurr*fac+uOld*(1-fac);
 
@@ -376,7 +375,7 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
-    function [cellData,pointData] = writeVTK(obj,t)
+    function [cellData,pointData] = writeVTK(obj,fac,varargin)
 
       % append state variable to output structure
       stateCurr = getState(obj);
@@ -385,19 +384,12 @@ classdef Poromechanics < PhysicsSolver
       displ = getState(obj,obj.getField());
       [avStress,avStrain] = finalizeState(obj,stateCurr);
 
+      dispOld = getStateOld(obj,obj.getField());
+      [avStressOld,avStrainOld] = finalizeState(obj,stateOld);
 
-      if isempty(stateOld)
-
-        % interpolate between current and old state
-        fac = (t - stateOld.t)/(stateCurr.t - stateOld.t);
-        dispOld = getStateOld(obj,obj.getField());
-        [avStressOld,avStrainOld] = finalizeState(obj,stateOld);
-
-        avStress = avStress*fac+avStressOld*(1-fac);
-        avStrain = avStrain*fac+avStrainOld*(1-fac);
-        displ = displ*fac+dispOld*(1-fac);
-
-      end
+      avStress = avStress*fac+avStressOld*(1-fac);
+      avStrain = avStrain*fac+avStrainOld*(1-fac);
+      displ = displ*fac+dispOld*(1-fac);
 
       [cellData,pointData] = Poromechanics.buildPrintStruct(displ,avStress,avStrain);
 

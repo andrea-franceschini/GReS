@@ -17,7 +17,7 @@ for i = 1:nInt
   interf = feval(interfNames{i},...
                  i,domains,outStruct.(interfNames{i}));
 
-  interf.setInterface(outStruct.(interfNames{i}));
+  interf.registerInterface(outStruct.(interfNames{i}));
   interfaces{end+1} = interf;
 end
 

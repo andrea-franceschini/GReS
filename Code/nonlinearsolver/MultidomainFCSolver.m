@@ -128,7 +128,6 @@ classdef MultidomainFCSolver < handle
           rhs = assembleRhs(obj);
           rhsNorm = norm(cell2mat(rhs),2);
 
-
           if obj.simparams.verbosity > 1
             fprintf('%d     %e\n',obj.iter,rhsNorm);
           end
@@ -145,20 +144,22 @@ classdef MultidomainFCSolver < handle
 
     function finalizeOutput(obj)
       % finalize print utils for domains and interfaces
-      for i =1:obj.nDom
+      for i = 1:obj.nDom
         obj.domains(i).outstate.finalize();
       end
 
       for i = 1:obj.nInterf
-        obj.interfaces{i}.finalizeOutput();
+        obj.interfaces{i}.outstate.finalize();
       end
     end
+
   end
 
 
 
   methods (Access = protected)
     function setNonLinearSolver(obj,simparams,dom,interf)
+
       % assumption: same set of simulation parameters for each domain
       obj.simparams = simparams;
       obj.domains = dom;
@@ -168,43 +169,16 @@ classdef MultidomainFCSolver < handle
 
       obj.nVars = 0;
       for iD = 1:obj.nDom
+        obj.domains(iD).simparams = simparams;
         obj.nVars = obj.nVars + obj.domains(iD).dofm.getNumberOfVariables();
       end
-    end
-
-    function updateResults(obj)
-      id = getSymSurf(obj.interfaces{1});
-      mult = obj.interfaces{1}.multipliers(1).curr;
-      mult = reshape(mult,3,[]);
-      obj.results = [obj.results;...
-        struct('sn',mult(1,id)','t_norm',sqrt(mult(2,id).^2+mult(3,id).^2))];
-    end
-
-    function [t, dt] = updateTime(obj,conv,dt)
-      t = obj.simparams.tMax;
-      told = t;
-      for i = 1:obj.nDom
-        if obj.domains(i).outstate.modTime
-          tmp = find(obj.t<obj.domains(i).outstate.timeList(),1,'first');
-          if ~conv
-            t = min([obj.t + obj.dt, obj.t + dt, obj.domains(i).outstate.timeList(tmp)]);
-          else
-            t = min([obj.t + obj.dt, obj.domains(i).outstate.timeList(tmp)]);
-          end
-        else
-          t = obj.t + obj.dt;
-        end
-        if t > told
-          t = told;
-        end
-      end
-      dt = t - obj.t;
     end
 
 
 
     function sol = solve(obj,J,rhs)
-      % solve unstabilized system
+
+      % TO DO: clean this method
       J = cell2matrix(J);
       rhs = cell2matrix(rhs);
       %tic
@@ -253,32 +227,55 @@ classdef MultidomainFCSolver < handle
 
 
 
-    function [dt] = manageNextTimeStep(obj,dt,flConv)
-      
-      if ~flConv   % Perform backstep
-        goBackState(obj);
-        obj.t = obj.t - obj.dt;
-        obj.tStep = obj.tStep - 1;
-        dt = dt/obj.simparams.divFac;
-        obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
-        if min(dt,obj.dt) < obj.simparams.dtMin
-          if obj.simparams.goOnBackstep == 1
-            flConv = 1;
-          elseif obj.simparams.goOnBackstep == 0
-            error('Minimum time step reached')
-          end
-        elseif obj.simparams.verbosity > 0
-          fprintf('\n %s \n','BACKSTEP');
+    function manageNextTimeStep(obj,flConv)
+
+      if flConv % Convergence
+
+        for i = 1:obj.nDom
+          dom = obj.domains(i);
+          dom.state.t = obj.t;
+          printState(dom);
+          advanceState(dom);
         end
-      end
-      if flConv % Go on if converged
+
+        for i = 1:obj.nInterf
+          interf = obj.interfaces{i};
+          interf.state.t = obj.t;
+          printState(interf);
+          advanceState(interf);
+        end
+
+
+        % go to next time step
         tmpVec = obj.simparams.multFac;
-        obj.dt = min([obj.dt * min(tmpVec),obj.simparams.dtMax]);
+        obj.dt = min([obj.dt * min(tmpVec), obj.simparams.dtMax]);
         obj.dt = max([obj.dt obj.simparams.dtMin]);
-        goOnState(obj);
-        %
+
+        % limit time step to end of simulation time
         if ((obj.t + obj.dt) > obj.simparams.tMax)
           obj.dt = obj.simparams.tMax - obj.t;
+        end
+
+      else
+
+        % backstep
+        for i = 1:obj.nDom
+          goBackState(obj.domains(i));
+        end
+
+        for i = 1:obj.nInterf
+          goBackState(obj.interfaces{i});
+        end
+
+        obj.t = obj.t - obj.dt;
+        obj.tStep = obj.tStep - 1;
+
+        obj.dt = obj.dt/obj.simparams.divFac;
+
+        if obj.dt < obj.simparams.dtMin
+          error('Minimum time step reached')
+        elseif obj.simparams.verbosity > 0
+          fprintf('\n %s \n','BACKSTEP');
         end
       end
     end
@@ -297,7 +294,7 @@ classdef MultidomainFCSolver < handle
         nV = dom.dofm.getNumberOfVariables;
 
         % inner domain blocks
-        J{k+1:k+nV} = getJacobian(dom);
+        J(k+1:k+nV) = getJacobian(dom);
 
         for iI = 1:numel(dom.interfaceList)
 

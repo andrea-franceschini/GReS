@@ -108,6 +108,15 @@ classdef Discretizer < handle
 
     end
 
+    function goBackState(obj)
+
+      for solv = obj.solverNames
+        % loop over available solvers
+        obj.getPhysicsSolver(solv).goBackState();
+      end
+
+    end
+
 
     function out = getPhysicsSolver(obj,id)
       out = obj.physicsSolvers(id);
@@ -216,7 +225,7 @@ classdef Discretizer < handle
       %   - Row and column fields must correspond to existing variables in the system.
 
       if nargin == 1
-        J = cell2matrix(obj.J);
+        J = obj.J;
       elseif nargin == 2
         id = obj.dofm.getVariableId(varargin{1});
         J = obj.J(id,id);
@@ -291,9 +300,15 @@ classdef Discretizer < handle
           assert(obj.state.t - obj.stateOld.t > eps('double'),...
             'Time step is too small for printing purposes');
 
-          writeVTK(obj,time);
+          % compute factor to interpolate current and old state variables
+          fac = (time - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
+          if isnan(fac) || isinf(fac)
+            fac = 1;
+          end
 
-          writeMatFile(obj,time,obj.outstate.timeID);
+          writeVTK(obj,fac,time);
+
+          writeMatFile(obj,fac,obj.outstate.timeID);
 
           obj.outstate.timeID = obj.outstate.timeID + 1;
 
@@ -378,7 +393,7 @@ classdef Discretizer < handle
     end
 
 
-    function writeVTK(obj,time)
+    function writeVTK(obj,fac,time)
       % write results to VTKoutput
 
       if obj.outstate.writeVtk
@@ -386,9 +401,9 @@ classdef Discretizer < handle
         for solv = obj.solverNames
           solver = getPhysicsSolver(obj,solv);
 
-          cellData3D = [];
-          pointData3D = [];
-          [cellData,pointData] = writeVTK(solver,time);
+          cellData3D = struct('name', [], 'data', []);
+          pointData3D = struct('name', [], 'data', []);
+          [cellData,pointData] = writeVTK(solver,fac,time);
           cellData3D = OutState.mergeOutFields(cellData3D,cellData);
           pointData3D = OutState.mergeOutFields(pointData3D,pointData);
         end
@@ -400,7 +415,7 @@ classdef Discretizer < handle
     end
 
 
-    function writeMatFile(obj,time,timeID)
+    function writeMatFile(obj,fac,timeID)
       % write to MAT-file
 
       if obj.outstate.writeSolution
@@ -408,7 +423,7 @@ classdef Discretizer < handle
         obj.outstate.results(timeID).time = obj.outstate.timeList(timeID);
 
         for solv = obj.solverNames
-          getPhysicsSolver(obj,solv).writeMatFile(time,timeID);
+          getPhysicsSolver(obj,solv).writeMatFile(fac,timeID);
         end
 
       end

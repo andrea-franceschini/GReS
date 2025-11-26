@@ -179,14 +179,14 @@ classdef BiotFullySaturated < PhysicsSolver
 
         end
 
-        function [cellDataBiot,pointDataBiot] = writeVTK(obj,t)
+        function [cellDataBiot,pointDataBiot] = writeVTK(obj,fac,t)
 
-          [cellDataFlow,pointDataFlow] = obj.flowSolver.writeVTK(t);
-          [cellDataMech,pointDataMech] = obj.mechSolver.writeVTK(t);
+          [cellDataFlow,pointDataFlow] = obj.flowSolver.writeVTK(fac,t);
+          [cellDataMech,pointDataMech] = obj.mechSolver.writeVTK(fac);
 
           cellDataBiot = OutState.mergeOutFields(cellDataMech,cellDataFlow);
 
-          clear cellDataMech celDataFlow
+          clear cellDataMech cellDataFlow
 
           pointDataBiot = OutState.mergeOutFields(pointDataMech,pointDataFlow);
 

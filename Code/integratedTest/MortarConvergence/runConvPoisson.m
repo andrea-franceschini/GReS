@@ -37,9 +37,14 @@ end
 
 nInt = 5;
 
+N_l = [4 8 16];
+
+N_r = [6 12 24];
 
 %% convergence loop
 for i = 1:nref
+  N_i_l = N_l(i);
+  N_i_r = N_r(i);
 
   % run script to get refined mesh
   meshName = "domain_"+elem_type+"_"+num2str(i);
@@ -52,7 +57,7 @@ for i = 1:nref
   fileStruct.Interface.MeshTying.Quadrature.type = integration_type;
   fileStruct.Interface.MeshTying.Quadrature.nGP = nG;
   %strInterf.Interface(1).Print.nameAttribute = "interf_"+integration_type+"_"+num2str(i);
-  if strcmp(integration_type,'RBF')
+  if strcmp(integration_type,'RBFquadrature')
     fileStruct.Interface(1).MeshTying.Quadrature.nInt = nInt;
   end
 
@@ -68,12 +73,14 @@ for i = 1:nref
   solver = MultidomainFCSolver(simparams,domain,interfaces);
   solver.NonLinearLoop();
 
-  pois = getSolver(domain,'Poisson');
+  % print to file
+  solver.finalizeOutput();
+
+  pois = getPhysicsSolver(domain,'Poisson');
   [L2(i),H1(i)] = pois.computeError_v2();
   h(i) = 1/N_i_r;
-  if domain.simparams.verbosity>0
-    fprintf('Max absolute error is: %1.6e \n',max(abs(pois.state.data.err)));
-  end
+
+  gresLog().log(0,'Max absolute error is: %1.6e \n',max(abs(domain.state.data.err)));
 end
 
 % compute convergence order
