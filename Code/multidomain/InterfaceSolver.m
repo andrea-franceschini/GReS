@@ -289,22 +289,29 @@ classdef (Abstract) InterfaceSolver < handle
 
       [s,varId] = getSideAndVar(obj,side,varargin{:});
 
-      assert(~isempty(obj.domains(s).Jmu{varId}),...
-        "Cannot add contribution to empty Jacobian block");
+      % assert(~isempty(obj.domains(s).Jmu{varId}),...
+      %   "Cannot add contribution to empty Jacobian block");
 
-      obj.domains(s).Jum{obj.interfaceId(s)}{varId} = ...
-        obj.domains(s).Jum{obj.interfaceId(s)}{varId} + setVal;
+      if ~isempty(obj.domains(s).Jmu{varId})
+        obj.domains(s).Jum{obj.interfaceId(s)}{varId} = ...
+          obj.domains(s).Jum{obj.interfaceId(s)}{varId} + setVal;
+      else
+        obj.domains(s).Jum{obj.interfaceId(s)}{varId} = setVal;
+      end
     end
 
     function addJmu(obj,side,setVal,varargin)
 
       [s,varId] = getSideAndVar(obj,side,varargin{:});
 
-      assert(~isempty(obj.domains(s).Jmu{varId}),...
-        "Cannot add contribution to empty Jacobian block");
+      if ~isempty(obj.domains(s).Jmu{varId})
+        obj.domains(s).Jum{obj.interfaceId(s)}{varId} = ...
+          obj.domains(s).Jum{obj.interfaceId(s)}{varId} + setVal;
+      else
+        obj.domains(s).Jum{obj.interfaceId(s)}{varId} = setVal;
+      end
 
-      obj.domains(s).Jmu{obj.interfaceId(s)}{varId} = ...
-        obj.domains(s).Jmu{obj.interfaceId(s)}{varId} + setVal;
+
     end
 
 

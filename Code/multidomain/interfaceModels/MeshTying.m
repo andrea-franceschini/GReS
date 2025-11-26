@@ -7,6 +7,8 @@ classdef MeshTying < InterfaceSolver
     coupledVariables
     D
     M
+    stabilizationMat
+    stabilizationScale
 
   end
 
@@ -140,7 +142,7 @@ classdef MeshTying < InterfaceSolver
           getMortarBasisFunctions(obj.quadrature,im,is,xiMaster,xiSlave);
 
         [Ns,Nm,Nmult] = ...
-          obj.reshapeBasisFunctions(ncomp,Ns,Nm,Nmult);
+          reshapeBasisFunctions(ncomp,Ns,Nm,Nmult);
 
         if ncomp > 1
           % vector field, local reference needed
@@ -240,48 +242,6 @@ classdef MeshTying < InterfaceSolver
     end
 
 
-    function computeMortarInterpolation(obj)
-
-      processMortarPairs(obj.quadrature); 
-
-      inactiveMaster = ~ismember(1:obj.getMesh(MortarSide.master).nSurfaces,...
-        obj.quadrature.interfacePairs(:,2));
-      [~, ~, obj.quadrature.interfacePairs(:,2)] = ...
-        unique(obj.quadrature.interfacePairs(:,2));
-
-      inactiveSlave = ~ismember(1:obj.getMesh(MortarSide.slave).nSurfaces,...
-        obj.quadrature.interfacePairs(:,1));
-      [~, ~, obj.quadrature.interfacePairs(:,1)] = ...
-        unique(obj.quadrature.interfacePairs(:,1));
-
-      % remove master elements
-      obj.interfMesh.removeMortarSurface(1,inactiveMaster);
-
-      % remove slave elements
-      obj.interfMesh.removeMortarSurface(2,inactiveSlave);
-
-
-    end
-
-
-    function sideStr = getSide(obj,idDomain)
-      % get side of the interface 'master' or 'slave' based on the
-      % domains input id
-      isMaster = obj.idDomain(1) == idDomain;
-      isSlave = obj.idDomain(2) == idDomain;
-      if isMaster
-        sideStr = 'master';
-      elseif isSlave
-        sideStr = 'slave';
-      elseif isMaster && isSlave
-        sideStr = 'master'+'slave';
-      else
-        % consider the case where both sides belong to the same domains,
-        % something like 'master_slave'
-        error('Input domains not belonging to the interface');
-      end
-    end
-
     function [surfaceStr,pointStr] = writeVTK(obj,fac,varargin)
 
       multCurr = obj.state.multipliers;
@@ -314,16 +274,5 @@ classdef MeshTying < InterfaceSolver
   end
 
 
-  methods (Static)
- 
-    function varargout = reshapeBasisFunctions(nc,varargin)
-      assert(numel(varargin)==nargout);
-      varargout = cell(1,nargout);
-      for i = 1:numel(varargin)
-        varargout{i} = reshapeBasisF(varargin{i},nc);
-      end
-    end
-
-  end
 end
 
