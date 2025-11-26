@@ -3,43 +3,22 @@
 in a nonConforming simulation.
 -->
 <Problem>
-
   <simParam fileName = "simParam.xml" />
-
   <Domain>
-
     <Geometry fileName="ReservoirTest_Hexa.msh" />
-
     <Gauss nGP = "2" />
-
-
     <Materials fileName = "materials.xml"/>
-
     <BoundaryConditions fileName = "boundaryConditions.xml" />
-
-
     <Output
             outputFile = "output_DeepAquifer"
             printTimes= "0,0.5,1.5"
-            saveHistory = "1"/>
-
+            saveHistory = "1"
+    />
     <Solver>
-      
       <BiotFullySaturated>
-
-        <Poromechanics
-                       targetRegions = "1,2,3"
-                       />
-
-        <SinglePhaseFlow
-                         targetRegions = "2,3"
-                         scheme = "FiniteVolumesTPFA"
-                         />
-
+        <Poromechanics targetRegions = "1,2,3" />
+        <SinglePhaseFlowFVTPFA targetRegions = "2,3" />
       </BiotFullySaturated>
-
     </Solver>
-
   </Domain>
-
 </Problem>

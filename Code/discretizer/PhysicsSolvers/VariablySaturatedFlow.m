@@ -188,7 +188,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
               % theta = obj.simParams.theta;
               gamma = obj.material.getFluid().getFluidSpecWeight();
               [mob, dmob] = obj.computeMobilityBoundary(obj.state.data.pressure(ents),v,faceID);
-              tr = obj.getFaceTransmissibilities(faceID);
+              tr = obj.trans(faceID);
               press = obj.state.data.pressure(ents) - v;
               gravT =  gamma*(obj.mesh.cellCentroid(ents,3) ...
                 - obj.faces.faceCentroid(faceID,3));
@@ -212,7 +212,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
 
               v(v<=0)=0.;
               [mob, dmob] = obj.computeMobilityBoundary(obj.state.data.pressure(ents),v,faceID);
-              tr = obj.getFaceTransmissibilities(faceID);
+              tr = obj.trans(faceID);
               press = obj.state.data.pressure(ents) - v;
               gravT = gamma*(obj.mesh.cellCentroid(ents,3) ...
                 - obj.faces.faceCentroid(faceID,3));
@@ -231,7 +231,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlow
               % % [ents,~,ind] = unique(ents(pos));
               % % v=v(pos); faceID = faceID(pos);
               % % [mob, dmob] = obj.computeMobilityBoundary(state.pressure(ents),v,faceID);
-              % % tr = obj.getFaceTransmissibilities(faceID);
+              % % tr = obj.trans(faceID);
               % % press = state.pressure(ents) - v;
               % % gravT = gamma*(obj.elements.cellCentroid(ents,3) ...
               % %    - obj.faces.faceCentroid(faceID,3));
