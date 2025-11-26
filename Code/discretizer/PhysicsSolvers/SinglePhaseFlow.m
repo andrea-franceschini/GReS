@@ -75,7 +75,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     end
 
     function alpha = getRockCompressibility(obj,el)
-      if ismember(obj.mesh.cellTag(el),getTargetRegions(obj.dofm,["pressure","displacements"]));
+      if ismember(obj.mesh.cellTag(el),getTargetRegions(obj.dofm,["pressure","displacements"]))
         alpha = 0; %this term is not needed in a coupled formulation
       else
         if isfield(obj.materials.getMaterial(obj.mesh.cellTag(el)),"ConstLaw")

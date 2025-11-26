@@ -157,11 +157,11 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     end
 
     function gTerm = finalizeRHSGravTerm(obj,lw)
-      nCells = obj.dofm.getNumDoF(obj.fieldId);
+      nCells = obj.dofm.getNumbDoF(obj.fieldId);
       neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
       gTerm = accumarray(neigh(:),[lw.*obj.rhsGrav; ...
         -lw.*obj.rhsGrav],[nCells,1]);
-      gTerm = gTerm(obj.dofm.getActiveEnts(obj.fieldId));
+      gTerm = gTerm(obj.dofm.getActiveEntities(obj.fieldId));
     end
 
     function [dof,vals] = getBC(obj,id,t)
@@ -420,10 +420,10 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       pointStr(1).data = state.flux;
 
       cellStr = repmat(struct('name', 1, 'data', 1), 2, 1);
-      cellStr(1).name = 'permeability';
-      cellStr(1).data = state.perm;
-      cellStr(2).name = 'pressure';
-      cellStr(2).data = state.pressure;
+      cellStr(1).name = 'pressure';
+      cellStr(1).data = state.pressure;
+      cellStr(2).name = 'permeability';
+      cellStr(2).data = state.perm;      
       if isfield(state,"potential")
         cellStr(3).name = 'potential';
         cellStr(3).data = state.potential;
