@@ -4,14 +4,13 @@ input_dir = 'Inputs/';
 figures_dir = 'Figs/';
 
 typeDiscretization = "FEM";
-%% ------------------------------------------------------------------------
+%% ------------------------------ Set up the Domain -----------------------
 % Set the simulation parameters for the non-linear solver.
 simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'));
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(fullfile(input_dir,'materials.xml'));
 
-%% ------------------------------ Set up the Domain -----------------------
 % Create the Mesh object
 topology = Mesh();
 
