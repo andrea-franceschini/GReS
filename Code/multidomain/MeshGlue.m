@@ -233,7 +233,6 @@ classdef MeshGlue < Mortar
     function applyBCslave(obj,bc,t)
       ph = obj.solvers(2).bcs.getPhysics(bc);
       [bcEnts,~] = getBC(obj.solvers(2).getSolver(ph),bc,t);
-      bcEnts = removeSlaveBCdofs(obj,ph,bcEnts);
       obj.rhsSlave(bcEnts) = 0;
       obj.Jslave(:,bcEnts) = 0;
     end

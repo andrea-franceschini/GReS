@@ -804,7 +804,6 @@ classdef ContactMortar < Mortar
     function applyBCslave(obj,bc,t)
       ph = obj.solvers(2).bcs.getPhysics(bc);
       [bcEnts,~] = getBC(obj.solvers(2).getSolver(ph),bc,t);
-      bcEnts = removeSlaveBCdofs(obj,ph,bcEnts);
       obj.rhsUs(bcEnts) = 0;
       obj.Jsu(bcEnts,:) = 0;
       obj.Jst(:,bcEnts) = 0;

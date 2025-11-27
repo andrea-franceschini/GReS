@@ -1,3 +1,0 @@
-Fluid                               % material model
-9.8066e3      0.     1e-3      % specif weight (N/m3), compressibility-beta (Pa-1), dynamic viscosity (Pa/s)
-End

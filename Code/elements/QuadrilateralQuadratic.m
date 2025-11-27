@@ -379,4 +379,24 @@ classdef QuadrilateralQuadratic < FEM
     end
   end
 
+  methods (Static)
+
+    function out = checkInRange(coord,tol)
+      % check if reference coordinate in input are inside the reference
+      % element
+
+      if nargin < 2
+        tol = 1e-5;
+      end
+
+      xi  = coord(:,1);
+      eta = coord(:,2);
+
+      out = (xi  >= -1 - tol) & (xi  <= 1 + tol) & ...
+        (eta >= -1 - tol) & (eta <= 1 + tol);
+
+    end
+
+  end
+
 end

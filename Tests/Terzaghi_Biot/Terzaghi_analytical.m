@@ -1,4 +1,4 @@
-function Terzaghi_analytical(mesh, mat, pL)
+function Terzaghi_analytical(mesh, mat, pL, time)
 fprintf('Computing Terzaghi Analytical solution... \n');
 % number of terms for analyitcal soluton series
 nm = 1000;
@@ -29,14 +29,12 @@ nuU = (3*nu+biot*B*(1-2*nu))/(3-biot*B*(1-2*nu)); %undrained Poisson Coefficient
 c = 2*k*G*(1-nu)*(nuU-nu)/(dyn*biot^2*(1-nuU)*(1-2*nu)^2);
 gamma = B*(1+nuU)/(3*(1-nuU));
 
-
-t = OutState.readTime("outTime.dat");
 nz = 50; %number of calculation points along z-axis
 z = linspace(L_min,L_max,nz);
 [~,u0] = iniSol(z,z,M,pL,Ku,biot,G);
-[p,u] = TerzaghiSol(u0,z,z,t,nm,L,c,pL,biot,gamma,G,nu);
-save('Terzaghi_Analytical.mat','p','u','z','t')
-fprintf('Done computing Terzaghi analytical solution.');
+[p,u] = TerzaghiSol(u0,z,z,time,nm,L,c,pL,biot,gamma,G,nu);
+save('Terzaghi_Analytical.mat','p','u','z','time')
+fprintf('Done computing Terzaghi analytical solution.\n');
 end
 
 function [p,u] = TerzaghiSol(u0,zu,zp,t,nm,L,c,pL,biot,gamma,G,nu)

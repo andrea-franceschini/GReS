@@ -48,8 +48,9 @@ a function handle depending on space (x,y,z)
       >
 
     <BCentities
-                bcList = "1"
+                surfaceTags = "1"                
                 />
+    <!-- surfaceTags,bcList  = "1" -->
 
     <BCevent
              time = "0.0"
@@ -58,6 +59,10 @@ a function handle depending on space (x,y,z)
 
     <BCevent
              time = "5.0"
+             value = "0"
+             />
+    <BCevent
+             time = "10.0"
              value = "0"
              />
 

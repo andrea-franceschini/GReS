@@ -11,13 +11,13 @@ if isfield(outStruct,"Domain")
 end
 
 nD = numel(outStruct);
-domains = cell(nD,1);
+domains = [];
 
 for i = 1:nD
-  domains{i} = defineDomain(outStruct(i));
+  domains = [domains; defineDomain(outStruct(i))];
 end
 
-domains = cell2mat(domains);
+% domains = cell2mat(domains);
 
 end
 

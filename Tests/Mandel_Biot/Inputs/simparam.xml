@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model>
+  <!-- Simulation parameters common to all physical models -->
+  <simParam>
+    <Time 
+          Start="0."
+          End ="5.01"
+          DtInit= "2.5e-2"          
+          DtMin ="1.e-5"
+          DtMax ="1.e-1"
+          incrementFactor = "1."
+          choppingFactor = "Default" />
+
+    <Solver
+            Theta = "Default"
+            MaxNLIteration = "10"
+            RelativeTolerance = "1.e-8"
+            AbsoluteTolerance = "1.e-9" />
+  </simParam>
+</model>
