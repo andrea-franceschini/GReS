@@ -37,7 +37,6 @@ classdef MultidomainFCSolver < handle
 
       %
 
-      % initialize the state object
       for i = 1:obj.nDom
         obj.domains(i).applyDirVal(obj.t);
       end
@@ -52,13 +51,9 @@ classdef MultidomainFCSolver < handle
         obj.tStep = obj.tStep + 1;
         obj.t = obj.t + obj.dt;
 
-        if obj.simparams.verbosity > 0
-          fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
-          fprintf('-----------------------------------------------------------\n');
-        end
-        if obj.simparams.verbosity > 1
-          fprintf('Iter     ||rhs||\n');
-        end
+        gresLog().log(0,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
+        gresLog().log(0,'-----------------------------------------------------------\n');
+        gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
 
         for i = 1:obj.nDom
           obj.domains(i).applyDirVal(obj.t);
@@ -77,19 +72,18 @@ classdef MultidomainFCSolver < handle
         end
 
         rhs = assembleRhs(obj);
-
         rhsNorm = norm(cell2matrix(rhs),2);
+        rhsNormIt0 = rhsNorm;
 
         tolWeigh = obj.simparams.relTol*rhsNorm;
         obj.iter = 0;
+
+        flConv = false;
         %
 
-        if obj.simparams.verbosity > 1
-          fprintf('0     %e\n',rhsNorm);
-        end
+        gresLog().log(1,'0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
 
-        while ((rhsNorm > tolWeigh) && (obj.iter < obj.simparams.itMaxNR) ...
-            && (rhsNorm > absTol)) || obj.iter == 0
+        while ~flConv && (obj.iter < obj.simparams.itMaxNR) || obj.iter == 0
 
           obj.iter = obj.iter + 1;
 
@@ -127,12 +121,10 @@ classdef MultidomainFCSolver < handle
 
           rhs = assembleRhs(obj);
           rhsNorm = norm(cell2mat(rhs),2);
+          gresLog().log(1,'%d     %e     %e\n',obj.iter,rhsNorm,rhsNorm/rhsNormIt0);
 
-          if obj.simparams.verbosity > 1
-            fprintf('%d     %e\n',obj.iter,rhsNorm);
-          end
-        end
-        
+        end % end newton loop
+
 
         % Check for convergence
         flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
@@ -274,8 +266,8 @@ classdef MultidomainFCSolver < handle
 
         if obj.dt < obj.simparams.dtMin
           error('Minimum time step reached')
-        elseif obj.simparams.verbosity > 0
-          fprintf('\n %s \n','BACKSTEP');
+        else
+          gresLog().log(0,'\n %s \n','BACKSTEP')
         end
       end
     end
@@ -329,7 +321,7 @@ classdef MultidomainFCSolver < handle
 
       for iD = 1:obj.nDom
         nV = obj.domains(iD).dofm.getNumberOfVariables;
-        rhs{k+1:k+nV} = getRhs(obj.domains(iD));
+        rhs(k+1:k+nV) = getRhs(obj.domains(iD));
         k = k+nV;
       end
 

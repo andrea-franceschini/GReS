@@ -1,17 +1,18 @@
-outFileTop = "topBlock";
-outFileBottom = "bottomBlock";
+clear
+close all
 
+scriptFullPath = mfilename('fullpath');
 
-domainFile = 'Domains/domains.xml';
-interfFile = 'Domains/interface.xml';
-domains = buildModel(domainFile); 
-% set verbosity
-domains(1).simparams.setVerbosity(0);
-domains(2).simparams.setVerbosity(0);
+% Extract the directory containing the script
+scriptDir = fileparts(scriptFullPath);
 
-[interfaces,domains] = Mortar.buildInterfaces(interfFile,domains);
+cd(scriptDir);
 
-solver = ActiveSetContactSolver(domains,interfaces,5);
+simparams = SimulationParameters('constantSliding.xml');
+
+[interfaces,domains] = buildModel('constantSliding.xml');
+
+solver = ActiveSetContactSolver(simparams,domains,interfaces,5);
 
 %solver.simParameters.setBackstepSkipFlag(1);
 

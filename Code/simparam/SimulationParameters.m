@@ -18,7 +18,6 @@ classdef SimulationParameters < handle
     pTarget
     sTarget = 0.4
     NLSolver = 'Newton'
-    verbosity = 2
     goOnBackstep = 0;
     isTimeDependent = true;
   end
@@ -46,9 +45,6 @@ classdef SimulationParameters < handle
        obj.isTimeDependent = flag;
     end
 
-    function setVerbosity(obj,val)
-      obj.verbosity = val;
-    end
   end
   
   methods (Access = private)

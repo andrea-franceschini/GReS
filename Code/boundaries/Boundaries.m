@@ -23,11 +23,6 @@ classdef Boundaries < handle
       % linkBoundSurf2TPFAFace(obj,grid);
     end
 
-    function delete(obj)
-      remove(obj.db,keys(obj.db));
-      obj.db = [];
-    end
-
     % Check if the identifier defined by the user is a key of the Map object
     function bc = getData(obj,identifier)
       if (obj.db.isKey(identifier))

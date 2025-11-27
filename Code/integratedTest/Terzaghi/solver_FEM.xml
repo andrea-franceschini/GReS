@@ -2,7 +2,7 @@
 
 <Solver>
   <BiotFullySaturated>
-    <Poromechanics cellTags = "1" />
+    <Poromechanics targetRegions = "1" />
     <SinglePhaseFlowFEM targetRegions = "1" />
-  </BiotFullySaturated>
+  </BiotFullySaturated> 
 </Solver>

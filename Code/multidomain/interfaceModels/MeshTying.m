@@ -3,8 +3,6 @@ classdef MeshTying < InterfaceSolver
   % Standard mesh tying between non conforming interfaces
   
   properties
-
-    coupledVariables
     D
     M
     stabilizationMat
@@ -131,7 +129,7 @@ classdef MeshTying < InterfaceSolver
       f = @(a,b) pagemtimes(a,'ctranspose',b,'none');
 
       % loop over pairs of connected master/slave elements
-      for iPair = 1:obj.quadrature.numbMortarPairs
+      for iPair = 1:obj.quadrature.numbInterfacePairs
 
         is = obj.quadrature.interfacePairs(iPair,1);
         im = obj.quadrature.interfacePairs(iPair,2);
@@ -165,7 +163,7 @@ classdef MeshTying < InterfaceSolver
           tangIdx = setdiff(1:length(tDof), 1:3:length(tDof));
 
           % rotation of multipliers
-          R = getRotationMatrix(obj.contactHelper,is);
+          R = getRotationMatrix(obj.interfMesh,is);
           NmultR = pagemtimes(Nmult,R);
 
           % Reduce the dimension of multiplier basis functions exploiting
@@ -178,7 +176,7 @@ classdef MeshTying < InterfaceSolver
 
           % get normal at the gauss points (for warped facets...?)
           % move this call to interfaceMesh()
-          normalNodes = obj.contactHelper.getNodalNormal(is);
+          normalNodes = obj.interfMesh.getNodalNormal(is);
           normal = pagemtimes(Ns,normalNodes);
 
           % operator selecting only tangential components of the
@@ -433,6 +431,14 @@ classdef MeshTying < InterfaceSolver
 
     end
 
+
+  end
+
+  methods (Static)
+
+    function var = getCoupledVariables()
+      var = [];
+    end
 
   end
 end

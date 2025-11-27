@@ -43,6 +43,9 @@ classdef (Abstract) InterfaceSolver < handle
     % id of connected domains
     domainId
 
+    % list of variables coupled from the solver
+    coupledVariables
+
 
   end
 
@@ -50,12 +53,6 @@ classdef (Abstract) InterfaceSolver < handle
 
     % id of this interface for master and slave domain
     interfaceId
-
-  end
-
-  properties (Abstract)
-
-    coupledVariables 
 
   end
 
@@ -82,6 +79,14 @@ classdef (Abstract) InterfaceSolver < handle
 
     % write history to MAT-file
     writeMatFile(obj,t,tID);
+
+  end
+
+  methods (Abstract, Static)
+
+    % return the variables that are coupled from the interface solver
+    % if var = empty, the user can/must choose which variable can be coupled
+    var = getCoupledVariables(obj)
 
   end
 
@@ -248,7 +253,14 @@ classdef (Abstract) InterfaceSolver < handle
 
     function nDoFs = getNumbDoF(obj)
 
-      nDoFs = obj.nMult;
+      if ~isempty(obj.nMult)
+        nDoFs = obj.nMult;
+      else
+        ncomp = max(getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables));
+        obj.nMult = ncomp * getNumberOfEntities(obj.multiplierLocation,...
+                                                obj.getMesh(MortarSide.slave));
+        nDoFs = obj.nMult;
+      end
     end
 
 
@@ -305,10 +317,10 @@ classdef (Abstract) InterfaceSolver < handle
       [s,varId] = getSideAndVar(obj,side,varargin{:});
 
       if ~isempty(obj.domains(s).Jmu{varId})
-        obj.domains(s).Jum{obj.interfaceId(s)}{varId} = ...
-          obj.domains(s).Jum{obj.interfaceId(s)}{varId} + setVal;
+        obj.domains(s).Jmu{obj.interfaceId(s)}{varId} = ...
+          obj.domains(s).Jmu{obj.interfaceId(s)}{varId} + setVal;
       else
-        obj.domains(s).Jum{obj.interfaceId(s)}{varId} = setVal;
+        obj.domains(s).Jmu{obj.interfaceId(s)}{varId} = setVal;
       end
 
 
@@ -365,6 +377,7 @@ classdef (Abstract) InterfaceSolver < handle
 
     function setCoupledVariables(obj,input)
 
+      obj.coupledVariables = obj.getCoupledVariables();
 
       varMaster = getVariableNames(obj.domains(1).dofm);
       varSlave = getVariableNames(obj.domains(2).dofm);
@@ -400,7 +413,7 @@ classdef (Abstract) InterfaceSolver < handle
       masterSurf = getXMLData(interfaceInput.Master,0,"surfaceTag");
       slaveSurf = getXMLData(interfaceInput.Slave,0,"surfaceTag");
 
-      obj.interfMesh = interfaceMesh(obj.domains(1).grid.topology,...
+      obj.interfMesh = InterfaceMesh(obj.domains(1).grid.topology,...
         obj.domains(2).grid.topology,...
         masterSurf,slaveSurf);
 

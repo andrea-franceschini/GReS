@@ -266,10 +266,10 @@ classdef Discretizer < handle
       %   Only one field list is allowed; multiple fields will be concatenated
 
       if nargin == 1
-        rhs = cell2matrix(obj.rhs);
+        rhs = obj.rhs;
       elseif nargin == 2
         id = obj.dofm.getVariableId(varargin{1});
-        rhs = obj.rhs{id};
+        rhs = obj.rhs(id);
       else
         error("Too many input arguments")
       end

@@ -80,7 +80,7 @@ classdef FCSolver < handle
 
         % compute Rhs norm
         rhs = getRhs(obj.domain);
-        rhsNorm = norm(rhs,2);
+        rhsNorm = norm(cell2matrix(rhs),2);
         rhsNormIt0 = rhsNorm;
         residual(1,1) = rhsNormIt0;
         residual(1,2) = 1.;
@@ -96,7 +96,7 @@ classdef FCSolver < handle
           obj.iter = obj.iter + 1;
 
           % Get system Jacobian
-          J = cell2matrix(getJacobian(obj.domain));
+          J = getJacobian(obj.domain);
 
           % Solve linear system
           du = FCSolver.solve(J,rhs);
@@ -112,7 +112,7 @@ classdef FCSolver < handle
 
           rhs = getRhs(obj.domain);
           % compute Rhs norm
-          rhsNorm = norm(rhs,2);
+          rhsNorm = norm(cell2matrix(rhs),2);
           residual(obj.iter+1,1) = rhsNorm;
           residual(obj.iter+1,2) = rhsNorm/rhsNormIt0;
 
@@ -213,6 +213,8 @@ classdef FCSolver < handle
 
   methods (Static)
     function sol = solve(J,rhs)
+      J = cell2matrix(J);
+      rhs = cell2matrix(rhs);
       sol = J\(-rhs);
     end
 

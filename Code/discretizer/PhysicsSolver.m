@@ -200,9 +200,10 @@ classdef (Abstract) PhysicsSolver < handle
       % end
 
       % add 1 to diagonal entry of diagonal block
-      
-      obj.domain.J{bcVarId,bcVarId}...
-        (sub2ind(size(obj.domain.J{bcVarId,bcVarId}), bcDofs, bcDofs)) = 1;
+
+      J = obj.domain.J{bcVarId,bcVarId};
+      J(bcDofs + (bcDofs-1)*size(J,1)) = 1;
+      obj.domain.J{bcVarId,bcVarId} = J;
 
       if nargin > 3
         obj.domain.rhs{bcVarId}(bcDofs) = bcVals(sortId);

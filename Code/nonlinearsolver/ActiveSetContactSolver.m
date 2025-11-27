@@ -9,12 +9,20 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
 
   methods (Access = public)
-    function obj = ActiveSetContactSolver(domains,interfaces,varargin)
-      obj@MultidomainFCSolver(domains,interfaces)
-      setContactInterfaces(obj);
+    function obj = ActiveSetContactSolver(simparams,domains,interfaces,varargin)
+      
+      obj@MultidomainFCSolver(simparams,domains,interfaces)
+
+      % find which of the available interfaces have an active set
+      obj.contactInterf = find(cellfun(@(c) isprop(c,'activeSet'), obj.interfaces));
+      if isempty(obj.contactInterf)
+        error("Call to ActiveSetContactSolver but no activeSet property " + ...
+          " is available for interfaces in the model");
+      end
       if ~isempty(varargin)
         obj.maxActiveSetIters = varargin{1};
       end
+
     end
 
 
@@ -23,17 +31,14 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
       % Initialize the time step increment
       obj.dt = obj.simParameters.dtIni;
-      delta_t = obj.dt; % dynamic time step
 
       %
-      flConv = true; %convergence flag
+      flConv = false; %convergence flag
 
-      % initialize the state object
-      applyDirVal(obj);
       for i = 1:obj.nDom
-        obj.state(i).curr = obj.domains(i).state;
-        obj.state(i).prev =  copy(obj.state(i).curr);
+        obj.domains(i).applyDirVal(obj.t);
       end
+
 
 
       % Loop over time
@@ -43,12 +48,11 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
         % Update the simulation time and time step ID
         absTol = obj.simParameters.absTol;
         obj.tStep = obj.tStep + 1;
-        %new time update to fit the outTime list
+        obj.t = obj.t + obj.dt;
 
-        if obj.simParameters.verbosity > 0
-          fprintf('\n-----------------------------------------------------------\n');
-          fprintf('TIME STEP %i\n',obj.tStep)
-        end
+
+        gresLog().log(0,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
+        gresLog().log(0,'-----------------------------------------------------------\n');
 
         % reset active set iteration counter
         itAS = 0;
@@ -57,38 +61,42 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
         [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
 
+        for i = 1:obj.nDom
+          obj.domains(i).applyDirVal(obj.t);
+        end
 
-        applyDirVal(obj);
 
         while hasActiveSetChanged && itAS <= obj.maxActiveSetIters
           % outer active set loop
 
-          if obj.simParameters.verbosity > 0
-            fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t);
+          gresLog().log(0,fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t));
+          gresLog().log(0,fprintf('Active set iteration n. %i \n', itAS));
+          gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
+
+          for i = 1:obj.nDom
+            obj.domains(i).assembleSystem(obj.dt);
           end
 
-          if obj.simParameters.verbosity > 0
-            fprintf('Active set iteration n. %i \n', itAS)
+          for i = 1:obj.nInterf
+            obj.interfaces{i}.assembleConstraint();
           end
 
-          if obj.simParameters.verbosity > 1
-            fprintf('Iter     ||rhs||\n');
+          for i = 1:obj.nDom
+            obj.domains(i).applyBC(obj.t);
           end
 
-          computeMatricesAndRhs(obj);
-          applyBC(obj);
           rhs = assembleRhs(obj);
           rhsNorm = norm(cell2mat(rhs),2);
+          rhsNormIt0 = rhsNorm;
 
           tolWeigh = obj.simParameters.relTol*rhsNorm;
           obj.iter = 0;
           %
-          if obj.simParameters.verbosity > 1
-            fprintf('0     %e\n',rhsNorm);
-          end
+          gresLog().log(1,'0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
 
-          while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
-              && (rhsNorm > absTol)) || obj.iter == 0
+          flConv = false;
+
+          while (~flConv) && (obj.iter < obj.simParameters.itMaxNR)
 
             obj.iter = obj.iter + 1;
 
@@ -96,19 +104,40 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
             du = solve(obj,J,rhs);
 
-            % update primary variables and multipliers
-            updateState(obj,du);
+            c = 0;
 
-            computeMatricesAndRhs(obj);
-            applyBC(obj);
+            for i = 1:obj.nDom
+              nDof = obj.domains(i).getNumbDoF();
+              sol = du(c+1:c+nDof);
+              obj.domains(i).updateState(sol);
+              c = c + nDof;
+            end
+
+            for i = 1:obj.nInterf
+              nDof = obj.interfaces{i}.getNumbDoF();
+              sol = du(c+1:c+nDof);
+              obj.interfaces{i}.updateState(sol);
+              c = c + nDof;
+            end
+
+            for i = 1:obj.nDom
+              obj.domains(i).assembleSystem(obj.dt);
+            end
+
+            for i = 1:obj.nInterf
+              obj.interfaces{i}.assembleConstraint();
+            end
+
+            for i = 1:obj.nDom
+              obj.domains(i).applyBC(obj.t);
+            end
+
             rhs = assembleRhs(obj);
             rhsNorm = norm(cell2mat(rhs),2);
+            gresLog().log(1,'%d     %e     %e\n',obj.iter,rhsNorm,rhsNorm/rhsNormIt0);
 
-
-            if obj.simParameters.verbosity > 1
-              fprintf('%d     %e\n',obj.iter,rhsNorm);
-            end
           end
+
           %
           % Check for convergence
           flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);

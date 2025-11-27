@@ -45,6 +45,11 @@ classdef InterfaceMesh < handle
           mshSlave.getSurfaceMesh(surfSlave)];
         % remove unconnected surfaces from msh
         getConnectivityMatrix(obj);
+
+        if ~any(obj.elemConnectivity,"all")
+          error("Master surface %i and Slave surface %i are not connected",surfMaster,surfSlave)
+        end
+
         [obj.msh(1),globNodes1] = mshMaster.getSurfaceMesh(surfMaster,any(obj.elemConnectivity,2));
         [obj.msh(2),globNodes2] = mshSlave.getSurfaceMesh(surfSlave,any(obj.elemConnectivity,1));
       end
@@ -80,6 +85,7 @@ classdef InterfaceMesh < handle
 
       % call here what has been moved from contact
       obj.elem = interfSolver.quadrature.elements(2);
+      obj.multLocation = interfSolver.multiplierLocation;
       if interfSolver.multiplierLocation == entityField.surface
         computeNormals(obj);
         computeRotationMatrix(obj);
@@ -152,7 +158,7 @@ classdef InterfaceMesh < handle
 
     function computeNormals(obj)
       % compute normal of each element in the contact interface
-      nS = pbj.msh(2).nSurfaces;
+      nS = obj.msh(2).nSurfaces;
 
       obj.normals = zeros(nS,3);
 
