@@ -81,7 +81,6 @@ classdef (Abstract) PhysicsSolver < handle
     % update the output structures for printing purposes
     [cellData,pointData] = writeVTK(obj,t);
 
-
     % write history to MAT-file
     [cellData,pointData] = writeMatFile(obj,t,tID);
 

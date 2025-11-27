@@ -3,17 +3,13 @@ close all;
 input_dir = 'Inputs';
 figures_dir = 'Figs';
 
-%% ------------------------------------------------------------------------
-% Set the physics of the experiment
-model = ModelType("VariabSatFlow_FVTPFA");
-
+%% ------------------------------ Set up the Domain -----------------------
 % Set the simulation parameters for the non-linear solver.
-simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'),model);
+simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'));
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(fullfile(input_dir,"Materials",'matTable.xml'));
 
-%% ------------------------------ Set up the Domain -----------------------
 % Create the Mesh object
 topology = Mesh();
 
@@ -28,29 +24,25 @@ topology.importMesh(fullfile(input_dir,'Mesh',fileName));
 elems = Elements(topology,2);
 
 % Create an object of the "Faces" class and process the face properties
-faces = Faces(model,topology);
+faces = Faces(topology);
 
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
-% Degree of freedom manager
-dofmanager = DoFManager(topology,model);
-
 % Creating boundaries conditions.
-bound = Boundaries(fullfile(input_dir,'boundaries.xml'),model,grid);
+bound = Boundaries(fullfile(input_dir,'boundaries.xml'),grid);
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility
-printUtils = OutState(model,topology,fullfile(input_dir,'output.xml'));
+printUtils = OutState(topology,fullfile(input_dir,'output.xml'));
 
 % Create object handling construction of Jacobian and rhs of the model
-domain = Discretizer('ModelType',model,...
-                     'SimulationParameters',simParam,...
-                     'DoFManager',dofmanager,...
-                     'Boundaries',bound,...
-                     'OutState',printUtils,...
+domain = Discretizer('Grid',grid,...
                      'Materials',mat,...
-                     'Grid',grid);
+                     'Boundaries',bound,...
+                     'OutState',printUtils);
+
+domain.addPhysicsSolver(fullfile(input_dir,'solver.xml'));
 
 % set initial conditions directly modifying the state object
 z = elems.mesh.cellCentroid(:,3);
@@ -62,7 +54,8 @@ domain.state.data.pressure = gamma_w*(wLev-z);
 % customize the solution scheme.
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = FCSolver(domain,'SaveRelError',true,'SaveBStepInf',true);
+Solver = FCSolver(simParam,domain);
+% Solver = FCSolver(domain,'SaveRelError',true,'SaveBStepInf',true);
 
 % Solve the problem
 [simState] = Solver.NonLinearLoop();
@@ -89,17 +82,17 @@ if true
   nodesP = nodesP(ind);
 
   nrep = length(printUtils.results);
-  nvars = length(printUtils.results(2).expPress);
+  nvars = length(printUtils.results(2).pressure);
   press = zeros(nvars,nrep);
   sw = zeros(nvars,nrep);
   t = zeros(1,nrep);
-  for i=2:nrep
-    press(:,i) = printUtils.results(i).expPress;
-    sw(:,i) = printUtils.results(i).expSat;
-    t(i) = printUtils.results(i).expTime;
+  for i=1:nrep
+    press(:,i) = printUtils.results(i).pressure;
+    sw(:,i) = printUtils.results(i).saturation;
+    t(i) = printUtils.results(i).time;
   end
 
-  tind = 2:length(t);
+  tind = 1:length(t);
   t_max = t(end);
   t = t(tind)/t_max;
   tstr = strcat(num2str(t'),' T');
@@ -109,12 +102,8 @@ if true
   swplot = sw(nodesP,tind);
 
   % Vertical position of the column
-  if isFVTPFABased(model,'Flow')
-    ptsZ = elems.mesh.cellCentroid(nodesP,3);
-  else
-    ptsZ = topology.coordinates(nodesP,3);
-  end
-
+  ptsZ = elems.mesh.cellCentroid(nodesP,3);
+  
   % Values for normalized plots
   pos = find(ptsZ == max(ptsZ));
   H = max(topology.coordinates(:,3));
