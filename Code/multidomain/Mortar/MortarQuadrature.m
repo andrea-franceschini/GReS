@@ -8,7 +8,7 @@ classdef (Abstract) MortarQuadrature < handle
     interface    % instance of the interface solver object 
     interfacePairs
     gpCoords = cell(1,2);  % store local coordinates for each master and slave pair
-    numbMortarPairs
+    numbInterfacePairs
     elements
     multiplierType
     

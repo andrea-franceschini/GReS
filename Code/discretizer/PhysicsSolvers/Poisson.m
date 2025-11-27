@@ -321,7 +321,7 @@ end
 
   methods (Static)
     function out = getField()
-      out = "poissonField";
+      out = "u";
     end
   end
 end

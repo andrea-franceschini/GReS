@@ -47,26 +47,21 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     %   % physicsSolver method
     % end
 
-    function [cellData,pointData] = writeVTK(obj,t)
+    function [cellData,pointData] = writeVTK(obj,fac,t)
       % append state variable to output structure
       sOld = getStateOld(obj);
       sNew = getState(obj);
 
-      if isempty(sOld)
-        p = sNew.data.pressure;
-      else
-        fac = (t - sOld.t)/(sNew.t - sOld.t);
-        p = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
-      end
+      p = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
 
       outPrint = finalizeState(obj,p,t);
       [cellData,pointData] = buildPrintStruct(obj,outPrint);
     end
 
-    function writeMatFile(obj,t,tID)
+    function writeMatFile(obj,fac,tID)
+
       pOld = getStateOld(obj,obj.getField());
       pCurr = getState(obj,obj.getField());
-      fac = (t - getStateOld(obj).t)/(getState(obj).t - getStateOld(obj).t);
       obj.domain.outstate.results(tID).pressure = pCurr*fac+pOld*(1-fac);
     end
 

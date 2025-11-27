@@ -26,7 +26,7 @@ classdef ElementBasedQuadrature < MortarQuadrature
 
   methods
     function obj = ElementBasedQuadrature(interface,multType,input)
-      obj@MortarQuadrature(interface,multType,nGP,input);
+      obj@MortarQuadrature(interface,multType,input);
       obj.nGP = getXMLData(input,[],"nGP");
     end
 
@@ -53,7 +53,7 @@ classdef ElementBasedQuadrature < MortarQuadrature
       for is = 1:obj.msh(2).nSurfaces
 
         % reset slave element based info
-        elemSlave = obj.interface.getElem(2,is);
+        elemSlave = obj.getElem(2,is);
         obj.idSlave = is;
         obj.countGP = 0;
         obj.gpsCoord = getGPointsLocation(elemSlave,is);
@@ -123,8 +123,8 @@ classdef ElementBasedQuadrature < MortarQuadrature
     function xiM = projectGP(obj,is,im)
       % xi: reference coordinates of the gauss point
       % get nodal normal
-      elM = getElem(obj.interface,1,im);
-      elS = getElem(obj.interface,2,is);
+      elM = getElem(obj,1,im);
+      elS = getElem(obj,2,is);
       nodeS = obj.msh(2).surfaces(is,:);
       X = obj.gpsCoord;                    % real position of gauss pts
       xiS = obj.gpsCoordLoc;
@@ -202,7 +202,7 @@ classdef ElementBasedQuadrature < MortarQuadrature
         obj.gpCoords{i}(id2,:) = [];
       end
 
-      obj.numbMortarPairs = size(obj.interfacePairs,1);
+      obj.numbInterfacePairs = size(obj.interfacePairs,1);
     end
 
 

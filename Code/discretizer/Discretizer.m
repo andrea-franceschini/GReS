@@ -122,22 +122,38 @@ classdef Discretizer < handle
       out = obj.physicsSolvers(id);
     end
 
-    function out = getState(obj)
-      out = obj.state;
-    end
-
-    function out = getStateOld(obj)
-      out = obj.stateOld;
-    end
-
-
-    function addInterface(obj,interfId,interf)
-      % add mortar interface to current domain
-      if ~ismember(interfId,obj.interfaceList)
-        obj.interfaceList = sort([obj.interfaceList interfId]);
-        obj.interfaces{end+1} = interf;
+    function stat = getState(obj,varName)
+      % get a copy of a state variable field
+      if nargin < 2
+        stat = obj.state;
+      else
+        if ~isfield(obj.getState().data,varName)
+          error("Variable %s does not exist in the State object",varName)
+        end
+        stat = obj.getState().data.(varName);
       end
     end
+
+    function stat = getStateOld(obj,varName)
+      % get a copy of a state variable field
+      if nargin < 2
+        stat = obj.stateOld;
+      else
+        if ~isfield(obj.getStateOld().data,varName)
+          error("Variable %s does not exist in the StateOld object",varName)
+        end
+        stat = obj.getStateOld().data.(varName);
+      end
+    end
+
+
+    % function addInterface(obj,interfId,interf)
+    %   % add mortar interface to current domain
+    %   if ~ismember(interfId,obj.interfaceList)
+    %     obj.interfaceList = sort([obj.interfaceList interfId]);
+    %     obj.interfaces{end+1} = interf;
+    %   end
+    %end
 
 
     function assembleSystem(obj,dt)
@@ -227,8 +243,6 @@ classdef Discretizer < handle
     function [Jum,Jmu] = getInterfaceJacobian(obj,interfaceId)
 
       % get the multidomain coupling blocks for a certain interface
-      interf = obj.interfaces(interfaceId);
-
       Jum = obj.Jum{interfaceId};
       Jmu = obj.Jmu{interfaceId};
 
@@ -255,7 +269,7 @@ classdef Discretizer < handle
         rhs = cell2matrix(obj.rhs);
       elseif nargin == 2
         id = obj.dofm.getVariableId(varargin{1});
-        rhs = cell2matrix(obj.rhs(id));
+        rhs = obj.rhs{id};
       else
         error("Too many input arguments")
       end
@@ -286,9 +300,15 @@ classdef Discretizer < handle
           assert(obj.state.t - obj.stateOld.t > eps('double'),...
             'Time step is too small for printing purposes');
 
-          writeVTK(obj,time);
+          % compute factor to interpolate current and old state variables
+          fac = (time - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
+          if isnan(fac) || isinf(fac)
+            fac = 1;
+          end
 
-          writeMatFile(obj,time,obj.outstate.timeID);
+          writeVTK(obj,fac,time);
+
+          writeMatFile(obj,fac,obj.outstate.timeID);
 
           obj.outstate.timeID = obj.outstate.timeID + 1;
 
@@ -373,7 +393,7 @@ classdef Discretizer < handle
     end
 
 
-    function writeVTK(obj,time)
+    function writeVTK(obj,fac,time)
       % write results to VTKoutput
 
       if obj.outstate.writeVtk
@@ -381,9 +401,9 @@ classdef Discretizer < handle
         for solv = obj.solverNames
           solver = getPhysicsSolver(obj,solv);
 
-          cellData3D = [];
-          pointData3D = [];
-          [cellData,pointData] = writeVTK(solver,time);
+          cellData3D = struct('name', [], 'data', []);
+          pointData3D = struct('name', [], 'data', []);
+          [cellData,pointData] = writeVTK(solver,fac,time);
           cellData3D = OutState.mergeOutFields(cellData3D,cellData);
           pointData3D = OutState.mergeOutFields(pointData3D,pointData);
         end
@@ -395,7 +415,7 @@ classdef Discretizer < handle
     end
 
 
-    function writeMatFile(obj,time,timeID)
+    function writeMatFile(obj,fac,timeID)
       % write to MAT-file
 
       if obj.outstate.writeSolution
@@ -403,7 +423,7 @@ classdef Discretizer < handle
         obj.outstate.results(timeID).time = obj.outstate.timeList(timeID);
 
         for solv = obj.solverNames
-          getPhysicsSolver(obj,solv).writeMatFile(time,timeID);
+          getPhysicsSolver(obj,solv).writeMatFile(fac,timeID);
         end
 
       end

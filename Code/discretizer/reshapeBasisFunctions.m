@@ -1,6 +1,14 @@
+function varargout = reshapeBasisFunctions(nc,varargin)
+assert(numel(varargin)==nargout);
+varargout = cell(1,nargout);
+for i = 1:numel(varargin)
+  varargout{i} = reshapeBasisF(varargin{i},nc);
+end
+end
+
 function Nout = reshapeBasisF(basis,nc)
 
-% expand and reshape basis function matrix to match number of components 
+% expand and reshape basis function matrix to match number of components
 % input: nEnts x nGP
 % output: nc x nEnts x nG
 

@@ -78,10 +78,10 @@ classdef (Abstract) PhysicsSolver < handle
     updateState(obj,solution);
 
     % update the output structures for printing purposes
-    [cellData,pointData] = writeVTK(obj,t);
+    [cellData,pointData] = writeVTK(obj,interpolationFactor,t);
 
     % write history to MAT-file
-    [cellData,pointData] = writeMatFile(obj,t,tID);
+    writeMatFile(obj,interpolationFactor,tID);
 
   end
 
@@ -131,6 +131,7 @@ classdef (Abstract) PhysicsSolver < handle
     end
 
     function goBackState(obj)
+      % base method to move back the state when convergence is not reached
 
       obj.domain.state = copy(obj.domain.stateOld);
 
@@ -189,11 +190,17 @@ classdef (Abstract) PhysicsSolver < handle
       % symmetry)
       % if isSymmetric(obj)
       %   for i = 1:nV
-      %     obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+      %   obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+      % end
+      % 
+      % for iI = 1:numel(obj.domain.interfaces)
+      %   if ~isempty(obj.domain.Jum{bcVarId})
+      %     obj.domain.Jmu{iI}{bcVarId}(:,bcDofs) = 0;
       %   end
       % end
 
       % add 1 to diagonal entry of diagonal block
+      
       obj.domain.J{bcVarId,bcVarId}...
         (sub2ind(size(obj.domain.J{bcVarId,bcVarId}), bcDofs, bcDofs)) = 1;
 
@@ -208,6 +215,9 @@ classdef (Abstract) PhysicsSolver < handle
     function J = getJacobian(obj,varargin)
 
       % get the Jacobian blocks affected by the solver
+      % differently from the getJacobian() in Discretizer, this method
+      % returns a matrix ready to perform computations
+
       if nargin < 2
         J = obj.domain.getJacobian(obj.getField());
       else

@@ -67,14 +67,9 @@ classdef FCSolver < handle
         % Apply the Dirichlet condition value to the solution vector
         applyDirVal(obj.domain,obj.t);
         %
-        if obj.simparams.verbosity > 0
-          fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
-          fprintf('-----------------------------------------------------------\n');
-        end
-        if obj.simparams.verbosity > 1
-          % fprintf('Iter     ||rhs||\n');
-          fprintf('Iter     ||rhs||     ||rhs||/||rhs_0||\n');
-        end
+        gresLog().log(0,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
+        gresLog().log(0,'-----------------------------------------------------------\n');
+        gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
 
         % Compute Rhs and matrices of NonLinear models
         % Loop over available linear models and compute the jacobian
@@ -94,10 +89,7 @@ classdef FCSolver < handle
         tolWeigh = obj.simparams.relTol*rhsNorm;
         obj.iter = 0;
         %
-        if obj.simparams.verbosity > 1
-          % fprintf('0     %e\n',rhsNorm);
-          fprintf('0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
-        end
+        gresLog().log(1,'0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
 
         while ((rhsNorm > tolWeigh) && (obj.iter < obj.simparams.itMaxNR) ...
             && (rhsNorm > absTol)) || obj.iter == 0
@@ -124,9 +116,7 @@ classdef FCSolver < handle
           residual(obj.iter+1,1) = rhsNorm;
           residual(obj.iter+1,2) = rhsNorm/rhsNormIt0;
 
-          if obj.simparams.verbosity > 1
-            fprintf('%d     %e     %e\n',obj.iter,residual(obj.iter+1,1),residual(obj.iter+1,2));
-          end
+          gresLog().log(1,'%d     %e     %e\n',obj.iter,residual(obj.iter+1,1),residual(obj.iter+1,2));
         end
         %
 
@@ -189,7 +179,6 @@ classdef FCSolver < handle
         % here copy current state to old state
         advanceState(obj.domain);
 
-
         % go to next time step
         tmpVec = obj.simparams.multFac;
         obj.dt = min([obj.dt * min(tmpVec), obj.simparams.dtMax]);
@@ -213,11 +202,11 @@ classdef FCSolver < handle
 
         if obj.dt < obj.simparams.dtMin
           error('Minimum time step reached')
-        elseif obj.simparams.verbosity > 0
-          fprintf('\n %s \n','BACKSTEP');
+        else 
+          gresLog().log(0,'\n %s \n','BACKSTEP')
         end
-
       end
+
     end
 
   end

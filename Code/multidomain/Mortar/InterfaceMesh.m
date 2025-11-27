@@ -1,4 +1,4 @@
-classdef interfaceMesh < handle
+classdef InterfaceMesh < handle
   % Manager for topological information and operation on interfaces between
   % meshes
 
@@ -19,9 +19,17 @@ classdef interfaceMesh < handle
     f2e
     avgNodNormal    % average nodal normal for master and slave side
   end
+
+  properties
+    rotationMat             % store global rotation matrices for each element
+    normals                 % element normal/slave normals
+    elem
+    multLocation
+  end
   
   methods
-    function obj = interfaceMesh(mshMaster,mshSlave,varargin)
+    function obj = InterfaceMesh(mshMaster,mshSlave,varargin)
+
       if nargin == 2
         % input are 2D meshes ready for processing
         obj.msh = [mshMaster,mshSlave];
@@ -60,15 +68,23 @@ classdef interfaceMesh < handle
       obj.elemConnectivity = cs.elemConnectivity;
     end
 
-    function finalizeInterfaceGeometry(obj,interface)
+    function finalizeInterfaceGeometry(obj,interfSolver)
 
       % finalize geometry and connectivity once the slave interface is
       % precisely defined
       setupEdgeTopology(obj,1);
       setupEdgeTopology(obj,2);
-      mshMaster = interface.domains(1).grid.topology;
-      mshSlave = interface.domains(2).grid.topology;
+      mshMaster = interfSolver.domains(1).grid.topology;
+      mshSlave = interfSolver.domains(2).grid.topology;
       obj.buildFace2CellMap([mshMaster mshSlave]);
+
+      % call here what has been moved from contact
+      obj.elem = interfSolver.quadrature.elements(2);
+      if interfSolver.multiplierLocation == entityField.surface
+        computeNormals(obj);
+        computeRotationMatrix(obj);
+      end
+
     end
 
     function removeMortarSurface(obj,side,id)
@@ -104,16 +120,73 @@ classdef interfaceMesh < handle
 
     end
 
-%     function list = getActiveCells(obj,side,id)
-%       % side: 1 -> master side:2 -> slave
-%       if nargin == 2
-%         list = obj.activeCells{side};
-%       elseif nargin == 3
-%         list = obj.activeCells{side}(id);
-%       else
-%         error('Too many input arguments')
-%       end
-%     end
+    function R = getRotationMatrix(obj,elemId)
+      
+      % get rotation matrix of entity i
+      if obj.multLocation == entityField.surface
+        R = obj.rotationMat(elemId,:);
+        R = reshape(R,3,3);
+      elseif obj.multLocation == entityField.node
+        n = getNodalNormal(obj,elemId);
+        sz = size(n,1);
+        R = zeros(sz(1));
+        for i = 1:3:sz(1)
+          R(i:i+2,i:i+2) = obj.computeRot(n(i:i+2));
+        end
+      end
+
+    end
+
+    function n = computeNormalinGP(obj,i)
+
+      % return a 3D matrix 3x1xnG with the normal evaluated in each gp
+      el = getSurfElementByID(obj.elem,i);
+      nG = el.GaussPts.nNode;
+      n = zeros(3,nG);
+      for i = 1:nG
+        xg = el.GaussPts.coord(i,:);
+        n(:,i) = el.computeNormal(i,xg);
+      end
+      n = reshape(3,1,nG);
+    end
+
+    function computeNormals(obj)
+      % compute normal of each element in the contact interface
+      nS = pbj.msh(2).nSurfaces;
+
+      obj.normals = zeros(nS,3);
+
+      for elId = 1:nS
+        elType = getSurfElementByID(obj.elem,elId);
+        obj.normals(elId,:) = computeNormal(elType,elId);
+      end
+    end
+
+    function n = getNodalNormal(obj,elemId)
+      nodeId = obj.elem.mesh.surfaces(elemId,:);
+      n = obj.avgNodNormal{2}(nodeId,:);
+      n = reshape(n',[],1);
+    end
+
+    function n = getNormal(obj,elemId)
+      n = obj.normals(elemId,:);
+      n = reshape(n,3,1);
+    end
+
+    function computeRotationMatrix(obj)
+      % compute rotation matrix of each element in the contact interface
+      % this maps traction dofs to global reference frame
+
+      nS = size(obj.normals,1);
+      obj.rotationMat = zeros(nS,9);
+
+      for i = 1:nS
+        n = obj.normals(i,:);
+        R = obj.computeRot(n);
+        obj.rotationMat(i,:) = R(:);
+      end
+    end
+
   end
 
 
@@ -293,6 +366,44 @@ classdef interfaceMesh < handle
       end
     end
 
+
+  end
+
+  methods (Static)
+
+    function R = computeRot(n)
+
+      % compute rotation matrix associated with an input normal
+      n = reshape(n,1,[]);
+      n = n / norm(n);   % normalize input normal
+
+      % Pick a vector not parallel to n (to start Gram–Schmidt)
+      if abs(n(1)) < 0.9
+        tmp = [1,0,0];
+      else
+        tmp = [0,1,0];
+      end
+
+      % First tangent: orthogonalize tmp against n
+      m1 = tmp - dot(tmp,n)*n;
+      m1 = m1 / norm(m1);
+
+      % Second tangent: orthogonal to both
+      m2 = cross(n,m1);
+      m2 = m2 / norm(m2);
+
+      % Assemble rotation matrix
+      R = [n', m1', m2'];
+
+      % Check orientation: enforce det=+1 (right-handed)
+      if det(R) < 0
+        m1 = -m1;
+        R = [n', m1', m2'];
+      end
+
+      assert(abs(det(R)-1.0) < 1e-12, ...
+        'Rotation matrix not orthogonal to machine precision');
+    end
 
   end
 

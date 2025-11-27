@@ -192,10 +192,10 @@ classdef BiotFullySaturated < PhysicsSolver
 
     end
 
-    function [cellDataBiot,pointDataBiot] = writeVTK(obj,t)
+        function [cellDataBiot,pointDataBiot] = writeVTK(obj,fac,t)
 
-      [cellDataFlow,pointDataFlow] = obj.flowSolver.writeVTK(t);
-      [cellDataMech,pointDataMech] = obj.mechSolver.writeVTK(t);
+          [cellDataFlow,pointDataFlow] = obj.flowSolver.writeVTK(fac,t);
+          [cellDataMech,pointDataMech] = obj.mechSolver.writeVTK(fac);
 
       cellDataBiot = OutState.mergeOutFields(cellDataMech,cellDataFlow);
 
@@ -207,19 +207,15 @@ classdef BiotFullySaturated < PhysicsSolver
 
     end
 
-    function writeMatFile(obj,t,tID)
+    function writeMatFile(obj,fac,tID)
 
-      obj.flowSolver.writeMatFile(t,tID);
-      obj.mechSolver.writeMatFile(t,tID);
+      obj.flowSolver.writeMatFile(fac,tID);
+      obj.mechSolver.writeMatFile(fac,tID);
 
 
     end
 
 
-    function advanceState(obj)
-      obj.mechSolver.advanceState();
-      obj.flowSolver.advanceState();
-    end
 
     function out = isLinear(obj)
       out = true;

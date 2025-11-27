@@ -35,39 +35,50 @@ classdef entityField
         tags = [];
       end
 
+      if mesh.nCells == 0
+        assert(obj == entityField.node || obj == entityField.surface,...
+          "Cannot retrieve entity %s from a 2D mesh object",obj);
+        % 2D mesh as input
+        source = mesh.surfaces;
+        sourceTag = mesh.surfaceTag;
+      else
+        source = mesh.cells;
+        sourceTag = mesh.cellTag;
+      end
+
       switch obj
         case entityField.node
           if isempty(tags)
-            ents = unique(mesh.cells(:));
+            ents = unique(source(:));
           else
-            cellsID = ismember(mesh.cellTag, tags);
-            ents = unique(mesh.cells(cellsID,:));
+            cellsID = ismember(sourceTag, tags);
+            ents = unique(source(cellsID,:));
           end
 
         case entityField.face
-          mesh = grid.topology;
-          faces = grid.faces;
+          mesh = mesh.topology;
+          faces = mesh.faces;
           fN = faces.faceNeighbors;
           if isempty(tags)
             ents = 1:size(fN,1);  % all faces
           else
-            cellsID = ismember(mesh.cellTag, tags);
+            cellsID = ismember(sourceTag, tags);
             ents = find(any(ismember(fN, find(cellsID)),2));
           end
 
         case entityField.cell
           if isempty(tags)
-            ents = 1:size(mesh.cells,1);
+            ents = 1:size(source,1);
           else
-            ents = find(ismember(mesh.cellTag, tags));
+            ents = find(ismember(sourceTag, tags));
           end
 
         case entityField.surface
-          % Replace with your interface extraction logic
+
           if isempty(tags)
-            ents = 1:size(mesh.surfaces,1);
+            ents = 1:size(source,1);
           else
-            ents = find(ismember(mesh.surfaceTag, tags));
+            ents = find(ismember(sourceTag, tags));
           end
         otherwise
           error('Unknown entityField type.');

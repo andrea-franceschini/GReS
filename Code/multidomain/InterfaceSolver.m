@@ -37,12 +37,16 @@ classdef (Abstract) InterfaceSolver < handle
     % print utilities
     outstate
 
-  end
-
-  properties (Access=private)
+    state
+    stateOld
 
     % id of connected domains
     domainId
+
+
+  end
+
+  properties (Access=private)
 
     % id of this interface for master and slave domain
     interfaceId
@@ -51,9 +55,7 @@ classdef (Abstract) InterfaceSolver < handle
 
   properties (Abstract)
 
-    coupledVariable 
-    state
-    stateOld
+    coupledVariables 
 
   end
 
@@ -67,7 +69,7 @@ classdef (Abstract) InterfaceSolver < handle
   methods (Abstract)
 
     % intialize the state object
-    initializeConstraint(obj);
+    registerInterface(obj);
 
     % assemble the constraint matrices
     assembleConstraint(obj);
@@ -75,14 +77,17 @@ classdef (Abstract) InterfaceSolver < handle
     % update the state after solving a linear system
     updateState(obj,du);
 
-    % advance the state after reaching time step convergence
-    advanceState(obj);
+    % update the output structures for printing purposes
+    [cellData,pointData] = writeVTK(obj,t);
+
+    % write history to MAT-file
+    writeMatFile(obj,t,tID);
 
   end
 
   methods
 
-    function obj = InterfaceSolver(domains,inputStruct)
+    function obj = InterfaceSolver(id,domains,inputStruct)
 
       % domain:  handle to the Discretizer object storing all the
       % information of the model
@@ -96,50 +101,312 @@ classdef (Abstract) InterfaceSolver < handle
       end
 
       obj.domainId = [getXMLData(inputStruct.Master,[],"domainId");
-                      getXMLData(inputStruct.Slave,[],"domainId")];
+        getXMLData(inputStruct.Slave,[],"domainId")];
 
       % store handle to connected domains
       obj.domains = [domains(obj.domainId(1));
-                     domains(obj.domainId(2))];
+        domains(obj.domainId(2))];
 
       % add handle of this object to the list of interfaces of connected
       % domains
-      obj.interfaceId = [numel(obj.domains(1).interfaces),...
-                         numel(obj.domains(2).interfaces)] + 1;
+      master = getSide(MortarSide.master);
+      slave = getSide(MortarSide.slave);
 
-      obj.domains(1).interfaces{obj.interfaceId(1)} = obj;
-      obj.domains(2).interfaces{obj.interfaceId(2)} = obj;
+      obj.interfaceId = [numel(obj.domains(master).interfaces),...
+        numel(obj.domains(slave).interfaces)] + 1;
+
+      obj.domains(1).interfaces{obj.interfaceId(master)} = obj;
+      obj.domains(2).interfaces{obj.interfaceId(slave)} = obj;
+      obj.domains(1).interfaceList(obj.interfaceId(master)) = id;
+      obj.domains(2).interfaceList(obj.interfaceId(slave)) = id;
+
 
       % initialize interfaces jacobian and rhs blocks to match same number
       % of variable of connected domains
-      nVarMaster = getNumberOfVariables(obj.domains(1).dofm);
-      nVarSlave =  getNumberOfVariables(obj.domains(2).dofm);
+      dofMaster = getDoFManager(obj,MortarSide.master);
+      dofSlave = getDoFManager(obj,MortarSide.slave);
+      nVarMaster = getNumberOfVariables(dofMaster);
+      nVarSlave =  getNumberOfVariables(dofSlave);
 
       % initialize the jacobian blocks for domain coupling
-      obj.domains(1).Jum{end+1} = cell(nVarMaster,1);
-      obj.domains(2).Jum{end+1} = cell(nVarSlave,1);
+      obj.domains(master).Jum{end+1} = cell(nVarMaster,1);
+      obj.domains(slave).Jum{end+1} = cell(nVarSlave,1);
 
-      obj.domains(1).Jmu{end+1} = cell(1,nVarMaster);
-      obj.domains(2).Jmu{end+1} = cell(1,nVarSlave);
+      obj.domains(master).Jmu{end+1} = cell(1,nVarMaster);
+      obj.domains(slave).Jmu{end+1} = cell(1,nVarSlave);
+
+      % specify the variables to be coupled
+      setCoupledVariables(obj,inputStruct)
+  
+      setMortarInterface(obj,inputStruct);
+
+      % set print utilities to match the slave output (privisonal)
+      obj.outstate = OutState(getMesh(obj,MortarSide.slave),inputStruct);
 
     end
 
-    function setInterface(obj,interfaceInput)
 
-      % setup the interfaceMesh object and process the mortar quadrature
+    function advanceState(obj)
 
-      % the following operations are done in every interface solver
+      % note: state in interface solver is just a value struct
+      % we don't need a copy method to create a deep copy
+      obj.stateOld = obj.state;
+      
+    end
+
+    function goBackState(obj)
+
+      obj.state = obj.stateOld;
+
+    end
+
+
+    function printState(obj)
+      % print solution at the interface according to the print time in the
+      % input list 
+
+      if obj.outstate.timeID <= length(obj.outstate.timeList)
+
+        time = obj.outstate.timeList(obj.outstate.timeID);
+
+        % loop over print times within last time step
+        while time <= obj.state.t
+
+          assert(time >= obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
+            time, obj.stateOld.t, obj.state.t);
+
+          % assert(obj.state.t - obj.stateOld.t > eps('double'),...
+          %   'Time step is too small for printing purposes');
+
+          % compute factor to interpolate current and old state variables
+          fac = (time - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
+          if isnan(fac) || isinf(fac)
+            fac = 1;
+          end
+
+          % call methods inside the individual interface solvers
+          if obj.outstate.writeVtk
+            surfData2D = struct('name', [], 'data', []);
+            pointData2D = struct('name', [], 'data', []);
+            [surfData,pointData] = writeVTK(obj,fac,time);
+            surfData2D = OutState.mergeOutFields(surfData2D,surfData);
+            pointData2D = OutState.mergeOutFields(pointData2D,pointData);
+            obj.outstate.VTK.writeVTKFile(time, [], [], surfData2D, pointData2D);
+          end
+
+          if obj.outstate.writeSolution
+            writeMatFile(obj,fac,obj.outstate.timeID);
+          end
+
+          obj.outstate.timeID = obj.outstate.timeID + 1;
+
+          if obj.outstate.timeID > length(obj.outstate.timeList)
+            break
+          else
+            time = obj.outstate.timeList(obj.outstate.timeID);
+          end
+
+        end
+
+      end
+    end
+
+
+
+    function J = getJacobian(obj)
+
+      % return the multiplier jacobian block
+      J = obj.Jconstraint;
+
+    end
+
+    function rhs = getRhs(obj)
+
+      % return the multiplier jacobian block
+      rhs = obj.rhsConstraint;
+
+    end
+
+    function dofs = getMultiplierDoF(obj,el)
+
+      meshSlave = getMesh(obj,MortarSide.slave);
+      dofSlave = getDoFManager(obj,MortarSide.slave);
+      ncomp = dofSlave.getNumberOfComponents(obj.coupledVariables);
+
+      if nargin > 1
+
+      dofs = getEntityFromElement( obj.multiplierLocation,...
+                                   entityField.surface,...
+                                   meshSlave,...
+                                   el,...
+                                   ncomp );
+      else
+        dofs = 1:getNumberOfEntities(obj.multiplierLocation,meshSlave);
+        dofs = DoFManager.dofExpand(dofs,ncomp);
+      end
+    end
+
+    function nDoFs = getNumbDoF(obj)
+
+      nDoFs = obj.nMult;
+    end
+
+
+    %%% Get the coupling jacobian
+    function J = getJum(obj,side,varargin)
+
+      [s,varId] = getSideAndVar(obj,side,varargin{:});
+
+      J = obj.domains(s).Jum{obj.interfaceId(s)}{varId};
+    end
+
+    function J = getJmu(obj,side,varargin)
+
+      [s,varId] = getSideAndVar(obj,side,varargin{:});
+
+      J = obj.domains(s).Jmu{obj.interfaceId(s)}{varId};
+    end
+
+
+    % Set the coupling jacobian
+    function setJmu(obj,side,setVal,varargin)
+
+      [s,varId] = getSideAndVar(obj,side,varargin{:});
+
+      obj.domains(s).Jmu{obj.interfaceId(s)}{varId} = setVal;
+    end
+
+    function setJum(obj,side,setVal,varargin)
+
+      [s,varId] = getSideAndVar(obj,side,varargin{:});
+
+      obj.domains(s).Jum{obj.interfaceId(s)}{varId} = setVal;
+    end
+
+
+    %%% Add contribution to coupling jacobian
+    function addJum(obj,side,setVal,varargin)
+
+      [s,varId] = getSideAndVar(obj,side,varargin{:});
+
+      % assert(~isempty(obj.domains(s).Jmu{varId}),...
+      %   "Cannot add contribution to empty Jacobian block");
+
+      if ~isempty(obj.domains(s).Jmu{varId})
+        obj.domains(s).Jum{obj.interfaceId(s)}{varId} = ...
+          obj.domains(s).Jum{obj.interfaceId(s)}{varId} + setVal;
+      else
+        obj.domains(s).Jum{obj.interfaceId(s)}{varId} = setVal;
+      end
+    end
+
+    function addJmu(obj,side,setVal,varargin)
+
+      [s,varId] = getSideAndVar(obj,side,varargin{:});
+
+      if ~isempty(obj.domains(s).Jmu{varId})
+        obj.domains(s).Jum{obj.interfaceId(s)}{varId} = ...
+          obj.domains(s).Jum{obj.interfaceId(s)}{varId} + setVal;
+      else
+        obj.domains(s).Jum{obj.interfaceId(s)}{varId} = setVal;
+      end
+
+
+    end
+
+
+    %%% Add contribution to rhs
+    function addRhs(obj,side,setVal,varargin)
+
+      [s,varId] = getSideAndVar(obj,side,varargin{:});
+
+      assert(~isempty(obj.domains(s).rhs{varId}),...
+        "Cannot add contribution to empty rhs block");
+
+      obj.domains(s).rhs{varId} = obj.domains(s).rhs{varId} + setVal;
+    end
+
+    function var = getVariableField(obj,side,varargin)
+
+      s = getSide(side);
+
+      if nargin < 3
+        assert(isscalar(obj.coupledVariables),...
+          "The object couples multiple variable field. " + ...
+          "Specify the varIable name.")
+        var = obj.coupledVariables;
+      else
+        var = varargin{1};
+      end
+
+      dof = getDoFManager(obj,side);
+      ents = dof.getActiveEntities(var,1);
+      var = getState(obj.domains(s),var);
+      var = var(ents);
+
+    end
+
+
+    function dofm = getDoFManager(obj,side)
+      s = getSide(side);
+      dofm = obj.domains(s).dofm;
+    end
+
+    function mesh = getMesh(obj,side)
+      s = getSide(side);
+      mesh = obj.interfMesh.msh(s);
+    end
+
+  end
+
+
+
+  methods (Access=private)
+
+    function setCoupledVariables(obj,input)
+
+
+      varMaster = getVariableNames(obj.domains(1).dofm);
+      varSlave = getVariableNames(obj.domains(2).dofm);
+      sharedVars = intersect(varSlave,varMaster);
+
+      if ~isempty(obj.coupledVariables)
+        % the interfaceSolver specifies the coupled variables directly in
+        % the properties block
+        % only check that the interface is compatible with the available
+        % field
+
+        isInterfaceValid = all(ismember(obj.coupledVariables,sharedVars));
+
+        if ~isInterfaceValid
+          error("The interface attempts to couple a variable that is not" + ...
+            " available in any of the connected domains.")
+        end
+
+      else
+        % the interfaceSolver does not specify the coupled variables
+        % in the properties block
+
+        if isfield(input,"variable")
+          sharedVars = getXMLData(input,[],"variable");
+        end
+
+        obj.coupledVariables = sharedVars;
+      end
+    end
+
+    function setMortarInterface(obj,interfaceInput)
 
       masterSurf = getXMLData(interfaceInput.Master,0,"surfaceTag");
       slaveSurf = getXMLData(interfaceInput.Slave,0,"surfaceTag");
 
       obj.interfMesh = interfaceMesh(obj.domains(1).grid.topology,...
-                                     obj.domains(2).grid.topology,...
-                                     masterSurf,slaveSurf);
+        obj.domains(2).grid.topology,...
+        masterSurf,slaveSurf);
 
       checkInterfaceDisjoint(obj);
 
-      multType = getXMLData(interfaceInput,"P0","multiplierType");
+      multType = getXMLData(interfaceInput.Quadrature,"P0","multiplierType");
 
       switch multType
         case {"standard","dual"}
@@ -162,122 +429,26 @@ classdef (Abstract) InterfaceSolver < handle
       % Mortar quadrature preprocessing
       computeMortarInterpolation(obj);
 
-      % initialize the state object and the number of multipliers
-      initializeConstraint(obj)
-
       % Finalize interface geometry
       finalizeInterfaceGeometry(obj.interfMesh,obj);
 
-      % set print utilities to match the slave output (privisonal)
-      obj.outstate = OutState(obj.interfMesh.msh(2),interfaceInput);
-      
+      % initialize the state objects
+      obj.state.t = 0;
+      obj.stateOld = obj.state;
     end
 
 
-
-    function J = getJacobian(obj)
-
-      % return the multiplier jacobian block
-      J = obj.Jconstraint;
-
-    end
-
-    function dofs = getMultiplierDoF(obj,el)
-
-      ncomp = obj.domains(2).dofm.getNumberOfComponents(obj.coupledVariable);
-
-      dofs = getEntityFromElement( obj.multiplierLocation,...
-                                   entityField.surface,...
-                                   obj.interfMesh.msh(2),...
-                                   el,...
-                                   ncomp);
-    end
-
-    function nDoFs = getNumbDoF(obj)
-
-      nDoFs = obj.nMult;
-    end
-
-
-    % set methods to ease the access to the domain coupling matrices
-
-    function setJum(obj,side,setVal,varargin)
-
-      s = getSide(side);
-      if nargin < 4
-        assert(isscalar(obj.coupledVariable),...
-          "The objace couples multiple variable field. " + ...
-          "Specify the varIable name.")
-        varId = getDoF(side).getVariableId(obj.coupledVariable);
-      else
-        varId = getDoF(side).getVariableId(varargin{1});
-      end
-
-      obj.domains(s).Jum{obj.interfaceId(s)}{varId} = setVal;
-    end
-
-
-    function setJmu(obj,side,setVal,varargin)
-
-      s = getSide(side);
-      if nargin < 4
-        assert(isscalar(obj.coupledVariable),...
-          "The objace couples multiple variable field. " + ...
-          "Specify the varIable name.")
-        varId = getDoF(side).getVariableId(obj.coupledVariable);
-      else
-        varId = getDoF(side).getVariableId(varargin{1});
-      end
-
-      obj.domains(s).Jmu{obj.interfaceId(s)}{varId} = setVal;
-
-    end
-
-    function addRhs(obj,side,setVal,varargin)
-
-      % shortcut to add a contribution to the coupling rhs 
-
-      s = getSide(side);
-      if nargin < 4
-        assert(isscalar(obj.coupledVariable),...
-          "The objace couples multiple variable field. " + ...
-          "Specify the varIable name.")
-        varId = getDoF(side).getVariableId(obj.coupledVariable);
-      else
-        varId = getDoF(side).getVariableId(varargin{1});
-      end
-
-      assert(~isempty(obj.domains(s).rhs{varId}),...
-        "Cannot add contribution to empty rhs block");
-
-      obj.domains(s).rhs{varId} = obj.domains(s).rhs{varId} + setVal;
-
-    end
-
-
-    function dofm = getDoF(side,interf)
-      s = getSide(side);
-      dofm = interf.domains(s).dofm;
-    end
-
-  end
-
-
-
-  methods (Access=private)
-
-    
     function computeMortarInterpolation(obj)
 
-      processMortarPairs(obj.quadrature); 
+      processMortarPairs(obj.quadrature);
 
-      inactiveMaster = ~ismember(1:obj.interfMesh.msh(1).nSurfaces,...
+      inactiveMaster = ~ismember(1:getMesh(obj,MortarSide.master).nSurfaces,...
         obj.quadrature.interfacePairs(:,2));
 
       [~, ~, obj.quadrature.interfacePairs(:,2)] = ...
         unique(obj.quadrature.interfacePairs(:,2));
 
-      inactiveSlave = ~ismember(1:obj.interfMesh.msh(2).nSurfaces,...
+      inactiveSlave = ~ismember(1:getMesh(obj,MortarSide.master).nSurfaces,...
         obj.quadrature.interfacePairs(:,1));
 
       [~, ~, obj.quadrature.interfacePairs(:,1)] = ...
@@ -302,7 +473,7 @@ classdef (Abstract) InterfaceSolver < handle
       % domain 2 is the slave
       nodSlave = obj.interfMesh.local2glob{2};
 
-      bc = obj.solvers(2).bcs;
+      bc = obj.domains(2).bcs;
       bcList = bc.db.keys;
 
       for bcId = string(bcList)
@@ -358,12 +529,18 @@ classdef (Abstract) InterfaceSolver < handle
     end
 
 
-    function side = getSide(obj,domId)
+    function [s,v] = getSideAndVar(obj,side,varargin)
 
-      side = find(obj.domainId == domId);
+      % shortcut to add a contribution to the coupling rhs
 
-      if isempty(side)
-        error("Domain %i is not connected by the interface")
+      s = getSide(side);
+      if nargin < 3
+        assert(isscalar(obj.coupledVariables),...
+          "The object couples multiple variable field. " + ...
+          "Specify the varIable name.")
+        v = getDoFManager(obj,side).getVariableId(obj.coupledVariables);
+      else
+        v = getDoFManager(obj,side).getVariableId(varargin{1});
       end
 
     end
