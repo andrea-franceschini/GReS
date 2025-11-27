@@ -1,5 +1,5 @@
-function log = gres_log()
-log = getappdata(0,'gres_log');
+function log = gresLog()
+log = getappdata(0,'gresLog');
 assert(~isempty(log),['GReS logger not defined. Run initGReS to initialize ' ...
   'the simulator'])
 end
