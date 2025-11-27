@@ -108,6 +108,15 @@ classdef Discretizer < handle
 
     end
 
+    function goBackState(obj)
+
+      for solv = obj.solverNames
+        % loop over available solvers
+        obj.getPhysicsSolver(solv).goBackState();
+      end
+
+    end
+
 
     function out = getPhysicsSolver(obj,id)
       out = obj.physicsSolvers(id);

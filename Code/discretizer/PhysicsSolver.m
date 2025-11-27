@@ -77,7 +77,6 @@ classdef (Abstract) PhysicsSolver < handle
     % update the state variables after solving the linear system
     updateState(obj,solution);
 
-
     % update the output structures for printing purposes
     [cellData,pointData] = writeVTK(obj,t);
 

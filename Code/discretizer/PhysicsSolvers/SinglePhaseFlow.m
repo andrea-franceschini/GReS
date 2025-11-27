@@ -42,10 +42,10 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       end
     end
 
-    function advanceState(obj)
-      % does nothing for now, but needed to override the abstract
-      % physicsSolver method
-    end
+    % function advanceState(obj)
+    %   % does nothing for now, but needed to override the abstract
+    %   % physicsSolver method
+    % end
 
     function [cellData,pointData] = writeVTK(obj,t)
       % append state variable to output structure
