@@ -103,7 +103,7 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       end
       obj.interfacePairs(id,:) = [];
 
-      obj.numbMortarPairs = size(obj.interfacePairs,1);
+      obj.numbInterfacePairs = size(obj.interfacePairs,1);
     end
 
     

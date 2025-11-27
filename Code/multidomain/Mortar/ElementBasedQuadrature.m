@@ -202,7 +202,7 @@ classdef ElementBasedQuadrature < MortarQuadrature
         obj.gpCoords{i}(id2,:) = [];
       end
 
-      obj.numbMortarPairs = size(obj.interfacePairs,1);
+      obj.numbInterfacePairs = size(obj.interfacePairs,1);
     end
 
 
