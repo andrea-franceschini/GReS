@@ -224,7 +224,6 @@ classdef FCSolver < handle
 
   methods (Static)
     function sol = solve(obj,J,rhs)
-      J = FCSolver.cell2matJac(J);
       rhs = cell2mat(rhs);
 
       % Actual solution of the system

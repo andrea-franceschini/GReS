@@ -24,13 +24,26 @@ classdef MultidomainFCSolver < handle
     interfaces
     nDof
     results
+
+    % for the linear system solution
+    linsolver
   end
 
 
   methods (Access = public)
     
     function obj = MultidomainFCSolver(domains,interfaces)
-      obj.setNonLinearSolver(domains,interfaces);
+       obj.setNonLinearSolver(domains,interfaces);
+
+       % Check if there is manual input from the user, if not use defaults
+       start_dir = pwd;
+       chronos_xml = fullfile(start_dir,'linsolver.xml');
+       if(isfile(chronos_xml))
+          obj.linsolver = linearSolver(obj.domains,chronos_xml);
+       else
+          fprintf('Using default values for linsolver\n');
+          obj.linsolver = linearSolver(obj.domains);
+       end
     end
 
 
@@ -158,6 +171,7 @@ classdef MultidomainFCSolver < handle
       getSystemSize(obj);
       getNumField(obj);
       %setDoFcounter(obj);
+
     end
 
     function updateResults(obj)
@@ -193,32 +207,10 @@ classdef MultidomainFCSolver < handle
 
     function sol = solve(obj,J,rhs)
       % solve unstabilized system
-      J = FCSolver.cell2matJac(J);
       rhs = cell2mat(rhs);
-      tic
-      if size(J,1)>1e7
-        fprintf('Solving linear system...\n')
-        if norm(J-J','fro') < 1e-10
-          % matrix is practically symmetric
-          J = 0.5 * (J + J');
-          %           J = J + speye(size(J)) * 1e-10;  % Regularize diagonal
-          %           opts.type = 'ict';        % incomplete Cholesky with threshold
-          %           opts.droptol = 1e-3;       % drop tolerance
-          %           opts.diagcomp = 1e-3;      % diagonal compensation
-          L = ichol(J);
-          [sol,fl2,rr2,it2,rv2] = pcg(J,-rhs,1e-9,300,L,L');
-        else
-          p = symamd(J);
-          sol = J(p,p) \ -rhs(p);
-          sol(p) = sol;
-        end
-        fprintf('Linear system solved in %.4f s \n',toc)
-      else
-        %direct solver
-        sol = J\(-rhs);
-      end
-      %       clear Jmat
-      %       Jstab =
+
+      % Actual solution of the system
+      [sol,~] = obj.linsolver.Solve(J,-rhs,obj.t);
 
     end
 
