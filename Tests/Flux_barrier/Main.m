@@ -3,7 +3,7 @@ close all;
 input_dir = 'Inputs/';
 figures_dir = 'Figs/';
 
-typeDiscretization = "FEM";
+typeDiscretization = "FVTPFA";
 %% ------------------------------ Set up the Domain -----------------------
 % Set the simulation parameters for the non-linear solver.
 simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'));
