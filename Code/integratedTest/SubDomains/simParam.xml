@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<model>
-  <!-- Simulation parameters common to all physical models -->
-  <simParam>
-    <Time 
-          Start="0."
-          End ="1.99"
-          DtInit= "0.5"
-          DtMax ="0.5"
-          DtMin ="1e-5"
-          incrementFactor = "Default"
-          choppingFactor = "Default" />
+<!-- Simulation parameters common to all physical models -->
+<simParam>
+  <Time
+        Start="0."
+        End ="1.99"
+        DtInit= "0.5"
+        DtMax ="0.5"
+        DtMin ="1e-5"
+        incrementFactor = "Default"
+        choppingFactor = "Default" />
 
-  </simParam>
-</model>
+</simParam>

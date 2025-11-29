@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<simParam>
+  <Time
+        Start="0."
+        End ="10"
+        DtInit= "0.5"
+        DtMax ="1.0"
+        DtMin ="1e-5"
+        />
+</simParam>

@@ -12,5 +12,9 @@
 
           />
 
+    <Solver
+            RelativeTolerance = "1.0e-6"
+            />
+
   </simParam>
 </model>

@@ -3,17 +3,13 @@ close all;
 input_dir = 'Inputs';
 figures_dir = 'Figs';
 
-%% ------------------------------------------------------------------------
-% Set the physics of the experiment
-model = ModelType("VariabSatFlow_FVTPFA");
-
+%% ------------------------------ Set up the Domain -----------------------
 % Set the simulation parameters for the non-linear solver.
-simParam = SimulationParameters(fullfile(input_dir,'simparamMeshConv.xml'),model);
+simParam = SimulationParameters(fullfile(input_dir,'simparamMeshConv.xml'));
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(fullfile(input_dir,'materials.xml'));
 
-%% ------------------------------ Set up the Domain -----------------------
 result = struct('pressure',[],'saturation',[],'height',[]);
 meshList = [10 20 40 80 160];
 for i=1:length(meshList)
@@ -30,29 +26,25 @@ for i=1:length(meshList)
     elems = Elements(topology,2);
 
     % Create an object of the "Faces" class and process the face properties
-    faces = Faces(model,topology);
+    faces = Faces(topology);
 
     % Wrap Mesh, Elements and Faces objects in a structure
     grid = struct('topology',topology,'cells',elems,'faces',faces);
 
-    % Degree of freedom manager
-    dofmanager = DoFManager(topology,model);
-
     % Creating boundaries conditions.
-    bound = Boundaries(fullfile(input_dir,'boundaries.xml'),model,grid);
+    bound = Boundaries(fullfile(input_dir,'boundaries.xml'),grid);
 
     % ------------------ Set up and Calling the Solver -----------------------
     % Create and set the print utility
-    printUtils = OutState(model,topology,fullfile(input_dir,'outputMeshConv.xml'));
+    printUtils = OutState(topology,fullfile(input_dir,'outputMeshConv.xml'));
 
     % Create object handling construction of Jacobian and rhs of the model
-    domain = Discretizer('ModelType',model,...
-                     'SimulationParameters',simParam,...
-                     'DoFManager',dofmanager,...
-                     'Boundaries',bound,...
-                     'OutState',printUtils,...
-                     'Materials',mat,...
-                     'Grid',grid);
+    domain = Discretizer('Grid',grid,...
+                         'Materials',mat,...
+                         'Boundaries',bound,...
+                         'OutState',printUtils);
+
+    domain.addPhysicsSolver(fullfile(input_dir,'solver.xml'));
 
     % set initial conditions directly modifying the state object
     domain.state.data.pressure(:) = -9.8066e4;
@@ -61,7 +53,8 @@ for i=1:length(meshList)
     % customize the solution scheme.
     % Here, a built-in fully implict solution scheme is adopted with class
     % FCSolver. This could be simply be replaced by a user defined function
-    Solver = FCSolver(domain);
+    % Solver = FCSolver(domain);
+    Solver = FCSolver(simParam,domain);
 
     % Solve the problem
     [simState] = Solver.NonLinearLoop();
@@ -70,8 +63,8 @@ for i=1:length(meshList)
     printUtils.finalize()
 
     % Retriving the analisys information
-    pressure = printUtils.results(2).expPress;
-    saturation = printUtils.results(2).expSat;
+    pressure = printUtils.results(1).pressure;
+    saturation = printUtils.results(1).saturation;
 
     %Getting pressure and saturation solution for specified time from MatFILE
     numb = 0.;

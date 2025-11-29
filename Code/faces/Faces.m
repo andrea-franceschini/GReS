@@ -16,14 +16,13 @@ classdef Faces < handle
   
   properties (Access = private)
     mesh
-    model
   end
   
   methods (Access = public)
-    function obj = Faces(simmod,msh)
+    function obj = Faces(msh)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
-      obj.setFaces(simmod,msh);
+      obj.setFaces(msh);
     end
 %     Triangle:
 % 
@@ -79,79 +78,19 @@ classdef Faces < handle
   end
     
   methods (Access = private)
-    function setFaces(obj,simmod,msh)
+    function setFaces(obj,msh)
       obj.mesh = msh;
-      obj.model = simmod;
-% % %       if obj.mesh.nSurfaces > 0
-% % %         obj.nFaces = obj.mesh.nSurfaces;
-% % %         areaSurf = zeros(obj.mesh.nSurfaces,1);
-% % %         idTri = (obj.mesh.surfaceVTKType == 5);
-% % %         idQuad = (obj.mesh.surfaceVTKType == 9);
-% % %         if any(idTri)
-% % %           areaSurf(idTri) = obj.computeAreaTri(idTri);
-% % %         end
-% % %         if any(idQuad)
-% % %           areaSurf(idQuad) = obj.computeAreaQuad(idQuad);
-% % %         end
-% % %         tmpMat = obj.mesh.surfaces';
-% % %         topolVec = tmpMat(tmpMat ~= 0);
-% % %         [obj.loadedNodesSurf,~,rowID] = unique(topolVec);
-% % %         clear matTmp
-% % %         colID = repelem(1:obj.mesh.nSurfaces,obj.mesh.surfaceNumVerts);
-% % %         areaSurf = areaSurf./obj.mesh.surfaceNumVerts;
-% % %         aNod = repelem(areaSurf,obj.mesh.surfaceNumVerts); %./obj.mesh.surfaceNumVerts;
-% % %         obj.nodeArea = sparse(rowID,colID,aNod,length(obj.loadedNodesSurf),obj.mesh.nSurfaces);
-% % %       end
-      if obj.model.isFVTPFABased('Flow')
-        obj.setupFaceTopology;
-        obj.computeFaceProperties;
-        % obj.addNeighborsNormal;
-      end
+
+      obj.setupFaceTopology;
+      obj.computeFaceProperties;
+
     end
         
-%         id = 1:obj.mesh.nSurfaces;
-%         vTmp = double(obj.mesh.surfaceVTKType == 5) + 4*double(obj.mesh.surfaceVTKType == 9);
-%         obj.areaNod = zeros(sum(vTmp),1);
-%         obj.mapAreaNod = cumsum([1 vTmp']);
-%         idTri = id(vTmp == 1);
-%         idQuad = id(vTmp == 4);
-%         if ~isempty(idTri)
-%           obj.areaNod(obj.mapAreaNod(idTri)) = obj.computeAreaTri(idTri);
-%           obj.areaNod(obj.mapAreaNod(idTri)) = (1/3)*obj.areaNod(obj.mapAreaNod(idTri));
-%         end
-%         if ~isempty(idQuad)
-%           vTmp1 = obj.computeAreaQuad(idQuad);
-%           obj.areaNod(find(repelem(vTmp,vTmp)==4))=0.25*repelem(vTmp1,4);
-%         end
-%         obj.nFaces = obj.mesh.nSurfaces;
-%       end 
-%       %
-%       if obj.model.isFVTPFABased('Flow')
-%         obj.setupFaceTopology;
-%         obj.computeFaceProperties;
-%       end
-%     end
+
     
     function computeFaceProperties(obj)
 %       % Compute faces center point by averaging
-%       nNF = diff(obj.mapN2F);
-%       obj.faceCentroid = sparse(repelem(1:obj.nFaces,nNF), ...
-%          obj.nodes2Faces,(repelem(nNF,nNF)).^(-1),...
-%          obj.nFaces,obj.mesh.nNodes)*obj.mesh.coordinates;
-%       %
-%       d = obj.mesh.coordinates(obj.nodes2Faces,:) - repelem(obj.faceCentroid,nNF,1);
-%       % Works only for 4-point faces
-%       ptr = repmat(mod(1:4,4)+1,1,obj.nFaces) + repelem(cumsum([0 nNF(1:end-1)']),4);
-%       normalTri = cross(d,d(ptr,:),2);
-%       areaTri = vecnorm(normalTri,2,2)/2;
-%       faceArea = sum(reshape(areaTri,4,[]));
-%       obj.faceNormal = reshape(sum(reshape(normalTri',3,4,[]),2),3,[])';
-%       centroidTri = (obj.mesh.coordinates(obj.nodes2Faces,:) + ...
-%         obj.mesh.coordinates(obj.nodes2Faces(ptr),:) + repelem(obj.faceCentroid,nNF,1))/3;
-%       obj.faceCentroid = reshape(sum(reshape((areaTri.*centroidTri)',3,4,[]),2),3,[])';
-%       obj.faceCentroid = obj.faceCentroid.*(1./faceArea)';
-%       %
-%       obj.faceNormal = obj.faceNormal./(vecnorm(obj.faceNormal,2,2)).*(faceArea');
+
       % Compute faces center point by averaging
       nNF = diff(obj.mapN2F);
       obj.faceCentroid = sparse(repelem(1:obj.nFaces,nNF), ...
@@ -173,25 +112,7 @@ classdef Faces < handle
 
       obj.faceNormal = obj.faceNormal./(vecnorm(obj.faceNormal,2,2)).*faceArea;
 
-%       nNF = diff(obj.mapN2F);
-%       obj.faceCentroid = sparse(repelem(1:obj.nFaces,nNF), ...
-%          obj.nodes2Faces,(repelem(nNF,nNF)).^(-1),...
-%          obj.nFaces,obj.mesh.nNodes)*obj.mesh.coordinates;
-%       %
-%       d = obj.mesh.coordinates(obj.nodes2Faces,:) - repelem(obj.faceCentroid,nNF,1);
-%       ptr = repmat(mod(1:4,4)+1,1,obj.nFaces) + repelem(cumsum([0 nNF(1:end-1)']),4);
-%       normalTri = cross(d,d(ptr,:),2);
-%       areaTri = vecnorm(normalTri,2,2)/2;
-%       faceArea = sum(reshape(areaTri,4,[]));
-%       tmpMat = reshape(normalTri',3,4,[]);
-%       tmpMat2 = sum(tmpMat,2);
-%       obj.faceNormal = reshape(tmpMat2,3,[])';
-%       centroidTri = (obj.mesh.coordinates(obj.nodes2Faces,:) + obj.mesh.coordinates(obj.nodes2Faces(ptr),:) + repelem(obj.faceCentroid,nNF,1))/3;
-%       centroidTri = areaTri.*centroidTri;
-%       tmpMat = reshape(centroidTri',3,4,[]);
-%       tmpMat2 = sum(tmpMat,2);
-%       obj.faceCentroid = reshape(tmpMat2,3,[])';
-%       obj.faceCentroid = (1./faceArea)'.*obj.faceCentroid;
+
          
     end
     

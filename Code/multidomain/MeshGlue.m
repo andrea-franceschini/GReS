@@ -214,14 +214,14 @@ classdef MeshGlue < Mortar
     end
 
 
-    function computeRhs(obj)
-      % compute rhs contributions
-      % reset rhs multiplier
-      nMult = getNumbMultipliers(obj);
-      obj.rhsMult = zeros(nMult,1);
-      computeRhsMaster(obj);
-      computeRhsSlave(obj);
-    end
+    % function [rhsMaster,rhsSlave,rhsMult] = computeRhs(obj)
+    %   % compute rhs contributions
+    %   % reset rhs multiplier
+    %   nMult = getNumbMultipliers(obj);
+    %   obj.rhsMult = zeros(nMult,1);
+    %   computeRhsMaster(obj);
+    %   computeRhsSlave(obj);
+    % end
 
     function applyBCmaster(obj,bc,t)
       ph = obj.solvers(1).bcs.getPhysics(bc);

@@ -13,8 +13,6 @@ scriptDir = fileparts(scriptFullPath);
 % cd(scriptDir);
 
 %% ------------------------------------------------------------------------
-% Set physical models 
-model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 
 % Set parameters of the simulation
 simParam = SimulationParameters(fullfile(scriptDir,input_dir,"simparam.xml"),model);

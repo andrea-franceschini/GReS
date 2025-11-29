@@ -5,21 +5,18 @@ errorTol = 1e-2;
 testPath = mfilename('fullpath');
 cd(fileparts(testPath));
 
-model = ModelType("VariabSatFlow_FVTPFA");
+% model = ModelType("VariabSatFlow_FVTPFA");
 simParam = SimulationParameters(fullfile('simParam.xml'));
 
 % Create the topology object
 topology = Mesh();
 topology.importGMSHmesh(fullfile('Mesh','Column.msh'));
 elems = Elements(topology,2);
-faces = Faces(model,topology);
+faces = Faces(topology);
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
-% Degree of freedom manager
-dofmanager = DoFManager(topology,model);
-
 % Creating boundaries conditions.
-bound = Boundaries("richardsBCs.xml",model,grid);
+bound = Boundaries("richardsBCs.xml",grid);
 
 % to set initial condition.
 z = elems.mesh.cellCentroid(:,3);
@@ -29,10 +26,10 @@ sol = struct('time', [], 'pressure', [],'saturation', []);
 listMat = ["matTab.xml" "matAnal.xml"];
 for sim = 1:numel(listMat)
   run("runRichards.m");
-  sol(sim).time = [printUtils.results.expTime]';
-  sol(sim).time = sol(sim).time(2:end);
-  sol(sim).pressure = [printUtils.results.expPress]';
-  sol(sim).saturation = [printUtils.results.expSat]';
+  sol(sim).time = [printUtils.results.time]';
+  % sol(sim).time = sol(sim).time(2:end);
+  sol(sim).pressure = [printUtils.results.pressure]';
+  sol(sim).saturation = [printUtils.results.saturation]';
 
   clearvars mat domain Solver simState printUtils
 end

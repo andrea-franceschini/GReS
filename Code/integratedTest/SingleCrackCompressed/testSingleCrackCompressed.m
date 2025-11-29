@@ -1,4 +1,4 @@
-% write mesh files
+%% write mesh files
 outFile = "SingleCrack_grid";
 
 grid = Mesh();

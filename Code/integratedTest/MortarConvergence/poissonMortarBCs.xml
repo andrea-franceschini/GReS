@@ -44,7 +44,7 @@ a function handle depending on space (x,y,z)
       name = "ManufacturedSolution"
       type = "Dirichlet"
       entityType = "NodeBC"
-      physics = "Poisson"
+      variable = "u"
       >
 
     <BCentities

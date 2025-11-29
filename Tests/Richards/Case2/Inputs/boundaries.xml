@@ -42,7 +42,7 @@ a function handle depending on space (x,y,z)
   <BC name = "Bottom"
       type = "Dirichlet"
       entityType = "SurfBC"
-      physics = "VariablySaturatedFlow" >
+      variable = "pressure" >
 
     <BCentities
         surfaceTags = "1"
@@ -57,7 +57,7 @@ a function handle depending on space (x,y,z)
   <BC name = "Top"
       type = "Dirichlet"
       entityType = "SurfBC"
-      physics = "VariablySaturatedFlow" >
+      variable = "pressure" >
 
     <BCentities
         surfaceTags = "2"
