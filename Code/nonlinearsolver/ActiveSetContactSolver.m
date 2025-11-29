@@ -58,9 +58,9 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
         % reset active set iteration counter
         itAS = 0;
-        hasActiveSetChanged = true;
+        hasActiveSetChanged = true(numel(obj.contactInterf),1);
 
-        while hasActiveSetChanged && itAS <= obj.maxActiveSetIters
+        while any(hasActiveSetChanged) && itAS <= obj.maxActiveSetIters
           % outer active set loop
 
           gresLog().log(0,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
@@ -135,50 +135,27 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
             % Check for convergence
             flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
 
-          end
-
-          % set active set not changed by default
-          hasActiveSetChanged = false;
+          end % end newton loop
 
           if flConv % Newton Convergence
-            % Advance state of non linear models
+            
+            % update the active set
 
             for i = obj.contactInterf
-              hasActiveSetChanged = updateActiveSet(obj.interfaces{i});
+              hasActiveSetChanged(i) = updateActiveSet(obj.interfaces{i});
             end
 
             itAS = itAS + 1;
 
-            if ~hasActiveSetChanged
-            for i = 1:obj.nDom
-              obj.state(i).curr.t = obj.t;
-              if isPoromechanics(obj.domains(i).model)
-                obj.domains(i).getSolver('Poromechanics').advanceState();
-              end
-            end
-            end
-
-%             % this happen also if obj.maxActiveSetIters = 0, break loop
-%             if itAS >= obj.maxActiveSetIters 
-%               obj.state(1).curr.t = obj.t;
-%               obj.state(2).curr.t = obj.t;
-%               printState(obj);
-%               delta_t = manageNextTimeStep(obj,delta_t,flConv,hasActiveSetChanged);
-%               break
-%             end
-
-            if itAS == obj.maxActiveSetIters
+            if any(hasActiveSetChanged) && itAS == obj.maxActiveSetIters
+              % force backstep
               fprintf('Reached maximum number of active set iterations \n');
-              hasActiveSetChanged = false;
+              hasActiveSetChanged(:) = false;
               flConv = false;
             end
           end
 
-          if flConv
-            printState(obj);
-          end
-
-          delta_t = manageNextTimeStep(obj,delta_t,flConv,hasActiveSetChanged);
+          manageNextTimeStep(obj,flConv,hasActiveSetChanged);
 
         end % outer active set loop
       end % time marching
@@ -249,46 +226,73 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 % 
 %     end
 
-    function [dt] = manageNextTimeStep(obj,dt,newtonConv,activeSetChanged)
-      if ~newtonConv    % time step not converged
+
+
+    function manageNextTimeStep(obj,newtonConv,activeSetChanged)
+
+      % case 1: newton not converged (perform backstep)
+      if ~newtonConv 
+
+        for i = 1:obj.nDom
+          goBackState(obj.domains(i));
+        end
+
+        for i = 1:obj.nInterf
+          goBackState(obj.interfaces{i});
+        end
+
+        % time step not converged
         dt = dt/obj.simparams.divFac;
         obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
 
-        if min(dt,obj.dt) < obj.simparams.dtMin
-          if obj.simparams.goOnBackstep == 1
-            newtonConv = true;
-          elseif obj.simparams.goOnBackstep == 0
-            error('Minimum time step reached')
-          end
+        obj.t = obj.t - obj.dt;
+        obj.tStep = obj.tStep - 1;
+        obj.dt = obj.dt/obj.simparams.divFac;
+
+        if obj.dt < obj.simparams.dtMin
+          error('Minimum time step reached')
         else
-          if obj.simparams.verbosity > 0
-            fprintf('\n %s \n','BACKSTEP');
-            goBackState(obj);
-            obj.t = obj.t - obj.dt*obj.simparams.divFac;
-            obj.tStep = obj.tStep - 1;
-          end
+          gresLog().log(0,'\n %s \n','BACKSTEP')
         end
+
+        return 
       end
+
+      % case 2: newton convergence and active set not changed -> go to next
+      % steo
+
       if newtonConv && ~activeSetChanged  % converged time step
-        tmpVec = obj.simparams.multFac;
+
         for i = 1:obj.nDom
-          if isFlow(obj.domains(i).model)
-            pnew = obj.state(i).curr.data.pressure;
-            pold = obj.state(i).prev.data.pressure;
-            dpMax = max(abs(pnew-pold));
-            tmpVec = [tmpVec, (1+obj.simparams.relaxFac)* ...
-              obj.simparams.pTarget/(dpMax + obj.simparams.relaxFac* ...
-              obj.simparams.pTarget)];
-          end
+          dom = obj.domains(i);
+          dom.state.t = obj.t;
+          printState(dom);
+          advanceState(dom);
         end
-        obj.dt = min([obj.dt * min(tmpVec),obj.simparams.dtMax]);
+
+        for i = 1:obj.nInterf
+          interf = obj.interfaces{i};
+          interf.state.t = obj.t;
+          printState(interf);
+          advanceState(interf);
+        end
+
+        % go to next time step
+        tmpVec = obj.simparams.multFac;
+        obj.dt = min([obj.dt * min(tmpVec), obj.simparams.dtMax]);
         obj.dt = max([obj.dt obj.simparams.dtMin]);
-        goOnState(obj);
-        %
+
+        % limit time step to end of simulation time
         if ((obj.t + obj.dt) > obj.simparams.tMax)
           obj.dt = obj.simparams.tMax - obj.t;
         end
+
+        return
       end
+
+      % case 3: newton convergence but active set changed
+      % do nothing, keep current state() and stateOld()
+
     end
 
 

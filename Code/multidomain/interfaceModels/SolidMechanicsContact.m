@@ -117,16 +117,19 @@ classdef SolidMechanicsContact < MeshTying
         limitTraction = abs(obj.cohesion - tan(deg2rad(obj.phi))*t(1));
 
         % report traction during activeSet update
-        gresLog().log(2,['\n Element %i: traction: %1.4e %1.4e %1.4e   ' ...
+        gresLog().log(3,['\n Element %i: traction: %1.4e %1.4e %1.4e   ' ...
           'Limit tangential traction: %1.4e \n'],is,t(:), limitTraction)
 
-        obj.activeSet.curr(is) = obj.updateContactState(state,t,limitTraction,obj.activeSet.tol);
+        obj.activeSet.curr(is) = obj.updateContactState(state,t,...
+                                                        limitTraction, ...
+                                                        obj.state.normalGap(is),...
+                                                        obj.activeSet.tol);
 
       end
 
       % check if active set changed
       asNew = ContactMode.integer(obj.activeSet.curr);
-      asOld = ContactMode.integer(obj.activeSet.curr);
+      asOld = ContactMode.integer(oldActiveSet);
 
       diffState = asNew - asOld;
 
@@ -138,11 +141,11 @@ classdef SolidMechanicsContact < MeshTying
 
       hasChanged = any(diffState);
 
-      if gresLog().getVerbosity > 2
+      if gresLog().getVerbosity > 1
         % report active set changes
         da = asNew - asOld;
         d = da(asOld == 1);
-        assert(~any(d==2));
+        assert(~any(d==2));       % avoid stick to slip without newSlip
         fprintf('%i elements from stick to new slip \n',sum(d==1));
         fprintf('%i elements from stick to open \n',sum(d==3));
         d = da(asOld==2);
@@ -176,8 +179,8 @@ classdef SolidMechanicsContact < MeshTying
 
 
     function advanceState(obj)
-      % advance state to new time step
-      obj.domain.stateOld = copy(obj.domain.state);
+
+      obj.stateOld = obj.state;
       obj.activeSet.prev = obj.activeSet.curr;
 
       % reset the counter for changed states
@@ -206,62 +209,59 @@ classdef SolidMechanicsContact < MeshTying
 
 
 
-    function [cellStr,pointStr] = buildPrintStruct(obj,fac)
+    function [surfaceStr,pointStr] = writeVTK(obj,fac,varargin)
 
-      nCellData = 8;
+      outTraction = fac*obj.state.traction + ...
+        (1-fac)*obj.stateOld.traction;
+      outNormalGap = fac*obj.state.normalGap + ...
+        (1-fac)*obj.stateOld.normalGap;
+      outSlip = fac*obj.state.slip + ...
+        (1-fac)*obj.stateOld.slip;
+      outSliding = fac*obj.state.tangentialGap + ...
+        (1-fac)*obj.stateOld.tangentialGap;
 
-      cellStr = repmat(struct('name', 1, 'data', 1), nCellData, 1);
-      if nargin ==1
-        outTraction = obj.stateOld.traction;
-        outNormalGap = obj.normalGap.prev;
-        outSlip = obj.slip.prev;
-        outSliding = obj.tangentialGap.prev;
-      elseif nargin == 2
-        outTraction = fac*obj.state.traction + ...
-          (1-fac)*obj.stateOld.traction;
-        outNormalGap = fac*obj.normalGap.curr + ...
-          (1-fac)*obj.normalGap.prev;
-        outSlip = fac*obj.slip.curr + ...
-          (1-fac)*obj.slip.prev;
-        outSliding = fac*obj.tangentialGap.curr + ...
-          (1-fac)*obj.tangentialGap.prev;
-      else
-        error('Invalid number of input arguments for function buildPrintStruct');
-      end
-
-      % compute tangential norms
       tT = [outTraction(2:3:end),outTraction(3:3:end)];
       norm_tT = sqrt(tT(:,1).^2 + tT(:,2).^2);
 
-      %       gapT = [outNormalGap(2:3:end),outNormalGap(3:3:end)];
-      %       norm_gapT = sqrt(gapT(:,1).^2 + gapT(:,2).^2);
+      fractureState = ContactMode.integer(obj.activeSet.curr);
 
-      fractureState = obj.activeSet.curr;
-      %       fractureState(fractureState==3) = 2;
-      %       fractureState(fractureState==4) = 3;
+      pointStr = [];
 
-      cellStr(1).name = 'normal_gap';
-      cellStr(1).data = outNormalGap;
-      cellStr(2).name = 'slip_norm';
-      cellStr(2).data = outSlip;
-      cellStr(3).name = 'normal_stress';
-      cellStr(3).data = outTraction(1:3:end);
-      cellStr(4).name = 'tangential_traction_1';
-      cellStr(4).data = outTraction(2:3:end);
-      cellStr(5).name = 'tangential_traction_2';
-      cellStr(5).data = outTraction(3:3:end);
-      cellStr(6).name = 'tangential_traction_norm';
-      cellStr(6).data = norm_tT;
-      % print the fracture state
-      cellStr(7).name = 'fracture_state';
-      cellStr(7).data = fractureState; % [1 stick, 2 slip, 3 open]
-      cellStr(8).name = 'sliding_norm';
-      cellStr(8).data = outSliding; % [1 stick, 2 slip, 3 open]
+      entries = {
+        'normal_gap',              outNormalGap
+        'slip_norm',               outSlip
+        'normal_stress',           outTraction(1:3:end)
+        'tangential_traction_1',   outTraction(2:3:end)
+        'tangential_traction_2',   outTraction(3:3:end)
+        'tangential_traction_norm',norm_tT
+        'sliding_norm',            outSliding
+        'fracture_state',          fractureState
+        };
 
-      pointStr = [];        % when using P0 multipliers
+      surfaceStr = cell2struct(entries, {'name','data'}, 2);
     end
 
+    function writeMatFile(obj,fac,tID)
 
+      outTraction = fac*obj.state.traction + ...
+        (1-fac)*obj.stateOld.traction;
+      outNormalGap = fac*obj.state.normalGap + ...
+        (1-fac)*obj.stateOld.normalGap;
+      outSlip = fac*obj.state.slip + ...
+        (1-fac)*obj.stateOld.slip;
+      outSliding = fac*obj.state.tangentialGap + ...
+        (1-fac)*obj.stateOld.tangentialGap;
+
+      tT = [outTraction(2:3:end),outTraction(3:3:end)];
+      norm_tT = sqrt(tT(:,1).^2 + tT(:,2).^2);
+
+      obj.outstate.results(tID).tractionVec = outTraction;
+      obj.outstate.results(tID).normalGap = outNormalGap;
+      obj.outstate.results(tID).slipIncrement = outSlip;
+      obj.outstate.results(tID).tangentialGap = outSliding;
+      obj.outstate.results(tID).tangentialTractionNorm = norm_tT;
+
+    end
 
   end
 
@@ -472,6 +472,8 @@ classdef SolidMechanicsContact < MeshTying
         % SLIP MODE
         if contactState == ContactMode.slip || contactState == ContactMode.newSlip
 
+          slidingTol = obj.activeSet.tol.sliding;
+
           % A_nu
           Anu_m = MortarQuadrature.integrate(f1, Nmult_n, Nm_n, dJw);
           Anu_s = MortarQuadrature.integrate(f1, Nmult_n, Ns_n, dJw);
@@ -479,7 +481,7 @@ classdef SolidMechanicsContact < MeshTying
           asbDt.localAssembly(tDof(1),usDof,Anu_s);
 
           % A_tu (non linear term)
-          if obj.state.slip(is) > tols.sliding && usDiff > 100*eps
+          if obj.state.slip(is) > slidingTol && usDiff > 100*eps
             % compute only on slip terms with sliding large enough
             dtdgt = computeDerTracGap(obj,trac(1),dgt);
             Atu_m = MortarQuadrature.integrate(f2, Nmult_t,dtdgt,Nm_t,dJw);
@@ -522,7 +524,7 @@ classdef SolidMechanicsContact < MeshTying
 
 
 
-          if obj.domains(2).simparams.verbosity > 2
+          if gresLog().getVerbosity > 5
             fprintf('\nelement %i- rhsT: %5.3e %5.3e \n',is,Att*trac(2:3))
             fprintf('element %i- rhsTlim: %5.3e %5.3e \n',is,MortarQuadrature.integrate(f1,Nmult_t,tT_lim,dJw))
             fprintf('------------------------------------ \n')
@@ -734,7 +736,7 @@ classdef SolidMechanicsContact < MeshTying
 
     end
 
-    function outState = updateContactState(inState,traction,tLimit,tols)
+    function outState = updateContactState(inState,traction,tLimit,normalGap,tols)
       % tols: structure with tolerances named
       % according to initializeActiveSet method
       % the method is static to be reused by other contact solvERS
@@ -744,7 +746,7 @@ classdef SolidMechanicsContact < MeshTying
       % contact state update
       if inState == ContactMode.open
         % from open to stick
-        if obj.normalGap.curr(is) < -  tols.normalGap
+        if normalGap < -  tols.normalGap
           outState = ContactMode.stick;
         end
 
