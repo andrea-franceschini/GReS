@@ -68,6 +68,10 @@
               printTimes = "1"
               />
 
+      <Coulomb 
+               cohesion = "0" 
+               frictionAngle = "5.71" />
+
     </SolidMechanicsContact>
 
 

@@ -1,3 +1,5 @@
+clear
+
 %% Coupled FEM - FV
 
 solverFile = "solver_TPFA.xml";

@@ -46,6 +46,9 @@ classdef (Abstract) InterfaceSolver < handle
     % list of variables coupled from the solver
     coupledVariables
 
+    % list of dirichlet nodes - TO DO: consider more elegant handling of dirichlet bcs 
+    dirNodes
+
 
   end
 
@@ -304,7 +307,7 @@ classdef (Abstract) InterfaceSolver < handle
       % assert(~isempty(obj.domains(s).Jmu{varId}),...
       %   "Cannot add contribution to empty Jacobian block");
 
-      if ~isempty(obj.domains(s).Jmu{varId})
+      if ~isempty(obj.domains(s).Jmu{obj.interfaceId(s)}{varId})
         obj.domains(s).Jum{obj.interfaceId(s)}{varId} = ...
           obj.domains(s).Jum{obj.interfaceId(s)}{varId} + setVal;
       else
@@ -316,7 +319,7 @@ classdef (Abstract) InterfaceSolver < handle
 
       [s,varId] = getSideAndVar(obj,side,varargin{:});
 
-      if ~isempty(obj.domains(s).Jmu{varId})
+      if ~isempty(obj.domains(s).Jmu{obj.interfaceId(s)}{varId})
         obj.domains(s).Jmu{obj.interfaceId(s)}{varId} = ...
           obj.domains(s).Jmu{obj.interfaceId(s)}{varId} + setVal;
       else
@@ -489,11 +492,15 @@ classdef (Abstract) InterfaceSolver < handle
       bc = obj.domains(2).bcs;
       bcList = bc.db.keys;
 
+      bcNodes = [];
+
       for bcId = string(bcList)
         if strcmp(getType(bc,bcId),"Dirichlet")
-          bc.removeBCentities(bcId,nodSlave);
+          bcNodes = [bcNodes; bc.removeBCentities(bcId,nodSlave)];
         end
       end
+
+      obj.dirNodes = bcNodes;
 
     end
 

@@ -161,6 +161,7 @@ classdef MultidomainFCSolver < handle
 
       obj.nVars = 0;
       for iD = 1:obj.nDom
+        obj.domains(iD).stateOld = copy(obj.domains(iD).getState());
         obj.domains(iD).simparams = simparams;
         obj.nVars = obj.nVars + obj.domains(iD).dofm.getNumberOfVariables();
       end
@@ -286,7 +287,7 @@ classdef MultidomainFCSolver < handle
         nV = dom.dofm.getNumberOfVariables;
 
         % inner domain blocks
-        J(k+1:k+nV) = getJacobian(dom);
+        J(k+1:k+nV,k+1:k+nV) = getJacobian(dom);
 
         for iI = 1:numel(dom.interfaceList)
 

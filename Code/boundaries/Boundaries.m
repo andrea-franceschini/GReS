@@ -192,7 +192,7 @@ classdef Boundaries < handle
     end
 
 
-    function removeBCentities(obj,bcId,list)
+    function removedEnts = removeBCentities(obj,bcId,list)
       % remove BC entities that are contained in an input list
       % ignores entries of list that are not valid entities
 
@@ -223,6 +223,7 @@ classdef Boundaries < handle
         bcEnts = bc.data;
         isEntActive = ~ismember(bcEnts.entities,list);
         bcEnts.isActiveEntity(~isEntActive) = false;
+        removedEnts = bcEnts.entities(~isEntActive);
         bcEnts.entities(~isEntActive) = [];
 
         % update the number of entities

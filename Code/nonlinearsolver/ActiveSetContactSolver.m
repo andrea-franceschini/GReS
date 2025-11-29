@@ -30,10 +30,9 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
     function NonLinearLoop(obj)
 
       % Initialize the time step increment
-      obj.dt = obj.simParameters.dtIni;
+      obj.dt = obj.simparams.dtIni;
 
       %
-      flConv = false; %convergence flag
 
       for i = 1:obj.nDom
         obj.domains(i).applyDirVal(obj.t);
@@ -42,35 +41,30 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
 
       % Loop over time
-      while obj.t < obj.simParameters.tMax
+      while obj.t < obj.simparams.tMax
 
 
         % Update the simulation time and time step ID
-        absTol = obj.simParameters.absTol;
+        absTol = obj.simparams.absTol;
         obj.tStep = obj.tStep + 1;
         obj.t = obj.t + obj.dt;
 
-
         gresLog().log(0,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
         gresLog().log(0,'-----------------------------------------------------------\n');
-
-        % reset active set iteration counter
-        itAS = 0;
-
-        hasActiveSetChanged = true;
-
-        [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
 
         for i = 1:obj.nDom
           obj.domains(i).applyDirVal(obj.t);
         end
 
+        % reset active set iteration counter
+        itAS = 0;
+        hasActiveSetChanged = true;
 
         while hasActiveSetChanged && itAS <= obj.maxActiveSetIters
           % outer active set loop
 
-          gresLog().log(0,fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t));
-          gresLog().log(0,fprintf('Active set iteration n. %i \n', itAS));
+          gresLog().log(0,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
+          gresLog().log(0,'Active set iteration n. %i \n', itAS);
           gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
 
           for i = 1:obj.nDom
@@ -89,14 +83,14 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
           rhsNorm = norm(cell2mat(rhs),2);
           rhsNormIt0 = rhsNorm;
 
-          tolWeigh = obj.simParameters.relTol*rhsNorm;
+          tolWeigh = obj.simparams.relTol*rhsNorm;
           obj.iter = 0;
           %
           gresLog().log(1,'0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
 
           flConv = false;
 
-          while (~flConv) && (obj.iter < obj.simParameters.itMaxNR)
+          while (~flConv) && (obj.iter < obj.simparams.itMaxNR)
 
             obj.iter = obj.iter + 1;
 
@@ -136,11 +130,12 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
             rhsNorm = norm(cell2mat(rhs),2);
             gresLog().log(1,'%d     %e     %e\n',obj.iter,rhsNorm,rhsNorm/rhsNormIt0);
 
-          end
 
-          %
-          % Check for convergence
-          flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
+            %
+            % Check for convergence
+            flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
+
+          end
 
           % set active set not changed by default
           hasActiveSetChanged = false;
@@ -256,42 +251,42 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
     function [dt] = manageNextTimeStep(obj,dt,newtonConv,activeSetChanged)
       if ~newtonConv    % time step not converged
-        dt = dt/obj.simParameters.divFac;
-        obj.dt = obj.dt/obj.simParameters.divFac;  % Time increment chop
+        dt = dt/obj.simparams.divFac;
+        obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
 
-        if min(dt,obj.dt) < obj.simParameters.dtMin
-          if obj.simParameters.goOnBackstep == 1
+        if min(dt,obj.dt) < obj.simparams.dtMin
+          if obj.simparams.goOnBackstep == 1
             newtonConv = true;
-          elseif obj.simParameters.goOnBackstep == 0
+          elseif obj.simparams.goOnBackstep == 0
             error('Minimum time step reached')
           end
         else
-          if obj.simParameters.verbosity > 0
+          if obj.simparams.verbosity > 0
             fprintf('\n %s \n','BACKSTEP');
             goBackState(obj);
-            obj.t = obj.t - obj.dt*obj.simParameters.divFac;
+            obj.t = obj.t - obj.dt*obj.simparams.divFac;
             obj.tStep = obj.tStep - 1;
           end
         end
       end
       if newtonConv && ~activeSetChanged  % converged time step
-        tmpVec = obj.simParameters.multFac;
+        tmpVec = obj.simparams.multFac;
         for i = 1:obj.nDom
           if isFlow(obj.domains(i).model)
             pnew = obj.state(i).curr.data.pressure;
             pold = obj.state(i).prev.data.pressure;
             dpMax = max(abs(pnew-pold));
-            tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
-              obj.simParameters.pTarget/(dpMax + obj.simParameters.relaxFac* ...
-              obj.simParameters.pTarget)];
+            tmpVec = [tmpVec, (1+obj.simparams.relaxFac)* ...
+              obj.simparams.pTarget/(dpMax + obj.simparams.relaxFac* ...
+              obj.simparams.pTarget)];
           end
         end
-        obj.dt = min([obj.dt * min(tmpVec),obj.simParameters.dtMax]);
-        obj.dt = max([obj.dt obj.simParameters.dtMin]);
+        obj.dt = min([obj.dt * min(tmpVec),obj.simparams.dtMax]);
+        obj.dt = max([obj.dt obj.simparams.dtMin]);
         goOnState(obj);
         %
-        if ((obj.t + obj.dt) > obj.simParameters.tMax)
-          obj.dt = obj.simParameters.tMax - obj.t;
+        if ((obj.t + obj.dt) > obj.simparams.tMax)
+          obj.dt = obj.simparams.tMax - obj.t;
         end
       end
     end

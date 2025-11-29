@@ -10,7 +10,7 @@ cd(scriptDir);
 
 simparams = SimulationParameters('constantSliding.xml');
 
-[interfaces,domains] = buildModel('constantSliding.xml');
+[domains,interfaces] = buildModel('constantSliding.xml');
 
 solver = ActiveSetContactSolver(simparams,domains,interfaces,5);
 

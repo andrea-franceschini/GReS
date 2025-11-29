@@ -297,7 +297,7 @@ classdef MeshTying < InterfaceSolver
         return
       end
 
-      nComp = getDoFManager(obj,MortarSide.slave,obj.coupledVariables);
+      nComp = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
 
       % initialize matrix estimating number of entries
       % number of internal slave elements
@@ -379,7 +379,7 @@ classdef MeshTying < InterfaceSolver
       dofS = dofSlave.getLocalDoF(fldS,obj.interfMesh.local2glob{2}(ns));
 
       % get local mortar matrices
-      nc = getDoFManager(obj,MortarSide.slave,obj.coupledVariables);
+      nc = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
       Dloc = obj.D(DoFManager.dofExpand(fs,nc),dofS);
       Mloc = obj.M(DoFManager.dofExpand(fs,nc),dofM);
       V = [Dloc, Mloc];              % minus sign!
@@ -390,7 +390,7 @@ classdef MeshTying < InterfaceSolver
       Ks = obj.domains(2).J{fldS,fldS}(dofS,dofS);
       Kloc = diag([1./diag(Ks);1./diag(Km)]);
 
-      S = obj.stabScaling*V*(Kloc*V');  % compute Schur complement
+      S = obj.stabilizationScale*V*(Kloc*V');  % compute Schur complement
 
     end
 
@@ -399,7 +399,7 @@ classdef MeshTying < InterfaceSolver
       % assemble stabilization matrix S (in global coordinates) for
       % elements e1 and e2.
 
-      nc = getDoFManager(obj,MortarSide.slave,obj.coupledVariables);
+      nc = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
       dof1 = DoFManager.dofExpand(e1,nc);
       dof2 = DoFManager.dofExpand(e2,nc);
 
