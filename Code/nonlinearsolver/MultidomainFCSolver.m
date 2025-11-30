@@ -297,9 +297,9 @@ classdef MultidomainFCSolver < handle
           [J(k+1:k+nV,obj.nVars+q), J(obj.nVars+q,k+1:k+nV)] = ...
             getInterfaceJacobian(dom,iI);
 
-          k = k + nV;
-
         end
+
+        k = k + nV;
 
       end
 

@@ -23,7 +23,7 @@
     <Gauss nGP = "3" />
     <Materials fileName = "materials.xml" />
     <BoundaryConditions fileName = "constantSlidingTopBCs.xml" />
-    <OutState
+    <Output
               outputFile = "TopBlock"
               printTimes = "1"
               />
@@ -38,7 +38,7 @@
     <Gauss nGP = "3" />
     <Materials fileName = "materials.xml" />
     <BoundaryConditions fileName = "constantSlidingBottomBCs.xml" />
-    <OutState
+    <Output
               outputFile = "BottomBlock"
               printTimes = "1"
               />

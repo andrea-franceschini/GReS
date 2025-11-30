@@ -1,37 +1,38 @@
-%% write mesh files
-outFile = "SingleCrack_grid";
+clear
+close all
 
-grid = Mesh();
-grid.importMesh(outFile + ".vtk");
-% 
+scriptFullPath = mfilename('fullpath');
 
-domainFile = 'Domains/domains.xml';
-interfFile = 'Domains/interface.xml';
+% Extract the directory containing the script
+scriptDir = fileparts(scriptFullPath);
 
-domains = buildModel(domainFile); 
+cd(scriptDir);
 
-% set verbosity 
-domains(1).simparams.setVerbosity(0);
+fileName = "singleCrackCompressed.xml";
 
-[interfaces,domains] = Mortar.buildInterfaces(interfFile,domains);
+%% Run model
 
-solver = ActiveSetContactSolver(domains,interfaces,10);
+simparams = SimulationParameters(fileName);
+
+[domains,interfaces] = buildModel(fileName); 
+
+solver = ActiveSetContactSolver(simparams,domains,interfaces,10);
 
 solver.NonLinearLoop();
 solver.finalizeOutput();
 
-%% Validate 
-nS = solver.interfaces{2}.mesh.msh(2).nSurfaces;
+%% Validate
+nS = getMesh(interfaces{2},MortarSide.slave).nSurfaces;
 cId = 2:2:nS-1;
-gt = solver.interfaces{2}.slip.curr(cId);
-tn = solver.interfaces{2}.traction.curr(3*cId-2);
+gt = interfaces{2}.state.slip(cId);
+tn = interfaces{2}.state.traction(3*cId-2);
 
-xCoord = solver.interfaces{2}.mesh.msh(2).surfaceCentroid(cId,1)/cos(deg2rad(20));
+xCoord = getMesh(interfaces{2},MortarSide.slave).surfaceCentroid(cId,1)/cos(deg2rad(20));
 
 % analytical solutions
 b = 1;
 % real angle of the generated fault
-c = solver.interfaces{2}.mesh.msh(2).surfaceCentroid(end,:);
+c = getMesh(interfaces{2},MortarSide.slave).surfaceCentroid(end,:);
 psi = atan(abs(c(2)/c(1)));
 sigma = 100;
 nu = 0.25;
@@ -43,36 +44,12 @@ K = 4*(1-nu^2)*(sigma*sin(psi)*(cos(psi)-sin(psi)*tan(theta)))/E;
 gt_anal = K*sqrt(b^2-(b-(xCoord+1)).^2);
 gt_anal = flip(gt_anal);
 
-% compare normal traction
+%% Check normal traction
 ntn = numel(tn);
 ntn_del = round(ntn/10);
 err_tn = norm(tn(ntn_del:end-ntn_del)+tn_anal);
 assert(err_tn < 1e0,"Normal traction not validated")
 
-% compare tangential gap
+%% Checl tangential gap
 err_gt = norm(gt-gt_anal);
 assert(err_gt < 1e-2,"Tangential gap not validated")
-
-function msh = setFaultSurface(msh)
-  % get nodes belonging to current surface 3
-  surfInFault = find(msh.surfaceTag==9);
-  n = unique(msh.surfaces(surfInFault,:));
-  xTarget = 1;
-  nInFault = abs(msh.coordinates(n,1))<xTarget;
-  nInFault = n(nInFault);
-  isNotSurfInFault = ~all(ismember(msh.surfaces(surfInFault,:),nInFault),2);
-  isNotSurfInFault = surfInFault(isNotSurfInFault);
-  msh.surfaceTag(isNotSurfInFault) = msh.nSurfaceTag + 1;
-  msh.nSurfaceTag = msh.nSurfaceTag + 1; 
-end
-
-%% plot profiles of multipliers along vertical axis (avoid opening paraview)
-
-
-
-
-
-
-
-% 
-

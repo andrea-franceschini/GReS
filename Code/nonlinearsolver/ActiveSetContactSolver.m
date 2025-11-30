@@ -141,8 +141,9 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
             
             % update the active set
 
-            for i = obj.contactInterf
-              hasActiveSetChanged(i) = updateActiveSet(obj.interfaces{i});
+            for i = 1:numel(obj.contactInterf)
+              interf = obj.interfaces{obj.contactInterf(i)};
+              hasActiveSetChanged(i) = updateActiveSet(interf);
             end
 
             itAS = itAS + 1;
@@ -261,7 +262,7 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
       % case 2: newton convergence and active set not changed -> go to next
       % steo
 
-      if newtonConv && ~activeSetChanged  % converged time step
+      if newtonConv && ~any(activeSetChanged)  % converged time step
 
         for i = 1:obj.nDom
           dom = obj.domains(i);

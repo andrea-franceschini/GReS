@@ -18,12 +18,14 @@ classdef MeshTying < InterfaceSolver
 
     end
 
-    function registerInterface(obj,varargin)
+    function registerInterface(obj,input)
 
       if ~isscalar(obj.coupledVariables)
         error("A Mesh tying interface can only couple one variable field." + ...
           "If you want to couple more than one variable field, create more than one interface")
       end
+
+      obj.stabilizationScale = getXMLData(input.Quadrature,1.0,"stabilizationScale");
 
       ncomp = obj.domains(2).dofm.getNumberOfComponents(obj.coupledVariables);
       obj.nMult = ncomp * getNumberOfEntities(obj.multiplierLocation,...
@@ -70,7 +72,7 @@ classdef MeshTying < InterfaceSolver
         rhsStab = -obj.stabilizationMat*...
           (obj.state.multipliers-obj.state.iniMultipliers);
 
-        obj.J = -obj.stabilizationMat;
+        obj.Jconstraint = -obj.stabilizationMat;
 
         rhsMult = rhsMult + rhsStab;
       end

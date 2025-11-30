@@ -137,11 +137,11 @@ classdef (Abstract) InterfaceSolver < handle
       nVarSlave =  getNumberOfVariables(dofSlave);
 
       % initialize the jacobian blocks for domain coupling
-      obj.domains(master).Jum{end+1} = cell(nVarMaster,1);
-      obj.domains(slave).Jum{end+1} = cell(nVarSlave,1);
+      obj.domains(master).Jum{obj.interfaceId(master)} = cell(nVarMaster,1);
+      obj.domains(slave).Jum{obj.interfaceId(slave)} = cell(nVarSlave,1);
 
-      obj.domains(master).Jmu{end+1} = cell(1,nVarMaster);
-      obj.domains(slave).Jmu{end+1} = cell(1,nVarSlave);
+      obj.domains(master).Jmu{obj.interfaceId(master)} = cell(1,nVarMaster);
+      obj.domains(slave).Jmu{obj.interfaceId(slave)} = cell(1,nVarSlave);
 
       % specify the variables to be coupled
       setCoupledVariables(obj,inputStruct)
@@ -307,7 +307,7 @@ classdef (Abstract) InterfaceSolver < handle
       % assert(~isempty(obj.domains(s).Jmu{varId}),...
       %   "Cannot add contribution to empty Jacobian block");
 
-      if ~isempty(obj.domains(s).Jmu{obj.interfaceId(s)}{varId})
+      if ~isempty(obj.domains(s).Jum{obj.interfaceId(s)}{varId})
         obj.domains(s).Jum{obj.interfaceId(s)}{varId} = ...
           obj.domains(s).Jum{obj.interfaceId(s)}{varId} + setVal;
       else

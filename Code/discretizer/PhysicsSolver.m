@@ -200,9 +200,10 @@ classdef (Abstract) PhysicsSolver < handle
       % end
 
       % add 1 to diagonal entry of diagonal block
+      %J(bcDofs + (bcDofs-1)*size(J,1)) = 1;   extremely slow
 
       J = obj.domain.J{bcVarId,bcVarId};
-      J(bcDofs + (bcDofs-1)*size(J,1)) = 1;
+      J = J + sparse(bcDofs, bcDofs, ones(size(bcDofs)), size(J,1), size(J,2));
       obj.domain.J{bcVarId,bcVarId} = J;
 
       if nargin > 3
