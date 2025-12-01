@@ -3,9 +3,11 @@
 in a nonConforming simulation.
 -->
 <Problem>
+
   <simParam fileName = "simParam.xml" />
+  
   <Domain>
-    <Geometry fileName="ReservoirTest_Hexa.msh" />
+    <Geometry fileName= "ReservoirTest_Hexa.msh" />
     <Gauss nGP = "2" />
     <Materials fileName = "materials.xml"/>
     <BoundaryConditions fileName = "boundaryConditions.xml" />
@@ -13,6 +15,7 @@ in a nonConforming simulation.
             printTimes= "0,0.5,1.5"
             saveHistory = "1"
     />
+
     <Solver>
       <BiotFullySaturated>
         <Poromechanics targetRegions = "1,2,3" />
@@ -20,4 +23,5 @@ in a nonConforming simulation.
       </BiotFullySaturated>
     </Solver>
   </Domain>
+
 </Problem>

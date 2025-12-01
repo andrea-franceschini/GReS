@@ -2,28 +2,29 @@
 <!-- This XML input file is a shortcut to preprocess the model for each domain
 in a nonConforming simulation.
 -->
-<Domains>
+
+<Problem>
+
+  <simParam fileName = "simParam.xml" />
+
   <Domain>
+    <Geometry fileName = "Inputs/ReservoirTest_Hexa.msh" />
+    <Gauss nGP = "2" />
+    <Materials fileName = "Inputs/materials.xml" />
+    <BoundaryConditions fileName = "Inputs/boundaryConditions.xml" />
 
-    <Name> DeepAquifer </Name>    
-    <Geometry> Inputs/ReservoirTest_Hexa.msh </Geometry>
+    <Output
+            saveHistory = "1"
+            outputFile = "Results"
+            printTimes = "1,4,8"
+            />
 
-    <ModelType>
-      SinglePhaseFlow_FVTPFA
-      Poromechanics_FEM
-    </ModelType>
+    <Solver>
+      <BiotFullySaturated>
+        <Poromechanics targetRegions = "1,2,3" />
+        <SinglePhaseFlowFVTPFA targetRegions = "2,3" />
+      </BiotFullySaturated>
+    </Solver>
 
-    <SimParameters> Inputs/simParam.xml </SimParameters>
-    <DoFManager> Inputs/dof.dat </DoFManager>
-    <Gauss> 2 </Gauss>
-    <Material> Inputs/materials.xml </Material>
-    <BoundaryConditions> Inputs/boundaryConditions.xml </BoundaryConditions>
-
-    <OutState
-        saveHistory = "1"
-        outputFile = "Results"
-        printTimes = "1,4,8"
-    />
-    
   </Domain>
-</Domains>
+</Problem>

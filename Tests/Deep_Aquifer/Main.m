@@ -11,10 +11,11 @@ warning('off','MATLAB:nearlySingularMatrix');
 
 % shortcut to define a model using a unique xml file
 % useful when dealing with many domains
+simparams = SimulationParameters(fullfile("Inputs","domain.xml"));
 domain = buildModel(fullfile("Inputs","domain.xml"));
 
 % perform a fully coupled simulation
-solver = FCSolver(domain);
+solver = FCSolver(simparams,domain);
 [simState] = solver.NonLinearLoop();
 
 % Finalize the print utility
