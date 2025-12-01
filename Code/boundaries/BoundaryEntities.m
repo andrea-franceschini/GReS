@@ -143,5 +143,4 @@ classdef BoundaryEntities < handle
     end
 
   end
-  end
-  
+end

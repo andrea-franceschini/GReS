@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <Output 
-        outputFile = "test"
-        matFileName = "testMat"
         saveHistory = "1"
         printTimes = "1,5,10"
   />

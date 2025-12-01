@@ -28,7 +28,7 @@ classdef SolidMechanicsContact < MeshTying
 
       obj.stabilizationScale = getXMLData(input.Quadrature,1.0,"stabilizationScale");
       obj.cohesion = getXMLData(input.Coulomb,[],"cohesion");
-      obj.phi = deg2rad(getXMLData(input.Coulomb,[],"frictionAngle"));
+      obj.phi = getXMLData(input.Coulomb,[],"frictionAngle");
 
  
       nDofsInterface = getNumbDoF(obj);

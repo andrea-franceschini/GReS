@@ -10,7 +10,6 @@ in a nonConforming simulation.
     <Materials fileName = "materials.xml"/>
     <BoundaryConditions fileName = "boundaryConditions.xml" />
     <Output
-            outputFile = "output_DeepAquifer"
             printTimes= "0,0.5,1.5"
             saveHistory = "1"
     />

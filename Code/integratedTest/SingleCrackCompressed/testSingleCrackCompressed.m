@@ -10,18 +10,17 @@ cd(scriptDir);
 
 fileName = "singleCrackCompressed.xml";
 
-%% Run model
-
 simparams = SimulationParameters(fileName);
 
 [domains,interfaces] = buildModel(fileName); 
 
+%solver = MultidomainFCSolver(simparams,domains,interfaces);
 solver = ActiveSetContactSolver(simparams,domains,interfaces,10);
 
 solver.NonLinearLoop();
 solver.finalizeOutput();
 
-%% Validate
+
 nS = getMesh(interfaces{2},MortarSide.slave).nSurfaces;
 cId = 2:2:nS-1;
 gt = interfaces{2}.state.slip(cId);
@@ -45,38 +44,37 @@ K = 4*(1-nu^2)*(sigma*sin(psi)*(cos(psi)-sin(psi)*tan(theta)))/E;
 gt_anal = K*sqrt(b^2-(b-(xCoord+1)).^2);
 gt_anal = flip(gt_anal);
 
-%% Check normal traction
+
 ntn = numel(tn);
 ntn_del = round(ntn/10);
 err_tn = norm(tn(ntn_del:end-ntn_del)+tn_anal);
 assert(err_tn < 1e0,"Normal traction not validated")
 
-%% Check tangential gap
 err_gt = norm(gt-gt_anal);
 %assert(err_gt < 1e-2,"Tangential gap not validated")
 
-%% plot
-gt_anal_plot = K*sqrt(b^2-(b-(xCoord+1)).^2);
-figure(1)
-plot(xCoord, gt, 'k-o', 'MarkerSize', 4, 'MarkerFaceColor', 'k');
-hold on
-plot(xAnal, gt_plot, 'b-', 'MarkerSize', 1, 'LineWidth', 1.5);
-xlim([-1 1])
-ylim([0 4.1e-3])
-xlabel('$\xi$', 'Interpreter', 'latex', 'FontSize', 14)
-ylabel('$\|\mathbf{g_T}\|$', 'Interpreter', 'latex', 'FontSize', 14)
-set(gca,'TickLabelInterpretegr','latex','FontSize',14)   % <-- axis numbers in LaTeX
-
-exportgraphics(gcf, 'gt_plot.pdf')
-
-figure(2)
-plot(xCoord, -tn, 'k-o', 'MarkerSize', 4,'MarkerFaceColor', 'k');
-hold on
-plot([-1 1], [tn_anal tn_anal], 'r-', 'LineWidth', 1.5)
-xlim([-1 1])
-ylim([-10 20])
-xlabel('$\xi$', 'Interpreter', 'latex', 'FontSize', 14)
-ylabel('$\sigma_n$', 'Interpreter', 'latex', 'FontSize', 14)
-set(gca,'TickLabelInterpreter','latex','FontSize',14)   % <-- axis numbers in LaTeX
-
-exportgraphics(gcf, 'tn_plot.pdf')
+% %% plot
+% gt_anal_plot = K*sqrt(b^2-(b-xi).^2);
+% figure(1)
+% plot(xCoord, gt, 'k-o', 'MarkerSize', 4, 'MarkerFaceColor', 'k');
+% hold on
+% plot(xAnal, gt_anal_plot, 'b-', 'MarkerSize', 1, 'LineWidth', 1.5);
+% xlim([-1 1])
+% ylim([0 4.1e-3])
+% xlabel('$\xi$', 'Interpreter', 'latex', 'FontSize', 14)
+% ylabel('$\|\mathbf{g_T}\|$', 'Interpreter', 'latex', 'FontSize', 14)
+% set(gca,'TickLabelInterpreter','latex','FontSize',14)   % <-- axis numbers in LaTeX
+% 
+% exportgraphics(gcf, 'gt_plot.pdf')
+% 
+% figure(2)
+% plot(xCoord, -tn, 'k-o', 'MarkerSize', 4,'MarkerFaceColor', 'k');
+% hold on
+% plot([-1 1], [tn_anal tn_anal], 'r-', 'LineWidth', 1.5)
+% xlim([-1 1])
+% ylim([-10 20])
+% xlabel('$\xi$', 'Interpreter', 'latex', 'FontSize', 14)
+% ylabel('$\sigma_n$', 'Interpreter', 'latex', 'FontSize', 14)
+% set(gca,'TickLabelInterpreter','latex','FontSize',14)   % <-- axis numbers in LaTeX
+% 
+% exportgraphics(gcf, 'tn_plot.pdf')

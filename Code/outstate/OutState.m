@@ -29,8 +29,6 @@ classdef OutState < handle
     function obj = OutState(mesh, varargin)
 
       % Default parameters
-      flagMatFile = false;
-      writeVtk = true;
       folderName = "output";
       tList = [];
 

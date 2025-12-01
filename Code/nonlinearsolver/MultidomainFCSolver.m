@@ -123,11 +123,10 @@ classdef MultidomainFCSolver < handle
           rhsNorm = norm(cell2mat(rhs),2);
           gresLog().log(1,'%d     %e     %e\n',obj.iter,rhsNorm,rhsNorm/rhsNormIt0);
 
+          % Check for convergence
+          flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
+
         end % end newton loop
-
-
-        % Check for convergence
-        flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
 
         manageNextTimeStep(obj,flConv);
       end

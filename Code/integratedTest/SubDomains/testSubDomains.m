@@ -15,6 +15,7 @@ domain = buildModel('domain.xml');
 % perform a fully coupled simulation
 solver = FCSolver(simparams,domain);
 [simState] = solver.NonLinearLoop();
+domain.outstate.finalize();
 
 ref = load('referenceSol.mat');
 comp = domain.outstate.results;
