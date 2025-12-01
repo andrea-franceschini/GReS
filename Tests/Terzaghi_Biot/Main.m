@@ -1,6 +1,6 @@
 close all;
 % clear;
-input_dir = 'Inputs';
+input_dir = 'Input';
 figures_dir = 'Images';
 
 % Get the full path of the currently executing file
