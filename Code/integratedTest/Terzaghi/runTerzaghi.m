@@ -10,10 +10,10 @@ simParam = SimulationParameters("simParam.xml");
 topology = Mesh();
 
 % Import the mesh data into the Mesh object
-topology.importGMSHmesh('Mesh/Column_hexa.msh');
+topology.importGMSHmesh('Input/Mesh/Column_hexa.msh');
 
 % Create an object of the Materials class and read the materials file
-mat = Materials('materials.xml');
+mat = Materials('Input/materials.xml');
 
 
 gaussOrder = 2;
@@ -22,10 +22,10 @@ faces = Faces(topology);
 
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
-printUtils = OutState(topology,'output.xml');
+printUtils = OutState(topology,'Input/output.xml');
 
 % Create an object of the "Boundaries" class 
-bound = Boundaries('boundaryConditions.xml',grid);
+bound = Boundaries('Input/boundaryConditions.xml',grid);
 
 % Create object handling construction of Jacobian and rhs of the model
 

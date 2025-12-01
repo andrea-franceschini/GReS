@@ -2,7 +2,7 @@ clear
 
 %% Coupled FEM - FV
 
-solverFile = "solver_TPFA.xml";
+solverFile = "Input/solver_TPFA.xml";
 runTerzaghi;
 clearvars -except domain
 analyticalSol = load('Terzaghi_Analytical.mat');
@@ -32,7 +32,7 @@ clear domain
 
 %% Coupled FEM - FEM
 
-solverFile = "solver_FEM.xml";
+solverFile = "Input/solver_FEM.xml";
 runTerzaghi;
 clearvars -except domain
 

@@ -18,11 +18,11 @@
   <!--Top domain-->
   <Domain>
     <Geometry
-              fileName = "topBlock.vtk"
+              fileName = "Input/topBlock.vtk"
               />
     <Gauss nGP = "3" />
-    <Materials fileName = "materials.xml" />
-    <BoundaryConditions fileName = "constantSlidingTopBCs.xml" />
+    <Materials fileName = "Input/materials.xml" />
+    <BoundaryConditions fileName = "Input/constantSlidingTopBCs.xml" />
     <!--<Output
               outputFile = "TopBlock"
               printTimes = "1"
@@ -34,10 +34,10 @@
 
   <!--Bottom domain-->
   <Domain>
-    <Geometry fileName = "bottomBlock.vtk" />
+    <Geometry fileName = "Input/bottomBlock.vtk" />
     <Gauss nGP = "3" />
-    <Materials fileName = "materials.xml" />
-    <BoundaryConditions fileName = "constantSlidingBottomBCs.xml" />
+    <Materials fileName = "Input/materials.xml" />
+    <BoundaryConditions fileName = "Input/constantSlidingBottomBCs.xml" />
     <!--<Output
               outputFile = "BottomBlock"
               printTimes = "1"

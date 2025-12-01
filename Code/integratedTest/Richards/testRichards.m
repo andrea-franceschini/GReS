@@ -6,24 +6,24 @@ testPath = mfilename('fullpath');
 cd(fileparts(testPath));
 
 % model = ModelType("VariabSatFlow_FVTPFA");
-simParam = SimulationParameters(fullfile('simParam.xml'));
+simParam = SimulationParameters(fullfile('Input','simParam.xml'));
 
 % Create the topology object
 topology = Mesh();
-topology.importGMSHmesh(fullfile('Mesh','Column.msh'));
+topology.importGMSHmesh(fullfile('Input','Mesh','Column.msh'));
 elems = Elements(topology,2);
 faces = Faces(topology);
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 % Creating boundaries conditions.
-bound = Boundaries("richardsBCs.xml",grid);
+bound = Boundaries("Input/richardsBCs.xml",grid);
 
 % to set initial condition.
 z = elems.mesh.cellCentroid(:,3);
 wLev = 9.;
 
 sol = struct('time', [], 'pressure', [],'saturation', []);
-listMat = ["matTab.xml" "matAnal.xml"];
+listMat = ["Input/matTab.xml" "Input/matAnal.xml"];
 for sim = 1:numel(listMat)
   run("runRichards.m");
   sol(sim).time = [printUtils.results.time]';
