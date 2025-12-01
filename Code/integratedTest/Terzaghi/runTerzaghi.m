@@ -5,7 +5,7 @@ scriptDir = fileparts(scriptFullPath);
 % Change the current directory to the script's directory
 cd(scriptDir);
 
-simParam = SimulationParameters("simParam.xml");
+simParam = SimulationParameters("Input/simParam.xml");
 % Create the Mesh object
 topology = Mesh();
 
