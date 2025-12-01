@@ -45,7 +45,7 @@ a function handle depending on space (x,y,z)
   <BC name = "NoFlowTop"
       type = "Dirichlet"
       entityType = "SurfBC"
-      physics = "SinglePhaseFlow" >
+      variable = "pressure" >
 
     <BCentities surfaceTags = "2" />
     <BCevent time = "0." value = "0.000000e+00" />
@@ -56,7 +56,7 @@ a function handle depending on space (x,y,z)
   <BC name = "TopLoad"
       type = "Neumann"
       entityType = "SurfBC"
-      physics = "Poromechanics" >
+      variable = "displacements" >
 
     <BCentities surfaceTags = "2" components = "z" />
     <BCevent time = "0." value = "-1.000000e+01" />
@@ -66,7 +66,7 @@ a function handle depending on space (x,y,z)
   <BC name = "LatFixedY"
       type = "Dirichlet"
       entityType = "NodeBC"
-      physics = "Poromechanics" >
+      variable = "displacements" >
 
     <BCentities surfaceTags = "3" components = "y" />
     <BCevent time = "0." value = "0.000000e+00" />
@@ -76,7 +76,7 @@ a function handle depending on space (x,y,z)
   <BC name = "LatFixedX"
       type = "Dirichlet"
       entityType = "NodeBC"
-      physics = "Poromechanics" >
+      variable = "displacements" >
 
     <BCentities surfaceTags = "4" components = "x" />
     <BCevent time = "0." value = "0.000000e+00" />
@@ -86,7 +86,7 @@ a function handle depending on space (x,y,z)
   <BC name = "BotFixed"
       type = "Dirichlet"
       entityType = "SurfBC"
-      physics = "Poromechanics" >
+      variable = "displacements" >
 
     <BCentities surfaceTags = "1" components = "x,y,z" />
     <BCevent time = "0." value = "0.000000e+00" />

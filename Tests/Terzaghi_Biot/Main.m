@@ -15,7 +15,7 @@ scriptDir = fileparts(scriptFullPath);
 %% ------------------------------------------------------------------------
 
 % Set parameters of the simulation
-simParam = SimulationParameters(fullfile(scriptDir,input_dir,"simparam.xml"),model);
+simParam = SimulationParameters(fullfile(scriptDir,input_dir,"simparam.xml"));
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(fullfile(scriptDir,input_dir,"materials.xml"));
@@ -33,29 +33,26 @@ gaussOrder = 2;
 elems = Elements(topology,gaussOrder);
 
 % Create an object of the "Faces" class and process the face properties
-faces = Faces(model, topology);
+faces = Faces(topology);
 
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
-% Degree of freedom manager
-dofmanager = DoFManager(topology,model);
 
 % Creating boundaries conditions.
-bound = Boundaries(fullfile(scriptDir,input_dir,"boundaries.xml"),model,grid);
+bound = Boundaries(fullfile(scriptDir,input_dir,"boundaries.xml"),grid);
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility for the solution
-printUtils = OutState(model,topology,fullfile(scriptDir,input_dir,'output.xml'));
+printUtils = OutState(topology,fullfile(scriptDir,input_dir,'output.xml'));
 
 % Create object handling construction of Jacobian and rhs of the model
-domain = Discretizer('ModelType',model,...
-                     'SimulationParameters',simParam,...
-                     'DoFManager',dofmanager,...
-                     'Boundaries',bound,...
+domain = Discretizer('Boundaries',bound,...
                      'OutState',printUtils,...
                      'Materials',mat,...
                      'Grid',grid);
+
+domain.addPhysicsSolver('solver_TPFA.xml');
 
 % In this version of the code, the user can assign initial conditions only
 % manually, by directly modifying the entries of the state structure. 
@@ -68,7 +65,7 @@ applyTerzaghiIC(domain.state,mat,topology,F);
 % customize the solution scheme. 
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = FCSolver(domain);
+Solver = FCSolver(simParam,domain);
 
 % Solve the problem
 [simState] = Solver.NonLinearLoop();
@@ -99,7 +96,8 @@ if true
 
 
   % elem vector containing elements centroid along vertical axis
-  if isFEMBased(model,'Flow')
+  flowscheme = getPhysicsSolver(domain,"BiotFullySaturated").getFlowScheme();
+  if strcmp(flowscheme,"FEM")
     nodesP = nodesU;
   else
     nodesP = find(topology.cellCentroid(:,1) + topology.cellCentroid(:,2) < 0.51);
@@ -108,8 +106,8 @@ if true
   end
 
   %Getting pressure and displacement solution for specified time from MatFILE
-  press = [printUtils.results.expPress];
-  disp = [printUtils.results.expDispl];
+  press = [printUtils.results.pressure];
+  disp = [printUtils.results.displacements];
   pressplot = press(nodesP,1:end);
   dispplot = disp(3*nodesU,1:end);
 
@@ -117,7 +115,7 @@ if true
   p0 = max(press(:,1));
 
   %Plotting solution
-  if isFVTPFABased(model,'Flow')
+  if strcmp(flowscheme,"FVTPFA")
     ptsY = topology.cellCentroid(nodesP,3);
   else
     ptsY = topology.coordinates(nodesP,3);

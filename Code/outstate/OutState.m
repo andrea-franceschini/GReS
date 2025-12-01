@@ -56,6 +56,12 @@ classdef OutState < handle
           input = input.Output;
         end
 
+        if isfield(input,"fileName")
+          assert(isscalar(fieldnames(input)),"FileName, " + ...
+            " must be a unique parameter.");
+          input = readstruct(input.fileName,AttributeSuffix="");
+        end
+
         obj.writeSolution = logical(getXMLData(input, 0, "saveHistory"));
         obj.vtkFileName  = getXMLData(input, folderName, "outputFile");
         obj.matFileName = getXMLData(input, folderName, "matFileName");

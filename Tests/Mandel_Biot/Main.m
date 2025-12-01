@@ -15,11 +15,9 @@ scriptDir = fileparts(scriptFullPath);
 % cd(scriptDir);
 
 %% ------------------------------------------------------------------------
-% Set physical models 
-model = ModelType(["SinglePhaseFlow_FVTPFA","Poromechanics_FEM"]);
 
 % Set parameters of the simulation
-simParam = SimulationParameters(fullfile(scriptDir,input_dir,"simparam.xml"),model);
+simParam = SimulationParameters(fullfile(scriptDir,input_dir,"simparam.xml"));
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(fullfile(scriptDir,input_dir,"materials.xml"));
@@ -35,29 +33,25 @@ topology.importMesh(fullfile(scriptDir,input_dir,"Mandel_Mesh.msh"));
 elems = Elements(topology,2);
 
 % Create an object of the "Faces" class and process the face properties
-faces = Faces(model, topology);
+faces = Faces(topology);
 
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
-% Degree of freedom manager 
-dofmanager = DoFManager(topology,model);
-
 % Creating boundaries conditions.
-bound = Boundaries(fullfile(scriptDir,input_dir,"boundaries.xml"),model,grid);
+bound = Boundaries(fullfile(scriptDir,input_dir,"boundaries.xml"),grid);
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility
-printUtils = OutState(model,topology,fullfile(scriptDir,input_dir,'output.xml'));
+printUtils = OutState(topology,fullfile(scriptDir,input_dir,'output.xml'));
 
 % Create object handling construction of Jacobian and rhs of the model
-domain = Discretizer('ModelType',model,...
-                     'SimulationParameters',simParam,...
-                     'DoFManager',dofmanager,...
-                     'Boundaries',bound,...
+domain = Discretizer('Boundaries',bound,...
                      'OutState',printUtils,...
                      'Materials',mat,...
                      'Grid',grid);
+
+domain.addPhysicsSolver('Inputs/solver_TPFA.xml')
 
 % In this version of the code, the user can assign initial conditions only
 % manually, by directly modifying the entries of the state structure. 
@@ -70,7 +64,7 @@ state = applyMandelIC(domain.state,mat,topology,F);
 % customize the solution scheme. 
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = FCSolver(domain);
+Solver = FCSolver(simParam,domain);
 
 % Solve the problem
 [simState] = Solver.NonLinearLoop();
@@ -111,8 +105,8 @@ if true
   nodesZ = nodesZ(ind);
 
   %Getting pressure and displacement solution for specified output times from MatFILE
-  press = [printUtils.results.expPress];
-  disp = [printUtils.results.expDispl];
+  press = [printUtils.results.pressure];
+  disp = [printUtils.results.displacements];
   pressNum = press(elemP,1:end);
   dispXNum = disp(3*nodesX-2,1:end);
   dispZNum = disp(3*nodesZ,1:end);

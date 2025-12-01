@@ -11,7 +11,7 @@
     </simParam>
     <Domain>
         <Geometry>
-            <fileName>Mesh/meshes/domain_hexa27_2.vtk</fileName>
+            <fileName>Mesh/meshes/domain_hexa_1.vtk</fileName>
         </Geometry>
         <Gauss>
             <nGP>3</nGP>
@@ -34,7 +34,7 @@
                 <surfaceTag>3</surfaceTag>
             </Slave>
             <Quadrature>
-                <type>ElementBasedQuadrature</type>
+                <type>SegmentBasedQuadrature</type>
                 <nGP>6</nGP>
                 <multiplierType>dual</multiplierType>
                 <nInt>5</nInt>

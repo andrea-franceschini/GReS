@@ -201,7 +201,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       bcType = obj.bcs.getType(bcId);
       switch bcType
         case {'Dirichlet','Seepage'}
-          applyDirBC(obj,bcId,bcDofs,bcVals);
+          applyDirBC(obj,bcId,bcDofs);
         case {'Neumann','VolumeForce'}
           applyNeuBC(obj,bcId,bcDofs,bcVals);
         otherwise

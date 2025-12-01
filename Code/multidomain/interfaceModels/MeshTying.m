@@ -50,9 +50,15 @@ classdef MeshTying < InterfaceSolver
 
       computeConstraintMatrices(obj);
 
+      % reset the jacobian blocks
+      obj.setJmu(MortarSide.slave, []);
+      obj.setJmu(MortarSide.master, []);
+      obj.setJum(MortarSide.slave, []);
+      obj.setJum(MortarSide.master, []);
+
       % overwrite current jacobian
-      setJum(obj,MortarSide.master,obj.M');
-      setJmu(obj,MortarSide.master,obj.M);
+      addJum(obj,MortarSide.master,obj.M');
+      addJmu(obj,MortarSide.master,obj.M);
 
       % add slave contribution
       addJum(obj,MortarSide.slave,obj.D');
