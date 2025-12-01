@@ -17,10 +17,12 @@ classdef Boundaries < handle
       % ensures that each instance has a unique value
       obj.db = containers.Map('KeyType','char','ValueType','any');
       obj.grid = grid;
-      % Calling the function to read input data from file
-      obj.readInputFile(input);
-      obj.computeBoundaryProperties(grid);
-      % linkBoundSurf2TPFAFace(obj,grid);
+      if strcmp(grid.topology.meshType,"Unstructured")
+        % Calling the function to read input data from file
+        obj.readInputFile(input);
+        obj.computeBoundaryProperties(grid);
+        % linkBoundSurf2TPFAFace(obj,grid);
+      end
     end
 
     % Check if the identifier defined by the user is a key of the Map object

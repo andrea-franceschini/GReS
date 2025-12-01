@@ -55,4 +55,4 @@
 /Manual/
 
 # Compiler  builds
-/ThirdPartLibs/*/build
+#/ThirdPartLibs/*/build
