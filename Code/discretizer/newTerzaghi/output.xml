@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-
-<Problem>
- <Output
-          outputFile = "terzaghiColumn"
-          saveHistory = "1"
-          printTimes = "0,1,5,10"
-          />
-</Problem>
