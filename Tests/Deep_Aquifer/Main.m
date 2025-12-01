@@ -61,18 +61,22 @@ if true
     'DefaultAxesLineStyleOrder','-|--|:|-.')
 
   figure('Position', [100, 100, 700, 700])
-  if strcmp()
-    pressPlot = pressure(vertNod(indNod),:);
-    plot(pressPlot,vertNodZ)
-    xlabel('Pressure [kPa]')
-    ylabel('z (m)')
-    legend(time_string)
-  elseif isFVTPFABased(domain.model,'Flow')
-    pressPlot = pressure(vertEl(indEl),:);
-    plot(pressPlot,vertElZ)
-    xlabel('Pressure [kPa]')
-    ylabel('z (m)')
-    legend(time_string)
+
+  flowSolver = getPhysicsSolver(domain,...
+    "BiotFullySaturated").getFlowScheme();
+  switch flowSolver
+    case "FEM"
+      pressPlot = pressure(vertNod(indNod),:);
+      plot(pressPlot,vertNodZ)
+      xlabel('Pressure [kPa]')
+      ylabel('z (m)')
+      legend(time_string)
+    case "FVTPFA"
+      pressPlot = pressure(vertEl(indEl),:);
+      plot(pressPlot,vertElZ)
+      xlabel('Pressure [kPa]')
+      ylabel('z (m)')
+      legend(time_string)
   end
 
   set(findall(gcf, 'type', 'text'), 'FontName', 'Liberation Serif','FontSize', 14);

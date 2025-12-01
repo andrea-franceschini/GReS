@@ -51,7 +51,12 @@ else
   elems = Elements(topology);
 end
 
-faces = Faces(topology);
+if ~any(topology.cellVTKType==10)
+  faces = Faces(topology);
+else
+  faces = [];
+end
+
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 

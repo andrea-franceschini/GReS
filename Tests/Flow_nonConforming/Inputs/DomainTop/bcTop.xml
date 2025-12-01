@@ -42,7 +42,7 @@ a function handle depending on space (x,y,z)
   <BC name = "topCorner_pressure"
       type = "Dirichlet"
       entityType = "NodeBC"
-      physics = "SinglePhaseFlow" >
+      variable = "pressure" >
 
     <BCentities
         bcList = "8"
