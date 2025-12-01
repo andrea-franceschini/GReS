@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Solver>
+  <Sedimentation
+      physics = "SinglePhaseFlow">
+    <domain
+        type = "classic"
+        division = "3,3,3"
+        size = "3,3,3"/>
+    <boundary
+        bottom = "NoFlow"
+        lateralX0 = "Hidrostatic"
+        lateralXM = "Hidrostatic"
+        lateralY0 = "Hidrostatic"
+        lateralYM = "Hidrostatic" />
+    <sediment_map
+        division = "2,2"
+        map_file = "Hidrostatic"/>
+  </Sedimentation>
+</Solver>
