@@ -96,9 +96,9 @@ a function handle depending on space (x,y,z)
              value = "-100.0"
              />
 
-  </BC>
+   </BC>
 
-     <BC
+  <BC
       name = "x_fix"
       type = "Dirichlet"
       entityType = "NodeBC"
@@ -108,6 +108,26 @@ a function handle depending on space (x,y,z)
     <BCentities
                 bcList = "14,30,960,2,18,506"
                 components = "x"
+                />
+
+    <BCevent
+             time = "0.0"
+             value = "0.0"
+             />
+
+  </BC>
+
+
+  <BC
+      name = "y_fix"
+      type = "Dirichlet"
+      entityType = "NodeBC"
+      variable = "displacements"
+      >
+
+    <BCentities
+                bcList = "4,20,542,16,32,980"
+                components = "y"
                 />
 
     <BCevent
