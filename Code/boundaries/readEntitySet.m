@@ -47,6 +47,7 @@ else
 
   nEnts = numel(entsID).*compID;
   ents = repmat(entsID,sum(compID),1);
+  ents = reshape(ents,[],1);
 
   entsPosition = getLocation(ents,mesh,entityType);
 

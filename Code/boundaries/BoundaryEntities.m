@@ -9,7 +9,7 @@ classdef BoundaryEntities < handle
     totEnts
     % Number of constrained entities for each degree of freedom
     nEntities
-    % Indices of constrained degrees of freedom
+    % Indices of constrained entities
     entities
     % Number of input times
     nTimes
@@ -143,5 +143,4 @@ classdef BoundaryEntities < handle
     end
 
   end
-  end
-  
+end

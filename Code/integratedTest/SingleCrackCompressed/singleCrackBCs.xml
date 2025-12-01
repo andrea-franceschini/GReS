@@ -44,7 +44,7 @@ a function handle depending on space (x,y,z)
       name = "z_outer"
       type = "Dirichlet"
       entityType = "SurfBC"
-      physics = "Poromechanics"
+      variable = "displacements"
       >
 
     <BCentities
@@ -63,7 +63,7 @@ a function handle depending on space (x,y,z)
       name = "left_load"
       type = "Neumann"
       entityType = "SurfBC"
-      physics = "Poromechanics"
+      variable = "displacements"
       >
 
     <BCentities
@@ -83,7 +83,7 @@ a function handle depending on space (x,y,z)
       name = "right_load"
       type = "Neumann"
       entityType = "SurfBC"
-      physics = "Poromechanics"
+      variable = "displacements"
       >
 
     <BCentities
@@ -102,7 +102,7 @@ a function handle depending on space (x,y,z)
       name = "x_fix"
       type = "Dirichlet"
       entityType = "NodeBC"
-      physics = "Poromechanics"
+      variable = "displacements"
       >
 
     <BCentities

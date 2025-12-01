@@ -11,10 +11,10 @@ classdef Materials < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = Materials(fileName)
+    function obj = Materials(input)
       obj.db = containers.Map('KeyType','double','ValueType','any');
       % Calling the function to read input data from file
-      obj.readInputFile(fileName);
+      obj.readInputFile(input);
     end
 
     % Get the material defined by matIdentifier and check if it is a
@@ -56,15 +56,26 @@ classdef Materials < handle
 
   methods (Access = private)
     % Reading the input file by material blocks
-    function readInputFile(obj, fileName)
+    function readInputFile(obj, input)
 
-      input = readstruct(fileName,AttributeSuffix="");
+      if ~isstruct(input)
+        input = readstruct(input,AttributeSuffix="");
+      end
+
       if isfield(input,"Materials")
         input = input.Materials;
       end
 
+      if isfield(input,"fileName")
+        assert(isscalar(fieldnames(input)),"FileName, " + ...
+          " must be a unique parameter.");
+        input = readstruct(input.fileName,AttributeSuffix="");
+      end
+
       if isfield(input,"Fluid")
          fluid = Fluid(input.Fluid);
+         %name = getXMLData(input.Fluid,[],"name");
+         %fluid.setName(name);
       end
 
       nSolid = 0;
@@ -77,6 +88,7 @@ classdef Materials < handle
         maxCellTag = max(cTags);
         obj.matMap = zeros(maxCellTag,1);
         for i = 1:nSolid
+          %mat.name = getXMLData(input.Solid(i),[],"name");
           cellTags = getXMLData(input.Solid(i),[],"cellTags");
           if any(obj.matMap(cellTags))
             existingCellTags = cellTags(obj.matMap(cellTags)~=0);

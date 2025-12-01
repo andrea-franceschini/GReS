@@ -1,10 +1,9 @@
-function domains = buildModel(fileName)
-% % build a structure array containing istances of all classes for different
-% noncofnorming domains in the simulation
+function varargout = buildModel(fileName)
+
+% build a GReS simulation from a unique input file
+
+
 outStruct = readstruct(fileName,AttributeSuffix="");
-if isfield(outStruct,"Domains")
-  outStruct = outStruct.Domains;
-end
 
 if isfield(outStruct,"Domain")
   outStruct = outStruct.Domain;
@@ -17,36 +16,34 @@ for i = 1:nD
   domains = [domains; defineDomain(outStruct(i))];
 end
 
-% domains = cell2mat(domains);
+varargout{1} = domains;
+
+if nargout > 1
+interfaces = buildInterfaces(fileName,domains);
+varargout{2} = interfaces;
+end
 
 end
 
 
-function modStr = defineDomain(struc)
+function domain = defineDomain(input)
 
-name = struc.Name;
-model = ModelType(strsplit(struc.ModelType));
 topology = Mesh();
-topology.importMesh(char(struc.Geometry));
-if isfield(struc,"Material")
-  material = Materials(char(struc.Material));
+geom = input.Geometry;
+meshFile = getXMLData(geom,[],"fileName");
+topology.importMesh(meshFile);
+
+if isfield(input,"Materials")
+  mat = Materials(input);
 else
-  material = [];
+  mat = [];
 end
 
-% dof manager
-if ~isfield(struc,'DoFManager')
-  dof = DoFManager(topology,model);
-else
-  dof = DoFManager(topology,model,struc.DoFManager);
+gNPoints = 0;
+if isfield(input,"Gauss")
+  g = input.Gauss;
+  gNPoints = getXMLData(g,[],'nGP');
 end
-
-if isfield(struc,"SimParameters")
-  simparam = SimulationParameters(struc.SimParameters);
-end
-
-
-gNPoints = getXMLData(struc,0,'Gauss');
 
 if gNPoints~=0
   elems = Elements(topology,gNPoints);
@@ -54,36 +51,31 @@ else
   elems = Elements(topology);
 end
 
-faces = Faces(model,topology);
+faces = Faces(topology);
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
+
 % boundary conditions
-if isfield(struc,'BoundaryConditions')
-  bcFile = getXMLData(struc,[],"BoundaryConditions");
-  bc = Boundaries(bcFile,model,grid);
+if isfield(input,'BoundaryConditions')
+  bound = Boundaries(input,grid);
 else
-  bc = [];
+  bound = [];
 end
 
 % output manager
-if isfield(struc,"OutState")
-  outFile = struc.OutState;
-  if ~isstruct(struc.OutState)
-    outFile = getXMLData(struc,[],"OutState");
-  end
-  printUtils = OutState(model,grid.topology,outFile);
+if isfield(input,"Output")
+  printUtils = OutState(grid.topology,input);
 else
-  printUtils = OutState(model,grid.topology);
+  printUtils = OutState(grid.topology);
 end
 
 
-modStr = Discretizer('ModelType',model,...
-  'SimulationParameters',simparam,...
-  'DoFManager',dof,...
-  'Boundaries',bc,...
-  'OutState',printUtils,...
-  'Materials',material,...
-  'Grid',grid);
+domain = Discretizer('grid',grid,...
+                     'materials',mat,...
+                     'boundaries',bound,...
+                     'outstate',printUtils);
+
+domain.addPhysicsSolver(input.Solver);
 
 
 end

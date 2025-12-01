@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<Domains>
+<problem>
   <Domain>
     <Name>TopBlock</Name>
     <ModelType>Poromechanics_FEM</ModelType>
@@ -29,5 +29,5 @@
               printTimes = "1"
               />
   </Domain>
-</Domains>
+</problem>
 

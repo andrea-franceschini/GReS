@@ -6,14 +6,16 @@ classdef OutState < handle
   % 'folderName','folderName': specify name of output folder
 
   properties (Access = public)
-    modTime = false %flag for time step size matching timeList
+    modTime = false     %flag for time step size matching timeList
     timeList
     results
-    model
+    % model
     writeSolution
     timeID = 1
     VTK
     writeVtk
+    matFileName
+    vtkFileName
   end
 
   properties (Access = private)
@@ -24,12 +26,10 @@ classdef OutState < handle
 
   methods (Access = public)
 
-    function obj = OutState(model, mesh, varargin)
+    function obj = OutState(mesh, varargin)
 
       % Default parameters
-      flagMatFile = false;
-      writeVtk = true;
-      folderName = "vtkOutput";
+      folderName = "output";
       tList = [];
 
       % ------------------------------------------------------------
@@ -39,7 +39,7 @@ classdef OutState < handle
         % no output
         obj.writeVtk = false;
         obj.writeSolution = false;
-        obj.model = model;
+        % obj.model = model;
         return
       end
 
@@ -47,17 +47,28 @@ classdef OutState < handle
 
       if isscalar(varargin) && (ischar(firstArg) || isstring(firstArg) || isstruct(firstArg))
         % ---------------- XML configuration mode ----------------
-        xml = firstArg;
-        if ~isstruct(xml)
-          xml = readstruct(xml, AttributeSuffix="");
+        input = firstArg;
+        if ~isstruct(input)
+          input = readstruct(input, AttributeSuffix="");
         end
 
-        flagMatFile = logical(getXMLData(xml, 0, "saveHistory"));
-        folderName  = getXMLData(xml, "vtkOutput", "outputFile");
-        tList       = getXMLData(xml, [], "printTimes");
+        if isfield(input,"Output")
+          input = input.Output;
+        end
 
-        % If no outputFile provided, disable VTK
-        writeVtk = isfield(xml, "outputFile");
+        obj.writeSolution = logical(getXMLData(input, 0, "saveHistory"));
+        obj.vtkFileName  = getXMLData(input, folderName, "outputFile");
+        obj.matFileName = getXMLData(input, folderName, "matFileName");
+
+        % If no outputFile name provided, disable VTK
+        obj.writeVtk = isfield(input, "outputFile");
+
+        if any([obj.writeSolution,obj.writeVtk])
+          tList = getXMLData(input, [], "printTimes");
+        else
+          return
+        end
+
 
       else
         % ---------------- Key-value pair mode ----------------
@@ -76,17 +87,9 @@ classdef OutState < handle
       % ------------------------------------------------------------
       % Object setup
       % ------------------------------------------------------------
-      obj.writeVtk = writeVtk;
-      obj.writeSolution = flagMatFile;
-      obj.model = model;
-      obj.VTK = VTKOutput(mesh, folderName);
 
-      % MAT-file output
-      if obj.writeSolution
-        if isfile('expData.mat'), delete 'expData.mat'; end
-        obj.results = matfile('expData.mat', 'Writable', true);
-        setMatFile(obj, mesh);
-      end
+      %obj.model = model;
+      obj.VTK = VTKOutput(mesh, obj.vtkFileName);
 
       % Time list handling
       if obj.writeVtk
@@ -100,12 +103,25 @@ classdef OutState < handle
         obj.timeList = obj.readTimeList(tList);
       end
 
+      % MAT-file output
+      if obj.writeSolution
+        if isfile('expData.mat'), delete 'expData.mat'; end
+        %obj.results = matfile('expData.mat', 'Writable', true);
+        nT = length(obj.timeList);
+        obj.results = repmat(struct('time', 0),nT,1);
+      end
+
     end
 
 
     function finalize(obj)
       if obj.writeVtk
         obj.VTK.finalize();
+      end
+
+      if obj.writeSolution
+        output = obj.results;
+        save(strcat(obj.matFileName,'.mat'),"output")
       end
     end
   end
@@ -145,6 +161,7 @@ classdef OutState < handle
       fclose(fid);
     end
 
+    % move this logic into specific Physics solver
     % function setMatFile(obj,msh)
     %   l = length(obj.timeList) + 1;
     %   obj.results.expTime = zeros(l,1);
@@ -164,26 +181,26 @@ classdef OutState < handle
     %   end
     % end
 
-    function setMatFile(obj,msh)
-      l = length(obj.timeList) + 1;
-      obj.results = repmat(struct('expTime', 0),l,1);
-      for i=1:l
-        if isFlow(obj.model)
-          if isFEMBased(obj.model,'Flow')
-            obj.results(i).expPress = [];
-          elseif isFVTPFABased(obj.model,'Flow')
-            obj.results(i).expPress = [];
-            if isVariabSatFlow(obj.model)
-              obj.results(i).expSat = [];
-            end
-          end
-        end
-        if isPoromechanics(obj.model)
-          obj.results(i).expDispl = [];
-          % Consider adding other output properties
-        end
-      end
-    end
+    % function setMatFile(obj,msh)
+    %   l = length(obj.timeList) + 1;
+    %   obj.results = repmat(struct('expTime', 0),l,1);
+    %   for i=1:l
+    %     if isFlow(obj.model)
+    %       if isFEMBased(obj.model,'Flow')
+    %         obj.results(i).expPress = [];
+    %       elseif isFVTPFABased(obj.model,'Flow')
+    %         obj.results(i).expPress = [];
+    %         if isVariabSatFlow(obj.model)
+    %           obj.results(i).expSat = [];
+    %         end
+    %       end
+    %     end
+    %     if isPoromechanics(obj.model)
+    %       obj.results(i).expDispl = [];
+    %       % Consider adding other output properties
+    %     end
+    %   end
+    % end
 
   end
 
@@ -193,12 +210,24 @@ classdef OutState < handle
       % Merge output variable coming from a field to the global output
       % structure
       % Concatenate the two structure arrays
-      if isempty(strA)
-        mergeStruct = strB;
-        return
+
+      try
+        mergeStruct = [strA; strB];
+      catch
+        unknownFields = setdiff(fieldnames(strB),fieldnames(strA));
+        error("Ouput structure must be an array of structures with 2 fields:" + ...
+          " 'name' and 'data'. \n" + ...
+          "Invalid fields: \n %s, ",unknownFields{:})
+
       end
-      mergeStruct = [strA; strB];
+
       names = {mergeStruct.name};
+
+      % remove empty 
+      isEmpty = cellfun(@isempty, names);
+      mergeStruct(isEmpty) = [];
+      names(isEmpty) = [];
+
       [~, uniqueIdx] = unique(names, 'stable');
       % Create the merged structure using the unique indices
       mergeStruct = mergeStruct(uniqueIdx);

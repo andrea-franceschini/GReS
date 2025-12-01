@@ -1,25 +1,24 @@
-outFileTop = "topBlock";
-outFileBottom = "bottomBlock";
+clear
+close all
 
+scriptFullPath = mfilename('fullpath');
 
-domainFile = 'Domains/domains.xml';
-interfFile = 'Domains/interface.xml';
-domains = buildModel(domainFile); 
-% set verbosity
-domains(1).simparams.setVerbosity(0);
-domains(2).simparams.setVerbosity(0);
+% Extract the directory containing the script
+scriptDir = fileparts(scriptFullPath);
 
-[interfaces,domains] = Mortar.buildInterfaces(interfFile,domains);
+cd(scriptDir);
 
-solver = ActiveSetContactSolver(domains,interfaces,5);
+simparams = SimulationParameters('constantSliding.xml');
 
-%solver.simParameters.setBackstepSkipFlag(1);
+[domains,interfaces] = buildModel('constantSliding.xml');
+
+solver = ActiveSetContactSolver(simparams,domains,interfaces,5);
 
 solver.NonLinearLoop();
 solver.finalizeOutput();
 
 % get tangential gap
-gt = interfaces{1}.tangentialGap.curr;
+gt = interfaces{1}.state.tangentialGap;
 anGt = 0.1*sqrt(2);
 tol = 1e-6;
 assert(all(abs(gt - anGt)<tol),"Analytical solution is not matched")

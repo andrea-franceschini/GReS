@@ -21,13 +21,12 @@ classdef testBoundaries < matlab.unittest.TestCase
     % Test methods
     
     function readBC(testCase)
-      model = ModelType(["Poromechanics_FEM","SinglePhaseFlow_FVTPFA"]);
       mesh = Mesh();
       mesh.importMesh("mesh.msh");
       elems = Elements(mesh,2);
-      faces = Faces(model,mesh);
+      faces = Faces(mesh);
       grid = struct("topology",mesh,"cells",elems,"faces",faces);
-      testCase.bc = Boundaries(testCase.pathToFile,model,grid);
+      testCase.bc = Boundaries(testCase.pathToFile,grid);
 
       v1 = testCase.bc.getVals("bc1",3);
       v21 = testCase.bc.getVals("bc2",0.2);
@@ -54,7 +53,7 @@ classdef testBoundaries < matlab.unittest.TestCase
       e3 = testCase.bc.getEntities("bc3");
       e5 = testCase.bc.getEntities("bc5");
 
-      verifyEqual(testCase,e1,[1;54;20],"AbsTol",1e-9)
+      verifyEqual(testCase,e1,[1;13;168],"AbsTol",1e-9)
       verifyEqual(testCase,e2,repmat((165:168)',2,1),"AbsTol",1e-9)
       verifyEqual(testCase,length(e3),126,"AbsTol",1e-9)
       verifyEqual(testCase,e5,repmat((1:4)',3,1),"AbsTol",1e-9)

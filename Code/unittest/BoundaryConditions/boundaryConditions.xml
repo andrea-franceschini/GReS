@@ -43,7 +43,7 @@ a function handle depending on space (x,y,z)
       name = "bc1"
       type = "Dirichlet"
       entityType = "SurfBC"
-      physics = "SinglePhaseFlow"
+      variable = "pressure"
       >
 
     <BCentities
@@ -60,7 +60,7 @@ a function handle depending on space (x,y,z)
       name = "bc2"
       type = "Neumann"
       entityType = "SurfBC"
-      physics = "Poromechanics"
+      variable = "displacements"
       >
 
     <BCentities
@@ -87,7 +87,7 @@ a function handle depending on space (x,y,z)
       name = "bc3"
       type = "Dirichlet"
       entityType = "NodeBC"
-      physics = "Poromechanics"
+      variable = "displacements"
       >
 
     <BCentities
@@ -104,7 +104,7 @@ a function handle depending on space (x,y,z)
       name = "bc4"
       type = "Dirichlet"
       entityType = "NodeBC"
-      physics = "Poromechanics"
+      variable = "displacements"
       >
 
     <BCentities
@@ -122,7 +122,7 @@ a function handle depending on space (x,y,z)
       name = "bc5"
       type = "Dirichlet"
       entityType = "SurfBC"
-      physics = "Poromechanics"
+      variable = "displacements"
       >
 
     <BCentities

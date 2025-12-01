@@ -1,10 +1,6 @@
 classdef ContactMortar < Mortar
 
   properties
-    normalGap        % normal gap
-    tangentialGap    % norm of tangential gap 
-    slip             % norm of tangential slip
-    %dispJump         % displacement jump in global coordinates
     Jmu               % master displacement block
     Jmt               % master multipliers block
     Jsu               % slave displacement block

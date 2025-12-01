@@ -44,7 +44,7 @@ a function handle depending on space (x,y,z)
       name = "Fixed_top"
       type = "Dirichlet"
       entityType = "SurfBC"
-      physics = "Poromechanics"
+      variable = "displacements"
       >
 
     <BCentities
@@ -63,7 +63,7 @@ a function handle depending on space (x,y,z)
       name = "Displacement_top"
       type = "Dirichlet"
       entityType = "SurfBC"
-      physics = "Poromechanics"
+      variable = "displacements"
       >
 
     <BCentities
