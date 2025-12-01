@@ -18,7 +18,7 @@ classdef BiotFullySaturated < PhysicsSolver
     fldMech
     fldFlow
 
-    flowscheme
+    flowScheme
   end
 
   methods (Access = public)
@@ -37,7 +37,7 @@ classdef BiotFullySaturated < PhysicsSolver
       if isfield(input,"SinglePhaseFlowFVTPFA")
         obj.flowSolver = SinglePhaseFlowFVTPFA(obj.domain);
       end
-      obj.flowscheme = obj.flowSolver.typeDiscretization();
+      obj.flowScheme = obj.flowSolver.typeDiscretization();
       % obj.flowSolver = SinglePhaseFlow(obj.domain);
       registerSolver(obj.flowSolver,input.(class(obj.flowSolver)));
       obj.mechSolver = Poromechanics(obj.domain);
@@ -91,7 +91,7 @@ classdef BiotFullySaturated < PhysicsSolver
 
       subCells = getEntities(entityField.cell,obj.mesh,cellTags);
 
-      switch obj.flowscheme
+      switch obj.flowScheme
         case "FEM"
           nEntries = sum((obj.mesh.nDim)*(obj.mesh.cellNumVerts(subCells)).^2);
         case "FVTPFA"
@@ -123,7 +123,7 @@ classdef BiotFullySaturated < PhysicsSolver
 
         % kronecker delta in tensor form
         kron = [1;1;1;0;0;0];
-        switch obj.flowscheme
+        switch obj.flowScheme
           case "FEM"
             Np = reshape(Nref',1,elem.nNode,nG);
             kron = repmat(kron,1,1,nG);
@@ -216,9 +216,12 @@ classdef BiotFullySaturated < PhysicsSolver
     end
 
 
-
     function out = isLinear(obj)
       out = true;
+    end
+
+    function out = getFlowScheme(obj)
+      out = obj.flowSolver.typeDiscretization;
     end
   end
 

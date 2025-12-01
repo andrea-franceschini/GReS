@@ -50,9 +50,15 @@ classdef MeshTying < InterfaceSolver
 
       computeConstraintMatrices(obj);
 
+      % reset the jacobian blocks
+      obj.setJmu(MortarSide.slave, []);
+      obj.setJmu(MortarSide.master, []);
+      obj.setJum(MortarSide.slave, []);
+      obj.setJum(MortarSide.master, []);
+
       % overwrite current jacobian
-      setJum(obj,MortarSide.master,obj.M');
-      setJmu(obj,MortarSide.master,obj.M);
+      addJum(obj,MortarSide.master,obj.M');
+      addJmu(obj,MortarSide.master,obj.M);
 
       % add slave contribution
       addJum(obj,MortarSide.slave,obj.D');
@@ -210,6 +216,10 @@ classdef MeshTying < InterfaceSolver
           Mloc = MortarQuadrature.integrate(f,Nmult,Nm,dJw);
           Dloc = MortarQuadrature.integrate(f,Nmult,Ns,dJw);
           asbM.localAssembly(tDof,umDof,-Mloc); % minus sign!
+          if strcmp(obj.quadrature.multiplierType,"dual")
+            Dloc = diag(sum(Dloc,2));
+          end
+
           asbD.localAssembly(tDof,usDof,Dloc);
 
         end

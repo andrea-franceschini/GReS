@@ -50,7 +50,7 @@ for i = 1:nref
   meshName = "domain_"+elem_type+"_"+num2str(i);
 
   % update the mesh in the domain input file
-  fileStruct.Domain.Geometry.fileName = fullfile('Mesh','meshes',meshName+".vtk");
+  fileStruct.Domain.Geometry.fileName = fullfile('Input','Mesh','meshes',meshName+".vtk");
  
 
   % write interface to file

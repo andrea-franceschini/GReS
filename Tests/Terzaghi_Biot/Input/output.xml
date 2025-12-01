@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <Output
-        outputFile = "Outputs/Bottom"
-        matFileName = "Outputs/resultsBot"
+        outputFile = "Outputs/results"
+        matFileName = "Outputs/results"
         saveHistory = "1"
-        printTimes = "0.5,1,2,5,10,50"
+        printTimes = "15,30,60,90,120,180"
         />
 
 <!--

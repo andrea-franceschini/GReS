@@ -22,16 +22,16 @@
   <Domain>
 
     <Geometry
-              fileName = "SingleCrack_grid.vtk"
+              fileName = "Input/SingleCrack_grid.vtk"
               />
     <Gauss nGP = "3" />
-    <Materials fileName = "materials.xml" />
-    <BoundaryConditions fileName = "singleCrackBCs.xml" />
+    <Materials fileName = "Input/materials.xml" />
+    <BoundaryConditions fileName = "Input/singleCrackBCs.xml" />
 
-    <Output
+    <!--<Output
             outputFile = "SingleCrackCompressed"
             printTimes = "1.0"
-            />
+            />-->
     <Solver>
       <Poromechanics />
     </Solver>

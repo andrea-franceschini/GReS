@@ -42,17 +42,17 @@ a function handle depending on space (x,y,z)
 
   <!-- Boundary Conditions to Flow -->
   <!-- Top -->
-  <BC name = "LatNoFlow"
+  <BC name = "NoFlowTop"
       type = "Dirichlet"
       entityType = "SurfBC"
       variable = "pressure" >
 
-    <BCentities surfaceTags = "5" />
+    <BCentities surfaceTags = "2" />
     <BCevent time = "0." value = "0.000000e+00" />
   </BC>
 
   <!-- Boundary Conditions to Mechanics -->  
-  <!-- Top -->
+  <!-- Top-->
   <BC name = "TopLoad"
       type = "Neumann"
       entityType = "SurfBC"
@@ -65,7 +65,7 @@ a function handle depending on space (x,y,z)
   <!-- Lateral Y -->
   <BC name = "LatFixedY"
       type = "Dirichlet"
-      entityType = "SurfBC"
+      entityType = "NodeBC"
       variable = "displacements" >
 
     <BCentities surfaceTags = "3" components = "y" />
@@ -75,7 +75,7 @@ a function handle depending on space (x,y,z)
   <!-- Lateral X -->
   <BC name = "LatFixedX"
       type = "Dirichlet"
-      entityType = "SurfBC"
+      entityType = "NodeBC"
       variable = "displacements" >
 
     <BCentities surfaceTags = "4" components = "x" />
@@ -83,12 +83,12 @@ a function handle depending on space (x,y,z)
   </BC>
 
   <!-- Bottom -->
-  <BC name = "BotFix"
+  <BC name = "BotFixed"
       type = "Dirichlet"
       entityType = "SurfBC"
       variable = "displacements" >
 
-    <BCentities surfaceTags = "1" components = "z" />
+    <BCentities surfaceTags = "1" components = "x,y,z" />
     <BCevent time = "0." value = "0.000000e+00" />
   </BC>
 
