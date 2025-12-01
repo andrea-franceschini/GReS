@@ -15,7 +15,8 @@ in a nonConforming simulation.
 
     <Output
             saveHistory = "1"
-            outputFile = "Results"
+            outputFile = "Outputs/Results"
+            matFileName = "Outputs/results"
             printTimes = "1,4,8"
             />
 
