@@ -31,9 +31,9 @@ if true
     mkdir(figures_dir)
   end
 
-  expPress = [domain.outstate.results.expPress];
-  expDispl = [domain.outstate.results.expDispl];
-  expTime = [domain.outstate.results.expTime];
+  pressure = [domain.outstate.results.pressure];
+  displacements = [domain.outstate.results.displacements];
+  expTime = [domain.outstate.results.time];
 
   topol = domain.grid.topology;
 
@@ -55,20 +55,20 @@ if true
   vertEl = find(tmpEl == 4);
   [vertElZ,indEl] = sort(topol.cellCentroid(vertEl,3));
 
-  timesInd = [2;3;4];
+  timesInd = [1;2;3];
   time_string = "Year  " + expTime(timesInd);
   set(0,'DefaultAxesColorOrder',[0 0 0],...
     'DefaultAxesLineStyleOrder','-|--|:|-.')
 
   figure('Position', [100, 100, 700, 700])
-  if isFEMBased(domain.model,'Flow')
-    pressPlot = expPress(vertNod(indNod),:);
+  if strcmp()
+    pressPlot = pressure(vertNod(indNod),:);
     plot(pressPlot,vertNodZ)
     xlabel('Pressure [kPa]')
     ylabel('z (m)')
     legend(time_string)
   elseif isFVTPFABased(domain.model,'Flow')
-    pressPlot = expPress(vertEl(indEl),:);
+    pressPlot = pressure(vertEl(indEl),:);
     plot(pressPlot,vertElZ)
     xlabel('Pressure [kPa]')
     ylabel('z (m)')
@@ -83,7 +83,7 @@ if true
   stmp = fullfile(figures_dir,'DeepAcquifer_pressure.png');
   exportgraphics(gcf,stmp,'Resolution',400)
 
-  dispPlot = expDispl(3*vertNod(indNod),:);
+  dispPlot = displacements(3*vertNod(indNod),:);
   figure('Position', [100, 100, 700, 700])
   plot(1000*dispPlot,vertNodZ);
   xlabel('Vertical displacement (mm)')

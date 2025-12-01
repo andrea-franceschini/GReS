@@ -5,7 +5,7 @@ in a nonConforming simulation.
 
 <Problem>
 
-  <simParam fileName = "simParam.xml" />
+  <simParam fileName = "Inputs/simParam.xml" />
 
   <Domain>
     <Geometry fileName = "Inputs/ReservoirTest_Hexa.msh" />
