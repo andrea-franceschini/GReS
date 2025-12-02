@@ -243,7 +243,17 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     end
 
     function applyDirVal(obj,bcId,t)
-      return
+      bcVar = obj.bcs.getVariable(bcId);
+      if ~strcmp(bcVar,obj.getField()) 
+        return 
+      end
+      [bcDofs,bcVals] = getBC(obj,bcId,t);
+      if size(bcVals,2)==2
+        % skip BC assigned to external surfaces
+        return
+      end
+      state = getState(obj);
+      state.data.pressure(bcDofs) = bcVals;
     end
 
     function applyBC(obj,bcId,t)
@@ -270,18 +280,23 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
     function applyDirBC(obj,bcId,bcDofs,bcVals)
       % apply Dirichlet BCs
+      % overrides the base method implemented in PhysicsSolver
       % ents: id of constrained faces without any dof mapping applied
       % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
 
       % BCs imposition for finite volumes - boundary flux
-      assert(size(bcVals,2)==2,'Invalid matrix size for BC values');
-      nDoF = obj.dofm.getNumbDoF(obj.fieldId);
-      bcDofsJ = nDoF*(bcDofs-1) + bcDofs;
-      J = getJacobian(obj);
-      obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) = ...
-        J(bcDofsJ) + bcVals(:,1);
-      obj.domain.rhs{obj.fieldId}(bcDofs) = ...
-        obj.domain.rhs{obj.fieldId}(bcDofs) + bcVals(:,2);
+      if size(bcVals,2) == 2
+        assert(size(bcVals,2)==2,'Invalid matrix size for BC values');
+        nDoF = obj.dofm.getNumbDoF(obj.fieldId);
+        bcDofsJ = nDoF*(bcDofs-1) + bcDofs;
+        J = getJacobian(obj);
+        obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) = ...
+          J(bcDofsJ) + bcVals(:,1);
+        obj.domain.rhs{obj.fieldId}(bcDofs) = ...
+          obj.domain.rhs{obj.fieldId}(bcDofs) + bcVals(:,2);
+      else
+        applyDirBC@PhysicsSolver(obj,bcId,bcDofs);
+      end
     end
 
     function computeTrans(obj)   % Inspired by MRST
@@ -383,6 +398,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
           [ents, ~] = sort(obj.bcs.getEntities(bc));
           switch obj.bcs.getCond(bc)
             case {'NodeBC','ElementBC'}
+              return
             case 'SurfBC'
               if strcmp(obj.bcs.getType(bc),'Dirichlet') || strcmp(obj.bcs.getType(bc),'Seepage')
                 vals=vals(:,2);
