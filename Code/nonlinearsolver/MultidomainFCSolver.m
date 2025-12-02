@@ -279,23 +279,6 @@ classdef MultidomainFCSolver < handle
       J = cell(obj.nVars + obj.nInterf);
 
       k = 0;
-<<<<<<< HEAD
-      % populate jacobian with inner domain blocks
-      for iDom = 1:obj.nDom
-        discr = obj.domains(iDom);
-        J(k+1:k+obj.nfldDom(iDom),k+1:k+obj.nfldDom(iDom)) = ...
-          discr.assembleJacobian();
-        for iFld = 1:obj.nfldDom(iDom)
-          fld = discr.fields(iFld);
-          for iI = discr.interfaceList
-            if ~strcmp(obj.interfaces{iI}.physic,fld)
-              continue
-            end
-            jj = obj.systSize(2)+iI;
-            [J{iFld+k,jj},J{jj,iFld+k}] = getJacobian(...
-              obj.interfaces{iI},fld,iDom);
-          end
-=======
 
       for iD = 1:obj.nDom
 
@@ -313,7 +296,6 @@ classdef MultidomainFCSolver < handle
           [J(k+1:k+nV,obj.nVars+q), J(obj.nVars+q,k+1:k+nV)] = ...
             getInterfaceJacobian(dom,iI);
 
->>>>>>> origin/main
         end
 
         k = k + nV;
@@ -322,28 +304,8 @@ classdef MultidomainFCSolver < handle
 
       for iI = 1:obj.nInterf
         interf = obj.interfaces{iI};
-<<<<<<< HEAD
-        if isa(interf,'MeshGlueDual')
-          id = interf.idDomain;
-          if isempty(J{id(1),id(2)})
-            J{id(1),id(2)} = interf.Jcoupling';
-          else
-            J{id(1),id(2)} =  J{id(1),id(2)} + interf.Jcoupling';
-          end
-          if isempty(J{id(2),id(1)})
-            J{id(2),id(1)} = interf.Jcoupling;
-          else
-            J{id(2),id(1)} = J{id(2),id(1)} + interf.Jcoupling;
-          end
-        else
-          jj = obj.systSize(2)+iI;
-          [J{jj,jj}] = getJacobian(...
-              obj.interfaces{iI},fld,iDom);
-        end
-=======
         % constraint blocks
         J{obj.nVars+iI,obj.nVars+iI} = getJacobian(interf);
->>>>>>> origin/main
       end
 
     end

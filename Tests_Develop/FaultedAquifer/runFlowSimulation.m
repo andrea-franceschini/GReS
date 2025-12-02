@@ -1,11 +1,11 @@
 function [mesh, pressures] = runFlowSimulation(mesh,gridDims,nRock)
 
-gresLog.log(1,'Faulted aquifer model - flow simulation \n')
-gresLog.log(1,'___________________\n\n')
+gresLog().log(1,'Faulted aquifer model - flow simulation \n')
+gresLog().log(1,'___________________\n\n')
 
 wellsId = setAquiferMesh(mesh,gridDims,nRock);
 
-gresLog.log(1,'ID of cells with wells: %i    %i \n',wellsId(1),wellsId(2))
+gresLog().log(1,'ID of cells with wells: %i    %i \n',wellsId(1),wellsId(2))
 
 fileName = "faultCP_flow";
 

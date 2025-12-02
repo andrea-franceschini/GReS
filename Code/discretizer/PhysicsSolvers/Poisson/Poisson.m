@@ -50,11 +50,7 @@ classdef Poisson < PhysicsSolver
 
       subCells = obj.dofm.getFieldCells(obj.fieldId);
       n = sum(obj.mesh.cellNumVerts(subCells).^2);
-<<<<<<< HEAD:Code/discretizer/SinglePhysics/Poisson.m
-      Ndof = obj.dofm.getNumDoF(obj.field);
-=======
       Ndof = obj.dofm.getNumbDoF(obj.getField());
->>>>>>> origin/main:Code/discretizer/PhysicsSolvers/Poisson/Poisson.m
       asbJ = assembler(n,Ndof,Ndof, @(el) computeLocalMatrix(obj,el));
       % loop over cells
       for el = subCells'
@@ -129,13 +125,8 @@ classdef Poisson < PhysicsSolver
       
     end
 
-<<<<<<< HEAD:Code/discretizer/SinglePhysics/Poisson.m
-    function applyDirVal(obj,dof,vals,varargin)
-      obj.state.data.u(dof) = vals;
-=======
     function advanceState(obj)
       % do nothing
->>>>>>> origin/main:Code/discretizer/PhysicsSolvers/Poisson/Poisson.m
     end
 
 

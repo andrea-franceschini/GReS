@@ -92,7 +92,7 @@ classdef Materials < handle
           cellTags = getXMLData(input.Solid(i),[],"cellTags");
           if any(obj.matMap(cellTags))
             existingCellTags = cellTags(obj.matMap(cellTags)~=0);
-            gres_log().error("Multiple materials assigned to cellTags %s",...
+            error("Multiple materials assigned to cellTags %s",...
               sprintf("%i ", existingCellTags));
           end
           obj.matMap(cellTags) = i;

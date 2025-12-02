@@ -9,14 +9,6 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
 
   methods (Access = public)
-<<<<<<< HEAD
-    function obj = ActiveSetContactSolver(domains,interfaces,varargin)
-      obj@MultidomainFCSolver(domains,interfaces)
-      setContactInterfaces(obj);
-      if ~isempty(varargin)
-        obj.maxActiveSetIters = varargin{1};
-      end
-=======
     function obj = ActiveSetContactSolver(simparams,domains,interfaces,varargin)
       
       obj@MultidomainFCSolver(simparams,domains,interfaces)
@@ -31,7 +23,6 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
         obj.maxActiveSetIters = varargin{1};
       end
 
->>>>>>> origin/main
     end
 
 
@@ -39,34 +30,6 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
     function NonLinearLoop(obj)
 
       % Initialize the time step increment
-<<<<<<< HEAD
-      obj.dt = obj.simParameters.dtIni;
-      delta_t = obj.dt; % dynamic time step
-
-      %
-      flConv = true; %convergence flag
-
-      % initialize the state object
-      applyDirVal(obj);
-      for i = 1:obj.nDom
-        obj.state(i).curr = obj.domains(i).state;
-        obj.state(i).prev =  copy(obj.state(i).curr);
-      end
-
-
-      % Loop over time
-      while obj.t < obj.simParameters.tMax
-
-
-        % Update the simulation time and time step ID
-        absTol = obj.simParameters.absTol;
-        obj.tStep = obj.tStep + 1;
-        %new time update to fit the outTime list
-
-        if obj.simParameters.verbosity > 0
-          fprintf('\n-----------------------------------------------------------\n');
-          fprintf('TIME STEP %i\n',obj.tStep)
-=======
       obj.dt = obj.simparams.dtIni;
 
       %
@@ -91,50 +54,10 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
         for i = 1:obj.nDom
           obj.domains(i).applyDirVal(obj.t);
->>>>>>> origin/main
         end
 
         % reset active set iteration counter
         itAS = 0;
-<<<<<<< HEAD
-
-        hasActiveSetChanged = true;
-
-        [obj.t, delta_t] = obj.updateTime(flConv, delta_t);
-
-
-        applyDirVal(obj);
-
-        while hasActiveSetChanged && itAS <= obj.maxActiveSetIters
-          % outer active set loop
-
-          if obj.simParameters.verbosity > 0
-            fprintf('\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,delta_t);
-          end
-
-          if obj.simParameters.verbosity > 0
-            fprintf('Active set iteration n. %i \n', itAS)
-          end
-
-          if obj.simParameters.verbosity > 1
-            fprintf('Iter     ||rhs||\n');
-          end
-
-          computeMatricesAndRhs(obj);
-          applyBC(obj);
-          rhs = assembleRhs(obj);
-          rhsNorm = norm(cell2mat(rhs),2);
-
-          tolWeigh = obj.simParameters.relTol*rhsNorm;
-          obj.iter = 0;
-          %
-          if obj.simParameters.verbosity > 1
-            fprintf('0     %e\n',rhsNorm);
-          end
-
-          while ((rhsNorm > tolWeigh) && (obj.iter < obj.simParameters.itMaxNR) ...
-              && (rhsNorm > absTol)) || obj.iter == 0
-=======
         hasActiveSetChanged = true(numel(obj.contactInterf),1);
 
         while any(hasActiveSetChanged) && itAS <= obj.maxActiveSetIters
@@ -168,7 +91,6 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
           flConv = false;
 
           while (~flConv) && (obj.iter < obj.simparams.itMaxNR)
->>>>>>> origin/main
 
             obj.iter = obj.iter + 1;
 
@@ -176,33 +98,6 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
             du = solve(obj,J,rhs);
 
-<<<<<<< HEAD
-            % update primary variables and multipliers
-            updateState(obj,du);
-
-            computeMatricesAndRhs(obj);
-            applyBC(obj);
-            rhs = assembleRhs(obj);
-            rhsNorm = norm(cell2mat(rhs),2);
-
-
-            if obj.simParameters.verbosity > 1
-              fprintf('%d     %e\n',obj.iter,rhsNorm);
-            end
-          end
-          %
-          % Check for convergence
-          flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
-
-          % set active set not changed by default
-          hasActiveSetChanged = false;
-
-          if flConv % Newton Convergence
-            % Advance state of non linear models
-
-            for i = obj.contactInterf
-              hasActiveSetChanged = updateActiveSet(obj.interfaces{i});
-=======
             c = 0;
 
             for i = 1:obj.nDom
@@ -249,52 +144,19 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
             for i = 1:numel(obj.contactInterf)
               interf = obj.interfaces{obj.contactInterf(i)};
               hasActiveSetChanged(i) = updateActiveSet(interf);
->>>>>>> origin/main
             end
 
             itAS = itAS + 1;
 
-<<<<<<< HEAD
-            if ~hasActiveSetChanged
-            for i = 1:obj.nDom
-              obj.state(i).curr.t = obj.t;
-              if isPoromechanics(obj.domains(i).model)
-                obj.domains(i).getSolver('Poromechanics').advanceState();
-              end
-            end
-            end
-
-%             % this happen also if obj.maxActiveSetIters = 0, break loop
-%             if itAS >= obj.maxActiveSetIters 
-%               obj.state(1).curr.t = obj.t;
-%               obj.state(2).curr.t = obj.t;
-%               printState(obj);
-%               delta_t = manageNextTimeStep(obj,delta_t,flConv,hasActiveSetChanged);
-%               break
-%             end
-
-            if itAS == obj.maxActiveSetIters
-              fprintf('Reached maximum number of active set iterations \n');
-              hasActiveSetChanged = false;
-=======
             if any(hasActiveSetChanged) && itAS == obj.maxActiveSetIters
               % force backstep
               fprintf('Reached maximum number of active set iterations \n');
               hasActiveSetChanged(:) = false;
->>>>>>> origin/main
               flConv = false;
             end
           end
 
-<<<<<<< HEAD
-          if flConv
-            printState(obj);
-          end
-
-          delta_t = manageNextTimeStep(obj,delta_t,flConv,hasActiveSetChanged);
-=======
           manageNextTimeStep(obj,flConv,hasActiveSetChanged);
->>>>>>> origin/main
 
         end % outer active set loop
       end % time marching
@@ -365,48 +227,6 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 % 
 %     end
 
-<<<<<<< HEAD
-    function [dt] = manageNextTimeStep(obj,dt,newtonConv,activeSetChanged)
-      if ~newtonConv    % time step not converged
-        dt = dt/obj.simParameters.divFac;
-        obj.dt = obj.dt/obj.simParameters.divFac;  % Time increment chop
-
-        if min(dt,obj.dt) < obj.simParameters.dtMin
-          if obj.simParameters.goOnBackstep == 1
-            newtonConv = true;
-          elseif obj.simParameters.goOnBackstep == 0
-            error('Minimum time step reached')
-          end
-        else
-          if obj.simParameters.verbosity > 0
-            fprintf('\n %s \n','BACKSTEP');
-            goBackState(obj);
-            obj.t = obj.t - obj.dt*obj.simParameters.divFac;
-            obj.tStep = obj.tStep - 1;
-          end
-        end
-      end
-      if newtonConv && ~activeSetChanged  % converged time step
-        tmpVec = obj.simParameters.multFac;
-        for i = 1:obj.nDom
-          if isFlow(obj.domains(i).model)
-            pnew = obj.state(i).curr.data.pressure;
-            pold = obj.state(i).prev.data.pressure;
-            dpMax = max(abs(pnew-pold));
-            tmpVec = [tmpVec, (1+obj.simParameters.relaxFac)* ...
-              obj.simParameters.pTarget/(dpMax + obj.simParameters.relaxFac* ...
-              obj.simParameters.pTarget)];
-          end
-        end
-        obj.dt = min([obj.dt * min(tmpVec),obj.simParameters.dtMax]);
-        obj.dt = max([obj.dt obj.simParameters.dtMin]);
-        goOnState(obj);
-        %
-        if ((obj.t + obj.dt) > obj.simParameters.tMax)
-          obj.dt = obj.simParameters.tMax - obj.t;
-        end
-      end
-=======
 
 
     function manageNextTimeStep(obj,newtonConv,activeSetChanged)
@@ -474,7 +294,6 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
       % case 3: newton convergence but active set changed
       % do nothing, keep current state() and stateOld()
 
->>>>>>> origin/main
     end
 
 

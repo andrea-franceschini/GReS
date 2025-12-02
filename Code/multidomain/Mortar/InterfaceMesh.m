@@ -124,8 +124,6 @@ classdef InterfaceMesh < handle
 
 
 
-<<<<<<< HEAD:Code/multidomain/Mortar/interfaceMesh.m
-=======
     end
 
     function R = getRotationMatrix(obj,elemId)
@@ -193,7 +191,6 @@ classdef InterfaceMesh < handle
         R = obj.computeRot(n);
         obj.rotationMat(i,:) = R(:);
       end
->>>>>>> origin/main:Code/multidomain/Mortar/InterfaceMesh.m
     end
 
   end

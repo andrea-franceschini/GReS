@@ -19,18 +19,6 @@ classdef SegmentBasedQuadrature < MortarQuadrature
   end
   
   methods
-<<<<<<< HEAD:Code/multidomain/Mortar/SegmentBasedQuadrature.m
-    function obj = SegmentBasedQuadrature(mortar,ng)
-
-      obj@MortarQuadrature(mortar,3);
-      obj.ngTri = ng;
-
-      gaussTri = Gauss(5,ng); % 5 is the vtk type of triangles
-      obj.wTri = gaussTri.weight;
-
-      isQuadratic = [~isempty(obj.mortar.elements(1).getElement(28));
-                     ~isempty(obj.mortar.elements(2).getElement(28))];
-=======
     function obj = SegmentBasedQuadrature(interface,multType,input)
 
       obj@MortarQuadrature(interface,multType,input);
@@ -41,7 +29,6 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
       isQuadratic = [~isempty(obj.elements(1).getElement(28));
                      ~isempty(obj.elements(2).getElement(28))];
->>>>>>> origin/main:Code/multidomain/Mortar/Quadrature/SegmentBasedQuadrature.m
 
       if sum(isQuadratic)==0 % no quadratic elements
         obj.maxTriPerPair = 6;
@@ -57,16 +44,6 @@ classdef SegmentBasedQuadrature < MortarQuadrature
     function processMortarPairs(obj)
 
       % initialize the maps to store mortar quadrature infos
-<<<<<<< HEAD:Code/multidomain/Mortar/SegmentBasedQuadrature.m
-      nConnections = nnz(obj.mortar.mesh.elemConnectivity);
-      totTri = nConnections*obj.maxTriPerPair;
-      obj.gpCoords = {zeros(totTri,obj.ngTri,2);
-        zeros(totTri,obj.ngTri,2)};
-      obj.mortarPairs = zeros(totTri,2);
-      obj.detJtri = zeros(totTri,1);
-
-      nM = full(sum(obj.mortar.mesh.elemConnectivity,1));
-=======
       nConnections = nnz(obj.interface.interfMesh.elemConnectivity);
       totTri = nConnections*obj.maxTriPerPair;
       obj.gpCoords = {zeros(totTri,obj.ngTri,2);
@@ -75,16 +52,11 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       obj.detJtri = zeros(totTri,1);
 
       nM = full(sum(obj.interface.interfMesh.elemConnectivity,1));
->>>>>>> origin/main:Code/multidomain/Mortar/Quadrature/SegmentBasedQuadrature.m
       nM = [0 cumsum(nM)];
 
       for is = 1:obj.msh(2).nSurfaces
 
-<<<<<<< HEAD:Code/multidomain/Mortar/SegmentBasedQuadrature.m
-        imList = find(obj.mortar.mesh.elemConnectivity(:,is));
-=======
         imList = find(obj.interface.interfMesh.elemConnectivity(:,is));
->>>>>>> origin/main:Code/multidomain/Mortar/Quadrature/SegmentBasedQuadrature.m
 
         for j = 1:numel(imList)
           im = imList(j);
@@ -112,11 +84,7 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
       for i = 1:nTri
         idTri = (k-1)*obj.maxTriPerPair + i;
-<<<<<<< HEAD:Code/multidomain/Mortar/SegmentBasedQuadrature.m
-        obj.mortarPairs(idTri,:) = [is im];
-=======
         obj.interfacePairs(idTri,:) = [is im];
->>>>>>> origin/main:Code/multidomain/Mortar/Quadrature/SegmentBasedQuadrature.m
         obj.gpCoords{2}(idTri,:,1) = xiSlave(:,1,i);
         obj.gpCoords{2}(idTri,:,2) = xiSlave(:,2,i);
         obj.gpCoords{1}(idTri,:,1) = xiMaster(:,1,i);
@@ -133,15 +101,9 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       for i = 1:2
       obj.gpCoords{i}(id,:,:) = [];
       end
-<<<<<<< HEAD:Code/multidomain/Mortar/SegmentBasedQuadrature.m
-      obj.mortarPairs(id,:) = [];
-
-      obj.numbMortarPairs = size(obj.mortarPairs,1);
-=======
       obj.interfacePairs(id,:) = [];
 
       obj.numbInterfacePairs = size(obj.interfacePairs,1);
->>>>>>> origin/main:Code/multidomain/Mortar/Quadrature/SegmentBasedQuadrature.m
     end
 
     
