@@ -4,13 +4,17 @@ clear
 close all
 clc
 
-thisFolder = pwd;
+% Get the full path of the currently executing file
+scriptFullPath = mfilename('fullpath');
+scriptDir = fileparts(scriptFullPath);
+cd(scriptDir);
 
-% launch MRST
-% cd('../../../MRST')
+
+%launch MRST
+% cd('../../../MRST/mrst-2023a')
 % addpath(genpath(fullfile(pwd,'testCornerPoint')))
-%startup 
-cd(thisFolder)
+% startup 
+% cd(scriptDir)
 
 % grid parameters
 gridName = 'cornerPointGrid';
@@ -28,6 +32,7 @@ scale = [1e2,1e2,10];
 % meshVisual = mesh;
 % meshVisual.coordinates = meshVisual.coordinates./scale;
 % meshVisual.coordinates = meshVisual.coordinates.*scaleNew;
+
 
 
 
