@@ -79,7 +79,7 @@ classdef SimulationParameters < handle
           solver = input.("Solver");
           obj.absTol = getXMLData(solver,1e-10,'AbsoluteTolerance');
           obj.relTol = getXMLData(solver,1e-6','RelativeTolerance');
-          obj.theta = getXMLData(solver,1.,'Theta');
+          %obj.theta = getXMLData(solver,1.,'Theta');
           obj.itMaxNR = getXMLData(solver,10,'MaxNLIteration');
         end
     end
