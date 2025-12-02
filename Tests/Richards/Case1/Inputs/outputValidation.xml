@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <Output
+    matFileName = "Outputs/ValidationResults"
     saveHistory = "1"
     printTimes = "10,50,100."
 />

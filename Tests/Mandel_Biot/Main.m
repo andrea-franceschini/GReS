@@ -1,7 +1,8 @@
 close all;
 % clear;
+output_dir = 'Outputs';
 input_dir = 'Inputs';
-figures_dir = 'Images';
+figures_dir = fullfile(output_dir,"Images");
 
 profile on
 
@@ -73,7 +74,7 @@ Solver = FCSolver(simParam,domain);
 printUtils.finalize()
 
 % calling analytical solution script
-Mandel_Analytical(topology, mat, abs(F),[0.05,0.25,1,2.5,5])
+Mandel_Analytical(topology, mat, abs(F),[0.05,0.25,1,2.5,5],output_dir)
 
 %% --------------------- Post Processing the Results ----------------------
 if true
@@ -112,7 +113,7 @@ if true
   dispZNum = disp(3*nodesZ,1:end);
 
   % Loading analytical solution MAT-FILE into workspace
-  load("Mandel_Analytical.mat");
+  load(fullfile(output_dir,"Mandel_Analytical.mat"));
 
   % Plotting solution
   % Pressure

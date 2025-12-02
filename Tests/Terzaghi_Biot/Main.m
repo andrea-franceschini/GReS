@@ -1,7 +1,11 @@
 close all;
 % clear;
-input_dir = 'Input';
-figures_dir = 'Images';
+output_dir = 'Outputs';
+input_dir = 'Inputs';
+figures_dir = fullfile(output_dir,"Images");
+
+% input_dir = 'Input';
+% figures_dir = 'Images';
 
 % Get the full path of the currently executing file
 scriptFullPath = mfilename('fullpath');
@@ -74,7 +78,7 @@ Solver = FCSolver(simParam,domain);
 domain.outstate.finalize()
 
 % calling analytical solution script
-Terzaghi_analytical(topology, mat, abs(F),[15,30,60,90,120,180])
+Terzaghi_analytical(topology, mat, abs(F),[15,30,60,90,120,180],output_dir)
 
 
 %% --------------------- Post Processing the Results ----------------------
@@ -87,7 +91,7 @@ if true
     mkdir(figures_dir)
   end
 
-  load("Terzaghi_Analytical.mat");
+  load(fullfile(output_dir,"Terzaghi_Analytical.mat"))
   %Post processing using MAT-FILE
   % obtain vector contain list of nodes along vertical axis (with x,y=0)
   nodesU = find(topology.coordinates(:,1)+topology.coordinates(:,2)==0);
