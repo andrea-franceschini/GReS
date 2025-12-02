@@ -427,6 +427,7 @@ classdef Mesh < handle
         surfMesh.nDim = 3;
         surfMesh.surfaceCentroid = Mesh.copyField(obj.surfaceCentroid,id);
         surfMesh.surfaceArea = Mesh.copyField(obj.surfaceArea,id);
+        surfMesh.meshType = obj.meshType;
     end
 
 %     function centroids = getCellCentroids(obj)
