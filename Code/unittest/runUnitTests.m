@@ -1,10 +1,6 @@
 clear
 clc
-<<<<<<< HEAD
-runtests(fullfile('Mesh','testMesh.m'));
-runtests(fullfile('DoFManager','testDoFManager.m'));
-runtests('Simparam/testSimparam.m');
-=======
+
 testFiles = {fullfile('Mesh','testMesh.m');...
              fullfile('Simparam','testSimparam.m');...
              fullfile('Materials','testMaterials.m')
@@ -18,4 +14,4 @@ if any([results.Failed])
 else
   disp("All test run successfully")
 end
->>>>>>> origin/main
+
