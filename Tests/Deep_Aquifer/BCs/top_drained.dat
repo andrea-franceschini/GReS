@@ -1,7 +1,0 @@
-SurfBC                            % BC item
-Dir                               % BC type
-SinglePhaseFlow                   % Physics
-top                               % BC name
-top_drained/list
-0.000000 top_drained/time0.dat
-End

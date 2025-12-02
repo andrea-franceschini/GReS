@@ -1,6 +1,10 @@
-function initGReS()
+function initGReS(outputFlag)
 % List of folders to check
 foldList = ["Code","ThirdPartyLibs","Utilities"];
+
+if nargin == 0
+  outputFlag = true;
+end
 
 % Check if any of the folders is already on the MATLAB path
 needRestore = false;
@@ -13,9 +17,10 @@ end
 
 % Restore path only if needed
 if needRestore
-  fprintf('Restoring default paths \n');
+  if outputFlag
+    fprintf('Restoring default paths \n');
+  end
   restoredefaultpath;
-  fprintf('Done Restoring default paths \n');
 end
 
 % set the root to the gres directory
@@ -24,7 +29,12 @@ setappdata(0,'gres_root', gres_root);
 
 % Add GReS paths
 for k = 1:numel(foldList)
-  addpath(genpath(foldList(k)))
+  addpath(genpath(fullfile(gres_root, foldList(k))));
+end
+
+setappdata(0,'gresLog', Logger());
+if outputFlag
+  gresLog().welcomeMsg()
 end
 
 end

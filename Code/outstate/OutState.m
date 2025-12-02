@@ -6,14 +6,16 @@ classdef OutState < handle
   % 'folderName','folderName': specify name of output folder
 
   properties (Access = public)
-    modTime = false %flag for time step size matching timeList
+    modTime = false     %flag for time step size matching timeList
     timeList
     results
-    model
+    % model
     writeSolution
     timeID = 1
     VTK
     writeVtk
+    matFileName
+    vtkFileName
   end
 
   properties (Access = private)
@@ -23,46 +25,114 @@ classdef OutState < handle
   end
 
   methods (Access = public)
-    function obj = OutState(model,mesh,fileName,options)
-      arguments
-        model (1,1) ModelType
-        mesh (1,1) Mesh
-        fileName (1,1) string
-        options.flagMatFile logical = false
-        options.writeVtk logical = true
-        options.folderName string = "vtkOutput"
+
+    function obj = OutState(mesh, varargin)
+
+      % Default parameters
+      folderName = "output";
+      tList = [];
+
+      % ------------------------------------------------------------
+      % Detect input mode
+      % ------------------------------------------------------------
+      if isempty(varargin)
+        % no output
+        obj.writeVtk = false;
+        obj.writeSolution = false;
+        % obj.model = model;
+        return
       end
-      % deal variable input
-      obj.writeVtk = options.writeVtk;
-      obj.writeSolution = options.flagMatFile;
-      foldName = options.folderName;
-      obj.setOutState(model,mesh,fileName,foldName)
+
+      firstArg = varargin{1};
+
+      if isscalar(varargin) && (ischar(firstArg) || isstring(firstArg) || isstruct(firstArg))
+        % ---------------- XML configuration mode ----------------
+        input = firstArg;
+        if ~isstruct(input)
+          input = readstruct(input, AttributeSuffix="");
+        end
+
+        if isfield(input,"Output")
+          input = input.Output;
+        end
+
+        if isfield(input,"fileName")
+          assert(isscalar(fieldnames(input)),"FileName, " + ...
+            " must be a unique parameter.");
+          input = readstruct(input.fileName,AttributeSuffix="");
+        end
+
+        obj.writeSolution = logical(getXMLData(input, 0, "saveHistory"));
+        obj.vtkFileName  = getXMLData(input, folderName, "outputFile");
+        obj.matFileName = getXMLData(input, folderName, "matFileName");
+
+        % If no outputFile name provided, disable VTK
+        obj.writeVtk = isfield(input, "outputFile");
+
+        if any([obj.writeSolution,obj.writeVtk])
+          tList = getXMLData(input, [], "printTimes");
+        else
+          return
+        end
+
+
+      else
+        % ---------------- Key-value pair mode ----------------
+        if mod(numel(varargin), 2) ~= 0
+          error('OutState:InvalidInput', ...
+            'Key-value pair inputs must come in pairs.');
+        end
+
+        opt = struct(varargin{:});
+        if isfield(opt, 'flagMatFile'), flagMatFile = logical(opt.flagMatFile); end
+        if isfield(opt, 'writeVtk'),    writeVtk    = logical(opt.writeVtk);    end
+        if isfield(opt, 'folderName'),  folderName  = string(opt.folderName);   end
+        if isfield(opt, 'timeList'),    tList       = opt.timeList;             end
+      end
+
+      % ------------------------------------------------------------
+      % Object setup
+      % ------------------------------------------------------------
+
+      %obj.model = model;
+      obj.VTK = VTKOutput(mesh, obj.vtkFileName);
+
+      % Time list handling
+      if obj.writeVtk
+        assert(~isempty(tList), ...
+          "Print times have not been specified for output.");
+      end
+
+      if isnumeric(tList)
+        obj.timeList = reshape(tList, [], 1);
+      else
+        obj.timeList = obj.readTimeList(tList);
+      end
+
+      % MAT-file output
+      if obj.writeSolution
+        if isfile('expData.mat'), delete 'expData.mat'; end
+        %obj.results = matfile('expData.mat', 'Writable', true);
+        nT = length(obj.timeList);
+        obj.results = repmat(struct('time', 0),nT,1);
+      end
+
     end
+
 
     function finalize(obj)
       if obj.writeVtk
         obj.VTK.finalize();
       end
+
+      if obj.writeSolution
+        output = obj.results;
+        save(strcat(obj.matFileName,'.mat'),"output")
+      end
     end
   end
 
   methods (Access = private)
-    function setOutState(obj,model,mesh,fileName,foldName)
-      obj.model = model;
-      obj.timeList = OutState.readTime(fileName);
-      % if obj.writeVtk
-        obj.VTK = VTKOutput(mesh,foldName);
-      % end
-      % Write solution to matfile. This feature will be extended in a
-      % future version of the code
-      if obj.writeSolution
-        if isfile('expData.mat')
-          delete 'expData.mat'
-        end
-        obj.results = matfile('expData.mat','Writable',true);
-        setMatFile(obj,mesh);
-      end
-    end
 
     function tList = readTimeList(obj,fileName)
       fid = fopen(fileName,'r');
@@ -97,6 +167,7 @@ classdef OutState < handle
       fclose(fid);
     end
 
+    % move this logic into specific Physics solver
     % function setMatFile(obj,msh)
     %   l = length(obj.timeList) + 1;
     %   obj.results.expTime = zeros(l,1);
@@ -116,26 +187,26 @@ classdef OutState < handle
     %   end
     % end
 
-    function setMatFile(obj,msh)
-      l = length(obj.timeList) + 1;
-      obj.results = repmat(struct('expTime', 0),l,1);
-      for i=1:l
-        if isFlow(obj.model)
-          if isFEMBased(obj.model,'Flow')
-            obj.results(i).expPress = [];
-          elseif isFVTPFABased(obj.model,'Flow')
-            obj.results(i).expPress = [];
-            if isVariabSatFlow(obj.model)
-              obj.results(i).expSat = [];
-            end
-          end
-        end
-        if isPoromechanics(obj.model)
-          obj.results(i).expDispl = [];
-          % Consider adding other output properties
-        end
-      end
-    end
+    % function setMatFile(obj,msh)
+    %   l = length(obj.timeList) + 1;
+    %   obj.results = repmat(struct('expTime', 0),l,1);
+    %   for i=1:l
+    %     if isFlow(obj.model)
+    %       if isFEMBased(obj.model,'Flow')
+    %         obj.results(i).expPress = [];
+    %       elseif isFVTPFABased(obj.model,'Flow')
+    %         obj.results(i).expPress = [];
+    %         if isVariabSatFlow(obj.model)
+    %           obj.results(i).expSat = [];
+    %         end
+    %       end
+    %     end
+    %     if isPoromechanics(obj.model)
+    %       obj.results(i).expDispl = [];
+    %       % Consider adding other output properties
+    %     end
+    %   end
+    % end
 
   end
 
@@ -145,12 +216,24 @@ classdef OutState < handle
       % Merge output variable coming from a field to the global output
       % structure
       % Concatenate the two structure arrays
-      if isempty(strA)
-        mergeStruct = strB;
-        return
+
+      try
+        mergeStruct = [strA; strB];
+      catch
+        unknownFields = setdiff(fieldnames(strB),fieldnames(strA));
+        error("Ouput structure must be an array of structures with 2 fields:" + ...
+          " 'name' and 'data'. \n" + ...
+          "Invalid fields: \n %s, ",unknownFields{:})
+
       end
-      mergeStruct = [strA; strB];
+
       names = {mergeStruct.name};
+
+      % remove empty 
+      isEmpty = cellfun(@isempty, names);
+      mergeStruct(isEmpty) = [];
+      names(isEmpty) = [];
+
       [~, uniqueIdx] = unique(names, 'stable');
       % Create the merged structure using the unique indices
       mergeStruct = mergeStruct(uniqueIdx);

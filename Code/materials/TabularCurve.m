@@ -9,9 +9,9 @@ classdef TabularCurve < handle
 
     methods (Access = public)
         % Class constructor method
-        function obj = TabularCurve(fID, matFileName)
-            % Calling the function to set the object properties
-            obj.readTabularCurve(fID, matFileName);
+        function obj = TabularCurve(path)
+            % path: the relative path to the tabular curve
+            obj.readTabularCurve(path);
         end
 
         function varargout = interpTable(obj,x)
@@ -73,35 +73,35 @@ classdef TabularCurve < handle
     end
 
     methods (Access = private)
-        function readTabularCurve(obj, fID, matFileName)
-            curveFname = readToken(fID, matFileName);
-            obj.tabW = load(curveFname);
-            obj.nPoints = size(obj.tabW,1);
-            avgLen = max(diff(obj.tabW(:,1)));
-            Len = obj.tabW(1,1);
-            if (Len~=0 && Len > avgLen)
-                fprintf(['The distance between the origin and the first point \n' ...
-                    'of the curve is greater than the maximun distance between \n' ...
-                    'the points, which can make convergence more difficult.\n']);
-            end
-
-            % first derivative
-            obj.derivW = zeros(obj.nPoints-1,1);
-            obj.derivW(:,1) = 0.5*(obj.tabW(1:obj.nPoints-1,1)+obj.tabW(2:obj.nPoints,1));
-            obj.derivW(:,2) = diff(obj.tabW(:,2))./diff(obj.tabW(:,1));
-            % second derivative
-            obj.derivW2 = zeros(obj.nPoints-2,1);
-            obj.derivW2(:,1) = obj.tabW(2:obj.nPoints-1,1);
-            obj.derivW2(:,2) = diff(obj.derivW(:,2))./diff(obj.derivW(:,1));
-
-            %h1 = diff(obj.tabW(1:obj.nPoints-1,1));
-            %h2 = diff(obj.tabW(2:obj.nPoints,1));
-            %obj.derivW2(:,2) = (h1.*obj.tabW(3:obj.nPoints,2) - (h1+h2).*obj.tabW(2:obj.nPoints-1,2) + h2.*obj.tabW(1:obj.nPoints-2,2))./ ...
-            %                   (0.5*h1.*h2.*(h1+h2));
-            %norm(diff(obj.derivW(:,2))./diff(obj.derivW(:,1)) - obj.derivW2(:,2))
-
-            % because of -x
-            obj.derivW(:,2) = -obj.derivW(:,2);
+      function readTabularCurve(obj,path)
+        path = fullfile(gres_root,path);
+        obj.tabW = load(path);
+        obj.nPoints = size(obj.tabW,1);
+        avgLen = max(diff(obj.tabW(:,1)));
+        Len = obj.tabW(1,1);
+        if (Len~=0 && Len > avgLen)
+          fprintf(['The distance between the origin and the first point \n' ...
+            'of the curve is greater than the maximun distance between \n' ...
+            'the points, which can make convergence more difficult.\n']);
         end
+
+        % first derivative
+        obj.derivW = zeros(obj.nPoints-1,1);
+        obj.derivW(:,1) = 0.5*(obj.tabW(1:obj.nPoints-1,1)+obj.tabW(2:obj.nPoints,1));
+        obj.derivW(:,2) = diff(obj.tabW(:,2))./diff(obj.tabW(:,1));
+        % second derivative
+        obj.derivW2 = zeros(obj.nPoints-2,1);
+        obj.derivW2(:,1) = obj.tabW(2:obj.nPoints-1,1);
+        obj.derivW2(:,2) = diff(obj.derivW(:,2))./diff(obj.derivW(:,1));
+
+        %h1 = diff(obj.tabW(1:obj.nPoints-1,1));
+        %h2 = diff(obj.tabW(2:obj.nPoints,1));
+        %obj.derivW2(:,2) = (h1.*obj.tabW(3:obj.nPoints,2) - (h1+h2).*obj.tabW(2:obj.nPoints-1,2) + h2.*obj.tabW(1:obj.nPoints-2,2))./ ...
+        %                   (0.5*h1.*h2.*(h1+h2));
+        %norm(diff(obj.derivW(:,2))./diff(obj.derivW(:,1)) - obj.derivW2(:,2))
+
+        % because of -x
+        obj.derivW(:,2) = -obj.derivW(:,2);
+      end
     end
 end

@@ -1,98 +1,61 @@
 close all;
-clear;
-input_dir = 'Inputs';
+% clear;
 output_dir = 'Outputs';
-figures_dir = 'Figs';
+input_dir = 'Inputs';
+figures_dir = fullfile(output_dir,"Images");
 
-%% -------------------------- SET THE PHYSICS -----------------------------
-model = ModelType("VariabSatFlow_FVTPFA");
+%% ------------------------------ Set up the Domain -----------------------
+% Set the simulation parameters for the non-linear solver.
+simParam = SimulationParameters(fullfile(input_dir,'simparamMeshConv.xml'));
 
-%% ----------------------- SIMULATION PARAMETERS --------------------------
-fileName = fullfile(input_dir,'simParamMesh.dat');
-simParam = SimulationParameters(fileName,model);
+% Create an object of the Materials class and read the materials file
+mat = Materials(fullfile(input_dir,'materials.xml'));
 
-%% ----------------------------- MATERIALS --------------------------------
-% Set the input file name
-fileMaterial = fullfile(input_dir,'materialsList.dat');
-
-%% ------------------------------ ELEMENTS --------------------------------
-% Define Gauss points
-% GaussPts = Gauss(12,2,3);
-
-%% ------------------------------ BOUNDARY CONDITIONS ---------------------
-cond = struct('name',[],'type',[],'field',[],'values',[],'times',[]);
-cond(1).name = 'Bottom';
-cond(1).type = 'Dir';
-cond(1).field = "bot";
-cond(1).times = 0.;
-cond(1).values = -10*9.8066e3;
-cond(2).name = 'Top';
-cond(2).type = 'Dir';
-cond(2).field = "top";
-cond(2).times = 0.;
-cond(2).values = -0.75*9.8066e3;
-
-%% ------------------------------ MESH ------------------------------------
-meshDir = 'Mesh';
-meshName = 'Column';
-meshList = [10 20 40 80 160];
-
-% Structure to save the results for the convergence
 result = struct('pressure',[],'saturation',[],'height',[]);
-
+meshList = [10 20 40 80 160];
 for i=1:length(meshList)
     % Create the Mesh object
     topology = Mesh();
 
     % Set the input file name
-    fileName = fullfile(input_dir,meshDir,strcat(meshName,int2str(meshList(i)),'.msh'));
-    % fileName = strcat(input_dir,meshDir,meshName,int2str(meshList(i)),'.msh');
+    fileName = fullfile(input_dir,'Mesh',strcat('Column',int2str(meshList(i)),'.msh'));
 
     % Import mesh data into the Mesh object
-    topology.importGMSHmesh(fileName);
-
-    % Create an object of the Materials class and read the materials file
-    mat = Materials(model,fileMaterial);
+    topology.importMesh(fileName);
 
     % Create an object of the "Elements" class and process the element properties
-    % elems = Elements(topology,GaussPts);
-    elems = Elements(topology);
+    elems = Elements(topology,2);
 
     % Create an object of the "Faces" class and process the face properties
-    faces = Faces(model,topology);
+    faces = Faces(topology);
 
     % Wrap Mesh, Elements and Faces objects in a structure
     grid = struct('topology',topology,'cells',elems,'faces',faces);
 
-    % Degree of freedom manager
-    dofmanager = DoFManager(topology,model);
+    % Creating boundaries conditions.
+    bound = Boundaries(fullfile(input_dir,'boundaries.xml'),grid);
 
+    % ------------------ Set up and Calling the Solver -----------------------
     % Create and set the print utility
-    printUtils = OutState(model,topology,strcat(input_dir,'outTime.dat'), ...
-        'folderName','Outputs','flagMatFile',true,'writeVtk',false);
-
-    % Appling boundaries conditions.
-    fileName = setRichardsBC('Inputs',grid,cond);
-    bound = Boundaries(fileName,model,grid);
+    printUtils = OutState(topology,fullfile(input_dir,'outputMeshConv.xml'));
 
     % Create object handling construction of Jacobian and rhs of the model
-    % linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
-    domain = Discretizer('ModelType',model,...
-                     'SimulationParameters',simParam,...
-                     'DoFManager',dofmanager,...
-                     'Boundaries',bound,...
-                     'OutState',printUtils,...
-                     'Materials',mat,...
-                     'Grid',grid);
+    domain = Discretizer('Grid',grid,...
+                         'Materials',mat,...
+                         'Boundaries',bound,...
+                         'OutState',printUtils);
 
+    domain.addPhysicsSolver(fullfile(input_dir,'solver.xml'));
 
     % set initial conditions directly modifying the state object
-    % state.pressure(:) = -10*9.8066e3;
-    domain.state.data.pressure(:) = -10*9.8066e3;
+    domain.state.data.pressure(:) = -9.8066e4;
 
-    % Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,GaussPts);
-    % Solver = FCSolver(model,simParam,dofmanager,grid,mat,bound,printUtils,state,linSyst,'GaussPts',GaussPts,'SaveRelError',true);
-    Solver = FCSolver(domain);
+    % The modular structure of the discretizer class allow the user to easily
+    % customize the solution scheme.
+    % Here, a built-in fully implict solution scheme is adopted with class
+    % FCSolver. This could be simply be replaced by a user defined function
+    % Solver = FCSolver(domain);
+    Solver = FCSolver(simParam,domain);
 
     % Solve the problem
     [simState] = Solver.NonLinearLoop();
@@ -101,26 +64,22 @@ for i=1:length(meshList)
     printUtils.finalize()
 
     % Retriving the analisys information
-    % pressure = printUtils.results.expPress;
-    % saturation = printUtils.results.expSat;
-
-    % Small modification - for the growning grid
-    pressure = printUtils.results(2).expPress;
-    saturation = printUtils.results(2).expSat;
+    pressure = printUtils.results(1).pressure;
+    saturation = printUtils.results(1).saturation;
 
     %Getting pressure and saturation solution for specified time from MatFILE
     numb = 0.;
     tol = 0.01;
-    % nodesP = find(abs(elems.cellCentroid(:,1)-numb) < tol & abs(elems.cellCentroid(:,2)-numb) < tol);
     nodesP = find(abs(elems.mesh.cellCentroid(:,1)-numb) < tol & abs(elems.mesh.cellCentroid(:,2)-numb) < tol);
-    % result(i).pressure = pressure(nodesP,2);
-    % result(i).saturation = saturation(nodesP,2);
+
     result(i).height = elems.mesh.cellCentroid(nodesP,3);
     result(i).pressure = pressure(nodesP);
     result(i).saturation = saturation(nodesP);
+
+    clearvars -except input_dir figures_dir model simParam mat result meshList i
 end
 
-%% POST PROCESSING
+%% --------------------- Post Processing the Results ----------------------
 image_dir = fullfile(pwd,figures_dir);
 if ~isfolder(image_dir)
     mkdir(image_dir)
@@ -160,9 +119,3 @@ set(gca,'FontName', 'Liberation Serif', 'FontSize', 16, 'XGrid', 'on', 'YGrid', 
 % export figure with quality
 stmp = fullfile(image_dir,'mesh_saturation.png');
 exportgraphics(gcf,stmp,'Resolution',400)
-
-% To save the information necessary to compare the solution of GReS and MRST.
-% GReS_mesh = meshList;
-% GReS_result = result;
-% GReS_weight = weight;
-% save('Inputs/Solution/GReS_Mesh_Conv.mat', 'GReS_mesh', 'GReS_result', 'GReS_weight');

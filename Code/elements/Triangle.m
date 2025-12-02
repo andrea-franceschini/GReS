@@ -181,6 +181,20 @@ classdef Triangle < FEM
 
   methods (Static)
 
+<<<<<<< HEAD
+=======
+    function out = checkInRange(coord,tol)
+
+      if nargin < 2
+        tol = 1e-5;
+      end
+      xi  = coord(:,1);
+      eta = coord(:,2);
+
+      out = (xi >= -tol) & (eta >= -tol) & (xi + eta <= 1 + tol);
+    end
+
+>>>>>>> origin/main
     function area = computeArea(coords)
       assert(all(size(coords)==[3 2]), ['Wrong size for input matrix of vertex coordinates. ' ...
         ' Expected size is 3 x 2']);

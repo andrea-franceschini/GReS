@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+  <simParam fileName = "Input/simParam.xml" />
+
+  <Domain>
+    <Geometry fileName = "Input/ReservoirTest_Hexa.msh" />
+    <Gauss nGP = "2" />
+    <Materials fileName = "Input/materials.xml" />
+    <BoundaryConditions fileName = "Input/boundaryConditions.xml" />
+
+    <Output
+            saveHistory = "1"
+            outputFile = "Outputs/Results"
+            matFileName = "Outputs/results"
+            printTimes = "1,4,8"
+            />
+
+    <Solver>
+      <BiotFullySaturated>
+        <Poromechanics targetRegions = "1,2,3" />
+        <SinglePhaseFlowFEM targetRegions = "2,3" />
+      </BiotFullySaturated>
+    </Solver>
+
+  </Domain>
+</Problem>

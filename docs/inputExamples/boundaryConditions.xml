@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-->
+
+entityList
+a path to a list of entities ID of type entitiyType
+
+surfaceTags
+a list of surfaceTags to which the BCs is applied
+
+
+BC step
+time can be:
+a single scalar
+a function handle of a scalar multiplier of value over time (t)
+
+value can be:
+single scalar (for each dof),
+a path to a file
+a function handle depending on space (x,y,z)
+-->
+
+
+
+<BoundaryConditions>
+  <BC
+      name = "NoFlowTop"
+      type = "Dirichlet"
+      entityType = "Surfaces"
+      physics = "SinglePhaseFlow"
+      >
+
+    <BCentities
+                entityList = "list"
+                />
+
+    <BCstep
+            time = "0"
+            value = "0"
+            />
+  </BC>
+
+  <BC
+      name = "TopLoad"
+      type = "Neumann"
+      entityType = "Surfaces"
+      physics = "Poromechanics"
+      >
+
+    <BCentities
+                surfaceTags = "2"
+                components = "x, z"
+                />
+
+    <BCstep
+            time = "0"
+            value = "-10"
+            />
+  </BC>
+
+  <BC
+      name = "LatFixedY"
+      type = "Dirichlet"
+      entityType = "Nodes"
+      physics = "Poromechanics"
+      >
+
+    <BCentities
+                surfaceTags = "3"
+                components = "y"
+                />
+
+    <BCstep
+            time = "0"
+            value = "0"
+            />
+  </BC>
+
+  <BC
+      name = "LatFixedX"
+      type = "Dirichlet"
+      entityType = "Nodes"
+      physics = "Poromechanics"
+      >
+
+    <BCentities
+                surfaceTags = "4"
+                components = "x"
+                />
+
+    <BCstep
+            time = "0"
+            value = "0"
+            />
+  </BC>
+
+  <BC
+      name = "BotFixed"
+      type = "Dirichlet"
+      entityType = "Surfaces"
+      physics = "Poromechanics"
+      >
+
+    <BCentities
+                surfaceTags = "1"
+                components = "x,y,z"
+                />
+
+    <BCstep
+            time = "0"
+            value = "0"
+            />
+  </BC>
+
+</BoundaryConditions>

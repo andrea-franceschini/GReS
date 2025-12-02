@@ -17,16 +17,19 @@ f = @(X) cos(pi*X(2)).*cos(pi*X(3)).*h(X(1));
 
 
 %% model commons
-% base structure to write xml file
-strDomain = readstruct('Domains/domain1block.xml');
-interfFile = fullfile('Domains','interfaces_1.xml');
-strInterf = readstruct(interfFile);
+% structure to rewrite the xml file and programatically change the input
+fileName = 'poissonMortar.xml';
+fileStruct = readstruct(fileName,AttributeSuffix="");
+
+
+
 %% INPUT
 
 % number of refinement
 nref = 2;
 [h,L2,H1] = deal(zeros(nref,1));
 
+% set mortar integration info
 nG = 6;           
 if strcmp(integration_type,'SegmentBased')
   nG = 7;
@@ -43,62 +46,41 @@ for i = 1:nref
   N_i_l = N_l(i);
   N_i_r = N_r(i);
 
-  %fprintf('Running mesh refinement %i \n',i);
-
   % run script to get refined mesh
-  fname = "domain_"+elem_type+"_"+num2str(i);
+  meshName = "domain_"+elem_type+"_"+num2str(i);
 
-%   command = "python Mesh/scripts/domain.py "  + fname...
-%     + " " + num2str(N_i_l) + " " + num2str(N_i_r) + " " + elem_type;
-%   system(command);
-
-  meshFile = fullfile('Mesh','meshes',fname+".vtk");
-  mesh = Mesh();
-  mesh.importMesh(meshFile);
-
-  % set up bc file
-  nodes = unique(mesh.surfaces(ismember(mesh.surfaceTag,[2 4]),:));
-  c = mesh.coordinates(nodes,:);
-  vals = arrayfun(@(i) anal(c(i,:)),1:numel(nodes));
-  vals = reshape(vals,[],1);
-  writeBCfiles('BCs/bc','NodeBC','Dir','Poisson','manufactured_bc',0,0,nodes,vals);
-
-  clear mesh
-
-  % write mesh to domain file
-  strDomain.Domain.Name = "Cube_"+integration_type+"_"+num2str(i);
-  strDomain.Domain.Geometry = fullfile('Mesh','meshes',fname+".vtk");
-  domainFile = fullfile('Domains','domain1block.xml');
-  writestruct(strDomain,domainFile);
+  % update the mesh in the domain input file
+  fileStruct.Domain.Geometry.fileName = fullfile('Input','Mesh','meshes',meshName+".vtk");
+ 
 
   % write interface to file
-  strInterf.Interface(1).Quadrature.typeAttribute = integration_type;
-  strInterf.Interface(1).Quadrature.nGPAttribute = nG;
+  fileStruct.Interface.MeshTying.Quadrature.type = integration_type;
+  fileStruct.Interface.MeshTying.Quadrature.nGP = nG;
   %strInterf.Interface(1).Print.nameAttribute = "interf_"+integration_type+"_"+num2str(i);
-  if strcmp(integration_type,'RBF')
-    strInterf.Interface(1).Quadrature.nIntAttribute = nInt;
+  if strcmp(integration_type,'RBFquadrature')
+    fileStruct.Interface(1).MeshTying.Quadrature.nInt = nInt;
   end
-  writestruct(strInterf,interfFile);
+
+  writestruct(fileStruct,fileName,AttributeSuffix="");
  
+  simparams = SimulationParameters(fileName);
+
   % processing Poisson problem
-  domains = buildModel(domainFile);
+  [domain,interfaces] = buildModel(fileName);
 
-  domains.simparams.setVerbosity(0);
-  domains.getSolver('Poisson').setAnalSolution(anal,f,gradx,grady,gradz);
+  domain.getPhysicsSolver("Poisson").setAnalSolution(anal,f,gradx,grady,gradz);
 
-  [interfaces,domains] = Mortar.buildInterfaces(interfFile,domains);
-  % set up analytical solution
-
-  solver = MultidomainFCSolver(domains,interfaces);
+  solver = MultidomainFCSolver(simparams,domain,interfaces);
   solver.NonLinearLoop();
 
+  % print to file
+  solver.finalizeOutput();
 
-  pois = getSolver(domains,'Poisson');
+  pois = getPhysicsSolver(domain,'Poisson');
   [L2(i),H1(i)] = pois.computeError_v2();
   h(i) = 1/N_i_r;
-  if domains.simparams.verbosity>0
-    fprintf('Max absolute error is: %1.6e \n',max(abs(pois.state.data.err)));
-  end
+
+  gresLog().log(0,'Max absolute error is: %1.6e \n',max(abs(domain.state.data.err)));
 end
 
 % compute convergence order

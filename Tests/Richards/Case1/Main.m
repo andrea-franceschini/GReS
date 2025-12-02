@@ -1,92 +1,63 @@
 close all;
 % clear;
+output_dir = 'Outputs';
 input_dir = 'Inputs';
-output_dir = 'Outputs/';
-figures_dir = 'Figs';
+figures_dir = fullfile(output_dir,"Images");
 
-%% -------------------------- SET THE PHYSICS -------------------------
-model = ModelType("VariabSatFlow_FVTPFA");
 
-%% ----------------------- SIMULATION PARAMETERS ----------------------
-fileName = fullfile(input_dir,'simParam.dat');
-simParam = SimulationParameters(fileName,model);
+%% ------------------------------ Set up the Domain -----------------------
+% Set the simulation parameters for the non-linear solver.
+simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'));
 
-%% ------------------------------  MESH -------------------------------
+% Create an object of the Materials class and read the materials file
+mat = Materials(fullfile(input_dir,"Materials",'matTable.xml'));
+
 % Create the Mesh object
 topology = Mesh();
 
-% Set the input file name
-% fileName = fullfile(input_dir,'Mesh','Column.msh');
-% fileName = fullfile(input_dir,'Mesh','Column1x1x10.msh');
-fileName = fullfile(input_dir,'Mesh','Column4x4x40.msh');
+% Choosing the mesh file
+availMesh = [ "Column.msh", "Column1x1x30.msh", "Column4x4x40.msh"];
+fileName = availMesh(2);
 
 % Import mesh data into the Mesh object
-topology.importGMSHmesh(fileName);
+topology.importMesh(fullfile(input_dir,'Mesh',fileName));
 
-%% ----------------------------- MATERIALS -----------------------------
-% Set the input file name
-fileName = fullfile(input_dir,'materialsList.dat');
-
-% Create an object of the Materials class and read the materials file
-mat = Materials(model,fileName);
-
-%% ------------------------------ ELEMENTS -----------------------------
 % Create an object of the "Elements" class and process the element properties
 elems = Elements(topology,2);
 
 % Create an object of the "Faces" class and process the face properties
-faces = Faces(model,topology);
+faces = Faces(topology);
 
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
-%% ----------------------- DOF Manager -----------------------------
-% Degree of freedom manager
-%fname = 'dof.dat';
-dofmanager = DoFManager(topology,model);
+% Creating boundaries conditions.
+bound = Boundaries(fullfile(input_dir,'boundaries.xml'),grid);
 
+%% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility
-printUtils = OutState(model,topology,fullfile(input_dir,'outTime.dat'), ...
-  'folderName','Outputs','flagMatFile',true);
-
-%% ----------------------- Boundary Condition -----------------------------
-% Creating and Appling boundaries conditions.
-cond = struct('name',[],'type',[],'field',[],'values',[],'times',[]);
-cond(1).name = 'Bottom';
-cond(1).type = 'Dir';
-cond(1).field = "bot";
-cond(1).times = [0. 5. 10.];
-cond(1).values = [87. 0. 0.];
-
-fileName = setRichardsBC('Inputs',grid,cond);
-bound = Boundaries(fileName,model,grid);
-
-%% ----------------------- Discretizer -----------------------------
+printUtils = OutState(topology,fullfile(input_dir,'output.xml'));
 
 % Create object handling construction of Jacobian and rhs of the model
-% linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
-domain = Discretizer('ModelType',model,...
-  'SimulationParameters',simParam,...
-  'DoFManager',dofmanager,...
-  'Boundaries',bound,...
-  'OutState',printUtils,...
-  'Materials',mat,...
-  'Grid',grid);
+domain = Discretizer('Grid',grid,...
+                     'Materials',mat,...
+                     'Boundaries',bound,...
+                     'OutState',printUtils);
 
-%% ----------------------- Initial Condition -----------------------------
+domain.addPhysicsSolver(fullfile(input_dir,'solver.xml'));
+
 % set initial conditions directly modifying the state object
 z = elems.mesh.cellCentroid(:,3);
 gamma_w = getFluid(mat).getFluidSpecWeight();
 wLev = 9.; % level of the water table
 domain.state.data.pressure = gamma_w*(wLev-z);
 
-%% ----------------------- Solver -----------------------------
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme.
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-
-Solver = FCSolver(domain,'SaveRelError',true,'SaveBStepInf',true);
+Solver = FCSolver(simParam,domain);
+% Solver = FCSolver(domain,'SaveRelError',true,'SaveBStepInf',true);
 
 % Solve the problem
 [simState] = Solver.NonLinearLoop();
@@ -94,32 +65,36 @@ Solver = FCSolver(domain,'SaveRelError',true,'SaveBStepInf',true);
 % Finalize the print utility
 printUtils.finalize()
 
-%% POST PROCESSING
+%% --------------------- Post Processing the Results ----------------------
 if true
   image_dir = fullfile(pwd,figures_dir);
-  if ~isfolder(image_dir)
-    mkdir(image_dir)
+  if isfolder(image_dir)
+    rmdir(image_dir,"s")
+    mkdir(figures_dir)
+  else
+    mkdir(figures_dir)
   end
 
   % elem vector containing elements centroid along vertical axis
-  numb = 0.125;
+  numb = 0.;
+  % numb = 0.125;
   tol = 0.01;
   nodesP = find(abs(topology.cellCentroid(:,1)-numb) < tol & abs(topology.cellCentroid(:,2)-numb) < tol);
   [~,ind] = sort(topology.cellCentroid(nodesP,3));
   nodesP = nodesP(ind);
 
   nrep = length(printUtils.results);
-  nvars = length(printUtils.results(2).expPress);
+  nvars = length(printUtils.results(2).pressure);
   press = zeros(nvars,nrep);
   sw = zeros(nvars,nrep);
   t = zeros(1,nrep);
-  for i=2:nrep
-    press(:,i) = printUtils.results(i).expPress;
-    sw(:,i) = printUtils.results(i).expSat;
-    t(i) = printUtils.results(i).expTime;
+  for i=1:nrep
+    press(:,i) = printUtils.results(i).pressure;
+    sw(:,i) = printUtils.results(i).saturation;
+    t(i) = printUtils.results(i).time;
   end
 
-  tind = 2:length(t);
+  tind = 1:length(t);
   t_max = t(end);
   t = t(tind)/t_max;
   tstr = strcat(num2str(t'),' T');
@@ -129,12 +104,8 @@ if true
   swplot = sw(nodesP,tind);
 
   % Vertical position of the column
-  if isFVTPFABased(model,'Flow')
-    ptsZ = elems.mesh.cellCentroid(nodesP,3);
-  else
-    ptsZ = topology.coordinates(nodesP,3);
-  end
-
+  ptsZ = elems.mesh.cellCentroid(nodesP,3);
+  
   % Values for normalized plots
   pos = find(ptsZ == max(ptsZ));
   H = max(topology.coordinates(:,3));
@@ -164,6 +135,4 @@ if true
   % export figure with quality
   stmp = fullfile(image_dir,'saturation.png');
   exportgraphics(gcf,stmp,'Resolution',400)
-
-  % save(fullfile(input_dir,'Solution','output1B.mat'),"pressplot","ptsZ","pos","swplot")
 end

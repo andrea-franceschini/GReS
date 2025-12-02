@@ -1,0 +1,9 @@
+VolumeForce            % BC item 
+Poromechanics            % Physics 
+awells            % BC name 
+BCs/pressures/list 
+0.000000 BCs/pressures/time0.dat 
+3.000000 BCs/pressures/time1.dat 
+6.000000 BCs/pressures/time2.dat 
+10.000000 BCs/pressures/time3.dat 
+End

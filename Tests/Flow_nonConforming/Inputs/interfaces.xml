@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file specifies which domain are in contact and trough which
+% surfaces. The potential contact interfaces are denoted by one (or more) surfaceTag,
+and must be known in advance during the mesh generation
+% The user must choose which domain is the master and which domain is the
+% slave-->
+<Interfaces>
+    <Interface>
+        <Master id="1" />
+        <Slave id="1"/>
+        <Type>MeshTying</Type>
+        <Quadrature type="RBF" nGP="12" nInt = "5"/>
+        <Multiplier type="dual"/>
+      <Physics>SinglePhaseFlow</Physics>
+      <Print name = "Output/interface"/>
+    </Interface>
+</Interfaces>
+<!-- 
+  the <Master> interface is made by the surfaces with tag 1 of domain 1
+  the <Slave> interface is made by the surfaces with tag 2 of domain 1
+  
+  <Quadrature> specifies the algorithm to compute the mortar integrals 
+  (change with caution)
+  For further details: 
+  D. Moretto, A. Franceschini, and M. Ferronato. A novel Mortar Method 
+  Integration using Radial Basis Functions. arXiv preprint arXiv:2409.11735, 2024.
+ 
+  <Physics> specifies the physics that we want to transfer across the non conforming interface
+  <Print> specifies the name of the output files for the interface
+
+  <Type> and <Multiplier> specify some algorithmic details regarding the mortar algorithm
+  -->
+
+

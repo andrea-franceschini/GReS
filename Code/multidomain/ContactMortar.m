@@ -1,10 +1,13 @@
 classdef ContactMortar < Mortar
 
   properties
+<<<<<<< HEAD
     normalGap        % normal gap
     tangentialGap    % norm of tangential gap 
     slip             % norm of tangential slip
     %dispJump         % displacement jump in global coordinates
+=======
+>>>>>>> origin/main
     Jmu               % master displacement block
     Jmt               % master multipliers block
     Jsu               % slave displacement block
@@ -804,7 +807,10 @@ classdef ContactMortar < Mortar
     function applyBCslave(obj,bc,t)
       ph = obj.solvers(2).bcs.getPhysics(bc);
       [bcEnts,~] = getBC(obj.solvers(2).getSolver(ph),bc,t);
+<<<<<<< HEAD
       bcEnts = removeSlaveBCdofs(obj,ph,bcEnts);
+=======
+>>>>>>> origin/main
       obj.rhsUs(bcEnts) = 0;
       obj.Jsu(bcEnts,:) = 0;
       obj.Jst(:,bcEnts) = 0;

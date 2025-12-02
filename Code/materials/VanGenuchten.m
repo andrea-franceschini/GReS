@@ -74,14 +74,15 @@ classdef VanGenuchten < handle
     end
 
     methods (Access = public)
-        function obj = VanGenuchten(fID,matFileName,varargin)
+        function obj = VanGenuchten(inputStruct,varargin)
             %VanGenuchtenMualem Construct an instance of this class
 
             % If number of arguments is greater than 2, passing values.
-            if (nargin>2) && (nargin<7)
+            if (nargin>1) && (nargin<6)
                 obj.passingData(varargin{:});
             else
-                obj.readFromFile(fID,matFileName);
+                % obj.readFromFile(inputStruct);
+                obj.readInputFile(inputStruct);
             end
         end
 
@@ -165,7 +166,6 @@ classdef VanGenuchten < handle
                     obj.modelType = 'Mualem';
                 case 'Burdine'
                     tmpVec = readDataInLine(fID, matFileName, 2);
-
                     % Assign object properties
                     % obj.modelType = false;
                     obj.n = tmpVec(1);
@@ -183,6 +183,42 @@ classdef VanGenuchten < handle
                     obj.presCor = true;
                     obj.modelType = 'Mualem';
             end
+        end
+
+        function readInputFile(obj,inputStruct)
+          %readFromFile function to read from the file and constructed
+          % the material class.
+
+          curveType = fieldnames(inputStruct);
+
+          assert(isscalar(curveType),"Multiple " + ...
+            "Unsaturated flow curves are not allowed")
+
+          in = inputStruct.(curveType{1});
+
+          switch curveType{1}
+            case 'Mualem'
+              obj.n = getXMLData(in,[],"n");
+              obj.beta = getXMLData(in,[],"beta");
+              obj.kappa = getXMLData(in,[],"kappa");
+              obj.modelType = 'Mualem';
+            case 'Burdine'
+              obj.n = getXMLData(in,[],"n");
+              obj.beta = getXMLData(in,[],"beta");
+              obj.modelType = 'Burdine';
+            case 'Tabular'
+              obj.modelType = 'Tabular';
+              capCurveFile = getXMLData(in,[],'capillaryCurvePath');
+              relPermFile = getXMLData(in,[],'relativePermeabilityPath');
+              obj.retantionCurve = TabularCurve(capCurveFile);
+              obj.relPermCurve = TabularCurve(relPermFile);
+            case 'Preset'
+              obj.modelType = 'Mualem';
+              modType = getXMLData(in,[],"soilName");
+              obj.readMaterialParametersFromTable(modType);
+              obj.betaCor = true;
+              obj.presCor = true;
+          end
         end
 
         function passingData(obj,varargin)

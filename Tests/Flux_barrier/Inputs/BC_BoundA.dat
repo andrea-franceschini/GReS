@@ -1,7 +1,0 @@
-SurfBC                            % BC item 
-Dir                               % BC type 
-SinglePhaseFlow                              % Physics 
-BoundA                           % BC name 
-Inputs/BC/List_BoundA 
-0.00 Inputs/BC/Time_BoundA_0.dat 
-End

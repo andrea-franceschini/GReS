@@ -142,8 +142,11 @@ classdef VTKOutput < handle
 
          toc.appendChild(blocks);
 
-         fileName = sprintf('%s/%s.vtm', obj.folderName, outName);
-         xmlwrite(fileName, docNode);
+         % fileName = sprintf('%s/%s.vtm', obj.folderName, outName);
+         % xmlwrite(fileName, docNode);
+         xmlwrite(sprintf('%s/%s.vtm', obj.folderName, outName), docNode);
+         [~,tmp,~] = fileparts(obj.folderName);
+         fileName = sprintf('%s/%s.vtm', tmp, outName);
       end
 
       function create2DMesh(obj)
