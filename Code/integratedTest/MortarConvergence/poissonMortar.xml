@@ -11,13 +11,13 @@
     </simParam>
     <Domain>
         <Geometry>
-            <fileName>Mesh/meshes/domain_hexa27_2.vtk</fileName>
+            <fileName>Input/Mesh/meshes/domain_hexa27_2.vtk</fileName>
         </Geometry>
         <Gauss>
             <nGP>3</nGP>
         </Gauss>
         <BoundaryConditions>
-            <fileName>poissonMortarBCs.xml</fileName>
+            <fileName>Input/poissonMortarBCs.xml</fileName>
         </BoundaryConditions>
         <Solver>
             <Poisson></Poisson>

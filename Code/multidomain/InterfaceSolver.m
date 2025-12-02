@@ -49,7 +49,6 @@ classdef (Abstract) InterfaceSolver < handle
     % list of dirichlet nodes - TO DO: consider more elegant handling of dirichlet bcs 
     dirNodes
 
-
   end
 
   properties (Access=private)
@@ -464,7 +463,7 @@ classdef (Abstract) InterfaceSolver < handle
       [~, ~, obj.quadrature.interfacePairs(:,2)] = ...
         unique(obj.quadrature.interfacePairs(:,2));
 
-      inactiveSlave = ~ismember(1:getMesh(obj,MortarSide.master).nSurfaces,...
+      inactiveSlave = ~ismember(1:getMesh(obj,MortarSide.slave).nSurfaces,...
         obj.quadrature.interfacePairs(:,1));
 
       [~, ~, obj.quadrature.interfacePairs(:,1)] = ...

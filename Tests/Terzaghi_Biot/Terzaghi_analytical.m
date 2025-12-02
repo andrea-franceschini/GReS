@@ -1,4 +1,4 @@
-function Terzaghi_analytical(mesh, mat, pL, time)
+function Terzaghi_analytical(mesh, mat, pL, time, outDir)
 fprintf('Computing Terzaghi Analytical solution... \n');
 % number of terms for analyitcal soluton series
 nm = 1000;
@@ -33,7 +33,8 @@ nz = 50; %number of calculation points along z-axis
 z = linspace(L_min,L_max,nz);
 [~,u0] = iniSol(z,z,M,pL,Ku,biot,G);
 [p,u] = TerzaghiSol(u0,z,z,time,nm,L,c,pL,biot,gamma,G,nu);
-save('Terzaghi_Analytical.mat','p','u','z','time')
+fileOut = fullfile(outDir,"Terzaghi_Analytical.mat");
+save(fileOut,'p','u','z','time')
 fprintf('Done computing Terzaghi analytical solution.\n');
 end
 
