@@ -1,4 +1,4 @@
-function Mandel_Analytical(mesh, mat, F, time)
+function Mandel_Analytical(mesh, mat, F, time, outDir)
 % Compute Mandel analytical solution for specified time_steps
 % Save results in MAT-FILE for postprocessing
 
@@ -52,7 +52,9 @@ x = linspace(0,a,nx);
 z = linspace(0,b,nz);
 [p0,~,~] = mandelIni(B,F,x,z,nuU,mu);
 [p,ux,uz,~] = mandelSol(alphan,x,time,c,p0,F,nu,nuU,mu,z);
-save('Mandel_Analytical.mat','p','ux','uz','x','z','time')
+fileOut = fullfile(outDir,"Mandel_Analytical.mat");
+save(fileOut,'p','ux','uz','x','z','time')
+
 
 fprintf('Done Computing Mandel Analytical solution. \n');
 end

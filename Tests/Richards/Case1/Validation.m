@@ -5,8 +5,10 @@
 
 close all;
 % clear;
+output_dir = 'Outputs';
 input_dir = 'Inputs';
-figures_dir = 'Figs';
+figures_dir = fullfile(output_dir,"Images");
+
 
 %% ------------------------------ Set up the Domain -----------------------
 % Set the simulation parameters for the non-linear solver.
