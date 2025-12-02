@@ -148,6 +148,9 @@ classdef FCSolver < handle
       obj.domain.stateOld = copy(domain.getState());
       obj.domain.simparams = simparams;
 
+      assert(~isempty(obj.domain.solverNames),"Missing PhysicsSolvers" + ...
+        " in Discretizer. Use the method addPhysicsSolver()")
+
     end
 
 
