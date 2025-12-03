@@ -16,9 +16,9 @@ classdef SolidMechanicsContact < MeshTying
 
 
   methods
-    function obj = SolidMechanicsContact(id,inputStruct,domains)
+    function obj = SolidMechanicsContact(id,domains,inputStruct)
 
-      obj@MeshTying(id,inputStruct,domains);
+      obj@MeshTying(id,domains,inputStruct);
 
     end
 

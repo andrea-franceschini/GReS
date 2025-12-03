@@ -51,7 +51,7 @@ err_tn = norm(tn(ntn_del:end-ntn_del)+tn_anal);
 assert(err_tn < 1e0,"Normal traction not validated")
 
 err_gt = norm(gt-gt_anal);
-%assert(err_gt < 1e-2,"Tangential gap not validated")
+assert(err_gt < 1e-2,"Tangential gap not validated")
 
 % %% plot
 % gt_anal_plot = K*sqrt(b^2-(b-xi).^2);
