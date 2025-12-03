@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+  <simParam>
+    <Time
+          Start="0."
+          End ="1.0e1"
+          DtInit="0.25"
+          DtMin ="1e-4"
+          DtMax ="1.0"
+          incrementFactor = "1.1"
+          choppingFactor = "Default" />
+
+    <Solver
+            MaxNLIteration = "10"
+            RelativeTolerance = "1.e-8"
+            AbsoluteTolerance = "1.e-10" />
+  </simParam>
+
+  <Materials fileName = "InputMech/materials.xml" />
+
+  <BoundaryConditions fileName = "InputMech/boundaryConditions.xml" />
+
+  <Output
+          saveHistory = "1"
+          outputFile = "Outputs/outMech"
+          matFileName = "Outputs/historyMech"
+          printTimes = "1,2,3,4,5,6,7,8,9,10"
+          />
+
+
+  <Solver>
+    <Poromechanics />
+  </Solver>
+
+
+  <Interface>
+    <SolidMechanicsContact>
+
+      <Master
+              domainId = "1"
+              surfaceTag = "1"
+              />
+      
+      <Slave
+             domainId = "1"
+             surfaceTag = "2"
+             />
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  nGP = "4"
+                  />
+
+      <Output
+              outputFile = "Outputs/Fault"
+              printTimes = "1,2,3,4,5,6,7,8,9,10"
+              matFileName = "Outputs/historyFault"
+              />
+
+      <Coulomb
+               cohesion = "0"
+               frictionAngle = "30" />
+
+      <ActiveSet 
+                 resetActiveSet = "0"
+                 forceStickBoundary = "1" >
+
+        <Tolerances
+                    sliding = "1e-5"
+                    normalGap = "1e-5"
+                    normalTraction = "-1e-3"
+                    tangentialViolation = "5e-3"
+                    minLimitTraction = "1e-4"
+                    areaChange = "2e-3"
+                    maxActiveSetChange = "5"
+        />
+
+      </ActiveSet>
+
+    </SolidMechanicsContact>
+
+  </Interface>
+
+
+</Problem>

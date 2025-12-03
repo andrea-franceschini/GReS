@@ -243,7 +243,6 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
         end
 
         % time step not converged
-        dt = dt/obj.simparams.divFac;
         obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
 
         obj.t = obj.t - obj.dt;

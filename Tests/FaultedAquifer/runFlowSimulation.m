@@ -1,85 +1,64 @@
 function [mesh, pressures] = runFlowSimulation(mesh,gridDims,nRock)
 
-fprintf('Faulted aquifer model - flow simulation \n')
-fprintf('___________________\n\n')
+gresLog().log(1,'Faulted aquifer model - flow simulation \n')
+gresLog().log(1,'___________________\n\n')
 
 wellsId = setAquiferMesh(mesh,gridDims,nRock);
 
-fprintf('ID of cells with wells: %i    %i \n',wellsId(1),wellsId(2))
+gresLog().log(1,'ID of cells with wells: %i    %i \n',wellsId(1),wellsId(2))
 
-% Set physical models 
-model = ModelType("SinglePhaseFlow_FVTPFA");
+fileName = "flowCP.xml";
 
-% Set parameters of the simulation
-fileName = "simParam.dat";
-simParam = SimulationParameters(fileName,model);
+simParam = SimulationParameters(fileName);
 
-% Create an object of the Materials class and read the materials file
-fileName = 'Materials/materialsListFlow.dat';
-mat = Materials(model,fileName);
+mat = Materials(fileName);
 
 % Create an object of the "Elements" class and process the element properties
 gaussOrder = 1;
 elems = Elements(mesh,gaussOrder);
 
 % Create an object of the "Faces" class and process the face properties
-faces = Faces(model, mesh);
+faces = Faces(mesh);
 %
 % Wrap Mesh, Elements and Faces objects in a structure
 grid = struct('topology',mesh,'cells',elems,'faces',faces);
-%
-dofmanager = DoFManager(mesh, model);
 
 % Create and set the print utility
-printUtils = OutState(model,mesh,'outTime.dat','folderName','Faulted_aquifer_flow','flagMatFile',true);
+printUtils = OutState(mesh,fileName);
 
 
-% testing surfaces
-% surf3 = getSurfaceMesh(mesh,3);
-% surf4 = getSurfaceMesh(mesh,4);
-% surf5 = getSurfaceMesh(mesh,5);
-% surf6 = getSurfaceMesh(mesh,6);
-% surf7 = getSurfaceMesh(mesh,7);
-% surf8 = getSurfaceMesh(mesh,8);
-% 
-% plotFunction(surf3,"surf3Test",ones(surf3.nNodes,1));
-% plotFunction(surf4,"surf4Test",ones(surf4.nNodes,1));
-% plotFunction(surf5,"surf5Test",ones(surf5.nNodes,1));
-% plotFunction(surf6,"surf6Test",ones(surf6.nNodes,1));
-% plotFunction(surf7,"surf7Test",ones(surf7.nNodes,1));
-% plotFunction(surf8,"surf8Test",ones(surf8.nNodes,1));
+setBCflow(wellsId);
 
-% Create an object of the "Boundaries" class 
-% write BC files
-setBCflow(mesh,wellsId);
-fileName = ["BCs/fix_press.dat", "BCs/wells_press.dat"];
-bound = Boundaries(fileName,model,grid);
+bound = Boundaries(fileName,grid);
 
 
 % Create object handling construction of Jacobian and rhs of the model
-domain = Discretizer('ModelType',model,...
-                     'SimulationParameters',simParam,...
-                     'DoFManager',dofmanager,...
-                     'Boundaries',bound,...
+domain = Discretizer('Boundaries',bound,...
                      'OutState',printUtils,...
                      'Materials',mat,...
                      'Grid',grid);
 
-solver = FCSolver(domain);
+% add physics solver
+domain.addPhysicsSolver(fileName);
+
+solver = FCSolver(simParam,domain);
 solver.NonLinearLoop();
 domain.outstate.finalize()
 
-pressures = printUtils.results.expPress;
+pressures = [printUtils.results.pressure];
 
 end
 
 
 
 
-function setBCflow(mesh,wellsId)
+function setBCflow(wellsId)
 
-writeBCfiles('BCs/fix_press','SurfBC','Dir','SinglePhaseFlow','fix_press',0,0,mesh,[5,7,8]);
-writeBCfiles('BCs/wells_press','ElementBC','Dir','SinglePhaseFlow','wells',[0,3,7,10],[0,120,440,750], wellsId);
+% update element id for wells boundary condition
+bcFileIn = "InputFlow/bcInit.xml";
+bc = readstruct(bcFileIn,AttributeSuffix="");
+bc.BC(2).BCentities.bcList = wellsId;
+writestruct(bc,"InputFlow/boundaryConditions.xml",AttributeSuffix="");
 
 end
 

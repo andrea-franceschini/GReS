@@ -441,6 +441,7 @@ classdef Poromechanics < PhysicsSolver
         for i = 1:numel(cells)
 
           % local coupling to map cell pressure to nodal force (as in Biot)
+          % assumes unit biot coefficient
           el = cells(i);
           elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
           nG = elem.GaussPts.nNode;
@@ -450,7 +451,7 @@ classdef Poromechanics < PhysicsSolver
           B(elem.indB(:,2)) = N(elem.indB(:,1));
           kron = [1;1;1;0;0;0];
           iN = repmat(kron,1,1,nG);
-          Qs = pagemtimes(B,'ctranspose',iN,'none'); % unit biot param
+          Qs = pagemtimes(B,'ctranspose',iN,'none'); 
           Qs = Qs.*reshape(dJWeighed,1,1,[]);
           Qloc = sum(Qs,3);
           vals(k+1:k+n) = Qloc*valsCell(i);

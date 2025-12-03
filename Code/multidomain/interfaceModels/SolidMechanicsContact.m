@@ -16,9 +16,9 @@ classdef SolidMechanicsContact < MeshTying
 
 
   methods
-    function obj = SolidMechanicsContact(id,inputStruct,domains)
+    function obj = SolidMechanicsContact(id,domains,inputStruct)
 
-      obj@MeshTying(id,inputStruct,domains);
+      obj@MeshTying(id,domains,inputStruct);
 
     end
 
@@ -698,6 +698,7 @@ classdef SolidMechanicsContact < MeshTying
     function var = getCoupledVariables()
       var = Poromechanics.getField();
     end
+
 
     function initializeActiveSet(contactSolver,input,N)
       % initialize an Active Set of size N and write it on input obj
