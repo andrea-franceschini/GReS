@@ -14,7 +14,7 @@ interfaces = {};
 interfNames = fieldnames(outStruct);
 
 k=0;
-for i = numel(interfNames)
+for i = 1:numel(interfNames)
 
   % deal with multiple interfaces of the same type
   s = outStruct.(interfNames{i});
