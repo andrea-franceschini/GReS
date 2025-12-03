@@ -273,7 +273,7 @@ classdef Poromechanics < PhysicsSolver
       switch bcType
         case 'Dirichlet'
           applyDirBC(obj,bcId,bcDofs);
-        case 'Neumann'
+        case {'Neumann','VolumeForce'}
           applyNeuBC(obj,bcId,bcDofs,bcVals);
         otherwise
           error("Error in %s: Boundary condition type '%s' is not " + ...

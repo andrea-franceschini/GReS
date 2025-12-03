@@ -74,19 +74,19 @@
 
     <BCevent
              time = "0"
-             value = "InputMech/pressureBC/time0"
+             value = "InputMech/pressureBC/time0.dat"
              />
     <BCevent
              time = "3"
-             value = "InputMech/pressureBC/time1"
+             value = "InputMech/pressureBC/time1.dat"
              />
     <BCevent
              time = "7"
-             value = "InputMech/pressureBC/time2"
+             value = "InputMech/pressureBC/time2.dat"
              />
     <BCevent
              time = "10"
-             value = "InputMech/pressureBC/time3"
+             value = "InputMech/pressureBC/time3.dat"
              />
 
   </BC>

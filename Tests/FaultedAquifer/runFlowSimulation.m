@@ -1,4 +1,4 @@
-function [mesh, pressures] = runFlowSimulation(mesh,gridDims,nRock)
+function [mesh, pressures] = runFlowSimulation(fileName,mesh,gridDims,nRock)
 
 gresLog().log(1,'Faulted aquifer model - flow simulation \n')
 gresLog().log(1,'___________________\n\n')
@@ -6,8 +6,6 @@ gresLog().log(1,'___________________\n\n')
 wellsId = setAquiferMesh(mesh,gridDims,nRock);
 
 gresLog().log(1,'ID of cells with wells: %i    %i \n',wellsId(1),wellsId(2))
-
-fileName = "flowCP.xml";
 
 simParam = SimulationParameters(fileName);
 

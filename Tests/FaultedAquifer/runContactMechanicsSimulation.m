@@ -1,9 +1,7 @@
-function runContactMechanicsSimulation(mesh,pressures)
+function runContactMechanicsSimulation(fileName,mesh,pressures)
 
 fprintf('Faulted aquifer model - Contact simulation \n')
 fprintf('___________________________________________\n\n')
-
-fileName = "mechCP.xml";
 
 simParam = SimulationParameters(fileName);
 
@@ -49,8 +47,12 @@ setInitialTraction(interfaces{1});
 % interfaces{1}.contactHelper.tol.areaTol = 2e-3;
 %interfaces{1}.contactHelper.resetActiveSet = true;
 
-maxActiveSetIters = 14;
-solver = ActiveSetContactSolver(simParam,domain,interfaces,maxActiveSetIters);
+if ~contains(fileName,"stick")
+  maxActiveSetIters = 14;
+  solver = ActiveSetContactSolver(simParam,domain,interfaces,maxActiveSetIters);
+else
+  solver = MultidomainFCSolver(simParam,domain,interfaces);
+end
 
 
 solver.NonLinearLoop();
@@ -102,14 +104,16 @@ K0 = 1-sin(deg2rad(30)); % horizontal factor
 
 gamma_s = 0.0; %specific weight of soil
 
-depth = abs(max(interface.getMesh(MortarSide.slave).surfaceCentroid(:,3)) - interface.getMesh(MortarSide.slave).surfaceCentroid(:,3));
+mshSlave = interface.getMesh(MortarSide.slave);
+
+depth = abs(max(mshSlave.surfaceCentroid(:,3)) - mshSlave.surfaceCentroid(:,3));
 
 coes = 0.05;
 sigma_v = coes+gamma_s*depth;
 
 sigma_glob = [-K0*sigma_v -K0*sigma_v -sigma_v];
 
-for i = 1:interface.mesh.msh(2).nSurfaces
+for i = 1:mshSlave.nSurfaces
   s = diag(sigma_glob(i,:));
   R = interface.interfMesh.getRotationMatrix(i);
   n = R(:,1);

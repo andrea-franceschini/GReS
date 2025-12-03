@@ -48,7 +48,9 @@ classdef MeshTying < InterfaceSolver
 
     function assembleConstraint(obj)
 
-      computeConstraintMatrices(obj);
+      if isempty(obj.D)
+        computeConstraintMatrices(obj);
+      end
 
       % reset the jacobian blocks
       obj.setJmu(MortarSide.slave, []);

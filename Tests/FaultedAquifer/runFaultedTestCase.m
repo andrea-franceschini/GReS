@@ -14,10 +14,8 @@ cd(thisFolder)
 
 % grid parameters
 gridName = 'cornerPointGrid';
-dims = [28,44,28];
-%refinement = [7,3];
+dims = [18,33,20];
 nRockCells = 3;
-%scale = [3e3,3e3,0.5e2];
 scale = [1e2,1e2,10];
 
 gresLog().setVerbosity(2);
@@ -26,19 +24,11 @@ gresLog().setVerbosity(2);
 [mesh,newDims] = processCornerPointGrid(gridName,dims,nRockCells,scale);
 
 
-
-
 %% run flow simulation
+fileName = "flowCP.xml";
+[mesh,pressures] = runFlowSimulation(fileName,mesh,newDims,nRockCells);
 
-[mesh,pressures] = runFlowSimulation(mesh,newDims,nRockCells);
 
 %% run mechanical simulation
-%diary('log.txt')
-%runMechanicsSimulation(mesh,pressures);
-runContactMechanicsSimulation(mesh,pressures);
-diary off
-
-
-%% post processing
-
-% displacement
+fileName = "mechCP_stick.xml";
+runContactMechanicsSimulation(fileName,mesh,pressures);

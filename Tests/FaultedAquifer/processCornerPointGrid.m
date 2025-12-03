@@ -5,7 +5,7 @@ NX = dims(1); NY = dims(2); NZ = dims(3);
 % layer_ref = ref(1);
 % n_refs = ref(2);
 
-grdecl = simpleGrdecl([NX,NY,NZ], 0.0);
+grdecl = simpleGrdecl([NX,NY,NZ], 0.01);
 
 % modifying original MRST corner point grid
 %grdecl = refineLayers(grdecl,layer_ref,n_refs);
