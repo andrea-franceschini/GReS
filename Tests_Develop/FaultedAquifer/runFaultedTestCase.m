@@ -1,19 +1,20 @@
 %% pre processing and input data
+close all;
+% clear;
 
-clear
-close all
-clc
+% Get the full path of the currently executing file
+scriptFullPath = mfilename('fullpath');
 
-thisFolder = pwd;
-
+% Extract the directory containing the script
+scriptDir = fileparts(scriptFullPath);
 % launch MRST
 % cd('../../../MRST')
 % addpath(genpath(fullfile(pwd,'testCornerPoint')))
 %startup 
-cd(thisFolder)
+
 
 % grid parameters
-gridName = 'cornerPointGrid';
+gridName = 'Outputs/cornerPointGrid';
 dims = [18,33,20];
 nRockCells = 3;
 scale = [1e2,1e2,10];

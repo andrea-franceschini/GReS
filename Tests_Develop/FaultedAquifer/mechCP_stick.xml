@@ -9,7 +9,7 @@ in a nonConforming simulation.
     <Time
           Start="0."
           End ="1.0e1"
-          DtInit="0.25"
+          DtInit="1.0"
           DtMin ="1e-4"
           DtMax ="1.0"
           incrementFactor = "1.1"
