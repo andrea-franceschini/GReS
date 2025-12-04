@@ -4,31 +4,23 @@ classdef Boundaries < handle
   properties (Access = public)
     % Creation of a Map object for the boundary conditions
     db
-    dof
   end
 
   properties (Access = private)
-    model
     grid
   end
 
   methods (Access = public)
     % Class constructor method
-    function obj = Boundaries(fileName,model,grid) %,model,grid
+    function obj = Boundaries(input,grid) % ,grid
       % MATLAB evaluates the assignment expression for each instance, which
       % ensures that each instance has a unique value
       obj.db = containers.Map('KeyType','char','ValueType','any');
-      obj.model = model;
       obj.grid = grid;
       % Calling the function to read input data from file
-      obj.readInputFile(fileName);
-      obj.computeBoundaryProperties(model,grid);
-      linkBoundSurf2TPFAFace(model,obj,grid);
-    end
-
-    function delete(obj)
-      remove(obj.db,keys(obj.db));
-      obj.db = [];
+      obj.readInputFile(input);
+      obj.computeBoundaryProperties(grid);
+      % linkBoundSurf2TPFAFace(obj,grid);
     end
 
     % Check if the identifier defined by the user is a key of the Map object
@@ -62,8 +54,8 @@ classdef Boundaries < handle
       end
     end
 
-    function physics = getPhysics(obj, identifier)
-      physics = obj.getData(identifier).physics;
+    function variable = getVariable(obj, identifier)
+      variable = obj.getData(identifier).variable;
     end
 
     function dofs = getCompEntities(obj,identifier,ents)
@@ -82,6 +74,14 @@ classdef Boundaries < handle
 
     function ents = getEntities(obj,identifier)
       ents = obj.getData(identifier).data.entities;
+    end
+
+    function ents = getBCentities(obj,identifier)
+      if isfield(obj.getData(identifier),"loadedEnts")
+        ents = getLoadedEntities(obj,identifier);
+      else
+        ents = getEntities(obj,identifier);
+      end
     end
 
     function ents = getLoadedEntities(obj, identifier)
@@ -115,7 +115,7 @@ classdef Boundaries < handle
       obj.getData(identifier).data.entities = list;
     end
 
-    function computeBoundaryProperties(obj, model, grid)
+    function computeBoundaryProperties(obj, grid)
 
       % preprocess surface/volume boundary conditions
 
@@ -127,10 +127,9 @@ classdef Boundaries < handle
       for bcId = 1:length(keys)
         key = keys{bcId};
         cond = obj.getCond(key);
-        phys = obj.getPhysics(key);
-        isFEM = isFEMBased(model, phys);
+        phys = obj.getVariable(key);
 
-        if any(strcmp(cond, ["VolumeForce","SurfBC"])) && isFEM
+        if any(strcmp(cond, ["VolumeForce","SurfBC"]))
 
           ents = obj.getEntities(key);
           nEnts = obj.getData(key).data.nEntities;
@@ -193,7 +192,7 @@ classdef Boundaries < handle
     end
 
 
-    function removeBCentities(obj,bcId,list)
+    function removedEnts = removeBCentities(obj,bcId,list)
       % remove BC entities that are contained in an input list
       % ignores entries of list that are not valid entities
 
@@ -224,6 +223,7 @@ classdef Boundaries < handle
         bcEnts = bc.data;
         isEntActive = ~ismember(bcEnts.entities,list);
         bcEnts.isActiveEntity(~isEntActive) = false;
+        removedEnts = bcEnts.entities(~isEntActive);
         bcEnts.entities(~isEntActive) = [];
 
         % update the number of entities
@@ -248,12 +248,20 @@ classdef Boundaries < handle
   methods (Access = private)
 
     % Read boundary condtions input file
-    function readInputFile(obj,fileName)
+    function readInputFile(obj,inputStruct)
 
-      inputStruct = readstruct(fileName,AttributeSuffix="");
+      if ~isstruct(inputStruct)
+        inputStruct = readstruct(inputStruct,AttributeSuffix="");
+      end
 
       if isfield(inputStruct,"BoundaryConditions")
         inputStruct = inputStruct.BoundaryConditions;
+      end
+
+      if isfield(inputStruct,"fileName")
+        assert(isscalar(fieldnames(inputStruct)),"FileName, " + ...
+          " must be a unique parameter");
+        inputStruct = readstruct(inputStruct.fileName,AttributeSuffix="");
       end
 
       for i = 1:numel(inputStruct.BC)
@@ -269,7 +277,7 @@ classdef Boundaries < handle
             '                    VolumeForce -> Volume force on elements'], entityType);
         end
 
-        physics = getXMLData(in,[],"physics");
+        variable = getXMLData(in,[],"variable");
         name = getXMLData(in,[],"name");
 
         if ~strcmp(entityType,"VolumeForce")
@@ -296,10 +304,10 @@ classdef Boundaries < handle
         switch entityType
           case 'VolumeForce'
             bc = struct('data', [], ...
-              'cond',entityType, 'physics', physics);
+              'cond',entityType, 'variable', variable);
           case {'SurfBC','NodeBC','ElementBC'}
             bc = struct('data', [], ...
-              'cond',entityType,'type', type, 'physics', physics);
+              'cond',entityType,'type', type, 'variable', variable);
           otherwise
             error('Unrecognized BC item %s for Boundary condition %s', ...
               entityType, name)

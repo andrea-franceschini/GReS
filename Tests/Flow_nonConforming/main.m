@@ -13,16 +13,14 @@ scriptDir = fileparts(scriptFullPath);
 
 
 %% BUILD MODEL
-% build model using domains input file (a shortcut to programmatically
-% initialize separate model objects for each domain)
-domains = buildModel(fullfile(input_dir,'domain.xml'));
 
+simparams = SimulationParameters(fullfile(input_dir,'flowNonConforming.xml'));
 % Initialize the mortar utilities
-[interfaces,domains] = Mortar.buildInterfaces(fullfile(input_dir,'interfaces.xml'),domains);
+[domains,interfaces] = buildModel(fullfile(input_dir,'flowNonConforming.xml'));
 
 
 %% RUN MODEL  
 % A different solver is needed for models with non conforming domains
-solver = MultidomainFCSolver(domains,interfaces);
+solver = MultidomainFCSolver(simparams,domains,interfaces);
 solver.NonLinearLoop();
 solver.finalizeOutput();

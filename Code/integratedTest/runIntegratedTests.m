@@ -4,6 +4,8 @@ clc
 tWall = tic();      % start wall-clock timer
 tCPU  = cputime;    % start CPU timer
 
+gresLog().setVerbosity(-1);
+
 testFiles = {
     fullfile('Terzaghi','testTerzaghi.m')
     fullfile('SubDomains','testSubDomains.m')

@@ -1,9 +1,24 @@
 function data = getXMLData(fieldStruct, defaultValue, dataName)
-% getXMLData - read a parameter from an input file
+% getXMLData  Retrieve and convert a parameter from an XML-derived structure
 %
-% Input:
+%   data = getXMLData(fieldStruct, defaultValue, dataName)
 %
-% str is the structure containing the paramters of a certain xml field
+%   Retrieves the value associated with the XML field `dataName` within the
+%   structure `fieldStruct`. If the field is missing or explicitly set to
+%   "Default", the value `defaultValue` is returned. Otherwise, the raw XML
+%   value is converted to an appropriate MATLAB type using getXMLValue.
+%
+%   Inputs:
+%     fieldStruct   - Matlab Struct containing parsed XML fields.
+%     defaultValue  - Fallback value used when the field is absent or marked
+%                     as default.
+%     dataName      - Name of the field to extract from the struct.
+%
+%   Output:
+%     data          - Parsed parameter value. Raises an error if the resulting
+%                     value is empty.
+%
+%   See also: getXMLValue
 
 
 % Check if field exists
@@ -23,11 +38,25 @@ end
 
 
 function val = getXMLValue(raw)
-% getXMLValue - Convert raw XML value into appropriate MATLAB type
+% getXMLValue  Convert a raw XML field value into a MATLAB type
 %
-% Converts strings like "1 2 3" -> [1 2 3], 
-% "text" -> "text", 
-% "a b c" -> ["a" "b" "c"]
+%   val = getXMLValue(raw)
+%
+%   Interprets XML text or numeric content and converts it to a suitable
+%   MATLAB representation:
+%     - numeric strings → numeric scalars/vectors (e.g. "1 2 3" → [1 2 3])
+%     - plain text      → string scalar
+%     - space/comma/semicolon-separated tokens → string array
+%     - numeric input   → returned unchanged
+%
+%   Inputs:
+%     raw  - Raw XML field content (numeric, char, string, cellstr).
+%
+%   Output:
+%     val  - Interpreted MATLAB value.
+%
+%   Errors:
+%     Throws getXMLValue:invalidType if the input cannot be interpreted.
 
   % If already numeric, return directly
   if isnumeric(raw)

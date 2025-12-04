@@ -3,6 +3,7 @@ classdef Fluid < handle
 
     properties (Access = private)
         %General properties:
+        name
         gamma;             % Fluid specific weight
         beta;              % Fluid compressibility
         mu;                % Fluid dynamic viscosity
@@ -28,6 +29,10 @@ classdef Fluid < handle
         function mu = getDynViscosity(obj)
             %GETDYNVISCOSITY Function to get fluid dynamic viscosity
             mu = obj.mu;
+        end
+ 
+        function setName(obj,name)
+          obj.name = name;
         end
     end
 

@@ -9,7 +9,7 @@ classdef BoundaryEntities < handle
     totEnts
     % Number of constrained entities for each degree of freedom
     nEntities
-    % Indices of constrained degrees of freedom
+    % Indices of constrained entities
     entities
     % Number of input times
     nTimes
@@ -63,13 +63,15 @@ classdef BoundaryEntities < handle
         vals = obj.availVals(:,1);
       else
         [i1, i2] = bin_search(obj, t);
-        if i1 == i2
-          % outside range of available steps
-          if ~(obj.availSteps(:,1) == i1)
+        if i1 == i2 % edge case 
+          if all([i1 i2] == 1)
             obj.availSteps(1) = i1;
-            obj.availVals(:,1) = readDataSet(obj,i1);
+            obj.availVals(:,1) = readDataSet(obj,1);
+            vals = obj.availVals(:,1);
+          elseif all([i1 i2] == obj.nTimes)
+            obj.availVals(:,2) = readDataSet(obj,obj.nTimes);
+            vals = obj.availVals(:,2);
           end
-          vals = obj.availVals(:,1);
         else
           p1 = find(obj.availSteps == i1);
           p2 = find(obj.availSteps == i2);
@@ -143,5 +145,4 @@ classdef BoundaryEntities < handle
     end
 
   end
-  end
-  
+end

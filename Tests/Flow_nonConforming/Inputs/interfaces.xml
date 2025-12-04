@@ -6,8 +6,8 @@ and must be known in advance during the mesh generation
 % slave-->
 <Interfaces>
     <Interface>
-        <Master id="1" surfaceTag="1"/>
-        <Slave id="2" surfaceTag="1"/>
+        <Master id="1" />
+        <Slave id="1"/>
         <Type>MeshTying</Type>
         <Quadrature type="RBF" nGP="12" nInt = "5"/>
         <Multiplier type="dual"/>

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Problem>
+
+  <simParam>
+    <Time
+          Start="0.0"
+          End ="1e0"
+          DtInit= "1e0"
+          DtMax ="1e0"
+          DtMin ="1.0"
+          />
+
+
+    <Solver
+            RelativeTolerance = "1e-8"
+            AbsoluteTolerance = "1e-10"
+            />
+  </simParam>
+
+
+  <Domain>
+
+    <Geometry
+              fileName = "Input/SingleCrack_grid.vtk"
+              />
+    <Gauss nGP = "3" />
+    <Materials fileName = "Input/materials.xml" />
+    <BoundaryConditions fileName = "Input/singleCrackBCs.xml" />
+
+    <!--<Output
+            outputFile = "SingleCrackCompressed"
+            printTimes = "1.0"
+            />-->
+    <Solver>
+      <Poromechanics />
+    </Solver>
+
+  </Domain>
+
+
+  <Interface>
+
+    <MeshTying>
+      <Master
+              domainId = "1"
+              surfaceTag = "4"
+              />
+      <Slave
+             domainId = "1"
+             surfaceTag = "5"
+             />
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  multiplierType = "P0"
+                  nGP = "6"
+                  />
+    </MeshTying>
+
+
+    <SolidMechanicsContact>
+      <Master
+              domainId = "1"
+              surfaceTag = "6"
+              />
+      <Slave
+             domainId = "1"
+             surfaceTag = "7"
+             />
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  multiplierType = "P0"
+                  nGP = "6"
+                  />
+      <Coulomb
+               cohesion = "0"
+               frictionAngle = "30.0" />
+      <!--<Output
+              outputFile = "CrackInterface"
+              printTimes = "1.0"
+              />-->
+    </SolidMechanicsContact>
+
+  </Interface>
+
+</Problem>
+
