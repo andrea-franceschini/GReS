@@ -37,7 +37,15 @@ domain.addPhysicsSolver(fileName);
 % set verbosity 
 interfaces = buildInterfaces(fileName,domain);
 
-setInitialTraction(interfaces{1});
+initTrac = setInitialTraction(interfaces{1});
+
+if contains(fileName,"stick")
+  interfaces{1}.state.multipliers = initTrac;
+  interfaces{1}.state.iniMultipliers = initTrac;
+else
+  interfaces{1}.state.iniTraction = initTrac;
+  interfaces{1}.state.tractopm = initTrac;
+end
 
 % interfaces{1}.contactHelper.forceStickBoundary = true;
 % interfaces{1}.contactHelper.tol.normalGap = 1e-5;
@@ -98,7 +106,7 @@ end
 end
 
 
-function setInitialTraction(interface)
+function iniTrac = setInitialTraction(interface)
 
 K0 = 1-sin(deg2rad(30)); % horizontal factor
 
@@ -113,14 +121,16 @@ sigma_v = coes+gamma_s*depth;
 
 sigma_glob = [-K0*sigma_v -K0*sigma_v -sigma_v];
 
+iniTrac = zeros(interface.nMult,1);
+
 for i = 1:mshSlave.nSurfaces
   s = diag(sigma_glob(i,:));
   R = interface.interfMesh.getRotationMatrix(i);
   n = R(:,1);
   sloc = R'*(s*n); % Rt*(sigma*n)
   dofs = DoFManager.dofExpand(i,3);
-  interface.state.traction(dofs) = sloc;
-  interface.state.iniTraction(dofs) = sloc;
+  iniTrac(dofs) = sloc;
+  iniTrac(dofs) = sloc;
 end
 
 end

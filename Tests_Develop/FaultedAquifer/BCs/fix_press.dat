@@ -1,7 +1,0 @@
-SurfBC            % BC item 
-Dir            % BC type 
-SinglePhaseFlow            % Physics 
-fix_press            % BC name 
-BCs/fix_press/list 
-0.000000 BCs/fix_press/time0.dat 
-End
