@@ -44,6 +44,9 @@
 # asv files
 *.asv
 
+# recovery files
+*.nfs
+
 # Develop Experiments folders
 /Tests_Develop/
 
