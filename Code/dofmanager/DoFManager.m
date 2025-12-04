@@ -20,6 +20,10 @@ classdef DoFManager < handle
 
   methods (Access = public)
     function obj = DoFManager(mesh)
+
+      if nargin == 0 
+        return
+      end
       obj.mesh = mesh;
       obj.totDofs = 0;
     end

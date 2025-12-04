@@ -3,11 +3,11 @@ classdef Discretizer < handle
 
   properties (GetAccess=public, SetAccess=private)
 
-    physicsSolvers      % physics solvers database
-    dofm                % dofManager
-    bcs
-    outstate
-    materials
+    physicsSolvers                     % physics solvers database
+    dofm = DoFManager()                % dofManager
+    bcs = Boundaries()
+    outstate = OutState()
+    materials = Materials()
     solverNames
     grid = struct('topology',[],'faces',[],'cells',[])
 
@@ -340,7 +340,9 @@ classdef Discretizer < handle
 
       obj.state = State();
 
-      obj.dofm = DoFManager(obj.grid.topology);
+      if ~isempty(obj.grid.topology)
+        obj.dofm = DoFManager(obj.grid.topology);
+      end
 
     end
 
@@ -358,6 +360,10 @@ classdef Discretizer < handle
         key = varargin{k};
         value = varargin{k+1};
 
+        if isempty(value)
+          continue
+        end
+
         if ~ischar(key) && ~isstring(key)
           error('Keys must be strings');
         end
@@ -367,29 +373,30 @@ classdef Discretizer < handle
           %   assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
           %   obj.simparams = value;
           case 'grid'
-            assert(isstruct(value),msg)
             obj.grid = value;
+            % check that grid has been defined correctly
+            isGridCorrect = all([isfield(obj.grid,"topology");...
+              isfield(obj.grid,"cells");...
+              isfield(obj.grid,"faces")]);
+
+            assert(isGridCorrect,"Error in Discretizer: grid input is not correct. " + ...
+              "See the default value of the grid property in Discretizer.");
+
           case 'materials'
-            assert(isa(value, 'Materials') || isempty(value),msg)
+            assert(isa(value, 'Materials'),msg)
             obj.materials = value;
           case 'boundaries'
-            assert(isa(value, 'Boundaries') || isempty(value),msg)
+            assert(isa(value, 'Boundaries'),msg)
             obj.bcs = value;
           case 'outstate'
-            assert(isa(value, 'OutState') || isempty(value),msg)
+            assert(isa(value, 'OutState'),msg)
             obj.outstate = value;
           otherwise
-            error('Unknown input %s for Discretier \n', key);
+            error('Unknown input key %s for Discretier \n', key);
         end
       end
 
-      % check that grid has been defined correctly
-      isGridCorrect = all([isfield(obj.grid,"topology");...
-                           isfield(obj.grid,"cells");...
-                           isfield(obj.grid,"faces")]);
 
-      assert(isGridCorrect,"Error in Discretizer: grid input is not correct. " + ...
-        "See the default value of the grid property in Discretizer.");
     end
 
 
