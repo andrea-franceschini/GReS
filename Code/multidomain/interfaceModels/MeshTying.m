@@ -277,6 +277,10 @@ classdef MeshTying < InterfaceSolver
       surfaceStr = [];
       pointStr = [];
 
+      nComp = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
+
+      mult = (reshape(mult,nComp,[]))';
+
       % append state variable to output structure
       if obj.multiplierLocation == entityField.surface
         surfaceStr(1).name = 'multiplier';
