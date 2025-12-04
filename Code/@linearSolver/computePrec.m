@@ -1,50 +1,172 @@
 
 % Function for the computation of the preconditioner
-function computePrec(obj,A)
+function [MfunL, MfunR] = computePrec(obj,A)
 
-   if (norm(A-A',"fro")/norm(A,"fro") > 1e-7)
-      obj.params.symm = false;
-   else
-      obj.params.symm = true;
-   end
+   % Case with A sparse matrix
+   if obj.precOpt == 0
+      if iscell(A)
+         A = A{1,1};
+      end
 
-   time_start = tic;
-   switch obj.PrecType
+      if (norm(A-A','f')/norm(A,'f') > 1e-7)
+         obj.params.symm = false;
+         fprintf('matrix nonsymmatric\n');
+      else
+         obj.params.symm = true;
+      end
 
-      % Compute the AMG preconditioner
-      case 'amg'
-         
-         % Treat Boundary conditions 
-         lmax = eigs(A,1,'lm','FailureTreatment','keep','Display',0,'Tolerance',0.001,'MaxIterations',3);
-         A(A==1) = lmax/10;
+      time_start = tic;
+      switch obj.PrecType
 
-         % Compute the test space
-         if(obj.phys == 0) % fluids
-            TV0 = ones(size(A,1),1);
-         elseif(obj.phys == 1)
-            TV0 = mk_rbm_3d(obj.domain.grid.topology.coordinates);
+         % Compute the AMG preconditioner
+         case 'amg'
+            
+            % Treat Boundary conditions 
+            lmax = eigs(A,1,'lm','FailureTreatment','keep','Display',0,'Tolerance',0.001,'MaxIterations',3);
+            A(A==1) = lmax/10;
+
+            % Compute the test space
+            if(obj.phys == 0) % fluids
+               TV0 = ones(size(A,1),1);
+            elseif(obj.phys == 1)
+               TV0 = mk_rbm_3d(obj.domain.grid.topology.coordinates);
+            end
+            
+            set_DEBINFO();
+
+            % Actually compute the AMG
+            obj.Prec = cpt_aspAMG(obj.params,A,TV0);
+
+            % Define Mfun
+            MfunL = @(r) AMG_Vcycle(obj.Prec,A,r);
+            MfunR = @(r) r;
+
+         % Compute the FSAI preconditioner
+         case 'fsai'
+            smootherOp = smoother(A,obj.params.symm,obj.params.smoother);
+
+            % Define Mfun
+            [MfunL,MfunR] = defineMfunFSAI(obj,smootherOp);
+      end
+      T_setup = toc(time_start);
+      obj.aTimeComp = obj.aTimeComp + T_setup;
+      obj.nComp = obj.nComp + 1;
+      
+   elseif obj.precOpt == 1
+
+      simple_flag = false;
+
+      % Get the dimensions of the blocks
+      n11 = size(A{1,1},1);
+      n22 = size(A{1,2},2);
+
+      % If block 22 has dim 0 then resize it
+      if size(A{2,2},1) ~= n22
+         A{2,2} = sparse(n22,n22);
+      end
+
+      % Treat Dirichlet boundary conditions
+      A{1,1} = A{1,1}';
+      D = sum(spones(A{1,1}));
+      ind_dir_dof = find(D==1);
+      ind_col_rem = find(sum(spones(A{1,2}))==1);
+      [ind_dir_lag,~,~] = find(A{1,2}(:,ind_col_rem));
+      ind_dir = union(ind_dir_dof,ind_dir_lag);
+      A{1,1}(:,ind_dir) = 0;
+      A{1,1} = A{1,1}';
+      A{2,1}(:,ind_dir) = 0;
+      A{1,2} = A{2,1}';
+      fac = max(D);
+      D = zeros(n11,1);
+      D(ind_dir,1) = fac;
+      A{1,1} = A{1,1} + diag(sparse(D));
+
+
+      % Set RACP Gamma to 1
+      gamma = 1.0;
+
+      % Compute local augmentation
+      AA_list = {};
+      BB_list = {};
+      aug = zeros(size(A{2,2},1),1);
+      D_11 = full(diag(A{1,1}));
+      mean_diag_A = mean(D_11);
+      D_22 = full(diag(A{2,2}));
+      A21_scaled_T = A{2,1}';
+      for icol = 1:n22
+         v12 = A{1,2}(:,icol);
+         v21 = A21_scaled_T(:,icol);
+         [ii_12,~,bb_12] = find(v12);
+         [ii_21,~,bb_21] = find(v21);
+         if (numel(ii_12)+numel(ii_21) > 0);
+            BB = bb_12*bb_21';
+            if simple_flag
+               m_a= max(D_11(ii_12));
+               m_b = max(diag(BB));
+            else
+               AA = A{1,1}(ii_12,ii_21);
+               AA_list{icol} = AA;
+               BB_list{icol} = BB;
+               m_a = max(eig(full(AA)));
+               m_b = max(eig(full(BB)));
+            end
+            m_a_sav = m_a;
+            if m_a == 0
+               m_a = mean_diag_A;
+            end
+            alpha = m_a / m_b;
+            aug(icol) = 1 / alpha;
          end
-         
-         set_DEBINFO();
+      end
 
-         % Actually compute the AMG
-         obj.Prec = cpt_aspAMG(obj.params,A,TV0);
+      aug_mat = diag(sparse(aug));
+      A22_aug = A{2,2} - gamma*aug_mat;
 
-         % Define Mfun
-         obj.MfunL = @(r) AMG_Vcycle(obj.Prec,A,r);
-         obj.MfunR = @(r) r;
+      % Compute augmented 11 block
+      inv_D22 = -inv(diag(diag(A22_aug)));
+      ADD = A{1,2}*inv_D22*A{2,1}; ADD = 0.5*(ADD+ADD');
+      A11_aug = A{1,1}+ADD;
 
-      % Compute the FSAI preconditioner
-      case 'fsai'
-         smootherOp = smoother(A,obj.params.symm,obj.params.smoother);
+      % Make the computation of the first block preconditioner available 
+      obj.precOpt = 0;
+      % For now impose the amg
+      obj.PrecType = 'amg';
 
-         % Define Mfun
-         [obj.MfunL,obj.MfunR] = defineMfunFSAI(obj,smootherOp);
+      % Compute the amg for block 11
+      [pL,pR] = computePrec(obj,A11_aug);
+
+      MfunL = @(x) apply_RevAug(pL,A11_aug,A{1,2},inv_D22,x);
+      MfunR = pR;
+
+   else
+      error('not implemented yet');
    end
-   T_setup = toc(time_start);
-   obj.aTimeComp = obj.aTimeComp + T_setup;
-   obj.nComp = obj.nComp + 1;
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -9,6 +9,7 @@ classdef linearSolver < handle
 
       % Preconditioner
       Prec
+      precOpt
       MfunL
       MfunR
       
@@ -51,7 +52,7 @@ classdef linearSolver < handle
 
          if isfolder(ChronosDir)
             
-            if(numel(domainin.fields) > 1)
+            if(numel(domainin.physicsSolvers) > 1)
                fprintf('multiPhysics not yet supported\nFall back to matlab solver\n');
                obj.ChronosFlag = false;
                return
@@ -59,9 +60,10 @@ classdef linearSolver < handle
 
             obj.domain = domainin;
 
-            if(obj.domain.fields(1) == 'SinglePhaseFlow' || obj.domain.fields(1) == 'VariablySaturatedFlow')
+            physname = obj.domain.solverNames(1);
+            if(physname == 'SinglePhaseFlow' || physname == 'VariablySaturatedFlow' || physname == 'Poisson')
                obj.phys = 0;
-            elseif(obj.domain.fields(1) == 'Poromechanics')
+            elseif(physname == 'Poromechanics')
                obj.phys = 1;
             else
                warning('Non supported Physics for linsolver, falling back to matlab solver');
@@ -72,6 +74,8 @@ classdef linearSolver < handle
             % Chronos exists
             obj.ChronosFlag = true;
             addpath(genpath(ChronosDir));
+            RACPDir = fullfile(gres_root,'..','aspamg_matlab','composed_precs');
+            addpath(genpath(RACPDir));
 
             % Read XML
             if nargin > 1
@@ -98,6 +102,7 @@ classdef linearSolver < handle
             obj.aTimeSolve    = 0;
             obj.aTimeComp     = 0;
             obj.whenComputed  = [];
+            obj.precOpt       = -1;
 
             % Get the solver type
             obj.SolverType = lower(data.solver);
@@ -159,7 +164,7 @@ classdef linearSolver < handle
    methods (Access = private)
 
       % Function to compute the preconditioner
-      computePrec(obj,A)
+      [MfunR,MfunL] = computePrec(obj,A)
 
    end
 

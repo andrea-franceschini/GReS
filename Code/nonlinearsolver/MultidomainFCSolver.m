@@ -26,7 +26,6 @@ classdef MultidomainFCSolver < handle
 
   methods (Access = public)
     
-<<<<<<< HEAD
     function obj = MultidomainFCSolver(simparams,domains,interfaces)
        obj.setNonLinearSolver(simparams,domains,interfaces);
 

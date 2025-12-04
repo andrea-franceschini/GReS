@@ -7,19 +7,22 @@
 % single physics single domain with lagrange multipliers) 
 function [x,flag] = Solve(obj,A,b,time)
    
+   A
    % Single physics, single domain, no lagrange multipliers
    if numel(A) == 1
-      A = A{1,1};
+      obj.precOpt = 0;
    elseif numel(A) == 4
-      error('2x2 J\n');
+      obj.precOpt = 1;
    else
-      error('Not implemented yet\n');
+      warning('Fallback onto matlab solver');
+      obj.ChronosFlag = false;
    end
    
    % Chronos does not exist, continue with matlab default
-   if ~obj.ChronosFlag || size(A,1) < 1e4 
+   if ~obj.ChronosFlag || size(A{1,1},1) < 1e4 
       startT = tic;
       % Solve the system
+      A = cell2matrix(A);
       x = A\b;
       Tend = toc(startT);
       obj.aTimeSolve = obj.aTimeSolve + Tend;
@@ -31,7 +34,7 @@ function [x,flag] = Solve(obj,A,b,time)
 
    % Have the linear solver compute the Preconditioner if necessary
    if(obj.requestPrecComp || obj.params.iter > 500 || obj.params.lastRelres > obj.params.tol*1e3)
-      obj.computePrec(A);
+      [obj.MfunL,obj.MfunR] = obj.computePrec(A);
       obj.whenComputed(length(obj.whenComputed) + 1) = time;
       obj.params.iterSinceLastPrecComp = 0;
    else
@@ -40,6 +43,10 @@ function [x,flag] = Solve(obj,A,b,time)
 
    % Save the solver type
    firstSolver = obj.SolverType;
+
+   if iscell(A) && numel(A) > 1
+      A = cell2matrix(A);
+   end
 
    % If the matrix is nonSymmetric the use always GMRES
    if (norm(A-A','f')/norm(A,'f') > 1e-7)
@@ -69,7 +76,7 @@ function [x,flag] = Solve(obj,A,b,time)
    % Did not converge, if prec not computed for it try again
    if(flag == 1 && obj.params.iterSinceLastPrecComp > 0)
       fprintf('Trying to recompute the preconditioner to see if it manages to converge\n');
-      obj.computePrec(A);
+      [obj.MfunL,obj.MfunR] = obj.computePrec(A);
       obj.params.iterSinceLastPrecComp = 0;
       [x,flag] = obj.Solve(A,b,time);
    end

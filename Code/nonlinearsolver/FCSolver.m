@@ -38,20 +38,21 @@ classdef FCSolver < handle
             saveStasticts(:) = varargin{pos+1};
           otherwise
         end
-        obj.solStatistics = SolverStatistics(obj.simparams.itMaxNR,...
+      end
+
+      obj.solStatistics = SolverStatistics(obj.simparams.itMaxNR,...
                                            obj.simparams.relTol,...
                                            obj.simparams.absTol,...
                                            saveStasticts);
 
-        % Check if there is manual input from the user, if not use defaults
-        start_dir = pwd;
-        chronos_xml = fullfile(start_dir,'linsolver.xml');
-        if(isfile(chronos_xml))
-           obj.linsolver = linearSolver(obj.domain,chronos_xml);
-        else
-           fprintf('Using default values for linsolver\n');
-           obj.linsolver = linearSolver(obj.domain);
-        end
+      % Check if there is manual input from the user, if not use defaults
+      start_dir = pwd;
+      chronos_xml = fullfile(start_dir,'linsolver.xml');
+      if(isfile(chronos_xml))
+         obj.linsolver = linearSolver(obj.domain,chronos_xml);
+      else
+         fprintf('Using default values for linsolver\n');
+         obj.linsolver = linearSolver(obj.domain);
       end
     end
 
@@ -236,4 +237,3 @@ classdef FCSolver < handle
     end
   end
 end
-
