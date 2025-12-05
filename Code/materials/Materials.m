@@ -12,6 +12,11 @@ classdef Materials < handle
   methods (Access = public)
     % Class constructor method
     function obj = Materials(input)
+      
+      if nargin == 0
+        return
+      end
+
       obj.db = containers.Map('KeyType','double','ValueType','any');
       % Calling the function to read input data from file
       obj.readInputFile(input);

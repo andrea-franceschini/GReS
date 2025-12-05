@@ -16,6 +16,11 @@ classdef Boundaries < handle
       % MATLAB evaluates the assignment expression for each instance, which
       % ensures that each instance has a unique value
       obj.db = containers.Map('KeyType','char','ValueType','any');
+
+      if nargin == 0
+        return
+      end
+
       obj.grid = grid;
       if strcmp(grid.topology.meshType,"Unstructured")
         % Calling the function to read input data from file
