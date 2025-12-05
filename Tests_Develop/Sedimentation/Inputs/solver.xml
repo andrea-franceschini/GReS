@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Solver>
+  <Sedimentation>
+    <domain>
+      <grid
+          type = "classic"
+          division = "2,2,1"
+          size = "1,1,1"/>
+      <initial>
+        <lay number = "1" materialFlag = "1" />
+      </initial>
+    </domain>
+    <boundary>
+      <BC name = "BordA"
+          type = "Dirichlet"
+          surface = "X0"
+          variable = "pressure" />
+      <BC name = "BordB"
+          type = "Dirichlet"
+          surface = "XM"
+          variable = "pressure" />
+      <BC name = "BordC"
+          type = "Dirichlet"
+          surface = "Y0"
+          variable = "pressure" />
+      <BC name = "BordD"
+          type = "Dirichlet"
+          surface = "YM"
+          variable = "pressure" />
+      <BC name = "Bottom"
+          type = "Newmann"
+          surface = "Z0"
+          variable = "pressure" />
+      <BC name = "Top"
+          type = "Newmann"
+          surface = "ZM"
+          variable = "pressure" />
+    </boundary>
+    <sediment_map
+        time = "0."
+        division = "2,2"
+        sediment_rate = "0.01,0.01,0.01,0.01"/>
+    <!--<sediment_map
+        time = "0."
+        division = "3,4"
+        sediment_rate = "Inputs/DomainBot/bottomLayer.vtk"/> -->
+    <Output outputFile = "Results/Dam"/>
+  </Sedimentation>
+</Solver>

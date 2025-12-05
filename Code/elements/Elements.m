@@ -33,11 +33,13 @@ classdef Elements < handle
 
   methods (Access = public)
     function obj = Elements(mesh,nGaussPt)
-        obj.mesh = mesh;
+      obj.mesh = mesh;
+      if strcmp(mesh.meshType,"Unstructured")        
         if nargin < 2
           nGaussPt = 1;
         end
         setElementData(obj,mesh,nGaussPt);
+      end
     end
 
 
