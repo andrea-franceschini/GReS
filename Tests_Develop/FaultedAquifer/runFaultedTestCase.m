@@ -1,12 +1,15 @@
 %% pre processing and input data
+clc
 close all;
-% clear;
+%clear;
 
 % Get the full path of the currently executing file
 scriptFullPath = mfilename('fullpath');
 
 % Extract the directory containing the script
 scriptDir = fileparts(scriptFullPath);
+
+cd(scriptDir)
 % launch MRST
 % cd('../../../MRST')
 % addpath(genpath(fullfile(pwd,'testCornerPoint')))
@@ -15,9 +18,9 @@ scriptDir = fileparts(scriptFullPath);
 
 % grid parameters
 gridName = 'Outputs/cornerPointGrid';
-dims = [18,33,20];
+dims = [18,28,20];
 nRockCells = 3;
-scale = [1e2,1e2,10];
+scale = [1e3,1e3,50];
 
 gresLog().setVerbosity(2);
 
@@ -31,5 +34,5 @@ fileName = "flowCP.xml";
 
 
 %% run mechanical simulation
-fileName = "mechCP_stick.xml";
+fileName = "mechCP.xml";
 runContactMechanicsSimulation(fileName,mesh,pressures);

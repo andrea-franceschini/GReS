@@ -8,11 +8,11 @@ in a nonConforming simulation.
   <simParam>
     <Time
           Start="0."
-          End ="1.0e1"
-          DtInit="0.25"
+          End ="10.0"
+          DtInit="0.5"
           DtMin ="1e-4"
-          DtMax ="1.0"
-          incrementFactor = "1.1"
+          DtMax ="0.5"
+          incrementFactor = "1.25"
           choppingFactor = "Default" />
 
     <Solver
@@ -29,7 +29,7 @@ in a nonConforming simulation.
           saveHistory = "1"
           outputFile = "Outputs/outMech"
           matFileName = "Outputs/historyMech"
-          printTimes = "1,2,3,4,5,6,7,8,9,10"
+          printTimes = "0,1,2,3,4,5,6,7,8,9,10"
           />
 
 
@@ -57,7 +57,7 @@ in a nonConforming simulation.
 
       <Output
               outputFile = "Outputs/Fault"
-              printTimes = "1,2,3,4,5,6,7,8,9,10"
+              printTimes = "0,1,2,3,4,5,6,7,8,9,10"
               matFileName = "Outputs/historyFault"
               />
 
@@ -73,9 +73,9 @@ in a nonConforming simulation.
                     sliding = "1e-5"
                     normalGap = "1e-5"
                     normalTraction = "-1e-3"
-                    tangentialViolation = "5e-3"
+                    tangentialViolation = "1e-2"
                     minLimitTraction = "1e-4"
-                    areaChange = "2e-3"
+                    areaChange = "5e-3"
                     maxActiveSetChange = "5"
         />
 

@@ -34,7 +34,7 @@ domain = Discretizer('Boundaries',bound,...
 domain.addPhysicsSolver(fileName);
 
 
-% set verbosity 
+% set verbosity
 interfaces = buildInterfaces(fileName,domain);
 
 initTrac = setInitialTraction(interfaces{1});
@@ -42,9 +42,13 @@ initTrac = setInitialTraction(interfaces{1});
 if contains(fileName,"stick")
   interfaces{1}.state.multipliers = initTrac;
   interfaces{1}.state.iniMultipliers = initTrac;
+  interfaces{1}.stateOld.multipliers = initTrac;
+  interfaces{1}.stateOld.iniMultipliers = initTrac;
 else
   interfaces{1}.state.iniTraction = initTrac;
-  interfaces{1}.state.tractopm = initTrac;
+  interfaces{1}.state.traction = initTrac;
+  interfaces{1}.stateOld.iniTraction = initTrac;
+  interfaces{1}.stateOld.traction = initTrac;
 end
 
 % interfaces{1}.contactHelper.forceStickBoundary = true;
@@ -110,13 +114,13 @@ function iniTrac = setInitialTraction(interface)
 
 K0 = 1-sin(deg2rad(30)); % horizontal factor
 
-gamma_s = 0.0; %specific weight of soil
+gamma_s = 0.021; %specific weight of soil
 
 mshSlave = interface.getMesh(MortarSide.slave);
 
 depth = abs(max(mshSlave.surfaceCentroid(:,3)) - mshSlave.surfaceCentroid(:,3));
 
-coes = 0.05;
+coes = 0.15;
 sigma_v = coes+gamma_s*depth;
 
 sigma_glob = [-K0*sigma_v -K0*sigma_v -sigma_v];
@@ -129,7 +133,6 @@ for i = 1:mshSlave.nSurfaces
   n = R(:,1);
   sloc = R'*(s*n); % Rt*(sigma*n)
   dofs = DoFManager.dofExpand(i,3);
-  iniTrac(dofs) = sloc;
   iniTrac(dofs) = sloc;
 end
 
