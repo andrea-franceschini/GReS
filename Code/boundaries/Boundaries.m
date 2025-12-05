@@ -12,7 +12,7 @@ classdef Boundaries < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = Boundaries(input,grid) % ,grid
+    function obj = Boundaries(varargin)
       % MATLAB evaluates the assignment expression for each instance, which
       % ensures that each instance has a unique value
       obj.db = containers.Map('KeyType','char','ValueType','any');

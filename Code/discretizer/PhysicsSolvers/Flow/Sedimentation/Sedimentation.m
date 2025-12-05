@@ -1,13 +1,14 @@
 classdef Sedimentation < PhysicsSolver
   % Sedimentation model subclass
-  % Coupled Poromechanics with SinglePhaseFlow
 
   properties
-     structuredGrid
+     grid = gridForSedimentation()
+     mapSediments = SedimentsMap()
+     bcsTypes
   end
 
-  properties (Access = private)
-    Solver
+  properties (Access = protected)
+    fieldId
   end
 
   methods (Access = public)
@@ -17,20 +18,22 @@ classdef Sedimentation < PhysicsSolver
 
     function registerSolver(obj,input)
       % setup the solver with custom input
-      % str2num(input.domain.division)
 
       if ~(isfield(input,'domain') || isfield(input,'Domain'))
         error("Domain for the simulation not defined!");
       end
-      obj.structuredGrid = structGrid(input.domain);
+      obj.grid = gridForSedimentation(input.domain);
+      
+      % Initialize the sedimentation control
+      obj.mapSediments = SedimentsMap(obj.grid.ncells(1:2),input.sediment_map);
 
-      switch input.physics
-        case "VariablySaturatedFlow"
-          obj.Solver = VariablySaturatedFlow(obj.domain);
-        otherwise
-          obj.Solver = SinglePhaseFlowFVTPFA(obj.domain);
-      end
-      registerSolver(obj.Solver,[]);
+      % Initialize the BCs
+      obj.prepareBC(input.boundary);
+
+
+      % Initialize the states
+
+
     end
 
     function assembleSystem(obj,dt)
@@ -42,7 +45,17 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function applyDirVal(obj,bcId,t)
-      obj.Solver.applyDirVal(bcId,t);
+      bcVar = obj.bcs.getVariable(bcId);
+      if ~strcmp(bcVar,obj.getField()) 
+        return 
+      end
+      [bcDofs,bcVals] = getBC(obj,bcId,t);
+      if size(bcVals,2)==2
+        % skip BC assigned to external surfaces
+        return
+      end
+      state = getState(obj);
+      state.data.pressure(bcDofs) = bcVals;
     end
 
     function updateState(obj,solution)
@@ -62,10 +75,50 @@ classdef Sedimentation < PhysicsSolver
     end
   end
 
+  methods  (Access = private)
+    function prepareBC(obj,data)
+
+      if ~isfield(data,"BC")
+        error("No boundary was defined for the simulation");
+      end
+      nbcs=length(data.BC);
+      bc = struct('data',[],'cond','SurfBC',...
+        'type',[],'variable',[],'surface',[]);
+      % obj.bcs = Boundaries();
+
+      % bcs = repmat(, nbcs, 1);
+      for i=1:nbcs
+        % bcsNames{i} = data.BC(i).name;
+        bc.type = data.BC.type;
+        bc.variable = data.BC.variable;
+        bc.surface = data.BC.surface;
+        obj.bcs.db(data.BC(i).name) = bc;
+      end
+
+      % bcsNames = [data.BC.name];
+      % 
+      % 
+      % obj.bcs = Boundaries("sedimentation",bcsNames,bcs);
+      % 
+      % case 3
+      %     if strcmp(varargin{1},"sedimentation")
+      %       ptNames = varargin{2};
+      %       ptSt = varargin{3};
+      %       for i=1:length(ptSt)
+      %         obj.db(ptNames(i)) = ptSt(i);
+      %       end
+      %     end
+
+      
+    end
+  end
+
+
+
   methods (Static)
 
     function out = getField()
-      out = SinglePhaseFlow.getField();
+      out = "pressure";
     end
 
     function out = isSymmetric()

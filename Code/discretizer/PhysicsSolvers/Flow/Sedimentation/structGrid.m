@@ -3,40 +3,207 @@ classdef structGrid
   %   Detailed explanation goes here
 
   properties
-    arrayX
-    arrayY
-    arrayZ
-    divisions (1,3)
+    X (:,1)
+    Y (:,1)
+    Z (:,1)
   end
 
-  methods
-    function obj = structGrid(data)
+  properties (Access = private)
+    npoints (1,3) int64
+    ncells (1,3) int64
+    ncellsSurf (1,3) int64 % XY, YZ, XZ
+  end
+
+  methods (Access = public)
+    function obj = structGrid(varargin)
       %structGrid Construct an instance of this class
       %   Detailed explanation goes here
-      switch lower(data.type)
+      if nargin == 0
+        return
+      end
+      switch lower(varargin{1}.type)
         case "classic"
-          obj.constructorClassic(data);
+          obj=obj.constructorClassic(varargin{1});
         otherwise
       end
     end
 
-    function outputArg = method1(obj,inputArg)
-      %METHOD1 Summary of this method goes here
-      %   Detailed explanation goes here
-      outputArg = obj.Property1 + inputArg;
+    function [coord, conect] = getMesh(obj,varargin)
+      if (nargin==1)
+        coord = [];
+        conect = [];
+        return;
+      end
+      coord = obj.getMeshCoordColumn(varargin{1});
+      conect = obj.getMeshConectColumn(varargin{1});
     end
+
+
+    % Function to help this class
+    function dim = getDimension(obj,varargin)
+      % Return the size of the block
+      if (nargin==1)
+        dim = [obj.X(end),obj.Y(end),obj.Z(end)];
+        return;
+      end
+      switch lower(varargin{1})
+        case 'x'
+          dim = obj.X(end);
+        case 'y'
+          dim = obj.Y(end);
+        case 'z'
+          dim = obj.Z(end);
+        otherwise
+          dim = [obj.X(end),obj.Y(end),obj.Z(end)];
+      end
+    end
+
+    function npts = getNumberPoints(obj,varargin)
+      % Function to return the size of the block
+      if (nargin==1)
+        npts = obj.npoints;
+        return;
+      end
+      switch lower(varargin{1})
+        case 'x'
+          npts = obj.npoints(1);
+        case 'y'
+          npts = obj.npoints(2);
+        case 'z'
+          npts = obj.npoints(3);
+        otherwise
+          npts = obj.npoints;
+      end
+    end
+
+    function ncells = getNumberCells(obj,varargin)
+      % Function to return the number of cells in the grid.
+      if (nargin==1)
+        ncells = obj.ncells;
+        return;
+      end
+      switch lower(varargin{1})
+        case 'x'
+          ncells = obj.ncells(1);
+        case 'y'
+          ncells = obj.ncells(2);
+        case 'z'
+          ncells = obj.ncells(3);
+        otherwise
+          ncells = obj.ncells;
+      end
+    end
+
+    function faces = getFacesAxis(obj,axis,layer)
+      % start point in the face.
+      pos = (layer-1)*obj.ncellsSurf(1)+1;
+      pos = pos + (layer-1)*obj.npoints(1)*obj.ncells(2);
+      pos = pos + (layer-1)*obj.npoints(2)*obj.ncells(1);
+      switch axis
+        case 'x'
+          pos = pos + obj.ncellsSurf(1);
+          nfacesRef = obj.npoints(1)*obj.ncells(2);
+        case 'y'
+          pos = pos + obj.ncellsSurf(1) + obj.npoints(1)*obj.ncells(2);
+          nfacesRef = obj.npoints(2)*obj.ncells(1);
+        case 'z'
+          nfacesRef = obj.ncellsSurf(1);
+      end
+      faces = pos:(pos+nfacesRef-1);
+    end
+
+    function faces = getFacesLayer(obj)
+      % start point in the face.
+      pos = (layer-1)*obj.ncellsSurf(1)+1;
+      pos = pos + (layer-1)*obj.npoints(1)*obj.ncells(2);
+      pos = pos + (layer-1)*obj.npoints(2)*obj.ncells(1);
+      % 
+      % nelm = obj.ncellsSurf(1);
+      % z0face = pos:(pos+nelm-1);
+      % 
+      % pos = pos + obj.ncellsSurf(1);
+      % x0face = 
+
+
+      bot = obj.mesh.cells(:, [1, 4, 3, 2]);
+      top = obj.mesh.cells(:, [6, 7, 8, 5]);
+      est = obj.mesh.cells(:, [2, 3, 7, 6]);
+      wst = obj.mesh.cells(:, [5, 8, 4, 1]);
+      sth = obj.mesh.cells(:, [6, 5, 1, 2]);
+      nth = obj.mesh.cells(:, [3, 4, 8, 7]);
+    end
+
   end
 
   methods (Access = private)
     function obj = constructorClassic(obj,data)
-      obj.divisions = str2num(data.division);
+      obj.ncells = str2num(data.division);
+      obj.npoints = obj.ncells+1;
+      obj.ncellsSurf = [ obj.ncells(1)*obj.ncells(2), ...
+        obj.ncells(2)*obj.ncells(3), obj.ncells(1)*obj.ncells(3)];
+      % divisions = str2num(data.division);
       dim = str2num(data.size);
-      obj.arrayX = linspace(0,dim(1),obj.divisions(1));
-      obj.arrayY = linspace(0,dim(2),obj.divisions(2));
-      obj.arrayZ = linspace(0,dim(3),obj.divisions(3));
+      obj.X = linspace(0,dim(1),obj.npoints(1));
+      obj.Y = linspace(0,dim(2),obj.npoints(2));
+      obj.Z = linspace(0,dim(3),obj.npoints(3));
+    end
+
+
+    function coord = getMeshCoordColumn(obj,Kpos)
+      % Return the coordinates from the layer kpos
+      if Kpos>obj.npoints(3)
+        coord = [];
+        return
+      end
+
+      [XX, YY, ZZ] = ndgrid(obj.X, obj.Y, obj.Z(Kpos:end));
+      coord = [XX(:), YY(:), ZZ(:)];
+    end
+
+    function conect = getMeshConectColumn(obj,Kpos)
+      % Return the conectivities from the layer kpos
+      % ndiv = [length(obj.arrayX),length(obj.arrayY),length(obj.arrayZ)]-1;
+      % ndivX = length(obj.arrayX);
+      % ndivXY = length(obj.arrayY)*ndivX;
+      % ndivZ = length(obj.arrayZ)-1;
+      if Kpos>obj.ncells(3)
+        conect = [];
+        return
+      end
+
+      % nelm = (ndiv(1)*ndiv(2))*(ndivZ-Kpos+1);
+      nelm = (obj.npoints(1)*obj.npoints(2))*(obj.ncells(3)-Kpos+1);
+      conect = zeros(nelm,8);
+      pos=1;
+      for k=Kpos:obj.ncells(3)
+        for j=1:obj.ncells(2)
+          for i=1:obj.ncells(1)
+            conect(pos,1)=ndivXY*(k-1)+ndivX*(j-1)+i;
+            conect(pos,2)=ndivXY*(k-1)+ndivX*(j-1)+i+1;
+            conect(pos,3)=ndivXY*(k-1)+ndivX*j+i+1;
+            conect(pos,4)=ndivXY*(k-1)+ndivX*j+i;
+            conect(pos,5)=ndivXY*k+ndivX*(j-1)+i;
+            conect(pos,6)=ndivXY*k+ndivX*(j-1)+i+1;
+            conect(pos,7)=ndivXY*k+ndivX*j+i+1;
+            conect(pos,8)=ndivXY*k+ndivX*j+i;
+            pos=pos+1;
+          end
+        end
+      end
+    end
+
+    function conect = getFaces2Cell(obj,Kpos)
+      % Return the conectivities from the layer kpos
+      if Kpos>ndivZ
+        conect = [];
+        return
+      end
+
+
     end
 
     
+
   end
 
 end
