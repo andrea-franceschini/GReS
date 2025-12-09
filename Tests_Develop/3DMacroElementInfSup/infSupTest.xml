@@ -8,20 +8,25 @@ in a nonConforming simulation.
   <simParam>
     <Time
           Start="0."
-          End ="9.1"
-          DtInit="0.25"
-          DtMin ="1e-4"
-          DtMax ="0.5"
-          incrementFactor = "1.25"
-          choppingFactor = "1.5" />
-
-    <Solver
-            MaxNLIteration = "10"
-            RelativeTolerance = "1.e-8"
-            AbsoluteTolerance = "1.e-10" />
+          End ="1.0e0"
+          DtInit="1.0"
+          DtMin ="1e0"
+          DtMax ="1e0"
+          />
   </simParam>
 
-  <Materials fileName = "InputMech/materials.xml" />
+  <Materials>
+    <Solid cellTags = "1" name = "rock">
+
+      <Constitutive>
+        <Elastic
+                 youngModulus = "4900.0"
+                 poissonRatio = "0.25"
+                 />
+      </Constitutive>
+
+    </Solid>
+  </Materials>
 
   <BoundaryConditions fileName = "InputMech/boundaryConditions.xml" />
 
@@ -39,7 +44,7 @@ in a nonConforming simulation.
 
 
   <Interface>
-    <SolidMechanicsContact>
+    <MeshTying>
 
       <Master
               domainId = "1"
@@ -61,27 +66,7 @@ in a nonConforming simulation.
               matFileName = "Outputs/historyFault"
               />
 
-      <Coulomb
-               cohesion = "0"
-               frictionAngle = "30" />
-
-      <ActiveSet 
-                 resetActiveSet = "0"
-                 forceStickBoundary = "1" >
-
-        <Tolerances
-                    sliding = "1e-5"
-                    normalGap = "1e-6"
-                    normalTraction = "-1e-3"
-                    tangentialViolation = "5e-3"
-                    minLimitTraction = "1e-4"
-                    areaChange = "1e-3"
-                    maxActiveSetChange = "6"
-        />
-
-      </ActiveSet>
-
-    </SolidMechanicsContact>
+    </MeshTying>
 
   </Interface>
 

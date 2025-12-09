@@ -135,6 +135,12 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
             % Check for convergence
             flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
 
+            % line search cut to avoid unnecessary iterations
+            if obj.iter > 3 && rhsNorm > 1.1*rhsNormIt0
+              hasActiveSetChanged(:) = false;
+              break
+            end
+
           end % end newton loop
 
           if flConv % Newton Convergence
@@ -234,20 +240,19 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
       % case 1: newton not converged (perform backstep)
       if ~newtonConv 
 
+
+        % time step not converged
+        obj.t = obj.t - obj.dt;
+        obj.tStep = obj.tStep - 1;
+        obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
+
         for i = 1:obj.nDom
           goBackState(obj.domains(i));
         end
 
         for i = 1:obj.nInterf
-          goBackState(obj.interfaces{i});
+          goBackState(obj.interfaces{i},obj.dt);
         end
-
-        % time step not converged
-        obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
-
-        obj.t = obj.t - obj.dt;
-        obj.tStep = obj.tStep - 1;
-        obj.dt = obj.dt/obj.simparams.divFac;
 
         if obj.dt < obj.simparams.dtMin
           error('Minimum time step reached')

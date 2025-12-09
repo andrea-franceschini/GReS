@@ -60,7 +60,7 @@ end
 %interfaces{1}.contactHelper.resetActiveSet = true;
 
 if ~contains(fileName,"stick")
-  maxActiveSetIters = 14;
+  maxActiveSetIters = 12;
   solver = ActiveSetContactSolver(simParam,domain,interfaces,maxActiveSetIters);
 else
   solver = MultidomainFCSolver(simParam,domain,interfaces);
@@ -120,7 +120,7 @@ mshSlave = interface.getMesh(MortarSide.slave);
 
 depth = abs(max(mshSlave.surfaceCentroid(:,3)) - mshSlave.surfaceCentroid(:,3));
 
-coes = 0.15;
+coes = 0.10;
 sigma_v = coes+gamma_s*depth;
 
 sigma_glob = [-K0*sigma_v -K0*sigma_v -sigma_v];

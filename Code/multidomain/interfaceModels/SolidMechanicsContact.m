@@ -9,11 +9,6 @@ classdef SolidMechanicsContact < MeshTying
     activeSet
   end
 
-  properties (Access=protected)
-    resetActiveSet = false
-    forceStickBoundary = true
-  end
-
 
   methods
     function obj = SolidMechanicsContact(id,domains,inputStruct)
@@ -105,7 +100,7 @@ classdef SolidMechanicsContact < MeshTying
         % force boundary element to stick state
         nodes = obj.interfMesh.msh(2).surfaces(is,:);
 
-        if obj.forceStickBoundary
+        if obj.activeSet.forceStickBoundary
           if any(ismember(nodes,obj.dirNodes))
             % element has a dirichlet node - keep it stick
             continue
@@ -131,13 +126,23 @@ classdef SolidMechanicsContact < MeshTying
       asNew = ContactMode.integer(obj.activeSet.curr);
       asOld = ContactMode.integer(oldActiveSet);
 
+      % do not upate state of element that exceeded the maximum number of
+      % individual updates
+      reset = obj.activeSet.stateChange >= ...
+        obj.activeSet.tol.maxStateChange;
+
+      asNew(reset) = asOld(reset);
+
       diffState = asNew - asOld;
 
       idNewSlipToSlip = all([asOld==2 diffState==1],2);
       diffState(idNewSlipToSlip) = 0;
       hasChangedElem = diffState~=0;
-      obj.activeSet.stateChange(hasChangedElem) = ...
-        obj.activeSet.stateChange(hasChangedElem) + 1;
+
+      nomoreStick = diffState > 0;
+
+      obj.activeSet.stateChange(nomoreStick) = ...
+        obj.activeSet.stateChange(nomoreStick) + 2;
 
       hasChanged = any(diffState);
 
@@ -163,15 +168,27 @@ classdef SolidMechanicsContact < MeshTying
       end
 
       if hasChanged
-        % check if area of fracture changing state is relatively small
+
+
+        % EXCEPTION 1): check if area of fracture changing state is relatively small
         msh = getMesh(obj,MortarSide.slave);
         areaChanged = sum(msh.surfaceArea(hasChangedElem));
         totArea = sum(msh.surfaceArea);
         if areaChanged/totArea < obj.activeSet.tol.areaTol
-          obj.activeSet.curr = oldActiveSet;
+          %obj.activeSet.curr = oldActiveSet;
+          % change the active set, but flag it as nothing changed
           hasChanged = false;
           gresLog().log(1,['Active set update suppressed due to small fracture change:' ...
             ' areaChange/areaTot = %3.2e \n'],areaChanged/totArea);
+        end
+
+        % EXCEPTION 2): check if changing elements have been looping from
+        % stick to slip/open too much times
+
+        if all(obj.activeSet.stateChange(hasChangedElem) > obj.activeSet.tol.maxStateChange)
+          hasChanged = false;
+          gresLog().log(1,['Active set update suppressed due to' ...
+            ' unstable behavior detected'])
         end
       end
     end
@@ -186,19 +203,23 @@ classdef SolidMechanicsContact < MeshTying
       % reset the counter for changed states
       obj.activeSet.stateChange(:) = 0;
 
-      if obj.resetActiveSet
-        % reset everything to stick for next time step
-        obj.activeSet.curr(:) = ContactMode.stick;
-      end
+      % if obj.resetActiveSet
+      %   % reset everything to stick for next time step
+      %   obj.activeSet.curr(:) = ContactMode.stick;
+      % end
     end
 
 
 
-    function goBackState(obj)
+    function goBackState(obj,dt)
       % reset state to beginning of time step
       obj.state = obj.stateOld;
 
-      if obj.resetActiveSet
+      divFac = obj.domains(2).simparams.divFac;
+      dtMin = obj.domains(2).simparams.dtMin;
+
+      if obj.activeSet.resetActiveSet && dt/divFac <= dtMin
+        % last chance to save the activeSet
         obj.activeSet.curr(:) = ContactMode.stick;
       else
         obj.activeSet.curr = obj.activeSet.prev;
@@ -676,7 +697,7 @@ classdef SolidMechanicsContact < MeshTying
       t_N = t(1);
       tauLim = obj.cohesion - tan(deg2rad(obj.phi))*t_N;
 
-
+ 
       if obj.state.slip(is) > obj.activeSet.tol.sliding && duNorm > 100*eps
         for i = 1:sz(3)
           g = dgt(:,:,i);
@@ -688,6 +709,21 @@ classdef SolidMechanicsContact < MeshTying
         Rt = R(:,2:3);
         t = Rt*t(2:3);
         tracLim =  repmat(tauLim*(t/norm(t)),1,1,sz(3));
+
+        % 
+        % mesh = getMesh(obj,MortarSide.slave);
+        % dofMap = obj.interfMesh.local2glob{2};
+        % varId = getDoFManager(obj,MortarSide.slave).getVariableId(obj.coupledVariables);
+        % nodes = dofMap(mesh.surfaces(is,:));
+        % N = numel(mesh.surfaces(is,:));
+        % Fext = obj.domains(2).rhs{varId}(DoFManager.dofExpand(nodes,3));
+        % Fext = (1/N)*sum(reshape(Fext,[],N),2); % average forces
+        % % get tangential components
+        % normal = getNormal(obj.interfMesh,is);
+        % T = eye(3) - normal*normal';
+        % t = T*Fext;
+        % tracLim = repmat(tauLim*(-t/norm(t)),1,1,sz(3));
+
       end
     end
 
@@ -733,7 +769,7 @@ classdef SolidMechanicsContact < MeshTying
       contactSolver.activeSet.tol.slidingCheck = getXMLData(input,1e-4,"tangentialViolation");
       contactSolver.activeSet.tol.minLimitTraction = getXMLData(input,1e-4,"minLimitTraction");
       contactSolver.activeSet.tol.areaTol = getXMLData(input,1e-2,"areaChange");
-      contactSolver.activeSet.tol.maxStateChange = getXMLData(input,1e-4,"maxActiveSetChange");
+      contactSolver.activeSet.tol.maxStateChange = getXMLData(input,100,"maxActiveSetChange");
 
     end
 

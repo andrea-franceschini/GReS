@@ -84,9 +84,10 @@ classdef OutState < handle
         end
 
         opt = struct(varargin{:});
-        if isfield(opt, 'flagMatFile'), flagMatFile = logical(opt.flagMatFile); end
-        if isfield(opt, 'writeVtk'),    writeVtk    = logical(opt.writeVtk);    end
-        if isfield(opt, 'folderName'),  folderName  = string(opt.folderName);   end
+        if isfield(opt, 'flagMatFile'), obj.writeSolution = logical(opt.flagMatFile); end
+        if isfield(opt, 'writeVtk'),    obj.writeVtk    = logical(opt.writeVtk);    end
+        if isfield(opt, 'folderName'),  obj.vtkFileName  = string(opt.folderName);   end
+        if isfield(opt, 'matFileName'),  obj.matFileName  = string(opt.matFileName);   end
         if isfield(opt, 'timeList'),    tList       = opt.timeList;             end
       end
 

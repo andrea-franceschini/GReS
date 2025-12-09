@@ -8,65 +8,55 @@ in a nonConforming simulation.
   <simParam>
     <Time
           Start="0."
-          End ="9.1"
-          DtInit="0.25"
+          End ="10.0"
+          DtInit="1.0"
           DtMin ="1e-4"
-          DtMax ="0.5"
+          DtMax ="1.0"
           incrementFactor = "1.25"
-          choppingFactor = "1.5" />
+          choppingFactor = "Default" />
 
     <Solver
-            MaxNLIteration = "10"
+            MaxNLIteration = "12"
             RelativeTolerance = "1.e-8"
             AbsoluteTolerance = "1.e-10" />
   </simParam>
-
-  <Materials fileName = "InputMech/materials.xml" />
-
-  <BoundaryConditions fileName = "InputMech/boundaryConditions.xml" />
-
-  <Output
-          saveHistory = "1"
-          outputFile = "Outputs/outMech"
-          matFileName = "Outputs/historyMech"
-          printTimes = "0,1,2,3,4,5,6,7,8,9,10"
-          />
 
 
   <Solver>
     <Poromechanics />
   </Solver>
 
-
   <Interface>
     <SolidMechanicsContact>
 
       <Master
               domainId = "1"
-              surfaceTag = "1"
+              surfaceTag = "6"
               />
-      
+
       <Slave
-             domainId = "1"
-             surfaceTag = "2"
+             domainId = "2"
+             surfaceTag = "5"
              />
       <Quadrature
                   type = "SegmentBasedQuadrature"
                   nGP = "4"
+                  stabilizationScale = "1.0"
                   />
 
       <Output
-              outputFile = "Outputs/Fault"
-              printTimes = "0,1,2,3,4,5,6,7,8,9,10"
-              matFileName = "Outputs/historyFault"
+              outputFile = "OUT/Crack"
+              printTimes = "0,1,2,3,4,5,6,7.2,8,9,10"
+              saveHistory = "1"
+              matFileName = "OUT/historyCrack"
               />
 
       <Coulomb
                cohesion = "0"
                frictionAngle = "30" />
 
-      <ActiveSet 
-                 resetActiveSet = "0"
+      <ActiveSet
+                 resetActiveSet = "1"
                  forceStickBoundary = "1" >
 
         <Tolerances
@@ -77,7 +67,7 @@ in a nonConforming simulation.
                     minLimitTraction = "1e-4"
                     areaChange = "1e-3"
                     maxActiveSetChange = "6"
-        />
+                    />
 
       </ActiveSet>
 

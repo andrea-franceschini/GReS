@@ -499,7 +499,7 @@ classdef (Abstract) InterfaceSolver < handle
         end
       end
 
-      obj.dirNodes = bcNodes;
+      obj.dirNodes = [obj.dirNodes; bcNodes];
 
     end
 

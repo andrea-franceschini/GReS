@@ -180,7 +180,7 @@ classdef MeshTying < InterfaceSolver
           % the local definition of degrees of freedom
 
           % the normal component of the multipliers basis
-          Nmult_n = -Nmult(1,normIdx,:);
+          Nmult_n = Nmult(1,normIdx,:);
           % tangential component of multiplier basis
           Nmult_t = NmultR(:,tangIdx,:);
 
