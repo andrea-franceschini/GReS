@@ -1,6 +1,6 @@
 
 % Function for the computation of the preconditioner
-function [MfunL, MfunR] = computePrec(obj,A)
+function computePrec(obj,A)
 
    % Case with A sparse matrix
    if obj.precOpt == 0
@@ -38,15 +38,15 @@ function [MfunL, MfunR] = computePrec(obj,A)
             obj.Prec = cpt_aspAMG(obj.params,A,TV0);
 
             % Define Mfun
-            MfunL = @(r) AMG_Vcycle(obj.Prec,A,r);
-            MfunR = @(r) r;
+            obj.MfunL = @(r) AMG_Vcycle(obj.Prec,A,r);
+            obj.MfunR = @(r) r;
 
          % Compute the FSAI preconditioner
          case 'fsai'
             smootherOp = smoother(A,obj.params.symm,obj.params.smoother);
 
             % Define Mfun
-            [MfunL,MfunR] = defineMfunFSAI(obj,smootherOp);
+            [obj.MfunL,obj.MfunR] = defineMfunFSAI(obj,smootherOp);
       end
       T_setup = toc(time_start);
       obj.aTimeComp = obj.aTimeComp + T_setup;
@@ -133,10 +133,10 @@ function [MfunL, MfunR] = computePrec(obj,A)
       obj.PrecType = 'amg';
 
       % Compute the amg for block 11
-      [pL,pR] = computePrec(obj,A11_aug);
+      computePrec(obj,A11_aug);
 
-      MfunL = @(x) apply_RevAug(pL,A11_aug,A{1,2},inv_D22,x);
-      MfunR = pR;
+      obj.MfunL = @(x) apply_RevAug(obj.Prec,A11_aug,A{1,2},inv_D22,x);
+      obj.MfunR = @(x) x;
 
    else
       error('not implemented yet');

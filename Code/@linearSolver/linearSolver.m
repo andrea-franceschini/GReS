@@ -8,7 +8,6 @@ classdef linearSolver < handle
       PrecType
 
       % Preconditioner
-      Prec
       precOpt
       MfunL
       MfunR
@@ -24,6 +23,7 @@ classdef linearSolver < handle
 
       % Flag to request Preconditioner computation
       requestPrecComp
+      Prec
 
       % starting vector
       x0
@@ -164,7 +164,7 @@ classdef linearSolver < handle
    methods (Access = private)
 
       % Function to compute the preconditioner
-      [MfunR,MfunL] = computePrec(obj,A)
+      computePrec(obj,A)
 
    end
 
