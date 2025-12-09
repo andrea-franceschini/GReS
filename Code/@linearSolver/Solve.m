@@ -7,18 +7,35 @@
 % single physics single domain with lagrange multipliers) 
 function [x,flag] = Solve(obj,A,b,time)
    
+   A
    % Single physics, single domain, no lagrange multipliers
    if numel(A) == 1
       obj.precOpt = 0;
    elseif numel(A) == 4
       obj.precOpt = 1;
    else
-      warning('Fallback onto matlab solver');
-      obj.ChronosFlag = false;
+      % Treat the multiple domains as if they were one and then use RACP
+      if obj.multidomFlag == false
+         nn = size(A,1);
+         A11 = cell2matrix(A(1:nn-1,1:nn-1));
+         A12 = cell2matrix(A(1:nn-1,nn));
+         A21 = cell2matrix(A(nn,1:nn-1));
+         A22 = cell2matrix(A(nn,nn));
+
+         clear A;
+
+         A = {A11, A12; A21 A22};
+         obj.precOpt = 1;
+      else
+         % research
+         warning('Fallback onto matlab solver');
+         obj.ChronosFlag = false;
+      end
    end
    
    % Chronos does not exist, continue with matlab default
    if ~obj.ChronosFlag || size(A{1,1},1) < 2e4 
+      fprintf('Fallback to matlab due to size or chronos inexistance\n');
       startT = tic;
       % Solve the system
       A = cell2matrix(A);

@@ -20,6 +20,9 @@ classdef linearSolver < handle
       
       % Physics
       phys
+      
+      % Flag to treat multiple domains as multiple domains
+      multidomFlag
 
       % Flag to request Preconditioner computation
       requestPrecComp
@@ -60,7 +63,7 @@ classdef linearSolver < handle
 
             obj.domain = domainin;
 
-            physname = obj.domain.solverNames(1);
+            physname = obj.domain(1).solverNames(1);
             if(physname == 'SinglePhaseFlow' || physname == 'VariablySaturatedFlow' || physname == 'Poisson')
                obj.phys = 0;
             elseif(physname == 'Poromechanics')
@@ -103,6 +106,7 @@ classdef linearSolver < handle
             obj.aTimeComp     = 0;
             obj.whenComputed  = [];
             obj.precOpt       = -1;
+            obj.multidomFlag  = false;
 
             % Get the solver type
             obj.SolverType = lower(data.solver);
