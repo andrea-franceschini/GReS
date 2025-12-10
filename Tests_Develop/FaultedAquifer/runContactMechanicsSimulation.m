@@ -120,7 +120,7 @@ mshSlave = interface.getMesh(MortarSide.slave);
 
 depth = abs(max(mshSlave.surfaceCentroid(:,3)) - mshSlave.surfaceCentroid(:,3));
 
-coes = 0.10;
+coes = 0.12;
 sigma_v = coes+gamma_s*depth;
 
 sigma_glob = [-K0*sigma_v -K0*sigma_v -sigma_v];

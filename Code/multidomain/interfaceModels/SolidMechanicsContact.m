@@ -224,7 +224,10 @@ classdef SolidMechanicsContact < MeshTying
         obj.activeSet.curr(:) = ContactMode.stick;
       else
         % we update the active set even if we did not achieve convergence
+        % slideOld = obj.activeSet.tol.slidingCheck;
+        % obj.activeSet.tol.slidingCheck = 0.0;
         updateActiveSet(obj);
+        %obj.activeSet.tol.slidingCheck = slideOld;
       end
 
       obj.activeSet.stateChange(:) = 0;

@@ -8,9 +8,9 @@ in a nonConforming simulation.
   <simParam>
     <Time
           Start="0."
-          End ="9.1"
+          End ="10.0"
           DtInit="0.25"
-          DtMin ="1e-4"
+          DtMin ="1e-3"
           DtMax ="0.5"
           incrementFactor = "1.25"
           choppingFactor = "1.5" />
@@ -66,17 +66,17 @@ in a nonConforming simulation.
                frictionAngle = "30" />
 
       <ActiveSet 
-                 resetActiveSet = "0"
+                 resetActiveSet = "1"
                  forceStickBoundary = "1" >
 
         <Tolerances
                     sliding = "1e-5"
                     normalGap = "1e-6"
                     normalTraction = "-1e-3"
-                    tangentialViolation = "5e-3"
+                    tangentialViolation = "1e-2"
                     minLimitTraction = "1e-4"
-                    areaChange = "1e-3"
-                    maxActiveSetChange = "6"
+                    areaChange = "1e-2"
+                    maxActiveSetChange = "20"
         />
 
       </ActiveSet>

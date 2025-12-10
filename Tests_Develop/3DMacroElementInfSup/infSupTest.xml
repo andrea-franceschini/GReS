@@ -16,11 +16,11 @@ in a nonConforming simulation.
   </simParam>
 
   <Materials>
-    <Solid cellTags = "1" name = "rock">
+    <Solid cellTags = "1" name = "mat">
 
       <Constitutive>
         <Elastic
-                 youngModulus = "4900.0"
+                 youngModulus = "1.0"
                  poissonRatio = "0.25"
                  />
       </Constitutive>
@@ -28,14 +28,6 @@ in a nonConforming simulation.
     </Solid>
   </Materials>
 
-  <BoundaryConditions fileName = "InputMech/boundaryConditions.xml" />
-
-  <Output
-          saveHistory = "1"
-          outputFile = "Outputs/outMech"
-          matFileName = "Outputs/historyMech"
-          printTimes = "0,1,2,3,4,5,6,7,8,9,10"
-          />
 
 
   <Solver>
@@ -52,7 +44,7 @@ in a nonConforming simulation.
               />
       
       <Slave
-             domainId = "1"
+             domainId = "2"
              surfaceTag = "2"
              />
       <Quadrature
@@ -61,9 +53,8 @@ in a nonConforming simulation.
                   />
 
       <Output
-              outputFile = "Outputs/Fault"
-              printTimes = "0,1,2,3,4,5,6,7,8,9,10"
-              matFileName = "Outputs/historyFault"
+              outputFile = "Outputs/infSup"
+              printTimes = "1e0"
               />
 
     </MeshTying>

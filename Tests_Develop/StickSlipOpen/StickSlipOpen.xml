@@ -63,7 +63,7 @@ in a nonConforming simulation.
                     sliding = "1e-5"
                     normalGap = "1e-6"
                     normalTraction = "-1e-3"
-                    tangentialViolation = "2e-3"
+                    tangentialViolation = "1e-2"
                     minLimitTraction = "1e-4"
                     areaChange = "1e-3"
                     maxActiveSetChange = "6"

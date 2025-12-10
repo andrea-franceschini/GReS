@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+
+<BoundaryConditions>
+
+  <BC
+      name = "fixTop"
+      type = "Dirichlet"
+      entityType = "SurfBC"
+      variable = "displacements"
+      >
+
+    <BCentities
+                surfaceTags = "2,3,4,5,6"
+                components = "x,y,z"
+                />
+
+    <BCevent
+             time = "0"
+             value = "0"
+             />
+
+  </BC>
+
+
+</BoundaryConditions>
