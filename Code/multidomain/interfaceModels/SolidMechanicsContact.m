@@ -219,11 +219,12 @@ classdef SolidMechanicsContact < MeshTying
       dtMin = obj.domains(2).simparams.dtMin;
 
       if obj.activeSet.resetActiveSet && dt/divFac <= dtMin
-        % last chance to save the activeSet
+        % last chance to save the activeSet - reset to stick 
         gresLog().log(1,"Active set reset to stick mode to resolve instability \n")
         obj.activeSet.curr(:) = ContactMode.stick;
       else
-        obj.activeSet.curr = obj.activeSet.prev;
+        % we update the active set even if we did not achieve convergence
+        updateActiveSet(obj);
       end
 
       obj.activeSet.stateChange(:) = 0;
