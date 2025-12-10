@@ -220,6 +220,7 @@ classdef SolidMechanicsContact < MeshTying
 
       if obj.activeSet.resetActiveSet && dt/divFac <= dtMin
         % last chance to save the activeSet
+        gresLog().log(1,"Active set reset to stick mode to resolve instability \n")
         obj.activeSet.curr(:) = ContactMode.stick;
       else
         obj.activeSet.curr = obj.activeSet.prev;
@@ -709,20 +710,6 @@ classdef SolidMechanicsContact < MeshTying
         Rt = R(:,2:3);
         t = Rt*t(2:3);
         tracLim =  repmat(tauLim*(t/norm(t)),1,1,sz(3));
-
-        % 
-        % mesh = getMesh(obj,MortarSide.slave);
-        % dofMap = obj.interfMesh.local2glob{2};
-        % varId = getDoFManager(obj,MortarSide.slave).getVariableId(obj.coupledVariables);
-        % nodes = dofMap(mesh.surfaces(is,:));
-        % N = numel(mesh.surfaces(is,:));
-        % Fext = obj.domains(2).rhs{varId}(DoFManager.dofExpand(nodes,3));
-        % Fext = (1/N)*sum(reshape(Fext,[],N),2); % average forces
-        % % get tangential components
-        % normal = getNormal(obj.interfMesh,is);
-        % T = eye(3) - normal*normal';
-        % t = T*Fext;
-        % tracLim = repmat(tauLim*(-t/norm(t)),1,1,sz(3));
 
       end
     end

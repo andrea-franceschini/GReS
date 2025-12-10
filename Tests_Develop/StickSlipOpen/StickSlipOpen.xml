@@ -10,13 +10,13 @@ in a nonConforming simulation.
           Start="0."
           End ="10.0"
           DtInit="1.0"
-          DtMin ="1e-4"
+          DtMin ="1e-3"
           DtMax ="1.0"
-          incrementFactor = "1.25"
+          incrementFactor = "1.1"
           choppingFactor = "Default" />
 
     <Solver
-            MaxNLIteration = "12"
+            MaxNLIteration = "20"
             RelativeTolerance = "1.e-8"
             AbsoluteTolerance = "1.e-10" />
   </simParam>
