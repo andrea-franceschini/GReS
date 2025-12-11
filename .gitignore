@@ -47,9 +47,6 @@
 # Develop Experiments folders
 #/Tests_Develop/
 
-# nfs files
-*.nfs
-
 # Temporary folders with external classes
 /Code/cross_grid/
 
@@ -60,4 +57,4 @@
 /ThirdPartLibs/*/build
 
 # Shared file system files
-.nfs*
+*.nfs*
