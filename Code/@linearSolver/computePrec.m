@@ -10,7 +10,7 @@ function computePrec(obj,A)
 
       if (norm(A-A','f')/norm(A,'f') > 1e-7)
          obj.params.symm = false;
-         if DEBUGflag
+         if obj.DEBUGflag
             fprintf('matrix nonsymmatric %e\n',norm(A-A','f')/norm(A,'f'));
          end
       else

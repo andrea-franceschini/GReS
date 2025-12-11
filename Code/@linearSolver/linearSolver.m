@@ -28,7 +28,7 @@ classdef linearSolver < handle
       multidomFlag = false
 
       % Flag to request Preconditioner computation
-      requestPrecComp = false
+      requestPrecComp = true
       Prec = []
 
       % starting vector
@@ -60,7 +60,7 @@ classdef linearSolver < handle
          if isfolder(ChronosDir)
             
             if(numel(domainin.physicsSolvers) > 1)
-               if DEBUGflag
+               if obj.DEBUGflag
                   fprintf('multiPhysics not yet supported\nFall back to matlab solver\n');
                end
                return
@@ -74,7 +74,7 @@ classdef linearSolver < handle
             elseif(physname == 'Poromechanics')
                obj.phys = 1;
             else
-               if DEBUGflag
+               if obj.DEBUGflag
                   warning('Non supported Physics for linsolver, falling back to matlab solver');
                end
                return

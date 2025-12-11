@@ -7,7 +7,10 @@
 % single physics single domain with lagrange multipliers) 
 function [x,flag] = Solve(obj,A,b,time)
    
-   A
+   if obj.DEBUGflag
+      A
+   end
+
    % Single physics, single domain, no lagrange multipliers
    if numel(A) == 1
       obj.precOpt = 0;
@@ -28,7 +31,7 @@ function [x,flag] = Solve(obj,A,b,time)
          obj.precOpt = 1;
       else
          % research
-         if DEBUGflag
+         if obj.DEBUGflag
             warning('Fallback onto matlab solver');
          end
          obj.ChronosFlag = false;
@@ -37,7 +40,7 @@ function [x,flag] = Solve(obj,A,b,time)
    
    % Chronos does not exist, continue with matlab default
    if ~obj.ChronosFlag || size(A{1,1},1) < 2e4 
-      if DEBUGflag
+      if obj.DEBUGflag
          fprintf('Fallback to matlab due to size or chronos inexistance\n');
       end
       startT = tic;
@@ -70,7 +73,7 @@ function [x,flag] = Solve(obj,A,b,time)
 
    % If the matrix is nonSymmetric the use always GMRES
    if (norm(Amat-Amat','f')/norm(Amat,'f') > 1e-7)
-      if DEBUGflag
+      if obj.DEBUGflag
          fprintf('\nsym = %e\n\n',norm(Amat-Amat','f')/norm(Amat,'f'));
       end
       obj.SolverType = 'gmres';
@@ -98,7 +101,7 @@ function [x,flag] = Solve(obj,A,b,time)
 
    % Did not converge, if prec not computed for it try again
    if(flag == 1 && obj.params.iterSinceLastPrecComp > 0)
-      if DEBUGflag
+      if obj.DEBUGflag
          fprintf('Trying to recompute the preconditioner to see if it manages to converge\n');
       end
       obj.computePrec(A);
@@ -109,7 +112,7 @@ function [x,flag] = Solve(obj,A,b,time)
    % Interesting problem
    if(flag == 1)
       x0 = obj.x0;
-      if DEBUGflag
+      if obj.DEBUGflag
          fprintf('Iterations since last preconditioner computation %d\n',obj.params.iterSinceLastPrecComp);
       end
       %save('new_problem.mat','A','b','x0');
