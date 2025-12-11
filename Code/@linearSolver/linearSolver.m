@@ -1,16 +1,19 @@
 classdef linearSolver < handle
    properties (Access = private)
 
+      % Flag for debug
+      DEBUGflag = false
+
       % Flag for Chronos existance
-      ChronosFlag
+      ChronosFlag = false
 
       % Preconditioner Type
       PrecType
 
       % Preconditioner
-      precOpt
-      MfunL
-      MfunR
+      precOpt = -1
+      MfunL = []
+      MfunR = []
       
       % Solver Type
       SolverType
@@ -22,22 +25,23 @@ classdef linearSolver < handle
       phys
       
       % Flag to treat multiple domains as multiple domains
-      multidomFlag
+      multidomFlag = false
 
       % Flag to request Preconditioner computation
-      requestPrecComp
-      Prec
+      requestPrecComp = false
+      Prec = []
 
       % starting vector
-      x0
+      x0 = []
 
       % Statistics
-      whenComputed
-      aTimeComp
-      aTimeSolve
-      nSolve
-      nComp
+      whenComputed = []
+      aTimeComp = 0
+      aTimeSolve = 0
+      nSolve = 0
+      nComp = 0
    end
+
 
    properties (Access = public)
 
@@ -56,8 +60,9 @@ classdef linearSolver < handle
          if isfolder(ChronosDir)
             
             if(numel(domainin.physicsSolvers) > 1)
-               fprintf('multiPhysics not yet supported\nFall back to matlab solver\n');
-               obj.ChronosFlag = false;
+               if DEBUGflag
+                  fprintf('multiPhysics not yet supported\nFall back to matlab solver\n');
+               end
                return
             end
 
@@ -69,15 +74,16 @@ classdef linearSolver < handle
             elseif(physname == 'Poromechanics')
                obj.phys = 1;
             else
-               warning('Non supported Physics for linsolver, falling back to matlab solver');
-               obj.ChronosFlag = false;
+               if DEBUGflag
+                  warning('Non supported Physics for linsolver, falling back to matlab solver');
+               end
                return
             end
 
             % Chronos exists
             obj.ChronosFlag = true;
             addpath(genpath(ChronosDir));
-            RACPDir = fullfile(gres_root,'..','aspamg_matlab','composed_precs');
+            RACPDir = fullfile(gres_root,'..','aspamg_matlab','composed_precs','RACP');
             addpath(genpath(RACPDir));
 
             % Read XML
@@ -96,18 +102,6 @@ classdef linearSolver < handle
                data = readstruct(chronos_xml_default,AttributeSuffix="");
             end
             
-            % null or zero value to the unsued stuff
-            obj.Prec   = [];
-            obj.MfunL  = [];
-            obj.MfunR  = [];
-            obj.nSolve = 0;
-            obj.nComp  = 0;
-            obj.aTimeSolve    = 0;
-            obj.aTimeComp     = 0;
-            obj.whenComputed  = [];
-            obj.precOpt       = -1;
-            obj.multidomFlag  = false;
-
             % Get the solver type
             obj.SolverType = lower(data.solver);
             
@@ -141,12 +135,8 @@ classdef linearSolver < handle
             end
 
             % First time solving request preconditioner computation
-            obj.requestPrecComp = true;
             obj.params.iter = -1;
             obj.params.lastRelres = obj.params.tol;
-            obj.x0 = [];
-         else
-            obj.ChronosFlag = false;
          end
       end
 

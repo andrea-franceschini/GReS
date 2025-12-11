@@ -28,14 +28,18 @@ function [x,flag] = Solve(obj,A,b,time)
          obj.precOpt = 1;
       else
          % research
-         warning('Fallback onto matlab solver');
+         if DEBUGflag
+            warning('Fallback onto matlab solver');
+         end
          obj.ChronosFlag = false;
       end
    end
    
    % Chronos does not exist, continue with matlab default
    if ~obj.ChronosFlag || size(A{1,1},1) < 2e4 
-      fprintf('Fallback to matlab due to size or chronos inexistance\n');
+      if DEBUGflag
+         fprintf('Fallback to matlab due to size or chronos inexistance\n');
+      end
       startT = tic;
       % Solve the system
       A = cell2matrix(A);
@@ -61,11 +65,14 @@ function [x,flag] = Solve(obj,A,b,time)
    firstSolver = obj.SolverType;
 
    if iscell(A) && numel(A) > 1
-      A = cell2matrix(A);
+      Amat = cell2matrix(A);
    end
 
    % If the matrix is nonSymmetric the use always GMRES
-   if (norm(A-A','f')/norm(A,'f') > 1e-7)
+   if (norm(Amat-Amat','f')/norm(Amat,'f') > 1e-7)
+      if DEBUGflag
+         fprintf('\nsym = %e\n\n',norm(Amat-Amat','f')/norm(Amat,'f'));
+      end
       obj.SolverType = 'gmres';
    end
 
@@ -74,14 +81,14 @@ function [x,flag] = Solve(obj,A,b,time)
       case 'gmres'
 
          % Solve the system by GMRES
-         [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_LEFT(A,b,obj.params.restart,obj.params.tol,...
+         [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_LEFT(Amat,b,obj.params.restart,obj.params.tol,...
                                                                   obj.params.maxit/obj.params.restart,obj.MfunL,obj.MfunR,obj.x0);
          obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
 
       case 'sqmr'
 
          % Solve the system by SQMR
-         Afun = @(x) A*x;
+         Afun = @(x) Amat*x;
          [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.params.tol,obj.params.maxit,obj.MfunL,obj.MfunR,obj.x0);
    end
 
@@ -91,7 +98,9 @@ function [x,flag] = Solve(obj,A,b,time)
 
    % Did not converge, if prec not computed for it try again
    if(flag == 1 && obj.params.iterSinceLastPrecComp > 0)
-      fprintf('Trying to recompute the preconditioner to see if it manages to converge\n');
+      if DEBUGflag
+         fprintf('Trying to recompute the preconditioner to see if it manages to converge\n');
+      end
       obj.computePrec(A);
       obj.params.iterSinceLastPrecComp = 0;
       [x,flag] = obj.Solve(A,b,time);
@@ -100,9 +109,11 @@ function [x,flag] = Solve(obj,A,b,time)
    % Interesting problem
    if(flag == 1)
       x0 = obj.x0;
-      fprintf('Iterations since last preconditioner computation %d\n',obj.params.iterSinceLastPrecComp);
-      save('new_problem.mat','A','b','x0');
-      error('Interesting problem spotted');
+      if DEBUGflag
+         fprintf('Iterations since last preconditioner computation %d\n',obj.params.iterSinceLastPrecComp);
+      end
+      %save('new_problem.mat','A','b','x0');
+      error('');
    end
 
    % Reset the solver
