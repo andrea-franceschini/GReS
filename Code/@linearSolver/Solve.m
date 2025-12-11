@@ -84,15 +84,20 @@ function [x,flag] = Solve(obj,A,b,time)
       case 'gmres'
 
          % Solve the system by GMRES
-         [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_LEFT(Amat,b,obj.params.restart,obj.params.tol,...
-                                                                  obj.params.maxit/obj.params.restart,obj.MfunL,obj.MfunR,obj.x0);
+         if obj.DEBUGflag
+            [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_LEFT(Amat,b,obj.params.restart,obj.params.tol,...
+                                                                     obj.params.maxit/obj.params.restart,obj.MfunL,obj.MfunR,obj.x0);
+         else
+            [x,flag,obj.params.lastRelres,iter1,resvec] = gmres(Amat,b,obj.params.restart,obj.params.tol,...
+                                                                     obj.params.maxit/obj.params.restart,obj.MfunL,obj.MfunR,obj.x0);
+         end
          obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
 
       case 'sqmr'
 
          % Solve the system by SQMR
          Afun = @(x) Amat*x;
-         [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.params.tol,obj.params.maxit,obj.MfunL,obj.MfunR,obj.x0);
+         [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.params.tol,obj.params.maxit,obj.MfunL,obj.MfunR,obj.x0,obj.DEBUGflag);
    end
 
    Tend = toc(startT);

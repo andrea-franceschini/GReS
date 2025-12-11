@@ -37,7 +37,7 @@ function computePrec(obj,A)
             set_DEBINFO();
 
             % Actually compute the AMG
-            obj.Prec = cpt_aspAMG(obj.params,A,TV0);
+            obj.Prec = cpt_aspAMG(obj.params,A,TV0,obj.DEBUGflag);
 
             % Define Mfun
             obj.MfunL = @(r) AMG_Vcycle(obj.Prec,A,r);
