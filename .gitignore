@@ -58,3 +58,6 @@
 
 # Compiler  builds
 /ThirdPartLibs/*/build
+
+# Shared file system files
+.nfs*
