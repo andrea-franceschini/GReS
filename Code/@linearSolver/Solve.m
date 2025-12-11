@@ -67,7 +67,7 @@ function [x,flag] = Solve(obj,A,b,time)
    % Save the solver type
    firstSolver = obj.SolverType;
 
-   if iscell(A) && numel(A) > 1
+   if iscell(A)
       Amat = cell2matrix(A);
    end
 

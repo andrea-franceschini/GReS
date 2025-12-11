@@ -69,13 +69,14 @@ classdef linearSolver < handle
             obj.domain = domainin;
 
             physname = obj.domain(1).solverNames(1);
-            if(physname == 'SinglePhaseFlow' || physname == 'VariablySaturatedFlow' || physname == 'Poisson')
+            if(contains(physname,'SinglePhaseFlow') || physname == 'VariablySaturatedFlow' || physname == 'Poisson')
                obj.phys = 0;
             elseif(physname == 'Poromechanics')
                obj.phys = 1;
             else
                if obj.DEBUGflag
                   warning('Non supported Physics for linsolver, falling back to matlab solver');
+                  fprintf('physics: %s\n',physname);
                end
                return
             end
