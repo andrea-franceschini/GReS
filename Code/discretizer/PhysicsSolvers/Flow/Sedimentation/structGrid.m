@@ -6,6 +6,9 @@ classdef structGrid
     X (:,1)
     Y (:,1)
     Z (:,1)
+    centerX (:,1)
+    centerY (:,1)
+    centerZ (:,1)
   end
 
   properties (Access = private)
@@ -37,7 +40,6 @@ classdef structGrid
       coord = obj.getMeshCoordColumn(varargin{1});
       conect = obj.getMeshConectColumn(varargin{1});
     end
-
 
     % Function to help this class
     function dim = getDimension(obj,varargin)
@@ -112,26 +114,65 @@ classdef structGrid
       faces = pos:(pos+nfacesRef-1);
     end
 
-    function faces = getFacesLayer(obj)
-      % start point in the face.
-      pos = (layer-1)*obj.ncellsSurf(1)+1;
-      pos = pos + (layer-1)*obj.npoints(1)*obj.ncells(2);
-      pos = pos + (layer-1)*obj.npoints(2)*obj.ncells(1);
-      % 
-      % nelm = obj.ncellsSurf(1);
-      % z0face = pos:(pos+nelm-1);
-      % 
-      % pos = pos + obj.ncellsSurf(1);
-      % x0face = 
-
-
-      bot = obj.mesh.cells(:, [1, 4, 3, 2]);
-      top = obj.mesh.cells(:, [6, 7, 8, 5]);
-      est = obj.mesh.cells(:, [2, 3, 7, 6]);
-      wst = obj.mesh.cells(:, [5, 8, 4, 1]);
-      sth = obj.mesh.cells(:, [6, 5, 1, 2]);
-      nth = obj.mesh.cells(:, [3, 4, 8, 7]);
+    function pts = getCellCenter(obj,axis)
+      % % % % start point in the face.
+      % % % pos = (layer-1)*obj.ncellsSurf(1)+1;
+      % % % pos = pos + (layer-1)*obj.npoints(1)*obj.ncells(2);
+      % % % pos = pos + (layer-1)*obj.npoints(2)*obj.ncells(1);
+      switch axis
+        case 'x'
+          pts = obj.X(1:end-1)+diff(obj.X)/2;
+        case 'y'
+          pts = obj.Y(1:end-1)+diff(obj.Y)/2;
+        case 'z'
+          pts = obj.Z(1:end-1)+diff(obj.Z)/2;
+      end
     end
+
+    function surfs = getSurfs(obj,type,vecA,vecB)
+      switch type
+        case "x"
+          segmA = diff(obj.Y);
+          segmB = diff(obj.Z);
+        case "y"
+          segmA = diff(obj.X);
+          segmB = diff(obj.Z);
+        case "z"
+          segmA = diff(obj.X);
+          segmB = diff(obj.Y);
+      end
+      surfs = segmA(vecA).*segmB(vecB);
+    end
+
+    function vols = getVols(obj,posX,posY,posZ)
+      segmX = diff(obj.X);
+      segmY = diff(obj.Y);
+      segmZ = diff(obj.Z);
+      vols = segmX(posX).*segmY(posY).*segmZ(posZ);
+    end
+
+    % % % % function faces = getFacesLayer(obj)
+    % % % %   % start point in the face.
+    % % % %   pos = (layer-1)*obj.ncellsSurf(1)+1;
+    % % % %   pos = pos + (layer-1)*obj.npoints(1)*obj.ncells(2);
+    % % % %   pos = pos + (layer-1)*obj.npoints(2)*obj.ncells(1);
+    % % % %   % 
+    % % % %   % nelm = obj.ncellsSurf(1);
+    % % % %   % z0face = pos:(pos+nelm-1);
+    % % % %   % 
+    % % % %   % pos = pos + obj.ncellsSurf(1);
+    % % % %   % x0face = 
+    % % % % 
+    % % % % 
+    % % % %   bot = obj.mesh.cells(:, [1, 4, 3, 2]);
+    % % % %   top = obj.mesh.cells(:, [6, 7, 8, 5]);
+    % % % %   est = obj.mesh.cells(:, [2, 3, 7, 6]);
+    % % % %   wst = obj.mesh.cells(:, [5, 8, 4, 1]);
+    % % % %   sth = obj.mesh.cells(:, [6, 5, 1, 2]);
+    % % % %   nth = obj.mesh.cells(:, [3, 4, 8, 7]);
+    % % % % end
+
+
 
   end
 
@@ -146,8 +187,11 @@ classdef structGrid
       obj.X = linspace(0,dim(1),obj.npoints(1));
       obj.Y = linspace(0,dim(2),obj.npoints(2));
       obj.Z = linspace(0,dim(3),obj.npoints(3));
-    end
 
+      obj.centerX = obj.X(1:end-1)+diff(obj.X)/2;
+      obj.centerY = obj.Y(1:end-1)+diff(obj.Y)/2;
+      obj.centerZ = obj.Z(1:end-1)+diff(obj.Z)/2;
+    end
 
     function coord = getMeshCoordColumn(obj,Kpos)
       % Return the coordinates from the layer kpos
@@ -200,6 +244,13 @@ classdef structGrid
       end
 
 
+    end
+
+    function data = getGeomData(obj,type,location)
+      switch type
+        case "volume"
+        case ""
+      end
     end
 
     

@@ -21,6 +21,9 @@ classdef Boundaries < handle
         return
       end
 
+      input=varargin{1};
+      grid=varargin{2};
+
       obj.grid = grid;
       if strcmp(grid.topology.meshType,"Unstructured")
         % Calling the function to read input data from file

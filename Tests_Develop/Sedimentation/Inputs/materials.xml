@@ -36,7 +36,7 @@
 
 
   <Fluid
-      specificWeight = "0.0"
+      specificWeight = "9.8066e3"
       compressibility = "0.0"
       dynamicViscosity = "1e-3"
   />

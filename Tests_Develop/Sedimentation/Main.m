@@ -3,8 +3,6 @@ close all;
 input_dir = 'Inputs/';
 file_SimP = fullfile(input_dir,'simparam.xml');
 file_Mat = fullfile(input_dir,'materials.xml');
-file_Bcs = fullfile(input_dir,'boundaries.xml');
-file_Outp = fullfile(input_dir,'output.xml');
 file_Solver = fullfile(input_dir,'solver.xml');
 
 %% ------------------------------ Set up the Domain -----------------------

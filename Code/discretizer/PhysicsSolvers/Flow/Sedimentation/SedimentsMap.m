@@ -2,9 +2,12 @@ classdef SedimentsMap < handle
   % SEDIMENTATION MAP - General class to store the sedimentation history
   %   Detailed explanation goes here
 
+  properties (Access = public)
+    map = []
+  end
+
   properties (Access = private)
     % db 
-    map = []
     dim (1,2) int64
     % t
   end
