@@ -3,6 +3,8 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
+      matlabMaxSize = 2e4
+      nsyTol = 1e-12
 
       % Flag for Chronos existance
       ChronosFlag = false
@@ -11,15 +13,26 @@ classdef linearSolver < handle
       PrecType
 
       % Preconditioner
-      precOpt = -1
+      Prec = []
+
+      % Preconditioner application
       MfunL = []
       MfunR = []
       
+      % Flag to request Preconditioner computation
+      requestPrecComp = true
+
+      % starting vector
+      x0 = []
+
       % Solver Type
       SolverType
 
       % Discretizer
       domain
+
+      % Number of domains
+      nDom
       
       % Physics
       phys
@@ -27,12 +40,8 @@ classdef linearSolver < handle
       % Flag to treat multiple domains as multiple domains
       multidomFlag = false
 
-      % Flag to request Preconditioner computation
-      requestPrecComp = true
-      Prec = []
-
-      % starting vector
-      x0 = []
+      % Flag to know if the problem has multiphysics
+      multiPhysFlag = false
 
       % Statistics
       whenComputed = []
@@ -60,6 +69,9 @@ classdef linearSolver < handle
          if isfolder(ChronosDir)
             
             if(numel(domainin.physicsSolvers) > 1)
+
+               obj.multiPhysFlag = true;
+
                if obj.DEBUGflag
                   fprintf('multiPhysics not yet supported\nFall back to matlab solver\n');
                end
@@ -67,6 +79,7 @@ classdef linearSolver < handle
             end
 
             obj.domain = domainin;
+            obj.nDom = length(domainin);
 
             physname = obj.domain(1).solverNames(1);
             if(contains(physname,'SinglePhaseFlow') || physname == 'VariablySaturatedFlow' || physname == 'Poisson')
@@ -94,9 +107,9 @@ classdef linearSolver < handle
             else
                % Get default values
                if obj.phys == 0
-                  chronos_xml_default = fullfile(gres_root,'Code','linearSolver','chronos_xml_setup_CFD.xml');
+                  chronos_xml_default = fullfile(gres_root,'Code','@linearSolver','XML_setup','chronos_xml_setup_CFD.xml');
                else
-                  chronos_xml_default = fullfile(gres_root,'Code','linearSolver','chronos_xml_setup.xml');
+                  chronos_xml_default = fullfile(gres_root,'Code','@linearSolver','XML_setup','chronos_xml_setup.xml');
                end
 
                % Read Defaults
@@ -161,6 +174,11 @@ classdef linearSolver < handle
       % Function to compute the preconditioner
       computePrec(obj,A)
 
+      % Function to compute the preconditioner for the single block (single physics)
+      computeSinglePhPrec(obj,A);
+
+      % Function to compute the RACP preconditioner for the lagrange multiplier case (single physics multi domain)
+      computeRACP(obj,A)
    end
 
 end

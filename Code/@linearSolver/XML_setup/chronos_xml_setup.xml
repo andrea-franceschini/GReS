@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Chronos>
-	<solver>SQMR</solver>
+	<solver>GMRES</solver>
    <preconditioner>AMG</preconditioner>
 
 	<!-- General parameters -->
    <general
-      tol="1e-8"
+      tol="1e-10"
       maxit="1000"
       restart="100"
    />
@@ -17,7 +17,7 @@
    />
 
 	<!-- SMOOTHER parameters -->
-	<!-- missing DDWS parameters as well as the ones for ABFIC -->
+	<!-- missing ABFIC parameters -->
    <smoother
       nthread="20"
       nupre="1"
@@ -80,10 +80,10 @@
 	<!-- TEST SPACE parameters -->
 	<tspace
 		ntv="6"
-		itmax="10"
-		tol="1.e-8"
+		itmax="200"
+		tol="1.e-5"
 		method="NONE"
-		init_approx="5"
+		init_approx="1"
 	/>
 
 	<!-- FILTERING parameters -->

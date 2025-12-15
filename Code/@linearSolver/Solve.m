@@ -11,52 +11,15 @@ function [x,flag] = Solve(obj,A,b,time)
       A
    end
 
-   % Single physics, single domain, no lagrange multipliers
-   if numel(A) == 1
-      obj.precOpt = 0;
-   elseif numel(A) == 4
-      obj.precOpt = 1;
-   else
-      % Treat the multiple domains as if they were one and then use RACP
-      if obj.multidomFlag == false
-         nn = size(A,1);
-         A11 = cell2matrix(A(1:nn-1,1:nn-1));
-         A12 = cell2matrix(A(1:nn-1,nn));
-         A21 = cell2matrix(A(nn,1:nn-1));
-         A22 = cell2matrix(A(nn,nn));
-
-         clear A;
-
-         A = {A11, A12; A21 A22};
-         obj.precOpt = 1;
-      else
-         % research
-         if obj.DEBUGflag
-            warning('Fallback onto matlab solver');
-         end
-         obj.ChronosFlag = false;
-      end
-   end
-   
    % Chronos does not exist, continue with matlab default
-   if ~obj.ChronosFlag || size(A{1,1},1) < 2e4 
-      if obj.DEBUGflag
-         fprintf('Fallback to matlab due to size or chronos inexistance\n');
-      end
-      startT = tic;
-      % Solve the system
-      A = cell2matrix(A);
-      x = A\b;
-      Tend = toc(startT);
-      obj.aTimeSolve = obj.aTimeSolve + Tend;
-      obj.nSolve = obj.nSolve + 1;
-      flag = 0;
-      obj.params.iter = 0;
+   if ~obj.ChronosFlag || size(A{1,1},1) < obj.matlabMaxSize
+      [x,flag] = matlab_solve(obj,A,b);
       return
    end
+   save("rhs.mat","b");
 
    % Have the linear solver compute the Preconditioner if necessary
-   if(obj.requestPrecComp || obj.params.iter > 500 || obj.params.lastRelres > obj.params.tol*1e3)
+   if(obj.requestPrecComp || obj.params.iter > 600 || obj.params.lastRelres > obj.params.tol*1e3)
       obj.computePrec(A);
       obj.whenComputed(length(obj.whenComputed) + 1) = time;
       obj.params.iterSinceLastPrecComp = 0;
@@ -72,7 +35,7 @@ function [x,flag] = Solve(obj,A,b,time)
    end
 
    % If the matrix is nonSymmetric the use always GMRES
-   if (norm(Amat-Amat','f')/norm(Amat,'f') > 1e-7)
+   if (norm(Amat-Amat','f')/norm(Amat,'f') > obj.nsyTol)
       if obj.DEBUGflag
          fprintf('\nsym = %e\n\n',norm(Amat-Amat','f')/norm(Amat,'f'));
       end
@@ -143,3 +106,21 @@ function [x,flag] = Solve(obj,A,b,time)
    obj.x0 = x;
 end
 
+
+
+
+function [x,flag] = matlab_solve(obj,A,b)
+
+   if obj.DEBUGflag
+      fprintf('Fallback to matlab due to size or chronos inexistance\n');
+   end
+   startT = tic;
+   % Solve the system
+   A = cell2matrix(A);
+   x = A\b;
+   Tend = toc(startT);
+   obj.aTimeSolve = obj.aTimeSolve + Tend;
+   obj.nSolve = obj.nSolve + 1;
+   flag = 0;
+   obj.params.iter = 0;
+end
