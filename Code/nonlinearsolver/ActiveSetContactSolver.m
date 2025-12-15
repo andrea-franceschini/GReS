@@ -136,7 +136,7 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
             %
             % Check for convergence
-            flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
+            flConv = (rhsNorm < tolWeigh && rhsNorm < absTol);
 
             % line search cut to avoid unnecessary iterations
              if obj.iter > 10 && rhsNorm > 1e1*rhsNormIt0

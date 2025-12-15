@@ -17,8 +17,8 @@ in a nonConforming simulation.
 
     <Solver
             MaxNLIteration = "10"
-            RelativeTolerance = "1.e-8"
-            AbsoluteTolerance = "1.e-10" />
+            RelativeTolerance = "1.e-5"
+            AbsoluteTolerance = "1.e-6" />
   </simParam>
 
   <Materials fileName = "InputMech/materials.xml" />
@@ -51,6 +51,7 @@ in a nonConforming simulation.
              surfaceTag = "2"
              />
       <Quadrature
+                  multiplierType = "standard"
                   type = "SegmentBasedQuadrature"
                   nGP = "4"
                   />

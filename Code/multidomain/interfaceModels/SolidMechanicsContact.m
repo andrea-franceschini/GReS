@@ -447,7 +447,7 @@ classdef SolidMechanicsContact < MeshTying
         Ns_t = pagemtimes(T,Ns);
 
 
-        % tangential gap increment (quasi-static coulomb low)
+        % tangential gap increment (quasi-static coulomb law)
         gt_curr = pagemtimes(Ns_t,us(usDof)) ...
           - pagemtimes(Nm_t,um(umDof));
         gt_old =  pagemtimes(Ns_t,us_old(usDof)) ...

@@ -16,7 +16,7 @@ in a nonConforming simulation.
           choppingFactor = "Default" />
 
     <Solver
-            MaxNLIteration = "11"
+            MaxNLIteration = "20"
             RelativeTolerance = "1.e-8"
             AbsoluteTolerance = "1.e-10" />
   </simParam>
@@ -41,7 +41,7 @@ in a nonConforming simulation.
       <Quadrature
                   type = "SegmentBasedQuadrature"
                   nGP = "4"
-                  stabilizationScale = "1.0"
+                  stabilizationScale = "0.0"
                   />
 
       <Output
@@ -56,7 +56,7 @@ in a nonConforming simulation.
                frictionAngle = "30" />
 
       <ActiveSet
-                 resetActiveSet = "0"
+                 resetActiveSet = "1"
                  forceStickBoundary = "1" >
 
         <Tolerances

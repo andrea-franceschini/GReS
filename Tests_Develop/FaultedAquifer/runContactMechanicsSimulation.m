@@ -40,10 +40,10 @@ interfaces = buildInterfaces(fileName,domain);
 initTrac = setInitialTraction(interfaces{1});
 
 if contains(fileName,"stick")
-  interfaces{1}.state.multipliers = initTrac;
-  interfaces{1}.state.iniMultipliers = initTrac;
-  interfaces{1}.stateOld.multipliers = initTrac;
-  interfaces{1}.stateOld.iniMultipliers = initTrac;
+  % interfaces{1}.state.multipliers = initTrac;
+  % interfaces{1}.state.iniMultipliers = initTrac;
+  % interfaces{1}.stateOld.multipliers = initTrac;
+  % interfaces{1}.stateOld.iniMultipliers = initTrac;
 else
   interfaces{1}.state.iniTraction = initTrac;
   interfaces{1}.state.traction = initTrac;

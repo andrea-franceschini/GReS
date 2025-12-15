@@ -15,7 +15,7 @@ cd(scriptDir)
 b1 = BlockStructuredMesh([0,4;0 20;0 20],[4 10 10],1);
 meshL = processGeometry(b1);
 
-b2 = BlockStructuredMesh([4,8;0 20;0 20],[4 15 15],1);
+b2 = BlockStructuredMesh([4,8;0 20;0 20],[4 10 10],1);
 meshR = processGeometry(b2);
 
 % define model 

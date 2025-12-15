@@ -202,6 +202,7 @@ classdef Boundaries < handle
         % remove loaded entity
         loadedEnts = getLoadedEntities(obj,bcId);
         isEntActive = ~ismember(loadedEnts,list);
+        removedEnts = bc.loadedEnts(~isEntActive);
         bc.loadedEnts = bc.loadedEnts(isEntActive);
 
         % remove corresponding rows of entity influence matrix
