@@ -16,7 +16,6 @@ function [x,flag] = Solve(obj,A,b,time)
       [x,flag] = matlab_solve(obj,A,b);
       return
    end
-   save("rhs.mat","b");
 
    % Have the linear solver compute the Preconditioner if necessary
    if(obj.requestPrecComp || obj.params.iter > 600 || obj.params.lastRelres > obj.params.tol*1e3)
@@ -30,6 +29,7 @@ function [x,flag] = Solve(obj,A,b,time)
    % Save the solver type
    firstSolver = obj.SolverType;
 
+   %save('Ab.mat',"A","b");
    if iscell(A)
       Amat = cell2matrix(A);
    end

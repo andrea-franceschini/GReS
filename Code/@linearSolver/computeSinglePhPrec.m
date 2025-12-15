@@ -41,7 +41,8 @@ function computeSinglePhPrec(obj,A)
 
          
          % coord = obj.domain.grid.topology.coordinates;
-         % save("mat_new.mat","A","TV0","coord");
+         % save("TV0.mat","TV0");
+         %save("mat_new.mat","A","TV0","coord");
          % error('ciao');
          set_DEBINFO();
 
