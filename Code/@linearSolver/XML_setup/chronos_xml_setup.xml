@@ -43,7 +43,7 @@
 	<!-- PROLONGATION parameters -->
 	<prolong
 		proltype="MEX_BAMG"
-		prol_emin="EMIN"
+		prol_emin="SMOOTH"
 		np="20"
 		itmax_Vol="100"
 		tol_Vol="0.01"

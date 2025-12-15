@@ -3,7 +3,7 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 2e4
+      matlabMaxSize = 5e4
       nsyTol = 1e-12
 
       % Flag for Chronos existance
@@ -31,8 +31,9 @@ classdef linearSolver < handle
       % Discretizer
       domain
 
-      % Number of domains
+      % Number of domains/interfaces
       nDom
+      nInt
       
       % Physics
       phys
@@ -80,6 +81,7 @@ classdef linearSolver < handle
 
             obj.domain = domainin;
             obj.nDom = length(domainin);
+            obj.nInt = length(domainin.interfaces);
 
             physname = obj.domain(1).solverNames(1);
             if(contains(physname,'SinglePhaseFlow') || physname == 'VariablySaturatedFlow' || physname == 'Poisson')
