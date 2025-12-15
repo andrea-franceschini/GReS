@@ -35,7 +35,9 @@ classdef MultidomainFCSolver < handle
        if(isfile(chronos_xml))
           obj.linsolver = linearSolver(obj.domains,chronos_xml);
        else
-          fprintf('Using default values for linsolver\n');
+          if gresLog().getVerbosity > 2
+            fprintf('Using default values for linsolver\n');
+          end
           obj.linsolver = linearSolver(obj.domains);
        end
     end
