@@ -17,8 +17,8 @@ in a nonConforming simulation.
 
     <Solver
             MaxNLIteration = "10"
-            RelativeTolerance = "1.e-8"
-            AbsoluteTolerance = "1.e-10" />
+            RelativeTolerance = "1.e-7"
+            AbsoluteTolerance = "1.e-8" />
   </simParam>
 
   <Materials fileName = "InputMech/materials.xml" />
@@ -77,7 +77,7 @@ in a nonConforming simulation.
                     tangentialViolation = "1e-2"
                     minLimitTraction = "1e-4"
                     areaChange = "1e-2"
-                    maxActiveSetChange = "20"
+                    maxActiveSetChange = "10"
         />
 
       </ActiveSet>

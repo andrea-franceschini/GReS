@@ -44,14 +44,8 @@
 # asv files
 *.asv
 
-# recovery files
-*.nfs
-
 # Develop Experiments folders
 #/Tests_Develop/
-
-# nfs files
-*.nfs
 
 # Temporary folders with external classes
 /Code/cross_grid/
@@ -61,3 +55,6 @@
 
 # Compiler  builds
 /ThirdPartLibs/*/build
+
+# Shared file system files
+*.nfs*

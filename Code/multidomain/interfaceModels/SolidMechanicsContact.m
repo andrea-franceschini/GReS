@@ -319,7 +319,7 @@ classdef SolidMechanicsContact < MeshTying
       slipIncrement = (currGap - prevGap - stabGap)./areaSlave;
       slipIncrement(1:3:end) = [];
 
-      obj.state.normalGap = -gap(1:3:end);
+      obj.state.normalGap = gap(1:3:end);
       obj.state.tangentialGap = sqrt(gap(2:3:end).^2 + ...
         gap(3:3:end).^2);
 

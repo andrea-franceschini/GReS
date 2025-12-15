@@ -28,6 +28,10 @@ classdef OutState < handle
 
     function obj = OutState(mesh, varargin)
 
+      if nargin == 0
+        return
+      end
+
       % Default parameters
       folderName = "output";
       tList = [];
