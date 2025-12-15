@@ -33,12 +33,12 @@ classdef MultidomainFCSolver < handle
        start_dir = pwd;
        chronos_xml = fullfile(start_dir,'linsolver.xml');
        if(isfile(chronos_xml))
-          obj.linsolver = linearSolver(obj.domains,chronos_xml);
+          obj.linsolver = linearSolver(obj.domains,obj.interfaces,chronos_xml);
        else
           if gresLog().getVerbosity > 2
             fprintf('Using default values for linsolver\n');
           end
-          obj.linsolver = linearSolver(obj.domains);
+          obj.linsolver = linearSolver(obj.domains,obj.interfaces);
        end
     end
 

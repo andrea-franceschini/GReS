@@ -62,7 +62,7 @@ classdef linearSolver < handle
    methods (Access = public)
       
       % Constructor Function
-      function obj = linearSolver(domainin,varargin)
+      function obj = linearSolver(domainin,interfacein,linsolverXML)
          
          % Check if chronos is available
          ChronosDir = fullfile(gres_root,'..','aspamg_matlab','sources');
@@ -81,7 +81,7 @@ classdef linearSolver < handle
 
             obj.domain = domainin;
             obj.nDom = length(domainin);
-            obj.nInt = length(domainin.interfaces);
+            obj.nInt = length(interfacein);
 
             physname = obj.domain(1).solverNames(1);
             if(contains(physname,'SinglePhaseFlow') || physname == 'VariablySaturatedFlow' || physname == 'Poisson')
@@ -103,9 +103,9 @@ classdef linearSolver < handle
             addpath(genpath(RACPDir));
 
             % Read XML
-            if nargin > 1
+            if nargin > 2
                % Use input values
-               data = readstruct(varargin{1},AttributeSuffix="");
+               data = readstruct(linsolverXML,AttributeSuffix="");
             else
                % Get default values
                if obj.phys == 0
