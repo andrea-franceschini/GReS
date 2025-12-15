@@ -22,8 +22,10 @@ solver.finalizeOutput();
 
 
 nS = getMesh(interfaces{2},MortarSide.slave).nSurfaces;
+gt = interfaces{2}.state.tangentialSlip;
+gt = sqrt(gt(1:2:end).^2 + gt(2:2:end).^2);
 cId = 2:2:nS-1;
-gt = interfaces{2}.state.slip(cId);
+gt = gt(cId);
 tn = interfaces{2}.state.traction(3*cId-2);
 
 xCoord = getMesh(interfaces{2},MortarSide.slave).surfaceCentroid(cId,1)/cos(deg2rad(20));
