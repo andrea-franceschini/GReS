@@ -12,10 +12,13 @@ classdef FCSolver < handle
     iter
     dt
     % toGrow
+
   end
 
   properties (Access = public)
-    solStatistics
+     solStatistics
+     % to solve
+     linsolver
   end
 
   methods (Access = public)
@@ -41,6 +44,18 @@ classdef FCSolver < handle
                                            obj.simparams.relTol,...
                                            obj.simparams.absTol,...
                                            saveStasticts);
+
+      % Check if there is manual input from the user, if not use defaults
+      start_dir = pwd;
+      chronos_xml = fullfile(start_dir,'linsolver.xml');
+      if(isfile(chronos_xml))
+         obj.linsolver = linearSolver(obj.domain,[],chronos_xml);
+      else
+         if gresLog().getVerbosity > 2
+            fprintf('Using default values for linsolver\n');
+         end
+         obj.linsolver = linearSolver(obj.domain,[]);
+      end
     end
 
     function [simStat] = NonLinearLoop(obj)
@@ -99,7 +114,7 @@ classdef FCSolver < handle
           J = getJacobian(obj.domain);
 
           % Solve linear system
-          du = FCSolver.solve(J,rhs);
+          du = FCSolver.solve(obj,J,rhs);
 
           % Update current model state
           updateState(obj.domain,du);
@@ -215,11 +230,12 @@ classdef FCSolver < handle
   end
 
   methods (Static)
-    function sol = solve(J,rhs)
-      J = cell2matrix(J);
+    function sol = solve(obj,J,rhs)
       rhs = cell2matrix(rhs);
-      sol = J\(-rhs);
-    end
 
+      % Actual solution of the system
+      [sol,~] = obj.linsolver.Solve(J,-rhs,obj.t);
+
+    end
   end
 end

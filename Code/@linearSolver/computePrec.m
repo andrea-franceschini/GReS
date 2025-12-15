@@ -1,0 +1,65 @@
+
+% Function for the computation of the preconditioner
+function computePrec(obj,A)
+
+   % Check if the problem has multiphysics
+   if obj.multiPhysFlag
+      % research
+      error('not implemented yet');
+   else
+      % Single physics, single domain, no lagrange multipliers
+      if numel(A) == 1 || ~iscell(A)
+         % Case of the single Physics preconditioner for one single block
+         obj.computeSinglePhPrec(A);
+
+      else
+         % Single physics multidomain or lagrange multipliers
+         if ~iscell(A)
+            error('Passed a non cell matrix to RACP');
+         end
+
+         if obj.multidomFlag
+            % research
+            error('not implemented yet');
+
+         else
+            % Treat the multiple domains as if they were one and then use RACP
+
+            if numel(A) ~= 4
+               % checks if any of the matrix entries are 0x0 blocks
+               [ZeroSpRow,ZeroSpCol] = find(cellfun(@(x) isempty(x), A));
+
+               if length(ZeroSpRow)
+                  % get the correct number of rows
+                  rows = zeros(size(A,1),1);
+                  for i = 1:size(A,1)
+                     rows(i) = size(A{i,1},1);
+                  end 
+
+                  % assign the correct dimension to the matrices
+                  for i = 1:length(ZeroSpRow)
+                     A{ZeroSpRow(i),ZeroSpCol(i)} = sparse(rows(ZeroSpRow(i)),rows(ZeroSpCol(i)));
+                  end
+               end
+
+               nn = size(A,1);
+               idxMain = 1:nn-obj.nInt;
+               idxSupp = nn+1-obj.nInt:nn;
+
+               A11 = cell2matrix(A(idxMain,idxMain));
+               A12 = cell2matrix(A(idxMain,idxSupp));
+               A21 = cell2matrix(A(idxSupp,idxMain));
+               A22 = cell2matrix(A(idxSupp,idxSupp)); 
+               
+               clear A;
+   
+               A = {A11, A12; A21 A22};
+            end
+            
+            % RACP for single physics multi domain 
+            obj.computeRACP(A);
+         end
+      end
+   end
+end
+

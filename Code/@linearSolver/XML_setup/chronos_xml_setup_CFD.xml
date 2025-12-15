@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Chronos>
+	<solver>SQMR</solver>
+   <preconditioner>AMG</preconditioner>
+
+	<!-- General parameters -->
+   <general
+      tol="1e-8"
+      maxit="1000"
+      restart="100"
+   />
+
+	<!-- AMG parameters -->
+   <amg
+      maxCoarseSZ="1000"
+      nLevMax="10"
+   />
+
+	<!-- SMOOTHER parameters -->
+	<!-- missing DDWS parameters as well as the ones for ABFIC -->
+   <smoother
+      nthread="20"
+      nupre="1"
+      nupost="1"
+      nstep="15"
+      step_size="1"
+      epsilon="1e-3"
+	   avg_nnzr="20"
+	   tau_pref_1="5e-3"
+	   power_1="100"
+	   nnzr_max_1="300"
+	   tau_pref_2="1e-2"
+	   power_2="100"
+	   nnzr_max_2="50"
+	   tol_CGfsai="1e-5"
+	   niter_CGfsai="5"
+	   droptol="0.0"
+      DDSW_method="1"
+      DDSW_apply_kind="1"
+	   method="jacobi"
+   />
+
+	<!-- PROLONGATION parameters -->
+	<prolong
+		proltype="MEX_EXTI"
+		prol_emin="NONE"
+		np="20"
+		itmax_Vol="100"
+		tol_Vol="0.01"
+		toll_res="1e-10"
+		dist_min="1"
+		dist_max="10"
+		maxcond="1e+13"
+		maxrownrm="5.0"
+		eps_prol="1e-10"
+		updateCF="0"
+      patt_pow="2"
+		patt_tau="1e-3"
+		nnzr_max="30"
+		itmax_emin="10"
+		energ_tol="1e-3"
+		condmax_emin="1e100"
+		maxwgt_emin="1e100"
+		prec_emin="1"
+		solv_emin="4"
+		min_lfil="0"
+		max_lfil="20"
+		D_lfil="5"
+	/>
+
+	<!-- COARSENING parameters -->
+	<coarsen
+		SoC_type="CLA"
+		tau="0.25"
+		SoC_perc="20"
+		nl_agg="0"
+		CR_iters="1"
+	/>
+
+	<!-- TEST SPACE parameters -->
+	<tspace
+		ntv="1"
+		itmax="10"
+		tol="1.e-8"
+		method="NONE"
+		init_approx="5"
+	/>
+
+	<!-- FILTERING parameters -->
+	<filter
+		filt_type="MEX_filt"
+		np="20"
+		filt_wgt="150.0"
+		filt_tol="0.1"
+		filt_tau="0.000"
+		min_patt="0"
+	/>
+
+</Chronos>
