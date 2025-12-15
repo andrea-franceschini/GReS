@@ -92,13 +92,14 @@ classdef SolidMechanicsContact < MeshTying
     function hasChanged = updateActiveSet(obj)
 
       oldActiveSet = obj.activeSet.curr;
+      mshSlave = getMesh(obj,MortarSide.slave);
 
       for is = 1:numel(obj.activeSet.curr)
 
         state = obj.activeSet.curr(is);
 
         % force boundary element to stick state
-        nodes = obj.interfMesh.msh(2).surfaces(is,:);
+        nodes = obj.interfMesh.local2glob{2}(mshSlave.surfaces(is,:));
 
         if obj.activeSet.forceStickBoundary
           if any(ismember(nodes,obj.dirNodes))
@@ -142,7 +143,8 @@ classdef SolidMechanicsContact < MeshTying
       nomoreStick = diffState > 0;
 
       obj.activeSet.stateChange(nomoreStick) = ...
-        obj.activeSet.stateChange(nomoreStick) + 2;
+        obj.activeSet.stateChange(nomoreStick) + 1;
+      
 
       hasChanged = any(diffState);
 

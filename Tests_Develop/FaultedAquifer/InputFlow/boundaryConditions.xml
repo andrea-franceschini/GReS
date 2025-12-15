@@ -19,8 +19,8 @@
         <entityType>ElementBC</entityType>
         <variable>pressure</variable>
         <BCentities>
-            <bcList>880</bcList>
-            <bcList>898</bcList>
+            <bcList>8065</bcList>
+            <bcList>8125</bcList>
         </BCentities>
         <BCevent>
             <time>0</time>

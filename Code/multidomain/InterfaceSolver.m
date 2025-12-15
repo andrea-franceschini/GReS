@@ -481,26 +481,21 @@ classdef (Abstract) InterfaceSolver < handle
 
     function removeSlaveBCents(obj)
 
-      if obj.multiplierLocation ~= entityField.node
-        return
-      end
-
       % domain 2 is the slave
       nodSlave = obj.interfMesh.local2glob{2};
 
       bc = obj.domains(2).bcs;
       bcList = bc.db.keys;
 
-      bcNodes = [];
-
       for bcId = string(bcList)
         if strcmp(getType(bc,bcId),"Dirichlet")
-          bcNodes = [bcNodes; bc.removeBCentities(bcId,nodSlave)];
+          bcNodes = intersect(bc.getBCentities(bcId),nodSlave);
+          obj.dirNodes = [obj.dirNodes; bcNodes];
+          if obj.multiplierLocation == entityField.node
+            bc.removeBCentities(bcId,nodSlave);
+          end
         end
       end
-
-      obj.dirNodes = [obj.dirNodes; bcNodes];
-
     end
 
 
