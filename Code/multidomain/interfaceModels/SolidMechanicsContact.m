@@ -535,7 +535,7 @@ classdef SolidMechanicsContact < MeshTying
             MortarQuadrature.integrate(f1,Nmult_n,g_n,dJw);
 
           % rhs -(mu_t,t*_T) (non linear term)
-          tT_lim = computeLimitTraction(obj,is,dgt,trac,slip);
+          tT_lim = computeLimitTraction(obj,is,dgt,trac);
 
 
           % rhs (mu_t,tT) tT and tT_lim in local coordinates (to be consistent with dof definition)
@@ -672,14 +672,14 @@ classdef SolidMechanicsContact < MeshTying
     end
 
 
-    function tracLim = computeLimitTraction(obj,is,dgt,t,slip)
+    function tracLim = computeLimitTraction(obj,is,dgt,t)
 
       % return the limit traction vector in the global frame
       t_N = t(1);
       tauLim = obj.cohesion - tan(deg2rad(obj.phi))*t_N;
 
 
-      if slip > obj.activeSet.tol.sliding
+      if norm(dgt) > obj.activeSet.tol.sliding
         tracLim = tauLim*(dgt/norm(dgt));
       else
         % compute tangential traction from traction (global coordinates!)
