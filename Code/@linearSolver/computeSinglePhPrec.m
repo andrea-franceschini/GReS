@@ -33,7 +33,7 @@ function computeSinglePhPrec(obj,A)
          elseif(obj.phys == 1)
             TV0 = [];
             for i = 1:obj.nDom
-               size(obj.domain(i).grid.topology.coordinates)
+               size(obj.domain(i).grid.topology.coordinates);
                TV = mk_rbm_3d(obj.domain(i).grid.topology.coordinates);
                TV0 = [TV0;TV];
             end

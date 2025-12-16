@@ -1,0 +1,37 @@
+<Sedimentation_Maps type = "Ramp">
+  <Event time = "0." >
+    <Uniform materialFlag = "1" value= "0.01"/>
+    <Map materialFlag = "1"
+         division = "3,3"
+         file = "Inputs/Maps/map.dat"/>
+  </Event>
+  <Event time = "0." >
+    <Uniform materialFlag = "1" value= "0.01"/>
+    <Map materialFlag = "1"
+         division = "3,3"
+         file = "Inputs/Maps/map.dat"/>
+  </Event>
+</Sedimentation_Maps>
+<!--
+
+<MapEvent
+          time = "0."
+          materialFlag = "1"
+          uniform = "0.01"
+          />
+
+<MapEvent time = "0."
+          materialFlag = "1"
+          division = "3,3"
+          sediment_rate = "0.01,0.01,0.01,0.01,0.01,0.01,0.01,0.01,0.01"
+          />
+
+
+
+
+<MapEvent time = "0."
+          materialFlag = "1"
+          division = "3,3"
+          file = "Inputs/mapsSedimentation.xml"
+          />
+-->

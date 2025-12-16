@@ -40,7 +40,7 @@ domain = Discretizer('Grid',grid,...
 
 switch typeFlow
   case "Saturated"
-    domain.addPhysicsSolver(fullfile(input_dir,'solverSaturated.xml'));
+    domain.addPhysicsSolver(fullfile(input_dir,'solverSaturated2.xml'));
   case "Unsaturated"
     domain.addPhysicsSolver(fullfile(input_dir,'solverUnsaturated.xml'));
 end

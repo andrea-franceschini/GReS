@@ -45,54 +45,15 @@
           variable = "pressure"
           value = "0." />
     </boundary>
+    <sediment_map file = "Inputs/mapsSedimentation.xml" />
+    <!--
     <sediment_map
         time = "0."
         division = "3,3"
         sediment_rate = "0.01,0.01,0.01,0.01,0.01,0.01,0.01,0.01,0.01"/>
-    <!--<sediment_map
-        time = "0."
-        division = "3,4"
-        sediment_rate = "Inputs/DomainBot/bottomLayer.vtk"/>
-        sediment_rate = "0.01,0.01,0.01,0.01"/>
+    
      -->
     <output file = "Inputs/output.xml"/>
   </Sedimentation>
 </Solver>
 
-
-<!--
- <boundary>
-      <BC name = "BordA"
-          type = "Dirichlet"
-          surface = "X0"
-          variable = "pressure"
-          value = "1e6" />
-      <BC name = "BordB"
-          type = "Dirichlet"
-          surface = "XM"
-          variable = "pressure"
-          value = "1e5" />
-      <BC name = "BordC"
-          type = "Newmann"
-          surface = "Y0"
-          variable = "pressure"
-          value = "0." />
-      <BC name = "BordD"
-          type = "Newmann"
-          surface = "YM"
-          variable = "pressure"
-          value = "0." />
-      <BC name = "Bottom"
-          type = "Newmann"
-          surface = "Z0"
-          variable = "pressure"
-          value = "0." />
-      <BC name = "Top"
-          type = "Dirichlet"
-          surface = "ZM"
-          variable = "pressure"
-          value = "0." />
-    </boundary>
-
-
--->

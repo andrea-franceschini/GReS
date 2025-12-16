@@ -30,24 +30,20 @@ classdef Sedimentation < PhysicsSolver
     function registerSolver(obj,input)
       % setup the solver with custom input
 
-      if ~(isfield(input,'domain') || isfield(input,'Domain'))
-        error("Domain for the simulation not defined!");
+      if Sedimentation.checkInput(input)
+        error("Simulation not well defined!");
       end
+
       obj.nmat = length(obj.materials.db)-1;
-      % obj.grid = gridForSedimentation( "XML",input.domain, ...
-      %   "Materiais",obj.materials.matMap);
-      % obj.grid = gridForSedimentation( "XML",input.domain, ...
-      %   "NumMateriais",obj.nmat);
-      obj.grid = gridForSedimentation( "XML",input.domain, ...
+      obj.grid = gridForSedimentation("XML",input.domain, ...
         "NumMateriais",obj.nmat);
 
       % Initialize Mesh.
       prepareMesh(obj);
-
             
       % Initialize the sedimentation control
-      obj.mapSediments = SedimentsMap(obj.grid.ncells(1:2),input.sediment_map);
-      % obj.mapSediments = SedimentsMap(obj.grid.ncells(1:2),input.sediment_map);
+      obj.mapSediments = SedimentsMap(input.sediment_map,obj.nmat,...
+        obj.grid.ncells(1:2));
 
       % Initialize the BCs
       obj.prepareBC(input.boundary);
@@ -67,11 +63,8 @@ classdef Sedimentation < PhysicsSolver
       computeHPInitial(obj);
 
       % Creating the output format
-      if isfield(input.output,"file")
-        prepareOutput(obj,input.output.file);
-      end
-
-
+      
+      prepareOutput(obj,input.output);
 
     end
 
@@ -115,10 +108,13 @@ classdef Sedimentation < PhysicsSolver
       state.data.pressure(bcDofs) = bcVals;
     end
 
+    % TODO: descomentar
     function updateState(obj,solution)
       ents = obj.grid.getActiveCells;
       state = getState(obj);
-      state.data.pressure(ents) = state.data.pressure(ents) + solution;
+      state.data.pressure(ents) = state.data.pressure(ents) + solution;      
+      % state = getState(obj);
+      % state.data.pressure = state.data.pressure + solution;
     end
 
     function [cellData,pointData] = writeVTK(obj,fac,t)
@@ -144,7 +140,6 @@ classdef Sedimentation < PhysicsSolver
       % states.flux = computeFlux(obj,p,mob,t);
       states.perm = getPerm(obj,obj.grid.getActiveCells);
       states.pressure = p;
-      % states.mass = checkMassCons(obj,mob,potential);
     end
 
     function writeMatFile(obj,fac,tID)      
@@ -352,6 +347,7 @@ classdef Sedimentation < PhysicsSolver
   end
 
   methods  (Access = private)
+
     function prepareMesh(obj)
       lnk = obj.grid;
 
@@ -365,7 +361,6 @@ classdef Sedimentation < PhysicsSolver
       [obj.mesh.coordinates,obj.mesh.cells] = lnk.grid.getMesh(1);
       obj.mesh.meshType = "Unstructured";
     end
-
 
     function prepareBC(obj,data)
 
@@ -490,7 +485,11 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function prepareOutput(obj,data)
-      tmp = OutState(obj.mesh,data);
+       if ~isfield(data,"file")
+         error("Output file not pass for the simulation!");
+       end
+
+      tmp = OutState(obj.mesh,data.file);
 
       obj.domain.outstate.modTime = tmp.modTime;
       obj.domain.outstate.timeList = tmp.timeList;
@@ -560,7 +559,30 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function out = isSymmetric()
-      out = obj.Solver.isSymmetric();
+      out = true;
+    end
+
+    function flag = checkInput(input)
+      flag = false;
+      if ~(isfield(input,'domain') || isfield(input,'Domain'))
+        flag = true;
+        disp("The initial domain for the simulation is not defined!");
+      end
+
+      if ~(isfield(input,'boundary') || isfield(input,'Boundary'))
+        flag = true;
+        disp("The boundary condition for the simulation is not defined!");
+      end
+
+      if ~(isfield(input,'sediment_map') || isfield(input,'Sediment_map'))
+        flag = true;
+        disp("Map of sedimentation for your simulation not defined!");
+      end
+
+      if ~(isfield(input,'output') || isfield(input,'Output'))
+        flag = true;
+        disp("The output specifications is not defined!");
+      end
     end
 
   end
