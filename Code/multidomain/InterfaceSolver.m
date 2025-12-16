@@ -360,6 +360,10 @@ classdef (Abstract) InterfaceSolver < handle
 
     end
 
+    function slaveArea = getSlaveArea(obj)
+      slaveArea = obj.quadrature.areaSlave;
+    end
+
 
     function dofm = getDoFManager(obj,side)
       s = getSide(side);

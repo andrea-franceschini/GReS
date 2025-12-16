@@ -6,6 +6,7 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
     maxActiveSetIters = 10
     contactInterf
     itAS
+    attemptedReset = false        % flag for attempt to save simulation resetting to stick
   end
 
 
@@ -241,11 +242,21 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
     function manageNextTimeStep(obj,newtonConv,activeSetChanged)
 
-      % case 1: newton not converged (perform backstep)
+      if ~newtonConv && ~obj.attemptedReset 
+        reset = false(obj.nInterf,1);
+        for i = 1:obj.nInterf
+          reset(i) = resetConfiguration(obj.interfaces{i});
+        end
+        newtonConv = any(reset);
+        if newtonConv
+          obj.attemptedReset = true;
+          activeSetChanged(:) = true;
+        end
+      end
+
       if ~newtonConv 
-
+      
         obj.itAS = 0;
-
 
         % time step not converged
         obj.t = obj.t - obj.dt;
@@ -299,6 +310,9 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
         if ((obj.t + obj.dt) > obj.simparams.tMax)
           obj.dt = obj.simparams.tMax - obj.t;
         end
+
+        % allow new survival attempts on new time steps
+        obj.attemptedReset = false;
 
         return
       end

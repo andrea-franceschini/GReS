@@ -61,6 +61,13 @@ domains = [domainL; domainR];
 interfaces = buildInterfaces('StickSlipOpen.xml',domains);
 %interfaces = buildInterfaces('Stick.xml',domains);
 
+tIni = -2;
+interfaces{1}.state.traction(1:3:end) = tIni;
+interfaces{1}.state.iniTraction(1:3:end) = tIni;
+interfaces{1}.stateOld.iniTraction(1:3:end) = tIni;
+interfaces{1}.stateOld.traction(1:3:end) = tIni;
+
+
 solv = ActiveSetContactSolver(simParam,domains,interfaces,10);
 %solv = MultidomainFCSolver(simParam,domains,interfaces);
 solv.NonLinearLoop();

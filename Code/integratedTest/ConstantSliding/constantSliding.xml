@@ -9,8 +9,8 @@
           DtInit= "1e0"
           DtMax ="1e0"
           DtMin ="1.0"
-          relativeTolerance = "1e-11"
-          absoluteTolerance = "1e-13"
+          relativeTolerance = "1e-12"
+          absoluteTolerance = "1e-11"
           />
   </simParam>
 

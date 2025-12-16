@@ -8,7 +8,7 @@ in a nonConforming simulation.
   <simParam>
     <Time
           Start="0."
-          End ="10.0"
+          End ="9.8"
           DtInit="0.25"
           DtMin ="1e-4"
           DtMax ="0.5"
@@ -17,7 +17,7 @@ in a nonConforming simulation.
 
     <Solver
             MaxNLIteration = "10"
-            RelativeTolerance = "1.e-7"
+            RelativeTolerance = "1.e-9"
             AbsoluteTolerance = "1.e-8" />
   </simParam>
 
@@ -73,11 +73,11 @@ in a nonConforming simulation.
         <Tolerances
                     sliding = "1e-5"
                     normalGap = "1e-6"
-                    normalTraction = "-1e-3"
-                    tangentialViolation = "5e-3"
+                    normalTraction = "-1e-2"
+                    tangentialViolation = "1e-4"
                     minLimitTraction = "1e-4"
-                    areaChange = "1e-3"
-                    maxActiveSetChange = "6"
+                    areaChange = "1e-4"
+                    maxActiveSetChange = "8"
         />
 
       </ActiveSet>

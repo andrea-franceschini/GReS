@@ -30,6 +30,10 @@ classdef SolidMechanicsContact < MeshTying
 
       obj.state.traction = zeros(nDofsInterface,1);
       obj.state.iniTraction = obj.state.traction;
+
+      % the gap in global coordinates
+      obj.state.gap = zeros(nDofsInterface,1);
+
       obj.state.normalGap = zeros(round(1/3*nDofsInterface),1);
       obj.state.tangentialGap = zeros(round(1/3*nDofsInterface),1);
       obj.state.tangentialSlip = zeros(round(2/3*nDofsInterface),1);
@@ -71,7 +75,7 @@ classdef SolidMechanicsContact < MeshTying
       [H,rhsStab] = getStabilizationMatrixAndRhs(obj);
 
       obj.Jconstraint = obj.Jconstraint - H;
-      %obj.rhsConstraint = obj.rhsConstraint + rhsStab;
+      obj.rhsConstraint = obj.rhsConstraint + rhsStab;
 
       if gresLog().getVerbosity > 1
         % print rhs terms for each fracture state for debug purposes
@@ -211,27 +215,22 @@ classdef SolidMechanicsContact < MeshTying
       % end
     end
 
+    function isReset = resetConfiguration(obj)
+      if ~obj.activeSet.resetActiveSet
+        isReset = false;
+      else
+        toReset = obj.activeSet.curr(:) ~= ContactMode.open;
+        obj.activeSet.curr(toReset) = ContactMode.stick;
+        isReset = true;
+      end
+    end
+
 
 
     function goBackState(obj,dt)
       % reset state to beginning of time step
       obj.state = obj.stateOld;
-
-      divFac = obj.domains(2).simparams.divFac;
-      dtMin = obj.domains(2).simparams.dtMin;
-
-      if obj.activeSet.resetActiveSet && dt/divFac <= dtMin
-        % last chance to save the activeSet - reset to stick 
-        gresLog().log(1,"Active set reset to stick mode to resolve instability \n")
-        obj.activeSet.curr(:) = ContactMode.stick;
-      else
-        % we update the active set even if we did not achieve convergence
-        % slideOld = obj.activeSet.tol.slidingCheck;
-        % obj.activeSet.tol.slidingCheck = 0.0;
-        updateActiveSet(obj);
-        %obj.activeSet.tol.slidingCheck = slideOld;
-      end
-
+      updateActiveSet(obj);
       obj.activeSet.stateChange(:) = 0;
     end
 
@@ -241,16 +240,18 @@ classdef SolidMechanicsContact < MeshTying
 
       outTraction = fac*obj.state.traction + ...
         (1-fac)*obj.stateOld.traction;
+
+
       outNormalGap = fac*obj.state.normalGap + ...
         (1-fac)*obj.stateOld.normalGap;
       outTangentialSlip = fac*obj.state.tangentialSlip + ...
         (1-fac)*obj.stateOld.tangentialSlip;
+      outTangentialSlip = (reshape(outTangentialSlip,2,[]))';
 
       outSliding = fac*obj.state.tangentialGap + ...
         (1-fac)*obj.stateOld.tangentialGap;
 
-      slipNorm = [outTangentialSlip(1:2:end),outTangentialSlip(2:2:end)];
-      outSlipNorm = sqrt(slipNorm(:,1).^2 + slipNorm(:,2).^2);
+      outSlipNorm = sqrt(outTangentialSlip(:,1).^2 + outTangentialSlip(:,2).^2);
 
       tT = [outTraction(2:3:end),outTraction(3:3:end)];
       norm_tT = sqrt(tT(:,1).^2 + tT(:,2).^2);
@@ -261,14 +262,13 @@ classdef SolidMechanicsContact < MeshTying
 
       entries = {
         'normal_gap',              outNormalGap
-        'slip_norm',               outSlip
         'normal_stress',           outTraction(1:3:end)
         'tangential_traction_1',   outTraction(2:3:end)
         'tangential_traction_2',   outTraction(3:3:end)
         'tangential_traction_norm',norm_tT
         'tangential_slip',         outTangentialSlip
         'tangential_slip_norm',    outSlipNorm
-        'tangential_gapp_norm',    outSliding
+        'tangential_gap_norm',     outSliding
         'fracture_state',          fractureState
         };
 
@@ -309,25 +309,25 @@ classdef SolidMechanicsContact < MeshTying
 
       um = obj.domains(1).state.data.displacements;
       us = obj.domains(2).state.data.displacements;
+      % 
 
-      umOld = obj.domains(1).stateOld.data.displacements;
-      usOld = obj.domains(2).stateOld.data.displacements;
 
-      % stabilization contribution to the gap
+      % recover variationally consistent stabilized gaps
+      areaSlave = repelem(obj.getSlaveArea(),3);
+
+      areaGap = (obj.D*us + obj.M*um);
+
+      obj.state.gap = areaGap./areaSlave;
+
       [H,~] = getStabilizationMatrixAndRhs(obj);
-      stabGap = H*(obj.state.traction - obj.state.iniTraction);
+      stabGap = H*(obj.state.traction - obj.state.iniTraction)./areaSlave;
 
-      % recover variationally consistent gap (in local coordinates)
-      currGap = obj.D*us + obj.M*um;
-      prevGap = obj.D*usOld + obj.M*umOld;
+      gap = obj.state.gap - stabGap;
+      slip = obj.state.gap - obj.stateOld.gap - stabGap;
 
-      areaSlave = repelem(obj.interfMesh.msh(2).surfaceArea,3);
-
-      gap = (currGap - stabGap)./areaSlave;
-      slipIncrement = (currGap - prevGap - stabGap)./areaSlave;
-      slipIncrement(1:3:end) = [];
-      obj.state.tangentialSlip = slipIncrement;
-
+      slip(1:3:end) = [];
+      obj.state.tangentialSlip = slip;
+      % 
       obj.state.normalGap = gap(1:3:end);
       obj.state.tangentialGap = sqrt(gap(2:3:end).^2 + ...
         gap(3:3:end).^2);
@@ -435,6 +435,10 @@ classdef SolidMechanicsContact < MeshTying
         % tangential component of multiplier basis
         Nmult_t = NmultR(:,2:3,:);
 
+        % get normal of the slave element
+        normalEl = obj.interfMesh.getNormal(is);
+        Tel = eye(3) - normalEl*normalEl';
+
         % get normal at the gauss points (for warped facets...?)
         normalNodes = obj.interfMesh.getNodalNormal(is);
         normal = pagemtimes(Ns,normalNodes);
@@ -450,24 +454,13 @@ classdef SolidMechanicsContact < MeshTying
         Ns_t = pagemtimes(T,Ns);
 
 
-        % tangential gap increment (quasi-static coulomb law)
-        % gt_curr = pagemtimes(Ns_t,us(usDof)) ...
-        %   - pagemtimes(Nm_t,um(umDof));
-        % gt_old =  pagemtimes(Ns_t,us_old(usDof)) ...
-        %   - pagemtimes(Nm_t,um_old(umDof));
-        % dgt = gt_curr - gt_old;
-
-
-        % normal gap (scalar)
-        % g_n = pagemtimes(Ns_n,us(usDof)) ...
-        %   - pagemtimes(Nm_n,um(umDof));
-
-        % tangential slip in global coords
-        dgt = R(:,2:3)*obj.state.tangentialSlip([2*is-1 2*is]);
-
         % normal gap
-        g_n = obj.state.normalGap(is);
+        g_n = -obj.state.gap(3*is-2);
 
+        % tangential slip (quasi-static coulomb law) in global coords
+        tangDofs = [3*is-1 3*is];
+        dgt = (obj.state.gap(tangDofs)-obj.stateOld.gap(tangDofs));
+        dgt = R(:,2:3)*dgt;
 
         % A_us
         Aun_m =  MortarQuadrature.integrate(f1,Nm_n,Nmult_n,dJw);
@@ -725,7 +718,7 @@ classdef SolidMechanicsContact < MeshTying
 
       % optional flags
       contactSolver.activeSet.resetActiveSet = ...
-        logical(getXMLData(input,0,"resetActiveSet"));
+        logical(getXMLData(input,1,"resetActiveSet"));
       contactSolver.activeSet.forceStickBoundary = ...
         logical(getXMLData(input,0,"forceStickBoundary"));
 

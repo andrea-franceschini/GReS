@@ -11,6 +11,7 @@ classdef (Abstract) MortarQuadrature < handle
     numbInterfacePairs
     elements
     multiplierType
+    areaSlave
     
   end
 
@@ -81,9 +82,16 @@ classdef (Abstract) MortarQuadrature < handle
       end
     end
 
-
-
-
+    function computeAreaSlave(obj)
+      % compute the effective area of the slave elements being integrated
+      obj.areaSlave = zeros(obj.msh(2).nSurfaces,1);
+      for iPair = 1:size(obj.interfacePairs,1)
+        is = obj.interfacePairs(iPair,1);
+        areaPair = sum(obj.getIntegrationWeights(iPair));
+        obj.areaSlave(is) = obj.areaSlave(is) + areaPair;
+      end
+      
+    end
 
 
   end
