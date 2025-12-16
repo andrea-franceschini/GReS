@@ -2,7 +2,7 @@ classdef linearSolver < handle
    properties (Access = private)
 
       % Flag for debug
-      DEBUGflag = false
+      DEBUGflag = true
       matlabMaxSize = 5e4
       nsyTol = 1e-12
 
@@ -50,6 +50,11 @@ classdef linearSolver < handle
       aTimeSolve = 0
       nSolve = 0
       nComp = 0
+      maxIter = -1
+      aIter = 0
+
+      % Max Threads
+      maxThreads
    end
 
 
@@ -131,7 +136,7 @@ classdef linearSolver < handle
             % Get the preconditioner type
             obj.PrecType = lower(data.preconditioner);
 
-            obj.params.tol   = data.general.tol;
+            obj.params.tol   = obj.domain.simparams.relTol;
             obj.params.maxit = data.general.maxit;
 
             % Get the different parameters according to the prectype
@@ -152,13 +157,22 @@ classdef linearSolver < handle
 
             % First time solving request preconditioner computation
             obj.params.iter = -1;
-            obj.params.lastRelres = obj.params.tol;
+            obj.params.lastRelres = 1e10;
+   
+            % Set maximum number of threads to use if the system provides less
+            obj.maxThreads = maxNumCompThreads;
+            obj.params.smoother.nthread = min(obj.params.smoother.nthread,obj.maxThreads);
+            obj.params.prolong.np = min(obj.params.prolong.np,obj.maxThreads);
+            obj.params.filter.np = min(obj.params.filter.np,obj.maxThreads);
+
          end
       end
 
       function printStats(obj)
          fprintf('Average Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
          fprintf('Average Solve time = %e\n',(obj.aTimeSolve/obj.nSolve));
+         fprintf('Average number of iterations = %e\n',(obj.aIter/obj.nSolve));
+         fprintf('Max number of iterations = %d\n',obj.maxIter);
          fprintf('The preconditioner was computed at time(s):\n');
          for i = 1:length(obj.whenComputed)
             fprintf('             %d\t%e\n',i,obj.whenComputed(i));
