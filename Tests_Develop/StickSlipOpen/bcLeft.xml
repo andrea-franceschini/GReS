@@ -1,47 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
-
-<BoundaryConditions>
-
-  <BC
-      name = "fix_back"
-      type = "Dirichlet"
-      entityType = "SurfBC"
-      variable = "displacements"
-      >
-
-    <BCentities
-                surfaceTags = "5"
-                components = "x,y,z"
-                />
-
-    <BCevent
-             time = "0"
-             value = "0"
-             />
-
-  </BC>
-
-
-  <BC
-      name = "fix_bottom"
-      type = "Dirichlet"
-      entityType = "SurfBC"
-      variable = "displacements"
-      >
-
-    <BCentities
-                surfaceTags = "1"
-                components = "x,y,z"
-                />
-
-    <BCevent
-             time = "0"
-             value = "0"
-             />
-
-  </BC>
-
-  
-
-</BoundaryConditions>
+<struct>
+    <BC>
+        <name>fix_back</name>
+        <type>Dirichlet</type>
+        <entityType>SurfBC</entityType>
+        <variable>displacements</variable>
+        <BCentities>
+            <surfaceTags>5</surfaceTags>
+            <components>x</components>
+        </BCentities>
+        <BCevent>
+            <time>0</time>
+            <value>0</value>
+        </BCevent>
+    </BC>
+    <BC>
+        <name>y_bottom</name>
+        <type>Dirichlet</type>
+        <entityType>NodeBC</entityType>
+        <variable>displacements</variable>
+        <BCentities>
+            <bcList>81</bcList>
+            <bcList>82</bcList>
+            <bcList>85</bcList>
+            <bcList>87</bcList>
+            <bcList>89</bcList>
+            <components>y</components>
+        </BCentities>
+        <BCevent>
+            <time>0</time>
+            <value>0</value>
+        </BCevent>
+    </BC>
+    <BC>
+        <name>z_bottom</name>
+        <type>Dirichlet</type>
+        <entityType>SurfBC</entityType>
+        <variable>displacements</variable>
+        <BCentities>
+            <surfaceTags>1</surfaceTags>
+            <components>z</components>
+        </BCentities>
+        <BCevent>
+            <time>0</time>
+            <value>0</value>
+        </BCevent>
+    </BC>
+</struct>

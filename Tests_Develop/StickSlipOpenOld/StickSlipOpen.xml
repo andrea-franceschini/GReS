@@ -8,15 +8,15 @@ in a nonConforming simulation.
   <simParam>
     <Time
           Start="0."
-          End ="20.0"
+          End ="10.0"
           DtInit="1.0"
           DtMin ="1e-3"
           DtMax ="1.0"
-          incrementFactor = "1.5"
-          choppingFactor = "2" />
+          incrementFactor = "1.1"
+          choppingFactor = "Default" />
 
     <Solver
-            MaxNLIteration = "10"
+            MaxNLIteration = "20"
             RelativeTolerance = "1.e-10"
             AbsoluteTolerance = "1.e-8" />
   </simParam>
@@ -46,7 +46,7 @@ in a nonConforming simulation.
 
       <Output
               outputFile = "OUT/Crack"
-              printTimes = "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20"
+              printTimes = "0,1,2,3,4,5,6,7,8,9,10"
               saveHistory = "1"
               matFileName = "OUT/historyCrack"
               />
@@ -57,15 +57,15 @@ in a nonConforming simulation.
 
       <ActiveSet
                  resetActiveSet = "1"
-                 forceStickBoundary = "1" >
+                 forceStickBoundary = "0" >
 
         <Tolerances
                     sliding = "1e-5"
                     normalGap = "1e-6"
                     normalTraction = "-1e-3"
-                    tangentialViolation = "1e-5"
+                    tangentialViolation = "1e-4"
                     minLimitTraction = "1e-4"
-                    areaChange = "1e-4"
+                    areaChange = "1e-3"
                     maxActiveSetChange = "6"
                     />
 

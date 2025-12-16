@@ -18,7 +18,7 @@ cd(scriptDir)
 
 % grid parameters
 gridName = 'Outputs/cornerPointGrid';
-dims = [24,36,28];
+dims = [24,40,26];
 nRockCells = 3;
 scale = [1e3,1e3,50];
 

@@ -219,6 +219,7 @@ classdef SolidMechanicsContact < MeshTying
       if ~obj.activeSet.resetActiveSet
         isReset = false;
       else
+        % obj.state = obj.stateOld;
         toReset = obj.activeSet.curr(:) ~= ContactMode.open;
         obj.activeSet.curr(toReset) = ContactMode.stick;
         isReset = true;
@@ -229,8 +230,8 @@ classdef SolidMechanicsContact < MeshTying
 
     function goBackState(obj,dt)
       % reset state to beginning of time step
-      obj.state = obj.stateOld;
       updateActiveSet(obj);
+      obj.state = obj.stateOld;
       obj.activeSet.stateChange(:) = 0;
     end
 
@@ -411,6 +412,7 @@ classdef SolidMechanicsContact < MeshTying
         % displacement increment to check if this is the first newton
         % iteration
         usDiff = norm(us(usDof) - us_old(usDof));
+        slip = norm([obj.state.tangentialSlip([2*is-1 2*is])]);
 
 
         nodeMaster = obj.interfMesh.local2glob{1}(obj.interfMesh.msh(1).surfaces(im,:));
@@ -509,7 +511,7 @@ classdef SolidMechanicsContact < MeshTying
           asbDt.localAssembly(tDof(1),usDof,Anu_s);
 
           % A_tu (non linear term)
-          if norm(dgt) > slidingTol && usDiff > 100*eps
+          if slip > slidingTol && usDiff > 100*eps
             % compute only on slip terms with sliding large enough
             dtdgt = computeDerTracGap(obj,trac(1),dgt);
             Atu_m = MortarQuadrature.integrate(f2, Nmult_t,dtdgt,Nm_t,dJw);
@@ -518,7 +520,7 @@ classdef SolidMechanicsContact < MeshTying
             asbDt.localAssembly(tDof(2:3),usDof,-Atu_s);
 
             % A_tn (non linear term)
-            dtdtn = computeDerTracTn(obj,is,dgt);
+            dtdtn = computeDerTracTn(obj,dgt);
             Atn = MortarQuadrature.integrate(f1,Nmult_t,dtdtn,dJw);
             asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
           end
@@ -533,7 +535,7 @@ classdef SolidMechanicsContact < MeshTying
             MortarQuadrature.integrate(f1,Nmult_n,g_n,dJw);
 
           % rhs -(mu_t,t*_T) (non linear term)
-          tT_lim = computeLimitTraction(obj,is,dgt,trac,usDiff);
+          tT_lim = computeLimitTraction(obj,is,dgt,trac,slip);
 
 
           % rhs (mu_t,tT) tT and tT_lim in local coordinates (to be consistent with dof definition)
@@ -651,35 +653,33 @@ classdef SolidMechanicsContact < MeshTying
       % gt = obj.g_T(get_dof(nodeId));
 
       tauLim = obj.cohesion - tan(deg2rad(obj.phi))*sigma_n;
-
       dtdgt = tauLim*((eye(3)*norm(dgt)^2 - dgt*dgt')/(norm(dgt))^3);
 
     end
 
-    function dtdtn = computeDerTracTn(obj,is,dgt)
+    function dtdtn = computeDerTracTn(obj,dgt)
 
       tanPhi = tan(deg2rad(obj.phi));
 
-      if norm(dgt) > obj.activeSet.tol.sliding
-        % use available gap to properly compute traction
-        dtdtn = -tanPhi*(dgt/norm(dgt));
-      else
-        Rloc = obj.getRotationMatrix(is);
-        t = Rloc*obj.state.traction(getMultiplierDoF(obj,is));
-        % convert to global reference system
-        dtdtn = -tanPhi*(t/norm(t));
-      end
+      % if slip > obj.activeSet.tol.sliding
+      % use available gap to properly compute traction
+      dtdtn = -tanPhi*(dgt/norm(dgt));
+      % else
+      %   Rloc = obj.getRotationMatrix(is);
+      %   t = Rloc*obj.state.traction(getMultiplierDoF(obj,is));
+      %   % convert to global reference system
+      %   dtdtn = -tanPhi*(t/norm(t));
     end
 
 
-    function tracLim = computeLimitTraction(obj,is,dgt,t,duNorm)
+    function tracLim = computeLimitTraction(obj,is,dgt,t,slip)
 
       % return the limit traction vector in the global frame
       t_N = t(1);
       tauLim = obj.cohesion - tan(deg2rad(obj.phi))*t_N;
 
 
-      if norm(dgt) > obj.activeSet.tol.sliding && duNorm > 100*eps
+      if slip > obj.activeSet.tol.sliding
         tracLim = tauLim*(dgt/norm(dgt));
       else
         % compute tangential traction from traction (global coordinates!)
@@ -688,9 +688,10 @@ classdef SolidMechanicsContact < MeshTying
         t = Rt*t(2:3);
         tracLim =  tauLim*(t/norm(t));
       end
-    end
 
+    end
   end
+
 
   methods (Static)
 

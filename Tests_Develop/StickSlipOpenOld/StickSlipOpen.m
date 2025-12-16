@@ -12,17 +12,11 @@ cd(scriptDir)
 
 
 % set mesh 
-X = 5; Y = 10; Z = 15;
-nx1 = 4; ny1 = 16; nz1 = 18;
-b1 = BlockStructuredMesh([0,0.5*X;0 Y;0 Z],[nx1,ny1,nz1],1);
+b1 = BlockStructuredMesh([0,4;0 20;0 20],[4 10 10],1);
 meshL = processGeometry(b1);
 
-nx2 = 4; ny2 = 18; nz2 = 20;
-b2 = BlockStructuredMesh([0.5*X,X;0 Y;0 Z],[nx2, ny2, nz2],1);
+b2 = BlockStructuredMesh([4,8;0 20;0 20],[4 10 10],1);
 meshR = processGeometry(b2);
-
-assert(mod(ny1,2) == 0 && mod(ny2,2)==0,"Number of elements along y axis " + ...
-  "must be even to correctly apply symmetric bcs")
 
 % define model 
 
@@ -39,13 +33,11 @@ gridR = struct('topology',meshR,'cells',elemsR,'faces',facesR);
 matR = Materials("materials.xml");
 
 % Create and set the print utility
-printUtilsL = OutState(meshL,"folderName","OUT/left","timeList",0:20,...
+printUtilsL = OutState(meshL,"folderName","OUT/left","timeList",[0,1,2,3,4,5,6,7,8,9,10],...
                        "writeVtk",1,"flagMatFile",1,"matFileName","OUT/left");
-printUtilsR = OutState(meshR,"folderName","OUT/right","timeList",0:20,...
+printUtilsR = OutState(meshR,"folderName","OUT/right","timeList",[0,1,2,3,4,5,6,7,8,9,10],...
                        "writeVtk",1,"flagMatFile",1,"matFileName","OUT/right");
 % Create an object of the "Boundaries" class 
-setBC(Y,meshL,meshR)
-
 bcL = Boundaries("bcLeft.xml",gridL);
 bcR = Boundaries("bcRight.xml",gridR);
 
@@ -69,7 +61,7 @@ domains = [domainL; domainR];
 interfaces = buildInterfaces('StickSlipOpen.xml',domains);
 %interfaces = buildInterfaces('Stick.xml',domains);
 
-tIni = -1;
+tIni = -2;
 interfaces{1}.state.traction(1:3:end) = tIni;
 interfaces{1}.state.iniTraction(1:3:end) = tIni;
 interfaces{1}.stateOld.iniTraction(1:3:end) = tIni;
@@ -80,26 +72,3 @@ solv = ActiveSetContactSolver(simParam,domains,interfaces,10);
 %solv = MultidomainFCSolver(simParam,domains,interfaces);
 solv.NonLinearLoop();
 solv.finalizeOutput();
-
-
-
-function setBC(Y,meshL,meshR)
-
-% write bc files to apply y contraint on the right node location
-targetCoord = 0.5*Y;
-nL = all([abs(meshL.coordinates(:,2)-targetCoord) < 1e-4,...
-          abs(meshL.coordinates(:,3)) < 1e-4],2);
-
-nR = all([abs(meshR.coordinates(:,2)-targetCoord) < 1e-4,...
-          abs(meshR.coordinates(:,3)) < 1e-4],2);
-
-strBCL = readstruct("bcLeft.xml",AttributeSuffix = "");
-strBCL.BC(2).BCentities.bcList = find(nL);
-writestruct(strBCL,"bcLeft.xml",AttributeSuffix="");
-
-strBCR = readstruct("bcRight.xml",AttributeSuffix = "");
-strBCR.BC(2).BCentities.bcList = find(nR);
-writestruct(strBCR,"bcRight.xml",AttributeSuffix="");
-
-
-end

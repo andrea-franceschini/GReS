@@ -8,7 +8,7 @@ in a nonConforming simulation.
   <simParam>
     <Time
           Start="0."
-          End ="9.8"
+          End ="10.0"
           DtInit="0.25"
           DtMin ="1e-4"
           DtMax ="0.5"
@@ -63,7 +63,7 @@ in a nonConforming simulation.
               />
 
       <Coulomb
-               cohesion = "0.1"
+               cohesion = "0.0"
                frictionAngle = "30" />
 
       <ActiveSet 
@@ -72,9 +72,9 @@ in a nonConforming simulation.
 
         <Tolerances
                     sliding = "1e-5"
-                    normalGap = "1e-6"
-                    normalTraction = "-1e-2"
-                    tangentialViolation = "1e-4"
+                    normalGap = "1e-4"
+                    normalTraction = "-1e-4"
+                    tangentialViolation = "1e-3"
                     minLimitTraction = "1e-4"
                     areaChange = "1e-4"
                     maxActiveSetChange = "8"
