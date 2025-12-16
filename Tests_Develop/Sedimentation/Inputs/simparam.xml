@@ -5,9 +5,9 @@
     <Time 
           Start="0."
           End ="1.e2"
-          DtInit="0.5"
-          DtMin ="0.5"
-          DtMax ="25"          
+          DtInit="1.e1"
+          DtMin ="1.e0"
+          DtMax ="1.e2"          
           incrementFactor = "1.1"
           choppingFactor = "Default" />
 

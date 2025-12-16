@@ -63,7 +63,7 @@ classdef structGrid
     function npts = getNumberPoints(obj,varargin)
       % Function to return the size of the block
       if (nargin==1)
-        npts = obj.npoints;
+        npts = prod(obj.npoints);
         return;
       end
       switch lower(varargin{1})
@@ -172,6 +172,8 @@ classdef structGrid
     % % % %   nth = obj.mesh.cells(:, [3, 4, 8, 7]);
     % % % % end
 
+    
+
 
 
   end
@@ -215,8 +217,11 @@ classdef structGrid
         return
       end
 
+      ndivX = obj.npoints(1);
+      ndivXY = prod(obj.npoints(1:2));
+
       % nelm = (ndiv(1)*ndiv(2))*(ndivZ-Kpos+1);
-      nelm = (obj.npoints(1)*obj.npoints(2))*(obj.ncells(3)-Kpos+1);
+      nelm = prod(obj.ncells(1:2))*(obj.ncells(3)-Kpos+1);
       conect = zeros(nelm,8);
       pos=1;
       for k=Kpos:obj.ncells(3)
@@ -235,6 +240,8 @@ classdef structGrid
         end
       end
     end
+
+    
 
     function conect = getFaces2Cell(obj,Kpos)
       % Return the conectivities from the layer kpos

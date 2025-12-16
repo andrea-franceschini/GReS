@@ -14,6 +14,7 @@ classdef gridForSedimentation < handle
     columnsHeight (:,:) uint64
     mapCellIds (:,:,:) uint64
     numberActiveCells uint64
+    
 
 
   end
@@ -122,7 +123,7 @@ classdef gridForSedimentation < handle
           nelm = prod(obj.ncells(1:2));
           id=zeros(nelm,1,"uint64");
           faceArea=zeros(nelm,1);
-          dh(1:nelm,1)=(obj.grid.z(2)-obj.grid.z(1))/2;
+          dh(1:nelm,1)=(obj.grid.Z(2)-obj.grid.Z(1))/2;
           count=1;
           for i=1:obj.ncells(1)
             for j=1:obj.ncells(2)
@@ -160,9 +161,31 @@ classdef gridForSedimentation < handle
       ncells = sum(sum(obj.columnsHeight));
     end
 
-    % function neigh = getNeighbordCells(obj,cellId)
-    % 
-    % end
+
+
+
+    function coord = getCoordCenter(obj,cellIds)
+      % Function to return the size of the block
+
+      % Return the coordinates from the layer kpos
+      tmp = zeros(obj.numberActiveCells,3);
+      count=1;
+      for k=1:obj.ncells(3)
+        ztmp = obj.grid.centerZ(k);
+        for j=1:obj.ncells(2)
+          ytmp = obj.grid.centerY(j);
+          for i=1:obj.ncells(1)
+            tmp(count,1)=obj.grid.centerX(i);
+            tmp(count,2)=ytmp;
+            tmp(count,3)=ztmp;
+            count=count+1;
+          end
+        end
+      end
+      coord=tmp(cellIds,:);
+    end
+
+
 
     function vols = computeVols(obj)
       segmX = reshape(diff(obj.grid.X),3,1,1);

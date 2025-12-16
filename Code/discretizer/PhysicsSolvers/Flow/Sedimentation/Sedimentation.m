@@ -3,6 +3,7 @@ classdef Sedimentation < PhysicsSolver
 
   properties
      mapSediments = SedimentsMap()
+     grid gridForSedimentation
 
      facesNeigh (:,2) uint64
      trans (:,1)
@@ -33,21 +34,26 @@ classdef Sedimentation < PhysicsSolver
         error("Domain for the simulation not defined!");
       end
       obj.nmat = length(obj.materials.db)-1;
-      % obj.mesh = gridForSedimentation( "XML",input.domain, ...
+      % obj.grid = gridForSedimentation( "XML",input.domain, ...
       %   "Materiais",obj.materials.matMap);
-      obj.mesh = gridForSedimentation( "XML",input.domain, ...
+      % obj.grid = gridForSedimentation( "XML",input.domain, ...
+      %   "NumMateriais",obj.nmat);
+      obj.grid = gridForSedimentation( "XML",input.domain, ...
         "NumMateriais",obj.nmat);
+
+      % Initialize Mesh.
+      prepareMesh(obj);
 
             
       % Initialize the sedimentation control
-      obj.mapSediments = SedimentsMap(obj.mesh.ncells(1:2),input.sediment_map);
+      obj.mapSediments = SedimentsMap(obj.grid.ncells(1:2),input.sediment_map);
       % obj.mapSediments = SedimentsMap(obj.grid.ncells(1:2),input.sediment_map);
 
       % Initialize the BCs
       obj.prepareBC(input.boundary);
 
       % Initialize the states
-      obj.getState().data.(obj.getField()) = zeros(obj.mesh.getNumberCells,1);
+      obj.getState().data.(obj.getField()) = zeros(obj.grid.getNumberCells,1);
 
       % Initialize the Transmissibility.
       prepareSystem(obj);
@@ -60,6 +66,12 @@ classdef Sedimentation < PhysicsSolver
       % Compute the initial system.
       computeHPInitial(obj);
 
+      % Creating the output format
+      if isfield(input.output,"file")
+        prepareOutput(obj,input.output.file);
+      end
+
+
 
     end
 
@@ -68,7 +80,7 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.rhs{obj.fieldId} = computeRhs(obj,dt);
     end
 
-    function applyBC(obj,bcId,t) % <---------HERE
+    function applyBC(obj,bcId,t)
       if ~BCapplies(obj,bcId)
         return
       end
@@ -104,15 +116,41 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function updateState(obj,solution)
-      obj.Solver.updateState(solution);
+      ents = obj.grid.getActiveCells;
+      state = getState(obj);
+      state.data.pressure(ents) = state.data.pressure(ents) + solution;
     end
 
     function [cellData,pointData] = writeVTK(obj,fac,t)
-      [cellData,pointData] = obj.Solver.writeVTK(fac,t);
+      % append state variable to output structure
+      sOld = getStateOld(obj);
+      sNew = getState(obj);
+
+      p = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
+
+      outPrint = finalizeState(obj,p,t);
+      [cellData,pointData] = buildPrintStruct(obj,outPrint);
     end
 
-    function writeMatFile(obj,fac,tID)
-      obj.Solver.writeMatFile(fac,tID);
+    function states = finalizeState(obj,p,t)
+      % Compute the posprocessing variables for the module.
+      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      if gamma>0
+        coords = obj.grid.getCoordCenter(obj.grid.getActiveCells);
+        states.potential = p + gamma*coords(:,3);
+        states.head = coords(:,3)+p/gamma;
+      end
+      % mob = (1/obj.materials.getFluid().getDynViscosity());
+      % states.flux = computeFlux(obj,p,mob,t);
+      states.perm = getPerm(obj,obj.grid.getActiveCells);
+      states.pressure = p;
+      % states.mass = checkMassCons(obj,mob,potential);
+    end
+
+    function writeMatFile(obj,fac,tID)      
+      pOld = getStateOld(obj,obj.getField());
+      pCurr = getState(obj,obj.getField());
+      obj.domain.outstate.results(tID).pressure = pCurr*fac+pOld*(1-fac);
     end
 
     function [dof,vals] = getBC(obj,id,t)
@@ -125,7 +163,7 @@ classdef Sedimentation < PhysicsSolver
       % point in the domain. (For future, have a way to pass this
       % information).
       bc = obj.bcs.db(id);
-      [cellId, faceArea, dz] = obj.mesh.getBordCell(bc.surface);
+      [cellId, faceArea, dz] = obj.grid.getBordCell(bc.surface);
       p=obj.domain.state.data.pressure(cellId);
       switch lower(bc.surface)
         case {"x0","xm"}
@@ -144,18 +182,14 @@ classdef Sedimentation < PhysicsSolver
       end
 
       switch lower(bc.type)
-        case 'newmann'
+        case 'neumann'
           v=bc.data.*ones(length(cellId),1);
           vals = sum(vecN.*v,2);
         case 'dirichlet'
           gamma = obj.materials.getFluid().getFluidSpecWeight();
           mu = obj.materials.getFluid().getDynViscosity();
-          permCell=0;
-          for mat=1:obj.nmat
-            tmpMat=obj.materials.getMaterial(mat).PorousRock.getPermVoigt();
-            permCell = permCell+obj.mesh.matfrac(cellId,mat)*tmpMat(axis);
-          end
-          dirJ = 1/mu*(faceArea.*permCell);
+          permCell = getPerm(obj,cellId);
+          dirJ = 1/mu*(faceArea.*permCell(:,axis));
           potential = p - bc.data + gamma*dz;
           q = dirJ.*potential;
           vals = [dirJ,q];
@@ -167,7 +201,7 @@ classdef Sedimentation < PhysicsSolver
         %   v(v<=0)=0.;
         %   mu = obj.materials.getFluid().getDynViscosity();
         %   tr = obj.trans(faceID);
-        %   dz = obj.mesh.cellCentroid(cellId,3) - obj.faces.faceCentroid(faceID,3);
+        %   dz = obj.grid.cellCentroid(cellId,3) - obj.faces.faceCentroid(faceID,3);
         %   q = 1/mu*tr.*(p(cellId) - v) + gamma*dz;
         %   vals = [1/mu*tr,q];
       end
@@ -197,7 +231,7 @@ classdef Sedimentation < PhysicsSolver
       pOld = getStateOld(obj,obj.getField());
 
       lw = 1/obj.materials.getFluid().getDynViscosity();
-      ents = obj.mesh.mapCellIds(:);
+      ents = obj.grid.mapCellIds(:);
       % ents = obj.dofm.getActiveEntities(obj.fieldId);
 
       if ~obj.domain.simparams.isTimeDependent
@@ -219,7 +253,7 @@ classdef Sedimentation < PhysicsSolver
 
     function computeInitialStiffMat(obj,lw)
       % Compute the Stiffness Matrix for the initial grid
-      ncells = obj.mesh.numberActiveCells;
+      ncells = obj.grid.numberActiveCells;
       tmpVec = lw.*obj.trans;
       sumDiagTrans = accumarray(obj.facesNeigh(:),repmat(tmpVec,[2,1]),[ncells,1]);
       obj.H = sparse([obj.facesNeigh(:,1); obj.facesNeigh(:,2); (1:ncells)'],...
@@ -228,7 +262,7 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function computeInitialCapMat(obj)
-      ncells = obj.mesh.numberActiveCells;
+      ncells = obj.grid.numberActiveCells;
       beta = obj.materials.getFluid().getFluidCompressibility();
       PVal = obj.rockCmCell+beta*obj.poroCell;
       obj.P = PVal.*speye(ncells);
@@ -238,7 +272,7 @@ classdef Sedimentation < PhysicsSolver
       % poroMat = zeros(nSubCells,1);
       % alphaMat = zeros(nSubCells,1);
       % beta = obj.materials.getFluid().getFluidCompressibility();
-      % for m = 1:obj.mesh.nCellTag
+      % for m = 1:obj.grid.nCellTag
       %   if ~ismember(m,obj.dofm.getTargetRegions([obj.getField(),"displacements"]))
       %     % compute alpha only if there's no coupling in the
       %     % subdomain
@@ -247,8 +281,8 @@ classdef Sedimentation < PhysicsSolver
       %   poroMat(m) = obj.materials.getMaterial(m).PorousRock.getPorosity();
       % end
       % % (alpha+poro*beta)
-      % PVal = alphaMat(obj.mesh.cellTag(subCells)) + beta*poroMat(obj.mesh.cellTag(subCells));
-      % PVal = PVal.*obj.mesh.cellVolume(subCells);
+      % PVal = alphaMat(obj.grid.cellTag(subCells)) + beta*poroMat(obj.grid.cellTag(subCells));
+      % PVal = PVal.*obj.grid.cellVolume(subCells);
       % nDoF = obj.dofm.getNumbDoF(obj.fieldId);
       % [~,~,dof] = unique(subCells);
       % obj.P = sparse(dof,dof,PVal,nDoF,nDoF);
@@ -256,12 +290,61 @@ classdef Sedimentation < PhysicsSolver
 
     function gTerm = finalizeRHSGravTerm(obj,lw)
       gTerm = accumarray(obj.facesNeigh(:), ...
-        [lw.*obj.rhsGrav; -lw.*obj.rhsGrav],[obj.mesh.numberActiveCells,1]);
-      gTerm = gTerm(obj.mesh.getActiveCells);
+        [lw.*obj.rhsGrav; -lw.*obj.rhsGrav],[obj.grid.numberActiveCells,1]);
+      gTerm = gTerm(obj.grid.getActiveCells);
     end
 
 
 
+    function applyNeuBC(obj,bcId,bcDofs,bcVals)
+      if ~BCapplies(obj,bcId)
+        return
+      end
+
+      % Base application of a Boundary condition
+      if ~strcmp(obj.bcs.getVariable(bcId),obj.getField)
+        return
+      end      
+
+      % Base application of Neumann boundary condition to the rhs.
+      % bc values are subtracted since we solve du = J\(-rhs)
+      bcId = obj.fieldId;
+      obj.domain.rhs{bcId}(bcDofs) = obj.domain.rhs{bcId}(bcDofs) - bcVals;
+    end
+
+    function applyDirBC(obj,~,bcDofs,bcVals)
+      % apply Dirichlet BCs
+      % overrides the base method implemented in PhysicsSolver
+      % ents: id of constrained faces without any dof mapping applied
+      % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
+
+      assert(size(bcVals,2)==2,'Invalid matrix size for BC values');
+      nDoF = obj.grid.numberActiveCells;
+      bcDofsJ = nDoF*(bcDofs-1) + bcDofs;
+      obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) = ...
+        obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) + bcVals(:,1);
+      obj.domain.rhs{obj.fieldId}(bcDofs) = ...
+        obj.domain.rhs{obj.fieldId}(bcDofs) + bcVals(:,2);
+    end
+
+    function [cellStr,pointStr] = buildPrintStruct(obj,state)
+      pointStr = [];
+      % pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);
+      % pointStr(1).name = 'flux';
+      % pointStr(1).data = state.flux;
+
+      cellStr = repmat(struct('name', 1, 'data', 1), 2, 1);
+      cellStr(1).name = 'pressure';
+      cellStr(1).data = state.pressure;
+      cellStr(2).name = 'permeability';
+      cellStr(2).data = state.perm;
+      if isfield(state,"potential")
+        cellStr(3).name = 'potential';
+        cellStr(3).data = state.potential;
+        cellStr(4).name = 'piezometric head';
+        cellStr(4).data = state.head;
+      end
+    end
 
     function out = isLinear(obj)
       out = true;
@@ -269,6 +352,21 @@ classdef Sedimentation < PhysicsSolver
   end
 
   methods  (Access = private)
+    function prepareMesh(obj)
+      lnk = obj.grid;
+
+      obj.mesh.nDim = 3;
+      obj.mesh.nCells = lnk.getNumberCells;
+      obj.mesh.nNodes = lnk.grid.getNumberPoints;
+      obj.mesh.cellVTKType = 12*ones(obj.mesh.nCells,1);
+      obj.mesh.cellNumVerts = 8*ones(obj.mesh.nCells,1);
+      obj.mesh.cellTag = 8*ones(obj.mesh.nCells,1);
+
+      [obj.mesh.coordinates,obj.mesh.cells] = lnk.grid.getMesh(1);
+      obj.mesh.meshType = "Unstructured";
+    end
+
+
     function prepareBC(obj,data)
 
       if ~isfield(data,"BC")
@@ -300,35 +398,35 @@ classdef Sedimentation < PhysicsSolver
 
     function prepareSystem(obj)
       % Function to create transmissibility for the initial grid      
-      segmX = diff(obj.mesh.grid.X);
-      segmY = diff(obj.mesh.grid.Y);
-      segmZ = diff(obj.mesh.grid.Z);
+      segmX = diff(obj.grid.grid.X);
+      segmY = diff(obj.grid.grid.Y);
+      segmZ = diff(obj.grid.grid.Z);
 
-      ncells = prod(obj.mesh.ncells);
+      ncells = prod(obj.grid.ncells);
       cellNeigh = zeros(ncells,6,'uint64');
       cellAreas = zeros(ncells,3);
-      for k = 1:obj.mesh.ncells(3)
-        for i = 1:obj.mesh.ncells(1)
-          for j = 1:obj.mesh.ncells(2)
-            cellId = obj.mesh.mapCellIds(i, j, k);
+      for k = 1:obj.grid.ncells(3)
+        for i = 1:obj.grid.ncells(1)
+          for j = 1:obj.grid.ncells(2)
+            cellId = obj.grid.mapCellIds(i, j, k);
             % Neighbor Mapping:
             if i > 1
-                cellNeigh(cellId, 3) = obj.mesh.mapCellIds(i-1,j,k);
+                cellNeigh(cellId, 3) = obj.grid.mapCellIds(i-1,j,k);
             end
-            if i < obj.mesh.ncells(1)
-                cellNeigh(cellId, 4) = obj.mesh.mapCellIds(i+1,j,k);
+            if i < obj.grid.ncells(1)
+                cellNeigh(cellId, 4) = obj.grid.mapCellIds(i+1,j,k);
             end
             if j > 1
-                cellNeigh(cellId, 1) = obj.mesh.mapCellIds(i,j-1,k);
+                cellNeigh(cellId, 1) = obj.grid.mapCellIds(i,j-1,k);
             end
-            if j < obj.mesh.ncells(2)
-                cellNeigh(cellId, 2) = obj.mesh.mapCellIds(i,j+1,k);
+            if j < obj.grid.ncells(2)
+                cellNeigh(cellId, 2) = obj.grid.mapCellIds(i,j+1,k);
             end
             if k > 1
-                cellNeigh(cellId, 5) = obj.mesh.mapCellIds(i,j,k-1);
+                cellNeigh(cellId, 5) = obj.grid.mapCellIds(i,j,k-1);
             end
-            if k < obj.mesh.ncells(3)
-                cellNeigh(cellId, 6) = obj.mesh.mapCellIds(i,j,k+1);
+            if k < obj.grid.ncells(3)
+                cellNeigh(cellId, 6) = obj.grid.mapCellIds(i,j,k+1);
             end
             
             % Face Area
@@ -340,19 +438,14 @@ classdef Sedimentation < PhysicsSolver
       end
 
       % Computing the permeability
-      permCell = zeros(ncells,3);
-      for mats=1:obj.nmat
-        tmpMat=obj.materials.getMaterial(mats).PorousRock.getPermVoigt();
-        permCell=permCell+tmpMat(1:3).*obj.mesh.matfrac(:,mats);
-      end
-      ActiveCells = obj.mesh.mapCellIds ~= 0;
-      permCell=permCell(ActiveCells,:);
+      permCell = getPerm(obj,obj.grid.getActiveCells);
+      ActiveCells = obj.grid.mapCellIds ~= 0;
 
       % correcting matfrac, cleaning fractions for non-existent cells
-      obj.mesh.matfrac(~ActiveCells(:),:)=0.;
+      obj.grid.matfrac(~ActiveCells(:),:)=0.;
 
       % temporay variables
-      maxFaces = (obj.mesh.ncells(1)+1)*(obj.mesh.ncells(2)+1)*(obj.mesh.ncells(3)+1);
+      maxFaces = (obj.grid.ncells(1)+1)*(obj.grid.ncells(2)+1)*(obj.grid.ncells(3)+1);
       tmpNeigh = zeros(maxFaces,2,'uint64');
       isActive = zeros(maxFaces,1,'logical');
       tmpTrans = zeros(maxFaces,1);
@@ -362,8 +455,8 @@ classdef Sedimentation < PhysicsSolver
       % Computing transmissibilities and RHS related to the gravity term
       count = 1;
       for cell=1:ncells
-        [~,~,zNeiA] = obj.mesh.getIJKfromCellID(cell);
-        zNeiA=obj.mesh.grid.centerZ(zNeiA);
+        [~,~,zNeiA] = obj.grid.getIJKfromCellID(cell);
+        zNeiA=obj.grid.grid.centerZ(zNeiA);
         for face=1:6
           neighbor = cellNeigh(cell, face);
           if (neighbor ~= 0) && (cell < neighbor)
@@ -379,8 +472,8 @@ classdef Sedimentation < PhysicsSolver
 
             % Gravity contribution.
             if gamma > 0
-              [~,~,zNeiB] = obj.mesh.getIJKfromCellID(neighbor);
-              zNeiB=obj.mesh.grid.centerZ(zNeiB);
+              [~,~,zNeiB] = obj.grid.getIJKfromCellID(neighbor);
+              zNeiB=obj.grid.grid.centerZ(zNeiB);
               tmpRhs(count) = gamma*tmpTrans(count)*(zNeiA-zNeiB);
             end
 
@@ -396,8 +489,23 @@ classdef Sedimentation < PhysicsSolver
       obj.rhsGrav=tmpRhs(isActive);
     end
 
+    function prepareOutput(obj,data)
+      tmp = OutState(obj.mesh,data);
+
+      obj.domain.outstate.modTime = tmp.modTime;
+      obj.domain.outstate.timeList = tmp.timeList;
+      obj.domain.outstate.results = tmp.results;
+      obj.domain.outstate.writeSolution = tmp.writeSolution;
+      obj.domain.outstate.timeID = tmp.timeID;      
+      obj.domain.outstate.writeVtk = tmp.writeVtk;
+      obj.domain.outstate.matFileName = tmp.matFileName;
+      obj.domain.outstate.vtkFileName = tmp.vtkFileName;
+
+      obj.domain.outstate.VTK = VTKOutput(obj.mesh,obj.domain.outstate.vtkFileName);
+    end
+
     function computeHPInitial(obj)
-      ncells = obj.mesh.numberActiveCells;
+      ncells = obj.grid.numberActiveCells;
       mu = obj.materials.getFluid().getDynViscosity();
 
       % Computing the initial H matrix
@@ -408,28 +516,37 @@ classdef Sedimentation < PhysicsSolver
         [-tmpVec; -tmpVec; sumDiagTrans], ncells, ncells);
 
       % Computing the initial P matrix
-      maxcells = prod(obj.mesh.ncells);
+      maxcells = prod(obj.grid.ncells);
       alpha=zeros(maxcells,1);
       poro=zeros(maxcells,1);
       for mats=1:obj.nmat
         tmpMat=obj.materials.getMaterial(mats).ConstLaw.getRockCompressibility();
-        alpha=alpha+tmpMat.*obj.mesh.matfrac(:,mats);
+        alpha=alpha+tmpMat.*obj.grid.matfrac(:,mats);
         tmpMat=obj.materials.getMaterial(mats).PorousRock.getPorosity();
-        poro=poro+tmpMat.*obj.mesh.matfrac(:,mats);
+        poro=poro+tmpMat.*obj.grid.matfrac(:,mats);
       end
 
       % Mapping and Reorder
-      mapCellsOn = obj.mesh.mapCellIds ~= 0;
-      map = obj.mesh.mapCellIds(mapCellsOn);
+      mapCellsOn = obj.grid.mapCellIds ~= 0;
+      map = obj.grid.mapCellIds(mapCellsOn);
       alpha=alpha(mapCellsOn);
       alpha=alpha(map);
       poro=poro(mapCellsOn);
       poro=poro(map);
-      volsCell = obj.mesh.computeVols();
+      volsCell = obj.grid.computeVols();
       
       beta = obj.materials.getFluid().getFluidCompressibility();
       PVal = (alpha+beta*poro).*volsCell;
       obj.P = PVal.*speye(ncells);
+    end
+
+    function permCells = getPerm(obj,cellId)
+      % nelm=length(cellId);
+      permCells=0;
+      for mat=1:obj.nmat
+        tmpMat=obj.materials.getMaterial(mat).PorousRock.getPermVoigt();
+        permCells = permCells+obj.grid.matfrac(cellId,mat)*tmpMat(1:3);
+      end
     end
 
   end

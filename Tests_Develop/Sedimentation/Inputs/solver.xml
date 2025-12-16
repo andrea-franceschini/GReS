@@ -15,27 +15,27 @@
     </domain>
     <boundary>
       <BC name = "BordA"
-          type = "Newmann"
+          type = "Neumann"
           surface = "X0"
           variable = "pressure"
           value = "0.,0.,0." />
       <BC name = "BordB"
-          type = "Newmann"
+          type = "Neumann"
           surface = "XM"
           variable = "pressure"
           value = "0.,0.,0." />
       <BC name = "BordC"
-          type = "Newmann"
+          type = "Neumann"
           surface = "Y0"
           variable = "pressure"
           value = "0.,0.,0." />
       <BC name = "BordD"
-          type = "Newmann"
+          type = "Neumann"
           surface = "YM"
           variable = "pressure"
           value = "0.,0.,0." />
       <BC name = "Bottom"
-          type = "Newmann"
+          type = "Neumann"
           surface = "Z0"
           variable = "pressure"
           value = "0.,0.,0." />
@@ -55,7 +55,7 @@
         sediment_rate = "Inputs/DomainBot/bottomLayer.vtk"/>
         sediment_rate = "0.01,0.01,0.01,0.01"/>
      -->
-    <Output outputFile = "Results/Dam"/>
+    <output file = "Inputs/output.xml"/>
   </Sedimentation>
 </Solver>
 

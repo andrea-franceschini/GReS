@@ -28,5 +28,4 @@ Solver = FCSolver(simParam,domain);
 % Solve the problem
 [simState] = Solver.NonLinearLoop();
 
-% Finalize the print utility
-printUtils.finalize()
+domain.outstate.finalize()
