@@ -47,25 +47,40 @@ function [x,flag] = Solve(obj,A,b,time)
       case 'gmres'
 
          % Solve the system by GMRES
-         if obj.DEBUGflag
-            [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_LEFT(Amat,b,obj.params.restart,obj.params.tol,...
-                                                                     obj.params.maxit/obj.params.restart,obj.MfunL,obj.MfunR,obj.x0);
-         else
-            [x,flag,obj.params.lastRelres,iter1,resvec] = gmres(Amat,b,obj.params.restart,obj.params.tol,...
-                                                                     obj.params.maxit/obj.params.restart,obj.MfunL,obj.MfunR,obj.x0);
-         end
+         [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.params.tol,...
+                                                                   obj.params.maxit/obj.params.restart,obj.MfunL,obj.MfunR,obj.x0);
          obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
+         
+         if obj.params.lastRelres > obj.params.tol
+            obj.notSuffTol(length(obj.notSuffTol)+1) = obj.params.tol/obj.params.lastRelres;
+
+            [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.params.tol*obj.notSuffTol(end)*0.1,...
+                                                                      obj.params.maxit/obj.params.restart,obj.MfunL,obj.MfunR,x);
+            obj.params.iter = obj.params.iter + (iter1(1) - 1) * obj.params.restart + iter1(2);
+         end
+
 
       case 'sqmr'
 
          % Solve the system by SQMR
          Afun = @(x) Amat*x;
          [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.params.tol,obj.params.maxit,obj.MfunL,obj.MfunR,obj.x0,obj.DEBUGflag);
+
+         if obj.params.lastRelres > obj.params.tol
+            obj.notSuffTol(length(obj.notSuffTol)+1) = obj.params.tol/obj.params.lastRelres;
+            if obj.DEBUGflag
+               fprintf('recomputing solution\n');
+            end
+            
+            [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.params.tol,obj.params.maxit,obj.MfunL,obj.MfunR,obj.x0,obj.DEBUGflag);
+         end
    end
 
    Tend = toc(startT);
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
+   obj.aIter = obj.aIter + obj.params.iter;
+   obj.maxIter = max(obj.maxIter,obj.params.iter);
 
    % Did not converge, if prec not computed for it try again
    if(flag == 1 && obj.params.iterSinceLastPrecComp > 0)

@@ -54,7 +54,7 @@ classdef FCSolver < handle
          if gresLog().getVerbosity > 2
             fprintf('Using default values for linsolver\n');
          end
-         obj.linsolver = linearSolver(obj.domain,[]);
+         obj.linsolver = linearSolver(obj.domain);
       end
     end
 

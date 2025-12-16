@@ -62,7 +62,7 @@
 		condmax_emin="1e100"
 		maxwgt_emin="1e100"
 		prec_emin="1"
-		solv_emin="4"
+		solv_emin="0"
 		min_lfil="0"
 		max_lfil="20"
 		D_lfil="5"

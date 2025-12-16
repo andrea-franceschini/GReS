@@ -25,6 +25,9 @@ classdef linearSolver < handle
       % starting vector
       x0 = []
 
+      % vector containing the insufficient tolerances
+      notSuffTol = []
+
       % Solver Type
       SolverType
 
@@ -67,7 +70,7 @@ classdef linearSolver < handle
    methods (Access = public)
       
       % Constructor Function
-      function obj = linearSolver(domainin,interfacein,linsolverXML)
+      function obj = linearSolver(domainin,varargin)
          
          % Check if chronos is available
          ChronosDir = fullfile(gres_root,'..','aspamg_matlab','sources');
@@ -82,6 +85,12 @@ classdef linearSolver < handle
                   fprintf('multiPhysics not yet supported\nFall back to matlab solver\n');
                end
                return
+            end
+
+            if nargin >= 2
+               interfacein = varargin{1};
+            else
+               interfacein = ones(1);
             end
 
             obj.domain = domainin;
@@ -110,7 +119,7 @@ classdef linearSolver < handle
             % Read XML
             if nargin > 2
                % Use input values
-               data = readstruct(linsolverXML,AttributeSuffix="");
+               data = readstruct(varargin{2},AttributeSuffix="");
             else
                % Get default values
                if obj.phys == 0
