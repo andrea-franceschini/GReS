@@ -412,8 +412,6 @@ classdef SolidMechanicsContact < MeshTying
         % displacement increment to check if this is the first newton
         % iteration
         usDiff = norm(us(usDof) - us_old(usDof));
-        slip = norm([obj.state.tangentialSlip([2*is-1 2*is])]);
-
 
         nodeMaster = obj.interfMesh.local2glob{1}(obj.interfMesh.msh(1).surfaces(im,:));
         umDof = dofMaster.getLocalDoF(fldM,nodeMaster);
@@ -460,9 +458,16 @@ classdef SolidMechanicsContact < MeshTying
         g_n = -obj.state.gap(3*is-2);
 
         % tangential slip (quasi-static coulomb law) in global coords
-        tangDofs = [3*is-1 3*is];
-        dgt = (obj.state.gap(tangDofs)-obj.stateOld.gap(tangDofs));
+        tangDofs1 = [2*is-1 2*is];
+        tangDofs2 = [3*is-1 3*is];
+        slip = obj.state.tangentialSlip(tangDofs1);
+        dgt = obj.state.gap(tangDofs2)-obj.stateOld.gap(tangDofs2);
         dgt = R(:,2:3)*dgt;
+        slip = R(:,2:3)*slip;
+        slipNorm = norm(slip);
+
+        % slip is stabilized while dgt does not incorporate the stabilizing
+        % contribution, hence can be non zero even for new slip elements
 
         % A_us
         Aun_m =  MortarQuadrature.integrate(f1,Nm_n,Nmult_n,dJw);
@@ -511,7 +516,7 @@ classdef SolidMechanicsContact < MeshTying
           asbDt.localAssembly(tDof(1),usDof,Anu_s);
 
           % A_tu (non linear term)
-          if slip > slidingTol && usDiff > 100*eps
+          if slipNorm > slidingTol && usDiff > 100*eps
             % compute only on slip terms with sliding large enough
             dtdgt = computeDerTracGap(obj,trac(1),dgt);
             Atu_m = MortarQuadrature.integrate(f2, Nmult_t,dtdgt,Nm_t,dJw);
@@ -535,7 +540,7 @@ classdef SolidMechanicsContact < MeshTying
             MortarQuadrature.integrate(f1,Nmult_n,g_n,dJw);
 
           % rhs -(mu_t,t*_T) (non linear term)
-          tT_lim = computeLimitTraction(obj,is,dgt,trac);
+          tT_lim = computeLimitTraction(obj,is,dgt,trac,slipNorm);
 
 
           % rhs (mu_t,tT) tT and tT_lim in local coordinates (to be consistent with dof definition)
@@ -611,6 +616,9 @@ classdef SolidMechanicsContact < MeshTying
       H([dofOpen;dofSlip],:) = 0;
       H(:,[dofOpen;dofSlip]) = 0;
       rhsH = -H*(obj.state.traction-obj.state.iniTraction);
+      % check that jump stabilizing terms are properly removed
+      assert(norm(sum(H,2))<1e-8, 'Stabilization matrix is not locally conservative')
+
     end
 
 
@@ -672,14 +680,14 @@ classdef SolidMechanicsContact < MeshTying
     end
 
 
-    function tracLim = computeLimitTraction(obj,is,dgt,t)
+    function tracLim = computeLimitTraction(obj,is,dgt,t,slipNorm)
 
       % return the limit traction vector in the global frame
       t_N = t(1);
       tauLim = obj.cohesion - tan(deg2rad(obj.phi))*t_N;
 
 
-      if norm(dgt) > obj.activeSet.tol.sliding
+      if slipNorm > obj.activeSet.tol.sliding && norm(dgt) > obj.activeSet.tol.sliding 
         tracLim = tauLim*(dgt/norm(dgt));
       else
         % compute tangential traction from traction (global coordinates!)
