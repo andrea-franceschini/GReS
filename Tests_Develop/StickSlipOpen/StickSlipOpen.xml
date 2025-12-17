@@ -8,12 +8,12 @@ in a nonConforming simulation.
   <simParam>
     <Time
           Start="0."
-          End ="20.0"
-          DtInit="1.0"
-          DtMin ="1.0"
-          DtMax ="1.0"
+          End ="12.0"
+          DtInit="1"
+          DtMin ="1e-4"
+          DtMax ="1"
           incrementFactor = "1.5"
-          choppingFactor = "2" />
+          choppingFactor = "5" />
 
     <Solver
             MaxNLIteration = "10"

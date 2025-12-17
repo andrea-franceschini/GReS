@@ -7,7 +7,7 @@ classdef SolidMechanicsContact < MeshTying
     cohesion          % cohesion
     contactHelper
     activeSet
-    oldStab = true
+    oldStab = false
   end
 
 
@@ -236,7 +236,7 @@ classdef SolidMechanicsContact < MeshTying
 
     function goBackState(obj,dt)
       % reset state to beginning of time step
-      updateActiveSet(obj);
+      %updateActiveSet(obj);
       obj.state = obj.stateOld;
       obj.activeSet.stateChange(:) = 0;
     end

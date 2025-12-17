@@ -51,7 +51,6 @@ in a nonConforming simulation.
              surfaceTag = "2"
              />
       <Quadrature
-                  multiplierType = "standard"
                   type = "SegmentBasedQuadrature"
                   nGP = "4"
                   />

@@ -10,10 +10,10 @@ in a nonConforming simulation.
           Start="0."
           End ="10.0"
           DtInit="0.25"
-          DtMin ="1e-4"
-          DtMax ="0.5"
+          DtMin ="1.0e-4"
+          DtMax ="1.0"
           incrementFactor = "1.25"
-          choppingFactor = "1.5" />
+          choppingFactor = "2" />
 
     <Solver
             MaxNLIteration = "10"
@@ -63,7 +63,7 @@ in a nonConforming simulation.
               />
 
       <Coulomb
-               cohesion = "0.0"
+               cohesion = "0.1"
                frictionAngle = "30" />
 
       <ActiveSet 
@@ -72,7 +72,7 @@ in a nonConforming simulation.
 
         <Tolerances
                     sliding = "1e-5"
-                    normalGap = "1e-4"
+                    normalGap = "1e-3"
                     normalTraction = "-1e-4"
                     tangentialViolation = "1e-3"
                     minLimitTraction = "1e-4"

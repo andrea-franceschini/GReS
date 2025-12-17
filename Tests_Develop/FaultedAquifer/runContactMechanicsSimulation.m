@@ -37,14 +37,13 @@ domain.addPhysicsSolver(fileName);
 % set verbosity
 interfaces = buildInterfaces(fileName,domain);
 
-initTrac = setInitialTraction(interfaces{1});
-
 if contains(fileName,"stick")
   % interfaces{1}.state.multipliers = initTrac;
   % interfaces{1}.state.iniMultipliers = initTrac;
   % interfaces{1}.stateOld.multipliers = initTrac;
   % interfaces{1}.stateOld.iniMultipliers = initTrac;
 else
+  initTrac = setInitialTraction(interfaces{1});
   interfaces{1}.state.iniTraction = initTrac;
   interfaces{1}.state.traction = initTrac;
   interfaces{1}.stateOld.iniTraction = initTrac;
@@ -120,7 +119,7 @@ mshSlave = interface.getMesh(MortarSide.slave);
 
 depth = abs(max(mshSlave.surfaceCentroid(:,3)) - mshSlave.surfaceCentroid(:,3));
 
-coes = 0.125;
+coes = 0.15;
 sigma_v = coes+gamma_s*depth;
 
 sigma_glob = [-K0*sigma_v -K0*sigma_v -sigma_v];
