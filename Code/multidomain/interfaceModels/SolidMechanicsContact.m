@@ -73,6 +73,7 @@ classdef SolidMechanicsContact < MeshTying
 
       % get stabilization matrix depending on the current active set
       [H,rhsStab] = getStabilizationMatrixAndRhs(obj);
+      
 
       obj.Jconstraint = obj.Jconstraint - H;
       obj.rhsConstraint = obj.rhsConstraint + rhsStab;
@@ -320,8 +321,9 @@ classdef SolidMechanicsContact < MeshTying
 
       obj.state.gap = areaGap./areaSlave;
 
-      [H,~] = getStabilizationMatrixAndRhs(obj);
-      stabGap = H*(obj.state.traction - obj.state.iniTraction)./areaSlave;
+      [~,rhsH] = getStabilizationMatrixAndRhs(obj);
+      stabGap = -rhsH./areaSlave;
+      % stabGap = H*(obj.state.traction - obj.state.iniTraction)./areaSlave;
 
       gap = obj.state.gap - stabGap;
       slip = obj.state.gap - obj.stateOld.gap - stabGap;
@@ -604,20 +606,150 @@ classdef SolidMechanicsContact < MeshTying
       % - all components of open dofs
 
       H = obj.stabilizationMat;
-
-      elOpen = find(obj.activeSet.curr == ContactMode.open);
-      elSlip = [find(obj.activeSet.curr == ContactMode.slip);...
-        find(obj.activeSet.curr == ContactMode.newSlip)];
-
-      dofOpen = DoFManager.dofExpand(elOpen,3);
-      dofSlip = [3*elSlip-1; 3*elSlip];
-
-      % remove rows and columns of dofs not requiring stabilization
-      H([dofOpen;dofSlip],:) = 0;
-      H(:,[dofOpen;dofSlip]) = 0;
+      % 
+      % elOpen = find(obj.activeSet.curr == ContactMode.open);
+      % elSlip = [find(obj.activeSet.curr == ContactMode.slip);...
+      %   find(obj.activeSet.curr == ContactMode.newSlip)];
+      % 
+      % dofOpen = DoFManager.dofExpand(elOpen,3);
+      % dofSlip = [3*elSlip-1; 3*elSlip];
+      % 
+      % % remove rows and columns of dofs not requiring stabilization
+      % H([dofOpen;dofSlip],:) = 0;
+      % H(:,[dofOpen;dofSlip]) = 0;
       rhsH = -H*(obj.state.traction-obj.state.iniTraction);
+      
       % check that jump stabilizing terms are properly removed
       assert(norm(sum(H,2))<1e-8, 'Stabilization matrix is not locally conservative')
+
+    end
+
+    function computeStabilizationMatrix(obj)
+
+
+      nComp = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
+
+      % initialize matrix estimating number of entries
+      % number of internal slave elements
+      nes = sum(all(obj.interfMesh.e2f{2},2));
+      nEntries = 2*36*nes; % each cell should contribute at least two times
+      nmult = getNumbDoF(obj);
+      localKernel = @(S,e1,e2) assembleLocalStabilization(obj,S,e1,e2);
+      asbH = assembler(nEntries,nmult,nmult,localKernel);
+
+      % get list of internal master edges
+      inEdgeMaster = find(all(obj.interfMesh.e2f{1},2));
+
+      for ieM = inEdgeMaster'
+        % loop over internal master edges
+
+        % get 2 master faces sharing internal edge ie
+        fM = obj.interfMesh.e2f{1}(ieM,:);
+        assert(numel(fM)==2,['Unexpected number of connected faces for' ...
+          'master edge %i. Expected 2.'], ieM);
+
+        % get slave faces sharing support with 2 master faces
+        fS = unique([find(obj.interfMesh.elemConnectivity(fM(1),:)),...
+          find(obj.interfMesh.elemConnectivity(fM(2),:))]);
+
+        if numel(fS) < 2
+          continue
+        end
+
+        % average master elements area
+        Am = mean(obj.interfMesh.msh(1).surfaceArea(fM));
+
+        % get internal edges of slave faces
+        eS = unique(obj.interfMesh.f2e{2}(fS,:));
+        id = all(ismember(obj.interfMesh.e2f{2}(eS,:),fS),2);
+        ieS = eS(id);
+
+        % get master/slave nodes in the local macroelement
+        nM = obj.interfMesh.e2n{1}(ieM,:);
+        nS = unique(obj.interfMesh.e2n{2}(eS,:));
+
+        % compute local schur complement approximation
+        S = computeSchurLocal(obj,nM,nS,fS);
+
+        % assemble stabilization matrix component
+        for iesLoc = ieS'
+
+          % loop over internal slave edges in the macroelement
+
+          % get pair of slave faces sharing the edge
+          f = obj.interfMesh.e2f{2}(iesLoc,:);
+
+          % mean area of the slave faces
+          As = mean(obj.interfMesh.msh(2).surfaceArea(f));
+          fLoc1 = dofId(find(fS==f(1)),nComp);
+          fLoc2 = dofId(find(fS==f(2)),nComp);
+
+          % local schur complement for macroelement pair of slave faces
+          Sloc = 0.5*(Am/As)*(S(fLoc1,fLoc1)+S(fLoc2,fLoc2));
+          asbH.localAssembly(Sloc,f(1),f(2));
+        end
+      end
+
+      obj.stabilizationMat = asbH.sparseAssembly();
+
+      assert(norm(sum(obj.stabilizationMat,2))<1e-8, 'Stabilization matrix is not locally conservative')
+    end
+
+    function [dofRow,dofCol,mat] = assembleLocalStabilization(obj,S,e1,e2)
+      % assemble stabilization matrix S (in global coordinates) for
+      % elements e1 and e2.
+
+      % for contact problem, we need to carefully handle element in mixed
+      % contact state
+
+      contactState = obj.activeSet.curr([e1,e2]);
+
+      nc = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
+      dof1 = DoFManager.dofExpand(e1,nc);
+      dof2 = DoFManager.dofExpand(e2,nc);
+
+      if nc > 1
+        % vector field, rotation matrix needed
+
+        % get average rotation matrix
+        n1 = getNormal(obj.interfMesh,e1);
+        n2 = getNormal(obj.interfMesh,e2);
+        if abs(n1'*n2 -1) < 1e4*eps
+          avgR = obj.interfMesh.computeRot(n1);
+        else
+          A1 = obj.interfMesh.msh(2).surfaceArea(e1);
+          A2 = obj.interfMesh.msh(2).surfaceArea(e2);
+          nAvg = n1*A1 + n2*A2;
+          nAvg = nAvg/norm(nAvg);
+          avgR = obj.interfMesh.computeRot(nAvg);
+        end
+
+        % apply rotation matrix to S
+        S = avgR'*S*avgR;
+
+      end
+
+      % prepare matrix for full stick edge
+      mat = [S,-S;-S,S];
+      dofRow = [dof1;dof2];
+      dofCol = [dof1;dof2];
+
+      if any(contactState == ContactMode.open)
+        % no stabilization required for open dofs
+        mat(:) = 0;
+      elseif any(contactState ~= ContactMode.stick)
+        % mixed state elements
+        mat([2,3,5,6],:) = 0;
+        mat(:,[2,3,5,6]) = 0;
+        % if contactState(1) ~= ContactMode.stick
+        %   mat([2 3],:) = 0;
+        %   mat(:,[2 3]) = 0;
+        % end
+        % if contactState(2) ~= ContactMode.stick
+        %   mat([5 6],:) = 0;
+        %   mat(:,[5 6]) = 0;
+        % end
+      end
 
     end
 
