@@ -7,6 +7,7 @@ classdef SolidMechanicsContact < MeshTying
     cohesion          % cohesion
     contactHelper
     activeSet
+    oldStab = true
   end
 
 
@@ -69,10 +70,9 @@ classdef SolidMechanicsContact < MeshTying
 
       computeContactMatricesAndRhs(obj);
 
-      computeStabilizationMatrix(obj)
-
       % get stabilization matrix depending on the current active set
       [H,rhsStab] = getStabilizationMatrixAndRhs(obj);
+      %[H,rhsStab] = getStabilizationMatrixAndRhsOld(obj);
       
 
       obj.Jconstraint = obj.Jconstraint - H;
@@ -198,6 +198,10 @@ classdef SolidMechanicsContact < MeshTying
             ' unstable behavior detected'])
         end
       end
+
+      if hasChanged && ~obj.oldStab
+        computeStabilizationMatrix(obj);
+      end
     end
 
 
@@ -223,6 +227,7 @@ classdef SolidMechanicsContact < MeshTying
         % obj.state = obj.stateOld;
         toReset = obj.activeSet.curr(:) ~= ContactMode.open;
         obj.activeSet.curr(toReset) = ContactMode.stick;
+        computeStabilizationMatrix(obj);
         isReset = true;
       end
     end
@@ -321,9 +326,9 @@ classdef SolidMechanicsContact < MeshTying
 
       obj.state.gap = areaGap./areaSlave;
 
-      [~,rhsH] = getStabilizationMatrixAndRhs(obj);
-      stabGap = -rhsH./areaSlave;
-      % stabGap = H*(obj.state.traction - obj.state.iniTraction)./areaSlave;
+      [H,~] = getStabilizationMatrixAndRhs(obj);
+      %stabGap = -rhsH./areaSlave;
+      stabGap = H*(obj.state.traction - obj.state.iniTraction)./areaSlave;
 
       gap = obj.state.gap - stabGap;
       slip = obj.state.gap - obj.stateOld.gap - stabGap;
@@ -605,22 +610,31 @@ classdef SolidMechanicsContact < MeshTying
       % - normal component in slip dofs
       % - all components of open dofs
 
+      if isempty(obj.stabilizationMat)
+        computeStabilizationMatrix(obj);
+      end
+
       H = obj.stabilizationMat;
-      % 
-      % elOpen = find(obj.activeSet.curr == ContactMode.open);
-      % elSlip = [find(obj.activeSet.curr == ContactMode.slip);...
-      %   find(obj.activeSet.curr == ContactMode.newSlip)];
-      % 
-      % dofOpen = DoFManager.dofExpand(elOpen,3);
-      % dofSlip = [3*elSlip-1; 3*elSlip];
-      % 
-      % % remove rows and columns of dofs not requiring stabilization
-      % H([dofOpen;dofSlip],:) = 0;
-      % H(:,[dofOpen;dofSlip]) = 0;
+
+      %
+      if obj.oldStab
+        elOpen = find(obj.activeSet.curr == ContactMode.open);
+        elSlip = [find(obj.activeSet.curr == ContactMode.slip);...
+          find(obj.activeSet.curr == ContactMode.newSlip)];
+
+        dofOpen = DoFManager.dofExpand(elOpen,3);
+        dofSlip = [3*elSlip-1; 3*elSlip];
+
+        % remove rows and columns of dofs not requiring stabilization
+        H([dofOpen;dofSlip],:) = 0;
+        H(:,[dofOpen;dofSlip]) = 0;
+      end
       rhsH = -H*(obj.state.traction-obj.state.iniTraction);
-      
+
       % check that jump stabilizing terms are properly removed
-      assert(norm(sum(H,2))<1e-8, 'Stabilization matrix is not locally conservative')
+      if ~obj.oldStab
+        assert(norm(sum(H,2))<1e-8, 'Stabilization matrix is not locally conservative')
+      end
 
     end
 
@@ -739,16 +753,14 @@ classdef SolidMechanicsContact < MeshTying
         mat(:) = 0;
       elseif any(contactState ~= ContactMode.stick)
         % mixed state elements
-        mat([2,3,5,6],:) = 0;
-        mat(:,[2,3,5,6]) = 0;
-        % if contactState(1) ~= ContactMode.stick
-        %   mat([2 3],:) = 0;
-        %   mat(:,[2 3]) = 0;
-        % end
-        % if contactState(2) ~= ContactMode.stick
-        %   mat([5 6],:) = 0;
-        %   mat(:,[5 6]) = 0;
-        % end
+        % mat([2,3,5,6],:) = 0;
+        % mat(:,[2,3,5,6]) = 0;
+        if contactState(1) ~= ContactMode.stick
+          mat([2 3],:) = 0;
+        end
+        if contactState(2) ~= ContactMode.stick
+          mat([5 6],:) = 0;
+        end
       end
 
     end

@@ -10,14 +10,17 @@ scriptDir = fileparts(scriptFullPath);
 
 cd(scriptDir)
 
+stab = "new";
+
+
 
 % set mesh 
 X = 5; Y = 10; Z = 15;
-nx1 = 3; ny1 = 10; nz1 = 10;
+nx1 = 3; ny1 = 6; nz1 = 6;
 b1 = BlockStructuredMesh([0,0.5*X;0 Y;0 Z],[nx1,ny1,nz1],1);
 meshL = processGeometry(b1);
 
-nx2 = 4; ny2 = 12; nz2 = 12;
+nx2 = 4; ny2 = 6; nz2 = 6;
 b2 = BlockStructuredMesh([0.5*X,X;0 Y;0 Z],[nx2, ny2, nz2],1);
 meshR = processGeometry(b2);
 
@@ -39,10 +42,20 @@ gridR = struct('topology',meshR,'cells',elemsR,'faces',facesR);
 matR = Materials("materials.xml");
 
 % Create and set the print utility
-printUtilsL = OutState(meshL,"folderName","OUT/left","timeList",0:20,...
-                       "writeVtk",1,"flagMatFile",1,"matFileName","OUT/left");
-printUtilsR = OutState(meshR,"folderName","OUT/right","timeList",0:20,...
-                       "writeVtk",1,"flagMatFile",1,"matFileName","OUT/right");
+
+
+if stab == "old"
+  fl = "_old";
+elseif stab == "new"
+  fl = "_new";
+end
+
+
+
+printUtilsL = OutState(meshL,"folderName",strcat("OUT/left",fl),"timeList",0:20,...
+                       "writeVtk",1,"flagMatFile",1,"matFileName",strcat("OUT/left",fl));
+printUtilsR = OutState(meshR,"folderName",strcat("OUT/right",fl),"timeList",0:20,...
+                       "writeVtk",1,"flagMatFile",1,"matFileName",strcat("OUT/right",fl));
 % Create an object of the "Boundaries" class 
 setBC(Y,meshL,meshR)
 
@@ -74,6 +87,13 @@ interfaces{1}.state.traction(1:3:end) = tIni;
 interfaces{1}.state.iniTraction(1:3:end) = tIni;
 interfaces{1}.stateOld.iniTraction(1:3:end) = tIni;
 interfaces{1}.stateOld.traction(1:3:end) = tIni;
+
+if stab == "new"
+  interfaces{1}.oldStab = false;
+end
+
+%interfaces{1}.outstate.vtkFileName = strcat("Crack",fl);
+%interfaces{1}.outstate.matFileName = strcat("Crack",fl);
 
 
 solv = ActiveSetContactSolver(simParam,domains,interfaces,10);
