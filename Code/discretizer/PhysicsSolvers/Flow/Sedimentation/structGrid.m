@@ -1,6 +1,7 @@
 classdef structGrid
-  %UNTITLED3 Summary of this class goes here
-  %   Detailed explanation goes here
+  % STRUCTGRID Manages a structured 3D rectilinear mesh.
+  %   Handles coordinate generation, cell/face indexing, and geometric
+  %   calculations (areas/volumes) for a structured grid.
 
   properties
     X (:,1)
@@ -19,15 +20,10 @@ classdef structGrid
 
   methods (Access = public)
     function obj = structGrid(varargin)
-      %structGrid Construct an instance of this class
-      %   Detailed explanation goes here
-      if nargin == 0
-        return
-      end
-      switch lower(varargin{1}.type)
-        case "classic"
-          obj=obj.constructorClassic(varargin{1});
-        otherwise
+      % Constructor: Supports "classic" initialization via struct data.
+      if nargin == 0, return; end
+      if strcmpi(varargin{1}.type, "classic")
+        obj = obj.constructorClassic(varargin{1});
       end
     end
 
@@ -43,7 +39,7 @@ classdef structGrid
 
     % Function to help this class
     function dim = getDimension(obj,varargin)
-      % Return the size of the block
+      % Returns grid bounds for 'x', 'y', 'z', or all.
       if (nargin==1)
         dim = [obj.X(end),obj.Y(end),obj.Z(end)];
         return;
@@ -61,7 +57,7 @@ classdef structGrid
     end
 
     function npts = getNumberPoints(obj,varargin)
-      % Function to return the size of the block
+      % Returns point counts per axis or total product.
       if (nargin==1)
         npts = prod(obj.npoints);
         return;
@@ -151,28 +147,7 @@ classdef structGrid
       vols = segmX(posX).*segmY(posY).*segmZ(posZ);
     end
 
-    % % % % function faces = getFacesLayer(obj)
-    % % % %   % start point in the face.
-    % % % %   pos = (layer-1)*obj.ncellsSurf(1)+1;
-    % % % %   pos = pos + (layer-1)*obj.npoints(1)*obj.ncells(2);
-    % % % %   pos = pos + (layer-1)*obj.npoints(2)*obj.ncells(1);
-    % % % %   % 
-    % % % %   % nelm = obj.ncellsSurf(1);
-    % % % %   % z0face = pos:(pos+nelm-1);
-    % % % %   % 
-    % % % %   % pos = pos + obj.ncellsSurf(1);
-    % % % %   % x0face = 
-    % % % % 
-    % % % % 
-    % % % %   bot = obj.mesh.cells(:, [1, 4, 3, 2]);
-    % % % %   top = obj.mesh.cells(:, [6, 7, 8, 5]);
-    % % % %   est = obj.mesh.cells(:, [2, 3, 7, 6]);
-    % % % %   wst = obj.mesh.cells(:, [5, 8, 4, 1]);
-    % % % %   sth = obj.mesh.cells(:, [6, 5, 1, 2]);
-    % % % %   nth = obj.mesh.cells(:, [3, 4, 8, 7]);
-    % % % % end
 
-    
 
 
 

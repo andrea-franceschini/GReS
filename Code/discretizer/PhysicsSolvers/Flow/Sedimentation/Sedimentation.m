@@ -77,19 +77,23 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.rhs{obj.fieldId} = computeRhs(obj,dt);
     end
 
-    function advanceState(obj)   % <---- HERE CONTROL TO GROW THE MESH
-      % advance the state after reaching convergence
+    function advanceState(obj)
+      % ADVANCESTATE Finalizes time step and updates grid topology.
+      %   1. Triggers cell growth checks based on sediment accumulation.
+      %   2. Updates the mesh structure if thresholds are met.
+      %   3. Archives the current state as 'stateOld' for the next step.
 
       % Update the sediments accumulated.
       cellGrow = obj.updateSedAccumulated;
 
       % Update the mesh.
-
+      if any(cellGrow)
+        meshUpdate(obj,cellGrow);
+      end
 
       % hard copy the new state object
       obj.domain.stateOld = copy(obj.domain.state);
     end
-
 
     function applyBC(obj,bcId,t)
       if ~BCapplies(obj,bcId)
@@ -126,13 +130,13 @@ classdef Sedimentation < PhysicsSolver
       state.data.pressure(bcDofs) = bcVals;
     end
 
-    % TODO: descomentar
     function updateState(obj,solution)
-      ents = obj.grid.getActiveCells;
-      state = getState(obj);
-      state.data.pressure(ents) = state.data.pressure(ents) + solution;
+      % TODO: test
+      % ents = obj.grid.getActiveCells;
       % state = getState(obj);
-      % state.data.pressure = state.data.pressure + solution;
+      % state.data.pressure(ents) = state.data.pressure(ents) + solution;
+      state = getState(obj);
+      state.data.pressure = state.data.pressure + solution;
     end
 
     function [cellData,pointData] = writeVTK(obj,fac,t)
@@ -306,8 +310,6 @@ classdef Sedimentation < PhysicsSolver
         [lw.*obj.rhsGrav; -lw.*obj.rhsGrav],[obj.grid.numberActiveCells,1]);
       gTerm = gTerm(obj.grid.getActiveCells);
     end
-
-
 
     function applyNeuBC(obj,bcId,bcDofs,bcVals)
       if ~BCapplies(obj,bcId)
@@ -595,7 +597,9 @@ classdef Sedimentation < PhysicsSolver
       end
     end
 
-
+    function meshUpdate(obj,CellMap)
+      
+    end
 
   end
 
