@@ -7,7 +7,7 @@ classdef SolidMechanicsContact < MeshTying
     cohesion          % cohesion
     contactHelper
     activeSet
-    oldStab = false
+    oldStab = true
   end
 
 
@@ -214,6 +214,8 @@ classdef SolidMechanicsContact < MeshTying
       % reset the counter for changed states
       obj.activeSet.stateChange(:) = 0;
 
+      %resetConfiguration(obj);
+
       % if obj.resetActiveSet
       %   % reset everything to stick for next time step
       %   obj.activeSet.curr(:) = ContactMode.stick;
@@ -238,7 +240,7 @@ classdef SolidMechanicsContact < MeshTying
       % reset state to beginning of time step
       %updateActiveSet(obj);
       obj.state = obj.stateOld;
-      obj.activeSet.stateChange(:) = 0;
+      %resetConfiguration(obj);
     end
 
 
@@ -415,6 +417,7 @@ classdef SolidMechanicsContact < MeshTying
         trac = obj.state.traction(tDof);
         % equilibrium equation and stabilization work with delta traction
         dTrac = trac - obj.state.iniTraction(tDof);
+        deltaTraction = obj.state.traction(tDof) - obj.stateOld.traction(tDof);
 
         % displacement increment to check if this is the first newton
         % iteration
@@ -628,6 +631,16 @@ classdef SolidMechanicsContact < MeshTying
         % remove rows and columns of dofs not requiring stabilization
         H([dofOpen;dofSlip],:) = 0;
         H(:,[dofOpen;dofSlip]) = 0;
+
+        % scale the diagonal of the stabilization matrix to satisfy local
+        % conservation
+        % rowSum = sum(H,2);
+        % H = H - diag(rowSum);
+        % 
+        % if ~obj.oldStab
+        %   assert(norm(sum(H,2))<1e-8, 'Stabilization matrix is not locally conservative')
+        % end
+
       end
       rhsH = -H*(obj.state.traction-obj.state.iniTraction);
 
@@ -753,14 +766,16 @@ classdef SolidMechanicsContact < MeshTying
         mat(:) = 0;
       elseif any(contactState ~= ContactMode.stick)
         % mixed state elements
-        % mat([2,3,5,6],:) = 0;
-        % mat(:,[2,3,5,6]) = 0;
-        if contactState(1) ~= ContactMode.stick
-          mat([2 3],:) = 0;
-        end
-        if contactState(2) ~= ContactMode.stick
-          mat([5 6],:) = 0;
-        end
+        mat([2,3,5,6],:) = 0;
+        mat(:,[2,3,5,6]) = 0;
+        % if contactState(1) ~= ContactMode.stick
+        %   mat([2 3],:) = 0;
+        %   mat(:,[2 3]) = 0;
+        % end
+        % if contactState(2) ~= ContactMode.stick
+        %   mat([5 6],:) = 0;
+        %   mat(:,[5 6]) = 0;
+        % end
       end
 
     end
@@ -813,14 +828,15 @@ classdef SolidMechanicsContact < MeshTying
 
       tanPhi = tan(deg2rad(obj.phi));
 
-      % if slip > obj.activeSet.tol.sliding
-      % use available gap to properly compute traction
-      dtdtn = -tanPhi*(dgt/norm(dgt));
-      % else
-      %   Rloc = obj.getRotationMatrix(is);
-      %   t = Rloc*obj.state.traction(getMultiplierDoF(obj,is));
-      %   % convert to global reference system
-      %   dtdtn = -tanPhi*(t/norm(t));
+      if norm(dgt) > obj.activeSet.tol.sliding
+        %use available gap to properly compute traction
+        dtdtn = -tanPhi*(dgt/norm(dgt));
+      else
+        Rloc = obj.getRotationMatrix(is);
+        t = Rloc*obj.state.traction(getMultiplierDoF(obj,is));
+        % convert to global reference system
+        dtdtn = -tanPhi*(t/norm(t));
+      end
     end
 
 

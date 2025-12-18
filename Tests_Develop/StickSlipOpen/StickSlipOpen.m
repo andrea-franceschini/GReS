@@ -10,7 +10,7 @@ scriptDir = fileparts(scriptFullPath);
 
 cd(scriptDir)
 
-stab = "new";
+stab = "old";
 
 % set mesh 
 X = 5; Y = 10; Z = 15;
@@ -18,7 +18,7 @@ nx1 = 3; ny1 = 10; nz1 = 10;
 b1 = BlockStructuredMesh([0,0.5*X;0 Y;0 Z],[nx1,ny1,nz1],1);
 meshL = processGeometry(b1);
 
-nx2 = 4; ny2 = 10; nz2 = 10;
+nx2 = 3; ny2 = 10; nz2 = 10;
 b2 = BlockStructuredMesh([0.5*X,X;0 Y;0 Z],[nx2, ny2, nz2],1);
 meshR = processGeometry(b2);
 

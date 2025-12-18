@@ -8,12 +8,12 @@ in a nonConforming simulation.
   <simParam>
     <Time
           Start="0."
-          End ="12.0"
+          End ="16.0"
           DtInit="1"
-          DtMin ="1e-4"
+          DtMin ="1e-5"
           DtMax ="1"
           incrementFactor = "1.5"
-          choppingFactor = "5" />
+          choppingFactor = "10" />
 
     <Solver
             MaxNLIteration = "10"
@@ -52,7 +52,7 @@ in a nonConforming simulation.
               />
 
       <Coulomb
-               cohesion = "0"
+               cohesion = "0.0"
                frictionAngle = "30" />
 
       <ActiveSet
@@ -60,10 +60,10 @@ in a nonConforming simulation.
                  forceStickBoundary = "1" >
 
         <Tolerances
-                    sliding = "1e-5"
+                    sliding = "1e-7"
                     normalGap = "1e-6"
                     normalTraction = "-1e-3"
-                    tangentialViolation = "1e-5"
+                    tangentialViolation = "1e-3"
                     minLimitTraction = "1e-4"
                     areaChange = "1e-4"
                     maxActiveSetChange = "6"

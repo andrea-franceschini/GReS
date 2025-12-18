@@ -20,11 +20,10 @@
         <entityType>NodeBC</entityType>
         <variable>displacements</variable>
         <BCentities>
-            <bcList>51</bcList>
-            <bcList>52</bcList>
-            <bcList>55</bcList>
-            <bcList>57</bcList>
-            <bcList>59</bcList>
+            <bcList>41</bcList>
+            <bcList>42</bcList>
+            <bcList>45</bcList>
+            <bcList>47</bcList>
             <components>y</components>
         </BCentities>
         <BCevent>
@@ -61,10 +60,6 @@
             <time>16</time>
             <value>0</value>
         </BCevent>
-        <BCevent>
-            <time>20</time>
-            <value>1.5</value>
-        </BCevent>
     </BC>
     <BC>
         <name>az_load</name>
@@ -93,10 +88,6 @@
         </BCevent>
         <BCevent>
             <time>16</time>
-            <value>0</value>
-        </BCevent>
-        <BCevent>
-            <time>20</time>
             <value>0</value>
         </BCevent>
     </BC>
