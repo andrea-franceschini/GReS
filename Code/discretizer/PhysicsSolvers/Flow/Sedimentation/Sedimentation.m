@@ -2,15 +2,18 @@ classdef Sedimentation < PhysicsSolver
   % Sedimentation model subclass
 
   properties
-     mapSediments = SedimentsMap()
-     grid gridForSedimentation
+    grid gridForSedimentation
 
-     facesNeigh (:,2) uint64
-     trans (:,1)
+    sedimentHistory = SedimentsMap()
+    sedimentAcc (:,:)
+    heighControl double = 0.1
 
-     H (:,:)
-     P (:,:)
-     rhsGrav (:,1)         % gravity contribution to rhs
+    facesNeigh (:,2) uint64
+    trans (:,1)
+
+    H (:,:)
+    P (:,:)
+    rhsGrav (:,1)         % gravity contribution to rhs
   end
 
   properties (Access = protected)
@@ -40,10 +43,11 @@ classdef Sedimentation < PhysicsSolver
 
       % Initialize Mesh.
       prepareMesh(obj);
-            
+
       % Initialize the sedimentation control
-      obj.mapSediments = SedimentsMap(input.sediment_map,obj.nmat,...
+      obj.sedimentHistory = SedimentsMap(input.sediment_map,obj.nmat,...
         obj.grid.ncells(1:2));
+      obj.sedimentAcc = zeros(prod(obj.grid.ncells(1:2)),obj.nmat);
 
       % Initialize the BCs
       obj.prepareBC(input.boundary);
@@ -63,7 +67,7 @@ classdef Sedimentation < PhysicsSolver
       computeHPInitial(obj);
 
       % Creating the output format
-      
+
       prepareOutput(obj,input.output);
 
     end
@@ -72,6 +76,20 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.J{obj.fieldId,obj.fieldId} = computeMat(obj,dt);
       obj.domain.rhs{obj.fieldId} = computeRhs(obj,dt);
     end
+
+    function advanceState(obj)   % <---- HERE CONTROL TO GROW THE MESH
+      % advance the state after reaching convergence
+
+      % Update the sediments accumulated.
+      cellGrow = obj.updateSedAccumulated;
+
+      % Update the mesh.
+
+
+      % hard copy the new state object
+      obj.domain.stateOld = copy(obj.domain.state);
+    end
+
 
     function applyBC(obj,bcId,t)
       if ~BCapplies(obj,bcId)
@@ -96,8 +114,8 @@ classdef Sedimentation < PhysicsSolver
 
     function applyDirVal(obj,bcId,t)
       bcVar = obj.bcs.getVariable(bcId);
-      if ~strcmp(bcVar,obj.getField()) 
-        return 
+      if ~strcmp(bcVar,obj.getField())
+        return
       end
       [bcDofs,bcVals] = getBC(obj,bcId,t);
       if size(bcVals,2)==2
@@ -112,7 +130,7 @@ classdef Sedimentation < PhysicsSolver
     function updateState(obj,solution)
       ents = obj.grid.getActiveCells;
       state = getState(obj);
-      state.data.pressure(ents) = state.data.pressure(ents) + solution;      
+      state.data.pressure(ents) = state.data.pressure(ents) + solution;
       % state = getState(obj);
       % state.data.pressure = state.data.pressure + solution;
     end
@@ -142,7 +160,7 @@ classdef Sedimentation < PhysicsSolver
       states.pressure = p;
     end
 
-    function writeMatFile(obj,fac,tID)      
+    function writeMatFile(obj,fac,tID)
       pOld = getStateOld(obj,obj.getField());
       pCurr = getState(obj,obj.getField());
       obj.domain.outstate.results(tID).pressure = pCurr*fac+pOld*(1-fac);
@@ -173,7 +191,7 @@ classdef Sedimentation < PhysicsSolver
         otherwise
           dof = [];
           vals = [];
-          return 
+          return
       end
 
       switch lower(bc.type)
@@ -188,17 +206,17 @@ classdef Sedimentation < PhysicsSolver
           potential = p - bc.data + gamma*dz;
           q = dirJ.*potential;
           vals = [dirJ,q];
-        % case 'hydrostatic'
-        %   gamma = obj.materials.getFluid().getFluidSpecWeight();
-        %   zbc = obj.faces.faceCentroid(faceID,3);
-        %   href = v(1);
-        %   v = gamma*(href-zbc);
-        %   v(v<=0)=0.;
-        %   mu = obj.materials.getFluid().getDynViscosity();
-        %   tr = obj.trans(faceID);
-        %   dz = obj.grid.cellCentroid(cellId,3) - obj.faces.faceCentroid(faceID,3);
-        %   q = 1/mu*tr.*(p(cellId) - v) + gamma*dz;
-        %   vals = [1/mu*tr,q];
+          % case 'hydrostatic'
+          %   gamma = obj.materials.getFluid().getFluidSpecWeight();
+          %   zbc = obj.faces.faceCentroid(faceID,3);
+          %   href = v(1);
+          %   v = gamma*(href-zbc);
+          %   v(v<=0)=0.;
+          %   mu = obj.materials.getFluid().getDynViscosity();
+          %   tr = obj.trans(faceID);
+          %   dz = obj.grid.cellCentroid(cellId,3) - obj.faces.faceCentroid(faceID,3);
+          %   q = 1/mu*tr.*(p(cellId) - v) + gamma*dz;
+          %   vals = [1/mu*tr,q];
       end
       dof = cellId;
     end
@@ -299,7 +317,7 @@ classdef Sedimentation < PhysicsSolver
       % Base application of a Boundary condition
       if ~strcmp(obj.bcs.getVariable(bcId),obj.getField)
         return
-      end      
+      end
 
       % Base application of Neumann boundary condition to the rhs.
       % bc values are subtracted since we solve du = J\(-rhs)
@@ -392,7 +410,7 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function prepareSystem(obj)
-      % Function to create transmissibility for the initial grid      
+      % Function to create transmissibility for the initial grid
       segmX = diff(obj.grid.grid.X);
       segmY = diff(obj.grid.grid.Y);
       segmZ = diff(obj.grid.grid.Z);
@@ -406,24 +424,24 @@ classdef Sedimentation < PhysicsSolver
             cellId = obj.grid.mapCellIds(i, j, k);
             % Neighbor Mapping:
             if i > 1
-                cellNeigh(cellId, 3) = obj.grid.mapCellIds(i-1,j,k);
+              cellNeigh(cellId, 3) = obj.grid.mapCellIds(i-1,j,k);
             end
             if i < obj.grid.ncells(1)
-                cellNeigh(cellId, 4) = obj.grid.mapCellIds(i+1,j,k);
+              cellNeigh(cellId, 4) = obj.grid.mapCellIds(i+1,j,k);
             end
             if j > 1
-                cellNeigh(cellId, 1) = obj.grid.mapCellIds(i,j-1,k);
+              cellNeigh(cellId, 1) = obj.grid.mapCellIds(i,j-1,k);
             end
             if j < obj.grid.ncells(2)
-                cellNeigh(cellId, 2) = obj.grid.mapCellIds(i,j+1,k);
+              cellNeigh(cellId, 2) = obj.grid.mapCellIds(i,j+1,k);
             end
             if k > 1
-                cellNeigh(cellId, 5) = obj.grid.mapCellIds(i,j,k-1);
+              cellNeigh(cellId, 5) = obj.grid.mapCellIds(i,j,k-1);
             end
             if k < obj.grid.ncells(3)
-                cellNeigh(cellId, 6) = obj.grid.mapCellIds(i,j,k+1);
+              cellNeigh(cellId, 6) = obj.grid.mapCellIds(i,j,k+1);
             end
-            
+
             % Face Area
             cellAreas(cellId, 1) = segmY(j) * segmZ(k);
             cellAreas(cellId, 2) = segmX(i) * segmZ(k);
@@ -478,16 +496,16 @@ classdef Sedimentation < PhysicsSolver
           end
         end
       end
-      
+
       obj.facesNeigh=tmpNeigh(isActive,:);
       obj.trans=tmpTrans(isActive);
       obj.rhsGrav=tmpRhs(isActive);
     end
 
     function prepareOutput(obj,data)
-       if ~isfield(data,"file")
-         error("Output file not pass for the simulation!");
-       end
+      if ~isfield(data,"file")
+        error("Output file not pass for the simulation!");
+      end
 
       tmp = OutState(obj.mesh,data.file);
 
@@ -495,7 +513,7 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.outstate.timeList = tmp.timeList;
       obj.domain.outstate.results = tmp.results;
       obj.domain.outstate.writeSolution = tmp.writeSolution;
-      obj.domain.outstate.timeID = tmp.timeID;      
+      obj.domain.outstate.timeID = tmp.timeID;
       obj.domain.outstate.writeVtk = tmp.writeVtk;
       obj.domain.outstate.matFileName = tmp.matFileName;
       obj.domain.outstate.vtkFileName = tmp.vtkFileName;
@@ -533,7 +551,7 @@ classdef Sedimentation < PhysicsSolver
       poro=poro(mapCellsOn);
       poro=poro(map);
       volsCell = obj.grid.computeVols();
-      
+
       beta = obj.materials.getFluid().getFluidCompressibility();
       PVal = (alpha+beta*poro).*volsCell;
       obj.P = PVal.*speye(ncells);
@@ -547,6 +565,37 @@ classdef Sedimentation < PhysicsSolver
         permCells = permCells+obj.grid.matfrac(cellId,mat)*tmpMat(1:3);
       end
     end
+
+    function cellGrow = updateSedAccumulated(obj)
+      % UPDATESEDACCUMULATED Updates sediment buffer and triggers grid growth.
+      %
+      %   Calculates new deposition, updates the accumulation buffer, and
+      %   identifies columns reaching the height threshold for new cells.
+      %
+      %   Returns:
+      %       cellGrow - Logical mask of columns requiring a new cell layer.
+
+      % 1. Calculate time step
+      t0 = obj.domain.stateOld.t;
+      dt = obj.domain.state.t-t0;
+
+      % 2. Update accumulation buffer
+      addSed = obj.sedimentHistory.getSedimentationMap(t0,dt);
+      obj.sedimentAcc = obj.sedimentAcc + addSed;
+
+      % 3. Check for growth trigger (Height >= Threshold)
+      colSed = sum(obj.sedimentAcc,2);
+      cellGrow = colSed >= obj.heighControl;
+
+      % 4. Handle overflow for grown cells
+      if any(cellGrow)
+        dl = obj.heighControl-colSed;
+        sed = sum(addSed,2);
+        obj.sedimentAcc(cellGrow,:)=(1/dt)*(dl(cellGrow)./sed(cellGrow)).*addSed(cellGrow,:);
+      end
+    end
+
+
 
   end
 

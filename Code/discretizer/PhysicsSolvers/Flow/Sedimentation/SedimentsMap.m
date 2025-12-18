@@ -1,34 +1,30 @@
 classdef SedimentsMap < handle
-  % SEDIMENTATION MAP - General class to store the sedimentation history
-  %   Detailed explanation goes here
+  % SEDIMENTSMAP Manages spatial/temporal sedimentation history and
+  % interpolation.
+  %
+  %   Loads events from a file and calculates material accumulation over
+  %   a time interval [t0, t0+dt]. Supports 'linear' (trapezoidal) and
+  %   piecewise constant ('ramp') interpolation types.
 
   properties (Access = public)
     timeList = []
-    map = []
     dataStruct
   end
 
-  properties (GetAccess=public, SetAccess=private)
-    type
-  end
-
   properties (Access = private)
+    type
     dim (1,2) uint64
     nmat uint16
   end
 
   methods
     function obj = SedimentsMap(data,nmat,dims)
-      %UNTITLED Construct an instance of this class
-      %   Detailed explanation goes here
-
-      % obj.db = containers.Map('KeyType','char','ValueType','any');
+      % Constructor: Initializes grid and loads event file.
       if nargin == 0
         return
       end
       obj.dim = dims;
       obj.nmat = nmat;
-      % obj.map = zeros(prod(dims),nmat);
       if ~isfield(data,"file")
         error("Maps for the sedimentation missing!");
       end
@@ -36,97 +32,137 @@ classdef SedimentsMap < handle
     end
 
     function map = getSedimentationMap(obj,t0,dt)
+      % GETSEDIMENTATIONMAP Integrates sedimentation rate from t0 to t0+dt.
+      %   Directs logic to specific interpolation methods based on 'obj.type'.
+      % Returns the sediment map for time t0 and duration dt.
 
-      map = zeros(prod(obj.dim),obj.nmat);
-      tf=t0+dt;
-      
       ntimesteps = length(obj.timeList);
-      posA=1;
-      posB=1;
-      if ntimesteps>1
-        for t=1:ntimesteps
-          tref=obj.timeList(t);
-          if tref<t0
-            posA=posA+1;
-          end
-          if tref<tf
-            posB=posB+1;
-          end
+      pos = find(obj.timeList <= t0, 1, 'last');
+      posF = find(t0+dt <= obj.timeList, 1, 'first');
 
-        end
-      else
+      % Boundary checks
+      if isempty(pos)
+        warning("The sediment map was not defined! Returning zeros.");
+        map = zeros(prod(obj.dim), obj.nmat);
+        return;
+      end
+      if isempty(posF)
+        posF=pos;        
       end
 
-
+      % Routing to interpolation logic
+      if ntimesteps > 1 && pos ~= posF
+        if strcmpi(obj.type, "linear")
+          map = obj.LinearInter(dt, pos, posF);
+        else
+          map = obj.RampInter(dt, pos, posF);
+        end
+      else
+        % Single event or within the same time window
+        map = obj.processEvent(pos) * dt;
+      end
     end
-
 
   end
 
   methods (Access = private)
-    function constructor(obj,file)
-      % Reading
-      listdata=readstruct(file, AttributeSuffix="");
-      if isfield(listdata,"type")
-        obj.type = lower(listdata.type);
-      else
-        obj.type = "ramp";
-      end
+    function constructor(obj, file)
+      % Parses file, sets type, and sorts events by time.
+      listdata = readstruct(file, AttributeSuffix="");
+      obj.type = lower(listdata.type);
       obj.dataStruct = listdata.Event;
 
-      % Constructing the time array.
-      numEvent = length(listdata.Event);
-      toDelete = false(numEvent,1);
-      for t=1:numEvent
-        tmp=listdata.Event(t);
-        if ~ismember(tmp.time,obj.timeList)
-          obj.timeList(end+1)=tmp.time;
-        else
-          toDelete(t)=true;
+      % Remove duplicate timestamps and sort chronologically
+      [~, uniqueIdx] = unique([listdata.Event.time]);
+      obj.dataStruct = listdata.Event(uniqueIdx);
+      obj.timeList = [obj.dataStruct.time];
+    end
+
+    function map = processEvent(obj, pos)
+      % Aggregates Uniform and Map data for a specific event index.
+      map = zeros(prod(obj.dim), obj.nmat);
+      checkMat = true(obj.nmat, 1);
+      event = obj.dataStruct(pos);
+
+      % Handle Uniform distributions
+      if isfield(event, "Uniform")
+        for item = event.Uniform
+          if checkMat(item.materialFlag)
+            map(:, item.materialFlag) = item.value;
+            checkMat(item.materialFlag) = false;
+          end
         end
       end
 
-      % Deleting duplicates and Ordering as function of the time.
-      obj.dataStruct(toDelete)=[];
-      [~,idx] = sort(obj.timeList);
-      obj.dataStruct=obj.dataStruct(idx);
-      obj.timeList=obj.timeList(idx);
-    end
-
-    function processEvent()
-    end
-
-    function tmpEvent()
-
-      data = listdata(1).Event;
-
-      if ~isfield(data,"materialFlag")
-        data = listdata(2);
+      % Handle File-based Maps
+      if isfield(event, "Map")
+        for item = event.Map
+          if checkMat(item.materialFlag) && isfile(item.file)
+            map(:, item.materialFlag) = obj.dataMap(item);
+            checkMat(item.materialFlag) = false;
+          end
+        end
       end
-
-      if isfield(data,"uniform")
-        obj.map(:,data.materialFlag) = data.uniform;
-        return
-      end
-
-      if isfield(data,"division")
-        tmp = str2num(data.division);
-        % tmp
-        obj.map(:,data.materialFlag) = data.uniform;
-        return
-      end
-
-
     end
 
-    function constructorStruct_old(obj,data)
-      % obj.dim = str2num(data.division);
-      tmp = data.sediment_rate;
-      tmp = str2num(tmp);
-      obj.map = reshape(tmp,obj.dim);
+    function values = dataMap(obj, data)
+      % Loads map from file and validates spatial dimensions.
+      mapDim = sscanf(data.division, '%lu,%lu')';
+      if isequal(obj.dim, mapDim)
+        values = load(data.file);
+      else
+        % TODO : Create an interpolation for the map values
+        warning("The sediment map has a mismatch dimension" + ...
+          " with the domain. Returning zeros.");
+        values = zeros(prod(obj.dim), 1);
+      end
     end
 
-    
+    function map = LinearInter(obj, dt, pos, posF)
+      % LINEARINTER Performs trapezoidal integration across event intervals.
+      map = zeros(prod(obj.dim), obj.nmat);
+      dtAcc = 0;
+      for i=1:(posF-pos)
+        tSt = obj.timeList(pos+i-1);
+        tEd = obj.timeList(pos+i);
+        v1 = obj.processEvent(pos+i-1);
+        v2 = obj.processEvent(pos+i);
+
+        if i==(posF-pos)
+          dl = dt-dtAcc;
+          % Interpolated rate at time t0
+          % y = A x + B
+          tDiff = 1/(tEd - tSt);
+          Aterm = tDiff*(v2 - v1);
+          Bterm = tDiff*(tEd*v1 - tSt*v2);
+          v2 = Aterm*(tSt+dl)+Bterm;
+        else
+          dl = tEd-tSt;
+          dtAcc = dtAcc + dl;
+        end
+        map = map + (dl/2)*(v1+v2);
+      end
+    end
+
+    function map = RampInter(obj, dt, pos, posF)
+      % RAMPINTER Performs piecewise constant integration (step function).
+      map = zeros(prod(obj.dim), obj.nmat);
+      dtAcc = 0;
+      for i=1:(posF-pos)
+        % Constant by part's between Event(pos) and Event(pos+1)
+        tSt = obj.timeList(pos+i-1);
+        tEd   = obj.timeList(pos+i);
+
+        if i==(posF-pos)
+          dl = dt-dtAcc;
+        else
+          dl = tEd-tSt;
+          dtAcc = dtAcc + dl;
+        end
+        v = obj.processEvent(pos+i-1);
+        map = map + v * dl;
+      end
+    end
 
   end
 end

@@ -8,9 +8,8 @@
           division = "3,3,3"
           size = "1,1,1"/>
       <initial>
-        <lay number = "1" materialFlag = "1" />
-        <lay number = "2" materialFlag = "1" />
-        <lay number = "3" materialFlag = "1" />
+        <all materialFlag = "1" />
+        <lay number = "2" materialFlag = "2" />
       </initial>
     </domain>
     <boundary>
