@@ -80,9 +80,9 @@
 	<!-- TEST SPACE parameters -->
 	<tspace
 		ntv="6"
-		itmax="200"
+		itmax="10"
 		tol="1.e-5"
-		method="NONE"
+		method="SRQCG"
 		init_approx="1"
 	/>
 
