@@ -3,8 +3,8 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 25000
-      nsyTol = 1e-14
+      matlabMaxSize = 50000
+      nsyTol = 1e-16
 
       % Flag for Chronos existance
       ChronosFlag = false
@@ -145,7 +145,7 @@ classdef linearSolver < handle
             % Get the preconditioner type
             obj.PrecType = lower(data.preconditioner);
 
-            obj.params.tol   = obj.domain.simparams.relTol;
+            obj.params.tol   = obj.domain(1).simparams.relTol;
             obj.params.maxit = data.general.maxit;
 
             % Get the different parameters according to the prectype
