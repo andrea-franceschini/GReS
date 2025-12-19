@@ -14,11 +14,11 @@ stab = "new";
 
 % set mesh 
 X = 5; Y = 10; Z = 15;
-nx1 = 3; ny1 = 20; nz1 = 20;
+nx1 = 3; ny1 = 6; nz1 = 6;
 b1 = BlockStructuredMesh([0,0.5*X;0 Y;0 Z],[nx1,ny1,nz1],1);
 meshL = processGeometry(b1);
 
-nx2 = 3; ny2 = 20; nz2 = 20;
+nx2 = 3; ny2 = 6; nz2 = 6;
 b2 = BlockStructuredMesh([0.5*X,X;0 Y;0 Z],[nx2, ny2, nz2],1);
 meshR = processGeometry(b2);
 
@@ -50,9 +50,9 @@ end
 
 
 
-printUtilsL = OutState(meshL,"folderName",strcat("OUT/left",fl),"timeList",0:20,...
+printUtilsL = OutState(meshL,"folderName",strcat("OUT/left",fl),"timeList",0:0.1:1,...
                        "writeVtk",1,"flagMatFile",1,"matFileName",strcat("OUT/left",fl));
-printUtilsR = OutState(meshR,"folderName",strcat("OUT/right",fl),"timeList",0:20,...
+printUtilsR = OutState(meshR,"folderName",strcat("OUT/right",fl),"timeList",0:0.1:1,...
                        "writeVtk",1,"flagMatFile",1,"matFileName",strcat("OUT/right",fl));
 % Create an object of the "Boundaries" class 
 setBC(Y,meshL,meshR)
@@ -92,16 +92,24 @@ else
   interfaces{1}.oldStab = true;
 end
 
-%interfaces{1}.outstate.vtkFileName = strcat("Crack",fl);
-%interfaces{1}.outstate.matFileName = strcat("Crack",fl);
+interfaces{1}.outstate.VTK.setVTKFolder(strcat("OUT/Crack",fl));
+interfaces{1}.outstate.matFileName = strcat("OUT/Crack",fl);
 
 
 solv = ActiveSetContactSolver(simParam,domains,interfaces,10);
 %solv = MultidomainFCSolver(simParam,domains,interfaces);
+diary off
+
+fname = ['log_' char(stab) '.txt'];
+
+if exist(fname,'file')
+    delete(fname)
+end
+
+diary(fname)
 solv.NonLinearLoop();
+diary off
 solv.finalizeOutput();
-
-
 
 function setBC(Y,meshL,meshR)
 

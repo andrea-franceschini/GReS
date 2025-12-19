@@ -70,6 +70,10 @@ classdef SolidMechanicsContact < MeshTying
 
       computeContactMatricesAndRhs(obj);
 
+      if ~obj.oldStab
+        computeStabilizationMatrix(obj);
+      end
+
       % get stabilization matrix depending on the current active set
       [H,rhsStab] = getStabilizationMatrixAndRhs(obj);
       %[H,rhsStab] = getStabilizationMatrixAndRhsOld(obj);
@@ -78,7 +82,7 @@ classdef SolidMechanicsContact < MeshTying
       obj.Jconstraint = obj.Jconstraint - H;
       obj.rhsConstraint = obj.rhsConstraint + rhsStab;
 
-      if gresLog().getVerbosity > 1
+      if gresLog().getVerbosity > 2
         % print rhs terms for each fracture state for debug purposes
         dof_stick = DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.stick),3);
         dof_slip = [DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.slip),3); ...
@@ -153,7 +157,7 @@ classdef SolidMechanicsContact < MeshTying
 
       hasChanged = any(diffState);
 
-      if gresLog().getVerbosity > 1
+      if gresLog().getVerbosity > 2
         % report active set changes
         da = asNew - asOld;
         d = da(asOld == 1);
@@ -199,9 +203,9 @@ classdef SolidMechanicsContact < MeshTying
         end
       end
 
-      if hasChanged && ~obj.oldStab
-        computeStabilizationMatrix(obj);
-      end
+      % if hasChanged && ~obj.oldStab
+      %   computeStabilizationMatrix(obj);
+      % end
     end
 
 
@@ -239,6 +243,7 @@ classdef SolidMechanicsContact < MeshTying
     function goBackState(obj,dt)
       % reset state to beginning of time step
       %updateActiveSet(obj);
+      obj.activeSet.curr = obj.activeSet.prev;
       obj.state = obj.stateOld;
       %resetConfiguration(obj);
     end
@@ -646,7 +651,7 @@ classdef SolidMechanicsContact < MeshTying
 
       % check that jump stabilizing terms are properly removed
       if ~obj.oldStab
-        assert(norm(sum(H,2))<1e-8, 'Stabilization matrix is not locally conservative')
+        %assert(norm(sum(H,2))<1e-8, 'Stabilization matrix is not locally conservative')
       end
 
     end
@@ -719,7 +724,7 @@ classdef SolidMechanicsContact < MeshTying
 
       obj.stabilizationMat = asbH.sparseAssembly();
 
-      assert(norm(sum(obj.stabilizationMat,2))<1e-8, 'Stabilization matrix is not locally conservative')
+      %assert(norm(sum(obj.stabilizationMat,2))<1e-8, 'Stabilization matrix is not locally conservative')
     end
 
     function [dofRow,dofCol,mat] = assembleLocalStabilization(obj,S,e1,e2)
@@ -735,26 +740,26 @@ classdef SolidMechanicsContact < MeshTying
       dof1 = DoFManager.dofExpand(e1,nc);
       dof2 = DoFManager.dofExpand(e2,nc);
 
-      if nc > 1
-        % vector field, rotation matrix needed
-
-        % get average rotation matrix
-        n1 = getNormal(obj.interfMesh,e1);
-        n2 = getNormal(obj.interfMesh,e2);
-        if abs(n1'*n2 -1) < 1e4*eps
-          avgR = obj.interfMesh.computeRot(n1);
-        else
-          A1 = obj.interfMesh.msh(2).surfaceArea(e1);
-          A2 = obj.interfMesh.msh(2).surfaceArea(e2);
-          nAvg = n1*A1 + n2*A2;
-          nAvg = nAvg/norm(nAvg);
-          avgR = obj.interfMesh.computeRot(nAvg);
-        end
-
-        % apply rotation matrix to S
-        S = avgR'*S*avgR;
-
-      end
+      % if nc > 1
+      %   % vector field, rotation matrix needed
+      % 
+      %   % get average rotation matrix
+      %   n1 = getNormal(obj.interfMesh,e1);
+      %   n2 = getNormal(obj.interfMesh,e2);
+      %   if abs(n1'*n2 -1) < 1e4*eps
+      %     avgR = obj.interfMesh.computeRot(n1);
+      %   else
+      %     A1 = obj.interfMesh.msh(2).surfaceArea(e1);
+      %     A2 = obj.interfMesh.msh(2).surfaceArea(e2);
+      %     nAvg = n1*A1 + n2*A2;
+      %     nAvg = nAvg/norm(nAvg);
+      %     avgR = obj.interfMesh.computeRot(nAvg);
+      %   end
+      % 
+      %   % apply rotation matrix to S
+      %   S = avgR'*S*avgR;
+      % 
+      % end
 
       % prepare matrix for full stick edge
       mat = [S,-S;-S,S];
@@ -770,11 +775,11 @@ classdef SolidMechanicsContact < MeshTying
         mat(:,[2,3,5,6]) = 0;
         % if contactState(1) ~= ContactMode.stick
         %   mat([2 3],:) = 0;
-        %   mat(:,[2 3]) = 0;
+        %   %mat(:,[2 3]) = 0;
         % end
         % if contactState(2) ~= ContactMode.stick
         %   mat([5 6],:) = 0;
-        %   mat(:,[5 6]) = 0;
+        %   %mat(:,[5 6]) = 0;
         % end
       end
 

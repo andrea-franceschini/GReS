@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <struct>
     <BC>
-        <name>fix_back</name>
+        <name>z_bottom</name>
         <type>Dirichlet</type>
         <entityType>SurfBC</entityType>
         <variable>displacements</variable>
         <BCentities>
-            <surfaceTags>5</surfaceTags>
-            <components>x</components>
+            <surfaceTags>1</surfaceTags>
+            <components>z</components>
         </BCentities>
         <BCevent>
             <time>0</time>
@@ -20,10 +20,10 @@
         <entityType>NodeBC</entityType>
         <variable>displacements</variable>
         <BCentities>
-            <bcList>81</bcList>
-            <bcList>82</bcList>
-            <bcList>85</bcList>
-            <bcList>87</bcList>
+            <bcList>25</bcList>
+            <bcList>26</bcList>
+            <bcList>29</bcList>
+            <bcList>31</bcList>
             <components>y</components>
         </BCentities>
         <BCevent>
@@ -32,17 +32,21 @@
         </BCevent>
     </BC>
     <BC>
-        <name>z_bottom</name>
-        <type>Dirichlet</type>
+        <name>az_load</name>
+        <type>Neumann</type>
         <entityType>SurfBC</entityType>
         <variable>displacements</variable>
         <BCentities>
-            <surfaceTags>1</surfaceTags>
+            <surfaceTags>2</surfaceTags>
             <components>z</components>
         </BCentities>
         <BCevent>
             <time>0</time>
             <value>0</value>
+        </BCevent>
+        <BCevent>
+            <time>1</time>
+            <value>-y</value>
         </BCevent>
     </BC>
 </struct>

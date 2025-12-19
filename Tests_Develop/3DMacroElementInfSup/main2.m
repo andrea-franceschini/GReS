@@ -4,8 +4,8 @@ clear
 close all
 clc
 % set mesh
-NM = [2 4 8];
-NS = [4 8 16];
+NM = [2 3 4 5  6 8];
+NS = [4 6 8 10  12 16];
 % Nm = 2;
 % Ns = 4;
 
@@ -14,9 +14,9 @@ for r = 1:numel(NM)
   Nm = NM(r);
   Ns = NS(r);
 
-  b1 = BlockStructuredMesh([0,1;0 1;1 1+1/Nm],[Nm Nm 1],1);
+  b1 = BlockStructuredMesh([0,1;0 1;1 2],[Nm Nm Nm],1);
   mesh1 = processGeometry(b1);
-  b2 = BlockStructuredMesh([0,1;0 1;1-1/Ns 1],[Ns Ns 1],1);
+  b2 = BlockStructuredMesh([0,1;0 1;0 1],[Ns Ns Ns],1);
   mesh2 = processGeometry(b2);
 
   % define model
@@ -77,17 +77,21 @@ for r = 1:numel(NM)
 
   isBC1 = ismember(loc2glob1,bcDof1);
   isBC2 = ismember(loc2glob2,bcDof2);
-  activeDof1 = loc2glob1(~isBC1);
-  activeDof2 = loc2glob2(~isBC2);
+  % activeDof1 = loc2glob1(~isBC1);
+  % activeDof2 = loc2glob2(~isBC2);
 
-  M = interfaces{1}.M(:,activeDof1);
-  D = interfaces{1}.D(:,activeDof2);
+
+  M = interfaces{1}.M;
+  D = interfaces{1}.D;
+
+  M(:,bcDof1) = [];
+  D(:,bcDof2) = [];
 
 
   % get kernel of B^T (same as the Schur complement!)
   % this kernel is crazy!
   B = full([D -M]');
-  [u,e,w] = svd(B);
+ % [u,e,w] = svd(B);
 
   %get matrix A removing extra entries
   poroTop = getPhysicsSolver(domainTop,"Poromechanics");
@@ -111,9 +115,9 @@ for r = 1:numel(NM)
   interfaces{1}.assembleConstraint();
 
   H = interfaces{1}.stabilizationMat;
-
-  nH = null(full(H));
-  nS = null(full(S));
+  % 
+  % nH = null(full(H));
+  % nS = null(full(S));
 
 
   % test kernel
@@ -127,12 +131,12 @@ for r = 1:numel(NM)
   % 
   % fprintf("norm(S*v) = %2.4e \n",norm(S*v))
 
-  for i = 1:size(nS,2)
-    r1 = nS(:,i)'*nH(:,1);
-    r2 = nS(:,i)'*nH(:,2);
-    r3 = nS(:,i)'*nH(:,3);
-    fprintf('%1.4e %1.4e %1.4e \n',r1,r2,r3);
-  end
+  % for i = 1:size(nS,2)
+  %   r1 = nS(:,i)'*nH(:,1);
+  %   r2 = nS(:,i)'*nH(:,2);
+  %   r3 = nS(:,i)'*nH(:,3);
+  %   fprintf('%1.4e %1.4e %1.4e \n',r1,r2,r3);
+  % end
 
   %% inf-sup constant evaluation
 
