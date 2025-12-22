@@ -248,8 +248,7 @@ classdef Sedimentation < PhysicsSolver
       pOld = getStateOld(obj,obj.getField());
 
       lw = 1/obj.materials.getFluid().getDynViscosity();
-      ents = obj.grid.mapCellIds(:);
-      % ents = obj.dofm.getActiveEntities(obj.fieldId);
+      ents = obj.grid.getActiveDofs;
 
       if ~obj.domain.simparams.isTimeDependent
         rhs = obj.H*p(ents);
@@ -307,7 +306,7 @@ classdef Sedimentation < PhysicsSolver
 
     function gTerm = finalizeRHSGravTerm(obj,lw)
       gTerm = accumarray(obj.facesNeigh(:), ...
-        [lw.*obj.rhsGrav; -lw.*obj.rhsGrav],[obj.grid.numberActiveCells,1]);
+        [lw.*obj.rhsGrav; -lw.*obj.rhsGrav],[obj.grid.getNdofs,1]);
       gTerm = gTerm(obj.grid.getActiveCells);
     end
 
@@ -334,7 +333,7 @@ classdef Sedimentation < PhysicsSolver
       % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
 
       assert(size(bcVals,2)==2,'Invalid matrix size for BC values');
-      nDoF = obj.grid.numberActiveCells;
+      nDoF = obj.grid.getNdofs;
       bcDofsJ = nDoF*(bcDofs-1) + bcDofs;
       obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) = ...
         obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) + bcVals(:,1);
@@ -412,49 +411,15 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function prepareSystem(obj)
-      % Function to create transmissibility for the initial grid
-      segmX = diff(obj.grid.grid.X);
-      segmY = diff(obj.grid.grid.Y);
-      segmZ = diff(obj.grid.grid.Z);
-
-      ncells = prod(obj.grid.ncells);
-      cellNeigh = zeros(ncells,6,'uint64');
-      cellAreas = zeros(ncells,3);
-      for k = 1:obj.grid.ncells(3)
-        for i = 1:obj.grid.ncells(1)
-          for j = 1:obj.grid.ncells(2)
-            cellId = obj.grid.mapCellIds(i, j, k);
-            % Neighbor Mapping:
-            if i > 1
-              cellNeigh(cellId, 3) = obj.grid.mapCellIds(i-1,j,k);
-            end
-            if i < obj.grid.ncells(1)
-              cellNeigh(cellId, 4) = obj.grid.mapCellIds(i+1,j,k);
-            end
-            if j > 1
-              cellNeigh(cellId, 1) = obj.grid.mapCellIds(i,j-1,k);
-            end
-            if j < obj.grid.ncells(2)
-              cellNeigh(cellId, 2) = obj.grid.mapCellIds(i,j+1,k);
-            end
-            if k > 1
-              cellNeigh(cellId, 5) = obj.grid.mapCellIds(i,j,k-1);
-            end
-            if k < obj.grid.ncells(3)
-              cellNeigh(cellId, 6) = obj.grid.mapCellIds(i,j,k+1);
-            end
-
-            % Face Area
-            cellAreas(cellId, 1) = segmY(j) * segmZ(k);
-            cellAreas(cellId, 2) = segmX(i) * segmZ(k);
-            cellAreas(cellId, 3) = segmX(i) * segmY(j);
-          end
-        end
-      end
+      actDofs = obj.grid.getActiveCells;
+      actIJK = obj.grid.getIJKfromCellID(actDofs);
+      cellNeigh = obj.grid.getNeigh(actIJK);
+      cellAreas = obj.grid.grid.getArea(actIJK);
 
       % Computing the permeability
-      permCell = getPerm(obj,obj.grid.getActiveCells);
-      ActiveCells = obj.grid.mapCellIds ~= 0;
+      dofs = obj.grid.getDofsFromIJK;
+      ActiveCells = dofs ~= 0;
+      permCell = getPerm(obj,dofs(ActiveCells));
 
       % correcting matfrac, cleaning fractions for non-existent cells
       obj.grid.matfrac(~ActiveCells(:),:)=0.;
@@ -469,9 +434,9 @@ classdef Sedimentation < PhysicsSolver
 
       % Computing transmissibilities and RHS related to the gravity term
       count = 1;
-      for cell=1:ncells
-        [~,~,zNeiA] = obj.grid.getIJKfromCellID(cell);
-        zNeiA=obj.grid.grid.centerZ(zNeiA);
+      for cell=1:sum(ActiveCells)
+        zNeiA = obj.grid.getIJKfromCellID(cell);
+        zNeiA = obj.grid.grid.centerZ(zNeiA(3));
         for face=1:6
           neighbor = cellNeigh(cell, face);
           if (neighbor ~= 0) && (cell < neighbor)
@@ -487,8 +452,8 @@ classdef Sedimentation < PhysicsSolver
 
             % Gravity contribution.
             if gamma > 0
-              [~,~,zNeiB] = obj.grid.getIJKfromCellID(neighbor);
-              zNeiB=obj.grid.grid.centerZ(zNeiB);
+              zNeiB = obj.grid.getIJKfromCellID(neighbor);
+              zNeiB=obj.grid.grid.centerZ(zNeiB(3));
               tmpRhs(count) = gamma*tmpTrans(count)*(zNeiA-zNeiB);
             end
 
@@ -524,7 +489,7 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function computeHPInitial(obj)
-      ncells = obj.grid.numberActiveCells;
+      ncells = obj.grid.getNdofs;
       mu = obj.materials.getFluid().getDynViscosity();
 
       % Computing the initial H matrix
@@ -546,11 +511,13 @@ classdef Sedimentation < PhysicsSolver
       end
 
       % Mapping and Reorder
-      mapCellsOn = obj.grid.mapCellIds ~= 0;
-      map = obj.grid.mapCellIds(mapCellsOn);
-      alpha=alpha(mapCellsOn);
+      % Computing the permeability
+      dofs = obj.grid.getDofsFromIJK;
+      ActiveCells = dofs ~= 0;
+      map = obj.grid.getActiveDofs;
+      alpha=alpha(ActiveCells);
       alpha=alpha(map);
-      poro=poro(mapCellsOn);
+      poro=poro(ActiveCells);
       poro=poro(map);
       volsCell = obj.grid.computeVols();
 
@@ -598,7 +565,7 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function meshUpdate(obj,CellMap)
-      
+      ty=1;      
     end
 
   end
@@ -641,5 +608,3 @@ classdef Sedimentation < PhysicsSolver
   end
 
 end
-
-

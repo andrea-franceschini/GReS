@@ -13,8 +13,8 @@ classdef gridForSedimentation < handle
 
     % Control for the growing grid
     columnsHeight (:,:) uint64
-    mapCellIds (:,:,:) uint64
-    numberActiveCells uint64
+    dof (:,:,:) uint64
+    ndofs uint64
   end
 
   properties(Access = private)
@@ -61,7 +61,7 @@ classdef gridForSedimentation < handle
           count=1;
           for j=1:obj.ncells(2)
             for h=1:obj.columnsHeight(1,j)
-              id(count)=obj.mapCellIds(1,j,h);
+              id(count)=obj.dof(1,j,h);
               faceArea(count)=areas(j,h);
               count=count+1;
             end
@@ -75,7 +75,7 @@ classdef gridForSedimentation < handle
           count=1;
           for j=1:obj.ncells(2)
             for h=1:obj.columnsHeight(end,j)
-              id(count)=obj.mapCellIds(end,j,h);
+              id(count)=obj.dof(end,j,h);
               faceArea(count)=areas(j,h);
               count=count+1;
             end
@@ -89,7 +89,7 @@ classdef gridForSedimentation < handle
           count=1;
           for i=1:obj.ncells(1)
             for h=1:obj.columnsHeight(i,1)
-              id(count)=obj.mapCellIds(i,1,h);
+              id(count)=obj.dof(i,1,h);
               faceArea(count)=areas(i,h);
               count=count+1;
             end
@@ -103,7 +103,7 @@ classdef gridForSedimentation < handle
           count=1;
           for i=1:obj.ncells(1)
             for h=1:obj.columnsHeight(i,end)
-              id(count)=obj.mapCellIds(i,end,h);
+              id(count)=obj.dof(i,end,h);
               faceArea(count)=areas(i,h);
               count=count+1;
             end
@@ -117,7 +117,7 @@ classdef gridForSedimentation < handle
           count=1;
           for i=1:obj.ncells(1)
             for j=1:obj.ncells(2)
-              id(count)=obj.mapCellIds(i,j,1);
+              id(count)=obj.dof(i,j,1);
               faceArea(count)=areas(i,j);
               count=count+1;
             end
@@ -133,7 +133,7 @@ classdef gridForSedimentation < handle
           for i=1:obj.ncells(1)
             for j=1:obj.ncells(2)
               dh(count)=dhtmp(obj.columnsHeight(i,j));
-              id(count)=obj.mapCellIds(i,j,obj.columnsHeight(i,j));
+              id(count)=obj.dof(i,j,obj.columnsHeight(i,j));
               faceArea(count)=areas(i,j);
               count=count+1;
             end
@@ -162,7 +162,7 @@ classdef gridForSedimentation < handle
       % This assumes cellIds corresponds to standard (i,j,k) linear indexing
       activeIds = obj.getActiveCells();
       coord = [X(activeIds), Y(activeIds), Z(activeIds)];
-      coord = coord(obj.mapCellIds(activeIds),:);
+      coord = coord(obj.dof(activeIds),:);
       coord = coord(cellIds,:);
     end
 
@@ -178,12 +178,13 @@ classdef gridForSedimentation < handle
       % Extract volumes only for active cells
       activeIds = obj.getActiveCells();
       vols = vAll(activeIds);
-      vols = vols(obj.mapCellIds(activeIds));
+      vols = vols(obj.dof(activeIds));
     end
 
-    function [i,j,k] = getIJKfromCellID(obj,cellID)
+    function ijk = getIJKfromCellID(obj,cellID)
       % Converts linear Cell ID to 3D subscripts.
       [i,j,k]=ind2sub(obj.ncells,cellID);
+      ijk=[i,j,k];
     end
 
     function cellID = getCellIDfromIJK(obj,i,j,k)
@@ -194,9 +195,54 @@ classdef gridForSedimentation < handle
 
     function cellID = getActiveCells(obj)
       % Returns a list of all non-zero Cell IDs.
-      cellID = obj.mapCellIds(obj.mapCellIds ~=0);
+      cellID = obj.dof(obj.dof ~=0);
     end
 
+    function dofs = getActiveDofs(obj)
+      dofs = obj.dof(obj.dof ~=0);
+    end
+
+    function ndofs = getNdofs(obj)
+      ndofs=obj.ndofs;
+    end
+
+    function dofs = getDofsFromIJK(obj,ijk)
+      if nargin == 1
+        dofs = obj.dof(:);
+      else
+        pos = sub2ind(size(obj.dof), ijk(:,1), ijk(:,2), ijk(:,3));
+        dofs = obj.dof(pos);
+      end
+    end
+
+    function neigh = getNeigh(obj,ijk)
+      neigh = zeros(size(ijk,1),6);
+
+      actTmp = ijk(:,1)~=1;
+      pos = sub2ind(size(obj.dof), ijk(actTmp,1)-1, ijk(actTmp,2), ijk(actTmp,3));
+      neigh(actTmp,3) =  obj.dof(pos);
+      actTmp = ijk(:,1)~=obj.ncells(1);
+      pos = sub2ind(size(obj.dof), ijk(actTmp,1)+1, ijk(actTmp,2), ijk(actTmp,3));
+      neigh(actTmp,4) =  obj.dof(pos);
+
+      actTmp = ijk(:,2)~=1;
+      pos = sub2ind(size(obj.dof), ijk(actTmp,1), ijk(actTmp,2)-1, ijk(actTmp,3));
+      neigh(actTmp,1) =  obj.dof(pos);
+      actTmp = ijk(:,2)~=obj.ncells(2);
+      pos = sub2ind(size(obj.dof), ijk(actTmp,1), ijk(actTmp,2)+1, ijk(actTmp,3));
+      neigh(actTmp,2) =  obj.dof(pos);
+
+      actTmp = ijk(:,3)~=1;
+      pos = sub2ind(size(obj.dof), ijk(actTmp,1), ijk(actTmp,2), ijk(actTmp,3)-1);
+      neigh(actTmp,5) =  obj.dof(pos);
+      actTmp = ijk(:,3)~=obj.ncells(3);
+      pos = sub2ind(size(obj.dof), ijk(actTmp,1), ijk(actTmp,2), ijk(actTmp,3)+1);
+      neigh(actTmp,6) =  obj.dof(pos);
+    end
+
+
+    function grow(obj,cells)
+    end
 
 
   end
@@ -206,13 +252,13 @@ classdef gridForSedimentation < handle
       % Internal initialization of grid, maps, and material layers.
       obj.grid = structGrid(data.grid);
       obj.ncells = obj.grid.getNumberCells;
-      obj.numberActiveCells = prod(obj.ncells);
+      obj.ndofs = prod(obj.ncells);
 
       nCellMap = prod(obj.ncells(1:2));
 
       obj.nmat = length(matList);
-      obj.matfrac = zeros(obj.numberActiveCells,obj.nmat);
-      obj.mapCellIds = reshape(1:obj.numberActiveCells,obj.ncells);
+      obj.matfrac = zeros(obj.ndofs,obj.nmat);
+      obj.dof = reshape(1:obj.ndofs,obj.ncells);
       obj.columnsHeight = obj.ncells(3)*ones(nCellMap,1,"uint64");
       obj.columnsHeight = reshape(obj.columnsHeight,obj.ncells(1:2));
 

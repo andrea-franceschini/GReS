@@ -147,6 +147,16 @@ classdef structGrid
       vols = segmX(posX).*segmY(posY).*segmZ(posZ);
     end
 
+    function area = getArea(obj,ijk)
+      segmX = diff(obj.X);
+      segmY = diff(obj.Y);
+      segmZ = diff(obj.Z);
+      area = zeros(size(ijk,1),3);
+      area(:,1) = segmY(ijk(:,2)).*segmZ(ijk(:,3));
+      area(:,2) = segmX(ijk(:,1)).*segmZ(ijk(:,3));
+      area(:,3) = segmX(ijk(:,1)).*segmY(ijk(:,2));
+    end
+
 
 
 

@@ -6,6 +6,10 @@
   </Event>
 </Sedimentation_Maps>
 <!--
+
+    <Map materialFlag = "1"
+         division = "3,3"
+         file = "Inputs/Maps/map2.dat"/>
   <Event time = "0." >
     <Uniform materialFlag = "1" value= "0.01"/>
     <Map materialFlag = "2"
