@@ -64,12 +64,12 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.rhs{obj.fieldId} = [];
 
       % Compute the initial system.
-      computeHPInitial(obj);
+      mu = obj.materials.getFluid().getDynViscosity();
+      computeStiffMat(obj,1/mu);
+      computeCapMat(obj);
 
       % Creating the output format
-
       prepareOutput(obj,input.output);
-
     end
 
     function assembleSystem(obj,dt)
@@ -233,11 +233,7 @@ classdef Sedimentation < PhysicsSolver
         computeCapMat(obj);
       end
 
-      if obj.domain.simparams.isTimeDependent
-        J = obj.domain.simparams.theta*obj.H + obj.P/dt;
-      else
-        J = obj.H;
-      end
+      J = obj.domain.simparams.theta*obj.H + obj.P/dt;
     end
 
     function rhs = computeRhs(obj,dt)
@@ -250,14 +246,10 @@ classdef Sedimentation < PhysicsSolver
       lw = 1/obj.materials.getFluid().getDynViscosity();
       ents = obj.grid.getActiveDofs;
 
-      if ~obj.domain.simparams.isTimeDependent
-        rhs = obj.H*p(ents);
-      else
-        theta = obj.domain.simparams.theta;
-        rhsStiff = theta*obj.H*p(ents) + (1-theta)*obj.H*pOld(ents);
-        rhsCap = (obj.P/dt)*(p(ents) - pOld(ents));
-        rhs = rhsStiff + rhsCap;
-      end
+      theta = obj.domain.simparams.theta;
+      rhsStiff = theta*obj.H*p(ents) + (1-theta)*obj.H*pOld(ents);
+      rhsCap = (obj.P/dt)*(p(ents) - pOld(ents));
+      rhs = rhsStiff + rhsCap;
 
       %adding gravity rhs contribute
       gamma = obj.materials.getFluid().getFluidSpecWeight();
@@ -267,41 +259,44 @@ classdef Sedimentation < PhysicsSolver
 
     end
 
-    function computeInitialStiffMat(obj,lw)
-      % Compute the Stiffness Matrix for the initial grid
-      ncells = obj.grid.numberActiveCells;
-      tmpVec = lw.*obj.trans;
+    % TODO: UPDATE THE TRANSMISSIBILITY OF THE CELL
+    function computeStiffMat(obj,lw)
+      % Compute the Stiffness Matrix
+      ncells = obj.grid.getNdofs;
+      tmpVec = lw.*obj.trans;  % <--- Modify here
       sumDiagTrans = accumarray(obj.facesNeigh(:),repmat(tmpVec,[2,1]),[ncells,1]);
       obj.H = sparse([obj.facesNeigh(:,1); obj.facesNeigh(:,2); (1:ncells)'],...
         [obj.facesNeigh(:,2); obj.facesNeigh(:,1); (1:ncells)'],...
         [-tmpVec; -tmpVec; sumDiagTrans], ncells, ncells);
     end
 
-    function computeInitialCapMat(obj)
-      ncells = obj.grid.numberActiveCells;
-      beta = obj.materials.getFluid().getFluidCompressibility();
-      PVal = obj.rockCmCell+beta*obj.poroCell;
-      obj.P = PVal.*speye(ncells);
+    % TODO: UPDATE THE CELL VOLUME
+    function computeCapMat(obj)
+      % Computing the initial P matrix
+      maxcells = prod(obj.grid.ncells);
+      alpha=zeros(maxcells,1);
+      poro=zeros(maxcells,1);
+      for mats=1:obj.nmat
+        tmpMat=obj.materials.getMaterial(mats).ConstLaw.getRockCompressibility();
+        alpha=alpha+tmpMat.*obj.grid.matfrac(:,mats);
+        tmpMat=obj.materials.getMaterial(mats).PorousRock.getPorosity();
+        poro=poro+tmpMat.*obj.grid.matfrac(:,mats);
+      end
 
-      % subCells = obj.dofm.getFieldCells(obj.fieldId);
-      % nSubCells = length(subCells);
-      % poroMat = zeros(nSubCells,1);
-      % alphaMat = zeros(nSubCells,1);
-      % beta = obj.materials.getFluid().getFluidCompressibility();
-      % for m = 1:obj.grid.nCellTag
-      %   if ~ismember(m,obj.dofm.getTargetRegions([obj.getField(),"displacements"]))
-      %     % compute alpha only if there's no coupling in the
-      %     % subdomain
-      %     alphaMat(m) = obj.materials.getMaterial(m).ConstLaw.getRockCompressibility();
-      %   end
-      %   poroMat(m) = obj.materials.getMaterial(m).PorousRock.getPorosity();
-      % end
-      % % (alpha+poro*beta)
-      % PVal = alphaMat(obj.grid.cellTag(subCells)) + beta*poroMat(obj.grid.cellTag(subCells));
-      % PVal = PVal.*obj.grid.cellVolume(subCells);
-      % nDoF = obj.dofm.getNumbDoF(obj.fieldId);
-      % [~,~,dof] = unique(subCells);
-      % obj.P = sparse(dof,dof,PVal,nDoF,nDoF);
+      % Mapping and Reorder
+      % Computing the permeability
+      dofs = obj.grid.getDofsFromIJK;
+      ActiveCells = dofs ~= 0;
+      map = obj.grid.getActiveDofs;
+      alpha=alpha(ActiveCells);
+      alpha=alpha(map);
+      poro=poro(ActiveCells);
+      poro=poro(map);
+      volsCell = obj.grid.computeVols();  % <--- Modify here
+
+      beta = obj.materials.getFluid().getFluidCompressibility();
+      PVal = (alpha+beta*poro).*volsCell;
+      obj.P = PVal.*speye(obj.grid.getNdofs);
     end
 
     function gTerm = finalizeRHSGravTerm(obj,lw)
@@ -486,44 +481,6 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.outstate.vtkFileName = tmp.vtkFileName;
 
       obj.domain.outstate.VTK = VTKOutput(obj.mesh,obj.domain.outstate.vtkFileName);
-    end
-
-    function computeHPInitial(obj)
-      ncells = obj.grid.getNdofs;
-      mu = obj.materials.getFluid().getDynViscosity();
-
-      % Computing the initial H matrix
-      tmpVec = (1/mu).*obj.trans;
-      sumDiagTrans = accumarray(obj.facesNeigh(:),repmat(tmpVec,[2,1]),[ncells,1]);
-      obj.H = sparse([obj.facesNeigh(:,1); obj.facesNeigh(:,2); (1:ncells)'],...
-        [obj.facesNeigh(:,2); obj.facesNeigh(:,1); (1:ncells)'],...
-        [-tmpVec; -tmpVec; sumDiagTrans], ncells, ncells);
-
-      % Computing the initial P matrix
-      maxcells = prod(obj.grid.ncells);
-      alpha=zeros(maxcells,1);
-      poro=zeros(maxcells,1);
-      for mats=1:obj.nmat
-        tmpMat=obj.materials.getMaterial(mats).ConstLaw.getRockCompressibility();
-        alpha=alpha+tmpMat.*obj.grid.matfrac(:,mats);
-        tmpMat=obj.materials.getMaterial(mats).PorousRock.getPorosity();
-        poro=poro+tmpMat.*obj.grid.matfrac(:,mats);
-      end
-
-      % Mapping and Reorder
-      % Computing the permeability
-      dofs = obj.grid.getDofsFromIJK;
-      ActiveCells = dofs ~= 0;
-      map = obj.grid.getActiveDofs;
-      alpha=alpha(ActiveCells);
-      alpha=alpha(map);
-      poro=poro(ActiveCells);
-      poro=poro(map);
-      volsCell = obj.grid.computeVols();
-
-      beta = obj.materials.getFluid().getFluidCompressibility();
-      PVal = (alpha+beta*poro).*volsCell;
-      obj.P = PVal.*speye(ncells);
     end
 
     function permCells = getPerm(obj,cellId)
