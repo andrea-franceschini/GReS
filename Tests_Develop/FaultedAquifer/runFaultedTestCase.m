@@ -18,11 +18,11 @@ cd(scriptDir)
 
 % grid parameters
 gridName = 'Outputs/cornerPointGrid';
-dims = [20,30,20];
+dims = [14,20,13];
 nRockCells = 3;
 scale = [5e2,5e2,100];
 
-gresLog().setVerbosity(2);
+gresLog().setVerbosity(3);
 
 %% process the grid
 [mesh,newDims] = processCornerPointGrid(gridName,dims,nRockCells,scale);

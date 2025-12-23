@@ -1,20 +1,20 @@
 
-TSTEP 1   ---  TIME 0.100000  --- DT = 1.000000e-01
+TSTEP 1   ---  TIME 0.050000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 1   ---  TIME 0.100000  --- DT = 1.000000e-01
+TSTEP 1   ---  TIME 0.050000  --- DT = 5.000000e-02
 Active set iteration n. 0 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 0.000e+00 
-Rhs norm for stick dofs: 0.000e+00 
+Rhs norm for stabilization: 2.941e-17 
+Rhs norm for stick dofs: 2.941e-17 
 Rhs norm for slip dofs: 0.000e+00 
 Rhs norm for open dofs: 0.000e+00 
-0     2.896411e+00     1.000000e+00
-Rhs norm for stabilization: 1.525e-03 
-Rhs norm for stick dofs: 6.127e-18 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 7.983e-04 
+Rhs norm for stick dofs: 1.161e-17 
 Rhs norm for slip dofs: 0.000e+00 
 Rhs norm for open dofs: 0.000e+00 
-1     1.763534e-14     6.088686e-15
+1     6.757128e-15     4.015736e-15
 0 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
@@ -25,22 +25,22 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from open to stick 
 Stick dofs: 36    Slip dofs: 0    Open dofs: 0 
 
-TSTEP 2   ---  TIME 0.150000  --- DT = 5.000000e-02
+TSTEP 2   ---  TIME 0.100000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 2   ---  TIME 0.150000  --- DT = 5.000000e-02
+TSTEP 2   ---  TIME 0.100000  --- DT = 5.000000e-02
 Active set iteration n. 0 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 1.525e-03 
-Rhs norm for stick dofs: 1.366e-03 
+Rhs norm for stabilization: 4.102e-04 
+Rhs norm for stick dofs: 1.154e-17 
 Rhs norm for slip dofs: 0.000e+00 
 Rhs norm for open dofs: 0.000e+00 
-0     1.448206e+00     1.000000e+00
-Rhs norm for stabilization: 1.798e-03 
-Rhs norm for stick dofs: 5.404e-18 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 1.069e-03 
+Rhs norm for stick dofs: 1.526e-17 
 Rhs norm for slip dofs: 0.000e+00 
 Rhs norm for open dofs: 0.000e+00 
-1     2.623145e-14     1.811307e-14
+1     1.494257e-14     8.880313e-15
 0 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
@@ -51,22 +51,22 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from open to stick 
 Stick dofs: 36    Slip dofs: 0    Open dofs: 0 
 
-TSTEP 3   ---  TIME 0.200000  --- DT = 5.000000e-02
+TSTEP 3   ---  TIME 0.150000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 3   ---  TIME 0.200000  --- DT = 5.000000e-02
+TSTEP 3   ---  TIME 0.150000  --- DT = 5.000000e-02
 Active set iteration n. 0 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 1.798e-03 
-Rhs norm for stick dofs: 1.549e-03 
+Rhs norm for stabilization: 8.204e-04 
+Rhs norm for stick dofs: 1.511e-17 
 Rhs norm for slip dofs: 0.000e+00 
 Rhs norm for open dofs: 0.000e+00 
-0     1.448206e+00     1.000000e+00
-Rhs norm for stabilization: 2.101e-03 
-Rhs norm for stick dofs: 9.545e-18 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 1.408e-03 
+Rhs norm for stick dofs: 1.394e-17 
 Rhs norm for slip dofs: 0.000e+00 
 Rhs norm for open dofs: 0.000e+00 
-1     3.309146e-14     2.284997e-14
+1     2.146680e-14     1.275764e-14
 0 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
@@ -77,22 +77,22 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from open to stick 
 Stick dofs: 36    Slip dofs: 0    Open dofs: 0 
 
-TSTEP 4   ---  TIME 0.250000  --- DT = 5.000000e-02
+TSTEP 4   ---  TIME 0.200000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 4   ---  TIME 0.250000  --- DT = 5.000000e-02
+TSTEP 4   ---  TIME 0.200000  --- DT = 5.000000e-02
 Active set iteration n. 0 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 2.101e-03 
-Rhs norm for stick dofs: 1.773e-03 
+Rhs norm for stabilization: 1.231e-03 
+Rhs norm for stick dofs: 1.347e-17 
 Rhs norm for slip dofs: 0.000e+00 
 Rhs norm for open dofs: 0.000e+00 
-0     1.448206e+00     1.000000e+00
-Rhs norm for stabilization: 2.378e-03 
-Rhs norm for stick dofs: 1.009e-17 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 1.778e-03 
+Rhs norm for stick dofs: 1.189e-17 
 Rhs norm for slip dofs: 0.000e+00 
 Rhs norm for open dofs: 0.000e+00 
-1     4.415439e-14     3.048902e-14
+1     2.991556e-14     1.777870e-14
 0 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
@@ -103,22 +103,22 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from open to stick 
 Stick dofs: 36    Slip dofs: 0    Open dofs: 0 
 
-TSTEP 5   ---  TIME 0.300000  --- DT = 5.000000e-02
+TSTEP 5   ---  TIME 0.250000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 5   ---  TIME 0.300000  --- DT = 5.000000e-02
+TSTEP 5   ---  TIME 0.250000  --- DT = 5.000000e-02
 Active set iteration n. 0 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 2.378e-03 
-Rhs norm for stick dofs: 1.974e-03 
+Rhs norm for stabilization: 1.641e-03 
+Rhs norm for stick dofs: 1.090e-17 
 Rhs norm for slip dofs: 0.000e+00 
 Rhs norm for open dofs: 0.000e+00 
-0     1.448207e+00     1.000000e+00
-Rhs norm for stabilization: 2.627e-03 
-Rhs norm for stick dofs: 1.075e-17 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 2.162e-03 
+Rhs norm for stick dofs: 1.437e-17 
 Rhs norm for slip dofs: 0.000e+00 
 Rhs norm for open dofs: 0.000e+00 
-1     5.337960e-14     3.685910e-14
+1     3.515290e-14     2.089124e-14
 0 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
@@ -129,23 +129,23 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from open to stick 
 Stick dofs: 36    Slip dofs: 0    Open dofs: 0 
 
-TSTEP 6   ---  TIME 0.350000  --- DT = 5.000000e-02
+TSTEP 6   ---  TIME 0.300000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 6   ---  TIME 0.350000  --- DT = 5.000000e-02
+TSTEP 6   ---  TIME 0.300000  --- DT = 5.000000e-02
 Active set iteration n. 0 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 2.627e-03 
-Rhs norm for stick dofs: 2.150e-03 
+Rhs norm for stabilization: 2.051e-03 
+Rhs norm for stick dofs: 1.304e-17 
 Rhs norm for slip dofs: 0.000e+00 
 Rhs norm for open dofs: 0.000e+00 
-0     1.448207e+00     1.000000e+00
-Rhs norm for stabilization: 2.855e-03 
-Rhs norm for stick dofs: 1.014e-17 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 2.555e-03 
+Rhs norm for stick dofs: 1.676e-17 
 Rhs norm for slip dofs: 0.000e+00 
 Rhs norm for open dofs: 0.000e+00 
-1     6.093140e-14     4.207369e-14
-0 elements from stick to new slip 
+1     4.107403e-14     2.441014e-14
+1 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
 0 elements from new slip to slip 
@@ -153,25 +153,81 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from slip to stick 
 0 elements from slip to open 
 0 elements from open to stick 
-Stick dofs: 36    Slip dofs: 0    Open dofs: 0 
+Stick dofs: 35    Slip dofs: 1    Open dofs: 0 
 
-TSTEP 7   ---  TIME 0.400000  --- DT = 5.000000e-02
+TSTEP 6   ---  TIME 0.300000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 7   ---  TIME 0.400000  --- DT = 5.000000e-02
+TSTEP 6   ---  TIME 0.300000  --- DT = 5.000000e-02
+Active set iteration n. 1 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 2.564e-03 
+Rhs norm for stick dofs: 3.497e-04 
+Rhs norm for slip dofs: 2.481e-01 
+Rhs norm for open dofs: 0.000e+00 
+0     2.481141e-01     1.000000e+00
+Rhs norm for stabilization: 2.520e-03 
+Rhs norm for stick dofs: 1.474e-17 
+Rhs norm for slip dofs: 2.846e-01 
+Rhs norm for open dofs: 0.000e+00 
+1     2.846166e-01     1.147120e+00
+Rhs norm for stabilization: 2.517e-03 
+Rhs norm for stick dofs: 1.386e-17 
+Rhs norm for slip dofs: 1.651e-02 
+Rhs norm for open dofs: 0.000e+00 
+2     1.651101e-02     6.654605e-02
+Rhs norm for stabilization: 2.518e-03 
+Rhs norm for stick dofs: 1.413e-17 
+Rhs norm for slip dofs: 1.784e-04 
+Rhs norm for open dofs: 0.000e+00 
+3     1.783974e-04     7.190136e-04
+Rhs norm for stabilization: 2.518e-03 
+Rhs norm for stick dofs: 1.457e-17 
+Rhs norm for slip dofs: 8.707e-09 
+Rhs norm for open dofs: 0.000e+00 
+4     8.707255e-09     3.509375e-08
+0 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+1 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 35    Slip dofs: 1    Open dofs: 0 
+
+TSTEP 7   ---  TIME 0.350000  --- DT = 5.000000e-02
+-----------------------------------------------------------
+
+TSTEP 7   ---  TIME 0.350000  --- DT = 5.000000e-02
 Active set iteration n. 0 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 2.855e-03 
-Rhs norm for stick dofs: 2.304e-03 
-Rhs norm for slip dofs: 0.000e+00 
+Rhs norm for stabilization: 2.411e-03 
+Rhs norm for stick dofs: 1.129e-17 
+Rhs norm for slip dofs: 4.089e-09 
 Rhs norm for open dofs: 0.000e+00 
-0     1.448207e+00     1.000000e+00
-Rhs norm for stabilization: 3.065e-03 
-Rhs norm for stick dofs: 1.385e-17 
-Rhs norm for slip dofs: 0.000e+00 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 2.872e-03 
+Rhs norm for stick dofs: 1.736e-17 
+Rhs norm for slip dofs: 2.105e-01 
 Rhs norm for open dofs: 0.000e+00 
-1     6.993759e-14     4.829253e-14
-0 elements from stick to new slip 
+1     2.104824e-01     1.250889e-01
+Rhs norm for stabilization: 2.872e-03 
+Rhs norm for stick dofs: 1.672e-17 
+Rhs norm for slip dofs: 6.236e-03 
+Rhs norm for open dofs: 0.000e+00 
+2     6.235728e-03     3.705870e-03
+Rhs norm for stabilization: 2.872e-03 
+Rhs norm for stick dofs: 1.756e-17 
+Rhs norm for slip dofs: 1.182e-05 
+Rhs norm for open dofs: 0.000e+00 
+3     1.182386e-05     7.026875e-06
+Rhs norm for stabilization: 2.872e-03 
+Rhs norm for stick dofs: 1.610e-17 
+Rhs norm for slip dofs: 1.536e-11 
+Rhs norm for open dofs: 0.000e+00 
+4     1.535891e-11     9.127745e-12
+1 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
 0 elements from new slip to slip 
@@ -179,24 +235,162 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from slip to stick 
 0 elements from slip to open 
 0 elements from open to stick 
-Stick dofs: 36    Slip dofs: 0    Open dofs: 0 
+Stick dofs: 34    Slip dofs: 2    Open dofs: 0 
 
-TSTEP 8   ---  TIME 0.450000  --- DT = 5.000000e-02
+TSTEP 7   ---  TIME 0.350000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 8   ---  TIME 0.450000  --- DT = 5.000000e-02
+TSTEP 7   ---  TIME 0.350000  --- DT = 5.000000e-02
+Active set iteration n. 1 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 2.877e-03 
+Rhs norm for stick dofs: 4.263e-04 
+Rhs norm for slip dofs: 3.865e-01 
+Rhs norm for open dofs: 0.000e+00 
+0     3.865339e-01     1.000000e+00
+Rhs norm for stabilization: 2.821e-03 
+Rhs norm for stick dofs: 1.554e-17 
+Rhs norm for slip dofs: 2.682e-01 
+Rhs norm for open dofs: 0.000e+00 
+1     2.682196e-01     6.939098e-01
+Rhs norm for stabilization: 2.817e-03 
+Rhs norm for stick dofs: 1.482e-17 
+Rhs norm for slip dofs: 8.054e-03 
+Rhs norm for open dofs: 0.000e+00 
+2     8.053800e-03     2.083595e-02
+Rhs norm for stabilization: 2.818e-03 
+Rhs norm for stick dofs: 1.398e-17 
+Rhs norm for slip dofs: 2.514e-05 
+Rhs norm for open dofs: 0.000e+00 
+3     2.514375e-05     6.504928e-05
+Rhs norm for stabilization: 2.818e-03 
+Rhs norm for stick dofs: 1.462e-17 
+Rhs norm for slip dofs: 1.236e-10 
+Rhs norm for open dofs: 0.000e+00 
+4     1.236068e-10     3.197826e-10
+0 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+1 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 34    Slip dofs: 2    Open dofs: 0 
+
+TSTEP 8   ---  TIME 0.400000  --- DT = 5.000000e-02
+-----------------------------------------------------------
+
+TSTEP 8   ---  TIME 0.400000  --- DT = 5.000000e-02
 Active set iteration n. 0 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 3.065e-03 
-Rhs norm for stick dofs: 2.440e-03 
-Rhs norm for slip dofs: 0.000e+00 
+Rhs norm for stabilization: 2.675e-03 
+Rhs norm for stick dofs: 1.268e-17 
+Rhs norm for slip dofs: 6.389e-11 
 Rhs norm for open dofs: 0.000e+00 
-0     1.448207e+00     1.000000e+00
-Rhs norm for stabilization: 3.261e-03 
-Rhs norm for stick dofs: 1.626e-17 
-Rhs norm for slip dofs: 0.000e+00 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 3.077e-03 
+Rhs norm for stick dofs: 1.620e-17 
+Rhs norm for slip dofs: 3.384e-01 
 Rhs norm for open dofs: 0.000e+00 
-1     7.019658e-14     4.847136e-14
+1     3.383897e-01     2.011037e-01
+Rhs norm for stabilization: 3.075e-03 
+Rhs norm for stick dofs: 1.543e-17 
+Rhs norm for slip dofs: 1.241e-02 
+Rhs norm for open dofs: 0.000e+00 
+2     1.241120e-02     7.375930e-03
+Rhs norm for stabilization: 3.075e-03 
+Rhs norm for stick dofs: 1.725e-17 
+Rhs norm for slip dofs: 3.362e-05 
+Rhs norm for open dofs: 0.000e+00 
+3     3.362031e-05     1.998042e-05
+Rhs norm for stabilization: 3.075e-03 
+Rhs norm for stick dofs: 1.609e-17 
+Rhs norm for slip dofs: 1.062e-10 
+Rhs norm for open dofs: 0.000e+00 
+4     1.061543e-10     6.308709e-11
+1 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+0 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 33    Slip dofs: 3    Open dofs: 0 
+
+TSTEP 8   ---  TIME 0.400000  --- DT = 5.000000e-02
+-----------------------------------------------------------
+
+TSTEP 8   ---  TIME 0.400000  --- DT = 5.000000e-02
+Active set iteration n. 1 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 3.072e-03 
+Rhs norm for stick dofs: 3.568e-04 
+Rhs norm for slip dofs: 1.662e-01 
+Rhs norm for open dofs: 0.000e+00 
+0     1.662260e-01     1.000000e+00
+Rhs norm for stabilization: 3.029e-03 
+Rhs norm for stick dofs: 1.845e-17 
+Rhs norm for slip dofs: 3.380e-01 
+Rhs norm for open dofs: 0.000e+00 
+1     3.380246e-01     2.033524e+00
+Rhs norm for stabilization: 3.025e-03 
+Rhs norm for stick dofs: 1.352e-17 
+Rhs norm for slip dofs: 1.169e-02 
+Rhs norm for open dofs: 0.000e+00 
+2     1.169144e-02     7.033459e-02
+Rhs norm for stabilization: 3.025e-03 
+Rhs norm for stick dofs: 1.424e-17 
+Rhs norm for slip dofs: 4.838e-05 
+Rhs norm for open dofs: 0.000e+00 
+3     4.837737e-05     2.910336e-04
+Rhs norm for stabilization: 3.025e-03 
+Rhs norm for stick dofs: 1.615e-17 
+Rhs norm for slip dofs: 2.911e-10 
+Rhs norm for open dofs: 0.000e+00 
+4     2.910768e-10     1.751090e-09
+0 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+1 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 33    Slip dofs: 3    Open dofs: 0 
+
+TSTEP 9   ---  TIME 0.450000  --- DT = 5.000000e-02
+-----------------------------------------------------------
+
+TSTEP 9   ---  TIME 0.450000  --- DT = 5.000000e-02
+Active set iteration n. 0 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 2.898e-03 
+Rhs norm for stick dofs: 1.377e-17 
+Rhs norm for slip dofs: 2.302e-10 
+Rhs norm for open dofs: 0.000e+00 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 3.250e-03 
+Rhs norm for stick dofs: 1.845e-17 
+Rhs norm for slip dofs: 4.629e-01 
+Rhs norm for open dofs: 0.000e+00 
+1     4.629284e-01     2.751166e-01
+Rhs norm for stabilization: 3.245e-03 
+Rhs norm for stick dofs: 1.724e-17 
+Rhs norm for slip dofs: 2.150e-02 
+Rhs norm for open dofs: 0.000e+00 
+2     2.150084e-02     1.277787e-02
+Rhs norm for stabilization: 3.245e-03 
+Rhs norm for stick dofs: 1.640e-17 
+Rhs norm for slip dofs: 9.566e-05 
+Rhs norm for open dofs: 0.000e+00 
+3     9.565852e-05     5.684950e-05
+Rhs norm for stabilization: 3.245e-03 
+Rhs norm for stick dofs: 1.831e-17 
+Rhs norm for slip dofs: 8.925e-10 
+Rhs norm for open dofs: 0.000e+00 
+4     8.925070e-10     5.304136e-10
 2 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
@@ -205,44 +399,44 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from slip to stick 
 0 elements from slip to open 
 0 elements from open to stick 
-Stick dofs: 34    Slip dofs: 2    Open dofs: 0 
+Stick dofs: 31    Slip dofs: 5    Open dofs: 0 
 
-TSTEP 8   ---  TIME 0.450000  --- DT = 5.000000e-02
+TSTEP 9   ---  TIME 0.450000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 8   ---  TIME 0.450000  --- DT = 5.000000e-02
+TSTEP 9   ---  TIME 0.450000  --- DT = 5.000000e-02
 Active set iteration n. 1 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 3.565e-03 
-Rhs norm for stick dofs: 1.500e-03 
-Rhs norm for slip dofs: 2.069e-01 
+Rhs norm for stabilization: 3.240e-03 
+Rhs norm for stick dofs: 5.972e-04 
+Rhs norm for slip dofs: 4.035e-01 
 Rhs norm for open dofs: 0.000e+00 
-0     2.069251e-01     1.000000e+00
+0     4.035122e-01     1.000000e+00
+Rhs norm for stabilization: 3.143e-03 
+Rhs norm for stick dofs: 1.439e-17 
+Rhs norm for slip dofs: 4.733e-01 
+Rhs norm for open dofs: 0.000e+00 
+1     4.732585e-01     1.172848e+00
 Rhs norm for stabilization: 3.150e-03 
-Rhs norm for stick dofs: 1.167e-17 
-Rhs norm for slip dofs: 6.359e-01 
+Rhs norm for stick dofs: 1.526e-17 
+Rhs norm for slip dofs: 3.454e-02 
 Rhs norm for open dofs: 0.000e+00 
-1     6.358515e-01     3.072859e+00
-Rhs norm for stabilization: 3.088e-03 
-Rhs norm for stick dofs: 1.276e-17 
-Rhs norm for slip dofs: 5.744e-02 
+2     3.453941e-02     8.559693e-02
+Rhs norm for stabilization: 3.149e-03 
+Rhs norm for stick dofs: 1.688e-17 
+Rhs norm for slip dofs: 4.685e-04 
 Rhs norm for open dofs: 0.000e+00 
-2     5.743782e-02     2.775778e-01
-Rhs norm for stabilization: 3.102e-03 
-Rhs norm for stick dofs: 1.326e-17 
-Rhs norm for slip dofs: 9.613e-04 
+3     4.684981e-04     1.161051e-03
+Rhs norm for stabilization: 3.148e-03 
+Rhs norm for stick dofs: 1.493e-17 
+Rhs norm for slip dofs: 4.268e-08 
 Rhs norm for open dofs: 0.000e+00 
-3     9.613189e-04     4.645734e-03
-Rhs norm for stabilization: 3.102e-03 
-Rhs norm for stick dofs: 1.213e-17 
-Rhs norm for slip dofs: 1.876e-07 
+4     4.267895e-08     1.057687e-07
+Rhs norm for stabilization: 3.148e-03 
+Rhs norm for stick dofs: 1.448e-17 
+Rhs norm for slip dofs: 5.218e-15 
 Rhs norm for open dofs: 0.000e+00 
-4     1.875694e-07     9.064603e-07
-Rhs norm for stabilization: 3.102e-03 
-Rhs norm for stick dofs: 1.517e-17 
-Rhs norm for slip dofs: 9.145e-15 
-Rhs norm for open dofs: 0.000e+00 
-5     8.033802e-14     3.882469e-13
+5     7.563126e-14     1.874324e-13
 0 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
@@ -251,121 +445,44 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from slip to stick 
 0 elements from slip to open 
 0 elements from open to stick 
-Stick dofs: 34    Slip dofs: 2    Open dofs: 0 
+Stick dofs: 31    Slip dofs: 5    Open dofs: 0 
 
-TSTEP 9   ---  TIME 0.500000  --- DT = 5.000000e-02
+TSTEP 10   ---  TIME 0.500000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 9   ---  TIME 0.500000  --- DT = 5.000000e-02
+TSTEP 10   ---  TIME 0.500000  --- DT = 5.000000e-02
 Active set iteration n. 0 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 3.102e-03 
-Rhs norm for stick dofs: 2.434e-03 
-Rhs norm for slip dofs: 2.981e-15 
+Rhs norm for stabilization: 3.032e-03 
+Rhs norm for stick dofs: 1.254e-17 
+Rhs norm for slip dofs: 1.466e-15 
 Rhs norm for open dofs: 0.000e+00 
-0     1.448207e+00     1.000000e+00
-Rhs norm for stabilization: 3.211e-03 
-Rhs norm for stick dofs: 1.449e-17 
-Rhs norm for slip dofs: 3.918e-01 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 3.284e-03 
+Rhs norm for stick dofs: 1.793e-17 
+Rhs norm for slip dofs: 6.430e-01 
 Rhs norm for open dofs: 0.000e+00 
-1     3.917895e-01     2.705341e-01
-Rhs norm for stabilization: 3.198e-03 
-Rhs norm for stick dofs: 1.444e-17 
-Rhs norm for slip dofs: 1.329e-02 
+1     6.430012e-01     3.821332e-01
+Rhs norm for stabilization: 3.282e-03 
+Rhs norm for stick dofs: 1.613e-17 
+Rhs norm for slip dofs: 3.120e-02 
 Rhs norm for open dofs: 0.000e+00 
-2     1.328560e-02     9.173824e-03
-Rhs norm for stabilization: 3.203e-03 
-Rhs norm for stick dofs: 1.877e-17 
-Rhs norm for slip dofs: 5.093e-05 
+2     3.119968e-02     1.854185e-02
+Rhs norm for stabilization: 3.281e-03 
+Rhs norm for stick dofs: 1.630e-17 
+Rhs norm for slip dofs: 4.144e-04 
 Rhs norm for open dofs: 0.000e+00 
-3     5.093196e-05     3.516897e-05
-Rhs norm for stabilization: 3.203e-03 
-Rhs norm for stick dofs: 1.449e-17 
-Rhs norm for slip dofs: 3.534e-10 
+3     4.143657e-04     2.462560e-04
+Rhs norm for stabilization: 3.281e-03 
+Rhs norm for stick dofs: 1.352e-17 
+Rhs norm for slip dofs: 1.869e-08 
 Rhs norm for open dofs: 0.000e+00 
-4     3.534390e-10     2.440528e-10
-0 elements from stick to new slip 
-0 elements from stick to open 
-0 elements from new slip to stick 
-0 elements from new slip to slip 
-0 elements from new slip to open 
-0 elements from slip to stick 
-0 elements from slip to open 
-0 elements from open to stick 
-Stick dofs: 34    Slip dofs: 2    Open dofs: 0 
-
-TSTEP 10   ---  TIME 0.550000  --- DT = 5.000000e-02
------------------------------------------------------------
-
-TSTEP 10   ---  TIME 0.550000  --- DT = 5.000000e-02
-Active set iteration n. 0 
-Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 3.203e-03 
-Rhs norm for stick dofs: 2.511e-03 
-Rhs norm for slip dofs: 2.095e-10 
+4     1.869062e-08     1.110776e-08
+Rhs norm for stabilization: 3.281e-03 
+Rhs norm for stick dofs: 1.387e-17 
+Rhs norm for slip dofs: 8.152e-15 
 Rhs norm for open dofs: 0.000e+00 
-0     1.448207e+00     1.000000e+00
-Rhs norm for stabilization: 3.317e-03 
-Rhs norm for stick dofs: 1.398e-17 
-Rhs norm for slip dofs: 2.754e-01 
-Rhs norm for open dofs: 0.000e+00 
-1     2.753983e-01     1.901649e-01
-Rhs norm for stabilization: 3.314e-03 
-Rhs norm for stick dofs: 1.648e-17 
-Rhs norm for slip dofs: 5.662e-03 
-Rhs norm for open dofs: 0.000e+00 
-2     5.662195e-03     3.909796e-03
-Rhs norm for stabilization: 3.316e-03 
-Rhs norm for stick dofs: 1.736e-17 
-Rhs norm for slip dofs: 6.566e-06 
-Rhs norm for open dofs: 0.000e+00 
-3     6.565907e-06     4.533817e-06
-Rhs norm for stabilization: 3.316e-03 
-Rhs norm for stick dofs: 1.604e-17 
-Rhs norm for slip dofs: 4.955e-12 
-Rhs norm for open dofs: 0.000e+00 
-4     4.956412e-12     3.422446e-12
-0 elements from stick to new slip 
-0 elements from stick to open 
-0 elements from new slip to stick 
-0 elements from new slip to slip 
-0 elements from new slip to open 
-0 elements from slip to stick 
-0 elements from slip to open 
-0 elements from open to stick 
-Stick dofs: 34    Slip dofs: 2    Open dofs: 0 
-
-TSTEP 11   ---  TIME 0.600000  --- DT = 5.000000e-02
------------------------------------------------------------
-
-TSTEP 11   ---  TIME 0.600000  --- DT = 5.000000e-02
-Active set iteration n. 0 
-Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 3.316e-03 
-Rhs norm for stick dofs: 2.599e-03 
-Rhs norm for slip dofs: 3.338e-12 
-Rhs norm for open dofs: 0.000e+00 
-0     1.448208e+00     1.000000e+00
-Rhs norm for stabilization: 3.429e-03 
-Rhs norm for stick dofs: 1.472e-17 
-Rhs norm for slip dofs: 2.032e-01 
-Rhs norm for open dofs: 0.000e+00 
-1     2.031573e-01     1.402819e-01
-Rhs norm for stabilization: 3.431e-03 
-Rhs norm for stick dofs: 1.839e-17 
-Rhs norm for slip dofs: 2.849e-03 
-Rhs norm for open dofs: 0.000e+00 
-2     2.849498e-03     1.967603e-03
-Rhs norm for stabilization: 3.432e-03 
-Rhs norm for stick dofs: 1.953e-17 
-Rhs norm for slip dofs: 6.779e-07 
-Rhs norm for open dofs: 0.000e+00 
-3     6.779286e-07     4.681156e-07
-Rhs norm for stabilization: 3.432e-03 
-Rhs norm for stick dofs: 1.617e-17 
-Rhs norm for slip dofs: 4.386e-14 
-Rhs norm for open dofs: 0.000e+00 
-4     1.149288e-13     7.935931e-14
+5     7.817632e-14     4.645989e-14
 1 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
@@ -374,39 +491,131 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from slip to stick 
 0 elements from slip to open 
 0 elements from open to stick 
-Stick dofs: 33    Slip dofs: 3    Open dofs: 0 
+Stick dofs: 30    Slip dofs: 6    Open dofs: 0 
 
-TSTEP 11   ---  TIME 0.600000  --- DT = 5.000000e-02
+TSTEP 10   ---  TIME 0.500000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 11   ---  TIME 0.600000  --- DT = 5.000000e-02
+TSTEP 10   ---  TIME 0.500000  --- DT = 5.000000e-02
 Active set iteration n. 1 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 3.512e-03 
-Rhs norm for stick dofs: 9.359e-04 
-Rhs norm for slip dofs: 2.635e-02 
+Rhs norm for stabilization: 3.271e-03 
+Rhs norm for stick dofs: 3.671e-04 
+Rhs norm for slip dofs: 3.188e-02 
 Rhs norm for open dofs: 0.000e+00 
-0     2.636344e-02     1.000000e+00
-Rhs norm for stabilization: 3.298e-03 
-Rhs norm for stick dofs: 1.607e-17 
-Rhs norm for slip dofs: 5.905e-01 
+0     3.188185e-02     1.000000e+00
+Rhs norm for stabilization: 3.232e-03 
+Rhs norm for stick dofs: 1.550e-17 
+Rhs norm for slip dofs: 6.641e-01 
 Rhs norm for open dofs: 0.000e+00 
-1     5.905212e-01     2.239924e+01
+1     6.640639e-01     2.082890e+01
+Rhs norm for stabilization: 3.225e-03 
+Rhs norm for stick dofs: 1.423e-17 
+Rhs norm for slip dofs: 7.291e-02 
+Rhs norm for open dofs: 0.000e+00 
+2     7.290761e-02     2.286806e+00
+Rhs norm for stabilization: 3.224e-03 
+Rhs norm for stick dofs: 1.458e-17 
+Rhs norm for slip dofs: 2.494e-03 
+Rhs norm for open dofs: 0.000e+00 
+3     2.493505e-03     7.821078e-02
+Rhs norm for stabilization: 3.224e-03 
+Rhs norm for stick dofs: 1.701e-17 
+Rhs norm for slip dofs: 1.227e-06 
+Rhs norm for open dofs: 0.000e+00 
+4     1.226961e-06     3.848461e-05
+Rhs norm for stabilization: 3.224e-03 
+Rhs norm for stick dofs: 1.704e-17 
+Rhs norm for slip dofs: 6.735e-13 
+Rhs norm for open dofs: 0.000e+00 
+5     6.783062e-13     2.127562e-11
+0 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+1 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 30    Slip dofs: 6    Open dofs: 0 
+
+TSTEP 11   ---  TIME 0.550000  --- DT = 5.000000e-02
+-----------------------------------------------------------
+
+TSTEP 11   ---  TIME 0.550000  --- DT = 5.000000e-02
+Active set iteration n. 0 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 3.108e-03 
+Rhs norm for stick dofs: 1.453e-17 
+Rhs norm for slip dofs: 1.163e-13 
+Rhs norm for open dofs: 0.000e+00 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 3.316e-03 
+Rhs norm for stick dofs: 1.403e-17 
+Rhs norm for slip dofs: 9.144e-01 
+Rhs norm for open dofs: 0.000e+00 
+1     9.144342e-01     5.434448e-01
+Rhs norm for stabilization: 3.309e-03 
+Rhs norm for stick dofs: 1.540e-17 
+Rhs norm for slip dofs: 8.787e-02 
+Rhs norm for open dofs: 0.000e+00 
+2     8.787419e-02     5.222330e-02
+Rhs norm for stabilization: 3.306e-03 
+Rhs norm for stick dofs: 1.726e-17 
+Rhs norm for slip dofs: 3.773e-03 
+Rhs norm for open dofs: 0.000e+00 
+3     3.773141e-03     2.242363e-03
+Rhs norm for stabilization: 3.306e-03 
+Rhs norm for stick dofs: 1.642e-17 
+Rhs norm for slip dofs: 2.195e-06 
+Rhs norm for open dofs: 0.000e+00 
+4     2.195408e-06     1.304723e-06
+Rhs norm for stabilization: 3.306e-03 
+Rhs norm for stick dofs: 1.789e-17 
+Rhs norm for slip dofs: 1.852e-12 
+Rhs norm for open dofs: 0.000e+00 
+5     1.853613e-12     1.101595e-12
+1 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+0 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 29    Slip dofs: 7    Open dofs: 0 
+
+TSTEP 11   ---  TIME 0.550000  --- DT = 5.000000e-02
+-----------------------------------------------------------
+
+TSTEP 11   ---  TIME 0.550000  --- DT = 5.000000e-02
+Active set iteration n. 1 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 3.308e-03 
+Rhs norm for stick dofs: 3.874e-04 
+Rhs norm for slip dofs: 2.013e-01 
+Rhs norm for open dofs: 0.000e+00 
+0     2.012552e-01     1.000000e+00
 Rhs norm for stabilization: 3.258e-03 
-Rhs norm for stick dofs: 1.350e-17 
-Rhs norm for slip dofs: 2.081e-02 
+Rhs norm for stick dofs: 1.340e-17 
+Rhs norm for slip dofs: 2.595e-01 
 Rhs norm for open dofs: 0.000e+00 
-2     2.081193e-02     7.894238e-01
-Rhs norm for stabilization: 3.263e-03 
-Rhs norm for stick dofs: 1.473e-17 
-Rhs norm for slip dofs: 6.850e-05 
+1     2.594712e-01     1.289264e+00
+Rhs norm for stabilization: 3.261e-03 
+Rhs norm for stick dofs: 1.570e-17 
+Rhs norm for slip dofs: 3.611e-03 
 Rhs norm for open dofs: 0.000e+00 
-3     6.850064e-05     2.598320e-03
-Rhs norm for stabilization: 3.263e-03 
-Rhs norm for stick dofs: 1.829e-17 
-Rhs norm for slip dofs: 4.380e-10 
+2     3.611482e-03     1.794478e-02
+Rhs norm for stabilization: 3.261e-03 
+Rhs norm for stick dofs: 1.589e-17 
+Rhs norm for slip dofs: 2.958e-06 
 Rhs norm for open dofs: 0.000e+00 
-4     4.380193e-10     1.661465e-08
+3     2.958488e-06     1.470018e-05
+Rhs norm for stabilization: 3.261e-03 
+Rhs norm for stick dofs: 1.323e-17 
+Rhs norm for slip dofs: 8.151e-13 
+Rhs norm for open dofs: 0.000e+00 
+4     8.196528e-13     4.072703e-12
 0 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
@@ -415,39 +624,44 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from slip to stick 
 0 elements from slip to open 
 0 elements from open to stick 
-Stick dofs: 33    Slip dofs: 3    Open dofs: 0 
+Stick dofs: 29    Slip dofs: 7    Open dofs: 0 
 
-TSTEP 12   ---  TIME 0.650000  --- DT = 5.000000e-02
+TSTEP 12   ---  TIME 0.600000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 12   ---  TIME 0.650000  --- DT = 5.000000e-02
+TSTEP 12   ---  TIME 0.600000  --- DT = 5.000000e-02
 Active set iteration n. 0 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 3.263e-03 
-Rhs norm for stick dofs: 2.495e-03 
-Rhs norm for slip dofs: 3.261e-10 
+Rhs norm for stabilization: 3.132e-03 
+Rhs norm for stick dofs: 1.161e-17 
+Rhs norm for slip dofs: 4.890e-13 
 Rhs norm for open dofs: 0.000e+00 
-0     1.448207e+00     1.000000e+00
-Rhs norm for stabilization: 3.359e-03 
-Rhs norm for stick dofs: 1.623e-17 
-Rhs norm for slip dofs: 4.150e-01 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 3.297e-03 
+Rhs norm for stick dofs: 1.398e-17 
+Rhs norm for slip dofs: 8.078e-01 
 Rhs norm for open dofs: 0.000e+00 
-1     4.150112e-01     2.865689e-01
-Rhs norm for stabilization: 3.346e-03 
-Rhs norm for stick dofs: 1.587e-17 
-Rhs norm for slip dofs: 1.262e-02 
+1     8.077565e-01     4.800467e-01
+Rhs norm for stabilization: 3.294e-03 
+Rhs norm for stick dofs: 1.391e-17 
+Rhs norm for slip dofs: 5.193e-02 
 Rhs norm for open dofs: 0.000e+00 
-2     1.261711e-02     8.712222e-03
-Rhs norm for stabilization: 3.351e-03 
-Rhs norm for stick dofs: 1.579e-17 
-Rhs norm for slip dofs: 2.279e-05 
+2     5.193050e-02     3.086210e-02
+Rhs norm for stabilization: 3.291e-03 
+Rhs norm for stick dofs: 1.355e-17 
+Rhs norm for slip dofs: 1.276e-03 
 Rhs norm for open dofs: 0.000e+00 
-3     2.278679e-05     1.573448e-05
-Rhs norm for stabilization: 3.351e-03 
-Rhs norm for stick dofs: 1.600e-17 
-Rhs norm for slip dofs: 6.050e-11 
+3     1.275556e-03     7.580580e-04
+Rhs norm for stabilization: 3.291e-03 
+Rhs norm for stick dofs: 1.533e-17 
+Rhs norm for slip dofs: 1.710e-07 
 Rhs norm for open dofs: 0.000e+00 
-4     6.049902e-11     4.177510e-11
+4     1.709763e-07     1.016106e-07
+Rhs norm for stabilization: 3.291e-03 
+Rhs norm for stick dofs: 1.701e-17 
+Rhs norm for slip dofs: 9.170e-15 
+Rhs norm for open dofs: 0.000e+00 
+5     9.319691e-14     5.538657e-14
 1 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
@@ -456,39 +670,44 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from slip to stick 
 0 elements from slip to open 
 0 elements from open to stick 
-Stick dofs: 32    Slip dofs: 4    Open dofs: 0 
+Stick dofs: 28    Slip dofs: 8    Open dofs: 0 
 
-TSTEP 12   ---  TIME 0.650000  --- DT = 5.000000e-02
+TSTEP 12   ---  TIME 0.600000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 12   ---  TIME 0.650000  --- DT = 5.000000e-02
+TSTEP 12   ---  TIME 0.600000  --- DT = 5.000000e-02
 Active set iteration n. 1 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 3.524e-03 
-Rhs norm for stick dofs: 9.925e-04 
-Rhs norm for slip dofs: 9.478e-02 
+Rhs norm for stabilization: 3.292e-03 
+Rhs norm for stick dofs: 3.959e-04 
+Rhs norm for slip dofs: 1.763e-01 
 Rhs norm for open dofs: 0.000e+00 
-0     9.478918e-02     1.000000e+00
-Rhs norm for stabilization: 3.296e-03 
-Rhs norm for stick dofs: 2.072e-17 
-Rhs norm for slip dofs: 5.177e-01 
+0     1.763409e-01     1.000000e+00
+Rhs norm for stabilization: 3.270e-03 
+Rhs norm for stick dofs: 1.482e-17 
+Rhs norm for slip dofs: 5.133e-01 
 Rhs norm for open dofs: 0.000e+00 
-1     5.176869e-01     5.461455e+00
-Rhs norm for stabilization: 3.276e-03 
-Rhs norm for stick dofs: 1.859e-17 
-Rhs norm for slip dofs: 1.834e-02 
+1     5.133150e-01     2.910924e+00
+Rhs norm for stabilization: 3.272e-03 
+Rhs norm for stick dofs: 1.585e-17 
+Rhs norm for slip dofs: 3.731e-02 
 Rhs norm for open dofs: 0.000e+00 
-2     1.834253e-02     1.935087e-01
-Rhs norm for stabilization: 3.280e-03 
-Rhs norm for stick dofs: 1.683e-17 
-Rhs norm for slip dofs: 5.721e-05 
+2     3.730833e-02     2.115693e-01
+Rhs norm for stabilization: 3.273e-03 
+Rhs norm for stick dofs: 1.577e-17 
+Rhs norm for slip dofs: 5.811e-04 
 Rhs norm for open dofs: 0.000e+00 
-3     5.721203e-05     6.035714e-04
-Rhs norm for stabilization: 3.280e-03 
-Rhs norm for stick dofs: 1.684e-17 
-Rhs norm for slip dofs: 3.083e-10 
+3     5.811256e-04     3.295466e-03
+Rhs norm for stabilization: 3.273e-03 
+Rhs norm for stick dofs: 1.665e-17 
+Rhs norm for slip dofs: 6.035e-08 
 Rhs norm for open dofs: 0.000e+00 
-4     3.083031e-10     3.252514e-09
+4     6.035000e-08     3.422348e-07
+Rhs norm for stabilization: 3.273e-03 
+Rhs norm for stick dofs: 1.644e-17 
+Rhs norm for slip dofs: 1.427e-14 
+Rhs norm for open dofs: 0.000e+00 
+5     9.648636e-14     5.471580e-13
 0 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
@@ -497,39 +716,44 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from slip to stick 
 0 elements from slip to open 
 0 elements from open to stick 
-Stick dofs: 32    Slip dofs: 4    Open dofs: 0 
+Stick dofs: 28    Slip dofs: 8    Open dofs: 0 
 
-TSTEP 13   ---  TIME 0.700000  --- DT = 5.000000e-02
+TSTEP 13   ---  TIME 0.650000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 13   ---  TIME 0.700000  --- DT = 5.000000e-02
+TSTEP 13   ---  TIME 0.650000  --- DT = 5.000000e-02
 Active set iteration n. 0 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 3.280e-03 
-Rhs norm for stick dofs: 2.488e-03 
-Rhs norm for slip dofs: 1.935e-10 
+Rhs norm for stabilization: 3.146e-03 
+Rhs norm for stick dofs: 1.415e-17 
+Rhs norm for slip dofs: 1.411e-15 
 Rhs norm for open dofs: 0.000e+00 
-0     1.448207e+00     1.000000e+00
-Rhs norm for stabilization: 3.355e-03 
-Rhs norm for stick dofs: 1.699e-17 
-Rhs norm for slip dofs: 4.278e-01 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 3.306e-03 
+Rhs norm for stick dofs: 1.616e-17 
+Rhs norm for slip dofs: 9.402e-01 
 Rhs norm for open dofs: 0.000e+00 
-1     4.278418e-01     2.954285e-01
-Rhs norm for stabilization: 3.342e-03 
-Rhs norm for stick dofs: 2.124e-17 
-Rhs norm for slip dofs: 1.230e-02 
+1     9.402307e-01     5.587756e-01
+Rhs norm for stabilization: 3.308e-03 
+Rhs norm for stick dofs: 1.460e-17 
+Rhs norm for slip dofs: 8.193e-02 
 Rhs norm for open dofs: 0.000e+00 
-2     1.230166e-02     8.494405e-03
-Rhs norm for stabilization: 3.347e-03 
-Rhs norm for stick dofs: 1.828e-17 
-Rhs norm for slip dofs: 5.091e-05 
+2     8.192549e-02     4.868801e-02
+Rhs norm for stabilization: 3.307e-03 
+Rhs norm for stick dofs: 1.369e-17 
+Rhs norm for slip dofs: 3.479e-03 
 Rhs norm for open dofs: 0.000e+00 
-3     5.091034e-05     3.515404e-05
-Rhs norm for stabilization: 3.347e-03 
-Rhs norm for stick dofs: 1.561e-17 
-Rhs norm for slip dofs: 3.328e-10 
+3     3.478796e-03     2.067435e-03
+Rhs norm for stabilization: 3.307e-03 
+Rhs norm for stick dofs: 1.471e-17 
+Rhs norm for slip dofs: 1.739e-06 
 Rhs norm for open dofs: 0.000e+00 
-4     3.328103e-10     2.298084e-10
+4     1.739400e-06     1.033719e-06
+Rhs norm for stabilization: 3.307e-03 
+Rhs norm for stick dofs: 1.540e-17 
+Rhs norm for slip dofs: 1.161e-12 
+Rhs norm for open dofs: 0.000e+00 
+5     1.165161e-12     6.924509e-13
 1 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
@@ -538,39 +762,223 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from slip to stick 
 0 elements from slip to open 
 0 elements from open to stick 
-Stick dofs: 31    Slip dofs: 5    Open dofs: 0 
+Stick dofs: 27    Slip dofs: 9    Open dofs: 0 
 
-TSTEP 13   ---  TIME 0.700000  --- DT = 5.000000e-02
+TSTEP 13   ---  TIME 0.650000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 13   ---  TIME 0.700000  --- DT = 5.000000e-02
+TSTEP 13   ---  TIME 0.650000  --- DT = 5.000000e-02
 Active set iteration n. 1 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 3.476e-03 
-Rhs norm for stick dofs: 9.079e-04 
-Rhs norm for slip dofs: 3.335e-02 
+Rhs norm for stabilization: 3.310e-03 
+Rhs norm for stick dofs: 3.949e-04 
+Rhs norm for slip dofs: 2.116e-01 
 Rhs norm for open dofs: 0.000e+00 
-0     3.336220e-02     1.000000e+00
-Rhs norm for stabilization: 3.257e-03 
-Rhs norm for stick dofs: 1.933e-17 
-Rhs norm for slip dofs: 4.202e-01 
+0     2.116154e-01     1.000000e+00
+Rhs norm for stabilization: 3.285e-03 
+Rhs norm for stick dofs: 1.306e-17 
+Rhs norm for slip dofs: 2.445e-01 
 Rhs norm for open dofs: 0.000e+00 
-1     4.201745e-01     1.259433e+01
-Rhs norm for stabilization: 3.243e-03 
-Rhs norm for stick dofs: 2.126e-17 
-Rhs norm for slip dofs: 6.117e-03 
+1     2.445220e-01     1.155502e+00
+Rhs norm for stabilization: 3.285e-03 
+Rhs norm for stick dofs: 1.498e-17 
+Rhs norm for slip dofs: 3.112e-03 
 Rhs norm for open dofs: 0.000e+00 
-2     6.117442e-03     1.833645e-01
-Rhs norm for stabilization: 3.244e-03 
+2     3.111766e-03     1.470482e-02
+Rhs norm for stabilization: 3.285e-03 
+Rhs norm for stick dofs: 1.491e-17 
+Rhs norm for slip dofs: 2.057e-06 
+Rhs norm for open dofs: 0.000e+00 
+3     2.056722e-06     9.719149e-06
+Rhs norm for stabilization: 3.285e-03 
+Rhs norm for stick dofs: 1.375e-17 
+Rhs norm for slip dofs: 4.551e-13 
+Rhs norm for open dofs: 0.000e+00 
+4     4.689239e-13     2.215925e-12
+0 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+1 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 27    Slip dofs: 9    Open dofs: 0 
+
+TSTEP 14   ---  TIME 0.700000  --- DT = 5.000000e-02
+-----------------------------------------------------------
+
+TSTEP 14   ---  TIME 0.700000  --- DT = 5.000000e-02
+Active set iteration n. 0 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 3.155e-03 
+Rhs norm for stick dofs: 1.073e-17 
+Rhs norm for slip dofs: 2.500e-13 
+Rhs norm for open dofs: 0.000e+00 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 3.310e-03 
+Rhs norm for stick dofs: 1.446e-17 
+Rhs norm for slip dofs: 8.587e-01 
+Rhs norm for open dofs: 0.000e+00 
+1     8.586602e-01     5.102985e-01
+Rhs norm for stabilization: 3.313e-03 
+Rhs norm for stick dofs: 1.624e-17 
+Rhs norm for slip dofs: 6.042e-02 
+Rhs norm for open dofs: 0.000e+00 
+2     6.041525e-02     3.590456e-02
+Rhs norm for stabilization: 3.314e-03 
+Rhs norm for stick dofs: 1.627e-17 
+Rhs norm for slip dofs: 1.997e-03 
+Rhs norm for open dofs: 0.000e+00 
+3     1.997380e-03     1.187035e-03
+Rhs norm for stabilization: 3.314e-03 
+Rhs norm for stick dofs: 1.997e-17 
+Rhs norm for slip dofs: 4.796e-07 
+Rhs norm for open dofs: 0.000e+00 
+4     4.796455e-07     2.850515e-07
+Rhs norm for stabilization: 3.314e-03 
+Rhs norm for stick dofs: 1.888e-17 
+Rhs norm for slip dofs: 1.014e-13 
+Rhs norm for open dofs: 0.000e+00 
+5     1.511242e-13     8.981256e-14
+2 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+0 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 25    Slip dofs: 11    Open dofs: 0 
+
+TSTEP 14   ---  TIME 0.700000  --- DT = 5.000000e-02
+-----------------------------------------------------------
+
+TSTEP 14   ---  TIME 0.700000  --- DT = 5.000000e-02
+Active set iteration n. 1 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 3.284e-03 
+Rhs norm for stick dofs: 4.515e-04 
+Rhs norm for slip dofs: 2.751e-01 
+Rhs norm for open dofs: 0.000e+00 
+0     2.751188e-01     1.000000e+00
+Rhs norm for stabilization: 3.216e-03 
+Rhs norm for stick dofs: 1.638e-17 
+Rhs norm for slip dofs: 8.125e-01 
+Rhs norm for open dofs: 0.000e+00 
+1     8.125291e-01     2.953375e+00
+Rhs norm for stabilization: 3.214e-03 
+Rhs norm for stick dofs: 1.604e-17 
+Rhs norm for slip dofs: 7.838e-02 
+Rhs norm for open dofs: 0.000e+00 
+2     7.838344e-02     2.849076e-01
+Rhs norm for stabilization: 3.212e-03 
+Rhs norm for stick dofs: 1.535e-17 
+Rhs norm for slip dofs: 2.288e-03 
+Rhs norm for open dofs: 0.000e+00 
+3     2.288408e-03     8.317889e-03
+Rhs norm for stabilization: 3.212e-03 
+Rhs norm for stick dofs: 1.567e-17 
+Rhs norm for slip dofs: 1.206e-06 
+Rhs norm for open dofs: 0.000e+00 
+4     1.206183e-06     4.384224e-06
+Rhs norm for stabilization: 3.212e-03 
 Rhs norm for stick dofs: 1.635e-17 
-Rhs norm for slip dofs: 5.193e-06 
+Rhs norm for slip dofs: 5.340e-13 
 Rhs norm for open dofs: 0.000e+00 
-3     5.193056e-06     1.556569e-04
-Rhs norm for stabilization: 3.244e-03 
-Rhs norm for stick dofs: 1.565e-17 
-Rhs norm for slip dofs: 2.372e-12 
+5     5.421577e-13     1.970631e-12
+0 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+2 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 25    Slip dofs: 11    Open dofs: 0 
+
+TSTEP 15   ---  TIME 0.750000  --- DT = 5.000000e-02
+-----------------------------------------------------------
+
+TSTEP 15   ---  TIME 0.750000  --- DT = 5.000000e-02
+Active set iteration n. 0 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 3.114e-03 
+Rhs norm for stick dofs: 1.331e-17 
+Rhs norm for slip dofs: 1.273e-13 
 Rhs norm for open dofs: 0.000e+00 
-4     2.376210e-12     7.122463e-11
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 3.186e-03 
+Rhs norm for stick dofs: 1.521e-17 
+Rhs norm for slip dofs: 1.485e+00 
+Rhs norm for open dofs: 0.000e+00 
+1     1.485474e+00     8.828116e-01
+Rhs norm for stabilization: 3.192e-03 
+Rhs norm for stick dofs: 1.848e-17 
+Rhs norm for slip dofs: 3.190e-01 
+Rhs norm for open dofs: 0.000e+00 
+2     3.189862e-01     1.895723e-01
+Rhs norm for stabilization: 3.180e-03 
+Rhs norm for stick dofs: 1.734e-17 
+Rhs norm for slip dofs: 3.713e-02 
+Rhs norm for open dofs: 0.000e+00 
+3     3.712838e-02     2.206526e-02
+Rhs norm for stabilization: 3.180e-03 
+Rhs norm for stick dofs: 1.711e-17 
+Rhs norm for slip dofs: 2.750e-04 
+Rhs norm for open dofs: 0.000e+00 
+4     2.750195e-04     1.634431e-04
+Rhs norm for stabilization: 3.180e-03 
+Rhs norm for stick dofs: 1.375e-17 
+Rhs norm for slip dofs: 2.180e-08 
+Rhs norm for open dofs: 0.000e+00 
+5     2.180416e-08     1.295813e-08
+Rhs norm for stabilization: 3.180e-03 
+Rhs norm for stick dofs: 1.846e-17 
+Rhs norm for slip dofs: 1.767e-14 
+Rhs norm for open dofs: 0.000e+00 
+6     1.112782e-13     6.613223e-14
+1 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+0 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 24    Slip dofs: 12    Open dofs: 0 
+
+TSTEP 15   ---  TIME 0.750000  --- DT = 5.000000e-02
+-----------------------------------------------------------
+
+TSTEP 15   ---  TIME 0.750000  --- DT = 5.000000e-02
+Active set iteration n. 1 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 3.180e-03 
+Rhs norm for stick dofs: 3.447e-04 
+Rhs norm for slip dofs: 3.185e-01 
+Rhs norm for open dofs: 0.000e+00 
+0     3.184958e-01     1.000000e+00
+Rhs norm for stabilization: 3.160e-03 
+Rhs norm for stick dofs: 1.277e-17 
+Rhs norm for slip dofs: 2.897e-01 
+Rhs norm for open dofs: 0.000e+00 
+1     2.896555e-01     9.094484e-01
+Rhs norm for stabilization: 3.159e-03 
+Rhs norm for stick dofs: 1.427e-17 
+Rhs norm for slip dofs: 3.463e-03 
+Rhs norm for open dofs: 0.000e+00 
+2     3.463375e-03     1.087416e-02
+Rhs norm for stabilization: 3.159e-03 
+Rhs norm for stick dofs: 1.466e-17 
+Rhs norm for slip dofs: 2.601e-06 
+Rhs norm for open dofs: 0.000e+00 
+3     2.600556e-06     8.165118e-06
+Rhs norm for stabilization: 3.159e-03 
+Rhs norm for stick dofs: 1.345e-17 
+Rhs norm for slip dofs: 5.915e-13 
+Rhs norm for open dofs: 0.000e+00 
+4     6.010399e-13     1.887120e-12
 0 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
@@ -579,50 +987,45 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from slip to stick 
 0 elements from slip to open 
 0 elements from open to stick 
-Stick dofs: 31    Slip dofs: 5    Open dofs: 0 
+Stick dofs: 24    Slip dofs: 12    Open dofs: 0 
 
-TSTEP 14   ---  TIME 0.710000  --- DT = 1.000000e-02
+TSTEP 16   ---  TIME 0.800000  --- DT = 5.000000e-02
 -----------------------------------------------------------
 
-TSTEP 14   ---  TIME 0.710000  --- DT = 1.000000e-02
+TSTEP 16   ---  TIME 0.800000  --- DT = 5.000000e-02
 Active set iteration n. 0 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-Rhs norm for stabilization: 3.244e-03 
-Rhs norm for stick dofs: 2.413e-03 
-Rhs norm for slip dofs: 1.469e-12 
+Rhs norm for stabilization: 3.052e-03 
+Rhs norm for stick dofs: 1.017e-17 
+Rhs norm for slip dofs: 3.679e-13 
 Rhs norm for open dofs: 0.000e+00 
-0     2.896511e-01     1.000000e+00
-Rhs norm for stabilization: 2.774e-03 
-Rhs norm for stick dofs: 1.626e-17 
-Rhs norm for slip dofs: 8.609e-01 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 3.119e-03 
+Rhs norm for stick dofs: 1.689e-17 
+Rhs norm for slip dofs: 1.312e+00 
 Rhs norm for open dofs: 0.000e+00 
-1     8.608806e-01     2.972129e+00
-Rhs norm for stabilization: 2.734e-03 
-Rhs norm for stick dofs: 1.313e-17 
-Rhs norm for slip dofs: 2.262e-01 
+1     1.312038e+00     7.797394e-01
+Rhs norm for stabilization: 3.123e-03 
+Rhs norm for stick dofs: 1.603e-17 
+Rhs norm for slip dofs: 1.885e-01 
 Rhs norm for open dofs: 0.000e+00 
-2     2.262166e-01     7.809970e-01
-Rhs norm for stabilization: 2.751e-03 
-Rhs norm for stick dofs: 1.461e-17 
-Rhs norm for slip dofs: 2.573e-02 
+2     1.885306e-01     1.120430e-01
+Rhs norm for stabilization: 3.118e-03 
+Rhs norm for stick dofs: 1.635e-17 
+Rhs norm for slip dofs: 1.586e-02 
 Rhs norm for open dofs: 0.000e+00 
-3     2.573069e-02     8.883340e-02
-Rhs norm for stabilization: 2.753e-03 
-Rhs norm for stick dofs: 1.728e-17 
-Rhs norm for slip dofs: 3.196e-04 
+3     1.586166e-02     9.426526e-03
+Rhs norm for stabilization: 3.118e-03 
+Rhs norm for stick dofs: 1.663e-17 
+Rhs norm for slip dofs: 3.531e-05 
 Rhs norm for open dofs: 0.000e+00 
-4     3.196030e-04     1.103407e-03
-Rhs norm for stabilization: 2.753e-03 
-Rhs norm for stick dofs: 1.716e-17 
-Rhs norm for slip dofs: 5.375e-08 
+4     3.531371e-05     2.098681e-05
+Rhs norm for stabilization: 3.118e-03 
+Rhs norm for stick dofs: 1.614e-17 
+Rhs norm for slip dofs: 4.095e-10 
 Rhs norm for open dofs: 0.000e+00 
-5     5.375240e-08     1.855764e-07
-Rhs norm for stabilization: 2.753e-03 
-Rhs norm for stick dofs: 1.733e-17 
-Rhs norm for slip dofs: 2.493e-14 
-Rhs norm for open dofs: 0.000e+00 
-6     1.258586e-13     4.345180e-13
-0 elements from stick to new slip 
+5     4.094747e-10     2.433493e-10
+1 elements from stick to new slip 
 0 elements from stick to open 
 0 elements from new slip to stick 
 0 elements from new slip to slip 
@@ -630,4 +1033,242 @@ Rhs norm for open dofs: 0.000e+00
 0 elements from slip to stick 
 0 elements from slip to open 
 0 elements from open to stick 
-Stick dofs: 31    Slip dofs: 5    Open dofs: 0 
+Stick dofs: 23    Slip dofs: 13    Open dofs: 0 
+
+TSTEP 16   ---  TIME 0.800000  --- DT = 5.000000e-02
+-----------------------------------------------------------
+
+TSTEP 16   ---  TIME 0.800000  --- DT = 5.000000e-02
+Active set iteration n. 1 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 3.113e-03 
+Rhs norm for stick dofs: 2.989e-04 
+Rhs norm for slip dofs: 1.932e-01 
+Rhs norm for open dofs: 0.000e+00 
+0     1.931631e-01     1.000000e+00
+Rhs norm for stabilization: 3.113e-03 
+Rhs norm for stick dofs: 1.474e-17 
+Rhs norm for slip dofs: 5.951e-01 
+Rhs norm for open dofs: 0.000e+00 
+1     5.951447e-01     3.081047e+00
+Rhs norm for stabilization: 3.110e-03 
+Rhs norm for stick dofs: 1.430e-17 
+Rhs norm for slip dofs: 5.929e-02 
+Rhs norm for open dofs: 0.000e+00 
+2     5.928790e-02     3.069318e-01
+Rhs norm for stabilization: 3.112e-03 
+Rhs norm for stick dofs: 1.467e-17 
+Rhs norm for slip dofs: 1.620e-03 
+Rhs norm for open dofs: 0.000e+00 
+3     1.620101e-03     8.387214e-03
+Rhs norm for stabilization: 3.112e-03 
+Rhs norm for stick dofs: 1.458e-17 
+Rhs norm for slip dofs: 5.423e-07 
+Rhs norm for open dofs: 0.000e+00 
+4     5.423017e-07     2.807480e-06
+Rhs norm for stabilization: 3.112e-03 
+Rhs norm for stick dofs: 1.407e-17 
+Rhs norm for slip dofs: 1.370e-13 
+Rhs norm for open dofs: 0.000e+00 
+5     1.880250e-13     9.734000e-13
+0 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+1 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 23    Slip dofs: 13    Open dofs: 0 
+
+TSTEP 17   ---  TIME 0.850000  --- DT = 5.000000e-02
+-----------------------------------------------------------
+
+TSTEP 17   ---  TIME 0.850000  --- DT = 5.000000e-02
+Active set iteration n. 0 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 3.010e-03 
+Rhs norm for stick dofs: 1.198e-17 
+Rhs norm for slip dofs: 2.579e-14 
+Rhs norm for open dofs: 0.000e+00 
+0     1.682662e+00     1.000000e+00
+Rhs norm for stabilization: 3.097e-03 
+Rhs norm for stick dofs: 1.677e-17 
+Rhs norm for slip dofs: 1.411e+00 
+Rhs norm for open dofs: 0.000e+00 
+1     1.411445e+00     8.388163e-01
+Rhs norm for stabilization: 3.099e-03 
+Rhs norm for stick dofs: 1.799e-17 
+Rhs norm for slip dofs: 2.488e-01 
+Rhs norm for open dofs: 0.000e+00 
+2     2.488360e-01     1.478823e-01
+Rhs norm for stabilization: 3.100e-03 
+Rhs norm for stick dofs: 1.928e-17 
+Rhs norm for slip dofs: 2.550e-02 
+Rhs norm for open dofs: 0.000e+00 
+3     2.550462e-02     1.515730e-02
+Rhs norm for stabilization: 3.100e-03 
+Rhs norm for stick dofs: 1.427e-17 
+Rhs norm for slip dofs: 1.202e-04 
+Rhs norm for open dofs: 0.000e+00 
+4     1.202036e-04     7.143657e-05
+Rhs norm for stabilization: 3.100e-03 
+Rhs norm for stick dofs: 1.747e-17 
+Rhs norm for slip dofs: 5.064e-09 
+Rhs norm for open dofs: 0.000e+00 
+5     5.064263e-09     3.009673e-09
+4 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+0 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 19    Slip dofs: 17    Open dofs: 0 
+
+TSTEP 17   ---  TIME 0.850000  --- DT = 5.000000e-02
+-----------------------------------------------------------
+
+TSTEP 17   ---  TIME 0.850000  --- DT = 5.000000e-02
+Active set iteration n. 1 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+<a href="matlab: opentoline('/scratches/russel3/moretto/GReS/Code/multidomain/interfaceModels/SolidMechanicsContact.m',581,1)">581 </a>          rhsT(tDof(2:3)) = rhsT(tDof(2:3)) - ...
+if system_dependent('IsDebugMode')==1, dbcont; end
+Rhs norm for stabilization: 3.067e-03 
+Rhs norm for stick dofs: 5.251e-04 
+Rhs norm for slip dofs: 2.778e-01 
+Rhs norm for open dofs: 0.000e+00 
+0     2.777600e-01     1.000000e+00
+slipNorm
+
+slipNorm =
+
+   1.5223e-04
+
+slidingTol
+
+slidingTol =
+
+   1.0000e-09
+
+if system_dependent('IsDebugMode')==1, dbstep out; end
+if system_dependent('IsDebugMode')==1, dbstep out; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+rhsStab
+
+rhsStab =
+
+   -0.0001
+   -0.0001
+    0.0001
+   -0.0001
+   -0.0000
+    0.0001
+    0.0000
+   -0.0000
+    0.0001
+    0.0001
+   -0.0000
+    0.0001
+    0.0002
+   -0.0000
+    0.0001
+    0.0002
+   -0.0000
+    0.0000
+    0.0001
+   -0.0000
+    0.0001
+    0.0000
+    0.0000
+    0.0001
+    0.0000
+    0.0000
+    0.0001
+    0.0000
+    0.0000
+    0.0000
+    0.0000
+    0.0000
+   -0.0001
+    0.0000
+   -0.0000
+   -0.0002
+    0.0005
+    0.0000
+    0.0001
+    0.0003
+    0.0000
+    0.0000
+    0.0001
+    0.0001
+   -0.0001
+    0.0001
+    0.0000
+   -0.0003
+    0.0000
+         0
+         0
+    0.0001
+         0
+         0
+    0.0009
+    0.0000
+    0.0001
+    0.0005
+    0.0000
+   -0.0001
+    0.0003
+         0
+         0
+    0.0002
+         0
+         0
+    0.0003
+         0
+         0
+    0.0005
+         0
+         0
+    0.0004
+   -0.0001
+   -0.0000
+    0.0002
+         0
+         0
+    0.0001
+         0
+         0
+    0.0001
+         0
+         0
+    0.0002
+         0
+         0
+    0.0005
+         0
+         0
+   -0.0011
+         0
+         0
+   -0.0012
+         0
+         0
+   -0.0012
+         0
+         0
+   -0.0011
+         0
+         0
+   -0.0009
+         0
+         0
+   -0.0005
+         0
+         0
+

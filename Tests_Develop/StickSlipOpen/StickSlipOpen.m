@@ -10,7 +10,7 @@ scriptDir = fileparts(scriptFullPath);
 
 cd(scriptDir)
 
-stab = "new";
+stab = "old";
 
 % set mesh 
 X = 5; Y = 10; Z = 15;

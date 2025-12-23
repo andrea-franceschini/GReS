@@ -242,17 +242,17 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
     function manageNextTimeStep(obj,newtonConv,activeSetChanged)
 
-      % if ~newtonConv && ~obj.attemptedReset 
-      %   reset = false(obj.nInterf,1);
-      %   for i = 1:obj.nInterf
-      %     reset(i) = resetConfiguration(obj.interfaces{i});
-      %   end
-      %   newtonConv = any(reset);
-      %   if newtonConv
-      %     obj.attemptedReset = true;
-      %     activeSetChanged(:) = true;
-      %   end
-      % end
+      if ~newtonConv && ~obj.attemptedReset 
+        reset = false(obj.nInterf,1);
+        for i = 1:obj.nInterf
+          reset(i) = resetConfiguration(obj.interfaces{i});
+        end
+        newtonConv = any(reset);
+        if newtonConv
+          obj.attemptedReset = true;
+          activeSetChanged(:) = true;
+        end
+      end
 
       if ~newtonConv 
       

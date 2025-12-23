@@ -8,9 +8,9 @@ in a nonConforming simulation.
   <simParam>
     <Time
           Start="0."
-          End ="1.01"
-          DtInit="0.1"
-          DtMin ="0.01"
+          End ="0.99"
+          DtInit="0.05"
+          DtMin ="0.05"
           DtMax ="0.05"
           incrementFactor = "1.5"
           choppingFactor = "2" />
@@ -60,7 +60,7 @@ in a nonConforming simulation.
                  forceStickBoundary = "1" >
 
         <Tolerances
-                    sliding = "1e-7"
+                    sliding = "1e-9"
                     normalGap = "1e-3"
                     normalTraction = "-1e-3"
                     tangentialViolation = "1e-3"
