@@ -9,9 +9,9 @@ in a nonConforming simulation.
     <Time
           Start="0."
           End ="10.0"
-          DtInit="0.5"
+          DtInit="1.0"
           DtMin ="1.0e-4"
-          DtMax ="0.5"
+          DtMax ="1.0"
           incrementFactor = "1.25"
           choppingFactor = "2" />
 
@@ -67,7 +67,7 @@ in a nonConforming simulation.
                frictionAngle = "30" />
 
       <ActiveSet 
-                 resetActiveSet = "1"
+                 resetActiveSet = "0"
                  forceStickBoundary = "1" >
 
         <Tolerances

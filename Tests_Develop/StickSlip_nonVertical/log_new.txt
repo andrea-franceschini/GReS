@@ -1133,142 +1133,68 @@ TSTEP 17   ---  TIME 0.850000  --- DT = 5.000000e-02
 TSTEP 17   ---  TIME 0.850000  --- DT = 5.000000e-02
 Active set iteration n. 1 
 Iter     ||rhs||     ||rhs||/||rhs_0||
-<a href="matlab: opentoline('/scratches/russel3/moretto/GReS/Code/multidomain/interfaceModels/SolidMechanicsContact.m',581,1)">581 </a>          rhsT(tDof(2:3)) = rhsT(tDof(2:3)) - ...
-if system_dependent('IsDebugMode')==1, dbcont; end
 Rhs norm for stabilization: 3.067e-03 
 Rhs norm for stick dofs: 5.251e-04 
 Rhs norm for slip dofs: 2.778e-01 
 Rhs norm for open dofs: 0.000e+00 
 0     2.777600e-01     1.000000e+00
-slipNorm
+Rhs norm for stabilization: 3.018e-03 
+Rhs norm for stick dofs: 1.288e-17 
+Rhs norm for slip dofs: 1.871e+00 
+Rhs norm for open dofs: 0.000e+00 
+1     1.870805e+00     6.735329e+00
+Rhs norm for stabilization: 3.055e-03 
+Rhs norm for stick dofs: 1.251e-17 
+Rhs norm for slip dofs: 3.275e+00 
+Rhs norm for open dofs: 0.000e+00 
+2     3.275396e+00     1.179218e+01
+Rhs norm for stabilization: 3.169e-03 
+Rhs norm for stick dofs: 1.273e-17 
+Rhs norm for slip dofs: 3.907e+00 
+Rhs norm for open dofs: 0.000e+00 
+3     3.906860e+00     1.406559e+01
+Rhs norm for stabilization: 3.004e-03 
+Rhs norm for stick dofs: 1.143e-17 
+Rhs norm for slip dofs: 3.866e+00 
+Rhs norm for open dofs: 0.000e+00 
+4     3.866143e+00     1.391900e+01
+Rhs norm for stabilization: 3.433e-03 
+Rhs norm for stick dofs: 1.502e-17 
+Rhs norm for slip dofs: 6.217e+00 
+Rhs norm for open dofs: 0.000e+00 
+5     6.216505e+00     2.238085e+01
+Rhs norm for stabilization: 3.559e-03 
+Rhs norm for stick dofs: 1.223e-17 
+Rhs norm for slip dofs: 7.259e+00 
+Rhs norm for open dofs: 0.000e+00 
+6     7.259351e+00     2.613533e+01
+Rhs norm for stabilization: 4.105e-03 
+Rhs norm for stick dofs: 1.061e-17 
+Rhs norm for slip dofs: 7.742e+00 
+Rhs norm for open dofs: 0.000e+00 
+7     7.741553e+00     2.787137e+01
+Rhs norm for stabilization: 4.231e-03 
+Rhs norm for stick dofs: 1.159e-17 
+Rhs norm for slip dofs: 1.597e+01 
+Rhs norm for open dofs: 0.000e+00 
+8     1.596704e+01     5.748501e+01
+Rhs norm for stabilization: 1.060e-02 
+Rhs norm for stick dofs: 1.695e-17 
+Rhs norm for slip dofs: 2.550e+01 
+Rhs norm for open dofs: 0.000e+00 
+9     2.549641e+01     9.179292e+01
+Rhs norm for stabilization: 8.019e-03 
+Rhs norm for stick dofs: 1.626e-17 
+Rhs norm for slip dofs: 1.585e+01 
+Rhs norm for open dofs: 0.000e+00 
+10     1.585158e+01     5.706932e+01
+{Error using <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('ActiveSetContactSolver/manageNextTimeStep', '/scratches/russel3/moretto/GReS/Code/nonlinearsolver/ActiveSetContactSolver.m', 275)" style="font-weight:bold">ActiveSetContactSolver/manageNextTimeStep</a> (<a href="matlab: opentoline('/scratches/russel3/moretto/GReS/Code/nonlinearsolver/ActiveSetContactSolver.m',275,0)">line 275</a>)
+Minimum time step reached
 
-slipNorm =
-
-   1.5223e-04
-
-slidingTol
-
-slidingTol =
-
-   1.0000e-09
-
-if system_dependent('IsDebugMode')==1, dbstep out; end
-if system_dependent('IsDebugMode')==1, dbstep out; end
-if system_dependent('IsDebugMode')==1, dbstep; end
-if system_dependent('IsDebugMode')==1, dbstep; end
-if system_dependent('IsDebugMode')==1, dbstep; end
-if system_dependent('IsDebugMode')==1, dbstep; end
-if system_dependent('IsDebugMode')==1, dbstep; end
-rhsStab
-
-rhsStab =
-
-   -0.0001
-   -0.0001
-    0.0001
-   -0.0001
-   -0.0000
-    0.0001
-    0.0000
-   -0.0000
-    0.0001
-    0.0001
-   -0.0000
-    0.0001
-    0.0002
-   -0.0000
-    0.0001
-    0.0002
-   -0.0000
-    0.0000
-    0.0001
-   -0.0000
-    0.0001
-    0.0000
-    0.0000
-    0.0001
-    0.0000
-    0.0000
-    0.0001
-    0.0000
-    0.0000
-    0.0000
-    0.0000
-    0.0000
-   -0.0001
-    0.0000
-   -0.0000
-   -0.0002
-    0.0005
-    0.0000
-    0.0001
-    0.0003
-    0.0000
-    0.0000
-    0.0001
-    0.0001
-   -0.0001
-    0.0001
-    0.0000
-   -0.0003
-    0.0000
-         0
-         0
-    0.0001
-         0
-         0
-    0.0009
-    0.0000
-    0.0001
-    0.0005
-    0.0000
-   -0.0001
-    0.0003
-         0
-         0
-    0.0002
-         0
-         0
-    0.0003
-         0
-         0
-    0.0005
-         0
-         0
-    0.0004
-   -0.0001
-   -0.0000
-    0.0002
-         0
-         0
-    0.0001
-         0
-         0
-    0.0001
-         0
-         0
-    0.0002
-         0
-         0
-    0.0005
-         0
-         0
-   -0.0011
-         0
-         0
-   -0.0012
-         0
-         0
-   -0.0012
-         0
-         0
-   -0.0011
-         0
-         0
-   -0.0009
-         0
-         0
-   -0.0005
-         0
-         0
-
+Error in <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('ActiveSetContactSolver/NonLinearLoop', '/scratches/russel3/moretto/GReS/Code/nonlinearsolver/ActiveSetContactSolver.m', 170)" style="font-weight:bold">ActiveSetContactSolver/NonLinearLoop</a> (<a href="matlab: opentoline('/scratches/russel3/moretto/GReS/Code/nonlinearsolver/ActiveSetContactSolver.m',170,0)">line 170</a>)
+          manageNextTimeStep(obj,flConv,hasActiveSetChanged);
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error in <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('StickSlipNV', '/scratches/russel3/moretto/GReS/Tests_Develop/StickSlip_nonVertical/StickSlipNV.m', 110)" style="font-weight:bold">StickSlipNV</a> (<a href="matlab: opentoline('/scratches/russel3/moretto/GReS/Tests_Develop/StickSlip_nonVertical/StickSlipNV.m',110,0)">line 110</a>)
+solv.NonLinearLoop();
+^^^^^^^^^^^^^^^^^^^^
+} 

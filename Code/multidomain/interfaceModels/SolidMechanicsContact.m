@@ -220,7 +220,6 @@ classdef SolidMechanicsContact < MeshTying
     function advanceState(obj)
 
       obj.state.deltaTraction(:) = 0;
-      obj.state.tangentialSlip(:) = 0;
       obj.stateOld = obj.state;
       obj.activeSet.prev = obj.activeSet.curr;
       obj.NLIter = 0;
@@ -346,16 +345,14 @@ classdef SolidMechanicsContact < MeshTying
 
       obj.state.gap = areaGap./areaSlave;
 
-      [~,rhsStab] = getStabilizationMatrixAndRhs(obj);
+      %[~,rhsStab] = getStabilizationMatrixAndRhs(obj);
       %stabGap = -rhsH./areaSlave;
-      %stabGap = H*(obj.state.traction - obj.state.iniTraction)./areaSlave;
+      %gap = H*(obj.state.traction - obj.state.iniTraction)./areaSlave;
 
       %gap = obj.state.gap - stabGap;
-      slip = obj.state.gap - obj.stateOld.gap;% - stabGap;
-
-
-
+      slip = obj.state.gap - obj.stateOld.gap;
       slip(1:3:end) = [];
+
       obj.state.tangentialSlip = slip;
       % 
       obj.state.normalGap = obj.state.gap(1:3:end);
@@ -418,6 +415,8 @@ classdef SolidMechanicsContact < MeshTying
       % anonymous functions for local fem computations
       f1 = @(a,b) pagemtimes(a,'ctranspose',b,'none');
       f2 = @(a,b,c) pagemtimes(a,'transpose',pagemtimes(b,c),'none');
+
+      slip = obj.state.gap - obj.stateOld.gap;
 
 
       for iPair = 1:obj.quadrature.numbInterfacePairs
@@ -489,9 +488,9 @@ classdef SolidMechanicsContact < MeshTying
         g_n = -obj.state.normalGap(is);
 
         % tangential slip (quasi-static coulomb law) in global coords
-        tangDofs1 = [2*is-1 2*is];
-        % tangDofs2 = [3*is-1 3*is];
-        dgt = obj.state.tangentialSlip(tangDofs1);
+        %tangDofs1 = [2*is-1 2*is];
+        tangDofs = [3*is-1 3*is];
+        dgt = slip(tangDofs);
         dgt = R(:,2:3)*dgt;
         slipNorm = norm(dgt);
 
@@ -763,26 +762,26 @@ classdef SolidMechanicsContact < MeshTying
       dof1 = DoFManager.dofExpand(e1,nc);
       dof2 = DoFManager.dofExpand(e2,nc);
 
-      % if nc > 1
-      %   % vector field, rotation matrix needed
-      % 
-      %   % get average rotation matrix
-      %   n1 = getNormal(obj.interfMesh,e1);
-      %   n2 = getNormal(obj.interfMesh,e2);
-      %   if abs(n1'*n2 -1) < 1e4*eps
-      %     avgR = obj.interfMesh.computeRot(n1);
-      %   else
-      %     A1 = obj.interfMesh.msh(2).surfaceArea(e1);
-      %     A2 = obj.interfMesh.msh(2).surfaceArea(e2);
-      %     nAvg = n1*A1 + n2*A2;
-      %     nAvg = nAvg/norm(nAvg);
-      %     avgR = obj.interfMesh.computeRot(nAvg);
-      %   end
-      % 
-      %   % apply rotation matrix to S
-      %   S = avgR'*S*avgR;
-      % 
-      % end
+      if nc > 1
+        % vector field, rotation matrix needed
+
+        % get average rotation matrix
+        n1 = getNormal(obj.interfMesh,e1);
+        n2 = getNormal(obj.interfMesh,e2);
+        if abs(n1'*n2 -1) < 1e4*eps
+          avgR = obj.interfMesh.computeRot(n1);
+        else
+          A1 = obj.interfMesh.msh(2).surfaceArea(e1);
+          A2 = obj.interfMesh.msh(2).surfaceArea(e2);
+          nAvg = n1*A1 + n2*A2;
+          nAvg = nAvg/norm(nAvg);
+          avgR = obj.interfMesh.computeRot(nAvg);
+        end
+
+        % apply rotation matrix to S
+        S = avgR'*S*avgR;
+
+      end
 
       % prepare matrix for full stick edge
       mat = obj.stabilizationScale*[S,-S;-S,S];
@@ -866,7 +865,6 @@ classdef SolidMechanicsContact < MeshTying
         dtdtn = -tanPhi*(t/norm(t));
       end
     end
-
 
     function tracLim = computeLimitTraction(obj,is,dgt,t,slipNorm)
 
