@@ -169,60 +169,33 @@ classdef MeshTying < InterfaceSolver
         if ncomp > 1
           % vector field, local reference needed
 
-          normIdx = 1:3:length(tDof);
-          tangIdx = setdiff(1:length(tDof), 1:3:length(tDof));
+
 
           % rotation of multipliers
           R = getRotationMatrix(obj.interfMesh,is);
-          NmultR = pagemtimes(Nmult,R);
 
-          % Reduce the dimension of multiplier basis functions exploiting
-          % the local definition of degrees of freedom
-
-          % the normal component of the multipliers basis
-          Nmult_n = -Nmult(1,normIdx,:);
-          % tangential component of multiplier basis
-          Nmult_t = NmultR(:,tangIdx,:);
-
-          % get normal at the gauss points (for warped facets...?)
-          % move this call to interfaceMesh()
-          normalNodes = obj.interfMesh.getNodalNormal(is);
-          normal = pagemtimes(Ns,normalNodes);
-
-          % operator selecting only tangential components of the
-          % displacements
-          T = eye(3) - pagemtimes(normal,'none',normal,'transpose');
-
-          % normal and tangential component of displacement basis functions
-          Nm_n = pagemtimes(normal,'transpose',Nm,'none');
-          Nm_t = pagemtimes(T,Nm);
-          Ns_n = pagemtimes(normal,'transpose',Ns,'none');
-          Ns_t = pagemtimes(T,Ns);
 
           % mortar coupling normal component
-          Atm_n =  MortarQuadrature.integrate(f,Nmult_n,Nm_n,dJw);
-          Ats_n =  MortarQuadrature.integrate(f,Nmult_n,Ns_n,dJw);
+          Atm =  MortarQuadrature.integrate(f,Nmult,Nm,dJw);
+          Ats =  MortarQuadrature.integrate(f,Nmult,Ns,dJw);
 
-          % mortar coupling tangential component
-          Atm_t =  MortarQuadrature.integrate(f,Nmult_t,Nm_t,dJw);
-          Ats_t =  MortarQuadrature.integrate(f,Nmult_t,Ns_t,dJw);
+          Atm = R'*Atm;
+          Ats = R'*Ats;
 
           % assemble the local mortar matrix contribution
-          asbM.localAssembly(tDof(normIdx),umDof,-Atm_n);
-          asbM.localAssembly(tDof(tangIdx),umDof,-Atm_t);
-          asbD.localAssembly(tDof(normIdx),usDof,Ats_n);
-          asbD.localAssembly(tDof(tangIdx),usDof,Ats_t);
+          asbM.localAssembly(tDof,umDof,Atm);
+          asbD.localAssembly(tDof,usDof,-Ats);
 
         else
 
           Mloc = MortarQuadrature.integrate(f,Nmult,Nm,dJw);
           Dloc = MortarQuadrature.integrate(f,Nmult,Ns,dJw);
-          asbM.localAssembly(tDof,umDof,-Mloc); % minus sign!
+          asbM.localAssembly(tDof,umDof,Mloc); % minus sign!
           if strcmp(obj.quadrature.multiplierType,"dual")
             Dloc = diag(sum(Dloc,2));
           end
 
-          asbD.localAssembly(tDof,usDof,Dloc);
+          asbD.localAssembly(tDof,usDof,-Dloc);
 
         end
       end

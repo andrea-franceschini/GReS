@@ -74,10 +74,10 @@ classdef SolidMechanicsContact < MeshTying
       end
 
       computeContactMatricesAndRhs(obj);
-
-      if ~obj.oldStab
-        computeStabilizationMatrix(obj);
-      end
+      % 
+      % if ~obj.oldStab
+      %   computeStabilizationMatrix(obj);
+      % end
 
       % get stabilization matrix depending on the current active set
       [H,rhsStab] = getStabilizationMatrixAndRhs(obj);
@@ -211,7 +211,7 @@ classdef SolidMechanicsContact < MeshTying
       end
 
       % if hasChanged && ~obj.oldStab
-      %   computeStabilizationMatrix(obj);
+      computeStabilizationMatrix(obj);
       % end
     end
 
@@ -243,7 +243,9 @@ classdef SolidMechanicsContact < MeshTying
         % obj.state = obj.stateOld;
         toReset = obj.activeSet.curr(:) ~= ContactMode.open;
         obj.activeSet.curr(toReset) = ContactMode.stick;
-        %computeStabilizationMatrix(obj);
+
+        % recompute stabilization matrix
+        computeStabilizationMatrix(obj);
         isReset = true;
       end
     end
@@ -392,10 +394,10 @@ classdef SolidMechanicsContact < MeshTying
       dofMaster = getDoFManager(obj,MortarSide.master);
 
       % extract current and previous displacements
-      us = obj.domains(2).state.data.displacements;
-      us_old = obj.domains(2).stateOld.data.displacements;
-      um = obj.domains(1).state.data.displacements;
-      um_old = obj.domains(1).stateOld.data.displacements;
+      % us = obj.domains(2).state.data.displacements;
+      % us_old = obj.domains(2).stateOld.data.displacements;
+      % um = obj.domains(1).state.data.displacements;
+      % um_old = obj.domains(1).stateOld.data.displacements;
 
       % compute displacement increment
       %       um_slip = um - um_old;
@@ -415,7 +417,9 @@ classdef SolidMechanicsContact < MeshTying
       % anonymous functions for local fem computations
       f1 = @(a,b) pagemtimes(a,'ctranspose',b,'none');
       f2 = @(a,b,c) pagemtimes(a,'transpose',pagemtimes(b,c),'none');
+      f3 = @(a,b) pagemtimes(a,b);
 
+      % compute slip
       slip = obj.state.gap - obj.stateOld.gap;
 
 
@@ -430,6 +434,8 @@ classdef SolidMechanicsContact < MeshTying
         xiMaster = obj.quadrature.getMasterGPCoords(iPair);
         xiSlave = obj.quadrature.getSlaveGPCoords(iPair);
         dJw = obj.quadrature.getIntegrationWeights(iPair);
+
+        area = sum(dJw);
 
         % define slave related quantities
         nodeSlave = obj.interfMesh.local2glob{2}(obj.interfMesh.msh(2).surfaces(is,:));
@@ -452,46 +458,50 @@ classdef SolidMechanicsContact < MeshTying
         % reshape basis function matrices to match number of components
         [Ns,Nm,Nmult] = reshapeBasisFunctions(3,Nslave,Nmaster,Nmult);
 
+        % Nmult(1,1,:) = -Nmult(1,1,:); 
+
         % rotation of multipliers
         R = getRotationMatrix(obj.interfMesh,is);
-        NmultR = pagemtimes(Nmult,R);
+        %NmultR = pagemtimes(Nmult,R);
 
         % Reduce the dimension of multiplier basis functions exploiting
         % the local definition of degrees of freedom
 
         % the normal component of the multipliers basis
-        Nmult_n = -Nmult(1,1,:);
+        %Nmult_n = -Nmult(1,1,:);
 
         % tangential component of multiplier basis
-        Nmult_t = NmultR(:,2:3,:);
+        %Nmult_t = NmultR(:,2:3,:);
 
         % get normal of the slave element
-        normalEl = obj.interfMesh.getNormal(is);
-        Tel = eye(3) - normalEl*normalEl';
+        %normalEl = obj.interfMesh.getNormal(is);
+        
+        %Tel = eye(3) - normalEl*normalEl';
 
         % get normal at the gauss points (for warped facets...?)
-        normalNodes = obj.interfMesh.getNodalNormal(is);
-        normal = pagemtimes(Ns,normalNodes);
+        % normalNodes = obj.interfMesh.getNodalNormal(is);
+        % normal = pagemtimes(Ns,normalNodes);
 
         % operator selecting only tangential components of the
         % displacements
-        T = eye(3) - pagemtimes(normal,'none',normal,'transpose');
+        %T = eye(3) - pagemtimes(normal,'none',normal,'transpose');
         % normal and tangential component of displacement basis functions
-        Nm_n = pagemtimes(normal,'transpose',Nm,'none');
-        Nm_t = pagemtimes(T,Nm);
+        % Nm_n = pagemtimes(normal,'transpose',Nm,'none');
+        % Nm_t = pagemtimes(T,Nm);
+        % 
+        % Ns_n = pagemtimes(normal,'transpose',Ns,'none');
+        % Ns_t = pagemtimes(T,Ns);
 
-        Ns_n = pagemtimes(normal,'transpose',Ns,'none');
-        Ns_t = pagemtimes(T,Ns);
 
+        % normal gap (minus sign to be checked)
+        g_n = obj.state.normalGap(is);
 
-        % normal gap
-        g_n = -obj.state.normalGap(is);
-
-        % tangential slip (quasi-static coulomb law) in global coords
+        % tangential slip (quasi-static coulomb law) in local coords
         %tangDofs1 = [2*is-1 2*is];
-        tangDofs = [3*is-1 3*is];
-        dgt = slip(tangDofs);
-        dgt = R(:,2:3)*dgt;
+
+        % operator mapping global vectors to local tangential coordinates
+        T = (R(:,2:3))';
+        dgt = slip([3*is-1 3*is]);
         slipNorm = norm(dgt);
 
 
@@ -500,38 +510,36 @@ classdef SolidMechanicsContact < MeshTying
         % contribution, hence can be non zero even for new slip elements
 
         % A_us
-        Aun_m =  MortarQuadrature.integrate(f1,Nm_n,Nmult_n,dJw);
-        Aun_s =  MortarQuadrature.integrate(f1,Ns_n,Nmult_n,dJw);
-        asbMu.localAssembly(umDof,tDof(1),-Aun_m);
-        asbDu.localAssembly(usDof,tDof(1),Aun_s);
+        Aum =  MortarQuadrature.integrate(f1,Nm,Nmult,dJw);
+        Aus =  MortarQuadrature.integrate(f1,Ns,Nmult,dJw);
+        % apply rotation matrix due to mixed dof assembly
+        Aum = Aum*R;
+        Aus = Aus*R;
+        asbMu.localAssembly(umDof,tDof,Aum);
+        asbDu.localAssembly(usDof,tDof,-Aus);
 
-        Aut_m =  MortarQuadrature.integrate(f1,Nm_t,Nmult_t,dJw);
-        Aut_s =  MortarQuadrature.integrate(f1,Ns_t,Nmult_t,dJw);
-        asbMu.localAssembly(umDof,tDof(2:3),-Aut_m);
-        asbDu.localAssembly(usDof,tDof(2:3),Aut_s);
+        % Aut_m =  MortarQuadrature.integrate(f1,Nm_t,Nmult_t,dJw);
+        % Aut_s =  MortarQuadrature.integrate(f1,Ns_t,Nmult_t,dJw);
+        % asbMu.localAssembly(umDof,tDof(2:3),-Aut_m);
+        % asbDu.localAssembly(usDof,tDof(2:3),Aut_s);
 
         % rhs (jump(eta),t)
-        rhsUm(umDof) = rhsUm(umDof) - Aun_m*dTrac(1);
-        rhsUs(usDof) = rhsUs(usDof) + Aun_s*dTrac(1);
-        rhsUm(umDof) = rhsUm(umDof) - Aut_m*dTrac(2:3);
-        rhsUs(usDof) = rhsUs(usDof) + Aut_s*dTrac(2:3);
+        rhsUm(umDof) = rhsUm(umDof) + Aum*dTrac;
+        rhsUs(usDof) = rhsUs(usDof) - Aus*dTrac;
 
         % assemble jacobian and rhs of traction balance equations
 
         % STICK MODE
         if contactState == ContactMode.stick
 
-          asbMt.localAssembly(tDof(1),umDof,-Aun_m');
-          asbDt.localAssembly(tDof(1),usDof,Aun_s');
-          asbMt.localAssembly(tDof(2:3),umDof,-Aut_m');
-          asbDt.localAssembly(tDof(2:3),usDof,Aut_s');
+          asbMt.localAssembly(tDof,umDof,Aum');
+          asbDt.localAssembly(tDof,usDof,-Aus');
 
+          % this term can be assembled easily without numerical integration
           % (mu_n,g_n)
-          rhsT(tDof(1)) = rhsT(tDof(1)) ...
-            + MortarQuadrature.integrate(f1,Nmult_n,g_n,dJw);
-          % (mu_t,delta_g_t)
-          rhsT(tDof(2:3)) = rhsT(tDof(2:3))  ...
-            + MortarQuadrature.integrate(f1,Nmult_t,dgt,dJw);
+          rhsT(tDof(1)) = rhsT(tDof(1)) + area*g_n;
+          rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area*dgt;
+
         end
 
         % SLIP MODE
@@ -540,45 +548,42 @@ classdef SolidMechanicsContact < MeshTying
           slidingTol = obj.activeSet.tol.sliding;
 
           % A_nu
-          Anu_m = MortarQuadrature.integrate(f1, Nmult_n, Nm_n, dJw);
-          Anu_s = MortarQuadrature.integrate(f1, Nmult_n, Ns_n, dJw);
-          asbMt.localAssembly(tDof(1),umDof,-Anu_m);
-          asbDt.localAssembly(tDof(1),usDof,Anu_s);
+          % Anu_m = MortarQuadrature.integrate(f1, Nmult_n, Nm_n, dJw);
+          % Anu_s = MortarQuadrature.integrate(f1, Nmult_n, Ns_n, dJw);
+          asbMt.localAssembly(tDof(1),umDof,Aum(:,1));
+          asbDt.localAssembly(tDof(1),usDof,-Aus(:,1));
 
           % A_tu (non linear term)
           if slipNorm > slidingTol && obj.NLIter > 0 
             % compute only on slip terms with sliding large enough
             dtdgt = computeDerTracGap(obj,trac(1),dgt);
-            Atu_m = MortarQuadrature.integrate(f2, Nmult_t,dtdgt,Nm_t,dJw);
-            Atu_s = MortarQuadrature.integrate(f2, Nmult_t,dtdgt,Ns_t,dJw);
-            asbMt.localAssembly(tDof(2:3),umDof,Atu_m);
-            asbDt.localAssembly(tDof(2:3),usDof,-Atu_s);
+            Atu_m = MortarQuadrature.integrate(f3, dtdgt,pagemtimes(T,Nm),dJw);
+            Atu_s = MortarQuadrature.integrate(f3, dtdgt,pagemtimes(T,Ns),dJw);
+            asbMt.localAssembly(tDof(2:3),umDof,-Atu_m);
+            asbDt.localAssembly(tDof(2:3),usDof,Atu_s);
 
             % A_tn (non linear term)
             dtdtn = computeDerTracTn(obj,dgt);
-            Atn = MortarQuadrature.integrate(f1,Nmult_t,dtdtn,dJw);
+            Atn = area*dtdtn; 
             asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
           end
 
           % A_tt
-          Att = MortarQuadrature.integrate(f1,Nmult_t,Nmult_t,dJw);
+          Att = area*eye(2);
           asbQ.localAssembly(tDof(2:3),tDof(2:3),Att);
 
 
           % rhs (mu_n,g_n)
-          rhsT(tDof(1)) = rhsT(tDof(1)) + ...
-            MortarQuadrature.integrate(f1,Nmult_n,g_n,dJw);
+          % rhsT(tDof(1)) = rhsT(tDof(1)) + ...
+          %   MortarQuadrature.integrate(f1,Nmult_n,g_n,dJw);
+          rhsT(tDof(1)) = rhsT(tDof(1)) + area*g_n;
 
           % rhs -(mu_t,t*_T) (non linear term)
-          tT_lim = computeLimitTraction(obj,is,dgt,trac,slipNorm);
+          tT_lim = computeLimitTraction(obj,dgt,trac,slipNorm);
 
 
           % rhs (mu_t,tT) tT and tT_lim in local coordinates (to be consistent with dof definition)
-          rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + Att*trac(2:3);
-          % reconvert in local coordinates
-          %             tT_lim = pagemtimes(R_el,'ctranspose',tT_lim,'none');
-          rhsT(tDof(2:3)) = rhsT(tDof(2:3)) - ...
-            MortarQuadrature.integrate(f1,Nmult_t,tT_lim,dJw);
+          rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (trac(2:3)-tT_lim);
 
 
 
@@ -598,8 +603,7 @@ classdef SolidMechanicsContact < MeshTying
           asbQ.localAssembly(tDof,tDof,Aoo);
 
           % rhs (mu,t)
-          rhsT(tDof) = rhsT(tDof) + ...
-            MortarQuadrature.integrate(f1,Nmult,trac,dJw);
+          rhsT(tDof) = rhsT(tDof) + area*trac;
         end
 
       end % end inner master elems loop
@@ -779,7 +783,7 @@ classdef SolidMechanicsContact < MeshTying
         end
 
         % apply rotation matrix to S
-        S = avgR'*S*avgR;
+        %S = avgR'*S*avgR;
 
       end
 
@@ -846,8 +850,9 @@ classdef SolidMechanicsContact < MeshTying
     function dtdgt = computeDerTracGap(obj,sigma_n,slip)
       % gt = obj.g_T(get_dof(nodeId));
 
+      % slip: 2x1 local tangential slip
       tauLim = obj.cohesion - tan(deg2rad(obj.phi))*sigma_n;
-      dtdgt = tauLim*((eye(3)*norm(slip)^2 - slip*slip')/(norm(slip))^3);
+      dtdgt = tauLim*((eye(2)*norm(slip)^2 - slip*slip')/(norm(slip))^3);
 
     end
 
@@ -859,14 +864,14 @@ classdef SolidMechanicsContact < MeshTying
         %use available gap to properly compute traction
         dtdtn = -tanPhi*(slip/norm(slip));
       else
-        Rloc = obj.getRotationMatrix(is);
-        t = Rloc*obj.state.traction(getMultiplierDoF(obj,is));
+        t = obj.state.traction(getMultiplierDoF(obj,is));
+        t = t(2:3);
         % convert to global reference system
         dtdtn = -tanPhi*(t/norm(t));
       end
     end
 
-    function tracLim = computeLimitTraction(obj,is,dgt,t,slipNorm)
+    function tracLim = computeLimitTraction(obj,dgt,t,slipNorm)
 
       % return the limit traction vector in the global frame
       t_N = t(1);
@@ -877,9 +882,7 @@ classdef SolidMechanicsContact < MeshTying
         tracLim = tauLim*(dgt/norm(dgt));
       else
         % compute tangential traction from traction (global coordinates!)
-        R = obj.interfMesh.getRotationMatrix(is);
-        Rt = R(:,2:3);
-        t = Rt*t(2:3);
+        t = t(2:3);
         tracLim =  tauLim*(t/norm(t));
       end
 

@@ -13,7 +13,7 @@ in a nonConforming simulation.
           DtMin ="1e-5"
           DtMax ="1"
           incrementFactor = "1.5"
-          choppingFactor = "10" />
+          choppingFactor = "2" />
 
     <Solver
             MaxNLIteration = "10"
@@ -60,7 +60,7 @@ in a nonConforming simulation.
                  forceStickBoundary = "1" >
 
         <Tolerances
-                    sliding = "1e-7"
+                    sliding = "1e-6"
                     normalGap = "1e-6"
                     normalTraction = "-1e-3"
                     tangentialViolation = "1e-3"

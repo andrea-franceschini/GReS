@@ -9,9 +9,9 @@ in a nonConforming simulation.
     <Time
           Start="0."
           End ="0.99"
-          DtInit="0.05"
-          DtMin ="0.05"
-          DtMax ="0.05"
+          DtInit="0.1"
+          DtMin ="0.1"
+          DtMax ="0.1"
           incrementFactor = "1.5"
           choppingFactor = "2" />
 
