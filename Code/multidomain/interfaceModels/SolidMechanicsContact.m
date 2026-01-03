@@ -75,9 +75,7 @@ classdef SolidMechanicsContact < MeshTying
 
       computeContactMatricesAndRhs(obj);
       % 
-      % if ~obj.oldStab
-      %   computeStabilizationMatrix(obj);
-      % end
+
 
       % get stabilization matrix depending on the current active set
       [H,rhsStab] = getStabilizationMatrixAndRhs(obj);
@@ -211,8 +209,11 @@ classdef SolidMechanicsContact < MeshTying
       end
 
       % if hasChanged && ~obj.oldStab
-      computeStabilizationMatrix(obj);
+      %computeStabilizationMatrix(obj);
       % end
+      if ~obj.oldStab
+        computeStabilizationMatrix(obj);
+      end
     end
 
 
@@ -245,7 +246,7 @@ classdef SolidMechanicsContact < MeshTying
         obj.activeSet.curr(toReset) = ContactMode.stick;
 
         % recompute stabilization matrix
-        computeStabilizationMatrix(obj);
+        %computeStabilizationMatrix(obj);
         isReset = true;
       end
     end
@@ -347,19 +348,22 @@ classdef SolidMechanicsContact < MeshTying
 
       obj.state.gap = areaGap./areaSlave;
 
-      %[~,rhsStab] = getStabilizationMatrixAndRhs(obj);
+      [~,rhsStab] = getStabilizationMatrixAndRhs(obj);
+
+      stabGap = (areaGap + rhsStab)./areaSlave;
+      stabSlip = (obj.state.gap-obj.stateOld.gap) + rhsStab./areaSlave;
       %stabGap = -rhsH./areaSlave;
       %gap = H*(obj.state.traction - obj.state.iniTraction)./areaSlave;
 
       %gap = obj.state.gap - stabGap;
-      slip = obj.state.gap - obj.stateOld.gap;
-      slip(1:3:end) = [];
+      %slip = obj.state.gap - obj.stateOld.gap;
+      stabSlip(1:3:end) = [];
 
-      obj.state.tangentialSlip = slip;
+      obj.state.tangentialSlip = stabSlip;
       % 
-      obj.state.normalGap = obj.state.gap(1:3:end);
-      obj.state.tangentialGap = sqrt(obj.state.gap(2:3:end).^2 + ...
-        obj.state.gap(3:3:end).^2);
+      obj.state.normalGap = stabGap(1:3:end);
+      obj.state.tangentialGap = sqrt(stabGap(2:3:end).^2 + ...
+        stabGap(3:3:end).^2);
 
       % rotate gap from global to local coordinates
       %       for i = 1:nS
@@ -494,7 +498,7 @@ classdef SolidMechanicsContact < MeshTying
 
 
         % normal gap (minus sign to be checked)
-        g_n = obj.state.normalGap(is);
+        g_n = obj.state.gap(3*is-2);
 
         % tangential slip (quasi-static coulomb law) in local coords
         %tangDofs1 = [2*is-1 2*is];
@@ -547,6 +551,8 @@ classdef SolidMechanicsContact < MeshTying
 
           slidingTol = obj.activeSet.tol.sliding;
 
+          tauLim = obj.cohesion - trac(1)*tan(deg2rad(obj.phi));
+
           % A_nu
           % Anu_m = MortarQuadrature.integrate(f1, Nmult_n, Nm_n, dJw);
           % Anu_s = MortarQuadrature.integrate(f1, Nmult_n, Ns_n, dJw);
@@ -566,6 +572,17 @@ classdef SolidMechanicsContact < MeshTying
             dtdtn = computeDerTracTn(obj,dgt);
             Atn = area*dtdtn; 
             asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
+
+            tT_lim = tauLim*(dgt/norm(dgt));
+          else
+
+            vaux = trac(2:3);
+            dtdtn = - tan(deg2rad(obj.phi))*vaux/norm(vaux);
+            Atn = area*dtdtn;
+            asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
+
+            tT_lim = tauLim*vaux/norm(vaux);
+
           end
 
           % A_tt
@@ -579,7 +596,7 @@ classdef SolidMechanicsContact < MeshTying
           rhsT(tDof(1)) = rhsT(tDof(1)) + area*g_n;
 
           % rhs -(mu_t,t*_T) (non linear term)
-          tT_lim = computeLimitTraction(obj,dgt,trac,slipNorm);
+          %tT_lim = computeLimitTraction(obj,dgt,trac,slipNorm);
 
 
           % rhs (mu_t,tT) tT and tT_lim in local coordinates (to be consistent with dof definition)
@@ -672,6 +689,7 @@ classdef SolidMechanicsContact < MeshTying
         % end
 
       end
+
       rhsH = -H*obj.state.deltaTraction;
       rhsH(1:3:end) = -H(1:3:end,:) * obj.state.traction;
 
@@ -873,7 +891,7 @@ classdef SolidMechanicsContact < MeshTying
 
     function tracLim = computeLimitTraction(obj,dgt,t,slipNorm)
 
-      % return the limit traction vector in the global frame
+      % return the limit traction vector in the local frame
       t_N = t(1);
       tauLim = obj.cohesion - tan(deg2rad(obj.phi))*t_N;
 
