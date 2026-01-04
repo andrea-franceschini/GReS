@@ -7,7 +7,6 @@ classdef SolidMechanicsContact < MeshTying
     cohesion          % cohesion
     contactHelper
     activeSet
-    oldStab = true
     NLIter = 0
   end
 
@@ -38,7 +37,7 @@ classdef SolidMechanicsContact < MeshTying
       obj.state.gap = zeros(nDofsInterface,1);
 
       obj.state.normalGap = zeros(round(1/3*nDofsInterface),1);
-      obj.state.tangentialGap = zeros(round(1/3*nDofsInterface),1);
+      obj.state.tangentialGap = zeros(round(2/3*nDofsInterface),1);
       obj.state.tangentialSlip = zeros(round(2/3*nDofsInterface),1);
 
       obj.stateOld = obj.state;
@@ -76,12 +75,10 @@ classdef SolidMechanicsContact < MeshTying
       computeContactMatricesAndRhs(obj);
       % 
 
-
       % get stabilization matrix depending on the current active set
       [H,rhsStab] = getStabilizationMatrixAndRhs(obj);
-      %[H,rhsStab] = getStabilizationMatrixAndRhsOld(obj);
-      
 
+      
       obj.Jconstraint = obj.Jconstraint - H;
       obj.rhsConstraint = obj.rhsConstraint + rhsStab;
 
@@ -208,12 +205,6 @@ classdef SolidMechanicsContact < MeshTying
         end
       end
 
-      % if hasChanged && ~obj.oldStab
-      %computeStabilizationMatrix(obj);
-      % end
-      if ~obj.oldStab
-        computeStabilizationMatrix(obj);
-      end
     end
 
 
@@ -260,7 +251,9 @@ classdef SolidMechanicsContact < MeshTying
       obj.state = obj.stateOld;
       obj.state.deltaTraction(:) = 0;
       obj.NLIter = 0;
-      %resetConfiguration(obj);
+      if obj.activeSet.resetActiveSet
+        resetConfiguration(obj);
+      end
     end
 
 
@@ -270,17 +263,18 @@ classdef SolidMechanicsContact < MeshTying
       outTraction = fac*obj.state.traction + ...
         (1-fac)*obj.stateOld.traction;
 
-
       outNormalGap = fac*obj.state.normalGap + ...
         (1-fac)*obj.stateOld.normalGap;
       outTangentialSlip = fac*obj.state.tangentialSlip + ...
         (1-fac)*obj.stateOld.tangentialSlip;
       outTangentialSlip = (reshape(outTangentialSlip,2,[]))';
 
-      outSliding = fac*obj.state.tangentialGap + ...
+      outTangentialGap = fac*obj.state.tangentialGap + ...
         (1-fac)*obj.stateOld.tangentialGap;
+      outTangentialGap = (reshape(outTangentialGap,2,[]))';
 
-      outSlipNorm = sqrt(outTangentialSlip(:,1).^2 + outTangentialSlip(:,2).^2);
+      outTangentialGapNorm = sqrt(outTangentialGap(:,1).^2 + ...
+        outTangentialGap(:,2).^2);
 
       tT = [outTraction(2:3:end),outTraction(3:3:end)];
       norm_tT = sqrt(tT(:,1).^2 + tT(:,2).^2);
@@ -296,8 +290,8 @@ classdef SolidMechanicsContact < MeshTying
         'tangential_traction_2',   outTraction(3:3:end)
         'tangential_traction_norm',norm_tT
         'tangential_slip',         outTangentialSlip
-        'tangential_slip_norm',    outSlipNorm
-        'tangential_gap_norm',     outSliding
+        'tangential_gap',          outTangentialGap
+        'tangential_gap_norm',     outTangentialGapNorm
         'fracture_state',          fractureState
         };
 
@@ -338,8 +332,6 @@ classdef SolidMechanicsContact < MeshTying
 
       um = obj.domains(1).state.data.displacements;
       us = obj.domains(2).state.data.displacements;
-      % 
-
 
       % recover variationally consistent stabilized gaps
       areaSlave = repelem(obj.getSlaveArea(),3);
@@ -352,34 +344,13 @@ classdef SolidMechanicsContact < MeshTying
 
       stabGap = (areaGap + rhsStab)./areaSlave;
       stabSlip = (obj.state.gap-obj.stateOld.gap) + rhsStab./areaSlave;
-      %stabGap = -rhsH./areaSlave;
-      %gap = H*(obj.state.traction - obj.state.iniTraction)./areaSlave;
 
-      %gap = obj.state.gap - stabGap;
-      %slip = obj.state.gap - obj.stateOld.gap;
       stabSlip(1:3:end) = [];
 
       obj.state.tangentialSlip = stabSlip;
       % 
       obj.state.normalGap = stabGap(1:3:end);
-      obj.state.tangentialGap = sqrt(stabGap(2:3:end).^2 + ...
-        stabGap(3:3:end).^2);
-
-      % rotate gap from global to local coordinates
-      %       for i = 1:nS
-      %         R  = getRotationMatrix(obj,i);
-      %         obj.dispJump.curr(dofId(i,3)) = R'*gap(dofId(i,3));
-      %         locSlip = R(:,2:3)'*slipIncrement(dofId(i,3));
-      %         obj.slip.curr(i) = norm(locSlip);
-      %       end
-
-
-      %       if obj.domains(2).simparams.verbosity > 2
-      %         m = max(abs(stabGap./(obj.Jst*us)));
-      %         fprintf('Maximum gap deviation due to stabilization: %4.1f %% \n',100*m)
-      %       end
-
-      %       gapOld = (obj.D*us_old - obj.M*um_old - stabGap)./sum(obj.D,2);
+      obj.state.tangentialGap = obj.stateOld.tangentialGap + stabSlip;
 
     end
 
@@ -397,16 +368,6 @@ classdef SolidMechanicsContact < MeshTying
       dofSlave = getDoFManager(obj,MortarSide.slave);
       dofMaster = getDoFManager(obj,MortarSide.master);
 
-      % extract current and previous displacements
-      % us = obj.domains(2).state.data.displacements;
-      % us_old = obj.domains(2).stateOld.data.displacements;
-      % um = obj.domains(1).state.data.displacements;
-      % um_old = obj.domains(1).stateOld.data.displacements;
-
-      % compute displacement increment
-      %       um_slip = um - um_old;
-      %       us_slip = us - us_old;
-
       % define matrix assemblers
       [asbMu,asbDu,asbMt,asbDt,asbQ] = defineAssemblers(obj);
 
@@ -420,12 +381,10 @@ classdef SolidMechanicsContact < MeshTying
 
       % anonymous functions for local fem computations
       f1 = @(a,b) pagemtimes(a,'ctranspose',b,'none');
-      f2 = @(a,b,c) pagemtimes(a,'transpose',pagemtimes(b,c),'none');
-      f3 = @(a,b) pagemtimes(a,b);
+      f2 = @(a,b) pagemtimes(a,b);
 
       % compute slip
       slip = obj.state.gap - obj.stateOld.gap;
-
 
       for iPair = 1:obj.quadrature.numbInterfacePairs
 
@@ -439,6 +398,7 @@ classdef SolidMechanicsContact < MeshTying
         xiSlave = obj.quadrature.getSlaveGPCoords(iPair);
         dJw = obj.quadrature.getIntegrationWeights(iPair);
 
+        % area of current integration cell
         area = sum(dJw);
 
         % define slave related quantities
@@ -446,12 +406,9 @@ classdef SolidMechanicsContact < MeshTying
         usDof = dofSlave.getLocalDoF(fldS,nodeSlave);
         tDof = getMultiplierDoF(obj,is);
         trac = obj.state.traction(tDof);
+
         % equilibrium equation and stabilization work with delta traction
         dTrac = trac - obj.state.iniTraction(tDof);
-
-        % displacement increment to check if this is the first newton
-        % iteration
-        % usDiff = norm(us(usDof) - us_old(usDof));
 
         nodeMaster = obj.interfMesh.local2glob{1}(obj.interfMesh.msh(1).surfaces(im,:));
         umDof = dofMaster.getLocalDoF(fldM,nodeMaster);
@@ -462,56 +419,18 @@ classdef SolidMechanicsContact < MeshTying
         % reshape basis function matrices to match number of components
         [Ns,Nm,Nmult] = reshapeBasisFunctions(3,Nslave,Nmaster,Nmult);
 
-        % Nmult(1,1,:) = -Nmult(1,1,:); 
-
-        % rotation of multipliers
+        % rotation matrix
         R = getRotationMatrix(obj.interfMesh,is);
-        %NmultR = pagemtimes(Nmult,R);
-
-        % Reduce the dimension of multiplier basis functions exploiting
-        % the local definition of degrees of freedom
-
-        % the normal component of the multipliers basis
-        %Nmult_n = -Nmult(1,1,:);
-
-        % tangential component of multiplier basis
-        %Nmult_t = NmultR(:,2:3,:);
-
-        % get normal of the slave element
-        %normalEl = obj.interfMesh.getNormal(is);
-        
-        %Tel = eye(3) - normalEl*normalEl';
-
-        % get normal at the gauss points (for warped facets...?)
-        % normalNodes = obj.interfMesh.getNodalNormal(is);
-        % normal = pagemtimes(Ns,normalNodes);
-
-        % operator selecting only tangential components of the
-        % displacements
-        %T = eye(3) - pagemtimes(normal,'none',normal,'transpose');
-        % normal and tangential component of displacement basis functions
-        % Nm_n = pagemtimes(normal,'transpose',Nm,'none');
-        % Nm_t = pagemtimes(T,Nm);
-        % 
-        % Ns_n = pagemtimes(normal,'transpose',Ns,'none');
-        % Ns_t = pagemtimes(T,Ns);
-
 
         % normal gap (minus sign to be checked)
         g_n = obj.state.gap(3*is-2);
 
-        % tangential slip (quasi-static coulomb law) in local coords
-        %tangDofs1 = [2*is-1 2*is];
-
-        % operator mapping global vectors to local tangential coordinates
-        T = (R(:,2:3))';
+        % tangential slip
         dgt = slip([3*is-1 3*is]);
         slipNorm = norm(dgt);
 
-
-
-        % slip is stabilized while does not incorporate the stabilizing
-        % contribution, hence can be non zero even for new slip elements
+        % operator mapping global vectors to local tangential coordinates
+        T = (R(:,2:3))';
 
         % A_us
         Aum =  MortarQuadrature.integrate(f1,Nm,Nmult,dJw);
@@ -521,11 +440,6 @@ classdef SolidMechanicsContact < MeshTying
         Aus = Aus*R;
         asbMu.localAssembly(umDof,tDof,Aum);
         asbDu.localAssembly(usDof,tDof,-Aus);
-
-        % Aut_m =  MortarQuadrature.integrate(f1,Nm_t,Nmult_t,dJw);
-        % Aut_s =  MortarQuadrature.integrate(f1,Ns_t,Nmult_t,dJw);
-        % asbMu.localAssembly(umDof,tDof(2:3),-Aut_m);
-        % asbDu.localAssembly(usDof,tDof(2:3),Aut_s);
 
         % rhs (jump(eta),t)
         rhsUm(umDof) = rhsUm(umDof) + Aum*dTrac;
@@ -540,7 +454,6 @@ classdef SolidMechanicsContact < MeshTying
           asbDt.localAssembly(tDof,usDof,-Aus');
 
           % this term can be assembled easily without numerical integration
-          % (mu_n,g_n)
           rhsT(tDof(1)) = rhsT(tDof(1)) + area*g_n;
           rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area*dgt;
 
@@ -553,18 +466,16 @@ classdef SolidMechanicsContact < MeshTying
 
           tauLim = obj.cohesion - trac(1)*tan(deg2rad(obj.phi));
 
-          % A_nu
-          % Anu_m = MortarQuadrature.integrate(f1, Nmult_n, Nm_n, dJw);
-          % Anu_s = MortarQuadrature.integrate(f1, Nmult_n, Ns_n, dJw);
           asbMt.localAssembly(tDof(1),umDof,Aum(:,1));
           asbDt.localAssembly(tDof(1),usDof,-Aus(:,1));
 
           % A_tu (non linear term)
           if slipNorm > slidingTol && obj.NLIter > 0 
+
             % compute only on slip terms with sliding large enough
             dtdgt = computeDerTracGap(obj,trac(1),dgt);
-            Atu_m = MortarQuadrature.integrate(f3, dtdgt,pagemtimes(T,Nm),dJw);
-            Atu_s = MortarQuadrature.integrate(f3, dtdgt,pagemtimes(T,Ns),dJw);
+            Atu_m = MortarQuadrature.integrate(f2, dtdgt,pagemtimes(T,Nm),dJw);
+            Atu_s = MortarQuadrature.integrate(f2, dtdgt,pagemtimes(T,Ns),dJw);
             asbMt.localAssembly(tDof(2:3),umDof,-Atu_m);
             asbDt.localAssembly(tDof(2:3),usDof,Atu_s);
 
@@ -574,8 +485,10 @@ classdef SolidMechanicsContact < MeshTying
             asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
 
             tT_lim = tauLim*(dgt/norm(dgt));
+
           else
 
+            % if slip is small, use current traction
             vaux = trac(2:3);
             dtdtn = - tan(deg2rad(obj.phi))*vaux/norm(vaux);
             Atn = area*dtdtn;
@@ -589,19 +502,10 @@ classdef SolidMechanicsContact < MeshTying
           Att = area*eye(2);
           asbQ.localAssembly(tDof(2:3),tDof(2:3),Att);
 
-
-          % rhs (mu_n,g_n)
-          % rhsT(tDof(1)) = rhsT(tDof(1)) + ...
-          %   MortarQuadrature.integrate(f1,Nmult_n,g_n,dJw);
           rhsT(tDof(1)) = rhsT(tDof(1)) + area*g_n;
 
-          % rhs -(mu_t,t*_T) (non linear term)
-          %tT_lim = computeLimitTraction(obj,dgt,trac,slipNorm);
-
-
-          % rhs (mu_t,tT) tT and tT_lim in local coordinates (to be consistent with dof definition)
+          % rhs (mu_t,tT) - local frame
           rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (trac(2:3)-tT_lim);
-
 
 
           if gresLog().getVerbosity > 5
@@ -637,14 +541,6 @@ classdef SolidMechanicsContact < MeshTying
       obj.addRhs(MortarSide.slave,rhsUs);
       obj.rhsConstraint = rhsT;
 
-      % assemble rhs contribution
-
-      % obj.Jmu = asbMu.sparseAssembly();
-      % obj.Jsu = asbDu.sparseAssembly();
-      % obj.Jmt = asbMt.sparseAssembly();
-      % obj.Jst = asbDt.sparseAssembly();
-      % obj.Jtt = asbQ.sparseAssembly();
-
     end
 
 
@@ -661,42 +557,21 @@ classdef SolidMechanicsContact < MeshTying
       H = obj.stabilizationMat;
 
       %
-      if obj.oldStab
-        elOpen = find(obj.activeSet.curr == ContactMode.open);
-        elSlip = [find(obj.activeSet.curr == ContactMode.slip);...
-          find(obj.activeSet.curr == ContactMode.newSlip)];
+      elOpen = find(obj.activeSet.curr == ContactMode.open);
+      elSlip = [find(obj.activeSet.curr == ContactMode.slip);...
+        find(obj.activeSet.curr == ContactMode.newSlip)];
 
-        dofOpen = DoFManager.dofExpand(elOpen,3);
-        dofSlip = [3*elSlip-1; 3*elSlip];
+      dofOpen = DoFManager.dofExpand(elOpen,3);
+      dofSlip = [3*elSlip-1; 3*elSlip];
 
-        % remove rows and columns of dofs not requiring stabilization
-        H([dofOpen;dofSlip],:) = 0;
-        H(:,[dofOpen;dofSlip]) = 0;
+      % remove rows and columns of dofs not requiring stabilization
+      H([dofOpen;dofSlip],:) = 0;
+      H(:,[dofOpen;dofSlip]) = 0;
 
-        % scale the off-diagonal terms of the stabilization matrix to satisfy local
-        % conservation
-        % dH = diag(H);
-        % H = H - diag(dH);
-        % f = abs(dH./sum(H,2));
-        % f(isnan(f) | isinf(f)) = 0; 
-        % H = f.*H + diag(dH);
-
-        % rowSum = sum(H,2);
-        % H = H - diag(rowSum);
-        % 
-        % if ~obj.oldStab
-        %   assert(norm(sum(H,2))<1e-8, 'Stabilization matrix is not locally conservative')
-        % end
-
-      end
-
+      % use traction variation for tangential components
       rhsH = -H*obj.state.deltaTraction;
-      rhsH(1:3:end) = -H(1:3:end,:) * obj.state.traction;
 
-      % check that jump stabilizing terms are properly removed
-      if ~obj.oldStab
-        assert(norm(sum(H,2))<1e-8, 'Stabilization matrix is not locally conservative')
-      end
+      rhsH(1:3:end) = -H(1:3:end,:) * obj.state.traction;
 
     end
 
@@ -768,64 +643,46 @@ classdef SolidMechanicsContact < MeshTying
 
       obj.stabilizationMat = asbH.sparseAssembly();
 
-      %assert(norm(sum(obj.stabilizationMat,2))<1e-8, 'Stabilization matrix is not locally conservative')
     end
 
     function [dofRow,dofCol,mat] = assembleLocalStabilization(obj,S,e1,e2)
       % assemble stabilization matrix S (in global coordinates) for
       % elements e1 and e2.
 
-      % for contact problem, we need to carefully handle element in mixed
-      % contact state
-
-      contactState = obj.activeSet.curr([e1,e2]);
-
       nc = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
       dof1 = DoFManager.dofExpand(e1,nc);
       dof2 = DoFManager.dofExpand(e2,nc);
 
-      if nc > 1
-        % vector field, rotation matrix needed
+      % IMPORTANT
+      % Rotation is not required since the Schur complement is already
+      % rotated in the local frame
 
-        % get average rotation matrix
-        n1 = getNormal(obj.interfMesh,e1);
-        n2 = getNormal(obj.interfMesh,e2);
-        if abs(n1'*n2 -1) < 1e4*eps
-          avgR = obj.interfMesh.computeRot(n1);
-        else
-          A1 = obj.interfMesh.msh(2).surfaceArea(e1);
-          A2 = obj.interfMesh.msh(2).surfaceArea(e2);
-          nAvg = n1*A1 + n2*A2;
-          nAvg = nAvg/norm(nAvg);
-          avgR = obj.interfMesh.computeRot(nAvg);
-        end
+      % if nc > 1
+      %   % vector field, rotation matrix needed
+      % 
+      %   % get average rotation matrix
+      %   n1 = getNormal(obj.interfMesh,e1);
+      %   n2 = getNormal(obj.interfMesh,e2);
+      %   if abs(n1'*n2 -1) < 1e4*eps
+      %     avgR = obj.interfMesh.computeRot(n1);
+      %   else
+      %     A1 = obj.interfMesh.msh(2).surfaceArea(e1);
+      %     A2 = obj.interfMesh.msh(2).surfaceArea(e2);
+      %     nAvg = n1*A1 + n2*A2;
+      %     nAvg = nAvg/norm(nAvg);
+      %     avgR = obj.interfMesh.computeRot(nAvg);
+      %   end
 
         % apply rotation matrix to S
         %S = avgR'*S*avgR;
 
-      end
+      %end
 
       % prepare matrix for full stick edge
+
       mat = obj.stabilizationScale*[S,-S;-S,S];
       dofRow = [dof1;dof2];
       dofCol = [dof1;dof2];
-
-      if any(contactState == ContactMode.open)
-        % no stabilization required for open dofs
-        mat(:) = 0;
-      elseif any(contactState ~= ContactMode.stick)
-        % mixed state elements
-        mat([2,3,5,6],:) = 0;
-        mat(:,[2,3,5,6]) = 0;
-        % if contactState(1) ~= ContactMode.stick
-        %   mat([2 3],:) = 0;
-        %   %mat(:,[2 3]) = 0;
-        % end
-        % if contactState(2) ~= ContactMode.stick
-        %   mat([5 6],:) = 0;
-        %   %mat(:,[5 6]) = 0;
-        % end
-      end
 
     end
 

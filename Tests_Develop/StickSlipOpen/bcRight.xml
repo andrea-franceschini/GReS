@@ -60,6 +60,10 @@
             <time>16</time>
             <value>0</value>
         </BCevent>
+        <BCevent>
+            <time>20</time>
+            <value>1</value>
+        </BCevent>
     </BC>
     <BC>
         <name>az_load</name>
