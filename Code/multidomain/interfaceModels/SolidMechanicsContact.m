@@ -7,7 +7,7 @@ classdef SolidMechanicsContact < MeshTying
     cohesion          % cohesion
     contactHelper
     activeSet
-    oldStab = false
+    oldStab = true
     NLIter = 0
   end
 

@@ -873,3 +873,136 @@ Rhs norm for stick dofs: 2.844e-13
 Rhs norm for slip dofs: 6.488e+00 
 Rhs norm for open dofs: 0.000e+00 
 7     6.487662e+00     1.085953e+01
+if system_dependent('IsDebugMode')==1, dbcont; end
+Rhs norm for stabilization: 6.795e+00 
+Rhs norm for stick dofs: 2.719e-13 
+Rhs norm for slip dofs: 6.509e+00 
+Rhs norm for open dofs: 0.000e+00 
+8     6.509144e+00     1.089549e+01
+Rhs norm for stabilization: 6.795e+00 
+Rhs norm for stick dofs: 2.184e-13 
+Rhs norm for slip dofs: 6.437e+00 
+Rhs norm for open dofs: 0.000e+00 
+9     6.436935e+00     1.077462e+01
+Rhs norm for stabilization: 6.795e+00 
+Rhs norm for stick dofs: 3.004e-13 
+Rhs norm for slip dofs: 6.505e+00 
+Rhs norm for open dofs: 0.000e+00 
+10     6.504552e+00     1.088781e+01
+
+ BACKSTEP 
+
+TSTEP 5   ---  TIME 3.812500  --- DT = 3.125000e-01
+-----------------------------------------------------------
+
+TSTEP 5   ---  TIME 3.812500  --- DT = 3.125000e-01
+Active set iteration n. 0 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 6.604e+00 
+Rhs norm for stick dofs: 7.640e-14 
+Rhs norm for slip dofs: 0.000e+00 
+Rhs norm for open dofs: 0.000e+00 
+0     3.741993e+01     1.000000e+00
+Rhs norm for stabilization: 6.692e+00 
+Rhs norm for stick dofs: 1.836e-13 
+Rhs norm for slip dofs: 0.000e+00 
+Rhs norm for open dofs: 0.000e+00 
+1     4.243432e-12     1.134003e-13
+0 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+0 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 260    Slip dofs: 0    Open dofs: 0 
+
+TSTEP 6   ---  TIME 4.203125  --- DT = 3.906250e-01
+-----------------------------------------------------------
+
+TSTEP 6   ---  TIME 4.203125  --- DT = 3.906250e-01
+Active set iteration n. 0 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 6.691e+00 
+Rhs norm for stick dofs: 7.497e-14 
+Rhs norm for slip dofs: 0.000e+00 
+Rhs norm for open dofs: 0.000e+00 
+0     4.677491e+01     1.000000e+00
+Rhs norm for stabilization: 6.812e+00 
+Rhs norm for stick dofs: 2.288e-13 
+Rhs norm for slip dofs: 0.000e+00 
+Rhs norm for open dofs: 0.000e+00 
+1     4.871981e-12     1.041580e-13
+6 elements from stick to new slip 
+0 elements from stick to open 
+0 elements from new slip to stick 
+0 elements from new slip to slip 
+0 elements from new slip to open 
+0 elements from slip to stick 
+0 elements from slip to open 
+0 elements from open to stick 
+Stick dofs: 254    Slip dofs: 6    Open dofs: 0 
+
+TSTEP 6   ---  TIME 4.203125  --- DT = 3.906250e-01
+-----------------------------------------------------------
+
+TSTEP 6   ---  TIME 4.203125  --- DT = 3.906250e-01
+Active set iteration n. 1 
+Iter     ||rhs||     ||rhs||/||rhs_0||
+Rhs norm for stabilization: 6.812e+00 
+Rhs norm for stick dofs: 6.079e-03 
+Rhs norm for slip dofs: 7.592e-01 
+Rhs norm for open dofs: 0.000e+00 
+0     7.592646e-01     1.000000e+00
+Rhs norm for stabilization: 6.812e+00 
+Rhs norm for stick dofs: 2.065e-13 
+Rhs norm for slip dofs: 9.927e-01 
+Rhs norm for open dofs: 0.000e+00 
+1     9.927031e-01     1.307453e+00
+Rhs norm for stabilization: 6.812e+00 
+Rhs norm for stick dofs: 2.559e-13 
+Rhs norm for slip dofs: 2.836e+00 
+Rhs norm for open dofs: 0.000e+00 
+2     2.835718e+00     3.734821e+00
+Rhs norm for stabilization: 6.813e+00 
+Rhs norm for stick dofs: 2.622e-13 
+Rhs norm for slip dofs: 3.701e+00 
+Rhs norm for open dofs: 0.000e+00 
+3     3.700741e+00     4.874113e+00
+Rhs norm for stabilization: 6.812e+00 
+Rhs norm for stick dofs: 2.771e-13 
+Rhs norm for slip dofs: 4.227e+00 
+Rhs norm for open dofs: 0.000e+00 
+4     4.227210e+00     5.567506e+00
+Rhs norm for stabilization: 6.813e+00 
+Rhs norm for stick dofs: 2.193e-13 
+Rhs norm for slip dofs: 4.976e+00 
+Rhs norm for open dofs: 0.000e+00 
+5     4.975983e+00     6.553688e+00
+Rhs norm for stabilization: 6.814e+00 
+Rhs norm for stick dofs: 2.204e-13 
+Rhs norm for slip dofs: 5.089e+00 
+Rhs norm for open dofs: 0.000e+00 
+6     5.088546e+00     6.701940e+00
+{Operation terminated by user during <a href="matlab:matlab.internal.language.introspective.errorDocCallback('SolidMechanicsContact/computeContactMatricesAndRhs')" style="font-weight:bold">SolidMechanicsContact/computeContactMatricesAndRhs</a>
+
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('SolidMechanicsContact/assembleConstraint', 'C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\multidomain\interfaceModels\SolidMechanicsContact.m', 76)" style="font-weight:bold">SolidMechanicsContact/assembleConstraint</a> (<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\multidomain\interfaceModels\SolidMechanicsContact.m',76,0)">line 76</a>)
+      computeContactMatricesAndRhs(obj);
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('ActiveSetContactSolver/NonLinearLoop', 'C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\nonlinearsolver\ActiveSetContactSolver.m', 126)" style="font-weight:bold">ActiveSetContactSolver/NonLinearLoop</a> (<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\nonlinearsolver\ActiveSetContactSolver.m',126,0)">line 126</a>)
+              obj.interfaces{i}.assembleConstraint();
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('runContactMechanicsSimulation', 'C:\Users\Moretto\Documents\PHD\Codes\GReS\Tests_Develop\FaultedAquifer\runContactMechanicsSimulation.m', 69)" style="font-weight:bold">runContactMechanicsSimulation</a> (<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Tests_Develop\FaultedAquifer\runContactMechanicsSimulation.m',69,0)">line 69</a>)
+solver.NonLinearLoop();
+
+In <a href="matlab:matlab.internal.language.introspective.errorDocCallback('runFaultedTestCase', 'C:\Users\Moretto\Documents\PHD\Codes\GReS\Tests_Develop\FaultedAquifer\runFaultedTestCase.m', 38)" style="font-weight:bold">runFaultedTestCase</a> (<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Tests_Develop\FaultedAquifer\runFaultedTestCase.m',38,0)">line 38</a>)
+runContactMechanicsSimulation(fileName,mesh,pressures);
+} 
+StickSlipOpen
+{StickSlipOpen is not found in the current folder or on the MATLAB path, but exists in:
+    C:\Users\Moretto\Documents\PHD\Codes\GReS\Tests_Develop\StickSlipOpen
+
+<a href = "matlab:internal.matlab.desktop.commandwindow.executeCommandForUser('cd ''C:\Users\Moretto\Documents\PHD\Codes\GReS\Tests_Develop\StickSlipOpen''')">Change the MATLAB current folder</a> or <a href = "matlab:internal.matlab.desktop.commandwindow.executeCommandForUser('addpath ''C:\Users\Moretto\Documents\PHD\Codes\GReS\Tests_Develop\StickSlipOpen''')">add its folder to the MATLAB path</a>.
+} 
