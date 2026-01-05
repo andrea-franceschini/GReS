@@ -24,6 +24,10 @@ classdef (Abstract) MortarQuadrature < handle
 
       ng = getXMLData(input,[],"nGP");
 
+      if strcmp(class(obj),"SegmentBasedQuadrature") && ng > 6
+        ng = 6;
+      end
+
       obj.elements = [Elements(interf.interfMesh.msh(1),ng),...
                       Elements(interf.interfMesh.msh(2),ng)];
     end

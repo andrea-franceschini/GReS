@@ -46,7 +46,7 @@ classdef MeshTying < InterfaceSolver
     end
 
 
-    function assembleConstraint(obj)
+    function assembleConstraint(obj,varargin)
 
       if isempty(obj.D)
         computeConstraintMatrices(obj);

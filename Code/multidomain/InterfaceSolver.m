@@ -71,7 +71,7 @@ classdef (Abstract) InterfaceSolver < handle
     registerInterface(obj);
 
     % assemble the constraint matrices
-    assembleConstraint(obj);
+    assembleConstraint(obj,varargin);
 
     % update the state after solving a linear system
     updateState(obj,du);
