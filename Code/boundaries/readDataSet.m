@@ -21,10 +21,12 @@ if isnumeric(bcVal)
 elseif isValidFunction(bcVal)
   % function of spatial coordinates
   f = str2func(['@(x,y,z)', char(bcVal)]);
-  vals = f(bc.entityPos(:,1),bc.entityPos(:,2),bc.entityPos(:,3));
+  pos = bc.entityPos(bc.isActiveEntity,:);
+  vals = f(pos(:,1),pos(:,2),pos(:,3));
 else 
   % file with BC values
   vals = readValuesList(bcVal,bc.totEnts);
+  vals = vals(bc.isActiveEntity);
 end
 
 % assert(bc.totEnts == numel(vals),...

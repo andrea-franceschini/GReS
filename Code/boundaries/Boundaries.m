@@ -242,8 +242,11 @@ classdef Boundaries < handle
 
         bcEnts.nEntities = l;
         bcEnts.totEnts = sum(bcEnts.nEntities);
+        bcEnts.availVals = zeros(bcEnts.totEnts,2);
 
       end
+
+      obj.db(bcId) = bc;
 
     end
   end

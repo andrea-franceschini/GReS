@@ -190,7 +190,8 @@ classdef (Abstract) PhysicsSolver < handle
       % symmetry)
       % if isSymmetric(obj)
       %   for i = 1:nV
-      %   obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+      %     obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+      %   end
       % end
       % 
       % for iI = 1:numel(obj.domain.interfaces)

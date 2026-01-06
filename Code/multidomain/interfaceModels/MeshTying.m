@@ -169,15 +169,16 @@ classdef MeshTying < InterfaceSolver
         if ncomp > 1
           % vector field, local reference needed
 
-
-
           % rotation of multipliers
           R = getRotationMatrix(obj.interfMesh,is);
-
 
           % mortar coupling normal component
           Atm =  MortarQuadrature.integrate(f,Nmult,Nm,dJw);
           Ats =  MortarQuadrature.integrate(f,Nmult,Ns,dJw);
+
+          % if strcmp(obj.quadrature.multiplierType,"dual")
+          %   Ats = diag(sum(Ats,2));
+          % end
 
           Atm = R'*Atm;
           Ats = R'*Ats;
