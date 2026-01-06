@@ -29270,3 +29270,217 @@ StickSlipOpen
 
 Change the MATLAB current folder or add its folder to the MATLAB path.
 } 
+StickSlipOpen
+<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\boundaries\Boundaries.m',213,1)">213 </a>        bc.entitiesInfl(~isEntActive,:) = [];
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+getData(obj,"z_bottom")
+
+ans = 
+
+  <a href="matlab:helpPopup struct" style="font-weight:bold">struct</a> with fields:
+
+            data: [1×1 BoundaryEntities]
+            cond: "SurfBC"
+            type: "Dirichlet"
+        variable: "displacements"
+    entitiesInfl: [10×8 double]
+      loadedEnts: [10×1 double]
+     nloadedEnts: [3×1 double]
+
+if system_dependent('IsDebugMode')==1, dbcont; end
+Using default values for linsolver
+if system_dependent('IsDebugMode')==1, dbcont; end
+if system_dependent('IsDebugMode')==1, dbcont; end
+if system_dependent('IsDebugMode')==1, dbcont; end
+if system_dependent('IsDebugMode')==1, dbcont; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+{Index exceeds the number of array elements. Index must not exceed 10.
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Boundaries/getCompEntities', 'C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\boundaries\Boundaries.m', 75)" style="font-weight:bold">Boundaries/getCompEntities</a> (<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\boundaries\Boundaries.m',75,0)">line 75</a>)
+        dofs(i1:i2-1) = dim*(ents(i1:i2-1)-1) + i;
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Poromechanics/getBCdofs', 'C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\discretizer\PhysicsSolvers\Mechanics\Poromechanics.m', 411)" style="font-weight:bold">Poromechanics/getBCdofs</a> (<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\discretizer\PhysicsSolvers\Mechanics\Poromechanics.m',411,0)">line 411</a>)
+      dof = obj.bcs.getCompEntities(bcId,ents);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Poromechanics/getBC', 'C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\discretizer\PhysicsSolvers\Mechanics\Poromechanics.m', 288)" style="font-weight:bold">Poromechanics/getBC</a> (<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\discretizer\PhysicsSolvers\Mechanics\Poromechanics.m',288,0)">line 288</a>)
+      dof = obj.getBCdofs(bcId);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Poromechanics/applyDirVal', 'C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\discretizer\PhysicsSolvers\Mechanics\Poromechanics.m', 301)" style="font-weight:bold">Poromechanics/applyDirVal</a> (<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\discretizer\PhysicsSolvers\Mechanics\Poromechanics.m',301,0)">line 301</a>)
+      [bcDofs,bcVals] = getBC(obj,bcId,t);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('Discretizer/applyDirVal', 'C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\discretizer\Discretizer.m', 87)" style="font-weight:bold">Discretizer/applyDirVal</a> (<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\discretizer\Discretizer.m',87,0)">line 87</a>)
+            solver.applyDirVal(bcId,t)
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('MultidomainFCSolver/NonLinearLoop', 'C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m', 55)" style="font-weight:bold">MultidomainFCSolver/NonLinearLoop</a> (<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\nonlinearsolver\MultidomainFCSolver.m',55,0)">line 55</a>)
+        obj.domains(i).applyDirVal(obj.t);
+
+Error in <a href="matlab:matlab.internal.language.introspective.errorDocCallback('StickSlipOpen', 'C:\Users\Moretto\Documents\PHD\Codes\GReS\Tests_Develop\StickSlipComparison\StickSlipOpen.m', 78)" style="font-weight:bold">StickSlipOpen</a> (<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Tests_Develop\StickSlipComparison\StickSlipOpen.m',78,0)">line 78</a>)
+solv.NonLinearLoop();
+} 
+opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\boundaries\Boundaries.m',75,0)
+StickSlipOpen
+<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\boundaries\Boundaries.m',217,1)">217 </a>        n = 0;
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+getData(obj,"z_bottom")
+
+ans = 
+
+  <a href="matlab:helpPopup struct" style="font-weight:bold">struct</a> with fields:
+
+            data: [1×1 BoundaryEntities]
+            cond: "SurfBC"
+            type: "Dirichlet"
+        variable: "displacements"
+    entitiesInfl: [10×8 double]
+      loadedEnts: [10×1 double]
+     nloadedEnts: [3×1 double]
+
+getData(obj,"z_bottom")
+
+ans = 
+
+  <a href="matlab:helpPopup struct" style="font-weight:bold">struct</a> with fields:
+
+            data: [1×1 BoundaryEntities]
+            cond: "SurfBC"
+            type: "Dirichlet"
+        variable: "displacements"
+    entitiesInfl: [10×8 double]
+      loadedEnts: [10×1 double]
+     nloadedEnts: [3×1 double]
+
+StickSlipOpen
+Using default values for linsolver
+<a href="matlab: opentoline('C:\Users\Moretto\Documents\PHD\Codes\GReS\Code\discretizer\PhysicsSolvers\Mechanics\Poromechanics.m',288,1)">288 </a>      dof = obj.getBCdofs(bcId);
+if system_dependent('IsDebugMode')==1, dbcont; end
+if system_dependent('IsDebugMode')==1, dbcont; end
+if system_dependent('IsDebugMode')==1, dbcont; end
+if system_dependent('IsDebugMode')==1, dbcont; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbstep; end
+if system_dependent('IsDebugMode')==1, dbcont; end
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     1.640625e+02     1.000000e+00
+1     2.383094e-13     1.452552e-15
+StickSlipOpen
+Using default values for linsolver
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     4.541016e+01     1.000000e+00
+1     1.440429e-13     3.172042e-15
+
+TSTEP 2   ---  TIME 2.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     1.356138e+01     1.000000e+00
+1     1.705662e-13     1.257735e-14
+
+TSTEP 3   ---  TIME 3.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     1.356138e+01     1.000000e+00
+1     2.062443e-13     1.520820e-14
+
+TSTEP 4   ---  TIME 4.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     1.356138e+01     1.000000e+00
+1     3.226110e-13     2.378894e-14
+StickSlipOpen
+Using default values for linsolver
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     4.541016e+01     1.000000e+00
+1     1.471955e-13     3.241466e-15
+
+TSTEP 2   ---  TIME 2.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     1.167178e+01     1.000000e+00
+1     1.697730e-13     1.454559e-14
+
+TSTEP 3   ---  TIME 3.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     1.167178e+01     1.000000e+00
+1     1.951043e-13     1.671590e-14
+
+TSTEP 4   ---  TIME 4.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     1.167178e+01     1.000000e+00
+1     2.870832e-13     2.459635e-14
+StickSlipOpen
+Using default values for linsolver
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     4.541016e+01     1.000000e+00
+1     1.535884e-13     3.382249e-15
+
+TSTEP 2   ---  TIME 2.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     1.167178e+01     1.000000e+00
+1     1.747045e-13     1.496811e-14
+
+TSTEP 3   ---  TIME 3.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     1.167178e+01     1.000000e+00
+1     1.955632e-13     1.675522e-14
+
+TSTEP 4   ---  TIME 4.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     1.167178e+01     1.000000e+00
+1     2.830578e-13     2.425146e-14
+StickSlipOpen
+Using default values for linsolver
+
+TSTEP 1   ---  TIME 1.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     4.541016e+01     1.000000e+00
+1     1.491862e-13     3.285305e-15
+
+TSTEP 2   ---  TIME 2.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     1.167178e+01     1.000000e+00
+1     1.713733e-13     1.468270e-14
+
+TSTEP 3   ---  TIME 3.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     1.167178e+01     1.000000e+00
+1     1.957064e-13     1.676748e-14
+
+TSTEP 4   ---  TIME 4.000000  --- DT = 1.000000e+00
+-----------------------------------------------------------
+Iter     ||rhs||     ||rhs||/||rhs_0||
+0     1.167178e+01     1.000000e+00
+1     3.116328e-13     2.669968e-14
