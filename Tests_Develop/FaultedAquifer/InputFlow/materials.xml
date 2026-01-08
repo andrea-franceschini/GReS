@@ -13,7 +13,7 @@
    
     <PorousRock
         porosity = "0.375"
-        permeability = "1e-19, 1e-19, 1e-19"
+        permeability = "1e-15, 1e-15, 1e-15"
     />
   </Solid>
 

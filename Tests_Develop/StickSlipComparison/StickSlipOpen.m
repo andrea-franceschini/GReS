@@ -11,7 +11,7 @@ scriptDir = fileparts(scriptFullPath);
 
 cd(scriptDir)
 
-fname = "StickBubble.xml";
+fname = "StickNodal.xml";
 
 
 % set mesh 

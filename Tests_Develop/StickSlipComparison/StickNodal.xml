@@ -42,7 +42,7 @@ in a nonConforming simulation.
       <Quadrature
                   type = "SegmentBasedQuadrature"
                   nGP = "6"
-                  multiplierType = "standard"
+                  multiplierType = "dual"
                   />
 
       <Output

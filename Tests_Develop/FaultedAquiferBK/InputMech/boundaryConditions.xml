@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+
+<BoundaryConditions>
+
+  <BC
+      name = "fix_Z"
+      type = "Dirichlet"
+      entityType = "SurfBC"
+      variable = "displacements"
+      >
+
+    <BCentities
+                surfaceTags = "3"
+                components = "z"
+                />
+
+    <BCevent
+             time = "0"
+             value = "0"
+             />
+
+  </BC>
+
+
+  <BC
+      name = "fix_Y"
+      type = "Dirichlet"
+      entityType = "SurfBC"
+      variable = "displacements"
+      >
+
+    <BCentities
+                surfaceTags = "4,6"
+                components = "y"
+                />
+
+    <BCevent
+             time = "0"
+             value = "0"
+             />
+
+  </BC>
+
+  <BC
+      name = "fix_X"
+      type = "Dirichlet"
+      entityType = "SurfBC"
+      variable = "displacements"
+      >
+
+    <BCentities
+                surfaceTags = "5,7"
+                components = "x"
+                />
+
+    <BCevent
+             time = "0"
+             value = "0"
+             />
+
+  </BC>
+
+
+  <BC
+      name = "externalPressure"
+      entityType = "VolumeForce"
+      variable = "displacements"
+      >
+
+    <BCentities
+                bcListFile = "InputMech/pressureBC/list"
+                />
+
+    <BCevent
+             time = "0"
+             value = "InputMech/pressureBC/time0.dat"
+             />
+    <BCevent
+             time = "3"
+             value = "InputMech/pressureBC/time1.dat"
+             />
+    <BCevent
+             time = "7"
+             value = "InputMech/pressureBC/time2.dat"
+             />
+    <BCevent
+             time = "10"
+             value = "InputMech/pressureBC/time3.dat"
+             />
+
+  </BC>
+
+</BoundaryConditions>

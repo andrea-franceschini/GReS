@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Materials>
+  <Solid cellTags = "1" name = "rock">
+   
+    <PorousRock
+        porosity = "0.375"
+        permeability = "1e-24, 1e-24, 1e-24"
+    />
+  </Solid>
+
+   <Solid cellTags = "2" name = "clay">
+   
+    <PorousRock
+        porosity = "0.375"
+        permeability = "1e-19, 1e-19, 1e-19"
+    />
+  </Solid>
+
+    <Solid cellTags = "3" name = "sand" >
+   
+    <PorousRock
+        porosity = "0.375"
+        permeability = "1e-11, 1e-11, 1e-11"
+    />
+  </Solid>
+
+
+  <Fluid
+      compressibility = "4.59e-7"
+      dynamicViscosity = "3.1608e-14"
+  />
+</Materials>

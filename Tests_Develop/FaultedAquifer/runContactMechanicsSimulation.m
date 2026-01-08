@@ -83,6 +83,8 @@ times = [1,3,7,10];
 % convert pressure from kPa to MPa
 press = 1e-3*press(:,times);
 
+%press(:,3) = 1.5*press(:,3);
+%press(:,4) = 2.5*press(:,4);
 list = (1:mesh.nCells)';
 
 fName = 'InputMech/pressureBC';
@@ -119,7 +121,7 @@ mshSlave = interface.getMesh(MortarSide.slave);
 
 depth = abs(max(mshSlave.surfaceCentroid(:,3)) - mshSlave.surfaceCentroid(:,3));
 
-coes = 0.2;
+coes = 0.1;
 sigma_v = coes+gamma_s*depth;
 
 sigma_glob = [-K0*sigma_v -K0*sigma_v -sigma_v];

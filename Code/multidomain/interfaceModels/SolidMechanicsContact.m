@@ -577,6 +577,11 @@ classdef SolidMechanicsContact < MeshTying
 
     function computeStabilizationMatrix(obj)
 
+      % if ~isempty(obj.stabilizationMat)
+      %   % compute stabilization matrix only once for all edges
+      %   % retrieve row-col needing stabilization at each time step
+      %   return
+      % end
 
       nComp = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
 
@@ -588,20 +593,27 @@ classdef SolidMechanicsContact < MeshTying
       localKernel = @(S,e1,e2) assembleLocalStabilization(obj,S,e1,e2);
       asbH = assembler(nEntries,nmult,nmult,localKernel);
 
-      % get list of internal master edges
-      inEdgeMaster = find(all(obj.interfMesh.e2f{1},2));
+      % get list of internal master nodes
+      boundEdges = ~all(obj.interfMesh.e2f{1},2);
+      boundNodes = unique(obj.interfMesh.e2n{1}(boundEdges,:));
 
-      for ieM = inEdgeMaster'
+      internalNodes = setdiff(1:getMesh(obj,MortarSide.master).nNodes,boundNodes);
+
+      topolMaster = getMesh(obj,MortarSide.master).surfaces;
+
+      for nodeM = internalNodes
         % loop over internal master edges
 
-        % get 2 master faces sharing internal edge ie
-        fM = obj.interfMesh.e2f{1}(ieM,:);
-        assert(numel(fM)==2,['Unexpected number of connected faces for' ...
-          'master edge %i. Expected 2.'], ieM);
+        % get master faces sharing internal node
+        fM = find(any(topolMaster == nodeM,2));
 
-        % get slave faces sharing support with 2 master faces
-        fS = unique([find(obj.interfMesh.elemConnectivity(fM(1),:)),...
-          find(obj.interfMesh.elemConnectivity(fM(2),:))]);
+        % fM = obj.interfMesh.e2f{1}(ieM,:);
+        assert(numel(fM)>2,['Unexpected number of connected faces for' ...
+          'node %i. Expected more than 2.'], nodeM);
+
+        % get slave faces sharing support with master faces
+        ii = ismember(obj.quadrature.interfacePairs(:,2),fM);
+        fS = unique(obj.quadrature.interfacePairs(ii,1));
 
         if numel(fS) < 2
           continue
@@ -615,16 +627,19 @@ classdef SolidMechanicsContact < MeshTying
         id = all(ismember(obj.interfMesh.e2f{2}(eS,:),fS),2);
         ieS = eS(id);
 
+        % get internal nodes
+        slaveNodes = unique(obj.interfMesh.e2n{2}(eS,:));
+        boundSlaveNodes = unique(obj.interfMesh.e2n{2}(~id,:));
+        nodeS = setdiff(slaveNodes,boundSlaveNodes);
+
         % get master/slave nodes in the local macroelement
-        nM = obj.interfMesh.e2n{1}(ieM,:);
-        nS = unique(obj.interfMesh.e2n{2}(eS,:));
+        % nM = obj.interfMesh.e2n{1}(ieM,:);
 
         % compute local schur complement approximation
-        S = computeSchurLocal(obj,nM,nS,fS);
+        S = computeSchurLocal(obj,nodeM,nodeS,fS);
 
         % assemble stabilization matrix component
         for iesLoc = ieS'
-
           % loop over internal slave edges in the macroelement
 
           % get pair of slave faces sharing the edge
@@ -643,6 +658,7 @@ classdef SolidMechanicsContact < MeshTying
 
       obj.stabilizationMat = asbH.sparseAssembly();
 
+      assert(norm(sum(obj.stabilizationMat,2))<1e-8, 'Stabilization matrix is not locally conservative')
     end
 
     function [dofRow,dofCol,mat] = assembleLocalStabilization(obj,S,e1,e2)

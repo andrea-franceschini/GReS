@@ -4,10 +4,12 @@ clear
 close all
 clc
 % set mesh
-NM = [2 3 4 5  6 8];
-NS = [4 6 8 10  12 16];
-% Nm = 2;
-% Ns = 4;
+NM = [2 3 4 5 6];
+NS = [4 6 8 10 12];
+% NM = 6;
+% NS = 12;
+
+infSupStab = zeros(numel(NM),1);
 
 for r = 1:numel(NM)
 
@@ -115,50 +117,77 @@ for r = 1:numel(NM)
   interfaces{1}.assembleConstraint();
 
   H = interfaces{1}.stabilizationMat;
+
+  % scale H to investigate the stability effectiveness
+  H = 1e-1*H;
   % 
-  % nH = null(full(H));
-  % nS = null(full(S));
+  nH = null(full(H));
+  nS = null(full(S));
 
 
   % test kernel
   % checkered kernel
-  % v1 = [1;0;0;-1;0;0;1;0;0;0;0;0];
-  % v2 = [0;0;0;-1;0;0;0;0;0;1;0;0];
+  % v1 = [1;0;0;1;0;0;1;0;0;1;0;0];
+  % v2 = [-1;0;0;-1;0;0;-1;0;0;-1;0;0];
   % v = [v1;v2;v1;v2];
-  % %
-  % % [v,e] = eig(S);
-  % % v = real(v); e = real(e);
-  % 
-  % fprintf("norm(S*v) = %2.4e \n",norm(S*v))
+  %
+  %[v,e] = eig(S);
+  %v = real(v); e = real(e);
 
-  % for i = 1:size(nS,2)
-  %   r1 = nS(:,i)'*nH(:,1);
-  %   r2 = nS(:,i)'*nH(:,2);
-  %   r3 = nS(:,i)'*nH(:,3);
-  %   fprintf('%1.4e %1.4e %1.4e \n',r1,r2,r3);
-  % end
+%  fprintf("norm(S*v) = %2.4e \n",norm(S*v))
+
+  for i = 1:size(nS,2)
+    r1 = nS(:,i)'*nH(:,1);
+    r2 = nS(:,i)'*nH(:,2);
+    r3 = nS(:,i)'*nH(:,3);
+    fprintf('%1.4e %1.4e %1.4e \n',r1,r2,r3);
+  end
 
   %% inf-sup constant evaluation
 
   h_s = 1/Ns;
 
   % sclaed mass matrix (h*Q)^-1
-  invQ = diag(1./(h_s^2*ones(size(S,1),1)));
+  %invQ = diag(1./(h_s^2*ones(size(S,1),1));
+  invQ = diag(1./(h_s*ones(size(S,1),1)));
 
   scaledSchur = invQ*S;
 
-  scaledSchurStab = invQ*(S+H);
+ % Hscale = (H./diag(H)).*sum(S,2);
 
+  % v = [1e-4 1e-3 1e-2 1e-1 0.5 1 1.5 2 5 10 20 100 1e3 1e4 1e5];
+  % infSupStab = zeros(numel(v),1);
+  
   infSup = sqrt(min(eig(scaledSchur)));
-  infSupStab = sqrt(min(eig(scaledSchurStab)));
+  infSupStab(r) = sqrt(min(eig(invQ*(scaledSchur + H))));
+
+  
+  % rescale H using Schur complement sum
+  % 
+  % for i = 1:numel(v)
+  %   scaledSchurStab = invQ*(S+v(i)*H);
+  %   infSupStab(i) = sqrt(min(eig(scaledSchurStab)));
+  % end
+  % 
+  % loglog(v,infSupStab,'k-o',"LineWidth",2)
+  % grid on
+  % hold on
+  % loglog(v(v==1),infSupStab(v==1.0),'ro')
+  % xlabel("Stabilization scaling")
+  % ylabel("Inf-sup value")
 
   fprintf("\n Inf-sup constant value for unstabilized: %1.4e \n",infSup)
-  fprintf("\n Inf-sup constant value for stabilized: %1.4e \n",infSupStab)
+    fprintf("\n Inf-sup constant value for stabilized: %1.4e \n",infSupStab(r))
+
 
 end
 
+%%
 
-
+plot(log(1./NS),log(infSupStab),'k-s','LineWidth',1.2)
+xlabel("hS")
+ylabel("infSup")
+ylim([-3 0])
 
 
 

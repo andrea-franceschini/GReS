@@ -186,6 +186,8 @@ classdef MeshTyingBubbles < MeshTying
           Kbb = Kbb(faceId,faceId);
           invKbb = inv(Kbb);
 
+          Atb = R'*Atb;
+
           % assemble local stabilization contribution
           asbKs.localAssembly(dofRow,dofCol,-Kub*invKbb*Kub');
           asbLag.localAssembly(dofMult,dofMult,-Atb*invKbb*Atb');
@@ -224,6 +226,7 @@ classdef MeshTyingBubbles < MeshTying
 
         % rotation of multipliers
         R = getRotationMatrix(obj.interfMesh,is);
+        
 
         % mortar coupling normal component
         Atm =  MortarQuadrature.integrate(f,Nmult,Nm,dJw);
@@ -231,9 +234,9 @@ classdef MeshTyingBubbles < MeshTying
 
         Atm = R'*Atm;
         Ats = R'*Ats;
-
         Dbtmp = MortarQuadrature.integrate(f,Nmult,Nbslave,dJw);
-        Atb = Atb - R'*Dbtmp;
+        Atb = Atb - Dbtmp;
+        %Atb = Atb + Dbtmp;
 
         % assemble the local mortar matrix contribution
         asbM.localAssembly(dofMult,umDof,Atm);

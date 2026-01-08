@@ -35,11 +35,11 @@
              />
     <BCevent
              time = "7"
-             value = "440"
+             value = "360"
              />
     <BCevent
              time = "10"
-             value = "750"
+             value = "720"
              />
 
   </BC>

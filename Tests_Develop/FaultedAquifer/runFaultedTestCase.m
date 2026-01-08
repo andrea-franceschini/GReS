@@ -18,9 +18,9 @@ cd(scriptDir)
 
 % grid parameters
 gridName = 'Outputs/cornerPointGrid';
-dims = [14,20,13];
+dims = [20,34,24];
 nRockCells = 3;
-scale = [5e2,5e2,100];
+scale = [2e3,1e3,80];
 
 gresLog().setVerbosity(3);
 

@@ -67,15 +67,15 @@ in a nonConforming simulation.
                frictionAngle = "30" />
 
       <ActiveSet 
-                 resetActiveSet = "0"
+                 resetActiveSet = "1"
                  forceStickBoundary = "1" >
 
         <Tolerances
                     sliding = "1e-6"
-                    normalGap = "1e-3"
-                    normalTraction = "-1e-4"
+                    normalGap = "1e-2"
+                    normalTraction = "-5e-3"
                     tangentialViolation = "1e-3"
-                    minLimitTraction = "1e-4"
+                    minLimitTraction = "0.0"
                     areaChange = "1e-4"
                     maxActiveSetChange = "8"
         />

@@ -112,8 +112,8 @@ mesh.surfaceVTKType = 9*ones(mesh.nSurfaces,1);
 % locate wells id 
 % map location of cells in i-j-k index to cell id
 
-i1 = [nRock+round(0.6*(gridDims(1)-nRock)),round(0.45*gridDims(2)),round(0.5*gridDims(3))];
-i2 = [nRock+round(0.6*(gridDims(1)-nRock)),round(0.55*gridDims(2)),round(0.5*gridDims(3))];
+i1 = [nRock+round(0.4*(gridDims(1)-nRock)),round(0.4*gridDims(2)),round(0.5*gridDims(3))];
+i2 = [nRock+round(0.4*(gridDims(1)-nRock)),round(0.6*gridDims(2)),round(0.5*gridDims(3))];
 
 wellsId = zeros(2,1);
 wellsId(1) = sub2ind(gridDims, i1(1), i1(2), i1(3));
