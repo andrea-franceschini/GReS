@@ -1,0 +1,7 @@
+Fluid                             % material model
+0        1    1              % specific weight USELESS, compressibility (beta - used in computing M) in kPa, dynamic viscosity (mu) in kPa*s
+End
+
+% 1) Specific gravities are not used anywhere in the code implementation - set to zero
+% 2) Compressibility (beta) is used to compute M (=porosity*beta) and since M should be 1, we set beta=1.
+% 3) D equivalent to K/mu and we set D values in K and mu=1 in the code

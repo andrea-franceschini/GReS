@@ -1,0 +1,7 @@
+SurfBC            % BC item 
+Dir            % BC type 
+SinglePhaseFlow            % Physics 
+c_outer_bc            % BC name 
+BCs/chemomech_cmax/list 
+0.000000 BCs/chemomech_cmax/time0.dat 
+End

@@ -1,0 +1,7 @@
+SurfBC            % BC item 
+Neu            % BC type 
+SinglePhaseFlow            % Physics 
+Right_1C            % BC name 
+BCs/RightSphere_gal/list 
+0.000000 BCs/RightSphere_gal/time0.dat 
+End

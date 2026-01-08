@@ -1,0 +1,13 @@
+Elastic                            % material model
+1     0.3                         % E [kPa], nu
+
+PorousRock                         % material model
+1      0  0.0667344167           % porosity, specific gravity USELESS (was 21 originally, not important in our equations), biot coefficient (alpha in the equations equivalent to Omega*E/(3(1-2*nu)) here 0.0667344167 for [Zhang,2007])
+1.0     0      0                   % intrinsic permeability matrix (upper part) 
+       1.0     0
+              1.0
+End
+
+% 1) Porosity = 1 ensures that the domain is solid throughout in the equations
+% 2) Specific gravities are not used anywhere in the code implementation - set to zero
+% 3) The biot co-efficient is mapped to the effect of diffusion-induced stresses and it's applied as a one-way coupling (the other term of biot coefficient in SinglePhaseFlow is eliminated from the discretizer)
