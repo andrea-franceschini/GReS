@@ -1,4 +1,4 @@
-close all;
+% close all;
 clear;
 tic;
 % Set some model parameters not included in the parameters file
@@ -89,7 +89,7 @@ writeBCfiles('BCs/chemomech_gal', 'SurfBC', 'Neu', 'SinglePhaseFlow', ...
 
 % Collect BC input file in a list
 % Case 1
-fileName = ["BCs/chemomech_cmax.dat", "BCs/chemomech_u_0.dat", ...
+fileName = ["BCs/chemomech_gal.dat", "BCs/chemomech_u_0.dat", ...
     "BCs/chemomech_u_x.dat", "BCs/chemomech_u_yz.dat"];
 
 % Case 2

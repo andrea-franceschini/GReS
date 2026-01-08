@@ -15,6 +15,6 @@ in a nonConforming simulation.
         <File> BCs/RightSphere_gal.dat </File>
         <File> BCs/FixLeftSphere.dat </File>
     </BoundaryConditions>
-    <OutState outFile="outTime.dat"  print="1" />
+    <OutState outFile="outTime.dat"  print="1" matFile="1" />
   </Domain>
 </struct>

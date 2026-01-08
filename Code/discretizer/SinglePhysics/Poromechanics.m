@@ -186,7 +186,7 @@ classdef Poromechanics < SinglePhysics
         % Exchange comments for including chemical strain:
         % % 1. Chemostrain removed from the strain update
         % %
-        %     Omega_d = 0.0800813; % 0.0800813 for [Zhang,2007] & 3.36064 for Si
+        %     Omega_d = 3.36064; % 0.0800813 for [Zhang,2007] & 3.36064 for Si
         %     % Extract pressures (nGx1) for current timestep
         %     % Updating p (SinglePhaseFlow updates after Poromechanics)
         %     p_temp = obj.state.data.pressure + dSol(getDoF(obj.dofm, "SinglePhaseFlow"));
@@ -272,26 +272,26 @@ classdef Poromechanics < SinglePhysics
             elem = obj.elements.getElement(vtk);
             nG = elem.GaussPts.nNode;
 
-            % Added by Shaunak - STARTS HERE
-            top = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
-            N = getBasisFinGPoints(elem);
-            % Added by Shaunak - ENDS HERE
+            % % Added by Shaunak - STARTS HERE
+            % top = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
+            % N = getBasisFinGPoints(elem);
+            % % Added by Shaunak - ENDS HERE
 
             obj.state.data.curr.stress((l1+1):(l1+nG),:) = ...
                 obj.state.data.curr.stress((l1+1):(l1+nG),:) + ...
                 obj.state.data.curr.strain((l1+1):(l1+nG),:)*D;
     
-            % Added by Shaunak - STARTS HERE
-            % Removing beta*c term from stresses
-            beta_d = 0.0667344167; % 0.0667344167 for [Zhang,2007], 2.0004 for Si
-            % Extract pressures (nGx1) for current timestep
-            % Updating p (SinglePhaseFlow updates after Poromechanics)
-            p_temp = obj.state.data.pressure;
-            dp_gp = N * (p_temp(top) - obj.state.data.pOld(top));
-            obj.state.data.curr.stress((l1+1):(l1+nG),:) = ...
-                obj.state.data.curr.stress((l1+1):(l1+nG),:) - ...
-                beta_d * dp_gp * [1 1 1 0 0 0];
-            % Added by Shaunak - ENDS HERE
+            % % Added by Shaunak - STARTS HERE
+            % % Removing beta*c term from stresses
+            % beta_d = 2.0004; % 0.0667344167 for [Zhang,2007], 2.0004 for Si
+            % % Extract pressures (nGx1) for current timestep
+            % % Updating p (SinglePhaseFlow updates after Poromechanics)
+            % p_temp = obj.state.data.pressure;
+            % dp_gp = N * (p_temp(top) - obj.state.data.pOld(top));
+            % obj.state.data.curr.stress((l1+1):(l1+nG),:) = ...
+            %     obj.state.data.curr.stress((l1+1):(l1+nG),:) - ...
+            %     beta_d * dp_gp * [1 1 1 0 0 0];
+            % % Added by Shaunak - ENDS HERE
 
             l1 = l1+nG;
         end
