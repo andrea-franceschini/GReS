@@ -1,9 +1,10 @@
 <Sedimentation_Maps type = "linear">
   <Event time = "0." >
-    <Uniform materialFlag = "1" value= "0.01"/>
+    <Uniform materialFlag = "1" value= "0.075"/>
   </Event>
 </Sedimentation_Maps>
 <!--
+<Uniform materialFlag = "2" value= "0.0075"/>
 
     <Map materialFlag = "1"
          division = "3,3"

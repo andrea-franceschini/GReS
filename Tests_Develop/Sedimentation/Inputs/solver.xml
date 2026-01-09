@@ -5,7 +5,7 @@
     <domain>
       <grid
           type = "classic"
-          division = "3,3,3"
+          division = "2,3,3"
           size = "1,1,1"/>
       <initial>
         <all materialFlag = "1" />

@@ -46,104 +46,83 @@ classdef gridForSedimentation < handle
       obj.constructor(data,matLabel);
     end
 
-    function [id,faceArea, dh, matP] = getBordCell(obj,label)
+    function [id,faceArea,dh] = getBordCell(obj,label)
       % GETBORDCELL Returns IDs, areas, and half-heights for a boundary.
       % Labels: 'x0', 'xm', 'y0', 'ym', 'z0' (bottom), 'zm' (top).
 
-      nmat = size(obj.matfrac,2);
       switch lower(label)
         case "x0"
-          areas = diff(obj.grid.Y).*diff(obj.grid.Z)';
-          nelm = sum(obj.columnsHeight,1);
-          id=zeros(nelm(1),1,"uint64");
-          faceArea=zeros(nelm(1),1);
-          dh=zeros(nelm(1),1);
-          count=1;
-          for j=1:obj.ncells(2)
-            for h=1:obj.columnsHeight(1,j)
-              id(count)=obj.dof(1,j,h);
-              faceArea(count)=areas(j,h);
+          mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
+          cells = mapH(:,1);
+          J_idx = zeros(obj.ncells(1),1);
+          for i=1:obj.ncells(1)
+            count=1;
+            while mapH(i,count) == 0 && count<=obj.ncells(2)
               count=count+1;
             end
+            cells(i)=mapH(i,count);
+            J_idx(i)=count;
           end
+          nelm = sum(cells,"all");
+          [id,faceArea,dh] = getBordX(obj,J_idx,nelm);
+
         case "xm"
-          areas = diff(obj.grid.Y).*diff(obj.grid.Z)';
-          nelm = sum(obj.columnsHeight,1);
-          id=zeros(nelm(end),1,"uint64");
-          faceArea=zeros(nelm(end),1);
-          dh=zeros(nelm(1),1);
-          count=1;
-          for j=1:obj.ncells(2)
-            for h=1:obj.columnsHeight(end,j)
-              id(count)=obj.dof(end,j,h);
-              faceArea(count)=areas(j,h);
-              count=count+1;
+          mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
+          cells = mapH(:,end);
+          J_idx = zeros(obj.ncells(1),1);
+          for i=1:obj.ncells(1)
+            count=obj.ncells(2);
+            while mapH(i,count) == 0 && count>=1
+              count=count-1;
             end
+            cells(i)=mapH(i,count);
+            J_idx(i)=count;
           end
+          nelm = sum(cells,"all");
+          [id,faceArea,dh] = getBordX(obj,J_idx,nelm);
+
         case "y0"
-          areas = diff(obj.grid.X).*diff(obj.grid.Z)';
-          nelm = sum(obj.columnsHeight,2);
-          id=zeros(nelm(1),1,"uint64");
-          faceArea=zeros(nelm(1),1);
-          dh=zeros(nelm(1),1);
-          count=1;
-          for i=1:obj.ncells(1)
-            for h=1:obj.columnsHeight(i,1)
-              id(count)=obj.dof(i,1,h);
-              faceArea(count)=areas(i,h);
+          mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
+          cells = mapH(1,:);
+          I_idx = zeros(obj.ncells(2),1);
+          for j=1:obj.ncells(2)
+            count=1;
+            while mapH(count,j) == 0 && count<=obj.ncells(2)
               count=count+1;
             end
+            cells(j)=mapH(count,j);
+            I_idx(j)=count;
           end
+          nelm = sum(cells,"all");
+          [id,faceArea,dh] = getBordY(obj,I_idx,nelm);
+
         case "ym"
-          areas = diff(obj.grid.X).*diff(obj.grid.Z)';
-          nelm = sum(obj.columnsHeight,2);
-          id=zeros(nelm(end),1,"uint64");
-          faceArea=zeros(nelm(end),1);
-          dh=zeros(nelm(1),1);
-          count=1;
-          for i=1:obj.ncells(1)
-            for h=1:obj.columnsHeight(i,end)
-              id(count)=obj.dof(i,end,h);
-              faceArea(count)=areas(i,h);
-              count=count+1;
+          mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
+          cells = mapH(end,:);
+          I_idx = zeros(obj.ncells(2),1);
+          for j=1:obj.ncells(2)
+            count=obj.ncells(1);
+            while mapH(count,j) == 0 && count>=1
+              count=count-1;
             end
+            cells(j)=mapH(count,j);
+            I_idx(j)=count;
           end
+          nelm = sum(cells,"all");
+          [id,faceArea,dh] = getBordY(obj,I_idx,nelm);
+
         case "z0"
-          areas = diff(obj.grid.Y).*diff(obj.grid.X)';
-          nelm = prod(obj.ncells(1:2));
-          id=zeros(nelm,1,"uint64");
-          faceArea=zeros(nelm,1);
-          dh(1:nelm,1)=(obj.grid.Z(2)-obj.grid.Z(1))/2;
-          count=1;
-          for i=1:obj.ncells(1)
-            for j=1:obj.ncells(2)
-              id(count)=obj.dof(i,j,1);
-              faceArea(count)=areas(i,j);
-              count=count+1;
-            end
-          end
+          [id,faceArea,dh] = getBordZ(obj,true);
+
         case "zm"
-          dhtmp=diff(obj.grid.Z)/2;
-          areas = diff(obj.grid.Y).*diff(obj.grid.X)';
-          nelm = prod(obj.ncells(1:2));
-          id=zeros(nelm,1,"uint64");
-          faceArea=zeros(nelm,1);
-          dh=zeros(nelm,1);
-          count=1;
-          for i=1:obj.ncells(1)
-            for j=1:obj.ncells(2)
-              dh(count)=dhtmp(obj.columnsHeight(i,j));
-              id(count)=obj.dof(i,j,obj.columnsHeight(i,j));
-              faceArea(count)=areas(i,j);
-              count=count+1;
-            end
-          end
+          [id,faceArea,dh] = getBordZ(obj,false);
+
         otherwise
           id = [];
           faceArea = [];
+          dh = [];
           return
       end
-
     end
 
     function ncells = getNumberCells(obj)
@@ -189,8 +168,15 @@ classdef gridForSedimentation < handle
 
     function cellID = getCellIDfromIJK(obj,i,j,k)
       % Converts 3D subscripts to linear Cell ID.
-      ncell = double(obj.ncells);
-      cellID = uint64(prod(ncell(1:2))*(k-1)+ncell(1)*(j-1)+i);
+      cellID = sub2ind(obj.ncells,i,j,k);
+      % ncell = double(obj.ncells);
+      % cellID = uint64(prod(ncell(1:2))*(k-1)+ncell(1)*(j-1)+i);
+    end
+
+    function [idI,idJ,idK] = getIJKTop(obj)
+      idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
+      idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
+      idK = obj.columnsHeight;
     end
 
     function cellID = getActiveCells(obj)
@@ -240,8 +226,28 @@ classdef gridForSedimentation < handle
       neigh(actTmp,6) =  obj.dof(pos);
     end
 
+    function newlayer = grow(obj,map,matfrac,height)
+      cellsTadd = size(matfrac,1);    
 
-    function grow(obj,cells)
+      % check if is necessary to add a new layer in z
+      atTop = obj.columnsHeight == obj.ncells(3);
+      newlayer = any(and(atTop,map));
+      if newlayer
+        % update the structured grid
+        addCoordZ(obj.grid,height);
+        obj.dof(:,:,end+1) = zeros(obj.ncells(1:2),"uint64");
+        obj.ncells(3)=obj.ncells(3)+1;
+      end
+
+      obj.matfrac(end+1:end+cellsTadd,:) = matfrac;
+      pos = sub2ind(obj.ncells, ...
+        repmat((1:obj.ncells(1))',obj.ncells(2),1), ...
+        repelem((1:obj.ncells(2))',obj.ncells(1)), ...
+        obj.columnsHeight+1);
+      pos = pos(map);
+      obj.dof(pos) = (obj.ndofs+1:obj.ndofs+cellsTadd)';
+      obj.ndofs = obj.ndofs + cellsTadd;
+      obj.columnsHeight(map)=obj.columnsHeight(map)+1;
     end
 
 
@@ -260,7 +266,6 @@ classdef gridForSedimentation < handle
       obj.matfrac = zeros(obj.ndofs,obj.nmat);
       obj.dof = reshape(1:obj.ndofs,obj.ncells);
       obj.columnsHeight = obj.ncells(3)*ones(nCellMap,1,"uint64");
-      obj.columnsHeight = reshape(obj.columnsHeight,obj.ncells(1:2));
 
       for lay=data.initial.all
         if isfield(lay,"materialFlag")
@@ -282,6 +287,94 @@ classdef gridForSedimentation < handle
           mats = double(lay.fractions)';
         end
         obj.matfrac(pos,:)=mats.*ones(nCellMap,obj.nmat);
+      end
+    end
+
+
+    function [id,area,dh] = getBordX(obj,idx,nelm)
+      dhtmp=diff(obj.grid.Z)/2;
+      areas = diff(obj.grid.X).*diff(obj.grid.Z)';
+
+      id=zeros(nelm,1,"uint64");
+      area=zeros(nelm,1);
+      dh=zeros(nelm,1);
+
+      count=1;
+      for i=1:obj.ncells(1)
+        for k=1:obj.ncells(3)
+          pos = obj.ncells(1)*(i-1)+idx(i);
+          if k>obj.columnsHeight(pos)
+            break;
+          end
+          dh(count)=dhtmp(k);
+          id(count)=obj.dof(i,idx(i),k);
+          area(count)=areas(i,k);
+          count=count+1;
+        end
+      end
+    end
+
+
+    function [id,area,dh] = getBordY(obj,idx,nelm)
+      dhtmp=diff(obj.grid.Z)/2;
+      areas = diff(obj.grid.Y).*diff(obj.grid.Z)';
+
+      id=zeros(nelm,1,"uint64");
+      area=zeros(nelm,1);
+      dh=zeros(nelm,1);
+
+      count=1;
+      for j=1:obj.ncells(2)
+        for k=1:obj.ncells(3)
+          pos = obj.ncells(1)*(idx(j)-1)+j;
+          if k>obj.columnsHeight(pos)
+            break;
+          end
+          dh(count)=dhtmp(k);
+          id(count)=obj.dof(idx(j),j,k);
+          area(count)=areas(idx(j),k);
+          count=count+1;
+        end
+      end
+    end
+
+
+    function [id,area,dh] = getBordZ(obj,bord)
+      activeCells = obj.columnsHeight>0 ;
+      nelm = sum(activeCells);
+
+      dhtmp=diff(obj.grid.Z)/2;
+      areas = reshape(diff(obj.grid.Y).*diff(obj.grid.X)',nelm,1);
+
+      id=zeros(nelm,1,"uint64");
+      area=zeros(nelm,1);
+      dh=zeros(nelm,1);
+
+      count=1;
+      if bord
+        % Case for the bord at z0
+        for column=1:length(activeCells)
+          if activeCells(column)
+            I_idx = mod(column-1,obj.ncells(1))+1;
+            J_idx = (column-I_idx)/obj.ncells(1)+1;
+            dh(count)=dhtmp(1);
+            id(count)=obj.dof(I_idx,J_idx,1);
+            area(count)=areas(column);
+          end
+          count=count+1;
+        end
+      else
+        % Case for the bord at zm
+        for column=1:length(activeCells)
+          if activeCells(column)
+            I_idx = mod(column-1,obj.ncells(1))+1;
+            J_idx = (column-I_idx)/obj.ncells(1)+1;
+            dh(count)=dhtmp(obj.columnsHeight(column));
+            id(count)=obj.dof(I_idx,J_idx,obj.columnsHeight(column));
+            area(count)=areas(column);
+          end
+          count=count+1;
+        end
       end
     end
 

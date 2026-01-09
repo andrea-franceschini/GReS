@@ -21,7 +21,7 @@ classdef Sedimentation < PhysicsSolver
   end
 
   properties (Access =private)
-    grow logical = false
+    grow logical = false %<--
     nmat uint16
   end
 
@@ -84,11 +84,12 @@ classdef Sedimentation < PhysicsSolver
       %   3. Archives the current state as 'stateOld' for the next step.
 
       % Update the sediments accumulated.
-      cellGrow = obj.updateSedAccumulated;
+      [cellGrow, cellSed] = obj.updateSedAccumulated;
 
       % Update the mesh.
       if any(cellGrow)
-        meshUpdate(obj,cellGrow);
+        meshUpdate(obj,cellGrow,cellSed);
+        obj.grow = true;
       end
 
       % hard copy the new state object
@@ -448,13 +449,13 @@ classdef Sedimentation < PhysicsSolver
             % Gravity contribution.
             if gamma > 0
               zNeiB = obj.grid.getIJKfromCellID(neighbor);
-              zNeiB=obj.grid.grid.centerZ(zNeiB(3));
+              zNeiB = obj.grid.grid.centerZ(zNeiB(3));
               tmpRhs(count) = gamma*tmpTrans(count)*(zNeiA-zNeiB);
             end
 
             tmpNeigh(count, :) = [cell neighbor];
             isActive(count) = true;
-            count = count + 1;
+            count = count + 1;            
           end
         end
       end
@@ -484,7 +485,6 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function permCells = getPerm(obj,cellId)
-      % nelm=length(cellId);
       permCells=0;
       for mat=1:obj.nmat
         tmpMat=obj.materials.getMaterial(mat).PorousRock.getPermVoigt();
@@ -492,7 +492,7 @@ classdef Sedimentation < PhysicsSolver
       end
     end
 
-    function cellGrow = updateSedAccumulated(obj)
+    function [cellGrow, cellSed] = updateSedAccumulated(obj)
       % UPDATESEDACCUMULATED Updates sediment buffer and triggers grid growth.
       %
       %   Calculates new deposition, updates the accumulation buffer, and
@@ -500,6 +500,10 @@ classdef Sedimentation < PhysicsSolver
       %
       %   Returns:
       %       cellGrow - Logical mask of columns requiring a new cell layer.
+      %       cellSed  - Array of the sedimentation
+
+      % 0. Initializate cellSed
+      cellSed = zeros(size(obj.sedimentAcc));
 
       % 1. Calculate time step
       t0 = obj.domain.stateOld.t;
@@ -515,14 +519,115 @@ classdef Sedimentation < PhysicsSolver
 
       % 4. Handle overflow for grown cells
       if any(cellGrow)
-        dl = obj.heighControl-colSed;
-        sed = sum(addSed,2);
-        obj.sedimentAcc(cellGrow,:)=(1/dt)*(dl(cellGrow)./sed(cellGrow)).*addSed(cellGrow,:);
+        dl = colSed-obj.heighControl;
+        sed = (dl./sum(addSed,2)).*addSed;
+        cellSed(cellGrow,:) = obj.sedimentAcc(cellGrow,:)-sed(cellGrow,:);
+        obj.sedimentAcc(cellGrow,:) = sed(cellGrow,:);
       end
     end
 
-    function meshUpdate(obj,CellMap)
-      ty=1;      
+    function meshUpdate(obj,map,sed)  % <<<-----HERE----
+
+      newcells = sum(map);
+
+      colheightBG = obj.grid.columnsHeight;
+      matfrac = sed/obj.heighControl;
+
+      % Update the grid
+      newlayer = obj.grid.grow(map,matfrac,obj.heighControl);
+      colheightAG = obj.grid.columnsHeight;
+      llayer=obj.grid.ncells(3);
+
+      % Update the transmissibility
+      [idI,idJ,idK] = obj.grid.getIJKTop;
+      actIJK = [idI(map),idJ(map),idK(map)];
+      dofs = obj.grid.getDofsFromIJK(actIJK);
+      
+      cellNeigh = obj.grid.getNeigh(actIJK);
+      allDofs = unique(cellNeigh(cellNeigh~=0));
+      actIJK = obj.grid.getIJKfromCellID(allDofs);
+
+      permCell = getPerm(obj,allDofs);
+      dims = obj.grid.grid.getDims(actIJK);
+      zcells = obj.grid.grid.centerZ(actIJK(:,3));
+
+      % Computing transmissibilities and RHS related to the gravity term
+      maxFaces = 5*newcells;
+      tmpNeigh = zeros(maxFaces,2,'uint64');
+      isActive = zeros(maxFaces,1,'logical');
+      tmpTrans = zeros(maxFaces,1);
+      tmpRhs = zeros(maxFaces,1);
+      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      count = 1;
+      for cell=1:newcells
+        zNeiA = zcells(cell);
+        for face=1:5
+          neighbor = cellNeigh(cell, face);
+          if (neighbor ~= 0) && (cell < neighbor)
+            % Determine axis (1=X, 2=Y, 3=Z)
+            axis = mod(ceil(face/2)-1,3)+1;
+
+            cellRef = allDofs == dofs(cell);
+            cellNeig = allDofs == neighbor;
+            posA = mod(axis,3)+1;
+            posB = mod(axis+1,3)+1;
+
+            % Resistivity: R = 1 / (K * A)
+            Ref = 1 / (dims(cellRef,posA)*dims(cellRef,posB)*permCell(cellRef,axis));
+            Relf = 1 / (dims(cellNeig,posA)*dims(cellNeig,posB)*permCell(cellNeig, axis));
+
+            % Harmonic Average Transmissibility: T = 1 / (Ref + Relf)
+            tmpTrans(count) = 1 / (Ref + Relf);
+
+            % Gravity contribution.
+            if gamma > 0
+              zNeiB = zcells(cellNeig);
+              tmpRhs(count) = gamma*tmpTrans(count)*(zNeiA-zNeiB);
+            end
+
+            tmpNeigh(count, :) = [dofs(cell) neighbor];
+            isActive(count) = true;
+            count = count + 1;
+          end
+        end
+      end
+      count=sum(isActive);
+      obj.facesNeigh(end+1:end+count,:)=tmpNeigh(isActive,:);
+      obj.trans(end+1:end+count)=tmpTrans(isActive);
+      obj.rhsGrav(end+1:end+count)=tmpRhs(isActive);
+
+      % update the states
+      idK = colheightBG;
+      actIJK = [idI(map),idJ(map),idK(map)];
+      dofs = obj.grid.getDofsFromIJK(actIJK);
+
+      obj.domain.state.data.pressure(end+1:end+newcells) = ...
+        obj.domain.state.data.pressure(dofs);
+
+
+      % update the mesh output
+      obj.updateMeshOutput(map,newlayer);
+    end
+
+    function updateMeshOutput(obj,map,newlayer)
+      newcells = sum(map);
+      if newlayer
+        lnk=obj.grid.grid;
+        [XX, YY, ZZ] = ndgrid(lnk.X, lnk.Y, lnk.Z(end));
+        coord = [XX(:), YY(:), ZZ(:)];
+        npoints = size(coord,1);
+        obj.mesh.nNodes = obj.mesh.nNodes+npoints;
+        obj.mesh.coordinates(end+1:obj.mesh.nNodes,:) = coord;
+      end
+
+      [idI,idJ,idK] = obj.grid.getIJKTop;
+
+      obj.mesh.cells(end+1:end+newcells,:) = ...
+        lnk.getConectByIJK(idI(map),idJ(map),idK(map));
+      obj.mesh.nCells=obj.mesh.nCells+newcells;
+      obj.mesh.cellTag(end+1:end+newcells) = 8;
+      obj.mesh.cellNumVerts(end+1:end+newcells) = 8;
+      obj.mesh.cellVTKType(end+1:end+newcells) = 12;
     end
 
   end

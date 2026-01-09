@@ -1,4 +1,4 @@
-classdef structGrid
+classdef structGrid < handle
   % STRUCTGRID Manages a structured 3D rectilinear mesh.
   %   Handles coordinate generation, cell/face indexing, and geometric
   %   calculations (areas/volumes) for a structured grid.
@@ -13,9 +13,9 @@ classdef structGrid
   end
 
   properties (Access = private)
-    npoints (1,3) int64
-    ncells (1,3) int64
-    ncellsSurf (1,3) int64 % XY, YZ, XZ
+    npoints (1,3) uint64
+    ncells (1,3) uint64
+    ncellsSurf (1,3) uint64 % XY, YZ, XZ
   end
 
   methods (Access = public)
@@ -156,6 +156,47 @@ classdef structGrid
       area(:,2) = segmX(ijk(:,1)).*segmZ(ijk(:,3));
       area(:,3) = segmX(ijk(:,1)).*segmY(ijk(:,2));
     end
+
+    function addCoordZ(obj,len)
+      obj.centerZ(end+1)=obj.Z(end)+len/2.;
+      obj.Z(end+1)=obj.Z(end)+len;
+      obj.npoints(3)=obj.npoints(3)+1;
+      obj.ncells(3)=obj.ncells(3)+1;
+      obj.ncellsSurf(2)=obj.ncellsSurf(2)+obj.ncells(2);
+      obj.ncellsSurf(3)=obj.ncellsSurf(3)+obj.ncells(1);
+    end
+
+    % % % function coord = getCoordByCellId(obj,i,j,k)
+    % % %   [XX, YY, ZZ] = ndgrid(obj.X(i), obj.Y(j), obj.Z(k));
+    % % %   coord = [XX(:), YY(:), ZZ(:)];
+    % % % end
+
+    function conect = getConectByIJK(obj,idI,idJ,idK)
+      ndivX = obj.npoints(1);
+      ndivXY = prod(obj.npoints(1:2));
+
+      conect=zeros(size(idI,1),8);
+      conect(:,1)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI;
+      conect(:,2)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI+1;
+      conect(:,3)=ndivXY*(idK-1)+ndivX*idJ+idI+1;
+      conect(:,4)=ndivXY*(idK-1)+ndivX*idJ+idI;
+      conect(:,5)=ndivXY*idK+ndivX*(idJ-1)+idI;
+      conect(:,6)=ndivXY*idK+ndivX*(idJ-1)+idI+1;
+      conect(:,7)=ndivXY*idK+ndivX*idJ+idI+1;
+      conect(:,8)=ndivXY*idK+ndivX*idJ+idI;
+    end
+
+
+    function dims = getDims(obj,ijk)
+      segmX = diff(obj.X);
+      segmY = diff(obj.Y);
+      segmZ = diff(obj.Z);
+      dims(:,1)=segmX(ijk(:,1));
+      dims(:,2)=segmY(ijk(:,2));
+      dims(:,3)=segmZ(ijk(:,3));
+    end
+
+
 
 
 
