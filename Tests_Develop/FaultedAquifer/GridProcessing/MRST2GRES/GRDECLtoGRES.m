@@ -62,9 +62,9 @@ n_j = n_j(all(n_j,2),:);
 
 % get face topology
 [s_i,~,s_ii] = unique(n_i(:,1)); % cell of slave side in i direction
-[m_i,~,m_ii] = unique(n_i(:,2)); % cell of slave side in i direction
-[s_j,~,s_jj] = unique(n_j(:,2)); % cell of slave side in i direction
-[m_j,~,m_jj] = unique(n_j(:,1)); % cell of slave side in i direction
+[m_i,~,m_ii] = unique(n_i(:,2)); % cell of master side in i direction
+[s_j,~,s_jj] = unique(n_j(:,2)); % cell of slave side in j direction
+[m_j,~,m_jj] = unique(n_j(:,1)); % cell of master side in j direction
 
 [nsi,nmi,nsj,nmj]  = deal(numel(s_i),numel(m_i),numel(s_j),numel(m_j));
 
@@ -185,6 +185,15 @@ msh.coordinates = G.nodes.coords;
 msh.coordinates = [msh.coordinates;...
                     msh.coordinates(x_i,:);...
                     msh.coordinates(x_j(~is_already_duplicated),:)];
+
+% better safe then sorry
+% remove left over nodes from the coordinates list
+
+nodeList = unique(msh.cells);
+
+assert(numel(nodeList)==max(msh.cells,[],"all"),"Node renumbering required");
+msh.coordinates = msh.coordinates(nodeList,:);
+msh.nNodes = size(msh.coordinates,1);
   
 
 end

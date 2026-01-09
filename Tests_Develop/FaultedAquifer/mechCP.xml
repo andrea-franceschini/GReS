@@ -67,8 +67,8 @@ in a nonConforming simulation.
                frictionAngle = "30" />
 
       <ActiveSet 
-                 resetActiveSet = "1"
-                 forceStickBoundary = "1" >
+                 resetActiveSet = "0"
+                 forceStickBoundary = "0" >
 
         <Tolerances
                     sliding = "1e-6"

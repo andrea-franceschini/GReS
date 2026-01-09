@@ -5,7 +5,7 @@ NX = dims(1); NY = dims(2); NZ = dims(3);
 % layer_ref = ref(1);
 % n_refs = ref(2);
 
-grdecl = simpleGrdecl([NX,NY,NZ], 0.01);
+grdecl = simpleGrdecl([NX,NY,NZ], 0.075);
 
 % modifying original MRST corner point grid
 %grdecl = refineLayers(grdecl,layer_ref,n_refs);
@@ -38,9 +38,9 @@ mshMaster = getSurfaceMesh(mesh,1);
 if ~isempty(mshSlave)
 
 % spot if there are inactive surfaces 
-if mshSlave.nSurfaces < newDims(2)*newDims(3)
-  error('Mortar inactive surfaces in the fault. Consider reducing the fault jump')
-end
+% if mshSlave.nSurfaces < newDims(2)*newDims(3)
+%   error('Mortar inactive surfaces in the fault. Consider reducing the fault jump')
+% end
 
 plotFunction(mshSlave,outName+"slave",ones(mshSlave.nNodes,1));
 plotFunction(mshMaster,outName + "master",ones(mshMaster.nNodes,1));

@@ -89,8 +89,8 @@ along with MRST.  If not, see <http://www.gnu.org/licenses/>.
 %}
 
 
-opt = struct('flat', true,...
-             'undisturbed', true,...
+opt = struct('flat', false,...
+             'undisturbed', false,...
              'physDims', [1, 1, 0.5]);
 opt = merge_options(opt, varargin{:});
 
@@ -108,7 +108,7 @@ if (~opt.undisturbed)
 end
 
 if (~opt.flat && ~opt.undisturbed),
-   fun = @(x,y) -0.05*sin(pi*(x-0.5)) -0.075*sin(pi*(y+2*x));
+   fun = @(x,y) -0.15*sin(1.5*pi*(x-0.5)) -0.025*sin(pi*(y+2*x));
 
    for k = 1 : dims(3) + 1,
       xi       = X(:,:,k) ./ physDims(1);

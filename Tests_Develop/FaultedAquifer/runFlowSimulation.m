@@ -92,8 +92,15 @@ isFaceBound = accumarray(i3,1) == 1;
 s_bnd     = s_full(i2(isFaceBound), :);   % proper vertex ordering
 idFace_bnd = idFace(i2(isFaceBound));     % which face (1..6)
 
-% discard surfaces already present (like faults)
-id = all(ismember(s_bnd,mesh.surfaces),2);
+
+% discard all surfaces on the crack
+cellLeftBound = linspace(1,gridDims(1)*gridDims(3)*gridDims(2)-gridDims(1)+1,gridDims(3)*gridDims(2));
+cellRightBound =  linspace(gridDims(1),gridDims(1)*gridDims(3)*gridDims(2),gridDims(2)*gridDims(3));
+Xcoord = mesh.coordinates(:,1);
+Xmin = max(Xcoord(mesh.cells(cellLeftBound,:)),[],"all");
+Xmax = min(Xcoord(mesh.cells(cellRightBound,:)),[],"all");
+
+id = all([all(Xcoord(s_bnd)>Xmin,2),all(Xcoord(s_bnd)<Xmax,2),any([idFace_bnd==3,idFace_bnd==5],2)],2);
 
 s_bnd = s_bnd(~id,:);
 idFace_bnd = idFace_bnd(~id);
@@ -112,8 +119,8 @@ mesh.surfaceVTKType = 9*ones(mesh.nSurfaces,1);
 % locate wells id 
 % map location of cells in i-j-k index to cell id
 
-i1 = [nRock+round(0.4*(gridDims(1)-nRock)),round(0.4*gridDims(2)),round(0.5*gridDims(3))];
-i2 = [nRock+round(0.4*(gridDims(1)-nRock)),round(0.6*gridDims(2)),round(0.5*gridDims(3))];
+i1 = [nRock+round(0.55*(gridDims(1)-nRock)),round(0.4*gridDims(2)),round(0.5*gridDims(3))];
+i2 = [nRock+round(0.55*(gridDims(1)-nRock)),round(0.6*gridDims(2)),round(0.5*gridDims(3))];
 
 wellsId = zeros(2,1);
 wellsId(1) = sub2ind(gridDims, i1(1), i1(2), i1(3));

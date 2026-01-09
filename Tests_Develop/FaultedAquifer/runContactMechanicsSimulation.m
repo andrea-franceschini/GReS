@@ -128,13 +128,15 @@ sigma_glob = [-K0*sigma_v -K0*sigma_v -sigma_v];
 
 iniTrac = zeros(interface.nMult,1);
 
-for i = 1:mshSlave.nSurfaces
-  s = diag(sigma_glob(i,:));
-  R = interface.interfMesh.getRotationMatrix(i);
-  n = R(:,1);
-  sloc = R'*(s*n); % Rt*(sigma*n)
-  dofs = DoFManager.dofExpand(i,3);
-  iniTrac(dofs) = sloc;
-end
+iniTrac(1:3:end) = sigma_glob(:,1);
+
+% for i = 1:mshSlave.nSurfaces
+%   s = diag(sigma_glob(i,:));
+%   R = interface.interfMesh.getRotationMatrix(i);
+%   n = R(:,1);
+%   sloc = R'*(s*n); % Rt*(sigma*n)
+%   dofs = DoFManager.dofExpand(i,3);
+%   iniTrac(dofs) = sloc;
+% end
 
 end

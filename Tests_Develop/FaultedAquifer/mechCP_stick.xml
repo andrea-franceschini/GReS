@@ -27,7 +27,7 @@ in a nonConforming simulation.
 
   <Output
           saveHistory = "1"
-          outputFile = "Outputs/outMech"
+          outputFile = "Outputs/outMechStick"
           matFileName = "Outputs/historyMech"
           printTimes = "0,1,2,3,4,5,6,7,8,9,10"
           />
@@ -56,7 +56,7 @@ in a nonConforming simulation.
                   />
 
       <Output
-              outputFile = "Outputs/Fault"
+              outputFile = "Outputs/FaultStick"
               printTimes = "0,1,2,3,4,5,6,7,8,9,10"
               matFileName = "Outputs/historyFault"
               />
