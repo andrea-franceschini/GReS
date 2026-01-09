@@ -9,11 +9,11 @@ classdef Sedimentation < PhysicsSolver
     heighControl double = 0.1
 
     facesNeigh (:,2) uint64
-    trans (:,1)
+    facesNeighDir (:,1) uint8
+    halfTrans (:,3)    
 
     H (:,:)
     P (:,:)
-    rhsGrav (:,1)         % gravity contribution to rhs
   end
 
   properties (Access = protected)
@@ -264,7 +264,8 @@ classdef Sedimentation < PhysicsSolver
     function computeStiffMat(obj,lw)
       % Compute the Stiffness Matrix
       ncells = obj.grid.getNdofs;
-      tmpVec = lw.*obj.trans;  % <--- Modify here
+      tmpVec = lw.*obj.computeTrans;
+      % tmpVec = lw.*obj.trans;  % <--- Modify here
       sumDiagTrans = accumarray(obj.facesNeigh(:),repmat(tmpVec,[2,1]),[ncells,1]);
       obj.H = sparse([obj.facesNeigh(:,1); obj.facesNeigh(:,2); (1:ncells)'],...
         [obj.facesNeigh(:,2); obj.facesNeigh(:,1); (1:ncells)'],...
@@ -300,10 +301,39 @@ classdef Sedimentation < PhysicsSolver
       obj.P = PVal.*speye(obj.grid.getNdofs);
     end
 
+    function transm = computeTrans(obj)
+      % Computing the permeability
+      dofs = obj.grid.getActiveCells;
+      ijk = obj.grid.getIJKfromCellID(dofs);
+
+      % TODO: use the deformation for each column to update the z height
+      dims = obj.grid.grid.getDims(ijk);
+      tmpT = obj.halfTrans;
+      for i=1:2
+        tmpT(:,i) = tmpT(:,i)./dims(:,3);
+      end
+
+      idx = sub2ind(size(tmpT), obj.facesNeigh(:,1), obj.facesNeighDir);
+      Tii = tmpT(idx);
+      idx = sub2ind(size(tmpT), obj.facesNeigh(:,2), obj.facesNeighDir);
+      Tik = tmpT(idx);
+      transm = 1./(Tii+Tik);
+    end
+
     function gTerm = finalizeRHSGravTerm(obj,lw)
+      % Computing the permeability
+      dofs = obj.grid.getActiveCells;
+      ijk = obj.grid.getIJKfromCellID(dofs);
+
+      % TODO: use the deformation for each column to update the z height
+      zcells = obj.grid.grid.centerZ(ijk(:,3));
+      zneiA = zcells(obj.facesNeigh(:,1));
+      zneiB = zcells(obj.facesNeigh(:,2));
+
+      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      tmpVec = gamma*lw.*obj.computeTrans.*(zneiA-zneiB);
       gTerm = accumarray(obj.facesNeigh(:), ...
-        [lw.*obj.rhsGrav; -lw.*obj.rhsGrav],[obj.grid.getNdofs,1]);
-      gTerm = gTerm(obj.grid.getActiveCells);
+        [tmpVec; -tmpVec],[obj.grid.getNdofs,1]);
     end
 
     function applyNeuBC(obj,bcId,bcDofs,bcVals)
@@ -407,62 +437,37 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function prepareSystem(obj)
-      actDofs = obj.grid.getActiveCells;
-      actIJK = obj.grid.getIJKfromCellID(actDofs);
-      cellNeigh = obj.grid.getNeigh(actIJK);
-      cellAreas = obj.grid.grid.getArea(actIJK);
-
-      % Computing the permeability
+      % Compute the Neighborhood.
       dofs = obj.grid.getDofsFromIJK;
       ActiveCells = dofs ~= 0;
-      permCell = getPerm(obj,dofs(ActiveCells));
 
-      % correcting matfrac, cleaning fractions for non-existent cells
-      obj.grid.matfrac(~ActiveCells(:),:)=0.;
+      actDofs = dofs(ActiveCells);
+      actIJK = obj.grid.getIJKfromCellID(actDofs);
+      cellNeigh = obj.grid.getNeigh(actIJK);
+      celldims = obj.grid.grid.getDims(actIJK);
 
-      % temporay variables
-      maxFaces = (obj.grid.ncells(1)+1)*(obj.grid.ncells(2)+1)*(obj.grid.ncells(3)+1);
-      tmpNeigh = zeros(maxFaces,2,'uint64');
-      isActive = zeros(maxFaces,1,'logical');
-      tmpTrans = zeros(maxFaces,1);
-      tmpRhs = zeros(maxFaces,1);
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
-
-      % Computing transmissibilities and RHS related to the gravity term
-      count = 1;
+      tmpId = ones(6,1,'uint64');
+      refId = repelem((1:3)',2);
       for cell=1:sum(ActiveCells)
-        zNeiA = obj.grid.getIJKfromCellID(cell);
-        zNeiA = obj.grid.grid.centerZ(zNeiA(3));
-        for face=1:6
-          neighbor = cellNeigh(cell, face);
-          if (neighbor ~= 0) && (cell < neighbor)
-            % Determine axis (1=X, 2=Y, 3=Z)
-            axis = mod(ceil(face/2)-1,3)+1;
-
-            % Resistivity: R = 1 / (K * A)
-            Ref = 1 / (cellAreas(cell, axis) * permCell(cell, axis));
-            Relf = 1 / (cellAreas(neighbor, axis) * permCell(neighbor, axis));
-
-            % Harmonic Average Transmissibility: T = 1 / (Ref + Relf)
-            tmpTrans(count) = 1 / (Ref + Relf);
-
-            % Gravity contribution.
-            if gamma > 0
-              zNeiB = obj.grid.getIJKfromCellID(neighbor);
-              zNeiB = obj.grid.grid.centerZ(zNeiB(3));
-              tmpRhs(count) = gamma*tmpTrans(count)*(zNeiA-zNeiB);
-            end
-
-            tmpNeigh(count, :) = [cell neighbor];
-            isActive(count) = true;
-            count = count + 1;            
-          end
+        tmp = cellNeigh(cell,:);
+        flag = tmp>actDofs(cell);
+        nfaces=sum(flag);
+        if nfaces~=0
+          obj.facesNeigh(end+1:end+nfaces,:) = [actDofs(cell)*tmpId(flag),tmp(flag)'];
+          obj.facesNeighDir(end+1:end+nfaces,:) = refId(flag)';
         end
       end
 
-      obj.facesNeigh=tmpNeigh(isActive,:);
-      obj.trans=tmpTrans(isActive);
-      obj.rhsGrav=tmpRhs(isActive);
+      % Computing the permeability
+      permCell = getPerm(obj,dofs(ActiveCells));
+      % correcting matfrac, cleaning fractions for non-existent cells
+      obj.grid.matfrac(~ActiveCells(:),:)=0.;
+
+      % Computing half transmissibilities
+      obj.halfTrans = zeros(obj.grid.ndofs,3);
+      obj.halfTrans(:,1)=1./(celldims(actDofs,2).*permCell(actDofs,1));
+      obj.halfTrans(:,2)=1./(celldims(actDofs,1).*permCell(actDofs,2));
+      obj.halfTrans(:,3)=1./(celldims(actDofs,1).*celldims(actDofs,2).*permCell(actDofs,3));
     end
 
     function prepareOutput(obj,data)
@@ -543,58 +548,35 @@ classdef Sedimentation < PhysicsSolver
       actIJK = [idI(map),idJ(map),idK(map)];
       dofs = obj.grid.getDofsFromIJK(actIJK);
       
-      cellNeigh = obj.grid.getNeigh(actIJK);
-      allDofs = unique(cellNeigh(cellNeigh~=0));
-      actIJK = obj.grid.getIJKfromCellID(allDofs);
+      cellNeigh = obj.grid.getNeigh(actIJK);     
 
-      permCell = getPerm(obj,allDofs);
-      dims = obj.grid.grid.getDims(actIJK);
-      zcells = obj.grid.grid.centerZ(actIJK(:,3));
-
-      % Computing transmissibilities and RHS related to the gravity term
-      maxFaces = 5*newcells;
-      tmpNeigh = zeros(maxFaces,2,'uint64');
-      isActive = zeros(maxFaces,1,'logical');
-      tmpTrans = zeros(maxFaces,1);
-      tmpRhs = zeros(maxFaces,1);
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
-      count = 1;
+      tmpId = ones(4,1,'uint64');
+      refId = repelem((1:2)',2);
       for cell=1:newcells
-        zNeiA = zcells(cell);
-        for face=1:5
-          neighbor = cellNeigh(cell, face);
-          if (neighbor ~= 0) && (cell < neighbor)
-            % Determine axis (1=X, 2=Y, 3=Z)
-            axis = mod(ceil(face/2)-1,3)+1;
-
-            cellRef = allDofs == dofs(cell);
-            cellNeig = allDofs == neighbor;
-            posA = mod(axis,3)+1;
-            posB = mod(axis+1,3)+1;
-
-            % Resistivity: R = 1 / (K * A)
-            Ref = 1 / (dims(cellRef,posA)*dims(cellRef,posB)*permCell(cellRef,axis));
-            Relf = 1 / (dims(cellNeig,posA)*dims(cellNeig,posB)*permCell(cellNeig, axis));
-
-            % Harmonic Average Transmissibility: T = 1 / (Ref + Relf)
-            tmpTrans(count) = 1 / (Ref + Relf);
-
-            % Gravity contribution.
-            if gamma > 0
-              zNeiB = zcells(cellNeig);
-              tmpRhs(count) = gamma*tmpTrans(count)*(zNeiA-zNeiB);
-            end
-
-            tmpNeigh(count, :) = [dofs(cell) neighbor];
-            isActive(count) = true;
-            count = count + 1;
-          end
+        tmp = cellNeigh(cell,:);
+        if tmp(5)~=0
+          obj.facesNeigh(end+1,:) = [tmp(5) dofs(cell)];
+          obj.facesNeighDir(end+1) = 3;
+        end
+        flag = tmp(1:4)>dofs(cell);
+        nfaces=sum(flag);
+        if nfaces~=0
+          obj.facesNeigh(end+1:end+nfaces,:) = [dofs(cell)*tmpId(flag),tmp(flag)'];
+          obj.facesNeighDir(end+1:end+nfaces,:) = refId(flag)';
         end
       end
-      count=sum(isActive);
-      obj.facesNeigh(end+1:end+count,:)=tmpNeigh(isActive,:);
-      obj.trans(end+1:end+count)=tmpTrans(isActive);
-      obj.rhsGrav(end+1:end+count)=tmpRhs(isActive);
+
+      permCell = obj.getPerm(dofs);
+      celldims = obj.grid.grid.getDims(actIJK);
+
+      % Computing half transmissibilities
+      appAtEnd = size(obj.halfTrans,1);
+      obj.halfTrans(appAtEnd+1:appAtEnd+newcells,1) = ...
+        1./(celldims(:,2).*permCell(:,1));
+      obj.halfTrans(appAtEnd+1:appAtEnd+newcells,2) = ...
+        1./(celldims(:,1).*permCell(:,2));
+      obj.halfTrans(appAtEnd+1:appAtEnd+newcells,3) = ...
+        1./(celldims(:,1).*celldims(:,2).*permCell(:,3));
 
       % update the states
       idK = colheightBG;
@@ -603,7 +585,6 @@ classdef Sedimentation < PhysicsSolver
 
       obj.domain.state.data.pressure(end+1:end+newcells) = ...
         obj.domain.state.data.pressure(dofs);
-
 
       % update the mesh output
       obj.updateMeshOutput(map,newlayer);
