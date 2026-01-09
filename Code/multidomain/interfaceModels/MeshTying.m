@@ -433,7 +433,7 @@ classdef MeshTying < InterfaceSolver
           fLoc2 = dofId(find(fS==f(2)),nComp);
 
           % local schur complement for macroelement pair of slave faces
-          Sloc = 0.5*(Am/As)*(S(fLoc1,fLoc1)+S(fLoc2,fLoc2));
+          Sloc = 0.5*(Am/As)^0*(S(fLoc1,fLoc1)+S(fLoc2,fLoc2));
           asbH.localAssembly(Sloc,f(1),f(2));
         end
       end

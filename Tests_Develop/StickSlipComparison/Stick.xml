@@ -42,6 +42,7 @@ in a nonConforming simulation.
       <Quadrature
                   type = "SegmentBasedQuadrature"
                   nGP = "6"
+                  stabilizationScale = "1.0"
                   />
 
       <Output

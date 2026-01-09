@@ -11,14 +11,14 @@ scriptDir = fileparts(scriptFullPath);
 
 cd(scriptDir)
 
-fname = "StickNodal.xml";
+fname = "Stick.xml";
 
 
 % set mesh 
 b1 = BlockStructuredMesh([0,2.5;0 10;0 15],[3 8 8],1);
 meshL = processGeometry(b1);
 
-b2 = BlockStructuredMesh([2.5,5;0 10;0 15],[3 16 16],1);
+b2 = BlockStructuredMesh([2.5,5;0 10;0 15],[3 24 24],1);
 meshR = processGeometry(b2);
 
 % define model 

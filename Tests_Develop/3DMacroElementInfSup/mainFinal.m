@@ -4,23 +4,23 @@ clear
 close all
 clc
 % set mesh
-NM = [2 3 4 5 6 7 8];
-NS = [4 6 8 10 12 14 16];
+NM = [2 4 6 8 10 12 14];
+NS = [2 2 2 2 2 2 2];
 % NM = 6;
 % NS = 12;
 
+infSup = zeros(numel(NM),1);
 infSupStab1 = zeros(numel(NM),1);
-infSupStab2 = zeros(numel(NM),1);
-infSupStab3 = zeros(numel(NM),1);
 
 for r = 1:numel(NM)
 
+  fprintf("Processing Refinement %i \n",r)
   Nm = NM(r);
   Ns = NS(r);
 
-  b1 = BlockStructuredMesh([0,1;0 1;1 2],[Nm Nm Nm],1);
+  b1 = BlockStructuredMesh([0,1;0 1;1 2],[Nm Nm 1],1);
   mesh1 = processGeometry(b1);
-  b2 = BlockStructuredMesh([0,1;0 1;0 1],[Ns Ns Ns],1);
+  b2 = BlockStructuredMesh([0,1;0 1;0 1],[Ns Ns 1],1);
   mesh2 = processGeometry(b2);
 
   % define model
@@ -162,8 +162,10 @@ for r = 1:numel(NM)
   % infSup1 = sqrt(min(real(eig(invQ*S))));
   % 
   % 
-  eOld = eig(invQ*(S + H));
-  infSupStab1(r) = sqrt(min(eOld));
+  eUnstab = abs(real(eig(invQ*S)));
+  eStab = eig(invQ*(S + H));
+  infSup(r) = sqrt(min(eUnstab));
+  infSupStab1(r) = sqrt(min(eStab));
   % % eNew = real(eig(S+H,Q));
   % % infSupStab2(r) = sqrt(min(eNew));
   % 
@@ -208,32 +210,39 @@ end
 
 figure('Color','w','Position',[100 100 520 420])
 
-plot(log(1./NS), log(infSupStab1), 'k-o', ...
-     'LineWidth', 1.4, ...
+plot(log(1./NM), infSupStab1, 'k-s', ...
+     'LineWidth', 1.3, ...
      'MarkerSize', 7, ...
      'MarkerFaceColor','k');
 hold on
 
-% plot(log(1./NS), log(infSupStab2), 'b-s', ...
-%      'LineWidth', 1.4, ...
-%      'MarkerSize', 7, ...
-%      'MarkerFaceColor','b');
+plot(log(1./NM), infSup, 'r-o', ...
+     'LineWidth', 1.3, ...
+     'MarkerSize', 7, ...
+     'MarkerFaceColor','r');
 
-xlabel('$h_S$', 'Interpreter','latex', 'FontSize',14)
-ylabel('$\log(\mathrm{inf\text{-}sup})$', 'Interpreter','latex', 'FontSize',14)
+% ---- Legend (LaTeX) ----
+lgd = legend({'Unstabilized', 'Stabilized'}, ...
+             'Interpreter','latex', ...
+             'FontSize',12, ...
+             'Location','best');
+lgd.Box = 'off';
+
+xlabel('$h_1$', 'Interpreter','latex', 'FontSize',14)
+ylabel('$\beta^*$', 'Interpreter','latex', 'FontSize',14)
 
 set(gca, ...
     'TickLabelInterpreter','latex', ...
     'FontSize',12, ...
     'LineWidth',1.1)
 
-ylim([-1 0])
-%grid on
-%box on
+xlim([-3 -1.2])
+ylim([-0.1 1])
 
-% ---- Export to PDF (vector graphics) ----
-exportgraphics(gcf,'infSupScaling.pdf','ContentType','vector')
+grid on
 
+% ---- Export to PDF (vector) ----
+exportgraphics(gcf,'infSupScaling3.pdf','ContentType','vector')
 
 
 

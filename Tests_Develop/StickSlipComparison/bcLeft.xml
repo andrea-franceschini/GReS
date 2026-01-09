@@ -20,11 +20,11 @@
         <entityType>NodeBC</entityType>
         <variable>displacements</variable>
         <BCentities>
+            <components>y</components>
             <bcList>33</bcList>
             <bcList>34</bcList>
             <bcList>37</bcList>
             <bcList>39</bcList>
-            <components>y</components>
         </BCentities>
         <BCevent>
             <time>0</time>
