@@ -9,6 +9,10 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
     attemptedReset = false        % flag for attempt to save simulation resetting to stick
   end
 
+  properties
+    doStickAttempt = false
+  end
+
 
   methods (Access = public)
     function obj = ActiveSetContactSolver(simparams,domains,interfaces,varargin)
@@ -242,7 +246,7 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
     function manageNextTimeStep(obj,newtonConv,activeSetChanged)
 
-      if ~newtonConv && ~obj.attemptedReset 
+      if ~newtonConv && obj.doStickAttempt && ~obj.attemptedReset && obj.t < 12.1
         reset = false(obj.nInterf,1);
         for i = 1:obj.nInterf
           reset(i) = resetConfiguration(obj.interfaces{i});

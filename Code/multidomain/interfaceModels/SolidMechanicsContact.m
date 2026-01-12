@@ -45,6 +45,10 @@ classdef SolidMechanicsContact < MeshTying
       N = getMesh(obj,MortarSide.slave).nSurfaces;
       SolidMechanicsContact.initializeActiveSet(obj,input,N);
 
+      % select dirichlet nodes
+      setDirichletNodes(obj);
+      
+
     end
 
     function updateState(obj,du)
@@ -112,7 +116,7 @@ classdef SolidMechanicsContact < MeshTying
         % force boundary element to stick state
         nodes = obj.interfMesh.local2glob{2}(mshSlave.surfaces(is,:));
 
-        if obj.activeSet.forceStickBoundary
+        if isstring(obj.activeSet.forceStickBoundary)
           if any(ismember(nodes,obj.dirNodes))
             % element has a dirichlet node - keep it stick
             continue
@@ -229,17 +233,14 @@ classdef SolidMechanicsContact < MeshTying
     end
 
     function isReset = resetConfiguration(obj)
-      if ~obj.activeSet.resetActiveSet
-        isReset = false;
-      else
-        % obj.state = obj.stateOld;
-        toReset = obj.activeSet.curr(:) ~= ContactMode.open;
-        obj.activeSet.curr(toReset) = ContactMode.stick;
 
-        % recompute stabilization matrix
-        %computeStabilizationMatrix(obj);
-        isReset = true;
-      end
+      % obj.state = obj.stateOld;
+      toReset = obj.activeSet.curr(:) ~= ContactMode.open;
+      obj.activeSet.curr(toReset) = ContactMode.stick;
+
+      % recompute stabilization matrix
+      %computeStabilizationMatrix(obj);
+      isReset = true;
     end
 
 
@@ -778,6 +779,40 @@ classdef SolidMechanicsContact < MeshTying
       end
 
     end
+
+
+    function setDirichletNodes(obj)
+
+      bcs = obj.domains(2).bcs;
+      bcList = keys(bcs.db);
+
+      if ~isstring(obj.activeSet.forceStickBoundary)
+        return
+      end
+
+      directions = ismember(["x","y","z"],obj.activeSet.forceStickBoundary);
+
+      dirList = [];
+
+      for bcId = string(bcList)
+
+        if getType(bcs,bcId)=="Dirichlet" && getVariable(bcs,bcId) == obj.coupledVariables
+          nEnts = getNumbLoadedEntities(bcs,bcId);
+
+          if sum(nEnts(directions))==0
+            continue
+          end
+
+          dirList = [dirList; getBCentities(bcs,bcId)];
+
+        end
+
+      end
+
+      obj.dirNodes = unique(dirList);
+      
+    end
+
   end
 
 
@@ -809,7 +844,7 @@ classdef SolidMechanicsContact < MeshTying
       contactSolver.activeSet.resetActiveSet = ...
         logical(getXMLData(input,1,"resetActiveSet"));
       contactSolver.activeSet.forceStickBoundary = ...
-        logical(getXMLData(input,0,"forceStickBoundary"));
+        getXMLData(input,0,"forceStickBoundary");
 
       % tolerances
       if isfield(input,"Tolerances")

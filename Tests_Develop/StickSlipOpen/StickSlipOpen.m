@@ -12,7 +12,7 @@ cd(scriptDir)
 
 % set mesh 
 X = 5; Y = 10; Z = 15;
-nx1 = 3; ny1 = 8; nz1 = 10;
+nx1 = 3; ny1 = 16; nz1 = 20;
 b1 = BlockStructuredMesh([0,0.5*X;0 Y;0 Z],[nx1,ny1,nz1],1);
 meshL = processGeometry(b1);
 
@@ -82,6 +82,10 @@ interfaces{1}.stateOld.traction(1:3:end) = tIni;
 
 
 solv = ActiveSetContactSolver(simParam,domains,interfaces,10);
+
+% flag to enable an elastic reset in case a time step do not converge
+solv.doStickAttempt = true;
+
 %solv = MultidomainFCSolver(simParam,domains,interfaces);
 solv.NonLinearLoop();
 solv.finalizeOutput();

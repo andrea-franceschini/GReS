@@ -68,7 +68,7 @@ in a nonConforming simulation.
 
       <ActiveSet 
                  resetActiveSet = "0"
-                 forceStickBoundary = "0" >
+                 forceStickBoundary = "z" >
 
         <Tolerances
                     sliding = "1e-6"
