@@ -64,6 +64,8 @@ classdef (Abstract) MortarQuadrature < handle
         case 'standard'
           Nmult = NslaveIn;
         case 'dual'
+          % ref: Popp, A. (2012). Mortar methods for computational contact
+          % mechanics and general interface problems 
           Ns = getBasisFinGPoints(elem);
           gpW = getDerBasisFAndDet(elem,el);
           Ml = Ns'*(Ns.*gpW');

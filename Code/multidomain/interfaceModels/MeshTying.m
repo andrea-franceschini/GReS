@@ -275,81 +275,6 @@ classdef MeshTying < InterfaceSolver
 
     end
 
-    function Hold = computeStabilizationMatrixOld(obj)
-
-      % if ~isempty(obj.stabilizationMat)
-      %   % compute stabilization matrix only once for all edges
-      %   % retrieve row-col needing stabilization at each time step
-      %   return
-      % end
-
-      nComp = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
-
-      % initialize matrix estimating number of entries
-      % number of internal slave elements
-      nes = sum(all(obj.interfMesh.e2f{2},2));
-      nEntries = 2*36*nes; % each cell should contribute at least two times
-      nmult = getNumbDoF(obj);
-      localKernel = @(S,e1,e2) assembleLocalStabilization(obj,S,e1,e2);
-      asbH = assembler(nEntries,nmult,nmult,localKernel);
-
-      % get list of internal master edges
-      inEdgeMaster = find(all(obj.interfMesh.e2f{1},2));
-
-      for ieM = inEdgeMaster'
-        % loop over internal master edges
-
-        % get 2 master faces sharing internal edge ie
-        fM = obj.interfMesh.e2f{1}(ieM,:);
-        assert(numel(fM)==2,['Unexpected number of connected faces for' ...
-          'master edge %i. Expected 2.'], ieM);
-
-        % get slave faces sharing support with 2 master faces
-        ii = ismember(obj.quadrature.interfacePairs(:,2),fM);
-        fS = unique(obj.quadrature.interfacePairs(ii,1));
-
-        if numel(fS) < 2
-          continue
-        end
-
-        % average master elements area
-        Am = mean(obj.interfMesh.msh(1).surfaceArea(fM));
-
-        % get internal edges of slave faces
-        eS = unique(obj.interfMesh.f2e{2}(fS,:));
-        id = all(ismember(obj.interfMesh.e2f{2}(eS,:),fS),2);
-        ieS = eS(id);
-
-        % get master/slave nodes in the local macroelement
-        nM = obj.interfMesh.e2n{1}(ieM,:);
-        nS = unique(obj.interfMesh.e2n{2}(eS,:));
-
-        % compute local schur complement approximation
-        S = computeSchurLocal(obj,nM,nS,fS);
-
-        % assemble stabilization matrix component
-        for iesLoc = ieS'
-          % loop over internal slave edges in the macroelement
-
-          % get pair of slave faces sharing the edge
-          f = obj.interfMesh.e2f{2}(iesLoc,:);
-
-          % mean area of the slave faces
-          As = mean(obj.interfMesh.msh(2).surfaceArea(f));
-          fLoc1 = dofId(find(fS==f(1)),nComp);
-          fLoc2 = dofId(find(fS==f(2)),nComp);
-
-          % local schur complement for macroelement pair of slave faces
-          Sloc = 0.5*(Am/As)^2*(S(fLoc1,fLoc1)+S(fLoc2,fLoc2));
-          asbH.localAssembly(Sloc,f(1),f(2));
-        end
-      end
-
-      Hold = asbH.sparseAssembly();
-
-      %assert(norm(sum(obj.stabilizationMat,2))<1e-8, 'Stabilization matrix is not locally conservative')
-    end
-
 
   end
 
@@ -433,7 +358,7 @@ classdef MeshTying < InterfaceSolver
           fLoc2 = dofId(find(fS==f(2)),nComp);
 
           % local schur complement for macroelement pair of slave faces
-          Sloc = 0.5*(Am/As)^0*(S(fLoc1,fLoc1)+S(fLoc2,fLoc2));
+          Sloc = 0.5*(Am/As)*(S(fLoc1,fLoc1)+S(fLoc2,fLoc2));
           asbH.localAssembly(Sloc,f(1),f(2));
         end
       end

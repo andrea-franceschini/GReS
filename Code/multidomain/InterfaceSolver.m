@@ -37,6 +37,7 @@ classdef (Abstract) InterfaceSolver < handle
     % print utilities
     outstate
 
+    % interface state
     state
     stateOld
 
@@ -46,7 +47,7 @@ classdef (Abstract) InterfaceSolver < handle
     % list of variables coupled from the solver
     coupledVariables
 
-    % list of dirichlet nodes - TO DO: consider more elegant handling of dirichlet bcs 
+    % list of dirichlet nodes
     dirNodes
 
   end
@@ -122,6 +123,7 @@ classdef (Abstract) InterfaceSolver < handle
       obj.interfaceId = [numel(obj.domains(master).interfaces),...
         numel(obj.domains(slave).interfaces)] + 1;
 
+      % make domain aware of its interface
       obj.domains(1).interfaces{obj.interfaceId(master)} = obj;
       obj.domains(2).interfaces{obj.interfaceId(slave)} = obj;
       obj.domains(1).interfaceList(obj.interfaceId(master)) = id;
@@ -138,16 +140,16 @@ classdef (Abstract) InterfaceSolver < handle
       % initialize the jacobian blocks for domain coupling
       obj.domains(master).Jum{obj.interfaceId(master)} = cell(nVarMaster,1);
       obj.domains(slave).Jum{obj.interfaceId(slave)} = cell(nVarSlave,1);
-
       obj.domains(master).Jmu{obj.interfaceId(master)} = cell(1,nVarMaster);
       obj.domains(slave).Jmu{obj.interfaceId(slave)} = cell(1,nVarSlave);
 
       % specify the variables to be coupled
       setCoupledVariables(obj,inputStruct)
   
+      % mortar computations
       setMortarInterface(obj,inputStruct);
 
-      % set print utilities to match the slave output (privisonal)
+      % set print utilities (slave side mesh)
       obj.outstate = OutState(getMesh(obj,MortarSide.slave),inputStruct);
 
     end
@@ -156,7 +158,6 @@ classdef (Abstract) InterfaceSolver < handle
     function advanceState(obj)
 
       % note: state in interface solver is just a value struct
-      % we don't need a copy method to create a deep copy
       obj.stateOld = obj.state;
       
     end
@@ -282,7 +283,7 @@ classdef (Abstract) InterfaceSolver < handle
     end
 
 
-    % Set the coupling jacobian
+    %%% Set the coupling jacobian
     function setJmu(obj,side,setVal,varargin)
 
       [s,varId] = getSideAndVar(obj,side,varargin{:});
@@ -387,6 +388,9 @@ classdef (Abstract) InterfaceSolver < handle
 
       varMaster = getVariableNames(obj.domains(1).dofm);
       varSlave = getVariableNames(obj.domains(2).dofm);
+
+      % default candidate interface variable are those in common between
+      % master and slave discretizers
       sharedVars = intersect(varSlave,varMaster);
 
       if ~isempty(obj.coupledVariables)
@@ -461,6 +465,7 @@ classdef (Abstract) InterfaceSolver < handle
 
       processMortarPairs(obj.quadrature);
 
+      % remove inactive interface elements
       inactiveMaster = ~ismember(1:getMesh(obj,MortarSide.master).nSurfaces,...
         obj.quadrature.interfacePairs(:,2));
 
@@ -549,8 +554,6 @@ classdef (Abstract) InterfaceSolver < handle
 
     function [s,v] = getSideAndVar(obj,side,varargin)
 
-      % shortcut to add a contribution to the coupling rhs
-
       s = getSide(side);
       if nargin < 3
         assert(isscalar(obj.coupledVariables),...
@@ -563,6 +566,8 @@ classdef (Abstract) InterfaceSolver < handle
 
     end
 
+
+    
   end
 
 

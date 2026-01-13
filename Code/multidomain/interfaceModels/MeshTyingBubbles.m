@@ -1,6 +1,7 @@
 classdef MeshTyingBubbles < MeshTying
 
-  % Mesh tying between non conforming interfaces using static condensation
+  % Mesh tying between non conforming interfaces using statically condensed
+  % bubbles
   
   properties
     localFaceIndex % slave faces with local index in neighboring cell

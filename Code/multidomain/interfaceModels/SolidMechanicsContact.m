@@ -55,7 +55,7 @@ classdef SolidMechanicsContact < MeshTying
 
       % traction update
       actMult = getMultiplierDoF(obj);
-      %obj.state.deltaTraction(actMult) = du(1:obj.nMult);
+
       obj.state.traction(actMult) = obj.state.traction(actMult) + du(1:obj.nMult);
       obj.state.deltaTraction = obj.state.traction - obj.stateOld.traction;
       obj.NLIter = obj.NLIter + 1;
@@ -113,10 +113,10 @@ classdef SolidMechanicsContact < MeshTying
 
         state = obj.activeSet.curr(is);
 
-        % force boundary element to stick state
         nodes = obj.interfMesh.local2glob{2}(mshSlave.surfaces(is,:));
 
         if isstring(obj.activeSet.forceStickBoundary)
+          % force elements adjacent to dirichlet boundary to remain stick
           if any(ismember(nodes,obj.dirNodes))
             % element has a dirichlet node - keep it stick
             continue
@@ -223,31 +223,21 @@ classdef SolidMechanicsContact < MeshTying
       % reset the counter for changed states
       obj.activeSet.stateChange(:) = 0;
 
-
-      %resetConfiguration(obj);
-
-      % if obj.resetActiveSet
-      %   % reset everything to stick for next time step
-      %   obj.activeSet.curr(:) = ContactMode.stick;
-      % end
     end
 
     function isReset = resetConfiguration(obj)
 
-      % obj.state = obj.stateOld;
       toReset = obj.activeSet.curr(:) ~= ContactMode.open;
       obj.activeSet.curr(toReset) = ContactMode.stick;
 
-      % recompute stabilization matrix
-      %computeStabilizationMatrix(obj);
       isReset = true;
     end
 
 
 
     function goBackState(obj,dt)
+
       % reset state to beginning of time step
-      %updateActiveSet(obj);
       obj.activeSet.curr = obj.activeSet.prev;
       obj.state = obj.stateOld;
       obj.state.deltaTraction(:) = 0;
@@ -328,8 +318,6 @@ classdef SolidMechanicsContact < MeshTying
 
     function computeGap(obj)
       % compute normal gap and tangential slip (local coordinates)
-
-      %nS = obj.interfMesh.msh(2).nSurfaces;
 
       um = obj.domains(1).state.data.displacements;
       us = obj.domains(2).state.data.displacements;
@@ -632,9 +620,6 @@ classdef SolidMechanicsContact < MeshTying
         slaveNodes = unique(obj.interfMesh.e2n{2}(eS,:));
         boundSlaveNodes = unique(obj.interfMesh.e2n{2}(~id,:));
         nodeS = setdiff(slaveNodes,boundSlaveNodes);
-
-        % get master/slave nodes in the local macroelement
-        % nM = obj.interfMesh.e2n{1}(ieM,:);
 
         % compute local schur complement approximation
         S = computeSchurLocal(obj,nodeM,nodeS,fS);
