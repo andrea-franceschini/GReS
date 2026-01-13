@@ -28,8 +28,8 @@ in a nonConforming simulation.
 
   <Output
           saveHistory = "1"
-          outputFile = "Outputs/outFlow"
-          matFileName = "Outputs/historyFlow"
+          outputFile = "Outputs/outFlowPlot"
+          matFileName = "Outputs/historyFlowPlot"
           printTimes = "1,2,3,4,5,6,7,8,9,10"
           />
 
