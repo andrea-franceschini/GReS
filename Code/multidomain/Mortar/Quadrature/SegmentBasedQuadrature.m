@@ -67,6 +67,7 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       end
 
       finalizeMortarMaps(obj);
+      computeAreaSlave(obj);
 
     end
 

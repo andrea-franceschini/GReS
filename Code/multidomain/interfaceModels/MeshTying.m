@@ -46,9 +46,11 @@ classdef MeshTying < InterfaceSolver
     end
 
 
-    function assembleConstraint(obj)
+    function assembleConstraint(obj,varargin)
 
-      computeConstraintMatrices(obj);
+      if isempty(obj.D)
+        computeConstraintMatrices(obj);
+      end
 
       % reset the jacobian blocks
       obj.setJmu(MortarSide.slave, []);
@@ -167,60 +169,34 @@ classdef MeshTying < InterfaceSolver
         if ncomp > 1
           % vector field, local reference needed
 
-          normIdx = 1:3:length(tDof);
-          tangIdx = setdiff(1:length(tDof), 1:3:length(tDof));
-
           % rotation of multipliers
           R = getRotationMatrix(obj.interfMesh,is);
-          NmultR = pagemtimes(Nmult,R);
-
-          % Reduce the dimension of multiplier basis functions exploiting
-          % the local definition of degrees of freedom
-
-          % the normal component of the multipliers basis
-          Nmult_n = -Nmult(1,normIdx,:);
-          % tangential component of multiplier basis
-          Nmult_t = NmultR(:,tangIdx,:);
-
-          % get normal at the gauss points (for warped facets...?)
-          % move this call to interfaceMesh()
-          normalNodes = obj.interfMesh.getNodalNormal(is);
-          normal = pagemtimes(Ns,normalNodes);
-
-          % operator selecting only tangential components of the
-          % displacements
-          T = eye(3) - pagemtimes(normal,'none',normal,'transpose');
-
-          % normal and tangential component of displacement basis functions
-          Nm_n = pagemtimes(normal,'transpose',Nm,'none');
-          Nm_t = pagemtimes(T,Nm);
-          Ns_n = pagemtimes(normal,'transpose',Ns,'none');
-          Ns_t = pagemtimes(T,Ns);
 
           % mortar coupling normal component
-          Atm_n =  MortarQuadrature.integrate(f,Nmult_n,Nm_n,dJw);
-          Ats_n =  MortarQuadrature.integrate(f,Nmult_n,Ns_n,dJw);
+          Atm =  MortarQuadrature.integrate(f,Nmult,Nm,dJw);
+          Ats =  MortarQuadrature.integrate(f,Nmult,Ns,dJw);
 
-          % mortar coupling tangential component
-          Atm_t =  MortarQuadrature.integrate(f,Nmult_t,Nm_t,dJw);
-          Ats_t =  MortarQuadrature.integrate(f,Nmult_t,Ns_t,dJw);
+          % if strcmp(obj.quadrature.multiplierType,"dual")
+          %   Ats = diag(sum(Ats,2));
+          % end
+
+          Atm = R'*Atm;
+          Ats = R'*Ats;
 
           % assemble the local mortar matrix contribution
-          asbM.localAssembly(tDof(normIdx),umDof,-Atm_n);
-          asbM.localAssembly(tDof(tangIdx),umDof,-Atm_t);
-          asbD.localAssembly(tDof(normIdx),usDof,Ats_n);
-          asbD.localAssembly(tDof(tangIdx),usDof,Ats_t);
+          asbM.localAssembly(tDof,umDof,Atm);
+          asbD.localAssembly(tDof,usDof,-Ats);
 
         else
 
           Mloc = MortarQuadrature.integrate(f,Nmult,Nm,dJw);
           Dloc = MortarQuadrature.integrate(f,Nmult,Ns,dJw);
-          asbM.localAssembly(tDof,umDof,-Mloc); % minus sign!
+          asbM.localAssembly(tDof,umDof,Mloc); % minus sign!
           if strcmp(obj.quadrature.multiplierType,"dual")
             Dloc = diag(sum(Dloc,2));
           end
 
-          asbD.localAssembly(tDof,usDof,Dloc);
+          asbD.localAssembly(tDof,usDof,-Dloc);
 
         end
       end
@@ -299,6 +275,7 @@ classdef MeshTying < InterfaceSolver
 
     end
 
+
   end
 
 
@@ -307,11 +284,11 @@ classdef MeshTying < InterfaceSolver
 
     function computeStabilizationMatrix(obj)
 
-      if ~isempty(obj.stabilizationMat)
-        % compute stabilization matrix only once for all edges
-        % retrieve row-col needing stabilization at each time step
-        return
-      end
+      % if ~isempty(obj.stabilizationMat)
+      %   % compute stabilization matrix only once for all edges
+      %   % retrieve row-col needing stabilization at each time step
+      %   return
+      % end
 
       nComp = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
 
@@ -323,20 +300,27 @@ classdef MeshTying < InterfaceSolver
       localKernel = @(S,e1,e2) assembleLocalStabilization(obj,S,e1,e2);
       asbH = assembler(nEntries,nmult,nmult,localKernel);
 
-      % get list of internal master edges
-      inEdgeMaster = find(all(obj.interfMesh.e2f{1},2));
+      % get list of internal master nodes
+      boundEdges = ~all(obj.interfMesh.e2f{1},2);
+      boundNodes = unique(obj.interfMesh.e2n{1}(boundEdges,:));
 
-      for ieM = inEdgeMaster'
+      internalNodes = setdiff(1:getMesh(obj,MortarSide.master).nNodes,boundNodes);
+
+      topolMaster = getMesh(obj,MortarSide.master).surfaces;
+
+      for nodeM = internalNodes
         % loop over internal master edges
 
-        % get 2 master faces sharing internal edge ie
-        fM = obj.interfMesh.e2f{1}(ieM,:);
-        assert(numel(fM)==2,['Unexpected number of connected faces for' ...
-          'master edge %i. Expected 2.'], ieM);
+        % get master faces sharing internal node
+        fM = find(any(topolMaster == nodeM,2));
 
-        % get slave faces sharing support with 2 master faces
-        fS = unique([find(obj.interfMesh.elemConnectivity(fM(1),:)),...
-          find(obj.interfMesh.elemConnectivity(fM(2),:))]);
+        % fM = obj.interfMesh.e2f{1}(ieM,:);
+        assert(numel(fM)>2,['Unexpected number of connected faces for' ...
+          'node %i. Expected more than 2.'], nodeM);
+
+        % get slave faces sharing support with master faces
+        ii = ismember(obj.quadrature.interfacePairs(:,2),fM);
+        fS = unique(obj.quadrature.interfacePairs(ii,1));
 
         if numel(fS) < 2
           continue
@@ -350,12 +334,16 @@ classdef MeshTying < InterfaceSolver
         id = all(ismember(obj.interfMesh.e2f{2}(eS,:),fS),2);
         ieS = eS(id);
 
+        % get internal nodes
+        slaveNodes = unique(obj.interfMesh.e2n{2}(eS,:));
+        boundSlaveNodes = unique(obj.interfMesh.e2n{2}(~id,:));
+        nodeS = setdiff(slaveNodes,boundSlaveNodes);
+
         % get master/slave nodes in the local macroelement
-        nM = obj.interfMesh.e2n{1}(ieM,:);
-        nS = unique(obj.interfMesh.e2n{2}(eS,:));
+        % nM = obj.interfMesh.e2n{1}(ieM,:);
 
         % compute local schur complement approximation
-        S = computeSchurLocal(obj,nM,nS,fS);
+        S = computeSchurLocal(obj,nodeM,nodeS,fS);
 
         % assemble stabilization matrix component
         for iesLoc = ieS'

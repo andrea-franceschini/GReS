@@ -1,26 +1,28 @@
 classdef ContactSearching < handle
-  % Contact search algorithm using polytopal bounding boxes
+  % Contact search algorithm using polytopal bounding boxes Yang, B., &
+  % Laursen, T. A. (2008). A contact searching algorithm including bounding
+  % volume trees applied to finite sliding mortar formulations.
+  % Computational mechanics, 41(2), 189-205.
 
   properties
     polytopSize = 18;
     msh1
     msh2
-    BBtree1        % binary tree storying different mesh subidivisions
+    BBtree1             % binary tree storying different mesh subidivisions
     BBtree2
-    polytop        % k-top used to bound a finite element
-    treeNodes1     % For each node of the tree, store primitives along k/2 axis
-    treeNodes2     % For each node of the tree, store primitives along k/2 axis
+    polytop             % k-top used to bound a finite element
+    treeNodes1          % For each node of the tree, store primitives along k/2 axis
+    treeNodes2          % For each node of the tree, store primitives along k/2 axis
     leaf2elem1
     leaf2elem2
-    elemConnectivity % master- slave connectivity
+    elemConnectivity    % master- slave connectivity
     dim
-    scale = 0.025;   % bounding box expansion (ratio w.r.t elem max dim)
+    scale = 0.025;      % bounding box expansion (ratio w.r.t elem max dim)
   end
 
   methods
     function obj = ContactSearching(msh1,msh2)
-      %CONTACTSEARCHING Construct an instance of this class
-      %   Detailed explanation goes here
+
       obj.msh1 = msh1;
       obj.msh2 = msh2;
       obj.elemConnectivity = sparse(obj.msh1.nSurfaces, obj.msh2.nSurfaces);
@@ -49,6 +51,7 @@ classdef ContactSearching < handle
     end
 
     function [BBtree, treeNodes, leaf2elem] = buildBBtree(obj,msh)
+      
       % build the hierarchical tree of bounding boxes
       BBtree = zeros(2*msh.nSurfaces-1, 2);
       treeNodes = zeros(2*msh.nSurfaces-1, 2*size(obj.polytop,2));
