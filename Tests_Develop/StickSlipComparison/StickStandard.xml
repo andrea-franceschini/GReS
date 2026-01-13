@@ -42,14 +42,14 @@ in a nonConforming simulation.
       <Quadrature
                   type = "SegmentBasedQuadrature"
                   nGP = "6"
-                  multiplierType = "dual"
+                  multiplierType = "standard"
                   />
 
       <Output
               outputFile = "OUT/Crack"
               printTimes = "0,1,2,3,4,5,6,7,8,9,10"
               saveHistory = "1"
-              matFileName = "OUT/historyCrack"
+              matFileName = "OUT/historyCrackStandard"
               />
 
     </MeshTying>

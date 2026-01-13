@@ -11,8 +11,9 @@ scriptDir = fileparts(scriptFullPath);
 
 cd(scriptDir)
 
-fname = "Stick.xml";
+fnames = ["StickP0.xml","StickBubble.xml","StickDual.xml","StickStandard.xml","StickFine.xml"];
 
+for fname = fnames
 
 % set mesh 
 b1 = BlockStructuredMesh([0,2.5;0 10;0 15],[3 8 10],1);
@@ -20,6 +21,14 @@ meshL = processGeometry(b1);
 
 b2 = BlockStructuredMesh([2.5,5;0 10;0 15],[3 16 20],1);
 meshR = processGeometry(b2);
+
+if fname == "StickFine.xml"
+b1 = BlockStructuredMesh([0,2.5;0 10;0 15],[3 32 32],1);
+meshL = processGeometry(b1);
+
+b2 = BlockStructuredMesh([2.5,5;0 10;0 15],[3 32 32],1);
+meshR = processGeometry(b2);
+end
 
 % define model 
 
@@ -78,6 +87,9 @@ solv = MultidomainFCSolver(simParam,domains,interfaces);
 solv.NonLinearLoop();
 solv.finalizeOutput();
 
+save(interfaces{1}.outstate.matFileName, 'interfaces', '-append');
+
+end
 
 function setBC(Y,meshL,meshR)
 

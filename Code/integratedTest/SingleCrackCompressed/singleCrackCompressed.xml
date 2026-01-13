@@ -42,6 +42,7 @@
   <Interface>
 
     <MeshTying>
+
       <Master
               domainId = "1"
               surfaceTag = "4"
