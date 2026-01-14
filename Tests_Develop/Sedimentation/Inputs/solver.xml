@@ -1,58 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <Solver>
   <Sedimentation>
-    <domain>
-      <grid
+    
+    <Domain>
+      <Grid
           type = "classic"
-          division = "2,3,3"
-          size = "1,1,1"/>
-      <initial>
-        <all materialFlag = "1" />
-        <lay number = "2" materialFlag = "2" />
-      </initial>
-    </domain>
-    <boundary>
-      <BC name = "BordA"
-          type = "Neumann"
-          surface = "X0"
-          variable = "pressure"
-          value = "0.,0.,0." />
-      <BC name = "BordB"
-          type = "Neumann"
-          surface = "XM"
-          variable = "pressure"
-          value = "0.,0.,0." />
-      <BC name = "BordC"
-          type = "Neumann"
-          surface = "Y0"
-          variable = "pressure"
-          value = "0.,0.,0." />
-      <BC name = "BordD"
-          type = "Neumann"
-          surface = "YM"
-          variable = "pressure"
-          value = "0.,0.,0." />
-      <BC name = "Bottom"
-          type = "Neumann"
-          surface = "Z0"
-          variable = "pressure"
-          value = "0.,0.,0." />
+          division = "50,50,10"
+          size = "10,10,1"/>
+      <Initial>
+        <All materialFlag = "1" />
+      </Initial>
+      <NewCellHeightControl> 0.1 </NewCellHeightControl>
+    </Domain>
+
+    <Boundary>
       <BC name = "Top"
           type = "Dirichlet"
           surface = "ZM"
           variable = "pressure"
           value = "0." />
-    </boundary>
-    <sediment_map file = "Inputs/mapsSedimentation.xml" />
-    <!--
-    <sediment_map
-        time = "0."
-        division = "3,3"
-        sediment_rate = "0.01,0.01,0.01,0.01,0.01,0.01,0.01,0.01,0.01"/>
+    </Boundary>
     
-     -->
-    <output file = "Inputs/output.xml"/>
+    <SedimentMap file = "Inputs/mapsSedimentation.xml" />
+    
+    <Output file = "Inputs/output.xml"/>
   </Sedimentation>
 </Solver>
 
+<!--
+        <Lay number = "2" materialFlag = "2" />
+
+<BC name = "BordA"
+type = "Neumann"
+surface = "X0"
+variable = "pressure"
+value = "0.,0.,0." />
+<BC name = "BordB"
+type = "Neumann"
+surface = "XM"
+variable = "pressure"
+value = "0.,0.,0." />
+<BC name = "BordC"
+type = "Neumann"
+surface = "Y0"
+variable = "pressure"
+value = "0.,0.,0." />
+<BC name = "BordD"
+type = "Neumann"
+surface = "YM"
+variable = "pressure"
+value = "0.,0.,0." />
+<BC name = "Bottom"
+type = "Neumann"
+surface = "Z0"
+variable = "pressure"
+value = "0.,0.,0." />
+-->

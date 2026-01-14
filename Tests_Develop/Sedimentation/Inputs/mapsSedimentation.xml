@@ -1,31 +1,15 @@
 <Sedimentation_Maps type = "linear">
   <Event time = "0." >
-    <Uniform materialFlag = "1" value= "0.075"/>
+    <Random mean = "0.005" variance= "2.e-8"/>
   </Event>
 </Sedimentation_Maps>
+
 <!--
+<Uniform materialFlag = "1" value= "0.01"/>
+<Map materialFlag = "1"
+         division = "3,3"
+         file = "Inputs/Maps/mapDiff.dat"/>
+
 <Uniform materialFlag = "2" value= "0.0075"/>
-
-    <Map materialFlag = "1"
-         division = "3,3"
-         file = "Inputs/Maps/map2.dat"/>
-
-  <Event time = "0." >
-    <Uniform materialFlag = "1" value= "0.01"/>
-    <Map materialFlag = "2"
-         division = "3,3"
-         file = "Inputs/Maps/map.dat"/>
-  </Event>
-  <Event time = "10." >
-    <Uniform materialFlag = "1" value= "0.01"/>
-    <Map materialFlag = "2"
-         division = "3,3"
-         file = "Inputs/Maps/map.dat"/>
-  </Event>
-  <Event time = "5." >
-    <Uniform materialFlag = "1" value= "0.01"/>
-    <Map materialFlag = "2"
-         division = "3,3"
-         file = "Inputs/Maps/map.dat"/>
-  </Event>
+<Random mean = "0.01" variance= "0.0005"/>
 -->

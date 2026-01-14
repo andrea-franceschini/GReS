@@ -1,16 +1,40 @@
 classdef Sedimentation < PhysicsSolver
-  % Sedimentation model subclass
+  % SEDIMENTATION
+  % ------------------------------------------------------------------
+  % Transient single-phase Darcy flow solver with sediment-driven
+  % vertical mesh growth.
+  %
+  % Governing physics:
+  %   - Darcy flow with gravity
+  %   - Rock and fluid compressibility
+  %
+  % Discretization:
+  %   - Finite volume
+  %   - Theta-method time integration
+  %
+  % Mesh:
+  %   - Structured column-based grid
+  %   - Dynamic growth in Z direction due to sediment accumulation
+  %
+  % Growth criterion:
+  %   - A new cell is added when accumulated sediment height
+  %     exceeds heightControl.
+  %
+  % Notes:
+  %   - Grid topology, transmissibility, and state vectors
+  %     may change during the simulation.
+  % ------------------------------------------------------------------
 
   properties
-    grid gridForSedimentation
+    grid gridForSedimentation           % Grid with column growth support
 
-    sedimentHistory = SedimentsMap()
-    sedimentAcc (:,:)
-    heighControl double = 0.1
+    sedimentHistory = SedimentsMap()    % Time-dependent sediment control
+    sedimentAcc (:,:)                   % Accumulated sediment per column
+    heightControl double = 0.1          % Height threshold for new cell
 
-    facesNeigh (:,2) uint64
-    facesNeighDir (:,1) uint8
-    halfTrans (:,3)    
+    facesNeigh (:,2)                    % Neighboring cell pairs per face
+    facesNeighDir (:,1)                 % Face normal direction (1=x,2=y,3=z)
+    halfTrans (:,3)                     % Half transmissibility per cell
 
     H (:,:)
     P (:,:)
@@ -21,7 +45,6 @@ classdef Sedimentation < PhysicsSolver
   end
 
   properties (Access =private)
-    grow logical = false %<--
     nmat uint16
   end
 
@@ -31,45 +54,41 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function registerSolver(obj,input)
-      % setup the solver with custom input
+      % REGISTERSOLVER Initializes solver data structures.
 
+      % Validate input
       if Sedimentation.checkInput(input)
         error("Simulation not well defined!");
       end
 
+      % Build grid & mesh
       obj.nmat = length(obj.materials.db)-1;
-      obj.grid = gridForSedimentation("XML",input.domain, ...
+      obj.grid = gridForSedimentation("XML",input.Domain, ...
         "NumMateriais",obj.nmat);
+      if isfield(input.Domain,"NewCellHeightControl")
+        obj.heightControl = input.Domain.NewCellHeightControl;
+      end
+      obj.prepareMesh;
 
-      % Initialize Mesh.
-      prepareMesh(obj);
-
-      % Initialize the sedimentation control
-      obj.sedimentHistory = SedimentsMap(input.sediment_map,obj.nmat,...
+      % Initialize sediment control
+      obj.sedimentHistory = SedimentsMap(input.SedimentMap,obj.nmat,...
         obj.grid.ncells(1:2));
       obj.sedimentAcc = zeros(prod(obj.grid.ncells(1:2)),obj.nmat);
 
-      % Initialize the BCs
-      obj.prepareBC(input.boundary);
+      % Setup BCs
+      obj.prepareBC(input.Boundary);
 
-      % Initialize the states
+      % Initialize the States
       obj.getState().data.(obj.getField()) = zeros(obj.grid.getNumberCells,1);
 
-      % Initialize the Transmissibility.
-      prepareSystem(obj);
-
+      % Allocate system matrices
+      obj.prepareSystem;
       obj.fieldId = 1;
-
       obj.domain.J{obj.fieldId,obj.fieldId} = [];
       obj.domain.rhs{obj.fieldId} = [];
 
-      % Compute the initial system.
-      mu = obj.materials.getFluid().getDynViscosity();
-      computeStiffMat(obj,1/mu);
-      computeCapMat(obj);
-
-      % Creating the output format
-      prepareOutput(obj,input.output);
+      % Prepare output
+      obj.prepareOutput(input.Output);
     end
 
     function assembleSystem(obj,dt)
@@ -79,20 +98,16 @@ classdef Sedimentation < PhysicsSolver
 
     function advanceState(obj)
       % ADVANCESTATE Finalizes time step and updates grid topology.
-      %   1. Triggers cell growth checks based on sediment accumulation.
-      %   2. Updates the mesh structure if thresholds are met.
-      %   3. Archives the current state as 'stateOld' for the next step.
 
-      % Update the sediments accumulated.
+      % Update sediment accumulation
       [cellGrow, cellSed] = obj.updateSedAccumulated;
 
-      % Update the mesh.
+      % Grow mesh if height threshold is reached
       if any(cellGrow)
         meshUpdate(obj,cellGrow,cellSed);
-        obj.grow = true;
       end
 
-      % hard copy the new state object
+      % Update state for next step
       obj.domain.stateOld = copy(obj.domain.state);
     end
 
@@ -133,7 +148,7 @@ classdef Sedimentation < PhysicsSolver
 
     function updateState(obj,solution)
       % TODO: test
-      % ents = obj.grid.getActiveCells;
+      % ents = obj.grid.getActiveDofs;
       % state = getState(obj);
       % state.data.pressure(ents) = state.data.pressure(ents) + solution;
       state = getState(obj);
@@ -155,13 +170,13 @@ classdef Sedimentation < PhysicsSolver
       % Compute the posprocessing variables for the module.
       gamma = obj.materials.getFluid().getFluidSpecWeight();
       if gamma>0
-        coords = obj.grid.getCoordCenter(obj.grid.getActiveCells);
+        coords = obj.grid.getCoordCenter(obj.grid.getActiveDofs);
         states.potential = p + gamma*coords(:,3);
         states.head = coords(:,3)+p/gamma;
       end
       % mob = (1/obj.materials.getFluid().getDynViscosity());
       % states.flux = computeFlux(obj,p,mob,t);
-      states.perm = getPerm(obj,obj.grid.getActiveCells);
+      states.perm = getPerm(obj,obj.grid.getActiveDofs);
       states.pressure = p;
     end
 
@@ -211,29 +226,14 @@ classdef Sedimentation < PhysicsSolver
           potential = p - bc.data + gamma*dz;
           q = dirJ.*potential;
           vals = [dirJ,q];
-          % case 'hydrostatic'
-          %   gamma = obj.materials.getFluid().getFluidSpecWeight();
-          %   zbc = obj.faces.faceCentroid(faceID,3);
-          %   href = v(1);
-          %   v = gamma*(href-zbc);
-          %   v(v<=0)=0.;
-          %   mu = obj.materials.getFluid().getDynViscosity();
-          %   tr = obj.trans(faceID);
-          %   dz = obj.grid.cellCentroid(cellId,3) - obj.faces.faceCentroid(faceID,3);
-          %   q = 1/mu*tr.*(p(cellId) - v) + gamma*dz;
-          %   vals = [1/mu*tr,q];
       end
       dof = cellId;
     end
 
     function J = computeMat(obj,dt)
       % recompute elementary matrices only if the model is non-linear
-      if obj.grow
-        mu = obj.materials.getFluid().getDynViscosity();
-        computeStiffMat(obj,1/mu);
-        computeCapMat(obj);
-      end
-
+      obj.computeStiffMat;
+      obj.computeCapMat;
       J = obj.domain.simparams.theta*obj.H + obj.P/dt;
     end
 
@@ -245,11 +245,9 @@ classdef Sedimentation < PhysicsSolver
       pOld = getStateOld(obj,obj.getField());
 
       lw = 1/obj.materials.getFluid().getDynViscosity();
-      ents = obj.grid.getActiveDofs;
-
       theta = obj.domain.simparams.theta;
-      rhsStiff = theta*obj.H*p(ents) + (1-theta)*obj.H*pOld(ents);
-      rhsCap = (obj.P/dt)*(p(ents) - pOld(ents));
+      rhsStiff = theta*obj.H*p + (1-theta)*obj.H*pOld;
+      rhsCap = (obj.P/dt)*(p - pOld);
       rhs = rhsStiff + rhsCap;
 
       %adding gravity rhs contribute
@@ -260,22 +258,28 @@ classdef Sedimentation < PhysicsSolver
 
     end
 
-    % TODO: UPDATE THE TRANSMISSIBILITY OF THE CELL
-    function computeStiffMat(obj,lw)
+    function computeStiffMat(obj)
       % Compute the Stiffness Matrix
-      ncells = obj.grid.getNdofs;
+      lw = 1/obj.materials.getFluid().getDynViscosity();
+      ncells = obj.grid.ndofs;
       tmpVec = lw.*obj.computeTrans;
-      % tmpVec = lw.*obj.trans;  % <--- Modify here
       sumDiagTrans = accumarray(obj.facesNeigh(:),repmat(tmpVec,[2,1]),[ncells,1]);
       obj.H = sparse([obj.facesNeigh(:,1); obj.facesNeigh(:,2); (1:ncells)'],...
         [obj.facesNeigh(:,2); obj.facesNeigh(:,1); (1:ncells)'],...
         [-tmpVec; -tmpVec; sumDiagTrans], ncells, ncells);
     end
 
-    % TODO: UPDATE THE CELL VOLUME
     function computeCapMat(obj)
-      % Computing the initial P matrix
-      maxcells = prod(obj.grid.ncells);
+      % COMPUTECAPMAT Builds the storage matrix (P).
+      %
+      % Includes:
+      %   - Rock compressibility
+      %   - Fluid compressibility
+      %
+      % TODO:
+      %   Update cell volumes after mesh growth.
+      
+      maxcells = obj.grid.ndofs;
       alpha=zeros(maxcells,1);
       poro=zeros(maxcells,1);
       for mats=1:obj.nmat
@@ -285,29 +289,38 @@ classdef Sedimentation < PhysicsSolver
         poro=poro+tmpMat.*obj.grid.matfrac(:,mats);
       end
 
-      % Mapping and Reorder
       % Computing the permeability
       dofs = obj.grid.getDofsFromIJK;
       ActiveCells = dofs ~= 0;
       map = obj.grid.getActiveDofs;
-      alpha=alpha(ActiveCells);
-      alpha=alpha(map);
-      poro=poro(ActiveCells);
-      poro=poro(map);
+      % alpha=alpha(ActiveCells);
+      % alpha=alpha(map);
+      % poro=poro(ActiveCells);
+      % poro=poro(map);
       volsCell = obj.grid.computeVols();  % <--- Modify here
 
       beta = obj.materials.getFluid().getFluidCompressibility();
       PVal = (alpha+beta*poro).*volsCell;
-      obj.P = PVal.*speye(obj.grid.getNdofs);
+      obj.P = PVal.*speye(obj.grid.ndofs);
     end
 
     function transm = computeTrans(obj)
+      % COMPUTETRANS Computes face transmissibilities.
+      %
+      % Notes:
+      %   - X and Y half transmissibilities are stored without height.
+      %
+      % TODO:
+      %   Update Z scaling using deformed column heights.
+
+      lnk=obj.grid;
+
       % Computing the permeability
-      dofs = obj.grid.getActiveCells;
-      ijk = obj.grid.getIJKfromCellID(dofs);
+      actDof = lnk.dof ~=0;
+      [idI,idJ,idK] = lnk.getIJK;
 
       % TODO: use the deformation for each column to update the z height
-      dims = obj.grid.grid.getDims(ijk);
+      dims = lnk.getDims([idI(actDof),idJ(actDof),idK(actDof)]);
       tmpT = obj.halfTrans;
       for i=1:2
         tmpT(:,i) = tmpT(:,i)./dims(:,3);
@@ -321,19 +334,25 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function gTerm = finalizeRHSGravTerm(obj,lw)
+      % FINALIZERHSGRAVTERM Computes gravity contribution to RHS.
+      %
+      % TODO:
+      %   Use updated cell center elevations after grid growth.
+
       % Computing the permeability
-      dofs = obj.grid.getActiveCells;
+      dofs = obj.grid.getActiveDofs;
       ijk = obj.grid.getIJKfromCellID(dofs);
 
       % TODO: use the deformation for each column to update the z height
-      zcells = obj.grid.grid.centerZ(ijk(:,3));
+      zcells = obj.grid.coordZ(1:end-1)+diff(obj.grid.coordZ)/2.;
+      zcells = zcells(ijk(:,3));
       zneiA = zcells(obj.facesNeigh(:,1));
       zneiB = zcells(obj.facesNeigh(:,2));
 
       gamma = obj.materials.getFluid().getFluidSpecWeight();
       tmpVec = gamma*lw.*obj.computeTrans.*(zneiA-zneiB);
       gTerm = accumarray(obj.facesNeigh(:), ...
-        [tmpVec; -tmpVec],[obj.grid.getNdofs,1]);
+        [tmpVec; -tmpVec],[obj.grid.ndofs,1]);
     end
 
     function applyNeuBC(obj,bcId,bcDofs,bcVals)
@@ -359,7 +378,7 @@ classdef Sedimentation < PhysicsSolver
       % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
 
       assert(size(bcVals,2)==2,'Invalid matrix size for BC values');
-      nDoF = obj.grid.getNdofs;
+      nDoF = obj.grid.ndofs;
       bcDofsJ = nDoF*(bcDofs-1) + bcDofs;
       obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) = ...
         obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) + bcVals(:,1);
@@ -394,16 +413,14 @@ classdef Sedimentation < PhysicsSolver
   methods  (Access = private)
 
     function prepareMesh(obj)
-      lnk = obj.grid;
-
       obj.mesh.nDim = 3;
-      obj.mesh.nCells = lnk.getNumberCells;
-      obj.mesh.nNodes = lnk.grid.getNumberPoints;
+      obj.mesh.nCells = obj.grid.getNumberCells;
+      obj.mesh.nNodes = obj.grid.getNumberPoints;
       obj.mesh.cellVTKType = 12*ones(obj.mesh.nCells,1);
       obj.mesh.cellNumVerts = 8*ones(obj.mesh.nCells,1);
       obj.mesh.cellTag = 8*ones(obj.mesh.nCells,1);
 
-      [obj.mesh.coordinates,obj.mesh.cells] = lnk.grid.getMesh(1);
+      [obj.mesh.coordinates,obj.mesh.cells] = obj.grid.getMesh;
       obj.mesh.meshType = "Unstructured";
     end
 
@@ -444,9 +461,9 @@ classdef Sedimentation < PhysicsSolver
       actDofs = dofs(ActiveCells);
       actIJK = obj.grid.getIJKfromCellID(actDofs);
       cellNeigh = obj.grid.getNeigh(actIJK);
-      celldims = obj.grid.grid.getDims(actIJK);
+      celldims = obj.grid.getDims(actIJK);
 
-      tmpId = ones(6,1,'uint64');
+      tmpId = ones(6,1);
       refId = repelem((1:3)',2);
       for cell=1:sum(ActiveCells)
         tmp = cellNeigh(cell,:);
@@ -503,9 +520,9 @@ classdef Sedimentation < PhysicsSolver
       %   Calculates new deposition, updates the accumulation buffer, and
       %   identifies columns reaching the height threshold for new cells.
       %
-      %   Returns:
-      %       cellGrow - Logical mask of columns requiring a new cell layer.
-      %       cellSed  - Array of the sedimentation
+      % Outputs:
+      %   cellGrow - Logical array indicating columns that grow
+      %   cellSed  - Sediment assigned to newly created cells
 
       % 0. Initializate cellSed
       cellSed = zeros(size(obj.sedimentAcc));
@@ -520,40 +537,59 @@ classdef Sedimentation < PhysicsSolver
 
       % 3. Check for growth trigger (Height >= Threshold)
       colSed = sum(obj.sedimentAcc,2);
-      cellGrow = colSed >= obj.heighControl;
+      cellGrow = colSed >= obj.heightControl;
 
       % 4. Handle overflow for grown cells
       if any(cellGrow)
-        dl = colSed-obj.heighControl;
+        dl = colSed-obj.heightControl;
         sed = (dl./sum(addSed,2)).*addSed;
         cellSed(cellGrow,:) = obj.sedimentAcc(cellGrow,:)-sed(cellGrow,:);
         obj.sedimentAcc(cellGrow,:) = sed(cellGrow,:);
       end
     end
 
-    function meshUpdate(obj,map,sed)  % <<<-----HERE----
+    function meshUpdate(obj,map,sed)
+      % MESHUPDATE Updates grid topology due to sediment growth.
+      %
+      % Actions:
+      %   - Add new cells
+      %   - Update face connectivity
+      %   - Update transmissibilities
+      %   - Extend state vectors
+      %   - Update VTK mesh
 
+      lnk=obj.grid;
       newcells = sum(map);
 
-      colheightBG = obj.grid.columnsHeight;
-      matfrac = sed/obj.heighControl;
+      colheightBG = lnk.columnsHeight;
+      matfrac = sed/obj.heightControl;
+      colNotTop = and(colheightBG~=lnk.ncells(3),map);
+      colNotTop = colNotTop(map);
 
       % Update the grid
-      newlayer = obj.grid.grow(map,matfrac,obj.heighControl);
-      colheightAG = obj.grid.columnsHeight;
-      llayer=obj.grid.ncells(3);
+      newlayer = lnk.grow(map,matfrac,obj.heightControl);
 
-      % Update the transmissibility
-      [idI,idJ,idK] = obj.grid.getIJKTop;
+      % Update the face connectivity
+      [idI,idJ,idK] = lnk.getIJKTop;
       actIJK = [idI(map),idJ(map),idK(map)];
-      dofs = obj.grid.getDofsFromIJK(actIJK);
+      dofs = lnk.getDofsFromIJK(actIJK);
       
-      cellNeigh = obj.grid.getNeigh(actIJK);     
+      cellNeigh = lnk.getNeigh(actIJK);     
 
-      tmpId = ones(4,1,'uint64');
+      tmpId = ones(4,1);
       refId = repelem((1:2)',2);
-      for cell=1:newcells
+      for cell=1:newcells        
         tmp = cellNeigh(cell,:);
+
+        % Add the connection when the column Check 
+        if (colNotTop(cell))
+          flag = and(tmp(1:4)<dofs(cell),tmp(1:4)~=0);
+          nfaces=sum(flag);
+          if nfaces~=0
+            obj.facesNeigh(end+1:end+nfaces,:) = [tmp(flag)',dofs(cell)*tmpId(flag)];
+            obj.facesNeighDir(end+1:end+nfaces,:) = refId(flag)';
+          end
+        end
         if tmp(5)~=0
           obj.facesNeigh(end+1,:) = [tmp(5) dofs(cell)];
           obj.facesNeighDir(end+1) = 3;
@@ -565,11 +601,10 @@ classdef Sedimentation < PhysicsSolver
           obj.facesNeighDir(end+1:end+nfaces,:) = refId(flag)';
         end
       end
-
       permCell = obj.getPerm(dofs);
-      celldims = obj.grid.grid.getDims(actIJK);
+      celldims = lnk.getDims(actIJK);
 
-      % Computing half transmissibilities
+      % Computing the new half transmissibilities
       appAtEnd = size(obj.halfTrans,1);
       obj.halfTrans(appAtEnd+1:appAtEnd+newcells,1) = ...
         1./(celldims(:,2).*permCell(:,1));
@@ -578,23 +613,22 @@ classdef Sedimentation < PhysicsSolver
       obj.halfTrans(appAtEnd+1:appAtEnd+newcells,3) = ...
         1./(celldims(:,1).*celldims(:,2).*permCell(:,3));
 
-      % update the states
+      % Update the states
       idK = colheightBG;
       actIJK = [idI(map),idJ(map),idK(map)];
-      dofs = obj.grid.getDofsFromIJK(actIJK);
+      dofs = lnk.getDofsFromIJK(actIJK);
 
       obj.domain.state.data.pressure(end+1:end+newcells) = ...
         obj.domain.state.data.pressure(dofs);
 
-      % update the mesh output
+      % Update the mesh output
       obj.updateMeshOutput(map,newlayer);
     end
 
     function updateMeshOutput(obj,map,newlayer)
       newcells = sum(map);
       if newlayer
-        lnk=obj.grid.grid;
-        [XX, YY, ZZ] = ndgrid(lnk.X, lnk.Y, lnk.Z(end));
+        [XX, YY, ZZ] = ndgrid(obj.grid.coordX, obj.grid.coordY, obj.grid.coordZ(end));
         coord = [XX(:), YY(:), ZZ(:)];
         npoints = size(coord,1);
         obj.mesh.nNodes = obj.mesh.nNodes+npoints;
@@ -604,7 +638,7 @@ classdef Sedimentation < PhysicsSolver
       [idI,idJ,idK] = obj.grid.getIJKTop;
 
       obj.mesh.cells(end+1:end+newcells,:) = ...
-        lnk.getConectByIJK(idI(map),idJ(map),idK(map));
+        obj.grid.getConectByIJK(idI(map),idJ(map),idK(map));
       obj.mesh.nCells=obj.mesh.nCells+newcells;
       obj.mesh.cellTag(end+1:end+newcells) = 8;
       obj.mesh.cellNumVerts(end+1:end+newcells) = 8;
@@ -612,7 +646,6 @@ classdef Sedimentation < PhysicsSolver
     end
 
   end
-
 
 
   methods (Static)
@@ -627,22 +660,22 @@ classdef Sedimentation < PhysicsSolver
 
     function flag = checkInput(input)
       flag = false;
-      if ~(isfield(input,'domain') || isfield(input,'Domain'))
+      if ~isfield(input,'Domain')
         flag = true;
         disp("The initial domain for the simulation is not defined!");
       end
 
-      if ~(isfield(input,'boundary') || isfield(input,'Boundary'))
+      if ~isfield(input,'Boundary')
         flag = true;
         disp("The boundary condition for the simulation is not defined!");
       end
 
-      if ~(isfield(input,'sediment_map') || isfield(input,'Sediment_map'))
+      if ~isfield(input,'SedimentMap')
         flag = true;
         disp("Map of sedimentation for your simulation not defined!");
       end
 
-      if ~(isfield(input,'output') || isfield(input,'Output'))
+      if ~isfield(input,'Output')
         flag = true;
         disp("The output specifications is not defined!");
       end

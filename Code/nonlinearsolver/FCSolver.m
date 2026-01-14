@@ -11,8 +11,6 @@ classdef FCSolver < handle
     tStep = 0
     iter
     dt
-    % toGrow
-
   end
 
   properties (Access = public)

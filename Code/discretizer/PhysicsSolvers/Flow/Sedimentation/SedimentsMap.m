@@ -1,25 +1,43 @@
 classdef SedimentsMap < handle
-  % SEDIMENTSMAP Manages spatial/temporal sedimentation history and
-  % interpolation.
+  % SEDIMENTSMAP
+  % ------------------------------------------------------------------
+  % Manages spatial and temporal sedimentation history.
   %
-  %   Loads events from a file and calculates material accumulation over
-  %   a time interval [t0, t0+dt]. Supports 'linear' (trapezoidal) and
-  %   piecewise constant ('ramp') interpolation types.
+  % Responsibilities:
+  %   - Load sedimentation events from file
+  %   - Store time-dependent sedimentation rates
+  %   - Integrate sedimentation over a time interval
+  %
+  % Supported interpolation:
+  %   - 'linear' : trapezoidal integration between events
+  %   - 'ramp'   : piecewise constant (step) integration
+  %
+  % Notes:
+  %   - Sedimentation is returned as accumulated height
+  %     over the interval [t0, t0 + dt].
+  % ------------------------------------------------------------------
 
   properties (Access = public)
-    timeList = []
-    dataStruct
+    timeList = []                   % Event timestamps
+    dataStruct                      % Event data structure
   end
 
   properties (Access = private)
-    type
-    dim (1,2) uint64
-    nmat uint16
+    type                            % Interpolation type ('linear' | 'ramp')
+    dim (1,2) uint64                % Spatial grid dimensions (nx, ny)
+    nmat uint16                     % Number of materials
   end
 
   methods
     function obj = SedimentsMap(data,nmat,dims)
-      % Constructor: Initializes grid and loads event file.
+      % SEDIMENTSMAP Constructor.
+      %
+      % Initializes sedimentation maps and loads event data.
+      %
+      % Inputs:
+      %   data  - Structure containing sediment map file reference
+      %   nmat  - Number of materials
+      %   dims  - Spatial grid dimensions
       if nargin == 0
         return
       end
@@ -32,9 +50,17 @@ classdef SedimentsMap < handle
     end
 
     function map = getSedimentationMap(obj,t0,dt)
-      % GETSEDIMENTATIONMAP Integrates sedimentation rate from t0 to t0+dt.
-      %   Directs logic to specific interpolation methods based on 'obj.type'.
-      % Returns the sediment map for time t0 and duration dt.
+      % GETSEDIMENTATIONMAP Integrates sedimentation over a time interval.
+      %
+      % Inputs:
+      %   t0 - Initial time
+      %   dt - Time increment
+      %
+      % Output:
+      %   map - Accumulated sediment map (cells × nmat)
+      %
+      % Notes:
+      %   - Integration strategy depends on interpolation type.
 
       ntimesteps = length(obj.timeList);
       pos = find(obj.timeList <= t0, 1, 'last');
@@ -67,7 +93,13 @@ classdef SedimentsMap < handle
 
   methods (Access = private)
     function constructor(obj, file)
-      % Parses file, sets type, and sorts events by time.
+      % CONSTRUCTOR Loads sedimentation file and initializes events.
+      %
+      % Actions:
+      %   - Read input file
+      %   - Sort events by time
+      %   - Remove duplicate timestamps
+
       listdata = readstruct(file, AttributeSuffix="");
       obj.type = lower(listdata.type);
       obj.dataStruct = listdata.Event;
@@ -79,7 +111,13 @@ classdef SedimentsMap < handle
     end
 
     function map = processEvent(obj, pos)
-      % Aggregates Uniform and Map data for a specific event index.
+      % PROCESSEVENT Builds sedimentation rate map for a single event.
+      %
+      % Supported event types:
+      %   - Uniform : constant value per material
+      %   - Random  : normally distributed values
+      %   - Map     : spatially varying values loaded from file
+
       map = zeros(prod(obj.dim), obj.nmat);
       checkMat = true(obj.nmat, 1);
       event = obj.dataStruct(pos);
@@ -91,6 +129,14 @@ classdef SedimentsMap < handle
             map(:, item.materialFlag) = item.value;
             checkMat(item.materialFlag) = false;
           end
+        end
+      end
+
+      % Handle Random distributions
+      if isfield(event, "Random")
+        for item = event.Random
+          pd = makedist('Normal', 'mu', item.mean, 'sigma', sqrt(item.variance));
+          map = random(pd, prod(obj.dim), obj.nmat);
         end
       end
 
@@ -106,7 +152,14 @@ classdef SedimentsMap < handle
     end
 
     function values = dataMap(obj, data)
-      % Loads map from file and validates spatial dimensions.
+      % DATAMAP Loads spatial sediment map from file.
+      %
+      % Notes:
+      %   - Dimensions must match the domain grid
+      %
+      % TODO:
+      %   Implement spatial interpolation for mismatched dimensions.
+
       mapDim = sscanf(data.division, '%lu,%lu')';
       if isequal(obj.dim, mapDim)
         values = load(data.file);
@@ -119,7 +172,11 @@ classdef SedimentsMap < handle
     end
 
     function map = LinearInter(obj, dt, pos, posF)
-      % LINEARINTER Performs trapezoidal integration across event intervals.
+      % LINEARINTER Performs trapezoidal integration of sedimentation rates.
+      %
+      % Notes:
+      %   - Assumes linear variation between event timestamps
+
       map = zeros(prod(obj.dim), obj.nmat);
       dtAcc = 0;
       for i=1:(posF-pos)
@@ -145,7 +202,11 @@ classdef SedimentsMap < handle
     end
 
     function map = RampInter(obj, dt, pos, posF)
-      % RAMPINTER Performs piecewise constant integration (step function).
+      % RAMPINTER Performs piecewise constant integration.
+      %
+      % Notes:
+      %   - Assumes constant sedimentation rate between events
+      
       map = zeros(prod(obj.dim), obj.nmat);
       dtAcc = 0;
       for i=1:(posF-pos)
