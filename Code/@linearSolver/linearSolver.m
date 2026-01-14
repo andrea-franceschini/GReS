@@ -160,7 +160,11 @@ classdef linearSolver < handle
             % Get the preconditioner type
             obj.PrecType = lower(data.preconditioner);
 
+<<<<<<< HEAD
             obj.params.tol   = obj.domain(1).simparams.relTol;
+=======
+            obj.params.tol   = 1e-1*data.general.tol;
+>>>>>>> main
             obj.params.maxit = data.general.maxit;
 
             % Get the different parameters according to the prectype

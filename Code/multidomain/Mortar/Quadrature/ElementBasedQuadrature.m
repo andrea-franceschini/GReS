@@ -89,6 +89,7 @@ classdef ElementBasedQuadrature < MortarQuadrature
       end
 
       finalizeMortarMaps(obj);
+      computeAreaSlave(obj);
 
     end
 

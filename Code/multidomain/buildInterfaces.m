@@ -12,13 +12,23 @@ end
 interfaces = {};
 
 interfNames = fieldnames(outStruct);
-nInt = numel(interfNames);
-for i = 1:nInt
-  interf = feval(interfNames{i},...
-                 i,domains,outStruct.(interfNames{i}));
 
-  interf.registerInterface(outStruct.(interfNames{i}));
-  interfaces{end+1} = interf;
+k=0;
+for i = 1:numel(interfNames)
+
+  % deal with multiple interfaces of the same type
+  s = outStruct.(interfNames{i});
+  for j = 1:numel(s)
+
+    interf = feval(interfNames{i},...
+      k+1,domains,s(j));
+
+    interf.registerInterface(s(j));
+    interfaces{end+1} = interf;
+
+    % update interface counter
+    k = k+1;
+  end
 end
 
 end

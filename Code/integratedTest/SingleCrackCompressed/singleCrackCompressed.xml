@@ -14,7 +14,7 @@
 
     <Solver
             RelativeTolerance = "1e-8"
-            AbsoluteTolerance = "1e-10"
+            AbsoluteTolerance = "1e-9"
             />
   </simParam>
 
@@ -42,6 +42,7 @@
   <Interface>
 
     <MeshTying>
+
       <Master
               domainId = "1"
               surfaceTag = "4"
@@ -56,7 +57,6 @@
                   nGP = "6"
                   />
     </MeshTying>
-
 
     <SolidMechanicsContact>
       <Master

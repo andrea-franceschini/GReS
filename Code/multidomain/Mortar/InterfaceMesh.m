@@ -1,6 +1,6 @@
 classdef InterfaceMesh < handle
-  % Manager for topological information and operation on interfaces between
-  % meshes
+  % Manager for topological information and operation on lower dimensional
+  % interfaces
 
   
   properties

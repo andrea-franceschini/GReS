@@ -97,7 +97,7 @@ classdef BoundaryEntities < handle
 
       end
 
-      vals = vals(obj.isActiveEntity);
+      %vals = vals(obj.isActiveEntity);
     end
   end
 

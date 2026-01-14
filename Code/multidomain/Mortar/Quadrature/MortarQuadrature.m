@@ -11,6 +11,7 @@ classdef (Abstract) MortarQuadrature < handle
     numbInterfacePairs
     elements
     multiplierType
+    areaSlave
     
   end
 
@@ -22,6 +23,10 @@ classdef (Abstract) MortarQuadrature < handle
       obj.multiplierType = multType;
 
       ng = getXMLData(input,[],"nGP");
+
+      if strcmp(class(obj),"SegmentBasedQuadrature") && ng > 6
+        ng = 6;
+      end
 
       obj.elements = [Elements(interf.interfMesh.msh(1),ng),...
                       Elements(interf.interfMesh.msh(2),ng)];
@@ -59,6 +64,8 @@ classdef (Abstract) MortarQuadrature < handle
         case 'standard'
           Nmult = NslaveIn;
         case 'dual'
+          % ref: Popp, A. (2012). Mortar methods for computational contact
+          % mechanics and general interface problems 
           Ns = getBasisFinGPoints(elem);
           gpW = getDerBasisFAndDet(elem,el);
           Ml = Ns'*(Ns.*gpW');
@@ -81,9 +88,16 @@ classdef (Abstract) MortarQuadrature < handle
       end
     end
 
-
-
-
+    function computeAreaSlave(obj)
+      % compute the effective area of the slave elements being integrated
+      obj.areaSlave = zeros(obj.msh(2).nSurfaces,1);
+      for iPair = 1:size(obj.interfacePairs,1)
+        is = obj.interfacePairs(iPair,1);
+        areaPair = sum(obj.getIntegrationWeights(iPair));
+        obj.areaSlave(is) = obj.areaSlave(is) + areaPair;
+      end
+      
+    end
 
 
   end

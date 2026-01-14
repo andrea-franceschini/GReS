@@ -139,7 +139,7 @@ classdef Poromechanics < PhysicsSolver
       % the unstabilized stiffness has been already assembled
 
       s = getState(obj);
-      sOld = getOldState(obj);
+      sOld = getStateOld(obj);
 
       vtkId = obj.mesh.cellVTKType(el);
       elem = getElement(obj.elements,vtkId);
@@ -156,17 +156,17 @@ classdef Poromechanics < PhysicsSolver
         obj.mesh.cellTag(el), ...
         sOld.data.stress(l+1:l+nG,:), ...
         s.data.strain(l+1:l+nG,:), ...
-        dt,sOld.data.status(l+1:l+nG,:), el, obj.state.t);
+        dt,sOld.data.status(l+1:l+nG,:), el, s.t);
 
-      Kub = PoromechanicsNew.computeKloc(Bu,D,Bb,dJWeighed);
-      Kbb = PoromechanicsNew.computeKloc(Bb,D,Bb,dJWeighed);
+      Kub = Poromechanics.computeKloc(Bu,D,Bb,dJWeighed);
+      Kbb = Poromechanics.computeKloc(Bb,D,Bb,dJWeighed);
 
       % important: right hand side in the unstabilized block already
       % considers the bubble contribution due to enhanced strain
 
       % get global DoF
       nodes = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
-      dof = obj.dofm.getLocalDoF(nodes,obj.fieldId);
+      dof = obj.dofm.getLocalDoF(obj.fieldId,nodes);
       dofr = dof; dofc = dof;
 
       % get variable output from matrix
