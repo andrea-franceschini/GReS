@@ -2,8 +2,8 @@ classdef linearSolver < handle
    properties (Access = private)
 
       % Flag for debug
-      DEBUGflag = false
-      matlabMaxSize = 50000
+      DEBUGflag = true
+      matlabMaxSize = 100
       nsyTol = 1e-16
 
       % Flag for Chronos existance
@@ -77,16 +77,12 @@ classdef linearSolver < handle
 
          if isfolder(ChronosDir)
             
-            if(numel(domainin.physicsSolvers) > 1)
-
+            % Check if the problem comes from multiphysics
+            if(domainin.dofm.getNumberOfVariables() > 1)
                obj.multiPhysFlag = true;
-
-               if obj.DEBUGflag
-                  fprintf('multiPhysics not yet supported\nFall back to matlab solver\n');
-               end
-               return
             end
-
+            
+            % Check the number of interfaces and domains
             if nargin >= 2
                interfacein = varargin{1};
             else
@@ -97,17 +93,36 @@ classdef linearSolver < handle
             obj.nDom = length(domainin);
             obj.nInt = length(interfacein);
 
+            % Select the physics
             physname = obj.domain(1).solverNames(1);
-            if(contains(physname,'SinglePhaseFlow') || physname == 'VariablySaturatedFlow' || physname == 'Poisson')
-               obj.phys = 0;
-            elseif(physname == 'Poromechanics')
-               obj.phys = 1;
-            else
-               if obj.DEBUGflag
-                  warning('Non supported Physics for linsolver, falling back to matlab solver');
-                  fprintf('physics: %s\n',physname);
+            if ~obj.multiPhysFlag
+               % Supported Single Physics
+               if(contains(physname,'SinglePhaseFlow') || physname == 'VariablySaturatedFlow' || physname == 'Poisson')
+                  obj.phys = 0;
+               elseif(physname == 'Poromechanics')
+                  obj.phys = 1;
+               else
+                  if obj.DEBUGflag
+                     warning('Non supported Physics for linsolver, falling back to matlab solver');
+                     fprintf('physics: %s\n',physname);
+                  end
+                  return
                end
-               return
+            else
+               % Supported MultiPhysics
+               if(physname == 'BiotFullySaturated')
+                  if domainin.dofm.getVariableNames(1) == "pressure"
+                     obj.phys = 0;
+                  else
+                     obj.phys = 1;
+                  end
+               else
+                  if obj.DEBUGflag
+                     warning('Non supported Physics for linsolver, falling back to matlab solver');
+                     fprintf('physics: %s\n',physname);
+                  end
+                  return
+               end
             end
 
             % Chronos exists
@@ -202,8 +217,14 @@ classdef linearSolver < handle
       % Function to compute the preconditioner for the single block (single physics)
       computeSinglePhPrec(obj,A);
 
-      % Function to compute the RACP preconditioner for the lagrange multiplier case (single physics multi domain)
+      % Function to compute the Reverse Agumented preconditioner for the lagrange multiplier case (single physics multi domain)
       computeRACP(obj,A)
+
+      % Function to compute the MCP preconditioner for the multiphysics case
+      computeMCP(obj,A)
+
+      % Function to treat the Dirichlet boundary conditions
+      treatDirBC(obj,A)
    end
 
 end
