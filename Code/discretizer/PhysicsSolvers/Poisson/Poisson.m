@@ -317,6 +317,9 @@ classdef Poisson < PhysicsSolver
     H1err = sqrt(H1err);
   end
 
+  function out = isSymmetric(obj)
+     out = true;
+  end
 end
 
   methods (Static)

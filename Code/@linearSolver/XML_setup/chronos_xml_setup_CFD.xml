@@ -73,7 +73,7 @@
 		SoC_type="CLA"
 		tau="0.25"
 		SoC_perc="20"
-		nl_agg="0"
+		nl_agg="1"
 		CR_iters="1"
 	/>
 
