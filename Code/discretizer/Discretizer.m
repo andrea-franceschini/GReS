@@ -182,16 +182,18 @@ classdef Discretizer < handle
       end
 
       obj.solverNames = string(fieldnames(solverInput));
+      obj.solverNames = reshape(obj.solverNames,1,[]);
 
       for solverName = obj.solverNames
         % create and register the solver
         solver = feval(solverName,obj);
         solver.registerSolver(solverInput.(solverName));
-        nV = obj.dofm.getNumberOfVariables();
-        obj.J = cell(nV);
-        obj.rhs = cell(nV,1);
         obj.physicsSolvers(solverName) = solver;
       end
+
+      nV = obj.dofm.getNumberOfVariables();
+      obj.J = cell(nV);
+      obj.rhs = cell(nV,1);
 
     end
 

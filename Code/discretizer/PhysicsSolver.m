@@ -125,7 +125,6 @@ classdef (Abstract) PhysicsSolver < handle
 
       % base method to advance the state after reaching convergence
       % hard copy the new state object
-
       obj.domain.stateOld = copy(obj.domain.state);
 
     end
