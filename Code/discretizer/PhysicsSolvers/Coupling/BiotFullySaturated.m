@@ -30,6 +30,11 @@ classdef BiotFullySaturated < PhysicsSolver
 
     function registerSolver(obj,input)
 
+      % Register mechanics
+      obj.mechSolver = Poromechanics(obj.domain);
+      registerSolver(obj.mechSolver,input.(class(obj.mechSolver)));
+      obj.fldMech = obj.dofm.getVariableId(obj.mechSolver.getField());
+
       % setup the solver with custom input
       if isfield(input,"SinglePhaseFlowFEM")
         obj.flowSolver = SinglePhaseFlowFEM(obj.domain);
@@ -37,14 +42,11 @@ classdef BiotFullySaturated < PhysicsSolver
       if isfield(input,"SinglePhaseFlowFVTPFA")
         obj.flowSolver = SinglePhaseFlowFVTPFA(obj.domain);
       end
-      obj.flowScheme = obj.flowSolver.typeDiscretization();
-      % obj.flowSolver = SinglePhaseFlow(obj.domain);
-      registerSolver(obj.flowSolver,input.(class(obj.flowSolver)));
-      obj.mechSolver = Poromechanics(obj.domain);
-      registerSolver(obj.mechSolver,input.(class(obj.mechSolver)));
 
+      % Register fluids
+      obj.flowScheme = obj.flowSolver.typeDiscretization();
+      registerSolver(obj.flowSolver,input.(class(obj.flowSolver)));
       obj.fldFlow = obj.dofm.getVariableId(obj.flowSolver.getField());
-      obj.fldMech = obj.dofm.getVariableId(obj.mechSolver.getField());
 
     end
 

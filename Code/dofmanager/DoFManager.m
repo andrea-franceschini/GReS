@@ -209,7 +209,7 @@ classdef DoFManager < handle
     end
 
     function fl = isVariable(obj,varId)
-      varId = strcmp([obj.fields.variableName],varId);
+      varId = contains([obj.fields.variableName],varId);
       fl = any(varId);
     end
 
