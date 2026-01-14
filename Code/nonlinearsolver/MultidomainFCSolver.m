@@ -78,7 +78,7 @@ classdef MultidomainFCSolver < handle
         end
 
         for i = 1:obj.nInterf
-          obj.interfaces{i}.assembleConstraint();
+          obj.interfaces{i}.assembleConstraint(obj.dt);
         end
 
         for i = 1:obj.nDom
@@ -126,7 +126,7 @@ classdef MultidomainFCSolver < handle
           end
 
           for i = 1:obj.nInterf
-            obj.interfaces{i}.assembleConstraint();
+            obj.interfaces{i}.assembleConstraint(obj.dt);
           end
 
           for i = 1:obj.nDom

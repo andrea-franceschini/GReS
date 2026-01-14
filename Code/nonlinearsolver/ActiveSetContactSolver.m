@@ -5,6 +5,12 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
     %
     maxActiveSetIters = 10
     contactInterf
+    itAS
+    attemptedReset = false        % flag for attempt to save simulation resetting to stick
+  end
+
+  properties
+    doStickAttempt = false
   end
 
 
@@ -46,25 +52,27 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
         % Update the simulation time and time step ID
         absTol = obj.simparams.absTol;
-        obj.tStep = obj.tStep + 1;
-        obj.t = obj.t + obj.dt;
-
-        gresLog().log(0,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
-        gresLog().log(0,'-----------------------------------------------------------\n');
-
-        for i = 1:obj.nDom
-          obj.domains(i).applyDirVal(obj.t);
-        end
 
         % reset active set iteration counter
-        itAS = 0;
+        obj.itAS = 0;
         hasActiveSetChanged = true(numel(obj.contactInterf),1);
 
-        while any(hasActiveSetChanged) && itAS <= obj.maxActiveSetIters
+        while any(hasActiveSetChanged) && obj.itAS <= obj.maxActiveSetIters
           % outer active set loop
 
+          obj.tStep = obj.tStep + 1;
+          obj.t = obj.t + obj.dt;
+
           gresLog().log(0,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
-          gresLog().log(0,'Active set iteration n. %i \n', itAS);
+          gresLog().log(0,'-----------------------------------------------------------\n');
+
+          for i = 1:obj.nDom
+            obj.domains(i).applyDirVal(obj.t);
+          end
+
+
+          gresLog().log(0,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
+          gresLog().log(0,'Active set iteration n. %i \n', obj.itAS);
           gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
 
           for i = 1:obj.nDom
@@ -135,6 +143,13 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
             % Check for convergence
             flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
 
+            % line search cut to avoid unnecessary iterations
+             if obj.iter > 10 && rhsNorm > 1e1*rhsNormIt0
+               gresLog().log(1," Line search cut due to non converging rhs \n")
+               hasActiveSetChanged(:) = false;
+               break
+             end
+
           end % end newton loop
 
           if flConv % Newton Convergence
@@ -146,9 +161,9 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
               hasActiveSetChanged(i) = updateActiveSet(interf);
             end
 
-            itAS = itAS + 1;
+            obj.itAS = obj.itAS + 1;
 
-            if any(hasActiveSetChanged) && itAS == obj.maxActiveSetIters
+            if any(hasActiveSetChanged) && obj.itAS == obj.maxActiveSetIters
               % force backstep
               fprintf('Reached maximum number of active set iterations \n');
               hasActiveSetChanged(:) = false;
@@ -231,24 +246,34 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
     function manageNextTimeStep(obj,newtonConv,activeSetChanged)
 
-      % case 1: newton not converged (perform backstep)
+      if ~newtonConv && obj.doStickAttempt && ~obj.attemptedReset && obj.t < 12.1
+        reset = false(obj.nInterf,1);
+        for i = 1:obj.nInterf
+          reset(i) = resetConfiguration(obj.interfaces{i});
+        end
+        newtonConv = any(reset);
+        if newtonConv
+          obj.attemptedReset = true;
+          activeSetChanged(:) = true;
+        end
+      end
+
       if ~newtonConv 
+      
+        obj.itAS = 0;
+
+        % time step not converged
+        obj.t = obj.t - obj.dt;
+        obj.tStep = obj.tStep - 1;
+        obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
 
         for i = 1:obj.nDom
           goBackState(obj.domains(i));
         end
 
         for i = 1:obj.nInterf
-          goBackState(obj.interfaces{i});
+          goBackState(obj.interfaces{i},obj.dt);
         end
-
-        % time step not converged
-        dt = dt/obj.simparams.divFac;
-        obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
-
-        obj.t = obj.t - obj.dt;
-        obj.tStep = obj.tStep - 1;
-        obj.dt = obj.dt/obj.simparams.divFac;
 
         if obj.dt < obj.simparams.dtMin
           error('Minimum time step reached')
@@ -260,9 +285,11 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
       end
 
       % case 2: newton convergence and active set not changed -> go to next
-      % steo
+      % step and reset active set iters
 
       if newtonConv && ~any(activeSetChanged)  % converged time step
+
+        obj.itAS = 0;
 
         for i = 1:obj.nDom
           dom = obj.domains(i);
@@ -288,11 +315,18 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
           obj.dt = obj.simparams.tMax - obj.t;
         end
 
+        % allow new survival attempts on new time steps
+        obj.attemptedReset = false;
+
         return
       end
 
       % case 3: newton convergence but active set changed
-      % do nothing, keep current state() and stateOld()
+      % keep current states, just go back in time
+      if newtonConv && any(activeSetChanged)
+        obj.t = obj.t - obj.dt;
+        obj.tStep = obj.tStep - 1;
+      end
 
     end
 

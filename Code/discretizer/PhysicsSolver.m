@@ -121,7 +121,7 @@ classdef (Abstract) PhysicsSolver < handle
       end
     end
 
-    function advanceState(obj)
+    function advanceState(obj,varargin)
 
       % base method to advance the state after reaching convergence
       % hard copy the new state object
@@ -130,7 +130,7 @@ classdef (Abstract) PhysicsSolver < handle
 
     end
 
-    function goBackState(obj)
+    function goBackState(obj,varargin)
       % base method to move back the state when convergence is not reached
 
       obj.domain.state = copy(obj.domain.stateOld);
@@ -190,7 +190,8 @@ classdef (Abstract) PhysicsSolver < handle
       % symmetry)
       % if isSymmetric(obj)
       %   for i = 1:nV
-      %   obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+      %     obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+      %   end
       % end
       % 
       % for iI = 1:numel(obj.domain.interfaces)

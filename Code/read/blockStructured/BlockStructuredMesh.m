@@ -201,14 +201,14 @@ classdef BlockStructuredMesh < handle
       % 4: top
       % 5: south
       % 6: north
-      % 7: east
-      % 8: west
+      % 7: west
+      % 8: east
 
-      allFaces = [cells(:,[1,2,3,4]);
+      allFaces = [cells(:,[2,1,4,3]);
                   cells(:,[5,6,7,8]);
-                  cells(:,[1,2,6,5]);
-                  cells(:,[4,3,7,8]);
-                  cells(:,[1,4,8,5]);
+                  cells(:,[5,6,2,1]);
+                  cells(:,[3,4,8,7]);
+                  cells(:,[1,5,8,4]);
                   cells(:,[2,3,7,6])];
 
       xMin = min(coordinates(:,1));
