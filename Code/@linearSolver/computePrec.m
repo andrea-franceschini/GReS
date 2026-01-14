@@ -11,13 +11,13 @@ function computePrec(obj,A)
 
    % Check if the problem has multiphysics
    if obj.multiPhysFlag
-      if numel(A) ~= 4 && iscell(A)
+%      if numel(A) ~= 4 && iscell(A)
          % research
          error('not implemented yet');
-      else
-         % Single domain Multiphysics
-         obj.computeMCP(A);
-      end
+%      else
+%         % Single domain Multiphysics
+%         obj.computeMCP(A);
+%      end
    else
       % Single physics multidomain or lagrange multipliers
       if ~iscell(A)
@@ -61,7 +61,7 @@ function computePrec(obj,A)
    
             A = {A11, A12; A21 A22};
          end
-         
+
          % RACP for single physics multi domain 
          obj.computeRACP(A);
       end

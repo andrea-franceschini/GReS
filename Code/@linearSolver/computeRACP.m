@@ -3,7 +3,8 @@ function computeRACP(obj,A)
 
    simple_flag = false;
 
-   % Get the dimensions of the block
+   % Get the dimensions of the blocks
+   n11 = size(A{1,1},1);
    n22 = size(A{1,2},2);
 
    % If block 22 has dim 0 then resize it
@@ -12,12 +13,27 @@ function computeRACP(obj,A)
    end
 
    % Treat Dirichlet boundary conditions
-   obj.treatDirBC(A);
+   A{1,1} = A{1,1}';
+   D = sum(spones(A{1,1}));
+   ind_dir_dof = find(D==1);
+   ind_col_rem = find(sum(spones(A{1,2}))==1);
+   [ind_dir_lag,~,~] = find(A{1,2}(:,ind_col_rem));
+   ind_dir = union(ind_dir_dof,ind_dir_lag);
+   A{1,1}(:,ind_dir) = 0;
+   A{1,1} = A{1,1}';
+   A{2,1}(:,ind_dir) = 0;
+   A{1,2} = A{2,1}';
+   fac = max(D);
+   D = zeros(n11,1);
+   D(ind_dir,1) = fac;
+   A{1,1} = A{1,1} + diag(sparse(D));
 
    % Set RACP Gamma to 1
    gamma = 1.0;
 
    % Compute local augmentation
+   AA_list = {};
+   BB_list = {};
    aug = zeros(size(A{2,2},1),1);
    D_11 = full(diag(A{1,1}));
    mean_diag_A = mean(D_11);
@@ -35,6 +51,8 @@ function computeRACP(obj,A)
             m_b = max(diag(BB));
          else
             AA = A{1,1}(ii_12,ii_21);
+            AA_list{icol} = AA;
+            BB_list{icol} = BB;
             m_a = max(eig(full(AA)));
             m_b = max(eig(full(BB)));
          end

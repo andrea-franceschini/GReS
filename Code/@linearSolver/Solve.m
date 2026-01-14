@@ -90,6 +90,7 @@ function [x,flag] = Solve(obj,A,b,time)
       obj.params.iterSinceLastPrecComp = 0;
       obj.requestPrecComp = true;
       [x,flag] = obj.Solve(A,b,time);
+      return;
    end
 
    % Interesting problem
