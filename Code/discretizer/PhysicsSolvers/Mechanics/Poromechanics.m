@@ -349,12 +349,12 @@ classdef Poromechanics < PhysicsSolver
 
     function out = isLinear(obj)
       out = false;
-      for i = 1:obj.mesh.nCellTag
-        out = isa(obj.materials.getMaterial(i).ConstLaw,"Elastic");
-        if ~out
-          return;
-        end
-      end
+      % for i = 1:obj.mesh.nCellTag
+      %   out = isa(obj.materials.getMaterial(i).ConstLaw,"Elastic");
+      %   if ~out
+      %     return;
+      %   end
+      % end
     end
 
     function out = isSymmetric(obj)
