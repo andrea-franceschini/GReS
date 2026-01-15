@@ -222,6 +222,14 @@ classdef OutState < handle
       % structure
       % Concatenate the two structure arrays
 
+      if isempty(strA)
+        mergeStruct = strB;
+        return
+      elseif isempty(strB)
+        mergeStruct = strA;
+        return
+      end
+
       try
         mergeStruct = [strA; strB];
       catch

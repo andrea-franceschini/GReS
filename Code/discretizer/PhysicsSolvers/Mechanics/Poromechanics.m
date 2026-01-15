@@ -81,10 +81,10 @@ classdef Poromechanics < PhysicsSolver
 
       % loop over active mechanics cells
       for el = subCells'
-        [dsigma,status] = assembleK.localAssembly(el,l);
-        ng = size(dsigma,1);
+        [sigma,status] = assembleK.localAssembly(el,l);
+        ng = size(sigma,1);
         stateCurr.data.status(l+1:l+ng,:) = status;
-        stateCurr.data.stress((l+1):(l+ng),:) = dsigma;
+        stateCurr.data.stress((l+1):(l+ng),:) = sigma;
         obj.cell2stress(el) = l;
         l = l + ng;
       end
@@ -218,6 +218,7 @@ classdef Poromechanics < PhysicsSolver
           solution(getDoF(obj.dofm,obj.fieldId));
       end
 
+      % displacement increment at current iteration
       du = stateCurr.data.displacements - stateOld.data.displacements;
 
       % Update strain

@@ -406,12 +406,12 @@ classdef Discretizer < handle
       % write results to VTKoutput
 
       if obj.outstate.writeVtk
+        
+        cellData3D = struct('name', [], 'data', []);
+        pointData3D = struct('name', [], 'data', []);
 
         for solv = obj.solverNames
           solver = getPhysicsSolver(obj,solv);
-
-          cellData3D = struct('name', [], 'data', []);
-          pointData3D = struct('name', [], 'data', []);
           [cellData,pointData] = writeVTK(solver,fac,time);
           cellData3D = OutState.mergeOutFields(cellData3D,cellData);
           pointData3D = OutState.mergeOutFields(pointData3D,pointData);

@@ -1,7 +1,7 @@
 classdef EmbeddedFractureMechanics < PhysicsSolver
 
-  % solver for embedded tractions
-  % important 
+  % solver for embedded tractions implementing the EFEM(0) formulation
+  % Cusini et al (2021).
 
   properties
 
@@ -119,7 +119,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         dtdg = computeDerTractionGap(obj,i);
 
-        KwwLoc = KwwLoc + dtdg*obj.cutAreas(i);
+        KwwLoc = KwwLoc - dtdg*obj.cutAreas(i);
 
         % grab degree of freedom
         nodes = obj.mesh.cells(cellId,:);
@@ -127,19 +127,19 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         wDof = obj.dofm.getLocalDoF(obj.fieldId,i);
 
         % assemble local contributions
-        asbKuw.localAssembly(uDof,wDof,KuwLoc);
-        asbKwu.localAssembly(wDof,uDof,KwuLoc);
-        asbKww.localAssembly(wDof,wDof,KwwLoc);
+        asbKuw.localAssembly(uDof,wDof,-KuwLoc);
+        asbKwu.localAssembly(wDof,uDof,-KwuLoc);
+        asbKww.localAssembly(wDof,wDof,-KwwLoc);
 
         % assemble rhsW (use computed stress tensor)
         sigma = reshape(sigma',6,1,nG);
         trac = s.data.traction(wDof);
         rhsLoc = zeros(3,1);
-        rhsLoc = rhsLoc + trac*obj.cutAreas(i);
+        rhsLoc = rhsLoc - trac*obj.cutAreas(i);
         fTmp = pagemtimes(E,'ctranspose',sigma,'none');
         fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
         fLoc = sum(fTmp,3);
-        rhsLoc = rhsLoc + fLoc;
+        rhsLoc = rhsLoc - fLoc;
         rhsW(wDof) = rhsW(wDof) + rhsLoc; 
 
       end
@@ -167,23 +167,32 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     end
 
     function updateState(obj,solution)
+
+
       % Update state structure with last solution increment
       ents = obj.dofm.getActiveEntities(obj.fieldId,1);
 
       stateCurr = obj.getState();
       stateOld = obj.getStateOld();
 
+
+
       if nargin > 1
         % apply newton update to current displacements
+        dw = solution(getDoF(obj.dofm,obj.fieldId));
         stateCurr.data.(obj.getField())(ents) = stateCurr.data.(obj.getField())(ents) + ...
-          solution(getDoF(obj.dofm,obj.fieldId));
+          dw;
+
+        % update traction using penalty approach
+        updateTraction(obj);
+
+
       end
 
       cell2stress = getPhysicsSolver(obj.domain,"Poromechanics").cell2stress;
-
-      du = stateCurr.data.displacements - stateOld.data.displacements;
        
-      w = getState(obj,obj.getField());
+      % jump increment at current iteration
+      w = stateCurr.data.(obj.getField()) - stateOld.data.(obj.getField()); 
 
       % Enhance straint with fracture contribution
       for i = 1:obj.nCutCells
@@ -195,7 +204,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         N = getDerBasisFAndDet(elem,el,2);
         Bw = computeCompatibilityMatrix(obj,i,N);
         jump = w(getLocalDoF(obj.dofm,obj.fieldId,i));
-        stateCurr.data.strain(l+1:l+nG,:) = reshape(pagemtimes(Bw,jump),6,nG)';
+        stateCurr.data.strain(l+1:l+nG,:) = stateCurr.data.strain(l+1:l+nG,:) - ...
+          reshape(pagemtimes(Bw,jump),6,nG)';
       end
     end
 
@@ -294,7 +304,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     function [cellData,pointData] = writeVTK(obj,fac,varargin)
 
-      % check if can plot only point cloud
+      cellData = [];
+      pointData = [];
 
     end
 
@@ -450,6 +461,42 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       end
 
 
+    end
+
+    function updateTraction(obj)
+
+      s = getState(obj);
+      sOld = getStateOld(obj);
+      jump = s.data.(obj.getField());
+      deltaJump = jump - sOld.data.(obj.getField()); 
+
+      penN = obj.penalty_n;
+      penT = obj.penalty_t;
+
+      for i = 1:obj.nCutCells
+        dofW = getLocalDoF(obj.dofm,obj.fieldId,i);
+        j = jump(dofW);
+        dj = deltaJump(dofW);
+
+        switch obj.contactState
+          
+          case ContactMode.stick
+            s.data.traction(dofW(1)) = ...
+              s.data.traction(dofW(1)) + penN * j(1);
+            s.data.traction(dofW(2:3)) = ...
+              s.data.traction(dofW(2:3)) + penT * j(2:3);
+
+          case ContactMode.slip
+                        s.data.traction(dofW(1)) = ...
+              s.data.traction(dofW(1)) + penN * j(1);
+
+          case ContactMode.open
+            s.data.traction(dofW(:)) = 0;
+
+        end
+
+
+      end
     end
 
 
