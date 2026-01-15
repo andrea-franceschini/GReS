@@ -3,7 +3,7 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 1e5
+      matlabMaxSize = 1e7
       nsyTol = 1e-12
 
       % Flag for Chronos existance

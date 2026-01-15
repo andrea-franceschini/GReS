@@ -311,7 +311,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     function [cellData,pointData] = writeVTK(obj,fac,time)
 
-      cellData = [];
+      cellData = repmat(struct('name', 1, 'data', 1), 1, 1);
+      cellData(1).name = 'isCellFractured';
+      cellData(1).data = double(reshape(ismember(1:obj.mesh.nCells,obj.cutCells),[],1));
       pointData = [];
 
       % this method do not return outputs for the 3D mesh grid. instead, it
@@ -376,6 +378,12 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         dims = getXMLData(fractureStruct(f),[],'dimensions');
         lVec = getXMLData(fractureStruct(f),[],'lengthVec');
         wVec = getXMLData(fractureStruct(f),[],'widthVec');
+
+        assert(all([abs(lVec*normal') < 1e-8,...
+              abs(wVec*normal')<1e-8,...
+              abs(lVec*wVec')<1e-8]),...
+          "For now, normal, length and width direction must form " + ...
+          "an orthonormal basis");
 
         % define plane corners
         lVec = lVec/norm(lVec);   wVec = wVec/norm(wVec);
@@ -497,7 +505,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         obj.cutTang2 = obj.cutTang2(id,:);
 
         surfs = msh.surfaces(id,:);
-
+      
         [u,~,id2] = unique(surfs(:));
 
         surfs = reshape(id2,[],6);
@@ -506,6 +514,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         msh.surfaceNumVerts = msh.surfaceNumVerts(id);
         
         msh.coordinates = msh.coordinates(u(2:end),:);
+
+        % coordRound = round(msh.coordinates/1e-7);
+        % [nodesUnique, ia, ic] = unique(coordRound, 'rows', 'stable')
+
         msh.nNodes = size(msh.coordinates,1);
         msh.nSurfaces = size(msh.surfaces,1);
         msh.surfaceVTKType = 7*ones(msh.nSurfaces,1);
