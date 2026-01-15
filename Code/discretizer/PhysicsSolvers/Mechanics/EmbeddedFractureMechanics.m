@@ -17,6 +17,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     penalty_t               % penalty parameter for tangential direction
     phi                     % friction angle in radians
     cohesion
+    fractureMesh            % a 2D mesh object with cut cell topology
 
   end
 
@@ -127,19 +128,18 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         wDof = obj.dofm.getLocalDoF(obj.fieldId,i);
 
         % assemble local contributions
-        asbKuw.localAssembly(uDof,wDof,-KuwLoc);
+        asbKuw.localAssembly(uDof,wDof,KuwLoc);
         asbKwu.localAssembly(wDof,uDof,-KwuLoc);
         asbKww.localAssembly(wDof,wDof,-KwwLoc);
 
         % assemble rhsW (use computed stress tensor)
         sigma = reshape(sigma',6,1,nG);
         trac = s.data.traction(wDof);
-        rhsLoc = zeros(3,1);
-        rhsLoc = rhsLoc - trac*obj.cutAreas(i);
+        r1 = trac*obj.cutAreas(i);
         fTmp = pagemtimes(E,'ctranspose',sigma,'none');
         fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
-        fLoc = sum(fTmp,3);
-        rhsLoc = rhsLoc - fLoc;
+        r2 = sum(fTmp,3);
+        rhsLoc = - r1 - r2;
         rhsW(wDof) = rhsW(wDof) + rhsLoc; 
 
       end
@@ -204,7 +204,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         N = getDerBasisFAndDet(elem,el,2);
         Bw = computeCompatibilityMatrix(obj,i,N);
         jump = w(getLocalDoF(obj.dofm,obj.fieldId,i));
-        stateCurr.data.strain(l+1:l+nG,:) = stateCurr.data.strain(l+1:l+nG,:) - ...
+        stateCurr.data.strain(l+1:l+nG,:) = stateCurr.data.strain(l+1:l+nG,:) + ...
           reshape(pagemtimes(Bw,jump),6,nG)';
       end
     end
@@ -328,6 +328,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       countCell = 0;
       obj.cutCells = zeros(obj.mesh.nCells*nFractures,1);
 
+      obj.fractureMesh = Mesh();
+
       for f = 1:numel(fractureStruct)
 
         % read the fracture geometry
@@ -402,12 +404,20 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         obj.cutTang1(countCell+1:countCell+nC,:) = repmat(tVec1',nC,1);
         obj.cutTang2(countCell+1:countCell+nC,:) = repmat(tVec2',nC,1);
 
+        % preallocate number of nodes
+        obj.fractureMesh.surfaces = zeros(nC,6);
+        obj.fractureMesh.surfaceNumVerts = zeros(nC,1);
+
         % loop over cut cell and compute geometry
         for ic = 1:nC
           cellEdges = cellToEdges(newCutCells(ic),:);
           isEdgeCut = logical(m(newCutCells(ic),:));
           cutEdges =  cellEdges(isEdgeCut);
           cutCellVertices = intersections(cutEdges,:);
+
+          obj.fractureMesh.surfaces(ic,1:numel(cutEdges)) = cutEdges;
+          obj.fractureMesh.surfaceNumVerts(ic) = numel(cutEdges);
+              
           [obj.cutCenters(countCell+ic,:),obj.cutAreas(countCell+ic)] = ...
             computePolygonGeometry(cutCellVertices,nVec');
         end
@@ -465,6 +475,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     function updateTraction(obj)
 
+      % check
+
       s = getState(obj);
       sOld = getStateOld(obj);
       jump = s.data.(obj.getField());
@@ -478,7 +490,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         j = jump(dofW);
         dj = deltaJump(dofW);
 
-        switch obj.contactState
+        switch obj.contactState.curr
           
           case ContactMode.stick
             s.data.traction(dofW(1)) = ...
@@ -487,9 +499,13 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
               s.data.traction(dofW(2:3)) + penT * j(2:3);
 
           case ContactMode.slip
-                        s.data.traction(dofW(1)) = ...
-              s.data.traction(dofW(1)) + penN * j(1);
-
+             s.data.traction(dofW(1)) = ...
+               s.data.traction(dofW(1)) + penN * j(1);
+             tN = s.data.traction(dofW(1));
+            tauLim = obj.cohesion - tN*tan(obj.phi);
+            %
+            s.data.traction(dofW(2:3)) = tauLim * (dj(2:3)/norm(dj(2:3)));
+            
           case ContactMode.open
             s.data.traction(dofW(:)) = 0;
 
@@ -514,16 +530,16 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       H = computeHeaviside(obj,i);
       v = - sum(N.*H',2);
-      n = obj.cutNormals(i,:)';
-      m1 = obj.cutTang1(i,:)';
-      m2 = obj.cutTang2(i,:)';
+      n = obj.cutNormals(i,:);
+      m1 = obj.cutTang1(i,:);
+      m2 = obj.cutTang2(i,:);
 
       v = permute(v,[2 1 3]);
 
 
-      sym_n_dyad_v = obj.symTensor(pagemtimes(n,v));
-      sym_m1_dyad_v = obj.symTensor(pagemtimes(m1,v));
-      sym_m2_dyad_v = obj.symTensor(pagemtimes(m2,v));
+      sym_n_dyad_v = obj.sym_AiBj_plus_AjBi(n,v);
+      sym_m1_dyad_v = obj.sym_AiBj_plus_AjBi(m1,v);
+      sym_m2_dyad_v = obj.sym_AiBj_plus_AjBi(m2,v);
 
       Bw = [sym_n_dyad_v, sym_m1_dyad_v, sym_m2_dyad_v];
     end
@@ -534,9 +550,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       m1 = obj.cutTang1(i,:)';
       m2 = obj.cutTang2(i,:)';
 
-      sym_n_dyad_n = obj.symTensor(pagemtimes(n',n));
-      sym_m1_dyad_n = obj.symTensor(pagemtimes(m1,n));
-      sym_m2_dyad_n = obj.symTensor(pagemtimes(m2,n));
+      sym_n_dyad_n = obj.sym_AiBj_plus_AjBi(n,n);
+      sym_m1_dyad_n = obj.sym_AiBj_plus_AjBi(m1,n);
+      sym_m2_dyad_n = obj.sym_AiBj_plus_AjBi(m2,n);
 
       A = obj.cutAreas(i);
       V = obj.mesh.cellVolume(obj.cutCells(i));
@@ -557,7 +573,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         case ContactMode.open
           return
         case ContactMode.stick
-          dtdg = diag([obj.penalty_n,obj.penalty_t,obj.penalty_t]);
+          dtdg = -diag([obj.penalty_n,obj.penalty_t,obj.penalty_t]);
         case ContactMode.slip
           dtdg(1,1) = obj.penalty_n;
           slipNorm = norm(slip);
@@ -620,11 +636,18 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     end
 
 
-    function vSym = symTensor(v)
-      % take a 3x3 symmetric tensor and convert into a 6x1 voigt array
+    function vSym = sym_AiBj_plus_AjBi(a,b)
+      % compute symmetric dyadic product of two 3x3 tensor 
+      % return result into a 6x1 voigt array
+
+      a = reshape(a,3,1,[]);
+      b = reshape(b,3,1,[]);
+
+      v = pagemtimes(a,'none',b,'ctranspose') + pagemtimes(b,'none',a,'ctranspose');
       vSym = reshape(v,9,1,[]);
       vSym = vSym([1 5 9 4 8 7],:,:);
       vSym(1:3,:,:) = 0.5*vSym(1:3,:,:);
+
     end
 
     function out = getField()
