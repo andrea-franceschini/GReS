@@ -19,6 +19,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     cohesion
     fractureMesh            % a 2D mesh object with cut cell topology
     outFracture
+    areaTol = 1e-6;         % minimum area of a fracture element
 
   end
 
@@ -452,11 +453,14 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           cutEdges =  cellEdges(isEdgeCut);
           cutCellVertices = intersections(cutEdges,:);
 
-          surfs(ic,1:numel(cutEdges)) = cutEdges;
+          idx = orderPointsCCW(cutCellVertices,normal);
+
+          surfs(ic,1:numel(cutEdges)) = cutEdges(idx);
           surfNumVerts(ic) = numel(cutEdges);
               
           [obj.cutCenters(countCell+ic,:),obj.cutAreas(countCell+ic)] = ...
             computePolygonGeometry(cutCellVertices,nVec');
+
         end
 
         countCell = countCell + nC;
@@ -475,17 +479,36 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       end
 
-        obj.nCutCells = countCell;
         obj.cutCells = obj.cutCells(1:countCell);
         obj.cutNormals = obj.cutNormals(1:countCell,:);
         obj.cutCenters = obj.cutCenters(1:countCell,:);
         obj.cutAreas = obj.cutAreas(1:countCell);
 
-        % finalize mesh
+        % finalize fracture mesh
+
+        % discard too small fractures
+        id = obj.cutAreas > obj.areaTol;
+        obj.nCutCells = sum(id);
+        obj.cutCells = obj.cutCells(id);
+        obj.cutCenters = obj.cutCenters(id,:);
+        obj.cutAreas = obj.cutAreas(id);
+        obj.cutNormals = obj.cutNormals(id,:);
+        obj.cutTang1 = obj.cutTang1(id,:);
+        obj.cutTang2 = obj.cutTang2(id,:);
+
+        surfs = msh.surfaces(id,:);
+
+        [u,~,id2] = unique(surfs(:));
+
+        surfs = reshape(id2,[],6);
+        msh.surfaces = surfs - 1;
+
+        msh.surfaceNumVerts = msh.surfaceNumVerts(id);
+        
+        msh.coordinates = msh.coordinates(u(2:end),:);
         msh.nNodes = size(msh.coordinates,1);
         msh.nSurfaces = size(msh.surfaces,1);
         msh.surfaceVTKType = 7*ones(msh.nSurfaces,1);
-
 
     end
 
