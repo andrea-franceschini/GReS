@@ -30,7 +30,9 @@
 
   <Fluid
       specificWeight = "1.e4"
-      compressibility = "0.0"
+      compressibility = "0."
       dynamicViscosity = "1e-3"
   />
 </Materials>
+
+<!--compressibility = "4.6e-10" -->

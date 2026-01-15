@@ -87,6 +87,8 @@ classdef SedimentsMap < handle
         % Single event or within the same time window
         map = obj.processEvent(pos) * dt;
       end
+
+      
     end
 
   end
@@ -136,6 +138,7 @@ classdef SedimentsMap < handle
       if isfield(event, "Random")
         for item = event.Random
           pd = makedist('Normal', 'mu', item.mean, 'sigma', sqrt(item.variance));
+          % pd = makedist('HalfNormal', 'mu', item.mean, 'sigma', sqrt(item.variance));
           map = random(pd, prod(obj.dim), obj.nmat);
         end
       end

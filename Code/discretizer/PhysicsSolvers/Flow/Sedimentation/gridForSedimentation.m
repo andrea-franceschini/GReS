@@ -221,6 +221,8 @@ classdef gridForSedimentation < handle
     function cellID = getCellIDfromIJK(obj,i,j,k)
       % GETCELLIDFROMIJK Converts (i,j,k) to linear DOF.
       cellID = sub2ind(obj.ncells,i,j,k);
+      % map = obj.dof(obj.dof~=0);
+      % cellID=cellID(map);
     end
 
     function [idI,idJ,idK] = getIJKTop(obj)
@@ -460,7 +462,6 @@ classdef gridForSedimentation < handle
 
       dhtmp=diff(obj.coordZ)/2;
       areas = reshape(diff(obj.coordY).*diff(obj.coordX)',nelm,1);
-
 
       [idI,idJ] = obj.getIJLay;
       if bord   % Case at the bord z0

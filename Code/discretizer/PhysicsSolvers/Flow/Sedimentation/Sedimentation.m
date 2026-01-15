@@ -36,6 +36,8 @@ classdef Sedimentation < PhysicsSolver
     facesNeighDir (:,1)                 % Face normal direction (1=x,2=y,3=z)
     halfTrans (:,3)                     % Half transmissibility per cell
 
+    maxDofUnchanged = 0                 % Identify the last unchanged position in the J matrix
+
     H (:,:)
     P (:,:)
   end
@@ -147,20 +149,19 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function updateState(obj,solution)
-      % TODO: test
-      % ents = obj.grid.getActiveDofs;
-      % state = getState(obj);
-      % state.data.pressure(ents) = state.data.pressure(ents) + solution;
       state = getState(obj);
       state.data.pressure = state.data.pressure + solution;
     end
 
     function [cellData,pointData] = writeVTK(obj,fac,t)
       % append state variable to output structure
-      sOld = getStateOld(obj);
-      sNew = getState(obj);
-
-      p = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
+      % sOld = getStateOld(obj);
+      % sNew = getState(obj);
+      % p = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
+      
+      sOld = obj.getStateOld(obj.getField);
+      sNew = obj.getState(obj.getField);
+      p = sNew*fac+sOld*(1-fac);
 
       outPrint = finalizeState(obj,p,t);
       [cellData,pointData] = buildPrintStruct(obj,outPrint);
@@ -197,7 +198,8 @@ classdef Sedimentation < PhysicsSolver
       % information).
       bc = obj.bcs.db(id);
       [cellId, faceArea, dz] = obj.grid.getBordCell(bc.surface);
-      p=obj.domain.state.data.pressure(cellId);
+      p = getState(obj,"pressure");
+      % p=obj.domain.state.data.pressure(cellId);
       switch lower(bc.surface)
         case {"x0","xm"}
           axis=1;
@@ -223,7 +225,7 @@ classdef Sedimentation < PhysicsSolver
           mu = obj.materials.getFluid().getDynViscosity();
           permCell = getPerm(obj,cellId);
           dirJ = 1/mu*(faceArea.*permCell(:,axis));
-          potential = p - bc.data + gamma*dz;
+          potential = p(cellId) - bc.data - gamma*dz;
           q = dirJ.*potential;
           vals = [dirJ,q];
       end
@@ -235,10 +237,12 @@ classdef Sedimentation < PhysicsSolver
       obj.computeStiffMat;
       obj.computeCapMat;
       J = obj.domain.simparams.theta*obj.H + obj.P/dt;
+      obj.maxDofUnchanged = find(sum(J~=0,1)==7,1,'last');
     end
 
     function rhs = computeRhs(obj,dt)
       % Compute the residual of the flow problem
+      % TODO: include sediment contribution (source term)
 
       % get pressure state
       p = getState(obj,obj.getField());
@@ -255,7 +259,6 @@ classdef Sedimentation < PhysicsSolver
       if gamma > 0
         rhs = rhs + finalizeRHSGravTerm(obj,lw);
       end
-
     end
 
     function computeStiffMat(obj)
@@ -352,7 +355,7 @@ classdef Sedimentation < PhysicsSolver
       gamma = obj.materials.getFluid().getFluidSpecWeight();
       tmpVec = gamma*lw.*obj.computeTrans.*(zneiA-zneiB);
       gTerm = accumarray(obj.facesNeigh(:), ...
-        [tmpVec; -tmpVec],[obj.grid.ndofs,1]);
+        [tmpVec; tmpVec],[obj.grid.ndofs,1]);
     end
 
     function applyNeuBC(obj,bcId,bcDofs,bcVals)
@@ -563,7 +566,7 @@ classdef Sedimentation < PhysicsSolver
 
       colheightBG = lnk.columnsHeight;
       matfrac = sed/obj.heightControl;
-      colNotTop = and(colheightBG~=lnk.ncells(3),map);
+      colNotTop = colheightBG~=lnk.ncells(3);
       colNotTop = colNotTop(map);
 
       % Update the grid
@@ -579,23 +582,19 @@ classdef Sedimentation < PhysicsSolver
       tmpId = ones(4,1);
       refId = repelem((1:2)',2);
       for cell=1:newcells        
-        tmp = cellNeigh(cell,:);
+        % Add the connection between the cell bellow and the reference
+        obj.facesNeigh(end+1,:) = [cellNeigh(cell,5) dofs(cell)];
+        obj.facesNeighDir(end+1) = 3;
 
-        % Add the connection when the column Check 
+        % Add the connection between the reference cell and the neighborhoods
+        tmp = cellNeigh(cell,1:4);
         if (colNotTop(cell))
-          flag = and(tmp(1:4)<dofs(cell),tmp(1:4)~=0);
+          flag = and(tmp<dofs(cell),tmp~=0);
           nfaces=sum(flag);
-          if nfaces~=0
-            obj.facesNeigh(end+1:end+nfaces,:) = [tmp(flag)',dofs(cell)*tmpId(flag)];
-            obj.facesNeighDir(end+1:end+nfaces,:) = refId(flag)';
-          end
+        else
+          flag = tmp>dofs(cell);
+          nfaces=sum(flag);
         end
-        if tmp(5)~=0
-          obj.facesNeigh(end+1,:) = [tmp(5) dofs(cell)];
-          obj.facesNeighDir(end+1) = 3;
-        end
-        flag = tmp(1:4)>dofs(cell);
-        nfaces=sum(flag);
         if nfaces~=0
           obj.facesNeigh(end+1:end+nfaces,:) = [dofs(cell)*tmpId(flag),tmp(flag)'];
           obj.facesNeighDir(end+1:end+nfaces,:) = refId(flag)';
@@ -621,6 +620,18 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.state.data.pressure(end+1:end+newcells) = ...
         obj.domain.state.data.pressure(dofs);
 
+      % obj.domain.state.data.pressure(end+1:end+newcells) = 0.;
+      
+      % % p = getState(obj,"pressure");
+      % % pl=zeros(obj.grid.ncells);
+      % % [i, j, k] = ind2sub(obj.grid.ncells, find(obj.grid.dof ~= 0));
+      % % % cellID = sub2ind(obj.grid.ncells,i,j,k);
+      % % % cellID = obj.grid.getCellIDfromIJK(i,j,k);
+      % % cellID = sub2ind(obj.grid.ncells,i,j,k);
+      % % map = obj.grid.dof(obj.grid.dof~=0);
+      % % cellID=cellID(map);
+      % % pl(cellID)=p;
+
       % Update the mesh output
       obj.updateMeshOutput(map,newlayer);
     end
@@ -635,7 +646,7 @@ classdef Sedimentation < PhysicsSolver
         obj.mesh.coordinates(end+1:obj.mesh.nNodes,:) = coord;
       end
 
-      [idI,idJ,idK] = obj.grid.getIJKTop;
+      [idI,idJ,idK] = obj.grid.getIJKTop;      
 
       obj.mesh.cells(end+1:end+newcells,:) = ...
         obj.grid.getConectByIJK(idI(map),idJ(map),idK(map));

@@ -1,10 +1,12 @@
 <Sedimentation_Maps type = "linear">
   <Event time = "0." >
-    <Random mean = "0.005" variance= "2.e-8"/>
+    <Random mean = "0.005" variance= "2.e-5"/>
   </Event>
 </Sedimentation_Maps>
 
 <!--
+
+<Random mean = "0.005" variance= "2.e-5"/>
 <Uniform materialFlag = "1" value= "0.01"/>
 <Map materialFlag = "1"
          division = "3,3"
