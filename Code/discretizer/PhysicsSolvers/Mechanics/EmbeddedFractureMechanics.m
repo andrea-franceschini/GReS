@@ -18,6 +18,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     phi                     % friction angle in radians
     cohesion
     fractureMesh            % a 2D mesh object with cut cell topology
+    outFracture
 
   end
 
@@ -49,6 +50,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       % initialize the state object
       initState(obj);
+
+      obj.outFracture = copy(obj.domain.outstate);
+
+      outFileName = getXMLData(solverInput,"fractureOutput","outputFile");
+      obj.outFracture.VTK = VTKOutput(obj.fractureMesh,outFileName);
 
     end
 
@@ -302,10 +308,37 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     end
 
-    function [cellData,pointData] = writeVTK(obj,fac,varargin)
+    function [cellData,pointData] = writeVTK(obj,fac,time)
 
       cellData = [];
       pointData = [];
+
+      % this method do not return outputs for the 3D mesh grid. instead, it
+      % works on a separate 2D polygonal mesh
+
+      s = getState(obj);
+      sOld = getStateOld(obj);
+
+      tracCurr = s.data.traction;
+      tracOld = sOld.data.traction;
+
+      jumpCurr = s.data.(obj.getField());
+      jumpOld = sOld.data.(obj.getField());
+
+      trac = tracCurr*fac + tracOld*(1-fac);
+      jump = jumpCurr*fac + jumpOld*(1-fac);
+
+      nCellData = 2;
+      cellStr = repmat(struct('name', 1, 'data', 1), nCellData, 1);
+      % Displacements
+      cellStr(1).name = 'fractureJump';
+      cellStr(1).data = [jump(1:3:end), jump(2:3:end), jump(3:3:end)];
+
+      cellStr(2).name = 'traction';
+      cellStr(2).data = [trac(1:3:end), trac(2:3:end), trac(3:3:end)];
+
+      % plot with the fracture output object
+      obj.outFracture.VTK.writeVTKFile(time, [], [], [], cellStr);
 
     end
 
@@ -329,8 +362,12 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       obj.cutCells = zeros(obj.mesh.nCells*nFractures,1);
 
       obj.fractureMesh = Mesh();
+      msh = obj.fractureMesh;
 
-      for f = 1:numel(fractureStruct)
+      nV = 0;
+
+
+      for f = 1:nFractures
 
         % read the fracture geometry
         normal = getXMLData(fractureStruct(f),[],'normal');
@@ -405,8 +442,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         obj.cutTang2(countCell+1:countCell+nC,:) = repmat(tVec2',nC,1);
 
         % preallocate number of nodes
-        obj.fractureMesh.surfaces = zeros(nC,6);
-        obj.fractureMesh.surfaceNumVerts = zeros(nC,1);
+        surfs = zeros(nC,6);
+        surfNumVerts = zeros(nC,1);
 
         % loop over cut cell and compute geometry
         for ic = 1:nC
@@ -415,14 +452,26 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           cutEdges =  cellEdges(isEdgeCut);
           cutCellVertices = intersections(cutEdges,:);
 
-          obj.fractureMesh.surfaces(ic,1:numel(cutEdges)) = cutEdges;
-          obj.fractureMesh.surfaceNumVerts(ic) = numel(cutEdges);
+          surfs(ic,1:numel(cutEdges)) = cutEdges;
+          surfNumVerts(ic) = numel(cutEdges);
               
           [obj.cutCenters(countCell+ic,:),obj.cutAreas(countCell+ic)] = ...
             computePolygonGeometry(cutCellVertices,nVec');
         end
 
         countCell = countCell + nC;
+
+        % finalize the mesh for the current fracture
+        [~,~,id] = unique(surfs(:));
+
+        surfs = nV + reshape(id,[],6);
+        surfs = surfs - 1;
+
+        nV = sum(id > 1);
+
+        msh.surfaces = [msh.surfaces; surfs];
+        msh.surfaceNumVerts = [msh.surfaceNumVerts; surfNumVerts];
+        msh.coordinates = [msh.coordinates; xInt];
 
       end
 
@@ -431,6 +480,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         obj.cutNormals = obj.cutNormals(1:countCell,:);
         obj.cutCenters = obj.cutCenters(1:countCell,:);
         obj.cutAreas = obj.cutAreas(1:countCell);
+
+        % finalize mesh
+        msh.nNodes = size(msh.coordinates,1);
+        msh.nSurfaces = size(msh.surfaces,1);
+        msh.surfaceVTKType = 7*ones(msh.nSurfaces,1);
 
 
     end
@@ -490,7 +544,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         j = jump(dofW);
         dj = deltaJump(dofW);
 
-        switch obj.contactState.curr
+        switch obj.contactState.curr(i)
           
           case ContactMode.stick
             s.data.traction(dofW(1)) = ...

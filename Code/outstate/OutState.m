@@ -1,4 +1,4 @@
-classdef OutState < handle
+classdef OutState < handle & matlab.mixin.Copyable
   % Class for printing results to VTK
   % Input: OutState(model,mesh,fNameList)
   % Optional parameters:
