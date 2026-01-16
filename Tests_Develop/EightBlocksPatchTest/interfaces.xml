@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Interfaces>
+  <!-- Input file for contact mechanics interface -->
+
+  <!-- Interface 1 -->
+  <Interface>
+    <Master id="1" surfaceTag="3" />
+    <Slave id="2" surfaceTag="5" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <!--<Coulomb phi="30.0" cohesion="0.0"/>-->
+    <Multiplier type="P0"/>
+    <Stabilization  type="Jump"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "Interf_1"/>
+  </Interface>
+
+  <!-- Interface 2 -->
+  <Interface>
+    <Master id="1" surfaceTag="4" />
+    <Slave id="4" surfaceTag="2" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <!--<Coulomb phi="30.0" cohesion="0.0"/>-->
+    <Multiplier type="P0"/>
+    <Stabilization  type="Jump"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "Interf_2"/>
+  </Interface>
+
+  <!-- Interface 3 -->
+  <Interface>
+    <Master id="2" surfaceTag="4" />
+    <Slave id="3" surfaceTag="2" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <!--<Coulomb phi="30.0" cohesion="0.0"/>-->
+    <Multiplier type="P0"/>
+    <Stabilization  type="Jump"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "Interf_3"/>
+  </Interface>
+
+  <!-- Interface 4 -->
+  <Interface>
+    <Master id="4" surfaceTag="3" />
+    <Slave id="3" surfaceTag="5" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <!--<Coulomb phi="30.0" cohesion="0.0"/>-->
+    <Multiplier type="P0"/>
+    <Stabilization  type="Jump"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "Interf_4"/>
+  </Interface>
+
+
+  <!-- Interface 5 -->
+  <Interface>
+    <Master id="5" surfaceTag="3" />
+    <Slave id="6" surfaceTag="5" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <!--<Coulomb phi="30.0" cohesion="0.0"/>-->
+    <Multiplier type="P0"/>
+    <Stabilization  type="Jump"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "Interf_5"/>
+  </Interface>
+
+
+  <!-- Interface 6 -->
+  <Interface>
+    <Master id="5" surfaceTag="4" />
+    <Slave id="8" surfaceTag="2" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <!--<Coulomb phi="30.0" cohesion="0.0"/>-->
+    <Multiplier type="P0"/>
+    <Stabilization  type="Jump"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "Interf_6"/>
+  </Interface>
+
+  <!-- Interface 7 -->
+  <Interface>
+    <Master id="6" surfaceTag="4" />
+    <Slave id="7" surfaceTag="2" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <!--<Coulomb phi="30.0" cohesion="0.0"/>-->
+    <Multiplier type="P0"/>
+    <Stabilization  type="Jump"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "Interf_7"/>
+  </Interface>
+
+  <!-- Interface 8 -->
+  <Interface>
+    <Master id="8" surfaceTag="3" />
+    <Slave id="7" surfaceTag="5" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <!--<Coulomb phi="30.0" cohesion="0.0"/>-->
+    <Multiplier type="P0"/>
+    <Stabilization  type="Jump"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "Interf_8"/>
+  </Interface>
+
+  <!-- Interface 9 -->
+  <Interface>
+    <Master id="1" surfaceTag="6" />
+    <Slave id="5" surfaceTag="1" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <!--<Coulomb phi="30.0" cohesion="0.0"/>-->
+    <Multiplier type="P0"/>
+    <Stabilization  type="Jump"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "Interf_9"/>
+  </Interface>
+
+  <!-- Interface 10 -->
+  <Interface>
+    <Master id="2" surfaceTag="6" />
+    <Slave id="6" surfaceTag="1" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <!--<Coulomb phi="30.0" cohesion="0.0"/>-->
+    <Multiplier type="P0"/>
+    <Stabilization  type="Jump"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "Interf_10"/>
+  </Interface>
+
+  <!-- Interface 11 -->
+  <Interface>
+    <Master id="3" surfaceTag="6" />
+    <Slave id="7" surfaceTag="1" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <!--<Coulomb phi="30.0" cohesion="0.0"/>-->
+    <Multiplier type="P0"/>
+    <Stabilization  type="Jump"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "Interf_11"/>
+  </Interface>
+
+  <!-- Interface 12 -->
+  <Interface>
+    <Master id="4" surfaceTag="6" />
+    <Slave id="8" surfaceTag="1" />
+    <Type> MeshTying </Type>
+    <Quadrature type = "SegmentBased" nGP="7"/>
+    <!--<Coulomb phi="30.0" cohesion="0.0"/>-->
+    <Multiplier type="P0"/>
+    <Stabilization  type="Jump"/>
+    <Physics> Poromechanics </Physics>
+    <Print name = "Interf_12"/>
+  </Interface>
+</Interfaces>

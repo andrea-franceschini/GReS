@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+  <simParam>
+    <Time
+          Start="0."
+          End ="1.0e0"
+          DtInit="1.0"
+          DtMin ="1e0"
+          DtMax ="1e0"
+          />
+  </simParam>
+
+  <Materials>
+    <Solid cellTags = "1" name = "mat">
+
+      <Constitutive>
+        <Elastic
+                 youngModulus = "1.0"
+                 poissonRatio = "0.0"
+                 />
+      </Constitutive>
+
+    </Solid>
+  </Materials>
+
+  <BoundaryConditions>
+
+    <BC
+        name = "fixBottom"
+        type = "Dirichlet"
+        entityType = "SurfBC"
+        variable = "displacements"
+        >
+
+      <BCentities
+                  surfaceTags = "1"
+                  components = "x,y,z"
+                  />
+
+      <BCevent
+               time = "0"
+               value = "0"
+               />
+
+    </BC>
+
+
+    <BC
+        name = "load"
+        type = "Neumann"
+        entityType = "SurfBC"
+        variable = "displacements"
+        >
+
+      <BCentities
+                  surfaceTags = "2"
+                  components = "z"
+                  />
+
+      <BCevent
+               time = "0"
+               value = "-1"
+               />
+
+    </BC>
+
+
+  </BoundaryConditions>
+
+
+  <Solver>
+    <Poromechanics />
+
+    <EmbeddedFractureMechanics
+                               penaltyNormal = "1e8"
+                               penaltyTangential = "1e8"
+                               outputFile = "OUT/testEFEM" >
+      <Fracture
+                origin = "0.5,0.5,0.3"
+                normal    = "0.408248290463863, 0.408248290463863, 0.816496580927726"
+                lengthVec = "0.912870929175277, -0.182574185835055, -0.365148371670111"
+                widthVec  = "0, 0.894427190999916, -0.447213595499958"
+                dimensions = "1.3,1.3"
+                />
+
+    </EmbeddedFractureMechanics>
+
+  </Solver>
+
+  <Output
+          saveHistory = "1"
+          outputFile = "OUT/patch"
+          matFileName = "OUT/historyPatch"
+          printTimes = "1"
+          />
+
+</Problem>

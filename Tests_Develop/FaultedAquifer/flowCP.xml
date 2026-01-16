@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+  <simParam>
+    <Time
+          Start="0."
+          End ="1.0e1"
+          DtInit="1.0"
+          DtMin ="1.0"
+          DtMax ="1.0"
+          incrementFactor = "1.0"
+          choppingFactor = "Default" />
+
+    <Solver
+            Theta = "Default"
+            MaxNLIteration = "10"
+            RelativeTolerance = "1.e-9"
+            AbsoluteTolerance = "1.e-8" />
+  </simParam>
+
+  <Materials fileName = "InputFlow/materials.xml" />
+
+  <BoundaryConditions fileName = "InputFlow/boundaryConditions.xml" />
+
+  <Output
+          saveHistory = "1"
+          outputFile = "Outputs/outFlow"
+          matFileName = "Outputs/historyFlow"
+          printTimes = "1,2,3,4,5,6,7,8,9,10"
+          />
+
+  <Solver>
+    <SinglePhaseFlowFVTPFA />
+  </Solver>
+
+</Problem>

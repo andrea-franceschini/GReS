@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+  <simParam>
+    <Time
+          Start="0."
+          End ="1.0e0"
+          DtInit="1.0"
+          DtMin ="1e0"
+          DtMax ="1e0"
+          />
+  </simParam>
+
+  <Materials>
+    <Solid cellTags = "1" name = "mat">
+
+      <Constitutive>
+        <Elastic
+                 youngModulus = "1.0"
+                 poissonRatio = "0.25"
+                 />
+      </Constitutive>
+
+    </Solid>
+  </Materials>
+
+
+
+  <Solver>
+    <Poromechanics />
+  </Solver>
+
+
+  <Interface>
+    <MeshTying>
+
+      <Master
+              domainId = "1"
+              surfaceTag = "1"
+              />
+      
+      <Slave
+             domainId = "2"
+             surfaceTag = "2"
+             />
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  nGP = "4"
+                  />
+
+      <Output
+              outputFile = "Outputs/infSup"
+              printTimes = "1e0"
+              />
+
+    </MeshTying>
+
+  </Interface>
+
+
+</Problem>

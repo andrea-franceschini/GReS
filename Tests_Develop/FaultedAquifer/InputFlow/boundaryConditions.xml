@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<struct>
+    <BC>
+        <name>fixed_pressure</name>
+        <type>Dirichlet</type>
+        <entityType>SurfBC</entityType>
+        <variable>pressure</variable>
+        <BCentities>
+            <surfaceTags>5,7,8</surfaceTags>
+        </BCentities>
+        <BCevent>
+            <time>0</time>
+            <value>0</value>
+        </BCevent>
+    </BC>
+    <BC>
+        <name>wells</name>
+        <type>Dirichlet</type>
+        <entityType>ElementBC</entityType>
+        <variable>pressure</variable>
+        <BCentities>
+            <bcList>15545</bcList>
+            <bcList>15761</bcList>
+        </BCentities>
+        <BCevent>
+            <time>0</time>
+            <value>0</value>
+        </BCevent>
+        <BCevent>
+            <time>3</time>
+            <value>120</value>
+        </BCevent>
+        <BCevent>
+            <time>7</time>
+            <value>360</value>
+        </BCevent>
+        <BCevent>
+            <time>10</time>
+            <value>720</value>
+        </BCevent>
+    </BC>
+</struct>
