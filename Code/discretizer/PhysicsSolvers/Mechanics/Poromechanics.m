@@ -196,14 +196,15 @@ classdef Poromechanics < PhysicsSolver
       state.data.(obj.getField()) = zeros(obj.mesh.nDim*obj.mesh.nNodes,1);
     end
 
-    % function advanceState(obj)
-    %   % Set converged state to current state after newton convergence
-    %   stateOld = getStateOld(obj);
-    %   stateOld.data.displacements = getState(obj,"displacements");
-    %   stateOld.data.strain = getState(obj,"strain");
-    %   stateOld.data.stress = getState(obj,"stress");
-    %   stateOld.data.status = getState(obj,"status");
-    % end
+    function advanceState(obj)
+      % Set converged state to current state after newton convergence
+      stateOld = getStateOld(obj);
+      state = getState(obj);
+      stateOld.data.displacements = getState(obj,"displacements");
+      state.data.strain = 0.0*state.data.strain;
+      stateOld.data.stress = getState(obj,"stress");
+      stateOld.data.status = getState(obj,"status");
+    end
 
     function updateState(obj,solution)
       % Update state structure with last solution increment
@@ -350,12 +351,12 @@ classdef Poromechanics < PhysicsSolver
 
     function out = isLinear(obj)
       out = false;
-      % for i = 1:obj.mesh.nCellTag
-      %   out = isa(obj.materials.getMaterial(i).ConstLaw,"Elastic");
-      %   if ~out
-      %     return;
-      %   end
-      % end
+      for i = 1:obj.mesh.nCellTag
+        out = isa(obj.materials.getMaterial(i).ConstLaw,"Elastic");
+        if ~out
+          return;
+        end
+      end
     end
 
     function out = isSymmetric(obj)

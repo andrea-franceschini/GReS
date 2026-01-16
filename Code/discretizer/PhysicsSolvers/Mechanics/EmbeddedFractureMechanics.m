@@ -15,8 +15,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     contactState = struct("curr",[],"old",[])          
     penalty_n               % penalty parameter for normal direction
     penalty_t               % penalty parameter for tangential direction
-    phi                     % friction angle in radians
-    cohesion
+    phi                     % friction angle in radians for each fracture
+    cohesion                % the cohesion of each fracture
+    cutCellToFracture       % map each cut cell to its fracture id
     fractureMesh            % a 2D mesh object with cut cell topology
     outFracture
     areaTol = 1e-6;         % minimum area of a fracture element
@@ -41,7 +42,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       obj.penalty_n = getXMLData(solverInput,[],"penaltyNormal");
       obj.penalty_t = getXMLData(solverInput,[],"penaltyTangential");
 
-      defineFractureGeometry(obj,solverInput);
+      defineFractures(obj,solverInput);
 
       % register nodal displacements on target regions
       obj.dofm.registerVariable(obj.getField(),entityField.cell,3,"nEntities",obj.nCutCells);
@@ -349,7 +350,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
   methods (Access=private)
 
-    function defineFractureGeometry(obj,input)
+    function defineFractures(obj,input)
 
       fractureStruct = input.Fracture;
 
@@ -363,6 +364,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       countCell = 0;
       obj.cutCells = zeros(obj.mesh.nCells*nFractures,1);
+
+      obj.cohesion = zeros(nFractures,1);
+      obj.phi = zeros(nFractures,1);
+
 
       obj.fractureMesh = Mesh();
       msh = obj.fractureMesh;
@@ -378,6 +383,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         dims = getXMLData(fractureStruct(f),[],'dimensions');
         lVec = getXMLData(fractureStruct(f),[],'lengthVec');
         wVec = getXMLData(fractureStruct(f),[],'widthVec');
+
+        obj.cohesion(f) = getXMLData(fractureStruct(f),[],'cohesion');
+        obj.phi(f) = getXMLData(fractureStruct(f),[],'frictionAngle');
+
 
         assert(all([abs(lVec*normal') < 1e-8,...
               abs(wVec*normal')<1e-8,...
@@ -449,6 +458,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         obj.cutNormals(countCell+1:countCell+nC,:) = repmat(nVec',nC,1);
         obj.cutTang1(countCell+1:countCell+nC,:) = repmat(tVec1',nC,1);
         obj.cutTang2(countCell+1:countCell+nC,:) = repmat(tVec2',nC,1);
+        obj.cutCellToFracture(countCell+1:countCell+nC,:) = f;
 
         % preallocate number of nodes
         surfs = zeros(nC,6);
@@ -484,6 +494,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         msh.surfaces = [msh.surfaces; surfs];
         msh.surfaceNumVerts = [msh.surfaceNumVerts; surfNumVerts];
         msh.coordinates = [msh.coordinates; xInt(isInPlane,:)];
+
+
 
       end
 
