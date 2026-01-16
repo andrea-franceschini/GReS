@@ -69,10 +69,10 @@ applyTerzaghiIC(domain.state,mat,topology,F);
 % customize the solution scheme. 
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = FCSolver(simParam,domain);
+Solver = GeneralSolver(simParam,domain);
 
 % Solve the problem
-[simState] = Solver.NonLinearLoop();
+Solver.NonLinearLoop();
 
 % Finalize the print utility
 domain.outstate.finalize()
