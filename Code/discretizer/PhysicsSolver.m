@@ -136,6 +136,26 @@ classdef (Abstract) PhysicsSolver < handle
 
     end
 
+    function hasConfigurationChanged = updateConfiguration(obj)
+
+      % base physicsSolver class implements no configuration update
+      hasConfigurationChanged = false;
+
+    end
+
+    function resetConfiguration(obj)
+
+      % base physicsSolver class implements no configuration reset
+
+    end
+
+    function finalizeOutput(obj)
+
+      % override this method in a PhysicsSolver to produce additional
+      % output files other then the general Discretizer.outState pvd file
+      return
+    end
+
 
     function applyNeuBC(obj,bcId,bcDofs,bcVals)
 

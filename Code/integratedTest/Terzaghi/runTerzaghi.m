@@ -42,9 +42,9 @@ state = domain.getState();
 
 applyTerzaghiIC(state,mat,topology,-10);
 
-solv = FCSolver(simParam,domain);
+solv = GeneralSolver(simParam,domain);
 
 %calling analytical solution script
 %Terzaghi_analytical(topology, mat, 10)
 
-[simState] = solv.NonLinearLoop();
+solv.NonLinearLoop();

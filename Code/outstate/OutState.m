@@ -224,20 +224,19 @@ classdef OutState < handle & matlab.mixin.Copyable
 
       if isempty(strA)
         mergeStruct = strB;
-        return
       elseif isempty(strB)
         mergeStruct = strA;
-        return
-      end
+      else
 
-      try
-        mergeStruct = [strA; strB];
-      catch
-        unknownFields = setdiff(fieldnames(strB),fieldnames(strA));
-        error("Ouput structure must be an array of structures with 2 fields:" + ...
-          " 'name' and 'data'. \n" + ...
-          "Invalid fields: \n %s, ",unknownFields{:})
+        try
+          mergeStruct = [strA; strB];
+        catch
+          unknownFields = setdiff(fieldnames(strB),fieldnames(strA));
+          error("Ouput structure must be an array of structures with 2 fields:" + ...
+            " 'name' and 'data'. \n" + ...
+            "Invalid fields: \n %s, ",unknownFields{:})
 
+        end
       end
 
       names = {mergeStruct.name};

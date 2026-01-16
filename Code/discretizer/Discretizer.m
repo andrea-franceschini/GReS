@@ -99,8 +99,31 @@ classdef Discretizer < handle
 
     end
 
+    function isConfigChanged = updateConfiguration(obj)
+
+      isConfigChanged = false;
+
+      for solv = obj.solverNames
+        % loop over available solvers
+        isConfigChanged = any([isConfigChanged; ...
+          obj.getPhysicsSolver(solv).updateConfiguration()]);
+      end
+
+    end
+
+    function resetConfiguration(obj)
+
+
+      for solv = obj.solverNames
+        % loop over available solvers
+        obj.getPhysicsSolver(solv).resetConfiguration();
+      end
+
+    end
+
+
     function advanceState(obj)
-      
+
       for solv = obj.solverNames
         % loop over available solvers
         obj.getPhysicsSolver(solv).advanceState();
@@ -113,6 +136,17 @@ classdef Discretizer < handle
       for solv = obj.solverNames
         % loop over available solvers
         obj.getPhysicsSolver(solv).goBackState();
+      end
+
+    end
+
+    function finalizeOutput(obj)
+
+      obj.outstate.finalize();
+
+      for solv = obj.solverNames
+        % loop over available solvers
+        obj.getPhysicsSolver(solv).finalizeOutput();
       end
 
     end
