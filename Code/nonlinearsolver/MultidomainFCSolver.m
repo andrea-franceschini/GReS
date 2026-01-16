@@ -163,6 +163,7 @@ classdef MultidomainFCSolver < handle
 
 
   methods (Access = protected)
+
     function setNonLinearSolver(obj,simparams,dom,interf)
 
       % assumption: same set of simulation parameters for each domain
@@ -338,41 +339,41 @@ classdef MultidomainFCSolver < handle
       end
     end
 
-
-    function computeMatricesAndRhs(obj)
-
-      % Compute domain matrices
-      for i = 1:obj.nDom
-        discretizer = obj.domains(i);
-        for j = 1:numel(discretizer.solverNames)
-          s = discretizer.solverNames{j};
-          computeMat(discretizer.solver(s), obj.state(i).prev, obj.dt);
-        end
-      end
-
-      % Compute domain coupling matrices 
-      for j = 1:obj.nInterf
-        computeMat(obj.interfaces{j}, obj.dt);
-      end
-
-      % Compute domain rhs
-      for i = 1:obj.nDom
-        discretizer = obj.domains(i);
-        for j = 1:numel(discretizer.solverNames)
-          s = discretizer.solverNames{j};
-          computeRhs(discretizer.solver(s), obj.state(i).prev, obj.dt);
-        end
-      end
-
-      % Compute domain coupling matrices and rhs
-      for j = 1:obj.nInterf
-        computeRhs(obj.interfaces{j});
-      end
-      % Compute matrices and residuals for individual models of
-      % the i-th domain
-      %         computeMatricesAndRhs(...
-      %           discretizer, obj.state(i).prev, obj.dt);
-    end
+    % 
+    % function computeMatricesAndRhs(obj)
+    % 
+    %   % Compute domain matrices
+    %   for i = 1:obj.nDom
+    %     discretizer = obj.domains(i);
+    %     for j = 1:numel(discretizer.solverNames)
+    %       s = discretizer.solverNames{j};
+    %       computeMat(discretizer.solver(s), obj.state(i).prev, obj.dt);
+    %     end
+    %   end
+    % 
+    %   % Compute domain coupling matrices 
+    %   for j = 1:obj.nInterf
+    %     computeMat(obj.interfaces{j}, obj.dt);
+    %   end
+    % 
+    %   % Compute domain rhs
+    %   for i = 1:obj.nDom
+    %     discretizer = obj.domains(i);
+    %     for j = 1:numel(discretizer.solverNames)
+    %       s = discretizer.solverNames{j};
+    %       computeRhs(discretizer.solver(s), obj.state(i).prev, obj.dt);
+    %     end
+    %   end
+    % 
+    %   % Compute domain coupling matrices and rhs
+    %   for j = 1:obj.nInterf
+    %     computeRhs(obj.interfaces{j});
+    %   end
+    %   % Compute matrices and residuals for individual models of
+    %   % the i-th domain
+    %   %         computeMatricesAndRhs(...
+    %   %           discretizer, obj.state(i).prev, obj.dt);
+    % end
 
 
 
@@ -413,29 +414,29 @@ classdef MultidomainFCSolver < handle
       end
     end
 
-
-    function printState(obj)
-      if obj.t > obj.simparams.tMax
-        for i = 1:obj.nDom
-          printState(obj.domains(i));
-        end
-        for i = 1:obj.nInterf
-          id = obj.interfaces{i}.idSlave;
-          tOld = obj.state(id).prev.t;
-          printState(obj.interfaces{i},tOld)
-        end
-      else
-        for i = 1:obj.nDom
-          printState(obj.domains(i),obj.state(i).prev);
-        end
-        for i = 1:obj.nInterf
-          id = obj.interfaces{i}.idDomain(2);
-          tOld = obj.state(id).prev.t;
-          tNew = obj.state(id).curr.t;
-          printState(obj.interfaces{i},tOld,tNew)
-        end
-      end
-    end
+    % 
+    % function printState(obj)
+    %   if obj.t > obj.simparams.tMax
+    %     for i = 1:obj.nDom
+    %       printState(obj.domains(i));
+    %     end
+    %     for i = 1:obj.nInterf
+    %       id = obj.interfaces{i}.idSlave;
+    %       tOld = obj.state(id).prev.t;
+    %       printState(obj.interfaces{i},tOld)
+    %     end
+    %   else
+    %     for i = 1:obj.nDom
+    %       printState(obj.domains(i),obj.state(i).prev);
+    %     end
+    %     for i = 1:obj.nInterf
+    %       id = obj.interfaces{i}.idDomain(2);
+    %       tOld = obj.state(id).prev.t;
+    %       tNew = obj.state(id).curr.t;
+    %       printState(obj.interfaces{i},tOld,tNew)
+    %     end
+    %   end
+    % end
 
 
 

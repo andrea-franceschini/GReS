@@ -346,6 +346,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     end
 
+    function finalizeOutput(obj)
+      obj.outFracture.finalize();
+    end
+
   end
 
   methods (Access=private)

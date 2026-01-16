@@ -4,6 +4,7 @@ classdef SimulationParameters < handle
   
   properties (SetAccess = private, GetAccess = public)
     itMaxNR = 10
+    itMaxConfig = 10
     relTol = 1.e-6
     absTol = 1.e-10
     pNorm = 2
@@ -20,6 +21,7 @@ classdef SimulationParameters < handle
     NLSolver = 'Newton'
     goOnBackstep = 0;
     isTimeDependent = true;
+    attemptSimplestConfiguration = false;
   end
 
   methods (Access = public)
@@ -81,6 +83,9 @@ classdef SimulationParameters < handle
           obj.relTol = getXMLData(solver,1e-6','RelativeTolerance');
           %obj.theta = getXMLData(solver,1.,'Theta');
           obj.itMaxNR = getXMLData(solver,10,'MaxNLIteration');
+          obj.itMaxConfig = getXMLData(solver,10,'MaxConfigurationIteration');
+          obj.attemptSimplestConfiguration = ...
+            logical(getXMLData(solver,0,'resetConfiguration'));
         end
     end
 

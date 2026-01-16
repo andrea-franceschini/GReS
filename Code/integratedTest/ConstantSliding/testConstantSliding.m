@@ -12,7 +12,7 @@ simparams = SimulationParameters('constantSliding.xml');
 
 [domains,interfaces] = buildModel('constantSliding.xml');
 
-solver = ActiveSetContactSolver(simparams,domains,interfaces,5);
+solver = GeneralSolver(simparams,domains,interfaces);
 
 solver.NonLinearLoop();
 solver.finalizeOutput();

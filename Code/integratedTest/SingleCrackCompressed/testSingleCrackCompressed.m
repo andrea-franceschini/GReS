@@ -15,7 +15,7 @@ simparams = SimulationParameters(fileName);
 [domains,interfaces] = buildModel(fileName); 
 
 %solver = MultidomainFCSolver(simparams,domains,interfaces);
-solver = ActiveSetContactSolver(simparams,domains,interfaces,10);
+solver = GeneralSolver(simparams,domains,interfaces);
 
 solver.NonLinearLoop();
 solver.finalizeOutput();

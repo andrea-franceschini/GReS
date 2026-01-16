@@ -184,6 +184,23 @@ classdef ActiveSetContactSolver < MultidomainFCSolver
 
   methods (Access = protected)
 
+     function setNonLinearSolver(obj,simparams,dom,interf)
+
+      % assumption: same set of simulation parameters for each domain
+      obj.simparams = simparams;
+      obj.domains = dom;
+      obj.nDom = numel(dom);
+      obj.interfaces = interf;
+      obj.nInterf = numel(interf);
+
+      obj.nVars = 0;
+      for iD = 1:obj.nDom
+        obj.domains(iD).stateOld = copy(obj.domains(iD).getState());
+        obj.domains(iD).simparams = simparams;
+        obj.nVars = obj.nVars + obj.domains(iD).dofm.getNumberOfVariables();
+      end
+    end
+
     
 
     function setContactInterfaces(obj)
