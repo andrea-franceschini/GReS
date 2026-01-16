@@ -56,11 +56,11 @@ domain.state.data.pressure = gamma_w*(wLev-z);
 % customize the solution scheme.
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = FCSolver(simParam,domain);
+Solver = GeneralSolver(simParam,domain);
 % Solver = FCSolver(domain,'SaveRelError',true,'SaveBStepInf',true);
 
 % Solve the problem
-[simState] = Solver.NonLinearLoop();
+Solver.NonLinearLoop();
 
 % Finalize the print utility
 printUtils.finalize()
