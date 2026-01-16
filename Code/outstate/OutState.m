@@ -1,4 +1,4 @@
-classdef OutState < handle
+classdef OutState < handle & matlab.mixin.Copyable
   % Class for printing results to VTK
   % Input: OutState(model,mesh,fNameList)
   % Optional parameters:
@@ -222,14 +222,21 @@ classdef OutState < handle
       % structure
       % Concatenate the two structure arrays
 
-      try
-        mergeStruct = [strA; strB];
-      catch
-        unknownFields = setdiff(fieldnames(strB),fieldnames(strA));
-        error("Ouput structure must be an array of structures with 2 fields:" + ...
-          " 'name' and 'data'. \n" + ...
-          "Invalid fields: \n %s, ",unknownFields{:})
+      if isempty(strA)
+        mergeStruct = strB;
+      elseif isempty(strB)
+        mergeStruct = strA;
+      else
 
+        try
+          mergeStruct = [strA; strB];
+        catch
+          unknownFields = setdiff(fieldnames(strB),fieldnames(strA));
+          error("Ouput structure must be an array of structures with 2 fields:" + ...
+            " 'name' and 'data'. \n" + ...
+            "Invalid fields: \n %s, ",unknownFields{:})
+
+        end
       end
 
       names = {mergeStruct.name};

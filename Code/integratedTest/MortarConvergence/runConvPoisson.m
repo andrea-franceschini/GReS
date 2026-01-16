@@ -70,7 +70,7 @@ for i = 1:nref
 
   domain.getPhysicsSolver("Poisson").setAnalSolution(anal,f,gradx,grady,gradz);
 
-  solver = MultidomainFCSolver(simparams,domain,interfaces);
+  solver = GeneralSolver(simparams,domain,interfaces);
   solver.NonLinearLoop();
 
   % print to file

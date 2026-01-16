@@ -53,6 +53,10 @@ classdef Poromechanics < PhysicsSolver
       if ~isLinear(obj) || isempty(getJacobian(obj))
         % recompute matrix if the model is non linear
         % define size of output matrix
+        if isempty(getJacobian(obj))
+          % compute strain due to initial boundary displacements
+          computeStrain(obj);
+        end
         computeStiffMat(obj,dt);
       end
 
@@ -81,10 +85,10 @@ classdef Poromechanics < PhysicsSolver
 
       % loop over active mechanics cells
       for el = subCells'
-        [dsigma,status] = assembleK.localAssembly(el,l);
-        ng = size(dsigma,1);
+        [sigma,status] = assembleK.localAssembly(el,l);
+        ng = size(sigma,1);
         stateCurr.data.status(l+1:l+ng,:) = status;
-        stateCurr.data.stress((l+1):(l+ng),:) = dsigma;
+        stateCurr.data.stress((l+1):(l+ng),:) = sigma;
         obj.cell2stress(el) = l;
         l = l + ng;
       end
@@ -196,21 +200,22 @@ classdef Poromechanics < PhysicsSolver
       state.data.(obj.getField()) = zeros(obj.mesh.nDim*obj.mesh.nNodes,1);
     end
 
-    % function advanceState(obj)
-    %   % Set converged state to current state after newton convergence
-    %   stateOld = getStateOld(obj);
-    %   stateOld.data.displacements = getState(obj,"displacements");
-    %   stateOld.data.strain = getState(obj,"strain");
-    %   stateOld.data.stress = getState(obj,"stress");
-    %   stateOld.data.status = getState(obj,"status");
-    % end
+    function advanceState(obj)
+      % Set converged state to current state after newton convergence
+      stateOld = getStateOld(obj);
+      state = getState(obj);
+      stateOld.data.displacements = getState(obj,"displacements");
+      state.data.strain = 0.0*state.data.strain;
+      stateOld.data.stress = getState(obj,"stress");
+      stateOld.data.status = getState(obj,"status");
+    end
 
     function updateState(obj,solution)
       % Update state structure with last solution increment
       ents = obj.dofm.getActiveEntities(obj.fieldId,1);
 
       stateCurr = obj.getState();
-      stateOld = obj.getStateOld();
+      %stateOld = obj.getStateOld();
 
       if nargin > 1
         % apply newton update to current displacements
@@ -218,21 +223,7 @@ classdef Poromechanics < PhysicsSolver
           solution(getDoF(obj.dofm,obj.fieldId));
       end
 
-      du = stateCurr.data.displacements - stateOld.data.displacements;
-
-      % Update strain
-      l = 0;
-      for el=1:obj.mesh.nCells
-        dof = getEntityFromElement(entityField.node,entityField.cell,obj.mesh,el,3);
-        vtkId = obj.mesh.cellVTKType(el);
-        elem = getElement(obj.elements,vtkId);
-        nG = elem.GaussPts.nNode;
-        N = getDerBasisFAndDet(elem,el,2);
-        B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
-        B(elem.indB(:,2)) = N(elem.indB(:,1));
-        stateCurr.data.strain(l+1:l+nG,:) = reshape(pagemtimes(B,du(dof)),6,nG)';
-        l = l + nG;
-      end
+      computeStrain(obj);
     end
 
     function [avStress,avStrain] = finalizeState(obj,stateIn)
@@ -349,6 +340,13 @@ classdef Poromechanics < PhysicsSolver
 
     function out = isLinear(obj)
       out = false;
+
+      % check if there is not embedded fractures
+      if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics"))
+        return
+      end
+
+
       for i = 1:obj.mesh.nCellTag
         out = isa(obj.materials.getMaterial(i).ConstLaw,"Elastic");
         if ~out
@@ -398,6 +396,31 @@ classdef Poromechanics < PhysicsSolver
   end
 
   methods (Access=private)
+
+    function computeStrain(obj)
+
+      stateCurr = obj.getState();
+      stateOld = obj.getStateOld();
+
+      % displacement increment at current iteration
+      du = stateCurr.data.displacements - stateOld.data.displacements;
+
+      % Update strain
+      l = 0;
+
+      for el=1:obj.mesh.nCells
+        dof = getEntityFromElement(entityField.node,entityField.cell,obj.mesh,el,3);
+        vtkId = obj.mesh.cellVTKType(el);
+        elem = getElement(obj.elements,vtkId);
+        nG = elem.GaussPts.nNode;
+        N = getDerBasisFAndDet(elem,el,2);
+        B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
+        B(elem.indB(:,2)) = N(elem.indB(:,1));
+        stateCurr.data.strain(l+1:l+nG,:) = reshape(pagemtimes(B,du(dof)),6,nG)';
+        l = l + nG;
+      end
+
+    end
 
     function dof = getBCdofs(obj,bcId)
 
