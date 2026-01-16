@@ -483,7 +483,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         msh.surfaces = [msh.surfaces; surfs];
         msh.surfaceNumVerts = [msh.surfaceNumVerts; surfNumVerts];
-        msh.coordinates = [msh.coordinates; xInt];
+        msh.coordinates = [msh.coordinates; xInt(isInPlane,:)];
 
       end
 
