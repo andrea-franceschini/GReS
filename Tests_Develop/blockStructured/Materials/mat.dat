@@ -1,5 +1,0 @@
-Elastic                           % material model
-1000      0.0                   % E [kPa], nu
-End
-
-
