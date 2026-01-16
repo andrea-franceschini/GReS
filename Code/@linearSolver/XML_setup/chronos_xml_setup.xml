@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Chronos>
-	<solver>GMRES</solver>
+	<solver>SQMR</solver>
    <preconditioner>AMG</preconditioner>
 
 	<!-- General parameters -->
@@ -27,8 +27,8 @@
       epsilon="1e-3"
 	   avg_nnzr="20"
 	   tau_pref_1="5e-3"
-	   power_1="100"
-	   nnzr_max_1="300"
+	   power_1="20"
+	   nnzr_max_1="50"
 	   tau_pref_2="1e-2"
 	   power_2="100"
 	   nnzr_max_2="50"
@@ -43,7 +43,7 @@
 	<!-- PROLONGATION parameters -->
 	<prolong
 		proltype="MEX_BAMG"
-		prol_emin="SMOOTH"
+		prol_emin="EMIN"
 		np="20"
 		itmax_Vol="100"
 		tol_Vol="0.01"
@@ -80,7 +80,7 @@
 	<!-- TEST SPACE parameters -->
 	<tspace
 		ntv="6"
-		itmax="200"
+		itmax="20"
 		tol="1.e-5"
 		method="NONE"
 		init_approx="1"

@@ -3,8 +3,8 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 1e7
-      nsyTol = 1e-12
+      matlabMaxSize = 1e5
+      nsyTol = 1e-16
 
       % Flag for Chronos existance
       ChronosFlag = false
@@ -24,6 +24,9 @@ classdef linearSolver < handle
 
       % starting vector
       x0 = []
+
+      % vector containing the insufficient tolerances
+      notSuffTol = []
 
       % Solver Type
       SolverType
@@ -50,6 +53,11 @@ classdef linearSolver < handle
       aTimeSolve = 0
       nSolve = 0
       nComp = 0
+      maxIter = -1
+      aIter = 0
+
+      % Max Threads
+      maxThreads
    end
 
 
@@ -62,38 +70,60 @@ classdef linearSolver < handle
    methods (Access = public)
       
       % Constructor Function
-      function obj = linearSolver(domainin,interfacein,linsolverXML)
+      function obj = linearSolver(domainin,varargin)
          
          % Check if chronos is available
          ChronosDir = fullfile(gres_root,'..','aspamg_matlab','sources');
 
          if isfolder(ChronosDir)
             
-            if(numel(domainin.physicsSolvers) > 1)
-
+            % Check if the problem comes from multiphysics
+            if(domainin(1).dofm.getNumberOfVariables() > 1)
                obj.multiPhysFlag = true;
-
-               if obj.DEBUGflag
-                  fprintf('multiPhysics not yet supported\nFall back to matlab solver\n');
-               end
                return
+            end
+            
+            % Check the number of interfaces and domains
+            if nargin >= 2
+               interfacein = varargin{1};
+            else
+               interfacein = ones(1);
             end
 
             obj.domain = domainin;
             obj.nDom = length(domainin);
             obj.nInt = length(interfacein);
 
+            % Select the physics
             physname = obj.domain(1).solverNames(1);
-            if(contains(physname,'SinglePhaseFlow') || physname == 'VariablySaturatedFlow' || physname == 'Poisson')
-               obj.phys = 0;
-            elseif(physname == 'Poromechanics')
-               obj.phys = 1;
-            else
-               if obj.DEBUGflag
-                  warning('Non supported Physics for linsolver, falling back to matlab solver');
-                  fprintf('physics: %s\n',physname);
+            if ~obj.multiPhysFlag
+               % Supported Single Physics
+               if(contains(physname,'SinglePhaseFlow') || physname == 'VariablySaturatedFlow' || physname == 'Poisson')
+                  obj.phys = 0;
+               elseif(physname == 'Poromechanics')
+                  obj.phys = 1;
+               else
+                  if obj.DEBUGflag
+                     warning('Non supported Physics for linsolver, falling back to matlab solver');
+                     fprintf('physics: %s\n',physname);
+                  end
+                  return
                end
-               return
+            else
+               % Supported MultiPhysics
+               if(physname == 'BiotFullySaturated')
+                  if domainin.dofm.getVariableNames(1) == "pressure"
+                     obj.phys = 0;
+                  else
+                     obj.phys = 1;
+                  end
+               else
+                  if obj.DEBUGflag
+                     warning('Non supported Physics for linsolver, falling back to matlab solver');
+                     fprintf('physics: %s\n',physname);
+                  end
+                  return
+               end
             end
 
             % Chronos exists
@@ -105,7 +135,7 @@ classdef linearSolver < handle
             % Read XML
             if nargin > 2
                % Use input values
-               data = readstruct(linsolverXML,AttributeSuffix="");
+               data = readstruct(varargin{2},AttributeSuffix="");
             else
                % Get default values
                if obj.phys == 0
@@ -131,7 +161,7 @@ classdef linearSolver < handle
             % Get the preconditioner type
             obj.PrecType = lower(data.preconditioner);
 
-            obj.params.tol   = 1e-1*data.general.tol;
+            obj.params.tol   = obj.domain(1).simparams.relTol;
             obj.params.maxit = data.general.maxit;
 
             % Get the different parameters according to the prectype
@@ -152,13 +182,22 @@ classdef linearSolver < handle
 
             % First time solving request preconditioner computation
             obj.params.iter = -1;
-            obj.params.lastRelres = obj.params.tol;
+            obj.params.lastRelres = 1e10;
+   
+            % Set maximum number of threads to use if the system provides less
+            obj.maxThreads = maxNumCompThreads;
+            obj.params.smoother.nthread = min(obj.params.smoother.nthread,obj.maxThreads);
+            obj.params.prolong.np = min(obj.params.prolong.np,obj.maxThreads);
+            obj.params.filter.np = min(obj.params.filter.np,obj.maxThreads);
+
          end
       end
 
       function printStats(obj)
          fprintf('Average Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
          fprintf('Average Solve time = %e\n',(obj.aTimeSolve/obj.nSolve));
+         fprintf('Average number of iterations = %e\n',(obj.aIter/obj.nSolve));
+         fprintf('Max number of iterations = %d\n',obj.maxIter);
          fprintf('The preconditioner was computed at time(s):\n');
          for i = 1:length(obj.whenComputed)
             fprintf('             %d\t%e\n',i,obj.whenComputed(i));
@@ -179,8 +218,14 @@ classdef linearSolver < handle
       % Function to compute the preconditioner for the single block (single physics)
       computeSinglePhPrec(obj,A);
 
-      % Function to compute the RACP preconditioner for the lagrange multiplier case (single physics multi domain)
+      % Function to compute the Reverse Agumented preconditioner for the lagrange multiplier case (single physics multi domain)
       computeRACP(obj,A)
+
+      % Function to compute the MCP preconditioner for the multiphysics case
+      computeMCP(obj,A)
+
+      % Function to treat the Dirichlet boundary conditions
+      treatDirBC(obj,A)
    end
 
 end
