@@ -13,7 +13,6 @@ function computeRACP(obj,A)
    end
 
    % Treat Dirichlet boundary conditions
-   A{1,1} = A{1,1}';
    D = sum(spones(A{1,1}));
    ind_dir_dof = find(D==1);
    ind_col_rem = find(sum(spones(A{1,2}))==1);
