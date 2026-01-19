@@ -6,11 +6,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
   properties
 
     cutCells                % list of global index of cells intercepted by fracture
-    cutAreas    (:,1)       % the area of the cut cells
-    cutCenters  (:,3)  
-    cutNormals  (:,3)       % the normal of the cutting plane for the fracture
-    cutTang1    (:,3)
-    cutTang2    (:,3)
+    cutAreas                % the area of the cut cells
+    cutCenters         
+    cutNormals              % the normal of the cutting plane for the fracture
+    cutTang1         
+    cutTang2         
     nCutCells
     activeSet = struct("curr",[],"prev",[])          
     penalty_n               % penalty parameter for normal direction
@@ -92,6 +92,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       s = getState(obj);
       sOld = getStateOld(obj);
 
+      jump = s.data.(obj.getField());
+
       cell2stress = getPhysicsSolver(obj.domain,"Poromechanics").cell2stress;
 
       fldMech = obj.dofm.getVariableId(Poromechanics.getField());
@@ -128,14 +130,15 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         KwuLoc = Poromechanics.computeKloc(E,D,B,dJWeighed);
         KwwLoc = Poromechanics.computeKloc(E,D,Bw,dJWeighed);
 
-        dtdg = computeDerTractionGap(obj,i);
-
-        KwwLoc = KwwLoc - dtdg*obj.cutAreas(i);
-
         % grab degree of freedom
         nodes = obj.mesh.cells(cellId,:);
         uDof = obj.dofm.getLocalDoF(fldMech,nodes);
         wDof = obj.dofm.getLocalDoF(obj.fieldId,i);
+
+        dtdg = computeDerTractionGap(obj,i,jump(wDof([2;3])));
+
+        KwwLoc = KwwLoc - dtdg*obj.cutAreas(i);
+
 
         % assemble local contributions
         asbKuw.localAssembly(uDof,wDof,KuwLoc);
@@ -189,7 +192,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         t = traction(id);
         g_n = displacementJump(id(1));
 
-        limitTraction = abs(obj.cohesion - tan(deg2rad(obj.phi))*t(1));
+        limitTraction = abs(obj.cohesion - tan(obj.phi)*t(1));
 
         obj.activeSet.curr(i) = SolidMechanicsContact.updateContactState(state,t,...
           limitTraction, ...
@@ -249,9 +252,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
 
         % EXCEPTION 1): check if area of fracture changing state is relatively small
-        msh = getMesh(obj,MortarSide.slave);
-        areaChanged = sum(msh.surfaceArea(hasChangedElem));
-        totArea = sum(msh.surfaceArea);
+        areaChanged = sum(obj.cutAreas(hasChangedElem));
+        totArea = sum(obj.cutAreas);
         if areaChanged/totArea < obj.activeSet.tol.areaTol
           %obj.activeSet.curr = oldActiveSet;
           % change the active set, but flag it as nothing changed
@@ -268,6 +270,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           gresLog().log(1,['Active set update suppressed due to' ...
             ' unstable behavior detected'])
         end
+      end
+
+      if hasConfigurationChanged
+        updateTraction(obj);
       end
 
     end
@@ -445,7 +451,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         wVec = getXMLData(fractureStruct(f),[],'widthVec');
 
         obj.cohesion(f) = getXMLData(fractureStruct(f),[],'cohesion');
-        obj.phi(f) = getXMLData(fractureStruct(f),[],'frictionAngle');
+        obj.phi(f) = deg2rad(getXMLData(fractureStruct(f),[],'frictionAngle'));
 
 
         assert(all([abs(lVec*normal') < 1e-8,...
@@ -652,14 +658,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         switch obj.activeSet.curr(i)
           
           case ContactMode.stick
-            s.data.traction(dofW(1)) = ...
-              s.data.traction(dofW(1)) + penN * j(1);
-            s.data.traction(dofW(2:3)) = ...
-              s.data.traction(dofW(2:3)) + penT * j(2:3);
+            s.data.traction(dofW(1)) = penN * j(1);
+            s.data.traction(dofW(2:3)) = penT * j(2:3);
 
-          case ContactMode.slip
-             s.data.traction(dofW(1)) = ...
-               s.data.traction(dofW(1)) + penN * j(1);
+          case {ContactMode.slip, ContactMode.newSlip}
+             s.data.traction(dofW(1)) = penN * j(1);
              tN = s.data.traction(dofW(1));
             tauLim = obj.cohesion - tN*tan(obj.phi);
             %
@@ -679,9 +682,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       cellId = obj.cutCells(i);
       coords = obj.mesh.coordinates(obj.mesh.cells(cellId,:),:);
-      dist = obj.cutCenters(i) - coords;
+      dist = obj.cutCenters(i,:) - coords;
       n = obj.cutNormals(i,:)';
-      H = double(dist*n > 0);
+      dn = dist*n;
+      assert(all(abs(dn)>1e-10),"Defined fracture passes exactly trough a node. This is not handled yet")
+      H = double(dn > 0);
 
     end
 
@@ -733,15 +738,17 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           return
         case ContactMode.stick
           dtdg = -diag([obj.penalty_n,obj.penalty_t,obj.penalty_t]);
-        case ContactMode.slip
-          dtdg(1,1) = obj.penalty_n;
-          slipNorm = norm(slip);
-          dtdg([2 3],1) = - obj.penalty_n*tan(obj.phi)*(slip/slipNorm);
-          dtdg([2 3],[2 3]) = tauLim * ...
-            (slipNorm^2*eye(3) - slip * slip')/slipNorm^3; 
+        case {ContactMode.slip,ContactMode.newSlip}
+          dtdg(1,1) = -obj.penalty_n;
+          if norm(slip) > obj.activeSet.tol.sliding
+            slipNorm = norm(slip);
+            dtdg([2 3],1) = obj.penalty_n*tan(obj.phi)*(slip/slipNorm);
+            dtdg([2 3],[2 3]) = -tauLim * ...
+              (slipNorm^2*eye(2) - slip * slip')/slipNorm^3;
+          end
 
       end
-     
+
     end
 
   end
