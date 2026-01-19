@@ -17,7 +17,7 @@ domain.addPhysicsSolver('Input/solver.xml');
 domain.state.data.pressure = getFluid(mat).getFluidSpecWeight()*(wLev-z);
 
 % Solve the problem
-Solver = FCSolver(simParam,domain);
-[simState] = Solver.NonLinearLoop();
+Solver = GeneralSolver(simParam,domain);
+Solver.NonLinearLoop();
 
 printUtils.finalize();

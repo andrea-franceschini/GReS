@@ -99,8 +99,31 @@ classdef Discretizer < handle
 
     end
 
+    function isConfigChanged = updateConfiguration(obj)
+
+      isConfigChanged = false;
+
+      for solv = obj.solverNames
+        % loop over available solvers
+        isConfigChanged = any([isConfigChanged; ...
+          obj.getPhysicsSolver(solv).updateConfiguration()]);
+      end
+
+    end
+
+    function resetConfiguration(obj)
+
+
+      for solv = obj.solverNames
+        % loop over available solvers
+        obj.getPhysicsSolver(solv).resetConfiguration();
+      end
+
+    end
+
+
     function advanceState(obj)
-      
+
       for solv = obj.solverNames
         % loop over available solvers
         obj.getPhysicsSolver(solv).advanceState();
@@ -113,6 +136,17 @@ classdef Discretizer < handle
       for solv = obj.solverNames
         % loop over available solvers
         obj.getPhysicsSolver(solv).goBackState();
+      end
+
+    end
+
+    function finalizeOutput(obj)
+
+      obj.outstate.finalize();
+
+      for solv = obj.solverNames
+        % loop over available solvers
+        obj.getPhysicsSolver(solv).finalizeOutput();
       end
 
     end
@@ -182,16 +216,18 @@ classdef Discretizer < handle
       end
 
       obj.solverNames = string(fieldnames(solverInput));
+      obj.solverNames = reshape(obj.solverNames,1,[]);
 
       for solverName = obj.solverNames
         % create and register the solver
         solver = feval(solverName,obj);
         solver.registerSolver(solverInput.(solverName));
-        nV = obj.dofm.getNumberOfVariables();
-        obj.J = cell(nV);
-        obj.rhs = cell(nV,1);
         obj.physicsSolvers(solverName) = solver;
       end
+
+      nV = obj.dofm.getNumberOfVariables();
+      obj.J = cell(nV);
+      obj.rhs = cell(nV,1);
 
     end
 
@@ -404,12 +440,12 @@ classdef Discretizer < handle
       % write results to VTKoutput
 
       if obj.outstate.writeVtk
+        
+        cellData3D = struct('name', [], 'data', []);
+        pointData3D = struct('name', [], 'data', []);
 
         for solv = obj.solverNames
           solver = getPhysicsSolver(obj,solv);
-
-          cellData3D = struct('name', [], 'data', []);
-          pointData3D = struct('name', [], 'data', []);
           [cellData,pointData] = writeVTK(solver,fac,time);
           cellData3D = OutState.mergeOutFields(cellData3D,cellData);
           pointData3D = OutState.mergeOutFields(pointData3D,pointData);

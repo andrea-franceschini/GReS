@@ -168,6 +168,13 @@ classdef (Abstract) InterfaceSolver < handle
 
     end
 
+    function hasConfigurationChanged = updateConfiguration(obj)
+
+      % base class implements no configuration change
+      hasConfigurationChanged = false;
+      
+    end
+
 
     function printState(obj)
       % print solution at the interface according to the print time in the
@@ -199,7 +206,7 @@ classdef (Abstract) InterfaceSolver < handle
             [surfData,pointData] = writeVTK(obj,fac,time);
             surfData2D = OutState.mergeOutFields(surfData2D,surfData);
             pointData2D = OutState.mergeOutFields(pointData2D,pointData);
-            obj.outstate.VTK.writeVTKFile(time, [], [], surfData2D, pointData2D);
+            obj.outstate.VTK.writeVTKFile(time, [], [], pointData2D, surfData2D);
           end
 
           if obj.outstate.writeSolution

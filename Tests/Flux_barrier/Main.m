@@ -54,11 +54,11 @@ domain.state.data.pressure(:) = 1.e5;
 % customize the solution scheme.
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = FCSolver(simParam,domain);
-% Solver = FCSolver(domain,'SaveRelError',true,'SaveBStepInf',true);
+Solver = GeneralSolver(simParam,domain);
+
 
 % Solve the problem
-[simState] = Solver.NonLinearLoop();
+Solver.NonLinearLoop();
 
 % Finalize the print utility
 printUtils.finalize()

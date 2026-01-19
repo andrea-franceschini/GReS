@@ -13,8 +13,8 @@ simparams = SimulationParameters('deepAquifer.xml');
 domain = buildModel('deepAquifer.xml');
 
 % perform a fully coupled simulation
-solver = FCSolver(simparams,domain);
-[simState] = solver.NonLinearLoop();
+solver = GeneralSolver(simparams,domain);
+solver.NonLinearLoop();
 domain.outstate.finalize();
 
 ref = load('referenceSol.mat');
