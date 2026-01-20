@@ -61,7 +61,14 @@ classdef BiotFullySaturated < PhysicsSolver
 
       % assign coupling blocks to jacobian
       obj.domain.J{obj.fldMech,obj.fldFlow} = -obj.domain.simparams.theta*obj.Q;
-      obj.domain.J{obj.fldFlow,obj.fldMech} = obj.Q'/dt;
+
+      % -------------------Edited by Shaunak from here-------------------
+      % Erased code:
+      % obj.domain.J{obj.fldFlow,obj.fldMech} = obj.Q'/dt;
+
+      % Added code: Ensures one-way coupling needed for chemo-mechanics
+      obj.domain.J{obj.fldFlow,obj.fldMech} = 0*obj.Q'/dt;
+      % -------------------Edits from Shaunak end here-------------------
 
       % add rhs from coupling contribution
       [rhsMech,rhsFlow] = computeRhs(obj);

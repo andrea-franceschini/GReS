@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Problem>
+
+    <simParam fileName = "Inputs/simparam.xml" />
+
+    <!-- Both spheres in contact defined by a common domain in the mesh -->
+    <Domain>
+        <Geometry
+            fileName = "Inputs/TwoSpheres/two_spheres.vtk"
+        />
+        <Gauss nGP = "1" />
+        <Materials fileName = "Inputs/TwoSpheres/materials.xml" />
+        <BoundaryConditions fileName = "Inputs/TwoSpheres/boundaries.xml" />
+        <Output
+            fileName = "Inputs/TwoSpheres/output.xml"
+        />
+
+        <Solver>
+            <BiotFullySaturated>
+                <Poromechanics />
+                <SinglePhaseFlowFEM />
+            </BiotFullySaturated>
+        </Solver>
+    </Domain>
+
+    <Interface>
+        <MeshTying
+            variable = "displacements" >
+            <Master
+                domainId = "1"
+                surfaceTag = "3"
+            />
+            <Slave
+                domainId = "1"
+                surfaceTag = "4"
+            />
+            <Quadrature
+                type = "SegmentBasedQuadrature"
+                nGP = "4"
+                nInt = "5"
+                multiplierType = "dual"
+            />
+        </MeshTying>
+    </Interface>
+</Problem>

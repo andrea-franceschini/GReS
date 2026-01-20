@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Materials>
+  <Solid cellTags = "1 2">
+    <Constitutive>
+      <Elastic
+          youngModulus = "1"
+          poissonRatio = "0.3"
+      />
+    </Constitutive>
+
+    <PorousRock
+        porosity = "1."
+        specificGravity = "0."
+        biotCoefficient = "0.0667344167"
+        permeability = "1., 1., 1."
+    />
+    <!-- porosity (Adimensional, between 0 and 1),
+         specificGravity (kg/m^3 ),
+         permeability (m^2) -->
+  </Solid>
+
+  <Fluid
+      specificWeight = "0."
+      compressibility = "1."
+      dynamicViscosity = "1."
+  />
+  <!-- specific weight (N/m3),
+       fluid compressibility (Pa-1) - 4.5e-10,
+       dynamic viscosity (Pa/s) -->  
+</Materials>

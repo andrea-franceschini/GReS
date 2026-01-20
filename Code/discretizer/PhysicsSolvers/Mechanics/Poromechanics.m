@@ -250,8 +250,17 @@ classdef Poromechanics < PhysicsSolver
         [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
         B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
         B(elem.indB(:,2)) = N(elem.indB(:,1));
-        avStress(el,:) = sum(diag(dJWeighed)* ...
-          stateIn.data.stress((l+1):(l+nG),:))/vol;
+        
+        % -------------------Edited by Shaunak from here-------------------
+        % Erased code:
+        % avStress(el,:) = sum(diag(dJWeighed)* ...
+        %   stateIn.data.stress((l+1):(l+nG),:))/vol;
+
+        % Added code:
+        stressGP = stateIn.data.stress((l+1):(l+nG),:);
+        avStress(el,:) = reshape((1/vol)*sum(dJWeighed'.*stressGP,1),1,[]);
+        % -------------------Edits from Shaunak end here-------------------
+
         dStrain = pagemtimes(B,stateIn.data.displacements(dof));
         dStrain = dStrain.*reshape(dJWeighed,1,1,[]);
         avStrain(el,:) = sum(dStrain,3)/vol;

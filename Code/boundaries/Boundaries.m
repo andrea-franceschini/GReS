@@ -237,8 +237,15 @@ classdef Boundaries < handle
         l = zeros(ncomp,1);
 
         for i = 1:ncomp
-          l(i) = sum(isEntActive(n+1:bcEnts.nEntities(i)));
+          % Edited by Shaunak - Starts here
+          % Removed:
+          % l(i) = sum(isEntActive(n+1:bcEnts.nEntities(i)));
+          % n = n + bcEnts.nEntities(i);
+
+          % Added:
+          l(i) = sum(isEntActive( n+1 : sum(bcEnts.nEntities(1:i)) ));
           n = n + bcEnts.nEntities(i);
+          % Edited by Shaunak - Ends here
         end
 
         bcEnts.nEntities = l;
