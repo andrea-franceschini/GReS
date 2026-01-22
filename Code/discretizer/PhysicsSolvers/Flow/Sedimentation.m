@@ -113,6 +113,37 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.stateOld = copy(obj.domain.state);
     end
 
+    function advanceStateNOK(obj)
+      % ADVANCESTATE Finalizes time step and updates grid topology.
+
+      % Update sediment accumulation
+      t0 = obj.domain.stateOld.t;
+      dt = obj.domain.state.t-t0;
+      addSed = obj.sedimentHistory.getSedimentationMap(t0,dt);
+      obj.sedimentAcc = obj.sedimentAcc + addSed;
+
+      % While need to create a new cell, update the mesh.
+      colSed = sum(obj.sedimentAcc,2);
+      cellGrow = colSed >= obj.heightControl;
+      while any(cellGrow)
+        cellSed = zeros([prod(obj.grid.ncells(1:2)),obj.nmat]);
+        dl = colSed-obj.heightControl;
+        sed = (dl./sum(addSed,2)).*addSed;
+        cellSed(cellGrow,:) = obj.sedimentAcc(cellGrow,:)-sed(cellGrow,:);
+        obj.sedimentAcc(cellGrow,:) = sed(cellGrow,:);
+
+        % Grow mesh if height threshold is reached
+        meshUpdate(obj,cellGrow,cellSed);
+
+        % update the accumulated sediment
+        colSed = sum(obj.sedimentAcc,2);
+        cellGrow = colSed >= obj.heightControl;
+      end
+
+      % Update state for next step
+      obj.domain.stateOld = copy(obj.domain.state);
+    end
+
     function applyBC(obj,bcId,t)
       if ~BCapplies(obj,bcId)
         return
@@ -199,7 +230,6 @@ classdef Sedimentation < PhysicsSolver
       bc = obj.bcs.db(id);
       [cellId, faceArea, dz] = obj.grid.getBordCell(bc.surface);
       p = getState(obj,"pressure");
-      % p=obj.domain.state.data.pressure(cellId);
       switch lower(bc.surface)
         case {"x0","xm"}
           axis=1;
@@ -355,7 +385,7 @@ classdef Sedimentation < PhysicsSolver
       gamma = obj.materials.getFluid().getFluidSpecWeight();
       tmpVec = gamma*lw.*obj.computeTrans.*(zneiA-zneiB);
       gTerm = accumarray(obj.facesNeigh(:), ...
-        [tmpVec; tmpVec],[obj.grid.ndofs,1]);
+        [tmpVec; -tmpVec],[obj.grid.ndofs,1]);
     end
 
     function applyNeuBC(obj,bcId,bcDofs,bcVals)
@@ -413,7 +443,7 @@ classdef Sedimentation < PhysicsSolver
     end
   end
 
-  methods  (Access = private)
+  methods (Access = private)
 
     function prepareMesh(obj)
       obj.mesh.nDim = 3;
@@ -466,22 +496,29 @@ classdef Sedimentation < PhysicsSolver
       cellNeigh = obj.grid.getNeigh(actIJK);
       celldims = obj.grid.getDims(actIJK);
 
-      tmpId = ones(6,1);
-      refId = repelem((1:3)',2);
-      for cell=1:sum(ActiveCells)
-        tmp = cellNeigh(cell,:);
-        flag = tmp>actDofs(cell);
-        nfaces=sum(flag);
-        if nfaces~=0
-          obj.facesNeigh(end+1:end+nfaces,:) = [actDofs(cell)*tmpId(flag),tmp(flag)'];
-          obj.facesNeighDir(end+1:end+nfaces,:) = refId(flag)';
-        end
+      newcells=sum(ActiveCells);
+      cellsConc = zeros([6*newcells,2]);
+      cellsConcDir = ones([6*newcells,1]);
+      cellsConcActive = false([6*newcells,1]);
+      for ref=1:6
+        % Add the connection between the reference cell and the neighborhoods
+        tmp = cellNeigh(:,ref);
+
+        % Evaluate the neighbor is smaller than the dof.
+        flag = tmp > actDofs;
+        nfaces = sum(flag);
+
+        cellsConc(ref*newcells+1:ref*newcells+nfaces,:)=[actDofs(flag),tmp(flag)];
+        cellsConcDir(ref*newcells+1:ref*newcells+nfaces)=ceil(ref/2);
+        cellsConcActive(ref*newcells+1:ref*newcells+nfaces)=true;
       end
+      obj.facesNeigh = cellsConc(cellsConcActive,:);
+      obj.facesNeighDir = cellsConcDir(cellsConcActive);
 
       % Computing the permeability
       permCell = getPerm(obj,dofs(ActiveCells));
       % correcting matfrac, cleaning fractions for non-existent cells
-      obj.grid.matfrac(~ActiveCells(:),:)=0.;
+      % obj.grid.matfrac(~ActiveCells(:),:)=0.;
 
       % Computing half transmissibilities
       obj.halfTrans = zeros(obj.grid.ndofs,3);
@@ -557,7 +594,7 @@ classdef Sedimentation < PhysicsSolver
       % Actions:
       %   - Add new cells
       %   - Update face connectivity
-      %   - Update transmissibilities
+      %   - Update transmissibility
       %   - Extend state vectors
       %   - Update VTK mesh
 
@@ -577,32 +614,41 @@ classdef Sedimentation < PhysicsSolver
       actIJK = [idI(map),idJ(map),idK(map)];
       dofs = lnk.getDofsFromIJK(actIJK);
       
-      cellNeigh = lnk.getNeigh(actIJK);     
-
-      tmpId = ones(4,1);
-      refId = repelem((1:2)',2);
-      for cell=1:newcells        
-        % Add the connection between the cell bellow and the reference
-        obj.facesNeigh(end+1,:) = [cellNeigh(cell,5) dofs(cell)];
-        obj.facesNeighDir(end+1) = 3;
-
-        % Add the connection between the reference cell and the neighborhoods
-        tmp = cellNeigh(cell,1:4);
-        if (colNotTop(cell))
-          flag = and(tmp<dofs(cell),tmp~=0);
-          nfaces=sum(flag);
-        else
-          flag = tmp>dofs(cell);
-          nfaces=sum(flag);
-        end
-        if nfaces~=0
-          obj.facesNeigh(end+1:end+nfaces,:) = [dofs(cell)*tmpId(flag),tmp(flag)'];
-          obj.facesNeighDir(end+1:end+nfaces,:) = refId(flag)';
-        end
-      end
       permCell = obj.getPerm(dofs);
       celldims = lnk.getDims(actIJK);
 
+      % Creating the connectives between new cells
+      cellNeigh = lnk.getNeigh(actIJK);
+
+      cellsConc = zeros([5*newcells,2]);
+      cellsConcDir = ones([5*newcells,1]);
+      cellsConcActive = false([5*newcells,1]);
+      cellsConc(1:newcells,:)=[cellNeigh(:,5) dofs];
+      cellsConcDir(1:newcells)=3;
+      cellsConcActive(1:newcells)=true;
+      for ref=1:4
+        % Add the connection between the reference cell and the neighborhoods
+        tmp = cellNeigh(:,ref);
+
+        % Evaluate the neighbor if the column is not at the top.
+        flag0 = and(and(tmp<dofs,tmp~=0),colNotTop);
+
+        % Evaluate the neighbor if the column is at the top.
+        % flag1 = and(tmp > dofs,~colNotTop);
+        flag1 = tmp > dofs;
+
+        % Combine the two case.
+        flag = or(flag0,flag1);
+        nfaces = sum(flag);
+
+        cellsConc(ref*newcells+1:ref*newcells+nfaces,:)=[dofs(flag),tmp(flag)];
+        cellsConcDir(ref*newcells+1:ref*newcells+nfaces)=ceil(ref/2);
+        cellsConcActive(ref*newcells+1:ref*newcells+nfaces)=true;
+      end
+      nfaces = sum(cellsConcActive);
+      obj.facesNeigh(end+1:end+nfaces,:) = cellsConc(cellsConcActive,:);
+      obj.facesNeighDir(end+1:end+nfaces,:) = cellsConcDir(cellsConcActive);
+      
       % Computing the new half transmissibilities
       appAtEnd = size(obj.halfTrans,1);
       obj.halfTrans(appAtEnd+1:appAtEnd+newcells,1) = ...
@@ -613,25 +659,14 @@ classdef Sedimentation < PhysicsSolver
         1./(celldims(:,1).*celldims(:,2).*permCell(:,3));
 
       % Update the states
-      idK = colheightBG;
-      actIJK = [idI(map),idJ(map),idK(map)];
-      dofs = lnk.getDofsFromIJK(actIJK);
+      % idK = colheightBG;
+      % actIJK = [idI(map),idJ(map),idK(map)];
+      % dofs = lnk.getDofsFromIJK(actIJK);
+      % obj.domain.state.data.pressure(end+1:end+newcells) = ...
+      %   obj.domain.state.data.pressure(dofs);
 
-      obj.domain.state.data.pressure(end+1:end+newcells) = ...
-        obj.domain.state.data.pressure(dofs);
-
-      % obj.domain.state.data.pressure(end+1:end+newcells) = 0.;
+      obj.domain.state.data.pressure(end+1:end+newcells) = 0.;
       
-      % % p = getState(obj,"pressure");
-      % % pl=zeros(obj.grid.ncells);
-      % % [i, j, k] = ind2sub(obj.grid.ncells, find(obj.grid.dof ~= 0));
-      % % % cellID = sub2ind(obj.grid.ncells,i,j,k);
-      % % % cellID = obj.grid.getCellIDfromIJK(i,j,k);
-      % % cellID = sub2ind(obj.grid.ncells,i,j,k);
-      % % map = obj.grid.dof(obj.grid.dof~=0);
-      % % cellID=cellID(map);
-      % % pl(cellID)=p;
-
       % Update the mesh output
       obj.updateMeshOutput(map,newlayer);
     end
@@ -655,6 +690,14 @@ classdef Sedimentation < PhysicsSolver
       obj.mesh.cellNumVerts(end+1:end+newcells) = 8;
       obj.mesh.cellVTKType(end+1:end+newcells) = 12;
     end
+
+    function out = mapCell2Grow(obj)
+      % 3. Check for growth trigger (Height >= Threshold)
+      colSed = sum(obj.sedimentAcc,2);
+      out = colSed >= obj.heightControl;
+    end
+
+
 
   end
 

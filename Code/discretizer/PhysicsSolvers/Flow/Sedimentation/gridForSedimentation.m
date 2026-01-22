@@ -70,7 +70,10 @@ classdef gridForSedimentation < handle
       % Assuming only 1 material
       if ~exist('matLabel', 'var'), matLabel = 1; end
 
-      obj.constructor(data,matLabel);
+      % Setting the number of material
+      obj.nmat = length(matLabel);
+
+      obj.constructor(data);
     end
 
     function [id,faceArea,dh] = getBordCell(obj,label)
@@ -161,7 +164,8 @@ classdef gridForSedimentation < handle
 
     function ncells = getNumberCells(obj)
       % GETNUMBERCELLS Returns the number of active cells.
-      ncells = sum(obj.columnsHeight, 'all');
+      ncells = sum(obj.dof~=0,"all");
+      % ncells = sum(obj.columnsHeight, 'all');
     end
 
     function npts = getNumberPoints(obj)
@@ -214,7 +218,9 @@ classdef gridForSedimentation < handle
 
     function ijk = getIJKfromCellID(obj,cellID)
       % GETIJKFROMCELLID Converts linear DOF to (i,j,k).
-      [i,j,k]=ind2sub(obj.ncells,cellID);
+      ind = find(ismember(obj.dof, cellID));
+      [i,j,k]=ind2sub(obj.ncells,ind);
+      % [i,j,k]=ind2sub(obj.ncells,cellID);
       ijk=[i,j,k];
     end
 
@@ -342,6 +348,10 @@ classdef gridForSedimentation < handle
       dofs = obj.getActiveDofs;
       ijk = obj.getIJKfromCellID(dofs);
       conect = obj.getConectByIJK(ijk(:,1),ijk(:,2),ijk(:,3));
+      % ddof = sub2ind(size(obj.dof), ijk(:,1), ijk(:,2), ijk(:,3));
+      % ddof = obj.dof(ddof);
+      % [~,idx]=sort(ddof);
+      % conect=conect(idx,:);
     end
 
     function [idI, idJ, idK] = getIJK(obj)
@@ -353,7 +363,7 @@ classdef gridForSedimentation < handle
   end
 
   methods (Access = private)
-    function constructor(obj,data,matList)
+    function constructor(obj,data)
       % CONSTRUCTOR Internal grid initialization.
       %
       % Initializes:
@@ -362,51 +372,127 @@ classdef gridForSedimentation < handle
       %   - Column heights
       %   - Initial material distribution
 
+      % Constructing the grid
+      if strcmp(data.Grid.type,"classic")
+        obj.gridClassic(data.Grid);
+      elseif strcmp(data.Grid.type,"explicit")
+        obj.gridExplicit(data.Grid);
+      else
+        gridForSedimentation.errorGrid();
+      end
+
+      % Initialaze some variables
+      obj.dof = zeros(obj.ncells);
+      obj.columnsHeight = zeros(prod(obj.ncells(1:2)),1);
+
+      % Constructing the initial grid
+      obj.initConf(data.Initial);
+
+      obj.ndofs = sum(obj.dof~=0,"all");
+    end
+
+    function gridClassic(obj,data)
       % Internal initialization of grid, maps, and material layers.
-      obj.ncells = str2num(data.Grid.division);
-      % obj.npoints = obj.ncells+1;
+      obj.ncells = str2num(data.division);
       
       % divisions = str2num(data.division);
-      dim = str2num(data.Grid.size);
+      dim = str2num(data.size);
       obj.coordX = linspace(0,dim(1),obj.ncells(1)+1);
       obj.coordY = linspace(0,dim(2),obj.ncells(2)+1);
       obj.coordZ = linspace(0,dim(3),obj.ncells(3)+1);
+    end
 
-      % obj.grid = structGrid(data.grid);
-      % obj.ncells = obj.grid.getNumberCells;
-      obj.ndofs = prod(obj.ncells);
-
-      nCellMap = prod(obj.ncells(1:2));
-
-      obj.nmat = length(matList);
-      obj.matfrac = zeros(obj.ndofs,obj.nmat);
-      obj.dof = reshape(1:obj.ndofs,obj.ncells);
-      obj.columnsHeight = obj.ncells(3)*ones(nCellMap,1);
-
-      if isfield(data.Initial,"All")
-        for lay=data.Initial.All
-          if isfield(lay,"materialFlag")
-            obj.matfrac(:,lay.materialFlag)=1.;
-          end
+    function gridExplicit(obj,data)
+      % Internal initialization of grid, maps, and material layers.
+      if isfield(data,'xfile')
+        if ~isfile(data.xfile)
+          gridForSedimentation.errorGrid();
         end
+        obj.coordX = load(data.xfile);
+      else
+        if ~isfield(data,'xcoord')
+          gridForSedimentation.errorGrid();
+        end
+        obj.coordX = str2num(data.xcoord);
       end
 
-      if isfield(data.Initial,"Lay")
-        cellsByLay = (1:nCellMap)';
-        for lay=data.Initial.Lay
-          % Cells referring to this layer
-          if isfield(lay,"number")
-            posInitial = nCellMap*(lay.number-1);
-            pos = cellsByLay+posInitial;
-          end
-          if isfield(lay,"materialFlag")
-            mats = double(matList == lay.materialFlag)';
-          end
-          if isfield(lay,"fractions")
-            mats = double(lay.fractions)';
-          end
-          obj.matfrac(pos,:)=mats.*ones(nCellMap,obj.nmat);
+      if isfield(data,'yfile')
+        if ~isfile(data.yfile)
+          gridForSedimentation.errorGrid();
         end
+        obj.coordY = load(data.yfile);
+      else
+        if ~isfield(data,'ycoord')
+          gridForSedimentation.errorGrid();
+        end
+        obj.coordY = str2num(data.ycoord);
+      end
+
+      if isfield(data,'zfile')
+        if ~isfile(data.zfile)
+          gridForSedimentation.errorGrid();
+        end
+        obj.coordZ = load(data.zfile);
+      else
+        if ~isfield(data,'zcoord')
+          gridForSedimentation.errorGrid();
+        end
+        obj.coordZ = str2num(data.zcoord);
+      end
+
+      obj.ncells = [length(obj.coordX),length(obj.coordY),length(obj.coordZ)]-1;
+    end
+
+    function initConf(obj,data)
+      % Defining the dof for the initial configuration
+      switch data.type
+        case "all"
+          numcells = prod(obj.ncells);          
+          obj.dof(1:numcells) = 1:numcells;
+          obj.columnsHeight(:) = obj.ncells(3);
+        case "surface"
+          numcells = prod(obj.ncells(1:2));
+
+          if isfield(data,"columnHeight")
+            surfCellHeight = load(data.columnHeight);
+          end
+
+          count=1;
+          for j=1:obj.ncells(2)
+            for i=1:obj.ncells(1)
+              obj.dof(i,j,surfCellHeight(i,j))=count;
+              count=count+1;
+            end
+          end
+
+          obj.columnsHeight = surfCellHeight(:);
+        case "untilSurface"
+        case "doubleSurface"
+        otherwise
+          gridForSedimentation.errorGrid();
+      end
+
+      % Defining the material fractions that compose each cell
+      % in the initial configuration
+      obj.matfrac = zeros(numcells,obj.nmat);
+
+      if isfield(data,"materialTag")
+        if ischar(data.materialTag)
+          loc = str2num(data.materialTag);
+        else
+          loc = data.materialTag;
+        end
+        frac = 1/length(loc);
+        obj.matfrac(:,loc)=frac;
+        % pos=obj.dof==0;
+        % obj.matfrac(pos(:),:)=0;
+        return;
+      end
+
+      if isfield(data,"materialFractions")
+        frac = load(data.materialFractions);
+        % frac = frac ./ vecnorm(frac,2,2);
+        obj.matfrac = frac;
       end
     end
 
@@ -493,13 +579,17 @@ classdef gridForSedimentation < handle
         disp("The grid parameters for the simulation is not defined!");
       end
 
-      if or(isfield(input,'Initial'),isfield(input,'initial'))
-        if ~(or(isfield(input.Initial,'All'),isfield(input,'Lay')))
+      if ~or(isfield(input,'Initial'),isfield(input,'initial'))
+      %   if ~(or(isfield(input.Initial,'All'),isfield(input,'Lay')))
           flag = true;
           disp("The material for each cell at the begin of the simulation is not defined!");
-        end
+      %   end
       end
 
+    end
+
+    function errorGrid()
+      error("The grid parameters for the simulation is not well defined!");
     end
 
   end

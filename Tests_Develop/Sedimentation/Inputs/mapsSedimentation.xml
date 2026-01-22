@@ -1,17 +1,24 @@
 <Sedimentation_Maps type = "linear">
   <Event time = "0." >
-    <Random mean = "0.005" variance= "2.e-5"/>
+    
+    <Random type = "Lognormal" mean = "0.005" variance= "1.e-1"/>
+    
   </Event>
 </Sedimentation_Maps>
 
 <!--
-
-<Random mean = "0.005" variance= "2.e-5"/>
 <Uniform materialFlag = "1" value= "0.01"/>
+
+<Uniform materialFlag = "1" value= "0.01"/>
+
+<Random type = "Uniform" lower = "0.003" upper= "0.007"/>
+<Random type = "Lognormal" mean = "0.005" variance= "2.e-1"/>
+<Random type = "Normal" mean = "0.005" variance= "2.e-6"/>
+
+The normal distribuition can create negative values of sedimentation,
+recommend use lognormal distribution instead 
+
 <Map materialFlag = "1"
          division = "3,3"
          file = "Inputs/Maps/mapDiff.dat"/>
-
-<Uniform materialFlag = "2" value= "0.0075"/>
-<Random mean = "0.01" variance= "0.0005"/>
 -->

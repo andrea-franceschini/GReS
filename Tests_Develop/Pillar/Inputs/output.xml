@@ -4,7 +4,7 @@
     outputFile = "Outputs/Results"
     matFileName = "Outputs/Results"
     saveHistory = "1"
-    printTimes = "0,10,20,30,40,50,60,70,80,90,100.1"
+    printTimes = "10"
 />
 
 <!-- 
@@ -16,3 +16,5 @@ Default "0": do not save history, "1": save history
 printTimes: list of time instant where the output solution is computed
 Can be directly specified here as a comma separated list of numbers, or can be a path to a file containing the list.
 -->
+
+

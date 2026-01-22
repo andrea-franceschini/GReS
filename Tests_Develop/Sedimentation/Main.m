@@ -4,6 +4,7 @@ input_dir = 'Inputs/';
 file_SimP = fullfile(input_dir,'simparam.xml');
 file_Mat = fullfile(input_dir,'materials.xml');
 file_Solver = fullfile(input_dir,'solver.xml');
+% profile on;
 
 %% ------------------------------ Set up the Domain -----------------------
 % Set the simulation parameters for the non-linear solver.
@@ -32,3 +33,6 @@ Solver = FCSolver(simParam,domain);
 [simState] = Solver.NonLinearLoop();
 
 domain.outstate.finalize()
+
+% profile off
+% profile viewer

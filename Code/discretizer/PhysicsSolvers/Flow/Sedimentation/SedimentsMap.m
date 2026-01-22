@@ -137,8 +137,14 @@ classdef SedimentsMap < handle
       % Handle Random distributions
       if isfield(event, "Random")
         for item = event.Random
-          pd = makedist('Normal', 'mu', item.mean, 'sigma', sqrt(item.variance));
-          % pd = makedist('HalfNormal', 'mu', item.mean, 'sigma', sqrt(item.variance));
+          switch item.type
+            case 'Normal'
+              pd = makedist('Normal', 'mu', item.mean, 'sigma', sqrt(item.variance));
+            case 'Lognormal'
+              pd = makedist('Lognormal', 'mu', log(item.mean), 'sigma', sqrt(item.variance));
+            case 'Uniform'
+              pd = makedist('Uniform', 'Lower', item.lower, 'Upper', item.upper);
+          end
           map = random(pd, prod(obj.dim), obj.nmat);
         end
       end

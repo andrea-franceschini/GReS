@@ -302,6 +302,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     function computeTrans(obj)   % Inspired by MRST
       % Compute first the vector connecting each cell centroid to the
       % half-face
+      % TODO: the function bsxfun throw a error if lest than mesh with one element
       r = [1, 1, 1, 2, 2, 2, 3, 3, 3];
       c = [1, 2, 3, 1, 2, 3, 1, 2, 3];
       hf2Cell = repelem((1:obj.mesh.nCells)',diff(obj.faces.mapF2E));
