@@ -26,7 +26,7 @@ classdef Faces < handle
         obj.setFaces(msh);
       end
     end
-%     Triangle:
+    %     Triangle:
 % 
 %     v
 %     ^
