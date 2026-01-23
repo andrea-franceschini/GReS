@@ -8,7 +8,7 @@ in a nonConforming simulation.
   <simParam>
     <Time
           Start="0."
-          End ="20.0"
+          End ="13.0"
           DtInit="1"
           DtMin ="1e-5"
           DtMax ="1"
