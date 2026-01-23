@@ -61,7 +61,8 @@ classdef Mesh < handle
     % 1D element VTK type tag
     edgeVTKType
     %
-    meshType = 'Unstructured'
+    % meshType = 'Unstructured'
+    meshType = 'Undefined'
   end
 
   properties (Access = private)
@@ -178,6 +179,7 @@ classdef Mesh < handle
       end
       obj.nCellTag = max(obj.cellTag);
       obj.nSurfaceTag = max(obj.surfaceTag);
+      obj.meshType = 'Unstructured';
     end
 
 
@@ -190,6 +192,7 @@ classdef Mesh < handle
       switch extension
         case 'vtk'
           [obj.coordinates, elems] = mxImportVTKmesh(char(fileName));
+          obj.meshType = 'Unstructured';
         case 'msh'
           importGMSHmesh(obj,char(fileName));
           return;
@@ -424,6 +427,7 @@ classdef Mesh < handle
         surfMesh.nDim = 3;
         surfMesh.surfaceCentroid = Mesh.copyField(obj.surfaceCentroid,id);
         surfMesh.surfaceArea = Mesh.copyField(obj.surfaceArea,id);
+        surfMesh.meshType = obj.meshType;
     end
 
 %     function centroids = getCellCentroids(obj)
