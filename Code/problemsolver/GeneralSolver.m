@@ -125,8 +125,12 @@ classdef GeneralSolver < handle
 
             % update simulation state with linear system solution
             for i = 1:obj.nDom
-              nDof = obj.domains(i).getNumbDoF();
-              sol = du(c+1:c+nDof);
+              if obj.nDom == 1
+                sol = du;
+              else
+                nDof = obj.domains(i).getNumbDoF();
+                sol = du(c+1:c+nDof);
+              end
               obj.domains(i).updateState(sol);
               c = c + nDof;
             end

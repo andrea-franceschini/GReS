@@ -54,11 +54,7 @@
 /Manual/
 
 # Compiler  builds
-<<<<<<< HEAD
-#/ThirdPartLibs/*/build
-=======
 /ThirdPartLibs/*/build
 
 # Shared file system files
 *.nfs*
->>>>>>> origin/main
