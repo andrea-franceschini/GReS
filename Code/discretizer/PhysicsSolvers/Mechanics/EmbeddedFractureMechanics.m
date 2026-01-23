@@ -392,7 +392,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       trac = tracCurr*fac + tracOld*(1-fac);
       jump = jumpCurr*fac + jumpOld*(1-fac);
 
-      nCellData = 2;
+      nCellData = 3;
       cellStr = repmat(struct('name', 1, 'data', 1), nCellData, 1);
       % Displacements
       cellStr(1).name = 'fractureJump';
@@ -400,6 +400,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       cellStr(2).name = 'traction';
       cellStr(2).data = [trac(1:3:end), trac(2:3:end), trac(3:3:end)];
+
+      cellStr(3).name = 'fractureState';
+      as = ContactMode.integer(obj.activeSet.curr);
+      cellStr(3).data = as;
 
       % plot with the fracture output object
       obj.outFracture.VTK.writeVTKFile(time, [], [], [], cellStr);
