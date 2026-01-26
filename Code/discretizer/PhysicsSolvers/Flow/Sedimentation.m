@@ -90,7 +90,7 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.rhs{obj.fieldId} = [];
 
       % Increase number of variables in the dof manager
-      % obj.dofm.registerVariable(obj.getField(),entityField.cell,1);
+      obj.dofm.registerVariable(obj.getField(),entityField.cell,1);
 
       % Prepare output
       obj.prepareOutput(input.Output);
