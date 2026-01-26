@@ -23,7 +23,7 @@ in a nonConforming simulation.
     <Solver>
       <BiotFullySaturated>
         <Poromechanics targetRegions = "1,2,3" />
-        <SinglePhaseFlowFEM targetRegions = "2,3" />
+        <SinglePhaseFlowFVTPFA targetRegions = "2,3" />
       </BiotFullySaturated>
     </Solver>
 

@@ -486,7 +486,7 @@ classdef Poromechanics < PhysicsSolver
         % accumulate results
         vals = accumarray(dofs,vals,[3*obj.mesh.nNodes 1]);
         dof = obj.getBCdofs(id);
-        vals = -vals(dof);
+        vals = vals(dof);
       end
 
     end

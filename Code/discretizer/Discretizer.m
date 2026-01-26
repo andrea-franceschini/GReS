@@ -9,7 +9,7 @@ classdef Discretizer < handle
     outstate = OutState()
     materials = Materials()
     solverNames
-    grid = struct('topology',[],'faces',[],'cells',[])
+    grid = struct('topology',Mesh(),'faces',[],'cells',[])
 
   end
 

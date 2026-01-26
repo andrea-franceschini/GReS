@@ -150,7 +150,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       if gamma > 0
         neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
         zVec = obj.mesh.cellCentroid(:,3);
-        zNeigh = zVec(neigh);
+        zNeigh = reshape(zVec(neigh),[],2);
         obj.rhsGrav = gamma*obj.trans(obj.isIntFaces).*(zNeigh(:,1) - zNeigh(:,2));
       end
       % remove inactive components of rhs vector
@@ -161,6 +161,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
       gTerm = accumarray(neigh(:),[lw.*obj.rhsGrav; ...
         -lw.*obj.rhsGrav],[nCells,1]);
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       gTerm = gTerm(obj.dofm.getActiveEntities(obj.fieldId));
     end
 
@@ -302,9 +303,10 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     function computeTrans(obj)   % Inspired by MRST
       % Compute first the vector connecting each cell centroid to the
       % half-face
+      % TODO: the function bsxfun throw a error if lest than mesh with one element
       r = [1, 1, 1, 2, 2, 2, 3, 3, 3];
       c = [1, 2, 3, 1, 2, 3, 1, 2, 3];
-      hf2Cell = repelem((1:obj.mesh.nCells)',diff(obj.faces.mapF2E));
+      hf2Cell = repelem((1:obj.mesh.nCells)',diff(obj.faces.mapF2E),1);
       L = obj.faces.faceCentroid(obj.faces.faces2Elements(:,1),:) - obj.mesh.cellCentroid(hf2Cell,:);
       sgn = 2*(hf2Cell == obj.faces.faceNeighbors(obj.faces.faces2Elements(:,1))) - 1;
       N = bsxfun(@times,sgn,obj.faces.faceNormal(obj.faces.faces2Elements(:,1),:));

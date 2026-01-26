@@ -198,7 +198,7 @@ classdef (Abstract) PhysicsSolver < handle
 
       % apply BC to multi-domain jacobian coupling blocks
       for iI = 1:numel(obj.domain.interfaces)
-        if ~isempty(obj.domain.Jum{bcVarId})
+        if ~isempty(obj.domain.Jum{iI}{bcVarId})
           obj.domain.Jum{iI}{bcVarId} = obj.domain.Jum{iI}{bcVarId}';
           obj.domain.Jum{iI}{bcVarId}(:,bcDofs) = 0;
           obj.domain.Jum{iI}{bcVarId} = obj.domain.Jum{iI}{bcVarId}';

@@ -2,7 +2,7 @@ classdef Logger < handle
   % Error logger in GReS
   
   properties (Access = private)
-    verbosity = 0
+    verbosity = 1
   end
 
   methods 
