@@ -5,6 +5,7 @@ classdef CheckTests < matlab.unittest.TestCase
     function startupGReS(testCase)
       addpath('../')
       initGReS(0);                   % main MATLAB
+      gresLog().setVerbosity(-2)
     end
   end
 
@@ -80,6 +81,13 @@ classdef CheckTests < matlab.unittest.TestCase
       % checking only if 6 outputs is being generated
       testCase.verifyEqual(domains(1).outstate.timeList,domains(2).outstate.timeList);
       testCase.verifyEqual(domains(1).outstate.timeList,[0.5000; 1; 2; 5; 10; 50]);
+      close all;
+      cd("../");
+    end
+
+    function StickSlipOpen(testCase)
+      cd("StickSlipOpenContact/");
+      run('StickSlipOpen.m');
       close all;
       cd("../");
     end

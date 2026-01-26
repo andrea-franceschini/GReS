@@ -9,6 +9,9 @@ function computeSinglePhPrec(obj,A)
    end
    if (norm(A-A','f')/norm(A,'f') > obj.nsyTol)
       obj.params.symm = false;
+      if obj.DEBUGflag
+         fprintf('matrix nonsymmatric %e\n',norm(A-A','f')/norm(A,'f'));
+      end
    else
       obj.params.symm = true;
    end
