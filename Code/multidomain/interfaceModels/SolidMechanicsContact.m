@@ -102,7 +102,7 @@ classdef SolidMechanicsContact < MeshTying
 
 
 
-    function hasChanged = updateActiveSet(obj)
+    function hasConfigurationChanged = updateConfiguration(obj)
 
       obj.NLIter = 0;
 
@@ -161,7 +161,7 @@ classdef SolidMechanicsContact < MeshTying
         obj.activeSet.stateChange(nomoreStick) + 1;
       
 
-      hasChanged = any(diffState);
+      hasConfigurationChanged = any(diffState);
 
       if gresLog().getVerbosity > 2
         % report active set changes
@@ -184,7 +184,7 @@ classdef SolidMechanicsContact < MeshTying
           sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
       end
 
-      if hasChanged
+      if hasConfigurationChanged
 
 
         % EXCEPTION 1): check if area of fracture changing state is relatively small
@@ -194,7 +194,7 @@ classdef SolidMechanicsContact < MeshTying
         if areaChanged/totArea < obj.activeSet.tol.areaTol
           %obj.activeSet.curr = oldActiveSet;
           % change the active set, but flag it as nothing changed
-          hasChanged = false;
+          hasConfigurationChanged = false;
           gresLog().log(1,['Active set update suppressed due to small fracture change:' ...
             ' areaChange/areaTot = %3.2e \n'],areaChanged/totArea);
         end
@@ -203,7 +203,7 @@ classdef SolidMechanicsContact < MeshTying
         % stick to slip/open too much times
 
         if all(obj.activeSet.stateChange(hasChangedElem) > obj.activeSet.tol.maxStateChange)
-          hasChanged = false;
+          hasConfigurationChanged = false;
           gresLog().log(1,['Active set update suppressed due to' ...
             ' unstable behavior detected'])
         end

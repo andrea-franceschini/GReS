@@ -4,11 +4,11 @@ function computeSinglePhPrec(obj,A)
       A = A{1,1};
    end
 
+   if obj.DEBUGflag
+      fprintf('\nsymmetry = %e\n\n',norm(A-A','f')/norm(A,'f'));
+   end
    if (norm(A-A','f')/norm(A,'f') > obj.nsyTol)
       obj.params.symm = false;
-      if obj.DEBUGflag
-         fprintf('matrix nonsymmatric %e\n',norm(A-A','f')/norm(A,'f'));
-      end
    else
       obj.params.symm = true;
    end
@@ -33,7 +33,10 @@ function computeSinglePhPrec(obj,A)
          elseif(obj.phys == 1)
             TV0 = [];
             for i = 1:obj.nDom
+<<<<<<< HEAD
                size(obj.domain(i).grid.topology.coordinates);
+=======
+>>>>>>> origin/main
                TV = mk_rbm_3d(obj.domain(i).grid.topology.coordinates);
                TV0 = [TV0;TV];
             end
@@ -41,7 +44,8 @@ function computeSinglePhPrec(obj,A)
 
          
          % coord = obj.domain.grid.topology.coordinates;
-         % save("mat_new.mat","A","TV0","coord");
+         % save("TV0.mat","TV0");
+         %save("mat_new.mat","A","TV0","coord");
          % error('ciao');
          set_DEBINFO();
 

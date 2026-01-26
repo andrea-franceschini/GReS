@@ -55,10 +55,10 @@ for i=1:length(meshList)
     % Here, a built-in fully implict solution scheme is adopted with class
     % FCSolver. This could be simply be replaced by a user defined function
     % Solver = FCSolver(domain);
-    Solver = FCSolver(simParam,domain);
+    Solver = GeneralSolver(simParam,domain);
 
     % Solve the problem
-    [simState] = Solver.NonLinearLoop();
+    Solver.NonLinearLoop();
 
     % Finalize the print utility
     printUtils.finalize()

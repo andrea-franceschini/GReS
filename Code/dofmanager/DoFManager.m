@@ -28,7 +28,8 @@ classdef DoFManager < handle
       obj.totDofs = 0;
     end
 
-    function registerVariable(obj,varName,fieldLocation,nComp,tags)
+
+    function registerVariable(obj,varName,fieldLocation,nComp,varargin)
       % varName: the name of the variable field
       % fieldLocation: a enum of type entityField
       % tags: the cellTag (or surfaceTag for lower dimensional fields) where the variable is actually present
@@ -81,14 +82,27 @@ classdef DoFManager < handle
         % new variable field 
 
         obj.fields(id).variableName = varName;
-        obj.fields(id).tags = tags;
         obj.fields(id).fieldLocation = fieldLocation;
         obj.numbComponents(end+1) = nComp;
 
-        % return the entity of type fieldLocation for the given mesh tags
-        entList = getEntities(fieldLocation,obj.mesh,tags);
+
+        if nargin < 6
+          % return the entity of type fieldLocation for the given mesh tags
+          if isempty(varargin)
+            tags = 1:obj.mesh.nCellTag;
+          else
+            tags = varargin{1};
+          end
+          obj.fields(id).tags = tags;
+          entList = getEntities(fieldLocation,obj.mesh,tags);
+          totActiveEnts = length(entList);
+        else
+          assert(strcmp(varargin{1},"nEntities"))
+          totActiveEnts = varargin{2};
+          entList = reshape(1:totActiveEnts,[],1);
+        end
+
         totEnts = getNumberOfEntities(fieldLocation,obj.mesh);
-        totActiveEnts = length(entList);
 
         % populate the dof map
         obj.dofMap{id} = zeros(totEnts,1);
@@ -102,8 +116,8 @@ classdef DoFManager < handle
 
       % create the entity field
 
-
     end
+
 
 
     function dofs = getLocalDoF(obj,id,ents)
@@ -227,10 +241,14 @@ classdef DoFManager < handle
       nVars = obj.nVars;
     end
 
-    function varNames = getVariableNames(obj)
-
-      varNames = [obj.fields.variableName];
-
+    function varNames = getVariableNames(obj,varId)
+      if nargin == 1
+         varNames = [obj.fields.variableName];
+      elseif nargin == 2
+         id = getVariableId(obj,varId);
+         varNames = [obj.fields.variableName];
+         varNames = varNames(id);
+      end
     end
 
     function ncomp = getNumberOfComponents(obj,varId)

@@ -21,6 +21,6 @@ simparams = SimulationParameters(fullfile(input_dir,'flowNonConforming.xml'));
 
 %% RUN MODEL  
 % A different solver is needed for models with non conforming domains
-solver = MultidomainFCSolver(simparams,domains,interfaces);
+solver = GeneralSolver(simparams,domains,interfaces);
 solver.NonLinearLoop();
 solver.finalizeOutput();

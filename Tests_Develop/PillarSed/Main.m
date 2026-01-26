@@ -18,11 +18,10 @@ domain = Discretizer('Materials',mat);
 domain.addPhysicsSolver(file_Solver);
 
 % set initial conditions directly modifying the state object
-% phy = domain.physicsSolvers(domain.solverNames).grid;
-% z = phy.getCoordCenter(phy.getActiveDofs);
-% gamma_w = getFluid(mat).getFluidSpecWeight();
-% wLev = 1.; % level of the water table
-% domain.state.data.pressure = gamma_w*(wLev-z(:,3));
+phy = domain.physicsSolvers(domain.solverNames).grid;
+z = phy.getCoordCenter(phy.getActiveDofs);
+gamma_w = getFluid(mat).getFluidSpecWeight();
+domain.state.data.pressure = gamma_w*z(:,3);
 
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme.

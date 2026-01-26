@@ -15,8 +15,8 @@ simparams = SimulationParameters("subDomains.xml");
 domain = buildModel("subDomains.xml");
 
 % perform a fully coupled simulation
-solver = FCSolver(simparams,domain);
-[simState] = solver.NonLinearLoop();
+solver = GeneralSolver(simparams,domain);
+solver.NonLinearLoop();
 
 % Finalize the print utility
 domain.outstate.finalize()

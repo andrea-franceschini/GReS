@@ -1,8 +1,7 @@
 <Sedimentation_Maps type = "linear">
   <Event time = "0." >
-    
     <Random type = "Lognormal" mean = "0.005" variance= "1.e-1"/>
-    
+
   </Event>
 </Sedimentation_Maps>
 
@@ -17,6 +16,13 @@
 
 The normal distribuition can create negative values of sedimentation,
 recommend use lognormal distribution instead 
+
+
+    <Random type = "Lognormal" mean = "0.005" variance= "1.e-1"/>
+
+    <Map materialFlag = "1"
+         division = "10,10"
+         file = "Inputs/Maps/map10x10.dat"/>
 
 <Map materialFlag = "1"
          division = "3,3"

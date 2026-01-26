@@ -125,7 +125,6 @@ classdef (Abstract) PhysicsSolver < handle
 
       % base method to advance the state after reaching convergence
       % hard copy the new state object
-
       obj.domain.stateOld = copy(obj.domain.state);
 
     end
@@ -135,6 +134,26 @@ classdef (Abstract) PhysicsSolver < handle
 
       obj.domain.state = copy(obj.domain.stateOld);
 
+    end
+
+    function hasConfigurationChanged = updateConfiguration(obj)
+
+      % base physicsSolver class implements no configuration update
+      hasConfigurationChanged = false;
+
+    end
+
+    function resetConfiguration(obj)
+
+      % base physicsSolver class implements no configuration reset
+
+    end
+
+    function finalizeOutput(obj)
+
+      % override this method in a PhysicsSolver to produce additional
+      % output files other then the general Discretizer.outState pvd file
+      return
     end
 
 
@@ -188,17 +207,17 @@ classdef (Abstract) PhysicsSolver < handle
 
       % zero out columns only if the solver is symmetric (preserves
       % symmetry)
-      % if isSymmetric(obj)
-      %   for i = 1:nV
-      %     obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
-      %   end
-      % end
-      % 
-      % for iI = 1:numel(obj.domain.interfaces)
-      %   if ~isempty(obj.domain.Jum{bcVarId})
-      %     obj.domain.Jmu{iI}{bcVarId}(:,bcDofs) = 0;
-      %   end
-      % end
+      if isSymmetric(obj)
+        for i = 1:nV
+          obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+        end
+      
+        for iI = 1:numel(obj.domain.interfaces)
+          if ~isempty(obj.domain.Jum{bcVarId})
+            obj.domain.Jmu{iI}{bcVarId}(:,bcDofs) = 0;
+          end
+        end
+      end
 
       % add 1 to diagonal entry of diagonal block
       %J(bcDofs + (bcDofs-1)*size(J,1)) = 1;   extremely slow
@@ -239,17 +258,17 @@ classdef (Abstract) PhysicsSolver < handle
     end
     
 
-  end
-
-
-  methods (Static)
-
-    function out = isSymmetric()
+    function out = isSymmetric(obj)
 
       out = false;
       % optional solver query to know if a solver is symmetric or not
 
     end
+  end
+
+
+  methods (Static)
+
   end
 
 end

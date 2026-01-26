@@ -88,6 +88,8 @@ classdef SedimentsMap < handle
         map = obj.processEvent(pos) * dt;
       end
 
+      % map=map/(3.1536e7); % year->
+
       
     end
 

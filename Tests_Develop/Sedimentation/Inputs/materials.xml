@@ -14,7 +14,18 @@
     />
   </Solid>
 
-  <Solid cellTags = "2">
+  
+
+  <Fluid
+      specificWeight = "1.e4"
+      compressibility = "0e0"
+      dynamicViscosity = "1e-3"
+  />
+</Materials>
+
+<!--
+
+<Solid cellTags = "2">
     <Constitutive>
       <Elastic
           youngModulus = "9.4706e7"
@@ -28,9 +39,6 @@
     />
   </Solid>
 
-  <Fluid
-      specificWeight = "1.e4"
-      compressibility = "4.6e-10"
-      dynamicViscosity = "1e-3"
-  />
-</Materials>
+
+compressibility = "4.6e-10"
+-->

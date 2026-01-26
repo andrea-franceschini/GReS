@@ -16,8 +16,7 @@ static const int VTK_QUAD = 9;
 static const int VTK_HEXAHEDRON = 12;
 static const int VTK_HEXAHEDRON2 = 29;
 static const int VTK_QUAD2 = 28;
-
-//static const int VTK_POLYGON = 7;
+static const int VTK_POLYGON = 7;
 
 namespace
 {

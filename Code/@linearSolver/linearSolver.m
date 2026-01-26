@@ -1,187 +1,232 @@
 classdef linearSolver < handle
-   properties (Access = private)
+  properties (Access = private)
 
-      % Flag for debug
-      DEBUGflag = false
-      matlabMaxSize = 1e5
-      nsyTol = 1e-12
+    % Flag for debug
+    DEBUGflag = false
+    matlabMaxSize = 1e5
+    nsyTol = 1e-16
 
-      % Flag for Chronos existance
-      ChronosFlag = false
+    % Flag for Chronos existance
+    ChronosFlag = false
 
-      % Preconditioner Type
-      PrecType
+    % Preconditioner Type
+    PrecType
 
-      % Preconditioner
-      Prec = []
+    % Preconditioner
+    Prec = []
 
-      % Preconditioner application
-      MfunL = []
-      MfunR = []
-      
-      % Flag to request Preconditioner computation
-      requestPrecComp = true
+    % Preconditioner application
+    MfunL = []
+    MfunR = []
 
-      % starting vector
-      x0 = []
+    % Flag to request Preconditioner computation
+    requestPrecComp = true
 
-      % Solver Type
-      SolverType
+    % starting vector
+    x0 = []
 
-      % Discretizer
-      domain
+    % vector containing the insufficient tolerances
+    notSuffTol = []
 
-      % Number of domains/interfaces
-      nDom
-      nInt
-      
-      % Physics
-      phys
-      
-      % Flag to treat multiple domains as multiple domains
-      multidomFlag = false
+    % Solver Type
+    SolverType
 
-      % Flag to know if the problem has multiphysics
-      multiPhysFlag = false
+    % Discretizer
+    domain
 
-      % Statistics
-      whenComputed = []
-      aTimeComp = 0
-      aTimeSolve = 0
-      nSolve = 0
-      nComp = 0
-   end
+    % Number of domains/interfaces
+    nDom
+    nInt
+
+    % Physics
+    phys
+
+    % Flag to treat multiple domains as multiple domains
+    multidomFlag = false
+
+    % Flag to know if the problem has multiphysics
+    multiPhysFlag = false
+
+    % Statistics
+    whenComputed = []
+    aTimeComp = 0
+    aTimeSolve = 0
+    nSolve = 0
+    nComp = 0
+    maxIter = -1
+    aIter = 0
+
+    % Max Threads
+    maxThreads
+  end
 
 
-   properties (Access = public)
+  properties (Access = public)
 
-      % Params struct
-      params
-   end
+    % Params struct
+    params
+  end
 
-   methods (Access = public)
-      
-      % Constructor Function
-      function obj = linearSolver(domainin,interfacein,linsolverXML)
-         
-         % Check if chronos is available
-         ChronosDir = fullfile(gres_root,'..','aspamg_matlab','sources');
+  methods (Access = public)
 
-         if isfolder(ChronosDir)
-            
-            if(numel(domainin.physicsSolvers) > 1)
+    % Constructor Function
+    function obj = linearSolver(domainin,varargin)
 
-               obj.multiPhysFlag = true;
+      % Check if chronos is available
+      ChronosDir = fullfile(gres_root,'..','aspamg_matlab','sources');
 
-               if obj.DEBUGflag
-                  fprintf('multiPhysics not yet supported\nFall back to matlab solver\n');
-               end
-               return
+      if isfolder(ChronosDir)
+
+        % Check if the problem comes from multiphysics
+        if(domainin(1).dofm.getNumberOfVariables() > 1)
+          obj.multiPhysFlag = true;
+          return
+        end
+
+        % Check the number of interfaces and domains
+        if nargin >= 2
+          interfacein = varargin{1};
+        else
+          interfacein = ones(1);
+        end
+
+        obj.domain = domainin;
+        obj.nDom = length(domainin);
+        obj.nInt = length(interfacein);
+
+        % Select the physics
+        physname = obj.domain(1).solverNames(1);
+        if ~obj.multiPhysFlag
+          % Supported Single Physics
+          if(contains(physname,'SinglePhaseFlow') || physname == 'VariablySaturatedFlow' || physname == 'Poisson')
+            obj.phys = 0;
+          elseif(physname == 'Poromechanics')
+            obj.phys = 1;
+          else
+            if obj.DEBUGflag
+              warning('Non supported Physics for linsolver, falling back to matlab solver');
+              fprintf('physics: %s\n',physname);
             end
-
-            obj.domain = domainin;
-            obj.nDom = length(domainin);
-            obj.nInt = length(interfacein);
-
-            physname = obj.domain(1).solverNames(1);
-            if(contains(physname,'SinglePhaseFlow') || physname == 'VariablySaturatedFlow' || physname == 'Poisson')
-               obj.phys = 0;
-            elseif(physname == 'Poromechanics')
-               obj.phys = 1;
+            return
+          end
+        else
+          % Supported MultiPhysics
+          if(physname == 'BiotFullySaturated')
+            if domainin.dofm.getVariableNames(1) == "pressure"
+              obj.phys = 0;
             else
-               if obj.DEBUGflag
-                  warning('Non supported Physics for linsolver, falling back to matlab solver');
-                  fprintf('physics: %s\n',physname);
-               end
-               return
+              obj.phys = 1;
             end
-
-            % Chronos exists
-            obj.ChronosFlag = true;
-            addpath(genpath(ChronosDir));
-            RACPDir = fullfile(gres_root,'..','aspamg_matlab','composed_precs','RACP');
-            addpath(genpath(RACPDir));
-
-            % Read XML
-            if nargin > 2
-               % Use input values
-               data = readstruct(linsolverXML,AttributeSuffix="");
-            else
-               % Get default values
-               if obj.phys == 0
-                  chronos_xml_default = fullfile(gres_root,'Code','@linearSolver','XML_setup','chronos_xml_setup_CFD.xml');
-               else
-                  chronos_xml_default = fullfile(gres_root,'Code','@linearSolver','XML_setup','chronos_xml_setup.xml');
-               end
-
-               % Read Defaults
-               data = readstruct(chronos_xml_default,AttributeSuffix="");
+          else
+            if obj.DEBUGflag
+              warning('Non supported Physics for linsolver, falling back to matlab solver');
+              fprintf('physics: %s\n',physname);
             end
-            
-            % Get the solver type
-            obj.SolverType = lower(data.solver);
-            
-            % if GMRES get restart value
-            if (obj.SolverType == 'gmres')
-               obj.params.restart = data.general.restart;
-            else
-               obj.params.restart = 100;
-            end
+            return
+          end
+        end
 
-            % Get the preconditioner type
-            obj.PrecType = lower(data.preconditioner);
+        % Chronos exists
+        obj.ChronosFlag = true;
+        addpath(genpath(ChronosDir));
+        RACPDir = fullfile(gres_root,'..','aspamg_matlab','composed_precs','RACP');
+        addpath(genpath(RACPDir));
 
-            obj.params.tol   = 1e-1*data.general.tol;
-            obj.params.maxit = data.general.maxit;
+        % Read XML
+        if nargin > 2
+          % Use input values
+          data = readstruct(varargin{2},AttributeSuffix="");
+        else
+          % Get default values
+          if obj.phys == 0
+            chronos_xml_default = fullfile(gres_root,'Code','@linearSolver','XML_setup','chronos_xml_setup_CFD.xml');
+          else
+            chronos_xml_default = fullfile(gres_root,'Code','@linearSolver','XML_setup','chronos_xml_setup.xml');
+          end
 
-            % Get the different parameters according to the prectype
-            switch obj.PrecType
-               case 'amg'
-                  obj.params.amg      = data.amg;
-                  obj.params.smoother = data.smoother;
-                  obj.params.prolong  = data.prolong;
-                  obj.params.coarsen  = data.coarsen;
-                  obj.params.tspace   = data.tspace;
-                  obj.params.filter   = data.filter;
-                  obj.params.minIter  = 30;
+          % Read Defaults
+          data = readstruct(chronos_xml_default,AttributeSuffix="");
+        end
 
-               case 'fsai'
-                  obj.params.smoother = data.smoother;
-                  obj.params.minIter  = 300;
-            end
+        % Get the solver type
+        obj.SolverType = lower(data.solver);
 
-            % First time solving request preconditioner computation
-            obj.params.iter = -1;
-            obj.params.lastRelres = obj.params.tol;
-         end
+        % if GMRES get restart value
+        if (obj.SolverType == 'gmres')
+          obj.params.restart = data.general.restart;
+        else
+          obj.params.restart = 100;
+        end
+
+        % Get the preconditioner type
+        obj.PrecType = lower(data.preconditioner);
+
+        obj.params.tol   = obj.domain(1).simparams.relTol;
+        obj.params.maxit = data.general.maxit;
+
+        % Get the different parameters according to the prectype
+        switch obj.PrecType
+          case 'amg'
+            obj.params.amg      = data.amg;
+            obj.params.smoother = data.smoother;
+            obj.params.prolong  = data.prolong;
+            obj.params.coarsen  = data.coarsen;
+            obj.params.tspace   = data.tspace;
+            obj.params.filter   = data.filter;
+            obj.params.minIter  = 30;
+
+          case 'fsai'
+            obj.params.smoother = data.smoother;
+            obj.params.minIter  = 300;
+        end
+
+        % First time solving request preconditioner computation
+        obj.params.iter = -1;
+        obj.params.lastRelres = 1e10;
+
+        % Set maximum number of threads to use if the system provides less
+        obj.maxThreads = maxNumCompThreads;
+        obj.params.smoother.nthread = min(obj.params.smoother.nthread,obj.maxThreads);
+        obj.params.prolong.np = min(obj.params.prolong.np,obj.maxThreads);
+        obj.params.filter.np = min(obj.params.filter.np,obj.maxThreads);
+
       end
+    end
 
-      function printStats(obj)
-         fprintf('Average Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
-         fprintf('Average Solve time = %e\n',(obj.aTimeSolve/obj.nSolve));
-         fprintf('The preconditioner was computed at time(s):\n');
-         for i = 1:length(obj.whenComputed)
-            fprintf('             %d\t%e\n',i,obj.whenComputed(i));
-         end
-         fprintf('Total time for computation of the linear systems = %e\n',obj.aTimeComp+obj.aTimeSolve);
+    function printStats(obj)
+      fprintf('Average Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
+      fprintf('Average Solve time = %e\n',(obj.aTimeSolve/obj.nSolve));
+      fprintf('Average number of iterations = %e\n',(obj.aIter/obj.nSolve));
+      fprintf('Max number of iterations = %d\n',obj.maxIter);
+      fprintf('The preconditioner was computed at time(s):\n');
+      for i = 1:length(obj.whenComputed)
+        fprintf('             %d\t%e\n',i,obj.whenComputed(i));
       end
+      fprintf('Total time for computation of the linear systems = %e\n',obj.aTimeComp+obj.aTimeSolve);
+    end
 
-      % Function to solve the system
-      [x,flag] = Solve(obj,A,b,time)
+    % Function to solve the system
+    [x,flag] = Solve(obj,A,b,time)
 
-   end
+  end
 
-   methods (Access = private)
+  methods (Access = private)
 
-      % Function to compute the preconditioner
-      computePrec(obj,A)
+    % Function to compute the preconditioner
+    computePrec(obj,A)
 
-      % Function to compute the preconditioner for the single block (single physics)
-      computeSinglePhPrec(obj,A);
+    % Function to compute the preconditioner for the single block (single physics)
+    computeSinglePhPrec(obj,A);
 
-      % Function to compute the RACP preconditioner for the lagrange multiplier case (single physics multi domain)
-      computeRACP(obj,A)
-   end
+    % Function to compute the Reverse Agumented preconditioner for the lagrange multiplier case (single physics multi domain)
+    computeRACP(obj,A)
+
+    % Function to compute the MCP preconditioner for the multiphysics case
+    computeMCP(obj,A)
+
+    % Function to treat the Dirichlet boundary conditions
+    treatDirBC(obj,A)
+  end
 
 end
 
