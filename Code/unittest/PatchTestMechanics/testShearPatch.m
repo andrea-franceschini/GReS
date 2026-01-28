@@ -20,7 +20,7 @@ classdef testShearPatch < matlab.unittest.TestCase
     % Test methods
 
     function testPatch(testCase)
-
+      gresLog().setVerbosity(-1);
       simparams = SimulationParameters(testCase.pathToFile);
       b = BlockStructuredMesh([0.0, 1.0;0.0 1.0; 0.0 1.0],[1,1,1],1);
       mesh = b.processGeometry();
