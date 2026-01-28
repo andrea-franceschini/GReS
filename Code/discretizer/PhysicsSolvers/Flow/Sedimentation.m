@@ -270,7 +270,7 @@ classdef Sedimentation < PhysicsSolver
       end
 
       % adding sediment contribution
-      % rhs=rhs+obj.computeSedContribution;
+      rhs=rhs+obj.computeSedContribution;
     end
 
     function computeStiffMat(obj)
@@ -360,7 +360,7 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function sedmRhs = computeSedContribution(obj)
-      sedmRhs = zeros(obj.grid.getActiveDofs,1);
+      sedmRhs = zeros(obj.grid.ndofs,1);
 
       % 1. Calculate time step
       t0 = obj.domain.stateOld.t;
@@ -372,7 +372,12 @@ classdef Sedimentation < PhysicsSolver
       % 3. Calculate the initial porosity and solid weight
       poro = 1-obj.computeInitialPorosity(obj.grid.getActiveDofs);
 
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      dgamma = zeros(obj.grid.ndofs,1);
+      for mat=1:obj.nmat
+        tmpMat=obj.materials.getMaterial(mat).PorousRock.getSpecificGravity();
+        dgamma = dgamma+obj.grid.matfrac(:,mat)*tmpMat;
+      end
+      dgamma = dgamma-obj.materials.getFluid().getFluidSpecWeight();
 
        
     end
