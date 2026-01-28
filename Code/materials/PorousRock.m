@@ -58,30 +58,19 @@ classdef PorousRock < handle
             elseif length(obj.KVec) == 3
                 K = diag(obj.KVec);
             else
-                K = [obj.KVec(1) obj.KVec(2) obj.KVec(3);
-                    obj.KVec(2) obj.KVec(4) obj.KVec(5);
-                    obj.KVec(3) obj.KVec(5) obj.KVec(6)];
+                K = [obj.KVec(1) obj.KVec(6) obj.KVec(5);
+                    obj.KVec(6) obj.KVec(2) obj.KVec(4);
+                    obj.KVec(5) obj.KVec(4) obj.KVec(3)];
             end
         end
 
-        function K = getPermVoigt(obj)
+        function K = getPermVector(obj)
             if isscalar(obj.KVec)  % output [K K K 0 0 0]
               K = obj.KVec*[ones(1,3) zeros(1,3)];
             elseif length(obj.KVec) == 3  % output [Kxx Kyy Kzz 0 0 0]
               K = [obj.KVec zeros(1,3)];
             else  % output [Kxx Kyy Kzz Kyz Kxz Kxy]
-              K = [obj.KVec(1) obj.KVec(4) obj.KVec(6) obj.KVec(5) obj.KVec(3) obj.KVec(2)];
-            end
-        end
-
-        function K = getPermVector(obj) % Inspired by MRST
-            if length(obj.KVec) == 1
-                K = [obj.KVec, 0, 0, 0, obj.KVec, 0, 0, 0, obj.KVec];
-            elseif length(obj.KVec) == 3
-                K = [obj.KVec(1), 0, 0, 0, obj.KVec(2), 0, 0, 0, obj.KVec(3)];
-            else
-                K = [obj.KVec(1), obj.KVec(2), obj.KVec(3), obj.KVec(2), obj.KVec(4), ...
-                    obj.KVec(5), obj.KVec(3), obj.KVec(5), obj.KVec(6)];
+              K = obj.KVec;
             end
         end
 
