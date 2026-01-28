@@ -40,6 +40,7 @@ classdef Elastic < handle
     %
 
     function D = getElasticTensor(obj,cID)
+      % elastic tensor in engineering Voigt notation
        D = zeros(6);
        if obj.isTabular
           pois = obj.nu(cID);
