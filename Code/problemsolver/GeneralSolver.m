@@ -111,7 +111,7 @@ classdef GeneralSolver < handle
           % reset non linear iteration counter
           obj.iterNL = 0;
 
-          %%% NEWTON LOOP %%%
+          %%% NONLINEAR LOOP %%%
           while (~flConv) && (obj.iterNL < obj.simparams.itMaxNR)
 
             obj.iterNL = obj.iterNL + 1;
@@ -473,7 +473,9 @@ classdef GeneralSolver < handle
         end
 
         % allow new survival attempts on new time steps
-        obj.attemptedReset = false;
+        if obj.simparams.attemptSimplestConfiguration
+          obj.attemptedReset = false;
+        end
 
       end
 
