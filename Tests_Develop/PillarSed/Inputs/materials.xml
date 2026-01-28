@@ -23,7 +23,7 @@
 
   <Fluid
       specificWeight = "1.e4"
-      compressibility = "0e0"
+      compressibility = "4.6e-10"
       dynamicViscosity = "1e-3"
   />
   <!-- specific weight (N/m3),

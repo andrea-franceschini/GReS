@@ -36,8 +36,6 @@ classdef Sedimentation < PhysicsSolver
     facesNeighDir (:,1)                 % Face normal direction (1=x,2=y,3=z)
     halfTrans (:,3)                     % Half transmissibility per cell
 
-    maxDofUnchanged = 0                 % Identify the last unchanged position in the J matrix
-
     H (:,:)
     P (:,:)
   end
@@ -81,7 +79,7 @@ classdef Sedimentation < PhysicsSolver
       obj.prepareBC(input.Boundary);
 
       % Initialize the States
-      obj.getState().data.(obj.getField()) = zeros(obj.grid.getNumberCells,1);
+      obj.prepareStates;
 
       % Allocate system matrices
       obj.prepareSystem;
@@ -108,43 +106,18 @@ classdef Sedimentation < PhysicsSolver
       [cellGrow, cellSed] = obj.updateSedAccumulated;
 
       % Grow mesh if height threshold is reached
-      if any(cellGrow)
+      flagGrow = any(cellGrow);
+      if flagGrow
         meshUpdate(obj,cellGrow,cellSed);
       end
 
       % Update state for next step
       obj.domain.stateOld = copy(obj.domain.state);
-    end
 
-    function advanceStateNOK(obj)
-      % ADVANCESTATE Finalizes time step and updates grid topology.
-
-      % Update sediment accumulation
-      t0 = obj.domain.stateOld.t;
-      dt = obj.domain.state.t-t0;
-      addSed = obj.sedimentHistory.getSedimentationMap(t0,dt);
-      obj.sedimentAcc = obj.sedimentAcc + addSed;
-
-      % While need to create a new cell, update the mesh.
-      colSed = sum(obj.sedimentAcc,2);
-      cellGrow = colSed >= obj.heightControl;
-      while any(cellGrow)
-        cellSed = zeros([prod(obj.grid.ncells(1:2)),obj.nmat]);
-        dl = colSed-obj.heightControl;
-        sed = (dl./sum(addSed,2)).*addSed;
-        cellSed(cellGrow,:) = obj.sedimentAcc(cellGrow,:)-sed(cellGrow,:);
-        obj.sedimentAcc(cellGrow,:) = sed(cellGrow,:);
-
-        % Grow mesh if height threshold is reached
-        meshUpdate(obj,cellGrow,cellSed);
-
-        % update the accumulated sediment
-        colSed = sum(obj.sedimentAcc,2);
-        cellGrow = colSed >= obj.heightControl;
+      % Update the dof used for the parallel solver
+      if flagGrow
+        obj.getState().data.maxDofUnchanged = obj.grid.getMaxDofUnchanged;
       end
-
-      % Update state for next step
-      obj.domain.stateOld = copy(obj.domain.state);
     end
 
     function applyBC(obj,bcId,t)
@@ -211,7 +184,10 @@ classdef Sedimentation < PhysicsSolver
       end
       % mob = (1/obj.materials.getFluid().getDynViscosity());
       % states.flux = computeFlux(obj,p,mob,t);
-      states.perm = getPerm(obj,obj.grid.getActiveDofs);
+      states.poro = obj.computePorosity();
+      states.perm = obj.computePermeability();
+      states.comp = obj.getState().data.cellComp;
+      states.vstress = obj.getState().data.vstress;
       states.pressure = p;
     end
 
@@ -256,7 +232,7 @@ classdef Sedimentation < PhysicsSolver
         case 'dirichlet'
           gamma = obj.materials.getFluid().getFluidSpecWeight();
           mu = obj.materials.getFluid().getDynViscosity();
-          permCell = getPerm(obj,cellId);
+          permCell = obj.computePermeability(cellId);
           dirJ = 1/mu*(faceArea.*permCell(:,axis));
           potential = p(cellId) - bc.data - gamma*dz;
           q = dirJ.*potential;
@@ -270,7 +246,7 @@ classdef Sedimentation < PhysicsSolver
       obj.computeStiffMat;
       obj.computeCapMat;
       J = obj.domain.simparams.theta*obj.H + obj.P/dt;
-      obj.maxDofUnchanged = find(sum(J~=0,1)==7,1,'last');
+      % obj.maxDofUnchanged = find(sum(J~=0,1)==7,1,'last');
     end
 
     function rhs = computeRhs(obj,dt)
@@ -292,6 +268,9 @@ classdef Sedimentation < PhysicsSolver
       if gamma > 0
         rhs = rhs + finalizeRHSGravTerm(obj,lw);
       end
+
+      % adding sediment contribution
+      % rhs=rhs+obj.computeSedContribution;
     end
 
     function computeStiffMat(obj)
@@ -311,32 +290,22 @@ classdef Sedimentation < PhysicsSolver
       % Includes:
       %   - Rock compressibility
       %   - Fluid compressibility
-      %
-      % TODO:
-      %   Update cell volumes after mesh growth.
-      
-      maxcells = obj.grid.ndofs;
-      alpha=zeros(maxcells,1);
-      poro=zeros(maxcells,1);
-      for mats=1:obj.nmat
-        tmpMat=obj.materials.getMaterial(mats).ConstLaw.getRockCompressibility();
-        alpha=alpha+tmpMat.*obj.grid.matfrac(:,mats);
-        tmpMat=obj.materials.getMaterial(mats).PorousRock.getPorosity();
-        poro=poro+tmpMat.*obj.grid.matfrac(:,mats);
-      end
 
-      % Computing the permeability
-      dofs = obj.grid.getDofsFromIJK;
-      ActiveCells = dofs ~= 0;
-      map = obj.grid.getActiveDofs;
-      % alpha=alpha(ActiveCells);
-      % alpha=alpha(map);
-      % poro=poro(ActiveCells);
-      % poro=poro(map);
-      volsCell = obj.grid.computeVols();  % <--- Modify here
+      % Selecting the active dofs
+      % dofs = obj.grid.getActiveDofs;
+      dofs = 1:obj.grid.ndofs;
 
+      % Computing the volumes
+      volsCell = obj.grid.computeVols(dofs,obj.getState().data.cellComp);
+      % volsCell = obj.grid.computeVols(dofs);   % <--- without cell height update
+
+      % Computing the storage coefficient
       beta = obj.materials.getFluid().getFluidCompressibility();
-      PVal = (alpha+beta*poro).*volsCell;
+      poro = obj.computePorosity(dofs);
+      oedoComp = obj.computeOedometricCompressibility(dofs);
+      PVal = (oedoComp+beta*poro).*volsCell;
+
+      % Creating the P matrix.
       obj.P = PVal.*speye(obj.grid.ndofs);
     end
 
@@ -345,9 +314,6 @@ classdef Sedimentation < PhysicsSolver
       %
       % Notes:
       %   - X and Y half transmissibilities are stored without height.
-      %
-      % TODO:
-      %   Update Z scaling using deformed column heights.
 
       lnk=obj.grid;
 
@@ -355,11 +321,13 @@ classdef Sedimentation < PhysicsSolver
       actDof = lnk.dof ~=0;
       [idI,idJ,idK] = lnk.getIJK;
 
-      % TODO: use the deformation for each column to update the z height
+      % Finalize the half-transmissibility
       dims = lnk.getDims([idI(actDof),idJ(actDof),idK(actDof)]);
       tmpT = obj.halfTrans;
+      dl = obj.getState().data.cellComp;
       for i=1:2
-        tmpT(:,i) = tmpT(:,i)./dims(:,3);
+        tmpT(:,i) = tmpT(:,i)./(dims(:,3)-dl);
+        % tmpT(:,i) = tmpT(:,i)./dims(:,3);   % <--- without cell height update
       end
 
       idx = sub2ind(size(tmpT), obj.facesNeigh(:,1), obj.facesNeighDir);
@@ -389,6 +357,62 @@ classdef Sedimentation < PhysicsSolver
       tmpVec = gamma*lw.*obj.computeTrans.*(zneiA-zneiB);
       gTerm = accumarray(obj.facesNeigh(:), ...
         [tmpVec; -tmpVec],[obj.grid.ndofs,1]);
+    end
+
+    function sedmRhs = computeSedContribution(obj)
+      sedmRhs = zeros(obj.grid.getActiveDofs,1);
+
+      % 1. Calculate time step
+      t0 = obj.domain.stateOld.t;
+      dt = obj.domain.state.t-t0;
+
+      % 2. Calculate the sedimentation rate
+      sedRate = obj.sedimentHistory.getSedimentationMap(t0,dt);
+
+      % 3. Calculate the initial porosity and solid weight
+      poro = 1-obj.computeInitialPorosity(obj.grid.getActiveDofs);
+
+      gamma = obj.materials.getFluid().getFluidSpecWeight();
+
+       
+    end
+
+    function poro = computeInitialPorosity(obj,dofs)
+      if ~exist("dofs","var")
+        dofs = obj.grid.getActiveDofs;
+      end
+      ndofs = length(dofs);
+      poro = zeros(ndofs,1);
+      for mat=1:obj.nmat
+        tmpMat=obj.materials.getMaterial(mat).PorousRock.getPorosity();
+        poro = poro+obj.grid.matfrac(dofs,mat)*tmpMat;
+      end
+    end
+
+    function poro = computePorosity(obj,dofs)
+      if ~exist("dofs","var")
+        dofs = obj.grid.getActiveDofs;
+      end
+      poro = obj.computeInitialPorosity(dofs);
+    end
+
+    function oedoComp = computeOedometricCompressibility(obj,dofs)
+      if ~exist("dofs","var")
+        dofs = obj.grid.getActiveDofs;
+      end
+      oedoComp=zeros(length(dofs),1);
+    end
+
+    function perm=computePermeability(obj,dofs)
+      if ~exist("dofs","var")
+        dofs = obj.grid.getActiveDofs;
+      end
+      ndofs = length(dofs);
+      perm = zeros(ndofs,3);
+      for mat=1:obj.nmat
+        tmpMat=obj.materials.getMaterial(mat).PorousRock.getPermVoigt();
+        perm = perm+obj.grid.matfrac(dofs,mat)*tmpMat(1:3);
+      end
     end
 
     function applyNeuBC(obj,bcId,bcDofs,bcVals)
@@ -433,11 +457,17 @@ classdef Sedimentation < PhysicsSolver
       cellStr(1).data = state.pressure;
       cellStr(2).name = 'permeability';
       cellStr(2).data = state.perm;
+      cellStr(3).name = 'porosity';
+      cellStr(3).data = state.poro;
+      cellStr(4).name = 'Compaction(cell)';
+      cellStr(4).data = state.comp;
+      cellStr(5).name = 'stress(vertical)';
+      cellStr(5).data = state.vstress;
       if isfield(state,"potential")
-        cellStr(3).name = 'potential';
-        cellStr(3).data = state.potential;
-        cellStr(4).name = 'piezometric head';
-        cellStr(4).data = state.head;
+        cellStr(6).name = 'potential';
+        cellStr(6).data = state.potential;
+        cellStr(7).name = 'piezometric head';
+        cellStr(7).data = state.head;
       end
     end
 
@@ -489,6 +519,25 @@ classdef Sedimentation < PhysicsSolver
       end
     end
 
+    function prepareStates(obj)
+      obj.getState().data.maxDofUnchanged = 0;
+      obj.getState().data.(obj.getField()) = zeros(obj.grid.getNumberCells,1);     
+
+      % % maxcells = obj.grid.ndofs;
+      % numcell = obj.grid.getNumberCells;
+      % obj.getState().data.poro = zeros(numcell,1);
+      % for mats=1:obj.nmat
+      %   % tmpMat=obj.materials.getMaterial(mats).ConstLaw.getRockCompressibility();
+      %   % alpha=alpha+tmpMat.*obj.grid.matfrac(:,mats);
+      %   tmpMat=obj.materials.getMaterial(mats).PorousRock.getPorosity();
+      %   obj.getState().data.poro = obj.getState().data.poro + ...
+      %     tmpMat.*obj.grid.matfrac(:,mats);
+      % end
+
+      obj.getState().data.cellComp = zeros(obj.grid.getNumberCells,1);
+      obj.getState().data.vstress = zeros(obj.grid.getNumberCells,1);
+    end
+
     function prepareSystem(obj)
       % Compute the Neighborhood.
       dofs = obj.grid.getDofsFromIJK;
@@ -519,7 +568,7 @@ classdef Sedimentation < PhysicsSolver
       obj.facesNeighDir = cellsConcDir(cellsConcActive);
 
       % Computing the permeability
-      permCell = getPerm(obj,dofs(ActiveCells));
+      permCell = obj.computePermeability();
       % correcting matfrac, cleaning fractions for non-existent cells
       % obj.grid.matfrac(~ActiveCells(:),:)=0.;
 
@@ -549,13 +598,7 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.outstate.VTK = VTKOutput(obj.mesh,obj.domain.outstate.vtkFileName);
     end
 
-    function permCells = getPerm(obj,cellId)
-      permCells=0;
-      for mat=1:obj.nmat
-        tmpMat=obj.materials.getMaterial(mat).PorousRock.getPermVoigt();
-        permCells = permCells+obj.grid.matfrac(cellId,mat)*tmpMat(1:3);
-      end
-    end
+    
 
     function [cellGrow, cellSed] = updateSedAccumulated(obj)
       % UPDATESEDACCUMULATED Updates sediment buffer and triggers grid growth.
@@ -617,7 +660,7 @@ classdef Sedimentation < PhysicsSolver
       actIJK = [idI(map),idJ(map),idK(map)];
       dofs = lnk.getDofsFromIJK(actIJK);
       
-      permCell = obj.getPerm(dofs);
+      permCell = obj.computePermeability(dofs);
       celldims = lnk.getDims(actIJK);
 
       % Creating the connectives between new cells
@@ -669,6 +712,18 @@ classdef Sedimentation < PhysicsSolver
       %   obj.domain.state.data.pressure(dofs);
 
       obj.domain.state.data.pressure(end+1:end+newcells) = 0.;
+
+      % poro = zeros(newcells,1);
+      % for mats=1:obj.nmat
+      %   pos = sub2ind(size(obj.grid.matfrac), dofs,repelem(mats,newcells,1));
+      %   tmpMat=obj.materials.getMaterial(mats).PorousRock.getPorosity();
+      %   poro=poro+tmpMat.*obj.grid.matfrac(pos);
+      % end
+
+      % Update the cell displacement.
+      obj.domain.state.data.cellComp(end+1:end+newcells) = 0.;
+      obj.domain.state.data.vstress(end+1:end+newcells) = 0.;
+
       
       % Update the mesh output
       obj.updateMeshOutput(map,newlayer);
@@ -699,6 +754,8 @@ classdef Sedimentation < PhysicsSolver
       colSed = sum(obj.sedimentAcc,2);
       out = colSed >= obj.heightControl;
     end
+
+
 
 
 

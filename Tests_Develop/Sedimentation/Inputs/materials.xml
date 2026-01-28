@@ -14,6 +14,20 @@
     />
   </Solid>
 
+  <Solid cellTags = "2">
+    <Constitutive>
+      <Elastic
+          youngModulus = "9.4706e7"
+          poissonRatio = "0.15"
+      />
+    </Constitutive>
+    <PorousRock
+        porosity = "0.25"
+        specificGravity = "2.1e6"
+        permeability = "1e-13, 1e-13, 1e-13"
+    />
+  </Solid>
+
   
 
   <Fluid

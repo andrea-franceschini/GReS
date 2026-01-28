@@ -127,8 +127,10 @@ of sediment deposition on the top of the domain.
           yfile = "Inputs/Domain/coord.dat"
           zcoord = "0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0" />
       <Initial
-          type = "all"
-          materialTag = "1" />
+          type = "surface"
+          columnHeight = "Inputs/Domain/initialColumn.dat"
+          materialTag = "1"
+      />
       <NewCellHeightControl> 0.1 </NewCellHeightControl>
     </Domain>
 

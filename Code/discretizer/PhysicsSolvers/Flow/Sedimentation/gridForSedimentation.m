@@ -195,25 +195,29 @@ classdef gridForSedimentation < handle
       coord = coord(cellIds,:);
     end
 
-    function vols = computeVols(obj)
+    function vols = computeVols(obj,dofs,dl)
       % COMPUTEVOLS Computes volumes of all active cells.
       %
       % Notes:
       %   - Uses vectorized broadcasting
       %   - Assumes orthogonal grid
 
+      if ~exist("dofs","var")
+        dofs = obj.getActiveDofs;
+      end
+      if ~exist("dl","var")
+        dl = zeros(length(dofs),1);
+      end
+      ind = find(ismember(obj.dof, dofs));
+      
       dx = diff(obj.coordX(:));
-      dy = diff(obj.coordY(:));
-      dz = diff(obj.coordZ(:));
+      dy = reshape(diff(obj.coordY(:)), 1, []);
+      dz = reshape(diff(obj.coordZ(:)), 1, 1, []);
+      tmp = ones(length(dx),length(dy),length(dz));
+      dz = dz.*tmp;
 
-      % Create 3D volume matrix via outer product (broadcasting)
-      vAll = dx .* reshape(dy, 1, []) .* reshape(dz, 1, 1, []);
-
-      % Extract volumes only for active cells
-      activeIds = obj.dof ~= 0;
-      ids = obj.dof(activeIds);
-      vols = vAll(activeIds);
-      vols = vols(ids);
+      vAll = dx.*dy.*tmp;
+      vols = vAll(ind).*(dz(ind)-dl(dofs));
     end
 
     function ijk = getIJKfromCellID(obj,cellID)
@@ -247,7 +251,7 @@ classdef gridForSedimentation < handle
       if nargin == 1
         dofs = obj.dof(:);
       else
-        pos = sub2ind(size(obj.dof), ijk(:,1), ijk(:,2), ijk(:,3));
+        pos = sub2ind(obj.ncells, ijk(:,1), ijk(:,2), ijk(:,3));
         dofs = obj.dof(pos);
       end
     end
@@ -355,9 +359,22 @@ classdef gridForSedimentation < handle
     end
 
     function [idI, idJ, idK] = getIJK(obj)
-      idI = repmat((1:obj.ncells(1))',prod(obj.ncells(2:3)),1);
-      idJ = repmat(repelem((1:obj.ncells(2))',obj.ncells(1)),obj.ncells(3),1);
-      idK = repelem((1:obj.ncells(3))',prod(obj.ncells(1:2)));
+      num=prod(obj.ncells);
+      idI = reshape(repmat((1:obj.ncells(1))',prod(obj.ncells(2:3)),1),num,1);
+      idJ = reshape(repmat(repelem((1:obj.ncells(2))',obj.ncells(1)),obj.ncells(3),1),num,1);
+      idK = reshape(repelem((1:obj.ncells(3))',prod(obj.ncells(1:2))),num,1);
+    end
+
+    function dof = getMaxDofUnchanged(obj)
+      minval = min(obj.columnsHeight);
+      if minval~=1
+        loc = obj.columnsHeight == minval;
+        [idI, idJ] = obj.getIJLay();
+        pos = sub2ind(obj.ncells, idI(loc), idJ(loc), obj.columnsHeight(loc)-1);
+        dof = max(obj.dof(pos));
+      else
+        dof=0;
+      end
     end
 
   end

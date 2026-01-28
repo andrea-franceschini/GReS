@@ -49,8 +49,6 @@ classdef GeneralSolver < handle
       % Initialize the time step increment
       obj.dt = obj.simparams.dtIni;
 
-      %
-
       for i = 1:obj.nDom
         obj.domains(i).applyDirVal(obj.t);
       end
