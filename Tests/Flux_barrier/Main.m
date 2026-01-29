@@ -48,7 +48,7 @@ end
 
 % set initial conditions directly modifying the state object
 domain.state.data.pressure(:) = 1.e5;
-% domain.state.data.potential(:) = domain.state.data.pressure+ mat.getFluid().getFluidSpecWeight()*topology.cellCentroid(:,3);
+% domain.state.data.potential(:) = domain.state.data.pressure+ mat.getFluid().getSpecificWeight()*topology.cellCentroid(:,3);
 
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme.

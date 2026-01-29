@@ -77,7 +77,7 @@ classdef CheckTests < matlab.unittest.TestCase
 
     function Flow_nonConforming(testCase)
       cd("Flow_nonConforming/");
-      main
+      run('Main.m');
       % checking only if 6 outputs is being generated
       testCase.verifyEqual(domains(1).outstate.timeList,domains(2).outstate.timeList);
       testCase.verifyEqual(domains(1).outstate.timeList,[0.5000; 1; 2; 5; 10; 50]);

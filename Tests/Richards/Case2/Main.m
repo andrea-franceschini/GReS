@@ -92,7 +92,7 @@ if postproc
 
     % Values for normalized plots
     H = max(topology.coordinates(:,3));
-    weight = mat.getFluid().getFluidSpecWeight();
+    weight = mat.getFluid().getSpecificWeight();
 
     % Location a column to be the plot position.
     ptsZ = elems.mesh.cellCentroid(nodesP,3);

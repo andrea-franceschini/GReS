@@ -39,7 +39,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
     function states = finalizeState(obj,p,t)
       % Compute the posprocessing variables for the module.
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getSpecificWeight();
       if gamma>0
         zbc = obj.mesh.cellCentroid(:,3);
         states.potential = p + gamma*zbc;
@@ -136,7 +136,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       end
 
       %adding gravity rhs contribute
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getSpecificWeight();
       if gamma > 0
         rhs = rhs + finalizeRHSGravTerm(obj,lw);
       end
@@ -146,7 +146,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     function computeRHSGravTerm(obj)
       % Compute the gravity contribution
       % Get the fluid specific weight and viscosity'
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getSpecificWeight();
       if gamma > 0
         neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
         zVec = obj.mesh.cellCentroid(:,3);
@@ -200,7 +200,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
               vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
 
             case 'Dirichlet'
-              gamma = obj.materials.getFluid().getFluidSpecWeight();
+              gamma = obj.materials.getFluid().getSpecificWeight();
               mu = obj.materials.getFluid().getDynViscosity();
               tr = obj.trans(faceID);
 
@@ -218,7 +218,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
               vals = [dirJ,q];
 
             case 'Seepage'
-              gamma = obj.materials.getFluid().getFluidSpecWeight();
+              gamma = obj.materials.getFluid().getSpecificWeight();
               assert(gamma>0.,'To impose Seepage boundary condition is necessary the fluid specify weight be bigger than zero!');
 
               zbc = obj.faces.faceCentroid(faceID,3);
