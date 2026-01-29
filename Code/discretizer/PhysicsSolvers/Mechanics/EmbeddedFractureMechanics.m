@@ -64,6 +64,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     function assembleSystem(obj,dt)
       % compute the displacements matrices and rhs in the domain
+
       fldMech = obj.dofm.getVariableId(Poromechanics.getField());
       [Juw,Jwu,Jww,rhsW] = computeJacobianAndRhs(obj,dt);
 
@@ -139,7 +140,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         KwwLoc = KwwLoc - dtdg*obj.cutAreas(i);
 
-
         % assemble local contributions
         asbKuw.localAssembly(uDof,wDof,KuwLoc);
         asbKwu.localAssembly(wDof,uDof,-KwuLoc);
@@ -152,8 +152,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         fTmp = pagemtimes(E,'ctranspose',sigma,'none');
         fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
         r2 = sum(fTmp,3);
-        rhsLoc = - r1 - r2;
-        rhsW(wDof) = rhsW(wDof) + rhsLoc; 
+        rhsLoc = -r1 -r2;
+        rhsW(wDof) = rhsW(wDof) - rhsLoc; 
 
       end
 
@@ -169,7 +169,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       state = getState(obj);
       state.data.(obj.getField()) = zeros(3*obj.nCutCells,1);
       state.data.traction = zeros(3*obj.nCutCells,1);
-      obj.activeSet.curr = repmat(ContactMode.stick,obj.nCutCells,1);
+      state.data.iniTraction = zeros(3*obj.nCutCells,1);
+      obj.activeSet.curr = repmat(ContactMode.open,obj.nCutCells,1);
       obj.activeSet.prev = obj.activeSet.curr;
 
     end
@@ -676,8 +677,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         end
 
+        s.data.traction = s.data.traction + s.data.iniTraction;
+
 
       end
+
     end
 
 
