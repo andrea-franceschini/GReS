@@ -75,6 +75,7 @@ classdef Logger < handle
       disp(' ')
       disp('Check out the tutorials folder')
       disp('     for hands-on guides and usage examples.')
+      disp('     <a href="matlab:open(strcat(gres_root,''/Tutorial/quickStart.mlx''))">Start the tutorial</a>')
       disp(' ')
       disp('Explore the Tests repository')
       disp('     to check available simulations in GReS.')
