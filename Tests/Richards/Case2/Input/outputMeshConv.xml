@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <Output
-        outputFile = "Outputs/Bottom"
-        matFileName = "Outputs/resultsBot"
-        saveHistory = "1"
-        printTimes = "0.5,1,2,5,10,50"
-        />
+    matFileName = "Output/MeshConvResults"
+    saveHistory = "1"
+    printTimes = "5.184e4"
+/>
 
-<!--
+<!-- 
 outputFile: the name of the Paraview output file. If the file is not provided, then nothing is printed
 
 saveHistory: save appropriate history output to mat file at specified printTimes. 

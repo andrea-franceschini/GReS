@@ -1,7 +1,7 @@
 close all;
 % clear;
-output_dir = 'Outputs';
-input_dir = 'Inputs';
+output_dir = 'Output';
+input_dir = 'Input';
 figures_dir = fullfile(output_dir,"Images");
 
 
@@ -48,7 +48,7 @@ domain.addPhysicsSolver(fullfile(input_dir,'solver.xml'));
 
 % set initial conditions directly modifying the state object
 z = elems.mesh.cellCentroid(:,3);
-gamma_w = getFluid(mat).getFluidSpecWeight();
+gamma_w = getFluid(mat).getSpecificWeight();
 wLev = 9.; % level of the water table
 domain.state.data.pressure = gamma_w*(wLev-z);
 
