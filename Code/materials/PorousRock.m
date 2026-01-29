@@ -33,13 +33,13 @@ classdef PorousRock < handle
         % end
 
         function Ss = getMaxSaturation(obj)
-            %GETSS Function to get the maximun saturation of the fluid.
-            Ss = obj.Ss;
+          %GETSS Function to get the maximun saturation of the fluid.
+          Ss = obj.Ss;
         end
 
         function Sr = getResidualSaturation(obj)
-            %GETSS Function to get the residual saturation of the fluid.
-            Sr = obj.Sr;
+          %GETSS Function to get the residual saturation of the fluid.
+          Sr = obj.Sr;
         end
 
         % function specGrav = getSpecificGravity(obj)
@@ -53,41 +53,34 @@ classdef PorousRock < handle
 
         % Function to get material porosity
         function biotCoeff = getBiotCoefficient(obj)
-            biotCoeff = obj.biot;
+          biotCoeff = obj.biot;
         end
 
         % Function to get material permeability as a 3x3 matrix
         function K = getPermMatrix(obj)
-            if length(obj.KVec) == 1
-                K = diag(obj.KVec*ones(3,1));
-            elseif length(obj.KVec) == 3
-                K = diag(obj.KVec);
-            else
-                K = [obj.KVec(1) obj.KVec(2) obj.KVec(3);
-                    obj.KVec(2) obj.KVec(4) obj.KVec(5);
-                    obj.KVec(3) obj.KVec(5) obj.KVec(6)];
-            end
+          if isscalar(obj.KVec)
+            K = diag(obj.KVec*ones(3,1));
+          elseif length(obj.KVec) == 3
+            K = diag(obj.KVec);
+          else
+            K = [obj.KVec(1) obj.KVec(6) obj.KVec(5);
+              obj.KVec(6) obj.KVec(2) obj.KVec(4);
+              obj.KVec(5) obj.KVec(4) obj.KVec(3)];
+          end
         end
 
-        function K = getPermVoigt(obj)
-            if isscalar(obj.KVec)  % output [K K K 0 0 0]
-              K = obj.KVec*[ones(1,3) zeros(1,3)];
-            elseif length(obj.KVec) == 3  % output [Kxx Kyy Kzz 0 0 0]
-              K = [obj.KVec zeros(1,3)];
-            else  % output [Kxx Kyy Kzz Kyz Kxz Kxy]
-              K = [obj.KVec(1) obj.KVec(4) obj.KVec(6) obj.KVec(5) obj.KVec(3) obj.KVec(2)];
-            end
-        end
+        function K = getPermVector(obj)
+          % returns 1x9 permeability entries as
+          %[Kxx,Kxy,Kxz,Kzx,Kyy,Kyz,Kxz,Kyz,Kzz]
 
-        function K = getPermVector(obj) % Inspired by MRST
-            if length(obj.KVec) == 1
-                K = [obj.KVec, 0, 0, 0, obj.KVec, 0, 0, 0, obj.KVec];
-            elseif length(obj.KVec) == 3
-                K = [obj.KVec(1), 0, 0, 0, obj.KVec(2), 0, 0, 0, obj.KVec(3)];
-            else
-                K = [obj.KVec(1), obj.KVec(2), obj.KVec(3), obj.KVec(2), obj.KVec(4), ...
-                    obj.KVec(5), obj.KVec(3), obj.KVec(5), obj.KVec(6)];
-            end
+          if isscalar(obj.KVec)
+            K = [obj.KVec, 0, 0, 0, obj.KVec, 0, 0, 0, obj.KVec];
+          elseif length(obj.KVec) == 3
+            K = [obj.KVec(1), 0, 0, 0, obj.KVec(2), 0, 0, 0, obj.KVec(3)];
+          else
+            K = [obj.KVec(1), obj.KVec(6), obj.KVec(5), obj.KVec(6), obj.KVec(2), ...
+              obj.KVec(4), obj.KVec(5), obj.KVec(4), obj.KVec(3)];
+          end
         end
 
         % Function to get rock compressibility
