@@ -2,18 +2,18 @@
 
 <Problem>
 
-  <simParam fileName = "Inputs/simparam.xml" />
+  <simParam fileName = "Input/simparam.xml" />
 
   <!--Top domain-->
   <Domain>
     <Geometry
-              fileName = "Inputs/DomainTop/topLayer.vtk"
+              fileName = "Input/DomainTop/topLayer.vtk"
               />
     <Gauss nGP = "1" />
-    <Materials fileName = "Inputs/DomainTop/materialsListTop.xml" />
-    <BoundaryConditions fileName = "Inputs/DomainTop/bcTop.xml" />
+    <Materials fileName = "Input/DomainTop/materialsListTop.xml" />
+    <BoundaryConditions fileName = "Input/DomainTop/bcTop.xml" />
     <Output
-              fileName = "Inputs/DomainTop/outTop.xml"
+              fileName = "Input/DomainTop/outTop.xml"
               />
     <Solver>
       <SinglePhaseFlowFEM />
@@ -23,13 +23,13 @@
   <!--Bottom domain-->
     <Domain>
     <Geometry
-              fileName = "Inputs/DomainBot/bottomLayer.vtk"
+              fileName = "Input/DomainBot/bottomLayer.vtk"
               />
     <Gauss nGP = "1" />
-    <Materials fileName = "Inputs/DomainBot/materialsListBottom.xml" />
-    <BoundaryConditions fileName = "Inputs/DomainBot/bcBot.xml" />
+    <Materials fileName = "Input/DomainBot/materialsListBottom.xml" />
+    <BoundaryConditions fileName = "Input/DomainBot/bcBot.xml" />
     <Output
-              fileName = "Inputs/DomainBot/outBottom.xml"
+              fileName = "Input/DomainBot/outBottom.xml"
               />
     <Solver>
       <SinglePhaseFlowFEM />

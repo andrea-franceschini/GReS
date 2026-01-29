@@ -8,7 +8,8 @@ classdef PorousRock < handle
         poro                 % Porosity
         biot                 % Biot coefficient
         %     alpha                % Rock compressibility (can be replaced by the oedometer test compressibility Cm)
-        specGrav             % Specific gravity of rock
+        gamma;             % Fluid specific weight
+        % specGrav             % Specific gravity of rock
         % Swr                  % Residual saturation of water
         Sr=0.;             % Residual saturation
         Ss=1.;             % Maximum saturation
@@ -41,8 +42,12 @@ classdef PorousRock < handle
             Sr = obj.Sr;
         end
 
-        function specGrav = getSpecificGravity(obj)
-            specGrav = obj.specGrav;
+        % function specGrav = getSpecificGravity(obj)
+        %     specGrav = obj.specGrav;
+        % end
+
+        function gamma = getSpecificWeight(obj)
+            gamma = obj.gamma;
         end
 
 
@@ -97,7 +102,8 @@ classdef PorousRock < handle
       function readMaterialParameters(obj,inputStruct)
 
         obj.poro = getXMLData(inputStruct,[],"porosity");
-        obj.specGrav = getXMLData(inputStruct,21,"specificGravity");
+        % obj.specGrav = getXMLData(inputStruct,21,"specificGravity");
+        obj.gamma = getXMLData(inputStruct,21,"specificWeight");
         obj.biot = getXMLData(inputStruct,1,"biotCoefficient");
         Kvec = getXMLData(inputStruct,[],"permeability");
         nK = length(Kvec);

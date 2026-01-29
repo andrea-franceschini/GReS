@@ -1,7 +1,7 @@
 close all;
 % clear;
-output_dir = 'Outputs';
-input_dir = 'Inputs';
+output_dir = 'Output';
+input_dir = 'Input';
 figures_dir = fullfile(output_dir,"Images");
 
 

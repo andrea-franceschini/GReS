@@ -1,7 +1,7 @@
 close all;
 % clear;
-input_dir = 'Inputs/';
-figures_dir = 'Outputs/Figs/';
+input_dir = 'Input/';
+figures_dir = 'Output/Figs/';
 
 typeDiscretization = "FVTPFA";
 %% ------------------------------ Set up the Domain -----------------------

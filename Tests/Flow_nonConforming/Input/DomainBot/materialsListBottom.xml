@@ -11,12 +11,13 @@
 
     <PorousRock
         porosity = "0.375"
-        specificGravity = "2.1e1"
-        permeability = "5.e-10, 5.e-10, 5.e-10"
+        specificWeight = "2.1e1"
+        permeability = "1.e-10, 1.e-10, 1.e-10"
     />
     <!-- porosity (Adimensional, between 0 and 1),
-         specificGravity (kg/m^3 ),
+         specificWeight (kg/m^3 ),
          permeability (m^2) -->
+
   </Solid>
 
   <Fluid

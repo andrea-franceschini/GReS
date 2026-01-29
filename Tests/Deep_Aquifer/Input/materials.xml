@@ -11,7 +11,7 @@
 
     <PorousRock
         porosity = "0.3"
-        specificGravity = "21"
+        specificWeight = "21"
         biotCoefficient = "1."
         permeability = "1e-17, 1e-17, 1e-17"
     />
@@ -27,7 +27,7 @@
 
     <PorousRock
         porosity = "0.30"
-        specificGravity = "21"
+        specificWeight = "21"
         biotCoefficient = "1."
         permeability = "1e-12, 1e-12, 1e-12"
     />

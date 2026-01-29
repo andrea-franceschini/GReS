@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+<struct>
+  <Domain>
+    <Name>TopLayer</Name>
+    <ModelType>SinglePhaseFlow_FEM</ModelType>
+    <SimParameters> Input/simparam.xml </SimParameters>
+    <Geometry>Input/DomainTop/topLayer.vtk</Geometry>
+    <Gauss>1</Gauss>
+    <Material> Input/DomainTop/materialsListTop.xml </Material>
+    <BoundaryConditions> Input/DomainTop/bcTop.xml </BoundaryConditions>
+    <OutState> Input/DomainTop/outTop.xml </OutState>
+  </Domain>
+
+  <Domain>
+    <Name>BottomLayer</Name>
+    <ModelType>SinglePhaseFlow_FEM</ModelType>
+    <SimParameters> Input/simparam.xml </SimParameters>
+    <Geometry>Input/DomainBot/bottomLayer.vtk</Geometry>    
+    <Gauss>1</Gauss>
+    <Material> Input/DomainBot/materialsListBottom.xml </Material>
+    <BoundaryConditions> Input/DomainBot/bcBot.xml </BoundaryConditions>
+    <OutState> Input/DomainBot/outBottom.xml </OutState>
+  </Domain>
+</struct>

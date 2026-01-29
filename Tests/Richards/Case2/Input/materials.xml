@@ -11,7 +11,7 @@
 
     <PorousRock
         porosity = "1.0"
-        specificGravity = "2.1e4"
+        specificWeight = "2.1e4"
         permeability = "9.4018e-12, 9.4018e-12, 9.4018e-12"
         residualSaturation = "0.102"
         maximumSaturation = "0.368"
