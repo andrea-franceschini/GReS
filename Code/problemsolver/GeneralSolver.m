@@ -1,7 +1,7 @@
 classdef GeneralSolver < handle
   % Class for solving non linear contact problem
 
-  properties (Access = protected)
+  properties (GetAccess=public,SetAccess=protected)
     %
     nDom                % number of domains in the model
     nInterf             % number of interfaces in the model
@@ -239,12 +239,12 @@ classdef GeneralSolver < handle
       start_dir = pwd;
       chronos_xml = fullfile(start_dir,'linsolver.xml');
       if(isfile(chronos_xml))
-        obj.linsolver = linearSolver(obj.domains,obj.interfaces,chronos_xml);
+        obj.linsolver = linearSolver(obj,chronos_xml);
       else
         if gresLog().getVerbosity > 2
           fprintf('Using default values for linsolver\n');
         end
-        obj.linsolver = linearSolver(obj.domains,obj.interfaces);
+        obj.linsolver = linearSolver(obj);
       end
     end
 

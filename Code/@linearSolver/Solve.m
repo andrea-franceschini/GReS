@@ -17,6 +17,17 @@ function [x,flag] = Solve(obj,A,b,time)
       return
    end
 
+   % Contact has opened a fracture or something similar so amg does not converge. 
+   % Directly recompute the preconditioner
+   if obj.phys == 1.1 
+      if obj.generalsolver.iterConfig > obj.iterConfigOld
+         obj.requestPrecComp = true;
+         obj.iterConfigOld = obj.generalsolver.iterConfig;
+      elseif obj.generalsolver.iterConfig < obj.iterConfigOld
+         obj.iterConfigOld = obj.generalsolver.iterConfig;
+      end
+   end
+
    % Have the linear solver compute the Preconditioner if necessary
    if(obj.requestPrecComp || obj.params.iter > 600 || obj.params.lastRelres > obj.params.tol*1e3)
       obj.computePrec(A);
@@ -51,29 +62,12 @@ function [x,flag] = Solve(obj,A,b,time)
                                                                    obj.params.maxit/obj.params.restart,obj.MfunL,obj.MfunR,obj.x0,obj.DEBUGflag);
          obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
          
-%          if obj.params.lastRelres > obj.params.tol
-%             obj.notSuffTol(length(obj.notSuffTol)+1) = obj.params.tol/obj.params.lastRelres;
-% 
-%             [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.params.tol*obj.notSuffTol(end)*0.1,...
-%                                                                       obj.params.maxit/obj.params.restart,obj.MfunL,obj.MfunR,x,obj.DEBUGflag);
-%             obj.params.iter = obj.params.iter + (iter1(1) - 1) * obj.params.restart + iter1(2);
-%          end
-
-
       case 'sqmr'
 
          % Solve the system by SQMR
          Afun = @(x) Amat*x;
          [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.params.tol,obj.params.maxit,obj.MfunL,obj.MfunR,obj.x0,obj.DEBUGflag);
 
-%          if obj.params.lastRelres > obj.params.tol
-%             obj.notSuffTol(length(obj.notSuffTol)+1) = obj.params.tol/obj.params.lastRelres;
-%             if obj.DEBUGflag
-%                fprintf('recomputing solution\n');
-%             end
-%             
-%             [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.params.tol,obj.params.maxit,obj.MfunL,obj.MfunR,obj.x0,obj.DEBUGflag);
-%          end
    end
 
    Tend = toc(startT);
