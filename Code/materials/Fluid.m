@@ -16,7 +16,7 @@ classdef Fluid < handle
             obj.readMaterialParameters(inputStruct);
         end
 
-        function gamma = getFluidSpecWeight(obj)
+        function gamma = getSpecificWeight(obj)
             %GETFLUIDSPECWIEGHT Function to get fluid specific gravity
             gamma = obj.gamma;
         end

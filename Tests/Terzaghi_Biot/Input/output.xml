@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <Output
-    outputFile = "Outputs/Results"
-    matFileName = "Outputs/Results"
-    saveHistory = "1"
-    printTimes = "10,50,100."
-/>
+        outputFile = "Output/results"
+        matFileName = "Output/results"
+        saveHistory = "1"
+        printTimes = "15,30,60,90,120,180"
+        />
 
-<!-- 
+<!--
 outputFile: the name of the Paraview output file. If the file is not provided, then nothing is printed
 
 saveHistory: save appropriate history output to mat file at specified printTimes. 

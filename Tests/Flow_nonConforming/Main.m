@@ -1,7 +1,7 @@
 % clear
 close all
 clc
-input_dir = 'Inputs';
+input_dir = 'Input';
 
 % Get the full path of the currently executing file
 scriptFullPath = mfilename('fullpath');

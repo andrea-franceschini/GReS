@@ -14,7 +14,7 @@ domain = Discretizer('Grid',grid,...
 domain.addPhysicsSolver('Input/solver.xml');
 
 % set initial conditions directly modifying the state object
-domain.state.data.pressure = getFluid(mat).getFluidSpecWeight()*(wLev-z);
+domain.state.data.pressure = getFluid(mat).getSpecificWeight()*(wLev-z);
 
 % Solve the problem
 Solver = GeneralSolver(simParam,domain);
