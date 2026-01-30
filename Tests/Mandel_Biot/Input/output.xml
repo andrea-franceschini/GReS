@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Output
+        outputFile = "Output/results"
+        matFileName = "Output/results"
+        saveHistory = "1"
+        printTimes = "0.05,0.25,1,2.5,5"
+        />
+
+<!-- 
+outputFile: the name of the Paraview output file. If the file is not provided, then nothing is printed
+
+saveHistory: save appropriate history output to mat file at specified printTimes. 
+Default "0": do not save history, "1": save history
+
+printTimes: list of time instant where the output solution is computed
+Can be directly specified here as a comma separated list of numbers, or can be a path to a file containing the list.
+-->
+
+

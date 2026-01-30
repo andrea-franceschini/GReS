@@ -89,7 +89,7 @@ end
 tstr = strcat(int2str(meshList(:)),' Cells');
 
 % Ajusting the pressure
-weight = mat.getFluid().getFluidSpecWeight();
+weight = mat.getFluid().getSpecificWeight();
 
 %Plotting pressure head
 figure('Position', [100, 100, 700, 700])

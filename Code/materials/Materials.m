@@ -117,7 +117,7 @@ classdef Materials < handle
           if isfield(input.Solid(i),"Curves")
             if ~ismissing(input.Solid(i).Curves)
               mat.Curves = VanGenuchten(input.Solid(i).Curves);
-              mat.Curves.betaCorrection(getFluidSpecWeight(fluid));
+              mat.Curves.betaCorrection(getSpecificWeight(fluid));
             end
           end
           obj.db(i) = mat;

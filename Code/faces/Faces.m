@@ -22,9 +22,11 @@ classdef Faces < handle
     function obj = Faces(msh)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
-      obj.setFaces(msh);
+      if strcmp(msh.meshType,"Unstructured")
+        obj.setFaces(msh);
+      end
     end
-%     Triangle:
+    %     Triangle:
 % 
 %     v
 %     ^

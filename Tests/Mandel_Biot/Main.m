@@ -1,7 +1,7 @@
 close all;
 % clear;
-output_dir = 'Outputs';
-input_dir = 'Inputs';
+output_dir = 'Output';
+input_dir = 'Input';
 figures_dir = fullfile(output_dir,"Images");
 
 profile on
@@ -52,7 +52,7 @@ domain = Discretizer('Boundaries',bound,...
                      'Materials',mat,...
                      'Grid',grid);
 
-domain.addPhysicsSolver('Inputs/solver_TPFA.xml')
+domain.addPhysicsSolver('Input/solver_TPFA.xml')
 
 % In this version of the code, the user can assign initial conditions only
 % manually, by directly modifying the entries of the state structure. 

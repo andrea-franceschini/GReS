@@ -15,15 +15,15 @@ in a nonConforming simulation.
 
     <Output
             saveHistory = "1"
-            outputFile = "Outputs/Results"
-            matFileName = "Outputs/results"
+            outputFile = "Output/Results"
+            matFileName = "Output/results"
             printTimes = "1,4,8"
             />
 
     <Solver>
       <BiotFullySaturated>
         <Poromechanics targetRegions = "1,2,3" />
-        <SinglePhaseFlowFEM targetRegions = "2,3" />
+        <SinglePhaseFlowFVTPFA targetRegions = "2,3" />
       </BiotFullySaturated>
     </Solver>
 

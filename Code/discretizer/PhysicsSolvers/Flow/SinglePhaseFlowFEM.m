@@ -27,7 +27,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
 
     function states = finalizeState(obj,p,t)
       % Compute the posprocessing variables for the module.
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getSpecificWeight();
       if gamma>0
         zbc = obj.mesh.coordinates(:,3);
         states.potential = p + gamma*zbc;
@@ -117,7 +117,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       end
 
       %adding gravity rhs contribute
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getSpecificWeight();
       if gamma > 0
         rhs = rhs + obj.rhsGrav;
       end
@@ -127,7 +127,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
     function computeRHSGravTerm(obj)
       % Compute the gravity contribution
       % Get the fluid specific weight and viscosity'
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getSpecificWeight();
       if gamma > 0
         rhsTmp = zeros(obj.dofm.getNumbDoF(obj.fieldId),1);
         subCells = obj.dofm.getFieldCells(obj.fieldId);

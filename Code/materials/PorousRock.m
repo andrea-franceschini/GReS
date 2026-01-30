@@ -8,7 +8,8 @@ classdef PorousRock < handle
         poro                 % Porosity
         biot                 % Biot coefficient
         %     alpha                % Rock compressibility (can be replaced by the oedometer test compressibility Cm)
-        specGrav             % Specific gravity of rock
+        gamma;             % Fluid specific weight
+        % specGrav             % Specific gravity of rock
         % Swr                  % Residual saturation of water
         Sr=0.;             % Residual saturation
         Ss=1.;             % Maximum saturation
@@ -32,47 +33,54 @@ classdef PorousRock < handle
         % end
 
         function Ss = getMaxSaturation(obj)
-            %GETSS Function to get the maximun saturation of the fluid.
-            Ss = obj.Ss;
+          %GETSS Function to get the maximun saturation of the fluid.
+          Ss = obj.Ss;
         end
 
         function Sr = getResidualSaturation(obj)
-            %GETSS Function to get the residual saturation of the fluid.
-            Sr = obj.Sr;
+          %GETSS Function to get the residual saturation of the fluid.
+          Sr = obj.Sr;
         end
 
-        function specGrav = getSpecificGravity(obj)
-            specGrav = obj.specGrav;
+        % function specGrav = getSpecificGravity(obj)
+        %     specGrav = obj.specGrav;
+        % end
+
+        function gamma = getSpecificWeight(obj)
+            gamma = obj.gamma;
         end
 
 
         % Function to get material porosity
         function biotCoeff = getBiotCoefficient(obj)
-            biotCoeff = obj.biot;
+          biotCoeff = obj.biot;
         end
 
         % Function to get material permeability as a 3x3 matrix
         function K = getPermMatrix(obj)
-            if length(obj.KVec) == 1
-                K = diag(obj.KVec*ones(3,1));
-            elseif length(obj.KVec) == 3
-                K = diag(obj.KVec);
-            else
-                K = [obj.KVec(1) obj.KVec(2) obj.KVec(3);
-                    obj.KVec(2) obj.KVec(4) obj.KVec(5);
-                    obj.KVec(3) obj.KVec(5) obj.KVec(6)];
-            end
+          if isscalar(obj.KVec)
+            K = diag(obj.KVec*ones(3,1));
+          elseif length(obj.KVec) == 3
+            K = diag(obj.KVec);
+          else
+            K = [obj.KVec(1) obj.KVec(6) obj.KVec(5);
+              obj.KVec(6) obj.KVec(2) obj.KVec(4);
+              obj.KVec(5) obj.KVec(4) obj.KVec(3)];
+          end
         end
 
-        function K = getPermVector(obj) % Inspired by MRST
-            if length(obj.KVec) == 1
-                K = [obj.KVec, 0, 0, 0, obj.KVec, 0, 0, 0, obj.KVec];
-            elseif length(obj.KVec) == 3
-                K = [obj.KVec(1), 0, 0, 0, obj.KVec(2), 0, 0, 0, obj.KVec(3)];
-            else
-                K = [obj.KVec(1), obj.KVec(2), obj.KVec(3), obj.KVec(2), obj.KVec(4), ...
-                    obj.KVec(5), obj.KVec(3), obj.KVec(5), obj.KVec(6)];
-            end
+        function K = getPermVector(obj)
+          % returns 1x9 permeability entries as
+          %[Kxx,Kxy,Kxz,Kzx,Kyy,Kyz,Kxz,Kyz,Kzz]
+
+          if isscalar(obj.KVec)
+            K = [obj.KVec, 0, 0, 0, obj.KVec, 0, 0, 0, obj.KVec];
+          elseif length(obj.KVec) == 3
+            K = [obj.KVec(1), 0, 0, 0, obj.KVec(2), 0, 0, 0, obj.KVec(3)];
+          else
+            K = [obj.KVec(1), obj.KVec(6), obj.KVec(5), obj.KVec(6), obj.KVec(2), ...
+              obj.KVec(4), obj.KVec(5), obj.KVec(4), obj.KVec(3)];
+          end
         end
 
         % Function to get rock compressibility
@@ -87,7 +95,8 @@ classdef PorousRock < handle
       function readMaterialParameters(obj,inputStruct)
 
         obj.poro = getXMLData(inputStruct,[],"porosity");
-        obj.specGrav = getXMLData(inputStruct,21,"specificGravity");
+        % obj.specGrav = getXMLData(inputStruct,21,"specificGravity");
+        obj.gamma = getXMLData(inputStruct,21,"specificWeight");
         obj.biot = getXMLData(inputStruct,1,"biotCoefficient");
         Kvec = getXMLData(inputStruct,[],"permeability");
         nK = length(Kvec);

@@ -4,6 +4,9 @@ classdef Poromechanics < PhysicsSolver
     K               % the stiffness matrix free of boundary conditions
     fInt            % internal forces
     cell2stress     % map cell ID to position in stress/strain matrix
+
+    % stress and strain tensor use engineering voigt notation
+    % s_xx,s_yy,s_zz,tau_yz,tau_xz,tau_xy
   end
 
   properties (Access = private)
@@ -316,7 +319,7 @@ classdef Poromechanics < PhysicsSolver
           elem = obj.elements.getElement(vtk);
           nG = elem.GaussPts.nNode;
           s.data.stress((l1+1):(l1+nG),:) = ...
-            s.data.stress((l1+1):(l1+nG),:)+...
+            sOld.data.stress((l1+1):(l1+nG),:)+...
             s.data.strain((l1+1):(l1+nG),:)*D;
           l1 = l1+nG;
         end
@@ -486,7 +489,7 @@ classdef Poromechanics < PhysicsSolver
         % accumulate results
         vals = accumarray(dofs,vals,[3*obj.mesh.nNodes 1]);
         dof = obj.getBCdofs(id);
-        vals = -vals(dof);
+        vals = vals(dof);
       end
 
     end
@@ -496,7 +499,7 @@ classdef Poromechanics < PhysicsSolver
   methods (Static)
     
     function [cellStr,pointStr] = buildPrintStruct(disp,stress,strain)
-
+      
       nCellData = 2;
       nPointData = 1;
       pointStr = repmat(struct('name', 1, 'data', 1), nPointData, 1);
@@ -512,18 +515,20 @@ classdef Poromechanics < PhysicsSolver
       % pointStr(3).data = disp(3:3:end);
       %
 
+      % Permutation needed to be consistent with paraview output
+
       % Stress
       cellStr(1).name = 'stress';
-      cellStr(1).data = stress;
+      cellStr(1).data = stress(:,[1 2 3 6 4 5]);
       cellStr(2).name = 'strain';
-      cellStr(2).data = strain;
+      cellStr(2).data = strain(:,[1 2 3 6 4 5]);
       % cellStr(3).name = 'sz';
       % cellStr(3).data = stress(:,3);
-      % cellStr(4).name = 'txy';
+      % cellStr(4).name = 'tyz';
       % cellStr(4).data = stress(:,4);
-      % cellStr(5).name = 'tyz';
+      % cellStr(5).name = 'txz';
       % cellStr(5).data = stress(:,5);
-      % cellStr(6).name = 'txz';
+      % cellStr(6).name = 'txy';
       % cellStr(6).data = stress(:,6);
       % %
       % % Strain
@@ -533,22 +538,34 @@ classdef Poromechanics < PhysicsSolver
       % cellStr(8).data = strain(:,2);
       % cellStr(9).name = 'ez';
       % cellStr(9).data = strain(:,3);
-      % cellStr(10).name = 'gxy';
+      % cellStr(10).name = 'gyz';
       % cellStr(10).data = strain(:,4);
-      % cellStr(11).name = 'gyz';
+      % cellStr(11).name = 'gxz';
       % cellStr(11).data = strain(:,5);
-      % cellStr(12).name = 'gxz';
+      % cellStr(12).name = 'gxy';
       % cellStr(12).data = strain(:,6);
     end
 
-    function indB = setStrainMatIndex(N)
+    function indB = setStrainMatIndex(np)
       % Preapare indices of strain matrix for direct assignment of shape
       % function derivatives
-      indB = zeros(9*N,2);
-      indB(:,1) = repmat([1, 2, 3, 2, 1, 3, 3, 2, 1],[1,N]);
-      indB(:,2) = repmat([1, 4, 6, 8,10,11,15,17,18],[1,N]);
-      indB(:,1) = indB(:,1) + repelem(3*(0:(N-1))',9);
-      indB(:,2) = indB(:,2) + repelem(18*(0:(N-1))',9);
+      % we use standard voigt notation, hence the order is
+      % ex,ey,ez,gyz,gxz,gxy
+
+      % np: number of nodes in the element x number of GP
+      % indB(:,1) -> index in matrix of basis function derivatives of size
+      % 3xnNxnGP
+
+      % indB(:,2) -> index for B of size 6x(3*nN)xnGP for each gauss point
+      % where Ni is the basis function of node i
+
+      indB = zeros(9*np,2);
+      indB(:,1) = repmat([1, 3, 2, 2, 3, 1, 3, 2, 1],[1,np]);
+      indB(:,2) = repmat([1, 5, 6, 8,10,12,15,16,17],[1,np]);
+      indB(:,1) = indB(:,1) + repelem(3*(0:(np-1))',9);
+      indB(:,2) = indB(:,2) + repelem(18*(0:(np-1))',9);
+
+
     end
 
 
