@@ -152,8 +152,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         fTmp = pagemtimes(E,'ctranspose',sigma,'none');
         fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
         r2 = sum(fTmp,3);
-        rhsLoc = -r1 -r2;
-        rhsW(wDof) = rhsW(wDof) - rhsLoc; 
+        rhsLoc = - r1 - r2;
+        rhsW(wDof) = rhsW(wDof) + rhsLoc; 
 
       end
 
@@ -676,8 +676,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
             s.data.traction(dofW(:)) = 0;
 
         end
-
-        s.data.traction = s.data.traction + s.data.iniTraction;
 
 
       end

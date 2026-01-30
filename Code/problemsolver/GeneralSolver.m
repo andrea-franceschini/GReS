@@ -1,7 +1,7 @@
 classdef GeneralSolver < handle
   % Class for solving non linear contact problem
 
-  properties (Access = protected)
+  properties (GetAccess=public,SetAccess=protected)
     %
     nDom                % number of domains in the model
     nInterf             % number of interfaces in the model
@@ -43,7 +43,6 @@ classdef GeneralSolver < handle
     end
 
 
-
     function NonLinearLoop(obj)
 
       % Initialize the time step increment
@@ -54,8 +53,6 @@ classdef GeneralSolver < handle
       for i = 1:obj.nDom
         obj.domains(i).applyDirVal(obj.t);
       end
-
-
 
       %%% TIME LOOP %%
       while obj.t < obj.simparams.tMax
