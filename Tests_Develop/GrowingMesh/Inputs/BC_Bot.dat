@@ -1,0 +1,7 @@
+SurfBC                            % BC item 
+Neu                               % BC type 
+SinglePhaseFlow                              % Physics 
+Bot                           % BC name 
+Inputs/BC/List_Bot 
+0.00 Inputs/BC/Time_Bot_0.dat 
+End
