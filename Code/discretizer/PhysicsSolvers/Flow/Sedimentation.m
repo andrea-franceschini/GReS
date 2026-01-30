@@ -176,7 +176,7 @@ classdef Sedimentation < PhysicsSolver
 
     function states = finalizeState(obj,p,t)
       % Compute the posprocessing variables for the module.
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getSpecificWeight();
       if gamma>0
         coords = obj.grid.getCoordCenter(obj.grid.getActiveDofs);
         states.potential = p + gamma*coords(:,3);
@@ -230,7 +230,7 @@ classdef Sedimentation < PhysicsSolver
           v=bc.data.*ones(length(cellId),1);
           vals = sum(vecN.*v,2);
         case 'dirichlet'
-          gamma = obj.materials.getFluid().getFluidSpecWeight();
+          gamma = obj.materials.getFluid().getSpecificWeight();
           mu = obj.materials.getFluid().getDynViscosity();
           permCell = obj.computePermeability(cellId);
           dirJ = 1/mu*(faceArea.*permCell(:,axis));
@@ -264,7 +264,7 @@ classdef Sedimentation < PhysicsSolver
       rhs = rhsStiff + rhsCap;
 
       %adding gravity rhs contribute
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getSpecificWeight();
       if gamma > 0
         rhs = rhs + finalizeRHSGravTerm(obj,lw);
       end
@@ -353,7 +353,7 @@ classdef Sedimentation < PhysicsSolver
       zneiA = zcells(obj.facesNeigh(:,1));
       zneiB = zcells(obj.facesNeigh(:,2));
 
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getSpecificWeight();
       tmpVec = gamma*lw.*obj.computeTrans.*(zneiA-zneiB);
       gTerm = accumarray(obj.facesNeigh(:), ...
         [tmpVec; -tmpVec],[obj.grid.ndofs,1]);
@@ -374,10 +374,10 @@ classdef Sedimentation < PhysicsSolver
 
       dgamma = zeros(obj.grid.ndofs,1);
       for mat=1:obj.nmat
-        tmpMat=obj.materials.getMaterial(mat).PorousRock.getSpecificGravity();
+        tmpMat=obj.materials.getMaterial(mat).PorousRock.getSpecificWeight();
         dgamma = dgamma+obj.grid.matfrac(:,mat)*tmpMat;
       end
-      dgamma = dgamma-obj.materials.getFluid().getFluidSpecWeight();
+      dgamma = dgamma-obj.materials.getFluid().getSpecificWeight();
 
        
     end
@@ -415,7 +415,7 @@ classdef Sedimentation < PhysicsSolver
       ndofs = length(dofs);
       perm = zeros(ndofs,3);
       for mat=1:obj.nmat
-        tmpMat=obj.materials.getMaterial(mat).PorousRock.getPermVoigt();
+        tmpMat=diag(obj.materials.getMaterial(mat).PorousRock.getPermMatrix())';
         perm = perm+obj.grid.matfrac(dofs,mat)*tmpMat(1:3);
       end
     end
