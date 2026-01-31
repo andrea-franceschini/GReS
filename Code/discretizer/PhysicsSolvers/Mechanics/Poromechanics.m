@@ -227,6 +227,7 @@ classdef Poromechanics < PhysicsSolver
       end
 
       computeStrain(obj);
+
     end
 
     function [avStress,avStrain] = finalizeState(obj,stateIn)

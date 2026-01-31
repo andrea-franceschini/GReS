@@ -32,7 +32,7 @@ else
   end
 
   if isempty(entsID)
-    error("Error for BC %s: Invalid list of entity in Boundary condition input",BCName)
+    error("Error for BC %s: Invalid list of entity in Boundary condition input",bcName)
   end
 
   compID = true;

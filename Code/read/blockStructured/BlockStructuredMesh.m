@@ -12,21 +12,37 @@ classdef BlockStructuredMesh < handle
   end
 
   methods
-    function obj = BlockStructuredMesh(dims,Ncells,maxDepth)
+    function obj = BlockStructuredMesh(varargin)
       % dims: 3x2 with extreme coordinate of box grid
       % nCells: 1x3 array with number of cell for each direction
       % maxDepth: maximum depth of recursive refinement
-      obj.dims = dims;
-      obj.nCells = Ncells;
-      obj.maxDepth = maxDepth;
-      createBaseGrid(obj)
+
+      assert(nargin > 2 && nargin < 5,"Wrong number of input arguments")
+
+      obj.maxDepth = varargin{end};
+
+      if nargin < 4
+        obj.dims = varargin{1};
+        obj.nCells = varargin{2};
+        createBaseGridHierarchical(obj)
+      else
+        % x,y,z coordinates given in input
+        xv = varargin{1};
+        yv = varargin{2};
+        zv = varargin{3};
+        obj.dims = [xv(1) xv(end); yv(1) yv(end); zv(1) zv(end)];
+        obj.nCells = [length(xv),length(yv),length(zv)]-1;
+        createBaseGrid(obj,xv,yv,zv)
+      end
     end
 
-    function createBaseGrid(obj)
-      obj.blocks(obj.nCells(1),obj.nCells(2),obj.nCells(3)) = Block();
+    function createBaseGridHierarchical(obj)
+
       xVec = linspace(obj.dims(1,1),obj.dims(1,2),obj.nCells(1)+1);
       yVec = linspace(obj.dims(2,1),obj.dims(2,2),obj.nCells(2)+1);
       zVec = linspace(obj.dims(3,1),obj.dims(3,2),obj.nCells(3)+1);
+      obj.blocks(obj.nCells(1),obj.nCells(2),obj.nCells(3)) = Block();
+
       for k = 1:obj.nCells(3)
         for j = 1:obj.nCells(2)
           for i = 1:obj.nCells(1)
@@ -36,6 +52,8 @@ classdef BlockStructuredMesh < handle
         end
       end
     end
+
+    
 
     function refineGrid(obj,targetPoint,varargin)
       % get id of block containing the target point
