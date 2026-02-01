@@ -21,6 +21,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     fractureMesh            % a 2D mesh object with cut cell topology
     outFracture
     areaTol = 1e-6;         % minimum area of a fracture element
+    bcTraction
 
   end
 
@@ -152,7 +153,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         fTmp = pagemtimes(E,'ctranspose',sigma,'none');
         fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
         rSigma = sum(fTmp,3);
-        rhsLoc = rSigma - rT;
+        rBC = obj.bcTraction(wDof)*obj.cutAreas(i);
+        rhsLoc = rSigma - rT - rBC;
         rhsW(wDof) = rhsW(wDof) + rhsLoc; 
 
       end
@@ -169,7 +171,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       state = getState(obj);
       state.data.(obj.getField()) = zeros(3*obj.nCutCells,1);
       state.data.traction = zeros(3*obj.nCutCells,1);
-      state.data.iniTraction = zeros(3*obj.nCutCells,1);
+      obj.bcTraction = zeros(3*obj.nCutCells,1);
       obj.activeSet.curr = repmat(ContactMode.open,obj.nCutCells,1);
       obj.activeSet.prev = obj.activeSet.curr;
 
@@ -677,7 +679,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         end
 
-        s.data.traction = s.data.traction + s.data.iniTraction;
+        %s.data.traction = s.data.traction + s.data.iniTraction;
 
 
       end
