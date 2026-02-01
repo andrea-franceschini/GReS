@@ -142,18 +142,18 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         % assemble local contributions
         asbKuw.localAssembly(uDof,wDof,KuwLoc);
-        asbKwu.localAssembly(wDof,uDof,-KwuLoc);
-        asbKww.localAssembly(wDof,wDof,-KwwLoc);
+        asbKwu.localAssembly(wDof,uDof,KwuLoc);
+        asbKww.localAssembly(wDof,wDof,KwwLoc);
 
         % assemble rhsW (use computed stress tensor)
         sigma = reshape(sigma',6,1,nG);
         trac = s.data.traction(wDof);
-        r1 = trac*obj.cutAreas(i);
+        rT = trac*obj.cutAreas(i);
         fTmp = pagemtimes(E,'ctranspose',sigma,'none');
         fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
-        r2 = sum(fTmp,3);
-        rhsLoc = -r1 -r2;
-        rhsW(wDof) = rhsW(wDof) - rhsLoc; 
+        rSigma = sum(fTmp,3);
+        rhsLoc = rSigma - rT;
+        rhsW(wDof) = rhsW(wDof) + rhsLoc; 
 
       end
 
@@ -700,7 +700,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     function Bw = computeCompatibilityMatrix(obj,i,N)
 
       H = computeHeaviside(obj,i);
-      v = - sum(N.*H',2);
+      v = sum(N.*H',2);
       n = obj.cutNormals(i,:);
       m1 = obj.cutTang1(i,:);
       m2 = obj.cutTang2(i,:);
@@ -728,7 +728,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       A = obj.cutAreas(i);
       V = obj.mesh.cellVolume(obj.cutCells(i));
 
-      E = - (A/V) * [sym_n_dyad_n, sym_m1_dyad_n, sym_m2_dyad_n];
+      E = (A/V) * [sym_n_dyad_n, sym_m1_dyad_n, sym_m2_dyad_n];
 
     end
 
@@ -744,13 +744,13 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         case ContactMode.open
           return
         case ContactMode.stick
-          dtdg = -diag([obj.penalty_n,obj.penalty_t,obj.penalty_t]);
+          dtdg = diag([obj.penalty_n,obj.penalty_t,obj.penalty_t]);
         case {ContactMode.slip,ContactMode.newSlip}
-          dtdg(1,1) = -obj.penalty_n;
+          dtdg(1,1) = obj.penalty_n;
           if norm(slip) > obj.activeSet.tol.sliding
             slipNorm = norm(slip);
-            dtdg([2 3],1) = obj.penalty_n*tan(obj.phi)*(slip/slipNorm);
-            dtdg([2 3],[2 3]) = -tauLim * ...
+            dtdg([2 3],1) = - obj.penalty_n*tan(obj.phi)*(slip/slipNorm);
+            dtdg([2 3],[2 3]) = tauLim * ...
               (slipNorm^2*eye(2) - slip * slip')/slipNorm^3;
           end
 
