@@ -86,7 +86,7 @@ a function handle depending on space (x,y,z)
 
     <!-- cell index -->
     <BCentities
-                bcList = "1422"
+                box = "545.0,555.0,545.0,555.0,975.0,1000.0"
                 />
 
     <!-- Flux is given in m^3/year -->

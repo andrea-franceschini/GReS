@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<struct>
+  <simParam>
+    <Time>
+      <Start>0</Start>
+      <End>1</End>
+      <DtInit>1</DtInit>
+      <DtMax>1</DtMax>
+      <DtMin>1</DtMin>
+    </Time>
+    <Solver>
+      <AbsoluteTolerance>1e-08</AbsoluteTolerance>
+      <RelativeTolerance>1e-09</RelativeTolerance>
+      <MaxNLIteration>30</MaxNLIteration>
+    </Solver>
+  </simParam>
+  <Materials>
+  <Solid
+         cellTags = " 1 ">
+    <Constitutive>
+      <Elastic
+               youngModulus = "15000"
+               poissonRatio = "0.25"
+               />
+    </Constitutive>
+
+  </Solid>
+
+</Materials>
+
+  <BoundaryConditions>
+    <BC>
+      <name>z_fix</name>
+      <type>Dirichlet</type>
+      <entityType>SurfBC</entityType>
+      <variable>displacements</variable>
+      <BCentities>
+        <surfaceTags>1,2</surfaceTags>
+        <components>z</components>
+      </BCentities>
+      <BCevent>
+        <time>0</time>
+        <value>0</value>
+      </BCevent>
+    </BC>
+    <BC>
+      <name>y_fix</name>
+      <type>Dirichlet</type>
+      <entityType>SurfBC</entityType>
+      <variable>displacements</variable>
+      <BCentities>
+        <surfaceTags>3,4</surfaceTags>
+        <components>y</components>
+      </BCentities>
+      <BCevent>
+        <time>0</time>
+        <value>0</value>
+      </BCevent>
+    </BC>
+    <BC>
+      <name>x_fix</name>
+      <type>Dirichlet</type>
+      <entityType>SurfBC</entityType>
+      <variable>displacements</variable>
+      <BCentities>
+        <surfaceTags>5,6</surfaceTags>
+        <components>x</components>
+      </BCentities>
+      <BCevent>
+        <time>0</time>
+        <value>0</value>
+      </BCevent>
+    </BC>
+  </BoundaryConditions>
+  <Solver>
+    <Poromechanics></Poromechanics>
+    <EmbeddedFractureMechanics>
+      <penaltyNormal>100000000</penaltyNormal>
+      <penaltyTangential>100000000</penaltyTangential>
+      <outputFile>Output/Crack</outputFile>
+      <Fracture>
+        <origin>0</origin>
+        <origin>0</origin>
+        <origin>0</origin>
+        <normal>0.0, 0, 1.0</normal>
+        <lengthVec>1.0, 0, 0.0</lengthVec>
+        <widthVec>0, 1, 0</widthVec>
+        <dimensions>2</dimensions>
+        <dimensions>2</dimensions>
+        <cohesion>0</cohesion>
+        <frictionAngle>30</frictionAngle>
+      </Fracture>
+      <ActiveSet>
+        <normalTraction>1e-6</normalTraction>
+      </ActiveSet>
+    </EmbeddedFractureMechanics>
+  </Solver>
+</struct>
