@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Chronos>
-	<solver>SQMR</solver>
+	<solver>GMRES</solver>
    <preconditioner>AMG</preconditioner>
 
 	<!-- General parameters -->
@@ -80,9 +80,9 @@
 	<!-- TEST SPACE parameters -->
 	<tspace
 		ntv="1"
-		itmax="10"
+		itmax="100"
 		tol="1.e-8"
-		method="NONE"
+		method="SRQCG"
 		init_approx="5"
 	/>
 

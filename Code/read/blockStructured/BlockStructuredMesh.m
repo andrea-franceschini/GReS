@@ -304,6 +304,7 @@ classdef BlockStructuredMesh < handle
       mesh.cellNumVerts = 8*ones(mesh.nCells,1);
       mesh.surfaceNumVerts = 4*ones(mesh.nSurfaces,1);
       mesh.nDim = 3;
+      mesh.meshType = "Unstructured";
 
     end
 

@@ -23,7 +23,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
     function states = finalizeState(obj,p,t)
       % Compute the posprocessing variables for the module.
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getSpecificWeight();
       if gamma>0
         zbc = obj.mesh.cellCentroid(:,3);
         states.potential = p + gamma*zbc;
@@ -77,7 +77,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       rhs = rhs + (obj.P/dt)*(p(ents) - pOld(ents));
 
       % adding gravity contribution
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getSpecificWeight();
       if gamma > 0
         rhs = rhs + finalizeRHSGravTerm(obj,obj.lwkpt);
       end
@@ -127,7 +127,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
               % vals = accumarray(ind, area);
             case 'Dirichlet'
               % theta = obj.simParams.theta;
-              gamma = obj.materials.getFluid().getFluidSpecWeight();
+              gamma = obj.materials.getFluid().getSpecificWeight();
               [mob, dmob] = obj.computeMobilityBoundary( ...
                 obj.domain.state.data.pressure(ents),v,faceID);
               tr = obj.trans(faceID);
@@ -144,7 +144,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
               vals = [dirJ,q]; % {JacobianVal,rhsVal]
               % vals = [dirJ,accumarray(ind,q)]; % {JacobianVal,rhsVal]
             case 'Seepage'
-              gamma = obj.materials.getFluid().getFluidSpecWeight();
+              gamma = obj.materials.getFluid().getSpecificWeight();
               assert(gamma>0.,'To impose Seepage boundary condition is necessary the fluid specify weight be bigger than zero!');
 
               % theta = obj.simParams.theta;
@@ -282,7 +282,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       materials = obj.mesh.cellTag(elms);
 
       % Find the direction of the flux;
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getSpecificWeight();
       if gamma > 0
         zfaces = obj.faces.faceCentroid(faceID,3);
         cellz = obj.mesh.cellCentroid(elms,3);
@@ -314,7 +314,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       % and first derivatives
       % compute also second derivative for saturation
       neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-      gamma = obj.materials.getFluid().getFluidSpecWeight();
+      gamma = obj.materials.getFluid().getSpecificWeight();
       if gamma > 0
         zVec = obj.elements.mesh.cellCentroid(:,3);
         zNeigh = zVec(neigh);
@@ -342,7 +342,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
       % Define some values.
       % theta = obj.simParams.theta;
-      gamma = obj.materials.getFluid.getFluidSpecWeight();
+      gamma = obj.materials.getFluid.getSpecificWeight();
       % subCells = obj.dofm.getFieldCells(obj.getField());
 
       % Get pairs of faces that contribute to the subdomain

@@ -1,7 +1,7 @@
 close all;
 % clear;
-output_dir = 'Outputs';
-input_dir = 'Inputs';
+output_dir = 'Output';
+input_dir = 'Input';
 figures_dir = fullfile(output_dir,"Images");
 
 %% ------------------------------ Set up the Domain -----------------------
@@ -92,7 +92,7 @@ if postproc
 
     % Values for normalized plots
     H = max(topology.coordinates(:,3));
-    weight = mat.getFluid().getFluidSpecWeight();
+    weight = mat.getFluid().getSpecificWeight();
 
     % Location a column to be the plot position.
     ptsZ = elems.mesh.cellCentroid(nodesP,3);

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Problem>
+
+  <simParam fileName = "Input/simparam.xml" />
+
+  <!--Top domain-->
+  <Domain>
+    <Geometry
+              fileName = "Input/DomainTop/topLayer.vtk"
+              />
+    <Gauss nGP = "1" />
+    <Materials fileName = "Input/DomainTop/materialsListTop.xml" />
+    <BoundaryConditions fileName = "Input/DomainTop/bcTop.xml" />
+    <Output
+              fileName = "Input/DomainTop/outTop.xml"
+              />
+    <Solver>
+      <SinglePhaseFlowFEM />
+    </Solver>
+  </Domain>
+
+  <!--Bottom domain-->
+    <Domain>
+    <Geometry
+              fileName = "Input/DomainBot/bottomLayer.vtk"
+              />
+    <Gauss nGP = "1" />
+    <Materials fileName = "Input/DomainBot/materialsListBottom.xml" />
+    <BoundaryConditions fileName = "Input/DomainBot/bcBot.xml" />
+    <Output
+              fileName = "Input/DomainBot/outBottom.xml"
+              />
+    <Solver>
+      <SinglePhaseFlowFEM />
+    </Solver>
+  </Domain>
+
+  <Interface>
+    <MeshTying>
+
+      <Master
+              domainId = "1"
+              surfaceTag = "1"
+              />
+      <Slave
+             domainId = "2"
+             surfaceTag = "1"
+             />
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  nGP = "4"
+                  multiplierType = "dual"
+                  />
+
+    </MeshTying>
+
+
+  </Interface>
+
+</Problem>
+

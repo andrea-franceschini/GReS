@@ -12,7 +12,7 @@ classdef Boundaries < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = Boundaries(input,grid) % ,grid
+    function obj = Boundaries(varargin)
       % MATLAB evaluates the assignment expression for each instance, which
       % ensures that each instance has a unique value
       obj.db = containers.Map('KeyType','char','ValueType','any');
@@ -21,11 +21,16 @@ classdef Boundaries < handle
         return
       end
 
+      input=varargin{1};
+      grid=varargin{2};
+
       obj.grid = grid;
-      % Calling the function to read input data from file
-      obj.readInputFile(input);
-      obj.computeBoundaryProperties(grid);
-      % linkBoundSurf2TPFAFace(obj,grid);
+      if strcmp(grid.topology.meshType,"Unstructured")
+        % Calling the function to read input data from file
+        obj.readInputFile(input);
+        obj.computeBoundaryProperties(grid);
+        % linkBoundSurf2TPFAFace(obj,grid);
+      end
     end
 
     % Check if the identifier defined by the user is a key of the Map object

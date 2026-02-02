@@ -1,6 +1,6 @@
  close all;
 % clear;
-figures_dir = 'Outputs/Images';
+figures_dir = 'Output/Images';
 
 profile on
 

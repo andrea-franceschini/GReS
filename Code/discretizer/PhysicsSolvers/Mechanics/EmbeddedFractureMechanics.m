@@ -715,6 +715,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       sym_m2_dyad_v = obj.sym_AiBj_plus_AjBi(m2,v);
 
       Bw = [sym_n_dyad_v, sym_m1_dyad_v, sym_m2_dyad_v];
+
     end
 
     function E = computeEquilibriumOperator(obj,i)
