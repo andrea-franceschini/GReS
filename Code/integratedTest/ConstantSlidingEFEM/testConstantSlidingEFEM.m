@@ -8,13 +8,15 @@ scriptDir = fileparts(scriptFullPath);
 
 cd(scriptDir);
 
-fname = 'constantSliding.xml';
+fname = 'constantSlidingEFEM.xml';
 
 simparams = SimulationParameters(fname);
 
 
-b = BlockStructuredMesh([0.0, 2.0; 0.0,0.5; 0.0, 4.0],[8,2,16],1);
-mesh = b.processGeometry();
+% b = BlockStructuredMesh([0.0, 2.0; 0.0,0.5; 0.0, 4.0],[8,2,16],1);
+% mesh = b.processGeometry();
+
+mesh = structuredMesh(8,2,16,[0 2],[0, 0.5],[0 4]);
 
 
 elems = Elements(mesh,2);
@@ -23,9 +25,10 @@ grid = struct('topology',mesh,'cells',elems,'faces',faces);
 mat = Materials(fname);
 
 
-printUtils = OutState(mesh,"folderName",strcat("Output/ConstantSlidingEFEM"),"timeList",1,...
-                       "writeVtk",1,"flagMatFile",1,"matFileName",strcat("Output/ConstantSlidingHistory"));
+% printUtils = OutState(mesh,"folderName",strcat("Output/ConstantSlidingEFEM"),"timeList",1,...
+%                        "writeVtk",1,"flagMatFile",1,"matFileName",strcat("Output/ConstantSlidingHistory"));
 
+printUtils = OutState(mesh);
 
 bc = Boundaries(fname,grid);
 % Create object handling construction of Jacobian and rhs of the model

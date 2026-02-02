@@ -775,7 +775,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       v = pagemtimes(a,'none',b,'ctranspose') + pagemtimes(b,'none',a,'ctranspose');
       vSym = reshape(v,9,1,[]);
-      vSym = vSym([1 5 9 4 8 7],:,:);
+      vSym = vSym([1 5 9 8 7 4],:,:);
       vSym(1:3,:,:) = 0.5*vSym(1:3,:,:);
 
     end
