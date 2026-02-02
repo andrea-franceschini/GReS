@@ -12,12 +12,12 @@ classdef BlockStructuredMesh < handle
   end
 
   methods
-    function obj = BlockStructuredMesh(dims,Ncells,maxDepth)
+    function obj = BlockStructuredMesh(Nx,Ny,Nz,Lx,Ly,Lz,maxDepth)
       % dims: 3x2 with extreme coordinate of box grid
       % nCells: 1x3 array with number of cell for each direction
       % maxDepth: maximum depth of recursive refinement
-      obj.dims = dims;
-      obj.nCells = Ncells;
+      obj.dims = [Lx;Ly;Lz];
+      obj.nCells = [Nx Ny Nz];
       obj.maxDepth = maxDepth;
       createBaseGrid(obj)
     end
