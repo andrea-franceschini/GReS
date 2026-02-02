@@ -30,7 +30,7 @@ clear
 m = structuredMesh(10,5,3,[0 50],[-10 40],[0 6]);
 
 
-plotFunction(m,'testS1',ones(m.nNodes,1));
+plotMesh(m,'testS1');
 
 clear
 
@@ -41,7 +41,7 @@ zv = [0 2 3 4 6];
 
 m = structuredMesh(xv,yv,zv);
 
-plotFunction(m,'testS2',ones(m.nNodes,1));
+plotMesh(m,'testS2');
 
 
 clear
@@ -49,7 +49,7 @@ clear
 b = BlockStructuredMesh(2,2,2,[0 1],[0 1],[0 1],3);
 blockStructuedMesh = b.processGeometry();
 
-plotFunction(blockStructuedMesh,'testB1',ones(blockStructuedMesh.nNodes,1));
+plotMesh(blockStructuedMesh,'testB1');
 
 clear
 
@@ -60,7 +60,7 @@ b.refineRecursive([2 2 2],3);
 b.refineRecursive([2 1 2],1);
 blockStructuedMesh = b.processGeometry();
 
-plotFunction(blockStructuedMesh,'testB2',ones(blockStructuedMesh.nNodes,1));
+plotMesh(blockStructuedMesh,'testB2');
 
 
 
@@ -73,4 +73,4 @@ b.refineRecursive([2 1 2],1);
 b.refineRecursive([2 1 2],2,2)
 blockStructuedMesh = b.processGeometry();
 
-plotFunction(blockStructuedMesh,'testB3',ones(blockStructuedMesh.nNodes,1));
+plotMesh(blockStructuedMesh,'testB3');

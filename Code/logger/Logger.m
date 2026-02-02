@@ -1,3 +1,4 @@
+
 classdef Logger < handle
   % Error logger in GReS
   
@@ -25,7 +26,7 @@ classdef Logger < handle
         loglevel = -1;
         a = 1;
       end
-      if obj.verbosity > loglevel
+      if obj.verbosity >= loglevel
         fprintf(varargin{a:end});
         %fprintf("\n");
       end
