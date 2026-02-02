@@ -29,7 +29,7 @@ gt = gt(cId);
 tn = interfaces{2}.state.traction(3*cId-2);
 
 xCoord = getMesh(interfaces{2},MortarSide.slave).surfaceCentroid(cId,1)/cos(deg2rad(20));
-xAnal = linspace(0,2,1000);
+xAnal = linspace(-1,1,1000);
 
 % analytical solutions
 b = 1;
@@ -41,9 +41,9 @@ nu = 0.25;
 E = 15000;
 theta = deg2rad(30);
 tn_anal = sigma*(sin(psi))^2;
-xi = linspace(0,2,1000);
+xi = linspace(-1,1,1000);
 K = 4*(1-nu^2)*(sigma*sin(psi)*(cos(psi)-sin(psi)*tan(theta)))/E;
-gt_anal = K*sqrt(b^2-(b-(xCoord+1)).^2);
+gt_anal = K*sqrt(b^2-xCoord.^2);
 gt_anal = flip(gt_anal);
 
 
@@ -56,7 +56,7 @@ err_gt = norm(gt-gt_anal);
 assert(err_gt < 1e-2,"Tangential gap not validated")
 
 %% plot
-gt_anal_plot = K*sqrt(b^2-(b-xi).^2);
+gt_anal_plot = K*sqrt(b^2-xi.^2);
 figure(1)
 plot(xCoord, gt, 'k-o', 'MarkerSize', 4, 'MarkerFaceColor', 'k');
 hold on
