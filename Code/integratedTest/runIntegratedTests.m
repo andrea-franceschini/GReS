@@ -13,6 +13,7 @@ testFiles = {
     fullfile('Richards','testRichards.m')
     fullfile('ConstantSliding','testConstantSliding.m')
     fullfile('SingleCrackCompressed','testSingleCrackCompressed.m')
+    fullfile('ConstantSlidingEFEM','testConstantSlidingEFEM.m')
 };
 
 results = runtests(testFiles);
