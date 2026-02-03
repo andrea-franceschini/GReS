@@ -50,7 +50,7 @@ domain.outstate.finalize()
 %% STEP 2) COUPLING WITH MECHANICS
 
 
-fileName = "02_singlePhysics.xml";
+fileName = "02_moreMaterials.xml";
 
 % Set parameters of the simulation
 simParam = SimulationParameters(fileName);
@@ -61,14 +61,17 @@ mat = Materials(fileName);
 
 mesh = structuredMesh(20,20,10,[0 100],[0 100],[0 10]);
 
-% we manually modify the tag for some clay overburden and underburden
-over = mesh.cellTag();
 
 gaussOrder = 2;
 elems = Elements(mesh,gaussOrder);
 faces = Faces(mesh);
 grid = struct('topology',mesh,'cells',elems,'faces',faces);
 
+% we manually modify the tag for some clay overburden and underburden
+over = mesh.cellCentroid(:,3) < 3;
+under = mesh.cellCentroid(:,3) > 7;
+mesh.cellTag(under) = 2;
+mesh.cellTag(over) = 3;
 
 bound = Boundaries(fileName,grid);
 

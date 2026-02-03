@@ -92,11 +92,14 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
     function computeCapMat(obj,varargin)
       subCells = obj.dofm.getFieldCells(obj.fieldId);
-      nSubCells = length(subCells);
-      poroMat = zeros(nSubCells,1);
-      alphaMat = zeros(nSubCells,1);
+      %nSubCells = length(subCells);
+      poroMat = zeros(obj.mesh.nCellTag,1);
+      alphaMat = zeros(obj.mesh.nCellTag,1);
       beta = obj.materials.getFluid().getFluidCompressibility();
       for m = 1:obj.mesh.nCellTag
+        if ~ismember(m,obj.dofm.getTargetRegions(obj.getField()))
+          continue
+        end
         if ~ismember(m,obj.dofm.getTargetRegions([obj.getField(),"displacements"]))
           % compute alpha only if there's no coupling in the
           % subdomain
@@ -104,6 +107,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         end
         poroMat(m) = obj.materials.getMaterial(m).PorousRock.getPorosity();
       end
+
       % (alpha+poro*beta)
       PVal = alphaMat(obj.mesh.cellTag(subCells)) + beta*poroMat(obj.mesh.cellTag(subCells));
       if ~isempty(varargin)

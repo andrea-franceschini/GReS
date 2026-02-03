@@ -31,6 +31,20 @@ in a nonConforming simulation.
                   permeability="1e-11"/>
     </Solid>
 
+    <Solid name = "clay_underburden" cellTags = "2">
+      <PorousRock
+                  porosity="0.2"
+                  specificWeight="21"
+                  permeability="1e-15"/>
+    </Solid>
+
+    <Solid name = "silty_clay_overburden" cellTags = "3">
+      <PorousRock
+                  porosity="0.22"
+                  specificWeight="21"
+                  permeability="1e-14"/>
+    </Solid>
+
     <Fluid
            specificWeight = "0.0"
            compressibility = "4.4e-7"
@@ -63,15 +77,15 @@ in a nonConforming simulation.
 
 
   <Output
-          printTimes   = "1,2,3,4"
-          outputFile   = "Output01/results"
-          matFileName  = "Output01/history"
+          printTimes   = "1,5,10"
+          outputFile   = "Output02/results"
+          matFileName  = "Output02/history"
           saveHistory  = "1"
           />
 
 
   <Solver>
-    <SinglePhaseFlowFVTPFA />
+    <SinglePhaseFlowFVTPFA targetRegions = "1"/>
   </Solver>
 
 
