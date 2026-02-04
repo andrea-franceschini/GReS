@@ -169,7 +169,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       gTerm = gTerm(obj.dofm.getActiveEntities(obj.fieldId));
     end
 
-    function [dof,vals] = getBC(obj,id,t)
+    function [ents,vals] = getBC(obj,id,t)
       % getBC - function to find the value and the location for the
       % boundary condition.
       %
@@ -243,8 +243,6 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
           ents = obj.bcs.getEntities(id);
           vals = v.*obj.mesh.cellVolume(ents);
       end
-
-      dof = obj.dofm.getLocalDoF(obj.fieldId,ents);
     end
 
     function applyDirVal(obj,bcId,t)
@@ -252,13 +250,14 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       if ~strcmp(bcVar,obj.getField()) 
         return 
       end
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
+      [bcEnts,bcVals] = getBC(obj,bcId,t);
+
       if size(bcVals,2)==2
         % skip BC assigned to external surfaces
         return
       end
       state = getState(obj);
-      state.data.pressure(bcDofs) = bcVals;
+      state.data.pressure(bcEnts) = bcVals;
     end
 
     function applyBC(obj,bcId,t)
@@ -267,7 +266,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         return
       end
 
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
+      [bcEnts,bcVals] = getBC(obj,bcId,t);
+
+      bcDofs = obj.dofm.getLocalDoF(obj.fieldId,bcEnts);
 
       % Base application of a Boundary condition
       bcType = obj.bcs.getType(bcId);
