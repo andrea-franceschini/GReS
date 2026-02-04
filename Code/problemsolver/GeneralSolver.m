@@ -53,8 +53,6 @@ classdef GeneralSolver < handle
         obj.domains(i).applyDirVal(obj.t);
       end
 
-
-
       %%% TIME LOOP %%
       while obj.t < obj.simparams.tMax
 

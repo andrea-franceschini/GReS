@@ -10,15 +10,19 @@
     </Constitutive>
 
     <PorousRock
-        porosity = "0.3"
-        specificGravity = "2.1e6"
+        specificWeight = "2.1e6"
         permeability = "1.0182e-6, 1.0182e-6, 1.0182e-6"
     />
-    <!-- porosity (Adimensional, between 0 and 1),
-         specificGravity (kg/m^3 ),
-         permeability (m^2)
-   conductivity 0.325 m/year => permeability = 0.315*1e-3/(9.81* year)
--->
+
+    <SedimentMaterial
+        specificWeight = "2.7e4"
+        voidRate = "1.e0"
+        preStress = "1.e3"
+        hydraulicConductivity = "3.e-6, 3.e-6, 1.e-6"
+        compressibilityIndex = "0.2"
+        reCompressibilityIndex = "0.02"
+    />
+
   </Solid>
 
   <Fluid

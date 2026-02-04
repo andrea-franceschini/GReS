@@ -377,6 +377,18 @@ classdef gridForSedimentation < handle
       end
     end
 
+    function varOut = accumulateProp(obj,mat,dofs)
+      if ~exist("dofs","var")
+        dofs = obj.getActiveDofs;
+      end
+      % ndofs = length(dofs);
+      [~,nprop]=size(mat);
+      varOut = zeros(length(dofs),nprop);
+      for i=1:obj.nmat
+        varOut = varOut+obj.matfrac(dofs,i).*mat(i,:);
+      end
+    end
+
   end
 
   methods (Access = private)
