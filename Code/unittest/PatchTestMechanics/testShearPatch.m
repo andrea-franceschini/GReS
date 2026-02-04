@@ -20,10 +20,9 @@ classdef testShearPatch < matlab.unittest.TestCase
     % Test methods
 
     function testPatch(testCase)
-      gresLog().setVerbosity(-1);
+      gresLog().setVerbosity(-2);
       simparams = SimulationParameters(testCase.pathToFile);
-      b = BlockStructuredMesh([0.0, 1.0;0.0 1.0; 0.0 1.0],[1,1,1],1);
-      mesh = b.processGeometry();
+      mesh = structuredMesh(1,1,1,[0 1],[0 1],[0 1]);
       elems = Elements(mesh,2);
       faces = Faces(mesh);
       grid = struct('topology',mesh,'cells',elems,'faces',faces);
@@ -37,7 +36,7 @@ classdef testShearPatch < matlab.unittest.TestCase
       domain.addPhysicsSolver(testCase.pathToFile);
       solver = GeneralSolver(simparams,domain);
       solver.NonLinearLoop();
-
+      gresLog().setVerbosity(-1);
       verifyEqual(testCase,domain.state.data.stress(:,5),1.5*ones(8,1),"AbsTol",1e-9)
 
 

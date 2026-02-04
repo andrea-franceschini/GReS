@@ -12,27 +12,46 @@ if isfield(input,"bcListFile")
   entsPosition = getLocation(ents,mesh,entityType);
 
   return
-  
+
 else
   entsID = [];
   if isfield(input,"surfaceTags")
-  % input is a surface tag with component specification
-  surfTags = getXMLData(input,[],"surfaceTags");
-  switch entityType
-    case "NodeBC"
-      entsID = unique(mesh.surfaces(ismember(mesh.surfaceTag,surfTags),:));
-    case "SurfBC"
-      entsID = find(ismember(mesh.surfaceTag,surfTags));
-    otherwise
-      error("Error for BC %s: XML field surfaceTags is not valid for BC of type %s", bcName, entityType)
-  end
+    % input is a surface tag with component specification
+    surfTags = getXMLData(input,[],"surfaceTags");
+    switch entityType
+      case "NodeBC"
+        entsID = unique(mesh.surfaces(ismember(mesh.surfaceTag,surfTags),:));
+      case "SurfBC"
+        entsID = find(ismember(mesh.surfaceTag,surfTags));
+      otherwise
+        error("Error for BC %s: XML field box is not valid for BC of type %s", bcName, entityType)
+    end
   elseif isfield(input,"bcList")
     % direct entity assignment in the xml file
     entsID = getXMLData(input,[],"bcList");
+  elseif isfield(input,"box")
+    boxSize = getXMLData(input,[],"box");
+    Lx = boxSize(1:2);
+    Ly = boxSize(3:4); 
+    Lz = boxSize(5:6);
+    switch entityType
+      case "NodeBC"
+        c = mesh.coordinates;
+      case {"ElementBC","VolumeForce"}
+        c = mesh.cellCentroid;
+      otherwise
+          error("Error for BC %s: XML field surfaceTags is not valid for BC of type %s", bcName, entityType)
+    end
+
+    entsID = all([ c(:,1) > Lx(1), c(:,1) < Lx(2),...
+                   c(:,2) > Ly(1), c(:,2) < Ly(2),...
+                   c(:,3) > Lz(1), c(:,3) < Lz(2)],2);
+      
+    entsID = find(entsID);
   end
 
   if isempty(entsID)
-    error("Error for BC %s: Invalid list of entity in Boundary condition input",bcName)
+    error("Error for BC %s: Empty or invalid list of entity in Boundary condition input.",bcName)
   end
 
   compID = true;

@@ -374,6 +374,9 @@ classdef Discretizer < handle
       % key-value input
       setInput(obj,varargin{:});
 
+      % validate consistency between input
+      validateInput(obj);
+
       obj.state = State();
 
       if ~isempty(obj.grid.topology)
@@ -432,6 +435,19 @@ classdef Discretizer < handle
         end
       end
 
+
+    end
+
+    function validateInput(obj)
+      msh = obj.grid.topology;
+
+      u = unique(msh.cellTag);
+      assert(max(u)==length(u),"cellTag numbering must be progressive from 1 to the number of cellTags")
+      msh.nCellTag = max(u);
+
+      u = unique(msh.surfaceTag);
+      assert(max(u)==length(u),"surfaceTag numbering must be progressive from 1 to the number of cellTags")
+      msh.nSurfaceTag = max(u);
 
     end
 

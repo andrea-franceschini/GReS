@@ -153,7 +153,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       % remove inactive components of rhs vector
     end
 
-    function [dof,vals] = getBC(obj,id,t)
+    function [ents,vals] = getBC(obj,id,t)
       % getBC - function to find the value and the location for the
       % boundary condition.
       %
@@ -178,7 +178,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
           entitiesInfl = obj.bcs.getEntitiesInfluence(id);
           vals = entitiesInfl*v;
       end
-      dof = obj.dofm.getLocalDoF(obj.fieldId,ents);
+
     end
 
     function applyDirVal(obj,bcId,t)
@@ -186,9 +186,9 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       if ~strcmp(bcVar,obj.getField()) 
         return 
       end
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
+      [bcEnts,bcVals] = getBC(obj,bcId,t);
       state = getState(obj);
-      state.data.pressure(bcDofs) = bcVals;
+      state.data.pressure(bcEnts) = bcVals;
     end
 
     function applyBC(obj,bcId,t)

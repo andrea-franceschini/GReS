@@ -63,8 +63,7 @@ classdef GeneralSolver < handle
         % Update the simulation time and time step ID
         absTol = obj.simparams.absTol;
 
-        obj.tStep = obj.tStep + 1;
-        obj.t = obj.t + obj.dt;
+        initializeTimeStep(obj)
 
         gresLog().log(-1,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
         gresLog().log(-1,'-----------------------------------------------------------\n');
@@ -389,6 +388,23 @@ classdef GeneralSolver < handle
         obj.interfaces{j}.updateState(du);
         dSol = dSol(N+1:end);
       end
+    end
+
+    function initializeTimeStep(obj)
+
+      obj.tStep = obj.tStep + 1;
+      obj.t = obj.t + obj.dt;
+
+      for i = 1:obj.nDom
+        dom = obj.domains(i);
+        dom.state.t = obj.t;
+      end
+
+      for i = 1:obj.nInterf
+        interf = obj.interfaces{i};
+        interf.state.t = obj.t;
+      end
+
     end
 
 

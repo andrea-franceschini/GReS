@@ -1,3 +1,4 @@
+
 classdef Logger < handle
   % Error logger in GReS
   
@@ -25,7 +26,7 @@ classdef Logger < handle
         loglevel = -1;
         a = 1;
       end
-      if obj.verbosity > loglevel
+      if obj.verbosity >= loglevel
         fprintf(varargin{a:end});
         %fprintf("\n");
       end
@@ -75,6 +76,7 @@ classdef Logger < handle
       disp(' ')
       disp('Check out the tutorials folder')
       disp('     for hands-on guides and usage examples.')
+      disp('     <a href="matlab:open(strcat(gres_root,''/Tutorial/quickStart.mlx''))">Start the tutorial</a>')
       disp(' ')
       disp('Explore the Tests repository')
       disp('     to check available simulations in GReS.')
