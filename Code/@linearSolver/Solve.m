@@ -19,7 +19,7 @@ function [x,flag] = Solve(obj,A,b,time)
 
    % Contact has opened a fracture or something similar so amg does not converge. 
    % Directly recompute the preconditioner
-   if obj.phys == 1.1 
+   if obj.Prec.phys == 1.1 
       if obj.generalsolver.iterConfig > obj.iterConfigOld
          obj.requestPrecComp = true;
          obj.iterConfigOld = obj.generalsolver.iterConfig;
@@ -30,7 +30,12 @@ function [x,flag] = Solve(obj,A,b,time)
 
    % Have the linear solver compute the Preconditioner if necessary
    if(obj.requestPrecComp || obj.params.iter > 600 || obj.params.lastRelres > obj.params.tol*1e3)
-      obj.computePrec(A);
+      time_start = tic;
+      obj.Prec.computePrec(A);
+      T_setup = toc(time_start);
+
+      obj.aTimeComp = obj.aTimeComp + T_setup;
+      obj.nComp = obj.nComp + 1;
       obj.whenComputed(length(obj.whenComputed) + 1) = time;
       obj.params.iterSinceLastPrecComp = 0;
    else

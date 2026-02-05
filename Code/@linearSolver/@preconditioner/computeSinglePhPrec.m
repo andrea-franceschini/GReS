@@ -16,7 +16,6 @@ function computeSinglePhPrec(obj,A)
       obj.params.symm = true;
    end
 
-   time_start = tic;
    switch obj.PrecType
 
       % Compute the AMG preconditioner
@@ -64,10 +63,6 @@ function computeSinglePhPrec(obj,A)
       otherwise
          error('Non defined preconditioner case')
    end
-   T_setup = toc(time_start);
-   obj.aTimeComp = obj.aTimeComp + T_setup;
-   obj.nComp = obj.nComp + 1;
-
 end
 
 

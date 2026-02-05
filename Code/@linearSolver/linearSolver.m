@@ -9,16 +9,6 @@ classdef linearSolver < handle
       % Flag for Chronos existance
       ChronosFlag = false
 
-      % Preconditioner Type
-      PrecType
-
-      % Preconditioner
-      Prec = []
-
-      % Preconditioner application
-      MfunL = []
-      MfunR = []
-
       % Flag to request Preconditioner computation
       requestPrecComp = true
 
@@ -28,25 +18,12 @@ classdef linearSolver < handle
       % Solver Type
       SolverType
 
-      % General solver params
-      iterConfigOld = 1
+      % Preconditioner object
+      Prec
+
+      % General solver
       generalsolver
-
-      % Discretizer
-      domain
-
-      % Number of domains/interfaces
-      nDom
-      nInt
-
-      % Physics
-      phys
-
-      % Flag to treat multiple domains as multiple domains
-      multidomFlag = false
-
-      % Flag to know if the problem has multiphysics
-      multiPhysFlag = false
+      iterConfigOld = 1
 
       % Statistics
       whenComputed = []
@@ -56,13 +33,6 @@ classdef linearSolver < handle
       nComp = 0
       maxIter = -1
       aIter = 0
-
-      % Max Threads
-      maxThreads
-   end
-
-
-   properties (Access = public)
 
       % Params struct
       params
@@ -79,64 +49,24 @@ classdef linearSolver < handle
          if isfolder(ChronosDir)
 
             obj.generalsolver = generalsolver;
-            domainin = generalsolver.domains;
 
-            % Check if the problem comes from multiphysics
-            if(domainin(1).dofm.getNumberOfVariables() > 1)
-               obj.multiPhysFlag = true;
-               return
-            end
+            % Create the preconditioner object, check if the physics is supported
+            [obj.Prec,obj.ChronosFlag] = preconditioner.create(DEBUGflag,generalsolver,varargin{:});
 
-            obj.domain = domainin;
-            obj.nDom = generalsolver.nDom;
-            obj.nInt = generalsolver.nInterf;
-
-            % Check the number of interfaces and domains
-            if obj.nInt ~= 0
-               interfacein = generalsolver.interfaces;
-            end
-
-            % Select the physics
-            physname = obj.domain(1).dofm.getVariableNames();
-            if ~obj.multiPhysFlag
-               % Supported Single Physics
-               if(contains(physname,'pressure'))
-                  obj.phys = 0;
-               elseif(physname == 'displacements')
-                  obj.phys = 1;
-                  % Check if there is contact 
-                  if any(cellfun(@(o) isa(o,'SolidMechanicsContact'),interfacein))
-                     obj.phys = 1.1;
-                  end
-               else
-                  if obj.DEBUGflag
-                    warning('Non supported Physics for linsolver, falling back to matlab solver');
-                    fprintf('physics: %s\n',physname);
-                  end
-                  return
-               end
-            else
-               % Supported MultiPhysics
-               if(contains(physname,['pressure' 'displacements']))
-                 if domainin.dofm.getVariableNames(1) == 'pressure'
-                   obj.phys = 0;
-                 else
-                   obj.phys = 1;
-                 end
-               else
-                 if obj.DEBUGflag
-                   warning('Non supported Physics for linsolver, falling back to matlab solver');
-                   fprintf('physics: %s\n',physname);
-                 end
-                 return
-               end
+            % Non supported physics for the preconditioner
+            if ~obj.ChronosFlag
+               return;
             end
 
             % Chronos exists
-            obj.ChronosFlag = true;
             addpath(genpath(ChronosDir));
             RACPDir = fullfile(gres_root,'..','aspamg_matlab','composed_precs','RACP');
             addpath(genpath(RACPDir));
+
+            % First time solving request preconditioner computation
+            obj.params.iter = -1;
+            obj.params.lastRelres = 1e10;
+            obj.params.tol   = generalsolver.simparams.relTol;
 
             % Read XML
             if nargin > 1
@@ -163,39 +93,6 @@ classdef linearSolver < handle
             else
                obj.params.restart = 100;
             end
-
-            % Get the preconditioner type
-            obj.PrecType = lower(data.preconditioner);
-
-            obj.params.tol   = generalsolver.simparams.relTol;
-            obj.params.maxit = data.general.maxit;
-
-            % Get the different parameters according to the prectype
-            switch obj.PrecType
-               case 'amg'
-                  obj.params.amg      = data.amg;
-                  obj.params.smoother = data.smoother;
-                  obj.params.prolong  = data.prolong;
-                  obj.params.coarsen  = data.coarsen;
-                  obj.params.tspace   = data.tspace;
-                  obj.params.filter   = data.filter;
-                  obj.params.minIter  = 30;
-
-               case 'fsai'
-                  obj.params.smoother = data.smoother;
-                  obj.params.minIter  = 300;
-            end
-
-            % First time solving request preconditioner computation
-            obj.params.iter = -1;
-            obj.params.lastRelres = 1e10;
-
-            % Set maximum number of threads to use if the system provides less
-            obj.maxThreads = maxNumCompThreads;
-            obj.params.smoother.nthread = min(obj.params.smoother.nthread,obj.maxThreads);
-            obj.params.prolong.np = min(obj.params.prolong.np,obj.maxThreads);
-            obj.params.filter.np = min(obj.params.filter.np,obj.maxThreads);
-
          end
       end
 
@@ -215,25 +112,6 @@ classdef linearSolver < handle
       [x,flag] = Solve(obj,A,b,time)
 
    end
-
-   methods (Access = private)
-
-      % Function to compute the preconditioner
-      computePrec(obj,A)
-
-      % Function to compute the preconditioner for the single block (single physics)
-      computeSinglePhPrec(obj,A);
-
-      % Function to compute the Reverse Agumented preconditioner for the lagrange multiplier case (single physics multi domain)
-      computeRACP(obj,A)
-
-      % Function to compute the MCP preconditioner for the multiphysics case
-      computeMCP(obj,A)
-
-      % Function to treat the Dirichlet boundary conditions
-      treatDirBC(obj,A)
-   end
-
 end
 
 
