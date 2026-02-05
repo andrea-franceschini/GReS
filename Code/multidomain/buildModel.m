@@ -46,10 +46,15 @@ end
 
 function domain = defineDomain(input)
 
-topology = Mesh();
+if isfield(input,"fileName")
+  % create domain linking input file
+  str = readstruct(input.fileName,AttributeSuffix="");
+  domain = defineDomain(str);
+  return
+end
+
 geom = input.Geometry;
-meshFile = getXMLData(geom,[],"fileName");
-topology.importMesh(meshFile);
+topology = Mesh.generateGrid(geom);
 
 if isfield(input,"Materials")
   mat = Materials(input);

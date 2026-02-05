@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+  <simParam>
+    <Time
+          Start="0."
+          End ="1.0"
+          DtInit=".1"
+          DtMin ="1e-5"
+          DtMax =".2"
+          incrementFactor = "1.25"
+          choppingFactor = "2" />
+
+    <Solver
+            RelativeTolerance = "1.e-10"
+            AbsoluteTolerance = "1.e-8"
+            />
+  </simParam>
+
+
+  <Materials >
+
+    <Solid name = "sand" cellTags = "1">
+
+      <Constitutive>
+        <Elastic
+                 youngModulus = "1e5"
+                 poissonRatio = "0.25"
+                 />
+      </Constitutive>
+      <PorousRock
+                  porosity="0.3"
+                  specificWeight="21"
+                  permeability="1e-13"/>
+    </Solid>
+
+    <Solid name = "clay_underburden" cellTags = "2">
+      <Constitutive>
+        <Elastic
+                 youngModulus = "1e5"
+                 poissonRatio = "0.25"
+                 />
+      </Constitutive>
+      <PorousRock
+                  porosity="0.2"
+                  specificWeight="21"
+                  permeability="1e-15"/>
+    </Solid>
+
+    <Solid name = "silty_clay_overburden" cellTags = "3">
+      <Constitutive>
+        <Elastic
+                 youngModulus = "1e5"
+                 poissonRatio = "0.25"
+                 />
+      </Constitutive>
+      <PorousRock
+                  porosity="0.22"
+                  specificWeight="21"
+                  permeability="1e-15"/>
+    </Solid>
+
+    <Fluid
+           compressibility = "4.59e-7"
+           dynamicViscosity = "3.1608e-14"
+           />
+  </Materials>
+
+
+
+  <BoundaryConditions>
+    <BC
+        name = "fix_bottom"
+        type = "Dirichlet"
+        entityType = "SurfBC"
+        variable = "displacements"
+        >
+
+      <BCentities
+                  surfaceTags = "1"
+                  components = "z"
+                  />
+
+      <BCevent
+               time = "0"
+               value = "0"
+               />
+    </BC>
+    <BC
+        name = "y_fix"
+        type = "Dirichlet"
+        entityType = "SurfBC"
+        variable = "displacements"
+        >
+
+      <BCentities
+                  surfaceTags = "3,4"
+                  components = "y"
+                  />
+
+      <BCevent
+               time = "0"
+               value = "0"
+               />
+    </BC>
+    <BC
+        name = "x_fix"
+        type = "Dirichlet"
+        entityType = "SurfBC"
+        variable = "displacements"
+        >
+
+      <BCentities
+                  surfaceTags = "5,6"
+                  components = "x"
+                  />
+
+      <BCevent
+               time = "0"
+               value = "0"
+               />
+    </BC>
+    <BC
+        name = "pressureBC"
+        type = "Dirichlet"
+        entityType = "ElementBC"
+        variable = "pressure"
+        >
+
+      <BCentities
+                  box = "50,55,50,55,5,6"
+                  />
+
+      <BCevent
+               time = "0"
+               value = "100.0"
+               />
+    </BC>
+
+  </BoundaryConditions>
+
+
+
+  <Output
+          printTimes   = ".1,.5,1"
+          outputFile   = "model03/Output03/results"
+          matFileName  = "model03/Output03/history"
+          saveHistory  = "1"
+          />
+
+
+
+  <Solver>
+    <BiotFullySaturated>
+      <Poromechanics />
+      <SinglePhaseFlowFVTPFA targetRegions = "1"/>
+    </BiotFullySaturated>
+  </Solver>
+
+
+</Problem>

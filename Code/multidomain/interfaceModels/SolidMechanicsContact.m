@@ -22,7 +22,7 @@ classdef SolidMechanicsContact < MeshTying
 
       input = varargin{1};
 
-      obj.stabilizationScale = getXMLData(input.Quadrature,1.0,"stabilizationScale");
+      obj.stabilizationScale = getXMLData(input,1.0,"stabilizationScale");
       obj.cohesion = getXMLData(input.Coulomb,[],"cohesion");
       obj.phi = getXMLData(input.Coulomb,[],"frictionAngle");
 
