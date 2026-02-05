@@ -146,7 +146,7 @@ classdef DoFManager < handle
 
     function ents = getLocalEnts(obj,id,ents)
 
-      % same as getLocalDoF but without component expansion
+      % same as getLocalDoF but WITHOUT component expansion
       ncomp = obj.numbComponents(id);
       ents = round(((ncomp-1)+obj.dofMap{id}(ents))/ncomp);
     end

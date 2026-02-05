@@ -4,7 +4,7 @@ clc
 tWall = tic();      % start wall-clock timer
 tCPU  = cputime;    % start CPU timer
 
-gresLog().setVerbosity(-1);
+gresLog().setVerbosity(-2);
 
 testFiles = {
     fullfile('Terzaghi','testTerzaghi.m')
@@ -13,6 +13,7 @@ testFiles = {
     fullfile('Richards','testRichards.m')
     fullfile('ConstantSliding','testConstantSliding.m')
     fullfile('SingleCrackCompressed','testSingleCrackCompressed.m')
+    fullfile('ConstantSlidingEFEM','testConstantSlidingEFEM.m')
 };
 
 results = runtests(testFiles);

@@ -39,12 +39,11 @@ a function handle depending on space (x,y,z)
 
 
 <BoundaryConditions>
-  <!--
   <BC
-      name = "topDrained"
+      name = "NoFlowTop"
       type = "Dirichlet"
       entityType = "SurfBC"
-      physics = "SinglePhaseFlow"
+      variable = "pressure"
       >
 
     <BCentities
@@ -56,61 +55,65 @@ a function handle depending on space (x,y,z)
              time = "0"
              value = "0"
              />
-</BC>
--->
+  </BC>
 
   <BC
-      name = "lateralFix"
-      type = "Dirichlet"
+      name = "TopLoad"
+      type = "Neumann"
       entityType = "SurfBC"
       variable = "displacements"
       >
 
     <BCentities
-                bcListFile = "Input/listLateralFix"
+                surfaceTags = "2"
+                components = "z"
                 />
 
     <BCevent
              time = "0"
-             value = "0"
+             value = "-10"
              />
 
   </BC>
 
-
   <BC
-      name = "FluxCell"
-      entityType = "VolumeForce"
-      variable = "pressure"
+      name = "LatFixedY"
+      type = "Dirichlet"
+      entityType = "NodeBC"
+      variable = "displacements"
       >
 
-    <!-- cell index -->
     <BCentities
-                box = "545,555,545,555,975,1000"
+                surfaceTags = "3"
+                components = "y"
                 />
 
-    <!-- Flux is given in m^3/year -->
     <BCevent
              time = "0"
              value = "0"
              />
-    <BCevent
-             time = "1"
-             value = "-0.360"
-             />
-    <BCevent
-             time = "6"
-             value = "-0.360"
-             />
-    <BCevent
-             time = "7"
-             value = "0"
-             />
-
   </BC>
 
   <BC
-      name = "BottomFixed"
+      name = "LatFixedX"
+      type = "Dirichlet"
+      entityType = "NodeBC"
+      variable = "displacements"
+      >
+
+    <BCentities
+                surfaceTags = "4"
+                components = "x"
+                />
+
+    <BCevent
+             time = "0"
+             value = "0"
+             />
+  </BC>
+
+  <BC
+      name = "BotFixed"
       type = "Dirichlet"
       entityType = "SurfBC"
       variable = "displacements"
@@ -125,8 +128,6 @@ a function handle depending on space (x,y,z)
              time = "0"
              value = "0"
              />
-
   </BC>
-
 
 </BoundaryConditions>
