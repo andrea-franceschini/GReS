@@ -1,5 +1,5 @@
-classdef GeneralSolver < SolutionScheme
-  % Class for solving non linear contact problem
+classdef SolutionScheme < handle
+  % General solution scheme class
 
   properties (Access = protected)
     %
@@ -9,36 +9,24 @@ classdef GeneralSolver < SolutionScheme
     t = 0               % simulation time
     tStep = 0           % simulation time step
     dt                  % current time step size
-    iterNL              % nonlinear iteration number
-    iterConfig          % configuration iteration number
-    nVars               % total number of inner variable fields in the model
-    attemptedReset
   end
 
 
   properties (Access = public)
+    output                % object handling the output of the simulation
     simparams             % parameters of the simulations (shared)
-    domains               % array of Discretizer
-    interfaces            % array of interfaces
-    linsolver             % instance of linear solver
+    domains               % array of Discretizer objects
+    interfaces            % cell array of interfaces objects
   end
 
 
   methods (Access = public)
-    function obj = GeneralSolver(simparams,domains,varargin)
+    function obj = SolutionScheme(varargin)
 
       assert(nargin > 1 && nargin < 4,"Wrong number of input arguments " + ...
         "for general solver")
-
-      if nargin > 2
-        interfaces = varargin{1};
-      else
-        interfaces = [];
-      end
       
-      obj.setNonLinearSolver(simparams,domains,interfaces);
-
-      obj.setLinearSolver()
+      obj.setSolutionScheme(varargin{:});
 
     end
 
@@ -191,27 +179,73 @@ classdef GeneralSolver < SolutionScheme
 
       end % time marching
       %
+      finalizeOutput(obj.output);
+
       gresLog().log(-1,"Simulation completed successfully \n")
     end
 
 
-    function finalizeOutput(obj)
-      
-      % finalize print utils for domains and interfaces
-      for i = 1:obj.nDom
-        obj.domains(i).finalizeOutput();
-      end
 
-      for i = 1:obj.nInterf
-        obj.interfaces{i}.outstate.finalize();
-      end
-    end
 
   end
 
 
 
   methods (Access = protected)
+
+    function setSolutionScheme(obj,varargin)
+
+
+      % Check that we have an even number of inputs
+      if mod(length(varargin), 2) ~= 0
+        error('Arguments must come in key-value pairs.');
+      end
+
+      % Loop through the key-value pairs
+      for k = 1:2:length(varargin)
+        key = varargin{k};
+        value = varargin{k+1};
+
+        if isempty(value)
+          continue
+        end
+
+        if ~ischar(key) && ~isstring(key)
+          error('Keys must be strings');
+        end
+
+        switch lower(key)
+          % case 'simulationparameters'
+          %   assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
+          %   obj.simparams = value;
+          case 'simulationparameters'
+            obj.simparams = value;
+          case 'output'
+            obj.output = value;
+          case {'domain','domains'}
+            obj.domains = value;
+          case {'interfaces','interface'}
+            obj.interfaces = value;
+          otherwise
+            error('Unknown input key %s for SolutionScheme \n', key);
+        end
+      end
+
+      obj.nDom = numel(obj.domains);
+      obj.nInterf = numel(obj.interfaces);
+
+      assert(~isempty(obj.simparams),"Input 'simulationParameters'" + ...
+        " is required for SolutionScheme")
+      assert(obj.nDom > 0,"Input 'domains'" + ...
+        " is required for SolutionScheme")
+
+      for i = 1:obj.nDom
+        obj.domains(i).domainId = i;
+        obj.domains(i).simparams = obj.simparams;
+
+      end
+      
+    end
 
     function setNonLinearSolver(obj,simparams,dom,interf)
 
@@ -228,6 +262,10 @@ classdef GeneralSolver < SolutionScheme
         obj.domains(iD).stateOld = copy(obj.domains(iD).getState());
         obj.domains(iD).simparams = simparams;
         obj.nVars = obj.nVars + obj.domains(iD).dofm.getNumberOfVariables();
+      end
+
+      for iI = 1:obj.nInterf
+
       end
     end
 
@@ -405,6 +443,19 @@ classdef GeneralSolver < SolutionScheme
         interf.state.t = obj.t;
       end
 
+    end
+
+    function setOutput(obj)
+
+      for iD = 1:obj.nDom
+        obj.domains(iD).stateOld = copy(obj.domains(iD).getState());
+        obj.domains(iD).simparams = simparams;
+        obj.nVars = obj.nVars + obj.domains(iD).dofm.getNumberOfVariables();
+      end
+
+      for iI = 1:obj.nInterf
+
+      end
     end
 
 

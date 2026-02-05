@@ -8,7 +8,7 @@ classdef OutState < handle & matlab.mixin.Copyable
   properties (Access = public)
     modTime = false     %flag for time step size matching timeList
     timeList
-    results
+    matFile
     % model
     writeSolution
     timeID = 1
@@ -16,6 +16,7 @@ classdef OutState < handle & matlab.mixin.Copyable
     writeVtk
     matFileName
     vtkFileName
+    vtkFile
   end
 
   properties (Access = private)
@@ -124,16 +125,44 @@ classdef OutState < handle & matlab.mixin.Copyable
 
     end
 
+    function writeVTKFile(obj)
+    end
+
+    function finalize(obj)
+
+      %write the pvd file
+      toc = obj.output.vtkFile.getDocumentElement;
+
+      toc.setAttribute('type', 'Collection');
+      toc.setAttribute('version', '1.0');
+      blocks = docNode.createElement('Collection');
+
+
+      for i = 1 : obj.output.timeID
+        block = docNode.createElement('DataSet');
+        block.setAttribute('timestep', sprintf('%e', obj.output.timeList(i).time));
+        block.setAttribute('file', obj.data(i).vtm);
+        blocks.appendChild(block);
+      end
+
+      toc.appendChild(blocks);
+
+      fileName = sprintf('%s.pvd', obj.folderName);
+      xmlwrite(fileName, docNode);
+
+      if obj.writeSolution
+        output = obj.results;
+        save(strcat(obj.matFileName,'.mat'),"output")
+      end
+
+    end
+
 
     function finalize(obj)
       if obj.writeVtk
         obj.VTK.finalize();
       end
 
-      if obj.writeSolution
-        output = obj.results;
-        save(strcat(obj.matFileName,'.mat'),"output")
-      end
     end
   end
 

@@ -4,18 +4,18 @@ classdef Discretizer < handle
   properties (GetAccess=public, SetAccess=private)
     physicsSolvers                     % physics solvers database
     solverNames
-    dofm         DoFManager
-    bcs          Boundaries
-    outstate     OutState
-    materials    Materials
-    grid         struct
+    dofm         
+    bcs          
+    materials    
+    grid         
   end
 
   properties
-    simparams
+    simparams    
     J
-    rhs
-
+    rhs    
+    outstate     
+    domainId
     % Jacobian blocks for multidomain coupling
     Jum
     Jmu

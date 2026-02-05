@@ -409,6 +409,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       cellStr(3).data = as;
 
       % plot with the fracture output object
+      xml = obj.domain.vtkblock;
+      OutState.writeVTK(xml,grid,cellStr,ptsStr,name)
       obj.outFracture.VTK.writeVTKFile(time, [], [], [], cellStr);
 
     end

@@ -94,25 +94,25 @@ classdef VTKOutput < handle
          obj.isFolderReady = true;
       end
 
-      function writePVDFile(obj)
-         docNode = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
-         toc = docNode.getDocumentElement;
-         toc.setAttribute('type', 'Collection');
-         toc.setAttribute('version', '1.0');
-         blocks = docNode.createElement('Collection');
-
-         for i = 1 : obj.IDdata
-            block = docNode.createElement('DataSet');
-            block.setAttribute('timestep', sprintf('%e', obj.data(i).time));
-            block.setAttribute('file', obj.data(i).vtm);
-            blocks.appendChild(block);
-         end
-
-         toc.appendChild(blocks);
-
-         fileName = sprintf('%s.pvd', obj.folderName);
-         xmlwrite(fileName, docNode);
-      end
+      % function writePVDFile(obj)
+      %    docNode = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
+      %    toc = docNode.getDocumentElement;
+      %    toc.setAttribute('type', 'Collection');
+      %    toc.setAttribute('version', '1.0');
+      %    blocks = docNode.createElement('Collection');
+      % 
+      %    for i = 1 : obj.IDdata
+      %       block = docNode.createElement('DataSet');
+      %       block.setAttribute('timestep', sprintf('%e', obj.data(i).time));
+      %       block.setAttribute('file', obj.data(i).vtm);
+      %       blocks.appendChild(block);
+      %    end
+      % 
+      %    toc.appendChild(blocks);
+      % 
+      %    fileName = sprintf('%s.pvd', obj.folderName);
+      %    xmlwrite(fileName, docNode);
+      % end
 
       function fileName = writeVTMFile(obj)
          outName = setOutputName(obj);
