@@ -2,15 +2,13 @@ classdef Discretizer < handle
   % General discretizer class
 
   properties (GetAccess=public, SetAccess=private)
-
     physicsSolvers                     % physics solvers database
-    dofm = DoFManager()                % dofManager
-    bcs = Boundaries()
-    outstate = OutState()
-    materials = Materials()
     solverNames
-    grid = struct('topology',Mesh(),'faces',[],'cells',[])
-
+    dofm         DoFManager
+    bcs          Boundaries
+    outstate     OutState
+    materials    Materials
+    grid         struct
   end
 
   properties
@@ -33,7 +31,6 @@ classdef Discretizer < handle
 
     state
     stateOld
-
   end
 
 
@@ -41,6 +38,14 @@ classdef Discretizer < handle
     function obj = Discretizer(varargin)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
+
+      % Initialized internal variables
+      obj.dofm = DoFManager();
+      obj.bcs = Boundaries();
+      obj.outstate = OutState();
+      obj.materials = Materials();
+      obj.grid = struct('topology',Mesh(),'faces',[],'cells',[]);
+
       obj.physicsSolvers = containers.Map('KeyType','char','ValueType','any');
       obj.setDiscretizer(varargin{:});
     end
@@ -442,12 +447,16 @@ classdef Discretizer < handle
       msh = obj.grid.topology;
 
       u = unique(msh.cellTag);
-      assert(max(u)==length(u),"cellTag numbering must be progressive from 1 to the number of cellTags")
-      msh.nCellTag = max(u);
+      if ~isempty(u)
+        assert(max(u)==length(u),"cellTag numbering must be progressive from 1 to the number of cellTags")
+        msh.nCellTag = max(u);
+      end
 
       u = unique(msh.surfaceTag);
-      assert(max(u)==length(u),"surfaceTag numbering must be progressive from 1 to the number of cellTags")
-      msh.nSurfaceTag = max(u);
+      if ~isempty(u)
+        assert(max(u)==length(u),"surfaceTag numbering must be progressive from 1 to the number of cellTags")
+        msh.nSurfaceTag = max(u);
+      end
 
     end
 
