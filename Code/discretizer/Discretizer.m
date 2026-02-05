@@ -442,12 +442,16 @@ classdef Discretizer < handle
       msh = obj.grid.topology;
 
       u = unique(msh.cellTag);
-      assert(max(u)==length(u),"cellTag numbering must be progressive from 1 to the number of cellTags")
-      msh.nCellTag = max(u);
+      if ~isempty(u)
+        assert(max(u)==length(u),"cellTag numbering must be progressive from 1 to the number of cellTags")
+        msh.nCellTag = max(u);
+      end
 
       u = unique(msh.surfaceTag);
-      assert(max(u)==length(u),"surfaceTag numbering must be progressive from 1 to the number of cellTags")
-      msh.nSurfaceTag = max(u);
+      if ~isempty(u)
+        assert(max(u)==length(u),"surfaceTag numbering must be progressive from 1 to the number of cellTags")
+        msh.nSurfaceTag = max(u);
+      end
 
     end
 

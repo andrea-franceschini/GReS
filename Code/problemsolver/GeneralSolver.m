@@ -466,14 +466,12 @@ classdef GeneralSolver < handle
 
         for i = 1:obj.nDom
           dom = obj.domains(i);
-          dom.state.t = obj.t;
           printState(dom);
           advanceState(dom);
         end
 
         for i = 1:obj.nInterf
           interf = obj.interfaces{i};
-          interf.state.t = obj.t;
           printState(interf);
           advanceState(interf);
         end
