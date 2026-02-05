@@ -88,7 +88,11 @@ classdef DoFManager < handle
 
         if nargin < 6
           % return the entity of type fieldLocation for the given mesh tags
-          tags = varargin{1};
+          if isempty(varargin)
+            tags = 1:obj.mesh.nCellTag;
+          else
+            tags = varargin{1};
+          end
           obj.fields(id).tags = tags;
           entList = getEntities(fieldLocation,obj.mesh,tags);
           totActiveEnts = length(entList);

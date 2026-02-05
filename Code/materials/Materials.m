@@ -114,6 +114,12 @@ classdef Materials < handle
               mat.PorousRock = PorousRock(input.Solid(i).PorousRock);
             end
           end
+          if isfield(input.Solid(i),"SedimentMaterial")
+            if ~ismissing(input.Solid(i).SedimentMaterial)
+              mat.SedMaterial = SedMaterial(input.Solid(i).SedimentMaterial);
+            end
+          end
+
           if isfield(input.Solid(i),"Curves")
             if ~ismissing(input.Solid(i).Curves)
               mat.Curves = VanGenuchten(input.Solid(i).Curves);
