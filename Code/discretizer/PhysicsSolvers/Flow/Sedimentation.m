@@ -38,6 +38,7 @@ classdef Sedimentation < PhysicsSolver
 
     H (:,:)
     P (:,:)
+    
     void0 (:,1) double                  % Initial porosity for each cell
   end
 
@@ -169,39 +170,34 @@ classdef Sedimentation < PhysicsSolver
 
     function updateState(obj,solution)
       state = getState(obj);
+      dt = state.t-obj.domain.stateOld.t;
       state.data.pressure = state.data.pressure + solution;
+      map = reshape(dt*state.data.tstressvar,obj.grid.ncells(1:2));
+      state.data.stress = obj.getStateOld('stress') - state.data.pressure ...
+        + obj.grid.constovercolumn(map);
     end
 
     function [cellData,pointData] = writeVTK(obj,fac,t)
       % append state variable to output structure
-      % sOld = getStateOld(obj);
-      % sNew = getState(obj);
-      % p = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
+      sOld = obj.getStateOld();
+      sNew = obj.getState();
+      p = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
 
-      sOld = obj.getStateOld(obj.getField);
-      sNew = obj.getState(obj.getField);
-      p = sNew*fac+sOld*(1-fac);
+      outPrint.overpres = p;
+      outPrint.poro = obj.grid.accumulateProp(obj.getProp('porosity'));
+      outPrint.perm = obj.grid.accumulateProp(obj.getProp('permeability'));
+      outPrint.comp = sNew.data.cellComp*fac+sOld.data.cellComp*(1-fac);      
+      outPrint.stress = sNew.data.stress*fac+sOld.data.stress*(1-fac);
 
-      outPrint = finalizeState(obj,p,t);
-      [cellData,pointData] = buildPrintStruct(obj,outPrint);
-    end
-
-    function states = finalizeState(obj,p,t)
-      % Compute the posprocessing variables for the module.
       gamma = obj.materials.getFluid().getSpecificWeight();
-      if gamma>0
-        coords = obj.grid.getCoordCenter(obj.grid.getActiveDofs);
-        states.potential = p + gamma*coords(:,3);
-        states.head = coords(:,3)+p/gamma;
-      end
+      coords = obj.grid.getCoordCenter(obj.grid.getActiveDofs);
+      outPrint.pressure = p + gamma*coords(:,3);
+      outPrint.head = coords(:,3)+p/gamma;
+
       % mob = (1/obj.materials.getFluid().getDynViscosity());
       % states.flux = computeFlux(obj,p,mob,t);
 
-      states.poro = obj.grid.accumulateProp(obj.getProp('porosity'));
-      states.perm = obj.grid.accumulateProp(obj.getProp('permeability'));
-      states.comp = obj.getState().data.cellComp;
-      states.stress = obj.getState().data.stress;
-      states.pressure = p;
+      [cellData,pointData] = buildPrintStruct(obj,outPrint);
     end
 
     function writeMatFile(obj,fac,tID)
@@ -220,7 +216,7 @@ classdef Sedimentation < PhysicsSolver
       % point in the domain. (For future, have a way to pass this
       % information).
       bc = obj.bcs.db(id);
-      [cellId, faceArea, dz] = obj.grid.getBordCell(bc.surface);
+      [cellId, faceArea] = obj.grid.getBordCell(bc.surface);
       p = getState(obj,"pressure");
       switch lower(bc.surface)
         case {"x0","xm"}
@@ -243,11 +239,9 @@ classdef Sedimentation < PhysicsSolver
           v=bc.data.*ones(length(cellId),1);
           vals = sum(vecN.*v,2);
         case 'dirichlet'
-          gamma = obj.materials.getFluid().getSpecificWeight();
           mu = obj.materials.getFluid().getDynViscosity();
           permCell = obj.grid.accumulateProp(obj.getProp('permeability'),cellId);
           dirJ = 1/mu*(faceArea.*permCell(:,axis));
-          % potential = p(cellId) - bc.data - gamma*dz;
           potential = p(cellId) - bc.data;
           q = dirJ.*potential;
           vals = [dirJ,q];
@@ -359,22 +353,21 @@ classdef Sedimentation < PhysicsSolver
       pointStr = [];
 
       cellStr = repmat(struct('name', 1, 'data', 1), 2, 1);
-      cellStr(1).name = 'pressure';
-      cellStr(1).data = state.pressure;
-      cellStr(2).name = 'permeability';
-      cellStr(2).data = state.perm;
-      cellStr(3).name = 'porosity';
-      cellStr(3).data = state.poro;
-      cellStr(4).name = 'Compaction(cell)';
-      cellStr(4).data = state.comp;
-      cellStr(5).name = 'stress(vertical)';
-      cellStr(5).data = state.stress;
-      if isfield(state,"potential")
-        cellStr(6).name = 'potential';
-        cellStr(6).data = state.potential;
-        cellStr(7).name = 'piezometric head';
-        cellStr(7).data = state.head;
-      end
+      cellStr(1).name = 'overpressure';
+      cellStr(1).data = state.overpres;
+      cellStr(2).name = 'pressure';
+      cellStr(2).data = state.pressure;
+      cellStr(3).name = 'piezometric head';
+      cellStr(3).data = state.head;
+
+      cellStr(4).name = 'permeability';
+      cellStr(4).data = state.perm;
+      cellStr(5).name = 'porosity';
+      cellStr(5).data = state.poro;
+      cellStr(6).name = 'compaction(cell)';
+      cellStr(6).data = state.comp;
+      cellStr(7).name = 'stress(vertical)';
+      cellStr(7).data = state.stress;
     end
 
     function out = isLinear(obj)
@@ -507,15 +500,19 @@ classdef Sedimentation < PhysicsSolver
       dofs = obj.grid.getDofsFromIJK([idI,idJ,idK]);
 
       % Finding the sedimentation rate
-      t0 = obj.getState().t;
+      t0 = obj.getStateOld().t;
       sedRate = obj.sedimentHistory.getSedimentationMap(t0,dt);
       obj.getState().data.sedmrate = sedRate;
 
       % Finding the total stress variation
+      gamma = obj.materials.getFluid().getSpecificWeight();
       poro = 1 - obj.void0(dofs)./(1+obj.void0(dofs));
-      spwg = obj.grid.accumulateProp(obj.getProp('specificweight'),dofs) ...
-        - obj.materials.getFluid().getSpecificWeight();
-      obj.getState().data.tstressvar = poro.*spwg.*sedRate;
+      spwg = zeros(length(dofs),1);
+      for mat=1:obj.nmat
+        spwg = spwg + (obj.materials.getMaterial(mat).PorousRock.getSpecificWeight() ...
+          -gamma)*obj.grid.matfrac(dofs,mat).*sedRate(:,mat);
+      end
+      obj.getState().data.tstressvar = poro.*spwg;
     end
 
     function [cellGrow, cellSed] = updateSedAccumulated(obj)

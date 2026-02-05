@@ -15,10 +15,8 @@
     />
 
     <SedimentMaterial
-        specificWeight = "2.7e4"
         voidRate = "1.e0"
         preStress = "1.e3"
-        hydraulicConductivity = "3.e-6, 3.e-6, 1.e-6"
         compressibilityIndex = "0.2"
         reCompressibilityIndex = "0.02"
     />

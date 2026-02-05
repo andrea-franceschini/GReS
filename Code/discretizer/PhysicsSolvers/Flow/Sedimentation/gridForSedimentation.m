@@ -76,13 +76,12 @@ classdef gridForSedimentation < handle
       obj.constructor(data);
     end
 
-    function [id,faceArea,dh] = getBordCell(obj,label)
+    function [id,faceArea] = getBordCell(obj,label)
       % GETBORDCELL Returns boundary cell information.
       %
       % Outputs:
       %   id        - Cell DOFs at the boundary
       %   faceArea  - Face areas
-      %   dh        - Half-cell height in Z
       %
       % Supported labels:
       %   'x0', 'xm', 'y0', 'ym', 'z0', 'zm'
@@ -101,7 +100,7 @@ classdef gridForSedimentation < handle
             J_idx(i)=count;
           end
           nelm = sum(cells,"all");
-          [id,faceArea,dh] = getBordX(obj,J_idx,nelm);
+          [id,faceArea] = getBordX(obj,J_idx,nelm);
 
         case "xm"
           mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
@@ -116,7 +115,7 @@ classdef gridForSedimentation < handle
             J_idx(i)=count;
           end
           nelm = sum(cells,"all");
-          [id,faceArea,dh] = getBordX(obj,J_idx,nelm);
+          [id,faceArea] = getBordX(obj,J_idx,nelm);
 
         case "y0"
           mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
@@ -131,7 +130,7 @@ classdef gridForSedimentation < handle
             I_idx(j)=count;
           end
           nelm = sum(cells,"all");
-          [id,faceArea,dh] = getBordY(obj,I_idx,nelm);
+          [id,faceArea] = getBordY(obj,I_idx,nelm);
 
         case "ym"
           mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
@@ -146,18 +145,17 @@ classdef gridForSedimentation < handle
             I_idx(j)=count;
           end
           nelm = sum(cells,"all");
-          [id,faceArea,dh] = getBordY(obj,I_idx,nelm);
+          [id,faceArea] = getBordY(obj,I_idx,nelm);
 
         case "z0"
-          [id,faceArea,dh] = getBordZ(obj,true);
+          [id,faceArea] = getBordZ(obj,true);
 
         case "zm"
-          [id,faceArea,dh] = getBordZ(obj,false);
+          [id,faceArea] = getBordZ(obj,false);
 
         otherwise
           id = [];
           faceArea = [];
-          dh = [];
           return
       end
     end
@@ -190,9 +188,9 @@ classdef gridForSedimentation < handle
       % Extract the coordinates for the requested linear indices
       actCells = obj.dof ~= 0;
       coord = [X(actCells), Y(actCells), Z(actCells)];
-      dofs = obj.getActiveDofs();
-      coord = coord(dofs,:);
-      coord = coord(cellIds,:);
+      % dofs = obj.getActiveDofs();
+      % coord = coord(dofs,:);
+      % coord = coord(cellIds,:);
     end
 
     function vols = computeVols(obj,dofs,dl)
@@ -389,6 +387,17 @@ classdef gridForSedimentation < handle
       end
     end
 
+    function out = constovercolumn(obj,map)
+      out = zeros(obj.ndofs,1);
+      for i=1:obj.ncells(1)
+        for j=1:obj.ncells(2)
+          dofTmp = obj.dof(sub2ind(obj.ncells,i,j,1:obj.ncells(3)));
+          notZero =dofTmp~=0;
+          out(dofTmp(notZero)) = map(i,j);
+        end
+      end
+    end
+
   end
 
   methods (Access = private)
@@ -525,13 +534,10 @@ classdef gridForSedimentation < handle
       end
     end
 
-    function [id,area,dh] = getBordX(obj,idx,nelm)
-      dhtmp=diff(obj.coordZ)/2;
+    function [id,area] = getBordX(obj,idx,nelm)
       areas = diff(obj.coordX).*diff(obj.coordZ)';
-
       id=zeros(nelm,1);
       area=zeros(nelm,1);
-      dh=zeros(nelm,1);
 
       count=1;
       for i=1:obj.ncells(1)
@@ -540,7 +546,6 @@ classdef gridForSedimentation < handle
           if k>obj.columnsHeight(pos)
             break;
           end
-          dh(count)=dhtmp(k);
           id(count)=obj.dof(i,idx(i),k);
           area(count)=areas(i,k);
           count=count+1;
@@ -548,13 +553,10 @@ classdef gridForSedimentation < handle
       end
     end
 
-    function [id,area,dh] = getBordY(obj,idx,nelm)
-      dhtmp=diff(obj.coordZ)/2;
+    function [id,area] = getBordY(obj,idx,nelm)
       areas = diff(obj.coordY).*diff(obj.coordZ)';
-
       id=zeros(nelm,1);
       area=zeros(nelm,1);
-      dh=zeros(nelm,1);
 
       count=1;
       for j=1:obj.ncells(2)
@@ -563,7 +565,6 @@ classdef gridForSedimentation < handle
           if k>obj.columnsHeight(pos)
             break;
           end
-          dh(count)=dhtmp(k);
           id(count)=obj.dof(idx(j),j,k);
           area(count)=areas(idx(j),k);
           count=count+1;
@@ -571,11 +572,9 @@ classdef gridForSedimentation < handle
       end
     end
 
-    function [id,area,dh] = getBordZ(obj,bord)
+    function [id,area] = getBordZ(obj,bord)
       activeCells = obj.columnsHeight~=0;
       nelm = sum(activeCells);
-
-      dhtmp=diff(obj.coordZ)/2;
       areas = reshape(diff(obj.coordY).*diff(obj.coordX)',nelm,1);
 
       [idI,idJ] = obj.getIJLay;
@@ -584,9 +583,8 @@ classdef gridForSedimentation < handle
       else      % Case at the bord zm
         idK = obj.columnsHeight;
       end
-      dh=dhtmp(idK);
       pos = getCellIDfromIJK(obj,idI(activeCells),idJ(activeCells), ...
-          obj.columnsHeight(activeCells));
+          idK(activeCells));
       id=obj.dof(pos);
       area=areas(activeCells);
     end

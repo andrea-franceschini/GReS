@@ -9,8 +9,14 @@
     </Constitutive>
     <PorousRock
         porosity = "0.3"
-        specificGravity = "2.1e6"
+        specificWeight = "2.1e6"
         permeability = "1e-12, 1e-12, 1e-12"
+    />
+        <SedimentMaterial
+        voidRate = "1.e0"
+        preStress = "1.e3"
+        compressibilityIndex = "0.2"
+        reCompressibilityIndex = "0.02"
     />
   </Solid>
 
@@ -23,8 +29,14 @@
     </Constitutive>
     <PorousRock
         porosity = "0.25"
-        specificGravity = "2.1e6"
+        specificWeight = "2.1e6"
         permeability = "1e-13, 1e-13, 1e-13"
+    />
+        <SedimentMaterial
+        voidRate = "1.e0"
+        preStress = "1.e3"
+        compressibilityIndex = "0.2"
+        reCompressibilityIndex = "0.02"
     />
   </Solid>
 
