@@ -6,7 +6,7 @@ classdef SedMaterial < handle
         compIdx            % Compressibility index (Cc)
         rcompIdx           % Re-compression index (Cr)
         voidRate           % Void Rate (e0)
-        preStress          % pre consolidade stress(Spre)
+        preStress          % pre consolidate stress(Spre)
     end
 
     methods (Access = public)
@@ -40,7 +40,7 @@ classdef SedMaterial < handle
       function readMaterialParameters(obj,inputStruct)
         obj.voidRate = getXMLData(inputStruct,1,"voidRate");
         obj.preStress = getXMLData(inputStruct,1,"preStress");
-        obj.compIdx = getXMLData(inputStruct,[],"compressibilityIndex");
+        obj.compIdx = getXMLData(inputStruct,1,"compressibilityIndex");
         obj.rcompIdx = getXMLData(inputStruct,1,"reCompressibilityIndex");
       end
     end

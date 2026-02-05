@@ -7,7 +7,6 @@ classdef gridForSedimentation < handle
   % Responsibilities:
   %   - Store grid geometry and topology
   %   - Track active cells and column heights
-  %   - Manage material fractions per cell
   %   - Support dynamic addition of cells in the Z direction
   %
   % Notes:
@@ -22,17 +21,10 @@ classdef gridForSedimentation < handle
     coordZ (:,1)                 % Z coordinates of grid nodes
     ncells (1,3)                 % Number of cells in (x,y,z)
 
-    % Material control
-    matfrac (:,:)                % Material fractions per cell (cells,nmat)
-
     % Dynamic grid control
     columnsHeight (:,:)          % Active height per column
     dof (:,:,:)                  % Cell DOF map (i,j,k) -> DOF ID
     ndofs                        % Number of active DOFs
-  end
-
-  properties(Access = private)
-    nmat uint16
   end
 
   methods (Access = public)
@@ -43,8 +35,6 @@ classdef gridForSedimentation < handle
       %
       % Supported inputs:
       %   "XML"          - XML grid definition
-      %   "Materiais"    - Material label list
-      %   "NumMateriais" - Number of materials
 
       flagEscape=true;
       for k = 1:2:nargin
@@ -52,26 +42,16 @@ classdef gridForSedimentation < handle
           case "xml"
             data = varargin{k+1};
             flagEscape = false;
-          case "materiais"
-            matLabel = varargin{k+1};
-          case "nummateriais"
-            matLabel = (1:varargin{k+1})';
         end
       end
 
       flgInput = gridForSedimentation.checkInput(data);
       if flgInput
-        disp("Grid for the sedimentation model not well defined!");
+        gresLog().error("Grid for the sedimentation model not well defined!");
       end
 
       % Check if the class is gonna be constructed.
       if or(flagEscape,flgInput), return; end
-
-      % Assuming only 1 material
-      if ~exist('matLabel', 'var'), matLabel = 1; end
-
-      % Setting the number of material
-      obj.nmat = length(matLabel);
 
       obj.constructor(data);
     end
@@ -284,19 +264,17 @@ classdef gridForSedimentation < handle
       neigh(actTmp,6) =  obj.dof(pos);
     end
 
-    function newlayer = grow(obj,map,matfrac,height)
+    function newlayer = grow(obj,map,height)
       % GROW Adds new cells on top of selected columns.
       %
       % Inputs:
       %   map      - Logical array of growing columns
-      %   matfrac  - Material fractions for new cells
       %   height   - Height of the new layer
       %
       % Output:
       %   newlayer - True if a new Z layer was added
 
       cellsTadd = sum(map);
-      obj.matfrac(end+1:end+cellsTadd,:) = matfrac(map,:);      
 
       % check if is necessary to add a new layer in z
       atTop = obj.columnsHeight == obj.ncells(3);
@@ -375,18 +353,6 @@ classdef gridForSedimentation < handle
       end
     end
 
-    function varOut = accumulateProp(obj,mat,dofs)
-      if ~exist("dofs","var")
-        dofs = obj.getActiveDofs;
-      end
-      % ndofs = length(dofs);
-      [~,nprop]=size(mat);
-      varOut = zeros(length(dofs),nprop);
-      for i=1:obj.nmat
-        varOut = varOut+obj.matfrac(dofs,i).*mat(i,:);
-      end
-    end
-
     function out = constovercolumn(obj,map)
       out = zeros(obj.ndofs,1);
       for i=1:obj.ncells(1)
@@ -408,7 +374,6 @@ classdef gridForSedimentation < handle
       %   - Coordinates
       %   - DOF mapping
       %   - Column heights
-      %   - Initial material distribution
 
       % Constructing the grid
       if strcmp(data.Grid.type,"classic")
@@ -509,29 +474,6 @@ classdef gridForSedimentation < handle
         otherwise
           gridForSedimentation.errorGrid();
       end
-
-      % Defining the material fractions that compose each cell
-      % in the initial configuration
-      obj.matfrac = zeros(numcells,obj.nmat);
-
-      if isfield(data,"materialTag")
-        if ischar(data.materialTag)
-          loc = str2num(data.materialTag);
-        else
-          loc = data.materialTag;
-        end
-        frac = 1/length(loc);
-        obj.matfrac(:,loc)=frac;
-        % pos=obj.dof==0;
-        % obj.matfrac(pos(:),:)=0;
-        return;
-      end
-
-      if isfield(data,"materialFractions")
-        frac = load(data.materialFractions);
-        % frac = frac ./ vecnorm(frac,2,2);
-        obj.matfrac = frac;
-      end
     end
 
     function [id,area] = getBordX(obj,idx,nelm)
@@ -603,20 +545,18 @@ classdef gridForSedimentation < handle
       flag = false;
       if ~(or(isfield(input,'Grid'),isfield(input,'grid')))
         flag = true;
-        disp("The grid parameters for the simulation is not defined!");
+        gresLog().error("The grid parameters for the simulation is not defined!");
       end
 
       if ~or(isfield(input,'Initial'),isfield(input,'initial'))
-      %   if ~(or(isfield(input.Initial,'All'),isfield(input,'Lay')))
           flag = true;
-          disp("The material for each cell at the begin of the simulation is not defined!");
-      %   end
+          gresLog().error("The material for each cell at the begin of the simulation is not defined!");
       end
 
     end
 
     function errorGrid()
-      error("The grid parameters for the simulation is not well defined!");
+      gresLog().error("The grid parameters for the simulation is not well defined!");
     end
 
   end

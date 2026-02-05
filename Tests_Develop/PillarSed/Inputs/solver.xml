@@ -1,4 +1,122 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+Standard file for defining a simulation with mesh growth due to
+sediment accumulation on the upper border of the domain (TOP).
+
+This file requires the definition of four main fields:
+  - <Domain>: Defines the simulation domain and grid.
+  - <Boundary>: Defines the boundary conditions of the simulation.
+  - <SedimentMap>: Defines the amount of sediment deposited on the
+    top cells of the domain over the entire simulation time.
+  - <Output>: Defines which output data should be stored.
+
+The <Domain> field is composed of three blocks:
+
+  - Grid:
+    Defines the number of cells along each axis and the nodal
+    coordinates that define the grid. Two constructors are available:
+
+      <Grid type = "classic" division = "3,3,2" size = "10,10,1"/>
+
+    This constructor builds a structured mesh for a parallelepiped
+    domain with dimensions 10×10×1 and a grid resolution of 3×3×2 cells.
+
+      <Grid type = "explicit"
+        xcoord = "0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0"
+        yfile  = "Inputs/Domain/coord.dat"
+        zcoord = "0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0" />
+
+    This constructor builds a mesh by explicitly providing the
+    coordinates along each axis. Coordinates can be defined either
+    directly as a list of values using "*coord" or read from a file
+    using "*file".
+
+    *** If both "*file" and "*coord" are defined for the same axis,
+    the "*coord" definition is ignored. ***
+
+  - Initial:
+    Defines which cells from the Grid compose the initial simulation
+    domain. The field "type" must be specified to determine how the
+    initial configuration is built. Available options are:
+
+      -> all:
+         All possible cells defined in Grid are active.
+
+      -> surface:
+         The initial domain consists of cells intersecting a defined
+         surface.
+
+      -> untilSurface:
+         The initial domain consists of all cells below a defined
+         surface.
+
+      -> doubleSurface:
+         The initial domain consists of the cells intersecting a
+         defined surface and, if possible, one cell above it.
+
+    For the surface-based options (surface, untilSurface, doubleSurface),
+    an additional field defining the surface map is required. This can
+    be done using:
+
+      - columnHeight: the number of cells in each column, or
+      - mapHeight: the elevation of the surface.
+
+    It is also mandatory to define the material composition of the
+    active cells, either by:
+
+      - materialTag: all active cells are composed of equal proportions
+        of the listed materials, or
+      - materialFractions: explicit material fractions are provided for
+        each cell.
+
+    Examples:
+
+      <Initial
+          type = "all"
+          materialFractions = "Inputs/Domain/initialMatFrac.dat"
+      />
+
+      <Initial
+          type = "surface"
+          columnHeight = "Inputs/Domain/initialColumn.dat"
+          materialTag = "1"
+      />
+
+      <Initial
+          type = "doubleSurface"
+          mapHeight = "Inputs/Domain/initialHeight.dat"
+          materialTag = "1,2"
+      />
+
+    *** It is recommended to use materialFractions only when
+    type = "all". For the other options, the number and ordering of
+    active cells may not be known a priori, which can lead to ambiguity. ***
+
+  - NewCellHeightControl:
+    If new cells need to be added above the highest existing
+    z-coordinate during that point in the simulation, this field defines
+    the height of the newly created cell.
+
+In the <Boundary> field, each <BC> entry defines a boundary condition.
+The general form is:
+
+  <BC name = "Top"
+      type = "Dirichlet"
+      surface = "ZM"
+      variable = "pressure"
+      value = "0." />
+
+Where:
+  - name: identifier of the boundary condition,
+  - type: boundary condition type (Dirichlet or Neumann),
+  - surface: domain boundary where the condition is applied
+    (x0, xm, y0, ym, z0, zm),
+  - variable: system variable to which the condition applies,
+  - value: prescribed boundary value.
+
+The <SedimentMap> field defines the spatial and temporal distribution
+of sediment deposition on the top of the domain.
+-->
 
 <Solver>
   <Sedimentation>
