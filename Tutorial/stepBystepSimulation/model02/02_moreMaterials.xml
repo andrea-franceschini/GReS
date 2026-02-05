@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+  <simParam>
+    <Time
+          Start="0."
+          End ="10.0"
+          DtInit="0.25"
+          DtMin ="1e-5"
+          DtMax ="0.5"
+          incrementFactor = "1.25"
+          choppingFactor = "2" />
+
+    <Solver
+            RelativeTolerance = "1.e-10"
+            AbsoluteTolerance = "1.e-8"
+            />
+  </simParam>
+
+
+  <Materials >
+
+    <Solid name = "sand" cellTags = "1">
+      <PorousRock
+                  porosity="0.3"
+                  specificWeight="21"
+                  permeability="1e-11"/>
+    </Solid>
+
+    <Solid name = "clay_underburden" cellTags = "2">
+      <PorousRock
+                  porosity="0.2"
+                  specificWeight="21"
+                  permeability="1e-15"/>
+    </Solid>
+
+    <Solid name = "silty_clay_overburden" cellTags = "3">
+      <PorousRock
+                  porosity="0.22"
+                  specificWeight="21"
+                  permeability="1e-14"/>
+    </Solid>
+
+    <Fluid
+           specificWeight = "0.0"
+           compressibility = "4.4e-7"
+           dynamicViscosity = "1.0e-6"
+           />
+  </Materials>
+
+
+
+  <BoundaryConditions>
+    <BC
+        name = "pressureBC"
+        type = "Dirichlet"
+        entityType = "ElementBC"
+        variable = "pressure"
+        >
+
+      <BCentities
+                  box = "50,55,50,55,5,6"
+                  />
+
+      <BCevent
+               time = "0"
+               value = "100"
+               />
+    </BC>
+
+  </BoundaryConditions>
+
+
+
+  <Output
+          printTimes   = "1,5,10"
+          outputFile   = "model02/Output02/results"
+          matFileName  = "model02/Output02/history"
+          saveHistory  = "1"
+          />
+
+
+  <Solver>
+    <SinglePhaseFlowFVTPFA targetRegions = "1"/>
+  </Solver>
+
+
+</Problem>

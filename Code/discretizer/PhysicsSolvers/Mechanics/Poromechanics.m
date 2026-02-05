@@ -227,6 +227,7 @@ classdef Poromechanics < PhysicsSolver
       end
 
       computeStrain(obj);
+
     end
 
     function [avStress,avStrain] = finalizeState(obj,stateIn)
@@ -260,7 +261,8 @@ classdef Poromechanics < PhysicsSolver
       end
 
       % get bcDofs and bcVals
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
+      bcDofs = getBCdofs(obj,bcId);
+      bcVals = getBCVals(obj,bcId,t);
 
       bcType = obj.bcs.getType(bcId);
 
@@ -277,11 +279,11 @@ classdef Poromechanics < PhysicsSolver
     end
 
 
-    function [dof,vals] = getBC(obj,bcId,t)
-      %
-      dof = obj.getBCdofs(bcId);
-      vals = obj.getBCVals(bcId,t);
-    end
+    % function [dof,vals] = getBC(obj,bcId,t)
+    %   %
+    %   dof = obj.getBCdofs(bcId);
+    %   vals = obj.getBCVals(bcId,t);
+    % end
 
 
     function applyDirVal(obj,bcId,t)
@@ -292,9 +294,10 @@ classdef Poromechanics < PhysicsSolver
         return
       end
 
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
+      bcEnts = getBCents(obj,bcId);
+      bcVals = getBCVals(obj,bcId,t);
 
-      obj.getState().data.displacements(bcDofs) = bcVals;
+      obj.getState().data.displacements(bcEnts) = bcVals;
     end
 
     function rhs = computeRhs(obj,varargin)
@@ -430,18 +433,32 @@ classdef Poromechanics < PhysicsSolver
       % get BC entity
       ents = obj.bcs.getBCentities(bcId);
 
-      % get local entity numbering
+      % map to local dof numbering
       ents = obj.dofm.getLocalEnts(obj.fieldId,ents);
 
-      % get component dof for multi-component bcs
       dof = obj.bcs.getCompEntities(bcId,ents);
 
-      % Volume forces are but isotropically act on all directions
       if strcmp(obj.bcs.getCond(bcId),'VolumeForce')
         dof = dofId(dof,3);
       end
 
     end
+
+    function ents = getBCents(obj,bcId)
+
+      % get BC entity
+      ents = obj.bcs.getBCentities(bcId);
+
+      % get component dof for multi-component bcs
+      ents = obj.bcs.getCompEntities(bcId,ents);
+
+      if strcmp(obj.bcs.getCond(bcId),'VolumeForce')
+        ents = dofId(ents,3);
+      end
+
+
+    end
+
 
     function vals = getBCVals(obj,id,t)
 

@@ -1,4 +1,4 @@
-classdef GeneralSolver < handle
+classdef GeneralSolver < SolutionScheme
   % Class for solving non linear contact problem
 
   properties (Access = protected)
@@ -12,7 +12,7 @@ classdef GeneralSolver < handle
     iterNL              % nonlinear iteration number
     iterConfig          % configuration iteration number
     nVars               % total number of inner variable fields in the model
-    attemptedReset      % flag for attempt a configuration reset
+    attemptedReset
   end
 
 

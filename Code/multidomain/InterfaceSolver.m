@@ -436,7 +436,16 @@ classdef (Abstract) InterfaceSolver < handle
 
       checkInterfaceDisjoint(obj);
 
-      multType = getXMLData(interfaceInput.Quadrature,"P0","multiplierType");
+      if isfield(interfaceInput,"Quadrature")
+        quad = interfaceInput.Quadrature;
+      else
+        quad = [];
+      end
+
+      multType = getXMLData(interfaceInput,"P0","multiplierType");
+
+      quadType = getXMLData(quad,...
+        "SegmentBasedQuadrature","type");
 
       switch multType
         case {"standard","dual"}
@@ -448,10 +457,11 @@ classdef (Abstract) InterfaceSolver < handle
             "Available types are: standard,dual,P0");
       end
 
-      obj.quadrature = feval(interfaceInput.Quadrature.type,...
+
+      obj.quadrature = feval(quadType,...
                              obj,...
                              multType,...
-                             interfaceInput.Quadrature);
+                             quad);
 
       % remove slave Dirichlet boundary conditions for nodal multipliers
       removeSlaveBCents(obj);

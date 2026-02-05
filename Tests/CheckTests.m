@@ -91,6 +91,13 @@ classdef CheckTests < matlab.unittest.TestCase
       close all;
       cd("../");
     end
+
+    function SneddonEFEM(testCase)
+      cd("SneddonProblemEFEM/");
+      run('sneddon.m');
+      close all;
+      cd("../");
+    end
   end
 
 end

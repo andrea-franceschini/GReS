@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+  <simParam>
+    <Time
+          Start="0."
+          End ="10.0"
+          DtInit="0.25"
+          DtMin ="1e-5"
+          DtMax ="0.5"
+          incrementFactor = "1.25"
+          choppingFactor = "2" />
+
+    <Solver
+            RelativeTolerance = "1.e-10"
+            AbsoluteTolerance = "1.e-8"
+            />
+  </simParam>
+
+
+  <Materials >
+
+    <Solid name = "sand" cellTags = "1">
+      <PorousRock
+                  porosity="0.3"
+                  specificWeight="21"
+                  permeability="1e-11"/>
+    </Solid>
+
+    <Fluid
+           specificWeight = "0.0"
+           compressibility = "4.4e-7"
+           dynamicViscosity = "1.0e-6"
+           />
+  </Materials>
+
+
+
+  <BoundaryConditions>
+    <BC
+        name = "pressureBC"
+        type = "Dirichlet"
+        entityType = "ElementBC"
+        variable = "pressure"
+        >
+
+      <BCentities
+                  box = "50,55,50,55,5,6"
+                  />
+
+      <BCevent
+               time = "0"
+               value = "100"
+               />
+    </BC>
+
+  </BoundaryConditions>
+
+
+
+  <Output
+          printTimes   = "1,2,3,4"
+          outputFile   = "model01/Output01/results"
+          matFileName  = "model01/Output01/history"
+          saveHistory  = "1"
+          />
+
+
+  <Solver>
+    <SinglePhaseFlowFVTPFA />
+  </Solver>
+
+
+</Problem>

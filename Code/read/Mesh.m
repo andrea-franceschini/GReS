@@ -480,6 +480,7 @@ classdef Mesh < handle
         msh.nDim = obj.nDim;
         %
     end
+
   end
 
   methods (Access = private)
@@ -580,6 +581,51 @@ classdef Mesh < handle
       else
         out = [];
       end
+
+    end
+
+
+    function mesh = generateGrid(input)
+
+      % general purpose method that generate a grid from xml input
+      if ~isstruct(input)
+        input = readstruct(input,AttributeSuffix="");
+      end
+
+      if isfield(input,"Geometry")
+        input = input.Geometry;
+      end
+
+      if isfield(input,"fileName")
+        meshFile = getXMLData(input,[],"fileName");
+        mesh = Mesh();
+        mesh.importMesh(meshFile);
+        return
+      end
+
+      if isfield(input,"StructuredMesh")
+        input = input.StructuredMesh;
+        NX = getXMLData(input,[],"NX");
+        NY = getXMLData(input,[],"NY");
+        NZ = getXMLData(input,[],"NZ");
+        LX = getXMLData(input,[],"LX");
+        LY = getXMLData(input,[],"LY");
+        LZ = getXMLData(input,[],"LZ");
+        assert(size([LX;LY;LZ],2)==2,"Length of structured mesh must be a 1x2 row array")
+        mesh = structuredMesh(NX,NY,NZ,LX,LY,LZ);
+      elseif isfield(input,"BlockStructuredMesh")
+        input = input.BlockStructuredMesh;
+        NX = getXMLData(input,[],"NX");
+        NY = getXMLData(input,[],"NY");
+        NZ = getXMLData(input,[],"NZ");
+        LX = getXMLData(input,[],"LX");
+        LY = getXMLData(input,[],"LY");
+        LZ = getXMLData(input,[],"LZ");
+        assert(size([LX;LY;LZ],2)==2,"Length of structured mesh must be a 1x2 row array")
+        depth = getXMLData(input,[],"depth"); 
+        mesh = structuredMesh(NX,NY,NZ,LX,LY,LZ,depth);
+      end
+
 
     end
   end
