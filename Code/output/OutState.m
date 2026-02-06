@@ -127,10 +127,10 @@ classdef OutState < handle & matlab.mixin.Copyable
     end
 
 
-    function writeVTKfile(obj,block,fname,cellData3D,pointData3D,cellData2D,pointData2D)
+    function writeVTKfile(obj,block,fname,mesh,cellData3D,pointData3D,cellData2D,pointData2D)
 
-      % block: the object containing the block of the vtm file in which we
-      % write the dataset
+      % block: the xml block of the vtm file in which we write the vtu dataset
+      % data struct: struct array with fields 'name' and 'data'
 
       time = obj.timeList(obj.timeID);
 
@@ -146,30 +146,22 @@ classdef OutState < handle & matlab.mixin.Copyable
           error('Unable to create folder for VTK output.');
         end
 
-        treatStructData()
 
-        outName = sprintf('%s/%s/%s', obj.folderName, outName, obj.cellFileName);
-        if ~all(isempty([cellData3DNames pointData3DNames]))
-          mxVTKWriter(outName, time, obj.mesh.coordinates, obj.mesh.cells, obj.mesh.cellVTKType, ...
-            obj.mesh.cellNumVerts, pointData3D, cellData3D);
-        elseif ~all(isempty([cellData2DNames pointData2DNames]))
-          mxVTKWriter(outName, time, obj.mesh.coordinates, obj.mesh.surfaces, obj.mesh.surfaceVTKType, ...
-            obj.mesh.surfaceNumVerts, pointData2D, cellData2D);
+        % call mex vtk writer
+        if ~all(isempty([cellData3D pointData3D]))
+          mxVTKWriter(outName, time, mesh.coordinates, mesh.cells, mesh.cellVTKType, ...
+            mesh.cellNumVerts, pointData3D, cellData3D);
+        elseif ~all(isempty([cellData2D pointData2D]))
+          mxVTKWriter(outName, time, mesh.coordinates, mesh.surfaces, mesh.surfaceVTKType, ...
+            mesh.surfaceNumVerts, pointData2D, cellData2D);
         end
 
-        if (obj.hasFaults)
-
-          for i = 1 : length(pointData2D)
-            pointData2D(i).data = pointData2D(i).data(obj.glo2loc>0,:);
-          end
-
-          outName = sprintf('%s/%s/%s', obj.folderName, outName, obj.surfaceFileName);
-          mxVTKWriter(outName, time, obj.surfaceCoord, obj.surfaceElems, obj.surfaceVTKType, ...
-            obj.surfaceNumVerts, pointData2D, cellData2D);
-        end
-
-        updateCounter(obj);
-      end
+        % write dataset to vtm block
+        dataset = docNode.createElement('DataSet');
+        dataset.setAttribute('name', fname);
+        dataset.setAttribute('file', outName);
+        % append dataset to vtm block
+        block.appendChild(dataset);
     end
 
     function finalize(obj)

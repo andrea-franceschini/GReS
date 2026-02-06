@@ -19,6 +19,7 @@ classdef Discretizer < handle
     % Jacobian blocks for multidomain coupling
     Jum
     Jmu
+    vtmBlock
   end
 
   properties (GetAccess=public, SetAccess=public)
@@ -341,6 +342,7 @@ classdef Discretizer < handle
           assert(obj.state.t - obj.stateOld.t > eps('double'),...
             'Time step is too small for printing purposes');
 
+          % move this into the solution scheme class
           % compute factor to interpolate current and old state variables
           fac = (time - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
           if isnan(fac) || isinf(fac)
@@ -388,6 +390,9 @@ classdef Discretizer < handle
         obj.dofm = DoFManager(obj.grid.topology);
       end
 
+      obj.vtmBlock = docNode.createElement('Block');
+      obj.vtmBlock.setAttribute('name', getOutName(obj));
+
     end
 
     function setInput(obj, varargin)
@@ -432,9 +437,6 @@ classdef Discretizer < handle
           case 'boundaries'
             assert(isa(value, 'Boundaries'),msg)
             obj.bcs = value;
-          case 'outstate'
-            assert(isa(value, 'OutState'),msg)
-            obj.outstate = value;
           otherwise
             error('Unknown input key %s for Discretier \n', key);
         end
@@ -464,7 +466,7 @@ classdef Discretizer < handle
     function writeVTK(obj,fac,time)
       % write results to VTKoutput
 
-      if obj.outstate.writeVtk
+      if ~isempty(obj.outstate)
         
         cellData3D = struct('name', [], 'data', []);
         pointData3D = struct('name', [], 'data', []);
@@ -477,7 +479,9 @@ classdef Discretizer < handle
         end
 
         cellData3D = OutState.printMeshData(obj.grid.topology,cellData3D);
-        obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
+
+        obj.outstate.writeVTKfile(obj.vtmBlock,obj.getOutName(),obj.grid.topology,...
+          time, pointData3D, cellData3D, [], []);
       end
 
     end
@@ -495,6 +499,13 @@ classdef Discretizer < handle
         end
 
       end
+    end
+
+    function outName = getOutName(obj)
+
+      outName = sprintf('Domain_%i',obj.domainId);
+
+
     end
 
 
