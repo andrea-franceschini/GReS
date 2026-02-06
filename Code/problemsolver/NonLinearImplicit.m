@@ -20,7 +20,7 @@ classdef NonLinearImplicit < SolutionScheme
     end
 
 
-    function solveStep(obj,varargin)
+    function converged = solveStep(obj,varargin)
 
       % set target variable for each domain and interface
       obj.targetVariables = [varargin{:}];
@@ -29,7 +29,8 @@ classdef NonLinearImplicit < SolutionScheme
       end
 
       hasConfigurationChanged = true;
-
+      absTol = obj.simparams.absTol;
+      obj.iterConfig = 0;
 
       while (hasConfigurationChanged) && (obj.iterConfig < obj.simparams.itMaxConfig)
 
@@ -62,13 +63,13 @@ classdef NonLinearImplicit < SolutionScheme
 
         gresLog().log(1,'0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
 
-        flConv = false;
+        newtonConv = false;
 
         % reset non linear iteration counter
         obj.iterNL = 0;
 
         %%% NEWTON LOOP %%%
-        while (~flConv) && (obj.iterNL < obj.simparams.itMaxNR)
+        while (~newtonConv) && (obj.iterNL < obj.simparams.itMaxNR)
 
           obj.iterNL = obj.iterNL + 1;
 
@@ -116,11 +117,11 @@ classdef NonLinearImplicit < SolutionScheme
           gresLog().log(1,'%d     %e     %e\n',obj.iterNL,rhsNorm,rhsNorm/rhsNormIt0);
 
           % Check for convergence
-          flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
+          newtonConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
 
         end % end newton loop
 
-        if flConv % Newton Convergence
+        if newtonConv % Newton Convergence
 
           hasConfigurationChanged = false;
 
@@ -143,36 +144,15 @@ classdef NonLinearImplicit < SolutionScheme
 
       end
 
+      converged = newtonConv && ~hasConfigurationChanged;
+
     end
   end
 
 
 
 
-
-
-
-
   methods (Access = protected)
-
-    function setNonLinearSolver(obj,simparams,dom,interf)
-
-      % assumption: same set of simulation parameters for each domain
-      obj.simparams = simparams;
-      obj.domains = dom;
-      obj.nDom = numel(dom);
-      obj.interfaces = interf;
-      obj.nInterf = numel(interf);
-      obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration;
-
-      obj.nVars = 0;
-      for iD = 1:obj.nDom
-        obj.domains(iD).stateOld = copy(obj.domains(iD).getState());
-        obj.domains(iD).simparams = simparams;
-        obj.nVars = obj.nVars + obj.domains(iD).dofm.getNumberOfVariables();
-      end
-    end
-
 
 
     function setLinearSolver(obj)
@@ -187,17 +167,6 @@ classdef NonLinearImplicit < SolutionScheme
         end
         obj.linsolver = linearSolver(obj.domains,obj.interfaces);
       end
-    end
-
-
-
-
-    function sol = solve(obj,J,rhs)
-
-      rhs = cell2matrix(rhs);
-
-      % Actual solution of the system
-      [sol,~] = obj.linsolver.Solve(J,-rhs,obj.t);
     end
 
 

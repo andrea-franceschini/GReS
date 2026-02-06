@@ -1,4 +1,4 @@
-classdef SolutionScheme < handle
+classdef (Abstract) SolutionScheme < handle
   % General solution scheme class
 
   properties (Access = protected)
@@ -23,11 +23,24 @@ classdef SolutionScheme < handle
     interfaces            % cell array of interfaces objects
   end
 
+  methods(Abstract,Access=public)
+
+    % every solution scheme must implement the logic to solve a time step
+    % and give feedback on convergence
+    conv = solveStep(obj)
+
+  end
+
+  methods (Abstract,Access=protected)
+    % every solution scheme must initialize a specialized linear solver
+    setLinearSolver(obj)
+  end
+
 
   methods (Access = public)
     function obj = SolutionScheme(varargin)
 
-      assert(nargin > 1 && nargin < 4,"Wrong number of input arguments " + ...
+      assert(nargin > 1 && nargin < 9,"Wrong number of input arguments " + ...
         "for general solver")
 
       obj.setSolutionScheme(varargin{:});
@@ -39,7 +52,7 @@ classdef SolutionScheme < handle
       % Initialize the time step increment
       obj.dt = obj.simparams.dtIni;
 
-      obj.linsolver = setLinearSolver(obj);
+      setLinearSolver(obj);
 
       while obj.t < obj.simparams.tMax
 
@@ -51,12 +64,18 @@ classdef SolutionScheme < handle
         % solve current time step
         % flConv: flag for convergence
         % dtOut: requested time step from the physics solver
-        [flConv,dtOut] = solveStep(obj);
+        conv = solveStep(obj);
 
         % move to the next time step
-        manageNextTimeStep(obj,flConv,dtOut)
+        manageNextTimeStep(obj,conv)
 
       end
+
+      if ~isempty(obj.output)
+        obj.output.finalize();
+      end
+
+      gresLog().log(-1,"Simulation completed successfully \n")
 
     end
 
@@ -117,16 +136,22 @@ classdef SolutionScheme < handle
       for i = 1:obj.nDom
         obj.domains(i).domainId = i;
         obj.domains(i).simparams = obj.simparams;
-        obj.domains(i).stateOld = copy(obj.domains(iD).getState());
-        obj.nVars = obj.nVars + obj.domains(iD).dofm.getNumberOfVariables();
+        obj.domains(i).outstate = obj.output;
+        obj.domains(i).stateOld = copy(obj.domains(i).getState());
+        obj.nVars = obj.nVars + obj.domains(i).dofm.getNumberOfVariables();
+      end
+
+      for i = 1:obj.nInterf
+        obj.interfaces{i}.interfId = i;
+        obj.interfaces{i}.outstate = obj.output;
       end
 
       obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration || obj.nInterf == 0;
 
     end
-    
 
-    function manageNextTimeStep(obj,flConv,dtPhysics)
+
+    function manageNextTimeStep(obj,flConv)
 
       if ~flConv && ~obj.attemptedReset
 
@@ -178,7 +203,7 @@ classdef SolutionScheme < handle
 
         % go to next time step
         tmpVec = obj.simparams.multFac;
-        obj.dt = min([obj.dt * min(tmpVec), dtPhysics, obj.simparams.dtMax]);
+        obj.dt = min([obj.dt * min(tmpVec), obj.simparams.dtMax]);
         obj.dt = max([obj.dt obj.simparams.dtMin]);
 
         % limit time step to end of simulation time
@@ -193,21 +218,6 @@ classdef SolutionScheme < handle
 
       end
 
-    end
-
-  
-    function setLinearSolver(obj)
-      % Check if there is manual input from the user, if not use defaults
-      start_dir = pwd;
-      chronos_xml = fullfile(start_dir,'linsolver.xml');
-      if(isfile(chronos_xml))
-        obj.linsolver = linearSolver(obj.domains,obj.interfaces,chronos_xml);
-      else
-        if gresLog().getVerbosity > 2
-          fprintf('Using default values for linsolver\n');
-        end
-        obj.linsolver = linearSolver(obj.domains,obj.interfaces);
-      end
     end
 
 
@@ -302,7 +312,7 @@ classdef SolutionScheme < handle
         outTime = obj.output.timeList(obj.output.timeID);
 
         % loop over print times contained in the current time step
-        
+
         while outTime <= obj.t
 
           assert(outTime >= obj.tOld, 'Print time %f out of range (%f - %f)',...
@@ -312,23 +322,51 @@ classdef SolutionScheme < handle
             'Time step is too small for printing purposes');
 
           % compute factor to interpolate current and old state variables
-          fac = (outTime - obj.t)/(obj.t - obj.tOld);
+          fac = (outTime - obj.tOld)/(obj.t - obj.tOld);
 
           if isnan(fac) || isinf(fac)
             fac = 1;
           end
 
-          % print vtk and matlab files
-          for i = 1:obj.nDom
-            obj.domains(i).writeVTK(obj,fac,outTime);
-            obj.domains(i).writeMatFile(fac,obj.output.timeID);
+          % print vtk
+          % create new vtm file
+          if obj.output.writeVtk
+
+            obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
+            toc = obj.output.vtkFile.getDocumentElement;
+            toc.setAttribute('type', 'vtkMultiBlockDataSet');
+            toc.setAttribute('version', '1.0');
+            blocks = obj.output.vtkFile.createElement('vtkMultiBlockDataSet');
+
+            % append blocks looping into domains and interfaces
+            for i = 1:obj.nDom
+              vtmBlock = obj.domains(i).writeVTK(fac,outTime);
+              blocks.appendChild(vtmBlock);
+            end
+            %
+            for i = 1:obj.nInterf
+              vtmBlock = obj.interfaces{i}.writeVTKfile(fac,outTime);
+              blocks.appendChild(vtmBlock);
+            end
+
+            toc.appendChild(blocks);
+            obj.output.writeVTMFile();
+
           end
 
-          for i = 1:obj.nInterf
-            obj.interfaces{i}.writeVTK(obj,fac,outTime);
-            obj.interfaces{i}.writeMatFile(fac,obj.output.timeID);
+          % write results to MAT-file
+          if obj.output.writeSolution
+
+            for i = 1:obj.nDom
+              obj.domains(i).writeMatFile(fac,obj.output.timeID);
+            end
+
+            for i = 1:obj.nInterf
+              obj.interfaces{i}.writeMatFile(fac,obj.output.timeID);
+            end
           end
 
+          % move to next print time
           obj.output.timeID = obj.output.timeID + 1;
 
           if obj.output.timeID > length(obj.output.timeList)

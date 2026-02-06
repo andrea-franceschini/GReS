@@ -368,8 +368,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       tractionOld = getStateOld(obj,"traction");
       tractionCurr = getState(obj,"traction");
 
-      obj.domain.outstate.results(tID).(obj.getField()) = jumpCurr*fac+jumpOld*(1-fac);
-      obj.domain.outstate.results(tID).traction = tractionCurr*fac+tractionOld*(1-fac);
+      obj.domain.outstate.matFile(tID).(obj.getField()) = jumpCurr*fac+jumpOld*(1-fac);
+      obj.domain.outstate.matFile(tID).traction = tractionCurr*fac+tractionOld*(1-fac);
 
     end
 
