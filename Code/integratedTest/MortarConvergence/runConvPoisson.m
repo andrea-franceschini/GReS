@@ -30,7 +30,7 @@ nref = 2;
 [h,L2,H1] = deal(zeros(nref,1));
 
 % set mortar integration info
-nG = 6;           
+nG = 6;
 if strcmp(integration_type,'SegmentBased')
   nG = 7;
 end
@@ -51,7 +51,7 @@ for i = 1:nref
 
   % update the mesh in the domain input file
   fileStruct.Domain.Geometry.fileName = fullfile('Input','Mesh','meshes',meshName+".vtk");
- 
+
 
   % write interface to file
   fileStruct.Interface.MeshTying.Quadrature.type = integration_type;
@@ -62,7 +62,7 @@ for i = 1:nref
   end
 
   writestruct(fileStruct,fileName,AttributeSuffix="");
- 
+
   simparams = SimulationParameters(fileName);
 
   % processing Poisson problem
@@ -70,11 +70,10 @@ for i = 1:nref
 
   domain.getPhysicsSolver("Poisson").setAnalSolution(anal,f,gradx,grady,gradz);
 
-  solver = GeneralSolver(simparams,domain,interfaces);
-  solver.NonLinearLoop();
-
-  % print to file
-  solver.finalizeOutput();
+  solver = NonLinearImplicit('simulationparameters',simparams,...
+                             'domains',domain,...
+                             'interface',interfaces);
+  solver.simulationLoop();
 
   pois = getPhysicsSolver(domain,'Poisson');
   [L2(i),H1(i)] = pois.computeError_v2();

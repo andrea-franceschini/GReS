@@ -22,7 +22,7 @@ faces = Faces(topology);
 
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
-printUtils = OutState(topology,'Input/output.xml');
+printUtils = OutState('Input/output.xml');
 
 % Create an object of the "Boundaries" class 
 bound = Boundaries('Input/boundaryConditions.xml',grid);
@@ -32,8 +32,7 @@ bound = Boundaries('Input/boundaryConditions.xml',grid);
 % create the Discretizer (key-value pair input)
 domain = Discretizer('grid',grid,...
                      'materials',mat,...
-                     'boundaries',bound,...
-                     'outstate',printUtils);
+                     'boundaries',bound);
 
 domain.addPhysicsSolver(solverFile);
 
@@ -42,9 +41,7 @@ state = domain.getState();
 
 applyTerzaghiIC(state,mat,topology,-10);
 
-solv = GeneralSolver(simParam,domain);
-
-%calling analytical solution script
-%Terzaghi_analytical(topology, mat, 10)
-
-solv.NonLinearLoop();
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils);
+solver.simulationLoop();

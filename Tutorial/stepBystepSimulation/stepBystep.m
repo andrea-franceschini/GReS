@@ -13,6 +13,8 @@ cd(scriptDir);
 gresLog().setVerbosity(2)
 
 %% STEP 1) SINGLE PHYSICS - SINGLE PHASE FLOW
+clear
+clc
 
 fileName = "model01/01_singlePhysics.xml";
 
@@ -33,24 +35,22 @@ grid = struct('topology',mesh,'cells',elems,'faces',faces);
 
 bound = Boundaries(fileName,grid);
 
-printUtils = OutState(mesh,fileName);
+printUtils = OutState(fileName);
 
 domain = Discretizer('Boundaries',bound,...
-                     'OutState',printUtils,...
                      'Materials',mat,...
                      'Grid',grid);
 domain.addPhysicsSolver(fileName);
 
-
-Solver = GeneralSolver(simParam,domain);
-
-Solver.NonLinearLoop();
-
-domain.outstate.finalize()
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils);
+solver.simulationLoop();
 
 
 %% STEP 2) ADDING SUBDOMAINS
-
+clear
+clc
 
 fileName = "model02/02_moreMaterials.xml";
 
@@ -77,24 +77,22 @@ mesh.cellTag(over) = 3;
 
 bound = Boundaries(fileName,grid);
 
-printUtils = OutState(mesh,fileName);
+printUtils = OutState(fileName);
 
 domain = Discretizer('Boundaries',bound,...
-                     'OutState',printUtils,...
                      'Materials',mat,...
                      'Grid',grid);
 domain.addPhysicsSolver(fileName);
 
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils);
+solver.simulationLoop();
 
-Solver = GeneralSolver(simParam,domain);
-
-Solver.NonLinearLoop();
-
-domain.outstate.finalize()
 
 %% STEP 3) COUPLING WITH MECHANICS
-
-
+clear
+clc
 
 fileName = "model03/03_coupledPoromechanics.xml";
 
@@ -119,20 +117,18 @@ mesh.cellTag(over) = 3;
 
 bound = Boundaries(fileName,grid);
 
-printUtils = OutState(mesh,fileName);
+printUtils = OutState(fileName);
 
 domain = Discretizer('Boundaries',bound,...
-                     'OutState',printUtils,...
                      'Materials',mat,...
                      'Grid',grid);
 domain.addPhysicsSolver(fileName);
 
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils);
+solver.simulationLoop();
 
-Solver = GeneralSolver(simParam,domain);
-
-Solver.NonLinearLoop();
-
-domain.outstate.finalize();
 
 
 %% STEP 4) ADDING A NON-CONFORMING INTERFACE
@@ -158,10 +154,7 @@ mesh1.cellTag(over) = 3;
 mat = Materials(fileName);
 bound = Boundaries(fileName,grid);
 
-printUtils = OutState(mesh1,fileName);
-
 domain1 = Discretizer('Boundaries',bound,...
-                     'OutState',printUtils,...
                      'Materials',mat,...
                      'Grid',grid);
 domain1.addPhysicsSolver(fileName);
@@ -180,10 +173,7 @@ grid = struct('topology',mesh2,'cells',elems,'faces',faces);
 mat = Materials(fileName);
 bound = Boundaries(fileName,grid);
 
-printUtils = OutState(mesh2,fileName);
-
 domain2 = Discretizer('Boundaries',bound,...
-                     'OutState',printUtils,...
                      'Materials',mat,...
                      'Grid',grid);
 domain2.addPhysicsSolver(fileName);
@@ -196,11 +186,13 @@ interfaces = buildInterfaces('model04/04_nonConformingInterface.xml',domains);
 
 simParam = SimulationParameters('model04/04_nonConformingInterface.xml');
 
-Solver = GeneralSolver(simParam,domains,interfaces);
+printUtils = OutState('model04/04_nonConformingInterface.xml');
 
-Solver.NonLinearLoop();
-
-Solver.finalizeOutput();
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domains,...
+                           'output',printUtils,...
+                           'interfaces',interfaces);
+solver.simulationLoop();
 
 
 
@@ -226,10 +218,7 @@ mesh1.cellTag(over) = 3;
 mat = Materials(fileName);
 bound = Boundaries(fileName,grid);
 
-printUtils = OutState(mesh1,fileName);
-
 domain1 = Discretizer('Boundaries',bound,...
-                     'OutState',printUtils,...
                      'Materials',mat,...
                      'Grid',grid);
 domain1.addPhysicsSolver(fileName);
@@ -248,10 +237,7 @@ grid = struct('topology',mesh2,'cells',elems,'faces',faces);
 mat = Materials(fileName);
 bound = Boundaries(fileName,grid);
 
-printUtils = OutState(mesh2,fileName);
-
 domain2 = Discretizer('Boundaries',bound,...
-                     'OutState',printUtils,...
                      'Materials',mat,...
                      'Grid',grid);
 domain2.addPhysicsSolver(fileName);
@@ -272,8 +258,11 @@ interfaces{1}.stateOld.traction(1:3:end) = tIni;
 
 simParam = SimulationParameters('model05/05_fault.xml');
 
-Solver = GeneralSolver(simParam,domains,interfaces);
+printUtils = OutState('model05/05_fault.xml');
 
-Solver.NonLinearLoop();
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domains,...
+                           'output',printUtils,...
+                           'interfaces',interfaces);
+solver.simulationLoop();
 
-Solver.finalizeOutput();

@@ -28,10 +28,7 @@
     <Materials fileName = "Input/materials.xml" />
     <BoundaryConditions fileName = "Input/singleCrackBCs.xml" />
 
-    <!--<Output
-            outputFile = "SingleCrackCompressed"
-            printTimes = "1.0"
-            />-->
+
     <Solver>
       <Poromechanics />
     </Solver>

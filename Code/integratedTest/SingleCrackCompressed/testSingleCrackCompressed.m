@@ -15,10 +15,10 @@ simparams = SimulationParameters(fileName);
 [domains,interfaces] = buildModel(fileName); 
 
 %solver = MultidomainFCSolver(simparams,domains,interfaces);
-solver = GeneralSolver(simparams,domains,interfaces);
-
-solver.NonLinearLoop();
-solver.finalizeOutput();
+solver = NonLinearImplicit('simulationparameters',simparams,...
+                           'domains',domains,...
+                           'interface',interfaces);
+solver.simulationLoop();
 
 
 nS = getMesh(interfaces{2},MortarSide.slave).nSurfaces;

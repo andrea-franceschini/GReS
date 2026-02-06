@@ -31,13 +31,12 @@ bound = Boundaries(fullfile(input_dir,'boundaries.xml'),grid);
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility
-printUtils = OutState(topology,fullfile(input_dir,'output.xml'));
+printUtils = OutState(fullfile(input_dir,'output.xml'));
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Grid',grid,...
                      'Materials',mat,...
-                     'Boundaries',bound,...
-                     'OutState',printUtils);
+                     'Boundaries',bound);
 
 domain.addPhysicsSolver(fullfile(input_dir,'solver.xml'));
 
@@ -48,14 +47,10 @@ domain.state.data.pressure(:) = -9.8066e4;
 % customize the solution scheme. 
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = GeneralSolver(simParam,domain);
-% Solver = FCSolver(domain,'SaveRelError',true,'SaveBStepInf',true);
-
-% Solve the problem
-Solver.NonLinearLoop();
-
-% Finalize the print utility
-printUtils.finalize()
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils);
+solver.simulationLoop();
 
 %% --------------------- Post Processing the Results ----------------------
 postproc = true;
@@ -66,15 +61,15 @@ if postproc
         mkdir(image_dir)
     end
 
-    nrep = length(printUtils.results);
-    nvars = length(printUtils.results(2).pressure);
+    nrep = length(printUtils.matFile);
+    nvars = length(printUtils.matFile(2).pressure);
     pressure = zeros(nvars,nrep);    
     saturation = zeros(nvars,nrep);    
     t = zeros(1,nrep);
     for i=1:nrep
-       pressure(:,i) = printUtils.results(i).pressure;
-       saturation(:,i) = printUtils.results(i).saturation;
-       t(i) = printUtils.results(i).time;
+       pressure(:,i) = printUtils.matFile(i).pressure;
+       saturation(:,i) = printUtils.matFile(i).saturation;
+       t(i) = printUtils.matFile(i).time;
     end
 
     % Adjusting the time position.

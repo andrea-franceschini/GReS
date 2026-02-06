@@ -36,13 +36,6 @@
       <Master domainId="2" surfaceTag="6"/>
       <Slave  domainId="1" surfaceTag="5"/>
 
-      <Output
-              outputFile = "model05/Output05/Fault"
-              printTimes = ".1,.2,.3,.4,.5,.6,.7,.8,.9,.95"
-              saveHistory = "1"
-              matFileName = "model05/Output05/historyFault"
-              />
-
       <Coulomb
                cohesion = "1.0"
                frictionAngle = "30" />

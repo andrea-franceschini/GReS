@@ -22,85 +22,14 @@ in a nonConforming simulation.
   </simParam>
 
 
-  </Materials>
+  <Materials fileName = "Input/materials.xml"/>
 
 
-
-  <BoundaryConditions>
-    <BC
-        name = "fix_bottom"
-        type = "Dirichlet"
-        entityType = "SurfBC"
-        variable = "displacements"
-        >
-
-      <BCentities
-                  surfaceTags = "1"
-                  components = "z"
-                  />
-
-      <BCevent
-               time = "0"
-               value = "0"
-               />
-    </BC>
-    <BC
-        name = "y_fix"
-        type = "Dirichlet"
-        entityType = "SurfBC"
-        variable = "displacements"
-        >
-
-      <BCentities
-                  surfaceTags = "3,4"
-                  components = "y"
-                  />
-
-      <BCevent
-               time = "0"
-               value = "0"
-               />
-    </BC>
-    <BC
-        name = "x_fix"
-        type = "Dirichlet"
-        entityType = "SurfBC"
-        variable = "displacements"
-        >
-
-      <BCentities
-                  surfaceTags = "5,6"
-                  components = "x"
-                  />
-
-      <BCevent
-               time = "0"
-               value = "0"
-               />
-    </BC>
-    <BC
-        name = "pressureBC"
-        type = "Dirichlet"
-        entityType = "ElementBC"
-        variable = "pressure"
-        >
-
-      <BCentities
-                  box = "50,55,50,55,5,6"
-                  />
-
-      <BCevent
-               time = "0"
-               value = "100.0"
-               />
-    </BC>
-
-  </BoundaryConditions>
-
-
+  <BoundaryConditions fileName = "Input/boundaryConditions.xml"/>
+   
 
   <Output
-          printTimes   = ".1,.5,1"
+          printTimes   = ".25,.5,1"
           outputFile   = "model03/Output03/results"
           matFileName  = "model03/Output03/history"
           saveHistory  = "1"

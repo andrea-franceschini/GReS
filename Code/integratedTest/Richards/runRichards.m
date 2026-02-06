@@ -1,5 +1,5 @@
 % Create and set the print utility
-printUtils = OutState(topology,'Input/output.xml');
+printUtils = OutState('Input/output.xml');
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(listMat(sim));
@@ -8,8 +8,7 @@ mat = Materials(listMat(sim));
 % linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
 domain = Discretizer('Grid',grid,...
                      'Materials',mat,...
-                     'Boundaries',bound,...
-                     'OutState',printUtils);
+                     'Boundaries',bound);
 
 domain.addPhysicsSolver('Input/solver.xml');
 
@@ -17,7 +16,9 @@ domain.addPhysicsSolver('Input/solver.xml');
 domain.state.data.pressure = getFluid(mat).getSpecificWeight()*(wLev-z);
 
 % Solve the problem
-Solver = GeneralSolver(simParam,domain);
-Solver.NonLinearLoop();
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils);
+solver.simulationLoop();
 
 printUtils.finalize();

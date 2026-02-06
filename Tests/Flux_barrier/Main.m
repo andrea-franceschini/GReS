@@ -31,13 +31,12 @@ bound = Boundaries(fullfile(input_dir,'boundaries.xml'),grid);
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility for the solution
-printUtils = OutState(topology,fullfile(input_dir,'output.xml'));
+printUtils = OutState(fullfile(input_dir,'output.xml'));
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Grid',grid,...
                      'Materials',mat,...
-                     'Boundaries',bound,...
-                     'OutState',printUtils);
+                     'Boundaries',bound);
 
 switch typeDiscretization
   case "FEM"
@@ -54,14 +53,10 @@ domain.state.data.pressure(:) = 1.e5;
 % customize the solution scheme.
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = GeneralSolver(simParam,domain);
-
-
-% Solve the problem
-Solver.NonLinearLoop();
-
-% Finalize the print utility
-printUtils.finalize()
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils);
+solver.simulationLoop();
 
 %% --------------------- Post Processing the Results ----------------------
 postproc=true;
@@ -75,10 +70,10 @@ if postproc
   end
 
   % Saving a temporary variabel.
-  pressure = [printUtils.results.pressure];
+  pressure = [printUtils.matFile.pressure];
 
   % Ajusting the time position.
-  t = [printUtils.results.time];
+  t = [printUtils.matFile.time];
   tind = 2:length(t);
   t_max = t(end);
   t = t(tind);
