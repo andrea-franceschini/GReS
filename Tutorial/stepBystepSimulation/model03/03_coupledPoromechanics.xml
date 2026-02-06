@@ -22,52 +22,6 @@ in a nonConforming simulation.
   </simParam>
 
 
-  <Materials >
-
-    <Solid name = "sand" cellTags = "1">
-
-      <Constitutive>
-        <Elastic
-                 youngModulus = "1e5"
-                 poissonRatio = "0.25"
-                 />
-      </Constitutive>
-      <PorousRock
-                  porosity="0.3"
-                  specificWeight="21"
-                  permeability="1e-13"/>
-    </Solid>
-
-    <Solid name = "clay_underburden" cellTags = "2">
-      <Constitutive>
-        <Elastic
-                 youngModulus = "1e5"
-                 poissonRatio = "0.25"
-                 />
-      </Constitutive>
-      <PorousRock
-                  porosity="0.2"
-                  specificWeight="21"
-                  permeability="1e-15"/>
-    </Solid>
-
-    <Solid name = "silty_clay_overburden" cellTags = "3">
-      <Constitutive>
-        <Elastic
-                 youngModulus = "1e5"
-                 poissonRatio = "0.25"
-                 />
-      </Constitutive>
-      <PorousRock
-                  porosity="0.22"
-                  specificWeight="21"
-                  permeability="1e-15"/>
-    </Solid>
-
-    <Fluid
-           compressibility = "4.59e-7"
-           dynamicViscosity = "3.1608e-14"
-           />
   </Materials>
 
 

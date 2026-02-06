@@ -10,24 +10,13 @@
 
   <Materials fileName = "Input/materials.xml" />
 
-      <BC name="x_fix" type="Dirichlet" entityType="SurfBC"
-          variable="displacements">
-        <BCentities surfaceTags="5,6" components="x"/>
-        <BCevent time="0" value="0"/>
-      </BC>
 
-      <BC name="pressureBC" type="Dirichlet" entityType="ElementBC"
-          variable="pressure">
-        <BCentities box="40,45,40,45,5,6"/>
-        <BCevent time="0" value="1e1"/>
-        <BCevent time="10" value="1e3"/>
-      </BC>
   <BoundaryConditions fileName = "model04/boundaryConditions.xml" />
 
 
   <Output printTimes=".1,.25,.5,1"
-          outputFile="model04/Output04/results"
-          matFileName="model04/Output04/history"
+          outputFile="model05/Output05/results"
+          matFileName="model05/Output05/history"
           saveHistory="1"/>
 
 

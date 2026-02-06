@@ -128,7 +128,7 @@ classdef SolidMechanicsContact < MeshTying
         limitTraction = abs(obj.cohesion - tan(deg2rad(obj.phi))*t(1));
 
         % report traction during activeSet update
-        gresLog().log(3,['\n Element %i: traction: %1.4e %1.4e %1.4e   ' ...
+        gresLog().log(4,['\n Element %i: traction: %1.4e %1.4e %1.4e   ' ...
           'Limit tangential traction: %1.4e \n'],is,t(:), limitTraction)
 
         obj.activeSet.curr(is) = obj.updateContactState(state,t,...
@@ -361,8 +361,8 @@ classdef SolidMechanicsContact < MeshTying
       [asbMu,asbDu,asbMt,asbDt,asbQ] = defineAssemblers(obj);
 
       % define rhs vectors;
-      rhsUm = zeros(getNumbDoF(dofMaster),1);
-      rhsUs = zeros(getNumbDoF(dofSlave),1);
+      rhsUm = zeros(getNumbDoF(dofMaster,obj.coupledVariables),1);
+      rhsUs = zeros(getNumbDoF(dofSlave,obj.coupledVariables),1);
       rhsT = zeros(getNumbDoF(obj),1);
 
       fldM = dofMaster.getVariableId(obj.coupledVariables);
@@ -851,6 +851,8 @@ classdef SolidMechanicsContact < MeshTying
       % the method is static to be reused by other contact solvERS
       outState = inState;
 
+      tol = 1e-8;
+
 
       % contact state update
       if inState == ContactMode.open
@@ -877,12 +879,12 @@ classdef SolidMechanicsContact < MeshTying
         if inState == ContactMode.stick && tau >= tLimit
 
           % reduce the tau if goes above limit
-          tau = tau*(1-tols.slidingCheck);
+          tau = tau*(1-tols.slidingCheck)-tol;
 
         elseif inState ~= ContactMode.stick  && tau <=tLimit
 
           % increase tau if falls below limit
-          tau = tau*(1+tols.slidingCheck);
+          tau = tau*(1+tols.slidingCheck)+tol;
         end
 
         % change the state after relaxation

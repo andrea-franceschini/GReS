@@ -168,6 +168,11 @@ classdef (Abstract) PhysicsSolver < handle
       bcVar = obj.bcs.getVariable(bcId);
       bcId = obj.dofm.getVariableId(bcVar);
 
+      % remove inactive dofs
+      id = bcDofs == 0;
+      bcDofs = bcDofs(~id);
+      bcVals = bcVals(~id);
+
       obj.domain.rhs{bcId}(bcDofs) = obj.domain.rhs{bcId}(bcDofs) - bcVals;
 
     end
@@ -180,6 +185,14 @@ classdef (Abstract) PhysicsSolver < handle
       if ~BCapplies(obj,bcId)
         return
       end
+
+      % remove inactive dofs
+      id = bcDofs == 0;
+      bcDofs = bcDofs(~id);
+      if nargin > 3
+        bcVals = bcVals(~id);
+      end
+
 
       % sort bcDofs to improve sparse access performance
       [bcDofs,sortId] = sort(bcDofs);
