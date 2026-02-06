@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Preprocess input for non-conforming multi-domain simulation -->
+
+<Problem>
+
+  <Geometry>
+    <StructuredMesh NX="20" NY="20" NZ="10"
+                    LX="20,100" LY="0,100" LZ="0,10"/>
+  </Geometry>
+
+  <Materials fileName = "Input/materials.xml" />
+
+
+  <BoundaryConditions fileName = "model04/boundaryConditions.xml" />
+
+
+  <Output printTimes=".1,.25,.5,1"
+          outputFile="model05/Output05/results"
+          matFileName="model05/Output05/history"
+          saveHistory="1"/>
+
+
+  <Solver>
+    <BiotFullySaturated>
+      <Poromechanics/>
+      <SinglePhaseFlowFVTPFA targetRegions="1"/>
+    </BiotFullySaturated>
+  </Solver>
+
+</Problem>
+
+
+

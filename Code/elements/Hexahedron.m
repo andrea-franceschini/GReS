@@ -253,6 +253,10 @@ classdef Hexahedron < FEM
     end
 
     function setElement(obj)
+      if obj.nGP < 2
+        obj.nGP = 2;
+        gresLog().warning(2,"Gauss integration for Hexahedron set to minimum of 2 per direction")
+      end
       obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
       obj.detJ = zeros(1,obj.GaussPts.nNode);
       findLocBasisF(obj);

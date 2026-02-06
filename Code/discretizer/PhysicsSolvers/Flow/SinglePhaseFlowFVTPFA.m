@@ -92,11 +92,14 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
     function computeCapMat(obj,varargin)
       subCells = obj.dofm.getFieldCells(obj.fieldId);
-      nSubCells = length(subCells);
-      poroMat = zeros(nSubCells,1);
-      alphaMat = zeros(nSubCells,1);
+      %nSubCells = length(subCells);
+      poroMat = zeros(obj.mesh.nCellTag,1);
+      alphaMat = zeros(obj.mesh.nCellTag,1);
       beta = obj.materials.getFluid().getFluidCompressibility();
       for m = 1:obj.mesh.nCellTag
+        if ~ismember(m,obj.dofm.getTargetRegions(obj.getField()))
+          continue
+        end
         if ~ismember(m,obj.dofm.getTargetRegions([obj.getField(),"displacements"]))
           % compute alpha only if there's no coupling in the
           % subdomain
@@ -104,6 +107,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         end
         poroMat(m) = obj.materials.getMaterial(m).PorousRock.getPorosity();
       end
+
       % (alpha+poro*beta)
       PVal = alphaMat(obj.mesh.cellTag(subCells)) + beta*poroMat(obj.mesh.cellTag(subCells));
       if ~isempty(varargin)
@@ -165,7 +169,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       gTerm = gTerm(obj.dofm.getActiveEntities(obj.fieldId));
     end
 
-    function [dof,vals] = getBC(obj,id,t)
+    function [ents,vals] = getBC(obj,id,t)
       % getBC - function to find the value and the location for the
       % boundary condition.
       %
@@ -239,8 +243,6 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
           ents = obj.bcs.getEntities(id);
           vals = v.*obj.mesh.cellVolume(ents);
       end
-
-      dof = obj.dofm.getLocalDoF(obj.fieldId,ents);
     end
 
     function applyDirVal(obj,bcId,t)
@@ -248,13 +250,14 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       if ~strcmp(bcVar,obj.getField()) 
         return 
       end
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
+      [bcEnts,bcVals] = getBC(obj,bcId,t);
+
       if size(bcVals,2)==2
         % skip BC assigned to external surfaces
         return
       end
       state = getState(obj);
-      state.data.pressure(bcDofs) = bcVals;
+      state.data.pressure(bcEnts) = bcVals;
     end
 
     function applyBC(obj,bcId,t)
@@ -263,7 +266,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         return
       end
 
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
+      [bcEnts,bcVals] = getBC(obj,bcId,t);
+
+      bcDofs = obj.dofm.getLocalDoF(obj.fieldId,bcEnts);
 
       % Base application of a Boundary condition
       bcType = obj.bcs.getType(bcId);
@@ -284,6 +289,12 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       % overrides the base method implemented in PhysicsSolver
       % ents: id of constrained faces without any dof mapping applied
       % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
+
+
+      id = bcDofs == 0;
+
+      bcDofs = bcDofs(~id,:);
+      bcVals = bcVals(~id,:);
 
       % BCs imposition for finite volumes - boundary flux
       if size(bcVals,2) == 2

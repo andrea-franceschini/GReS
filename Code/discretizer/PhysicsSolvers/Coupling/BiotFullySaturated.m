@@ -50,7 +50,7 @@ classdef BiotFullySaturated < PhysicsSolver
 
     end
 
-    function assembleSystem(obj,dt)
+    function assembleSystem(obj,dt,varargin)
 
       % get Jacobian and rhs from single physics solvers
       obj.mechSolver.assembleSystem(dt);

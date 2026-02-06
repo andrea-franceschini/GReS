@@ -37,7 +37,8 @@
   </Domain>
 
   <Interface>
-    <MeshTying>
+    <MeshTying
+               multiplierType = "dual">
 
       <Master
               domainId = "1"
@@ -50,7 +51,6 @@
       <Quadrature
                   type = "SegmentBasedQuadrature"
                   nGP = "4"
-                  multiplierType = "dual"
                   />
 
     </MeshTying>

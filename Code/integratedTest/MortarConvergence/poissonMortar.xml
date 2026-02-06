@@ -25,6 +25,7 @@
     </Domain>
     <Interface>
         <MeshTying>
+            <multiplierType>dual</multiplierType>
             <Master>
                 <domainId>1</domainId>
                 <surfaceTag>1</surfaceTag>
@@ -36,7 +37,6 @@
             <Quadrature>
                 <type>ElementBasedQuadrature</type>
                 <nGP>6</nGP>
-                <multiplierType>dual</multiplierType>
                 <nInt>5</nInt>
             </Quadrature>
         </MeshTying>

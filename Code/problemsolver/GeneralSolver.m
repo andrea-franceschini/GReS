@@ -63,8 +63,7 @@ classdef GeneralSolver < handle
         % Update the simulation time and time step ID
         absTol = obj.simparams.absTol;
 
-        obj.tStep = obj.tStep + 1;
-        obj.t = obj.t + obj.dt;
+        initializeTimeStep(obj)
 
         gresLog().log(-1,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
         gresLog().log(-1,'-----------------------------------------------------------\n');
@@ -111,7 +110,7 @@ classdef GeneralSolver < handle
           % reset non linear iteration counter
           obj.iterNL = 0;
 
-          %%% NEWTON LOOP %%%
+          %%% NONLINEAR LOOP %%%
           while (~flConv) && (obj.iterNL < obj.simparams.itMaxNR)
 
             obj.iterNL = obj.iterNL + 1;
@@ -386,6 +385,23 @@ classdef GeneralSolver < handle
       end
     end
 
+    function initializeTimeStep(obj)
+
+      obj.tStep = obj.tStep + 1;
+      obj.t = obj.t + obj.dt;
+
+      for i = 1:obj.nDom
+        dom = obj.domains(i);
+        dom.state.t = obj.t;
+      end
+
+      for i = 1:obj.nInterf
+        interf = obj.interfaces{i};
+        interf.state.t = obj.t;
+      end
+
+    end
+
 
 
     function manageNextTimeStep(obj,NLConv,configurationChanged)
@@ -445,14 +461,12 @@ classdef GeneralSolver < handle
 
         for i = 1:obj.nDom
           dom = obj.domains(i);
-          dom.state.t = obj.t;
           printState(dom);
           advanceState(dom);
         end
 
         for i = 1:obj.nInterf
           interf = obj.interfaces{i};
-          interf.state.t = obj.t;
           printState(interf);
           advanceState(interf);
         end
@@ -468,7 +482,9 @@ classdef GeneralSolver < handle
         end
 
         % allow new survival attempts on new time steps
-        obj.attemptedReset = false;
+        if obj.simparams.attemptSimplestConfiguration
+          obj.attemptedReset = false;
+        end
 
       end
 
