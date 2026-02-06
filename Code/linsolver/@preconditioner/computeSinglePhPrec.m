@@ -51,15 +51,15 @@ function computeSinglePhPrec(obj,A)
          obj.Prec = cpt_aspAMG(obj.params,A,TV0,obj.DEBUGflag);
 
          % Define Mfun
-         obj.MfunL = @(r) AMG_Vcycle(obj.Prec,A,r);
-         obj.MfunR = @(r) r;
+         obj.Apply_L = @(r) AMG_Vcycle(obj.Prec,A,r);
+         obj.Apply_R = @(r) r;
 
       % Compute the FSAI preconditioner
       case 'fsai'
          smootherOp = smoother(A,obj.params.symm,obj.params.smoother);
 
          % Define Mfun
-         [obj.MfunL,obj.MfunR] = defineMfunFSAI(obj,smootherOp);
+         [obj.Apply_L,obj.Apply_R] = defineMfunFSAI(obj,smootherOp);
       otherwise
          error('Non defined preconditioner case')
    end

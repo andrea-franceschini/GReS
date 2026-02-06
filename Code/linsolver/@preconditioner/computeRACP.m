@@ -31,8 +31,6 @@ function computeRACP(obj,A)
    gamma = 1.0;
 
    % Compute local augmentation
-   AA_list = {};
-   BB_list = {};
    aug = zeros(size(A{2,2},1),1);
    D_11 = full(diag(A{1,1}));
    mean_diag_A = mean(D_11);
@@ -50,8 +48,6 @@ function computeRACP(obj,A)
             m_b = max(diag(BB));
          else
             AA = A{1,1}(ii_12,ii_21);
-            AA_list{icol} = AA;
-            BB_list{icol} = BB;
             m_a = max(eig(full(AA)));
             m_b = max(eig(full(BB)));
          end
@@ -76,8 +72,8 @@ function computeRACP(obj,A)
    obj.PrecType = 'amg';
 
    % Compute the amg for block 11
-   obj.computePrec(A11_aug);
+   obj.Compute(A11_aug);
 
-   obj.MfunL = @(x) apply_RevAug(obj.Prec,A11_aug,A{1,2},inv_D22,x);
-   obj.MfunR = @(x) x;
+   obj.Apply_L = @(x) apply_RevAug(obj.Prec,A11_aug,A{1,2},inv_D22,x);
+   obj.Apply_R = @(x) x;
 end

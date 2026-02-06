@@ -12,7 +12,7 @@ function [x,flag] = Solve(obj,A,b,time)
    end
 
    % Chronos does not exist, continue with matlab default
-   if ~obj.ChronosFlag || size(A{1,1},1) < obj.matlabMaxSize
+   if ~obj.ChronosFlag || (getGlobalSize(A) < obj.matlabMaxSize)
       [x,flag] = matlab_solve(obj,A,b);
       return
    end
@@ -31,7 +31,7 @@ function [x,flag] = Solve(obj,A,b,time)
    % Have the linear solver compute the Preconditioner if necessary
    if(obj.requestPrecComp || obj.params.iter > 600 || obj.params.lastRelres > obj.params.tol*1e3)
       time_start = tic;
-      obj.Prec.computePrec(A);
+      obj.Prec.Compute(A);
       T_setup = toc(time_start);
 
       obj.aTimeComp = obj.aTimeComp + T_setup;
@@ -64,14 +64,16 @@ function [x,flag] = Solve(obj,A,b,time)
 
          % Solve the system by GMRES
          [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.params.tol,...
-                                                                   obj.params.maxit/obj.params.restart,obj.MfunL,obj.MfunR,obj.x0,obj.DEBUGflag);
+                                                                   obj.params.maxit/obj.params.restart,...
+                                                                   obj.Prec.Apply_L,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
          obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
          
       case 'sqmr'
 
          % Solve the system by SQMR
          Afun = @(x) Amat*x;
-         [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.params.tol,obj.params.maxit,obj.MfunL,obj.MfunR,obj.x0,obj.DEBUGflag);
+         [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.params.tol,obj.params.maxit,...
+                                                                      obj.Prec.Apply_L,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
 
    end
 
@@ -112,7 +114,7 @@ function [x,flag] = Solve(obj,A,b,time)
       obj.requestPrecComp = false;
    else
       % If the number of iterations changes too much then recompute the preconditioner
-      if(obj.params.iter > 1.2 * obj.params.firstIterAfterPrecComp && obj.params.iter > obj.params.minIter)
+      if(obj.params.iter > 1.5 * obj.params.firstIterAfterPrecComp && obj.params.iter > obj.params.minIter)
          obj.requestPrecComp = true;
       end
    end
@@ -122,7 +124,24 @@ function [x,flag] = Solve(obj,A,b,time)
 end
 
 
+% Function to get the global size of the system
+function [gSize] = getGlobalSize(A)
 
+   [nBlockRows,nBlockCols] = size(A);
+   rowSizes = zeros(nBlockRows,1);
+   
+   for i = 1:nBlockRows
+      for j = 1:nBlockCols
+         C = A{i,j};
+         if ~isempty(C)
+            rowSizes(i) = size(C,1);
+            break;
+         end
+      end
+   end
+
+   gSize = sum(rowSizes);
+end
 
 function [x,flag] = matlab_solve(obj,A,b)
 

@@ -1,6 +1,9 @@
 classdef preconditioner < handle
    properties (Access = private)
 
+      % Nonsymmetry tolerance
+      nsyTol
+
       % Flag for debug
       DEBUGflag = false
 
@@ -29,10 +32,6 @@ classdef preconditioner < handle
       % Preconditioner
       Prec = []
 
-      % Preconditioner application
-      MfunL = []
-      MfunR = []
-
    end
 
 
@@ -43,20 +42,34 @@ classdef preconditioner < handle
 
       % Params struct
       params
+
+      % Preconditioner application
+      Apply_L = []
+      Apply_R = []
+
    end
 
    methods (Access = public)
 
+      % Function to compute the preconditioner
+      Compute(obj,A)
+
+   end
+
+
+   methods (Static,Access = public)
+
       % Constructor of the preconditioner object, specifies if it cannot be used as not supported
-      function [obj, useMatlab] = create(debugflag,generalsolver,varargin)
+      function [obj, useChronos] = create(debugflag,nsyTol,generalsolver,varargin)
 
          % Initialize an empty class
-         obj = MyClass.empty;
-         useMatlab = true;
+         obj = preconditioner.empty;
+         useChronos = false;
 
          domainin = generalsolver.domains;
 
          % Check if the problem comes from multiphysics
+         multiPhysFlag = false;
          if(domainin(1).dofm.getNumberOfVariables() > 1)
             multiPhysFlag = true;
             return
@@ -105,19 +118,16 @@ classdef preconditioner < handle
          end
 
          % Now the preconditioner can actually be built, the checks have been passed
-         obj = preconditioner(debugflag,generalsolver,domainin,multiPhysFlag,phys,varargin{:});
-         useMatlab = false;
+         obj = preconditioner(debugflag,nsyTol,generalsolver,domainin,multiPhysFlag,phys,varargin{:});
+         useChronos = true;
       end
 
-      % Function to compute the preconditioner
-      computePrec(obj,A)
-
    end
-
+   
    methods (Access = private)
 
       % Constructor Function
-      function obj = preconditioner(debugflag,generalsolver,domainin,multiPhysFlag,phys,varargin)
+      function obj = preconditioner(debugflag,nsyTol,generalsolver,domainin,multiPhysFlag,phys,varargin)
 
          % Use the debugflag set into the linearsolver
          obj.DEBUGflag = debugflag;
@@ -127,17 +137,18 @@ classdef preconditioner < handle
          obj.nDom = generalsolver.nDom;
          obj.nInt = generalsolver.nInterf;
          obj.phys = phys;
+         obj.nsyTol = nsyTol;
 
          % Read XML
-         if nargin > 1
+         if nargin > 6
             % Use input values
             data = readstruct(varargin{1},AttributeSuffix="");
          else
             % Get default values
             if obj.phys == 0
-              chronos_xml_default = fullfile(gres_root,'Code','@linearSolver','XML_setup','chronos_xml_setup_CFD.xml');
+              chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup_CFD.xml');
             else
-              chronos_xml_default = fullfile(gres_root,'Code','@linearSolver','XML_setup','chronos_xml_setup.xml');
+              chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');
             end
 
             % Read Defaults

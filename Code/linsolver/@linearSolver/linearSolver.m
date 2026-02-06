@@ -2,8 +2,8 @@ classdef linearSolver < handle
    properties (Access = private)
 
       % Flag for debug
-      DEBUGflag = false
-      matlabMaxSize = 1e5
+      DEBUGflag = true
+      matlabMaxSize = 1e1
       nsyTol = 1e-16
 
       % Flag for Chronos existance
@@ -51,7 +51,7 @@ classdef linearSolver < handle
             obj.generalsolver = generalsolver;
 
             % Create the preconditioner object, check if the physics is supported
-            [obj.Prec,obj.ChronosFlag] = preconditioner.create(DEBUGflag,generalsolver,varargin{:});
+            [obj.Prec,obj.ChronosFlag] = preconditioner.create(obj.DEBUGflag,obj.nsyTol,generalsolver,varargin{:});
 
             % Non supported physics for the preconditioner
             if ~obj.ChronosFlag
@@ -74,10 +74,10 @@ classdef linearSolver < handle
                data = readstruct(varargin{1},AttributeSuffix="");
             else
                % Get default values
-               if obj.phys == 0
-                 chronos_xml_default = fullfile(gres_root,'Code','@linearSolver','XML_setup','chronos_xml_setup_CFD.xml');
+               if obj.Prec.phys == 0
+                 chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup_CFD.xml');
                else
-                 chronos_xml_default = fullfile(gres_root,'Code','@linearSolver','XML_setup','chronos_xml_setup.xml');
+                 chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');
                end
 
                % Read Defaults
@@ -86,6 +86,8 @@ classdef linearSolver < handle
 
             % Get the solver type
             obj.SolverType = lower(data.solver);
+            obj.params.maxit = data.general.maxit;
+            obj.params.minIter = obj.Prec.params.minIter;
 
             % if GMRES get restart value
             if (obj.SolverType == 'gmres')
