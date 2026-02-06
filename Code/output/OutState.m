@@ -118,34 +118,45 @@ classdef OutState < handle & matlab.mixin.Copyable
 
     end
 
+    function prepareOutputFolders(obj)
 
-    function writeVTKfile(obj,block,fname,mesh,time,cellData3D,pointData3D,cellData2D,pointData2D)
+      foldName = sprintf('%s/output_%5.5i',obj.vtkFileName,obj.timeID);
+
+      if (~obj.isFolderReady)
+        createVTKFolder(obj);
+      end
+
+      % create folder for vtu files
+      status = mkdir(foldName);
+      if (status ~= 1)
+        error('Unable to create folder for VTK output.');
+      end
+    end
+
+
+    function writeVTKfile(obj,block,vtuName,mesh,time,pointData3D,cellData3D,pointData2D,cellData2D)
 
       % block: the xml block of the vtm file in which we write the vtu dataset
       % data struct: struct array with fields 'name' and 'data'
 
-      foldName = sprintf('%s/output_%5.5i',obj.vtkFileName,obj.timeID);
-      outName = sprintf('%s/%s.vtu',foldName,fname);
+      vtmName = sprintf('output_%5.5i/%s',obj.timeID,vtuName);
+      outName = sprintf('%s/%s.vtu',obj.vtkFileName,vtmName);
 
-        if (~obj.isFolderReady)
-          createVTKFolder(obj);
-        end
+      % call mex vtk writer
+      if ~all(isempty([cellData3D; pointData3D]))
+        mxVTKWriter(outName, time, mesh.coordinates, mesh.cells, mesh.cellVTKType, ...
+          mesh.cellNumVerts, pointData3D, cellData3D);
+      elseif ~all(isempty([cellData2D; pointData2D]))
+        mxVTKWriter(outName, time, mesh.coordinates, mesh.surfaces, mesh.surfaceVTKType, ...
+          mesh.surfaceNumVerts, pointData2D, cellData2D);
+      end
 
-        % call mex vtk writer
-        if ~all(isempty([cellData3D; pointData3D]))
-          mxVTKWriter(outName, time, mesh.coordinates, mesh.cells, mesh.cellVTKType, ...
-            mesh.cellNumVerts, pointData3D, cellData3D);
-        elseif ~all(isempty([cellData2D; pointData2D]))
-          mxVTKWriter(outName, time, mesh.coordinates, mesh.surfaces, mesh.surfaceVTKType, ...
-            mesh.surfaceNumVerts, pointData2D, cellData2D);
-        end
-
-        % write dataset to vtm block
-        dataset = obj.vtkFile.createElement('DataSet');
-        dataset.setAttribute('name', fname);
-        dataset.setAttribute('file', outName);
-        % append dataset to vtm block
-        block.appendChild(dataset);
+      % write dataset to vtm block
+      dataset = obj.vtkFile.createElement('DataSet');
+      dataset.setAttribute('name', vtuName);
+      dataset.setAttribute('file', sprintf('%s.vtu',vtmName));
+      % append dataset to vtm block
+      block.appendChild(dataset);
     end
 
     function writeVTMFile(obj)

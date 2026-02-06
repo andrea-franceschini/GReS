@@ -19,6 +19,7 @@ classdef Discretizer < handle
     % Jacobian blocks for multidomain coupling
     Jum
     Jmu
+    vtmBlock
   end
 
   properties (GetAccess=public, SetAccess=public)
@@ -365,8 +366,10 @@ classdef Discretizer < handle
     % end
 
 
-    function vtmBlock = writeVTK(obj,fac,time)
+    function out = writeVTK(obj,fac,time)
       % write results to VTKoutput
+
+      obj.vtmBlock = obj.outstate.vtkFile.createElement('Block');
 
       cellData3D = struct('name', [], 'data', []);
       pointData3D = struct('name', [], 'data', []);
@@ -381,9 +384,10 @@ classdef Discretizer < handle
       cellData3D = OutState.printMeshData(obj.grid.topology,cellData3D);
 
       % write dataset to vtmBlock
-      vtmBlock = obj.outstate.vtkFile.createElement('Block');
-      obj.outstate.writeVTKfile(vtmBlock,obj.getOutName(),obj.grid.topology,...
+      obj.outstate.writeVTKfile(obj.vtmBlock,obj.getOutName(),obj.grid.topology,...
         time, pointData3D, cellData3D, [], []);
+
+      out = obj.vtmBlock;
 
     end
 
