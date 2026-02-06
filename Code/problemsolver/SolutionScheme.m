@@ -242,7 +242,6 @@ classdef SolutionScheme < handle
       for i = 1:obj.nDom
         obj.domains(i).domainId = i;
         obj.domains(i).simparams = obj.simparams;
-
       end
       
     end

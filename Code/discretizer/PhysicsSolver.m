@@ -7,8 +7,8 @@ classdef (Abstract) PhysicsSolver < handle
   % simulation.
   %
   % Properties:
-  %   fields      - String array of variable fields that are going to be used by
-  %   the solver
+  %   fields      - String array of variable fields that are going to be
+  %   used by the solver
   %
   %
   % Coupled Solver Notes:

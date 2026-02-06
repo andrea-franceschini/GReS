@@ -59,6 +59,8 @@ classdef VTKOutput < handle
       end
 
       function writeVTKFile(obj, time, pointData3D, cellData3D, pointData2D, cellData2D)
+
+        % write new da
          vtmFileName = writeVTUFile(obj, time, pointData3D, cellData3D, pointData2D, cellData2D);
          obj.IDdata = obj.IDdata + 1;
          if (obj.IDdata > obj.nDataMax)

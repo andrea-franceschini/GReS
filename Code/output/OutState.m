@@ -23,6 +23,7 @@ classdef OutState < handle & matlab.mixin.Copyable
     % timeID = 1
     % VTK
     % writeVtk
+    isFolderReady
   end
 
   methods (Access = public)
@@ -125,13 +126,56 @@ classdef OutState < handle & matlab.mixin.Copyable
 
     end
 
-    function writeVTKFile(obj)
+
+    function writeVTKfile(obj,block,fname,cellData3D,pointData3D,cellData2D,pointData2D)
+
+      % block: the object containing the block of the vtm file in which we
+      % write the dataset
+
+      time = obj.timeList(obj.timeID);
+
+      foldName = sprintf('%s/output_%5.5i',obj.vtkFileName,obj.timeID);
+      outName = sprintf('%s/%s.vtu',foldName,fname);
+
+        if (~obj.isFolderReady)
+          createVTKFolder(obj);
+        end
+
+        status = mkdir(foldName);
+        if (status ~= 1)
+          error('Unable to create folder for VTK output.');
+        end
+
+        treatStructData()
+
+        outName = sprintf('%s/%s/%s', obj.folderName, outName, obj.cellFileName);
+        if ~all(isempty([cellData3DNames pointData3DNames]))
+          mxVTKWriter(outName, time, obj.mesh.coordinates, obj.mesh.cells, obj.mesh.cellVTKType, ...
+            obj.mesh.cellNumVerts, pointData3D, cellData3D);
+        elseif ~all(isempty([cellData2DNames pointData2DNames]))
+          mxVTKWriter(outName, time, obj.mesh.coordinates, obj.mesh.surfaces, obj.mesh.surfaceVTKType, ...
+            obj.mesh.surfaceNumVerts, pointData2D, cellData2D);
+        end
+
+        if (obj.hasFaults)
+
+          for i = 1 : length(pointData2D)
+            pointData2D(i).data = pointData2D(i).data(obj.glo2loc>0,:);
+          end
+
+          outName = sprintf('%s/%s/%s', obj.folderName, outName, obj.surfaceFileName);
+          mxVTKWriter(outName, time, obj.surfaceCoord, obj.surfaceElems, obj.surfaceVTKType, ...
+            obj.surfaceNumVerts, pointData2D, cellData2D);
+        end
+
+        updateCounter(obj);
+      end
     end
 
     function finalize(obj)
 
       %write the pvd file
-      toc = obj.output.vtkFile.getDocumentElement;
+      toc = obj.vtkFile.getDocumentElement;
 
       toc.setAttribute('type', 'Collection');
       toc.setAttribute('version', '1.0');
@@ -140,34 +184,31 @@ classdef OutState < handle & matlab.mixin.Copyable
 
       for i = 1 : obj.output.timeID
         block = docNode.createElement('DataSet');
-        block.setAttribute('timestep', sprintf('%e', obj.output.timeList(i).time));
-        block.setAttribute('file', obj.data(i).vtm);
+        block.setAttribute('timestep', sprintf('%e', obj.timeList(i)));
+        [~,fname,~] = fileparts(obj.vtkFile);
+        % standard naming for vtm files
+        vtmFileName = sprintf('%s/output_%5.5i',fname,i);
+        block.setAttribute('file', vtmFileName);
         blocks.appendChild(block);
       end
 
       toc.appendChild(blocks);
 
-      fileName = sprintf('%s.pvd', obj.folderName);
+      fileName = sprintf('%s.pvd', obj.vtkFileName);
       xmlwrite(fileName, docNode);
 
       if obj.writeSolution
-        output = obj.results;
+        output = obj.matFile;
         save(strcat(obj.matFileName,'.mat'),"output")
       end
 
     end
 
-
-    function finalize(obj)
-      if obj.writeVtk
-        obj.VTK.finalize();
-      end
-
-    end
   end
 
   methods (Access = private)
 
+   
     function tList = readTimeList(obj,fileName)
       fid = fopen(fileName,'r');
       [flEof,line] = OutState.readLine(fid);
@@ -201,46 +242,19 @@ classdef OutState < handle & matlab.mixin.Copyable
       fclose(fid);
     end
 
-    % move this logic into specific Physics solver
-    % function setMatFile(obj,msh)
-    %   l = length(obj.timeList) + 1;
-    %   obj.results.expTime = zeros(l,1);
-    %   if isFlow(obj.model)
-    %     if isFEMBased(obj.model,'Flow')
-    %       obj.results.expPress = zeros(msh.nNodes,l);
-    %     elseif isFVTPFABased(obj.model,'Flow')
-    %       obj.results.expPress = zeros(msh.nCells,l);
-    %       if isVariabSatFlow(obj.model)
-    %         obj.results.expSat = zeros(msh.nCells,l);
-    %       end
-    %     end
-    %   end
-    %   if isPoromechanics(obj.model)
-    %     obj.results.expDispl = zeros(msh.nDim*msh.nNodes,l);
-    %     % Consider adding other output properties
-    %   end
-    % end
+    function createVTKFolder(obj)
+      if (isfolder(obj.vtkFileName))
+        rmdir(obj.vtkFileName, 's');
+      end
 
-    % function setMatFile(obj,msh)
-    %   l = length(obj.timeList) + 1;
-    %   obj.results = repmat(struct('expTime', 0),l,1);
-    %   for i=1:l
-    %     if isFlow(obj.model)
-    %       if isFEMBased(obj.model,'Flow')
-    %         obj.results(i).expPress = [];
-    %       elseif isFVTPFABased(obj.model,'Flow')
-    %         obj.results(i).expPress = [];
-    %         if isVariabSatFlow(obj.model)
-    %           obj.results(i).expSat = [];
-    %         end
-    %       end
-    %     end
-    %     if isPoromechanics(obj.model)
-    %       obj.results(i).expDispl = [];
-    %       % Consider adding other output properties
-    %     end
-    %   end
-    % end
+      status = mkdir(obj.vtkFileName);
+      if (status ~= 1)
+        error('Unable to create folder for VTK output.');
+      end
+      obj.isFolderReady = true;
+    end
+
+
 
   end
 
