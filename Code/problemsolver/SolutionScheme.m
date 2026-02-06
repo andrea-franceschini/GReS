@@ -1,5 +1,8 @@
 classdef (Abstract) SolutionScheme < handle
   % General solution scheme class
+  % Implement the time loop and basic operations that are common to all
+  % solution schemes
+  
 
   properties (Access = protected)
     %
