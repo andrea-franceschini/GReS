@@ -90,18 +90,10 @@ else
   bound = [];
 end
 
-% output manager
-if isfield(input,"Output")
-  printUtils = OutState(grid.topology,input);
-else
-  printUtils = OutState(grid.topology);
-end
-
 
 domain = Discretizer('grid',grid,...
                      'materials',mat,...
-                     'boundaries',bound,...
-                     'outstate',printUtils);
+                     'boundaries',bound);
 
 domain.addPhysicsSolver(input.Solver);
 

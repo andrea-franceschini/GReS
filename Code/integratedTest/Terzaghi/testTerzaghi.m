@@ -9,9 +9,9 @@ analyticalSol = load('Terzaghi_Analytical.mat');
 zAn = analyticalSol.z;
 zNodes = domain.grid.topology.coordinates(:,3);
 zCells = domain.grid.topology.cellCentroid(:,3);
-pNum = [domain.outstate.results.pressure];
+pNum = [domain.outstate.matFile.pressure];
 pNum = pNum(:,1:end);
-uNum = [domain.outstate.results.displacements];
+uNum = [domain.outstate.matFile.displacements];
 uzNum = uNum(3:3:end,1:end);
 
 
@@ -39,9 +39,9 @@ clearvars -except domain
 analyticalSol = load('Terzaghi_Analytical.mat');
 zAn = analyticalSol.z;
 zNodes = domain.grid.topology.coordinates(:,3);
-pNum = [domain.outstate.results.pressure];
+pNum = [domain.outstate.matFile.pressure];
 pNum = pNum(:,1:end);
-uNum = [domain.outstate.results.displacements];
+uNum = [domain.outstate.matFile.displacements];
 uzNum = uNum(3:3:end,1:end);
 
 

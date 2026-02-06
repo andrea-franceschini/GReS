@@ -19,7 +19,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     cohesion                % the cohesion of each fracture
     cutCellToFracture       % map each cut cell to its fracture id
     fractureMesh            % a 2D mesh object with cut cell topology
-    outFracture
     areaTol = 1e-6;         % minimum area of a fracture element
     bcTraction
 
@@ -53,11 +52,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       % initialize the state object
       initState(obj);
-
-      obj.outFracture = copy(obj.domain.outstate);
-
-      outFileName = getXMLData(solverInput,"fractureOutput","outputFile");
-      obj.outFracture.VTK = VTKOutput(obj.fractureMesh,outFileName);
 
       SolidMechanicsContact.initializeActiveSet(obj,solverInput,obj.nCutCells);
 
@@ -368,8 +362,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       tractionOld = getStateOld(obj,"traction");
       tractionCurr = getState(obj,"traction");
 
-      obj.domain.outstate.results(tID).(obj.getField()) = jumpCurr*fac+jumpOld*(1-fac);
-      obj.domain.outstate.results(tID).traction = tractionCurr*fac+tractionOld*(1-fac);
+      obj.domain.outstate.matFile(tID).(obj.getField()) = jumpCurr*fac+jumpOld*(1-fac);
+      obj.domain.outstate.matFile(tID).traction = tractionCurr*fac+tractionOld*(1-fac);
 
     end
 
@@ -408,9 +402,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       as = ContactMode.integer(obj.activeSet.curr);
       cellStr(3).data = as;
 
-      % plot with the fracture output object
-      obj.outFracture.VTK.writeVTKFile(time, [], [], [], cellStr);
-
+      % plot directly into the domain vtm block
+      blk = obj.domain.vtmBlock;
+      obj.domain.outstate.writeVTKfile(blk,'EmbeddedFractures',obj.fractureMesh,...,
+        time,[],[],[],cellStr)
     end
 
     function finalizeOutput(obj)

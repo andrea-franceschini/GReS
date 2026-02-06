@@ -7,18 +7,18 @@ in a nonConforming simulation.
 
   <simParam fileName = "Input/simParam.xml" />
 
-  <Domain>
-    <Geometry fileName = "Input/ReservoirTest_Hexa.msh" />
-    <Gauss nGP = "2" />
-    <Materials fileName = "Input/materials.xml" />
-    <BoundaryConditions fileName = "Input/boundaryConditions.xml" />
-
-    <Output
+      <Output
             saveHistory = "1"
             outputFile = "Output/Results"
             matFileName = "Output/results"
             printTimes = "1,4,8"
             />
+
+  <Domain>
+    <Geometry fileName = "Input/ReservoirTest_Hexa.msh" />
+    <Gauss nGP = "2" />
+    <Materials fileName = "Input/materials.xml" />
+    <BoundaryConditions fileName = "Input/boundaryConditions.xml" />
 
     <Solver>
       <BiotFullySaturated>

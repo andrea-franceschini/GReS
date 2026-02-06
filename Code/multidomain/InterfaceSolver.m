@@ -41,6 +41,9 @@ classdef (Abstract) InterfaceSolver < handle
     state
     stateOld
 
+    % id of this interface within the final linear solver
+    interfId
+
     % id of connected domains
     domainId
 
@@ -149,9 +152,6 @@ classdef (Abstract) InterfaceSolver < handle
       % mortar computations
       setMortarInterface(obj,inputStruct);
 
-      % set print utilities (slave side mesh)
-      obj.outstate = OutState(getMesh(obj,MortarSide.slave),inputStruct);
-
     end
 
 
@@ -176,55 +176,69 @@ classdef (Abstract) InterfaceSolver < handle
     end
 
 
-    function printState(obj)
-      % print solution at the interface according to the print time in the
-      % input list 
+    % function printState(obj)
+    %   % print solution at the interface according to the print time in the
+    %   % input list 
+    % 
+    %   if obj.outstate.timeID <= length(obj.outstate.timeList)
+    % 
+    %     time = obj.outstate.timeList(obj.outstate.timeID);
+    % 
+    %     % loop over print times within last time step
+    %     while time <= obj.state.t
+    % 
+    %       assert(time >= obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
+    %         time, obj.stateOld.t, obj.state.t);
+    % 
+    %       % assert(obj.state.t - obj.stateOld.t > eps('double'),...
+    %       %   'Time step is too small for printing purposes');
+    % 
+    %       % compute factor to interpolate current and old state variables
+    %       fac = (time - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
+    %       if isnan(fac) || isinf(fac)
+    %         fac = 1;
+    %       end
+    % 
+    %       % call methods inside the individual interface solvers
+    %       if obj.outstate.writeVtk
+    %         surfData2D = struct('name', [], 'data', []);
+    %         pointData2D = struct('name', [], 'data', []);
+    %         [surfData,pointData] = writeVTK(obj,fac,time);
+    %         surfData2D = OutState.mergeOutFields(surfData2D,surfData);
+    %         pointData2D = OutState.mergeOutFields(pointData2D,pointData);
+    %         obj.outstate.VTK.writeVTKFile(time, [], [], pointData2D, surfData2D);
+    %       end
+    % 
+    %       if obj.outstate.writeSolution
+    %         writeMatFile(obj,fac,obj.outstate.timeID);
+    %       end
+    % 
+    %       obj.outstate.timeID = obj.outstate.timeID + 1;
+    % 
+    %       if obj.outstate.timeID > length(obj.outstate.timeList)
+    %         break
+    %       else
+    %         time = obj.outstate.timeList(obj.outstate.timeID);
+    %       end
+    % 
+    %     end
+    % 
+    %   end
+    % end
 
-      if obj.outstate.timeID <= length(obj.outstate.timeList)
+    function vtmBlock = writeVTKfile(obj,fac,time)
+      mesh = getMesh(obj,MortarSide.slave);
+      vtmBlock = obj.outstate.vtkFile.createElement('Block');
+      surfData2D = struct('name', [], 'data', []);
+      pointData2D = struct('name', [], 'data', []);
+      [surfData,pointData] = writeVTK(obj,fac,time);
+      surfData2D = OutState.mergeOutFields(surfData2D,surfData);
+      pointData2D = OutState.mergeOutFields(pointData2D,pointData);
+      obj.outstate.writeVTKfile(vtmBlock,obj.getOutName(),mesh,...
+        time, [], [], pointData2D, surfData2D);
 
-        time = obj.outstate.timeList(obj.outstate.timeID);
-
-        % loop over print times within last time step
-        while time <= obj.state.t
-
-          assert(time >= obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
-            time, obj.stateOld.t, obj.state.t);
-
-          % assert(obj.state.t - obj.stateOld.t > eps('double'),...
-          %   'Time step is too small for printing purposes');
-
-          % compute factor to interpolate current and old state variables
-          fac = (time - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
-          if isnan(fac) || isinf(fac)
-            fac = 1;
-          end
-
-          % call methods inside the individual interface solvers
-          if obj.outstate.writeVtk
-            surfData2D = struct('name', [], 'data', []);
-            pointData2D = struct('name', [], 'data', []);
-            [surfData,pointData] = writeVTK(obj,fac,time);
-            surfData2D = OutState.mergeOutFields(surfData2D,surfData);
-            pointData2D = OutState.mergeOutFields(pointData2D,pointData);
-            obj.outstate.VTK.writeVTKFile(time, [], [], pointData2D, surfData2D);
-          end
-
-          if obj.outstate.writeSolution
-            writeMatFile(obj,fac,obj.outstate.timeID);
-          end
-
-          obj.outstate.timeID = obj.outstate.timeID + 1;
-
-          if obj.outstate.timeID > length(obj.outstate.timeList)
-            break
-          else
-            time = obj.outstate.timeList(obj.outstate.timeID);
-          end
-
-        end
-
-      end
     end
+
 
 
 
@@ -580,6 +594,13 @@ classdef (Abstract) InterfaceSolver < handle
       else
         v = getDoFManager(obj,side).getVariableId(varargin{1});
       end
+
+    end
+
+    function outName = getOutName(obj)
+
+      outName = sprintf('Interface_%i',obj.interfId);
+
 
     end
 

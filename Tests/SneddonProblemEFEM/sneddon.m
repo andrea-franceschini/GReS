@@ -18,7 +18,7 @@ X = 40.0;
 Y = 1;
 Z = X;
 
-mesh = structuredMesh(721,1,131,[-0.5*X 0.5*X],[-0.5*Y 0.5*Y],[-0.5*Z 0.5*Z]);
+mesh = structuredMesh(521,1,101,[-0.5*X 0.5*X],[-0.5*Y 0.5*Y],[-0.5*Z 0.5*Z]);
 
 %assert(3*mesh.nNodes < 2e5,"Mesh is too fine")
 
@@ -29,7 +29,7 @@ grid = struct('topology',mesh,'cells',elems,'faces',faces);
 mat = Materials(fname);
 
 
-printUtils = OutState(mesh,"folderName",strcat("Output/Sneddon"),"timeList",1,...
+printUtils = OutState("folderName",strcat("Output/Sneddon"),"timeList",1,...
                        "writeVtk",1,"flagMatFile",1,"matFileName",strcat("Output/Sneddon"));
 
 
@@ -37,7 +37,6 @@ bc = Boundaries(fname,grid);
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Boundaries',bc,...
-                     'OutState',printUtils,...
                      'Materials',mat,...
                      'Grid',grid);
 
@@ -48,10 +47,10 @@ domain.addPhysicsSolver(fname);
 efem = getPhysicsSolver(domain,"EmbeddedFractureMechanics");
 efem.bcTraction(1:3:end) = -2;
 
-solver = GeneralSolver(simparams,domain);
-
-solver.NonLinearLoop();
-solver.finalizeOutput();
+solver = NonLinearImplicit('simulationparameters',simparams,...
+                           'domains',domain,...
+                           'output',printUtils);
+solver.simulationLoop();
 
 
 %% analytical solution processing

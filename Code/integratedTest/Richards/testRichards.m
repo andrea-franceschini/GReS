@@ -26,10 +26,10 @@ sol = struct('time', [], 'pressure', [],'saturation', []);
 listMat = ["Input/matTab.xml" "Input/matAnal.xml"];
 for sim = 1:numel(listMat)
   run("runRichards.m");
-  sol(sim).time = [printUtils.results.time]';
+  sol(sim).time = [printUtils.matFile.time]';
   % sol(sim).time = sol(sim).time(2:end);
-  sol(sim).pressure = [printUtils.results.pressure]';
-  sol(sim).saturation = [printUtils.results.saturation]';
+  sol(sim).pressure = [printUtils.matFile.pressure]';
+  sol(sim).saturation = [printUtils.matFile.saturation]';
 
   clearvars mat domain Solver simState printUtils
 end

@@ -4,28 +4,29 @@ classdef Discretizer < handle
   properties (GetAccess=public, SetAccess=private)
     physicsSolvers                     % physics solvers database
     solverNames
-    dofm         DoFManager
-    bcs          Boundaries
-    outstate     OutState
-    materials    Materials
-    grid         struct
+    dofm
+    bcs
+    materials
+    grid
   end
 
   properties
     simparams
     J
     rhs
-
+    outstate
+    domainId
     % Jacobian blocks for multidomain coupling
     Jum
     Jmu
+    vtmBlock
   end
 
   properties (GetAccess=public, SetAccess=public)
 
     % handle to interface solver defined on the domain
     interfaces
-    
+
     % id of the interfaces defined on the domain
     interfaceList
 
@@ -202,7 +203,7 @@ classdef Discretizer < handle
         assembleSystem(obj.getPhysicsSolver(solver),dt);
       end
     end
-    
+
 
     function addPhysicsSolver(obj,solverInput)
 
@@ -287,7 +288,6 @@ classdef Discretizer < handle
       Jum = obj.Jum{interfaceId};
       Jmu = obj.Jmu{interfaceId};
 
-
     end
 
     function rhs = getRhs(obj,varargin)
@@ -316,53 +316,91 @@ classdef Discretizer < handle
       end
     end
 
-    function printState(obj)
-      % print solution of the model according to the print time in the
-      % list
+    % function printState(obj)
+    %   % print solution of the model according to the print time in the
+    %   % list
+    %
+    %   % if obj.state.t >= obj.simparams.tMax
+    %   %
+    %   %   time = getState(obj).t;
+    %   %   writeVTK(obj,time);
+    %   %   writeMatFile(obj,time,obj.outstate.timeID);
+    %   %
+    %   % else
+    %
+    %   if obj.outstate.timeID <= length(obj.outstate.timeList)
+    %
+    %     time = obj.outstate.timeList(obj.outstate.timeID);
+    %
+    %     % loop over print times within last time step
+    %     while time <= obj.state.t
+    %
+    %       assert(time >= obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
+    %         time, obj.stateOld.t, obj.state.t);
+    %
+    %       assert(obj.state.t - obj.stateOld.t > eps('double'),...
+    %         'Time step is too small for printing purposes');
+    %
+    %       % move this into the solution scheme class
+    %       % compute factor to interpolate current and old state variables
+    %       fac = (time - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
+    %       if isnan(fac) || isinf(fac)
+    %         fac = 1;
+    %       end
+    %
+    %       writeVTK(obj,fac,time);
+    %
+    %       writeMatFile(obj,fac,obj.outstate.timeID);
+    %
+    %       obj.outstate.timeID = obj.outstate.timeID + 1;
+    %
+    %       if obj.outstate.timeID > length(obj.outstate.timeList)
+    %         break
+    %       else
+    %         time = obj.outstate.timeList(obj.outstate.timeID);
+    %       end
+    %
+    %     end
+    %
+    %   end
+    % end
 
-      % if obj.state.t >= obj.simparams.tMax
-      %
-      %   time = getState(obj).t;
-      %   writeVTK(obj,time);
-      %   writeMatFile(obj,time,obj.outstate.timeID);
-      %
-      % else
 
-      if obj.outstate.timeID <= length(obj.outstate.timeList)
+    function out = writeVTK(obj,fac,time)
+      % write results to VTKoutput
 
-        time = obj.outstate.timeList(obj.outstate.timeID);
+      obj.vtmBlock = obj.outstate.vtkFile.createElement('Block');
 
-        % loop over print times within last time step
-        while time <= obj.state.t
+      cellData3D = struct('name', [], 'data', []);
+      pointData3D = struct('name', [], 'data', []);
 
-          assert(time >= obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
-            time, obj.stateOld.t, obj.state.t);
+      for solv = obj.solverNames
+        solver = getPhysicsSolver(obj,solv);
+        [cellData,pointData] = writeVTK(solver,fac,time);
+        cellData3D = OutState.mergeOutFields(cellData3D,cellData);
+        pointData3D = OutState.mergeOutFields(pointData3D,pointData);
+      end
 
-          assert(obj.state.t - obj.stateOld.t > eps('double'),...
-            'Time step is too small for printing purposes');
+      cellData3D = OutState.printMeshData(obj.grid.topology,cellData3D);
 
-          % compute factor to interpolate current and old state variables
-          fac = (time - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
-          if isnan(fac) || isinf(fac)
-            fac = 1;
-          end
+      % write dataset to vtmBlock
+      obj.outstate.writeVTKfile(obj.vtmBlock,obj.getOutName(),obj.grid.topology,...
+        time, pointData3D, cellData3D, [], []);
 
-          writeVTK(obj,fac,time);
+      out = obj.vtmBlock;
 
-          writeMatFile(obj,fac,obj.outstate.timeID);
+    end
 
-          obj.outstate.timeID = obj.outstate.timeID + 1;
 
-          if obj.outstate.timeID > length(obj.outstate.timeList)
-            break
-          else
-            time = obj.outstate.timeList(obj.outstate.timeID);
-          end
+    function writeMatFile(obj,fac,timeID)
+      % write to MAT-file
+      obj.outstate.matFile(timeID).time = obj.outstate.timeList(timeID);
 
-        end
-
+      for solv = obj.solverNames
+        getPhysicsSolver(obj,solv).writeMatFile(fac,timeID);
       end
     end
+
 
     function nDofs = getNumbDoF(obj,varargin)
 
@@ -374,6 +412,7 @@ classdef Discretizer < handle
   end
 
   methods(Access = private)
+
     function setDiscretizer(obj,varargin)
 
       % key-value input
@@ -432,9 +471,6 @@ classdef Discretizer < handle
           case 'boundaries'
             assert(isa(value, 'Boundaries'),msg)
             obj.bcs = value;
-          case 'outstate'
-            assert(isa(value, 'OutState'),msg)
-            obj.outstate = value;
           otherwise
             error('Unknown input key %s for Discretier \n', key);
         end
@@ -461,43 +497,14 @@ classdef Discretizer < handle
     end
 
 
-    function writeVTK(obj,fac,time)
-      % write results to VTKoutput
+    function outName = getOutName(obj)
 
-      if obj.outstate.writeVtk
-        
-        cellData3D = struct('name', [], 'data', []);
-        pointData3D = struct('name', [], 'data', []);
+      outName = sprintf('Domain_%i',obj.domainId);
 
-        for solv = obj.solverNames
-          solver = getPhysicsSolver(obj,solv);
-          [cellData,pointData] = writeVTK(solver,fac,time);
-          cellData3D = OutState.mergeOutFields(cellData3D,cellData);
-          pointData3D = OutState.mergeOutFields(pointData3D,pointData);
-        end
-
-        cellData3D = OutState.printMeshData(obj.grid.topology,cellData3D);
-        obj.outstate.VTK.writeVTKFile(time, pointData3D, cellData3D, [], []);
-      end
 
     end
-
-
-    function writeMatFile(obj,fac,timeID)
-      % write to MAT-file
-
-      if obj.outstate.writeSolution
-
-        obj.outstate.results(timeID).time = obj.outstate.timeList(timeID);
-
-        for solv = obj.solverNames
-          getPhysicsSolver(obj,solv).writeMatFile(fac,timeID);
-        end
-
-      end
-    end
-
 
   end
 
 end
+

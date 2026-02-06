@@ -303,11 +303,11 @@ classdef SolidMechanicsContact < MeshTying
       tT = [outTraction(2:3:end),outTraction(3:3:end)];
       norm_tT = sqrt(tT(:,1).^2 + tT(:,2).^2);
 
-      obj.outstate.results(tID).tractionVec = outTraction;
-      obj.outstate.results(tID).normalGap = outNormalGap;
-      obj.outstate.results(tID).slipIncrement = outSlip;
-      obj.outstate.results(tID).tangentialGap = outSliding;
-      obj.outstate.results(tID).tangentialTractionNorm = norm_tT;
+      obj.outstate.matFile(tID).tractionVec = outTraction;
+      obj.outstate.matFile(tID).normalGap = outNormalGap;
+      obj.outstate.matFile(tID).slipIncrement = outSlip;
+      obj.outstate.matFile(tID).tangentialGap = outSliding;
+      obj.outstate.matFile(tID).tangentialTractionNorm = norm_tT;
 
     end
 

@@ -99,8 +99,8 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       pOld = getStateOld(obj,"pressure");
       pCurr = getState(obj,"pressure");
 
-      obj.domain.outstate.results(tID).pressure = pCurr*fac+pOld*(1-fac);
-      obj.domain.outstate.results(tID).saturation = satCurr*fac+satOld*(1-fac);
+      obj.domain.outstate.matFile(tID).pressure = pCurr*fac+pOld*(1-fac);
+      obj.domain.outstate.matFile(tID).saturation = satCurr*fac+satOld*(1-fac);
     end
 
     function [dof,vals] = getBC(obj,id,t)
