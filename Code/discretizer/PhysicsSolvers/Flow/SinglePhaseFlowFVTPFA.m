@@ -290,6 +290,12 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       % ents: id of constrained faces without any dof mapping applied
       % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
 
+
+      id = bcDofs == 0;
+
+      bcDofs = bcDofs(~id);
+      bcVals = bcVals(~id);
+
       % BCs imposition for finite volumes - boundary flux
       if size(bcVals,2) == 2
         assert(size(bcVals,2)==2,'Invalid matrix size for BC values');

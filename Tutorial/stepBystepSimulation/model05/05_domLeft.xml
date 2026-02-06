@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Preprocess input for non-conforming multi-domain simulation -->
+
+<Problem>
+
+    <Geometry>
+      <StructuredMesh NX="3" NY="6" NZ="4"
+                      LX="0,20" LY="0,100" LZ="0,10"/>
+    </Geometry>
+
+
+    <Materials>
+      <Solid name="rock" cellTags="1">
+        <Constitutive>
+          <Elastic youngModulus="3e5" poissonRatio="0.25"/>
+        </Constitutive>
+        <PorousRock porosity="0.3" specificWeight="21" permeability="1e-18"/>
+      </Solid>
+    </Materials>
+
+
+    <BoundaryConditions>
+      <BC name="fix_bottom" type="Dirichlet" entityType="SurfBC"
+          variable="displacements">
+        <BCentities surfaceTags="1" components="z"/>
+        <BCevent time="0" value="0"/>
+      </BC>
+
+      <BC name="y_fix" type="Dirichlet" entityType="SurfBC"
+          variable="displacements">
+        <BCentities surfaceTags="3,4" components="y"/>
+        <BCevent time="0" value="0"/>
+      </BC>
+
+      <BC name="x_fix" type="Dirichlet" entityType="SurfBC"
+          variable="displacements">
+        <BCentities surfaceTags="5" components="x"/>
+        <BCevent time="0" value="0"/>
+      </BC>
+    </BoundaryConditions>
+
+
+    <Output printTimes="1,5,10"
+            outputFile="model04/Output04/resultsRock"
+            matFileName="model04/Output04/history"
+            saveHistory="1"/>
+
+
+    <Solver>
+      <Poromechanics/>
+    </Solver>
+</Problem>

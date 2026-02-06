@@ -104,7 +104,7 @@ simParam = SimulationParameters(fileName);
 % Create an object of the Materials class and read the materials file
 mat = Materials(fileName);
 
-mesh = structuredMesh(25,25,15,[0 100],[0 100],[0 10]);
+mesh = structuredMesh(15,15,10,[0 100],[0 100],[0 10]);
 
 gaussOrder = 2;
 elems = Elements(mesh,gaussOrder);
@@ -160,3 +160,21 @@ Solver.finalizeOutput();
 
 
 %% STEP 5) ADDING A FAULT
+fileName = "model05/fault.xml";
+
+% Set parameters of the simulation
+simParam = SimulationParameters(fileName);
+[domain,interfaces] = buildModel(fileName);
+
+% we manually modify the tag for some clay overburden and underburden
+over = domain(2).grid.topology.cellCentroid(:,3) < 3;
+under = domain(2).grid.topology.cellCentroid(:,3) > 7;
+domain(2).grid.topology.cellTag(under) = 2;
+domain(2).grid.topology.cellTag(over) = 3;
+
+
+Solver = GeneralSolver(simParam,domain,interfaces);
+
+Solver.NonLinearLoop();
+
+Solver.finalizeOutput();
