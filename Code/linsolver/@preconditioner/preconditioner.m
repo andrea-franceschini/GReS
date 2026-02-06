@@ -63,7 +63,7 @@ classdef preconditioner < handle
    methods (Static,Access = public)
 
       % Constructor of the preconditioner object, specifies if it cannot be used as not supported
-      function [obj, useChronos] = create(debugflag,nsyTol,generalsolver,varargin)
+      function [obj, useChronos] = create(debugflag,nsyTol,generalsolver,xml_mech,xml_flux)
 
          % Initialize an empty class
          obj = preconditioner.empty;
@@ -121,7 +121,7 @@ classdef preconditioner < handle
          end
 
          % Now the preconditioner can actually be built, the checks have been passed
-         obj = preconditioner(debugflag,nsyTol,generalsolver,domainin,multiPhysFlag,phys,varargin{:});
+         obj = preconditioner(debugflag,nsyTol,generalsolver,domainin,multiPhysFlag,phys,xml_mech,xml_flux);
          useChronos = true;
       end
 
@@ -130,7 +130,7 @@ classdef preconditioner < handle
    methods (Access = private)
 
       % Constructor Function
-      function obj = preconditioner(debugflag,nsyTol,generalsolver,domainin,multiPhysFlag,phys,varargin)
+      function obj = preconditioner(debugflag,nsyTol,generalsolver,domainin,multiPhysFlag,phys,xml_mech,xml_flux)
 
          % Use the debugflag set into the linearsolver
          obj.DEBUGflag = debugflag;
@@ -142,21 +142,15 @@ classdef preconditioner < handle
          obj.phys = phys;
          obj.nsyTol = nsyTol;
 
-         % Read XML
-         if nargin > 6
-            % Use input values
-            data = readstruct(varargin{1},AttributeSuffix="");
+         % Get default values
+         if obj.phys == 0
+           chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup_CFD.xml');
          else
-            % Get default values
-            if obj.phys == 0
-              chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup_CFD.xml');
-            else
-              chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');
-            end
-
-            % Read Defaults
-            data = readstruct(chronos_xml_default,AttributeSuffix="");
+           chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');
          end
+
+         % Read Defaults
+         data = readstruct(chronos_xml_default,AttributeSuffix="");
 
          % Get the preconditioner type
          obj.PrecType = lower(data.preconditioner);
@@ -182,8 +176,18 @@ classdef preconditioner < handle
          obj.params.smoother.nthread = min(obj.params.smoother.nthread,obj.maxThreads);
          obj.params.prolong.np = min(obj.params.prolong.np,obj.maxThreads);
          obj.params.filter.np = min(obj.params.filter.np,obj.maxThreads);
+
+         % Get user prescribed values
+         if obj.phys == 0
+            obj.params = obj.getUserInput(obj.params,xml_flux);
+         else
+            obj.params = obj.getUserInput(obj.params,xml_mech);
+         end
          
       end
+
+      % Function to get the user input parameters for the preconditioner
+      [params] = getUserInput(obj,params,xml);
 
       % Function to compute the preconditioner for the single block (single physics)
       computeSinglePhPrec(obj,A);
