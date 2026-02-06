@@ -3,82 +3,31 @@
 
 <Problem>
 
-    <Geometry>
-      <StructuredMesh NX="20" NY="20" NZ="10"
-                      LX="20,100" LY="0,100" LZ="0,10"/>
-    </Geometry>
+  <Geometry>
+    <StructuredMesh NX="20" NY="20" NZ="10"
+                    LX="20,100" LY="0,100" LZ="0,10"/>
+  </Geometry>
 
-  <Materials>
-    <Solid name="sand" cellTags="1">
-      <Constitutive>
-        <Elastic youngModulus="1e5" poissonRatio="0.25"/>
-      </Constitutive>
-      <PorousRock porosity="0.3" specificWeight="21" permeability="1e-11"/>
-    </Solid>
-
-    <Solid name="clay_underburden" cellTags="2">
-      <Constitutive>
-        <Elastic youngModulus="0.5e5" poissonRatio="0.25"/>
-      </Constitutive>
-      <PorousRock porosity="0.2" specificWeight="21" permeability="1e-14"/>
-    </Solid>
-
-    <Solid name="silty_clay_overburden" cellTags="3">
-      <Constitutive>
-        <Elastic youngModulus="2.5e5" poissonRatio="0.25"/>
-      </Constitutive>
-      <PorousRock porosity="0.22" specificWeight="21" permeability="1e-14"/>
-    </Solid>
-
-    <Fluid
-           compressibility = "4.59e-7"
-           dynamicViscosity = "3.1608e-14"
-           />
-  </Materials>
+  <Materials fileName = "Input/materials.xml" />
 
 
-    <BoundaryConditions>
-      <BC name="fix_bottom" type="Dirichlet" entityType="SurfBC"
-          variable="displacements">
-        <BCentities surfaceTags="1" components="z"/>
-        <BCevent time="0" value="0"/>
-      </BC>
-
-      <BC name="y_fix" type="Dirichlet" entityType="SurfBC"
-          variable="displacements">
-        <BCentities surfaceTags="3,4" components="y"/>
-        <BCevent time="0" value="0"/>
-      </BC>
-
-      <BC name="x_fix" type="Dirichlet" entityType="SurfBC"
-          variable="displacements">
-        <BCentities surfaceTags="5,6" components="x"/>
-        <BCevent time="0" value="0"/>
-      </BC>
-
-      <BC name="pressureBC" type="Dirichlet" entityType="ElementBC"
-          variable="pressure">
-        <BCentities box="40,45,40,45,5,6"/>
-        <BCevent time="0" value="1e1"/>
-        <BCevent time="10" value="1e3"/>
-      </BC>
-    </BoundaryConditions>
+  <BoundaryConditions fileName = "model04/boundaryConditions.xml" />
 
 
-    <Output printTimes="1,2,3,4,5,6,7,8,9,10"
-            outputFile="model04/Output04/results"
-            matFileName="model04/Output04/history"
-            saveHistory="1"/>
+  <Output printTimes=".1,.25,.5,1"
+          outputFile="model04/Output04/results"
+          matFileName="model04/Output04/history"
+          saveHistory="1"/>
 
-  
-    <Solver>
-      <BiotFullySaturated>
-        <Poromechanics/>
-        <SinglePhaseFlowFVTPFA targetRegions="1"/>
-      </BiotFullySaturated>
-    </Solver>
 
-</Problem> 
+  <Solver>
+    <BiotFullySaturated>
+      <Poromechanics/>
+      <SinglePhaseFlowFVTPFA targetRegions="1"/>
+    </BiotFullySaturated>
+  </Solver>
+
+</Problem>
 
 
 

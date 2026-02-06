@@ -12,7 +12,7 @@
     <Materials>
       <Solid name="rock" cellTags="1">
         <Constitutive>
-          <Elastic youngModulus="3e5" poissonRatio="0.25"/>
+          <Elastic youngModulus="10e6" poissonRatio="0.25"/>
         </Constitutive>
         <PorousRock porosity="0.3" specificWeight="21" permeability="1e-18"/>
       </Solid>
@@ -40,9 +40,9 @@
     </BoundaryConditions>
 
 
-    <Output printTimes="1,5,10"
-            outputFile="model04/Output04/resultsRock"
-            matFileName="model04/Output04/history"
+    <Output printTimes=".1,.25,.5,.1"
+            outputFile="model05/Output05/resultsRock"
+            matFileName="model05/Output05/history"
             saveHistory="1"/>
 
 
