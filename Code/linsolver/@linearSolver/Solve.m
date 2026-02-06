@@ -100,8 +100,10 @@ function [x,flag] = Solve(obj,A,b,time)
       if obj.DEBUGflag
          fprintf('Iterations since last preconditioner computation %d\n',obj.params.iterSinceLastPrecComp);
       end
-      %save('new_problem.mat','A','b','x0');
-      error('');
+      [x,flag] = matlab_solve(obj,A,b);
+      TV0 = obj.Prec.TV0;
+      save('new_problem.mat','A','b','TV0');
+      error('matlab could solve and chronos did not.');
    end
 
    % Reset the solver
@@ -153,6 +155,11 @@ function [x,flag] = matlab_solve(obj,A,b)
    A = cell2matrix(A);
    x = A\b;
    Tend = toc(startT);
+
+   if obj.DEBUGflag
+      fprintf('condition number of the matrix %e\n',condest(A));
+   end
+
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
    flag = 0;

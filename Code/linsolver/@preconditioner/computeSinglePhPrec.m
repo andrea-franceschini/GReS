@@ -38,13 +38,11 @@ function computeSinglePhPrec(obj,A)
                TV = mk_rbm_3d(obj.domain(i).grid.topology.coordinates);
                TV0 = [TV0;TV];
             end
+            if obj.DEBUGflag
+               obj.TV0 = TV0
+            end
          end
 
-         
-         % coord = obj.domain.grid.topology.coordinates;
-         % save("TV0.mat","TV0");
-         %save("mat_new.mat","A","TV0","coord");
-         % error('ciao');
          set_DEBINFO();
 
          % Actually compute the AMG

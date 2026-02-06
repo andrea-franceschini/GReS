@@ -43,6 +43,9 @@ classdef preconditioner < handle
       % Params struct
       params
 
+      % Test Space
+      TV0
+
       % Preconditioner application
       Apply_L = []
       Apply_R = []
