@@ -293,8 +293,8 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       id = bcDofs == 0;
 
-      bcDofs = bcDofs(~id);
-      bcVals = bcVals(~id);
+      bcDofs = bcDofs(~id,:);
+      bcVals = bcVals(~id,:);
 
       % BCs imposition for finite volumes - boundary flux
       if size(bcVals,2) == 2

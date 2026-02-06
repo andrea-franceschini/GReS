@@ -851,6 +851,8 @@ classdef SolidMechanicsContact < MeshTying
       % the method is static to be reused by other contact solvERS
       outState = inState;
 
+      tol = 1e-8;
+
 
       % contact state update
       if inState == ContactMode.open
@@ -877,12 +879,12 @@ classdef SolidMechanicsContact < MeshTying
         if inState == ContactMode.stick && tau >= tLimit
 
           % reduce the tau if goes above limit
-          tau = tau*(1-tols.slidingCheck);
+          tau = tau*(1-tols.slidingCheck)-tol;
 
         elseif inState ~= ContactMode.stick  && tau <=tLimit
 
           % increase tau if falls below limit
-          tau = tau*(1+tols.slidingCheck);
+          tau = tau*(1+tols.slidingCheck)+tol;
         end
 
         % change the state after relaxation
