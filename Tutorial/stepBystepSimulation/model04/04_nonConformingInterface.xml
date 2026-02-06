@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Preprocess input for non-conforming multi-domain simulation -->
+
+<Problem>
+
+  <simParam>
+    <Time
+          Start="0."
+          End ="1.01"
+          DtInit=".1"
+          DtMin ="1e-5"
+          DtMax =".1"
+          incrementFactor = "1.0"
+          choppingFactor = "2" />
+
+    <Solver
+            RelativeTolerance = "1.e-10"
+            AbsoluteTolerance = "1.e-8"
+            />
+  </simParam>
+
+  <!--
+  <Domain fileName = "model04/04_domLeft.xml"/>
+
+  <Domain fileName = "model04/04_domRight.xml"/>
+-->
+
+
+  <Interface>
+    <MeshTying
+               multiplierType="P0">
+
+      <Master domainId="2" surfaceTag="6"/>
+      <Slave  domainId="1" surfaceTag="5"/>
+
+      <Output
+              outputFile = "model04/Output04/Interface"
+              printTimes = ".1,.25,.5,1"
+              saveHistory = "1"
+              matFileName = "model04/Output04/historyInterface"
+              />
+
+    </MeshTying>
+
+  </Interface>
+
+</Problem>

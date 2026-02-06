@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Preprocess input for non-conforming multi-domain simulation -->
+
+<Problem>
+
+
+  <simParam>
+    <Time
+          Start="0.0"
+          End ="0.999"
+          DtInit=".1"
+          DtMin ="1e-5"
+          DtMax =".25"
+          incrementFactor = "1.0"
+          choppingFactor = "2" />
+
+    <Solver
+            RelativeTolerance = "1.e-10"
+            AbsoluteTolerance = "1.e-8"
+            MaxConfigurationIteration = "8"
+            resetConfiguration = "0"
+            />
+  </simParam>
+
+  <!--
+  <Domain fileName = "model05/05_domLeft.xml"/>
+
+  <Domain fileName = "model05/05_domRight.xml"/>
+  -->
+
+  <Interface>
+    <SolidMechanicsContact
+                           multiplierType="P0">
+
+
+      <Master domainId="2" surfaceTag="6"/>
+      <Slave  domainId="1" surfaceTag="5"/>
+
+      <Output
+              outputFile = "model05/Output05/Fault"
+              printTimes = ".1,.2,.3,.4,.5,.6,.7,.8,.9,.95"
+              saveHistory = "1"
+              matFileName = "model05/Output05/historyFault"
+              />
+
+      <Coulomb
+               cohesion = "1.0"
+               frictionAngle = "30" />
+
+      <ActiveSet
+                 resetActiveSet = "0"
+                 forceStickBoundary = "z" >>
+
+        <Tolerances
+                    sliding = "5e-4"
+                    normalGap = "1e-4"
+                    normalTraction = "-1e-2"
+                    tangentialViolation = "1e-5"
+                    minLimitTraction = "1e-4"
+                    areaChange = "1e-4"
+                    maxActiveSetChange = "6"
+                    />
+
+      </ActiveSet>
+
+    </SolidMechanicsContact>
+
+  </Interface>
+
+</Problem>

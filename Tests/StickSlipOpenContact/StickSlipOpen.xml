@@ -29,7 +29,8 @@ in a nonConforming simulation.
   </Solver>
 
   <Interface>
-    <SolidMechanicsContact>
+    <SolidMechanicsContact
+                      stabilizationScale = "1.0">
 
       <Master
               domainId = "1"
@@ -43,7 +44,6 @@ in a nonConforming simulation.
       <Quadrature
                   type = "SegmentBasedQuadrature"
                   nGP = "4"
-                  stabilizationScale = "1.0"
                   />
 
       <Output
