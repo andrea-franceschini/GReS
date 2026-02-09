@@ -165,7 +165,6 @@ of sediment deposition on the top of the domain.
           value = "0." />
     </Boundary>
     <SedimentMap file = "Inputs/mapsSedimentation.xml" />
-    <Output file = "Inputs/output.xml"/>
   </Sedimentation>
 </Solver>
 
