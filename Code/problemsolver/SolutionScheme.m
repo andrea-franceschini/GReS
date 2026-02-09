@@ -1,5 +1,8 @@
 classdef (Abstract) SolutionScheme < handle
   % General solution scheme class
+  % Implement the time loop and basic operations that are common to all
+  % solution schemes
+  
 
   properties (Access = protected)
     %
@@ -331,6 +334,9 @@ classdef (Abstract) SolutionScheme < handle
           % print vtk
           % create new vtm file
           if obj.output.writeVtk
+
+            % set folders
+            obj.output.prepareOutputFolders()
 
             obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
             toc = obj.output.vtkFile.getDocumentElement;

@@ -599,7 +599,7 @@ classdef (Abstract) InterfaceSolver < handle
 
     function outName = getOutName(obj)
 
-      outName = sprintf('Interface_%i',obj.interfaceId);
+      outName = sprintf('Interface_%i',obj.interfId);
 
 
     end

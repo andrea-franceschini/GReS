@@ -5,16 +5,16 @@ in a nonConforming simulation.
 <Problem>
 
   <simParam fileName = "Input/simParam.xml" />
-  
+  <Output
+          printTimes= "0,0.5,1.5"
+          saveHistory = "1"
+          />
+
   <Domain>
     <Geometry fileName= "Input/ReservoirTest_Hexa.msh" />
     <Gauss nGP = "2" />
     <Materials fileName = "Input/materials.xml"/>
     <BoundaryConditions fileName = "Input/boundaryConditions.xml" />
-    <Output
-            printTimes= "0,0.5,1.5"
-            saveHistory = "1"
-    />
 
     <Solver>
       <BiotFullySaturated>

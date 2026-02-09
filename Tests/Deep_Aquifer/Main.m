@@ -12,14 +12,15 @@ warning('off','MATLAB:nearlySingularMatrix');
 % shortcut to define a model using a unique xml file
 % useful when dealing with many domains
 simparams = SimulationParameters("subDomains.xml");
+printUtils = OutState("subDomains.xml");
+
 domain = buildModel("subDomains.xml");
 
 % perform a fully coupled simulation
-solver = GeneralSolver(simparams,domain);
-solver.NonLinearLoop();
-
-% Finalize the print utility
-domain.outstate.finalize()
+solver = NonLinearImplicit('simulationparameters',simparams,...
+                           'domains',domain,...
+                           'output',printUtils);
+solver.simulationLoop();
 
 %% --------------------- Post Processing the Results ----------------------
 if true
@@ -31,9 +32,9 @@ if true
     mkdir(figures_dir)
   end
 
-  pressure = [domain.outstate.results.pressure];
-  displacements = [domain.outstate.results.displacements];
-  expTime = [domain.outstate.results.time];
+  pressure = [domain.outstate.matFile.pressure];
+  displacements = [domain.outstate.matFile.displacements];
+  expTime = [domain.outstate.matFile.time];
 
   topol = domain.grid.topology;
 

@@ -19,11 +19,11 @@
             />
   </simParam>
 
-  <!--
-<Domain fileName = "model04/04_domLeft.xml"/>
 
-  <Domain fileName = "model04/04_domRight.xml"/>
--->
+  <Output printTimes=".1,.25,.5,1"
+          outputFile="model04/Output04/results"
+          matFileName="model04/Output04/history"
+          saveHistory="1"/>
 
 
   <Interface>
@@ -32,13 +32,6 @@
 
       <Master domainId="2" surfaceTag="6"/>
       <Slave  domainId="1" surfaceTag="5"/>
-
-      <Output
-              outputFile = "model04/Output04/Interface"
-              printTimes = ".1,.25,.5,1"
-              saveHistory = "1"
-              matFileName = "model04/Output04/historyInterface"
-              />
 
     </MeshTying>
 

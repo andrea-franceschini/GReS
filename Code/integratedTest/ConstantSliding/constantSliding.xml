@@ -23,10 +23,6 @@
     <Gauss nGP = "3" />
     <Materials fileName = "Input/materials.xml" />
     <BoundaryConditions fileName = "Input/constantSlidingTopBCs.xml" />
-    <!--<Output
-              outputFile = "TopBlock"
-              printTimes = "1"
-              />-->
     <Solver>
       <Poromechanics />
     </Solver>
@@ -38,10 +34,6 @@
     <Gauss nGP = "3" />
     <Materials fileName = "Input/materials.xml" />
     <BoundaryConditions fileName = "Input/constantSlidingBottomBCs.xml" />
-    <!--<Output
-              outputFile = "BottomBlock"
-              printTimes = "1"
-              />-->
     <Solver>
       <Poromechanics />
     </Solver>
