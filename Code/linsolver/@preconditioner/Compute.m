@@ -1,6 +1,6 @@
 
 % Function for the computation of the preconditioner
-function computePrec(obj,A)
+function Compute(obj,A)
 
    % Check if it is the case of a single physics single domain
    if numel(A) == 1 || ~iscell(A)
