@@ -63,7 +63,7 @@ classdef preconditioner < handle
    methods (Static,Access = public)
 
       % Constructor of the preconditioner object, specifies if it cannot be used as not supported
-      function [obj, useChronos] = create(debugflag,nsyTol,generalsolver,xml_mech,xml_flux)
+      function [obj, useChronos] = create(debugflag,nsyTol,generalsolver,usrInput)
 
          % Initialize an empty class
          obj = preconditioner.empty;
@@ -121,7 +121,7 @@ classdef preconditioner < handle
          end
 
          % Now the preconditioner can actually be built, the checks have been passed
-         obj = preconditioner(debugflag,nsyTol,generalsolver,domainin,multiPhysFlag,phys,xml_mech,xml_flux);
+         obj = preconditioner(debugflag,nsyTol,generalsolver,domainin,multiPhysFlag,phys,usrInput);
          useChronos = true;
       end
 
@@ -130,7 +130,7 @@ classdef preconditioner < handle
    methods (Access = private)
 
       % Constructor Function
-      function obj = preconditioner(debugflag,nsyTol,generalsolver,domainin,multiPhysFlag,phys,xml_mech,xml_flux)
+      function obj = preconditioner(debugflag,nsyTol,generalsolver,domainin,multiPhysFlag,phys,usrInput)
 
          % Use the debugflag set into the linearsolver
          obj.DEBUGflag = debugflag;
@@ -177,13 +177,26 @@ classdef preconditioner < handle
          obj.params.prolong.np = min(obj.params.prolong.np,obj.maxThreads);
          obj.params.filter.np = min(obj.params.filter.np,obj.maxThreads);
 
+         if isempty(varargin)
+           return
+         end
+
          % Get user prescribed values
+
+         inputStr = [];
+
          if obj.phys == 0
-            obj.params = obj.getUserInput(obj.params,xml_flux);
+           if isfield(usrInput,"Flow")
+             inputStr = usrInput.Flow;
+           end
          else
-            obj.params = obj.getUserInput(obj.params,xml_mech);
+           if isfield(usrInput,"Mechanics")
+             inputStr = usrInput.Mechanics;
+           end
          end
          
+         obj.params = obj.getUserInput(obj.params,inputStr);
+
       end
 
       % Function to get the user input parameters for the preconditioner

@@ -155,14 +155,24 @@ classdef NonLinearImplicit < SolutionScheme
   methods (Access = protected)
 
 
-    function setLinearSolver(obj)
-      % Pass the possible manual input from the user
-      start_dir = pwd;
-      chronos_mech_xml = fullfile(start_dir,'linsolver_mech.xml');
-      chronos_flow_xml = fullfile(start_dir,'linsolver_flow.xml');
+    function setLinearSolver(obj,varargin)
 
-      obj.linsolver = linearSolver(obj,chronos_mech_xml,chronos_flow_xml);
-   end
+      if isempty(varargin)
+        str = [];
+      else
+        fname = varargin{1};
+        str = readstruct(fname,AttributeSuffix="");
+        if isfield(str,"LinearSolver")
+          str = str.LinearSolver;
+        else
+          str = [];
+        end
+      end
+
+      obj.linsolver = linearSolver(obj,str);
+
+
+    end
 
 
     function out = computeRhsNorm(obj)

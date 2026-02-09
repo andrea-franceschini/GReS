@@ -34,11 +34,6 @@ classdef (Abstract) SolutionScheme < handle
 
   end
 
-  methods (Abstract,Access=protected)
-    % every solution scheme must initialize a specialized linear solver
-    setLinearSolver(obj)
-  end
-
 
   methods (Access = public)
     function obj = SolutionScheme(varargin)
@@ -152,6 +147,13 @@ classdef (Abstract) SolutionScheme < handle
       obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration || obj.nInterf == 0;
 
     end
+
+    function setLinearSolver(obj,varargin)
+
+      obj.linsolver = linearSolver(obj,varargin{:});
+      
+    end
+
 
 
     function manageNextTimeStep(obj,flConv)

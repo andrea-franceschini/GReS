@@ -41,7 +41,7 @@ classdef linearSolver < handle
    methods (Access = public)
 
       % Constructor Function
-      function obj = linearSolver(generalsolver,xml_mech,xml_flux)
+      function obj = linearSolver(generalsolver,usrInput)
 
          % Check if chronos is available
          ChronosDir = fullfile(gres_root,'..','aspamg_matlab','sources');
@@ -51,7 +51,7 @@ classdef linearSolver < handle
             obj.generalsolver = generalsolver;
 
             % Create the preconditioner object, check if the physics is supported
-            [obj.Prec,obj.ChronosFlag] = preconditioner.create(obj.DEBUGflag,obj.nsyTol,generalsolver,xml_mech,xml_flux);
+            [obj.Prec,obj.ChronosFlag] = preconditioner.create(obj.DEBUGflag,obj.nsyTol,generalsolver,usrInput);
 
             % Non supported physics for the preconditioner
             if ~obj.ChronosFlag
@@ -69,11 +69,7 @@ classdef linearSolver < handle
             obj.params.tol   = generalsolver.simparams.relTol;
 
             % Get default values
-            if obj.Prec.phys == 0
-              chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup_CFD.xml');
-            else
-              chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');
-            end
+            chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');
 
             % Read Defaults
             data = readstruct(chronos_xml_default,AttributeSuffix="");
