@@ -353,7 +353,7 @@ classdef gridForSedimentation < handle
       end
     end
 
-    function out = constovercolumn(obj,map)
+    function out = distMapOverDofs(obj,map)
       out = zeros(obj.ndofs,1);
       for i=1:obj.ncells(1)
         for j=1:obj.ncells(2)
