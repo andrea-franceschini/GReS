@@ -36,13 +36,12 @@ bound = Boundaries(fullfile(input_dir,'boundaries.xml'),grid);
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility
-printUtils = OutState(topology,fullfile(input_dir,'output.xml'));
+printUtils = OutState(fullfile(input_dir,'output.xml'));
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Grid',grid,...
                      'Materials',mat,...
-                     'Boundaries',bound,...
-                     'OutState',printUtils);
+                     'Boundaries',bound);
 
 domain.addPhysicsSolver(fullfile(input_dir,'solver.xml'));
 
@@ -56,14 +55,10 @@ domain.state.data.pressure = gamma_w*(wLev-z);
 % customize the solution scheme.
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = GeneralSolver(simParam,domain);
-% Solver = FCSolver(domain,'SaveRelError',true,'SaveBStepInf',true);
-
-% Solve the problem
-Solver.NonLinearLoop();
-
-% Finalize the print utility
-printUtils.finalize()
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils);
+solver.simulationLoop();
 
 %% --------------------- Post Processing the Results ----------------------
 if true
@@ -83,15 +78,15 @@ if true
   [~,ind] = sort(topology.cellCentroid(nodesP,3));
   nodesP = nodesP(ind);
 
-  nrep = length(printUtils.results);
-  nvars = length(printUtils.results(2).pressure);
+  nrep = length(printUtils.matFile);
+  nvars = length(printUtils.matFile(2).pressure);
   press = zeros(nvars,nrep);
   sw = zeros(nvars,nrep);
   t = zeros(1,nrep);
   for i=1:nrep
-    press(:,i) = printUtils.results(i).pressure;
-    sw(:,i) = printUtils.results(i).saturation;
-    t(i) = printUtils.results(i).time;
+    press(:,i) = printUtils.matFile(i).pressure;
+    sw(:,i) = printUtils.matFile(i).saturation;
+    t(i) = printUtils.matFile(i).time;
   end
 
   tind = 1:length(t);

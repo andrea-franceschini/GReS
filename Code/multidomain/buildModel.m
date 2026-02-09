@@ -46,10 +46,15 @@ end
 
 function domain = defineDomain(input)
 
-topology = Mesh();
+if isfield(input,"fileName")
+  % create domain linking input file
+  str = readstruct(input.fileName,AttributeSuffix="");
+  domain = defineDomain(str);
+  return
+end
+
 geom = input.Geometry;
-meshFile = getXMLData(geom,[],"fileName");
-topology.importMesh(meshFile);
+topology = Mesh.generateGrid(geom);
 
 if isfield(input,"Materials")
   mat = Materials(input);
@@ -85,18 +90,10 @@ else
   bound = [];
 end
 
-% output manager
-if isfield(input,"Output")
-  printUtils = OutState(grid.topology,input);
-else
-  printUtils = OutState(grid.topology);
-end
-
 
 domain = Discretizer('grid',grid,...
                      'materials',mat,...
-                     'boundaries',bound,...
-                     'outstate',printUtils);
+                     'boundaries',bound);
 
 domain.addPhysicsSolver(input.Solver);
 

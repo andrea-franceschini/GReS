@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Preprocess input for non-conforming multi-domain simulation -->
+
+<Problem>
+
+  <Geometry>
+    <StructuredMesh NX="20" NY="20" NZ="10"
+                    LX="20,100" LY="0,100" LZ="0,10"/>
+  </Geometry>
+
+  <Materials fileName = "Input/materials.xml" />
+
+      <BC name="x_fix" type="Dirichlet" entityType="SurfBC"
+          variable="displacements">
+        <BCentities surfaceTags="5,6" components="x"/>
+        <BCevent time="0" value="0"/>
+      </BC>
+
+      <BC name="pressureBC" type="Dirichlet" entityType="ElementBC"
+          variable="pressure">
+        <BCentities box="40,45,40,45,5,6"/>
+        <BCevent time="0" value="1e1"/>
+        <BCevent time="10" value="1e3"/>
+      </BC>
+  <BoundaryConditions fileName = "model04/boundaryConditions.xml" />
+
+
+  <Solver>
+    <BiotFullySaturated>
+      <Poromechanics/>
+      <SinglePhaseFlowFVTPFA targetRegions="1"/>
+    </BiotFullySaturated>
+  </Solver>
+
+</Problem>
+
+
+

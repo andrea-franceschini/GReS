@@ -48,11 +48,10 @@ bound = Boundaries(fullfile(scriptDir,input_dir,"boundaries.xml"),grid);
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility for the solution
-printUtils = OutState(topology,fullfile(scriptDir,input_dir,'output.xml'));
+printUtils = OutState(fullfile(scriptDir,input_dir,'output.xml'));
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Boundaries',bound,...
-                     'OutState',printUtils,...
                      'Materials',mat,...
                      'Grid',grid);
 
@@ -69,13 +68,10 @@ applyTerzaghiIC(domain.state,mat,topology,F);
 % customize the solution scheme. 
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = GeneralSolver(simParam,domain);
-
-% Solve the problem
-Solver.NonLinearLoop();
-
-% Finalize the print utility
-domain.outstate.finalize()
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils);
+solver.simulationLoop();
 
 % calling analytical solution script
 Terzaghi_analytical(topology, mat, abs(F),[15,30,60,90,120,180],output_dir)

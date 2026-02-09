@@ -27,15 +27,13 @@ classdef testShearPatch < matlab.unittest.TestCase
       faces = Faces(mesh);
       grid = struct('topology',mesh,'cells',elems,'faces',faces);
       mat = Materials(testCase.pathToFile);
-      printUtils = OutState(mesh,"writeVtk",0,"flagMatFile",0);
       bc = Boundaries(testCase.pathToFile,grid);
       domain = Discretizer('Boundaries',bc,...
-        'OutState',printUtils,...
-        'Materials',mat,...
-        'Grid',grid);
+                            'Materials',mat,...
+                            'Grid',grid);
       domain.addPhysicsSolver(testCase.pathToFile);
-      solver = GeneralSolver(simparams,domain);
-      solver.NonLinearLoop();
+      solver = NonLinearImplicit('simulationparameters',simparams,'domain',domain);
+      solver.simulationLoop();
       gresLog().setVerbosity(-1);
       verifyEqual(testCase,domain.state.data.stress(:,5),1.5*ones(8,1),"AbsTol",1e-9)
 

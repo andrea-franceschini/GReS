@@ -13,14 +13,18 @@ scriptDir = fileparts(scriptFullPath);
 
 
 %% BUILD MODEL
+fName = fullfile(input_dir,'flowNonConforming.xml');
 
-simparams = SimulationParameters(fullfile(input_dir,'flowNonConforming.xml'));
+simparams = SimulationParameters(fName);
+printUtils = OutState(fName);
 % Initialize the mortar utilities
-[domains,interfaces] = buildModel(fullfile(input_dir,'flowNonConforming.xml'));
+[domains,interfaces] = buildModel(fName);
 
 
 %% RUN MODEL  
 % A different solver is needed for models with non conforming domains
-solver = GeneralSolver(simparams,domains,interfaces);
-solver.NonLinearLoop();
-solver.finalizeOutput();
+solver = NonLinearImplicit('simulationparameters',simparams,...
+                           'domains',domains,...
+                           'interface',interfaces, ...
+                           'output',printUtils);
+solver.simulationLoop();

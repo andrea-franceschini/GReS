@@ -4,6 +4,7 @@ clc
 tWall = tic();      % start wall-clock timer
 tCPU  = cputime;    % start CPU timer
 
+v = gresLog().getVerbosity();
 gresLog().setVerbosity(-2);
 
 testFiles = {
@@ -29,3 +30,5 @@ if any([results.Failed])
 else
     disp("All tests ran successfully");
 end
+
+gresLog().setVerbosity(v);

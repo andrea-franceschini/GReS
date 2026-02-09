@@ -62,7 +62,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
       pOld = getStateOld(obj,obj.getField());
       pCurr = getState(obj,obj.getField());
-      obj.domain.outstate.results(tID).pressure = pCurr*fac+pOld*(1-fac);
+      obj.domain.outstate.matFile(tID).pressure = pCurr*fac+pOld*(1-fac);
     end
 
     function out = isLinear(obj)

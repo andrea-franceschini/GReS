@@ -24,7 +24,7 @@ else
       case "SurfBC"
         entsID = find(ismember(mesh.surfaceTag,surfTags));
       otherwise
-        error("Error for BC %s: XML field box is not valid for BC of type %s", bcName, entityType)
+        error("Error for BC %s: XML field surfaceTags is not valid for BC of type %s", bcName, entityType)
     end
   elseif isfield(input,"bcList")
     % direct entity assignment in the xml file
@@ -40,7 +40,7 @@ else
       case {"ElementBC","VolumeForce"}
         c = mesh.cellCentroid;
       otherwise
-          error("Error for BC %s: XML field surfaceTags is not valid for BC of type %s", bcName, entityType)
+          error("Error for BC %s: XML field box is not valid for BC of type %s", bcName, entityType)
     end
 
     entsID = all([ c(:,1) > Lx(1), c(:,1) < Lx(2),...
