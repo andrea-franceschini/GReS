@@ -177,25 +177,8 @@ classdef preconditioner < handle
          obj.params.prolong.np = min(obj.params.prolong.np,obj.maxThreads);
          obj.params.filter.np = min(obj.params.filter.np,obj.maxThreads);
 
-         if isempty(varargin)
-           return
-         end
-
          % Get user prescribed values
-
-         inputStr = [];
-
-         if obj.phys == 0
-           if isfield(usrInput,"Flow")
-             inputStr = usrInput.Flow;
-           end
-         else
-           if isfield(usrInput,"Mechanics")
-             inputStr = usrInput.Mechanics;
-           end
-         end
-         
-         obj.params = obj.getUserInput(obj.params,inputStr);
+         obj.params = obj.getUserInput(obj.params,usrInput);
 
       end
 

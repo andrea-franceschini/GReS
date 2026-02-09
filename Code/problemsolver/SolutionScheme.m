@@ -6,8 +6,6 @@ classdef (Abstract) SolutionScheme < handle
 
   properties (Access = protected)
     %
-    nDom                % number of domains in the model
-    nInterf             % number of interfaces in the model
     %
     tOld                % tOld: previous converged time instant
     t = 0               % simulation time
@@ -19,6 +17,8 @@ classdef (Abstract) SolutionScheme < handle
 
 
   properties (Access = public)
+    nDom                % number of domains in the model
+    nInterf             % number of interfaces in the model
     linsolver             % instance of linear solver object
     output                % object handling the output of the simulation
     simparams             % parameters of the simulations (shared)
@@ -45,12 +45,12 @@ classdef (Abstract) SolutionScheme < handle
 
     end
 
-    function simulationLoop(obj)
+    function simulationLoop(obj,varargin)
 
       % Initialize the time step increment
       obj.dt = obj.simparams.dtIni;
 
-      setLinearSolver(obj);
+      setLinearSolver(obj,varargin{:});
 
       while obj.t < obj.simparams.tMax
 

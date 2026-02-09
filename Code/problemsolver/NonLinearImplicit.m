@@ -155,22 +155,22 @@ classdef NonLinearImplicit < SolutionScheme
   methods (Access = protected)
 
 
+    % Sets the linear solver and checks for eventual user input parameters
     function setLinearSolver(obj,varargin)
 
       if isempty(varargin)
-        str = [];
+         str = [];
       else
-        fname = varargin{1};
-        str = readstruct(fname,AttributeSuffix="");
-        if isfield(str,"LinearSolver")
-          str = str.LinearSolver;
-        else
-          str = [];
-        end
+         fname = varargin{1};
+         str = readstruct(fname,AttributeSuffix="");
+         if isfield(str,'LinearSolver')
+            str = str.LinearSolver;
+         else
+            str = [];
+         end
       end
 
       obj.linsolver = linearSolver(obj,str);
-
 
     end
 
