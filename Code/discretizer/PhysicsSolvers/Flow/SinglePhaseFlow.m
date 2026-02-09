@@ -59,14 +59,17 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     end
 
     function writeMatFile(obj,fac,tID)
-
       pOld = getStateOld(obj,obj.getField());
       pCurr = getState(obj,obj.getField());
-      obj.domain.outstate.results(tID).pressure = pCurr*fac+pOld*(1-fac);
+      obj.domain.outstate.matFile(tID).pressure = pCurr*fac+pOld*(1-fac);
     end
 
     function out = isLinear(obj)
       out = true;
+    end
+
+    function out = isSymmetric(obj)
+      out = isLinear(obj);
     end
 
     function alpha = getRockCompressibility(obj,el)

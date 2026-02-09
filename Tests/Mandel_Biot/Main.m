@@ -44,11 +44,10 @@ bound = Boundaries(fullfile(scriptDir,input_dir,"boundaries.xml"),grid);
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility
-printUtils = OutState(topology,fullfile(scriptDir,input_dir,'output.xml'));
+printUtils = OutState(fullfile(scriptDir,input_dir,'output.xml'));
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Boundaries',bound,...
-                     'OutState',printUtils,...
                      'Materials',mat,...
                      'Grid',grid);
 
@@ -65,13 +64,10 @@ state = applyMandelIC(domain.state,mat,topology,F);
 % customize the solution scheme. 
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = GeneralSolver(simParam,domain);
-
-% Solve the problem
-Solver.NonLinearLoop();
-
-% Finalize the print utility
-printUtils.finalize()
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils);
+solver.simulationLoop();
 
 % calling analytical solution script
 Mandel_Analytical(topology, mat, abs(F),[0.05,0.25,1,2.5,5],output_dir)
@@ -106,8 +102,8 @@ if true
   nodesZ = nodesZ(ind);
 
   %Getting pressure and displacement solution for specified output times from MatFILE
-  press = [printUtils.results.pressure];
-  disp = [printUtils.results.displacements];
+  press = [printUtils.matFile.pressure];
+  disp = [printUtils.matFile.displacements];
   pressNum = press(elemP,1:end);
   dispXNum = disp(3*nodesX-2,1:end);
   dispZNum = disp(3*nodesZ,1:end);

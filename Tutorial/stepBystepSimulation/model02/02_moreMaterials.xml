@@ -78,8 +78,8 @@ in a nonConforming simulation.
 
   <Output
           printTimes   = "1,5,10"
-          outputFile   = "Output02/results"
-          matFileName  = "Output02/history"
+          outputFile   = "model02/Output02/results"
+          matFileName  = "model02/Output02/history"
           saveHistory  = "1"
           />
 

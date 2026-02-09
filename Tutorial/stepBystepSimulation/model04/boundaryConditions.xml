@@ -48,7 +48,7 @@ in a nonConforming simulation.
       >
 
     <BCentities
-                surfaceTags = "5,6"
+                surfaceTags = "6"
                 components = "x"
                 />
 

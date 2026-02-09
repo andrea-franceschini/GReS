@@ -12,10 +12,10 @@ simparams = SimulationParameters('constantSliding.xml');
 
 [domains,interfaces] = buildModel('constantSliding.xml');
 
-solver = GeneralSolver(simparams,domains,interfaces);
-
-solver.NonLinearLoop();
-solver.finalizeOutput();
+solver = NonLinearImplicit('simulationparameters',simparams,...
+                           'domains',domains,...
+                           'interface',interfaces);
+solver.simulationLoop();
 
 % get tangential gap
 gt = interfaces{1}.state.tangentialGap(1:2:end);

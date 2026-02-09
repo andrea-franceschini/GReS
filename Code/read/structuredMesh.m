@@ -42,27 +42,27 @@ topol = [n1(:),n2(:),n4(:),n3(:),n5(:),n6(:),n8(:),n7(:)];
 
 % bottom: tag 1
 n = nid(:,:,1);
-fb = FaceGrid(n,nnx);
+fb = FaceGrid(n);
 
 % top: tag 2
 n = nid(:,:,end);
-ft = FaceGrid(n,nnx);
+ft = FaceGrid(n);
 
 % south: tag 3
 n = nid(:,1,:);
-fs = FaceGrid(n,nnx);
+fs = FaceGrid(n);
 
 % north: tag 4
 n = nid(:,end,:);
-fn = FaceGrid(n,nnx);
+fn = FaceGrid(n);
 
 % west
 n = nid(1,:,:);
-fw = FaceGrid(n,nny);
+fw = FaceGrid(n);
 
 % east
 n = nid(end,:,:);
-fe = FaceGrid(n,nny);
+fe = FaceGrid(n);
 
 
 surf = [fb; ft; fs; fn; fw; fe];
@@ -97,12 +97,20 @@ mesh.nDim = 3;
 end
 
 
-function f = FaceGrid(nodes,n)
+function f = FaceGrid(nodes)
 
-f = [nodes(1:end-n-1)',...
-     nodes(2:end-n)',...
-     nodes(n+1:end-1)',...
-     nodes(n+2:end)'];
+sz = size(nodes);
+sz(sz == 1) = [];
+nodes = reshape(nodes, sz);
+
+n1 = nodes(1:end-1,1:end-1);
+n2 = nodes(2:end,1:end-1);
+n3 = nodes(1:end-1,2:end);
+n4 = nodes(2:end,2:end);
+
+
+
+f = [n1(:),n2(:),n3(:),n4(:)];
 
 f = f(:,[2 1 3 4]);
 end

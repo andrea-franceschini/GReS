@@ -37,14 +37,7 @@ facesR = Faces(meshR);
 gridR = struct('topology',meshR,'cells',elemsR,'faces',facesR);
 matR = Materials("materials.xml");
 
-% Create and set the print utility
 
-
-
-printUtilsL = OutState(meshL,"folderName",strcat("OUT/leftBlock"),"timeList",0:20,...
-                       "writeVtk",1,"flagMatFile",1,"matFileName",strcat("OUT/leftBlock"));
-printUtilsR = OutState(meshR,"folderName",strcat("OUT/rightBlock"),"timeList",0:20,...
-                       "writeVtk",1,"flagMatFile",1,"matFileName",strcat("OUT/rightBlock"));
 % Create an object of the "Boundaries" class 
 setBC(Y,meshL,meshR)
 
@@ -53,12 +46,10 @@ bcR = Boundaries("bcRight.xml",gridR);
 
 % Create object handling construction of Jacobian and rhs of the model
 domainL = Discretizer('Boundaries',bcL,...
-                     'OutState',printUtilsL,...
                      'Materials',matL,...
                      'Grid',gridL);
 
 domainR = Discretizer('Boundaries',bcR,...
-                     'OutState',printUtilsR,...
                      'Materials',matR,...
                      'Grid',gridR);
 
@@ -78,10 +69,14 @@ interfaces{1}.state.iniTraction(1:3:end) = tIni;
 interfaces{1}.stateOld.iniTraction(1:3:end) = tIni;
 interfaces{1}.stateOld.traction(1:3:end) = tIni;
 
+printUtils = OutState("folderName","StickSlipOpen","timeList",0:20,...
+  "writeVtk",1,"flagMatFile",1,"matFileName","StickSlipOpen");
 
-solv = GeneralSolver(simParam,domains,interfaces);
-solv.NonLinearLoop();
-solv.finalizeOutput();
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domains,...
+                           'interface',interfaces, ...
+                           'output',printUtils);
+solver.simulationLoop();
 
 
 
