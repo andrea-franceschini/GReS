@@ -135,16 +135,16 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
           % Get the material permeability
           permMat = obj.materials.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
           %             permMat = permMat/mu;
-          vtkId = obj.mesh.cellVTKType(elID);
+          vtkId = obj.mesh.cellVTKType(el);
           elem = getElement(obj.elements,vtkId);
-          [N,dJWeighed] = getDerBasisFAndDet(elem,elID,1);
+          [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
           fs = pagemtimes(N,'ctranspose',permMat(:,3),'none');
           fs = fs.*reshape(dJWeighed,1,1,[]);
           rhsLoc = sum(fs,3)*gamma;
           entsId = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
           rhsTmp(entsId) = rhsTmp(entsId) + rhsLoc;
         end
-        obj.rhsGrav = rhsTmp(obj.dofm.getActiveEnts(obj.fieldId));
+        obj.rhsGrav = rhsTmp(obj.dofm.getActiveEntities(obj.fieldId));
       end
       % remove inactive components of rhs vector
     end
