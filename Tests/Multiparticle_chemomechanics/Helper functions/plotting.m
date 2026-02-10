@@ -11,13 +11,17 @@ for i = 1:nNodes
 end
 u_abs = (ux.^2 + uy.^2 + uz.^2).^(0.5);
 
+if ~exist('Results', 'dir')
+    mkdir('Results');
+end
+
 % Post-processing - Plotting
 
 %% Figure 1 - Validate concentration profile with Fig.3 from [Zhang,2007]
 figure();
 hold on;
 tol = 1e-1;
-plot_idx = find(cx >= -tol & abs(cy) < tol & abs(cz) < tol); % Plotting along x-axis
+plot_idx = find(abs(cy) < tol & abs(cz) < tol); % Plotting along x-axis
 t_target = 1000; % target time in seconds
 t_target_d = t_target*params.D / params.Rp^2;
 [~, timestep_idx] = min(abs(output_times - t_target_d));
@@ -26,18 +30,10 @@ p_sorted = p(timestep_idx, plot_idx(sort_idx));
 plot(cx_sorted, params.c_max*p_sorted, '--', 'LineWidth', 3, ...
     'DisplayName', 'GReS model');
 
-load("Inputs\Validation plots\Zhang2007_5um_1000s_i2A_c.csv");
-x_plt = Zhang2007_5um_1000s_i2A_c(:, 1) / params.Rp;
-c_plt = Zhang2007_5um_1000s_i2A_c(:, 2);
-plot(x_plt, c_plt, 'LineWidth', 3, 'DisplayName', 'COMSOL model');
-
 xlabel('x-coordinate along the x-axis');
 ylabel('Li concentration c');
-legend('show', 'Location', 'best');
-xlim([0 1]);
-% exportgraphics(gcf, 'Validation plots/c_Zhang2007_validation.eps', 'Resolution', 300);
-% exportgraphics(gcf, 'Validation plots/c_Zhang2007_validation.pdf', 'Resolution', 300);
-% exportgraphics(gcf, 'Validation plots/c_Zhang2007_validation.png', 'Resolution', 300);
+xlim([-2 2]);
+% exportgraphics(gcf, 'Results/c_Zhang2007_validation.png', 'Resolution', 300);
 
 %% Figure 2 - Check displacements for the same timestep along the x-axis
 figure();
@@ -50,20 +46,12 @@ plot(cx_sorted, u_abs_sorted, '--', 'LineWidth', 3, 'DisplayName', ...
 %     plot(cx_sorted, u_abs_sorted(timestep, :));
 % end
 
-load("Inputs\Validation plots\Zhang2007_5um_1000s_i2A_u.csv");
-x_plt = Zhang2007_5um_1000s_i2A_u(:, 1) / params.Rp;
-u_plt = Zhang2007_5um_1000s_i2A_u(:, 2);
-plot(x_plt, u_plt, 'LineWidth', 3, 'DisplayName', 'COMSOL model');
-
 xlabel('x-coordinate along the x-axis');
 % ylabel('Nondimensional displacement magnitude, |u|');
 ylabel('Nondimensional radial displacement, u');
-legend('show', 'Location', 'best');
-xlim([0 1]);
+xlim([-2 2]);
 % ylim([0 0.1]);
-% exportgraphics(gcf, 'Validation plots/u_Zhang2007_validation.eps', 'Resolution', 300);
-% exportgraphics(gcf, 'Validation plots/u_Zhang2007_validation.pdf', 'Resolution', 300);
-% exportgraphics(gcf, 'Validation plots/u_Zhang2007_validation.png', 'Resolution', 300);
+% exportgraphics(gcf, 'Results/u_Zhang2007_validation.png', 'Resolution', 300);
 
 %% Figures 3 and 4 - Check stresses for the same timestep along the x-axis
 figure();
@@ -77,8 +65,8 @@ end
 xlabel('x-coordinate along the x-axis');
 ylabel('\sigma_{xx}');
 % legend('show', 'location', 'best');
-xlim([0 1]);
-% exportgraphics(gcf, 'Validation plots/GReS_sigmar.png', 'Resolution', 300);
+xlim([-2 2]);
+% exportgraphics(gcf, 'Results/GReS_sigmar.png', 'Resolution', 300);
 
 figure();
 hold on;
@@ -91,5 +79,48 @@ end
 xlabel('x-coordinate along the x-axis');
 ylabel('\sigma_{yy}');
 % legend('show', 'location', 'best');
-xlim([0 1]);
-% exportgraphics(gcf, 'Validation plots/GReS_sigmat.png', 'Resolution', 300);
+xlim([-2 2]);
+% exportgraphics(gcf, 'Results/GReS_sigmat.png', 'Resolution', 300);
+
+%% Comparing contact stresses with diffusion induced stresses
+[~, zero_idx] = min(abs(cx_sorted));
+
+% Radial stresses
+contact_sigma_r = sigma_xx_sorted(:, zero_idx);
+% Find maximum along each row
+sigma_xx_noZeroIdx = [sigma_xx_sorted(:, 1:zero_idx-1), ...
+    sigma_xx_sorted(:, zero_idx+1:end)];
+[max_dis_sigma_r, max_dis_sigma_r_idx] = max(abs(sigma_xx_noZeroIdx), ...
+    [], 2);
+figure();
+hold on;
+plot(output_times, max_dis_sigma_r, '--', 'LineWidth', 3, ...
+    'DisplayName', 'Maximum absolute DIS');
+plot(output_times, abs(contact_sigma_r), 'LineWidth', 3, 'DisplayName', ...
+    'Absolute contact stress');
+xlabel('Dimensionless time');
+ylabel('Maximum absolute radial stresses');
+legend('show', 'Location', 'best');
+% exportgraphics(gcf, 'Results/contactvsdis_sigmar.png', 'Resolution', 300);
+
+% Tangential stresses
+contact_sigma_t = sigma_yy_sorted(:, zero_idx);
+% Find maximum along each row
+sigma_yy_noZeroIdx = [sigma_yy_sorted(:, 1:zero_idx-1), ...
+    sigma_yy_sorted(:, zero_idx+1:end)];
+[max_dis_sigma_t, max_dis_sigma_t_idx] = max(sigma_yy_noZeroIdx, ...
+    [], 2);
+[max_compressive_dis_sigma_t, max_compressive_dis_sigma_t_idx] = ...
+    min(sigma_yy_noZeroIdx, [], 2);
+figure();
+hold on;
+plot(output_times, max_dis_sigma_t, 'LineWidth', 3, 'DisplayName', ...
+    'Maximum tensile DIS');
+plot(output_times, abs(sigma_yy_sorted(:,end)), '--', 'LineWidth', 3, ...
+    'DisplayName', 'Maximum compressive DIS');
+plot(output_times, abs(contact_sigma_t), 'LineWidth', 3, 'DisplayName', ...
+    'Compressive stress at the contact point');
+xlabel('Dimensionless time');
+ylabel('Quantifying compressive contact stresses');
+legend('show', 'Location', 'best');
+% exportgraphics(gcf, 'Results/contactvsdis_sigmat.png', 'Resolution', 300);

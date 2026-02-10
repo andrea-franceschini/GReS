@@ -5,11 +5,11 @@ SetFactory("OpenCASCADE");
 
 // mesh sizing
 R  = 1.0;
-lc = 0.2;   // increase for coarser, decrease for finer mesh
+lc = 0.1;   // increase for coarser, decrease for finer mesh
 
 // define the two spheres
 Sphere(1) = {-1, 0, 0, R};    // left sphere centered at (-1, 0, 0)
-Sphere(2) = {1, 0, 0, R};     // { 1.000001, 0, 0, R};    // right sphere centered at (1, 0, 0)
+Sphere(2) = { 1.000001, 0, 0, R};    // right sphere centered at (1, 0, 0)
 
 // make sure geometry is explicit (keeps separate volumes even if tangent)
 BooleanFragments{ Volume{1}; Delete; }{ Volume{2}; Delete; }
@@ -49,4 +49,4 @@ Mesh.CharacteristicLengthMin = lc/3;
 
 // generate and save directly to VTK
 Mesh 3;
-Save "two_spheres.vtk";
+Save "two_spheres_nocontact.vtk";

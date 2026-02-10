@@ -7,7 +7,7 @@
     <!-- Both spheres in contact defined by a common domain in the mesh -->
     <Domain>
         <Geometry
-            fileName = "Inputs/TwoSpheres/two_spheres.vtk"
+            fileName = "Inputs/TwoSpheres/two_spheres_nocontact.vtk"
         />
         <Gauss nGP = "1" />
         <Materials fileName = "Inputs/TwoSpheres/materials.xml" />
@@ -40,6 +40,11 @@
                 nGP = "4"
                 nInt = "5"
                 multiplierType = "dual"
+            />
+
+            <Output
+                outputFile = "Outputs/Interface"
+                printTimes = "0.01,0.02"
             />
         </MeshTying>
     </Interface>

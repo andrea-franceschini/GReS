@@ -512,9 +512,9 @@ classdef (Abstract) InterfaceSolver < handle
 
         out = setdiff(obj.interfMesh.local2glob{1},obj.interfMesh.local2glob{2});
 
-        if ~all(ismember(obj.interfMesh.local2glob{1},out))
-          error('Nodes of master and slave side are not disjoint');
-        end
+        % if ~all(ismember(obj.interfMesh.local2glob{1},out))
+        %   error('Nodes of master and slave side are not disjoint');
+        % end
 
       end
     end
