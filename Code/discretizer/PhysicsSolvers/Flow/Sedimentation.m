@@ -211,16 +211,16 @@ classdef Sedimentation < PhysicsSolver
       state.data.pressure = state.data.pressure + solution;
 
       % Update the Stress and Deformation
-      % % % % % map = reshape(dt*state.data.tstressvar,obj.grid.ncells(1:2));
-      % % % % % sNew = obj.getStateOld('stress') - state.data.pressure ...
-      % % % % %   + obj.grid.distMapOverDofs(map);
-      % % % % % state.data.stress = sNew;
-      % % % % % sOld = obj.getStateOld().data.stress;
-      % % % % % if obj.nonElasticFlag
-      % % % % %   obj.updateStateNonElastic(sNew,sOld);
-      % % % % % else
-      % % % % %   obj.updateStateElastic(sNew,sOld);
-      % % % % % end
+      map = reshape(dt*state.data.tstressvar,obj.grid.ncells(1:2));
+      sNew = obj.getStateOld('stress') - state.data.pressure ...
+        + obj.grid.distMapOverDofs(map);
+      state.data.stress = sNew;
+      sOld = obj.getStateOld().data.stress;
+      if obj.nonElasticFlag
+        obj.updateStateNonElastic(sNew,sOld);
+      else
+        obj.updateStateElastic(sNew,sOld);
+      end
     end
 
     function [cellData,pointData] = writeVTK(obj,fac,t)
@@ -326,12 +326,6 @@ classdef Sedimentation < PhysicsSolver
       dofs = obj.grid.getDofsFromIJK([idI,idJ,idK]);
       rhs(dofs) = rhs(dofs) + ...
         obj.computeOedometricCompressibility(dofs).*obj.getState('tstressvar');
-
-      % % % %adding gravity rhs contribute
-      % % % gamma = obj.materials.getFluid().getSpecificWeight();
-      % % % if gamma > 0
-      % % %   rhs = rhs + computeGravTerm(obj,lw);
-      % % % end
     end
 
     function computeStiffMat(obj)
@@ -479,7 +473,8 @@ classdef Sedimentation < PhysicsSolver
       obj.getState().data.maxDofUnchanged = 0;
       obj.getState().data.(obj.getField()) = zeros(ndofs,1);
       obj.getState().data.cellComp = zeros(ndofs,1);
-      obj.getState().data.stress = zeros(ndofs,1);
+      % obj.getState().data.stress = zeros(ndofs,1);
+      obj.getState().data.stress = ones(ndofs,1);
       obj.getState().data.sedmrate = zeros(ndofs,1);
       obj.getState().data.tstressvar = [];
       if obj.nonElasticFlag
@@ -673,7 +668,8 @@ classdef Sedimentation < PhysicsSolver
 
       % Update the cell displacement.
       obj.domain.state.data.cellComp(end+1:end+newcells) = 0.;
-      obj.domain.state.data.stress(end+1:end+newcells) = 0.;
+      % obj.domain.state.data.stress(end+1:end+newcells) = 0.;
+      obj.domain.state.data.stress(end+1:end+newcells) = 1.;
       if obj.nonElasticFlag
         obj.domain.state.data.voidrate(end+1:end+newcells) = voidI;
         obj.domain.state.data.prestress(end+1:end+newcells) = obj.getCellsProp('preConStress',dofs);
@@ -707,12 +703,12 @@ classdef Sedimentation < PhysicsSolver
 
     function updateStateElastic(obj,sNew,sOld)
       % Update the Mesh Deformation
-      % obj.updateDeformation;
-      % L=lo- obj.getStateOld().data.cellComp;   <------HERE 
+      L = obj.grid.getCellHeight();
+      L = L(:)-obj.getStateOld().data.cellComp;
       elasticPerCell = obj.getCellsProp('youngModulus');
       poissonPerCell = obj.getCellsProp('poissonRatio');
       alpha = (1-2*poissonPerCell).*(1+poissonPerCell)./((1-poissonPerCell).*elasticPerCell);
-      obj.getState().data.cellComp=obj.getStateOld().data.cellComp + alpha.*L.*(sNew-sOld);
+      obj.getState().data.cellComp=obj.getState().data.cellComp + alpha.*L.*(sNew-sOld);
     end
 
     function updateStateNonElastic(obj,sNew,sOld)
@@ -724,16 +720,12 @@ classdef Sedimentation < PhysicsSolver
       obj.getState().data.voidrate = void;
 
       % Update the Mesh Deformation
-      % L=lo- obj.getStateOld().data.cellComp;   <------HERE
-      % map = sNew == 0;
-      % sNew(map)=1;
-      % oedo = (1/log(10))*(Cc./((1+void).*sNew));
-      % obj.getState().data.cellComp=obj.getStateOld().data.cellComp + oedo.*L.*(sNew-sOld);
-
-      % elasticPerCell = obj.getCellsProp('youngModulus');
-      % poissonPerCell = obj.getCellsProp('poissonRatio');
-      % alpha = (1-2*poissonPerCell).*(1+poissonPerCell)./((1-poissonPerCell).*elasticPerCell);
-      % obj.getState().data.cellComp=obj.getStateOld().data.cellComp + alpha.*L.*(sNew-sOld);
+      L=obj.grid.getCellHeight();
+      L=L(:)-obj.getStateOld().data.cellComp;
+      map = sNew == 0;
+      sNew(map)=1;
+      oedo = (1/log(10))*(Cc./((1+void).*sNew));
+      obj.getState().data.cellComp=obj.getStateOld().data.cellComp + oedo.*L.*(sNew-sOld);
     end
 
 
@@ -757,7 +749,6 @@ classdef Sedimentation < PhysicsSolver
       dl = obj.getState().data.cellComp;
       for i=1:2
         tmpT(:,i) = tmpT(:,i)./(dims(:,3)-dl);
-        % tmpT(:,i) = tmpT(:,i)./dims(:,3);   % <--- without cell height update
       end
 
       idx = sub2ind(size(tmpT), obj.facesNeigh(:,1), obj.facesNeighDir);
@@ -767,35 +758,18 @@ classdef Sedimentation < PhysicsSolver
       transm = 1./(Tii+Tik);
     end
 
-    function gTerm = computeGravTerm(obj,lw)
-      % COMPUTEGRAVTERM Computes gravity contribution to RHS.
-
-      % Computing the permeability
-      dofs = obj.grid.getActiveDofs;
-      ijk = obj.grid.getIJKfromCellID(dofs);
-      zcells = obj.grid.coordZ(1:end-1)+diff(obj.grid.coordZ)/2.;
-      % zcells = zcells(ijk(:,3));
-      zcells = zcells(ijk(:,3))-obj.domain.state.data.cellComp; % update the z height
-      zneiA = zcells(obj.facesNeigh(:,1));
-      zneiB = zcells(obj.facesNeigh(:,2));
-
-      gamma = obj.materials.getFluid().getSpecificWeight();
-      tmpVec = gamma*lw.*obj.computeTrans.*(zneiA-zneiB);
-      gTerm = accumarray(obj.facesNeigh(:), ...
-        [tmpVec; -tmpVec],[obj.grid.ndofs,1]);
-    end
-
     function oedoComp = computeOedometricCompressibility(obj,dofs)
       if ~exist("dofs","var")
         dofs = obj.grid.getActiveDofs;
       end
+
+      sNew= obj.getState().data.stress(dofs);
       if obj.nonElasticFlag
         % Non elastic formulation
         Cc = obj.getCellsProp('compressIdx',dofs);
-        void = obj.getState().data.voidrate(dofs);
-        sNew= obj.getState().data.stress(dofs);
-        map = sNew == 0;
-        sNew(map)=1;
+        void = obj.getState().data.voidrate(dofs);        
+        % map = sNew == 0;
+        % sNew(map)=1;
         oedoComp = (1/log(10))*(Cc./((1+void).*sNew));
       else
         % Elastic formulation
@@ -804,7 +778,6 @@ classdef Sedimentation < PhysicsSolver
         poissonPerCell = obj.getCellsProp('poissonRatio');
         poissonPerCell = poissonPerCell(dofs);
         alpha = (1-2*poissonPerCell).*(1+poissonPerCell)./((1-poissonPerCell).*elasticPerCell);
-        sNew= obj.getState().data.stress(dofs);
         oedoComp=alpha./(1-alpha.*sNew);
       end      
     end
@@ -906,7 +879,6 @@ classdef Sedimentation < PhysicsSolver
       end
 
     end
-
 
   end
 

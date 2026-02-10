@@ -30,13 +30,12 @@ bound = Boundaries(fullfile(input_dir,bcs(2)),grid);
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility for the solution
-printUtils = OutState(topology,fullfile(input_dir,'output.xml'));
+printUtils = OutState(fullfile(input_dir,'output.xml'));
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Grid',grid,...
                      'Materials',mat,...
-                     'Boundaries',bound,...
-                     'OutState',printUtils);
+                     'Boundaries',bound);
 
 switch typeFlow
   case "Saturated"
@@ -54,15 +53,12 @@ domain.state.data.pressure(:) = 1.e5;
 % customize the solution scheme.
 % Here, a built-in fully implict solution scheme is adopted with class
 % FCSolver. This could be simply be replaced by a user defined function
-Solver = FCSolver(simParam,domain);
-% Solver = FCSolver(domain,'SaveRelError',true,'SaveBStepInf',true);
 
 % Solve the problem
-[simState] = Solver.NonLinearLoop();
-
-% Finalize the print utility
-printUtils.finalize()
-
+solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils);
+solver.simulationLoop();
 
 
 

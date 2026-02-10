@@ -364,6 +364,15 @@ classdef gridForSedimentation < handle
       end
     end
 
+    function dh = getCellHeight(obj)
+      map = obj.dof ~= 0;
+      pos = find(map);
+      [~,id] = sort(obj.dof(map));
+      [~,~,idK(id)]=ind2sub(obj.ncells,pos);
+      segmZ = diff(obj.coordZ);
+      dh=segmZ(idK);
+    end
+    
   end
 
   methods (Access = private)

@@ -14,6 +14,12 @@
         specificWeight = "2.1e6"
         permeability = "1.0182e-6, 1.0182e-6, 1.0182e-6"
     />
+    <SedimentMaterial
+        voidRate = "1.e0"
+        preStress = "1.e3"
+        compressibilityIndex = "0.2"
+        reCompressibilityIndex = "0.02"
+    />
 
     
 
@@ -35,11 +41,6 @@ compressibility = "4.6e-10"
 
 <!---
 
-<SedimentMaterial
-        voidRate = "1.e0"
-        preStress = "1.e3"
-        compressibilityIndex = "0.2"
-        reCompressibilityIndex = "0.02"
-    />
+
 
 -->

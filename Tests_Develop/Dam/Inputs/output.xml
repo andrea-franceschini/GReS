@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <Output
-    outputFile = "Results/Dam"
-    matFileName = "Results/Dam"
+    outputFile = "Result/Dam"
+    matFileName = "Result/Dam"
     saveHistory = "1"
     printTimes = "10.,20.,30.,40.,50.,60.,300.,600.,900.,950,1000,1050,
                   1100,1150,1200.,1800.,2400.,3000.,3600.,10800.,21600.,
