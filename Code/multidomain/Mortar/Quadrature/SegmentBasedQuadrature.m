@@ -152,7 +152,7 @@ classdef SegmentBasedQuadrature < MortarQuadrature
           coordS3D =  obj.elems(2).getSubElementCoords(elSlave,iS);  
         end
 
-        coordS = projectNodes(obj,P0,nP,coordS3D);
+        coordS = pointToSurfaceProjection(P0,nP,coordS3D);
 
         for iM = 1:ns1
           if ns1==1
@@ -161,32 +161,21 @@ classdef SegmentBasedQuadrature < MortarQuadrature
             coordM3D = obj.elems(1).getSubElementCoords(elMaster,iM);
           end
 
-          coordM = projectNodes(obj,P0,nP,coordM3D);
+          coordM = pointToSurfaceProjection(P0,nP,coordM3D);
 
-          % compute 2D coordinates of projected nodes on the aux. plane
-          % obtain intersection of polygon
-          [clipX,clipY] = polyclip(coordS(:,1),coordS(:,2),coordM(:,1),coordM(:,2),1);
-          if numel(clipX)==0
-            % no intersection
+          [coordClip,topolClip,isClipValid] = SegmentBasedQuadrature.segmentation2(coordS,coordM);
+          %[coordClip,topolClip,isClipValid] = SegmentBasedQuadrature.segmentation2(coordS,coordM);
+          
+
+          if ~isClipValid
             continue
           end
-          assert(numel(clipX)==1,['Non unique clip polygon for master/slave pair' ...
-            ' %i/%i \n'],elMaster,elSlave)
 
 
-          % perform delaunay triangulation on clip polygon
-          % assumption: only one clip polygon results from intersection
-          coordClip = [clipX{:} clipY{:}];
-
-          if ~SegmentBasedQuadrature.isClipValid(coordClip)
-            % skip if the polygon is degenerate or has very small area
-            continue
-          end
-          topolClip = delaunay(coordClip(:,1),coordClip(:,2));
           nTriLoc = size(topolClip,1);
 
           % project gauss points of each triangular cell into slave and
-          % master susegments
+          % master subsegments
           xiSlaveLoc = projectBack(obj,elemS,topolClip,coordClip,coordS);
           xiMasterLoc = projectBack(obj,elemM,topolClip,coordClip,coordM);
 
@@ -260,30 +249,6 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       end
     end
 
-    function x = projectNodes(obj,P,n,coord)
-      % Project nodes of triangle pair into auxiliary plane
-      % get 2D direction of plane
-      % Choose arbitrary vector not parallel to n
-      if abs(n(1)) < 0.9
-        temp = [1; 0; 0];
-      else
-        temp = [0; 1; 0];
-      end
-      % First direction in the plane
-      d1 = cross(n, temp);
-      d1 = d1 / norm(d1);
-      % Second direction in the plane
-      d2 = cross(n, d1);
-
-      c = coord;
-      cn = (c - P)*n;
-      nN = size(c,1);
-      projC = c - repmat(n',nN,1).*cn;
-      % project in 2D
-      x = (projC - P)*[d1 d2];
-
-    end
-
 
     function dJw = getIntegrationWeights(obj,kPair)
 
@@ -317,6 +282,45 @@ classdef SegmentBasedQuadrature < MortarQuadrature
         isValid = false;
       end
 
+    end
+
+    function [polyClip,topolClip,isClipValid] = segmentation1(poly1,poly2)
+      coordS = orderPointsCCW2D(poly1);
+      coordM = orderPointsCCW2D(poly2);
+      topolClip = [];
+      [polyClip,isClipValid] = mxPolygonClip(coordS,coordM);
+      if ~isClipValid || isempty(polyClip)
+        return
+      end
+      %fan triangulation
+      nV = size(polyClip,1);
+      isClipValid = true;
+      topolClip = [ ones(nV-2,1), (2:nV-1)', (3:nV)' ];
+    end
+
+    function [polyClip,topolClip,isClipValid] = segmentation2(poly1,poly2)
+      [clipX,clipY] = polyclip(poly1(:,1),poly1(:,2),poly2(:,1),poly2(:,2),1);
+      polyClip = [clipX{:} clipY{:}];
+      isClipValid = false;
+      topolClip = [];
+
+      if numel(clipX)==0
+        % no intersection
+        return
+      end
+
+      assert(isscalar(clipX),'Non unique clip polygon for master/slave pair')
+
+      % perform delaunay triangulation on clip polygon
+      % assumption: only one clip polygon results from intersection
+
+      if ~SegmentBasedQuadrature.isClipValid(polyClip)
+        % skip if the polygon is degenerate or has very small area
+        return
+      end
+
+      topolClip = delaunay(polyClip(:,1),polyClip(:,2));
+      isClipValid = true;
     end
 
   end

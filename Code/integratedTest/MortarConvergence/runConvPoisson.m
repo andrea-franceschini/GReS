@@ -26,7 +26,7 @@ fileStruct = readstruct(fileName,AttributeSuffix="");
 %% INPUT
 
 % number of refinement
-nref = 2;
+nref = 3;
 [h,L2,H1] = deal(zeros(nref,1));
 
 % set mortar integration info

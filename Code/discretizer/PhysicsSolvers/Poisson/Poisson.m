@@ -149,7 +149,7 @@ classdef Poisson < PhysicsSolver
 
     end
 
-    function [cellData,pointData] = writeVTK(obj,fac)
+    function [cellData,pointData] = writeVTK(obj,fac,varargin)
 
       sOld = getStateOld(obj);
       sNew = getState(obj);
@@ -160,13 +160,12 @@ classdef Poisson < PhysicsSolver
 
     end
 
-    function writeMatFile(obj,t)
+    function writeMatFile(obj,fac,tID)
 
       uOld = getStateOld(obj,obj.getField());
       uCurr = getState(obj,obj.getField());
-      fac = (t - getStateOld(obj).t)/(getState(obj).t - getStateOld(obj).t);
 
-      obj.outstate.matFile(tID+1).poissonVar = uCurr*fac+uOld*(1-fac);
+      obj.domain.outstate.matFile(tID).(obj.getField()) = uCurr*fac+uOld*(1-fac);
     
     end
 

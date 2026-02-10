@@ -137,7 +137,7 @@ classdef InterfaceMesh < handle
         sz = size(n,1);
         R = zeros(sz(1));
         for i = 1:3:sz(1)
-          R(i:i+2,i:i+2) = obj.computeRot(n(i:i+2));
+          R(i:i+2,i:i+2) = mxComputeRotationMat(n(i:i+2));
         end
       end
 
@@ -188,7 +188,7 @@ classdef InterfaceMesh < handle
 
       for i = 1:nS
         n = obj.normals(i,:);
-        R = obj.computeRot(n);
+        R = mxComputeRotationMat(n);
         obj.rotationMat(i,:) = R(:);
       end
     end
@@ -379,36 +379,9 @@ classdef InterfaceMesh < handle
 
     function R = computeRot(n)
 
-      % compute rotation matrix associated with an input normal
-      n = reshape(n,1,[]);
-      n = n / norm(n);   % normalize input normal
+      % call to mex function
+      R = mxComputeRotationMat(n);
 
-      % Pick a vector not parallel to n (to start Gram–Schmidt)
-      if abs(n(1)) < 0.9
-        tmp = [1,0,0];
-      else
-        tmp = [0,1,0];
-      end
-
-      % First tangent: orthogonalize tmp against n
-      m1 = tmp - dot(tmp,n)*n;
-      m1 = m1 / norm(m1);
-
-      % Second tangent: orthogonal to both
-      m2 = cross(n,m1);
-      m2 = m2 / norm(m2);
-
-      % Assemble rotation matrix
-      R = [n', m1', m2'];
-
-      % Check orientation: enforce det=+1 (right-handed)
-      if det(R) < 0
-        m1 = -m1;
-        R = [n', m1', m2'];
-      end
-
-      assert(abs(det(R)-1.0) < 1e-12, ...
-        'Rotation matrix not orthogonal to machine precision');
     end
 
   end
