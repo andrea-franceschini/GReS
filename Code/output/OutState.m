@@ -258,6 +258,8 @@ classdef OutState < handle & matlab.mixin.Copyable
       % Merge output variable coming from a field to the global output
       % structure
       % Concatenate the two structure arrays
+      strA = reshape(strA,[],1);
+      strB = reshape(strB,[],1);
 
       if isempty(strA)
         mergeStruct = strB;
