@@ -369,6 +369,8 @@ classdef Discretizer < handle
     function out = writeVTK(obj,fac,time)
       % write results to VTKoutput
 
+      obj.vtmBlock = obj.outstate.vtkFile.createElement('Block');
+
       cellData3D = struct('name', [], 'data', []);
       pointData3D = struct('name', [], 'data', []);
 

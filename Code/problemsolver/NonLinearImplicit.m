@@ -4,7 +4,7 @@ classdef NonLinearImplicit < SolutionScheme
 
   % The time loop is implemented in the base class SolutionScheme
 
-  properties (Access = protected)
+  properties (SetAccess = protected,GetAccess=public)
     iterNL = 0          % nonlinear iteration number
     iterConfig = 0      % configuration iteration number
     targetVariables     % variables currently solved for
