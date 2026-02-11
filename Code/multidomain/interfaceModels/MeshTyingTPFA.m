@@ -1,7 +1,9 @@
 classdef MeshTyingTPFA < InterfaceSolver
 
   % Finite volume mesh tying between non conforming interfaces
-  
+
+  % Now only for SinglePhaseFlow without gravity
+
   properties
     neigh                     % neighborship map between non-conforming cells [master,slave]
     faceArea                  % area of the intersection polygons
@@ -24,12 +26,12 @@ classdef MeshTyingTPFA < InterfaceSolver
     function registerInterface(obj,input)
 
       % check validity of the model
-      validateInterface(obj)
+      validateInterface(obj);
 
       % number of interface variables
       obj.nMult = length(obj.faceArea);
 
-      obj.state.interfacePressures = zeros(obj.nMult,1);
+      obj.state.interfacePressure = zeros(obj.nMult,1);
 
       obj.stateOld = obj.state;
 
@@ -38,7 +40,7 @@ classdef MeshTyingTPFA < InterfaceSolver
 
     function updateState(obj,du)
 
-      obj.state.multipliers = obj.state.multipliers + du(1:obj.nMult);
+      obj.state.interfacePressure = obj.state.interfacePressure + du(1:obj.nMult);
 
     end
 
@@ -46,7 +48,18 @@ classdef MeshTyingTPFA < InterfaceSolver
     function assembleConstraint(obj,varargin)
 
       % set up half face transmissibilities and compute rhs fluxes
-      computeHalfTrans(obj);
+      if isempty(obj.halfTrans)
+        computeHalfTrans(obj);
+      end
+
+      % we are assuming SINGLEPHASEFLOW for now
+      % consider replacing with a 
+      % flowSolver{side}.computeMobility() method valid for
+      % generic flow model
+      % mob is an array with size nF x 2
+      mob = zeros(2,1);
+      mob(1) = 1/obj.domains(1).materials.getFluid().getDynViscosity();
+      mob(2) = 1/obj.domains(2).materials.getFluid().getDynViscosity();
 
       % reset the jacobian blocks
       obj.setJmu(MortarSide.slave, []);
@@ -54,8 +67,8 @@ classdef MeshTyingTPFA < InterfaceSolver
       obj.setJum(MortarSide.slave, []);
       obj.setJum(MortarSide.master, []);
 
-      assembleMatrices(obj); 
-      [rhsMaster,rhsSlave,rhsInterf] = computeRhs(obj);
+      assembleMatrices(obj,mob); 
+      [rhsMaster,rhsSlave,rhsInterf] = computeRhs(obj,mob);
 
       addRhs(obj,MortarSide.master,rhsMaster);
       addRhs(obj,MortarSide.slave,rhsSlave);
@@ -64,12 +77,17 @@ classdef MeshTyingTPFA < InterfaceSolver
     end
 
 
-    function assembleMatrices(obj)
+    function assembleMatrices(obj,mob)
 
       % assemble half transmissibilities
+
+      Tff = sparse(obj.nMult,obj.nMult);
+
       for side = [MortarSide.master,MortarSide.slave]
 
         s = getSide(side);
+
+        hT = mob(s).*obj.halfTrans(:,s);
 
         dofm = obj.getDoFManager(side);
 
@@ -77,58 +95,62 @@ classdef MeshTyingTPFA < InterfaceSolver
 
         nDoF = dofm.getNumbDoF(obj.coupledVariables);
 
+        neighs = getDoFManager(obj,side).getLocalDoF(idPressure,obj.neigh(:,s));
 
-        Tfu = sparse((1:obj.nMult)',obj.neigh(:,s),obj.halfTrans(:,s),obj.nMult,nDoF);
-        Tuu = sparse(obj.neigh(:,s),obj.neigh(:,s),obj.halfTrans(:,s),nDoF,nDoF);
+        Tfu = sparse((1:obj.nMult)',neighs,hT,obj.nMult,nDoF);
+        Tuu = sparse(neighs,neighs,hT,nDoF,nDoF);
 
         addJmu(obj,side,-Tfu);
         addJum(obj,side,-Tfu');
-        obj.flowModels{s}.J{idPressure,idPressure} = ...
-          obj.flowModels{s}.J{idPressure,idPressure} + Tuu;
+        obj.flowModels{s}.domain.J{idPressure,idPressure} = ...
+          obj.flowModels{s}.domain.J{idPressure,idPressure} + Tuu;
+
+        Tff = Tff + spdiags(hT,0,obj.nMult,obj.nMult);
         
       end
 
-      obj.Jconstraint = spdiags(sum(obj.halfTrans,2),0,obj.nMult,obj.nMult);
+      obj.Jconstraint = Tff;
 
     end
 
-    function [rhsM,rhsS,rhsI] = computeRhs(obj)
+    function [rhsM,rhsS,rhsI] = computeRhs(obj,mob)
 
-      pM = obj.domains(1).state.data.(obj.coupledVariables);
-      pS = obj.domains(2).state.data.(obj.coupledVariables);
+
+      hTM = mob(1).*obj.halfTrans(:,1);
+      hTS = mob(2).*obj.halfTrans(:,2);
+      pM = obj.domains(1).state.data.(obj.coupledVariables)(obj.neigh(:,1));
+      pS = obj.domains(2).state.data.(obj.coupledVariables)(obj.neigh(:,2));
       pI = obj.state.interfacePressure;
       nDoFM = getDoFManager(obj,MortarSide.master).getNumbDoF(obj.coupledVariables);
       nDoFS = getDoFManager(obj,MortarSide.slave).getNumbDoF(obj.coupledVariables);
-      rhsM = zeros(nDoFM,1);
-      rhsS = zeros(nDoFS,1);
-      rhsM(obj.neigh(:,1)) = -obj.halfTrans(:,1).*pI;
-      rhsS(obj.neigh(:,1)) = -obj.halfTrans(:,2).*pI;
-      rhsI = - obj.halfTrans(:,1).*pM(obj.neigh(:,1))  ...
-             - obj.halfTrans(:,2).*pS(obj.neigh(:,2)) ...
-             + sum(obj.halfTrans,2).*pI;
+      rhsM = accumarray(obj.neigh(:,1),hTM.*(pM-pI),[nDoFM 1]);
+      rhsS = accumarray(obj.neigh(:,2),hTS.*(pS-pI),[nDoFS 1]);
+      rhsI = hTM.*(pI-pM) + hTS.*(pI-pS); 
 
     end
 
 
     function [surfaceStr,pointStr] = writeVTK(obj,fac,varargin)
 
-      pCurr = obj.state.faacePressure;
-      pOld = obj.stateOld.facePressure;
+      pCurr = obj.state.interfacePressure;
+      pOld = obj.stateOld.interfacePressure;
       p = fac*pCurr + (1-fac)*pOld;
 
       surfaceStr = [];
       pointStr = [];
 
       % append state variable to output structure
-      surfaceStr(1).name = 'interfacePressure';
-      surfaceStr(1).data = p;
+
+      % we dont plot anything for now. mesh does not support it
+      % surfaceStr(1).name = 'interfacePressure';
+      % surfaceStr(1).data = p;
     end
 
 
     function writeMatFile(obj,fac,tID)
 
       pCurr = obj.state.interfacePressure;
-      pOld = obj.stateOld.multipliers;
+      pOld = obj.stateOld.interfacePressure;
       p = fac*pCurr + (1-fac)*pOld;
 
       obj.outstate.matFile(tID).interfacePressure = p;
@@ -286,7 +308,8 @@ classdef MeshTyingTPFA < InterfaceSolver
         for k=1:length(r)
           hT = hT + L(:,r(k)) .* KMat(mesh.cellTag(obj.neigh(:,s)),k) .* obj.faceNormals(:,c(k));
         end
-        
+
+        hT = obj.faceArea.*hT;
         obj.halfTrans(:,s) = hT./sum(L.*L,2);
 
       end
@@ -316,6 +339,9 @@ classdef MeshTyingTPFA < InterfaceSolver
           "MeshTyingTPFA works only with cell pressure variables in master and slave domains")
 
         solvNames = obj.domains(s).solverNames;
+
+        gamma = obj.domains(s).materials.getFluid().getSpecificWeight();
+        assert(gamma==0.0,"Gravity contribution not yet supported in MeshTyingTPFA")
 
         % not elegant but effective
         isFlow = contains(solvNames,"Flow");
