@@ -336,9 +336,8 @@ classdef (Abstract) SolutionScheme < handle
           if obj.output.writeVtk
 
             % set folders
-            obj.output.prepareOutputFolders()
-
-            obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
+            obj.output.prepareOutputFolders();
+            
             toc = obj.output.vtkFile.getDocumentElement;
             toc.setAttribute('type', 'vtkMultiBlockDataSet');
             toc.setAttribute('version', '1.0');

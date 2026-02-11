@@ -3,19 +3,19 @@ classdef MeshTyingTPFA < InterfaceSolver
   % Finite volume mesh tying between non conforming interfaces
   
   properties
-    neigh         % neighborship map between 
-      
-
-    % D
-    % M
-    % stabilizationMat
-    % stabilizationScale
+    neigh                     % neighborship map between non-conforming cells [master,slave]
+    faceArea                  % area of the intersection polygons
+    faceCenter                % centroid of the intersection polygons
+    halfTrans                 % Nface x 2 halfTransmissibilities at the intersecting faces [master,slave]
+    flowModels = cell(2,1)    % handle to Flow models in master and slave side
+    faceNormals               % normals of the intersection polygons
+    elements
 
   end
 
   methods
 
-    function obj = MeshTying(id,domains,inputStruct)
+    function obj = MeshTyingTPFA(id,domains,inputStruct)
       
       obj@InterfaceSolver(id,domains,inputStruct);
 
@@ -23,19 +23,13 @@ classdef MeshTyingTPFA < InterfaceSolver
 
     function registerInterface(obj,input)
 
-      if ~isscalar(obj.coupledVariables)
-        error("A Mesh tying interface can only couple one variable field." + ...
-          "If you want to couple more than one variable field, create more than one interface")
-      end
+      % check validity of the model
+      validateInterface(obj)
 
-      obj.stabilizationScale = getXMLData(input,1.0,"stabilizationScale");
+      % number of interface variables
+      obj.nMult = length(obj.faceArea);
 
-      ncomp = obj.domains(2).dofm.getNumberOfComponents(obj.coupledVariables);
-      obj.nMult = ncomp * getNumberOfEntities(obj.multiplierLocation,...
-        obj.getMesh(MortarSide.slave));
-
-      obj.state.multipliers = zeros(obj.nMult,1);
-      obj.state.iniMultipliers = zeros(obj.nMult,1);
+      obj.state.interfacePressures = zeros(obj.nMult,1);
 
       obj.stateOld = obj.state;
 
@@ -51,9 +45,8 @@ classdef MeshTyingTPFA < InterfaceSolver
 
     function assembleConstraint(obj,varargin)
 
-      if isempty(obj.D)
-        computeConstraintMatrices(obj);
-      end
+      % set up half face transmissibilities and compute rhs fluxes
+      computeHalfTrans(obj);
 
       % reset the jacobian blocks
       obj.setJmu(MortarSide.slave, []);
@@ -61,220 +54,84 @@ classdef MeshTyingTPFA < InterfaceSolver
       obj.setJum(MortarSide.slave, []);
       obj.setJum(MortarSide.master, []);
 
-      % overwrite current jacobian
-      addJum(obj,MortarSide.master,obj.M');
-      addJmu(obj,MortarSide.master,obj.M);
-
-      % add slave contribution
-      addJum(obj,MortarSide.slave,obj.D');
-      addJmu(obj,MortarSide.slave,obj.D);
-
-      [rhsMaster,rhsSlave,rhsMult] = computeRhs(obj);
+      assembleMatrices(obj); 
+      [rhsMaster,rhsSlave,rhsInterf] = computeRhs(obj);
 
       addRhs(obj,MortarSide.master,rhsMaster);
       addRhs(obj,MortarSide.slave,rhsSlave);
+      obj.rhsConstraint = rhsInterf;
 
-      obj.rhsConstraint = rhsMult;
+    end
 
-      % apply stabilization for P0 multipliers
-      if obj.multiplierLocation == entityField.surface
+
+    function assembleMatrices(obj)
+
+      % assemble half transmissibilities
+      for side = [MortarSide.master,MortarSide.slave]
+
+        s = getSide(side);
+
+        dofm = obj.getDoFManager(side);
+
+        idPressure = dofm.getVariableId(obj.coupledVariables);
+
+        nDoF = dofm.getNumbDoF(obj.coupledVariables);
+
+
+        Tfu = sparse((1:obj.nMult)',obj.neigh(:,s),obj.halfTrans(:,s),obj.nMult,nDoF);
+        Tuu = sparse(obj.neigh(:,s),obj.neigh(:,s),obj.halfTrans(:,s),nDoF,nDoF);
+
+        addJmu(obj,side,-Tfu);
+        addJum(obj,side,-Tfu');
+        obj.flowModels{s}.J{idPressure,idPressure} = ...
+          obj.flowModels{s}.J{idPressure,idPressure} + Tuu;
         
-        computeStabilizationMatrix(obj);
-        rhsStab = -obj.stabilizationMat*...
-          (obj.state.multipliers-obj.state.iniMultipliers);
-
-        obj.Jconstraint = -obj.stabilizationMat;
-
-        rhsMult = rhsMult + rhsStab;
       end
 
-      obj.rhsConstraint = rhsMult;
+      obj.Jconstraint = spdiags(sum(obj.halfTrans,2),0,obj.nMult,obj.nMult);
 
     end
 
+    function [rhsM,rhsS,rhsI] = computeRhs(obj)
 
-    function computeConstraintMatrices(obj)
-
-      % This method computes the cross grid mortar matrices between
-      % connected interfaces
-
-      meshMaster = getMesh(obj,MortarSide.master);
-      meshSlave = getMesh(obj,MortarSide.slave);
-
-      dofmMaster = getDoFManager(obj,MortarSide.master);
-      dofmSlave =  getDoFManager(obj,MortarSide.slave);
-
-
-      % number of components per dof of interpolated physics
-      if ~isempty(obj.domains(2).dofm)
-        ncomp = obj.domains(2).dofm.getNumberOfComponents(obj.coupledVariables);
-      else
-        ncomp = 1;
-      end
-
-      % get number of index entries for sparse matrices
-      % overestimate number of sparse indices assuming all quadrilaterals
-      nNmaster = meshMaster.surfaceNumVerts'*obj.interfMesh.elemConnectivity;
-
-      switch obj.multiplierLocation
-        case entityField.cell
-          N1 = sum(nNmaster);
-          N2 = sum(meshSlave.surfaceNumVerts);
-        otherwise
-          N1 = nNmaster*meshSlave.surfaceNumVerts;
-          N2 = sum(meshSlave.surfaceNumVerts.^2);
-      end
-
-      nm = (ncomp^2)*N1;
-      ns = ncomp^2*N2;
-
-      nDofMaster = dofmMaster.getNumbDoF(obj.coupledVariables);
-      nDofSlave = dofmSlave.getNumbDoF(obj.coupledVariables);
-      nDofMult = obj.nMult;
-
-
-      fldM = dofmMaster.getVariableId(obj.coupledVariables);
-      fldS = dofmSlave.getVariableId(obj.coupledVariables);
-
-      asbM = assembler(nm,nDofMult,nDofMaster);
-      asbD = assembler(ns,nDofMult,nDofSlave);
-
-      f = @(a,b) pagemtimes(a,'ctranspose',b,'none');
-
-      % loop over pairs of connected master/slave elements
-      for iPair = 1:obj.quadrature.numbInterfacePairs
-
-        is = obj.quadrature.interfacePairs(iPair,1);
-        im = obj.quadrature.interfacePairs(iPair,2);
-
-        % get dofs 
-        nodeSlave = obj.interfMesh.local2glob{2}(meshSlave.surfaces(is,:));
-        usDof = dofmSlave.getLocalDoF(fldS,nodeSlave);
-        nodeMaster = obj.interfMesh.local2glob{1}(meshMaster.surfaces(im,:));
-        umDof = dofmMaster.getLocalDoF(fldM,nodeMaster);
-        tDof = getMultiplierDoF(obj,is);
-
-        % retrieve mortar integration data
-        % gp reference coordinate on master element
-        xiMaster = obj.quadrature.getMasterGPCoords(iPair);
-        % gp reference coordinate on slave element
-        xiSlave = obj.quadrature.getSlaveGPCoords(iPair);
-        % determinant of jacobian for each gp
-        dJw = obj.quadrature.getIntegrationWeights(iPair);
-
-        % compute slave/master/multipliers basis functions
-        [Ns,Nm,Nmult] = ...
-          getMortarBasisFunctions(obj.quadrature,im,is,xiMaster,xiSlave);
-
-        [Ns,Nm,Nmult] = ...
-          reshapeBasisFunctions(ncomp,Ns,Nm,Nmult);
-
-        if ncomp > 1
-          % vector field, local reference needed
-
-          % rotation of multipliers
-          R = getRotationMatrix(obj.interfMesh,is);
-
-          % mortar coupling normal component
-          Atm =  MortarQuadrature.integrate(f,Nmult,Nm,dJw);
-          Ats =  MortarQuadrature.integrate(f,Nmult,Ns,dJw);
-
-          % if strcmp(obj.quadrature.multiplierType,"dual")
-          %   Ats = diag(sum(Ats,2));
-          % end
-
-          Atm = R'*Atm;
-          Ats = R'*Ats;
-
-          % assemble the local mortar matrix contribution
-          asbM.localAssembly(tDof,umDof,Atm);
-          asbD.localAssembly(tDof,usDof,-Ats);
-
-        else
-
-          Mloc = MortarQuadrature.integrate(f,Nmult,Nm,dJw);
-          Dloc = MortarQuadrature.integrate(f,Nmult,Ns,dJw);
-          asbM.localAssembly(tDof,umDof,Mloc); % minus sign!
-          if strcmp(obj.quadrature.multiplierType,"dual")
-            Dloc = diag(sum(Dloc,2));
-          end
-
-          asbD.localAssembly(tDof,usDof,-Dloc);
-
-        end
-      end
-
-      obj.M = asbM.sparseAssembly();
-      obj.D = asbD.sparseAssembly();
-
-      % verify partition of unity 
-      pu = sum([obj.M obj.D],2);
-      assert(norm(pu)<1e-7,'Partiition of unity violated');
-
-    end
-
-
-    function [dofr,dofc,mat] = computeLocMortar(obj,side,imult,iu,Nmult,Nu,dJw)
-      mat = pagemtimes(Nmult,'ctranspose',Nu,'none');
-      mat = mat.*reshape(dJw,1,1,[]);
-      mat = sum(mat,3);
-      nodes = obj.interfMesh.local2glob{side}(obj.getMesh(MortarSide.slave).surfaces(iu,:));
-      fld = obj.domains(side).dofm.getVariableId(obj.coupledVariables);
-      dofc = obj.domains(side).dofm.getLocalDoF(fld,nodes);
-      dofr = getMultiplierDoF(obj,imult);
-    end
-
-
-    function [rhsMaster,rhsSlave,rhsMult] = computeRhs(obj)
-
-      % retrieve variable field arrays
-      varMaster = getVariableField(obj,MortarSide.master);
-      varSlave = getVariableField(obj,MortarSide.slave);
-
-      % retrieve active multipliers
-      actMult = getMultiplierDoF(obj);
-      iniMult = obj.state.iniMultipliers(actMult);
-      mult = obj.state.multipliers(actMult);
-
-      % compute rhs terms
-      rhsMaster = obj.M' * (mult - iniMult);
-      rhsSlave = obj.D' * (mult - iniMult);
-
-      rhsMult = obj.M * varMaster + obj.D * varSlave;
+      pM = obj.domains(1).state.data.(obj.coupledVariables);
+      pS = obj.domains(2).state.data.(obj.coupledVariables);
+      pI = obj.state.interfacePressure;
+      nDoFM = getDoFManager(obj,MortarSide.master).getNumbDoF(obj.coupledVariables);
+      nDoFS = getDoFManager(obj,MortarSide.slave).getNumbDoF(obj.coupledVariables);
+      rhsM = zeros(nDoFM,1);
+      rhsS = zeros(nDoFS,1);
+      rhsM(obj.neigh(:,1)) = -obj.halfTrans(:,1).*pI;
+      rhsS(obj.neigh(:,1)) = -obj.halfTrans(:,2).*pI;
+      rhsI = - obj.halfTrans(:,1).*pM(obj.neigh(:,1))  ...
+             - obj.halfTrans(:,2).*pS(obj.neigh(:,2)) ...
+             + sum(obj.halfTrans,2).*pI;
 
     end
 
 
     function [surfaceStr,pointStr] = writeVTK(obj,fac,varargin)
 
-      multCurr = obj.state.multipliers;
-      multOld = obj.stateOld.multipliers;
-      mult = fac*multCurr + (1-fac)*multOld;
+      pCurr = obj.state.faacePressure;
+      pOld = obj.stateOld.facePressure;
+      p = fac*pCurr + (1-fac)*pOld;
 
       surfaceStr = [];
       pointStr = [];
 
-      nComp = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
-
-      mult = (reshape(mult,nComp,[]))';
-
       % append state variable to output structure
-      if obj.multiplierLocation == entityField.surface
-        surfaceStr(1).name = 'multiplier';
-        surfaceStr(1).data = mult;
-      elseif obj.multiplierLocation == entityField.node
-        pointStr(1).name = 'multiplier';
-        pointStr(1).data = mult;
-      end
+      surfaceStr(1).name = 'interfacePressure';
+      surfaceStr(1).data = p;
     end
+
 
     function writeMatFile(obj,fac,tID)
 
-      multCurr = obj.state.multipliers;
-      multOld = obj.stateOld.multipliers;
-      mult = fac*multCurr + (1-fac)*multOld;
+      pCurr = obj.state.interfacePressure;
+      pOld = obj.stateOld.multipliers;
+      p = fac*pCurr + (1-fac)*pOld;
 
-      obj.outstate.matFile(tID).multipliers = mult;
+      obj.outstate.matFile(tID).interfacePressure = p;
 
     end
 
@@ -284,161 +141,191 @@ classdef MeshTyingTPFA < InterfaceSolver
 
   methods (Access = protected)
 
+    function setMortarInterface(obj,varargin)
 
-    function computeStabilizationMatrix(obj)
+      interfaceInput = varargin{1};
 
-      % if ~isempty(obj.stabilizationMat)
-      %   % compute stabilization matrix only once for all edges
-      %   % retrieve row-col needing stabilization at each time step
-      %   return
-      % end
+      % setup the face neighborship at the interface
+      masterSurf = getXMLData(interfaceInput.Master,[],"surfaceTag");
+      slaveSurf = getXMLData(interfaceInput.Slave,[],"surfaceTag");
 
-      nComp = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
+      % rough screen connectivity
+      obj.interfMesh = InterfaceMesh(obj.domains(1).grid.topology,...
+        obj.domains(2).grid.topology,...
+        masterSurf,slaveSurf);
 
-      % initialize matrix estimating number of entries
-      % number of internal slave elements
-      nes = sum(all(obj.interfMesh.e2f{2},2));
-      nEntries = 2*36*nes; % each cell should contribute at least two times
-      nmult = getNumbDoF(obj);
-      localKernel = @(S,e1,e2) assembleLocalStabilization(obj,S,e1,e2);
-      asbH = assembler(nEntries,nmult,nmult,localKernel);
+      checkInterfaceDisjoint(obj);
 
-      % get list of internal master nodes
-      boundEdges = ~all(obj.interfMesh.e2f{1},2);
-      boundNodes = unique(obj.interfMesh.e2n{1}(boundEdges,:));
+      % initialize the maps to store mortar quadrature infos
+      nConnections = nnz(obj.interfMesh.elemConnectivity);
 
-      internalNodes = setdiff(1:getMesh(obj,MortarSide.master).nNodes,boundNodes);
+      obj.neigh = zeros(nConnections,2);
+      obj.faceArea = zeros(nConnections,1);
+      obj.faceCenter = zeros(nConnections,3);
 
-      topolMaster = getMesh(obj,MortarSide.master).surfaces;
+      obj.elements = [Elements(obj.interfMesh.msh(1),3),...
+                      Elements(obj.interfMesh.msh(2),3)];
 
-      for nodeM = internalNodes
-        % loop over internal master edges
+      idx = 0;
 
-        % get master faces sharing internal node
-        fM = find(any(topolMaster == nodeM,2));
+      for is = 1:obj.interfMesh.msh(2).nSurfaces
 
-        % fM = obj.interfMesh.e2f{1}(ieM,:);
-        assert(numel(fM)>2,['Unexpected number of connected faces for' ...
-          'node %i. Expected more than 2.'], nodeM);
+        imList = find(obj.interfMesh.elemConnectivity(:,is));
 
-        % get slave faces sharing support with master faces
-        ii = ismember(obj.quadrature.interfacePairs(:,2),fM);
-        fS = unique(obj.quadrature.interfacePairs(ii,1));
+        for j = 1:numel(imList)
 
-        if numel(fS) < 2
-          continue
-        end
+          % add new pair to neighborship
+          im = imList(j);
+          
+          idx = processFacePair(obj,is,im,idx);
 
-        % average master elements area
-        Am = mean(obj.interfMesh.msh(1).surfaceArea(fM));
-
-        % get internal edges of slave faces
-        eS = unique(obj.interfMesh.f2e{2}(fS,:));
-        id = all(ismember(obj.interfMesh.e2f{2}(eS,:),fS),2);
-        ieS = eS(id);
-
-        % get internal nodes
-        slaveNodes = unique(obj.interfMesh.e2n{2}(eS,:));
-        boundSlaveNodes = unique(obj.interfMesh.e2n{2}(~id,:));
-        nodeS = setdiff(slaveNodes,boundSlaveNodes);
-
-        % get master/slave nodes in the local macroelement
-        % nM = obj.interfMesh.e2n{1}(ieM,:);
-
-        % compute local schur complement approximation
-        S = computeSchurLocal(obj,nodeM,nodeS,fS);
-
-        % assemble stabilization matrix component
-        for iesLoc = ieS'
-          % loop over internal slave edges in the macroelement
-
-          % get pair of slave faces sharing the edge
-          f = obj.interfMesh.e2f{2}(iesLoc,:);
-
-          % mean area of the slave faces
-          As = mean(obj.interfMesh.msh(2).surfaceArea(f));
-          fLoc1 = dofId(find(fS==f(1)),nComp);
-          fLoc2 = dofId(find(fS==f(2)),nComp);
-
-          % local schur complement for macroelement pair of slave faces
-          Sloc = 0.5*(Am/As)*(S(fLoc1,fLoc1)+S(fLoc2,fLoc2));
-          asbH.localAssembly(Sloc,f(1),f(2));
         end
       end
 
-      obj.stabilizationMat = asbH.sparseAssembly();
+      obj.neigh = obj.neigh(1:idx,:);
+      obj.faceArea = obj.faceArea(1:idx);
+      obj.faceCenter = obj.faceCenter(1:idx,:);
 
-      assert(norm(sum(obj.stabilizationMat,2))<1e-8, 'Stabilization matrix is not locally conservative')
-    end
 
-    function S = computeSchurLocal(obj,nm,ns,fs)
-      % compute approximate schur complement for local nonconforming
-      % patch of element (in global reference)
-      % input: nm/ns local master/slave node indices
-      % fs: local slave faces indices
+      % remove inactive interface elements
+      mshMaster = getMesh(obj,MortarSide.master);
+      inactiveMaster = ~ismember(1:mshMaster.nSurfaces,...
+        obj.neigh(:,1));
+      [~, ~, obj.neigh(:,1)] = unique(obj.neigh(:,1));
+      mshSlave = getMesh(obj,MortarSide.slave);
+      inactiveSlave = ~ismember(1:mshSlave.nSurfaces,...
+        obj.neigh(:,2));
+      [~, ~, obj.neigh(:,2)] = unique(obj.neigh(:,2));
 
-      % get slave and master dof to access jacobian
-      dofMaster = getDoFManager(obj,MortarSide.master);
-      dofSlave = getDoFManager(obj,MortarSide.slave);
-      fldM = getVariableId(dofMaster,obj.coupledVariables);
-      fldS = getVariableId(dofSlave,obj.coupledVariables);
-      dofM = dofMaster.getLocalDoF(fldM,obj.interfMesh.local2glob{1}(nm));
-      dofS = dofSlave.getLocalDoF(fldS,obj.interfMesh.local2glob{2}(ns));
+      % remove master elements
+      obj.interfMesh.removeMortarSurface(1,inactiveMaster);
+      % remove slave elements
+      obj.interfMesh.removeMortarSurface(2,inactiveSlave);
 
-      % get local mortar matrices
-      nc = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
-      Dloc = obj.D(DoFManager.dofExpand(fs,nc),dofS);
-      Mloc = obj.M(DoFManager.dofExpand(fs,nc),dofM);
-      V = [Dloc, Mloc];              % minus sign!
-      %V = Discretizer.expandMat(V,nc);
+      % map interface surfaces to adjacent domain cells
+      mesh3DMaster = obj.domains(1).grid.topology;
+      mesh3DSlave = obj.domains(2).grid.topology;
+      obj.interfMesh.buildFace2CellMap([mesh3DMaster,mesh3DSlave]);
 
-      % get local jacobian
-      Km = obj.domains(1).J{fldM,fldM}(dofM,dofM);
-      Ks = obj.domains(2).J{fldS,fldS}(dofS,dofS);
-      Kloc = diag([1./diag(Ks);1./diag(Km)]);
-
-      S = obj.stabilizationScale*V*(Kloc*V');  % compute Schur complement
+      obj.neigh = [obj.interfMesh.f2c{1}(obj.neigh(:,1)),...
+                   obj.interfMesh.f2c{2}(obj.neigh(:,2))];
 
     end
 
 
-    function [dofRow,dofCol,mat] = assembleLocalStabilization(obj,S,e1,e2)
-      % assemble stabilization matrix S (in global coordinates) for
-      % elements e1 and e2.
 
-      nc = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
-      dof1 = DoFManager.dofExpand(e1,nc);
-      dof2 = DoFManager.dofExpand(e2,nc);
+    function idx = processFacePair(obj,idS,idM,idx)
 
-      if nc > 1
-        % vector field, rotation matrix needed
+      mshS = getMesh(obj,MortarSide.slave);
+      mshM = getMesh(obj,MortarSide.master);
 
-        % get average rotation matrix
-        n1 = getNormal(obj.interfMesh,e1);
-        n2 = getNormal(obj.interfMesh,e2);
-        if abs(n1'*n2 -1) < 1e4*eps
-          avgR = obj.interfMesh.computeRot(n1);
-        else
-          A1 = obj.interfMesh.msh(2).surfaceArea(e1);
-          A2 = obj.interfMesh.msh(2).surfaceArea(e2);
-          nAvg = n1*A1 + n2*A2;
-          nAvg = nAvg/norm(nAvg);
-          avgR = obj.interfMesh.computeRot(nAvg);
+      elemS = obj.elements(2).getElement(mshS.surfaceVTKType(idS));
+      elemM = obj.elements(1).getElement(mshM.surfaceVTKType(idM));
+
+      % compute auxiliairy plane on slave surface 
+      P0 = mshS.surfaceCentroid(idS,:);
+      nP = elemS.computeNormal(idS,elemS.centroid);
+
+      coordS3D = FEM.getElementCoords(elemS,idS);
+      coordS = pointToSurfaceProjection(P0,nP,coordS3D);
+
+      coordM3D = FEM.getElementCoords(elemM,idM);
+      coordM = pointToSurfaceProjection(P0,nP,coordM3D);
+
+      [polyClip,isClipValid] = mxPolygonClip(coordS,coordM);
+
+      if ~isClipValid || isempty(polyClip)
+        return
+      end
+
+      polyClip = orderPointsCCW2D(polyClip);
+      center2D = mxComputePolygonCentroid2D(polyClip);
+      area = computePolygonArea2D(polyClip);
+
+      % map the center back to 3D coords
+      R = mxComputeRotationMat(nP);
+      center3D = P0' + center2D(1)*R(:,2) + center2D(2)*R(:,3);
+
+      % add new face to list
+      idx = idx+1;
+      obj.neigh(idx,:) = [idM,idS];
+      obj.faceNormals(idx,:) = nP;
+      obj.faceArea(idx) = area;
+      obj.faceCenter(idx,:) = center3D;
+
+    end
+
+    function computeHalfTrans(obj)
+
+      % half face transmissibility 
+      % the property is a Nfaces x 2 matrix with the half face
+      % transmissibility of each neigboring cell
+      r = [1, 1, 1, 2, 2, 2, 3, 3, 3];
+      c = [1, 2, 3, 1, 2, 3, 1, 2, 3];
+
+      obj.halfTrans = zeros(length(obj.faceArea),2);
+
+      
+      % sign to ensure that the scalar product between c and normal is positive
+      % remember: normal points outward the slave domain
+      sgn = [-1,+1];
+
+      for side = [MortarSide.master,MortarSide.slave]
+
+        hT = zeros(size(obj.halfTrans,1),1);
+
+        s = getSide(side);
+        mesh = obj.domains(s).grid.topology;
+        L = obj.faceCenter - mesh.cellCentroid(obj.neigh(:,s),:);
+        L = sgn(s)*L;
+        KMat = zeros(mesh.nCellTag,9);
+        for i=1:mesh.nCellTag
+          KMat(i,:) = obj.domains(s).materials.getMaterial(i).PorousRock.getPermVector();
         end
 
-        % apply rotation matrix to S
-        S = avgR'*S*avgR;
+        for k=1:length(r)
+          hT = hT + L(:,r(k)) .* KMat(mesh.cellTag(obj.neigh(:,s)),k) .* obj.faceNormals(:,c(k));
+        end
+        
+        obj.halfTrans(:,s) = hT./sum(L.*L,2);
 
       end
 
-      dofRow = [dof1;dof2];
-      dofCol = [dof1;dof2];
+    end 
 
-      mat = [S,-S;-S,S];
+
+
+
+  end
+
+  methods (Access=private)
+
+    function  validateInterface(obj)
+
+      % validate the model and populate the obj.flowModels pointers
+
+      var = obj.coupledVariables;
+      assert(strcmp(obj.coupledVariables,"pressure"),...
+        "MeshTyingTPFA can only couple pressure field with TPFA");
+
+      for side = [MortarSide.master,MortarSide.slave]
+
+        s = getSide(side);
+        fieldLocation = getDoFManager(obj,side).getFieldLocation(var);
+        assert(fieldLocation == entityField.cell,...
+          "MeshTyingTPFA works only with cell pressure variables in master and slave domains")
+
+        solvNames = obj.domains(s).solverNames;
+
+        % not elegant but effective
+        isFlow = contains(solvNames,"Flow");
+        assert(sum(isFlow)==1,"Only one flow model can be coupled");
+
+        obj.flowModels{s} = getPhysicsSolver(obj.domains(s),solvNames(isFlow)); 
+
+      end
 
     end
-
-
   end
 
   methods (Static)

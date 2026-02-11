@@ -71,7 +71,7 @@ classdef (Abstract) InterfaceSolver < handle
 
   methods (Abstract)
 
-    % intialize the state object
+    % intialize the interface properties
     registerInterface(obj);
 
     % assemble the constraint matrices
@@ -401,7 +401,7 @@ classdef (Abstract) InterfaceSolver < handle
 
 
 
-  methods (Access=private)
+  methods (Access=protected)
 
     function setCoupledVariables(obj,input)
 

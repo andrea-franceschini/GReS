@@ -193,6 +193,56 @@ classdef InterfaceMesh < handle
       end
     end
 
+    function buildFace2CellMap(obj, meshBg)
+
+      for i = [1 2]
+        top = obj.local2glob{i}(obj.msh(i).surfaces);  % global face node IDs
+        nFaces = obj.msh(i).nSurfaces;
+        nFaceNodes = size(top, 2);
+
+        % Initialize face-to-cell mapping
+        obj.f2c{i} = zeros(nFaces, 1);
+
+        % Build node-to-cell adjacency list
+        allCells = meshBg(i).cells;  % size: [nCells, nodesPerCell]
+        nCells = size(allCells, 1);
+        maxNodeID = max(allCells(:));
+
+        node2cells = cell(maxNodeID, 1);  % preallocate
+        for c = 1:nCells
+          for v = allCells(c, :)
+            node2cells{v} = [node2cells{v}, c];
+          end
+        end
+
+        % For each face, find the unique cell that contains all its nodes
+        for e = 1:nFaces
+          faceNodes = top(e, :);
+
+          % Get candidate cells as the intersection of node2cell lists
+          candidates = node2cells{faceNodes(1)};
+          for k = 2:nFaceNodes
+            candidates = intersect(candidates, node2cells{faceNodes(k)});
+            if isempty(candidates)
+              break;
+            end
+          end
+
+          % Among candidates, find the one that contains all the face nodes
+          hasCellNeigh = false;
+          for id = candidates
+            if all(ismember(faceNodes, allCells(id, :)))
+              obj.f2c{i}(e) = id;
+              hasCellNeigh = true;
+              break;
+            end
+          end
+
+          assert(hasCellNeigh, 'Invalid connectivity: face does not belong to any cell.');
+        end
+      end
+    end
+
   end
 
 
@@ -300,55 +350,7 @@ classdef InterfaceMesh < handle
 %       obj.local2glob{side}(locNodes) = globNodes(:);
 %     end
 
-    function buildFace2CellMap(obj, meshBg)
 
-      for i = [1 2]
-        top = obj.local2glob{i}(obj.msh(i).surfaces);  % global face node IDs
-        nFaces = obj.msh(i).nSurfaces;
-        nFaceNodes = size(top, 2);
-
-        % Initialize face-to-cell mapping
-        obj.f2c{i} = zeros(nFaces, 1);
-
-        % Build node-to-cell adjacency list
-        allCells = meshBg(i).cells;  % size: [nCells, nodesPerCell]
-        nCells = size(allCells, 1);
-        maxNodeID = max(allCells(:));
-
-        node2cells = cell(maxNodeID, 1);  % preallocate
-        for c = 1:nCells
-          for v = allCells(c, :)
-            node2cells{v} = [node2cells{v}, c];
-          end
-        end
-
-        % For each face, find the unique cell that contains all its nodes
-        for e = 1:nFaces
-          faceNodes = top(e, :);
-
-          % Get candidate cells as the intersection of node2cell lists
-          candidates = node2cells{faceNodes(1)};
-          for k = 2:nFaceNodes
-            candidates = intersect(candidates, node2cells{faceNodes(k)});
-            if isempty(candidates)
-              break;
-            end
-          end
-
-          % Among candidates, find the one that contains all the face nodes
-          hasCellNeigh = false;
-          for id = candidates
-            if all(ismember(faceNodes, allCells(id, :)))
-              obj.f2c{i}(e) = id;
-              hasCellNeigh = true;
-              break;
-            end
-          end
-
-          assert(hasCellNeigh, 'Invalid connectivity: face does not belong to any cell.');
-        end
-      end
-    end
 
     function computeAverageNodalNormal(obj)
       for side = 1:2

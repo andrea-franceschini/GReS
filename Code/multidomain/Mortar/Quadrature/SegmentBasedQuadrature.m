@@ -123,15 +123,15 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       % get number of susegment (in case of higher-order elements)
       if obj.elems(1).nNode > 4
         ns1 = 4;
-        elemS = createSubElement(obj.elems(1));
+        elemS = obj.elems(1).subQuad;
       else
         ns1 = 1;
-        elemS = obj.elems(2);
+        elemS = obj.elems(1);
       end
 
       if obj.elems(2).nNode > 4
         ns2 = 4;
-        elemM = createSubElement(obj.elems(2));
+        elemM = obj.elems(2).subQuad;
       else
         ns2 = 1;
         elemM = obj.elems(2);
@@ -163,14 +163,11 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
           coordM = pointToSurfaceProjection(P0,nP,coordM3D);
 
-          [coordClip,topolClip,isClipValid] = SegmentBasedQuadrature.segmentation2(coordS,coordM);
-          %[coordClip,topolClip,isClipValid] = SegmentBasedQuadrature.segmentation2(coordS,coordM);
-          
+          [coordClip,topolClip,isClipValid] = SegmentBasedQuadrature.segmentation(coordS,coordM);
 
           if ~isClipValid
             continue
           end
-
 
           nTriLoc = size(topolClip,1);
 
@@ -284,7 +281,7 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
     end
 
-    function [polyClip,topolClip,isClipValid] = segmentation1(poly1,poly2)
+    function [polyClip,topolClip,isClipValid] = segmentation(poly1,poly2)
       coordS = orderPointsCCW2D(poly1);
       coordM = orderPointsCCW2D(poly2);
       topolClip = [];
@@ -298,30 +295,30 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       topolClip = [ ones(nV-2,1), (2:nV-1)', (3:nV)' ];
     end
 
-    function [polyClip,topolClip,isClipValid] = segmentation2(poly1,poly2)
-      [clipX,clipY] = polyclip(poly1(:,1),poly1(:,2),poly2(:,1),poly2(:,2),1);
-      polyClip = [clipX{:} clipY{:}];
-      isClipValid = false;
-      topolClip = [];
-
-      if numel(clipX)==0
-        % no intersection
-        return
-      end
-
-      assert(isscalar(clipX),'Non unique clip polygon for master/slave pair')
-
-      % perform delaunay triangulation on clip polygon
-      % assumption: only one clip polygon results from intersection
-
-      if ~SegmentBasedQuadrature.isClipValid(polyClip)
-        % skip if the polygon is degenerate or has very small area
-        return
-      end
-
-      topolClip = delaunay(polyClip(:,1),polyClip(:,2));
-      isClipValid = true;
-    end
+    % function [polyClip,topolClip,isClipValid] = segmentation2(poly1,poly2)
+    %   [clipX,clipY] = polyclip(poly1(:,1),poly1(:,2),poly2(:,1),poly2(:,2),1);
+    %   polyClip = [clipX{:} clipY{:}];
+    %   isClipValid = false;
+    %   topolClip = [];
+    % 
+    %   if numel(clipX)==0
+    %     % no intersection
+    %     return
+    %   end
+    % 
+    %   assert(isscalar(clipX),'Non unique clip polygon for master/slave pair')
+    % 
+    %   % perform delaunay triangulation on clip polygon
+    %   % assumption: only one clip polygon results from intersection
+    % 
+    %   if ~SegmentBasedQuadrature.isClipValid(polyClip)
+    %     % skip if the polygon is degenerate or has very small area
+    %     return
+    %   end
+    % 
+    %   topolClip = delaunay(polyClip(:,1),polyClip(:,2));
+    %   isClipValid = true;
+    % end
 
   end
 end

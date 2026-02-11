@@ -1,11 +1,9 @@
 % study parameters
-profile off
-profile on
-for elem_type = ["hexa27"]
+for elem_type = ["hexa","hexa27"]
 
   for integration_type = ["SegmentBasedQuadrature",...
-                          % "RBFquadrature",...
-                          % "ElementBasedQuadrature",...
+                          "RBFquadrature",...
+                          "ElementBasedQuadrature",...
                           ]
 
     runConvPoisson;
@@ -28,4 +26,3 @@ for elem_type = ["hexa27"]
   end
   clearvars
 end
-profile viewer

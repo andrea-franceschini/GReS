@@ -473,7 +473,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         % mark node location w.r.t plane
         distVec = obj.mesh.coordinates - origin;
         nVec = reshape(normal/norm(normal),[],1);
-        R = InterfaceMesh.computeRot(nVec);
+        R = mxComputeRotationMat(nVec);
         tVec1 = R(:,2);
         tVec2 = R(:,3);
 
