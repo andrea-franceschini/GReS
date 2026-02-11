@@ -76,11 +76,13 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
       % Transmissibility of internal faces
       tmpVec = lw.*obj.trans(obj.isIntFaces);
-      nneigh = length(tmpVec);
+      %nneigh = length(tmpVec);
       % [~,~,reorder] = unique([neigh(:,1); neigh(:,2); subCells]);
-      [~,~,reorder] = unique([neigh(:,1); neigh(:,2)]);
-      neigh1 = reorder(1:nneigh);
-      neigh2 = reorder(nneigh+1:2*nneigh);
+      % [~,~,reorder] = unique([neigh(:,1); neigh(:,2)]);
+      % neigh1 = reorder(1:nneigh);
+      % neigh2 = reorder(nneigh+1:2*nneigh);
+      neigh1 = obj.dofm.getLocalDoF(obj.fieldId,neigh(:,1));
+      neigh2 = obj.dofm.getLocalDoF(obj.fieldId,neigh(:,2));
       sumDiagTrans = accumarray( [neigh1;neigh2], repmat(tmpVec,[2,1]), ...
         [nSubCells,1]);
       % Assemble H matrix
