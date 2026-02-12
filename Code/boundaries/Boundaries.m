@@ -8,6 +8,9 @@ classdef Boundaries < handle
 
   properties (Access = private)
     grid
+    bcOrder 
+    % to ensure neumann is applied before dirichlet in case of overlapping
+    % entity definition
   end
 
   methods (Access = public)
@@ -252,6 +255,14 @@ classdef Boundaries < handle
       end
 
       obj.db(bcId) = bc;
+
+    end
+
+
+    function bcList = getBCList(obj)
+
+      bcList = obj.db.keys;
+      bcList = bcList{obj.bcOrder};
 
     end
   end

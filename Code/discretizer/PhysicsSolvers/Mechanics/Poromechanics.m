@@ -75,20 +75,22 @@ classdef Poromechanics < PhysicsSolver
       % general sparse assembly loop over elements for Poromechanics
 
       % define local assembler
-      assembleKloc = @(elemId,counter) computeLocalStiff(obj,elemId,dt,counter);
+      %assembleKloc = @(elemId,counter) computeLocalStiff(obj,elemId,dt,counter);
 
       subCells = obj.dofm.getFieldCells(obj.fieldId);
       n = sum((obj.mesh.nDim^2)*(obj.mesh.cellNumVerts(subCells)).^2);
       l = 0;
       Ndof = obj.dofm.getNumbDoF(obj.fieldId);
       obj.fInt = zeros(Ndof,1);
-      assembleK = assembler(n,Ndof,Ndof,assembleKloc);
+      assembleK = assembler(n,Ndof,Ndof);
 
       stateCurr = getState(obj);
 
       % loop over active mechanics cells
       for el = subCells'
-        [sigma,status] = assembleK.localAssembly(el,l);
+        %[sigma,status] = assembleK.localAssembly(el,l);
+        [dofr,dofc,KLoc,sigma,status] = computeLocalStiff(obj,el,dt,l);
+        assembleK.localAssembly(dofr,dofc,KLoc);
         ng = size(sigma,1);
         stateCurr.data.status(l+1:l+ng,:) = status;
         stateCurr.data.stress((l+1):(l+ng),:) = sigma;
