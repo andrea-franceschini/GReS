@@ -23,9 +23,6 @@ classdef preconditioner < handle
       % Flag to know if the problem has multiphysics
       multiPhysFlag = false
 
-      % Max Threads
-      maxThreads
-
       % Preconditioner Type
       PrecType
 
@@ -42,6 +39,9 @@ classdef preconditioner < handle
 
       % Params struct
       params
+      
+      % Max Threads
+      maxThreads
 
       % Test Space
       TV0

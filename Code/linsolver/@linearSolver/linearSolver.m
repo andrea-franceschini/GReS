@@ -4,7 +4,7 @@ classdef linearSolver < handle
       % Flag for debug
       DEBUGflag = false
       matlabMaxSize = 1e5
-      nsyTol = 1e-17
+      nsyTol = 1e-15
 
       % Flag for Chronos existance
       ChronosFlag = false
@@ -80,7 +80,7 @@ classdef linearSolver < handle
             obj.params.minIter = obj.Prec.params.minIter;
 
             % if GMRES get restart value
-            if (obj.SolverType == 'gmres')
+            if (obj.SolverType == "gmres")
                obj.params.restart = data.general.restart;
             else
                obj.params.restart = 100;
@@ -89,9 +89,10 @@ classdef linearSolver < handle
       end
 
       function printStats(obj)
+         fprintf('Used %d threads during mex\n',obj.Prec.maxThreads);
          fprintf('Average Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
          fprintf('Average Solve time = %e\n',(obj.aTimeSolve/obj.nSolve));
-         fprintf('Average number of iterations = %e\n',(obj.aIter/obj.nSolve));
+         fprintf('Average number of iterations = %f\n',(obj.aIter/obj.nSolve));
          fprintf('Max number of iterations = %d\n',obj.maxIter);
          fprintf('The preconditioner was computed at time(s):\n');
          for i = 1:length(obj.whenComputed)
