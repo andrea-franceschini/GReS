@@ -74,11 +74,10 @@ classdef preconditioner < handle
          % Check if the problem comes from multiphysics
          multiPhysFlag = false;
          if(domainin(1).dofm.getNumberOfVariables() > 1)
-            multiPhysFlag = true;
+            multiPhysFlag = true; %#ok<NASGU>
             return
          end
 
-         nDom = generalsolver.nDom;
          nInt = generalsolver.nInterf;
 
          % Check the number of interfaces and domains
@@ -92,7 +91,7 @@ classdef preconditioner < handle
             % Supported Single Physics
             if(contains(physname,'pressure'))
                phys = 0;
-            elseif(physname == 'displacements')
+            elseif(physname == 'displacements') %#ok<BDSCA>
                phys = 1;
                % Check if there is contact 
                if any(cellfun(@(o) isa(o,'SolidMechanicsContact'),interfacein))
@@ -106,8 +105,8 @@ classdef preconditioner < handle
             end
          else
             % Supported MultiPhysics
-            if(contains(physname,['pressure' 'displacements']))
-               if domainin.dofm.getVariableNames(1) == 'pressure'
+            if(contains(physname,['pressure' 'displacements'])) %#ok<UNRCH>
+               if domainin.dofm.getVariableNames(1) == 'pressure' %#ok<BDSCA>
                   phys = 0;
                else
                   phys = 1;
@@ -121,7 +120,7 @@ classdef preconditioner < handle
          end
 
          % Now the preconditioner can actually be built, the checks have been passed
-         obj = preconditioner(debugflag,nsyTol,generalsolver,domainin,multiPhysFlag,phys,usrInput);
+         obj = preconditioner(debugflag,nsyTol,generalsolver,multiPhysFlag,phys,usrInput);
          useChronos = true;
       end
 
@@ -130,7 +129,7 @@ classdef preconditioner < handle
    methods (Access = private)
 
       % Constructor Function
-      function obj = preconditioner(debugflag,nsyTol,generalsolver,domainin,multiPhysFlag,phys,usrInput)
+      function obj = preconditioner(debugflag,nsyTol,generalsolver,multiPhysFlag,phys,usrInput)
 
          % Use the debugflag set into the linearsolver
          obj.DEBUGflag = debugflag;

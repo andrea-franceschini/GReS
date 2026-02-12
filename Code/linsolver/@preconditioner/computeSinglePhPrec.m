@@ -4,13 +4,14 @@ function computeSinglePhPrec(obj,A)
       A = A{1,1};
    end
 
+   infnorm = norm(A-A','inf');
    if obj.DEBUGflag
-      fprintf('\nsymmetry = %e\n\n',norm(A-A','f')/norm(A,'f'));
+      fprintf('\nsymmetry = %e\n\n',infnorm);
    end
-   if (norm(A-A','f')/norm(A,'f') > obj.nsyTol)
+   if (infnorm > obj.nsyTol)
       obj.params.symm = false;
       if obj.DEBUGflag
-         fprintf('matrix nonsymmatric %e\n',norm(A-A','f')/norm(A,'f'));
+         fprintf('matrix nonsymmatric %e\n',infnorm);
       end
    else
       obj.params.symm = true;

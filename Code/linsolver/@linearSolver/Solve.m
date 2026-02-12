@@ -11,6 +11,8 @@ function [x,flag] = Solve(obj,A,b,time)
       A
    end
 
+   [A] = symmetrize(A,obj.nsyTol);
+
    % Chronos does not exist, continue with matlab default
    if ~obj.ChronosFlag || (getGlobalSize(A) < obj.matlabMaxSize)
       [x,flag] = matlab_solve(obj,A,b);
@@ -51,9 +53,10 @@ function [x,flag] = Solve(obj,A,b,time)
    end
 
    % If the matrix is nonSymmetric the use always GMRES
-   if (norm(Amat-Amat','f')/norm(Amat,'f') > obj.nsyTol)
+   infnorm = norm(Amat-Amat','inf');
+   if (infnorm > obj.nsyTol)
       if obj.DEBUGflag
-         fprintf('\nsym = %e\n\n',norm(Amat-Amat','f')/norm(Amat,'f'));
+         fprintf('\nsym = %e\n\n',infnorm);
       end
       obj.SolverType = 'gmres';
    end
@@ -96,11 +99,10 @@ function [x,flag] = Solve(obj,A,b,time)
 
    % Interesting problem
    if(flag == 1)
-      x0 = obj.x0;
       if obj.DEBUGflag
          fprintf('Iterations since last preconditioner computation %d\n',obj.params.iterSinceLastPrecComp);
       end
-      [x,flag] = matlab_solve(obj,A,b);
+      [~,~] = matlab_solve(obj,A,b);
       TV0 = obj.Prec.TV0;
       save('new_problem.mat','A','b','TV0');
       error('matlab could solve and chronos did not.');
@@ -124,6 +126,39 @@ function [x,flag] = Solve(obj,A,b,time)
    % Store the new starting vector
    obj.x0 = x;
 end
+
+function [A] = symmetrize(A,nsyTol)
+   
+   % If the matrix is not a cell matrix then symmetrize is simplified
+   if ~iscell(A)
+       if(norm(A-A','inf') < nsyTol)
+            A = 0.5*(A + A');
+       end
+       return
+   end
+
+   N = size(A,1);
+   
+   % Symmetrize the first block
+   for i = 1:N
+      for j = i:N
+         if i == j
+            % Diagonal Block
+            err = norm(A{i,i} - A{i,i}', 'inf');
+            if err < nsyTol
+               A{i,i} = 0.5 * (A{i,i} + A{i,i}');
+            end
+         else
+            % Off-Diagonal Block: Copy Upper to Lower
+            err = norm(A{i,j} - A{j,i}', 'inf');
+            if err < nsyTol
+               A{j,i} = A{i,j}';
+            end
+         end
+      end
+   end
+end
+
 
 
 % Function to get the global size of the system
