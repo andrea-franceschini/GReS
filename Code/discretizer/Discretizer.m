@@ -458,12 +458,20 @@ classdef Discretizer < handle
           case 'grid'
             obj.grid = value;
             % check that grid has been defined correctly
-            isGridCorrect = all([isfield(obj.grid,"topology");...
-              isfield(obj.grid,"cells");...
-              isfield(obj.grid,"faces")]);
+            if ~isfield(obj.grid,"topology")
+              obj.grid.topology = [];
+            end
+            if ~isfield(obj.grid,"cells")
+              obj.grid.cells = [];
+            end
+            if ~isfield(obj.grid,"faces")
+              obj.grid.faces = [];
+            end
+
+            isGridCorrect = numel(fieldnames(obj.grid))==3;
 
             assert(isGridCorrect,"Error in Discretizer: grid input is not correct. " + ...
-              "See the default value of the grid property in Discretizer.");
+              "grid must be a struct with fields: 'topology','cells','faces'.");
 
           case 'materials'
             assert(isa(value, 'Materials'),msg)

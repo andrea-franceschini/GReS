@@ -228,12 +228,12 @@ classdef (Abstract) InterfaceSolver < handle
 
     function vtmBlock = writeVTKfile(obj,fac,time)
       mesh = getMesh(obj,MortarSide.slave);
-      vtmBlock = obj.outstate.vtkFile.createElement('Block');
       surfData2D = struct('name', [], 'data', []);
       pointData2D = struct('name', [], 'data', []);
       [surfData,pointData] = writeVTK(obj,fac,time);
       surfData2D = OutState.mergeOutFields(surfData2D,surfData);
       pointData2D = OutState.mergeOutFields(pointData2D,pointData);
+      vtmBlock = obj.outstate.vtkFile.createElement('Block');
       obj.outstate.writeVTKfile(vtmBlock,obj.getOutName(),mesh,...
         time, [], [], pointData2D, surfData2D);
 
