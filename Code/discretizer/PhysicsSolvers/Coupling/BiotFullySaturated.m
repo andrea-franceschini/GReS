@@ -30,10 +30,12 @@ classdef BiotFullySaturated < PhysicsSolver
 
     function registerSolver(obj,input)
 
+      dofm = obj.domain.dofm;
+
       % Register mechanics
       obj.mechSolver = Poromechanics(obj.domain);
       registerSolver(obj.mechSolver,input.(class(obj.mechSolver)));
-      obj.fldMech = obj.dofm.getVariableId(obj.mechSolver.getField());
+      obj.fldMech = dofm.getVariableId(obj.mechSolver.getField());
 
       % setup the solver with custom input
       if isfield(input,"SinglePhaseFlowFEM")
@@ -46,7 +48,7 @@ classdef BiotFullySaturated < PhysicsSolver
       % Register fluids
       obj.flowScheme = obj.flowSolver.typeDiscretization();
       registerSolver(obj.flowSolver,input.(class(obj.flowSolver)));
-      obj.fldFlow = obj.dofm.getVariableId(obj.flowSolver.getField());
+      obj.fldFlow = dofm.getVariableId(obj.flowSolver.getField());
 
     end
 
@@ -85,8 +87,10 @@ classdef BiotFullySaturated < PhysicsSolver
       % compute coupling matrix only where mechanics and flow are
       % active
 
-      cellTagFlow = obj.dofm.getTargetRegions(obj.fldFlow);
-      cellTagMech = obj.dofm.getTargetRegions(obj.fldMech);
+      dofm = obj.domain.dofm;
+
+      cellTagFlow = dofm.getTargetRegions(obj.fldFlow);
+      cellTagMech = dofm.getTargetRegions(obj.fldMech);
 
       % find cell tag where both flow and mechanics are active
       cellTags = intersect(cellTagMech,cellTagFlow);
@@ -103,14 +107,14 @@ classdef BiotFullySaturated < PhysicsSolver
       end
 
       [iiVec,jjVec,Qvec] = deal(zeros(nEntries,1));
-      nDoF1 = obj.dofm.getNumbDoF(obj.fldMech);
-      nDoF2 = obj.dofm.getNumbDoF(obj.fldFlow);
+      nDoF1 = dofm.getNumbDoF(obj.fldMech);
+      nDoF2 = dofm.getNumbDoF(obj.fldFlow);
       % consider replacing the string field with an integer
 
       l1 = 0;
       for el=subCells'
-
-        biot = obj.materials.getMaterial(obj.mesh.cellTag(el)).PorousRock.getBiotCoefficient();
+        mat = obj.domain.materials.getMaterial(obj.mesh.cellTag(el));
+        biot = mat.PorousRock.getBiotCoefficient();
         elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
         nG = elem.GaussPts.nNode;
         nodes = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
@@ -121,7 +125,7 @@ classdef BiotFullySaturated < PhysicsSolver
         B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
         B(elem.indB(:,2)) = N(elem.indB(:,1));
         Nref = getBasisFinGPoints(elem);
-        dofrow = getLocalDoF(obj.dofm,obj.fldMech,nodes);
+        dofrow = getLocalDoF(dofm,obj.fldMech,nodes);
 
         % kronecker delta in tensor form
         kron = [1;1;1;0;0;0];
@@ -130,10 +134,10 @@ classdef BiotFullySaturated < PhysicsSolver
             Np = reshape(Nref',1,elem.nNode,nG);
             kron = repmat(kron,1,1,nG);
             iN = pagemtimes(kron,Np);
-            dofcol = getLocalDoF(obj.dofm,obj.fldFlow,nodes);
+            dofcol = getLocalDoF(dofm,obj.fldFlow,nodes);
           case "FVTPFA"
             iN = repmat(kron,1,1,nG);
-            dofcol = getLocalDoF(obj.dofm,obj.fldFlow,el);
+            dofcol = getLocalDoF(dofm,obj.fldFlow,el);
         end
 
         % compute local coupling matrix
@@ -163,8 +167,8 @@ classdef BiotFullySaturated < PhysicsSolver
       uOld = getStateOld(obj,"displacements");
 
       % select active coefficients of solution vectors
-      entsPoro = obj.dofm.getActiveEntities(obj.fldMech,1);
-      entsFlow = obj.dofm.getActiveEntities(obj.fldFlow,1);
+      entsPoro = obj.domain.dofm.getActiveEntities(obj.fldMech,1);
+      entsFlow = obj.domain.dofm.getActiveEntities(obj.fldFlow,1);
 
       % get coupling blocks
       Qmech = getJacobian(obj,obj.fldMech,obj.fldFlow);

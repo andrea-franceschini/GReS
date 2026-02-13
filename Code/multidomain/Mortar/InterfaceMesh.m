@@ -137,7 +137,7 @@ classdef InterfaceMesh < handle
         sz = size(n,1);
         R = zeros(sz(1));
         for i = 1:3:sz(1)
-          R(i:i+2,i:i+2) = obj.computeRot(n(i:i+2));
+          R(i:i+2,i:i+2) = mxComputeRotationMat(n(i:i+2));
         end
       end
 
@@ -188,8 +188,58 @@ classdef InterfaceMesh < handle
 
       for i = 1:nS
         n = obj.normals(i,:);
-        R = obj.computeRot(n);
+        R = mxComputeRotationMat(n);
         obj.rotationMat(i,:) = R(:);
+      end
+    end
+
+    function buildFace2CellMap(obj, meshBg)
+
+      for i = [1 2]
+        top = obj.local2glob{i}(obj.msh(i).surfaces);  % global face node IDs
+        nFaces = obj.msh(i).nSurfaces;
+        nFaceNodes = size(top, 2);
+
+        % Initialize face-to-cell mapping
+        obj.f2c{i} = zeros(nFaces, 1);
+
+        % Build node-to-cell adjacency list
+        allCells = meshBg(i).cells;  % size: [nCells, nodesPerCell]
+        nCells = size(allCells, 1);
+        maxNodeID = max(allCells(:));
+
+        node2cells = cell(maxNodeID, 1);  % preallocate
+        for c = 1:nCells
+          for v = allCells(c, :)
+            node2cells{v} = [node2cells{v}, c];
+          end
+        end
+
+        % For each face, find the unique cell that contains all its nodes
+        for e = 1:nFaces
+          faceNodes = top(e, :);
+
+          % Get candidate cells as the intersection of node2cell lists
+          candidates = node2cells{faceNodes(1)};
+          for k = 2:nFaceNodes
+            candidates = intersect(candidates, node2cells{faceNodes(k)});
+            if isempty(candidates)
+              break;
+            end
+          end
+
+          % Among candidates, find the one that contains all the face nodes
+          hasCellNeigh = false;
+          for id = candidates
+            if all(ismember(faceNodes, allCells(id, :)))
+              obj.f2c{i}(e) = id;
+              hasCellNeigh = true;
+              break;
+            end
+          end
+
+          assert(hasCellNeigh, 'Invalid connectivity: face does not belong to any cell.');
+        end
       end
     end
 
@@ -300,55 +350,7 @@ classdef InterfaceMesh < handle
 %       obj.local2glob{side}(locNodes) = globNodes(:);
 %     end
 
-    function buildFace2CellMap(obj, meshBg)
 
-      for i = [1 2]
-        top = obj.local2glob{i}(obj.msh(i).surfaces);  % global face node IDs
-        nFaces = obj.msh(i).nSurfaces;
-        nFaceNodes = size(top, 2);
-
-        % Initialize face-to-cell mapping
-        obj.f2c{i} = zeros(nFaces, 1);
-
-        % Build node-to-cell adjacency list
-        allCells = meshBg(i).cells;  % size: [nCells, nodesPerCell]
-        nCells = size(allCells, 1);
-        maxNodeID = max(allCells(:));
-
-        node2cells = cell(maxNodeID, 1);  % preallocate
-        for c = 1:nCells
-          for v = allCells(c, :)
-            node2cells{v} = [node2cells{v}, c];
-          end
-        end
-
-        % For each face, find the unique cell that contains all its nodes
-        for e = 1:nFaces
-          faceNodes = top(e, :);
-
-          % Get candidate cells as the intersection of node2cell lists
-          candidates = node2cells{faceNodes(1)};
-          for k = 2:nFaceNodes
-            candidates = intersect(candidates, node2cells{faceNodes(k)});
-            if isempty(candidates)
-              break;
-            end
-          end
-
-          % Among candidates, find the one that contains all the face nodes
-          hasCellNeigh = false;
-          for id = candidates
-            if all(ismember(faceNodes, allCells(id, :)))
-              obj.f2c{i}(e) = id;
-              hasCellNeigh = true;
-              break;
-            end
-          end
-
-          assert(hasCellNeigh, 'Invalid connectivity: face does not belong to any cell.');
-        end
-      end
-    end
 
     function computeAverageNodalNormal(obj)
       for side = 1:2
@@ -379,36 +381,9 @@ classdef InterfaceMesh < handle
 
     function R = computeRot(n)
 
-      % compute rotation matrix associated with an input normal
-      n = reshape(n,1,[]);
-      n = n / norm(n);   % normalize input normal
+      % call to mex function
+      R = mxComputeRotationMat(n);
 
-      % Pick a vector not parallel to n (to start Gram–Schmidt)
-      if abs(n(1)) < 0.9
-        tmp = [1,0,0];
-      else
-        tmp = [0,1,0];
-      end
-
-      % First tangent: orthogonalize tmp against n
-      m1 = tmp - dot(tmp,n)*n;
-      m1 = m1 / norm(m1);
-
-      % Second tangent: orthogonal to both
-      m2 = cross(n,m1);
-      m2 = m2 / norm(m2);
-
-      % Assemble rotation matrix
-      R = [n', m1', m2'];
-
-      % Check orientation: enforce det=+1 (right-handed)
-      if det(R) < 0
-        m1 = -m1;
-        R = [n', m1', m2'];
-      end
-
-      assert(abs(det(R)-1.0) < 1e-12, ...
-        'Rotation matrix not orthogonal to machine precision');
     end
 
   end

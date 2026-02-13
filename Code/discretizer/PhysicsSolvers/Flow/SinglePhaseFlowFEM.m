@@ -15,9 +15,11 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
         targetRegions = 1:nTags;
       end
 
-      obj.dofm.registerVariable(obj.getField(),entityField.node,1,targetRegions);
+      dofm = obj.domain.dofm;
+
+      dofm.registerVariable(obj.getField(),entityField.node,1,targetRegions);
       n = getNumberOfEntities(entityField.node,obj.mesh);
-      obj.fieldId = obj.dofm.getVariableId(obj.getField());
+      obj.fieldId = dofm.getVariableId(obj.getField());
 
       % initialize the state object with a pressure field
       obj.getState().data.(obj.getField()) = zeros(n,1);
@@ -27,7 +29,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
 
     function states = finalizeState(obj,p,t)
       % Compute the posprocessing variables for the module.
-      gamma = obj.materials.getFluid().getSpecificWeight();
+      gamma = obj.domain.materials.getFluid().getSpecificWeight();
       if gamma>0
         zbc = obj.mesh.coordinates(:,3);
         states.potential = p + gamma*zbc;
@@ -52,21 +54,23 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
 
     function computeMatFEM(obj)
       % dealing with input params
-      subCells = obj.dofm.getFieldCells(obj.fieldId);
+      dofm = obj.domain.dofm;
+      mat = obj.domain.materials;
+      subCells = dofm.getFieldCells(obj.fieldId);
       nEntries = sum(obj.mesh.cellNumVerts(subCells).^2);
 
       [iiVec,jjVec,HVec,PVec] = deal(zeros(nEntries,1));
 
       % Get the fluid compressibility
-      beta = obj.materials.getFluid().getFluidCompressibility();
+      beta = mat.getFluid().getFluidCompressibility();
 
       % Get the fluid dynamic viscosity
-      mu = obj.materials.getFluid().getDynViscosity();
+      mu = mat.getFluid().getDynViscosity();
 
       l1 = 0;
       for el = subCells'
-        permMat = obj.materials.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
-        poro = obj.materials.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
+        permMat = mat.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+        poro = mat.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
         alpha = getRockCompressibility(obj,el);
         % Compute the element matrices based on the element type
         % (tetrahedra vs. hexahedra)
@@ -83,7 +87,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
         PLoc = (alpha+poro*beta)*(N'*diag(dJWeighed)*N);
         %Getting dof associated to Flow subphysic
         nodes = (obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
-        dof = obj.dofm.getLocalDoF(obj.fieldId,nodes);
+        dof = dofm.getLocalDoF(obj.fieldId,nodes);
         [jjLoc,iiLoc] = meshgrid(dof,dof);
         iiVec(l1+1:l1+s1) = iiLoc(:);
         jjVec(l1+1:l1+s1) = jjLoc(:);
@@ -92,7 +96,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
         l1 = l1 + s1;
       end
       % renumber indices according to active nodes
-      nDoF = obj.dofm.getNumbDoF(obj.fieldId);
+      nDoF = dofm.getNumbDoF(obj.fieldId);
       % Assemble H and P matrices defined as new fields of
       obj.H = sparse(iiVec, jjVec, HVec, nDoF, nDoF);
       obj.P = sparse(iiVec, jjVec, PVec, nDoF, nDoF);
@@ -105,7 +109,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       p = getState(obj,obj.getField());
       pOld = getStateOld(obj,obj.getField());
 
-      ents = obj.dofm.getActiveEntities(obj.fieldId);
+      ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
 
       if ~obj.domain.simparams.isTimeDependent
         rhs = obj.H*p(ents);
@@ -117,7 +121,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       end
 
       %adding gravity rhs contribute
-      gamma = obj.materials.getFluid().getSpecificWeight();
+      gamma = obj.domain.materials.getFluid().getSpecificWeight();
       if gamma > 0
         rhs = rhs + obj.rhsGrav;
       end
@@ -127,13 +131,15 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
     function computeRHSGravTerm(obj)
       % Compute the gravity contribution
       % Get the fluid specific weight and viscosity'
-      gamma = obj.materials.getFluid().getSpecificWeight();
+      dofm = obj.domain.dofm;
+      mat = obj.domain.materials;
+      gamma = mat.getFluid().getSpecificWeight();
       if gamma > 0
-        rhsTmp = zeros(obj.dofm.getNumbDoF(obj.fieldId),1);
-        subCells = obj.dofm.getFieldCells(obj.fieldId);
+        rhsTmp = zeros(dofm.getNumbDoF(obj.fieldId),1);
+        subCells = dofm.getFieldCells(obj.fieldId);
         for el = subCells'
           % Get the material permeability
-          permMat = obj.materials.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+          permMat = mat.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
           %             permMat = permMat/mu;
           vtkId = obj.mesh.cellVTKType(el);
           elem = getElement(obj.elements,vtkId);
@@ -144,7 +150,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
           entsId = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
           rhsTmp(entsId) = rhsTmp(entsId) + rhsLoc;
         end
-        obj.rhsGrav = rhsTmp(obj.dofm.getActiveEntities(obj.fieldId));
+        obj.rhsGrav = rhsTmp(dofm.getActiveEntities(obj.fieldId));
       end
       % remove inactive components of rhs vector
     end
@@ -158,27 +164,28 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       % in the boundary, and it's assume as a datum the most elavated
       % point in the domain. (For future, have a way to pass this
       % information).
+      bc = obj.domain.bcs;
 
-      switch obj.bcs.getCond(id)
+      switch bc.getCond(id)
         case {'NodeBC','ElementBC'}
-          ents = obj.bcs.getEntities(id);
-          vals = obj.bcs.getVals(id,t);
+          ents = bc.getEntities(id);
+          vals = bc.getVals(id,t);
         case 'SurfBC'
-          v = obj.bcs.getVals(id,t);
-          ents = obj.bcs.getLoadedEntities(id);
-          entitiesInfl = obj.bcs.getEntitiesInfluence(id);
+          v = bc.getVals(id,t);
+          ents = bc.getLoadedEntities(id);
+          entitiesInfl = bc.getEntitiesInfluence(id);
           vals = entitiesInfl*v;
         case 'VolumeForce'
-          v = obj.bcs.getVals(id,t);
-          ents = obj.bcs.getLoadedEntities(id);
-          entitiesInfl = obj.bcs.getEntitiesInfluence(id);
+          v = bc.getVals(id,t);
+          ents = bc.getLoadedEntities(id);
+          entitiesInfl = bc.getEntitiesInfluence(id);
           vals = entitiesInfl*v;
       end
 
     end
 
     function applyDirVal(obj,bcId,t)
-      bcVar = obj.bcs.getVariable(bcId);
+      bcVar = obj.domain.bcs.getVariable(bcId);
       if ~strcmp(bcVar,obj.getField()) 
         return 
       end
@@ -194,7 +201,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       [bcDofs,bcVals] = getBC(obj,bcId,t);
 
       % Base application of a Boundary condition
-      bcType = obj.bcs.getType(bcId);
+      bcType = obj.domain.bcs.getType(bcId);
       switch bcType
         case {'Dirichlet','Seepage'}
           applyDirBC(obj,bcId,bcDofs);
