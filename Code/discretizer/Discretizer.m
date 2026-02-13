@@ -1,7 +1,7 @@
 classdef Discretizer < handle
   % General discretizer class
 
-  properties (GetAccess=public, SetAccess=private)
+  properties (GetAccess=public, SetAccess=public)
     physicsSolvers                     % physics solvers database
     solverNames
     dofm
@@ -52,9 +52,9 @@ classdef Discretizer < handle
     end
 
     function applyBC(obj,t)
-      bcList = obj.bcs.db.keys;
+      bcList = obj.bcs.getBCList();
 
-      for bcId = string(bcList)
+      for bcId = bcList
         % loop over available bcs
         bcVar = obj.bcs.getVariable(bcId);
 
@@ -74,9 +74,9 @@ classdef Discretizer < handle
 
 
     function applyDirVal(obj,t)
-      bcList = obj.bcs.db.keys;
+      bcList = obj.bcs.getBCList;
 
-      for bcId = string(bcList)
+      for bcId = bcList
         % discard non-Dirichlet BC
         if ~strcmp(obj.bcs.getType(bcId),"Dirichlet")
           continue

@@ -10,8 +10,8 @@ classdef (Abstract) SolutionScheme < handle
     nInterf             % number of interfaces in the model
     %
     tOld                % tOld: previous converged time instant
-    t = 0               % simulation time
-    tStep = 0           % simulation time step
+    t                   % simulation time
+    tStep               % simulation time step
     dt                  % current time step size
     nVars               % total number of inner variable fields in the model
     attemptedReset      % flag for attempting a configuration reset
@@ -52,7 +52,9 @@ classdef (Abstract) SolutionScheme < handle
 
     function simulationLoop(obj)
 
-      % Initialize the time step increment
+      % Initialize time
+      obj.tStep = 0;
+      obj.t = obj.simparams.tIni;
       obj.dt = obj.simparams.dtIni;
 
       setLinearSolver(obj);

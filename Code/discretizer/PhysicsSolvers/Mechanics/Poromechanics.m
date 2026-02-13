@@ -4,6 +4,11 @@ classdef Poromechanics < PhysicsSolver
     K               % the stiffness matrix free of boundary conditions
     fInt            % internal forces
     cell2stress     % map cell ID to position in stress/strain matrix
+    avStress
+    avStrain
+    avStressOld
+    avStrainOld
+    flOut = true
 
     % stress and strain tensor use engineering voigt notation
     % s_xx,s_yy,s_zz,tau_yz,tau_xz,tau_xy
@@ -213,6 +218,7 @@ classdef Poromechanics < PhysicsSolver
       state.data.strain = 0.0*state.data.strain;
       stateOld.data.stress = getState(obj,"stress");
       stateOld.data.status = getState(obj,"status");
+      obj.flOut = true;
     end
 
     function updateState(obj,solution)
@@ -385,19 +391,27 @@ classdef Poromechanics < PhysicsSolver
 
       % append state variable to output structure
       stateCurr = getState(obj);
-      stateOld = getStateOld(obj);
+      stateOld = getState(obj);
 
       displ = getState(obj,obj.getField());
-      [avStress,avStrain] = finalizeState(obj,stateCurr);
-
       dispOld = getStateOld(obj,obj.getField());
-      [avStressOld,avStrainOld] = finalizeState(obj,stateOld);
 
-      avStress = avStress*fac+avStressOld*(1-fac);
-      avStrain = avStrain*fac+avStrainOld*(1-fac);
+      if obj.flOut
+        % perform this computation once per time step
+        if isempty(obj.avStress)
+          [obj.avStress,obj.avStrain] = finalizeState(obj,stateOld);
+        end
+        obj.avStressOld = obj.avStress;
+        obj.avStrainOld = obj.avStrain;
+        [obj.avStress,obj.avStrain] = finalizeState(obj,stateCurr);
+        obj.flOut = false;
+      end
+
+      avgStress = obj.avStress*fac+obj.avStressOld*(1-fac);
+      avgStrain = obj.avStrain*fac+obj.avStrainOld*(1-fac);
       displ = displ*fac+dispOld*(1-fac);
 
-      [cellData,pointData] = Poromechanics.buildPrintStruct(displ,avStress,avStrain);
+      [cellData,pointData] = Poromechanics.buildPrintStruct(displ,avgStress,avgStrain);
 
     end
 
@@ -417,7 +431,9 @@ classdef Poromechanics < PhysicsSolver
       l = 0;
 
       for el=1:obj.mesh.nCells
-        dof = getEntityFromElement(entityField.node,entityField.cell,obj.mesh,el,3);
+        nodes = obj.mesh.cells(el,:);
+        dof = dofId(nodes,3);
+        %dof = getEntityFromElement(entityField.node,entityField.cell,obj.mesh,el,3);
         vtkId = obj.mesh.cellVTKType(el);
         elem = getElement(obj.elements,vtkId);
         nG = elem.GaussPts.nNode;

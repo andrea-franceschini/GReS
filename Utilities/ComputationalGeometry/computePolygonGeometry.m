@@ -5,7 +5,7 @@ function [elementCenter, elementArea] = computePolygonGeometry(poly, normal)
 idx = mxOrderPointsCCW(poly, normal);
 polyCCW = poly(idx,:);
 
-elementCenter = mxComputePolygonCentroid3D(polyCCW,normal);
+elementCenter = mxComputePolygonCentroid3D(polyCCW);
 
 elementArea = computePolygonArea(polyCCW);
 

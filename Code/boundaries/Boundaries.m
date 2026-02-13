@@ -8,7 +8,7 @@ classdef Boundaries < handle
 
   properties (Access = private)
     grid
-    bcOrder 
+    bcList 
     % to ensure neumann is applied before dirichlet in case of overlapping
     % entity definition
   end
@@ -261,8 +261,7 @@ classdef Boundaries < handle
 
     function bcList = getBCList(obj)
 
-      bcList = obj.db.keys;
-      bcList = bcList{obj.bcOrder};
+      bcList = obj.bcList;
 
     end
   end
@@ -287,7 +286,9 @@ classdef Boundaries < handle
         inputStruct = readstruct(inputStruct.fileName,AttributeSuffix="");
       end
 
-      for i = 1:numel(inputStruct.BC)
+      nBC = numel(inputStruct.BC);
+
+      for i = 1:nBC
         % process each BC
         in = inputStruct.BC(i);
 
@@ -344,6 +345,16 @@ classdef Boundaries < handle
         % add BC to the database
         obj.db(name) = bc;
       end
+
+      % set correct order of boundary conditions. Dirichlet last
+      bcTypeList = [];
+      for bcId = string(obj.db.keys)
+        bcTypeList = [bcTypeList, obj.getType(bcId)];
+      end
+      idxDir  = strcmp(bcTypeList, 'Dirichlet'); 
+      bcOrd = [find(~idxDir), find(idxDir)];
+      bcNames = obj.db.keys;
+      obj.bcList = string(bcNames(bcOrd));
 
     end
     

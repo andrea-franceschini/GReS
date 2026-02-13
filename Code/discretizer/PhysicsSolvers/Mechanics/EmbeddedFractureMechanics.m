@@ -538,7 +538,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           cutEdges =  cellEdges(isEdgeCut);
           cutCellVertices = intersections(cutEdges,:);
 
-          idx = orderPointsCCW(cutCellVertices,normal);
+          idx = mxOrderPointsCCW(cutCellVertices,normal);
 
           surfs(ic,1:numel(cutEdges)) = cutEdges(idx);
           surfNumVerts(ic) = numel(cutEdges);
