@@ -13,7 +13,7 @@ classdef FixedStressSplit < GeneralSolver
       else
         interfaces = [];
       end
-      
+
       obj.setNonLinearSolver(simparams,domains,interfaces);
 
       obj.setLinearSolver()
@@ -38,7 +38,7 @@ classdef FixedStressSplit < GeneralSolver
 
       end
 
-     
+
 
     end
 
@@ -49,11 +49,12 @@ classdef FixedStressSplit < GeneralSolver
       % Initialize the time step increment
       obj.dt = obj.simparams.dtIni;
 
-            % Apply Dirichlet bcs to initial state
+      % Apply Dirichlet bcs to initial state
       for i = 1:obj.nDom
         obj.domains(i).applyDirVal(obj.t);
       end
 
+      %%% TIME LOOP %%
       while obj.t < obj.simparams.tMax
 
         obj.tStep = obj.tStep + 1;
@@ -179,7 +180,7 @@ classdef FixedStressSplit < GeneralSolver
         end
 
 
-          manageNextTimeStep(obj,flConv,hasConfigurationChanged);
+        manageNextTimeStep(obj,flConv,hasConfigurationChanged);
 
       end % time marching
       %
@@ -188,81 +189,81 @@ classdef FixedStressSplit < GeneralSolver
 
 
     %  function NonLinearLoop(obj)
-    % 
+    %
     %   % Initialize the time step increment
     %   obj.dt = obj.simparams.dtIni;
-    % 
+    %
     %   while obj.t < obj.simparams.tMax
-    % 
+    %
     %   % Apply Dirichlet bcs to initial state
     %   for i = 1:obj.nDom
     %     obj.domains(i).applyDirVal(obj.t);
     %   end
-    % 
-    % 
+    %
+    %
     %     % Update the simulation time and time step ID
     %     absTol = obj.simparams.absTol;
-    % 
+    %
     %     obj.tStep = obj.tStep + 1;
     %     obj.t = obj.t + obj.dt;
-    % 
+    %
     %     gresLog().log(-1,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
     %     gresLog().log(-1,'-----------------------------------------------------------\n');
-    % 
+    %
     %     % reset active set iteration counter
     %     obj.iterConfig = 0;
-    % 
+    %
     %     hasConfigurationChanged = true;
-    % 
+    %
     %     %%% CONFIGURATION LOOP %%
     %     while (hasConfigurationChanged) && (obj.iterConfig < obj.simparams.itMaxConfig)
-    % 
+    %
     %       gresLog().log(0,'\nConfiguration iteration n. %i \n', obj.iterConfig);
     %       obj.iterConfig = obj.iterConfig + 1;
-    % 
+    %
     %       for i = 1:obj.nDom
     %         obj.domains(i).applyDirVal(obj.t);
     %       end
-    % 
+    %
     %       gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
-    % 
+    %
     %       for i = 1:obj.nDom
     %         obj.domains(i).assembleSystem(obj.dt);
     %       end
-    % 
+    %
     %       for i = 1:obj.nInterf
     %         obj.interfaces{i}.assembleConstraint();
     %       end
-    % 
+    %
     %       for i = 1:obj.nDom
     %         obj.domains(i).applyBC(obj.t);
     %       end
-    % 
+    %
     %       rhs = assembleRhs(obj);
     %       rhsNorm = norm(cell2mat(rhs),2);
     %       rhsNormIt0 = rhsNorm;
-    % 
+    %
     %       tolWeigh = obj.simparams.relTol*rhsNorm;
-    % 
+    %
     %       gresLog().log(1,'0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
-    % 
+    %
     %       flConv = false;
-    % 
+    %
     %       % reset non linear iteration counter
     %       obj.iterNL = 0;
-    % 
+    %
     %       %%% NEWTON LOOP %%%
     %       while (~flConv) && (obj.iterNL < obj.simparams.itMaxNR)
-    % 
+    %
     %         obj.iterNL = obj.iterNL + 1;
-    % 
+    %
     %         J = assembleJacobian(obj);
-    % 
+    %
     %         % solve linear system
     %         du = solve(obj,J,rhs);
-    % 
+    %
     %         c = 0;
-    % 
+    %
     %         % update simulation state with linear system solution
     %         for i = 1:obj.nDom
     %           if obj.nDom == 1 && obj.nInterf == 0
@@ -274,62 +275,62 @@ classdef FixedStressSplit < GeneralSolver
     %           end
     %           obj.domains(i).updateState(sol);
     %         end
-    % 
+    %
     %         for i = 1:obj.nInterf
     %           nDof = obj.interfaces{i}.getNumbDoF();
     %           sol = du(c+1:c+nDof);
     %           obj.interfaces{i}.updateState(sol);
     %           c = c + nDof;
     %         end
-    % 
+    %
     %         % reassemble system
     %         for i = 1:obj.nDom
     %           obj.domains(i).assembleSystem(obj.dt);
     %         end
-    % 
+    %
     %         for i = 1:obj.nInterf
     %           obj.interfaces{i}.assembleConstraint();
     %         end
-    % 
+    %
     %         for i = 1:obj.nDom
     %           obj.domains(i).applyBC(obj.t);
     %         end
-    % 
+    %
     %         rhs = assembleRhs(obj);
     %         rhsNorm = norm(cell2mat(rhs),2);
     %         gresLog().log(1,'%d     %e     %e\n',obj.iterNL,rhsNorm,rhsNorm/rhsNormIt0);
-    % 
+    %
     %         % Check for convergence
     %         flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
-    % 
+    %
     %       end % end newton loop
-    % 
+    %
     %       if flConv % Newton Convergence
-    % 
+    %
     %         hasConfigurationChanged = false;
-    % 
+    %
     %         % update the active set
     %         for i = 1:obj.nDom
     %           hasConfigurationChanged = any([hasConfigurationChanged; ...
     %             obj.domains(i).updateConfiguration()]);
     %         end
-    % 
+    %
     %         for i = 1:obj.nInterf
     %           hasConfigurationChanged = any([hasConfigurationChanged; ...
     %             obj.interfaces{i}.updateConfiguration()]);
     %         end
-    % 
+    %
     %       else
-    % 
+    %
     %         break
-    % 
+    %
     %       end
-    % 
+    %
     %     end
-    % 
-    % 
+    %
+    %
     %       manageNextTimeStep(obj,flConv,hasConfigurationChanged);
-    % 
+    %
     %   end % time marching
     %   %
     %   gresLog().log(-1,"Simulation completed successfully \n")
@@ -337,7 +338,7 @@ classdef FixedStressSplit < GeneralSolver
 
 
     function finalizeOutput(obj)
-      
+
       % finalize print utils for domains and interfaces
       for i = 1:obj.nDom
         obj.domains(i).finalizeOutput();
@@ -460,7 +461,7 @@ classdef FixedStressSplit < GeneralSolver
 
       % each variable field of each domain represents a cell row
       rhs = cell(obj.nVars + obj.nInterf,1);
-      
+
       k = 0;
 
       for iD = 1:obj.nDom
@@ -488,7 +489,7 @@ classdef FixedStressSplit < GeneralSolver
         if ~isempty(obj.domains(i).bcs)
 
           % Apply Dirichlet boundary values to i-th domain
-            applyDirVal(discretizer,obj.t);
+          applyDirVal(discretizer,obj.t);
         end
       end
     end
@@ -547,7 +548,7 @@ classdef FixedStressSplit < GeneralSolver
           resetConfiguration(obj.interfaces{i});
         end
 
-        % move time 
+        % move time
         obj.tStep = obj.tStep - 1;
         obj.t = obj.t - obj.dt;
 
@@ -584,7 +585,7 @@ classdef FixedStressSplit < GeneralSolver
 
         return
 
-      else 
+      else
 
         % TIME STEP CONVERGED - advance to the next time step
 
@@ -621,4 +622,3 @@ classdef FixedStressSplit < GeneralSolver
 
   end
 end
-
