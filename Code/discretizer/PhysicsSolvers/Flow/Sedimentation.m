@@ -206,16 +206,18 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function updateState(obj,solution)
+      % Update overpressure
       state = getState(obj);
-      dt = state.t-obj.domain.stateOld.t;
       state.data.pressure = state.data.pressure + solution;
 
-      % Update the Stress and Deformation
-      map = reshape(dt*state.data.tstressvar,obj.grid.ncells(1:2));
-      sNew = obj.getStateOld('stress') - state.data.pressure ...
-        + obj.grid.distMapOverDofs(map);
-      state.data.stress = sNew;
+      % Update the stress state
+      dt = state.t-obj.domain.stateOld.t;
+      map = reshape(state.data.tstressvar,obj.grid.ncells(1:2));
+      sNew = -dt*obj.grid.distMapOverDofs(map)+solution;
       sOld = obj.getStateOld().data.stress;
+      state.data.stress = sOld + sNew;
+
+      % Update the deformation      
       if obj.nonElasticFlag
         obj.updateStateNonElastic(sNew,sOld);
       else
@@ -231,7 +233,7 @@ classdef Sedimentation < PhysicsSolver
 
       outPrint.overpres = p;
       outPrint.perm = obj.getCellsProp('permeability');
-      outPrint.comp = sNew.data.cellComp*fac+sOld.data.cellComp*(1-fac);      
+      outPrint.comp = sNew.data.cellDefm*fac+sOld.data.cellDefm*(1-fac);      
       outPrint.stress = sNew.data.stress*fac+sOld.data.stress*(1-fac);
 
       gamma = obj.materials.getFluid().getSpecificWeight();
@@ -322,10 +324,13 @@ classdef Sedimentation < PhysicsSolver
       rhs = rhsStiff + rhsCap;
 
       % adding sediment contribution
-      [idI, idJ, idK] = obj.grid.getIJKTop;
-      dofs = obj.grid.getDofsFromIJK([idI,idJ,idK]);
-      rhs(dofs) = rhs(dofs) + ...
-        obj.computeOedometricCompressibility(dofs).*obj.getState('tstressvar');
+      map = reshape(obj.getState('tstressvar'),obj.grid.ncells(1:2));
+      rhs = rhs - obj.computeOedometricCompressibility().*obj.grid.distMapOverDofs(map);
+
+      % [idI, idJ, idK] = obj.grid.getIJKTop;
+      % dofs = obj.grid.getDofsFromIJK([idI,idJ,idK]);
+      % rhs(dofs) = rhs(dofs) - ...
+      %   obj.computeOedometricCompressibility(dofs).*obj.getState('tstressvar');
     end
 
     function computeStiffMat(obj)
@@ -351,7 +356,7 @@ classdef Sedimentation < PhysicsSolver
       dofs = 1:obj.grid.ndofs;
 
       % Computing the volumes
-      volsCell = obj.grid.computeVols(dofs,obj.getState().data.cellComp);
+      volsCell = obj.grid.computeVols(dofs,obj.getState().data.cellDefm);
 
       % Computing the storage coefficient
       if obj.nonElasticFlag
@@ -364,7 +369,7 @@ classdef Sedimentation < PhysicsSolver
       oedoComp = obj.computeOedometricCompressibility(dofs);
       PVal = (oedoComp+beta*poro).*volsCell;
 
-      % Creating the P matrix.
+      % CreatcellDefming the P matrix.
       obj.P = PVal.*speye(obj.grid.ndofs);
     end
 
@@ -415,9 +420,9 @@ classdef Sedimentation < PhysicsSolver
       cellStr(5).name = 'porosity';
       cellStr(5).data = state.poro;
       cellStr(6).name = 'compaction(cell)';
-      cellStr(6).data = state.comp;
+      cellStr(6).data = -state.comp;
       cellStr(7).name = 'stress(vertical)';
-      cellStr(7).data = state.stress;
+      cellStr(7).data = -state.stress;
     end
 
     function out = isLinear(obj)
@@ -472,9 +477,9 @@ classdef Sedimentation < PhysicsSolver
       ndofs = obj.grid.getNumberCells;
       obj.getState().data.maxDofUnchanged = 0;
       obj.getState().data.(obj.getField()) = zeros(ndofs,1);
-      obj.getState().data.cellComp = zeros(ndofs,1);
-      % obj.getState().data.stress = zeros(ndofs,1);
-      obj.getState().data.stress = ones(ndofs,1);
+      obj.getState().data.cellDefm = zeros(ndofs,1);
+      obj.getState().data.stress = zeros(ndofs,1);
+      % obj.getState().data.stress = ones(ndofs,1);
       obj.getState().data.sedmrate = zeros(ndofs,1);
       obj.getState().data.tstressvar = [];
       if obj.nonElasticFlag
@@ -524,6 +529,21 @@ classdef Sedimentation < PhysicsSolver
         obj.void0 = obj.getCellsProp('voidrate');
         obj.getState().data.voidrate = obj.void0;
       end
+
+      % Initial stress state
+      coords = obj.grid.getCoordCenter(actDofs);
+      gamma = obj.materials.getFluid().getSpecificWeight();
+      if obj.nonElasticFlag
+        poro = obj.void0(dofs)./(1+obj.void0(dofs));
+      else
+        poro = obj.getCellsProp('porosity',dofs);
+      end      
+      spwg = zeros(length(dofs),1);
+      for mat=1:obj.nmat
+        spwg = spwg + (obj.materials.getMaterial(mat).PorousRock.getSpecificWeight() ...
+          -gamma)*obj.matfrac(dofs,mat);
+      end
+      obj.getState().data.stress = -(1-poro).*spwg.*(max(obj.grid.coordZ)-coords(:,3));
     end
 
     function updateSedRate(obj,dt)
@@ -539,7 +559,7 @@ classdef Sedimentation < PhysicsSolver
       % Finding the total stress variation
       gamma = obj.materials.getFluid().getSpecificWeight();
       if obj.nonElasticFlag
-        poro = 1 - obj.void0(dofs)./(1+obj.void0(dofs));
+        poro = obj.void0(dofs)./(1+obj.void0(dofs));
       else
         poro = obj.getCellsProp('porosity',dofs);
       end      
@@ -548,7 +568,7 @@ classdef Sedimentation < PhysicsSolver
         spwg = spwg + (obj.materials.getMaterial(mat).PorousRock.getSpecificWeight() ...
           -gamma)*obj.matfrac(dofs,mat).*sedRate(:,mat);
       end
-      obj.getState().data.tstressvar = poro.*spwg;
+      obj.getState().data.tstressvar = (1-poro).*spwg;
     end
 
     function [cellGrow, cellSed] = updateSedAccumulated(obj)
@@ -565,7 +585,8 @@ classdef Sedimentation < PhysicsSolver
       cellSed = zeros(size(obj.sedimentAcc));
       
       % 2. Update accumulation buffer
-      addSed = obj.getState().data.sedmrate;
+      dt = obj.getState().t-obj.getStateOld().t;
+      addSed = dt*obj.getState().data.sedmrate;
       obj.sedimentAcc = obj.sedimentAcc + addSed;
 
       % 3. Check for growth trigger (Height >= Threshold)
@@ -667,19 +688,61 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.state.data.pressure(end+1:end+newcells) = 0.;
 
       % Update the cell displacement.
-      obj.domain.state.data.cellComp(end+1:end+newcells) = 0.;
+      obj.domain.state.data.cellDefm(end+1:end+newcells) = 0.;
       % obj.domain.state.data.stress(end+1:end+newcells) = 0.;
-      obj.domain.state.data.stress(end+1:end+newcells) = 1.;
+      % obj.domain.state.data.stress(end+1:end+newcells) = 1.;
+
+      coords = obj.grid.getCoordCenter(dofs);
+      gamma = obj.materials.getFluid().getSpecificWeight();
+      if obj.nonElasticFlag
+        poro = obj.void0(dofs)./(1+obj.void0(dofs));
+      else
+        poro = obj.getCellsProp('porosity',dofs);
+      end      
+      spwg = zeros(length(dofs),1);
+      for mat=1:obj.nmat
+        spwg = spwg + (obj.materials.getMaterial(mat).PorousRock.getSpecificWeight() ...
+          -gamma)*obj.matfrac(dofs,mat);
+      end
+      obj.getState().data.stress(dofs) = -(1-poro).*spwg.*(max(obj.grid.coordZ)-coords(dofs,3));
+
       if obj.nonElasticFlag
         obj.domain.state.data.voidrate(end+1:end+newcells) = voidI;
         obj.domain.state.data.prestress(end+1:end+newcells) = obj.getCellsProp('preConStress',dofs);
       end
 
       % Update the mesh output
-      obj.updateMeshOutput(map,newlayer);
+      obj.updateMeshOutputOK(map,newlayer);
     end
 
     function updateMeshOutput(obj,map,newlayer)
+      newcells = sum(map);
+      if newlayer
+        [XX, YY, ZZ] = ndgrid(obj.grid.coordX, obj.grid.coordY, obj.grid.coordZ(end));
+        XX = repelem(XX,2,2);
+        XX = XX(2:end-1,2:end-1);
+        YY = repelem(YY,2,2);
+        YY = YY(2:end-1,2:end-1);
+        ZZ = repelem(ZZ,2,2);
+        ZZ = ZZ(2:end-1,2:end-1);
+        coord = [XX(:), YY(:), ZZ(:)];
+        npoints = size(coord,1);
+        obj.mesh.nNodes = obj.mesh.nNodes+npoints;
+        obj.mesh.coordinates(end+1:obj.mesh.nNodes,:) = coord;
+      end
+
+      [idI,idJ,idK] = obj.grid.getIJKTop;
+
+      obj.mesh.cells(end+1:end+newcells,:) = ...
+        obj.grid.getConectByIJK(idI(map),idJ(map),idK(map));
+      obj.mesh.nCells=obj.mesh.nCells+newcells;
+      obj.mesh.cellTag(end+1:end+newcells) = 8;
+      obj.mesh.cellNumVerts(end+1:end+newcells) = 8;
+      obj.mesh.cellVTKType(end+1:end+newcells) = 12;
+    end
+
+
+    function updateMeshOutputOK(obj,map,newlayer)
       newcells = sum(map);
       if newlayer
         [XX, YY, ZZ] = ndgrid(obj.grid.coordX, obj.grid.coordY, obj.grid.coordZ(end));
@@ -704,11 +767,11 @@ classdef Sedimentation < PhysicsSolver
     function updateStateElastic(obj,sNew,sOld)
       % Update the Mesh Deformation
       L = obj.grid.getCellHeight();
-      L = L(:)-obj.getStateOld().data.cellComp;
+      L = L(:)+obj.getStateOld().data.cellDefm;
       elasticPerCell = obj.getCellsProp('youngModulus');
       poissonPerCell = obj.getCellsProp('poissonRatio');
       alpha = (1-2*poissonPerCell).*(1+poissonPerCell)./((1-poissonPerCell).*elasticPerCell);
-      obj.getState().data.cellComp=obj.getState().data.cellComp + alpha.*L.*(sNew-sOld);
+      obj.getState().data.cellDefm=obj.getState().data.cellDefm + alpha.*L.*(sNew-sOld);
     end
 
     function updateStateNonElastic(obj,sNew,sOld)
@@ -721,11 +784,12 @@ classdef Sedimentation < PhysicsSolver
 
       % Update the Mesh Deformation
       L=obj.grid.getCellHeight();
-      L=L(:)-obj.getStateOld().data.cellComp;
-      map = sNew == 0;
-      sNew(map)=1;
+      L=L(:)+obj.getStateOld().data.cellDefm;
+      % L=L(:);
+      % map = sNew == 0;
+      % sNew(map)=1;
       oedo = (1/log(10))*(Cc./((1+void).*sNew));
-      obj.getState().data.cellComp=obj.getStateOld().data.cellComp + oedo.*L.*(sNew-sOld);
+      obj.getState().data.cellDefm=obj.getStateOld().data.cellDefm + oedo.*L.*(sNew-sOld);
     end
 
 
@@ -746,9 +810,9 @@ classdef Sedimentation < PhysicsSolver
       % Finalize the half-transmissibility
       dims = lnk.getDims([idI(actDof),idJ(actDof),idK(actDof)]);
       tmpT = obj.halfTrans;
-      dl = obj.getState().data.cellComp;
+      dl = obj.getState().data.cellDefm;
       for i=1:2
-        tmpT(:,i) = tmpT(:,i)./(dims(:,3)-dl);
+        tmpT(:,i) = tmpT(:,i)./(dims(:,3)+dl);
       end
 
       idx = sub2ind(size(tmpT), obj.facesNeigh(:,1), obj.facesNeighDir);

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Materials>
+  <Solid cellTags = "1">
+    <PorousRock
+        specificWeight = "2.1e6"
+        permeability = "1.0182e-6, 1.0182e-6, 1.0182e-6"
+    />
+    <SedimentMaterial
+        voidRate = "1."
+        preStress = "1.e3"
+        compressibilityIndex = "0.2"
+        reCompressibilityIndex = "0.02"
+    />
+  </Solid>
+
+  <Fluid
+      specificWeight = "1.e4"
+      compressibility = "4.6e-10"
+      dynamicViscosity = "1e-3"
+  />
+  <!-- specific weight (N/m3),
+       fluid compressibility (Pa-1),
+       dynamic viscosity (Pa/s)
+compressibility = "4.6e-10" 0.432E-08
+  -->
+  
+</Materials>
+<!---
+
+<Constitutive>
+      <Elastic
+          youngModulus = "9.4706e7"
+          poissonRatio = "0.15"
+      />
+    </Constitutive>
+
+-->

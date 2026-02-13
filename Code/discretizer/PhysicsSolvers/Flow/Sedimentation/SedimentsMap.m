@@ -79,18 +79,14 @@ classdef SedimentsMap < handle
       % Routing to interpolation logic
       if ntimesteps > 1 && pos ~= posF
         if strcmpi(obj.type, "linear")
-          map = obj.LinearInter(dt, pos, posF);
+          map = obj.LinearInter(dt, pos, posF) / dt;
         else
-          map = obj.RampInter(dt, pos, posF);
+          map = obj.RampInter(dt, pos, posF) / dt;
         end
       else
         % Single event or within the same time window
-        map = obj.processEvent(pos) * dt;
+        map = obj.processEvent(pos);
       end
-
-      % map=map/(3.1536e7); % year->
-
-      
     end
 
   end
@@ -129,9 +125,11 @@ classdef SedimentsMap < handle
       % Handle Uniform distributions
       if isfield(event, "Uniform")
         for item = event.Uniform
-          if checkMat(item.materialFlag)
-            map(:, item.materialFlag) = item.value;
-            checkMat(item.materialFlag) = false;
+          if ~ismissing(item)
+            if checkMat(item.materialFlag)
+              map(:, item.materialFlag) = item.value;
+              checkMat(item.materialFlag) = false;
+            end
           end
         end
       end
@@ -139,24 +137,28 @@ classdef SedimentsMap < handle
       % Handle Random distributions
       if isfield(event, "Random")
         for item = event.Random
-          switch item.type
-            case 'Normal'
-              pd = makedist('Normal', 'mu', item.mean, 'sigma', sqrt(item.variance));
-            case 'Lognormal'
-              pd = makedist('Lognormal', 'mu', log(item.mean), 'sigma', sqrt(item.variance));
-            case 'Uniform'
-              pd = makedist('Uniform', 'Lower', item.lower, 'Upper', item.upper);
+          if ~ismissing(item)
+            switch item.type
+              case 'Normal'
+                pd = makedist('Normal', 'mu', item.mean, 'sigma', sqrt(item.variance));
+              case 'Lognormal'
+                pd = makedist('Lognormal', 'mu', log(item.mean), 'sigma', sqrt(item.variance));
+              case 'Uniform'
+                pd = makedist('Uniform', 'Lower', item.lower, 'Upper', item.upper);
+            end
+            map = random(pd, prod(obj.dim), obj.nmat);
           end
-          map = random(pd, prod(obj.dim), obj.nmat);
         end
       end
 
       % Handle File-based Maps
       if isfield(event, "Map")
         for item = event.Map
-          if checkMat(item.materialFlag) && isfile(item.file)
-            map(:, item.materialFlag) = obj.dataMap(item);
-            checkMat(item.materialFlag) = false;
+          if ~ismissing(item)
+            if and(checkMat(item.materialFlag),isfile(item.file))
+              map(:, item.materialFlag) = obj.dataMap(item);
+              checkMat(item.materialFlag) = false;
+            end
           end
         end
       end

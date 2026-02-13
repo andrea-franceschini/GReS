@@ -195,7 +195,7 @@ classdef gridForSedimentation < handle
       dz = dz.*tmp;
 
       vAll = dx.*dy.*tmp;
-      vols = vAll(ind).*(dz(ind)-dl(dofs));
+      vols = vAll(ind).*(dz(ind)+dl(dofs));
     end
 
     function ijk = getIJKfromCellID(obj,cellID)
@@ -309,6 +309,26 @@ classdef gridForSedimentation < handle
       ndivXY = (obj.ncells(1)+1)*(obj.ncells(2)+1);
 
       conect=zeros(size(idI,1),8);
+
+      % conect(:,1)=ndivXY*(idK-1)+4*(ndivX-1)*(idJ-1)+2*(idI-1);
+
+      conect(:,1)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI;
+      conect(:,2)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI+1;
+      conect(:,3)=ndivXY*(idK-1)+ndivX*idJ+idI+1;
+      conect(:,4)=ndivXY*(idK-1)+ndivX*idJ+idI;
+      conect(:,5)=ndivXY*idK+ndivX*(idJ-1)+idI;
+      conect(:,6)=ndivXY*idK+ndivX*(idJ-1)+idI+1;
+      conect(:,7)=ndivXY*idK+ndivX*idJ+idI+1;
+      conect(:,8)=ndivXY*idK+ndivX*idJ+idI;
+    end
+
+    function conect = getConectByIJKOk(obj,idI,idJ,idK)
+      % GETCONECTBYIJK Returns VTK hexahedral connectivity.
+
+      ndivX = obj.ncells(1)+1;
+      ndivXY = (obj.ncells(1)+1)*(obj.ncells(2)+1);
+
+      conect=zeros(size(idI,1),8);
       conect(:,1)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI;
       conect(:,2)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI+1;
       conect(:,3)=ndivXY*(idK-1)+ndivX*idJ+idI+1;
@@ -351,6 +371,15 @@ classdef gridForSedimentation < handle
       else
         dof=0;
       end
+    end
+
+    function out = distMapOverDofsOld(obj,map)
+      out = zeros(obj.ndofs,1);
+      idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
+      idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
+      idK = obj.columnsHeight(:);
+      dofTmp = obj.dof(sub2ind(obj.ncells,idI,idJ,idK));
+      out(dofTmp) = map(:);
     end
 
     function out = distMapOverDofs(obj,map)
