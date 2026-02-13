@@ -114,7 +114,7 @@ xlabel('$\xi$', 'Interpreter', 'latex', 'FontSize', 14)
 ylabel('$\|\mathbf{g_T}\|$', 'Interpreter', 'latex', 'FontSize', 14)
 set(gca,'TickLabelInterpreter','latex','FontSize',14)   % <-- axis numbers in LaTeX
 
-exportgraphics(gcf, 'gn_plot.pdf')
+%exportgraphics(gcf, 'gn_plot.pdf')
 
 
 

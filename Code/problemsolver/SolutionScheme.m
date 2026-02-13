@@ -56,7 +56,7 @@ classdef (Abstract) SolutionScheme < handle
       obj.tStep = 0;
       obj.t = obj.simparams.tIni;
       obj.dt = obj.simparams.dtIni;
-
+      
       setLinearSolver(obj);
 
       while obj.t < obj.simparams.tMax

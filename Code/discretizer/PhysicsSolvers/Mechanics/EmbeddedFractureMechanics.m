@@ -44,11 +44,13 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       defineFractures(obj,solverInput);
 
+      dofm = obj.domain.dofm;
+
       % register nodal displacements on target regions
-      obj.dofm.registerVariable(obj.getField(),entityField.cell,3,"nEntities",obj.nCutCells);
+      dofm.registerVariable(obj.getField(),entityField.cell,3,"nEntities",obj.nCutCells);
 
       % store the id of the field in the degree of freedom manager
-      obj.fieldId = obj.dofm.getVariableId(obj.getField());
+      obj.fieldId = dofm.getVariableId(obj.getField());
 
       % initialize the state object
       initState(obj);
@@ -60,7 +62,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     function assembleSystem(obj,dt)
       % compute the displacements matrices and rhs in the domain
 
-      fldMech = obj.dofm.getVariableId(Poromechanics.getField());
+      fldMech = obj.domain.dofm.getVariableId(Poromechanics.getField());
       [Juw,Jwu,Jww,rhsW] = computeJacobianAndRhs(obj,dt);
 
       obj.domain.J{obj.fieldId,fldMech} = Jwu;
@@ -73,10 +75,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     function [Kuw,Kwu,Kww,rhsW] = computeJacobianAndRhs(obj,dt)
 
+      dofm = obj.domain.dofm; 
       n1 = sum((obj.mesh.nDim^2)*(obj.mesh.cellNumVerts(obj.cutCells)*obj.nCutCells));
       n2 = sum((obj.mesh.nDim^2)*obj.nCutCells^2);
-      nDofU = obj.dofm.getNumbDoF(Poromechanics.getField()); 
-      nDofW = obj.dofm.getNumbDoF(obj.fieldId); 
+      nDofU = dofm.getNumbDoF(Poromechanics.getField()); 
+      nDofW = dofm.getNumbDoF(obj.fieldId); 
 
       asbKuw = assembler(n1,nDofU,nDofW);
       asbKwu = assembler(n1,nDofW,nDofU);
@@ -92,7 +95,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       cell2stress = getPhysicsSolver(obj.domain,"Poromechanics").cell2stress;
 
-      fldMech = obj.dofm.getVariableId(Poromechanics.getField());
+      fldMech = dofm.getVariableId(Poromechanics.getField());
 
       for i = 1:obj.nCutCells
 
@@ -116,7 +119,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         E = computeEquilibriumOperator(obj,i);
 
         % compute constituvie tensor
-        [D, sigma, ~] = obj.materials.updateMaterial( ...
+        [D, sigma, ~] = obj.domain.materials.updateMaterial( ...
           obj.mesh.cellTag(cellId), ...
           sOld.data.stress(l+1:l+nG,:), ...
           s.data.strain(l+1:l+nG,:), ...
@@ -128,8 +131,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         % grab degree of freedom
         nodes = obj.mesh.cells(cellId,:);
-        uDof = obj.dofm.getLocalDoF(fldMech,nodes);
-        wDof = obj.dofm.getLocalDoF(obj.fieldId,i);
+        uDof = dofm.getLocalDoF(fldMech,nodes);
+        wDof = dofm.getLocalDoF(obj.fieldId,i);
 
         dtdg = computeDerTractionGap(obj,i,jump(wDof([2;3])));
 
@@ -283,14 +286,15 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     function updateState(obj,solution)
 
       % Update state structure with last solution increment
-      ents = obj.dofm.getActiveEntities(obj.fieldId,1);
+      dofm = obj.domain.dofm;
+      ents = dofm.getActiveEntities(obj.fieldId,1);
 
       stateCurr = obj.getState();
       stateOld = obj.getStateOld();
 
       if nargin > 1
         % apply newton update to current displacements
-        dw = solution(getDoF(obj.dofm,obj.fieldId));
+        dw = solution(getDoF(dofm,obj.fieldId));
         stateCurr.data.(obj.getField())(ents) = stateCurr.data.(obj.getField())(ents) + ...
           dw;
 
@@ -314,7 +318,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         nG = elem.GaussPts.nNode;
         N = getDerBasisFAndDet(elem,el,2);
         Bw = computeCompatibilityMatrix(obj,i,N);
-        jump = w(getLocalDoF(obj.dofm,obj.fieldId,i));
+        jump = w(getLocalDoF(dofm,obj.fieldId,i));
         stateCurr.data.strain(l+1:l+nG,:) = stateCurr.data.strain(l+1:l+nG,:) + ...
           reshape(pagemtimes(Bw,jump),6,nG)';
       end
@@ -331,7 +335,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     function applyDirVal(obj,bcId,t)
 
-      bcVar = obj.bcs.getVariable(bcId);
+      bcVar = obj.domain.bcs.getVariable(bcId);
 
       if ~strcmp(bcVar,obj.getField())
         return
@@ -652,7 +656,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       penT = obj.penalty_t;
 
       for i = 1:obj.nCutCells
-        dofW = getLocalDoF(obj.dofm,obj.fieldId,i);
+        dofW = getLocalDoF(obj.domain.dofm,obj.fieldId,i);
         j = jump(dofW);
         dj = deltaJump(dofW);
 

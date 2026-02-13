@@ -1,7 +1,7 @@
 function linkBoundSurf2TPFAFace(solver)
 % TO DO: call this from within the SinglePhaseFlow solver!
 
-bcs = solver.bcs;
+bcs = solver.domain.bcs;
 
 keys = bcs.db.keys;
 flRenum = false(length(keys),1);
