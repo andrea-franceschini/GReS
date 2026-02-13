@@ -53,6 +53,8 @@ classdef (Abstract) InterfaceSolver < handle
     % list of dirichlet nodes
     dirNodes
 
+    vtmBlock
+
   end
 
   properties (Access=private)
@@ -227,14 +229,16 @@ classdef (Abstract) InterfaceSolver < handle
     % end
 
     function vtmBlock = writeVTKfile(obj,fac,time)
+
+      obj.vtmBlock = obj.outstate.vtkFile.createElement('Block');
+      
       mesh = getMesh(obj,MortarSide.slave);
       surfData2D = struct('name', [], 'data', []);
       pointData2D = struct('name', [], 'data', []);
       [surfData,pointData] = writeVTK(obj,fac,time);
       surfData2D = OutState.mergeOutFields(surfData2D,surfData);
       pointData2D = OutState.mergeOutFields(pointData2D,pointData);
-      vtmBlock = obj.outstate.vtkFile.createElement('Block');
-      obj.outstate.writeVTKfile(vtmBlock,obj.getOutName(),mesh,...
+      obj.outstate.writeVTKfile(obj.vtmBlock,obj.getOutName(),mesh,...
         time, [], [], pointData2D, surfData2D);
 
     end
