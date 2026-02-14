@@ -162,7 +162,7 @@ classdef (Abstract) PhysicsSolver < handle
       bcVar = obj.domain.bcs.getVariable(bcId);
       bcId = obj.domain.dofm.getVariableId(bcVar);
 
-      % remove inactive dofs
+      %remove inactive dofs
       id = bcDofs == 0;
       bcDofs = bcDofs(~id);
       bcVals = bcVals(~id);
@@ -218,7 +218,7 @@ classdef (Abstract) PhysicsSolver < handle
         for i = 1:nV
           obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
         end
-      
+
         for iI = 1:numel(obj.domain.interfaces)
           if ~isempty(obj.domain.Jum{bcVarId})
             obj.domain.Jmu{iI}{bcVarId}(:,bcDofs) = 0;
@@ -240,6 +240,8 @@ classdef (Abstract) PhysicsSolver < handle
       end
 
     end
+
+
 
     function J = getJacobian(obj,varargin)
 
@@ -263,7 +265,7 @@ classdef (Abstract) PhysicsSolver < handle
       out = any(strcmp(obj.getField(),bcVar));
 
     end
-    
+
 
     function out = isSymmetric(obj)
 
