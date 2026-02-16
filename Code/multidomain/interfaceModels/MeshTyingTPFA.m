@@ -249,7 +249,7 @@ classdef MeshTyingTPFA < InterfaceSolver
       nP = elemS.computeNormal(idS,elemS.centroid);
 
       coordS3D = FEM.getElementCoords(elemS,idS);
-      coordS = pointToSurfaceProjection(P0,nP,coordS3D);
+      [coordS,m1,m2] = pointToSurfaceProjection(P0,nP,coordS3D);
 
       coordM3D = FEM.getElementCoords(elemM,idM);
       coordM = pointToSurfaceProjection(P0,nP,coordM3D);
@@ -265,8 +265,7 @@ classdef MeshTyingTPFA < InterfaceSolver
       area = computePolygonArea2D(polyClip);
 
       % map the center back to 3D coords
-      R = mxComputeRotationMat(nP);
-      center3D = P0' + center2D(1)*R(:,2) + center2D(2)*R(:,3);
+      center3D = P0' + center2D(1)*m1 + center2D(2)*m2;
 
       % add new face to list
       idx = idx+1;
