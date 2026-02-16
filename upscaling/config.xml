@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Problem>
+  <InputFiles
+    meshFile = "Input/cylinder.vtk"
+    simParam = "Input/simParam.xml"
+    materials = "Input/materials.xml"
+    boundaries = "Input/boundaries.xml"
+    solver = "Input/solver.xml"
+  />
+  <Mesh
+    H = "5000"
+    R = "1000"
+    fault_angle = "30"
+  />
+  <Rock
+    E = "10.e9"
+    nu = "0.26"
+  />
+  <JointFamilies
+    BlockSize = "50">
+    <Families>
+      <set1
+        number_of_joints = "64, 41, 31, 24, 19, 15, 12, 9, 6, 4"
+        azimuth_mean = "175"
+        dip_mean = "76"
+        azimuth_std = "10"
+        dip_std = "5"
+        Kn_mean = "10.e9"
+        Ks_mean = "8.e9"
+        Kn_std = "1.e9"
+        Ks_std = "1.e9"
+        Kn_min = "5.e9"
+        Ks_min = "4.e9"
+        Kn_max = "20.e9"
+        Ks_max = "16.e9"
+      />
+      <set2
+        number_of_joints = "75, 49, 37, 29, 23, 18, 14, 10, 7, 5"
+        azimuth_mean = "310"
+        dip_mean = "65"
+        azimuth_std = "10"
+        dip_std = "5"
+        Kn_mean = "15.e9"
+        Ks_mean = "12.5e9"
+        Kn_std = "1.e9"
+        Ks_std = "1.e9"
+        Kn_min = "5.e9"
+        Ks_min = "4.e9"
+        Kn_max = "20.e9"
+        Ks_max = "16.e9"
+      />
+      <set3
+        number_of_joints = "26, 17, 13, 10, 8, 6, 5, 4, 3, 2"
+        azimuth_mean = "218"
+        dip_mean = "75"
+        azimuth_std = "10"
+        dip_std = "5"
+        Kn_mean = "12.e9"
+        Ks_mean = "10.e9"
+        Kn_std = "1.e9"
+        Ks_std = "1.e9"
+        Kn_min = "5.e9"
+        Ks_min = "4.e9"
+        Kn_max = "20.e9"
+        Ks_max = "16.e9"
+      />
+    </Families>
+  </JointFamilies>
+  <DruckerPrager>
+    <DamageZone1
+      zoneID = "2"
+      cohesion_mean = "0.5"
+      friction_angle_mean = "30"
+      cohesion_std = "0.1"
+      friction_angle_std = "1"
+    />
+    <Core
+      zoneID = "3"
+      cohesion_mean = "2.0"
+      friction_angle_mean = "25"
+      cohesion_std = "0.1"
+      friction_angle_std = "1"
+    />
+    <DamageZone2
+      zoneID = "4"
+      cohesion_mean = "1.0"
+      friction_angle_mean = "27.5"
+      cohesion_std = "0.1"
+      friction_angle_std = "1"
+    />
+  </DruckerPrager>
+</Problem>

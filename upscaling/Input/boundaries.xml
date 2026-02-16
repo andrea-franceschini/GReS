@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<BoundaryConditions>
+  <BC
+    name = "fix_bottom"
+    type = "Dirichlet"
+    entityType = "SurfBC"
+    variable = "displacements"
+  >
+
+    <BCentities
+      surfaceTags = "2"
+      components = "x,y,z"
+    />
+
+    <BCevent
+      time = "0"
+      value = "0"
+    />
+  </BC>
+
+  <BC
+    name = "load_top"
+    type = "Neumann"
+    entityType = "SurfBC"
+    variable = "displacements"
+  >
+
+    <BCentities
+      bcListFile = "BCs/listTop"
+    />
+
+    <BCevent
+      time = "0.0"
+      value = "BCs/valsTop"
+    />
+  </BC>
+
+  <BC
+    name = "load_lateral"
+    type = "Neumann"
+    entityType = "SurfBC"
+    variable = "displacements"
+  >
+
+    <BCentities
+      bcListFile = "BCs/listLat"
+    />
+
+    <BCevent
+      time = "0.0"
+      value = "BCs/valsLat"
+    />
+  </BC>
+
+</BoundaryConditions>

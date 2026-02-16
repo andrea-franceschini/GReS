@@ -27,7 +27,7 @@ classdef Logger < handle
         a = 1;
       end
       if obj.verbosity >= loglevel
-        fprintf(varargin{a:end});
+        %fprintf(varargin{a:end});
         %fprintf("\n");
       end
     end
