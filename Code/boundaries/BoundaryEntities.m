@@ -27,6 +27,8 @@ classdef BoundaryEntities < handle
     entityPos
     % logical index to easily deactivate a bc entity
     isActiveEntity
+    % scaling factor for the bc value
+    bcScale
   end
 
   properties (Access = private)
@@ -43,6 +45,7 @@ classdef BoundaryEntities < handle
       obj.nTimes = sum(times >= 0.0);
       obj.bcData = bcData;
       obj.entityType = entityType;
+      obj.bcScale = 1.0;
     end
 
 
@@ -96,6 +99,8 @@ classdef BoundaryEntities < handle
         end
 
       end
+
+      vals = vals*obj.bcScale;
 
       %vals = vals(obj.isActiveEntity);
     end

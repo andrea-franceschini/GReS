@@ -264,6 +264,12 @@ classdef Boundaries < handle
       bcList = obj.bcList;
 
     end
+
+    function scaleBC(obj,identifier,scalingFactor)
+
+      obj.getData(identifier).data.bcScale = scalingFactor;
+
+    end
   end
 
 
