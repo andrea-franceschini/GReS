@@ -2,7 +2,8 @@ close all;
 % clear;
 input_dir = 'Input/';
 file_SimP = fullfile(input_dir,'simparam.xml');
-file_Mat = fullfile(input_dir,'materialsElastic.xml');
+% file_Mat = fullfile(input_dir,'materialsElastic.xml');
+ file_Mat = fullfile(input_dir,'materials.xml');
 file_Output = fullfile(input_dir,'output.xml');
 file_Solver = fullfile(input_dir,'solver.xml');
 

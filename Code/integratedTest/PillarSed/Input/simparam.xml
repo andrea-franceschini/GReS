@@ -4,7 +4,7 @@
   <simParam>
     <Time 
           Start="0."
-          End ="3.101e2"
+          End ="2.01e2"
           DtInit="5.e0"
           DtMin ="5.e0"
           DtMax ="1.e2"          

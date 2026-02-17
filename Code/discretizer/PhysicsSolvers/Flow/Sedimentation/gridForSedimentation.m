@@ -401,6 +401,23 @@ classdef gridForSedimentation < handle
       segmZ = diff(obj.coordZ);
       dh=segmZ(idK);
     end
+
+    function comp = getCompaction(obj,defByCell)
+      comp = zeros(obj.ndofs,1);
+      for i=1:obj.ncells(1)
+        for j=1:obj.ncells(2)
+          column = obj.dof(i,j,:);
+          acc = 0.;
+          for k=1:obj.ncells(3)
+            dofId = column(k);
+            if dofId ~= 0
+              acc = acc + defByCell(dofId);
+              comp(dofId)=acc;
+            end
+          end
+        end
+      end
+    end
     
   end
 

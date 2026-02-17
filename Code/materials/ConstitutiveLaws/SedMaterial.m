@@ -48,19 +48,23 @@ classdef SedMaterial < handle
     end
 
     methods (Static)
-      function out = getVoidRatio(sNew,sOld,sPre,void0,Cc,Cr)
+      function out = getVoidRatio(sNew,sOld,sPre,Cc,Cr)
           ndofs = length(sNew);
           flag = ndofs==length(sOld);
           flag = and(flag,ndofs==length(sPre));
-          flag = and(flag,ndofs==length(void0));
           flag = and(flag,ndofs==length(Cc));
           flag = and(flag,ndofs==length(Cr));
+          sNew = abs(sNew);
           if ~flag, return; end
           map1 = sNew>=sPre;
-          map2 = ~map1;
+          map2 = sNew<=sPre;
+          map3 = and(sOld<=sPre,map1);
+          map1 = and(map1,~map3);
           out = zeros(ndofs,1);
-          out(map1) = void0(map1)-Cc(map1).*log(sNew(map1)./sPre(map1));
-          out(map2) = void0(map2)-Cr(map2).*log(sNew(map2)./sOld(map2));
+          out(map1) = Cc(map1).*log(sNew(map1)./sOld(map1));
+          out(map2) = Cr(map2).*log(sNew(map2)./sPre(map2));
+          out(map3) = Cc(map3).*log(sNew(map3)./sPre(map3)) + ...
+            Cr(map3).*log(sPre(map3)./sOld(map3));
       end
     end
 end
