@@ -1,350 +1,71 @@
-classdef FixedStressSplit < GeneralSolver
+classdef FixedStressSplit < SolutionScheme
   % Class for solving non linear contact problem
+
+  properties
+    % instance of linearSolver for singlePhysics
+    solverMech
+    solverFlow
+    maxIterFSS = 10;
+    tolFSS = 1e-5;
+    iterFSS
+  end
 
 
   methods (Access = public)
-    function obj = FixedStressSplit(simparams,domains,varargin)
+    function obj = FixedStressSplit(varargin)
 
-      assert(nargin > 1 && nargin < 4,"Wrong number of input arguments " + ...
-        "for general solver")
-
-      if nargin > 2
-        interfaces = varargin{1};
-      else
-        interfaces = [];
-      end
-      
-      obj.setNonLinearSolver(simparams,domains,interfaces);
-
-      obj.setLinearSolver()
-
-    end
-
-
-    function simulationLoop(obj)
-
-      % Initialize the time step increment
-      obj.dt = obj.simparams.dtIni;
-
-      while obj.t < obj.simparams.tMax
-
-        obj.tStep = obj.tStep + 1;
-        obj.t = obj.t + obj.dt;
-
-        gresLog().log(-1,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
-        gresLog().log(-1,'-----------------------------------------------------------\n');
-
-        flConv = solveStep(obj);
-
-      end
-
-     
+      setFixedStressSplit(obj)
 
     end
 
 
 
-    function NonLinearLoop(obj)
+    function fSSplitConv = solveStep(obj,varargin)
 
-      % Initialize the time step increment
-      obj.dt = obj.simparams.dtIni;
-
-            % Apply Dirichlet bcs to initial state
-      for i = 1:obj.nDom
-        obj.domains(i).applyDirVal(obj.t);
+      % set target variable for each domain and interface
+      obj.targetVariables = [varargin{:}];
+      if ~isempty(varargin)
+        error("solveStep with target variables is not yet implemented")
       end
 
-      while obj.t < obj.simparams.tMax
+      dom = obj.domains;
+      physSolv = dom.getPhysicsSolver("BiotFixedStressSplit");
 
-        obj.tStep = obj.tStep + 1;
-        obj.t = obj.t + obj.dt;
+      % apply dirichlet value at the beginning of the time step
+      dom.applyDirVal(obj.t);
 
-        gresLog().log(-1,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
-        gresLog().log(-1,'-----------------------------------------------------------\n');
+      fSSplitConv = false;
 
-        flConv = solveStep(obj);
+      while (~fSSplitConv) && (obj.iterFSS < maxIter)
 
-        manageNextTimeStep(obj,flConv);
-        %%% CONFIGURATION LOOP %%
-        while (hasConfigurationChanged) && (obj.iterConfig < obj.simparams.itMaxConfig)
+        gresLog().log(0,'\nFixed Stress Split iteration n. %i \n', obj.iterFSS);
+        obj.iterFSS = obj.iterFSS + 1;
 
-          gresLog().log(0,'\nConfiguration iteration n. %i \n', obj.iterConfig);
-          obj.iterConfig = obj.iterConfig + 1;
+        % solve pressure
+        gresLog().log(1,"\nSolving pressure\n")
+        newtConvFlow = obj.nonLinearSolve("pressure");
 
-          for i = 1:obj.nDom
-            obj.domains(i).applyDirVal(obj.t);
-          end
+        if ~newtConvFlow, break, end
 
-          gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
+        % check convergence of fixed stress split
+        currPress = dom.state.data.pressure;
+        prevPress = physSolv.conv.pressure;
+        relPressChange = norm(currPress-prevPress)/norm(prevPress);
 
-          for i = 1:obj.nDom
-            obj.domains(i).assembleSystem(obj.dt);
-          end
+        physSolv.advanceState("pressure");
 
-          for i = 1:obj.nInterf
-            obj.interfaces{i}.assembleConstraint();
-          end
+        % solve mechanics
+        gresLog().log(1,"\nSolving mechanics\n")
+        newtConvMech = obj.nonLinearSolve("displacements");
 
-          for i = 1:obj.nDom
-            obj.domains(i).applyBC(obj.t);
-          end
+        if ~newtConvMech, break, end
 
-          rhs = assembleRhs(obj);
-          rhsNorm = norm(cell2mat(rhs),2);
-          rhsNormIt0 = rhsNorm;
+        physSolv.advanceState("displacements");
 
-          tolWeigh = obj.simparams.relTol*rhsNorm;
-
-          gresLog().log(1,'0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
-
-          flConv = false;
-
-          % reset non linear iteration counter
-          obj.iterNL = 0;
-
-          %%% NEWTON LOOP %%%
-          while (~flConv) && (obj.iterNL < obj.simparams.itMaxNR)
-
-            obj.iterNL = obj.iterNL + 1;
-
-            J = assembleJacobian(obj);
-
-            % solve linear system
-            du = solve(obj,J,rhs);
-
-            c = 0;
-
-            % update simulation state with linear system solution
-            for i = 1:obj.nDom
-              if obj.nDom == 1 && obj.nInterf == 0
-                sol = du;
-              else
-                nDof = obj.domains(i).getNumbDoF();
-                sol = du(c+1:c+nDof);
-                c = c + nDof;
-              end
-              obj.domains(i).updateState(sol);
-            end
-
-            for i = 1:obj.nInterf
-              nDof = obj.interfaces{i}.getNumbDoF();
-              sol = du(c+1:c+nDof);
-              obj.interfaces{i}.updateState(sol);
-              c = c + nDof;
-            end
-
-            % reassemble system
-            for i = 1:obj.nDom
-              obj.domains(i).assembleSystem(obj.dt);
-            end
-
-            for i = 1:obj.nInterf
-              obj.interfaces{i}.assembleConstraint();
-            end
-
-            for i = 1:obj.nDom
-              obj.domains(i).applyBC(obj.t);
-            end
-
-            rhs = assembleRhs(obj);
-            rhsNorm = norm(cell2mat(rhs),2);
-            gresLog().log(1,'%d     %e     %e\n',obj.iterNL,rhsNorm,rhsNorm/rhsNormIt0);
-
-            % Check for convergence
-            flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
-
-          end % end newton loop
-
-          if flConv % Newton Convergence
-
-            hasConfigurationChanged = false;
-
-            % update the active set
-            for i = 1:obj.nDom
-              hasConfigurationChanged = any([hasConfigurationChanged; ...
-                obj.domains(i).updateConfiguration()]);
-            end
-
-            for i = 1:obj.nInterf
-              hasConfigurationChanged = any([hasConfigurationChanged; ...
-                obj.interfaces{i}.updateConfiguration()]);
-            end
-
-          else
-
-            break
-
-          end
-
+        % check convergence of the scheme
+        if relPressChange < obj.tolFSS
+          fSSplitConv = true;
         end
-
-
-          manageNextTimeStep(obj,flConv,hasConfigurationChanged);
-
-      end % time marching
-      %
-      gresLog().log(-1,"Simulation completed successfully \n")
-    end
-
-
-    %  function NonLinearLoop(obj)
-    % 
-    %   % Initialize the time step increment
-    %   obj.dt = obj.simparams.dtIni;
-    % 
-    %   while obj.t < obj.simparams.tMax
-    % 
-    %   % Apply Dirichlet bcs to initial state
-    %   for i = 1:obj.nDom
-    %     obj.domains(i).applyDirVal(obj.t);
-    %   end
-    % 
-    % 
-    %     % Update the simulation time and time step ID
-    %     absTol = obj.simparams.absTol;
-    % 
-    %     obj.tStep = obj.tStep + 1;
-    %     obj.t = obj.t + obj.dt;
-    % 
-    %     gresLog().log(-1,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
-    %     gresLog().log(-1,'-----------------------------------------------------------\n');
-    % 
-    %     % reset active set iteration counter
-    %     obj.iterConfig = 0;
-    % 
-    %     hasConfigurationChanged = true;
-    % 
-    %     %%% CONFIGURATION LOOP %%
-    %     while (hasConfigurationChanged) && (obj.iterConfig < obj.simparams.itMaxConfig)
-    % 
-    %       gresLog().log(0,'\nConfiguration iteration n. %i \n', obj.iterConfig);
-    %       obj.iterConfig = obj.iterConfig + 1;
-    % 
-    %       for i = 1:obj.nDom
-    %         obj.domains(i).applyDirVal(obj.t);
-    %       end
-    % 
-    %       gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
-    % 
-    %       for i = 1:obj.nDom
-    %         obj.domains(i).assembleSystem(obj.dt);
-    %       end
-    % 
-    %       for i = 1:obj.nInterf
-    %         obj.interfaces{i}.assembleConstraint();
-    %       end
-    % 
-    %       for i = 1:obj.nDom
-    %         obj.domains(i).applyBC(obj.t);
-    %       end
-    % 
-    %       rhs = assembleRhs(obj);
-    %       rhsNorm = norm(cell2mat(rhs),2);
-    %       rhsNormIt0 = rhsNorm;
-    % 
-    %       tolWeigh = obj.simparams.relTol*rhsNorm;
-    % 
-    %       gresLog().log(1,'0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
-    % 
-    %       flConv = false;
-    % 
-    %       % reset non linear iteration counter
-    %       obj.iterNL = 0;
-    % 
-    %       %%% NEWTON LOOP %%%
-    %       while (~flConv) && (obj.iterNL < obj.simparams.itMaxNR)
-    % 
-    %         obj.iterNL = obj.iterNL + 1;
-    % 
-    %         J = assembleJacobian(obj);
-    % 
-    %         % solve linear system
-    %         du = solve(obj,J,rhs);
-    % 
-    %         c = 0;
-    % 
-    %         % update simulation state with linear system solution
-    %         for i = 1:obj.nDom
-    %           if obj.nDom == 1 && obj.nInterf == 0
-    %             sol = du;
-    %           else
-    %             nDof = obj.domains(i).getNumbDoF();
-    %             sol = du(c+1:c+nDof);
-    %             c = c + nDof;
-    %           end
-    %           obj.domains(i).updateState(sol);
-    %         end
-    % 
-    %         for i = 1:obj.nInterf
-    %           nDof = obj.interfaces{i}.getNumbDoF();
-    %           sol = du(c+1:c+nDof);
-    %           obj.interfaces{i}.updateState(sol);
-    %           c = c + nDof;
-    %         end
-    % 
-    %         % reassemble system
-    %         for i = 1:obj.nDom
-    %           obj.domains(i).assembleSystem(obj.dt);
-    %         end
-    % 
-    %         for i = 1:obj.nInterf
-    %           obj.interfaces{i}.assembleConstraint();
-    %         end
-    % 
-    %         for i = 1:obj.nDom
-    %           obj.domains(i).applyBC(obj.t);
-    %         end
-    % 
-    %         rhs = assembleRhs(obj);
-    %         rhsNorm = norm(cell2mat(rhs),2);
-    %         gresLog().log(1,'%d     %e     %e\n',obj.iterNL,rhsNorm,rhsNorm/rhsNormIt0);
-    % 
-    %         % Check for convergence
-    %         flConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
-    % 
-    %       end % end newton loop
-    % 
-    %       if flConv % Newton Convergence
-    % 
-    %         hasConfigurationChanged = false;
-    % 
-    %         % update the active set
-    %         for i = 1:obj.nDom
-    %           hasConfigurationChanged = any([hasConfigurationChanged; ...
-    %             obj.domains(i).updateConfiguration()]);
-    %         end
-    % 
-    %         for i = 1:obj.nInterf
-    %           hasConfigurationChanged = any([hasConfigurationChanged; ...
-    %             obj.interfaces{i}.updateConfiguration()]);
-    %         end
-    % 
-    %       else
-    % 
-    %         break
-    % 
-    %       end
-    % 
-    %     end
-    % 
-    % 
-    %       manageNextTimeStep(obj,flConv,hasConfigurationChanged);
-    % 
-    %   end % time marching
-    %   %
-    %   gresLog().log(-1,"Simulation completed successfully \n")
-    % end
-
-
-    function finalizeOutput(obj)
-      
-      % finalize print utils for domains and interfaces
-      for i = 1:obj.nDom
-        obj.domains(i).finalizeOutput();
-      end
-
-      for i = 1:obj.nInterf
-        obj.interfaces{i}.outstate.finalize();
       end
     end
 
@@ -352,30 +73,135 @@ classdef FixedStressSplit < GeneralSolver
 
 
 
+
   methods (Access = protected)
 
-    function setNonLinearSolver(obj,simparams,dom,interf)
+    function setFixedStressSplit(obj,varargin)
 
-      % assumption: same set of simulation parameters for each domain
-      obj.simparams = simparams;
-      obj.domains = dom;
-      obj.nDom = numel(dom);
-      obj.interfaces = interf;
-      obj.nInterf = numel(interf);
-      obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration;
+      % Check that we have an even number of inputs
+      if mod(length(varargin), 2) ~= 0
+        error('Arguments must come in key-value pairs.');
+      end
+
+      % Loop through the key-value pairs
+      for k = 1:2:length(varargin)
+        key = varargin{k};
+        value = varargin{k+1};
+
+        if isempty(value)
+          continue
+        end
+
+        if ~ischar(key) && ~isstring(key)
+          error('Keys must be strings');
+        end
+
+        switch lower(key)
+          % case 'simulationparameters'
+          %   assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
+          %   obj.simparams = value;
+          case 'simulationparameters'
+            obj.simparams = value;
+          case 'output'
+            obj.output = value;
+          case {'domain','domains'}
+            obj.domains = value;
+          case 'maxiterations'
+            obj.maxIterFSS = value;
+          case 'reltolerance'
+            obj.tolFSS = value;
+          otherwise
+            error('Unknown input key %s for SolutionScheme \n', key);
+        end
+      end
+
+      obj.nDom = numel(obj.domains);
+      obj.nInterf = numel(obj.interfaces);
+
+      assert(~isempty(obj.simparams),"Input 'simulationParameters'" + ...
+        " is required for SolutionScheme")
+      assert(obj.nDom == 0,"Only one domain is admitted when using fixedStressSplit");
 
       obj.nVars = 0;
-      for iD = 1:obj.nDom
-        obj.domains(iD).stateOld = copy(obj.domains(iD).getState());
-        obj.domains(iD).simparams = simparams;
-        obj.nVars = obj.nVars + obj.domains(iD).dofm.getNumberOfVariables();
+
+      for i = 1:obj.nDom
+        obj.domains(i).domainId = i;
+        obj.domains(i).simparams = obj.simparams;
+        obj.domains(i).outstate = obj.output;
+        obj.domains(i).stateOld = copy(obj.domains(i).getState());
+        obj.nVars = obj.nVars + obj.domains(i).dofm.getNumberOfVariables();
       end
+
+      assert(domain.solverNames == "BiotFixedStressSplit",...
+        "FixedStressSplit algorithm only requires 'BiotFixedStressSplit' physics solver")
+
+    end
+
+
+    function newtonConv = nonLinearSolve(obj,varName)
+
+      % nonlinear loop for single physics model
+
+      varId = obj.domains.dofm.getVariableId(varName);
+
+      physSolv.assembleSystem(obj.dt,varName);
+
+      % applyBC (all variables ...)
+      dom.applyBC(obj.t);
+
+      gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
+
+      rhs = dom.rhs{varId};
+      rhsNorm = norm(rhs,2);
+      rhsNormIt0 = rhsNorm;
+
+      tolWeigh = obj.simparams.relTol*rhsNorm;
+
+      gresLog().log(1,'0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
+
+      newtonConv = false;
+
+      % reset non linear iteration counter
+      iter = 0;
+
+      %%% NEWTON LOOP FOR FLOW %%%
+      while (~newtonConv) && (iter < obj.simparams.itMaxNR)
+
+        iter= iter + 1;
+
+        J = dom.J{varId,varId};
+        rhs = dom.rhs{varId};
+
+        % solve linear system
+        du = solve(obj,J,rhs);
+
+        physSolv.updateState(du,varName);
+
+        % reassemble system
+        physSolv.assembleSystem(obj.dt,varName);
+        obj.domains.applyBC(obj.t);
+
+        rhs = dom.rhs{varId};
+        rhsNorm = norm(rhs,2);
+
+        gresLog().log(1,'%d     %e     %e\n',obj.iterNL,rhsFlowNorm,rhsFlowNorm/rhsNormIt0);
+
+        % Check for convergence
+        newtonConv = (rhsNorm < tolWeigh || rhsNorm < obj.simparams.absTol);
+
+      end % end newton loop
     end
 
 
 
     function setLinearSolver(obj)
-      % Check if there is manual input from the user, if not use defaults
+      % update this method to set iterative solver for specific physics
+      % using properties of this solutionScheme
+
+      % if nargin == 1
+      % else
+      % assign solverMech and solverFlow
+      % end
       start_dir = pwd;
       chronos_xml = fullfile(start_dir,'linsolver.xml');
       if(isfile(chronos_xml))
@@ -388,236 +214,6 @@ classdef FixedStressSplit < GeneralSolver
       end
     end
 
-
-
-
-    function sol = solve(obj,J,rhs)
-
-      rhs = cell2matrix(rhs);
-
-      % Actual solution of the system
-      [sol,~] = obj.linsolver.Solve(J,-rhs,obj.t);
-    end
-
-
-
-    function out = computeRhsNorm(obj)
-
-      %Return maximum norm of the entire domain
-      rhsNorm = zeros(obj.nDom,1);
-      for i = 1:obj.nDom
-        nRhs = length(obj.domains(i).dofm.subList);
-        rhsNorm_loc = zeros(nRhs,1);
-        for j = 1:nRhs
-          rhsNorm_loc(j) = norm(obj.domains(i).rhs{j}, obj.simparams.pNorm);
-        end
-        rhsNorm(i) = sqrt(sum(rhsNorm_loc.^2));
-      end
-      out = norm(rhsNorm);
-    end
-
-
-
-    function J = assembleJacobian(obj)
-
-      J = cell(obj.nVars + obj.nInterf);
-
-      k = 0;
-
-      for iD = 1:obj.nDom
-
-        dom = obj.domains(iD);
-        nV = dom.dofm.getNumberOfVariables;
-
-        % inner domain blocks
-        J(k+1:k+nV,k+1:k+nV) = getJacobian(dom);
-
-        for iI = 1:numel(dom.interfaceList)
-
-          q = dom.interfaceList(iI);
-
-          % domain coupling blocks
-          [J(k+1:k+nV,obj.nVars+q), J(obj.nVars+q,k+1:k+nV)] = ...
-            getInterfaceJacobian(dom,iI);
-
-        end
-
-        k = k + nV;
-
-      end
-
-      for iI = 1:obj.nInterf
-        interf = obj.interfaces{iI};
-        % constraint blocks
-        J{obj.nVars+iI,obj.nVars+iI} = getJacobian(interf);
-      end
-
-    end
-
-
-    function rhs = assembleRhs(obj)
-      % assemble blocks of rhs for multidomain system
-
-      % each variable field of each domain represents a cell row
-      rhs = cell(obj.nVars + obj.nInterf,1);
-      
-      k = 0;
-
-      for iD = 1:obj.nDom
-        nV = obj.domains(iD).dofm.getNumberOfVariables;
-        rhs(k+1:k+nV) = getRhs(obj.domains(iD));
-        k = k+nV;
-      end
-
-      for iI = 1:obj.nInterf
-
-        rhs{k+1} = getRhs(obj.interfaces{iI});
-
-        % each interface has one only multiplier field!
-        k = k+1;
-      end
-    end
-
-
-
-    function applyDirVal(obj)
-      for i = 1:obj.nDom
-        discretizer = obj.domains(i);
-
-        % Check if boundary conditions are defined for the i-th domain
-        if ~isempty(obj.domains(i).bcs)
-
-          % Apply Dirichlet boundary values to i-th domain
-            applyDirVal(discretizer,obj.t);
-        end
-      end
-    end
-
-
-    function applyBC(obj)
-      for i = 1:obj.nDom
-        discretizer = obj.domains(i);
-        % Apply BCs to the blocks of the linear system
-        applyBC(discretizer, obj.t);
-
-        % Apply BC to domain coupling matrices
-        for j = discretizer.interfaceList
-          applyBC(obj.interfaces{j},i,discretizer.bcs,obj.t);
-        end
-      end
-    end
-
-
-    function updateState(obj,dSol)
-      % update domain and interface state using incremental solution
-      dSol_fix = dSol;
-      for i = 1:obj.nDom
-        N = obj.domains(i).dofm.totDoF;
-        du = dSol(1:N);
-        updateState(obj.domains(i),du);
-        dSol = dSol(N+1:end);
-      end
-
-      % update interface state
-      for j = 1:obj.nInterf
-        N = obj.interfaces{j}.totMult;
-        if N == 0
-          du = dSol_fix;
-        else
-          du = dSol(1:N);
-        end
-        obj.interfaces{j}.updateState(du);
-        dSol = dSol(N+1:end);
-      end
-    end
-
-
-
-    function manageNextTimeStep(obj,flConv)
-
-      if ~flConv && ~obj.attemptedReset
-
-        % allow a configuration reset to attempt saving the simulation
-
-        for i = 1:obj.nDom
-          resetConfiguration(obj.domains(i));
-        end
-
-        for i = 1:obj.nInterf
-          resetConfiguration(obj.interfaces{i});
-        end
-
-        % move time 
-        obj.tStep = obj.tStep - 1;
-        obj.t = obj.t - obj.dt;
-
-        obj.attemptedReset = true;
-
-        gresLog().log(1,"Reset to simplest configuration \n")
-
-        return
-
-      end
-
-
-      if ~flConv
-
-        % BACKSTEP
-
-        obj.t = obj.t - obj.dt;
-        obj.tStep = obj.tStep - 1;
-        obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
-
-        for i = 1:obj.nDom
-          goBackState(obj.domains(i));
-        end
-
-        for i = 1:obj.nInterf
-          goBackState(obj.interfaces{i},obj.dt);
-        end
-
-        if obj.dt < obj.simparams.dtMin
-          error('Minimum time step reached')
-        else
-          gresLog().log(0,'\n %s \n','BACKSTEP')
-        end
-
-        return
-
-      else 
-
-        % TIME STEP CONVERGED - advance to the next time step
-
-        for i = 1:obj.nDom
-          dom = obj.domains(i);
-          dom.state.t = obj.t;
-          printState(dom);
-          advanceState(dom);
-        end
-
-        for i = 1:obj.nInterf
-          interf = obj.interfaces{i};
-          interf.state.t = obj.t;
-          printState(interf);
-          advanceState(interf);
-        end
-
-        % go to next time step
-        tmpVec = obj.simparams.multFac;
-        obj.dt = min([obj.dt * min(tmpVec), obj.simparams.dtMax]);
-        obj.dt = max([obj.dt obj.simparams.dtMin]);
-
-        % limit time step to end of simulation time
-        if ((obj.t + obj.dt) > obj.simparams.tMax)
-          obj.dt = obj.simparams.tMax - obj.t;
-        end
-
-        % allow new survival attempts on new time steps
-        obj.attemptedReset = false;
-
-      end
-
-    end
 
   end
 end
