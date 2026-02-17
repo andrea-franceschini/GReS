@@ -41,7 +41,7 @@ classdef linearSolver < handle
    methods (Access = public)
 
       % Constructor Function
-      function obj = linearSolver(generalsolver,usrInput)
+      function obj = linearSolver(generalsolver,usrInput,physname)
 
          % Check if chronos is available
          ChronosDir = fullfile(gres_root,'..','aspamg_matlab','sources');
@@ -51,7 +51,7 @@ classdef linearSolver < handle
             obj.generalsolver = generalsolver;
 
             % Create the preconditioner object, check if the physics is supported
-            [obj.Prec,obj.ChronosFlag] = preconditioner.create(obj.DEBUGflag,obj.nsyTol,generalsolver,usrInput);
+            [obj.Prec,obj.ChronosFlag] = preconditioner.create(obj.DEBUGflag,obj.nsyTol,generalsolver,usrInput,physname);
 
             % Non supported physics for the preconditioner
             if ~obj.ChronosFlag

@@ -160,6 +160,7 @@ classdef NonLinearImplicit < SolutionScheme
 
       if isempty(varargin)
          str = [];
+         physname = [];
       else
          fname = varargin{1};
          str = readstruct(fname,AttributeSuffix="");
@@ -168,9 +169,16 @@ classdef NonLinearImplicit < SolutionScheme
          else
             str = [];
          end
+         
+         % check if the user provided the physics
+         if nargin > 2
+            physname = varargin{2};
+         else
+            physname = [];
+         end
       end
 
-      obj.linsolver = linearSolver(obj,str);
+      obj.linsolver = linearSolver(obj,str,physname);
 
     end
 

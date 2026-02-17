@@ -63,7 +63,7 @@ classdef preconditioner < handle
    methods (Static,Access = public)
 
       % Constructor of the preconditioner object, specifies if it cannot be used as not supported
-      function [obj, useChronos] = create(debugflag,nsyTol,generalsolver,usrInput)
+      function [obj, useChronos] = create(debugflag,nsyTol,generalsolver,usrInput,physname)
 
          % Initialize an empty class
          obj = preconditioner.empty;
@@ -85,8 +85,11 @@ classdef preconditioner < handle
             interfacein = generalsolver.interfaces;
          end
 
-         % Select the physics
-         physname = domainin(1).dofm.getVariableNames();
+         % Select the physics, check if asked by user directly
+         if isempty(physname)
+            physname = domainin(1).dofm.getVariableNames();
+         end
+
          if ~multiPhysFlag
             % Supported Single Physics
             if(contains(physname,'pressure'))
