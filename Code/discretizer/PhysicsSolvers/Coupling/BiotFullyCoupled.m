@@ -1,4 +1,4 @@
-classdef BiotFullySaturated < PhysicsSolver
+classdef BiotFullyCoupled < PhysicsSolver
   % Biot model subclass
   % Coupled Poromechanics with SinglePhaseFlow
 
@@ -22,7 +22,7 @@ classdef BiotFullySaturated < PhysicsSolver
   end
 
   methods (Access = public)
-    function obj = BiotFullySaturated(domain)
+    function obj = BiotFullyCoupled(domain)
 
       obj@PhysicsSolver(domain);
 

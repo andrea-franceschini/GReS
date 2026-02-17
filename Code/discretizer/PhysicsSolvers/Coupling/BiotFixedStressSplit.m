@@ -1,9 +1,11 @@
-classdef BiotFixedStressSplit < PhysicsSolver
+classdef BiotFixedStressSplit < BiotFullyCoupled
     % Biot model subclass
     % Coupled Poromechanics with SinglePhaseFlow
+    % This solver for application of the fixed stress split scheme
 
     properties
-        Q             % the biot coupling matrix 
+        R             % the fixed stress split relaxation matrix
+        drainedModulusType % either 1,2,3 for 1D,2D or 3D
     end
 
     properties (Access = private)
@@ -22,28 +24,23 @@ classdef BiotFixedStressSplit < PhysicsSolver
     methods (Access = public)
       function obj = BiotFixedStressSplit(domain)
 
-        obj@PhysicsSolver(domain);
+        obj@BiotFullyCoupled(domain);
 
       end
 
-      function registerSolver(obj,input)
-        
-        % setup the solver with custom input
-        obj.flowSolver = SinglePhaseFlow(obj.domain);
-        registerSolver(obj.flowSolver,input.(class(obj.flowSolver)));
-        obj.mechSolver = Poromechanics(obj.domain);
-        registerSolver(obj.mechSolver,input.(class(obj.mechSolver)));
 
-        obj.fldFlow = obj.dofm.getVariableId(obj.flowSolver.getField());
-        obj.fldMech = obj.dofm.getVariableId(obj.mechSolver.getField());
-
-      end
-
-      function assembleSystem(obj,dt)
+      function assembleSystem(obj,dt,var)
 
         % get Jacobian and rhs from single physics solvers
-        obj.mechSolver.assembleSystem(dt);
-        obj.flowSolver.assembleSystem(dt);
+        if strcmpi(var,"pressure")
+          obj.flowSolver.assembleSystem(dt);
+          computeRelaxationMatrix(obj);
+          obj.domain.rhs{obj.fldFlow} = obj.domain.rhs{obj.fldFlow} + obj.R;
+        elseif strcmpi(var,"displacements")
+          obj.mechSolver.assembleSystem(dt);
+        else
+          error("Unknown variable for BiotFixedStressSplit solver")
+        end
 
         % assemble coupling blocks and rhs
 
@@ -51,7 +48,7 @@ classdef BiotFixedStressSplit < PhysicsSolver
         computeMat(obj);
 
         % assign coupling blocks to jacobian
-        obj.domain.J{obj.fldMech,obj.fldFlow} = -obj.domain.simparams.theta*obj.Q;
+        obj.domain.J{obj.fldMech,obj.fldFlow} = -obj.Q;
         obj.domain.J{obj.fldFlow,obj.fldMech} = obj.Q'/dt;
 
         % add rhs from coupling contribution
@@ -205,6 +202,9 @@ classdef BiotFixedStressSplit < PhysicsSolver
         function advanceState(obj)
           obj.mechSolver.advanceState();
           obj.flowSolver.advanceState();
+        end
+
+        function getDrainedBulkModulus(obj,cTag)
         end
 
 
