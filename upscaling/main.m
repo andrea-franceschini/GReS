@@ -42,13 +42,10 @@ stiffnesses = createMat(domain.grid, meshProp, rock, blockSize, jointFamilies);
 % Set materials
 domain.materials.db{1}.ConstLaw.setStiffnesses(stiffnesses);
 
-%printUtils = OutState(fullfile('Input','output.xml'));
-
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme. 
 solver = NonLinearImplicit('simulationparameters', simParam, ...
-                           'domains', domain);%, ...
-                           %'output', printUtils);
+                           'domains', domain);
 
 fea.initState = initState;
 fea.solver = solver;
@@ -76,4 +73,6 @@ for i = 1:length(avgPs)
 end
 fclose(fid);
 
-fitCurve(avgPs, avgQs);
+[A, B] = fitCurve(avgPs, avgQs);
+
+plotPQ(avgPs, avgQs, A, B, druckerPrager);

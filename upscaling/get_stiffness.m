@@ -4,9 +4,6 @@ function D_eff = get_stiffness(blkID, E_rock, nu_rock, ...
     % Intact rock compliance
     S_r = compliance_intact_rock(E_rock, nu_rock);
 
-    %tot_num_joints = 0;
-    %max_num_joints = 0;
-
     if blkID < size(numbers_of_joints,1)
 
         S_j_total = zeros(6);
@@ -14,22 +11,22 @@ function D_eff = get_stiffness(blkID, E_rock, nu_rock, ...
         for i = 1:length(azimuths.mean)
 
             % Randomize orientation
-            azimuth = generate_truncated_random_numbers( ...
+            azimuth = truncated_random( ...
                 azimuths.mean(i), azimuths.std(i), 0, inf);
 
-            dip = generate_truncated_random_numbers( ...
+            dip = truncated_random( ...
                 dips.mean(i), dips.std(i), 0, inf);
 
             % Truncated stiffnesses
-            Kn_value = generate_truncated_random_numbers( ...
+            Kn_value = truncated_random( ...
                 Kn.mean(i), Kn.std(i), Kn.min(i), Kn.max(i));
 
-            Ks_value = generate_truncated_random_numbers( ...
+            Ks_value = truncated_random( ...
                 Ks.mean(i), Ks.std(i), Ks.min(i), Ks.max(i));
 
             % Number of joints
             mu_joints = numbers_of_joints(blkID+1, i);
-            num_joints = round(generate_truncated_random_numbers( ...
+            num_joints = round(truncated_random( ...
                 mu_joints, 1, 0, inf));
 
             if num_joints > 0
@@ -44,14 +41,10 @@ function D_eff = get_stiffness(blkID, E_rock, nu_rock, ...
                 S_j_local = joint_compliance(Kn_value, Ks_value);
 
                 S_j_global = ...
-                    transform_joint_compliance(S_j_local, R) ...
-                    / spacing;
+                    transform_joint_compliance(S_j_local, R) / spacing;
 
                 S_j_total = S_j_total + S_j_global;
             end
-
-            %tot_num_joints = tot_num_joints + num_joints;
-            %max_num_joints = max(max_num_joints, num_joints);
 
         end
 

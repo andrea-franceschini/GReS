@@ -1,6 +1,6 @@
 function S_global = transform_joint_compliance(S_j, R)
 
-    T = build_voigt_rotation_matrix(R);
+    T = voigt_rotation_matrix(R);
 
     S_j_voigt = zeros(6);
 

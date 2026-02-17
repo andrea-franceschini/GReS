@@ -1,4 +1,4 @@
-function val = generate_truncated_random_numbers(mu, sigma, lower, upper, n)
+function val = truncated_random(mu, sigma, lower, upper, n)
     if nargin < 5, n = 1; end
     pd = makedist('Normal','mu',mu,'sigma',sigma);
     t = truncate(pd, lower, upper);

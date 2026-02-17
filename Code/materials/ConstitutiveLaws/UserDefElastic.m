@@ -27,7 +27,11 @@ classdef UserDefElastic < handle
       nptGauss = size(sigmaIn,1);
       D = obj.stiffnesses{cellID};
       sigmaOut = sigmaIn + epsilon*D;
-      DAll = repmat(D,[1, 1, nptGauss]);
+      if nptGauss > 1
+        DAll = repmat(D,[1, 1, nptGauss]);
+      else
+        DAll = D;
+      end
     end
     %
   end

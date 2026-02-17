@@ -1,4 +1,4 @@
-function T = build_voigt_rotation_matrix(R)
+function T = voigt_rotation_matrix(R)
 
     T = zeros(6);
 

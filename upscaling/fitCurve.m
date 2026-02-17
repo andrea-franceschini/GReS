@@ -1,4 +1,4 @@
-function fitCurve(avgPs, avgQs)
+function [A, B] = fitCurve(avgPs, avgQs)
 
     % Linear fit q = A*p + B
     p = polyfit(avgPs, avgQs, 1);
