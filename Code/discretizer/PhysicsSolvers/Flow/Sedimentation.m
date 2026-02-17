@@ -233,14 +233,16 @@ classdef Sedimentation < PhysicsSolver
       sOld = obj.getStateOld();
       sNew = obj.getState();
       p = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
+      
+      gamma = obj.materials.getFluid().getSpecificWeight();
 
-      outPrint.overpres = p;
+      outPrint.overpres = p/gamma;
       outPrint.perm = obj.getCellsProp('permeability');
       comp = sNew.data.cellDefm*fac+sOld.data.cellDefm*(1-fac);
       outPrint.comp = obj.grid.getCompaction(comp);
       outPrint.stress = sNew.data.stress*fac+sOld.data.stress*(1-fac);
 
-      gamma = obj.materials.getFluid().getSpecificWeight();
+      % gamma = obj.materials.getFluid().getSpecificWeight();
       coords = obj.grid.getCoordCenter(obj.grid.getActiveDofs);
       outPrint.pressure = p + gamma*coords(:,3);
       outPrint.head = coords(:,3)+p/gamma;
@@ -331,11 +333,6 @@ classdef Sedimentation < PhysicsSolver
       % adding sediment contribution
       map = reshape(obj.getState('tstressvar'),obj.grid.ncells(1:2));
       rhs = rhs - obj.computeOedometricCompressibility().*obj.grid.distMapOverDofs(map);
-
-      % [idI, idJ, idK] = obj.grid.getIJKTop;
-      % dofs = obj.grid.getDofsFromIJK([idI,idJ,idK]);
-      % rhs(dofs) = rhs(dofs) - ...
-      %   obj.computeOedometricCompressibility(dofs).*obj.getState('tstressvar');
     end
 
     function computeStiffMat(obj)
@@ -548,7 +545,8 @@ classdef Sedimentation < PhysicsSolver
         spwg = spwg + (obj.materials.getMaterial(mat).PorousRock.getSpecificWeight() ...
           -gamma)*obj.matfrac(dofs,mat);
       end
-      obj.getState().data.stress = -(1-poro).*spwg.*(max(obj.grid.coordZ)-coords(:,3))-100;
+      initStres = obj.getCellsProp('initialStress',dofs);
+      obj.getState().data.stress = -(1-poro).*spwg.*(obj.grid.getColumnMaxHeight()-coords(:,3))-initStres;
     end
 
     function updateSedRate(obj,dt)
@@ -709,7 +707,8 @@ classdef Sedimentation < PhysicsSolver
         spwg = spwg + (obj.materials.getMaterial(mat).PorousRock.getSpecificWeight() ...
           -gamma)*obj.matfrac(dofs,mat);
       end
-      obj.getState().data.stress(dofs) = -(1-poro).*spwg.*(max(obj.grid.coordZ)-coords(dofs,3))-100;
+      initStres = obj.getCellsProp('initialStress',dofs);
+      obj.getState().data.stress(dofs) = -(1-poro).*spwg.*(obj.grid.getColumnMaxHeight(dofs)-coords(dofs,3))-initStres;
 
       if obj.nonElasticFlag
         obj.domain.state.data.voidrate(end+1:end+newcells) = voidI;
@@ -894,6 +893,12 @@ classdef Sedimentation < PhysicsSolver
           out = zeros(length(dofs),1);
           for mat=1:obj.nmat
             tmpMat = obj.materials.getMaterial(mat).SedMaterial.getPreConsolidadeStress();
+            out = out + obj.matfrac(dofs,mat).*tmpMat;
+          end
+        case 'initialStress'
+          out = zeros(length(dofs),1);
+          for mat=1:obj.nmat
+            tmpMat = obj.materials.getMaterial(mat).SedMaterial.getInitialStress();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
         case 'youngModulus'

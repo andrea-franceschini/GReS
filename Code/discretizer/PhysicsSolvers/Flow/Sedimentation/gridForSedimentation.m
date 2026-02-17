@@ -402,6 +402,21 @@ classdef gridForSedimentation < handle
       dh=segmZ(idK);
     end
 
+    function zcol = getColumnMaxHeight(obj,dofs)
+      if ~exist("dofs","var")
+        dofs = (1:obj.ndofs)';
+      end
+      ndofs_eval = length(dofs);
+      zcol = zeros(ndofs_eval,1);
+      ind = find(ismember(obj.dof, dofs));
+      [idI,idJ,~]=ind2sub(obj.ncells,ind);
+      colMaxHei = reshape(obj.columnsHeight,obj.ncells(1:2));
+      for i=1:ndofs_eval
+        pos = colMaxHei(idI(i),idJ(i))+1;
+        zcol(i) = obj.coordZ(pos,1);
+      end
+    end
+
     function comp = getCompaction(obj,defByCell)
       comp = zeros(obj.ndofs,1);
       for i=1:obj.ncells(1)

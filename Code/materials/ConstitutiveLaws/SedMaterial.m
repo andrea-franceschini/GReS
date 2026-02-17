@@ -3,10 +3,11 @@ classdef SedMaterial < handle
 
     properties (Access = private)
         %General properties:
-        compIdx            % Compressibility index (Cc)
-        rcompIdx           % Re-compression index (Cr)
+        compIdx            % Compressibility Index (Cc)
+        rcompIdx           % Re-Compression Index (Cr)
         voidRate           % Void Rate (e0)
-        preStress          % pre consolidate stress(Spre)
+        preStress          % Pre Consolidate Stress(Spre)
+        inicStress         % Initial stress 
     end
 
     methods (Access = public)
@@ -32,6 +33,10 @@ classdef SedMaterial < handle
             out = obj.preStress;
         end
 
+        function out = getInitialStress(obj)
+            out = obj.inicStress;
+        end
+
         
 
     end
@@ -41,7 +46,8 @@ classdef SedMaterial < handle
       % to object properties
       function readMaterialParameters(obj,inputStruct)
         obj.voidRate = getXMLData(inputStruct,1,"voidRate");
-        obj.preStress = getXMLData(inputStruct,1,"preStress");
+        obj.preStress = getXMLData(inputStruct,1.,"preStress");
+        obj.inicStress = getXMLData(inputStruct,0.,"initStress");
         obj.compIdx = getXMLData(inputStruct,1,"compressibilityIndex");
         obj.rcompIdx = getXMLData(inputStruct,1,"reCompressibilityIndex");
       end
