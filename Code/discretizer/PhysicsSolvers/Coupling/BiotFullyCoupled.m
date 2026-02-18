@@ -6,7 +6,7 @@ classdef BiotFullyCoupled < PhysicsSolver
     Q             % the biot coupling matrix
   end
 
-  properties (Access = private)
+  properties (Access = protected)
 
     % we avoid multiple inheritance and we directly create instances to the
     % single physics models that are needed
@@ -175,8 +175,8 @@ classdef BiotFullyCoupled < PhysicsSolver
     end
 
     function cells = getCoupledCells(obj)
-      cellTagFlow = obj.dofm.getTargetRegions(obj.fldFlow);
-      cellTagMech = obj.dofm.getTargetRegions(obj.fldMech);
+      cellTagFlow = obj.domain.dofm.getTargetRegions(obj.fldFlow);
+      cellTagMech = obj.domain.dofm.getTargetRegions(obj.fldMech);
 
       % find cell tag where both flow and mechanics are active
       cellTags = intersect(cellTagMech,cellTagFlow);

@@ -12,18 +12,10 @@ classdef FixedStressSplit < SolutionScheme
 
 
   methods (Access = public)
-    function obj = FixedStressSplit(varargin)
-
-      setFixedStressSplit(obj)
-
-    end
-
-
 
     function fSSplitConv = solveStep(obj,varargin)
 
       % set target variable for each domain and interface
-      obj.targetVariables = [varargin{:}];
       if ~isempty(varargin)
         error("solveStep with target variables is not yet implemented")
       end
@@ -34,9 +26,16 @@ classdef FixedStressSplit < SolutionScheme
       % apply dirichlet value at the beginning of the time step
       dom.applyDirVal(obj.t);
 
+      obj.iterFSS = 0;
+
       fSSplitConv = false;
 
-      while (~fSSplitConv) && (obj.iterFSS < maxIter)
+      % critical: initialize the converged state to match the current state
+      physSolv.conv.pressure = getState(dom,"pressure");
+      physSolv.conv.displacements = getState(dom,"displacements");
+
+
+      while (~fSSplitConv) && (obj.iterFSS < obj.maxIterFSS)
 
         gresLog().log(0,'\nFixed Stress Split iteration n. %i \n', obj.iterFSS);
         obj.iterFSS = obj.iterFSS + 1;
@@ -76,7 +75,7 @@ classdef FixedStressSplit < SolutionScheme
 
   methods (Access = protected)
 
-    function setFixedStressSplit(obj,varargin)
+    function setSolutionScheme(obj,varargin)
 
       % Check that we have an even number of inputs
       if mod(length(varargin), 2) ~= 0
@@ -120,7 +119,8 @@ classdef FixedStressSplit < SolutionScheme
 
       assert(~isempty(obj.simparams),"Input 'simulationParameters'" + ...
         " is required for SolutionScheme")
-      assert(obj.nDom == 0,"Only one domain is admitted when using fixedStressSplit");
+      assert(obj.nDom == 1,"Only one domain is admitted when using fixedStressSplit");
+      assert(obj.nInterf == 0,"FixedStressSplit with internal interfaces is not yet implmented");
 
       obj.nVars = 0;
 
@@ -132,7 +132,7 @@ classdef FixedStressSplit < SolutionScheme
         obj.nVars = obj.nVars + obj.domains(i).dofm.getNumberOfVariables();
       end
 
-      assert(domain.solverNames == "BiotFixedStressSplit",...
+      assert(obj.domains.solverNames == "BiotFixedStressSplit",...
         "FixedStressSplit algorithm only requires 'BiotFixedStressSplit' physics solver")
 
     end
@@ -141,13 +141,17 @@ classdef FixedStressSplit < SolutionScheme
     function newtonConv = nonLinearSolve(obj,varName)
 
       % nonlinear loop for single physics model
+      % consider replacing this with a call to
+      % NonLinearImplicit.solveStep(varName)
 
+      
       varId = obj.domains.dofm.getVariableId(varName);
+      dom = obj.domains(1);
+      physSolv = dom.getPhysicsSolver("BiotFixedStressSplit");
 
       physSolv.assembleSystem(obj.dt,varName);
 
-      % applyBC (all variables ...)
-      dom.applyBC(obj.t);
+      dom.applyBC(obj.t,varName);
 
       gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
 
@@ -169,8 +173,8 @@ classdef FixedStressSplit < SolutionScheme
 
         iter= iter + 1;
 
-        J = dom.J{varId,varId};
-        rhs = dom.rhs{varId};
+        J = dom.J(varId,varId);
+        rhs = dom.rhs(varId);
 
         % solve linear system
         du = solve(obj,J,rhs);
@@ -179,12 +183,12 @@ classdef FixedStressSplit < SolutionScheme
 
         % reassemble system
         physSolv.assembleSystem(obj.dt,varName);
-        obj.domains.applyBC(obj.t);
+        obj.domains.applyBC(obj.t,varName);
 
         rhs = dom.rhs{varId};
         rhsNorm = norm(rhs,2);
 
-        gresLog().log(1,'%d     %e     %e\n',obj.iterNL,rhsFlowNorm,rhsFlowNorm/rhsNormIt0);
+        gresLog().log(1,'%d     %e     %e\n',iter,rhsNorm,rhsNorm/rhsNormIt0);
 
         % Check for convergence
         newtonConv = (rhsNorm < tolWeigh || rhsNorm < obj.simparams.absTol);

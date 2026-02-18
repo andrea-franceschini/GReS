@@ -35,7 +35,7 @@
                 <surfaceTag>3</surfaceTag>
             </Slave>
             <Quadrature>
-                <type>ElementBasedQuadrature</type>
+                <type>RBFquadrature</type>
                 <nGP>6</nGP>
                 <nInt>5</nInt>
             </Quadrature>

@@ -51,12 +51,22 @@ classdef Discretizer < handle
       obj.setDiscretizer(varargin{:});
     end
 
-    function applyBC(obj,t)
+    function applyBC(obj,t,varargin)
       bcList = obj.bcs.getBCList();
+
+      if isempty(varargin)
+        varNames = obj.dofm.getVariableNames();
+      else
+        varNames = [varargin{:}];
+      end
 
       for bcId = bcList
         % loop over available bcs
         bcVar = obj.bcs.getVariable(bcId);
+
+        if ~strcmp(bcVar,varNames)
+          continue
+        end
 
         for solv = obj.solverNames
           % loop over available solvers
