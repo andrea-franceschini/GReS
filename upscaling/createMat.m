@@ -23,7 +23,7 @@ function stiffnesses = createMat(grid, meshProp, rock, blockSize, jointFamilies)
         bar = mean(locCoords, 1);
         dist = abs(dot(norm, bar) + d);
 
-        blkID = int32(floor(dist / blockSize));
+        blkID = floor(dist / blockSize);
 
         D_eff = get_stiffness(blkID, E_rock, nu_rock, azimuths, dips, ...
             Kn_values, Ks_values, numbers_of_joints, blockSize);

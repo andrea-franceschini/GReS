@@ -8,20 +8,20 @@ function [E_rock, nu_rock, azimuths, dips, Kn, Ks, numbers_of_joints] = ...
     keys = fieldnames(jointFamilies);
     nFam = length(keys);
 
-    azimuths.mean = zeros(1,nFam);
-    azimuths.std  = zeros(1,nFam);
-    dips.mean     = zeros(1,nFam);
-    dips.std      = zeros(1,nFam);
+    azimuths.mean = zeros(nFam,1);
+    azimuths.std  = zeros(nFam,1);
+    dips.mean     = zeros(nFam,1);
+    dips.std      = zeros(nFam,1);
 
-    Kn.mean = zeros(1,nFam);
-    Kn.std  = zeros(1,nFam);
-    Kn.min  = zeros(1,nFam);
-    Kn.max  = zeros(1,nFam);
+    Kn.mean = zeros(nFam,1);
+    Kn.std  = zeros(nFam,1);
+    Kn.min  = zeros(nFam,1);
+    Kn.max  = zeros(nFam,1);
 
-    Ks.mean = zeros(1,nFam);
-    Ks.std  = zeros(1,nFam);
-    Ks.min  = zeros(1,nFam);
-    Ks.max  = zeros(1,nFam);
+    Ks.mean = zeros(nFam,1);
+    Ks.std  = zeros(nFam,1);
+    Ks.min  = zeros(nFam,1);
+    Ks.max  = zeros(nFam,1);
 
     for i = 1:nFam
         jf = jointFamilies.(keys{i});

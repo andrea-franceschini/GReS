@@ -25,9 +25,7 @@ function D_eff = get_stiffness(blkID, E_rock, nu_rock, ...
                 Ks.mean(i), Ks.std(i), Ks.min(i), Ks.max(i));
 
             % Number of joints
-            mu_joints = numbers_of_joints(blkID+1, i);
-            num_joints = round(truncated_random( ...
-                mu_joints, 1, 0, inf));
+            num_joints = numbers_of_joints(blkID+1, i);
 
             if num_joints > 0
 
