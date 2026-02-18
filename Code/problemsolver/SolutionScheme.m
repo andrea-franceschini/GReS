@@ -6,15 +6,15 @@ classdef (Abstract) SolutionScheme < handle
 
   properties (Access = protected)
     %
-    nDom                % number of domains in the model
-    nInterf             % number of interfaces in the model
-    %
-    tOld                % tOld: previous converged time instant
-    t                   % simulation time
-    tStep               % simulation time step
-    dt                  % current time step size
-    nVars               % total number of inner variable fields in the model
-    attemptedReset      % flag for attempting a configuration reset
+    nDom                        % number of domains in the model
+    nInterf                     % number of interfaces in the model
+    %       
+    tOld                        % tOld: previous converged time instant
+    t                           % simulation time
+    tStep                       % simulation time step
+    dt                          % current time step size
+    nVars                       % total number of inner variable fields in the model
+    attemptedReset = true       % flag for attempting a configuration reset
   end
 
 
@@ -43,8 +43,8 @@ classdef (Abstract) SolutionScheme < handle
   methods (Access = public)
     function obj = SolutionScheme(varargin)
 
-      assert(nargin > 1 && nargin < 9,"Wrong number of input arguments " + ...
-        "for general solver")
+      % assert(nargin > 1 && nargin < 9,"Wrong number of input arguments " + ...
+      %   "for general solver")
 
       obj.setSolutionScheme(varargin{:});
 

@@ -1,4 +1,4 @@
-classdef BiotFullySaturated < PhysicsSolver
+classdef BiotFullyCoupled < PhysicsSolver
   % Biot model subclass
   % Coupled Poromechanics with SinglePhaseFlow
 
@@ -6,7 +6,7 @@ classdef BiotFullySaturated < PhysicsSolver
     Q             % the biot coupling matrix
   end
 
-  properties (Access = private)
+  properties (Access = protected)
 
     % we avoid multiple inheritance and we directly create instances to the
     % single physics models that are needed
@@ -22,7 +22,7 @@ classdef BiotFullySaturated < PhysicsSolver
   end
 
   methods (Access = public)
-    function obj = BiotFullySaturated(domain)
+    function obj = BiotFullyCoupled(domain)
 
       obj@PhysicsSolver(domain);
 
@@ -89,13 +89,7 @@ classdef BiotFullySaturated < PhysicsSolver
 
       dofm = obj.domain.dofm;
 
-      cellTagFlow = dofm.getTargetRegions(obj.fldFlow);
-      cellTagMech = dofm.getTargetRegions(obj.fldMech);
-
-      % find cell tag where both flow and mechanics are active
-      cellTags = intersect(cellTagMech,cellTagFlow);
-
-      subCells = getEntities(entityField.cell,obj.mesh,cellTags);
+      subCells = getCoupledCells(obj);
 
       switch obj.flowScheme
         case "FEM"
@@ -107,8 +101,8 @@ classdef BiotFullySaturated < PhysicsSolver
       end
 
       [iiVec,jjVec,Qvec] = deal(zeros(nEntries,1));
-      nDoF1 = dofm.getNumbDoF(obj.fldMech);
-      nDoF2 = dofm.getNumbDoF(obj.fldFlow);
+      nDoFMech = dofm.getNumbDoF(obj.fldMech);
+      nDoFFlow = dofm.getNumbDoF(obj.fldFlow);
       % consider replacing the string field with an integer
 
       l1 = 0;
@@ -155,7 +149,7 @@ classdef BiotFullySaturated < PhysicsSolver
         l1 = l1+s1;
       end
 
-      obj.Q = sparse(iiVec, jjVec, Qvec, nDoF1, nDoF2);
+      obj.Q = sparse(iiVec, jjVec, Qvec, nDoFMech, nDoFFlow);
     end
 
     function [rhsMech,rhsFlow] = computeRhs(obj,dt)
@@ -178,6 +172,16 @@ classdef BiotFullySaturated < PhysicsSolver
       theta = obj.domain.simparams.theta;
       rhsMech = Qmech * (pCurr(entsFlow) + (1/theta-1)*pOld(entsFlow));
       rhsFlow = Qflow * (uCurr(entsPoro) - uOld(entsPoro));
+    end
+
+    function cells = getCoupledCells(obj)
+      cellTagFlow = obj.domain.dofm.getTargetRegions(obj.fldFlow);
+      cellTagMech = obj.domain.dofm.getTargetRegions(obj.fldMech);
+
+      % find cell tag where both flow and mechanics are active
+      cellTags = intersect(cellTagMech,cellTagFlow);
+
+      cells = getEntities(entityField.cell,obj.mesh,cellTags);
     end
 
     function applyBC(obj,bcId,t)
