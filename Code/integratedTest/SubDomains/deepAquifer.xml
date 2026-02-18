@@ -17,10 +17,10 @@ in a nonConforming simulation.
     <BoundaryConditions fileName = "Input/boundaryConditions.xml" />
 
     <Solver>
-      <BiotFullySaturated>
+      <BiotFullyCoupled>
         <Poromechanics targetRegions = "1,2,3" />
         <SinglePhaseFlowFVTPFA targetRegions = "2,3" />
-      </BiotFullySaturated>
+      </BiotFullyCoupled>
     </Solver>
   </Domain>
 

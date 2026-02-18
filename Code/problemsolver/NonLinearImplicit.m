@@ -13,12 +13,6 @@ classdef NonLinearImplicit < SolutionScheme
 
 
   methods (Access = public)
-    function obj = NonLinearImplicit(varargin)
-
-      obj@SolutionScheme(varargin{:});
-
-    end
-
 
     function converged = solveStep(obj,varargin)
 
