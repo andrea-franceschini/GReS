@@ -122,12 +122,16 @@ classdef Faces < handle
       % DISCLAIMER: Thus far hexas are the only allowed elements
       % Implemented following the piece of code in MRST
       % Definition of faces on hex
+      try
       bot = obj.mesh.cells(:, [1, 4, 3, 2]);
       top = obj.mesh.cells(:, [6, 7, 8, 5]);
       est = obj.mesh.cells(:, [2, 3, 7, 6]);
       wst = obj.mesh.cells(:, [5, 8, 4, 1]);
       sth = obj.mesh.cells(:, [6, 5, 1, 2]);
       nth = obj.mesh.cells(:, [3, 4, 8, 7]);
+      catch
+        error("Faces() class can only be created with Hexa element")
+      end
       %
       % Rearrange such that for each row, the smalles node index is in the
       % first column

@@ -33,13 +33,10 @@ classdef (Abstract) PhysicsSolver < handle
   properties (GetAccess=public, SetAccess=protected)
     % handle to domain properties
     domain
-    dofm
+    simparams
     mesh
     elements
     faces
-    bcs
-    materials
-    simparams
   end
 
   methods
@@ -47,13 +44,10 @@ classdef (Abstract) PhysicsSolver < handle
 
       % inputStruct: struct with additional solver-specific parameters
       obj.domain = domain;
-      obj.dofm = domain.dofm;
-      obj.mesh = domain.grid.topology;
-      obj.elements = domain.grid.cells;
-      obj.faces = domain.grid.faces;
-      obj.materials = domain.materials;
-      obj.bcs = domain.bcs;
       obj.simparams = domain.simparams;
+      obj.mesh = domain.grid.topology;
+      obj.faces = domain.grid.faces;
+      obj.elements = domain.grid.cells;
 
     end
   end
@@ -165,10 +159,10 @@ classdef (Abstract) PhysicsSolver < handle
 
       % Base application of Neumann boundary condition to the rhs.
       % bc values are subtracted since we solve du = J\(-rhs)
-      bcVar = obj.bcs.getVariable(bcId);
-      bcId = obj.dofm.getVariableId(bcVar);
+      bcVar = obj.domain.bcs.getVariable(bcId);
+      bcId = obj.domain.dofm.getVariableId(bcVar);
 
-      % remove inactive dofs
+      %remove inactive dofs
       id = bcDofs == 0;
       bcDofs = bcDofs(~id);
       bcVals = bcVals(~id);
@@ -197,10 +191,10 @@ classdef (Abstract) PhysicsSolver < handle
       % sort bcDofs to improve sparse access performance
       [bcDofs,sortId] = sort(bcDofs);
 
-      bcVar = obj.bcs.getVariable(bcId);
-      bcVarId = obj.dofm.getVariableId(bcVar);
+      bcVar = obj.domain.bcs.getVariable(bcId);
+      bcVarId = obj.domain.dofm.getVariableId(bcVar);
 
-      nV = getNumberOfVariables(obj.dofm);
+      nV = getNumberOfVariables(obj.domain.dofm);
 
       % zero out rows (use transpose trick)
       for j = 1:nV
@@ -224,7 +218,7 @@ classdef (Abstract) PhysicsSolver < handle
         for i = 1:nV
           obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
         end
-      
+
         for iI = 1:numel(obj.domain.interfaces)
           if ~isempty(obj.domain.Jum{bcVarId})
             obj.domain.Jmu{iI}{bcVarId}(:,bcDofs) = 0;
@@ -247,6 +241,8 @@ classdef (Abstract) PhysicsSolver < handle
 
     end
 
+
+
     function J = getJacobian(obj,varargin)
 
       % get the Jacobian blocks affected by the solver
@@ -265,11 +261,11 @@ classdef (Abstract) PhysicsSolver < handle
 
     function out = BCapplies(obj,bcId)
 
-      bcVar = obj.bcs.getVariable(bcId);
+      bcVar = obj.domain.bcs.getVariable(bcId);
       out = any(strcmp(obj.getField(),bcVar));
 
     end
-    
+
 
     function out = isSymmetric(obj)
 

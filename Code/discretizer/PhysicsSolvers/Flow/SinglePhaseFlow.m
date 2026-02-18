@@ -35,10 +35,11 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     end
 
     function updateState(obj,dSol)
+      dofm = obj.domain.dofm;
       if nargin > 1
-        ents = obj.dofm.getActiveEntities(obj.fieldId);
+        ents = dofm.getActiveEntities(obj.fieldId);
         state = getState(obj);
-        state.data.pressure(ents) = state.data.pressure(ents) + dSol(obj.dofm.getDoF(obj.fieldId));
+        state.data.pressure(ents) = state.data.pressure(ents) + dSol(dofm.getDoF(obj.fieldId));
       end
     end
 
@@ -59,7 +60,6 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     end
 
     function writeMatFile(obj,fac,tID)
-
       pOld = getStateOld(obj,obj.getField());
       pCurr = getState(obj,obj.getField());
       obj.domain.outstate.matFile(tID).pressure = pCurr*fac+pOld*(1-fac);
@@ -69,13 +69,19 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       out = true;
     end
 
+    function out = isSymmetric(obj)
+      out = isLinear(obj);
+    end
+
     function alpha = getRockCompressibility(obj,el)
-      if ismember(obj.mesh.cellTag(el),getTargetRegions(obj.dofm,["pressure","displacements"]))
+      mat = obj.domain.materials;
+      targetRegions = getTargetRegions(obj.domain.dofm,["pressure","displacements"]);
+      if ismember(obj.mesh.cellTag(el),targetRegions)
         alpha = 0; %this term is not needed in a coupled formulation
       else
-        if isfield(obj.materials.getMaterial(obj.mesh.cellTag(el)),"ConstLaw")
+        if isfield(mat.getMaterial(obj.mesh.cellTag(el)),"ConstLaw")
           %solid skeleton contribution to storage term as oedometric compressibility .
-          alpha = obj.materials.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
+          alpha = mat.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
         else
           alpha = 0;
         end
@@ -86,7 +92,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       % printPermeab - print the permeability for the cell or element.
       perm = zeros(obj.mesh.nCells,6);
       for el=1:obj.mesh.nCells
-        ktmp = obj.materials.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+        ktmp = obj.domain.materials.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
         perm(el,1)=ktmp(1,1);
         perm(el,2)=ktmp(2,2);
         perm(el,3)=ktmp(3,3);

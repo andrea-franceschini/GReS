@@ -40,6 +40,10 @@ classdef QuadrilateralQuadratic < FEM
                1 -1;]
   end
 
+  properties
+    subQuad Quadrilateral
+  end
+
 
   methods (Access = public)
 
@@ -128,10 +132,9 @@ classdef QuadrilateralQuadratic < FEM
       assert(isscalar(idQuad),'Element input id must be a scalar positive integer')
       % compute centroid of specific subElement defined by idSub
       if nargin > 2
-        quad = createSubElement(obj);
         nodeCoord = obj.getSubElementCoords(idQuad,idSub);
-        dJWeighed = getDerBasisFAndDet(quad,nodeCoord);
-        gPCoordinates = getGPointsLocation(quad,nodeCoord);
+        dJWeighed = getDerBasisFAndDet(obj.subQuad,nodeCoord);
+        gPCoordinates = getGPointsLocation(obj.subQuad,nodeCoord);
       elseif nargin == 2
         dJWeighed = getDerBasisFAndDet(obj,idQuad);
         gPCoordinates = getGPointsLocation(obj,idQuad);
@@ -283,6 +286,7 @@ classdef QuadrilateralQuadratic < FEM
       obj.detJ = zeros(1,obj.GaussPts.nNode);
       findLocBasisF(obj);
       findLocDerBasisF(obj);
+      obj.subQuad = Quadrilateral(obj.nGP);
 %       findLocBubbleBasisF(obj);
     end
 

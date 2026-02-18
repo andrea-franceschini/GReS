@@ -6,10 +6,12 @@ classdef (Abstract) SolutionScheme < handle
 
   properties (Access = protected)
     %
+    nDom                % number of domains in the model
+    nInterf             % number of interfaces in the model
     %
     tOld                % tOld: previous converged time instant
-    t = 0               % simulation time
-    tStep = 0           % simulation time step
+    t                   % simulation time
+    tStep               % simulation time step
     dt                  % current time step size
     nVars               % total number of inner variable fields in the model
     attemptedReset      % flag for attempting a configuration reset
@@ -17,8 +19,6 @@ classdef (Abstract) SolutionScheme < handle
 
 
   properties (Access = public)
-    nDom                % number of domains in the model
-    nInterf             % number of interfaces in the model
     linsolver             % instance of linear solver object
     output                % object handling the output of the simulation
     simparams             % parameters of the simulations (shared)
@@ -34,6 +34,11 @@ classdef (Abstract) SolutionScheme < handle
 
   end
 
+  methods (Abstract,Access=protected)
+    % every solution scheme must initialize a specialized linear solver
+    setLinearSolver(obj)
+  end
+
 
   methods (Access = public)
     function obj = SolutionScheme(varargin)
@@ -47,10 +52,12 @@ classdef (Abstract) SolutionScheme < handle
 
     function simulationLoop(obj,varargin)
 
-      % Initialize the time step increment
+      % Initialize time
+      obj.tStep = 0;
+      obj.t = obj.simparams.tIni;
       obj.dt = obj.simparams.dtIni;
-
-      setLinearSolver(obj,varargin{:});
+      
+      setLinearSolver(obj);
 
       while obj.t < obj.simparams.tMax
 
@@ -147,13 +154,6 @@ classdef (Abstract) SolutionScheme < handle
       obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration || obj.nInterf == 0;
 
     end
-
-    function setLinearSolver(obj,varargin)
-
-      obj.linsolver = linearSolver(obj,varargin{:});
-      
-    end
-
 
 
     function manageNextTimeStep(obj,flConv)
@@ -338,9 +338,9 @@ classdef (Abstract) SolutionScheme < handle
           if obj.output.writeVtk
 
             % set folders
-            obj.output.prepareOutputFolders()
+            obj.output.prepareOutputFolders();
 
-            obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
+            obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');  
             toc = obj.output.vtkFile.getDocumentElement;
             toc.setAttribute('type', 'vtkMultiBlockDataSet');
             toc.setAttribute('version', '1.0');
@@ -349,12 +349,16 @@ classdef (Abstract) SolutionScheme < handle
             % append blocks looping into domains and interfaces
             for i = 1:obj.nDom
               vtmBlock = obj.domains(i).writeVTK(fac,outTime);
-              blocks.appendChild(vtmBlock);
+              if ~isempty(vtmBlock)
+                blocks.appendChild(vtmBlock);
+              end
             end
             %
             for i = 1:obj.nInterf
               vtmBlock = obj.interfaces{i}.writeVTKfile(fac,outTime);
-              blocks.appendChild(vtmBlock);
+              if ~isempty(vtmBlock)
+                blocks.appendChild(vtmBlock);
+              end
             end
 
             toc.appendChild(blocks);
