@@ -95,7 +95,7 @@ function [maxF, avgP, avgQ, ratio] = ...
     plastic_vol = sum(vols_DZ1(f_DZ1 > 1)) + ...
         sum(vols_core(f_core > 1)) + sum(vols_DZ2(f_DZ2 > 1));
 
-    total_vol = sum(vols(ID_DZ1)) + sum(vols(ID_core)) + sum(vols(ID_DZ2));
+    total_vol = sum(vols_DZ1) + sum(vols_core) + sum(vols_DZ2);
 
     ratio = plastic_vol / total_vol;
 
