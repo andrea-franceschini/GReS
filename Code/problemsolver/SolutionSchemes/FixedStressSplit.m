@@ -8,6 +8,7 @@ classdef FixedStressSplit < SolutionScheme
     maxIterFSS = 10;
     tolFSS = 1e-5;
     iterFSS
+    iters
   end
 
 
@@ -62,10 +63,17 @@ classdef FixedStressSplit < SolutionScheme
         physSolv.advanceState("displacements");
 
         % check convergence of the scheme
+        gresLog().log(1,"\nRelative pressure change = %1.4e\n",relPressChange)
         if relPressChange < obj.tolFSS
           fSSplitConv = true;
+          obj.iters(obj.tStep) = obj.iterFSS;
         end
       end
+    end
+
+
+    function iters = getFixedStressIters(obj)
+      iters = obj.iters(1:obj.tStep);
     end
 
   end
@@ -203,6 +211,8 @@ classdef FixedStressSplit < SolutionScheme
       % using properties of this solutionScheme
 
       % if nargin == 1
+       % obj.solverMech = linearsolver(input,"displacements");
+       % obj.solverFlow = linearsolver(input,"pressure");
       % else
       % assign solverMech and solverFlow
       % end
