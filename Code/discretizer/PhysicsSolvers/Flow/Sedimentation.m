@@ -39,7 +39,7 @@ classdef Sedimentation < PhysicsSolver
     H (:,:)
     P (:,:)
     
-    void0 (:,1) double                  % Initial porosity for each cell
+    poro0 (:,1) double                  % Initial porosity for each cell
     matfrac (:,:)                       % Material fractions per cell
   end
 
@@ -50,7 +50,7 @@ classdef Sedimentation < PhysicsSolver
   properties (Access = private)
     nmat uint16
     sedFlag logical = true
-    nonElasticFlag logical = false
+    nonElasticFlag logical = true
   end
 
   methods (Access = public)
@@ -69,21 +69,23 @@ classdef Sedimentation < PhysicsSolver
       % Build grid & mesh
       obj.nmat = length(obj.materials.db)-1;
       % Check the material is well defined.
-      if isfield(obj.materials.db(1),'SedMaterial')
-        tmp=true;
+      if isfield(obj.materials.db(1),'Elastic')
+        tmp1=true;
       else
-        tmp=false;
+        tmp1=false;
       end      
       for i=1:obj.nmat
-        if isfield(obj.materials.db(i),'SedMaterial')
-          obj.nonElasticFlag = true;
+        tmp2=false;
+        if isfield(obj.materials.db(i),'Elastic')
+          tmp2=true;          
         end
-        if obj.nonElasticFlag ~= tmp
+        if tmp2 ~= tmp1
           disp("The materials for the simulation is not defined!");
           gresLog().error("Simulation not well defined!");
         end
-        tmp=obj.nonElasticFlag;
+        tmp1=tmp2;
       end
+      obj.nonElasticFlag = ~tmp1;
       obj.grid = gridForSedimentation("XML",input.Domain);
       % Build the material fractions for each cell
       lnk = input.Domain.Initial;
@@ -236,7 +238,8 @@ classdef Sedimentation < PhysicsSolver
       
       gamma = obj.materials.getFluid().getSpecificWeight();
 
-      outPrint.overpres = p/gamma;
+      outPrint.overpres = p;
+      % outPrint.overpres = p/gamma;
       outPrint.perm = obj.getCellsProp('permeability');
       comp = sNew.data.cellDefm*fac+sOld.data.cellDefm*(1-fac);
       outPrint.comp = obj.grid.getCompaction(comp);
@@ -300,7 +303,7 @@ classdef Sedimentation < PhysicsSolver
           v=bc.data.*ones(length(cellId),1);
           vals = sum(vecN.*v,2);
         case 'dirichlet'
-          mu = obj.materials.getFluid().getDynViscosity();
+          mu = obj.materials.getFluid().getSpecificWeight();
           permCell = obj.getCellsProp('permeability',cellId);
           dirJ = 1/mu*(faceArea.*permCell(:,axis));
           potential = p(cellId) - bc.data;
@@ -322,9 +325,8 @@ classdef Sedimentation < PhysicsSolver
 
       % get pressure state
       p = getState(obj,obj.getField());
-      pOld = getStateOld(obj,obj.getField());
+      pOld = getStateOld(obj,obj.getField());      
 
-      % lw = 1/obj.materials.getFluid().getDynViscosity();
       theta = obj.domain.simparams.theta;
       rhsStiff = theta*obj.H*p + (1-theta)*obj.H*pOld;
       rhsCap = (obj.P/dt)*(p - pOld);
@@ -332,12 +334,15 @@ classdef Sedimentation < PhysicsSolver
 
       % adding sediment contribution
       map = reshape(obj.getState('tstressvar'),obj.grid.ncells(1:2));
-      rhs = rhs - obj.computeOedometricCompressibility().*obj.grid.distMapOverDofs(map);
+      % volsCell = obj.grid.computeVols((1:obj.grid.ndofs)',obj.getState().data.cellDefm);
+      volsCell = obj.grid.computeVols((1:obj.grid.ndofs)');
+      rhs = rhs - volsCell.*obj.computeOedometricCompressibility().*obj.grid.distMapOverDofs(map);
     end
 
     function computeStiffMat(obj)
       % Compute the Stiffness Matrix
-      lw = 1/obj.materials.getFluid().getDynViscosity();
+      lw = 1/obj.materials.getFluid().getSpecificWeight();
+      
       ncells = obj.grid.ndofs;
       tmpVec = lw.*obj.computeTrans;
       sumDiagTrans = accumarray(obj.facesNeigh(:),repmat(tmpVec,[2,1]),[ncells,1]);
@@ -486,6 +491,7 @@ classdef Sedimentation < PhysicsSolver
       obj.getState().data.tstressvar = [];
       if obj.nonElasticFlag
         obj.getState().data.voidrate = zeros(ndofs,1);
+        obj.getState().data.strain = zeros(ndofs,1);
         obj.getState().data.prestress = obj.getCellsProp('preConStress');
       end
     end
@@ -526,27 +532,29 @@ classdef Sedimentation < PhysicsSolver
       obj.halfTrans(:,2)=1./(celldims(actDofs,1).*permCell(actDofs,2));
       obj.halfTrans(:,3)=1./(celldims(actDofs,1).*celldims(actDofs,2).*permCell(actDofs,3));
 
-      % Computing the initial void rate
+      % Computing the initial porosity
+      void0 = obj.getCellsProp('voidrate');
+      obj.poro0 = void0./(1+void0);
       if obj.nonElasticFlag
-        obj.void0 = obj.getCellsProp('voidrate');
-        obj.getState().data.voidrate = obj.void0;
+        obj.getState().data.voidrate = void0;
       end
 
       % Initial stress state
       coords = obj.grid.getCoordCenter(actDofs);
       gamma = obj.materials.getFluid().getSpecificWeight();
       if obj.nonElasticFlag
-        poro = obj.void0(dofs)./(1+obj.void0(dofs));
+        poro = obj.poro0(dofs)./(1+obj.poro0(dofs));
       else
         poro = obj.getCellsProp('porosity',dofs);
       end      
       spwg = zeros(length(dofs),1);
       for mat=1:obj.nmat
-        spwg = spwg + (obj.materials.getMaterial(mat).PorousRock.getSpecificWeight() ...
+        spwg = spwg + (obj.materials.getMaterial(mat).SedMaterial.getSpecificWeight() ...
           -gamma)*obj.matfrac(dofs,mat);
       end
       initStres = obj.getCellsProp('initialStress',dofs);
       obj.getState().data.stress = -(1-poro).*spwg.*(obj.grid.getColumnMaxHeight()-coords(:,3))-initStres;
+
     end
 
     function updateSedRate(obj,dt)
@@ -562,14 +570,14 @@ classdef Sedimentation < PhysicsSolver
       % Finding the total stress variation
       gamma = obj.materials.getFluid().getSpecificWeight();
       if obj.nonElasticFlag
-        poro = obj.void0(dofs)./(1+obj.void0(dofs));
+        poro = obj.poro0(dofs)./(1+obj.poro0(dofs));
       else
         poro = obj.getCellsProp('porosity',dofs);
       end      
       spwg = zeros(length(dofs),1);
       for mat=1:obj.nmat
-        spwg = spwg + (obj.materials.getMaterial(mat).PorousRock.getSpecificWeight() ...
-          -gamma)*obj.matfrac(dofs,mat).*sedRate(:,mat);
+        spwg = spwg + (obj.materials.getMaterial(mat).SedMaterial.getSpecificWeight() ...
+          -gamma)*obj.matfrac(dofs,mat).*sedRate(:,mat);        
       end
       obj.getState().data.tstressvar = (1-poro).*spwg;
     end
@@ -633,7 +641,7 @@ classdef Sedimentation < PhysicsSolver
       % Update initial void rate
       if obj.nonElasticFlag
         voidI = obj.getCellsProp('voidrate',dofs);
-        obj.void0(end+1:end+newcells) = voidI;
+        obj.poro0(end+1:end+newcells) = voidI;
       end
 
       % Update the face connectivity
@@ -698,13 +706,13 @@ classdef Sedimentation < PhysicsSolver
       coords = obj.grid.getCoordCenter(dofs);
       gamma = obj.materials.getFluid().getSpecificWeight();
       if obj.nonElasticFlag
-        poro = obj.void0(dofs)./(1+obj.void0(dofs));
+        poro = obj.poro0(dofs)./(1+obj.poro0(dofs));
       else
         poro = obj.getCellsProp('porosity',dofs);
       end      
       spwg = zeros(length(dofs),1);
       for mat=1:obj.nmat
-        spwg = spwg + (obj.materials.getMaterial(mat).PorousRock.getSpecificWeight() ...
+        spwg = spwg + (obj.materials.getMaterial(mat).SedMaterial.getSpecificWeight() ...
           -gamma)*obj.matfrac(dofs,mat);
       end
       initStres = obj.getCellsProp('initialStress',dofs);
@@ -779,19 +787,28 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function updateStateNonElastic(obj,sNew,sOld)
+      % For the terzaghi column, the deformation is only in the reduction
+      % in the void spaces. So the strain is given by
+      %          strain = dVoid/(1-void0)
+
       % Update the Void Rate
       sPre= obj.getState().data.prestress;
       Cc = obj.getCellsProp('compressIdx');
       Cr = obj.getCellsProp('recompressIdx');
-      void = SedMaterial.getVoidRatio(abs(sNew),abs(sOld),abs(sPre),Cc,Cr);
-      obj.getState().data.voidrate = obj.getState().data.voidrate-void;
+      de = SedMaterial.getVoidRatio(abs(sNew),abs(sOld),abs(sPre),Cc,Cr);
+      e0 = obj.getStateOld().data.voidrate;
+      obj.getState().data.voidrate = e0 + de;
 
       % Update the Mesh Deformation
-      void = obj.getState().data.voidrate;
-      L=obj.grid.getCellHeight();
-      L=L(:)+obj.getStateOld().data.cellDefm;
-      oedo = (1/log(10))*(Cc./((1+void).*sNew));
-      obj.getState().data.cellDefm=obj.getStateOld().data.cellDefm - oedo.*L.*(sNew-sOld);
+
+      L = obj.grid.getCellHeight();
+      % vertical deformation (compaction has negative sign)
+      eps = de./(1+e0);
+      L = L(:)+obj.getStateOld().data.cellDefm;
+      % oedo = (1/log(10))*(Cc./((1+void).*sNew));
+      % obj.getState().data.cellDefm = obj.getStateOld().data.cellDefm - oedo.*L.*(sNew-sOld);
+      obj.getState().data.cellDefm = obj.getStateOld().data.cellDefm + eps.*L;
+      % obj.getState().data.cellDefm=obj.getStateOld().data.cellDefm - void.*L;
     end
 
 
@@ -829,13 +846,11 @@ classdef Sedimentation < PhysicsSolver
         dofs = obj.grid.getActiveDofs;
       end
 
-      sNew= obj.getState().data.stress(dofs);
+      sNew = obj.getState().data.stress(dofs);
       if obj.nonElasticFlag
         % Non elastic formulation
         Cc = obj.getCellsProp('compressIdx',dofs);
-        void = obj.getState().data.voidrate(dofs);        
-        % map = sNew == 0;
-        % sNew(map)=1;
+        void = obj.getState().data.voidrate(dofs);
         oedoComp = -(1/log(10))*(Cc./((1+void).*sNew));
       else
         % Elastic formulation
@@ -844,7 +859,7 @@ classdef Sedimentation < PhysicsSolver
         poissonPerCell = obj.getCellsProp('poissonRatio');
         poissonPerCell = poissonPerCell(dofs);
         alpha = (1-2*poissonPerCell).*(1+poissonPerCell)./((1-poissonPerCell).*elasticPerCell);
-        oedoComp=alpha./(1-alpha.*sNew);
+        oedoComp = alpha./(1-alpha.*sNew);
       end      
     end
 
@@ -856,7 +871,7 @@ classdef Sedimentation < PhysicsSolver
         case 'permeability'
           out = zeros(length(dofs),3);
           for mat=1:obj.nmat
-            tmpMat = diag(obj.materials.getMaterial(mat).PorousRock.getPermMatrix())';
+            tmpMat = obj.materials.getMaterial(mat).SedMaterial.getConductivity();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
         case 'porosity'
@@ -868,7 +883,7 @@ classdef Sedimentation < PhysicsSolver
         case 'specificweight'
           out = zeros(length(dofs),1);
           for mat=1:obj.nmat
-            tmpMat = obj.materials.getMaterial(mat).PorousRock.getSpecificWeight();
+            tmpMat = obj.materials.getMaterial(mat).SedMaterial.getSpecificWeight();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
         case 'voidrate'
@@ -883,12 +898,14 @@ classdef Sedimentation < PhysicsSolver
             tmpMat = obj.materials.getMaterial(mat).SedMaterial.getCompressibilityIdx();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
+          % out = (1-obj.void0(dofs)).*out;
         case 'recompressIdx'
           out = zeros(length(dofs),1);
           for mat=1:obj.nmat
             tmpMat = obj.materials.getMaterial(mat).SedMaterial.getReCompressibilityIdx();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
+          % out = (1-obj.void0(dofs)).*out;
         case 'preConStress'
           out = zeros(length(dofs),1);
           for mat=1:obj.nmat
@@ -915,7 +932,7 @@ classdef Sedimentation < PhysicsSolver
           end
         otherwise
           out = [];
-      end
+      end        
     end
 
    

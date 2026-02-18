@@ -42,7 +42,7 @@ classdef Fluid < handle
             % Assign object properties
             obj.gamma = getXMLData(inputStruct,0,"specificWeight");
             obj.beta = getXMLData(inputStruct,0,"compressibility");
-            obj.mu = getXMLData(inputStruct,[],"dynamicViscosity");
+            obj.mu = getXMLData(inputStruct,1e-3,"dynamicViscosity");
      
         end
     end
