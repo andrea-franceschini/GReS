@@ -1,6 +1,8 @@
 classdef FixedStressSplit < SolutionScheme
-  % Class for solving non linear contact problem
-
+  
+% Fixed-stress split algorithm
+% This scheme is valid only when used together with the
+% BiotFixedStressSplit physics solver.
   properties
     % instance of linearSolver for singlePhysics
     solverMech
@@ -171,7 +173,7 @@ classdef FixedStressSplit < SolutionScheme
 
       gresLog().log(1,'0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
 
-      newtonConv = false;
+      newtonConv = (rhsNorm < tolWeigh || rhsNorm < obj.simparams.absTol);
 
       % reset non linear iteration counter
       iter = 0;
@@ -187,6 +189,8 @@ classdef FixedStressSplit < SolutionScheme
         % solve linear system
         du = solve(obj,J,rhs);
 
+        % update state variable calling directly the BiotFixedStressSplit
+        % solver
         physSolv.updateState(du,varName);
 
         % reassemble system
