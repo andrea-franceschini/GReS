@@ -55,7 +55,7 @@ classdef preconditioner < handle
    methods (Access = public)
 
       % Function to compute the preconditioner
-      Compute(obj,A)
+      Compute(obj,A,symMat)
 
    end
 
@@ -190,10 +190,10 @@ classdef preconditioner < handle
       [params] = getUserInput(obj,params,xml);
 
       % Function to compute the preconditioner for the single block (single physics)
-      computeSinglePhPrec(obj,A);
+      computeSinglePhPrec(obj,A,symMat);
 
       % Function to compute the Reverse Agumented preconditioner for the lagrange multiplier case (single physics multi domain)
-      computeRACP(obj,A)
+      computeRACP(obj,A,symMat)
 
       % Function to compute the MCP preconditioner for the multiphysics case
       computeMCP(obj,A)

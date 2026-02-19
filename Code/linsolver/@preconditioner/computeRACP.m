@@ -1,5 +1,5 @@
 % Function to compute the RACP preconditioner for the lagrange multiplier case (single physics multi domain)
-function computeRACP(obj,A)
+function computeRACP(obj,A,symMat)
 
    simple_flag = false;
 
@@ -70,8 +70,12 @@ function computeRACP(obj,A)
    % For now impose the amg
    obj.PrecType = 'amg';
 
+   % If even one of the blocks is nonsymmetric then the agumented matrix
+   % must be nonsymmetric
+   symAug = min(symMat(1:3));
+   
    % Compute the amg for block 11
-   obj.Compute(A11_aug);
+   obj.Compute(A11_aug,symAug);
 
    obj.Apply_L = @(x) apply_RevAug(obj.Prec,A11_aug,A{1,2},inv_D22,x);
    obj.Apply_R = @(x) x;

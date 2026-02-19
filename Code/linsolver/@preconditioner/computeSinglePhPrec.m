@@ -1,18 +1,12 @@
-function computeSinglePhPrec(obj,A)
+function computeSinglePhPrec(obj,A,symMat)
    
    if iscell(A)
       A = A{1,1};
    end
 
-   infnorm = norm(A-A','inf');
-   if obj.DEBUGflag
-      fprintf('\nsymmetry = %e\n\n',infnorm);
-   end
-   if (infnorm > obj.nsyTol)
+   % If symMat == 0 then the matrix is nonsymmetric
+   if ~symMat
       obj.params.symm = false;
-      if obj.DEBUGflag
-         fprintf('matrix nonsymmatric %e\n',infnorm);
-      end
    else
       obj.params.symm = true;
    end
@@ -40,7 +34,7 @@ function computeSinglePhPrec(obj,A)
                TV0 = [TV0;TV];
             end
             if obj.DEBUGflag
-               obj.TV0 = TV0
+               obj.TV0 = TV0;
             end
          end
 
@@ -104,7 +98,7 @@ end
 % Function to determine how MfunL and MfunR are for each fsai preconditioner
 function [MfunL,MfunR] = defineMfunFSAI(obj,smootherOp)
    omega = smootherOp.omega;
-   if strcmp(lower(obj.params.smoother.method),'afsai_enh')
+   if strcmpi(obj.params.smoother.method,'afsai_enh')
       F     = smootherOp.left;
       FT    = smootherOp.right;
       W     = smootherOp.W;
@@ -116,13 +110,13 @@ function [MfunL,MfunR] = defineMfunFSAI(obj,smootherOp)
          MfunL = smootherOp.polyPrec;
          MfunR = smootherOp.polyPrec;
       else
-         if strcmp(lower(obj.params.smoother.method),'blk_j')
+         if strcmpi(obj.params.smoother.method,'blk_j')
             MfunL = smootherOp.BLKJ;
             MfunR = smootherOp.BLKJ;
-         elseif strcmp(lower(obj.params.smoother.method),'bafsai')
+         elseif strcmpi(obj.params.smoother.method,'bafsai')
             MfunL = smootherOp.BAFSAI;
             MfunR = smootherOp.BAFSAI;
-         elseif strcmp(lower(obj.params.smoother.method),'ddsw')
+         elseif strcmpi(obj.params.smoother.method,'ddsw')
             MfunL = smootherOp.DDSW1;
             MfunR = smootherOp.DDSW2;
          else

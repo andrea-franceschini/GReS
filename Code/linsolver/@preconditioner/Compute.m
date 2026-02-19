@@ -1,11 +1,11 @@
 
 % Function for the computation of the preconditioner
-function Compute(obj,A)
+function Compute(obj,A,symMat)
 
    % Check if it is the case of a single physics single domain
    if numel(A) == 1 || ~iscell(A)
       % Case of the single Physics preconditioner for one single block
-      obj.computeSinglePhPrec(A);
+      obj.computeSinglePhPrec(A,symMat);
       return
    end
 
@@ -56,14 +56,27 @@ function Compute(obj,A)
             A12 = cell2matrix(A(idxMain,idxSupp));
             A21 = cell2matrix(A(idxSupp,idxMain));
             A22 = cell2matrix(A(idxSupp,idxSupp)); 
+
+            % Fuse the symMat
+            symMat1 = zeros(2,2);
+            mm = length(idxMain) * length(idxMain);
+            sm = length(idxMain) * length(idxSupp);
+            ss = length(idxSupp) * length(idxSupp);
+            symMat1(1,1) = (sum(symMat(idxMain,idxMain), 'all') == mm);
+            symMat1(1,2) = (sum(symMat(idxMain,idxSupp), 'all') == sm);
+            symMat1(2,2) = (sum(symMat(idxSupp,idxSupp), 'all') == ss);
+            symMat1(2,1) = symMat1(1,2);
             
+            clear symMat;
+            symMat = symMat1;
+            clear symMat1;
             clear A;
    
             A = {A11, A12; A21 A22};
          end
 
          % RACP for single physics multi domain 
-         obj.computeRACP(A);
+         obj.computeRACP(A,symMat);
       end
    end
 end
