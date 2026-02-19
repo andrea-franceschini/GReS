@@ -4,19 +4,19 @@ function computeSinglePhPrec(obj,A)
       A = A{1,1};
    end
 
+   infnorm = norm(A-A','inf');
    if obj.DEBUGflag
-      fprintf('\nsymmetry = %e\n\n',norm(A-A','f')/norm(A,'f'));
+      fprintf('\nsymmetry = %e\n\n',infnorm);
    end
-   if (norm(A-A','f')/norm(A,'f') > obj.nsyTol)
+   if (infnorm > obj.nsyTol)
       obj.params.symm = false;
       if obj.DEBUGflag
-         fprintf('matrix nonsymmatric %e\n',norm(A-A','f')/norm(A,'f'));
+         fprintf('matrix nonsymmatric %e\n',infnorm);
       end
    else
       obj.params.symm = true;
    end
 
-   time_start = tic;
    switch obj.PrecType
 
       % Compute the AMG preconditioner
@@ -33,41 +33,35 @@ function computeSinglePhPrec(obj,A)
          % Compute the test space
          if(obj.phys == 0) % fluids
             TV0 = ones(size(A,1),1);
-         elseif(obj.phys == 1)
+         elseif(obj.phys == 1 || obj.phys == 1.1) % true contact mechanichs physics is 1.1, general poromechanics is 1
             TV0 = [];
             for i = 1:obj.nDom
                TV = mk_rbm_3d(obj.domain(i).grid.topology.coordinates);
                TV0 = [TV0;TV];
             end
+            if obj.DEBUGflag
+               obj.TV0 = TV0
+            end
          end
 
-         
-         % coord = obj.domain.grid.topology.coordinates;
-         % save("TV0.mat","TV0");
-         %save("mat_new.mat","A","TV0","coord");
-         % error('ciao');
          set_DEBINFO();
 
          % Actually compute the AMG
          obj.Prec = cpt_aspAMG(obj.params,A,TV0,obj.DEBUGflag);
 
          % Define Mfun
-         obj.MfunL = @(r) AMG_Vcycle(obj.Prec,A,r);
-         obj.MfunR = @(r) r;
+         obj.Apply_L = @(r) AMG_Vcycle(obj.Prec,A,r);
+         obj.Apply_R = @(r) r;
 
       % Compute the FSAI preconditioner
       case 'fsai'
          smootherOp = smoother(A,obj.params.symm,obj.params.smoother);
 
          % Define Mfun
-         [obj.MfunL,obj.MfunR] = defineMfunFSAI(obj,smootherOp);
+         [obj.Apply_L,obj.Apply_R] = defineMfunFSAI(obj,smootherOp);
       otherwise
          error('Non defined preconditioner case')
    end
-   T_setup = toc(time_start);
-   obj.aTimeComp = obj.aTimeComp + T_setup;
-   obj.nComp = obj.nComp + 1;
-
 end
 
 

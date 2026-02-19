@@ -6,8 +6,6 @@ classdef (Abstract) SolutionScheme < handle
 
   properties (Access = protected)
     %
-    nDom                        % number of domains in the model
-    nInterf                     % number of interfaces in the model
     %       
     tOld                        % tOld: previous converged time instant
     t                           % simulation time
@@ -19,6 +17,8 @@ classdef (Abstract) SolutionScheme < handle
 
 
   properties (Access = public)
+    nDom                % number of domains in the model
+    nInterf             % number of interfaces in the model
     linsolver             % instance of linear solver object
     output                % object handling the output of the simulation
     simparams             % parameters of the simulations (shared)
@@ -161,7 +161,7 @@ classdef (Abstract) SolutionScheme < handle
         if gresLog().getVerbosity > 2
           fprintf('Using default values for linsolver\n');
         end
-        obj.linsolver = linearSolver(obj.domains,obj.interfaces);
+      obj.linsolver = linearSolver(obj,varargin{:});
       end
     end
 

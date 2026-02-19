@@ -1,6 +1,6 @@
 
 % Function for the computation of the preconditioner
-function computePrec(obj,A)
+function Compute(obj,A)
 
    % Check if it is the case of a single physics single domain
    if numel(A) == 1 || ~iscell(A)
@@ -35,7 +35,7 @@ function computePrec(obj,A)
             % checks if any of the matrix entries are 0x0 blocks
             [ZeroSpRow,ZeroSpCol] = find(cellfun(@(x) isempty(x), A));
 
-            if length(ZeroSpRow)
+            if ~isempty(ZeroSpRow)
                % get the correct number of rows
                rows = zeros(size(A,1),1);
                for i = 1:size(A,1)
