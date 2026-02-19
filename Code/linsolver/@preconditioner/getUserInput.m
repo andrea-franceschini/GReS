@@ -2,7 +2,7 @@ function [params] = getUserInput(obj,params,usrInput)
 
 
 if isempty(usrInput)
-  fprintf('Using default values for preconditioner\n');
+  gresLog().log(3,'Using default values for preconditioner\n');
   return
 end
 
