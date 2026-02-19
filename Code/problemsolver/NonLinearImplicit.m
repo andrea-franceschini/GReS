@@ -149,22 +149,6 @@ classdef NonLinearImplicit < SolutionScheme
   methods (Access = protected)
 
 
-    function setLinearSolver(obj)
-      % Check if there is manual input from the user, if not use defaults
-      start_dir = pwd;
-      chronos_xml = fullfile(start_dir,'linsolver.xml');
-      if(isfile(chronos_xml))
-        obj.linsolver = linearSolver(obj.domains,obj.interfaces,chronos_xml);
-      else
-        if gresLog().getVerbosity > 2
-          fprintf('Using default values for linsolver\n');
-        end
-        obj.linsolver = linearSolver(obj.domains,obj.interfaces);
-      end
-    end
-
-
-
     function out = computeRhsNorm(obj)
 
       %Return maximum norm of the entire domain

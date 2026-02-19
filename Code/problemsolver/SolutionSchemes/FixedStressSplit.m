@@ -210,27 +210,27 @@ classdef FixedStressSplit < SolutionScheme
 
 
 
-    function setLinearSolver(obj)
-      % update this method to set iterative solver for specific physics
-      % using properties of this solutionScheme
-
-      % if nargin == 1
-       % obj.solverMech = linearsolver(input,"displacements");
-       % obj.solverFlow = linearsolver(input,"pressure");
-      % else
-      % assign solverMech and solverFlow
-      % end
-      start_dir = pwd;
-      chronos_xml = fullfile(start_dir,'linsolver.xml');
-      if(isfile(chronos_xml))
-        obj.linsolver = linearSolver(obj.domains,obj.interfaces,chronos_xml);
-      else
-        if gresLog().getVerbosity > 2
-          fprintf('Using default values for linsolver\n');
-        end
-        obj.linsolver = linearSolver(obj.domains,obj.interfaces);
-      end
-    end
+    % function setLinearSolver(obj)
+    %   % update this method to set iterative solver for specific physics
+    %   % using properties of this solutionScheme
+    % 
+    %   % if nargin == 1
+    %    % obj.solverMech = linearsolver(input,"displacements");
+    %    % obj.solverFlow = linearsolver(input,"pressure");
+    %   % else
+    %   % assign solverMech and solverFlow
+    %   % end
+    %   start_dir = pwd;
+    %   chronos_xml = fullfile(start_dir,'linsolver.xml');
+    %   if(isfile(chronos_xml))
+    %     obj.linsolver = linearSolver(obj.domains,obj.interfaces,chronos_xml);
+    %   else
+    %     if gresLog().getVerbosity > 2
+    %       fprintf('Using default values for linsolver\n');
+    %     end
+    %     obj.linsolver = linearSolver(obj.domains,obj.interfaces);
+    %   end
+    % end
 
 
   end

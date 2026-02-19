@@ -34,11 +34,6 @@ classdef (Abstract) SolutionScheme < handle
 
   end
 
-  methods (Abstract,Access=protected)
-    % every solution scheme must initialize a specialized linear solver
-    setLinearSolver(obj)
-  end
-
 
   methods (Access = public)
     function obj = SolutionScheme(varargin)
@@ -90,6 +85,7 @@ classdef (Abstract) SolutionScheme < handle
 
   methods (Access = protected)
 
+   
     function setSolutionScheme(obj,varargin)
 
 
@@ -153,6 +149,20 @@ classdef (Abstract) SolutionScheme < handle
 
       obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration || obj.nInterf == 0;
 
+    end
+
+    function setLinearSolver(obj)
+      % Check if there is manual input from the user, if not use defaults
+      start_dir = pwd;
+      chronos_xml = fullfile(start_dir,'linsolver.xml');
+      if(isfile(chronos_xml))
+        obj.linsolver = linearSolver(obj.domains,obj.interfaces,chronos_xml);
+      else
+        if gresLog().getVerbosity > 2
+          fprintf('Using default values for linsolver\n');
+        end
+        obj.linsolver = linearSolver(obj.domains,obj.interfaces);
+      end
     end
 
 

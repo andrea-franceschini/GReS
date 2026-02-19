@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-->
+
+<BCentities>
+Various attribute are available to specify the
+ID of the constrained entities in different ways.
+
+'bcListFile'
+a path to a list of entities ID of type entitiyType
+(see the BoundaryConditions tutorial)
+
+'surfaceTags'
+the surfaceTags to which the constrained entities belong
+
+'bcList'
+a simple list of entities to be constrained in the specified components
+
+NOTE
+for the case of multi-component fields where 'bcList' or 'surfaceTags'
+are used, the user must also specify the 'component' attribute
+component = "x" or component = "x,y,z" or component = "y,z"
+
+
+
+<BCevent>
+Each BC event needs a 'time' and a 'value' attribute
+
+'time' can be:
+a single scalar
+a function handle of a scalar multiplier changing with time (t)
+
+'valuel can be:
+a single scalar (constant in space for each dof),
+a path to a file with a list of values for each dof
+a function handle depending on space (x,y,z)
+
+<-->
+
+
+<BoundaryConditions>
+  <BC
+      name = "NoFlowTop"
+      type = "Dirichlet"
+      entityType = "SurfBC"
+      variable = "pressure"
+      >
+
+    <BCentities
+                surfaceTags = "2"
+
+                />
+
+    <BCevent
+             time = "0"
+             value = "0"
+             />
+  </BC>
+
+  <BC
+      name = "TopLoad"
+      type = "Neumann"
+      entityType = "SurfBC"
+      variable = "displacements"
+      >
+
+    <BCentities
+                surfaceTags = "2"
+                components = "z"
+                />
+
+    <BCevent
+             time = "0"
+             value = "-10"
+             />
+
+  </BC>
+
+  <BC
+      name = "LatFixedY"
+      type = "Dirichlet"
+      entityType = "NodeBC"
+      variable = "displacements"
+      >
+
+    <BCentities
+                surfaceTags = "3"
+                components = "y"
+                />
+
+    <BCevent
+             time = "0"
+             value = "0"
+             />
+  </BC>
+
+  <BC
+      name = "LatFixedX"
+      type = "Dirichlet"
+      entityType = "NodeBC"
+      variable = "displacements"
+      >
+
+    <BCentities
+                surfaceTags = "4"
+                components = "x"
+                />
+
+    <BCevent
+             time = "0"
+             value = "0"
+             />
+  </BC>
+
+  <BC
+      name = "BotFixed"
+      type = "Dirichlet"
+      entityType = "SurfBC"
+      variable = "displacements"
+      >
+
+    <BCentities
+                surfaceTags = "1"
+                components = "x,y,z"
+                />
+
+    <BCevent
+             time = "0"
+             value = "0"
+             />
+  </BC>
+
+</BoundaryConditions>
