@@ -11,8 +11,6 @@ function [x,flag] = Solve(obj,A,b,time)
       A
    end
 
-   [A] = symmetrize(A,obj.nsyTol);
-
    % Chronos does not exist, continue with matlab default
    if ~obj.ChronosFlag || (getGlobalSize(A) < obj.matlabMaxSize)
       [x,flag] = matlab_solve(obj,A,b);
@@ -30,10 +28,27 @@ function [x,flag] = Solve(obj,A,b,time)
       end
    end
 
+   % Save the solver type
+   firstSolver = obj.SolverType;
+
+   [globalsymm,maxval,symMat] = checkSymmetry(A,obj.nsyTol);
+   
+   if globalsymm == 0
+      % If the matrix is nonSymmetric the use always GMRES
+      obj.SolverType = 'gmres';
+      if obj.DEBUGflag
+         fprintf("The matrix is nonsymmetric with a maximum nonsymmetry of %e\n",maxval);
+      end
+   end
+
    % Have the linear solver compute the Preconditioner if necessary
    if(obj.requestPrecComp || obj.params.iter > 600 || obj.params.lastRelres > obj.params.tol*1e3)
+      if obj.DEBUGflag
+         fprintf("Computing the preconditioner\n");
+      end
+
       time_start = tic;
-      obj.Prec.Compute(A);
+      obj.Prec.Compute(A,symMat);
       T_setup = toc(time_start);
 
       obj.aTimeComp = obj.aTimeComp + T_setup;
@@ -44,21 +59,9 @@ function [x,flag] = Solve(obj,A,b,time)
       obj.params.iterSinceLastPrecComp = obj.params.iterSinceLastPrecComp + 1;
    end
 
-   % Save the solver type
-   firstSolver = obj.SolverType;
-
    %save('Ab.mat',"A","b");
    if iscell(A)
       Amat = cell2matrix(A);
-   end
-
-   % If the matrix is nonSymmetric the use always GMRES
-   infnorm = norm(Amat-Amat','inf');
-   if (infnorm > obj.nsyTol)
-      if obj.DEBUGflag
-         fprintf('\nsym = %e\n\n',infnorm);
-      end
-      obj.SolverType = 'gmres';
    end
 
    startT = tic;
@@ -127,37 +130,22 @@ function [x,flag] = Solve(obj,A,b,time)
    obj.x0 = x;
 end
 
-function [A] = symmetrize(A,nsyTol)
-   
-   % If the matrix is not a cell matrix then symmetrize is simplified
-   if ~iscell(A)
-       if(norm(A-A','inf') < nsyTol)
-            A = 0.5*(A + A');
-       end
-       return
-   end
 
-   N = size(A,1);
-   
-   % Symmetrize the first block
-   for i = 1:N
-      for j = i:N
-         if i == j
-            % Diagonal Block
-            err = norm(A{i,i} - A{i,i}', 'inf');
-            if err < nsyTol
-               A{i,i} = 0.5 * (A{i,i} + A{i,i}');
-            end
-         else
-            % Off-Diagonal Block: Copy Upper to Lower
-            err = norm(A{i,j} - A{j,i}', 'inf');
-            if err < nsyTol
-               A{j,i} = A{i,j}';
-            end
-         end
-      end
-   end
-end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -199,4 +187,60 @@ function [x,flag] = matlab_solve(obj,A,b)
    obj.nSolve = obj.nSolve + 1;
    flag = 0;
    obj.params.iter = 0;
+end
+
+function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
+   
+   % Base Case: Numeric Matrix
+   if ~iscell(A)
+       diff_mat = abs(A - A') - eps1 .* max(abs(A), abs(A'));
+       diff_vec = diff_mat(diff_mat > 0);
+       
+       if isempty(diff_vec)
+           maxval = 0;
+           globalsymm = 1;
+       else
+           maxval = max(diff_vec);
+           globalsymm = 0;
+       end
+       symMat = globalsymm;
+       return
+   end
+   
+   % Allocate the stuff
+   N = size(A,1);
+   symm = zeros(sum(1:N),1);
+   val = zeros(sum(1:N),1);
+   cont = 1;
+   
+   % Loop over the blocks
+   for j = 1:N
+      for i = 1:j
+         if i == j
+            % Diagonal Block
+            [symm(cont), val(cont)] = checkSymmetry(A{i,i},eps1);
+         else
+            % Off-Diagonal Block
+            diff_mat = abs(A{i,j} - A{j,i}') - eps1 .* max(abs(A{i,j}), abs(A{j,i}'));
+            diff_vec = diff_mat(diff_mat > 0);
+            
+            if isempty(diff_vec)
+                symm(cont) = 1;
+                val(cont) = 0;
+            else
+                symm(cont) = 0;
+                val(cont) = max(diff_vec);
+            end
+         end
+         cont = cont + 1;
+      end
+   end
+   
+   % Global mapping and output
+   symMat = zeros(N, N);
+   symMat(triu(true(N))) = symm;
+   symMat = symMat + triu(symMat, 1).';
+   
+   globalsymm = min(symm);
+   maxval = max(val);
 end
