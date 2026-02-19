@@ -3,6 +3,7 @@
 <Materials>
   <Solid cellTags = "1">
     
+    
     <SedimentMaterial
         voidRate = "0.1"
         conductivity = "0.945e-0, 0.945e-0, 0.315e-0"
@@ -23,6 +24,28 @@
 
 
 <!---
+<Constitutive>
+      <Elastic
+          youngModulus = "4.5e7"
+          poissonRatio = "0.35"
+      />
+    </Constitutive>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 <PorousRock
         porosity = "0.0909"

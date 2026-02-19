@@ -433,6 +433,17 @@ classdef gridForSedimentation < handle
         end
       end
     end
+
+    function out = getMapFormDofs(obj,dofs)
+      if ~exist("dofs","var")
+        dofs = 1:obj.ndofs;
+      end
+      map = ismember(obj.dof,dofs);
+      pos = find(map);
+      [~,id] = sort(obj.dof(map));
+      [idI(id),idJ(id),~]=ind2sub(obj.ncells,pos);
+      out = sub2ind(obj.ncells(1:2), idI', idJ');
+    end
     
   end
 
