@@ -4,7 +4,7 @@ classdef NonLinearImplicit < SolutionScheme
 
   % The time loop is implemented in the base class SolutionScheme
 
-  properties (Access = protected)
+  properties (SetAccess = protected,GetAccess=public)
     iterNL = 0          % nonlinear iteration number
     iterConfig = 0      % configuration iteration number
     targetVariables     % variables currently solved for
@@ -13,12 +13,6 @@ classdef NonLinearImplicit < SolutionScheme
 
 
   methods (Access = public)
-    function obj = NonLinearImplicit(varargin)
-
-      obj@SolutionScheme(varargin{:});
-
-    end
-
 
     function converged = solveStep(obj,varargin)
 
@@ -154,22 +148,32 @@ classdef NonLinearImplicit < SolutionScheme
 
   methods (Access = protected)
 
-
-    function setLinearSolver(obj)
-      % Check if there is manual input from the user, if not use defaults
-      start_dir = pwd;
-      chronos_xml = fullfile(start_dir,'linsolver.xml');
-      if(isfile(chronos_xml))
-        obj.linsolver = linearSolver(obj.domains,obj.interfaces,chronos_xml);
-      else
-        if gresLog().getVerbosity > 2
-          fprintf('Using default values for linsolver\n');
-        end
-        obj.linsolver = linearSolver(obj.domains,obj.interfaces);
-      end
-    end
-
-
+        % Sets the linear solver and checks for eventual user input parameters
+    % function setLinearSolver(obj,varargin)
+    % 
+    %   if isempty(varargin)
+    %      str = [];
+    %      physname = [];
+    %   else
+    %      fname = varargin{1};
+    %      str = readstruct(fname,AttributeSuffix="");
+    %      if isfield(str,'LinearSolver')
+    %         str = str.LinearSolver;
+    %      else
+    %         str = [];
+    %      end
+    % 
+    %      % check if the user provided the physics
+    %      if nargin > 2
+    %         physname = varargin{2};
+    %      else
+    %         physname = [];
+    %      end
+    %   end
+    % 
+    %   obj.linsolver = linearSolver(obj,str,physname);
+    % 
+    % end
 
     function out = computeRhsNorm(obj)
 

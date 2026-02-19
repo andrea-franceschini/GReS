@@ -6,19 +6,19 @@ classdef (Abstract) SolutionScheme < handle
 
   properties (Access = protected)
     %
-    nDom                % number of domains in the model
-    nInterf             % number of interfaces in the model
-    %
-    tOld                % tOld: previous converged time instant
-    t                   % simulation time
-    tStep               % simulation time step
-    dt                  % current time step size
-    nVars               % total number of inner variable fields in the model
-    attemptedReset      % flag for attempting a configuration reset
+    %       
+    tOld                        % tOld: previous converged time instant
+    t                           % simulation time
+    tStep                       % simulation time step
+    dt                          % current time step size
+    nVars                       % total number of inner variable fields in the model
+    attemptedReset = true       % flag for attempting a configuration reset
   end
 
 
   properties (Access = public)
+    nDom                % number of domains in the model
+    nInterf             % number of interfaces in the model
     linsolver             % instance of linear solver object
     output                % object handling the output of the simulation
     simparams             % parameters of the simulations (shared)
@@ -34,30 +34,25 @@ classdef (Abstract) SolutionScheme < handle
 
   end
 
-  methods (Abstract,Access=protected)
-    % every solution scheme must initialize a specialized linear solver
-    setLinearSolver(obj)
-  end
-
 
   methods (Access = public)
     function obj = SolutionScheme(varargin)
 
-      assert(nargin > 1 && nargin < 9,"Wrong number of input arguments " + ...
-        "for general solver")
+      % assert(nargin > 1 && nargin < 9,"Wrong number of input arguments " + ...
+      %   "for general solver")
 
       obj.setSolutionScheme(varargin{:});
 
     end
 
-    function simulationLoop(obj)
+    function simulationLoop(obj,varargin)
 
       % Initialize time
       obj.tStep = 0;
       obj.t = obj.simparams.tIni;
       obj.dt = obj.simparams.dtIni;
       
-      setLinearSolver(obj);
+      setLinearSolver(obj,varargin{:});
 
       while obj.t < obj.simparams.tMax
 
@@ -90,6 +85,7 @@ classdef (Abstract) SolutionScheme < handle
 
   methods (Access = protected)
 
+   
     function setSolutionScheme(obj,varargin)
 
 
@@ -155,6 +151,31 @@ classdef (Abstract) SolutionScheme < handle
 
     end
 
+    function setLinearSolver(obj,varargin)
+
+      if isempty(varargin)
+        str = [];
+        physname = [];
+      else
+        fname = varargin{1};
+        str = readstruct(fname,AttributeSuffix="");
+        if isfield(str,'LinearSolver')
+          str = str.LinearSolver;
+        else
+          str = [];
+        end
+
+        % check if the user provided the physics
+        if nargin > 2
+          physname = varargin{2};
+        else
+          physname = [];
+        end
+      end
+
+      obj.linsolver = linearSolver(obj,str,physname);
+
+    end
 
     function manageNextTimeStep(obj,flConv)
 
