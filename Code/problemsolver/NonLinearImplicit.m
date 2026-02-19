@@ -148,6 +148,32 @@ classdef NonLinearImplicit < SolutionScheme
 
   methods (Access = protected)
 
+        % Sets the linear solver and checks for eventual user input parameters
+    % function setLinearSolver(obj,varargin)
+    % 
+    %   if isempty(varargin)
+    %      str = [];
+    %      physname = [];
+    %   else
+    %      fname = varargin{1};
+    %      str = readstruct(fname,AttributeSuffix="");
+    %      if isfield(str,'LinearSolver')
+    %         str = str.LinearSolver;
+    %      else
+    %         str = [];
+    %      end
+    % 
+    %      % check if the user provided the physics
+    %      if nargin > 2
+    %         physname = varargin{2};
+    %      else
+    %         physname = [];
+    %      end
+    %   end
+    % 
+    %   obj.linsolver = linearSolver(obj,str,physname);
+    % 
+    % end
 
     function out = computeRhsNorm(obj)
 

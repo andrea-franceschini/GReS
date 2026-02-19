@@ -73,7 +73,7 @@ classdef preconditioner < handle
 
          % Check if the problem comes from multiphysics
          multiPhysFlag = false;
-         if(domainin(1).dofm.getNumberOfVariables() > 1)
+         if(domainin(1).dofm.getNumberOfVariables() > 1) && isempty(physname)
             multiPhysFlag = true; %#ok<NASGU>
             return
          end
@@ -83,6 +83,8 @@ classdef preconditioner < handle
          % Check the number of interfaces and domains
          if nInt ~= 0
             interfacein = generalsolver.interfaces;
+         else
+           interfacein = {};
          end
 
          % Select the physics, check if asked by user directly

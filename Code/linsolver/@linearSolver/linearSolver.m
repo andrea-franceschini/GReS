@@ -2,8 +2,8 @@ classdef linearSolver < handle
    properties (Access = private)
 
       % Flag for debug
-      DEBUGflag = false
-      matlabMaxSize = 1e5
+      DEBUGflag = true
+      matlabMaxSize = 1e1
       nsyTol = 1e-15
 
       % Flag for Chronos existance

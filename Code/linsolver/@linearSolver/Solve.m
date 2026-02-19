@@ -11,7 +11,7 @@ function [x,flag] = Solve(obj,A,b,time)
       A
    end
 
-   [A] = symmetrize(A,obj.nsyTol);
+   %[A] = symmetrize(A,obj.nsyTol);
 
    % Chronos does not exist, continue with matlab default
    if ~obj.ChronosFlag || (getGlobalSize(A) < obj.matlabMaxSize)

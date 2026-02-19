@@ -45,14 +45,14 @@ classdef (Abstract) SolutionScheme < handle
 
     end
 
-    function simulationLoop(obj)
+    function simulationLoop(obj,varargin)
 
       % Initialize time
       obj.tStep = 0;
       obj.t = obj.simparams.tIni;
       obj.dt = obj.simparams.dtIni;
       
-      setLinearSolver(obj);
+      setLinearSolver(obj,varargin{:});
 
       while obj.t < obj.simparams.tMax
 
@@ -151,20 +151,31 @@ classdef (Abstract) SolutionScheme < handle
 
     end
 
-    function setLinearSolver(obj)
-      % Check if there is manual input from the user, if not use defaults
-      start_dir = pwd;
-      chronos_xml = fullfile(start_dir,'linsolver.xml');
-      if(isfile(chronos_xml))
-        obj.linsolver = linearSolver(obj.domains,obj.interfaces,chronos_xml);
-      else
-        if gresLog().getVerbosity > 2
-          fprintf('Using default values for linsolver\n');
-        end
-      obj.linsolver = linearSolver(obj,varargin{:});
-      end
-    end
+    function setLinearSolver(obj,varargin)
 
+      if isempty(varargin)
+        str = [];
+        physname = [];
+      else
+        fname = varargin{1};
+        str = readstruct(fname,AttributeSuffix="");
+        if isfield(str,'LinearSolver')
+          str = str.LinearSolver;
+        else
+          str = [];
+        end
+
+        % check if the user provided the physics
+        if nargin > 2
+          physname = varargin{2};
+        else
+          physname = [];
+        end
+      end
+
+      obj.linsolver = linearSolver(obj,str,physname);
+
+    end
 
     function manageNextTimeStep(obj,flConv)
 
