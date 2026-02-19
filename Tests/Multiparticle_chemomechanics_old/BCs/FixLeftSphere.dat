@@ -1,7 +1,0 @@
-NodeBC            % BC item 
-Dir            % BC type 
-Poromechanics            % Physics 
-FixLeftSphereCenter            % BC name 
-BCs/FixLeftSphere/list 
-0.000000 BCs/FixLeftSphere/time0.dat 
-End

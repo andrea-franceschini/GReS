@@ -1,7 +1,0 @@
-SurfBC            % BC item 
-Dir            % BC type 
-SinglePhaseFlow            % Physics 
-Left_cmax            % BC name 
-BCs/LeftSphere_cmax/list 
-0.000000 BCs/LeftSphere_cmax/time0.dat 
-End

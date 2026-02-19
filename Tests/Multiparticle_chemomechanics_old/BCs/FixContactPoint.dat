@@ -1,7 +1,0 @@
-NodeBC            % BC item 
-Dir            % BC type 
-Poromechanics            % Physics 
-FixContactPoint            % BC name 
-BCs/FixContactPoint/list 
-0.000000 BCs/FixContactPoint/time0.dat 
-End

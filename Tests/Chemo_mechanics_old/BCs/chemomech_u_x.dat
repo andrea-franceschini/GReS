@@ -1,7 +1,0 @@
-NodeBC            % BC item 
-Dir            % BC type 
-Poromechanics            % Physics 
-Fix_ux            % BC name 
-BCs/chemomech_u_x/list 
-0.000000 BCs/chemomech_u_x/time0.dat 
-End
