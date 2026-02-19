@@ -43,10 +43,9 @@ classdef linearSolver < handle
       % Constructor Function
       function obj = linearSolver(generalsolver,usrInput,physname)
 
-         % Check if chronos is available
-         ChronosDir = fullfile(gres_root,'..','aspamg_matlab','sources');
+        [isAMGavailable,AMGdir] = obj.isAMGavailable();
 
-         if isfolder(ChronosDir)
+         if isAMGavailable
 
             obj.generalsolver = generalsolver;
 
@@ -59,8 +58,8 @@ classdef linearSolver < handle
             end
 
             % Chronos exists
-            addpath(genpath(ChronosDir));
-            RACPDir = fullfile(gres_root,'..','aspamg_matlab','composed_precs','RACP');
+            addpath(genpath(AMGdir));
+            RACPDir = fullfile(gres_root,'ThirdPartyLibs','aspAMG','composed_precs','RACP');
             addpath(genpath(RACPDir));
 
             % First time solving request preconditioner computation
@@ -104,6 +103,19 @@ classdef linearSolver < handle
       % Function to solve the system
       [x,flag] = Solve(obj,A,b,time)
 
+   end
+
+
+   methods (Static)
+     function [out,varargout] = isAMGavailable()
+       % Check if aspAMG is available in the TPL
+       aspAMGdir = fullfile(gres_root,'ThirdPartyLibs','aspAMG','sources');
+       out = isfolder(aspAMGdir);
+
+       if nargout > 1
+         varargout{1} = aspAMGdir;
+       end
+     end
    end
 end
 
