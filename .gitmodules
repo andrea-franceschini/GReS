@@ -1,5 +1,5 @@
 [submodule "ThirdPartyLibs/aspAMG"]
 	path = ThirdPartyLibs/aspAMG
 	url = http://gitlab.m3eweb.it/janna/aspamg_matlab.git
-[submodule "ThirdPartyLibs/aspAMG/"]
-	branch = origin/examples_remake
+[submodule "ThirdPartyLibs/aspAMG"]
+	branch = examples_remake
