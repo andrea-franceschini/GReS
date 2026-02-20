@@ -3,8 +3,8 @@
   <!-- Simulation parameters common to all physical models -->
   <simParam>
     <Time 
-          Start="0."
-          End ="1.01e2"
+          Start="0.0"
+          End ="100.1"
           DtInit="5.e-1"
           DtMin ="5.e-1"
           DtMax ="1.e2"          

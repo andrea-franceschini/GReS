@@ -123,12 +123,12 @@ of sediment deposition on the top of the domain.
     <Domain>
       <Grid
           type = "classic"
-          division = "2,2,5"
+          division = "2,2,50"
           size = "1,1,0.25"/>
       <Initial
           type = "all"
           materialTag = "1" />
-      <NewCellHeightControl> 0.05 </NewCellHeightControl>
+      <NewCellHeightControl> 0.005 </NewCellHeightControl>
     </Domain>
     <Boundary>
       <!--
