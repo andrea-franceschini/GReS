@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Materials>
+  <Solid cellTags = "1">
+    <SedimentMaterial
+        voidRate = "0.1"
+        conductivity = "0.945e-0, 0.945e-0, 0.315e-0"
+        initStress = "1000.0"
+        preStress = "1000.0"
+        specificWeight = "2.65e4"
+        compressibilityIndex = "0.0001"
+        reCompressibilityIndex = "0.0001"
+    />
+  </Solid>
+
+  <Fluid
+      specificWeight = "1.e4"
+      compressibility = "0.432e-9"
+  />
+</Materials>
+
+
+
+<!---
+<Constitutive>
+      <Elastic
+          youngModulus = "4.5e7"
+          poissonRatio = "0.35"
+      />
+    </Constitutive>
+
+
+-->

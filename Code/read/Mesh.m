@@ -61,8 +61,8 @@ classdef Mesh < handle
     % 1D element VTK type tag
     edgeVTKType
     %
+    % meshType = 'Undefined'
     meshType = 'Unstructured'
-    %meshType = 'Undefined'
   end
 
   properties (Access = private)
