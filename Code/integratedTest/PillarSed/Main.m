@@ -26,16 +26,16 @@ solver = NonLinearImplicit('simulationparameters',simParam,...
                            'output',printUtils);
 solver.simulationLoop();
 
-%fprintf("Bottom pressure -"domain.state.data.pressure(1))
-sed = domain.getPhysicsSolver("Sedimentation");
-
-load('/scratches/flash/castro/GReS/Code/integratedTest/PillarSed/Outputs/Results.mat')
-pos = 9;
-comp=output(pos).compaction(1:4:end);
-xpos = sed.grid.coordZ(1:length(comp));
-plot(xpos,comp)
-
-% def = domain.state.data.cellDefm(1:4:sed.grid.ndofs)
-% pres = domain.state.data.pressure(1:4:sed.grid.ndofs)
-% plot(xpos,abs(def))
-hold on
+% % % % %fprintf("Bottom pressure -"domain.state.data.pressure(1))
+% % % % sed = domain.getPhysicsSolver("Sedimentation");
+% % % % 
+% % % % load('/scratches/flash/castro/GReS/Code/integratedTest/PillarSed/Outputs/Results.mat')
+% % % % pos = 9;
+% % % % comp=output(pos).compaction(1:4:end);
+% % % % xpos = sed.grid.coordZ(1:length(comp));
+% % % % plot(xpos,comp)
+% % % % 
+% % % % % def = domain.state.data.cellDefm(1:4:sed.grid.ndofs)
+% % % % % pres = domain.state.data.pressure(1:4:sed.grid.ndofs)
+% % % % % plot(xpos,abs(def))
+% % % % hold on

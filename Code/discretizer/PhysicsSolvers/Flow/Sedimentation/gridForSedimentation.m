@@ -56,7 +56,7 @@ classdef gridForSedimentation < handle
       obj.constructor(data);
     end
 
-    function [id,faceArea] = getBordCell(obj,label)
+    function id = getBordCell(obj,label)
       % GETBORDCELL Returns boundary cell information.
       %
       % Outputs:
@@ -80,7 +80,7 @@ classdef gridForSedimentation < handle
             J_idx(i)=count;
           end
           nelm = sum(cells,"all");
-          [id,faceArea] = getBordX(obj,J_idx,nelm);
+          [id,~] = getBordX(obj,J_idx,nelm);
 
         case "xm"
           mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
@@ -95,7 +95,7 @@ classdef gridForSedimentation < handle
             J_idx(i)=count;
           end
           nelm = sum(cells,"all");
-          [id,faceArea] = getBordX(obj,J_idx,nelm);
+          [id,~] = getBordX(obj,J_idx,nelm);
 
         case "y0"
           mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
@@ -110,7 +110,7 @@ classdef gridForSedimentation < handle
             I_idx(j)=count;
           end
           nelm = sum(cells,"all");
-          [id,faceArea] = getBordY(obj,I_idx,nelm);
+          [id,~] = getBordY(obj,I_idx,nelm);
 
         case "ym"
           mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
@@ -125,17 +125,16 @@ classdef gridForSedimentation < handle
             I_idx(j)=count;
           end
           nelm = sum(cells,"all");
-          [id,faceArea] = getBordY(obj,I_idx,nelm);
+          [id,~] = getBordY(obj,I_idx,nelm);
 
         case "z0"
-          [id,faceArea] = getBordZ(obj,true);
+          [id,~] = getBordZ(obj,true);
 
         case "zm"
-          [id,faceArea] = getBordZ(obj,false);
+          [id,~] = getBordZ(obj,false);
 
         otherwise
           id = [];
-          faceArea = [];
           return
       end
     end
@@ -171,31 +170,6 @@ classdef gridForSedimentation < handle
       % dofs = obj.getActiveDofs();
       % coord = coord(dofs,:);
       % coord = coord(cellIds,:);
-    end
-
-    function vols = computeVols(obj,dofs,dl)
-      % COMPUTEVOLS Computes volumes of all active cells.
-      %
-      % Notes:
-      %   - Uses vectorized broadcasting
-      %   - Assumes orthogonal grid
-
-      if ~exist("dofs","var")
-        dofs = obj.getActiveDofs;
-      end
-      if ~exist("dl","var")
-        dl = zeros(length(dofs),1);
-      end
-      ind = find(ismember(obj.dof, dofs));
-      
-      dx = diff(obj.coordX(:));
-      dy = reshape(diff(obj.coordY(:)), 1, []);
-      dz = reshape(diff(obj.coordZ(:)), 1, 1, []);
-      tmp = ones(length(dx),length(dy),length(dz));
-      dz = dz.*tmp;
-
-      vAll = dx.*dy.*tmp;
-      vols = vAll(ind).*(dz(ind)+dl(dofs));
     end
 
     function ijk = getIJKfromCellID(obj,cellID)
@@ -291,15 +265,6 @@ classdef gridForSedimentation < handle
       obj.dof(pos) = (obj.ndofs+1:obj.ndofs+cellsTadd)';
       obj.ndofs = obj.ndofs + cellsTadd;
       obj.columnsHeight(map) = obj.columnsHeight(map)+1;
-    end
-
-    function dims = getDims(obj,ijk)
-      segmX = diff(obj.coordX);
-      segmY = diff(obj.coordY);
-      segmZ = diff(obj.coordZ);
-      dims(:,1)=segmX(ijk(:,1));
-      dims(:,2)=segmY(ijk(:,2));
-      dims(:,3)=segmZ(ijk(:,3));
     end
 
     function conect = getConectByIJK(obj,idI,idJ,idK)
@@ -443,6 +408,22 @@ classdef gridForSedimentation < handle
       [~,id] = sort(obj.dof(map));
       [idI(id),idJ(id),~]=ind2sub(obj.ncells,pos);
       out = sub2ind(obj.ncells(1:2), idI', idJ');
+    end
+
+    function [dx,dy,dz] = getCellsDims(obj,dofs)
+      if ~exist("dofs","var")
+        dofs = 1:obj.ndofs;
+      end
+      segmX = diff(obj.coordX);
+      segmY = diff(obj.coordY);
+      segmZ = diff(obj.coordZ);
+      map = ismember(obj.dof,dofs);
+      pos = find(map);
+      [~,id] = sort(obj.dof(map));
+      [idI(id),idJ(id),idK(id)]=ind2sub(obj.ncells,pos);
+      dx=segmX(idI');
+      dy=segmY(idJ');
+      dz=segmZ(idK');
     end
     
   end

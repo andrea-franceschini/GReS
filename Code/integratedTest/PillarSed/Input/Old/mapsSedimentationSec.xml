@@ -1,7 +1,0 @@
-<Sedimentation_Maps type = "ramp">
-  <Event time = "0." >
-    <Uniform materialFlag = "1" value= "3.170979e-10"/>
-  </Event>
-  <Event time = "3.2536e9" >
-  </Event>
-</Sedimentation_Maps>

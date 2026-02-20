@@ -5,8 +5,8 @@
     <Time 
           Start="0.0"
           End ="100.1"
-          DtInit="5.e-1"
-          DtMin ="5.e-1"
+          DtInit="1.e-0"
+          DtMin ="1.e-0"
           DtMax ="1.e2"          
           incrementFactor = "1.0"
           choppingFactor = "Default" />
