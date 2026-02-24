@@ -20,7 +20,7 @@ for i = 1:numel(interfNames)
   s = [outStruct.(interfNames{i})];
   for j = 1:numel(s)
 
-    fprintf("Processing interface %i\n",j)
+    gresLog().log(3,"Processing interface %i/%i\n",j,numel(s))
 
     interf = feval(interfNames{i},...
       k+1,domains,s(j));

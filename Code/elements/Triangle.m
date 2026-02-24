@@ -100,20 +100,27 @@ classdef Triangle < FEM
       end
     end
 
-    function [area,cellCentroid] = findAreaAndCentroid(obj,idTri)
-      % Find the Area of the cells using the determinant of the Jacobian
-      % of the isoparameric transformation
-      area = zeros(length(idTri),1);
-      cellCentroid = zeros(length(idTri),3);
-      i = 0;
-      for el = idTri'
-        i = i + 1;
-        dJWeighed = getDerBasisFAndDet(obj,el);
-        area(i) = sum(dJWeighed);
-        assert(area(i)>0,'Volume less than 0');
-        coord = FEM.getElementCoords(obj,el);
-        cellCentroid(i,:) = 1/3*(sum(coord,1));
-      end
+    function [area, cellCentroid] = findAreaAndCentroid(obj, idTri)
+
+      % Extract nodes for all triangles
+      triNodes = obj.mesh.surfaces(idTri, 1:3);   
+
+      % Node coordinates
+      A = obj.mesh.coordinates(triNodes(:,1), :); 
+      B = obj.mesh.coordinates(triNodes(:,2), :);
+      C = obj.mesh.coordinates(triNodes(:,3), :);
+
+      % Centroid: mean of 3 nodes
+      cellCentroid = (A + B + C)/3;
+
+      % Area: 0.5 * || (B-A) × (C-A) ||
+      v1 = B - A;
+      v2 = C - A;
+      area = 0.5 * sqrt(sum(cross(v1,v2,2).^2,2));
+
+      % Sanity check
+      assert(all(area>0), 'Some triangle area is non-positive');
+
     end
 
     function n = computeNormal(obj,idTri,varargin)

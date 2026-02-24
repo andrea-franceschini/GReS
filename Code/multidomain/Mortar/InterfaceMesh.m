@@ -193,6 +193,88 @@ classdef InterfaceMesh < handle
       end
     end
 
+    % function buildFace2CellMap(obj, meshBg)
+    % 
+    %   for i = [1 2]
+    % 
+    %     top = obj.local2glob{i}(obj.msh(i).surfaces);
+    %     nFaceNodes = size(top, 2);
+    % 
+    %     allCells = meshBg(i).cells;
+    %     nCells = size(allCells, 1);
+    %     maxNodeID = max(allCells(:));
+    % 
+    %     % --- Node-to-cell sparse matrix ---
+    %     rows = allCells(:);
+    %     cols = repelem((1:nCells)', size(allCells,2));
+    %     A = sparse(rows, cols, 1, maxNodeID, nCells);
+    % 
+    %     % ---------------------------------------------------------
+    %     % VECTORISED FACE → CELL MATCHING
+    %     % ---------------------------------------------------------
+    % 
+    %     % Collect all face nodes in one long vector
+    %     faceNodesAll = top(:);
+    % 
+    %     % Extract corresponding rows from A
+    %     Af = A(faceNodesAll, :);
+    % 
+    %     % Reshape so that we group rows per face
+    %     Af = reshape(Af, [], nFaceNodes, nCells);
+    % 
+    %     % Count how many nodes per face belong to each cell
+    %     counts = squeeze(sum(Af, 2));
+    % 
+    %     % Cell contains face if it contains all face nodes
+    %     mask = (counts == nFaceNodes);
+    % 
+    %     % Extract first matching cell per face
+    %     [faceIdx, cellIdx] = find(mask);
+    % 
+    %     face2cells = zeros(size(top,1),1);
+    %     face2cells(faceIdx) = cellIdx;
+    % 
+    %     assert(all(face2cells > 0), ...
+    %       'Invalid connectivity: face does not belong to any cell.');
+    % 
+    %     obj.f2c{i} = face2cells;
+    % 
+    %   end
+    % end
+
+    % function buildFace2CellMap(obj, meshBg)
+    %
+    %   for i = [1 2]
+    %
+    %     top = obj.local2glob{i}(obj.msh(i).surfaces);
+    %     nFaces = obj.msh(i).nSurfaces;
+    %     nFaceNodes = size(top, 2);
+    % 
+    %     allCells = meshBg(i).cells;
+    %     nCells = size(allCells, 1);
+    %     maxNodeID = max(allCells(:));
+    % 
+    %     % Build sparse node-to-cell matrix
+    %     rows = allCells(:);
+    %     cols = repelem((1:nCells)', size(allCells,2));
+    %     A = sparse(rows, cols, 1, maxNodeID, nCells);
+    % 
+    %     obj.f2c{i} = zeros(nFaces,1);
+    % 
+    %     for e = 1:nFaces
+    %       faceNodes = top(e,:);
+    %       counts = sum(A(faceNodes,:), 1);
+    %       cellID = find(counts == nFaceNodes, 1);
+    % 
+    %       assert(~isempty(cellID), ...
+    %         'Invalid connectivity: face does not belong to any cell.');
+    % 
+    %       obj.f2c{i}(e) = cellID;
+    %     end
+    % 
+    %   end
+    % end
+
     function buildFace2CellMap(obj, meshBg)
 
       for i = [1 2]
@@ -205,40 +287,25 @@ classdef InterfaceMesh < handle
 
         % Build node-to-cell adjacency list
         allCells = meshBg(i).cells;  % size: [nCells, nodesPerCell]
-        nCells = size(allCells, 1);
-        maxNodeID = max(allCells(:));
 
-        node2cells = cell(maxNodeID, 1);  % preallocate
-        for c = 1:nCells
-          for v = allCells(c, :)
-            node2cells{v} = [node2cells{v}, c];
-          end
-        end
+        cellIds = find(any(ismember(allCells,top),2));
+
+        cells = allCells(cellIds,:);
+
 
         % For each face, find the unique cell that contains all its nodes
         for e = 1:nFaces
-          faceNodes = top(e, :);
+          faceNodes = top(e,:);
 
-          % Get candidate cells as the intersection of node2cell lists
-          candidates = node2cells{faceNodes(1)};
-          for k = 2:nFaceNodes
-            candidates = intersect(candidates, node2cells{faceNodes(k)});
-            if isempty(candidates)
-              break;
-            end
-          end
+          id = ismember(cells,faceNodes);
 
-          % Among candidates, find the one that contains all the face nodes
-          hasCellNeigh = false;
-          for id = candidates
-            if all(ismember(faceNodes, allCells(id, :)))
-              obj.f2c{i}(e) = id;
-              hasCellNeigh = true;
-              break;
-            end
-          end
+          cId = find(sum(id,2) == nFaceNodes);
 
-          assert(hasCellNeigh, 'Invalid connectivity: face does not belong to any cell.');
+          assert(isscalar(cId), 'Invalid connectivity: face does not belong to any cell.');
+
+          obj.f2c{i}(e) = cellIds(cId);
+
+
         end
       end
     end

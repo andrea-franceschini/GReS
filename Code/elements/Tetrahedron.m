@@ -65,23 +65,44 @@ classdef Tetrahedron < FEM
       end
 
       %   Elements volume calculation
-      function [vol,cellCentroid] = findVolumeAndCentroid(obj,idTetra)
-        vol = zeros(length(idTetra),1);
-        cellCentroid = zeros(length(idTetra),3);
-        %       obj.volSign = ones(obj.mesh.nCells,1);
-        %       obj.volNod = zeros(obj.mesh.nNodes,1);
-        i = 0;
-        for el = idTetra'
-          i = i + 1;
-          top = obj.mesh.cells(el,1:obj.nNode);
-          coordMat = obj.mesh.coordinates(top,:);
-          vol(i) = det([ones(obj.nNode,1) coordMat])/6;
-          if vol(i) < 0
-            %           obj.volSign(el) = -1;
-            vol(i) = -vol(i);
-          end
-          cellCentroid(i,:) = sum(coordMat,1)/obj.nNode;
-        end
+      % function [vol,cellCentroid] = findVolumeAndCentroid(obj,idTetra)
+      %   vol = zeros(length(idTetra),1);
+      %   cellCentroid = zeros(length(idTetra),3);
+      %   %       obj.volSign = ones(obj.mesh.nCells,1);
+      %   %       obj.volNod = zeros(obj.mesh.nNodes,1);
+      %   i = 0;
+      %   for el = idTetra'
+      %     i = i + 1;
+      %     top = obj.mesh.cells(el,1:obj.nNode);
+      %     coordMat = obj.mesh.coordinates(top,:);
+      %     vol(i) = det([ones(obj.nNode,1) coordMat])/6;
+      %     if vol(i) < 0
+      %       %           obj.volSign(el) = -1;
+      %       vol(i) = -vol(i);
+      %     end
+      %     cellCentroid(i,:) = sum(coordMat,1)/obj.nNode;
+      %   end
+      % end
+
+      function [vol, cellCentroid] = findVolumeAndCentroid(obj, idTetra)
+
+        % vectorized version
+
+        tetraNodes = obj.mesh.cells(idTetra, 1:obj.nNode);  % [nTetra × 4]
+
+        X = obj.mesh.coordinates(tetraNodes(:,1),:); % [nTetra × 3]
+        Y = obj.mesh.coordinates(tetraNodes(:,2),:);
+        Z = obj.mesh.coordinates(tetraNodes(:,3),:);
+        W = obj.mesh.coordinates(tetraNodes(:,4),:);
+
+        cellCentroid = (X + Y + Z + W)/obj.nNode;
+
+        v1 = Y - X;
+        v2 = Z - X;
+        v3 = W - X;
+
+        vol = abs(dot(v1, cross(v2,v3,2),2)) / 6;
+
       end
 
       function gPCoordinates = getGPointsLocation(obj,el)

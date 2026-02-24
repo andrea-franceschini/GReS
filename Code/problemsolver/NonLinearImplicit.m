@@ -44,10 +44,12 @@ classdef NonLinearImplicit < SolutionScheme
         gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
 
         for i = 1:obj.nDom
+          gresLog().log(3,'Assembling domain %i',i, obj.nDom)
           obj.domains(i).assembleSystem(obj.dt);
         end
 
         for i = 1:obj.nInterf
+          gresLog().log(3,'Assembling interface %i/%i',i, obj.nInterf)
           obj.interfaces{i}.assembleConstraint();
         end
 
