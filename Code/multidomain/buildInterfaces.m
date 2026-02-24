@@ -17,8 +17,10 @@ k=0;
 for i = 1:numel(interfNames)
 
   % deal with multiple interfaces of the same type
-  s = outStruct.(interfNames{i});
+  s = [outStruct.(interfNames{i})];
   for j = 1:numel(s)
+
+    fprintf("Processing interface %i\n",j)
 
     interf = feval(interfNames{i},...
       k+1,domains,s(j));
