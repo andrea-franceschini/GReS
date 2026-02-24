@@ -1,4 +1,4 @@
-function data = getXMLData(fieldStruct, defaultValue, dataName)
+function data = readInputData(fieldStruct, defaultValue, dataName)
 % getXMLData  Retrieve and convert a parameter from an XML-derived structure
 %
 %   data = getXMLData(fieldStruct, defaultValue, dataName)
@@ -24,10 +24,10 @@ function data = getXMLData(fieldStruct, defaultValue, dataName)
 % Check if field exists
 if ~isfield(fieldStruct, dataName)
    data = defaultValue;
-elseif strcmp(getXMLValue([fieldStruct.(dataName)]),"Default")
+elseif strcmp(getValue([fieldStruct.(dataName)]),"Default")
    data = defaultValue;
 else 
-  data = getXMLValue(fieldStruct.(dataName));
+  data = getValue(fieldStruct.(dataName));
 end
 
 if isempty(data) 
@@ -37,7 +37,7 @@ end
 
 
 
-function val = getXMLValue(raw)
+function val = getValue(raw)
 % getXMLValue  Convert a raw XML field value into a MATLAB type
 %
 %   val = getXMLValue(raw)
@@ -76,7 +76,7 @@ function val = getXMLValue(raw)
     str = strtrim(raw);
 
     % Try numeric
-    num = str2num(str); %#ok<ST2NM>
+    num = str2num(str);
     if ~isempty(num)
       val = num;
       return;

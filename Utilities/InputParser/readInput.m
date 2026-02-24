@@ -25,10 +25,10 @@ end
 if numel(usrIn) > 1
   usr = readKeyValueInput(usrIn);
 else
-  if isstruct(usrIn{1})
-    usr = usrIn{1};
+  if isstruct(usrIn)
+    usr = usrIn;
   else
-    usr = readXMLfile(usrIn{1});
+    usr = readXMLfile(usrIn);
   end
 end
 
@@ -40,7 +40,12 @@ end
 
 end
 
+
+
+% --------------- HELPER FUNCTIONS ----------------
+
 function str = readKeyValueInput(kv)
+% convert a key-value input into a structure
 if mod(numel(kv),2) ~= 0
   error('Key-value cell must have even length');
 end
@@ -50,7 +55,6 @@ for k = 1:2:numel(kv)
   key = kv{k};
   val = kv{k+1};
 
-  % Recursively convert even-length cell values into struct
   if iscell(val) && mod(numel(val),2) == 0
     val = kv2struct(val);
   end
@@ -60,11 +64,84 @@ end
 end
 
 function str = readXMLfile(fileName)
-str = readstruct(fileName);
+% convert xml file into a matlab struct
+
+str = readstruct(fileName,AttributeSuffix="");
+
+str = parseXMLStruct(str);
+end
+
+function S = parseXMLStruct(S)
+% Reintepret values of a struct read from xml file
+
+if ~isstruct(S)
+  % Leaf node
+  S = getValue(S);
+  return;
+end
+
+% Struct (possibly array)
+for i = 1:numel(S)
+  fn = fieldnames(S(i));
+  for k = 1:numel(fn)
+    field = fn{k};
+    S(i).(field) = parseXMLStruct(S(i).(field));
+  end
+end
 end
 
 
-function mergeInput(default,usr)
+function out = mergeInput(default, usr)
+% Merge default and user-provided structs (shallow, top-level only)
+% To merge lower-level struct, rerun the command
+%
+% Rules:
+% 1. Fields in usr override default.
+% 2. If a field is missing in one, take the one present.
+% 3. If a field in default is [], it is required in usr.
+% 4. If both default and usr have values, enforce type consistency.
+
+out = default;
+fusr = fieldnames(usr);
+fdef = fieldnames(default);
+
+for k = 1:numel(fusr)
+  fn = fusr{k};
+  uval = usr.(fn);
+
+  if isfield(default, fn)
+    dval = default.(fn);
+
+    % If default is empty, user must provide
+    if isempty(dval) && isempty(uval)
+      error('mergeInput:RequiredFieldMissing', ...
+        'Required field "%s" must be specified in usr.', fn);
+    end
+
+    % Type check if both are non-empty
+    if ~isempty(dval) && ~isempty(uval)
+      if ~isa(uval, class(dval))
+        error('mergeInput:TypeMismatch', ...
+          'Field "%s" has type %s in usr but expected %s from default.', ...
+          fn, class(uval), class(dval));
+      end
+    end
+  else
+    % Field only in usr, just add it
+    dval = [];
+  end
+
+  out.(fn) = uval;  % override or add
+end
+
+% Check required fields from default that were missing in usr
+for k = 1:numel(fdef)
+  fn = fdef{k};
+  if isempty(default.(fn)) && ~isfield(usr, fn)
+    error('mergeInput:RequiredFieldMissing', ...
+      'Required field "%s" must be specified in usr.', fn);
+  end
+end
 end
 
 

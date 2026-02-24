@@ -2,41 +2,167 @@ classdef Materials < handle
   % MATERIAL - General material class
 
   properties (Access = public)
-    db 
-    matMap
+    solid     % container of all solid materials in the model
+    fluid     % container of all fluid materials in the model
+    matMap    % array map cell tag to corresponding material id
   end
 
   methods (Access = public)
     % Class constructor method
     function obj = Materials(input)
+
+      obj.db = cell([]);
       
       if nargin == 0
         return
       end
 
-      obj.db = cell([]);
-      % Calling the function to read input data from file
-      obj.readInputFile(input);
+      % Read any input material if provided
+      obj.addMaterials(input);
     end
 
-    % Get the material defined by matIdentifier and check if it is a
-    % key of the Map db
+    function addMaterials(obj,input)
+
+      input = readInput(input);
+
+      % order matters: some solid PorousRock properties depend on the fluid
+      if isfield(input.Fluid)
+        addFluid(obj,input.Fluid);
+      end
+
+      if isfield(input.Solid)
+        addSolid(obj,input.Solid);
+      end
+
+    end
+
+
+    function addSolid(obj,input)
+      nSolid = numel(input);
+
+      % advance reading all cell tags specified for all input solids
+      cTags = [input.cellTags];
+      if isstring(cTags)
+        cTags = str2num(strjoin(cTags));
+      end
+
+      maxCellTag = max(cTags);
+      obj.matMap = zeros(maxCellTag,1);
+
+      for i = 1:nSolid
+
+        matID = numel(db)+1;
+
+        default = struct('cellTags',[],...
+                         'name',string(strcat('mat_',num2str(matID)),...
+                         'Constitutive',missing,...
+                         'PorousRock',missing,...
+                         'Curves',missing));
+
+        input = readInput(default,input);
+
+        % update the material map
+        obj.matMap(input.cellTags) = matID;
+        if any(obj.matMap(cellTags))
+          existingCellTags = cellTags(obj.matMap(cellTags)~=0);
+          error("Multiple materials assigned to cellTags %s",...
+                sprintf("%i ", existingCellTags));
+        end
+
+        mat.name = input.name;
+
+        % add solid material to the database
+        obj.solid{matID} = mat;
+
+        if ~ismissing(input,"Constitutive")
+          obj.addConstitutiveLaw(mat.name,input.Constitutive);
+        end
+        if ~ismissing(input,"PorousRock")
+          obj.addPorousRock(mat.name,input.PorousRock);
+        end
+        if ~ismissing(input,"Curves")
+          obj.addCapillaryCurves(mat.name,input.Curves);
+        end
+
+      end
+
+    end
+
+
     function mat = getMaterial(obj,cellTag)
-      %
-      % The preliminary check whether matID is key of db has been commented
-      % since it is highly expensive
-      %       if (obj.db.isKey(matID))
-      mat = obj.db{obj.matMap(cellTag)};
-      %       else
-      %       Displaying error message if matIdentifier is not a key
-      %       of the map
-      %         error('Material %s not present', matID);
-      %       end
+      % get material based on the cellTag using matMap
+
+      mat = obj.solid{obj.matMap(cellTag)};
+
+    end
+
+
+    function materialNames = getMaterialNames(obj)
+
+      db = [obj.solid{:}];
+      materialNames = [db.name];
+
+    end
+
+    function matID = getMaterialIDFromName(obj,name)
+
+      assert(isstring(name),"Material name must be a valid string");
+      
+      matNames = getMaterialNames(obj);
+      matID = find(matNames==name);
+      
+      assert(isscalar(matID),"Multiple materials with name %s have been defined",matNames(matID(1)));
+
+    end
+
+    function mat = getMaterialFromName(obj,name)
+
+      matID = getMaterialIDFromName(obj,name);
+      mat = obj.solid{matID};
+
     end
 
     function fluidMat = getFluid(obj)
       % fluid material is always stored as the last one in the database
-      fluidMat = obj.db{end};
+      fluidMat = obj.fluid;
+    end
+
+    function addConstitutiveLaw(obj,matName,varargin)
+      % add a constitutive law to a material with specified name of id
+
+      % add constitutive law
+      matID = getMaterialIDFromName(obj,matName);
+
+      if nargin < 4
+        % when called from addSolid()
+        constLaw = fieldnames(varargin{1});
+        obj.solid{matID}.ConstLaw = feval(constLaw,varargin{1});
+      else
+        % when called externally from addSolid()
+        constLaw = varargin{1};
+        obj.solid{matID}.ConstLaw = feval(constLaw,varargin{2:end});
+      end
+
+    end
+
+    function addPorousRock(obj,matName,input)
+
+      if isempty(obj.fluid) 
+        error("PorousRock properties can be added only if a fluid phase is present")
+      end
+
+      matID = getMaterialIDFromName(matName);
+      obj.solid{matID}.PorousRock = PorousRock(input);
+
+    end
+
+    function addCapillaryCurves(obj,matName,input)
+
+      % this will be called from the PorousRock
+      matID = getMaterialIDFromName(matName);
+      obj.solid{matID}.Curves = VanGenuchten(input);
+
+
     end
 
     function [status] = initializeStatus(obj,cTag,sigma)
@@ -114,10 +240,9 @@ classdef Materials < handle
           if isfield(input.Solid(i),"Curves")
             if ~ismissing(input.Solid(i).Curves)
               mat.Curves = VanGenuchten(input.Solid(i).Curves);
-              mat.Curves.betaCorrection(getSpecificWeight(fluid));
             end
           end
-          obj.db{i} = mat;
+          obj.solid{i} = mat;
         end
       end
 
