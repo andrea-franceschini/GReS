@@ -16,13 +16,8 @@ classdef Elastic < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = Elastic(inputStruct, varargin)
-       if nargin > 2
-          obj.isTabular = true;
-          obj.readTabMaterialParameters(fID,matFileName,varargin{1});  
-       else
-          readMaterialParameters(obj,inputStruct);
-       end
+    function obj = Elastic(varargin)
+          readMaterialParameters(obj,varargin{:});
     end
     
     function [status] = initializeStatus(obj, sigma)
@@ -70,7 +65,8 @@ classdef Elastic < handle
   methods (Access = private)
     % Assigning material parameters (check also the Materials class)
     % to object properties
-    function readMaterialParameters(obj,inputStruct)
+    function readMaterialParameters(obj,varargin)
+      
       if isfield(inputStruct,"Elastic")
         inputStruct = inputStruct.Elastic;
       end
@@ -82,7 +78,6 @@ classdef Elastic < handle
        obj.M = obj.nu/(1-obj.nu);
        %
        % Compute vertical compressibility
-       % obj.cM = (1+obj.nu)*(1-2*obj.nu)/(obj.E*(1-obj.nu));
        obj.cM = 0.;
        % Compute constitutive matrix
     end

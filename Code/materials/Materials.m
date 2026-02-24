@@ -11,7 +11,9 @@ classdef Materials < handle
     % Class constructor method
     function obj = Materials(input)
 
-      obj.db = cell([]);
+      obj.solid = cell([]);
+      obj.fluid = cell([]);
+      obj.matMap = [];
       
       if nargin == 0
         return
@@ -31,61 +33,48 @@ classdef Materials < handle
       end
 
       if isfield(input.Solid)
-        addSolid(obj,input.Solid);
+        for i = 1:numel(input.Solid)
+          addSolid(obj,input.Solid(i));
+        end
       end
 
     end
 
 
-    function addSolid(obj,input)
-      nSolid = numel(input);
+    function addSolid(obj,varargin)
 
-      % advance reading all cell tags specified for all input solids
-      cTags = [input.cellTags];
-      if isstring(cTags)
-        cTags = str2num(strjoin(cTags));
-      end
-
-      maxCellTag = max(cTags);
-      obj.matMap = zeros(maxCellTag,1);
-
-      for i = 1:nSolid
-
-        matID = numel(db)+1;
+        matID = numel(obj.solid)+1;
 
         default = struct('cellTags',[],...
-                         'name',string(strcat('mat_',num2str(matID)),...
+                         'name',string(strcat('mat_',num2str(matID))),...
                          'Constitutive',missing,...
                          'PorousRock',missing,...
-                         'Curves',missing));
+                         'Curves',missing);
 
-        input = readInput(default,input);
+        input = readInput(default,varargin{:});
 
         % update the material map
-        obj.matMap(input.cellTags) = matID;
-        if any(obj.matMap(cellTags))
-          existingCellTags = cellTags(obj.matMap(cellTags)~=0);
-          error("Multiple materials assigned to cellTags %s",...
-                sprintf("%i ", existingCellTags));
+        if length(obj.matMap) > max(input.cellTags)
+          assert(~any(obj.matMap(cellTags)),...
+            "Cannot assign material %s. Material have been already assigned to cell tag",input.name)
         end
 
+        obj.matMap(input.cellTags) = matID;
+        
         mat.name = input.name;
 
         % add solid material to the database
         obj.solid{matID} = mat;
 
-        if ~ismissing(input,"Constitutive")
+        if ~ismissing(input.Constitutive)
           obj.addConstitutiveLaw(mat.name,input.Constitutive);
         end
-        if ~ismissing(input,"PorousRock")
+        if ~ismissing(input.PorousRock)
           obj.addPorousRock(mat.name,input.PorousRock);
         end
-        if ~ismissing(input,"Curves")
+        if ~ismissing(input.Curves)
           obj.addCapillaryCurves(mat.name,input.Curves);
         end
-
-      end
-
     end
 
 
@@ -127,11 +116,13 @@ classdef Materials < handle
       fluidMat = obj.fluid;
     end
 
-    function addConstitutiveLaw(obj,matName,varargin)
+    function addConstitutiveLaw(obj,matID,varargin)
       % add a constitutive law to a material with specified name of id
 
       % add constitutive law
-      matID = getMaterialIDFromName(obj,matName);
+      if ~isnumeric(matID)
+        matID = getMaterialIDFromName(obj,matName);
+      end
 
       if nargin < 4
         % when called from addSolid()
