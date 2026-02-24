@@ -76,6 +76,9 @@ classdef NonLinearImplicit < SolutionScheme
           J = assembleJacobian(obj);
 
           % solve linear system
+          save('syst.mat','J','rhs');
+          error('stopped before solving the linear system')
+
           du = solve(obj,J,rhs);
 
           c = 0;
