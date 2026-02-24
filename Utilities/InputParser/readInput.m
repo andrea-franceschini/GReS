@@ -17,18 +17,18 @@ default = [];
 
 if nargin > 1 && isstruct(varargin{1})
   default = varargin{1};
-  usrIn = varargin{2:end};
+  usrIn = varargin(2:end);
 else
-  usrIn = varargin{:};
+  usrIn = varargin(:);
 end
 
 if numel(usrIn) > 1
   usr = readKeyValueInput(usrIn);
 else
-  if isstruct(usrIn)
-    usr = usrIn;
+  if isstruct(usrIn{:})
+    usr = usrIn{:};
   else
-    usr = readXMLfile(usrIn);
+    usr = readXMLfile(usrIn{:});
   end
 end
 
@@ -122,7 +122,7 @@ for k = 1:numel(fusr)
     if ~isempty(dval) && ~isempty(uval)
       if ~isa(uval, class(dval))
         error('mergeInput:TypeMismatch', ...
-          'Field "%s" has type %s in usr but expected %s from default.', ...
+          'Field "%s" has type %s in user input but expected %s from default.', ...
           fn, class(uval), class(dval));
       end
     end
