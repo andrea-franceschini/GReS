@@ -220,7 +220,7 @@ classdef (Abstract) PhysicsSolver < handle
         end
 
         for iI = 1:numel(obj.domain.interfaces)
-          if ~isempty(obj.domain.Jum{bcVarId})
+          if ~isempty(obj.domain.Jum{iI}{bcVarId})
             obj.domain.Jmu{iI}{bcVarId}(:,bcDofs) = 0;
           end
         end
