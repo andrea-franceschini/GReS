@@ -4,30 +4,49 @@
   <Solid cellTags = "1">
     <Constitutive>
       <Elastic
-          youngModulus = "1e5"
-          poissonRatio = "0.25"
-      />
+               youngModulus = "9.4706e7"
+               poissonRatio = "0.15"
+               />
     </Constitutive>
 
     <PorousRock
-        porosity = "0.375"
-        specificWeight = "2.1e1"
-        biotCoefficient = "1."
-        permeability = "1e-12, 1e-12, 1e-12"
-    />
-    <!-- porosity (Adimensional, between 0 and 1),
-         specificGravity (kg/m^3 ),
-         permeability (m^2) -->
+                porosity = "1.0"
+                specificWeight = "2.1e4"
+                permeability = "9.4018e-12, 9.4018e-12, 9.4018e-12"
+                residualSaturation = "0.102"
+                maximumSaturation = "0.368">
+
+
+      <Curves
+              type = "tabular"
+              relativePermeabilityPath = "Code/integratedTest/Richards/Input/Materials/krCurve_2000.dat"
+              capillaryCurvePath = "Code/integratedTest/Richards/Input/Materials/pcCurve_2000.dat"
+              />
+
+      <!-- porosity (Adimensional, between 0 and 1),
+specificGravity (kg/m^3 ),
+permeability (m^2) -->
+
+      <!--
+<Burdine
+n = "2."
+beta = "3.416e-04"
+/>
+<Preset soilName = "Sand" />
+<Tabular
+relativePermeabilityPath = "Code/integratedTest/Richards/Materials/krCurve_2000.dat"
+capillaryCurvePath = "Code/integratedTest/Richards/Materials/pcCurve_2000.dat"
+/>
+-->
+    </PorousRock>
   </Solid>
 
-
   <Fluid
-      specificWeight = "0.0"
-      compressibility = "4.4e-7"
-      dynamicViscosity = "1.0e-6"
-  />
+         specificWeight = "9.8066e3"
+         compressibility = "4.5e-10"
+         dynamicViscosity = "1e-3"
+         />
   <!-- specific weight (N/m3),
-       fluid compressibility (Pa-1),
-       dynamic viscosity (Pa/s)
-  -->
+       fluid compressibility (Pa-1) - 4.5e-10,
+       dynamic viscosity (Pa/s) -->  
 </Materials>

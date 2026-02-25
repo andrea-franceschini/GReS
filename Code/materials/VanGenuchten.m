@@ -79,13 +79,6 @@ classdef VanGenuchten < handle
 
             readInputParameters(obj,varargin{:});
 
-            % If number of arguments is greater than 2, passing values.
-            if (nargin>1) && (nargin<6)
-                obj.passingData(varargin{:});
-            else
-                % obj.readFromFile(inputStruct);
-                obj.readInputFile(inputStruct);
-            end
         end
 
         function [Sw, dSw, ddSw] = computeSwAnddSw(obj,pres)
@@ -108,15 +101,15 @@ classdef VanGenuchten < handle
 
             % Compute the relative permeability.
             switch obj.modelType
-                case 'Mualem'
+              case 'mualem'
                     p = obj.presCorrection(pres);
                     [Kr, dKr] = obj.computeRelativePermeabilityMualem(p);
                     dKr = varCorrection(obj,dKr);
-                case 'Burdine'
+              case 'burdine'
                     p = obj.presCorrection(pres);
                     [Kr, dKr] = obj.computeRelativePermeabilityBurdine(p);
                     dKr = varCorrection(obj,dKr);
-                case 'Tabular'
+                case 'tabular'
                     [Kr, dKr, ~] = obj.relPermCurve.interpTable(pres);
                 otherwise
             end
@@ -151,107 +144,7 @@ classdef VanGenuchten < handle
     end
 
     methods (Access = private)
-        function readFromFile(obj,fID,matFileName)
-            %readFromFile function to read from the file and constructed
-            % the material class.
-
-            modType = readToken(fID,matFileName);
-            switch modType
-                case 'Mualem'
-                    tmpVec = readDataInLine(fID, matFileName, 3);
-
-                    % Assign object properties
-                    obj.n = tmpVec(1);
-                    obj.beta = tmpVec(2);
-                    obj.kappa = tmpVec(3);
-
-                    obj.modelType = 'Mualem';
-                case 'Burdine'
-                    tmpVec = readDataInLine(fID, matFileName, 2);
-                    % Assign object properties
-                    % obj.modelType = false;
-                    obj.n = tmpVec(1);
-                    obj.beta = tmpVec(2);
-
-                    obj.modelType = 'Burdine';
-                case 'Tabular'
-                    obj.modelType = 'Tabular';
-                    obj.retantionCurve = TabularCurve(fID, matFileName);
-                    obj.relPermCurve = TabularCurve(fID, matFileName);
-                otherwise
-                    % Assign object properties from a table
-                    obj.readMaterialParametersFromTable(modType);
-                    obj.betaCor = true;
-                    obj.presCor = true;
-                    obj.modelType = 'Mualem';
-            end
-        end
-
-        function readInputFile(obj,inputStruct)
-          %readFromFile function to read from the file and constructed
-          % the material class.
-
-          curveType = fieldnames(inputStruct);
-
-          assert(isscalar(curveType),"Multiple " + ...
-            "Unsaturated flow curves are not allowed")
-
-          in = inputStruct.(curveType{1});
-
-          switch curveType{1}
-            case 'Mualem'
-              obj.n = getXMLData(in,[],"n");
-              obj.beta = getXMLData(in,[],"beta");
-              obj.kappa = getXMLData(in,[],"kappa");
-              obj.modelType = 'Mualem';
-            case 'Burdine'
-              obj.n = getXMLData(in,[],"n");
-              obj.beta = getXMLData(in,[],"beta");
-              obj.modelType = 'Burdine';
-            case 'Tabular'
-              obj.modelType = 'Tabular';
-              capCurveFile = getXMLData(in,[],'capillaryCurvePath');
-              relPermFile = getXMLData(in,[],'relativePermeabilityPath');
-              obj.retantionCurve = TabularCurve(capCurveFile);
-              obj.relPermCurve = TabularCurve(relPermFile);
-            case 'Preset'
-              obj.modelType = 'Mualem';
-              modType = getXMLData(in,[],"soilName");
-              obj.readMaterialParametersFromTable(modType);
-              obj.betaCor = true;
-              obj.presCor = true;
-          end
-        end
-
-        function passingData(obj,varargin)
-            %readFromFile function to read from the file and constructed
-            % the material class.
-
-            modType=varargin{1};
-            switch modType
-                case 'Mualem'
-                    % Assign object properties
-                    obj.modelType = 'Mualem';
-                    obj.n = varargin{2};
-                    obj.beta = varargin{3};
-                    obj.kappa = varargin{4};
-                case 'Burdine'
-                    % Assign object properties
-                    obj.modelType = 'Burdine';
-                    obj.n = varargin{2};
-                    obj.beta = varargin{3};
-                case 'Tabular'
-                    obj.modelType = 'Tabular';
-                    obj.retantionCurve = TabularCurve(varargin{2}, varargin{3});
-                    obj.relPermCurve = TabularCurve(varargin{2}, varargin{3});
-                otherwise
-                    % Assign object properties from a table
-                    obj.modelType = 'Mualem';
-                    obj.readMaterialParametersFromTable(modType);
-                    obj.betaCor = true;
-                    obj.presCor = true;                    
-            end
-        end
+    
 
         function readMaterialParametersFromTable(obj,soil)
             %readMaterialParametersFromTable Assigning a table with some
@@ -262,7 +155,7 @@ classdef VanGenuchten < handle
                 "Silty_loam"];
 
             % Finding the position of the soil.
-            pos = matches(names,soil);
+            pos = matches(lower(names),lower(soil));
 
             % Table of adimensional values for the experimental parameters.
             list_n = [0.098; 0.151; 0.168; 0.242; 0.502; 0.082; 0.124; ...
@@ -361,10 +254,12 @@ classdef VanGenuchten < handle
         function readInputParameters(obj,varargin)
 
           % first make sure a type is defined
-          default = struct('type','mualem');
+          default = struct('type',"mualem");
           params = readInput(default,varargin{:});
 
-          switch lower(type)
+          obj.modelType = lower(params.type);
+
+          switch obj.modelType
             case 'preset'
               params = readInput(struct('soilName',[]),params);
               obj.readMaterialParametersFromTable(params.soilName);
@@ -375,7 +270,7 @@ classdef VanGenuchten < handle
                 "relativePermeabilityPath",[]);
               params = readInput(default,params);
               obj.retantionCurve = TabularCurve(params.capillaryCurvePath);
-              obj.relPermCurve = TabularCurve(params.relativePermabilityPath);
+              obj.relPermCurve = TabularCurve(params.relativePermeabilityPath);
             case 'burdine'
               default = struct("n",[],...
                 "beta",[]);
@@ -385,13 +280,12 @@ classdef VanGenuchten < handle
             case 'mualem'
               default = struct("n",[],...
                                 "beta",[],...
-                                );
+                                "kappa",[]);
               params = readInput(default,params);
               obj.n = params.n;
               obj.beta = params.beta;
+              obj.kappa = params.kappa;
           end
-
-
 
 
         end

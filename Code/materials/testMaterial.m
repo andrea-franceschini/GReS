@@ -8,6 +8,8 @@ mat1.addConstitutiveLaw("rock","Elastic",'youngModulus',5e3,'poissonRatio',0.25)
 mat1.addFluid('dynamicViscosity',1e-3);
 mat1.addPorousRock("rock","specificWeight",21.0,"permeability",1e-12);
 
+mat1.addCapillaryCurves("rock","type","mualem","beta",2.0,"n",1.0,"kappa",1.0)
+
 %%
 
 mat = Materials("Dev/materials.xml");

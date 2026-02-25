@@ -120,7 +120,7 @@ for k = 1:numel(fusr)
     end
 
     % Type check if both are non-empty non-missing
-    if ~isempty(dval) && ~isempty(uval) && ~ismissing(dval)
+    if ~isempty(dval) && ~isempty(uval) && ~any(ismissing(dval))
       if ~isa(uval, class(dval))
         error('mergeInput:TypeMismatch', ...
           'Field "%s" has type %s in user input but expected %s from default.', ...

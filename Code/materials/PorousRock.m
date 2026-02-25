@@ -15,6 +15,10 @@ classdef PorousRock < handle
         Ss=1.;             % Maximum saturation
     end
 
+    properties
+      Curves
+    end
+
     methods (Access = public)
         % Class constructor method
         function obj = PorousRock(varargin)
@@ -83,6 +87,10 @@ classdef PorousRock < handle
           end
         end
 
+        function addCapillaryCurves(obj,varargin)
+          obj.Curves = VanGenuchten(varargin{:});
+        end
+
         % Function to get rock compressibility
         %     function a = getRockCompressibility(obj)
         %       a = obj.alpha;
@@ -99,7 +107,8 @@ classdef PorousRock < handle
                          'permeability',[],...
                          'specificWeight',21.0,...
                          "residualSaturation",0.0,...
-                         "maximumSaturation",1.0);
+                         "maximumSaturation",1.0,...
+                         "Curves",missing);
 
         % initialize also the Curve here!
 
@@ -128,6 +137,11 @@ classdef PorousRock < handle
           % Tolerance chosen following the hint in:
           % https://it.mathworks.com/help/matlab/math/determine-whether-matrix-is-positive-definite.html#DetermineWhetherMatrixIsSPDExample-3
           error('The permeability matrix for material %s is not positive definite',matFileName);
+        end
+
+        % read capillaery curves
+        if ~ismissing(params.Curves)
+          addCapillaryCurves(obj,params.Curves)
         end
       end
     end
