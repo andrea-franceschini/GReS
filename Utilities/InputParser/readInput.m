@@ -68,6 +68,7 @@ function str = readXMLfile(fileName)
 
 str = readstruct(fileName,AttributeSuffix="");
 
+% recursively interpret XML data
 str = parseXMLStruct(str);
 end
 
@@ -75,8 +76,8 @@ function S = parseXMLStruct(S)
 % Reintepret values of a struct read from xml file
 
 if ~isstruct(S)
-  % Leaf node
-  S = getValue(S);
+  % Interpret and read xml data
+  S = getXMLValue(S);
   return;
 end
 
@@ -109,29 +110,27 @@ for k = 1:numel(fusr)
   fn = fusr{k};
   uval = usr.(fn);
 
-  if isfield(default, fn)
+  if isfield(default, fn) 
     dval = default.(fn);
 
     % If default is empty, user must provide
     if isempty(dval) && isempty(uval)
-      error('mergeInput:RequiredFieldMissing', ...
-        'Required field "%s" must be specified in usr.', fn);
+      error('mergeInput:RequiredFieldNotProvided', ...
+        'Required field "%s" must be provided by the user.', fn);
     end
 
-    % Type check if both are non-empty
-    if ~isempty(dval) && ~isempty(uval)
+    % Type check if both are non-empty non-missing
+    if ~isempty(dval) && ~isempty(uval) && ~ismissing(dval)
       if ~isa(uval, class(dval))
         error('mergeInput:TypeMismatch', ...
           'Field "%s" has type %s in user input but expected %s from default.', ...
           fn, class(uval), class(dval));
       end
     end
-  else
-    % Field only in usr, just add it
-    dval = [];
+
   end
 
-  out.(fn) = uval;  % override or add
+  out.(fn) = uval; 
 end
 
 % Check required fields from default that were missing in usr
@@ -139,7 +138,7 @@ for k = 1:numel(fdef)
   fn = fdef{k};
   if isempty(default.(fn)) && ~isfield(usr, fn)
     error('mergeInput:RequiredFieldMissing', ...
-      'Required field "%s" must be specified in usr.', fn);
+      'Required field "%s" must be provided by the user.', fn);
   end
 end
 end

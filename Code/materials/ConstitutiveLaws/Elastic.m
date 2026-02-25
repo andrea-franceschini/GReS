@@ -66,13 +66,15 @@ classdef Elastic < handle
     % Assigning material parameters (check also the Materials class)
     % to object properties
     function readMaterialParameters(obj,varargin)
+
+      default = struct("youngModulus",[],...
+                       "poissonRatio",[]);
+
+      params = readInput(default,varargin{:});
       
-      if isfield(inputStruct,"Elastic")
-        inputStruct = inputStruct.Elastic;
-      end
        %
-       obj.E = getXMLData(inputStruct,[],"youngModulus");
-       obj.nu = getXMLData(inputStruct,[],"poissonRatio");
+       obj.E = params.youngModulus;
+       obj.nu = params.poissonRatio;
        %
        % Compute the M factor
        obj.M = obj.nu/(1-obj.nu);

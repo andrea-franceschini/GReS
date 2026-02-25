@@ -20,9 +20,10 @@
          specificGravity (kg/m^3 ),
          permeability (m^2) -->
 
-    <Curves>
-      <Preset soilName = "Sand" />
-    </Curves>
+    <Curves
+      type = "preset"
+      soilName = "sand" />
+    
   </Solid>
 
   <Fluid

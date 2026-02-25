@@ -28,11 +28,11 @@ classdef Materials < handle
       input = readInput(input);
 
       % order matters: some solid PorousRock properties depend on the fluid
-      if isfield(input.Fluid)
+      if isfield(input,"Fluid")
         addFluid(obj,input.Fluid);
       end
 
-      if isfield(input.Solid)
+      if isfield(input,"Solid")
         for i = 1:numel(input.Solid)
           addSolid(obj,input.Solid(i));
         end
@@ -75,6 +75,13 @@ classdef Materials < handle
         if ~ismissing(input.Curves)
           obj.addCapillaryCurves(mat.name,input.Curves);
         end
+    end
+
+
+    function addFluid(obj,varargin)
+
+      obj.fluid{1} = Fluid(varargin{:}); 
+
     end
 
 
@@ -121,13 +128,17 @@ classdef Materials < handle
 
       % add constitutive law
       if ~isnumeric(matID)
-        matID = getMaterialIDFromName(obj,matName);
+        matID = getMaterialIDFromName(obj,matID);
       end
 
       if nargin < 4
         % when called from addSolid()
         constLaw = fieldnames(varargin{1});
-        obj.solid{matID}.ConstLaw = feval(constLaw,varargin{1});
+        if isstruct(varargin{1})
+          input = varargin{1};
+          input = input.(constLaw{:});
+        end
+        obj.solid{matID}.ConstLaw = feval(constLaw{1},input);
       else
         % when called externally from addSolid()
         constLaw = varargin{1};
@@ -136,23 +147,22 @@ classdef Materials < handle
 
     end
 
-    function addPorousRock(obj,matName,input)
+    function addPorousRock(obj,matName,varargin)
 
       if isempty(obj.fluid) 
         error("PorousRock properties can be added only if a fluid phase is present")
       end
 
-      matID = getMaterialIDFromName(matName);
-      obj.solid{matID}.PorousRock = PorousRock(input);
+      matID = obj.getMaterialIDFromName(matName);
+      obj.solid{matID}.PorousRock = PorousRock(varargin{:});
 
     end
 
-    function addCapillaryCurves(obj,matName,input)
+    function addCapillaryCurves(obj,matName,varargin)
 
       % this will be called from the PorousRock
       matID = getMaterialIDFromName(matName);
-      obj.solid{matID}.Curves = VanGenuchten(input);
-
+      obj.solid{matID}.PorousRock.Curves = VanGenuchten(varargin{:});
 
     end
 

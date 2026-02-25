@@ -65,17 +65,19 @@ classdef VanGenuchten < handle
     end
 
     properties (Access = private)
-        betaCor=false;   % Flag to indicated the necessity of correction for the beta.
-        presCor=true;    % Flag to indicated the necessity of correction for the pressure.
-        modelType;       % Flag to indicated the model type
+        betaCor=false;   % Flag to indicate the necessity of correction for the beta.
+        presCor=true;    % Flag to indicate the necessity of correction for the pressure.
+        modelType;       % Flag to indicate the model type
         retantionCurve;  % Storage the retantion curve.
         relPermCurve;    % Storage the relative permability curve.
         nonNegPressure;  % Storage a flag for the non negative pressure.
     end
 
     methods (Access = public)
-        function obj = VanGenuchten(inputStruct,varargin)
+      function obj = VanGenuchten(varargin)
             %VanGenuchtenMualem Construct an instance of this class
+
+            readInputParameters(obj,varargin{:});
 
             % If number of arguments is greater than 2, passing values.
             if (nargin>1) && (nargin<6)
@@ -354,6 +356,44 @@ classdef VanGenuchten < handle
             if (obj.presCor)
                 var(obj.nonNegPressure) = 0.;
             end
+        end
+
+        function readInputParameters(obj,varargin)
+
+          % first make sure a type is defined
+          default = struct('type','mualem');
+          params = readInput(default,varargin{:});
+
+          switch lower(type)
+            case 'preset'
+              params = readInput(struct('soilName',[]),params);
+              obj.readMaterialParametersFromTable(params.soilName);
+              obj.betaCor = true;
+              obj.presCor = true;
+            case 'tabular'
+              default = struct("capillaryCurvePath",[],...
+                "relativePermeabilityPath",[]);
+              params = readInput(default,params);
+              obj.retantionCurve = TabularCurve(params.capillaryCurvePath);
+              obj.relPermCurve = TabularCurve(params.relativePermabilityPath);
+            case 'burdine'
+              default = struct("n",[],...
+                "beta",[]);
+              params = readInput(default,params);
+              obj.n = params.n;
+              obj.beta = params.beta;
+            case 'mualem'
+              default = struct("n",[],...
+                                "beta",[],...
+                                );
+              params = readInput(default,params);
+              obj.n = params.n;
+              obj.beta = params.beta;
+          end
+
+
+
+
         end
     end
 end
