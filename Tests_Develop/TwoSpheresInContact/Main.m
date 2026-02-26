@@ -49,7 +49,7 @@ params.beta_d = params.Omega_d * (3*params.lambda_d + 2*params.G_d) / 3;
 %% Importing and setting up the mesh
 % Importing mesh
 topology = Mesh();
-MeshFile = "two_spheres_nocontact.vtk";
+MeshFile = "two_overlapping_spheres.vtk";
 topology.importMesh(fullfile(scriptDir, input_dir, "Mesh", MeshFile));
 
 % Create an object of the "Elements" class and process the element properties

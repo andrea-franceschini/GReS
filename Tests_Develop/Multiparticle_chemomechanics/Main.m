@@ -52,11 +52,34 @@ params.beta_d = params.Omega_d * (3*params.lambda_d + 2*params.G_d) / 3;
 params.c_in = 0;                  % initial concentration value
 params.c_in_d = params.c_in / params.c_max; % nondimensional value of initial concentration
 
+%% Extract the required information for boundary conditions
+% Reading the mesh file -- will only work for one domain
+fileName = fullfile(input_dir, 'overlapping_spheres.xml');
+outStruct = readstruct(fileName,AttributeSuffix="");
+if isfield(outStruct,"Domain")
+  outStruct = outStruct.Domain;
+end
+topology = Mesh();
+geom = outStruct.Geometry; 
+meshFile = getXMLData(geom,[],"fileName");
+topology.importMesh(meshFile);
+
+% Extract mesh coordinates
+[cx, cy, cz] = deal( topology.coordinates(:,1), ...
+                   topology.coordinates(:,2), ...
+                   topology.coordinates(:,3) ...
+                   );
+
 % get dirichlet node index (X = MIN, Y = MAX, Z = MAX)
-tol = 1e-2;
+params.tol = 1e-3;
+params.alpha = 0.2; % Parameter for % overlap between the spheres
+params.Rp_d = 1; % Non-dimensional particle radius
+params.d = (1 - params.alpha)*2*params.Rp_d; % dist between sphere centers
+
+Point_leftcenter = find(all(abs([cx + params.d/2 cy-0 cz-0]) ...
+    < params.tol, 2));
 
 %% BUILD MODEL
-
 simparams = SimulationParameters(fullfile(input_dir, ...
     'simparam.xml'));
 % Initialize the mortar utilities
@@ -64,12 +87,6 @@ simparams = SimulationParameters(fullfile(input_dir, ...
 %     'multiparticle_chemomechanics.xml'));
 [domains, interfaces] = buildModel(fullfile(input_dir, ...
     'overlapping_spheres.xml'));
-
-% Extract mesh coordinates
-[cx, cy, cz] = deal( domains.grid.topology.coordinates(:,1), ...
-                   domains.grid.topology.coordinates(:,2), ...
-                   domains.grid.topology.coordinates(:,3) ...
-                   );
 
 %% RUN MODEL  
 % A different solver is needed for models with non conforming domains

@@ -11,7 +11,7 @@
         />
         <Gauss nGP = "1" />
         <Materials fileName = "Inputs/TwoSpheres/materials.xml" />
-        <BoundaryConditions fileName = "Inputs/TwoSpheres/boundaries.xml" />
+        <BoundaryConditions fileName = "Inputs/TwoSpheres/boundaries_overlapping_spheres.xml" />
         <Output
             fileName = "Inputs/TwoSpheres/output.xml"
         />
@@ -29,11 +29,11 @@
             variable = "displacements" >
             <Master
                 domainId = "1"
-                surfaceTag = "3"
+                surfaceTag = "4"
             />
             <Slave
                 domainId = "1"
-                surfaceTag = "4"
+                surfaceTag = "-5"
             />
             <Quadrature
                 type = "SegmentBasedQuadrature"

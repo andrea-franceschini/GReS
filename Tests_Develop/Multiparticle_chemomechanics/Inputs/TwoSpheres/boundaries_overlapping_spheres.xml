@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-->
+
+<BCentities>
+Various attribute are available to specify the
+ID of the constrained entities in different ways.
+
+'bcListFile'
+a path to a list of entities ID of type entitiyType
+(see the BoundaryConditions tutorial)
+
+'surfaceTags'
+the surfaceTags to which the constrained entities belong
+
+'bcList'
+a simple list of entities to be constrained in the specified components
+
+NOTE
+for the case of multi-component fields where 'bcList' or 'surfaceTags'
+are used, the user must also specify the 'component' attribute
+component = "x" or component = "x,y,z" or component = "y,z"
+
+
+
+<BCevent>
+Each BC event needs a 'time' and a 'value' attribute
+
+'time' can be:
+a single scalar
+a function handle of a scalar multiplier changing with time (t)
+
+'valuel can be:
+a single scalar (constant in space for each dof),
+a path to a file with a list of values for each dof
+a function handle depending on space (x,y,z)
+
+<-->
+
+<BoundaryConditions>
+    <!-- Boundary Conditions to Flow -->
+    <!-- Galvanostatic boundary condition for both spheres - constant I -->
+    <BC name = "Galvanostatic"
+        type = "Neumann"
+        entityType = "SurfBC"
+        variable = "pressure" >
+
+        <BCentities surfaceTags = "3, 5" />
+        <BCevent time = "0." value = "0.639251062864524" /> <!-- i_n=2 -->
+    </BC>
+
+    <!-- Zero flux at the sphere-sphere interface -->
+    <BC name = "ZeroFlux"
+        type = "Neumann"
+        entityType = "SurfBC"
+        variable = "pressure" >
+
+        <BCentities surfaceTags = "4, -5" />
+        <BCevent time = "0." value = "0.639251062864524" /> <!--zero flux at interface-->
+    </BC>
+
+    <!-- Boundary Conditions to Mechanics -->
+    <!-- Fix the left sphere center -->
+    <BC name = "FixLeftCenter"
+        type = "Dirichlet"
+        entityType = "NodeBC"
+        variable = "displacements" >
+    
+        <BCentities bcList = "8" components = "x, y, z" /> <!--(-d/2,0,0)-->
+        <BCevent time = "0." value = "0.000000e+00" />
+    </BC>
+</BoundaryConditions>
