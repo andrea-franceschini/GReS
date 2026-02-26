@@ -16,49 +16,54 @@ function val = getXMLValue(raw)
 %   Output:
 %     val  - Interpreted MATLAB value.
 
-  % If already numeric, return directly
-  if isnumeric(raw)
-    val = raw;
+% If already numeric, return directly
+if isnumeric(raw)
+  val = raw;
+  return;
+end
+
+% Normalize to string
+if iscell(raw)
+  raw = string(raw);
+elseif ischar(raw)
+  raw = string(raw);
+end
+
+% For string scalars
+if isstring(raw) && isscalar(raw)
+  str = strtrim(raw);
+
+  % Try numeric
+  num = str2num(str);
+  if ~isempty(num)
+    val = num;
     return;
   end
 
-  % Normalize to string
-  if iscell(raw)
-    raw = string(raw);
-  elseif ischar(raw)
-    raw = string(raw);
-  end
-
-  % For string scalars
-  if isstring(raw) && isscalar(raw)
-    str = strtrim(raw);
-
-    % Try numeric
-    num = str2num(str);
-    if ~isempty(num)
-      val = num;
-      return;
-    end
-
-    % Try string array (split on spaces, commas, semicolons)
-    if contains(str, [",", ";", " "])
-      parts = regexp(str, '[,; ]+', 'split');
-      parts = parts(parts ~= ""); % remove empties
-      val = parts;
-      return;
-    end
-
-    % Otherwise single string
-    val = str;
+  % Try string array (split on spaces, commas, semicolons)
+  if contains(str, [",", ";", " "])
+    parts = regexp(str, '[,; ]+', 'split');
+    parts = parts(parts ~= ""); % remove empties
+    val = parts;
     return;
   end
 
-  % Already a string array
-  if isstring(raw)
-    val = raw;
-    return;
-  end
+  % Otherwise single string
+  val = str;
+  return;
+end
 
-  error('getXMLValue:invalidType', ...
-        'Could not interpret XML value of type %s', class(raw));
+% Already a string array
+if isstring(raw)
+  val = raw;
+  return;
+end
+
+if ismissing(raw)
+  val = [];
+  return
+end
+
+error('getXMLValue:invalidType', ...
+  'Could not interpret XML value of type %s', class(raw));
 end
