@@ -25,7 +25,7 @@ simParam = SimulationParameters(fileName);
 mat = Materials(fileName);
 
 
-mesh = structuredMesh(20,20,10,[0 100],[0 100],[0 10]);
+mesh = structuredMesh(200,20,10,[0 100],[0 100],[0 10]);
 
 gaussOrder = 2;
 elems = Elements(mesh,gaussOrder);

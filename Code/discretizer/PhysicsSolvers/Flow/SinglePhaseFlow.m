@@ -68,7 +68,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     function out = isLinear(obj)
       out = true;
     end
-
+    
     function out = isSymmetric(obj)
       out = isLinear(obj);
     end
