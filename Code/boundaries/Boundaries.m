@@ -53,20 +53,87 @@ classdef Boundaries < handle
     end
 
     function addBC(obj,varargin)
-      
+
+      default = struct('name',[],...
+        'variable',[],...
+        'targetEntity',[],...
+        'entityList',[],...
+        'entityListType',[],...
+        'type',[],...
+        'components',missing);
+
+      params = readInput(default,varargin{:});
+
+      name = params.name;
+      if obj.db.isKey(name)
+        error("'%s' boundary condition name already defined", name);
+      end
+
+      targetEnt = params.targetEntity;
+      type = params.type;
+
+
+      if (~ismember(string(targetEnt), ["node", "surface", "cell", "volumeforce"]))
+        error(['%s condition is unknown\n', ...
+          'Accepted types are: node   -> Boundary cond. on nodes\n',...
+          '                    surface   -> Boundary cond. on surfaces\n',...
+          '                    cell   -> Boundary cond. on elements\n',...
+          '                    volumeforce -> Volume force on elements'], entityType);
+      end
+
+
+      if ~strcmp(targetEnt,"VolumeForce")
+        if (~ismember(type, ["Dirichlet", "Neumann", "Seepage"]))
+          error(['Error in BC %s : %s boundary condition is not admitted\n', ...
+            'Accepted types are: Dirichlet, Neumann, Seepage'], name, type);
+        end
+      end
+
+
+      switch targetEnt
+        case 'VolumeForce'
+          bc = struct('data', [], ...
+            'cond',entityType, 'variable', variable);
+        case {'SurfBC','NodeBC','ElementBC'}
+          bc = struct('data', [], ...
+            'cond',entityType,'type', type, 'variable', variable);
+        otherwise
+          error('Unrecognized BC item %s for Boundary condition %s', ...
+            entityType, name)
+      end
+
+      if ismissing(params.components)
+        comp = [];
+      else
+        comp = params.components;
+      end
+
+      bcEnt = BoundaryEntities(name,targetEntity);
+      bcEnt.setEntities(params.entityListType,...
+        params.entityList,...
+        comp,obj.grid.topology);
+
+      bc.data = bcEnt;
+
+      % add BC to the database
+      obj.db(name) = bc;
+
+      % add the bc event
+      if isfield(params,"BCevent")
+        for i = 1:numel(params.bcEvent)
+          addBCEvent(obj,name,params.bcEvent(i))
+        end
+      end
+
     end
 
-    function setBCEntities(obj,field,comp,val)
-      % setBCEntities(obj,field,val)
-      % set the entities of the boundary conditions.
-      % field: surfaceTags,bcList,bcListFile
-      % val: the tag, the list of entities 
-      % comp: 1,2,3 or a combination, for multi component dofs
+
+    function addBCEvent(obj,bcId,varargin)
+
+      obj.getData(bcId).data.addBCevent(varargin{:});
 
     end
 
-    function addBCEvent(obj,varargin)
-    end
 
     % Check if the identifier defined by the user is a key of the Map object
     function bc = getData(obj,identifier)
@@ -298,137 +365,4 @@ classdef Boundaries < handle
     end
   end
 
-
-  methods (Access = private)
-
-    % Read boundary condtions input file
-    function readInputFile(obj,inputStruct)
-
-      if ~isstruct(inputStruct)
-        inputStruct = readstruct(inputStruct,AttributeSuffix="");
-      end
-
-      if isfield(inputStruct,"BoundaryConditions")
-        inputStruct = inputStruct.BoundaryConditions;
-      end
-
-      if isfield(inputStruct,"fileName")
-        assert(isscalar(fieldnames(inputStruct)),"FileName, " + ...
-          " must be a unique parameter");
-        inputStruct = readstruct(inputStruct.fileName,AttributeSuffix="");
-      end
-
-      nBC = numel(inputStruct.BC);
-
-      for i = 1:nBC
-        % process each BC
-        in = inputStruct.BC(i);
-
-        entityType = getXMLData(in,[],"entityType");
-        if (~ismember(convertCharsToStrings(entityType), ["NodeBC", "SurfBC", "ElementBC", "VolumeForce"]))
-          error(['%s condition is unknown\n', ...
-            'Accepted types are: NodeBC   -> Boundary cond. on nodes\n',...
-            '                    SurfBC   -> Boundary cond. on surfaces\n',...
-            '                    ElementBC   -> Boundary cond. on elements\n',...
-            '                    VolumeForce -> Volume force on elements'], entityType);
-        end
-
-        variable = getXMLData(in,[],"variable");
-        name = getXMLData(in,[],"name");
-
-        if ~strcmp(entityType,"VolumeForce")
-          type = getXMLData(in,[],"type");
-          if (~ismember(type, ["Dirichlet", "Neumann", "Seepage"]))
-            error(['Error in BC %s : %s boundary condition is not admitted\n', ...
-              'Accepted types are: Dirichlet, Neumann, Seepage'], name, type);
-          end
-        end
-
-        if ~isfield(in,"BCevent")
-          error("Missing at least one field 'BCevent' for Boundary condition '%s'",name)
-        end
-        if ~isfield(in,"BCentities")
-          error("Missing field 'BCentities' for Boundary condition '%s'",name)
-        end
-
-        [times, bcData] = Boundaries.readDataFiles(in.BCevent);
-
-        if obj.db.isKey(name)
-          error("'%s' boundary condition name already defined", name);
-        end
-
-        switch entityType
-          case 'VolumeForce'
-            bc = struct('data', [], ...
-              'cond',entityType, 'variable', variable);
-          case {'SurfBC','NodeBC','ElementBC'}
-            bc = struct('data', [], ...
-              'cond',entityType,'type', type, 'variable', variable);
-          otherwise
-            error('Unrecognized BC item %s for Boundary condition %s', ...
-              entityType, name)
-        end
-
-        % set the BC entities
-        bcEnt = BoundaryEntities(name,times,bcData,entityType);
-        bcEnt.setBC(in.BCentities,obj.grid.topology);
-        bc.data = bcEnt;
-
-        % add BC to the database
-        obj.db(name) = bc;
-      end
-
-      % set correct order of boundary conditions. Dirichlet last
-      bcTypeList = [];
-      for bcId = string(obj.db.keys)
-        bcTypeList = [bcTypeList, obj.getType(bcId)];
-      end
-      idxDir  = strcmp(bcTypeList, 'Dirichlet'); 
-      bcOrd = [find(~idxDir), find(idxDir)];
-      bcNames = obj.db.keys;
-      obj.bcList = string(bcNames(bcOrd));
-
-    end
-    
-  end
-  
-  methods(Static = true)
-    % Read the next token and check for eof
- 
-    function [times, bcData] = readDataFiles(bcList)
-      % read times and values of input file
-      nData = numel(bcList);
-
-      bcData = repmat(struct('time', 0, 'value', []), nData, 1);
-      times = zeros(nData,1);
-
-      for i = 1:nData
-        tVal = getXMLData(bcList(i),[],"time");
-        if ~isnumeric(tVal)
-          times(i) = -1;
-        else
-          times(i) = tVal;
-        end
-
-        if sum(times == -1)>0 && length(times) > 1
-          error("Multiple <BCevent> with time functions are " + ...
-            "not allowed")
-        end
-
-        bcData(i).time = tVal;
-        bcData(i).value = getXMLData(bcList(i),[],"value");
-      end
-
-      if length(unique(times))~=length(times)
-        error("Multiple <BCevent> with same time are" + ...
-          "not allowed")
-      end
-
-      % reorder time in ascending order
-      [~,s] = sort(times,"ascend");
-      bcData = bcData(s);
-     
-    end
-
-  end
 end
