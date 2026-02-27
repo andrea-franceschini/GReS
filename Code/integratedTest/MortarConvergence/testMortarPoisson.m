@@ -3,7 +3,8 @@ for elem_type = ["hexa","hexa27"]
 
   for integration_type = ["SegmentBasedQuadrature",...
                           "RBFquadrature",...
-                          "ElementBasedQuadrature"]
+                          "ElementBasedQuadrature",...
+                          ]
 
     runConvPoisson;
 

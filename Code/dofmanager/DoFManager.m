@@ -201,8 +201,8 @@ classdef DoFManager < handle
 
     function location = getFieldLocation(obj,varId)
 
-      id = getVariableId(varId);
-      location = obj.fields(id).location;
+      id = obj.getVariableId(varId);
+      location = obj.fields(id).fieldLocation;
 
 
     end

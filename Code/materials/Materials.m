@@ -2,10 +2,7 @@ classdef Materials < handle
   % MATERIAL - General material class
 
   properties (Access = public)
-    % Creation of a Dictionary object (faster than map)
-    %db = configureDictionary("double","struct");
-    % configureDictionary is not supported before 2023b
-    db
+    db 
     matMap
   end
 
@@ -17,7 +14,7 @@ classdef Materials < handle
         return
       end
 
-      obj.db = containers.Map('KeyType','double','ValueType','any');
+      obj.db = cell([]);
       % Calling the function to read input data from file
       obj.readInputFile(input);
     end
@@ -29,7 +26,7 @@ classdef Materials < handle
       % The preliminary check whether matID is key of db has been commented
       % since it is highly expensive
       %       if (obj.db.isKey(matID))
-      mat = obj.db(obj.matMap(cellTag));
+      mat = obj.db{obj.matMap(cellTag)};
       %       else
       %       Displaying error message if matIdentifier is not a key
       %       of the map
@@ -39,7 +36,7 @@ classdef Materials < handle
 
     function fluidMat = getFluid(obj)
       % fluid material is always stored as the last one in the database
-      fluidMat = obj.db(max(cell2mat(keys(obj.db))));
+      fluidMat = obj.db{end};
     end
 
     function [status] = initializeStatus(obj,cTag,sigma)
@@ -126,7 +123,7 @@ classdef Materials < handle
               mat.Curves.betaCorrection(getSpecificWeight(fluid));
             end
           end
-          obj.db(i) = mat;
+          obj.db{i} = mat;
         end
       end
 
@@ -138,7 +135,7 @@ classdef Materials < handle
       end
 
       if isfield(input,"Fluid")
-        obj.db(nSolid+1) = fluid;
+        obj.db{nSolid+1} = fluid;
       end
 
     end

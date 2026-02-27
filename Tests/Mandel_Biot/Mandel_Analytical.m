@@ -2,7 +2,7 @@ function Mandel_Analytical(mesh, mat, F, time, outDir)
 % Compute Mandel analytical solution for specified time_steps
 % Save results in MAT-FILE for postprocessing
 
-fprintf('\n Computing Mandel Analytical solution... \n');
+gresLog().log(2,'\nComputing Mandel Analytical solution...\n');
 
 % Get model geometry
 nx = 50; %numb. of calc.points along axis x

@@ -86,19 +86,24 @@ classdef OutState < handle & matlab.mixin.Copyable
 
         opt = struct(varargin{:});
         if isfield(opt, 'flagMatFile'), obj.writeSolution = logical(opt.flagMatFile); end
-        if isfield(opt, 'writeVtk'),    obj.writeVtk    = logical(opt.writeVtk);    end
-        if isfield(opt, 'folderName'),  obj.vtkFileName  = string(opt.folderName);   end
+        if isfield(opt, 'folderName')
+          obj.vtkFileName  = string(opt.folderName);
+          obj.writeVtk = true;
+        end
         if isfield(opt, 'matFileName'),  obj.matFileName  = string(opt.matFileName);   end
         if isfield(opt, 'timeList'),    tList       = opt.timeList;             end
+
       end
 
       % ------------------------------------------------------------
       % Object setup
       % ------------------------------------------------------------
 
+
       % Time list handling
       if obj.writeVtk
         % vtm file document node
+        obj.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
         assert(~isempty(tList), ...
           "Print times have not been specified for output.");
       end

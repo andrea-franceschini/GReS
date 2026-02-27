@@ -1,3 +1,32 @@
+function [elementCenter, elementArea] = computePolygonGeometry(intersectionPoints, normal)
+
+elementCenter = mean(intersectionPoints,1);
+
+elementArea = computeSurfaceArea(intersectionPoints, normal);
+
+end
+
+
+function area = computeSurfaceArea(points, normal)
+
+% reorder points CCW
+idx = orderPointsCCW(points, normal);
+P = points(idx,:);
+%P = points;
+% fan triangulation
+P0 = P(1,:);
+area = 0;
+
+for a = 2:size(P,1)-1
+    v1 = P(a,:)   - P0;
+    v2 = P(a+1,:) - P0;
+    area = area + norm(cross(v1, v2));
+end
+
+area = 0.5 * area;
+end
+
+
 function indices = orderPointsCCW(points, normal)
 % points : N x 3 (coplanar, unordered)
 % normal : 1 x 3 (orientation reference)
@@ -29,5 +58,4 @@ end
 [~, perm] = sort(angle);
 indices = indices(perm);
 end
-
 
