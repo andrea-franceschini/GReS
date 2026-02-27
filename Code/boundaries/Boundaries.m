@@ -261,13 +261,30 @@ classdef Boundaries < handle
 
     function bcList = getBCList(obj)
 
+      if isempty(obj.bcList)
+        setBCList(obj);
+      end
+
       bcList = obj.bcList;
 
     end
+
   end
 
 
   methods (Access = private)
+
+    function setBCList(obj)
+      % set correct order of boundary conditions. Dirichlet last
+      bcTypeList = [];
+      for bcId = string(obj.db.keys)
+        bcTypeList = [bcTypeList, obj.getType(bcId)];
+      end
+      idxDir  = strcmp(bcTypeList, 'Dirichlet');
+      bcOrd = [find(~idxDir), find(idxDir)];
+      bcNames = obj.db.keys;
+      obj.bcList = string(bcNames(bcOrd));
+    end
 
     % Read boundary condtions input file
     function readInputFile(obj,inputStruct)
@@ -345,16 +362,6 @@ classdef Boundaries < handle
         % add BC to the database
         obj.db(name) = bc;
       end
-
-      % set correct order of boundary conditions. Dirichlet last
-      bcTypeList = [];
-      for bcId = string(obj.db.keys)
-        bcTypeList = [bcTypeList, obj.getType(bcId)];
-      end
-      idxDir  = strcmp(bcTypeList, 'Dirichlet'); 
-      bcOrd = [find(~idxDir), find(idxDir)];
-      bcNames = obj.db.keys;
-      obj.bcList = string(bcNames(bcOrd));
 
     end
     
