@@ -24,7 +24,7 @@ classdef SedimentsMap < handle
 
   properties (Access = private)
     type                            % Interpolation type ('linear' | 'ramp')
-    dim (1,2) uint64                % Spatial grid dimensions (nx, ny)
+    dim (1,2)                       % Spatial grid dimensions (nx, ny)
     nmat uint16                     % Number of materials
   end
 
@@ -128,6 +128,27 @@ classdef SedimentsMap < handle
           if ~ismissing(item)
             if checkMat(item.materialFlag)
               map(:, item.materialFlag) = item.value;
+              checkMat(item.materialFlag) = false;
+            end
+          end
+        end
+      end
+
+      % Handle Linear distributions (lagrange polynomial)
+      if isfield(event, "Linear")
+        for item = event.Linear
+          if ~ismissing(item)
+            if checkMat(item.materialFlag)
+              ref = getXMLData(item,[],"value");
+              xpos = 1:obj.dim(1);
+              ypos = 1:obj.dim(2);
+              polyXA = (xpos-obj.dim(1))/(1-obj.dim(1));
+              polyXB = (xpos-1)/(obj.dim(1)-1);
+              polyYA = (ypos-obj.dim(2))/(1-obj.dim(2));              
+              polyYB = (ypos-1)/(obj.dim(2)-1);              
+              values = ref(1)*polyXA'.*polyYA + ref(2)*polyXB'.*polyYA ...
+                + ref(3)*polyXA'.*polyYB + ref(4)*polyXB'.*polyYB;
+              map(:, item.materialFlag) = values(:);
               checkMat(item.materialFlag) = false;
             end
           end

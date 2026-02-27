@@ -1,7 +1,0 @@
-  0                            !     1-> input from advaced conf
-     0.1000E+04                                   !   gw
-     0.4320E-08                                 !   beta
-  1                                             !   1-> elasoplastic, 0-> creep
-  1                                            !    num material
-./Input/materials/mat1                                      
-./Input/materials/ome_res.dat                               

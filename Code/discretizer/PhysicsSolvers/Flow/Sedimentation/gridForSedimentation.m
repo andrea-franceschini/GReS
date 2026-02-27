@@ -56,12 +56,12 @@ classdef gridForSedimentation < handle
       obj.constructor(data);
     end
 
-    function id = getBordCell(obj,label)
-      % GETBORDCELL Returns boundary cell information.
+    % DofManager related functions
+    function dofs = getBord(obj,label)
+      % GETBORDDOFS Returns dofs for the border.
       %
       % Outputs:
-      %   id        - Cell DOFs at the boundary
-      %   faceArea  - Face areas
+      %   id        - DOFs at the boundary
       %
       % Supported labels:
       %   'x0', 'xm', 'y0', 'ym', 'z0', 'zm'
@@ -80,7 +80,7 @@ classdef gridForSedimentation < handle
             J_idx(i)=count;
           end
           nelm = sum(cells,"all");
-          [id,~] = getBordX(obj,J_idx,nelm);
+          dofs = getBordX(obj,J_idx,nelm);
 
         case "xm"
           mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
@@ -95,7 +95,7 @@ classdef gridForSedimentation < handle
             J_idx(i)=count;
           end
           nelm = sum(cells,"all");
-          [id,~] = getBordX(obj,J_idx,nelm);
+          dofs = getBordX(obj,J_idx,nelm);
 
         case "y0"
           mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
@@ -110,7 +110,7 @@ classdef gridForSedimentation < handle
             I_idx(j)=count;
           end
           nelm = sum(cells,"all");
-          [id,~] = getBordY(obj,I_idx,nelm);
+          dofs = getBordY(obj,I_idx,nelm);
 
         case "ym"
           mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
@@ -125,32 +125,118 @@ classdef gridForSedimentation < handle
             I_idx(j)=count;
           end
           nelm = sum(cells,"all");
-          [id,~] = getBordY(obj,I_idx,nelm);
+          dofs = getBordY(obj,I_idx,nelm);
 
         case "z0"
-          [id,~] = getBordZ(obj,true);
+          idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
+          idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
+          idK = ones(prod(obj.ncells(1:2)),1);
 
+          % For case where some column do not exist
+          % map = obj.columnsHeight~=0;
+          % cellID = sub2ind(obj.ncells,idI(map),idJ(map),idK(map));
+
+          cellID = sub2ind(obj.ncells,idI,idJ,idK);
+          dofs = obj.dof(cellID);
         case "zm"
-          [id,~] = getBordZ(obj,false);
+          dofs = getTopDofs(obj);
 
         otherwise
-          id = [];
+          dofs = [];
           return
       end
     end
 
-    function ncells = getNumberCells(obj)
-      % GETNUMBERCELLS Returns the number of active cells.
-      ncells = sum(obj.dof~=0,"all");
-      % ncells = sum(obj.columnsHeight, 'all');
+    function neigh = getNeigh(obj,dofs)
+      % GETNEIGH Returns neighboring cell DOFs.
+      %
+      % Order:
+      %   [x-, x+, y-, y+, z-, z+]
+
+      if ~exist("dofs","var")
+        dofs = (1:obj.ndofs)';
+      end
+      pos = find(ismember(obj.dof,dofs));
+      [idI,idJ,idK]=ind2sub(obj.ncells,pos);
+
+      neigh = zeros(length(dofs),6);
+
+      actTmp = idJ~=1;
+      pos = sub2ind(obj.ncells, idI(actTmp), idJ(actTmp)-1, idK(actTmp));
+      neigh(actTmp,1) =  obj.dof(pos);
+      actTmp = idJ~=obj.ncells(2);
+      pos = sub2ind(obj.ncells, idI(actTmp), idJ(actTmp)+1, idK(actTmp));
+      neigh(actTmp,2) =  obj.dof(pos);
+
+      actTmp = idI~=1;
+      pos = sub2ind(obj.ncells, idI(actTmp)-1, idJ(actTmp), idK(actTmp));
+      neigh(actTmp,3) =  obj.dof(pos);
+      actTmp = idI~=obj.ncells(1);
+      pos = sub2ind(obj.ncells, idI(actTmp)+1, idJ(actTmp), idK(actTmp));
+      neigh(actTmp,4) =  obj.dof(pos);      
+
+      actTmp = idK~=1;
+      pos = sub2ind(obj.ncells, idI(actTmp), idJ(actTmp), idK(actTmp)-1);
+      neigh(actTmp,5) =  obj.dof(pos);
+      actTmp = idK~=obj.ncells(3);
+      pos = sub2ind(obj.ncells, idI(actTmp), idJ(actTmp), idK(actTmp)+1);
+      neigh(actTmp,6) =  obj.dof(pos);
     end
 
-    function npts = getNumberPoints(obj)
-      % GETNUMBERPOINTS Returns total number of grid points.
-      npts = (obj.ncells(1)+1)*(obj.ncells(2)+1)*(obj.ncells(3)+1);
+    function out = getMapFromDofs(obj,dofs)
+      if ~exist("dofs","var")
+        dofs = 1:obj.ndofs;
+      end
+      map = ismember(obj.dof,dofs);
+      pos = find(map);
+      [~,id] = sort(obj.dof(map));
+      [idI(id),idJ(id),~]=ind2sub(obj.ncells,pos);
+      out = sub2ind(obj.ncells(1:2), idI', idJ');
     end
 
-    function coord = getCoordCenter(obj, cellIds)
+    function dofs = getTopDofs(obj)
+      idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
+      idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
+      idK = obj.columnsHeight;
+
+      % For case where some column do not exist
+      % map = obj.columnsHeight~=0;
+      % cellID = sub2ind(obj.ncells,idI(map),idJ(map),idK(map));
+
+      cellID = sub2ind(obj.ncells,idI,idJ,idK);
+      dofs = obj.dof(cellID);
+    end
+
+    function dof = getMaxDofUnchanged(obj)
+      minval = min(obj.columnsHeight);
+      if minval~=1
+        loc = obj.columnsHeight == minval;
+        [idI, idJ] = obj.getIJLay();
+        pos = sub2ind(obj.ncells, idI(loc), idJ(loc), obj.columnsHeight(loc)-1);
+        dof = max(obj.dof(pos));
+      else
+        dof = 0;
+      end
+    end
+
+    % Coordanates related functions
+    function [dx,dy,dz] = getCellsDims(obj,dofs)
+      if ~exist("dofs","var")
+        dofs = 1:obj.ndofs;
+      end
+      segmX = diff(obj.coordX);
+      segmY = diff(obj.coordY);
+      segmZ = diff(obj.coordZ);
+      map = ismember(obj.dof,dofs);
+      pos = find(map);
+      [~,id] = sort(obj.dof(map));
+      [idI(id),idJ(id),idK(id)]=ind2sub(obj.ncells,pos);
+      dx=segmX(idI');
+      dy=segmY(idJ');
+      dz=segmZ(idK');
+    end
+
+    function [x,y,z] = getCoordCenter(obj, dofs)
       % GETCOORDCENTER Returns cell center coordinates.
       %
       % Input:
@@ -158,113 +244,78 @@ classdef gridForSedimentation < handle
       %
       % Output:
       %   coord   - (x,y,z) coordinates of cell centers
+
+      if ~exist("dofs","var")
+        dofs = 1:obj.ndofs;
+      end
       
       % Generate 3D matrices for each coordinate component
-      [X, Y, Z] = ndgrid(obj.coordX(1:end-1)+diff(obj.coordX)/2., ...
+      [x, y, z] = ndgrid(obj.coordX(1:end-1)+diff(obj.coordX)/2., ...
         obj.coordY(1:end-1)+diff(obj.coordY)/2., ...
         obj.coordZ(1:end-1)+diff(obj.coordZ)/2.);
 
       % Extract the coordinates for the requested linear indices
-      actCells = obj.dof ~= 0;
-      coord = [X(actCells), Y(actCells), Z(actCells)];
-      % dofs = obj.getActiveDofs();
-      % coord = coord(dofs,:);
-      % coord = coord(cellIds,:);
+      map = ismember(obj.dof,dofs);
+      id = sort(obj.dof(map));
+      x = x(id);
+      y = y(id);
+      z = z(id);
     end
 
-    function ijk = getIJKfromCellID(obj,cellID)
-      % GETIJKFROMCELLID Converts linear DOF to (i,j,k).
-      ind = find(ismember(obj.dof, cellID));
-      [i,j,k]=ind2sub(obj.ncells,ind);
-      % [i,j,k]=ind2sub(obj.ncells,cellID);
-      ijk=[i,j,k];
-    end
-
-    function cellID = getCellIDfromIJK(obj,i,j,k)
-      % GETCELLIDFROMIJK Converts (i,j,k) to linear DOF.
-      cellID = sub2ind(obj.ncells,i,j,k);
-      % map = obj.dof(obj.dof~=0);
-      % cellID=cellID(map);
-    end
-
-    function [idI,idJ,idK] = getIJKTop(obj)
-      [idI, idJ] = obj.getIJLay;
-      % idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
-      % idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
-      idK = obj.columnsHeight;
-    end
-
-    function dofs = getActiveDofs(obj)
-      % Returns a list of all non-zero Cell IDs.
-      dofs = obj.dof(obj.dof ~=0);
-    end
-
-    function dofs = getDofsFromIJK(obj,ijk)
-      if nargin == 1
-        dofs = obj.dof(:);
-      else
-        pos = sub2ind(obj.ncells, ijk(:,1), ijk(:,2), ijk(:,3));
-        dofs = obj.dof(pos);
+    function zcol = getColumnMaxHeight(obj,dofs)
+      if ~exist("dofs","var")
+        dofs = (1:obj.ndofs)';
+      end
+      ndofs_eval = length(dofs);
+      zcol = zeros(ndofs_eval,1);
+      ind = find(ismember(obj.dof, dofs));
+      [idI,idJ,~]=ind2sub(obj.ncells,ind);
+      colMaxHei = reshape(obj.columnsHeight,obj.ncells(1:2));
+      for i=1:ndofs_eval
+        pos = colMaxHei(idI(i),idJ(i))+1;
+        zcol(i) = obj.coordZ(pos,1);
       end
     end
 
-    function neigh = getNeigh(obj,ijk)
-      % GETNEIGH Returns neighboring cell DOFs.
-      %
-      % Order:
-      %   [x-, x+, y-, y+, z-, z+]
+    % Mesh related functions
+    function [coord, conect] = getMesh(obj)
+      % GETMESH Returns mesh coordinates and connectivity.
 
-      neigh = zeros(size(ijk,1),6);
+      [XX, YY, ZZ] = ndgrid(obj.coordX, obj.coordY, obj.coordZ);
+      coord = [XX(:), YY(:), ZZ(:)];
 
-      actTmp = ijk(:,1)~=1;
-      pos = sub2ind(obj.ncells, ijk(actTmp,1)-1, ijk(actTmp,2), ijk(actTmp,3));
-      neigh(actTmp,3) =  obj.dof(pos);
-      actTmp = ijk(:,1)~=obj.ncells(1);
-      pos = sub2ind(obj.ncells, ijk(actTmp,1)+1, ijk(actTmp,2), ijk(actTmp,3));
-      neigh(actTmp,4) =  obj.dof(pos);
+      dofs = (1:obj.ndofs)';
+      map = ismember(obj.dof,dofs);
+      id = sort(obj.dof(map));
+      [idI,idJ,idK]=ind2sub(obj.ncells,id);
+      conect = obj.getConectByIJK(idI,idJ,idK);
 
-      actTmp = ijk(:,2)~=1;
-      pos = sub2ind(obj.ncells, ijk(actTmp,1), ijk(actTmp,2)-1, ijk(actTmp,3));
-      neigh(actTmp,1) =  obj.dof(pos);
-      actTmp = ijk(:,2)~=obj.ncells(2);
-      pos = sub2ind(obj.ncells, ijk(actTmp,1), ijk(actTmp,2)+1, ijk(actTmp,3));
-      neigh(actTmp,2) =  obj.dof(pos);
-
-      actTmp = ijk(:,3)~=1;
-      pos = sub2ind(obj.ncells, ijk(actTmp,1), ijk(actTmp,2), ijk(actTmp,3)-1);
-      neigh(actTmp,5) =  obj.dof(pos);
-      actTmp = ijk(:,3)~=obj.ncells(3);
-      pos = sub2ind(obj.ncells, ijk(actTmp,1), ijk(actTmp,2), ijk(actTmp,3)+1);
-      neigh(actTmp,6) =  obj.dof(pos);
+      % ijk = obj.getIJKfromCellID(dofs);
+      % conect = obj.getConectByIJK(ijk(:,1),ijk(:,2),ijk(:,3));
     end
 
-    function newlayer = grow(obj,map,height)
-      % GROW Adds new cells on top of selected columns.
-      %
-      % Inputs:
-      %   map      - Logical array of growing columns
-      %   height   - Height of the new layer
-      %
-      % Output:
-      %   newlayer - True if a new Z layer was added
-
-      cellsTadd = sum(map);
-
-      % check if is necessary to add a new layer in z
-      atTop = obj.columnsHeight == obj.ncells(3);
-      newlayer = any(and(atTop,map));
-      if newlayer
-        obj.ncells(3) = obj.ncells(3)+1;
-        obj.coordZ(end+1) = obj.coordZ(end)+height;
-        obj.dof(:,:,end+1) = zeros(obj.ncells(1:2));
+    function conect = getConect(obj,dofs)
+      % GETCONECTBYIJK Returns VTK hexahedral connectivity.
+      if ~exist("dofs","var")
+        dofs = (1:obj.ndofs)';
       end
+      [idI,idJ,idK]=obj.getIJKfromDofs(dofs);
 
-      % update the dof for the newest cells.
-      [idI,idJ] = obj.getIJLay;      
-      pos = obj.getCellIDfromIJK(idI(map),idJ(map),obj.columnsHeight(map)+1);
-      obj.dof(pos) = (obj.ndofs+1:obj.ndofs+cellsTadd)';
-      obj.ndofs = obj.ndofs + cellsTadd;
-      obj.columnsHeight(map) = obj.columnsHeight(map)+1;
+      ndivX = obj.ncells(1)+1;
+      ndivXY = (obj.ncells(1)+1)*(obj.ncells(2)+1);
+
+      conect=zeros(size(idI,1),8);
+
+      % conect(:,1)=ndivXY*(idK-1)+4*(ndivX-1)*(idJ-1)+2*(idI-1);
+
+      conect(:,1)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI;
+      conect(:,2)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI+1;
+      conect(:,3)=ndivXY*(idK-1)+ndivX*idJ+idI+1;
+      conect(:,4)=ndivXY*(idK-1)+ndivX*idJ+idI;
+      conect(:,5)=ndivXY*idK+ndivX*(idJ-1)+idI;
+      conect(:,6)=ndivXY*idK+ndivX*(idJ-1)+idI+1;
+      conect(:,7)=ndivXY*idK+ndivX*idJ+idI+1;
+      conect(:,8)=ndivXY*idK+ndivX*idJ+idI;
     end
 
     function conect = getConectByIJK(obj,idI,idJ,idK)
@@ -304,86 +355,43 @@ classdef gridForSedimentation < handle
       conect(:,8)=ndivXY*idK+ndivX*idJ+idI;
     end
 
-    function [coord, conect] = getMesh(obj)
-      % GETMESH Returns mesh coordinates and connectivity.
+    function newlayer = grow(obj,map,height)
+      % GROW Adds new cells on top of selected columns.
+      %
+      % Inputs:
+      %   map      - Logical array of growing columns
+      %   height   - Height of the new layer
+      %
+      % Output:
+      %   newlayer - True if a new Z layer was added
 
-      [XX, YY, ZZ] = ndgrid(obj.coordX, obj.coordY, obj.coordZ);
-      coord = [XX(:), YY(:), ZZ(:)];
+      cellsTadd = sum(map);
 
-      dofs = obj.getActiveDofs;
-      ijk = obj.getIJKfromCellID(dofs);
-      conect = obj.getConectByIJK(ijk(:,1),ijk(:,2),ijk(:,3));
-      % ddof = sub2ind(size(obj.dof), ijk(:,1), ijk(:,2), ijk(:,3));
-      % ddof = obj.dof(ddof);
-      % [~,idx]=sort(ddof);
-      % conect=conect(idx,:);
-    end
-
-    function [idI, idJ, idK] = getIJK(obj)
-      num=prod(obj.ncells);
-      idI = reshape(repmat((1:obj.ncells(1))',prod(obj.ncells(2:3)),1),num,1);
-      idJ = reshape(repmat(repelem((1:obj.ncells(2))',obj.ncells(1)),obj.ncells(3),1),num,1);
-      idK = reshape(repelem((1:obj.ncells(3))',prod(obj.ncells(1:2))),num,1);
-    end
-
-    function dof = getMaxDofUnchanged(obj)
-      minval = min(obj.columnsHeight);
-      if minval~=1
-        loc = obj.columnsHeight == minval;
-        [idI, idJ] = obj.getIJLay();
-        pos = sub2ind(obj.ncells, idI(loc), idJ(loc), obj.columnsHeight(loc)-1);
-        dof = max(obj.dof(pos));
-      else
-        dof=0;
+      % check if is necessary to add a new layer in z
+      atTop = obj.columnsHeight == obj.ncells(3);
+      newlayer = any(and(atTop,map));
+      if newlayer
+        obj.ncells(3) = obj.ncells(3)+1;
+        obj.coordZ(end+1) = obj.coordZ(end)+height;
+        obj.dof(:,:,end+1) = zeros(obj.ncells(1:2));
       end
+
+      % update the dof for the newest cells.
+      [idI,idJ] = obj.getIJLay;
+      pos = sub2ind(obj.ncells,idI(map),idJ(map),obj.columnsHeight(map)+1);
+      obj.dof(pos) = (obj.ndofs+1:obj.ndofs+cellsTadd)';
+      obj.ndofs = obj.ndofs + cellsTadd;
+      obj.columnsHeight(map) = obj.columnsHeight(map)+1;
     end
 
-    function out = distMapOverDofsOld(obj,map)
-      out = zeros(obj.ndofs,1);
-      idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
-      idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
-      idK = obj.columnsHeight(:);
-      dofTmp = obj.dof(sub2ind(obj.ncells,idI,idJ,idK));
-      out(dofTmp) = map(:);
+    function npts = getNumberPoints(obj)
+      % GETNUMBERPOINTS Returns total number of grid points.
+      npts = (obj.ncells(1)+1)*(obj.ncells(2)+1)*(obj.ncells(3)+1);
     end
 
-    function out = distMapOverDofs(obj,map)
-      out = zeros(obj.ndofs,1);
-      for i=1:obj.ncells(1)
-        for j=1:obj.ncells(2)
-          dofTmp = obj.dof(sub2ind(obj.ncells,i,j,1:obj.ncells(3)));
-          notZero =dofTmp~=0;
-          out(dofTmp(notZero)) = map(i,j);
-        end
-      end
-    end
-
-    function dh = getCellHeight(obj)
-      map = obj.dof ~= 0;
-      pos = find(map);
-      [~,id] = sort(obj.dof(map));
-      [~,~,idK(id)]=ind2sub(obj.ncells,pos);
-      segmZ = diff(obj.coordZ);
-      dh=segmZ(idK);
-    end
-
-    function zcol = getColumnMaxHeight(obj,dofs)
-      if ~exist("dofs","var")
-        dofs = (1:obj.ndofs)';
-      end
-      ndofs_eval = length(dofs);
-      zcol = zeros(ndofs_eval,1);
-      ind = find(ismember(obj.dof, dofs));
-      [idI,idJ,~]=ind2sub(obj.ncells,ind);
-      colMaxHei = reshape(obj.columnsHeight,obj.ncells(1:2));
-      for i=1:ndofs_eval
-        pos = colMaxHei(idI(i),idJ(i))+1;
-        zcol(i) = obj.coordZ(pos,1);
-      end
-    end
-
-    function comp = getCompaction(obj,defByCell)
-      comp = zeros(obj.ndofs,1);
+    % Other types
+    function data = accByColumnFromBot2Top(obj,valByCell)
+      data = zeros(obj.ndofs,1);
       for i=1:obj.ncells(1)
         for j=1:obj.ncells(2)
           column = obj.dof(i,j,:);
@@ -391,41 +399,14 @@ classdef gridForSedimentation < handle
           for k=1:obj.ncells(3)
             dofId = column(k);
             if dofId ~= 0
-              acc = acc + defByCell(dofId);
-              comp(dofId)=acc;
+              acc = acc + valByCell(dofId);
+              data(dofId)=acc;
             end
           end
         end
       end
     end
 
-    function out = getMapFormDofs(obj,dofs)
-      if ~exist("dofs","var")
-        dofs = 1:obj.ndofs;
-      end
-      map = ismember(obj.dof,dofs);
-      pos = find(map);
-      [~,id] = sort(obj.dof(map));
-      [idI(id),idJ(id),~]=ind2sub(obj.ncells,pos);
-      out = sub2ind(obj.ncells(1:2), idI', idJ');
-    end
-
-    function [dx,dy,dz] = getCellsDims(obj,dofs)
-      if ~exist("dofs","var")
-        dofs = 1:obj.ndofs;
-      end
-      segmX = diff(obj.coordX);
-      segmY = diff(obj.coordY);
-      segmZ = diff(obj.coordZ);
-      map = ismember(obj.dof,dofs);
-      pos = find(map);
-      [~,id] = sort(obj.dof(map));
-      [idI(id),idJ(id),idK(id)]=ind2sub(obj.ncells,pos);
-      dx=segmX(idI');
-      dy=segmY(idJ');
-      dz=segmZ(idK');
-    end
-    
   end
 
   methods (Access = private)
@@ -538,10 +519,8 @@ classdef gridForSedimentation < handle
       end
     end
 
-    function [id,area] = getBordX(obj,idx,nelm)
-      areas = diff(obj.coordX).*diff(obj.coordZ)';
+    function id = getBordX(obj,idx,nelm)
       id=zeros(nelm,1);
-      area=zeros(nelm,1);
 
       count=1;
       for i=1:obj.ncells(1)
@@ -551,16 +530,13 @@ classdef gridForSedimentation < handle
             break;
           end
           id(count)=obj.dof(i,idx(i),k);
-          area(count)=areas(i,k);
           count=count+1;
         end
       end
     end
 
-    function [id,area] = getBordY(obj,idx,nelm)
-      areas = diff(obj.coordY).*diff(obj.coordZ)';
+    function id = getBordY(obj,idx,nelm)
       id=zeros(nelm,1);
-      area=zeros(nelm,1);
 
       count=1;
       for j=1:obj.ncells(2)
@@ -570,32 +546,22 @@ classdef gridForSedimentation < handle
             break;
           end
           id(count)=obj.dof(idx(j),j,k);
-          area(count)=areas(idx(j),k);
           count=count+1;
         end
       end
     end
 
-    function [id,area] = getBordZ(obj,bord)
-      activeCells = obj.columnsHeight~=0;
-      nelm = sum(activeCells);
-      areas = reshape(diff(obj.coordY).*diff(obj.coordX)',nelm,1);
-
-      [idI,idJ] = obj.getIJLay;
-      if bord   % Case at the bord z0
-        idK = ones(prod(obj.ncells(1:2)),1);
-      else      % Case at the bord zm
-        idK = obj.columnsHeight;
-      end
-      pos = getCellIDfromIJK(obj,idI(activeCells),idJ(activeCells), ...
-          idK(activeCells));
-      id=obj.dof(pos);
-      area=areas(activeCells);
-    end
-
+    % Create the ijk position in the from 
     function [idI, idJ] = getIJLay(obj)
       idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
       idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
+    end
+
+    function [idI, idJ, idK] = getIJKfromDofs(obj,dofs)
+      map = ismember(obj.dof,dofs);
+      pos = find(map);
+      % id = sort(obj.dof(map));
+      [idI,idJ,idK]=ind2sub(obj.ncells,pos);
     end
 
   end
