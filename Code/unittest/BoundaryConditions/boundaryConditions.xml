@@ -2,12 +2,11 @@
 
 <!-->
 
-<BCentities>
-Various attribute are available to specify the
-ID of the constrained entities in different ways.
+'entityListType'
+specifies how the ID of the constrained entities is given.
 
 'bcListFile'
-a path to a list of entities ID of type entitiyType
+a path to a list of entities ID of type specified by 'targetEntity'
 (see the BoundaryConditions tutorial)
 
 'surfaceTags'
@@ -17,10 +16,9 @@ the surfaceTags to which the constrained entities belong
 a simple list of entities to be constrained in the specified components
 
 NOTE
-for the case of multi-component fields where 'bcList' or 'surfaceTags' 
+for the case of multi-component fields where 'bcList' or 'surfaceTags'
 are used, the user must also specify the 'component' attribute
 component = "x" or component = "x,y,z" or component = "y,z"
-
 
 
 <BCevent>
@@ -30,7 +28,7 @@ Each BC event needs a 'time' and a 'value' attribute
 a single scalar
 a function handle of a scalar multiplier changing with time (t)
 
-'valuel can be:
+'value' can be:
 a single scalar (constant in space for each dof),
 a path to a file with a list of values for each dof
 a function handle depending on space (x,y,z)
@@ -42,31 +40,27 @@ a function handle depending on space (x,y,z)
   <BC
       name = "bc1"
       type = "Dirichlet"
-      entityType = "SurfBC"
+      targetEntity = "surface"
       variable = "pressure"
+      entityListType = "bcList"
+      entityList = "1,3,168"
       >
 
-    <BCentities
-                bcList = "1,13,168"
-                />
-
     <BCevent
-            time = "2*t"
-            value = "10-z"
-            />
+             time = "2*t"
+             value = "10-z"
+             />
   </BC>
 
   <BC
       name = "bc2"
       type = "Neumann"
-      entityType = "SurfBC"
+      targetEntity = "surface"
+      entityListType = "surfaceTags"
+      entityList = "2"
       variable = "displacements"
+      components = "x,z"
       >
-
-    <BCentities
-                surfaceTags = "2"
-                components = "x, z"
-                />
 
     <BCevent
              time = "1"
@@ -78,7 +72,7 @@ a function handle depending on space (x,y,z)
              value = "-5"
              />
     <BCevent
-             time = "8"
+             time = "6"
              value = "z"
              />
   </BC>
@@ -86,54 +80,61 @@ a function handle depending on space (x,y,z)
   <BC
       name = "bc3"
       type = "Dirichlet"
-      entityType = "NodeBC"
+      targetEntity = "node"
       variable = "displacements"
+      entityListType = "bcListFile"
+      entityList = "entityList"
       >
 
-    <BCentities
-                bcListFile = "entityList"
-                />
-
     <BCevent
-            time = "1"
-            value = "5"
-            />
+             time = "1"
+             value = "5"
+             />
   </BC>
+
 
   <BC
       name = "bc4"
       type = "Dirichlet"
-      entityType = "NodeBC"
+      targetEntity = "node"
       variable = "displacements"
+      entityListType = "surfaceTags"
+      entityList = "4"
+      components = "x"
       >
 
-    <BCentities
-                surfaceTags = "4"
-                components = "x"
-                />
-
     <BCevent
-            time = "0"
-            value = "bcvals_list.dat"
-            />
+             time = "0"
+             value = "bcvals_list.dat"
+             />
   </BC>
 
   <BC
       name = "bc5"
       type = "Dirichlet"
-      entityType = "SurfBC"
+      targetEntity = "surface"
       variable = "displacements"
+      entityListType = "surfaceTags"
+      entityList = "1"
+      components = "x,y,z"
       >
 
-    <BCentities
-                surfaceTags = "1"
-                components = "x,y,z"
-                />
+    <BCevent
+             time = "0"
+             value = "0"
+             />
+
 
     <BCevent
-            time = "0"
-            value = "0"
-            />
+             time = "5.0"
+             value = "4"
+             />
+
+    <BCevent
+             time = "3.0"
+             value = "4"
+             />
+
   </BC>
 
 </BoundaryConditions>

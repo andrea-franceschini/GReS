@@ -1,5 +1,5 @@
 classdef testBoundaries < matlab.unittest.TestCase
-  
+
   properties
     bc
     pathToFile
@@ -12,21 +12,22 @@ classdef testBoundaries < matlab.unittest.TestCase
         "/Code/unittest/BoundaryConditions/boundaryConditions.xml");
     end
   end
-  
+
   methods(TestMethodSetup)
     % Setup for each test
   end
-  
+
   methods(Test)
     % Test methods
-    
-    function readBC(testCase)
+
+    function readBCFile(testCase)
+      % test bc added with  xml file
       mesh = Mesh();
       mesh.importMesh("mesh.msh");
       elems = Elements(mesh,2);
       faces = Faces(mesh);
       grid = struct("topology",mesh,"cells",elems,"faces",faces);
-      testCase.bc = Boundaries(testCase.pathToFile,grid);
+      testCase.bc = Boundaries(grid,testCase.pathToFile);
 
       v1 = testCase.bc.getVals("bc1",3);
       v21 = testCase.bc.getVals("bc2",0.2);
@@ -59,7 +60,7 @@ classdef testBoundaries < matlab.unittest.TestCase
       verifyEqual(testCase,e5,repmat((1:4)',3,1),"AbsTol",1e-9)
 
 
-      le2 = testCase.bc.getLoadedEntities("bc2"); 
+      le2 = testCase.bc.getLoadedEntities("bc2");
       leCheck = repmat([5;6;7;8;13;14;15;16;170],2,1);
       verifyEqual(testCase,le2,leCheck,"AbsTol",1e-9);
 
@@ -68,6 +69,47 @@ classdef testBoundaries < matlab.unittest.TestCase
       verifyEqual(testCase,area,repmat(0.0625,32,1),"AbsTol",1e-9);
 
     end
+
+    function readBC(testCase)
+      % test bc added with key-value input
+      mesh = Mesh();
+      mesh.importMesh("mesh.msh");
+      elems = Elements(mesh,2);
+      faces = Faces(mesh);
+      grid = struct("topology",mesh,"cells",elems,"faces",faces);
+
+      testCase.bc = Boundaries(grid);
+
+      testCase.bc.addBC("name","bound_name_1",...
+        "type","Dirichlet",...
+        "targetEntity","surface",...
+        "variable","pressure",...
+        "entityListType","bcList",...
+        "entityList","1,1,3,168");
+
+      testCase.bc.addBCEvent("bound_name_1",'time',"2*t",'value',"10-z");
+
+      testCase.bc.addBC("name","bound_name_2",...
+        "type","Dirichlet",...
+        "targetEntity","node",...
+        "components",1,...
+        "variable","displacements",...
+        "entityListType","surfaceTags",...
+        "entityList","4");
+
+      testCase.bc.addBCEvent("bound_name_2",'time',"0",'value',"bcvals_list.dat");
+
+
+      v1 = testCase.bc.getVals("bound_name_1",3);
+      verifyEqual(testCase,v1,[60;34.50;0.0],"AbsTol",1e-8);
+      e1 = testCase.bc.getEntities("bc1");
+      verifyEqual(testCase,e1,[1;13;168],"AbsTol",1e-9)
+
+      v4 = testCase.bc.getVals("bc4",2);
+      verifyEqual(testCase,length(v4),126,"AbsTol",1e-9)
+
+    end
+
   end
-  
+
 end
