@@ -24,16 +24,48 @@ classdef Boundaries < handle
         return
       end
 
-      input=varargin{1};
-      grid=varargin{2};
+      if nargin == 1
+        obj.grid = varargin{1};
+        return
+      end
 
-      obj.grid = grid;
+      obj.grid = varargin{1};
+
       if strcmp(grid.topology.meshType,"Unstructured")
         % Calling the function to read input data from file
-        obj.readInputFile(input);
+        obj.addBCs(varargin{2:end});
         obj.computeBoundaryProperties(grid);
         % linkBoundSurf2TPFAFace(obj,grid);
       end
+    end
+
+    function addBCs(obj,varargin)
+
+      % add a list of multiple boundary conditions from file
+      assert(isscalar(varargin),"addBCs method is valid only with scalar" + ...
+        " xml file name or ")
+      input = readInput(varargin{:});
+
+      for i = 1:numel(input.BC)
+        addBC(obj,input.BC(i));
+      end
+
+    end
+
+    function addBC(obj,varargin)
+      
+    end
+
+    function setBCEntities(obj,field,comp,val)
+      % setBCEntities(obj,field,val)
+      % set the entities of the boundary conditions.
+      % field: surfaceTags,bcList,bcListFile
+      % val: the tag, the list of entities 
+      % comp: 1,2,3 or a combination, for multi component dofs
+
+    end
+
+    function addBCEvent(obj,varargin)
     end
 
     % Check if the identifier defined by the user is a key of the Map object
