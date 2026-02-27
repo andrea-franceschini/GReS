@@ -73,10 +73,6 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       out = isLinear(obj);
     end
 
-    function out = isSymmetric(obj)
-      out = isLinear(obj);
-    end
-
     function alpha = getRockCompressibility(obj,el)
       mat = obj.domain.materials;
       targetRegions = getTargetRegions(obj.domain.dofm,["pressure","displacements"]);

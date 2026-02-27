@@ -95,7 +95,7 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.rhs{obj.fieldId} = [];
 
       % Increase number of variables in the dof manager
-      obj.dofm.registerVariable(obj.getField(),entityField.cell,1);
+      obj.domain.dofm.registerVariable(obj.getField(),entityField.cell,1);
     end
 
     function assembleSystem(obj,dt)
@@ -149,7 +149,7 @@ classdef Sedimentation < PhysicsSolver
       [bcDofs,bcVals] = getBC(obj,bcId,t);
 
       % Base application of a Boundary condition
-      bcType = obj.bcs.getType(bcId);
+      bcType = obj.domain.bcs.getType(bcId);
 
       switch bcType
         case {'Dirichlet','Seepage'}
@@ -179,7 +179,7 @@ classdef Sedimentation < PhysicsSolver
 
       dofsTop = obj.grid.getTopDofs;
       gamma_s = obj.getCellsProp('specificWeight',dofsTop);
-      gamma_w = obj.materials.getFluid().getSpecificWeight();
+      gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
       poroInic = obj.poro0(dofsTop);
       dofList = obj.grid.getMapFromDofs();
       omega = obj.getState().data.sedmrate;
@@ -217,7 +217,7 @@ classdef Sedimentation < PhysicsSolver
       % in the boundary, and it's assume as a datum the most elavated
       % point in the domain. (For future, have a way to pass this
       % information).
-      bc = obj.bcs.db(id);
+      bc = obj.domain.bcs.db(id);
       dofs = obj.grid.getBord(bc.surface);
       p = getState(obj,"pressure");
       switch lower(bc.surface)
@@ -240,7 +240,7 @@ classdef Sedimentation < PhysicsSolver
           v=bc.data.*ones(length(dofs),1);
           vals = sum(vecN.*v,2);
         case 'dirichlet'
-          mu = obj.materials.getFluid().getSpecificWeight();
+          mu = obj.domain.materials.getFluid().getSpecificWeight();
           dirJ = 1/mu*obj.halfTrans(dofs,axis);
           potential = p(dofs) - bc.data;
           q = dirJ.*potential;
@@ -265,7 +265,7 @@ classdef Sedimentation < PhysicsSolver
 
       dofsTop = obj.grid.getTopDofs;
       gamma_s = obj.getCellsProp('specificWeight',dofsTop);
-      gamma_w = obj.materials.getFluid().getSpecificWeight();
+      gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
       poroInic = obj.poro0(dofsTop);
       omega = obj.getState().data.sedmrate;
       K = (1 - poroInic) .* (gamma_s - gamma_w) .* omega;
@@ -284,7 +284,7 @@ classdef Sedimentation < PhysicsSolver
     function computeStiffMat(obj)
       % Compute the Stiffness Matrix
       ncells = obj.grid.ndofs;
-      lw = 1/obj.materials.getFluid().getSpecificWeight();
+      lw = 1/obj.domain.materials.getFluid().getSpecificWeight();
 
       idi = sub2ind(size(obj.halfTrans), obj.facesNeigh(:,1), obj.facesNeighDir);
       idk = sub2ind(size(obj.halfTrans), obj.facesNeigh(:,2), obj.facesNeighDir);
@@ -320,7 +320,7 @@ classdef Sedimentation < PhysicsSolver
       else
         poro = obj.poro0;
       end
-      beta = obj.materials.getFluid().getFluidCompressibility();
+      beta = obj.domain.materials.getFluid().getFluidCompressibility();
       oedoComp = obj.computeOedometricCompressibility(dofs);
       PVal = (oedoComp+beta*poro).*volCell;
 
@@ -334,7 +334,7 @@ classdef Sedimentation < PhysicsSolver
       end
 
       % Base application of a Boundary condition
-      if ~strcmp(obj.bcs.getVariable(bcId),obj.getField)
+      if ~strcmp(obj.domain.bcs.getVariable(bcId),obj.getField)
         return
       end
 
@@ -391,15 +391,15 @@ classdef Sedimentation < PhysicsSolver
       flag = false;
 
       % Check the material is well defined.
-      obj.nmat = length(obj.materials.db)-1;
-      if isfield(obj.materials.db(1),'ConstLaw')
+      obj.nmat = length(obj.domain.materials.db)-1;
+      if isfield(obj.domain.materials.db(1),'ConstLaw')
         tmp1=true;
       else
         tmp1=false;
       end      
       for i=1:obj.nmat
         tmp2=false;
-        if isfield(obj.materials.db(i),'ConstLaw')
+        if isfield(obj.domain.materials.db(i),'ConstLaw')
           tmp2=true;          
         end
         if tmp2 ~= tmp1
@@ -433,7 +433,7 @@ classdef Sedimentation < PhysicsSolver
 
     function prepareMaterialFractions(obj,data)
       % Build the material fractions for each cell
-      obj.matfrac = zeros(obj.grid.ndofs,length(obj.materials.db)-1);
+      obj.matfrac = zeros(obj.grid.ndofs,length(obj.domain.materials.db)-1);
       if isfield(data,"materialFractions")
         frac = load(data.materialFractions);
         obj.matfrac = frac;
@@ -486,7 +486,7 @@ classdef Sedimentation < PhysicsSolver
             bc.data=0;
           end
         end
-        obj.bcs.db(data.BC(i).name) = bc;
+        obj.domain.bcs.db(data.BC(i).name) = bc;
       end
     end
 
@@ -539,7 +539,7 @@ classdef Sedimentation < PhysicsSolver
       [~,~,zCellCM] = obj.grid.getCoordCenter();
       zCell = obj.grid.getColumnMaxHeight();
       gamma_s = obj.getCellsProp('specificWeight');
-      gamma_w = obj.materials.getFluid().getSpecificWeight();
+      gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
       obj.getState().data.stress = -(1-poro).*(gamma_s-gamma_w).*(zCell-zCellCM)-initStres;
     end
 
@@ -650,7 +650,7 @@ classdef Sedimentation < PhysicsSolver
       [~,~,zCellCM] = obj.grid.getCoordCenter(dofs);
       zCell = obj.grid.getColumnMaxHeight(dofs);
       gamma_s = obj.getCellsProp('specificWeight',dofs);
-      gamma_w = obj.materials.getFluid().getSpecificWeight();
+      gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
       obj.getState().data.stress(dofs) = -(1-poro).*(gamma_s-gamma_w).*(zCell-zCellCM)-initStres;
 
       if obj.nonElasticFlag
@@ -786,55 +786,55 @@ classdef Sedimentation < PhysicsSolver
         case 'conductivity'
           out = zeros(length(dofs),3);
           for mat=1:obj.nmat
-            tmpMat = obj.materials.getMaterial(mat).SedMaterial.getConductivity();
+            tmpMat = obj.domain.materials.getMaterial(mat).SedMaterial.getConductivity();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
         case 'specificweight'
           out = zeros(length(dofs),1);
           for mat=1:obj.nmat
-            tmpMat = obj.materials.getMaterial(mat).SedMaterial.getSpecificWeight();
+            tmpMat = obj.domain.materials.getMaterial(mat).SedMaterial.getSpecificWeight();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
         case 'voidrate'
           out = zeros(length(dofs),1);
           for mat=1:obj.nmat
-            tmpMat = obj.materials.getMaterial(mat).SedMaterial.getVoidRate();
+            tmpMat = obj.domain.materials.getMaterial(mat).SedMaterial.getVoidRate();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
         case 'compressidx'
           out = zeros(length(dofs),1);
           for mat=1:obj.nmat
-            tmpMat = obj.materials.getMaterial(mat).SedMaterial.getCompressibilityIdx();
+            tmpMat = obj.domain.materials.getMaterial(mat).SedMaterial.getCompressibilityIdx();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
         case 'recompressidx'
           out = zeros(length(dofs),1);
           for mat=1:obj.nmat
-            tmpMat = obj.materials.getMaterial(mat).SedMaterial.getReCompressibilityIdx();
+            tmpMat = obj.domain.materials.getMaterial(mat).SedMaterial.getReCompressibilityIdx();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
         case 'preconstress'
           out = zeros(length(dofs),1);
           for mat=1:obj.nmat
-            tmpMat = obj.materials.getMaterial(mat).SedMaterial.getPreConsolidadeStress();
+            tmpMat = obj.domain.materials.getMaterial(mat).SedMaterial.getPreConsolidadeStress();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
         case 'initialstress'
           out = zeros(length(dofs),1);
           for mat=1:obj.nmat
-            tmpMat = obj.materials.getMaterial(mat).SedMaterial.getInitialStress();
+            tmpMat = obj.domain.materials.getMaterial(mat).SedMaterial.getInitialStress();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
         case 'youngmodulus'
           out = zeros(length(dofs),1);
           for mat=1:obj.nmat
-            tmpMat = obj.materials.getMaterial(mat).ConstLaw.E;
+            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.E;
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
         case 'poissonratio'
           out = zeros(length(dofs),1);
           for mat=1:obj.nmat
-            tmpMat = obj.materials.getMaterial(mat).ConstLaw.nu;
+            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.nu;
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
         otherwise
@@ -853,7 +853,7 @@ classdef Sedimentation < PhysicsSolver
 
       comp = sNew.data.cellDefm*fac+sOld.data.cellDefm*(1-fac);
       comp = obj.grid.accByColumnFromBot2Top(comp);
-      gamma = obj.materials.getFluid().getSpecificWeight();
+      gamma = obj.domain.materials.getFluid().getSpecificWeight();
       [~,~,zCoordCM] = obj.grid.getCoordCenter();
       if obj.nonElasticFlag
         voidR = sNew.data.voidrate*fac+sOld.data.voidrate*(1-fac);
@@ -861,7 +861,7 @@ classdef Sedimentation < PhysicsSolver
       else
         voidR = obj.poro0;
       end
-      % mob = (1/obj.materials.getFluid().getDynViscosity());
+      % mob = (1/obj.domain.materials.getFluid().getDynViscosity());
       % states.flux = computeFlux(obj,p,mob,t);
 
       data.pres = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
