@@ -43,21 +43,20 @@ classdef NonLinearImplicit < SolutionScheme
 
         gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
 
-        for i = 1:obj.nDom
-          gresLog().log(3,'Assembling domain %i/%i\n',i, obj.nDom)
-          obj.domains(i).assembleSystem(obj.dt);
-        end
-
-
-        for i = 1:3
-
-          gresLog().log(3,'Assembling interface %i/%i\n',i, obj.nInterf)
-          obj.interfaces{i}.assembleConstraint();
-        end
-
-        for i = 1:obj.nDom
-          obj.domains(i).applyBC(obj.t);
-        end
+        % for i = 1:obj.nDom
+        %   gresLog().log(3,'Assembling domain %i/%i\n',i, obj.nDom)
+        %   obj.domains(i).assembleSystem(obj.dt);
+        % end
+        % 
+        % 
+        % for i = 1:obj.nInterf
+        %   gresLog().log(3,'Assembling interface %i/%i\n',i, obj.nInterf)
+        %   obj.interfaces{i}.assembleConstraint();
+        % end
+        % 
+        % for i = 1:obj.nDom
+        %   obj.domains(i).applyBC(obj.t);
+        % end
 
         rhs = assembleRhs(obj);
         rhsNorm = norm(cell2mat(rhs),2);
@@ -81,7 +80,7 @@ classdef NonLinearImplicit < SolutionScheme
 
           % solve linear system
           if gresLog().getVerbosity == 5
-          save('syst.mat','J','rhs');
+          save('syst.mat','J','rhs','-v7.3');
           error('stopped before solving the linear system')
           end
 
