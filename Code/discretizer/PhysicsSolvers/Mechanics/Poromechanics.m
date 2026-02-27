@@ -86,16 +86,23 @@ classdef Poromechanics < PhysicsSolver
       dofm = obj.domain.dofm;
 
       subCells = dofm.getFieldCells(obj.fieldId);
-      n = sum((obj.mesh.nDim^2)*(obj.mesh.cellNumVerts(subCells)).^2);
       l = 0;
       Ndof = dofm.getNumbDoF(obj.fieldId);
       obj.fInt = zeros(Ndof,1);
-      assembleK = assembler(n,Ndof,Ndof);
+      %assembleK = assembler(n,Ndof,Ndof);
 
       stateCurr = getState(obj);
-
+      obj.K = sparse(Ndof,Ndof);
+      c = 0;
+      elC = 0;
+      nmax = 1e5;
+      cmax = min([numel(subCells),nmax]);
+      n =  sum((obj.mesh.nDim^2)*(obj.mesh.cellNumVerts(subCells(1:cmax)).^2));
+      assembleK = assembler(n,Ndof,Ndof);
       % loop over active mechanics cells
       for el = subCells'
+        elC = elC + 1;
+      	c = c + 1;
         %[sigma,status] = assembleK.localAssembly(el,l);
         [dofr,dofc,KLoc,sigma,status] = computeLocalStiff(obj,el,dt,l);
         assembleK.localAssembly(dofr,dofc,KLoc);
@@ -104,9 +111,19 @@ classdef Poromechanics < PhysicsSolver
         stateCurr.data.stress((l+1):(l+ng),:) = sigma;
         obj.cell2stress(el) = l;
         l = l + ng;
+      	if c == cmax
+          gresLog().log(3,"Sub-assembly: %i/%i \n",el,numel(subCells));
+      		% accumulate temporary K
+        	obj.K = obj.K + assembleK.sparseAssembly;
+          cmax = min([numel(subCells)-elC,nmax]); % [remaining elems, max]
+        	n =  sum((obj.mesh.nDim^2)*(obj.mesh.cellNumVerts(subCells(elC+1:elC+cmax)).^2));
+        	% assembler and i,j,k triplets are reset
+        	assembleK = assembler(n,Ndof,Ndof);
+          c = 0;
+      	end
       end
       % populate stiffness matrix
-      obj.K = assembleK.sparseAssembly();
+      %obj.K = assembleK.sparseAssembly();
     end
 
     function [dofr,dofc,KLoc,sigma,status] = computeLocalStiff(obj,elID,dt,l)
