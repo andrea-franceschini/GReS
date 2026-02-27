@@ -34,10 +34,14 @@ if isstring(raw) && isscalar(raw)
   str = strtrim(raw);
 
   % Try numeric
-  num = str2num(str);
-  if ~isempty(num)
-    val = num;
-    return;
+  if ~strcmp(str,'surface')
+    % temporary control to the default behavior of built-in surface object,
+    % which creates a plot when called
+    num = str2num(str);
+    if ~isempty(num) && isnumeric(num)
+      val = num;
+      return;
+    end
   end
 
   % Try string array (split on spaces, commas, semicolons)
@@ -67,3 +71,4 @@ end
 error('getXMLValue:invalidType', ...
   'Could not interpret XML value of type %s', class(raw));
 end
+

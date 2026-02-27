@@ -8,13 +8,14 @@ classdef Boundaries < handle
 
   properties (Access = private)
     grid
-    bcList 
+    bcList
     % to ensure neumann is applied before dirichlet in case of overlapping
     % entity definition
   end
 
   methods (Access = public)
-    % Class constructor method
+
+
     function obj = Boundaries(varargin)
       % MATLAB evaluates the assignment expression for each instance, which
       % ensures that each instance has a unique value
@@ -31,11 +32,10 @@ classdef Boundaries < handle
 
       obj.grid = varargin{1};
 
-      if strcmp(grid.topology.meshType,"Unstructured")
+      if strcmp(obj.grid.topology.meshType,"Unstructured")
         % Calling the function to read input data from file
         obj.addBCs(varargin{2:end});
-        obj.computeBoundaryProperties(grid);
-        % linkBoundSurf2TPFAFace(obj,grid);
+        obj.computeBoundaryProperties(obj.grid);
       end
     end
 
@@ -69,7 +69,8 @@ classdef Boundaries < handle
         error("'%s' boundary condition name already defined", name);
       end
 
-      targetEnt = params.targetEntity;
+      targetEnt = lower(params.targetEntity);
+      variable = params.variable;
       type = params.type;
 
 
@@ -78,7 +79,7 @@ classdef Boundaries < handle
           'Accepted types are: node   -> Boundary cond. on nodes\n',...
           '                    surface   -> Boundary cond. on surfaces\n',...
           '                    cell   -> Boundary cond. on elements\n',...
-          '                    volumeforce -> Volume force on elements'], entityType);
+          '                    volumeforce -> Volume force on elements'], targetEnt);
       end
 
 
@@ -91,15 +92,15 @@ classdef Boundaries < handle
 
 
       switch targetEnt
-        case 'VolumeForce'
+        case 'volumeforce'
           bc = struct('data', [], ...
-            'cond',entityType, 'variable', variable);
-        case {'SurfBC','NodeBC','ElementBC'}
+            'cond',targetEnt, 'variable', variable);
+        case {'surface','node','cell'}
           bc = struct('data', [], ...
-            'cond',entityType,'type', type, 'variable', variable);
+            'cond',targetEnt,'type', type, 'variable', variable);
         otherwise
           error('Unrecognized BC item %s for Boundary condition %s', ...
-            entityType, name)
+            targetEnt, name)
       end
 
       if ismissing(params.components)
@@ -108,7 +109,7 @@ classdef Boundaries < handle
         comp = params.components;
       end
 
-      bcEnt = BoundaryEntities(name,targetEntity);
+      bcEnt = BoundaryEntities(name,targetEnt);
       bcEnt.setEntities(params.entityListType,...
         params.entityList,...
         comp,obj.grid.topology);
@@ -120,23 +121,25 @@ classdef Boundaries < handle
 
       % add the bc event
       if isfield(params,"BCevent")
-        for i = 1:numel(params.bcEvent)
-          addBCEvent(obj,name,params.bcEvent(i))
+        for i = 1:numel(params.BCevent)
+          addBCEvent(obj,name,params.BCevent(i))
         end
       end
+
+      setBCList(obj);
 
     end
 
 
     function addBCEvent(obj,bcId,varargin)
 
-      obj.getData(bcId).data.addBCevent(varargin{:});
+      obj.getData(bcId).data.addBCEvent(varargin{:});
 
     end
 
 
-    % Check if the identifier defined by the user is a key of the Map object
     function bc = getData(obj,identifier)
+      % Check if the identifier defined by the user is a key of the Map object
       if (obj.db.isKey(identifier))
         bc = obj.db(identifier);
       else
@@ -359,10 +362,31 @@ classdef Boundaries < handle
 
 
     function bcList = getBCList(obj)
+      % Get list of boundary condition names ensuring that Dirichlet are
+      % applied at last
+
+      if isempty(obj.bcList)
+        setBCList(obj);
+      end
 
       bcList = obj.bcList;
-
     end
+  end
+
+  methods (Access = private)
+
+    function setBCList(obj)
+      % set correct order of boundary conditions. Dirichlet last
+      bcTypeList = [];
+      for bcId = string(obj.db.keys)
+        bcTypeList = [bcTypeList, obj.getType(bcId)];
+      end
+      idxDir  = strcmp(bcTypeList, 'Dirichlet');
+      bcOrd = [find(~idxDir), find(idxDir)];
+      bcNames = obj.db.keys;
+      obj.bcList = string(bcNames(bcOrd));
+    end
+
   end
 
 end

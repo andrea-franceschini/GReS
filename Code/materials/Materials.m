@@ -12,7 +12,7 @@ classdef Materials < handle
     function obj = Materials(input)
 
       obj.solid = cell([]);
-      obj.fluid = cell([]);
+      obj.fluid = [];
       obj.matMap = [];
 
       if nargin == 0
@@ -55,7 +55,7 @@ classdef Materials < handle
 
       % update the material map
       if length(obj.matMap) > max(input.cellTags)
-        assert(~any(obj.matMap(cellTags)),...
+        assert(~any(obj.matMap(input.cellTags)),...
           "Cannot assign material %s. Material have been already assigned to cell tag",input.name)
       end
 
@@ -77,7 +77,7 @@ classdef Materials < handle
 
     function addFluid(obj,varargin)
 
-      obj.fluid{1} = Fluid(varargin{:});
+      obj.fluid= Fluid(varargin{:});
 
     end
 
@@ -92,8 +92,7 @@ classdef Materials < handle
 
     function materialNames = getMaterialNames(obj)
 
-      db = [obj.solid{:}];
-      materialNames = [db.name];
+      materialNames = string(cellfun(@(s) s.name, obj.solid, 'UniformOutput', false));
 
     end
 

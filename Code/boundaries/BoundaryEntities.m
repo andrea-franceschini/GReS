@@ -16,7 +16,7 @@ classdef BoundaryEntities < handle
     % Set of input times
     times
     % struct with data to set the boundary condition in times
-    bcData = struct('time',[],'value',[])
+    bcData = struct([])
     % Values of currently-stored boundary conditions
     availVals
     % Time id of currently-stored boundary conditions
@@ -113,11 +113,13 @@ classdef BoundaryEntities < handle
       end
 
       obj.times(end+1) = time;
-      obj.bcData(end+1) = struct('time', time, 'value', params.value);
+      obj.bcData = [obj.bcData; struct('time', tVal, 'value', params.value)];
 
       % reorder time in ascending order
       [obj.times,s] = sort(obj.times,"ascend");
       obj.bcData = obj.bcData(s);
+
+      obj.nTimes = sum(obj.times >= 0.0);
 
       % check for repeated bc times
       if length(unique(obj.times))~=length(obj.times)
@@ -139,7 +141,7 @@ classdef BoundaryEntities < handle
           'already defined. GReS will overwrite them.'])
       end
 
-      [obj.nEntities, obj.entities, obj.entityPos] = readEntitySet(type,list,comp,mesh);
+      [obj.nEntities, obj.entities, obj.entityPos] = readEntitySet(obj,type,list,comp,mesh);
 
       obj.totEnts = sum(obj.nEntities);
 
@@ -158,17 +160,18 @@ classdef BoundaryEntities < handle
 
   methods (Access=private)
 
-    function [nEnts, ents, entsPosition] = readEntitySet(type, ents, components, mesh)
+    function [nEnts, ents, entsPosition] = readEntitySet(obj,type, ents, components, mesh)
       % read entity set and return the number of entities for each
       % component, the list of entities and their reference location
 
-      switch type
+      switch lower(type)
         % input file for list of entities
         case "bclistfile"
-          [nEnts, ents] = readListFile(ents);
-          entsPosition = getLocation(ents,mesh,obj.obj.targetEntity);
+          [nEnts, ents] = obj.readListFile(ents);
+          entsPosition = getLocation(obj,ents,mesh);
           return
         case {'surfacetags','surfacetag'}
+          surfTags = ents;
           switch obj.targetEntity
             case "node"
               entsID = unique(mesh.surfaces(ismember(mesh.surfaceTag,surfTags),:));
@@ -178,9 +181,9 @@ classdef BoundaryEntities < handle
               error("Error for BC %s: XML field surfaceTags is not valid for BC of type %s", obj.name, obj.targetEntity)
           end
         case "bclist"
-          entsID = getXMLData(input,[],"bcList");
+          entsID = ents;
         case "box"
-          boxSize = getXMLData(input,[],"box");
+          boxSize = ents;
           Lx = boxSize(1:2);
           Ly = boxSize(3:4);
           Lz = boxSize(5:6);
@@ -231,52 +234,15 @@ classdef BoundaryEntities < handle
       ents = repmat(entsID,sum(compID),1);
       ents = reshape(ents,[],1);
 
-      entsPosition = getLocation(ents,mesh,obj.targetEntity);
+      entsPosition = getLocation(obj,ents,mesh);
 
     end
 
 
-    function [nEnts, ents] = readListFile(fileName)
 
-      if (~exist(fileName, 'file'))
-        error('File %s does not seem to exist. Please, check the provided file.', fileName);
-      end
-      header = false;
-      fid = fopen(fileName, 'r');
-      while (~feof(fid) && ~header)
-        line = fgetl(fid);
-        word = sscanf(line, '%s');
-        if (~strcmp(word(1), '%'))
-          % If this is not a commented line (not starting with %)
-          nEnts = sscanf(line, '%i');
-          header = true;
-        end
-      end
-      if (~header)
-        error('Missing header in readSet.');
-      end
-      nValMax = sum(nEnts);
-      ents = zeros(nValMax,1);
-      id = 1;
-      while ~feof(fid)
-        line = fgetl(fid);
-        word = sscanf(line, '%s');
-        if (~strcmp(word(1), '%'))
-          % If this is not a commented line (not starting with %)
-          num = sscanf(line, '%i');
-          nNum = length(num);
-          ents(id:id+nNum-1) = num;
-          id = id + nNum;
-        end
-      end
-      fclose(fid);
+    function pos = getLocation(obj,ents,mesh)
 
-    end
-
-
-    function pos = getLocation(ents,mesh,entType)
-
-      switch lower(entType)
+      switch obj.targetEntity
         case "node"
           pos = mesh.coordinates(ents,:);
         case "surface"
@@ -313,6 +279,48 @@ classdef BoundaryEntities < handle
           i1 = pos;
         end
       end
+    end
+
+  end
+
+
+  methods (Static)
+
+        function [nEnts, ents] = readListFile(fileName)
+
+      if (~exist(fileName, 'file'))
+        error('File %s does not seem to exist. Please, check the provided file.', fileName);
+      end
+      header = false;
+      fid = fopen(fileName, 'r');
+      while (~feof(fid) && ~header)
+        line = fgetl(fid);
+        word = sscanf(line, '%s');
+        if (~strcmp(word(1), '%'))
+          % If this is not a commented line (not starting with %)
+          nEnts = sscanf(line, '%i');
+          header = true;
+        end
+      end
+      if (~header)
+        error('Missing header in readSet.');
+      end
+      nValMax = sum(nEnts);
+      ents = zeros(nValMax,1);
+      id = 1;
+      while ~feof(fid)
+        line = fgetl(fid);
+        word = sscanf(line, '%s');
+        if (~strcmp(word(1), '%'))
+          % If this is not a commented line (not starting with %)
+          num = sscanf(line, '%i');
+          nNum = length(num);
+          ents(id:id+nNum-1) = num;
+          id = id + nNum;
+        end
+      end
+      fclose(fid);
+
     end
 
   end

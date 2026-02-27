@@ -31,14 +31,9 @@ classdef DruckerPrager < handle
 
   methods (Access = public)
      % Class constructor method
-     function obj = DruckerPrager(inputStruct,varargin)
+     function obj = DruckerPrager(varargin)
         % Calling the function to set the object properties
-        if nargin > 1
-           obj.isTabular = true;
-           obj.readTabMaterialParameters(inputStruct,varargin{1});
-        else
-           obj.readMaterialParameters(inputStruct);
-        end
+           obj.readMaterialParameters(varargin{:});
      end
 
     function [status] = initializeStatus(obj, sigma)
@@ -124,26 +119,31 @@ classdef DruckerPrager < handle
   methods (Access = private)
     % Assigning material parameters (check also the Materials class)
     % to object properties
-    function readMaterialParameters(obj, inputStruct)
+    function readMaterialParameters(obj, varargin)
 
-      if isfield(inputStruct,class(obj))
-        inputStruct = inputStruct.(class(obj));
-      end
+      default = struct('youngModulus',[],...
+                       'poissonRatio',[],...
+                       'dilatancy',[],...
+                       'cohesion',[],...
+                       'hardeningParameter',[],...
+                       'hardeningVariable',0.0);
 
-      obj.E = getXMLData(inputStruct,[],"youngModulus");
-      obj.nu = getXMLData(inputStruct,[],"poissonRatio");
+      params = readInput(default,varargin{:});
+
+      obj.E = params.youngModulus;
+      obj.nu = params.poissonRatio;
+      obj.psi = params.dilatancy;
+      obj.phi = params.frictionAngle;
+      obj.co = params.cohesion;
+      obj.h = params.hardeningParameter;
+      obj.varepsilon = params.hardeningVariable;
 
       % Compute the M factor
       obj.M = obj.nu/(1-obj.nu);
       % Compute vertical compressibility
       obj.cM = (1+obj.nu)*(1-2*obj.nu)/(obj.E*(1-obj.nu));
 
-      obj.psi = getXMLData(inputStruct,[],"dilatancy");
-      obj.phi = getXMLData(inputStruct,[],"frictionAngle");
-      obj.co = getXMLData(inputStruct,[],"cohesion");
-      obj.h = getXMLData(inputStruct,[],"hardeningParameter");
-      obj.varepsilon = getXMLData(inputStruct,0,"hardeningVariable");
-    
+  
       obj.alpha = (3*tan(deg2rad(obj.phi)))/(sqrt(9+12*tan(deg2rad(obj.phi))^2)); 
       obj.beta = (3*tan(deg2rad(obj.psi)))/(sqrt(9+12*tan(deg2rad(obj.psi))^2));
       obj.epsilon = 3/(sqrt(9+12*tan(deg2rad(obj.phi))^2));
