@@ -43,7 +43,7 @@ classdef Boundaries < handle
 
       % add a list of multiple boundary conditions from file
       assert(isscalar(varargin),"addBCs method is valid only with scalar" + ...
-        " xml file name or ")
+        " xml file name or struct")
       input = readInput(varargin{:});
 
       for i = 1:numel(input.BC)
