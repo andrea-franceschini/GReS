@@ -80,33 +80,55 @@ classdef testBoundaries < matlab.unittest.TestCase
 
       testCase.bc = Boundaries(grid);
 
-      testCase.bc.addBC("name","bound_name_1",...
+      testCase.bc.addBC("name","kbc1",...
         "type","Dirichlet",...
         "targetEntity","surface",...
         "variable","pressure",...
         "entityListType","bcList",...
-        "entityList","1,1,3,168");
+        "entityList",[1,13,168]);
 
-      testCase.bc.addBCEvent("bound_name_1",'time',"2*t",'value',"10-z");
+      testCase.bc.addBCEvent("kbc1",'time',"2*t",'value',"10-z");
 
-      testCase.bc.addBC("name","bound_name_2",...
+      testCase.bc.addBC("name","kbc2",...
         "type","Dirichlet",...
         "targetEntity","node",...
         "components",1,...
         "variable","displacements",...
         "entityListType","surfaceTags",...
-        "entityList","4");
+        "entityList",4);
 
-      testCase.bc.addBCEvent("bound_name_2",'time',"0",'value',"bcvals_list.dat");
+      testCase.bc.addBCEvent("kbc2",'time',0,'value',"bcvals_list.dat");
 
 
-      v1 = testCase.bc.getVals("bound_name_1",3);
+      v1 = testCase.bc.getVals("kbc1",3);
       verifyEqual(testCase,v1,[60;34.50;0.0],"AbsTol",1e-8);
-      e1 = testCase.bc.getEntities("bc1");
+      e1 = testCase.bc.getEntities("kbc1");
       verifyEqual(testCase,e1,[1;13;168],"AbsTol",1e-9)
 
-      v4 = testCase.bc.getVals("bc4",2);
-      verifyEqual(testCase,length(v4),126,"AbsTol",1e-9)
+      v2 = testCase.bc.getVals("kbc2",2);
+      verifyEqual(testCase,length(v2),126,"AbsTol",1e-9)
+
+      testCase.bc.addBC('name',"kbc3",...
+        'type',"Neumann",...
+        'targetEntity',"surface",...
+        'entityListType',"surfaceTags",...
+        'entityList',2,...
+        'variable',"displacements",...
+        'components',[1 3])
+
+
+      testCase.bc.addBCEvent("kbc3",'time',1,'value',-10);
+      testCase.bc.addBCEvent("kbc3",'time',3,'value',-5);
+      testCase.bc.addBCEvent("kbc3",'time',6,'value',"z");
+
+      v21 = testCase.bc.getVals("kbc3",0.2);
+      v22 = testCase.bc.getVals("kbc3",2);
+      v23 = testCase.bc.getVals("kbc3",10);
+
+      verifyEqual(testCase,mean(v21),-10.0,"AbsTol",1e-9)
+      verifyEqual(testCase,mean(v22),-7.5,"AbsTol",1e-9)
+      verifyEqual(testCase,mean(v23),10.0,"AbsTol",1e-9)
+
 
     end
 

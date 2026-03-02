@@ -244,7 +244,7 @@ classdef Boundaries < handle
         cond = obj.getCond(key);
         phys = obj.getVariable(key);
 
-        if any(strcmp(cond, ["VolumeForce","SurfBC"]))
+        if any(strcmpi(cond, ["volumeforce","surface"]))
 
           ents = obj.getEntities(key);
           nEnts = obj.getData(key).data.nEntities;
@@ -272,7 +272,7 @@ classdef Boundaries < handle
             k = 0;
             for j = 1:nEnts(i)
               el = ents_i(j);
-              if strcmp(cond,'VolumeForce')
+              if strcmpi(cond,'volumeforce')
                 nodInf = findNodeVolume(elem,el);
                 nodes = msh.cells(el,:);
               else
@@ -291,7 +291,7 @@ classdef Boundaries < handle
             loadedEnts = [loadedEnts; loadedEnts_i];
           end
 
-          if strcmp(obj.getType(key), 'Dirichlet')
+          if strcmpi(obj.getType(key), 'dirichlet')
             entsInfl = entsInfl./sum(entsInfl,2);
           end
 

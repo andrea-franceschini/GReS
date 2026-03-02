@@ -43,7 +43,7 @@ a function handle depending on space (x,y,z)
       targetEntity = "surface"
       variable = "pressure"
       entityListType = "bcList"
-      entityList = "1,3,168"
+      entityList = "1,13,168"
       >
 
     <BCevent
