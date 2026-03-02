@@ -16,8 +16,8 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       obj@SinglePhaseFlowFVTPFA(domain);
     end
 
-    function registerSolver(obj,solverInput)
-      registerSolver@SinglePhaseFlowFVTPFA(obj,solverInput);
+    function registerSolver(obj,varargin)
+      registerSolver@SinglePhaseFlowFVTPFA(obj,varargin{:});
       % additional logic for richards goes here...
     end
 

@@ -11,18 +11,20 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       obj@SinglePhaseFlow(domain);
     end
 
-    function registerSolver(obj,solverInput)
+    function registerSolver(obj,varargin)
+
       nTags = obj.mesh.nCellTag;
 
-      if ~isempty(solverInput)
-        targetRegions = getXMLData(solverInput,1:nTags,"targetRegions");
-      else
-        targetRegions = 1:nTags;
-      end
+      default = struct('targetRegions',1:nTags);
+
+      params = readInput(default,varargin{:});
+
       dofm = obj.domain.dofm;
-      dofm.registerVariable(obj.getField(),entityField.cell,1,targetRegions);
-      n = getNumberOfEntities(entityField.cell,obj.mesh);
+
+      dofm.registerVariable(obj.getField(),entityField.node,1,params.targetRegions);
+      n = getNumberOfEntities(entityField.node,obj.mesh);
       obj.fieldId = dofm.getVariableId(obj.getField());
+
 
       % initialize the state object with a pressure field
       obj.getState().data.(obj.getField()) = zeros(n,1);

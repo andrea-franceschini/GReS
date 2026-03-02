@@ -57,7 +57,7 @@ classdef (Abstract) PhysicsSolver < handle
     % mandatory methods that need to be implemented in any physicsSolver
 
     % read the input data of the solver and assign variables to cell tags
-    registerSolver(obj,input);
+    registerSolver(obj,varargin);
 
     % compute the jacobian and the rhs
     assembleSystem(obj,varargin);

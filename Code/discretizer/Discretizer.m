@@ -205,7 +205,7 @@ classdef Discretizer < handle
     end
 
 
-    function addPhysicsSolver(obj,solverInput)
+    function addPhysicsSolvers(obj,input)
 
       assert(isempty(getJacobian(obj)),"Cannot add a physics solver " + ...
         "after system has already been assembled");
@@ -213,28 +213,32 @@ classdef Discretizer < handle
       % Add a new solver to the Discretizer
       assert(nargin == 2,"Input must be an xml file or a scalar struct")
 
-      if ~isstruct(solverInput)
-        solverInput = readstruct(solverInput,AttributeSuffix="");
-      end
+      solverInput = input.Solver;
 
-      if isfield(solverInput,"Solver")
-        solverInput = solverInput.Solver;
-      end
 
       obj.solverNames = string(fieldnames(solverInput));
       obj.solverNames = reshape(obj.solverNames,1,[]);
 
       for solverName = obj.solverNames
         % create and register the solver
-        solver = feval(solverName,obj);
-        solver.registerSolver(solverInput.(solverName));
-        obj.physicsSolvers(solverName) = solver;
+        addPhysicsSolver(obj,solverName,solverInput.(solverName));
       end
 
       nV = obj.dofm.getNumberOfVariables();
       obj.J = cell(nV);
       obj.rhs = cell(nV,1);
 
+    end
+
+    function addPhysicsSolver(obj,solverName,varargin)
+      solver = feval(solverName,obj);
+      solver.registerSolver(varargin{:});
+      obj.physicsSolvers(solverName) = solver;
+
+      % update block jacobian and rhs 
+      nV = obj.dofm.getNumberOfVariables();
+      obj.J = cell(nV);
+      obj.rhs = cell(nV,1);
     end
 
 

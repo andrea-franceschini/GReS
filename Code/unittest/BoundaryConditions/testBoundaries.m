@@ -121,13 +121,31 @@ classdef testBoundaries < matlab.unittest.TestCase
       testCase.bc.addBCEvent("kbc3",'time',3,'value',-5);
       testCase.bc.addBCEvent("kbc3",'time',6,'value',"z");
 
-      v21 = testCase.bc.getVals("kbc3",0.2);
-      v22 = testCase.bc.getVals("kbc3",2);
-      v23 = testCase.bc.getVals("kbc3",10);
+      v31 = testCase.bc.getVals("kbc3",0.2);
+      v32 = testCase.bc.getVals("kbc3",2);
+      v33 = testCase.bc.getVals("kbc3",10);
 
-      verifyEqual(testCase,mean(v21),-10.0,"AbsTol",1e-9)
-      verifyEqual(testCase,mean(v22),-7.5,"AbsTol",1e-9)
-      verifyEqual(testCase,mean(v23),10.0,"AbsTol",1e-9)
+      verifyEqual(testCase,mean(v31),-10.0,"AbsTol",1e-9)
+      verifyEqual(testCase,mean(v32),-7.5,"AbsTol",1e-9)
+      verifyEqual(testCase,mean(v33),10.0,"AbsTol",1e-9)
+
+      testCase.bc.addBC("name","kbc4",...
+        "type","Dirichlet",...
+        "targetEntity","surface",...
+        "components",["x","y","z"],...
+        "variable","displacements",...
+        "entityListType","surfaceTags",...
+        "entityList",1);
+      testCase.bc.addBCEvent("kbc4",'time',0,'value',0);
+      testCase.bc.addBCEvent("kbc4",'time',5,'value',4);
+      testCase.bc.addBCEvent("kbc4",'time',3,'value',4);
+
+      v4 = testCase.bc.getVals("kbc4",0.0);
+      e4 = testCase.bc.getEntities("kbc4");
+      verifyEqual(testCase,max(v4),0,"AbsTol",1e-9)
+      verifyEqual(testCase,length(v4),12,"AbsTol",1e-9)
+      verifyEqual(testCase,e4,repmat((1:4)',3,1),"AbsTol",1e-9)
+
 
 
     end

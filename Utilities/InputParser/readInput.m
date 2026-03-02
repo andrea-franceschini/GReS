@@ -22,6 +22,11 @@ else
   usrIn = varargin(:);
 end
 
+if isempty(usrIn{:})
+  inputStrcut = default;
+  return
+end
+
 if numel(usrIn) > 1
   usr = readKeyValueInput(usrIn);
 else

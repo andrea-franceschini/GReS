@@ -37,12 +37,15 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     end
 
-    function registerSolver(obj,solverInput)
+    function registerSolver(obj,varargin)
 
-      obj.penalty_n = getXMLData(solverInput,[],"penaltyNormal");
-      obj.penalty_t = getXMLData(solverInput,[],"penaltyTangential");
+      default = struct('penaltyNormal',[],...
+                       'penaltyTangential',[],...
+                       'Fracture',[]);
 
-      defineFractures(obj,solverInput);
+      params = readInput(default,varargin{:});
+
+      defineFractures(obj,params.Fracture);
 
       dofm = obj.domain.dofm;
 
@@ -420,11 +423,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
   methods (Access=private)
 
-    function defineFractures(obj,input)
+    function defineFractures(obj,fractureStruct)
 
       % define the fracture geometrical informations
-
-      fractureStruct = input.Fracture;
 
       nFractures = numel(fractureStruct);
 

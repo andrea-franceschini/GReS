@@ -6,18 +6,17 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       obj@SinglePhaseFlow(domain);
     end
 
-    function registerSolver(obj,solverInput)
-      nTags = obj.mesh.nCellTag;
-      
-      if ~isempty(solverInput)
-        targetRegions = getXMLData(solverInput,1:nTags,"targetRegions");
-      else
-        targetRegions = 1:nTags;
-      end
+    function registerSolver(obj,varargin)
 
+      nTags = obj.mesh.nCellTag;
+
+      default = struct('targetRegions',1:nTags);
+
+      params = readInput(default,varargin{:});
+  
       dofm = obj.domain.dofm;
 
-      dofm.registerVariable(obj.getField(),entityField.node,1,targetRegions);
+      dofm.registerVariable(obj.getField(),entityField.node,1,params.targetRegions);
       n = getNumberOfEntities(entityField.node,obj.mesh);
       obj.fieldId = dofm.getVariableId(obj.getField());
 

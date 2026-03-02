@@ -820,21 +820,35 @@ c
       % count how many times an element has changed state during iteration
       contactSolver.activeSet.stateChange = zeros(N,1);
 
+      default = struct('resetActiveSet',1,...
+                       'forceStickBoundary',0);
+
+
       % extract xml field
       if isfield(input,"ActiveSet")
         input = input.ActiveSet;
+      else
+        input = [];
       end
 
-      % optional flags
-      contactSolver.activeSet.resetActiveSet = ...
-        logical(getXMLData(input,1,"resetActiveSet"));
-      contactSolver.activeSet.forceStickBoundary = ...
-        getXMLData(input,0,"forceStickBoundary");
+      params = readInput(default,input);
+
+      contactSolver.activeSet = params;
 
       % tolerances
-      if isfield(input,"Tolerances")
-        input = input.Tolerances;
+      if isfield(params,"Tolerances")
+        tols = params.Tolerances;
+      else
+        tols = [];
       end
+
+      default = struct('sliding',1e-4,...
+                       'normalGap',1e-6,...
+                       'normalTraction',1e-3,...
+                       'tangentialViolation',1e-4,...
+                       'areaaChange')
+
+
       contactSolver.activeSet.tol.sliding = getXMLData(input,1e-4,"sliding");
       contactSolver.activeSet.tol.normalGap = getXMLData(input,1e-6,"normalGap");
       contactSolver.activeSet.tol.normalTrac = getXMLData(input,1e-3,"normalTraction");
@@ -842,6 +856,8 @@ c
       contactSolver.activeSet.tol.minLimitTraction = getXMLData(input,1e-4,"minLimitTraction");
       contactSolver.activeSet.tol.areaTol = getXMLData(input,1e-2,"areaChange");
       contactSolver.activeSet.tol.maxStateChange = getXMLData(input,100,"maxActiveSetChange");
+
+       contactSolver.activeSet.tol = params;
 
     end
 

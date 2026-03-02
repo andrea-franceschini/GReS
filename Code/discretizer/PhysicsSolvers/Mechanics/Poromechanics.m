@@ -27,20 +27,18 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
-    function registerSolver(obj,solverInput)
+    function registerSolver(obj,varargin)
 
       nTags = obj.mesh.nCellTag;
 
-      if ~isempty(solverInput)
-        targetRegions = getXMLData(solverInput,1:nTags,"targetRegions");
-      else
-        targetRegions = 1:nTags;
-      end
+      default = struct('targetRegions',1:nTags);
+
+      params = readInput(default,varargin{:});
 
       dofm = obj.domain.dofm;
 
       % register nodal displacements on target regions
-      dofm.registerVariable(obj.getField(),entityField.node,3,targetRegions);
+      dofm.registerVariable(obj.getField(),entityField.node,3,params.targetRegions);
 
       % store the id of the field in the degree of freedom manager
       obj.fieldId = dofm.getVariableId(obj.getField());
