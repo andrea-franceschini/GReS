@@ -17,7 +17,6 @@
    />
 
 	<!-- SMOOTHER parameters -->
-	<!-- missing ABFIC parameters -->
    <smoother
       nthread="20"
       nupre="1"
@@ -25,29 +24,16 @@
       nstep="15"
       step_size="1"
       epsilon="1e-3"
-	   avg_nnzr="20"
-	   tau_pref_1="5e-3"
-	   power_1="20"
-	   nnzr_max_1="50"
-	   tau_pref_2="1e-2"
-	   power_2="100"
-	   nnzr_max_2="50"
-	   tol_CGfsai="1e-5"
-	   niter_CGfsai="5"
-	   droptol="0.0"
-      DDSW_method="1"
-      DDSW_apply_kind="1"
-	   method="afsai_cpp"
+	   method="afsai_sym"
    />
 
 	<!-- PROLONGATION parameters -->
 	<prolong
-		proltype="MEX_BAMG"
+		proltype="BAMG"
 		prol_emin="EMIN"
 		np="20"
 		itmax_Vol="100"
 		tol_Vol="0.01"
-		toll_res="1e-10"
 		dist_min="1"
 		dist_max="10"
 		maxcond="1e+13"
@@ -72,9 +58,7 @@
 	<coarsen
 		SoC_type="DOM"
 		tau="0.01"
-		SoC_perc="20"
 		nl_agg="0"
-		CR_iters="1"
 	/>
 
 	<!-- TEST SPACE parameters -->
@@ -88,7 +72,6 @@
 
 	<!-- FILTERING parameters -->
 	<filter
-		filt_type="MEX_filt"
 		np="20"
 		filt_wgt="150.0"
 		filt_tol="0.1"

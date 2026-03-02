@@ -75,6 +75,8 @@ classdef preconditioner < handle
          multiPhysFlag = false;
          if(domainin(1).dofm.getNumberOfVariables() > 1)
             multiPhysFlag = true; %#ok<NASGU>
+            warning('Multiphysics not yet supported');
+            disp(domainin(1).dofm.getVariableNames())
             return
          end
 
@@ -92,9 +94,9 @@ classdef preconditioner < handle
 
          if ~multiPhysFlag
             % Supported Single Physics
-            if(contains(physname,'pressure'))
+            if(contains(physname,'pressure') || contains(physname,'u'))
                phys = 0;
-            elseif(physname == 'displacements') %#ok<BDSCA>
+            elseif(contains(physname,'displacements')) %#ok<BDSCA>
                phys = 1;
                % Check if there is contact 
                if any(cellfun(@(o) isa(o,'SolidMechanicsContact'),interfacein))
@@ -103,6 +105,7 @@ classdef preconditioner < handle
             else
                if debugflag
                   warning('Non supported Physics for preconditioner, falling back to matlab solver');
+                  disp(physname);
                end
                return
             end

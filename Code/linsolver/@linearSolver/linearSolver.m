@@ -44,7 +44,7 @@ classdef linearSolver < handle
       function obj = linearSolver(generalsolver,usrInput,physname)
 
          % Check if chronos is available
-         ChronosDir = fullfile(gres_root,'..','aspamg_matlab','sources');
+         ChronosDir = fullfile(gres_root,'..','Chronos_Lab','sources');
 
          if isfolder(ChronosDir)
 
@@ -60,7 +60,7 @@ classdef linearSolver < handle
 
             % Chronos exists
             addpath(genpath(ChronosDir));
-            RACPDir = fullfile(gres_root,'..','aspamg_matlab','composed_precs','RACP');
+            RACPDir = fullfile(gres_root,'..','Chronos_Lab','composed_precs','RACP');
             addpath(genpath(RACPDir));
 
             % First time solving request preconditioner computation
@@ -80,7 +80,7 @@ classdef linearSolver < handle
             obj.params.minIter = obj.Prec.params.minIter;
 
             % if GMRES get restart value
-            if (obj.SolverType == "gmres")
+            if strcmp(obj.SolverType,'gmres')
                obj.params.restart = data.general.restart;
             else
                obj.params.restart = 100;
