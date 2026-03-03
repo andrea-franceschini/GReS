@@ -215,9 +215,11 @@ classdef Discretizer < handle
 
       solverInput = input.Solver;
 
-
       obj.solverNames = string(fieldnames(solverInput));
       obj.solverNames = reshape(obj.solverNames,1,[]);
+
+      assert(numel(obj.solverNames)==numel(solverInput),"PhysicsSolver cannot" + ...
+        "be defined more than once in a model.")
 
       for solverName = obj.solverNames
         % create and register the solver
@@ -231,6 +233,12 @@ classdef Discretizer < handle
     end
 
     function addPhysicsSolver(obj,solverName,varargin)
+
+      if ismember(solverName,obj.solverNames)
+        error('Solver %s has already been defined',solverName)
+      else
+        obj.solverNames = [obj.solverNames; string(solverName)];
+      end
       solver = feval(solverName,obj);
       solver.registerSolver(varargin{:});
       obj.physicsSolvers(solverName) = solver;

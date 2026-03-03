@@ -601,12 +601,70 @@ classdef (Abstract) InterfaceSolver < handle
 
       outName = sprintf('Interface_%i',obj.interfId);
 
+    end
+
+
+  end
+
+
+  methods (Static)
+
+    function interfaces = buildInterfaces(domains,input)
+
+      assert(nargin == 2,"Input must be a scalar structure or an input file")
+
+      interfStruct = readInput(input);
+
+
+      interfaces = {};
+
+      interfNames = fieldnames(interfStruct);
+
+      k=0;
+
+      for i = 1:numel(interfNames)
+
+        % deal with multiple interfaces having same name
+
+        for in = [interfStruct.(interfNames{i})]
+
+          interfaces = obj.addInterfaceSolver(interfaces,domains,in);
+
+          interf = feval(interfNames{i},...
+            k+1,domains,in);
+
+          interf.registerInterface(in);
+          interfaces{end+1} = interf;
+
+          % update interface counter
+          k = k+1;
+        end
+      end
 
     end
 
 
-    
-  end
+    function interfaces = addInterfaceSolver(interfaces,domains,varargin)
+
+      % minimal required input is the id of the connected domains
+      default = struct('masterDomain',[], ...
+                       'slaveDomain',[]);
+
+      input = readInput(default,varargin{:});
+
+      
+    end
+
+
+
+
+
+
+
+
+
+
+    end
 
 
 end
