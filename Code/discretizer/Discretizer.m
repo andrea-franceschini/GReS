@@ -77,8 +77,8 @@ classdef Discretizer < handle
       bcList = obj.bcs.getBCList;
 
       for bcId = bcList
-        % discard non-Dirichlet BC
-        if ~strcmp(obj.bcs.getType(bcId),"Dirichlet")
+        % discard non-dirichlet BC
+        if ~strcmp(obj.bcs.getType(bcId),"dirichlet")
           continue
         end
 
@@ -205,7 +205,7 @@ classdef Discretizer < handle
     end
 
 
-    function addPhysicsSolvers(obj,input)
+    function addPhysicsSolvers(obj,solverInput)
 
       assert(isempty(getJacobian(obj)),"Cannot add a physics solver " + ...
         "after system has already been assembled");
@@ -213,28 +213,28 @@ classdef Discretizer < handle
       % Add a new solver to the Discretizer
       assert(nargin == 2,"Input must be an xml file or a scalar struct")
 
-      solverInput = input.Solver;
+      %solverInput = input.Solver;
 
-      obj.solverNames = string(fieldnames(solverInput));
-      obj.solverNames = reshape(obj.solverNames,1,[]);
+      sN = string(fieldnames(solverInput));
+      sN = reshape(sN,1,[]);
 
-      assert(numel(obj.solverNames)==numel(solverInput),"PhysicsSolver cannot" + ...
+      assert(numel(sN)==numel(solverInput),"A PhysicsSolver cannot" + ...
         "be defined more than once in a model.")
 
-      for solverName = obj.solverNames
+      for solverName = sN
         % create and register the solver
         addPhysicsSolver(obj,solverName,solverInput.(solverName));
       end
 
-      nV = obj.dofm.getNumberOfVariables();
-      obj.J = cell(nV);
-      obj.rhs = cell(nV,1);
+      % nV = obj.dofm.getNumberOfVariables();
+      % obj.J = cell(nV);
+      % obj.rhs = cell(nV,1);
 
     end
 
     function addPhysicsSolver(obj,solverName,varargin)
 
-      if ismember(solverName,obj.solverNames)
+      if any(strcmp(solverName,obj.solverNames))
         error('Solver %s has already been defined',solverName)
       else
         obj.solverNames = [obj.solverNames; string(solverName)];

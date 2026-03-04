@@ -27,7 +27,8 @@ classdef ElementBasedQuadrature < MortarQuadrature
   methods
     function obj = ElementBasedQuadrature(interface,multType,input)
       obj@MortarQuadrature(interface,multType,input);
-      obj.nGP = getXMLData(input,[],"nGP");
+      input = readInput(struct('nGP',6),input);
+      obj.ngTri = input.ng;
     end
 
 
@@ -78,7 +79,6 @@ classdef ElementBasedQuadrature < MortarQuadrature
           obj.gpsCoordLoc = obj.gpsCoordLoc(~obj.suppFlag,:);
           obj.dJwSlave = obj.dJwSlave(~obj.suppFlag);
           obj.countGP = obj.countGP + sum(obj.suppFlag);
-
 
         end
 

@@ -166,15 +166,15 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       bc = obj.domain.bcs;
 
       switch bc.getCond(id)
-        case {'NodeBC','ElementBC'}
+        case {'node','cell'}
           ents = bc.getEntities(id);
           vals = bc.getVals(id,t);
-        case 'SurfBC'
+        case 'surface'
           v = bc.getVals(id,t);
           ents = bc.getLoadedEntities(id);
           entitiesInfl = bc.getEntitiesInfluence(id);
           vals = entitiesInfl*v;
-        case 'VolumeForce'
+        case 'volumeforce'
           v = bc.getVals(id,t);
           ents = bc.getLoadedEntities(id);
           entitiesInfl = bc.getEntitiesInfluence(id);
@@ -202,9 +202,9 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       % Base application of a Boundary condition
       bcType = obj.domain.bcs.getType(bcId);
       switch bcType
-        case {'Dirichlet','Seepage'}
+        case {'dirichlet','seepage'}
           applyDirBC(obj,bcId,bcDofs);
-        case {'Neumann','VolumeForce'}
+        case {'neumann','volumeforce'}
           applyNeuBC(obj,bcId,bcDofs,bcVals);
         otherwise
           error("Error in %s: Boundary condition type '%s' is not " + ...

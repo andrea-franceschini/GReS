@@ -122,10 +122,9 @@ classdef InterfaceMesh < handle
         obj.elemConnectivity(:,id) = [];
       end
 
-
-
     end
 
+    
     function R = getRotationMatrix(obj,elemId)
       
       % get rotation matrix of entity i

@@ -25,14 +25,16 @@ classdef Materials < handle
 
     function addMaterials(obj,input)
 
-      input = readInput(input);
+      default = struct('Fluid',struct(),...
+                       'Solid',struct());
+      input = readInput(default,input);
 
       % order matters: some solid PorousRock properties depend on the fluid
-      if isfield(input,"Fluid")
+      if numel(fieldnames(input.Fluid)) > 0
         addFluid(obj,input.Fluid);
       end
 
-      if isfield(input,"Solid")
+      if  numel(fieldnames(input.Solid)) > 0
         for i = 1:numel(input.Solid)
           addSolid(obj,input.Solid(i));
         end
@@ -77,7 +79,7 @@ classdef Materials < handle
 
     function addFluid(obj,varargin)
 
-      obj.fluid= Fluid(varargin{:});
+      obj.fluid = Fluid(varargin{:});
 
     end
 

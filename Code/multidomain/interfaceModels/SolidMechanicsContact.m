@@ -846,7 +846,7 @@ c
                        'normalGap',1e-6,...
                        'normalTraction',1e-3,...
                        'tangentialViolation',1e-4,...
-                       'areaaChange')
+                       'areaaChange');
 
 
       contactSolver.activeSet.tol.sliding = getXMLData(input,1e-4,"sliding");
@@ -857,7 +857,7 @@ c
       contactSolver.activeSet.tol.areaTol = getXMLData(input,1e-2,"areaChange");
       contactSolver.activeSet.tol.maxStateChange = getXMLData(input,100,"maxActiveSetChange");
 
-       contactSolver.activeSet.tol = params;
+      contactSolver.activeSet.tol = params;
 
     end
 
@@ -868,7 +868,6 @@ c
       outState = inState;
 
       tol = 1e-8;
-
 
       % contact state update
       if inState == ContactMode.open

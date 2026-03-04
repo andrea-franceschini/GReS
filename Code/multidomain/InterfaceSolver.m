@@ -98,21 +98,19 @@ classdef (Abstract) InterfaceSolver < handle
 
   methods
 
-    function obj = InterfaceSolver(id,domains,inputStruct)
+    function obj = InterfaceSolver(id,domains,varargin)
 
       % domain:  handle to the Discretizer object storing all the
       % information of the model
 
-      if ~isstruct(inputStruct)
-        inputStruct = readstruct(inputStruct,AttributeSuffix="");
-      end
+      % minimal required input is the id of the connected domains
+      default = struct('masterDomain',[], ...
+        'slaveDomain',[]);
 
-      if isfield(inputStruct,"Interface")
-        inputStruct = inputStruct.Interface;
-      end
+      input = readInput(default,varargin{:});
 
-      obj.domainId = [getXMLData(inputStruct.Master,[],"domainId");
-        getXMLData(inputStruct.Slave,[],"domainId")];
+
+      obj.domainId = [input.slaveDomain,input.masterDomain];
 
       % store handle to connected domains
       obj.domains = [domains(obj.domainId(1));
@@ -147,10 +145,10 @@ classdef (Abstract) InterfaceSolver < handle
       obj.domains(slave).Jmu{obj.interfaceId(slave)} = cell(1,nVarSlave);
 
       % specify the variables to be coupled
-      setCoupledVariables(obj,inputStruct)
+      setCoupledVariables(obj,input)
   
       % mortar computations
-      setMortarInterface(obj,inputStruct);
+      setMortarInterface(obj,input);
 
     end
 
@@ -439,29 +437,26 @@ classdef (Abstract) InterfaceSolver < handle
       end
     end
 
-    function setMortarInterface(obj,interfaceInput)
+    function setMortarInterface(obj,params)
 
-      masterSurf = getXMLData(interfaceInput.Master,0,"surfaceTag");
-      slaveSurf = getXMLData(interfaceInput.Slave,0,"surfaceTag");
+
+      default = struct('masterSurface',[],...
+                       'slaveSurface',[],...
+                       'multiplierType',"P0",...
+                       'Quadrature',struct());
+
+      % the Quadrature field implies that this is an xml field
+
+      params = readInput(default,params);
 
       obj.interfMesh = InterfaceMesh(obj.domains(1).grid.topology,...
-        obj.domains(2).grid.topology,...
-        masterSurf,slaveSurf);
+                                     obj.domains(2).grid.topology,...
+                                     params.masterSurface,...
+                                     params.slaveSurface);
 
       checkInterfaceDisjoint(obj);
 
-      if isfield(interfaceInput,"Quadrature")
-        quad = interfaceInput.Quadrature;
-      else
-        quad = [];
-      end
-
-      multType = getXMLData(interfaceInput,"P0","multiplierType");
-
-      quadType = getXMLData(quad,...
-        "SegmentBasedQuadrature","type");
-
-      switch multType
+      switch params.multiplierType
         case {"standard","dual"}
           obj.multiplierLocation = entityField.node;
         case "P0"
@@ -471,11 +466,17 @@ classdef (Abstract) InterfaceSolver < handle
             "Available types are: standard,dual,P0");
       end
 
+      if numel(fieldnames(params.Quadrature)) > 0
+        quadType = params.Quadrature.type;
+      else
+        quadType = "SegmentBasedQuadrature";
+      end
+
 
       obj.quadrature = feval(quadType,...
                              obj,...
-                             multType,...
-                             quad);
+                             params.multiplierType, ...
+                             params.Quadrature);
 
       % remove slave Dirichlet boundary conditions for nodal multipliers
       removeSlaveBCents(obj);
@@ -609,50 +610,51 @@ classdef (Abstract) InterfaceSolver < handle
 
   methods (Static)
 
-    function interfaces = buildInterfaces(domains,input)
+    function interfaces = addInterfaces(domains,input)
 
       assert(nargin == 2,"Input must be a scalar structure or an input file")
 
       interfStruct = readInput(input);
 
-
       interfaces = {};
 
       interfNames = fieldnames(interfStruct);
 
-      k=0;
-
       for i = 1:numel(interfNames)
 
         % deal with multiple interfaces having same name
-
         for in = [interfStruct.(interfNames{i})]
 
-          interfaces = obj.addInterfaceSolver(interfaces,domains,in);
-
-          interf = feval(interfNames{i},...
-            k+1,domains,in);
-
-          interf.registerInterface(in);
-          interfaces{end+1} = interf;
-
-          % update interface counter
-          k = k+1;
+          interfaces = obj.addInterfaceSolver(interfNames{i},...
+                                              domains,...
+                                              interfaces,in);
         end
       end
 
     end
 
 
-    function interfaces = addInterfaceSolver(interfaces,domains,varargin)
+    function interfaces = addInterfaceSolver(interfType,domains,varargin)
 
-      % minimal required input is the id of the connected domains
-      default = struct('masterDomain',[], ...
-                       'slaveDomain',[]);
+      if iscell(varargin{1})
+        interfaces = varargin{1};
+        i1 = 2;
+      else
+        interfaces = {};
+        i1 = 1;
+      end
 
-      input = readInput(default,varargin{:});
+      k = numel(interfaces);
 
-      
+      input = varargin{i1:end};
+
+      % general input
+      interf = feval(interfType,k+1,domains,input);
+      % solver-specific input
+      interf.registerInterface(input);
+
+      interfaces{end+1} = interf;
+
     end
 
 

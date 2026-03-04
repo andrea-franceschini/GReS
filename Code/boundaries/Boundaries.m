@@ -32,10 +32,12 @@ classdef Boundaries < handle
 
       obj.grid = varargin{1};
 
+      % % check grid
+      % assert()
+
       if strcmp(obj.grid.topology.meshType,"Unstructured")
         % Calling the function to read input data from file
         obj.addBCs(varargin{2:end});
-        obj.computeBoundaryProperties(obj.grid);
       end
     end
 
@@ -54,12 +56,12 @@ classdef Boundaries < handle
 
     function addBC(obj,varargin)
 
-      default = struct('name',[],...
-        'variable',[],...
-        'targetEntity',[],...
-        'entityList',[],...
-        'entityListType',[],...
-        'type',[],...
+      default = struct('name',string.empty,...
+        'variable',string.empty,...
+        'targetEntity',string.empty,...
+        'entityList',double.empty,...
+        'entityListType',string.empty,...
+        'type',string.empty,...
         'components',missing);
 
       params = readInput(default,varargin{:});
@@ -70,11 +72,11 @@ classdef Boundaries < handle
       end
 
       targetEnt = lower(params.targetEntity);
-      variable = params.variable;
-      type = params.type;
+      variable = lower(params.variable);
+      type = lower(params.type);
 
 
-      if (~ismember(string(targetEnt), ["node", "surface", "cell", "volumeforce"]))
+      if (~ismember(targetEnt, ["node", "surface", "cell", "volumeforce"]))
         error(['%s condition is unknown\n', ...
           'Accepted types are: node   -> Boundary cond. on nodes\n',...
           '                    surface   -> Boundary cond. on surfaces\n',...
@@ -83,10 +85,10 @@ classdef Boundaries < handle
       end
 
 
-      if ~strcmp(targetEnt,"VolumeForce")
-        if (~ismember(type, ["Dirichlet", "Neumann", "Seepage"]))
-          error(['Error in BC %s : %s boundary condition is not admitted\n', ...
-            'Accepted types are: Dirichlet, Neumann, Seepage'], name, type);
+      if ~strcmp(targetEnt,"volumeforce")
+        if (~any(strcmp(type, ["dirichlet", "neumann", "seepage"])))
+          error(['Error in BC %s : "%s" boundary condition is not admitted\n', ...
+            'Accepted types are: dirichlet, neumann, seepage'], name, type);
         end
       end
 
@@ -127,6 +129,9 @@ classdef Boundaries < handle
       end
 
       setBCList(obj);
+
+      % finalize the boundary condition 
+      obj.computeBoundaryProperties(name);
 
     end
 
@@ -230,80 +235,75 @@ classdef Boundaries < handle
       obj.getData(identifier).data.entities = list;
     end
 
-    function computeBoundaryProperties(obj, grid)
+    function computeBoundaryProperties(obj,bcId)
 
-      % preprocess surface/volume boundary conditions
+      % preprocess surface/volume boundary conditions for boundary
+      % condition named bcId
 
-      msh = grid.topology;
-      elem = grid.cells;
+      msh = obj.grid.topology;
+      elem = obj.grid.cells;
 
-      keys = obj.db.keys;
+      cond = obj.getCond(bcId);
+      phys = obj.getVariable(bcId);
 
-      for bcId = 1:length(keys)
-        key = keys{bcId};
-        cond = obj.getCond(key);
-        phys = obj.getVariable(key);
+      if any(strcmp(cond, ["volumeforce","surface"]))
 
-        if any(strcmpi(cond, ["volumeforce","surface"]))
+        ents = obj.getEntities(bcId);
+        nEnts = obj.getData(bcId).data.nEntities;
+        nLoadEnts = zeros(numel(nEnts),1);
+        loadedEnts = [];
+        entsInfl = [];
 
-          ents = obj.getEntities(key);
-          nEnts = obj.getData(key).data.nEntities;
-          nLoadEnts = zeros(numel(nEnts),1);
-          loadedEnts = [];
-          entsInfl = [];
+        N = 0;
+        for i = 1:numel(nEnts)
+          ents_i = ents(N+1:N+nEnts(i));
+          if strcmp(cond,'volumeforce')
+            tmpMat = msh.cells(ents_i, :)';
+            nEntries = sum(msh.cellNumVerts(ents_i));
+          else
+            tmpMat = msh.surfaces(ents_i, :)';
+            nEntries = sum(msh.surfaceNumVerts(ents_i));
+          end
 
-          N = 0;
-          for i = 1:numel(nEnts)
-            ents_i = ents(N+1:N+nEnts(i));
-            if strcmp(cond,'VolumeForce')
-              tmpMat = msh.cells(ents_i, :)';
-              nEntries = sum(msh.cellNumVerts(ents_i));
+          loadedEnts_i = unique(tmpMat(tmpMat ~= 0));
+          nLoadEnts(i) = numel(loadedEnts_i);
+
+          % Preallocate row,col,val indices for sparse assembly
+          %           n = sum(msh.cellNumVerts())
+          [r,c,v] = deal(zeros(nEntries,1));
+          k = 0;
+          for j = 1:nEnts(i)
+            el = ents_i(j);
+            if strcmp(cond,'volumeforce')
+              nodInf = findNodeVolume(elem,el);
+              nodes = msh.cells(el,:);
             else
-              tmpMat = msh.surfaces(ents_i, :)';
-              nEntries = sum(msh.surfaceNumVerts(ents_i));
+              nodInf = findNodeArea(elem,el);
+              nodes = msh.surfaces(el,:);
             end
-
-            loadedEnts_i = unique(tmpMat(tmpMat ~= 0));
-            nLoadEnts(i) = numel(loadedEnts_i);
-
-            % Preallocate row,col,val indices for sparse assembly
-            %           n = sum(msh.cellNumVerts())
-            [r,c,v] = deal(zeros(nEntries,1));
-            k = 0;
-            for j = 1:nEnts(i)
-              el = ents_i(j);
-              if strcmpi(cond,'volumeforce')
-                nodInf = findNodeVolume(elem,el);
-                nodes = msh.cells(el,:);
-              else
-                nodInf = findNodeArea(elem,el);
-                nodes = msh.surfaces(el,:);
-              end
-              loadEntsLoc = find(ismember(loadedEnts_i,nodes));
-              nn = numel(nodInf);
-              r(k+1:k+nn) = loadEntsLoc;
-              c(k+1:k+nn) = repelem(j,nn);
-              v(k+1:k+nn) = nodInf;
-              k = k + nn;
-            end
-            entsInfl = blkdiag(entsInfl,sparse(r,c,v));
-            N = N + nEnts(i);
-            loadedEnts = [loadedEnts; loadedEnts_i];
+            loadEntsLoc = find(ismember(loadedEnts_i,nodes));
+            nn = numel(nodInf);
+            r(k+1:k+nn) = loadEntsLoc;
+            c(k+1:k+nn) = repelem(j,nn);
+            v(k+1:k+nn) = nodInf;
+            k = k + nn;
           end
-
-          if strcmpi(obj.getType(key), 'dirichlet')
-            entsInfl = entsInfl./sum(entsInfl,2);
-          end
-
-          % update bc struct with additional properties
-          entry = obj.getData(key);
-          entry.entitiesInfl = entsInfl;
-          entry.loadedEnts = loadedEnts;
-          entry.nloadedEnts = nLoadEnts;
-          obj.db(key) = entry;
+          entsInfl = blkdiag(entsInfl,sparse(r,c,v));
+          N = N + nEnts(i);
+          loadedEnts = [loadedEnts; loadedEnts_i];
         end
-      end
 
+        if strcmpi(obj.getType(bcId), 'dirichlet')
+          entsInfl = entsInfl./sum(entsInfl,2);
+        end
+
+        % update bc struct with additional properties
+        entry = obj.getData(bcId);
+        entry.entitiesInfl = entsInfl;
+        entry.loadedEnts = loadedEnts;
+        entry.nloadedEnts = nLoadEnts;
+        obj.db(bcId) = entry;
+      end
     end
 
 

@@ -277,9 +277,9 @@ classdef Poromechanics < PhysicsSolver
       bcType = obj.domain.bcs.getType(bcId);
 
       switch bcType
-        case 'Dirichlet'
+        case 'dirichlet'
           applyDirBC(obj,bcId,bcDofs);
-        case {'Neumann','VolumeForce'}
+        case {'neumann','volumeforce'}
           applyNeuBC(obj,bcId,bcDofs,bcVals);
         otherwise
           error("Error in %s: Boundary condition type '%s' is not " + ...
@@ -491,13 +491,13 @@ classdef Poromechanics < PhysicsSolver
 
       vals = bc.getVals(id,t);
 
-      if strcmp(bc.getCond(id),'SurfBC')
+      if strcmp(bc.getCond(id),'surface')
 
         % nodeArea*bcValue
         entInfl = bc.getEntitiesInfluence(id);
         vals = entInfl*vals;
 
-      elseif strcmp(bc.getCond(id),'VolumeForce')
+      elseif strcmp(bc.getCond(id),'volumeforce')
 
         % imposed volume pressure
         valsCell = vals;

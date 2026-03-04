@@ -30,9 +30,11 @@ classdef RBFquadrature < MortarQuadrature
     function obj = RBFquadrature(mortar,multType,input)
       %
       obj@MortarQuadrature(mortar,multType,input);
-      obj.nGP = getXMLData(input,[],"nGP");
-      obj.nInt = getXMLData(input,[],"nInt");
-      obj.rbfType = getXMLData(input,"gauss","RBFtype");
+      default = struct('nGP',6,'nInt',5,'RBFtype',"gauss");
+      params = readInput(default,input);
+      obj.nGP = params.nGP;
+      obj.nInt = params.nInt;
+      obj.rbfType = params.RBFtype;
       obj.getWeights();
     end
 

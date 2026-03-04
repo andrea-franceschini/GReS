@@ -22,7 +22,17 @@ else
   usrIn = varargin(:);
 end
 
-if isempty(usrIn{:})
+% deal with empty strings
+if isscalar(usrIn) 
+if isstring(usrIn{1})
+  str = usrIn{1};
+  if isempty(char(str))
+    usrIn = {};
+  end
+end
+end
+
+if isempty([usrIn{:}])
   inputStrcut = default;
   return
 end
