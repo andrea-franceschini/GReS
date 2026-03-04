@@ -19,26 +19,33 @@ function varargout = buildModel(fileName)
 % domains = buildModel("input.xml");
 % [domains, interfaces] = buildModel("input.xml");
 
+default = struct('Domain',struct(),...
+                 'Interface',struct());
 
+params = readInput(default,fileName);
+domainInput = params.Domain;
+interfInput = params.Interface;
 
-outStruct = readstruct(fileName,AttributeSuffix="");
-
-if isfield(outStruct,"Domain")
-  outStruct = outStruct.Domain;
+if numel(fieldnames(domainInput))==0
+  nD = 0;
+else
+nD = numel(domainInput);
 end
 
-nD = numel(outStruct);
 domains = [];
 
 for i = 1:nD
-  domains = [domains; defineDomain(outStruct(i))];
+  domains = [domains; defineDomain(domainInput(i))];
 end
 
 varargout{1} = domains;
 
 if nargout > 1
-interfaces = buildInterfaces(fileName,domains);
-varargout{2} = interfaces;
+  if numel(fieldnames(interfInput))>0
+    interfaces = InterfaceSolver.addInterfaces(domains,interfInput);
+    varargout{2} = interfaces;
+  end
+
 end
 
 end
@@ -46,26 +53,20 @@ end
 
 function domain = defineDomain(input)
 
-if isfield(input,"fileName")
-  % create domain linking input file
-  str = readstruct(input.fileName,AttributeSuffix="");
-  domain = defineDomain(str);
-  return
-end
+input = readInput(input);
 
-geom = input.Geometry;
-topology = Mesh.generateGrid(geom);
+topology = Mesh.create(input.Geometry);
 
 if isfield(input,"Materials")
-  mat = Materials(input);
+  mat = Materials(input.Materials);
 else
   mat = [];
 end
 
 gNPoints = 0;
+
 if isfield(input,"Gauss")
-  g = input.Gauss;
-  gNPoints = getXMLData(g,[],'nGP');
+  gNPoints = input.Gauss.nGP;
 end
 
 if gNPoints~=0
@@ -85,7 +86,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 % boundary conditions
 if isfield(input,'BoundaryConditions')
-  bound = Boundaries(input,grid);
+  bound = Boundaries(grid,input.BoundaryConditions);
 else
   bound = [];
 end

@@ -1,17 +1,12 @@
 classdef (Abstract) InterfaceSolver < handle
-  % Interface to create an interface between domains in GReS
-
+  % General Interface solver between domains in GReS
+  % 
   % Any interfaceSolver should implemented everything needed to couple a
   % variable field across two non conforming lower dimensional (2D) interfaces
-
-  % The interface can belong to two different domains 
-
-  % The fields property lists a set of single physical moduls that are
-  % implemented
-
-  % If the physicsSolver is coupled:
-  % fields is a string array with all the single physics fields
-  % J and rhs are cell variable with the same size as the number of fields
+  %
+  % Each side of the interface is specified by one (or more) surfaceTags of
+  % a domain. The sides of the interface can both belong to the same
+  % domain, provided that their nodes are disjoint.
 
 
   properties (GetAccess=public, SetAccess=public)
@@ -612,7 +607,7 @@ classdef (Abstract) InterfaceSolver < handle
 
     function interfaces = addInterfaces(domains,input)
 
-      assert(nargin == 2,"Input must be a scalar structure or an input file")
+      assert(nargin == 2,"Input must be a structure array or an input file")
 
       interfStruct = readInput(input);
 
@@ -625,21 +620,60 @@ classdef (Abstract) InterfaceSolver < handle
         % deal with multiple interfaces having same name
         for in = [interfStruct.(interfNames{i})]
 
-          interfaces = obj.addInterfaceSolver(interfNames{i},...
-                                              domains,...
-                                              interfaces,in);
+          interfaces = obj.add(interfNames{i},...
+                               domains,...
+                               interfaces,in);
         end
       end
 
     end
 
 
-    function interfaces = addInterfaceSolver(interfType,domains,varargin)
+    function interfaces = add(interfType,domains,varargin)
+      %   Add a new interface object to the interface list.
+      %
+      %   interfaces = add(interfType, domains, input)
+      %   interfaces = add(interfType, domains, interfaces, input)
+      %
+      %   This function creates a new interface object of type `interfType`,
+      %   assigns it a progressive index, registers solver-specific data,
+      %   and appends it to the interface list.
+      %
+      %   INPUT
+      %   -----
+      %   interfType : function handle or class name (char/string)
+      %       Constructor for the interface object. The constructor must
+      %       accept the signature:
+      %           obj = interfType(id, domains, input)
+      %
+      %   domains : array or cell array
+      %       Collection of domains connected by the interface.
+      %
+      %   interfaces : cell array (optional)
+      %       Existing list of interface objects. If omitted, a new list
+      %       is created.
+      %
+      %   input : cell array
+      %       Additional user-defined input parameters passed both to the
+      %       constructor and to the interface method `registerInterface`.
+      %
+      %   OUTPUT
+      %   ------
+      %   interfaces : cell array
+      %       Updated list of interface objects, including the newly
+      %       created interface appended at the end.
+      %
+      %
+      %   See also: InterfaceSolver
+      %
+      %   ---------------------------------------------------------------------
+
 
       if iscell(varargin{1})
         interfaces = varargin{1};
         i1 = 2;
       else
+        % generate the interface list
         interfaces = {};
         i1 = 1;
       end

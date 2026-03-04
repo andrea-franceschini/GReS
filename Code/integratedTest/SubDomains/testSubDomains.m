@@ -9,8 +9,8 @@ warning('off','MATLAB:nearlySingularMatrix');
 
 % shortcut to define a model using a unique xml file
 % useful when dealing with many domains
-simparams = SimulationParameters('deepAquifer.xml');
-output = OutState('deepAquifer.xml');
+simparams = SimulationParameters('Input/simParam.xml');
+output = OutState('matFileName',"results",'printTimes',[0,0.5,1.5]);
 domain = buildModel('deepAquifer.xml');
 
 % perform a fully coupled simulation
