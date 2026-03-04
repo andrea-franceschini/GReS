@@ -25,7 +25,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 printUtils = OutState('Input/output.xml');
 
 % Create an object of the "Boundaries" class 
-bound = Boundaries('Input/boundaryConditions.xml',grid);
+bound = Boundaries(grid,'Input/boundaryConditions.xml');
 
 % Create object handling construction of Jacobian and rhs of the model
 
@@ -34,7 +34,7 @@ domain = Discretizer('grid',grid,...
                      'materials',mat,...
                      'boundaries',bound);
 
-domain.addPhysicsSolver(solverFile);
+domain.addPhysicsSolver('BiotFullyCoupled',solverIn);
 
 % manually apply initial conditions
 state = domain.getState();

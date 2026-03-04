@@ -28,24 +28,32 @@ classdef BiotFullyCoupled < PhysicsSolver
 
     end
 
-    function registerSolver(obj,input)
+    function registerSolver(obj,varargin)
 
       dofm = obj.domain.dofm;
 
+      targetReg = struct('targetRegions',1:obj.mesh.nCellTag);
+
+      default = struct('Poromechanics',targetReg,...
+                       'SinglePhaseFlowFVTPFA',targetReg);
+
+      input = readInput(default,varargin{:});
+
       % Register mechanics
       obj.mechSolver = Poromechanics(obj.domain);
-      registerSolver(obj.mechSolver,input.(class(obj.mechSolver)));
-      obj.fldMech = dofm.getVariableId(obj.mechSolver.getField());
 
       % setup the solver with custom input
       if isfield(input,"SinglePhaseFlowFEM")
         obj.flowSolver = SinglePhaseFlowFEM(obj.domain);
-      end
-      if isfield(input,"SinglePhaseFlowFVTPFA")
+      else
         obj.flowSolver = SinglePhaseFlowFVTPFA(obj.domain);
       end
 
-      % Register fluids
+      % Register mechanics solver
+      registerSolver(obj.mechSolver,input.(class(obj.mechSolver)));
+      obj.fldMech = dofm.getVariableId(obj.mechSolver.getField());
+
+      % Register flow solver
       obj.flowScheme = obj.flowSolver.typeDiscretization();
       registerSolver(obj.flowSolver,input.(class(obj.flowSolver)));
       obj.fldFlow = dofm.getVariableId(obj.flowSolver.getField());

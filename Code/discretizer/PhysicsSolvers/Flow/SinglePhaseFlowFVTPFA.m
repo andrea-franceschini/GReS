@@ -21,8 +21,8 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       dofm = obj.domain.dofm;
 
-      dofm.registerVariable(obj.getField(),entityField.node,1,params.targetRegions);
-      n = getNumberOfEntities(entityField.node,obj.mesh);
+      dofm.registerVariable(obj.getField(),entityField.cell,1,params.targetRegions);
+      n = getNumberOfEntities(entityField.cell,obj.mesh);
       obj.fieldId = dofm.getVariableId(obj.getField());
 
 
@@ -195,17 +195,17 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       switch bc.getCond(id)
 
-        case {'NodeBC','ElementBC'}
+        case {'node','cell'}
           ents = bc.getEntities(id);
           vals = bc.getVals(id,t);
 
-        case 'SurfBC'
+        case 'surface'
           v = bc.getVals(id,t);
 
           faceID = bc.getEntities(id);
           ents = sum(obj.faces.faceNeighbors(faceID,:),2);
 
-          p = getState(obj,"pressure");
+          p = getState(obj,obj.getField());
 
           % [ents,~,ind] = unique(ents);
           % % % [faceID, faceOrder] = sort(bc.getEntities(id));
@@ -214,10 +214,10 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
           switch bc.getType(id)
 
-            case 'Neumann'
+            case 'neumann'
               vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
 
-            case 'Dirichlet'
+            case 'dirichlet'
               gamma = mat.getFluid().getSpecificWeight();
               mu = mat.getFluid().getDynViscosity();
               tr = obj.trans(faceID);
@@ -235,7 +235,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
               q = dirJ.*potential;
               vals = [dirJ,q];
 
-            case 'Seepage'
+            case 'seepage'
               gamma = mat.getFluid().getSpecificWeight();
               assert(gamma>0.,'To impose Seepage boundary condition is necessary the fluid specify weight be bigger than zero!');
 
@@ -252,7 +252,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
           end
 
 
-        case 'VolumeForce'
+        case 'volumeforce'
           v = bc.getVals(id,t);
           ents = bc.getEntities(id);
           vals = v.*obj.mesh.cellVolume(ents);
@@ -288,9 +288,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       bcType = obj.domain.bcs.getType(bcId);
 
       switch bcType
-        case {'Dirichlet','Seepage'}
+        case {'dirichlet','Seepage'}
           applyDirBC(obj,bcId,bcDofs,bcVals);
-        case {'Neumann','VolumeForce'}
+        case {'neumann','volumeforce'}
           applyNeuBC(obj,bcId,bcDofs,bcVals);
         otherwise
           error("Error in %s: Boundary condition type '%s' is not " + ...
@@ -299,7 +299,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     end
 
     function applyDirBC(obj,bcId,bcDofs,bcVals)
-      % apply Dirichlet BCs
+      % apply dirichlet BCs
       % overrides the base method implemented in PhysicsSolver
       % ents: id of constrained faces without any dof mapping applied
       % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
@@ -427,16 +427,16 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
           [~,vals] = getBC(obj,bcID,t);
           [ents, ~] = sort(bc.getEntities(bcID));
           switch bc.getCond(bcID)
-            case {'NodeBC','ElementBC'}
+            case {'node','cell'}
               return
-            case 'SurfBC'
-              if strcmp(bc.getType(bcID),'Dirichlet') || strcmp(bc.getType(bcID),'Seepage')
+            case 'surface'
+              if strcmp(bc.getType(bcID),'dirichlet') || strcmp(bc.getType(bcID),'Seepage')
                 vals=vals(:,2);
               end
               dir = sgn(ents).*faceUnit(ents,:);
               vals = vals(:)./areaSq(ents).*dir;
               vals = repelem(vals,nnodesBfaces(ents),1);
-            case 'VolumeForce'
+            case 'volumeforce'
               facesBcell = diff(obj.faces.mapF2E);
 
               % Find the faces to distribute the contribution.

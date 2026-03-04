@@ -6,7 +6,7 @@ bcs = solver.domain.bcs;
 keys = bcs.db.keys;
 flRenum = false(length(keys),1);
 for i = 1 : length(keys)
-  if strcmp(bcs.getCond(keys{i}), 'SurfBC') && strcmp(bcs.getVariable(keys{i}),solver.getField())
+  if strcmp(bcs.getCond(keys{i}), 'surface') && strcmp(bcs.getVariable(keys{i}),solver.getField())
     flRenum(i) = true;
   end
 end

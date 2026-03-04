@@ -1,4 +1,4 @@
-function inputStrcut = readInput(varargin)
+function inputStruct = readInput(varargin)
 % Read input as struct, key-value pair or xml input file.
 % if nargin > 1 and the first input is a struct, this is used as default
 % set of parameters.
@@ -32,8 +32,8 @@ if isstring(usrIn{1})
 end
 end
 
-if isempty([usrIn{:}])
-  inputStrcut = default;
+if isempty([usrIn{:}]) 
+  inputStruct = default;
   return
 end
 
@@ -48,9 +48,9 @@ else
 end
 
 if isempty(default)
-  inputStrcut = usr;
+  inputStruct = usr;
 else
-  inputStrcut = mergeInput(default,usr);
+  inputStruct = mergeInput(default,usr);
 end
 
 end
@@ -125,6 +125,8 @@ for k = 1:numel(fusr)
   fn = fusr{k};
   uval = usr.(fn);
 
+
+  % compare with default
   if isfield(default, fn) 
     dval = default.(fn);
 
@@ -133,6 +135,7 @@ for k = 1:numel(fusr)
       error('mergeInput:RequiredFieldNotProvided', ...
         'Required field "%s" must be provided by the user.', fn);
     end
+
 
     % Type check if both are non-empty non-missing
     if ~isempty(dval) && ~isempty(uval) && ~any(ismissing(dval))

@@ -2,7 +2,7 @@ clear
 
 %% Coupled FEM - FV
 
-solverFile = "Input/solver_TPFA.xml";
+solverIn = [];
 runTerzaghi;
 clearvars -except domain
 analyticalSol = load('Terzaghi_Analytical.mat');
@@ -32,7 +32,7 @@ clear domain
 
 %% Coupled FEM - FEM
 
-solverFile = "Input/solver_FEM.xml";
+solverIn = struct("SinglePhaseFlowFEM",[]);
 runTerzaghi;
 clearvars -except domain
 
