@@ -62,7 +62,8 @@ classdef Boundaries < handle
         'entityList',double.empty,...
         'entityListType',string.empty,...
         'type',string.empty,...
-        'components',missing);
+        'components',missing,...
+        'essential',missing);
 
       params = readInput(default,varargin{:});
 
@@ -71,39 +72,39 @@ classdef Boundaries < handle
         error("'%s' boundary condition name already defined", name);
       end
 
-      targetEnt = lower(params.targetEntity);
+      targetEnt = entityField(lower(params.targetEntity));
       variable = lower(params.variable);
       type = lower(params.type);
 
 
-      if (~ismember(targetEnt, ["node", "surface", "cell", "volumeforce"]))
+      if (~ismember(targetEnt, ["node", "surface", "cell"]))
         error(['%s condition is unknown\n', ...
           'Accepted types are: node   -> Boundary cond. on nodes\n',...
           '                    surface   -> Boundary cond. on surfaces\n',...
-          '                    cell   -> Boundary cond. on elements\n',...
-          '                    volumeforce -> Volume force on elements'], targetEnt);
+          '                    cell   -> Boundary cond. on elements\n'], targetEnt);
       end
 
+      % BC type 
+      % THE USER IS RESPONSIBLE FOR INPUTTING THE CORRECT BCTYPE NAME.
+      % THIS IS ONLY CHECKED AT THE PHYSICS_SOLVER LEVEL
 
-      if ~strcmp(targetEnt,"volumeforce")
-        if (~any(strcmp(type, ["dirichlet", "neumann", "seepage"])))
-          error(['Error in BC %s : "%s" boundary condition is not admitted\n', ...
-            'Accepted types are: dirichlet, neumann, seepage'], name, type);
+      essentialFlag = false;
+
+      if isCustomBC()
+        if ~ismissing(params.essential)
+          essentialFlag = logical(params.essential);
+        else
+          gresLog().warning(1, sprintf( ...
+                "Custom boundary condition '%s' has been automatically considered to be NOT essential!\n" + ...
+                "To override this behavior, specify the logical field 'essential' in the Boundary condition input.", ...
+                bctype));
         end
+      elseif BCtype(type) == BCtype.dirichlet
+        essentialFlag = true;
       end
 
-
-      switch targetEnt
-        case 'volumeforce'
-          bc = struct('data', [], ...
-            'cond',targetEnt, 'variable', variable);
-        case {'surface','node','cell'}
-          bc = struct('data', [], ...
-            'cond',targetEnt,'type', type, 'variable', variable);
-        otherwise
-          error('Unrecognized BC item %s for Boundary condition %s', ...
-            targetEnt, name)
-      end
+      bc = struct('data', [], 'essential',essentialFlag,...
+        'sourceField',targetEnt,'type', type, 'variable', variable);
 
       if ismissing(params.components)
         comp = [];
@@ -131,7 +132,7 @@ classdef Boundaries < handle
       setBCList(obj);
 
       % finalize the boundary condition 
-      obj.computeBoundaryProperties(name);
+      % obj.computeBoundaryProperties(name);
 
     end
 
@@ -158,8 +159,8 @@ classdef Boundaries < handle
       vals = obj.getData(identifier).data.getValues(t);
     end
 
-    function cond = getCond(obj, identifier)
-      cond = obj.getData(identifier).cond;
+    function cond = getBCfield(obj, identifier)
+      cond = obj.getData(identifier).sourceField;
     end
 
     function name = getName(obj, identifier)
@@ -167,11 +168,7 @@ classdef Boundaries < handle
     end
 
     function type = getType(obj, identifier)
-      if ~strcmp(obj.getCond(identifier),'VolumeForce')
-        type = obj.getData(identifier).type;
-      else
-        type = 'VolumeForce';
-      end
+      type = obj.getData(identifier).type;
     end
 
     function variable = getVariable(obj, identifier)
@@ -193,7 +190,15 @@ classdef Boundaries < handle
     end
 
     function ents = getEntities(obj,identifier)
-      ents = obj.getData(identifier).data.entities;
+      % get raw entities as specified in the BC input
+      ents = obj.getData(identifier).data.sourceRntities;
+    end
+
+    function dofs = getBCdofs(obj,identifier)
+      % get the degree-of-freedom index of the constrained for of the
+      % specified boundary condition
+
+
     end
 
     function ents = getBCentities(obj,identifier)
@@ -209,107 +214,110 @@ classdef Boundaries < handle
       ents = obj.getData(identifier).loadedEnts;
     end
 
-    function nEnts = getNumbEntities(obj,identifier)
-      nEnts = obj.getData(identifier).data.nEntities;
+    function nEnts = getNumbSourceEntities(obj,identifier)
+      nEnts = obj.getData(identifier).data.nSrcEntities;
     end
 
-    function ents = getNumbLoadedEntities(obj, identifier)
-      bc = obj.getData(identifier);
-      if isfield(bc,'nloadedEnts')
-        % Surface BC
-        ents = bc.nloadedEnts;
-      else
-        % Node BC
-        ents = bc.data.nEntities;
-      end
+    function nEnts = getNumbTargetEntities(obj,identifier)
+      nEnts = obj.getData(identifier).data.nTargetEntities;
     end
+
+    % function ents = getNumbLoadedEntities(obj, identifier)
+    %   bc = obj.getData(identifier);
+    %   if isfield(bc,'nloadedEnts')
+    %     % Surface BC
+    %     ents = bc.nloadedEnts;
+    %   else
+    %     % Node BC
+    %     ents = bc.data.nEntities;
+    %   end
+    % end
 
     function infl = getEntitiesInfluence(obj, identifier)
-      infl = [];
-      if isfield(obj.getData(identifier),"entitiesInfl")
-        infl = obj.getData(identifier).entitiesInfl;
-      end
+        infl = obj.getData(identifier).data.entsMap;
     end
 
     function setDofs(obj, identifier, list)
-      obj.getData(identifier).data.entities = list;
+      obj.getData(identifier).data.sourceEntities = list;
     end
 
-    function computeBoundaryProperties(obj,bcId)
+  %   function computeBoundaryProperties(obj,bcId)
+  % 
+  %     % preprocess boundary conditions once the target entity is known
+  % 
+  %     msh = obj.grid.topology;
+  %     elem = obj.grid.cells;
+  % 
+  %     % target entity field
+  %     source = obj.getBCfield(bcId);
+  % 
+  %       ents = obj.getEntities(bcId);
+  %       nSrcEnts = obj.getData(bcId).data.nEntities;
+  %       nTargetEnts = zeros(numel(nSrcEnts),1);
+  % 
+  %       loadedEnts = [];
+  %       entsInfl = [];
+  % 
+  %       N = 0;
+  % 
+  %       for i = 1:numel(nSrcEnts)
+  %         % process components individually
+  %         ents_i = ents(N+1:N+nSrcEnts(i));
+  %         inflMap_i = getEntitiesInterpolation()
+  %         if strcmp(source,'volumeforce')
+  %           tmpMat = msh.cells(ents_i, :)';
+  %           nEntries = sum(msh.cellNumVerts(ents_i));
+  %         else
+  %           tmpMat = msh.surfaces(ents_i, :)';
+  %           nEntries = sum(msh.surfaceNumVerts(ents_i));
+  %         end
+  % 
+  %         loadedEnts_i = unique(tmpMat(tmpMat ~= 0));
+  %         nTargetEnts(i) = numel(loadedEnts_i);
+  % 
+  %         % Preallocate row,col,val indices for sparse assembly
+  %         %           n = sum(msh.cellNumVerts())
+  %         [r,c,v] = deal(zeros(nEntries,1));
+  %         k = 0;
+  %         for j = 1:nSrcEnts(i)
+  %           el = ents_i(j);
+  %           if strcmp(source,'volumeforce')
+  %             nodInf = findNodeVolume(elem,el);
+  %             nodes = msh.cells(el,:);
+  %           else
+  %             nodInf = findNodeArea(elem,el);
+  %             nodes = msh.surfaces(el,:);
+  %           end
+  %           loadEntsLoc = find(ismember(loadedEnts_i,nodes));
+  %           nn = numel(nodInf);
+  %           r(k+1:k+nn) = loadEntsLoc;
+  %           c(k+1:k+nn) = repelem(j,nn);
+  %           v(k+1:k+nn) = nodInf;
+  %           k = k + nn;
+  %         end
+  %         entsInfl = blkdiag(entsInfl,sparse(r,c,v));
+  %         N = N + nSrcEnts(i);
+  %         loadedEnts = [loadedEnts; loadedEnts_i];
+  %       end
+  % 
+  %       if strcmpi(obj.getType(bcId), 'dirichlet')
+  %         entsInfl = entsInfl./sum(entsInfl,2);
+  %       end
+  % 
+  %       % update bc struct with additional properties
+  %       entry = obj.getData(bcId);
+  %       entry.entitiesInfl = entsInfl;
+  %       entry.targetEntities = loadedEnts;
+  %       entry.nTargetEnts = nTargetEnts;
+  %       obj.db(bcId) = entry;
+  %     end
+  % end
 
-      % preprocess surface/volume boundary conditions for boundary
-      % condition named bcId
+ 
 
-      msh = obj.grid.topology;
-      elem = obj.grid.cells;
-
-      cond = obj.getCond(bcId);
-      phys = obj.getVariable(bcId);
-
-      if any(strcmp(cond, ["volumeforce","surface"]))
-
-        ents = obj.getEntities(bcId);
-        nEnts = obj.getData(bcId).data.nEntities;
-        nLoadEnts = zeros(numel(nEnts),1);
-        loadedEnts = [];
-        entsInfl = [];
-
-        N = 0;
-        for i = 1:numel(nEnts)
-          ents_i = ents(N+1:N+nEnts(i));
-          if strcmp(cond,'volumeforce')
-            tmpMat = msh.cells(ents_i, :)';
-            nEntries = sum(msh.cellNumVerts(ents_i));
-          else
-            tmpMat = msh.surfaces(ents_i, :)';
-            nEntries = sum(msh.surfaceNumVerts(ents_i));
-          end
-
-          loadedEnts_i = unique(tmpMat(tmpMat ~= 0));
-          nLoadEnts(i) = numel(loadedEnts_i);
-
-          % Preallocate row,col,val indices for sparse assembly
-          %           n = sum(msh.cellNumVerts())
-          [r,c,v] = deal(zeros(nEntries,1));
-          k = 0;
-          for j = 1:nEnts(i)
-            el = ents_i(j);
-            if strcmp(cond,'volumeforce')
-              nodInf = findNodeVolume(elem,el);
-              nodes = msh.cells(el,:);
-            else
-              nodInf = findNodeArea(elem,el);
-              nodes = msh.surfaces(el,:);
-            end
-            loadEntsLoc = find(ismember(loadedEnts_i,nodes));
-            nn = numel(nodInf);
-            r(k+1:k+nn) = loadEntsLoc;
-            c(k+1:k+nn) = repelem(j,nn);
-            v(k+1:k+nn) = nodInf;
-            k = k + nn;
-          end
-          entsInfl = blkdiag(entsInfl,sparse(r,c,v));
-          N = N + nEnts(i);
-          loadedEnts = [loadedEnts; loadedEnts_i];
-        end
-
-        if strcmpi(obj.getType(bcId), 'dirichlet')
-          entsInfl = entsInfl./sum(entsInfl,2);
-        end
-
-        % update bc struct with additional properties
-        entry = obj.getData(bcId);
-        entry.entitiesInfl = entsInfl;
-        entry.loadedEnts = loadedEnts;
-        entry.nloadedEnts = nLoadEnts;
-        obj.db(bcId) = entry;
-      end
-    end
-
-
-    function removeBCentities(obj,bcId,list)
-      % remove BC entities that are contained in an input list
-      % ignores entries of list that are not valid entities
+  function removeBCentities(obj,bcId,list)
+    % remove BC entities that are contained in an input list
+    % ignores entries of list that are not valid entities
 
       bc = getData(obj,bcId);
 

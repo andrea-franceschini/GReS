@@ -288,7 +288,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       bcType = obj.domain.bcs.getType(bcId);
 
       switch bcType
-        case {'dirichlet','Seepage'}
+        case {'dirichlet','seepage'}
           applyDirBC(obj,bcId,bcDofs,bcVals);
         case {'neumann','volumeforce'}
           applyNeuBC(obj,bcId,bcDofs,bcVals);

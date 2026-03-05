@@ -7,10 +7,14 @@ classdef BoundaryEntities < handle
     name
     % Total number of constrained entities
     totEnts = 0
-    % Number of constrained entities for each degree of freedom
-    nEntities
-    % Indices of constrained entities
-    entities
+    % Number of constrained source entities for dof component
+    nSrcEntities
+    % Raw indices of source constrained entities
+    sourceEnts
+    % Indices of target constrained entities
+    targetEnts
+    % Number of constrained target entities for each dof component
+    nTargetEnts
     % Number of input times
     nTimes
     % Set of input times
@@ -22,11 +26,13 @@ classdef BoundaryEntities < handle
     % Time id of currently-stored boundary conditions
     availSteps
     % the type of the target entity where the BC is applied
-    targetEntity
-    % the position in space of the target entities
+    targetField
+    % the position in space of the source entities
     entityPos
     % logical index to easily deactivate a bc entity
     isActiveEntity
+    % source to target geometric mapping operator
+    entsMap
   end
 
   properties (Access = private)
@@ -39,7 +45,7 @@ classdef BoundaryEntities < handle
     function obj = BoundaryEntities(name, targetEnt)
       % Calling the function to set object properties
       obj.name = name;
-      obj.targetEntity = targetEnt;
+      obj.targetField = targetEnt;
     end
 
 
@@ -141,9 +147,9 @@ classdef BoundaryEntities < handle
           'already defined. GReS will overwrite them.'])
       end
 
-      [obj.nEntities, obj.entities, obj.entityPos] = readEntitySet(obj,type,list,comp,mesh);
+      [obj.nSrcEntities, obj.sourceEnts, obj.entityPos] = readEntitySet(obj,type,list,comp,mesh);
 
-      obj.totEnts = sum(obj.nEntities);
+      obj.totEnts = sum(obj.nSrcEntities);
 
       obj.isActiveEntity = true(obj.totEnts,1);
 
@@ -153,6 +159,30 @@ classdef BoundaryEntities < handle
 
       obj.availVals = zeros(obj.totEnts,2);
       obj.availSteps = zeros(2,1);
+
+    end
+
+    function computeTargetEntities(obj,grid,targetField,srcField)
+
+      obj.nTargetEnts = zeros(numel(obj.nSrcEntities),1);
+
+      n = 0;
+
+      for i = 1:numel(obj.nSrcEntities)
+        % process components individually
+        srcID = obj.sourceEnts(n+1:n+obj.nSrcEntities(i));
+
+        targEnts = getEntitiesIncidence(targetField,...
+          grid.topology,srcField,srcID);
+
+        inflMap = getEntitiesInterpolation(targetField,sourceField,grid,srcID);
+        
+        obj.nTargetEnts(i) = numel(targEnts);
+        obj.targetEnts = [obj.targetEnts; targEnts];
+
+        % concatenete block diagonal sparse maps for each component set
+        obj.entsMap = blkdiag(obj.entsMap,inflMap);
+      end
 
     end
 
@@ -172,13 +202,13 @@ classdef BoundaryEntities < handle
           return
         case {'surfacetags','surfacetag'}
           surfTags = ents;
-          switch obj.targetEntity
+          switch obj.targetField
             case "node"
               entsID = unique(mesh.surfaces(ismember(mesh.surfaceTag,surfTags),:));
             case "surface"
               entsID = find(ismember(mesh.surfaceTag,surfTags));
             otherwise
-              error("Error for BC %s: XML field surfaceTags is not valid for BC of type %s", obj.name, obj.targetEntity)
+              error("Error for BC %s: XML field surfaceTags is not valid for BC of type %s", obj.name, obj.targetField)
           end
         case "bclist"
           entsID = ents;
@@ -187,13 +217,13 @@ classdef BoundaryEntities < handle
           Lx = boxSize(1:2);
           Ly = boxSize(3:4);
           Lz = boxSize(5:6);
-          switch obj.targetEntity
+          switch obj.targetField
             case "node"
               c = mesh.coordinates;
-            case {"cell","volumeforce"}
+            case "cell"
               c = mesh.cellCentroid;
             otherwise
-              error("Error for BC %s: XML field box is not valid for BC of type %s", obj.name, obj.targetEntity)
+              error("Error for BC %s: XML field box is not valid for BC of type %s", obj.name, obj.targetField)
           end
 
           entsID = all([ c(:,1) > Lx(1), c(:,1) < Lx(2),...
@@ -242,12 +272,12 @@ classdef BoundaryEntities < handle
 
     function pos = getLocation(obj,ents,mesh)
 
-      switch obj.targetEntity
+      switch obj.targetField
         case "node"
           pos = mesh.coordinates(ents,:);
         case "surface"
           pos = mesh.surfaceCentroid(ents,:);
-        case {"cell","volumeforce"}
+        case "cell"
           pos = mesh.cellCentroid(ents,:);
         otherwise
           error("Unrecognized 'targetEntity' for boundary condition '%s':\n" + ...

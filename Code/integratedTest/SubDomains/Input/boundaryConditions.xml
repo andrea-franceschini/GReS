@@ -79,7 +79,8 @@ a function handle depending on space (x,y,z)
 
   <BC
       name = "FluxCell"
-      targetEntity = "volumeforce"
+      targetEntity = "cell"
+      type = "volumeforce"
       variable = "pressure"
       entityListType = "box"
       entityList = "545,555,545,555,975,1000"

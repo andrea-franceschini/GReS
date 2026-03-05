@@ -100,7 +100,6 @@ classdef SolidMechanicsContact < MeshTying
 
     end
 
-c
 
     function hasConfigurationChanged = updateConfiguration(obj)
 

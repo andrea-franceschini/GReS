@@ -516,6 +516,26 @@ classdef Discretizer < handle
 
     end
 
+    function finalizeBoundaryConditions(obj)
+
+      % preprocess the boundary condition once the type of the target field
+      % is knwon
+
+      bcList = obj.bcs.getBCList();
+
+      for bcId = bcList
+
+        % loop over available bcs
+        bcVar = obj.bcs.getVariable(bcId);
+
+        targetField = obj.dofm.getFieldLocation(bcVar);
+
+        obj.bcs.getData(ncId).computeTargetEntities(obj.grid,targetField);
+
+      end
+ 
+    end
+
 
     function outName = getOutName(obj)
 
