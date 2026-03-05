@@ -33,7 +33,7 @@
             />
             <Slave
                 domainId = "1"
-                surfaceTag = "-5"
+                surfaceTag = "4"
             />
             <Quadrature
                 type = "SegmentBasedQuadrature"

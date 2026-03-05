@@ -2,9 +2,9 @@ SetFactory("OpenCASCADE");
 
 // -------------------------
 R     = 1.0;
-lc    = 0.4;
+lc    = 0.2;
 alpha = 0.20;        // overlap percentage of diameter
-delta = 0.001;      // distance between spheres
+delta = 0;      // distance between spheres
 
 D  = 2*R;
 h  = alpha * D;      // desired overlap thickness
@@ -32,7 +32,8 @@ right_squished[] = BooleanDifference{ Volume{2}; Delete; }{ Volume{4}; Delete; }
 // Make interface conforming
 // -------------------------
 // volumes[] = BooleanFragments{ Volume{1, left_squished[0]}; Delete; }{ Volume{2, right_squished[]}; Delete; };
-volumes[] = BooleanFragments{ Volume{left_squished[0], right_squished[0]}; Delete; }{};
+// volumes[] = BooleanFragments{ Volume{left_squished[0], right_squished[0]}; Delete; }{};
+volumes[] = {left_squished[0], right_squished[0]};
 
 // Add left sphere center point in the mesh
 Point(100) = {-d/2, 0, 0, lc};

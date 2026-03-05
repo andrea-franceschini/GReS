@@ -3,7 +3,7 @@ function initGReS(outputFlag)
 foldList = ["Code","ThirdPartyLibs","Utilities"];
 
 if nargin == 0
-  outputFlag = true;
+  outputFlag = false;
 end
 
 % Check if any of the folders is already on the MATLAB path

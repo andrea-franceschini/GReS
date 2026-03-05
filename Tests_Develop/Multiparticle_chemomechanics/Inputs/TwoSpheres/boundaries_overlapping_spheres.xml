@@ -50,14 +50,16 @@ a function handle depending on space (x,y,z)
     </BC>
 
     <!-- Zero flux at the sphere-sphere interface -->
-    <BC name = "ZeroFlux"
-        type = "Neumann"
-        entityType = "SurfBC"
-        variable = "pressure" >
-
-        <BCentities surfaceTags = "4, -5" />
-        <BCevent time = "0." value = "0.639251062864524" /> <!--zero flux at interface-->
-    </BC>
+    <!--
+        <BC name = "ZeroFlux"
+            type = "Neumann"
+            entityType = "SurfBC"
+            variable = "pressure" >
+    
+            <BCentities surfaceTags = "4, -5" />
+            <BCevent time = "0." value = "0." />
+        </BC>
+    -->
 
     <!-- Boundary Conditions to Mechanics -->
     <!-- Fix the left sphere center -->

@@ -1,6 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <simParam>
-  <Time 
+    <Time 
+        Start="0."
+        End ="0.009"
+        DtInit="0.001"
+        DtMin ="0.0005"
+        DtMax ="0.1"          
+        incrementFactor = "1.1"
+        choppingFactor = "Default" />
+      
+    <Solver
+        Theta = "Default"
+        MaxNLIteration = "10"
+        RelativeTolerance = "1.e-8"
+        AbsoluteTolerance = "1.e-9" />
+</simParam>
+
+<!-- Original simParams
+<simParam>
+    <Time 
         Start="0."
         End ="1."
         DtInit="0.001"
@@ -9,9 +27,10 @@
         incrementFactor = "1.1"
         choppingFactor = "Default" />
       
-  <Solver
+    <Solver
         Theta = "Default"
         MaxNLIteration = "10"
         RelativeTolerance = "1.e-8"
         AbsoluteTolerance = "1.e-9" />
 </simParam>
+-->

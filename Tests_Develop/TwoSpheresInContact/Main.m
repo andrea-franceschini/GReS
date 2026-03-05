@@ -72,12 +72,13 @@ tol = 1e-3;
 r0 = 0.2*max(sqrt(cx.^2 + cy.^2 + cz.^2)); % threshold constraint
 
 % Computing specific points from nodal coordinates
-Point_Minus100 = find(all(abs([cx+1 cy-0 cz-0]) < tol, 2));
+Point_Minus100 = find(all(abs([cx+0.8 cy-0 cz-0]) < tol, 2));
 writematrix(Point_Minus100, "Inputs/Point_-100.dat");
 
 % Remember to update current values and points in boundaries when changing
 % i_n/C-rate values or when changing the mesh file.
-bound = Boundaries(fullfile(scriptDir, input_dir, "boundaries.xml"), grid);
+bound = Boundaries(fullfile(scriptDir, input_dir, ...
+    "boundaries_overlappingspheres.xml"), grid);
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility for the solution

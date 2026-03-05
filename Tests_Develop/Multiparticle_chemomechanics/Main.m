@@ -1,6 +1,10 @@
 % clear
-close all;
+clear all;
 tic;
+
+%% Useful commands:
+% warning('off', 'MATLAB:nearlySingularMatrix');
+% gresLog().setVerbosity(5)
 
 %% Initialize input, output, directory paths
 output_dir = 'Outputs';
