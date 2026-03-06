@@ -149,9 +149,26 @@ classdef Boundaries < handle
 
     function vals = getVals(obj, identifier, t)
       % value to the source field
-      valSrc = obj.getData(identifier).data.getValues(t);
       M = obj.getEntitiesInfluence(identifier);
-      vals = M * valSrc; 
+      valSrc = obj.getData(identifier).data.getValues(t);
+
+      type = obj.getType(identifier);
+
+      msg = "The base getVals() method cannot be used for custom boundary condition '" + type + "'." + newline + ...
+        "It must be overridden in a method of the PhysicsSolver using it" + newline + ...
+        "getVals() only applies to BC types: " + ...
+        strjoin(string(enumeration('BCtype')), ", ");
+
+      assert(~BCtype.isCustomBC(type), msg);
+
+      switch type
+        case BCtype.dirichlet
+          M = M./sum(M,2);`
+        case {BCtype.source,BCtype.neumann}
+      end
+
+
+      vals = M * valSrc;
     end
 
 
@@ -216,7 +233,8 @@ classdef Boundaries < handle
       % is applied
 
       src = obj.getField(bcId);
-      obj.getData(bcId).computeTargetEntities(obj.grid,target,src);
+      bcEnt = obj.getData(bcId).data;
+      bcEnt.computeTargetEntities(obj.grid,target,src);
 
     end
 

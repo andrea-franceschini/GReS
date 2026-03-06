@@ -25,13 +25,15 @@ classdef entityField
         sourceList = [];
       end
 
+      target = entityField(target);
+
       switch source
         case entityField.node
           [list,ptr] = getIncidenceIDFromNode(target,mesh,sourceList);
         case entitiyField.surface
-          [list,ptr] = getIndicenceIDFromSurface(target,mesh,sourceList);
+          [list,ptr] = getIncidenceIDFromSurface(target,mesh,sourceList);
         case entityField.cell
-          [list,ptr] = getIndicenceIDFromCell(target,mesh,sourceList);
+          [list,ptr] = getIncidenceIDFromCell(target,mesh,sourceList);
       end
 
       varargout{1} = list;
@@ -58,7 +60,7 @@ classdef entityField
 
     end
 
-    function [list,ptr] = getIndicenceIDFromSurface(target,mesh,sourceList)
+    function [list,ptr] = getIncidenceIDFromSurface(target,mesh,sourceList)
 
       if isempty(sourceList)
         sourceList = 1:mesh.nSurfaces;
@@ -66,7 +68,7 @@ classdef entityField
 
       switch target
         case entityField.node
-          ptr = mesh.surfaceNumVerts(sourceList);
+          ptr = [0;cumsum(mesh.surfaceNumVerts(sourceList))];
           tmp = mesh.surfaces(sourceList,:);
           list = reshape(tmp',[],1);
         case entityField.surface
@@ -78,7 +80,7 @@ classdef entityField
 
     end
 
-    function [list,ptr] = getIndicenceIDFromCell(target,mesh,sourceList)
+    function [list,ptr] = getIncidenceIDFromCell(target,mesh,sourceList)
 
       if isempty(sourceList)
         sourceList = 1:mesh.nCells;
@@ -86,7 +88,7 @@ classdef entityField
 
       switch target
         case entityField.node
-          ptr = [1; cumsum(mesh.cellNumVerts(sourceList))];
+          ptr = [0; cumsum(mesh.cellNumVerts(sourceList))];
           tmp = mesh.cells(sourceList,:);
           list = reshape(tmp',[],1);
         case entityField.cell
@@ -99,7 +101,7 @@ classdef entityField
     end
 
 
-    function map = getIncidenceMap(target,grid,source,srcList)
+    function [map,varargout] = getIncidenceMap(target,grid,source,srcList)
       % return a sparse matrix  map that perform geometrical interpolation
       % from entity of type 'source' to entity of type 'target'
       % sourceList - optional input with id of source entities
@@ -111,32 +113,60 @@ classdef entityField
         srcList = [];
       end
 
+      target = entityField(target);
 
-      switch source
+
+      switch entityField(source)
         case entityField.node
-          error("Incidence map from node is not yet available")
+          [map,ents] = getIncidenceMapFromNode(target,grid,srcList);
           % map = getIncidenceMapFromNode(target,grid,srcList);
-        case entitiyField.surface
-          map = getIncidenceMapFromSurface(target,grid,srcList);
+        case entityField.surface
+          [map,ents] = getIncidenceMapFromSurface(target,grid,srcList);
         case entityField.cell
-          map = getIncidenceMapFromCell(target,grid,srcList);
+          [map,ents] = getIncidenceMapFromCell(target,grid,srcList);
+      end
+
+      if nargout > 1
+        varargout{1} = ents;
+      end
+
+    end
+
+    function [map,targEnts] = getIncidenceMapFromNode(target,grid,srcList)
+
+      if isempty(srcList)
+        srcList = 1:grid.topology.nNodes;
+      end
+
+      switch target
+        case entityField.node
+          n = numel(srcList);
+          map = speye(n);
+          targEnts = srcList;
+        otherwise
+          error("Incidence map from node to %s is not yet available")
       end
 
     end
 
 
-    function [map,varargout] = getIncidenceMapFromSurface(target,grid,srcList)
+    function [map,targEnts] = getIncidenceMapFromSurface(target,grid,srcList)
+
+      if isempty(srcList)
+        srcList = 1:grid.topology.nSurfaces;
+      end
+
       switch target
         case entityField.node
-          [nodeID,ptr] = getIncidenceIDFromSurface(target,grid,srcList);
+          [nodeID,ptr] = getIncidenceIDFromSurface(target,grid.topology,srcList);
           [targEnts,~,n] = unique(nodeID);
           m = assembler(numel(nodeID),numel(targEnts),numel(srcList));
           k = 0;
           for id = srcList'
             k = k+1;
-            A = findNodeArea(grid.cell,id);
-            ii = n(ptr(k:k+1));
-            m.localAssembly(ii,k,A./sum(A));
+            A = findNodeArea(grid.cells,id);
+            ii = n(ptr(k)+1:ptr(k+1));
+            m.localAssembly(ii,k,A);
           end
           map = m.sparseAssembly();
         case entityField.surface
@@ -151,32 +181,51 @@ classdef entityField
           %error("Incidence map from surface to %s is not yet available")
       end
 
-      if nargout > 1
-        varargout{1} = targEnts;
-      end
-
     end
 
 
-    function map = getIncidenceMapFromCell(target,grid,srcList)
+    function [map,targEnts] = getIncidenceMapFromCell(target,grid,srcList)
+
+      if isempty(srcList)
+        srcList = 1:grid.topology.nCells;
+      end
+
       switch target
         case entityField.node
-          [nodeID,ptr] = getIncidenceIDFromCell(target,grid,srcList);
-          [nodes,~,n] = unique(nodeID);
-          m = assembler(numel(nodeID),numel(nodes),numel(srcList));
+          [nodeID,ptr] = getIncidenceIDFromCell(target,grid.topology,srcList);
+          [targEnts,~,n] = unique(nodeID);
+          m = assembler(numel(nodeID),numel(targEnts),numel(srcList));
           k = 0;
           for id = srcList'
             k = k+1;
-            V = findNodeVolume(grid.cell,id);
+            V = findNodeVolume(grid.cells,id);
             ii = n(ptr(k:k+1));
-            m.localAssembly(ii,k,V./sum(V));
+            m.localAssembly(ii,k,V);
           end
           map = m.sparseAssembly();
         case entityField.cell
           n = numel(srcList);
           map = speye(n);
+          targEnts = srcList;
         otherwise
           error("Incidence map from cell to %s is not yet available")
+      end
+    end
+
+
+    function size = getEntitySize(ent,msh,list)
+
+      if nargin < 3
+        list = getIncidenceID(ent,msh,ent);
+      end
+
+      switch ent
+        case entityField.node
+          size = ones(list,1);
+        case entityField.surface
+          size = msh.surfaceArea(list);
+        case entityField.cell
+          size = mesh.cellVolume(list);
       end
     end
 

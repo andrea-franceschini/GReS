@@ -178,7 +178,7 @@ classdef BoundaryEntities < handle
           continue
         end
 
-        [inflMap,targEnts] = getIncidenceMap(targetField,srcField,grid,srcID);
+        [inflMap,targEnts] = getIncidenceMap(targetField,grid,srcField,srcID);
 
         obj.nTargetEnts(i) = numel(targEnts);
         obj.targetEnts = [obj.targetEnts; targEnts];
