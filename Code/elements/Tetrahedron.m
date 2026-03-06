@@ -23,14 +23,18 @@ classdef Tetrahedron < FEM
       %    1) [mat,dJWeighed] = getDerBasisFAndDet(obj,el,1)
       %    2) mat = getDerBasisFAndDet(obj,el,2)
       %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
-      
+
       if obj.GaussPts.nNode < 2
         % faster version for single GP rule
-        mat = [1 obj.mesh.coordinates(obj.mesh.cells(el,1),:);
-                   1 obj.mesh.coordinates(obj.mesh.cells(el,2),:);
-                   1 obj.mesh.coordinates(obj.mesh.cells(el,3),:);
-                   1 obj.mesh.coordinates(obj.mesh.cells(el,4),:)];
-        obj.detJ = det(mat);
+        nodes = obj.mesh.cells(el,:);
+        X = obj.mesh.coordinates(nodes,:);
+
+        mat = [ones(4,1) X];
+        detJ = det(mat);
+
+        if detJ < 0
+          error("Negative determinant for Tetrahedron %d", el)
+        end
         dJw = obj.GaussPts.weight*obj.detJ;
         invMat = inv(mat);
         N = invMat(2:obj.nNode,:);
@@ -88,6 +92,8 @@ classdef Tetrahedron < FEM
 
         % vectorized version
 
+        % fix element orientation if some tetrahedra have wrong numbering
+
         tetraNodes = obj.mesh.cells(idTetra, 1:obj.nNode);  % [nTetra × 4]
 
         X = obj.mesh.coordinates(tetraNodes(:,1),:); % [nTetra × 3]
@@ -101,7 +107,23 @@ classdef Tetrahedron < FEM
         v2 = Z - X;
         v3 = W - X;
 
-        vol = abs(dot(v1, cross(v2,v3,2),2)) / 6;
+        vol = dot(v1, cross(v2,v3,2),2) / 6;
+
+        degen = abs(vol) < 1e-10;
+
+        if any(degen)
+          error('Found %i degenerate tetrahedrons',sum(degen));
+        end
+
+        neg = vol < 0;
+
+        % flip nodes 3 and 4 and change volume sign
+        obj.mesh.cells(neg,[3 4]) = obj.mesh.cells(neg,[4 3]);
+
+        if any(neg)
+          gresLog().warning(2,"Found %i tetrahedra with negative determinant." + ...
+            " Node ordering has been automatically fixed",sum(neg))
+        end
 
       end
 

@@ -365,7 +365,10 @@ classdef MeshTying < InterfaceSolver
 
       obj.stabilizationMat = asbH.sparseAssembly();
 
-      assert(norm(sum(obj.stabilizationMat,2))<1e-8, 'Stabilization matrix is not locally conservative')
+      % sanity checks for stabilization matrix
+      dH = diag(obj.stabilizationMat);
+      assert(all(sum(obj.stabilizationMat,2)./dH < 1e-9), 'Stabilization matrix is not locally conservative')
+      assert(all(dH > eps),"Found negative diagonal in stabilization matrix")
     end
 
     function S = computeSchurLocal(obj,nm,ns,fs)

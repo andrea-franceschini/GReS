@@ -66,7 +66,7 @@ classdef Poromechanics < PhysicsSolver
         if isempty(getJacobian(obj))
           % compute strain due to initial boundary displacements
           gresLog().log(3,"Computing strain...\n")
-          computeStrain(obj);
+          %computeStrain(obj);
         end
         computeStiffMat(obj,dt);
       end
