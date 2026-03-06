@@ -172,21 +172,53 @@ classdef BoundaryEntities < handle
         % process components individually
         srcID = obj.sourceEnts(n+1:n+obj.nSrcEntities(i));
 
-        targEnts = getEntitiesIncidence(targetField,...
-          grid.topology,srcField,srcID);
+        if srcField == entityField.surface && targetField == entityField.cell
+          % For FV only: treated differently
+          obj.targetEnts = srcID;
+          continue
+        end
 
-        inflMap = getEntitiesInterpolation(targetField,sourceField,grid,srcID);
-        
+        [inflMap,targEnts] = getIncidenceMap(targetField,srcField,grid,srcID);
+
         obj.nTargetEnts(i) = numel(targEnts);
         obj.targetEnts = [obj.targetEnts; targEnts];
 
-        % concatenete block diagonal sparse maps for each component set
+        % concatenate block diagonal sparse maps for each component set
         obj.entsMap = blkdiag(obj.entsMap,inflMap);
       end
 
     end
 
+
+
+    function removeTargetEntities(obj,list)
+      % remove BC entities that are contained in an input list
+      % ignores entries of list that are not valid entities
+
+      isEntActive = ~ismember(obj.targetEnts,list);
+      obj.isActiveEntity(~isEntActive) = false;
+      obj.targetEnts(~isEntActive) = [];
+      obj.entsMap(~isEntActive,:) = [];
+
+      % update the number of entities
+      n = 0;
+      ncomp = numel(obj.targetEnts);
+      l = zeros(ncomp,1);
+
+      for i = 1:ncomp
+        l(i) = sum(isEntActive(n+1:obj.nTargetEnts(i)));
+        n = n + obj.nTargetEnts(i);
+      end
+
+      obj.nTargetEnts = l;
+      obj.totEnts = sum(obj.nTargetEnts);
+      obj.availVals = zeros(obj.totEnts,2);
+
+    end
+
   end
+
+
 
   methods (Access=private)
 
@@ -316,7 +348,7 @@ classdef BoundaryEntities < handle
 
   methods (Static)
 
-        function [nEnts, ents] = readListFile(fileName)
+    function [nEnts, ents] = readListFile(fileName)
 
       if (~exist(fileName, 'file'))
         error('File %s does not seem to exist. Please, check the provided file.', fileName);

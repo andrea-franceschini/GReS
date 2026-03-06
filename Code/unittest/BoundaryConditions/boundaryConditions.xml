@@ -6,7 +6,7 @@
 specifies how the ID of the constrained entities is given.
 
 'bcListFile'
-a path to a list of entities ID of type specified by 'targetEntity'
+a path to a list of entities ID of type specified by 'field'
 (see the BoundaryConditions tutorial)
 
 'surfaceTags'
@@ -40,7 +40,7 @@ a function handle depending on space (x,y,z)
   <BC
       name = "bc1"
       type = "Dirichlet"
-      targetEntity = "surface"
+      field = "surface"
       variable = "pressure"
       entityListType = "bcList"
       entityList = "1,13,168"
@@ -55,7 +55,7 @@ a function handle depending on space (x,y,z)
   <BC
       name = "bc2"
       type = "Neumann"
-      targetEntity = "surface"
+      field = "surface"
       entityListType = "surfaceTags"
       entityList = "2"
       variable = "displacements"
@@ -80,7 +80,7 @@ a function handle depending on space (x,y,z)
   <BC
       name = "bc3"
       type = "Dirichlet"
-      targetEntity = "node"
+      field = "node"
       variable = "displacements"
       entityListType = "bcListFile"
       entityList = "entityList"
@@ -96,7 +96,7 @@ a function handle depending on space (x,y,z)
   <BC
       name = "bc4"
       type = "Dirichlet"
-      targetEntity = "node"
+      field = "node"
       variable = "displacements"
       entityListType = "surfaceTags"
       entityList = "4"
@@ -112,7 +112,7 @@ a function handle depending on space (x,y,z)
   <BC
       name = "bc5"
       type = "Dirichlet"
-      targetEntity = "surface"
+      field = "surface"
       variable = "displacements"
       entityListType = "surfaceTags"
       entityList = "1"
@@ -133,6 +133,30 @@ a function handle depending on space (x,y,z)
     <BCevent
              time = "3.0"
              value = "4"
+             />
+
+  </BC>
+
+
+
+  <BC
+      name = "bc6"
+      type = "source"
+      field = "cell"
+      variable = "pressure"
+      entityListType = "bcList"
+      entityList = "3"
+      >
+
+    <BCevent
+             time = "0"
+             value = "0"
+             />
+
+
+    <BCevent
+             time = "1.0"
+             value = "1"
              />
 
   </BC>

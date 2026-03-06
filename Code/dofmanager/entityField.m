@@ -1,25 +1,14 @@
 classdef entityField
+  % general class for handling field location and interactions
 
-  % general class for handling a generic field in the problem
-
-  % the class is useful for both purely geometric information and also
-  % physical information for variable fields
-
-  % the location of the field
+  % possible location of variable fields
   enumeration
     node
-    face
+    face % not supported yet
     cell
     surface
   end
 
-  % properties needed only for variable field
-  % properties
-  %   mesh
-  %   variableName
-  %   fieldId                % the position of the field in the system matrix of the domain
-  %   numbComponents
-  % end
 
   methods
 
@@ -28,8 +17,9 @@ classdef entityField
       % type 'target'.
       % sourceList - optional input with id of source entities
 
-      % output: list: list of indices connected, ptr: pointer mapping each
-      % source id with the first corresponding target entity in the list
+      % output: list: list of indices connected (with repetitions)
+      % ptr: pointer mapping each source id with the first corresponding
+      % target entity in the list
 
       if nargin < 4
         sourceList = [];
@@ -37,22 +27,22 @@ classdef entityField
 
       switch source
         case entityField.node
-          [list,ptr] = getIncidenceFromNode(target,mesh,sourceList);
+          [list,ptr] = getIncidenceIDFromNode(target,mesh,sourceList);
         case entitiyField.surface
-          [list,ptr] = getSurfaceIndicence(target,mesh,sourceList);
+          [list,ptr] = getIndicenceIDFromSurface(target,mesh,sourceList);
         case entityField.cell
-          [list,ptr] = getCellIncidence(target,mesh,sourceList);
+          [list,ptr] = getIndicenceIDFromCell(target,mesh,sourceList);
       end
 
       varargout{1} = list;
-      
+
       if nargout > 1
         varargout{2} = ptr;
       end
     end
 
 
-    function [list,ptr] = getIncidenceFromNode(target,mesh,sourceList)
+    function [list,ptr] = getIncidenceIDFromNode(target,mesh,sourceList)
 
       if isempty(sourceList)
         sourceList = 1:mesh.nNodes;
@@ -68,7 +58,7 @@ classdef entityField
 
     end
 
-    function [list,ptr] = getIndicenceFromSurface(target,mesh,sourceList)
+    function [list,ptr] = getIndicenceIDFromSurface(target,mesh,sourceList)
 
       if isempty(sourceList)
         sourceList = 1:mesh.nSurfaces;
@@ -82,13 +72,13 @@ classdef entityField
         case entityField.surface
           list = sourceList;
           ptr = reshape(1:numel(list),[],1);
-        otherwise
+        case entityField.cell
           error("Incidence from surface to %s is not yet available")
       end
 
     end
 
-    function [list,ptr] = getIndicenceFromCell(target,mesh,sourceList)
+    function [list,ptr] = getIndicenceIDFromCell(target,mesh,sourceList)
 
       if isempty(sourceList)
         sourceList = 1:mesh.nCells;
@@ -96,234 +86,103 @@ classdef entityField
 
       switch target
         case entityField.node
-          ptr = mesh.cellNumVerts(sourceList);
+          ptr = [1; cumsum(mesh.cellNumVerts(sourceList))];
           tmp = mesh.cells(sourceList,:);
           list = reshape(tmp',[],1);
         case entityField.cell
           list = sourceList;
           ptr = reshape(1:numel(list),[],1);
         otherwise
-          error("Incidence from cell to %s is not yet available")
+          error("Incidence from cell to %s is not yet available",target)
       end
 
     end
 
 
-    function getIncidenceMap(target,grid,source,srcList)
-      % given entities of type 'source', return the connected entities of
-      % type 'target'.
+    function map = getIncidenceMap(target,grid,source,srcList)
+      % return a sparse matrix  map that perform geometrical interpolation
+      % from entity of type 'source' to entity of type 'target'
       % sourceList - optional input with id of source entities
 
       % output: list: list of indices connected, ptr: pointer mapping each
       % source id with the first corresponding target entity in the list
 
       if nargin < 4
-        sourceList = [];
+        srcList = [];
       end
+
 
       switch source
         case entityField.node
-          [list,ptr] = getIncidenceFromNode(target,mesh,sourceList);
+          error("Incidence map from node is not yet available")
+          % map = getIncidenceMapFromNode(target,grid,srcList);
         case entitiyField.surface
-          [list,ptr] = getSurfaceIndicence(target,mesh,sourceList);
+          map = getIncidenceMapFromSurface(target,grid,srcList);
         case entityField.cell
-          [list,ptr] = getCellIncidence(target,mesh,sourceList);
+          map = getIncidenceMapFromCell(target,grid,srcList);
       end
 
-      varargout{1} = list;
+    end
+
+
+    function [map,varargout] = getIncidenceMapFromSurface(target,grid,srcList)
+      switch target
+        case entityField.node
+          [nodeID,ptr] = getIncidenceIDFromSurface(target,grid,srcList);
+          [targEnts,~,n] = unique(nodeID);
+          m = assembler(numel(nodeID),numel(targEnts),numel(srcList));
+          k = 0;
+          for id = srcList'
+            k = k+1;
+            A = findNodeArea(grid.cell,id);
+            ii = n(ptr(k:k+1));
+            m.localAssembly(ii,k,A./sum(A));
+          end
+          map = m.sparseAssembly();
+        case entityField.surface
+          n = numel(srcList);
+          map = speye(n);
+          targEnts = srcList;
+        case entityField.cell
+          % this combination is only needed by FV solvers where influence
+          % map is not used
+          map = [];
+          targEnts = [];
+          %error("Incidence map from surface to %s is not yet available")
+      end
 
       if nargout > 1
-        varargout{2} = ptr;
+        varargout{1} = targEnts;
       end
 
-      mesh = grid.topology;
-      elem = grid.cell;
+    end
 
 
+    function map = getIncidenceMapFromCell(target,grid,srcList)
+      switch target
+        case entityField.node
+          [nodeID,ptr] = getIncidenceIDFromCell(target,grid,srcList);
+          [nodes,~,n] = unique(nodeID);
+          m = assembler(numel(nodeID),numel(nodes),numel(srcList));
+          k = 0;
+          for id = srcList'
+            k = k+1;
+            V = findNodeVolume(grid.cell,id);
+            ii = n(ptr(k:k+1));
+            m.localAssembly(ii,k,V./sum(V));
+          end
+          map = m.sparseAssembly();
+        case entityField.cell
+          n = numel(srcList);
+          map = speye(n);
+        otherwise
+          error("Incidence map from cell to %s is not yet available")
+      end
     end
 
   end
 
-    % function getEntitiesInterpolation(target,grid,source,sourceList)
-    % end
-
-  end
-
-
-  % methods
-  % 
-  % 
-  %   function ents = getEntities(obj, mesh, tags)
-  %     % GETENTITIES returns the entities of this type from the mesh
-  %     % obj      : the enum instance (entityField.node, etc.)
-  %     % mesh     : mesh object containing cells, faces, etc.
-  %     % tags     : optional tags to filter entities
-  % 
-  %     if nargin < 3
-  %       tags = [];
-  %     end
-  % 
-  %     if mesh.nCells == 0
-  %       assert(obj == entityField.node || obj == entityField.surface,...
-  %         "Cannot retrieve entity %s from a 2D mesh object",obj);
-  %       % 2D mesh as input
-  %       source = mesh.surfaces;
-  %       sourceTag = mesh.surfaceTag;
-  %     else
-  %       source = mesh.cells;
-  %       sourceTag = mesh.cellTag;
-  %     end
-  % 
-  %     switch obj
-  %       case entityField.node
-  %         if isempty(tags)
-  %           ents = unique(source(:));
-  %         else
-  %           cellsID = ismember(sourceTag, tags);
-  %           ents = unique(source(cellsID,:));
-  %         end
-  % 
-  %       case entityField.face
-  %         mesh = mesh.topology;
-  %         faces = mesh.faces;
-  %         fN = faces.faceNeighbors;
-  %         if isempty(tags)
-  %           ents = 1:size(fN,1);  % all faces
-  %         else
-  %           cellsID = ismember(sourceTag, tags);
-  %           ents = find(any(ismember(fN, find(cellsID)),2));
-  %         end
-  % 
-  %       case entityField.cell
-  %         if isempty(tags)
-  %           ents = 1:size(source,1);
-  %         else
-  %           ents = find(ismember(sourceTag, tags));
-  %         end
-  % 
-  %       case entityField.surface
-  % 
-  %         if isempty(tags)
-  %           ents = 1:size(source,1);
-  %         else
-  %           ents = find(ismember(sourceTag, tags));
-  %         end
-  %       otherwise
-  %         error('Unknown entityField type.');
-  %     end
-  %   end
-
-    % function nEnts = getNumberOfEntities(target,mesh,tags,source)
-    %   % return the number of entities
-    % 
-    %   if nargin < 3
-    %     target == source;
-    %   end
-    % 
-    % 
-    %     ents = getEntities(obj,mesh);
-    %   else
-    %     ents = getEntities(obj,mesh,tags);
-    %   end
-    %   nEnts = numel(ents);
-    % end
-
-    % function nEnts = getNumberOfEntities(target,mesh,tags,source)
-    %   if nargin < 3
-    %     ents = getEntities(obj,mesh);
-    %   else
-    %     ents = getEntities(obj,mesh,tags);
-    %   end
-    %   nEnts = numel(ents);
-    % end
-
-    % function ents = getEntityFromElement(outEntity,sourceEntity,mesh,el,nc)
-    % 
-    %   if sourceEntity == entityField.cell
-    % 
-    %     switch outEntity
-    %       case entityField.node
-    %         ents = mesh.cells(el,1:mesh.cellNumVerts(el));
-    %       case entityField.cell
-    %         ents = el;
-    %       otherwise
-    %         error("Method not yet supported for entity of type %s");
-    %     end
-    % 
-    %   elseif sourceEntity == entityField.surface
-    % 
-    %     switch outEntity
-    %       case entityField.node
-    %         ents = mesh.surfaces(el,1:mesh.surfaceNumVerts(el));
-    %       case entityField.surface
-    %         ents = el;
-    %       otherwise
-    %         error("Method not yet supported for entity of type %s",outEntity);
-    %     end
-    % 
-    %   else
-    % 
-    %     error("Method not yet supported for source entity %s",sourceEntity)
-    % 
-    %   end
-    % 
-    %   % if nargin > 3
-    %   %   ents = DoFManager.dofExpand(ents,nc);
-    %   % end
-    % 
-    % end
-
-
-    % function map = getEntityMapping(targetEntity,sourceEntity,grid,varargin)
-    %   % return a sparse matrix that perform geometric interpolation from a
-    %   % sourceEntity to a targetEntitiy.
-    %   % mesh (grid object handling all geometric information on the
-    %   % entities)
-    %   % since this is is an interpolation operator, rows sum to one
-    %   % optional input: a list for a subset of source entities
-    % 
-    %   nS = getNumberOfEntities(sourceEntity);
-    % 
-    %   if targetEntity == sourceEntity
-    %     map = speye(nS);
-    %     return
-    %   end
-    % 
-    % 
-    %   if nargin > 3
-    %     list = varargin{1};
-    %   else
-    %     list = reshape(1:nS,[],1);
-    %   end
-    % 
-    %   if targetEntity ~= entityField.node
-    %     error(['Mapping between different entities is currently ' ...
-    %       'available only for nodal target'])
-    %   end
-    % 
-    %   switch sourceEntity
-    %     case entityField.surface
-    %       getInf = @(el) 
-    %     case entityField.cell
-    %   end
-    %   end
-
-
-
-
-
-
-      % use getEntityFromElement to map the entities and preallocate the
-      % matrix
-
-      % then use findNodeVolume and findNodeAea
-
-
-    %end
-
-
-  %end
-
 end
+
 
 

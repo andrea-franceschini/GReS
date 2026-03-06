@@ -1,5 +1,4 @@
 function linkBoundSurf2TPFAFace(solver)
-% TO DO: call this from within the SinglePhaseFlow solver!
 
 bcs = solver.domain.bcs;
 
