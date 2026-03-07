@@ -564,130 +564,130 @@ c
 
     end
 
-    function computeStabilizationMatrix(obj)
+    % function computeStabilizationMatrix(obj)
+    % 
+    %   % if ~isempty(obj.stabilizationMat)
+    %   %   % compute stabilization matrix only once for all edges
+    %   %   % retrieve row-col needing stabilization at each time step
+    %   %   return
+    %   % end
+    % 
+    %   nComp = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
+    % 
+    %   % initialize matrix estimating number of entries
+    %   % number of internal slave elements
+    %   nes = sum(all(obj.interfMesh.e2f{2},2));
+    %   nEntries = 2*36*nes; % each cell should contribute at least two times
+    %   nmult = getNumbDoF(obj);
+    %   localKernel = @(S,e1,e2) assembleLocalStabilization(obj,S,e1,e2);
+    %   asbH = assembler(nEntries,nmult,nmult,localKernel);
+    % 
+    %   % get list of internal master nodes
+    %   boundEdges = ~all(obj.interfMesh.e2f{1},2);
+    %   boundNodes = unique(obj.interfMesh.e2n{1}(boundEdges,:));
+    % 
+    %   internalNodes = setdiff(1:getMesh(obj,MortarSide.master).nNodes,boundNodes);
+    % 
+    %   topolMaster = getMesh(obj,MortarSide.master).surfaces;
+    % 
+    %   for nodeM = internalNodes
+    %     % loop over internal master edges
+    % 
+    %     % get master faces sharing internal node
+    %     fM = find(any(topolMaster == nodeM,2));
+    % 
+    %     % fM = obj.interfMesh.e2f{1}(ieM,:);
+    %     assert(numel(fM)>2,['Unexpected number of connected faces for' ...
+    %       'node %i. Expected more than 2.'], nodeM);
+    % 
+    %     % get slave faces sharing support with master faces
+    %     ii = ismember(obj.quadrature.interfacePairs(:,2),fM);
+    %     fS = unique(obj.quadrature.interfacePairs(ii,1));
+    % 
+    %     if numel(fS) < 2
+    %       continue
+    %     end
+    % 
+    %     % average master elements area
+    %     Am = mean(obj.interfMesh.msh(1).surfaceArea(fM));
+    % 
+    %     % get internal edges of slave faces
+    %     eS = unique(obj.interfMesh.f2e{2}(fS,:));
+    %     id = all(ismember(obj.interfMesh.e2f{2}(eS,:),fS),2);
+    %     ieS = eS(id);
+    % 
+    %     % get internal nodes
+    %     slaveNodes = unique(obj.interfMesh.e2n{2}(eS,:));
+    %     boundSlaveNodes = unique(obj.interfMesh.e2n{2}(~id,:));
+    %     nodeS = setdiff(slaveNodes,boundSlaveNodes);
+    % 
+    %     % compute local schur complement approximation
+    %     S = computeSchurLocal(obj,nodeM,nodeS,fS);
+    % 
+    %     % assemble stabilization matrix component
+    %     for iesLoc = ieS'
+    %       % loop over internal slave edges in the macroelement
+    % 
+    %       % get pair of slave faces sharing the edge
+    %       f = obj.interfMesh.e2f{2}(iesLoc,:);
+    % 
+    %       % mean area of the slave faces
+    %       As = mean(obj.interfMesh.msh(2).surfaceArea(f));
+    %       fLoc1 = dofId(find(fS==f(1)),nComp);
+    %       fLoc2 = dofId(find(fS==f(2)),nComp);
+    % 
+    %       % local schur complement for macroelement pair of slave faces
+    %       Sloc = 0.5*(Am/As)*(S(fLoc1,fLoc1)+S(fLoc2,fLoc2));
+    %       asbH.localAssembly(Sloc,f(1),f(2));
+    %     end
+    %   end
+    % 
+    %   obj.stabilizationMat = asbH.sparseAssembly();
+    % 
+    %   assert(norm(sum(obj.stabilizationMat,2))<1e-8, 'Stabilization matrix is not locally conservative')
+    % end
 
-      % if ~isempty(obj.stabilizationMat)
-      %   % compute stabilization matrix only once for all edges
-      %   % retrieve row-col needing stabilization at each time step
-      %   return
-      % end
-
-      nComp = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
-
-      % initialize matrix estimating number of entries
-      % number of internal slave elements
-      nes = sum(all(obj.interfMesh.e2f{2},2));
-      nEntries = 2*36*nes; % each cell should contribute at least two times
-      nmult = getNumbDoF(obj);
-      localKernel = @(S,e1,e2) assembleLocalStabilization(obj,S,e1,e2);
-      asbH = assembler(nEntries,nmult,nmult,localKernel);
-
-      % get list of internal master nodes
-      boundEdges = ~all(obj.interfMesh.e2f{1},2);
-      boundNodes = unique(obj.interfMesh.e2n{1}(boundEdges,:));
-
-      internalNodes = setdiff(1:getMesh(obj,MortarSide.master).nNodes,boundNodes);
-
-      topolMaster = getMesh(obj,MortarSide.master).surfaces;
-
-      for nodeM = internalNodes
-        % loop over internal master edges
-
-        % get master faces sharing internal node
-        fM = find(any(topolMaster == nodeM,2));
-
-        % fM = obj.interfMesh.e2f{1}(ieM,:);
-        assert(numel(fM)>2,['Unexpected number of connected faces for' ...
-          'node %i. Expected more than 2.'], nodeM);
-
-        % get slave faces sharing support with master faces
-        ii = ismember(obj.quadrature.interfacePairs(:,2),fM);
-        fS = unique(obj.quadrature.interfacePairs(ii,1));
-
-        if numel(fS) < 2
-          continue
-        end
-
-        % average master elements area
-        Am = mean(obj.interfMesh.msh(1).surfaceArea(fM));
-
-        % get internal edges of slave faces
-        eS = unique(obj.interfMesh.f2e{2}(fS,:));
-        id = all(ismember(obj.interfMesh.e2f{2}(eS,:),fS),2);
-        ieS = eS(id);
-
-        % get internal nodes
-        slaveNodes = unique(obj.interfMesh.e2n{2}(eS,:));
-        boundSlaveNodes = unique(obj.interfMesh.e2n{2}(~id,:));
-        nodeS = setdiff(slaveNodes,boundSlaveNodes);
-
-        % compute local schur complement approximation
-        S = computeSchurLocal(obj,nodeM,nodeS,fS);
-
-        % assemble stabilization matrix component
-        for iesLoc = ieS'
-          % loop over internal slave edges in the macroelement
-
-          % get pair of slave faces sharing the edge
-          f = obj.interfMesh.e2f{2}(iesLoc,:);
-
-          % mean area of the slave faces
-          As = mean(obj.interfMesh.msh(2).surfaceArea(f));
-          fLoc1 = dofId(find(fS==f(1)),nComp);
-          fLoc2 = dofId(find(fS==f(2)),nComp);
-
-          % local schur complement for macroelement pair of slave faces
-          Sloc = 0.5*(Am/As)*(S(fLoc1,fLoc1)+S(fLoc2,fLoc2));
-          asbH.localAssembly(Sloc,f(1),f(2));
-        end
-      end
-
-      obj.stabilizationMat = asbH.sparseAssembly();
-
-      assert(norm(sum(obj.stabilizationMat,2))<1e-8, 'Stabilization matrix is not locally conservative')
-    end
-
-    function [dofRow,dofCol,mat] = assembleLocalStabilization(obj,S,e1,e2)
-      % assemble stabilization matrix S (in global coordinates) for
-      % elements e1 and e2.
-
-      nc = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
-      dof1 = DoFManager.dofExpand(e1,nc);
-      dof2 = DoFManager.dofExpand(e2,nc);
-
-      % IMPORTANT
-      % Rotation is not required since the Schur complement is already
-      % rotated in the local frame
-
-      % if nc > 1
-      %   % vector field, rotation matrix needed
-      % 
-      %   % get average rotation matrix
-      %   n1 = getNormal(obj.interfMesh,e1);
-      %   n2 = getNormal(obj.interfMesh,e2);
-      %   if abs(n1'*n2 -1) < 1e4*eps
-      %     avgR = obj.interfMesh.computeRot(n1);
-      %   else
-      %     A1 = obj.interfMesh.msh(2).surfaceArea(e1);
-      %     A2 = obj.interfMesh.msh(2).surfaceArea(e2);
-      %     nAvg = n1*A1 + n2*A2;
-      %     nAvg = nAvg/norm(nAvg);
-      %     avgR = obj.interfMesh.computeRot(nAvg);
-      %   end
-
-        % apply rotation matrix to S
-        %S = avgR'*S*avgR;
-
-      %end
-
-      % prepare matrix for full stick edge
-
-      mat = obj.stabilizationScale*[S,-S;-S,S];
-      dofRow = [dof1;dof2];
-      dofCol = [dof1;dof2];
-
-    end
-
+    % function [dofRow,dofCol,mat] = assembleLocalStabilization(obj,S,e1,e2)
+    %   % assemble stabilization matrix S (in global coordinates) for
+    %   % elements e1 and e2.
+    % 
+    %   nc = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
+    %   dof1 = DoFManager.dofExpand(e1,nc);
+    %   dof2 = DoFManager.dofExpand(e2,nc);
+    % 
+    %   % IMPORTANT
+    %   % Rotation is not required since the Schur complement is already
+    %   % rotated in the local frame
+    % 
+    %   % if nc > 1
+    %   %   % vector field, rotation matrix needed
+    %   % 
+    %   %   % get average rotation matrix
+    %   %   n1 = getNormal(obj.interfMesh,e1);
+    %   %   n2 = getNormal(obj.interfMesh,e2);
+    %   %   if abs(n1'*n2 -1) < 1e4*eps
+    %   %     avgR = obj.interfMesh.computeRot(n1);
+    %   %   else
+    %   %     A1 = obj.interfMesh.msh(2).surfaceArea(e1);
+    %   %     A2 = obj.interfMesh.msh(2).surfaceArea(e2);
+    %   %     nAvg = n1*A1 + n2*A2;
+    %   %     nAvg = nAvg/norm(nAvg);
+    %   %     avgR = obj.interfMesh.computeRot(nAvg);
+    %   %   end
+    % 
+    %     % apply rotation matrix to S
+    %     %S = avgR'*S*avgR;
+    % 
+    %   %end
+    % 
+    %   % prepare matrix for full stick edge
+    % 
+    %   mat = obj.stabilizationScale*[S,-S;-S,S];
+    %   dofRow = [dof1;dof2];
+    %   dofCol = [dof1;dof2];
+    % 
+    % end
+    % 
 
     function [asbMu,asbDu,asbMt,asbDt,asbQ] = defineAssemblers(obj)
       % helper to define contact matrix assemblers
