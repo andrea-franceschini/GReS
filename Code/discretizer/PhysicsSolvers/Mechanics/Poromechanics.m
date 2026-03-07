@@ -55,7 +55,8 @@ classdef Poromechanics < PhysicsSolver
     function assembleSystem(obj,dt)
       % compute the displacements matrices and rhs in the domain
       obj.domain.J{obj.fieldId,obj.fieldId} = computeJacobian(obj,dt);
-      obj.domain.rhs{obj.fieldId} = computeRhs(obj);
+      obj.domain.rhs{obj.fieldId} = zeros(size(obj.domain.J{obj.fieldId,obj.fieldId},1),1);
+      %obj.domain.rhs{obj.fieldId} = computeRhs(obj);
     end
 
 
@@ -72,9 +73,9 @@ classdef Poromechanics < PhysicsSolver
       end
 
       if obj.domain.simparams.isTimeDependent
-        Jmat = obj.domain.simparams.theta*obj.K;
+        Jmat = obj.domain.simparams.theta*obj.domain.J{1,1};
       else
-        Jmat = obj.K;
+        Jmat = obj.domain.J{1,1};
       end
     end
 

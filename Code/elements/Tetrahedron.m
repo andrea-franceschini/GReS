@@ -30,9 +30,9 @@ classdef Tetrahedron < FEM
         X = obj.mesh.coordinates(nodes,:);
 
         mat = [ones(4,1) X];
-        detJ = det(mat);
+        obj.detJ = det(mat);
 
-        if detJ < 0
+        if obj.detJ < 0
           error("Negative determinant for Tetrahedron %d", el)
         end
         dJw = obj.GaussPts.weight*obj.detJ;
