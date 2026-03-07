@@ -168,7 +168,9 @@ classdef BoundaryEntities < handle
 
       n = 0;
 
-      for i = 1:numel(obj.nSrcEntities)
+      comp = find(obj.nSrcEntities > 0);
+
+      for i = comp
         % process components individually
         srcID = obj.sourceEnts(n+1:n+obj.nSrcEntities(i));
 

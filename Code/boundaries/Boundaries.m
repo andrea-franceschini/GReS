@@ -147,12 +147,15 @@ classdef Boundaries < handle
       end
     end
 
-    function vals = getVals(obj, identifier, t)
-      % value to the source field
-      M = obj.getEntitiesInfluence(identifier);
-      valSrc = obj.getData(identifier).data.getValues(t);
+    function vals = getVals(obj, bcId, t)
+      % get value of the boundary condition at the target field
+      
+      % geometric incidence map from source to target bc entities
+      M = obj.getEntitiesInfluence(bcId);
 
-      type = obj.getType(identifier);
+      valSrc = getSourceVals(obj,bcId,t);
+
+      type = obj.getType(bcId);
 
       msg = "The base getVals() method cannot be used for custom boundary condition '" + type + "'." + newline + ...
         "It must be overridden in a method of the PhysicsSolver using it" + newline + ...
@@ -161,14 +164,17 @@ classdef Boundaries < handle
 
       assert(~BCtype.isCustomBC(type), msg);
 
-      switch type
-        case BCtype.dirichlet
-          M = M./sum(M,2);`
-        case {BCtype.source,BCtype.neumann}
+      if isEssential(obj,bcId)
+          % make map interpolative
+          M = M./sum(M,2);
       end
 
-
+      % map values from source entity to target entity
       vals = M * valSrc;
+    end
+
+    function vals = getSourceVals(obj,bcId,t)
+        vals = obj.getData(bcId).data.getValues(t);
     end
 
 
@@ -334,6 +340,12 @@ classdef Boundaries < handle
       % ignores entries of list that are not valid entities
 
       getData(obj,bcId).removeTargetEntities(list);
+
+    end
+
+    function out = isEssential(obj,bcId)
+
+      out = obj.getData(bcId).essential;
 
     end
 
