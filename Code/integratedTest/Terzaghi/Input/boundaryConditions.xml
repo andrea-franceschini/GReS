@@ -10,14 +10,14 @@ ID of the constrained entities in different ways.
 a path to a list of entities ID of type entitiyType
 (see the BoundaryConditions tutorial)
 
-'surfaceTags'
-the surfaceTags to which the constrained entities belong
+'tags'
+the tags to which the constrained entities belong
 
 'bcList'
 a simple list of entities to be constrained in the specified components
 
 NOTE
-for the case of multi-component fields where 'bcList' or 'surfaceTags'
+for the case of multi-component fields where 'bcList' or 'tags'
 are used, the user must also specify the 'component' attribute
 component = "x" or component = "x,y,z" or component = "y,z"
 
@@ -44,7 +44,7 @@ a function handle depending on space (x,y,z)
       type = "Dirichlet"
       field = "surface"
       variable = "pressure"
-      entityListType = "surfacetags"
+      entityListType = "tags"
       entityList = "2"
       >
 
@@ -60,7 +60,7 @@ a function handle depending on space (x,y,z)
       type = "Neumann"
       field = "surface"
       variable = "displacements"
-      entityListType = "surfacetags"
+      entityListType = "tags"
       entityList = "2"
       components = "z"
       >
@@ -75,9 +75,9 @@ a function handle depending on space (x,y,z)
   <BC
       name = "LatFixedY"
       type = "Dirichlet"
-      field = "node"
+      field = "surface"
       variable = "displacements"
-      entityListType = "surfacetags"
+      entityListType = "tags"
       entityList = "3"
       components = "y"
       >
@@ -92,9 +92,9 @@ a function handle depending on space (x,y,z)
   <BC
       name = "LatFixedX"
       type = "Dirichlet"
-      field = "node"
+      field = "surface"
       variable = "displacements"
-      entityListType = "surfacetags"
+      entityListType = "tags"
       entityList = "4"
       components = "x"
       >
@@ -110,7 +110,7 @@ a function handle depending on space (x,y,z)
       type = "Dirichlet"
       field = "surface"
       variable = "displacements"
-      entityListType = "surfacetags"
+      entityListType = "tags"
       entityList = "1"
       components = "x,y,z"
       >

@@ -9,14 +9,14 @@ specifies how the ID of the constrained entities is given.
 a path to a list of entities ID of type specified by 'field'
 (see the BoundaryConditions tutorial)
 
-'surfaceTags'
-the surfaceTags to which the constrained entities belong
+'tags'
+the tags to which the constrained entities belong
 
 'bcList'
 a simple list of entities to be constrained in the specified components
 
 NOTE
-for the case of multi-component fields where 'bcList' or 'surfaceTags'
+for the case of multi-component fields where 'bcList' or 'tags'
 are used, the user must also specify the 'component' attribute
 component = "x" or component = "x,y,z" or component = "y,z"
 
@@ -56,7 +56,7 @@ a function handle depending on space (x,y,z)
       name = "bc2"
       type = "Neumann"
       field = "surface"
-      entityListType = "surfaceTags"
+      entityListType = "tags"
       entityList = "2"
       variable = "displacements"
       components = "x,z"
@@ -96,9 +96,9 @@ a function handle depending on space (x,y,z)
   <BC
       name = "bc4"
       type = "Dirichlet"
-      field = "node"
+      field = "surface"
       variable = "displacements"
-      entityListType = "surfaceTags"
+      entityListType = "tags"
       entityList = "4"
       components = "x"
       >
@@ -114,7 +114,7 @@ a function handle depending on space (x,y,z)
       type = "Dirichlet"
       field = "surface"
       variable = "displacements"
-      entityListType = "surfaceTags"
+      entityListType = "tags"
       entityList = "1"
       components = "x,y,z"
       >

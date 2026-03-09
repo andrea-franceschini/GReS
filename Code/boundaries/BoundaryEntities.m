@@ -25,8 +25,8 @@ classdef BoundaryEntities < handle
     availVals
     % Time id of currently-stored boundary conditions
     availSteps
-    % the type of the target entity where the BC is applied
-    targetField
+    % the type of the source entity where the BC is applied
+    sourceField
     % the position in space of the source entities
     entityPos
     % logical index to easily deactivate a bc entity
@@ -42,10 +42,10 @@ classdef BoundaryEntities < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = BoundaryEntities(name, targetEnt)
+    function obj = BoundaryEntities(name, srcFld)
       % Calling the function to set object properties
       obj.name = name;
-      obj.targetField = targetEnt;
+      obj.sourceField = srcFld;
     end
 
 
@@ -234,16 +234,9 @@ classdef BoundaryEntities < handle
           [nEnts, ents] = obj.readListFile(ents);
           entsPosition = getLocation(obj,ents,mesh);
           return
-        case {'surfacetags','surfacetag'}
-          surfTags = ents;
-          switch obj.targetField
-            case "node"
-              entsID = unique(mesh.surfaces(ismember(mesh.surfaceTag,surfTags),:));
-            case "surface"
-              entsID = find(ismember(mesh.surfaceTag,surfTags));
-            otherwise
-              error("Error for BC %s: XML field surfaceTags is not valid for BC of type %s", obj.name, obj.targetField)
-          end
+        case {'tags','tag'}
+          tags = ents;
+          entsID = getEntitiesFromTags(obj.sourceField,mesh,obj.sourceField,tags);
         case "bclist"
           entsID = ents;
         case "box"
@@ -251,13 +244,13 @@ classdef BoundaryEntities < handle
           Lx = boxSize(1:2);
           Ly = boxSize(3:4);
           Lz = boxSize(5:6);
-          switch obj.targetField
+          switch obj.sourceField
             case "node"
               c = mesh.coordinates;
             case "cell"
               c = mesh.cellCentroid;
             otherwise
-              error("Error for BC %s: XML field box is not valid for BC of type %s", obj.name, obj.targetField)
+              error("Error for BC %s: entityListType 'box' is not valid for BC of type %s", obj.name, obj.sourceField)
           end
 
           entsID = all([ c(:,1) > Lx(1), c(:,1) < Lx(2),...
@@ -267,8 +260,8 @@ classdef BoundaryEntities < handle
           entsID = find(entsID);
 
         otherwise
-          error("Unrecognized field 'entityListType' for Boundary condition '%s'.\n" + ...
-            "Valid fields are: 'bclist','bclistfile','surfacetags','box'")
+          error("Unrecognized entityListType '%s' for Boundary condition '%s'.\n" + ...
+            "Valid entries for 'entityListType' are: 'bclist','bclistfile','tags','box'.",type,obj.name)
       end
 
 
@@ -305,7 +298,7 @@ classdef BoundaryEntities < handle
 
     function pos = getLocation(obj,ents,mesh)
 
-      switch obj.targetField
+      switch obj.sourceField
         case "node"
           pos = mesh.coordinates(ents,:);
         case "surface"
