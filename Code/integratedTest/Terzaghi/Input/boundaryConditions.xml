@@ -42,7 +42,7 @@ a function handle depending on space (x,y,z)
   <BC
       name = "NoFlowTop"
       type = "Dirichlet"
-      targetEntity = "surface"
+      field = "surface"
       variable = "pressure"
       entityListType = "surfacetags"
       entityList = "2"
@@ -58,7 +58,7 @@ a function handle depending on space (x,y,z)
   <BC
       name = "TopLoad"
       type = "Neumann"
-      targetEntity = "surface"
+      field = "surface"
       variable = "displacements"
       entityListType = "surfacetags"
       entityList = "2"
@@ -75,7 +75,7 @@ a function handle depending on space (x,y,z)
   <BC
       name = "LatFixedY"
       type = "Dirichlet"
-      targetEntity = "node"
+      field = "node"
       variable = "displacements"
       entityListType = "surfacetags"
       entityList = "3"
@@ -92,7 +92,7 @@ a function handle depending on space (x,y,z)
   <BC
       name = "LatFixedX"
       type = "Dirichlet"
-      targetEntity = "node"
+      field = "node"
       variable = "displacements"
       entityListType = "surfacetags"
       entityList = "4"
@@ -108,7 +108,7 @@ a function handle depending on space (x,y,z)
   <BC
       name = "BotFixed"
       type = "Dirichlet"
-      targetEntity = "surface"
+      field = "surface"
       variable = "displacements"
       entityListType = "surfacetags"
       entityList = "1"

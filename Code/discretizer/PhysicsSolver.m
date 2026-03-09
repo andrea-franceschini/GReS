@@ -63,10 +63,10 @@ classdef (Abstract) PhysicsSolver < handle
     assembleSystem(obj,varargin);
 
     % apply the boundary condition to the jacobian and rhs
-    applyBC(obj,bcId,t);
+    %applyBC(obj,bcId,t);
 
     % apply the dirichlet values to the state object
-    applyDirVal(obj,bcId,t);
+    %applyDirVal(obj,bcId,t);
     
     % update the state variables after solving the linear system
     updateState(obj,solution);
@@ -148,6 +148,21 @@ classdef (Abstract) PhysicsSolver < handle
       % override this method in a PhysicsSolver to produce additional
       % output files other then the general Discretizer.outState pvd file
       return
+    end
+
+    function applyBC(obj,bcId,t)
+
+      % standard application of a boundary condition
+      dofs = obj.bcs.getBCdofs(bcId);
+      vals = obj.bcs.getVals(bcId,t);
+
+      if isEssential(obj.bcs(bcId))
+        obj.applyDirBC(bcId,dofs,vals);
+      else
+        obj.applyNeuBC(bcId,dofs,vals);
+      end
+
+
     end
 
 

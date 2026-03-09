@@ -29,17 +29,16 @@ classdef DoFManager < handle
     end
 
 
-    function registerVariable(obj,varName,fieldLocation,nComp,varargin)
-      % varName: the name of the variable field
-      % fieldLocation: a enum of type entityField
+    function registerVariable(obj,varName,fldLoc,nComp,varargin)
+      % varName: the name of the registered variable field
+      % fldLoc: a enum of type entityField
       % tags: the cellTag (or surfaceTag for lower dimensional fields) where the variable is actually present
-      % numbComponents: the number of dofs per entitiy
+      % nComp: the number of dofs per entitiy
 
       % return an instance of the registeredVariable as an instance of
       % entityField()
 
       id = obj.nVars+1;
-
 
       if any(strcmpi([obj.fields.variableName],varName))
         % variable field already exist
@@ -66,7 +65,7 @@ classdef DoFManager < handle
         % obj.fields(id).tags = sort([obj.fields(id).tags tags]);
         % 
         % % update the entities with only new entities
-        % entList = getEntities(fieldLocation,obj.mesh,tags);
+        % entList = getEntities(fldLoc,obj.mesh,tags);
         % isInactive = obj.dofMap{id}(entList) == 0;
         % nNewEnts = sum(isInactive);
         % maxEnt = max(obj.dofMap{id});
@@ -82,15 +81,15 @@ classdef DoFManager < handle
         % new variable field 
 
         obj.fields(id).variableName = varName;
-        obj.fields(id).fieldLocation = fieldLocation;
+        obj.fields(id).fieldLocation = fldLoc;
         obj.numbComponents(end+1) = nComp;
 
 
         if nargin < 6
-          % return the entity of type fieldLocation for the given mesh tags
+          % return the entity of type fldLoc for the given mesh tags
           tags = varargin{1};
           obj.fields(id).tags = tags;
-          entList = getEntities(fieldLocation,obj.mesh,tags);
+          entList = getEntitiesList(fldLoc,obj.mesh,entityField.cell,tags);
           totActiveEnts = length(entList);
         else
           assert(strcmp(varargin{1},"nEntities"))
@@ -98,7 +97,7 @@ classdef DoFManager < handle
           entList = reshape(1:totActiveEnts,[],1);
         end
 
-        totEnts = getNumberOfEntities(fieldLocation,obj.mesh);
+        totEnts = numel(getEntitiesList(fldLoc,obj.mesh,fldLoc));
 
         % populate the dof map
         obj.dofMap{id} = zeros(totEnts,1);

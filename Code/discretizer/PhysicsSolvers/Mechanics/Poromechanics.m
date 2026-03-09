@@ -271,6 +271,7 @@ classdef Poromechanics < PhysicsSolver
       end
 
       % get bcDofs and bcVals
+      
       bcDofs = getBCdofs(obj,bcId);
       bcVals = getBCVals(obj,bcId,t);
 

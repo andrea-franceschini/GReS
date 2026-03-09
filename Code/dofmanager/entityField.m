@@ -30,7 +30,7 @@ classdef entityField
       switch source
         case entityField.node
           [list,ptr] = getIncidenceIDFromNode(target,mesh,sourceList);
-        case entitiyField.surface
+        case entityField.surface
           [list,ptr] = getIncidenceIDFromSurface(target,mesh,sourceList);
         case entityField.cell
           [list,ptr] = getIncidenceIDFromCell(target,mesh,sourceList);
@@ -41,6 +41,27 @@ classdef entityField
       if nargout > 1
         varargout{2} = ptr;
       end
+    end
+
+    function ents = getEntitiesList(target,mesh,varargin)
+      if nargin < 3
+        source = target;
+        list = [];
+      elseif nargin < 4
+        source = varargin{1};
+        list = [];
+      else
+        source = varargin{1};
+        list = varargin{2};
+      end
+
+      ents = getIncidenceID(target,mesh,source,list);
+      ents = unique(ents);
+    end
+
+    function nEnts = getNumberOfEntities(target,mesh,varargin)
+      ents = getEntitiesList(target,mesh,varargin{:});
+      nEnts = numel(ents);
     end
 
 
