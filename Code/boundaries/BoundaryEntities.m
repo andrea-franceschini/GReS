@@ -295,9 +295,8 @@ classdef BoundaryEntities < handle
       end
 
       nEnts = numel(entsID).*compID;
+      entsID = reshape(entsID,[],1);
       ents = repmat(entsID,sum(compID),1);
-      ents = reshape(ents,[],1);
-
       entsPosition = getLocation(obj,ents,mesh);
 
     end

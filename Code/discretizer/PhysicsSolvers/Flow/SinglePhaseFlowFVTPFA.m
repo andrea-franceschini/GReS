@@ -405,29 +405,18 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       for bcID = bcList
         if strcmp(bc.getVariable(bcID),obj.getField())
           [~,vals] = getBC(obj,bcID,t);
-          [ents, ~] = sort(bc.getEntities(bcID));
+          ents = bc.getSourceEntities(bcID);
+          %[ents, ~] = sort(bc.getSourceEntities(bcID));
           switch bc.getField(bcID)
             case {'node','cell'}
               return
             case 'surface'
-              if anystrcmp(bc.getType(bcID),["dirichlet","seepage"])
-                vals=vals(:,2);
+              if size(vals,2) > 1
+                vals = vals(:,2);
               end
               dir = sgn(ents).*faceUnit(ents,:);
               vals = vals(:)./areaSq(ents).*dir;
               vals = repelem(vals,nnodesBfaces(ents),1);
-            case 'volumeforce'
-              facesBcell = diff(obj.faces.mapF2E);
-
-              % Find the faces to distribute the contribution.
-              vals = vals(:)./facesBcell(ents);
-              vals = repelem(vals,facesBcell(ents),1);
-
-              hf2Cell = repelem((1:obj.mesh.nCells)',facesBcell);
-              ents = obj.faces.faces2Elements(hf2Cell == ents,1);
-
-              vals = sgn(ents).*vals./areaSq(ents).*faceUnit(ents,:);
-              vals = -repelem(vals,nnodesBfaces(ents),1);
           end
 
           nodes = obj.faces.nodes2Faces(ismember(Node2Face,ents));
