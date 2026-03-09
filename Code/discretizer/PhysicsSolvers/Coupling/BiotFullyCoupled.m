@@ -103,7 +103,8 @@ classdef BiotFullyCoupled < PhysicsSolver
       % find cell tag where both flow and mechanics are active
       cellTags = intersect(cellTagMech,cellTagFlow);
 
-      subCells = getEntities(entityField.cell,obj.mesh,cellTags);
+      subCells = getEntitiesFromTags(entityField.cell,...
+        obj.mesh,entityField.cell,cellTags);
 
       switch obj.flowScheme
         case "FEM"

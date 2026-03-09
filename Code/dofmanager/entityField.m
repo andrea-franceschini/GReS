@@ -43,6 +43,20 @@ classdef entityField
       end
     end
 
+    function ents = getEntitiesFromTags(target,mesh,source,tags)
+      switch source
+        case entityField.node
+          error("Tag entity retrieval is not valid for source entity of type '%s'",source)
+        case entityField.surface
+          list = find(ismember(mesh.surfaceTag,tags));
+        case entityField.cell
+          list = find(ismember(mesh.cellTag,tags));
+      end
+
+      ents = getEntitiesList(target,mesh,source,list);
+
+    end
+
     function ents = getEntitiesList(target,mesh,varargin)
       if nargin < 3
         source = target;

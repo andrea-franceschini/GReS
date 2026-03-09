@@ -180,7 +180,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       gTerm = gTerm(dofm.getActiveEntities(obj.fieldId));
     end
 
-    function [ents,vals] = getBC(obj,id,t)
+    function [ents,vals] = getBC(obj,bcId,t)
       % getBC - function to find the value and the location for the
       % boundary condition.
       %
@@ -193,70 +193,58 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       bc = obj.domain.bcs;
       mat = obj.domain.materials;
 
-      switch bc.getCond(id)
+      bcFld = bc.getField(bcId); 
+      type = bc.getType(bcId);
+      % 
+      % ents = bc.getTargetEntities(bcId);
+      % vals = bc.getVals(bcId,t);
 
-        case {'node','cell'}
-          ents = bc.getEntities(id);
-          vals = bc.getVals(id,t);
-
-        case 'surface'
-          v = bc.getVals(id,t);
-
-          faceID = bc.getEntities(id);
-          ents = sum(obj.faces.faceNeighbors(faceID,:),2);
-
-          p = getState(obj,obj.getField());
-
-          % [ents,~,ind] = unique(ents);
-          % % % [faceID, faceOrder] = sort(bc.getEntities(id));
-          % % % ents = sum(obj.faces.faceNeighbors(faceID,:),2);
-          % % % v(faceOrder,1) = bc.getVals(id,t);
-
-          switch bc.getType(id)
-
-            case 'neumann'
-              vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
-
-            case 'dirichlet'
-              gamma = mat.getFluid().getSpecificWeight();
-              mu = mat.getFluid().getDynViscosity();
-              tr = obj.trans(faceID);
-
-              % q = 1/mu*tr.*((obj.state.data.pressure(ents) - v)...
-              %    + gamma*(obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
-              % vals = [1/mu*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
-
-              dirJ = 1/mu*tr;
-              % % press = obj.state.data.pressure(ents) - v;
-              % % gravT =  gamma*(obj.mesh.cellCentroid(ents,3) ...
-              % %   - obj.faces.faceCentroid(faceID,3));
-              dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3);
-              potential = (p(ents) - v) + gamma*dz;
-              q = dirJ.*potential;
-              vals = [dirJ,q];
-
-            case 'seepage'
-              gamma = mat.getFluid().getSpecificWeight();
-              assert(gamma>0.,'To impose Seepage boundary condition is necessary the fluid specify weight be bigger than zero!');
-
-              zbc = obj.faces.faceCentroid(faceID,3);
-              href = v(1);
-              v = gamma*(href-zbc);
-
-              v(v<=0)=0.;
-              mu = mat.getFluid().getDynViscosity();
-              tr = obj.trans(faceID);
-              dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3);
-              q = 1/mu*tr.*(p(ents) - v) + gamma*dz;
-              vals = [1/mu*tr,q];
-          end
-
-
-        case 'volumeforce'
-          v = bc.getVals(id,t);
-          ents = bc.getEntities(id);
-          vals = v.*obj.mesh.cellVolume(ents);
+      if strcmp(type,'seepage')
+        assert(isEssential(bc,bcId),"Boundary condition of type 'seepage' must be essential")
       end
+
+      if bcFld == entityField.surface
+
+        srcId = bc.getSourceEntities(bcId);
+        srcVal = bc.getSourceVals(bcId,t);
+        ents = sum(obj.faces.faceNeighbors(srcId,:),2);
+        p = getState(obj,obj.getField());
+
+        %
+        switch type
+          case 'dirichlet'
+            gamma = mat.getFluid().getSpecificWeight();
+            mu = mat.getFluid().getDynViscosity();
+            tr = obj.trans(srcId);
+            
+            dirJ = 1/mu*tr;
+
+            dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(srcId,3);
+            potential = (p(ents) - srcVal) + gamma*dz;
+            q = dirJ.*potential;
+            vals = [dirJ,q];
+            return
+          case 'seepage'
+            gamma = mat.getFluid().getSpecificWeight();
+            assert(gamma>0.,'To impose Seepage boundary condition is necessary the fluid specify weight be bigger than zero!');
+
+            zbc = obj.faces.faceCentroid(srcId,3);
+            href = srcVal(1);
+            v = gamma*(href-zbc);
+
+            v(v<=0)=0.;
+            mu = mat.getFluid().getDynViscosity();
+            tr = obj.trans(srcId);
+            dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(srcId,3);
+            q = 1/mu*tr.*(p(ents) - v) + gamma*dz;
+            vals = [1/mu*tr,q];
+            return
+        end
+      end
+
+      ents = bc.getTargetEntities(bcId);
+      vals = bc.getVals(bcId,t);
+
     end
 
     function applyDirVal(obj,bcId,t)
@@ -270,8 +258,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         % skip BC assigned to external surfaces
         return
       end
-      state = getState(obj);
-      state.data.pressure(bcEnts) = bcVals;
+
+      applyDirVal@PhysicsSolver(obj,bcId,bcEnts,bcVals);
+
     end
 
     function applyBC(obj,bcId,t)
@@ -280,22 +269,13 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         return
       end
 
+      % helper method for FV bcs
       [bcEnts,bcVals] = getBC(obj,bcId,t);
 
       bcDofs = obj.domain.dofm.getLocalDoF(obj.fieldId,bcEnts);
 
-      % Base application of a Boundary condition
-      bcType = obj.domain.bcs.getType(bcId);
+      applyBC@PhysicsSolver(obj,bcId,bcDofs,bcVals);
 
-      switch bcType
-        case {'dirichlet','seepage'}
-          applyDirBC(obj,bcId,bcDofs,bcVals);
-        case {'neumann','volumeforce'}
-          applyNeuBC(obj,bcId,bcDofs,bcVals);
-        otherwise
-          error("Error in %s: Boundary condition type '%s' is not " + ...
-            "available in applyBC()",class(obj),bcType)
-      end
     end
 
     function applyDirBC(obj,bcId,bcDofs,bcVals)
@@ -426,11 +406,11 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         if strcmp(bc.getVariable(bcID),obj.getField())
           [~,vals] = getBC(obj,bcID,t);
           [ents, ~] = sort(bc.getEntities(bcID));
-          switch bc.getCond(bcID)
+          switch bc.getField(bcID)
             case {'node','cell'}
               return
             case 'surface'
-              if strcmp(bc.getType(bcID),'dirichlet') || strcmp(bc.getType(bcID),'Seepage')
+              if anystrcmp(bc.getType(bcID),["dirichlet","seepage"])
                 vals=vals(:,2);
               end
               dir = sgn(ents).*faceUnit(ents,:);

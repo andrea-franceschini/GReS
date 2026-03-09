@@ -8,7 +8,7 @@ classdef BoundaryEntities < handle
     % Total number of constrained entities
     totEnts = 0
     % Number of constrained source entities for dof component
-    nSrcEntities
+    nSourceEnts
     % Raw indices of source constrained entities
     sourceEnts
     % Indices of target constrained entities
@@ -147,9 +147,9 @@ classdef BoundaryEntities < handle
           'already defined. GReS will overwrite them.'])
       end
 
-      [obj.nSrcEntities, obj.sourceEnts, obj.entityPos] = readEntitySet(obj,type,list,comp,mesh);
+      [obj.nSourceEnts, obj.sourceEnts, obj.entityPos] = readEntitySet(obj,type,list,comp,mesh);
 
-      obj.totEnts = sum(obj.nSrcEntities);
+      obj.totEnts = sum(obj.nSourceEnts);
 
       obj.isActiveEntity = true(obj.totEnts,1);
 
@@ -164,15 +164,15 @@ classdef BoundaryEntities < handle
 
     function computeTargetEntities(obj,grid,targetField,srcField)
 
-      obj.nTargetEnts = zeros(numel(obj.nSrcEntities),1);
+      obj.nTargetEnts = zeros(numel(obj.nSourceEnts),1);
 
       n = 0;
 
-      comp = find(obj.nSrcEntities > 0);
+      comp = find(obj.nSourceEnts > 0);
 
       for i = comp
         % process components individually
-        srcID = obj.sourceEnts(n+1:n+obj.nSrcEntities(i));
+        srcID = obj.sourceEnts(n+1:n+obj.nSourceEnts(i));
 
         if srcField == entityField.surface && targetField == entityField.cell
           % For FV only: treated differently

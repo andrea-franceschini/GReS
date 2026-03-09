@@ -27,7 +27,7 @@ if any(flRenum)
     [~,~,ib] = intersect(sort(bFaceTop,2),faceBound,'stable','rows');
     newID = idBFace(ib);
     assert(all(sum(solver.faces.faceNeighbors(newID,:) ~= 0,2) == 1),'Corrupted face renumbering for %s surface condition',bcs.getName(keys{i}));
-    bcs.setDofs(keys{i},idBFace(ib));
+    bcs.setEntities(keys{i},idBFace(ib));
   end
 end
 end

@@ -51,6 +51,7 @@ classdef Discretizer < handle
       obj.setDiscretizer(varargin{:});
     end
 
+
     function applyBC(obj,t)
       bcList = obj.bcs.getBCList();
 
@@ -78,7 +79,7 @@ classdef Discretizer < handle
 
       for bcId = bcList
         % discard non-dirichlet BC
-        if ~strcmp(obj.bcs.getType(bcId),"dirichlet")
+        if ~isEssential(obj.bcs,bcId)
           continue
         end
 
@@ -243,10 +244,6 @@ classdef Discretizer < handle
       solver.registerSolver(varargin{:});
       obj.physicsSolvers(solverName) = solver;
 
-      % update block jacobian and rhs 
-      nV = obj.dofm.getNumberOfVariables();
-      obj.J = cell(nV);
-      obj.rhs = cell(nV,1);
     end
 
 
@@ -326,6 +323,24 @@ classdef Discretizer < handle
       else
         error("Too many input arguments")
       end
+    end
+
+
+    function initialize(obj)
+
+      % prepare the discretizer before starting the simulation
+
+      % initialize block jacobian and rhs
+      nV = obj.dofm.getNumberOfVariables();
+      obj.J = cell(nV);
+      obj.rhs = cell(nV,1);
+
+      finalizeBoundaryConditions(obj);
+
+      for solver = obj.solverNames
+        initialize(obj.getPhysicsSolver(solver));
+      end
+
     end
 
     % function printState(obj)
@@ -530,7 +545,7 @@ classdef Discretizer < handle
 
         targetField = obj.dofm.getFieldLocation(bcVar);
 
-        obj.bcs.getData(ncId).computeTargetEntities(obj.grid,targetField);
+        obj.bcs.computeTargetEntities(bcId,targetField);
 
       end
  

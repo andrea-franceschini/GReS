@@ -89,7 +89,8 @@ classdef DoFManager < handle
           % return the entity of type fldLoc for the given mesh tags
           tags = varargin{1};
           obj.fields(id).tags = tags;
-          entList = getEntitiesList(fldLoc,obj.mesh,entityField.cell,tags);
+          cells = obj.getFieldCells(id);
+          entList = getEntitiesList(fldLoc,obj.mesh,entityField.cell,cells);
           totActiveEnts = length(entList);
         else
           assert(strcmp(varargin{1},"nEntities"))
@@ -191,7 +192,8 @@ classdef DoFManager < handle
 
     function cells = getFieldCells(obj,varId)
       tags = getTargetRegions(obj,varId);
-      cells = getEntities(entityField.cell,obj.mesh,tags);
+      cells = getEntitiesFromTags(...
+        entityField.cell,obj.mesh,entityField.cell,tags);
     end
 
     function location = getFieldLocation(obj,varId)

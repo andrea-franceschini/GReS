@@ -56,6 +56,8 @@ classdef (Abstract) SolutionScheme < handle
       obj.tStep = 0;
       obj.t = obj.simparams.tIni;
       obj.dt = obj.simparams.dtIni;
+
+      initialize(obj);
       
       setLinearSolver(obj);
 
@@ -154,6 +156,17 @@ classdef (Abstract) SolutionScheme < handle
 
       obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration || obj.nInterf == 0;
 
+    end
+
+    function initialize(obj)
+
+      for i = 1:obj.nDom
+        initialize(obj.domains(i));
+      end
+
+      for i = 1:obj.nInterf
+        initialize(obj.interface{i})
+      end
     end
 
 

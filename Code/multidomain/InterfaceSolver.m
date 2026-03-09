@@ -168,6 +168,10 @@ classdef (Abstract) InterfaceSolver < handle
       
     end
 
+    function initialize(obj)
+      % initialize the interface solver
+    end
+
 
     % function printState(obj)
     %   % print solution at the interface according to the print time in the

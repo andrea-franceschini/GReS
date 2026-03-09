@@ -138,30 +138,91 @@ classdef (Abstract) PhysicsSolver < handle
     end
 
     function resetConfiguration(obj)
+      % reset the physicsSolver configuraiton
+    end
 
-      % base physicsSolver class implements no configuration reset
-
+    function initialize(obj)
+      % initialize the physics solver before the simulation starts
     end
 
     function finalizeOutput(obj)
-
       % override this method in a PhysicsSolver to produce additional
-      % output files other then the general Discretizer.outState pvd file
-      return
+      % output files other than the general Discretizer.outState pvd file
     end
 
-    function applyBC(obj,bcId,t)
+    function applyDirVal(obj,bcId,varargin)
+
+      if ~BCapplies(obj,bcId)
+        return
+      end
+
+      if ~isEssential(obj.domain.bcs,bcId)
+        return
+      end
+
+      if nargin == 3
+        type = obj.domain.bcs.getType(bcId);
+        assert(~BCtype.isCustomBC(type),"Base applyBC method for custom BC requires " + ...
+          "dofs and values to be already specified")
+        t = varargin{1};
+        dofs = obj.domain.bcs.getStateDofs(bcId);
+        vals = obj.domain.bcs.getVals(bcId,t);
+      elseif nargin==4
+        dofs = varargin{1};
+        vals = varargin{2};
+      else
+        error("Wrong number of input for applyBC function")
+      end
+
+      bcVar = obj.domain.bcs.getVariable(bcId);
+
+      s = obj.getState();
+      v = s.data.(bcVar);
+      v(dofs) = vals;
+      s.data.(bcVar) = v;
+
+    end
+
+    function applyBC(obj,bcId,varargin)
+      % applyBC apply a boundary condition to the system
+      %
+      %   applyBC(obj, bcId, t) applies the boundary condition identified
+      %   by bcId and retreive bc dofs and values at time t
+      %
+      %   applyBC(obj, bcId, dofs, vals) applies the boundary condition
+      %   using explicitly provided degrees of freedom dofs and
+      %   corresponding values vals.
+      %
+      %   - for custom boundary conditions, dofs and values must be
+      %   provided explicitely
+
+      bcs = obj.domain.bcs;
+
+      if ~BCapplies(obj,bcId)
+        return
+      end
+
+      if nargin == 3
+        type = bcs.getType(bcId);
+        assert(~BCtype.isCustomBC(type),"Base applyBC method for custom BC requires " + ...
+          "dofs and values to be already specified")
+        t = varargin{1};
+        dofs = bcs.getDofs(obj.domain.dofm,bcId);
+        vals = bcs.getVals(bcId,t);
+      elseif nargin==4
+        dofs = varargin{1};
+        vals = varargin{2};
+      else
+        error("Wrong number of input for applyBC function")
+      end
 
       % standard application of a boundary condition
-      dofs = obj.bcs.getBCdofs(bcId);
-      vals = obj.bcs.getVals(bcId,t);
 
-      if isEssential(obj.bcs(bcId))
+      if isEssential(bcs,bcId)
         obj.applyDirBC(bcId,dofs,vals);
       else
         obj.applyNeuBC(bcId,dofs,vals);
       end
-
 
     end
 
@@ -201,7 +262,6 @@ classdef (Abstract) PhysicsSolver < handle
       if nargin > 3
         bcVals = bcVals(~id);
       end
-
 
       % sort bcDofs to improve sparse access performance
       [bcDofs,sortId] = sort(bcDofs);

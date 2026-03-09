@@ -218,11 +218,35 @@ classdef Boundaries < handle
       ents = obj.getData(identifier).data.targetEnts;
     end
 
-    function dofs = getBCdofs(obj,bcId)
+    function dofs = getDofs(obj,dofm,bcId)
       % get the constrained degree-of-freedom of the specified bcs
 
       nEnts = getNumbTargetEntities(obj,bcId);
       ents = getTargetEntities(obj,bcId);
+
+      % transform entities in dof numbering
+      var = obj.getVariable(bcId);
+      varId = dofm.getVariableId(var);
+      ents = getLocalEnts(dofm,varId,ents);
+
+      % component multiplication
+      dim = length(nEnts);
+      i1 = 1;
+      dofs = zeros(numel(ents),1);
+      for i = 1 : dim
+        i2 = i1 + nEnts(i);
+        dofs(i1:i2-1) = dim*(ents(i1:i2-1)-1) + i;
+        i1 = i2;
+      end
+    end
+
+    function dofs = getStateDofs(obj,bcId)
+      % get the id of degree-of-freedom of the specified bcs in the state
+      % array
+
+      nEnts = getNumbTargetEntities(obj,bcId);
+      ents = getTargetEntities(obj,bcId);
+
       % component multiplication of BC entities
       dim = length(nEnts);
       i1 = 1;
@@ -239,27 +263,27 @@ classdef Boundaries < handle
       % is applied
 
       src = obj.getField(bcId);
-      bcEnt = obj.getData(bcId).data;
-      bcEnt.computeTargetEntities(obj.grid,target,src);
+      bc = obj.getData(bcId);
+      bc.data.computeTargetEntities(obj.grid,target,src);
 
     end
 
 
     function nEnts = getNumbSourceEntities(obj,identifier)
-      nEnts = obj.getData(identifier).data.nSrcEntities;
+      nEnts = obj.getData(identifier).data.nSorceEnts;
     end
 
     function nEnts = getNumbTargetEntities(obj,identifier)
-      nEnts = obj.getData(identifier).data.nTargetEntities;
+      nEnts = obj.getData(identifier).data.nTargetEnts;
     end
 
     function infl = getEntitiesInfluence(obj, identifier)
       infl = obj.getData(identifier).data.entsMap;
     end
 
-    % function setDofs(obj, identifier, list)
-    %   getData(obj,identifier).data.sourceEntities = list;
-    % end
+    function setEntities(obj, identifier, list)
+      obj.getData(identifier).data.sourceEnts = list;
+    end
 
     %   function computeBoundaryProperties(obj,bcId)
     %
