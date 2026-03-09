@@ -210,12 +210,12 @@ classdef Boundaries < handle
 
     function ents = getSourceEntities(obj,identifier)
       % get raw entities as specified in the BC input
-      ents = obj.getData(identifier).data.sourceEntities;
+      ents = obj.getData(identifier).data.sourceEnts;
     end
 
     function ents = getTargetEntities(obj,identifier)
       % get raw entities as specified in the BC input
-      ents = obj.getData(identifier).data.targetEntities;
+      ents = obj.getData(identifier).data.targetEnts;
     end
 
     function dofs = getBCdofs(obj,bcId)

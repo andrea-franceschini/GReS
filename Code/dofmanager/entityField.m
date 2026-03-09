@@ -199,7 +199,7 @@ classdef entityField
           for id = srcList'
             k = k+1;
             V = findNodeVolume(grid.cells,id);
-            ii = n(ptr(k:k+1));
+            ii = n(ptr(k)+1:ptr(k+1));
             m.localAssembly(ii,k,V);
           end
           map = m.sparseAssembly();

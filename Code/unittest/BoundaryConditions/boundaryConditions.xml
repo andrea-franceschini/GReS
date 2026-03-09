@@ -144,8 +144,8 @@ a function handle depending on space (x,y,z)
       type = "source"
       field = "cell"
       variable = "pressure"
-      entityListType = "bcList"
-      entityList = "3"
+      entityListType = "box"
+      entityList = "0.2 0.8 0.2 0.8 3.0 6.0"
       >
 
     <BCevent
