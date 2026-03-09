@@ -183,15 +183,15 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
     % 
     % end
 
-    function applyDirVal(obj,bcId,t)
-      bcVar = obj.domain.bcs.getVariable(bcId);
-      if ~strcmp(bcVar,obj.getField()) 
-        return 
-      end
-      [bcEnts,bcVals] = getBC(obj,bcId,t);
-      state = getState(obj);
-      state.data.pressure(bcEnts) = bcVals;
-    end
+    % function applyDirVal(obj,bcId,t)
+    %   bcVar = obj.domain.bcs.getVariable(bcId);
+    %   if ~strcmp(bcVar,obj.getField()) 
+    %     return 
+    %   end
+    %   [bcEnts,bcVals] = getBC(obj,bcId,t);
+    %   state = getState(obj);
+    %   state.data.pressure(bcEnts) = bcVals;
+    % end
 
     % function applyBC(obj,bcId,t)
     %   if ~BCapplies(obj,bcId)
