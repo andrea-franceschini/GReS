@@ -74,6 +74,8 @@ r0 = 0.2*max(sqrt(cx.^2 + cy.^2 + cz.^2)); % threshold constraint
 % Computing specific points from nodal coordinates
 Point_Minus100 = find(all(abs([cx+0.8 cy-0 cz-0]) < tol, 2));
 writematrix(Point_Minus100, "Inputs/Point_-100.dat");
+Point_100 = find(all(abs([cx-0.8 cy-0 cz-0]) < tol, 2));
+writematrix(Point_100, "Inputs/Point_100.dat");
 
 % Remember to update current values and points in boundaries when changing
 % i_n/C-rate values or when changing the mesh file.
@@ -135,6 +137,6 @@ if true
     stress_nodal = celltonodeStress(stress, topology);
     
     % Plotting
-    run("plotting.m");
+    % run("plotting.m");
 end
 toc;

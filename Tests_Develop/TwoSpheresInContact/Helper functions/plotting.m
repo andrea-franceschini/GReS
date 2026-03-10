@@ -26,15 +26,15 @@ p_sorted = p(timestep_idx, plot_idx(sort_idx));
 plot(cx_sorted, params.c_max*p_sorted, '--', 'LineWidth', 3, ...
     'DisplayName', 'GReS model');
 
-load("Inputs\Validation plots\Zhang2007_5um_1000s_i2A_c.csv");
-x_plt = Zhang2007_5um_1000s_i2A_c(:, 1) / params.Rp;
-c_plt = Zhang2007_5um_1000s_i2A_c(:, 2);
-plot(x_plt, c_plt, 'LineWidth', 3, 'DisplayName', 'COMSOL model');
+% load("Inputs\Validation plots\Zhang2007_5um_1000s_i2A_c.csv");
+% x_plt = Zhang2007_5um_1000s_i2A_c(:, 1) / params.Rp;
+% c_plt = Zhang2007_5um_1000s_i2A_c(:, 2);
+% plot(x_plt, c_plt, 'LineWidth', 3, 'DisplayName', 'COMSOL model');
 
 xlabel('x-coordinate along the x-axis');
 ylabel('Li concentration c');
 legend('show', 'Location', 'best');
-xlim([0 1]);
+% xlim([0 1]);
 % exportgraphics(gcf, 'Validation plots/c_Zhang2007_validation.eps', 'Resolution', 300);
 % exportgraphics(gcf, 'Validation plots/c_Zhang2007_validation.pdf', 'Resolution', 300);
 % exportgraphics(gcf, 'Validation plots/c_Zhang2007_validation.png', 'Resolution', 300);
@@ -50,16 +50,16 @@ plot(cx_sorted, u_abs_sorted, '--', 'LineWidth', 3, 'DisplayName', ...
 %     plot(cx_sorted, u_abs_sorted(timestep, :));
 % end
 
-load("Inputs\Validation plots\Zhang2007_5um_1000s_i2A_u.csv");
-x_plt = Zhang2007_5um_1000s_i2A_u(:, 1) / params.Rp;
-u_plt = Zhang2007_5um_1000s_i2A_u(:, 2);
-plot(x_plt, u_plt, 'LineWidth', 3, 'DisplayName', 'COMSOL model');
+% load("Inputs\Validation plots\Zhang2007_5um_1000s_i2A_u.csv");
+% x_plt = Zhang2007_5um_1000s_i2A_u(:, 1) / params.Rp;
+% u_plt = Zhang2007_5um_1000s_i2A_u(:, 2);
+% plot(x_plt, u_plt, 'LineWidth', 3, 'DisplayName', 'COMSOL model');
 
 xlabel('x-coordinate along the x-axis');
 % ylabel('Nondimensional displacement magnitude, |u|');
 ylabel('Nondimensional radial displacement, u');
 legend('show', 'Location', 'best');
-xlim([0 1]);
+% xlim([0 1]);
 % ylim([0 0.1]);
 % exportgraphics(gcf, 'Validation plots/u_Zhang2007_validation.eps', 'Resolution', 300);
 % exportgraphics(gcf, 'Validation plots/u_Zhang2007_validation.pdf', 'Resolution', 300);
@@ -77,7 +77,7 @@ end
 xlabel('x-coordinate along the x-axis');
 ylabel('\sigma_{xx}');
 % legend('show', 'location', 'best');
-xlim([0 1]);
+% xlim([0 1]);
 % exportgraphics(gcf, 'Validation plots/GReS_sigmar.png', 'Resolution', 300);
 
 figure();
@@ -91,5 +91,5 @@ end
 xlabel('x-coordinate along the x-axis');
 ylabel('\sigma_{yy}');
 % legend('show', 'location', 'best');
-xlim([0 1]);
+% xlim([0 1]);
 % exportgraphics(gcf, 'Validation plots/GReS_sigmat.png', 'Resolution', 300);

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <Materials>
-  <Solid cellTags = "1 2">
+  <Solid cellTags = "1">
     <Constitutive>
       <Elastic
           youngModulus = "1."

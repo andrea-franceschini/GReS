@@ -7,13 +7,32 @@
     <!-- Both spheres in contact defined by a common domain in the mesh -->
     <Domain>
         <Geometry
-            fileName = "Inputs/TwoSpheres/two_overlapping_spheres.vtk"
+            fileName = "Inputs/TwoSpheres/left_overlapped_sphere.vtk"
         />
         <Gauss nGP = "1" />
         <Materials fileName = "Inputs/TwoSpheres/materials.xml" />
-        <BoundaryConditions fileName = "Inputs/TwoSpheres/boundaries_overlapping_spheres.xml" />
+        <BoundaryConditions fileName = "Inputs/TwoSpheres/boundaries_leftSphere.xml" />
         <Output
-            fileName = "Inputs/TwoSpheres/output.xml"
+            fileName = "Inputs/TwoSpheres/output_left.xml"
+        />
+
+        <Solver>
+            <BiotFullySaturated>
+                <Poromechanics />
+                <SinglePhaseFlowFEM />
+            </BiotFullySaturated>
+        </Solver>
+    </Domain>
+
+    <Domain>
+        <Geometry
+            fileName = "Inputs/TwoSpheres/right_overlapped_sphere.vtk"
+        />
+        <Gauss nGP = "1" />
+        <Materials fileName = "Inputs/TwoSpheres/materials.xml" />
+        <BoundaryConditions fileName = "Inputs/TwoSpheres/boundaries_rightSphere.xml" />
+        <Output
+            fileName = "Inputs/TwoSpheres/output_right.xml"
         />
 
         <Solver>
@@ -29,11 +48,11 @@
             variable = "displacements" >
             <Master
                 domainId = "1"
-                surfaceTag = "4"
+                surfaceTag = "3"
             />
             <Slave
-                domainId = "1"
-                surfaceTag = "4"
+                domainId = "2"
+                surfaceTag = "3"
             />
             <Quadrature
                 type = "SegmentBasedQuadrature"
@@ -44,7 +63,7 @@
 
             <Output
                 outputFile = "Outputs/Interface"
-                printTimes = "0.01,0.02"
+                printTimes = "0.1 0.2832 0.3 0.5 0.7 0.9 0.99"
             />
         </MeshTying>
     </Interface>

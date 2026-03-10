@@ -45,18 +45,7 @@ a function handle depending on space (x,y,z)
         entityType = "SurfBC"
         variable = "pressure" >
 
-        <BCentities surfaceTags = "3, 5" />
+        <BCentities surfaceTags = "2" />
         <BCevent time = "0." value = "0.639251062864524" /> <!-- i_n=2 -->
-    </BC>
-
-    <!-- Boundary Conditions to Mechanics -->
-    <!-- Fix the left sphere center -->
-    <BC name = "FixLeftCenter"
-        type = "Dirichlet"
-        entityType = "NodeBC"
-        variable = "displacements" >
-    
-        <BCentities bcList = "8" components = "x, y, z" /> <!--(-d/2,0,0)-->
-        <BCevent time = "0." value = "0.000000e+00" />
     </BC>
 </BoundaryConditions>

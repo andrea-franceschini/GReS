@@ -2,7 +2,7 @@
 <simParam>
     <Time 
         Start="0."
-        End ="0.009"
+        End ="1."
         DtInit="0.001"
         DtMin ="0.0005"
         DtMax ="0.1"          

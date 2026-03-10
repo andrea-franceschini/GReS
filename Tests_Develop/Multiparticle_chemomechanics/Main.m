@@ -54,7 +54,7 @@ params.lambda_d = params.nu*params.E_d/((1 + params.nu)*(1 - 2*params.nu));
 params.Omega_d = params.Omega * params.c_max;
 params.beta_d = params.Omega_d * (3*params.lambda_d + 2*params.G_d) / 3;
 params.c_in = 0;                  % initial concentration value
-params.c_in_d = params.c_in / params.c_max; % nondimensional value of initial concentration
+params.c_in_d = params.c_in / params.c_max; % nondimensional value of initial conceobj.mshntration
 
 %% Extract the required information for boundary conditions
 % Reading the mesh file -- will only work for one domain
@@ -63,15 +63,23 @@ outStruct = readstruct(fileName,AttributeSuffix="");
 if isfield(outStruct,"Domain")
   outStruct = outStruct.Domain;
 end
-topology = Mesh();
-geom = outStruct.Geometry; 
-meshFile = getXMLData(geom,[],"fileName");
-topology.importMesh(meshFile);
+for i = 1:size(outStruct,2)
+    topology(i).msh = Mesh();
+    geom = outStruct.Geometry; 
+    meshFile = getXMLData(geom,[],"fileName");
+    topology(i).msh.importMesh(meshFile);
+end
 
 % Extract mesh coordinates
-[cx, cy, cz] = deal( topology.coordinates(:,1), ...
-                   topology.coordinates(:,2), ...
-                   topology.coordinates(:,3) ...
+msh_left = topology(1).msh;
+msh_right = topology(2).msh;
+[cx_l, cy_l, cz_l] = deal( msh_left.coordinates(:,1), ...
+                   msh_left.coordinates(:,2), ...
+                   msh_left.coordinates(:,3) ...
+                   );
+[cx_r, cy_r, cz_r] = deal( msh_right.coordinates(:,1), ...
+                   msh_right.coordinates(:,2), ...
+                   msh_right.coordinates(:,3) ...
                    );
 
 % get dirichlet node index (X = MIN, Y = MAX, Z = MAX)
@@ -80,7 +88,7 @@ params.alpha = 0.2; % Parameter for % overlap between the spheres
 params.Rp_d = 1; % Non-dimensional particle radius
 params.d = (1 - params.alpha)*2*params.Rp_d; % dist between sphere centers
 
-Point_leftcenter = find(all(abs([cx + params.d/2 cy-0 cz-0]) ...
+Point_leftcenter = find(all(abs([cx_l + params.d/2 cy_l-0 cz_l-0]) ...
     < params.tol, 2));
 
 %% BUILD MODEL

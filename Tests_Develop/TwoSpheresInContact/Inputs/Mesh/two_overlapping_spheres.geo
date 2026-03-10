@@ -4,7 +4,7 @@ SetFactory("OpenCASCADE");
 R     = 1.0;
 lc    = 0.2;
 alpha = 0.20;        // overlap percentage of diameter
-delta = 0.001;      // distance between spheres
+delta = 0.;      // distance between spheres
 
 D  = 2*R;
 h  = alpha * D;      // desired overlap thickness
@@ -27,47 +27,53 @@ Box(4) = {right_box_x0 - 2*R + delta, -2*R, -2*R, 2*R, 4*R, 4*R}; // Box to subt
 // Subtract box from right sphere
 left_squished[] = BooleanDifference{ Volume{1}; Delete; }{ Volume{3}; Delete; }; // Here, Delete; ensures that the original volumes are deleted
 right_squished[] = BooleanDifference{ Volume{2}; Delete; }{ Volume{4}; Delete; };
+overlapped_spheres[] = BooleanUnion{ Volume{left_squished[0]}; Delete; }{ Volume{right_squished[0]}; Delete; };
 
 // -------------------------
 // Make interface conforming
 // -------------------------
 // volumes[] = BooleanFragments{ Volume{1, left_squished[0]}; Delete; }{ Volume{2, right_squished[]}; Delete; };
 // volumes[] = BooleanFragments{ Volume{left_squished[0], right_squished[0]}; Delete; }{};
-volumes[] = {left_squished[0], right_squished[0]};
+// volumes[] = {left_squished[0], right_squished[0]};
+volumes[] = {overlapped_spheres[0]};
 
 // Add left sphere center point in the mesh
-Point(100) = {-d/2, 0, 0, lc};
-Point{100} In Volume{volumes[0]};
+// Point(100) = {-d/2, 0, 0, lc};
+// Point{100} In Volume{volumes[0]};
 
 // -------------------------
-Physical Volume("LeftSphere")  = {volumes[0]};
-Physical Volume("RightSphere") = {volumes[1]};
+// Physical Volume("LeftSphere")  = {volumes[0]};
+// Physical Volume("RightSphere") = {volumes[1]};
+Physical Volume("OverlappedSpheres") = {volumes[0]};
 
 // -------------------------
-eps = 1e-3;
+// eps = 1e-3;
 
-left_surfaces[]  = Boundary{ Volume{volumes[0]}; };
-right_surfaces[] = Boundary{ Volume{volumes[1]}; };
-left_flat[] = Surface In BoundingBox{
-  left_box_x0 - eps, -2*R, -2*R,
-  left_box_x0 + eps,  2*R,  2*R
-};
+// left_surfaces[]  = Boundary{ Volume{volumes[0]}; };
+// right_surfaces[] = Boundary{ Volume{volumes[1]}; };
+// left_flat[] = Surface In BoundingBox{
+//   left_box_x0 - eps, -2*R, -2*R,
+//   left_box_x0 + eps,  2*R,  2*R
+// };
+// 
+// right_flat[] = Surface In BoundingBox{
+//   right_box_x0 - eps, -2*R, -2*R,
+//   right_box_x0 + eps,  2*R,  2*R
+// };
+// 
+// left_curved[]  = left_surfaces[];
+// right_curved[] = right_surfaces[];
+// 
+// left_curved[]  -= left_flat[];
+// right_curved[] -= right_flat[];
+// 
+// Physical Surface("Left_Curved")  = {left_curved[]};
+// Physical Surface("Left_Flat")    = {left_flat[]};
+// Physical Surface("Right_Curved") = {right_curved[]};
+// Physical Surface("Right_Flat")   = {right_flat[]};
+//
 
-right_flat[] = Surface In BoundingBox{
-  right_box_x0 - eps, -2*R, -2*R,
-  right_box_x0 + eps,  2*R,  2*R
-};
-
-left_curved[]  = left_surfaces[];
-right_curved[] = right_surfaces[];
-
-left_curved[]  -= left_flat[];
-right_curved[] -= right_flat[];
-
-Physical Surface("Left_Curved")  = {left_curved[]};
-Physical Surface("Left_Flat")    = {left_flat[]};
-Physical Surface("Right_Curved") = {right_curved[]};
-Physical Surface("Right_Flat")   = {right_flat[]};
+Physical Surface("SphereBoundaries") = Boundary{ Volume{volumes[0]}; };
 
 // -------------------------
 Mesh.CharacteristicLengthMax = lc;
