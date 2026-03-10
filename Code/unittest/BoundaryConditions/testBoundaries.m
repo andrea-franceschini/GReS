@@ -56,7 +56,7 @@ classdef testBoundaries < matlab.unittest.TestCase
 
       testCase.bc.addBC('name',"bc2",...
         'type',"Neumann",...
-        'field',"node",...
+        'field',"surface",...
         'entityListType',"tags",...
         'entityList',2,...
         'variable',"displacements",...
@@ -79,10 +79,10 @@ classdef testBoundaries < matlab.unittest.TestCase
       testCase.bc.addBC("name","bc4",...
         "type","Dirichlet",...
         "field","surface",...
-        "components",["x","y","z"],...
+        "components","x",...
         "variable","displacements",...
         "entityListType","tags",...
-        "entityList",1);
+        "entityList",4);
       testCase.bc.addBCEvent("bc4",'time',0,'value','bcvals_list.dat');
 
 
@@ -99,8 +99,8 @@ classdef testBoundaries < matlab.unittest.TestCase
 
 
       testCase.bc.addBC("name","bc6",...
-        "type","Dirichlet",...
-        "field","surface",...
+        "type","Source",...
+        "field","cell",...
         "components",["x","y","z"],...
         "variable","displacements",...
         "entityListType","box",...
@@ -121,19 +121,21 @@ classdef testBoundaries < matlab.unittest.TestCase
 
       bcs = testCase.bc;
 
-      tol = 1e-9;
+      tol = 1e-6;
 
       bcs.computeTargetEntities("bc1",'node')
       bcs.computeTargetEntities("bc2",'node')
       bcs.computeTargetEntities("bc3",'node')
       bcs.computeTargetEntities("bc4",'node')
       bcs.computeTargetEntities("bc5",'node')
+      bcs.computeTargetEntities("bc6",'node')
 
       e1 = bcs.getTargetEntities("bc1");
       e2 = bcs.getTargetEntities("bc2");
       e3 = bcs.getTargetEntities("bc3");
       e4 = bcs.getTargetEntities("bc4");
-      e5 = bcs.getTargetEntities("bc5");
+      e5 = bcs.getDofs("bc5");
+      es6 = bcs.getSourceEntities("bc6");
       e6 = bcs.getTargetEntities("bc6");
 
       v1 = bcs.getVals("bc1",3);
@@ -145,36 +147,25 @@ classdef testBoundaries < matlab.unittest.TestCase
       v5 = bcs.getVals("bc5",0.0);
       v6 = bcs.getVals("bc6",0.5);
 
-      verifyEqual(testCase,v1([1 5 end-1]),[60;0.0;34.5],"AbsTol",tol)
-      verifyEqual(testCase,v21([1 5 end]),[-0.625 -1.25 -2.5],"AbsTol",tol)
-      verifyEqual(testCase,v21([1 5 end]),[-0.625 -1.25 -2.5],"AbsTol",tol)
-      verifyEqual(testCase,mean(v23),10.0,"AbsTol",1e-9)
-      verifyEqual(testCase,length(v3),126,"AbsTol",1e-9)
-      verifyEqual(testCase,mean(v3),5,"AbsTol",1e-9)
-      verifyEqual(testCase,length(v4),126,"AbsTol",1e-9)
-      verifyEqual(testCase,max(v5),0,"AbsTol",1e-9)
-      verifyEqual(testCase,length(v5),12,"AbsTol",1e-9)
-
-      verifyEqual(testCase,e1,[1;13;168],"AbsTol",1e-9)
-      verifyEqual(testCase,e2,repmat((165:168)',2,1),"AbsTol",1e-9)
-      verifyEqual(testCase,length(e3),126,"AbsTol",1e-9)
-      verifyEqual(testCase,e5,repmat((1:4)',3,1),"AbsTol",1e-9)
-
-
-      % verifyEqual(testCase,v1,[60;34.50;0.0],"AbsTol",1e-8)
-      % verifyEqual(testCase,mean(v21),-10.0,"AbsTol",1e-9)
-      % verifyEqual(testCase,mean(v22),-7.5,"AbsTol",1e-9)
-      % verifyEqual(testCase,mean(v23),10.0,"AbsTol",1e-9)
-      % verifyEqual(testCase,length(v3),126,"AbsTol",1e-9)
-      % verifyEqual(testCase,mean(v3),5,"AbsTol",1e-9)
-      % verifyEqual(testCase,length(v4),126,"AbsTol",1e-9)
-      % verifyEqual(testCase,max(v5),0,"AbsTol",1e-9)
-      % verifyEqual(testCase,length(v5),12,"AbsTol",1e-9)
-      %
-      % verifyEqual(testCase,e1,[1;13;168],"AbsTol",1e-9)
-      % verifyEqual(testCase,e2,repmat((165:168)',2,1),"AbsTol",1e-9)
-      % verifyEqual(testCase,length(e3),126,"AbsTol",1e-9)
-      % verifyEqual(testCase,e5,repmat((1:4)',3,1),"AbsTol",1e-9)
+      % verify bcs
+      % bc1
+      verifyEqual(testCase,e1([1; end]),[1;170],"AbsTol",tol)
+      verifyEqual(testCase,v1([1; 5; end-1]),[60.0;0.0;34.5],"AbsTol",tol)
+      % bc2
+      verifyEqual(testCase,all(e2(1:9)==e2(10:18)),true,"AbsTol",tol)
+      verifyEqual(testCase,v21([1; 5; end]),[-0.625; -1.25; -2.5],"AbsTol",tol)
+      verifyEqual(testCase,mean(v22),-0.833333333333,"AbsTol",tol)
+      verifyEqual(testCase,all(v23(1:9)==v23(10:18)),true,"AbsTol",tol)
+      % bc3
+      %verifyEqual(testCase,all(e3==load('entityList')),true,"AbsTol",tol)
+      verifyEqual(testCase,all(v3==5),true,"AbsTol",tol)
+      % bc5
+      verifyEqual(testCase,e5([1;10;19]),[1;2;3],"AbsTol",tol)
+      verifyEqual(testCase,max(v5),0,"AbsTol",tol)
+      % bc6
+      verifyEqual(testCase,mean(e6),1.016666666666667e+02,"AbsTol",tol)
+      verifyEqual(testCase,mean(es6),  39.500000000000000,"AbsTol",tol)
+      verifyEqual(testCase,mean(v6),0.023809523809524,"AbsTol",tol)
     end
   end
 

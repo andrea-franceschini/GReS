@@ -207,7 +207,7 @@ classdef (Abstract) PhysicsSolver < handle
         assert(~BCtype.isCustomBC(type),"Base applyBC method for custom BC requires " + ...
           "dofs and values to be already specified")
         t = varargin{1};
-        dofs = bcs.getDofs(obj.domain.dofm,bcId);
+        dofs = bcs.getDofs(bcId,obj.domain.dofm);
         vals = bcs.getVals(bcId,t);
       elseif nargin==4
         dofs = varargin{1};
@@ -219,7 +219,7 @@ classdef (Abstract) PhysicsSolver < handle
       % standard application of a boundary condition
 
       if isEssential(bcs,bcId)
-        obj.applyDirBC(bcId,dofs,vals);
+        obj.applyDirBC(bcId,dofs);
       else
         obj.applyNeuBC(bcId,dofs,vals);
       end

@@ -218,16 +218,18 @@ classdef Boundaries < handle
       ents = obj.getData(identifier).data.targetEnts;
     end
 
-    function dofs = getDofs(obj,dofm,bcId)
+    function dofs = getDofs(obj,bcId,dofm)
       % get the constrained degree-of-freedom of the specified bcs
 
       nEnts = getNumbTargetEntities(obj,bcId);
       ents = getTargetEntities(obj,bcId);
 
       % transform entities in dof numbering
-      var = obj.getVariable(bcId);
-      varId = dofm.getVariableId(var);
-      ents = getLocalEnts(dofm,varId,ents);
+      if nargin > 2
+        var = obj.getVariable(bcId);
+        varId = dofm.getVariableId(var);
+        ents = getLocalEnts(dofm,varId,ents);
+      end
 
       % component multiplication
       dim = length(nEnts);

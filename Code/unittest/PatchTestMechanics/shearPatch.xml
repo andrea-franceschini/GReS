@@ -33,9 +33,9 @@
     <BC
         name = "fix_bottom"
         type = "Dirichlet"
-        targetEntity = "surface"
+        field = "surface"
         variable = "displacements"
-        entityListType = "surfacetags"
+        entityListType = "tags"
         entityList = "1"
         components = "x,y,z"
         >
@@ -51,9 +51,9 @@
     <BC
         name = "top_disp"
         type = "dirichlet"
-        targetEntity = "surface"
+        field = "surface"
         variable = "displacements"
-        entityListType = "surfacetags"
+        entityListType = "tags"
         entityList = "2"
         components = "x">
 
@@ -73,9 +73,9 @@
     <BC
         name = "top_fix"
         type = "Dirichlet"
-        targetEntity = "surface"
+        field = "surface"
         variable = "displacements"
-        entityListType = "surfacetags"
+        entityListType = "tags"
         entityList = "2"
         components = "z"
         >

@@ -66,7 +66,7 @@ end
 vals = vals(1:id-1);
 if length(vals) ~= nVals
   error(['Number of values in %s not matching number of constrained' ...
-    'degrees of freedom'],fileName)
+    ' degrees of freedom'],fileName)
 end
 fclose(fid);
 end
