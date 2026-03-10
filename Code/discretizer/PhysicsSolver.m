@@ -219,7 +219,7 @@ classdef (Abstract) PhysicsSolver < handle
       % standard application of a boundary condition
 
       if isEssential(bcs,bcId)
-        obj.applyDirBC(bcId,dofs);
+        obj.applyDirBC(bcId,dofs,vals);
       else
         obj.applyNeuBC(bcId,dofs,vals);
       end
@@ -247,7 +247,7 @@ classdef (Abstract) PhysicsSolver < handle
 
     end
 
-    function applyDirBC(obj,bcId,bcDofs,bcVals)
+    function applyDirBC(obj,bcId,bcDofs,varargin)
 
       % Standard application of Dirichlet boundary condition to the jacobian.
       % This method works with incremental linear system du = J\(-rhs)
@@ -259,9 +259,10 @@ classdef (Abstract) PhysicsSolver < handle
       % remove inactive dofs
       id = bcDofs == 0;
       bcDofs = bcDofs(~id);
-      if nargin > 3
-        bcVals = bcVals(~id);
-      end
+
+      % if nargin > 3
+      %   bcVals = bcVals(~id);
+      % end
 
       % sort bcDofs to improve sparse access performance
       [bcDofs,sortId] = sort(bcDofs);
@@ -308,11 +309,11 @@ classdef (Abstract) PhysicsSolver < handle
       J = J + sparse(bcDofs, bcDofs, ones(size(bcDofs)), size(J,1), size(J,2));
       obj.domain.J{bcVarId,bcVarId} = J;
 
-      if nargin > 3
-        obj.domain.rhs{bcVarId}(bcDofs) = bcVals(sortId);
-      else
-        obj.domain.rhs{bcVarId}(bcDofs) = 0;
-      end
+      % if nargin > 3
+      %   obj.domain.rhs{bcVarId}(bcDofs) = bcVals(sortId);
+      % else
+      obj.domain.rhs{bcVarId}(bcDofs) = 0;
+      %end
 
     end
 

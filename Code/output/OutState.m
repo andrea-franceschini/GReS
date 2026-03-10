@@ -6,7 +6,7 @@ classdef OutState < handle & matlab.mixin.Copyable
   % 'folderName','folderName': specify name of output folder
 
   properties (Access = public)
-    matFile
+    results
     % model
     timeID = 1
     vtkFile
@@ -108,7 +108,7 @@ classdef OutState < handle & matlab.mixin.Copyable
       xmlwrite(fileName, pvd);
 
       if obj.writeSolution
-        output = obj.matFile;
+        output = obj.results;
         save(strcat(obj.matFileName,'.mat'),"output")
       end
 
