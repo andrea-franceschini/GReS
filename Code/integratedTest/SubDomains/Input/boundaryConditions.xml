@@ -43,7 +43,7 @@ a function handle depending on space (x,y,z)
   <BC
       name = "topDrained"
       type = "Dirichlet"
-      targetEntity = "SurfBC"
+      field = "SurfBC"
       physics = "SinglePhaseFlow"
       >
 
@@ -62,7 +62,7 @@ a function handle depending on space (x,y,z)
   <BC
       name = "lateralFix"
       type = "Dirichlet"
-      targetEntity = "surface"
+      field = "surface"
       variable = "displacements"
       entityListType = "bcListFile"
       entityList = "Input/listLateralFix"
@@ -79,8 +79,8 @@ a function handle depending on space (x,y,z)
 
   <BC
       name = "FluxCell"
-      targetEntity = "cell"
-      type = "volumeforce"
+      field = "cell"
+      type = "source"
       variable = "pressure"
       entityListType = "box"
       entityList = "545,555,545,555,975,1000"
@@ -109,9 +109,9 @@ a function handle depending on space (x,y,z)
   <BC
       name = "BottomFixed"
       type = "Dirichlet"
-      targetEntity = "surface"
+      field = "surface"
       variable = "displacements"
-      entityListType = "surfacetags"
+      entityListType = "tags"
       entityList = "2"
       components = "x,y,z"
       >

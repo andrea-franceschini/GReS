@@ -25,8 +25,9 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
 
         default = struct('BulkModulus',"3D");
         params = readInput(default,input);
+        blkMod = char(params.BulkModulus);
 
-        obj.KdrType = str2double(params.BulkModulus(1));
+        obj.KdrType = str2double(blkMod(1));
 
       end
 

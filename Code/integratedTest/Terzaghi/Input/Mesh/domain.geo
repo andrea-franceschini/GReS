@@ -23,7 +23,7 @@ Transfinite Surface{1}; // structured triangles
 // extrusion in z with 10 layers
 Extrude {0, 0, 10} {
   Surface{1};
-  Layers{50};
+  Layers{10};
 }
 
 // physical groups

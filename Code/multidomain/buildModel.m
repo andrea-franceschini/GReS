@@ -96,7 +96,7 @@ domain = Discretizer('grid',grid,...
                      'materials',mat,...
                      'boundaries',bound);
 
-domain.addPhysicsSolver(input.Solver);
+domain.addPhysicsSolvers(input.Solver);
 
 
 end

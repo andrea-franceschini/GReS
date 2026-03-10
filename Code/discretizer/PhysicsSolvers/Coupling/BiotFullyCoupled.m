@@ -6,7 +6,7 @@ classdef BiotFullyCoupled < PhysicsSolver
     Q             % the biot coupling matrix
   end
 
-  properties (Access = private)
+  properties (Access = protected)
 
     % we avoid multiple inheritance and we directly create instances to the
     % single physics models that are needed
@@ -97,14 +97,7 @@ classdef BiotFullyCoupled < PhysicsSolver
 
       dofm = obj.domain.dofm;
 
-      cellTagFlow = dofm.getTargetRegions(obj.fldFlow);
-      cellTagMech = dofm.getTargetRegions(obj.fldMech);
-
-      % find cell tag where both flow and mechanics are active
-      cellTags = intersect(cellTagMech,cellTagFlow);
-
-      subCells = getEntitiesFromTags(entityField.cell,...
-        obj.mesh,entityField.cell,cellTags);
+      subCells = getCoupledCells(obj);
 
       switch obj.flowScheme
         case "FEM"
@@ -189,6 +182,18 @@ classdef BiotFullyCoupled < PhysicsSolver
       rhsFlow = Qflow * (uCurr(entsPoro) - uOld(entsPoro));
     end
 
+    function cells = getCoupledCells(obj)
+
+      cellTagFlow = obj.domain.dofm.getTargetRegions(obj.fldFlow);
+      cellTagMech = obj.domain.dofm.getTargetRegions(obj.fldMech);
+
+      % find cell tag where both flow and mechanics are active
+      cellTags = intersect(cellTagMech,cellTagFlow);
+
+      cells = getEntitiesFromTags(entityField.cell,...
+        obj.mesh,entityField.cell,cellTags);
+    end
+
     function applyBC(obj,bcId,t)
       obj.flowSolver.applyBC(bcId,t);
       obj.mechSolver.applyBC(bcId,t);
@@ -207,10 +212,10 @@ classdef BiotFullyCoupled < PhysicsSolver
 
     end
 
-        function [cellDataBiot,pointDataBiot] = writeVTK(obj,fac,t)
+    function [cellDataBiot,pointDataBiot] = writeVTK(obj,fac,t)
 
-          [cellDataFlow,pointDataFlow] = obj.flowSolver.writeVTK(fac,t);
-          [cellDataMech,pointDataMech] = obj.mechSolver.writeVTK(fac);
+      [cellDataFlow,pointDataFlow] = obj.flowSolver.writeVTK(fac,t);
+      [cellDataMech,pointDataMech] = obj.mechSolver.writeVTK(fac);
 
       cellDataBiot = OutState.mergeOutFields(cellDataMech,cellDataFlow);
 

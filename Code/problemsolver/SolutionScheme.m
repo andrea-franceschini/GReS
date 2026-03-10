@@ -34,17 +34,12 @@ classdef (Abstract) SolutionScheme < handle
 
   end
 
-  methods (Abstract,Access=protected)
-    % every solution scheme must initialize a specialized linear solver
-    setLinearSolver(obj)
-  end
-
 
   methods (Access = public)
     function obj = SolutionScheme(varargin)
 
-      assert(nargin > 1 && nargin < 9,"Wrong number of input arguments " + ...
-        "for general solver")
+      % assert(nargin > 1 && nargin < 9,"Wrong number of input arguments " + ...
+      %   "for general solver")
 
       obj.setSolutionScheme(varargin{:});
 
@@ -59,7 +54,7 @@ classdef (Abstract) SolutionScheme < handle
 
       initialize(obj);
       
-      setLinearSolver(obj,varargin);
+      setLinearSolver(obj,varargin{:});
 
       while obj.t < obj.simparams.tMax
 
@@ -246,6 +241,34 @@ classdef (Abstract) SolutionScheme < handle
 
       % Actual solution of the system
       [sol,~] = obj.linsolver.Solve(J,-rhs,obj.t);
+    end
+
+
+
+    function setLinearSolver(obj,varargin)
+
+      if isempty(varargin)
+        str = [];
+        physname = [];
+      else
+        fname = varargin{1};
+        str = readstruct(fname,AttributeSuffix="");
+        if isfield(str,'LinearSolver')
+          str = str.LinearSolver;
+        else
+          str = [];
+        end
+
+        % check if the user provided the physics
+        if nargin > 2
+          physname = varargin{2};
+        else
+          physname = [];
+        end
+      end
+
+      obj.linsolver = linearSolver(obj,str,physname);
+
     end
 
 

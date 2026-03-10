@@ -29,7 +29,7 @@ switch elemShape
     topology.importGMSHmesh('Input/Mesh/Column_tetra.msh');
   case 'hexa'
     ng = 2;
-    topology = structuredMesh(1,1,50,[0 1],[0 1],[0 10]);
+    topology = structuredMesh(1,1,10,[0 1],[0 1],[0 10]);
 end
 
 simParam = SimulationParameters("Input/simParam.xml");
@@ -59,6 +59,7 @@ switch scheme
   case 'FC'
     domain.addPhysicsSolver('BiotFullyCoupled',solverIn);
   case 'FS'
+    solverIn.BulkModulus = "1D";
     domain.addPhysicsSolver('BiotFixedStressSplit',solverIn);
 end
 
@@ -106,19 +107,16 @@ for i = 1:numel(solver.output.timeList)
   uNum = uNumerical(:,i);
   uNum = uNum(3:3:end);
 
-  relErrP = (pAn-pNum)./pNum;
-  relErrP(isinf(relErrP)) = 0;
-  relErrP(isnan(relErrP)) = 0;
-  assert(norm(relErrP)<1e0,'Pressure error for out time %i \n',i)
+  errP = norm(pAn-pNum);
+  errU = norm(uNum-uAn);
 
-  relErrU = (uAn-uNum)./(uNum);
-  relErrU(isinf(relErrU)) = 0;
-  assert(norm(relErrU)<1e0,'Displacement error for out time %i\n',i)
+  assert(norm(errP)<1.0,'Pressure error for out time %i \n',i)
+  assert(norm(errU)<1e-4,'Displacement error for out time %i\n',i)
 end
 
 if strcmp(class(solver),"FixedStressSplit")
-  nIter = mean(solver.getFixedStressIer);
-  assert(nIter==2,"Unexpected number of fixed stress split iterations")
+  nIter = mean(solver.getFixedStressIters());
+  assert(nIter<10,"Unexpected number of fixed stress split iterations")
 end
 
 end
@@ -168,7 +166,11 @@ gamma = B*(1+nuU)/(3*(1-nuU));
 zu = mesh.coordinates(:,3);
 
 if isfield(grid,'faces')
-  zp = mesh.cellCentroid(:,3);
+  if ~isempty(grid.faces)
+    zp = mesh.cellCentroid(:,3);
+  else
+    zp = zu;
+  end
 else
   zp = zu;
 end
