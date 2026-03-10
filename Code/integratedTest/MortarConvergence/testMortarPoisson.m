@@ -7,6 +7,9 @@ scriptDir = fileparts(scriptFullPath);
 % Change the current directory to the script's directory
 cd(scriptDir);
 
+fileName = 'poissonMortar.xml';
+params = readstruct(fileName,AttributeSuffix="");
+
 for elem_type = ["hexa","hexa27"]
 
   for integration_type = ["SegmentBasedQuadrature",...
@@ -14,7 +17,7 @@ for elem_type = ["hexa","hexa27"]
                           "ElementBasedQuadrature",...
                           ]
 
-    [L2,H1] = run(elem_type,integration_type);
+    [L2,H1] = run(params,elem_type,integration_type);
     validate(elem_type,L2,H1);
 
     clearvars
@@ -23,7 +26,7 @@ for elem_type = ["hexa","hexa27"]
 end
 
 
-function [L2ord,H1ord] = run(elem,quadrature)
+function [L2ord,H1ord] = run(params,elem,quadrature)
 
 
 %% Poisson problem with single domain in 3D. Testing new poisson module
@@ -35,12 +38,6 @@ grady = @(X) -pi*sin(pi*X(2)).*cos(pi*X(3)).*(2*X(1)-X(1).^2 + sin(pi*X(1)));
 gradz = @(X) -pi*cos(pi*X(2)).*sin(pi*X(3)).*(2*X(1)-X(1).^2 + sin(pi*X(1)));
 h = @(x) -2-3*pi^2*sin(pi*x)-4*pi^2*x+2*pi^2*x.^2;
 f = @(X) cos(pi*X(2)).*cos(pi*X(3)).*h(X(1));
-
-
-%% model commons
-% structure to rewrite the xml file and programatically change the input
-fileName = 'poissonMortar.xml';
-fileStruct = readstruct(fileName,AttributeSuffix="");
 
 
 
@@ -71,23 +68,21 @@ for i = 1:nref
   meshName = "domain_"+elem+"_"+num2str(i);
 
   % update the mesh in the domain input file
-  fileStruct.Domain.Geometry.fileName = fullfile('Input','Mesh','meshes',meshName+".vtk");
+  params.Geometry.fileName = fullfile('Input','Mesh','meshes',meshName+".vtk");
 
 
   % write interface to file
-  fileStruct.Interface.MeshTying.Quadrature.type = integration_type;
-  fileStruct.Interface.MeshTying.Quadrature.nGP = nG;
+  params.Interface.MeshTying.Quadrature.type = quadrature;
+  params.Interface.MeshTying.Quadrature.nGP = nG;
   %strInterf.Interface(1).Print.nameAttribute = "interf_"+integration_type+"_"+num2str(i);
   if strcmp(quadrature,'RBFquadrature')
-    fileStruct.Interface(1).MeshTying.Quadrature.nInt = nInt;
+    params.Interface(1).MeshTying.Quadrature.nInt = nInt;
   end
 
-  writestruct(fileStruct,fileName,AttributeSuffix="");
-
-  simparams = SimulationParameters(fileName);
+  simparams = SimulationParameters(params.SimulationParameters);
 
   % processing Poisson problem
-  [domain,interfaces] = buildModel(fileName);
+  [domain,interfaces] = buildModel(params);
 
   domain.getPhysicsSolver("Poisson").setAnalSolution(anal,f,gradx,grady,gradz);
 

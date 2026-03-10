@@ -23,7 +23,7 @@ classdef (Abstract) MortarQuadrature < handle
       obj.multiplierType = multType;
 
       input = readInput(struct('nGP',3),input);
-      ng = input.ng;
+      ng = input.nGP;
 
 
       if strcmp(class(obj),"SegmentBasedQuadrature") && ng > 6

@@ -160,7 +160,7 @@ classdef (Abstract) SolutionScheme < handle
       end
 
       for i = 1:obj.nInterf
-        initialize(obj.interface{i})
+        initialize(obj.interfaces{i})
       end
     end
 
