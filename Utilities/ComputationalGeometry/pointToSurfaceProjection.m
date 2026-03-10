@@ -1,4 +1,4 @@
-function x = pointToSurfaceProjection(P,n,coord)
+function varargout = pointToSurfaceProjection(P,n,coord)
       % Project nodes of triangle pair into auxiliary plane
       % get 2D direction of plane
       % Choose arbitrary vector not parallel to n
@@ -19,5 +19,12 @@ function x = pointToSurfaceProjection(P,n,coord)
       projC = c - repmat(n',nN,1).*cn;
       % project in 2D
       x = (projC - P)*[d1 d2];
+
+      varargout{1} = x;
+
+      if nargout > 1
+        varargout{2} = d1;
+        varargout{3} = d2;
+      end
 
     end
