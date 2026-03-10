@@ -20,7 +20,7 @@ solver = NonLinearImplicit('simulationparameters',simparams,...
 solver.simulationLoop();
 
 ref = load('referenceSol.mat');
-comp = domain.outstate.matFile;
+comp = domain.outstate.results;
 %%
 tol = 1e-3;
 assert(norm(ref.expDispl(:,1:end)-[comp.displacements])<tol)

@@ -149,7 +149,7 @@ for k = 1:numel(fusr)
         end
 
         % Type consistency
-        if ~isempty(dval) && ~isempty(uval) && ~ismissing(dval)
+        if ~isempty(dval) && ~isempty(uval) && ~any(ismissing(dval))
             if ~isa(uval, class(dval))
                 error('mergeInput:TypeMismatch', ...
                     'Field "%s" has type %s but expected %s.', ...

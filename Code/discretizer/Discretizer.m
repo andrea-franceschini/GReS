@@ -549,6 +549,8 @@ classdef Discretizer < handle
       % preprocess the boundary condition once the type of the target field
       % is knwon
 
+      setBCList(obj.bcs);
+
       bcList = obj.bcs.getBCList();
 
       for bcId = bcList

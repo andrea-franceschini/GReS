@@ -121,8 +121,6 @@ classdef Boundaries < handle
         end
       end
 
-      setBCList(obj);
-
       % finalize the boundary condition
       % obj.computeBoundaryProperties(name);
 
@@ -167,6 +165,13 @@ classdef Boundaries < handle
       if isEssential(obj,bcId)
           % make map interpolative
           M = M./sum(M,2);
+      end
+
+      if type == BCtype.source || type == BCtype.neumann
+        % multiply neumann and source bcs by the size of the source entity
+        ents = obj.getSourceEntities(bcId);
+        S = getEntitySize(obj.getField(bcId),obj.grid.topology,ents);
+        valSrc = S.*valSrc;
       end
 
       % map values from source entity to target entity
@@ -375,15 +380,25 @@ classdef Boundaries < handle
 
     end
 
+    function setBCList(obj)
+      % set correct order of boundary conditions. Dirichlet last
+      bcNames = string(obj.db.keys);
+      bcTypeList = strings(numel(bcNames),1);
+      for i = 1:numel(bcNames)
+        bcId = bcNames(i);
+        bcTypeList(i) = string(obj.getType(bcId));
+      end
+      idxDir  = strcmp(bcTypeList, 'Dirichlet');
+      bcOrd = [find(~idxDir), find(idxDir)];
+      bcNames = obj.db.keys;
+      obj.bcList = string(bcNames(bcOrd));
+    end
+
 
 
     function bcList = getBCList(obj)
       % Get list of boundary condition names ensuring that Dirichlet are
       % applied at last
-
-      if isempty(obj.bcList)
-        setBCList(obj);
-      end
 
       bcList = obj.bcList;
     end
@@ -391,17 +406,6 @@ classdef Boundaries < handle
 
   methods (Access = private)
 
-    function setBCList(obj)
-      % set correct order of boundary conditions. Dirichlet last
-      bcTypeList = [];
-      for bcId = string(obj.db.keys)
-        bcTypeList = [bcTypeList, obj.getType(bcId)];
-      end
-      idxDir  = strcmp(bcTypeList, 'Dirichlet');
-      bcOrd = [find(~idxDir), find(idxDir)];
-      bcNames = obj.db.keys;
-      obj.bcList = string(bcNames(bcOrd));
-    end
 
   end
 

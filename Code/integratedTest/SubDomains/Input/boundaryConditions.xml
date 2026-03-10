@@ -112,7 +112,7 @@ a function handle depending on space (x,y,z)
       field = "surface"
       variable = "displacements"
       entityListType = "tags"
-      entityList = "2"
+      entityList = "1"
       components = "x,y,z"
       >
 

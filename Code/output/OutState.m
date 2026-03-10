@@ -84,28 +84,32 @@ classdef OutState < handle & matlab.mixin.Copyable
     function finalize(obj)
 
       % write the pvd file
-      pvd = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
-      toc = pvd.getDocumentElement;
+      if obj.writeVtk
 
-      toc.setAttribute('type', 'Collection');
-      toc.setAttribute('version', '1.0');
-      blocks = pvd.createElement('Collection');
+        pvd = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
+        toc = pvd.getDocumentElement;
+
+        toc.setAttribute('type', 'Collection');
+        toc.setAttribute('version', '1.0');
+        blocks = pvd.createElement('Collection');
 
 
-      for i = 1 : obj.timeID-1
-        block = pvd.createElement('DataSet');
-        block.setAttribute('timestep', sprintf('%e', obj.timeList(i)));
-        [~,fname,~] = fileparts(obj.vtkFileName);
-        % standard naming for vtm files
-        vtmFileName = sprintf('%s/output_%5.5i.vtm',fname,i);
-        block.setAttribute('file', vtmFileName);
-        blocks.appendChild(block);
+        for i = 1 : obj.timeID-1
+          block = pvd.createElement('DataSet');
+          block.setAttribute('timestep', sprintf('%e', obj.timeList(i)));
+          [~,fname,~] = fileparts(obj.vtkFileName);
+          % standard naming for vtm files
+          vtmFileName = sprintf('%s/output_%5.5i.vtm',fname,i);
+          block.setAttribute('file', vtmFileName);
+          blocks.appendChild(block);
+        end
+
+        toc.appendChild(blocks);
+
+        fileName = sprintf('%s.pvd', obj.vtkFileName);
+        xmlwrite(fileName, pvd);
+
       end
-
-      toc.appendChild(blocks);
-
-      fileName = sprintf('%s.pvd', obj.vtkFileName);
-      xmlwrite(fileName, pvd);
 
       if obj.writeSolution
         output = obj.results;

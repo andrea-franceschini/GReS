@@ -148,6 +148,7 @@ classdef BoundaryEntities < handle
       end
 
       [obj.nSourceEnts, obj.sourceEnts, obj.entityPos] = readEntitySet(obj,type,list,comp,mesh);
+      obj.nSourceEnts = reshape(obj.nSourceEnts,1,[]);
 
       obj.totEnts = sum(obj.nSourceEnts);
 
@@ -169,10 +170,13 @@ classdef BoundaryEntities < handle
       n = 0;
 
       comp = find(obj.nSourceEnts > 0);
+      comp = reshape(comp,1,[]);
 
       for i = comp
         % process components individually
         srcID = obj.sourceEnts(n+1:n+obj.nSourceEnts(i));
+
+        n = n+obj.nSourceEnts(i);
 
         if srcField == entityField.surface && targetField == entityField.cell
           % For FV only: treated differently
@@ -187,6 +191,7 @@ classdef BoundaryEntities < handle
 
         % concatenate block diagonal sparse maps for each component set
         obj.entsMap = blkdiag(obj.entsMap,inflMap);
+
       end
 
     end

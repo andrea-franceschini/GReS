@@ -201,7 +201,7 @@ classdef entityField
             k = k+1;
             A = findNodeArea(grid.cells,id);
             ii = n(ptr(k)+1:ptr(k+1));
-            m.localAssembly(ii,k,A);
+            m.localAssembly(ii,k,A./sum(A));
           end
           map = m.sparseAssembly();
         case entityField.surface
@@ -235,7 +235,7 @@ classdef entityField
             k = k+1;
             V = findNodeVolume(grid.cells,id);
             ii = n(ptr(k)+1:ptr(k+1));
-            m.localAssembly(ii,k,V);
+            m.localAssembly(ii,k,V./sum(V));
           end
           map = m.sparseAssembly();
         case entityField.cell
@@ -260,7 +260,7 @@ classdef entityField
         case entityField.surface
           size = msh.surfaceArea(list);
         case entityField.cell
-          size = mesh.cellVolume(list);
+          size = msh.cellVolume(list);
       end
     end
 
