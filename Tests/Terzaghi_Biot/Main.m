@@ -44,7 +44,7 @@ grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 
 % Creating boundaries conditions.
-bound = Boundaries(fullfile(scriptDir,input_dir,"boundaries.xml"),grid);
+bound = Boundaries(grid,fullfile(scriptDir,input_dir,"boundaries.xml"));
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility for the solution
@@ -55,7 +55,7 @@ domain = Discretizer('Boundaries',bound,...
                      'Materials',mat,...
                      'Grid',grid);
 
-domain.addPhysicsSolver('solver_TPFA.xml');
+domain.addPhysicsSolvers('solver_TPFA.xml');
 
 % In this version of the code, the user can assign initial conditions only
 % manually, by directly modifying the entries of the state structure. 
@@ -74,7 +74,7 @@ solver = NonLinearImplicit('simulationparameters',simParam,...
 solver.simulationLoop();
 
 % calling analytical solution script
-Terzaghi_analytical(topology, mat, abs(F),[15,30,60,90,120,180],output_dir)
+Terzaghi_analytical(topology, mat, abs(F),domain.outstate.timeList,output_dir)
 
 
 %% --------------------- Post Processing the Results ----------------------
@@ -96,7 +96,7 @@ if true
 
 
   % elem vector containing elements centroid along vertical axis
-  flowscheme = getPhysicsSolver(domain,"BiotFullySaturated").getFlowScheme();
+  flowscheme = getPhysicsSolver(domain,"BiotFullyCoupled").getFlowScheme();
   if strcmp(flowscheme,"FEM")
     nodesP = nodesU;
   else
@@ -106,8 +106,8 @@ if true
   end
 
   %Getting pressure and displacement solution for specified time from MatFILE
-  press = [printUtils.matFile.pressure];
-  disp = [printUtils.matFile.displacements];
+  press = [printUtils.results.pressure];
+  disp = [printUtils.results.displacements];
   pressplot = press(nodesP,1:end);
   dispplot = disp(3*nodesU,1:end);
 

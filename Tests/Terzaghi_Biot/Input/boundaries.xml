@@ -44,51 +44,64 @@ a function handle depending on space (x,y,z)
   <!-- Top -->
   <BC name = "NoFlowTop"
       type = "Dirichlet"
-      entityType = "SurfBC"
-      variable = "pressure" >
+      field = "surface"
+      variable = "pressure"
+      entityListType = "tags"
+      entityList = "2"
+      >
 
-    <BCentities surfaceTags = "2" />
     <BCevent time = "0." value = "0.000000e+00" />
   </BC>
 
-  <!-- Boundary Conditions to Mechanics -->  
+  <!-- Boundary Conditions to Mechanics -->
   <!-- Top-->
   <BC name = "TopLoad"
       type = "Neumann"
-      entityType = "SurfBC"
-      variable = "displacements" >
+      field = "surface"
+      variable = "displacements"
+      entityListType = "tags"
+      entityList = "2"
+      components = "z"
+      >
 
-    <BCentities surfaceTags = "2" components = "z" />
     <BCevent time = "0." value = "-1.000000e+01" />
   </BC>
 
   <!-- Lateral Y -->
   <BC name = "LatFixedY"
       type = "Dirichlet"
-      entityType = "NodeBC"
-      variable = "displacements" >
+      field = "surface"
+      variable = "displacements"
+      entityListType = "tags"
+      entityList = "3"
+      components = "y"
+      >
 
-    <BCentities surfaceTags = "3" components = "y" />
     <BCevent time = "0." value = "0.000000e+00" />
   </BC>
 
   <!-- Lateral X -->
   <BC name = "LatFixedX"
       type = "Dirichlet"
-      entityType = "NodeBC"
-      variable = "displacements" >
+      field = "surface"
+      variable = "displacements"
+      entityListType = "tags"
+      entityList = "4"
+      components = "x"
+      >
 
-    <BCentities surfaceTags = "4" components = "x" />
     <BCevent time = "0." value = "0.000000e+00" />
   </BC>
 
   <!-- Bottom -->
   <BC name = "BotFixed"
       type = "Dirichlet"
-      entityType = "SurfBC"
-      variable = "displacements" >
+      field = "surface"
+      variable = "displacements"
+      entityListType = "tags"
+      entityList = "1"
+      components = "x,y,z">
 
-    <BCentities surfaceTags = "1" components = "x,y,z" />
     <BCevent time = "0." value = "0.000000e+00" />
   </BC>
 

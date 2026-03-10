@@ -50,7 +50,7 @@ classdef (Abstract) SolutionScheme < handle
 
     end
 
-    function simulationLoop(obj)
+    function simulationLoop(obj,varargin)
 
       % Initialize time
       obj.tStep = 0;
@@ -59,7 +59,7 @@ classdef (Abstract) SolutionScheme < handle
 
       initialize(obj);
       
-      setLinearSolver(obj);
+      setLinearSolver(obj,varargin);
 
       while obj.t < obj.simparams.tMax
 

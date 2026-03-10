@@ -212,9 +212,12 @@ classdef Discretizer < handle
         "after system has already been assembled");
 
       % Add a new solver to the Discretizer
-      assert(nargin == 2,"Input must be an xml file or a scalar struct")
+      assert(nargin == 2,"Input must be an xml file or a struct")
 
-      %solverInput = input.Solver;
+      solverInput = readInput(solverInput);
+      if isfield(solverInput,"Solver")
+        solverInput = solverInput.Solver;
+      end
 
       sN = string(fieldnames(solverInput));
       sN = reshape(sN,1,[]);
@@ -421,7 +424,7 @@ classdef Discretizer < handle
 
     function writeMatFile(obj,fac,timeID)
       % write to MAT-file
-      obj.outstate.matFile(timeID).time = obj.outstate.timeList(timeID);
+      obj.outstate.results(timeID).time = obj.outstate.timeList(timeID);
 
       for solv = obj.solverNames
         getPhysicsSolver(obj,solv).writeMatFile(fac,timeID);

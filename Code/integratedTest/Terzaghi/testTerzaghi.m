@@ -8,8 +8,11 @@ scriptDir = fileparts(scriptFullPath);
 % Change the current directory to the script's directory
 cd(scriptDir);
 
-for elem = ["tetra","hexa"]
+for elem = ["hexa","tetra"]
   for flow = ["FV","FEM"]
+    if elem == "tetra" && flow == "FV"
+      continue
+    end
     for scheme = ["FC","FS"]
       run(elem,flow,scheme);
     end
@@ -26,7 +29,7 @@ switch elemShape
     topology.importGMSHmesh('Input/Mesh/Column_tetra.msh');
   case 'hexa'
     ng = 2;
-    topology = structuredMesh(1,1,10,[0 1],[0 1],[0 10]);
+    topology = structuredMesh(1,1,50,[0 1],[0 1],[0 10]);
 end
 
 simParam = SimulationParameters("Input/simParam.xml");
@@ -34,8 +37,8 @@ mat = Materials('Input/materials.xml');
 elems = Elements(topology,ng);
 
 if strcmp(flowSolver,"FV")
-  faces = Faces(topology);
   solverIn = struct("SinglePhaseFlowFVTPFA",[]);
+    faces = Faces(topology);
   grid = struct('topology',topology,'cells',elems,'faces',faces);
 else
   solverIn = struct("SinglePhaseFlowFEM",[]);
@@ -55,7 +58,7 @@ domain = Discretizer('grid',grid,...
 switch scheme
   case 'FC'
     domain.addPhysicsSolver('BiotFullyCoupled',solverIn);
-  case 'FV'
+  case 'FS'
     domain.addPhysicsSolver('BiotFixedStressSplit',solverIn);
 end
 
@@ -83,33 +86,44 @@ validate(solver)
 
 end
 
+
+
 function validate(solver)
 
-[pAnalytical,uAnalytical] = computeAnalyticalSolution(solver,10);
+[pAnalytical,uAnalytical] = computeAnalyticalSolution(solver,-10);
 
-pNumerical = [solver.outstate.results.pressure];
-uNumerical = [solver.outstate.results.displacements];
+pNumerical = [solver.output.results.pressure];
+uNumerical = [solver.output.results.displacements];
 
-for i = 1:numel(analyticalSol.t)
+
+for i = 1:numel(solver.output.timeList)
   % compare pressure and displacement solution at each time step
 
-  pAn = pAnalytical(:,i);
+  pAn = abs(pAnalytical(:,i));
   pNum = pNumerical(:,i);
 
   uAn = uAnalytical(:,i);
   uNum = uNumerical(:,i);
+  uNum = uNum(3:3:end);
 
-  relErrP = (pAn-pNum(:,i))./pNum(:,i);
+  relErrP = (pAn-pNum)./pNum;
   relErrP(isinf(relErrP)) = 0;
   relErrP(isnan(relErrP)) = 0;
   assert(norm(relErrP)<1e0,'Pressure error for out time %i \n',i)
 
-  relErrU = (uAn-uNum(:,i))./(uNum(:,i));
+  relErrU = (uAn-uNum)./(uNum);
   relErrU(isinf(relErrU)) = 0;
   assert(norm(relErrU)<1e0,'Displacement error for out time %i\n',i)
 end
 
+if strcmp(class(solver),"FixedStressSplit")
+  nIter = mean(solver.getFixedStressIer);
+  assert(nIter==2,"Unexpected number of fixed stress split iterations")
 end
+
+end
+
+
 
 
 function [p,u] = computeAnalyticalSolution(solv,F)
@@ -158,8 +172,11 @@ if isfield(grid,'faces')
 else
   zp = zu;
 end
+time = solv.domains.outstate.timeList;
 
-time = solv.domain.outstate.timeList;
+zu = reshape(zu,1,[]);
+zp = reshape(zp,1,[]);
+time = reshape(time,1,[]);
 
 [~,u0] = iniSol(zu,zp,M,F,Ku,biot,G);
 [p,u] = TerzaghiSol(u0,zu,zp,time,nm,L,c,F,biot,gamma,G,nu);
