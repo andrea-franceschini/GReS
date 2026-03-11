@@ -187,21 +187,21 @@ classdef SedimentsMap < handle
 
     function values = dataMap(obj, data)
       % DATAMAP Loads spatial sediment map from file.
-      %
-      % Notes:
-      %   - Dimensions must match the domain grid
-      %
-      % TODO:
-      %   Implement spatial interpolation for mismatched dimensions.
-
-      mapDim = sscanf(data.division, '%lu,%lu')';
+      
+      mapDim = getXMLData(data,[],"division");
       if isequal(obj.dim, mapDim)
-        values = load(data.file);
+        % values = load(data.file);
+        fid = fopen(data.file);
+        values = cell2mat(textscan(fid,'%f','Delimiter','\n'));
+        fclose(fid);
       else
-        % TODO : Create an interpolation for the map values
-        warning("The sediment map has a mismatch dimension" + ...
-          " with the domain. Returning zeros.");
-        values = zeros(prod(obj.dim), 1);
+        fid = fopen(data.file);
+        val_ref = cell2mat(textscan(fid,'%f','Delimiter','\n'));
+        fclose(fid);
+        val_ref = reshape(val_ref,mapDim)';
+        [x_ref, y_ref] = meshgrid(0:1/(mapDim(1)-1):1, 0:1/(mapDim(2)-1):1);
+        [x_new, y_new] = meshgrid(0:1/(obj.dim(1)-1):1, 0:1/(obj.dim(2)-1):1);        
+        values = reshape(interp2(x_ref, y_ref, val_ref, x_new, y_new, 'cubic'),[],1);
       end
     end
 

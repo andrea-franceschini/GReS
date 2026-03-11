@@ -278,81 +278,55 @@ classdef gridForSedimentation < handle
     end
 
     % Mesh related functions
-    function [coord, conect] = getMesh(obj)
-      % GETMESH Returns mesh coordinates and connectivity.
-
-      [XX, YY, ZZ] = ndgrid(obj.coordX, obj.coordY, obj.coordZ);
-      coord = [XX(:), YY(:), ZZ(:)];
-
-      dofs = (1:obj.ndofs)';
-      map = ismember(obj.dof,dofs);
-      id = sort(obj.dof(map));
-      [idI,idJ,idK]=ind2sub(obj.ncells,id);
-      conect = obj.getConectByIJK(idI,idJ,idK);
-
-      % ijk = obj.getIJKfromCellID(dofs);
-      % conect = obj.getConectByIJK(ijk(:,1),ijk(:,2),ijk(:,3));
-    end
-
-    function conect = getConect(obj,dofs)
-      % GETCONECTBYIJK Returns VTK hexahedral connectivity.
+    function [coord, conect] = getMesh(obj,dofs)
       if ~exist("dofs","var")
         dofs = (1:obj.ndofs)';
       end
-      [idI,idJ,idK]=obj.getIJKfromDofs(dofs);
 
-      ndivX = obj.ncells(1)+1;
-      ndivXY = (obj.ncells(1)+1)*(obj.ncells(2)+1);
+      map = ismember(obj.dof,dofs);
+      [idI,idJ,idK]=ind2sub(obj.ncells,find(map));
+      refdof = sub2ind(obj.ncells,idI,idJ,idK);
+      dofs = obj.dof(refdof);
 
-      conect=zeros(size(idI,1),8);
+      conect = zeros(length(dofs),8);
+      for i=1:8
+        conect(:,i)=8*(dofs-1)+i;
+      end
 
-      % conect(:,1)=ndivXY*(idK-1)+4*(ndivX-1)*(idJ-1)+2*(idI-1);
+      coord = zeros(8*length(dofs),3);
+      ddof = (1:length(dofs))';
+      dofId = 8*(ddof-1);
+      coord(dofId+1,1) = obj.coordX(idI(ddof)+0);
+      coord(dofId+1,2) = obj.coordY(idJ(ddof)+0);
+      coord(dofId+1,3) = obj.coordZ(idK(ddof)+0);
 
-      conect(:,1)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI;
-      conect(:,2)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI+1;
-      conect(:,3)=ndivXY*(idK-1)+ndivX*idJ+idI+1;
-      conect(:,4)=ndivXY*(idK-1)+ndivX*idJ+idI;
-      conect(:,5)=ndivXY*idK+ndivX*(idJ-1)+idI;
-      conect(:,6)=ndivXY*idK+ndivX*(idJ-1)+idI+1;
-      conect(:,7)=ndivXY*idK+ndivX*idJ+idI+1;
-      conect(:,8)=ndivXY*idK+ndivX*idJ+idI;
-    end
+      coord(dofId+2,1) = obj.coordX(idI(ddof)+1);
+      coord(dofId+2,2) = obj.coordY(idJ(ddof)+0);
+      coord(dofId+2,3) = obj.coordZ(idK(ddof)+0);
 
-    function conect = getConectByIJK(obj,idI,idJ,idK)
-      % GETCONECTBYIJK Returns VTK hexahedral connectivity.
+      coord(dofId+3,1) = obj.coordX(idI(ddof)+1);
+      coord(dofId+3,2) = obj.coordY(idJ(ddof)+1);
+      coord(dofId+3,3) = obj.coordZ(idK(ddof)+0);
 
-      ndivX = obj.ncells(1)+1;
-      ndivXY = (obj.ncells(1)+1)*(obj.ncells(2)+1);
+      coord(dofId+4,1) = obj.coordX(idI(ddof)+0);
+      coord(dofId+4,2) = obj.coordY(idJ(ddof)+1);
+      coord(dofId+4,3) = obj.coordZ(idK(ddof)+0);
 
-      conect=zeros(size(idI,1),8);
+      coord(dofId+5,1) = obj.coordX(idI(ddof)+0);
+      coord(dofId+5,2) = obj.coordY(idJ(ddof)+0);
+      coord(dofId+5,3) = obj.coordZ(idK(ddof)+1);
 
-      % conect(:,1)=ndivXY*(idK-1)+4*(ndivX-1)*(idJ-1)+2*(idI-1);
+      coord(dofId+6,1) = obj.coordX(idI(ddof)+1);
+      coord(dofId+6,2) = obj.coordY(idJ(ddof)+0);
+      coord(dofId+6,3) = obj.coordZ(idK(ddof)+1);
 
-      conect(:,1)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI;
-      conect(:,2)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI+1;
-      conect(:,3)=ndivXY*(idK-1)+ndivX*idJ+idI+1;
-      conect(:,4)=ndivXY*(idK-1)+ndivX*idJ+idI;
-      conect(:,5)=ndivXY*idK+ndivX*(idJ-1)+idI;
-      conect(:,6)=ndivXY*idK+ndivX*(idJ-1)+idI+1;
-      conect(:,7)=ndivXY*idK+ndivX*idJ+idI+1;
-      conect(:,8)=ndivXY*idK+ndivX*idJ+idI;
-    end
+      coord(dofId+7,1) = obj.coordX(idI(ddof)+1);
+      coord(dofId+7,2) = obj.coordY(idJ(ddof)+1);
+      coord(dofId+7,3) = obj.coordZ(idK(ddof)+1);
 
-    function conect = getConectByIJKOk(obj,idI,idJ,idK)
-      % GETCONECTBYIJK Returns VTK hexahedral connectivity.
-
-      ndivX = obj.ncells(1)+1;
-      ndivXY = (obj.ncells(1)+1)*(obj.ncells(2)+1);
-
-      conect=zeros(size(idI,1),8);
-      conect(:,1)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI;
-      conect(:,2)=ndivXY*(idK-1)+ndivX*(idJ-1)+idI+1;
-      conect(:,3)=ndivXY*(idK-1)+ndivX*idJ+idI+1;
-      conect(:,4)=ndivXY*(idK-1)+ndivX*idJ+idI;
-      conect(:,5)=ndivXY*idK+ndivX*(idJ-1)+idI;
-      conect(:,6)=ndivXY*idK+ndivX*(idJ-1)+idI+1;
-      conect(:,7)=ndivXY*idK+ndivX*idJ+idI+1;
-      conect(:,8)=ndivXY*idK+ndivX*idJ+idI;
+      coord(dofId+8,1) = obj.coordX(idI(ddof)+0);
+      coord(dofId+8,2) = obj.coordY(idJ(ddof)+1);
+      coord(dofId+8,3) = obj.coordZ(idK(ddof)+1);
     end
 
     function newlayer = grow(obj,map,height)
@@ -407,6 +381,25 @@ classdef gridForSedimentation < handle
       end
     end
 
+    function data = cell2NodeAccByColumnFromBot2Top(obj,valByCell)
+      data = zeros(8*obj.ndofs,1);
+      for i=1:obj.ncells(1)
+        for j=1:obj.ncells(2)
+          column = obj.dof(i,j,:);
+          acc = 0.;
+          for k=1:obj.ncells(3)
+            dofId = column(k);
+            if dofId ~= 0
+              refDof = 8*(dofId-1);
+              data(refDof+1:refDof+4)=acc;
+              acc = acc + valByCell(dofId);
+              data(refDof+5:refDof+8)=acc;              
+            end
+          end
+        end
+      end
+    end
+
   end
 
   methods (Access = private)
@@ -439,10 +432,8 @@ classdef gridForSedimentation < handle
 
     function gridClassic(obj,data)
       % Internal initialization of grid, maps, and material layers.
-      obj.ncells = str2num(data.division);
-      
-      % divisions = str2num(data.division);
-      dim = str2num(data.size);
+      obj.ncells = getXMLData(data,[1,1,1],"division");
+      dim = getXMLData(data,[1,1,1],"size");
       obj.coordX = linspace(0,dim(1),obj.ncells(1)+1);
       obj.coordY = linspace(0,dim(2),obj.ncells(2)+1);
       obj.coordZ = linspace(0,dim(3),obj.ncells(3)+1);
@@ -451,39 +442,24 @@ classdef gridForSedimentation < handle
     function gridExplicit(obj,data)
       % Internal initialization of grid, maps, and material layers.
       if isfield(data,'xfile')
-        if ~isfile(data.xfile)
-          gridForSedimentation.errorGrid();
-        end
-        obj.coordX = load(data.xfile);
+        file = getXMLData(data,[],"xfile");
+        obj.coordX = load(file);
       else
-        if ~isfield(data,'xcoord')
-          gridForSedimentation.errorGrid();
-        end
-        obj.coordX = str2num(data.xcoord);
+        obj.coordX = getXMLData(data,[],"xcoord");
       end
 
       if isfield(data,'yfile')
-        if ~isfile(data.yfile)
-          gridForSedimentation.errorGrid();
-        end
-        obj.coordY = load(data.yfile);
+        file = getXMLData(data,[],"yfile");
+        obj.coordY = load(file);
       else
-        if ~isfield(data,'ycoord')
-          gridForSedimentation.errorGrid();
-        end
-        obj.coordY = str2num(data.ycoord);
+        obj.coordY = getXMLData(data,[],"ycoord");
       end
 
       if isfield(data,'zfile')
-        if ~isfile(data.zfile)
-          gridForSedimentation.errorGrid();
-        end
-        obj.coordZ = load(data.zfile);
+        file = getXMLData(data,[],"zfile");
+        obj.coordZ = load(file);
       else
-        if ~isfield(data,'zcoord')
-          gridForSedimentation.errorGrid();
-        end
-        obj.coordZ = str2num(data.zcoord);
+        obj.coordZ = getXMLData(data,[],"zcoord");
       end
 
       obj.ncells = [length(obj.coordX),length(obj.coordY),length(obj.coordZ)]-1;

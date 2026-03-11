@@ -74,24 +74,53 @@ classdef SedMaterial < handle
     end
 
     methods (Static)
-      function de = getVoidRatio(sNew,sOld,sPre,Cc,Cr)
-        %return the variation in void ratio
-          ndofs = length(sNew);
-          flag = ndofs==length(sOld);
-          flag = and(flag,ndofs==length(sPre));
+      function de = getDeltaVoidRatio(sCurr,sPrev,sCons,Cc,Cr)
+        % Return the variation in void ratio
+          ndofs = length(sCurr);
+          flag = ndofs==length(sPrev);
+          flag = and(flag,ndofs==length(sCons));
           flag = and(flag,ndofs==length(Cc));
           flag = and(flag,ndofs==length(Cr));
-          sNew = abs(sNew);
+          sCurr = abs(sCurr);
           if ~flag, return; end
-          map1 = sNew>=sPre;
-          map2 = sNew<=sPre;
-          map3 = and(sOld<=sPre,map1);
-          map1 = and(map1,~map3);
+          % map1 = sCurr>=sCons;
+          % map2 = sCurr<=sCons;
+          % map3 = and(sPrev<=sCons,map1);
+          % map1 = and(map1,~map3);
+          % de = zeros(ndofs,1);
+          % de(map1) = -Cc(map1).*log(sCurr(map1)./sPrev(map1));
+          % de(map2) = -Cr(map2).*log(sCurr(map2)./sCons(map2));
+          % de(map3) = -Cc(map3).*log(sCurr(map3)./sCons(map3)) - ...
+          %   Cr(map3).*log(sCons(map3)./sPrev(map3));
+
+          map1 = sCurr <= sCons;
+          map2 = sPrev >= sCons;
+          map3 = and((~map1),(~map2));
           de = zeros(ndofs,1);
-          de(map1) = -Cc(map1).*log(sNew(map1)./sOld(map1));
-          de(map2) = -Cr(map2).*log(sNew(map2)./sPre(map2));
-          de(map3) = -Cc(map3).*log(sNew(map3)./sPre(map3)) - ...
-            Cr(map3).*log(sPre(map3)./sOld(map3));
+          de(map1) = -Cr(map1).*log10(sCurr(map1)./sPrev(map1));
+          de(map2) = -Cc(map2).*log10(sCurr(map2)./sPrev(map2));          
+          de(map3) = -Cr(map3).*log10(sCurr(map3)./sPrev(map3)) ...
+            - Cc(map3).*log(sCurr(map3)./sCons(map3));
+      end
+
+      function de = getDevVoidRatio(sCurr,sPrev,sCons,Cc,Cr)
+        % Return the variation in void ratio
+          ndofs = length(sCurr);
+          flag = ndofs==length(sPrev);
+          flag = and(flag,ndofs==length(sCons));
+          flag = and(flag,ndofs==length(Cc));
+          flag = and(flag,ndofs==length(Cr));
+          sCurr = abs(sCurr);
+          if ~flag, return; end
+
+          map1 = sCurr <= sCons;
+          map2 = sPrev >= sCons;
+          map3 = and((~map1),(~map2));
+          de = zeros(ndofs,1);
+          % 1/log(10) = 0.434294481903252
+          de(map1) = 0.434294481903252*Cr(map1)./sCurr(map1);
+          de(map2) = 0.434294481903252*Cc(map2)./sCurr(map2);
+          de(map3) = 0.434294481903252*(Cr(map3)+Cc(map3))./sCurr(map3);
       end
     end
 end
