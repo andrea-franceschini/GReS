@@ -209,6 +209,8 @@ classdef Poisson < PhysicsSolver
       else 
         error('Mode input must be 0 (nodes list) or 1 (coordinate input list)');
       end
+
+      [x,y,z] = deal(x(:,1),x(:,2),x(:,3));
       switch var
         case 'u'
           f = obj.analyticalSolution.u;
@@ -223,7 +225,7 @@ classdef Poisson < PhysicsSolver
         otherwise
           error('Incorrect input for flag')
       end
-      anal = arrayfun(@(i) f(x(i,:)),1:size(x,1));
+      anal = f(x,y,z);
       anal = reshape(anal,[],1);      % make column array
     end
 

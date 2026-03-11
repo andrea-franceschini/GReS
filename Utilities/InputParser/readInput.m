@@ -30,7 +30,7 @@ if isscalar(usrIn) && isstring(usrIn{1}) && strlength(usrIn{1}) == 0
 end
 
 % No user input → return default
-if isempty([usrIn{:}]) 
+if isempty(usrIn) || all(cellfun(@isempty, usrIn))
   inputStruct = default;
   return
 end
