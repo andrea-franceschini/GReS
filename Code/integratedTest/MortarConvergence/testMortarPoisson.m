@@ -56,6 +56,7 @@ interfStr.masterDomain = 1;
 interfStr.slaveDomain = 1;
 interfStr.masterSurface = 1;
 interfStr.slaveSurface = 3;
+interfStr.multiplierType="dual";
 
 quadStr.type = quadrature;
 quadStr.nG = nG;
