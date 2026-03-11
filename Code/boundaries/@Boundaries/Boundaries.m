@@ -62,13 +62,6 @@ classdef Boundaries < handle
 
 
 
-    function addBCEvent(obj,bcId,varargin)
-
-
-
-    end
-
-
     function bc = getData(obj,identifier)
       % Check if the identifier defined by the user is a key of the Map object
       if (obj.db.isKey(identifier))

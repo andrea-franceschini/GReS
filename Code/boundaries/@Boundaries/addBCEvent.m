@@ -1,8 +1,8 @@
-function addBCEvent(obj,varargin)
+function addBCEvent(boundaries,name,varargin)
 % ADDBCEVENT  Add a time-dependent event to an existing boundary condition.
 %
-%   ADDBCEVENT(obj, Name, Value) appends a (time, value) pair to the
-%   boundary condition event list of OBJ. Events are kept sorted in
+%   ADDBCEVENT(obj, name, Key, Value) appends a (time, value) pair to the
+%   boundary condition object boundaries. Events are kept sorted in
 %   ascending time order. Duplicate time entries are not allowed.
 %
 % -------------------------------------------------------------------------
@@ -31,7 +31,7 @@ function addBCEvent(obj,varargin)
 % -------------------------------------------------------------------------
 %   addBC
 
-obj.getData(bcId).data.addBCEvent(varargin{:});
+boundaries.getData(name).data.addBCEvent(varargin{:});
 
 end
 

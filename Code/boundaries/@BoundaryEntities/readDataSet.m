@@ -14,7 +14,7 @@ end
 if isnumeric(bcVal)
   % scalar value
   if isscalar(bcVal)
-    vals = repmat(bcVal,bc.totEnts,1);
+    vals = repmat(bcVal,bc.totSrcEnts,1);
   else
     vals = bcVal;
   end
@@ -25,8 +25,8 @@ elseif isValidFunction(bcVal)
   vals = f(pos(:,1),pos(:,2),pos(:,3));
 else 
   % file with BC values
-  vals = readValuesList(bcVal,bc.totEnts);
-  vals = vals(bc.isActiveEntity);
+  vals = readValuesList(bcVal,bc.totSrcEnts);
+  %vals = vals(bc.isActiveEntity);
 end
 
 % assert(bc.totEnts == numel(vals),...
