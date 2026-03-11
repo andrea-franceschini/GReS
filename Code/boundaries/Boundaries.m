@@ -366,11 +366,11 @@ classdef Boundaries < handle
 
 
 
-    function removeBCentities(obj,bcId,list)
+    function removeTargetEntities(obj,bcId,list)
       % remove BC entities that are contained in an input list
       % ignores entries of list that are not valid entities
 
-      getData(obj,bcId).removeTargetEntities(list);
+      getData(obj,bcId).data.removeTargetEntities(list);
 
     end
 

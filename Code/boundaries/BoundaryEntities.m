@@ -5,8 +5,10 @@ classdef BoundaryEntities < handle
   properties (Access = public)
     % Boundary condition identifier (mainly for error messages)
     name
-    % Total number of constrained entities
-    totEnts = 0
+    % Total number of constrained source entities
+    totSrcEnts = 0
+    % Total number of constrained target entities
+    totTargetEnts = 0
     % Number of constrained source entities for dof component
     nSourceEnts
     % Raw indices of source constrained entities
@@ -142,7 +144,7 @@ classdef BoundaryEntities < handle
 
     function setEntities(obj,type,list,comp,mesh)
 
-      if obj.totEnts > 0
+      if obj.totSrcEnts > 0
         gresLog().warning(2,['Entities for boundary condition %s ' ...
           'already defined. GReS will overwrite them.'])
       end
@@ -150,15 +152,13 @@ classdef BoundaryEntities < handle
       [obj.nSourceEnts, obj.sourceEnts, obj.entityPos] = readEntitySet(obj,type,list,comp,mesh);
       obj.nSourceEnts = reshape(obj.nSourceEnts,1,[]);
 
-      obj.totEnts = sum(obj.nSourceEnts);
+      obj.totSrcEnts = sum(obj.nSourceEnts);
 
-      obj.isActiveEntity = true(obj.totEnts,1);
-
-      if (obj.totEnts == 0)
+      if (obj.totSrcEnts == 0)
         error('No boundary conditions are prescribed for %s BC', obj.name);
       end
 
-      obj.availVals = zeros(obj.totEnts,2);
+      obj.availVals = zeros(obj.totSrcEnts,2);
       obj.availSteps = zeros(2,1);
 
     end
@@ -194,6 +194,12 @@ classdef BoundaryEntities < handle
 
       end
 
+      obj.totTargetEnts = sum(obj.nTargetEnts);
+
+      obj.isActiveEntity = true(obj.totTargetEnts,1);
+      % obj.availVals = zeros(obj.totTargetEnts,2);
+      % obj.availSteps = zeros(2,1);
+
     end
 
 
@@ -209,7 +215,7 @@ classdef BoundaryEntities < handle
 
       % update the number of entities
       n = 0;
-      ncomp = numel(obj.targetEnts);
+      ncomp = numel(obj.nTargetEnts);
       l = zeros(ncomp,1);
 
       for i = 1:ncomp
@@ -218,8 +224,8 @@ classdef BoundaryEntities < handle
       end
 
       obj.nTargetEnts = l;
-      obj.totEnts = sum(obj.nTargetEnts);
-      obj.availVals = zeros(obj.totEnts,2);
+      obj.totTargetEnts = sum(obj.nTargetEnts);
+      % obj.availVals = zeros(obj.totTargetEnts,2);
 
     end
 

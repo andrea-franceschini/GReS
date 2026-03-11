@@ -1,11 +1,10 @@
-
+function [x,flag] = Solve(obj,A,b,time)
 % Function for the solution of the system
 % note that the A passed here might be slightly different than the one passed in the computationi of the preconditioner
 % if the two As differ too much the preconditioner loses effectiveness. Must be recomputed
 
 % A is passed directly as a cell array, meaning it is already split in the various blocks (A11,A12,A21,A22 for a 
 % single physics single domain with lagrange multipliers) 
-function [x,flag] = Solve(obj,A,b,time)
    
    if obj.DEBUGflag
       A

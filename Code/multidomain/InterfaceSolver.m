@@ -170,6 +170,9 @@ classdef (Abstract) InterfaceSolver < handle
 
     function initialize(obj)
       % initialize the interface solver
+
+      % remove slave Dirichlet boundary conditions for nodal multipliers
+      removeSlaveBCents(obj);
     end
 
 
@@ -480,9 +483,6 @@ classdef (Abstract) InterfaceSolver < handle
                              params.multiplierType, ...
                              params.Quadrature);
 
-      % remove slave Dirichlet boundary conditions for nodal multipliers
-      removeSlaveBCents(obj);
-
       % Mortar quadrature preprocessing
       computeMortarInterpolation(obj);
 
@@ -531,11 +531,11 @@ classdef (Abstract) InterfaceSolver < handle
       bcList = bc.db.keys;
 
       for bcId = string(bcList)
-        if strcmp(getType(bc,bcId),"Dirichlet")
-          bcNodes = intersect(bc.getBCentities(bcId),nodSlave);
+        if getType(bc,bcId) == BCtype.dirichlet
+          bcNodes = intersect(bc.getTargetEntities(bcId),nodSlave);
           obj.dirNodes = [obj.dirNodes; bcNodes];
           if obj.multiplierLocation == entityField.node
-            bc.removeBCentities(bcId,nodSlave);
+            bc.removeTargetEntities(bcId,nodSlave);
           end
         end
       end

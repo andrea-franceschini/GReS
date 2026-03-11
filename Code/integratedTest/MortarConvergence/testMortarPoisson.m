@@ -66,11 +66,20 @@ for i = 1:nref
 
   % run script to get refined mesh
   meshName = "domain_"+elem+"_"+num2str(i);
+  meshFileName = fullfile('Input','Mesh','meshes',meshName+".vtk");
 
-  % update the mesh in the domain input file
-  params.Geometry.fileName = fullfile('Input','Mesh','meshes',meshName+".vtk");
+  mesh = Mesh();
+  mesh.importMesh(meshFileName);
+  elems = Elements(mesh,3);
+  grid = struct('topology',mesh,'cells',elems);
+  bc = Boundaries(grid);
+  bc.addBC('name',"ManufacturedSolution")
 
 
+  domain 
+
+
+  
   % write interface to file
   params.Interface.MeshTying.Quadrature.type = quadrature;
   params.Interface.MeshTying.Quadrature.nGP = nG;
@@ -82,6 +91,7 @@ for i = 1:nref
   simparams = SimulationParameters(params.SimulationParameters);
 
   % processing Poisson problem
+
   [domain,interfaces] = buildModel(params);
 
   domain.getPhysicsSolver("Poisson").setAnalSolution(anal,f,gradx,grady,gradz);

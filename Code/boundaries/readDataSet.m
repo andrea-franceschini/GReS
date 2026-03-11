@@ -21,7 +21,7 @@ if isnumeric(bcVal)
 elseif isValidFunction(bcVal)
   % function of spatial coordinates
   f = str2func(['@(x,y,z)', char(bcVal)]);
-  pos = bc.entityPos(bc.isActiveEntity,:);
+  pos = bc.entityPos;
   vals = f(pos(:,1),pos(:,2),pos(:,3));
 else 
   % file with BC values
