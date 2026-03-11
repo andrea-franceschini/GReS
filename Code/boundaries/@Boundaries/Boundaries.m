@@ -41,6 +41,12 @@ classdef Boundaries < handle
       end
     end
 
+
+    addBC(obj,varargin)
+
+    addBCEvent(obj,varargin)
+
+
     function addBCs(obj,varargin)
 
       % add a list of multiple boundary conditions from file
@@ -54,82 +60,11 @@ classdef Boundaries < handle
 
     end
 
-    function addBC(obj,varargin)
-
-      default = struct('name',string.empty,...
-        'variable',string.empty,...
-        'field',string.empty,...
-        'entityList',double.empty,...
-        'entityListType',string.empty,...
-        'type',string.empty,...
-        'components',missing,...
-        'essential',missing);
-
-      params = readInput(default,varargin{:});
-
-      name = params.name;
-      if obj.db.isKey(name)
-        error("'%s' boundary condition name already defined", name);
-      end
-
-      srcEnt = entityField(lower(params.field));
-      variable = lower(params.variable);
-      type = lower(params.type);
-
-      % BC type
-      % THE USER IS RESPONSIBLE FOR INPUTTING THE CORRECT BCTYPE NAME.
-      % THIS IS ONLY CHECKED AT THE PHYSICS_SOLVER LEVEL
-
-      essentialFlag = false;
-
-      if BCtype.isCustomBC(type)
-        if ~ismissing(params.essential)
-          essentialFlag = logical(params.essential);
-        else
-          gresLog().warning(1, sprintf( ...
-            "Custom boundary condition '%s' has been automatically considered to be NOT essential!\n" + ...
-            "To override this behavior, specify the logical field 'essential' in the Boundary condition input.", ...
-            bctype));
-        end
-      elseif BCtype(type) == BCtype.dirichlet
-        essentialFlag = true;
-      end
-
-      bc = struct('data', [], 'essential',essentialFlag,...
-        'sourceField',srcEnt,'type', type, 'variable', variable);
-
-      if ismissing(params.components)
-        comp = [];
-      else
-        comp = params.components;
-      end
-
-      bcEnt = BoundaryEntities(name,srcEnt);
-      bcEnt.setEntities(params.entityListType,...
-        params.entityList,...
-        comp,obj.grid.topology);
-
-      bc.data = bcEnt;
-
-      % add BC to the database
-      obj.db(name) = bc;
-
-      % add the bc event
-      if isfield(params,"BCevent")
-        for i = 1:numel(params.BCevent)
-          addBCEvent(obj,name,params.BCevent(i))
-        end
-      end
-
-      % finalize the boundary condition
-      % obj.computeBoundaryProperties(name);
-
-    end
 
 
     function addBCEvent(obj,bcId,varargin)
 
-      obj.getData(bcId).data.addBCEvent(varargin{:});
+
 
     end
 
@@ -291,79 +226,6 @@ classdef Boundaries < handle
     function setEntities(obj, identifier, list)
       obj.getData(identifier).data.sourceEnts = list;
     end
-
-    %   function computeBoundaryProperties(obj,bcId)
-    %
-    %     % preprocess boundary conditions once the target entity is known
-    %
-    %     msh = obj.grid.topology;
-    %     elem = obj.grid.cells;
-    %
-    %     % target entity field
-    %     source = obj.getBCfield(bcId);
-    %
-    %       ents = obj.getEntities(bcId);
-    %       nSrcEnts = obj.getData(bcId).data.nEntities;
-    %       nTargetEnts = zeros(numel(nSrcEnts),1);
-    %
-    %       loadedEnts = [];
-    %       entsInfl = [];
-    %
-    %       N = 0;
-    %
-    %       for i = 1:numel(nSrcEnts)
-    %         % process components individually
-    %         ents_i = ents(N+1:N+nSrcEnts(i));
-    %         inflMap_i = getEntitiesInterpolation()
-    %         if strcmp(source,'volumeforce')
-    %           tmpMat = msh.cells(ents_i, :)';
-    %           nEntries = sum(msh.cellNumVerts(ents_i));
-    %         else
-    %           tmpMat = msh.surfaces(ents_i, :)';
-    %           nEntries = sum(msh.surfaceNumVerts(ents_i));
-    %         end
-    %
-    %         loadedEnts_i = unique(tmpMat(tmpMat ~= 0));
-    %         nTargetEnts(i) = numel(loadedEnts_i);
-    %
-    %         % Preallocate row,col,val indices for sparse assembly
-    %         %           n = sum(msh.cellNumVerts())
-    %         [r,c,v] = deal(zeros(nEntries,1));
-    %         k = 0;
-    %         for j = 1:nSrcEnts(i)
-    %           el = ents_i(j);
-    %           if strcmp(source,'volumeforce')
-    %             nodInf = findNodeVolume(elem,el);
-    %             nodes = msh.cells(el,:);
-    %           else
-    %             nodInf = findNodeArea(elem,el);
-    %             nodes = msh.surfaces(el,:);
-    %           end
-    %           loadEntsLoc = find(ismember(loadedEnts_i,nodes));
-    %           nn = numel(nodInf);
-    %           r(k+1:k+nn) = loadEntsLoc;
-    %           c(k+1:k+nn) = repelem(j,nn);
-    %           v(k+1:k+nn) = nodInf;
-    %           k = k + nn;
-    %         end
-    %         entsInfl = blkdiag(entsInfl,sparse(r,c,v));
-    %         N = N + nSrcEnts(i);
-    %         loadedEnts = [loadedEnts; loadedEnts_i];
-    %       end
-    %
-    %       if strcmpi(obj.getType(bcId), 'dirichlet')
-    %         entsInfl = entsInfl./sum(entsInfl,2);
-    %       end
-    %
-    %       % update bc struct with additional properties
-    %       entry = obj.getData(bcId);
-    %       entry.entitiesInfl = entsInfl;
-    %       entry.targetEntities = loadedEnts;
-    %       entry.nTargetEnts = nTargetEnts;
-    %       obj.db(bcId) = entry;
-    %     end
-    % end
-
 
 
     function removeTargetEntities(obj,bcId,list)
