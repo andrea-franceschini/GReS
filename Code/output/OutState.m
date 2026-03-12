@@ -111,6 +111,10 @@ classdef OutState < handle & matlab.mixin.Copyable
 
       end
 
+      if obj.writeSolution && ~isempty(obj.matFileName)
+        saveHistory(obj);
+      end
+
     end
 
     function saveHistory(obj)
@@ -126,7 +130,8 @@ classdef OutState < handle & matlab.mixin.Copyable
 
       default = struct('outputFile',missing,...
                        'matFileName',missing,...
-                       'printTimes',missing);
+                       'printTimes',missing,...
+                       'saveHistory',true);
 
       params = readInput(default,varargin{:});
 
@@ -136,16 +141,16 @@ classdef OutState < handle & matlab.mixin.Copyable
       end
 
       if ~ismissing(params.matFileName)
-        obj.writeSolution = true;
         obj.matFileName = params.matFileName;
       end
+
+      obj.writeSolution = logical(params.saveHistory);
 
       if any([obj.writeSolution,obj.writeVtk])
         assert(~any(ismissing(params.printTimes)),"Print times are required when specifying output files");
         t = readInput(struct('printTimes',double.empty),varargin{:});
         obj.timeList = t.printTimes;
       end
-
 
     end
 

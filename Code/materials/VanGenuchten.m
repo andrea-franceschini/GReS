@@ -86,7 +86,7 @@ classdef VanGenuchten < handle
             % it's derivatives
             
             % Compute the effective or normalized saturation.
-            if strcmp(obj.modelType,'Tabular')
+            if strcmpi(obj.modelType,'Tabular')
                 [Sw, dSw, ddSw] = obj.retantionCurve.interpTable(pres);
             else
                 p = obj.presCorrection(pres);

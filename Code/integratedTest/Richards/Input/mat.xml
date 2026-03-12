@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <Materials>
-  <Solid
+  <Solid name = "sand"
          cellTags = "1">
     <Constitutive>
       <Elastic
@@ -18,13 +18,8 @@
                 maximumSaturation = "1.0"
                 />
 
-    <Curves>
-      <Tabular
-               relativePermeabilityPath = "Code/integratedTest/Richards/Input/Materials/krCurve_2000.dat"
-               capillaryCurvePath = "Code/integratedTest/Richards/Input/Materials/pcCurve_2000.dat"
-               />
-    </Curves>
   </Solid>
+
 
   <Fluid
          specificWeight = "9.81"

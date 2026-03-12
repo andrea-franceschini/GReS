@@ -28,20 +28,6 @@ classdef SimulationParameters < handle
       obj.readSimulationParameters(varargin{:});
     end
 
-    function status = isNewtonNLSolver(obj)
-      status = false;
-      if strcmp(obj.NLSolver,'Newton')
-        status = true;
-      end
-    end
-    
-    function status = isPicardNLSolver(obj)
-      status = false;
-      if strcmp(obj.NLSolver,'Picard')
-        status = true;
-      end
-    end
-
     function setTimeDependence(obj,flag)
        obj.isTimeDependent = flag;
     end

@@ -193,9 +193,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       bc = obj.domain.bcs;
       mat = obj.domain.materials;
 
-      bcFld = bc.getField(bcId); 
+      bcFld = bc.getField(bcId);
       type = bc.getType(bcId);
-      % 
+      %
       % ents = bc.getTargetEntities(bcId);
       % vals = bc.getVals(bcId,t);
 
@@ -205,9 +205,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       if bcFld == entityField.surface
 
-        srcId = bc.getSourceEntities(bcId);
+        faceId = bc.getSourceEntities(bcId);
         srcVal = bc.getSourceVals(bcId,t);
-        ents = sum(obj.faces.faceNeighbors(srcId,:),2);
+        ents = sum(obj.faces.faceNeighbors(faceId,:),2);
         p = getState(obj,obj.getField());
 
         %
@@ -215,35 +215,36 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
           case 'dirichlet'
             gamma = mat.getFluid().getSpecificWeight();
             mu = mat.getFluid().getDynViscosity();
-            tr = obj.trans(srcId);
-            
+            tr = obj.trans(faceId);
+
             dirJ = 1/mu*tr;
 
-            dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(srcId,3);
+            dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceId,3);
             potential = (p(ents) - srcVal) + gamma*dz;
             q = dirJ.*potential;
             vals = [dirJ,q];
-            return
           case 'seepage'
             gamma = mat.getFluid().getSpecificWeight();
             assert(gamma>0.,'To impose Seepage boundary condition is necessary the fluid specify weight be bigger than zero!');
 
-            zbc = obj.faces.faceCentroid(srcId,3);
+            zbc = obj.faces.faceCentroid(faceId,3);
             href = srcVal(1);
             v = gamma*(href-zbc);
 
             v(v<=0)=0.;
             mu = mat.getFluid().getDynViscosity();
-            tr = obj.trans(srcId);
-            dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(srcId,3);
+            tr = obj.trans(faceId);
+            dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceId,3);
             q = 1/mu*tr.*(p(ents) - v) + gamma*dz;
             vals = [1/mu*tr,q];
-            return
         end
-      end
 
-      ents = bc.getTargetEntities(bcId);
-      vals = bc.getVals(bcId,t);
+      else
+
+        ents = bc.getTargetEntities(bcId);
+        vals = bc.getVals(bcId,t);
+
+      end
 
     end
 
