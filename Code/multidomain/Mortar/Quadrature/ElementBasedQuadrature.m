@@ -28,7 +28,7 @@ classdef ElementBasedQuadrature < MortarQuadrature
     function obj = ElementBasedQuadrature(interface,multType,input)
       obj@MortarQuadrature(interface,multType,input);
       input = readInput(struct('nGP',6),input);
-      obj.ngTri = input.ng;
+      obj.nGP = input.nGP;
     end
 
 

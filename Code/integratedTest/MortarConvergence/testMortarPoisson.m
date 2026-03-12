@@ -10,11 +10,11 @@ cd(scriptDir);
 fileName = 'poissonMortar.xml';
 params = readstruct(fileName,AttributeSuffix="");
 
-for elem_type = ["hexa","hexa27"]
+for elem_type = ["hexa27","hexa"]
 
-  for integration_type = ["SegmentBasedQuadrature",...
-                          "RBFquadrature",...
+  for integration_type = ["RBFquadrature",...
                           "ElementBasedQuadrature",...
+                          "SegmentBasedQuadrature"
                           ]
 
     [L2,H1] = run(params,elem_type,integration_type);
@@ -47,9 +47,9 @@ nref = 2;
 
 % set mortar integration info
 if strcmp(quadrature,'SegmentBasedQuadrature')
-  nG = 7;
+  nGP = 7;
 else
-  nG = 6;
+  nGP = 6;
 end
 
 interfStr.masterDomain = 1;
@@ -59,7 +59,7 @@ interfStr.slaveSurface = 3;
 interfStr.multiplierType="dual";
 
 quadStr.type = quadrature;
-quadStr.nG = nG;
+quadStr.nGP = nGP;
 quadStr.nInt = 5;
 
 
@@ -100,7 +100,7 @@ for i = 1:nref
   domain = Discretizer('grid',grid,'boundaries',bc);
   domain.addPhysicsSolver('Poisson');
 
-  interfStr.quadrature = quadStr;
+  interfStr.Quadrature = quadStr;
 
   interface = InterfaceSolver.add('MeshTying',domain,interfStr);
 
