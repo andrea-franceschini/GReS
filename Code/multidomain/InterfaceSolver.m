@@ -264,7 +264,7 @@ classdef (Abstract) InterfaceSolver < handle
 
       if nargin > 1
 
-        dofs = getEntitiesList(obj.multiplierLocation,meshSlave,entityField.surface,el);
+        dofs = getIncidenceID(obj.multiplierLocation,meshSlave,entityField.surface,el);
 
         % dofs = getEntityFromElement( obj.multiplierLocation,...
         %   entityField.surface,...

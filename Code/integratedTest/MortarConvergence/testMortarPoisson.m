@@ -7,24 +7,25 @@ scriptDir = fileparts(scriptFullPath);
 % Change the current directory to the script's directory
 cd(scriptDir);
 
-fileName = 'poissonMortar.xml';
-params = readstruct(fileName,AttributeSuffix="");
 
-for elem_type = ["hexa27","hexa"]
+for elem_type = ["hexa","hexa27"]
 
-  for integration_type = ["RBFquadrature",...
+  for integration_type = ["SegmentBasedQuadrature",...
                           "ElementBasedQuadrature",...
-                          "SegmentBasedQuadrature"
+                          "RBFquadrature"
                           ]
 
-    [L2,H1] = run(params,elem_type,integration_type);
+    [L2,H1] = run(elem_type,integration_type);
     validate(elem_type,integration_type,L2,H1);
 
   end
 end
 
 
-function [L2ord,H1ord] = run(params,elem,quadrature)
+function [L2ord,H1ord] = run(elem,quadrature)
+
+fileName = 'poissonMortar.xml';
+params = readstruct(fileName,AttributeSuffix="");
 
 
 %% Poisson problem with single domain in 3D. Testing new poisson module

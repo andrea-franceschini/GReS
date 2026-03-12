@@ -26,7 +26,7 @@ switch elemShape
   case 'tetra'
     ng = 1;
     topology = Mesh();
-    topology.importGMSHmesh('Input/Mesh/Column_tetra.msh');
+    topology.importMesh('Input/Mesh/Column_tetra.msh');
   case 'hexa'
     ng = 2;
     topology = structuredMesh(1,1,10,[0 1],[0 1],[0 10]);

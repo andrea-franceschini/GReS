@@ -111,11 +111,11 @@ classdef OutState < handle & matlab.mixin.Copyable
 
       end
 
-      if obj.writeSolution
-        output = obj.results;
-        save(strcat(obj.matFileName,'.mat'),"output")
-      end
+    end
 
+    function saveHistory(obj)
+      output = obj.results;
+      save(strcat(obj.matFileName,'.mat'),"output")
     end
 
   end

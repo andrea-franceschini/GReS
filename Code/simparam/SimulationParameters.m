@@ -18,7 +18,6 @@ classdef SimulationParameters < handle
     divFac = 2
     pTarget
     sTarget = 0.4
-    NLSolver = 'Newton'
     goOnBackstep = 0;
     isTimeDependent = true;
     attemptSimplestConfiguration = false;

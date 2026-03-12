@@ -10,7 +10,7 @@ domain = Discretizer('Grid',grid,...
                      'Materials',mat,...
                      'Boundaries',bound);
 
-domain.addPhysicsSolver('Input/solver.xml');
+domain.addPhysicsSolvers('Input/solver.xml');
 
 % set initial conditions directly modifying the state object
 domain.state.data.pressure = getFluid(mat).getSpecificWeight()*(wLev-z);

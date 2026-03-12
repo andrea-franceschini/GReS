@@ -82,6 +82,11 @@ classdef (Abstract) SolutionScheme < handle
 
     end
 
+
+    function saveHistory(obj)
+      obj.output.saveHistory();
+    end
+
   end
 
 
