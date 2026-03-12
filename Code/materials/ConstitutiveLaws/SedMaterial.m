@@ -81,20 +81,11 @@ classdef SedMaterial < handle
           flag = and(flag,ndofs==length(sCons));
           flag = and(flag,ndofs==length(Cc));
           flag = and(flag,ndofs==length(Cr));
-          sCurr = abs(sCurr);
           if ~flag, return; end
-          % map1 = sCurr>=sCons;
-          % map2 = sCurr<=sCons;
-          % map3 = and(sPrev<=sCons,map1);
-          % map1 = and(map1,~map3);
-          % de = zeros(ndofs,1);
-          % de(map1) = -Cc(map1).*log(sCurr(map1)./sPrev(map1));
-          % de(map2) = -Cr(map2).*log(sCurr(map2)./sCons(map2));
-          % de(map3) = -Cc(map3).*log(sCurr(map3)./sCons(map3)) - ...
-          %   Cr(map3).*log(sCons(map3)./sPrev(map3));
-
-          map1 = sCurr <= sCons;
-          map2 = sPrev >= sCons;
+          % map = sCurr > 0; % Select only the positive stress.
+          map = sign(sCurr) == sign(sPrev); % Select only the positive stress.
+          map1 = and(sCurr <= sCons,map);
+          map2 = and(sPrev >= sCons,map);
           map3 = and((~map1),(~map2));
           de = zeros(ndofs,1);
           de(map1) = -Cr(map1).*log10(sCurr(map1)./sPrev(map1));
@@ -110,17 +101,17 @@ classdef SedMaterial < handle
           flag = and(flag,ndofs==length(sCons));
           flag = and(flag,ndofs==length(Cc));
           flag = and(flag,ndofs==length(Cr));
-          sCurr = abs(sCurr);
           if ~flag, return; end
-
-          map1 = sCurr <= sCons;
-          map2 = sPrev >= sCons;
+          % map = sCurr > 0; % Select only the positive stress.
+          map = sign(sCurr) == sign(sPrev); % Select only the positive stress.
+          map1 = and(sCurr <= sCons,map);
+          map2 = and(sPrev >= sCons,map);
           map3 = and((~map1),(~map2));
           de = zeros(ndofs,1);
           % 1/log(10) = 0.434294481903252
-          de(map1) = 0.434294481903252*Cr(map1)./sCurr(map1);
-          de(map2) = 0.434294481903252*Cc(map2)./sCurr(map2);
-          de(map3) = 0.434294481903252*(Cr(map3)+Cc(map3))./sCurr(map3);
+          de(map1) = -0.434294481903252*Cr(map1)./sCurr(map1);
+          de(map2) = -0.434294481903252*Cc(map2)./sCurr(map2);
+          de(map3) = -0.434294481903252*(Cr(map3)+Cc(map3))./sCurr(map3);
       end
     end
 end
