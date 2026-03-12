@@ -12,7 +12,7 @@ classdef PorousRock < handle
         % specGrav             % Specific gravity of rock
         % Swr                  % Residual saturation of water
         Sr=0.;             % Residual saturation
-        Ss=1.;             % Maximum saturation
+        Ss=1.;             % Maximum saturation        
     end
 
     properties
@@ -87,8 +87,11 @@ classdef PorousRock < handle
           end
         end
 
-        function addCapillaryCurves(obj,varargin)
-          obj.Curves = VanGenuchten(varargin{:});
+        function addCapillaryCurves(obj,f,varargin)
+
+          fluidWeight = f.getSpecificWeight;
+
+          obj.Curves = VanGenuchten(fluidWeight,varargin{:});
         end
 
         % Function to get rock compressibility

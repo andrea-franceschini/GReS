@@ -236,7 +236,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       for m = 1:obj.mesh.nCellTag
         isElMat = matUpElem == m;
         p = pkpt(obj.upElem(isElMat));
-        [lwkpt(isElMat), dlwkpt(isElMat)] = mat.getMaterial(m).Curves.computeRelativePermeability(p);
+        [lwkpt(isElMat), dlwkpt(isElMat)] = mat.getMaterial(m).PorousRock.Curves.computeRelativePermeability(p);
         % [lwkpt(isElMat), dlwkpt(isElMat)] = mat.getMaterial(m).RelativePermCurve.interpTable(p);
       end
       mu = mat.getFluid().getDynViscosity();

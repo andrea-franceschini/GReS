@@ -12,7 +12,7 @@ classdef Materials < handle
     function obj = Materials(input)
 
       obj.solid = cell([]);
-      obj.fluid = [];
+      obj.fluid = [];           % only one fluid in the model is allowed
       obj.matMap = [];
 
       if nargin == 0
@@ -152,6 +152,7 @@ classdef Materials < handle
       end
 
       matID = obj.getMaterialIDFromName(matName);
+
       obj.solid{matID}.PorousRock = PorousRock(varargin{:});
 
     end
@@ -159,7 +160,13 @@ classdef Materials < handle
     function addCapillaryCurves(obj,matName,varargin)
 
       matID = obj.getMaterialIDFromName(matName);
-      obj.solid{matID}.PorousRock.addCapillaryCurves(varargin{:});
+
+      % future with more fluid: ask in input the fluid to be associated
+      % with the capillaryCurves. No fluid specified means only one fluid
+      % is available in the model
+      f = obj.fluid;
+
+      obj.solid{matID}.PorousRock.addCapillaryCurves(f,varargin{:});
     end
 
 

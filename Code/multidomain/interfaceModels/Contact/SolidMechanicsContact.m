@@ -16,17 +16,25 @@ classdef SolidMechanicsContact < MeshTying
 
       obj@MeshTying(id,domains,inputStruct);
 
+      if obj.multiplierLocation ~= entityField.surface
+        error("Interface Solver %s is not implemented for multipliers ..." + ...
+          "located at %s. The only available entityField is %s",...
+          class(obj),obj.multiplierLocation,entityField.surface)
+      end
+
     end
 
     function registerInterface(obj,varargin)
 
       input = varargin{1};
 
-      obj.stabilizationScale = getXMLData(input,1.0,"stabilizationScale");
-      obj.cohesion = getXMLData(input.Coulomb,[],"cohesion");
-      obj.phi = getXMLData(input.Coulomb,[],"frictionAngle");
+      input = readInput(struct('Coulomb',[],'ActiveSet',missing),input);
 
- 
+      params = readInput(struct('cohesion',[],'frictionAngle',[]),input.Coulomb);
+
+      obj.cohesion = params.cohesion;
+      obj.phi = params.frictionAngle;
+
       nDofsInterface = getNumbDoF(obj);
 
       obj.state.traction = zeros(nDofsInterface,1);
@@ -43,7 +51,7 @@ classdef SolidMechanicsContact < MeshTying
       obj.stateOld = obj.state;
 
       N = getMesh(obj,MortarSide.slave).nSurfaces;
-      SolidMechanicsContact.initializeActiveSet(obj,input,N);
+      initializeActiveSet(obj,N,input.ActiveSet);
 
       % select dirichlet nodes
       setDirichletNodes(obj);
@@ -130,7 +138,7 @@ classdef SolidMechanicsContact < MeshTying
         gresLog().log(4,['\n Element %i: traction: %1.4e %1.4e %1.4e   ' ...
           'Limit tangential traction: %1.4e \n'],is,t(:), limitTraction)
 
-        obj.activeSet.curr(is) = obj.updateContactState(state,t,...
+        obj.activeSet.curr(is) = updateContactState(obj,state,t,...
                                                         limitTraction, ...
                                                         obj.state.normalGap(is),...
                                                         obj.activeSet.tol);
@@ -804,114 +812,6 @@ classdef SolidMechanicsContact < MeshTying
 
     function var = getCoupledVariables()
       var = Poromechanics.getField();
-    end
-
-
-    function initializeActiveSet(contactSolver,input,N)
-      % initialize an Active Set of size N and write it on input obj
-      % read xml field ActiveSet
-      
-      assert(isprop(contactSolver,"activeSet"),"A property named 'activeSet' " + ...
-        "is required to initialize the activeSet");
-
-      contactSolver.activeSet.curr = repmat(ContactMode.stick,N,1);
-      contactSolver.activeSet.prev = contactSolver.activeSet.curr;
-      % count how many times an element has changed state during iteration
-      contactSolver.activeSet.stateChange = zeros(N,1);
-
-      default = struct('resetActiveSet',1,...
-                       'forceStickBoundary',0);
-
-
-      % extract xml field
-      if isfield(input,"ActiveSet")
-        input = input.ActiveSet;
-      else
-        input = [];
-      end
-
-      params = readInput(default,input);
-
-      contactSolver.activeSet = params;
-
-      % tolerances
-      if isfield(params,"Tolerances")
-        tols = params.Tolerances;
-      else
-        tols = [];
-      end
-
-      default = struct('sliding',1e-4,...
-                       'normalGap',1e-6,...
-                       'normalTraction',1e-3,...
-                       'tangentialViolation',1e-4,...
-                       'areaaChange');
-
-
-      contactSolver.activeSet.tol.sliding = getXMLData(input,1e-4,"sliding");
-      contactSolver.activeSet.tol.normalGap = getXMLData(input,1e-6,"normalGap");
-      contactSolver.activeSet.tol.normalTrac = getXMLData(input,1e-3,"normalTraction");
-      contactSolver.activeSet.tol.slidingCheck = getXMLData(input,1e-4,"tangentialViolation");
-      contactSolver.activeSet.tol.minLimitTraction = getXMLData(input,1e-4,"minLimitTraction");
-      contactSolver.activeSet.tol.areaTol = getXMLData(input,1e-2,"areaChange");
-      contactSolver.activeSet.tol.maxStateChange = getXMLData(input,100,"maxActiveSetChange");
-
-      contactSolver.activeSet.tol = params;
-
-    end
-
-    function outState = updateContactState(inState,traction,tLimit,normalGap,tols)
-      % tols: structure with tolerances named
-      % according to initializeActiveSet method
-      % the method is static to be reused by other contact solvERS
-      outState = inState;
-
-      tol = 1e-8;
-
-      % contact state update
-      if inState == ContactMode.open
-        % from open to stick
-        if normalGap < -  tols.normalGap
-          outState = ContactMode.stick;
-        end
-
-      elseif traction(1) > tols.normalTrac
-        outState = ContactMode.open;
-
-      else % not open
-
-        % tangential traction norm
-        tau = norm(traction(2:3));
-        % limiting traction
-
-        % set to 0 a tLimit that is too small
-        if tLimit < tols.minLimitTraction
-          tLimit = 0;
-        end
-
-        % relax stick/sliding transition if the state is about to change
-        if inState == ContactMode.stick && tau >= tLimit
-
-          % reduce the tau if goes above limit
-          tau = tau*(1-tols.slidingCheck)-tol;
-
-        elseif inState ~= ContactMode.stick  && tau <=tLimit
-
-          % increase tau if falls below limit
-          tau = tau*(1+tols.slidingCheck)+tol;
-        end
-
-        % change the state after relaxation
-        if tau > tLimit
-          if inState == ContactMode.stick
-            outState = ContactMode.newSlip;
-          else
-            outState = ContactMode.slip;
-          end
-        else
-          outState = ContactMode.stick;
-        end
-      end
     end
 
   end

@@ -2,8 +2,7 @@
 
 <Problem>
 
-  <simParam>
-    <Time
+  <SimulationParameters
           Start="0.0"
           End ="1e0"
           DtInit= "1e0"
@@ -12,13 +11,12 @@
           relativeTolerance = "1e-12"
           absoluteTolerance = "1e-11"
           />
-  </simParam>
 
 
   <!--Top domain-->
   <Domain>
     <Geometry
-              fileName = "Input/topBlock.vtk"
+              meshFile = "Input/topBlock.vtk"
               />
     <Gauss nGP = "3" />
     <Materials fileName = "Input/materials.xml" />
@@ -30,7 +28,7 @@
 
   <!--Bottom domain-->
   <Domain>
-    <Geometry fileName = "Input/bottomBlock.vtk" />
+    <Geometry meshFile = "Input/bottomBlock.vtk" />
     <Gauss nGP = "3" />
     <Materials fileName = "Input/materials.xml" />
     <BoundaryConditions fileName = "Input/constantSlidingBottomBCs.xml" />
@@ -40,25 +38,17 @@
   </Domain>
 
   <Interface>
-    <SolidMechanicsContact>
+    <SolidMechanicsContact
+                           masterDomain = "2"
+                           masterSurface = "3"
+                           slaveDomain = "1"
+                           slaveSurface = "1" >
 
-      <Master
-              domainId = "2"
-              surfaceTag = "3"
-              />
-      <Slave
-             domainId = "1"
-             surfaceTag = "1"
-             />
       <Quadrature
                   type = "SegmentBasedQuadrature"
                   nGP = "6"
                   />
 
-      <!--<Output
-              outputFile = "Crack"
-              printTimes = "1"
-              />-->
 
       <Coulomb 
                cohesion = "0" 

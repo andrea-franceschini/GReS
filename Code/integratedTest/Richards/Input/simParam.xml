@@ -6,4 +6,5 @@
                       DtMax ="1e1"
                       DtMin ="1e-2"
                       incrementFactor = "1.0"
+                      RelativeTolerance = "1e-6"
                       />

@@ -568,7 +568,7 @@ classdef Discretizer < handle
 
 
     function outName = getOutName(obj)
-
+       % property domainId not set yet
       outName = sprintf('Domain_%i',obj.domainId);
 
 

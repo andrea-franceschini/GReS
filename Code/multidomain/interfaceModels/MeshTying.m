@@ -6,7 +6,7 @@ classdef MeshTying < InterfaceSolver
     D
     M
     stabilizationMat
-    stabilizationScale
+    stabilizationScale = 1.0
 
   end
 

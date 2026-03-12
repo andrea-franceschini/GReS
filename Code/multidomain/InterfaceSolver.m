@@ -105,7 +105,7 @@ classdef (Abstract) InterfaceSolver < handle
       input = readInput(default,varargin{:});
 
 
-      obj.domainId = [input.slaveDomain,input.masterDomain];
+      obj.domainId = [input.masterDomain,input.slaveDomain];
 
       % store handle to connected domains
       obj.domains = [domains(obj.domainId(1));

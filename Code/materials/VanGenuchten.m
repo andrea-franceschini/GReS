@@ -60,72 +60,69 @@ classdef VanGenuchten < handle
 
     properties
         n;               % Empirical value - adimensional
+        m
         beta;            % Empirical value - need to be the same dimension as pressure.
         kappa;           % Empirical value para van Genuchten-Mualem permeability curve.
     end
 
     properties (Access = private)
-        betaCor=false;   % Flag to indicate the necessity of correction for the beta.
-        presCor=true;    % Flag to indicate the necessity of correction for the pressure.
+        % betaCor=false;   % Flag to indicate the necessity of correction for the beta.
+        % presCor=true;    % Flag to indicate the necessity of correction for the pressure.
         modelType;       % Flag to indicate the model type
-        retantionCurve;  % Storage the retantion curve.
+        retentionCurve;  % Storage the retantion curve.
         relPermCurve;    % Storage the relative permability curve.
         nonNegPressure;  % Storage a flag for the non negative pressure.
     end
 
     methods (Access = public)
-      function obj = VanGenuchten(varargin)
+      function obj = VanGenuchten(specWeight,varargin)
             %VanGenuchtenMualem Construct an instance of this class
 
-            readInputParameters(obj,varargin{:});
+            readInputParameters(obj,specWeight,varargin{:});
 
         end
 
         function [Sw, dSw, ddSw] = computeSwAnddSw(obj,pres)
             % COMPUTESWANDDSW Method to compute the relative saturation and
             % it's derivatives
+
             
             % Compute the effective or normalized saturation.
-            if strcmpi(obj.modelType,'Tabular')
-                [Sw, dSw, ddSw] = obj.retantionCurve.interpTable(pres);
+            if strcmpi(obj.modelType,'tabular')
+                [Sw, dSw, ddSw] = obj.retentionCurve.interpTable(pres);
             else
-                p = obj.presCorrection(pres);
+                [p,id] = obj.presCorrection(pres);
                 [Sw, dSw, ddSw] = obj.computeSaturation(p);
-                dSw = varCorrection(obj,dSw);
-                ddSw = varCorrection(obj,ddSw);
+                dSw(id) = 0.0; 
+                ddSw(id) = 0.0;
             end
         end
 
         function [Kr, dKr] = computeRelativePermeability(obj,pres)
             %computeLwAnddLw Method to compute the relative permeability
 
+            if ~strcmpi(obj.modelType,'tabular')
+              [p,id] = VanGenuchten.presCorrection(pres);
+            end
+
             % Compute the relative permeability.
             switch obj.modelType
               case 'mualem'
-                    p = obj.presCorrection(pres);
                     [Kr, dKr] = obj.computeRelativePermeabilityMualem(p);
-                    dKr = varCorrection(obj,dKr);
+                    dKr(id) = 0.0;
               case 'burdine'
-                    p = obj.presCorrection(pres);
                     [Kr, dKr] = obj.computeRelativePermeabilityBurdine(p);
-                    dKr = varCorrection(obj,dKr);
+                    dKr(id) = 0.0;
                 case 'tabular'
                     [Kr, dKr, ~] = obj.relPermCurve.interpTable(pres);
-                otherwise
+              otherwise
+                error('Unknown model type %s',obj.modelType)
             end
         end
     end
 
     methods
-        function mm = getm(obj)
-            %GETM - return the empirical value of m in the van genuchten
-            % curves.
-            if (obj.modelType)
-                mm = 1-1/obj.n;
-            else
-                mm = 1-2/obj.n;
-            end
-        end
+
 
         function obj = betaCorrection (obj,specWeight)
             % BETACORRECTION Method to correct the beta parameter as function
@@ -170,7 +167,6 @@ classdef VanGenuchten < handle
             % Test if the soil is describe in the table.
             if not(isscalar(nn))
                 error('Unknown soil type');
-                return;
             end
 
             % Saving the information.
@@ -179,24 +175,12 @@ classdef VanGenuchten < handle
             obj.kappa = 0.5;
         end
 
-        function p = presCorrection (obj,pres)
-            % PRESCORRECTION Method to correct the capilari pressure to be
-            % positive and non-negative.
-            if (obj.presCor)
-                p = -pres;
-                obj.nonNegPressure = p<=0;
-                p(obj.nonNegPressure) = 1e-15;
-                % p(p>1e4)=1e4;
-            else
-                p=pres;
-            end
-        end
 
         function [Sw, dSw, ddSw] = computeSaturation(obj,p)
             % COMPUTESATURATION compute the effective saturation as
             % function of the pressure.
             nn = obj.n;
-            mm = obj.getm();
+            mm = obj.m;
             b = obj.beta;
 
             % Solving the saturation and it's derivatives.
@@ -213,7 +197,7 @@ classdef VanGenuchten < handle
             %computeKrMualem compute the relative permeability by Mualem
             %Model.
             nn = obj.n;
-            mm = obj.getm();
+            mm = obj.m;
             b = obj.beta;
             k = obj.kappa;
             p = pres;
@@ -232,7 +216,7 @@ classdef VanGenuchten < handle
             %computeKrBurdine compute the relative permeability by Burdine
             %Model.
             nn = obj.n;
-            mm = obj.getm();
+            mm = obj.m;
             b = obj.beta;
             p = pres;
 
@@ -244,14 +228,8 @@ classdef VanGenuchten < handle
                 (b*p).^(mm.*nn) - 2.*(b.*p).^(nn.*mm+nn));
         end
 
-        function var = varCorrection(obj,var)
-            % VARCORRECTION Method to correct the derivative of a variable.
-            if (obj.presCor)
-                var(obj.nonNegPressure) = 0.;
-            end
-        end
 
-        function readInputParameters(obj,varargin)
+        function readInputParameters(obj,specWeight,varargin)
 
           % first make sure a type is defined
           default = struct('type',"mualem");
@@ -263,13 +241,14 @@ classdef VanGenuchten < handle
             case 'preset'
               params = readInput(struct('soilName',[]),params);
               obj.readMaterialParametersFromTable(params.soilName);
-              obj.betaCor = true;
-              obj.presCor = true;
+              obj.m = 1-1/obj.n;
+              obj.beta = obj.beta/specWeight;
+              obj.modelType = 'mualem';
             case 'tabular'
               default = struct("capillaryCurvePath",[],...
                 "relativePermeabilityPath",[]);
               params = readInput(default,params);
-              obj.retantionCurve = TabularCurve(params.capillaryCurvePath);
+              obj.retentionCurve = TabularCurve(params.capillaryCurvePath);
               obj.relPermCurve = TabularCurve(params.relativePermeabilityPath);
             case 'burdine'
               default = struct("n",[],...
@@ -277,6 +256,7 @@ classdef VanGenuchten < handle
               params = readInput(default,params);
               obj.n = params.n;
               obj.beta = params.beta;
+              obj.m = 1-2/obj.n;
             case 'mualem'
               default = struct("n",[],...
                                 "beta",[],...
@@ -285,9 +265,22 @@ classdef VanGenuchten < handle
               obj.n = params.n;
               obj.beta = params.beta;
               obj.kappa = params.kappa;
+              obj.m = 1-1/obj.n;
           end
 
 
         end
+    end
+
+    methods (Static)
+
+      function [p,id] = presCorrection (pres)
+        % PRESCORRECTION Method to correct the capillary pressure to be
+        % non-negative in analytical curves
+        p = -pres;
+        id = p<=0;
+        p(id) = 1e-15;
+      end
+
     end
 end

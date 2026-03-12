@@ -8,10 +8,10 @@ cd(fileparts(testPath));
 
 listMat = ["tabular","analytical"];
 
-s = struct('time', [], 'pressure', [],'saturation', []);
+s = cell(2,1);
 
 for i = 1:numel(listMat)
-  s(i) = run(listMat(i)); 
+  s{i} = run(listMat(i)); 
 end
 
 validate(s);
@@ -80,28 +80,34 @@ end
 
 
 
-function validate(sol)
+function validate(solution)
 
-assert(numel(sol)==2);
+errorTol = 1e-2;
 
-for sim = 1:numel(sol(1).time)
+assert(numel(solution)==2);
+
+for sim = 1:numel(solution{1}.time)
+  sol1 = solution{1};
+  sol2 = solution{2};
+  sol1 = sol1(sim);
+  sol2= sol2(sim);
   % Check if the solution are evaluated at the same time.
-  err = norm((sol(1).time(sim)-sol(2).time(sim))./sol(2).time(sim));
+  err = norm((sol1.time-sol2.time)./sol2.time);
   assert( err < errorTol, ['Test - %i - Results are not evaluated at' ...
     ' the same time - tabular(%i) analitical(%i)\n'], sim, ...
-    sol(1).time(sim), sol(2).time(sim));
+    sol1.time(sim), sol2.time(sim));
 
   % Check if the pressure are approximately the same.
-  err = norm((sol(1).pressure(sim,:)-sol(2).pressure(sim,:))./sol(2).pressure(sim,:));
+  err = norm((sol1.pressure-sol2.pressure)./sol2.pressure);
   assert( err < errorTol, ['Test - %i - Results of pressure are not' ...
     ' the same - tabular(|%i|) analitical(|%i|)\n'], sim, ...
-    norm(sol(1).pressure(sim,:)), norm(sol(2).pressure(sim,:)));
+    norm(sol1.pressure), norm(sol2.pressure));
 
   % Check if the saturation are approximately the same.
-  err = norm((sol(1).saturation(sim,:)-sol(2).saturation(sim,:))./sol(2).saturation(sim,:));
+  err = norm((sol1.saturation-sol2.saturation)./sol2.saturation);
   assert( err < errorTol, ['Test- %i - Results of saturation are not the' ...
     ' same - tabular(|%i|) analitical(|%i|)\n'], sim, ...
-    norm(sol(1).saturation(sim,:)),norm(sol(2).saturation(sim,:)));
+    norm(sol1.saturation),norm(sol2.saturation));
 end
 
 end
