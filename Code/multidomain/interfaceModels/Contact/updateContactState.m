@@ -14,7 +14,7 @@ if inState == ContactMode.open
     outState = ContactMode.stick;
   end
 
-elseif traction(1) > tols.normalTrac
+elseif traction(1) > tols.normalTraction
   outState = ContactMode.open;
 
 else % not open
@@ -32,12 +32,12 @@ else % not open
   if inState == ContactMode.stick && tau >= tLimit
 
     % reduce the tau if goes above limit
-    tau = tau*(1-tols.slidingCheck)-tol;
+    tau = tau*(1-tols.tangentialViolation)-tol;
 
   elseif inState ~= ContactMode.stick  && tau <=tLimit
 
     % increase tau if falls below limit
-    tau = tau*(1+tols.slidingCheck)+tol;
+    tau = tau*(1+tols.tangentialViolation)+tol;
   end
 
   % change the state after relaxation

@@ -138,10 +138,10 @@ classdef SolidMechanicsContact < MeshTying
         gresLog().log(4,['\n Element %i: traction: %1.4e %1.4e %1.4e   ' ...
           'Limit tangential traction: %1.4e \n'],is,t(:), limitTraction)
 
-        obj.activeSet.curr(is) = updateContactState(obj,state,t,...
-                                                        limitTraction, ...
-                                                        obj.state.normalGap(is),...
-                                                        obj.activeSet.tol);
+        obj.activeSet.curr(is) = updateContactState(state,t,...
+                                                    limitTraction, ...
+                                                    obj.state.normalGap(is),...
+                                                    obj.activeSet.tol);
 
       end
 
@@ -198,7 +198,7 @@ classdef SolidMechanicsContact < MeshTying
         msh = getMesh(obj,MortarSide.slave);
         areaChanged = sum(msh.surfaceArea(hasChangedElem));
         totArea = sum(msh.surfaceArea);
-        if areaChanged/totArea < obj.activeSet.tol.areaTol
+        if areaChanged/totArea < obj.activeSet.tol.areaChange
           %obj.activeSet.curr = oldActiveSet;
           % change the active set, but flag it as nothing changed
           hasConfigurationChanged = false;
