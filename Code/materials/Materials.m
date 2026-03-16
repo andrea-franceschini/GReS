@@ -153,7 +153,7 @@ classdef Materials < handle
 
       matID = obj.getMaterialIDFromName(matName);
 
-      obj.solid{matID}.PorousRock = PorousRock(varargin{:});
+      obj.solid{matID}.PorousRock = PorousRock(obj.fluid,varargin{:});
 
     end
 

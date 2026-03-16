@@ -21,9 +21,9 @@ classdef PorousRock < handle
 
     methods (Access = public)
         % Class constructor method
-        function obj = PorousRock(varargin)
+        function obj = PorousRock(fluid,varargin)
             % Calling the function to set the object properties
-            obj.readMaterialParameters(varargin{:});
+            obj.readMaterialParameters(fluid,varargin{:});
         end
 
         % Function to get material porosity
@@ -103,7 +103,7 @@ classdef PorousRock < handle
     methods (Access = private)
       % Assigning material parameters (check also the Materials class)
       % to object properties
-      function readMaterialParameters(obj,varargin)
+      function readMaterialParameters(obj,fluid,varargin)
 
         default = struct('porosity',0.3,...
                          'biotCoefficient',1.0,...
@@ -144,7 +144,7 @@ classdef PorousRock < handle
 
         % read capillaery curves
         if ~ismissing(params.Curves)
-          addCapillaryCurves(obj,params.Curves)
+          addCapillaryCurves(obj,fluid,params.Curves)
         end
       end
     end
