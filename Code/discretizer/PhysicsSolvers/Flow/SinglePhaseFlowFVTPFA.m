@@ -13,6 +13,10 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
     function registerSolver(obj,varargin)
 
+      if isempty(obj.faces)
+        error(["%s solver requires 'Faces' field to be define in the grid." ...
+          "grid = struct('topology',Mesh(),'cells',Elements(),'faces',Faces()]"])
+      end
       nTags = obj.mesh.nCellTag;
 
       default = struct('targetRegions',1:nTags);

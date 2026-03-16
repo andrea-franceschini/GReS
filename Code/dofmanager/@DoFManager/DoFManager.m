@@ -51,7 +51,7 @@ classdef DoFManager < handle
         % the same physicsSolver in a single domain.
 
         error("Variable %s has already been registered. GReS variables can" + ...
-          "only be registered once in each domain ", varName)
+          " only be registered once in each domain ", varName)
 
         % the following  code make sense if we allow registering the same
         % variable more than once

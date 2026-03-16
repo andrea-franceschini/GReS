@@ -16,7 +16,7 @@ classdef CheckTests < matlab.unittest.TestCase
   methods (Test)
     % Test methods
     function Deep_Aquifer(testCase)
-      cd("Deep_Aquifer/");
+      cd("DeepAquifer/");
       run('Main.m');
       % checking only if 3 outputs is being generated
       testCase.verifyEqual(length(domain.outstate.matFile),3);
@@ -26,7 +26,7 @@ classdef CheckTests < matlab.unittest.TestCase
     end
 
     function Mandel_Biot(testCase)
-      cd("Mandel_Biot/");
+      cd("MandelBiot/");
       run('Main.m');
       % checking only if 5 outputs is being generated
       testCase.verifyEqual(length(domain.outstate.matFile),5);
@@ -56,7 +56,7 @@ classdef CheckTests < matlab.unittest.TestCase
     end
 
     function Terzaghi_Biot(testCase)
-      cd("Terzaghi_Biot/");
+      cd("TerzaghiBiot/");
       run('Main.m');
       % checking only if 6 outputs is being generated
       testCase.verifyEqual(length(domain.outstate.matFile),6);
@@ -66,7 +66,7 @@ classdef CheckTests < matlab.unittest.TestCase
     end
 
     function Flux_barrier(testCase)
-      cd("Flux_barrier/");
+      cd("FluxBarrier/");
       run('Main.m');
       % checking only if 2 outputs is being generated
       testCase.verifyEqual(length(domain.outstate.matFile),1);
@@ -76,7 +76,7 @@ classdef CheckTests < matlab.unittest.TestCase
     end
 
     function Flow_nonConforming(testCase)
-      cd("Flow_nonConforming/");
+      cd("FlowNonConforming/");
       run('Main.m');
       % checking only if 6 outputs is being generated
       testCase.verifyEqual(domains(1).outstate.timeList,domains(2).outstate.timeList);

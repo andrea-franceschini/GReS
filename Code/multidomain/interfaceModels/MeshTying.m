@@ -272,7 +272,7 @@ classdef MeshTying < InterfaceSolver
       multOld = obj.stateOld.multipliers;
       mult = fac*multCurr + (1-fac)*multOld;
 
-      obj.outstate.matFile(tID).multipliers = mult;
+      obj.outstate.results(tID).multipliers = mult;
 
     end
 

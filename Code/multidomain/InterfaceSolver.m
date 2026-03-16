@@ -413,6 +413,11 @@ classdef (Abstract) InterfaceSolver < handle
       varMaster = getVariableNames(obj.domains(1).dofm);
       varSlave = getVariableNames(obj.domains(2).dofm);
 
+      if any([isempty(varMaster),isempty(varSlave)])
+        error(['Interface solver can be registered only after ' ...
+          'physicsSolver have been defined'])
+      end
+
       % default candidate interface variable are those in common between
       % master and slave discretizers
       sharedVars = intersect(varSlave,varMaster);
