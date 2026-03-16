@@ -53,6 +53,7 @@ classdef Sedimentation < PhysicsSolver
 
     tol = 1e-8;
     niterMx = 100;
+    iterTimeStep = 1;
   end
 
   methods (Access = public)
@@ -142,6 +143,7 @@ classdef Sedimentation < PhysicsSolver
 
       % Update the necessity to compute the sedimentation rate.
       obj.sedFlag = true;
+      obj.iterTimeStep = 1;
     end
 
     function applyBC(obj,bcId,t)
@@ -186,12 +188,17 @@ classdef Sedimentation < PhysicsSolver
       % poroInic = obj.poro0(dofsTop);
       % omega = obj.getState().data.sedmrate;
       % K = (1 - poroInic) .* (gamma_s - gamma_w) .* omega;
+
       K = obj.getCellsProp('TotalStressVariation');
 
       dofList = obj.grid.getMapFromDofs();
       K = K(obj.grid.getMapFromDofs());
-      sNew = sOld + dp - dt*K(dofList);
-
+      if obj.iterTimeStep == 1
+        sNew = state.data.stress + dp - dt*K(dofList);
+      else
+        sNew = sOld + dp - dt*K(dofList);
+      end
+      
       % Update the deformation
       state.data.stress = sNew;
       
@@ -200,6 +207,13 @@ classdef Sedimentation < PhysicsSolver
       else
         obj.updateStateElastic(sNew,sOld);
       end
+
+      if obj.iterTimeStep == 1
+        obj.getStateOld().data.stress = sNew;
+        % obj.getStateOld().data.stress = obj.getState().data.stress;
+      end
+
+      obj.iterTimeStep = obj.iterTimeStep+1;
     end
 
     function [cellData,pointData] = writeVTK(obj,fac,t)
@@ -212,7 +226,9 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.outstate.matFile(tID).pressure = outPrint.pres;
       obj.domain.outstate.matFile(tID).porosity = outPrint.poro;
       obj.domain.outstate.matFile(tID).stress = outPrint.stress;
+      obj.domain.outstate.matFile(tID).strain = outPrint.strain;
       obj.domain.outstate.matFile(tID).compaction = outPrint.comp;
+      obj.domain.outstate.matFile(tID).height = outPrint.height;
     end
 
     function [dofs,vals] = getBC(obj,id,t)
@@ -515,6 +531,7 @@ classdef Sedimentation < PhysicsSolver
         obj.getState().data.strain = zeros(ndofs,1);
         obj.getState().data.stressCons = -abs(obj.getCellsProp('preConStress'));
       end
+      obj.domain.stateOld = copy(obj.domain.getState());
     end
 
     function prepareSystem(obj)
@@ -541,8 +558,8 @@ classdef Sedimentation < PhysicsSolver
       obj.facesNeighDir = cellsConcDir(cellsConcActive);
 
       % Initialize for each cell: porosity, initial stress
-      obj.initializeCell(dofs);
-      % obj.initializeCellIter(dofs);
+      % obj.initializeCell(dofs);
+      obj.initializeCellIter(dofs);
     end
 
 
@@ -871,6 +888,8 @@ classdef Sedimentation < PhysicsSolver
       data.head = zCoordCM+data.pres/gamma;
       data.pressure = data.pres + gamma*zCoordCM;
       data.poro = voidR;
+      data.height = obj.grid.getCoordBottom();
+      % data.height = obj.grid.getCoordTop();
     end
 
 
@@ -883,7 +902,9 @@ classdef Sedimentation < PhysicsSolver
 
       % Initial stress state
       sInit = obj.getCellsProp('initialStress',dofs);
-      [~,~,zCellCM] = obj.grid.getCoordCenter(dofs);      
+      [~,~,zCellCM] = obj.grid.getCoordCenter(dofs);
+      % zCellCM = obj.grid.getCoordBottom(dofs);
+      % zCellCM = obj.grid.getCoordTop(dofs);
       zCell = obj.grid.getColumnMaxHeight(dofs);
       gamma_s = obj.getCellsProp('specificWeight',dofs);
       gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
@@ -893,6 +914,7 @@ classdef Sedimentation < PhysicsSolver
         poro = void0./(1+void0);
         obj.poro0(dofs) = void0./(1+void0);
         obj.getState().data.stress(dofs) = -(1-poro).*(gamma_s-gamma_w).*(zCell-zCellCM)-sInit;
+        obj.getStateOld().data.stress(dofs) = -sInit;
         return;        
       end
 
@@ -913,9 +935,10 @@ classdef Sedimentation < PhysicsSolver
         iter=iter+1;
       end
 
-      obj.poro0(dofs) = poro;
-      % obj.getState().data.stress(dofs) = -stress+sInit;
-      obj.getState().data.stress(dofs) = -stress;
+      obj.poro0(dofs) = voidCurr./(1+voidCurr);
+      obj.getState().data.stress(dofs) = -stress-sInit;
+      % obj.getStateOld().data.stress(dofs) = -stress;
+      obj.getStateOld().data.stress(dofs) = -sInit;
     end
 
     function initializeCell(obj,dofs)
@@ -927,7 +950,9 @@ classdef Sedimentation < PhysicsSolver
 
       % Initial stress state
       sInit = obj.getCellsProp('initialStress',dofs);
-      [~,~,zCellCM] = obj.grid.getCoordCenter(dofs);
+      %[~,~,zCellCM] = obj.grid.getCoordCenter(dofs);
+      zCellCM = obj.grid.getCoordBottom(dofs);
+      %zCellCM = obj.grid.getCoordTop(dofs);
       zCell = obj.grid.getColumnMaxHeight(dofs);
       gamma_s = obj.getCellsProp('specificWeight',dofs);
       gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
@@ -935,6 +960,10 @@ classdef Sedimentation < PhysicsSolver
       poro = void0./(1+void0);
       obj.poro0(dofs) = void0./(1+void0);
       obj.getState().data.stress(dofs) = -(1-poro).*(gamma_s-gamma_w).*(zCell-zCellCM)-sInit;
+      obj.getStateOld().data.stress(dofs) = -sInit;
+
+      % obj.getState().data.stress(dofs) = -sInit;
+      % obj.getStateOld().data.stress(dofs) =  -2*(1-poro).*(gamma_s-gamma_w).*(zCell-zCellCM)-sInit;
     end
 
 

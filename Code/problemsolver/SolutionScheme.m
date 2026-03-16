@@ -142,7 +142,9 @@ classdef (Abstract) SolutionScheme < handle
         obj.domains(i).domainId = i;
         obj.domains(i).simparams = obj.simparams;
         obj.domains(i).outstate = obj.output;
-        obj.domains(i).stateOld = copy(obj.domains(i).getState());
+        if isempty(obj.domains(i).stateOld)
+          obj.domains(i).stateOld = copy(obj.domains(i).getState());
+        end
         obj.nVars = obj.nVars + obj.domains(i).dofm.getNumberOfVariables();
       end
 

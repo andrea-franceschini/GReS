@@ -262,6 +262,56 @@ classdef gridForSedimentation < handle
       z = z(id);
     end
 
+    function z = getCoordBottom(obj, dofs)
+      % GETCOORDCENTER Returns cell center coordinates.
+      %
+      % Input:
+      %   cellIds - Active cell DOF indices
+      %
+      % Output:
+      %   coord   - (x,y,z) coordinates of cell centers
+
+      if ~exist("dofs","var")
+        dofs = 1:obj.ndofs;
+      end
+      
+      % Generate 3D matrices for each coordinate component
+      [~, ~, z] = ndgrid(obj.coordX(2:end),obj.coordY(2:end),obj.coordZ(2:end));
+
+      % Generate 3D matrices for each coordinate component
+      % [~, ~, z] = ndgrid(obj.coordX(2:end)+diff(obj.coordX)/2., ...
+      %   obj.coordY(2:end)+diff(obj.coordY)/2., ...
+      %   obj.coordZ(2:end)+diff(obj.coordZ)/2.);
+
+      % Extract the coordinates for the requested linear indices
+      map = ismember(obj.dof,dofs);
+      id = sort(obj.dof(map));
+      z = z(id);
+    end
+
+    function z = getCoordTop(obj, dofs)
+      % GETCOORDCENTER Returns cell center coordinates.
+      %
+      % Input:
+      %   cellIds - Active cell DOF indices
+      %
+      % Output:
+      %   coord   - (x,y,z) coordinates of cell centers
+
+      if ~exist("dofs","var")
+        dofs = 1:obj.ndofs;
+      end
+      
+      % Generate 3D matrices for each coordinate component
+      [x, y, z] = ndgrid(obj.coordX(1:end-1), ...
+        obj.coordY(1:end-1), obj.coordZ(1:end-1));
+
+      % Extract the coordinates for the requested linear indices
+      map = ismember(obj.dof,dofs);
+      id = sort(obj.dof(map));
+      z = z(id);
+    end
+
     function zcol = getColumnMaxHeight(obj,dofs)
       if ~exist("dofs","var")
         dofs = (1:obj.ndofs)';
