@@ -11,52 +11,32 @@
 // Build command:
 //   mex -R2018a computePolygonCentroid2D_CCW_wrap.cpp
 //
-// ALL FIXES APPLIED
+// FIXES APPLIED (vs previous version)
 // -----------------------------------------------------------------------
-// [FIX-A] mexErrMsgTxt() not declared in the pure C++ MEX API.
-//         Replaced with throwError() routing through
-//         getEngine()->feval(u"error", ..., createCharArray()).
-//         Generic IDs assigned since original used no-ID mexErrMsgTxt.
+// [FIX-G] TypedArray flat-index subscripting causes runtime error
+//         "Not enough indices provided" on 2D arrays.
 //
-// [FIX-B] TypedArray<T>::operator[] returns a proxy — cannot take address.
-//         points copied into std::vector<double>; .data() used for raw
-//         pointer arithmetic in the centroid computation loop.
+//         out {1, 2}:
+//           out[0] and out[1] were single flat indices on a 2D TypedArray.
+//           Fixed: write into a std::vector<double>{Cx, Cy} and
+//           std::copy into the TypedArray via iterators.
 //
-// [FIX-C] ArgumentList::size() / operator[] are NOT const-qualified.
-//         validateArguments() takes non-const ArgumentList& references.
-//
-// [FIX-E] factory.createScalar<T>() is only valid for arithmetic T.
-//         All string arguments use factory.createCharArray() instead.
-//
-// [FIX-F] mwSize is declared in mex.h — NOT included by mex.hpp.
-//         Every mwSize replaced with std::size_t (#include <cstddef>).
-//         Affected sites: N, dim, loop variable i, index j.
-//
-// [NEW-1] mxGetM() / mxGetN() replaced with getDimensions()[0] / [1].
-//
-// [NEW-2] mxCreateDoubleMatrix(1,2) + mxGetPr replaced with
-//         factory.createArray<double>({1, 2}) and element assignment.
-//
-// [NEW-3] Zero-area check throws via throwError() — the std::vector<double>
-//         P is live at that point so the old mexErrMsgIdAndTxt longjmp
-//         would have leaked it; a C++ exception unwinds it cleanly.
+// All previously documented fixes (FIX-A/B/C/E/F, NEW-1..3) are retained.
 // -----------------------------------------------------------------------
 //----------------------------------------------------------------------------------------
 
 #include "mex.hpp"
 #include "mexAdapter.hpp"
 
-#include <cstddef>   // std::size_t  [FIX-F]
+#include <cstddef>
 #include <vector>
 #include <string>
 #include <cmath>
+#include <algorithm> // std::copy
 
 using namespace matlab::data;
 using matlab::mex::ArgumentList;
 
-//----------------------------------------------------------------------------------------
-// MexFunction
-//----------------------------------------------------------------------------------------
 class MexFunction : public matlab::mex::Function {
 
     ArrayFactory factory;
@@ -65,45 +45,29 @@ public:
 
     void operator()(ArgumentList outputs, ArgumentList inputs) override
     {
-        // [FIX-C]
         validateArguments(outputs, inputs);
 
-        // -----------------------------------------------------------------------
-        // [FIX-B][NEW-1] Read points — N x 2 double matrix (column-major)
-        // [FIX-F] N, dim are std::size_t
-        // -----------------------------------------------------------------------
         const TypedArray<double> Parr = inputs[0];
-        const auto dims               = Parr.getDimensions();   // [NEW-1]
-        const std::size_t N           = dims[0];                // [FIX-F]
+        const auto dims               = Parr.getDimensions();
+        const std::size_t N           = dims[0];
 
-        // [FIX-B] Copy into contiguous vector for raw pointer arithmetic
         std::vector<double> P(Parr.begin(), Parr.end());
 
-        // -----------------------------------------------------------------------
-        // Centroid computation (shoelace / Green's theorem)
-        // [FIX-F] loop variables i, j are std::size_t
-        // -----------------------------------------------------------------------
-        double Cx = 0.0;
-        double Cy = 0.0;
-        double A  = 0.0;   // signed area × 2
+        // Shoelace / Green's theorem
+        double Cx = 0.0, Cy = 0.0, A = 0.0;
 
         for (std::size_t i = 0; i < N; ++i) {
-            const std::size_t j = (i + 1) % N;   // [FIX-F]
+            const std::size_t j = (i + 1) % N;
 
-            const double xi = P[i];
-            const double yi = P[i + N];
+            const double xi = P[i],     yi = P[i + N];
+            const double xj = P[j],     yj = P[j + N];
+            const double cr = xi*yj - xj*yi;
 
-            const double xj = P[j];
-            const double yj = P[j + N];
-
-            const double cross = xi*yj - xj*yi;
-
-            A  += cross;
-            Cx += (xi + xj) * cross;
-            Cy += (yi + yj) * cross;
+            A  += cr;
+            Cx += (xi + xj) * cr;
+            Cy += (yi + yj) * cr;
         }
 
-        // [NEW-3] Zero-area check via throwError() — C++ exception unwinds P
         if (A == 0.0)
             throwError("Centroid2D:zeroArea", "Zero-area polygon.");
 
@@ -112,19 +76,17 @@ public:
         Cy /= (6.0 * A);
 
         // -----------------------------------------------------------------------
-        // [NEW-2] Build output: 1 x 2 double array
-        //         factory.createArray replaces mxCreateDoubleMatrix + mxGetPr
+        // [FIX-G] Write via std::vector + std::copy — not direct arr[0]/arr[1]
         // -----------------------------------------------------------------------
+        std::vector<double> outBuf = { Cx, Cy };
         TypedArray<double> out = factory.createArray<double>({1, 2});
-        out[0] = Cx;
-        out[1] = Cy;
+        std::copy(outBuf.begin(), outBuf.end(), out.begin());
 
         outputs[0] = std::move(out);
     }
 
 private:
 
-    // [FIX-C] non-const refs — ArgumentList methods are not const-qualified
     void validateArguments(ArgumentList& outputs, ArgumentList& inputs)
     {
         if (inputs.size() != 1)
@@ -139,19 +101,16 @@ private:
             throwError("Centroid2D:inputError",
                        "points must be a real double array.");
 
-        // Must be N x 2 [NEW-1]
         const auto dims = inputs[0].getDimensions();
         if (dims.size() < 2 || dims[1] != 2)
             throwError("Centroid2D:inputError",
                        "points must be N x 2.");
 
-        // At least 3 points required
         if (dims[0] < 3)
             throwError("Centroid2D:inputError",
                        "At least 3 points required.");
     }
 
-    // [FIX-E] createCharArray for strings; routes through MATLAB error()
     void throwError(const std::string& id, const std::string& msg)
     {
         getEngine()->feval(u"error", 0,

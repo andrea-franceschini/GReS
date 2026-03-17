@@ -3,9 +3,7 @@
 // Modernized MEX gateway — MathWorks C++ MEX API (R2018a+)
 // Uses: mex.hpp + mexAdapter.hpp (matlab::data API)
 //
-// Preserves the original #ifdef MEX_FUNCTION dual-mode structure:
-//   - Compiled with -DMEX_FUNCTION (default): MATLAB MEX gateway
-//   - Compiled without it:                    standalone CLI executable
+// Preserves the original #ifdef MEX_FUNCTION dual-mode structure.
 //
 // MATLAB signature:
 //   [coord, elems, regions] = readGMSHmesh(fileName)
@@ -13,49 +11,22 @@
 // Build command (MEX):
 //   mex -R2018a -DMEX_FUNCTION readGMSHmesh_wrap.cpp
 //
-// Build command (standalone):
-//   g++ -std=c++17 -o readGMSHmesh_standalone readGMSHmesh_wrap.cpp
-//
-// ALL FIXES APPLIED (MEX side only — standalone main() unchanged)
+// FIXES APPLIED (vs previous version)
 // -----------------------------------------------------------------------
-// [FIX-A] mexErrMsgIdAndTxt() not declared in the pure C++ MEX API.
-//         Replaced with throwError() routing through
-//         getEngine()->feval(u"error", ..., createCharArray()).
+// [FIX-G] TypedArray flat-index subscripting causes runtime error
+//         "Not enough indices provided" on 2D arrays.
 //
-// [FIX-C] ArgumentList::size() / operator[] are NOT const-qualified.
-//         validateArguments() takes non-const ArgumentList& references.
+//         mxCoord {nNodes, 3}:
+//           mxCoord[i + j*nNodes] was flat-indexing a 2D TypedArray.
+//           Fixed: fill std::vector<double> coordBuf column-major,
+//           then std::copy into mxCoord via iterators.
 //
-// [FIX-E] factory.createScalar<T>() is only valid for arithmetic T.
-//         Strings use factory.createCharArray() instead.
+//         mxElems {nElems, numCols}:
+//           mxElems[i + j*nElems] was flat-indexing a 2D TypedArray.
+//           Fixed: fill std::vector<int32_t> elemsBuf column-major,
+//           then std::copy into mxElems via iterators.
 //
-// [NEW-1] mxGetString() + fixed 1024-byte buffer replaced with
-//         CharArray::toAscii() — no truncation risk, any path length.
-//         The original truncation-detection check is also removed as
-//         it is no longer needed.
-//
-// [NEW-2] mxCreateNumericMatrix + (double*) mxGetData() for coord
-//         replaced with factory.createArray<double>({nNodes, 3}) and
-//         flat column-major indexing — semantics identical to original.
-//
-// [NEW-3] mxCreateNumericMatrix + (int*) mxGetData() for elems
-//         replaced with factory.createArray<int32_t>({nElems, cols}).
-//         Typed accessor removes the void* cast.
-//
-// [NEW-4] mxCreateStructMatrix + mxSetField + mxCreateString for regions
-//         replaced with factory.createStructArray() + StructArray field
-//         assignment. Each scalar int field uses factory.createScalar<int32_t>();
-//         the name string field uses factory.createCharArray().
-//         This is the most significant structural change in this file.
-//
-// [NEW-5] NULL checks on mxCreate* return values removed — factory methods
-//         in the C++ MEX API throw on allocation failure rather than
-//         returning NULL, so explicit checks are redundant.
-//
-// [NEW-6] coord.resize(0) / elems.resize(0) / regions.resize(0) replaced
-//         with .clear() which is the idiomatic C++ equivalent and more
-//         clearly expresses the intent of releasing the data.
-//
-// [NEW-7] std::size_t used for all array sizes and loop bounds.
+// All previously documented fixes (FIX-A/C/E, NEW-1..6) are retained.
 // -----------------------------------------------------------------------
 //----------------------------------------------------------------------------------------
 
@@ -65,14 +36,11 @@
 
 #ifdef MEX_FUNCTION
 
-//========================================================================================
-// MEX mode — C++ MEX API (R2018a+)
-//========================================================================================
-
 #include "mex.hpp"
 #include "mexAdapter.hpp"
 #include <vector>
 #include <string>
+#include <algorithm> // std::copy
 
 using namespace matlab::data;
 using matlab::mex::ArgumentList;
@@ -85,18 +53,11 @@ public:
 
     void operator()(ArgumentList outputs, ArgumentList inputs) override
     {
-        // [FIX-C]
         validateArguments(outputs, inputs);
 
-        // -----------------------------------------------------------------------
-        // [NEW-1] Extract filename — no fixed buffer, no truncation risk
-        // -----------------------------------------------------------------------
         const CharArray   filenameArr = inputs[0];
         const std::string fileName    = filenameArr.toAscii();
 
-        // -----------------------------------------------------------------------
-        // Call the GMSH reader
-        // -----------------------------------------------------------------------
         std::vector<Region>  regions;
         std::vector<Point>   coord;
         std::vector<Element> elems;
@@ -111,68 +72,49 @@ public:
                        "Wrong file format.");
 
         // -----------------------------------------------------------------------
-        // [NEW-2] Build coord output: nNodes x 3 double matrix (column-major)
-        //
-        //   col 0 (x): indices [0         .. nNodes-1  ]
-        //   col 1 (y): indices [nNodes     .. 2*nNodes-1]
-        //   col 2 (z): indices [2*nNodes   .. 3*nNodes-1]
-        //
-        //   Flat index for row i, col j  →  i + j * nNodes
-        //   Identical to the original: ptrCoord[j*nNodes + i]
+        // [FIX-G] coord output: nNodes x 3 double
+        //   Fill flat column-major buffer, then std::copy into TypedArray.
         // -----------------------------------------------------------------------
         const std::size_t nNodes = coord.size();
 
-        TypedArray<double> mxCoord =
-            factory.createArray<double>({nNodes, 3});
-
+        std::vector<double> coordBuf(nNodes * 3);
         for (std::size_t i = 0; i < nNodes; ++i) {
-            mxCoord[i              ] = coord[i].x;   // col 0
-            mxCoord[i +     nNodes ] = coord[i].y;   // col 1
-            mxCoord[i + 2 * nNodes ] = coord[i].z;   // col 2
+            coordBuf[i              ] = coord[i].x;
+            coordBuf[i +     nNodes ] = coord[i].y;
+            coordBuf[i + 2 * nNodes ] = coord[i].z;
         }
-        coord.clear();   // [NEW-6]
+        coord.clear();
+
+        TypedArray<double> mxCoord = factory.createArray<double>({nNodes, 3});
+        std::copy(coordBuf.begin(), coordBuf.end(), mxCoord.begin());
 
         // -----------------------------------------------------------------------
-        // [NEW-3] Build elems output: nElems x (MAX_NUM_VERTICES+3) int32 matrix
-        //
-        //   Column layout (same as original):
-        //     col 0          : element ID
-        //     col 1          : tag
-        //     col 2          : n (number of vertices in this element)
-        //     col 3..2+MAX   : vertex indices; 0-padded for unused slots
-        //
-        //   Flat column-major index: i + j * nElems
-        //   TypedArray is zero-initialised by the factory — no explicit fill needed
-        //   for the padding zeros (factory.createArray zero-fills for numeric types).
+        // [FIX-G] elems output: nElems x (MAX_NUM_VERTICES+3) int32
+        //   Fill flat column-major buffer (zero-init for padding),
+        //   then std::copy into TypedArray.
         // -----------------------------------------------------------------------
         const std::size_t nElems  = elems.size();
         const std::size_t numCols = static_cast<std::size_t>(MAX_NUM_VERTICES) + 3;
 
-        TypedArray<int32_t> mxElems =
-            factory.createArray<int32_t>({nElems, numCols});
+        std::vector<int32_t> elemsBuf(nElems * numCols, 0);  // zero-init = padding
 
         for (std::size_t i = 0; i < nElems; ++i) {
             std::size_t j = 0;
-            mxElems[i + j * nElems] = static_cast<int32_t>(elems[i].ID);
-            j++;
-            mxElems[i + j * nElems] = static_cast<int32_t>(elems[i].tag);
-            j++;
-            mxElems[i + j * nElems] = static_cast<int32_t>(elems[i].n);
-            j++;
-            // Filled vertices
+            elemsBuf[i + j * nElems] = static_cast<int32_t>(elems[i].ID);   ++j;
+            elemsBuf[i + j * nElems] = static_cast<int32_t>(elems[i].tag);  ++j;
+            elemsBuf[i + j * nElems] = static_cast<int32_t>(elems[i].n);    ++j;
             for (int k = 0; k < elems[i].n; ++k, ++j)
-                mxElems[i + j * nElems] = static_cast<int32_t>(elems[i].v[k]);
-            // Remaining slots already zero — factory zero-initialises numeric arrays
+                elemsBuf[i + j * nElems] = static_cast<int32_t>(elems[i].v[k]);
+            // remaining slots already 0 from zero-init
         }
-        elems.clear();   // [NEW-6]
+        elems.clear();
+
+        TypedArray<int32_t> mxElems =
+            factory.createArray<int32_t>({nElems, numCols});
+        std::copy(elemsBuf.begin(), elemsBuf.end(), mxElems.begin());
 
         // -----------------------------------------------------------------------
-        // [NEW-4] Build regions output: nFields x 1 struct array
-        //         Fields: "dim" (int32 scalar), "ID" (int32 scalar), "name" (char)
-        //
-        //   Original used mxCreateStructMatrix + mxSetField + mxCreateString.
-        //   Modern equivalent: factory.createStructArray() + StructArray field
-        //   assignment using factory-created scalars and char arrays.
+        // regions output: nFields x 1 struct array (no flat indexing — safe)
         // -----------------------------------------------------------------------
         const std::size_t nFields = regions.size();
 
@@ -186,11 +128,8 @@ public:
                                        static_cast<int32_t>(regions[i].ID));
             mxRegions[i]["name"] = factory.createCharArray(regions[i].name);
         }
-        regions.clear();   // [NEW-6]
+        regions.clear();
 
-        // -----------------------------------------------------------------------
-        // Return outputs to MATLAB
-        // -----------------------------------------------------------------------
         outputs[0] = std::move(mxCoord);
         outputs[1] = std::move(mxElems);
         outputs[2] = std::move(mxRegions);
@@ -198,7 +137,6 @@ public:
 
 private:
 
-    // [FIX-C] non-const refs — ArgumentList methods are not const-qualified
     void validateArguments(ArgumentList& outputs, ArgumentList& inputs)
     {
         if (inputs.size() != 1)
@@ -209,14 +147,12 @@ private:
             throwError("MATLAB:mxImportGMSHmesh:undefinedOutputs",
                        "Too many output arguments.");
 
-        // Accept both 'char array' and "string" scalar from MATLAB caller
         const ArrayType t = inputs[0].getType();
         if (t != ArrayType::CHAR && t != ArrayType::MATLAB_STRING)
             throwError("MATLAB:mxImportGMSHmesh:inputNotString",
                        "Input must be a string or char array.");
     }
 
-    // [FIX-E] createCharArray for strings; routes through MATLAB error()
     void throwError(const std::string& id, const std::string& msg)
     {
         getEngine()->feval(u"error", 0,
@@ -228,10 +164,6 @@ private:
 };
 
 #else // MEX_FUNCTION
-
-//========================================================================================
-// Standalone mode — unchanged from original
-//========================================================================================
 
 #include <iostream>
 #include <vector>
