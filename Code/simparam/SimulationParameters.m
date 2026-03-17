@@ -21,6 +21,7 @@ classdef SimulationParameters < handle
     goOnBackstep = 0;
     isTimeDependent = true;
     attemptSimplestConfiguration = false;
+    linSolverParams = []
   end
 
   methods (Access = public)
@@ -54,7 +55,9 @@ classdef SimulationParameters < handle
         "RelativeTolerance", 1e-6, ...
         "MaxNLIteration", 10, ...
         "MaxConfigurationIteration", 10, ...
-        "resetConfiguration", 0 ...
+        "resetConfiguration", 0,...
+        ...% Linear solver params
+        "LinearSolver",missing ... 
         );
 
       params = readInput(default,varargin{:});
@@ -72,6 +75,10 @@ classdef SimulationParameters < handle
       obj.itMaxNR    = params.MaxNLIteration;
       obj.itMaxConfig = params.MaxConfigurationIteration;
       obj.attemptSimplestConfiguration = logical(params.resetConfiguration);
+
+      if ~ismissing(params.LinearSolver)
+         obj.linSolverParams = params.LinearSolver;
+      end
     end
 
   end

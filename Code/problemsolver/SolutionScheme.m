@@ -252,27 +252,13 @@ classdef (Abstract) SolutionScheme < handle
     function setLinearSolver(obj,varargin)
 
       if isempty(varargin)
-        str = [];
-        physname = [];
+         physname = [];
       else
-        fname = varargin{1};
-        str = readstruct(fname,AttributeSuffix="");
-        if isfield(str,'LinearSolver')
-          str = str.LinearSolver;
-        else
-          str = [];
-        end
-
-        % check if the user provided the physics
-        if nargin > 2
-          physname = varargin{2};
-        else
-          physname = [];
-        end
+         % check if the user provided the physics
+         physname = varargin{1};
       end
 
-      obj.linsolver = linearSolver(obj,str,physname);
-
+      obj.linsolver = linearSolver(obj,physname);
     end
 
 

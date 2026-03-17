@@ -209,7 +209,6 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
    
    % Base Case: Numeric Matrix
    if ~iscell(A)
-<<<<<<< HEAD
 
       diffnorm = norm(A-A','f');
       Anorm = norm(A,'f');
@@ -224,20 +223,6 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
       end
       symMat = globalsymm;
       return
-=======
-       diff_mat = abs(A - A') - eps1 .* abs(A);
-       diff_vec = diff_mat(diff_mat > 0);
-       
-       if isempty(diff_vec)
-           maxval = 0;
-           globalsymm = 1;
-       else
-           maxval = max(diff_vec);
-           globalsymm = 0;
-       end
-       symMat = globalsymm;
-       return
->>>>>>> 97b65e6221de9527256d4e3b919a0ac91111c081
    end
    
    % Allocate the stuff
@@ -252,7 +237,6 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
          if i == j
             % Diagonal Block
             [symm(cont), val(cont)] = checkSymmetry(A{i,i},eps1);
-<<<<<<< HEAD
          elseif ~isempty(A{i,j})
             % Off-Diagonal Block
             diffnorm = norm(A{i,j}-A{j,i}','f');
@@ -261,23 +245,11 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
             
             
             if relNorm < eps1
-=======
-         else
-            % Off-Diagonal Block
-            diff_mat = abs(A{i,j} - A{j,i}') - eps1 .* abs(A{i,j});
-            diff_vec = diff_mat(diff_mat > 0);
-            
-            if isempty(diff_vec)
->>>>>>> 97b65e6221de9527256d4e3b919a0ac91111c081
                 symm(cont) = 1;
                 val(cont) = 0;
             else
                 symm(cont) = 0;
-<<<<<<< HEAD
                 val(cont) = relNorm < eps1;
-=======
-                val(cont) = max(diff_vec);
->>>>>>> 97b65e6221de9527256d4e3b919a0ac91111c081
             end
          end
          cont = cont + 1;
@@ -293,19 +265,13 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
    maxval = max(val);
 end
 
-<<<<<<< HEAD
 
 function [A] = fixPattern(A)
    N = size(A, 1);
-=======
-function [A] = fixPattern(A)
-   N = size(A,1);
->>>>>>> 97b65e6221de9527256d4e3b919a0ac91111c081
    for j = 1:N
       for i = 1:j
          patt = spones(A{i,j}) - spones(A{j,i}');
          if nnz(patt)
-<<<<<<< HEAD
             mask1 = (patt ==  1);  % in A{i,j} but not A{j,i}'
             mask2 = (patt == -1);  % in A{j,i}' but not A{i,j}
             if i ~= j
@@ -318,27 +284,6 @@ function [A] = fixPattern(A)
                end
             else
                A{i,i} = A{i,i} + (A{i,i} .* mask1)' * eps;
-=======
-            mask1 = (patt ==  1);
-            mask2 = (patt == -1);
-            
-            if i ~= j
-               % Non diagonal block, fix also the symmetric counterpart
-               A{j,i}(mask1') = A{i,j}(mask1) * eps;
-               A{i,j}(mask2) = (A{j,i}(mask2') * eps)';
-               patt = spones(A{i,j}) - spones(A{j,i}');
-               if nnz(patt) ~= 0
-                  error('nsy patt found');
-               end
-            else
-               % Diagonal blocks
-               % Get the union of mask1 with the transposed mask2 to get
-               % the total true masking as if the matrix is truly
-               % nonsimmetric only in one direction only mask1 or mask2 is
-               % insufficient
-               pattern = mask1 | mask2';
-               A{i,i}(pattern') = A{i,i}(pattern) * eps;
->>>>>>> 97b65e6221de9527256d4e3b919a0ac91111c081
             end
          end
       end

@@ -50,7 +50,7 @@ classdef linearSolver < handle
    methods (Access = public)
 
       % Constructor Function
-      function obj = linearSolver(generalsolver,usrInput,physname)
+      function obj = linearSolver(generalsolver,physname)
 
          % Check if chronos is available
          ChronosDir = fullfile(gres_root,'ThirdPartyLibs','Chronos_Lab','sources');
@@ -58,14 +58,14 @@ classdef linearSolver < handle
          if isfolder(ChronosDir)
             fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexa64');
             if ~isfile(fileMex)
-               warning('Chronos_Lab submodule is present but not compiled. Using matlab fallback');
+               warning('Chronos_Lab submodule is present, but not compiled. Using matlab fallback');
                return;
             end
 
             obj.generalsolver = generalsolver;
 
             % Create the preconditioner object, check if the physics is supported
-            [obj.Prec,obj.ChronosFlag] = preconditioner.create(obj.DEBUGflag,obj.nsyTol,generalsolver,usrInput,physname);
+            [obj.Prec,obj.ChronosFlag] = preconditioner.create(obj.DEBUGflag,obj.nsyTol,generalsolver,physname);
 
             % Non supported physics for the preconditioner
             if ~obj.ChronosFlag
@@ -84,7 +84,7 @@ classdef linearSolver < handle
             chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');
 
             % Read Defaults
-            data = readstruct(chronos_xml_default,AttributeSuffix="");
+            data = readInput(chronos_xml_default);
 
             % Get the solver type
             obj.SolverType = lower(data.solver);

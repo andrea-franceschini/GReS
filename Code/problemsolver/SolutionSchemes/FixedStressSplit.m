@@ -154,7 +154,7 @@ classdef FixedStressSplit < SolutionScheme
       % consider replacing this with a call to
       % NonLinearImplicit.solveStep(varName)
 
-      setLinearSolver(obj,[],varName);
+      setLinearSolver(obj,varName);
       
       varId = obj.domains.dofm.getVariableId(varName);
       dom = obj.domains(1);
@@ -209,14 +209,11 @@ classdef FixedStressSplit < SolutionScheme
       end % end newton loop
     end
 
-    function setLinearSolver(obj,xmlInput,varName)
+    function setLinearSolver(obj,varName)
 
-      if nargin == 1
-        xmlInput = [];
-      end
-      if nargin <= 2
-        obj.solverFlow = linearSolver(obj,xmlInput,"pressure");
-        obj.solverMech = linearSolver(obj,xmlInput,"displacements");
+      if nargin <= 1
+        obj.solverFlow = linearSolver(obj,"pressure");
+        obj.solverMech = linearSolver(obj,"displacements");
       else
         if strcmp(varName,"pressure")
           obj.linsolver = obj.solverFlow;
@@ -230,32 +227,6 @@ classdef FixedStressSplit < SolutionScheme
       end
 
     end
-
-
-
-    % function setLinearSolver(obj,xmlInput,varName)
-    % 
-    %   if nargin == 1
-    %     xmlInput = [];
-    %   end
-    %   if nargin <= 2
-    %     obj.solverFlow = linearSolver(obj,xmlInput,"pressure");
-    %     obj.solverMech = linearSolver(obj,xmlInput,"displacements");
-    %   else
-    %     if strcmp(varName,"pressure")
-    %       obj.linsolver = obj.solverFlow;
-    %     elseif strcmp(varName,"displacements")
-    %       obj.linsolver = obj.solverMech;
-    %     else
-    %       error("Invalid variable name for linear solver in " + ...
-    %         "FixedStressSplit algorithm")
-    %     end
-    % 
-    %   end
-    % 
-    % end
-
-
   end
 end
 
