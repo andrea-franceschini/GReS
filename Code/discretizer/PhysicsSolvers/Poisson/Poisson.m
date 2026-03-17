@@ -14,24 +14,24 @@ classdef Poisson < PhysicsSolver
       obj@PhysicsSolver(domain)
     end
 
-    function registerSolver(obj,solverInput)
+    function registerSolver(obj,varargin)
 
       nTags = obj.mesh.nCellTag;
 
-      if ~isempty(solverInput)
-        targetRegions = getXMLData(solverInput,1:nTags,"targetRegions");
-      else
-        targetRegions = 1:nTags;
-      end
+      default = struct('targetRegions',1:nTags);
 
-      % register nodal displacements on target regions
-      obj.dofm.registerVariable(obj.getField(),entityField.node,1,targetRegions);
+      params = readInput(default,varargin{:});
+
+      dofm = obj.domain.dofm;
+
+      % register scalar poisson variable on target regions
+      dofm.registerVariable(obj.getField(),entityField.node,1,params.targetRegions);
 
       % store the id of the field in the degree of freedom manager
-      obj.fieldId = obj.dofm.getVariableId(obj.getField());
+      obj.fieldId = dofm.getVariableId(obj.getField());
 
       % initialize the state object
-      n = getNumbDoF(obj.dofm,obj.fieldId);
+      n = getNumbDoF(dofm,obj.fieldId);
 
       state = getState(obj);
       state.data.u = zeros(n,1);
@@ -48,9 +48,9 @@ classdef Poisson < PhysicsSolver
 
     function J = computeMat(obj,varargin)
 
-      subCells = obj.dofm.getFieldCells(obj.fieldId);
+      subCells = obj.domain.dofm.getFieldCells(obj.fieldId);
       n = sum(obj.mesh.cellNumVerts(subCells).^2);
-      Ndof = obj.dofm.getNumbDoF(obj.getField());
+      Ndof = obj.domain.dofm.getNumbDoF(obj.getField());
       asbJ = assembler(n,Ndof,Ndof, @(el) computeLocalMatrix(obj,el));
       % loop over cells
       for el = subCells'
@@ -70,12 +70,12 @@ classdef Poisson < PhysicsSolver
       matLoc = sum(matLoc,3);
       % get global DoF
       nodes = obj.mesh.cells(elID,1:obj.mesh.cellNumVerts(elID));
-      dof = obj.dofm.getLocalDoF(obj.fieldId,nodes);
+      dof = obj.domain.dofm.getLocalDoF(obj.fieldId,nodes);
       dofr = dof; dofc = dof;
     end
 
     function rhs = computeRhs(obj,varargin)
-      ents = obj.dofm.getActiveEntities(obj.getField());
+      ents = obj.domain.dofm.getActiveEntities(obj.getField());
       J = getJacobian(obj);
       f = computeForcingTerm(obj);
       rhs = J*obj.domain.state.data.u(ents) + f(ents);
@@ -89,10 +89,11 @@ classdef Poisson < PhysicsSolver
 
     function updateState(obj,dSol)
       % Update state structure with last solution increment
-      ents = obj.dofm.getActiveEntities(obj.fieldId);
+      ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
       if nargin > 1
         % update solution
-        obj.domain.state.data.u(ents) = obj.domain.state.data.u(ents) + dSol(getDoF(obj.dofm,obj.fieldId));
+        obj.domain.state.data.u(ents) = obj.domain.state.data.u(ents) + ...
+          dSol(getDoF(obj.domain.dofm,obj.fieldId));
       end
 
       % compute error if analytical solution is available
@@ -102,54 +103,54 @@ classdef Poisson < PhysicsSolver
       end
     end
 
-    function applyBC(obj,bcId,t)
-
-      if ~BCapplies(obj,bcId)
-        return
-      end
-
-      % get bcDofs and bcVals
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
-
-      bcType = obj.bcs.getType(bcId);
-
-      switch bcType
-        case 'Dirichlet'
-          applyDirBC(obj,bcId,bcDofs);
-        case 'Neumann'
-          applyNeuBC(obj,bcId,bcDofs,bcVals);
-        otherwise
-          error("Error in %s: Boundary condition type '%s' is not " + ...
-            "available in %s",class(obj),bcType);
-      end
-      
-    end
+    % function applyBC(obj,bcId,t)
+    % 
+    % 
+    %   if ~strcmp(bc.getField(bcId),"node")
+    %     error('BC entitiy %s is not available for %s field',cond,obj.getField());
+    %   end
+    % 
+    %   applyBC@PhysicsSolver(obj,bcId,t);
+    % 
+    %   % % get bcDofs and bcVals
+    %   % [bcDofs,bcVals] = getBC(obj,bcId,t);
+    %   % 
+    %   % bcType = obj.domain.bcs.getType(bcId);
+    %   % 
+    %   % switch bcType
+    %   %   case 'Dirichlet'
+    %   %     applyDirBC(obj,bcId,bcDofs);
+    %   %   case 'Neumann'
+    %   %     applyNeuBC(obj,bcId,bcDofs,bcVals);
+    %   %   otherwise
+    %   %     error("Error in %s: Boundary condition type '%s' is not " + ...
+    %   %       "available in %s",class(obj),bcType);
+    %   % end
+    % 
+    % end
 
     function advanceState(obj)
       % do nothing
     end
 
+    % 
+    % function [dof,vals] = getBC(obj,bcId,t)
+    % 
+    %   bc = obj.domain.bcs;
+    %   dof = bc.getBCentities(bcId);
+    %   vals = bc.getVals(bcId,t);
+    % 
+    % end
 
-    function [dof,vals] = getBC(obj,bcId,t)
+    % function applyDirVal(obj,bcId,t)
+    % 
+    %   [bcDofs,bcVals] = getBC(obj,bcId,t);
+    % 
+    %   obj.domain.state.data.u(bcDofs) = bcVals;
+    % 
+    % end
 
-      if ~strcmp(obj.bcs.getCond(bcId),"NodeBC")
-          error('BC entitiy %s is not available for %s field',cond,obj.getField());
-      end
-
-      dof = obj.bcs.getBCentities(bcId);
-      vals = obj.bcs.getVals(bcId,t);
-
-    end
-
-    function applyDirVal(obj,bcId,t)
-
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
-
-      obj.domain.state.data.u(bcDofs) = bcVals;
-
-    end
-
-    function [cellData,pointData] = writeVTK(obj,fac)
+    function [cellData,pointData] = writeVTK(obj,fac,varargin)
 
       sOld = getStateOld(obj);
       sNew = getState(obj);
@@ -160,13 +161,12 @@ classdef Poisson < PhysicsSolver
 
     end
 
-    function writeMatFile(obj,t)
+    function writeMatFile(obj,fac,tID)
 
       uOld = getStateOld(obj,obj.getField());
       uCurr = getState(obj,obj.getField());
-      fac = (t - getStateOld(obj).t)/(getState(obj).t - getStateOld(obj).t);
 
-      obj.outstate.matFile(tID+1).poissonVar = uCurr*fac+uOld*(1-fac);
+      obj.domain.outstate.results(tID).(obj.getField()) = uCurr*fac+uOld*(1-fac);
     
     end
 
@@ -209,6 +209,8 @@ classdef Poisson < PhysicsSolver
       else 
         error('Mode input must be 0 (nodes list) or 1 (coordinate input list)');
       end
+
+      [x,y,z] = deal(x(:,1),x(:,2),x(:,3));
       switch var
         case 'u'
           f = obj.analyticalSolution.u;
@@ -223,15 +225,15 @@ classdef Poisson < PhysicsSolver
         otherwise
           error('Incorrect input for flag')
       end
-      anal = arrayfun(@(i) f(x(i,:)),1:size(x,1));
+      anal = f(x,y,z);
       anal = reshape(anal,[],1);      % make column array
     end
 
     function F = computeForcingTerm(obj)
       % classical
       % general sparse assembly loop over elements for Poromechanics
-      subCells = obj.dofm.getFieldCells(obj.getField());
-      F = zeros(obj.dofm.getNumbDoF(obj.getField()),1);
+      subCells = obj.domain.dofm.getFieldCells(obj.getField());
+      F = zeros(obj.domain.dofm.getNumbDoF(obj.getField()),1);
       % loop over cells
       for el = subCells'
         % get dof id and local matrix

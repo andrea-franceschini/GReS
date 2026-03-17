@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Problem>
+
+  <SimulationParameters
+                        Start="0."
+                        End ="1.01e+1"
+                        DtInit="1.e-1"
+                        DtMin ="1.e-1"
+                        DtMax ="1.e+1"
+                        incrementFactor = "1.1"
+                        MaxNLIteration = "10"
+                        RelativeTolerance = "1.e-9"
+                        AbsoluteTolerance = "1.e-9" />
+
+  <Output
+          outputFile = "Output/flowNonConforming"
+          matFileName = "Output/flowNonConforming"
+          saveHistory = "1"
+          printTimes = "0.5,1,2,5,10,50"
+          />
+
+  <!--Top domain-->
+  <Domain>
+    <Geometry
+              meshFile = "Input/DomainTop/topLayer.vtk"
+              />
+    <Gauss nGP = "1" />
+    <Materials fileName = "Input/DomainTop/materialsListTop.xml" />
+    <BoundaryConditions fileName = "Input/DomainTop/bcTop.xml" />
+    <Solver>
+      <SinglePhaseFlowFEM />
+    </Solver>
+  </Domain>
+
+  <!--Bottom domain-->
+  <Domain>
+    <Geometry
+              meshFile = "Input/DomainBot/bottomLayer.vtk"
+              />
+    <Gauss nGP = "1" />
+    <Materials fileName = "Input/DomainBot/materialsListBottom.xml" />
+    <BoundaryConditions fileName = "Input/DomainBot/bcBot.xml" />
+    <Solver>
+      <SinglePhaseFlowFEM />
+    </Solver>
+  </Domain>
+
+  
+  <Interface>
+    <MeshTying
+               masterDomain = "1" masterSurface = "1"
+               slaveDomain = "2" slaveSurface = "1"
+               multiplierType = "dual">
+
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  nGP = "4"
+                  />
+
+    </MeshTying>
+
+
+  </Interface>
+
+</Problem>
+

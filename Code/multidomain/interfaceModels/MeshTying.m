@@ -6,7 +6,7 @@ classdef MeshTying < InterfaceSolver
     D
     M
     stabilizationMat
-    stabilizationScale
+    stabilizationScale = 1.0
 
   end
 
@@ -25,7 +25,8 @@ classdef MeshTying < InterfaceSolver
           "If you want to couple more than one variable field, create more than one interface")
       end
 
-      obj.stabilizationScale = getXMLData(input,1.0,"stabilizationScale");
+      params = readInput(struct('stabilizationScale',1.0),input);
+      obj.stabilizationScale = params.stabilizationScale;
 
       ncomp = obj.domains(2).dofm.getNumberOfComponents(obj.coupledVariables);
       obj.nMult = ncomp * getNumberOfEntities(obj.multiplierLocation,...
@@ -271,7 +272,7 @@ classdef MeshTying < InterfaceSolver
       multOld = obj.stateOld.multipliers;
       mult = fac*multCurr + (1-fac)*multOld;
 
-      obj.outstate.matFile(tID).multipliers = mult;
+      obj.outstate.results(tID).multipliers = mult;
 
     end
 

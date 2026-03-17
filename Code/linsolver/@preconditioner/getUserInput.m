@@ -1,7 +1,7 @@
 function [params] = getUserInput(obj,params,usrInput)
 
    input = [];
-   
+
    % Unpack the fields and select the correct one
    if obj.phys == 0
       if isfield(usrInput,'Flow')

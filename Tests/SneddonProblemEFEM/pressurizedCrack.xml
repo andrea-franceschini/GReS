@@ -1,21 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <struct>
-  <simParam>
-    <Time>
+  <SimulationParameters>
       <Start>0</Start>
       <End>1</End>
       <DtInit>1</DtInit>
       <DtMax>1</DtMax>
       <DtMin>1</DtMin>
-    </Time>
-    <Solver>
       <AbsoluteTolerance>1e-08</AbsoluteTolerance>
       <RelativeTolerance>1e-09</RelativeTolerance>
       <MaxNLIteration>30</MaxNLIteration>
-    </Solver>
-  </simParam>
+  </SimulationParameters>
+
+
   <Materials>
   <Solid
+         name = "solid"
          cellTags = " 1 ">
     <Constitutive>
       <Elastic
@@ -72,12 +71,12 @@
       </BCevent>
     </BC>
   </BoundaryConditions>
+
   <Solver>
     <Poromechanics></Poromechanics>
     <EmbeddedFractureMechanics>
       <penaltyNormal>100000000</penaltyNormal>
       <penaltyTangential>100000000</penaltyTangential>
-      <outputFile>Output/Crack</outputFile>
       <Fracture>
         <origin>0</origin>
         <origin>0</origin>
@@ -95,4 +94,5 @@
       </ActiveSet>
     </EmbeddedFractureMechanics>
   </Solver>
+  
 </struct>

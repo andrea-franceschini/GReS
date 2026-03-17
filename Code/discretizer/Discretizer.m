@@ -1,7 +1,7 @@
 classdef Discretizer < handle
   % General discretizer class
 
-  properties (GetAccess=public, SetAccess=private)
+  properties (GetAccess=public, SetAccess=public)
     physicsSolvers                     % physics solvers database
     solverNames
     dofm
@@ -51,12 +51,23 @@ classdef Discretizer < handle
       obj.setDiscretizer(varargin{:});
     end
 
-    function applyBC(obj,t)
-      bcList = obj.bcs.db.keys;
 
-      for bcId = string(bcList)
+    function applyBC(obj,t,varargin)
+      bcList = obj.bcs.getBCList();
+
+      if isempty(varargin)
+        varNames = obj.dofm.getVariableNames();
+      else
+        varNames = [varargin{:}];
+      end
+
+      for bcId = bcList
         % loop over available bcs
         bcVar = obj.bcs.getVariable(bcId);
+
+        if ~strcmp(bcVar,varNames)
+          continue
+        end
 
         for solv = obj.solverNames
           % loop over available solvers
@@ -74,11 +85,11 @@ classdef Discretizer < handle
 
 
     function applyDirVal(obj,t)
-      bcList = obj.bcs.db.keys;
+      bcList = obj.bcs.getBCList;
 
-      for bcId = string(bcList)
-        % discard non-Dirichlet BC
-        if ~strcmp(obj.bcs.getType(bcId),"Dirichlet")
+      for bcId = bcList
+        % discard non-dirichlet BC
+        if ~isEssential(obj.bcs,bcId)
           continue
         end
 
@@ -205,35 +216,46 @@ classdef Discretizer < handle
     end
 
 
-    function addPhysicsSolver(obj,solverInput)
+    function addPhysicsSolvers(obj,solverInput)
 
       assert(isempty(getJacobian(obj)),"Cannot add a physics solver " + ...
         "after system has already been assembled");
 
       % Add a new solver to the Discretizer
-      assert(nargin == 2,"Input must be an xml file or a scalar struct")
+      assert(nargin == 2,"Input must be an xml file or a struct")
 
-      if ~isstruct(solverInput)
-        solverInput = readstruct(solverInput,AttributeSuffix="");
-      end
-
+      solverInput = readInput(solverInput);
       if isfield(solverInput,"Solver")
         solverInput = solverInput.Solver;
       end
 
-      obj.solverNames = string(fieldnames(solverInput));
-      obj.solverNames = reshape(obj.solverNames,1,[]);
+      sN = string(fieldnames(solverInput));
+      sN = reshape(sN,1,[]);
 
-      for solverName = obj.solverNames
+      % assert(numel(sN)==numel(solverInput),"A PhysicsSolver cannot" + ...
+      %   "be defined more than once in a model.")
+
+      for solverName = sN
         % create and register the solver
-        solver = feval(solverName,obj);
-        solver.registerSolver(solverInput.(solverName));
-        obj.physicsSolvers(solverName) = solver;
+        addPhysicsSolver(obj,solverName,solverInput.(solverName));
       end
 
-      nV = obj.dofm.getNumberOfVariables();
-      obj.J = cell(nV);
-      obj.rhs = cell(nV,1);
+      % nV = obj.dofm.getNumberOfVariables();
+      % obj.J = cell(nV);
+      % obj.rhs = cell(nV,1);
+
+    end
+
+    function addPhysicsSolver(obj,solverName,varargin)
+
+      if any(strcmp(solverName,obj.solverNames))
+        error('Solver %s has already been defined',solverName)
+      else
+        obj.solverNames = [obj.solverNames, string(solverName)];
+      end
+      solver = feval(solverName,obj);
+      solver.registerSolver(varargin{:});
+      obj.physicsSolvers(solverName) = solver;
 
     end
 
@@ -316,6 +338,24 @@ classdef Discretizer < handle
       end
     end
 
+
+    function initialize(obj)
+
+      % prepare the discretizer before starting the simulation
+
+      % initialize block jacobian and rhs
+      nV = obj.dofm.getNumberOfVariables();
+      obj.J = cell(nV);
+      obj.rhs = cell(nV,1);
+
+      finalizeBoundaryConditions(obj);
+
+      for solver = obj.solverNames
+        initialize(obj.getPhysicsSolver(solver));
+      end
+
+    end
+
     % function printState(obj)
     %   % print solution of the model according to the print time in the
     %   % list
@@ -394,7 +434,7 @@ classdef Discretizer < handle
 
     function writeMatFile(obj,fac,timeID)
       % write to MAT-file
-      obj.outstate.matFile(timeID).time = obj.outstate.timeList(timeID);
+      obj.outstate.results(timeID).time = obj.outstate.timeList(timeID);
 
       for solv = obj.solverNames
         getPhysicsSolver(obj,solv).writeMatFile(fac,timeID);
@@ -458,12 +498,20 @@ classdef Discretizer < handle
           case 'grid'
             obj.grid = value;
             % check that grid has been defined correctly
-            isGridCorrect = all([isfield(obj.grid,"topology");...
-              isfield(obj.grid,"cells");...
-              isfield(obj.grid,"faces")]);
+            if ~isfield(obj.grid,"topology")
+              obj.grid.topology = [];
+            end
+            if ~isfield(obj.grid,"cells")
+              obj.grid.cells = [];
+            end
+            if ~isfield(obj.grid,"faces")
+              obj.grid.faces = [];
+            end
+
+            isGridCorrect = numel(fieldnames(obj.grid))==3;
 
             assert(isGridCorrect,"Error in Discretizer: grid input is not correct. " + ...
-              "See the default value of the grid property in Discretizer.");
+              "grid must be a struct with fields: 'topology','cells','faces'.");
 
           case 'materials'
             assert(isa(value, 'Materials'),msg)
@@ -496,9 +544,31 @@ classdef Discretizer < handle
 
     end
 
+    function finalizeBoundaryConditions(obj)
+
+      % preprocess the boundary condition once the type of the target field
+      % is knwon
+
+      setBCList(obj.bcs);
+
+      bcList = obj.bcs.getBCList();
+
+      for bcId = bcList
+
+        % loop over available bcs
+        bcVar = obj.bcs.getVariable(bcId);
+
+        targetField = obj.dofm.getFieldLocation(bcVar);
+
+        obj.bcs.computeTargetEntities(bcId,targetField);
+
+      end
+ 
+    end
+
 
     function outName = getOutName(obj)
-
+       % property domainId not set yet
       outName = sprintf('Domain_%i',obj.domainId);
 
 

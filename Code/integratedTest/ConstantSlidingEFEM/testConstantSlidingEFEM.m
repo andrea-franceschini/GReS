@@ -10,7 +10,9 @@ cd(scriptDir);
 
 fname = 'constantSlidingEFEM.xml';
 
-simparams = SimulationParameters(fname);
+params = readInput(fname);
+
+simparams = SimulationParameters(params.SimulationParameters);
 
 
 mesh = structuredMesh(8,2,16,[0 2],[0, 0.5],[0 4]);
@@ -19,21 +21,21 @@ mesh = structuredMesh(8,2,16,[0 2],[0, 0.5],[0 4]);
 elems = Elements(mesh,2);
 faces = Faces(mesh);
 grid = struct('topology',mesh,'cells',elems,'faces',faces);
-mat = Materials(fname);
+mat = Materials(params.Materials);
 
 
-bc = Boundaries(fname,grid);
+bc = Boundaries(grid,params.BoundaryConditions);
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Boundaries',bc,...
-                     'Materials',mat,...
-                     'Grid',grid);
+  'Materials',mat,...
+  'Grid',grid);
 
 
-domain.addPhysicsSolver(fname);
+domain.addPhysicsSolvers(params.Solver);
 
 
 solver = NonLinearImplicit('simulationparameters',simparams,...
-                           'domains',domain);
+  'domains',domain);
 solver.simulationLoop();
 
 % get tangential gap

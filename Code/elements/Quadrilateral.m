@@ -270,6 +270,7 @@ classdef Quadrilateral < FEM
 %      dN = [d1';d2'];
     end
 
+
     function N = computeBasisF(coordList)
       % Find the value the basis functions take at some  reference points
       % whose 2D coordinates are store in coord

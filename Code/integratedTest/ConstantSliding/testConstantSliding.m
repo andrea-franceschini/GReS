@@ -8,7 +8,9 @@ scriptDir = fileparts(scriptFullPath);
 
 cd(scriptDir);
 
-simparams = SimulationParameters('constantSliding.xml');
+input = readstruct('constantSliding.xml',AttributeSuffix="");
+
+simparams = SimulationParameters(input.SimulationParameters);
 
 [domains,interfaces] = buildModel('constantSliding.xml');
 

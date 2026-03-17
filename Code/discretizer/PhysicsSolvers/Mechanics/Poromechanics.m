@@ -4,6 +4,11 @@ classdef Poromechanics < PhysicsSolver
     K               % the stiffness matrix free of boundary conditions
     fInt            % internal forces
     cell2stress     % map cell ID to position in stress/strain matrix
+    avStress
+    avStrain
+    avStressOld
+    avStrainOld
+    flOut = true
 
     % stress and strain tensor use engineering voigt notation
     % s_xx,s_yy,s_zz,tau_yz,tau_xz,tau_xy
@@ -22,21 +27,21 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
-    function registerSolver(obj,solverInput)
+    function registerSolver(obj,varargin)
 
       nTags = obj.mesh.nCellTag;
 
-      if ~isempty(solverInput)
-        targetRegions = getXMLData(solverInput,1:nTags,"targetRegions");
-      else
-        targetRegions = 1:nTags;
-      end
+      default = struct('targetRegions',1:nTags);
+
+      params = readInput(default,varargin{:});
+
+      dofm = obj.domain.dofm;
 
       % register nodal displacements on target regions
-      obj.dofm.registerVariable(obj.getField(),entityField.node,3,targetRegions);
+      dofm.registerVariable(obj.getField(),entityField.node,3,params.targetRegions);
 
       % store the id of the field in the degree of freedom manager
-      obj.fieldId = obj.dofm.getVariableId(obj.getField());
+      obj.fieldId = dofm.getVariableId(obj.getField());
 
       % initialize the state object
       initState(obj);
@@ -75,20 +80,23 @@ classdef Poromechanics < PhysicsSolver
       % general sparse assembly loop over elements for Poromechanics
 
       % define local assembler
-      assembleKloc = @(elemId,counter) computeLocalStiff(obj,elemId,dt,counter);
+      %assembleKloc = @(elemId,counter) computeLocalStiff(obj,elemId,dt,counter);
+      dofm = obj.domain.dofm;
 
-      subCells = obj.dofm.getFieldCells(obj.fieldId);
+      subCells = dofm.getFieldCells(obj.fieldId);
       n = sum((obj.mesh.nDim^2)*(obj.mesh.cellNumVerts(subCells)).^2);
       l = 0;
-      Ndof = obj.dofm.getNumbDoF(obj.fieldId);
+      Ndof = dofm.getNumbDoF(obj.fieldId);
       obj.fInt = zeros(Ndof,1);
-      assembleK = assembler(n,Ndof,Ndof,assembleKloc);
+      assembleK = assembler(n,Ndof,Ndof);
 
       stateCurr = getState(obj);
 
       % loop over active mechanics cells
       for el = subCells'
-        [sigma,status] = assembleK.localAssembly(el,l);
+        %[sigma,status] = assembleK.localAssembly(el,l);
+        [dofr,dofc,KLoc,sigma,status] = computeLocalStiff(obj,el,dt,l);
+        assembleK.localAssembly(dofr,dofc,KLoc);
         ng = size(sigma,1);
         stateCurr.data.status(l+1:l+ng,:) = status;
         stateCurr.data.stress((l+1):(l+ng),:) = sigma;
@@ -113,7 +121,7 @@ classdef Poromechanics < PhysicsSolver
       B(elem.indB(:,2)) = N(elem.indB(:,1));
 
       % constitutive update
-      [D, sigma, status] = obj.materials.updateMaterial( ...
+      [D, sigma, status] = obj.domain.materials.updateMaterial( ...
         obj.mesh.cellTag(elID), ...
         sOld.data.stress(l+1:l+nG,:), ...
         s.data.strain(l+1:l+nG,:), ...
@@ -129,7 +137,7 @@ classdef Poromechanics < PhysicsSolver
 
       % get global DoF
       nodes = obj.mesh.cells(elID,1:obj.mesh.cellNumVerts(elID));
-      dof = obj.dofm.getLocalDoF(obj.fieldId,nodes);
+      dof = obj.domain.dofm.getLocalDoF(obj.fieldId,nodes);
       dofr = dof; dofc = dof;
 
       % assemble internal forces
@@ -159,7 +167,7 @@ classdef Poromechanics < PhysicsSolver
       Bu(elem.indB(:,2)) = Nu(elem.indB(:,1));
       Bb = zeros(6,elem.nFace*obj.mesh.nDim,nG);
       Bb(elem.indBbubble(:,2)) = Nb(elem.indBbubble(:,1));
-      [D, ~, ~] = obj.materials.updateMaterial( ...
+      [D, ~, ~] = obj.domain.materials.updateMaterial( ...
         obj.mesh.cellTag(el), ...
         sOld.data.stress(l+1:l+nG,:), ...
         s.data.strain(l+1:l+nG,:), ...
@@ -173,7 +181,7 @@ classdef Poromechanics < PhysicsSolver
 
       % get global DoF
       nodes = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
-      dof = obj.dofm.getLocalDoF(obj.fieldId,nodes);
+      dof = obj.domain.dofm.getLocalDoF(obj.fieldId,nodes);
       dofr = dof; dofc = dof;
 
       % get variable output from matrix
@@ -211,11 +219,13 @@ classdef Poromechanics < PhysicsSolver
       state.data.strain = 0.0*state.data.strain;
       stateOld.data.stress = getState(obj,"stress");
       stateOld.data.status = getState(obj,"status");
+      obj.flOut = true;
     end
 
     function updateState(obj,solution)
       % Update state structure with last solution increment
-      ents = obj.dofm.getActiveEntities(obj.fieldId,1);
+      dofm = obj.domain.dofm;
+      ents = dofm.getActiveEntities(obj.fieldId,1);
 
       stateCurr = obj.getState();
       %stateOld = obj.getStateOld();
@@ -223,7 +233,7 @@ classdef Poromechanics < PhysicsSolver
       if nargin > 1
         % apply newton update to current displacements
         stateCurr.data.displacements(ents) = stateCurr.data.displacements(ents) + ...
-          solution(getDoF(obj.dofm,obj.fieldId));
+          solution(getDoF(dofm,obj.fieldId));
       end
 
       computeStrain(obj);
@@ -256,51 +266,96 @@ classdef Poromechanics < PhysicsSolver
 
     function applyBC(obj,bcId,t)
 
-      if ~BCapplies(obj,bcId)
-        return
-      end
-
-      % get bcDofs and bcVals
-      bcDofs = getBCdofs(obj,bcId);
-      bcVals = getBCVals(obj,bcId,t);
-
-      bcType = obj.bcs.getType(bcId);
+      bcType = obj.domain.bcs.getType(bcId);
 
       switch bcType
-        case 'Dirichlet'
-          applyDirBC(obj,bcId,bcDofs);
-        case {'Neumann','VolumeForce'}
-          applyNeuBC(obj,bcId,bcDofs,bcVals);
+        case 'volumeforce' % custom bc type
+          applyVolumeForceBC(obj,bcId,bcDofs);
         otherwise
-          error("Error in %s: Boundary condition type '%s' is not " + ...
-            "available in %s",class(obj),bcType);
+          applyBC@PhysicsSolver(obj,bcId,t);
       end
       
     end
 
 
-    % function [dof,vals] = getBC(obj,bcId,t)
-    %   %
-    %   dof = obj.getBCdofs(bcId);
-    %   vals = obj.getBCVals(bcId,t);
-    % end
+    function applyVolumeForceBC(obj,bcId,t)
 
+      % handle volume force boundary condition.
+      % poromechanical coupling with a scalar pressure field
 
-    function applyDirVal(obj,bcId,t)
+      bc = obj.domain.bcs;
 
-      bcVar = obj.bcs.getVariable(bcId);
+      srcVal = bc.getSourceVals(id,t);
 
-      if ~strcmp(bcVar,obj.getField())
-        return
+      assert(getField(bc,bcId)==entityField.cell,"field of 'volumeforce' BC" + ...
+        " must be 'cell'")
+
+      cells = bc.getSourceEntities(bcId);
+
+      nodeId = bc.getTargetEntities(bcId);
+
+      % preallocate vector for later assembly
+      valsC = zeros(3*sum(obj.mesh.cellNumVerts(cells)),1);
+      dofs = zeros(3*sum(obj.mesh.cellNumVerts(cells)),1);
+      k = 0;
+
+      for i = 1:numel(cells)
+
+        % local coupling to map cell pressure to nodal force (as in Biot)
+        % assumes unit biot coefficient
+        el = cells(i);
+
+        % compute local biot coupling matrix
+        elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
+        nG = elem.GaussPts.nNode;
+        n = 3*elem.nNode;
+        [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
+        B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
+        B(elem.indB(:,2)) = N(elem.indB(:,1));
+        kron = [1;1;1;0;0;0];
+        iN = repmat(kron,1,1,nG);
+        Qs = pagemtimes(B,'ctranspose',iN,'none');
+        Qs = Qs.*reshape(dJWeighed,1,1,[]);
+        Qloc = sum(Qs,3);
+
+        % accumulate bc values
+        valsC(k+1:k+n) = Qloc*srcVal(i);
+        dofState(k+1:k+n) = dofId(obj.mesh.cells(el,:),3);
+        k = k+n;
+
       end
 
-      bcEnts = getBCents(obj,bcId);
-      bcVals = getBCVals(obj,bcId,t);
+      % accumulate results
+      valsC = accumarray(dofs,valsC,[3*obj.mesh.nNodes 1]);
 
-      obj.getState().data.displacements(bcEnts) = bcVals;
+      dofState = dofId(nodeId,3);
+
+      % retrieve dof numbering of constrained dofs
+      dofs = dofId(obj.dofm.getLocalEnts(obj.fieldId,nodeId),3);
+      vals = valsC(dofState);
+
+      applyNeuBC(obj,bcId,dofs,vals);
+
     end
 
+
+    % function applyDirVal(obj,bcId,t)
+    % 
+    %   bcVar = obj.domain.bcs.getVariable(bcId);
+    % 
+    %   if ~strcmp(bcVar,obj.getField())
+    %     return
+    %   end
+    % 
+    %   bcEnts = getBCents(obj,bcId);
+    %   bcVals = getBCVals(obj,bcId,t);
+    % 
+    %   obj.getState().data.displacements(bcEnts) = bcVals;
+    % end
+
     function rhs = computeRhs(obj,varargin)
+
+      dofm = obj.domain.dofm;
 
       if isLinear(obj) % linear case
 
@@ -310,12 +365,12 @@ classdef Poromechanics < PhysicsSolver
         sOld = obj.getStateOld();
 
         % update elastic stress
-        subCells = obj.dofm.getFieldCells(obj.fieldId);
+        subCells = dofm.getFieldCells(obj.fieldId);
         l1 = 0;
 
         for el=subCells'
 
-          D = getElasticTensor(obj.materials.getMaterial(obj.mesh.cellTag(el)).ConstLaw);
+          D = getElasticTensor(obj.domain.materials.getMaterial(obj.mesh.cellTag(el)).ConstLaw);
 
           % Get the right material stiffness for each element
           vtk = obj.mesh.cellVTKType(el);
@@ -327,7 +382,7 @@ classdef Poromechanics < PhysicsSolver
           l1 = l1+nG;
         end
 
-        ents = obj.dofm.getActiveEntities(obj.fieldId,1);
+        ents = dofm.getActiveEntities(obj.fieldId,1);
 
         u = s.data.(obj.getField());
         uOld = sOld.data.(obj.getField());
@@ -354,7 +409,7 @@ classdef Poromechanics < PhysicsSolver
 
 
       for i = 1:obj.mesh.nCellTag
-        out = isa(obj.materials.getMaterial(i).ConstLaw,"Elastic");
+        out = isa(obj.domain.materials.getMaterial(i).ConstLaw,"Elastic");
         if ~out
           return;
         end
@@ -373,7 +428,7 @@ classdef Poromechanics < PhysicsSolver
       uOld = getStateOld(obj,obj.getField());
       uCurr = getState(obj,obj.getField());
 
-      obj.domain.outstate.matFile(tID).(obj.getField()) = uCurr*fac+uOld*(1-fac);
+      obj.domain.outstate.results(tID).(obj.getField()) = uCurr*fac+uOld*(1-fac);
 
       % TO DO: optional print of stresses as an input for the solver
 
@@ -383,19 +438,27 @@ classdef Poromechanics < PhysicsSolver
 
       % append state variable to output structure
       stateCurr = getState(obj);
-      stateOld = getStateOld(obj);
+      stateOld = getState(obj);
 
       displ = getState(obj,obj.getField());
-      [avStress,avStrain] = finalizeState(obj,stateCurr);
-
       dispOld = getStateOld(obj,obj.getField());
-      [avStressOld,avStrainOld] = finalizeState(obj,stateOld);
 
-      avStress = avStress*fac+avStressOld*(1-fac);
-      avStrain = avStrain*fac+avStrainOld*(1-fac);
+      if obj.flOut
+        % perform this computation once per time step
+        if isempty(obj.avStress)
+          [obj.avStress,obj.avStrain] = finalizeState(obj,stateOld);
+        end
+        obj.avStressOld = obj.avStress;
+        obj.avStrainOld = obj.avStrain;
+        [obj.avStress,obj.avStrain] = finalizeState(obj,stateCurr);
+        obj.flOut = false;
+      end
+
+      avgStress = obj.avStress*fac+obj.avStressOld*(1-fac);
+      avgStrain = obj.avStrain*fac+obj.avStrainOld*(1-fac);
       displ = displ*fac+dispOld*(1-fac);
 
-      [cellData,pointData] = Poromechanics.buildPrintStruct(displ,avStress,avStrain);
+      [cellData,pointData] = Poromechanics.buildPrintStruct(displ,avgStress,avgStrain);
 
     end
 
@@ -415,7 +478,9 @@ classdef Poromechanics < PhysicsSolver
       l = 0;
 
       for el=1:obj.mesh.nCells
-        dof = getEntityFromElement(entityField.node,entityField.cell,obj.mesh,el,3);
+        nodes = obj.mesh.cells(el,:);
+        dof = dofId(nodes,3);
+        %dof = getEntityFromElement(entityField.node,entityField.cell,obj.mesh,el,3);
         vtkId = obj.mesh.cellVTKType(el);
         elem = getElement(obj.elements,vtkId);
         nG = elem.GaussPts.nNode;
@@ -428,88 +493,93 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
-    function dof = getBCdofs(obj,bcId)
+    % function dof = getBCdofs(obj,bcId)
+    % 
+    %   bc = obj.domain.bcs;
+    % 
+    %   % get BC entity
+    %   ents = bc.getBCentities(bcId);
+    % 
+    %   % map to local dof numbering
+    %   ents = obj.domain.dofm.getLocalEnts(obj.fieldId,ents);
+    % 
+    %   dof = bc.getCompEntities(bcId,ents);
+    % 
+    %   if strcmp(bc.getCond(bcId),'VolumeForce')
+    %     dof = dofId(dof,3);
+    %   end
+    % 
+    % end
+    % 
+    % function ents = getBCents(obj,bcId)
+    % 
+    %   bc = obj.domain.bcs;
+    %   % get BC entity
+    %   ents = bc.getBCentities(bcId);
+    % 
+    %   % get component dof for multi-component bcs
+    %   ents = bc.getCompEntities(bcId,ents);
+    % 
+    %   if strcmp(bc.getCond(bcId),'VolumeForce')
+    %     ents = dofId(ents,3);
+    %   end
+    % 
+    % 
+    % end
 
-      % get BC entity
-      ents = obj.bcs.getBCentities(bcId);
 
-      % map to local dof numbering
-      ents = obj.dofm.getLocalEnts(obj.fieldId,ents);
-
-      dof = obj.bcs.getCompEntities(bcId,ents);
-
-      if strcmp(obj.bcs.getCond(bcId),'VolumeForce')
-        dof = dofId(dof,3);
-      end
-
-    end
-
-    function ents = getBCents(obj,bcId)
-
-      % get BC entity
-      ents = obj.bcs.getBCentities(bcId);
-
-      % get component dof for multi-component bcs
-      ents = obj.bcs.getCompEntities(bcId,ents);
-
-      if strcmp(obj.bcs.getCond(bcId),'VolumeForce')
-        ents = dofId(ents,3);
-      end
-
-
-    end
-
-
-    function vals = getBCVals(obj,id,t)
-
-      vals = obj.bcs.getVals(id,t);
-
-      if strcmp(obj.bcs.getCond(id),'SurfBC')
-
-        % nodeArea*bcValue
-        entInfl = obj.bcs.getEntitiesInfluence(id);
-        vals = entInfl*vals;
-
-      elseif strcmp(obj.bcs.getCond(id),'VolumeForce')
-
-        % imposed volume pressure
-        valsCell = vals;
-        cells = obj.bcs.getEntities(id);
-
-        % preallocate vector for later assembly
-        vals = zeros(3*sum(obj.mesh.cellNumVerts),1);
-        dofs = zeros(3*sum(obj.mesh.cellNumVerts),1);
-        k = 0;
-
-        for i = 1:numel(cells)
-
-          % local coupling to map cell pressure to nodal force (as in Biot)
-          % assumes unit biot coefficient
-          el = cells(i);
-          elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
-          nG = elem.GaussPts.nNode;
-          n = 3*elem.nNode;
-          [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
-          B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
-          B(elem.indB(:,2)) = N(elem.indB(:,1));
-          kron = [1;1;1;0;0;0];
-          iN = repmat(kron,1,1,nG);
-          Qs = pagemtimes(B,'ctranspose',iN,'none'); 
-          Qs = Qs.*reshape(dJWeighed,1,1,[]);
-          Qloc = sum(Qs,3);
-          vals(k+1:k+n) = Qloc*valsCell(i);
-          dofs(k+1:k+n) = dofId(obj.mesh.cells(el,:),3);
-          k = k+n;
-
-        end
-
-        % accumulate results
-        vals = accumarray(dofs,vals,[3*obj.mesh.nNodes 1]);
-        dof = obj.getBCdofs(id);
-        vals = vals(dof);
-      end
-
-    end
+    % function vals = getBCVals(obj,id,t)
+    % 
+    %   bc = obj.domain.bcs;
+    % 
+    %   vals = bc.getVals(id,t);
+    % 
+    %   if strcmp(bc.getCond(id),'surface')
+    % 
+    %     % nodeArea*bcValue
+    %     entInfl = bc.getEntitiesInfluence(id);
+    %     vals = entInfl*vals;
+    % 
+    %   elseif strcmp(bc.getCond(id),'volumeforce')
+    % 
+    %     % imposed volume pressure
+    %     valsCell = vals;
+    %     cells = bc.getEntities(id);
+    % 
+    %     % preallocate vector for later assembly
+    %     vals = zeros(3*sum(obj.mesh.cellNumVerts),1);
+    %     dofs = zeros(3*sum(obj.mesh.cellNumVerts),1);
+    %     k = 0;
+    % 
+    %     for i = 1:numel(cells)
+    % 
+    %       % local coupling to map cell pressure to nodal force (as in Biot)
+    %       % assumes unit biot coefficient
+    %       el = cells(i);
+    %       elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
+    %       nG = elem.GaussPts.nNode;
+    %       n = 3*elem.nNode;
+    %       [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
+    %       B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
+    %       B(elem.indB(:,2)) = N(elem.indB(:,1));
+    %       kron = [1;1;1;0;0;0];
+    %       iN = repmat(kron,1,1,nG);
+    %       Qs = pagemtimes(B,'ctranspose',iN,'none'); 
+    %       Qs = Qs.*reshape(dJWeighed,1,1,[]);
+    %       Qloc = sum(Qs,3);
+    %       vals(k+1:k+n) = Qloc*valsCell(i);
+    %       dofs(k+1:k+n) = dofId(obj.mesh.cells(el,:),3);
+    %       k = k+n;
+    % 
+    %     end
+    % 
+    %     % accumulate results
+    %     vals = accumarray(dofs,vals,[3*obj.mesh.nNodes 1]);
+    %     dof = obj.getBCdofs(id);
+    %     vals = vals(dof);
+    %   end
+    % 
+    % end
 
   end
 

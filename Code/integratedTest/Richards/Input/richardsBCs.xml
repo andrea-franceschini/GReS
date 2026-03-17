@@ -43,13 +43,12 @@ a function handle depending on space (x,y,z)
   <BC
       name = "bottomPressure"
       type = "Dirichlet"
-      entityType = "SurfBC"
+      field = "surface"
       variable = "pressure"
+      entityListType = "tags"
+      entityList = "1"
       >
 
-    <BCentities
-                surfaceTags = "1"                
-                />
     <!-- surfaceTags,bcList  = "1" -->
 
     <BCevent

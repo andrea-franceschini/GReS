@@ -16,20 +16,20 @@ classdef CheckTests < matlab.unittest.TestCase
   methods (Test)
     % Test methods
     function Deep_Aquifer(testCase)
-      cd("Deep_Aquifer/");
+      cd("DeepAquifer/");
       run('Main.m');
       % checking only if 3 outputs is being generated
-      testCase.verifyEqual(length(domain.outstate.results),3);
+      testCase.verifyEqual(length(domain.outstate.matFile),3);
       testCase.verifyEqual(domain.outstate.timeList,[1; 4; 8]);
       close all;
       cd("../");
     end
 
     function Mandel_Biot(testCase)
-      cd("Mandel_Biot/");
+      cd("MandelBiot/");
       run('Main.m');
       % checking only if 5 outputs is being generated
-      testCase.verifyEqual(length(domain.outstate.results),5);
+      testCase.verifyEqual(length(domain.outstate.matFile),5);
       testCase.verifyEqual(domain.outstate.timeList,[0.0500; 0.2500; 1; 2.5000; 5]);
       close all;
       cd("../");
@@ -39,7 +39,7 @@ classdef CheckTests < matlab.unittest.TestCase
       cd("Richards/Case1/");
       run('Main.m');
       % checking only if 3 outputs is being generated
-      testCase.verifyEqual(length(domain.outstate.results),3);
+      testCase.verifyEqual(length(domain.outstate.matFile),3);
       testCase.verifyEqual(domain.outstate.timeList,[10; 50; 100]);
       close all;
       cd("../../");
@@ -49,34 +49,34 @@ classdef CheckTests < matlab.unittest.TestCase
       cd("Richards/Case2/");
       run('Main.m');
       % checking only if 4 outputs is being generated
-      testCase.verifyEqual(length(domain.outstate.results),4);
+      testCase.verifyEqual(length(domain.outstate.matFile),4);
       testCase.verifyEqual(domain.outstate.timeList,[51840; 77760; 129600; 259200]);
       close all;
       cd("../../");
     end
 
     function Terzaghi_Biot(testCase)
-      cd("Terzaghi_Biot/");
+      cd("TerzaghiBiot/");
       run('Main.m');
       % checking only if 6 outputs is being generated
-      testCase.verifyEqual(length(domain.outstate.results),6);
+      testCase.verifyEqual(length(domain.outstate.matFile),6);
       testCase.verifyEqual(domain.outstate.timeList,[15; 30; 60; 90; 120; 180]);
       close all;
       cd("../");
     end
 
     function Flux_barrier(testCase)
-      cd("Flux_barrier/");
+      cd("FluxBarrier/");
       run('Main.m');
       % checking only if 2 outputs is being generated
-      testCase.verifyEqual(length(domain.outstate.results),1);
+      testCase.verifyEqual(length(domain.outstate.matFile),1);
       testCase.verifyEqual(domain.outstate.timeList,10);
       close all;
       cd("../");
     end
 
     function Flow_nonConforming(testCase)
-      cd("Flow_nonConforming/");
+      cd("FlowNonConforming/");
       run('Main.m');
       % checking only if 6 outputs is being generated
       testCase.verifyEqual(domains(1).outstate.timeList,domains(2).outstate.timeList);

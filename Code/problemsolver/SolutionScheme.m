@@ -8,8 +8,8 @@ classdef (Abstract) SolutionScheme < handle
     %
     %
     tOld                % tOld: previous converged time instant
-    t = 0               % simulation time
-    tStep = 0           % simulation time step
+    t                   % simulation time
+    tStep               % simulation time step
     dt                  % current time step size
     nVars               % total number of inner variable fields in the model
     attemptedReset      % flag for attempting a configuration reset
@@ -38,8 +38,8 @@ classdef (Abstract) SolutionScheme < handle
   methods (Access = public)
     function obj = SolutionScheme(varargin)
 
-      assert(nargin > 1 && nargin < 9,"Wrong number of input arguments " + ...
-        "for general solver")
+      % assert(nargin > 1 && nargin < 9,"Wrong number of input arguments " + ...
+      %   "for general solver")
 
       obj.setSolutionScheme(varargin{:});
 
@@ -47,9 +47,13 @@ classdef (Abstract) SolutionScheme < handle
 
     function simulationLoop(obj,varargin)
 
-      % Initialize the time step increment
+      % Initialize time
+      obj.tStep = 0;
+      obj.t = obj.simparams.tIni;
       obj.dt = obj.simparams.dtIni;
 
+      initialize(obj);
+      
       setLinearSolver(obj,varargin{:});
 
       while obj.t < obj.simparams.tMax
@@ -62,6 +66,7 @@ classdef (Abstract) SolutionScheme < handle
         % solve current time step
         % flConv: flag for convergence
         % dtOut: requested time step from the physics solver
+
         conv = solveStep(obj);
 
         % move to the next time step
@@ -75,6 +80,11 @@ classdef (Abstract) SolutionScheme < handle
 
       gresLog().log(-1,"Simulation completed successfully \n")
 
+    end
+
+
+    function saveHistory(obj)
+      obj.output.saveHistory();
     end
 
   end
@@ -148,13 +158,16 @@ classdef (Abstract) SolutionScheme < handle
 
     end
 
-    function setLinearSolver(obj,varargin)
+    function initialize(obj)
 
-      obj.linsolver = linearSolver(obj,varargin{:});
-      
+      for i = 1:obj.nDom
+        initialize(obj.domains(i));
+      end
+
+      for i = 1:obj.nInterf
+        initialize(obj.interfaces{i})
+      end
     end
-
-
 
     function manageNextTimeStep(obj,flConv)
 
@@ -232,6 +245,34 @@ classdef (Abstract) SolutionScheme < handle
 
       % Actual solution of the system
       [sol,~] = obj.linsolver.Solve(J,-rhs,obj.t);
+    end
+
+
+
+    function setLinearSolver(obj,varargin)
+
+      if isempty(varargin)
+        str = [];
+        physname = [];
+      else
+        fname = varargin{1};
+        str = readstruct(fname,AttributeSuffix="");
+        if isfield(str,'LinearSolver')
+          str = str.LinearSolver;
+        else
+          str = [];
+        end
+
+        % check if the user provided the physics
+        if nargin > 2
+          physname = varargin{2};
+        else
+          physname = [];
+        end
+      end
+
+      obj.linsolver = linearSolver(obj,str,physname);
+
     end
 
 
@@ -338,9 +379,9 @@ classdef (Abstract) SolutionScheme < handle
           if obj.output.writeVtk
 
             % set folders
-            obj.output.prepareOutputFolders()
+            obj.output.prepareOutputFolders();
 
-            obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
+            obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');  
             toc = obj.output.vtkFile.getDocumentElement;
             toc.setAttribute('type', 'vtkMultiBlockDataSet');
             toc.setAttribute('version', '1.0');
@@ -349,12 +390,16 @@ classdef (Abstract) SolutionScheme < handle
             % append blocks looping into domains and interfaces
             for i = 1:obj.nDom
               vtmBlock = obj.domains(i).writeVTK(fac,outTime);
-              blocks.appendChild(vtmBlock);
+              if ~isempty(vtmBlock)
+                blocks.appendChild(vtmBlock);
+              end
             end
             %
             for i = 1:obj.nInterf
               vtmBlock = obj.interfaces{i}.writeVTKfile(fac,outTime);
-              blocks.appendChild(vtmBlock);
+              if ~isempty(vtmBlock)
+                blocks.appendChild(vtmBlock);
+              end
             end
 
             toc.appendChild(blocks);

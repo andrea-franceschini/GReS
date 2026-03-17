@@ -10,9 +10,11 @@ cd(scriptDir);
 
 fileName = "singleCrackCompressed.xml";
 
-simparams = SimulationParameters(fileName);
+params = readInput(fileName);
 
-[domains,interfaces] = buildModel(fileName); 
+simparams = SimulationParameters(params.SimulationParameters);
+
+[domains,interfaces] = buildModel(params); 
 
 %solver = MultidomainFCSolver(simparams,domains,interfaces);
 solver = NonLinearImplicit('simulationparameters',simparams,...
