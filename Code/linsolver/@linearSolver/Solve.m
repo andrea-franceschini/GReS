@@ -96,7 +96,12 @@ function [x,flag] = Solve(obj,A,b,time)
       obj.iterLin(obj.nSolve) = obj.params.iter;
       obj.timeLin(obj.nSolve) = time; 
       obj.solveTLin(obj.nSolve) = Tend;
-      obj.newtonLin(obj.nSolve) = obj.generalsolver.iterNL;
+      if exist('obj.generalsolver.iterNL','var')
+         obj.newtonLin(obj.nSolve) = obj.generalsolver.iterNL;
+      else
+         obj.newtonLin(obj.nSolve) = obj.nSolve;
+      end
+
       obj.symFlagLin(obj.nSolve) = globalsymm;
       if obj.params.iterSinceLastPrecComp == 0
          obj.precCompLin(obj.nSolve) = T_setup;
