@@ -1,0 +1,8 @@
+<SimulationParameters
+    Start            = "0.0"
+    End              = "10.01"
+    DtInit           = "1e-1"
+    DtMax            = "1e1"
+    DtMin            = "1e-2"
+    incrementFactor  = "1.0"
+/>

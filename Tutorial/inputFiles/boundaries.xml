@@ -1,0 +1,10 @@
+<BoundaryConditions>
+  <BC name="firstBC" type="Dirichlet" field="surface"
+      variable="displacements"
+      entityListType="tags" entityList="1"
+      components="1,2,3">
+    <BCevent time="1" value="0.0"/>
+    <BCevent time="3" value="1.0"/>
+    <BCevent time="6" value="-2.0"/>
+  </BC>
+</BoundaryConditions>
