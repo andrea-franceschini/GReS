@@ -11,40 +11,16 @@
 // Build command:
 //   mex -R2018a computeRot_wrap.cpp
 //
-// ALL FIXES APPLIED
+// FIXES APPLIED (vs previous version)
 // -----------------------------------------------------------------------
-// [FIX-A] mexErrMsgTxt() not declared in the pure C++ MEX API.
-//         Replaced with throwError() in the gateway for all validation
-//         and post-computation checks.
+// [FIX-G] TypedArray flat-index subscripting causes runtime error
+//         "Not enough indices provided" on 2D arrays.
+//         The previous version wrote R_out[k] in a loop over a {3,3}
+//         TypedArray — single flat index on a 2D array is illegal.
+//         Fixed by filling a std::vector<double>(9) column-major and
+//         then std::copy-ing into R_out via iterators.
 //
-// [FIX-B] TypedArray<T>::operator[] returns a proxy — cannot take address.
-//         n input copied into std::vector<double>; elements read into
-//         std::array<double,3> for the math code.
-//
-// [FIX-C] ArgumentList::size() / operator[] are NOT const-qualified.
-//         validateArguments() takes non-const ArgumentList& references.
-//
-// [FIX-E] factory.createScalar<T>() is only valid for arithmetic T.
-//         All string arguments use factory.createCharArray() instead.
-//
-// [NEW-1] normalize() called mexErrMsgTxt() directly from a pure math
-//         function — same anti-pattern as inv3x3() in the Jacobian file.
-//         Fixed by:
-//           - Removing mexErrMsgTxt from normalize()
-//           - Having normalize() throw std::runtime_error instead
-//           - Catching it in operator()() and re-throwing via throwError()
-//         This keeps math helpers MATLAB-free and ensures RAII unwinds.
-//
-// [NEW-2] mxGetPr() / mxCreateDoubleMatrix(3,3) replaced with
-//         TypedArray<double> copy (input) and
-//         factory.createArray<double>({3, 3}) (output).
-//
-// [NEW-3] Output filled via flat column-major index i + j*3, identical
-//         to the original R_ptr[i + j*3] = Rcols[j][i] loop.
-//
-// [NEW-4] All pure math helpers (cross, dot, norm, normalize, det3x3)
-//         are kept unchanged in logic — only mexErrMsgTxt removed from
-//         normalize() and replaced with std::runtime_error.
+// All previously documented fixes (FIX-A/B/C/E, NEW-1..4) are retained.
 // -----------------------------------------------------------------------
 //----------------------------------------------------------------------------------------
 
@@ -53,16 +29,16 @@
 
 #include <array>
 #include <cmath>
-#include <stdexcept>   // std::runtime_error  [NEW-1]
+#include <stdexcept>
 #include <vector>
 #include <string>
+#include <algorithm> // std::copy
 
 using namespace matlab::data;
 using matlab::mex::ArgumentList;
 
 //========================================================================================
-// Pure math helpers — NO MATLAB API dependency
-// [NEW-1] normalize() throws std::runtime_error instead of mexErrMsgTxt
+// Pure math helpers — no MATLAB API dependency
 //========================================================================================
 
 inline std::array<double,3> cross(const std::array<double,3>& a,
@@ -83,8 +59,6 @@ inline double norm(const std::array<double,3>& a)
     return std::sqrt(dot(a, a));
 }
 
-// [NEW-1] throws std::runtime_error — keeps function MATLAB-free,
-//         lets RAII destructors unwind on error
 inline std::array<double,3> normalize(const std::array<double,3>& a)
 {
     const double n = norm(a);
@@ -112,22 +86,12 @@ public:
 
     void operator()(ArgumentList outputs, ArgumentList inputs) override
     {
-        // [FIX-C]
         validateArguments(outputs, inputs);
 
-        // -----------------------------------------------------------------------
-        // [FIX-B][NEW-2] Read n — 3-element double vector
-        // -----------------------------------------------------------------------
+        // Read n
         const TypedArray<double> nArr = inputs[0];
-
-        // Copy into std::array for the math code
         std::array<double,3> n = { nArr[0], nArr[1], nArr[2] };
 
-        // -----------------------------------------------------------------------
-        // Compute rotation matrix
-        // [NEW-1] normalize() may throw std::runtime_error — caught here and
-        //         re-thrown as MATLAB exception so RAII destructors run cleanly
-        // -----------------------------------------------------------------------
         try {
             n = normalize(n);
 
@@ -136,21 +100,21 @@ public:
             if (std::fabs(n[0]) < 0.9) tmp = {1.0, 0.0, 0.0};
             else                        tmp = {0.0, 1.0, 0.0};
 
-            // First tangent: orthogonalize tmp against n
+            // First tangent
             const double ndot = dot(tmp, n);
             std::array<double,3> m1 = { tmp[0] - ndot*n[0],
                                         tmp[1] - ndot*n[1],
                                         tmp[2] - ndot*n[2] };
             m1 = normalize(m1);
 
-            // Second tangent: orthogonal to both
+            // Second tangent
             std::array<double,3> m2 = cross(n, m1);
             m2 = normalize(m2);
 
-            // Assemble rotation matrix (columns: n, m1, m2)
+            // Assemble columns: n, m1, m2
             std::array<std::array<double,3>,3> Rcols = { n, m1, m2 };
 
-            // Enforce right-handed system (det = +1)
+            // Enforce right-handed system
             double detR = det3x3(Rcols);
             if (detR < 0.0) {
                 m1[0] = -m1[0]; m1[1] = -m1[1]; m1[2] = -m1[2];
@@ -163,27 +127,28 @@ public:
                            "Rotation matrix is not orthogonal to machine precision.");
 
             // -------------------------------------------------------------------
-            // [NEW-2][NEW-3] Build 3x3 output array — column-major
-            //   R_out[i + j*3] = Rcols[j][i]   (same as original)
+            // [FIX-G] Build 3x3 output via flat std::vector (column-major),
+            //         then std::copy into TypedArray via iterators.
+            //         Direct R_out[k] subscripting on a {3,3} TypedArray
+            //         raises "Not enough indices provided" at runtime.
             // -------------------------------------------------------------------
-            TypedArray<double> R_out = factory.createArray<double>({3, 3});
-
-            std::size_t k = 0;
+            std::vector<double> Rbuf(9);
             for (int j = 0; j < 3; ++j)
-                for (int i = 0; i < 3; ++i, ++k)
-                    R_out[k] = Rcols[j][i];
+                for (int i = 0; i < 3; ++i)
+                    Rbuf[i + j*3] = Rcols[j][i];   // column-major
+
+            TypedArray<double> R_out = factory.createArray<double>({3, 3});
+            std::copy(Rbuf.begin(), Rbuf.end(), R_out.begin());
 
             outputs[0] = std::move(R_out);
 
         } catch (const std::runtime_error& e) {
-            // [NEW-1] Re-throw as MATLAB exception — RAII unwinds cleanly
             throwError("computeRot:mathError", e.what());
         }
     }
 
 private:
 
-    // [FIX-C] non-const refs — ArgumentList methods are not const-qualified
     void validateArguments(ArgumentList& outputs, ArgumentList& inputs)
     {
         if (inputs.size() != 1)
@@ -203,7 +168,6 @@ private:
                        "Input n must be a 3-element real vector.");
     }
 
-    // [FIX-E] createCharArray for strings; routes through MATLAB error()
     void throwError(const std::string& id, const std::string& msg)
     {
         getEngine()->feval(u"error", 0,
