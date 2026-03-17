@@ -1,5 +1,5 @@
 classdef linearSolver < handle
-   properties (Access = private)
+   properties (SetAccess = private, GetAccess = public)
 
       % Flag for debug
       DEBUGflag = false
@@ -54,6 +54,14 @@ classdef linearSolver < handle
 
          % Check if chronos is available
          ChronosDir = fullfile(gres_root,'ThirdPartyLibs','Chronos_Lab','sources');
+
+         % Possible the user wants to use matlab even if the size is sufficient
+         if isfield(generalsolver.simparams.linSolverParams, 'useMatlab')
+            if generalsolver.simparams.linSolverParams.useMatlab == 1
+               fprintf('The user requested the use of matlab\n');
+               return;
+            end
+         end
 
          if isfolder(ChronosDir)
             fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexa64');
