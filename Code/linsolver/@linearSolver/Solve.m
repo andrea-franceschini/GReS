@@ -37,17 +37,17 @@ function [x,flag] = Solve(obj,A,b,time)
    [globalsymm,maxval,symMat] = checkSymmetry(A,obj.nsyTol);
    
    if globalsymm == 0
-      % If the matrix is nonSymmetric the use always GMRES
+      % If the matrix is nonSymmetric then use always GMRES
       obj.SolverType = 'gmres';
       if obj.DEBUGflag
-         fprintf("The matrix is nonsymmetric with a maximum nonsymmetry of %e\n",maxval);
+         fprintf('The matrix is nonsymmetric with a maximum nonsymmetry of %e\n',maxval);
       end
    end
 
    % Have the linear solver compute the Preconditioner if necessary
    if(obj.requestPrecComp || obj.params.iter > 600 || obj.params.lastRelres > obj.params.tol*1e3)
       if obj.DEBUGflag
-         fprintf("Computing the preconditioner\n");
+         fprintf('Computing the preconditioner\n');
       end
 
       time_start = tic;
@@ -86,10 +86,25 @@ function [x,flag] = Solve(obj,A,b,time)
    end
 
    Tend = toc(startT);
+
+   % Save statistics for profiling or info in general
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
    obj.aIter = obj.aIter + obj.params.iter;
    obj.maxIter = max(obj.maxIter,obj.params.iter);
+
+   if obj.fullInfo
+      obj.iterLin(obj.nSolve) = obj.params.iter;
+      obj.timeLin(obj.nSolve) = time; 
+      obj.solveTLin(obj.nSolve) = Tend;
+      obj.newtonLin(obj.nSolve) = obj.generalsolver.iterNL;
+      obj.symFlagLin(obj.nSolve) = globalsymm;
+      if obj.params.iterSinceLastPrecComp == 0
+         obj.precCompLin(obj.nSolve) = T_setup;
+      else
+         obj.precCompLin(obj.nSolve) = 0;
+      end
+   end
 
    % Did not converge, if prec not computed for it try again
    if(flag == 1 && obj.params.iterSinceLastPrecComp > 0)
