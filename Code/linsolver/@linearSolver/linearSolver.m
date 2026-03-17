@@ -64,7 +64,12 @@ classdef linearSolver < handle
          end
 
          if isfolder(ChronosDir)
-            fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexa64');
+            if strcmp(computer('arch'),'maca64')
+               fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexmaca64');
+            else
+               fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexa64');
+            end
+            
             if ~isfile(fileMex)
                warning('Chronos_Lab submodule is present, but not compiled. Using matlab fallback');
                return;
