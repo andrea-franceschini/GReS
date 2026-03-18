@@ -39,7 +39,7 @@ bc.addBCEvent("bottomPressure",'time',0.0,'value',0.0);
 
 % top pressure - linear variation from t = 0.0 to t = 1.0
 bc.addBCEvent("topPressure",'time',0.0,'value',0.0);
-bc.addBCEvent("topPressure",'time',1.0,'value',10.0);
+bc.addBCEvent("topPressure",'time',10.0,'value',10.0);
 
 % discretizer
 domain = Discretizer('Boundaries', bc, ...

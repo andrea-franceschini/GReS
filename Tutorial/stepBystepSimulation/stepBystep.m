@@ -17,12 +17,13 @@ clear
 clc
 
 fileName = "model01/01_singlePhysics.xml";
+params = readInput(fileName);
 
 % Set parameters of the simulation
-simParam = SimulationParameters(fileName);
+simParam = SimulationParameters(params.SimulationParameters);
 
 % Create an object of the Materials class and read the materials file
-mat = Materials(fileName);
+mat = Materials(params.Materials);
 
 
 mesh = structuredMesh(20,20,10,[0 100],[0 100],[0 10]);
@@ -33,14 +34,14 @@ faces = Faces(mesh);
 grid = struct('topology',mesh,'cells',elems,'faces',faces);
 
 
-bound = Boundaries(fileName,grid);
+bound = Boundaries(grid,params.BoundaryConditions);
 
-printUtils = OutState(fileName);
+printUtils = OutState(params.Output);
 
 domain = Discretizer('Boundaries',bound,...
                      'Materials',mat,...
                      'Grid',grid);
-domain.addPhysicsSolver(fileName);
+domain.addPhysicsSolvers(params.Solver);
 
 solver = NonLinearImplicit('simulationparameters',simParam,...
                            'domains',domain,...
@@ -53,12 +54,13 @@ clear
 clc
 
 fileName = "model02/02_moreMaterials.xml";
+params = readInput(fileName);
 
 % Set parameters of the simulation
-simParam = SimulationParameters(fileName);
+simParam = SimulationParameters(params.SimulationParameters);
 
 % Create an object of the Materials class and read the materials file
-mat = Materials(fileName);
+mat = Materials(params.Materials);
 
 
 mesh = structuredMesh(20,20,10,[0 100],[0 100],[0 10]);

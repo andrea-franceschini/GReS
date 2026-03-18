@@ -1,6 +1,6 @@
 <Problem>
 
-  <!-- single domain -->
+  % single domain 
   <Domain>
     <Geometry meshFile="Input/ReservoirTest_Hexa.msh"/>
     <Gauss nGP="2"/>
@@ -14,7 +14,7 @@
     </Solver>
   </Domain>
 
-  <!-- global settings -->
+  % global settings (not domain specific)
   <SimulationParameters fileName="Input/simParams.xml"/>
 
   <Output

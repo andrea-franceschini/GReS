@@ -213,10 +213,33 @@ classdef Mesh < handle
 
     function mesh = create(varargin)
 
-      % general purpose method that generate a grid from xml input
+      % CREATE  Generate a mesh from an XML input struct or name-value pairs.
+      %
+      %   MESH = CREATE(INPUT) dispatches to the appropriate mesh constructor
+      %   based on which field is present in INPUT:
+      %     - 'meshFile'            : import mesh from file
+      %     - 'StructuredMesh'      : build a uniform Cartesian hexahedral mesh
+      %     - 'BlockStructuredMesh' : build a block-structured hexahedral mesh
+      %
+      % -------------------------------------------------------------------------
+      % INPUTS (name-value or struct fields)
+      %   meshFile             - path to an existing mesh file  [string]
+      %
+      %   StructuredMesh       - sub-struct with fields:
+      %                            .NX, .NY, .NZ  number of cells along x, y, z
+      %                            .LX, .LY, .LZ  extents [min, max]  (1x2 each)
+      %
+      %   BlockStructuredMesh  - sub-struct with fields:
+      %                            .NX, .NY, .NZ  number of cells per block
+      %                            .LX, .LY, .LZ  extents [min, max]  (1x2 each)
+      %                            .depth         refinement depth (default: 2)
+      %
+      % -------------------------------------------------------------------------
+      % OUTPUT
+      %   mesh  - Mesh object built by the selected constructor
       default = struct('meshFile',missing,...
-                       'StructuredMesh',missing,...
-                       'BlockStructuredMesh',missing);
+        'StructuredMesh',missing,...
+        'BlockStructuredMesh',missing);
 
       input = readInput(default,varargin{:});
 
