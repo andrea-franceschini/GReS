@@ -1,7 +1,7 @@
 close all;
 % clear;
-output_dir = 'Outputs';
-input_dir = 'Inputs';
+output_dir = 'Output';
+input_dir = 'Input';
 figures_dir = fullfile(output_dir,"Images");
 
 %% ------------------------------ Set up the Domain -----------------------
@@ -33,48 +33,36 @@ for i=1:length(meshList)
     grid = struct('topology',topology,'cells',elems,'faces',faces);
 
     % Creating boundaries conditions.
-    bound = Boundaries(fullfile(input_dir,'boundaries.xml'),grid);
+    bound = Boundaries(grid,fullfile(input_dir,'boundaries.xml'));
 
     % ------------------ Set up and Calling the Solver -----------------------
     % Create and set the print utility
-    printUtils = OutState(topology,fullfile(input_dir,'outputMeshConv.xml'));
+    printUtils = OutState(fullfile(input_dir,'outputMeshConv.xml'));
 
     % Create object handling construction of Jacobian and rhs of the model
     domain = Discretizer('Grid',grid,...
                          'Materials',mat,...
-                         'Boundaries',bound,...
-                         'OutState',printUtils);
+                         'Boundaries',bound);
 
-    domain.addPhysicsSolver(fullfile(input_dir,'solver.xml'));
+    domain.addPhysicsSolver('VariablySaturatedFlow');
 
-    % set initial conditions directly modifying the state object
+    % Set initial conditions directly modifying the state object
     domain.state.data.pressure(:) = -9.8066e4;
 
-    % The modular structure of the discretizer class allow the user to easily
-    % customize the solution scheme.
-    % Here, a built-in fully implict solution scheme is adopted with class
-    % FCSolver. This could be simply be replaced by a user defined function
-    % Solver = FCSolver(domain);
-    Solver = GeneralSolver(simParam,domain);
+    % Set and solve the simulation
+    solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils);
+    solver.simulationLoop();
 
-    % Solve the problem
-    Solver.NonLinearLoop();
-
-    % Finalize the print utility
-    printUtils.finalize()
-
-    % Retriving the analisys information
-    pressure = printUtils.results(1).pressure;
-    saturation = printUtils.results(1).saturation;
-
-    %Getting pressure and saturation solution for specified time from MatFILE
+    % Saving the analysis information
     numb = 0.;
     tol = 0.01;
     nodesP = find(abs(elems.mesh.cellCentroid(:,1)-numb) < tol & abs(elems.mesh.cellCentroid(:,2)-numb) < tol);
 
     result(i).height = elems.mesh.cellCentroid(nodesP,3);
-    result(i).pressure = pressure(nodesP);
-    result(i).saturation = saturation(nodesP);
+    result(i).pressure = printUtils.results(1).pressure(nodesP);
+    result(i).saturation = printUtils.results(1).saturation(nodesP);
 
     clearvars -except input_dir figures_dir model simParam mat result meshList i
 end
