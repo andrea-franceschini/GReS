@@ -1,5 +1,42 @@
 function mesh = structuredMesh(NX,NY,NZ,Lx,Ly,Lz)
-% Return cartesian structured hexahedral grid
+% STRUCTUREDMESH  Build a Cartesian structured hexahedral mesh.
+%
+%   MESH = STRUCTUREDMESH(NX, NY, NZ, Lx, Ly, Lz) creates a uniform mesh
+%   with NX x NY x NZ cells over the axis-aligned box defined by the
+%   coordinate ranges Lx, Ly, Lz.
+%
+%   MESH = STRUCTUREDMESH(X, Y, Z) creates a mesh whose node positions are
+%   given explicitly by the coordinate vectors X, Y, Z.
+%
+% -------------------------------------------------------------------------
+% INPUTS (uniform spacing)
+%   NX, NY, NZ  - number of cells along x, y, z  [positive integers]
+%   Lx          - x extent: [x_min, x_max]        [1x2 double]
+%   Ly          - y extent: [y_min, y_max]         [1x2 double]
+%   Lz          - z extent: [z_min, z_max]         [1x2 double]
+%
+% INPUTS (prescribed spacing)
+%   NX, NY, NZ  - node coordinate vectors along x, y, z  [double arrays]
+%
+% -------------------------------------------------------------------------
+% OUTPUT
+%   mesh  - Mesh object with fields:
+%             .coordinates    (nNodes x 3)  node x/y/z coordinates
+%             .cells          (nCells x 8)  hexahedral connectivity (VTK order)
+%             .surfaces       (nSurf  x 4)  boundary quad connectivity
+%             .surfaceTag     (nSurf  x 1)  boundary patch identifier:
+%                               1 = bottom (z_min)   2 = top    (z_max)
+%                               3 = south  (y_min)   4 = north  (y_max)
+%                               5 = west   (x_min)   6 = east   (x_max)
+%             .cellTag        (nCells x 1)  cell region tag (all 1)
+%             .nNodes, .nCells, .nSurfaces, .nDim
+%             .cellVTKType    VTK element type 12 (hexahedron)
+%             .surfaceVTKType VTK element type  9 (quad)
+%
+% -------------------------------------------------------------------------
+% EXAMPLES
+%   % Uniform 10x5x3 mesh on [0,1] x [0,0.5] x [0,0.3]
+%   mesh = structuredMesh(10, 5, 3, [0 1], [0 0.5], [0 0.3]);
 
 if nargin == 6
   % uniformly spaced grid
