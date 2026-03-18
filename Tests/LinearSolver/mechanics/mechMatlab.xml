@@ -41,20 +41,40 @@ in a nonConforming simulation.
 
   <BoundaryConditions>
     <BC
-        name = "pressureBC"
+        name = "fixBottom"
         type = "Dirichlet"
-        field = "cell"
-        variable = "pressure"
-        entityListType = "box"
-        entityList = "50,55,50,55,5,6"
+        field = "surface"
+        variable = "displacements"
+        entityListType = "tag"
+        entityList = "1"
+        components = "x,y,z"
        >
 
       <BCevent
                time = "0"
-               value = "100"
+               value = "0"
                />
     </BC>
 
+     <BC
+        name = "verticalLoad"
+        type = "Neumann"
+        field = "surface"
+        variable = "displacements"
+        entityListType = "tag"
+        entityList = "2"
+        components = "z"
+       >
+
+      <BCevent
+               time = "0"
+               value = "0"
+               />
+       <BCevent
+               time = "2"
+               value = "-1"
+               />
+    </BC>
   </BoundaryConditions>
 
 
@@ -67,6 +87,6 @@ in a nonConforming simulation.
 
 
   <Solver>
-    <SinglePhaseFlowFVTPFA />
+    <Poromechanics />
   </Solver>
 </Problem>

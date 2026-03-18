@@ -7,7 +7,7 @@ in a nonConforming simulation.
 
    <SimulationParameters
       Start="0."
-      End ="10.0"
+      End ="2.0"
       DtInit="0.25"
       DtMin ="1e-5"
       DtMax ="0.5"
@@ -16,51 +16,65 @@ in a nonConforming simulation.
       RelativeTolerance = "1.e-6"
       AbsoluteTolerance = "1.e-8"
       >
-      <LinearSolver>
-         <Flow>
-            <amg
-               maxNlevel="5"
-               maxCoarseSize="1000"
-            />
-         </Flow>
+      <LinearSolver
+         useMatlab="0">
       </LinearSolver>
   </SimulationParameters>
 
 
   <Materials >
 
-    <Solid name = "sand" cellTags = "1">
-      <PorousRock
-                  porosity="0.3"
-                  specificWeight="21"
-                  permeability="1e-11"/>
-    </Solid>
+    <Solid cellTags = "1" name = "mat">
 
-    <Fluid
-           specificWeight = "0.0"
-           compressibility = "4.4e-7"
-           dynamicViscosity = "1.0e-6"
-           />
+    <Constitutive>
+
+      <Elastic
+               youngModulus = "5000.0"
+               poissonRatio = "0.3"
+               />
+    </Constitutive>
+
+  </Solid>
   </Materials>
 
 
 
   <BoundaryConditions>
     <BC
-        name = "pressureBC"
+        name = "fixBottom"
         type = "Dirichlet"
-        field = "cell"
-        variable = "pressure"
-        entityListType = "box"
-        entityList = "50,55,50,55,5,6"
+        field = "surface"
+        variable = "displacements"
+        entityListType = "tag"
+        entityList = "1"
+        components = "x,y,z"
        >
 
       <BCevent
                time = "0"
-               value = "100"
+               value = "0"
                />
     </BC>
 
+     <BC
+        name = "verticalLoad"
+        type = "Neumann"
+        field = "surface"
+        variable = "displacements"
+        entityListType = "tag"
+        entityList = "2"
+        components = "z"
+       >
+
+      <BCevent
+               time = "0"
+               value = "0"
+               />
+       <BCevent
+               time = "2"
+               value = "-1"
+               />
+    </BC>
   </BoundaryConditions>
 
 
@@ -73,6 +87,6 @@ in a nonConforming simulation.
 
 
   <Solver>
-    <SinglePhaseFlowFVTPFA />
+    <Poromechanics />
   </Solver>
 </Problem>

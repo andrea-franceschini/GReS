@@ -52,6 +52,10 @@ in a nonConforming simulation.
 
       <BCevent
                time = "0"
+               value = "1"
+               />
+       <BCevent
+               time = "2"
                value = "100"
                />
     </BC>

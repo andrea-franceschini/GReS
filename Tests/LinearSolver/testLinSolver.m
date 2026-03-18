@@ -31,22 +31,22 @@ nn = [16,25,35,45,55];
 linsolverTime = zeros(2,length(nn));
 for i = 1:length(nn)
    mesh = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
-   
+
    gaussOrder = 2;
    elems = Elements(mesh,gaussOrder);
    faces = Faces(mesh);
    gridd = struct('topology',mesh,'cells',elems,'faces',faces);
-   
-   
+
+
    bound = Boundaries(gridd,params.BoundaryConditions);
-   
+
    printUtils = OutState(params.Output);
-   
+
    domain = Discretizer('Boundaries',bound,...
                         'Materials',mat,...
                         'Grid',gridd);
    domain.addPhysicsSolvers(params.Solver);
-   
+
    solver = NonLinearImplicit('simulationparameters',simParam,...
                               'domains',domain,...
                               'output',printUtils);
@@ -74,22 +74,22 @@ mat = Materials(params.Materials);
 
 for i = 1:length(nn)
    mesh = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
-   
+
    gaussOrder = 2;
    elems = Elements(mesh,gaussOrder);
    faces = Faces(mesh);
    gridd = struct('topology',mesh,'cells',elems,'faces',faces);
-   
-   
+
+
    bound = Boundaries(gridd,params.BoundaryConditions);
-   
+
    printUtils = OutState(params.Output);
-   
+
    domain = Discretizer('Boundaries',bound,...
                         'Materials',mat,...
                         'Grid',gridd);
    domain.addPhysicsSolvers(params.Solver);
-   
+
    solver = NonLinearImplicit('simulationparameters',simParam,...
                               'domains',domain,...
                               'output',printUtils);
@@ -128,26 +128,26 @@ mat = Materials(params.Materials);
 
 
 % Number of nodes for one dimension
-nn = [16,25,35,45,55];
+nn = [8,12,16,20,24];
 linsolverTime = zeros(2,length(nn));
 for i = 1:length(nn)
    mesh = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
-   
+
    gaussOrder = 2;
    elems = Elements(mesh,gaussOrder);
    faces = Faces(mesh);
    gridd = struct('topology',mesh,'cells',elems,'faces',faces);
-   
-   
+
+
    bound = Boundaries(gridd,params.BoundaryConditions);
-   
+
    printUtils = OutState(params.Output);
-   
+
    domain = Discretizer('Boundaries',bound,...
                         'Materials',mat,...
                         'Grid',gridd);
    domain.addPhysicsSolvers(params.Solver);
-   
+
    solver = NonLinearImplicit('simulationparameters',simParam,...
                               'domains',domain,...
                               'output',printUtils);
@@ -175,22 +175,22 @@ mat = Materials(params.Materials);
 
 for i = 1:length(nn)
    mesh = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
-   
+
    gaussOrder = 2;
    elems = Elements(mesh,gaussOrder);
    faces = Faces(mesh);
    gridd = struct('topology',mesh,'cells',elems,'faces',faces);
-   
-   
+
+
    bound = Boundaries(gridd,params.BoundaryConditions);
-   
+
    printUtils = OutState(params.Output);
-   
+
    domain = Discretizer('Boundaries',bound,...
                         'Materials',mat,...
                         'Grid',gridd);
    domain.addPhysicsSolvers(params.Solver);
-   
+
    solver = NonLinearImplicit('simulationparameters',simParam,...
                               'domains',domain,...
                               'output',printUtils);
