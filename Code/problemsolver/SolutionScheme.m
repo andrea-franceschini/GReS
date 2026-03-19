@@ -397,11 +397,11 @@ classdef (Abstract) SolutionScheme < handle
           if obj.output.writeSolution
 
             for i = 1:obj.nDom
-              obj.domains(i).writeMatFile(fac,obj.output.timeID);
+              obj.domains(i).writeSolution(fac,obj.output.timeID);
             end
 
             for i = 1:obj.nInterf
-              obj.interfaces{i}.writeMatFile(fac,obj.output.timeID);
+              obj.interfaces{i}.writeSolution(fac,obj.output.timeID);
             end
           end
 

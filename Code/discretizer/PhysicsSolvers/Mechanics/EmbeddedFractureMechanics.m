@@ -365,7 +365,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     end
 
-    function writeMatFile(obj,fac,tID)
+    function writeSolution(obj,fac,tID)
 
       jumpOld = getStateOld(obj,obj.getField());
       jumpCurr = getState(obj,obj.getField());

@@ -161,7 +161,7 @@ classdef Poisson < PhysicsSolver
 
     end
 
-    function writeMatFile(obj,fac,tID)
+    function writeSolution(obj,fac,tID)
 
       uOld = getStateOld(obj,obj.getField());
       uCurr = getState(obj,obj.getField());

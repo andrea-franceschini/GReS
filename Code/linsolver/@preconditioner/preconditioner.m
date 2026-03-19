@@ -75,8 +75,8 @@ classdef preconditioner < handle
          multiPhysFlag = false;
          if(domainin(1).dofm.getNumberOfVariables() > 1) && isempty(physname)
             multiPhysFlag = true; %#ok<NASGU>
-            warning('Multiphysics not yet supported');
-            disp(domainin(1).dofm.getVariableNames())
+            gresLog().warning(3,'Multiphysics not yet supported');
+            gresLog().log(3,domainin(1).dofm.getVariableNames());
             return
          end
 

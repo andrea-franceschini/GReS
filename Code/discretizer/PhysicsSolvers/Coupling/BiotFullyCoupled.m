@@ -227,10 +227,10 @@ classdef BiotFullyCoupled < PhysicsSolver
 
     end
 
-    function writeMatFile(obj,fac,tID)
+    function writeSolution(obj,fac,tID)
 
-      obj.flowSolver.writeMatFile(fac,tID);
-      obj.mechSolver.writeMatFile(fac,tID);
+      obj.flowSolver.writeSolution(fac,tID);
+      obj.mechSolver.writeSolution(fac,tID);
 
 
     end

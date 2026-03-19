@@ -17,7 +17,8 @@ classdef OutState < handle & matlab.mixin.Copyable
     timeList
     matFileName
     vtkFileName
-    writeSolution = false
+    writeSolution = true
+    writeMatFile = false
     isFolderReady = false
   end
 
@@ -26,7 +27,6 @@ classdef OutState < handle & matlab.mixin.Copyable
     function obj = OutState(varargin)
 
       if nargin == 0
-        obj.writeVtk = false;
         obj.writeSolution = false;
       else
         obj.setOutState(varargin{:})
@@ -83,6 +83,14 @@ classdef OutState < handle & matlab.mixin.Copyable
 
     function finalize(obj)
 
+      savePvd(obj);
+
+      saveHistory(obj);
+
+    end
+
+    function savePvd(obj)
+
       % write the pvd file
       if obj.writeVtk
 
@@ -110,16 +118,13 @@ classdef OutState < handle & matlab.mixin.Copyable
         xmlwrite(fileName, pvd);
 
       end
-
-      if obj.writeSolution && ~isempty(obj.matFileName)
-        saveHistory(obj);
-      end
-
     end
 
     function saveHistory(obj)
+      if obj.writeMatFile
       output = obj.results;
       save(strcat(obj.matFileName,'.mat'),"output")
+      end
     end
 
   end
@@ -130,7 +135,8 @@ classdef OutState < handle & matlab.mixin.Copyable
 
       default = struct('outputFile',missing,...
                        'matFileName',missing,...
-                       'printTimes',missing);
+                       'printTimes',missing,...
+                       'saveHistory',missing);
 
       params = readInput(default,varargin{:});
 
@@ -141,12 +147,19 @@ classdef OutState < handle & matlab.mixin.Copyable
 
       if ~ismissing(params.matFileName)
         obj.matFileName = params.matFileName;
-        obj.writeSolution = true;
+        obj.writeMatFile = true;
       end
 
-      %obj.writeSolution = logical(params.saveHistory);
 
-      if any([obj.writeSolution,obj.writeVtk])
+      if ~any(ismissing(params.saveHistory))
+        sh = params.saveHistory;
+        if ~isnumeric(params.saveHistory)
+          sh = str2double(sh);
+        end
+        obj.writeSolution = logical(sh);
+      end
+
+      if any([obj.writeSolution,obj.writeVtk,obj.writeMatFile])
         assert(~any(ismissing(params.printTimes)),"Print times are required when specifying output files");
         t = readInput(struct('printTimes',double.empty),varargin{:});
         obj.timeList = t.printTimes;

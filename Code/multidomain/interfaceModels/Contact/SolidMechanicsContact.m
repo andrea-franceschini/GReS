@@ -296,7 +296,7 @@ classdef SolidMechanicsContact < MeshTying
       surfaceStr = cell2struct(entries, {'name','data'}, 2);
     end
 
-    function writeMatFile(obj,fac,tID)
+    function writeSolution(obj,fac,tID)
 
       outTraction = fac*obj.state.traction + ...
         (1-fac)*obj.stateOld.traction;

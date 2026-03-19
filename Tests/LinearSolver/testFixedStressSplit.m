@@ -62,7 +62,7 @@ simParam = SimulationParameters(params.SimulationParameters);
 % Create an object of the Materials class and read the materials file
 mat = Materials(params.Materials);
 
-nn = [8,12,16,20];
+nn = [8,12,16];
 linsolverTime = zeros(3,length(nn));
 for i = 1:length(nn)
    mesh = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
