@@ -1,4 +1,54 @@
 classdef linearSolver < handle
+% LINEARSOLVER  Wrapper around external (Chronos) and MATLAB linear solvers.
+%
+%   This class manages optional preconditioning, solver configuration,
+%   timing and statistics for preconditioner construction and linear solves.
+%
+%   PROPERTIES (public get, private set):
+%     DEBUGflag        - Flag for debug output (logical)
+%     matlabMaxSize    - Threshold size to force MATLAB solver (numeric)
+%     nsyTol           - Numerical symmetry tolerance (numeric)
+%     ChronosFlag      - True if Chronos preconditioner is available (logical)
+%     requestPrecComp  - Request preconditioner computation (logical)
+%     x0               - Starting vector for iterative solvers (numeric vector)
+%     SolverType       - Solver type string (e.g., 'gmres')
+%     Prec             - Preconditioner object (Chronos wrapper)
+%     generalsolver    - Reference to the nonlinear solver object
+%     iterConfigOld    - Configuration flag for iterative solver reuse
+%     whenComputed     - Times at which preconditioner was computed
+%     aTimeComp        - Accumulated time spent computing preconditioner
+%     aTimeSolve       - Accumulated time spent solving linear systems
+%     nSolve           - Number of solves performed
+%     nComp            - Number of preconditioner computations performed
+%     maxIter          - Maximum iterations observed across solves
+%     aIter            - Accumulated iteration counts
+%     iterLin          - Per-solve iteration counts (when fullInfo)
+%     solveTLin        - Per-solve solve times (when fullInfo)
+%     symFlagLin       - Per-solve symmetry flags (when fullInfo)
+%     precCompLin      - Per-solve preconditioner computation flags (when fullInfo)
+%     newtonLin        - Per-solve Newton step indices (when fullInfo)
+%     timeLin          - Per-solve timestamps (when fullInfo)
+%     params           - Struct of solver parameters (tol, maxit, restart, ...)
+%
+%   METHODS:
+%     linearSolver(generalsolver, physname)
+%       Constructor. Checks for Chronos library and compiled mex, creates
+%       the preconditioner object when supported, reads default Chronos XML
+%       settings, and initializes solver parameters. Sets ChronosFlag=false
+%       if Chronos is unavailable or useMatlab is forced via
+%       generalsolver.simparams.linSolverParams.useMatlab.
+%
+%     printStats()
+%       Prints accumulated statistics for preconditioner construction and
+%       linear solves. When fullInfo is enabled, also prints a per-solve
+%       table of timing, iterations, symmetry flag and preconditioner
+%       computation time.
+%
+%     Solve(obj, A, b, time)
+%       Solves the linear system A*x = b using the configured solver and
+%       preconditioner. Returns solution x and a convergence flag.
+%
+
    properties (SetAccess = private, GetAccess = public)
 
       % Flag for debug
