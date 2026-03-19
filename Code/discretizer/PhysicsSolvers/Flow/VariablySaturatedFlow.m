@@ -98,7 +98,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       end
     end
 
-    function writeMatFile(obj,fac,tID)
+    function writeSolution(obj,fac,tID)
       satOld = getStateOld(obj,"saturation");
       satCurr = getState(obj,"saturation");
       pOld = getStateOld(obj,"pressure");

@@ -63,7 +63,7 @@ classdef preconditioner < handle
    methods (Static,Access = public)
 
       % Constructor of the preconditioner object, specifies if it cannot be used as not supported
-      function [obj, useChronos] = create(debugflag,nsyTol,generalsolver,usrInput,physname)
+      function [obj, useChronos] = create(debugflag,nsyTol,generalsolver,physname)
 
          % Initialize an empty class
          obj = preconditioner.empty;
@@ -73,10 +73,10 @@ classdef preconditioner < handle
 
          % Check if the problem comes from multiphysics
          multiPhysFlag = false;
-         if(domainin(1).dofm.getNumberOfVariables() > 1)
+         if(domainin(1).dofm.getNumberOfVariables() > 1) && isempty(physname)
             multiPhysFlag = true; %#ok<NASGU>
-            warning('Multiphysics not yet supported');
-            disp(domainin(1).dofm.getVariableNames())
+            gresLog().warning(3,'Multiphysics not yet supported');
+            gresLog().log(3,domainin(1).dofm.getVariableNames());
             return
          end
 
@@ -85,6 +85,8 @@ classdef preconditioner < handle
          % Check the number of interfaces and domains
          if nInt ~= 0
             interfacein = generalsolver.interfaces;
+         else
+            interfacein = {};
          end
 
          % Select the physics, check if asked by user directly
@@ -126,7 +128,7 @@ classdef preconditioner < handle
          end
 
          % Now the preconditioner can actually be built, the checks have been passed
-         obj = preconditioner(debugflag,nsyTol,generalsolver,multiPhysFlag,phys,usrInput);
+         obj = preconditioner(debugflag,nsyTol,generalsolver,multiPhysFlag,phys);
          useChronos = true;
       end
 
@@ -135,7 +137,7 @@ classdef preconditioner < handle
    methods (Access = private)
 
       % Constructor Function
-      function obj = preconditioner(debugflag,nsyTol,generalsolver,multiPhysFlag,phys,usrInput)
+      function obj = preconditioner(debugflag,nsyTol,generalsolver,multiPhysFlag,phys)
 
          % Use the debugflag set into the linearsolver
          obj.DEBUGflag = debugflag;
@@ -155,7 +157,7 @@ classdef preconditioner < handle
          end
 
          % Read Defaults
-         data = readstruct(chronos_xml_default,AttributeSuffix="");
+         data = readInput(chronos_xml_default);
 
          % Get the preconditioner type
          obj.PrecType = lower(data.preconditioner);
@@ -183,7 +185,7 @@ classdef preconditioner < handle
          obj.params.filter.np = min(obj.params.filter.np,obj.maxThreads);
 
          % Get user prescribed values
-         obj.params = obj.getUserInput(obj.params,usrInput);
+         obj.params = obj.getUserInput(obj.params,obj.generalsolver.simparams.linSolverParams);
 
       end
 

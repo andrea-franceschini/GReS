@@ -1,10 +1,43 @@
-function [x,flag] = Solve(obj,A,b,time)
-% Function for the solution of the system
-% note that the A passed here might be slightly different than the one passed in the computationi of the preconditioner
-% if the two As differ too much the preconditioner loses effectiveness. Must be recomputed
-
-% A is passed directly as a cell array, meaning it is already split in the various blocks (A11,A12,A21,A22 for a 
-% single physics single domain with lagrange multipliers) 
+function [x,flag] = SolveLin(obj,A,b,time)
+% This file implements a Solve method and related utilities intended to be
+% used as part of a linear solver class (linsolver). The Solve function
+% orchestrates choosing between internal MATLAB direct solve and an external
+% iterative solver (Chronos), manages preconditioner computation and reuse,
+% gathers timing/iteration statistics, and handles fallback/retry logic.
+%
+% Relationship with linsolver class:
+% - The code expects to be a method of an object "obj" that encapsulates the
+%   solver state and configuration.
+% - Prec is expected to be an object with methods Compute and function
+%   handles Apply_L and Apply_R used as left/right preconditioners.
+% - The linsolver class should provide gmres_RIGHT and SQMR wrappers or
+%   have them available on the path. The code also relies on helper
+%   utilities cell2matrix, fixPattern, and checkSymmetry.
+% - Solve manages recursive calls to itself when it requests a
+%   recomputation of the preconditioner and retrying the solve.
+%
+% Usage:
+% - Call as: [x,flag] = obj.Solve(Acell,b,currentTime)
+%   where Acell is a cell array of blocks representing the system matrix,
+%   b is the right-hand side, and currentTime is a scalar timestamp used
+%   for profiling (e.g., simulation time).
+%
+% Notes and behaviour details:
+% - For small problems or when Chronos (external iterative solver) is not
+%   available, the method falls back to matlab_solve which uses the direct
+%   backslash on the assembled matrix.
+% - If the matrix is detected non-symmetric, SolverType is forced to 'gmres'.
+% - The preconditioner is computed when requested or when convergence
+%   metrics indicate poor performance (high iteration counts or large
+%   relative residual). The decision logic is encoded using fields in obj.
+% - After a failed solve (flag == 1), the method may attempt to recompute
+%   the preconditioner and retry once. If MATLAB direct solve succeeds but
+%   Chronos does not, the code saves a snapshot ('new_problem.mat') and
+%   raises an error to aid debugging.
+% - Note that the A passed here might be slightly different than the one passed in the computation of the preconditioner
+%   if the two As differ too much the preconditioner loses effectiveness. Must be recomputed
+% - A is passed directly as a cell array, meaning it is already split in the various blocks (A11,A12,A21,A22 for a
+%   single physics single domain with lagrange multipliers)
    
    if obj.DEBUGflag
       A
@@ -36,17 +69,17 @@ function [x,flag] = Solve(obj,A,b,time)
    [globalsymm,maxval,symMat] = checkSymmetry(A,obj.nsyTol);
    
    if globalsymm == 0
-      % If the matrix is nonSymmetric the use always GMRES
+      % If the matrix is nonSymmetric then use always GMRES
       obj.SolverType = 'gmres';
       if obj.DEBUGflag
-         fprintf("The matrix is nonsymmetric with a maximum nonsymmetry of %e\n",maxval);
+         fprintf('The matrix is nonsymmetric with a maximum nonsymmetry of %e\n',maxval);
       end
    end
 
    % Have the linear solver compute the Preconditioner if necessary
    if(obj.requestPrecComp || obj.params.iter > 600 || obj.params.lastRelres > obj.params.tol*1e3)
       if obj.DEBUGflag
-         fprintf("Computing the preconditioner\n");
+         fprintf('Computing the preconditioner\n');
       end
 
       time_start = tic;
@@ -85,10 +118,30 @@ function [x,flag] = Solve(obj,A,b,time)
    end
 
    Tend = toc(startT);
+
+   % Save statistics for profiling or info in general
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
    obj.aIter = obj.aIter + obj.params.iter;
    obj.maxIter = max(obj.maxIter,obj.params.iter);
+
+   if obj.fullInfo
+      obj.iterLin(obj.nSolve) = obj.params.iter;
+      obj.timeLin(obj.nSolve) = time; 
+      obj.solveTLin(obj.nSolve) = Tend;
+      if exist('obj.generalsolver.iterNL','var')
+         obj.newtonLin(obj.nSolve) = obj.generalsolver.iterNL;
+      else
+         obj.newtonLin(obj.nSolve) = obj.nSolve;
+      end
+
+      obj.symFlagLin(obj.nSolve) = globalsymm;
+      if obj.params.iterSinceLastPrecComp == 0
+         obj.precCompLin(obj.nSolve) = T_setup;
+      else
+         obj.precCompLin(obj.nSolve) = 0;
+      end
+   end
 
    % Did not converge, if prec not computed for it try again
    if(flag == 1 && obj.params.iterSinceLastPrecComp > 0)
@@ -194,18 +247,20 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
    
    % Base Case: Numeric Matrix
    if ~iscell(A)
-       diff_mat = abs(A - A') - eps1 .* abs(A);
-       diff_vec = diff_mat(diff_mat > 0);
-       
-       if isempty(diff_vec)
-           maxval = 0;
-           globalsymm = 1;
-       else
-           maxval = max(diff_vec);
-           globalsymm = 0;
-       end
-       symMat = globalsymm;
-       return
+
+      diffnorm = norm(A-A','f');
+      Anorm = norm(A,'f');
+      relNorm = diffnorm/Anorm;
+
+      if relNorm < eps1
+         maxval = 0;
+         globalsymm = 1;
+      else
+         maxval = relNorm;
+         globalsymm = 0;
+      end
+      symMat = globalsymm;
+      return
    end
    
    % Allocate the stuff
@@ -220,17 +275,19 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
          if i == j
             % Diagonal Block
             [symm(cont), val(cont)] = checkSymmetry(A{i,i},eps1);
-         else
+         elseif ~isempty(A{i,j})
             % Off-Diagonal Block
-            diff_mat = abs(A{i,j} - A{j,i}') - eps1 .* abs(A{i,j});
-            diff_vec = diff_mat(diff_mat > 0);
+            diffnorm = norm(A{i,j}-A{j,i}','f');
+            Anorm = norm(A{i,j},'f');
+            relNorm = diffnorm/Anorm;
             
-            if isempty(diff_vec)
+            
+            if relNorm < eps1
                 symm(cont) = 1;
                 val(cont) = 0;
             else
                 symm(cont) = 0;
-                val(cont) = max(diff_vec);
+                val(cont) = relNorm < eps1;
             end
          end
          cont = cont + 1;
@@ -246,31 +303,25 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
    maxval = max(val);
 end
 
+
 function [A] = fixPattern(A)
-   N = size(A,1);
+   N = size(A, 1);
    for j = 1:N
       for i = 1:j
          patt = spones(A{i,j}) - spones(A{j,i}');
          if nnz(patt)
-            mask1 = (patt ==  1);
-            mask2 = (patt == -1);
-            
+            mask1 = (patt ==  1);  % in A{i,j} but not A{j,i}'
+            mask2 = (patt == -1);  % in A{j,i}' but not A{i,j}
             if i ~= j
-               % Non diagonal block, fix also the symmetric counterpart
-               A{j,i}(mask1') = A{i,j}(mask1) * eps;
-               A{i,j}(mask2) = (A{j,i}(mask2') * eps)';
+               A{j,i} = A{j,i} + (A{i,j} .* mask1)' * eps;
+               A{i,j} = A{i,j} + (A{j,i} .* mask2')' * eps;
+
                patt = spones(A{i,j}) - spones(A{j,i}');
                if nnz(patt) ~= 0
-                  error('nsy patt found');
+                  error('asymmetric pattern found');
                end
             else
-               % Diagonal blocks
-               % Get the union of mask1 with the transposed mask2 to get
-               % the total true masking as if the matrix is truly
-               % nonsimmetric only in one direction only mask1 or mask2 is
-               % insufficient
-               pattern = mask1 | mask2';
-               A{i,i}(pattern') = A{i,i}(pattern) * eps;
+               A{i,i} = A{i,i} + (A{i,i} .* mask1)' * eps;
             end
          end
       end

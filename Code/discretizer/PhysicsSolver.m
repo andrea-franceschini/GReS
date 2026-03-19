@@ -75,7 +75,7 @@ classdef (Abstract) PhysicsSolver < handle
     [cellData,pointData] = writeVTK(obj,interpolationFactor,t);
 
     % write history to MAT-file
-    writeMatFile(obj,interpolationFactor,tID);
+    writeSolution(obj,interpolationFactor,tID);
 
   end
 

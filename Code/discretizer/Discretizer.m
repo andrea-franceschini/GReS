@@ -434,12 +434,12 @@ classdef Discretizer < handle
     end
 
 
-    function writeMatFile(obj,fac,timeID)
+    function writeSolution(obj,fac,timeID)
       % write to MAT-file
       obj.outstate.results(timeID).time = obj.outstate.timeList(timeID);
 
       for solv = obj.solverNames
-        getPhysicsSolver(obj,solv).writeMatFile(fac,timeID);
+        getPhysicsSolver(obj,solv).writeSolution(fac,timeID);
       end
     end
 

@@ -79,7 +79,7 @@ classdef (Abstract) InterfaceSolver < handle
     [cellData,pointData] = writeVTK(obj,t);
 
     % write history to MAT-file
-    writeMatFile(obj,t,tID);
+    writeSolution(obj,t,tID);
 
   end
 

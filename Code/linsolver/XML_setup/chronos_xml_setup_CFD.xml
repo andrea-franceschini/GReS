@@ -45,8 +45,7 @@
 		nnzr_max="30"
 		itmax_emin="10"
 		energ_tol="1e-3"
-		condmax_emin="1e100"
-		maxwgt_emin="1e100"
+		condmax_emin="1e5"
 		prec_emin="1"
 		solv_emin="4"
 		min_lfil="0"
@@ -64,8 +63,8 @@
 	<!-- TEST SPACE parameters -->
 	<tspace
 		ntv="1"
-		itmax="100"
-		tol="1.e-8"
+		itmax="30"
+		tol="1.e-6"
 		method="SRQCG"
 		init_approx="5"
 	/>
