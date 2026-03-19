@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Materials>
+  <Solid cellTags = "1">
+    <Constitutive>
+      <Elastic
+          youngModulus = "0.035714285714286"
+          poissonRatio = "0.35"
+      />
+    </Constitutive>
+  </Solid>
+</Materials>

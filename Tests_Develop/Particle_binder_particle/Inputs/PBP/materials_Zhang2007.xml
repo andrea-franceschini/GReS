@@ -5,14 +5,14 @@
     <Constitutive>
       <Elastic
           youngModulus = "1."
-          poissonRatio = "0.22"
+          poissonRatio = "0.3"
       />
     </Constitutive>
 
     <PorousRock
         porosity = "1."
         specificGravity = "0."
-        biotCoefficient = "2.0004"
+        biotCoefficient = "0.0667344167"
         permeability = "1., 1., 1."
     />
     <!-- porosity (Adimensional, between 0 and 1),

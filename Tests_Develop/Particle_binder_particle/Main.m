@@ -20,7 +20,7 @@ scriptDir = fileparts(scriptFullPath);
 
 %% Model parameters
 % Set some model parameters not included in the parameters file
-material_switch = 1; % 0 for [Zhang,2007], 1 for Si
+material_switch = 0; % 0 for [Zhang,2007], 1 for Si
 % Make sure to also switch Materials file name in
 % Inputs/multiparticle_chemomechanics.xml
 if material_switch == 0
@@ -54,11 +54,11 @@ params.lambda_d = params.nu*params.E_d/((1 + params.nu)*(1 - 2*params.nu));
 params.Omega_d = params.Omega * params.c_max;
 params.beta_d = params.Omega_d * (3*params.lambda_d + 2*params.G_d) / 3;
 params.c_in = 0;                  % initial concentration value
-params.c_in_d = params.c_in / params.c_max; % nondimensional value of initial conceobj.mshntration
+params.c_in_d = params.c_in / params.c_max; % nondimensional value of initial concentration
 
 %% Extract the required information for boundary conditions
 % Reading the mesh file -- will only work for one domain
-fileName = fullfile(input_dir, 'overlapping_spheres.xml');
+fileName = fullfile(input_dir, 'pbp.xml');
 outStruct = readstruct(fileName,AttributeSuffix="");
 if isfield(outStruct,"Domain")
   outStruct = outStruct.Domain;
@@ -70,9 +70,10 @@ for i = 1:size(outStruct,2)
     topology(i).msh.importMesh(meshFile);
 end
 
-% Extract mesh coordinates
+%% Extract mesh coordinates
 msh_left = topology(1).msh;
 msh_right = topology(2).msh;
+msh_binder = topology(3).msh;
 [cx_l, cy_l, cz_l] = deal( msh_left.coordinates(:,1), ...
                    msh_left.coordinates(:,2), ...
                    msh_left.coordinates(:,3) ...
@@ -83,7 +84,7 @@ msh_right = topology(2).msh;
                    );
 
 % get dirichlet node index (X = MIN, Y = MAX, Z = MAX)
-params.tol = 1e-3;
+params.tol = 1e-3; % tolerance
 params.alpha = 0.2; % Parameter for % overlap between the spheres
 params.Rp_d = 1; % Non-dimensional particle radius
 params.d = (1 - params.alpha)*2*params.Rp_d; % dist between sphere centers
@@ -98,7 +99,7 @@ simparams = SimulationParameters(fullfile(input_dir, ...
 % [domains, interfaces] = buildModel(fullfile(input_dir, ...
 %     'multiparticle_chemomechanics.xml'));
 [domains, interfaces] = buildModel(fullfile(input_dir, ...
-    'overlapping_spheres.xml'));
+    'pbp.xml'));
 
 %% RUN MODEL  
 % A different solver is needed for models with non conforming domains

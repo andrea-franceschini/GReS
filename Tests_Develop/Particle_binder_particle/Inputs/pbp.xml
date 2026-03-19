@@ -7,13 +7,13 @@
     <!-- Both spheres in contact defined by a common domain in the mesh -->
     <Domain>
         <Geometry
-            fileName = "Inputs/TwoSpheres/left_overlapped_sphere.vtk"
+            fileName = "Inputs/PBP/pbp_leftSphere.vtk"
         />
         <Gauss nGP = "1" />
-        <Materials fileName = "Inputs/TwoSpheres/materials_Si.xml" />
-        <BoundaryConditions fileName = "Inputs/TwoSpheres/boundaries_leftSphere.xml" />
+        <Materials fileName = "Inputs/PBP/materials_Zhang2007.xml" />
+        <BoundaryConditions fileName = "Inputs/PBP/boundaries_leftSphere.xml" />
         <Output
-            fileName = "Inputs/TwoSpheres/output_left.xml"
+            fileName = "Inputs/PBP/output_left.xml"
         />
 
         <Solver>
@@ -26,13 +26,13 @@
 
     <Domain>
         <Geometry
-            fileName = "Inputs/TwoSpheres/right_overlapped_sphere.vtk"
+            fileName = "Inputs/PBP/pbp_rightSphere.vtk"
         />
         <Gauss nGP = "1" />
-        <Materials fileName = "Inputs/TwoSpheres/materials_Si.xml" />
-        <BoundaryConditions fileName = "Inputs/TwoSpheres/boundaries_rightSphere.xml" />
+        <Materials fileName = "Inputs/PBP/materials_Zhang2007.xml" />
+        <BoundaryConditions fileName = "Inputs/PBP/boundaries_rightSphere.xml" />
         <Output
-            fileName = "Inputs/TwoSpheres/output_right.xml"
+            fileName = "Inputs/PBP/output_right.xml"
         />
 
         <Solver>
@@ -43,16 +43,32 @@
         </Solver>
     </Domain>
 
+    <Domain>
+        <Geometry
+            fileName = "Inputs/PBP/pbp_binder.vtk"
+        />
+        <Gauss nGP = "1" />
+        <Materials fileName = "Inputs/PBP/materials_binder_Zhang2007.xml" />
+        <BoundaryConditions fileName = "Inputs/PBP/boundaries_binder.xml" />
+        <Output
+            fileName = "Inputs/PBP/output_binder.xml"
+        />
+
+        <Solver>
+            <Poromechanics />
+        </Solver>
+    </Domain>
+
     <Interface>
         <MeshTying
             variable = "displacements" >
             <Master
                 domainId = "1"
-                surfaceTag = "3"
+                surfaceTag = "2"
             />
             <Slave
-                domainId = "2"
-                surfaceTag = "3"
+                domainId = "3"
+                surfaceTag = "-2"
             />
             <Quadrature
                 type = "SegmentBasedQuadrature"
@@ -62,8 +78,8 @@
             />
 
             <Output
-                outputFile = "Outputs/Interface"
-                printTimes = "0.1 0.2832 0.3 0.5 0.7 0.9 0.99"
+                outputFile = "Outputs/Interface_left"
+                printTimes = "0.1 0.2 0.2832 0.3 0.5 0.7 0.9 0.99"
             />
         </MeshTying>
     </Interface>

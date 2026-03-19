@@ -38,17 +38,6 @@ a function handle depending on space (x,y,z)
 <-->
 
 <BoundaryConditions>
-    <!-- Boundary Conditions to Flow -->
-    <!-- Galvanostatic boundary condition for both spheres - constant I -->
-    <BC name = "Galvanostatic"
-        type = "Neumann"
-        entityType = "SurfBC"
-        variable = "pressure" >
-
-        <BCentities surfaceTags = "2" />
-        <BCevent time = "0." value = "0.351332384150342" /> <!-- i_n=2, value = "0.639251062864524" for Zhang2007 -->
-    </BC>
-
     <!-- Boundary Conditions to Mechanics -->
     <!-- Fix the left sphere center -->
     <BC name = "FixLeftCenter"
