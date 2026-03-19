@@ -1,10 +1,43 @@
-function [x,flag] = Solve(obj,A,b,time)
-% Function for the solution of the system
-% note that the A passed here might be slightly different than the one passed in the computation of the preconditioner
-% if the two As differ too much the preconditioner loses effectiveness. Must be recomputed
-
-% A is passed directly as a cell array, meaning it is already split in the various blocks (A11,A12,A21,A22 for a 
-% single physics single domain with lagrange multipliers) 
+function [x,flag] = SolveLin(obj,A,b,time)
+% This file implements a Solve method and related utilities intended to be
+% used as part of a linear solver class (linsolver). The Solve function
+% orchestrates choosing between internal MATLAB direct solve and an external
+% iterative solver (Chronos), manages preconditioner computation and reuse,
+% gathers timing/iteration statistics, and handles fallback/retry logic.
+%
+% Relationship with linsolver class:
+% - The code expects to be a method of an object "obj" that encapsulates the
+%   solver state and configuration.
+% - Prec is expected to be an object with methods Compute and function
+%   handles Apply_L and Apply_R used as left/right preconditioners.
+% - The linsolver class should provide gmres_RIGHT and SQMR wrappers or
+%   have them available on the path. The code also relies on helper
+%   utilities cell2matrix, fixPattern, and checkSymmetry.
+% - Solve manages recursive calls to itself when it requests a
+%   recomputation of the preconditioner and retrying the solve.
+%
+% Usage:
+% - Call as: [x,flag] = obj.Solve(Acell,b,currentTime)
+%   where Acell is a cell array of blocks representing the system matrix,
+%   b is the right-hand side, and currentTime is a scalar timestamp used
+%   for profiling (e.g., simulation time).
+%
+% Notes and behaviour details:
+% - For small problems or when Chronos (external iterative solver) is not
+%   available, the method falls back to matlab_solve which uses the direct
+%   backslash on the assembled matrix.
+% - If the matrix is detected non-symmetric, SolverType is forced to 'gmres'.
+% - The preconditioner is computed when requested or when convergence
+%   metrics indicate poor performance (high iteration counts or large
+%   relative residual). The decision logic is encoded using fields in obj.
+% - After a failed solve (flag == 1), the method may attempt to recompute
+%   the preconditioner and retry once. If MATLAB direct solve succeeds but
+%   Chronos does not, the code saves a snapshot ('new_problem.mat') and
+%   raises an error to aid debugging.
+% - Note that the A passed here might be slightly different than the one passed in the computation of the preconditioner
+%   if the two As differ too much the preconditioner loses effectiveness. Must be recomputed
+% - A is passed directly as a cell array, meaning it is already split in the various blocks (A11,A12,A21,A22 for a
+%   single physics single domain with lagrange multipliers)
    
    if obj.DEBUGflag
       A

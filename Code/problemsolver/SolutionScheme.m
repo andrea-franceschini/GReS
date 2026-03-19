@@ -244,7 +244,7 @@ classdef (Abstract) SolutionScheme < handle
       rhs = cell2matrix(rhs);
 
       % Actual solution of the system
-      [sol,~] = obj.linsolver.Solve(J,-rhs,obj.t);
+      [sol,~] = obj.linsolver.SolveLin(J,-rhs,obj.t);
     end
 
 

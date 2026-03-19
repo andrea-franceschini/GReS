@@ -140,7 +140,7 @@ classdef linearSolver < handle
       end
 
       % Function to solve the system
-      [x,flag] = Solve(obj,A,b,time)
+      [x,flag] = SolveLin(obj,A,b,time)
 
    end
 end
