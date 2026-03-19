@@ -1,3 +1,12 @@
+% This script runs a series of simulation benchmarks comparing two solver
+% configurations (MATLAB direct and iterative) for flow and poromechanics
+% problems. For each problem type it:
+%   - reads simulation and material input files,
+%   - builds structured meshes of increasing resolution,
+%   - constructs discretization, boundary and material objects,
+%   - runs the NonLinearImplicit solver,
+%   - records linear solver computation times,
+% and finally plots solver time comparisons for flow and mechanics tests.
 
 close all;
 
@@ -51,7 +60,9 @@ for i = 1:length(nn)
                               'domains',domain,...
                               'output',printUtils);
    solver.simulationLoop();
-   linsolverTime(1,i) = solver.linsolver.aTimeComp+solver.linsolver.aTimeSolve;
+
+   % Get the time needed for the solve step
+   linsolverTime(1,i) = solver.linsolver.aTimeSolve;
 
 end
 
@@ -94,6 +105,8 @@ for i = 1:length(nn)
                               'domains',domain,...
                               'output',printUtils);
    solver.simulationLoop();
+
+   % Get the time needed for the solve step and the preconditioner computation time
    linsolverTime(2,i) = solver.linsolver.aTimeComp+solver.linsolver.aTimeSolve;
 
 end
@@ -152,7 +165,9 @@ for i = 1:length(nn)
                               'domains',domain,...
                               'output',printUtils);
    solver.simulationLoop();
-   linsolverTime(1,i) = solver.linsolver.aTimeComp+solver.linsolver.aTimeSolve;
+
+   % Get the time needed for the solve step 
+   linsolverTime(1,i) = solver.linsolver.aTimeSolve;
 
 end
 
@@ -195,6 +210,8 @@ for i = 1:length(nn)
                               'domains',domain,...
                               'output',printUtils);
    solver.simulationLoop();
+
+   % Get the time needed for the solve step and the preconditioner computation time
    linsolverTime(2,i) = solver.linsolver.aTimeComp+solver.linsolver.aTimeSolve;
 
 end
