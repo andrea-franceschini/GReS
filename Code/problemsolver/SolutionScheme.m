@@ -6,8 +6,6 @@ classdef (Abstract) SolutionScheme < handle
 
   properties (Access = protected)
     %
-    nDom                % number of domains in the model
-    nInterf             % number of interfaces in the model
     %
     tOld                % tOld: previous converged time instant
     t                   % simulation time
@@ -19,6 +17,8 @@ classdef (Abstract) SolutionScheme < handle
 
 
   properties (Access = public)
+    nDom                % number of domains in the model
+    nInterf             % number of interfaces in the model
     linsolver             % instance of linear solver object
     output                % object handling the output of the simulation
     simparams             % parameters of the simulations (shared)
@@ -169,7 +169,6 @@ classdef (Abstract) SolutionScheme < handle
       end
     end
 
-
     function manageNextTimeStep(obj,flConv)
 
       if ~flConv && ~obj.attemptedReset
@@ -245,7 +244,7 @@ classdef (Abstract) SolutionScheme < handle
       rhs = cell2matrix(rhs);
 
       % Actual solution of the system
-      [sol,~] = obj.linsolver.Solve(J,-rhs,obj.t);
+      [sol,~] = obj.linsolver.SolveLin(J,-rhs,obj.t);
     end
 
 
@@ -253,27 +252,13 @@ classdef (Abstract) SolutionScheme < handle
     function setLinearSolver(obj,varargin)
 
       if isempty(varargin)
-        str = [];
-        physname = [];
+         physname = [];
       else
-        fname = varargin{1};
-        str = readstruct(fname,AttributeSuffix="");
-        if isfield(str,'LinearSolver')
-          str = str.LinearSolver;
-        else
-          str = [];
-        end
-
-        % check if the user provided the physics
-        if nargin > 2
-          physname = varargin{2};
-        else
-          physname = [];
-        end
+         % check if the user provided the physics
+         physname = varargin{1};
       end
 
-      obj.linsolver = linearSolver(obj,str,physname);
-
+      obj.linsolver = linearSolver(obj,physname);
     end
 
 

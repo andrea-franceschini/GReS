@@ -1,10 +1,11 @@
 classdef linearSolver < handle
-   properties (Access = private)
+   properties (SetAccess = private, GetAccess = public)
 
       % Flag for debug
       DEBUGflag = false
       matlabMaxSize = 1e5
-      nsyTol = 1e3*eps
+      nsyTol = 100*eps
+      fullInfo = false
 
       % Flag for Chronos existance
       ChronosFlag = false
@@ -33,6 +34,14 @@ classdef linearSolver < handle
       nComp = 0
       maxIter = -1
       aIter = 0
+      
+      % Full info stats
+      iterLin = []
+      solveTLin = []
+      symFlagLin = []
+      precCompLin = []
+      newtonLin = []
+      timeLin = []
 
       % Params struct
       params
@@ -41,17 +50,35 @@ classdef linearSolver < handle
    methods (Access = public)
 
       % Constructor Function
-      function obj = linearSolver(generalsolver,usrInput,physname)
+      function obj = linearSolver(generalsolver,physname)
 
          % Check if chronos is available
-         ChronosDir = fullfile(gres_root,'..','Chronos_Lab','sources');
+         ChronosDir = fullfile(gres_root,'ThirdPartyLibs','Chronos_Lab','sources');
+
+         % Possible the user wants to use matlab even if the size is sufficient
+         if isfield(generalsolver.simparams.linSolverParams, 'useMatlab')
+            if generalsolver.simparams.linSolverParams.useMatlab == 1
+               fprintf('The user requested the use of matlab\n');
+               return;
+            end
+         end
 
          if isfolder(ChronosDir)
+            if strcmp(computer('arch'),'maca64')
+               fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexmaca64');
+            else
+               fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexa64');
+            end
+            
+            if ~isfile(fileMex)
+               warning('Chronos_Lab submodule is present, but not compiled. Using matlab fallback');
+               return;
+            end
 
             obj.generalsolver = generalsolver;
 
             % Create the preconditioner object, check if the physics is supported
-            [obj.Prec,obj.ChronosFlag] = preconditioner.create(obj.DEBUGflag,obj.nsyTol,generalsolver,usrInput,physname);
+            [obj.Prec,obj.ChronosFlag] = preconditioner.create(obj.DEBUGflag,obj.nsyTol,generalsolver,physname);
 
             % Non supported physics for the preconditioner
             if ~obj.ChronosFlag
@@ -60,8 +87,6 @@ classdef linearSolver < handle
 
             % Chronos exists
             addpath(genpath(ChronosDir));
-            RACPDir = fullfile(gres_root,'..','Chronos_Lab','composed_precs','RACP');
-            addpath(genpath(RACPDir));
 
             % First time solving request preconditioner computation
             obj.params.iter = -1;
@@ -72,7 +97,7 @@ classdef linearSolver < handle
             chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');
 
             % Read Defaults
-            data = readstruct(chronos_xml_default,AttributeSuffix="");
+            data = readInput(chronos_xml_default);
 
             % Get the solver type
             obj.SolverType = lower(data.solver);
@@ -89,20 +114,33 @@ classdef linearSolver < handle
       end
 
       function printStats(obj)
-         fprintf('Used %d threads during mex\n',obj.Prec.maxThreads);
-         fprintf('Average Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
-         fprintf('Average Solve time = %e\n',(obj.aTimeSolve/obj.nSolve));
-         fprintf('Average number of iterations = %f\n',(obj.aIter/obj.nSolve));
-         fprintf('Max number of iterations = %d\n',obj.maxIter);
+         fprintf('\n\n\nAverage Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
          fprintf('The preconditioner was computed at time(s):\n');
          for i = 1:length(obj.whenComputed)
             fprintf('             %d\t%e\n',i,obj.whenComputed(i));
          end
-         fprintf('Total time for computation of the linear systems = %e\n',obj.aTimeComp+obj.aTimeSolve);
+         fprintf('\nAverage Solve time = %e\n',(obj.aTimeSolve/obj.nSolve));
+         fprintf('\nAverage number of iterations = %f\n',(obj.aIter/obj.nSolve));
+         fprintf('Max number of iterations = %d\n',obj.maxIter);
+         fprintf('\nTotal time for computation of the linear systems = %e\n',obj.aTimeComp+obj.aTimeSolve);
+
+         if obj.fullInfo
+            fprintf('\nUsed %d threads during mex\n',obj.Prec.maxThreads);
+            fprintf('\n-------------------------------------------------------------------------\n')
+            fprintf('| %11s | %10s | %4s | %13s | %4s | %13s |\n','Time','NewtonIter','Iter','Time','Symm','PrecTime');
+            fprintf('-------------------------------------------------------------------------\n')
+            timeOld = obj.timeLin(1);
+            for i = 1:size(obj.solveTLin,2)
+               if timeOld ~= obj.timeLin(i)
+                  fprintf('-------------------------------------------------------------------------\n')
+               end
+               fprintf('| %.5e | %10d | %4d | %.7e | %4d | %.7e |\n',obj.timeLin(i),obj.newtonLin(i),obj.iterLin(i),obj.solveTLin(i),obj.symFlagLin(i),obj.precCompLin(i));
+            end
+         end
       end
 
       % Function to solve the system
-      [x,flag] = Solve(obj,A,b,time)
+      [x,flag] = SolveLin(obj,A,b,time)
 
    end
 end
