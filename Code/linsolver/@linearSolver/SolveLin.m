@@ -63,6 +63,23 @@ function [x,flag] = SolveLin(obj,A,b,time)
    % Save the solver type
    firstSolver = obj.SolverType;
 
+   % Apply Ruix Scaling on the Block matrix
+   if obj.nIterRuiz > 0
+      % Compute and apply Ritz scaling on A
+      [A,obj.Prec.D] = ruiz_block_symmetric(A,obj.nIterRuiz,obj.tolRuiz,obj.DEBUGflag);
+
+      % Prepare the D for future applications
+      obj.Prec.D = cellfun(@(Di) diag(Di), obj.Prec.D, 'UniformOutput', false);
+
+      % Single vector D to apply to the rhs
+      D = diag(vertcat(obj.Prec.D{:}));
+
+      % Apply the scaling to the rhs
+      b = D*b;
+   else
+      obj.Prec.D = {};
+   end
+
    % Fix the pattern to be symmetric and check the symmetry of the
    % resulting matrix
    [A] = fixPattern(A);
@@ -115,6 +132,11 @@ function [x,flag] = SolveLin(obj,A,b,time)
          [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.params.tol,obj.params.maxit,...
                                                                       obj.Prec.Apply_L,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
 
+   end
+
+   % De apply ruiz from the result
+   if obj.nIterRuiz > 0
+      x = D*x;
    end
 
    Tend = toc(startT);

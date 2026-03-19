@@ -38,6 +38,12 @@ function computeSinglePhPrec(obj,A,symMat)
             end
          end
 
+         % Apply the Ruiz scaling factor to the test space
+         if ~isempty(obj.D)
+            D = vertcat(obj.D{1:obj.nDom});
+            TV0 = diag(D)\TV0;
+         end
+
          set_DEBINFO();
 
          % Actually compute the AMG

@@ -43,6 +43,10 @@ classdef linearSolver < handle
       newtonLin = []
       timeLin = []
 
+      % Ruiz params
+      nIterRuiz = 0
+      tolRuiz = 1e-3
+
       % Params struct
       params
    end
@@ -109,6 +113,14 @@ classdef linearSolver < handle
                obj.params.restart = data.general.restart;
             else
                obj.params.restart = 100;
+            end
+
+            % Get the values if ruiz symmetric scaling is asked for by the user
+            if isfield(generalsolver.simparams.linSolverParams, 'ruizIter')
+               obj.nIterRuiz = generalsolver.simparams.linSolverParams.ruizIter;
+            end
+            if isfield(generalsolver.simparams.linSolverParams, 'ruizTol')
+               obj.tolRuiz = generalsolver.simparams.linSolverParams.ruizTol;
             end
          end
       end
