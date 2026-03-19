@@ -32,10 +32,9 @@ classdef BiotFullyCoupled < PhysicsSolver
 
       dofm = obj.domain.dofm;
 
-      targetReg = struct('targetRegions',1:obj.mesh.nCellTag);
 
-      default = struct('Poromechanics',targetReg,...
-                       'SinglePhaseFlowFVTPFA',targetReg);
+      default = struct('Poromechanics',missing,...
+                       'SinglePhaseFlowFVTPFA',missing);
 
       input = readInput(default,varargin{:});
 

@@ -26,10 +26,10 @@
 
 
   <Solver>
-    <BiotFullySaturated>
-      <Poromechanics/>
+    <BiotFullyCoupled>
+      <!--<Poromechanics/>-->
       <SinglePhaseFlowFVTPFA targetRegions="1"/>
-    </BiotFullySaturated>
+    </BiotFullyCoupled>
   </Solver>
 
 </Problem>
