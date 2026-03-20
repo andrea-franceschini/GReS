@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <Materials>
-  <Solid cellTags = "1">
+  <Solid name = "sand"
+         cellTags = "1">
     <Constitutive>
       <Elastic
           youngModulus = "9.4706e7"
-          poissonRatio = "0.15"
-      />
+          poissonRatio = "0.15"      />
     </Constitutive>
 
     <PorousRock
@@ -14,30 +14,29 @@
         specificWeight = "2.1e4"
         permeability = "9.4018e-12, 9.4018e-12, 9.4018e-12"
         residualSaturation = "0.102"
-        maximumSaturation = "0.368"
-    />
+        maximumSaturation = "0.368"    >
+      <Curves
+          type = "mualem"
+          n = "2."
+          beta = "3.416e-04" 
+          kappa = "0.5"   />
+      <!--
+      <Curves
+          type = "burdine"
+          n = "2."
+          beta = "3.416e-04"   />
+      <Curves
+          type = "preset"
+          soilName = "sand"     />
+      <Curves
+          type = "tabular"
+          relativePermeabilityPath = "Tests/Richards/Case1/Input/Materials/krCurve_2000.dat"
+          capillaryCurvePath = "Tests/Richards/Case1/Input/Materials/pcCurve_2000.dat"/>
+      -->
+    </PorousRock>
     <!-- porosity (Adimensional, between 0 and 1),
          specificGravity (kg/m^3 ),
          permeability (m^2) -->
-
-    <Curves>
-      <Mualem 
-          n = "2."
-          beta = "3.416e-04" 
-          kappa = "0.5"
-      />
-      <!--
-      <Burdine 
-          n = "2."
-          beta = "3.416e-04"
-      />
-      <Preset soilName = "Sand" />
-      <Tabular
-          relativePermeabilityPath = "Code/integratedTest/Richards/Materials/krCurve_2000.dat"
-          capillaryCurvePath = "Code/integratedTest/Richards/Materials/pcCurve_2000.dat"
-      />
-      -->
-    </Curves>
   </Solid>
 
   <Fluid

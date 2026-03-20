@@ -14,10 +14,11 @@ interfaces = {};
 interfNames = fieldnames(outStruct);
 
 k=0;
+
 for i = 1:numel(interfNames)
 
   % deal with multiple interfaces of the same type
-  s = outStruct.(interfNames{i});
+  s = outStruct.interfNames{i};
   for j = 1:numel(s)
 
     interf = feval(interfNames{i},...

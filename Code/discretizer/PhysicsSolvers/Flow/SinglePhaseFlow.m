@@ -59,10 +59,10 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       [cellData,pointData] = buildPrintStruct(obj,outPrint);
     end
 
-    function writeMatFile(obj,fac,tID)
+    function writeSolution(obj,fac,tID)
       pOld = getStateOld(obj,obj.getField());
       pCurr = getState(obj,obj.getField());
-      obj.domain.outstate.matFile(tID).pressure = pCurr*fac+pOld*(1-fac);
+      obj.domain.outstate.results(tID).pressure = pCurr*fac+pOld*(1-fac);
     end
 
     function out = isLinear(obj)

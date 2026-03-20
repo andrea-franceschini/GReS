@@ -10,14 +10,14 @@ ID of the constrained entities in different ways.
 a path to a list of entities ID of type entitiyType
 (see the BoundaryConditions tutorial)
 
-'surfaceTags'
-the surfaceTags to which the constrained entities belong
+'tags'
+the tags to which the constrained entities belong
 
 'bcList'
 a simple list of entities to be constrained in the specified components
 
 NOTE
-for the case of multi-component fields where 'bcList' or 'surfaceTags'
+for the case of multi-component fields where 'bcList' or 'tags'
 are used, the user must also specify the 'component' attribute
 component = "x" or component = "x,y,z" or component = "y,z"
 
@@ -42,14 +42,12 @@ a function handle depending on space (x,y,z)
   <BC
       name = "NoFlowTop"
       type = "Dirichlet"
-      entityType = "SurfBC"
+      field = "surface"
       variable = "pressure"
+      entityListType = "tags"
+      entityList = "2"
       >
 
-    <BCentities
-                surfaceTags = "2"
-
-                />
 
     <BCevent
              time = "0"
@@ -60,14 +58,12 @@ a function handle depending on space (x,y,z)
   <BC
       name = "TopLoad"
       type = "Neumann"
-      entityType = "SurfBC"
+      field = "surface"
       variable = "displacements"
+      entityListType = "tags"
+      entityList = "2"
+      components = "z"
       >
-
-    <BCentities
-                surfaceTags = "2"
-                components = "z"
-                />
 
     <BCevent
              time = "0"
@@ -79,14 +75,13 @@ a function handle depending on space (x,y,z)
   <BC
       name = "LatFixedY"
       type = "Dirichlet"
-      entityType = "NodeBC"
+      field = "surface"
       variable = "displacements"
+      entityListType = "tags"
+      entityList = "3,4"
+      components = "y"
       >
 
-    <BCentities
-                surfaceTags = "3"
-                components = "y"
-                />
 
     <BCevent
              time = "0"
@@ -97,14 +92,12 @@ a function handle depending on space (x,y,z)
   <BC
       name = "LatFixedX"
       type = "Dirichlet"
-      entityType = "NodeBC"
+      field = "surface"
       variable = "displacements"
+      entityListType = "tags"
+      entityList = "5,6"
+      components = "x"
       >
-
-    <BCentities
-                surfaceTags = "4"
-                components = "x"
-                />
 
     <BCevent
              time = "0"
@@ -115,14 +108,12 @@ a function handle depending on space (x,y,z)
   <BC
       name = "BotFixed"
       type = "Dirichlet"
-      entityType = "SurfBC"
+      field = "surface"
       variable = "displacements"
+      entityListType = "tags"
+      entityList = "1"
+      components = "x,y,z"
       >
-
-    <BCentities
-                surfaceTags = "1"
-                components = "x,y,z"
-                />
 
     <BCevent
              time = "0"

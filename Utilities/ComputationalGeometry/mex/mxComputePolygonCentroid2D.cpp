@@ -1,66 +1,124 @@
-#include "mex.h"
+//----------------------------------------------------------------------------------------
+// computePolygonCentroid2D_CCW_wrap.cpp
+// Modernized MEX gateway — MathWorks C++ MEX API (R2018a+)
+// Uses: mex.hpp + mexAdapter.hpp (matlab::data API)
+//
+// MATLAB signature:
+//   centroid = computePolygonCentroid2D_CCW(points)
+//     points   : N x 2 real double (CCW ordered)
+//     centroid : 1 x 2 real double [Cx, Cy]
+//
+// Build command:
+//   mex -R2018a computePolygonCentroid2D_CCW_wrap.cpp
+//
+// FIXES APPLIED (vs previous version)
+// -----------------------------------------------------------------------
+// [FIX-G] TypedArray flat-index subscripting causes runtime error
+//         "Not enough indices provided" on 2D arrays.
+//
+//         out {1, 2}:
+//           out[0] and out[1] were single flat indices on a 2D TypedArray.
+//           Fixed: write into a std::vector<double>{Cx, Cy} and
+//           std::copy into the TypedArray via iterators.
+//
+// All previously documented fixes (FIX-A/B/C/E/F, NEW-1..3) are retained.
+// -----------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
+
+#include "mex.hpp"
+#include "mexAdapter.hpp"
+
+#include <cstddef>
+#include <vector>
+#include <string>
 #include <cmath>
+#include <algorithm> // std::copy
 
-void mexFunction(int nlhs, mxArray* plhs[],
-                 int nrhs, const mxArray* prhs[])
-{
-  /* ---- checks ---- */
-  if (nrhs != 1)
-    mexErrMsgTxt("Usage: centroid = computePolygonCentroid2D_CCW_mex(points)");
+using namespace matlab::data;
+using matlab::mex::ArgumentList;
 
-  if (nlhs != 1)
-    mexErrMsgTxt("One output required.");
+class MexFunction : public matlab::mex::Function {
 
-  const mxArray* Pmx = prhs[0];
+    ArrayFactory factory;
 
-  if (!mxIsDouble(Pmx) || mxIsComplex(Pmx))
-    mexErrMsgTxt("points must be real double.");
+public:
 
-  mwSize N = mxGetM(Pmx);
-  mwSize dim = mxGetN(Pmx);
+    void operator()(ArgumentList outputs, ArgumentList inputs) override
+    {
+        validateArguments(outputs, inputs);
 
-  if (dim != 2)
-    mexErrMsgTxt("points must be N x 2.");
+        const TypedArray<double> Parr = inputs[0];
+        const auto dims               = Parr.getDimensions();
+        const std::size_t N           = dims[0];
 
-  if (N < 3)
-    mexErrMsgTxt("At least 3 points required.");
+        std::vector<double> P(Parr.begin(), Parr.end());
 
-  const double* P = mxGetPr(Pmx);
+        // Shoelace / Green's theorem
+        double Cx = 0.0, Cy = 0.0, A = 0.0;
 
-  /* ---- centroid computation ---- */
-  double Cx = 0.0;
-  double Cy = 0.0;
-  double A  = 0.0;   // signed area * 2
+        for (std::size_t i = 0; i < N; ++i) {
+            const std::size_t j = (i + 1) % N;
 
-  for (mwSize i = 0; i < N; ++i)
-  {
-    mwSize j = (i + 1) % N;
+            const double xi = P[i],     yi = P[i + N];
+            const double xj = P[j],     yj = P[j + N];
+            const double cr = xi*yj - xj*yi;
 
-    double xi = P[i];
-    double yi = P[i + N];
+            A  += cr;
+            Cx += (xi + xj) * cr;
+            Cy += (yi + yj) * cr;
+        }
 
-    double xj = P[j];
-    double yj = P[j + N];
+        if (A == 0.0)
+            throwError("Centroid2D:zeroArea", "Zero-area polygon.");
 
-    double cross = xi*yj - xj*yi;
+        A  *= 0.5;
+        Cx /= (6.0 * A);
+        Cy /= (6.0 * A);
 
-    A  += cross;
-    Cx += (xi + xj) * cross;
-    Cy += (yi + yj) * cross;
-  }
+        // -----------------------------------------------------------------------
+        // [FIX-G] Write via std::vector + std::copy — not direct arr[0]/arr[1]
+        // -----------------------------------------------------------------------
+        std::vector<double> outBuf = { Cx, Cy };
+        TypedArray<double> out = factory.createArray<double>({1, 2});
+        std::copy(outBuf.begin(), outBuf.end(), out.begin());
 
-  if (A == 0.0)
-    mexErrMsgTxt("Zero-area polygon.");
+        outputs[0] = std::move(out);
+    }
 
-  A *= 0.5;
+private:
 
-  Cx /= (6.0 * A);
-  Cy /= (6.0 * A);
+    void validateArguments(ArgumentList& outputs, ArgumentList& inputs)
+    {
+        if (inputs.size() != 1)
+            throwError("Centroid2D:inputError",
+                       "Usage: centroid = computePolygonCentroid2D_CCW(points).");
 
-  /* ---- output ---- */
-  plhs[0] = mxCreateDoubleMatrix(1, 2, mxREAL);
-  double* out = mxGetPr(plhs[0]);
+        if (outputs.size() > 1)
+            throwError("Centroid2D:outputError",
+                       "One output required.");
 
-  out[0] = Cx;
-  out[1] = Cy;
-}
+        if (inputs[0].getType() != ArrayType::DOUBLE)
+            throwError("Centroid2D:inputError",
+                       "points must be a real double array.");
+
+        const auto dims = inputs[0].getDimensions();
+        if (dims.size() < 2 || dims[1] != 2)
+            throwError("Centroid2D:inputError",
+                       "points must be N x 2.");
+
+        if (dims[0] < 3)
+            throwError("Centroid2D:inputError",
+                       "At least 3 points required.");
+    }
+
+    void throwError(const std::string& id, const std::string& msg)
+    {
+        getEngine()->feval(u"error", 0,
+            std::vector<Array>{
+                factory.createCharArray(id),
+                factory.createCharArray(msg)
+            });
+    }
+};
+
+//----------------------------------------------------------------------------------------

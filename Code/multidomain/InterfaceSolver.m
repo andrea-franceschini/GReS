@@ -1,17 +1,12 @@
 classdef (Abstract) InterfaceSolver < handle
-  % Interface to create an interface between domains in GReS
-
+  % General Interface solver between domains in GReS
+  % 
   % Any interfaceSolver should implemented everything needed to couple a
   % variable field across two non conforming lower dimensional (2D) interfaces
-
-  % The interface can belong to two different domains 
-
-  % The fields property lists a set of single physical moduls that are
-  % implemented
-
-  % If the physicsSolver is coupled:
-  % fields is a string array with all the single physics fields
-  % J and rhs are cell variable with the same size as the number of fields
+  %
+  % Each side of the interface is specified by one (or more) surfaceTags of
+  % a domain. The sides of the interface can both belong to the same
+  % domain, provided that their nodes are disjoint.
 
 
   properties (GetAccess=public, SetAccess=public)
@@ -84,7 +79,7 @@ classdef (Abstract) InterfaceSolver < handle
     [cellData,pointData] = writeVTK(obj,t);
 
     % write history to MAT-file
-    writeMatFile(obj,t,tID);
+    writeSolution(obj,t,tID);
 
   end
 
@@ -98,21 +93,19 @@ classdef (Abstract) InterfaceSolver < handle
 
   methods
 
-    function obj = InterfaceSolver(id,domains,inputStruct)
+    function obj = InterfaceSolver(id,domains,varargin)
 
       % domain:  handle to the Discretizer object storing all the
       % information of the model
 
-      if ~isstruct(inputStruct)
-        inputStruct = readstruct(inputStruct,AttributeSuffix="");
-      end
+      % minimal required input is the id of the connected domains
+      default = struct('masterDomain',[], ...
+        'slaveDomain',[]);
 
-      if isfield(inputStruct,"Interface")
-        inputStruct = inputStruct.Interface;
-      end
+      input = readInput(default,varargin{:});
 
-      obj.domainId = [getXMLData(inputStruct.Master,[],"domainId");
-        getXMLData(inputStruct.Slave,[],"domainId")];
+
+      obj.domainId = [input.masterDomain,input.slaveDomain];
 
       % store handle to connected domains
       obj.domains = [domains(obj.domainId(1));
@@ -147,10 +140,10 @@ classdef (Abstract) InterfaceSolver < handle
       obj.domains(slave).Jmu{obj.interfaceId(slave)} = cell(1,nVarSlave);
 
       % specify the variables to be coupled
-      setCoupledVariables(obj,inputStruct)
+      setCoupledVariables(obj,input)
   
       % mortar computations
-      setMortarInterface(obj,inputStruct);
+      setMortarInterface(obj,input);
 
     end
 
@@ -173,6 +166,13 @@ classdef (Abstract) InterfaceSolver < handle
       % base class implements no configuration change
       hasConfigurationChanged = false;
       
+    end
+
+    function initialize(obj)
+      % initialize the interface solver
+
+      % remove slave Dirichlet boundary conditions for nodal multipliers
+      removeSlaveBCents(obj);
     end
 
 
@@ -264,15 +264,18 @@ classdef (Abstract) InterfaceSolver < handle
 
       if nargin > 1
 
-      dofs = getEntityFromElement( obj.multiplierLocation,...
-                                   entityField.surface,...
-                                   meshSlave,...
-                                   el,...
-                                   ncomp );
+        dofs = getIncidenceID(obj.multiplierLocation,meshSlave,entityField.surface,el);
+
+        % dofs = getEntityFromElement( obj.multiplierLocation,...
+        %   entityField.surface,...
+        %   meshSlave,...
+        %   el,...
+        %   ncomp );
       else
         dofs = 1:getNumberOfEntities(obj.multiplierLocation,meshSlave);
-        dofs = DoFManager.dofExpand(dofs,ncomp);
       end
+
+      dofs = DoFManager.dofExpand(dofs,ncomp);
     end
 
     function nDoFs = getNumbDoF(obj)
@@ -410,6 +413,11 @@ classdef (Abstract) InterfaceSolver < handle
       varMaster = getVariableNames(obj.domains(1).dofm);
       varSlave = getVariableNames(obj.domains(2).dofm);
 
+      if any([isempty(varMaster),isempty(varSlave)])
+        error(['Interface solver can be registered only after ' ...
+          'physicsSolver have been defined'])
+      end
+
       % default candidate interface variable are those in common between
       % master and slave discretizers
       sharedVars = intersect(varSlave,varMaster);
@@ -439,29 +447,26 @@ classdef (Abstract) InterfaceSolver < handle
       end
     end
 
-    function setMortarInterface(obj,interfaceInput)
+    function setMortarInterface(obj,params)
 
-      masterSurf = getXMLData(interfaceInput.Master,0,"surfaceTag");
-      slaveSurf = getXMLData(interfaceInput.Slave,0,"surfaceTag");
+
+      default = struct('masterSurface',[],...
+                       'slaveSurface',[],...
+                       'multiplierType',"P0",...
+                       'Quadrature',struct());
+
+      % the Quadrature field implies that this is an xml field
+
+      params = readInput(default,params);
 
       obj.interfMesh = InterfaceMesh(obj.domains(1).grid.topology,...
-        obj.domains(2).grid.topology,...
-        masterSurf,slaveSurf);
+                                     obj.domains(2).grid.topology,...
+                                     params.masterSurface,...
+                                     params.slaveSurface);
 
       checkInterfaceDisjoint(obj);
 
-      if isfield(interfaceInput,"Quadrature")
-        quad = interfaceInput.Quadrature;
-      else
-        quad = [];
-      end
-
-      multType = getXMLData(interfaceInput,"P0","multiplierType");
-
-      quadType = getXMLData(quad,...
-        "SegmentBasedQuadrature","type");
-
-      switch multType
+      switch params.multiplierType
         case {"standard","dual"}
           obj.multiplierLocation = entityField.node;
         case "P0"
@@ -471,14 +476,17 @@ classdef (Abstract) InterfaceSolver < handle
             "Available types are: standard,dual,P0");
       end
 
+      if numel(fieldnames(params.Quadrature)) > 0
+        quadType = params.Quadrature.type;
+      else
+        quadType = "SegmentBasedQuadrature";
+      end
+
 
       obj.quadrature = feval(quadType,...
                              obj,...
-                             multType,...
-                             quad);
-
-      % remove slave Dirichlet boundary conditions for nodal multipliers
-      removeSlaveBCents(obj);
+                             params.multiplierType, ...
+                             params.Quadrature);
 
       % Mortar quadrature preprocessing
       computeMortarInterpolation(obj);
@@ -528,11 +536,11 @@ classdef (Abstract) InterfaceSolver < handle
       bcList = bc.db.keys;
 
       for bcId = string(bcList)
-        if strcmp(getType(bc,bcId),"Dirichlet")
-          bcNodes = intersect(bc.getBCentities(bcId),nodSlave);
+        if getType(bc,bcId) == BCtype.dirichlet
+          bcNodes = intersect(bc.getTargetEntities(bcId),nodSlave);
           obj.dirNodes = [obj.dirNodes; bcNodes];
           if obj.multiplierLocation == entityField.node
-            bc.removeBCentities(bcId,nodSlave);
+            bc.removeTargetEntities(bcId,nodSlave);
           end
         end
       end
@@ -601,12 +609,110 @@ classdef (Abstract) InterfaceSolver < handle
 
       outName = sprintf('Interface_%i',obj.interfId);
 
+    end
+
+
+  end
+
+
+  methods (Static)
+
+    function interfaces = addInterfaces(domains,input)
+
+      assert(nargin == 2,"Input must be a structure array or an input file")
+
+      interfStruct = readInput(input);
+
+      interfaces = {};
+
+      interfNames = fieldnames(interfStruct);
+
+      for i = 1:numel(interfNames)
+
+        % deal with multiple interfaces having same name
+        for in = [interfStruct.(interfNames{i})]
+
+          interfaces = InterfaceSolver.add(interfNames{i},...
+                                           domains,...
+                                           interfaces,in);
+        end
+      end
 
     end
 
 
-    
-  end
+    function interfaces = add(interfType,domains,varargin)
+      %   Add a new interface object to the interface list.
+      %
+      %   interfaces = add(interfType, domains, input)
+      %   interfaces = add(interfType, domains, interfaces, input)
+      %
+      %   This function creates a new interface object of type `interfType`,
+      %   assigns it a progressive index, registers solver-specific data,
+      %   and appends it to the interface list.
+      %
+      %   INPUT
+      %   -----
+      %   interfType : function handle or class name (char/string)
+      %       Constructor for the interface object. The constructor must
+      %       accept the signature:
+      %           obj = interfType(id, domains, input)
+      %
+      %   domains : array or cell array
+      %       Collection of domains connected by the interface.
+      %
+      %   interfaces : cell array (optional)
+      %       Existing list of interface objects. If omitted, a new list
+      %       is created.
+      %
+      %   input : cell array
+      %       Additional user-defined input parameters passed both to the
+      %       constructor and to the interface method `registerInterface`.
+      %
+      %   OUTPUT
+      %   ------
+      %   interfaces : cell array
+      %       Updated list of interface objects, including the newly
+      %       created interface appended at the end.
+      %
+      %
+      %   See also: InterfaceSolver
+      %
+      %   ---------------------------------------------------------------------
+
+
+      if iscell(varargin{1})
+        interfaces = varargin{1};
+        i1 = 2;
+      else
+        % generate the interface list
+        interfaces = {};
+        i1 = 1;
+      end
+
+      k = numel(interfaces);
+
+      input = varargin{i1:end};
+
+      % general input
+      interf = feval(interfType,k+1,domains,input);
+      % solver-specific input
+      interf.registerInterface(input);
+
+      interfaces{end+1} = interf;
+
+    end
+
+
+
+
+
+
+
+
+
+
+    end
 
 
 end

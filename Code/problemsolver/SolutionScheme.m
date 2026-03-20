@@ -6,8 +6,6 @@ classdef (Abstract) SolutionScheme < handle
 
   properties (Access = protected)
     %
-    nDom                % number of domains in the model
-    nInterf             % number of interfaces in the model
     %
     tOld                % tOld: previous converged time instant
     t                   % simulation time
@@ -19,6 +17,8 @@ classdef (Abstract) SolutionScheme < handle
 
 
   properties (Access = public)
+    nDom                % number of domains in the model
+    nInterf             % number of interfaces in the model
     linsolver             % instance of linear solver object
     output                % object handling the output of the simulation
     simparams             % parameters of the simulations (shared)
@@ -34,30 +34,27 @@ classdef (Abstract) SolutionScheme < handle
 
   end
 
-  methods (Abstract,Access=protected)
-    % every solution scheme must initialize a specialized linear solver
-    setLinearSolver(obj)
-  end
-
 
   methods (Access = public)
     function obj = SolutionScheme(varargin)
 
-      assert(nargin > 1 && nargin < 9,"Wrong number of input arguments " + ...
-        "for general solver")
+      % assert(nargin > 1 && nargin < 9,"Wrong number of input arguments " + ...
+      %   "for general solver")
 
       obj.setSolutionScheme(varargin{:});
 
     end
 
-    function simulationLoop(obj)
+    function simulationLoop(obj,varargin)
 
       % Initialize time
       obj.tStep = 0;
       obj.t = obj.simparams.tIni;
       obj.dt = obj.simparams.dtIni;
+
+      initialize(obj);
       
-      setLinearSolver(obj);
+      setLinearSolver(obj,varargin{:});
 
       while obj.t < obj.simparams.tMax
 
@@ -69,6 +66,7 @@ classdef (Abstract) SolutionScheme < handle
         % solve current time step
         % flConv: flag for convergence
         % dtOut: requested time step from the physics solver
+
         conv = solveStep(obj);
 
         % move to the next time step
@@ -82,6 +80,11 @@ classdef (Abstract) SolutionScheme < handle
 
       gresLog().log(-1,"Simulation completed successfully \n")
 
+    end
+
+
+    function saveHistory(obj)
+      obj.output.saveHistory();
     end
 
   end
@@ -155,6 +158,16 @@ classdef (Abstract) SolutionScheme < handle
 
     end
 
+    function initialize(obj)
+
+      for i = 1:obj.nDom
+        initialize(obj.domains(i));
+      end
+
+      for i = 1:obj.nInterf
+        initialize(obj.interfaces{i})
+      end
+    end
 
     function manageNextTimeStep(obj,flConv)
 
@@ -231,7 +244,21 @@ classdef (Abstract) SolutionScheme < handle
       rhs = cell2matrix(rhs);
 
       % Actual solution of the system
-      [sol,~] = obj.linsolver.Solve(J,-rhs,obj.t);
+      [sol,~] = obj.linsolver.SolveLin(J,-rhs,obj.t);
+    end
+
+
+
+    function setLinearSolver(obj,varargin)
+
+      if isempty(varargin)
+         physname = [];
+      else
+         % check if the user provided the physics
+         physname = varargin{1};
+      end
+
+      obj.linsolver = linearSolver(obj,physname);
     end
 
 
@@ -370,11 +397,11 @@ classdef (Abstract) SolutionScheme < handle
           if obj.output.writeSolution
 
             for i = 1:obj.nDom
-              obj.domains(i).writeMatFile(fac,obj.output.timeID);
+              obj.domains(i).writeSolution(fac,obj.output.timeID);
             end
 
             for i = 1:obj.nInterf
-              obj.interfaces{i}.writeMatFile(fac,obj.output.timeID);
+              obj.interfaces{i}.writeSolution(fac,obj.output.timeID);
             end
           end
 
