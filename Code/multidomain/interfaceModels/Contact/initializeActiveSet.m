@@ -23,7 +23,11 @@ end
 
 params = readInput(...
   struct('resetActiveSet',1,...
-  'forceStickBoundary',0,'Tolerances',missing),activeSetParams);
+  'forceStickBoundary',missing,'Tolerances',missing),activeSetParams);
+
+if ismissing(params.forceStickBoundary)
+  params.forceStickBoundary = false;
+end
 
 contactSolver.activeSet = params;
 

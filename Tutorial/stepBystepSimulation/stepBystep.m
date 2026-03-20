@@ -183,7 +183,9 @@ domain2.addPhysicsSolvers(params.Solver);
 
 domains = [domain1;domain2];
 
-interfaces = addInterfaces(domains,params.Interface);
+
+params = readInput("model04/04_nonConformingInterface.xml");
+interfaces = InterfaceSolver.addInterfaces(domains,params.Interface);
 
 %%%%
 
@@ -206,6 +208,7 @@ clear
 %%%%%%%%%%% domain 1
 
 fileName = "model05/05_domRight.xml";
+params = readInput(fileName);
 
 mesh1 = structuredMesh(15,15,10,[20 100],[0 100],[0 10]);
 elems = Elements(mesh1,2);
@@ -218,36 +221,39 @@ under = mesh1.cellCentroid(:,3) > 7;
 mesh1.cellTag(under) = 2;
 mesh1.cellTag(over) = 3;
 
-mat = Materials(fileName);
-bound = Boundaries(fileName,grid);
+mat = Materials(params.Materials);
+bound = Boundaries(grid,params.BoundaryConditions);
 
 domain1 = Discretizer('Boundaries',bound,...
                      'Materials',mat,...
                      'Grid',grid);
-domain1.addPhysicsSolver(fileName);
+domain1.addPhysicsSolvers(params.Solver);
 
 
 %%%%%%%%%%% domain 2
 
 fileName = "model05/05_domLeft.xml";
-
+params = readInput(fileName);
 
 mesh2 = structuredMesh(6,6,4,[0 20],[0 100],[0 10]);
 elems = Elements(mesh2,2);
 faces = Faces(mesh2);
 grid = struct('topology',mesh2,'cells',elems,'faces',faces);
 
-mat = Materials(fileName);
-bound = Boundaries(fileName,grid);
+mat = Materials(params.Materials);
+bound = Boundaries(grid,params.BoundaryConditions);
 
 domain2 = Discretizer('Boundaries',bound,...
                      'Materials',mat,...
                      'Grid',grid);
-domain2.addPhysicsSolver(fileName);
+domain2.addPhysicsSolvers(params.Solver);
 
 domains = [domain1;domain2];
 
-interfaces = buildInterfaces('model05/05_fault.xml',domains);
+
+params = readInput("model05/05_fault.xml");
+
+interfaces = InterfaceSolver.addInterfaces(domains,params.Interface);
 
 % set initial traction
 % apply initial traction to the interface
@@ -259,9 +265,9 @@ interfaces{1}.stateOld.traction(1:3:end) = tIni;
 
 %%%%
 
-simParam = SimulationParameters('model05/05_fault.xml');
+simParam = SimulationParameters(params.SimulationParameters);
 
-printUtils = OutState('model05/05_fault.xml');
+printUtils = OutState(params.Output);
 
 solver = NonLinearImplicit('simulationparameters',simParam,...
                            'domains',domains,...

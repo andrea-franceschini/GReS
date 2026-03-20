@@ -51,28 +51,31 @@ if isempty(usrIn) || all(cellfun(@isempty, usrIn))
   inputStruct = default;
   return
 end
- 
+
 % Parse user input
 if numel(usrIn) > 1
-    % Multiple args, name-value pairs
-    usr = readKeyValueInput(usrIn);
+  % Multiple args, name-value pairs
+  usr = readKeyValueInput(usrIn);
 else
-    arg = usrIn{1};
- 
-    if isstruct(arg)
-        if isfield(arg,'fileName') && ~isempty(fieldnames(arg))
-            usr = readXMLfile(arg.fileName);   % struct with fileName → XML
-        else
-            usr = arg;                         % plain struct → pass through
-        end
+  arg = usrIn{1};
+
+  if isstruct(arg)
+    if isfield(arg,'fileName') && ~isempty(fieldnames(arg))
+      usr = readXMLfile(arg.fileName);   % struct with fileName → XML
     else
-        usr = readXMLfile(arg);                % string → XML file path
+      usr = arg;                         % plain struct → pass through
     end
+  elseif isstring(arg) || ischar(arg)
+    usr = readXMLfile(arg);                % string → XML file path
+  else
+    % argument is type missing
+    usr = [];
+  end
 end
- 
+
 % Merge with defaults if provided
 if isempty(default)
-    inputStruct = usr;
+  inputStruct = usr;
 else
     inputStruct = mergeInput(default, usr);
 end
@@ -186,6 +189,10 @@ function out = mergeInput(default, usr)
 %     out     : merged struct.
  
 out  = default;
+
+if any([isempty(usr),any(ismissing(usr))])
+    return
+end
 fusr = fieldnames(usr);
 fdef = fieldnames(default);
  

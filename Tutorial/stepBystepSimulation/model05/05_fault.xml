@@ -4,37 +4,31 @@
 <Problem>
 
 
-  <simParam>
-    <Time
-          Start="0.0"
-          End ="0.999"
-          DtInit=".1"
-          DtMin ="1e-5"
-          DtMax =".25"
-          incrementFactor = "1.0"
-          choppingFactor = "2" />
+  <SimulationParameters
+                        Start="0.0"
+                        End ="0.999"
+                        DtInit=".1"
+                        DtMin ="1e-5"
+                        DtMax =".25"
+                        incrementFactor = "1.0"
+                        choppingFactor = "2"
+                        RelativeTolerance = "1.e-10"
+                        AbsoluteTolerance = "1.e-8"
+                        MaxConfigurationIteration = "8"
+                        resetConfiguration = "0"
+                        />
 
-    <Solver
-            RelativeTolerance = "1.e-10"
-            AbsoluteTolerance = "1.e-8"
-            MaxConfigurationIteration = "8"
-            resetConfiguration = "0"
-            />
-  </simParam>
 
-  <!--
-  <Domain fileName = "model05/05_domLeft.xml"/>
+<!--Domain fileName = "model05/05_domLeft.xml"/>
 
   <Domain fileName = "model05/05_domRight.xml"/>
   -->
 
   <Interface>
     <SolidMechanicsContact
+                           masterDomain = "2" masterSurface = "6"
+                           slaveDomain = "1" slaveSurface = "5"
                            multiplierType="P0">
-
-
-      <Master domainId="2" surfaceTag="6"/>
-      <Slave  domainId="1" surfaceTag="5"/>
 
       <Coulomb
                cohesion = "1.0"
@@ -59,5 +53,10 @@
     </SolidMechanicsContact>
 
   </Interface>
+
+
+    <Output printTimes="0.1,0.25,0.5,1.0"
+            outputFile="model05/Output05/resultsRock"
+            matFileName="model05/Output05/history"/>
 
 </Problem>

@@ -248,7 +248,9 @@ classdef Discretizer < handle
 
     function addPhysicsSolver(obj,solverName,varargin)
 
-      assert(isstring(solverName),"First input must be the name of the PhysicsSolver")
+      if ~any([ischar(solverName),isstring(solverName)])
+        error("First input must be the name of the PhysicsSolver")
+      end
 
       if any(strcmp(solverName,obj.solverNames))
         error('Solver %s has already been defined',solverName)
@@ -260,7 +262,6 @@ classdef Discretizer < handle
       obj.physicsSolvers(solverName) = solver;
 
     end
-
 
 
     function J = getJacobian(obj,varargin)
