@@ -31,7 +31,7 @@
                            multiplierType="P0">
 
       <Coulomb
-               cohesion = "0.1"
+               cohesion = "1.0"
                frictionAngle = "30" />
 
       <ActiveSet

@@ -8,6 +8,7 @@ classdef SolidMechanicsContact < MeshTying
     contactHelper
     activeSet
     NLIter = 0
+    stickNodes     % boundary nodes where contact state should stay stick
   end
 
 
@@ -52,11 +53,7 @@ classdef SolidMechanicsContact < MeshTying
 
       N = getMesh(obj,MortarSide.slave).nSurfaces;
       initializeActiveSet(obj,N,input.ActiveSet);
-
-      % select dirichlet nodes
-      setDirichletNodes(obj);
       
-
     end
 
     function updateState(obj,du)
@@ -124,7 +121,7 @@ classdef SolidMechanicsContact < MeshTying
 
         if isstring(obj.activeSet.forceStickBoundary)
           % force elements adjacent to dirichlet boundary to remain stick
-          if any(ismember(nodes,obj.dirNodes))
+          if any(ismember(nodes,obj.stickNodes))
             % element has a dirichlet node - keep it stick
             continue
           end
@@ -215,6 +212,15 @@ classdef SolidMechanicsContact < MeshTying
             ' unstable behavior detected'])
         end
       end
+
+    end
+
+
+    function initialize(obj)
+
+      initialize@InterfaceSolver(obj);
+
+      setStickNodes(obj);
 
     end
 
@@ -773,7 +779,9 @@ classdef SolidMechanicsContact < MeshTying
     end
 
 
-    function setDirichletNodes(obj)
+    function setStickNodes(obj)
+
+      % set boundary nodes that must remain stick
 
       bcs = obj.domains(2).bcs;
       bcList = keys(bcs.db);
@@ -784,24 +792,25 @@ classdef SolidMechanicsContact < MeshTying
 
       directions = ismember(["x","y","z"],obj.activeSet.forceStickBoundary);
 
-      dirList = [];
+      stickList = [];
 
       for bcId = string(bcList)
 
-        if getType(bcs,bcId)=="Dirichlet" && getVariable(bcs,bcId) == obj.coupledVariables
-          nEnts = getNumbLoadedEntities(bcs,bcId);
+        if strcmpi(getType(bcs,bcId),"dirichlet") && getVariable(bcs,bcId) == obj.coupledVariables
+
+          nEnts = getNumbTargetEntities(bcs,bcId);
 
           if sum(nEnts(directions))==0
             continue
           end
 
-          dirList = [dirList; getBCentities(bcs,bcId)];
+          stickList = [stickList; getTargetEntities(bcs,bcId)];
 
         end
 
       end
 
-      obj.dirNodes = unique(dirList);
+      obj.stickNodes = unique(stickList);
       
     end
 
