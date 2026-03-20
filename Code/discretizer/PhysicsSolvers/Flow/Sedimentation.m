@@ -110,6 +110,7 @@ classdef Sedimentation < PhysicsSolver
       if obj.sedFlag
         obj.updateSedRate(dt);
         obj.sedFlag = false;
+        % obj.domain.J{obj.fieldId,obj.fieldId} = computeMat(obj,dt);
       end     
 
       % Assembling the system.
@@ -670,12 +671,6 @@ classdef Sedimentation < PhysicsSolver
       obj.initializeCell(dofs);
       % obj.initializeCellIter(dofs);
 
-      if obj.nonElasticFlag
-        poro = obj.poro0(dofs);
-        obj.domain.state.data.voidrate(dofs) = poro./(1-poro);
-        % obj.domain.state.data.voidrate(dofs) = obj.getCellsProp('voidrate',dofs);
-      end
-
       % Update the mesh output
       obj.updateMeshOutput(dofs);
     end
@@ -717,24 +712,22 @@ classdef Sedimentation < PhysicsSolver
       Cc = obj.getCellsProp('compressIdx');
       Cr = obj.getCellsProp('recompressIdx');
       delta_e = SedMaterial.getDeltaVoidRatio(sCurr,sPrev,sCon,Cc,Cr);
+
       e_prev = obj.getStateOld().data.voidrate;
       % e_prev = obj.getState().data.voidrate;
       obj.getState().data.voidrate = e_prev + delta_e;
 
       % Update the Mesh Deformation - vertical deformation (compaction has negative sign)
       [~,~,dz] = obj.grid.getCellsDims();
-      % dz = dz + obj.getState('cellDefm');
+      % dz = dz + obj.getState('cellDefm');  % to compute as eulerian grid
 
       e_0 = obj.getCellsProp('voidrate');
       eps = delta_e./(1+e_0);
-      strain = obj.getStateOld().data.strain + eps;
-      % strain = obj.getStateOld().data.strain + eps./(1+eps);
+      strain = obj.getStateOld().data.strain + eps;  % <-- Lagrangian strain
+      % strain = obj.getStateOld().data.strain + eps./(1+eps); % <-- Eulerian strain
       
       obj.getState().data.strain = strain;
       obj.getState().data.cellDefm = strain.*dz;
-      % obj.getState().data.cellDefm = obj.getStateOld().data.cellDefm + eps.*dz;
-      % obj.getState().data.cellDefm = obj.getState().data.strain.*dz;
-      %vcomp = dz * (eps_old + delta_eps)
     end
 
     function computeHalfTrans(obj)
@@ -896,9 +889,6 @@ classdef Sedimentation < PhysicsSolver
     function initializeCellIter(obj,dofs)
       % Computing the initial porosity
       void0 = obj.getCellsProp('voidrate',dofs);
-      if obj.nonElasticFlag
-        obj.getState().data.voidrate(dofs) = void0;
-      end
 
       % Initial stress state
       sInit = obj.getCellsProp('initialStress',dofs);
@@ -913,6 +903,7 @@ classdef Sedimentation < PhysicsSolver
       if ~obj.nonElasticFlag
         poro = void0./(1+void0);
         obj.poro0(dofs) = void0./(1+void0);
+        obj.getState().data.voidrate(dofs) = void0;
         obj.getState().data.stress(dofs) = -(1-poro).*(gamma_s-gamma_w).*(zCell-zCellCM)-sInit;
         obj.getStateOld().data.stress(dofs) = -sInit;
         return;        
@@ -933,20 +924,25 @@ classdef Sedimentation < PhysicsSolver
         voidCurr = void0+dvoid;
         error = max(abs((voidCurr-voidOld)./voidOld));
         iter=iter+1;
-      end
+      end      
 
       obj.poro0(dofs) = voidCurr./(1+voidCurr);
       obj.getState().data.stress(dofs) = -stress-sInit;
       % obj.getStateOld().data.stress(dofs) = -stress;
       obj.getStateOld().data.stress(dofs) = -sInit;
+      obj.getState().data.voidrate(dofs) = voidCurr;
     end
+
+
 
     function initializeCell(obj,dofs)
       % Computing the initial porosity
       void0 = obj.getCellsProp('voidrate',dofs);
-      if obj.nonElasticFlag
-        obj.getState().data.voidrate(dofs) = void0;
-      end
+      obj.getState().data.voidrate(dofs) = void0;
+      % 
+      % if obj.nonElasticFlag
+      %   obj.getState().data.voidrate(dofs) = void0;
+      % end
 
       % Initial stress state
       sInit = obj.getCellsProp('initialStress',dofs);
@@ -963,8 +959,9 @@ classdef Sedimentation < PhysicsSolver
       obj.getStateOld().data.stress(dofs) = -sInit;
 
       % obj.getState().data.stress(dofs) = -sInit;
-      % obj.getStateOld().data.stress(dofs) =  -2*(1-poro).*(gamma_s-gamma_w).*(zCell-zCellCM)-sInit;
+      % obj.getStateOld().data.stress(dofs) =  -2*(1-poro).*(gamma_s-gamma_w).*(zCell-zCellCM)-sInit;      
     end
+
 
 
 
