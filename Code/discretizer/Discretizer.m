@@ -62,7 +62,7 @@ classdef Discretizer < handle
       end
 
       for i = 1:numel(bcList)
-        bcId = bcList;
+        bcId = bcList(i);
 
         % loop over available bcs
         bcVar = obj.bcs.getVariable(bcId);

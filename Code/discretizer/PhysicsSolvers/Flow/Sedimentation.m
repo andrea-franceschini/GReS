@@ -50,8 +50,6 @@ classdef Sedimentation < PhysicsSolver
 
   properties (Access = private)
     nmat uint16
-    sedFlag logical = true
-    % nonElasticFlag logical = true
 
     tol = 1e-8;
     niterMx = 100;
@@ -80,9 +78,6 @@ classdef Sedimentation < PhysicsSolver
         obj.heightControl = input.Domain.NewCellHeightControl;
       end
 
-      % % % Set mesh to be print.
-      % % obj.prepareMesh;
-
       % Initialize sediment control
       obj.sedimentHistory = SedimentsMap(input.SedimentMap,obj.nmat,...
         obj.grid.ncells(1:2));
@@ -93,11 +88,6 @@ classdef Sedimentation < PhysicsSolver
         gresLog().error("No boundary was defined for the simulation");
       end
       obj.bcs = input.Boundary.BC(:);
-
-      % % % Initialize the States
-      % % obj.prepareStates;
-      % %       
-      % % obj.prepareSystem;
 
       % Allocate system matrices
       obj.fieldId = 1;
@@ -123,21 +113,14 @@ classdef Sedimentation < PhysicsSolver
 
     function timeStepSetup(obj)
       % initialize the physics solver for the time step
+      % % Only one time for each time step, update the sedimentation rate.
       dt = obj.domain.state.t-obj.domain.stateOld.t;
       obj.updateSedRate(dt);
-      obj.sedFlag = false;
     end
 
     function assembleSystem(obj,dt)
       % Update the cells half transmissibility
       obj.computeHalfTrans();
-
-      % % Only one time for each time step, update the sedimentation rate.
-      % if obj.sedFlag
-      %   obj.updateSedRate(dt);
-      %   obj.sedFlag = false;
-      %   % obj.domain.J{obj.fieldId,obj.fieldId} = computeMat(obj,dt);
-      % end     
 
       % Assembling the system.
       obj.domain.J{obj.fieldId,obj.fieldId} = computeMat(obj,dt);
@@ -211,10 +194,8 @@ classdef Sedimentation < PhysicsSolver
 
       % Update state for next step
       obj.domain.stateOld = copy(obj.domain.state);
-      % if obj.nonElasticFlag
-        map = obj.domain.state.data.stress < obj.domain.state.data.stressCons;
-        obj.domain.state.data.stressCons(map) = obj.domain.state.data.stress(map);
-      % end
+      map = obj.domain.state.data.stress < obj.domain.state.data.stressCons;
+      obj.domain.state.data.stressCons(map) = obj.domain.state.data.stress(map);
 
       % Update the dof used for the parallel solver
       if flagGrow
@@ -222,29 +203,29 @@ classdef Sedimentation < PhysicsSolver
       end
 
       % Update the necessity to compute the sedimentation rate.
-      obj.sedFlag = true;
       obj.iterTimeStep = 1;
     end
 
     function applyBC(obj,bcId,t)
-      if ~BCapplies(obj,bcId)
-        return
-      end
-
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
-
-      % Base application of a Boundary condition
-      bcType = obj.domain.bcs.getType(bcId);
-
-      switch bcType
-        case {'Dirichlet','Seepage'}
-          applyDirBC(obj,bcId,bcDofs,bcVals);
-        case {'Neumann','VolumeForce'}
-          applyNeuBC(obj,bcId,bcDofs,bcVals);
-        otherwise
-          gresLog().error("Error in %s: Boundary condition type '%s' is not " + ...
-            "available in applyBC()",class(obj),bcType)
-      end
+      return
+      % if ~BCapplies(obj,bcId)
+      %   return
+      % end
+      % 
+      % [bcDofs,bcVals] = getBC(obj,bcId,t);
+      % 
+      % % Base application of a Boundary condition
+      % bcType = obj.domain.bcs.getType(bcId);
+      % 
+      % switch bcType
+      %   case {'Dirichlet','Seepage'}
+      %     applyDirBC(obj,bcId,bcDofs,bcVals);
+      %   case {'Neumann','VolumeForce'}
+      %     applyNeuBC(obj,bcId,bcDofs,bcVals);
+      %   otherwise
+      %     gresLog().error("Error in %s: Boundary condition type '%s' is not " + ...
+      %       "available in applyBC()",class(obj),bcType)
+      % end
     end
 
     function applyDirVal(obj,bcId,t)
@@ -281,12 +262,7 @@ classdef Sedimentation < PhysicsSolver
       
       % Update the deformation
       state.data.stress = sNew;
-      
-      % if obj.nonElasticFlag
-        obj.updateStateNonElastic(sNew,sOld);
-      % else
-      %   obj.updateStateElastic(sNew,sOld);
-      % end
+      obj.updateStateNonElastic(sNew,sOld);
 
       if obj.iterTimeStep == 1
         obj.getStateOld().data.stress = sNew;
@@ -311,45 +287,45 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.outstate.results(tID).height = outPrint.height;
     end
 
-    function [dofs,vals] = getBC(obj,id,t)
-      % getBC - function to find the value and the location for the
-      % boundary condition.
-      %
-      % Observation.:
-      %  - The seepage boundary condition apply a hydrostatic pressure
-      % in the boundary, and it's assume as a datum the most elavated
-      % point in the domain. (For future, have a way to pass this
-      % information).
-      bc = obj.domain.bcs.db(id);
-      dofs = obj.grid.getBord(bc.surface);
-      p = getState(obj,"pressure");
-      switch lower(bc.surface)
-        case {"x0","xm"}
-          axis=1;
-          vecN = [1 0 0];
-        case {"y0","ym"}
-          axis=2;
-          vecN = [0 1 0];
-        case {"z0","zm"}
-          axis=3;
-          vecN = [0 0 1];
-        otherwise
-          vals = [];
-          return
-      end
-
-      switch lower(bc.type)
-        case 'neumann'
-          v=bc.data.*ones(length(dofs),1);
-          vals = sum(vecN.*v,2);
-        case 'dirichlet'
-          mu = obj.domain.materials.getFluid().getSpecificWeight();
-          dirJ = 1/mu*obj.halfTrans(dofs,axis);
-          potential = p(dofs) - bc.data;
-          q = dirJ.*potential;
-          vals = [dirJ,q];
-      end
-    end
+    % % % function [dofs,vals] = getBC(obj,id,t)
+    % % %   % getBC - function to find the value and the location for the
+    % % %   % boundary condition.
+    % % %   %
+    % % %   % Observation.:
+    % % %   %  - The seepage boundary condition apply a hydrostatic pressure
+    % % %   % in the boundary, and it's assume as a datum the most elavated
+    % % %   % point in the domain. (For future, have a way to pass this
+    % % %   % information).
+    % % %   bc = obj.domain.bcs.db(id);
+    % % %   dofs = obj.grid.getBord(bc.surface);
+    % % %   p = getState(obj,"pressure");
+    % % %   switch lower(bc.surface)
+    % % %     case {"x0","xm"}
+    % % %       axis=1;
+    % % %       vecN = [1 0 0];
+    % % %     case {"y0","ym"}
+    % % %       axis=2;
+    % % %       vecN = [0 1 0];
+    % % %     case {"z0","zm"}
+    % % %       axis=3;
+    % % %       vecN = [0 0 1];
+    % % %     otherwise
+    % % %       vals = [];
+    % % %       return
+    % % %   end
+    % % % 
+    % % %   switch lower(bc.type)
+    % % %     case 'neumann'
+    % % %       v=bc.data.*ones(length(dofs),1);
+    % % %       vals = sum(vecN.*v,2);
+    % % %     case 'dirichlet'
+    % % %       mu = obj.domain.materials.getFluid().getSpecificWeight();
+    % % %       dirJ = 1/mu*obj.halfTrans(dofs,axis);
+    % % %       potential = p(dofs) - bc.data;
+    % % %       q = dirJ.*potential;
+    % % %       vals = [dirJ,q];
+    % % %   end
+    % % % end
 
     function J = computeMat(obj,dt)
       % Recompute elementary matrices
@@ -426,12 +402,9 @@ classdef Sedimentation < PhysicsSolver
       volCell = dx.*dy.*(dz + obj.getState('cellDefm'));
 
       % Computing the storage coefficient
-      % if obj.nonElasticFlag
-        poro = obj.getState().data.voidrate;
-        poro = poro./(1+poro);
-      % else
-      %   poro = obj.poro0;
-      % end
+      poro = obj.getState().data.voidrate;
+      poro = poro./(1+poro);
+
       beta = obj.domain.materials.getFluid().getFluidCompressibility();
       oedoComp = obj.computeOedometricCompressibility(dofs);
       PVal = (oedoComp+beta*poro).*volCell;
@@ -440,36 +413,36 @@ classdef Sedimentation < PhysicsSolver
       obj.P = PVal.*speye(obj.grid.ndofs);
     end
 
-    function applyNeuBC(obj,bcId,bcDofs,bcVals)
-      if ~BCapplies(obj,bcId)
-        return
-      end
+    % % % function applyNeuBC(obj,bcId,bcDofs,bcVals)
+    % % %   if ~BCapplies(obj,bcId)
+    % % %     return
+    % % %   end
+    % % % 
+    % % %   % Base application of a Boundary condition
+    % % %   if ~strcmp(obj.domain.bcs.getVariable(bcId),obj.getField)
+    % % %     return
+    % % %   end
+    % % % 
+    % % %   % Base application of Neumann boundary condition to the rhs.
+    % % %   % bc values are subtracted since we solve du = J\(-rhs)
+    % % %   bcId = obj.fieldId;
+    % % %   obj.domain.rhs{bcId}(bcDofs) = obj.domain.rhs{bcId}(bcDofs) - bcVals;
+    % % % end
 
-      % Base application of a Boundary condition
-      if ~strcmp(obj.domain.bcs.getVariable(bcId),obj.getField)
-        return
-      end
-
-      % Base application of Neumann boundary condition to the rhs.
-      % bc values are subtracted since we solve du = J\(-rhs)
-      bcId = obj.fieldId;
-      obj.domain.rhs{bcId}(bcDofs) = obj.domain.rhs{bcId}(bcDofs) - bcVals;
-    end
-
-    function applyDirBC(obj,~,bcDofs,bcVals)
-      % apply Dirichlet BCs
-      % overrides the base method implemented in PhysicsSolver
-      % ents: id of constrained faces without any dof mapping applied
-      % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
-
-      assert(size(bcVals,2)==2,'Invalid matrix size for BC values');
-      nDoF = obj.grid.ndofs;
-      bcDofsJ = nDoF*(bcDofs-1) + bcDofs;
-      obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) = ...
-        obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) + bcVals(:,1);
-      obj.domain.rhs{obj.fieldId}(bcDofs) = ...
-        obj.domain.rhs{obj.fieldId}(bcDofs) + bcVals(:,2);
-    end
+    % % % function applyDirBC(obj,~,bcDofs,bcVals)
+    % % %   % apply Dirichlet BCs
+    % % %   % overrides the base method implemented in PhysicsSolver
+    % % %   % ents: id of constrained faces without any dof mapping applied
+    % % %   % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
+    % % % 
+    % % %   assert(size(bcVals,2)==2,'Invalid matrix size for BC values');
+    % % %   nDoF = obj.grid.ndofs;
+    % % %   bcDofsJ = nDoF*(bcDofs-1) + bcDofs;
+    % % %   obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) = ...
+    % % %     obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) + bcVals(:,1);
+    % % %   obj.domain.rhs{obj.fieldId}(bcDofs) = ...
+    % % %     obj.domain.rhs{obj.fieldId}(bcDofs) + bcVals(:,2);
+    % % % end
 
     function [cellStr,pointStr] = buildPrintStruct(obj,state)
       pointStr = [];
@@ -571,11 +544,9 @@ classdef Sedimentation < PhysicsSolver
       obj.getState().data.cellDefm = zeros(ndofs,1);
       obj.getState().data.stress = zeros(ndofs,1);
       obj.getState().data.sedmrate = zeros(ndofs,1);
-      % if obj.nonElasticFlag
-        obj.getState().data.voidrate = zeros(ndofs,1);
-        obj.getState().data.strain = zeros(ndofs,1);
-        obj.getState().data.stressCons = -abs(obj.getCellsProp('preConStress'));
-      % end
+      obj.getState().data.voidrate = zeros(ndofs,1);
+      obj.getState().data.strain = zeros(ndofs,1);
+      obj.getState().data.stressCons = -abs(obj.getCellsProp('preConStress'));
       obj.domain.stateOld = copy(obj.domain.getState());
     end
 
@@ -735,16 +706,16 @@ classdef Sedimentation < PhysicsSolver
       obj.mesh.cells(end+1:end+nelm,:) = conec;
     end
 
-    function updateStateElastic(obj,sNew,sOld)
-      % Update the Mesh Deformation
-      [~,~,dz] = obj.grid.getCellsDims();
-      dz = dz + obj.getState('cellDefm');
-
-      elasticPerCell = obj.getCellsProp('youngModulus');
-      poissonPerCell = obj.getCellsProp('poissonRatio');
-      alpha = (1-2*poissonPerCell).*(1+poissonPerCell)./((1-poissonPerCell).*elasticPerCell);
-      obj.getState().data.cellDefm=obj.getState().data.cellDefm + alpha.*dz.*(sNew-sOld);
-    end
+    % % % function updateStateElastic(obj,sNew,sOld)
+    % % %   % Update the Mesh Deformation
+    % % %   [~,~,dz] = obj.grid.getCellsDims();
+    % % %   dz = dz + obj.getState('cellDefm');
+    % % % 
+    % % %   elasticPerCell = obj.getCellsProp('youngModulus');
+    % % %   poissonPerCell = obj.getCellsProp('poissonRatio');
+    % % %   alpha = (1-2*poissonPerCell).*(1+poissonPerCell)./((1-poissonPerCell).*elasticPerCell);
+    % % %   obj.getState().data.cellDefm=obj.getState().data.cellDefm + alpha.*dz.*(sNew-sOld);
+    % % % end
 
     function updateStateNonElastic(obj,sCurr,sPrev)
       % For the terzaghi column, the deformation is only in the reduction
@@ -796,24 +767,13 @@ classdef Sedimentation < PhysicsSolver
       end
 
       sNew = obj.getState().data.stress(dofs);
-      % if obj.nonElasticFlag
-        % Non elastic formulation
-        Cc = obj.getCellsProp('compressIdx',dofs);
-        Cr = obj.getCellsProp('recompressIdx',dofs);        
-        sCurr = obj.getState().data.stress(dofs);
-        sPrev = obj.getStateOld().data.stress(dofs);
-        sCon  = obj.getState().data.stressCons(dofs);
-        void = obj.getState().data.voidrate(dofs);
-        oedoComp = (1./(1+void)).*SedimentMaterial.getDevVoidRatio(sCurr,sPrev,sCon,Cc,Cr);
-      % else
-      %   % Elastic formulation
-      %   elasticPerCell = obj.getCellsProp('youngModulus');
-      %   elasticPerCell = elasticPerCell(dofs);
-      %   poissonPerCell = obj.getCellsProp('poissonRatio');
-      %   poissonPerCell = poissonPerCell(dofs);
-      %   alpha = (1-2*poissonPerCell).*(1+poissonPerCell)./((1-poissonPerCell).*elasticPerCell);
-      %   oedoComp = alpha./(1-alpha.*sNew);
-      % end      
+      Cc = obj.getCellsProp('compressIdx',dofs);
+      Cr = obj.getCellsProp('recompressIdx',dofs);
+      sCurr = obj.getState().data.stress(dofs);
+      sPrev = obj.getStateOld().data.stress(dofs);
+      sCon  = obj.getState().data.stressCons(dofs);
+      void = obj.getState().data.voidrate(dofs);
+      oedoComp = (1./(1+void)).*SedimentMaterial.getDevVoidRatio(sCurr,sPrev,sCon,Cc,Cr);
     end
 
     function out = getCellsProp(obj,type,dofs)
@@ -907,12 +867,8 @@ classdef Sedimentation < PhysicsSolver
       comp = obj.grid.cell2NodeAccByColumnFromBot2Top(comp);
       gamma = obj.domain.materials.getFluid().getSpecificWeight();
       [~,~,zCoordCM] = obj.grid.getCoordCenter();
-      % if obj.nonElasticFlag
-        voidR = sNew.data.voidrate*fac+sOld.data.voidrate*(1-fac);
-        voidR = voidR./(1+voidR);
-      % else
-      %   voidR = obj.poro0;
-      % end
+      voidR = sNew.data.voidrate*fac+sOld.data.voidrate*(1-fac);
+      voidR = voidR./(1+voidR);
 
       % mob = (1/obj.domain.materials.getFluid().getDynViscosity());
       % states.flux = computeFlux(obj,p,mob,t);
@@ -942,16 +898,6 @@ classdef Sedimentation < PhysicsSolver
       zCell = obj.grid.getColumnMaxHeight(dofs);
       gamma_s = obj.getCellsProp('specificWeight',dofs);
       gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
-
-      % % For Elastic material.
-      % if ~obj.nonElasticFlag
-      %   poro = void0./(1+void0);
-      %   obj.poro0(dofs) = void0./(1+void0);
-      %   obj.getState().data.voidrate(dofs) = void0;
-      %   obj.getState().data.stress(dofs) = -(1-poro).*(gamma_s-gamma_w).*(zCell-zCellCM)-sInit;
-      %   obj.getStateOld().data.stress(dofs) = -sInit;
-      %   return;        
-      % end
 
       % For Non-Elastic material.
       % [~,~,zCellCM] = obj.grid.getCellsDims(dofs);
@@ -983,10 +929,6 @@ classdef Sedimentation < PhysicsSolver
       % Computing the initial porosity
       void0 = obj.getCellsProp('voidrate',dofs);
       obj.getState().data.voidrate(dofs) = void0;
-      % 
-      % if obj.nonElasticFlag
-      %   obj.getState().data.voidrate(dofs) = void0;
-      % end
 
       % Initial stress state
       sInit = obj.getCellsProp('initialStress',dofs);
