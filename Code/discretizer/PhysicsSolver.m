@@ -145,8 +145,8 @@ classdef (Abstract) PhysicsSolver < handle
       % initialize the physics solver before the simulation starts
     end
 
-    function initializeTimeStep(obj)
-      % initialize the physics solver for the time step
+    function timeStepSetup(obj)
+      % prepare the physics solver at the begin of each time step
     end
 
     function finalizeOutput(obj)

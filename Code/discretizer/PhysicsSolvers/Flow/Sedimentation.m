@@ -121,7 +121,7 @@ classdef Sedimentation < PhysicsSolver
       obj.prepareSystem;
     end
 
-    function initializeTimeStep(obj)
+    function timeStepSetup(obj)
       % initialize the physics solver for the time step
       dt = obj.domain.state.t-obj.domain.stateOld.t;
       obj.updateSedRate(dt);

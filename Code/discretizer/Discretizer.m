@@ -363,11 +363,11 @@ classdef Discretizer < handle
 
     end
 
-    function initializeTimeStep(obj)
+    function timeStepSetup(obj)
 
-      % prepare the discretizer before starting the simulation
+      % prepare the physics for each new time step
       for solver = obj.solverNames
-        initializeTimeStep(obj.getPhysicsSolver(solver));
+        timeStepSetup(obj.getPhysicsSolver(solver));
       end
 
     end

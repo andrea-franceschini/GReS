@@ -147,16 +147,15 @@ classdef (Abstract) InterfaceSolver < handle
 
     end
 
-    function initializeTimeStep(obj)
-      % initialize the physics solver for the time step
-    end
-
-
     function advanceState(obj)
 
       % note: state in interface solver is just a value struct
       obj.stateOld = obj.state;
       
+    end
+
+    function timeStepSetup(obj)
+      % prepare the interface solver at the begin of each time step
     end
 
     function goBackState(obj)
