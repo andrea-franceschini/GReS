@@ -359,6 +359,15 @@ classdef Discretizer < handle
 
     end
 
+    function timeStepSetup(obj)
+
+      % prepare the physics for each new time step
+      for solver = obj.solverNames
+        timeStepSetup(obj.getPhysicsSolver(solver));
+      end
+
+    end
+
     % function printState(obj)
     %   % print solution of the model according to the print time in the
     %   % list

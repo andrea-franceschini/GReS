@@ -155,6 +155,10 @@ classdef (Abstract) InterfaceSolver < handle
       
     end
 
+    function timeStepSetup(obj)
+      % prepare the interface solver at the begin of each time step
+    end
+
     function goBackState(obj)
 
       obj.state = obj.stateOld;
