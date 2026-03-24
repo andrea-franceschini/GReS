@@ -10,7 +10,9 @@ cd(scriptDir);
 
 fname = 'pressurizedCrack.xml';
 
-simparams = SimulationParameters(fname);
+params = readInput(fname);
+
+simparams = SimulationParameters(params.SimulationParameters);
 
 % coordinate arrays
 % Domain sizes
@@ -18,7 +20,7 @@ X = 40.0;
 Y = 1;
 Z = X;
 
-mesh = structuredMesh(521,1,101,[-0.5*X 0.5*X],[-0.5*Y 0.5*Y],[-0.5*Z 0.5*Z]);
+mesh = structuredMesh(321,1,121,[-0.5*X 0.5*X],[-0.5*Y 0.5*Y],[-0.5*Z 0.5*Z]);
 
 %assert(3*mesh.nNodes < 2e5,"Mesh is too fine")
 
@@ -26,14 +28,43 @@ mesh = structuredMesh(521,1,101,[-0.5*X 0.5*X],[-0.5*Y 0.5*Y],[-0.5*Z 0.5*Z]);
 elems = Elements(mesh,2);
 faces = Faces(mesh);
 grid = struct('topology',mesh,'cells',elems,'faces',faces);
-mat = Materials(fname);
+mat = Materials(params.Materials);
 
 
-printUtils = OutState("folderName",strcat("Output/Sneddon"),"timeList",1,...
-                       "writeVtk",1,"flagMatFile",1,"matFileName",strcat("Output/Sneddon"));
+printUtils = OutState("outputFile",strcat("Output/Sneddon"),"printTimes",1,...
+                      "matFileName",strcat("Output/Sneddon"));
 
 
-bc = Boundaries(fname,grid);
+bc = Boundaries(grid);
+
+bc.addBC('name',"z_fix",...
+          'type',"dirichlet",...
+          'field',"surface",...
+          'variable',"displacements",...
+          'entityListType',"tag", ...
+          'entityList',[1,2],...
+          'components',"z");
+bc.addBCEvent("z_fix",'time',0.0,'value',0.0);
+
+bc.addBC('name',"y_fix",...
+          'type',"dirichlet",...
+          'field',"surface",...
+          'variable',"displacements",...
+          'entityListType',"tag", ...
+          'entityList',[3,4],...
+          'components',"x");
+bc.addBCEvent("y_fix",'time',0.0,'value',0.0);
+
+bc.addBC('name',"x_fix",...
+          'type',"dirichlet",...
+          'field',"surface",...
+          'variable',"displacements",...
+          'entityListType',"tag", ...
+          'entityList',[5,6],...
+          'components',"x");
+bc.addBCEvent("x_fix",'time',0.0,'value',0.0);
+
+
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Boundaries',bc,...
@@ -41,7 +72,7 @@ domain = Discretizer('Boundaries',bc,...
                      'Grid',grid);
 
 
-domain.addPhysicsSolver(fname);
+domain.addPhysicsSolvers(params.Solver);
 
 % set neumann traction in embedded fracture
 efem = getPhysicsSolver(domain,"EmbeddedFractureMechanics");

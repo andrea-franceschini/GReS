@@ -11,14 +11,18 @@ classdef PorousRock < handle
         gamma;             % Fluid specific weight
         % specGrav             % Specific gravity of rock
         Sr=0.;             % Residual saturation
-        Ss=1.;             % Maximum saturation
+        Ss=1.;             % Maximum saturation        
+    end
+
+    properties
+      Curves
     end
 
     methods (Access = public)
         % Class constructor method
-        function obj = PorousRock(inputStruct)
+        function obj = PorousRock(fluid,varargin)
             % Calling the function to set the object properties
-            obj.readMaterialParameters(inputStruct);
+            obj.readMaterialParameters(fluid,varargin{:});
         end
 
         % Function to get material porosity
@@ -82,6 +86,13 @@ classdef PorousRock < handle
           end
         end
 
+        function addCapillaryCurves(obj,f,varargin)
+
+          fluidWeight = f.getSpecificWeight;
+
+          obj.Curves = VanGenuchten(fluidWeight,varargin{:});
+        end
+
         % Function to get rock compressibility
         %     function a = getRockCompressibility(obj)
         %       a = obj.alpha;
@@ -91,22 +102,34 @@ classdef PorousRock < handle
     methods (Access = private)
       % Assigning material parameters (check also the Materials class)
       % to object properties
-      function readMaterialParameters(obj,inputStruct)
+      function readMaterialParameters(obj,fluid,varargin)
 
-        obj.poro = getXMLData(inputStruct,1.,"porosity");
-        % obj.specGrav = getXMLData(inputStruct,21,"specificGravity");
-        obj.gamma = getXMLData(inputStruct,21,"specificWeight");
-        obj.biot = getXMLData(inputStruct,1,"biotCoefficient");
-        Kvec = getXMLData(inputStruct,[],"permeability");
+        default = struct('porosity',0.3,...
+                         'biotCoefficient',1.0,...
+                         'permeability',[],...
+                         'specificWeight',21.0,...
+                         "residualSaturation",0.0,...
+                         "maximumSaturation",1.0,...
+                         "Curves",missing);
+
+        % initialize also the Curve here!
+
+        params = readInput(default,varargin{:});
+
+        obj.poro = params.porosity;
+        obj.gamma = params.specificWeight;
+        obj.biot = params.biotCoefficient;
+        obj.Sr = params.residualSaturation;
+        obj.Ss = params.maximumSaturation;
+
+        Kvec = params.permeability;
+
         nK = length(Kvec);
         if ~any([nK==1,nK==3,nK==6])
-          gresLog().error("Wrong number of numeric " + ...
+          error("Wrong number of numeric " + ...
             "values for permeability");
         end
         obj.KVec = Kvec;
-
-        obj.Sr = getXMLData(inputStruct,0,"residualSaturation");
-        obj.Ss = getXMLData(inputStruct,1,"maximumSaturation");
 
         % K needs to be SPD. It is symmetric by construction but is it also
         % Positive Definite?
@@ -116,6 +139,11 @@ classdef PorousRock < handle
           % Tolerance chosen following the hint in:
           % https://it.mathworks.com/help/matlab/math/determine-whether-matrix-is-positive-definite.html#DetermineWhetherMatrixIsSPDExample-3
           gresLog().error('The values passed for permeability matrix is not positive definite');
+        end
+
+        % read capillaery curves
+        if ~ismissing(params.Curves)
+          addCapillaryCurves(obj,fluid,params.Curves)
         end
       end
     end

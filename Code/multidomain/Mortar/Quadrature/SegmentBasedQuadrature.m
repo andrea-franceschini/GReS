@@ -23,9 +23,10 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
       obj@MortarQuadrature(interface,multType,input);
 
-      obj.ngTri = getXMLData(input,4,"nGP");
+      input = readInput(struct('nGP',3),input);
+      obj.ngTri = input.nGP;
 
-      gaussTri = Gauss(5,obj.ngTri); % 5 is the vtk type of triangles
+      gaussTri = Gauss(5,obj.ngTri);      % 5 is the vtk type of triangles
       obj.wTri = gaussTri.weight;
 
       isQuadratic = [~isempty(obj.elements(1).getElement(28));

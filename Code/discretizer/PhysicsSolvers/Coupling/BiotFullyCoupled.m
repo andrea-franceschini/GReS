@@ -6,7 +6,7 @@ classdef BiotFullyCoupled < PhysicsSolver
     Q             % the biot coupling matrix
   end
 
-  properties (Access = private)
+  properties (Access = protected)
 
     % we avoid multiple inheritance and we directly create instances to the
     % single physics models that are needed
@@ -28,24 +28,31 @@ classdef BiotFullyCoupled < PhysicsSolver
 
     end
 
-    function registerSolver(obj,input)
+    function registerSolver(obj,varargin)
 
       dofm = obj.domain.dofm;
 
+
+      default = struct('Poromechanics',missing,...
+                       'SinglePhaseFlowFVTPFA',missing);
+
+      input = readInput(default,varargin{:});
+
       % Register mechanics
       obj.mechSolver = Poromechanics(obj.domain);
-      registerSolver(obj.mechSolver,input.(class(obj.mechSolver)));
-      obj.fldMech = dofm.getVariableId(obj.mechSolver.getField());
 
       % setup the solver with custom input
       if isfield(input,"SinglePhaseFlowFEM")
         obj.flowSolver = SinglePhaseFlowFEM(obj.domain);
-      end
-      if isfield(input,"SinglePhaseFlowFVTPFA")
+      else
         obj.flowSolver = SinglePhaseFlowFVTPFA(obj.domain);
       end
 
-      % Register fluids
+      % Register mechanics solver
+      registerSolver(obj.mechSolver,input.(class(obj.mechSolver)));
+      obj.fldMech = dofm.getVariableId(obj.mechSolver.getField());
+
+      % Register flow solver
       obj.flowScheme = obj.flowSolver.typeDiscretization();
       registerSolver(obj.flowSolver,input.(class(obj.flowSolver)));
       obj.fldFlow = dofm.getVariableId(obj.flowSolver.getField());
@@ -89,13 +96,7 @@ classdef BiotFullyCoupled < PhysicsSolver
 
       dofm = obj.domain.dofm;
 
-      cellTagFlow = dofm.getTargetRegions(obj.fldFlow);
-      cellTagMech = dofm.getTargetRegions(obj.fldMech);
-
-      % find cell tag where both flow and mechanics are active
-      cellTags = intersect(cellTagMech,cellTagFlow);
-
-      subCells = getEntities(entityField.cell,obj.mesh,cellTags);
+      subCells = getCoupledCells(obj);
 
       switch obj.flowScheme
         case "FEM"
@@ -180,6 +181,18 @@ classdef BiotFullyCoupled < PhysicsSolver
       rhsFlow = Qflow * (uCurr(entsPoro) - uOld(entsPoro));
     end
 
+    function cells = getCoupledCells(obj)
+
+      cellTagFlow = obj.domain.dofm.getTargetRegions(obj.fldFlow);
+      cellTagMech = obj.domain.dofm.getTargetRegions(obj.fldMech);
+
+      % find cell tag where both flow and mechanics are active
+      cellTags = intersect(cellTagMech,cellTagFlow);
+
+      cells = getEntitiesFromTags(entityField.cell,...
+        obj.mesh,entityField.cell,cellTags);
+    end
+
     function applyBC(obj,bcId,t)
       obj.flowSolver.applyBC(bcId,t);
       obj.mechSolver.applyBC(bcId,t);
@@ -198,10 +211,10 @@ classdef BiotFullyCoupled < PhysicsSolver
 
     end
 
-        function [cellDataBiot,pointDataBiot] = writeVTK(obj,fac,t)
+    function [cellDataBiot,pointDataBiot] = writeVTK(obj,fac,t)
 
-          [cellDataFlow,pointDataFlow] = obj.flowSolver.writeVTK(fac,t);
-          [cellDataMech,pointDataMech] = obj.mechSolver.writeVTK(fac);
+      [cellDataFlow,pointDataFlow] = obj.flowSolver.writeVTK(fac,t);
+      [cellDataMech,pointDataMech] = obj.mechSolver.writeVTK(fac);
 
       cellDataBiot = OutState.mergeOutFields(cellDataMech,cellDataFlow);
 
@@ -213,10 +226,10 @@ classdef BiotFullyCoupled < PhysicsSolver
 
     end
 
-    function writeMatFile(obj,fac,tID)
+    function writeSolution(obj,fac,tID)
 
-      obj.flowSolver.writeMatFile(fac,tID);
-      obj.mechSolver.writeMatFile(fac,tID);
+      obj.flowSolver.writeSolution(fac,tID);
+      obj.mechSolver.writeSolution(fac,tID);
 
 
     end

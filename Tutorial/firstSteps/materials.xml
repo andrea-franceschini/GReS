@@ -1,0 +1,18 @@
+<Materials>
+  <Solid name="sand" cellTags="1">
+    <Constitutive>
+      <Elastic youngModulus="1e3" poissonRatio="0.25"/>
+    </Constitutive>
+    <PorousRock
+        specificWeight = "21.0"
+        permeability   = "1e-12"
+        porosity       = "0.375">
+      <Curves type="mualem" beta="2.0" n="1.0" kappa="1.0"/>
+    </PorousRock>
+  </Solid>
+  <Fluid
+      dynamicViscosity = "1e-3"
+      specificWeight   = "9.81"
+      compressibility  = "4.4e-7"/>
+
+</Materials>

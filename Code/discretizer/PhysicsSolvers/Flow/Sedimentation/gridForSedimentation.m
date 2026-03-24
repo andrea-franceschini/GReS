@@ -64,10 +64,10 @@ classdef gridForSedimentation < handle
       %   id        - DOFs at the boundary
       %
       % Supported labels:
-      %   'x0', 'xm', 'y0', 'ym', 'z0', 'zm'
+      %   'xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax'
 
       switch lower(label)
-        case "x0"
+        case "xmin"
           mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
           cells = mapH(:,1);
           J_idx = zeros(obj.ncells(1),1);
@@ -82,7 +82,7 @@ classdef gridForSedimentation < handle
           nelm = sum(cells,"all");
           dofs = getBordX(obj,J_idx,nelm);
 
-        case "xm"
+        case "xmax"
           mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
           cells = mapH(:,end);
           J_idx = zeros(obj.ncells(1),1);
@@ -97,7 +97,7 @@ classdef gridForSedimentation < handle
           nelm = sum(cells,"all");
           dofs = getBordX(obj,J_idx,nelm);
 
-        case "y0"
+        case "ymin"
           mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
           cells = mapH(1,:);
           I_idx = zeros(obj.ncells(2),1);
@@ -112,7 +112,7 @@ classdef gridForSedimentation < handle
           nelm = sum(cells,"all");
           dofs = getBordY(obj,I_idx,nelm);
 
-        case "ym"
+        case "ymax"
           mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
           cells = mapH(end,:);
           I_idx = zeros(obj.ncells(2),1);
@@ -127,7 +127,7 @@ classdef gridForSedimentation < handle
           nelm = sum(cells,"all");
           dofs = getBordY(obj,I_idx,nelm);
 
-        case "z0"
+        case "zmin"
           idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
           idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
           idK = ones(prod(obj.ncells(1:2)),1);
@@ -138,7 +138,7 @@ classdef gridForSedimentation < handle
 
           cellID = sub2ind(obj.ncells,idI,idJ,idK);
           dofs = obj.dof(cellID);
-        case "zm"
+        case "zmax"
           dofs = getTopDofs(obj);
 
         otherwise
@@ -463,7 +463,12 @@ classdef gridForSedimentation < handle
 
       % Constructing the grid
       if strcmp(data.Grid.type,"classic")
-        obj.gridClassic(data.Grid);
+        obj.ncells = data.Grid.division;
+        dim = data.Grid.size;
+        obj.coordX = linspace(0,dim(1),obj.ncells(1)+1);
+        obj.coordY = linspace(0,dim(2),obj.ncells(2)+1);
+        obj.coordZ = linspace(0,dim(3),obj.ncells(3)+1);
+        % obj.gridClassic(data.Grid);
       elseif strcmp(data.Grid.type,"explicit")
         obj.gridExplicit(data.Grid);
       else
@@ -480,14 +485,14 @@ classdef gridForSedimentation < handle
       obj.ndofs = sum(obj.dof~=0,"all");
     end
 
-    function gridClassic(obj,data)
-      % Internal initialization of grid, maps, and material layers.
-      obj.ncells = getXMLData(data,[1,1,1],"division");
-      dim = getXMLData(data,[1,1,1],"size");
-      obj.coordX = linspace(0,dim(1),obj.ncells(1)+1);
-      obj.coordY = linspace(0,dim(2),obj.ncells(2)+1);
-      obj.coordZ = linspace(0,dim(3),obj.ncells(3)+1);
-    end
+    % function gridClassic(obj,data)
+    %   % Internal initialization of grid, maps, and material layers.
+    %   obj.ncells = getXMLData(data,[1,1,1],"division");
+    %   dim = getXMLData(data,[1,1,1],"size");
+    %   obj.coordX = linspace(0,dim(1),obj.ncells(1)+1);
+    %   obj.coordY = linspace(0,dim(2),obj.ncells(2)+1);
+    %   obj.coordZ = linspace(0,dim(3),obj.ncells(3)+1);
+    % end
 
     function gridExplicit(obj,data)
       % Internal initialization of grid, maps, and material layers.

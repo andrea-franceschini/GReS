@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+   <SimulationParameters
+      Start="0."
+      End ="2.0"
+      DtInit="0.25"
+      DtMin ="1e-5"
+      DtMax ="0.5"
+      incrementFactor = "1.25"
+      choppingFactor = "2" 
+      RelativeTolerance = "1.e-6"
+      AbsoluteTolerance = "1.e-8"
+      >
+      <LinearSolver
+         useMatlab="0">
+      </LinearSolver>
+  </SimulationParameters>
+
+
+  <Materials >
+
+    <Solid cellTags = "1" name = "mat">
+
+    <Constitutive>
+
+      <Elastic
+               youngModulus = "5000.0"
+               poissonRatio = "0.3"
+               />
+    </Constitutive>
+
+  </Solid>
+  </Materials>
+
+
+
+  <BoundaryConditions>
+    <BC
+        name = "fixBottom"
+        type = "Dirichlet"
+        field = "surface"
+        variable = "displacements"
+        entityListType = "tag"
+        entityList = "1"
+        components = "x,y,z"
+       >
+
+      <BCevent
+               time = "0"
+               value = "0"
+               />
+    </BC>
+
+     <BC
+        name = "verticalLoad"
+        type = "Neumann"
+        field = "surface"
+        variable = "displacements"
+        entityListType = "tag"
+        entityList = "2"
+        components = "z"
+       >
+
+      <BCevent
+               time = "0"
+               value = "0"
+               />
+       <BCevent
+               time = "2"
+               value = "-1"
+               />
+    </BC>
+  </BoundaryConditions>
+
+
+
+  <Output
+          printTimes   = "1,2,3,4"
+          outputFile   = "mechanics/Output/resultsI"
+          matFileName  = "mechanics/Output/historyI"
+          />
+
+
+  <Solver>
+    <Poromechanics />
+  </Solver>
+</Problem>

@@ -6,18 +6,17 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       obj@SinglePhaseFlow(domain);
     end
 
-    function registerSolver(obj,solverInput)
-      nTags = obj.mesh.nCellTag;
-      
-      if ~isempty(solverInput)
-        targetRegions = getXMLData(solverInput,1:nTags,"targetRegions");
-      else
-        targetRegions = 1:nTags;
-      end
+    function registerSolver(obj,varargin)
 
+      nTags = obj.mesh.nCellTag;
+
+      default = struct('targetRegions',1:nTags);
+
+      params = readInput(default,varargin{:});
+  
       dofm = obj.domain.dofm;
 
-      dofm.registerVariable(obj.getField(),entityField.node,1,targetRegions);
+      dofm.registerVariable(obj.getField(),entityField.node,1,params.targetRegions);
       n = getNumberOfEntities(entityField.node,obj.mesh);
       obj.fieldId = dofm.getVariableId(obj.getField());
 
@@ -155,63 +154,63 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       % remove inactive components of rhs vector
     end
 
-    function [ents,vals] = getBC(obj,id,t)
-      % getBC - function to find the value and the location for the
-      % boundary condition.
-      %
-      % Observation.:
-      %  - The seepage boundary condition apply a hydrostatic pressure
-      % in the boundary, and it's assume as a datum the most elavated
-      % point in the domain. (For future, have a way to pass this
-      % information).
-      bc = obj.domain.bcs;
+    % function [ents,vals] = getBC(obj,id,t)
+    %   % getBC - function to find the value and the location for the
+    %   % boundary condition.
+    %   %
+    %   % Observation.:
+    %   %  - The seepage boundary condition apply a hydrostatic pressure
+    %   % in the boundary, and it's assume as a datum the most elavated
+    %   % point in the domain. (For future, have a way to pass this
+    %   % information).
+    %   bc = obj.domain.bcs;
+    % 
+    %   switch bc.getCond(id)
+    %     case {'node','cell'}
+    %       ents = bc.getEntities(id);
+    %       vals = bc.getVals(id,t);
+    %     case 'surface'
+    %       v = bc.getVals(id,t);
+    %       ents = bc.getLoadedEntities(id);
+    %       entitiesInfl = bc.getEntitiesInfluence(id);
+    %       vals = entitiesInfl*v;
+    %     case 'volumeforce'
+    %       v = bc.getVals(id,t);
+    %       ents = bc.getLoadedEntities(id);
+    %       entitiesInfl = bc.getEntitiesInfluence(id);
+    %       vals = entitiesInfl*v;
+    %   end
+    % 
+    % end
 
-      switch bc.getCond(id)
-        case {'NodeBC','ElementBC'}
-          ents = bc.getEntities(id);
-          vals = bc.getVals(id,t);
-        case 'SurfBC'
-          v = bc.getVals(id,t);
-          ents = bc.getLoadedEntities(id);
-          entitiesInfl = bc.getEntitiesInfluence(id);
-          vals = entitiesInfl*v;
-        case 'VolumeForce'
-          v = bc.getVals(id,t);
-          ents = bc.getLoadedEntities(id);
-          entitiesInfl = bc.getEntitiesInfluence(id);
-          vals = entitiesInfl*v;
-      end
+    % function applyDirVal(obj,bcId,t)
+    %   bcVar = obj.domain.bcs.getVariable(bcId);
+    %   if ~strcmp(bcVar,obj.getField()) 
+    %     return 
+    %   end
+    %   [bcEnts,bcVals] = getBC(obj,bcId,t);
+    %   state = getState(obj);
+    %   state.data.pressure(bcEnts) = bcVals;
+    % end
 
-    end
-
-    function applyDirVal(obj,bcId,t)
-      bcVar = obj.domain.bcs.getVariable(bcId);
-      if ~strcmp(bcVar,obj.getField()) 
-        return 
-      end
-      [bcEnts,bcVals] = getBC(obj,bcId,t);
-      state = getState(obj);
-      state.data.pressure(bcEnts) = bcVals;
-    end
-
-    function applyBC(obj,bcId,t)
-      if ~BCapplies(obj,bcId)
-        return
-      end
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
-
-      % Base application of a Boundary condition
-      bcType = obj.domain.bcs.getType(bcId);
-      switch bcType
-        case {'Dirichlet','Seepage'}
-          applyDirBC(obj,bcId,bcDofs);
-        case {'Neumann','VolumeForce'}
-          applyNeuBC(obj,bcId,bcDofs,bcVals);
-        otherwise
-          error("Error in %s: Boundary condition type '%s' is not " + ...
-            "available in applyBC()",class(obj),bcType)
-      end
-    end    
+    % function applyBC(obj,bcId,t)
+    %   if ~BCapplies(obj,bcId)
+    %     return
+    %   end
+    %   [bcDofs,bcVals] = getBC(obj,bcId,t);
+    % 
+    %   % Base application of a Boundary condition
+    %   bcType = obj.domain.bcs.getType(bcId);
+    %   switch bcType
+    %     case {'dirichlet','seepage'}
+    %       applyDirBC(obj,bcId,bcDofs);
+    %     case {'neumann','volumeforce'}
+    %       applyNeuBC(obj,bcId,bcDofs,bcVals);
+    %     otherwise
+    %       error("Error in %s: Boundary condition type '%s' is not " + ...
+    %         "available in applyBC()",class(obj),bcType)
+    %   end
+    % end    
 
     function [cellStr,pointStr] = buildPrintStruct(obj,state)
       cellStr = repmat(struct('name', 1, 'data', 1), 1, 1);

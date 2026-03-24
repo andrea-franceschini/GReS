@@ -1,21 +1,65 @@
-#include "mex.h"
-#include <cmath>
+//----------------------------------------------------------------------------------------
+// computeQuad9Basis_wrap.cpp
+// Modernized MEX gateway — MathWorks C++ MEX API (R2018a+)
+// Uses: mex.hpp + mexAdapter.hpp (matlab::data API)
+//
+// MATLAB signature:
+//   N = computeQuad9Basis(coords)   % coords: n×2, N: n×9
+//
+// Build command:
+//   mex -R2018a computeQuad9Basis_wrap.cpp
+//
+// FIXES APPLIED (vs previous version)
+// -----------------------------------------------------------------------
+// [FIX-F] mwSize is declared in mex.h — which is NOT included by the
+//         pure C++ MEX API (mex.hpp). Using it caused "unknown type name
+//         'mwSize'" errors at every use site.
+//         Fixed by replacing every mwSize with std::size_t throughout,
+//         both in the computational kernel and in the gateway.
+//         std::size_t is the correct portable equivalent; it is the same
+//         underlying type as mwSize on all 64-bit platforms.
+//
+// All previously documented fixes (FIX-A/B/C/E, NEW-1..4) are retained.
+// -----------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 
-void computeBasis(double* N, const double* coords, mwSize np) {
-    for (mwSize i = 0; i < np; ++i) {
-        double xi  = coords[i];           // xi = c(i,0)
-        double eta = coords[i + np];      // eta = c(i,1)
+#include "mex.hpp"
+#include "mexAdapter.hpp"
 
-        // 1D basis functions
-        double b1_xi  = 0.5 * xi * (xi - 1);
-        double b2_xi  = 1.0 - xi * xi;
-        double b3_xi  = 0.5 * xi * (xi + 1);
+#include <cstddef>   // std::size_t  [FIX-F]
+#include <vector>
+#include <string>
+#include <algorithm> // std::copy
 
-        double b1_eta = 0.5 * eta * (eta - 1);
-        double b2_eta = 1.0 - eta * eta;
-        double b3_eta = 0.5 * eta * (eta + 1);
+using namespace matlab::data;
+using matlab::mex::ArgumentList;
 
-        // Compute tensor product basis functions
+//----------------------------------------------------------------------------------------
+// Pure computational kernel — no MATLAB API dependency.
+// [FIX-F] mwSize replaced with std::size_t
+//
+// coords layout: column-major, np rows × 2 cols
+//   xi  = coords[i]       (col 0)
+//   eta = coords[i + np]  (col 1)
+// N layout: column-major, np rows × 9 cols
+//   N[i + np*j] = shape function j at point i
+//----------------------------------------------------------------------------------------
+static void computeBasis(double* N, const double* coords, std::size_t np)
+{
+    for (std::size_t i = 0; i < np; ++i) {
+        const double xi  = coords[i];         // col 0
+        const double eta = coords[i + np];    // col 1
+
+        // 1D quadratic basis functions
+        const double b1_xi  = 0.5 * xi  * (xi  - 1.0);
+        const double b2_xi  = 1.0 - xi  * xi;
+        const double b3_xi  = 0.5 * xi  * (xi  + 1.0);
+
+        const double b1_eta = 0.5 * eta * (eta - 1.0);
+        const double b2_eta = 1.0 - eta * eta;
+        const double b3_eta = 0.5 * eta * (eta + 1.0);
+
+        // Tensor-product shape functions for Quad9
         N[i + np * 0] = b1_xi * b1_eta;  // Node 1
         N[i + np * 1] = b3_xi * b1_eta;  // Node 2
         N[i + np * 2] = b3_xi * b3_eta;  // Node 3
@@ -28,23 +72,73 @@ void computeBasis(double* N, const double* coords, mwSize np) {
     }
 }
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-    if (nrhs != 1)
-        mexErrMsgTxt("One input required: coordList (n×2 array)");
-    if (nlhs != 1)
-        mexErrMsgTxt("One output required: N (n×9 array)");
+//----------------------------------------------------------------------------------------
+// MexFunction
+//----------------------------------------------------------------------------------------
+class MexFunction : public matlab::mex::Function {
 
-    const mxArray *coordList = prhs[0];
-    if (!mxIsDouble(coordList) || mxIsComplex(coordList) || mxGetN(coordList) != 2)
-        mexErrMsgTxt("Input must be a real double n×2 array");
+    ArrayFactory factory;
 
-    mwSize np = mxGetM(coordList); // number of points
-    const double* coords = mxGetPr(coordList); // column-major
+public:
 
-    // Create output array: np × 9
-    mwSize dims[2] = {np, 9};
-    plhs[0] = mxCreateNumericArray(2, dims, mxDOUBLE_CLASS, mxREAL);
-    double* N = mxGetPr(plhs[0]);
+    void operator()(ArgumentList outputs, ArgumentList inputs) override
+    {
+        validateArguments(outputs, inputs);
 
-    computeBasis(N, coords, np);
-}
+        // -----------------------------------------------------------------------
+        // Read coords — n×2 double matrix (column-major)
+        // [FIX-F] mwSize → std::size_t
+        // -----------------------------------------------------------------------
+        const TypedArray<double> coordArr = inputs[0];
+        const auto dims                   = coordArr.getDimensions();
+        const std::size_t np              = dims[0];   // [FIX-F]
+
+        // Copy into contiguous vector for raw pointer access in kernel
+        std::vector<double> coordsVec(coordArr.begin(), coordArr.end());
+
+        // -----------------------------------------------------------------------
+        // Allocate output work buffer, fill via kernel, copy into TypedArray
+        // -----------------------------------------------------------------------
+        std::vector<double> N_vec(np * 9, 0.0);
+
+        computeBasis(N_vec.data(), coordsVec.data(), np);
+
+        TypedArray<double> N_out = factory.createArray<double>({np, 9});
+        std::copy(N_vec.begin(), N_vec.end(), N_out.begin());
+
+        outputs[0] = std::move(N_out);
+    }
+
+private:
+
+    void validateArguments(ArgumentList& outputs, ArgumentList& inputs)
+    {
+        if (inputs.size() != 1)
+            throwError("Quad9:inputError",
+                       "One input required: coordList (n x 2 array).");
+
+        if (outputs.size() > 1)
+            throwError("Quad9:outputError",
+                       "One output required: N (n x 9 array).");
+
+        if (inputs[0].getType() != ArrayType::DOUBLE)
+            throwError("Quad9:inputError",
+                       "Input must be a real double n x 2 array.");
+
+        const auto dims = inputs[0].getDimensions();
+        if (dims.size() < 2 || dims[1] != 2)
+            throwError("Quad9:inputError",
+                       "Input must be a real double n x 2 array.");
+    }
+
+    void throwError(const std::string& id, const std::string& msg)
+    {
+        getEngine()->feval(u"error", 0,
+            std::vector<Array>{
+                factory.createCharArray(id),
+                factory.createCharArray(msg)
+            });
+    }
+};
+
+//----------------------------------------------------------------------------------------

@@ -11,18 +11,24 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       obj@SinglePhaseFlow(domain);
     end
 
-    function registerSolver(obj,solverInput)
+    function registerSolver(obj,varargin)
+
+      if isempty(obj.faces)
+        error(["%s solver requires 'Faces' field to be define in the grid." ...
+          "grid = struct('topology',Mesh(),'cells',Elements(),'faces',Faces()]"])
+      end
       nTags = obj.mesh.nCellTag;
 
-      if ~isempty(solverInput)
-        targetRegions = getXMLData(solverInput,1:nTags,"targetRegions");
-      else
-        targetRegions = 1:nTags;
-      end
+      default = struct('targetRegions',1:nTags);
+
+      params = readInput(default,varargin{:});
+
       dofm = obj.domain.dofm;
-      dofm.registerVariable(obj.getField(),entityField.cell,1,targetRegions);
+
+      dofm.registerVariable(obj.getField(),entityField.cell,1,params.targetRegions);
       n = getNumberOfEntities(entityField.cell,obj.mesh);
       obj.fieldId = dofm.getVariableId(obj.getField());
+
 
       % initialize the state object with a pressure field
       obj.getState().data.(obj.getField()) = zeros(n,1);
@@ -178,7 +184,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       gTerm = gTerm(dofm.getActiveEntities(obj.fieldId));
     end
 
-    function [ents,vals] = getBC(obj,id,t)
+    function [ents,vals] = getBC(obj,bcId,t)
       % getBC - function to find the value and the location for the
       % boundary condition.
       %
@@ -191,70 +197,59 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       bc = obj.domain.bcs;
       mat = obj.domain.materials;
 
-      switch bc.getCond(id)
+      bcFld = bc.getField(bcId);
+      type = bc.getType(bcId);
+      %
+      % ents = bc.getTargetEntities(bcId);
+      % vals = bc.getVals(bcId,t);
 
-        case {'NodeBC','ElementBC'}
-          ents = bc.getEntities(id);
-          vals = bc.getVals(id,t);
-
-        case 'SurfBC'
-          v = bc.getVals(id,t);
-
-          faceID = bc.getEntities(id);
-          ents = sum(obj.faces.faceNeighbors(faceID,:),2);
-
-          p = getState(obj,"pressure");
-
-          % [ents,~,ind] = unique(ents);
-          % % % [faceID, faceOrder] = sort(bc.getEntities(id));
-          % % % ents = sum(obj.faces.faceNeighbors(faceID,:),2);
-          % % % v(faceOrder,1) = bc.getVals(id,t);
-
-          switch bc.getType(id)
-
-            case 'Neumann'
-              vals = vecnorm(obj.faces.faceNormal(faceID,:),2,2).*v;
-
-            case 'Dirichlet'
-              gamma = mat.getFluid().getSpecificWeight();
-              mu = mat.getFluid().getDynViscosity();
-              tr = obj.trans(faceID);
-
-              % q = 1/mu*tr.*((obj.state.data.pressure(ents) - v)...
-              %    + gamma*(obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3)));
-              % vals = [1/mu*tr,accumarray(ind,q)]; % {JacobianVal,rhsVal]
-
-              dirJ = 1/mu*tr;
-              % % press = obj.state.data.pressure(ents) - v;
-              % % gravT =  gamma*(obj.mesh.cellCentroid(ents,3) ...
-              % %   - obj.faces.faceCentroid(faceID,3));
-              dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3);
-              potential = (p(ents) - v) + gamma*dz;
-              q = dirJ.*potential;
-              vals = [dirJ,q];
-
-            case 'Seepage'
-              gamma = mat.getFluid().getSpecificWeight();
-              assert(gamma>0.,'To impose Seepage boundary condition is necessary the fluid specify weight be bigger than zero!');
-
-              zbc = obj.faces.faceCentroid(faceID,3);
-              href = v(1);
-              v = gamma*(href-zbc);
-
-              v(v<=0)=0.;
-              mu = mat.getFluid().getDynViscosity();
-              tr = obj.trans(faceID);
-              dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceID,3);
-              q = 1/mu*tr.*(p(ents) - v) + gamma*dz;
-              vals = [1/mu*tr,q];
-          end
-
-
-        case 'VolumeForce'
-          v = bc.getVals(id,t);
-          ents = bc.getEntities(id);
-          vals = v.*obj.mesh.cellVolume(ents);
+      if strcmp(type,'seepage')
+        assert(isEssential(bc,bcId),"Boundary condition of type 'seepage' must be essential")
       end
+
+      if bcFld == entityField.surface
+
+        faceId = bc.getSourceEntities(bcId);
+        srcVal = bc.getSourceVals(bcId,t);
+        ents = sum(obj.faces.faceNeighbors(faceId,:),2);
+        p = getState(obj,obj.getField());
+
+        %
+        switch type
+          case 'dirichlet'
+            gamma = mat.getFluid().getSpecificWeight();
+            mu = mat.getFluid().getDynViscosity();
+            tr = obj.trans(faceId);
+
+            dirJ = 1/mu*tr;
+
+            dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceId,3);
+            potential = (p(ents) - srcVal) + gamma*dz;
+            q = dirJ.*potential;
+            vals = [dirJ,q];
+          case 'seepage'
+            gamma = mat.getFluid().getSpecificWeight();
+            assert(gamma>0.,'To impose Seepage boundary condition is necessary the fluid specify weight be bigger than zero!');
+
+            zbc = obj.faces.faceCentroid(faceId,3);
+            href = srcVal(1);
+            v = gamma*(href-zbc);
+
+            v(v<=0)=0.;
+            mu = mat.getFluid().getDynViscosity();
+            tr = obj.trans(faceId);
+            dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceId,3);
+            q = 1/mu*tr.*(p(ents) - v) + gamma*dz;
+            vals = [1/mu*tr,q];
+        end
+
+      else
+
+        ents = bc.getTargetEntities(bcId);
+        vals = bc.getVals(bcId,t);
+
+      end
+
     end
 
     function applyDirVal(obj,bcId,t)
@@ -268,8 +263,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         % skip BC assigned to external surfaces
         return
       end
-      state = getState(obj);
-      state.data.pressure(bcEnts) = bcVals;
+
+      applyDirVal@PhysicsSolver(obj,bcId,bcEnts,bcVals);
+
     end
 
     function applyBC(obj,bcId,t)
@@ -278,26 +274,17 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         return
       end
 
+      % helper method for FV bcs
       [bcEnts,bcVals] = getBC(obj,bcId,t);
 
       bcDofs = obj.domain.dofm.getLocalDoF(obj.fieldId,bcEnts);
 
-      % Base application of a Boundary condition
-      bcType = obj.domain.bcs.getType(bcId);
+      applyBC@PhysicsSolver(obj,bcId,bcDofs,bcVals);
 
-      switch bcType
-        case {'Dirichlet','Seepage'}
-          applyDirBC(obj,bcId,bcDofs,bcVals);
-        case {'Neumann','VolumeForce'}
-          applyNeuBC(obj,bcId,bcDofs,bcVals);
-        otherwise
-          error("Error in %s: Boundary condition type '%s' is not " + ...
-            "available in applyBC()",class(obj),bcType)
-      end
     end
 
     function applyDirBC(obj,bcId,bcDofs,bcVals)
-      % apply Dirichlet BCs
+      % apply dirichlet BCs
       % overrides the base method implemented in PhysicsSolver
       % ents: id of constrained faces without any dof mapping applied
       % vals(:,1): Jacobian BC contrib vals(:,2): rhs BC contrib
@@ -423,29 +410,18 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       for bcID = bcList
         if strcmp(bc.getVariable(bcID),obj.getField())
           [~,vals] = getBC(obj,bcID,t);
-          [ents, ~] = sort(bc.getEntities(bcID));
-          switch bc.getCond(bcID)
-            case {'NodeBC','ElementBC'}
+          ents = bc.getSourceEntities(bcID);
+          %[ents, ~] = sort(bc.getSourceEntities(bcID));
+          switch bc.getField(bcID)
+            case {'node','cell'}
               return
-            case 'SurfBC'
-              if strcmp(bc.getType(bcID),'Dirichlet') || strcmp(bc.getType(bcID),'Seepage')
-                vals=vals(:,2);
+            case 'surface'
+              if size(vals,2) > 1
+                vals = vals(:,2);
               end
               dir = sgn(ents).*faceUnit(ents,:);
               vals = vals(:)./areaSq(ents).*dir;
               vals = repelem(vals,nnodesBfaces(ents),1);
-            case 'VolumeForce'
-              facesBcell = diff(obj.faces.mapF2E);
-
-              % Find the faces to distribute the contribution.
-              vals = vals(:)./facesBcell(ents);
-              vals = repelem(vals,facesBcell(ents),1);
-
-              hf2Cell = repelem((1:obj.mesh.nCells)',facesBcell);
-              ents = obj.faces.faces2Elements(hf2Cell == ents,1);
-
-              vals = sgn(ents).*vals./areaSq(ents).*faceUnit(ents,:);
-              vals = -repelem(vals,nnodesBfaces(ents),1);
           end
 
           nodes = obj.faces.nodes2Faces(ismember(Node2Face,ents));

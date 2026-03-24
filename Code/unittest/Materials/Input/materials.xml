@@ -9,52 +9,41 @@
                poissonRatio = "0.25"
                />
     </Constitutive>
-    <Curves>
-      <!--
-      <Mualem
-              n = "1"
-              beta = "2"
-              kappa = "3"
-              /> -->
-      <Tabular
-               relativePermeabilityPath = "Code/unittest/Materials/Input/krCurve_2000.dat"
-               capillaryCurvePath = "Code/unittest/Materials/Input/pcCurve_2000.dat"
-               />
-      <!--<Preset
-              soilName = "Clay"
-              />-->
-    </Curves>
 
     <PorousRock
                 porosity = "0.375"
                 permeability = "1e-12, 1e-12, 1e-12"
                 residualSaturation = "0.102"
-                maximumSaturation = "0.368"
-                />
-  </Solid>
+                maximumSaturation = "0.368">
 
-  <Solid
-         cellTags = "1 2 3">
-    <Constitutive>
-      <DruckerPrager
-               youngModulus = "1e3"
-               poissonRatio = "0.25"
-               dilatancy = "10"
-               frictionAngle = "30"
-               cohesion = "10"
-               hardeningParameter = "1e4"
-               />
-    </Constitutive>
-    <Curves>
-      <Preset
-              soilName = "Clay"
-              />
-    </Curves>
+      <Curves
+                 type = "tabular" 
+                 relativePermeabilityPath = "Code/unittest/Materials/Input/krCurve_2000.dat"
+                 capillaryCurvePath = "Code/unittest/Materials/Input/pcCurve_2000.dat"
+                 />
+      </PorousRock>
+    </Solid>
 
-  </Solid>
 
-  <Fluid
-         compressibility = "4.4e-7"
-         dynamicViscosity = "1.0e-6"
-         />
+
+    <Solid
+           cellTags = "1 2 3">
+      <Constitutive>
+        <DruckerPrager
+                       youngModulus = "1e3"
+                       poissonRatio = "0.25"
+                       dilatancy = "10"
+                       frictionAngle = "30"
+                       cohesion = "10"
+                       hardeningParameter = "1e4"
+                       />
+      </Constitutive>
+    </Solid>
+
+
+    <Fluid
+           compressibility = "4.4e-7"
+           dynamicViscosity = "1.0e-6"
+           />
+  
 </Materials>

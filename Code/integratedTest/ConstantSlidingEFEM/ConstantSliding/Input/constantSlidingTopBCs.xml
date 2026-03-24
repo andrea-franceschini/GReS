@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<BoundaryConditions>
+
+  <BC
+      name = "Fixed_top"
+      type = "Dirichlet"
+      field = "surface"
+      variable = "displacements"
+      entityListType = "tag"
+      entityList = "2"
+      components = "z"
+      >
+
+    <BCevent
+             time = "0.0"
+             value = "0.0"
+             />
+
+  </BC>
+
+  
+
+  <BC
+      name = "Displacement_top"
+      type = "Dirichlet"
+      field = "surface"
+      variable = "displacements"
+      entityListType = "tag"
+      entityList = "3"
+      components = "y"
+      >
+
+
+    <BCevent
+             time = "0.0"
+             value = "-0.1"
+             />
+
+  </BC>
+
+</BoundaryConditions>

@@ -5,53 +5,30 @@ in a nonConforming simulation.
 
 <Problem>
 
-  <simParam>
-    <Time
-          Start="0."
-          End ="13.0"
-          DtInit="1"
-          DtMin ="1e-5"
-          DtMax ="1"
-          incrementFactor = "1.5"
-          choppingFactor = "2" />
-
-    <Solver
-            MaxNLIteration = "10"
-            RelativeTolerance = "1.e-10"
-            AbsoluteTolerance = "1.e-8"
-            resetConfiguration = "1"
-            />
-  </simParam>
-
-
-  <Solver>
-    <Poromechanics />
-  </Solver>
+  <SimulationParameters
+                        Start="0."
+                        End ="13.0"
+                        DtInit="1"
+                        DtMin ="1e-5"
+                        DtMax ="1"
+                        incrementFactor = "1.5"
+                        choppingFactor = "2"
+                        MaxNLIteration = "10"
+                        RelativeTolerance = "1.e-10"
+                        AbsoluteTolerance = "1.e-8"
+                        resetConfiguration = "1"
+                        />
 
   <Interface>
     <SolidMechanicsContact
-                      stabilizationScale = "1.0">
+                           stabilizationScale = "1.0"
+                           masterDomain = "1" masterSurface = "6"
+                           slaveDomain = "2" slaveSurface = "5">
 
-      <Master
-              domainId = "1"
-              surfaceTag = "6"
-              />
-
-      <Slave
-             domainId = "2"
-             surfaceTag = "5"
-             />
       <Quadrature
                   type = "SegmentBasedQuadrature"
                   nGP = "4"
                   />
-
-      <Output
-              outputFile = "OUT/Crack"
-              printTimes = "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20"
-              saveHistory = "1"
-              matFileName = "OUT/historyCrack"
-              />
 
       <Coulomb
                cohesion = "0.0"

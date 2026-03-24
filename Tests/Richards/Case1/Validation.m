@@ -30,11 +30,11 @@ faces = Faces(topology);
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 % Creating boundaries conditions.
-bound = Boundaries(fullfile(input_dir,'boundaries.xml'),grid);
+bound = Boundaries(grid,fullfile(input_dir,'boundaries.xml'));
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility
-printUtils = OutState(topology,fullfile(input_dir,'outputValidation.xml'));
+printUtils = OutState(fullfile(input_dir,'outputValidation.xml'));
 
 sol = struct();
 ComparisonMaterials = ["matTable.xml","matTabular.xml"];
@@ -45,10 +45,9 @@ for sim=1:length(ComparisonMaterials)
   % Create object handling construction of Jacobian and rhs of the model
   domain = Discretizer('Grid',grid,...
                        'Materials',mat,...
-                       'Boundaries',bound,...
-                       'OutState',printUtils);
+                       'Boundaries',bound);
 
-  domain.addPhysicsSolver(fullfile(input_dir,'solver.xml'));
+  domain.addPhysicsSolver('VariablySaturatedFlow');
 
   % set initial conditions directly modifying the state object
   z = elems.mesh.cellCentroid(:,3);
@@ -56,18 +55,11 @@ for sim=1:length(ComparisonMaterials)
   wLev = 9.; % level of the water table
   domain.state.data.pressure = gamma_w*(wLev-z);
 
-  % The modular structure of the discretizer class allow the user to easily
-  % customize the solution scheme.
-  % Here, a built-in fully implict solution scheme is adopted with class
-  % FCSolver. This could be simply be replaced by a user defined function
-  Solver = FCSolver(simParam,domain);
-  % Solver = FCSolver(domain,'SaveRelError',true,'SaveBStepInf',true);
-
-  % Solve the problem
-  [simState] = Solver.NonLinearLoop();
-
-  % Finalize the print utility
-  printUtils.finalize()
+  % Set and solve the simulation
+  solver = NonLinearImplicit('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils);  
+  solver.simulationLoop();
 
   % elem vector containing elements centroid along vertical axis
   numb = 0.;
@@ -76,20 +68,14 @@ for sim=1:length(ComparisonMaterials)
   [~,ind] = sort(topology.cellCentroid(nodesP,3));
   nodesP = nodesP(ind);
 
-  nrep = length(printUtils.results);
-  nvars = length(printUtils.results(2).pressure);
+  nrep = length(printUtils.timeList);
+  nvars = length(nodesP);
   press = zeros(nvars,nrep);
   sw = zeros(nvars,nrep);
-  t = zeros(1,nrep);
-  for i=1:nrep
-    press(:,i) = printUtils.results(i).pressure;
-    sw(:,i) = printUtils.results(i).saturation;
-    t(i) = printUtils.results(i).time;
+  for i=1:length(printUtils.timeList)
+    press(:,i) = printUtils.results(i).pressure(nodesP);
+    sw(:,i) = printUtils.results(i).saturation(nodesP);
   end
-  tind = 1:length(t);
-
-  % Getting pressure and saturation solution for specified time
-  pressplot = press(nodesP,tind');
 
   % Vertical position of the column
   ptsZ = elems.mesh.cellCentroid(nodesP,3);
@@ -98,9 +84,9 @@ for sim=1:length(ComparisonMaterials)
   pos = find(ptsZ == max(ptsZ));
   H = max(topology.coordinates(:,3));
 
-  sol(sim).pressure = pressplot./(pressplot(pos,:));
+  sol(sim).pressure = press./(press(pos,:));
   sol(sim).position = ptsZ/H;
-  sol(sim).saturation = sw(nodesP,tind);
+  sol(sim).saturation = sw;
 end
 clearvars -except sol figures_dir
 
