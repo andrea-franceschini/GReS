@@ -145,6 +145,10 @@ classdef (Abstract) PhysicsSolver < handle
       % initialize the physics solver before the simulation starts
     end
 
+    function timeStepSetup(obj)
+      % prepare the physics solver at the begin of each time step
+    end
+
     function finalizeOutput(obj)
       % override this method in a PhysicsSolver to produce additional
       % output files other than the general Discretizer.outState pvd file
