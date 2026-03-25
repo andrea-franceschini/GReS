@@ -139,7 +139,8 @@ classdef SedimentsMap < handle
         for item = event.Linear
           if ~ismissing(item)
             if checkMat(item.materialFlag)
-              ref = getXMLData(item,[],"value");
+              % ref = getXMLData(item,[],"value");
+              ref=str2num(item.value);
               xpos = 1:obj.dim(1);
               ypos = 1:obj.dim(2);
               polyXA = (xpos-obj.dim(1))/(1-obj.dim(1));
