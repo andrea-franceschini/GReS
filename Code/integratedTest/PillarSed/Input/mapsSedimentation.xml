@@ -3,5 +3,6 @@
     <Uniform materialFlag = "1" value= "0.01"/>
   </Event>
   <Event time = "100." >
+    <Uniform materialFlag = "1" value= "0."/>
   </Event>
 </Sedimentation_Maps>
