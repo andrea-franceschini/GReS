@@ -98,8 +98,7 @@ classdef Tetrahedron < FEM
         obj.mesh.cells(neg,[3 4]) = obj.mesh.cells(neg,[4 3]);
 
         if any(neg)
-          gresLog().warning(2,"Found %i tetrahedra with negative determinant." + ...
-            " Node ordering has been automatically fixed",sum(neg))
+          gresLog().warning(1,"Found %i tetrahedra with negative determinant. Node ordering has been automatically fixed",sum(neg))
         end
 
       end
