@@ -113,6 +113,9 @@ function [x,flag] = SolveLin(obj,A,b,time)
 
    if iscell(A)
       Amat = cell2matrix(A);
+      if obj.DEBUGflag
+         symValue = norm(Amat-Amat','f')/norm(Amat,'f');
+      end
    end
 
    startT = tic;
@@ -157,7 +160,11 @@ function [x,flag] = SolveLin(obj,A,b,time)
          obj.newtonLin(obj.nSolve) = obj.nSolve;
       end
 
-      obj.symFlagLin(obj.nSolve) = globalsymm;
+      if obj.DEBUGflag
+         obj.symFlagLin(obj.nSolve) = symValue;
+      else
+         obj.symFlagLin(obj.nSolve) = globalsymm;
+      end
       if obj.params.iterSinceLastPrecComp == 0
          obj.precCompLin(obj.nSolve) = T_setup;
       else
