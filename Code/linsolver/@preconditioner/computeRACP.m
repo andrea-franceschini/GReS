@@ -82,7 +82,12 @@ function computeRACP(obj,A,symMat)
 
    % Compute augmented 11 block
    inv_D22 = -inv(diag(diag(A22_aug)));
-   ADD = A{1,2}*inv_D22*A{2,1}; ADD = 0.5*(ADD+ADD');
+   ADD = A{1,2}*inv_D22*A{2,1}; 
+
+   % Strong Symmetrization if the matrix was seen as symmetric
+   if symMat(1,2) == 1
+      ADD = 0.5*(ADD+ADD');
+   end
    A11_aug = A{1,1}+ADD;
    
    % For now impose the amg
