@@ -41,7 +41,7 @@ classdef Fluid < handle
 
         default = struct('specificWeight',0.0,...
           'compressibility',0.0,...
-          'dynamicViscosity',[]);
+          'dynamicViscosity',0.0);
 
         params = readInput(default,varargin{:});
 

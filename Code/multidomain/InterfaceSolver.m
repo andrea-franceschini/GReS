@@ -147,7 +147,6 @@ classdef (Abstract) InterfaceSolver < handle
 
     end
 
-
     function advanceState(obj)
 
       % note: state in interface solver is just a value struct
