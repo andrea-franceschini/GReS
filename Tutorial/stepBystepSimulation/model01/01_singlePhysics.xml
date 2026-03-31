@@ -5,25 +5,18 @@ in a nonConforming simulation.
 
 <Problem>
 
-   <SimulationParameters
-      Start="0."
-      End ="10.0"
-      DtInit="0.25"
-      DtMin ="1e-5"
-      DtMax ="0.5"
-      incrementFactor = "1.25"
-      choppingFactor = "2" 
-      RelativeTolerance = "1.e-10"
-      AbsoluteTolerance = "1.e-8"
-      >
-      <LinearSolver>
-         <Flow>
-             <amg
-                nLevMax='5'
-                />
-          </Flow>
-      </LinearSolver>
-  </SimulationParameters>
+
+  <SimulationParameters
+            Start="0."
+            End ="10.0"
+            DtInit="0.25"
+            DtMin ="1e-5"
+            DtMax ="0.5"
+            incrementFactor = "1.25"
+            choppingFactor = "2"
+            RelativeTolerance = "1.e-10"
+            AbsoluteTolerance = "1.e-8"
+            />
 
 
   <Materials >
@@ -51,8 +44,7 @@ in a nonConforming simulation.
         field = "cell"
         variable = "pressure"
         entityListType = "box"
-        entityList = "50,55,50,55,5,6"
-       >
+        entityList = "50,55,50,55,5,6">
 
       <BCevent
                time = "0"
@@ -65,7 +57,7 @@ in a nonConforming simulation.
 
 
   <Output
-          printTimes   = "1,2,3,4"
+          printTimes   = "1,5,10"
           outputFile   = "model01/Output01/results"
           matFileName  = "model01/Output01/history"
           />

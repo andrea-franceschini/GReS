@@ -17,7 +17,8 @@ classdef OutState < handle & matlab.mixin.Copyable
     timeList
     matFileName
     vtkFileName
-    writeSolution = false
+    writeSolution = true
+    writeMatFile = false
     isFolderReady = false
   end
 
@@ -26,7 +27,6 @@ classdef OutState < handle & matlab.mixin.Copyable
     function obj = OutState(varargin)
 
       if nargin == 0
-        obj.writeVtk = false;
         obj.writeSolution = false;
       else
         obj.setOutState(varargin{:})
@@ -83,6 +83,14 @@ classdef OutState < handle & matlab.mixin.Copyable
 
     function finalize(obj)
 
+      savePvd(obj);
+
+      saveHistory(obj);
+
+    end
+
+    function savePvd(obj)
+
       % write the pvd file
       if obj.writeVtk
 
@@ -110,11 +118,13 @@ classdef OutState < handle & matlab.mixin.Copyable
         xmlwrite(fileName, pvd);
 
       end
+    end
 
-      if obj.writeSolution && ~isempty(obj.matFileName)
-        saveHistory(obj);
+    function saveHistory(obj)
+      if obj.writeMatFile
+      output = obj.results;
+      save(strcat(obj.matFileName,'.mat'),"output")
       end
-
     end
 
     function saveHistory(obj)
@@ -131,7 +141,7 @@ classdef OutState < handle & matlab.mixin.Copyable
       default = struct('outputFile',missing,...
                        'matFileName',missing,...
                        'printTimes',missing,...
-                       'saveHistory',true);
+                       'saveHistory',missing);
 
       params = readInput(default,varargin{:});
 
@@ -142,14 +152,27 @@ classdef OutState < handle & matlab.mixin.Copyable
 
       if ~ismissing(params.matFileName)
         obj.matFileName = params.matFileName;
+        obj.writeMatFile = true;
       end
 
-      obj.writeSolution = logical(params.saveHistory);
 
-      if any([obj.writeSolution,obj.writeVtk])
+      if ~any(ismissing(params.saveHistory))
+        sh = params.saveHistory;
+        if ~isnumeric(params.saveHistory)
+          sh = str2double(sh);
+        end
+        obj.writeSolution = logical(sh);
+      end
+
+      if any([obj.writeSolution,obj.writeVtk,obj.writeMatFile])
         assert(~any(ismissing(params.printTimes)),"Print times are required when specifying output files");
         t = readInput(struct('printTimes',double.empty),varargin{:});
         obj.timeList = t.printTimes;
+      end
+
+      if obj.writeVtk
+        % vtm file document node
+        obj.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
       end
 
     end
@@ -211,6 +234,9 @@ classdef OutState < handle & matlab.mixin.Copyable
       % structure
       % Concatenate the two structure arrays
 
+      strA = reshape(strA,[],1);
+      strB = reshape(strB,[],1);
+      
       if isempty(strA)
         mergeStruct = strB;
       elseif isempty(strB)
@@ -242,7 +268,6 @@ classdef OutState < handle & matlab.mixin.Copyable
 
     function outData = printMeshData(mesh,data)
       cellStr = repmat(struct('name', 1, 'data', 1), 1, 1);
-      % Displacement
       cellStr(1).name = 'cellTag';
       cellStr(1).data = mesh.cellTag;
       outData = OutState.mergeOutFields(data,cellStr);

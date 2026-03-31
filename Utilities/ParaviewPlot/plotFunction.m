@@ -2,7 +2,7 @@ function  plotFunction(mesh, foldName, time, funct, varargin)
 % PLOTFUNCTION Summary of this function goes here
 %   Detailed explanation goes here
 
-out = OutState('folderName',foldName,'timeList',time);
+out = OutState('outputFile',foldName,'printTimes',time);
 out.prepareOutputFolders();
 
 [~, vtuName, ~] = fileparts(foldName);

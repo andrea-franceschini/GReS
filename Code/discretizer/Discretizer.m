@@ -248,6 +248,10 @@ classdef Discretizer < handle
 
     function addPhysicsSolver(obj,solverName,varargin)
 
+      if ~any([ischar(solverName),isstring(solverName)])
+        error("First input must be the name of the PhysicsSolver")
+      end
+
       if any(strcmp(solverName,obj.solverNames))
         error('Solver %s has already been defined',solverName)
       else
@@ -258,7 +262,6 @@ classdef Discretizer < handle
       obj.physicsSolvers(solverName) = solver;
 
     end
-
 
 
     function J = getJacobian(obj,varargin)
@@ -356,6 +359,15 @@ classdef Discretizer < handle
 
     end
 
+    function timeStepSetup(obj)
+
+      % prepare the physics for each new time step
+      for solver = obj.solverNames
+        timeStepSetup(obj.getPhysicsSolver(solver));
+      end
+
+    end
+
     % function printState(obj)
     %   % print solution of the model according to the print time in the
     %   % list
@@ -432,12 +444,12 @@ classdef Discretizer < handle
     end
 
 
-    function writeMatFile(obj,fac,timeID)
+    function writeSolution(obj,fac,timeID)
       % write to MAT-file
       obj.outstate.results(timeID).time = obj.outstate.timeList(timeID);
 
       for solv = obj.solverNames
-        getPhysicsSolver(obj,solv).writeMatFile(fac,timeID);
+        getPhysicsSolver(obj,solv).writeSolution(fac,timeID);
       end
     end
 

@@ -32,7 +32,7 @@ faces = Faces(topology);
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 % Creating boundaries conditions.
-bound = Boundaries(fullfile(input_dir,'boundaries.xml'),grid);
+bound = Boundaries(grid,fullfile(input_dir,'boundaries.xml'));
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility
@@ -43,7 +43,7 @@ domain = Discretizer('Grid',grid,...
                      'Materials',mat,...
                      'Boundaries',bound);
 
-domain.addPhysicsSolver(fullfile(input_dir,'solver.xml'));
+domain.addPhysicsSolver('VariablySaturatedFlow');
 
 % set initial conditions directly modifying the state object
 z = elems.mesh.cellCentroid(:,3);
@@ -51,10 +51,7 @@ gamma_w = getFluid(mat).getSpecificWeight();
 wLev = 9.; % level of the water table
 domain.state.data.pressure = gamma_w*(wLev-z);
 
-% The modular structure of the discretizer class allow the user to easily
-% customize the solution scheme.
-% Here, a built-in fully implict solution scheme is adopted with class
-% FCSolver. This could be simply be replaced by a user defined function
+% Set and solve the simulation
 solver = NonLinearImplicit('simulationparameters',simParam,...
                            'domains',domain,...
                            'output',printUtils);
@@ -78,25 +75,15 @@ if true
   [~,ind] = sort(topology.cellCentroid(nodesP,3));
   nodesP = nodesP(ind);
 
-  nrep = length(printUtils.matFile);
-  nvars = length(printUtils.matFile(2).pressure);
+  tstr = strcat(num2str(printUtils.timeList'),' T');
+  nrep = length(printUtils.timeList);
+  nvars = length(nodesP);
   press = zeros(nvars,nrep);
   sw = zeros(nvars,nrep);
-  t = zeros(1,nrep);
-  for i=1:nrep
-    press(:,i) = printUtils.matFile(i).pressure;
-    sw(:,i) = printUtils.matFile(i).saturation;
-    t(i) = printUtils.matFile(i).time;
+  for i=1:length(printUtils.timeList)
+    press(:,i) = printUtils.results(i).pressure(nodesP);
+    sw(:,i) = printUtils.results(i).saturation(nodesP);
   end
-
-  tind = 1:length(t);
-  t_max = t(end);
-  t = t(tind)/t_max;
-  tstr = strcat(num2str(t'),' T');
-
-  % Getting pressure and saturation solution for specified time
-  pressplot = press(nodesP,tind');
-  swplot = sw(nodesP,tind);
 
   % Vertical position of the column
   ptsZ = elems.mesh.cellCentroid(nodesP,3);
@@ -108,7 +95,7 @@ if true
 
   figure('Position', [100, 100, 700, 700])
   hold on
-  plot(pressplot./(pressplot(pos,:)),ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
+  plot(press./(press(pos,:)),ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
   xlabel('p/p_{top}')
   ylabel('z/H')
   legend(tstr, 'Location', 'northwest')
@@ -119,7 +106,7 @@ if true
   exportgraphics(gcf,stmp,'Resolution',400)
 
   figure('Position', [100, 100, 700, 700])
-  plot(swplot,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
+  plot(sw,ptsZ,'.-', 'LineWidth', 2, 'MarkerSize', 14);
   hold on
   xlabel('S_w')
   ylabel('z/H')

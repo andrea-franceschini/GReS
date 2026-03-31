@@ -32,10 +32,9 @@ classdef BiotFullyCoupled < PhysicsSolver
 
       dofm = obj.domain.dofm;
 
-      targetReg = struct('targetRegions',1:obj.mesh.nCellTag);
 
-      default = struct('Poromechanics',targetReg,...
-                       'SinglePhaseFlowFVTPFA',targetReg);
+      default = struct('Poromechanics',missing,...
+                       'SinglePhaseFlowFVTPFA',missing);
 
       input = readInput(default,varargin{:});
 
@@ -227,10 +226,10 @@ classdef BiotFullyCoupled < PhysicsSolver
 
     end
 
-    function writeMatFile(obj,fac,tID)
+    function writeSolution(obj,fac,tID)
 
-      obj.flowSolver.writeMatFile(fac,tID);
-      obj.mechSolver.writeMatFile(fac,tID);
+      obj.flowSolver.writeSolution(fac,tID);
+      obj.mechSolver.writeSolution(fac,tID);
 
 
     end

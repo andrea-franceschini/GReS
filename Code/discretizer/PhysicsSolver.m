@@ -75,7 +75,7 @@ classdef (Abstract) PhysicsSolver < handle
     [cellData,pointData] = writeVTK(obj,interpolationFactor,t);
 
     % write history to MAT-file
-    writeMatFile(obj,interpolationFactor,tID);
+    writeSolution(obj,interpolationFactor,tID);
 
   end
 
@@ -143,6 +143,10 @@ classdef (Abstract) PhysicsSolver < handle
 
     function initialize(obj)
       % initialize the physics solver before the simulation starts
+    end
+
+    function timeStepSetup(obj)
+      % prepare the physics solver at the begin of each time step
     end
 
     function finalizeOutput(obj)

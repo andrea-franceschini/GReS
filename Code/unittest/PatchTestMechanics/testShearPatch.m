@@ -29,14 +29,24 @@ classdef testShearPatch < matlab.unittest.TestCase
       grid = struct('topology',mesh,'cells',elems,'faces',faces);
       mat = Materials(input.Materials);
       bc = Boundaries(grid,input.BoundaryConditions);
+      printUtils = OutState('printTimes',1,'outputFile',"test");
       domain = Discretizer('Boundaries',bc,...
                            'Materials',mat,...
                            'Grid',grid);
       domain.addPhysicsSolvers(input.Solver);
-      solver = NonLinearImplicit('simulationparameters',simparams,'domain',domain);
+      solver = NonLinearImplicit('simulationparameters',simparams,'domain',domain,'output',printUtils);
       solver.simulationLoop();
       gresLog().setVerbosity(-1);
       verifyEqual(testCase,domain.state.data.stress(:,5),1.5*ones(8,1),"AbsTol",1e-9)
+
+      % validate the vtk output
+      s = readstruct("test/output_00001/Domain_1.vtu","FileType","xml");
+      v = s.UnstructuredGrid.Piece.PointData.DataArray.Text;
+      v = str2num(v);
+      vv = zeros(8,3);
+      vv(5:end,1) = 1.0;
+      verifyEqual(testCase,v,vv,"AbsTol",1e-9)
+
     end
 
     function testPatchKV(testCase)

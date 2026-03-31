@@ -120,7 +120,7 @@ classdef Hexahedron < FEM
         i = i + 1;
         dJWeighed = getDerBasisFAndDet(obj,el,3);
         vol(i) = sum(dJWeighed);
-        assert(vol(i)>0,'Volume less than 0');
+        assert(vol(i)>0,'Volume less than 0 for element %i',el);
         gPCoordinates = getGPointsLocation(obj,el);
         cellCentroid(i,:) = (dJWeighed * gPCoordinates)./vol(i);
       end

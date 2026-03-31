@@ -256,7 +256,7 @@ classdef entityField
 
       switch ent
         case entityField.node
-          size = ones(list,1);
+          size = ones(numel(list),1);
         case entityField.surface
           size = msh.surfaceArea(list);
         case entityField.cell

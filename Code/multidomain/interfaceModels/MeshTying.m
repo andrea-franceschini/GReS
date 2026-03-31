@@ -266,7 +266,7 @@ classdef MeshTying < InterfaceSolver
       end
     end
 
-    function writeMatFile(obj,fac,tID)
+    function writeSolution(obj,fac,tID)
 
       multCurr = obj.state.multipliers;
       multOld = obj.stateOld.multipliers;

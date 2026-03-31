@@ -79,7 +79,7 @@ classdef (Abstract) InterfaceSolver < handle
     [cellData,pointData] = writeVTK(obj,t);
 
     % write history to MAT-file
-    writeMatFile(obj,t,tID);
+    writeSolution(obj,t,tID);
 
   end
 
@@ -153,6 +153,10 @@ classdef (Abstract) InterfaceSolver < handle
       % note: state in interface solver is just a value struct
       obj.stateOld = obj.state;
       
+    end
+
+    function timeStepSetup(obj)
+      % prepare the interface solver at the begin of each time step
     end
 
     function goBackState(obj)

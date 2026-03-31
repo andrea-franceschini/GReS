@@ -33,6 +33,10 @@ switch lower(type)
 
     entsID = find(entsID);
 
+    if isempty(entsID)
+      error("The specified box does not fully contain any entity of source type %s",obj.sourceField)
+    end
+
   otherwise
     error("Unrecognized entityListType '%s' for Boundary condition '%s'.\n" + ...
       "Valid entries for 'entityListType' are: 'bclist','bclistfile','tags','box'.",type,obj.name)
