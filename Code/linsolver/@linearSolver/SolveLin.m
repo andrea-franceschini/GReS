@@ -179,7 +179,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
       end
       obj.params.iterSinceLastPrecComp = 0;
       obj.requestPrecComp = true;
-      [x,flag] = obj.Solve(A,b,time);
+      [x,flag] = obj.SolveLin(A,b,time);
       return;
    end
 
