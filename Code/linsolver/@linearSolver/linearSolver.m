@@ -93,6 +93,10 @@ classdef linearSolver < handle
       newtonLin = []
       timeLin = []
 
+      % Ruiz params
+      nIterRuiz = 0
+      tolRuiz = 1e-3
+
       % Params struct
       params
    end
@@ -160,6 +164,14 @@ classdef linearSolver < handle
             else
                obj.params.restart = 100;
             end
+
+            % Get the values if ruiz symmetric scaling is asked for by the user
+            if isfield(generalsolver.simparams.linSolverParams, 'ruizIter')
+               obj.nIterRuiz = generalsolver.simparams.linSolverParams.ruizIter;
+            end
+            if isfield(generalsolver.simparams.linSolverParams, 'ruizTol')
+               obj.tolRuiz = generalsolver.simparams.linSolverParams.ruizTol;
+            end
          end
       end
 
@@ -176,15 +188,15 @@ classdef linearSolver < handle
 
          if obj.fullInfo
             fprintf('\nUsed %d threads during mex\n',obj.Prec.maxThreads);
-            fprintf('\n-------------------------------------------------------------------------\n')
-            fprintf('| %11s | %10s | %4s | %13s | %4s | %13s |\n','Time','NewtonIter','Iter','Time','Symm','PrecTime');
-            fprintf('-------------------------------------------------------------------------\n')
+            fprintf('\n-----------------------------------------------------------------------------\n')
+            fprintf('| %11s | %10s | %4s | %13s | %7s | %13s |\n','Time','NewtonIter','Iter','Time','Symm','PrecTime');
+            fprintf('-----------------------------------------------------------------------------\n')
             timeOld = obj.timeLin(1);
             for i = 1:size(obj.solveTLin,2)
                if timeOld ~= obj.timeLin(i)
-                  fprintf('-------------------------------------------------------------------------\n')
+                  fprintf('-----------------------------------------------------------------------------\n')
                end
-               fprintf('| %.5e | %10d | %4d | %.7e | %4d | %.7e |\n',obj.timeLin(i),obj.newtonLin(i),obj.iterLin(i),obj.solveTLin(i),obj.symFlagLin(i),obj.precCompLin(i));
+               fprintf('| %.5e | %10d | %4d | %.7e | %.1e | %.7e |\n',obj.timeLin(i),obj.newtonLin(i),obj.iterLin(i),obj.solveTLin(i),obj.symFlagLin(i),obj.precCompLin(i));
             end
          end
       end

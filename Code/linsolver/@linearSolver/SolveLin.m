@@ -63,6 +63,23 @@ function [x,flag] = SolveLin(obj,A,b,time)
    % Save the solver type
    firstSolver = obj.SolverType;
 
+   % Apply Ruix Scaling on the Block matrix
+   if obj.nIterRuiz > 0
+      % Compute and apply Ritz scaling on A
+      [A,obj.Prec.D] = ruiz_block_symmetric(A,obj.nIterRuiz,obj.tolRuiz,obj.DEBUGflag);
+
+      % Prepare the D for future applications
+      obj.Prec.D = cellfun(@(Di) diag(Di), obj.Prec.D, 'UniformOutput', false);
+
+      % Single vector D to apply to the rhs
+      D = diag(vertcat(obj.Prec.D{:}));
+
+      % Apply the scaling to the rhs
+      b = D*b;
+   else
+      obj.Prec.D = {};
+   end
+
    % Fix the pattern to be symmetric and check the symmetry of the
    % resulting matrix
    [A] = fixPattern(A);
@@ -96,6 +113,9 @@ function [x,flag] = SolveLin(obj,A,b,time)
 
    if iscell(A)
       Amat = cell2matrix(A);
+      if obj.DEBUGflag
+         symValue = norm(Amat-Amat','f')/norm(Amat,'f');
+      end
    end
 
    startT = tic;
@@ -117,6 +137,11 @@ function [x,flag] = SolveLin(obj,A,b,time)
 
    end
 
+   % De apply ruiz from the result
+   if obj.nIterRuiz > 0
+      x = D*x;
+   end
+
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
@@ -135,7 +160,11 @@ function [x,flag] = SolveLin(obj,A,b,time)
          obj.newtonLin(obj.nSolve) = obj.nSolve;
       end
 
-      obj.symFlagLin(obj.nSolve) = globalsymm;
+      if obj.DEBUGflag
+         obj.symFlagLin(obj.nSolve) = symValue;
+      else
+         obj.symFlagLin(obj.nSolve) = globalsymm;
+      end
       if obj.params.iterSinceLastPrecComp == 0
          obj.precCompLin(obj.nSolve) = T_setup;
       else
@@ -150,7 +179,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
       end
       obj.params.iterSinceLastPrecComp = 0;
       obj.requestPrecComp = true;
-      [x,flag] = obj.Solve(A,b,time);
+      [x,flag] = obj.SolveLin(A,b,time);
       return;
    end
 

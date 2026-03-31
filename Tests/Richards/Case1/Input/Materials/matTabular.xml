@@ -30,6 +30,6 @@
          compressibility = "0.0"
          dynamicViscosity = "1.1574e-11"     />
   <!-- specific weight (N/m3),
-       fluid compressibility (Pa-1),
+fluid compressibility (Pa-1),
        dynamic viscosity (Pa/s) -->  
 </Materials>
