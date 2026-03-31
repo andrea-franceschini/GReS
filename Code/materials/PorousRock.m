@@ -51,7 +51,15 @@ classdef PorousRock < handle
         % end
 
         function gamma = getSpecificWeight(obj)
-            gamma = obj.gamma;
+          gamma = obj.gamma;
+        end
+
+        function gamma = getDrySpecificWeight(obj)
+          gamma = obj.gamma;
+        end
+
+        function gamma = getSaturatedSpecificWeight(obj)
+          gamma = obj.gamma;
         end
 
 

@@ -8,6 +8,7 @@ classdef Poromechanics < PhysicsSolver
     avStrain
     avStressOld
     avStrainOld
+    gravity
     flOut = true
 
     % stress and strain tensor use engineering voigt notation
@@ -31,9 +32,12 @@ classdef Poromechanics < PhysicsSolver
 
       nTags = obj.mesh.nCellTag;
 
-      default = struct('targetRegions',1:nTags);
+      default = struct('targetRegions',1:nTags,...
+                       'gravity',missing);
 
+      
       params = readInput(default,varargin{:});
+
 
       dofm = obj.domain.dofm;
 
@@ -42,6 +46,9 @@ classdef Poromechanics < PhysicsSolver
 
       % store the id of the field in the degree of freedom manager
       obj.fieldId = dofm.getVariableId(obj.getField());
+
+      % set gravity in the model
+      setGravity(obj,params.gravity);
 
       % initialize the state object
       initState(obj);
@@ -200,11 +207,14 @@ classdef Poromechanics < PhysicsSolver
       end
     end
 
+
+
     function initState(obj)
       % add poromechanics fields to state structure
       Ndata = getNumbCellData(obj.elements);
       state = getState(obj);
       state.data.stress = zeros(Ndata,6);
+      % initial stress ( assumed balanced with external forces)
       state.data.iniStress = zeros(Ndata,6);
       state.data.status = zeros(Ndata,6);
       state.data.strain = zeros(Ndata,6);
@@ -396,6 +406,25 @@ classdef Poromechanics < PhysicsSolver
       else % non linear case: rhs computed with internal forces (B^T*sigma)
         rhs = obj.fInt; % provisional assuming theta = 1;
       end
+
+      if obj.gravityFlag
+        assembleGravity(obj);
+      end
+    end
+
+
+    function assembleGravity(obj)
+
+      % add gravity contribution to the rhs 
+
+      for i = 1:obj.mesh.nCellTag
+
+      end
+
+
+
+
+
     end
 
 
@@ -489,6 +518,39 @@ classdef Poromechanics < PhysicsSolver
         B(elem.indB(:,2)) = N(elem.indB(:,1));
         stateCurr.data.strain(l+1:l+nG,:) = reshape(pagemtimes(B,du(dof)),6,nG)';
         l = l + nG;
+      end
+
+    end
+
+    function setGravity(obj,input)
+
+      if any(ismissing(input))
+        % no gravity in the model
+        obj.gravity = [];
+        return
+      else
+        % read input for gravity
+        default = struct('waterlevel',missing,...
+                         'obg',missing);
+        grav = readInput(default,input);
+      end
+
+      % compute specificWeight (without water effect)
+      fluid = obj.domain.mat.getFluid;
+
+      if ismissing(grav.obg)
+        % use specificWeight if provided, otherwise throw error
+
+      else
+        % compute gamma solid from overburden gradient
+
+      end
+
+
+      if numel(fluid) == 0
+        % there is a fluid
+        if ismissing(grav.waterlevel)
+      else
       end
 
     end
