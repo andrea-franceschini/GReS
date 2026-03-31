@@ -190,7 +190,8 @@ classdef gridForSedimentation < handle
       map = ismember(obj.dof,dofs);
       pos = find(map);
       [~,id] = sort(obj.dof(map));
-      [idI(id),idJ(id),~]=ind2sub(obj.ncells,pos);
+      % [idI(id),idJ(id),~]=ind2sub(obj.ncells,pos);
+      [idI,idJ,~]=ind2sub(obj.ncells,pos(id));
       out = sub2ind(obj.ncells(1:2), idI', idJ');
     end
 
@@ -468,7 +469,6 @@ classdef gridForSedimentation < handle
         obj.coordX = linspace(0,dim(1),obj.ncells(1)+1);
         obj.coordY = linspace(0,dim(2),obj.ncells(2)+1);
         obj.coordZ = linspace(0,dim(3),obj.ncells(3)+1);
-        % obj.gridClassic(data.Grid);
       elseif strcmp(data.Grid.type,"explicit")
         obj.gridExplicit(data.Grid);
       else
@@ -485,36 +485,24 @@ classdef gridForSedimentation < handle
       obj.ndofs = sum(obj.dof~=0,"all");
     end
 
-    % function gridClassic(obj,data)
-    %   % Internal initialization of grid, maps, and material layers.
-    %   obj.ncells = getXMLData(data,[1,1,1],"division");
-    %   dim = getXMLData(data,[1,1,1],"size");
-    %   obj.coordX = linspace(0,dim(1),obj.ncells(1)+1);
-    %   obj.coordY = linspace(0,dim(2),obj.ncells(2)+1);
-    %   obj.coordZ = linspace(0,dim(3),obj.ncells(3)+1);
-    % end
-
     function gridExplicit(obj,data)
       % Internal initialization of grid, maps, and material layers.
       if isfield(data,'xfile')
-        file = getXMLData(data,[],"xfile");
-        obj.coordX = load(file);
+        obj.coordX = load(data.xfile);
       else
-        obj.coordX = getXMLData(data,[],"xcoord");
+        obj.coordX = data.xcoord;
       end
 
       if isfield(data,'yfile')
-        file = getXMLData(data,[],"yfile");
-        obj.coordY = load(file);
+        obj.coordY = load(data.yfile);
       else
-        obj.coordY = getXMLData(data,[],"ycoord");
+        obj.coordY = data.ycoord;
       end
 
       if isfield(data,'zfile')
-        file = getXMLData(data,[],"zfile");
-        obj.coordZ = load(file);
+        obj.coordZ = load(data.zfile);
       else
-        obj.coordZ = getXMLData(data,[],"zcoord");
+        obj.coordZ = data.zcoord;
       end
 
       obj.ncells = [length(obj.coordX),length(obj.coordY),length(obj.coordZ)]-1;

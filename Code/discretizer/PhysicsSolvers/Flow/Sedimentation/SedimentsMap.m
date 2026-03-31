@@ -100,7 +100,9 @@ classdef SedimentsMap < handle
       %   - Sort events by time
       %   - Remove duplicate timestamps
 
-      listdata = readstruct(file, AttributeSuffix="");
+      default = struct('type',"ramp",...
+        'Event',[]);
+      listdata = readInput(default,file);
       obj.type = lower(listdata.type);
       obj.dataStruct = listdata.Event;
 
@@ -139,8 +141,7 @@ classdef SedimentsMap < handle
         for item = event.Linear
           if ~ismissing(item)
             if checkMat(item.materialFlag)
-              % ref = getXMLData(item,[],"value");
-              ref=str2num(item.value);
+              ref=item.value;
               xpos = 1:obj.dim(1);
               ypos = 1:obj.dim(2);
               polyXA = (xpos-obj.dim(1))/(1-obj.dim(1));
@@ -188,10 +189,7 @@ classdef SedimentsMap < handle
 
     function values = dataMap(obj, data)
       % DATAMAP Loads spatial sediment map from file.
-      
-      mapDim = getXMLData(data,[],"division");
-      if isequal(obj.dim, mapDim)
-        % values = load(data.file);
+      if isequal(obj.dim, data.division)
         fid = fopen(data.file);
         values = cell2mat(textscan(fid,'%f','Delimiter','\n'));
         fclose(fid);
@@ -204,6 +202,11 @@ classdef SedimentsMap < handle
         [x_new, y_new] = meshgrid(0:1/(obj.dim(1)-1):1, 0:1/(obj.dim(2)-1):1);        
         values = reshape(interp2(x_ref, y_ref, val_ref, x_new, y_new, 'cubic'),[],1);
       end
+
+      % smoothing the data.
+      values = reshape(values,data.division(1),data.division(2));
+      values = imgaussfilt(values, 1);         % light smoothing
+      values = reshape(values,[],1);
     end
 
     function map = LinearInter(obj, dt, pos, posF)
