@@ -15,9 +15,10 @@ cd(scriptDir);
 % files
 
 
+
 % Domain 1 - Top layer
 mshTop = Mesh();
-mshTop.importMesh('topLayer.vtk');
+mshTop.importMesh(fullfile('Input','topLayer.vtk'));
 gridTop = struct('topology',mshTop,'cells',Elements(mshTop));
 matTop = Materials();
 matTop.addSolid('name',"topMat",'cellTags',1);
@@ -40,7 +41,7 @@ domainTop.addPhysicsSolver('SinglePhaseFlowFEM');
 
 % Domain 2 - Bottom layer
 mshBottom = Mesh();
-mshBottom.importMesh('bottomLayer.vtk');
+mshBottom.importMesh(fullfile('Input','bottomLayer.vtk'));
 gridBottom = struct('topology',mshBottom,'cells',Elements(mshBottom));
 matBottom = Materials();
 matBottom.addSolid('name',"botMat",'cellTags',1);
@@ -75,8 +76,8 @@ interf.Quadrature.nGP = 4;
 interfaces = InterfaceSolver.add('MeshTying',domains,interf);
 
 
-simparams = SimulationParameters('simParams.xml');
-printUtils = OutState('printTimes',[0.5,1,2,5,10,50],'outputFile',"flowNonConformingOut");
+simparams = SimulationParameters(fullfile('Input','simParams.xml'));
+printUtils = OutState('printTimes',[0.5,1,2,5,10,50],'outputFile',"Output/flowNonConformingOut");
 
 solver = NonLinearImplicit('simulationparameters',simparams,...
                            'domains',domains,...

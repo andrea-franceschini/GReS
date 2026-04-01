@@ -11,7 +11,7 @@ warning('off','MATLAB:nearlySingularMatrix');
 
 % shortcut to define a model using a unique xml file
 % useful when dealing with many domains
-params = readInput('subDomains.xml');
+params = readInput(fullfile('Input','subDomains.xml'));
 simparams = SimulationParameters(params.SimulationParameters);
 printUtils = OutState(params.Output);
 
