@@ -34,9 +34,15 @@ classdef OutState < handle & matlab.mixin.Copyable
 
     end
 
-    function prepareOutputFolders(obj)
+    function prepareOutputFolders(obj,varargin)
 
-      foldName = sprintf('%s/output_%5.5i',obj.vtkFileName,obj.timeID);
+      if nargin > 1
+        tID = varargin{1};
+      else
+        tID = obj.timeID;
+      end
+
+      foldName = sprintf('%s/output_%5.5i',obj.vtkFileName,tID);
 
       if (~obj.isFolderReady)
         createVTKFolder(obj);
