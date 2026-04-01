@@ -233,7 +233,7 @@ classdef Boundaries < handle
 
     function out = isEssential(obj,bcId)
 
-      out = obj.getData(bcId).essenattial;
+      out = obj.getData(bcId).essential;
 
     end
 
