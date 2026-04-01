@@ -111,9 +111,9 @@ for k = 1:2:numel(kv)
     key = kv{k};
     val = kv{k+1};
  
-    if iscell(val) && mod(numel(val),2) == 0
-        val = kv2struct(val);   % recurse into nested name-value cell
-    end
+    % if iscell(val) && mod(numel(val),2) == 0
+    %     val = kv2struct(val);   % recurse into nested name-value cell
+    % end
  
     str.(key) = val;
 end

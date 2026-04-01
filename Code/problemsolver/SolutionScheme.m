@@ -95,40 +95,22 @@ classdef (Abstract) SolutionScheme < handle
 
     function setSolutionScheme(obj,varargin)
 
+      default = struct('simulationparameters',SimulationParameters.empty,...
+                       'output',missing,...
+                       'domains',Discretizer.empty,...
+                       'interface',missing);
 
-      % Check that we have an even number of inputs
-      if mod(length(varargin), 2) ~= 0
-        error('Arguments must come in key-value pairs.');
+      params = readInput(default,varargin{:});
+
+      obj.simparams = params.simulationparameters;
+      obj.domains = params.domains;
+
+      if ~ismissing(params.interface)
+        obj.interfaces = params.interface;
       end
 
-      % Loop through the key-value pairs
-      for k = 1:2:length(varargin)
-        key = varargin{k};
-        value = varargin{k+1};
-
-        if isempty(value)
-          continue
-        end
-
-        if ~ischar(key) && ~isstring(key)
-          error('Keys must be strings');
-        end
-
-        switch lower(key)
-          % case 'simulationparameters'
-          %   assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
-          %   obj.simparams = value;
-          case 'simulationparameters'
-            obj.simparams = value;
-          case 'output'
-            obj.output = value;
-          case {'domain','domains'}
-            obj.domains = value;
-          case {'interfaces','interface'}
-            obj.interfaces = value;
-          otherwise
-            error('Unknown input key %s for SolutionScheme \n', key);
-        end
+      if ~ismissing(params.output)
+        obj.output = params.output;
       end
 
       obj.nDom = numel(obj.domains);

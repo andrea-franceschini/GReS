@@ -89,11 +89,19 @@ classdef Materials < handle
     function mat = getMaterial(obj,input)
       % get material based on the cellTag using matMap
 
-      if ~isnumeric(obj,input)
-        mat = getMaterialFromName(input);
+      if ~isnumeric(input)
+        mat = getMaterialFromName(obj,input);
       else
-        mat = getMaterialFromTag(input);
+        mat = getMaterialFromTag(obj,input);
       end
+
+    end
+
+
+    function gamma = getSpecificWeight(obj,input)
+
+      mat = getMaterial(obj,input);
+      gamma = mat.specificWeight;
 
     end
 

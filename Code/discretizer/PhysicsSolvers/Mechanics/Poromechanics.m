@@ -8,7 +8,6 @@ classdef Poromechanics < PhysicsSolver
     avStrain
     avStressOld
     avStrainOld
-    gravity
     flOut = true
 
     % stress and strain tensor use engineering voigt notation
@@ -46,9 +45,6 @@ classdef Poromechanics < PhysicsSolver
 
       % store the id of the field in the degree of freedom manager
       obj.fieldId = dofm.getVariableId(obj.getField());
-
-      % set gravity in the model
-      setGravity(obj,params.gravity);
 
       % initialize the state object
       initState(obj);
@@ -406,10 +402,7 @@ classdef Poromechanics < PhysicsSolver
       else % non linear case: rhs computed with internal forces (B^T*sigma)
         rhs = obj.fInt; % provisional assuming theta = 1;
       end
-
-      if obj.gravityFlag
-        assembleGravity(obj);
-      end
+      
     end
 
 
@@ -467,7 +460,7 @@ classdef Poromechanics < PhysicsSolver
 
       % append state variable to output structure
       stateCurr = getState(obj);
-      stateOld = getState(obj);
+      stateOld = getStateOld(obj);
 
       displ = getState(obj,obj.getField());
       dispOld = getStateOld(obj,obj.getField());

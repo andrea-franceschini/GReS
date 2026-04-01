@@ -9,10 +9,11 @@ classdef PreStressMechanics < Poromechanics
 
   properties
     specWeight         % stores specific weight in each cell of the model
+    gravity = false
   end
 
   properties (Access = private)
-    fieldId
+    fieldId = 1
   end
 
   methods (Access = public)
@@ -49,35 +50,48 @@ classdef PreStressMechanics < Poromechanics
     function rhsGrav = computeGravityRhs(obj)
 
       % add gravity contribution to the rhs
+      nDoF = obj.domain.dofm.getNumbDoF(obj.fieldId);
+      rhsGrav = zeros(nDoF,1);
 
-      for i = 1:obj.mesh.nCells
-
-
-        for el = 1:obj.mesh.nCells
-          nodes = obj.mesh.cells(el,:);
-          dof = dofId(nodes,3);
-          vtkId = obj.mesh.cellVTKType(el);
-          elem = getElement(obj.elements,vtkId);
-          N = getBasisFinGPoints(elem);
-          %rhsGrav(dof) = N
-        end
-
+      for el = 1:obj.mesh.nCells
+        nodes = obj.mesh.cells(el,:);
+        dof = dofId(nodes,3);
+        % only affects z contribution
+        dof = dof(3:3:end);
+        vtkId = obj.mesh.cellVTKType(el);
+        elem = getElement(obj.elements,vtkId);
+        N = getBasisFinGPoints(elem);
+        dJWeighed = getDerBasisFAndDet(elem,el,3);
+        b = obj.specWeight(el)*(N'*dJWeighed');
+        rhsGrav(dof) = rhsGrav(dof) + b;
       end
-
 
     end
 
 
 
 
-    function initialStress = getInitialStress(obj)
+
+    function initialStress = getInitialStress(obj,varargin)
+
 
       % setup a self-contained one-step GReS simulation to compute initial stress
 
+      % default parameters for the simulation
+      parm = struct('Start',0.0,'End',1.0,'DtInit',1.0,'DtMax',1.0,'DtMin',0.01);
+      default = struct('simulationparameters',SimulationParameters(parm),...
+        'domains',obj.domain);
 
-     
+      params = readInput(default,varargin{:});
 
+      solv = NonLinearImplicit(params);
 
+      assert(solv.nDom == 1 && solv.nInterf == 0, ...
+        "PreStressMechanics can be used only as a stand-alone PhysicsSolver within a single domain");
+
+      solv.simulationLoop();
+
+      [initialStress,~] = obj.finalizeState(obj.getState());
 
     end
 
@@ -92,9 +106,9 @@ classdef PreStressMechanics < Poromechanics
 
       if any(ismissing(input))
         % no gravity in the model
-        obj.gravity = [];
         return
       else
+        obj.gravity = true;
         % read input for gravity
         default = struct('hydrostaticPressure',0,...
                          'waterDepth',0.0,...
@@ -103,7 +117,7 @@ classdef PreStressMechanics < Poromechanics
         grav.hydrostaticPressure = logical(grav.hydrostaticPressure);
       end
 
-      obj.gravity = getSpecificWeight(obj,grav);
+      obj.specWeight = getSpecificWeight(obj,grav);
 
 
     end
@@ -116,7 +130,7 @@ classdef PreStressMechanics < Poromechanics
       gamma = zeros(obj.mesh.nCells,1);
       poro = zeros(obj.mesh.nCells,1);
 
-      if ~any(ismissing(grav.obj))
+      if ~any(ismissing(grav.obg))
         %  specific weight computed from overburden gradient
         try
           obg = str2func(['@(x,y,z)', char(grav.obg)]);
