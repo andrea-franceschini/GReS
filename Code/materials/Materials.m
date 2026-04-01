@@ -86,10 +86,14 @@ classdef Materials < handle
     end
 
 
-    function mat = getMaterial(obj,cellTag)
+    function mat = getMaterial(obj,input)
       % get material based on the cellTag using matMap
 
-      mat = obj.solid{obj.matMap(cellTag)};
+      if ~isnumeric(obj,input)
+        mat = getMaterialFromName(input);
+      else
+        mat = getMaterialFromTag(input);
+      end
 
     end
 
@@ -97,6 +101,12 @@ classdef Materials < handle
     function materialNames = getMaterialNames(obj)
 
       materialNames = string(cellfun(@(s) s.name, obj.solid, 'UniformOutput', false));
+
+    end
+
+    function mat = getMaterialFromTag(obj,tag)
+
+      mat = obj.solid{obj.matMap(tag)};
 
     end
 
@@ -147,6 +157,7 @@ classdef Materials < handle
 
     end
 
+
     function addPorousRock(obj,matName,varargin)
 
       if isempty(obj.fluid)
@@ -169,6 +180,13 @@ classdef Materials < handle
       f = obj.fluid;
 
       obj.solid{matID}.PorousRock.addCapillaryCurves(f,varargin{:});
+    end
+
+    function porousRock = getPorousRock(obj,input)
+
+      mat = getMaterial(obj,input);
+      porousRock = mat.PorousRock;
+
     end
 
 

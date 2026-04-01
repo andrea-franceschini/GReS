@@ -522,38 +522,7 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
-    function setGravity(obj,input)
 
-      if any(ismissing(input))
-        % no gravity in the model
-        obj.gravity = [];
-        return
-      else
-        % read input for gravity
-        default = struct('waterlevel',missing,...
-                         'obg',missing);
-        grav = readInput(default,input);
-      end
-
-      % compute specificWeight (without water effect)
-      fluid = obj.domain.mat.getFluid;
-
-      if ismissing(grav.obg)
-        % use specificWeight if provided, otherwise throw error
-
-      else
-        % compute gamma solid from overburden gradient
-
-      end
-
-
-      if numel(fluid) == 0
-        % there is a fluid
-        if ismissing(grav.waterlevel)
-      else
-      end
-
-    end
 
     % function dof = getBCdofs(obj,bcId)
     % 
