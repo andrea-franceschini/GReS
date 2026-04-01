@@ -1,0 +1,26 @@
+<Problem>
+
+  % single domain 
+  <Domain>
+    <Geometry meshFile="Input/ReservoirTest_Hexa.msh"/>
+    <Gauss nGP="2"/>
+    <Materials          fileName="Input/materials.xml"/>
+    <BoundaryConditions fileName="Input/boundaryConditions.xml"/>
+    <Solver>
+      <BiotFullySaturated>
+        <Poromechanics      targetRegions="1,2,3"/>
+        <SinglePhaseFlowFEM targetRegions="2,3"/>
+      </BiotFullySaturated>
+    </Solver>
+  </Domain>
+
+  % global settings (not domain specific)
+  <SimulationParameters fileName="Input/simParams.xml"/>
+
+  <Output
+      outputFile  = "Output/results"
+      matFileName = "Output/results"
+      printTimes  = "1,4,8"/>
+
+
+</Problem>

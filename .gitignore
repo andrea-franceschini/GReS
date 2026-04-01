@@ -27,6 +27,7 @@
 *.lib
 *.mexw64
 *.mexa64
+*.mexmaca64
 
 # Executables
 *.exe
@@ -40,6 +41,8 @@
 
 # Matlab files
 *.mat
+*.MATLABDriveTag
+*.DS_Store
 
 # asv files
 *.asv

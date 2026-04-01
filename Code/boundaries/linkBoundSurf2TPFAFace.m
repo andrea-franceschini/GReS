@@ -1,12 +1,11 @@
 function linkBoundSurf2TPFAFace(solver)
-% TO DO: call this from within the SinglePhaseFlow solver!
 
 bcs = solver.domain.bcs;
 
 keys = bcs.db.keys;
 flRenum = false(length(keys),1);
 for i = 1 : length(keys)
-  if strcmp(bcs.getCond(keys{i}), 'SurfBC') && strcmp(bcs.getVariable(keys{i}),solver.getField())
+  if strcmp(bcs.getField(keys{i}), 'surface') && strcmp(bcs.getVariable(keys{i}),solver.getField())
     flRenum(i) = true;
   end
 end
@@ -24,11 +23,11 @@ if any(flRenum)
   faceBound = sort(faceBound',2);
   %
   for i = find(flRenum)'
-    bFaceTop = solver.mesh.surfaces(bcs.getEntities(keys{i}),:); 
+    bFaceTop = solver.mesh.surfaces(bcs.getSourceEntities(keys{i}),:); 
     [~,~,ib] = intersect(sort(bFaceTop,2),faceBound,'stable','rows');
     newID = idBFace(ib);
     assert(all(sum(solver.faces.faceNeighbors(newID,:) ~= 0,2) == 1),'Corrupted face renumbering for %s surface condition',bcs.getName(keys{i}));
-    bcs.setDofs(keys{i},idBFace(ib));
+    bcs.setEntities(keys{i},idBFace(ib));
   end
 end
 end

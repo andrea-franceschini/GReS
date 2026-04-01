@@ -10,10 +10,10 @@ classdef Fluid < handle
     end
 
     methods (Access = public)
-      function obj = Fluid(inputStruct)
-            %FLUID Class constructor method
+      function obj = Fluid(varargin)
+
             % Calling the function to set the material parameters
-            obj.readMaterialParameters(inputStruct);
+            obj.readMaterialParameters(varargin{:});
         end
 
         function gamma = getSpecificWeight(obj)
@@ -37,13 +37,18 @@ classdef Fluid < handle
     end
 
     methods (Access = private)
-      function readMaterialParameters(obj,inputStruct)
-            
-            % Assign object properties
-            obj.gamma = getXMLData(inputStruct,0,"specificWeight");
-            obj.beta = getXMLData(inputStruct,0,"compressibility");
-            obj.mu = getXMLData(inputStruct,[],"dynamicViscosity");
-     
-        end
+      function readMaterialParameters(obj,varargin)
+
+        default = struct('specificWeight',0.0,...
+          'compressibility',0.0,...
+          'dynamicViscosity',[]);
+
+        params = readInput(default,varargin{:});
+
+        obj.gamma = params.specificWeight;
+        obj.beta = params.compressibility;
+        obj.mu = params.dynamicViscosity;
+
+      end
     end
 end

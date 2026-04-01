@@ -27,20 +27,18 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
-    function registerSolver(obj,solverInput)
+    function registerSolver(obj,varargin)
 
       nTags = obj.mesh.nCellTag;
 
-      if ~isempty(solverInput)
-        targetRegions = getXMLData(solverInput,1:nTags,"targetRegions");
-      else
-        targetRegions = 1:nTags;
-      end
+      default = struct('targetRegions',1:nTags);
+
+      params = readInput(default,varargin{:});
 
       dofm = obj.domain.dofm;
 
       % register nodal displacements on target regions
-      dofm.registerVariable(obj.getField(),entityField.node,3,targetRegions);
+      dofm.registerVariable(obj.getField(),entityField.node,3,params.targetRegions);
 
       % store the id of the field in the degree of freedom manager
       obj.fieldId = dofm.getVariableId(obj.getField());
@@ -268,49 +266,92 @@ classdef Poromechanics < PhysicsSolver
 
     function applyBC(obj,bcId,t)
 
-      if ~BCapplies(obj,bcId)
-        return
-      end
-
-      % get bcDofs and bcVals
-      bcDofs = getBCdofs(obj,bcId);
-      bcVals = getBCVals(obj,bcId,t);
-
       bcType = obj.domain.bcs.getType(bcId);
 
       switch bcType
-        case 'Dirichlet'
-          applyDirBC(obj,bcId,bcDofs);
-        case {'Neumann','VolumeForce'}
-          applyNeuBC(obj,bcId,bcDofs,bcVals);
+        case 'volumeforce' % custom bc type
+          applyVolumeForceBC(obj,bcId,bcDofs);
         otherwise
-          error("Error in %s: Boundary condition type '%s' is not " + ...
-            "available in %s",class(obj),bcType);
+          applyBC@PhysicsSolver(obj,bcId,t);
       end
       
     end
 
 
-    % function [dof,vals] = getBC(obj,bcId,t)
-    %   %
-    %   dof = obj.getBCdofs(bcId);
-    %   vals = obj.getBCVals(bcId,t);
-    % end
+    function applyVolumeForceBC(obj,bcId,t)
 
+      % handle volume force boundary condition.
+      % poromechanical coupling with a scalar pressure field
 
-    function applyDirVal(obj,bcId,t)
+      bc = obj.domain.bcs;
 
-      bcVar = obj.domain.bcs.getVariable(bcId);
+      srcVal = bc.getSourceVals(id,t);
 
-      if ~strcmp(bcVar,obj.getField())
-        return
+      assert(getField(bc,bcId)==entityField.cell,"field of 'volumeforce' BC" + ...
+        " must be 'cell'")
+
+      cells = bc.getSourceEntities(bcId);
+
+      nodeId = bc.getTargetEntities(bcId);
+
+      % preallocate vector for later assembly
+      valsC = zeros(3*sum(obj.mesh.cellNumVerts(cells)),1);
+      dofs = zeros(3*sum(obj.mesh.cellNumVerts(cells)),1);
+      k = 0;
+
+      for i = 1:numel(cells)
+
+        % local coupling to map cell pressure to nodal force (as in Biot)
+        % assumes unit biot coefficient
+        el = cells(i);
+
+        % compute local biot coupling matrix
+        elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
+        nG = elem.GaussPts.nNode;
+        n = 3*elem.nNode;
+        [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
+        B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
+        B(elem.indB(:,2)) = N(elem.indB(:,1));
+        kron = [1;1;1;0;0;0];
+        iN = repmat(kron,1,1,nG);
+        Qs = pagemtimes(B,'ctranspose',iN,'none');
+        Qs = Qs.*reshape(dJWeighed,1,1,[]);
+        Qloc = sum(Qs,3);
+
+        % accumulate bc values
+        valsC(k+1:k+n) = Qloc*srcVal(i);
+        dofState(k+1:k+n) = dofId(obj.mesh.cells(el,:),3);
+        k = k+n;
+
       end
 
-      bcEnts = getBCents(obj,bcId);
-      bcVals = getBCVals(obj,bcId,t);
+      % accumulate results
+      valsC = accumarray(dofs,valsC,[3*obj.mesh.nNodes 1]);
 
-      obj.getState().data.displacements(bcEnts) = bcVals;
+      dofState = dofId(nodeId,3);
+
+      % retrieve dof numbering of constrained dofs
+      dofs = dofId(obj.dofm.getLocalEnts(obj.fieldId,nodeId),3);
+      vals = valsC(dofState);
+
+      applyNeuBC(obj,bcId,dofs,vals);
+
     end
+
+
+    % function applyDirVal(obj,bcId,t)
+    % 
+    %   bcVar = obj.domain.bcs.getVariable(bcId);
+    % 
+    %   if ~strcmp(bcVar,obj.getField())
+    %     return
+    %   end
+    % 
+    %   bcEnts = getBCents(obj,bcId);
+    %   bcVals = getBCVals(obj,bcId,t);
+    % 
+    %   obj.getState().data.displacements(bcEnts) = bcVals;
+    % end
 
     function rhs = computeRhs(obj,varargin)
 
@@ -382,12 +423,12 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
-    function writeMatFile(obj,fac,tID)
+    function writeSolution(obj,fac,tID)
 
       uOld = getStateOld(obj,obj.getField());
       uCurr = getState(obj,obj.getField());
 
-      obj.domain.outstate.matFile(tID).(obj.getField()) = uCurr*fac+uOld*(1-fac);
+      obj.domain.outstate.results(tID).(obj.getField()) = uCurr*fac+uOld*(1-fac);
 
       % TO DO: optional print of stresses as an input for the solver
 
@@ -452,93 +493,93 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
-    function dof = getBCdofs(obj,bcId)
+    % function dof = getBCdofs(obj,bcId)
+    % 
+    %   bc = obj.domain.bcs;
+    % 
+    %   % get BC entity
+    %   ents = bc.getBCentities(bcId);
+    % 
+    %   % map to local dof numbering
+    %   ents = obj.domain.dofm.getLocalEnts(obj.fieldId,ents);
+    % 
+    %   dof = bc.getCompEntities(bcId,ents);
+    % 
+    %   if strcmp(bc.getCond(bcId),'VolumeForce')
+    %     dof = dofId(dof,3);
+    %   end
+    % 
+    % end
+    % 
+    % function ents = getBCents(obj,bcId)
+    % 
+    %   bc = obj.domain.bcs;
+    %   % get BC entity
+    %   ents = bc.getBCentities(bcId);
+    % 
+    %   % get component dof for multi-component bcs
+    %   ents = bc.getCompEntities(bcId,ents);
+    % 
+    %   if strcmp(bc.getCond(bcId),'VolumeForce')
+    %     ents = dofId(ents,3);
+    %   end
+    % 
+    % 
+    % end
 
-      bc = obj.domain.bcs;
 
-      % get BC entity
-      ents = bc.getBCentities(bcId);
-
-      % map to local dof numbering
-      ents = obj.domain.dofm.getLocalEnts(obj.fieldId,ents);
-
-      dof = bc.getCompEntities(bcId,ents);
-
-      if strcmp(bc.getCond(bcId),'VolumeForce')
-        dof = dofId(dof,3);
-      end
-
-    end
-
-    function ents = getBCents(obj,bcId)
-
-      bc = obj.domain.bcs;
-      % get BC entity
-      ents = bc.getBCentities(bcId);
-
-      % get component dof for multi-component bcs
-      ents = bc.getCompEntities(bcId,ents);
-
-      if strcmp(bc.getCond(bcId),'VolumeForce')
-        ents = dofId(ents,3);
-      end
-
-
-    end
-
-
-    function vals = getBCVals(obj,id,t)
-
-      bc = obj.domain.bcs;
-
-      vals = bc.getVals(id,t);
-
-      if strcmp(bc.getCond(id),'SurfBC')
-
-        % nodeArea*bcValue
-        entInfl = bc.getEntitiesInfluence(id);
-        vals = entInfl*vals;
-
-      elseif strcmp(bc.getCond(id),'VolumeForce')
-
-        % imposed volume pressure
-        valsCell = vals;
-        cells = bc.getEntities(id);
-
-        % preallocate vector for later assembly
-        vals = zeros(3*sum(obj.mesh.cellNumVerts),1);
-        dofs = zeros(3*sum(obj.mesh.cellNumVerts),1);
-        k = 0;
-
-        for i = 1:numel(cells)
-
-          % local coupling to map cell pressure to nodal force (as in Biot)
-          % assumes unit biot coefficient
-          el = cells(i);
-          elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
-          nG = elem.GaussPts.nNode;
-          n = 3*elem.nNode;
-          [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
-          B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
-          B(elem.indB(:,2)) = N(elem.indB(:,1));
-          kron = [1;1;1;0;0;0];
-          iN = repmat(kron,1,1,nG);
-          Qs = pagemtimes(B,'ctranspose',iN,'none'); 
-          Qs = Qs.*reshape(dJWeighed,1,1,[]);
-          Qloc = sum(Qs,3);
-          vals(k+1:k+n) = Qloc*valsCell(i);
-          dofs(k+1:k+n) = dofId(obj.mesh.cells(el,:),3);
-          k = k+n;
-
-        end
-
-        % accumulate results
-        vals = accumarray(dofs,vals,[3*obj.mesh.nNodes 1]);
-        dof = obj.getBCdofs(id);
-        vals = vals(dof);
-      end
-
-    end
+    % function vals = getBCVals(obj,id,t)
+    % 
+    %   bc = obj.domain.bcs;
+    % 
+    %   vals = bc.getVals(id,t);
+    % 
+    %   if strcmp(bc.getCond(id),'surface')
+    % 
+    %     % nodeArea*bcValue
+    %     entInfl = bc.getEntitiesInfluence(id);
+    %     vals = entInfl*vals;
+    % 
+    %   elseif strcmp(bc.getCond(id),'volumeforce')
+    % 
+    %     % imposed volume pressure
+    %     valsCell = vals;
+    %     cells = bc.getEntities(id);
+    % 
+    %     % preallocate vector for later assembly
+    %     vals = zeros(3*sum(obj.mesh.cellNumVerts),1);
+    %     dofs = zeros(3*sum(obj.mesh.cellNumVerts),1);
+    %     k = 0;
+    % 
+    %     for i = 1:numel(cells)
+    % 
+    %       % local coupling to map cell pressure to nodal force (as in Biot)
+    %       % assumes unit biot coefficient
+    %       el = cells(i);
+    %       elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
+    %       nG = elem.GaussPts.nNode;
+    %       n = 3*elem.nNode;
+    %       [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
+    %       B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
+    %       B(elem.indB(:,2)) = N(elem.indB(:,1));
+    %       kron = [1;1;1;0;0;0];
+    %       iN = repmat(kron,1,1,nG);
+    %       Qs = pagemtimes(B,'ctranspose',iN,'none'); 
+    %       Qs = Qs.*reshape(dJWeighed,1,1,[]);
+    %       Qloc = sum(Qs,3);
+    %       vals(k+1:k+n) = Qloc*valsCell(i);
+    %       dofs(k+1:k+n) = dofId(obj.mesh.cells(el,:),3);
+    %       k = k+n;
+    % 
+    %     end
+    % 
+    %     % accumulate results
+    %     vals = accumarray(dofs,vals,[3*obj.mesh.nNodes 1]);
+    %     dof = obj.getBCdofs(id);
+    %     vals = vals(dof);
+    %   end
+    % 
+    % end
 
   end
 

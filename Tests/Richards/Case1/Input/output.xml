@@ -3,7 +3,6 @@
 <Output
     outputFile = "Output/Results"
     matFileName = "Output/Results"
-    saveHistory = "1"
     printTimes = "10,50,100."
 />
 

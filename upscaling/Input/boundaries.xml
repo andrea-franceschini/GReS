@@ -4,14 +4,12 @@
   <BC
     name = "fix_bottom"
     type = "Dirichlet"
-    entityType = "SurfBC"
+    field = "surface"
     variable = "displacements"
+    entityListType = "tags"
+    entityList = "2"
+    components = "x,y,z"
   >
-
-    <BCentities
-      surfaceTags = "2"
-      components = "x,y,z"
-    />
 
     <BCevent
       time = "0"
@@ -22,13 +20,11 @@
   <BC
     name = "load_top"
     type = "Neumann"
-    entityType = "SurfBC"
+    field = "surface"
     variable = "displacements"
+    entityListType = "bcListFile"
+    entityList = "BCs/listTop"
   >
-
-    <BCentities
-      bcListFile = "BCs/listTop"
-    />
 
     <BCevent
       time = "0.0"
@@ -39,13 +35,11 @@
   <BC
     name = "load_lateral"
     type = "Neumann"
-    entityType = "SurfBC"
+    field = "surface"
     variable = "displacements"
+    entityListType = "bcListFile"
+    entityList = "BCs/listLat"
   >
-
-    <BCentities
-      bcListFile = "BCs/listLat"
-    />
 
     <BCevent
       time = "0.0"

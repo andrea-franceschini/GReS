@@ -13,6 +13,7 @@ in a nonConforming simulation.
                poissonRatio = "0.25"
                />
     </Constitutive>
+    
     <PorousRock
                 porosity="0.3"
                 specificWeight="21"

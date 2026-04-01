@@ -2,7 +2,7 @@ clc;
 clear;
 close all;
 
-gresLog().setVerbosity(0);
+gresLog().setVerbosity(-2);
 
 % Read input file
 [meshProp, rock, blockSize, jointFamilies, druckerPrager, inputFiles] = ...
@@ -23,14 +23,14 @@ mat = Materials(inputFiles.materials);
 grid = struct('topology',mesh,'cells',Elements(mesh));
 
 % Creating boundaries conditions.
-bound = Boundaries(inputFiles.boundaries,grid);
+bound = Boundaries(grid,inputFiles.boundaries);
 
 % create the Discretizer (key-value pair input)
 domain = Discretizer('grid',grid,...
                      'materials',mat,...
                      'boundaries',bound);
 
-domain.addPhysicsSolver(inputFiles.solver);
+domain.addPhysicsSolver('Poromechanics');
 
 % we keep in memory the initial state for repeated simulations
 initState = copy(getState(domain));
@@ -40,7 +40,7 @@ rng(42);   % Set random seed
 stiffnesses = createMat(domain.grid, meshProp, rock, blockSize, jointFamilies);
 
 % Set materials
-domain.materials.db{1}.ConstLaw.setStiffnesses(stiffnesses);
+domain.materials.solid{1}.ConstLaw.setStiffnesses(stiffnesses);
 
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme. 

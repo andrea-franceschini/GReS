@@ -5,7 +5,6 @@
     simParam = "Input/simParam.xml"
     materials = "Input/materials.xml"
     boundaries = "Input/boundaries.xml"
-    solver = "Input/solver.xml"
   />
   <Mesh
     H = "5000"

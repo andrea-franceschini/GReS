@@ -43,13 +43,11 @@ a function handle depending on space (x,y,z)
   <BC
       name = "ManufacturedSolution"
       type = "Dirichlet"
-      entityType = "NodeBC"
+      field = "surface"
+      entityListType = "tags"
+      entityList = "2,4"
       variable = "u"
       >
-
-    <BCentities
-                surfaceTags = "2,4"
-                />
 
     <BCevent
              time = "0.0"

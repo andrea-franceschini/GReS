@@ -2,7 +2,6 @@
 
 <Output
     matFileName = "Output/MeshConvResults"
-    saveHistory = "1"
     printTimes = "5.184e4"
 />
 
