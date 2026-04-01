@@ -11,6 +11,11 @@ classdef EvolvingGrid < SolutionScheme
     physics
   end
 
+  properties (Access = private)
+    printGrow
+    printCount = 0
+  end
+
   methods (Access = public)
     function obj = EvolvingGrid(varargin)
       obj@SolutionScheme(varargin{:});
@@ -18,6 +23,7 @@ classdef EvolvingGrid < SolutionScheme
 
     function converged = solveStep(obj,varargin)
       absTol = obj.simparams.absTol;
+      converged = false;
 
       gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
 
@@ -33,14 +39,11 @@ classdef EvolvingGrid < SolutionScheme
 
       gresLog().log(1,'0     %e     %e\n',rhsNorm,rhsNorm/rhsNormIt0);
 
-      converged = false;
-
       % reset non linear iteration counter
       obj.iterNL = 0;
 
       %%% NEWTON LOOP %%%
       while (~converged) && (obj.iterNL < obj.simparams.itMaxNR)
-
         obj.iterNL = obj.iterNL + 1;
 
         J = obj.domains.J;
@@ -66,9 +69,6 @@ classdef EvolvingGrid < SolutionScheme
       end
     end
 
-    
-
-
   end
 
 
@@ -77,8 +77,6 @@ classdef EvolvingGrid < SolutionScheme
   methods (Access = protected)
 
     function setSolutionScheme(obj,varargin)
-      
-
       % Check that we have an even number of inputs
       if mod(length(varargin), 2) ~= 0
         error('Arguments must come in key-value pairs.');
@@ -107,6 +105,8 @@ classdef EvolvingGrid < SolutionScheme
             obj.output = value;
           case {'domain','domains'}
             obj.domains = value;
+          case 'growprint'
+            obj.printGrow = value;
           otherwise
             error('Unknown input key %s for SolutionScheme \n', key);
         end
@@ -153,17 +153,19 @@ classdef EvolvingGrid < SolutionScheme
         return
       end
 
+      print = false;
+      newcells = obj.physics.domain.state.data.newcells~=0;
+      printByGrow = and(obj.printGrow,newcells);
+
       if obj.output.timeID <= length(obj.output.timeList)
 
         outTime = obj.output.timeList(obj.output.timeID);
 
         % loop over print times contained in the current time step
-
         while outTime <= obj.t
 
           assert(outTime >= obj.tOld, 'Print time %f out of range (%f - %f)',...
             outTime, obj.tOld, obj.t);
-
           assert(obj.t - obj.tOld > eps('double'),...
             'Time step is too small for printing purposes');
 
@@ -176,58 +178,33 @@ classdef EvolvingGrid < SolutionScheme
 
           % print vtk
           % create new vtm file
-          if obj.output.writeVtk
-
-            % set folders
-            obj.output.prepareOutputFolders();
-
-            obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');  
-            toc = obj.output.vtkFile.getDocumentElement;
-            toc.setAttribute('type', 'vtkMultiBlockDataSet');
-            toc.setAttribute('version', '1.0');
-            blocks = obj.output.vtkFile.createElement('vtkMultiBlockDataSet');
-
-            % append blocks looping into domains and interfaces
-            for i = 1:obj.nDom
-              vtmBlock = obj.domains(i).writeVTK(fac,outTime);
-              if ~isempty(vtmBlock)
-                blocks.appendChild(vtmBlock);
-              end
-            end
-            %
-            for i = 1:obj.nInterf
-              vtmBlock = obj.interfaces{i}.writeVTKfile(fac,outTime);
-              if ~isempty(vtmBlock)
-                blocks.appendChild(vtmBlock);
-              end
-            end
-
-            toc.appendChild(blocks);
-            obj.output.writeVTMFile();
-
-          end
+          obj.printVTK(fac,outTime);
 
           % write results to MAT-file
-          if obj.output.writeSolution
-
-            for i = 1:obj.nDom
-              obj.domains(i).writeSolution(fac,obj.output.timeID);
-            end
-
-            for i = 1:obj.nInterf
-              obj.interfaces{i}.writeSolution(fac,obj.output.timeID);
-            end
-          end
+          obj.printMAT(fac);
 
           % move to next print time
           obj.output.timeID = obj.output.timeID + 1;
 
           if obj.output.timeID > length(obj.output.timeList)
+            print = true;
             break
           else
             outTime = obj.output.timeList(obj.output.timeID);
           end
+        end
 
+        if and(~print,printByGrow)
+          fac = 0;  % 0=stateOld, 1=stateNew 
+
+          % write Vtk results
+          obj.printVTK(fac,outTime);
+
+          % write results to MAT-file
+          obj.printMAT(fac);
+
+          % update the print
+          obj.printCount = obj.printCount+1;
         end
 
       end
@@ -239,6 +216,56 @@ classdef EvolvingGrid < SolutionScheme
 
 
 
+
   end
+
+  methods (Access = private)
+
+    function printVTK(obj,fac,outTime)
+      
+      if obj.output.writeVtk
+        % set folders
+        tID = obj.output.timeID + obj.printCount;
+        obj.output.prepareOutputFolders(tID);
+
+        obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
+        toc = obj.output.vtkFile.getDocumentElement;
+        toc.setAttribute('type', 'vtkMultiBlockDataSet');
+        toc.setAttribute('version', '1.0');
+        blocks = obj.output.vtkFile.createElement('vtkMultiBlockDataSet');
+
+        % append blocks looping into domains and interfaces
+        for i = 1:obj.nDom
+          vtmBlock = obj.domains(i).writeVTK(fac,outTime);
+          if ~isempty(vtmBlock)
+            blocks.appendChild(vtmBlock);
+          end
+        end
+        %
+        for i = 1:obj.nInterf
+          vtmBlock = obj.interfaces{i}.writeVTKfile(fac,outTime);
+          if ~isempty(vtmBlock)
+            blocks.appendChild(vtmBlock);
+          end
+        end
+
+        toc.appendChild(blocks);
+        obj.output.writeVTMFile();
+      end
+    end
+
+    function printMAT(obj,fac)
+      if obj.output.writeSolution
+        for i = 1:obj.nDom
+          obj.domains(i).writeSolution(fac,obj.printCount+obj.output.timeID);
+        end
+
+        for i = 1:obj.nInterf
+          obj.interfaces{i}.writeSolution(fac,obj.printCount+obj.output.timeID);
+        end
+      end
+    end
+  end
+
 
 end

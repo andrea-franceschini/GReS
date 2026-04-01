@@ -131,6 +131,7 @@ classdef Sedimentation < PhysicsSolver
       obj.facesNeighDir = cellsConcDir(cellsConcActive);
 
       % Initialize the States
+      obj.getState().data.newcells =0;
       obj.getState().data.pressure = zeros(nelm,1);
       obj.getState().data.cellDefm = zeros(nelm,1);
       obj.getState().data.sedmrate = zeros(nelm,1);
@@ -258,6 +259,7 @@ classdef Sedimentation < PhysicsSolver
 
       % Update the necessity to compute the sedimentation rate.
       obj.getState().data.iterTimeStep = 1;
+      obj.getState().data.newcells = sum(cellGrow);
     end
 
     function updateState(obj,solution)
