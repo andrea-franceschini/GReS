@@ -33,7 +33,7 @@ classdef (Abstract) InterfaceSolver < handle
     outstate
 
     % interface state
-    state
+    state 
     stateOld
 
     % id of this interface within the final linear solver

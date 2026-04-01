@@ -13,6 +13,8 @@ classdef (Abstract) SolutionScheme < handle
     dt                  % current time step size
     nVars               % total number of inner variable fields in the model
     attemptedReset      % flag for attempting a configuration reset
+    iniState            % initial state of the simulation for solver reset
+    isFirstRun = true   % flag if the simulation is first ever or first after a reset          
   end
 
 
@@ -142,13 +144,42 @@ classdef (Abstract) SolutionScheme < handle
 
     function initialize(obj)
 
+      % check if the state object
+      if ~obj.isFirstRun
+        error("Simulation already run. Use reset() before calling simulationLoop()")
+      end
+
+      % store initial state
+
       for i = 1:obj.nDom
+        obj.iniState.domains(i) = copy(obj.domains(i).state);
         initialize(obj.domains(i));
       end
 
       for i = 1:obj.nInterf
+        obj.iniState.interfaces{i} = copy(obj.interfaces{i}.state);
         initialize(obj.interfaces{i})
       end
+
+    end
+
+
+    function reset(obj)
+
+      if obj.isFirstRun
+        warning("Simulation was already reset. Nothing to do.");
+      end
+
+      for i = 1:obj.nDom
+        obj.domains(i).state = copy(obj.iniState.domains(i));
+      end
+
+      for i = 1:obj.nInterf
+        obj.interfaces{i}.state = copy(obj.iniState.interfaces{i});
+      end
+
+      obj.isFirstRun = true;
+
     end
 
     function manageNextTimeStep(obj,flConv)
