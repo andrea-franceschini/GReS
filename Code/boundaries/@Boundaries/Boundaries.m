@@ -104,10 +104,12 @@ classdef Boundaries < handle
 
       % map values from source entity to target entity
       vals = M * valSrc;
+
     end
 
     function vals = getSourceVals(obj,bcId,t)
-        vals = obj.getData(bcId).data.getValues(t);
+      bc = obj.getData(bcId);
+      vals = bc.scale * bc.data.getValues(t);
     end
 
 
@@ -231,7 +233,15 @@ classdef Boundaries < handle
 
     function out = isEssential(obj,bcId)
 
-      out = obj.getData(bcId).essential;
+      out = obj.getData(bcId).essenattial;
+
+    end
+
+
+    function scaleBC(obj,identifier,scalingFactor)
+
+      bc = obj.getData(identifier);
+      bc.scale = scalingFactor;
 
     end
 
