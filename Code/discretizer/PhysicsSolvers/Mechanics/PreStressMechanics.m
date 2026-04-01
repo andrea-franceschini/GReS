@@ -30,7 +30,7 @@ classdef PreStressMechanics < Poromechanics
 
       registerSolver@Poromechanics(obj,varargin)
 
-      setGravity(obj,varargin)
+      setGravity(obj,varargin{:})
 
     end
 
@@ -39,8 +39,12 @@ classdef PreStressMechanics < Poromechanics
     function assembleSystem(obj,dt)
       % compute the displacements matrices and rhs in the domain
       assembleSystem@Poromechanics(obj,dt);
-      obj.domain.rhs{obj.fieldId} = ...
-        obj.domain.rhs{obj.fieldId}  + computeGravityRhs(obj);
+
+      if ~isempty(obj.specWeight)
+        % gravitational forces
+        obj.domain.rhs{obj.fieldId} = ...
+          obj.domain.rhs{obj.fieldId}  + computeGravityRhs(obj);
+      end
 
     end
 
@@ -48,6 +52,7 @@ classdef PreStressMechanics < Poromechanics
 
 
     function rhsGrav = computeGravityRhs(obj)
+
 
       % add gravity contribution to the rhs
       nDoF = obj.domain.dofm.getNumbDoF(obj.fieldId);
@@ -73,9 +78,17 @@ classdef PreStressMechanics < Poromechanics
 
 
     function initialStress = getInitialStress(obj,varargin)
-
-
-      % setup a self-contained one-step GReS simulation to compute initial stress
+      %
+      % getInitialStress  Compute initial stress via a one-step GReS simulation.
+      % DEFAULT SETUP
+      % initialStress = getInitialStress(obj)   % default setup
+      % SETUP WITH USER DEFINED PARAMETERS
+      % initialStress = getInitialStress(obj, 'simulationparameters', sp, 'output', out)
+      %
+      % Accept only a single domain with no interfaces.
+      %
+      % Output:
+      %   initialStress - [nGP x 6] matrix with stress tensor components
 
       % default parameters for the simulation
       parm = struct('Start',0.0,'End',1.0,'DtInit',1.0,'DtMax',1.0,'DtMin',0.01);
@@ -91,7 +104,7 @@ classdef PreStressMechanics < Poromechanics
 
       solv.simulationLoop();
 
-      [initialStress,~] = obj.finalizeState(obj.getState());
+      initialStress = obj.domain.state.data.stress;
 
     end
 
@@ -100,11 +113,11 @@ classdef PreStressMechanics < Poromechanics
 
   methods (Access=private)
 
-    function setGravity(obj,input)
+    function setGravity(obj,varargin)
 
       % compute the specific weight in each cell of the model
 
-      if any(ismissing(input))
+      if any(ismissing(varargin))
         % no gravity in the model
         return
       else
@@ -113,7 +126,7 @@ classdef PreStressMechanics < Poromechanics
         default = struct('hydrostaticPressure',0,...
                          'waterDepth',0.0,...
                          'obg',missing);
-        grav = readInput(default,input);
+        grav = readInput(default,varargin{:});
         grav.hydrostaticPressure = logical(grav.hydrostaticPressure);
       end
 
@@ -124,6 +137,8 @@ classdef PreStressMechanics < Poromechanics
 
 
     function gamma = getSpecificWeight(obj,grav)
+
+      tol = 1e-6;
 
       mat = obj.domain.materials;
 
@@ -139,7 +154,7 @@ classdef PreStressMechanics < Poromechanics
         end
 
         C = obj.mesh.cellCentroid;
-        gamma = obj(C(:,1),C(:,2),C(:,3));
+        gamma = obg(C(:,1),C(:,2),C(:,3));
 
       else
         % specific weight computed from material user-input
@@ -158,7 +173,7 @@ classdef PreStressMechanics < Poromechanics
 
         fluid = mat.getFluid();
         if numel(fluid) == 0
-          error("hydrostatic contribution to gravitational forces requires definition of fluid and porous rock properties");
+          error("Hydrostatic contribution to gravitational forces requires definition of fluid and porous rock properties.");
         end
 
         gammaW = fluid.getSpecificWeight();
@@ -172,11 +187,11 @@ classdef PreStressMechanics < Poromechanics
         end
 
         maxZ = max(obj.mesh.cellCentroid(:,3));
-        depth = abs(obj.mesh.cellCentroid - maxZ);
-        sID = depth > grav.waterDepth;
+        depth = abs(obj.mesh.cellCentroid(:,3) - maxZ);
+        sID = depth > grav.waterDepth - tol;
 
         % compute submerged specific weight (for cells below waterlevel)
-        gamma(sID) = (1 - poro(sID)) * ( gamma(sID) - gammaW );
+        gamma(sID) = (1 - poro(sID)) .* ( gamma(sID) - gammaW );
        
       end
 

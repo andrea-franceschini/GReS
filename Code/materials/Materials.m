@@ -81,6 +81,8 @@ classdef Materials < handle
 
     function addFluid(obj,varargin)
 
+      % to do: use pre-defined fluid types with pre-set properties
+
       obj.fluid = Fluid(varargin{:});
 
     end

@@ -85,6 +85,9 @@ classdef BoundaryEntities < handle
       comp = find(obj.nSourceEnts > 0);
       comp = reshape(comp,1,[]);
 
+      obj.entsMap = [];
+      obj.targetEnts = [];
+
       for i = comp
         % process components individually
         srcID = obj.sourceEnts(n+1:n+obj.nSourceEnts(i));
