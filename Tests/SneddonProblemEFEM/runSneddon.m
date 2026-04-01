@@ -8,7 +8,7 @@ scriptDir = fileparts(scriptFullPath);
 
 cd(scriptDir);
 
-fname = 'pressurizedCrack.xml';
+fname = fullfile('Input','pressurizedCrack.xml');
 
 params = readInput(fname);
 
@@ -145,9 +145,7 @@ xlabel('$\xi$', 'Interpreter', 'latex', 'FontSize', 14)
 ylabel('$\|\mathbf{g_T}\|$', 'Interpreter', 'latex', 'FontSize', 14)
 set(gca,'TickLabelInterpreter','latex','FontSize',14)   % <-- axis numbers in LaTeX
 
-%exportgraphics(gcf, 'gn_plot.pdf')
-
-
+exportgraphics(gcf, fullfile('Output','gn_plot.png'))
 
 
 % 

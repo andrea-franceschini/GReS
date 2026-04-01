@@ -1,6 +1,5 @@
 classdef Mesh < handle
 
-
   properties (SetAccess = public, GetAccess = public)
     
     % GENERAL INFO:

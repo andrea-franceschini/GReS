@@ -346,48 +346,50 @@ classdef (Abstract) SolutionScheme < handle
 
           % print vtk
           % create new vtm file
-          if obj.output.writeVtk
-
-            % set folders
-            obj.output.prepareOutputFolders();
-
-            obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');  
-            toc = obj.output.vtkFile.getDocumentElement;
-            toc.setAttribute('type', 'vtkMultiBlockDataSet');
-            toc.setAttribute('version', '1.0');
-            blocks = obj.output.vtkFile.createElement('vtkMultiBlockDataSet');
-
-            % append blocks looping into domains and interfaces
-            for i = 1:obj.nDom
-              vtmBlock = obj.domains(i).writeVTK(fac,outTime);
-              if ~isempty(vtmBlock)
-                blocks.appendChild(vtmBlock);
-              end
-            end
-            %
-            for i = 1:obj.nInterf
-              vtmBlock = obj.interfaces{i}.writeVTKfile(fac,outTime);
-              if ~isempty(vtmBlock)
-                blocks.appendChild(vtmBlock);
-              end
-            end
-
-            toc.appendChild(blocks);
-            obj.output.writeVTMFile();
-
-          end
+          obj.printVTK(fac,outTime,obj.output.timeID);
+          % if obj.output.writeVtk
+          % 
+          %   % set folders
+          %   obj.output.prepareOutputFolders();
+          % 
+          %   obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');  
+          %   toc = obj.output.vtkFile.getDocumentElement;
+          %   toc.setAttribute('type', 'vtkMultiBlockDataSet');
+          %   toc.setAttribute('version', '1.0');
+          %   blocks = obj.output.vtkFile.createElement('vtkMultiBlockDataSet');
+          % 
+          %   % append blocks looping into domains and interfaces
+          %   for i = 1:obj.nDom
+          %     vtmBlock = obj.domains(i).writeVTK(fac,outTime);
+          %     if ~isempty(vtmBlock)
+          %       blocks.appendChild(vtmBlock);
+          %     end
+          %   end
+          %   %
+          %   for i = 1:obj.nInterf
+          %     vtmBlock = obj.interfaces{i}.writeVTKfile(fac,outTime);
+          %     if ~isempty(vtmBlock)
+          %       blocks.appendChild(vtmBlock);
+          %     end
+          %   end
+          % 
+          %   toc.appendChild(blocks);
+          %   obj.output.writeVTMFile();
+          % 
+          % end
 
           % write results to MAT-file
-          if obj.output.writeSolution
-
-            for i = 1:obj.nDom
-              obj.domains(i).writeSolution(fac,obj.output.timeID);
-            end
-
-            for i = 1:obj.nInterf
-              obj.interfaces{i}.writeSolution(fac,obj.output.timeID);
-            end
-          end
+          obj.printMAT(fac,obj.output.timeID);
+          % if obj.output.writeSolution
+          % 
+          %   for i = 1:obj.nDom
+          %     obj.domains(i).writeSolution(fac,obj.output.timeID);
+          %   end
+          % 
+          %   for i = 1:obj.nInterf
+          %     obj.interfaces{i}.writeSolution(fac,obj.output.timeID);
+          %   end
+          % end
 
           % move to next print time
           obj.output.timeID = obj.output.timeID + 1;
@@ -402,6 +404,52 @@ classdef (Abstract) SolutionScheme < handle
 
       end
 
+    end
+
+    function printVTK(obj,fac,outTime,tID)
+
+      if obj.output.writeVtk
+        % set folders        
+        obj.output.prepareOutputFolders(tID);
+
+        obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
+        toc = obj.output.vtkFile.getDocumentElement;
+        toc.setAttribute('type', 'vtkMultiBlockDataSet');
+        toc.setAttribute('version', '1.0');
+        blocks = obj.output.vtkFile.createElement('vtkMultiBlockDataSet');
+
+        % append blocks looping into domains and interfaces
+        for i = 1:obj.nDom
+          vtmBlock = obj.domains(i).writeVTK(fac,outTime);
+          if ~isempty(vtmBlock)
+            blocks.appendChild(vtmBlock);
+          end
+        end
+        %
+        for i = 1:obj.nInterf
+          vtmBlock = obj.interfaces{i}.writeVTKfile(fac,outTime);
+          if ~isempty(vtmBlock)
+            blocks.appendChild(vtmBlock);
+          end
+        end
+
+        toc.appendChild(blocks);
+        obj.output.writeVTMFile();
+      end
+    end
+
+
+    function printMAT(obj,fac,timeID)
+
+      if obj.output.writeSolution
+        for i = 1:obj.nDom
+          obj.domains(i).writeSolution(fac,timeID);
+        end
+
+        for i = 1:obj.nInterf
+          obj.interfaces{i}.writeSolution(fac,timeID);
+        end
+      end
     end
 
 

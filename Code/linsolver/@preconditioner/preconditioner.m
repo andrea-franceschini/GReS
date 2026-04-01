@@ -28,9 +28,12 @@ classdef preconditioner < handle
 
       % Preconditioner
       Prec = []
-
    end
 
+   properties (Access = public)
+      % Ruiz Diagonal scaling
+      D = {}
+   end
 
    properties (GetAccess = public,SetAccess = private)
 
