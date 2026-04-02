@@ -75,11 +75,11 @@ function addBC(obj,varargin)
 % USAGE EXAMPLES
 % -------------------------------------------------------------------------
 %
-%   % Dirichlet BC on a set of faces obj.addBC('name',
+%   % Dirichlet BC on a set of external surfaces obj.addBC('name',
 %   'wall_noslip',    ...
 %             'variable',       'velocity',       ... 'field',
-%             'face',           ... 'entityList',     [10, 11, 12],     ...
-%             'entityListType', 'faceTag',        ... 'type',
+%             'surface',           ... 'entityList',     [10, 11, 12],     ...
+%             'entityListType', 'surfaceTag',        ... 'type',
 %             'dirichlet');
 %
 %   % Custom BC with explicit essential flag obj.addBC('name',
@@ -154,8 +154,8 @@ elseif BCtype(type) == BCtype.dirichlet
   essentialFlag = true;
 end
 
-bc = struct('data', [], 'essential',essentialFlag,...
-  'sourceField',srcEnt,'type', type, 'variable', variable);
+bc = struct('data', [], 'essential', essentialFlag,...
+  'sourceField',srcEnt,'type', type, 'variable', variable, 'scale', 1.0);
 
 if ismissing(params.components)
   comp = [];

@@ -51,8 +51,16 @@ classdef PorousRock < handle
         % end
 
         function gamma = getSpecificWeight(obj)
-            gamma = obj.gamma;
+          gamma = obj.gamma;
         end
+
+        % function gamma = getDrySpecificWeight(obj)
+        %   gamma = obj.gamma;
+        % end
+        % 
+        % function gamma = getSaturatedSpecificWeight(obj)
+        %   gamma = obj.gamma;
+        % end
 
 
         % Function to get material porosity
@@ -107,7 +115,7 @@ classdef PorousRock < handle
 
         default = struct('porosity',0.3,...
                          'biotCoefficient',1.0,...
-                         'permeability',[],...
+                         'permeability',1e-12,...
                          'specificWeight',21.0,...
                          "residualSaturation",0.0,...
                          "maximumSaturation",1.0,...

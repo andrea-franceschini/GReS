@@ -49,6 +49,7 @@ classdef Materials < handle
 
       default = struct('cellTags',[],...
                        'name',string(strcat('mat_',num2str(matID))),...
+                       'specificWeight',0.0,...
                        'Constitutive',missing,...
                        'PorousRock',missing,...
                        'Curves',missing);
@@ -64,6 +65,7 @@ classdef Materials < handle
       obj.matMap(input.cellTags) = matID;
 
       mat.name = input.name;
+      mat.specificWeight = input.specificWeight;
 
       % add solid material to the database
       obj.solid{matID} = mat;
@@ -79,15 +81,29 @@ classdef Materials < handle
 
     function addFluid(obj,varargin)
 
+      % to do: use pre-defined fluid types with pre-set properties
+
       obj.fluid = Fluid(varargin{:});
 
     end
 
 
-    function mat = getMaterial(obj,cellTag)
+    function mat = getMaterial(obj,input)
       % get material based on the cellTag using matMap
 
-      mat = obj.solid{obj.matMap(cellTag)};
+      if ~isnumeric(input)
+        mat = getMaterialFromName(obj,input);
+      else
+        mat = getMaterialFromTag(obj,input);
+      end
+
+    end
+
+
+    function gamma = getSpecificWeight(obj,input)
+
+      mat = getMaterial(obj,input);
+      gamma = mat.specificWeight;
 
     end
 
@@ -95,6 +111,12 @@ classdef Materials < handle
     function materialNames = getMaterialNames(obj)
 
       materialNames = string(cellfun(@(s) s.name, obj.solid, 'UniformOutput', false));
+
+    end
+
+    function mat = getMaterialFromTag(obj,tag)
+
+      mat = obj.solid{obj.matMap(tag)};
 
     end
 
@@ -145,6 +167,7 @@ classdef Materials < handle
 
     end
 
+
     function addPorousRock(obj,matName,varargin)
 
       if isempty(obj.fluid)
@@ -167,6 +190,13 @@ classdef Materials < handle
       f = obj.fluid;
 
       obj.solid{matID}.PorousRock.addCapillaryCurves(f,varargin{:});
+    end
+
+    function porousRock = getPorousRock(obj,input)
+
+      mat = getMaterial(obj,input);
+      porousRock = mat.PorousRock;
+
     end
 
 
