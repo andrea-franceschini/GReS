@@ -9,8 +9,7 @@ scriptFullPath = mfilename('fullpath');
 scriptDir = fileparts(scriptFullPath);
 
 cd(scriptDir)
-
-params = readInput('StickSlipOpen.xml');
+params = readInput(fullfile('Input','StickSlipOpen.xml'));
 
 % set mesh 
 X = 5; Y = 10; Z = 15;
@@ -30,12 +29,12 @@ simParam = SimulationParameters(params.SimulationParameters);
 elemsL = Elements(meshL,2);
 facesL = Faces(meshL);
 gridL = struct('topology',meshL,'cells',elemsL,'faces',facesL);
-matL = Materials("materials.xml");
+matL = Materials(fullfile('Input','materials.xml'));
 
 elemsR = Elements(meshR,2);
 facesR = Faces(meshR);
 gridR = struct('topology',meshR,'cells',elemsR,'faces',facesR);
-matR = Materials("materials.xml");
+matR = Materials(fullfile('Input','materials.xml'));
 
 
 % Create an object of the "Boundaries" class 
