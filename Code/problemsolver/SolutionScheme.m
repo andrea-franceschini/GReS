@@ -175,7 +175,9 @@ classdef (Abstract) SolutionScheme < handle
         obj.interfaces{i}.state = copy(obj.iniState.interfaces{i});
       end
 
-      obj.output.reset();
+      if ~isempty(obj.output)
+        obj.output.reset();
+      end
 
       obj.isFirstRun = false;
 
