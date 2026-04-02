@@ -112,7 +112,7 @@ classdef linearSolver < handle
          % Possible the user wants to use matlab even if the size is sufficient
          if isfield(generalsolver.simparams.linSolverParams, 'useMatlab')
             if generalsolver.simparams.linSolverParams.useMatlab == 1
-               fprintf('The user requested the use of matlab\n');
+               gresLog().log(3,'The user requested the use of matlab\n');
                return;
             end
          end
@@ -125,7 +125,7 @@ classdef linearSolver < handle
             end
             
             if ~isfile(fileMex)
-               warning('Chronos_Lab submodule is present, but not compiled. Using matlab fallback');
+               gresLog().warning(2,'Chronos_Lab submodule is present, but not compiled. Using matlab fallback');
                return;
             end
 

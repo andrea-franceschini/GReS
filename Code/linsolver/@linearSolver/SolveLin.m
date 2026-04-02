@@ -88,16 +88,12 @@ function [x,flag] = SolveLin(obj,A,b,time)
    if globalsymm == 0
       % If the matrix is nonSymmetric then use always GMRES
       obj.SolverType = 'gmres';
-      if obj.DEBUGflag
-         fprintf('The matrix is nonsymmetric with a maximum nonsymmetry of %e\n',maxval);
-      end
+      gresLog().log(3,'The matrix is nonsymmetric with a maximum nonsymmetry of %e\n',maxval);
    end
 
    % Have the linear solver compute the Preconditioner if necessary
    if(obj.requestPrecComp || obj.params.iter > 600 || obj.params.lastRelres > obj.params.tol*1e3)
-      if obj.DEBUGflag
-         fprintf('Computing the preconditioner\n');
-      end
+      gresLog().log(3,'Computing the preconditioner\n');
 
       time_start = tic;
       obj.Prec.Compute(A,symMat);
@@ -107,6 +103,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
       obj.nComp = obj.nComp + 1;
       obj.whenComputed(length(obj.whenComputed) + 1) = time;
       obj.params.iterSinceLastPrecComp = 0;
+      gresLog().log(3,'Finished computing the preconditioner\n');
    else
       obj.params.iterSinceLastPrecComp = obj.params.iterSinceLastPrecComp + 1;
    end
@@ -174,9 +171,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
 
    % Did not converge, if prec not computed for it try again
    if(flag == 1 && obj.params.iterSinceLastPrecComp > 0)
-      if obj.DEBUGflag
-         fprintf('Trying to recompute the preconditioner to see if it manages to converge\n');
-      end
+      gresLog().log(3,'Trying to recompute the preconditioner to see if it manages to converge\n');
       obj.params.iterSinceLastPrecComp = 0;
       obj.requestPrecComp = true;
       [x,flag] = obj.SolveLin(A,b,time);
@@ -185,9 +180,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
 
    % Interesting problem
    if(flag == 1)
-      if obj.DEBUGflag
-         fprintf('Iterations since last preconditioner computation %d\n',obj.params.iterSinceLastPrecComp);
-      end
+      gresLog().log(3,'Iterations since last preconditioner computation %d\n',obj.params.iterSinceLastPrecComp);
       [~,~] = matlab_solve(obj,A,b);
       TV0 = obj.Prec.TV0;
       save('new_problem.mat','A','b','TV0');
@@ -253,9 +246,8 @@ end
 
 function [x,flag] = matlab_solve(obj,A,b)
 
-   if obj.DEBUGflag
-      fprintf('Fallback to matlab due to size or chronos inexistance\n');
-   end
+   gresLog().log(3,'Fallback to matlab due to size or chronos inexistance\n');
+
    startT = tic;
    % Solve the system
    A = cell2matrix(A);
