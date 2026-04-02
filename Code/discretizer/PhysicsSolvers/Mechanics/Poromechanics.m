@@ -14,6 +14,10 @@ classdef Poromechanics < PhysicsSolver
     % s_xx,s_yy,s_zz,tau_yz,tau_xz,tau_xy
   end
 
+  properties (Access = protected)
+    iniStress
+  end
+
   properties (Access = private)
     fieldId
   end
@@ -31,9 +35,12 @@ classdef Poromechanics < PhysicsSolver
 
       nTags = obj.mesh.nCellTag;
 
-      default = struct('targetRegions',1:nTags);
+      default = struct('targetRegions',1:nTags,...
+                       'gravity',missing);
 
+      
       params = readInput(default,varargin{:});
+
 
       dofm = obj.domain.dofm;
 
@@ -129,7 +136,7 @@ classdef Poromechanics < PhysicsSolver
 
       % compute local stiffness and internal forces
       KLoc = obj.computeKloc(B,D,B,dJWeighed);
-      sz = sigma - s.data.iniStress(l+1:l+nG,:);
+      sz = sigma - obj.iniStress(l+1:l+nG,:);
       sz = reshape(sz',6,1,nG);
       fTmp = pagemtimes(B,'ctranspose',sz,'none');
       fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
@@ -200,12 +207,23 @@ classdef Poromechanics < PhysicsSolver
       end
     end
 
+    function initialize(obj)
+
+      % initial stress - assumed balanced with external forces
+      state = getState(obj);
+      obj.iniStress = state.data.stress;
+      
+    end
+
+
+
     function initState(obj)
       % add poromechanics fields to state structure
       Ndata = getNumbCellData(obj.elements);
       state = getState(obj);
       state.data.stress = zeros(Ndata,6);
-      state.data.iniStress = zeros(Ndata,6);
+      % initial stress ( assumed balanced with external forces)
+      obj.iniStress = zeros(Ndata,6);
       state.data.status = zeros(Ndata,6);
       state.data.strain = zeros(Ndata,6);
       state.data.(obj.getField()) = zeros(obj.mesh.nDim*obj.mesh.nNodes,1);
@@ -396,6 +414,22 @@ classdef Poromechanics < PhysicsSolver
       else % non linear case: rhs computed with internal forces (B^T*sigma)
         rhs = obj.fInt; % provisional assuming theta = 1;
       end
+      
+    end
+
+
+    function assembleGravity(obj)
+
+      % add gravity contribution to the rhs 
+
+      for i = 1:obj.mesh.nCellTag
+
+      end
+
+
+
+
+
     end
 
 
@@ -438,7 +472,7 @@ classdef Poromechanics < PhysicsSolver
 
       % append state variable to output structure
       stateCurr = getState(obj);
-      stateOld = getState(obj);
+      stateOld = getStateOld(obj);
 
       displ = getState(obj,obj.getField());
       dispOld = getStateOld(obj,obj.getField());
@@ -492,6 +526,8 @@ classdef Poromechanics < PhysicsSolver
       end
 
     end
+
+
 
     % function dof = getBCdofs(obj,bcId)
     % 

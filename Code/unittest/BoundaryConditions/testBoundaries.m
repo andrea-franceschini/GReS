@@ -123,12 +123,12 @@ classdef testBoundaries < matlab.unittest.TestCase
 
       tol = 1e-6;
 
-      bcs.computeTargetEntities("bc1",'node')
-      bcs.computeTargetEntities("bc2",'node')
-      bcs.computeTargetEntities("bc3",'node')
-      bcs.computeTargetEntities("bc4",'node')
-      bcs.computeTargetEntities("bc5",'node')
-      bcs.computeTargetEntities("bc6",'node')
+      bcs.initialize("bc1",'node')
+      bcs.initialize("bc2",'node')
+      bcs.initialize("bc3",'node')
+      bcs.initialize("bc4",'node')
+      bcs.initialize("bc5",'node')
+      bcs.initialize("bc6",'node')
 
       e1 = bcs.getTargetEntities("bc1");
       e2 = bcs.getTargetEntities("bc2");

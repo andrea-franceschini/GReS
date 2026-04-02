@@ -98,7 +98,15 @@ classdef OutState < handle & matlab.mixin.Copyable
 
     end
 
+    function reset(obj)
+
+      obj.timeID = 1;
+      obj.results = [];
+
+    end
+
     function savePvd(obj,varargin)
+      
       if ~isempty(varargin)
         tID = varargin{1};
       else
