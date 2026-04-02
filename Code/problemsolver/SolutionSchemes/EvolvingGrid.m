@@ -14,6 +14,7 @@ classdef EvolvingGrid < SolutionScheme
   properties (Access = private)
     printGrow
     printCount = 0
+    printList = []
   end
 
   methods (Access = public)
@@ -157,6 +158,29 @@ classdef EvolvingGrid < SolutionScheme
       newcells = obj.physics.domain.state.data.newcells~=0;
       printByGrow = and(obj.printGrow,newcells);
 
+      % if and(~print,printByGrow)
+        if printByGrow
+          fac = 0;  % 0=stateOld, 1=stateNew - Because the mesh update
+          % happens after the print, to plot after the grow, i plot the
+          % oldstate in the next time step.
+
+          % if print
+          %   obj.printCount = obj.printCount+1;
+          % end
+
+          pos = obj.output.timeID + obj.printCount;
+
+          % write Vtk results
+          obj.printVTK(fac,obj.tOld,pos);
+
+          % write results to MAT-file
+          obj.printMAT(fac,pos);
+
+          % update the print
+          obj.printList(pos)=obj.tOld;
+          obj.printCount = obj.printCount+1;
+        end
+
       if obj.output.timeID <= length(obj.output.timeList)
 
         outTime = obj.output.timeList(obj.output.timeID);
@@ -178,54 +202,34 @@ classdef EvolvingGrid < SolutionScheme
 
           % print vtk
           % create new vtm file
-          obj.printVTK(fac,outTime);
+          pos = obj.output.timeID + obj.printCount;
+          obj.printVTK(fac,outTime,pos);
+          obj.printList(pos)=outTime;
+          print = true;
 
           % write results to MAT-file
-          obj.printMAT(fac);
+          obj.printMAT(fac,pos);
 
           % move to next print time
           obj.output.timeID = obj.output.timeID + 1;
 
           if obj.output.timeID > length(obj.output.timeList)
-            print = true;
             break
           else
             outTime = obj.output.timeList(obj.output.timeID);
-          end
+          end          
         end
 
-        if and(~print,printByGrow)
-          fac = 0;  % 0=stateOld, 1=stateNew 
-
-          % write Vtk results
-          obj.printVTK(fac,outTime);
-
-          % write results to MAT-file
-          obj.printMAT(fac);
-
-          % update the print
-          obj.printCount = obj.printCount+1;
-        end
+        
 
       end
 
     end
 
-
-
-
-
-
-
-  end
-
-  methods (Access = private)
-
-    function printVTK(obj,fac,outTime)
+    function printVTK(obj,fac,outTime,tID)
       
       if obj.output.writeVtk
         % set folders
-        tID = obj.output.timeID + obj.printCount;
         obj.output.prepareOutputFolders(tID);
 
         obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
@@ -234,38 +238,45 @@ classdef EvolvingGrid < SolutionScheme
         toc.setAttribute('version', '1.0');
         blocks = obj.output.vtkFile.createElement('vtkMultiBlockDataSet');
 
-        % append blocks looping into domains and interfaces
-        for i = 1:obj.nDom
-          vtmBlock = obj.domains(i).writeVTK(fac,outTime);
-          if ~isempty(vtmBlock)
-            blocks.appendChild(vtmBlock);
-          end
-        end
-        %
-        for i = 1:obj.nInterf
-          vtmBlock = obj.interfaces{i}.writeVTKfile(fac,outTime);
-          if ~isempty(vtmBlock)
-            blocks.appendChild(vtmBlock);
-          end
-        end
+        vtmBlock = obj.output.vtkFile.createElement('Block');
+        [cellData,pointData] = obj.physics.writeVTK(fac,outTime);
+
+        cellData = OutState.printMeshData(obj.physics.mesh,cellData);
+
+        % write dataset to vtmBlock
+        obj.output.writeVTKfile(vtmBlock,'Sedimentation',obj.physics.mesh,...
+          outTime, pointData, cellData, [], [],tID);
+
+        blocks.appendChild(vtmBlock);
 
         toc.appendChild(blocks);
-        obj.output.writeVTMFile();
+        obj.output.writeVTMFile(tID);
       end
     end
 
-    function printMAT(obj,fac)
+    function printMAT(obj,fac,timeID)
       if obj.output.writeSolution
-        for i = 1:obj.nDom
-          obj.domains(i).writeSolution(fac,obj.printCount+obj.output.timeID);
-        end
-
-        for i = 1:obj.nInterf
-          obj.interfaces{i}.writeSolution(fac,obj.printCount+obj.output.timeID);
-        end
+        obj.physics.writeSolution(fac,timeID);
       end
     end
+
+    function finalize(obj)
+
+      if ~isempty(obj.output)
+        obj.output.savePvd(obj.printList);
+
+        obj.output.saveHistory;
+      end
+    end
+
+
+
+
+
+
+
   end
+
 
 
 end

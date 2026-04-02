@@ -56,12 +56,17 @@ classdef OutState < handle & matlab.mixin.Copyable
     end
 
 
-    function writeVTKfile(obj,block,vtuName,mesh,time,pointData3D,cellData3D,pointData2D,cellData2D)
+    function writeVTKfile(obj,block,vtuName,mesh,time,pointData3D,cellData3D,pointData2D,cellData2D,varargin)
 
       % block: the xml block of the vtm file in which we write the vtu dataset
       % data struct: struct array with fields 'name' and 'data'
+      if ~isempty(varargin)
+        tID = varargin{1};
+      else
+        tID = obj.timeID;
+      end
 
-      vtmName = sprintf('output_%5.5i/%s',obj.timeID,vtuName);
+      vtmName = sprintf('output_%5.5i/%s',tID,vtuName);
       outName = sprintf('%s/%s.vtu',obj.vtkFileName,vtmName);
 
       % call mex vtk writer
@@ -81,21 +86,24 @@ classdef OutState < handle & matlab.mixin.Copyable
       block.appendChild(dataset);
     end
 
-    function writeVTMFile(obj)
-      fname = sprintf('%s/output_%5.5i.vtm',obj.vtkFileName,obj.timeID);
+    function writeVTMFile(obj,varargin)
+      if nargin > 1
+        tID = varargin{1};
+      else
+        tID = obj.timeID;
+      end
+
+      fname = sprintf('%s/output_%5.5i.vtm',obj.vtkFileName,tID);
       xmlwrite(fname, obj.vtkFile);
 
     end
 
-    function finalize(obj)
-
-      savePvd(obj);
-
-      saveHistory(obj);
-
-    end
-
-    function savePvd(obj)
+    function savePvd(obj,varargin)
+      if ~isempty(varargin)
+        tID = varargin{1};
+      else
+        tID = obj.timeList;
+      end
 
       % write the pvd file
       if obj.writeVtk
@@ -108,9 +116,9 @@ classdef OutState < handle & matlab.mixin.Copyable
         blocks = pvd.createElement('Collection');
 
 
-        for i = 1 : obj.timeID-1
+        for i = 1 : length(tID)
           block = pvd.createElement('DataSet');
-          block.setAttribute('timestep', sprintf('%e', obj.timeList(i)));
+          block.setAttribute('timestep', sprintf('%e', tID(i)));
           [~,fname,~] = fileparts(obj.vtkFileName);
           % standard naming for vtm files
           vtmFileName = sprintf('%s/output_%5.5i.vtm',fname,i);

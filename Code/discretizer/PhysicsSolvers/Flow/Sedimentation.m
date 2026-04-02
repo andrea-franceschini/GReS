@@ -389,6 +389,7 @@ classdef Sedimentation < PhysicsSolver
 
     function writeSolution(obj,fac,tID)
       outPrint = obj.finalizeState(fac);
+      obj.domain.outstate.results(tID).time = outPrint.time;
       obj.domain.outstate.results(tID).pressure = outPrint.pres;
       obj.domain.outstate.results(tID).porosity = outPrint.poro;
       obj.domain.outstate.results(tID).stress = outPrint.stress;
@@ -491,7 +492,7 @@ classdef Sedimentation < PhysicsSolver
 
       % 3. Check for growth trigger (Height >= Threshold)
       colSed = sum(obj.getState().data.sedimentAcc,2);
-      cellGrow = colSed/obj.heightControl-1 > obj.tol; % <-- Very important check
+      cellGrow = colSed/obj.heightControl-1 > -obj.tol; % <-- Very important check
 
       % 4. Handle overflow for grown cells
       if any(cellGrow)
@@ -716,6 +717,7 @@ classdef Sedimentation < PhysicsSolver
       data.head = zCoordCM+data.pres/gamma;
       data.poro = voidR;
       data.height = obj.grid.getCoordBottom();
+      data.time = t;
       % data.height = obj.grid.getCoordTop();
     end
 

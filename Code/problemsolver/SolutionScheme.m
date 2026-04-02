@@ -74,9 +74,7 @@ classdef (Abstract) SolutionScheme < handle
 
       end
 
-      if ~isempty(obj.output)
-        obj.output.finalize();
-      end
+      obj.finalize;
 
       gresLog().log(-1,"Simulation completed successfully \n")
 
@@ -168,6 +166,15 @@ classdef (Abstract) SolutionScheme < handle
 
       for i = 1:obj.nInterf
         initialize(obj.interfaces{i})
+      end
+    end
+
+    function finalize(obj)
+
+      if ~isempty(obj.output)
+        obj.output.savePvd();
+
+        obj.output.saveHistory();
       end
     end
 
@@ -460,7 +467,6 @@ classdef (Abstract) SolutionScheme < handle
       end
     end
 
-
     function printMAT(obj,fac,timeID)
 
       if obj.output.writeSolution
@@ -473,7 +479,6 @@ classdef (Abstract) SolutionScheme < handle
         end
       end
     end
-
 
     function advanceState(obj)
 
