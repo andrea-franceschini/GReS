@@ -123,43 +123,42 @@ classdef (Abstract) SolutionScheme < handle
       assert(obj.nDom > 0,"Input 'domains'" + ...
         " is required for SolutionScheme")
 
-      obj.nVars = 0;
-
-      for i = 1:obj.nDom
-        obj.domains(i).domainId = i;
-        obj.domains(i).simparams = obj.simparams;
-        obj.domains(i).outstate = obj.output;
-        obj.domains(i).stateOld = copy(obj.domains(i).getState());
-        obj.nVars = obj.nVars + obj.domains(i).dofm.getNumberOfVariables();
-      end
-
-      for i = 1:obj.nInterf
-        obj.interfaces{i}.interfId = i;
-        obj.interfaces{i}.outstate = obj.output;
-      end
-
-      obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration || obj.nInterf == 0;
-
     end
+
 
     function initialize(obj)
 
       % restore the solution scheme object at its initial state
       if ~obj.isFirstRun
-        % 
         obj.reset();
       end
 
+      obj.nVars = 0;
+
       % store initial state and setup simulation
+
       for i = 1:obj.nDom
-        obj.iniState.domains(i) = copy(obj.domains(i).state);
-        initialize(obj.domains(i));
+        dom = obj.domains(i);
+        obj.iniState.domains(i) = copy(dom.state);
+        dom.stateOld = copy(dom.state);
+        dom.outstate = obj.output;
+        dom.simparams = obj.simparams;
+        dom.domainId = i;
+        obj.nVars = obj.nVars + dom.dofm.getNumberOfVariables();
+        initialize(dom);
       end
 
       for i = 1:obj.nInterf
-        obj.iniState.interfaces{i} = copy(obj.interfaces{i}.state);
-        initialize(obj.interfaces{i})
+        interf = obj.interfaces{i};
+        obj.iniState.interfaces{i} = interf.state;
+        interf.interfId = i;
+        interf.outstate = obj.output;
+        initialize(interf)
       end
+
+      obj.isFirstRun = false;
+
+      obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration || obj.nInterf == 0;
 
     end
 
@@ -176,7 +175,9 @@ classdef (Abstract) SolutionScheme < handle
         obj.interfaces{i}.state = copy(obj.iniState.interfaces{i});
       end
 
-      obj.isFirstRun = true;
+      obj.output.reset();
+
+      obj.isFirstRun = false;
 
     end
 

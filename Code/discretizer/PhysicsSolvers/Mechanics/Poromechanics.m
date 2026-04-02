@@ -14,6 +14,10 @@ classdef Poromechanics < PhysicsSolver
     % s_xx,s_yy,s_zz,tau_yz,tau_xz,tau_xy
   end
 
+  properties (Access = protected)
+    iniStress
+  end
+
   properties (Access = private)
     fieldId
   end
@@ -132,7 +136,7 @@ classdef Poromechanics < PhysicsSolver
 
       % compute local stiffness and internal forces
       KLoc = obj.computeKloc(B,D,B,dJWeighed);
-      sz = sigma - s.data.iniStress(l+1:l+nG,:);
+      sz = sigma - obj.iniStress(l+1:l+nG,:);
       sz = reshape(sz',6,1,nG);
       fTmp = pagemtimes(B,'ctranspose',sz,'none');
       fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
@@ -203,6 +207,14 @@ classdef Poromechanics < PhysicsSolver
       end
     end
 
+    function initialize(obj)
+
+      % initial stress - assumed balanced with external forces
+      state = getState(obj);
+      obj.iniStress = state.data.stress;
+      
+    end
+
 
 
     function initState(obj)
@@ -211,7 +223,7 @@ classdef Poromechanics < PhysicsSolver
       state = getState(obj);
       state.data.stress = zeros(Ndata,6);
       % initial stress ( assumed balanced with external forces)
-      state.data.iniStress = zeros(Ndata,6);
+      obj.iniStress = zeros(Ndata,6);
       state.data.status = zeros(Ndata,6);
       state.data.strain = zeros(Ndata,6);
       state.data.(obj.getField()) = zeros(obj.mesh.nDim*obj.mesh.nNodes,1);
