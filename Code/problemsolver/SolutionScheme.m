@@ -144,13 +144,13 @@ classdef (Abstract) SolutionScheme < handle
 
     function initialize(obj)
 
-      % check if the state object
+      % restore the solution scheme object at its initial state
       if ~obj.isFirstRun
-        error("Simulation already run. Use reset() before calling simulationLoop()")
+        % 
+        obj.reset();
       end
 
-      % store initial state
-
+      % store initial state and setup simulation
       for i = 1:obj.nDom
         obj.iniState.domains(i) = copy(obj.domains(i).state);
         initialize(obj.domains(i));
@@ -166,9 +166,7 @@ classdef (Abstract) SolutionScheme < handle
 
     function reset(obj)
 
-      if obj.isFirstRun
-        warning("Simulation was already reset. Nothing to do.");
-      end
+      % reset the simulation  at its initial state
 
       for i = 1:obj.nDom
         obj.domains(i).state = copy(obj.iniState.domains(i));

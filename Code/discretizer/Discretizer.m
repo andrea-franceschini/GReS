@@ -344,14 +344,14 @@ classdef Discretizer < handle
 
     function initialize(obj)
 
-      % prepare the discretizer before starting the simulation
+      % prepare the discretizer before starting a new simulation
 
       % initialize block jacobian and rhs
       nV = obj.dofm.getNumberOfVariables();
       obj.J = cell(nV);
       obj.rhs = cell(nV,1);
 
-      finalizeBoundaryConditions(obj);
+      prepareBoundaryConditions(obj);
 
       for solver = obj.solverNames
         initialize(obj.getPhysicsSolver(solver));
@@ -556,7 +556,7 @@ classdef Discretizer < handle
 
     end
 
-    function finalizeBoundaryConditions(obj)
+    function prepareBoundaryConditions(obj)
 
       % preprocess the boundary condition once the type of the target field
       % is knwon
@@ -572,7 +572,7 @@ classdef Discretizer < handle
 
         targetField = obj.dofm.getFieldLocation(bcVar);
 
-        obj.bcs.computeTargetEntities(bcId,targetField);
+        obj.bcs.initialize(bcId,targetField);
 
       end
  

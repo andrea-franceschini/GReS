@@ -35,10 +35,12 @@ classdef BoundaryEntities < handle
     isActiveEntity
     % source to target geometric mapping operator
     entsMap
+    % scaling for boundary values
+    scale = 1.0
   end
 
   properties (Access = private)
-    dof
+    %dof
     readSetFlag = true
   end
 
@@ -71,22 +73,32 @@ classdef BoundaryEntities < handle
         error('No boundary conditions are prescribed for %s BC', obj.name);
       end
 
+    end
+
+
+    function reset(obj)
+
       obj.availVals = zeros(obj.totSrcEnts,2);
       obj.availSteps = zeros(2,1);
+      obj.readSetFlag = true;
 
     end
 
     function computeTargetEntities(obj,grid,targetField,srcField)
 
+      if sum(obj.nTargetEnts) > 0
+        % target entities already computed
+        return
+      end
+
+      obj.entsMap = [];
+      obj.targetEnts = [];
       obj.nTargetEnts = zeros(numel(obj.nSourceEnts),1);
 
       n = 0;
 
       comp = find(obj.nSourceEnts > 0);
       comp = reshape(comp,1,[]);
-
-      obj.entsMap = [];
-      obj.targetEnts = [];
 
       for i = comp
         % process components individually

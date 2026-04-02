@@ -175,6 +175,9 @@ classdef (Abstract) InterfaceSolver < handle
     function initialize(obj)
       % initialize the interface solver
 
+      obj.Jconstraint = [];
+      obj.rhsConstraint = [];
+
       % remove slave Dirichlet boundary conditions for nodal multipliers
       removeSlaveBCents(obj);
     end
