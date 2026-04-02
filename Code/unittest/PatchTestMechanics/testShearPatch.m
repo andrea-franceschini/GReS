@@ -34,7 +34,7 @@ classdef testShearPatch < matlab.unittest.TestCase
                            'Materials',mat,...
                            'Grid',grid);
       domain.addPhysicsSolvers(input.Solver);
-      solver = NonLinearImplicit('simulationparameters',simparams,'domain',domain,'output',printUtils);
+      solver = NonLinearImplicit('simulationparameters',simparams,'domains',domain,'output',printUtils);
       solver.simulationLoop();
       gresLog().setVerbosity(-1);
       verifyEqual(testCase,domain.state.data.stress(:,5),1.5*ones(8,1),"AbsTol",1e-9)
@@ -104,7 +104,7 @@ classdef testShearPatch < matlab.unittest.TestCase
         'Materials',mat,...
         'Grid',grid);
       domain.addPhysicsSolver('Poromechanics');
-      solver = NonLinearImplicit('simulationparameters',simparams,'domain',domain);
+      solver = NonLinearImplicit('simulationparameters',simparams,'domains',domain);
       solver.simulationLoop();
       gresLog().setVerbosity(-1);
       verifyEqual(testCase,domain.state.data.stress(:,5),1.5*ones(8,1),"AbsTol",1e-9)
