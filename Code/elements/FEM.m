@@ -1,7 +1,7 @@
 classdef (Abstract) FEM < handle
 
-  properties
-    mesh
+  properties 
+    grid
     indB
     indBbubble
     GaussPts
@@ -14,13 +14,18 @@ classdef (Abstract) FEM < handle
     detJ
   end
 
+  properties (Access = protected)
+    topolMap      % id of cells with this shape
+  end
+  
+
   methods (Access = public)
 
     % Abstract class constructor
-    function obj = FEM(ng,mesh)
+    function obj = FEM(ng,grid)
         obj.nGP = ng;
       if nargin > 1
-        obj.mesh = mesh;
+        obj.grid = grid;
       end
       setElement(obj);
     end
@@ -34,6 +39,17 @@ classdef (Abstract) FEM < handle
     setElement(obj)
     findLocBasisF(obj)
     findLocDerBasisF(obj)
+
+    function cellNodes = getCellNodes(id)
+      % get a list of cell nodes from the grid topology
+      % return a matrix of size nCells x nNode
+      if isMixed(obj.grid)
+        nId = obj.grid.cells.connectivity.getArray(id);
+        cellNodes = (reshape(nId,4,[]))';
+      else
+        cellNodes = obj.grid.cells.connectivity.getArray(id,:);
+      end
+    end
   end
 
   methods (Static)

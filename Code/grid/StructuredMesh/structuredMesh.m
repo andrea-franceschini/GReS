@@ -1,4 +1,4 @@
-function mesh = structuredMesh(NX,NY,NZ,Lx,Ly,Lz)
+function grid = structuredMesh(NX,NY,NZ,Lx,Ly,Lz)
 % STRUCTUREDMESH  Build a Cartesian structured hexahedral mesh.
 %
 %   MESH = STRUCTUREDMESH(NX, NY, NZ, Lx, Ly, Lz) creates a uniform mesh
@@ -20,18 +20,7 @@ function mesh = structuredMesh(NX,NY,NZ,Lx,Ly,Lz)
 %
 % -------------------------------------------------------------------------
 % OUTPUT
-%   mesh  - Mesh object with fields:
-%             .coordinates    (nNodes x 3)  node x/y/z coordinates
-%             .cells          (nCells x 8)  hexahedral connectivity (VTK order)
-%             .surfaces       (nSurf  x 4)  boundary quad connectivity
-%             .surfaceTag     (nSurf  x 1)  boundary patch identifier:
-%                               1 = bottom (z_min)   2 = top    (z_max)
-%                               3 = south  (y_min)   4 = north  (y_max)
-%                               5 = west   (x_min)   6 = east   (x_max)
-%             .cellTag        (nCells x 1)  cell region tag (all 1)
-%             .nNodes, .nCells, .nSurfaces, .nDim
-%             .cellVTKType    VTK element type 12 (hexahedron)
-%             .surfaceVTKType VTK element type  9 (quad)
+%   grid  - grid object with processed geometry
 %
 % -------------------------------------------------------------------------
 % EXAMPLES
@@ -113,23 +102,20 @@ surfTag = [
     ones(size(fe,1),1) * 6
 ];
 
-mesh = Mesh();
-mesh.coordinates = coord;
-mesh.cells = topol;
-mesh.surfaces = surf;
-mesh.nCells = size(topol,1);
-mesh.nSurfaces = size(surf,1);
-mesh.surfaces = surf;
-mesh.surfaceTag = surfTag;
-mesh.cellTag = ones(mesh.nCells,1);
-mesh.cellNumVerts = 8*ones(mesh.nCells,1);
-mesh.surfaceNumVerts = 4*ones(mesh.nSurfaces,1);
-mesh.cellVTKType = 12*ones(mesh.nCells,1);
-mesh.surfaceVTKType = 9*ones(mesh.nSurfaces,1);
-mesh.nSurfaceTag = 6;
-mesh.nCellTag = 1;
-mesh.nNodes = size(mesh.coordinates,1);
-mesh.nDim = 3;
+grid = Grid();
+grid.nDim = 3;
+grid.coordinates = coord;
+
+nC = size(topol,1);
+grid.cells.connectivity = topol;
+grid.cells.VTKType = 12*ones(nC,1);
+grid.cells.tag = ones(nC,1);
+
+
+nS = size(surf,1);
+grid.surfaces.connectivity = surf;
+grid.surfaces.tag = surfTag;
+grid.surface.VTKType = 9*ones(nS,1);
 
 end
 

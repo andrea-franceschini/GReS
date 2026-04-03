@@ -67,11 +67,13 @@ classdef Tetrahedron < FEM
       %   Elements volume calculation
       function [vol, cellCentroid] = findVolumeAndCentroid(obj, idTetra)
 
-        % vectorized version
-
         % fix element orientation if some tetrahedra have wrong numbering
 
-        tetraNodes = obj.mesh.cells(idTetra, 1:obj.nNode);  % [nTetra × 4]
+        if nargin == 1
+          idTetra = find(obj.grid.cells.VTKtype == obj.vtkType);
+        end
+
+        tetraNodes = obj.getCellNodes(idTetra);  % [nTetra × 4]
 
         X = obj.mesh.coordinates(tetraNodes(:,1),:); % [nTetra × 3]
         Y = obj.mesh.coordinates(tetraNodes(:,2),:);
