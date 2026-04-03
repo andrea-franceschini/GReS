@@ -61,7 +61,9 @@ classdef Discretizer < handle
         varNames = [varargin{:}];
       end
 
-      for bcId = bcList
+      for i = 1:numel(bcList)
+        bcId = bcList(i);
+
         % loop over available bcs
         bcVar = obj.bcs.getVariable(bcId);
 
@@ -87,7 +89,9 @@ classdef Discretizer < handle
     function applyDirVal(obj,t)
       bcList = obj.bcs.getBCList;
 
-      for bcId = bcList
+      for i = 1:numel(bcList)
+        bcId = bcList(i);
+        
         % discard non-dirichlet BC
         if ~isEssential(obj.bcs,bcId)
           continue
@@ -565,8 +569,9 @@ classdef Discretizer < handle
 
       bcList = obj.bcs.getBCList();
 
-      for bcId = bcList
-
+      for i = 1:numel(bcList)
+        bcId = bcList(i);
+        
         % loop over available bcs
         bcVar = obj.bcs.getVariable(bcId);
 

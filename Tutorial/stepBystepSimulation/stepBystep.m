@@ -26,7 +26,7 @@ simParam = SimulationParameters(params.SimulationParameters);
 mat = Materials(params.Materials);
 
 
-mesh = structuredMesh(20,20,10,[0 100],[0 100],[0 10]);
+mesh = structuredMesh(200,20,10,[0 100],[0 100],[0 10]);
 
 gaussOrder = 2;
 elems = Elements(mesh,gaussOrder);

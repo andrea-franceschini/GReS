@@ -76,9 +76,7 @@ classdef (Abstract) SolutionScheme < handle
 
       end
 
-      if ~isempty(obj.output)
-        obj.output.finalize();
-      end
+      obj.finalize;
 
       gresLog().log(-1,"Simulation completed successfully \n")
 
@@ -181,6 +179,15 @@ classdef (Abstract) SolutionScheme < handle
 
       obj.isFirstRun = false;
 
+    end
+
+    function finalize(obj)
+
+      if ~isempty(obj.output)
+        obj.output.savePvd();
+
+        obj.output.saveHistory();
+      end
     end
 
     function manageNextTimeStep(obj,flConv)
@@ -347,6 +354,8 @@ classdef (Abstract) SolutionScheme < handle
         timeStepSetup(obj.interfaces{i});
       end
 
+
+
     end
 
     function printState(obj)
@@ -429,7 +438,6 @@ classdef (Abstract) SolutionScheme < handle
       end
     end
 
-
     function printMAT(obj,fac,timeID)
       % write results into an output structure
       
@@ -443,7 +451,6 @@ classdef (Abstract) SolutionScheme < handle
         end
       end
     end
-
 
     function advanceState(obj)
 
