@@ -22,6 +22,7 @@ classdef Quadrilateral < FiniteElementType
     vtkType = 9
     nNode = 4
     nFace = 1
+    minGaussOrder = 2
   end
 
 
@@ -70,7 +71,7 @@ classdef Quadrilateral < FiniteElementType
     end
 
 
-    function [area,cellCentroid] = findAreaAndCentroid(obj,idQuad)
+    function [area,cellCentroid] = getSizeAndCentroid(obj,idQuad)
       % Find the Area of the cells using the determinant of the Jacobian
       % of the isoparameric transformation
       area = zeros(length(idQuad),1);
@@ -88,7 +89,7 @@ classdef Quadrilateral < FiniteElementType
 
 
 
-    function nodeArea = findNodeArea(obj,el)
+    function nodeArea = getNodeInfluence(obj,el)
         dJWeighed = obj.getDerBasisFAndDet(el);
         nodeArea = obj.Nref'*dJWeighed';
     end
@@ -104,8 +105,8 @@ classdef Quadrilateral < FiniteElementType
       % compute normal vector of quadrilatral in specific reference point
       assert(isscalar(idQuad),'Input id must be a scalar positive integer')
       dN = obj.computeDerBasisF(pos);
-      %nodeCoord = obj.mesh.coordinates(obj.mesh.surfaces(idQuad,:),:);
-      nodeCoord = FEM.getElementCoords(obj,idQuad);
+      nodes = obj.grid.getCellNodes(idQuad);
+      nodeCoord = obj.grid.coordinates(nodes,:);
       tang = dN*nodeCoord;
       crossTang = cross(tang(1,:)',tang(2,:)');
       n = crossTang/norm(crossTang);
@@ -142,25 +143,15 @@ classdef Quadrilateral < FiniteElementType
       N = N';
     end
 
-    function computeProperties(obj)
-      idQuad = find(obj.mesh.surfaceVTKType == obj.vtkType);
-      [area,cellCent] = findAreaAndCentroid(obj,idQuad);
-      obj.mesh.surfaceCentroid(idQuad,:) = cellCent;
-      obj.mesh.surfaceArea(idQuad,:) = area;
-    end
   end
 
   methods (Access = protected)
+
     function setElement(obj)
-      if obj.nGP < 2
-        obj.nGP = 2;
-        gresLog().warning(2,"Gauss integration for Hexahedron set to minimum of 2 per direction")
-      end
-      obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
-      obj.detJ = zeros(1,obj.GaussPts.nNode);
       findLocBasisF(obj);
       findLocDerBasisF(obj);
       findLocBubbleBasisF(obj);
+      findLocDerBubbleBasisF(obj);
     end
 
     function findLocDerBasisF(obj,varargin)

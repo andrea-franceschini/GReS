@@ -1,13 +1,15 @@
-function [elementCenter, elementArea] = computePolygonGeometry(poly, normal)
+function varargout = computePolygonGeometry(poly, nV)
 
-% mex accelerated computational geometry for 3D polygons
+% mex accelerated computational geometry for general polygons
 
-idx = mxOrderPointsCCW(poly, normal);
-polyCCW = poly(idx,:);
+[areas,centers,normals] = mxPolygonGeometry(poly, nV);
 
-elementCenter = mxComputePolygonCentroid3D(polyCCW);
+varargout{1} = areas;
+varargout{2} = centers;
 
-elementArea = computePolygonArea(polyCCW);
+if nargout > 2
+  varargout{3} = normals;
+end
 
 end
 

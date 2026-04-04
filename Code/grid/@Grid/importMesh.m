@@ -49,8 +49,6 @@ switch extension
   case 'vtk'
     [grid.coordinates, elems] = mxImportVTKmesh(char(fileName));
     elems = double(elems);
-    regions = [];
-    grid.meshType = 'Unstructured';
 
   case 'msh'
     [grid.coordinates, elems, ~] = mxImportGMSHmesh(char(fileName));
@@ -58,8 +56,6 @@ switch extension
     % by GReS
     elems = double(elems);
     elems = gmshToVTK(elems);
-    grid.meshType = 'Unstructured';
-
   otherwise
     error("Unsupported mesh format '.%s'. Valid formats are: 'vtk', 'msh'.", extension);
 end
@@ -77,9 +73,12 @@ grid.nNodes = size(grid.coordinates, 1);
 % -------------------------------------------------
 % 3D CELL DATA
 % -------------------------------------------------
-if any(~ismember(elems(:,1), grid.vtkType(:,2)))
-  error(['Unsupported 3D elements in the mesh.\n', ...
-    'Supported types: 4-node tetrahedra (VTKType = 10), ', ...
+if any(~ismember(elems(:,1), grid.vtkType))
+  error(['Unsupported  elements in the mesh.\n', ...
+    'Supported types: 3-node triangles (VTKType = 5), ', ...
+    '4-node quadrilaterals (VTKType = 9).',...
+    '9-node quadrilaterals (VTKType = 28).',...
+    'Supported 3D types: 4-node tetrahedra (VTKType = 10), ', ...
     '8-node hexahedra (VTKType = 12).',...
     '27-node hexahedra (VTKType = 29).']);
 end
@@ -98,13 +97,6 @@ end
 % -------------------------------------------------
 % 2D SURFACE DATA - tagged boundary surfaces (for bc and grid coupling)
 % -------------------------------------------------
-
-if any(~ismember(grid.surfaces.VTKType, grid.vtkType(:,1)))
-  error(['Unsupported 2D elements in the mesh.\n', ...
-    'Supported types: 3-node triangles (VTKType = 5), ', ...
-    '4-node quadrilaterals (VTKType = 9).',...
-    '9-node quadrilaterals (VTKType = 28).']);
-end
 
 ID = ismember(elems(:,1), grid.vtkType(:,1));
 grid.surfaces.numVerts = elems(ID, 3);
@@ -128,7 +120,7 @@ grid.surfaces.tag      = elems(ID, 2);
 % grid.edgeVTKType  = elems(ID, 1);
 % grid.nEdges       = length(grid.edgeTag);
 
-processGeometry(obj);
+processGeometry(grid);
 
 end
 

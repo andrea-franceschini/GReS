@@ -7,6 +7,7 @@ classdef Triangle < FiniteElementType
     vtkType = 5
     nNode = 3
     nFace = 1
+    minGaussOrder = 1
   end
 
 
@@ -100,7 +101,7 @@ classdef Triangle < FiniteElementType
       end
     end
 
-    function [area,cellCentroid] = findAreaAndCentroid(obj,idTri)
+    function [area,cellCentroid] = getSizeAndCentroid(obj,idTri)
       % Find the Area of the cells using the determinant of the Jacobian
       % of the isoparameric transformation
       area = zeros(length(idTri),1);
@@ -126,7 +127,7 @@ classdef Triangle < FiniteElementType
       n = n/norm(n);
     end
 
-    function areaNod = findNodeArea(obj,el)
+    function areaNod = getNodeInfluence(obj,el)
       areaNod = (1/obj.nNode)*obj.mesh.surfaceArea(el);
       areaNod = repelem(areaNod,obj.nNode,1);
     end
@@ -141,14 +142,6 @@ classdef Triangle < FiniteElementType
       n_a = n_a(unique(surfMsh.surfaces));
     end
 
-
-    function computeProperties(obj)
-      % update the parent mesh object computing cell properties
-      idTri = find(obj.mesh.surfaceVTKType == obj.vtkType);
-      [area,centr] = findAreaAndCentroid(obj,idTri);
-      obj.mesh.surfaceCentroid(idTri,:) = centr;
-      obj.mesh.surfaceArea(idTri,:) = area;
-    end
   end
 
   methods (Access = protected)

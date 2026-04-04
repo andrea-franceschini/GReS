@@ -26,6 +26,9 @@ classdef HexahedronQuadratic < FiniteElementType
     % 6: 5-6-7-8
 
   properties (Constant)
+
+    minGaussOrder = 3
+    
     centroid = [0,0,0]
 
     coordLoc = [-1	-1	-1;
@@ -132,7 +135,7 @@ classdef HexahedronQuadratic < FiniteElementType
     end
 
 
-    function [vol,cellCentroid] = findVolumeAndCentroid(obj,idHexa)
+    function [vol,cellCentroid] = getSizeAndCentroid(obj,idHexa)
       % Find the volume of the cells using the determinant of the Jacobian
       % of the isoparameric transformation
 
@@ -154,7 +157,7 @@ classdef HexahedronQuadratic < FiniteElementType
       end
     end
 
-    function nodeVol = findNodeVolume(obj,el)
+    function nodeVol = getNodeInfluence(obj,el)
       dJWeighed = obj.getDerBasisFAndDet(el,3);
       nodeVol = obj.Nref'*dJWeighed';
     end
@@ -163,13 +166,6 @@ classdef HexahedronQuadratic < FiniteElementType
       % Get the location of the Gauss points in the element in the physical
       % space
       gPCoordinates = obj.Nref*obj.mesh.coordinates(obj.mesh.cells(el,:),:);
-    end
-
-    function computeProperties(obj)
-      idHexa = find(obj.mesh.cellVTKType == obj.vtkType);
-      [vol,cellCent] = findVolumeAndCentroid(obj,idHexa);
-      obj.mesh.cellCentroid(idHexa,:) = cellCent;
-      obj.mesh.cellVolume(idHexa,:) = vol;
     end
 
   end

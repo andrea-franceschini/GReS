@@ -38,6 +38,7 @@ classdef QuadrilateralQuadratic < FiniteElementType
               -1  1;
               -1 -1;
                1 -1;]
+    minGaussOrder = 3
   end
 
   properties
@@ -86,7 +87,7 @@ classdef QuadrilateralQuadratic < FiniteElementType
     end
 
 
-    function [area,cellCentroid] = findAreaAndCentroid(obj,idQuad)
+    function [area,cellCentroid] = getSizeAndCentroid(obj,idQuad)
       % Find the Area of the cells using the determinant of the Jacobian
       % of the isoparameric transformation
       area = zeros(length(idQuad),1);
@@ -104,7 +105,7 @@ classdef QuadrilateralQuadratic < FiniteElementType
 
 
 
-    function nodeArea = findNodeArea(obj,el)
+    function nodeArea = getNodeInfluence(obj,el)
         dJWeighed = obj.getDerBasisFAndDet(el);
         nodeArea = obj.Nref'*dJWeighed';
     end
@@ -208,13 +209,6 @@ classdef QuadrilateralQuadratic < FiniteElementType
 %       N = arrayfun(@(i) (1-coordList(i,1)^2).*(1-coordList(i,2)^2),(1:size(coordList,1)));
 %       N = N';
 %     end
-
-    function computeProperties(obj)
-      idQuad = find(obj.grid.surfaceVTKType == obj.vtkType);
-      [area,cellCent] = findAreaAndCentroid(obj,idQuad);
-      obj.grid.surfaceCentroid(idQuad,:) = cellCent;
-      obj.grid.surfaceArea(idQuad,:) = area;
-    end
 
 
     function dN = computeDerBasisF(obj, list)

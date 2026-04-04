@@ -1,12 +1,12 @@
 classdef (Abstract) FiniteElementType < handle
 
-  properties (Abstract)
-    minGaussOrder 
+  properties (Abstract,Constant)
     centroid
     coordLoc
     vtkType 
     nNode
     nFace 
+    minGaussOrder
   end
 
   properties (Access=protected)
@@ -22,14 +22,19 @@ classdef (Abstract) FiniteElementType < handle
     detJ              % jacobian determinant
   end
 
-  methods (Abstract)
+  methods (Abstract,Access=public)
 
-    findLocBasisF(obj)
-    findLocDerBasisF(obj)
     getBasisFinGPoints(obj)       % compute basis functions
     getDerBasisFAndDet(obj)       % compute basis functions gradient
     getSizeAndCentroid(obj)
     getNodeInfluence(obj)         % compute area/volume influence to nodes
+
+  end
+
+  methods (Abstract,Access=protected)
+
+    findLocBasisF(obj)
+    findLocDerBasisF(obj)
 
   end
 
@@ -39,13 +44,13 @@ classdef (Abstract) FiniteElementType < handle
     % Abstract class constructor
     function obj = FiniteElementType(grid,varargin)
 
-      if nargin > 1
+      if nargin > 0
         obj.grid = grid;
       end
 
       default = struct('gaussOrder',obj.minGaussOrder);
       g = readInput(default,varargin{:});
-      obj.GaussPts = Gauss(obj.vtkType,gauss.gaussOrder);
+      obj.GaussPts = Gauss(obj.vtkType,g.gaussOrder);
       obj.detJ = zeros(1,obj.GaussPts.nNode);
       obj.setStrainMatrixIndex();
   
@@ -59,8 +64,6 @@ classdef (Abstract) FiniteElementType < handle
     function setElement(obj)
       findLocBasisF(obj);
       findLocDerBasisF(obj);
-      findLocBubbleBasisF(obj);
-      findLocDerBubbleBasisF(obj);
     end
 
     function cellNodes = getCellNodes(id)

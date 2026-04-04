@@ -35,7 +35,7 @@
 
 #include "mex.hpp"
 #include "mexAdapter.hpp"
-#include "polygonClip.hpp"
+#include "src/polygonClip.hpp"
 
 #include <cstddef>   // std::size_t
 #include <vector>

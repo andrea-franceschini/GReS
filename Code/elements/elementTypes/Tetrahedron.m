@@ -10,6 +10,7 @@ classdef Tetrahedron < FiniteElementType
     vtkType = 10
     nNode = 4
     nFace = 3
+    minGaussOrder = 1
   end
   
 
@@ -56,15 +57,9 @@ classdef Tetrahedron < FiniteElementType
         N = obj.Nref;
       end
 
-      function computeProperties(obj)
-        idTetra = find(obj.grid.cellVTKType == obj.vtkType);
-        [vol,cellCent] = findVolumeAndCentroid(obj,idTetra);
-        obj.grid.cellCentroid(idTetra,:) = cellCent;
-        obj.grid.cellVolume(idTetra,:) = vol;
-      end
 
       %   Elements volume calculation
-      function [vol, cellCentroid] = findVolumeAndCentroid(obj, idTetra)
+      function [vol, cellCentroid] = getSizeAndCentroid(obj, idTetra)
 
         % fix element orientation if some tetrahedra have wrong numbering
 
@@ -114,7 +109,7 @@ classdef Tetrahedron < FiniteElementType
         gPCoordinates = obj.Nref*coords;
       end
 
-      function volNod = findNodeVolume(obj,el)
+      function volNod = getNodeInfluence(obj,el)
         volNod = 0.25*obj.grid.cellVolume(el);
         volNod = repelem(volNod,obj.nNode);      
       end

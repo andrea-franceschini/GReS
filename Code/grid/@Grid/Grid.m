@@ -36,7 +36,7 @@ classdef Grid < handle
     % Available VTK types
     % vtkType(:,1) -> 2D types
     % vtkType(:,2_ -> 3D types
-    vtkType = [5,9;10,12;28,29];
+    vtkType = [5,10;9,12;28,29];
     % edgeVTK = []
 
     isMixed = false             % flag for presence of multiple cell shapes

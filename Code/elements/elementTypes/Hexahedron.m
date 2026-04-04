@@ -39,6 +39,7 @@ classdef Hexahedron < FiniteElementType
     vtkType = 12
     nNode = 8
     nFace = 6
+    minGaussOrder = 2
   end
 
   methods (Access = public)
@@ -53,7 +54,7 @@ classdef Hexahedron < FiniteElementType
       %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
 
       nodes = obj.grid.getCellNodes(el);
-      coords = obj.mesh.coordinates(nodes,:);
+      coords = obj.grid.coordinates(nodes,:);
       [N, dJw] = mxGetDerBasisAndDet(obj.Jref,coords,obj.GaussPts.weight);
 
       switch flOut
@@ -79,7 +80,9 @@ classdef Hexahedron < FiniteElementType
       %    2) mat = getDerBasisFAndDet(obj,el,2)
       %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
 
-      J = pagemtimes(obj.Jref,obj.mesh.coordinates(obj.mesh.cells(el,:),:));
+      nodes = obj.grid.getCellNodes(el);
+      coords = obj.grid.coordinates(nodes,:);
+      J = pagemtimes(obj.Jref,coords);
 
       if flOut == 3 || flOut == 1
         %         obj.detJ = arrayfun(@(x) det(J(:,:,x)),1:obj.GaussPts.nNode);
@@ -110,13 +113,13 @@ classdef Hexahedron < FiniteElementType
     end
 
 
-    function [vol,cellCentroid] = findVolumeAndCentroid(obj,idHexa)
+    function [vol,cellCentroid] = getSizeAndCentroid(obj,idHexa)
       % Find the volume of the cells using the determinant of the Jacobian
       % of the isoparameric transformation
 
 
       if nargin == 1
-        idHexa = find(obj.grid.cells.VTKtype == obj.vtkType);
+        idHexa = find(obj.grid.cells.VTKType == obj.vtkType);
       end
 
       vol = zeros(length(idHexa),1);
@@ -132,7 +135,7 @@ classdef Hexahedron < FiniteElementType
       end
     end
 
-    function nodeVol = findNodeVolume(obj,el)
+    function nodeVol = getNodeInfluence(obj,el)
       dJWeighed = obj.getDerBasisFAndDet(el,3);
       nodeVol = obj.Nref'*dJWeighed';
     end
@@ -145,43 +148,45 @@ classdef Hexahedron < FiniteElementType
       gPCoordinates = obj.Nref*coords;
     end
 
-    function computeProperties(obj)
-      idHexa = find(obj.mesh.cellVTKType == obj.vtkType);
-      [vol,cellCent] = findVolumeAndCentroid(obj,idHexa);
-      obj.mesh.cellCentroid(idHexa,:) = cellCent;
-      obj.mesh.cellVolume(idHexa,:) = vol;
-    end
-
+    
   end
 
   methods (Access = protected)
+
+    function setElement(obj)
+      findLocBasisF(obj);
+      findLocDerBasisF(obj);
+      findLocBubbleBasisF(obj);
+      findLocDerBubbleBasisF(obj);
+    end
+
     function findLocDerBasisF(obj)
       % Compute derivatives in the reference space for all Gauss points
-      obj.Jref = zeros(obj.mesh.nDim,obj.mesh.cellNumVerts(1),obj.GaussPts.nNode);
+      obj.Jref = zeros(3,obj.nNode,obj.GaussPts.nNode);
       %
       % d(N)/d\csi
       d1 = bsxfun(@(i,j) 1/8*obj.coordLoc(j,1).* ...
         (1+obj.coordLoc(j,2).*obj.GaussPts.coord(i,2)).* ...
         (1+obj.coordLoc(j,3).*obj.GaussPts.coord(i,3)), ...
-        (1:obj.GaussPts.nNode)',1:obj.mesh.cellNumVerts(1));
+        (1:obj.GaussPts.nNode)',1:obj.nNode);
       %
       % d(N)/d\eta
       d2 = bsxfun(@(i,j) 1/8*obj.coordLoc(j,2).* ...
         (1+obj.coordLoc(j,1).*obj.GaussPts.coord(i,1)).* ...
         (1+obj.coordLoc(j,3).*obj.GaussPts.coord(i,3)), ...
-        (1:obj.GaussPts.nNode)',1:obj.mesh.cellNumVerts(1));
+        (1:obj.GaussPts.nNode)',1:obj.nNode);
       % d2 = 1/8.*coord_loc(:,2).*(1+coord_loc(:,1).*pti_G(1)).*(1+coord_loc(:,3).*pti_G(3));
       %
       % d(N)/d\zeta
       d3 = bsxfun(@(i,j) 1/8*obj.coordLoc(j,3).* ...
         (1+obj.coordLoc(j,1).*obj.GaussPts.coord(i,1)).* ...
         (1+obj.coordLoc(j,2).*obj.GaussPts.coord(i,2)), ...
-        (1:obj.GaussPts.nNode)',1:obj.mesh.cellNumVerts(1));
+        (1:obj.GaussPts.nNode)',1:obj.nNode);
       % d3 = 1/8.*coord_loc(:,3).*(1+coord_loc(:,1).*pti_G(1)).*(1+coord_loc(:,2).*pti_G(2));
 
-      obj.Jref(1,1:obj.mesh.cellNumVerts(1),1:obj.GaussPts.nNode) = d1';
-      obj.Jref(2,1:obj.mesh.cellNumVerts(1),1:obj.GaussPts.nNode) = d2';
-      obj.Jref(3,1:obj.mesh.cellNumVerts(1),1:obj.GaussPts.nNode) = d3';
+      obj.Jref(1,1:obj.nNode,1:obj.GaussPts.nNode) = d1';
+      obj.Jref(2,1:obj.nNode,1:obj.GaussPts.nNode) = d2';
+      obj.Jref(3,1:obj.nNode,1:obj.GaussPts.nNode) = d3';
     end
 
     function findLocBasisF(obj)
@@ -189,7 +194,7 @@ classdef Hexahedron < FiniteElementType
       obj.Nref = bsxfun(@(i,j) 1/8*(1+obj.coordLoc(j,1).*obj.GaussPts.coord(i,1)).* ...
         (1+obj.coordLoc(j,2).*obj.GaussPts.coord(i,2)).* ...
         (1+obj.coordLoc(j,3).*obj.GaussPts.coord(i,3)), ...
-        (1:obj.GaussPts.nNode)',1:obj.mesh.cellNumVerts(1));
+        (1:obj.GaussPts.nNode)',1:obj.nNode);
 
       obj.Nref = reshape(obj.Nref,[],obj.nNode);
     end
@@ -218,7 +223,7 @@ classdef Hexahedron < FiniteElementType
 
     function findLocDerBubbleBasisF(obj)
       % Find the value the basis functions take at the Gauss points
-      zeros(obj.mesh.nDim,obj.mesh.cellNumVerts(1),obj.GaussPts.nNode);
+      zeros(3,obj.nNode,obj.GaussPts.nNode);
       g = obj.GaussPts.coord;
       bub = @(x,y) 1.0-g(x,y)^2;
       val = @(x,y,z) 0.5 + 0.5*x*g(y,z);
@@ -260,19 +265,6 @@ classdef Hexahedron < FiniteElementType
       end
     end
 
-    function setElement(obj)
-      if obj.nGP < 2
-        obj.nGP = 2;
-        gresLog().warning(2,"Gauss integration for Hexahedron set to minimum of 2 per direction")
-      end
-      obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
-      obj.detJ = zeros(1,obj.GaussPts.nNode);
-      findLocBasisF(obj);
-      findLocDerBasisF(obj);
-      findLocBubbleBasisF(obj);
-      findLocDerBubbleBasisF(obj);
-      FEM.setStrainMatrix(obj);
-    end
   end
 
 end
