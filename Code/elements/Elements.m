@@ -42,27 +42,6 @@ classdef Elements < handle
       end
     end
 
-
-    function createElement(obj,id,msh,ng)
-      k = obj.mapVTK2elem(id);
-      switch id
-        case 12
-          obj.elems{k} = Hexahedron(ng,msh);
-        case 10
-          obj.elems{k} = Tetrahedron(ng,msh);
-        case 9
-          obj.elems{k} = Quadrilateral(ng,msh);
-        case 5
-          obj.elems{k} = Triangle(ng,msh);
-        case 28
-          obj.elems{k} = QuadrilateralQuadratic(ng,msh);
-        case 29
-          obj.elems{k} = HexahedronQuadratic(ng,msh);
-        otherwise
-          error('Finite element of vtk type %i not yet implemented \n',id)
-      end
-      obj.elems{k}.computeProperties();
-    end
   end
 
   methods (Access = private)
@@ -79,7 +58,8 @@ classdef Elements < handle
         nC = sum(obj.mesh.cellVTKType == vtk);
         if nC > 0
           obj.nCellsByType(c3D) = nC;
-          obj.createElement(vtk,msh,g);
+          k = obj.mapVTK2elem(vtk);
+          obj.obj.createElement(vtk,msh,g);
         end
       end
 
@@ -90,7 +70,7 @@ classdef Elements < handle
         nC = sum(obj.mesh.surfaceVTKType == vtk);
         if nC > 0
           obj.nSurfByType(c2D) = nC;
-          obj.createElement(vtk,msh,g);
+          obj.createFiniteElement(vtk,msh,g);
         end
       end
     end
@@ -200,6 +180,29 @@ classdef Elements < handle
 %         end
 %       end
 %     end
+  end
+
+
+  methods (Static)
+    
+    function elem = create(id,msh,ng)
+      switch id
+        case 12
+          elem = Hexahedron(ng,msh);
+        case 10
+          elem = Tetrahedron(ng,msh);
+        case 9
+          elem = Quadrilateral(ng,msh);
+        case 5
+          elem = Triangle(ng,msh);
+        case 28
+          elem = QuadrilateralQuadratic(ng,msh);
+        case 29
+          elem = HexahedronQuadratic(ng,msh);
+        otherwise
+          error('Finite element of vtk type %i not yet implemented \n',id)
+      end
+    end
   end
 
 end

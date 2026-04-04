@@ -1,4 +1,4 @@
-classdef QuadrilateralQuadratic < FEM
+classdef QuadrilateralQuadratic < FiniteElementType
   % QUADRILATERAL element class
   %
   % NODE ORDERING ASSUMPTION (same as Gmsh output):
@@ -50,7 +50,7 @@ classdef QuadrilateralQuadratic < FEM
     function [outVar1,outVar2] = getDerBasisFAndDet(obj,in)   % mat,dJWeighed
       %       findJacAndDet(obj,el);  % OUTPUT: J and obj.detJ
       % way to call this method: if el is a scalar (element idx) the 3D
-      % coordinates are retrieved by the corresponding mesh object. Only
+      % coordinates are retrieved by the corresponding grid object. Only
       % the determinant is returned
       % if in is not scalar, it is a 4x2 list of 2D coordinates, the
       % gradient matrix and the determinant are returned
@@ -149,7 +149,7 @@ classdef QuadrilateralQuadratic < FEM
 
 
     function n_a = computeAreaNod(obj,surfMsh)
-      % compute area associated to each node of a surface mesh
+      % compute area associated to each node of a surface grid
       n_a = zeros(max(surfMsh.surfaces,[],'all'),1);
       for i = 1:length(surfMsh.surfaces)
         n_a(surfMsh.surfaces(i,:)) = n_a(surfMsh.surfaces(i,:)) + findNodeArea(obj,i);
@@ -210,10 +210,10 @@ classdef QuadrilateralQuadratic < FEM
 %     end
 
     function computeProperties(obj)
-      idQuad = find(obj.mesh.surfaceVTKType == obj.vtkType);
+      idQuad = find(obj.grid.surfaceVTKType == obj.vtkType);
       [area,cellCent] = findAreaAndCentroid(obj,idQuad);
-      obj.mesh.surfaceCentroid(idQuad,:) = cellCent;
-      obj.mesh.surfaceArea(idQuad,:) = area;
+      obj.grid.surfaceCentroid(idQuad,:) = cellCent;
+      obj.grid.surfaceArea(idQuad,:) = area;
     end
 
 
@@ -233,7 +233,7 @@ classdef QuadrilateralQuadratic < FEM
 % 
 %       c = list;
 %       np = size(c,1);
-%       dN = zeros(2,obj.mesh.surfaceNumVerts(1),np);
+%       dN = zeros(2,obj.grid.surfaceNumVerts(1),np);
 %       dN(1,1,:) = arrayfun(@(i) gb1(c(i,1)).*b1(c(i,2)),1:np);
 %       dN(2,1,:) = arrayfun(@(i) b1(c(i,1)).*gb1(c(i,2)),1:np);
 % 
@@ -263,8 +263,8 @@ classdef QuadrilateralQuadratic < FEM
     end
 
     function coord = getSubElementCoords(obj,idQuad,idSub)
-      nodeSub = obj.mesh.surfaces(idQuad,obj.nod2sub(idSub,:));
-      coord = obj.mesh.coordinates(nodeSub,:);
+      nodeSub = obj.grid.surfaces(idQuad,obj.nod2sub(idSub,:));
+      coord = obj.grid.coordinates(nodeSub,:);
     end
 
     function xi_sub = mapref2sub(obj,xi_ref,sub)
@@ -311,7 +311,7 @@ classdef QuadrilateralQuadratic < FEM
       end
 
       % Compute derivatives in the reference space for all Gauss points
-      obj.Jref = zeros(2,obj.mesh.surfaceNumVerts(1),np);
+      obj.Jref = zeros(2,obj.grid.surfaceNumVerts(1),np);
       
       obj.Jref(1,1,:) = arrayfun(@(i) gb1(c(i,1)).*b1(c(i,2)),1:np);
       obj.Jref(2,1,:) = arrayfun(@(i) b1(c(i,1)).*gb1(c(i,2)),1:np);

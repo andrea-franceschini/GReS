@@ -1,4 +1,4 @@
-classdef Triangle < FEM
+classdef Triangle < FiniteElementType
   % TRIANGLE element class
 
   properties (Constant)

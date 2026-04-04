@@ -4,9 +4,9 @@ classdef Grid < handle
     
     nDim = 0    % mesh dimensions: 2(D) or 3(D)
 
-    Cells
-    Surfaces    % external faces with tag
-    Faces 
+    cells
+    surfaces    % external faces with tag
+    faces 
     %edges      % not yet supported
 
     nNodes = 0
@@ -34,8 +34,9 @@ classdef Grid < handle
     % 29  VTK_TRIQUADRATIC_HEXAHEDRON
 
     % Available VTK types
-    cellVTK = [10, 12, 29];     % tetra, hexa, hexa27
-    surfaceVTK = [5, 9, 28];    % triangle, quad, quad9
+    % vtkType(:,1) -> 2D types
+    % vtkType(:,2_ -> 3D types
+    vtkType = [5,9;10,12;28,29];
     % edgeVTK = []
 
     isMixed = false             % flag for presence of multiple cell shapes
@@ -46,6 +47,8 @@ classdef Grid < handle
     importMesh(obj,fileName)
 
     processGeometry(obj)
+
+    processFaces(obj)
 
   
     function [surfMesh,varargout] = getSurfaceMesh(obj, surfTag, varargin)
@@ -76,7 +79,7 @@ classdef Grid < handle
           return
         end
         surfMesh = Grid();
-        surfTopol = obj.Surfaces(id,:);
+        surfTopol = obj.surfaces(id,:);
         if nargout > 1
           % global node index ordered per column
           varargout{1} = surfTopol;
@@ -117,7 +120,7 @@ classdef Grid < handle
     function addSurface(obj,id,topol)
        % add a surface to mesh object given the surface topology
        surf = load(topol); % standard topology file
-       obj.Surfaces = [obj.Surfaces; surf];
+       obj.surfaces = [obj.surfaces; surf];
        if any(obj.surfaceTag==id)
           error('Surface iD already been defined')
        else
@@ -138,7 +141,7 @@ classdef Grid < handle
     function msh = getQuad4mesh(obj)
         assert(obj.cartGrid,'This method is valid only for Cartesian grids');
         msh = Grid();
-        msh.surfaces = obj.Surfaces(:,1:4);
+        msh.surfaces = obj.surfaces(:,1:4);
         msh.nSurfaces = size(msh.surfaces,1);
         msh.nNodes = max(msh.surfaces,[],"all");
         msh.coordinates = obj.coordinates(1:msh.nNodes,:);
@@ -172,6 +175,24 @@ classdef Grid < handle
         nodes = obj.surface.connectivity(id,:);
       end
     end
+
+
+    function setConnectivity(obj,type,rows,conn)
+      % modify a chunk of the connectivity matrix of elements of the same size
+
+      if ~any(strcmp(type,["cells","surfaces"]))
+        error("Invalid connectivity type specifier. Acceptet values are 'cells' or 'surfaces'")
+      end
+
+      if obj.isMixed
+        obj.(type).connectivity.setArray(rows,conn);
+      else
+        obj.(type).connectivity(rows,:) = conn;
+      end
+    end
+
+
+
 
 
   end

@@ -1,4 +1,4 @@
-classdef Hexahedron < FEM
+classdef Hexahedron < FiniteElementType
   % HEXAHEDRON element class
       %
     % NODE ORDERING ASSUMPTION (same as Gmsh output):
@@ -52,7 +52,8 @@ classdef Hexahedron < FEM
       %    2) mat = getDerBasisFAndDet(obj,el,2)
       %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
 
-      coords = obj.mesh.coordinates(obj.mesh.cells(el,:),:);
+      nodes = obj.grid.getCellNodes(el);
+      coords = obj.mesh.coordinates(nodes,:);
       [N, dJw] = mxGetDerBasisAndDet(obj.Jref,coords,obj.GaussPts.weight);
 
       switch flOut
@@ -112,8 +113,13 @@ classdef Hexahedron < FEM
     function [vol,cellCentroid] = findVolumeAndCentroid(obj,idHexa)
       % Find the volume of the cells using the determinant of the Jacobian
       % of the isoparameric transformation
+
+
+      if nargin == 1
+        idHexa = find(obj.grid.cells.VTKtype == obj.vtkType);
+      end
+
       vol = zeros(length(idHexa),1);
-      %       obj.volNod = zeros(obj.mesh.nNodes,1);
       cellCentroid = zeros(length(idHexa),3);
       i = 0;
       for el = idHexa'
@@ -134,7 +140,9 @@ classdef Hexahedron < FEM
     function gPCoordinates = getGPointsLocation(obj,el)
       % Get the location of the Gauss points in the element in the physical
       % space
-      gPCoordinates = obj.Nref*obj.mesh.coordinates(obj.mesh.cells(el,:),:);
+      nodes = obj.grid.getCellNodes(el);
+      coords = obj.grid.coordinates(nodes,:);
+      gPCoordinates = obj.Nref*coords;
     end
 
     function computeProperties(obj)

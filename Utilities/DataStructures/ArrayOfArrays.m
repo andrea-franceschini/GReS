@@ -163,8 +163,8 @@ classdef ArrayOfArrays < handle
 
     function array = getArray(obj,r)
       % GETARRAY  Return data corresponding to pointer(s) r
-      % Fully vectorized, works for scalar or array r
-      % Returns matrix of size [numel(r) x L] directly
+      % rows in r must have a constant length L
+      % Returns matrix of size [numel(r) x L]
 
       % Start and end indices
       starts = obj.ptr(r);
@@ -183,11 +183,55 @@ classdef ArrayOfArrays < handle
         error('Internal arrays must have the same length if calling getArray() with non scalar input');
       end
 
-      L = lens(1); 
+      L = lens(1);
 
-      idx = starts + (0:L-1)';   
-      array = obj.data(idx)';    
+      idx = starts + (0:L-1)';
+      array = obj.data(idx)';
     end
+
+    function setArray(obj, r, mat)
+      % SETARRAY  Set data of multiple rows with the same length
+      %
+      %   obj.setArray(r, mat)
+      %
+      % r   : vector of row indices (not necessarily contiguous)
+      % mat : matrix [numel(r) x L] where L matches the row length
+
+      r = r(:)';  % row vector
+
+      if isempty(r)
+        return
+      end
+
+      % Start and end indices of the rows
+      starts = obj.ptr(r);
+      ends   = obj.ptr(r+1) - 1;
+
+      % Length of each row
+      lens = ends - starts + 1;
+
+      if any(lens ~= lens(1))
+        error('All selected rows must have the same length.');
+      end
+
+      L = lens(1);
+
+      % Check input matrix dimensions
+      if size(mat,1) ~= numel(r)
+        error('Number of rows in input matrix must match number of rows selected.');
+      end
+      if size(mat,2) ~= L
+        error('Number of columns in input matrix must match row length.');
+      end
+
+      % Compute the linear indices to overwrite
+      % Each column of idx is a row's position in obj.data
+      idx = starts + (0:L-1)';  % L x numel(r)
+
+      % Write row by row
+      obj.data(idx) = mat';
+    end
+
 
 
 

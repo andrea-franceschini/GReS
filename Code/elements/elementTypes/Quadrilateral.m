@@ -1,4 +1,4 @@
-classdef Quadrilateral < FEM
+classdef Quadrilateral < FiniteElementType
   % QUADRILATERAL element class
   %
   % NODE ORDERING ASSUMPTION (same as Gmsh output):

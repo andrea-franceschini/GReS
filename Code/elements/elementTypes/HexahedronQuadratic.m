@@ -1,4 +1,4 @@
-classdef HexahedronQuadratic < FEM
+classdef HexahedronQuadratic < FiniteElementType
   % HEXAHEDRON element class
       %
       % NODE ORDERING ASSUMPTION (VTK, not available with msh grids)
@@ -72,7 +72,8 @@ classdef HexahedronQuadratic < FEM
       %    2) mat = getDerBasisFAndDet(obj,el,2)
       %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
 
-      coords = obj.mesh.coordinates(obj.mesh.cells(el,:),:);
+      nodes = obj.grid.getCellNodes(el);
+      coords = obj.grid.coordinates(nodes,:);
       [N, dJw] = mxGetDerBasisAndDet(obj.Jref,coords,obj.GaussPts.weight);
 
       switch flOut
@@ -98,7 +99,9 @@ classdef HexahedronQuadratic < FEM
       %    2) mat = getDerBasisFAndDet(obj,el,2)
       %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
 
-      J = pagemtimes(obj.Jref,obj.mesh.coordinates(obj.mesh.cells(el,:),:));
+      nodes = obj.grid.getCellNodes(el);
+      coords = obj.mesh.coordinates(nodes,:);
+      J = pagemtimes(obj.Jref,coords);
 
       if flOut == 3 || flOut == 1
         %         obj.detJ = arrayfun(@(x) det(J(:,:,x)),1:obj.GaussPts.nNode);
@@ -132,17 +135,22 @@ classdef HexahedronQuadratic < FEM
     function [vol,cellCentroid] = findVolumeAndCentroid(obj,idHexa)
       % Find the volume of the cells using the determinant of the Jacobian
       % of the isoparameric transformation
+
+
+      if nargin == 1
+        idHexa = find(obj.grid.cells.VTKtype == obj.vtkType);
+      end
+
       vol = zeros(length(idHexa),1);
-      %       obj.volNod = zeros(obj.mesh.nNodes,1);
       cellCentroid = zeros(length(idHexa),3);
       i = 0;
       for el = idHexa'
         i = i + 1;
         dJWeighed = getDerBasisFAndDet(obj,el,3);
         vol(i) = sum(dJWeighed);
-        assert(vol(i)>0,'Volume less than 0');
+        assert(vol(i)>0,'Volume less than 0 for element %i',el);
         gPCoordinates = getGPointsLocation(obj,el);
-        cellCentroid(i,:) = obj.detJ * gPCoordinates/vol(i);
+        cellCentroid(i,:) = (dJWeighed * gPCoordinates)./vol(i);
       end
     end
 

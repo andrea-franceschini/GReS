@@ -1,4 +1,4 @@
-classdef Tetrahedron < FEM
+classdef Tetrahedron < FiniteElementType
   % TETRAHEDRON element class
 
     properties (Constant)
@@ -23,19 +23,18 @@ classdef Tetrahedron < FEM
       %    1) [mat,dJWeighed] = getDerBasisFAndDet(obj,el,1)
       %    2) mat = getDerBasisFAndDet(obj,el,2)
       %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
+
+      nodes = obj.grid.getCellNodes(el);
+      coords = obj.grid.coordinates(nodes,:);
       
       if obj.GaussPts.nNode < 2
         % faster version for single GP rule
-        mat = [1 obj.mesh.coordinates(obj.mesh.cells(el,1),:);
-                   1 obj.mesh.coordinates(obj.mesh.cells(el,2),:);
-                   1 obj.mesh.coordinates(obj.mesh.cells(el,3),:);
-                   1 obj.mesh.coordinates(obj.mesh.cells(el,4),:)];
+        mat = [ones(obj.nNode,1), coords];
         obj.detJ = det(mat);
         dJw = obj.GaussPts.weight*obj.detJ;
         invMat = inv(mat);
         N = invMat(2:obj.nNode,:);
       else
-        coords = obj.mesh.coordinates(obj.mesh.cells(el,:),:);
         [N, dJw] = mxGetDerBasisAndDet(obj.Jref,coords,obj.GaussPts.weight);
       end
 
@@ -58,10 +57,10 @@ classdef Tetrahedron < FEM
       end
 
       function computeProperties(obj)
-        idTetra = find(obj.mesh.cellVTKType == obj.vtkType);
+        idTetra = find(obj.grid.cellVTKType == obj.vtkType);
         [vol,cellCent] = findVolumeAndCentroid(obj,idTetra);
-        obj.mesh.cellCentroid(idTetra,:) = cellCent;
-        obj.mesh.cellVolume(idTetra,:) = vol;
+        obj.grid.cellCentroid(idTetra,:) = cellCent;
+        obj.grid.cellVolume(idTetra,:) = vol;
       end
 
       %   Elements volume calculation
@@ -75,10 +74,10 @@ classdef Tetrahedron < FEM
 
         tetraNodes = obj.getCellNodes(idTetra);  % [nTetra × 4]
 
-        X = obj.mesh.coordinates(tetraNodes(:,1),:); % [nTetra × 3]
-        Y = obj.mesh.coordinates(tetraNodes(:,2),:);
-        Z = obj.mesh.coordinates(tetraNodes(:,3),:);
-        W = obj.mesh.coordinates(tetraNodes(:,4),:);
+        X = obj.grid.coordinates(tetraNodes(:,1),:); % [nTetra × 3]
+        Y = obj.grid.coordinates(tetraNodes(:,2),:);
+        Z = obj.grid.coordinates(tetraNodes(:,3),:);
+        W = obj.grid.coordinates(tetraNodes(:,4),:);
 
         cellCentroid = (X + Y + Z + W)/obj.nNode;
 
@@ -97,22 +96,26 @@ classdef Tetrahedron < FEM
         neg = vol < 0;
 
         % flip nodes 3 and 4 and change volume sign
-        obj.mesh.cells(neg,[3 4]) = obj.mesh.cells(neg,[4 3]);
+        tetraNodes(neg,[3 4]) = tetraNodes(neg,[4 3]);
 
         if any(neg)
           gresLog().warning(1,"Found %i tetrahedra with negative determinant. Node ordering has been automatically fixed",sum(neg))
         end
+
+        obj.grid.setConnectivity("cells",idTetra,tetraNodes);
 
       end
 
       function gPCoordinates = getGPointsLocation(obj,el)
         % Get the location of the Gauss points in the element in the physical
         % space
-        gPCoordinates = obj.Nref*obj.mesh.coordinates(obj.mesh.cells(el,:),:);
+        nodes = obj.grid.getCellNodes(el);
+        coords = obj.grid.coordinates(nodes,:);
+        gPCoordinates = obj.Nref*coords;
       end
 
       function volNod = findNodeVolume(obj,el)
-        volNod = 0.25*obj.mesh.cellVolume(el);
+        volNod = 0.25*obj.grid.cellVolume(el);
         volNod = repelem(volNod,obj.nNode);      
       end
       %     end

@@ -18,7 +18,7 @@ end
 % process vtk types
 for vtkId = vtkTypes
   % return face connectivity and 3D-2D geometry for given vtk type
-  [cells,faces] = processShape(vtkId,cells);
+  [cells,faces,surf] = processShape(grid,vtkId,cells,surf);
 end
 
 % link faces to surfaces
@@ -33,41 +33,24 @@ end
 
 
 
-function [cells,faces] = processShape(vtkId,cells)
+function [cells,faces] = processShape(grid,vtk3d,cells,surf)
 
-switch vtkId
-  case 9
-    [cells,faces] = processTetra(cells);
-  case 12
-    [cells,faces] = processHexa(cells);
-  case 29
-    gresLog().warning(2,"Faces are not supported with quadratic hexahedra. Finite volume based discretization are cannot be used.")
-    [cells,faces] = processHexaQuad(cells);
-  otherwise
-    error('VTK type %i is not yet supported');
-end
+i = find(grid.vtkType(:,2)==vtk3d);
+vtk2d =  obj.vtkId(i,1);
 
-end
+volShape = FiniteElementType.create(vtk3d,grid);
+[vols, cellCenters] = getSizeAndCentroid(volShape);
 
+% process grid.faces.connectivity and grid.faces.neighbors
+processFaces(obj,vtk3d);
 
-
-function processTetra(obj)
-
-% use tetra utils
-tetra = Tetrahedron(obj);
-
-% make topology
-[obj.cells.volume, obj.cells.center] = findVolumeAndCentroid(tetra);
-
+surfShape = FiniteElementType.create(vtk2d,grid);
+[areas, faceCenters] = getSizeAndCentroid(surfShape);
 
 
 end
 
 
-function processHexa(cells)
 
-% use hexa utils
-hexa = Hexahedron();
 
-end
 
