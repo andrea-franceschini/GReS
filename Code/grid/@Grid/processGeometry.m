@@ -30,7 +30,7 @@ cells.center = zeros(nc,3);
 % process vtk types
 for vtkId = vtkTypes
   % return face connectivity and 3D-2D geometry for given vtk type
-  [cells,faces,surf] = processShape(grid,vtkId,cells,surf);
+  [cells,faces,surf] = processShape(grid,vtkId);
 end
 
 % link faces to surfaces
@@ -45,19 +45,21 @@ end
 
 
 
-function processShape(grid,vtk3d,cells,surf)
+function processShape(grid,vtk3d)
 
 i = find(grid.vtkType(:,2)==vtk3d);
-vtk2d =  grid.vtkType(i,1);
+%vtk2d =  grid.vtkType(i,1);
+
+idC = grid.cells.VTKType == vtk3d;
 
 volShape = FiniteElementType.create(vtk3d,grid);
-[vols, cellCenters] = getSizeAndCentroid(volShape);
+[grid.cells.vol(idC), grid.cells.center(idC)] = getSizeAndCentroid(volShape);
 
-% process grid.faces.connectivity and grid.faces.neighbors
+% process faces
 processFaces(grid,vtk3d);
 
-surfShape = FiniteElementType.create(vtk2d,grid);
-[areas, faceCenters] = getSizeAndCentroid(surfShape);
+% surfShape = FiniteElementType.create(vtk2d,grid);
+% [areas, faceCenters] = getSizeAndCentroid(surfShape);
 
 
 end
