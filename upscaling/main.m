@@ -2,6 +2,8 @@ clc;
 clear;
 close all;
 
+addpath('utils');
+
 gresLog().setVerbosity(-2);
 
 % Read input file
@@ -67,7 +69,7 @@ for id_forceX = 1:nStep
     avgQs(id_forceX) = avgQ;
 end
 
-fid = fopen('averages.txt','w');
+fid = fopen('Output/averages.txt','w');
 for i = 1:length(avgPs)
     fprintf(fid,'%15.6e%15.6e\n', avgPs(i), avgQs(i));
 end
@@ -75,4 +77,4 @@ fclose(fid);
 
 [A, B] = fitCurve(avgPs, avgQs);
 
-plotPQ(avgPs, avgQs, A, B, druckerPrager);
+plotPQ(avgPs, avgQs, A, B, druckerPrager, 'Output/pq_plot.pdf');
