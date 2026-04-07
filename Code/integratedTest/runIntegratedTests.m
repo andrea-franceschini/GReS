@@ -15,6 +15,7 @@ testFiles = {
     fullfile('ConstantSliding','testConstantSliding.m')
     fullfile('SingleCrackCompressed','testSingleCrackCompressed.m')
     fullfile('ConstantSlidingEFEM','testConstantSlidingEFEM.m')
+    fullfile('CubeSedimentation','testSedimentation.m')
 };
 
 results = runtests(testFiles);

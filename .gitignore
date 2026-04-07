@@ -57,10 +57,17 @@
 /Manual/
 
 # Compiler  builds
+<<<<<<< HEAD
+#/ThirdPartLibs/*/build
+=======
 /ThirdPartLibs/*/build
 
 # Shared file system files
 *.nfs*
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 
 # idea folders
 .idea
+>>>>>>> main
