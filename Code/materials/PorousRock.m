@@ -12,8 +12,11 @@ classdef PorousRock < handle
         % specGrav             % Specific gravity of rock
         % Swr                  % Residual saturation of water
         Sr=0.;             % Residual saturation
-        Ss=1.;             % Maximum saturation        
+        Ss=1.;             % Maximum saturation    
+
+
     end
+
 
     properties
       Curves

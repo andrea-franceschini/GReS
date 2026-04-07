@@ -28,7 +28,7 @@ function processFaces(grid,vtkId)
 %    internal : normal points          from neighbors(:,1) to neighbors(:,2)
 
 % Supported VTK types: tetrahedron and hexahedron (hexa27 are treated as hexa8)
-%
+% IMPORTANT: The code assumes that the processed vtkId has constant number of face (not valid for VTK type POLYHEDRON)
 %  See also: processGeometry, ArrayOfArrays
 
 
@@ -39,171 +39,146 @@ function processFaces(grid,vtkId)
 
 
 if nargin == 1
-  % if vtk id is not provided, recursively process all vtk type available
-  vtkIds = unique(grid.cells.VTKType');
-
-  for vtkId = vtkIds
-    processFaces(grid,vtkId);
+  vtkIds = unique(grid.cells.VTKType);
+  for k = 1:numel(vtkIds)
+    processFaces(grid, vtkIds(k));
   end
-
   return
 end
 
-coords = grid.coordinates;       
-nCells = grid.cells.num;
+coords = grid.coordinates; 
 
-% 1) half-face connectivity
 idC = find(grid.cells.VTKType == vtkId);
-topol = grid.cells.getCellNodes(idC);
-
-f = localFaceDefs(vtkId);
-nNPF = size(f,2);
-
-% half-faces
-hf = zeros(size(f,1)*nCells,size(f,2));
-
-% repeated half-face topology
-for i = 1:size(f,1)
-  k = (i-1)*nCells;
-  hf(k+1:k+nCells) = topol(:,f(i,:));
+if isempty(idC)
+  return
 end
 
-% cell index per half face
-hfCellId   = repelem(idC,nNPF);
+nC    = numel(idC);
+topol = grid.getCellNodes(idC);
 
-% local face id per face
-hfLocalFId = repmat((1:nNPF)', nC, 1);  
+lf = localFaceDefs(vtkId);
+[nFPC, nNPF] = size(lf);
 
+% half-faces
+hfNodes = zeros(nFPC*nC, nNPF, class(topol));
+for id = 1:nFPC
+  k = (id-1)*nC;
+  hfNodes(k+1:k+nC, :) = topol(:, lf(id,:));
+end
 
+hfCellId   = repmat(idC(:), nFPC, 1);
+hfLocalFId = repelem((1:nFPC)', nC);
 
-% partially inspired by MRST routine
+% canonical representation of faces
+nHF = size(hfNodes, 1);
 
-% canonicalize faces
-nHF = size(hf, 1);
+[~, minCol] = min(hfNodes, [], 2);
+offsets     = mod(bsxfun(@plus, 0:nNPF-1, minCol-1), nNPF);
+linIdx      = bsxfun(@plus, offsets*nHF, (1:nHF)');
+hfCan       = reshape(hfNodes(linIdx), nHF, nNPF);
 
-% -- Step 1: rotate minimum to column 1  ---------------------------------
-[~, minCol] = min(hfNodes, [], 2);                             % nHF × 1, 1-based
-offsets     = mod(bsxfun(@plus, (0:nNPF-1), minCol-1), nNPF); % nHF × nNPF, 0-based column offsets
-
-% Column-major linear index: element at (row i, col offsets(i,j)+1)
-% linear = offsets(i,j)*nHF + i
-linIdx = bsxfun(@plus, offsets * nHF, (1:nHF)');              % nHF × nNPF
-hfCan  = reshape(hfNodes(linIdx), nHF, nNPF);
-
-% -- Step 2: choose canonical cyclic direction  --------------------------
 needFlip               = hfCan(:,2) > hfCan(:,end);
 hfCan(needFlip, 2:end) = hfCan(needFlip, end:-1:2);
 
+% winding sign
 hfSign           = ones(nHF, 1);
 hfSign(needFlip) = -1;
 
-% --  Step B: sort to bring matching half-faces to adjacent rows  --------
 [hfSorted, sIdx] = sortrows(hfCan);
-hfCellSorted     = hfCellId  (sIdx);
-hfSignSorted     = hfSign    (sIdx);
+hfCellSorted     = hfCellId(sIdx);
+hfSignSorted     = hfSign(sIdx);
 hfLocalSorted    = hfLocalFId(sIdx);
 
-% --  Step C: identify unique faces  -------------------------------------
-%  Consecutive equal rows → same face.  First occurrence marks a new face.
-isNew    = [true; any(diff(hfSorted), 2)];   % nHF × 1  logical
-faceIdx  = cumsum(isNew);                     % half-face → face ID (1-based)
-nF       = faceIdx(end);                     % number of faces
-faceNodes = hfSorted(isNew, :);              % nF × nNPF
+isNew   = [true; any(hfSorted(2:end,:) ~= hfSorted(1:end-1,:), 2)];
+faceIdx = cumsum(isNew);
+nF      = faceIdx(end);
+nPlist = nNPF*ones(nF,1);
 
-% --  Step D: build neighbor table  --------------------------------------
-%  hfSign = +1  →  column 1 of neighbors (n1)
-%  hfSign = -1  →  column 2 of neighbors (n2)
-col       = ones(nHF, 1);
+faceTopol = int32(hfSorted(isNew, :));
+
+% get unique neighbors
+col = ones(nHF, 1);
 col(hfSignSorted == -1) = 2;
 neighbors = accumarray([faceIdx, col], hfCellSorted, [nF, 2]);
 
-% guarantee that boundary faces always have their cell in column 1
-needSwap              = neighbors(:,1) == 0 & neighbors(:,2) ~= 0;
+% make sure that boundary faces have 0 cell as secondo position
+needSwap = neighbors(:,1) == 0 & neighbors(:,2) ~= 0;
 neighbors(needSwap,:) = neighbors(needSwap, [2,1]);
 
-% --  Step E: cell-to-face map  ------------------------------------------
-cellFaces = [hfCellSorted, faceIdx, hfLocalSorted];
+isBoundary = neighbors(:,2) == 0;
+
+% compute faces geometrical informations
+nList = faceTopol';
+poly = coords(nList(:),:); 
+[area, cent, normal] = computePolygonGeometry(poly, nPlist);
 
 
-% process face geometry 
+% append faces
+f = grid.faces;
+c = grid.cells;
+s = grid.surfaces;
 
-[a,c,n] = computePolygonGeometry(poly,nNPF*ones(nF));
+nFold = f.num;
+f.num        = nFold + nF;
+f.neighbors  = [f.neighbors; int32(neighbors)];
+f.normal    = [f.normal; normal];
+f.center  = [f.center; cent];
+f.area      = [f.area; area];
+f.numVerts   = [f.numVerts; nPlist];
+f.isBoundary = [f.isBoundary; isBoundary];
+f.connectivity = [f.connectivity; ArrayOfArrays(faceTopol)];
 
 
-% update grid structure
-nVerts = [3*ones(nTri,1); 4*ones(nQuad,1)];
+% cell to faces mapping
+[~,id] = sort(hfCellSorted);
+nFPCs = nFPC*ones(nC,1);
+c2f = ArrayOfArrays(faceIdx(id),nFPCs);
+c2locf = ArrayOfArrays(hfLocalSorted(id),nFPCs);
+c.cells2faces = [c.cells2faces; c2f];
+c.cells2localFaces = [c.cells2localFaces; c2locf];
 
-f.num       = nF;
-f.neighbors = [triNbr;  quadNbr];
-f.normals   = [triNrm;  quadNrm];
-f.centroids = [triCen;  quadCen];
-f.areas     = [triA;    quadA  ];
-f.numVerts  = nVerts;
+% surfaces (map surfaces to boundaryfaces) 
+boundFaces = faceTopol(isBoundary,:);
 
-% concatenate connectivity maps into ArrayOfArrays
-if nTri > 0 && nQuad > 0
-  % Mixed face types: pack into an ArrayOfArrays
-  flatNodes      = [reshape(triFN',  [], 1);    % 3·nTri  entries
-    reshape(quadFN', [], 1)];   % 4·nQuad entries
-  f.connectivity = ArrayOfArrays(flatNodes, nVerts);
-elseif nTri > 0
-  f.connectivity = int32(triFN);
-else
-  f.connectivity = int32(quadFN);
-end
+% connectivity of the surfaces corresponding to the 2D VTK
+vtk2d = grid.vtkType(grid.vtkType(:,2) == vtkId,1);
+idS = find(grid.surfaces.VTKType == vtk2d);
+topolSurf = grid.getSurfNodes(idS);
+[sId,fId] = ismember(sort(topolSurf,2),sort(boundFaces,2),'rows');
+boundId = find(isBoundary);
+s.faceId(sId) = nFold + boundId(fId); 
 
+
+% finally update grid
 grid.faces = f;
+grid.cells = c;
+grid.surfaces = s;
 
-% -----------------------------------------------------------------------
-% 5.  Update grid.cells cell-to-face mapping
-%     allCF rows:  [cellId  globalFaceId  localFaceId]
-% -----------------------------------------------------------------------
-if ~isempty(quadCF)
-  quadCF(:,2) = quadCF(:,2) + nTri;   % shift to global face numbering
-end
-
-allCF  = sortrows([triCF; quadCF], 1);            % sort by cell ID
-nFPCv  = accumarray(allCF(:,1), 1, [nCells, 1]);  % faces per cell
-
-grid.cells.facePos     = int32([1; cumsum(nFPCv) + 1]);
-grid.cells.faces       = int32(allCF(:, 2));
-grid.cells.faceLocalId = int32(allCF(:, 3));
 
 end
 
-
-% fix normals 
-
-
-% map external surfaces to faces
-
-
-
-
-
-
-
-%-------------------------------------------------------------------------
 
 function lf = localFaceDefs(vtkId)
-%LOCALFACEDEFS  Return local face node indices (1-based) for a VTK cell.
-%
-% Node ordering of faces is CCW when viewed from outside.
 
 switch vtkId
-
   case 10
-    lf   = [ 1, 2, 4 ;
-      2, 3, 4 ;
-      3, 1, 4 ;
-      1, 3, 2 ];
+    lf = [1 2 4;
+          2 3 4;
+          3 1 4;
+          1 3 2];
+
   case {12, 29}
-    lf   = [ 1, 4, 3, 2 ;
-      5, 6, 7, 8 ;
-      1, 2, 6, 5 ;
-      2, 3, 7, 6 ;
-      3, 4, 8, 7 ;
-      4, 1, 5, 8 ];
+    lf = [1 4 3 2;
+          5 6 7 8;
+          1 2 6 5;
+          2 3 7 6;
+          3 4 8 7;
+          4 1 5 8];
+
+  otherwise
+    error('processFaces:unsupportedVTKType', ...
+      'Unsupported VTK type %d.', vtkId);
 end
+
 end
 

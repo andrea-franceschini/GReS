@@ -119,6 +119,13 @@ classdef Hexahedron < FiniteElementType
 
 
       if nargin == 1
+
+        if obj.grid.isStructured
+          % use cheaper divergence theorem for simple meshes
+          [vol,cellCentroid] = obj.grid.computeCellGeometry();
+          return
+        end
+
         idHexa = find(obj.grid.cells.VTKType == obj.vtkType);
       end
 

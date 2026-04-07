@@ -7,5 +7,5 @@ mex -O   mxPolygonNormal.cpp      src/PolygonGeometry.cpp
 mex -O   mxOrderPointsCCW.cpp     src/PolygonGeometry.cpp
 mex -O   mxOrderPointsCCW.cpp     src/PolygonGeometry.cpp
 mex -O   mxPolygonClip.cpp
-
+mex -O   mxComputeRotationMat.cpp    
 

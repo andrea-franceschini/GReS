@@ -74,6 +74,7 @@ fb = FaceGrid(n);
 n = nid(:,:,end);
 ft = FaceGrid(n);
 
+
 % south: tag 3
 n = nid(:,1,:);
 fs = FaceGrid(n);
@@ -115,7 +116,11 @@ grid.cells.tag = ones(nC,1);
 nS = size(surf,1);
 grid.surfaces.connectivity = surf;
 grid.surfaces.tag = surfTag;
-grid.surface.VTKType = 9*ones(nS,1);
+grid.surfaces.VTKType = 9*ones(nS,1);
+
+% finalize geometry
+grid.setStructured;
+processGeometry(grid);
 
 end
 
@@ -135,6 +140,11 @@ n4 = nodes(2:end,2:end);
 
 f = [n1(:),n2(:),n3(:),n4(:)];
 
-f = f(:,[2 1 3 4]);
+f = f(:,[2 3 1 4]);
+end
+
+
+function f = flipFace(f)
+    f = f(:,[1 3 2 4]);   % swap orientation of nodes in faces
 end
 

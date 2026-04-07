@@ -7,7 +7,7 @@ classdef ArrayOfArrays < handle
   properties (Access = private)
     data      % (1 x N)
     ptr       % (1,nr+1)
-    nrows
+    nrows = 0;
   end
 
   % Construction
@@ -49,7 +49,16 @@ classdef ArrayOfArrays < handle
 
     function obj = ArrayOfArrays(varargin)
 
+      if nargin == 0
+        return
+      end
+
       if nargin == 1
+
+        if strcmp(class(varargin{1}),"ArrayOfArrays")
+          obj = varargin{1};
+          return
+        end
 
         mat = varargin{1};
 
@@ -73,6 +82,20 @@ classdef ArrayOfArrays < handle
       rl = reshape(rl,1,[]);
       obj.ptr   = [1, cumsum(rl) + 1];
       obj.data  = flat;
+
+    end
+
+
+    function [data,ptr] = getData(obj)
+
+      % return flat data and indirection map
+
+      data = obj.data(:);
+
+      if nargout > 1
+        ptr = obj.ptr(:);
+      end
+
 
     end
 
@@ -161,6 +184,15 @@ classdef ArrayOfArrays < handle
       end
     end
 
+
+
+    function sz = size(obj)
+
+      sz = obj.nrows;
+
+    end
+
+
     function array = getArray(obj,r)
       % GETARRAY  Return data corresponding to pointer(s) r
       % rows in r must have a constant length L
@@ -234,6 +266,58 @@ classdef ArrayOfArrays < handle
 
 
 
+    function out = vertcat(varargin)
+      % VERTCAT  Vertical concatenation for ArrayOfArrays
+      %
+      %   C = [A; B; D; ...]
+      %
+      % Concatenates rows of multiple ArrayOfArrays objects by simply
+      % appending their flat data and their row lengths.
+
+      if nargin == 0
+        out = ArrayOfArrays([], []);
+        return
+      end
+
+      % Validate inputs
+      for k = 1:nargin
+        if ~isa(varargin{k}, 'ArrayOfArrays')
+          error('ArrayOfArrays:vertcat', ...
+            'All inputs must be ArrayOfArrays objects.');
+        end
+      end
+
+      % Total allocation sizes
+      totalElems = 0;
+      totalRows  = 0;
+      for k = 1:nargin
+        objk = varargin{k};
+        totalElems = totalElems + numel(objk.data);
+        totalRows  = totalRows  + objk.nrows;
+      end
+
+      % Preallocate
+      flat = zeros(1, totalElems, class(varargin{1}.data));
+      rl   = zeros(1, totalRows);
+
+      % Fill
+      pData = 1;
+      pRow  = 1;
+      for k = 1:nargin
+        objk = varargin{k};
+
+        nk = numel(objk.data);
+        nr = objk.nrows;
+
+        flat(pData:pData+nk-1) = objk.data;
+        rl(pRow:pRow+nr-1)     = diff(objk.ptr);
+
+        pData = pData + nk;
+        pRow  = pRow  + nr;
+      end
+
+      out = ArrayOfArrays(flat, rl);
+    end
 
   end
 

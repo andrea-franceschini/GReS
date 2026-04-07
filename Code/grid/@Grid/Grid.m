@@ -14,7 +14,7 @@ classdef Grid < handle
    
   end
 
-  properties (Access = private)
+  properties (GetAccess = public, SetAccess = private)
 
     %  1  VTK_VERTEX
     %  2  VTK_POLY_VERTEX
@@ -40,6 +40,7 @@ classdef Grid < handle
     % edgeVTK = []
 
     isMixed = false             % flag for presence of multiple cell shapes
+    isStructured = false        % flag for structured mesh
   end
 
   methods (Access = public)
@@ -48,7 +49,9 @@ classdef Grid < handle
 
     processGeometry(obj)
 
-    processFaces(obj)
+    [vol,center] = computeCellGeometry(obj)
+
+    processFaces(obj,vtkId)
 
   
     function [surfMesh,varargout] = getSurfaceMesh(obj, surfTag, varargin)
@@ -172,7 +175,7 @@ classdef Grid < handle
       if obj.isMixed
         nodes = obj.surfaces.connectivity.getArray(id);
       else
-        nodes = obj.surface.connectivity(id,:);
+        nodes = obj.surfaces.connectivity(id,:);
       end
     end
 
@@ -189,6 +192,11 @@ classdef Grid < handle
       else
         obj.(type).connectivity(rows,:) = conn;
       end
+    end
+
+
+    function setStructured(obj)
+      obj.isStructured = true;
     end
 
 
