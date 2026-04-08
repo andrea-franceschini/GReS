@@ -17,6 +17,7 @@ function computeSinglePhPrec(obj,A,symMat)
       case 'amg'
          
          % Treat Boundary conditions 
+         warning('off', 'MATLAB:eigs:NotAllEigsConvKeep');
          lmax = eigs(A,1,'lm','FailureTreatment','keep','Display',0,'Tolerance',0.001,'MaxIterations',3);
 
          d = diag(A);

@@ -62,6 +62,7 @@ classdef linearSolver < handle
 
       % Flag to request Preconditioner computation
       requestPrecComp = true
+      alpha = 1
 
       % starting vector
       x0 = []
@@ -84,6 +85,7 @@ classdef linearSolver < handle
       nComp = 0
       maxIter = -1
       aIter = 0
+      cumTSolveAfterPrec = 0
       
       % Full info stats
       iterLin = []
@@ -99,6 +101,9 @@ classdef linearSolver < handle
 
       % Params struct
       params
+
+      precL
+      sizeDiff = 0
    end
 
    methods (Access = public)
@@ -112,7 +117,7 @@ classdef linearSolver < handle
          % Possible the user wants to use matlab even if the size is sufficient
          if isfield(generalsolver.simparams.linSolverParams, 'useMatlab')
             if generalsolver.simparams.linSolverParams.useMatlab == 1
-               fprintf('The user requested the use of matlab\n');
+               gresLog().log(3,'The user requested the use of matlab\n');
                return;
             end
          end
@@ -125,7 +130,7 @@ classdef linearSolver < handle
             end
             
             if ~isfile(fileMex)
-               warning('Chronos_Lab submodule is present, but not compiled. Using matlab fallback');
+               gresLog().warning(2,'Chronos_Lab submodule is present, but not compiled. Using matlab fallback');
                return;
             end
 
@@ -175,7 +180,7 @@ classdef linearSolver < handle
          end
       end
 
-      function printStats(obj)
+      function printStats(obj,varargin)
          fprintf('\n\n\nAverage Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
          fprintf('The preconditioner was computed at time(s):\n');
          for i = 1:length(obj.whenComputed)
@@ -186,17 +191,20 @@ classdef linearSolver < handle
          fprintf('Max number of iterations = %d\n',obj.maxIter);
          fprintf('\nTotal time for computation of the linear systems = %e\n',obj.aTimeComp+obj.aTimeSolve);
 
-         if obj.fullInfo
+         if ~isempty(varargin)
+            string = varargin{1};
+         else
+            string = [];
+         end
+
+         if obj.fullInfo && ~strcmpi(string,'short')
             fprintf('\nUsed %d threads during mex\n',obj.Prec.maxThreads);
             fprintf('\n-----------------------------------------------------------------------------\n')
-            fprintf('| %11s | %10s | %4s | %13s | %7s | %13s |\n','Time','NewtonIter','Iter','Time','Symm','PrecTime');
+            fprintf('| %11s | %6s | %4s | %13s | %7s | %13s |\n','Phys Time','Sol N.','Iter','Solve Time','Symm','PrecTime');
             fprintf('-----------------------------------------------------------------------------\n')
             timeOld = obj.timeLin(1);
             for i = 1:size(obj.solveTLin,2)
-               if timeOld ~= obj.timeLin(i)
-                  fprintf('-----------------------------------------------------------------------------\n')
-               end
-               fprintf('| %.5e | %10d | %4d | %.7e | %.1e | %.7e |\n',obj.timeLin(i),obj.newtonLin(i),obj.iterLin(i),obj.solveTLin(i),obj.symFlagLin(i),obj.precCompLin(i));
+               fprintf('| %.5e | %6d | %4d | %.7e | %.1e | %.7e |\n',obj.timeLin(i),i,obj.iterLin(i),obj.solveTLin(i),obj.symFlagLin(i),obj.precCompLin(i));
             end
          end
       end
