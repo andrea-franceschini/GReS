@@ -5,8 +5,10 @@ function processGeometry(grid)
 initializeGrid(grid);
 
 % process vtk types
-vtkTypes = unique(grid.cells.VTKType);
-for vtkId = vtkTypes
+grid.cells.vtkTypes = reshape(unique(grid.cells.VTKType),1,[]);
+grid.surfaces.vtkTypes = reshape(unique(grid.surfaces.VTKType),1,[]);
+
+for vtkId = grid.cells.vtkTypes
   processShape(grid,vtkId);
 end
 
@@ -16,7 +18,7 @@ fixNormals(grid);
 
 fId = grid.surfaces.faceId;
 grid.surfaces.area = grid.faces.area(fId);
-grid.surfaces.center = grid.faces.center(fId);
+grid.surfaces.center = grid.faces.center(fId,:);
 grid.surfaces.normal = grid.faces.normal(fId,:);
 
 end
@@ -25,7 +27,7 @@ end
 
 function processShape(grid,vtk3d)
 
-idC = grid.cells.VTKType == vtk3d;
+idC = grid.getCellsByVTKId(vtk3d);
 
 % process faces
 grid.processFaces(vtk3d);
@@ -40,6 +42,7 @@ end
 
 function initializeGrid(grid)
 
+grid.nNodes = size(grid.coordinates,1);
 grid.cells.num = size(grid.cells.connectivity,1);
 grid.surfaces.num = size(grid.surfaces.connectivity,1); 
 nc = grid.cells.num;

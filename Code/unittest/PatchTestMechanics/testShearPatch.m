@@ -23,10 +23,7 @@ classdef testShearPatch < matlab.unittest.TestCase
       gresLog().setVerbosity(-2);
       input = readInput(testCase.pathToFile);
       simparams = SimulationParameters(input.SimulationParameters);
-      mesh = structuredMesh(1,1,1,[0 1],[0 1],[0 1]);
-      elems = Elements(mesh,2);
-      faces = Faces(mesh);
-      grid = struct('topology',mesh,'cells',elems,'faces',faces);
+      grid = structuredMesh(1,1,1,[0 1],[0 1],[0 1]);
       mat = Materials(input.Materials);
       bc = Boundaries(grid,input.BoundaryConditions);
       printUtils = OutState('printTimes',1,'outputFile',"test");

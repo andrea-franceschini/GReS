@@ -12,7 +12,7 @@ classdef entityField
 
   methods
 
-    function varargout = getIncidenceID(target,grid,source,sourceList)
+    function infl = getIncidenceID(target,grid,source,sourceList)
       % given entities of type 'source', return the connected entities of
       % type 'target'.
       % sourceList - optional input with id of source entities
@@ -29,18 +29,13 @@ classdef entityField
 
       switch source
         case entityField.node
-          [list,ptr] = getIncidenceIDFromNode(target,grid,sourceList);
+          infl = getIncidenceIDFromNode(target,grid,sourceList);
         case entityField.surface
-          [list,ptr] = getIncidenceIDFromSurface(target,grid,sourceList);
+          infl = getIncidenceIDFromSurface(target,grid,sourceList);
         case entityField.cell
-          [list,ptr] = getIncidenceIDFromCell(target,grid,sourceList);
+          infl = getIncidenceIDFromCell(target,grid,sourceList);
       end
 
-      varargout{1} = list;
-
-      if nargout > 1
-        varargout{2} = ptr;
-      end
     end
 
     function ents = getEntitiesFromTags(target,grid,source,tags)
@@ -70,7 +65,7 @@ classdef entityField
       end
 
       ents = getIncidenceID(target,grid,source,list);
-      ents = unique(ents);
+      ents = unique(ents.getData);
     end
 
     function nEnts = getNumberOfEntities(target,grid,varargin)
@@ -79,7 +74,7 @@ classdef entityField
     end
 
 
-    function [list,ptr] = getIncidenceIDFromNode(target,grid,sourceList)
+    function infl = getIncidenceIDFromNode(target,grid,sourceList)
 
       if isempty(sourceList)
         sourceList = 1:grid.nNodes;
@@ -87,15 +82,14 @@ classdef entityField
 
       switch target
         case entityField.node
-          list = sourceList;
-          ptr = reshape(1:numel(list),[],1);
+          infl = ArrayOfArrays(sourceList,ones(numel(sourceList),1));
         otherwise
           error("Incidence from node to %s is not yet available")
       end
 
     end
 
-    function [list,ptr] = getIncidenceIDFromSurface(target,grid,sourceList)
+    function infl = getIncidenceIDFromSurface(target,grid,sourceList)
 
       if isempty(sourceList)
         sourceList = 1:grid.surfaces.num;
@@ -103,19 +97,21 @@ classdef entityField
 
       switch target
         case entityField.node
-          ptr = [0;cumsum(grid.surfaces.numVerts(sourceList))];
-          tmp = grid.getSurfNodes(sourceList);
-          list = reshape(tmp',[],1);
+          list = grid.getSurfNodes(sourceList);
+          rl = grid.surfaces.numVerts(sourceList);
         case entityField.surface
           list = sourceList;
-          ptr = reshape(1:numel(list),[],1);
+          rl = ones(numel(sourceList),1);
         case entityField.cell
           error("Incidence from surface to %s is not yet available")
       end
 
+      list = list';
+      infl = ArrayOfArrays(list(:),rl);
+
     end
 
-    function [list,ptr] = getIncidenceIDFromCell(target,grid,sourceList)
+    function infl = getIncidenceIDFromCell(target,grid,sourceList)
 
       if isempty(sourceList)
         sourceList = 1:grid.cells.num;
@@ -123,15 +119,17 @@ classdef entityField
 
       switch target
         case entityField.node
-          ptr = [0; cumsum(grid.cells.numVerts(sourceList))];
-          tmp = grid.getCellNodes(sourceList,:);
-          list = reshape(tmp',[],1);
+          list = grid.getCellNodes(sourceList);
+          rl = grid.cells.numVerts(sourceList);
         case entityField.cell
           list = sourceList;
-          ptr = reshape(1:numel(list),[],1);
+          rl = ones(numel(sourceList),1);
         otherwise
           error("Incidence from cell to %s is not yet available",target)
       end
+
+      list = list';
+      infl = ArrayOfArrays(list(:),rl);
 
     end
 
@@ -147,8 +145,6 @@ classdef entityField
       if nargin < 4
         srcList = [];
       end
-
-      target = entityField(target);
 
 
       switch entityField(source)
@@ -195,21 +191,17 @@ classdef entityField
 
       switch target
         case entityField.node
-          [nodeID,ptr] = getIncidenceIDFromSurface(target,grid,srcList);
-          [targEnts,~,n] = unique(nodeID);
-          m = assembler(numel(nodeID),numel(targEnts),numel(srcList));
-          k = 0;
-          for id = srcList'
-            k = k+1;
-            A = findNodeArea(grid.cells,id);
-            ii = n(ptr(k)+1:ptr(k+1));
-            m.localAssembly(ii,k,A./sum(A));
-          end
-          map = m.sparseAssembly();
+          [nodes,areas] = grid.getNodeInfluence(entityField.surface,srcList); % nodes is an ArrayOfArrays
+          [nList,ptr] = getData(nodes);   
+          [targEnts,~,ii] = unique(nList); 
+          jj = repelem((1:numel(srcList))',diff(ptr),1);
+          map = sparse(ii,jj,areas,numel(targEnts),numel(srcList));
+
         case entityField.surface
           n = numel(srcList);
           map = speye(n);
           targEnts = srcList;
+
         case entityField.cell
           % this combination is only needed by FV solvers where influence
           % map is not used
@@ -229,17 +221,13 @@ classdef entityField
 
       switch target
         case entityField.node
-          [nodeID,ptr] = getIncidenceIDFromCell(target,grid,srcList);
-          [targEnts,~,n] = unique(nodeID);
-          m = assembler(numel(nodeID),numel(targEnts),numel(srcList));
-          k = 0;
-          for id = srcList'
-            k = k+1;
-            V = findNodeVolume(grid.cells,id);
-            ii = n(ptr(k)+1:ptr(k+1));
-            m.localAssembly(ii,k,V./sum(V));
-          end
-          map = m.sparseAssembly();
+
+          [nodes,vols] = grid.getNodeInfluence(entityField.cell,srcList); % nodes is an ArrayOfArrays
+          [nList,ptr] = getData(nodes);
+          [targEnts,~,ii] = unique(nList);
+          jj = repelem((1:numel(srcList))',diff(ptr),1);
+          map = sparse(ii,jj,vols,numel(targEnts),numel(srcList));
+
         case entityField.cell
           n = numel(srcList);
           map = speye(n);
@@ -260,9 +248,9 @@ classdef entityField
         case entityField.node
           size = ones(numel(list),1);
         case entityField.surface
-          size = msh.surfaceArea(list);
+          size = msh.surfaces.area(list);
         case entityField.cell
-          size = msh.cellVolume(list);
+          size = msh.cells.volume(list);
       end
     end
 

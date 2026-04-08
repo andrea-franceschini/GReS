@@ -22,11 +22,8 @@ classdef testBoundaries < matlab.unittest.TestCase
 
     function readBCFile(testCase)
       % test bc added with  xml file
-      mesh = Mesh();
-      mesh.importMesh("mesh.msh");
-      elems = Elements(mesh,2);
-      faces = Faces(mesh);
-      grid = struct("topology",mesh,"cells",elems,"faces",faces);
+      grid = Grid();
+      grid.importMesh("mesh.msh");
       testCase.bc = Boundaries(grid,testCase.pathToFile);
 
       validate(testCase)
@@ -37,12 +34,9 @@ classdef testBoundaries < matlab.unittest.TestCase
 
     function readBC(testCase)
       % test bc added with key-value input
-      mesh = Mesh();
-      mesh.importMesh("mesh.msh");
-      elems = Elements(mesh,2);
-      faces = Faces(mesh);
-      grid = struct("topology",mesh,"cells",elems,"faces",faces);
-
+      grid = Grid();
+      grid.importMesh("mesh.msh");
+   
       testCase.bc = Boundaries(grid);
 
       testCase.bc.addBC("name","bc1",...
@@ -149,7 +143,7 @@ classdef testBoundaries < matlab.unittest.TestCase
 
       % verify bcs
       % bc1
-      verifyEqual(testCase,e1([1; end]),[1;170],"AbsTol",tol)
+      verifyEqual(testCase,e1([1; end]),int32([1;170]),"AbsTol",tol)
       verifyEqual(testCase,v1([1; 5; end-1]),[60.0;0.0;34.5],"AbsTol",tol)
       % bc2
       verifyEqual(testCase,all(e2(1:9)==e2(10:18)),true,"AbsTol",tol)
@@ -160,7 +154,7 @@ classdef testBoundaries < matlab.unittest.TestCase
       %verifyEqual(testCase,all(e3==load('entityList')),true,"AbsTol",tol)
       verifyEqual(testCase,all(v3==5),true,"AbsTol",tol)
       % bc5
-      verifyEqual(testCase,e5([1;10;19]),[1;2;3],"AbsTol",tol)
+      verifyEqual(testCase,e5([1;10;19]),int32([1;2;3]),"AbsTol",tol)
       verifyEqual(testCase,max(v5),0,"AbsTol",tol)
       % bc6
       verifyEqual(testCase,mean(e6),1.016666666666667e+02,"AbsTol",tol)

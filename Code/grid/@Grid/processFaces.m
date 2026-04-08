@@ -48,7 +48,7 @@ end
 
 coords = grid.coordinates; 
 
-idC = find(grid.cells.VTKType == vtkId);
+idC = grid.getCellsByVTKId(vtkId);
 if isempty(idC)
   return
 end
@@ -86,9 +86,10 @@ hfSign(needFlip) = -1;
 
 [hfSorted, sIdx] = sortrows(hfCan);
 hfCellSorted     = hfCellId(sIdx);
-hfSignSorted     = hfSign(sIdx);
+%hfSignSorted     = hfSign(sIdx);
 hfLocalSorted    = hfLocalFId(sIdx);
 
+% CHECK THIS IN FUTURE
 isNew   = [true; any(hfSorted(2:end,:) ~= hfSorted(1:end-1,:), 2)];
 faceIdx = cumsum(isNew);
 nF      = faceIdx(end);
@@ -98,7 +99,7 @@ faceTopol = int32(hfSorted(isNew, :));
 
 % get unique neighbors
 col = ones(nHF, 1);
-col(hfSignSorted == -1) = 2;
+col(~isNew) = 2;
 neighbors = accumarray([faceIdx, col], hfCellSorted, [nF, 2]);
 
 % make sure that boundary faces have 0 cell as secondo position
@@ -141,8 +142,7 @@ c.cells2localFaces = [c.cells2localFaces; c2locf];
 boundFaces = faceTopol(isBoundary,:);
 
 % connectivity of the surfaces corresponding to the 2D VTK
-vtk2d = grid.vtkType(grid.vtkType(:,2) == vtkId,1);
-idS = find(grid.surfaces.VTKType == vtk2d);
+idS = grid.getSurfByVTKId(VTKType.to2D(vtkId));
 topolSurf = grid.getSurfNodes(idS);
 [sId,fId] = ismember(sort(topolSurf,2),sort(boundFaces,2),'rows');
 boundId = find(isBoundary);

@@ -42,10 +42,10 @@ classdef Discretizer < handle
 
       % Initialized internal variables
       obj.dofm = DoFManager();
-      obj.bcs = Boundaries();
-      obj.outstate = OutState();
-      obj.materials = Materials();
-      obj.grid = struct('topology',Mesh(),'faces',[],'cells',[]);
+      % obj.bcs = Boundaries();
+      % obj.outstate = OutState();
+      % obj.materials = Materials();
+      % obj.grid = Grid();
 
       obj.physicsSolvers = containers.Map('KeyType','char','ValueType','any');
       obj.setDiscretizer(varargin{:});
@@ -433,10 +433,10 @@ classdef Discretizer < handle
         pointData3D = OutState.mergeOutFields(pointData3D,pointData);
       end
 
-      cellData3D = OutState.printMeshData(obj.grid.topology,cellData3D);
+      cellData3D = OutState.printMeshData(obj.grid,cellData3D);
 
       % write dataset to vtmBlock
-      obj.outstate.writeVTKfile(obj.vtmBlock,obj.getOutName(),obj.grid.topology,...
+      obj.outstate.writeVTKfile(obj.vtmBlock,obj.getOutName(),obj.grid,...
         time, pointData3D, cellData3D, [], []);
 
       out = obj.vtmBlock;
@@ -475,80 +475,42 @@ classdef Discretizer < handle
 
       obj.state = State();
 
-      if ~isempty(obj.grid.topology)
-        obj.dofm = DoFManager(obj.grid.topology);
+      if ~isempty(obj.grid)
+        obj.dofm = DoFManager(obj.grid);
       end
 
     end
 
     function setInput(obj, varargin)
 
-      msg = 'Invalid key-value pair for Discretizer class \n';
+      default = struct('grid',Grid.empty,...
+                       'materials',Materials(),...
+                       'boundaries',Boundaries());
 
-      % Check that we have an even number of inputs
-      if mod(length(varargin), 2) ~= 0
-        error('Arguments must come in key-value pairs.');
-      end
+      % the grid is required when a Discretizer is defined
 
-      % Loop through the key-value pairs
-      for k = 1:2:length(varargin)
-        key = varargin{k};
-        value = varargin{k+1};
+      params = readInput(default,varargin{:});
 
-        if isempty(value)
-          continue
-        end
-
-        if ~ischar(key) && ~isstring(key)
-          error('Keys must be strings');
-        end
-
-        switch lower(key)
-          % case 'simulationparameters'
-          %   assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
-          %   obj.simparams = value;
-          case 'grid'
-            obj.grid = value;
-            % check that grid has been defined correctly
-            if ~isfield(obj.grid,"topology")
-              obj.grid.topology = [];
-            end
-            if ~isfield(obj.grid,"cells")
-              obj.grid.cells = [];
-            end
-            if ~isfield(obj.grid,"faces")
-              obj.grid.faces = [];
-            end
-
-            isGridCorrect = numel(fieldnames(obj.grid))==3;
-
-            assert(isGridCorrect,"Error in Discretizer: grid input is not correct. " + ...
-              "grid must be a struct with fields: 'topology','cells','faces'.");
-
-          case 'materials'
-            assert(isa(value, 'Materials'),msg)
-            obj.materials = value;
-          case 'boundaries'
-            assert(isa(value, 'Boundaries'),msg)
-            obj.bcs = value;
-          otherwise
-            error('Unknown input key %s for Discretier \n', key);
-        end
-      end
-
+      obj.grid = params.grid;
+      obj.materials = params.materials;
+      obj.bcs = params.boundaries;
 
     end
 
+   
     function validateInput(obj)
-      msh = obj.grid.topology;
 
-      u = unique(msh.cellTag);
+      msh = obj.grid.cells;
+
+      u = unique(msh.tag);
       if ~isempty(u)
         assert(max(u)==length(u),"cellTag numbering must be progressive from 1 to the number of cellTags")
         msh.nCellTag = max(u);
       end
 
-      u = unique(msh.surfaceTag);
+      msh = obj.grid.surfaces;
+
+      u = unique(msh.tag);
       if ~isempty(u)
         assert(max(u)==length(u),"surfaceTag numbering must be progressive from 1 to the number of cellTags")
         msh.nSurfaceTag = max(u);
@@ -579,12 +541,27 @@ classdef Discretizer < handle
     end
 
 
+
     function outName = getOutName(obj)
        % property domainId not set yet
       outName = sprintf('Domain_%i',obj.domainId);
 
 
     end
+
+  end
+
+
+  methods (Static)
+
+
+    function checkClass(val,fldName,className)
+
+       if ~isa(val, className)
+         error("Invalid key-value pair for Discretizer class. Input field %s must be an object of class %s \n",fldName,className);
+       end
+    end
+
 
   end
 

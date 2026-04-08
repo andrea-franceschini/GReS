@@ -25,7 +25,6 @@ classdef (Abstract) FiniteElementType < handle
   methods (Abstract,Access=public)
 
     getBasisFinGPoints(obj)       % compute basis functions
-    getDerBasisFAndDet(obj)       % compute basis functions gradient
     getSizeAndCentroid(obj)
     getNodeInfluence(obj)         % compute area/volume influence to nodes
 
@@ -53,8 +52,21 @@ classdef (Abstract) FiniteElementType < handle
       obj.GaussPts = Gauss(obj.vtkType,g.gaussOrder);
       obj.detJ = zeros(1,obj.GaussPts.nNode);
       obj.setStrainMatrixIndex();
-  
+
       setElement(obj);
+    end
+
+
+    function [N,dJw] = getDerBasisFAndDet(obj,coords)
+
+      % coords: matrix of element coordinates of size nNode x 3
+
+      % call mex file for basis function computation
+      [N, dJw] = mxGetDerBasisAndDet(obj.Jref,coords,obj.GaussPts.weight);
+      dJw = reshape(dJw,1,[]);
+
+      obj.detJ = (dJw./obj.GaussPts.weight)';
+
     end
 
   end
@@ -66,16 +78,6 @@ classdef (Abstract) FiniteElementType < handle
       findLocDerBasisF(obj);
     end
 
-    function cellNodes = getCellNodes(id)
-      % get a list of cell nodes from the grid topology
-      % return a matrix of size nCells x nNode
-      if isMixed(obj.grid)
-        nId = obj.grid.cells.connectivity.getArray(id);
-        cellNodes = (reshape(nId,4,[]))';
-      else
-        cellNodes = obj.grid.cells.connectivity.getArray(id,:);
-      end
-    end
 
     function setStrainMatrixIndex(obj)
       n = obj.nNode*obj.GaussPts.nNode;

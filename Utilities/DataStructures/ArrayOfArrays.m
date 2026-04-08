@@ -25,9 +25,6 @@ classdef ArrayOfArrays < handle
   %                   2 5 0 0];
   %           A = ArrayOfArrays(conn)
   %
-  %   A = ArrayOfArrays(data, ptr)
-  %       Build from a pre-flattened data vector and a ptr vector.
-  %       ptr has length nrows+1 and uses 1-based indices.
   %
   %   A = ArrayOfArrays(data, sizes)
   %       Build from a pre-flattened data vector and a sizes vector
@@ -331,6 +328,11 @@ classdef ArrayOfArrays < handle
       else
         n = obj.ptr(r+1) - obj.ptr(r);
       end
+    end
+
+    function n = totalSize(obj)
+      % Length of row r.
+      n = numel(obj.data);
     end
 
     function disp(obj)

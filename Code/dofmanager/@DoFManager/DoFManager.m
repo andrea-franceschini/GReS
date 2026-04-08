@@ -6,7 +6,7 @@ classdef DoFManager < handle
   % Field-based ordering (default)
   % Domain-based ordering
   properties (Access = private)
-    mesh
+    grid
     dofMap                        % cell array with dof map for each variable field
     numbComponents
     fields = struct("variableName",[],...
@@ -19,12 +19,12 @@ classdef DoFManager < handle
 
 
   methods (Access = public)
-    function obj = DoFManager(mesh)
+    function obj = DoFManager(grid)
 
       if nargin == 0 
         return
       end
-      obj.mesh = mesh;
+      obj.grid = grid;
       obj.totDofs = 0;
     end
 
@@ -90,7 +90,7 @@ classdef DoFManager < handle
           tags = varargin{1};
           obj.fields(id).tags = tags;
           cells = obj.getFieldCells(id);
-          entList = getEntitiesList(fldLoc,obj.mesh,entityField.cell,cells);
+          entList = getEntitiesList(fldLoc,obj.grid,entityField.cell,cells);
           totActiveEnts = length(entList);
         else
           assert(strcmp(varargin{1},"nEntities"))
@@ -98,7 +98,7 @@ classdef DoFManager < handle
           entList = reshape(1:totActiveEnts,[],1);
         end
 
-        totEnts = numel(getEntitiesList(fldLoc,obj.mesh,fldLoc));
+        totEnts = numel(getEntitiesList(fldLoc,obj.grid,fldLoc));
 
         % populate the dof map
         obj.dofMap{id} = zeros(totEnts,1);
@@ -193,7 +193,7 @@ classdef DoFManager < handle
     function cells = getFieldCells(obj,varId)
       tags = getTargetRegions(obj,varId);
       cells = getEntitiesFromTags(...
-        entityField.cell,obj.mesh,entityField.cell,tags);
+        entityField.cell,obj.grid,entityField.cell,tags);
     end
 
     function location = getFieldLocation(obj,varId)

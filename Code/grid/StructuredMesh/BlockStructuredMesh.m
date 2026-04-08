@@ -97,7 +97,7 @@ classdef BlockStructuredMesh < handle
 
     end
 
-    function mesh = processGeometry(obj)
+    function grid = processGeometry(obj)
       % build a GReS Mesh() based on block structured grid
       % loop over leaves and process adjacency
       % mark each face of the leaves as conforming, master, slave
@@ -270,23 +270,23 @@ classdef BlockStructuredMesh < handle
 
 
       % populate Mesh object
-      mesh = Mesh();
-      mesh.coordinates = coordinates;
-      mesh.nNodes = size(coordinates,1);
-      mesh.cells = cells;
-      mesh.nCells = size(cells,1);
-      mesh.cellTag = ones(mesh.nCells,1);
-      mesh.nSurfaces = length(surfaceTag);
-      mesh.surfaceTag = surfaceTag;
-      mesh.surfaces = surfaces;
-      mesh.nCellTag = max(mesh.cellTag);
-      mesh.nSurfaceTag = max(mesh.surfaceTag);
-      mesh.cellVTKType = 12*ones(mesh.nCells,1);
-      mesh.surfaceVTKType = 9*ones(mesh.nSurfaces,1);
-      mesh.cellNumVerts = 8*ones(mesh.nCells,1);
-      mesh.surfaceNumVerts = 4*ones(mesh.nSurfaces,1);
-      mesh.nDim = 3;
-      mesh.meshType = "Unstructured";
+      grid = Grid();
+      grid.coordinates = coordinates;
+      grid.nNodes = size(coordinates,1);
+      grid.cells.connectivity = cells;
+      grid.cells.num = size(cells,1);
+      grid.cells.tag = ones(grid.cells.num,1);
+      grid.surfaces.num = length(surfaceTag);
+      grid.surfaces.tag = surfaceTag;
+      grid.surfaces.connectivity = surfaces;
+      grid.cells.nCellTag = max(grid.cells.tag);
+      grid.surfaces.nSurfaceTag = max(grid.surfaces.tag);
+      grid.cells.VTKType = 12*ones(grid.cells.num,1);
+      grid.surfaces.VTKType = 9*ones(grid.surfaces.num,1);
+      grid.cells.numVerts = 8*ones(grid.cells.num,1);
+      grid.surfaces.numVerts = 4*ones(grid.surfaces.num,1);
+      grid.nDim = 3;
+      grid.setStructured();
 
     end
 

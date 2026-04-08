@@ -73,7 +73,7 @@ grid.nNodes = size(grid.coordinates, 1);
 % -------------------------------------------------
 % 3D CELL DATA
 % -------------------------------------------------
-if any(~ismember(elems(:,1), grid.vtkType))
+if any(~ismember(elems(:,1), [VTKType.types2D,VTKType.types3D]))
   error(['Unsupported  elements in the mesh.\n', ...
     'Supported types: 3-node triangles (VTKType = 5), ', ...
     '4-node quadrilaterals (VTKType = 9).',...
@@ -83,7 +83,7 @@ if any(~ismember(elems(:,1), grid.vtkType))
     '27-node hexahedra (VTKType = 29).']);
 end
 
-ID = ismember(elems(:,1), grid.vtkType(:,2));
+ID = ismember(elems(:,1), VTKType.types3D);
 grid.cells.numVerts  = elems(ID, 3);
 nVerts            = max(grid.cells.numVerts);
 grid.cells.connectivity = Grid.makeConnectivity(elems(ID, 4:nVerts+3));
@@ -98,7 +98,7 @@ end
 % 2D SURFACE DATA - tagged boundary surfaces (for bc and grid coupling)
 % -------------------------------------------------
 
-ID = ismember(elems(:,1), grid.vtkType(:,1));
+ID = ismember(elems(:,1), VTKType.types2D);
 grid.surfaces.numVerts = elems(ID, 3);
 nVerts = max(grid.surfaces.numVerts);
 grid.surfaces.connectivity = Grid.makeConnectivity(elems(ID, 4:nVerts+3));

@@ -44,32 +44,32 @@ classdef Hexahedron < FiniteElementType
 
   methods (Access = public)
 
-    function [outVar1,outVar2] = getDerBasisFAndDet(obj,el,flOut)   % mat,dJWeighed
-      %       findJacAndDet(obj,el);  % OUTPUT: J and obj.detJ
-      % Find the Jacobian matrix of the isoparametric map and its determinant
-      %
-      % Possible ways of calling this function are:
-      %    1) [mat,dJWeighed] = getDerBasisFAndDet(obj,el,1)
-      %    2) mat = getDerBasisFAndDet(obj,el,2)
-      %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
-
-      nodes = obj.grid.getCellNodes(el);
-      coords = obj.grid.coordinates(nodes,:);
-      [N, dJw] = mxGetDerBasisAndDet(obj.Jref,coords,obj.GaussPts.weight);
-
-      switch flOut
-        case 1
-          outVar1 = N;
-          outVar2 = dJw';
-        case 2
-          outVar1 = N;
-        case 3
-          outVar1 = dJw';
-      end
-      if flOut == 1 || flOut == 3
-        obj.detJ = (dJw./obj.GaussPts.weight)';
-      end
-    end
+    % function [outVar1,outVar2] = getDerBasisFAndDet(obj,el,flOut)   % mat,dJWeighed
+    %   %       findJacAndDet(obj,el);  % OUTPUT: J and obj.detJ
+    %   % Find the Jacobian matrix of the isoparametric map and its determinant
+    %   %
+    %   % Possible ways of calling this function are:
+    %   %    1) [mat,dJWeighed] = getDerBasisFAndDet(obj,el,1)
+    %   %    2) mat = getDerBasisFAndDet(obj,el,2)
+    %   %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
+    % 
+    %   nodes = obj.grid.getCellNodes(el);
+    %   coords = obj.grid.coordinates(nodes,:);
+    %   [N, dJw] = mxGetDerBasisAndDet(obj.Jref,coords,obj.GaussPts.weight);
+    % 
+    %   switch flOut
+    %     case 1
+    %       outVar1 = N;
+    %       outVar2 = dJw';
+    %     case 2
+    %       outVar1 = N;
+    %     case 3
+    %       outVar1 = dJw';
+    %   end
+    %   if flOut == 1 || flOut == 3
+    %     obj.detJ = (dJw./obj.GaussPts.weight)';
+    %   end
+    % end
 
     function [outVar1,outVar2] = getDerBubbleBasisFAndDet(obj,el,flOut)   % mat,dJWeighed
       %       findJacAndDet(obj,el);  % OUTPUT: J and obj.detJ
@@ -126,15 +126,20 @@ classdef Hexahedron < FiniteElementType
           return
         end
 
-        idHexa = find(obj.grid.cells.VTKType == obj.vtkType);
+        idHexa = obj.grid.getCellsByVTKId(obj.vtkType);
       end
+
+      topol = obj.grid.getCellNodes(idHexa);
 
       vol = zeros(length(idHexa),1);
       cellCentroid = zeros(length(idHexa),3);
       i = 0;
+
       for el = idHexa'
+        nodes = topol(el,:);
+        coords = obj.grid.coordinates(nodes,:);
         i = i + 1;
-        dJWeighed = getDerBasisFAndDet(obj,el,3);
+        [~,dJWeighed] = getDerBasisFAndDet(obj,coords);
         vol(i) = sum(dJWeighed);
         assert(vol(i)>0,'Volume less than 0 for element %i',el);
         gPCoordinates = getGPointsLocation(obj,el);
@@ -142,9 +147,13 @@ classdef Hexahedron < FiniteElementType
       end
     end
 
-    function nodeVol = getNodeInfluence(obj,el)
+    function nodeVol = getNodeInfluence(obj,in)
       % return a nNodex1 array of influence volumes
-      dJWeighed = obj.getDerBasisFAndDet(el,3);
+      if size(in,2)==1
+        nodes = obj.grid.getCellNodes(in);
+        in = obj.grid.coordinates(nodes,:);
+      end
+      [~,dJWeighed] = obj.getDerBasisFAndDet(in);
       nodeVol = obj.Nref'*dJWeighed';
     end
 

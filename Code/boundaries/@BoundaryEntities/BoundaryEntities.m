@@ -112,7 +112,7 @@ classdef BoundaryEntities < handle
           continue
         end
 
-        [inflMap,targEnts] = getIncidenceMap(targetField,grid,srcField,srcID);
+        [inflMap,targEnts] = getIncidenceMap(entityField(targetField),grid,srcField,srcID);
 
         obj.nTargetEnts(i) = numel(targEnts);
         obj.targetEnts = [obj.targetEnts; targEnts];
@@ -175,9 +175,9 @@ classdef BoundaryEntities < handle
         case "node"
           pos = mesh.coordinates(ents,:);
         case "surface"
-          pos = mesh.surfaceCentroid(ents,:);
+          pos = mesh.surfaces.center(ents,:);
         case "cell"
-          pos = mesh.cellCentroid(ents,:);
+          pos = mesh.cells.center(ents,:);
         otherwise
           error("Unrecognized 'targetEntity' for boundary condition '%s':\n" + ...
             "Accepted fields are: 'node','surface','cell','volumeforce'",obj.name)

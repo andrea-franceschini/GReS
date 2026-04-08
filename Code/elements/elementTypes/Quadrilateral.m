@@ -48,7 +48,8 @@ classdef Quadrilateral < FiniteElementType
       else
         if isscalar(in)
           % 3D setting
-          coord = FEM.getElementCoords(obj,in);
+          n = obj.grid.getSurfNodes(in);
+          coord = obj.grid.coordinates(n,:);
         elseif size(in,2)==3 % 3D list of coordinates in input
           coord = in;
         end
@@ -151,7 +152,7 @@ classdef Quadrilateral < FiniteElementType
       findLocBasisF(obj);
       findLocDerBasisF(obj);
       findLocBubbleBasisF(obj);
-      findLocDerBubbleBasisF(obj);
+      %findLocDerBubbleBasisF(obj);
     end
 
     function findLocDerBasisF(obj,varargin)

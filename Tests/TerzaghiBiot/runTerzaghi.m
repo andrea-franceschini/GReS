@@ -26,14 +26,14 @@ mat = Materials(fullfile(scriptDir,input_dir,"materials.xml"));
 
 %% ------------------------------ Set up the Domain -----------------------
 % Create the Mesh object
-topology = Grid();
+grid = Grid();
 
 % Import mesh data into the Mesh object
 MeshFile = "Column_hexa.msh";
-topology.importMesh(fullfile(scriptDir,input_dir,"Mesh",MeshFile));
+grid.importMesh(fullfile(scriptDir,input_dir,"Mesh",MeshFile));
 
 % Creating boundaries conditions.
-bound = Boundaries(topology,fullfile(scriptDir,input_dir,"boundaries.xml"));
+bound = Boundaries(grid,fullfile(scriptDir,input_dir,"boundaries.xml"));
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility for the solution
@@ -43,7 +43,6 @@ printUtils = OutState('outputFile',"Output/results",'printTimes',[5,15,30]);
 domain = Discretizer('Boundaries',bound,...
                      'Materials',mat,...
                      'Grid',grid);
-
 domain.addPhysicsSolver("BiotFullyCoupled");
 
 % In this version of the code, the user can assign initial conditions only
