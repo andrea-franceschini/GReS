@@ -205,6 +205,14 @@ classdef Sedimentation < PhysicsSolver
 
         switch lower(bcId.type)
           case {'dirichlet'}
+
+            % [dx,dy,~] = obj.grid.getCellsDims(obj,dofs);
+            % obj.halfTrans(:,3)= (dx.*dy)./(dz/2).*condCell(dofs,3);
+
+            sedm=obj.domain.state.data.sedimentAcc;
+            colSed = sum(sedm,2);
+
+
             mu = obj.domain.materials.getFluid().getSpecificWeight();
             dirJ = 1/mu*obj.halfTrans(dofs,axis);
             potential = p(dofs) - bcId.value;
@@ -712,6 +720,7 @@ classdef Sedimentation < PhysicsSolver
       data.stress = sNew.data.stress*fac+sOld.data.stress*(1-fac);
       data.strain = sNew.data.strain*fac+sOld.data.strain*(1-fac);
       data.void = sNew.data.voidrate*fac+sOld.data.voidrate*(1-fac);
+
       data.cond = obj.getCellsProp('conductivity');
       data.comp = comp;
       data.head = zCoordCM+data.pres/gamma;

@@ -154,13 +154,14 @@ classdef EvolvingGrid < SolutionScheme
         return
       end
 
-      print = false;
-      newcells = obj.physics.domain.state.data.newcells~=0;
-      printByGrow = and(obj.printGrow,newcells);
+      % print = false;
+      % newcells = obj.physics.domain.state.data.newcells~=0;
+      % % printByGrow = and(obj.printGrow,newcells);
+      printByGrow = true;
 
       % if and(~print,printByGrow)
         if printByGrow
-          fac = 0;  % 0=stateOld, 1=stateNew - Because the mesh update
+          fac = 1;  % 0=stateOld, 1=stateNew - Because the mesh update
           % happens after the print, to plot after the grow, i plot the
           % oldstate in the next time step.
 
