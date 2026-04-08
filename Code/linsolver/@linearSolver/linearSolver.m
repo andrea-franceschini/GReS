@@ -99,6 +99,9 @@ classdef linearSolver < handle
 
       % Params struct
       params
+
+      precL
+      sizeDiff
    end
 
    methods (Access = public)
