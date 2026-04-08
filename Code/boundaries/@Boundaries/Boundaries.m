@@ -35,10 +35,8 @@ classdef Boundaries < handle
       % % check grid
       % assert()
 
-      if strcmp(obj.grid.topology.meshType,"Unstructured")
-        % Calling the function to read input data from file
-        obj.addBCs(varargin{2:end});
-      end
+      % Calling the function to read input data from file
+      obj.addBCs(varargin{2:end});
     end
 
 

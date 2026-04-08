@@ -64,10 +64,10 @@ classdef Tetrahedron < FiniteElementType
         % fix element orientation if some tetrahedra have wrong numbering
 
         if nargin == 1
-          idTetra = find(obj.grid.cells.VTKtype == obj.vtkType);
+          idTetra = find(obj.grid.cells.VTKType == obj.vtkType);
         end
 
-        tetraNodes = obj.getCellNodes(idTetra);  % [nTetra × 4]
+        tetraNodes = obj.grid.getCellNodes(idTetra);  % [nTetra × 4]
 
         X = obj.grid.coordinates(tetraNodes(:,1),:); % [nTetra × 3]
         Y = obj.grid.coordinates(tetraNodes(:,2),:);
@@ -133,13 +133,13 @@ classdef Tetrahedron < FiniteElementType
         -1 0 0 1];
       obj.Jref = repmat(obj.Jref,1,1,obj.GaussPts.nNode);
     end
-
-    function setElement(obj)
-      obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
-      obj.detJ = zeros(1,obj.GaussPts.nNode);
-      findLocBasisF(obj);
-      findLocDerBasisF(obj);
-      FEM.setStrainMatrix(obj)
-    end
+    % 
+    % function setElement(obj)
+    %   obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
+    %   obj.detJ = zeros(1,obj.GaussPts.nNode);
+    %   findLocBasisF(obj);
+    %   findLocDerBasisF(obj);
+    %   FEM.setStrainMatrix(obj)
+    % end
   end
 end

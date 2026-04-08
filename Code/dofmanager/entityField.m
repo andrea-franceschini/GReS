@@ -12,7 +12,7 @@ classdef entityField
 
   methods
 
-    function varargout = getIncidenceID(target,mesh,source,sourceList)
+    function varargout = getIncidenceID(target,grid,source,sourceList)
       % given entities of type 'source', return the connected entities of
       % type 'target'.
       % sourceList - optional input with id of source entities
@@ -29,11 +29,11 @@ classdef entityField
 
       switch source
         case entityField.node
-          [list,ptr] = getIncidenceIDFromNode(target,mesh,sourceList);
+          [list,ptr] = getIncidenceIDFromNode(target,grid,sourceList);
         case entityField.surface
-          [list,ptr] = getIncidenceIDFromSurface(target,mesh,sourceList);
+          [list,ptr] = getIncidenceIDFromSurface(target,grid,sourceList);
         case entityField.cell
-          [list,ptr] = getIncidenceIDFromCell(target,mesh,sourceList);
+          [list,ptr] = getIncidenceIDFromCell(target,grid,sourceList);
       end
 
       varargout{1} = list;
@@ -43,21 +43,21 @@ classdef entityField
       end
     end
 
-    function ents = getEntitiesFromTags(target,mesh,source,tags)
+    function ents = getEntitiesFromTags(target,grid,source,tags)
       switch source
         case entityField.node
           error("Tag entity retrieval is not valid for source entity of type '%s'",source)
         case entityField.surface
-          list = find(ismember(mesh.surfaceTag,tags));
+          list = find(ismember(grid.surfaces.tag,tags));
         case entityField.cell
-          list = find(ismember(mesh.cellTag,tags));
+          list = find(ismember(grid.cells.tag,tags));
       end
 
-      ents = getEntitiesList(target,mesh,source,list);
+      ents = getEntitiesList(target,grid,source,list);
 
     end
 
-    function ents = getEntitiesList(target,mesh,varargin)
+    function ents = getEntitiesList(target,grid,varargin)
       if nargin < 3
         source = target;
         list = [];
@@ -69,20 +69,20 @@ classdef entityField
         list = varargin{2};
       end
 
-      ents = getIncidenceID(target,mesh,source,list);
+      ents = getIncidenceID(target,grid,source,list);
       ents = unique(ents);
     end
 
-    function nEnts = getNumberOfEntities(target,mesh,varargin)
-      ents = getEntitiesList(target,mesh,varargin{:});
+    function nEnts = getNumberOfEntities(target,grid,varargin)
+      ents = getEntitiesList(target,grid,varargin{:});
       nEnts = numel(ents);
     end
 
 
-    function [list,ptr] = getIncidenceIDFromNode(target,mesh,sourceList)
+    function [list,ptr] = getIncidenceIDFromNode(target,grid,sourceList)
 
       if isempty(sourceList)
-        sourceList = 1:mesh.nNodes;
+        sourceList = 1:grid.nNodes;
       end
 
       switch target
@@ -95,16 +95,16 @@ classdef entityField
 
     end
 
-    function [list,ptr] = getIncidenceIDFromSurface(target,mesh,sourceList)
+    function [list,ptr] = getIncidenceIDFromSurface(target,grid,sourceList)
 
       if isempty(sourceList)
-        sourceList = 1:mesh.nSurfaces;
+        sourceList = 1:grid.surfaces.num;
       end
 
       switch target
         case entityField.node
-          ptr = [0;cumsum(mesh.surfaceNumVerts(sourceList))];
-          tmp = mesh.surfaces(sourceList,:);
+          ptr = [0;cumsum(grid.surfaces.numVerts(sourceList))];
+          tmp = grid.getSurfNodes(sourceList);
           list = reshape(tmp',[],1);
         case entityField.surface
           list = sourceList;
@@ -115,16 +115,16 @@ classdef entityField
 
     end
 
-    function [list,ptr] = getIncidenceIDFromCell(target,mesh,sourceList)
+    function [list,ptr] = getIncidenceIDFromCell(target,grid,sourceList)
 
       if isempty(sourceList)
-        sourceList = 1:mesh.nCells;
+        sourceList = 1:grid.cells.num;
       end
 
       switch target
         case entityField.node
-          ptr = [0; cumsum(mesh.cellNumVerts(sourceList))];
-          tmp = mesh.cells(sourceList,:);
+          ptr = [0; cumsum(grid.cells.numVerts(sourceList))];
+          tmp = grid.getCellNodes(sourceList,:);
           list = reshape(tmp',[],1);
         case entityField.cell
           list = sourceList;
@@ -170,7 +170,7 @@ classdef entityField
     function [map,targEnts] = getIncidenceMapFromNode(target,grid,srcList)
 
       if isempty(srcList)
-        srcList = 1:grid.topology.nNodes;
+        srcList = 1:grid.nNodes;
       end
 
       switch target
@@ -188,12 +188,14 @@ classdef entityField
     function [map,targEnts] = getIncidenceMapFromSurface(target,grid,srcList)
 
       if isempty(srcList)
-        srcList = 1:grid.topology.nSurfaces;
+        srcList = 1:grid.surfaces.num;
       end
+
+      % need to update logic for node/volume influence
 
       switch target
         case entityField.node
-          [nodeID,ptr] = getIncidenceIDFromSurface(target,grid.topology,srcList);
+          [nodeID,ptr] = getIncidenceIDFromSurface(target,grid,srcList);
           [targEnts,~,n] = unique(nodeID);
           m = assembler(numel(nodeID),numel(targEnts),numel(srcList));
           k = 0;
@@ -222,12 +224,12 @@ classdef entityField
     function [map,targEnts] = getIncidenceMapFromCell(target,grid,srcList)
 
       if isempty(srcList)
-        srcList = 1:grid.topology.nCells;
+        srcList = 1:grid.cells.num;
       end
 
       switch target
         case entityField.node
-          [nodeID,ptr] = getIncidenceIDFromCell(target,grid.topology,srcList);
+          [nodeID,ptr] = getIncidenceIDFromCell(target,grid,srcList);
           [targEnts,~,n] = unique(nodeID);
           m = assembler(numel(nodeID),numel(targEnts),numel(srcList));
           k = 0;

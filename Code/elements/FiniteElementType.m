@@ -93,9 +93,9 @@ classdef (Abstract) FiniteElementType < handle
       switch vtkId
         case 5
           elem = Triangle(varargin{:});
-        case 9
-          elem = Tetrahedron(varargin{:});
         case 10
+          elem = Tetrahedron(varargin{:});
+        case 9
           elem = Quadrilateral(varargin{:});
         case 12
           elem = Hexahedron(varargin{:});

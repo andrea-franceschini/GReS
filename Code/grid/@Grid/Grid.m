@@ -14,7 +14,7 @@ classdef Grid < handle
    
   end
 
-  properties (GetAccess = public, SetAccess = private)
+  properties (GetAccess = private, SetAccess = private)
 
     %  1  VTK_VERTEX
     %  2  VTK_POLY_VERTEX
@@ -40,7 +40,7 @@ classdef Grid < handle
     % edgeVTK = []
 
     isMixed = false             % flag for presence of multiple cell shapes
-    isStructured = false        % flag for structured mesh
+    structFlag = false        % flag for structured mesh
   end
 
   methods (Access = public)
@@ -196,7 +196,12 @@ classdef Grid < handle
 
 
     function setStructured(obj)
-      obj.isStructured = true;
+      obj.structFlag = true;
+    end
+
+
+    function out = isStructured(obj)
+      out = obj.structFlag;
     end
 
 

@@ -143,6 +143,7 @@ classdef Hexahedron < FiniteElementType
     end
 
     function nodeVol = getNodeInfluence(obj,el)
+      % return a nNodex1 array of influence volumes
       dJWeighed = obj.getDerBasisFAndDet(el,3);
       nodeVol = obj.Nref'*dJWeighed';
     end

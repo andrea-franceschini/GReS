@@ -26,25 +26,14 @@ mat = Materials(fullfile(scriptDir,input_dir,"materials.xml"));
 
 %% ------------------------------ Set up the Domain -----------------------
 % Create the Mesh object
-topology = Mesh();
+topology = Grid();
 
 % Import mesh data into the Mesh object
 MeshFile = "Column_hexa.msh";
 topology.importMesh(fullfile(scriptDir,input_dir,"Mesh",MeshFile));
 
-% Create an object of the "Elements" class and process the element properties
-gaussOrder = 2;
-elems = Elements(topology,gaussOrder);
-
-% Create an object of the "Faces" class and process the face properties
-faces = Faces(topology);
-
-% Wrap Mesh, Elements and Faces objects in a structure
-grid = struct('topology',topology,'cells',elems,'faces',faces);
-
-
 % Creating boundaries conditions.
-bound = Boundaries(grid,fullfile(scriptDir,input_dir,"boundaries.xml"));
+bound = Boundaries(topology,fullfile(scriptDir,input_dir,"boundaries.xml"));
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility for the solution

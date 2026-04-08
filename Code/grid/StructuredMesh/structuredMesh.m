@@ -111,6 +111,7 @@ nC = size(topol,1);
 grid.cells.connectivity = topol;
 grid.cells.VTKType = 12*ones(nC,1);
 grid.cells.tag = ones(nC,1);
+grid.cells.numVerts = 8*ones(nC,1);
 
 
 nS = size(surf,1);
