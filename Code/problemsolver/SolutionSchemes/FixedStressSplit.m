@@ -229,4 +229,3 @@ classdef FixedStressSplit < SolutionScheme
     end
   end
 end
-

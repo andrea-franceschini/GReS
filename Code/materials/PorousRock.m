@@ -7,10 +7,9 @@ classdef PorousRock < handle
         % (upper triangular part ordered column-wise)
         poro                 % Porosity
         biot                 % Biot coefficient
-        %     alpha                % Rock compressibility (can be replaced by the oedometer test compressibility Cm)
+        % alpha                % Rock compressibility (can be replaced by the oedometer test compressibility Cm)
         gamma;             % Fluid specific weight
         % specGrav             % Specific gravity of rock
-        % Swr                  % Residual saturation of water
         Sr=0.;             % Residual saturation
         Ss=1.;             % Maximum saturation        
     end
@@ -42,7 +41,7 @@ classdef PorousRock < handle
         end
 
         function Sr = getResidualSaturation(obj)
-          %GETSS Function to get the residual saturation of the fluid.
+          %GETSR Function to get the residual saturation of the fluid.
           Sr = obj.Sr;
         end
 
@@ -51,8 +50,16 @@ classdef PorousRock < handle
         % end
 
         function gamma = getSpecificWeight(obj)
-            gamma = obj.gamma;
+          gamma = obj.gamma;
         end
+
+        % function gamma = getDrySpecificWeight(obj)
+        %   gamma = obj.gamma;
+        % end
+        % 
+        % function gamma = getSaturatedSpecificWeight(obj)
+        %   gamma = obj.gamma;
+        % end
 
 
         % Function to get material porosity
@@ -107,7 +114,7 @@ classdef PorousRock < handle
 
         default = struct('porosity',0.3,...
                          'biotCoefficient',1.0,...
-                         'permeability',[],...
+                         'permeability',1e-12,...
                          'specificWeight',21.0,...
                          "residualSaturation",0.0,...
                          "maximumSaturation",1.0,...
@@ -139,7 +146,7 @@ classdef PorousRock < handle
         if any(eigv < length(eigv)*eps(max(eigv)))
           % Tolerance chosen following the hint in:
           % https://it.mathworks.com/help/matlab/math/determine-whether-matrix-is-positive-definite.html#DetermineWhetherMatrixIsSPDExample-3
-          error('The permeability matrix for material %s is not positive definite',matFileName);
+          gresLog().error('The values passed for permeability matrix is not positive definite');
         end
 
         % read capillaery curves

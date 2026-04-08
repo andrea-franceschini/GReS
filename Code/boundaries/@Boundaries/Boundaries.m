@@ -104,10 +104,12 @@ classdef Boundaries < handle
 
       % map values from source entity to target entity
       vals = M * valSrc;
+
     end
 
     function vals = getSourceVals(obj,bcId,t)
-        vals = obj.getData(bcId).data.getValues(t);
+      bc = obj.getData(bcId);
+      vals = bc.data.scale * bc.data.getValues(t);
     end
 
 
@@ -193,15 +195,15 @@ classdef Boundaries < handle
       end
     end
 
-    function computeTargetEntities(obj,bcId,target)
-      % finalize the boundary conditions specifying the entity where the bc
-      % is applied
+    function initialize(obj,bcId,target)
 
       src = obj.getField(bcId);
       bc = obj.getData(bcId);
+      bc.data.reset();
       bc.data.computeTargetEntities(obj.grid,target,src);
 
     end
+
 
 
     function nEnts = getNumbSourceEntities(obj,identifier)
@@ -235,6 +237,14 @@ classdef Boundaries < handle
 
     end
 
+
+    function scaleBC(obj,identifier,scalingFactor)
+
+      bc = obj.getData(identifier);
+      bc.data.scale = scalingFactor;
+
+    end
+
     function setBCList(obj)
       % set correct order of boundary conditions. Dirichlet last
       bcNames = string(obj.db.keys);
@@ -243,12 +253,19 @@ classdef Boundaries < handle
         bcId = bcNames(i);
         bcTypeList(i) = string(obj.getType(bcId));
       end
-      idxDir  = strcmp(bcTypeList, 'Dirichlet');
-      bcOrd = [find(~idxDir), find(idxDir)];
+      idxDir  = strcmpi(bcTypeList, 'dirichlet');
+      bcOrd = [find(~idxDir); find(idxDir)];
       bcNames = obj.db.keys;
       obj.bcList = string(bcNames(bcOrd));
     end
-
+    % 
+    % function prepareBoundaries(obj)
+    %   % restore the boundary object to start a new simulation
+    % 
+    % 
+    % 
+    % end
+    % 
 
 
     function bcList = getBCList(obj)

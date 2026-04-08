@@ -13,6 +13,8 @@ classdef (Abstract) SolutionScheme < handle
     dt                  % current time step size
     nVars               % total number of inner variable fields in the model
     attemptedReset      % flag for attempting a configuration reset
+    iniState            % initial state of the simulation for solver reset
+    isFirstRun = true   % flag if the simulation is first ever or first after a reset          
   end
 
 
@@ -74,9 +76,7 @@ classdef (Abstract) SolutionScheme < handle
 
       end
 
-      if ~isempty(obj.output)
-        obj.output.finalize();
-      end
+      obj.finalize;
 
       gresLog().log(-1,"Simulation completed successfully \n")
 
@@ -95,40 +95,22 @@ classdef (Abstract) SolutionScheme < handle
 
     function setSolutionScheme(obj,varargin)
 
+      default = struct('simulationparameters',SimulationParameters.empty,...
+                       'output',missing,...
+                       'domains',Discretizer.empty,...
+                       'interface',missing);
 
-      % Check that we have an even number of inputs
-      if mod(length(varargin), 2) ~= 0
-        error('Arguments must come in key-value pairs.');
+      params = readInput(default,varargin{:});
+
+      obj.simparams = params.simulationparameters;
+      obj.domains = params.domains;
+
+      if ~ismissing(params.interface)
+        obj.interfaces = params.interface;
       end
 
-      % Loop through the key-value pairs
-      for k = 1:2:length(varargin)
-        key = varargin{k};
-        value = varargin{k+1};
-
-        if isempty(value)
-          continue
-        end
-
-        if ~ischar(key) && ~isstring(key)
-          error('Keys must be strings');
-        end
-
-        switch lower(key)
-          % case 'simulationparameters'
-          %   assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
-          %   obj.simparams = value;
-          case 'simulationparameters'
-            obj.simparams = value;
-          case 'output'
-            obj.output = value;
-          case {'domain','domains'}
-            obj.domains = value;
-          case {'interfaces','interface'}
-            obj.interfaces = value;
-          otherwise
-            error('Unknown input key %s for SolutionScheme \n', key);
-        end
+      if ~ismissing(params.output)
+        obj.output = params.output;
       end
 
       obj.nDom = numel(obj.domains);
@@ -139,33 +121,72 @@ classdef (Abstract) SolutionScheme < handle
       assert(obj.nDom > 0,"Input 'domains'" + ...
         " is required for SolutionScheme")
 
+    end
+
+
+    function initialize(obj)
+
+      % restore the solution scheme object at its initial state
+      if ~obj.isFirstRun
+        obj.reset();
+      end
+
       obj.nVars = 0;
 
+      % store initial state and setup simulation
+
       for i = 1:obj.nDom
-        obj.domains(i).domainId = i;
-        obj.domains(i).simparams = obj.simparams;
-        obj.domains(i).outstate = obj.output;
-        obj.domains(i).stateOld = copy(obj.domains(i).getState());
-        obj.nVars = obj.nVars + obj.domains(i).dofm.getNumberOfVariables();
+        dom = obj.domains(i);
+        obj.iniState.domains(i) = copy(dom.state);
+        dom.stateOld = copy(dom.state);
+        dom.outstate = obj.output;
+        dom.simparams = obj.simparams;
+        dom.domainId = i;
+        obj.nVars = obj.nVars + dom.dofm.getNumberOfVariables();
+        initialize(dom);
       end
 
       for i = 1:obj.nInterf
-        obj.interfaces{i}.interfId = i;
-        obj.interfaces{i}.outstate = obj.output;
+        interf = obj.interfaces{i};
+        obj.iniState.interfaces{i} = interf.state;
+        interf.interfId = i;
+        interf.outstate = obj.output;
+        initialize(interf)
       end
+
+      obj.isFirstRun = false;
 
       obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration || obj.nInterf == 0;
 
     end
 
-    function initialize(obj)
+
+    function reset(obj)
+
+      % reset the simulation  at its initial state
 
       for i = 1:obj.nDom
-        initialize(obj.domains(i));
+        obj.domains(i).state = copy(obj.iniState.domains(i));
       end
 
       for i = 1:obj.nInterf
-        initialize(obj.interfaces{i})
+        obj.interfaces{i}.state = copy(obj.iniState.interfaces{i});
+      end
+
+      if ~isempty(obj.output)
+        obj.output.reset();
+      end
+
+      obj.isFirstRun = false;
+
+    end
+
+    function finalize(obj)
+
+      if ~isempty(obj.output)
+        obj.output.savePvd();
+
+        obj.output.saveHistory();
       end
     end
 
@@ -333,6 +354,8 @@ classdef (Abstract) SolutionScheme < handle
         timeStepSetup(obj.interfaces{i});
       end
 
+
+
     end
 
     function printState(obj)
@@ -362,52 +385,11 @@ classdef (Abstract) SolutionScheme < handle
             fac = 1;
           end
 
-          % print vtk
-          % create new vtm file
+          % write results to vtk file
           obj.printVTK(fac,outTime,obj.output.timeID);
-          % if obj.output.writeVtk
-          % 
-          %   % set folders
-          %   obj.output.prepareOutputFolders();
-          % 
-          %   obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');  
-          %   toc = obj.output.vtkFile.getDocumentElement;
-          %   toc.setAttribute('type', 'vtkMultiBlockDataSet');
-          %   toc.setAttribute('version', '1.0');
-          %   blocks = obj.output.vtkFile.createElement('vtkMultiBlockDataSet');
-          % 
-          %   % append blocks looping into domains and interfaces
-          %   for i = 1:obj.nDom
-          %     vtmBlock = obj.domains(i).writeVTK(fac,outTime);
-          %     if ~isempty(vtmBlock)
-          %       blocks.appendChild(vtmBlock);
-          %     end
-          %   end
-          %   %
-          %   for i = 1:obj.nInterf
-          %     vtmBlock = obj.interfaces{i}.writeVTKfile(fac,outTime);
-          %     if ~isempty(vtmBlock)
-          %       blocks.appendChild(vtmBlock);
-          %     end
-          %   end
-          % 
-          %   toc.appendChild(blocks);
-          %   obj.output.writeVTMFile();
-          % 
-          % end
 
           % write results to MAT-file
           obj.printMAT(fac,obj.output.timeID);
-          % if obj.output.writeSolution
-          % 
-          %   for i = 1:obj.nDom
-          %     obj.domains(i).writeSolution(fac,obj.output.timeID);
-          %   end
-          % 
-          %   for i = 1:obj.nInterf
-          %     obj.interfaces{i}.writeSolution(fac,obj.output.timeID);
-          %   end
-          % end
 
           % move to next print time
           obj.output.timeID = obj.output.timeID + 1;
@@ -456,9 +438,9 @@ classdef (Abstract) SolutionScheme < handle
       end
     end
 
-
     function printMAT(obj,fac,timeID)
-
+      % write results into an output structure
+      
       if obj.output.writeSolution
         for i = 1:obj.nDom
           obj.domains(i).writeSolution(fac,timeID);
@@ -469,7 +451,6 @@ classdef (Abstract) SolutionScheme < handle
         end
       end
     end
-
 
     function advanceState(obj)
 

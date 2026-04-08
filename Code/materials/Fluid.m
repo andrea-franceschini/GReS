@@ -40,8 +40,8 @@ classdef Fluid < handle
       function readMaterialParameters(obj,varargin)
 
         default = struct('specificWeight',0.0,...
-          'compressibility',0.0,...
-          'dynamicViscosity',[]);
+                         'compressibility',0.0,...
+                         'dynamicViscosity',1e-6); % viscosity of water in kPa*s
 
         params = readInput(default,varargin{:});
 
