@@ -205,7 +205,7 @@ classdef preconditioner < handle
       computeMCP(obj,A)
 
       % Function to treat the Dirichlet boundary conditions
-      treatDirBC(obj,A)
+      A = treatDirBC(obj,A,symMat)
    end
 
 end
