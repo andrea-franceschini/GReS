@@ -154,7 +154,7 @@ classdef testBoundaries < matlab.unittest.TestCase
       %verifyEqual(testCase,all(e3==load('entityList')),true,"AbsTol",tol)
       verifyEqual(testCase,all(v3==5),true,"AbsTol",tol)
       % bc5
-      verifyEqual(testCase,e5([1;10;19]),int32([1;2;3]),"AbsTol",tol)
+      verifyEqual(testCase,e5([1;10;19]),[1;2;3],"AbsTol",tol)
       verifyEqual(testCase,max(v5),0,"AbsTol",tol)
       % bc6
       verifyEqual(testCase,mean(e6),1.016666666666667e+02,"AbsTol",tol)

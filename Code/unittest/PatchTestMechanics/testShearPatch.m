@@ -7,6 +7,8 @@ classdef testShearPatch < matlab.unittest.TestCase
   methods(TestClassSetup)
     % Shared setup for the entire test class
     function setupOnce(testCase)
+      rmpath(genpath(fullfile(gres_root,...
+        "/Code/unittest/PatchTestMechanics/test")));
       testCase.pathToFile = fullfile(gres_root,...
         "/Code/unittest/PatchTestMechanics/shearPatch.xml");
     end
@@ -27,9 +29,9 @@ classdef testShearPatch < matlab.unittest.TestCase
       mat = Materials(input.Materials);
       bc = Boundaries(grid,input.BoundaryConditions);
       printUtils = OutState('printTimes',1,'outputFile',"test");
-      domain = Discretizer('Boundaries',bc,...
-                           'Materials',mat,...
-                           'Grid',grid);
+      domain = Discretizer('boundaries',bc,...
+                           'materials',mat,...
+                           'grid',grid);
       domain.addPhysicsSolvers(input.Solver);
       solver = NonLinearImplicit('simulationparameters',simparams,'domains',domain,'output',printUtils);
       solver.simulationLoop();
@@ -56,10 +58,7 @@ classdef testShearPatch < matlab.unittest.TestCase
         'RelativeTolerance',1.e-8,...
         'AbsoluteTolerance',1.e-9);
 
-      mesh = structuredMesh(1,1,1,[0 1],[0 1],[0 1]);
-      elems = Elements(mesh,2);
-      faces = Faces(mesh);
-      grid = struct('topology',mesh,'cells',elems,'faces',faces);
+      grid = structuredMesh(1,1,1,[0 1],[0 1],[0 1]);
       mat = Materials();
       mat.addSolid('name',"solid",'cellTags',1);
       mat.addConstitutiveLaw("solid","Elastic",'youngModulus',1e0,'poissonRatio',0.0);
@@ -97,9 +96,9 @@ classdef testShearPatch < matlab.unittest.TestCase
       bc.addBCEvent('top_disp','time',5.0,'value',5.0);
 
 
-      domain = Discretizer('Boundaries',bc,...
-        'Materials',mat,...
-        'Grid',grid);
+      domain = Discretizer('boundaries',bc,...
+                           'materials',mat,...
+                           'grid',grid);
       domain.addPhysicsSolver('Poromechanics');
       solver = NonLinearImplicit('simulationparameters',simparams,'domains',domain);
       solver.simulationLoop();

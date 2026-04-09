@@ -1,5 +1,7 @@
 function linkBoundSurf2TPFAFace(solver)
 
+% renumber 
+
 bcs = solver.domain.bcs;
 
 keys = bcs.db.keys;

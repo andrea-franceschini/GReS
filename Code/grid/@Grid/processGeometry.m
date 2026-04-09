@@ -47,6 +47,8 @@ grid.cells.num = size(grid.cells.connectivity,1);
 grid.surfaces.num = size(grid.surfaces.connectivity,1); 
 nc = grid.cells.num;
 ns = grid.surfaces.num;
+grid.cells.nTag = numel(unique(grid.cells.tag));
+grid.surfaces.nTag = numel(unique(grid.surfaces.tag));
 
 if grid.cells.num > 0
   grid.nDim = 3;

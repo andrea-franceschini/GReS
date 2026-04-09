@@ -24,26 +24,15 @@ function run(elemShape,flowSolver,scheme)
 
 switch elemShape
   case 'tetra'
-    ng = 1;
-    topology = Mesh();
-    topology.importMesh('Input/Mesh/Column_tetra.msh');
+    grid = Grid();
+    grid.importMesh('Input/Mesh/Column_tetra.msh');
   case 'hexa'
-    ng = 2;
-    topology = structuredMesh(1,1,10,[0 1],[0 1],[0 10]);
+    grid = structuredMesh(1,1,10,[0 1],[0 1],[0 10]);
 end
 
 simParam = SimulationParameters("Input/simParam.xml");
 mat = Materials('Input/materials.xml');
-elems = Elements(topology,ng);
 
-if strcmp(flowSolver,"FV")
-  solverIn = struct("SinglePhaseFlowFVTPFA",[]);
-    faces = Faces(topology);
-  grid = struct('topology',topology,'cells',elems,'faces',faces);
-else
-  solverIn = struct("SinglePhaseFlowFEM",[]);
-  grid = struct('topology',topology,'cells',elems);
-end
 
 printUtils = OutState('Input/output.xml');
 
@@ -55,6 +44,13 @@ domain = Discretizer('grid',grid,...
                      'materials',mat,...
                      'boundaries',bound);
 
+if strcmp(flowSolver,"FV")
+  solverIn = struct("SinglePhaseFlowFVTPFA",[]);
+else
+  solverIn = struct("SinglePhaseFlowFEM",[]);
+end
+
+
 switch scheme
   case 'FC'
     domain.addPhysicsSolver('BiotFullyCoupled',solverIn);
@@ -65,7 +61,7 @@ end
 
 % manually apply initial conditions
 state = domain.getState();
-applyTerzaghiIC(state,mat,topology,-10);
+applyTerzaghiIC(state,mat,grid,-10);
 
 switch scheme
   case 'FC'

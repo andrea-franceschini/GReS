@@ -164,8 +164,6 @@ classdef Triangle < FiniteElementType
     end
 
     function setElement(obj)
-      obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
-      obj.detJ = zeros(1,obj.GaussPts.nNode);
       findLocBasisF(obj);
       findLocDerBasisF(obj);
     end

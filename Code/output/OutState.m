@@ -67,11 +67,13 @@ classdef OutState < handle & matlab.mixin.Copyable
       % call mex vtk writer
       if ~all(isempty([cellData3D; pointData3D]))
         cells = grid.cells;
-        mxVTKWriter(outName, time, grid.coordinates, grid.getCellNodes(), cells.VTKType, ...
+        nodeList = grid.getFlatConnectivity("cells");
+        mxVTKWriter(outName, time, grid.coordinates, nodeList, cells.VTKType, ...
           cells.numVerts, pointData3D, cellData3D);
       elseif ~all(isempty([cellData2D; pointData2D]))
         surf = grid.surfaces;
-        mxVTKWriter(outName, time, grid.coordinates, grid.getSurfNodes(), surf.VTKType, ...
+        nodeList = grid.getFlatConnectivity("surfaces");
+        mxVTKWriter(outName, time, grid.coordinates, nodeList, surf.VTKType, ...
           surf.numVerts, pointData2D, cellData2D);
       end
 

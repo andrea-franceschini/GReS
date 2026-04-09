@@ -3,9 +3,9 @@ classdef (Abstract) FiniteElementType < handle
   properties (Abstract,Constant)
     centroid
     coordLoc
-    vtkType 
+    vtkType
     nNode
-    nFace 
+    nFace
     minGaussOrder
   end
 
@@ -41,14 +41,23 @@ classdef (Abstract) FiniteElementType < handle
   methods (Access = public)
 
     % Abstract class constructor
-    function obj = FiniteElementType(grid,varargin)
+    function obj = FiniteElementType(varargin)
+
+      k = 1;
 
       if nargin > 0
-        obj.grid = grid;
+        if isa(varargin{1},"Grid")
+          obj.grid = varargin{1};
+          k = 2;
+        end
       end
 
       default = struct('gaussOrder',obj.minGaussOrder);
-      g = readInput(default,varargin{:});
+      g = readInput(default,varargin{k:end});
+
+      if g.gaussOrder < 1
+        g.gaussOrder = obj.minGaussOrder;
+      end
       obj.GaussPts = Gauss(obj.vtkType,g.gaussOrder);
       obj.detJ = zeros(1,obj.GaussPts.nNode);
       obj.setStrainMatrixIndex();
@@ -67,6 +76,20 @@ classdef (Abstract) FiniteElementType < handle
 
       obj.detJ = (dJw./obj.GaussPts.weight)';
 
+    end
+
+    function B = getStrainMatrix(obj,gradN)
+      B = zeros(6,obj.nNode*obj.grid.nDim,obj.nNode);
+      B(obj.indB(:,2)) = gradN(obj.indB(:,1));
+    end
+
+
+    function g = getGauss(obj)
+      g = obj.GaussPts;
+    end
+
+    function nGP = getNumbGaussPts(obj)
+      nGP = obj.GaussPts.nNode;
     end
 
   end
@@ -113,5 +136,30 @@ classdef (Abstract) FiniteElementType < handle
       coords = elem.grid.coordinates(nodes,:);
     end
 
+
+
+    function totGP = getTotGPinGrid(grid,ord,elemList)
+      % return the total number of gauss points in the grid
+
+      % gOrd: order of gauss integration (assumed constant for each element
+      % type
+
+      totGP = 0;
+
+      for vtkId = grid.cells.vtkTypes
+
+        elem = FiniteElementType.create(vtkId,grid,ord);
+        ng = elem.getGauss.nNode;
+        c = grid.getCellsByVTKId(vtkId);
+
+        if nargin > 2
+          c = intersect(c,elemList);
+        end
+
+        totGP = totGP + ng*numel(c);
+      end
+    end
+
   end
+
 end

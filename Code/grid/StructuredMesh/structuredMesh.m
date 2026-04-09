@@ -116,8 +116,9 @@ grid.cells.numVerts = 8*ones(nC,1);
 
 nS = size(surf,1);
 grid.surfaces.connectivity = surf;
-grid.surfaces.tag = surfTag;
 grid.surfaces.VTKType = 9*ones(nS,1);
+grid.surfaces.tag = surfTag;
+grid.surfaces.numVerts = 4*ones(nS,1);
 
 % finalize geometry
 grid.setStructured;

@@ -29,7 +29,7 @@ cellConn = ArrayOfArrays(grid.cells.connectivity);
 nNPC = diff(ptr);
 
 xyz = coords(cellNodes,:);
-rowId = repelem((1:nC).', nNPC);
+rowId = repelem((1:nC).', nNPC, 1);
 
 roughCenters = zeros(nC, 3);
 roughCenters(:,1) = accumarray(rowId, xyz(:,1), [nC,1]) ./ nNPC;
@@ -42,7 +42,7 @@ cell2faces = ArrayOfArrays(grid.cells.cells2faces);
 nFPC = diff(ptr);
 
 % expand cells for each face
-rowId = repelem((1:nC).', nFPC);
+rowId = repelem((1:nC).', nFPC, 1);
 
 
 cf = grid.faces.center(c2f,:);           % face centroids

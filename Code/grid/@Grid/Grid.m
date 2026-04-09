@@ -209,11 +209,12 @@ classdef Grid < handle
     end
 
 
-    function [list,infl] = getNodeInfluence(obj,srcEnt,entId)
+    function [list,infl] = getNodeInfluence(obj,srcEnt,entId,fl)
 
       % return the nodal incidence of a subset of source entities
       % list is an array of array with numel(entId) subarrays
       % infl is the influence value for each node in each cell
+      % if fl == "interp", the influence is interpolative 
 
       % process by vtk type
       switch srcEnt
@@ -225,9 +226,13 @@ classdef Grid < handle
           getNodes = @(el) obj.getSurfNodes(el);
       end
 
+      interp = false;
+      if nargin > 3 && strcmpi(fl,"interp")
+        interp = true;
+      end
+
       vtkTypes = mesh.vtkTypes;
       coords = obj.coordinates;
-
 
       list = cell(length(vtkTypes),1);
       infl = cell(length(vtkTypes),1);
@@ -254,8 +259,12 @@ classdef Grid < handle
           nodes = topol(j,:);
           coord = coords(nodes,:);
           infEl = elem.getNodeInfluence(coord);
+          if interp
+            infEl = infEl/sum(infEl);
+          end
           nn = listLoc.arraySize(j);
           infLoc(k+1:k+nn) = infEl;
+
           k = k+nn;
         end
 
@@ -269,6 +278,21 @@ classdef Grid < handle
     end
 
 
+    function list = getFlatConnectivity(obj,fld)
+
+      % str: either cells or surfaces
+      conn = obj.(fld).connectivity;
+
+      if obj.isMixed
+        % connectivity is an ArrayOfArrays
+        list = conn.getData;
+      else % connectivity is a strandard matrix
+        conn = conn';
+        list = conn(:);
+      end
+
+    end
+
   end
 
 
@@ -276,6 +300,7 @@ classdef Grid < handle
 
 
   methods (Static)
+
 
     function mat = makeConnectivity(mat)
 

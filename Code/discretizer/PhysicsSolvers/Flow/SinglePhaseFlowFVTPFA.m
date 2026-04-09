@@ -3,7 +3,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
   properties
     trans
-    isIntFaces
+    % isIntFaces
   end
 
   methods (Access = public)
@@ -13,13 +13,14 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
     function registerSolver(obj,varargin)
 
-      if isempty(obj.faces)
-        error(["%s solver requires 'Faces' field to be define in the grid." ...
-          "grid = struct('topology',Mesh(),'cells',Elements(),'faces',Faces()]"])
-      end
-      nTags = obj.mesh.nCellTag;
+      % if isempty(obj.faces)
+      %   error(["%s solver requires 'Faces' field to be define in the grid." ...
+      %     "grid = struct('topology',Mesh(),'cells',Elements(),'faces',Faces()]"])
+      % end
 
-      default = struct('targetRegions',1:nTags);
+      cells = obj.grid.cells;
+
+      default = struct('targetRegions',1:cells.nTag);
 
       params = readInput(default,varargin{:});
 
@@ -33,7 +34,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       % initialize the state object with a pressure field
       obj.getState().data.(obj.getField()) = zeros(n,1);
 
-      linkBoundSurf2TPFAFace(obj);
+      %linkBoundSurf2TPFAFace(obj);
 
       obj.computeTrans();
       %get cells with active flow model
@@ -313,126 +314,103 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     function computeTrans(obj)   % Inspired by MRST
       % Compute first the vector connecting each cell centroid to the
       % half-face
-      % TODO: the function bsxfun throw a error if lest than mesh with one element
-      r = [1, 1, 1, 2, 2, 2, 3, 3, 3];
-      c = [1, 2, 3, 1, 2, 3, 1, 2, 3];
-      hf2Cell = repelem((1:obj.mesh.nCells)',diff(obj.faces.mapF2E),1);
-      L = obj.faces.faceCentroid(obj.faces.faces2Elements(:,1),:) - obj.mesh.cellCentroid(hf2Cell,:);
-      sgn = 2*(hf2Cell == obj.faces.faceNeighbors(obj.faces.faces2Elements(:,1))) - 1;
-      N = bsxfun(@times,sgn,obj.faces.faceNormal(obj.faces.faces2Elements(:,1),:));
+
+      cells = obj.grid.cells;
+      faces = obj.grid.faces;
+
+      [fList,ptr] = getData(cells.cell2faces);
+      nFPC = diff(ptr);                       % number of faces per cell
+
+      hf2Cell = repelem((1:cells.num)',nFPC,1);
+      L = faces.center(fList,:) - cells.center(hf2Cell,:);
+
+      % signed normal for half face transmissibility (points outside the
+      % cell)
+      % if a cell do not match with the first column entry of the
+      % neighbors, it measn that the normal of that face points inside the
+      % cell (so it has to be flipped)
+      sgn = 2*(hf2Cell == faces.neighbors(faceList,1)) - 1;
+      N = sgn .* obj.faces.normal(faceList,:);
 
       mat = obj.domain.materials;
-      KMat = zeros(obj.mesh.nCellTag,9);
-      for i=1:obj.mesh.nCellTag
+      KMat = zeros(cells.nTag,9);
+      for i=1:cells.nTag
         KMat(i,:) = mat.getMaterial(i).PorousRock.getPermVector();
       end
-      hT = zeros(length(hf2Cell),1);
-      for k=1:length(r)
-        hT = hT + L(:,r(k)) .* KMat(obj.mesh.cellTag(hf2Cell),k) .* N(:,c(k));
-      end
-      hT = hT./sum(L.*L,2);
-      %       mu = mat.getMaterial(obj.mesh.nCellTag+1).getDynViscosity();
-      %       hT = hT/mu;
-      obj.trans = 1 ./ accumarray(obj.faces.faces2Elements(:,1),1 ./ hT,[obj.faces.nFaces,1]);
-    end
 
-    function trans = computeTransCell(obj,ncell)
-      % Compute first the vector connecting each cell centroid to the
-      % half-face
+      % index for vectorized L*K*N product
       r = [1, 1, 1, 2, 2, 2, 3, 3, 3];
       c = [1, 2, 3, 1, 2, 3, 1, 2, 3];
-      nrep = diff(obj.faces.mapF2E);
-      hf2Cell = repelem(ncell.gtCell+1,nrep(ncell.gtCell+1));
-      L = obj.faces.faceCentroid(ncell.face,:) - obj.elements.cellCentroid(hf2Cell,:);
-      % sgn = 2*(hf2Cell == obj.faces.faceNeighbors(ncell.face)) - 1;
-      sgn(1:6)=-1;
-      N = bsxfun(@times,sgn,obj.faces.faceNormal(ncell.face,:)')';
-      KMat = zeros(obj.mesh.nCellTag,9);
-      for i=1:obj.mesh.nCellTag
-        KMat(i,:) = mat.getMaterial(i).PorousRock.getPermVector();
-      end
+
+      % half-face transmissibilities
       hT = zeros(length(hf2Cell),1);
       for k=1:length(r)
-        hT = hT + L(:,r(k)) .* KMat(obj.mesh.cellTag(hf2Cell),k) .* N(:,c(k));
+        hT = hT + L(:,r(k)) .* KMat(cells.tag(hf2Cell),k) .* N(:,c(k));
       end
-      trans = hT./sum(L.*L,2);
+      hT = hT./sum(L.*L,2);
+
+      % compute face transmissibilities
+      obj.trans = 1 ./ accumarray(fList,1 ./ hT,[faces.num,1]);
+
     end
+
 
     function flux = computeFlux(obj,pot,mob,t)
       %COMPUTEFLUX - compute the flux at the faces, than accumulate
-      %the value at the nodes (The contribution of the boundary is done
-      % in another function).
+      %the value at the nodes 
+      % boundary fluxes are retrieved from boundary condition value
 
-      % Compute the fluxes inside the domain.
-      nnodesBfaces = diff(obj.faces.mapN2F);
-      neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-      % isIntNode = repelem(obj.isIntFaces,nnodesBfaces);
+      % Compute the nodal fluxes in the domain
 
-      fluxFaces = zeros(obj.faces.nFaces,1);
-      fluxFaces(obj.isIntFaces) = pot(neigh(:,1))-pot(neigh(:,2));
-      fluxFaces(obj.isIntFaces) = mob.*obj.trans(obj.isIntFaces).*fluxFaces(obj.isIntFaces);
-      % fluxFaces = pot(neigh(:,1))-pot(neigh(:,2));
-      % fluxFaces = mob.*obj.trans(obj.isIntFaces).*fluxFaces;
+      faces = obj.grid.faces;
+      surfaces = obj.grid.surfaces;
+      fluxFaces = zeros(faces.num,1);
 
-      areaSq = vecnorm(obj.faces.faceNormal,2,2);
-      faceUnit = obj.faces.faceNormal./areaSq;
-      areaSq = areaSq.*nnodesBfaces;
-      fluxFaces = fluxFaces./areaSq;
-      fluxFaces = fluxFaces.*faceUnit;
-      % flux at the faces
-      % fluxFaces = fluxFaces./areaSq(obj.isIntFaces);
-      % fluxFaces = fluxFaces.*faceUnit(obj.isIntFaces,:);  % flux at the faces
 
-      % Contribution
-      fluxFaces = repelem(fluxFaces,nnodesBfaces,1);
-      axis = ones(length(obj.faces.nodes2Faces),1);
-      flux = accumarray([[obj.faces.nodes2Faces axis]; ...
-        [obj.faces.nodes2Faces 2*axis]; ...
-        [obj.faces.nodes2Faces 3*axis]], fluxFaces(:));
+      %%% process internal face
 
-      % fluxFaces = repelem(fluxFaces,nnodesBfaces(obj.isIntFaces),1);
-      % axis = ones(size(fluxFaces,1),1);
-      % flux = accumarray([[obj.faces.nodes2Faces(isIntNode) axis]; ...
-      %    [obj.faces.nodes2Faces(isIntNode) 2*axis]; ...
-      %    [obj.faces.nodes2Faces(isIntNode) 3*axis]], fluxFaces(:));
+      isFaceInternal = ~faces.isBoundary;
+      neigh = faces.neighbors(isFaceInternal,:);
+      dpot = pot(neigh(:,1))-pot(neigh(:,2));
+      fluxFaces(isFaceInternal) = mob.* obj.trans(obj.isIntFaces) * dpot;
 
-      % Compute the fluxes at the boundary of the domain.
-      Node2Face = repelem((1:obj.faces.nFaces)',nnodesBfaces);
-      sgn = 2*(obj.faces.faceNeighbors(:,1)==0) - 1;
+      %%% process boundary faces
 
-      areaSq = vecnorm(obj.faces.faceNormal,2,2);
-      faceUnit = obj.faces.faceNormal./areaSq;
-      areaSq = areaSq.*nnodesBfaces;
-
-      % add boundary condition
+      % get boundary flux for surface bcs
       bc = obj.domain.bcs;
       bcList = bc.getBCList();
       for bcID = bcList
         if strcmp(bc.getVariable(bcID),obj.getField())
-          [~,vals] = getBC(obj,bcID,t);
-          ents = bc.getSourceEntities(bcID);
-          %[ents, ~] = sort(bc.getSourceEntities(bcID));
           switch bc.getField(bcID)
             case {'node','cell'}
-              return
+              continue
             case 'surface'
-              if size(vals,2) > 1
-                vals = vals(:,2);
+              [~,boundFlux] = getBC(obj,bcID,t);
+              surfId = bc.getSourceEntities(bcID);
+              if size(vals,2) > 1 % flux associated with dirichlet bc
+                boundFlux = boundFlux(:,2);
               end
-              dir = sgn(ents).*faceUnit(ents,:);
-              vals = vals(:)./areaSq(ents).*dir;
-              vals = repelem(vals,nnodesBfaces(ents),1);
           end
-
-          nodes = obj.faces.nodes2Faces(ismember(Node2Face,ents));
-          [loc,~,pos] = unique(nodes);
-          axis = ones(length(nodes),1);
-          fluxB = accumarray([[pos axis]; [pos 2*axis]; ...
-            [pos 3*axis]], vals(:));
-          flux(loc,:)=fluxB;
+          faceId = surfaces.faceId(surfId);
+          fluxFaces(faceId) = fluxFaces(faceId) + boundFlux;
+          % add because more then one flux bc can be applied to the same
+          % boundary face
         end
       end
+
+      %%% map fluxes from face to nodes
+      % provisional: nodeArea = faceArea/numNodes 
+      % TO DO: use proper nodeInfluence for internal faces
+
+      [nList,ptr] = getData(faces.connectivity);
+      nNPF = diff(ptr);               % number of nodes per face
+      fluxFaces = fluxFaces .* faces.normal;  % get flux direction according to computed normal
+
+      % accumulate flux of each face on the nodes
+      flux = accumarray(nList,repelem(fluxFaces./nNPF,nNPF),obj.nNodes,1);
+
     end
+
 
     function [cellStr,pointStr] = buildPrintStruct(obj,state)
       pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);

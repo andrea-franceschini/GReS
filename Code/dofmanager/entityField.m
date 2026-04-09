@@ -191,7 +191,7 @@ classdef entityField
 
       switch target
         case entityField.node
-          [nodes,areas] = grid.getNodeInfluence(entityField.surface,srcList); % nodes is an ArrayOfArrays
+          [nodes,areas] = grid.getNodeInfluence(entityField.surface,srcList,"interp"); % nodes is an ArrayOfArrays
           [nList,ptr] = getData(nodes);   
           [targEnts,~,ii] = unique(nList); 
           jj = repelem((1:numel(srcList))',diff(ptr),1);
@@ -222,7 +222,7 @@ classdef entityField
       switch target
         case entityField.node
 
-          [nodes,vols] = grid.getNodeInfluence(entityField.cell,srcList); % nodes is an ArrayOfArrays
+          [nodes,vols] = grid.getNodeInfluence(entityField.cell,srcList,"interp"); % nodes is an ArrayOfArrays
           [nList,ptr] = getData(nodes);
           [targEnts,~,ii] = unique(nList);
           jj = repelem((1:numel(srcList))',diff(ptr),1);
