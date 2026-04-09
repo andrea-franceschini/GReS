@@ -53,7 +53,7 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 1e5
+      matlabMaxSize = 1e4
       nsyTol = 100*eps
       fullInfo = false
 
@@ -99,6 +99,9 @@ classdef linearSolver < handle
 
       % Params struct
       params
+
+      precL
+      sizeDiff
    end
 
    methods (Access = public)
@@ -112,7 +115,7 @@ classdef linearSolver < handle
          % Possible the user wants to use matlab even if the size is sufficient
          if isfield(generalsolver.simparams.linSolverParams, 'useMatlab')
             if generalsolver.simparams.linSolverParams.useMatlab == 1
-               fprintf('The user requested the use of matlab\n');
+               gresLog().log(3,'The user requested the use of matlab\n');
                return;
             end
          end
@@ -125,7 +128,7 @@ classdef linearSolver < handle
             end
             
             if ~isfile(fileMex)
-               warning('Chronos_Lab submodule is present, but not compiled. Using matlab fallback');
+               gresLog().warning(2,'Chronos_Lab submodule is present, but not compiled. Using matlab fallback');
                return;
             end
 
@@ -206,5 +209,3 @@ classdef linearSolver < handle
 
    end
 end
-
-
