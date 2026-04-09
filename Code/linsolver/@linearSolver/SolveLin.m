@@ -44,7 +44,6 @@ function [x,flag] = SolveLin(obj,A,b,time)
    end
 
    oldProbSize = size(obj.x0,1);
-   sizeDiff = 0;
 
    % Chronos does not exist, continue with matlab default
    if ~obj.ChronosFlag || (getGlobalSize(A) < obj.matlabMaxSize)
@@ -52,10 +51,12 @@ function [x,flag] = SolveLin(obj,A,b,time)
       return
    elseif oldProbSize ~= 0
       newProbSize = size(b,1);
-      sizeDiff = newProbSize - oldProbSize;
-      if sizeDiff > 0
-         obj.x0 = [obj.x0; zeros(sizeDiff,1)];
-      fprintf('changed size from %d to %d\n',oldProbSize,newProbSize);
+      obj.sizeDiff = obj.sizeDiff + newProbSize - oldProbSize;
+      if obj.sizeDiff > 0
+         obj.x0 = [obj.x0; zeros(obj.sizeDiff,1)];
+         if newProbSize - oldProbSize > 0
+            gresLog().log(3,'changed size from %d to %d\n',oldProbSize,newProbSize);
+         end
       end
    end
 
@@ -74,21 +75,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
    firstSolver = obj.SolverType;
 
    % Apply Ruix Scaling on the Block matrix
-   if obj.nIterRuiz > 0
-      % Compute and apply Ritz scaling on A
-      [A,obj.Prec.D] = ruiz_block_symmetric(A,obj.nIterRuiz,obj.tolRuiz,obj.DEBUGflag);
-
-      % Prepare the D for future applications
-      obj.Prec.D = cellfun(@(Di) diag(Di), obj.Prec.D, 'UniformOutput', false);
-
-      % Single vector D to apply to the rhs
-      D = diag(vertcat(obj.Prec.D{:}));
-
-      % Apply the scaling to the rhs
-      b = D*b;
-   else
-      obj.Prec.D = {};
-   end
+   A = Ruiz(obj,A,b);
 
    % Fix the pattern to be symmetric and check the symmetry of the
    % resulting matrix
@@ -102,7 +89,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
    end
 
    % Have the linear solver compute the Preconditioner if necessary
-   if(obj.requestPrecComp || obj.params.iter > 600 || obj.params.lastRelres > obj.params.tol*1e3)
+   if(obj.requestPrecComp) 
       gresLog().log(3,'Computing the preconditioner\n');
 
       time_start = tic;
@@ -112,25 +99,27 @@ function [x,flag] = SolveLin(obj,A,b,time)
       obj.aTimeComp = obj.aTimeComp + T_setup;
       obj.nComp = obj.nComp + 1;
       obj.whenComputed(length(obj.whenComputed) + 1) = time;
-      obj.params.iterSinceLastPrecComp = 0;
+      obj.params.nSolveSinceLastPrecComp = 0;
       obj.sizeDiff = 0;
       gresLog().log(3,'Finished computing the preconditioner\n');
    else
-      obj.params.iterSinceLastPrecComp = obj.params.iterSinceLastPrecComp + 1;
+      obj.params.nSolveSinceLastPrecComp = obj.params.nSolveSinceLastPrecComp + 1;
+      T_setup = 0;
    end
 
    if iscell(A)
       Amat = cell2matrix(A);
       if obj.DEBUGflag
          symValue = norm(Amat-Amat','f')/norm(Amat,'f');
+      else
+         symValue = -999;
       end
    end
 
-   if sizeDiff > 0 
-      obj.sizeDiff = obj.sizeDiff + sizeDiff;
-      
-      obj.precL = @(x) [obj.Prec.Apply_L(x(1:end-obj.sizeDiff)); x(end-obj.sizeDiff+1:end)];
-   elseif isempty(obj.precL)
+   if obj.sizeDiff > 0 
+      invD = 1./diag(Amat(end-obj.sizeDiff+1:end,end-obj.sizeDiff+1:end));
+      obj.precL = @(x) [obj.Prec.Apply_L(x(1:end-obj.sizeDiff)); invD.*x(end-obj.sizeDiff+1:end)];
+   elseif isempty(obj.precL) || obj.params.nSolveSinceLastPrecComp == 0
       obj.precL = obj.Prec.Apply_L;
    end
 
@@ -157,41 +146,15 @@ function [x,flag] = SolveLin(obj,A,b,time)
    if obj.nIterRuiz > 0
       x = D*x;
    end
-
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
-   obj.aTimeSolve = obj.aTimeSolve + Tend;
-   obj.nSolve = obj.nSolve + 1;
-   obj.aIter = obj.aIter + obj.params.iter;
-   obj.maxIter = max(obj.maxIter,obj.params.iter);
-
-   if obj.fullInfo
-      obj.iterLin(obj.nSolve) = obj.params.iter;
-      obj.timeLin(obj.nSolve) = time; 
-      obj.solveTLin(obj.nSolve) = Tend;
-      if exist('obj.generalsolver.iterNL','var')
-         obj.newtonLin(obj.nSolve) = obj.generalsolver.iterNL;
-      else
-         obj.newtonLin(obj.nSolve) = obj.nSolve;
-      end
-
-      if obj.DEBUGflag
-         obj.symFlagLin(obj.nSolve) = symValue;
-      else
-         obj.symFlagLin(obj.nSolve) = globalsymm;
-      end
-      if obj.params.iterSinceLastPrecComp == 0
-         obj.precCompLin(obj.nSolve) = T_setup;
-      else
-         obj.precCompLin(obj.nSolve) = 0;
-      end
-   end
+   fillStats(obj,Tend,time,symValue,globalsymm,T_setup);
 
    % Did not converge, if prec not computed for it try again
-   if(flag == 1 && obj.params.iterSinceLastPrecComp > 0)
+   if(flag == 1 && obj.params.nSolveSinceLastPrecComp > 0)
       gresLog().log(3,'Trying to recompute the preconditioner to see if it manages to converge\n');
-      obj.params.iterSinceLastPrecComp = 0;
+      obj.params.nSolveSinceLastPrecComp = 0;
       obj.requestPrecComp = true;
       [x,flag] = obj.SolveLin(A,b,time);
       return;
@@ -199,7 +162,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
 
    % Interesting problem
    if(flag == 1)
-      gresLog().log(3,'Iterations since last preconditioner computation %d\n',obj.params.iterSinceLastPrecComp);
+      gresLog().log(3,'Number of solves since last preconditioner computation %d\n',obj.params.nSolveSinceLastPrecComp);
       [~,~] = matlab_solve(obj,A,b);
       TV0 = obj.Prec.TV0;
       save('new_problem.mat','A','b','TV0');
@@ -212,11 +175,16 @@ function [x,flag] = SolveLin(obj,A,b,time)
    % If the preconditioner has just been computed then do not compute it for the next iter
    if(obj.requestPrecComp)
       % Keep in memory the number of iter it did with the correct matrix
-      obj.params.firstIterAfterPrecComp = obj.params.iter;
+      obj.params.firstSolveTAfterPrecComp = Tend;
+      obj.cumTSolveAfterPrec = Tend;
       obj.requestPrecComp = false;
    else
-      % If the number of iterations changes too much then recompute the preconditioner
-      if(obj.params.iter > 1.5 * obj.params.firstIterAfterPrecComp && obj.params.iter > obj.params.minIter)
+      % Choose if to recompute the preconditioner
+      obj.cumTSolveAfterPrec = obj.cumTSolveAfterPrec + Tend;
+      Delta_T = obj.cumTSolveAfterPrec - obj.params.nSolveSinceLastPrecComp*obj.params.firstSolveTAfterPrecComp;
+
+      tSetup = obj.precCompLin(end-obj.params.nSolveSinceLastPrecComp);
+      if Delta_T > obj.alpha*tSetup || obj.alpha < 0.
          obj.requestPrecComp = true;
       end
    end
@@ -239,6 +207,28 @@ end
 
 
 
+
+% Function to get and fill the stats
+function fillStats(obj,Tend,time,symValue,globalsymm,T_setup)
+
+   obj.aTimeSolve = obj.aTimeSolve + Tend;
+   obj.nSolve = obj.nSolve + 1;
+   obj.aIter = obj.aIter + obj.params.iter;
+   obj.maxIter = max(obj.maxIter,obj.params.iter);
+
+   if obj.fullInfo
+      obj.iterLin(obj.nSolve) = obj.params.iter;
+      obj.timeLin(obj.nSolve) = time; 
+      obj.solveTLin(obj.nSolve) = Tend;
+      obj.precCompLin(obj.nSolve) = T_setup;
+
+      if obj.DEBUGflag
+         obj.symFlagLin(obj.nSolve) = symValue;
+      else
+         obj.symFlagLin(obj.nSolve) = globalsymm;
+      end
+   end
+end
 
 
 
@@ -365,5 +355,24 @@ function [A] = fixPattern(A)
             end
          end
       end
+   end
+end
+
+
+function A = Ruiz(obj,A,b)
+   if obj.nIterRuiz > 0
+      % Compute and apply Ritz scaling on A
+      [A,obj.Prec.D] = ruiz_block_symmetric(A,obj.nIterRuiz,obj.tolRuiz,obj.DEBUGflag);
+
+      % Prepare the D for future applications
+      obj.Prec.D = cellfun(@(Di) diag(Di), obj.Prec.D, 'UniformOutput', false);
+
+      % Single vector D to apply to the rhs
+      D = diag(vertcat(obj.Prec.D{:}));
+
+      % Apply the scaling to the rhs
+      b = D*b;
+   else
+      obj.Prec.D = {};
    end
 end
