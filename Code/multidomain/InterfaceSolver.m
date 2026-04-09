@@ -20,8 +20,8 @@ classdef (Abstract) InterfaceSolver < handle
     % object for non-conforming integration
     quadrature
 
-    % object holding the interface mesh geometrical info
-    interfMesh
+    % grids(1): master    grids(2): slave
+    grids
 
     % Number of multiplier dofs
     nMult
@@ -29,17 +29,17 @@ classdef (Abstract) InterfaceSolver < handle
     % Location of the lagrange multiplier ( default is P0 )
     multiplierLocation = entityField.surface
 
-    % print utilities
+    % print utilities (pointer to property of solutionScheme)
     outstate
 
     % interface state
     state 
     stateOld
 
-    % id of this interface within the final linear solver
+    % id of this interface in the solution scheme object
     interfId
 
-    % id of connected domains
+    % global id of the connected domains
     domainId
 
     % list of variables coupled from the solver

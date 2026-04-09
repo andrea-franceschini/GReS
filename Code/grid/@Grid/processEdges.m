@@ -1,0 +1,169 @@
+function processEdges(grid,vtkId)
+% PROCESSFACES  Build edge topology and geometry for the surfaces of a given
+% grid
+%
+%  PROCESSFACES(grid) operates on all 2‑D cell types found in grid and
+%  populates the following fields in-place:
+%
+%  grid.edges
+%    .num          – scalar, total number of unique faces
+%    .connectivity – int32 matrix  (nF × nNPF)  for uniform meshes, or
+%                    ArrayOfArrays              for mixed tet+hex meshes
+%    .neighbors    – num × 2  [n1, n2] global cell IDs;  n2 = 0 on boundary
+%    .length       – num × 3  area‑weighted face normals  (‖n‖₂ = area)
+%    .center       – num × 3  edge midpoint coordinates
+%    .e2n          - num x 2
+%    .e2f          - nE x 2
+%    .f2e          - nF
+  
+
+% 1.  Extract typed half-faces for every cell type
+%
+%     triHF  (nTriHF  × nVert + 2) : [n1 n2 n3    cellId localFaceId]
+%     quadHF (nQuadHF × nVers + 2) : [n1 n2 n3 n4 cellId localFaceId]
+
+
+if nargin == 1
+  vtkIds = unique(grid.cells.VTKType);
+  for k = 1:numel(vtkIds)
+    processEdges(grid, vtkIds(k));
+  end
+  return
+end
+
+coords = grid.coordinates; 
+
+idC = grid.getCellsByVTKId(vtkId);
+if isempty(idC)
+  return
+end
+
+nC    = numel(idC);
+topol = grid.getCellNodes(idC);
+
+lf = localFaceDefs(vtkId);
+[nFPC, nNPF] = size(lf);
+
+% half-faces
+hfNodes = zeros(nFPC*nC, nNPF, class(topol));
+for id = 1:nFPC
+  k = (id-1)*nC;
+  hfNodes(k+1:k+nC, :) = topol(:, lf(id,:));
+end
+
+hfCellId   = repmat(idC(:), nFPC, 1);
+hfLocalFId = repelem((1:nFPC)', nC);
+
+% canonical representation of faces
+nHF = size(hfNodes, 1);
+
+[~, minCol] = min(hfNodes, [], 2);
+offsets     = mod(bsxfun(@plus, 0:nNPF-1, minCol-1), nNPF);
+linIdx      = bsxfun(@plus, offsets*nHF, (1:nHF)');
+hfCan       = reshape(hfNodes(linIdx), nHF, nNPF);
+
+needFlip               = hfCan(:,2) > hfCan(:,end);
+hfCan(needFlip, 2:end) = hfCan(needFlip, end:-1:2);
+
+% winding sign
+hfSign           = ones(nHF, 1);
+hfSign(needFlip) = -1;
+
+[hfSorted, sIdx] = sortrows(hfCan);
+hfCellSorted     = hfCellId(sIdx);
+%hfSignSorted     = hfSign(sIdx);
+hfLocalSorted    = hfLocalFId(sIdx);
+
+% CHECK THIS IN FUTURE
+isNew   = [true; any(hfSorted(2:end,:) ~= hfSorted(1:end-1,:), 2)];
+faceIdx = cumsum(isNew);
+nF      = faceIdx(end);
+nPlist = nNPF*ones(nF,1);
+
+faceTopol = int32(hfSorted(isNew, :));
+
+% get unique neighbors
+col = ones(nHF, 1);
+col(~isNew) = 2;
+neighbors = accumarray([faceIdx, col], hfCellSorted, [nF, 2]);
+
+% make sure that boundary faces have 0 cell as secondo position
+needSwap = neighbors(:,1) == 0 & neighbors(:,2) ~= 0;
+neighbors(needSwap,:) = neighbors(needSwap, [2,1]);
+
+isBoundary = neighbors(:,2) == 0;
+
+% compute faces geometrical informations
+nList = faceTopol';
+poly = coords(nList(:),:); 
+[area, cent, normal] = computePolygonGeometry(poly, nPlist);
+
+
+% append faces
+f = grid.faces;
+c = grid.cells;
+s = grid.surfaces;
+
+nFold = f.num;
+f.num        = nFold + nF;
+f.neighbors  = [f.neighbors; int32(neighbors)];
+f.normal    = [f.normal; normal];
+f.center  = [f.center; cent];
+f.area      = [f.area; area];
+f.numVerts   = [f.numVerts; nPlist];
+f.isBoundary = [f.isBoundary; isBoundary];
+f.connectivity = [f.connectivity; ArrayOfArrays(faceTopol)];
+
+
+% cell to faces mapping
+[~,id] = sort(hfCellSorted);
+nFPCs = nFPC*ones(nC,1);
+c2f = ArrayOfArrays(faceIdx(id),nFPCs);
+c2locf = ArrayOfArrays(hfLocalSorted(id),nFPCs);
+c.cells2faces = [c.cells2faces; c2f];
+c.cells2localFaces = [c.cells2localFaces; c2locf];
+
+% surfaces (map surfaces to boundaryfaces) 
+boundFaces = faceTopol(isBoundary,:);
+
+% connectivity of the surfaces corresponding to the 2D VTK
+idS = grid.getSurfByVTKId(VTKType.to2D(vtkId));
+topolSurf = grid.getSurfNodes(idS);
+[sId,fId] = ismember(sort(topolSurf,2),sort(boundFaces,2),'rows');
+boundId = find(isBoundary);
+s.faceId(sId) = nFold + boundId(fId); 
+
+
+% finally update grid
+grid.faces = f;
+grid.cells = c;
+grid.surfaces = s;
+
+
+end
+
+
+function lf = localFaceDefs(vtkId)
+
+switch vtkId
+  case 10
+    lf = [1 2 4;
+          2 3 4;
+          3 1 4;
+          1 3 2];
+
+  case {12, 29}
+    lf = [1 4 3 2;
+          5 6 7 8;
+          1 2 6 5;
+          2 3 7 6;
+          3 4 8 7;
+          4 1 5 8];
+
+  otherwise
+    error('processEdges:unsupportedVTKType', ...
+      'Unsupported VTK type %d.', vtkId);
+end
+
+end
+
