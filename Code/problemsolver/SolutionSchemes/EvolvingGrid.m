@@ -157,29 +157,30 @@ classdef EvolvingGrid < SolutionScheme
       print = false;
       newcells = obj.physics.domain.state.data.newcells~=0;
       printByGrow = and(obj.printGrow,newcells);
+      % printByGrow = true;
 
-      % if and(~print,printByGrow)
-        if printByGrow
-          fac = 0;  % 0=stateOld, 1=stateNew - Because the mesh update
-          % happens after the print, to plot after the grow, i plot the
-          % oldstate in the next time step.
+      if and(~print,printByGrow)
+        % if printByGrow
+        fac = 0;  % 0=stateOld, 1=stateNew - Because the mesh update
+        % happens after the print, to plot after the grow, i plot the
+        % oldstate in the next time step.
 
-          % if print
-          %   obj.printCount = obj.printCount+1;
-          % end
+        % if print
+        %   obj.printCount = obj.printCount+1;
+        % end
 
-          pos = obj.output.timeID + obj.printCount;
+        pos = obj.output.timeID + obj.printCount;
 
-          % write Vtk results
-          obj.printVTK(fac,obj.tOld,pos);
+        % write Vtk results
+        obj.printVTK(fac,obj.tOld,pos);
 
-          % write results to MAT-file
-          obj.printMAT(fac,pos);
+        % write results to MAT-file
+        obj.printMAT(fac,pos);
 
-          % update the print
-          obj.printList(pos)=obj.tOld;
-          obj.printCount = obj.printCount+1;
-        end
+        % update the print
+        obj.printList(pos)=obj.tOld;
+        obj.printCount = obj.printCount+1;
+      end
 
       if obj.output.timeID <= length(obj.output.timeList)
 
@@ -217,17 +218,17 @@ classdef EvolvingGrid < SolutionScheme
             break
           else
             outTime = obj.output.timeList(obj.output.timeID);
-          end          
+          end
         end
 
-        
+
 
       end
 
     end
 
     function printVTK(obj,fac,outTime,tID)
-      
+
       if obj.output.writeVtk
         % set folders
         obj.output.prepareOutputFolders(tID);
