@@ -79,7 +79,7 @@ classdef (Abstract) FiniteElementType < handle
     end
 
     function B = getStrainMatrix(obj,gradN)
-      B = zeros(6,obj.nNode*obj.grid.nDim,obj.nNode);
+      B = zeros(6,obj.nNode*obj.grid.nDim,obj.getNumbGaussPts);
       B(obj.indB(:,2)) = gradN(obj.indB(:,1));
     end
 

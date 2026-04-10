@@ -14,14 +14,17 @@ classdef Triangle < FiniteElementType
 
   methods (Access = public)
 
-    function [mat] = getDerBasisF(obj,el)
+    function gradN = getDerBasisF(obj,el)
       % compute derivatives of the basis functions for element in real
       % space 
       % this work only in 2D!
-      inv_A = inv([1 obj.mesh.coordinates(obj.mesh.surfaces(el,1),1:2);
-        1 obj.mesh.coordinates(obj.mesh.surfaces(el,2),1:2);
-        1 obj.mesh.coordinates(obj.mesh.surfaces(el,3),1:2)]);
-      mat = inv_A(2:3,:);
+
+     % inv([ones(3,1), in])
+     nodes = obj.grid.getSurfNodes(el);
+     coords = obj.grid.coordinates(nodes,1:2);
+     inv_A = inv([ones(3,1), coords]);
+     gradN = inv_A(2:3,:);
+
     end
 
     function dN = computeDerBasisF(obj,varargin)
@@ -41,7 +44,7 @@ classdef Triangle < FiniteElementType
         assert(nargout==1,['Too many output argument. If input is scalar' ...
           ' 3D setting is assumed and only element jacobian is returned'])
         % jacobian is constant in a simplex
-        coord = FEM.getElementCoords(obj,in);
+        coord = obj.grid.coordinates(obj.grid.getSurfNodes(in),:);
         v1 = coord(1,:) - coord(2,:);
         v2 = coord(1,:) - coord(3,:);
         obj.detJ = norm(cross(v1,v2));
@@ -94,9 +97,12 @@ classdef Triangle < FiniteElementType
     function gPCoordinates = getGPointsLocation(obj,in)
       % Get the location of the Gauss points in the element in the physical
       % space
-      if isscalar(in)
-        gPCoordinates = obj.Nref*obj.mesh.coordinates(obj.mesh.surfaces(in,:),:);
-      else
+   
+      if isscalar(in) % input is element id
+        nodes = obj.grid.getSurfNodes(in);
+        coords = obj.grid.coordinates(nodes,:);
+        gPCoordinates = obj.Nref*coords;
+      else % input is coordinates matrix
         gPCoordinates = obj.Nref*in;
       end
     end
@@ -127,20 +133,21 @@ classdef Triangle < FiniteElementType
       n = n/norm(n);
     end
 
-    function areaNod = getNodeInfluence(obj,el)
-      areaNod = (1/obj.nNode)*obj.mesh.surfaceArea(el);
-      areaNod = repelem(areaNod,obj.nNode,1);
+    function areaNod = getNodeInfluence(obj,in)
+
+      area = obj.grid.surfaces.area(in);
+      areaNod = repelem(area/obj.nNode,obj.nNode,1);
     end
 
-    function n_a = computeAreaNod(obj,surfMsh)
-      % compute area associated to each node of a surface mesh
-      n_a = zeros(max(surfMsh.surfaces,[],'all'),1);
-      for i = 1:length(surfMsh.surfaces)
-        a = findAreaAndCentroid(obj,i);
-        n_a(surfMsh.surfaces(i,:)) = n_a(surfMsh.surfaces(i,:)) + a/3;
-      end
-      n_a = n_a(unique(surfMsh.surfaces));
-    end
+    % function n_a = computeAreaNod(obj,surfMsh)
+    %   % compute area associated to each node of a surface mesh
+    %   n_a = zeros(max(surfMsh.surfaces,[],'all'),1);
+    %   for i = 1:length(surfMsh.surfaces)
+    %     a = findAreaAndCentroid(obj,i);
+    %     n_a(surfMsh.surfaces(i,:)) = n_a(surfMsh.surfaces(i,:)) + a/3;
+    %   end
+    %   n_a = n_a(unique(surfMsh.surfaces));
+    % end
 
   end
 

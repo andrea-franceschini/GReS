@@ -144,7 +144,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         -lw.*obj.rhsGrav],[nCells,1]);
 
       gTerm = gTerm(dofm.getActiveEntities(obj.fieldId));
-      
+
     end
 
     function [ents,vals] = getBC(obj,bcId,t)
@@ -338,7 +338,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       neigh = faces.neighbors(obj.isIntFaces,:);
       dpot = pot(neigh(:,1))-pot(neigh(:,2));
-      fluxFaces(obj.isIntFaces) = mob.* obj.trans(obj.isIntFaces) * dpot;
+      fluxFaces(obj.isIntFaces) = mob.* obj.trans(obj.isIntFaces).* dpot;
 
       %%% process boundary faces
 
@@ -353,7 +353,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
             case 'surface'
               [~,boundFlux] = getBC(obj,bcID,t);
               surfId = bc.getSourceEntities(bcID);
-              if size(vals,2) > 1 % flux associated with dirichlet bc
+              if size(boundFlux,2) > 1 % flux associated with dirichlet bc
                 boundFlux = boundFlux(:,2);
               end
           end
@@ -373,7 +373,10 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       fluxFaces = fluxFaces .* faces.normal;  % get flux direction according to computed normal
 
       % accumulate flux of each face on the nodes
-      flux = accumarray(nList,repelem(fluxFaces./nNPF,nNPF),obj.nNodes,1);
+      flux = zeros(obj.grid.nNodes,3);
+      for i = 1:3
+        flux(:,i) = accumarray(nList,repelem(fluxFaces(:,i)./nNPF,nNPF),[obj.grid.nNodes,1]);
+      end
 
     end
 

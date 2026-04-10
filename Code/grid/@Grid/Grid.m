@@ -256,9 +256,9 @@ classdef Grid < handle
         k = 0;
 
         for j = 1:length(elIds)
-          nodes = topol(j,:);
-          coord = coords(nodes,:);
-          infEl = elem.getNodeInfluence(coord);
+          % nodes = topol(j,:);
+          % coord = coords(nodes,:);
+          infEl = elem.getNodeInfluence(elIds(j));
           if interp
             infEl = infEl/sum(infEl);
           end
@@ -305,7 +305,7 @@ classdef Grid < handle
     function mat = makeConnectivity(mat)
 
       % save space
-      mat = int32(mat);
+      % mat = int32(mat);
 
       % Possible development: support array of arrays for connectivity
       if ~all(mat(:)) && size(mat,1) > 1e6

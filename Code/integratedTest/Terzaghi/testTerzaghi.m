@@ -8,7 +8,7 @@ scriptDir = fileparts(scriptFullPath);
 % Change the current directory to the script's directory
 cd(scriptDir);
 
-for elem = ["hexa","tetra"]
+for elem = ["tetra","hexa"]
   for flow = ["FV","FEM"]
     if elem == "tetra" && flow == "FV"
       continue

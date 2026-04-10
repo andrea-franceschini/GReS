@@ -16,42 +16,7 @@ classdef Tetrahedron < FiniteElementType
 
   methods (Access = public)
     % Class constructor method
-      function [outVar1,outVar2] = getDerBasisFAndDet(obj,el,flOut)   % mat,dJWeighed
-      %       findJacAndDet(obj,el);  % OUTPUT: J and obj.detJ
-      % Find the Jacobian matrix of the isoparametric map and its determinant
-      %
-      % Possible ways of calling this function are:
-      %    1) [mat,dJWeighed] = getDerBasisFAndDet(obj,el,1)
-      %    2) mat = getDerBasisFAndDet(obj,el,2)
-      %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
 
-      nodes = obj.grid.getCellNodes(el);
-      coords = obj.grid.coordinates(nodes,:);
-      
-      if obj.GaussPts.nNode < 2
-        % faster version for single GP rule
-        mat = [ones(obj.nNode,1), coords];
-        obj.detJ = det(mat);
-        dJw = obj.GaussPts.weight*obj.detJ;
-        invMat = inv(mat);
-        N = invMat(2:obj.nNode,:);
-      else
-        [N, dJw] = mxGetDerBasisAndDet(obj.Jref,coords,obj.GaussPts.weight);
-      end
-
-      switch flOut
-        case 1
-          outVar1 = N;
-          outVar2 = dJw';
-        case 2
-          outVar1 = N;
-        case 3
-          outVar1 = dJw';
-      end
-      if (flOut == 1 || flOut == 3) && obj.GaussPts.nNode > 1
-        obj.detJ = (dJw./obj.GaussPts.weight)';
-      end
-      end
 
       function N = getBasisFinGPoints(obj)
         N = obj.Nref;
@@ -109,9 +74,9 @@ classdef Tetrahedron < FiniteElementType
         gPCoordinates = obj.Nref*coords;
       end
 
-      function volNod = getNodeInfluence(obj,el)
-        volNod = 0.25*obj.grid.cellVolume(el);
-        volNod = repelem(volNod,obj.nNode);      
+      function volNod = getNodeInfluence(obj,in)
+
+        volNod = repelem(obj.grid.cells.volume(in)/obj.nNode,obj.nNode,1);
       end
       %     end
   end

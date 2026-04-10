@@ -752,8 +752,8 @@ classdef Poromechanics < PhysicsSolver
       indB = zeros(9*np,2);
       indB(:,1) = repmat([1, 3, 2, 2, 3, 1, 3, 2, 1],[1,np]);
       indB(:,2) = repmat([1, 5, 6, 8,10,12,15,16,17],[1,np]);
-      indB(:,1) = indB(:,1) + repelem(3*(0:(np-1))',9);
-      indB(:,2) = indB(:,2) + repelem(18*(0:(np-1))',9);
+      indB(:,1) = indB(:,1) + repelem(3*(0:(np-1))',9,1);
+      indB(:,2) = indB(:,2) + repelem(18*(0:(np-1))',9,1);
 
 
     end

@@ -158,7 +158,13 @@ classdef HexahedronQuadratic < FiniteElementType
     end
 
     function nodeVol = getNodeInfluence(obj,el)
-      dJWeighed = obj.getDerBasisFAndDet(el,3);
+
+      if size(el,2) == 1
+        n = obj.grid.getCellNodes(el);
+        coords = obj.grid.coordinates(n,:);
+      end
+
+      [~,dJWeighed] = obj.getDerBasisFAndDet(coords);
       nodeVol = obj.Nref'*dJWeighed';
     end
 
