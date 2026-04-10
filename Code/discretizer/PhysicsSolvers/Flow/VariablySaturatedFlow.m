@@ -5,7 +5,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
   % It is subclass of SPFlow since most of the methods are the same
 
   properties
-    lwkpt           % mobility
+    lw            % upstream mobility
     % JNewt = []      % newton jacobian contribution
     upElem          % upstream elements array for each face
     NLscheme      % newton or picard
@@ -18,12 +18,59 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
     end
 
     function registerSolver(obj,varargin)
+
       registerSolver@SinglePhaseFlowFVTPFA(obj,varargin{:});
       % additional logic for richards goes here...
       input = readInput(struct('NLscheme',"newton"),varargin{:});
       obj.NLscheme = input.NLscheme;
 
     end
+
+    function assembleSystem(obj,dt)
+
+      % compute upstream saturation and mobility
+      p = obj.getState(obj.getField());
+      [Sw,dSw,d2Sw, obj.lw,dlw] = computeUpElemAndProperties(obj,p);
+      % compute obj.H and obj.P
+      computeStiffMat(obj,obj.lw);
+      computeCapMat(obj,Sw,dSw);
+
+      ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
+
+
+      if obj.steadyState
+        rhs = obj.H*p(ents);
+        J = obj.H;
+      else
+        pOld = obj.getStateOld(obj.getField());
+        rhs = obj.H*p(ents) + (obj.P/dt)*(p(ents) - pOld(ents));
+        J = obj.H + obj.P/dt;
+      end
+
+
+      if isNewtonNLSolver(obj)
+        Jh = computeJacobianPartJhNewton(obj,p,dlw);
+        Jp = computeJacobianPartJpNewton(obj,dt,p,pOld,Sw,dSw,d2Sw);
+        J = J + Jh;
+        if ~obj.steadyState
+          J = J + Jp/dt;
+        end
+      end
+
+      obj.domain.J{obj.fieldId,obj.fieldId} = J;
+
+      gamma = obj.domain.materials.getFluid().getSpecificWeight();
+      if gamma > 0
+        % add rhs gravity contribution
+        obj.domain.rhs{obj.fieldId} = rhs + getRhsGravity(obj,obj.lw);
+      else
+        obj.domain.rhs{obj.fieldId} = rhs;
+      end
+
+
+    end
+
+
 
     function states = finalizeState(obj,p,t)
       % Compute the posprocessing variables for the module.
@@ -41,51 +88,20 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       % states.mass = checkMassCons(obj,mob,potential);
     end
 
-    function J = computeMat(obj,dt)
-      theta = obj.domain.simparams.theta;
 
-      % get pressure state
-      p = getState(obj,obj.getField());
-      pOld = getStateOld(obj,obj.getField());
-      pkpt = theta*p + (1 - theta)*pOld;
-      
-      [Swkpt,dSwkpt,d2Swkpt, obj.lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt);
-      computeStiffMat(obj,obj.lwkpt);
-      computeCapMat(obj,Swkpt,dSwkpt);
-      J = theta*obj.H + obj.P/dt;
-      % obj.H = theta*obj.H;
-      % obj.P = theta*obj.P/dt;
-      if isNewtonNLSolver(obj)
-        J = J + computeJacobianPartJhNewton(obj,pkpt,dlwkpt);
-        J = J + computeJacobianPartJpNewton(obj,dt,p,pOld,Swkpt,dSwkpt,d2Swkpt);
 
-        % obj.H = obj.H + computeJacobianPartJhNewton(obj,pkpt,dlwkpt);
-        % obj.P = obj.P + computeJacobianPartJpNewton(obj,dt,obj.domain.state.data.pressure, ...
-        %   obj.domain.stateOld.data.pressure,Swkpt,dSwkpt,d2Swkpt);
-      end
-      % J = obj.H + obj.P;
+    function gTerm = getRhsGravity(obj,lw)
+
+      dofm = obj.domain.dofm;
+      nCells = dofm.getNumbDoF(obj.fieldId);
+      neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+      gTerm = accumarray(neigh(:),[lw.*obj.rhsGrav; ...
+        -lw.*obj.rhsGrav],[nCells,1]);
+
+      gTerm = gTerm(dofm.getActiveEntities(obj.fieldId));
     end
 
-    function rhs = computeRhs(obj,dt)
-      % Compute the residual of the flow problem
 
-      % get pressure state
-      p = getState(obj,obj.getField());
-      pOld = getStateOld(obj,obj.getField());
-
-      theta = obj.domain.simparams.theta;
-      ents = obj.domain.dofm.getActiveEntities(obj.getField());
-
-      % computing the rhs
-      rhs = obj.H*(theta*p(ents) + (1-theta)*pOld(ents));
-      rhs = rhs + (obj.P/dt)*(p(ents) - pOld(ents));
-
-      % adding gravity contribution
-      gamma = obj.domain.materials.getFluid().getSpecificWeight();
-      if gamma > 0
-        rhs = rhs + finalizeRHSGravTerm(obj,obj.lwkpt);
-      end
-    end
 
     function updateState(obj,dSol)
       dofm = obj.domain.dofm;
@@ -207,41 +223,42 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
   end
 
   methods (Access = private)
-    function [Swkpt,dSwkpt,d2Swkpt] = computeSaturation(obj,pkpt)
+    function [Sw,dSw,d2Sw] = computeSaturation(obj,p)
       % COMPUTESATURATION compute the saturation and it's derivatives
-      Swkpt = zeros(obj.mesh.nCells,1);
-      dSwkpt = zeros(obj.mesh.nCells,1);
-      d2Swkpt = zeros(obj.mesh.nCells,1);
+      Sw = zeros(obj.mesh.nCells,1);
+      dSw = zeros(obj.mesh.nCells,1);
+      d2Sw = zeros(obj.mesh.nCells,1);
+
       for m = 1:obj.mesh.nCellTag
         isElMat = obj.mesh.cellTag == m;
-        p = pkpt(isElMat);
+        p = p(isElMat);
         mat = obj.domain.materials.getMaterial(m);
         Sws = mat.PorousRock.getMaxSaturation();
         Swr = mat.PorousRock.getResidualSaturation();
-        [Swkpt(isElMat), dSwkpt(isElMat), d2Swkpt(isElMat)] = mat.PorousRock.Curves.computeSwAnddSw(p);
-        Swkpt(isElMat) = Swr + (Sws-Swr)*Swkpt(isElMat);
-        dSwkpt(isElMat) = (Sws-Swr)*dSwkpt(isElMat);
-        d2Swkpt(isElMat) = (Sws-Swr)*d2Swkpt(isElMat);
+        [Sw(isElMat), dSw(isElMat), d2Sw(isElMat)] = mat.PorousRock.Curves.computeSwAnddSw(p);
+        Sw(isElMat) = Swr + (Sws-Swr)*Sw(isElMat);
+        dSw(isElMat) = (Sws-Swr)*dSw(isElMat);
+        d2Sw(isElMat) = (Sws-Swr)*d2Sw(isElMat);
       end
     end
 
-    function [lwkpt,dlwkpt] = computeMobility(obj,pkpt)
+    function [lw,dlw] = computeMobility(obj,p)
       % COMPUTEMOBILITY compute the mobility and its derivatives
       % for the upstream elements for each face
       nIntFaces = length(obj.upElem);
-      lwkpt = zeros(nIntFaces,1);
-      dlwkpt = zeros(nIntFaces,1);
+      lw = zeros(nIntFaces,1);
+      dlw = zeros(nIntFaces,1);
       matUpElem = obj.mesh.cellTag(obj.upElem);
       mat = obj.domain.materials;
       for m = 1:obj.mesh.nCellTag
         isElMat = matUpElem == m;
-        p = pkpt(obj.upElem(isElMat));
-        [lwkpt(isElMat), dlwkpt(isElMat)] = mat.getMaterial(m).PorousRock.Curves.computeRelativePermeability(p);
-        % [lwkpt(isElMat), dlwkpt(isElMat)] = mat.getMaterial(m).RelativePermCurve.interpTable(p);
+        p = p(obj.upElem(isElMat));
+        [lw(isElMat), dlw(isElMat)] = mat.getMaterial(m).PorousRock.Curves.computeRelativePermeability(p);
+        % [lw(isElMat), dlw(isElMat)] = mat.getMaterial(m).RelativePermCurve.interpTable(p);
       end
       mu = mat.getFluid().getDynViscosity();
-      lwkpt = lwkpt/mu;
-      dlwkpt = dlwkpt/mu;
+      lw = lw/mu;
+      dlw = dlw/mu;
     end
 
     function [lpt, dlpt] = computeMobilityBoundary(obj,pcells,pface,faceId)
@@ -279,7 +296,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       dlpt = dlpt.*lElemIsUp;
     end
 
-    function [Swkpt,dSwkpt,d2Swkpt,lwkpt,dlwkpt] = computeUpElemAndProperties(obj,pkpt)
+    function [Sw,dSw,d2Sw,lw,dlw] = computeUpElemAndProperties(obj,p)
       % compute upstream elements for each face
       % interpolate effective saturation and relative permeability
       % and first derivatives
@@ -289,16 +306,16 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       if gamma > 0
         zVec = obj.elements.mesh.cellCentroid(:,3);
         zNeigh = zVec(neigh);
-        lElemIsUp = (pkpt(neigh(:,1)) - pkpt(neigh(:,2))) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
+        lElemIsUp = (p(neigh(:,1)) - p(neigh(:,2))) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
       else
-        lElemIsUp = pkpt(neigh(:,1)) >= pkpt(neigh(:,2));
+        lElemIsUp = p(neigh(:,1)) >= p(neigh(:,2));
       end
       obj.upElem(lElemIsUp) = neigh(lElemIsUp,1);
       obj.upElem(~lElemIsUp) = neigh(~lElemIsUp,2);
-      [Swkpt,dSwkpt,d2Swkpt] = computeSaturation(obj,pkpt);
-      dSwkpt = - dSwkpt;
-      [lwkpt,dlwkpt] = computeMobility(obj,pkpt);
-      dlwkpt = - dlwkpt;
+      [Sw,dSw,d2Sw] = computeSaturation(obj,p);
+      dSw = - dSw;
+      [lw,dlw] = computeMobility(obj,p);
+      dlw = - dlw;
     end
 
     function Jh = computeJacobianPartJhNewton(obj,pTau,dMob)
@@ -311,8 +328,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       % \frac{\partial\lambda_{u}^{t+dt,m}}{\partial p_{t+dt}} \mathbf{T}$$
       % $$ J_{hf} = J_{h} + J_{f}$$
 
-      % Define some values.
-      % theta = obj.simParams.theta;
       gamma = obj.domain.materials.getFluid.getSpecificWeight();
       % subCells = obj.domain.dofm.getFieldCells(obj.getField());
 
@@ -329,7 +344,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       neighU = reorder(2*nneigh+1:3*nneigh);
 
       % Transmissibility of internal faces
-      % Jh = theta*dMob.*obj.trans(obj.isIntFaces);
       Jh = dMob.*obj.trans(obj.isIntFaces);
       Jh = Jh.*(pTau(:,1) - pTau(:,2) + gamma*(zNeigh(:,1) - zNeigh(:,2)));
 
@@ -351,7 +365,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       % \left|\Omega\right|^{e}$$
 
       % Define some constant.
-      % theta = obj.simParams.theta;
       mat = obj.domain.materials;
       beta = mat.getFluid().getFluidCompressibility();
       subCells = obj.domain.dofm.getFieldCells(obj.getField());
@@ -376,10 +389,8 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       pdiff = pTmp-pOld;
 
       % Computing the Jacobian Part.
-      % Jp = poroMat.*ddStau;
-      % Jp = (theta/dt)*obj.elements.vol(subCells).*Jp.*pdiff;
       Jp = beta*alphaMat.*Stau + (2*alphaMat+beta*poroMat).*dStau + poroMat.*ddStau;
-      Jp = (1./dt)*obj.elements.mesh.cellVolume(subCells).*Jp.*pdiff;
+      Jp = obj.elements.mesh.cellVolume(subCells).*Jp.*pdiff;
 
       nDoF = obj.domain.dofm.getNumbDoF(obj.getField());
       [~,~,dof] = unique(subCells);
