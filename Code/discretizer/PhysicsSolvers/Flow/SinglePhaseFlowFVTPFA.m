@@ -90,18 +90,19 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       poroMat = zeros(obj.mesh.nCellTag,1);
       alphaMat = zeros(obj.mesh.nCellTag,1);
       beta = mat.getFluid().getFluidCompressibility();
+
       for m = 1:obj.mesh.nCellTag
         if ~ismember(m,dofm.getTargetRegions(obj.getField()))
           continue
         end
 
-        if ~ismember(m,dofm.getTargetRegions([obj.getField(),"displacements"]))
-          % compute alpha only if there's no coupling in the
-          % subdomain
-          alphaMat(m) = mat.getMaterial(m).ConstLaw.getRockCompressibility();
-        end
+        % get regions where pressure is coupled with displacements
+        coupledTags = dofm.getTargetRegions([obj.getField(),"displacements"]);
+        alphaMat(m) = getRockCompressibility(obj,m,coupledTags);
+
         poroMat(m) = mat.getMaterial(m).PorousRock.getPorosity();
       end
+      
 
       % (alpha+poro*beta)
       PVal = alphaMat(obj.mesh.cellTag(subCells)) + beta*poroMat(obj.mesh.cellTag(subCells));

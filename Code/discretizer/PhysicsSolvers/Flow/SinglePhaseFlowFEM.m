@@ -48,11 +48,14 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       % Get the fluid dynamic viscosity
       mu = mat.getFluid().getDynViscosity();
 
+      % get cell tags where there is coupling with the displacements
+      coupledRegions = dofm.getTargetRegions([obj.getField(),"displacements"]);
+
       l1 = 0;
       for el = subCells'
         permMat = mat.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
         poro = mat.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
-        alpha = getRockCompressibility(obj,el);
+        alpha = getRockCompressibility(obj,obj.mesh.cellTag(el),coupledRegions);
         % Compute the element matrices based on the element type
         % (tetrahedra vs. hexahedra)
         elem = getElement(obj.elements,obj.mesh.cellVTKType(el));

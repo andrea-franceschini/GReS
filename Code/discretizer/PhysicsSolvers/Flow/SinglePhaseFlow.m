@@ -118,7 +118,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       out = isLinear(obj);
     end
 
-    function alpha = getRockCompressibility(obj,cellTag,regions)
+    function alpha = getRockCompressibility(obj,cellTag,coupledRegions)
 
       % regions: cell tags where pressure is coupled with displacements
 
@@ -127,11 +127,11 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       alpha = 0.0;
 
       if nargin < 3
-        regions = [];
+        coupledRegions = [];
       end
 
       % enter only if the cell is not already coupled with displacements
-      if ~ismember(tag,regions) 
+      if ~ismember(cellTag,coupledRegions) 
         % get alpha from mechanical constitutive law if provided
         if isfield(mat,"ConstLaw")
           alpha = mat.ConstLaw.getRockCompressibility();
