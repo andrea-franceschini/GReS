@@ -15,9 +15,7 @@ function [params] = getUserInput(obj,params,usrInput)
    
    % If the file does not exist use the defaults
    if ~isempty(input)
-      if obj.DEBUGflag
-         fprintf('Using user defined values for preconditioner\n');
-      end
+      gresLog().log(3,'Using user defined values for preconditioner\n');
    
       % Get amg params
       if isfield(input,'amg')
@@ -45,9 +43,7 @@ function [params] = getUserInput(obj,params,usrInput)
       end
    
    else
-      if obj.DEBUGflag
-         fprintf('Using default values for preconditioner\n');
-      end
+      gresLog().log(3,'Using default values for preconditioner\n');
    end
 end
 
