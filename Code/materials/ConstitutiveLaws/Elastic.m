@@ -80,21 +80,22 @@ classdef Elastic < handle
        obj.M = obj.nu/(1-obj.nu);
        %
        % Compute vertical compressibility
-       obj.cM = 0.;
-       % Compute constitutive matrix
+       %obj.cM = 0.;
+       obj.cM = (1+obj.nu).*(1-2*obj.nu)./(obj.E.*(1-obj.nu));
+
     end
  
-    function readTabMaterialParameters(obj,fID,fileName,mesh)
-       % young modulus
-       youngModFile = readToken(fID,fileName);
-       poissonRatioFile = readToken(fID,fileName);
-       obj.E = setTabularParams(youngModFile,mesh);
-       obj.nu = setTabularParams(poissonRatioFile,mesh);
-       % Compute the M factor
-       obj.M = obj.nu./(1-obj.nu);
-       %
-       % Compute vertical compressibility
-       obj.cM = (1+obj.nu).*(1-2*obj.nu)./(obj.E.*(1-obj.nu));
-    end
+    % function readTabMaterialParameters(obj,fID,fileName,mesh)
+    %    % young modulus
+    %    youngModFile = readToken(fID,fileName);
+    %    poissonRatioFile = readToken(fID,fileName);
+    %    obj.E = setTabularParams(youngModFile,mesh);
+    %    obj.nu = setTabularParams(poissonRatioFile,mesh);
+    %    % Compute the M factor
+    %    obj.M = obj.nu./(1-obj.nu);
+    %    %
+    %    % Compute vertical compressibility
+    %    obj.cM = (1+obj.nu).*(1-2*obj.nu)./(obj.E.*(1-obj.nu));
+    % end
   end
 end

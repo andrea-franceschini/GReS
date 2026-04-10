@@ -75,13 +75,15 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
     function alpha = getRockCompressibility(obj,el)
       mat = obj.domain.materials;
+      tag = obj.grid.cells.tag(el);
+      
       targetRegions = getTargetRegions(obj.domain.dofm,["pressure","displacements"]);
-      if ismember(obj.mesh.cellTag(el),targetRegions)
+      if ismember(tag,targetRegions)
         alpha = 0; %this term is not needed in a coupled formulation
       else
-        if isfield(mat.getMaterial(obj.mesh.cellTag(el)),"ConstLaw")
+        if isfield(mat.getMaterial(tag),"ConstLaw")
           %solid skeleton contribution to storage term as oedometric compressibility .
-          alpha = mat.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
+          alpha = mat.getMaterial(tag).ConstLaw.getRockCompressibility();
         else
           alpha = 0;
         end

@@ -1,22 +1,20 @@
 classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
   %SINGLEPHASEFLOW
 
-  properties
+  properties (Access = protected)
     trans
-    % isIntFaces
+    isIntFaces
   end
 
   methods (Access = public)
+    
     function obj = SinglePhaseFlowFVTPFA(domain)
+
       obj@SinglePhaseFlow(domain);
+
     end
 
     function registerSolver(obj,varargin)
-
-      % if isempty(obj.faces)
-      %   error(["%s solver requires 'Faces' field to be define in the grid." ...
-      %     "grid = struct('topology',Mesh(),'cells',Elements(),'faces',Faces()]"])
-      % end
 
       cells = obj.grid.cells;
 
@@ -27,7 +25,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       dofm = obj.domain.dofm;
 
       dofm.registerVariable(obj.getField(),entityField.cell,1,params.targetRegions);
-      n = getNumberOfEntities(entityField.cell,obj.mesh);
+      n = getNumberOfEntities(entityField.cell,obj.grid);
       obj.fieldId = dofm.getVariableId(obj.getField());
 
 
@@ -40,7 +38,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       %get cells with active flow model
       flowCells = dofm.getActiveEntities(obj.fieldId);
       % Find internal faces (i.e. shared by two active flow cells)
-      obj.isIntFaces = all(ismember(obj.faces.faceNeighbors, flowCells), 2);
+      obj.isIntFaces = all(ismember(obj.grid.faces.neighbors, flowCells), 2);
 
       computeRHSGravTerm(obj);
     end
@@ -50,7 +48,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       fluid = obj.domain.materials.getFluid();
       gamma = fluid.getSpecificWeight();
       if gamma>0
-        zbc = obj.mesh.cellCentroid(:,3);
+        zbc = obj.grid.cells.center(:,3);
         states.potential = p + gamma*zbc;
         states.head = zbc+p/gamma;
       end
@@ -77,42 +75,43 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     end
 
     function computeStiffMat(obj,lw)
-      % Inspired by MRST
+      % lw (the cell mobility)
+
       dofm = obj.domain.dofm;
       subCells = dofm.getFieldCells(obj.fieldId);
       nSubCells = length(subCells);
-      %get pairs of faces that contribute to the subdomain
-      neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-      % Transmissibility of internal faces
-      tmpVec = lw.*obj.trans(obj.isIntFaces);
-      %nneigh = length(tmpVec);
-      % [~,~,reorder] = unique([neigh(:,1); neigh(:,2); subCells]);
-      % [~,~,reorder] = unique([neigh(:,1); neigh(:,2)]);
-      % neigh1 = reorder(1:nneigh);
-      % neigh2 = reorder(nneigh+1:2*nneigh);
+      % get transmissibility of internal faces
+      neigh = obj.grid.faces.neighbors(obj.isIntFaces,:);
+      T = lw.*obj.trans(obj.isIntFaces);
+   
       neigh1 = dofm.getLocalDoF(obj.fieldId,neigh(:,1));
       neigh2 = dofm.getLocalDoF(obj.fieldId,neigh(:,2));
-      sumDiagTrans = accumarray( [neigh1;neigh2], repmat(tmpVec,[2,1]), ...
+      sumDiagTrans = accumarray( [neigh1;neigh2], repmat(T,[2,1]), ...
         [nSubCells,1]);
+
       % Assemble H matrix
       nDoF = dofm.getNumbDoF(obj.fieldId);
       obj.H = sparse([neigh1; neigh2; (1:nSubCells)'],...
         [neigh2; neigh1; (1:nSubCells)'],...
-        [-tmpVec; -tmpVec; sumDiagTrans], nDoF, nDoF);
+        [-T; -T; sumDiagTrans], nDoF, nDoF);
     end
 
     function computeCapMat(obj,varargin)
+
       mat = obj.domain.materials;
       dofm = obj.domain.dofm;
-      subCells = dofm.getFieldCells(obj.fieldId);
-      %nSubCells = length(subCells);
-      poroMat = zeros(obj.mesh.nCellTag,1);
-      alphaMat = zeros(obj.mesh.nCellTag,1);
+      cellIds = dofm.getFieldCells(obj.fieldId);
+      cells = obj.grid.cells;
+
+      poroMat = zeros(cells.nTag,1);
+      alphaMat = zeros(cells.nTag,1);
       beta = mat.getFluid().getFluidCompressibility();
-      for m = 1:obj.mesh.nCellTag
+
+      for m = 1:cells.nTag
         if ~ismember(m,dofm.getTargetRegions(obj.getField()))
           continue
         end
+
         if ~ismember(m,dofm.getTargetRegions([obj.getField(),"displacements"]))
           % compute alpha only if there's no coupling in the
           % subdomain
@@ -121,15 +120,17 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         poroMat(m) = mat.getMaterial(m).PorousRock.getPorosity();
       end
 
+      ctags = cells.tag(cellIds);
+
       % (alpha+poro*beta)
-      PVal = alphaMat(obj.mesh.cellTag(subCells)) + beta*poroMat(obj.mesh.cellTag(subCells));
+      PVal = alphaMat(ctags) + beta*poroMat(ctags);
       if ~isempty(varargin)
         % variably saturated flow model
-        PVal = PVal.*varargin{1} + poroMat(obj.mesh.cellTag(subCells)).*varargin{2};
+        PVal = PVal.*varargin{1} + poroMat(ctags).*varargin{2};
       end
-      PVal = PVal.*obj.mesh.cellVolume(subCells);
+      PVal = PVal.*cells.volume(cellIds);
       nDoF = dofm.getNumbDoF(obj.fieldId);
-      [~,~,dof] = unique(subCells);
+      [~,~,dof] = unique(cellIds);
       obj.P = sparse(dof,dof,PVal,nDoF,nDoF);
     end
 
@@ -166,22 +167,25 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       % Compute the gravity contribution
       % Get the fluid specific weight and viscosity'
       gamma = obj.domain.materials.getFluid().getSpecificWeight();
+
       if gamma > 0
-        neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-        zVec = obj.mesh.cellCentroid(:,3);
+        neigh = faces.neighbors(obj.isIntFaces,:);
+        zVec = obj.grid.cells.center(:,3);
         zNeigh = reshape(zVec(neigh),[],2);
         obj.rhsGrav = gamma*obj.trans(obj.isIntFaces).*(zNeigh(:,1) - zNeigh(:,2));
       end
       % remove inactive components of rhs vector
     end
 
+
     function gTerm = finalizeRHSGravTerm(obj,lw)
       dofm = obj.domain.dofm;
       nCells = dofm.getNumbDoF(obj.fieldId);
-      neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+      neigh = obj.grid.faces.neighbors(obj.isIntFaces,:);
+
       gTerm = accumarray(neigh(:),[lw.*obj.rhsGrav; ...
         -lw.*obj.rhsGrav],[nCells,1]);
-      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
       gTerm = gTerm(dofm.getActiveEntities(obj.fieldId));
     end
 
@@ -197,6 +201,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       bc = obj.domain.bcs;
       mat = obj.domain.materials;
+      faces = obj.grid.faces;
+      surfaces = obj.grid.surfaces;
+      cells = obj.grid.cells;
 
       bcFld = bc.getField(bcId);
       type = bc.getType(bcId);
@@ -210,9 +217,10 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       if bcFld == entityField.surface
 
-        faceId = bc.getSourceEntities(bcId);
+        surfId = bc.getSourceEntities(bcId);
+        faceId = surfaces.faceId(surfId);
         srcVal = bc.getSourceVals(bcId,t);
-        ents = sum(obj.faces.faceNeighbors(faceId,:),2);
+        ents = sum(faces.neighbors(faceId,:),2);
         p = getState(obj,obj.getField());
 
         %
@@ -224,7 +232,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
             dirJ = 1/mu*tr;
 
-            dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceId,3);
+            dz = cells.center(ents,3) - faces.center(faceId,3);
             potential = (p(ents) - srcVal) + gamma*dz;
             q = dirJ.*potential;
             vals = [dirJ,q];
@@ -232,14 +240,14 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
             gamma = mat.getFluid().getSpecificWeight();
             assert(gamma>0.,'To impose Seepage boundary condition is necessary the fluid specify weight be bigger than zero!');
 
-            zbc = obj.faces.faceCentroid(faceId,3);
+            zbc = faces.center(faceId,3);
             href = srcVal(1);
             v = gamma*(href-zbc);
 
             v(v<=0)=0.;
             mu = mat.getFluid().getDynViscosity();
             tr = obj.trans(faceId);
-            dz = obj.mesh.cellCentroid(ents,3) - obj.faces.faceCentroid(faceId,3);
+            dz = cells.center(ents,3) - faces.center(faceId,3);
             q = 1/mu*tr.*(p(ents) - v) + gamma*dz;
             vals = [1/mu*tr,q];
         end
@@ -318,11 +326,11 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       cells = obj.grid.cells;
       faces = obj.grid.faces;
 
-      [fList,ptr] = getData(cells.cell2faces);
+      [faceList,ptr] = getData(cells.cells2faces);
       nFPC = diff(ptr);                       % number of faces per cell
 
       hf2Cell = repelem((1:cells.num)',nFPC,1);
-      L = faces.center(fList,:) - cells.center(hf2Cell,:);
+      L = faces.center(faceList,:) - cells.center(hf2Cell,:);
 
       % signed normal for half face transmissibility (points outside the
       % cell)
@@ -330,7 +338,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       % neighbors, it measn that the normal of that face points inside the
       % cell (so it has to be flipped)
       sgn = 2*(hf2Cell == faces.neighbors(faceList,1)) - 1;
-      N = sgn .* obj.faces.normal(faceList,:);
+      N = sgn .* faces.normal(faceList,:);
 
       mat = obj.domain.materials;
       KMat = zeros(cells.nTag,9);
@@ -350,7 +358,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       hT = hT./sum(L.*L,2);
 
       % compute face transmissibilities
-      obj.trans = 1 ./ accumarray(fList,1 ./ hT,[faces.num,1]);
+      obj.trans = 1 ./ accumarray(faceList,1 ./ hT,[faces.num,1]);
 
     end
 
@@ -367,12 +375,11 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       fluxFaces = zeros(faces.num,1);
 
 
-      %%% process internal face
+      %%% process internal faces
 
-      isFaceInternal = ~faces.isBoundary;
-      neigh = faces.neighbors(isFaceInternal,:);
+      neigh = faces.neighbors(obj.isIntFaces,:);
       dpot = pot(neigh(:,1))-pot(neigh(:,2));
-      fluxFaces(isFaceInternal) = mob.* obj.trans(obj.isIntFaces) * dpot;
+      fluxFaces(obj.isIntFaces) = mob.* obj.trans(obj.isIntFaces) * dpot;
 
       %%% process boundary faces
 
@@ -442,23 +449,6 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       str = "FVTPFA";
     end
 
-    % function mass = checkMassCons(obj,mob,pot)
-    %   %CHECKMASSCONS - check the mass conservation in all elements.
-    %   mass = zeros(obj.mesh.nCells,1);
-    %   if isTPFA(obj)
-    %     neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-    %     sgn = 2*((obj.faces.faces2Elements(:,2)==1) +(obj.faces.faces2Elements(:,2)==3)+(obj.faces.faces2Elements(:,2)==5)) - 1;
-    %
-    %     fluxFaces = zeros(obj.faces.nFaces,1);
-    %     fluxFaces(obj.isIntFaces) = pot(neigh(:,1))-pot(neigh(:,2));
-    %     fluxFaces(obj.isIntFaces) = mob.*obj.trans(obj.isIntFaces).*fluxFaces(obj.isIntFaces);
-    %
-    %     % Contribution
-    %     massFace = sgn.*fluxFaces(obj.faces.faces2Elements(:,1));
-    %     elm = repelem(1:obj.mesh.nCells,diff(obj.faces.mapF2E));
-    %     mass = accumarray(elm',massFace);
-    %   end
-    % end
   end
 
   methods (Access = private)

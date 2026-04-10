@@ -473,19 +473,11 @@ classdef Poromechanics < PhysicsSolver
     end
 
 
-    function assembleGravity(obj)
-
-      % add gravity contribution to the rhs 
-
-      for i = 1:obj.grid.nCellTag
-
-      end
-
-
-
-
-
+    function order = getGaussOrder(obj)
+      order = obj.gaussOrder;
     end
+
+
 
 
     function out = isLinear(obj)

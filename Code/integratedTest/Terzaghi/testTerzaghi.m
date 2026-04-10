@@ -127,12 +127,13 @@ nm = 1000;
 
 mat = solv.domains.materials;
 grid = solv.domains.grid;
-mesh = grid.topology;
+coord = grid.coordinates;
+cells = grid.cells;
 
 
 % Get model geometry
-L_min = min(mesh.coordinates(:,3));
-L_max = max(mesh.coordinates(:,3));
+L_min = min(coord(:,3));
+L_max = max(coord(:,3));
 L = abs(L_max-L_min);
 
 % Get Material parameters from materials class
@@ -159,17 +160,19 @@ gamma = B*(1+nuU)/(3*(1-nuU));
 % nz = 50; %number of calculation points along z-axis
 % z = linspace(L_min,L_max,nz);
 
-zu = mesh.coordinates(:,3);
+zu = coord(:,3);
 
-if isfield(grid,'faces')
-  if ~isempty(grid.faces)
-    zp = mesh.cellCentroid(:,3);
-  else
-    zp = zu;
-  end
+sName = solv.domains.solverNames{1};
+biotSolv = solv.domains.getPhysicsSolver(sName);
+
+flowScheme = biotSolv.getFlowScheme;
+
+if strcmp(flowScheme,"FVTPFA")
+  zp = cells.center(:,3);
 else
   zp = zu;
 end
+
 time = solv.domains.outstate.timeList;
 
 zu = reshape(zu,1,[]);

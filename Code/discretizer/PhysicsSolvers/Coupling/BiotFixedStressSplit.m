@@ -59,71 +59,104 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
       end
 
       function computeMat(obj)
-        
+
         % call method according to the discretization technique chosen
-           if isempty(obj.Q) || ~isLinear(obj)
-              computeMatBiot(obj)
-           end
+        if isempty(obj.Q) || ~isLinear(obj)
+          computeMatBiot(obj)
+        end
+      end
+
+
+      function computeRelaxationMatrix(obj)
+
+        % R = int_el b^2/Kdr*(Np'*Np)
+
+        dofm = obj.domain.dofm;
+        coordinates = obj.grid.coordinates;
+        cells = obj.grid.cells;
+        materials = obj.domain.materials;
+        s = getState(obj);
+        sOld = getStateOld(obj);
+
+        if ~isempty(obj.R) && isLinear(obj.mechSolver)
+          return
         end
 
+        subCells = getCoupledCells(obj);
+        nDoF = dofm.getNumbDoF(obj.fldFlow);
+        nEntries = sum(cells.numVerts(subCells).^2);
+        asbR = assembler(nEntries,nDoF,nDoF);
+        gOrd = obj.mechSolver.getGaussOrder;
 
-        function computeRelaxationMatrix(obj)
+        for vtkId = cells.vtkTypes
 
-          % R = int_el b^2/Kdr*(Np'*Np)
+          tmp = obj.grid.getCellsByVTKId(vtkId);
+          cellList = reshape(intersect(subCells,tmp,'sorted'),1,[]);
+          elem = FiniteElementType.create(vtkId,obj.grid,gOrd);
+          nG = elem.getNumbGaussPts;
 
-          dofm = obj.domain.dofm;
+          % get node topology for given vtk type
+          topol = obj.grid.getCellNodes(cellList);
 
-          if ~isempty(obj.R) && isLinear(obj.mechSolver)
-            return
-          end
+          for i = 1:numel(cellList)
 
-          subCells = getCoupledCells(obj);
+            % assembly loop for homogeneous element type
 
-          nDoF = dofm.getNumbDoF(obj.fldFlow);
+            el = cellList(i);
+            tag = cells.tag(el);
+            nodes = topol(i,:);
+            coords = coordinates(nodes,:);
+            mat = materials.getMaterial(tag);
 
-          nEntries = sum(obj.mesh.cellNumVerts(subCells).^2);
-          asbR = assembler(nEntries,nDoF,nDoF);
+            % get drained bulk modulus
+            l = obj.mechSolver.cell2stress(el,1);
+            [D, ~, ~] = obj.domain.materials.updateMaterial( ...
+              tag, ...
+              sOld.data.stress(l+1:l+nG,:), ...
+              s.data.strain(l+1:l+nG,:), ...
+              [], sOld.data.status(l+1:l+nG,:), el, s.t);
 
+            I = zeros(6,1);
+            I(1:obj.KdrType) = 1;
+            DI = pagemtimes(D,I);
+            Kdr = (1/obj.KdrType^2)*pagemtimes(I',DI);
 
-          for el = subCells'
-            % get bulk modulus
-            Kdr = getDrainedBulkModulus(obj,el);
-            mat = obj.domain.materials.getMaterial(obj.mesh.cellTag(el));
-            elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
-            dJWeighed = getDerBasisFAndDet(elem,el,3);
+            [~,dJWeighed] = getDerBasisFAndDet(elem,coords);
+
             if isFEM(obj.flowSolver)
-              nodes = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
               dof = dofm.getLocalDoF(obj.fldFlow,nodes);
               N = getBasisFinGPoints(elem);
             elseif isTPFA(obj.flowSolver)
-              nG = elem.GaussPts.nNode;
               N = ones(nG,1);
               dof = dofm.getLocalDoF(obj.fldFlow,el);
             end
+
             biot = mat.PorousRock.getBiotCoefficient();
             k = biot^2./reshape(Kdr,1,[],1);
             Rloc = N'*diag(k.*dJWeighed)*N;
             asbR.localAssembly(dof,dof,Rloc);
           end
 
-          obj.R = asbR.sparseAssembly();
         end
 
+        obj.R = asbR.sparseAssembly();
+      end
 
-        function rhsMech = computeRhsMech(obj,dt)
 
-          pCurr = getState(obj,"pressure");
+      function rhsMech = computeRhsMech(obj,dt)
 
-          entsFlow = obj.domain.dofm.getActiveEntities(obj.fldFlow,1);
+        pCurr = getState(obj,"pressure");
 
-          % remember the minus sign (look at biot)
-          rhsMech = - obj.Q * pCurr(entsFlow);
+        entsFlow = obj.domain.dofm.getActiveEntities(obj.fldFlow,1);
 
-        end
+        % remember the minus sign (look at biot)
+        rhsMech = - obj.Q * pCurr(entsFlow);
 
-        function rhsFlow = computeRhsFlow(obj,dt)
+      end
 
-          % retrieve State variables
+      function rhsFlow = computeRhsFlow(obj,dt)
+
+        % retrieve State variables
           pCurr = getState(obj,"pressure");
           uOld = getStateOld(obj,"displacements");
           pConv = obj.conv.pressure;
@@ -168,18 +201,17 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
           end
         end
 
-        function Kdr = getDrainedBulkModulus(obj,elID)
+        function Kdr = getDrainedBulkModulus(obj,elID,elem)
 
           % result is given for each gauss point
 
           s = getState(obj);
           sOld = getStateOld(obj);
 
-          vtkId = obj.mesh.cellVTKType(elID);
-          elem = getElement(obj.elements,vtkId);
-          nG = elem.GaussPts.nNode;
+    
+          nG = elem.getNumbGaussPts;
 
-          l = obj.mechSolver.cell2stress(elID);
+          l = obj.mechSolver.cell2stress(elID,1);
 
           % get constitutive matrix
           [D, ~, ~] = obj.domain.materials.updateMaterial( ...
