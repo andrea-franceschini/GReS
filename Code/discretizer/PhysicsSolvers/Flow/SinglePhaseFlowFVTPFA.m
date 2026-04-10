@@ -94,6 +94,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         if ~ismember(m,dofm.getTargetRegions(obj.getField()))
           continue
         end
+
         if ~ismember(m,dofm.getTargetRegions([obj.getField(),"displacements"]))
           % compute alpha only if there's no coupling in the
           % subdomain

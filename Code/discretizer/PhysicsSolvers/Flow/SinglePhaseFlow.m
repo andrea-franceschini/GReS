@@ -50,7 +50,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       obj.getState().data.(obj.getField()) = zeros(n,1);
 
     end
-    
+
 
     function assembleSystem(obj,dt)
 
@@ -118,19 +118,30 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       out = isLinear(obj);
     end
 
-    function alpha = getRockCompressibility(obj,el)
-      mat = obj.domain.materials;
-      targetRegions = getTargetRegions(obj.domain.dofm,["pressure","displacements"]);
-      if ismember(obj.mesh.cellTag(el),targetRegions)
-        alpha = 0; %this term is not needed in a coupled formulation
-      else
-        if isfield(mat.getMaterial(obj.mesh.cellTag(el)),"ConstLaw")
-          %solid skeleton contribution to storage term as oedometric compressibility .
-          alpha = mat.getMaterial(obj.mesh.cellTag(el)).ConstLaw.getRockCompressibility();
+    function alpha = getRockCompressibility(obj,cellTag,regions)
+
+      % regions: cell tags where pressure is coupled with displacements
+
+      mat = obj.domain.materials.getMaterial(cellTag);
+      rock = mat.PorousRock;
+      alpha = 0.0;
+
+      if nargin < 3
+        regions = [];
+      end
+
+      % enter only if the cell is not already coupled with displacements
+      if ~ismember(tag,regions) 
+        % get alpha from mechanical constitutive law if provided
+        if isfield(mat,"ConstLaw")
+          alpha = mat.ConstLaw.getRockCompressibility();
         else
-          alpha = 0;
+          % otherwise get the compressibility from the porous rock (default
+          % is 0)
+          alpha = rock.getCompressibility;
         end
       end
+      
     end
 
     function perm = printPermeab(obj)
