@@ -15,14 +15,11 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
   methods (Abstract)
     % mandatory methods that need to be implemented in any SinglePhaseFlow
 
-    % compute the jacobian matrix
-    J = computeMat(obj,dt);
-
-    % compute the rhs
-    rhs = computeRhs(obj,dt);
-
     % Print the output at the physics level.
     [cellData,pointData] = buildPrintStruct(obj,outPrint);
+
+    computeMat(obj,dt)
+
   end
 
   methods (Access = public)
@@ -53,10 +50,33 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       obj.getState().data.(obj.getField()) = zeros(n,1);
 
     end
+    
 
     function assembleSystem(obj,dt)
-      obj.domain.J{obj.fieldId,obj.fieldId} = computeMat(obj,dt);
-      obj.domain.rhs{obj.fieldId} = computeRhs(obj,dt);
+
+      % compute stiffness matrix obj.H and capacity matrix obj.P
+      computeMat(obj,dt);
+
+      p = obj.getState(obj.getField());
+      ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
+
+      if obj.steadyState
+        obj.domain.J{obj.fieldId,obj.fieldId} = obj.H;
+        rhs = obj.H*p(ents);
+      else
+        obj.domain.J{obj.fieldId,obj.fieldId} = obj.H + obj.P/dt;
+        pOld = obj.getStateOld(obj.getField());
+        rhs = obj.H*p(ents) + (obj.P/dt)*(p(ents) - pOld(ents));
+      end
+
+      gamma = obj.domain.materials.getFluid().getSpecificWeight();
+      if gamma > 0
+        % add rhs gravity contribution
+        obj.domain.rhs{obj.fieldId} = rhs + getRhsGravity(obj);
+      else
+        obj.domain.rhs{obj.fieldId} = rhs;  
+      end
+      
     end
 
     function updateState(obj,dSol)
@@ -129,7 +149,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
 
 
-    function ssPressure = getSeadyStatePressure(obj,varargin)
+    function ssPressure = getSteadyStatePressure(obj,varargin)
       %
       % getSeadyStatePressure  Compute initial stress via a one-step GReS simulation.
       % DEFAULT SETUP

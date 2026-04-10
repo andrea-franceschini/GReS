@@ -28,7 +28,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       % Find internal faces (i.e. shared by two active flow cells)
       obj.isIntFaces = all(ismember(obj.faces.faceNeighbors, flowCells), 2);
 
-      computeRHSGravTerm(obj);
+      computeRhsGravTerm(obj);
 
     end
 
@@ -48,18 +48,12 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       % states.mass = checkMassCons(obj,mob,potential);
     end
 
-    function J = computeMat(obj,dt)
+    function computeMat(obj,dt)
       % recompute elementary matrices only if the model is non-linear
       if ~isLinear(obj) || isempty(getJacobian(obj))
         mu = obj.domain.materials.getFluid().getDynViscosity();
         computeStiffMat(obj,1/mu);
         computeCapMat(obj);
-      end
-
-      if obj.domain.simparams.isTimeDependent
-        J = obj.domain.simparams.theta*obj.H + obj.P/dt;
-      else
-        J = obj.H;
       end
     end
 
@@ -120,36 +114,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       obj.P = sparse(dof,dof,PVal,nDoF,nDoF);
     end
 
-    function rhs = computeRhs(obj,dt)
-      % Compute the residual of the flow problem
+ 
 
-      % get pressure state
-      p = getState(obj,obj.getField());
-      pOld = getStateOld(obj,obj.getField());
-
-      fluid = obj.domain.materials.getFluid();
-
-      lw = 1/fluid.getDynViscosity();
-      ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
-
-      if ~obj.domain.simparams.isTimeDependent
-        rhs = obj.H*p(ents);
-      else
-        theta = obj.domain.simparams.theta;
-        rhsStiff = theta*obj.H*p(ents) + (1-theta)*obj.H*pOld(ents);
-        rhsCap = (obj.P/dt)*(p(ents) - pOld(ents));
-        rhs = rhsStiff + rhsCap;
-      end
-
-      %adding gravity rhs contribute
-      gamma = fluid.getSpecificWeight();
-      if gamma > 0
-        rhs = rhs + finalizeRHSGravTerm(obj,lw);
-      end
-
-    end
-
-    function computeRHSGravTerm(obj)
+    function computeRhsGravTerm(obj)
       % Compute the gravity contribution
       % Get the fluid specific weight and viscosity'
       gamma = obj.domain.materials.getFluid().getSpecificWeight();
@@ -159,16 +126,19 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         zNeigh = reshape(zVec(neigh),[],2);
         obj.rhsGrav = gamma*obj.trans(obj.isIntFaces).*(zNeigh(:,1) - zNeigh(:,2));
       end
-      % remove inactive components of rhs vector
     end
 
-    function gTerm = finalizeRHSGravTerm(obj,lw)
+    function gTerm = getRhsGravity(obj)
+
+      fluid = obj.domain.materials.getFluid();
+      lw = 1/fluid.getDynViscosity();
+      
       dofm = obj.domain.dofm;
       nCells = dofm.getNumbDoF(obj.fieldId);
       neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
       gTerm = accumarray(neigh(:),[lw.*obj.rhsGrav; ...
         -lw.*obj.rhsGrav],[nCells,1]);
-      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
       gTerm = gTerm(dofm.getActiveEntities(obj.fieldId));
     end
 
@@ -241,6 +211,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     end
 
     function applyDirVal(obj,bcId,t)
+
       bcVar = obj.domain.bcs.getVariable(bcId);
       if ~strcmp(bcVar,obj.getField()) 
         return 

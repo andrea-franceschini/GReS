@@ -10,7 +10,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
 
       registerSolver@SinglePhaseFlow(obj,entityField.node,varargin{:});
 
-      computeRHSGravTerm(obj);
+      computeRhsGravTerm(obj);
 
     end
 
@@ -26,16 +26,10 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       states.pressure = p;
     end
 
-    function J = computeMat(obj,dt)
+    function computeMat(obj,dt)
       % recompute elementary matrices only if the model is non-linear
       if ~isLinear(obj) || isempty(getJacobian(obj))
         computeMatFEM(obj);
-      end
-
-      if obj.domain.simparams.isTimeDependent
-        J = obj.domain.simparams.theta*obj.H + obj.P/dt;
-      else
-        J = obj.H;
       end
     end
 
@@ -89,33 +83,9 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       obj.P = sparse(iiVec, jjVec, PVec, nDoF, nDoF);
     end
 
-    function rhs = computeRhs(obj,dt)
-      % Compute the residual of the flow problem
-
-      % get pressure state
-      p = getState(obj,obj.getField());
-      pOld = getStateOld(obj,obj.getField());
-
-      ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
-
-      if ~obj.domain.simparams.isTimeDependent
-        rhs = obj.H*p(ents);
-      else
-        theta = obj.domain.simparams.theta;
-        rhsStiff = theta*obj.H*p(ents) + (1-theta)*obj.H*pOld(ents);
-        rhsCap = (obj.P/dt)*(p(ents) - pOld(ents));
-        rhs = rhsStiff + rhsCap;
-      end
-
-      %adding gravity rhs contribute
-      gamma = obj.domain.materials.getFluid().getSpecificWeight();
-      if gamma > 0
-        rhs = rhs + obj.rhsGrav;
-      end
-    end
 
     % TO DO: update to new FEM logic
-    function computeRHSGravTerm(obj)
+    function computeRhsGravTerm(obj)
       % Compute the gravity contribution
       % Get the fluid specific weight and viscosity'
       dofm = obj.domain.dofm;
@@ -141,6 +111,12 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       end
       % remove inactive components of rhs vector
     end
+
+    function rhsGrav = getRhsGravity(obj)
+
+      rhsGrav = obj.rhsGrav;
+      
+    end 
 
     % function [ents,vals] = getBC(obj,id,t)
     %   % getBC - function to find the value and the location for the
