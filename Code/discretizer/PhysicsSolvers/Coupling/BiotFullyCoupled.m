@@ -32,7 +32,6 @@ classdef BiotFullyCoupled < PhysicsSolver
 
       dofm = obj.domain.dofm;
 
-
       default = struct('Poromechanics',missing,...
                        'SinglePhaseFlowFVTPFA',missing);
 

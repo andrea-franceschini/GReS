@@ -16,31 +16,19 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
     function registerSolver(obj,varargin)
 
-      cells = obj.grid.cells;
 
-      default = struct('targetRegions',1:cells.nTag);
-
-      params = readInput(default,varargin{:});
-
-      dofm = obj.domain.dofm;
-
-      dofm.registerVariable(obj.getField(),entityField.cell,1,params.targetRegions);
-      n = getNumberOfEntities(entityField.cell,obj.grid);
-      obj.fieldId = dofm.getVariableId(obj.getField());
-
-
-      % initialize the state object with a pressure field
-      obj.getState().data.(obj.getField()) = zeros(n,1);
+      registerSolver@SinglePhaseFlow(obj,entityField.cell,varargin{:});
 
       %linkBoundSurf2TPFAFace(obj);
 
       obj.computeTrans();
       %get cells with active flow model
-      flowCells = dofm.getActiveEntities(obj.fieldId);
+      flowCells = obj.domain.dofm.getActiveEntities(obj.fieldId);
       % Find internal faces (i.e. shared by two active flow cells)
       obj.isIntFaces = all(ismember(obj.grid.faces.neighbors, flowCells), 2);
 
-      computeRHSGravTerm(obj);
+      computeRhsGravTerm(obj);
+
     end
 
     function states = finalizeState(obj,p,t)
@@ -59,18 +47,12 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       % states.mass = checkMassCons(obj,mob,potential);
     end
 
-    function J = computeMat(obj,dt)
+    function computeMat(obj,dt)
       % recompute elementary matrices only if the model is non-linear
       if ~isLinear(obj) || isempty(getJacobian(obj))
         mu = obj.domain.materials.getFluid().getDynViscosity();
         computeStiffMat(obj,1/mu);
         computeCapMat(obj);
-      end
-
-      if obj.domain.simparams.isTimeDependent
-        J = obj.domain.simparams.theta*obj.H + obj.P/dt;
-      else
-        J = obj.H;
       end
     end
 
@@ -112,13 +94,13 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
           continue
         end
 
-        if ~ismember(m,dofm.getTargetRegions([obj.getField(),"displacements"]))
-          % compute alpha only if there's no coupling in the
-          % subdomain
-          alphaMat(m) = mat.getMaterial(m).ConstLaw.getRockCompressibility();
-        end
+        % get regions where pressure is coupled with displacements
+        coupledTags = dofm.getTargetRegions([obj.getField(),"displacements"]);
+        alphaMat(m) = getRockCompressibility(obj,m,coupledTags);
         poroMat(m) = mat.getMaterial(m).PorousRock.getPorosity();
+
       end
+      
 
       ctags = cells.tag(cellIds);
 
@@ -134,36 +116,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       obj.P = sparse(dof,dof,PVal,nDoF,nDoF);
     end
 
-    function rhs = computeRhs(obj,dt)
-      % Compute the residual of the flow problem
+ 
 
-      % get pressure state
-      p = getState(obj,obj.getField());
-      pOld = getStateOld(obj,obj.getField());
-
-      fluid = obj.domain.materials.getFluid();
-
-      lw = 1/fluid.getDynViscosity();
-      ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
-
-      if ~obj.domain.simparams.isTimeDependent
-        rhs = obj.H*p(ents);
-      else
-        theta = obj.domain.simparams.theta;
-        rhsStiff = theta*obj.H*p(ents) + (1-theta)*obj.H*pOld(ents);
-        rhsCap = (obj.P/dt)*(p(ents) - pOld(ents));
-        rhs = rhsStiff + rhsCap;
-      end
-
-      %adding gravity rhs contribute
-      gamma = fluid.getSpecificWeight();
-      if gamma > 0
-        rhs = rhs + finalizeRHSGravTerm(obj,lw);
-      end
-
-    end
-
-    function computeRHSGravTerm(obj)
+    function computeRhsGravTerm(obj)
       % Compute the gravity contribution
       % Get the fluid specific weight and viscosity'
       gamma = obj.domain.materials.getFluid().getSpecificWeight();
@@ -174,11 +129,13 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         zNeigh = reshape(zVec(neigh),[],2);
         obj.rhsGrav = gamma*obj.trans(obj.isIntFaces).*(zNeigh(:,1) - zNeigh(:,2));
       end
-      % remove inactive components of rhs vector
     end
 
+    function gTerm = getRhsGravity(obj)
 
-    function gTerm = finalizeRHSGravTerm(obj,lw)
+      fluid = obj.domain.materials.getFluid();
+      lw = 1/fluid.getDynViscosity();
+      
       dofm = obj.domain.dofm;
       nCells = dofm.getNumbDoF(obj.fieldId);
       neigh = obj.grid.faces.neighbors(obj.isIntFaces,:);
@@ -187,6 +144,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         -lw.*obj.rhsGrav],[nCells,1]);
 
       gTerm = gTerm(dofm.getActiveEntities(obj.fieldId));
+      
     end
 
     function [ents,vals] = getBC(obj,bcId,t)
@@ -262,6 +220,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     end
 
     function applyDirVal(obj,bcId,t)
+
       bcVar = obj.domain.bcs.getVariable(bcId);
       if ~strcmp(bcVar,obj.getField()) 
         return 

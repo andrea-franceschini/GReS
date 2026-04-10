@@ -43,7 +43,9 @@ printUtils = OutState('outputFile',"Output/results",'printTimes',[5,15,30]);
 domain = Discretizer('Boundaries',bound,...
                      'Materials',mat,...
                      'Grid',grid);
+
 domain.addPhysicsSolver("BiotFullyCoupled");
+
 
 % In this version of the code, the user can assign initial conditions only
 % manually, by directly modifying the entries of the state structure. 

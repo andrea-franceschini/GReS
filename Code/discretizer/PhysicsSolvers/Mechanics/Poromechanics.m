@@ -20,7 +20,7 @@ classdef Poromechanics < PhysicsSolver
 
   properties (Access = private)
     fieldId
-    gaussOrder
+    gaussOrder      % (0 means the minimum required by the fem type)
   end
 
   methods (Access = public)
