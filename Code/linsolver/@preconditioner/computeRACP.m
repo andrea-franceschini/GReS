@@ -59,7 +59,10 @@ function computeRACP(obj,A,symMat)
    A11_aug = A{1,1}+ADD;
    
    % For now impose the amg
-   obj.PrecType = 'amg';
+   if strcmpi(obj.PrecType,'fsai')
+      warning('fsai preconditioner not yet tested with racp');
+      obj.PrecType = 'amg';
+   end
 
    % If even one of the blocks is nonsymmetric then the agumented matrix
    % must be nonsymmetric
