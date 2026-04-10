@@ -1,13 +1,16 @@
-classdef InterfaceMesh < handle
+classdef InterfaceGrid < handle
   % Manager for topological information and operation on lower dimensional
-  % interfaces
+  % interfaces between non-conforming domains
+
+
+  % Assumption: each side of the interface must have a unique vtk type
 
   
   properties
     % prop{1} -> master     prop{2} -> slave 
-    msh
-    local2glob
-    elemConnectivity
+    grids               % grid(1): slave side   grid(2): master side
+    %local2glob
+    elemConnectivity    % connectivity map between elems on both side of the interface
     nN
     %nEl
     cellType
@@ -28,7 +31,7 @@ classdef InterfaceMesh < handle
   end
   
   methods
-    function obj = InterfaceMesh(mshMaster,mshSlave,varargin)
+    function obj = InterfaceGrid(mshMaster,mshSlave,varargin)
 
       if nargin == 2
         % input are 2D meshes ready for processing

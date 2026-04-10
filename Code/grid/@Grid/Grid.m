@@ -7,7 +7,7 @@ classdef Grid < handle
     cells
     surfaces    % external faces with tag
     faces 
-    %edges      % not yet supported
+    edges         
 
     nNodes = 0
     coordinates
