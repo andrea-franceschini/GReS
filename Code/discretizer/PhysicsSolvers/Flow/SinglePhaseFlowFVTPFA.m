@@ -17,31 +17,19 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         error(["%s solver requires 'Faces' field to be define in the grid." ...
           "grid = struct('topology',Mesh(),'cells',Elements(),'faces',Faces()]"])
       end
-      nTags = obj.mesh.nCellTag;
 
-      default = struct('targetRegions',1:nTags);
-
-      params = readInput(default,varargin{:});
-
-      dofm = obj.domain.dofm;
-
-      dofm.registerVariable(obj.getField(),entityField.cell,1,params.targetRegions);
-      n = getNumberOfEntities(entityField.cell,obj.mesh);
-      obj.fieldId = dofm.getVariableId(obj.getField());
-
-
-      % initialize the state object with a pressure field
-      obj.getState().data.(obj.getField()) = zeros(n,1);
+      registerSolver@SinglePhaseFlow(obj,entityField.cell,varargin{:});
 
       linkBoundSurf2TPFAFace(obj);
 
       obj.computeTrans();
       %get cells with active flow model
-      flowCells = dofm.getActiveEntities(obj.fieldId);
+      flowCells = obj.domain.dofm.getActiveEntities(obj.fieldId);
       % Find internal faces (i.e. shared by two active flow cells)
       obj.isIntFaces = all(ismember(obj.faces.faceNeighbors, flowCells), 2);
 
       computeRHSGravTerm(obj);
+
     end
 
     function states = finalizeState(obj,p,t)

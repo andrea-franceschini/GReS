@@ -5,6 +5,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     H
     P
     rhsGrav         % gravity contribution to rhs
+    steadyState     % flag to force steady state problem
   end
 
   properties (Access = protected)
@@ -27,6 +28,30 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
   methods (Access = public)
     function obj = SinglePhaseFlow(domain)
       obj@PhysicsSolver(domain);
+    end
+
+
+    function registerSolver(obj,fldLocation,varargin)
+
+      nTags = obj.mesh.nCellTag;
+
+      default = struct('targetRegions',1:nTags,...
+        'steadyState',0);
+
+
+      params = readInput(default,varargin{:});
+
+      obj.steadyState = logical(params.steadyState);
+
+      dofm = obj.domain.dofm;
+
+      dofm.registerVariable(obj.getField(),fldLocation,1,params.targetRegions);
+      n = getNumberOfEntities(fldLocation,obj.mesh);
+      obj.fieldId = dofm.getVariableId(obj.getField());
+
+      % initialize the state object with a pressure field
+      obj.getState().data.(obj.getField()) = zeros(n,1);
+
     end
 
     function assembleSystem(obj,dt)
@@ -100,6 +125,43 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
         perm(el,5)=ktmp(2,3);
         perm(el,6)=ktmp(1,3);
       end
+    end
+
+
+
+    function ssPressure = getSeadyStatePressure(obj,varargin)
+      %
+      % getSeadyStatePressure  Compute initial stress via a one-step GReS simulation.
+      % DEFAULT SETUP
+      % ssPressure = getSeadyStatePressure(obj)   % default setup
+      % SETUP WITH USER DEFINED PARAMETERS
+      % initialStress = getSeadyStatePressure(obj, 'simulationparameters', sp, 'output', out)
+      %
+      % Accept only a single domain with no interfaces.
+      %
+      % Output:
+      %   initialStress - [nGP x 6] matrix with stress tensor components
+
+      % default parameters for the simulation
+      if ~obj.steadyState
+        error("getSeadyStatePressure() is available only if flow solver '%s' has property 'steadyState' set to true.",class(obj))
+      end
+
+      parm = struct('Start',0.0,'End',1.0,'DtInit',1.0,'DtMax',1.0,'DtMin',0.01);
+      default = struct('simulationparameters',SimulationParameters(parm),...
+        'domains',obj.domain);
+
+      params = readInput(default,varargin{:});
+
+      solv = NonLinearImplicit(params);
+
+      assert(solv.nDom == 1 && solv.nInterf == 0, ...
+        "SteadyState pressure computation can be used only as a stand-alone PhysicsSolver within a single domain");
+
+      solv.simulationLoop();
+
+      ssPressure = obj.domain.state.data.pressure;
+      
     end
   end
 
