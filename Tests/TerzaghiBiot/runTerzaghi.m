@@ -29,7 +29,7 @@ mat = Materials(fullfile(scriptDir,input_dir,"materials.xml"));
 grid = Grid();
 
 % Import mesh data into the Mesh object
-MeshFile = "Column_hexa.msh";
+MeshFile = "Column_tetra.msh";
 grid.importMesh(fullfile(scriptDir,input_dir,"Mesh",MeshFile));
 
 % Creating boundaries conditions.

@@ -57,7 +57,7 @@ mat = Materials(fullfile(input_dir,'materials.xml'));
 printUtils = OutState(fullfile(input_dir,'output.xml'));
 
 % Create object handling construction of Jacobian and rhs of the model
-domain = Discretizer('Materials',mat);
+domain = Discretizer('materials',mat);
 domain.addPhysicsSolvers(fullfile(input_dir,'solver.xml'));
 
 % Solve the problem

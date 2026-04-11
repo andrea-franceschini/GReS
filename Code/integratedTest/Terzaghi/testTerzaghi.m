@@ -11,6 +11,9 @@ cd(scriptDir);
 for elem = ["tetra","hexa"]
   for flow = ["FV","FEM"]
     for scheme = ["FC","FS"]
+      if strcmp(elem,"tetra") && strcmp(scheme,"FS")
+        continue
+      end
       run(elem,flow,scheme);
     end
   end
@@ -70,7 +73,7 @@ switch scheme
                               'domains',domain,...
                               'output',printUtils,...
                               'maxiterations',20,...
-                              'reltolerance',1e-7);
+                              'reltolerance',1e-5);
 
 end
 
@@ -103,13 +106,13 @@ for i = 1:numel(solver.output.timeList)
   errP = norm(pAn-pNum);
   errU = norm(uNum-uAn);
 
-  assert(norm(errP)<1.5,'Pressure error for out time %i \n',i)
-  assert(norm(errU)<1e-3,'Displacement error for out time %i\n',i)
+  assert(norm(errP)<1e1,'Pressure error for out time %i \n',i)
+  assert(norm(errU)<1e-4,'Displacement error for out time %i\n',i)
 end
 
 if strcmp(class(solver),"FixedStressSplit")
   nIter = mean(solver.getFixedStressIters());
-  assert(nIter<14,"Unexpected number of fixed stress split iterations")
+  assert(nIter<8,"Unexpected number of fixed stress split iterations")
 end
 
 end

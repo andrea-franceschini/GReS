@@ -124,7 +124,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       gamma = obj.domain.materials.getFluid().getSpecificWeight();
 
       if gamma > 0
-        neigh = faces.neighbors(obj.isIntFaces,:);
+        neigh = obj.grid.faces.neighbors(obj.isIntFaces,:);
         zVec = obj.grid.cells.center(:,3);
         zNeigh = reshape(zVec(neigh),[],2);
         obj.rhsGrav = gamma*obj.trans(obj.isIntFaces).*(zNeigh(:,1) - zNeigh(:,2));

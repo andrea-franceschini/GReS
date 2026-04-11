@@ -487,7 +487,7 @@ classdef Discretizer < handle
 
     function setInput(obj, varargin)
 
-      default = struct('grid',Grid.empty,...
+      default = struct('grid',Grid(),...
                        'materials',Materials(),...
                        'boundaries',Boundaries());
 
@@ -503,6 +503,10 @@ classdef Discretizer < handle
 
    
     function validateInput(obj)
+
+      if isempty(obj.grid.cells)
+        return
+      end
 
       msh = obj.grid.cells;
 
