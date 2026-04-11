@@ -71,7 +71,7 @@ classdef BiotFullyCoupled < PhysicsSolver
       computeMat(obj);
 
       % assign coupling blocks to jacobian
-      obj.domain.J{obj.fldMech,obj.fldFlow} = -obj.domain.simparams.theta*obj.Q;
+      obj.domain.J{obj.fldMech,obj.fldFlow} = -obj.Q;
       obj.domain.J{obj.fldFlow,obj.fldMech} = obj.Q'/dt;
 
       % add rhs from coupling contribution
@@ -201,6 +201,20 @@ classdef BiotFullyCoupled < PhysicsSolver
       cells = getEntitiesFromTags(entityField.cell,...
         obj.grid,entityField.cell,cellTags);
     end
+
+
+    function flowSolv = getFlowSolver(obj)
+
+      flowSolv = obj.flowSolver;
+
+    end
+
+    function mechSolv = getMechSolver(obj)
+
+      mechSolv = obj.mechSolver;
+
+    end
+
 
     function applyBC(obj,bcId,t)
       obj.flowSolver.applyBC(bcId,t);

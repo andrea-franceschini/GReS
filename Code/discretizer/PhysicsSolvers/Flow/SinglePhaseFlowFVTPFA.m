@@ -21,7 +21,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       %linkBoundSurf2TPFAFace(obj);
 
-      obj.computeTrans();
+      obj.computeTransmissibilities();
       %get cells with active flow model
       flowCells = obj.domain.dofm.getActiveEntities(obj.fieldId);
       % Find internal faces (i.e. shared by two active flow cells)
@@ -278,7 +278,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       end
     end
 
-    function computeTrans(obj)   % Inspired by MRST
+    function computeTransmissibilities(obj)   % Inspired by MRST
       % Compute first the vector connecting each cell centroid to the
       % half-face
 
@@ -290,6 +290,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       hf2Cell = repelem((1:cells.num)',nFPC,1);
       L = faces.center(faceList,:) - cells.center(hf2Cell,:);
+      A = faces.area(faceList);
 
       % signed normal for half face transmissibility (points outside the
       % cell)
@@ -314,7 +315,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       for k=1:length(r)
         hT = hT + L(:,r(k)) .* KMat(cells.tag(hf2Cell),k) .* N(:,c(k));
       end
-      hT = hT./sum(L.*L,2);
+
+
+      hT = A.*hT./sum(L.*L,2);
 
       % compute face transmissibilities
       obj.trans = 1 ./ accumarray(faceList,1 ./ hT,[faces.num,1]);
@@ -409,6 +412,11 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
     function str = typeDiscretization(obj)
       str = "FVTPFA";
+    end
+
+
+    function transm = getTransmissibility(obj)
+      transm = obj.trans;
     end
 
   end
