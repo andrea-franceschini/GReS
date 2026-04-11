@@ -89,25 +89,26 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.J{obj.fieldId,obj.fieldId} = [];
       obj.domain.rhs{obj.fieldId} = [];
 
-      % Increase number of variables in the dof manager
-      obj.domain.dofm.registerVariable(obj.getField(),entityField.cell,1,1);
+      %obj.domain.dofm.registerVariable(obj.getField(),entityField.cell,1,1);
     end
 
     function initialize(obj)
       % Initialize the Sedimentation solver before the simulation starts
 
       % Set mesh output.
-      [coord,conec] = obj.gridSed.getMesh;
+      [coord,conn] = obj.gridSed.getMesh;
       npts = size(coord,1);
-      nelm = size(conec,1);
-      obj.mesh.nDim = 3;
-      obj.mesh.nCells = nelm;
-      obj.mesh.nNodes = npts;
-      obj.mesh.cellVTKType = 12*ones(nelm,1);
-      obj.mesh.cellNumVerts = 8*ones(nelm,1);
-      obj.mesh.cellTag = 8*ones(nelm,1);
-      obj.mesh.coordinates = coord;
-      obj.mesh.cells = conec;
+      nelm = size(conn,1);
+      obj.grid.nDim = 3;
+      obj.grid.nNodes = npts;
+      obj.grid.coordinates = coord;
+      cells.num = nelm;
+      cells.VTKType = 12*ones(nelm,1);
+      cells.numVerts = 8*ones(nelm,1);
+      cells.tag = 8*ones(nelm,1);
+      cells.connectivity = conn;
+
+      obj.grid.cells = cells;
 
       % Prepare the faces connectivity
       dofs = (1:nelm)';
@@ -619,15 +620,16 @@ classdef Sedimentation < PhysicsSolver
       [coord, conec] = obj.gridSed.getMesh(dofs);
       npts = size(coord,1);
       nelm = size(conec,1);
-      obj.mesh.nCells = obj.mesh.nCells+nelm;
-      obj.mesh.nNodes = obj.mesh.nNodes+npts;
+      obj.grid.nNodes = obj.grid.nNodes+npts;
+      obj.grid.coordinates(end+1:obj.grid.nNodes,:) = coord;
 
-      obj.mesh.cellVTKType(end+1:end+nelm) = 12;
-      obj.mesh.cellNumVerts(end+1:end+nelm) = 8;
-      obj.mesh.cellTag(end+1:end+nelm) = 8;
-
-      obj.mesh.coordinates(end+1:obj.mesh.nNodes,:) = coord;
-      obj.mesh.cells(end+1:end+nelm,:) = conec;
+      cells = obj.grid.cells;
+      cells.num = cells.num + nelm;
+      cells.VTKType(end+1:end+nelm) = 12;
+      cells.numVerts(end+1:end+nelm) = 8;
+      cells.tag(end+1:end+nelm) = 8;
+      cells.connectivity(end+1:end+nelm,:) = conec;
+      obj.grid.cells = cells;
     end
 
     function computeHalfTrans(obj)
