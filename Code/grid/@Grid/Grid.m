@@ -136,11 +136,16 @@ classdef Grid < handle
     % end
 
 
-    function cellList = getCellsByVTKId(obj,vtkId)
+    function outList = getCellsByVTKId(obj,vtkId,cellList)
       if ~isscalar(vtkId)
         error("Input vtk id must be a scalar value");
       end
-      cellList = find(obj.cells.VTKType == vtkId);
+
+      if nargin == 2
+        cellList = (1:obj.cells.num)';
+      end
+
+      outList = cellList(obj.cells.VTKType(cellList) == vtkId);
     end
 
     function surfList = getSurfByVTKId(obj,vtkId)

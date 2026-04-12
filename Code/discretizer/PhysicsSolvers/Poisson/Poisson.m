@@ -1,11 +1,11 @@
 classdef Poisson < PhysicsSolver
-  %UNTITLED Summary of this class goes here
-  %   Detailed explanation goes here
+  % FEM solver for Poisson equation
   
   properties
     F
     analyticalSolution
     fieldId
+    gaussOrder
   end
 
 
@@ -16,12 +16,13 @@ classdef Poisson < PhysicsSolver
 
     function registerSolver(obj,varargin)
 
-      nTags = obj.mesh.nCellTag;
+      nTags = obj.grid.cells.nTag;
 
-      default = struct('targetRegions',1:nTags);
+      default = struct('targetRegions',1:nTags,'gaussOrder',0);
 
       params = readInput(default,varargin{:});
 
+      obj.gaussOrder = params.gaussOrder;
       dofm = obj.domain.dofm;
 
       % register scalar poisson variable on target regions
@@ -51,27 +52,36 @@ classdef Poisson < PhysicsSolver
       subCells = obj.domain.dofm.getFieldCells(obj.fieldId);
       n = sum(obj.mesh.cellNumVerts(subCells).^2);
       Ndof = obj.domain.dofm.getNumbDoF(obj.getField());
-      asbJ = assembler(n,Ndof,Ndof, @(el) computeLocalMatrix(obj,el));
+      asbJ = assembler(n,Ndof,Ndof);
+      coordinates = obj.grid.coordinates;
+      cells = obj.grid.cells;
+
       % loop over cells
-      for el = subCells'
-        % get dof id and local matrix
-        asbJ.localAssembly(el);
+      for vtkId = cells.vtkTypes
+
+        tmp = obj.grid.getCellsByVTKId(vtkId);
+        subCellsLoc = intersect(subCells,tmp,'sorted');
+        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+
+        % get node topology for given vtk type
+        topol = obj.grid.getCellNodes(subCellsLoc);
+
+        for i = 1:numel(subCellsLoc)
+          el = subCellsLoc(i);
+          nodes = topol(el,:);
+          coords = coordinates(nodes,:);
+          % get dof id and local matrix
+          [gradN,dJW] = getDerBasisFAndDet(elem,coords);
+          Jloc = pagemtimes(gradN,'ctranspose',gradN,'none');
+          Jloc = Jloc.*reshape(dJW,1,1,[]);
+          Jloc = sum(Jloc,3);
+          % get global DoF
+          dof = obj.domain.dofm.getLocalDoF(obj.fieldId,nodes);
+          asbJ.localAssembly(dof,dof,Jloc);
+        end
       end
       % populate stiffness matrix
       J = asbJ.sparseAssembly();
-    end
-
-
-    function [dofr,dofc,matLoc] = computeLocalMatrix(obj,elID)
-      elem = getElementByID(obj.elements,elID);
-      [gradN,dJW] = getDerBasisFAndDet(elem,elID,1);
-      matLoc = pagemtimes(gradN,'ctranspose',gradN,'none');
-      matLoc = matLoc.*reshape(dJW,1,1,[]);
-      matLoc = sum(matLoc,3);
-      % get global DoF
-      nodes = obj.mesh.cells(elID,1:obj.mesh.cellNumVerts(elID));
-      dof = obj.domain.dofm.getLocalDoF(obj.fieldId,nodes);
-      dofr = dof; dofc = dof;
     end
 
     function rhs = computeRhs(obj,varargin)
@@ -83,8 +93,8 @@ classdef Poisson < PhysicsSolver
 
     function initState(obj)
       % add poromechanics fields to state structure
-      obj.domain.state.data.u = zeros(obj.mesh.nNodes,1);
-      obj.domain.state.data.err = zeros(obj.mesh.nNodes,1);
+      obj.domain.state.data.u = zeros(obj.grid.nNodes,1);
+      obj.domain.state.data.err = zeros(obj.grid.nNodes,1);
     end
 
     function updateState(obj,dSol)
@@ -184,7 +194,7 @@ classdef Poisson < PhysicsSolver
       pointStr(1).data = var;
       if ~isempty(obj.analyticalSolution)
         pointStr(2).name = 'abs_error';
-        pointStr(2).data = abs(var-computeAnal(obj,1:obj.mesh.nNodes,'u',0));
+        pointStr(2).data = abs(var-computeAnal(obj,1:obj.grid.nNodes,'u',0));
       end
     end
 
@@ -203,7 +213,7 @@ classdef Poisson < PhysicsSolver
 
     function anal = computeAnal(obj,list,var,mode)
       if mode == 0
-        x = obj.mesh.coordinates(list,:);
+        x = obj.grid.coordinates(list,:);
       elseif mode == 1
         x = list;
       else 
@@ -233,20 +243,30 @@ classdef Poisson < PhysicsSolver
       % classical
       % general sparse assembly loop over elements for Poromechanics
       subCells = obj.domain.dofm.getFieldCells(obj.getField());
+      cells = obj.grid.cells;
       F = zeros(obj.domain.dofm.getNumbDoF(obj.getField()),1);
-      % loop over cells
-      for el = subCells'
-        % get dof id and local matrix
-        id = obj.mesh.cells(el,:);
-        elem = getElementByID(obj.elements,el);
-        c_gp = getGPointsLocation(elem,el);
-        f_gp = computeAnal(obj,c_gp,'f',1);
-        [~,dJW] = getDerBasisFAndDet(elem,el,1);
-        N = getBasisFinGPoints(elem);
-        floc = N'*(f_gp.*dJW');
-        % proper integration
-        F(id) = F(id) + floc;
+
+      for vtkId = cells.vtkTypes
+
+        subCellsLoc = obj.grid.getCellsByVTKId(vtkId,subCells);
+        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+
+        % get node topology for given vtk type
+        topol = obj.grid.getCellNodes(subCellsLoc);
+
+        for i = 1:numel(subCellsLoc)
+          el = subCellsLoc(i);
+          nodes = topol(el,:);
+          c_gp = getGPointsLocation(elem,el);
+          f_gp = computeAnal(obj,c_gp,'f',1);
+          [~,dJW] = getDerBasisFAndDet(elem,el,1);
+          N = getBasisFinGPoints(elem);
+          floc = N'*(f_gp.*dJW');
+          % proper integration
+          F(nodes) = F(nodes) + floc;
+        end
       end
+
     end
 
     function [L2err,H1err] = computeError(obj)
