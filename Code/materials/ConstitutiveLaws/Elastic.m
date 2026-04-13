@@ -80,7 +80,7 @@ classdef Elastic < handle
        obj.M = obj.nu/(1-obj.nu);
        %
        % Compute vertical compressibility
-       obj.cM = 0.;
+       obj.cM =  (1+obj.nu).*(1-2*obj.nu)./(obj.E.*(1-obj.nu));
        % Compute constitutive matrix
     end
  

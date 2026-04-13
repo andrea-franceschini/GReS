@@ -214,5 +214,3 @@ classdef linearSolver < handle
 
    end
 end
-
-

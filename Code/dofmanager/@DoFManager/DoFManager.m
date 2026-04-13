@@ -186,8 +186,30 @@ classdef DoFManager < handle
     end
 
     function tags = getTargetRegions(obj,varId)
-      id = obj.getVariableId(varId);
-      tags = unique([obj.fields(id).tags]);
+      % get regions where variable fields are present simultaneously
+      % varId - array of id or a string array of variable names
+      % if the variable is not present, the result is empty
+
+      if nargin > 2 
+        error("getTargetRegions:List of variables must be a single array or  single string array of variable names")
+      end
+
+      tags = [];
+
+
+      if numel(varId) > 1
+        tags = obj.getTargetRegions(varId(1));
+        for i = 2:numel(varId)
+          tags = intersect(tags, obj.getTargetRegions(varId(i)));
+        end
+        return
+      end
+
+      if isVariable(obj,varId)
+        id = obj.getVariableId(varId);
+        tags = unique([obj.fields(id).tags]);
+      end
+
     end
 
     function cells = getFieldCells(obj,varId)
@@ -206,22 +228,26 @@ classdef DoFManager < handle
 
     function id = getVariableId(obj,varId)
       % return the id of the requested input variable
-      if isnumeric(varId)
-        assert(all(varId > 0) && all(varId <= numel(obj.fields)),"Input variable" + ...
-          "ID is not included in the domain")
 
-        id = varId;
-
-      else
-        assert(isVariable(obj,varId),"Requested variable is not available" + ...
+      assert(isVariable(obj,varId),"Requested variable is not available" + ...
           "in the DoFManager")
+
+      if isnumeric(varId)
+        id = varId;
+      else     
         id = find(strcmp([obj.fields.variableName],varId));
       end
     end
 
-    function fl = isVariable(obj,varId)
-      varId = contains([obj.fields.variableName],varId);
-      fl = any(varId);
+    function out = isVariable(obj,varId)
+
+      if isnumeric(varId)
+        out = all([varId(:) > 0; varId(:) <= numel(obj.fields)]);
+      else
+        out = any(contains([obj.fields.variableName],varId));
+      end
+
+
     end
 
     function numDof = getNumbDoF(obj,varId)

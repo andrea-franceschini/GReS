@@ -39,7 +39,7 @@ domain = Discretizer('Grid',grid,...
                      'Materials',mat,...
                      'Boundaries',bound);
 
-domain.addPhysicsSolver(solverName);
+domain.addPhysicsSolver(solverName,'steadyState',1);
 
 
 % set initial conditions directly modifying the state object

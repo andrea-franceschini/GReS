@@ -7,6 +7,8 @@ classdef testShearPatch < matlab.unittest.TestCase
   methods(TestClassSetup)
     % Shared setup for the entire test class
     function setupOnce(testCase)
+      rmpath(genpath(fullfile(gres_root,...
+        "/Code/unittest/PatchTestMechanics/test")));
       testCase.pathToFile = fullfile(gres_root,...
         "/Code/unittest/PatchTestMechanics/shearPatch.xml");
     end

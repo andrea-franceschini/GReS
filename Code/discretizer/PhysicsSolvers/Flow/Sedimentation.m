@@ -190,6 +190,7 @@ classdef Sedimentation < PhysicsSolver
       for bcId = obj.bcs
         dofs = obj.grid.getBord(bcId.surface);
         p = getState(obj,"pressure");
+        fcorr = false;
         switch lower(bcId.surface)
           case {"xmin","xmax"}
             axis=1;
@@ -197,16 +198,40 @@ classdef Sedimentation < PhysicsSolver
           case {"ymin","ymax"}
             axis=2;
             vecN = [0 1 0];
-          case {"zmin","zmax"}
+          case {"zmin"}
             axis=3;
             vecN = [0 0 1];
+          case {"zmax"}
+            axis=3;
+            vecN = [0 0 1];
+            fcorr = true;
           otherwise
         end
 
         switch lower(bcId.type)
           case {'dirichlet'}
+            % Correction to the zero pressure to be at the top of the
+            % accumulated sediment.
+            Trans = obj.halfTrans(dofs,axis);
+            if fcorr
+              [dx,dy,~] = obj.grid.getCellsDims(dofs);
+              sedm=obj.domain.state.data.sedimentAcc;
+              dz = sum(sedm,2);
+              map = dz~=0;
+              if any(map)
+                mfrac = sedm(map,:)./dz(map);
+                condCell = zeros(sum(map),3);
+                for mat=1:obj.nmat
+                  tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getConductivity();
+                  condCell = condCell + mfrac(:,mat).*tmpMat;
+                end
+                Tvirt = (dx(map).*dy(map))./(dz(map)).*condCell(:,3);
+                Trans(map) = 1./(1./Tvirt+1./Trans(map));
+              end
+            end
+
             mu = obj.domain.materials.getFluid().getSpecificWeight();
-            dirJ = 1/mu*obj.halfTrans(dofs,axis);
+            dirJ = 1/mu*Trans;
             potential = p(dofs) - bcId.value;
             q = dirJ.*potential;
 
@@ -330,6 +355,13 @@ classdef Sedimentation < PhysicsSolver
       K = obj.getCellsProp('TotalStressVariation');
       K = K(obj.grid.getMapFromDofs());
       [dx,dy,dz] = obj.grid.getCellsDims();
+
+      % sedm=obj.domain.state.data.sedimentAcc;
+      % vv = dz + obj.getState('cellDefm');
+      % tt=obj.grid.getTopDofs();
+      % vv(tt) = vv(tt)+sum(sedm,2);
+      % volCell = dx.*dy.*vv;
+      
       volCell = dx.*dy.*(dz + obj.getState('cellDefm'));
       cb = obj.computeOedometricCompressibility();
 
@@ -712,6 +744,7 @@ classdef Sedimentation < PhysicsSolver
       data.stress = sNew.data.stress*fac+sOld.data.stress*(1-fac);
       data.strain = sNew.data.strain*fac+sOld.data.strain*(1-fac);
       data.void = sNew.data.voidrate*fac+sOld.data.voidrate*(1-fac);
+
       data.cond = obj.getCellsProp('conductivity');
       data.comp = comp;
       data.head = zCoordCM+data.pres/gamma;
