@@ -50,7 +50,9 @@ classdef Poisson < PhysicsSolver
     function J = computeMat(obj,varargin)
 
       subCells = obj.domain.dofm.getFieldCells(obj.fieldId);
-      n = sum(obj.mesh.cellNumVerts(subCells).^2);
+      cells = obj.grid.cells;
+      
+      n = sum(cells.numVerts(subCells).^2);
       Ndof = obj.domain.dofm.getNumbDoF(obj.getField());
       asbJ = assembler(n,Ndof,Ndof);
       coordinates = obj.grid.coordinates;
@@ -244,6 +246,7 @@ classdef Poisson < PhysicsSolver
       % general sparse assembly loop over elements for Poromechanics
       subCells = obj.domain.dofm.getFieldCells(obj.getField());
       cells = obj.grid.cells;
+      coordinates = obj.grid.coordinates;
       F = zeros(obj.domain.dofm.getNumbDoF(obj.getField()),1);
 
       for vtkId = cells.vtkTypes
@@ -257,9 +260,10 @@ classdef Poisson < PhysicsSolver
         for i = 1:numel(subCellsLoc)
           el = subCellsLoc(i);
           nodes = topol(el,:);
+          coords = coordinates(nodes,:);
           c_gp = getGPointsLocation(elem,el);
           f_gp = computeAnal(obj,c_gp,'f',1);
-          [~,dJW] = getDerBasisFAndDet(elem,el,1);
+          [~,dJW] = getDerBasisFAndDet(elem,coords);
           N = getBasisFinGPoints(elem);
           floc = N'*(f_gp.*dJW');
           % proper integration
@@ -269,82 +273,66 @@ classdef Poisson < PhysicsSolver
 
     end
 
+
+
     function [L2err,H1err] = computeError(obj)
       assert(~isempty(obj.analyticalSolution),['Missing analytical solution for ' ...
         'Poisson model \n'])
       L2err = 0;
       H1err = 0;
-      for el = 1:obj.mesh.nCells
-        vtkId = obj.mesh.cellVTKType(el);
-        elem = getElement(obj.elements,vtkId);
-        N = getBasisFinGPoints(elem);
-        [gradN,dJW] = getDerBasisFAndDet(elem,el,1);
-        dofId = obj.mesh.cells(el,:);
-        locErr = (obj.domain.state.data.err(dofId));
-        norm_e = N*locErr.^2;        % squared value of error
-        L2errLoc = sum(norm_e.*reshape(dJW,[],1));
-        grad_e = pagemtimes(gradN,locErr);
-        ngp = size(grad_e,3);
-        norm_grad_e = zeros(ngp,1);
-        for i = 1:ngp
-          norm_grad_e(i) = norm(grad_e(:,:,i),2);
+
+      u = obj.domain.state.data.u;
+
+      coordinates = obj.grid.coordinates;
+      cells = obj.grid.cells;
+
+      for vtkId = cells.vtkTypes
+
+        cellList = obj.grid.getCellsByVTKId(vtkId);
+        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+
+        % get node topology for given vtk type
+        topol = obj.grid.getCellNodes(cellList);
+
+        for i = 1:numel(cellList)
+
+          el = cellList(i);
+          nodes = topol(el,:);
+          coords = coordinates(nodes,:);
+          N = getBasisFinGPoints(elem);
+          [gradN,dJW] = getDerBasisFAndDet(elem,coords);
+          c_gp = getGPointsLocation(elem,el);
+          u_gp = N*u(nodes);
+          err = u_gp - computeAnal(obj,c_gp,'u',1);
+          err_2 = err.^2;        % squared value of error
+          L2errLoc = sum(err_2.*reshape(dJW,[],1));
+          grad_uh = pagemtimes(gradN,u(nodes));
+          grad_uh = squeeze(permute(grad_uh,[3 1 2]));
+
+          grad_u = [computeAnal(obj,c_gp,'grad_x',1),...
+                    computeAnal(obj,c_gp,'grad_y',1),...
+                    computeAnal(obj,c_gp,'grad_z',1)];
+
+          grad_err = grad_uh - grad_u;
+          grad_err2 = sum(grad_err.^2,2);
+          semiH1errLoc = sum(grad_err2.*reshape(dJW,[],1));
+
+          L2err = L2err + L2errLoc;
+          H1err = H1err + L2errLoc + semiH1errLoc;
         end
-        norm_e_grad_e = norm_e + norm_grad_e;
-        H1errLoc = sum(norm_e_grad_e.*reshape(dJW,[],1));
-        L2err = L2err + L2errLoc;
-        H1err = H1err + H1errLoc;
+
+        L2err = sqrt(L2err);
+        H1err = sqrt(H1err);
       end
-      L2err = sqrt(L2err);
-      H1err = sqrt(H1err);
     end
 
-
-  function [L2err,H1err] = computeError_v2(obj)
-    assert(~isempty(obj.analyticalSolution),['Missing analytical solution for ' ...
-      'Poisson model \n'])
-    L2err = 0;
-    H1err = 0;
-
-    u = obj.domain.state.data.u;
-
-    for el = 1:obj.mesh.nCells
-      vtkId = obj.mesh.cellVTKType(el);
-      elem = getElement(obj.elements,vtkId);
-      N = getBasisFinGPoints(elem);
-      [gradN,dJW] = getDerBasisFAndDet(elem,el,1);
-      c_gp = getGPointsLocation(elem,el);
-      dofId = obj.mesh.cells(el,:);
-      u_gp = N*u(dofId);
-      err = u_gp - computeAnal(obj,c_gp,'u',1);
-      err_2 = err.^2;        % squared value of error
-      L2errLoc = sum(err_2.*reshape(dJW,[],1));
-
-      grad_uh = pagemtimes(gradN,u(dofId));
-      grad_uh = squeeze(permute(grad_uh,[3 1 2]));
-
-      grad_u = [computeAnal(obj,c_gp,'grad_x',1),...
-                computeAnal(obj,c_gp,'grad_y',1),...
-                computeAnal(obj,c_gp,'grad_z',1)];
-
-      grad_err = grad_uh - grad_u;
-      grad_err2 = sum(grad_err.^2,2);
-      semiH1errLoc = sum(grad_err2.*reshape(dJW,[],1));
-
-      L2err = L2err + L2errLoc;
-      H1err = H1err + L2errLoc + semiH1errLoc;
+      function out = isSymmetric(obj)
+        out = true;
+      end
     end
 
-    L2err = sqrt(L2err);
-    H1err = sqrt(H1err);
-  end
-
-  function out = isSymmetric(obj)
-     out = true;
-  end
-end
-
-  methods (Static)
-    function out = getField()
+    methods (Static)
+      function out = getField()
       out = "u";
     end
   end

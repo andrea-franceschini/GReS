@@ -117,10 +117,10 @@ classdef QuadrilateralQuadratic < FiniteElementType
       assert(isscalar(idQuad),'Element input id must be a scalar positive integer')
       if nargin < 4
         dN = computeDerBasisF(obj,pos);
-        nodeCoord = FEM.getElementCoords(obj,idQuad);
+        nodeCoord = getElementCoords(obj,idQuad);
       else
         dN = Quadrilateral.computeDerBasisF(pos);
-        nodeCoord = obj.getSubElementCoords(idQuad,idSub);
+        nodeCoord = getSubElementCoords(idQuad,idSub);
       end
       tang = dN*nodeCoord;
       crossTang = cross(tang(1,:)',tang(2,:)');
@@ -257,8 +257,9 @@ classdef QuadrilateralQuadratic < FiniteElementType
     end
 
     function coord = getSubElementCoords(obj,idQuad,idSub)
-      nodeSub = obj.grid.surfaces(idQuad,obj.nod2sub(idSub,:));
-      coord = obj.grid.coordinates(nodeSub,:);
+      nList = obj.grid.getSurfNofes(idQuad);
+      nList = nList(obj.nod2sub(idSub,:));
+      coord = obj.grid.coordinates(nList,:);
     end
 
     function xi_sub = mapref2sub(obj,xi_ref,sub)
@@ -276,12 +277,9 @@ classdef QuadrilateralQuadratic < FiniteElementType
 
   methods (Access = protected)
     function setElement(obj)
-      obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
-      obj.detJ = zeros(1,obj.GaussPts.nNode);
       findLocBasisF(obj);
       findLocDerBasisF(obj);
       obj.subQuad = Quadrilateral(obj.nGP);
-%       findLocBubbleBasisF(obj);
     end
 
     function findLocDerBasisF(obj,varargin)

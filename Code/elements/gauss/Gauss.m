@@ -66,7 +66,14 @@ classdef Gauss < handle
 
       % get 1D points location for tensor product rule
       % used in hexa and quad - order = numb of gp per direction
-      switch order
+
+      ng = ceil(0.5*(order+1));
+
+      availGP = [1,2,3,4,5,6,8,16];
+      i = find(ng < availGP);
+      ng = i(1);
+
+      switch ng
         case 1
           coord1D = 0.0;
           weight1D = 2.0;
@@ -246,7 +253,7 @@ classdef Gauss < handle
             0.082851075618374
             ];
         otherwise
-          error(['Unsupported number of gauss points for triangle quadrature.' ...
+          error(['Unsupported order for triangle quadrature.' ...
             'Available integration order are: \n' ...
             ' order 1: 1 gp \n order 2: 3 gp \n order 3: 4 gp \n' ...
             ' order 4: 6 gp \n order 5: 7 gp \n order 6: 12 gp']);
@@ -334,7 +341,7 @@ classdef Gauss < handle
             ];
 
         otherwise
-          error(['Unsupported number of gauss points for tetrahedron quadrature.' ...
+          error(['Unsupported order for tetrahedron quadrature.' ...
             'Available integration order are: \n' ...
             ' order 1: 1 gp \n order 2: 4 gp \n order 3: 5 gp \n' ...
             ' order 4: 11 gp']);

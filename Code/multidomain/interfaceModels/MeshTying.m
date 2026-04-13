@@ -28,9 +28,9 @@ classdef MeshTying < InterfaceSolver
       params = readInput(struct('stabilizationScale',1.0),input);
       obj.stabilizationScale = params.stabilizationScale;
 
-      ncomp = obj.domains(2).dofm.getNumberOfComponents(obj.coupledVariables);
+      ncomp = obj.domains(MortarSide.slave).dofm.getNumberOfComponents(obj.coupledVariables);
       obj.nMult = ncomp * getNumberOfEntities(obj.multiplierLocation,...
-        obj.getMesh(MortarSide.slave));
+        obj.grids(MortarSide.slave));
 
       obj.state.multipliers = zeros(obj.nMult,1);
       obj.state.iniMultipliers = zeros(obj.nMult,1);
@@ -96,31 +96,38 @@ classdef MeshTying < InterfaceSolver
       % This method computes the cross grid mortar matrices between
       % connected interfaces
 
-      meshMaster = getMesh(obj,MortarSide.master);
-      meshSlave = getMesh(obj,MortarSide.slave);
+      m = MortarSide.master;
+      s = MortarSide.slave;
 
-      dofmMaster = getDoFManager(obj,MortarSide.master);
-      dofmSlave =  getDoFManager(obj,MortarSide.slave);
+      surfMaster = obj.grids(m).surfaces;
+      surfSlave = obj.grids(s).surfaces;
 
+      dofmMaster = getDoFManager(obj,m);
+      dofmSlave =  getDoFManager(obj,s);
+
+      elemPairs = obj.quadrature.interfacePairs;
 
       % number of components per dof of interpolated physics
-      if ~isempty(obj.domains(2).dofm)
-        ncomp = obj.domains(2).dofm.getNumberOfComponents(obj.coupledVariables);
+      if ~isempty(obj.domains(m).dofm)
+        ncomp = obj.domains(m).dofm.getNumberOfComponents(obj.coupledVariables);
       else
         ncomp = 1;
       end
 
       % get number of index entries for sparse matrices
       % overestimate number of sparse indices assuming all quadrilaterals
-      nNmaster = meshMaster.surfaceNumVerts'*obj.interfMesh.elemConnectivity;
+
+      % array with number of master nodes per slave
+      nv = surfMaster.numVerts(elemPairs(:,m));
+      nNMPS = accumarray(elemPairs(:,s),nv,[surfSlave.num,1]); 
 
       switch obj.multiplierLocation
         case entityField.cell
-          N1 = sum(nNmaster);
-          N2 = sum(meshSlave.surfaceNumVerts);
+          N1 = sum(nNMPS);
+          N2 = sum(surfSlave.numVerts);
         otherwise
-          N1 = nNmaster*meshSlave.surfaceNumVerts;
-          N2 = sum(meshSlave.surfaceNumVerts.^2);
+          N1 = nNMPS'*surfSlave.numVerts;
+          N2 = sum(surfSlave.numVerts.^2);
       end
 
       nm = (ncomp^2)*N1;
@@ -130,7 +137,6 @@ classdef MeshTying < InterfaceSolver
       nDofSlave = dofmSlave.getNumbDoF(obj.coupledVariables);
       nDofMult = obj.nMult;
 
-
       fldM = dofmMaster.getVariableId(obj.coupledVariables);
       fldS = dofmSlave.getVariableId(obj.coupledVariables);
 
@@ -139,88 +145,105 @@ classdef MeshTying < InterfaceSolver
 
       f = @(a,b) pagemtimes(a,'ctranspose',b,'none');
 
-      % loop over pairs of connected master/slave elements
-      for iPair = 1:obj.quadrature.numbInterfacePairs
+      topolMaster = getRowsMatrix(surfMaster.connectivity,1:surfMaster.num);
+      topolSlave = getRowsMatrix(surfSlave.connectivity,1:surfSlave.num);
 
-        is = obj.quadrature.interfacePairs(iPair,1);
-        im = obj.quadrature.interfacePairs(iPair,2);
 
-        % get dofs 
-        nodeSlave = obj.interfMesh.local2glob{2}(meshSlave.surfaces(is,:));
-        usDof = dofmSlave.getLocalDoF(fldS,nodeSlave);
-        nodeMaster = obj.interfMesh.local2glob{1}(meshMaster.surfaces(im,:));
-        umDof = dofmMaster.getLocalDoF(fldM,nodeMaster);
-        tDof = getMultiplierDoF(obj,is);
+      for vtkSlave = surfSlave.vtkTypes
 
-        % retrieve mortar integration data
-        % gp reference coordinate on master element
-        xiMaster = obj.quadrature.getMasterGPCoords(iPair);
-        % gp reference coordinate on slave element
-        xiSlave = obj.quadrature.getSlaveGPCoords(iPair);
-        % determinant of jacobian for each gp
-        dJw = obj.quadrature.getIntegrationWeights(iPair);
+        elSlave = FiniteElementType.create(vtkSlave,obj.grids(s));
 
-        % compute slave/master/multipliers basis functions
-        [Ns,Nm,Nmult] = ...
-          getMortarBasisFunctions(obj.quadrature,im,is,xiMaster,xiSlave);
+        for vtkMaster = surfSlave.vtkTypes
 
-        [Ns,Nm,Nmult] = ...
-          reshapeBasisFunctions(ncomp,Ns,Nm,Nmult);
+          elMaster = FiniteElementType.create(vtkMaster,obj.grids(m));
 
-        if ncomp > 1
-          % vector field, local reference needed
+          % loop over pairs of connected master/slave elements
+          for iPair = 1:obj.quadrature.numbInterfacePairs
 
-          % rotation of multipliers
-          R = getRotationMatrix(obj.interfMesh,is);
+            is = elemPairs(iPair,s);
+            im = elemPairs(iPair,m);
 
-          % mortar coupling normal component
-          Atm =  MortarQuadrature.integrate(f,Nmult,Nm,dJw);
-          Ats =  MortarQuadrature.integrate(f,Nmult,Ns,dJw);
+            if surfSlave.VTKType(is) ~= vtkSlave; continue; end
+            if surfMaster.VTKType(im) ~= vtkMaster; continue; end
 
-          % if strcmp(obj.quadrature.multiplierType,"dual")
-          %   Ats = diag(sum(Ats,2));
-          % end
+            % get dofs
+            nodeSlave = surfSlave.loc2glob(topolSlave(is,1:elSlave.nNode));
+            usDof = dofmSlave.getLocalDoF(fldS,nodeSlave);
+            nodeMaster = surfMaster.loc2glob(topolMaster(im,1:elMaster.nNode));
+            umDof = dofmMaster.getLocalDoF(fldM,nodeMaster);
+            tDof = getMultiplierDoF(obj,is);
 
-          Atm = R'*Atm;
-          Ats = R'*Ats;
+            % retrieve mortar integration data
+            % gp reference coordinate on master element
+            xiMaster = obj.quadrature.getMasterGPCoords(iPair);
+            % gp reference coordinate on slave element
+            xiSlave = obj.quadrature.getSlaveGPCoords(iPair);
+            % determinant of jacobian for each gp
+            dJw = obj.quadrature.getIntegrationWeights(iPair);
 
-          % assemble the local mortar matrix contribution
-          asbM.localAssembly(tDof,umDof,Atm);
-          asbD.localAssembly(tDof,usDof,-Ats);
+            % compute slave/master/multipliers basis functions
+            [Ns,Nm,Nmult] = ...
+              getMortarBasisFunctions(obj.quadrature,im,is,elMaster,elSlave,xiMaster,xiSlave);
 
-        else
+            [Ns,Nm,Nmult] = ...
+              reshapeBasisFunctions(ncomp,Ns,Nm,Nmult);
 
-          Mloc = MortarQuadrature.integrate(f,Nmult,Nm,dJw);
-          Dloc = MortarQuadrature.integrate(f,Nmult,Ns,dJw);
-          asbM.localAssembly(tDof,umDof,Mloc); % minus sign!
-          if strcmp(obj.quadrature.multiplierType,"dual")
-            Dloc = diag(sum(Dloc,2));
+            if ncomp > 1
+              % vector field, local reference needed
+
+              % rotation of multipliers
+              R = getRotationMatrix(obj.interfMesh,is);
+
+              % mortar coupling normal component
+              Atm =  MortarQuadrature.integrate(f,Nmult,Nm,dJw);
+              Ats =  MortarQuadrature.integrate(f,Nmult,Ns,dJw);
+
+              % if strcmp(obj.quadrature.multiplierType,"dual")
+              %   Ats = diag(sum(Ats,2));
+              % end
+
+              Atm = R'*Atm;
+              Ats = R'*Ats;
+
+              % assemble the local mortar matrix contribution
+              asbM.localAssembly(tDof,umDof,Atm);
+              asbD.localAssembly(tDof,usDof,-Ats);
+
+            else
+
+              Mloc = MortarQuadrature.integrate(f,Nmult,Nm,dJw);
+              Dloc = MortarQuadrature.integrate(f,Nmult,Ns,dJw);
+              asbM.localAssembly(tDof,umDof,Mloc); % minus sign!
+              if strcmp(obj.quadrature.multiplierType,"dual")
+                Dloc = diag(sum(Dloc,2));
+              end
+
+              asbD.localAssembly(tDof,usDof,-Dloc);
+
+            end
           end
-
-          asbD.localAssembly(tDof,usDof,-Dloc);
-
         end
       end
 
       obj.M = asbM.sparseAssembly();
       obj.D = asbD.sparseAssembly();
 
-      % verify partition of unity 
+      % verify partition of unity
       pu = sum([obj.M obj.D],2);
       assert(norm(pu)<1e-7,'Partiition of unity violated');
 
     end
 
 
-    function [dofr,dofc,mat] = computeLocMortar(obj,side,imult,iu,Nmult,Nu,dJw)
-      mat = pagemtimes(Nmult,'ctranspose',Nu,'none');
-      mat = mat.*reshape(dJw,1,1,[]);
-      mat = sum(mat,3);
-      nodes = obj.interfMesh.local2glob{side}(obj.getMesh(MortarSide.slave).surfaces(iu,:));
-      fld = obj.domains(side).dofm.getVariableId(obj.coupledVariables);
-      dofc = obj.domains(side).dofm.getLocalDoF(fld,nodes);
-      dofr = getMultiplierDoF(obj,imult);
-    end
+    % function [dofr,dofc,mat] = computeLocMortar(obj,side,imult,iu,Nmult,Nu,dJw)
+    %   mat = pagemtimes(Nmult,'ctranspose',Nu,'none');
+    %   mat = mat.*reshape(dJw,1,1,[]);
+    %   mat = sum(mat,3);
+    %   nodes = obj.interfMesh.local2glob{side}(obj.getMesh(MortarSide.slave).surfaces(iu,:));
+    %   fld = obj.domains(side).dofm.getVariableId(obj.coupledVariables);
+    %   dofc = obj.domains(side).dofm.getLocalDoF(fld,nodes);
+    %   dofr = getMultiplierDoF(obj,imult);
+    % end
 
 
     function [rhsMaster,rhsSlave,rhsMult] = computeRhs(obj)
@@ -320,8 +343,8 @@ classdef MeshTying < InterfaceSolver
           'node %i. Expected more than 2.'], nodeM);
 
         % get slave faces sharing support with master faces
-        ii = ismember(obj.quadrature.interfacePairs(:,2),fM);
-        fS = unique(obj.quadrature.interfacePairs(ii,1));
+        ii = ismember(elemPairs(:,2),fM);
+        fS = unique(elemPairs(ii,1));
 
         if numel(fS) < 2
           continue

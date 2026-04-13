@@ -33,6 +33,8 @@ classdef Grid < handle
 
     processFaces(obj,vtkId)
 
+    processEdges(obj,vtkId)
+
 
     function outGrid = getSurfaceGrid(obj, surfTag)
 
@@ -90,16 +92,27 @@ classdef Grid < handle
       surfOut.tag          = surf.tag(sel);
       surfOut.nTag         = numel(unique(surfOut.tag));
       surfOut.VTKType      = surf.VTKType(sel);
+      surfOut.vtkTypes     = reshape(unique(surfOut.VTKType),1,[]);
       surfOut.center       = surf.center(sel,:);
+      surfOut.normal       = surf.normal(sel,:);
       surfOut.area         = surf.area(sel);
+
+      edgeStruct.num = 0;
+      edgeStruct.length = zeros(0,1);
+      edgeStruct.center = zeros(0,3);
+      edgeStruct.neighbors = zeros(0,2);    % edge to surface
+      edgeStruct.isBoundary = false(0,1);
+      edgeStruct.connectivity = zeros(0,2); % edge to node
 
       % local 2 global node map
       surfOut.loc2glob = globalNodeId(:);
+      surfOut.surfaces2edges = ArrayOfArrays();
 
       outGrid.coordinates = obj.coordinates(globalNodeId,:);
       outGrid.nNodes      = size(outGrid.coordinates,1);
       outGrid.nDim        = 3;
       outGrid.surfaces    = surfOut;
+      outGrid.edges = edgeStruct;
 
     end
     %
@@ -209,6 +222,29 @@ classdef Grid < handle
     function out = isStructured(obj)
       out = obj.structFlag;
     end
+
+    function computeAvgNodalNormal(obj)
+
+      avNorm = zeros(obj.nNodes,3);
+      coord = obj.coordinates;
+      surf = obj.surfaces;
+      topol = surf.connectivity;
+
+      for i = 1:surf.num
+        nVert = surf.numVerts(i);
+        coordLoc = coord(topol(i,[nVert,1:nVert,1]),:);
+        % get edges direction according to predefined node ordering
+        dn = diff(coordLoc,1);
+        for j = 1:nVert
+          nLoc = cross(dn(j,:),dn(j+1,:));
+          avNorm(topol(i,j),:) = avNorm(topol(i,j),:) + nLoc;
+        end
+      end
+      % normalize matrix
+      normN = sqrt(sum(avNorm.^2,2));
+      obj.surfaces.avgNodNormal = avNorm./(normN);
+    end
+
 
 
     function [list,infl] = getNodeInfluence(obj,srcEnt,entId,fl)

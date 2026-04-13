@@ -92,6 +92,12 @@ classdef (Abstract) FiniteElementType < handle
       nGP = obj.GaussPts.nNode;
     end
 
+
+    function coords = getElementCoords(obj,id)
+      nodes = obj.grid.getSurfNodes(id);
+      coords = obj.grid.coordinates(nodes,:);
+    end
+
   end
 
   methods (Access = protected)
@@ -109,6 +115,8 @@ classdef (Abstract) FiniteElementType < handle
       n = obj.nFace*obj.GaussPts.nNode;
       obj.indBbubble = Poromechanics.setStrainMatIndex(n);
     end
+
+
   end
 
   methods (Static)
@@ -131,10 +139,6 @@ classdef (Abstract) FiniteElementType < handle
       end
     end
 
-    function coords = getElementCoords(elem,id)
-      nodes = elem.grid.getSurfNodes(id);
-      coords = elem.grid.coordinates(nodes,:);
-    end
 
 
 

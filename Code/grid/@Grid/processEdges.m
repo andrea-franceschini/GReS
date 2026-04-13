@@ -1,164 +1,144 @@
 function processEdges(grid,vtkId)
-% PROCESSFACES  Build edge topology and geometry for the surfaces of a given
-% grid
+%PROCESSEDGES  Build edge topology and geometry for a manifold surface mesh.
 %
-%  PROCESSFACES(grid) operates on all 2‑D cell types found in grid and
-%  populates the following fields in-place:
+%  PROCESSEDGES(grid) operates on all 2-D cell types found in grid.surfaces
+%  and populates:
 %
 %  grid.edges
-%    .num          – scalar, total number of unique faces
-%    .connectivity – int32 matrix  (nF × nNPF)  for uniform meshes, or
-%                    ArrayOfArrays              for mixed tet+hex meshes
-%    .neighbors    – num × 2  [n1, n2] global cell IDs;  n2 = 0 on boundary
-%    .length       – num × 3  area‑weighted face normals  (‖n‖₂ = area)
-%    .center       – num × 3  edge midpoint coordinates
-%    .e2n          - num x 2
-%    .e2f          - nE x 2
-%    .f2e          - nF
-  
-
-% 1.  Extract typed half-faces for every cell type
+%    .num          – scalar, total number of unique edges
+%    .connectivity – int32 matrix  (nE × 2), global node ids of each edge
+%    .neighbors    – nE × 2  [s1, s2] global surface IDs; s2 = 0 on boundary
+%    .length       – nE × 1
+%    .center       – nE × nDim  edge midpoint
+%    .isBoundary   – nE × 1  % logical true if edge is on the boundary
 %
-%     triHF  (nTriHF  × nVert + 2) : [n1 n2 n3    cellId localFaceId]
-%     quadHF (nQuadHF × nVers + 2) : [n1 n2 n3 n4 cellId localFaceId]
-
+%  grid.surfaces (appended)
+%    .surfaces2edges      – packed global edge IDs  (one entry per surface-edge pair)
+%    .surfaces2localEdges – packed local edge index inside the surface  (1-based)
+%
+%  Edge convention
+%    connectivity is stored in canonical order [min(nodeId) max(nodeId)]
+%
+%  Neighbor convention
+%    boundary : neighbors(:,2) = 0
+%    internal : edge shared by exactly two surfaces
+%
+%  Supported VTK types: triangle, quadrilateral, biquadratic quadrilateral
+%  IMPORTANT: This function assumes a manifold surface mesh, so each edge
+%  can belong to at most two surfaces.
+%
+%  See also: processFaces, ArrayOfArrays
 
 if nargin == 1
-  vtkIds = unique(grid.cells.VTKType);
-  for k = 1:numel(vtkIds)
-    processEdges(grid, vtkIds(k));
+  for vtkId = grid.surfaces.vtkTypes
+    processEdges(grid, vtkId);
   end
   return
 end
 
-coords = grid.coordinates; 
+coords = grid.coordinates;
 
-idC = grid.getCellsByVTKId(vtkId);
-if isempty(idC)
+idS = grid.getSurfByVTKId(vtkId);
+if isempty(idS)
   return
 end
 
-nC    = numel(idC);
-topol = grid.getCellNodes(idC);
+nS    = numel(idS);
+topol = grid.getSurfNodes(idS);
 
-lf = localFaceDefs(vtkId);
-[nFPC, nNPF] = size(lf);
+le = localEdgeDefs(vtkId);
+[nEPS, ~] = size(le);
 
-% half-faces
-hfNodes = zeros(nFPC*nC, nNPF, class(topol));
-for id = 1:nFPC
-  k = (id-1)*nC;
-  hfNodes(k+1:k+nC, :) = topol(:, lf(id,:));
+% half-edges
+heNodes = zeros(nEPS*nS, 2, class(topol));
+for id = 1:nEPS
+  k = (id-1)*nS;
+  heNodes(k+1:k+nS, :) = topol(:, le(id,:));
 end
 
-hfCellId   = repmat(idC(:), nFPC, 1);
-hfLocalFId = repelem((1:nFPC)', nC);
+heSurfId   = repmat(idS(:), nEPS, 1);
+heLocalEId = repelem((1:nEPS)', nS);
 
-% canonical representation of faces
-nHF = size(hfNodes, 1);
+% canonical representation of edges
+heCan = sort(heNodes, 2);
 
-[~, minCol] = min(hfNodes, [], 2);
-offsets     = mod(bsxfun(@plus, 0:nNPF-1, minCol-1), nNPF);
-linIdx      = bsxfun(@plus, offsets*nHF, (1:nHF)');
-hfCan       = reshape(hfNodes(linIdx), nHF, nNPF);
+[heSorted, sIdx] = sortrows(heCan);
+heSurfSorted     = heSurfId(sIdx);
+heLocalSorted    = heLocalEId(sIdx);
 
-needFlip               = hfCan(:,2) > hfCan(:,end);
-hfCan(needFlip, 2:end) = hfCan(needFlip, end:-1:2);
+isNew   = [true; any(heSorted(2:end,:) ~= heSorted(1:end-1,:), 2)];
+edgeIdx = cumsum(isNew);
+nE      = edgeIdx(end);
 
-% winding sign
-hfSign           = ones(nHF, 1);
-hfSign(needFlip) = -1;
+% manifold check
+nSPE = accumarray(edgeIdx, 1, [nE, 1]); % number of surfaces per edge
+if any(nSPE > 2)
+  error('processEdges:nonManifoldMesh', ...
+    'Non-manifold surface mesh detected: some edges belong to more than two surfaces.');
+end
 
-[hfSorted, sIdx] = sortrows(hfCan);
-hfCellSorted     = hfCellId(sIdx);
-%hfSignSorted     = hfSign(sIdx);
-hfLocalSorted    = hfLocalFId(sIdx);
-
-% CHECK THIS IN FUTURE
-isNew   = [true; any(hfSorted(2:end,:) ~= hfSorted(1:end-1,:), 2)];
-faceIdx = cumsum(isNew);
-nF      = faceIdx(end);
-nPlist = nNPF*ones(nF,1);
-
-faceTopol = int32(hfSorted(isNew, :));
+edgeTopol = heSorted(isNew,:);
 
 % get unique neighbors
-col = ones(nHF, 1);
+col = ones(nEPS*nS, 1);
 col(~isNew) = 2;
-neighbors = accumarray([faceIdx, col], hfCellSorted, [nF, 2]);
+neighbors = accumarray([edgeIdx, col], heSurfSorted, [nE, 2]);
 
-% make sure that boundary faces have 0 cell as secondo position
+% make sure that boundary edges have 0 surface as second position
 needSwap = neighbors(:,1) == 0 & neighbors(:,2) ~= 0;
 neighbors(needSwap,:) = neighbors(needSwap, [2,1]);
 
 isBoundary = neighbors(:,2) == 0;
 
-% compute faces geometrical informations
-nList = faceTopol';
-poly = coords(nList(:),:); 
-[area, cent, normal] = computePolygonGeometry(poly, nPlist);
+% compute edge geometrical informations
+p1 = coords(edgeTopol(:,1),:);
+p2 = coords(edgeTopol(:,2),:);
 
+center = 0.5*(p1 + p2);
+len = sqrt(sum((p2 - p1).^2, 2));
 
-% append faces
-f = grid.faces;
-c = grid.cells;
+% append edges
+e = grid.edges;
 s = grid.surfaces;
 
-nFold = f.num;
-f.num        = nFold + nF;
-f.neighbors  = [f.neighbors; int32(neighbors)];
-f.normal    = [f.normal; normal];
-f.center  = [f.center; cent];
-f.area      = [f.area; area];
-f.numVerts   = [f.numVerts; nPlist];
-f.isBoundary = [f.isBoundary; isBoundary];
-f.connectivity = [f.connectivity; ArrayOfArrays(faceTopol)];
+nEold = e.num;
+e.num          = nEold + nE;
+e.connectivity = [e.connectivity; edgeTopol];
+e.neighbors    = [e.neighbors; neighbors];
+e.length       = [e.length; len];
+e.center       = [e.center; center];
+e.isBoundary   = [e.isBoundary; isBoundary];
 
+% surface to edges mapping
+[~,id] = sort(heSurfSorted);
+nEPSs = nEPS*ones(nS,1);
 
-% cell to faces mapping
-[~,id] = sort(hfCellSorted);
-nFPCs = nFPC*ones(nC,1);
-c2f = ArrayOfArrays(faceIdx(id),nFPCs);
-c2locf = ArrayOfArrays(hfLocalSorted(id),nFPCs);
-c.cells2faces = [c.cells2faces; c2f];
-c.cells2localFaces = [c.cells2localFaces; c2locf];
+s2e = ArrayOfArrays(nEold + edgeIdx(id), nEPSs);
+%s2loce = ArrayOfArrays(heLocalSorted(id), nEPSs);
 
-% surfaces (map surfaces to boundaryfaces) 
-boundFaces = faceTopol(isBoundary,:);
-
-% connectivity of the surfaces corresponding to the 2D VTK
-idS = grid.getSurfByVTKId(VTKType.to2D(vtkId));
-topolSurf = grid.getSurfNodes(idS);
-[sId,fId] = ismember(sort(topolSurf,2),sort(boundFaces,2),'rows');
-boundId = find(isBoundary);
-s.faceId(sId) = nFold + boundId(fId); 
-
+s.surfaces2edges = [s.surfaces2edges; s2e];
+%s.surfaces2localEdges = [s.surfaces2localEdges; s2loce];
 
 % finally update grid
-grid.faces = f;
-grid.cells = c;
+grid.edges = e;
 grid.surfaces = s;
-
 
 end
 
 
-function lf = localFaceDefs(vtkId)
+function le = localEdgeDefs(vtkId)
 
-switch vtkId
-  case 10
-    lf = [1 2 4;
-          2 3 4;
-          3 1 4;
-          1 3 2];
+switch double(vtkId)
+  case 5
+    le = [1 2;
+          2 3;
+          3 1];
 
-  case {12, 29}
-    lf = [1 4 3 2;
-          5 6 7 8;
-          1 2 6 5;
-          2 3 7 6;
-          3 4 8 7;
-          4 1 5 8];
+  case {9, 28}
+    le = [1 2;
+          2 3;
+          3 4;
+          4 1];
 
   otherwise
     error('processEdges:unsupportedVTKType', ...
@@ -166,4 +146,3 @@ switch vtkId
 end
 
 end
-

@@ -9,34 +9,33 @@ classdef SegmentBasedQuadrature < MortarQuadrature
   
   properties
     detJtri
-    ngTri
+    triGaussOrder
   end
 
   properties (Access = private)
-    elems     % provisional elems instances for each master/slave pair
     wTri      % store weight for gauss integration on triangles
     maxTriPerPair
   end
   
   methods
-    function obj = SegmentBasedQuadrature(interface,multType,input)
+    function obj = SegmentBasedQuadrature(multType,grids,input)
 
-      obj@MortarQuadrature(interface,multType,input);
+      obj@MortarQuadrature(multType,grids);
 
-      input = readInput(struct('nGP',3),input);
-      obj.ngTri = input.nGP;
+      input = readInput(struct('gaussOrder',3),input);
+      obj.triGaussOrder = input.gaussOrder;
 
-      gaussTri = Gauss(5,obj.ngTri);      % 5 is the vtk type of triangles
+      gaussTri = Gauss(5,obj.triGaussOrder);      % 5 is the vtk type of triangles
       obj.wTri = gaussTri.weight;
 
-      isQuadratic = [~isempty(obj.elements(1).getElement(28));
-                     ~isempty(obj.elements(2).getElement(28))];
+      isQuadratic = [any(grids(1).surfaces.VTKType == 28);
+                     any(grids(2).surfaces.VTKType == 28)];
 
       if sum(isQuadratic)==0 % no quadratic elements
         obj.maxTriPerPair = 6;
-      elseif sum(isQuadratic)==1
+      elseif sum(isQuadratic)==1 % quadratic on one side
         obj.maxTriPerPair = 24;
-      elseif sum(isQuadratic)==2
+      elseif sum(isQuadratic)==2 % quadratic on both sides
         obj.maxTriPerPair = 96;
       end
 
@@ -46,25 +45,48 @@ classdef SegmentBasedQuadrature < MortarQuadrature
     function processMortarPairs(obj,connectivity)
 
       % initialize the maps to store mortar quadrature infos
-      nConnections = nnz(obj.interface.interfMesh.elemConnectivity);
+      nConnections = nnz(connectivity);
       totTri = nConnections*obj.maxTriPerPair;
-      obj.gpCoords = {zeros(totTri,obj.ngTri,2);
-        zeros(totTri,obj.ngTri,2)};
+      ng = numel(obj.wTri);
+      obj.gpCoords = {zeros(totTri,ng,2);
+        zeros(totTri,ng,2)};
       obj.interfacePairs = zeros(totTri,2);
       obj.detJtri = zeros(totTri,1);
 
-      nM = full(sum(obj.interface.interfMesh.elemConnectivity,1));
-      nM = [0 cumsum(nM)];
+      nM = full(sum(connectivity,2));
+      nM = [0;cumsum(nM)];
 
-      for is = 1:obj.msh(2).nSurfaces
+      gridS = obj.grids(MortarSide.slave);
+      gridM = obj.grids(MortarSide.master);
 
-        imList = find(obj.interface.interfMesh.elemConnectivity(:,is));
+      % process homogenous vtk types on both sides of the grid
 
-        for j = 1:numel(imList)
-          im = imList(j);
-          k = nM(is)+ j;
-          % k (global index to write without race conditions)
-          processMortarPair(obj,is,im,k);
+      for vtkSlave = gridS.surfaces.vtkTypes
+
+        elemSlave = FiniteElementType.create(vtkSlave,gridS);
+        listSlave = gridS.getSurfByVTKId(vtkSlave);
+
+        for vtkMaster = gridM.surfaces.vtkTypes
+
+          elemMaster = FiniteElementType.create(vtkMaster,gridM);
+          listMaster = gridM.getSurfByVTKId(vtkMaster);
+
+          mask = false(gridM.surfaces.num,1);
+          mask(listMaster) = true;
+
+          for is = listSlave'
+
+            % get master elements belonging to that vtk type
+            imList = find(connectivity(is,:));
+            imList = imList(mask(imList));
+
+            for j = 1:numel(imList)
+              im = imList(j);
+              k = nM(is)+ j;
+              % k (global index to write without race conditions)
+              processMortarPair(obj,is,im,elemSlave,elemMaster,k);
+            end
+          end
         end
       end
 
@@ -73,11 +95,11 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
     end
 
-    function isPairActive = processMortarPair(obj,is,im,k)
+    function isPairActive = processMortarPair(obj,is,im,elS,elM,k)
 
       isPairActive = true;
 
-      [xiSlave,xiMaster,detJ] = segmentBasedCouple(obj,is,im);
+      [xiSlave,xiMaster,detJ] = segmentBasedCouple(obj,is,im,elS,elM);
       if isempty(xiSlave)
         isPairActive = false;
         return
@@ -87,11 +109,13 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
       for i = 1:nTri
         idTri = (k-1)*obj.maxTriPerPair + i;
-        obj.interfacePairs(idTri,:) = [is im];
-        obj.gpCoords{2}(idTri,:,1) = xiSlave(:,1,i);
-        obj.gpCoords{2}(idTri,:,2) = xiSlave(:,2,i);
-        obj.gpCoords{1}(idTri,:,1) = xiMaster(:,1,i);
-        obj.gpCoords{1}(idTri,:,2) = xiMaster(:,2,i);
+        s = MortarSide.slave;
+        m = MortarSide.master;
+        obj.interfacePairs(idTri,[s m]) = [is im];
+        obj.gpCoords{s}(idTri,:,1) = xiSlave(:,1,i);
+        obj.gpCoords{s}(idTri,:,2) = xiSlave(:,2,i);
+        obj.gpCoords{m}(idTri,:,1) = xiMaster(:,1,i);
+        obj.gpCoords{m}(idTri,:,2) = xiMaster(:,2,i);
         obj.detJtri(idTri) = detJ(i);
       end
     end
@@ -101,8 +125,8 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       % remove useless entries after mortar preallocation
       id = obj.detJtri == 0;
       obj.detJtri = obj.detJtri(~id);
-      for i = 1:2
-      obj.gpCoords{i}(id,:,:) = [];
+      for s = [MortarSide.master,MortarSide.slave]
+      obj.gpCoords{s}(id,:,:) = [];
       end
       obj.interfacePairs(id,:) = [];
 
@@ -110,7 +134,7 @@ classdef SegmentBasedQuadrature < MortarQuadrature
     end
 
     
-    function [xiSlave,xiMaster,dJTri] = segmentBasedCouple(obj,elSlave,elMaster)
+    function [xiSlave,xiMaster,dJTri] = segmentBasedCouple(obj,idSlave,idMaster,elemSlave,elemMaster)
       % output: nGx2xnT matrices of reference coordinate in slave and
       % master side to perform segment based integration
       % dJTri: determinant for each pallet
@@ -118,48 +142,46 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       % polygon
 
       % compute auxiliary plane for integration
-      obj.elems = [getElem(obj,1,elMaster),...
-                   getElem(obj,2,elSlave)];
+      master = MortarSide.master;
+      slave = MortarSide.slave;
+      elId([slave,master]) = [idSlave,idMaster];
+      elem([slave,master]) = [elemSlave,elemMaster];
+      xi = cell(2,1);
 
-      % get number of susegment (in case of higher-order elements)
-      if obj.elems(1).nNode > 4
-        ns1 = 4;
-        elemS = obj.elems(1).subQuad;
-      else
-        ns1 = 1;
-        elemS = obj.elems(1);
+      ns = zeros(2,1);
+      % get number of subsegment ns (in case of higher-order elements)
+      for side = [slave,master]
+        if elem(side).nNode > 4
+          ns(side) = 4;
+          elem(side) = elem(side).subQuad;
+        else
+          ns(side) = 1;
+        end
       end
 
-      if obj.elems(2).nNode > 4
-        ns2 = 4;
-        elemM = obj.elems(2).subQuad;
-      else
-        ns2 = 1;
-        elemM = obj.elems(2);
-      end
 
       % initialize output
       nTri = 0;
-      [xiMaster,xiSlave] = deal(zeros(obj.ngTri,2,obj.maxTriPerPair));
+      [xi{master},xi{slave}] = deal(zeros(numel(obj.wTri),2,obj.maxTriPerPair));
       dJTri = zeros(obj.maxTriPerPair,1);
 
       % double loop over slave and master subsegments
-      for iS = 1:ns2
-        if ns2 == 1
-          [P0,nP] = computeAuxiliaryPlane(obj,elSlave);
-          coordS3D = FEM.getElementCoords(obj.elems(2),elSlave);
+      for iS = 1:ns(slave)
+        if ns(slave) == 1
+          [P0,nP] = computeAuxiliaryPlane(obj,elId(slave));
+          coordS3D = getElementCoords(elem(slave),elId(slave));
         else
-          [P0,nP] = computeAuxiliaryPlane(obj,elSlave,iS);
-          coordS3D =  obj.elems(2).getSubElementCoords(elSlave,iS);  
+          [P0,nP] = computeAuxiliaryPlane(obj,elId(slave),iS);
+          coordS3D =  elem(slave).getSubElementCoords(elId(slave),iS);  
         end
 
         coordS = pointToSurfaceProjection(P0,nP,coordS3D);
 
-        for iM = 1:ns1
-          if ns1==1
-            coordM3D = FEM.getElementCoords(obj.elems(1),elMaster);
+        for iM = 1:ns(master)
+          if ns(master) == 1
+            coordM3D = getElementCoords(elem(master),elId(master));
           else
-            coordM3D = obj.elems(1).getSubElementCoords(elMaster,iM);
+            coordM3D = elem(master).getSubElementCoords(elId(master),iM);
           end
 
           coordM = pointToSurfaceProjection(P0,nP,coordM3D);
@@ -174,15 +196,15 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
           % project gauss points of each triangular cell into slave and
           % master subsegments
-          xiSlaveLoc = projectBack(obj,elemS,topolClip,coordClip,coordS);
-          xiMasterLoc = projectBack(obj,elemM,topolClip,coordClip,coordM);
+          xiSlaveLoc = projectBack(obj,elem(slave),topolClip,coordClip,coordS);
+          xiMasterLoc = projectBack(obj,elem(master),topolClip,coordClip,coordM);
 
           % map subsegment coords to higher order element coords
-          if ns1 > 1
-            xiMasterLoc = obj.elems(1).mapsub2ref(xiMasterLoc,iM);
+          if ns(master) > 1
+            xiMasterLoc = elem(master).mapsub2ref(xiMasterLoc,iM);
           end
-          if ns2 > 1
-            xiSlaveLoc = obj.elems(1).mapsub2ref(xiSlaveLoc,iS);
+          if ns(slave) > 1
+            xiSlaveLoc = elem(slave).mapsub2ref(xiSlaveLoc,iS);
           end
 
           for iT = 1:nTriLoc
@@ -190,31 +212,28 @@ classdef SegmentBasedQuadrature < MortarQuadrature
             dJTri(nTri+iT) = 2 * Triangle.computeArea(triVert);
           end
 
-          xiMaster(:,:,nTri+1:nTri+nTriLoc) = xiMasterLoc;
-          xiSlave(:,:,nTri+1:nTri+nTriLoc) = xiSlaveLoc;
+          xi{master}(:,:,nTri+1:nTri+nTriLoc) = xiMasterLoc;
+          xi{slave}(:,:,nTri+1:nTri+nTriLoc) = xiSlaveLoc;
 
           nTri = nTri + nTriLoc;
         end
       end
 
       % cut outputs
-      if nTri == 0
-        [xiSlave,xiMaster,dJTri] = deal([]);
-      end
-      xiMaster = xiMaster(:,:,1:nTri);
-      xiSlave = xiSlave(:,:,1:nTri);
+      xiMaster = xi{master}(:,:,1:nTri);
+      xiSlave = xi{slave}(:,:,1:nTri);
       dJTri = dJTri(1:nTri);
 
     end
     
     function [P,n] = computeAuxiliaryPlane(obj,el,subID)
       if nargin == 2
-        P = obj.msh(2).surfaceCentroid(el,:);
-        n = obj.elems(2).computeNormal(el,obj.elems(2).centroid);
+        P = obj.grids(MortarSide.slave).surfaces.center(el,:);
+        n = obj.grids(MortarSide.slave).surfaces.normal(el,:);
       elseif nargin == 3
         % compute auxiliary plane on subsegment of quad9
-        P = obj.elems(2).computeCentroid(el,subID);
-        n = obj.elems(2).computeNormal(el,obj.elems(2).centroid,subID);
+        P = elem.computeCentroid(el,subID);
+        n = elem.computeNormal(el,elem.centroid,subID);
       end
     end
 
@@ -222,15 +241,15 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       % return reference coordinates in master/slave space for GP in
       % triangle facets after intersection
       % output is a 3D matrices of size nGx2xnTri
-      xi = zeros(obj.ngTri,2,size(topolTri,1));
+      xi = zeros(numel(obj.wTri),2,size(topolTri,1));
       % netwon params
       itMax = 10;
       tol = 1e-9;
-      tri = Triangle(obj.ngTri);                % define reference triangle
+      tri = Triangle('gaussOrder',obj.triGaussOrder);                % define reference triangle
       for i = 1:size(topolTri,1)
         coordTri = clipCoord(topolTri(i,:),:);
         coordGPtri = getGPointsLocation(tri,coordTri);
-        for g = 1:obj.ngTri
+        for g = 1:numel(obj.wTri)
           rhs = (elem.computeBasisF(xi(g,:,i))*elemCoord)' - coordGPtri(g,:)';
           iter = 0;
           while (norm(rhs,2) > tol) && (iter < itMax)
@@ -256,12 +275,12 @@ classdef SegmentBasedQuadrature < MortarQuadrature
     end
 
     function gpCoords = getSlaveGPCoords(obj,kPair)
-      gpCoords = obj.gpCoords{2}(kPair,:,:);
+      gpCoords = obj.gpCoords{MortarSide.slave}(kPair,:,:);
       gpCoords = reshape(gpCoords,[],2);
     end
 
     function gpCoords = getMasterGPCoords(obj,kPair)
-      gpCoords = obj.gpCoords{1}(kPair,:,:);
+      gpCoords = obj.gpCoords{MortarSide.master}(kPair,:,:);
       gpCoords = reshape(gpCoords,[],2);
     end
 
@@ -283,44 +302,24 @@ classdef SegmentBasedQuadrature < MortarQuadrature
     end
 
     function [polyClip,topolClip,isClipValid] = segmentation(poly1,poly2)
-      coordS = orderPointsCCW2D(poly1);
-      coordM = orderPointsCCW2D(poly2);
+
+      polyClip = clipPolygon(poly1,poly2);
+
       topolClip = [];
-      [polyClip,isClipValid] = mxPolygonClip(coordS,coordM);
-      if ~isClipValid || isempty(polyClip)
+
+      if isempty(polyClip)
+        isClipValid = false;
         return
       end
+
       %fan triangulation
       nV = size(polyClip,1);
       isClipValid = true;
       topolClip = [ ones(nV-2,1), (2:nV-1)', (3:nV)' ];
+
     end
 
-    % function [polyClip,topolClip,isClipValid] = segmentation2(poly1,poly2)
-    %   [clipX,clipY] = polyclip(poly1(:,1),poly1(:,2),poly2(:,1),poly2(:,2),1);
-    %   polyClip = [clipX{:} clipY{:}];
-    %   isClipValid = false;
-    %   topolClip = [];
-    % 
-    %   if numel(clipX)==0
-    %     % no intersection
-    %     return
-    %   end
-    % 
-    %   assert(isscalar(clipX),'Non unique clip polygon for master/slave pair')
-    % 
-    %   % perform delaunay triangulation on clip polygon
-    %   % assumption: only one clip polygon results from intersection
-    % 
-    %   if ~SegmentBasedQuadrature.isClipValid(polyClip)
-    %     % skip if the polygon is degenerate or has very small area
-    %     return
-    %   end
-    % 
-    %   topolClip = delaunay(polyClip(:,1),polyClip(:,2));
-    %   isClipValid = true;
-    % end
-
+  
   end
 end
 

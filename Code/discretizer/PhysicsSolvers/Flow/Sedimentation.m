@@ -89,7 +89,7 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.J{obj.fieldId,obj.fieldId} = [];
       obj.domain.rhs{obj.fieldId} = [];
 
-      %obj.domain.dofm.registerVariable(obj.getField(),entityField.cell,1,1);
+      obj.domain.dofm.registerVariable(obj.getField());
     end
 
     function initialize(obj)

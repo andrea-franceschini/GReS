@@ -1,5 +1,5 @@
-classdef ContactSearching
-  %CONTACTSEARCHobj.ING Summary of this class goes here
+classdef ContactSearching < handle
+  %CONTACTSEARCHING Summary of this class goes here
   %   Detailed explanation goes here
 
   properties
@@ -19,9 +19,9 @@ classdef ContactSearching
       % ContactSearching(topolMaster,topolSlave,options)
 
 
-      if isMatrix(varargin{1})
-        mshMaster = varargin{2};
-        mshSlave = varargin{3};
+      if isa(varargin{1},"Grid")
+        mshSlave = varargin{MortarSide.slave};
+        mshMaster = varargin{MortarSide.master};
         connMaster = mshMaster.surfaces.connectivity;
         connSlave =  mshSlave.surfaces.connectivity;
         centersMaster = mshMaster.surfaces.center;
@@ -30,22 +30,24 @@ classdef ContactSearching
         coordsSlave = mshSlave.coordinates;
         k = 2;
       else
-        [coordsMaster,coordsSlave,connMaster,connSlave] = deal(varargin{1:4});
+        [coordsSlave,coordsMaster,connSlave,connMaster] = deal(varargin{1:4});
         k = 4;
         centersMaster = computeSurfaceCenters(coordsMaster, connMaster);
         centersSlave  = computeSurfaceCenters(coordsSlave,  connSlave);
       end
 
-      opts = varargin{k+1:end};
-
       % build bounding-box trees
-      obj.BBTreeMaster = BBTree(coordsMaster, connMaster, centersMaster, opts);
-      obj.BBTreeSlave  = BBTree(coordsSlave, connSlave, centersSlave, opts);
+      obj.BBTreeMaster = BBTree(coordsMaster, connMaster, centersMaster, varargin{k+1:end});
+      obj.BBTreeSlave  = BBTree(coordsSlave, connSlave, centersSlave, varargin{k+1:end});
 
     end
 
 
     function elemConnectivity = getElementConnectivity(obj)
+
+      % return sparse connectivity matrix
+      % rows: slave id 
+      % columns: master id
 
 
       % initial indices for sparse matrix assembly (use cap
@@ -55,7 +57,7 @@ classdef ContactSearching
       obj.J = zeros(obj.cap,1,'uint32');
       obj.cnt = 0;
 
-      tandemTraversal(1,1);
+      obj.tandemTraversal(1,1);
 
       obj.I = obj.I(1:obj.cnt);
       obj.J = obj.J(1:obj.cnt);
@@ -95,20 +97,20 @@ classdef ContactSearching
         cS = obj.BBTreeSlave.children(nodeSlave,:);
         cM = obj.BBTreeMaster.children(nodeMaster,:);
 
-        tandemTraversal(cS(1), cM(1));
-        tandemTraversal(cS(1), cM(2));
-        tandemTraversal(cS(2), cM(1));
-        tandemTraversal(cS(2), cM(2));
+        tandemTraversal(obj,cS(1), cM(1));
+        tandemTraversal(obj,cS(1), cM(2));
+        tandemTraversal(obj,cS(2), cM(1));
+        tandemTraversal(obj,cS(2), cM(2));
 
       elseif ~isLeafSlave
         cS = obj.BBTreeSlave.children(nodeSlave,:);
-        tandemTraversal(cS(1), nodeMaster);
-        tandemTraversal(cS(2), nodeMaster);
+        tandemTraversal(obj,cS(1), nodeMaster);
+        tandemTraversal(obj,cS(2), nodeMaster);
 
       else
         cM = obj.BBTreeMaster.children(nodeMaster,:);
-        tandemTraversal(nodeSlave, cM(1));
-        tandemTraversal(nodeSlave, cM(2));
+        tandemTraversal(obj,nodeSlave, cM(1));
+        tandemTraversal(obj,nodeSlave, cM(2));
       end
     end
 

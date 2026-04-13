@@ -6,8 +6,8 @@ function processFaces(grid,vtkId)
 %
 %  grid.faces
 %    .num          – scalar, total number of unique faces
-%    .connectivity – int32 matrix  (nF × nNPF)  for uniform meshes, or
-%                    ArrayOfArrays              for mixed tet+hex meshes
+%    .connectivity – matrix  (nF × nNPF)  for uniform meshes, or
+%                    ArrayOfArrays        for mixed meshes (e.g tet+hex)
 %    .numVerts     – nF × 1  nodes per face  (3 = triangle, 4 = quad)
 %    .neighbors    – nF × 2  [n1, n2] global cell IDs;  n2 = 0 on boundary
 %    .normals      – nF × 3  area‑weighted face normals  (‖n‖₂ = area)
@@ -95,7 +95,7 @@ faceIdx = cumsum(isNew);
 nF      = faceIdx(end);
 nPlist = nNPF*ones(nF,1);
 
-faceTopol = int32(hfSorted(isNew, :));
+faceTopol = hfSorted(isNew, :);
 
 % get unique neighbors
 col = ones(nHF, 1);
@@ -121,7 +121,7 @@ s = grid.surfaces;
 
 nFold = f.num;
 f.num        = nFold + nF;
-f.neighbors  = [f.neighbors; int32(neighbors)];
+f.neighbors  = [f.neighbors; neighbors];
 f.normal    = [f.normal; normal];
 f.center  = [f.center; cent];
 f.area      = [f.area; area];

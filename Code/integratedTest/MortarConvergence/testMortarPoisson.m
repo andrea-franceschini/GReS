@@ -8,12 +8,12 @@ scriptDir = fileparts(scriptFullPath);
 cd(scriptDir);
 
 
-for elem_type = ["hexa","hexa27"]
+for integration_type = ["SegmentBasedQuadrature",...
+    "ElementBasedQuadrature",...
+    "RBFquadrature"
+    ]
 
-  for integration_type = ["SegmentBasedQuadrature",...
-                          "ElementBasedQuadrature",...
-                          "RBFquadrature"
-                          ]
+  for elem_type = ["hexa","hexa27"]
 
     [L2,H1] = run(elem_type,integration_type);
     validate(elem_type,integration_type,L2,H1);
@@ -48,9 +48,9 @@ nref = 2;
 
 % set mortar integration info
 if strcmp(quadrature,'SegmentBasedQuadrature')
-  nGP = 7;
+  order = 5;
 else
-  nGP = 6;
+  order = 10; % 6 gp per direction
 end
 
 interfStr.masterDomain = 1;
@@ -60,33 +60,33 @@ interfStr.slaveSurface = 3;
 interfStr.multiplierType="dual";
 
 quadStr.type = quadrature;
-quadStr.nGP = nGP;
+quadStr.nGP = order;
 quadStr.nInt = 5;
 
 
-N_l = [4 8 16];
-N_r = [6 12 24];
+%Nl = [4 8 16];
+Nr = [6 12 24];
 
 simparams = SimulationParameters(params.SimulationParameters);
 
 
 %% convergence loop
 for i = 1:nref
-  N_i_l = N_l(i);
-  N_i_r = N_r(i);
+  %N_i_l = N_l(i);
 
   % run script to get refined mesh
   meshName = "domain_"+elem+"_"+num2str(i);
   meshFileName = fullfile('Input','Mesh','meshes',meshName+".vtk");
 
-  mesh = Mesh();
-  mesh.importMesh(meshFileName);
-  elems = Elements(mesh,3);
-  grid = struct('topology',mesh,'cells',elems);
+  grid = Grid();
+  grid.importMesh(meshFileName);
 
-  bcEnts = unique(mesh.surfaces(ismember(mesh.surfaceTag,[2;4]),:));
-  c = mesh.coordinates(bcEnts,:);
-  [X,Y,Z] = deal(c(:,1),c(:,2),c(:,3)); 
+  surf = grid.surfaces;
+
+
+  bcEnts = unique(surf.connectivity(ismember(surf.tag,[2;4]),:));
+  c = grid.coordinates(bcEnts,:);
+  [X,Y,Z] = deal(c(:,1),c(:,2),c(:,3));
   bcVals = anal(X,Y,Z);
   bc = Boundaries(grid);
   bc.addBC('name',"analSol",...
@@ -114,8 +114,8 @@ for i = 1:nref
   solver.simulationLoop();
 
   pois = getPhysicsSolver(domain,'Poisson');
-  [L2(i),H1(i)] = pois.computeError_v2();
-  h(i) = 1/N_i_r;
+  [L2(i),H1(i)] = pois.computeError();
+  h(i) = 1/Nr(i);
 
   gresLog().log(0,'Max absolute error is: %1.6e \n',max(abs(domain.state.data.err)));
 end
@@ -129,19 +129,19 @@ H1ord = log(H1(1:end-1)./H1(2:end))./log(h(1:end-1)./h(2:end));
 end
 
 function validate(elem,quadrature,L2,H1)
-    msg = "Error for %s element with %s mortar quadrature scheme";
+msg = "Error for %s element with %s mortar quadrature scheme";
 
-    switch elem
-      % ensure correct convergence rate 
-      case "hexa"
-        assert(all([L2>1.8;L2<2.5]),...
-          msg,elem,quadrature)
-        assert(all([H1>0.8;H1<1.5]),...
-          msg,elem,quadrature)
-      case "hexa27"
-        assert(all([L2>2.8;L2<3.5]),...
-          msg,elem,quadrature)
-        assert(all([H1>1.8;H1<2.5]),...
-          msg,elem,quadrature)
-    end
+switch elem
+  % ensure correct convergence rate
+  case "hexa"
+    assert(all([L2>1.8;L2<2.5]),...
+      msg,elem,quadrature)
+    assert(all([H1>0.8;H1<1.5]),...
+      msg,elem,quadrature)
+  case "hexa27"
+    assert(all([L2>2.8;L2<3.5]),...
+      msg,elem,quadrature)
+    assert(all([H1>1.8;H1<2.5]),...
+      msg,elem,quadrature)
+end
 end

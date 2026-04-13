@@ -27,9 +27,9 @@ classdef RBFquadrature < MortarQuadrature
 
 
   methods
-    function obj = RBFquadrature(mortar,multType,input)
+    function obj = RBFquadrature(multType,grids,input)
       %
-      obj@MortarQuadrature(mortar,multType,input);
+      obj@MortarQuadrature(multType);
       default = struct('nGP',6,'nInt',5,'RBFtype',"gauss");
       params = readInput(default,input);
       obj.nGP = params.nGP;

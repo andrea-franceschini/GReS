@@ -2,6 +2,8 @@ function x = pointToSurfaceProjection(P,n,coord)
 % Project nodes of triangle pair into auxiliary plane
 % get 2D direction of plane
 % Choose arbitrary vector not parallel to n
+
+n = n(:);
 if abs(n(1)) < 0.9
   temp = [1; 0; 0];
 else
