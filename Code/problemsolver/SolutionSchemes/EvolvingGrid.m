@@ -270,12 +270,6 @@ classdef EvolvingGrid < SolutionScheme
       end
     end
 
-
-
-
-
-
-
   end
 
 
