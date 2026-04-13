@@ -33,73 +33,77 @@ classdef Grid < handle
 
     processFaces(obj,vtkId)
 
-  
-    % function [surfMesh,varargout] = getSurfaceMesh(obj, surfTag, varargin)
-    %     % Function to build a separate 2D mesh object based on the
-    %     % surfaceTag of another object
-    %     % there are 3 ways to call this method
-    %     % 1) in1 = surfaceTag(s)
-    %     % 2) in1 = surfaceTags in2= logical index of active surfaceTags
-    %     % 3) in1 = logical index of active surfaces
-    % 
-    %     % optional output: global node indices of surface mesh
-    %     % initialize Mesh object
-    %     if nargin>2
-    %       assert(~isempty(varargin{1}));
-    %       id = find(ismember(obj.surfaceTag,surfTag));
-    %       id = id(varargin{1});
-    %     else
-    %       if ~islogical(surfTag)
-    %         id = ismember(obj.surfaceTag,surfTag);
-    %       else
-    %         assert(numel(surfTag) == obj.nSurfaces,['Logical ' ...
-    %           'index array must have the same size of available surfaces'])
-    %         id = surfTag;
-    %       end
-    %     end
-    %     if sum(id)==0
-    %       surfMesh = [];
-    %       return
-    %     end
-    %     surfMesh = Grid();
-    %     surfTopol = obj.surfaces(id,:);
-    %     if nargout > 1
-    %       % global node index ordered per column
-    %       varargout{1} = surfTopol;
-    %     end
-    %     % renumber the nodes starting from 1;
-    %     surfTopol = surfTopol(:);
-    %     % ordered list of unique nodes in the topology matrix
-    %     [surfOrd] = unique(surfTopol);
-    %     if surfOrd(1) == 0
-    %       val = 0:numel(surfOrd)-1;
-    %     else
-    %       val = 1:numel(surfOrd);
-    %     end
-    %     mapping = containers.Map(surfOrd, val);
-    %     for i = 1:length(surfTopol)
-    %         surfTopol(i) = mapping(surfTopol(i));
-    %     end
-    %     if surfOrd(1) == 0
-    %       surfOrd = surfOrd(2:end);
-    %     end
-    % 
-    %     surfMesh.surfaceNumVerts = Grid.copyField(obj.surfaceNumVerts,id);
-    %     nNmax = max(surfMesh.surfaceNumVerts);
-    %     surfMesh.surfaces = (reshape(surfTopol, [], nNmax));
-    %     surfMesh.coordinates = obj.coordinates(surfOrd,:);
-    %     surfMesh.nNodes = length(surfMesh.coordinates);
-    %     surfMesh.nSurfaces = size(surfMesh.surfaces,1);
-    %     surfMesh.surfaceTag = obj.surfaceTag(id);
-    %     surfMesh.nSurfaceTag = 1;
-    %     surfMesh.surfaceVTKType = Grid.copyField(obj.surfaceVTKType,id);
-    %     surfMesh.nDim = 3;
-    %     surfMesh.surfaceCentroid = Grid.copyField(obj.surfaceCentroid,id);
-    %     surfMesh.surfaceArea = Grid.copyField(obj.surfaceArea,id);
-    %     surfMesh.meshType = obj.meshType;
-    % end
-    % 
-    % 
+
+    function outGrid = getSurfaceGrid(obj, surfTag)
+
+      surf = obj.surfaces;
+      outGrid = Grid();
+
+      % select surfaces
+      if nargin == 1
+        id = true(surf.num,1);
+      elseif nargin == 2
+        if islogical(surfTag)
+          assert(numel(surfTag) == surf.num);
+          id = surfTag(:);
+        else
+          id = ismember(surf.tag, surfTag);
+        end
+      else
+        error("getSurfaceGrid:wrong number of input arguments")
+      end
+
+
+      if ~any(id); return; end
+
+      sel  = find(id);
+      nSel = numel(sel);
+
+      % extract connectivity
+      connSel = getRows(surf.connectivity, sel);
+
+      if isa(connSel,'ArrayOfArrays')
+        [oldConn, ~] = connSel.getData();
+        nVert = connSel.arraySize();
+        nVert = nVert(:);
+      else
+        oldConn = connSel.';
+        oldConn = oldConn(:);
+        nVert = repmat(size(connSel,2), nSel, 1);
+      end
+
+      % stable local node renumbering
+      [globalNodeId, ~, newConn] = unique(oldConn, 'stable');
+
+      % local connectivity
+      if all(nVert == nVert(1))
+        surfConn = reshape(newConn, nVert(1), []).';
+      else
+        surfConn = ArrayOfArrays(newConn, nVert);
+      end
+
+      % populate output grid
+      surfOut = struct();
+      surfOut.connectivity = surfConn;
+      surfOut.numVerts     = nVert;
+      surfOut.num          = nSel;
+      surfOut.tag          = surf.tag(sel);
+      surfOut.nTag         = numel(unique(surfOut.tag));
+      surfOut.VTKType      = surf.VTKType(sel);
+      surfOut.center       = surf.center(sel,:);
+      surfOut.area         = surf.area(sel);
+
+      % local 2 global node map
+      surfOut.loc2glob = globalNodeId(:);
+
+      outGrid.coordinates = obj.coordinates(globalNodeId,:);
+      outGrid.nNodes      = size(outGrid.coordinates,1);
+      outGrid.nDim        = 3;
+      outGrid.surfaces    = surfOut;
+
+    end
+    %
+    %
     % function addSurface(obj,id,topol)
     %    % add a surface to mesh object given the surface topology
     %    surf = load(topol); % standard topology file
@@ -164,11 +168,7 @@ classdef Grid < handle
         id = 1:obj.cells.num;
       end
 
-      if obj.isMixed
-        nodes = obj.cells.connectivity.getArray(id);
-      else
-        nodes = obj.cells.connectivity(id,:);
-      end
+      nodes = getRowsMatrix(obj.cells.connectivity,id);
 
     end
 
@@ -181,11 +181,8 @@ classdef Grid < handle
         id = 1:obj.surfaces.num;
       end
 
-      if obj.isMixed
-        nodes = obj.surfaces.connectivity.getArray(id);
-      else
-        nodes = obj.surfaces.connectivity(id,:);
-      end
+       nodes = getRowsMatrix(obj.surfaces.connectivity,id);
+
     end
 
 

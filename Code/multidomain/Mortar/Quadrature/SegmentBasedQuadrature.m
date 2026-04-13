@@ -43,7 +43,7 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
     end
 
-    function processMortarPairs(obj)
+    function processMortarPairs(obj,connectivity)
 
       % initialize the maps to store mortar quadrature infos
       nConnections = nnz(obj.interface.interfMesh.elemConnectivity);

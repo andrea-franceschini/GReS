@@ -139,11 +139,12 @@ classdef (Abstract) InterfaceSolver < handle
       obj.domains(master).Jmu{obj.interfaceId(master)} = cell(1,nVarMaster);
       obj.domains(slave).Jmu{obj.interfaceId(slave)} = cell(1,nVarSlave);
 
+      % prepare cross-grid informations
+      setMortarInterface(obj,input);
+
       % specify the variables to be coupled
       setCoupledVariables(obj,input)
-  
-      % mortar computations
-      setMortarInterface(obj,input);
+
 
     end
 
@@ -456,8 +457,8 @@ classdef (Abstract) InterfaceSolver < handle
     function setMortarInterface(obj,params)
 
 
-      default = struct('masterSurface',[],...
-                       'slaveSurface',[],...
+      default = struct('masterSurface',missing,...
+                       'slaveSurface',missing,...
                        'multiplierType',"P0",...
                        'Quadrature',struct());
 
@@ -465,12 +466,12 @@ classdef (Abstract) InterfaceSolver < handle
 
       params = readInput(default,params);
 
-      obj.interfMesh = InterfaceMesh(obj.domains(1).grid.topology,...
-                                     obj.domains(2).grid.topology,...
-                                     params.masterSurface,...
-                                     params.slaveSurface);
+      % obj.interfMesh = InterfaceMesh(obj.domains(1).grid.topology,...
+      %                                obj.domains(2).grid.topology,...
+      %                                params.masterSurface,...
+      %                                params.slaveSurface);
 
-      checkInterfaceDisjoint(obj);
+      %checkInterfaceDisjoint(obj);
 
       switch params.multiplierType
         case {"standard","dual"}
@@ -494,11 +495,12 @@ classdef (Abstract) InterfaceSolver < handle
                              params.multiplierType, ...
                              params.Quadrature);
 
-      % Mortar quadrature preprocessing
-      computeMortarInterpolation(obj);
+      % initialize mortar grids and perform rough screen for element pairs
+      % in contact
+      m = params.masterSurface;
+      s = params.slaveSurface;
 
-      % Finalize interface geometry
-      finalizeInterfaceGeometry(obj.interfMesh,obj);
+      processMortarGrid(obj,m,s);
 
       % initialize the state objects
       obj.state.t = 0;
@@ -506,9 +508,69 @@ classdef (Abstract) InterfaceSolver < handle
     end
 
 
-    function computeMortarInterpolation(obj)
+    function processMortarGrid(obj,s,m)
 
-      processMortarPairs(obj.quadrature);
+      elemConnectivity = getConnectivity(obj,s,m);
+
+
+      processMortarPairs(obj.quadrature,elemConnectivity);
+
+      obj.grids = repmat(Grid(),2,1);
+      tags = {s,m};
+
+      % now finalize the interface grid and compute edges
+      for side = [MortarSide.slave,MortarSide.master]
+        surf = obj.domains(side).grid.surfaces;
+        mask = false(surf.num,1);
+        if ismissing(tags{side})
+          tags{side} = (1:surf.nTag)';
+        end
+        surfList = find(ismember(surf.tag,tags{side}));
+        surfList(interfacePairs(:,side)) = ;
+      end
+      
+
+
+
+    end
+
+
+    function elemConnectivity = getConnectivity(obj,s,m)
+      % return a sparse matrix with true values for element pairs in
+      % contact
+      % size is nSlave x nMaster
+      % this search is a rough screen. The connectivity is further refined
+      % by mortar quadrature
+
+      tag = [s,m];
+
+      for side = [MortarSide.slave,MortarSide.master]
+
+        grid = obj.domains(side).grid;
+        coords = cell(2,1);
+        conn = cell(2,1);
+
+        if ismissing(tag(side))
+          id = true(grid.surfaces.nTag,1);
+        else
+          id = grid.surfaces.tag == tag(side);
+        end
+
+        coords{side} = grid.coordinates;
+        conn{side} = getRows(grid.surfaces.connectivity,find(id));
+
+      end
+
+      cs = ContactSearching(coords{1},coords{2},conn{1},conn{2});
+
+      elemConnectivity = cs.getElementConnectivity();
+
+    end
+
+
+    function computeMortarInterpolation(obj,connectivity)
+
+      processMortarPairs(obj.quadrature,connectivity);
 
       % remove inactive interface elements
       inactiveMaster = ~ismember(1:getMesh(obj,MortarSide.master).nSurfaces,...
@@ -550,6 +612,23 @@ classdef (Abstract) InterfaceSolver < handle
           end
         end
       end
+    end
+
+    function initializeMortarInterface(obj,slaveTag,masterTag)
+
+      surf = [slaveTag,masterTag];
+
+      for side = [MortarSide.slave, MortarSide.master]
+
+        gDom = obj.domains(side).grid;
+
+        if ismissing(surf(side))
+          obj.grids(side) = gDom.getSurfaceGrid();
+        else
+          obj.grids(side) = gDom.getSurfaceGrid(surf(side));
+        end
+      end
+
     end
 
 

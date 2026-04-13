@@ -189,33 +189,65 @@ classdef ArrayOfArrays < handle
 
     end
 
+    function out = getRows(obj, r)
+      %SUBSETROWS Extract arbitrary rows as a new ArrayOfArrays.
 
-    function array = getArray(obj,r)
-      % GETARRAY  Return data corresponding to pointer(s) r
-      % rows in r must have a constant length L
-      % Returns matrix of size [numel(r) x L]
+      r = r(:);
 
-      % Start and end indices
-      starts = obj.ptr(r);
-      ends   = obj.ptr(r+1) - 1;
-
-      % Compute lengths
-      lens = ends - starts + 1;
-
-      if isscalar(r)
-        array = obj.data(starts:ends);
+      if isempty(r)
+        out = ArrayOfArrays([], []);
         return
       end
 
-      % Ensure all lengths are equal
+      starts = obj.ptr(r);
+      ends   = obj.ptr(r+1) - 1;
+      rl     = ends - starts + 1;   % row lengths
+
+      % Fast path: contiguous rows
+      if all(diff(r) == 1)
+        flat = obj.data(starts(1):ends(end));
+      else
+        % General case: gather
+        nTot = sum(rl);
+        flat = zeros(nTot, 1, class(obj.data));
+
+        p = 1;
+        for k = 1:numel(r)
+          nk = rl(k);
+          flat(p:p+nk-1) = obj.data(starts(k):ends(k));
+          p = p + nk;
+        end
+      end
+      
+      out = ArrayOfArrays(flat, rl);
+    end
+
+
+    function mat = getRowsMatrix(obj, r)
+      %GETROWSMATRIX Return rows as a dense matrix.
+      % Requires all selected rows to have the same length L.
+      % Output size: [numel(r) x L]
+
+      r = r(:)';
+
+      starts = obj.ptr(r);
+      ends   = obj.ptr(r+1) - 1;
+      lens   = ends - starts + 1;
+
+      if isscalar(r)
+        mat = obj.data(starts:ends);
+        return
+      end
+
       if any(lens ~= lens(1))
-        error('Internal arrays must have the same length if calling getArray() with non scalar input');
+        error('ArrayOfArrays:getRowsMatrix', ...
+          'Selected rows must all have the same length.');
       end
 
       L = lens(1);
 
-      idx = starts + (0:L-1)';
-      array = obj.data(idx)';
+      idx = starts + (0:L-1)';   % [L x nRows]
+      mat = obj.data(idx)';      % [nRows x L]
     end
 
     function setArray(obj, r, mat)

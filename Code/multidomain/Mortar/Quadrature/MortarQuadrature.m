@@ -40,7 +40,7 @@ classdef (Abstract) MortarQuadrature < handle
 
 
   methods (Abstract)
-    processMortarPairs(obj)
+    processMortarPairs(obj,connectivity)
     isPairActive = processMortarPair(obj,is,im);
     finalizeMortarMaps(obj);
     getIntegrationWeights(obj,idPair);
