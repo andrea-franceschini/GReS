@@ -183,7 +183,7 @@ classdef ArrayOfArrays < handle
 
 
 
-    function sz = size(obj)
+    function sz = size(obj,varargin)
 
       sz = obj.nrows;
 

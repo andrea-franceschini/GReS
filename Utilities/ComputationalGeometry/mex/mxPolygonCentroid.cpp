@@ -12,7 +12,7 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[]) {
     require(nrhs == 2, "mxPolygonCentroid:input", "Usage: C = mxPolygonCentroid(points) or C = mxPolygonCentroid(Pflat,nVert).");
     BatchInput in = parseBatchInput(prhs[0], prhs[1]);
     std::vector<double> centroid;
-    polygonCentroidBatch(in, centroid);
+    polygonCentroidBatch(in, nullptr, centroid);
     plhs[0] = mxCreateDoubleMatrix(in.nPoly, in.dim, mxREAL);
     std::copy(centroid.begin(), centroid.end(), mxGetPr(plhs[0]));
 }

@@ -37,6 +37,10 @@ classdef Grid < handle
 
     processEdges(obj,vtkId)
 
+    function obj = Grid()
+      initializeGrid(obj)
+    end
+
 
     function outGrid = getSurfaceGrid(obj, surfTag)
 

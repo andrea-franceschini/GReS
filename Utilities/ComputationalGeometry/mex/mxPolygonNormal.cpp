@@ -12,7 +12,7 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[]) {
     require(nrhs == 2, "mxPolygonNormal:input", "Usage: N = mxPolygonNormal(points3D) or N = mxPolygonNormal(Pflat3D,nVert).");
     BatchInput in = parseBatchInput(prhs[0], prhs[1]);
     std::vector<double> normal;
-    polygonNormalBatch(in, normal);
+    polygonNormalBatch(in, nullptr, normal);
     plhs[0] = mxCreateDoubleMatrix(in.nPoly, 3, mxREAL);
     std::copy(normal.begin(), normal.end(), mxGetPr(plhs[0]));
 }

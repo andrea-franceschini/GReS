@@ -4,6 +4,7 @@
 #include <cmath>
 #include <numeric>
 #include <stdexcept>
+#include <vector>
 
 namespace polygeom {
 
@@ -31,19 +32,10 @@ inline void normalize3(double* a) {
     require(n > 1e-15, "PolygonGeometry:degenerate", "Zero or near-zero vector cannot be normalized.");
     a[0] /= n; a[1] /= n; a[2] /= n;
 }
-inline const double* rowPtr(const double* P, mwSize nRows, mwSize dim, mwSize i) {
-    (void)dim;
-    return P + i;
-}
 inline void getPoint(const double* P, mwSize nRows, mwSize dim, mwSize i, double* out) {
     out[0] = P[i];
     out[1] = P[i + nRows];
     if (dim == 3) out[2] = P[i + 2*nRows];
-}
-inline void setPoint(double* P, mwSize nRows, mwSize dim, mwSize i, const double* x) {
-    P[i] = x[0];
-    P[i + nRows] = x[1];
-    if (dim == 3) P[i + 2*nRows] = x[2];
 }
 
 struct AngleIdx {
@@ -51,7 +43,7 @@ struct AngleIdx {
     mwSize idx;
 };
 
-void computeNewellNormal(const double* pts, mwSize n, double* normal) {
+void computeNewellNormalOrdered(const double* pts, mwSize n, double* normal) {
     normal[0] = 0.0; normal[1] = 0.0; normal[2] = 0.0;
     for (mwSize i = 0; i < n; ++i) {
         mwSize j = (i + 1) % n;
@@ -63,6 +55,35 @@ void computeNewellNormal(const double* pts, mwSize n, double* normal) {
         normal[2] += (pi[0] - pj[0]) * (pi[1] + pj[1]);
     }
     normalize3(normal);
+}
+
+bool normalFromAnyTriple(const double* pts, mwSize n, double* normal) {
+    double p0[3], p1[3], p2[3], v1[3], v2[3], cp[3];
+
+    for (mwSize i = 0; i < n; ++i) {
+        getPoint(pts, n, 3, i, p0);
+        for (mwSize j = i + 1; j < n; ++j) {
+            getPoint(pts, n, 3, j, p1);
+            v1[0] = p1[0] - p0[0];
+            v1[1] = p1[1] - p0[1];
+            v1[2] = p1[2] - p0[2];
+            for (mwSize k = j + 1; k < n; ++k) {
+                getPoint(pts, n, 3, k, p2);
+                v2[0] = p2[0] - p0[0];
+                v2[1] = p2[1] - p0[1];
+                v2[2] = p2[2] - p0[2];
+                cross3(v1, v2, cp);
+                double nrm = norm3(cp);
+                if (nrm > 1e-15) {
+                    normal[0] = cp[0] / nrm;
+                    normal[1] = cp[1] / nrm;
+                    normal[2] = cp[2] / nrm;
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 void orthonormalBasisFromNormal(const double* n, double* e1, double* e2) {
@@ -211,7 +232,7 @@ void areaCentroid3DOrdered(const double* pts, mwSize n, double& area, double* ce
         return;
     }
 
-    computeNewellNormal(pts, n, unitNormal);
+    computeNewellNormalOrdered(pts, n, unitNormal);
     double p0[3]; getPoint(pts, n, 3, 0, p0);
     double C[3] = {0.0, 0.0, 0.0};
     area = 0.0;
@@ -232,6 +253,30 @@ void areaCentroid3DOrdered(const double* pts, mwSize n, double& area, double* ce
     }
     require(area > 1e-15, "PolygonGeometry:degenerate", "Zero-area polygon.");
     centroid[0] = C[0]/area; centroid[1] = C[1]/area; centroid[2] = C[2]/area;
+}
+
+void validateLocalPoints(const mxArray* points) {
+    require(mxIsDouble(points) && !mxIsComplex(points), "PolygonGeometry:input", "points must be a real double matrix.");
+    mwSize m = mxGetM(points), n = mxGetN(points);
+    require((n == 2 || n == 3) && m >= 3, "PolygonGeometry:input", "points must be N x 2 or N x 3 with N >= 3.");
+}
+
+const double* parseLocalNormal(const mxArray* normalOrNull, double* buf) {
+    if (!normalOrNull) return nullptr;
+    require(mxIsDouble(normalOrNull) && !mxIsComplex(normalOrNull) &&
+            mxGetNumberOfElements(normalOrNull) == 3,
+            "PolygonGeometry:input", "normal must be a real 3-vector.");
+    const double* pn = mxGetPr(normalOrNull);
+    buf[0] = pn[0]; buf[1] = pn[1]; buf[2] = pn[2];
+    return buf;
+}
+
+inline const double* getBatchNormalPtr(const double* normalsOrNull, mwSize p, mwSize nPoly, double* buf) {
+    if (!normalsOrNull) return nullptr;
+    buf[0] = normalsOrNull[p];
+    buf[1] = normalsOrNull[p + nPoly];
+    buf[2] = normalsOrNull[p + 2*nPoly];
+    return buf;
 }
 
 } // anonymous namespace
@@ -262,7 +307,10 @@ void orderCCW2D(const double* pts, mwSize n, std::vector<mwSize>& perm) {
     orderFromProjected2D(pts2, n, perm);
 }
 
-void orderCCW3D(const double* pts, mwSize n, const double* userNormalOrNull, std::vector<mwSize>& perm, double* unitNormalOut) {
+void orderCCW3D(const double* pts, mwSize n,
+                const double* userNormalOrNull,
+                std::vector<mwSize>& perm,
+                double* unitNormalOut) {
     double normal[3];
     if (userNormalOrNull) {
         normal[0] = userNormalOrNull[0];
@@ -270,11 +318,15 @@ void orderCCW3D(const double* pts, mwSize n, const double* userNormalOrNull, std
         normal[2] = userNormalOrNull[2];
         normalize3(normal);
     } else {
-        computeNewellNormal(pts, n, normal);
+        bool ok = normalFromAnyTriple(pts, n, normal);
+        require(ok, "PolygonGeometry:degenerate",
+                "Could not determine a valid plane normal from the input points.");
     }
+
     std::vector<double> pts2;
     project3Dto2D(pts, n, normal, pts2);
     orderFromProjected2D(pts2, n, perm);
+
     if (unitNormalOut) {
         unitNormalOut[0] = normal[0];
         unitNormalOut[1] = normal[1];
@@ -290,12 +342,16 @@ void areaCentroidNormal2D(const double* pts, mwSize n, double& area, double* cen
     areaCentroid2DOrdered(ordered.data(), n, area, centroid);
 }
 
-void areaCentroidNormal3D(const double* pts, mwSize n, double& area, double* centroid, double* unitNormal) {
+void areaCentroidNormal3D(const double* pts, mwSize n,
+                          const double* userNormalOrNull,
+                          double& area, double* centroid, double* unitNormal) {
     std::vector<mwSize> perm;
     double normal0[3];
-    orderCCW3D(pts, n, nullptr, perm, normal0);
+    orderCCW3D(pts, n, userNormalOrNull, perm, normal0);
+
     std::vector<double> ordered;
     reorderPoints(pts, n, 3, perm, ordered);
+
     areaCentroid3DOrdered(ordered.data(), n, area, centroid, unitNormal);
     if (dot3(unitNormal, normal0) < 0.0) {
         unitNormal[0] = -unitNormal[0];
@@ -304,48 +360,50 @@ void areaCentroidNormal3D(const double* pts, mwSize n, double& area, double* cen
     }
 }
 
-static void validateLocalPoints(const mxArray* points) {
-    require(mxIsDouble(points) && !mxIsComplex(points), "PolygonGeometry:input", "points must be a real double matrix.");
-    mwSize m = mxGetM(points), n = mxGetN(points);
-    require((n == 2 || n == 3) && m >= 3, "PolygonGeometry:input", "points must be N x 2 or N x 3 with N >= 3.");
-}
-
-double polygonAreaLocal(const mxArray* points) {
+double polygonAreaLocal(const mxArray* points, const mxArray* normalOrNull) {
     validateLocalPoints(points);
     const double* P = mxGetPr(points);
     mwSize n = mxGetM(points), dim = mxGetN(points);
-    double area, c[3], normal[3];
-    if (dim == 2) areaCentroidNormal2D(P, n, area, c);
-    else          areaCentroidNormal3D(P, n, area, c, normal);
+    double area, c[3], normal[3], normalBuf[3];
+    if (dim == 2) {
+        require(normalOrNull == nullptr, "PolygonGeometry:input", "A normal can only be provided for 3D polygons.");
+        areaCentroidNormal2D(P, n, area, c);
+    } else {
+        const double* userNormal = parseLocalNormal(normalOrNull, normalBuf);
+        areaCentroidNormal3D(P, n, userNormal, area, c, normal);
+    }
     return area;
 }
 
-mxArray* polygonCentroidLocal(const mxArray* points) {
+mxArray* polygonCentroidLocal(const mxArray* points, const mxArray* normalOrNull) {
     validateLocalPoints(points);
     const double* P = mxGetPr(points);
     mwSize n = mxGetM(points), dim = mxGetN(points);
     mxArray* out = mxCreateDoubleMatrix(1, dim, mxREAL);
     double* c = mxGetPr(out);
-    double area, normal[3];
-    if (dim == 2) areaCentroidNormal2D(P, n, area, c);
-    else          areaCentroidNormal3D(P, n, area, c, normal);
+    double area, normal[3], normalBuf[3];
+    if (dim == 2) {
+        require(normalOrNull == nullptr, "PolygonGeometry:input", "A normal can only be provided for 3D polygons.");
+        areaCentroidNormal2D(P, n, area, c);
+    } else {
+        const double* userNormal = parseLocalNormal(normalOrNull, normalBuf);
+        areaCentroidNormal3D(P, n, userNormal, area, c, normal);
+    }
     return out;
 }
 
-
-
-
-
-mxArray* polygonNormalLocal(const mxArray* points) {
+mxArray* polygonNormalLocal(const mxArray* points, const mxArray* normalOrNull) {
     validateLocalPoints(points);
     mwSize dim = mxGetN(points);
     require(dim == 3, "PolygonGeometry:input", "Normal is only defined here for N x 3 polygons.");
     const double* P = mxGetPr(points);
     mwSize n = mxGetM(points);
+    double normalBuf[3];
+    const double* userNormal = parseLocalNormal(normalOrNull, normalBuf);
     mxArray* out = mxCreateDoubleMatrix(1, 3, mxREAL);
     double* normal = mxGetPr(out);
     double area, centroid[3];
-    areaCentroidNormal3D(P, n, area, centroid, normal);
+    areaCentroidNormal3D(P, n, userNormal, area, centroid, normal);
     return out;
 }
 
@@ -354,6 +412,7 @@ mxArray* orderPointsLocal(int nrhs, const mxArray* prhs[]) {
     const double* P = mxGetPr(prhs[0]);
     mwSize n = mxGetM(prhs[0]), dim = mxGetN(prhs[0]);
     std::vector<mwSize> perm;
+
     if (dim == 2) {
         require(nrhs == 1, "PolygonGeometry:input", "2D ordering takes only points.");
         orderCCW2D(P, n, perm);
@@ -361,16 +420,13 @@ mxArray* orderPointsLocal(int nrhs, const mxArray* prhs[]) {
         const double* userNormal = nullptr;
         double normalBuf[3];
         if (nrhs == 2) {
-            require(mxIsDouble(prhs[1]) && !mxIsComplex(prhs[1]) && mxGetNumberOfElements(prhs[1]) == 3,
-                    "PolygonGeometry:input", "normal must be a 3-vector.");
-            const double* pn = mxGetPr(prhs[1]);
-            normalBuf[0]=pn[0]; normalBuf[1]=pn[1]; normalBuf[2]=pn[2];
-            userNormal = normalBuf;
+            userNormal = parseLocalNormal(prhs[1], normalBuf);
         } else {
             require(nrhs == 1, "PolygonGeometry:input", "Usage: idx = mxOrderPointsCCW(points [, normal]).");
         }
         orderCCW3D(P, n, userNormal, perm, nullptr);
     }
+
     mxArray* out = mxCreateDoubleMatrix(n, 1, mxREAL);
     double* idx = mxGetPr(out);
     for (mwSize i = 0; i < n; ++i) idx[i] = static_cast<double>(perm[i] + 1);
@@ -401,8 +457,20 @@ BatchInput parseBatchInput(const mxArray* Pflat, const mxArray* nVert) {
     return out;
 }
 
-void polygonAreaBatch(const BatchInput& in, std::vector<double>& area) {
+const double* parseBatchNormals(const mxArray* normals, mwSize nPoly) {
+    require(mxIsDouble(normals) && !mxIsComplex(normals),
+            "PolygonGeometry:input", "normals must be a real double matrix.");
+    require(mxGetM(normals) == nPoly && mxGetN(normals) == 3,
+            "PolygonGeometry:input", "normals must have size nPoly x 3.");
+    return mxGetPr(normals);
+}
+
+void polygonAreaBatch(const BatchInput& in, const double* normalsOrNull, std::vector<double>& area) {
     area.assign(in.nPoly, 0.0);
+    if (normalsOrNull) {
+        require(in.dim == 3, "PolygonGeometry:input", "A normals array can only be provided for 3D polygons.");
+    }
+
     mwSize off = 0;
     for (mwSize p = 0; p < in.nPoly; ++p) {
         mwSize n = static_cast<mwSize>(std::llround(in.nVert[p]));
@@ -412,15 +480,22 @@ void polygonAreaBatch(const BatchInput& in, std::vector<double>& area) {
             poly[i + n] = in.P[off + i + in.nPts];
             if (in.dim == 3) poly[i + 2*n] = in.P[off + i + 2*in.nPts];
         }
-        double c[3], normal[3];
+        double c[3], normal[3], normalBuf[3];
         if (in.dim == 2) areaCentroidNormal2D(poly.data(), n, area[p], c);
-        else             areaCentroidNormal3D(poly.data(), n, area[p], c, normal);
+        else {
+            const double* userNormal = getBatchNormalPtr(normalsOrNull, p, in.nPoly, normalBuf);
+            areaCentroidNormal3D(poly.data(), n, userNormal, area[p], c, normal);
+        }
         off += n;
     }
 }
 
-void polygonCentroidBatch(const BatchInput& in, std::vector<double>& centroid) {
+void polygonCentroidBatch(const BatchInput& in, const double* normalsOrNull, std::vector<double>& centroid) {
     centroid.assign(in.nPoly * in.dim, 0.0);
+    if (normalsOrNull) {
+        require(in.dim == 3, "PolygonGeometry:input", "A normals array can only be provided for 3D polygons.");
+    }
+
     mwSize off = 0;
     for (mwSize p = 0; p < in.nPoly; ++p) {
         mwSize n = static_cast<mwSize>(std::llround(in.nVert[p]));
@@ -430,9 +505,12 @@ void polygonCentroidBatch(const BatchInput& in, std::vector<double>& centroid) {
             poly[i + n] = in.P[off + i + in.nPts];
             if (in.dim == 3) poly[i + 2*n] = in.P[off + i + 2*in.nPts];
         }
-        double area, c[3], normal[3];
+        double area, c[3], normal[3], normalBuf[3];
         if (in.dim == 2) areaCentroidNormal2D(poly.data(), n, area, c);
-        else             areaCentroidNormal3D(poly.data(), n, area, c, normal);
+        else {
+            const double* userNormal = getBatchNormalPtr(normalsOrNull, p, in.nPoly, normalBuf);
+            areaCentroidNormal3D(poly.data(), n, userNormal, area, c, normal);
+        }
         centroid[p] = c[0];
         centroid[p + in.nPoly] = c[1];
         if (in.dim == 3) centroid[p + 2*in.nPoly] = c[2];
@@ -440,9 +518,10 @@ void polygonCentroidBatch(const BatchInput& in, std::vector<double>& centroid) {
     }
 }
 
-void polygonNormalBatch(const BatchInput& in, std::vector<double>& normal) {
+void polygonNormalBatch(const BatchInput& in, const double* normalsOrNull, std::vector<double>& normal) {
     require(in.dim == 3, "PolygonGeometry:input", "Polygon normals are only defined here for 3D polygons.");
     normal.assign(in.nPoly * 3, 0.0);
+
     mwSize off = 0;
     for (mwSize p = 0; p < in.nPoly; ++p) {
         mwSize n = static_cast<mwSize>(std::llround(in.nVert[p]));
@@ -452,8 +531,9 @@ void polygonNormalBatch(const BatchInput& in, std::vector<double>& normal) {
             poly[i + n] = in.P[off + i + in.nPts];
             poly[i + 2*n] = in.P[off + i + 2*in.nPts];
         }
-        double area, c[3], nn[3];
-        areaCentroidNormal3D(poly.data(), n, area, c, nn);
+        double area, c[3], nn[3], normalBuf[3];
+        const double* userNormal = getBatchNormalPtr(normalsOrNull, p, in.nPoly, normalBuf);
+        areaCentroidNormal3D(poly.data(), n, userNormal, area, c, nn);
         normal[p] = nn[0];
         normal[p + in.nPoly] = nn[1];
         normal[p + 2*in.nPoly] = nn[2];
@@ -462,12 +542,17 @@ void polygonNormalBatch(const BatchInput& in, std::vector<double>& normal) {
 }
 
 void polygonGeometryBatch(const BatchInput& in,
+                          const double* normalsOrNull,
                           std::vector<double>& area,
                           std::vector<double>& centroid,
                           std::vector<double>& normal) {
     area.assign(in.nPoly, 0.0);
     centroid.assign(in.nPoly * in.dim, 0.0);
     if (in.dim == 3) normal.assign(in.nPoly * 3, 0.0); else normal.clear();
+
+    if (normalsOrNull) {
+        require(in.dim == 3, "PolygonGeometry:input", "A normals array can only be provided for 3D polygons.");
+    }
 
     mwSize off = 0;
     for (mwSize p = 0; p < in.nPoly; ++p) {
@@ -480,8 +565,12 @@ void polygonGeometryBatch(const BatchInput& in,
         }
         double c[3] = {0.0,0.0,0.0};
         double nn[3] = {0.0,0.0,0.0};
+        double normalBuf[3];
         if (in.dim == 2) areaCentroidNormal2D(poly.data(), n, area[p], c);
-        else             areaCentroidNormal3D(poly.data(), n, area[p], c, nn);
+        else {
+            const double* userNormal = getBatchNormalPtr(normalsOrNull, p, in.nPoly, normalBuf);
+            areaCentroidNormal3D(poly.data(), n, userNormal, area[p], c, nn);
+        }
         centroid[p] = c[0];
         centroid[p + in.nPoly] = c[1];
         if (in.dim == 3) centroid[p + 2*in.nPoly] = c[2];
@@ -495,10 +584,17 @@ void polygonGeometryBatch(const BatchInput& in,
 }
 
 void orderPointsBatch(const BatchInput& in,
+                      const double* normalsOrNull,
                       std::vector<double>& Pccw,
                       std::vector<double>& permOut) {
     Pccw.assign(in.nPts * in.dim, 0.0);
     permOut.assign(in.nPts, 0.0);
+
+    if (normalsOrNull) {
+        require(in.dim == 3, "PolygonGeometry:input",
+                "A normals array can only be provided for 3D polygons.");
+    }
+
     mwSize off = 0;
     for (mwSize p = 0; p < in.nPoly; ++p) {
         mwSize n = static_cast<mwSize>(std::llround(in.nVert[p]));
@@ -509,49 +605,22 @@ void orderPointsBatch(const BatchInput& in,
             if (in.dim == 3) poly[i + 2*n] = in.P[off + i + 2*in.nPts];
         }
         std::vector<mwSize> perm;
-        if (in.dim == 2) orderCCW2D(poly.data(), n, perm);
-        else             orderCCW3D(poly.data(), n, nullptr, perm, nullptr);
+        if (in.dim == 2) {
+            orderCCW2D(poly.data(), n, perm);
+        } else {
+            double normalBuf[3];
+            const double* userNormal = getBatchNormalPtr(normalsOrNull, p, in.nPoly, normalBuf);
+            orderCCW3D(poly.data(), n, userNormal, perm, nullptr);
+        }
         for (mwSize i = 0; i < n; ++i) {
             mwSize src = perm[i];
             Pccw[off + i] = poly[src];
-          Pccw[off + i + in.nPts] = poly[src + n];
-          if (in.dim == 3) Pccw[off + i + 2*in.nPts] = poly[src + 2*n];
-          permOut[off + i] = static_cast<double>(src + 1);
+            Pccw[off + i + in.nPts] = poly[src + n];
+            if (in.dim == 3) Pccw[off + i + 2*in.nPts] = poly[src + 2*n];
+            permOut[off + i] = static_cast<double>(src + 1);
         }
-      off += n;
+        off += n;
     }
 }
-
-
-  bool normalFromAnyTriple(const double* pts, mwSize n, double* normal) {
-    double p0[3], p1[3], p2[3], v1[3], v2[3], cp[3];
-
-    for (mwSize i = 0; i < n; ++i) {
-      getPoint(pts, n, 3, i, p0);
-      for (mwSize j = i + 1; j < n; ++j) {
-        getPoint(pts, n, 3, j, p1);
-        v1[0] = p1[0] - p0[0];
-        v1[1] = p1[1] - p0[1];
-        v1[2] = p1[2] - p0[2];
-
-        for (mwSize k = j + 1; k < n; ++k) {
-          getPoint(pts, n, 3, k, p2);
-          v2[0] = p2[0] - p0[0];
-          v2[1] = p2[1] - p0[1];
-          v2[2] = p2[2] - p0[2];
-
-          cross3(v1, v2, cp);
-          double nrm = norm3(cp);
-          if (nrm > 1e-15) {
-            normal[0] = cp[0] / nrm;
-            normal[1] = cp[1] / nrm;
-            normal[2] = cp[2] / nrm;
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  }
 
 } // namespace polygeom

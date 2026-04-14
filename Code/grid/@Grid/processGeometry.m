@@ -4,10 +4,6 @@ function processGeometry(grid)
 
 initializeGrid(grid);
 
-% process vtk types
-grid.cells.vtkTypes = reshape(unique(grid.cells.VTKType),1,[]);
-grid.surfaces.vtkTypes = reshape(unique(grid.surfaces.VTKType),1,[]);
-
 for vtkId = grid.cells.vtkTypes
   processShape(grid,vtkId);
 end

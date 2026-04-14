@@ -12,7 +12,7 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[]) {
     require(nrhs == 2, "mxPolygonArea:input", "Usage: A = mxPolygonArea(points) or A = mxPolygonArea(Pflat,nVert).");
     BatchInput in = parseBatchInput(prhs[0], prhs[1]);
     std::vector<double> area;
-    polygonAreaBatch(in, area);
+    polygonAreaBatch(in, nullptr, area);
     plhs[0] = mxCreateDoubleMatrix(in.nPoly, 1, mxREAL);
     std::copy(area.begin(), area.end(), mxGetPr(plhs[0]));
 }

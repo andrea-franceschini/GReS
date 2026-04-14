@@ -431,7 +431,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       % define the fracture geometrical informations
 
-      cells = obj.grid.cells;
       coords = obj.grid.coordinates;
 
       nFractures = numel(fractureStruct);
@@ -446,14 +445,13 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       tol = 1e-8;
 
-      countCell = 0;
-
       obj.cohesion = zeros(nFractures,1);
       obj.phi = zeros(nFractures,1);
 
 
       obj.fractureMesh = Grid();
-      f = obj.fractureMesh.surfaces;
+      fMesh = obj.fractureMesh;
+      f = fMesh.surfaces;
       [f.tang1,f.tang2,f.cutCells,f.nFracCells] = deal([]);
       f.connectivity = ArrayOfArrays();
 
@@ -557,9 +555,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           isEdgeCut = logical(m(newCutCells(ic),:));
           cutEdges =  cellEdges(isEdgeCut);
           nVerts = numel(cutEdges);
-          cutCellVertices(c+1:c+nVerts,:) = intersections(cutEdges,:);
+          verts = intersections(cutEdges,:);
+          [cutCellVertices(c+1:c+nVerts,:),perm] = orderPointsCCW(verts);
           cutNumVerts(ic) = nVerts;
-          surfs(c+1:c+nVerts) = cutEdges;
+          surfs(c+1:c+nVerts) = cutEdges(perm);
           c = c + nVerts;
         end
 
@@ -569,22 +568,23 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         normals = repmat(nVec',nC,1);
         [cutA,cutC] = computePolygonGeometry(cutCellVertices,cutNumVerts,normals);
 
-        f.cutCells    = [f.cutCell; newCutCells];
-        f.normal      = [f.normal;normals];
+        f.cutCells    = [f.cutCells; newCutCells];
+        f.normal      = [f.normal; normals];
         f.area        = [f.area; cutA];
         f.center      = [f.center; cutC];
         f.tang1       = [f.tang1; repmat(tVec1',nC,1)];
-        f.tang2       = [f.tang2; repmat(tVec1',nC,1)];
+        f.tang2       = [f.tang2; repmat(tVec2',nC,1)];
         f.nFracCells  = [f.nFracCells; nC];
 
         % finalize the mesh for the current fracture
+        surfs = surfs(1:c);
         [~,~,id] = unique(surfs);
         surfs = nV + id;
         nV = sum(id > 1);
         
         f.connectivity = [f.connectivity; ArrayOfArrays(surfs,cutNumVerts)];
         f.numVerts = [f.numVerts; cutNumVerts];
-        obj.fractureMesh.coordinates = [obj.fractureMesh.coordinates; xInt(isInPlane,:)];
+        fMesh.coordinates = [fMesh.coordinates; xInt(isInPlane,:)];
 
       end
 
@@ -598,24 +598,18 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       f.tang1         = f.tang1(id,:); 
       f.tang2         = f.tang2(id,:); 
       f.numVerts      = f.numVerts(id);
+      f.VTKType       = repmat(VTKType.Polygon,f.num,1);
 
       surfs = getRows(f.connectivity,find(id));
 
       [u,~,id2] = unique(getData(surfs));
+      f.connectivity = ArrayOfArrays(id2(:),f.numVerts);
+      fMesh.coordinates = fMesh.coordinates(u,:);
 
-      surfs = reshape(id2,[],6);
-      msh.surfaces = surfs - 1;
-
-      msh.surfaceNumVerts = msh.surfaceNumVerts(id);
-
-      msh.coordinates = msh.coordinates(u,:);
-
-      % coordRound = round(msh.coordinates/1e-7);
-      % [nodesUnique, ia, ic] = unique(coordRound, 'rows', 'stable')
-
-      msh.nNodes = size(msh.coordinates,1);
-      msh.nSurfaces = size(msh.surfaces,1);
-      msh.surfaceVTKType = 7*ones(msh.nSurfaces,1);
+      % finalize the grid
+      fMesh.surfaces = f;
+      initializeGrid(fMesh);
+      obj.fractureMesh = fMesh;
 
     end
 

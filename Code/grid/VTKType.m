@@ -4,6 +4,7 @@ classdef VTKType < uint8
 
   enumeration
     Tri (5)           % 3 node triangle
+    Polygon (7)       % n-node polygon
     Quad  (9)         % 4 node quadrilateral
     Quad9 (28)        % 9 node quadrilateral (biquadratic)
     Tetra (10)        % 4 node tetrahedron
