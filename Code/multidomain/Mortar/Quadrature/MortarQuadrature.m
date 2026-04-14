@@ -10,11 +10,15 @@ classdef (Abstract) MortarQuadrature < handle
     numbInterfacePairs
     multiplierType
     areaSlave
+    gaussOrder
   end
 
   methods
-    function obj = MortarQuadrature(multType,grids)
+    function obj = MortarQuadrature(multType,grids,input)
       % grids: the lower dimensional grids for slave and master side
+
+      input = readInput(struct('gaussOrder',3),input);
+      obj.gaussOrder = input.gaussOrder;
 
       obj.multiplierType = multType;
       obj.grids = grids;

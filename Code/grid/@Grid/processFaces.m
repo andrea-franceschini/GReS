@@ -144,6 +144,9 @@ boundFaces = faceTopol(isBoundary,:);
 % connectivity of the surfaces corresponding to the 2D VTK
 idS = grid.getSurfByVTKId(VTKType.to2D(vtkId));
 topolSurf = grid.getSurfNodes(idS);
+if VTKType.to2D(vtkId) == VTKType.Quad9
+  topolSurf = topolSurf(:,1:4);
+end
 [sId,fId] = ismember(sort(topolSurf,2),sort(boundFaces,2),'rows');
 boundId = find(isBoundary);
 s.faceId(sId) = nFold + boundId(fId); 

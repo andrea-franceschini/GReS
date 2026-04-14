@@ -151,11 +151,11 @@ classdef MeshTying < InterfaceSolver
 
       for vtkSlave = surfSlave.vtkTypes
 
-        elSlave = FiniteElementType.create(vtkSlave,obj.grids(s));
+        elSlave = getElement(obj,vtkSlave,s);
 
         for vtkMaster = surfSlave.vtkTypes
 
-          elMaster = FiniteElementType.create(vtkMaster,obj.grids(m));
+          elMaster = getElement(obj,vtkSlave,m);
 
           % loop over pairs of connected master/slave elements
           for iPair = 1:obj.quadrature.numbInterfacePairs

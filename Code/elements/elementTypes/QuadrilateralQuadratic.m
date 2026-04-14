@@ -56,15 +56,7 @@ classdef QuadrilateralQuadratic < FiniteElementType
       % if in is not scalar, it is a 4x2 list of 2D coordinates, the
       % gradient matrix and the determinant are returned
 
-      if isscalar(in)
-        % 3D setting
-        coord = FEM.getElementCoords(obj,in);
-        J = pagemtimes(obj.Jref,coord);
-        for i = 1:obj.GaussPts.nNode
-          obj.detJ(i) = norm(cross(J(1,:,i),J(2,:,i)),2);
-        end
-        outVar1 = obj.detJ.*(obj.GaussPts.weight)';
-      else
+      if size(in,2) == 2
         % 2D - in is a given list of x-y coordinates for nodes
         J = pagemtimes(obj.Jref,in);
         for i=1:obj.GaussPts.nNode
@@ -73,6 +65,19 @@ classdef QuadrilateralQuadratic < FiniteElementType
         end
         outVar1 = pagemtimes(J,obj.Jref);
         outVar2 = obj.detJ.*(obj.GaussPts.weight)';
+      else
+        if isscalar(in)
+          % 3D setting
+          n = obj.grid.getSurfNodes(in);
+          coord = obj.grid.coordinates(n,:);
+        elseif size(in,2)==3 % 3D list of coordinates in input
+          coord = in;
+        end
+        J = pagemtimes(obj.Jref,coord);
+        for i = 1:obj.GaussPts.nNode
+          obj.detJ(i) = norm(cross(J(1,:,i),J(2,:,i)),2);
+        end
+        outVar1 = obj.detJ.*(obj.GaussPts.weight)';
       end
     end
 
@@ -120,7 +125,7 @@ classdef QuadrilateralQuadratic < FiniteElementType
         nodeCoord = getElementCoords(obj,idQuad);
       else
         dN = Quadrilateral.computeDerBasisF(pos);
-        nodeCoord = getSubElementCoords(idQuad,idSub);
+        nodeCoord = obj.getSubElementCoords(idQuad,idSub);
       end
       tang = dN*nodeCoord;
       crossTang = cross(tang(1,:)',tang(2,:)');
@@ -164,7 +169,7 @@ classdef QuadrilateralQuadratic < FiniteElementType
       % Get the location of the Gauss points in the element in the physical
       % space
       if isscalar(in) % element id
-        gPCoordinates = obj.Nref*FEM.getElementCoords(obj,in);
+        gPCoordinates = obj.Nref*obj.getElementCoords(in);
       else 
         assert(size(in,1)==4 && size(in,2)==2, ['List of coordinates in ' ...
           'input must be a 4x2 matrix'])
@@ -257,7 +262,7 @@ classdef QuadrilateralQuadratic < FiniteElementType
     end
 
     function coord = getSubElementCoords(obj,idQuad,idSub)
-      nList = obj.grid.getSurfNofes(idQuad);
+      nList = obj.grid.getSurfNodes(idQuad);
       nList = nList(obj.nod2sub(idSub,:));
       coord = obj.grid.coordinates(nList,:);
     end
@@ -303,7 +308,7 @@ classdef QuadrilateralQuadratic < FiniteElementType
       end
 
       % Compute derivatives in the reference space for all Gauss points
-      obj.Jref = zeros(2,obj.grid.surfaceNumVerts(1),np);
+      obj.Jref = zeros(2,obj.grid.surfaces.numVerts(1),np);
       
       obj.Jref(1,1,:) = arrayfun(@(i) gb1(c(i,1)).*b1(c(i,2)),1:np);
       obj.Jref(2,1,:) = arrayfun(@(i) b1(c(i,1)).*gb1(c(i,2)),1:np);

@@ -67,11 +67,7 @@ classdef Gauss < handle
       % get 1D points location for tensor product rule
       % used in hexa and quad - order = numb of gp per direction
 
-      ng = ceil(0.5*(order+1));
-
-      availGP = [1,2,3,4,5,6,8,16];
-      i = find(ng < availGP);
-      ng = i(1);
+      ng = Gauss.getNumPtsFromOrder(order);
 
       switch ng
         case 1
@@ -348,6 +344,17 @@ classdef Gauss < handle
       end
       weight = weight * parentVolume;        % refernce volume scaling
       assert(sum(weight)==parentVolume,'Wrong gauss point weight')
+    end
+
+
+    function nG = getNumPtsFromOrder(order)
+
+       nG = ceil(0.5*(order+1));
+
+      availGP = [1,2,3,4,5,6,8,16];
+      i = find(availGP >= nG);
+      nG = i(1);
+
     end
 
   end

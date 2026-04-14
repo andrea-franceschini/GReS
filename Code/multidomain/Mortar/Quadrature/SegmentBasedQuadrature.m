@@ -9,7 +9,6 @@ classdef SegmentBasedQuadrature < MortarQuadrature
   
   properties
     detJtri
-    triGaussOrder
   end
 
   properties (Access = private)
@@ -20,12 +19,9 @@ classdef SegmentBasedQuadrature < MortarQuadrature
   methods
     function obj = SegmentBasedQuadrature(multType,grids,input)
 
-      obj@MortarQuadrature(multType,grids);
+      obj@MortarQuadrature(multType,grids,input);
 
-      input = readInput(struct('gaussOrder',3),input);
-      obj.triGaussOrder = input.gaussOrder;
-
-      gaussTri = Gauss(5,obj.triGaussOrder);      % 5 is the vtk type of triangles
+      gaussTri = Gauss(5,obj.gaussOrder);      % 5 is the vtk type of triangles
       obj.wTri = gaussTri.weight;
 
       isQuadratic = [any(grids(1).surfaces.VTKType == 28);
@@ -145,15 +141,17 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       master = MortarSide.master;
       slave = MortarSide.slave;
       elId([slave,master]) = [idSlave,idMaster];
-      elem([slave,master]) = [elemSlave,elemMaster];
+      elem = cell(2,1);
+      elem{master} = elemMaster;
+      elem{slave} = elemSlave;
       xi = cell(2,1);
 
       ns = zeros(2,1);
       % get number of subsegment ns (in case of higher-order elements)
       for side = [slave,master]
-        if elem(side).nNode > 4
+        if elem{side}.nNode > 4
           ns(side) = 4;
-          elem(side) = elem(side).subQuad;
+          elem{side} = elem{side}.subQuad;
         else
           ns(side) = 1;
         end
@@ -169,19 +167,19 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       for iS = 1:ns(slave)
         if ns(slave) == 1
           [P0,nP] = computeAuxiliaryPlane(obj,elId(slave));
-          coordS3D = getElementCoords(elem(slave),elId(slave));
+          coordS3D = getElementCoords(elemSlave,idSlave);
         else
-          [P0,nP] = computeAuxiliaryPlane(obj,elId(slave),iS);
-          coordS3D =  elem(slave).getSubElementCoords(elId(slave),iS);  
+          [P0,nP] = computeAuxiliaryPlane(obj,elId(slave),elemSlave,iS);
+          coordS3D =  elemSlave.getSubElementCoords(elId(slave),iS);  
         end
 
         coordS = pointToSurfaceProjection(P0,nP,coordS3D);
 
         for iM = 1:ns(master)
           if ns(master) == 1
-            coordM3D = getElementCoords(elem(master),elId(master));
+            coordM3D = getElementCoords(elem{master},elId(master));
           else
-            coordM3D = elem(master).getSubElementCoords(elId(master),iM);
+            coordM3D = elemMaster.getSubElementCoords(elId(master),iM);
           end
 
           coordM = pointToSurfaceProjection(P0,nP,coordM3D);
@@ -196,15 +194,15 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
           % project gauss points of each triangular cell into slave and
           % master subsegments
-          xiSlaveLoc = projectBack(obj,elem(slave),topolClip,coordClip,coordS);
-          xiMasterLoc = projectBack(obj,elem(master),topolClip,coordClip,coordM);
+          xiSlaveLoc = projectBack(obj,elem{slave},topolClip,coordClip,coordS);
+          xiMasterLoc = projectBack(obj,elem{master},topolClip,coordClip,coordM);
 
           % map subsegment coords to higher order element coords
           if ns(master) > 1
-            xiMasterLoc = elem(master).mapsub2ref(xiMasterLoc,iM);
+            xiMasterLoc = elemMaster.mapsub2ref(xiMasterLoc,iM);
           end
           if ns(slave) > 1
-            xiSlaveLoc = elem(slave).mapsub2ref(xiSlaveLoc,iS);
+            xiSlaveLoc = elemSlave.mapsub2ref(xiSlaveLoc,iS);
           end
 
           for iT = 1:nTriLoc
@@ -226,11 +224,11 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
     end
     
-    function [P,n] = computeAuxiliaryPlane(obj,el,subID)
+    function [P,n] = computeAuxiliaryPlane(obj,el,elem,subID)
       if nargin == 2
         P = obj.grids(MortarSide.slave).surfaces.center(el,:);
         n = obj.grids(MortarSide.slave).surfaces.normal(el,:);
-      elseif nargin == 3
+      elseif nargin == 4
         % compute auxiliary plane on subsegment of quad9
         P = elem.computeCentroid(el,subID);
         n = elem.computeNormal(el,elem.centroid,subID);
@@ -245,7 +243,7 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       % netwon params
       itMax = 10;
       tol = 1e-9;
-      tri = Triangle('gaussOrder',obj.triGaussOrder);                % define reference triangle
+      tri = Triangle('gaussOrder',obj.gaussOrder);                % define reference triangle
       for i = 1:size(topolTri,1)
         coordTri = clipCoord(topolTri(i,:),:);
         coordGPtri = getGPointsLocation(tri,coordTri);

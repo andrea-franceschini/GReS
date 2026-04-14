@@ -465,6 +465,7 @@ classdef (Abstract) InterfaceSolver < handle
           tags{side} = (1:grid.surface.nTag)';
         end
         obj.grids(side) = getSurfaceGrid(grid,tags{side});
+        obj.grids(side).computeAvgNodalNormal();
       end
 
       cs = ContactSearching(obj.grids(MortarSide.slave),obj.grids(MortarSide.master));
@@ -506,6 +507,11 @@ classdef (Abstract) InterfaceSolver < handle
         obj.grids(side).surfaces.rotationMatrices = R;
       end
       
+    end
+
+
+    function elem = getElement(obj,vtkId,side)
+      elem = FiniteElementType.create(vtkId,obj.grids(side),'gaussOrder',obj.quadrature.gaussOrder);
     end
 
 

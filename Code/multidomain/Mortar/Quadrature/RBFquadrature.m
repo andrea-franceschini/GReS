@@ -18,7 +18,7 @@ classdef RBFquadrature < MortarQuadrature
     % element based infos
     idSlave          % current slave element being processed
     gpsCoord     % current list of 3D gp coordinates for RBF interpolation
-    gpsCoordLoc  % current list of local gp coordinates 
+    gpsCoordLoc  % current list of local gp coordinates
     dJwSlave
     suppFlag
     countGP
@@ -29,74 +29,97 @@ classdef RBFquadrature < MortarQuadrature
   methods
     function obj = RBFquadrature(multType,grids,input)
       %
-      obj@MortarQuadrature(multType);
-      default = struct('nGP',6,'nInt',5,'RBFtype',"gauss");
+      obj@MortarQuadrature(multType,grids,input);
+      default = struct('nInt',5,'RBFtype',"gauss");
       params = readInput(default,input);
-      obj.nGP = params.nGP;
       obj.nInt = params.nInt;
       obj.rbfType = params.RBFtype;
       obj.getWeights();
     end
 
   end
-  
+
   methods (Access = public)
 
-    function processMortarPairs(obj)
+    function processMortarPairs(obj,connectivity)
 
       % initialize the maps to store mortar quadrature info
-      obj.maxGP = obj.nGP^2;
-%       nConnections = nnz(obj.interface.interfMesh.elemConnectivity);
-      totGP = obj.msh(2).nSurfaces*obj.maxGP;
-      obj.gpCoords = {zeros(totGP,2);
-                      zeros(totGP,2)};
+      obj.maxGP = Gauss.getNumPtsFromOrder(obj.gaussOrder)^2;
 
-      nConnections = nnz(obj.interface.interfMesh.elemConnectivity);
+      s = MortarSide.slave;
+      m = MortarSide.master;
+      totGP = obj.grids(s).surfaces.num*obj.maxGP;
+      obj.gpCoords = {zeros(totGP,2);
+        zeros(totGP,2)};
+
+      nConnections = nnz(connectivity);
 
       obj.interfacePairs = zeros(nConnections,2);
       obj.detJw = zeros(totGP,1);
 
       obj.activeGPmap = zeros(nConnections+1,1);
 
-      nM = full(sum(obj.interface.interfMesh.elemConnectivity,1));
-      nM = [0 cumsum(nM)];
 
-      for is = 1:obj.msh(2).nSurfaces
+      nM = full(sum(connectivity,2));
+      nM = [0;cumsum(nM)];
 
-        % reset slave element based info
-        elemSlave = obj.getElem(2,is);
-        obj.idSlave = is;
-        obj.countGP = 0;
-        obj.gpsCoord = getGPointsLocation(elemSlave,is);
-        obj.gpsCoordLoc = elemSlave.GaussPts.coord;
-        obj.dJwSlave = getDerBasisFAndDet(elemSlave,is);
 
-        imList = find(obj.interface.interfMesh.elemConnectivity(:,is));
 
-        for j = 1:numel(imList)
-          im = imList(j);
-          k = nM(is)+ j;
-          % k (global index to write without race conditions)
-          isPairActive = processMortarPair(obj,is,im,k);
-          if ~isPairActive
-            obj.activeGPmap(k+1) = obj.activeGPmap(k);
-            continue
+
+      for vtkSlave = obj.grids(s).surfaces.vtkTypes
+
+        elemSlave = FiniteElementType.create(vtkSlave,obj.grids(s));
+        listSlave = obj.grids(s).getSurfByVTKId(vtkSlave);
+
+        for vtkMaster = obj.grids(m).surfaces.vtkTypes
+
+          elemMaster = FiniteElementType.create(vtkMaster,obj.grids(m));
+          listMaster = obj.grids(m).getSurfByVTKId(vtkMaster);
+
+          mask = false(obj.grids(m).surfaces.num,1);
+          mask(listMaster) = true;
+
+          for is = listSlave'
+
+            obj.idSlave = is;
+            obj.countGP = 0;
+            obj.gpsCoord = getGPointsLocation(elemSlave,is);
+            obj.gpsCoordLoc = elemSlave.getGauss.coord;
+            obj.dJwSlave = getDerBasisFAndDet(elemSlave,is);
+
+
+            % get master elements belonging to that vtk type
+            imList = find(connectivity(is,:));
+            imList = imList(mask(imList));
+
+            for j = 1:numel(imList)
+              im = imList(j);
+              k = nM(is)+ j;
+              % k (global index to write without race conditions)
+              isPairActive = processMortarPair(obj,is,im,elemSlave,elemMaster,k);
+
+              if ~isPairActive
+                obj.activeGPmap(k+1) = obj.activeGPmap(k);
+                continue
+              end
+
+              % sort out gauss points already projected
+              obj.activeGPmap(k+1) = obj.activeGPmap(k) + sum(obj.suppFlag);
+              obj.gpsCoord = obj.gpsCoord(~obj.suppFlag,:);
+              obj.gpsCoordLoc = obj.gpsCoordLoc(~obj.suppFlag,:);
+              obj.dJwSlave = obj.dJwSlave(~obj.suppFlag);
+              obj.countGP = obj.countGP + sum(obj.suppFlag);
+
+            end
+
+            if obj.countGP ~= elemSlave.getGauss.nNode
+              warning("Some gauss point not projected for element %i",is)
+            end
+
           end
-
-          obj.activeGPmap(k+1) = obj.activeGPmap(k) + sum(obj.suppFlag);
-          obj.gpsCoord = obj.gpsCoord(~obj.suppFlag,:);
-          obj.gpsCoordLoc = obj.gpsCoordLoc(~obj.suppFlag,:);
-          obj.dJwSlave = obj.dJwSlave(~obj.suppFlag);
-          obj.countGP = obj.countGP + sum(obj.suppFlag);
-
-
         end
-
-        if obj.countGP ~= elemSlave.GaussPts.nNode
-          warning("Some gauss point not projected for element %i",is)
-        end
-
       end
+
 
       finalizeMortarMaps(obj);
       computeAreaSlave(obj);
@@ -117,7 +140,7 @@ classdef RBFquadrature < MortarQuadrature
       else
         nIntPts = obj.nInt^2;
       end
-      
+
       ptsInt = obj.ptsRBF(1:nIntPts,[3*im-2 3*im-1 3*im]);
 
       [fiNM,id1] = obj.computeRBFfiNM(ptsInt,posGP);
@@ -175,7 +198,7 @@ classdef RBFquadrature < MortarQuadrature
       gpCoords = obj.gpCoords{1}(i1+1:i2,:);
     end
 
-    
+
     function dJweighed = getIntegrationWeights(obj,kPair)
       i1 = obj.activeGPmap(kPair);
       i2 = obj.activeGPmap(kPair+1);
@@ -188,43 +211,58 @@ classdef RBFquadrature < MortarQuadrature
     %
     function getWeights(obj)
 
-      elem = obj.elements(1);
-      msh = getMesh(obj.interface,MortarSide.master);
+      m = MortarSide.master;
+      surf = obj.grids(m).surfaces;
+      coordinates = obj.grids(m).coordinates;
 
-      nElM = msh.nSurfaces;
+      vtk = surf.VTKType;
+      nTri = sum(vtk == VTKType.Tri);
+      nQuad = sum(any([vtk == VTKType.Quad; vtk == VTKType.Quad9]));
+      numPts =  nTri*sum(1:obj.nInt) + nQuad*(obj.nInt)^2;
 
-      numPtsQ = (obj.nInt)^2;
-      numPtsT = sum(1:obj.nInt);
-      if isempty(getElement(elem,9))
-        numPts = numPtsT;
-      else
-        numPts = numPtsQ;
-      end
-     
+      nElM = surf.num;
       weighF = zeros(numPts,2*nElM);
       weigh1 = zeros(numPts,nElM);
-
       pts = zeros(numPts,nElM*3);
+
+      % solve local system to get weight of interpolant
+      warning('off','MATLAB:nearlySingularMatrix')
 
       k = 0;
 
-      for im = 1:nElM
+      for vtkMaster = obj.grids(m).surfaces.vtkTypes
 
-        [f, ptsInt] = getRBFfunction(obj,im);
-        nptInt = size(ptsInt,1);
-       
-        fiMM = obj.computeRBFfiMM(ptsInt);
+        elem = FiniteElementType.create(vtkMaster,...
+          obj.grids(m),'gaussOrder',obj.gaussOrder);
+        listMaster = obj.grids(m).getSurfByVTKId(vtkMaster);
 
-        % solve local system to get weight of interpolant
-        warning('off','MATLAB:nearlySingularMatrix')
+        topol = obj.grids(m).getCellNodes(listMaster);
 
-        x = fiMM\[f ones(size(ptsInt,1),1)];
 
-        weighF(1:nptInt,k+1:k+2) = x(:,1:2);
-        weigh1(1:nptInt,im) = x(:,3);
+        for im = listMaster'
 
-        pts(1:nptInt,[3*im-2 3*im-1 3*im]) = ptsInt;
-        k = k+2;
+          nodes = topol(im,:);
+          coord = coordinates(nodes,:);
+
+          f = getInterpolationPoints(obj,elem);
+          N = elem.computeBasisF(f);
+          % get coords of interpolation points in the real space
+          pos = N*coord;
+
+
+          nptInt = size(pos,1);
+
+          fiMM = obj.computeRBFfiMM(pos);
+
+          x = fiMM\[f ones(size(ptsInt,1),1)];
+
+          weighF(1:nptInt,k+1:k+2) = x(:,1:2);
+          weigh1(1:nptInt,im) = x(:,3);
+
+          pts(1:nptInt,[3*im-2 3*im-1 3*im]) = ptsInt;
+          k = k+2;
+        end
+
       end
 
       obj.wF = weighF;
@@ -249,23 +287,23 @@ classdef RBFquadrature < MortarQuadrature
       fiNM = obj.rbfInterp(d,r,obj.rbfType);
     end
 
-    function [intPts,pos] = getRBFfunction(obj,id)
-      % evaluate shape function in the real space and return position of
-      % integration points in the real space
-      msh = obj.interface.getMesh(MortarSide.master);
-      surfNodes = msh.surfaces(id,:);
-      coord = msh.coordinates(surfNodes,:);
-      elem = obj.getElem(1,id);
-      % place interpolation points in a regular grid
-      intPts = getInterpolationPoints(obj,elem);
-      bf = elem.computeBasisF(intPts);
-      % get coords of interpolation points in the real space
-      pos = bf*coord;
-    end
+    % function [intPts,pos] = getRBFfunction(obj,elId,elem)
+    %   % evaluate shape function in the real space and return position of
+    %   % integration points in the real space
+    %   surf = obj.grids(MortarSide.master).surface;
+    %   surfNodes = msh.surfaces(elId,:);
+    %   coord = msh.coordinates(surfNodes,:);
+    %   elem = obj.getElem(1,elId);
+    %   % place interpolation points in a regular grid
+    %   intPts = getInterpolationPoints(obj,elem);
+    %   bf = elem.computeBasisF(intPts);
+    %   % get coords of interpolation points in the real space
+    %   pos = bf*coord;
+    % end
 
-    function intPts = getInterpolationPoints(obj,elem)
-      switch class(elem)
-        case 'Triangle'
+    function intPts = getInterpolationPoints(obj,vtk)
+      switch vtk
+        case VTKType.Tri
           % uniform grid in triangle
           intPts = zeros(sum(1:obj.nInt),2);
           p = linspace(0,1,obj.nInt);
@@ -277,7 +315,7 @@ classdef RBFquadrature < MortarQuadrature
             k = k-1;
           end
           intPts(:,2) = repelem(p,obj.nInt:-1:1);
-        case {'Quadrilateral','QuadrilateralQuadratic'}
+        case {VTKType.Quad,VTKType.Quad9}
           intPts = linspace(-1,1, obj.nInt);
           [y, x] = meshgrid(intPts, intPts);
           intPts = [x(:), y(:)];

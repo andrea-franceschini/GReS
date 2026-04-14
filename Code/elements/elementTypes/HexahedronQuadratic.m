@@ -65,33 +65,33 @@ classdef HexahedronQuadratic < FiniteElementType
   end
 
   methods (Access = public)
-
-    function [outVar1,outVar2] = getDerBasisFAndDet(obj,el,flOut)   % mat,dJWeighed
-      %       findJacAndDet(obj,el);  % OUTPUT: J and obj.detJ
-      % Find the Jacobian matrix of the isoparametric map and its determinant
-      %
-      % Possible ways of calling this function are:
-      %    1) [mat,dJWeighed] = getDerBasisFAndDet(obj,el,1)
-      %    2) mat = getDerBasisFAndDet(obj,el,2)
-      %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
-
-      nodes = obj.grid.getCellNodes(el);
-      coords = obj.grid.coordinates(nodes,:);
-      [N, dJw] = mxGetDerBasisAndDet(obj.Jref,coords,obj.GaussPts.weight);
-
-      switch flOut
-        case 1
-          outVar1 = N;
-          outVar2 = dJw';
-        case 2
-          outVar1 = N;
-        case 3
-          outVar1 = dJw';
-      end
-      if flOut == 1 || flOut == 3
-        obj.detJ = (dJw./obj.GaussPts.weight)';
-      end
-    end
+    % 
+    % function [outVar1,outVar2] = getDerBasisFAndDet(obj,el,flOut)   % mat,dJWeighed
+    %   %       findJacAndDet(obj,el);  % OUTPUT: J and obj.detJ
+    %   % Find the Jacobian matrix of the isoparametric map and its determinant
+    %   %
+    %   % Possible ways of calling this function are:
+    %   %    1) [mat,dJWeighed] = getDerBasisFAndDet(obj,el,1)
+    %   %    2) mat = getDerBasisFAndDet(obj,el,2)
+    %   %    3) dJWeighed = getDerBasisFAndDet(obj,el,3)
+    % 
+    %   nodes = obj.grid.getCellNodes(el);
+    %   coords = obj.grid.coordinates(nodes,:);
+    %   [N, dJw] = mxGetDerBasisAndDet(obj.Jref,coords,obj.GaussPts.weight);
+    % 
+    %   switch flOut
+    %     case 1
+    %       outVar1 = N;
+    %       outVar2 = dJw';
+    %     case 2
+    %       outVar1 = N;
+    %     case 3
+    %       outVar1 = dJw';
+    %   end
+    %   if flOut == 1 || flOut == 3
+    %     obj.detJ = (dJw./obj.GaussPts.weight)';
+    %   end
+    % end
 
     function [outVar1,outVar2] = getDerBubbleBasisFAndDet(obj,el,flOut)   % mat,dJWeighed
       %       findJacAndDet(obj,el);  % OUTPUT: J and obj.detJ
@@ -141,15 +141,20 @@ classdef HexahedronQuadratic < FiniteElementType
 
 
       if nargin == 1
-        idHexa = find(obj.grid.cells.VTKtype == obj.vtkType);
+        idHexa = find(obj.grid.cells.VTKType == obj.vtkType);
       end
+
+      topol = obj.grid.getCellNodes(idHexa);
 
       vol = zeros(length(idHexa),1);
       cellCentroid = zeros(length(idHexa),3);
       i = 0;
+
       for el = idHexa'
+        nodes = topol(el,:);
+        coords = obj.grid.coordinates(nodes,:);
         i = i + 1;
-        dJWeighed = getDerBasisFAndDet(obj,el,3);
+        [~,dJWeighed] = getDerBasisFAndDet(obj,coords);
         vol(i) = sum(dJWeighed);
         assert(vol(i)>0,'Volume less than 0 for element %i',el);
         gPCoordinates = getGPointsLocation(obj,el);
@@ -171,7 +176,9 @@ classdef HexahedronQuadratic < FiniteElementType
     function gPCoordinates = getGPointsLocation(obj,el)
       % Get the location of the Gauss points in the element in the physical
       % space
-      gPCoordinates = obj.Nref*obj.mesh.coordinates(obj.mesh.cells(el,:),:);
+      nodes = obj.grid.getCellNodes(el);
+      coords = obj.grid.coordinates(nodes,:);
+      gPCoordinates = obj.Nref*coords;
     end
 
   end
@@ -298,13 +305,8 @@ classdef HexahedronQuadratic < FiniteElementType
 %     end
 
     function setElement(obj)
-      obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
-      obj.detJ = zeros(1,obj.GaussPts.nNode);
       findLocBasisF(obj);
       findLocDerBasisF(obj);
-%       findLocBubbleBasisF(obj);
-%       findLocDerBubbleBasisF(obj);
-      FEM.setStrainMatrix(obj);
     end
   end
 

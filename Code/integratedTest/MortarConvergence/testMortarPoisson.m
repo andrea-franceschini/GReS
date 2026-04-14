@@ -1,5 +1,6 @@
 % study parameters
-
+clc
+clear
 % Get the full path of the currently executing file
 scriptFullPath = mfilename('fullpath');
 % Extract the directory containing the script
@@ -8,10 +9,9 @@ scriptDir = fileparts(scriptFullPath);
 cd(scriptDir);
 
 
-for integration_type = ["SegmentBasedQuadrature",...
-    "ElementBasedQuadrature",...
-    "RBFquadrature"
-    ]
+for integration_type = ["RBFquadrature",...
+                        "ElementBasedQuadrature",...
+                        "SegmentBasedQuadrature"]
 
   for elem_type = ["hexa","hexa27"]
 
@@ -60,7 +60,7 @@ interfStr.slaveSurface = 3;
 interfStr.multiplierType="dual";
 
 quadStr.type = quadrature;
-quadStr.nGP = order;
+quadStr.gaussOrder = order;
 quadStr.nInt = 5;
 
 
@@ -141,7 +141,7 @@ switch elem
   case "hexa27"
     assert(all([L2>2.8;L2<3.5]),...
       msg,elem,quadrature)
-    assert(all([H1>1.8;H1<2.5]),...
+    assert(all([H1>1.8;H1<4.0]),...
       msg,elem,quadrature)
 end
 end

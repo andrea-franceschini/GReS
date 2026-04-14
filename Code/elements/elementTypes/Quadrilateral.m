@@ -129,7 +129,7 @@ classdef Quadrilateral < FiniteElementType
       % Get the location of the Gauss points in the element in the physical
       % space
       if isscalar(in) % element id
-        gPCoordinates = obj.Nref*FEM.getElementCoords(obj,in);
+        gPCoordinates = obj.Nref*getElementCoords(obj,in);
       else 
         assert(size(in,1)==4, ['List of coordinates in ' ...
           'input must be a 4x2 or 4x3 matrix'])
