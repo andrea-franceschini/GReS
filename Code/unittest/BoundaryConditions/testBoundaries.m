@@ -143,7 +143,7 @@ classdef testBoundaries < matlab.unittest.TestCase
 
       % verify bcs
       % bc1
-      verifyEqual(testCase,e1([1; end]),int32([1;170]),"AbsTol",tol)
+      verifyEqual(testCase,e1([1; end]),[1;170],"AbsTol",tol)
       verifyEqual(testCase,v1([1; 5; end-1]),[60.0;0.0;34.5],"AbsTol",tol)
       % bc2
       verifyEqual(testCase,all(e2(1:9)==e2(10:18)),true,"AbsTol",tol)

@@ -184,8 +184,7 @@ classdef (Abstract) InterfaceSolver < handle
       surfData2D = OutState.mergeOutFields(surfData2D,surfData);
       pointData2D = OutState.mergeOutFields(pointData2D,pointData);
       vtmBlock = obj.outstate.vtkFile.createElement('Block');
-      nList = getFlatConnectivity(grid,"surfaces");
-      obj.outstate.writeVTKfile(vtmBlock,obj.getOutName(),nList,...
+      obj.outstate.writeVTKfile(vtmBlock,obj.getOutName(),grid,...
         time, [], [], pointData2D, surfData2D);
 
     end

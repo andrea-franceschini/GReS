@@ -4,8 +4,8 @@ classdef Grid < handle
     
     nDim = 0    % mesh dimensions: 2(D) or 3(D)
 
-    cells
-    surfaces    % external faces with tag
+    cells = struct('connectivity',[]); 
+    surfaces = struct('connectivity',[]);    % external faces with tag
     faces 
     edges         
 
@@ -26,6 +26,8 @@ classdef Grid < handle
   methods (Access = public)
 
     importMesh(obj,fileName)
+
+    initializeGrid(obj)
 
     processGeometry(obj)
 

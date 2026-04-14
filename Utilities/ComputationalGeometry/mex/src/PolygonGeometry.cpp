@@ -332,6 +332,10 @@ mxArray* polygonCentroidLocal(const mxArray* points) {
     return out;
 }
 
+
+
+
+
 mxArray* polygonNormalLocal(const mxArray* points) {
     validateLocalPoints(points);
     mwSize dim = mxGetN(points);
@@ -510,12 +514,44 @@ void orderPointsBatch(const BatchInput& in,
         for (mwSize i = 0; i < n; ++i) {
             mwSize src = perm[i];
             Pccw[off + i] = poly[src];
-            Pccw[off + i + in.nPts] = poly[src + n];
-            if (in.dim == 3) Pccw[off + i + 2*in.nPts] = poly[src + 2*n];
-            permOut[off + i] = static_cast<double>(src + 1);
+          Pccw[off + i + in.nPts] = poly[src + n];
+          if (in.dim == 3) Pccw[off + i + 2*in.nPts] = poly[src + 2*n];
+          permOut[off + i] = static_cast<double>(src + 1);
         }
-        off += n;
+      off += n;
     }
 }
+
+
+  bool normalFromAnyTriple(const double* pts, mwSize n, double* normal) {
+    double p0[3], p1[3], p2[3], v1[3], v2[3], cp[3];
+
+    for (mwSize i = 0; i < n; ++i) {
+      getPoint(pts, n, 3, i, p0);
+      for (mwSize j = i + 1; j < n; ++j) {
+        getPoint(pts, n, 3, j, p1);
+        v1[0] = p1[0] - p0[0];
+        v1[1] = p1[1] - p0[1];
+        v1[2] = p1[2] - p0[2];
+
+        for (mwSize k = j + 1; k < n; ++k) {
+          getPoint(pts, n, 3, k, p2);
+          v2[0] = p2[0] - p0[0];
+          v2[1] = p2[1] - p0[1];
+          v2[2] = p2[2] - p0[2];
+
+          cross3(v1, v2, cp);
+          double nrm = norm3(cp);
+          if (nrm > 1e-15) {
+            normal[0] = cp[0] / nrm;
+            normal[1] = cp[1] / nrm;
+            normal[2] = cp[2] / nrm;
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
 
 } // namespace polygeom

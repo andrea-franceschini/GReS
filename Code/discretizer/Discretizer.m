@@ -491,9 +491,18 @@ classdef Discretizer < handle
                        'materials',Materials(),...
                        'boundaries',Boundaries());
 
-      % the grid is required when a Discretizer is defined
+      % make read case-insensitive
+      input = readInput(varargin{:});
+      fn = fieldnames(input);
+      for i = 1:numel(fn)
+        newName = lower(fn{i});
+        if ~strcmp(fn{i}, newName)
+          input.(newName) = input.(fn{i});
+          input = rmfield(input, fn{i});
+        end
+      end
 
-      params = readInput(default,varargin{:});
+      params = readInput(default,input);
 
       obj.grid = params.grid;
       obj.materials = params.materials;
@@ -504,7 +513,8 @@ classdef Discretizer < handle
    
     function validateInput(obj)
 
-      if isempty(obj.grid.cells)
+      if obj.grid.nNodes == 0
+        % the grid is still empty, nothing to validate
         return
       end
 

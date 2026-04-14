@@ -427,9 +427,12 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
   methods (Access=private)
 
-    function defineFractures(obj,fractureStruct)
+    function defineFractures(obj,fractureStruct)     
 
       % define the fracture geometrical informations
+
+      cells = obj.grid.cells;
+      coords = obj.grid.coordinates;
 
       nFractures = numel(fractureStruct);
 
@@ -444,19 +447,21 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       tol = 1e-8;
 
       countCell = 0;
-      obj.cutCells = zeros(obj.mesh.nCells*nFractures,1);
 
       obj.cohesion = zeros(nFractures,1);
       obj.phi = zeros(nFractures,1);
 
 
-      obj.fractureMesh = Mesh();
-      msh = obj.fractureMesh;
+      obj.fractureMesh = Grid();
+      f = obj.fractureMesh.surfaces;
+      [f.tang1,f.tang2,f.cutCells,f.nFracCells] = deal([]);
+      f.connectivity = ArrayOfArrays();
 
+      % count number of vertices in each fracture
       nV = 0;
 
 
-      for f = 1:nFractures
+      for fId = 1:nFractures
 
         % read the fracture geometry
         d = double.empty;
@@ -464,15 +469,15 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           'dimensions',d,'lengthVec',d,'widthVec',d,...
           'cohesion',d,'frictionAngle',d);
 
-        frac = readInput(default,fractureStruct(f));
+        frac = readInput(default,fractureStruct(fId));
 
         normal = frac.normal;
         origin = frac.origin;
         dims = frac.dimensions;
         lVec = frac.lengthVec;
         wVec = frac.widthVec;
-        obj.cohesion(f) = frac.cohesion;
-        obj.phi(f) = deg2rad(frac.frictionAngle);
+        obj.cohesion(fId) = frac.cohesion;
+        obj.phi(fId) = deg2rad(frac.frictionAngle);
 
         assert(all([abs(lVec*normal') < 1e-3,...
           abs(wVec*normal')<1e-3,...
@@ -490,7 +495,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         D = origin - L + W;
 
         % mark node location w.r.t plane
-        distVec = obj.mesh.coordinates - origin;
+        distVec = coords - origin;
         nVec = reshape(normal/norm(normal),[],1);
         R = mxComputeRotationMat(nVec);
         tVec1 = R(:,2);
@@ -502,8 +507,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         isEdgeCrossed = sum(sign(edgesTopol),2) == 1;
 
         % compute intersection points of crossed edges
-        x0 = obj.mesh.coordinates(edgesTopol(isEdgeCrossed,1),:);
-        x1 =  obj.mesh.coordinates(edgesTopol(isEdgeCrossed,2),:);
+        x0 = coords(edgesTopol(isEdgeCrossed,1),:);
+        x1 =  coords(edgesTopol(isEdgeCrossed,2),:);
         distEdge = x1-x0;
         distOrigin = origin - x0;
         t = (distOrigin * nVec)./(distEdge * nVec);
@@ -539,79 +544,71 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         newCutCells = find(isCutCell);
 
-        obj.cutCells(countCell+1:countCell+nC) = newCutCells;
-
-        obj.cutNormals(countCell+1:countCell+nC,:) = repmat(nVec',nC,1);
-        obj.cutTang1(countCell+1:countCell+nC,:) = repmat(tVec1',nC,1);
-        obj.cutTang2(countCell+1:countCell+nC,:) = repmat(tVec2',nC,1);
-        obj.cutCellToFracture(countCell+1:countCell+nC,:) = f;
-
-        % preallocate number of nodes
-        surfs = zeros(nC,6);
-        surfNumVerts = zeros(nC,1);
+        % preallocate number of nodes (maximum 6 per cell in hexa)
+        surfs = zeros(nC*6,1);
+        cutCellVertices = zeros(nC*6,3);
+        cutNumVerts = zeros(nC,1);
 
         % loop over cut cell and compute geometry
+        c = 0;
+
         for ic = 1:nC
           cellEdges = cellToEdges(newCutCells(ic),:);
           isEdgeCut = logical(m(newCutCells(ic),:));
           cutEdges =  cellEdges(isEdgeCut);
-          cutCellVertices = intersections(cutEdges,:);
-
-          idx = mxOrderPointsCCW(cutCellVertices,normal);
-
-          surfs(ic,1:numel(cutEdges)) = cutEdges(idx);
-          surfNumVerts(ic) = numel(cutEdges);
-
-          [obj.cutCenters(countCell+ic,:),obj.cutAreas(countCell+ic)] = ...
-            computePolygonGeometry(cutCellVertices,nVec');
-
+          nVerts = numel(cutEdges);
+          cutCellVertices(c+1:c+nVerts,:) = intersections(cutEdges,:);
+          cutNumVerts(ic) = nVerts;
+          surfs(c+1:c+nVerts) = cutEdges;
+          c = c + nVerts;
         end
 
-        countCell = countCell + nC;
+        cutCellVertices = cutCellVertices(1:sum(cutNumVerts),:);
+
+        % compute geometry
+        normals = repmat(nVec',nC,1);
+        [cutA,cutC] = computePolygonGeometry(cutCellVertices,cutNumVerts,normals);
+
+        f.cutCells    = [f.cutCell; newCutCells];
+        f.normal      = [f.normal;normals];
+        f.area        = [f.area; cutA];
+        f.center      = [f.center; cutC];
+        f.tang1       = [f.tang1; repmat(tVec1',nC,1)];
+        f.tang2       = [f.tang2; repmat(tVec1',nC,1)];
+        f.nFracCells  = [f.nFracCells; nC];
 
         % finalize the mesh for the current fracture
-        [~,~,id] = unique(surfs(:));
-
-        surfs = nV + reshape(id,[],6);
-        surfs = surfs - 1;
-
+        [~,~,id] = unique(surfs);
+        surfs = nV + id;
         nV = sum(id > 1);
-
-        msh.surfaces = [msh.surfaces; surfs];
-        msh.surfaceNumVerts = [msh.surfaceNumVerts; surfNumVerts];
-        msh.coordinates = [msh.coordinates; xInt(isInPlane,:)];
-
-
+        
+        f.connectivity = [f.connectivity; ArrayOfArrays(surfs,cutNumVerts)];
+        f.numVerts = [f.numVerts; cutNumVerts];
+        obj.fractureMesh.coordinates = [obj.fractureMesh.coordinates; xInt(isInPlane,:)];
 
       end
 
-      obj.cutCells = obj.cutCells(1:countCell);
-      obj.cutNormals = obj.cutNormals(1:countCell,:);
-      obj.cutCenters = obj.cutCenters(1:countCell,:);
-      obj.cutAreas = obj.cutAreas(1:countCell);
-
-      % finalize fracture mesh
-
       % discard too small fractures
-      id = obj.cutAreas > obj.areaTol;
-      obj.nCutCells = sum(id);
-      obj.cutCells = obj.cutCells(id);
-      obj.cutCenters = obj.cutCenters(id,:);
-      obj.cutAreas = obj.cutAreas(id);
-      obj.cutNormals = obj.cutNormals(id,:);
-      obj.cutTang1 = obj.cutTang1(id,:);
-      obj.cutTang2 = obj.cutTang2(id,:);
+      id = f.area > obj.areaTol;
+      f.num           = sum(id);
+      f.cutCells      = f.cutCells(id);
+      f.center        = f.center(id,:);
+      f.area          = f.area(id); 
+      f.normal        = f.normal(id,:);
+      f.tang1         = f.tang1(id,:); 
+      f.tang2         = f.tang2(id,:); 
+      f.numVerts      = f.numVerts(id);
 
-      surfs = msh.surfaces(id,:);
+      surfs = getRows(f.connectivity,find(id));
 
-      [u,~,id2] = unique(surfs(:));
+      [u,~,id2] = unique(getData(surfs));
 
       surfs = reshape(id2,[],6);
       msh.surfaces = surfs - 1;
 
       msh.surfaceNumVerts = msh.surfaceNumVerts(id);
 
-      msh.coordinates = msh.coordinates(u(2:end),:);
+      msh.coordinates = msh.coordinates(u,:);
 
       % coordRound = round(msh.coordinates/1e-7);
       % [nodesUnique, ia, ic] = unique(coordRound, 'rows', 'stable')
@@ -625,28 +622,28 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     function [edges,c2e] = getEdgeTopology(obj)
 
-      assert(isscalar(unique(obj.mesh.cellVTKType)),...
-        "EFEM implemented only for mesh with uniform element shapes");
+      cells = obj.grid.cells;
+      vtkId = unique(cells.VTKType);
+      assert(isscalar(vtkId),"EFEM implemented only for mesh with uniform element shapes");
 
-
-      if obj.mesh.cellVTKType(1) == 12
+      if vtkId == VTKType.Hexa
 
         eLoc = [ ...
           1 2; 2 3; 3 4; 4 1; ...
           5 6; 6 7; 7 8; 8 5; ...
           1 5; 2 6; 3 7; 4 8 ];
 
-        nCells = obj.mesh.nCells;
+        nCells = cells.num;
         nEdgesLoc = size(eLoc,1);
 
-        cells = obj.mesh.cells;
+        topol = obj.grid.getCellNodes(1:nCells);
 
         % Node indices of all edges (stacked)
-        e1 = cells(:, eLoc(:,1));   % (nCells x 12)
-        e2 = cells(:, eLoc(:,2));   % (nCells x 12)
+        e1 = topol(:, eLoc(:,1));   % (nCells x 12)
+        e2 = topol(:, eLoc(:,2));   % (nCells x 12)
 
         allEdges = [e1(:), e2(:)];  % (12*nCells x 2)
-        allEdges = sort(allEdges, 2);
+        allEdges = sort(allEdges, 2); 
 
         % discard duplicated edges
         [edges, ~, ic] = unique(allEdges, 'rows');

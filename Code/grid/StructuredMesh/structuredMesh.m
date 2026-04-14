@@ -68,7 +68,7 @@ topol = [n1(:),n2(:),n4(:),n3(:),n5(:),n6(:),n8(:),n7(:)];
 
 % bottom: tag 1
 n = nid(:,:,1);
-fb = FaceGrid(n);
+fb = flipFace(FaceGrid(n));
 
 % top: tag 2
 n = nid(:,:,end);
@@ -81,11 +81,11 @@ fs = FaceGrid(n);
 
 % north: tag 4
 n = nid(:,end,:);
-fn = FaceGrid(n);
+fn = flipFace(FaceGrid(n));
 
 % west
 n = nid(1,:,:);
-fw = FaceGrid(n);
+fw = flipFace(FaceGrid(n));
 
 % east
 n = nid(end,:,:);
@@ -138,15 +138,12 @@ n2 = nodes(2:end,1:end-1);
 n3 = nodes(1:end-1,2:end);
 n4 = nodes(2:end,2:end);
 
+f = [n1(:), n2(:), n4(:), n3(:)];
 
-
-f = [n1(:),n2(:),n3(:),n4(:)];
-
-f = f(:,[2 3 1 4]);
 end
 
 
 function f = flipFace(f)
-    f = f(:,[1 3 2 4]);   % swap orientation of nodes in faces
+    f = f(:, [1 4 3 2]);   % reverse cyclic orientation
 end
 

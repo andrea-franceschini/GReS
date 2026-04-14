@@ -327,8 +327,8 @@ classdef MeshTying < InterfaceSolver
       %V = Discretizer.expandMat(V,nc);
 
       % get local jacobian
-      Km = obj.domains(1).J{fldM,fldM}(dofM,dofM);
-      Ks = obj.domains(2).J{fldS,fldS}(dofS,dofS);
+      Km = obj.domains(MortarSide.master).J{fldM,fldM}(dofM,dofM);
+      Ks = obj.domains(MortarSide.slave).J{fldS,fldS}(dofS,dofS);
       Kloc = diag([1./diag(Ks);1./diag(Km)]);
 
       S = obj.stabilizationScale*V*(Kloc*V');  % compute Schur complement
