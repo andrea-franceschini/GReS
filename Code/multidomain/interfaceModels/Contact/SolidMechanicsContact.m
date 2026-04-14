@@ -51,7 +51,7 @@ classdef SolidMechanicsContact < MeshTying
 
       obj.stateOld = obj.state;
 
-      N = getMesh(obj,MortarSide.slave).nSurfaces;
+      N = obj.grids(MortarSide.slave).surfaces.num;
       initializeActiveSet(obj,N,input.ActiveSet);
       
     end

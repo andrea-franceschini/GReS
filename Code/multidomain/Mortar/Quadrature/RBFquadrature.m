@@ -68,12 +68,13 @@ classdef RBFquadrature < MortarQuadrature
 
       for vtkSlave = obj.grids(s).surfaces.vtkTypes
 
-        elemSlave = FiniteElementType.create(vtkSlave,obj.grids(s));
+        elemSlave = FiniteElementType.create(vtkSlave,obj.grids(s),...
+          'gaussOrder',obj.gaussOrder);
         listSlave = obj.grids(s).getSurfByVTKId(vtkSlave);
 
         for vtkMaster = obj.grids(m).surfaces.vtkTypes
 
-          elemMaster = FiniteElementType.create(vtkMaster,obj.grids(m));
+          elemMaster = FiniteElementType.create(vtkMaster,obj.grids(m),'gaussOrder',obj.gaussOrder);
           listMaster = obj.grids(m).getSurfByVTKId(vtkMaster);
 
           mask = false(obj.grids(m).surfaces.num,1);
@@ -127,15 +128,15 @@ classdef RBFquadrature < MortarQuadrature
     end
 
 
-    function isPairActive = processMortarPair(obj,is,im,k)
+    function isPairActive = processMortarPair(obj,is,im,~,elemM,k)
 
       isPairActive = true;
+      m = MortarSide.master;
+      s = MortarSide.slave;
 
       posGP = obj.gpsCoord;
 
-      elem = getElem(obj,1,im);
-
-      if class(elem)=="Triangle"
+      if elemM.vtkType == VTKType.Tri
         nIntPts = sum(1:obj.nInt);
       else
         nIntPts = obj.nInt^2;
@@ -149,7 +150,7 @@ classdef RBFquadrature < MortarQuadrature
       % compute interpolated gp coordinates
       xiMaster = (fiNM*obj.wF(:,[2*im-1 2*im]))./(fiNM*obj.w1(:,im));
 
-      obj.suppFlag = elem.checkInRange(xiMaster,1e-3);
+      obj.suppFlag = elemM.checkInRange(xiMaster,1e-3);
 
       if ~any(obj.suppFlag)
         isPairActive = false;
@@ -161,10 +162,10 @@ classdef RBFquadrature < MortarQuadrature
 
       nGsupp = sum(obj.suppFlag);
       gpId = (is-1)*obj.maxGP + obj.countGP;
-      obj.gpCoords{1}(gpId+1:gpId+nGsupp,1) = xiMaster(obj.suppFlag,1);
-      obj.gpCoords{1}(gpId+1:gpId+nGsupp,2) = xiMaster(obj.suppFlag,2);
-      obj.gpCoords{2}(gpId+1:gpId+nGsupp,1) = obj.gpsCoordLoc(obj.suppFlag,1);
-      obj.gpCoords{2}(gpId+1:gpId+nGsupp,2) = obj.gpsCoordLoc(obj.suppFlag,2);
+      obj.gpCoords{m}(gpId+1:gpId+nGsupp,1) = xiMaster(obj.suppFlag,1);
+      obj.gpCoords{m}(gpId+1:gpId+nGsupp,2) = xiMaster(obj.suppFlag,2);
+      obj.gpCoords{s}(gpId+1:gpId+nGsupp,1) = obj.gpsCoordLoc(obj.suppFlag,1);
+      obj.gpCoords{s}(gpId+1:gpId+nGsupp,2) = obj.gpsCoordLoc(obj.suppFlag,2);
       obj.detJw(gpId+1:gpId+nGsupp) = obj.dJwSlave(obj.suppFlag);
 
     end
@@ -189,13 +190,13 @@ classdef RBFquadrature < MortarQuadrature
     function gpCoords = getSlaveGPCoords(obj,kPair)
       i1 = obj.activeGPmap(kPair);
       i2 = obj.activeGPmap(kPair+1);
-      gpCoords = obj.gpCoords{2}(i1+1:i2,:);
+      gpCoords = obj.gpCoords{MortarSide.slave}(i1+1:i2,:);
     end
 
     function gpCoords = getMasterGPCoords(obj,kPair)
       i1 = obj.activeGPmap(kPair);
       i2 = obj.activeGPmap(kPair+1);
-      gpCoords = obj.gpCoords{1}(i1+1:i2,:);
+      gpCoords = obj.gpCoords{MortarSide.master}(i1+1:i2,:);
     end
 
 
@@ -236,7 +237,7 @@ classdef RBFquadrature < MortarQuadrature
           obj.grids(m),'gaussOrder',obj.gaussOrder);
         listMaster = obj.grids(m).getSurfByVTKId(vtkMaster);
 
-        topol = obj.grids(m).getCellNodes(listMaster);
+        topol = obj.grids(m).getSurfNodes(listMaster);
 
 
         for im = listMaster'
@@ -244,22 +245,21 @@ classdef RBFquadrature < MortarQuadrature
           nodes = topol(im,:);
           coord = coordinates(nodes,:);
 
-          f = getInterpolationPoints(obj,elem);
+          f = getInterpolationPoints(obj,vtkMaster);
           N = elem.computeBasisF(f);
           % get coords of interpolation points in the real space
           pos = N*coord;
-
 
           nptInt = size(pos,1);
 
           fiMM = obj.computeRBFfiMM(pos);
 
-          x = fiMM\[f ones(size(ptsInt,1),1)];
+          x = fiMM\[f ones(size(pos,1),1)];
 
           weighF(1:nptInt,k+1:k+2) = x(:,1:2);
           weigh1(1:nptInt,im) = x(:,3);
 
-          pts(1:nptInt,[3*im-2 3*im-1 3*im]) = ptsInt;
+          pts(1:nptInt,[3*im-2 3*im-1 3*im]) = pos;
           k = k+2;
         end
 

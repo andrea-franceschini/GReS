@@ -63,7 +63,7 @@ classdef Poisson < PhysicsSolver
 
         tmp = obj.grid.getCellsByVTKId(vtkId);
         subCellsLoc = intersect(subCells,tmp,'sorted');
-        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+        elem = FiniteElementType.create(vtkId,obj.grid,'gaussOrder',obj.gaussOrder);
 
         % get node topology for given vtk type
         topol = obj.grid.getCellNodes(subCellsLoc);

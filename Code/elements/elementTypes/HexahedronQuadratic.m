@@ -27,7 +27,7 @@ classdef HexahedronQuadratic < FiniteElementType
 
   properties (Constant)
 
-    minGaussOrder = 3
+    minGaussOrder = 4
     
     centroid = [0,0,0]
 

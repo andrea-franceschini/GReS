@@ -38,7 +38,7 @@ classdef QuadrilateralQuadratic < FiniteElementType
               -1  1;
               -1 -1;
                1 -1;]
-    minGaussOrder = 3
+    minGaussOrder = 4
   end
 
   properties

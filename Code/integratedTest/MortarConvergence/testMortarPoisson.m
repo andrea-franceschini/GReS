@@ -1,6 +1,6 @@
 % study parameters
-clc
-clear
+% clc
+% clear
 % Get the full path of the currently executing file
 scriptFullPath = mfilename('fullpath');
 % Extract the directory containing the script
@@ -9,9 +9,9 @@ scriptDir = fileparts(scriptFullPath);
 cd(scriptDir);
 
 
-for integration_type = ["RBFquadrature",...
+for integration_type = ["SegmentBasedQuadrature",...
                         "ElementBasedQuadrature",...
-                        "SegmentBasedQuadrature"]
+                        "RBFquadrature"]
 
   for elem_type = ["hexa","hexa27"]
 
@@ -99,7 +99,7 @@ for i = 1:nref
   bc.addBCEvent("analSol",'time',0.0,'value',bcVals)
 
   domain = Discretizer('grid',grid,'boundaries',bc);
-  domain.addPhysicsSolver('Poisson');
+  domain.addPhysicsSolver('Poisson','gaussOrder',4);
 
   interfStr.Quadrature = quadStr;
 
@@ -141,7 +141,7 @@ switch elem
   case "hexa27"
     assert(all([L2>2.8;L2<3.5]),...
       msg,elem,quadrature)
-    assert(all([H1>1.8;H1<4.0]),...
+    assert(all([H1>1.8;H1<2.5]),...
       msg,elem,quadrature)
 end
 end
