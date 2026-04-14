@@ -245,8 +245,8 @@ classdef (Abstract) InterfaceSolver < handle
 
     function R = getRotationMatrix(obj,side,el)
 
-      if obj.multiplierLocation == entityField.cell
-        R = obj.grid(side).sirfaces.rotationMatrices(elemId,:);
+      if obj.multiplierLocation == entityField.surface
+        R = obj.grids(side).surfaces.rotationMatrices(el,:);
         R = reshape(R,3,3);
       elseif obj.multiplierLocation == entityField.node
         nodes = obj.grids(side).getSurfNodes(el);

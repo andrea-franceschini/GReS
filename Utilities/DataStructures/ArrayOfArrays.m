@@ -98,28 +98,28 @@ classdef ArrayOfArrays < handle
 
 
 
-    function out = get(obj, r, c)
-
-
-      if ~isscalar(r)
-        m = obj.toMatrix(r);
-        out = m(:,c);
-        return
-      end
-
-      if r < 1 || r > obj.nrows
-        error('ArrayOfArrays: row index must be a scalar in [1, %d].', obj.nrows);
-      end
-
-      % get row slice
-      row_data = obj.getArray(r);
-
-      if ischar(c) && c == ':'
-        out = row_data;
-      else
-        out = row_data(c);
-      end
-    end
+    % function out = get(obj, r, c)
+    % 
+    % 
+    %   if ~isscalar(r)
+    %     m = obj.toMatrix(r);
+    %     out = m(:,c);
+    %     return
+    %   end
+    % 
+    %   if r < 1 || r > obj.nrows
+    %     error('ArrayOfArrays: row index must be a scalar in [1, %d].', obj.nrows);
+    %   end
+    % 
+    %   % get row slice
+    %   row_data = obj.getArray(r);
+    % 
+    %   if ischar(c) && c == ':'
+    %     out = row_data;
+    %   else
+    %     out = row_data(c);
+    %   end
+    % end
 
 
     function mat = toMatrix(obj, rows)
