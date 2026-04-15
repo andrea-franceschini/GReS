@@ -2,13 +2,7 @@
 
 <Materials>
   <Solid cellTags = "1">
-    <Constitutive>
-      <Elastic
-          youngModulus = "9.4706e7"
-          poissonRatio = "0.15"
-      />
-    </Constitutive>
-
+  
     <PorousRock
         porosity = "0.3"
         specificWeight = "2.1e6"
@@ -20,13 +14,7 @@
   </Solid>
 
   <Solid cellTags = "2">
-    <Constitutive>
-      <Elastic
-          youngModulus = "9.4706e7"
-          poissonRatio = "0.15"
-      />
-    </Constitutive>
-
+ 
     <PorousRock
         porosity = "0.3"
         specificWeight = "2.1e6"
@@ -37,7 +25,7 @@
 
   <Fluid
       specificWeight = "0.0"
-      compressibility = "0.0"
+      compressibility = "4.4e-10"
       dynamicViscosity = "1e-3"
   />
   <!-- specific weight (N/m3),

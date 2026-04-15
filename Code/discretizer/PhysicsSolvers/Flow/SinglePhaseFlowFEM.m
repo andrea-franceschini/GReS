@@ -8,22 +8,10 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
 
     function registerSolver(obj,varargin)
 
-      nTags = obj.mesh.nCellTag;
+      registerSolver@SinglePhaseFlow(obj,entityField.node,varargin{:});
 
-      default = struct('targetRegions',1:nTags);
+      computeRhsGravTerm(obj);
 
-      params = readInput(default,varargin{:});
-  
-      dofm = obj.domain.dofm;
-
-      dofm.registerVariable(obj.getField(),entityField.node,1,params.targetRegions);
-      n = getNumberOfEntities(entityField.node,obj.mesh);
-      obj.fieldId = dofm.getVariableId(obj.getField());
-
-      % initialize the state object with a pressure field
-      obj.getState().data.(obj.getField()) = zeros(n,1);
-
-      computeRHSGravTerm(obj);
     end
 
     function states = finalizeState(obj,p,t)
@@ -38,16 +26,10 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       states.pressure = p;
     end
 
-    function J = computeMat(obj,dt)
+    function computeMat(obj,dt)
       % recompute elementary matrices only if the model is non-linear
       if ~isLinear(obj) || isempty(getJacobian(obj))
         computeMatFEM(obj);
-      end
-
-      if obj.domain.simparams.isTimeDependent
-        J = obj.domain.simparams.theta*obj.H + obj.P/dt;
-      else
-        J = obj.H;
       end
     end
 
@@ -66,11 +48,14 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       % Get the fluid dynamic viscosity
       mu = mat.getFluid().getDynViscosity();
 
+      % get cell tags where there is coupling with the displacements
+      coupledRegions = dofm.getTargetRegions([obj.getField(),"displacements"]);
+
       l1 = 0;
       for el = subCells'
         permMat = mat.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
         poro = mat.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
-        alpha = getRockCompressibility(obj,el);
+        alpha = getRockCompressibility(obj,obj.mesh.cellTag(el),coupledRegions);
         % Compute the element matrices based on the element type
         % (tetrahedra vs. hexahedra)
         elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
@@ -101,33 +86,9 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       obj.P = sparse(iiVec, jjVec, PVec, nDoF, nDoF);
     end
 
-    function rhs = computeRhs(obj,dt)
-      % Compute the residual of the flow problem
-
-      % get pressure state
-      p = getState(obj,obj.getField());
-      pOld = getStateOld(obj,obj.getField());
-
-      ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
-
-      if ~obj.domain.simparams.isTimeDependent
-        rhs = obj.H*p(ents);
-      else
-        theta = obj.domain.simparams.theta;
-        rhsStiff = theta*obj.H*p(ents) + (1-theta)*obj.H*pOld(ents);
-        rhsCap = (obj.P/dt)*(p(ents) - pOld(ents));
-        rhs = rhsStiff + rhsCap;
-      end
-
-      %adding gravity rhs contribute
-      gamma = obj.domain.materials.getFluid().getSpecificWeight();
-      if gamma > 0
-        rhs = rhs + obj.rhsGrav;
-      end
-    end
 
     % TO DO: update to new FEM logic
-    function computeRHSGravTerm(obj)
+    function computeRhsGravTerm(obj)
       % Compute the gravity contribution
       % Get the fluid specific weight and viscosity'
       dofm = obj.domain.dofm;
@@ -153,6 +114,12 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       end
       % remove inactive components of rhs vector
     end
+
+    function rhsGrav = getRhsGravity(obj)
+
+      rhsGrav = obj.rhsGrav;
+      
+    end 
 
     % function [ents,vals] = getBC(obj,id,t)
     %   % getBC - function to find the value and the location for the
