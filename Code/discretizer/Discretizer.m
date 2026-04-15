@@ -520,17 +520,21 @@ classdef Discretizer < handle
 
       msh = obj.grid.cells;
 
-      t = msh.nTag;
+      t = unique(msh.tag);
       if ~isempty(t)
-        assert(max(msh.tag)==t,"cellTag numbering must be progressive from 1 to the number of cellTags")
+        assert(t(end) == length(t),"cellTag numbering must be progressive from 1 to the number of cellTags")
       end
+      msh.nTag = t(end);
+      obj.grid.cells = msh;
 
       msh = obj.grid.surfaces;
 
-      t = msh.nTag;
+      t = unique(msh.tag);
       if ~isempty(t)
-        assert(max(msh.tag)==t,"surfaceTag numbering must be progressive from 1 to the number of cellTags")
+        assert(t(end) == length(t),"surfaceTag numbering must be progressive from 1 to the number of cellTags")
       end
+      msh.nTag = t(end);
+      obj.grid.surfaces = msh;
 
     end
 

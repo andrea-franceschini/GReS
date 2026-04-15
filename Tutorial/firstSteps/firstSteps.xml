@@ -9,12 +9,12 @@
     <Materials          fileName="materials.xml"/>
     <BoundaryConditions fileName="boundaries.xml"/>
     <Solver>
-      <SinglePhaseFlowFEM targetRegions="1"/>
+      <SinglePhaseFlowFVTPFA targetRegions="1"/>
     </Solver>
   </Domain>
 
-  <!--% global settings (not domain specific) -->
-  <SimulationParameters fileName="simParams.xml"/>
+  <!-- global settings (not domain specific) -->
+  <SimulationParameters fileName="simparams.xml"/>
 
   <Output
       outputFile  = "Output/results"

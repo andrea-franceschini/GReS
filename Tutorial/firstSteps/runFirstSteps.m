@@ -69,5 +69,13 @@ domain = Discretizer('Boundaries', bc, ...
 domain.addPhysicsSolvers(params.Domain.Solver)
 simparams = SimulationParameters(params.SimulationParameters);
 output = OutState(params.Output);
-solver = NonLinearImplicit('simulationparameters',simparams,'domain',domain, 'output', printUtils);
+solver = NonLinearImplicit('simulationparameters',simparams,'domains',domain, 'output', output);
+solver.simulationLoop();
+
+%% using buildModel utility
+params = readInput('firstSteps.xml');
+domains = buildModel(params);
+simparams = SimulationParameters(params.SimulationParameters);
+out = OutState(params.Output);
+solver = NonLinearImplicit('simulationparameters',simparams,'domains',domain, 'output', out);
 solver.simulationLoop();

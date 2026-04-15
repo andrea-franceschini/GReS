@@ -134,6 +134,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
             % Get the material permeability
             nodes = topol(i,:);
             coords = coordinates(nodes,:);
+            el = cellList(i);
 
             permMat = mat.getMaterial(cells.tag(el)).PorousRock.getPermMatrix();
             % why K is not divided by the dynamic viscosity?
