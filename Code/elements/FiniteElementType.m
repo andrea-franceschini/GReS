@@ -78,6 +78,44 @@ classdef (Abstract) FiniteElementType < handle
 
     end
 
+
+
+    function [N,dJw] = getDerBasisFAndDet2(obj,coords)
+
+      % coords: matrix of element coordinates of size nNode x 3
+
+      % call mex file for basis function computation
+      [N, dJw] = mxGetDerBasisAndDet_nonop(obj.Jref,coords,obj.GaussPts.weight);
+      dJw = reshape(dJw,1,[]);
+
+      obj.detJ = (dJw./obj.GaussPts.weight)';
+
+    end
+
+    function [N,dJw] = getDerBasisFAndDet3(obj,coords)
+
+      % coords: matrix of element coordinates of size nNode x 3
+
+      % call mex file for basis function computation
+      [N, dJw] = mxGetDerBasisAndDet_optimized(obj.Jref,coords,obj.GaussPts.weight);
+      dJw = reshape(dJw,1,[]);
+
+      obj.detJ = (dJw./obj.GaussPts.weight)';
+
+    end
+
+    function [N,dJw] = getDerBasisFAndDet4(obj,coords)
+
+      % coords: matrix of element coordinates of size nNode x 3
+
+      % call mex file for basis function computation
+      [N, dJw] = mxGetDerBasisAndDet_cpp(obj.Jref,coords,obj.GaussPts.weight);
+      dJw = reshape(dJw,1,[]);
+
+      obj.detJ = (dJw./obj.GaussPts.weight)';
+
+    end
+
     function B = getStrainMatrix(obj,gradN)
       B = zeros(6,obj.nNode*obj.grid.nDim,obj.getNumbGaussPts);
       B(obj.indB(:,2)) = gradN(obj.indB(:,1));

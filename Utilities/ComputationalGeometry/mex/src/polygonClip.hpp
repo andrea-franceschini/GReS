@@ -82,4 +82,3 @@ inline bool clipPolygon(Polygon& poly,const Polygon& clipper){
 }
 
 #endif // POLYGON_CLIP_2D_HPP
-

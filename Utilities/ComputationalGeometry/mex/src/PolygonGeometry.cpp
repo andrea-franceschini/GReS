@@ -5,6 +5,7 @@
 #include <numeric>
 #include <stdexcept>
 #include <vector>
+#include <cstddef>
 
 namespace polygeom {
 
@@ -32,7 +33,7 @@ inline void normalize3(double* a) {
     require(n > 1e-15, "PolygonGeometry:degenerate", "Zero or near-zero vector cannot be normalized.");
     a[0] /= n; a[1] /= n; a[2] /= n;
 }
-inline void getPoint(const double* P, mwSize nRows, mwSize dim, mwSize i, double* out) {
+inline void getPoint(const double* P, std::size_t nRows, std::size_t dim, std::size_t i, double* out) {
     out[0] = P[i];
     out[1] = P[i + nRows];
     if (dim == 3) out[2] = P[i + 2*nRows];
@@ -40,13 +41,13 @@ inline void getPoint(const double* P, mwSize nRows, mwSize dim, mwSize i, double
 
 struct AngleIdx {
     double ang;
-    mwSize idx;
+    std::size_t idx;
 };
 
-void computeNewellNormalOrdered(const double* pts, mwSize n, double* normal) {
+void computeNewellNormalOrdered(const double* pts, std::size_t n, double* normal) {
     normal[0] = 0.0; normal[1] = 0.0; normal[2] = 0.0;
-    for (mwSize i = 0; i < n; ++i) {
-        mwSize j = (i + 1) % n;
+    for (std::size_t i = 0; i < n; ++i) {
+        std::size_t j = (i + 1) % n;
         double pi[3], pj[3];
         getPoint(pts, n, 3, i, pi);
         getPoint(pts, n, 3, j, pj);
@@ -57,17 +58,17 @@ void computeNewellNormalOrdered(const double* pts, mwSize n, double* normal) {
     normalize3(normal);
 }
 
-bool normalFromAnyTriple(const double* pts, mwSize n, double* normal) {
+bool normalFromAnyTriple(const double* pts, std::size_t n, double* normal) {
     double p0[3], p1[3], p2[3], v1[3], v2[3], cp[3];
 
-    for (mwSize i = 0; i < n; ++i) {
+    for (std::size_t i = 0; i < n; ++i) {
         getPoint(pts, n, 3, i, p0);
-        for (mwSize j = i + 1; j < n; ++j) {
+        for (std::size_t j = i + 1; j < n; ++j) {
             getPoint(pts, n, 3, j, p1);
             v1[0] = p1[0] - p0[0];
             v1[1] = p1[1] - p0[1];
             v1[2] = p1[2] - p0[2];
-            for (mwSize k = j + 1; k < n; ++k) {
+            for (std::size_t k = j + 1; k < n; ++k) {
                 getPoint(pts, n, 3, k, p2);
                 v2[0] = p2[0] - p0[0];
                 v2[1] = p2[1] - p0[1];
@@ -89,7 +90,7 @@ bool normalFromAnyTriple(const double* pts, mwSize n, double* normal) {
 void orthonormalBasisFromNormal(const double* n, double* e1, double* e2) {
     double tmp[3];
     if (std::fabs(n[0]) < 0.9) { tmp[0]=1.0; tmp[1]=0.0; tmp[2]=0.0; }
-    else                        { tmp[0]=0.0; tmp[1]=1.0; tmp[2]=0.0; }
+    else                       { tmp[0]=0.0; tmp[1]=1.0; tmp[2]=0.0; }
 
     double proj = dot3(tmp, n);
     e1[0] = tmp[0] - proj*n[0];
@@ -100,20 +101,20 @@ void orthonormalBasisFromNormal(const double* n, double* e1, double* e2) {
     normalize3(e2);
 }
 
-void project3Dto2D(const double* pts3, mwSize n, const double* normal, std::vector<double>& pts2) {
+void project3Dto2D(const double* pts3, std::size_t n, const double* normal, std::vector<double>& pts2) {
     double e1[3], e2[3];
     orthonormalBasisFromNormal(normal, e1, e2);
     pts2.assign(n * 2, 0.0);
-    for (mwSize i = 0; i < n; ++i) {
+    for (std::size_t i = 0; i < n; ++i) {
         double p[3]; getPoint(pts3, n, 3, i, p);
         pts2[i] = dot3(p, e1);
         pts2[i + n] = dot3(p, e2);
     }
 }
 
-void orderFromProjected2D(const std::vector<double>& pts2, mwSize n, std::vector<mwSize>& perm) {
+void orderFromProjected2D(const std::vector<double>& pts2, std::size_t n, std::vector<std::size_t>& perm) {
     double c[2] = {0.0, 0.0};
-    for (mwSize i = 0; i < n; ++i) {
+    for (std::size_t i = 0; i < n; ++i) {
         c[0] += pts2[i];
         c[1] += pts2[i + n];
     }
@@ -121,7 +122,7 @@ void orderFromProjected2D(const std::vector<double>& pts2, mwSize n, std::vector
     c[1] /= static_cast<double>(n);
 
     std::vector<AngleIdx> ang(n);
-    for (mwSize i = 0; i < n; ++i) {
+    for (std::size_t i = 0; i < n; ++i) {
         double x = pts2[i] - c[0];
         double y = pts2[i + n] - c[1];
         ang[i].ang = std::atan2(y, x);
@@ -129,12 +130,12 @@ void orderFromProjected2D(const std::vector<double>& pts2, mwSize n, std::vector
     }
     std::sort(ang.begin(), ang.end(), [](const AngleIdx& a, const AngleIdx& b) { return a.ang < b.ang; });
     perm.resize(n);
-    for (mwSize i = 0; i < n; ++i) perm[i] = ang[i].idx;
+    for (std::size_t i = 0; i < n; ++i) perm[i] = ang[i].idx;
 
     double twiceArea = 0.0;
-    for (mwSize i = 0; i < n; ++i) {
-        mwSize ia = perm[i];
-        mwSize ib = perm[(i+1)%n];
+    for (std::size_t i = 0; i < n; ++i) {
+        std::size_t ia = perm[i];
+        std::size_t ib = perm[(i+1)%n];
         double xa = pts2[ia], ya = pts2[ia + n];
         double xb = pts2[ib], yb = pts2[ib + n];
         twiceArea += xa*yb - xb*ya;
@@ -142,17 +143,17 @@ void orderFromProjected2D(const std::vector<double>& pts2, mwSize n, std::vector
     if (twiceArea < 0.0) std::reverse(perm.begin(), perm.end());
 }
 
-void reorderPoints(const double* ptsIn, mwSize n, mwSize dim, const std::vector<mwSize>& perm, std::vector<double>& ptsOut) {
+void reorderPoints(const double* ptsIn, std::size_t n, std::size_t dim, const std::vector<std::size_t>& perm, std::vector<double>& ptsOut) {
     ptsOut.assign(n * dim, 0.0);
-    for (mwSize i = 0; i < n; ++i) {
-        mwSize src = perm[i];
+    for (std::size_t i = 0; i < n; ++i) {
+        std::size_t src = perm[i];
         ptsOut[i] = ptsIn[src];
         ptsOut[i + n] = ptsIn[src + n];
         if (dim == 3) ptsOut[i + 2*n] = ptsIn[src + 2*n];
     }
 }
 
-void areaCentroid2DOrdered(const double* pts, mwSize n, double& area, double* centroid) {
+void areaCentroid2DOrdered(const double* pts, std::size_t n, double& area, double* centroid) {
     if (n == 3) {
         double x1 = pts[0],     y1 = pts[0 + n];
         double x2 = pts[1],     y2 = pts[1 + n];
@@ -177,8 +178,8 @@ void areaCentroid2DOrdered(const double* pts, mwSize n, double& area, double* ce
     }
 
     double A2 = 0.0, Cx = 0.0, Cy = 0.0;
-    for (mwSize i = 0; i < n; ++i) {
-        mwSize j = (i + 1) % n;
+    for (std::size_t i = 0; i < n; ++i) {
+        std::size_t j = (i + 1) % n;
         double xi = pts[i], yi = pts[i + n];
         double xj = pts[j], yj = pts[j + n];
         double cr = xi*yj - xj*yi;
@@ -192,7 +193,7 @@ void areaCentroid2DOrdered(const double* pts, mwSize n, double& area, double* ce
     centroid[1] = Cy / (3.0 * A2);
 }
 
-void areaCentroid3DOrdered(const double* pts, mwSize n, double& area, double* centroid, double* unitNormal) {
+void areaCentroid3DOrdered(const double* pts, std::size_t n, double& area, double* centroid, double* unitNormal) {
     if (n == 3) {
         double p0[3], p1[3], p2[3], v1[3], v2[3], cp[3];
         getPoint(pts, n, 3, 0, p0); getPoint(pts, n, 3, 1, p1); getPoint(pts, n, 3, 2, p2);
@@ -236,7 +237,7 @@ void areaCentroid3DOrdered(const double* pts, mwSize n, double& area, double* ce
     double p0[3]; getPoint(pts, n, 3, 0, p0);
     double C[3] = {0.0, 0.0, 0.0};
     area = 0.0;
-    for (mwSize i = 1; i + 1 < n; ++i) {
+    for (std::size_t i = 1; i + 1 < n; ++i) {
         double p1[3], p2[3], v1[3], v2[3], cp[3], ct[3];
         getPoint(pts, n, 3, i, p1);
         getPoint(pts, n, 3, i+1, p2);
@@ -255,23 +256,7 @@ void areaCentroid3DOrdered(const double* pts, mwSize n, double& area, double* ce
     centroid[0] = C[0]/area; centroid[1] = C[1]/area; centroid[2] = C[2]/area;
 }
 
-void validateLocalPoints(const mxArray* points) {
-    require(mxIsDouble(points) && !mxIsComplex(points), "PolygonGeometry:input", "points must be a real double matrix.");
-    mwSize m = mxGetM(points), n = mxGetN(points);
-    require((n == 2 || n == 3) && m >= 3, "PolygonGeometry:input", "points must be N x 2 or N x 3 with N >= 3.");
-}
-
-const double* parseLocalNormal(const mxArray* normalOrNull, double* buf) {
-    if (!normalOrNull) return nullptr;
-    require(mxIsDouble(normalOrNull) && !mxIsComplex(normalOrNull) &&
-            mxGetNumberOfElements(normalOrNull) == 3,
-            "PolygonGeometry:input", "normal must be a real 3-vector.");
-    const double* pn = mxGetPr(normalOrNull);
-    buf[0] = pn[0]; buf[1] = pn[1]; buf[2] = pn[2];
-    return buf;
-}
-
-inline const double* getBatchNormalPtr(const double* normalsOrNull, mwSize p, mwSize nPoly, double* buf) {
+inline const double* getBatchNormalPtr(const double* normalsOrNull, std::size_t p, std::size_t nPoly, double* buf) {
     if (!normalsOrNull) return nullptr;
     buf[0] = normalsOrNull[p];
     buf[1] = normalsOrNull[p + nPoly];
@@ -281,9 +266,6 @@ inline const double* getBatchNormalPtr(const double* normalsOrNull, mwSize p, mw
 
 } // anonymous namespace
 
-void require(bool cond, const char* id, const char* msg) {
-    if (!cond) mexErrMsgIdAndTxt(id, "%s", msg);
-}
 
 bool isIntegerValued(double x, double tol) {
     return std::fabs(x - std::round(x)) <= tol;
@@ -301,15 +283,15 @@ void rotationFromNormal(const double* nIn, double* R) {
     }
 }
 
-void orderCCW2D(const double* pts, mwSize n, std::vector<mwSize>& perm) {
+void orderCCW2D(const double* pts, std::size_t n, std::vector<std::size_t>& perm) {
     std::vector<double> pts2(2*n);
     std::copy(pts, pts + 2*n, pts2.begin());
     orderFromProjected2D(pts2, n, perm);
 }
 
-void orderCCW3D(const double* pts, mwSize n,
+void orderCCW3D(const double* pts, std::size_t n,
                 const double* userNormalOrNull,
-                std::vector<mwSize>& perm,
+                std::vector<std::size_t>& perm,
                 double* unitNormalOut) {
     double normal[3];
     if (userNormalOrNull) {
@@ -334,18 +316,18 @@ void orderCCW3D(const double* pts, mwSize n,
     }
 }
 
-void areaCentroidNormal2D(const double* pts, mwSize n, double& area, double* centroid) {
-    std::vector<mwSize> perm;
+void areaCentroidNormal2D(const double* pts, std::size_t n, double& area, double* centroid) {
+    std::vector<std::size_t> perm;
     orderCCW2D(pts, n, perm);
     std::vector<double> ordered;
     reorderPoints(pts, n, 2, perm, ordered);
     areaCentroid2DOrdered(ordered.data(), n, area, centroid);
 }
 
-void areaCentroidNormal3D(const double* pts, mwSize n,
+void areaCentroidNormal3D(const double* pts, std::size_t n,
                           const double* userNormalOrNull,
                           double& area, double* centroid, double* unitNormal) {
-    std::vector<mwSize> perm;
+    std::vector<std::size_t> perm;
     double normal0[3];
     orderCCW3D(pts, n, userNormalOrNull, perm, normal0);
 
@@ -360,122 +342,17 @@ void areaCentroidNormal3D(const double* pts, mwSize n,
     }
 }
 
-double polygonAreaLocal(const mxArray* points, const mxArray* normalOrNull) {
-    validateLocalPoints(points);
-    const double* P = mxGetPr(points);
-    mwSize n = mxGetM(points), dim = mxGetN(points);
-    double area, c[3], normal[3], normalBuf[3];
-    if (dim == 2) {
-        require(normalOrNull == nullptr, "PolygonGeometry:input", "A normal can only be provided for 3D polygons.");
-        areaCentroidNormal2D(P, n, area, c);
-    } else {
-        const double* userNormal = parseLocalNormal(normalOrNull, normalBuf);
-        areaCentroidNormal3D(P, n, userNormal, area, c, normal);
-    }
-    return area;
-}
-
-mxArray* polygonCentroidLocal(const mxArray* points, const mxArray* normalOrNull) {
-    validateLocalPoints(points);
-    const double* P = mxGetPr(points);
-    mwSize n = mxGetM(points), dim = mxGetN(points);
-    mxArray* out = mxCreateDoubleMatrix(1, dim, mxREAL);
-    double* c = mxGetPr(out);
-    double area, normal[3], normalBuf[3];
-    if (dim == 2) {
-        require(normalOrNull == nullptr, "PolygonGeometry:input", "A normal can only be provided for 3D polygons.");
-        areaCentroidNormal2D(P, n, area, c);
-    } else {
-        const double* userNormal = parseLocalNormal(normalOrNull, normalBuf);
-        areaCentroidNormal3D(P, n, userNormal, area, c, normal);
-    }
-    return out;
-}
-
-mxArray* polygonNormalLocal(const mxArray* points, const mxArray* normalOrNull) {
-    validateLocalPoints(points);
-    mwSize dim = mxGetN(points);
-    require(dim == 3, "PolygonGeometry:input", "Normal is only defined here for N x 3 polygons.");
-    const double* P = mxGetPr(points);
-    mwSize n = mxGetM(points);
-    double normalBuf[3];
-    const double* userNormal = parseLocalNormal(normalOrNull, normalBuf);
-    mxArray* out = mxCreateDoubleMatrix(1, 3, mxREAL);
-    double* normal = mxGetPr(out);
-    double area, centroid[3];
-    areaCentroidNormal3D(P, n, userNormal, area, centroid, normal);
-    return out;
-}
-
-mxArray* orderPointsLocal(int nrhs, const mxArray* prhs[]) {
-    validateLocalPoints(prhs[0]);
-    const double* P = mxGetPr(prhs[0]);
-    mwSize n = mxGetM(prhs[0]), dim = mxGetN(prhs[0]);
-    std::vector<mwSize> perm;
-
-    if (dim == 2) {
-        require(nrhs == 1, "PolygonGeometry:input", "2D ordering takes only points.");
-        orderCCW2D(P, n, perm);
-    } else {
-        const double* userNormal = nullptr;
-        double normalBuf[3];
-        if (nrhs == 2) {
-            userNormal = parseLocalNormal(prhs[1], normalBuf);
-        } else {
-            require(nrhs == 1, "PolygonGeometry:input", "Usage: idx = mxOrderPointsCCW(points [, normal]).");
-        }
-        orderCCW3D(P, n, userNormal, perm, nullptr);
-    }
-
-    mxArray* out = mxCreateDoubleMatrix(n, 1, mxREAL);
-    double* idx = mxGetPr(out);
-    for (mwSize i = 0; i < n; ++i) idx[i] = static_cast<double>(perm[i] + 1);
-    return out;
-}
-
-BatchInput parseBatchInput(const mxArray* Pflat, const mxArray* nVert) {
-    require(mxIsDouble(Pflat) && !mxIsComplex(Pflat), "PolygonGeometry:input", "Pflat must be a real double matrix.");
-    require(mxIsDouble(nVert) && !mxIsComplex(nVert), "PolygonGeometry:input", "nVert must be a real double vector.");
-    mwSize nPts = mxGetM(Pflat), dim = mxGetN(Pflat);
-    require(dim == 2 || dim == 3, "PolygonGeometry:input", "Pflat must be Ntot x 2 or Ntot x 3.");
-    mwSize nPoly = mxGetNumberOfElements(nVert);
-    require(nPoly >= 1, "PolygonGeometry:input", "nVert must contain at least one polygon.");
-    const double* nv = mxGetPr(nVert);
-    double sum = 0.0;
-    for (mwSize i = 0; i < nPoly; ++i) {
-        require(isIntegerValued(nv[i]) && nv[i] >= 3.0, "PolygonGeometry:input", "Each nVert entry must be an integer >= 3.");
-        sum += nv[i];
-    }
-    require(static_cast<mwSize>(std::llround(sum)) == nPts, "PolygonGeometry:input", "sum(nVert) must equal size(Pflat,1).");
-    BatchInput out;
-    out.P = mxGetPr(Pflat);
-    out.Pdims = mxGetDimensions(Pflat);
-    out.nPts = nPts;
-    out.dim = dim;
-    out.nVert = nv;
-    out.nPoly = nPoly;
-    return out;
-}
-
-const double* parseBatchNormals(const mxArray* normals, mwSize nPoly) {
-    require(mxIsDouble(normals) && !mxIsComplex(normals),
-            "PolygonGeometry:input", "normals must be a real double matrix.");
-    require(mxGetM(normals) == nPoly && mxGetN(normals) == 3,
-            "PolygonGeometry:input", "normals must have size nPoly x 3.");
-    return mxGetPr(normals);
-}
-
 void polygonAreaBatch(const BatchInput& in, const double* normalsOrNull, std::vector<double>& area) {
     area.assign(in.nPoly, 0.0);
     if (normalsOrNull) {
         require(in.dim == 3, "PolygonGeometry:input", "A normals array can only be provided for 3D polygons.");
     }
 
-    mwSize off = 0;
-    for (mwSize p = 0; p < in.nPoly; ++p) {
-        mwSize n = static_cast<mwSize>(std::llround(in.nVert[p]));
+    std::size_t off = 0;
+    for (std::size_t p = 0; p < in.nPoly; ++p) {
+        std::size_t n = static_cast<std::size_t>(std::llround(in.nVert[p]));
         std::vector<double> poly(n * in.dim);
-        for (mwSize i = 0; i < n; ++i) {
+        for (std::size_t i = 0; i < n; ++i) {
             poly[i] = in.P[off + i];
             poly[i + n] = in.P[off + i + in.nPts];
             if (in.dim == 3) poly[i + 2*n] = in.P[off + i + 2*in.nPts];
@@ -496,11 +373,11 @@ void polygonCentroidBatch(const BatchInput& in, const double* normalsOrNull, std
         require(in.dim == 3, "PolygonGeometry:input", "A normals array can only be provided for 3D polygons.");
     }
 
-    mwSize off = 0;
-    for (mwSize p = 0; p < in.nPoly; ++p) {
-        mwSize n = static_cast<mwSize>(std::llround(in.nVert[p]));
+    std::size_t off = 0;
+    for (std::size_t p = 0; p < in.nPoly; ++p) {
+        std::size_t n = static_cast<std::size_t>(std::llround(in.nVert[p]));
         std::vector<double> poly(n * in.dim);
-        for (mwSize i = 0; i < n; ++i) {
+        for (std::size_t i = 0; i < n; ++i) {
             poly[i] = in.P[off + i];
             poly[i + n] = in.P[off + i + in.nPts];
             if (in.dim == 3) poly[i + 2*n] = in.P[off + i + 2*in.nPts];
@@ -522,11 +399,11 @@ void polygonNormalBatch(const BatchInput& in, const double* normalsOrNull, std::
     require(in.dim == 3, "PolygonGeometry:input", "Polygon normals are only defined here for 3D polygons.");
     normal.assign(in.nPoly * 3, 0.0);
 
-    mwSize off = 0;
-    for (mwSize p = 0; p < in.nPoly; ++p) {
-        mwSize n = static_cast<mwSize>(std::llround(in.nVert[p]));
+    std::size_t off = 0;
+    for (std::size_t p = 0; p < in.nPoly; ++p) {
+        std::size_t n = static_cast<std::size_t>(std::llround(in.nVert[p]));
         std::vector<double> poly(n * 3);
-        for (mwSize i = 0; i < n; ++i) {
+        for (std::size_t i = 0; i < n; ++i) {
             poly[i] = in.P[off + i];
             poly[i + n] = in.P[off + i + in.nPts];
             poly[i + 2*n] = in.P[off + i + 2*in.nPts];
@@ -554,11 +431,11 @@ void polygonGeometryBatch(const BatchInput& in,
         require(in.dim == 3, "PolygonGeometry:input", "A normals array can only be provided for 3D polygons.");
     }
 
-    mwSize off = 0;
-    for (mwSize p = 0; p < in.nPoly; ++p) {
-        mwSize n = static_cast<mwSize>(std::llround(in.nVert[p]));
+    std::size_t off = 0;
+    for (std::size_t p = 0; p < in.nPoly; ++p) {
+        std::size_t n = static_cast<std::size_t>(std::llround(in.nVert[p]));
         std::vector<double> poly(n * in.dim);
-        for (mwSize i = 0; i < n; ++i) {
+        for (std::size_t i = 0; i < n; ++i) {
             poly[i] = in.P[off + i];
             poly[i + n] = in.P[off + i + in.nPts];
             if (in.dim == 3) poly[i + 2*n] = in.P[off + i + 2*in.nPts];
@@ -595,16 +472,16 @@ void orderPointsBatch(const BatchInput& in,
                 "A normals array can only be provided for 3D polygons.");
     }
 
-    mwSize off = 0;
-    for (mwSize p = 0; p < in.nPoly; ++p) {
-        mwSize n = static_cast<mwSize>(std::llround(in.nVert[p]));
+    std::size_t off = 0;
+    for (std::size_t p = 0; p < in.nPoly; ++p) {
+        std::size_t n = static_cast<std::size_t>(std::llround(in.nVert[p]));
         std::vector<double> poly(n * in.dim);
-        for (mwSize i = 0; i < n; ++i) {
+        for (std::size_t i = 0; i < n; ++i) {
             poly[i] = in.P[off + i];
             poly[i + n] = in.P[off + i + in.nPts];
             if (in.dim == 3) poly[i + 2*n] = in.P[off + i + 2*in.nPts];
         }
-        std::vector<mwSize> perm;
+        std::vector<std::size_t> perm;
         if (in.dim == 2) {
             orderCCW2D(poly.data(), n, perm);
         } else {
@@ -612,8 +489,8 @@ void orderPointsBatch(const BatchInput& in,
             const double* userNormal = getBatchNormalPtr(normalsOrNull, p, in.nPoly, normalBuf);
             orderCCW3D(poly.data(), n, userNormal, perm, nullptr);
         }
-        for (mwSize i = 0; i < n; ++i) {
-            mwSize src = perm[i];
+        for (std::size_t i = 0; i < n; ++i) {
+            std::size_t src = perm[i];
             Pccw[off + i] = poly[src];
             Pccw[off + i + in.nPts] = poly[src + n];
             if (in.dim == 3) Pccw[off + i + 2*in.nPts] = poly[src + 2*n];

@@ -4,227 +4,232 @@
 
 #ifdef MEX_FUNCTION
 
-#include "mex.h"
-#include <cstdlib>
+#include "mex.hpp"
+#include "mexAdapter.hpp"
 
-void mexFunction( int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[] )
+#include <memory>
+#include <string>
+#include <vector>
+
+class MexFunction : public matlab::mex::Function
 {
-  if( nrhs < 7 )
+public:
+  void operator()( matlab::mex::ArgumentList outputs,
+                   matlab::mex::ArgumentList inputs ) override
   {
-    mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:invalidInputs", "At least 7 input arguments are required." );
-  }
-  else if( nlhs > 0 )
-  {
-    mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:invalidOutputs", "Too many output arguments." );
-  }
-  else if( mxIsChar( prhs[0] ) != 1 )
-  {
-    mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:inputNotString", "Input must be a string." );
-  }
-
-  int status;
-  int const bufSize = 1024;
-  char fileName[bufSize];
-
-  status = mxGetString( prhs[0], fileName, bufSize );
-  if( status != 0 )
-  {
-    mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:fileName", "Not enough space. String is truncated." );
-  }
-
-  double const time = mxGetScalar( prhs[1] );
-
-  mxArray const * const mxCoord = prhs[2];
-  double * coord = (double *) mxGetPr( mxCoord );
-  int const nPoints = (int) mxGetM( mxCoord );
-  int const dim = (int) mxGetN( mxCoord );
-
-  // prhs[3] = flat connectivity vector
-  // prhs[4] = cell VTK type
-  // prhs[5] = number of vertices for each cell
-
-  mxArray const * const mxCells = prhs[3];
-  double const * cells = (double *) mxGetPr( mxCells );
-
-  mxArray const * const mxCellVTKType = prhs[4];
-  double const * cellVTKType = (double *) mxGetPr( mxCellVTKType );
-
-  mxArray const * const mxCellNumVerts = prhs[5];
-  double const * cellNumVerts = (double *) mxGetPr( mxCellNumVerts );
-
-  int const nCells = (int) mxGetNumberOfElements( mxCellNumVerts );
-  int const nCellTypes = (int) mxGetNumberOfElements( mxCellVTKType );
-  int const nConnections = (int) mxGetNumberOfElements( mxCells );
-
-  if( nCellTypes != nCells )
-  {
-    mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:invalidField", "cellVTKType and cellNumVerts must have the same number of elements." );
-  }
-
-  int * const cellNumVertsInt = (int *) malloc( nCells*sizeof( int ) );
-  int * const cellVTKTypeInt = (int *) malloc( nCells*sizeof( int ) );
-
-  if( cellNumVertsInt == NULL || cellVTKTypeInt == NULL )
-  {
-    free( cellNumVertsInt );
-    free( cellVTKTypeInt );
-    mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:allocation", "Memory allocation failed." );
-  }
-
-  int totalConnections = 0;
-  for( int i = 0; i < nCells; ++i )
-  {
-    cellNumVertsInt[i] = (int) cellNumVerts[i];
-    cellVTKTypeInt[i] = (int) cellVTKType[i];
-
-    if( cellNumVertsInt[i] <= 0 )
+    if( inputs.size() < 7 )
     {
-      free( cellNumVertsInt );
-      free( cellVTKTypeInt );
-      mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:cellNumVerts", "Each entry of cellNumVerts must be positive." );
+      error( "MATLAB:mxVTKWriter:invalidInputs", "At least 7 input arguments are required." );
+    }
+    else if( outputs.size() > 0 )
+    {
+      error( "MATLAB:mxVTKWriter:invalidOutputs", "Too many output arguments." );
     }
 
-    totalConnections += cellNumVertsInt[i];
-  }
-
-  if( totalConnections != nConnections )
-  {
-    free( cellNumVertsInt );
-    free( cellVTKTypeInt );
-    mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:connectivity", "Length of flat connectivity must match sum(cellNumVerts)." );
-  }
-
-  int * const cellsInt = (int *) malloc( nConnections*sizeof( int ) );
-  if( cellsInt == NULL )
-  {
-    free( cellNumVertsInt );
-    free( cellVTKTypeInt );
-    mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:allocation", "Memory allocation failed." );
-  }
-
-  for( int i = 0; i < nConnections; ++i )
-  {
-    int const id = (int) cells[i];
-    if( id <= 0 || id > nPoints )
+    matlab::data::Array const fileNameArr = inputs[0];
+    if( fileNameArr.getType() != matlab::data::ArrayType::CHAR )
     {
-      free( cellNumVertsInt );
-      free( cellVTKTypeInt );
-      free( cellsInt );
-      mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:connectivity", "Connectivity contains an invalid node index." );
+      error( "MATLAB:mxVTKWriter:inputNotString", "Input must be a string." );
     }
-    cellsInt[i] = id - 1;
-  }
 
-  for( int i = 0; i < nCells; ++i )
-  {
-    if( cellVTKTypeInt[i] != VTK_TRIANGLE &&
-        cellVTKTypeInt[i] != VTK_QUAD &&
-        cellVTKTypeInt[i] != VTK_TETRA &&
-        cellVTKTypeInt[i] != VTK_HEXAHEDRON &&
-        cellVTKTypeInt[i] != VTK_HEXAHEDRON2 &&
-        cellVTKTypeInt[i] != VTK_QUAD2 &&
-        cellVTKTypeInt[i] != VTK_POLYGON
-      )
+    std::string const fileName = toAsciiString( fileNameArr );
+
+    matlab::data::TypedArray<double> const timeArr = getDoubleArray( inputs[1], "time must be a real double scalar." );
+    if( timeArr.getNumberOfElements() != 1 )
     {
-      free( cellNumVertsInt );
-      free( cellVTKTypeInt );
-      free( cellsInt );
-      mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:cellType", "Element type not yet supported." );
+      error( "MATLAB:mxVTKWriter:time", "time must be a scalar." );
     }
-  }
+    double const time = *timeArr.begin();
 
-  VTUWriter vtuFile;
-  vtuFile.set_mesh( dim, nPoints, coord, nCells, nConnections, cellsInt, cellVTKTypeInt, cellNumVertsInt );
-  vtuFile.set_time( time );
-
-  if( nrhs > 6 )
-  {
-    for( int iStruct = 0; iStruct < ( nrhs-6 ); ++iStruct )
+    matlab::data::TypedArray<double> const mxCoord = getDoubleArray( inputs[2], "coord must be a real double matrix." );
+    auto const coordDims = mxCoord.getDimensions();
+    if( coordDims.size() != 2 )
     {
-      mxArray const * const ptr = prhs[6+iStruct];
-      if( mxGetNumberOfElements( ptr ) > 0 )
+      error( "MATLAB:mxVTKWriter:coord", "coord must be a 2D matrix." );
+    }
+
+    double const * coord = getPointer( mxCoord );
+    int const nPoints = static_cast<int>( coordDims[0] );
+    int const dim = static_cast<int>( coordDims[1] );
+
+    matlab::data::TypedArray<double> const mxCells = getDoubleArray( inputs[3], "cells must be a real double array." );
+    double const * cells = getPointer( mxCells );
+
+    matlab::data::TypedArray<double> const mxCellVTKType = getDoubleArray( inputs[4], "cellVTKType must be a real double array." );
+    double const * cellVTKType = getPointer( mxCellVTKType );
+
+    matlab::data::TypedArray<double> const mxCellNumVerts = getDoubleArray( inputs[5], "cellNumVerts must be a real double array." );
+    double const * cellNumVerts = getPointer( mxCellNumVerts );
+
+    int const nCells = static_cast<int>( mxCellNumVerts.getNumberOfElements() );
+    int const nCellTypes = static_cast<int>( mxCellVTKType.getNumberOfElements() );
+    int const nConnections = static_cast<int>( mxCells.getNumberOfElements() );
+
+    if( nCellTypes != nCells )
+    {
+      error( "MATLAB:mxVTKWriter:invalidField", "cellVTKType and cellNumVerts must have the same number of elements." );
+    }
+
+    std::vector<int> cellNumVertsInt( nCells );
+    std::vector<int> cellVTKTypeInt( nCells );
+
+    int totalConnections = 0;
+    for( int i = 0; i < nCells; ++i )
+    {
+      cellNumVertsInt[i] = static_cast<int>( cellNumVerts[i] );
+      cellVTKTypeInt[i] = static_cast<int>( cellVTKType[i] );
+
+      if( cellNumVertsInt[i] <= 0 )
       {
-        if( mxGetClassID( ptr ) != mxSTRUCT_CLASS )
+        error( "MATLAB:mxVTKWriter:cellNumVerts", "Each entry of cellNumVerts must be positive." );
+      }
+
+      totalConnections += cellNumVertsInt[i];
+    }
+
+    if( totalConnections != nConnections )
+    {
+      error( "MATLAB:mxVTKWriter:connectivity", "Length of flat connectivity must match sum(cellNumVerts)." );
+    }
+
+    std::vector<int> cellsInt( nConnections );
+    for( int i = 0; i < nConnections; ++i )
+    {
+      int const id = static_cast<int>( cells[i] );
+      if( id <= 0 || id > nPoints )
+      {
+        error( "MATLAB:mxVTKWriter:connectivity", "Connectivity contains an invalid node index." );
+      }
+      cellsInt[i] = id - 1;
+    }
+
+    for( int i = 0; i < nCells; ++i )
+    {
+      if( cellVTKTypeInt[i] != VTK_TRIANGLE &&
+          cellVTKTypeInt[i] != VTK_QUAD &&
+          cellVTKTypeInt[i] != VTK_TETRA &&
+          cellVTKTypeInt[i] != VTK_HEXAHEDRON &&
+          cellVTKTypeInt[i] != VTK_HEXAHEDRON2 &&
+          cellVTKTypeInt[i] != VTK_QUAD2 &&
+          cellVTKTypeInt[i] != VTK_POLYGON )
+      {
+        error( "MATLAB:mxVTKWriter:cellType", "Element type not yet supported." );
+      }
+    }
+
+    VTUWriter vtuFile;
+    vtuFile.set_mesh( dim,
+                      nPoints,
+                      coord,
+                      nCells,
+                      nConnections,
+                      cellsInt.data(),
+                      cellVTKTypeInt.data(),
+                      cellNumVertsInt.data() );
+    vtuFile.set_time( time );
+
+    for( std::size_t iStruct = 0; iStruct < inputs.size() - 6; ++iStruct )
+    {
+      matlab::data::Array const ptr = inputs[6 + iStruct];
+      if( ptr.getNumberOfElements() > 0 )
+      {
+        if( ptr.getType() != matlab::data::ArrayType::STRUCT )
         {
-          free( cellNumVertsInt );
-          free( cellVTKTypeInt );
-          free( cellsInt );
-          mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:struct", "Scalar and vector data has to be saved as struct." );
+          error( "MATLAB:mxVTKWriter:struct", "Scalar and vector data has to be saved as struct." );
         }
-        mwSize const nFields = mxGetNumberOfFields( ptr );
-        if( nFields != 2 )
+
+        matlab::data::StructArray const s = ptr;
+        for( auto const& elem : s )
         {
-          free( cellNumVertsInt );
-          free( cellVTKTypeInt );
-          free( cellsInt );
-          mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:struct", "Struct for scalar and vector data must have 2 fields." );
-        }
-        mwSize const nStructElems = mxGetNumberOfElements( ptr );
-        for( mwIndex i = 0; i < nStructElems; i++ )
-        {
-          mxArray const * const fieldName = mxGetField( ptr, i, "name" );
-          if( fieldName == NULL )
+          matlab::data::Array const fieldName = elem["name"];
+          if( fieldName.isEmpty() )
           {
-            free( cellNumVertsInt );
-            free( cellVTKTypeInt );
-            free( cellsInt );
-            mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:invalidField", "name field must exist." );
-          }
-          if( !mxIsChar( fieldName ) )
-          {
-            free( cellNumVertsInt );
-            free( cellVTKTypeInt );
-            free( cellsInt );
-            mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:invalidField", "name field must by a string." );
+            error( "MATLAB:mxVTKWriter:invalidField", "name field must exist." );
           }
 
-          char fieldNameC[bufSize];
-          status = mxGetString( fieldName, fieldNameC, bufSize );
-          if( status != 0 )
+          matlab::data::Array const dataArr = elem["data"];
+          if( dataArr.isEmpty() )
           {
-            free( cellNumVertsInt );
-            free( cellVTKTypeInt );
-            free( cellsInt );
-            mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:fieldName", "Not enough space. String is truncated." );
+            error( "MATLAB:mxVTKWriter:invalidField", "data field must exist." );
           }
 
-          mxArray const * const data = mxGetField( ptr, i, "data" );
-          if( data == NULL )
+          if( fieldName.getType() != matlab::data::ArrayType::CHAR )
           {
-            free( cellNumVertsInt );
-            free( cellVTKTypeInt );
-            free( cellsInt );
-            mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:invalidField", "data field must exist." );
+            error( "MATLAB:mxVTKWriter:invalidField", "name field must by a string." );
           }
-          double const * const ptrData = (double *) mxGetData( data );
-          int const size = (int) mxGetM( data );
+
+          std::string const fieldNameC = toAsciiString( fieldName );
+
+          matlab::data::TypedArray<double> const data =
+              getDoubleArray( dataArr, "data field must be a real double array." );
+
+          auto const dataDims = data.getDimensions();
+          if( dataDims.size() != 2 )
+          {
+            error( "MATLAB:mxVTKWriter:invalidField", "data field must be a 2D matrix." );
+          }
+
+          double const * const ptrData = getPointer( data );
+          int const size = static_cast<int>( dataDims[0] );
+          int const fieldDim = static_cast<int>( dataDims[1] );
+
           if( size != nPoints && size != nCells )
           {
-            free( cellNumVertsInt );
-            free( cellVTKTypeInt );
-            free( cellsInt );
-            mexErrMsgIdAndTxt( "MATLAB:mxVTKWriter:invalidField", "Size inconsistency." );
+            error( "MATLAB:mxVTKWriter:invalidField", "Size inconsistency." );
           }
-          int const fieldDim = (int) mxGetN( data );
+
           if( size == nPoints )
           {
-            vtuFile.add_field< double >( std::string( fieldNameC ), ptrData, size, fieldDim );
+            vtuFile.add_field<double>( fieldNameC, ptrData, size, fieldDim );
           }
           else
           {
-            vtuFile.add_cell_field< double >( std::string( fieldNameC ), ptrData, size, fieldDim );
+            vtuFile.add_cell_field<double>( fieldNameC, ptrData, size, fieldDim );
           }
         }
       }
     }
+
+    if( !vtuFile.write_mesh( fileName ) )
+    {
+      error( "MATLAB:mxVTKWriter:write", "Failed to write output file." );
+    }
   }
 
-  vtuFile.write_mesh( fileName );
+private:
+  std::shared_ptr<matlab::engine::MATLABEngine> matlabPtr = getEngine();
+  matlab::data::ArrayFactory factory;
 
-  free( cellNumVertsInt );
-  free( cellVTKTypeInt );
-  free( cellsInt );
-}
+  void error( std::string const& id, std::string const& msg )
+  {
+    matlabPtr->feval( u"error", 0,
+      std::vector<matlab::data::Array>{
+        factory.createScalar( id ),
+        factory.createScalar( msg )
+      } );
+  }
+
+  matlab::data::TypedArray<double> getDoubleArray( matlab::data::Array const& arr,
+                                                   char const* msg )
+  {
+    if( arr.getType() != matlab::data::ArrayType::DOUBLE )
+    {
+      error( "MATLAB:mxVTKWriter:type", msg );
+    }
+    return matlab::data::TypedArray<double>( arr );
+  }
+
+  std::string toAsciiString( matlab::data::Array const& arr )
+  {
+    matlab::data::CharArray const charArr = arr;
+    std::u16string const s16 = charArr.toUTF16();
+    return std::string( s16.begin(), s16.end() );
+  }
+
+  double const* getPointer( matlab::data::TypedArray<double> const& arr )
+  {
+    return arr.begin().operator->();
+  }
+};
 
 #endif // MEX_FUNCTION
-//----------------------------------------------------------------------------------------
