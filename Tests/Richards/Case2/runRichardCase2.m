@@ -44,7 +44,10 @@ solver.simulationLoop();
 %% --------------------- Post Processing the Results ----------------------
 postproc = true;
 printFigs = true;
+
 if postproc
+
+  center = grid.cells.center;
   image_dir = fullfile(pwd,figures_dir);
     if ~isfolder(image_dir)
         mkdir(image_dir)
@@ -53,7 +56,7 @@ if postproc
     % Getting pressure and saturation solution for specified time from MatFILE
     numb = 0.;
     tol = 0.01;
-    nodesP = find(abs(elems.mesh.cellCentroid(:,1)-numb) < tol & abs(elems.mesh.cellCentroid(:,2)-numb) < tol);
+    nodesP = find(abs(center(:,1)-numb) < tol & abs(center(:,2)-numb) < tol);
 
     tstr = strcat(num2str((printUtils.timeList/86400)'),' Days');
     nrep = length(printUtils.timeList);
@@ -70,7 +73,7 @@ if postproc
     weight = mat.getFluid().getSpecificWeight();
 
     % Location a column to be the plot position.
-    ptsZ = elems.mesh.cellCentroid(nodesP,3);
+    ptsZ = center(nodesP,3);
 
     if printFigs
       % Plotting pressure head

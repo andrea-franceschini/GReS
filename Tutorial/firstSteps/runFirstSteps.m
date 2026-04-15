@@ -2,10 +2,7 @@
 % slightly compressible single phase flow model
 
 % unit cube with 10x10x10 hexahedra
-mesh = structuredMesh(10,10,10,[0 1],[0 1],[0 1]);
-
-numbGaussPoints = 2;
-grid = struct('topology', mesh, 'cells', Elements(mesh,numbGaussPoints), 'faces', Faces(mesh));
+grid = structuredMesh(10,10,10,[0 1],[0 1],[0 1]);
 
 % materials
 mat = Materials();
@@ -46,13 +43,14 @@ domain = Discretizer('Boundaries', bc, ...
                      'Materials',  mat, ...
                      'Grid',       grid);
 
+domain.addPhysicsSolver("SinglePhaseFlowFVTPFA",'targetRegions',1);
 
 input = struct('Start',0.0,'End',10.0,'DtInit',1e-1,'DtMax',1e0,'DtMin',1e-1,'incrementFactor',1.1);
 simparams = SimulationParameters(input);
 
 out = OutState('printTimes',[1.0,5.0,10.0],'outputFile',"Output/results",'matFileName',"Output/results");
 
-solver = NonLinearImplicit('simulationparameters',simparams,'domain',domain, 'output', out);
+solver = NonLinearImplicit('simulationparameters',simparams,'domains',domain, 'output', out);
 gresLog().setVerbosity(2);
 solver.simulationLoop();
 
@@ -62,15 +60,13 @@ clear
 clc
 
 params = readInput('firstSteps.xml');
-mesh = Mesh.create(params.Geometry);
-grid = struct('topology', mesh, 'cells', Elements(mesh,nGP), 'faces', Faces(mesh));
-mat = Materials(params.Materials);
-bc = Boundaries(grid, params.Domain(1).BoundaryConditions); % example for Boundary Conditions
-domain = Discretizer('Boundaries', bound, ...
-                     'OutState',   printUtils, ...
+grid = Grid.create(params.Domain.Geometry);
+mat = Materials(params.Domain.Materials);
+bc = Boundaries(grid, params.Domain.BoundaryConditions); % example for Boundary Conditions
+domain = Discretizer('Boundaries', bc, ...
                      'Materials',  mat, ...
                      'Grid',       grid);
-domain.addPhysicsSolvers(params.Solver)
+domain.addPhysicsSolvers(params.Domain.Solver)
 simparams = SimulationParameters(params.SimulationParameters);
 output = OutState(params.Output);
 solver = NonLinearImplicit('simulationparameters',simparams,'domain',domain, 'output', printUtils);

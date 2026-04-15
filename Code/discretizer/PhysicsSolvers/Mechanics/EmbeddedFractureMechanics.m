@@ -615,7 +615,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       f.tang1         = f.tang1(id,:);
       f.tang2         = f.tang2(id,:);
       f.numVerts      = f.numVerts(id);
-      f.VTKType       = repmat(VTKType.Polygon,f.num,1);
+      f.VTKType       = repmat(double(VTKType.Polygon),f.num,1);
 
       surfs = getRows(f.connectivity,find(id));
 
