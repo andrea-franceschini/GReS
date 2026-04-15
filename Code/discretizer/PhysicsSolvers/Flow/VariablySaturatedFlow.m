@@ -133,6 +133,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
       faces = obj.grid.faces;
       cells = obj.grid.cells;
+      surfaces = obj.grid.surfaces;
 
       bc = obj.domain.bcs;
       mat = obj.domain.materials;
@@ -146,7 +147,8 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
       if bcFld == entityField.surface && isEssential(bc,bcId)
 
-        faceId = bc.getSourceEntities(bcId);
+        surfId = bc.getSourceEntities(bcId);
+        faceId = surfaces.faceId(surfId);
         zf = faces.center(faceId,3);
         srcVal = bc.getSourceVals(bcId,t);
         gamma = mat.getFluid().getSpecificWeight();

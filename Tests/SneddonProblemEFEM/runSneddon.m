@@ -20,20 +20,16 @@ X = 40.0;
 Y = 1;
 Z = X;
 
-mesh = structuredMesh(321,1,121,[-0.5*X 0.5*X],[-0.5*Y 0.5*Y],[-0.5*Z 0.5*Z]);
+grid = structuredMesh(321,1,121,[-0.5*X 0.5*X],[-0.5*Y 0.5*Y],[-0.5*Z 0.5*Z]);
 
 %assert(3*mesh.nNodes < 2e5,"Mesh is too fine")
 
 %%
-elems = Elements(mesh,2);
-faces = Faces(mesh);
-grid = struct('topology',mesh,'cells',elems,'faces',faces);
-mat = Materials(params.Materials);
 
+mat = Materials(params.Materials);
 
 printUtils = OutState("outputFile",strcat("Output/Sneddon"),"printTimes",1,...
                       "matFileName",strcat("Output/Sneddon"));
-
 
 bc = Boundaries(grid);
 

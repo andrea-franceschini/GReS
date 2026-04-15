@@ -12,19 +12,11 @@ simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'));
 mat = Materials(fullfile(input_dir,'materials.xml'));
 
 % Create the Mesh object
-topology = Mesh();
+grid = Grid();
 
 % Import mesh data into the Mesh object
-topology.importMesh(fullfile(input_dir,'Mesh',"Column30.msh"));
+grid.importMesh(fullfile(input_dir,'Mesh',"Column30.msh"));
 
-% Create an object of the "Elements" class and process the element properties
-elems = Elements(topology,2);
-
-% Create an object of the "Faces" class and process the face properties
-faces = Faces(topology);
-
-% Wrap Mesh, Elements and Faces objects in a structure
-grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 % Creating boundaries conditions.
 bound = Boundaries(grid,fullfile(input_dir,'boundaries.xml'));

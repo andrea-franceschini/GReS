@@ -327,7 +327,7 @@ classdef Grid < handle
       % str: either cells or surfaces
       conn = obj.(fld).connectivity;
 
-      if obj.isMixed
+      if isa(conn,"ArrayOfArrays")
         % connectivity is an ArrayOfArrays
         list = conn.getData;
       else % connectivity is a strandard matrix

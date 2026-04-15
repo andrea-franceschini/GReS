@@ -3,32 +3,23 @@ close all;
 input_dir = 'Input/';
 figures_dir = 'Output/Figs/';
 
-typeDiscretization = "FEM";
+typeDiscretization = "FVTPFA";
 solverName = strcat("SinglePhaseFlow",typeDiscretization);
 
 % Set the simulation parameters for the non-linear solver.
 simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'));
 
 % output parameters
-printUtils = OutState('outputFile',"Output/results",'printTimes',10.);
+printUtils = OutState('outputFile',"Output/results",'printTimes',[1,2,3,4,5,6,7,8,9,10]);
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(fullfile(input_dir,'materials.xml'));
 
 % Create the Mesh object
-topology = Mesh();
+grid = Grid();
 
 % Import mesh data into the Mesh object
-topology.importMesh(fullfile(input_dir,'domain.msh'));
-
-% Create an object of the "Elements" class and process the element properties
-elems = Elements(topology,2);
-
-% Create an object of the "Faces" class and process the face properties
-faces = Faces(topology);
-
-% Wrap Mesh, Elements and Faces objects in a structure
-grid = struct('topology',topology,'cells',elems,'faces',faces);
+grid.importMesh(fullfile(input_dir,'domain.msh'));
 
 % Creating boundaries conditions.
 bound = Boundaries(grid,fullfile(input_dir,'boundaries.xml'));
@@ -39,7 +30,7 @@ domain = Discretizer('Grid',grid,...
                      'Materials',mat,...
                      'Boundaries',bound);
 
-domain.addPhysicsSolver(solverName,'steadyState',1);
+domain.addPhysicsSolver(solverName,'steadyState',0);
 
 
 % set initial conditions directly modifying the state object
@@ -71,36 +62,38 @@ if postproc
   t = t(tind);
   tstr = strcat(num2str(t'),' second');
 
+  center = grid.cells.center;
+
   %Getting pressure and saturation solution for specified time from MatFILE
   numbA = 5.;
   numbB = 5.;
   switch typeDiscretization
     case "FEM"
       tol = 1e-3;
-      nodesP = find(abs(topology.coordinates(:,1)-numbA) < tol & abs(topology.coordinates(:,3)-numbB) < tol);
-      [~,ind] = sort(topology.coordinates(nodesP,2));
+      nodesP = find(abs(grid.coordinates(:,1)-numbA) < tol & abs(grid.coordinates(:,3)-numbB) < tol);
+      [~,ind] = sort(grid.coordinates(nodesP,2));
       nodesP = nodesP(ind);
 
       pressplot = pressure(nodesP);
 
       % Values for normalized plots
-      H = max(topology.coordinates(nodesP,2));
+      H = max(grid.coordinates(nodesP,2));
 
       % Location a column to be the plot position.
-      pts = topology.coordinates(nodesP,2)/H;
+      pts = grid.coordinates(nodesP,2)/H;
     case "FVTPFA"
       tol = 0.4;
-      nodesP = find(abs(topology.cellCentroid(:,1)-numbA) < tol & abs(topology.cellCentroid(:,3)-numbB) < tol);
-      [~,ind] = sort(topology.cellCentroid(nodesP,2));
+      nodesP = find(abs(center(:,1)-numbA) < tol & abs(center(:,3)-numbB) < tol);
+      [~,ind] = sort(center(nodesP,2));
       nodesP = nodesP(ind);
 
       pressplot = pressure(nodesP);
 
       % Values for normalized plots
-      H = max(topology.cellCentroid(nodesP,2));
+      H = max(center(nodesP,2));
 
       % Location a column to be the plot position.
-      pts = topology.cellCentroid(nodesP,2)/H;
+      pts = center(nodesP,2)/H;
     otherwise
   end
 
