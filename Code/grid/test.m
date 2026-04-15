@@ -1,8 +1,8 @@
 % test new grid utilities
 
-grid = Grid();
-grid.importMesh('Column_tetra.msh');
-% 
+% grid = Grid();
+% grid.importMesh('Column_tetra.msh');
+% % 
 % cells = grid.cells;
 % faces = grid.faces;
 % 
@@ -21,3 +21,6 @@ grid.importMesh('Column_tetra.msh');
 % grid = structuredMesh(100,100,10,[0 1],[0 1],[0 1]);
 % nC = grid.cells.num;
 % profile viewer
+
+grid = structuredMesh([10,100,10],[10 20],2,[0 10 20 30],[0 15 30],[0 5]);
+plotMesh(grid, 'test');

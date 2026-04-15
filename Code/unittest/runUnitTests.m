@@ -13,6 +13,6 @@ results = runtests(testFiles);
 if any([results.Failed])
   error("Some test not passed");
 else
-  disp("All test run successfully")
+  disp("All test passed")
 end
 

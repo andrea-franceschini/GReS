@@ -31,5 +31,5 @@ gresLog().setVerbosity(v);
 if any([results.Failed])
     error("Some tests did not pass");
 else
-    disp("All tests ran successfully");
+    disp("All tests passed");
 end
