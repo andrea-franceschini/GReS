@@ -1,6 +1,8 @@
 clear
 clc
 
+v = gresLog().getVerbosity;
+gresLog().setVerbosity(-2);
 testFiles = {fullfile('Mesh','testMesh.m');...
              fullfile('Simparam','testSimparam.m');...
              fullfile('Materials','testMaterials.m')
@@ -9,7 +11,7 @@ testFiles = {fullfile('Mesh','testMesh.m');...
              };
 
 results = runtests(testFiles);
-
+gresLog().setVerbosity(v);
 if any([results.Failed])
   error("Some test not passed");
 else
