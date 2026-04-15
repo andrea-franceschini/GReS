@@ -158,8 +158,8 @@ classdef Poromechanics < PhysicsSolver
           assembleK.localAssembly(dof,dof,KLoc);
 
           % update stress map and gp counter
-          stateCurr.data.status(l:l+nG-1,:) = status;
-          stateCurr.data.stress((l):(l+nG-1),:) = sigma;
+          s.data.status(l:l+nG-1,:) = status;
+          s.data.stress(l:(l+nG-1),:) = sigma;
 
         end % end sub cells loop
 
