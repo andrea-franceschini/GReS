@@ -3,8 +3,7 @@ function computeRACP(obj,A,symMat)
 
    simple_flag = false;
 
-   % Get the dimensions of the blocks
-   n11 = size(A{1,1},1);
+   % Get the dimensions of the block
    n22 = size(A{1,2},2);
 
    % If block 22 has dim 0 then resize it
@@ -12,38 +11,7 @@ function computeRACP(obj,A,symMat)
       A{2,2} = sparse(n22,n22);
    end
 
-   % Treat Dirichlet boundary conditions
-   % Identify target indices
-   D = sum(spones(A{1,1}));
-   ind_dir_dof = find(D==1);
-   ind_col_rem = sum(spones(A{1,2}))==1;
-   [ind_dir_lag,~,~] = find(A{1,2}(:,ind_col_rem));
-   ind_dir = union(ind_dir_dof,ind_dir_lag);
-
-   % Native Column Zeroing 
-   A{1,1}(:,ind_dir) = 0;
-   A{2,1}(:,ind_dir) = 0;
-
-   % A11 Row Zeroing
-   A{1,1} = A{1,1}';
-   A{1,1}(:,ind_dir) = 0;
-   A{1,1} = A{1,1}';
-   
-   if symMat(1,2) == 1
-      % If the matrix is symmetric then I can fix the dir copying the transposed block
-      A{1,2} = A{2,1}';
-   else
-      % If the matrix is not symmetric I need to fix the 1,2 matrix itself
-      A12t = A{1,2}';
-      A12t(:,ind_dir) = 0;
-      A{1,2} = A12t';
-   end 
-
-   % Diagonal Restoration
-   fac = max(D);
-   D_diag = zeros(n11,1);
-   D_diag(ind_dir,1) = fac;
-   A{1,1} = A{1,1} + spdiags(D_diag, 0, n11, n11);
+   A = obj.treatDirBC(A,symMat);
 
    % Set RACP Gamma to 1
    gamma = 1.0;
@@ -91,7 +59,10 @@ function computeRACP(obj,A,symMat)
    A11_aug = A{1,1}+ADD;
    
    % For now impose the amg
-   obj.PrecType = 'amg';
+   if strcmpi(obj.PrecType,'fsai')
+      warning('fsai preconditioner not yet tested with racp');
+      obj.PrecType = 'amg';
+   end
 
    % If even one of the blocks is nonsymmetric then the agumented matrix
    % must be nonsymmetric
