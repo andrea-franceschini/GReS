@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Simulation parameters common to all physical models -->
+<SimulationParameters
+    Start="0."
+    End ="1.00e3"
+    DtInit= "1e-0"
+    DtMin = "1e-2"
+    DtMax = "1e-0"
+    incrementFactor = "1.05"
+    MaxNLIteration = "30"
+    AbsoluteTolerance = "1.e-9"
+    RelativeTolerance = "1.e-6" />
