@@ -38,6 +38,7 @@
 *.vtu
 *.vtm
 *.pvd
+*.pvsm
 
 # Matlab files
 *.mat
