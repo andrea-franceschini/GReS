@@ -19,6 +19,8 @@ jobs:
             display_name: Linux (Ubuntu Latest, GCC 11)
           - os: windows-latest
             display_name: Windows (Windows 2022, MSVC 2022)
+          - os: macos-latest
+            display_name: macOS (macOS Latest, Apple Clang)
 
     runs-on: ${{ matrix.os }}
 
