@@ -452,6 +452,9 @@ classdef Sedimentation < PhysicsSolver
       cellStr(7).name = 'voidRate';
       cellStr(7).data = state.void;
 
+      % cellStr(8).name = 'comp';
+      % cellStr(8).data = state.dl;
+
       pointStr(1).name = 'compaction';
       pointStr(1).data = state.comp;
     end
@@ -728,7 +731,7 @@ classdef Sedimentation < PhysicsSolver
       end
 
       comp = sNew.data.cellDefm*fac+sOld.data.cellDefm*(1-fac);
-      data.dl = comp;
+      % data.dl = comp;
 
       comp = obj.gridSed.cell2NodeAccByColumnFromBot2Top(comp);
       gamma = obj.domain.materials.getFluid().getSpecificWeight();
