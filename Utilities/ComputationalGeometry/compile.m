@@ -1,4 +1,4 @@
-cd mex_new
+cd mex
 
 mex -O   mxPolygonGeometry.cpp       src/PolygonGeometry.cpp
 mex -O   mxPolygonArea.cpp           src/PolygonGeometry.cpp

@@ -20,7 +20,9 @@ X = 40.0;
 Y = 1;
 Z = X;
 
-grid = structuredMesh([10,201,10],1,[10,61,10],[-0.5*X,-2,2,0.5*X],[-0.5*Y 0.5*Y],[-0.5*Z,-2,2,0.5*Z]);
+grid = structuredMesh([10,521,10],1,[10,91,10],[-0.5*X,-2,2,0.5*X],[-0.5*Y 0.5*Y],[-0.5*Z,-2,2,0.5*Z]);
+%grid = structuredMesh(101,1,61,[-0.5*X,0.5*X],[-0.5*Y, 0.5*Y],[-0.5*Z, 0.5*Z]);
+
 
 %assert(3*mesh.nNodes < 2e5,"Mesh is too fine")
 
@@ -48,7 +50,7 @@ bc.addBC('name',"y_fix",...
           'variable',"displacements",...
           'entityListType',"tag", ...
           'entityList',[3,4],...
-          'components',"x");
+          'components',"y");
 bc.addBCEvent("y_fix",'time',0.0,'value',0.0);
 
 bc.addBC('name',"x_fix",...
@@ -128,16 +130,16 @@ fprintf("Error norm: %1.4e \n",err)
 
 % plot
 
-% gn_anal_plot = K*sqrt(b^2-xi_anal.^2);
-% figure(1)
-% plot(xi, gn, 'k-o', 'MarkerSize', 4, 'MarkerFaceColor', 'k');
-% hold on
-% plot(xi_anal, gn_anal_plot, 'b-', 'MarkerSize', 1, 'LineWidth', 1.5);
-% xlim([-1.5*b 1.5*b])
-% ylim([0 1e-3])
-% xlabel('$\xi$', 'Interpreter', 'latex', 'FontSize', 14)
-% ylabel('$\|\mathbf{g_T}\|$', 'Interpreter', 'latex', 'FontSize', 14)
-% set(gca,'TickLabelInterpreter','latex','FontSize',14)   % <-- axis numbers in LaTeX
+gn_anal_plot = K*sqrt(b^2-xi_anal.^2);
+figure(1)
+plot(xi, gn, 'k-o', 'MarkerSize', 4, 'MarkerFaceColor', 'k');
+hold on
+plot(xi_anal, gn_anal_plot, 'b-', 'MarkerSize', 1, 'LineWidth', 1.5);
+xlim([-1.5*b 1.5*b])
+ylim([0 1e-3])
+xlabel('$\xi$', 'Interpreter', 'latex', 'FontSize', 14)
+ylabel('$\|\mathbf{g_T}\|$', 'Interpreter', 'latex', 'FontSize', 14)
+set(gca,'TickLabelInterpreter','latex','FontSize',14)   % <-- axis numbers in LaTeX
 
 %exportgraphics(gcf, fullfile('Output','gn_plot.png'))
 
