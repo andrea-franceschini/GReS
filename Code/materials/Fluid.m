@@ -3,19 +3,20 @@ classdef Fluid < handle
 
     properties (Access = private)
         %General properties:
+        name
         gamma;             % Fluid specific weight
         beta;              % Fluid compressibility
         mu;                % Fluid dynamic viscosity
     end
 
     methods (Access = public)
-      function obj = Fluid(inputStruct)
-            %FLUID Class constructor method
+      function obj = Fluid(varargin)
+
             % Calling the function to set the material parameters
-            obj.readMaterialParameters(inputStruct);
+            obj.readMaterialParameters(varargin{:});
         end
 
-        function gamma = getFluidSpecWeight(obj)
+        function gamma = getSpecificWeight(obj)
             %GETFLUIDSPECWIEGHT Function to get fluid specific gravity
             gamma = obj.gamma;
         end
@@ -29,16 +30,25 @@ classdef Fluid < handle
             %GETDYNVISCOSITY Function to get fluid dynamic viscosity
             mu = obj.mu;
         end
+ 
+        function setName(obj,name)
+          obj.name = name;
+        end
     end
 
     methods (Access = private)
-      function readMaterialParameters(obj,inputStruct)
-            
-            % Assign object properties
-            obj.gamma = getXMLData(inputStruct,0,"specificWeight");
-            obj.beta = getXMLData(inputStruct,0,"compressibility");
-            obj.mu = getXMLData(inputStruct,[],"dynamicViscosity");
-     
-        end
+      function readMaterialParameters(obj,varargin)
+
+        default = struct('specificWeight',0.0,...
+                         'compressibility',0.0,...
+                         'dynamicViscosity',1e-6); % viscosity of water in kPa*s
+
+        params = readInput(default,varargin{:});
+
+        obj.gamma = params.specificWeight;
+        obj.beta = params.compressibility;
+        obj.mu = params.dynamicViscosity;
+
+      end
     end
 end

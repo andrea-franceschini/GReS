@@ -4,6 +4,9 @@ clc
 tWall = tic();      % start wall-clock timer
 tCPU  = cputime;    % start CPU timer
 
+v = gresLog().getVerbosity();
+gresLog().setVerbosity(-2);
+
 testFiles = {
     fullfile('Terzaghi','testTerzaghi.m')
     fullfile('SubDomains','testSubDomains.m')
@@ -11,6 +14,8 @@ testFiles = {
     fullfile('Richards','testRichards.m')
     fullfile('ConstantSliding','testConstantSliding.m')
     fullfile('SingleCrackCompressed','testSingleCrackCompressed.m')
+    fullfile('ConstantSlidingEFEM','testConstantSlidingEFEM.m')
+    fullfile('CubeSedimentation','testSedimentation.m')
 };
 
 results = runtests(testFiles);
@@ -26,3 +31,5 @@ if any([results.Failed])
 else
     disp("All tests ran successfully");
 end
+
+gresLog().setVerbosity(v);

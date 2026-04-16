@@ -1,8 +1,5 @@
-function  plotMesh(mesh, foldName, funct, varargin)
-% PLOTFUNCTION Summary of this function goes here
-%   Detailed explanation goes here
-outVTK = VTKOutput(mesh, foldName); % create VTK object
-outVTK.writeVTKFile(0, [], [], [], []);
-outVTK.finalize()
+function  plotMesh(mesh, foldName)
+
+plotFunction(mesh,foldName,0.0,zeros(mesh.nNodes,1))
 end
 

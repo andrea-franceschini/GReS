@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<BoundaryConditions>
+
+  <BC
+      name = "z_Fixed_bottom"
+      type = "Dirichlet"
+      field = "surface"
+      variable = "displacements"
+      entityListType = "tag"
+      entityList = "2"
+      components = "z"
+      >
+
+
+    <BCevent
+             time = "0.0"
+             value = "0.0"
+             />
+
+  </BC>
+
+  <BC
+      name = "y_Fixed_bottom"
+      type = "Dirichlet"
+      field = "surface"
+      variable = "displacements"
+      entityListType = "tag"
+      entityList = "1"
+      components = "y"
+      >
+
+
+    <BCevent
+             time = "0.0"
+             value = "0.0"
+             />
+
+  </BC>
+
+
+  <BC
+      name = "x_Fixed_bottom"
+      type = "Dirichlet"
+      field = "node"
+      variable = "displacements"
+      entityListType = "bcList"
+      entityList = "2,6,40,41,42"
+      components = "x"
+      >
+
+
+    <BCevent
+             time = "0.0"
+             value = "0.0"
+             />
+
+  </BC>
+
+</BoundaryConditions>

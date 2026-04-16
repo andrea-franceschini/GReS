@@ -4,6 +4,7 @@ classdef SimulationParameters < handle
   
   properties (SetAccess = private, GetAccess = public)
     itMaxNR = 10
+    itMaxConfig = 10
     relTol = 1.e-6
     absTol = 1.e-10
     pNorm = 2
@@ -17,69 +18,67 @@ classdef SimulationParameters < handle
     divFac = 2
     pTarget
     sTarget = 0.4
-    NLSolver = 'Newton'
-    verbosity = 2
     goOnBackstep = 0;
     isTimeDependent = true;
+    attemptSimplestConfiguration = false;
+    linSolverParams = []
   end
 
   methods (Access = public)
-    function obj = SimulationParameters(fileName,varargin)
-      obj.readSimulationParameters(fileName);
-    end
-
-    function status = isNewtonNLSolver(obj)
-      status = false;
-      if strcmp(obj.NLSolver,'Newton')
-        status = true;
-      end
-    end
-    
-    function status = isPicardNLSolver(obj)
-      status = false;
-      if strcmp(obj.NLSolver,'Picard')
-        status = true;
-      end
+    function obj = SimulationParameters(varargin)
+      obj.readSimulationParameters(varargin{:});
     end
 
     function setTimeDependence(obj,flag)
        obj.isTimeDependent = flag;
     end
 
-    function setVerbosity(obj,val)
-      obj.verbosity = val;
-    end
   end
   
   methods (Access = private)
  
-    function readSimulationParameters(obj,fileName)
-        %READXMLFILE - function to read the simulation parameters file in
-        %xml and construct the class object.
+    function readSimulationParameters(obj,varargin)
+      %READXMLFILE - function to read the simulation parameters file in
+      %xml and construct the class object.
 
-        fdata = readstruct(fileName,AttributeSuffix="");
+      default = struct( ...
+        ... % time params
+        "Start", 0.0, ...
+        "End", double.empty, ...
+        "DtInit", double.empty, ...
+        "DtMin", double.empty, ...
+        "DtMax", double.empty, ...
+        "incrementFactor", 1.1, ...
+        "choppingFactor", 2.0, ...
+        ...% solver params
+        "AbsoluteTolerance", 1e-10, ...
+        "RelativeTolerance", 1e-6, ...
+        "MaxNLIteration", 10, ...
+        "MaxConfigurationIteration", 10, ...
+        "resetConfiguration", 0,...
+        ...% Linear solver params
+        "LinearSolver",missing ... 
+        );
 
-        if isfield(fdata,'simParam')
-          fdata = fdata.simParam;
-        end
+      params = readInput(default,varargin{:});
 
-        time = fdata.("Time");
+      obj.tIni   = params.Start;
+      obj.tMax   = params.End;
+      obj.dtIni  = params.DtInit;
+      obj.dtMin  = params.DtMin;
+      obj.dtMax  = params.DtMax;
+      obj.multFac = params.incrementFactor;
+      obj.divFac  = params.choppingFactor;
 
-        obj.tIni = getXMLData(time,0,'Start');
-        obj.tMax = getXMLData(time,[],'End');
-        obj.dtIni = getXMLData(time,[],'DtInit');
-        obj.dtMin = getXMLData(time,[],'DtMin');
-        obj.dtMax = getXMLData(time,[],'DtMax');
-        obj.multFac = getXMLData(time,1.1,'incrementFactor');
-        obj.divFac = getXMLData(time,2.,'choppingFactor');
+      obj.absTol     = params.AbsoluteTolerance;
+      obj.relTol     = params.RelativeTolerance;
+      obj.itMaxNR    = params.MaxNLIteration;
+      obj.itMaxConfig = params.MaxConfigurationIteration;
+      obj.attemptSimplestConfiguration = logical(params.resetConfiguration);
 
-        if isfield(fdata,"Solver")
-          solver = fdata.("Solver");
-          obj.absTol = getXMLData(solver,1e-10,'AbsoluteTolerance');
-          obj.relTol = getXMLData(solver,1e-6','RelativeTolerance');
-          obj.theta = getXMLData(solver,1.,'Theta');
-          obj.itMaxNR = getXMLData(solver,10,'MaxNLIteration');
-        end
+      if ~ismissing(params.LinearSolver)
+         obj.linSolverParams = params.LinearSolver;
+      end
     end
 
   end

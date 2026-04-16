@@ -16,13 +16,8 @@ classdef Elastic < handle
 
   methods (Access = public)
     % Class constructor method
-    function obj = Elastic(inputStruct, varargin)
-       if nargin > 2
-          obj.isTabular = true;
-          obj.readTabMaterialParameters(fID,matFileName,varargin{1});  
-       else
-          readMaterialParameters(obj,inputStruct);
-       end
+    function obj = Elastic(varargin)
+          readMaterialParameters(obj,varargin{:});
     end
     
     function [status] = initializeStatus(obj, sigma)
@@ -40,6 +35,7 @@ classdef Elastic < handle
     %
 
     function D = getElasticTensor(obj,cID)
+      % elastic tensor in engineering Voigt notation
        D = zeros(6);
        if obj.isTabular
           pois = obj.nu(cID);
@@ -69,20 +65,22 @@ classdef Elastic < handle
   methods (Access = private)
     % Assigning material parameters (check also the Materials class)
     % to object properties
-    function readMaterialParameters(obj,inputStruct)
-      if isfield(inputStruct,"Elastic")
-        inputStruct = inputStruct.Elastic;
-      end
+    function readMaterialParameters(obj,varargin)
+
+      default = struct("youngModulus",[],...
+                       "poissonRatio",[]);
+
+      params = readInput(default,varargin{:});
+      
        %
-       obj.E = getXMLData(inputStruct,[],"youngModulus");
-       obj.nu = getXMLData(inputStruct,[],"poissonRatio");
+       obj.E = params.youngModulus;
+       obj.nu = params.poissonRatio;
        %
        % Compute the M factor
        obj.M = obj.nu/(1-obj.nu);
        %
        % Compute vertical compressibility
-       % obj.cM = (1+obj.nu)*(1-2*obj.nu)/(obj.E*(1-obj.nu));
-       obj.cM = 0.;
+       obj.cM =  (1+obj.nu).*(1-2*obj.nu)./(obj.E.*(1-obj.nu));
        % Compute constitutive matrix
     end
  

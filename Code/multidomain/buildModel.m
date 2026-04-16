@@ -1,52 +1,73 @@
-function domains = buildModel(fileName)
-% % build a structure array containing istances of all classes for different
-% noncofnorming domains in the simulation
-outStruct = readstruct(fileName,AttributeSuffix="");
-if isfield(outStruct,"Domains")
-  outStruct = outStruct.Domains;
+function varargout = buildModel(fileName)
+% This function constructs a full simulation model from a single XML input
+% file. The goal is to assemble all components required for a GReS
+% simulation (geometry, mesh, materials, integration rules, boundary
+% conditions, and output settings) into an array of Discretizer object, one
+% for each domain in the simulation.
+% Optional interface construction is also supported.
+% 
+% FUNCTION: buildModel(fileName)
+% 
+% Reads the XML input using readstruct, extracts the <Domain> block when
+% present, and iterates over each domain specification. For each domain
+% entry, defineDomain is called to create a Discretizer object.
+% The function returns:
+% - The list of fully constructed domain objects  
+% - Optionally, the interface objects connecting multiple domains, if any.
+% 
+% Example usage:
+% domains = buildModel("input.xml");
+% [domains, interfaces] = buildModel("input.xml");
+
+default = struct('Domain',struct(),...
+                 'Interface',struct());
+
+params = readInput(default,fileName);
+domainInput = params.Domain;
+interfInput = params.Interface;
+
+if numel(fieldnames(domainInput))==0
+  nD = 0;
+else
+nD = numel(domainInput);
 end
 
-if isfield(outStruct,"Domain")
-  outStruct = outStruct.Domain;
-end
-
-nD = numel(outStruct);
 domains = [];
 
 for i = 1:nD
-  domains = [domains; defineDomain(outStruct(i))];
+  domains = [domains; defineDomain(domainInput(i))];
 end
 
-% domains = cell2mat(domains);
+varargout{1} = domains;
+
+if nargout > 1
+  if numel(fieldnames(interfInput))>0
+    interfaces = InterfaceSolver.addInterfaces(domains,interfInput);
+    varargout{2} = interfaces;
+  end
+
+end
 
 end
 
 
-function modStr = defineDomain(struc)
+function domain = defineDomain(input)
 
-name = struc.Name;
-model = ModelType(strsplit(struc.ModelType));
-topology = Mesh();
-topology.importMesh(char(struc.Geometry));
-if isfield(struc,"Material")
-  material = Materials(char(struc.Material));
+input = readInput(input);
+
+topology = Mesh.create(input.Geometry);
+
+if isfield(input,"Materials")
+  mat = Materials(input.Materials);
 else
-  material = [];
+  mat = [];
 end
 
-% dof manager
-if ~isfield(struc,'DoFManager')
-  dof = DoFManager(topology,model);
-else
-  dof = DoFManager(topology,model,struc.DoFManager);
+gNPoints = 0;
+
+if isfield(input,"Gauss")
+  gNPoints = input.Gauss.nGP;
 end
-
-if isfield(struc,"SimParameters")
-  simparam = SimulationParameters(struc.SimParameters);
-end
-
-
-gNPoints = getXMLData(struc,0,'Gauss');
 
 if gNPoints~=0
   elems = Elements(topology,gNPoints);
@@ -54,36 +75,28 @@ else
   elems = Elements(topology);
 end
 
-faces = Faces(model,topology);
+if ~any(topology.cellVTKType==10)
+  faces = Faces(topology);
+else
+  faces = [];
+end
+
 grid = struct('topology',topology,'cells',elems,'faces',faces);
 
+
 % boundary conditions
-if isfield(struc,'BoundaryConditions')
-  bcFile = getXMLData(struc,[],"BoundaryConditions");
-  bc = Boundaries(bcFile,model,grid);
+if isfield(input,'BoundaryConditions')
+  bound = Boundaries(grid,input.BoundaryConditions);
 else
-  bc = [];
-end
-
-% output manager
-if isfield(struc,"OutState")
-  outFile = struc.OutState;
-  if ~isstruct(struc.OutState)
-    outFile = getXMLData(struc,[],"OutState");
-  end
-  printUtils = OutState(model,grid.topology,outFile);
-else
-  printUtils = OutState(model,grid.topology);
+  bound = [];
 end
 
 
-modStr = Discretizer('ModelType',model,...
-  'SimulationParameters',simparam,...
-  'DoFManager',dof,...
-  'Boundaries',bc,...
-  'OutState',printUtils,...
-  'Materials',material,...
-  'Grid',grid);
+domain = Discretizer('grid',grid,...
+                     'materials',mat,...
+                     'boundaries',bound);
+
+domain.addPhysicsSolvers(input.Solver);
 
 
 end

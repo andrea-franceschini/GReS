@@ -152,6 +152,10 @@ classdef Quadrilateral < FEM
 
   methods (Access = protected)
     function setElement(obj)
+      if obj.nGP < 2
+        obj.nGP = 2;
+        gresLog().warning(2,"Gauss integration for Hexahedron set to minimum of 2 per direction")
+      end
       obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
       obj.detJ = zeros(1,obj.GaussPts.nNode);
       findLocBasisF(obj);
@@ -265,6 +269,7 @@ classdef Quadrilateral < FEM
 %      %
 %      dN = [d1';d2'];
     end
+
 
     function N = computeBasisF(coordList)
       % Find the value the basis functions take at some  reference points

@@ -11,8 +11,11 @@ We invite you to explore GReS and leverage its powerful capabilities for your ge
 
 ## Publications ##
 
-ArXiv link to a publication describing a novel interpolation strategy fot the mortar method:
-http://arxiv.org/abs/2409.11735
+Link to a publication describing a novel interpolation strategy fot the mortar method:
+[Moretto, D., Franceschini, A. & Ferronato, M., _A novel mortar method integration using radial basis functions._ Comput. Math. Appl. 198, 38-58 (2025)](https://doi.org/10.1016/j.camwa.2025.08.008)
+
+Link to a publication describing a stabilized formulation for the mortar method with non-linear contact constraints:
+[Moretto, D., Franceschini, A. & Ferronato, M., _A stabilized formulation for the mortar method with non-linear contact constraints._ Appl Math 70, 825–849 (2025)](https://doi.org/10.21136/AM.2025.0149-25)
 
 ## Main contributors ##
 
@@ -20,6 +23,7 @@ The code is developed by the research group in Numerical Analysis at University 
 
 * Daniele Moretto (PhD student at University of Padova)
 * Eduardo da Silva Castro (PostDoc at University of Padova)
+* Mattia Lupi (PhD student at University of Padova)
 * Andrea Franceschini (assistant professor at University of Padova)
 
 Past members:

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+  <SimulationParameters
+                        Start="0."
+                        End ="1.0"
+                        DtInit=".1"
+                        DtMin ="1e-5"
+                        DtMax =".2"
+                        incrementFactor = "1.25"
+                        choppingFactor = "2"
+                        RelativeTolerance = "1.e-10"
+                        AbsoluteTolerance = "1.e-8"
+                        />
+
+  <Materials fileName = "Input/materials.xml" />
+
+
+  <BoundaryConditions fileName = "Input/boundaryConditions.xml" />
+
+
+  <Output
+          printTimes   = ".1,.5,1"
+          outputFile   = "model03/Output03/results"
+          matFileName  = "model03/Output03/history"
+          />
+
+
+
+  <Solver>
+    <BiotFullyCoupled>
+      <Poromechanics />
+      <SinglePhaseFlowFVTPFA targetRegions = "1"/>
+    </BiotFullyCoupled>
+  </Solver>
+
+
+</Problem>

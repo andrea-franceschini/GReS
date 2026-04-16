@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SimulationParameters
+        Start="0."
+        End ="5.184e+4"
+        DtInit= "1.e+0"
+        DtMin ="1.e+0"
+        DtMax ="1.e+3"         
+        incrementFactor = "1.05"
+        MaxNLIteration = "20"
+        AbsoluteTolerance = "1.e-9"
+        RelativeTolerance = "1.e-8" />

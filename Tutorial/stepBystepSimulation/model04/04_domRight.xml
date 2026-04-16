@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Preprocess input for non-conforming multi-domain simulation -->
+
+<Problem>
+
+  <Geometry>
+    <StructuredMesh NX="20" NY="20" NZ="10"
+                    LX="20,100" LY="0,100" LZ="0,10"/>
+  </Geometry>
+
+  <Materials fileName = "Input/materials.xml" />
+
+  <BoundaryConditions fileName = "model04/boundaryConditions.xml" />
+
+
+  <Solver>
+    <BiotFullyCoupled>
+      <Poromechanics />
+      <SinglePhaseFlowFVTPFA targetRegions="1"/>
+    </BiotFullyCoupled>
+  </Solver>
+
+</Problem>
+
+
+

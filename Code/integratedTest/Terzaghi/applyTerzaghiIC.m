@@ -16,7 +16,7 @@ Ku = lambda + 2*(G/3) + biot^2*M;
 
 state.data.pressure = state.data.pressure+(biot*M*abs(pL))/(Ku+4*G/3);
 zu = mesh.coordinates(:,3);
-state.data.dispConv(3:3:end) = arrayfun(@(zu) 1/(Ku+4*G/3)*pL*(zu),zu);
-state.data.dispCurr = state.data.dispConv;
+state.data.displacements(3:3:end) = arrayfun(@(zu) 1/(Ku+4*G/3)*pL*(zu),zu);
+
 end
 

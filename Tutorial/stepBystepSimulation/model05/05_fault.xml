@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Preprocess input for non-conforming multi-domain simulation -->
+
+<Problem>
+
+
+  <SimulationParameters
+                        Start="0.0"
+                        End ="0.999"
+                        DtInit=".1"
+                        DtMin ="1e-5"
+                        DtMax =".25"
+                        incrementFactor = "1.0"
+                        choppingFactor = "2"
+                        RelativeTolerance = "1.e-10"
+                        AbsoluteTolerance = "1.e-8"
+                        MaxConfigurationIteration = "8"
+                        resetConfiguration = "0"
+                        />
+
+
+<!--Domain fileName = "model05/05_domLeft.xml"/>
+
+  <Domain fileName = "model05/05_domRight.xml"/>
+  -->
+
+  <Interface>
+    <SolidMechanicsContact
+                           masterDomain = "2" masterSurface = "6"
+                           slaveDomain = "1" slaveSurface = "5"
+                           multiplierType="P0">
+
+      <Coulomb
+               cohesion = "0.1"
+               frictionAngle = "30" />
+
+      <ActiveSet
+                 resetActiveSet = "0"
+                 forceStickBoundary = "z" >>
+
+        <Tolerances
+                    sliding = "5e-4"
+                    normalGap = "1e-4"
+                    normalTraction = "-1e-2"
+                    tangentialViolation = "1e-5"
+                    minLimitTraction = "1e-4"
+                    areaChange = "1e-4"
+                    maxActiveSetChange = "6"
+                    />
+
+      </ActiveSet>
+
+    </SolidMechanicsContact>
+
+  </Interface>
+
+
+    <Output printTimes="0.1,0.25,0.5,1.0"
+            outputFile="model05/Output05/resultsRock"
+            matFileName="model05/Output05/history"/>
+
+</Problem>

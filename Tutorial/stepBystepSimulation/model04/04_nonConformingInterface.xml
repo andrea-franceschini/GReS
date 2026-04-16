@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Preprocess input for non-conforming multi-domain simulation -->
+
+<Problem>
+
+  <SimulationParameters
+                        Start="0."
+                        End ="1.01"
+                        DtInit=".1"
+                        DtMin ="1e-5"
+                        DtMax =".1"
+                        incrementFactor = "1.0"
+                        choppingFactor = "2"
+                        RelativeTolerance = "1.e-10"
+                        AbsoluteTolerance = "1.e-8"
+                        />
+
+
+  <Output printTimes=".1,.25,.5,1"
+          outputFile="model04/Output04/results"
+          matFileName="model04/Output04/history"
+          />
+
+
+  <Interface>
+    <MeshTying
+               masterDomain = "2" masterSurface = "6"
+               slaveDomain = "1" slaveSurface = "5"
+               multiplierType="P0">
+
+    </MeshTying>
+
+  </Interface>
+
+</Problem>

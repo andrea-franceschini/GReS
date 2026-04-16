@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Problem>
+
+  <SimulationParameters
+                        Start="0.0"
+                        End ="1e0"
+                        DtInit= "1e0"
+                        DtMax ="1e0"
+                        DtMin ="1.0"
+                        RelativeTolerance = "1e-8"
+                        AbsoluteTolerance = "1e-9"
+                        />
+
+
+  <Domain>
+
+    <Geometry
+              meshFile = "Input/SingleCrack_grid.vtk"
+              />
+    <Gauss nGP = "3" />
+    <Materials fileName = "Input/materials.xml" />
+    <BoundaryConditions fileName = "Input/singleCrackBCs.xml" />
+
+
+    <Solver>
+      <Poromechanics />
+    </Solver>
+
+  </Domain>
+
+
+  <Interface>
+
+    <MeshTying
+               masterDomain = "1"
+               slaveDomain = "1"
+               masterSurface = "4"
+               slaveSurface = "5"
+               multiplierType = "P0">
+
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  nGP = "6"
+                  />
+    </MeshTying>
+
+    <SolidMechanicsContact
+                           masterDomain = "1"
+                           slaveDomain = "1"
+                           masterSurface = "6"
+                           slaveSurface = "7"
+                           multiplierType = "P0">
+
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  nGP = "6"
+                  />
+      <Coulomb
+               cohesion = "0"
+               frictionAngle = "30.0" />
+
+    </SolidMechanicsContact>
+
+  </Interface>
+
+</Problem>
+

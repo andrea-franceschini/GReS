@@ -120,7 +120,7 @@ classdef Hexahedron < FEM
         i = i + 1;
         dJWeighed = getDerBasisFAndDet(obj,el,3);
         vol(i) = sum(dJWeighed);
-        assert(vol(i)>0,'Volume less than 0');
+        assert(vol(i)>0,'Volume less than 0 for element %i',el);
         gPCoordinates = getGPointsLocation(obj,el);
         cellCentroid(i,:) = (dJWeighed * gPCoordinates)./vol(i);
       end
@@ -253,6 +253,10 @@ classdef Hexahedron < FEM
     end
 
     function setElement(obj)
+      if obj.nGP < 2
+        obj.nGP = 2;
+        gresLog().warning(2,"Gauss integration for Hexahedron set to minimum of 2 per direction")
+      end
       obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
       obj.detJ = zeros(1,obj.GaussPts.nNode);
       findLocBasisF(obj);

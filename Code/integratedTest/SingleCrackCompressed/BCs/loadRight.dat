@@ -1,7 +1,0 @@
-SurfBC            % BC item 
-Neu            % BC type 
-Poromechanics            % Physics 
-right_load            % BC name 
-BCs/loadRight/list 
-0.000000 BCs/loadRight/time0.dat 
-End

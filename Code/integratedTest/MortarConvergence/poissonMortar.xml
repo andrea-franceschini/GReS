@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<struct>
+
+  <SimulationParameters
+    Start="0" End="1" DtInit="1" DtMax="1" DtMin="1"/>
+
+
+  <Domain>
+
+    <Geometry meshFile="Input/Mesh/meshes/domain_hexa_1.vtk"/>
+
+    <Gauss nGP="3"/>
+
+    <BoundaryConditions fileName="Input/poissonMortarBCs.xml"/>
+
+    <Solver> 
+      <Poisson />
+    </Solver>
+
+  </Domain>
+
+  <Interface>
+    <MeshTying 
+               multiplierType="dual"
+               masterDomain = "1" slaveDomain = "1"
+               masterSurface = "1"  slaveSurface = "3" >
+
+      <Quadrature type="SegmentBasedQuadrature"
+                  nGP="6"
+                  nInt="5"/>
+
+    </MeshTying>
+  </Interface>
+
+</struct>
