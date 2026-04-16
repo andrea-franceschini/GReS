@@ -9,18 +9,18 @@ classdef Poromechanics < PhysicsSolver
     avStressOld
     avStrainOld
     flOut = true
-
+    
     % stress and strain tensor use engineering voigt notation
     % s_xx,s_yy,s_zz,tau_yz,tau_xz,tau_xy
   end
 
   properties (Access = protected)
     iniStress
+    gaussOrder      % (0 means the minimum required by the fem type)
   end
 
   properties (Access = private)
     fieldId
-    gaussOrder      % (0 means the minimum required by the fem type)
   end
 
   methods (Access = public)
@@ -228,8 +228,9 @@ classdef Poromechanics < PhysicsSolver
 
       % initial stress - assumed balanced with external forces
       state = getState(obj);
-      obj.iniStress = state.data.stress;
       computeStrain(obj);
+      [obj.avStress,obj.avStrain] = finalizeState(obj,state);
+      obj.iniStress = state.data.stress;
       
     end
 

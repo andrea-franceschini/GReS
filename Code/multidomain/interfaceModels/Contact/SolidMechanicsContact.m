@@ -240,7 +240,6 @@ classdef SolidMechanicsContact < MeshTying
       % initialize traction for cell stress (average)
       sl = MortarSide.slave;
       poro = obj.domains(sl).getPhysicsSolver("Poromechanics");
-      [avgStress,~] = finalizeState(poro,getState(poro));
       surf = obj.grids(sl).surfaces;
       faces = obj.domains(sl).grid.faces;
       normals = surf.normal;
@@ -250,7 +249,7 @@ classdef SolidMechanicsContact < MeshTying
       idx = [1;6;5;6;2;4;5;4;3];
       t = zeros(getNumbDoF(obj),1);
       for i = 1:numel(cellIds)
-        sigma(:) = avgStress(i,idx);
+        sigma(:) = poro.avStress(i,idx);
         n = normals(i,:);
         tDof = getMultiplierDoF(obj,i);
         t(tDof) = sigma*n';

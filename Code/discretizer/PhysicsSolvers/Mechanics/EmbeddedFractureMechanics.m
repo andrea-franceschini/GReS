@@ -73,6 +73,29 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     end
 
 
+    function initialize(obj)
+
+      t = computeInitialTraction(obj);
+      obj.state.data.traction = obj.state.data.traction + t;
+
+    end
+
+    function t = computeInitialTraction(obj)
+      % initialize traction for cell stress (average)
+      sl = MortarSide.slave;
+      poro = obj.domains(sl).getPhysicsSolver("Poromechanics");
+      frac = obj.fractureMesh.surfaces;
+      idx = [1;6;5;6;2;4;5;4;3];
+      sigma = zeros(3);
+      t = zeros(frac.num,1);
+      for i = 1:frac.num
+        sigma(:) = poro.avStress(i,idx);
+        n = frac.normal(i,:);
+        t(dofId(i,3)) = sigma*n';
+      end
+    end
+
+
     function [Kuw,Kwu,Kww,rhsW] = computeJacobianAndRhs(obj,dt)
 
       dofm = obj.domain.dofm;
@@ -199,6 +222,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       for i = 1:numel(obj.activeSet.curr)
 
+        fracId = f.fracId(i);
+
         state = obj.activeSet.curr(i);
 
         id = DoFManager.dofExpand(i,3);
@@ -206,7 +231,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         t = traction(id);
         g_n = displacementJump(id(1));
 
-        limitTraction = abs(obj.cohesion - tan(obj.phi)*t(1));
+        limitTraction = abs(obj.cohesion(fracId) - tan(obj.phi(fracId))*t(1));
 
         obj.activeSet.curr(i) = updateContactState(state,t,...
           limitTraction, ...
@@ -465,16 +490,14 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       obj.cohesion = zeros(nFractures,1);
       obj.phi = zeros(nFractures,1);
 
-
       obj.fractureMesh = Grid();
       fMesh = obj.fractureMesh;
       f = fMesh.surfaces;
-      [f.tang1,f.tang2,f.cutCells,f.nFracCells] = deal([]);
+      [f.tang1,f.tang2,f.cutCells,f.fracId] = deal([]);
       f.connectivity = ArrayOfArrays();
 
       % count number of vertices in each fracture
       nV = 0;
-
 
       for fId = 1:nFractures
 
@@ -523,7 +546,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         % compute intersection points of crossed edges
         x0 = coords(edgesTopol(isEdgeCrossed,1),:);
-        x1 =  coords(edgesTopol(isEdgeCrossed,2),:);
+        x1 = coords(edgesTopol(isEdgeCrossed,2),:);
         distEdge = x1-x0;
         distOrigin = origin - x0;
         t = (distOrigin * nVec)./(distEdge * nVec);
@@ -570,7 +593,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         for ic = 1:nC
           cellEdges = cellToEdges(newCutCells(ic),:);
           isEdgeCut = logical(m(newCutCells(ic),:));
-          cutEdges =  cellEdges(isEdgeCut);
+          cutEdges = cellEdges(isEdgeCut);
           nVerts = numel(cutEdges);
           verts = intersections(cutEdges,:);
           [cutCellVertices(c+1:c+nVerts,:),perm] = orderPointsCCW(verts);
@@ -591,17 +614,23 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         f.center      = [f.center; cutC];
         f.tang1       = [f.tang1; repmat(tVec1',nC,1)];
         f.tang2       = [f.tang2; repmat(tVec2',nC,1)];
-        f.nFracCells  = [f.nFracCells; nC];
+        f.fracId  = [f.fracId; repmat(fId,nC,1)];
 
         % finalize the mesh for the current fracture
         surfs = surfs(1:c);
-        [~,~,id] = unique(surfs);
-        surfs = nV + id;
-        nV = sum(id > 1);
+
+        % local numbering w.r.t. current fracture
+        [usedEdges,~,locConn] = unique(surfs,'stable');
+
+        % shift to global numbering in the accumulated fracture mesh
+        surfs = nV + locConn;
+        nV = nV + numel(usedEdges);
 
         f.connectivity = [f.connectivity; ArrayOfArrays(surfs,cutNumVerts)];
         f.numVerts = [f.numVerts; cutNumVerts];
-        fMesh.coordinates = [fMesh.coordinates; xInt(isInPlane,:)];
+
+        % coordinates consistent with local numbering above
+        fMesh.coordinates = [fMesh.coordinates; intersections(usedEdges,:)];
 
       end
 
@@ -677,14 +706,15 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       penN = obj.penalty_n;
       penT = obj.penalty_t;
+      frac = obj.fractureMesh.surfaces;
 
-      for i = 1:obj.fractureMesh.surfaces.num
+      for i = 1:frac.num
         dofW = getLocalDoF(obj.domain.dofm,obj.fieldId,i);
         j = jump(dofW);
         dj = deltaJump(dofW);
+        fId = frac.fracId(i);
 
         switch obj.activeSet.curr(i)
-
           case ContactMode.stick
             s.data.traction(dofW(1)) = penN * j(1);
             s.data.traction(dofW(2:3)) = penT * j(2:3);
@@ -692,7 +722,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           case {ContactMode.slip, ContactMode.newSlip}
             s.data.traction(dofW(1)) = penN * j(1);
             tN = s.data.traction(dofW(1));
-            tauLim = obj.cohesion - tN*tan(obj.phi);
+            tauLim = obj.cohesion(fId) - tN*tan(obj.phi(fId));
             %
             s.data.traction(dofW(2:3)) = tauLim * (dj(2:3)/norm(dj(2:3)));
 
@@ -760,8 +790,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       % slip: 2x1 array with tangential gap increment
       state = obj.activeSet.curr(i);
       dtdg = zeros(3,3);
+      fId = obj.fractureMesh.surfaces.fracId(i);
+      phiF = obj.phi(fId);
+      cF = obj.cohesion(fId);
       tN = obj.domain.state.data.traction(3*i-2);
-      tauLim = obj.cohesion - tN*tan(obj.phi);
+      tauLim = cF - tN*tan(phiF);
 
       switch state
         case ContactMode.open
@@ -772,7 +805,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           dtdg(1,1) = obj.penalty_n;
           if norm(slip) > obj.activeSet.tol.sliding
             slipNorm = norm(slip);
-            dtdg([2 3],1) = - obj.penalty_n*tan(obj.phi)*(slip/slipNorm);
+            dtdg([2 3],1) = - obj.penalty_n*tan(phiF)*(slip/slipNorm);
             dtdg([2 3],[2 3]) = tauLim * ...
               (slipNorm^2*eye(2) - slip * slip')/slipNorm^3;
           end
