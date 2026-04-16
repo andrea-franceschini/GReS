@@ -102,6 +102,7 @@ classdef Grid < handle
       surfOut.center       = surf.center(sel,:);
       surfOut.normal       = surf.normal(sel,:);
       surfOut.area         = surf.area(sel);
+      surfOut.faceId       = surf.faceId(sel);
 
       edgeStruct.num = 0;
       edgeStruct.length = zeros(0,1);

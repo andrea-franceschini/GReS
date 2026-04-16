@@ -220,8 +220,41 @@ classdef SolidMechanicsContact < MeshTying
 
       initialize@InterfaceSolver(obj);
 
+      % initial traction from cell stress
+      tIni = computeInitialTraction(obj);
+      obj.state.traction = obj.state.traction + tIni;
+      obj.state.initTraction = obj.state.traction;
+
       setStickNodes(obj);
 
+    end
+
+
+    function addInitialTraction(obj)
+      % add a traction on the fault
+      obj.state.traction = obj.state.traction + t;
+      obj.state.iniTraction = obj.state.iniTraction + t;
+    end
+
+    function t = computeInitialTraction(obj)
+      % initialize traction for cell stress (average)
+      sl = MortarSide.slave;
+      poro = obj.domains(sl).getPhysicsSolver("Poromechanics");
+      [avgStress,~] = finalizeState(poro,getState(poro));
+      surf = obj.grids(sl).surfaces;
+      faces = obj.domains(sl).grid.faces;
+      normals = surf.normal;
+      faceIds = surf.faceId;
+      cellIds = faces.neighbors(faceIds,1);
+      sigma = zeros(3);
+      idx = [1;6;5;6;2;4;5;4;3];
+      t = zeros(getNumbDoF(obj),1);
+      for i = 1:numel(cellIds)
+        sigma(:) = avgStress(i,idx);
+        n = normals(i,:);
+        tDof = getMultiplierDoF(obj,i);
+        t(tDof) = sigma*n';
+      end
     end
 
 
