@@ -65,13 +65,7 @@ mat = Materials(params.Materials);
 nn = [8,12,16,20];
 linsolverTime = zeros(3,length(nn));
 for i = 1:length(nn)
-   mesh = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
-
-   gaussOrder = 2;
-   elems = Elements(mesh,gaussOrder);
-   faces = Faces(mesh);
-   gridd = struct('topology',mesh,'cells',elems,'faces',faces);
-
+   gridd = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
 
    bound = Boundaries(gridd,params.BoundaryConditions);
 
@@ -83,7 +77,7 @@ for i = 1:length(nn)
    domain.addPhysicsSolvers(params.Solver);
 
    F = -10; % vertical force
-   state = applyMandelIC(domain.state,mat,mesh,F);
+   state = applyMandelIC(domain.state,mat,gridd,F);
 
    % Solve the fully coupled Mandel Biot problem with matlab
    solver = NonLinearImplicit('simulationparameters',simParam,...
@@ -114,12 +108,7 @@ mat = Materials(params.Materials);
 
 % Number of nodes for one dimension
 for i = 1:length(nn)
-   mesh = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
-
-   gaussOrder = 2;
-   elems = Elements(mesh,gaussOrder);
-   faces = Faces(mesh);
-   gridd = struct('topology',mesh,'cells',elems,'faces',faces);
+   gridd = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
 
 
    bound = Boundaries(gridd,params.BoundaryConditions);
@@ -132,7 +121,7 @@ for i = 1:length(nn)
    domain.addPhysicsSolvers(params.Solver);
 
    F = -10; % vertical force
-   state = applyMandelIC(domain.state,mat,mesh,F);
+   state = applyMandelIC(domain.state,mat,gridd,F);
 
    % Solve the Mandel Biot problem with matlab using the fixed stress split algorithm
    solver = FixedStressSplit('simulationparameters',simParam,...
@@ -164,14 +153,9 @@ simParam = SimulationParameters(params.SimulationParameters);
 mat = Materials(params.Materials);
 
 for i = 1:length(nn)
-   mesh = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
+   gridd = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
 
-   gaussOrder = 2;
-   elems = Elements(mesh,gaussOrder);
-   faces = Faces(mesh);
-   gridd = struct('topology',mesh,'cells',elems,'faces',faces);
-
-
+ 
    bound = Boundaries(gridd,params.BoundaryConditions);
 
    printUtils = OutState(params.Output);
@@ -182,7 +166,7 @@ for i = 1:length(nn)
    domain.addPhysicsSolvers(params.Solver);
 
    F = -10; % vertical force
-   state = applyMandelIC(domain.state,mat,mesh,F);
+   state = applyMandelIC(domain.state,mat,gridd,F);
 
    % Solve the Mandel Biot problem with the preconditioned iterative solver 
    % using the fixed stress split algorithm

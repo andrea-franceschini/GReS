@@ -15,19 +15,10 @@ figures_dir = fullfile(output_dir,"Images");
 simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'));
 
 % Create the Mesh object
-topology = Mesh();
+grid = Grid();
 
 % Import mesh data into the Mesh object
-topology.importMesh(fullfile(input_dir,'Mesh',"Column1x1x30.msh"));
-
-% Create an object of the "Elements" class and process the element properties
-elems = Elements(topology,2);
-
-% Create an object of the "Faces" class and process the face properties
-faces = Faces(topology);
-
-% Wrap Mesh, Elements and Faces objects in a structure
-grid = struct('topology',topology,'cells',elems,'faces',faces);
+grid.importMesh(fullfile(input_dir,'Mesh',"Column1x1x30.msh"));
 
 % Creating boundaries conditions.
 bound = Boundaries(grid,fullfile(input_dir,'boundaries.xml'));
@@ -38,6 +29,8 @@ printUtils = OutState(fullfile(input_dir,'outputValidation.xml'));
 
 sol = struct();
 ComparisonMaterials = ["matTable.xml","matTabular.xml"];
+
+
 for sim=1:length(ComparisonMaterials)
   % Create an object of the Materials class and read the materials file
   mat = Materials(fullfile(input_dir,"Materials",ComparisonMaterials(sim)));
@@ -64,8 +57,8 @@ for sim=1:length(ComparisonMaterials)
   % elem vector containing elements centroid along vertical axis
   numb = 0.;
   tol = 0.01;
-  nodesP = find(abs(topology.cellCentroid(:,1)-numb) < tol & abs(topology.cellCentroid(:,2)-numb) < tol);
-  [~,ind] = sort(topology.cellCentroid(nodesP,3));
+  nodesP = find(abs(grid.cellCentroid(:,1)-numb) < tol & abs(grid.cellCentroid(:,2)-numb) < tol);
+  [~,ind] = sort(grid.cellCentroid(nodesP,3));
   nodesP = nodesP(ind);
 
   nrep = length(printUtils.timeList);
@@ -82,7 +75,7 @@ for sim=1:length(ComparisonMaterials)
   
   % Values for normalized plots
   pos = find(ptsZ == max(ptsZ));
-  H = max(topology.coordinates(:,3));
+  H = max(grid.coordinates(:,3));
 
   sol(sim).pressure = press./(press(pos,:));
   sol(sim).position = ptsZ/H;

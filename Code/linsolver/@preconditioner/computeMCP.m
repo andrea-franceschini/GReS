@@ -1,5 +1,5 @@
 % Function to compute the MCP preconditioner for the lagrange multiplier case (multi physics single domain)
-function computeMCP(obj,A)
+function computeMCP(obj,A,symMat)
 
    simple_flag = false;
 
@@ -7,7 +7,7 @@ function computeMCP(obj,A)
    n22 = size(A{1,2},2);
 
    % Treat Dirichlet boundary conditions
-   obj.treatDirBC(A);
+   A = obj.treatDirBC(A,symMat);
 
    % Compute global augmentation
    lmax_glo = eigs(A{1,1},1,'lm','Display',0,'Tolerance',1.e-5,...
@@ -28,11 +28,21 @@ function computeMCP(obj,A)
    % Compute augmentation block
    gamma = 1.0;
    D22_mat = gamma*(lmax_glo/gmean_ADD_s)*speye(n22);
-   
+   ADD = A{1,2}*D22_mat*A{2,1};
+
+   % Strong symmetrize if the matrices are symmetric
+   if symMat(1,2) == 1
+      ADD = 0.5*(ADD+ADD');
+   end
+
    % Compute new saddle-point system peconditioner
-   AA = A{1,1} + A{1,2}*D22_mat*A{2,1}; AA = 0.5*(AA+AA');
+   AA = A{1,1} + ADD;
    BB = A{1,2};
-   CC = A{2,2}; CC = 0.5*(CC+CC');
+   CC = A{2,2}; 
+
+   if symMat(2,2) == 1
+      CC = 0.5*(CC+CC');
+   end
 
    if obj.DEBUGflag
       tmp = [AA BB; BB' CC];

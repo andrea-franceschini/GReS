@@ -28,19 +28,11 @@ mat = Materials(fullfile(scriptDir,input_dir,"materials.xml"));
 
 %% ------------------------------ Set up the Domain -----------------------
 % Create the Mesh object
-topology = Mesh();
+grid = Grid();
 
 % Set the mesh input file name
-topology.importMesh(fullfile(scriptDir,input_dir,"Mandel_Mesh.msh"));
+grid.importMesh(fullfile(scriptDir,input_dir,"Mandel_Mesh.msh"));
 
-% Create an object of the "Elements" class and process the element properties
-elems = Elements(topology,2);
-
-% Create an object of the "Faces" class and process the face properties
-faces = Faces(topology);
-
-% Wrap Mesh, Elements and Faces objects in a structure
-grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 % Creating boundaries conditions.
 bound = Boundaries(grid,fullfile(scriptDir,input_dir,"boundaries.xml"));
@@ -63,7 +55,7 @@ domain.addPhysicsSolver('BiotFullyCoupled',solverIn)
 % In this example, we use a user defined function to apply Terzaghi initial
 % conditions to the state structure
 F = -10; % vertical force
-state = applyMandelIC(domain.state,mat,topology,F);
+state = applyMandelIC(domain.state,mat,grid,F);
 
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme. 
@@ -75,7 +67,7 @@ solver = NonLinearImplicit('simulationparameters',simParam,...
 solver.simulationLoop();
 
 % calling analytical solution script
-Mandel_Analytical(topology, mat, abs(F),[0.05,0.25,1,2.5,5],output_dir)
+Mandel_Analytical(grid, mat, abs(F),[0.05,0.25,1,2.5,5],output_dir)
 
 %% --------------------- Post Processing the Results ----------------------
 if true
@@ -87,23 +79,25 @@ if true
     mkdir(figures_dir)
   end
 
+  center = grid.cells.center;
+
   %Post processing using MAT-FILE
   %list of nodes along vertical axis (with x,y=0)
   tol = 0.001;
-  elemP1 = find(abs(topology.cellCentroid(:,3) - 0.05) < tol);
-  elemP2 = find(abs(topology.cellCentroid(:,2) - 0.025) < tol);
+  elemP1 = find(abs(center(:,3) - 0.05) < tol);
+  elemP2 = find(abs(center(:,2) - 0.025) < tol);
   elemP = intersect(elemP1, elemP2);
-  nodesX1 = find(abs(topology.coordinates(:,2)-0.05)<tol) ;
-  nodesX2 = find(abs(topology.coordinates(:,3)-0.7)<tol);
+  nodesX1 = find(abs(grid.coordinates(:,2)-0.05)<tol) ;
+  nodesX2 = find(abs(grid.coordinates(:,3)-0.7)<tol);
   nodesX = intersect(nodesX1,nodesX2);
-  nodesZ1 = find(abs(topology.coordinates(:,1)-0.6)<tol);
-  nodesZ2 = find(abs(topology.coordinates(:,2)-0.05)<tol);
+  nodesZ1 = find(abs(grid.coordinates(:,1)-0.6)<tol);
+  nodesZ2 = find(abs(grid.coordinates(:,2)-0.05)<tol);
   nodesZ = intersect(nodesZ1,nodesZ2);
-  [coordsP,ind] = sort(topology.cellCentroid(elemP,1));
+  [coordsP,ind] = sort(center(elemP,1));
   elemP = elemP(ind);
-  [coordsX,ind] = sort(topology.coordinates(nodesX,1));
+  [coordsX,ind] = sort(grid.coordinates(nodesX,1));
   nodesX = nodesX(ind);
-  [coordsZ,ind] = sort(topology.coordinates(nodesZ,3));
+  [coordsZ,ind] = sort(grid.coordinates(nodesZ,3));
   nodesZ = nodesZ(ind);
 
   %Getting pressure and displacement solution for specified output times from MatFILE
@@ -120,7 +114,7 @@ if true
   % Pressure
   figure('Position', [100, 100, 700, 700])
   hold on
-  plotObj1 = plot(topology.cellCentroid(elemP,1),pressNum,'k.', 'LineWidth', 1, 'MarkerSize', 15);
+  plotObj1 = plot(center(elemP,1),pressNum,'k.', 'LineWidth', 1, 'MarkerSize', 15);
   plotObj2 = plot(x,p,'k-', 'LineWidth', 1);
   xlabel('x (m)')
   ylabel('Pressure (kPa)')
@@ -137,7 +131,7 @@ if true
   % Displacement DX
   figure('Position', [100, 100, 700, 700])
   hold on
-  plotObj1 = plot(topology.coordinates(nodesX,1),dispXNum,'k.', 'LineWidth', 1, 'MarkerSize', 15);  
+  plotObj1 = plot(grid.coordinates(nodesX,1),dispXNum,'k.', 'LineWidth', 1, 'MarkerSize', 15);  
   plotObj2 = plot(x,ux,'k-', 'LineWidth', 1);
   xlabel('x (m)')
   ylabel('Displacement u_x (m)')
@@ -155,7 +149,7 @@ if true
   % Displacement DZ
   figure('Position', [100, 100, 700, 700])
   hold on
-  plotObj1 = plot(dispZNum,topology.coordinates(nodesZ,3),'k.', 'LineWidth', 1, 'MarkerSize', 15);
+  plotObj1 = plot(dispZNum,grid.coordinates(nodesZ,3),'k.', 'LineWidth', 1, 'MarkerSize', 15);
   plotObj2 = plot(uz,z,'k-', 'LineWidth', 1);
   xlabel('Displacement u_z (m)')
   xlim([-10e-5 1e-5])

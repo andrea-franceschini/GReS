@@ -32,7 +32,6 @@ classdef BiotFullyCoupled < PhysicsSolver
 
       dofm = obj.domain.dofm;
 
-
       default = struct('Poromechanics',missing,...
                        'SinglePhaseFlowFVTPFA',missing);
 
@@ -47,6 +46,7 @@ classdef BiotFullyCoupled < PhysicsSolver
       else
         obj.flowSolver = SinglePhaseFlowFVTPFA(obj.domain);
       end
+
 
       % Register mechanics solver
       registerSolver(obj.mechSolver,input.(class(obj.mechSolver)));
@@ -71,7 +71,7 @@ classdef BiotFullyCoupled < PhysicsSolver
       computeMat(obj);
 
       % assign coupling blocks to jacobian
-      obj.domain.J{obj.fldMech,obj.fldFlow} = -obj.domain.simparams.theta*obj.Q;
+      obj.domain.J{obj.fldMech,obj.fldFlow} = -obj.Q;
       obj.domain.J{obj.fldFlow,obj.fldMech} = obj.Q'/dt;
 
       % add rhs from coupling contribution
@@ -95,68 +95,77 @@ classdef BiotFullyCoupled < PhysicsSolver
       % active
 
       dofm = obj.domain.dofm;
+      coordinates = obj.grid.coordinates;
+      cells = obj.grid.cells;
 
       subCells = getCoupledCells(obj);
 
       switch obj.flowScheme
         case "FEM"
-          nEntries = sum((obj.mesh.nDim)*(obj.mesh.cellNumVerts(subCells)).^2);
+          nEntries = sum((obj.grid.nDim)*(cells.numVerts(subCells)).^2);
         case "FVTPFA"
-          nEntries = sum((obj.mesh.nDim)*(obj.mesh.cellNumVerts(subCells)));
+          nEntries = sum((obj.grid.nDim)*(cells.numVerts(subCells)));
         otherwise
           error("The discretization for the flow need to be FEM or FVTPFA.");
       end
 
-      [iiVec,jjVec,Qvec] = deal(zeros(nEntries,1));
-      nDoF1 = dofm.getNumbDoF(obj.fldMech);
-      nDoF2 = dofm.getNumbDoF(obj.fldFlow);
-      % consider replacing the string field with an integer
+      nDoFMech = dofm.getNumbDoF(obj.fldMech);
+      nDoFFlow = dofm.getNumbDoF(obj.fldFlow);
+      assembleQ = assembler(nEntries,nDoFMech,nDoFFlow);
 
-      l1 = 0;
-      for el=subCells'
-        mat = obj.domain.materials.getMaterial(obj.mesh.cellTag(el));
-        biot = mat.PorousRock.getBiotCoefficient();
-        elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
-        nG = elem.GaussPts.nNode;
-        nodes = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
+      gaussOrd = obj.mechSolver.getGaussOrder;
 
-        % get strain matrix
-        [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
-        iN = zeros(6,elem.nNode,nG); %matrix product i*N
-        B = zeros(6,elem.nNode*obj.mesh.nDim,nG);
-        B(elem.indB(:,2)) = N(elem.indB(:,1));
-        Nref = getBasisFinGPoints(elem);
-        dofrow = getLocalDoF(dofm,obj.fldMech,nodes);
 
-        % kronecker delta in tensor form
-        kron = [1;1;1;0;0;0];
-        switch obj.flowScheme
-          case "FEM"
-            Np = reshape(Nref',1,elem.nNode,nG);
-            kron = repmat(kron,1,1,nG);
-            iN = pagemtimes(kron,Np);
-            dofcol = getLocalDoF(dofm,obj.fldFlow,nodes);
-          case "FVTPFA"
-            iN = repmat(kron,1,1,nG);
-            dofcol = getLocalDoF(dofm,obj.fldFlow,el);
+      for vtkId = cells.vtkTypes
+
+        tmp = obj.grid.getCellsByVTKId(vtkId);
+        subCellsLoc = reshape(intersect(subCells,tmp,'sorted'),1,[]);
+        elem = FiniteElementType.create(vtkId,obj.grid,gaussOrd);
+
+        % get node topology for given vtk type
+        topol = obj.grid.getCellNodes(subCellsLoc);
+        nG = elem.getNumbGaussPts;
+
+        for i = 1:numel(subCellsLoc)
+
+          el = subCellsLoc(i);
+          mat = obj.domain.materials.getMaterial(cells.tag(el));
+          biot = mat.PorousRock.getBiotCoefficient();
+ 
+          nodes = topol(i,:);
+          coords = coordinates(nodes,:);
+
+          % get strain matrix
+          [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
+          B = getStrainMatrix(elem,gradN);
+          N = getBasisFinGPoints(elem);
+          dofrow = getLocalDoF(dofm,obj.fldMech,nodes);
+
+          % kronecker delta in tensor form
+          kron = [1;1;1;0;0;0];
+          switch obj.flowScheme
+            case "FEM"
+              Np = reshape(N',1,elem.nNode,nG);
+              kron = repmat(kron,1,1,nG);
+              iN = pagemtimes(kron,Np);
+              dofcol = getLocalDoF(dofm,obj.fldFlow,nodes);
+            case "FVTPFA"
+              iN = repmat(kron,1,1,nG);
+              dofcol = getLocalDoF(dofm,obj.fldFlow,el);
+          end
+
+          % compute local coupling matrix
+          Qs = biot*pagemtimes(B,'ctranspose',iN,'none');
+          Qs = Qs.*reshape(dJWeighed,1,1,[]);
+          Qloc = sum(Qs,3);
+          assembleQ.localAssembly(dofrow,dofcol,Qloc);
+
         end
 
-        % compute local coupling matrix
-        Qs = biot*pagemtimes(B,'ctranspose',iN,'none');
-        Qs = Qs.*reshape(dJWeighed,1,1,[]);
-        Qloc = sum(Qs,3);
-        clear Qs;
-        s1 = numel(Qloc);
-
-        %assemble coupling Matrix
-        [jjloc,iiloc] = meshgrid(dofcol,dofrow);
-        iiVec(l1+1:l1+s1) = iiloc(:);
-        jjVec(l1+1:l1+s1) = jjloc(:);
-        Qvec(l1+1:l1+s1) = Qloc(:);
-        l1 = l1+s1;
       end
 
-      obj.Q = sparse(iiVec, jjVec, Qvec, nDoF1, nDoF2);
+      obj.Q = assembleQ.sparseAssembly();
+
     end
 
     function [rhsMech,rhsFlow] = computeRhs(obj,dt)
@@ -190,8 +199,22 @@ classdef BiotFullyCoupled < PhysicsSolver
       cellTags = intersect(cellTagMech,cellTagFlow);
 
       cells = getEntitiesFromTags(entityField.cell,...
-        obj.mesh,entityField.cell,cellTags);
+        obj.grid,entityField.cell,cellTags);
     end
+
+
+    function flowSolv = getFlowSolver(obj)
+
+      flowSolv = obj.flowSolver;
+
+    end
+
+    function mechSolv = getMechSolver(obj)
+
+      mechSolv = obj.mechSolver;
+
+    end
+
 
     function applyBC(obj,bcId,t)
       obj.flowSolver.applyBC(bcId,t);
