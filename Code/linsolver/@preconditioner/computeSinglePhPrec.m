@@ -31,7 +31,7 @@ function computeSinglePhPrec(obj,A,symMat)
          elseif(obj.phys == 1 || obj.phys == 1.1) % true contact mechanichs physics is 1.1, general poromechanics is 1
             TV0 = [];
             for i = 1:obj.nDom
-               TV = mk_rbm_3d(obj.domain(i).grid.topology.coordinates);
+               TV = mk_rbm_3d(obj.domain(i).grid.coordinates);
                TV0 = [TV0;TV];
             end
             if obj.DEBUGflag

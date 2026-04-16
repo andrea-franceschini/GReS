@@ -71,10 +71,6 @@ classdef Poromechanics < PhysicsSolver
       if ~isLinear(obj) || isempty(getJacobian(obj))
         % recompute matrix if the model is non linear
         % define size of output matrix
-        if isempty(getJacobian(obj))
-          % compute strain due to initial boundary displacements
-          computeStrain(obj);
-        end
         computeStiffMat(obj,dt);
       end
 
@@ -233,6 +229,7 @@ classdef Poromechanics < PhysicsSolver
       % initial stress - assumed balanced with external forces
       state = getState(obj);
       obj.iniStress = state.data.stress;
+      computeStrain(obj);
       
     end
 

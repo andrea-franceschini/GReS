@@ -190,6 +190,10 @@ classdef BiotFullyCoupled < PhysicsSolver
       rhsFlow = Qflow * (uCurr(entsPoro) - uOld(entsPoro));
     end
 
+    function initialize(obj)
+      obj.mechSolver.initialize();
+    end
+
     function cells = getCoupledCells(obj)
 
       cellTagFlow = obj.domain.dofm.getTargetRegions(obj.fldFlow);
