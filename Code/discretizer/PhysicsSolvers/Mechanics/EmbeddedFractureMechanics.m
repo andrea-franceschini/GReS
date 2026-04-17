@@ -75,22 +75,25 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     function initialize(obj)
       % 
-      % t = computeInitialTraction(obj);
-      % obj.domain.state.data.traction = obj.domain.state.data.traction + t;
+      t = computeInitialTraction(obj);
+      obj.domain.state.data.traction = obj.domain.state.data.traction + t;
 
     end
 
-    function t = computeInitialTraction(obj)
+    function trac = computeInitialTraction(obj)
       % initialize traction for cell stress (average)
       poro = obj.domain.getPhysicsSolver("Poromechanics");
       frac = obj.fractureMesh.surfaces;
       idx = [1;6;5;6;2;4;5;4;3];
       sigma = zeros(3);
-      t = zeros(frac.num,1);
+      trac = zeros(frac.num,1);
       for i = 1:frac.num
-        sigma(:) = poro.avStress(i,idx);
+        R = reshape(frac.rotationMatrices(i,:),3,3);
+        cellId = frac.cutCells(i);
+        sigma(:) = poro.avStress(cellId,idx);
         n = frac.normal(i,:);
-        t(dofId(i,3)) = sigma*n';
+        t = sigma*n';
+        trac(dofId(i,3)) = R'*t;
       end
     end
 
@@ -650,6 +653,14 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       [u,~,id2] = unique(getData(surfs));
       f.connectivity = ArrayOfArrays(id2(:),f.numVerts);
       fMesh.coordinates = fMesh.coordinates(u,:);
+
+      R = zeros(f.num,9);
+      for i = 1:f.num
+        n = f.normal(i,:);
+        Ri = mxComputeRotationMat(n);
+        R(i,:) = Ri(:);
+      end
+      f.rotationMatrices = R;
 
       % finalize the grid
       fMesh.surfaces = f;

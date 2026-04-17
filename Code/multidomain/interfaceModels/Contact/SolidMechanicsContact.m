@@ -223,7 +223,7 @@ classdef SolidMechanicsContact < MeshTying
       % initial traction from cell stress
       tIni = computeInitialTraction(obj);
       obj.state.traction = obj.state.traction + tIni;
-      obj.state.initTraction = obj.state.traction;
+      obj.state.iniTraction = obj.state.traction;
 
       setStickNodes(obj);
 
