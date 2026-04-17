@@ -1,6 +1,6 @@
 function centroid = computePolygonCentroid(varargin)
 
-centroid = mxComputePolygonCentroid(varargin{:},"centroid");
+centroid = mxComputePolygonGeometry(varargin{:},'centroid');
 
 end
 

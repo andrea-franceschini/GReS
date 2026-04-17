@@ -76,7 +76,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     function initialize(obj)
       % 
       t = computeInitialTraction(obj);
-      obj.domain.state.data.traction = obj.domain.state.data.traction + t;
+      obj.domain.state.data.traction = obj.domain.state.data.traction + t(:);
 
     end
 
