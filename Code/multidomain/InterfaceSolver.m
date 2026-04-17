@@ -375,8 +375,8 @@ classdef (Abstract) InterfaceSolver < handle
 
       obj.coupledVariables = obj.getCoupledVariables();
 
-      varMaster = getVariableNames(obj.domains(1).dofm);
-      varSlave = getVariableNames(obj.domains(2).dofm);
+      varMaster = getVariableNames(obj.domains(MortarSide.master).dofm);
+      varSlave = getVariableNames(obj.domains(MortarSide.slave).dofm);
 
       if any([isempty(varMaster),isempty(varSlave)])
         error(['Interface solver can be registered only after ' ...
@@ -387,29 +387,17 @@ classdef (Abstract) InterfaceSolver < handle
       % master and slave discretizers
       sharedVars = intersect(varSlave,varMaster);
 
-      if ~isempty(obj.coupledVariables)
-        % the interfaceSolver specifies the coupled variables directly in
-        % the properties block
-        % only check that the interface is compatible with the available
-        % field
+      in = readInput(struct('variable',sharedVars),input);
+      obj.coupledVariables = in.variable;
 
-        isInterfaceValid = all(ismember(obj.coupledVariables,sharedVars));
 
-        if ~isInterfaceValid
-          error("The interface attempts to couple a variable that is not" + ...
-            " available in any of the connected domains.")
-        end
+      isInterfaceValid = all(ismember(obj.coupledVariables,sharedVars));
 
-      else
-        % the interfaceSolver does not specify the coupled variables
-        % in the properties block
-
-        if isfield(input,"variable")
-          sharedVars = getXMLData(input,[],"variable");
-        end
-
-        obj.coupledVariables = sharedVars;
+      if ~isInterfaceValid
+        error("The interface attempts to couple a variable named '%s' that is not" + ...
+          " available in any of the connected domains.",obj.coupledVariables)
       end
+
     end
 
     function setMortarInterface(obj,params)
