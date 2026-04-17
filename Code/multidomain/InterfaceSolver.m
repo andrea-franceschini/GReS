@@ -387,32 +387,17 @@ classdef (Abstract) InterfaceSolver < handle
       % master and slave discretizers
       sharedVars = intersect(varSlave,varMaster);
 
-      if ~isempty(obj.coupledVariables)
-        % the interfaceSolver specifies the coupled variables directly in
-        % the properties block
-        % input variables are ignored
-        % only check that the interface is compatible with the available
-        % field
+      in = readInput(struct('variable',sharedVars),input);
+      obj.coupledVariables = in.variable;
 
-        isInterfaceValid = all(ismember(obj.coupledVariables,sharedVars));
 
-        if ~isInterfaceValid
-          error("The interface attempts to couple a variable that is not" + ...
-            " available in any of the connected domains.")
-        end
+      isInterfaceValid = all(ismember(obj.coupledVariables,sharedVars));
 
-      else
-        % the interfaceSolver does not specify the coupled variables
-        % the user can select which variable is coupled by the present
-        % interface
-
-        parm = readInput(struct("variable",missing),input);
-        sharedVars = parm.variable;
-        if ~ismissing(parm.variable)
-          obj.coupledVariables = sharedVars;
-        end
-
+      if ~isInterfaceValid
+        error("The interface attempts to couple a variable named '%s' that is not" + ...
+          " available in any of the connected domains.",obj.coupledVariables)
       end
+
     end
 
     function setMortarInterface(obj,params)
