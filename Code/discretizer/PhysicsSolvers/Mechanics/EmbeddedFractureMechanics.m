@@ -74,16 +74,15 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
 
     function initialize(obj)
-
-      t = computeInitialTraction(obj);
-      obj.state.data.traction = obj.state.data.traction + t;
+      % 
+      % t = computeInitialTraction(obj);
+      % obj.domain.state.data.traction = obj.domain.state.data.traction + t;
 
     end
 
     function t = computeInitialTraction(obj)
       % initialize traction for cell stress (average)
-      sl = MortarSide.slave;
-      poro = obj.domains(sl).getPhysicsSolver("Poromechanics");
+      poro = obj.domain.getPhysicsSolver("Poromechanics");
       frac = obj.fractureMesh.surfaces;
       idx = [1;6;5;6;2;4;5;4;3];
       sigma = zeros(3);

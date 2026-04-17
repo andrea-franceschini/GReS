@@ -357,6 +357,10 @@ classdef Discretizer < handle
 
       prepareBoundaryConditions(obj);
 
+      % apply initial dirichlet condition to the state object
+      tIni = obj.simparams.tIni;
+      applyDirVal(obj,tIni)
+
       for solver = obj.solverNames
         initialize(obj.getPhysicsSolver(solver));
       end
