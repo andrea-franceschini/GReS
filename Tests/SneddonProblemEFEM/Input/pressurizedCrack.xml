@@ -1,31 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <struct>
   <SimulationParameters>
-      <Start>0</Start>
-      <End>1</End>
-      <DtInit>1</DtInit>
-      <DtMax>1</DtMax>
-      <DtMin>1</DtMin>
-      <AbsoluteTolerance>1e-08</AbsoluteTolerance>
-      <RelativeTolerance>1e-09</RelativeTolerance>
-      <MaxNLIteration>30</MaxNLIteration>
+    <Start>0</Start>
+    <End>1</End>
+    <DtInit>1</DtInit>
+    <DtMax>1</DtMax>
+    <DtMin>1</DtMin>
+    <AbsoluteTolerance>1e-08</AbsoluteTolerance>
+    <RelativeTolerance>1e-09</RelativeTolerance>
+    <MaxNLIteration>30</MaxNLIteration>
   </SimulationParameters>
 
 
   <Materials>
-  <Solid
-         name = "solid"
-         cellTags = " 1 ">
-    <Constitutive>
-      <Elastic
-               youngModulus = "15000"
-               poissonRatio = "0.25"
-               />
-    </Constitutive>
+    <Solid
+           name = "solid"
+           cellTags = " 1 ">
+      <Constitutive>
+        <Elastic
+                 youngModulus = "25000"
+                 poissonRatio = "0.25"
+                 />
+      </Constitutive>
 
-  </Solid>
+    </Solid>
 
-</Materials>
+  </Materials>
 
   <BoundaryConditions>
     <BC>
@@ -74,25 +74,23 @@
 
   <Solver>
     <Poromechanics></Poromechanics>
-    <EmbeddedFractureMechanics>
-      <penaltyNormal>100000000</penaltyNormal>
-      <penaltyTangential>100000000</penaltyTangential>
-      <Fracture>
-        <origin>0</origin>
-        <origin>0</origin>
-        <origin>0</origin>
-        <normal>0.0, 0, 1.0</normal>
-        <lengthVec>1.0, 0, 0.0</lengthVec>
-        <widthVec>0, 1, 0</widthVec>
-        <dimensions>2</dimensions>
-        <dimensions>2</dimensions>
-        <cohesion>0</cohesion>
-        <frictionAngle>30</frictionAngle>
-      </Fracture>
+    <EmbeddedFractureMechanics
+                               penaltyNormal = "1e8"
+                               penaltyTangential = "1e8">
+      <Fracture
+                origin = "0,0,0"
+                normal = "0,0,1"
+                lengthVec = "1,0,0"
+                widthVec = "0,1,0"
+                dimensions = "2,2"
+                cohesion = "0"
+                frictionAngle = "30"
+                />
+
       <ActiveSet>
         <normalTraction>1e-6</normalTraction>
       </ActiveSet>
     </EmbeddedFractureMechanics>
   </Solver>
-  
+
 </struct>

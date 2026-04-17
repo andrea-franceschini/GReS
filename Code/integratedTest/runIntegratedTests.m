@@ -10,12 +10,12 @@ gresLog().setVerbosity(-2);
 testFiles = {
     fullfile('Terzaghi','testTerzaghi.m')
     fullfile('SubDomains','testSubDomains.m')
-    fullfile('MortarConvergence','testMortarPoisson.m')
     fullfile('Richards','testRichards.m')
+    fullfile('CubeSedimentation','testSedimentation.m')
+    fullfile('MortarConvergence','testMortarPoisson.m')
     fullfile('ConstantSliding','testConstantSliding.m')
     fullfile('SingleCrackCompressed','testSingleCrackCompressed.m')
     fullfile('ConstantSlidingEFEM','testConstantSlidingEFEM.m')
-    fullfile('CubeSedimentation','testSedimentation.m')
 };
 
 results = runtests(testFiles);
@@ -26,10 +26,10 @@ elapsedCPU  = cputime - tCPU;
 fprintf("Elapsed wall-clock time: %1.2f s\n", elapsedWall);
 fprintf("Elapsed CPU time:        %1.2f s\n", elapsedCPU);
 
+gresLog().setVerbosity(v);
+
 if any([results.Failed])
     error("Some tests did not pass");
 else
-    disp("All tests ran successfully");
+    disp("All tests passed");
 end
-
-gresLog().setVerbosity(v);

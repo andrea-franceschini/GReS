@@ -14,10 +14,10 @@ params = readInput(fullfile('Input','StickSlipOpen.xml'));
 % set mesh 
 X = 5; Y = 10; Z = 15;
 nx1 = 2; ny1 = 6; nz1 = 6;
-meshL = structuredMesh(nx1,ny1,nz1,[0,0.5*X],[0 Y],[0 Z]);
+gridL = structuredMesh(nx1,ny1,nz1,[0,0.5*X],[0 Y],[0 Z]);
 
 nx2 = 2; ny2 = 8; nz2 = 8;
-meshR = structuredMesh(nx2,ny2,nz2,[0.5*X,X],[0 Y],[0 Z]);
+gridR = structuredMesh(nx2,ny2,nz2,[0.5*X,X],[0 Y],[0 Z]);
 
 assert(mod(ny1,2) == 0 && mod(ny2,2)==0,"Number of elements along y axis " + ...
   "must be even to correctly apply symmetric bcs")
@@ -26,14 +26,8 @@ assert(mod(ny1,2) == 0 && mod(ny2,2)==0,"Number of elements along y axis " + ...
 
 simParam = SimulationParameters(params.SimulationParameters);
 
-elemsL = Elements(meshL,2);
-facesL = Faces(meshL);
-gridL = struct('topology',meshL,'cells',elemsL,'faces',facesL);
 matL = Materials(fullfile('Input','materials.xml'));
 
-elemsR = Elements(meshR,2);
-facesR = Faces(meshR);
-gridR = struct('topology',meshR,'cells',elemsR,'faces',facesR);
 matR = Materials(fullfile('Input','materials.xml'));
 
 
@@ -41,16 +35,14 @@ matR = Materials(fullfile('Input','materials.xml'));
 [bcL,bcR] = setBC(Y,gridL,gridR);
 
 
-
-
 % Create object handling construction of Jacobian and rhs of the model
-domainL = Discretizer('Boundaries',bcL,...
-                     'Materials',matL,...
-                     'Grid',gridL);
+domainL = Discretizer('boundaries',bcL,...
+                      'materials',matL,...
+                      'grid',gridL);
 
-domainR = Discretizer('Boundaries',bcR,...
-                     'Materials',matR,...
-                     'Grid',gridR);
+domainR = Discretizer('boundaries',bcR,...
+                      'materials',matR,...
+                      'grid',gridR);
 
 domainL.addPhysicsSolver('Poromechanics');
 domainR.addPhysicsSolver('Poromechanics');
@@ -81,16 +73,14 @@ solver.simulationLoop();
 
 function [bcLeft,bcRigth] = setBC(Y,gridL,gridR)
 
-meshL = gridL.topology;
-meshR = gridR.topology;
 
 % write bc files to apply y contraint on the right node location
 targetCoord = 0.5*Y;
-nL = all([abs(meshL.coordinates(:,2)-targetCoord) < 1e-4,...
-          abs(meshL.coordinates(:,3)) < 1e-4],2);
+nL = all([abs(gridL.coordinates(:,2)-targetCoord) < 1e-4,...
+          abs(gridL.coordinates(:,3)) < 1e-4],2);
 
-nR = all([abs(meshR.coordinates(:,2)-targetCoord) < 1e-4,...
-          abs(meshR.coordinates(:,3)) < 1e-4],2);
+nR = all([abs(gridR.coordinates(:,2)-targetCoord) < 1e-4,...
+          abs(gridR.coordinates(:,3)) < 1e-4],2);
 
 nL = find(nL);
 nR = find(nR);

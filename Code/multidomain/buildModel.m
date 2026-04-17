@@ -55,33 +55,13 @@ function domain = defineDomain(input)
 
 input = readInput(input);
 
-topology = Mesh.create(input.Geometry);
+grid = Grid.create(input.Geometry);
 
 if isfield(input,"Materials")
   mat = Materials(input.Materials);
 else
   mat = [];
 end
-
-gNPoints = 0;
-
-if isfield(input,"Gauss")
-  gNPoints = input.Gauss.nGP;
-end
-
-if gNPoints~=0
-  elems = Elements(topology,gNPoints);
-else
-  elems = Elements(topology);
-end
-
-if ~any(topology.cellVTKType==10)
-  faces = Faces(topology);
-else
-  faces = [];
-end
-
-grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 
 % boundary conditions

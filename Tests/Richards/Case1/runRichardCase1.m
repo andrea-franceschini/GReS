@@ -13,23 +13,14 @@ simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'));
 mat = Materials(fullfile(input_dir,"Materials",'matTable.xml'));
 
 % Create the Mesh object
-topology = Mesh();
+grid = Grid();
 
 % Choosing the mesh file
 availMesh = [ "Column.msh", "Column1x1x30.msh", "Column4x4x40.msh"];
 fileName = availMesh(2);
 
 % Import mesh data into the Mesh object
-topology.importMesh(fullfile(input_dir,'Mesh',fileName));
-
-% Create an object of the "Elements" class and process the element properties
-elems = Elements(topology,2);
-
-% Create an object of the "Faces" class and process the face properties
-faces = Faces(topology);
-
-% Wrap Mesh, Elements and Faces objects in a structure
-grid = struct('topology',topology,'cells',elems,'faces',faces);
+grid.importMesh(fullfile(input_dir,'Mesh',fileName));
 
 % Creating boundaries conditions.
 bound = Boundaries(grid,fullfile(input_dir,'boundaries.xml'));
@@ -46,7 +37,7 @@ domain = Discretizer('Grid',grid,...
 domain.addPhysicsSolver('VariablySaturatedFlow');
 
 % set initial conditions directly modifying the state object
-z = elems.mesh.cellCentroid(:,3);
+z = grid.cells.center(:,3);
 gamma_w = getFluid(mat).getSpecificWeight();
 wLev = 9.; % level of the water table
 domain.state.data.pressure = gamma_w*(wLev-z);
@@ -67,12 +58,14 @@ if true
     mkdir(figures_dir)
   end
 
+  center = grid.cells.center;
+
   % elem vector containing elements centroid along vertical axis
   numb = 0.;
   % numb = 0.125;
   tol = 0.01;
-  nodesP = find(abs(topology.cellCentroid(:,1)-numb) < tol & abs(topology.cellCentroid(:,2)-numb) < tol);
-  [~,ind] = sort(topology.cellCentroid(nodesP,3));
+  nodesP = find(abs(center(:,1)-numb) < tol & abs(center(:,2)-numb) < tol);
+  [~,ind] = sort(center(nodesP,3));
   nodesP = nodesP(ind);
 
   tstr = strcat(num2str(printUtils.timeList'),' T');
@@ -86,11 +79,11 @@ if true
   end
 
   % Vertical position of the column
-  ptsZ = elems.mesh.cellCentroid(nodesP,3);
+  ptsZ = center(nodesP,3);
   
   % Values for normalized plots
   pos = find(ptsZ == max(ptsZ));
-  H = max(topology.coordinates(:,3));
+  H = max(grid.coordinates(:,3));
   ptsZ = ptsZ/H;
 
   figure('Position', [100, 100, 700, 700])

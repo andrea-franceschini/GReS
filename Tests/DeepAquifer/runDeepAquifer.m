@@ -37,7 +37,8 @@ if true
   displacements = [domain.outstate.results.displacements];
   expTime = [domain.outstate.results.time];
 
-  topol = domain.grid.topology;
+  topol = domain.grid;
+  centers = topol.cells.center;
 
   %find nodes in vertical symmetry axis
   tmp1=topol.coordinates(:,1)<500.1;
@@ -49,13 +50,13 @@ if true
   [vertNodZ,indNod] = sort(topol.coordinates(vertNod,3));
 
   %find elemes in vertical symmetry axis
-  tmp1 = topol.cellCentroid(:,1)<450.1;
-  tmp2 = topol.cellCentroid(:,1)>449.9;
-  tmp3 = topol.cellCentroid(:,2)<550.1;
-  tmp4 = topol.cellCentroid(:,2)>449.9;
+  tmp1 = centers(:,1)<450.1;
+  tmp2 = centers(:,1)>449.9;
+  tmp3 = centers(:,2)<550.1;
+  tmp4 = centers(:,2)>449.9;
   tmpEl = tmp1+tmp2+tmp3+tmp4;
   vertEl = find(tmpEl == 4);
-  [vertElZ,indEl] = sort(topol.cellCentroid(vertEl,3));
+  [vertElZ,indEl] = sort(centers(vertEl,3));
 
   timesInd = [1;2;3];
   time_string = "Year  " + expTime(timesInd);
