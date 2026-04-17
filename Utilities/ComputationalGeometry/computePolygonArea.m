@@ -1,6 +1,6 @@
-function A = computePolygonArea(points,nV)
+function A = computePolygonArea(varargin)
 
-A = mxPolygonArea(points,nV);
+A = mxPolygonGeometry(varargin{:},"area");
 
 end
 

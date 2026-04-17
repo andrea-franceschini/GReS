@@ -91,7 +91,7 @@ classdef SolidMechanicsContact < MeshTying
       obj.Jconstraint = obj.Jconstraint - H;
       obj.rhsConstraint = obj.rhsConstraint + rhsStab;
 
-      if gresLog().getVerbosity > 2
+      if gresLog().getVerbosity > 3
         % print rhs terms for each fracture state for debug purposes
         dof_stick = DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.stick),3);
         dof_slip = [DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.slip),3); ...
@@ -170,6 +170,7 @@ classdef SolidMechanicsContact < MeshTying
 
       if gresLog().getVerbosity > 2
         % report active set changes
+        fprintf('\n%s: Active set \n',class(obj));
         da = asNew - asOld;
         d = da(asOld == 1);
         assert(~any(d==2));       % avoid stick to slip without newSlip

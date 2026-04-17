@@ -269,6 +269,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       hasConfigurationChanged = any(diffState);
 
       if gresLog().getVerbosity > 2
+        fprintf('%s: Active set \n',class(obj));
         % report active set changes
         da = asNew - asOld;
         d = da(asOld == 1);
