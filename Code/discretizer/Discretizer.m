@@ -91,7 +91,7 @@ classdef Discretizer < handle
 
       for i = 1:numel(bcList)
         bcId = bcList(i);
-        
+
         % discard non-dirichlet BC
         if ~isEssential(obj.bcs,bcId)
           continue
@@ -492,8 +492,8 @@ classdef Discretizer < handle
     function setInput(obj, varargin)
 
       default = struct('grid',Grid(),...
-                       'materials',Materials(),...
-                       'boundaries',Boundaries());
+        'materials',Materials(),...
+        'boundaries',Boundaries());
 
       % make read case-insensitive
       input = readInput(varargin{:});
@@ -514,7 +514,7 @@ classdef Discretizer < handle
 
     end
 
-   
+
     function validateInput(obj)
 
       if obj.grid.nNodes == 0
@@ -524,21 +524,30 @@ classdef Discretizer < handle
 
       msh = obj.grid.cells;
 
-      t = unique(msh.tag);
-      if ~isempty(t)
-        assert(t(end) == length(t),"cellTag numbering must be progressive from 1 to the number of cellTags")
+      if msh.num > 0
+
+        t = unique(msh.tag);
+        if ~isempty(t)
+          assert(t(end) == length(t),"cellTag numbering must be progressive from 1 to the number of cellTags")
+        end
+        msh.nTag = t(end);
+        obj.grid.cells = msh;
+
       end
-      msh.nTag = t(end);
-      obj.grid.cells = msh;
+
 
       msh = obj.grid.surfaces;
 
-      t = unique(msh.tag);
-      if ~isempty(t)
-        assert(t(end) == length(t),"surfaceTag numbering must be progressive from 1 to the number of cellTags")
+      if msh.num > 0
+
+        t = unique(msh.tag);
+        if ~isempty(t)
+          assert(t(end) == length(t),"surfaceTag numbering must be progressive from 1 to the number of cellTags")
+        end
+        msh.nTag = t(end);
+        obj.grid.surfaces = msh;
+
       end
-      msh.nTag = t(end);
-      obj.grid.surfaces = msh;
 
     end
 
@@ -553,7 +562,7 @@ classdef Discretizer < handle
 
       for i = 1:numel(bcList)
         bcId = bcList(i);
-        
+
         % loop over available bcs
         bcVar = obj.bcs.getVariable(bcId);
 
@@ -562,13 +571,13 @@ classdef Discretizer < handle
         obj.bcs.initialize(bcId,targetField);
 
       end
- 
+
     end
 
 
 
     function outName = getOutName(obj)
-       % property domainId not set yet
+      % property domainId not set yet
       outName = sprintf('Domain_%i',obj.domainId);
 
 
@@ -582,9 +591,9 @@ classdef Discretizer < handle
 
     function checkClass(val,fldName,className)
 
-       if ~isa(val, className)
-         error("Invalid key-value pair for Discretizer class. Input field %s must be an object of class %s \n",fldName,className);
-       end
+      if ~isa(val, className)
+        error("Invalid key-value pair for Discretizer class. Input field %s must be an object of class %s \n",fldName,className);
+      end
     end
 
 

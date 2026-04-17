@@ -19,7 +19,7 @@ function processFaces(grid,vtkId)
 %    .facePos      – (nCells+1) × 1  offsets into cells.faces (1‑based)
 %    .faces        – packed global face IDs  (one entry per cell–face pair)
 %    .faceLocalId  – packed local face index inside the cell  (1‑based)
-% 
+%
 %  grid.surfaces (appended)
 %    .faceId      – map tagged surface to global id of corresponding face
 
@@ -46,7 +46,7 @@ if nargin == 1
   return
 end
 
-coords = grid.coordinates; 
+coords = grid.coordinates;
 
 idC = grid.getCellsByVTKId(vtkId);
 if isempty(idC)
@@ -110,7 +110,7 @@ isBoundary = neighbors(:,2) == 0;
 
 % compute faces geometrical informations
 nList = faceTopol';
-poly = coords(nList(:),:); 
+poly = coords(nList(:),:);
 [area, cent, normal] = computePolygonGeometry(poly, nPlist);
 
 
@@ -138,18 +138,20 @@ c2locf = ArrayOfArrays(hfLocalSorted(id),nFPCs);
 c.cells2faces = [c.cells2faces; c2f];
 c.cells2localFaces = [c.cells2localFaces; c2locf];
 
-% surfaces (map surfaces to boundaryfaces) 
+% surfaces (map surfaces to boundaryfaces)
 boundFaces = faceTopol(isBoundary,:);
 
 % connectivity of the surfaces corresponding to the 2D VTK
-idS = grid.getSurfByVTKId(VTKType.to2D(vtkId));
-topolSurf = grid.getSurfNodes(idS);
-if VTKType.to2D(vtkId) == VTKType.Quad9
-  topolSurf = topolSurf(:,1:4);
+if s.num > 0
+  idS = grid.getSurfByVTKId(VTKType.to2D(vtkId));
+  topolSurf = grid.getSurfNodes(idS);
+  if VTKType.to2D(vtkId) == VTKType.Quad9
+    topolSurf = topolSurf(:,1:4);
+  end
+  [sId,fId] = ismember(sort(topolSurf,2),sort(boundFaces,2),'rows');
+  boundId = find(isBoundary);
+  s.faceId(sId) = nFold + boundId(fId);
 end
-[sId,fId] = ismember(sort(topolSurf,2),sort(boundFaces,2),'rows');
-boundId = find(isBoundary);
-s.faceId(sId) = nFold + boundId(fId); 
 
 
 % finally update grid
@@ -166,17 +168,17 @@ function lf = localFaceDefs(vtkId)
 switch vtkId
   case 10
     lf = [1 2 4;
-          2 3 4;
-          3 1 4;
-          1 3 2];
+      2 3 4;
+      3 1 4;
+      1 3 2];
 
   case {12, 29}
     lf = [1 4 3 2;
-          5 6 7 8;
-          1 2 6 5;
-          2 3 7 6;
-          3 4 8 7;
-          4 1 5 8];
+      5 6 7 8;
+      1 2 6 5;
+      2 3 7 6;
+      3 4 8 7;
+      4 1 5 8];
 
   otherwise
     error('processFaces:unsupportedVTKType', ...
