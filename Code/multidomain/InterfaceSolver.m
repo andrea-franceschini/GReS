@@ -375,8 +375,8 @@ classdef (Abstract) InterfaceSolver < handle
 
       obj.coupledVariables = obj.getCoupledVariables();
 
-      varMaster = getVariableNames(obj.domains(1).dofm);
-      varSlave = getVariableNames(obj.domains(2).dofm);
+      varMaster = getVariableNames(obj.domains(MortarSide.master).dofm);
+      varSlave = getVariableNames(obj.domains(MortarSide.slave).dofm);
 
       if any([isempty(varMaster),isempty(varSlave)])
         error(['Interface solver can be registered only after ' ...
@@ -390,6 +390,7 @@ classdef (Abstract) InterfaceSolver < handle
       if ~isempty(obj.coupledVariables)
         % the interfaceSolver specifies the coupled variables directly in
         % the properties block
+        % input variables are ignored
         % only check that the interface is compatible with the available
         % field
 
@@ -402,13 +403,15 @@ classdef (Abstract) InterfaceSolver < handle
 
       else
         % the interfaceSolver does not specify the coupled variables
-        % in the properties block
+        % the user can select which variable is coupled by the present
+        % interface
 
-        if isfield(input,"variable")
-          sharedVars = getXMLData(input,[],"variable");
+        parm = readInput(struct("variable",missing),input);
+        sharedVars = parm.variable;
+        if ~ismissing(parm.variable)
+          obj.coupledVariables = sharedVars;
         end
 
-        obj.coupledVariables = sharedVars;
       end
     end
 
