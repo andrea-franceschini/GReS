@@ -475,6 +475,13 @@ classdef Poromechanics < PhysicsSolver
     end
 
 
+    function iniStress = getInitialStress(obj)
+
+      iniStress = obj.iniStress;
+      
+    end
+
+
 
 
     function out = isLinear(obj)

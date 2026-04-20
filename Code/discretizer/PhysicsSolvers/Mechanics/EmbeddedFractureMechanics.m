@@ -12,6 +12,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     fractureMesh            % a 2D mesh object with cut cell topology
     areaTol = 1e-6;         % minimum area of a fracture element
     bcTraction
+    iniTraction
 
   end
 
@@ -77,6 +78,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       % 
       t = computeInitialTraction(obj);
       obj.domain.state.data.traction = obj.domain.state.data.traction + t(:);
+      obj.iniTraction = obj.domain.state.data.traction;
 
     end
 
@@ -123,6 +125,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       coordinates = obj.grid.coordinates;
       mech = getPhysicsSolver(obj.domain,"Poromechanics");
       cell2stress = mech.cell2stress;
+      iniStress = mech.getInitialStress;
 
       fldMech = dofm.getVariableId(Poromechanics.getField());
 
@@ -179,8 +182,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         asbKww.localAssembly(wDof,wDof,KwwLoc);
 
         % assemble rhsW (use computed stress tensor)
+        sigma = sigma - iniStress(l:l+nG-1,:);
         sigma = reshape(sigma',6,1,nG);
-        trac = s.data.traction(wDof);
+        trac = s.data.traction(wDof) - obj.iniTraction(wDof);
         rT = trac*f.area(i);
         fTmp = pagemtimes(E,'ctranspose',sigma,'none');
         fTmp = fTmp.*reshape(dJw,1,1,[]);

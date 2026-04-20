@@ -225,7 +225,7 @@ classdef SolidMechanicsContact < MeshTying
       tIni = computeInitialTraction(obj);
       obj.state.traction = obj.state.traction + tIni;
       obj.state.iniTraction = obj.state.traction;
-
+      obj.stateOld.traction = obj.state.traction;
       setStickNodes(obj);
 
     end
@@ -567,7 +567,7 @@ classdef SolidMechanicsContact < MeshTying
               rhsT(tDof(1)) = rhsT(tDof(1)) + area*g_n;
 
               % rhs (mu_t,tT) - local frame
-              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (trac(2:3)-tT_lim);
+              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (dTrac(2:3)-tT_lim);
 
 
               if gresLog().getVerbosity > 5
@@ -636,7 +636,7 @@ classdef SolidMechanicsContact < MeshTying
       % use traction variation for tangential components
       rhsH = -H*obj.state.deltaTraction;
 
-      rhsH(1:3:end) = -H(1:3:end,:) * obj.state.traction;
+      rhsH(1:3:end) = -H(1:3:end,:) * (obj.state.traction - obj.state.iniTraction);
 
     end
 
