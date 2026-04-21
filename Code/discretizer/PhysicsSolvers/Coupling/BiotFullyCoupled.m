@@ -192,6 +192,7 @@ classdef BiotFullyCoupled < PhysicsSolver
 
     function initialize(obj)
       obj.mechSolver.initialize();
+      obj.flowSolver.initialize();
     end
 
     function cells = getCoupledCells(obj)

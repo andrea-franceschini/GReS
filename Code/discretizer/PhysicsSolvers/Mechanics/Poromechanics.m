@@ -102,6 +102,10 @@ classdef Poromechanics < PhysicsSolver
       obj.fInt = zeros(Ndof,1);
       assembleK = assembler(n,Ndof,Ndof);
 
+      % displacement variation at current iter
+      du = s.data.displacements - sOld.data.displacements;
+
+      l = 1;
 
       for vtkId = cells.vtkTypes
 
@@ -111,23 +115,22 @@ classdef Poromechanics < PhysicsSolver
         % get node topology for given vtk type
         topol = obj.grid.getCellNodes(subCellsLoc);
 
+        nG = elem.getNumbGaussPts;
+
         for i = 1:numel(subCellsLoc)
 
           % assembly loop for homogeneous element type
 
           el = subCellsLoc(i);
 
-          % position in stress/strain matrix
-          l = obj.cell2stress(el,1);
-          nG = obj.cell2stress(el,2);
-
           nodes = topol(i,:);
           dof = dofm.getLocalDoF(obj.fieldId,nodes);
           coords = coordinates(nodes,:);
 
-          % get strain matrix B
+          % compute strain
           [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
           B = elem.getStrainMatrix(gradN);
+          s.data.strain(l:l+nG-1,:) = reshape(pagemtimes(B,du(dof)),6,nG)';
 
           % constitutive update (will be updated with proper
           % constitutiveLaw class)
@@ -156,6 +159,10 @@ classdef Poromechanics < PhysicsSolver
           % update stress map and gp counter
           s.data.status(l:l+nG-1,:) = status;
           s.data.stress(l:(l+nG-1),:) = sigma;
+
+
+          obj.cell2stress(el,:) = [l nG];
+          l = l + nG;
 
         end % end sub cells loop
 
@@ -228,7 +235,7 @@ classdef Poromechanics < PhysicsSolver
 
       % initial stress - assumed balanced with external forces
       state = getState(obj);
-      computeStrain(obj);
+      %computeStrain(obj);
       [obj.avStress,obj.avStrain] = finalizeState(obj,state);
       obj.iniStress = state.data.stress;
       
@@ -273,7 +280,7 @@ classdef Poromechanics < PhysicsSolver
           solution(getDoF(dofm,obj.fieldId));
       end
 
-      computeStrain(obj);
+      %computeStrain(obj);
 
     end
 
@@ -479,8 +486,9 @@ classdef Poromechanics < PhysicsSolver
 
     function out = isLinear(obj)
       out = false;
+      % return
 
-      % check if there is not embedded fractures
+      %check if there is not embedded fractures
       if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics"))
         return
       end

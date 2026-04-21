@@ -131,6 +131,15 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       end
     end
 
+
+    function pHydro = getHydrostaticPressure(obj)
+
+      fluid = obj.domain.materials.getFluid();
+      gamma = fluid.getSpecificWeight;
+      pHydro = gamma * (obj.watLev - obj.grid.cells.center(:,3));
+
+    end
+
     function gTerm = getRhsGravity(obj)
 
       fluid = obj.domain.materials.getFluid();
@@ -144,6 +153,13 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         -lw.*obj.rhsGrav],[nCells,1]);
 
       gTerm = gTerm(dofm.getActiveEntities(obj.fieldId));
+
+      % remove hydrostatic contribution
+      gamma = fluid.getSpecificWeight;
+      pHydro = gamma * (obj.watLev - obj.grid.cells.center(:,3));
+      gHydro = obj.H * pHydro;
+
+      gTerm = gTerm - gHydro;
 
     end
 
