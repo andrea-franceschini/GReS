@@ -567,7 +567,7 @@ classdef SolidMechanicsContact < MeshTying
               rhsT(tDof(1)) = rhsT(tDof(1)) + area*g_n;
 
               % rhs (mu_t,tT) - local frame
-              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (dTrac(2:3)-tT_lim);
+              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (trac(2:3)-tT_lim);
 
 
               if gresLog().getVerbosity > 5
