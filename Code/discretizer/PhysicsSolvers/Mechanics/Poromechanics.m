@@ -9,6 +9,7 @@ classdef Poromechanics < PhysicsSolver
     avStressOld
     avStrainOld
     flOut = true
+    iniDisp        % initial displacements in the model (balanced with external forces) 
     
     % stress and strain tensor use engineering voigt notation
     % s_xx,s_yy,s_zz,tau_yz,tau_xz,tau_xy
@@ -235,6 +236,7 @@ classdef Poromechanics < PhysicsSolver
 
       % initial stress - assumed balanced with external forces
       state = getState(obj);
+      obj.iniDisp = state.data.displacements;
       %computeStrain(obj);
       [obj.avStress,obj.avStrain] = finalizeState(obj,state);
       obj.iniStress = state.data.stress;
@@ -486,7 +488,7 @@ classdef Poromechanics < PhysicsSolver
 
     function out = isLinear(obj)
       out = false;
-      % return
+      return
 
       %check if there is not embedded fractures
       if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics"))

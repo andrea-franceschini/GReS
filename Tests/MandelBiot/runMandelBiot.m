@@ -39,7 +39,7 @@ bound = Boundaries(grid,fullfile(scriptDir,input_dir,"boundaries.xml"));
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility
-printUtils = OutState('outputFile',"Output/results",'printTimes',[0.05,0.25,1,2.5,5]);
+printUtils = OutState('outputFile',"Output/results",'printTimes',[0.05]);
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Boundaries',bound,...
@@ -67,7 +67,7 @@ solver = NonLinearImplicit('simulationparameters',simParam,...
 solver.simulationLoop();
 
 % calling analytical solution script
-Mandel_Analytical(grid, mat, abs(F),[0.05,0.25,1,2.5,5],output_dir)
+Mandel_Analytical(grid, mat, abs(F),[0.05],output_dir)
 
 %% --------------------- Post Processing the Results ----------------------
 if true

@@ -55,6 +55,8 @@ a function handle depending on space (x,y,z)
 
   <!-- Boundary Conditions to Mechanics -->
   <!-- Top -->
+  
+  <!--
   <BC name = "TopLoad"
       type = "Neumann"
       field = "surface"
@@ -65,7 +67,9 @@ a function handle depending on space (x,y,z)
       >
 
     <BCevent time = "0." value = "-1.000000e+01" />
-  </BC>
+</BC>
+-->
+
 
   <!-- Lateral Y -->
   <BC name = "LatFixedY"

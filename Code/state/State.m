@@ -1,9 +1,9 @@
 classdef State < handle & matlab.mixin.Copyable
   % Handle for state troughout simulation
 
-  properties
+  properties 
     t = 0
-    data
+    data = struct('curr',[],'init',[],'prev',[])
   end
 
   methods
@@ -11,11 +11,20 @@ classdef State < handle & matlab.mixin.Copyable
   end
 
   methods (Access = protected)
-    function cp = copyElement(obj)
+    function cp = copyElement(obj,src)
+      switch src
       cp = State();
       cp.t = obj.t;
       cp.data = obj.data;
-    end
+      end
+
+      function state = getState(obj,src)
+
+        state = obj.data.(src);
+        
+      end
+
+
   end
 end
 
