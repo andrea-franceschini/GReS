@@ -1,4 +1,4 @@
-function state = applyMandelIC(state,mat,msh,F)
+function s = applyMandelIC(state,mat,msh,F)
 % Get Material parameters from materials class
 porosity = mat.getMaterial(1).PorousRock.getPorosity();
 cf = mat.getFluid().getFluidCompressibility; % [kPa^-1] Fluid compressibility
@@ -17,8 +17,10 @@ nuU = (3*nu+alpha*B*(1-2*nu))/(3-alpha*B*(1-2*nu));
 x = msh.coordinates(:,1);
 z = msh.coordinates(:,3);
 
-state.data.pressure = -(state.data.pressure+(1/(3*max(x)))*B*(1+nuU)*F);
-state.data.displacements(1:3:end) = -F*nuU*x/(2*mu*max(x));
-state.data.displacements(3:3:end) = F*(1-nuU)*z/(2*mu*max(x));
+s = state.get('curr');
+s.pressure = -(s.pressure+(1/(3*max(x)))*B*(1+nuU)*F);
+s.displacements(1:3:end) = -F*nuU*x/(2*mu*max(x));
+s.displacements(3:3:end) = F*(1-nuU)*z/(2*mu*max(x));
+set(state,'curr',s);
 end
 

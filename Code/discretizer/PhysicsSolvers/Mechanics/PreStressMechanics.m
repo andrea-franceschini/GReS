@@ -119,7 +119,7 @@ classdef PreStressMechanics < Poromechanics
 
       solv.simulationLoop();
 
-      initialStress = obj.domain.state.data.stress;
+      initialStress = getState(obj,"stress");
 
     end
 

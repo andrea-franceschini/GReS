@@ -169,7 +169,7 @@ classdef (Abstract) SolutionScheme < handle
       % reset the simulation  at its initial state
 
       for i = 1:obj.nDom
-        obj.domains(i).state = copy(obj.iniState.domains(i));
+        setState(obj.domains(i),obj.iniState.domains(i));
       end
 
       for i = 1:obj.nInterf

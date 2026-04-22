@@ -77,6 +77,7 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
         materials = obj.domain.materials;
         s = getState(obj);
         sOld = getStateOld(obj);
+        t = obj.domain.state.t;
 
         if ~isempty(obj.R) && isLinear(obj.mechSolver)
           return
@@ -112,14 +113,11 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
             l = obj.mechSolver.cell2stress(el,1);
             [D, ~, ~] = obj.domain.materials.updateMaterial( ...
               tag, ...
-              sOld.data.stress(l:l+nG-1,:), ...
-              s.data.strain(l:l+nG-1,:), ...
-              [], sOld.data.status(l:l+nG-1,:), el, s.t);
+              sOld.stress(l:l+nG-1,:), ...
+              s.strain(l:l+nG-1,:), ...
+              [], sOld.status(l:l+nG-1,:), el, t);
 
-            I = zeros(6,1);
-            I(1:obj.KdrType) = 1;
-            DI = pagemtimes(D,I);
-            Kdr = (1/obj.KdrType^2)*pagemtimes(I',DI);
+            Kdr = obj.getDrainedBulkModulus(D);
 
             [~,dJWeighed] = getDerBasisFAndDet(elem,coords);
 
@@ -146,11 +144,12 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
       function rhsMech = computeRhsMech(obj,dt)
 
         pCurr = getState(obj,"pressure");
+        p0 = getStateInit(obj,"pressure");
 
         entsFlow = obj.domain.dofm.getActiveEntities(obj.fldFlow,1);
 
         % remember the minus sign (look at biot)
-        rhsMech = - obj.Q * pCurr(entsFlow);
+        rhsMech = - obj.Q * (pCurr(entsFlow)-p0(entsFlow));
 
       end
 
@@ -175,16 +174,10 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
     
 
         function updateState(obj,solution,var)
-          if strcmp(var,obj.flowSolver.getField())
-            ents = obj.domain.dofm.getActiveEntities(obj.fldFlow,1);
-            state = getState(obj);
-            state.data.pressure(ents) = state.data.pressure(ents) + solution;
-          elseif strcmp(var,obj.mechSolver.getField())
-            ents = obj.domain.dofm.getActiveEntities(obj.fldMech,1);
-            state = getState(obj);
-            state.data.displacements(ents) = state.data.displacements(ents) + solution;
-            obj.mechSolver.updateState();
-          end
+          v = getState(obj,var);
+          ents = obj.domain.dofm.getActiveEntities(var,1);
+          v(ents) = v(ents) + solution;
+          setState(obj,v,var);
         end
 
 
@@ -201,24 +194,9 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
           end
         end
 
-        function Kdr = getDrainedBulkModulus(obj,elID,elem)
+        function Kdr = getDrainedBulkModulus(obj,D)
 
           % result is given for each gauss point
-
-          s = getState(obj);
-          sOld = getStateOld(obj);
-
-    
-          nG = elem.getNumbGaussPts;
-
-          l = obj.mechSolver.cell2stress(elID,1);
-
-          % get constitutive matrix
-          [D, ~, ~] = obj.domain.materials.updateMaterial( ...
-            obj.mesh.cellTag(elID), ...
-            sOld.data.stress(l:l+nG-1,:), ...
-            s.data.strain(l:l+nG-1,:), ...
-            [], sOld.data.status(l:l+nG-1,:), elID, s.t);
 
           I = zeros(6,1);
           I(1:obj.KdrType) = 1;

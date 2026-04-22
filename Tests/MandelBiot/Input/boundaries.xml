@@ -47,7 +47,7 @@ a function handle depending on space (x,y,z)
       field = "surface"
       variable = "pressure"
       entityListType = "tag"
-      entityList = "5"
+      entityList = "6"
       >
 
     <BCevent time = "0." value = "0.000000e+00" />
@@ -77,7 +77,7 @@ a function handle depending on space (x,y,z)
       field = "surface"
       variable = "displacements"
       entityListType = "tag"
-      entityList = "3"
+      entityList = "3,4"
       components = "y"
       >
 
@@ -90,7 +90,7 @@ a function handle depending on space (x,y,z)
       field = "surface"
       variable = "displacements"
       entityListType = "tag"
-      entityList = "4"
+      entityList = "5"
       components = "x"
       >
 
