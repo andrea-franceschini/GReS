@@ -172,10 +172,10 @@ classdef BiotFullyCoupled < PhysicsSolver
 
       % retrieve State variables
       pCurr = getState(obj,"pressure");
-      %pOld = getStateOld(obj,"pressure");
       uCurr = getState(obj,"displacements");
       uOld = getStateOld(obj,"displacements");
-      dp = pCurr - obj.flowSolver.iniPressure;
+      p0 = obj.getStateInit("pressure");
+      dp = pCurr - p0;
 
       % select active coefficients of solution vectors
       entsPoro = obj.domain.dofm.getActiveEntities(obj.fldMech,1);

@@ -137,8 +137,11 @@ classdef (Abstract) SolutionScheme < handle
 
       for i = 1:obj.nDom
         dom = obj.domains(i);
-        obj.iniState.domains(i) = copy(dom.state);
-        dom.stateOld = copy(dom.state);
+        state = dom.getState;
+        obj.iniState.domains(i) = state;
+        % set old and initial state 
+        dom.setStateInit(state)
+        dom.setStateOld(state);
         dom.outstate = obj.output;
         dom.simparams = obj.simparams;
         dom.domainId = i;

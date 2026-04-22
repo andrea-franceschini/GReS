@@ -5,7 +5,6 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     H                         % stiffness matrix
     P                         % capacity matrix
     watLev
-    iniPressure           % initial overpressure (balanced)
     rhsGrav                   % gravity contribution to rhs
     steadyState               % flag to force steady state problem
   end
@@ -59,18 +58,16 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       obj.fieldId = dofm.getVariableId(obj.getField());
 
       % initialize the state object with a pressure field
-      obj.getState().data.(obj.getField()) = zeros(n,1);
+      state = getState(obj);
+      state.pressure = zeros(n,1);
+      setState(obj,state)
 
     end
 
 
 
     function initialize(obj)
-      
-      % non zero initial pressure are assumed balanced 
-      state = getState(obj);
-      obj.iniPressure = state.data.pressure;
-
+      % nothing to initialize here
     end
 
 
@@ -82,13 +79,16 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       p = obj.getState(obj.getField());
       ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
 
+      % balanced pressure to be removed from rhs assembly
+      p0 = getStateInit(obj,"pressure");
+
       if obj.steadyState
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H;
-        rhs = obj.H*(p(ents) - obj.iniPressure(ents));
+        rhs = obj.H*(p(ents) - p0(ents));
       else
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H + obj.P/dt;
         pOld = obj.getStateOld(obj.getField());
-        rhsH = obj.H*(p(ents) - obj.iniPressure(ents));
+        rhsH = obj.H*(p(ents) - p0(ents));
         rhsP = (obj.P/dt)*(p(ents) - pOld(ents));
         rhs = rhsH + rhsP;
       end
@@ -107,17 +107,19 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
     function updateState(obj,dSol)
       dofm = obj.domain.dofm;
+      p = getState(obj,"pressure");
       if nargin > 1
         ents = dofm.getActiveEntities(obj.fieldId);
-        state = getState(obj);
-        state.data.pressure(ents) = state.data.pressure(ents) + dSol(dofm.getDoF(obj.fieldId));
+        p(ents) = p(ents) + dSol(dofm.getDoF(obj.fieldId));
       end
+      setState(obj,p,"pressure");
     end
 
 
     function pTot = getTotalPressure(obj)
 
-      pTot = getHydrostaticPressure(obj) + obj.domain.state.pressure;
+      overPressure =  getState(obj,"pressure");
+      pTot = overPressure + getHydrostaticPressure(obj);
 
     end
 
@@ -127,11 +129,8 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     % end
 
     function [cellData,pointData] = writeVTK(obj,fac,t)
-      % append state variable to output structure
-      sOld = getStateOld(obj);
-      sNew = getState(obj);
 
-      p = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
+      p = obj.domain.state.interpolate(fac,"pressure");
 
       outPrint = finalizeState(obj,p,t);
       [cellData,pointData] = buildPrintStruct(obj,outPrint);
@@ -226,7 +225,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
       solv.simulationLoop();
 
-      ssPressure = obj.domain.state.data.pressure;
+      ssPressure = getState(obj,obj.getField());
       
     end
   end

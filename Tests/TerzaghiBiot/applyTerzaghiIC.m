@@ -14,8 +14,14 @@ G = E/(2*(1+nu)); %[kPa] second lamè constant
 M = (porosity*cf)^-1; %Biot Modulus, assuming cbr=0
 Ku = lambda + 2*(G/3) + biot^2*M;
 
-state.data.pressure = state.data.pressure+(biot*M*abs(pL))/(Ku+4*G/3);
+p = state.get('curr',"pressure");
+p = p + (biot*M*abs(pL))/(Ku+4*G/3);
+set(state,'curr',p,"pressure");
+
 zu = mesh.coordinates(:,3);
-state.data.displacements(3:3:end) = arrayfun(@(zu) 1/(Ku+4*G/3)*pL*(zu),zu);
+u = state.get('curr',"displacements");
+u(3:3:end) = arrayfun(@(zu) 1/(Ku+4*G/3)*pL*(zu),zu);
+set(state,'curr',u,"displacements");
+
 end
 

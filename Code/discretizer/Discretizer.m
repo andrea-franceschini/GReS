@@ -31,7 +31,7 @@ classdef Discretizer < handle
     interfaceList
 
     state
-    stateOld
+
   end
 
 
@@ -87,6 +87,8 @@ classdef Discretizer < handle
 
 
     function applyDirVal(obj,t)
+      % apply Dirichlet boundary values to the current state object
+
       bcList = obj.bcs.getBCList;
 
       for i = 1:numel(bcList)
@@ -177,27 +179,74 @@ classdef Discretizer < handle
       out = obj.physicsSolvers(id);
     end
 
-    function stat = getState(obj,varName)
-      % get a copy of a state variable field
-      if nargin < 2
-        stat = obj.state;
+    function stateCurr = getState(obj,varName)
+      % get current state variables
+      if nargin == 1
+        stateCurr = obj.state.get('curr');
+      elseif nargin == 2
+        stateCurr = obj.state.get('curr',varName);
       else
-        if ~isfield(obj.getState().data,varName)
-          error("Variable %s does not exist in the State object",varName)
-        end
-        stat = obj.getState().data.(varName);
+        error("getState:Number of input arguments must be 1 or 2")
       end
     end
 
-    function stat = getStateOld(obj,varName)
-      % get a copy of a state variable field
-      if nargin < 2
-        stat = obj.stateOld;
+    function stateOld = getStateOld(obj,varName)
+      % get last converged state variables
+      if nargin == 1
+        stateOld = obj.state.get('old');
+      elseif nargin == 2
+        stateOld = obj.state.get('old',varName);
       else
-        if ~isfield(obj.getStateOld().data,varName)
-          error("Variable %s does not exist in the StateOld object",varName)
-        end
-        stat = obj.getStateOld().data.(varName);
+        error("getState:Number of input arguments must be 1 or 2")
+      end
+    end
+
+
+    function stateInit = getStateInit(obj,varName)
+      % get initial state variables
+      if nargin == 1
+        stateInit = obj.state.get('init');
+      elseif nargin == 2
+        stateInit = obj.state.get('init',varName);
+      else
+        error("getState:Number of input arguments must be 1 or 2")
+      end
+    end
+
+
+
+    function setState(obj,val,varName)
+      % get current state variables
+      if nargin == 2
+        obj.state.set('curr',val);
+      elseif nargin == 3
+        obj.state.set('curr',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
+      end
+    end
+
+    function setStateOld(obj,val,varName)
+      % get last converged state variables
+      if nargin == 2
+        obj.state.set('old',val);
+      elseif nargin == 3
+        obj.state.set('old',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
+      end
+
+    end
+
+
+    function setStateInit(obj,val,varName)
+      % get initial state variables
+      if nargin == 2
+        obj.state.set('init',val);
+      elseif nargin == 3
+        obj.state.set('init',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
       end
     end
 
@@ -361,10 +410,6 @@ classdef Discretizer < handle
       for solver = obj.solverNames
         initialize(obj.getPhysicsSolver(solver));
       end
-
-      % apply initial dirichlet condition to the state object
-      tIni = obj.simparams.tIni;
-      applyDirVal(obj,tIni);
 
     end
 
