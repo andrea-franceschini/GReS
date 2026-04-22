@@ -32,10 +32,8 @@ classdef MeshTying < InterfaceSolver
       obj.nMult = ncomp * getNumberOfEntities(obj.multiplierLocation,...
         obj.grids(MortarSide.slave));
 
-      obj.state.multipliers = zeros(obj.nMult,1);
-      obj.state.iniMultipliers = zeros(obj.nMult,1);
-
-      obj.stateOld = obj.state;
+      state.multipliers = zeros(obj.nMult,1);
+      setState(obj,state);
 
     end
 
@@ -254,8 +252,10 @@ classdef MeshTying < InterfaceSolver
 
       % retrieve active multipliers
       actMult = getMultiplierDoF(obj);
-      iniMult = obj.state.iniMultipliers(actMult);
-      mult = obj.state.multipliers(actMult);
+      s = obj.getState();
+      sIni = obj.getStateInit();
+      iniMult = sIni.multiplier(actMult);
+      mult = s.multipliers(actMult);
 
       % compute rhs terms
       rhsMaster = obj.M' * (mult - iniMult);

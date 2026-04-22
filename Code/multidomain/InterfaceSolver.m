@@ -33,8 +33,7 @@ classdef (Abstract) InterfaceSolver < handle
     outstate
 
     % interface state
-    state 
-    stateOld
+    state = State()
 
     % id of this interface in the solution scheme object
     interfId
@@ -143,7 +142,7 @@ classdef (Abstract) InterfaceSolver < handle
     function advanceState(obj)
 
       % note: state in interface solver is just a value struct
-      obj.stateOld = obj.state;
+      setStateOld(obj,getState(obj));
       
     end
 
@@ -153,7 +152,7 @@ classdef (Abstract) InterfaceSolver < handle
 
     function goBackState(obj)
 
-      obj.state = obj.stateOld;
+      setState(obj,getStateOld(obj));
 
     end
 
@@ -187,6 +186,79 @@ classdef (Abstract) InterfaceSolver < handle
       obj.outstate.writeVTKfile(vtmBlock,obj.getOutName(),grid,...
         time, [], [], pointData2D, surfData2D);
 
+    end
+
+
+
+    function stateCurr = getState(obj,varName)
+      % get current state variables
+      if nargin == 1
+        stateCurr = obj.state.get('curr');
+      elseif nargin == 2
+        stateCurr = obj.state.get('curr',varName);
+      else
+        error("getState:Number of input arguments must be 1 or 2")
+      end
+    end
+
+    function stateOld = getStateOld(obj,varName)
+      % get last converged state variables
+      if nargin == 1
+        stateOld = obj.state.get('old');
+      elseif nargin == 2
+        stateOld = obj.state.get('old',varName);
+      else
+        error("getState:Number of input arguments must be 1 or 2")
+      end
+    end
+
+
+    function stateInit = getStateInit(obj,varName)
+      % get initial state variables
+      if nargin == 1
+        stateInit = obj.state.get('init');
+      elseif nargin == 2
+        stateInit = obj.state.get('init',varName);
+      else
+        error("getState:Number of input arguments must be 1 or 2")
+      end
+    end
+
+
+
+    function setState(obj,val,varName)
+      % get current state variables
+      if nargin == 2
+        obj.state.set('curr',val);
+      elseif nargin == 3
+        obj.state.set('curr',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
+      end
+    end
+
+    function setStateOld(obj,val,varName)
+      % get last converged state variables
+      if nargin == 2
+        obj.state.set('old',val);
+      elseif nargin == 3
+        obj.state.set('old',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
+      end
+
+    end
+
+
+    function setStateInit(obj,val,varName)
+      % get initial state variables
+      if nargin == 2
+        obj.state.set('init',val);
+      elseif nargin == 3
+        obj.state.set('init',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
+      end
     end
 
 
@@ -414,9 +486,7 @@ classdef (Abstract) InterfaceSolver < handle
 
       processMortarGrid(obj,params);
 
-      % initialize the state objects
-      obj.state.t = 0;
-      obj.stateOld = obj.state;
+
     end
 
 

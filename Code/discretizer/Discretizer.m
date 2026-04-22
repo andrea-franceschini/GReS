@@ -30,7 +30,7 @@ classdef Discretizer < handle
     % id of the interfaces defined on the domain
     interfaceList
 
-    state
+    state = State();
 
   end
 
@@ -251,15 +251,6 @@ classdef Discretizer < handle
     end
 
 
-    % function addInterface(obj,interfId,interf)
-    %   % add mortar interface to current domain
-    %   if ~ismember(interfId,obj.interfaceList)
-    %     obj.interfaceList = sort([obj.interfaceList interfId]);
-    %     obj.interfaces{end+1} = interf;
-    %   end
-    %end
-
-
     function assembleSystem(obj,dt)
       % loop trough solver database and compute non-costant jacobian
       % blocks and rhs block
@@ -422,54 +413,6 @@ classdef Discretizer < handle
 
     end
 
-    % function printState(obj)
-    %   % print solution of the model according to the print time in the
-    %   % list
-    %
-    %   % if obj.state.t >= obj.simparams.tMax
-    %   %
-    %   %   time = getState(obj).t;
-    %   %   writeVTK(obj,time);
-    %   %   writeMatFile(obj,time,obj.outstate.timeID);
-    %   %
-    %   % else
-    %
-    %   if obj.outstate.timeID <= length(obj.outstate.timeList)
-    %
-    %     time = obj.outstate.timeList(obj.outstate.timeID);
-    %
-    %     % loop over print times within last time step
-    %     while time <= obj.state.t
-    %
-    %       assert(time >= obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
-    %         time, obj.stateOld.t, obj.state.t);
-    %
-    %       assert(obj.state.t - obj.stateOld.t > eps('double'),...
-    %         'Time step is too small for printing purposes');
-    %
-    %       % move this into the solution scheme class
-    %       % compute factor to interpolate current and old state variables
-    %       fac = (time - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
-    %       if isnan(fac) || isinf(fac)
-    %         fac = 1;
-    %       end
-    %
-    %       writeVTK(obj,fac,time);
-    %
-    %       writeMatFile(obj,fac,obj.outstate.timeID);
-    %
-    %       obj.outstate.timeID = obj.outstate.timeID + 1;
-    %
-    %       if obj.outstate.timeID > length(obj.outstate.timeList)
-    %         break
-    %       else
-    %         time = obj.outstate.timeList(obj.outstate.timeID);
-    %       end
-    %
-    %     end
-    %
-    %   end
-    % end
 
 
     function out = writeVTK(obj,fac,time)
