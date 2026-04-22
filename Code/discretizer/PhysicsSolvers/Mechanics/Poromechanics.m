@@ -89,7 +89,6 @@ classdef Poromechanics < PhysicsSolver
       % get state variables
       du = s.displacements - sOld.displacements;
 
-      l = 1;
 
       if isempty(obj.K) || ~isLinear(obj)
         computeK = true;
@@ -112,6 +111,8 @@ classdef Poromechanics < PhysicsSolver
           % assembly loop for homogeneous element type
 
           el = subCellsLoc(i);
+
+          l = obj.cell2stress(el);
 
           nodes = topol(i,:);
           dof = dofm.getLocalDoF(obj.fieldId,nodes);
