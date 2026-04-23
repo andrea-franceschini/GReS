@@ -11,7 +11,7 @@ testFiles = {
     fullfile('Terzaghi','testTerzaghi.m')
     fullfile('SubDomains','testSubDomains.m')
     fullfile('Richards','testRichards.m')
-    %fullfile('CubeSedimentation','testSedimentation.m')
+    fullfile('CubeSedimentation','testSedimentation.m')
     fullfile('MortarConvergence','testMortarPoisson.m')
     fullfile('ConstantSliding','testConstantSliding.m')
     fullfile('SingleCrackCompressed','testSingleCrackCompressed.m')
