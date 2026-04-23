@@ -263,9 +263,9 @@ function [x,flag] = matlab_solve(obj,A,b)
    x = A\b;
    Tend = toc(startT);
 
-   if obj.DEBUGflag
-      fprintf('condition number of the matrix %e\n',condest(A));
-   end
+   % if obj.DEBUGflag
+   %    fprintf('condition number of the matrix %e\n',condest(A));
+   % end
 
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
