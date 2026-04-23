@@ -34,9 +34,10 @@ classdef Poisson < PhysicsSolver
       % initialize the state object
       n = getNumbDoF(dofm,obj.fieldId);
 
-      state = getState(obj);
-      state.data.u = zeros(n,1);
-      state.data.err = zeros(n,1);
+      s = getState(obj);
+      s.u = zeros(n,1);
+      s.err = zeros(n,1);
+      setState(obj,s);
 
     end
 
@@ -90,28 +91,26 @@ classdef Poisson < PhysicsSolver
       ents = obj.domain.dofm.getActiveEntities(obj.getField());
       J = getJacobian(obj);
       f = computeForcingTerm(obj);
-      rhs = J*obj.domain.state.data.u(ents) + f(ents);
+      u = getState(obj,"u");
+      rhs = J*u(ents) + f(ents);
     end
 
-    function initState(obj)
-      % add poromechanics fields to state structure
-      obj.domain.state.data.u = zeros(obj.grid.nNodes,1);
-      obj.domain.state.data.err = zeros(obj.grid.nNodes,1);
-    end
 
     function updateState(obj,dSol)
       % Update state structure with last solution increment
       ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
       if nargin > 1
         % update solution
-        obj.domain.state.data.u(ents) = obj.domain.state.data.u(ents) + ...
-          dSol(getDoF(obj.domain.dofm,obj.fieldId));
+        u = getState(obj,"u");
+        u(ents) = u(ents) + dSol(getDoF(obj.domain.dofm,obj.fieldId));
+        setState(obj,u,"u");
       end
 
       % compute error if analytical solution is available
       if ~isempty(obj.analyticalSolution)
         analSol = computeAnal(obj,ents,'u',0);
-        obj.domain.state.data.err(ents) = obj.domain.state.data.u(ents) - analSol;
+        err = u(ents) - analSol;
+        setState(obj,err,"err");
       end
     end
 
@@ -281,7 +280,7 @@ classdef Poisson < PhysicsSolver
       L2err = 0;
       H1err = 0;
 
-      u = obj.domain.state.data.u;
+      u = getState(obj,"u");
 
       coordinates = obj.grid.coordinates;
       cells = obj.grid.cells;

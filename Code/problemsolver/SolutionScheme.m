@@ -151,7 +151,11 @@ classdef (Abstract) SolutionScheme < handle
 
       for i = 1:obj.nInterf
         interf = obj.interfaces{i};
-        obj.iniState.interfaces{i} = interf.state;
+        state = interf.getState;
+        obj.iniState.interfaces(i) = state;
+        % set old and initial state
+        interf.setStateInit(state)
+        interf.setStateOld(state);
         interf.interfId = i;
         interf.outstate = obj.output;
         initialize(interf)
