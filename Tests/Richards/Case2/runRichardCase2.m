@@ -12,19 +12,11 @@ simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'));
 mat = Materials(fullfile(input_dir,'materials.xml'));
 
 % Create the Mesh object
-topology = Mesh();
+grid = Grid();
 
 % Import mesh data into the Mesh object
-topology.importMesh(fullfile(input_dir,'Mesh',"Column30.msh"));
+grid.importMesh(fullfile(input_dir,'Mesh',"Column30.msh"));
 
-% Create an object of the "Elements" class and process the element properties
-elems = Elements(topology,2);
-
-% Create an object of the "Faces" class and process the face properties
-faces = Faces(topology);
-
-% Wrap Mesh, Elements and Faces objects in a structure
-grid = struct('topology',topology,'cells',elems,'faces',faces);
 
 % Creating boundaries conditions.
 bound = Boundaries(grid,fullfile(input_dir,'boundaries.xml'));
@@ -52,7 +44,10 @@ solver.simulationLoop();
 %% --------------------- Post Processing the Results ----------------------
 postproc = true;
 printFigs = true;
+
 if postproc
+
+  center = grid.cells.center;
   image_dir = fullfile(pwd,figures_dir);
     if ~isfolder(image_dir)
         mkdir(image_dir)
@@ -61,7 +56,7 @@ if postproc
     % Getting pressure and saturation solution for specified time from MatFILE
     numb = 0.;
     tol = 0.01;
-    nodesP = find(abs(elems.mesh.cellCentroid(:,1)-numb) < tol & abs(elems.mesh.cellCentroid(:,2)-numb) < tol);
+    nodesP = find(abs(center(:,1)-numb) < tol & abs(center(:,2)-numb) < tol);
 
     tstr = strcat(num2str((printUtils.timeList/86400)'),' Days');
     nrep = length(printUtils.timeList);
@@ -78,7 +73,7 @@ if postproc
     weight = mat.getFluid().getSpecificWeight();
 
     % Location a column to be the plot position.
-    ptsZ = elems.mesh.cellCentroid(nodesP,3);
+    ptsZ = center(nodesP,3);
 
     if printFigs
       % Plotting pressure head

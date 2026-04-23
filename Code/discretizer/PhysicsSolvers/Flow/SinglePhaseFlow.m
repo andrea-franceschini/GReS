@@ -30,10 +30,10 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
     function registerSolver(obj,fldLocation,varargin)
 
-      nTags = obj.mesh.nCellTag;
+      nTags = obj.grid.cells.nTag;
 
       default = struct('targetRegions',1:nTags,...
-        'steadyState',0);
+                       'steadyState',0);
 
 
       params = readInput(default,varargin{:});
@@ -43,7 +43,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       dofm = obj.domain.dofm;
 
       dofm.registerVariable(obj.getField(),fldLocation,1,params.targetRegions);
-      n = getNumberOfEntities(fldLocation,obj.mesh);
+      n = getNumberOfEntities(fldLocation,obj.grid);
       obj.fieldId = dofm.getVariableId(obj.getField());
 
       % initialize the state object with a pressure field
@@ -118,6 +118,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       out = isLinear(obj);
     end
 
+
     function alpha = getRockCompressibility(obj,cellTag,coupledRegions)
 
       % regions: cell tags where pressure is coupled with displacements
@@ -141,14 +142,15 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
           alpha = rock.getCompressibility;
         end
       end
-      
     end
 
     function perm = printPermeab(obj)
+
       % printPermeab - print the permeability for the cell or element.
-      perm = zeros(obj.mesh.nCells,6);
-      for el=1:obj.mesh.nCells
-        ktmp = obj.domain.materials.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
+      cells = obj.grid.cells;
+      perm = zeros(cells.num,6);
+      for el=1:cells.num
+        ktmp = obj.domain.materials.getMaterial(cells.tag(el)).PorousRock.getPermMatrix();
         perm(el,1)=ktmp(1,1);
         perm(el,2)=ktmp(2,2);
         perm(el,3)=ktmp(3,3);

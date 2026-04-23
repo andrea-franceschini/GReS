@@ -1,4 +1,3 @@
-
 function outState = updateContactState(inState,traction,tLimit,normalGap,tols)
 % tols: structure with tolerances named
 % according to initializeActiveSet method

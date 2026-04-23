@@ -22,11 +22,8 @@ classdef testBoundaries < matlab.unittest.TestCase
 
     function readBCFile(testCase)
       % test bc added with  xml file
-      mesh = Mesh();
-      mesh.importMesh("mesh.msh");
-      elems = Elements(mesh,2);
-      faces = Faces(mesh);
-      grid = struct("topology",mesh,"cells",elems,"faces",faces);
+      grid = Grid();
+      grid.importMesh("mesh.msh");
       testCase.bc = Boundaries(grid,testCase.pathToFile);
 
       validate(testCase)
@@ -37,12 +34,9 @@ classdef testBoundaries < matlab.unittest.TestCase
 
     function readBC(testCase)
       % test bc added with key-value input
-      mesh = Mesh();
-      mesh.importMesh("mesh.msh");
-      elems = Elements(mesh,2);
-      faces = Faces(mesh);
-      grid = struct("topology",mesh,"cells",elems,"faces",faces);
-
+      grid = Grid();
+      grid.importMesh("mesh.msh");
+   
       testCase.bc = Boundaries(grid);
 
       testCase.bc.addBC("name","bc1",...

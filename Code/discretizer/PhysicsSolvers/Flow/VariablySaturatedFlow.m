@@ -76,7 +76,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       % Compute the posprocessing variables for the module.
       gamma = obj.domain.materials.getFluid().getSpecificWeight();
       if gamma>0
-        zbc = obj.mesh.cellCentroid(:,3);
+        zbc = obj.grid.cells.center(:,3);
         states.potential = p + gamma*zbc;
         states.head = zbc+p/gamma;
       end
@@ -94,7 +94,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
       dofm = obj.domain.dofm;
       nCells = dofm.getNumbDoF(obj.fieldId);
-      neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+      neigh = obj.grid.faces.neighbors(obj.isIntFaces,:);
       gTerm = accumarray(neigh(:),[lw.*obj.rhsGrav; ...
         -lw.*obj.rhsGrav],[nCells,1]);
 
@@ -131,6 +131,10 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       % overrides the SinglePhaseFlowFVTPFA getBC() to add the newton
       % contribution to the boundary condition values
 
+      faces = obj.grid.faces;
+      cells = obj.grid.cells;
+      surfaces = obj.grid.surfaces;
+
       bc = obj.domain.bcs;
       mat = obj.domain.materials;
 
@@ -143,8 +147,9 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
       if bcFld == entityField.surface && isEssential(bc,bcId)
 
-        faceId = bc.getSourceEntities(bcId);
-        zf = obj.faces.faceCentroid(faceId,3);
+        surfId = bc.getSourceEntities(bcId);
+        faceId = surfaces.faceId(surfId);
+        zf = faces.center(faceId,3);
         srcVal = bc.getSourceVals(bcId,t);
         gamma = mat.getFluid().getSpecificWeight();
 
@@ -153,14 +158,14 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
           srcVal(srcVal<=0)=0.;
         end
 
-        ents = sum(obj.faces.faceNeighbors(faceId,:),2);
+        ents = sum(faces.neighbors(faceId,:),2);
         p = getState(obj,obj.getField());
 
         %
         [mob, dmob] = obj.computeMobilityBoundary( ...
           obj.domain.state.data.pressure(ents),srcVal,faceId);
         tr = obj.trans(faceId);
-        dz = obj.mesh.cellCentroid(ents,3) - zf;
+        dz = cells.center(ents,3) - zf;
         dirJ = mob.*tr;
         potential = (p(ents) - srcVal) + gamma*dz;
         q = dirJ.*potential;
@@ -179,7 +184,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       end
 
     end
-
 
 
     function [cellStr,pointStr] = buildPrintStruct(obj,state)
@@ -225,12 +229,13 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
   methods (Access = private)
     function [Sw,dSw,d2Sw] = computeSaturation(obj,p)
       % COMPUTESATURATION compute the saturation and it's derivatives
-      Sw = zeros(obj.mesh.nCells,1);
-      dSw = zeros(obj.mesh.nCells,1);
-      d2Sw = zeros(obj.mesh.nCells,1);
+      cells = obj.grid.cells;
+      Sw = zeros(cells.num,1);
+      dSw = zeros(cells.num,1);
+      d2Sw = zeros(cells.num,1);
 
-      for m = 1:obj.mesh.nCellTag
-        isElMat = obj.mesh.cellTag == m;
+      for m = 1:cells.nTag
+        isElMat = cells.tag == m;
         p = p(isElMat);
         mat = obj.domain.materials.getMaterial(m);
         Sws = mat.PorousRock.getMaxSaturation();
@@ -248,9 +253,10 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       nIntFaces = length(obj.upElem);
       lw = zeros(nIntFaces,1);
       dlw = zeros(nIntFaces,1);
-      matUpElem = obj.mesh.cellTag(obj.upElem);
+      cells = obj.grid.cells;
+      matUpElem = cells.tag(obj.upElem);
       mat = obj.domain.materials;
-      for m = 1:obj.mesh.nCellTag
+      for m = 1:cells.nTag
         isElMat = matUpElem == m;
         p = p(obj.upElem(isElMat));
         [lw(isElMat), dlw(isElMat)] = mat.getMaterial(m).PorousRock.Curves.computeRelativePermeability(p);
@@ -264,16 +270,19 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
     function [lpt, dlpt] = computeMobilityBoundary(obj,pcells,pface,faceId)
       % COMPUTEMOBILITYBOUNDARY compute the mobility for the
       % upstream elements in the boundary
-      elms = obj.faces.faceNeighbors(faceId,:);
+      faces = obj.grid.faces;
+      cells = obj.grid.cells;
+
+      elms = faces.neighbors(faceId,:);
       elms = elms(elms~=0);
-      materialsID = obj.mesh.cellTag(elms);
+      materialsID = cells.tag(elms);
       mat = obj.domain.materials;
 
       % Find the direction of the flux;
       gamma = mat.getFluid().getSpecificWeight();
       if gamma > 0
-        zfaces = obj.faces.faceCentroid(faceId,3);
-        cellz = obj.mesh.cellCentroid(elms,3);
+        zfaces = faces.center(faceId,3);
+        cellz = cells.center(elms,3);
         lElemIsUp = (pcells - pface) + gamma*(cellz- zfaces) >= 0;
       else
         lElemIsUp = pcells >= pface;
@@ -301,10 +310,10 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       % interpolate effective saturation and relative permeability
       % and first derivatives
       % compute also second derivative for saturation
-      neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
+      neigh = obj.grid.faces.neighbors(obj.isIntFaces,:);
       gamma = obj.domain.materials.getFluid().getSpecificWeight();
       if gamma > 0
-        zVec = obj.elements.mesh.cellCentroid(:,3);
+        zVec = obj.grid.cells.center(:,3);
         zNeigh = zVec(neigh);
         lElemIsUp = (p(neigh(:,1)) - p(neigh(:,2))) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
       else
@@ -332,8 +341,8 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       % subCells = obj.domain.dofm.getFieldCells(obj.getField());
 
       % Get pairs of faces that contribute to the subdomain
-      neigh = obj.faces.faceNeighbors(obj.isIntFaces,:);
-      zVec = obj.mesh.cellCentroid(:,3);
+      neigh = obj.grid.faces.neighbors(obj.isIntFaces,:);
+      zVec = obj.grid.cells.center(:,3);
       zNeigh = zVec(neigh);
       pTau = pTau(neigh);
       nneigh = length(dMob);
@@ -371,18 +380,15 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       nSubCells = length(subCells);
       poroMat = zeros(nSubCells,1);
       alphaMat = zeros(nSubCells,1);
-      for m = 1:obj.mesh.nCellTag
-        alphaMat(m) = getRockCompressibility(obj,obj.mesh.cellTag(m));
-        % if ~ismember(m,obj.domain.dofm.getFieldCellTags({obj.getField(),"displacements"}))
-        %   % compute alpha only if there's no coupling in the subdomain
-        %   alphaMat(m) = mat.getMaterial(m).ConstLaw.getRockCompressibility();
-        % end
+      cells = obj.grid.cells;
+      for m = 1:cells.nTag
+        alphaMat(m) = getRockCompressibility(obj,m);
         poroMat(m) = mat.getMaterial(m).PorousRock.getPorosity();
       end
 
-      alphaMat=alphaMat(obj.mesh.cellTag(subCells));
-      poroMat=poroMat(obj.mesh.cellTag(subCells));
-
+      alphaMat = alphaMat(cells.tag(subCells));
+      poroMat = poroMat(cells.tag(subCells));
+ 
       % Define some parameters.
       pTmp = pTmp(subCells);
       pOld = pOld(subCells);
@@ -390,7 +396,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
       % Computing the Jacobian Part.
       Jp = beta*alphaMat.*Stau + (2*alphaMat+beta*poroMat).*dStau + poroMat.*ddStau;
-      Jp = obj.elements.mesh.cellVolume(subCells).*Jp.*pdiff;
+      Jp = cells.volume(subCells).*Jp.*pdiff;
 
       nDoF = obj.domain.dofm.getNumbDoF(obj.getField());
       [~,~,dof] = unique(subCells);

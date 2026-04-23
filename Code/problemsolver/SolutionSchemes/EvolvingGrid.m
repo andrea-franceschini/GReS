@@ -128,7 +128,9 @@ classdef EvolvingGrid < SolutionScheme
       if isempty(obj.domains(1).stateOld)
         obj.domains(1).stateOld = copy(obj.domains(1).getState());
       end
-      obj.nVars = obj.nVars + obj.domains(1).dofm.getNumberOfVariables();
+
+      % system has only one pressure field
+      obj.nVars = 1;
 
       obj.attemptedReset = false;
 
@@ -242,10 +244,10 @@ classdef EvolvingGrid < SolutionScheme
         vtmBlock = obj.output.vtkFile.createElement('Block');
         [cellData,pointData] = obj.physics.writeVTK(fac,outTime);
 
-        cellData = OutState.printMeshData(obj.physics.mesh,cellData);
+        cellData = OutState.printMeshData(obj.physics.grid,cellData);
 
         % write dataset to vtmBlock
-        obj.output.writeVTKfile(vtmBlock,'Sedimentation',obj.physics.mesh,...
+        obj.output.writeVTKfile(vtmBlock,'Sedimentation',obj.physics.grid,...
           outTime, pointData, cellData, [], [],tID);
 
         blocks.appendChild(vtmBlock);

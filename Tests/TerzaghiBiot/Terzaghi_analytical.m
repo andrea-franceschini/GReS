@@ -1,11 +1,11 @@
-function Terzaghi_analytical(mesh, mat, pL, time, outDir)
+function Terzaghi_analytical(grid, mat, pL, time, outDir)
 fprintf('Computing Terzaghi Analytical solution... \n');
 % number of terms for analyitcal soluton series
 nm = 1000;
 
 % Get model geometry
-L_min = min(mesh.coordinates(:,3));
-L_max = max(mesh.coordinates(:,3));
+L_min = min(grid.coordinates(:,3));
+L_max = max(grid.coordinates(:,3));
 L = abs(L_max-L_min);
 
 % Get Material parameters from materials class

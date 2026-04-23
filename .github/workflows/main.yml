@@ -26,10 +26,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup MATLAB
-        uses: matlab-actions/setup-matlab@v2
+        uses: matlab-actions/setup-matlab@v3
 
       - name: Ensure GCC 11 is active on Ubuntu
         if: matrix.os == 'ubuntu-latest'
@@ -42,7 +42,7 @@ jobs:
           g++ --version
 
       - name: Initialize GReS, compile MEX, and run tests
-        uses: matlab-actions/run-command@v2
+        uses: matlab-actions/run-command@v3
         with:
           command: |
             try

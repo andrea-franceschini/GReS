@@ -7,7 +7,7 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 // strictly positive integer; here `1') and defined by a list of four numbers:
 // three coordinates (X, Y and Z) and the target mesh size (lc) close to the
 // point:
-lc = 1e-2;
+lc = 1e-1;
 meshFile = "Column_hexa.msh";
 //meshFile = "Column.msh";
 

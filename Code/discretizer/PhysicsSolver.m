@@ -34,9 +34,7 @@ classdef (Abstract) PhysicsSolver < handle
     % handle to domain properties
     domain
     simparams
-    mesh
-    elements
-    faces
+    grid
   end
 
   methods
@@ -45,9 +43,7 @@ classdef (Abstract) PhysicsSolver < handle
       % inputStruct: struct with additional solver-specific parameters
       obj.domain = domain;
       obj.simparams = domain.simparams;
-      obj.mesh = domain.grid.topology;
-      obj.faces = domain.grid.faces;
-      obj.elements = domain.grid.cells;
+      obj.grid = domain.grid;
 
     end
   end
