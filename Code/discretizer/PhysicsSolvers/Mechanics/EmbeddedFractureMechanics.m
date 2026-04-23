@@ -75,14 +75,18 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     function initialize(obj)
       % 
-      t = computeInitialTraction(obj);
-      obj.domain.state.data.traction = obj.domain.state.data.traction + t;
+      tIni = computeInitialTraction(obj);
+      t = getState(obj,"traction");
+      t = t + tIni(:);
+      setState(obj,t,"traction");
+      setStateInit(obj,t,"traction");
 
     end
 
     function trac = computeInitialTraction(obj)
       % initialize traction for cell stress (average)
       poro = obj.domain.getPhysicsSolver("Poromechanics");
+      avgStress = getState(poro,"avgStress");
       frac = obj.fractureMesh.surfaces;
       idx = [1;6;5;6;2;4;5;4;3];
       sigma = zeros(3);
@@ -90,7 +94,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       for i = 1:frac.num
         R = reshape(frac.rotationMatrices(i,:),3,3);
         cellId = frac.cutCells(i);
-        sigma(:) = poro.avStress(cellId,idx);
+        sigma(:) = avgStress(cellId,idx);
         n = frac.normal(i,:);
         t = sigma*n';
         trac(dofId(i,3)) = R'*t;
@@ -115,10 +119,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       rhsW = zeros(nDofW,1);
 
       % get the state object
+      t = obj.domain.state.t;
       s = getState(obj);
       sOld = getStateOld(obj);
 
-      jump = s.data.(obj.getField());
+      jump = s.(obj.getField());
 
       coordinates = obj.grid.coordinates;
       mech = getPhysicsSolver(obj.domain,"Poromechanics");
@@ -157,9 +162,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         % compute constituvie tensor
         [D, sigma, ~] = obj.domain.materials.updateMaterial( ...
           cells.tag(cellId), ...
-          sOld.data.stress(l:(l+nG-1),:), ...
-          s.data.strain(l:(l+nG-1),:), ...
-          dt, sOld.data.status(l:(l+nG-1),:), cellId, s.t);
+          sOld.stress(l:(l+nG-1),:), ...
+          s.strain(l:(l+nG-1),:), ...
+          dt, sOld.status(l:(l+nG-1),:), cellId, t);
 
         KuwLoc = Poromechanics.computeKloc(B,D,Bw,dJw);
         KwuLoc = Poromechanics.computeKloc(E,D,B,dJw);
@@ -169,7 +174,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         uDof = dofm.getLocalDoF(fldMech,nodes);
         wDof = dofm.getLocalDoF(obj.fieldId,i);
 
-        dtdg = computeDerTractionGap(obj,i,jump(wDof([2;3])));
+        slip = jump(wDof([2;3])); % why not dj?
+        trac = s.traction(wDof);
+        dtdg = computeDerTractionGap(obj,i,slip,trac(1));
 
         KwwLoc = KwwLoc - dtdg*f.area(i);
 
@@ -180,7 +187,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         % assemble rhsW (use computed stress tensor)
         sigma = reshape(sigma',6,1,nG);
-        trac = s.data.traction(wDof);
         rT = trac*f.area(i);
         fTmp = pagemtimes(E,'ctranspose',sigma,'none');
         fTmp = fTmp.*reshape(dJw,1,1,[]);
@@ -200,11 +206,12 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
 
     function initState(obj)
-      % add poromechanics fields to state structure
+      % add embedded fracture fields to state structure
       nCutCells = obj.fractureMesh.surfaces.num;
       state = getState(obj);
-      state.data.(obj.getField()) = zeros(3*nCutCells,1);
-      state.data.traction = zeros(3*nCutCells,1);
+      state.(obj.getField()) = zeros(3*nCutCells,1);
+      state.traction = zeros(3*nCutCells,1);
+      setState(obj,state);
       obj.bcTraction = zeros(3*nCutCells,1);
       obj.activeSet.curr = repmat(ContactMode.open,nCutCells,1);
       obj.activeSet.prev = obj.activeSet.curr;
@@ -336,8 +343,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       if nargin > 1
         % apply newton update to current displacements
         dw = solution(getDoF(dofm,obj.fieldId));
-        stateCurr.data.(obj.getField())(ents) = stateCurr.data.(obj.getField())(ents) + ...
+        stateCurr.(obj.getField())(ents) = stateCurr.(obj.getField())(ents) + ...
           dw;
+
+        setState(obj,stateCurr);
 
         % update traction using penalty approach
         updateTraction(obj);
@@ -345,12 +354,14 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       end
 
+      strain = stateCurr.strain;
+
       mech = getPhysicsSolver(obj.domain,"Poromechanics");
       cell2stress = mech.cell2stress;
       gOrd = mech.getGaussOrder;
 
       % jump increment at current iteration
-      w = stateCurr.data.(obj.getField()) - stateOld.data.(obj.getField());
+      w = stateCurr.(obj.getField()) - stateOld.(obj.getField());
 
       f = obj.fractureMesh.surfaces;
       elem = Hexahedron(obj.grid,'gaussOrder',gOrd);
@@ -368,9 +379,12 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         gradN = getDerBasisFAndDet(elem,coord);
         Bw = computeCompatibilityMatrix(obj,f,i,coord,gradN);
         jump = w(getLocalDoF(dofm,obj.fieldId,i));
-        stateCurr.data.strain(l:(l+nG-1),:) = stateCurr.data.strain(l:(l+nG-1),:) + ...
+        strain(l:(l+nG-1),:) = strain(l:(l+nG-1),:) + ...
           reshape(pagemtimes(Bw,jump),6,nG)';
       end
+
+      % enhance strain
+      setState(obj,strain,"strain");
     end
 
 
@@ -392,7 +406,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       [bcDofs,bcVals] = getBC(obj,bcId,t);
 
-      obj.getState().data.displacements(bcDofs) = bcVals;
+      w = getState(obj,obj.getField());
+      w(bcDofs) = bcVals;
+      setState(obj,w,obj.getField())
+
     end
 
 
@@ -432,17 +449,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       % this method do not return outputs for the 3D mesh grid. instead, it
       % works on a separate 2D polygonal mesh
 
-      s = getState(obj);
-      sOld = getStateOld(obj);
-
-      tracCurr = s.data.traction;
-      tracOld = sOld.data.traction;
-
-      jumpCurr = s.data.(obj.getField());
-      jumpOld = sOld.data.(obj.getField());
-
-      trac = tracCurr*fac + tracOld*(1-fac);
-      jump = jumpCurr*fac + jumpOld*(1-fac);
+      s = obj.domain.state.interpolate(fac);
+      jump = s.(obj.getField());
+      trac = s.traction(:);
 
       nCellData = 3;
       cellStr = repmat(struct('name', 1, 'data', 1), nCellData, 1);
@@ -711,8 +720,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       s = getState(obj);
       sOld = getStateOld(obj);
-      jump = s.data.(obj.getField());
-      deltaJump = jump - sOld.data.(obj.getField());
+      %sIni = getStateInit(obj);
+      jump = s.(obj.getField());
+      deltaJump = jump - sOld.(obj.getField());
 
       penN = obj.penalty_n;
       penT = obj.penalty_t;
@@ -726,25 +736,26 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         switch obj.activeSet.curr(i)
           case ContactMode.stick
-            s.data.traction(dofW(1)) = penN * j(1);
-            s.data.traction(dofW(2:3)) = penT * j(2:3);
+            s.traction(dofW(1)) = penN * j(1);
+            s.traction(dofW(2:3)) = penT * j(2:3);
 
           case {ContactMode.slip, ContactMode.newSlip}
-            s.data.traction(dofW(1)) = penN * j(1);
-            tN = s.data.traction(dofW(1));
+            s.traction(dofW(1)) = penN * j(1);
+            tN = s.traction(dofW(1));
             tauLim = obj.cohesion(fId) - tN*tan(obj.phi(fId));
             %
-            s.data.traction(dofW(2:3)) = tauLim * (dj(2:3)/norm(dj(2:3)));
+            s.traction(dofW(2:3)) = tauLim * (dj(2:3)/norm(dj(2:3)));
 
           case ContactMode.open
-            s.data.traction(dofW(:)) = 0;
-
+            s.traction(dofW(:)) = 0;
         end
 
-        %s.data.traction = s.data.traction + s.data.iniTraction;
-
-
       end
+
+      setState(obj,s);
+
+      % stick traction might need the initial one...?
+      %s.traction = s.traction + sIni.traction;
 
     end
 
@@ -795,7 +806,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     end
 
-    function dtdg = computeDerTractionGap(obj,i,slip)
+    function dtdg = computeDerTractionGap(obj,i,slip,tN)
 
       % slip: 2x1 array with tangential gap increment
       state = obj.activeSet.curr(i);
@@ -803,7 +814,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       fId = obj.fractureMesh.surfaces.fracId(i);
       phiF = obj.phi(fId);
       cF = obj.cohesion(fId);
-      tN = obj.domain.state.data.traction(3*i-2);
       tauLim = cF - tN*tan(phiF);
 
       switch state

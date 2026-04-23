@@ -67,6 +67,23 @@ classdef State < handle
       end
 
     end
+
+
+
+
+    function data = getData(obj)
+
+      data = obj.data;
+      
+    end
+
+
+
+
+
+
+
+
   end
 
 end

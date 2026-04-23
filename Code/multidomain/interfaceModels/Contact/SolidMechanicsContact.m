@@ -348,7 +348,7 @@ classdef SolidMechanicsContact < MeshTying
 
     function writeSolution(obj,fac,tID)
 
-      s = obj.state.interpolate(obj,fac);
+      s = obj.state.interpolate(fac);
 
       tT = [s.traction(2:3:end),s.traction(3:3:end)];
       norm_tT = sqrt(tT(:,1).^2 + tT(:,2).^2);

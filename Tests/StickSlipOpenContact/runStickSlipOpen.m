@@ -54,17 +54,20 @@ interfaces = InterfaceSolver.addInterfaces(domains,params.Interface);
 
 
 % apply initial compression to the model
-iniStress = getState(domainL,"stress");
-iniStress(:,1) = -1;
-setState(domainL,iniStress,"stress");
-setState(domainR,iniStress,"stress");
+iniStressL = getState(domainL,"stress");
+iniStressL(:,1) = -1;
+setState(domainL,iniStressL,"stress");
+
+iniStressR = getState(domainR,"stress");
+iniStressR(:,1) = -1;
+setState(domainR,iniStressR,"stress");
 % tIni = -1;
 % interfaces{1}.state.traction(1:3:end) = tIni;
 % interfaces{1}.state.iniTraction(1:3:end) = tIni;
 % interfaces{1}.stateOld.iniTraction(1:3:end) = tIni;
 % interfaces{1}.stateOld.traction(1:3:end) = tIni;
 
-printUtils = OutState("outputFile","Output/StickSlipOpen","printTimes",0:20,...
+printUtils = OutState("outputFile","Output/StickSlipOpen","printTimes",0:13,...
                       "matFileName","Output/StickSlipOpenHistory");
 
 solver = NonLinearImplicit('simulationparameters',simParam,...

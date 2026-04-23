@@ -162,7 +162,7 @@ classdef Poromechanics < PhysicsSolver
         obj.K = assembleK.sparseAssembly();
       end
 
-      % update modified state object
+      % update modified state object with new stress and strain
       setState(obj,s);
 
     end
@@ -560,43 +560,14 @@ classdef Poromechanics < PhysicsSolver
       % Displacements
       pointStr(1).name = 'displacements';
       pointStr(1).data = [disp(1:3:end) disp(2:3:end) disp(3:3:end)];
-      % pointStr(1).name = 'ux';
-      % pointStr(1).data = disp(1:3:end);
-      % pointStr(2).name = 'uy';
-      % pointStr(2).data = disp(2:3:end);
-      % pointStr(3).name = 'uz';
-      % pointStr(3).data = disp(3:3:end);
-      %
 
       % Permutation needed to be consistent with paraview output
-
       % Stress
       cellStr(1).name = 'stress';
       cellStr(1).data = stress(:,[1 2 3 6 4 5]);
       cellStr(2).name = 'strain';
       cellStr(2).data = strain(:,[1 2 3 6 4 5]);
-      % cellStr(3).name = 'sz';
-      % cellStr(3).data = stress(:,3);
-      % cellStr(4).name = 'tyz';
-      % cellStr(4).data = stress(:,4);
-      % cellStr(5).name = 'txz';
-      % cellStr(5).data = stress(:,5);
-      % cellStr(6).name = 'txy';
-      % cellStr(6).data = stress(:,6);
-      % %
-      % % Strain
-      % cellStr(7).name = 'ex';
-      % cellStr(7).data = strain(:,1);
-      % cellStr(8).name = 'ey';
-      % cellStr(8).data = strain(:,2);
-      % cellStr(9).name = 'ez';
-      % cellStr(9).data = strain(:,3);
-      % cellStr(10).name = 'gyz';
-      % cellStr(10).data = strain(:,4);
-      % cellStr(11).name = 'gxz';
-      % cellStr(11).data = strain(:,5);
-      % cellStr(12).name = 'gxy';
-      % cellStr(12).data = strain(:,6);
+
     end
 
     function indB = setStrainMatIndex(np)
