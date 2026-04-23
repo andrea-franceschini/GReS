@@ -172,9 +172,10 @@ classdef BiotFullyCoupled < PhysicsSolver
 
       % retrieve State variables
       pCurr = getState(obj,"pressure");
-      pOld = getStateOld(obj,"pressure");
       uCurr = getState(obj,"displacements");
       uOld = getStateOld(obj,"displacements");
+      p0 = obj.getStateInit("pressure");
+      dp = pCurr - p0;
 
       % select active coefficients of solution vectors
       entsPoro = obj.domain.dofm.getActiveEntities(obj.fldMech,1);
@@ -185,13 +186,13 @@ classdef BiotFullyCoupled < PhysicsSolver
       Qflow = getJacobian(obj,obj.fldFlow,obj.fldMech);
 
       % compute rhs
-      theta = obj.domain.simparams.theta;
-      rhsMech = Qmech * (pCurr(entsFlow) + (1/theta-1)*pOld(entsFlow));
+      rhsMech = Qmech * dp(entsFlow);
       rhsFlow = Qflow * (uCurr(entsPoro) - uOld(entsPoro));
     end
 
     function initialize(obj)
       obj.mechSolver.initialize();
+      obj.flowSolver.initialize();
     end
 
     function cells = getCoupledCells(obj)

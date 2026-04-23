@@ -2,7 +2,7 @@ classdef (Abstract) SolutionScheme < handle
   % General solution scheme class
   % Implement the time loop and basic operations that are common to all
   % solution schemes
-
+  
 
   properties (Access = protected)
     %
@@ -14,7 +14,7 @@ classdef (Abstract) SolutionScheme < handle
     nVars               % total number of inner variable fields in the model
     attemptedReset      % flag for attempting a configuration reset
     iniState            % initial state of the simulation for solver reset
-    isFirstRun = true   % flag if the simulation is first ever or first after a reset
+    isFirstRun = true   % flag if the simulation is first ever or first after a reset          
   end
 
 
@@ -55,7 +55,7 @@ classdef (Abstract) SolutionScheme < handle
       obj.dt = obj.simparams.dtIni;
 
       initialize(obj);
-
+      
       setLinearSolver(obj,varargin{:});
 
       while obj.t < obj.simparams.tMax
@@ -96,9 +96,9 @@ classdef (Abstract) SolutionScheme < handle
     function setSolutionScheme(obj,varargin)
 
       default = struct('simulationparameters',SimulationParameters.empty,...
-        'output',missing,...
-        'domains',Discretizer.empty,...
-        'interface',missing);
+                       'output',missing,...
+                       'domains',Discretizer.empty,...
+                       'interface',missing);
 
       params = readInput(default,varargin{:});
 
@@ -137,18 +137,25 @@ classdef (Abstract) SolutionScheme < handle
 
       for i = 1:obj.nDom
         dom = obj.domains(i);
+        state = dom.getState;
+        obj.iniState.domains(i) = state;
+        % set old and initial state 
+        dom.setStateInit(state)
+        dom.setStateOld(state);
         dom.outstate = obj.output;
         dom.simparams = obj.simparams;
-        obj.iniState.domains(i) = copy(dom.state);
-        dom.stateOld = copy(dom.state);
-        initialize(dom);
         dom.domainId = i;
         obj.nVars = obj.nVars + dom.dofm.getNumberOfVariables();
+        initialize(dom);
       end
 
       for i = 1:obj.nInterf
         interf = obj.interfaces{i};
-        obj.iniState.interfaces{i} = interf.state;
+        state = interf.getState;
+        obj.iniState.interfaces(i) = state;
+        % set old and initial state
+        interf.setStateInit(state)
+        interf.setStateOld(state);
         interf.interfId = i;
         interf.outstate = obj.output;
         initialize(interf)
@@ -166,7 +173,7 @@ classdef (Abstract) SolutionScheme < handle
       % reset the simulation  at its initial state
 
       for i = 1:obj.nDom
-        obj.domains(i).state = copy(obj.iniState.domains(i));
+        setState(obj.domains(i),obj.iniState.domains(i));
       end
 
       for i = 1:obj.nInterf
@@ -273,10 +280,10 @@ classdef (Abstract) SolutionScheme < handle
     function setLinearSolver(obj,varargin)
 
       if isempty(varargin)
-        physname = [];
+         physname = [];
       else
-        % check if the user provided the physics
-        physname = varargin{1};
+         % check if the user provided the physics
+         physname = varargin{1};
       end
 
       obj.linsolver = linearSolver(obj,physname);
@@ -409,7 +416,7 @@ classdef (Abstract) SolutionScheme < handle
     function printVTK(obj,fac,outTime,tID)
 
       if obj.output.writeVtk
-        % set folders
+        % set folders        
         obj.output.prepareOutputFolders(tID);
 
         obj.output.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
@@ -440,7 +447,7 @@ classdef (Abstract) SolutionScheme < handle
 
     function printMAT(obj,fac,timeID)
       % write results into an output structure
-
+      
       if obj.output.writeSolution
         for i = 1:obj.nDom
           obj.domains(i).writeSolution(fac,timeID);
