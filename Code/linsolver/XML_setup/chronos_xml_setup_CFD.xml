@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Chronos>
-	<solver>GMRES</solver>
+	<solver>SQMR</solver>
    <preconditioner>AMG</preconditioner>
 
 	<!-- General parameters -->
