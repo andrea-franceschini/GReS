@@ -5,22 +5,29 @@ classdef SedDofManager < handle
   properties
     % Dynamic grid control
     ncells (1,3)                 % Number of cells in (x,y,z)
-    columnsHeight (:,:)          % Active height per column
+    laysByCol (:,:)              % Number of layer by column
     dof (:,:,:)                  % Cell DOF map (i,j,k) -> DOF ID
     ndofs                        % Number of active DOFs
+    inactDof                     % inactive dof
+  end
+
+  properties (Access = private)
+    precs = 1e-5
   end
 
   methods (Access = public)
-    function obj = SedDofManager(data)
-      obj.ncells = data.Grid.division;
+    function obj = SedDofManager(data,ncells)
+      obj.ncells = ncells;
       obj.dof = zeros(obj.ncells);
-      obj.columnsHeight = zeros(prod(obj.ncells(1:2)),1);
+      % obj.laysByCol = zeros(prod(obj.ncells(1:2)),1);
+      obj.laysByCol = zeros(obj.ncells(1:2));
 
       % Constructing the initial grid
       switch data.Initial.type
         case "all"
           obj.dof(:) = 1:prod(obj.ncells);
-          obj.columnsHeight(:) = obj.ncells(3);
+          obj.laysByCol(:) = obj.ncells(3);
+          obj.inactDof = (prod(ncells(1:2))+1:prod(ncells))';
         case "surface"
           numcells = prod(obj.ncells(1:2));
 
@@ -36,7 +43,7 @@ classdef SedDofManager < handle
             end
           end
 
-          obj.columnsHeight = surfCellHeight(:);
+          obj.laysByCol = surfCellHeight(:);
         case "untilSurface"
         case "doubleSurface"
         otherwise
@@ -46,8 +53,213 @@ classdef SedDofManager < handle
       obj.ndofs = sum(obj.dof~=0,"all");
     end
 
+    function dofs = getActiveDof(obj)
+      dofs = 1:obj.ndofs;
+      dofs = dofs(~ismember(dofs,obj.inactDof));
+    end
+
+    function dofs = getNotActiveDof(obj)
+      dofs = obj.inactDof;
+    end
+
+    function dofs = getActiveNdof(obj)
+      dofs = obj.ndofs-length(obj.inactDof);
+    end
+
+    function dofs = activetedDofs(obj,map)
+      % Activeted the inactive dofs using the map as reference.
+      idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
+      idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
+      idK = obj.findIdLaysVaryCell;
+
+      cellID = sub2ind(obj.ncells,idI(map(:)),idJ(map(:)),idK(map(:)));
+      actDof = obj.dof(cellID);
+      loc = ismember(obj.inactDof,actDof);
+      dofs = obj.inactDof(loc);
+      obj.inactDof = obj.inactDof(~loc);
+    end
+
+    function dofs = getVarHeightDofs(obj,map)
+      idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
+      idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
+      idK = obj.findIdLaysVaryCell;
+      cellID = sub2ind(obj.ncells,idI(map),idJ(map),idK(map(:)));
+      dofs = obj.dof(cellID);
+    end
+
+    function deactiveDofs(obj,colDeact)
+      dofs = obj.getVarHeightDofs(colDeact);
+      ncell = length(dofs);
+      obj.inactDof(end+1:end+ncell) = dofs;
+    end
+
+
+    function mesh = makeMeshOutput(obj,mesh,coordX,coordY,coordZ,sedAcc,act)
+      idxTop = obj.findIdLaysVaryCell;
+      idxTop(~act) = idxTop(~act)-1;
+
+      % Remap the dofs
+      allDofs = 1:obj.ndofs;
+      actDofs = obj.getActiveDof;
+      [tf, loc] = ismember(allDofs, actDofs);
+      dofs = loc;
+      dofs(~tf) = 0;
+
+      npoint = sum(4*idxTop+4,"all");
+      ncell = sum(idxTop,"all");
+
+      coord(1:npoint,1:3) = 0.;
+      conec(1:ncell,1:8)  = 0;
+
+      count = 0;
+      for col=1:prod(obj.ncells(1:2))
+        idI = mod(col-1,obj.ncells(1))+1;
+        idJ = (col-idI)/obj.ncells(1)+1;
+
+        coord(4*count+1,1) = coordX(idI);
+        coord(4*count+2,1) = coordX(idI+1);
+        coord(4*count+3,1) = coordX(idI+1);
+        coord(4*count+4,1) = coordX(idI);
+        
+        coord(4*count+1,2) = coordY(idJ);
+        coord(4*count+2,2) = coordY(idJ);
+        coord(4*count+3,2) = coordY(idJ+1);
+        coord(4*count+4,2) = coordY(idJ+1);
+        
+        coord(4*count+1:4*count+4,3) = coordZ(1);
+        count = count+1;
+        topLay = idxTop(col);
+        for lay = 1:topLay
+          coord(4*count+1,1) = coordX(idI);
+          coord(4*count+2,1) = coordX(idI+1);
+          coord(4*count+3,1) = coordX(idI+1);
+          coord(4*count+4,1) = coordX(idI);
+
+          coord(4*count+1,2) = coordY(idJ);
+          coord(4*count+2,2) = coordY(idJ);
+          coord(4*count+3,2) = coordY(idJ+1);
+          coord(4*count+4,2) = coordY(idJ+1);
+
+          if lay == topLay
+            if act(col)
+              coord(4*count+1:4*count+4,3) = coordZ(lay)+sedAcc(col);
+            else
+              coord(4*count+1:4*count+4,3) = coordZ(lay+1);
+            end
+          else
+            coord(4*count+1:4*count+4,3) = coordZ(lay+1);
+          end
+          cell = dofs(obj.dof(idI,idJ,lay));
+          conec(cell,1)=4*(count-1)+1;
+          conec(cell,2)=4*(count-1)+2;
+          conec(cell,3)=4*(count-1)+3;
+          conec(cell,4)=4*(count-1)+4;
+          conec(cell,5)=4*count+1;
+          conec(cell,6)=4*count+2;
+          conec(cell,7)=4*count+3;
+          conec(cell,8)=4*count+4;
+          count=count+1;
+        end
+      end
+
+      mesh.nDim = 3;
+      mesh.nCells = ncell;      
+      mesh.cellVTKType = 12*ones(ncell,1);
+      mesh.cellNumVerts = 8*ones(ncell,1);
+      mesh.cellTag = 8*ones(ncell,1);
+
+      mesh.nNodes = npoint;
+      mesh.coordinates = coord;
+      mesh.cells = conec;
+    end
+
+    function data = getComp(obj,act,comp)
+      % Identify the top layer index.
+      % sedAcc = reshape(sedAcc,obj.ncells(1:2));
+      % sedMin = control*obj.precs;
+      % act = sedAcc > sedMin;
+      idxTop = obj.findIdLaysVaryCell;
+      idxTop(~act) = idxTop(~act)-1;
+
+      % Remap the dofs
+      allDofs = 1:obj.ndofs;
+      actDofs = obj.getActiveDof;
+      [tf, loc] = ismember(allDofs, actDofs);
+      dofs = loc;
+      dofs(~tf) = 0;
+
+      npoint = sum(4*idxTop+4,"all");
+      data(1:npoint,1)=0.;
+
+      count = 0;
+      for col=1:prod(obj.ncells(1:2))
+        idI = mod(col-1,obj.ncells(1))+1;
+        idJ = (col-idI)/obj.ncells(1)+1;
+
+        count = count+1;
+        topLay = idxTop(col);
+        acc = 0.;
+        for lay = 1:topLay
+          cell = dofs(obj.dof(idI,idJ,lay));
+          acc = acc+comp(cell);
+          data(4*count+1:4*count+4,1) = acc;
+          count=count+1;
+        end
+      end
+    end
+
+    function [dof,pos] = getDofFromLay(obj,nlay)
+      dof = obj.dof(:,:,nlay);
+      map = ismember(dof,obj.inactDof);
+      dof(map) = 0;
+      map = dof(:)~=0;
+      [dof,id] = sort(dof(map));
+      pos = (1:length(dof))';
+      pos = pos(map);
+      pos = pos(id);
+    end
+
+    function dofs = getBord(obj,label)
+      % GETBORDDOFS Returns dofs for the border.
+      %
+      % Outputs:
+      %   id        - DOFs at the boundary
+      %
+      % Supported labels:
+      %   'xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax'
+
+      switch lower(label)
+        case "xmin"
+          dofs = obj.getBordXMin();
+        case "xmax"
+          dofs = obj.getBordXMax();
+        case "ymin"
+          dofs = obj.getBordYMin();
+        case "ymax"
+          dofs = obj.getBordYMax();
+        case "zmin"
+          dofs = obj.getBordZMin();
+        case "zmax"
+          dofs = obj.getBordZMax();
+        otherwise
+          dofs = [];
+      end
+    end
+
+    function dofs = reScale(obj,dof)
+      % Remap the dofs
+      allDofs = 1:obj.ndofs;
+      actDofs = obj.getActiveDof;
+      [tf, loc] = ismember(allDofs, actDofs);
+      ddofs = loc;
+      ddofs(~tf) = 0;
+      dofs = ddofs(dof);      
+    end
+
+
+
     function dofs = getBordXMin(obj)
-      mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
+      mapH = reshape(obj.laysByCol,obj.ncells(1:2));
       cells = mapH(:,1);
       J_idx = zeros(obj.ncells(1),1);
       for i=1:obj.ncells(1)
@@ -63,7 +275,7 @@ classdef SedDofManager < handle
     end
 
     function dofs = getBordXMax(obj)
-      mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
+      mapH = reshape(obj.laysByCol,obj.ncells(1:2));
       cells = mapH(:,end);
       J_idx = zeros(obj.ncells(1),1);
       for i=1:obj.ncells(1)
@@ -79,7 +291,7 @@ classdef SedDofManager < handle
     end
 
     function dofs = getBordYMin(obj)
-      mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
+      mapH = reshape(obj.laysByCol,obj.ncells(1:2));
       cells = mapH(1,:);
       I_idx = zeros(obj.ncells(2),1);
       for j=1:obj.ncells(2)
@@ -95,7 +307,7 @@ classdef SedDofManager < handle
     end
 
     function dofs = getBordYMax(obj)
-      mapH = reshape(obj.columnsHeight,obj.ncells(1:2));
+      mapH = reshape(obj.laysByCol,obj.ncells(1:2));
       cells = mapH(end,:);
       I_idx = zeros(obj.ncells(2),1);
       for j=1:obj.ncells(2)
@@ -116,7 +328,7 @@ classdef SedDofManager < handle
       idK = ones(prod(obj.ncells(1:2)),1);
 
       % For case where some column do not exist
-      % map = obj.columnsHeight~=0;
+      % map = obj.laysByCol~=0;
       % cellID = sub2ind(obj.ncells,idI(map),idJ(map),idK(map));
 
       cellID = sub2ind(obj.ncells,idI,idJ,idK);
@@ -124,13 +336,30 @@ classdef SedDofManager < handle
     end
 
     function dofs = getBordZMax(obj)
+      % Find I and J positions.
       idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
       idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
-      idK = obj.columnsHeight;
+      % idK = findIdLaysVaryCell(obj);
+      % idK = idK(:) - ~varCellAct;
 
-      % For case where some column do not exist
-      % map = obj.columnsHeight~=0;
-      % cellID = sub2ind(obj.ncells,idI(map),idJ(map),idK(map));
+      % layId = obj.laysByCol;
+      % map = ismember(obj.dof,obj.inactDof);
+      % pos = find(map);
+      % [~,id] = sort(obj.dof(map));
+      % [idI,idJ,idK]=ind2sub(obj.ncells,pos(id));
+
+      % % Find K position.
+      doftmp = obj.dof;
+      doftmp(ismember(obj.dof,obj.inactDof))= 0;
+      mask = doftmp ~= 0;
+      idK = sum(mask, 3);
+      idK = idK(:);
+
+      % restrict to where exist a column.
+      map = idK > 0;
+      idI = idI(map);
+      idJ = idJ(map);
+      idK = idK(map);
 
       cellID = sub2ind(obj.ncells,idI,idJ,idK);
       dofs = obj.dof(cellID);
@@ -175,7 +404,7 @@ classdef SedDofManager < handle
       neigh(actTmp,6) =  obj.dof(pos);
     end
 
-    function out = getMapFromDofs(obj,dofs)  %<--- ok
+    function out = getMapFromDofs(obj,dofs)
       if ~exist("dofs","var")
         dofs = 1:obj.ndofs;
       end
@@ -187,11 +416,11 @@ classdef SedDofManager < handle
     end
 
     function dof = getMaxDofUnchanged(obj)
-      minval = min(obj.columnsHeight);
+      minval = min(obj.laysByCol);
       if minval~=1
-        loc = obj.columnsHeight == minval;
+        loc = obj.laysByCol == minval;
         [idI, idJ] = obj.getIJLay();
-        pos = sub2ind(obj.ncells, idI(loc), idJ(loc), obj.columnsHeight(loc)-1);
+        pos = sub2ind(obj.ncells, idI(loc), idJ(loc), obj.laysByCol(loc)-1);
         dof = max(obj.dof(pos));
       else
         dof = 0;
@@ -221,63 +450,27 @@ classdef SedDofManager < handle
       cellsTadd = sum(map);
 
       % check if is necessary to add a new layer in z
-      atTop = obj.columnsHeight == obj.ncells(3);
-      newlayer = any(and(atTop,map));
+      atTop = obj.laysByCol == obj.ncells(3);
+      newlayer = any(and(atTop(:),map));
       if newlayer
         obj.ncells(3) = obj.ncells(3)+1;
         obj.dof(:,:,end+1) = zeros(obj.ncells(1:2));
       end
 
       % update the dof for the newest cells.
+      dofs = obj.ndofs+1:obj.ndofs+cellsTadd;
       [idI,idJ] = obj.getIJLay;
-      pos = sub2ind(obj.ncells,idI(map),idJ(map),obj.columnsHeight(map)+1);
-      obj.dof(pos) = (obj.ndofs+1:obj.ndofs+cellsTadd)';
+      pos = sub2ind(obj.ncells,idI(map),idJ(map),obj.laysByCol(map)+1);
+      obj.dof(pos) = dofs';
       obj.ndofs = obj.ndofs + cellsTadd;
-      obj.columnsHeight(map) = obj.columnsHeight(map)+1;
+      obj.laysByCol(map) = obj.laysByCol(map)+1;
+      obj.inactDof(end+1:end+cellsTadd) = dofs;
     end
 
     function npts = getNumberPoints(obj)
       % GETNUMBERPOINTS Returns total number of grid points.
       npts = (obj.ncells(1)+1)*(obj.ncells(2)+1)*(obj.ncells(3)+1);
     end
-
-
-    function data = accByColumnFromBot2Top(obj,valByCell)
-      data = zeros(obj.ndofs,1);
-      for i=1:obj.ncells(1)
-        for j=1:obj.ncells(2)
-          column = obj.dof(i,j,:);
-          acc = 0.;
-          for k=1:obj.ncells(3)
-            dofId = column(k);
-            if dofId ~= 0
-              acc = acc + valByCell(dofId);
-              data(dofId)=acc;
-            end
-          end
-        end
-      end
-    end
-
-    function data = cell2NodeAccByColumnFromBot2Top(obj,valByCell)
-      data = zeros(8*obj.ndofs,1);
-      for i=1:obj.ncells(1)
-        for j=1:obj.ncells(2)
-          column = obj.dof(i,j,:);
-          acc = 0.;
-          for k=1:obj.ncells(3)
-            dofId = column(k);
-            if dofId ~= 0
-              refDof = 8*(dofId-1);
-              data(refDof+1:refDof+4)=acc;
-              acc = acc + valByCell(dofId);
-              data(refDof+5:refDof+8)=acc;              
-            end
-          end
-        end
-      end
-    end
-
 
   end
 
@@ -291,7 +484,7 @@ classdef SedDofManager < handle
       for i=1:obj.ncells(1)
         for k=1:obj.ncells(3)
           pos = obj.ncells(1)*(i-1)+idx(i);
-          if k>obj.columnsHeight(pos)
+          if k>obj.laysByCol(pos)
             break;
           end
           id(count)=obj.dof(i,idx(i),k);
@@ -307,7 +500,7 @@ classdef SedDofManager < handle
       for j=1:obj.ncells(2)
         for k=1:obj.ncells(3)
           pos = obj.ncells(1)*(idx(j)-1)+j;
-          if k>obj.columnsHeight(pos)
+          if k>obj.laysByCol(pos)
             break;
           end
           id(count)=obj.dof(idx(j),j,k);
@@ -321,6 +514,22 @@ classdef SedDofManager < handle
       idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
     end
 
+    function layId = findIdLaysVaryCell(obj)
+      % Find the index of the layer in which the cell vary the height.
+      % layId = obj.ncells(3)*ones(obj.ncells(1:2));
+      layId = obj.laysByCol;
+      map = ismember(obj.dof,obj.inactDof);
+      pos = find(map);
+      [~,id] = sort(obj.dof(map));
+      [idI,idJ,idK]=ind2sub(obj.ncells,pos(id));
+      cols = obj.ncells(1)*(idJ-1)+idI;
+      for ln = 1:length(cols)
+        val = idK(ln);
+        if val < layId(cols(ln))
+          layId(cols(ln)) = idK(col);
+        end
+      end
+    end
 
 
   end

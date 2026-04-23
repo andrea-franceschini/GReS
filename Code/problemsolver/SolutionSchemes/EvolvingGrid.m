@@ -67,6 +67,7 @@ classdef EvolvingGrid < SolutionScheme
 
         % Check for convergence
         converged = (rhsNorm < tolWeigh || rhsNorm < absTol);
+        % converged = rhsNorm < absTol;
       end
     end
 
@@ -156,8 +157,8 @@ classdef EvolvingGrid < SolutionScheme
 
       print = false;
       newcells = obj.physics.domain.state.data.newcells~=0;
-      printByGrow = and(obj.printGrow,newcells);
-      % printByGrow = true;
+      % printByGrow = and(obj.printGrow,newcells);
+      printByGrow = true;
 
       if and(~print,printByGrow)
         % if printByGrow
