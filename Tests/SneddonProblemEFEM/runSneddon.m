@@ -107,8 +107,8 @@ L = fractureSize/cos(deg2rad(angle));
 xi = f.center(:,1)/cos(deg2rad(angle));
 
 
-gn = efem.domain.state.data.fractureJump(1:3:end); 
-
+g = getState(efem,"fractureJump");
+gn = g(1:3:end);
 
 % analytical solutions
 b = L/2;

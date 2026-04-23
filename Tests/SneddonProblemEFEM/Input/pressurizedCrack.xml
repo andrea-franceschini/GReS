@@ -73,7 +73,7 @@
   </BoundaryConditions>
 
   <Solver>
-    <Poromechanics></Poromechanics>
+
     <EmbeddedFractureMechanics
                                penaltyNormal = "1e8"
                                penaltyTangential = "1e8">
