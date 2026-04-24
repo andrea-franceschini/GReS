@@ -57,7 +57,7 @@ function varargout = computePolygonGeometry(varargin)
 %  See also MXPOLYGONGEOMETRY.
 
 
-[areas,centers,normals] = mxPolygonGeometry(varargin{:});
+[areas,centers,normals] = mxPolygonGeometry(varargin{:},'geometry');
 
 
 varargout{1} = areas;

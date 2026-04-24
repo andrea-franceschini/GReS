@@ -301,6 +301,28 @@ class MexFunction : public matlab::mex::Function {
                          "Invalid syntax. If the second argument is a mode string, no third argument is allowed.");
             }
 
+            /*
+             * Important: decide batch syntax before local-normal syntax.
+             * nVert can be scalar, or can itself contain three entries, e.g. [3 4 3].
+             * In those cases it can look like a local 3-vector normal unless the
+             * third argument is used to disambiguate the call.
+             */
+            if (isPossibleNVert(inputs[1])) {
+                if (isCharArray(inputs[2])) {
+                    return DispatchKind::Batch;
+                }
+
+                requireArgs(this, factory, dim == 3,
+                            "mxPolygonGeometry:input",
+                            "Batch normals are only valid for 3D polygons.");
+
+                requireArgs(this, factory, isBatchNormals(inputs[2], numel(inputs[1])),
+                            "mxPolygonGeometry:input",
+                            "Batch normals must have size nPoly x 3, where nPoly = numel(nVert).");
+
+                return DispatchKind::Batch;
+            }
+
             if (isNormalVectorForDim(inputs[1], dim)) {
                 requireArgs(this, factory, isCharArray(inputs[2]),
                             "mxPolygonGeometry:input",
@@ -308,23 +330,8 @@ class MexFunction : public matlab::mex::Function {
                 return DispatchKind::Local;
             }
 
-            requireArgs(this, factory, isPossibleNVert(inputs[1]),
-                        "mxPolygonGeometry:input",
-                        "For batch syntax, the second argument must be nVert.");
-
-            if (isCharArray(inputs[2])) {
-                return DispatchKind::Batch;
-            }
-
-            requireArgs(this, factory, dim == 3,
-                        "mxPolygonGeometry:input",
-                        "Batch normals are only valid for 3D polygons.");
-
-            requireArgs(this, factory, isBatchNormals(inputs[2], numel(inputs[1])),
-                        "mxPolygonGeometry:input",
-                        "Batch normals must have size nPoly x 3, where nPoly = numel(nVert).");
-
-            return DispatchKind::Batch;
+            throwErr("mxPolygonGeometry:input",
+                     "Second argument must be either nVert or a 3-vector normal.");
         }
 
         requireArgs(this, factory, inputs.size() == 4,
