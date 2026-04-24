@@ -437,7 +437,7 @@ classdef Poromechanics < PhysicsSolver
       % check if model is pure linear elasticity
 
       out = false;
-
+      
       % check if there is not embedded fractures
       if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics"))
         return

@@ -9,6 +9,7 @@ classdef SolidMechanicsContact < MeshTying
     activeSet
     NLIter = 0
     stickNodes     % boundary nodes where contact state should stay stick
+    forceStick     % flag to enforce interface to stay stick
   end
 
 
@@ -29,9 +30,12 @@ classdef SolidMechanicsContact < MeshTying
 
       input = varargin{1};
 
-      input = readInput(struct('Coulomb',[],'ActiveSet',missing),input);
+      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0),input);
 
       params = readInput(struct('cohesion',[],'frictionAngle',[]),input.Coulomb);
+
+
+      obj.forceStick = logical(input.forceStick);
 
       obj.cohesion = params.cohesion;
       obj.phi = params.frictionAngle;
@@ -110,6 +114,11 @@ classdef SolidMechanicsContact < MeshTying
 
 
     function hasConfigurationChanged = updateConfiguration(obj)
+
+      hasConfigurationChanged = false;
+      if obj.forceStick
+        return
+      end
 
       obj.NLIter = 0;
 
@@ -247,8 +256,7 @@ classdef SolidMechanicsContact < MeshTying
     function trac = computeInitialTraction(obj)
       % initialize traction for cell stress (average)
       sl = MortarSide.slave;
-      poro = obj.domains(sl).getPhysicsSolver("Poromechanics");
-      avgStress = poro.getState("avgStress");
+      avgStress = obj.domains(MortarSide.slave).getState("avgStress");
       surf = obj.grids(sl).surfaces;
       faces = obj.domains(sl).grid.faces;
       normals = surf.normal;

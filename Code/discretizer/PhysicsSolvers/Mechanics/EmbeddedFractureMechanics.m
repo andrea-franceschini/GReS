@@ -133,7 +133,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       iniTraction = getStateInit(obj,'traction'); % use this!
       jump = s.fractureJump;
       du = s.displacements - sOld.displacements;
-      dw = s.fractureJump - sOld.fractureJump;
+      dj = s.fractureJump - sOld.fractureJump;
 
       coordinates = obj.grid.coordinates;
 
@@ -173,7 +173,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           Bw = computeCompatibilityMatrix(obj,frac,f,coords,gradN);
 
           % enhance strain
-          enhancedStrain = reshape(pagemtimes(Bw,dw(wDof)),6,nG)';
+          enhancedStrain = reshape(pagemtimes(Bw,dj(wDof)),6,nG)';
 
           % compute E matrix (equilibrium operator, 6x3)
           E = computeEquilibriumOperator(obj,frac,f);
@@ -207,13 +207,13 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         if isCellCut
           % assemble the efem blocks
-
           KuwLoc = Poromechanics.computeKloc(B,D,Bw,dJw);
           KwuLoc = Poromechanics.computeKloc(E,D,B,dJw);
           KwwLoc = Poromechanics.computeKloc(E,D,Bw,dJw);
 
-          slip = jump(wDof([2;3])); % why not dj?
+          slip = dj(wDof([2;3])); % why not dj?
           trac = s.traction(wDof);
+          dtrac = trac - iniTraction(wDof);
           dtdg = computeDerTractionGap(obj,f,slip,trac(1));
 
           KwwLoc = KwwLoc - dtdg*frac.area(f);
@@ -225,7 +225,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
           % assemble rhsW (use computed stress tensor)
           sigma = reshape(sigma',6,1,nG);
-          rT = trac*frac.area(f);
+          rT = dtrac*frac.area(f);
           fTmp = pagemtimes(E,'ctranspose',sigma,'none');
           fTmp = fTmp.*reshape(dJw,1,1,[]);
           rSigma = sum(fTmp,3);
@@ -770,25 +770,27 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       for i = 1:frac.num
         dofW = getLocalDoF(obj.domain.dofm,obj.fldFrac,i);
+        t = s.traction(dofW);
+        tOld = sOld.traction(dofW);
         j = jump(dofW);
         dj = deltaJump(dofW);
         fId = frac.fracId(i);
 
         switch obj.activeSet.curr(i)
           case ContactMode.stick
-            s.traction(dofW(1)) = penN * j(1);
-            s.traction(dofW(2:3)) = penT * j(2:3);
+            t(1) = tOld(1) + penN * dj(1);
+            t(2:3) = tOld(2:3) + penT * dj(2:3);
 
           case {ContactMode.slip, ContactMode.newSlip}
-            s.traction(dofW(1)) = penN * j(1);
-            tN = s.traction(dofW(1));
-            tauLim = obj.cohesion(fId) - tN*tan(obj.phi(fId));
+            t(1) = tOld(1) + penN * j(1);
+            tauLim = obj.cohesion(fId) - t(1)*tan(obj.phi(fId));   % using the updated or not?
             %
-            s.traction(dofW(2:3)) = tauLim * (dj(2:3)/norm(dj(2:3)));
-
+            t(2:3) = tauLim * (dj(2:3)/norm(dj(2:3)));
           case ContactMode.open
-            s.traction(dofW(:)) = 0;
+            t(:) = 0;
         end
+
+        s.traction(dofW) = t;
 
       end
 
