@@ -225,9 +225,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           asbKww.localAssembly(wDof,wDof,KwwLoc);
 
           % assemble rhsW (use computed stress tensor)
-          sigma = reshape(sigma',6,1,nG);
+          %dsigma = reshape(dsigma',6,1,nG);
           rT = dtrac*frac.area(f);
-          fTmp = pagemtimes(E,'ctranspose',sigma,'none');
+          fTmp = pagemtimes(E,'ctranspose',dsigma,'none');
           fTmp = fTmp.*reshape(dJw,1,1,[]);
           rSigma = sum(fTmp,3);
           rBC = obj.bcTraction(wDof)*frac.area(f);
@@ -401,7 +401,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       obj.mechSolver.goBackState();
 
       obj.activeSet.curr = obj.activeSet.prev;
-      obj.NLIter = 0;
+      % obj.NLIter = 0;
 
       if obj.activeSet.resetActiveSet
         resetConfiguration(obj);
