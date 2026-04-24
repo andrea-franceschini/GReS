@@ -82,6 +82,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       t = getState(obj,"traction");
       t = t + tIni(:);
       setState(obj,t,"traction");
+      setStateOld(obj,t,"traction");
       setStateInit(obj,t,"traction");
 
     end
@@ -297,8 +298,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
 
       % check if active set changed
-      asNew = ContactMode.integer(obj.activeSet.curr);
-      asOld = ContactMode.integer(oldActiveSet);
+      asNew = obj.activeSet.curr;
+      asOld = oldActiveSet;
 
       % do not upate state of element that exceeded the maximum number of
       % individual updates
@@ -321,8 +322,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       hasConfigurationChanged = any(diffState);
 
-      if gresLog().getVerbosity > 2
-        fprintf('%s: Active set \n',class(obj));
+      gresLog().log(2,'%s: Active set \n',class(obj));
+      if gresLog().getVerbosity > 3
         % report active set changes
         da = asNew - asOld;
         d = da(asOld == 1);
@@ -339,9 +340,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         d = da(asOld==4);
         fprintf('%i elements from open to stick \n',sum(d==-3));
 
-        fprintf('Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
-          sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
       end
+
+      gresLog().log(2,'Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
+        sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
 
       if hasConfigurationChanged
 
@@ -499,7 +501,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       cellStr(2).data = [trac(1:3:end), trac(2:3:end), trac(3:3:end)];
 
       cellStr(3).name = 'fractureState';
-      as = ContactMode.integer(obj.activeSet.curr);
+      as = double(obj.activeSet.curr);
       cellStr(3).data = as;
 
       % plot directly into the domain vtm block

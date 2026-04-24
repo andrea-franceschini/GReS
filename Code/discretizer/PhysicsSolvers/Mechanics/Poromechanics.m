@@ -172,6 +172,8 @@ classdef Poromechanics < PhysicsSolver
 
       % initial stress - assumed balanced with external forces
       computeAvgStressAndStrain(obj);
+      setStateInit(obj,getState(obj));
+      setStateOld(obj,getState(obj));
       
     end
 
@@ -275,6 +277,7 @@ classdef Poromechanics < PhysicsSolver
 
       setState(obj,avStress,'avgStress');
       setState(obj,avStrain,'avgStrain');
+
 
     end
 

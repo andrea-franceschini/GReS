@@ -98,7 +98,7 @@ classdef SolidMechanicsContact < MeshTying
       obj.Jconstraint = obj.Jconstraint - H;
       obj.rhsConstraint = obj.rhsConstraint + rhsStab;
 
-      if gresLog().getVerbosity > 2
+      if gresLog().getVerbosity > 3
         % print rhs terms for each fracture state for debug purposes
         dof_stick = DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.stick),3);
         dof_slip = [DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.slip),3); ...
@@ -158,8 +158,8 @@ classdef SolidMechanicsContact < MeshTying
       end
 
       % check if active set changed
-      asNew = ContactMode.integer(obj.activeSet.curr);
-      asOld = ContactMode.integer(oldActiveSet);
+      asNew = obj.activeSet.curr;
+      asOld = oldActiveSet;
 
       % do not upate state of element that exceeded the maximum number of
       % individual updates
@@ -182,7 +182,8 @@ classdef SolidMechanicsContact < MeshTying
 
       hasConfigurationChanged = any(diffState);
 
-      if gresLog().getVerbosity > 2
+      gresLog().log(2,'%s: Active set \n',class(obj));
+      if gresLog().getVerbosity > 3
         % report active set changes
         da = asNew - asOld;
         d = da(asOld == 1);
@@ -198,10 +199,10 @@ classdef SolidMechanicsContact < MeshTying
         fprintf('%i elements from slip to open \n',sum(d==1));
         d = da(asOld==4);
         fprintf('%i elements from open to stick \n',sum(d==-3));
-
-        fprintf('Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
-          sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
       end
+
+      gresLog().log(2,'Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
+          sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
 
       if hasConfigurationChanged
 
@@ -238,6 +239,8 @@ classdef SolidMechanicsContact < MeshTying
       tIni = computeInitialTraction(obj);
 
       addInitialTraction(obj,tIni);
+
+      setStateOld(obj,getState(obj,"traction"),"traction");
 
       setStickNodes(obj);
 
@@ -335,7 +338,7 @@ classdef SolidMechanicsContact < MeshTying
       tT = [outTraction(2:3:end),outTraction(3:3:end)];
       norm_tT = sqrt(tT(:,1).^2 + tT(:,2).^2);
 
-      fractureState = ContactMode.integer(obj.activeSet.curr);
+      fractureState = double(obj.activeSet.curr);
 
       pointStr = [];
 
