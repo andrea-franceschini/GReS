@@ -82,6 +82,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       t = getState(obj,"traction");
       t = t + tIni(:);
       setState(obj,t,"traction");
+      setStateOld(obj,t,"traction");
       setStateInit(obj,t,"traction");
 
     end
@@ -133,7 +134,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       iniTraction = getStateInit(obj,'traction'); % use this!
       jump = s.fractureJump;
       du = s.displacements - sOld.displacements;
-      dw = s.fractureJump - sOld.fractureJump;
+      dj = s.fractureJump - sOld.fractureJump;
 
       coordinates = obj.grid.coordinates;
 
@@ -173,7 +174,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           Bw = computeCompatibilityMatrix(obj,frac,f,coords,gradN);
 
           % enhance strain
-          enhancedStrain = reshape(pagemtimes(Bw,dw(wDof)),6,nG)';
+          enhancedStrain = reshape(pagemtimes(Bw,dj(wDof)),6,nG)';
 
           % compute E matrix (equilibrium operator, 6x3)
           E = computeEquilibriumOperator(obj,frac,f);
@@ -207,13 +208,13 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         if isCellCut
           % assemble the efem blocks
-
           KuwLoc = Poromechanics.computeKloc(B,D,Bw,dJw);
           KwuLoc = Poromechanics.computeKloc(E,D,B,dJw);
           KwwLoc = Poromechanics.computeKloc(E,D,Bw,dJw);
 
-          slip = jump(wDof([2;3])); % why not dj?
+          slip = dj(wDof([2;3])); % why not dj?
           trac = s.traction(wDof);
+          dtrac = trac - iniTraction(wDof);
           dtdg = computeDerTractionGap(obj,f,slip,trac(1));
 
           KwwLoc = KwwLoc - dtdg*frac.area(f);
@@ -224,9 +225,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           asbKww.localAssembly(wDof,wDof,KwwLoc);
 
           % assemble rhsW (use computed stress tensor)
-          sigma = reshape(sigma',6,1,nG);
-          rT = trac*frac.area(f);
-          fTmp = pagemtimes(E,'ctranspose',sigma,'none');
+          %dsigma = reshape(dsigma',6,1,nG);
+          rT = dtrac*frac.area(f);
+          fTmp = pagemtimes(E,'ctranspose',dsigma,'none');
           fTmp = fTmp.*reshape(dJw,1,1,[]);
           rSigma = sum(fTmp,3);
           rBC = obj.bcTraction(wDof)*frac.area(f);
@@ -297,8 +298,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
 
       % check if active set changed
-      asNew = ContactMode.integer(obj.activeSet.curr);
-      asOld = ContactMode.integer(oldActiveSet);
+      asNew = obj.activeSet.curr;
+      asOld = oldActiveSet;
 
       % do not upate state of element that exceeded the maximum number of
       % individual updates
@@ -321,7 +322,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       hasConfigurationChanged = any(diffState);
 
-      if gresLog().getVerbosity > 2
+      gresLog().log(2,'%s: Active set \n',class(obj));
+      if gresLog().getVerbosity > 3
         % report active set changes
         da = asNew - asOld;
         d = da(asOld == 1);
@@ -338,9 +340,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         d = da(asOld==4);
         fprintf('%i elements from open to stick \n',sum(d==-3));
 
-        fprintf('Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
-          sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
       end
+
+      gresLog().log(2,'Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
+        sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
 
       if hasConfigurationChanged
 
@@ -398,7 +401,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       obj.mechSolver.goBackState();
 
       obj.activeSet.curr = obj.activeSet.prev;
-      obj.NLIter = 0;
+      % obj.NLIter = 0;
 
       if obj.activeSet.resetActiveSet
         resetConfiguration(obj);
@@ -498,7 +501,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       cellStr(2).data = [trac(1:3:end), trac(2:3:end), trac(3:3:end)];
 
       cellStr(3).name = 'fractureState';
-      as = ContactMode.integer(obj.activeSet.curr);
+      as = double(obj.activeSet.curr);
       cellStr(3).data = as;
 
       % plot directly into the domain vtm block
@@ -769,25 +772,27 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       for i = 1:frac.num
         dofW = getLocalDoF(obj.domain.dofm,obj.fldFrac,i);
+        t = s.traction(dofW);
+        tOld = sOld.traction(dofW);
         j = jump(dofW);
         dj = deltaJump(dofW);
         fId = frac.fracId(i);
 
         switch obj.activeSet.curr(i)
           case ContactMode.stick
-            s.traction(dofW(1)) = penN * j(1);
-            s.traction(dofW(2:3)) = penT * j(2:3);
+            t(1) = tOld(1) + penN * dj(1);
+            t(2:3) = tOld(2:3) + penT * dj(2:3);
 
           case {ContactMode.slip, ContactMode.newSlip}
-            s.traction(dofW(1)) = penN * j(1);
-            tN = s.traction(dofW(1));
-            tauLim = obj.cohesion(fId) - tN*tan(obj.phi(fId));
+            t(1) = tOld(1) + penN * j(1);
+            tauLim = obj.cohesion(fId) - t(1)*tan(obj.phi(fId));   % using the updated or not?
             %
-            s.traction(dofW(2:3)) = tauLim * (dj(2:3)/norm(dj(2:3)));
-
+            t(2:3) = tauLim * (dj(2:3)/norm(dj(2:3)));
           case ContactMode.open
-            s.traction(dofW(:)) = 0;
+            t(:) = 0;
         end
+
+        s.traction(dofW) = t;
 
       end
 

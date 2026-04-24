@@ -130,7 +130,7 @@ classdef (Abstract) PhysicsSolver < handle
     function goBackState(obj,varargin)
       % base method to move back the state when convergence is not reached
 
-      obj.domain.state = copy(obj.domain.stateOld);
+      setState(obj,getStateOld(obj));
 
     end
 

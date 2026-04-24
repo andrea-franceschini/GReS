@@ -138,7 +138,7 @@ classdef (Abstract) SolutionScheme < handle
       for i = 1:obj.nDom
         dom = obj.domains(i);
         state = dom.getState;
-        obj.iniState.domains(i) = state;
+        obj.iniState.domains(i) = dom.state;
         % set old and initial state 
         dom.setStateInit(state)
         dom.setStateOld(state);
@@ -152,7 +152,7 @@ classdef (Abstract) SolutionScheme < handle
       for i = 1:obj.nInterf
         interf = obj.interfaces{i};
         state = interf.getState;
-        obj.iniState.interfaces(i) = state;
+        obj.iniState.interfaces(i) = interf.state;
         % set old and initial state
         interf.setStateInit(state)
         interf.setStateOld(state);
@@ -173,11 +173,11 @@ classdef (Abstract) SolutionScheme < handle
       % reset the simulation  at its initial state
 
       for i = 1:obj.nDom
-        setState(obj.domains(i),obj.iniState.domains(i));
+        setState(obj.domains(i),obj.iniState.domains(i).getState);
       end
 
       for i = 1:obj.nInterf
-        obj.interfaces{i}.state = copy(obj.iniState.interfaces{i});
+        obj.interfaces{i}.state = copy(obj.iniState.interfaces{i}.getState);
       end
 
       if ~isempty(obj.output)

@@ -172,6 +172,8 @@ classdef Poromechanics < PhysicsSolver
 
       % initial stress - assumed balanced with external forces
       computeAvgStressAndStrain(obj);
+      setStateInit(obj,getState(obj));
+      setStateOld(obj,getState(obj));
       
     end
 
@@ -275,6 +277,7 @@ classdef Poromechanics < PhysicsSolver
 
       setState(obj,avStress,'avgStress');
       setState(obj,avStrain,'avgStrain');
+
 
     end
 
@@ -423,6 +426,13 @@ classdef Poromechanics < PhysicsSolver
     end
 
 
+    function iniStress = getInitialStress(obj)
+
+      iniStress = obj.iniStress;
+      
+    end
+
+
 
 
     function out = isLinear(obj)
@@ -430,7 +440,7 @@ classdef Poromechanics < PhysicsSolver
       % check if model is pure linear elasticity
 
       out = false;
-
+      
       % check if there is not embedded fractures
       if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics"))
         return

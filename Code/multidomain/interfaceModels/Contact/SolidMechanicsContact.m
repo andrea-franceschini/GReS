@@ -9,6 +9,7 @@ classdef SolidMechanicsContact < MeshTying
     activeSet
     NLIter = 0
     stickNodes     % boundary nodes where contact state should stay stick
+    forceStick     % flag to enforce interface to stay stick
   end
 
 
@@ -29,9 +30,12 @@ classdef SolidMechanicsContact < MeshTying
 
       input = varargin{1};
 
-      input = readInput(struct('Coulomb',[],'ActiveSet',missing),input);
+      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0),input);
 
       params = readInput(struct('cohesion',[],'frictionAngle',[]),input.Coulomb);
+
+
+      obj.forceStick = logical(input.forceStick);
 
       obj.cohesion = params.cohesion;
       obj.phi = params.frictionAngle;
@@ -94,7 +98,7 @@ classdef SolidMechanicsContact < MeshTying
       obj.Jconstraint = obj.Jconstraint - H;
       obj.rhsConstraint = obj.rhsConstraint + rhsStab;
 
-      if gresLog().getVerbosity > 2
+      if gresLog().getVerbosity > 3
         % print rhs terms for each fracture state for debug purposes
         dof_stick = DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.stick),3);
         dof_slip = [DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.slip),3); ...
@@ -110,6 +114,11 @@ classdef SolidMechanicsContact < MeshTying
 
 
     function hasConfigurationChanged = updateConfiguration(obj)
+
+      hasConfigurationChanged = false;
+      if obj.forceStick
+        return
+      end
 
       obj.NLIter = 0;
 
@@ -149,8 +158,8 @@ classdef SolidMechanicsContact < MeshTying
       end
 
       % check if active set changed
-      asNew = ContactMode.integer(obj.activeSet.curr);
-      asOld = ContactMode.integer(oldActiveSet);
+      asNew = obj.activeSet.curr;
+      asOld = oldActiveSet;
 
       % do not upate state of element that exceeded the maximum number of
       % individual updates
@@ -173,7 +182,8 @@ classdef SolidMechanicsContact < MeshTying
 
       hasConfigurationChanged = any(diffState);
 
-      if gresLog().getVerbosity > 2
+      gresLog().log(2,'%s: Active set \n',class(obj));
+      if gresLog().getVerbosity > 3
         % report active set changes
         da = asNew - asOld;
         d = da(asOld == 1);
@@ -189,10 +199,10 @@ classdef SolidMechanicsContact < MeshTying
         fprintf('%i elements from slip to open \n',sum(d==1));
         d = da(asOld==4);
         fprintf('%i elements from open to stick \n',sum(d==-3));
-
-        fprintf('Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
-          sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
       end
+
+      gresLog().log(2,'Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
+          sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
 
       if hasConfigurationChanged
 
@@ -230,6 +240,8 @@ classdef SolidMechanicsContact < MeshTying
 
       addInitialTraction(obj,tIni);
 
+      setStateOld(obj,getState(obj,"traction"),"traction");
+
       setStickNodes(obj);
 
     end
@@ -247,8 +259,7 @@ classdef SolidMechanicsContact < MeshTying
     function trac = computeInitialTraction(obj)
       % initialize traction for cell stress (average)
       sl = MortarSide.slave;
-      poro = obj.domains(sl).getPhysicsSolver("Poromechanics");
-      avgStress = poro.getState("avgStress");
+      avgStress = obj.domains(MortarSide.slave).getState("avgStress");
       surf = obj.grids(sl).surfaces;
       faces = obj.domains(sl).grid.faces;
       normals = surf.normal;
@@ -327,7 +338,7 @@ classdef SolidMechanicsContact < MeshTying
       tT = [outTraction(2:3:end),outTraction(3:3:end)];
       norm_tT = sqrt(tT(:,1).^2 + tT(:,2).^2);
 
-      fractureState = ContactMode.integer(obj.activeSet.curr);
+      fractureState = double(obj.activeSet.curr);
 
       pointStr = [];
 
