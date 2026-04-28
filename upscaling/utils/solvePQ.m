@@ -98,10 +98,10 @@ end
 
 function [forceZ1, forceZ2] = initial_guess(fea, forceX, druckerPrager)
     % Volumes
-    vols = fea.solver.domains.grid.topology.cellVolume;
+    vols = fea.solver.domains.grid.cells.volume;
 
     % Regions
-    regions = fea.solver.domains.grid.topology.cellTag;
+    regions = fea.solver.domains.grid.cells.tag;
 
     % Zone IDs
     ID_DZ1  = regions == druckerPrager.DamageZone1.zoneID;

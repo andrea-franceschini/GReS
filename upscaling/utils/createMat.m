@@ -13,8 +13,8 @@ function stiffnesses = createMat(grid, meshProp, rock, blockSize, jointFamilies)
     norm = [-sin_t, 0, cos_t];
     d    = -dot(norm, pt);
 
-    coords = grid.topology.coordinates;
-    elements = grid.topology.cells;
+    coords = grid.coordinates;
+    elements = grid.cells.connectivity;
     nElem = size(elements,1);
     stiffnesses = cell(nElem,1);
 

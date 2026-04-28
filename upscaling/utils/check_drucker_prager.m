@@ -2,10 +2,10 @@ function [maxF, avgP, avgQ, ratio] = ...
     check_drucker_prager(grid, stress, druckerPrager)
 
     % Volumes
-    vols = grid.topology.cellVolume;
+    vols = grid.cells.volume;
 
     % Regions
-    regions = grid.topology.cellTag;
+    regions = grid.cells.tag;
 
     % Zone IDs
     ID_DZ1  = regions == druckerPrager.DamageZone1.zoneID;

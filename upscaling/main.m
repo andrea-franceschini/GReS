@@ -11,18 +11,14 @@ gresLog().setVerbosity(-2);
     readInputFile('config.xml');
 
 % Import mesh data into the Mesh object
-mesh = Mesh();
-mesh.importMesh(inputFiles.meshFile);
-topology = Mesh();
+grid = Grid();
+grid.importMesh(inputFiles.meshFile);
 
 % Set parameters of the simulation
 simParam = SimulationParameters(inputFiles.simParam);
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(inputFiles.materials);
-
-% now the faces field can be omitted completely
-grid = struct('topology',mesh,'cells',Elements(mesh));
 
 % Creating boundaries conditions.
 bound = Boundaries(grid,inputFiles.boundaries);
