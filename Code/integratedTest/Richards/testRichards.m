@@ -23,17 +23,14 @@ function sol = run(curveType)
 simParam = SimulationParameters(fullfile('Input','simParam.xml'));
 
 % Create the topology object
-topology = Mesh();
-topology.importMesh(fullfile('Input','Mesh','Column.msh'));
-elems = Elements(topology,2);
-faces = Faces(topology);
-grid = struct('topology',topology,'cells',elems,'faces',faces);
+grid = Grid();
+grid.importMesh(fullfile('Input','Mesh','Column.msh'));
 
 % Creating boundaries conditions.
 bound = Boundaries(grid,"Input/richardsBCs.xml");
 
 % to set initial condition.
-z = elems.mesh.cellCentroid(:,3);
+z = grid.cells.center(:,3);
 wLev = 9.;
 
 mat = Materials('Input/mat.xml');
@@ -57,9 +54,9 @@ printUtils = OutState('printTimes',[5;10]);
 
 % Create object handling construction of Jacobian and rhs of the model
 % linSyst = Discretizer(model,simParam,dofmanager,grid,mat,GaussPts);
-domain = Discretizer('Grid',grid,...
-                     'Materials',mat,...
-                     'Boundaries',bound);
+domain = Discretizer('grid',grid,...
+                     'materials',mat,...
+                     'boundaries',bound);
 
 domain.addPhysicsSolver('VariablySaturatedFlow');
 

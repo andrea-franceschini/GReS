@@ -7,12 +7,13 @@ classdef PorousRock < handle
         % (upper triangular part ordered column-wise)
         poro                 % Porosity
         biot                 % Biot coefficient
-        % alpha                % Rock compressibility (can be replaced by the oedometer test compressibility Cm)
-        gamma;             % Fluid specific weight
-        % specGrav             % Specific gravity of rock
-        Sr=0.;             % Residual saturation
-        Ss=1.;             % Maximum saturation        
+        alpha                % Rock compressibility (can be replaced by the oedometer test compressibility Cm)
+        gamma;               % Fluid specific weight
+        % specGrav           % Specific gravity of rock
+        Sr=0.;               % Residual saturation
+        Ss=1.;               % Maximum saturation        
     end
+
 
     properties
       Curves
@@ -45,21 +46,13 @@ classdef PorousRock < handle
           Sr = obj.Sr;
         end
 
-        % function specGrav = getSpecificGravity(obj)
-        %     specGrav = obj.specGrav;
-        % end
+        function comp = getCompressibility(obj)
+          comp = obj.alpha;
+        end
 
         function gamma = getSpecificWeight(obj)
           gamma = obj.gamma;
         end
-
-        % function gamma = getDrySpecificWeight(obj)
-        %   gamma = obj.gamma;
-        % end
-        % 
-        % function gamma = getSaturatedSpecificWeight(obj)
-        %   gamma = obj.gamma;
-        % end
 
 
         % Function to get material porosity
@@ -115,6 +108,7 @@ classdef PorousRock < handle
         default = struct('porosity',0.3,...
                          'biotCoefficient',1.0,...
                          'permeability',1e-12,...
+                         'compressibility',0,...
                          'specificWeight',21.0,...
                          "residualSaturation",0.0,...
                          "maximumSaturation",1.0,...
@@ -129,6 +123,7 @@ classdef PorousRock < handle
         obj.biot = params.biotCoefficient;
         obj.Sr = params.residualSaturation;
         obj.Ss = params.maximumSaturation;
+        obj.alpha = params.compressibility;
 
         Kvec = params.permeability;
 

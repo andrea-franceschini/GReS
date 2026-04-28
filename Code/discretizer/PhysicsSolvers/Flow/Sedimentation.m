@@ -25,7 +25,7 @@ classdef Sedimentation < PhysicsSolver
   % ------------------------------------------------------------------
 
   properties
-    grid gridForSedimentation           % Grid with column growth support
+    gridSed gridForSedimentation           % Grid with column growth support
     bcs                                 % Boundary condition
     sedimentHistory = SedimentsMap()    % Time-dependent sediment control
 
@@ -64,7 +64,7 @@ classdef Sedimentation < PhysicsSolver
       obj.checkInput(input);
 
       % Build grid
-      obj.grid = gridForSedimentation("XML",input.Domain);
+      obj.gridSed = gridForSedimentation("XML",input.Domain);
 
       % Build the material fractions for each cell
       obj.prepareMaterialFractions(input.Domain.Initial);
@@ -76,7 +76,7 @@ classdef Sedimentation < PhysicsSolver
 
       % Initialize sediment control
       obj.sedimentHistory = SedimentsMap(input.SedimentMap,obj.nmat,...
-        obj.grid.ncells(1:2));
+        obj.gridSed.ncells(1:2));
 
       % Setup BCs
       if ~isfield(input.Boundary,"BC")
@@ -89,29 +89,30 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.J{obj.fieldId,obj.fieldId} = [];
       obj.domain.rhs{obj.fieldId} = [];
 
-      % Increase number of variables in the dof manager
-      obj.domain.dofm.registerVariable(obj.getField(),entityField.cell,1,1);
+      obj.domain.dofm.registerVariable(obj.getField());
     end
 
     function initialize(obj)
       % Initialize the Sedimentation solver before the simulation starts
 
       % Set mesh output.
-      [coord,conec] = obj.grid.getMesh;
+      [coord,conn] = obj.gridSed.getMesh;
       npts = size(coord,1);
-      nelm = size(conec,1);
-      obj.mesh.nDim = 3;
-      obj.mesh.nCells = nelm;
-      obj.mesh.nNodes = npts;
-      obj.mesh.cellVTKType = 12*ones(nelm,1);
-      obj.mesh.cellNumVerts = 8*ones(nelm,1);
-      obj.mesh.cellTag = 8*ones(nelm,1);
-      obj.mesh.coordinates = coord;
-      obj.mesh.cells = conec;
+      nelm = size(conn,1);
+      obj.grid.nDim = 3;
+      obj.grid.nNodes = npts;
+      obj.grid.coordinates = coord;
+      cells.num = nelm;
+      cells.VTKType = 12*ones(nelm,1);
+      cells.numVerts = 8*ones(nelm,1);
+      cells.tag = 8*ones(nelm,1);
+      cells.connectivity = conn;
+
+      obj.grid.cells = cells;
 
       % Prepare the faces connectivity
       dofs = (1:nelm)';
-      cellNeigh = obj.grid.getNeigh();
+      cellNeigh = obj.gridSed.getNeigh();
       cellsConc = zeros([6*nelm,2]);
       cellsConcDir = ones([6*nelm,1]);
       cellsConcActive = false([6*nelm,1]);
@@ -141,18 +142,18 @@ classdef Sedimentation < PhysicsSolver
       obj.getState().data.voidrate = zeros(nelm,1);
       obj.getState().data.stress = zeros(nelm,1);
       obj.getState().data.iterTimeStep = 1;
-      obj.getState().data.sedimentAcc = zeros(prod(obj.grid.ncells(1:2)),obj.nmat);
+      obj.getState().data.sedimentAcc = zeros(prod(obj.gridSed.ncells(1:2)),obj.nmat);
       obj.domain.stateOld = copy(obj.domain.getState());
 
       % Initialize for each cell: porosity, initial stress
       obj.void0 = zeros(nelm,1);
-      stStore = zeros(obj.grid.ncells(1:2));
-      for nlay = 0:obj.grid.ncells(3)-1
-        ddf = obj.grid.dof(:,:,end-nlay);
+      stStore = zeros(obj.gridSed.ncells(1:2));
+      for nlay = 0:obj.gridSed.ncells(3)-1
+        ddf = obj.gridSed.dof(:,:,end-nlay);
         map = ddf~=0;
         dtmp = ddf(map);
         fracMat = obj.matfrac(dtmp,:);
-        [~,~,dh] = obj.grid.getCellsDims(dtmp);
+        [~,~,dh] = obj.gridSed.getCellsDims(dtmp);
         stsCons = stStore(map);
         [void,stress] = obj.initializeCell(fracMat,dh/2,stsCons);
         stStore(map) = 2*stress-stsCons;
@@ -188,7 +189,7 @@ classdef Sedimentation < PhysicsSolver
 
     function applyBC(obj,bcId,t)
       for bcId = obj.bcs
-        dofs = obj.grid.getBord(bcId.surface);
+        dofs = obj.gridSed.getBord(bcId.surface);
         p = getState(obj,"pressure");
         fcorr = false;
         switch lower(bcId.surface)
@@ -214,7 +215,7 @@ classdef Sedimentation < PhysicsSolver
             % accumulated sediment.
             Trans = obj.halfTrans(dofs,axis);
             if fcorr
-              [dx,dy,~] = obj.grid.getCellsDims(dofs);
+              [dx,dy,~] = obj.gridSed.getCellsDims(dofs);
               sedm=obj.domain.state.data.sedimentAcc;
               dz = sum(sedm,2);
               map = dz~=0;
@@ -235,7 +236,7 @@ classdef Sedimentation < PhysicsSolver
             potential = p(dofs) - bcId.value;
             q = dirJ.*potential;
 
-            nDoF = obj.grid.ndofs;
+            nDoF = obj.gridSed.ndofs;
             bcDofsJ = nDoF*(dofs-1) + dofs;
 
             obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) = ...
@@ -279,7 +280,7 @@ classdef Sedimentation < PhysicsSolver
 
       % Update the dof used for the parallel solver
       if flagGrow
-        obj.getState().data.maxDofUnchanged = obj.grid.getMaxDofUnchanged;
+        obj.getState().data.maxDofUnchanged = obj.gridSed.getMaxDofUnchanged;
       end
 
       % Update the necessity to compute the sedimentation rate.
@@ -301,7 +302,7 @@ classdef Sedimentation < PhysicsSolver
       sPrev = stateOld.data.stress;
 
       dStsMap = obj.getCellsProp('TotalStressVariation');
-      dofList = obj.grid.getMapFromDofs();
+      dofList = obj.gridSed.getMapFromDofs();
       dStsMap = dStsMap(dofList);
       if state.data.iterTimeStep == 1
         sCurr = state.data.stress + dp - dt*dStsMap;
@@ -320,7 +321,7 @@ classdef Sedimentation < PhysicsSolver
       state.data.voidrate = e_prev + delta_e;
 
       % Update the Mesh Deformation - vertical deformation
-      [~,~,dz] = obj.grid.getCellsDims();
+      [~,~,dz] = obj.gridSed.getCellsDims();
       % dz = dz + obj.getState('cellDefm');  % to compute as eulerian grid
       eps = delta_e./(1+obj.void0);
       strain = stateOld.data.strain + eps;  % <-- Lagrangian strain
@@ -353,8 +354,8 @@ classdef Sedimentation < PhysicsSolver
       rhs = rhsStiff + rhsCap;
 
       K = obj.getCellsProp('TotalStressVariation');
-      K = K(obj.grid.getMapFromDofs());
-      [dx,dy,dz] = obj.grid.getCellsDims();
+      K = K(obj.gridSed.getMapFromDofs());
+      [dx,dy,dz] = obj.gridSed.getCellsDims();
 
       % sedm=obj.domain.state.data.sedimentAcc;
       % vv = dz + obj.getState('cellDefm');
@@ -371,7 +372,7 @@ classdef Sedimentation < PhysicsSolver
 
     function computeStiffMat(obj)
       % Compute the Stiffness Matrix
-      ncells = obj.grid.ndofs;
+      ncells = obj.gridSed.ndofs;
       lw = 1/obj.domain.materials.getFluid().getSpecificWeight();
 
       idi = sub2ind(size(obj.halfTrans), obj.facesNeigh(:,1), obj.facesNeighDir);
@@ -395,10 +396,10 @@ classdef Sedimentation < PhysicsSolver
       %   - Fluid compressibility
 
       % Selecting the active dofs
-      dofs = 1:obj.grid.ndofs;
+      dofs = 1:obj.gridSed.ndofs;
 
       % Computing the volumes
-      [dx,dy,dz] = obj.grid.getCellsDims();
+      [dx,dy,dz] = obj.gridSed.getCellsDims();
       volCell = dx.*dy.*(dz + obj.getState('cellDefm'));
       % volCell = dx.*dy.*dz;
 
@@ -411,7 +412,7 @@ classdef Sedimentation < PhysicsSolver
       PVal = (oedoComp+beta*poro).*volCell;
 
       % CreatcellDefming the P matrix.
-      obj.P = PVal.*speye(obj.grid.ndofs);
+      obj.P = PVal.*speye(obj.gridSed.ndofs);
     end
 
     function [cellData,pointData] = writeVTK(obj,fac,t)
@@ -450,6 +451,9 @@ classdef Sedimentation < PhysicsSolver
 
       cellStr(7).name = 'voidRate';
       cellStr(7).data = state.void;
+
+      % cellStr(8).name = 'comp';
+      % cellStr(8).data = state.dl;
 
       pointStr(1).name = 'compaction';
       pointStr(1).data = state.comp;
@@ -491,7 +495,7 @@ classdef Sedimentation < PhysicsSolver
 
     function prepareMaterialFractions(obj,data)
       % Build the material fractions for each cell
-      obj.matfrac = zeros(obj.grid.ndofs,length(obj.domain.materials.solid));
+      obj.matfrac = zeros(obj.gridSed.ndofs,length(obj.domain.materials.solid));
       if isfield(data,"materialFractions")
         frac = load(data.materialFractions);
         obj.matfrac = frac;
@@ -515,7 +519,7 @@ classdef Sedimentation < PhysicsSolver
       %   cellSed  - Sediment assigned to newly created cells
 
       % 1. Initializate cellSed
-      cellSed = zeros(prod(obj.grid.ncells(1:2)),obj.nmat);
+      cellSed = zeros(prod(obj.gridSed.ncells(1:2)),obj.nmat);
 
       % 2. Update accumulation buffer
       dt = obj.getState().t-obj.getStateOld().t;
@@ -545,9 +549,9 @@ classdef Sedimentation < PhysicsSolver
       %   - Update VTK mesh
       %   - Update states
 
-      lnk=obj.grid;
+      lnk=obj.gridSed;
       newcells = sum(map);
-      dofs = (obj.grid.ndofs+1:obj.grid.ndofs+newcells)';
+      dofs = (obj.gridSed.ndofs+1:obj.gridSed.ndofs+newcells)';
 
       colheightBG = lnk.columnsHeight;
       fracMat = sed(map,:)/obj.heightControl;
@@ -560,7 +564,7 @@ classdef Sedimentation < PhysicsSolver
       newlayer = lnk.grow(map,obj.heightControl);
 
       % Creating the connectives between new cells
-      cellNeigh = obj.grid.getNeigh(dofs);
+      cellNeigh = obj.gridSed.getNeigh(dofs);
 
       cellsConc = zeros([5*newcells,2]);
       cellsConcDir = ones([5*newcells,1]);
@@ -616,27 +620,28 @@ classdef Sedimentation < PhysicsSolver
 
 
     function updateMeshOutput(obj,dofs)
-      [coord, conec] = obj.grid.getMesh(dofs);
+      [coord, conec] = obj.gridSed.getMesh(dofs);
       npts = size(coord,1);
       nelm = size(conec,1);
-      obj.mesh.nCells = obj.mesh.nCells+nelm;
-      obj.mesh.nNodes = obj.mesh.nNodes+npts;
+      obj.grid.nNodes = obj.grid.nNodes+npts;
+      obj.grid.coordinates(end+1:obj.grid.nNodes,:) = coord;
 
-      obj.mesh.cellVTKType(end+1:end+nelm) = 12;
-      obj.mesh.cellNumVerts(end+1:end+nelm) = 8;
-      obj.mesh.cellTag(end+1:end+nelm) = 8;
-
-      obj.mesh.coordinates(end+1:obj.mesh.nNodes,:) = coord;
-      obj.mesh.cells(end+1:end+nelm,:) = conec;
+      cells = obj.grid.cells;
+      cells.num = cells.num + nelm;
+      cells.VTKType(end+1:end+nelm) = 12;
+      cells.numVerts(end+1:end+nelm) = 8;
+      cells.tag(end+1:end+nelm) = 8;
+      cells.connectivity(end+1:end+nelm,:) = conec;
+      obj.grid.cells = cells;
     end
 
     function computeHalfTrans(obj)
       % COMPUTEHALFTRANS Computes cells half-transmissibility.
-      dofs = (1:obj.grid.ndofs)';
-      obj.halfTrans = zeros(obj.grid.ndofs,3);
+      dofs = (1:obj.gridSed.ndofs)';
+      obj.halfTrans = zeros(obj.gridSed.ndofs,3);
 
       % Get mesh dimension and update with the deformation
-      [dx,dy,dz] = obj.grid.getCellsDims();
+      [dx,dy,dz] = obj.gridSed.getCellsDims();
       dz = dz + obj.getState('cellDefm');
 
       % Computing half transmissibilities
@@ -648,7 +653,7 @@ classdef Sedimentation < PhysicsSolver
 
     function oedoComp = computeOedometricCompressibility(obj,dofs)
       if ~exist("dofs","var")
-        dofs = (1:obj.grid.ndofs)';
+        dofs = (1:obj.gridSed.ndofs)';
       end
 
       % sNew = obj.getState().data.stress(dofs);
@@ -663,7 +668,7 @@ classdef Sedimentation < PhysicsSolver
 
     function out = getCellsProp(obj,type,dofs)
       if ~exist("dofs","var")
-        dofs = 1:obj.grid.ndofs;
+        dofs = 1:obj.gridSed.ndofs;
       end
 
       type = lower(type);
@@ -703,7 +708,7 @@ classdef Sedimentation < PhysicsSolver
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
         case 'totalstressvariation'
-          dofs = obj.grid.getTopDofs;
+          dofs = obj.gridSed.getTopDofs;
           out = zeros(length(dofs),1);
           gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
           omega = obj.getState().data.sedmrate;
@@ -726,11 +731,11 @@ classdef Sedimentation < PhysicsSolver
       end
 
       comp = sNew.data.cellDefm*fac+sOld.data.cellDefm*(1-fac);
-      data.dl = comp;
+      % data.dl = comp;
 
-      comp = obj.grid.cell2NodeAccByColumnFromBot2Top(comp);
+      comp = obj.gridSed.cell2NodeAccByColumnFromBot2Top(comp);
       gamma = obj.domain.materials.getFluid().getSpecificWeight();
-      [~,~,zCoordCM] = obj.grid.getCoordCenter();
+      [~,~,zCoordCM] = obj.gridSed.getCoordCenter();
       voidR = sNew.data.voidrate*fac+sOld.data.voidrate*(1-fac);
       voidR = voidR./(1+voidR);
       % poroA = sNew.data.voidrate./(1+sNew.data.voidrate);
@@ -749,7 +754,7 @@ classdef Sedimentation < PhysicsSolver
       data.comp = comp;
       data.head = zCoordCM+data.pres/gamma;
       data.poro = voidR;
-      data.height = obj.grid.getCoordBottom();
+      data.height = obj.gridSed.getCoordBottom();
       data.time = t;
       % data.height = obj.grid.getCoordTop();
     end

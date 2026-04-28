@@ -1,0 +1,16 @@
+<Sedimentation_Maps type = "ramp">
+  <Event time = "0." >
+    <Uniform materialFlag = "1" value= "3.e-3"/>
+  </Event>
+
+  <Event time = "400" >
+    <Uniform materialFlag = "2" value= "3.e-3"/>
+  </Event>
+
+  <Event time = "800" >
+    <Linear materialFlag = "3" value= "0.e0, 0.e0, 3.e-3, 3.e-3"/>
+  </Event>
+
+  <Event time = "1000" >    
+  </Event>
+</Sedimentation_Maps>

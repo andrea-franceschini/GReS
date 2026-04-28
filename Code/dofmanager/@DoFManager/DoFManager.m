@@ -6,7 +6,7 @@ classdef DoFManager < handle
   % Field-based ordering (default)
   % Domain-based ordering
   properties (Access = private)
-    mesh
+    grid
     dofMap                        % cell array with dof map for each variable field
     numbComponents
     fields = struct("variableName",[],...
@@ -19,101 +19,16 @@ classdef DoFManager < handle
 
 
   methods (Access = public)
-    function obj = DoFManager(mesh)
+    function obj = DoFManager(grid)
 
       if nargin == 0 
         return
       end
-      obj.mesh = mesh;
+      obj.grid = grid;
       obj.totDofs = 0;
     end
 
-
-    function registerVariable(obj,varName,fldLoc,nComp,varargin)
-      % varName: the name of the registered variable field
-      % fldLoc: a enum of type entityField
-      % tags: the cellTag (or surfaceTag for lower dimensional fields) where the variable is actually present
-      % nComp: the number of dofs per entitiy
-
-      % return an instance of the registeredVariable as an instance of
-      % entityField()
-
-      id = obj.nVars+1;
-
-      if any(strcmpi([obj.fields.variableName],varName))
-        % variable field already exist
-
-        % This is a Phylosophical choice: we can register a variable field
-        % only one time for each domain. While we can still define more
-        % then one physicsSolver in each domain, those are required to act
-        % on disjoint sets of variable fields. 
-        % An obvious consequence is that we cannot define two istances of
-        % the same physicsSolver in a single domain.
-
-        error("Variable %s has already been registered. GReS variables can" + ...
-          " only be registered once in each domain ", varName)
-
-        % the following  code make sense if we allow registering the same
-        % variable more than once
-          
-        % id = getVariableId(obj,varName);
-        % assert(isempty(intersect(tags,obj.fields(id).tags)), ...
-        %   "Variable field %i has been already defined on specified tags", ...
-        %   tags);
-
-        % % update the tags
-        % obj.fields(id).tags = sort([obj.fields(id).tags tags]);
-        % 
-        % % update the entities with only new entities
-        % entList = getEntities(fldLoc,obj.mesh,tags);
-        % isInactive = obj.dofMap{id}(entList) == 0;
-        % nNewEnts = sum(isInactive);
-        % maxEnt = max(obj.dofMap{id});
-        % obj.dofMap{id}(entList(isInactive)) =  nComp*(maxEnt:maxEnts+nNewEnts)+1;
-        % 
-        % % update the ranges with new number of entities
-        % obj.fields(id).range(2) = obj.fields(id).range(2) + nComp*nNewEnts;
-        % for k = id+1:numel(obj.fields)
-        %   obj.fields(k).range = obj.fields(k).range + nComp*nNewEnts;
-        % end
-
-      else
-        % new variable field 
-
-        obj.fields(id).variableName = varName;
-        obj.fields(id).fieldLocation = fldLoc;
-        obj.numbComponents(end+1) = nComp;
-
-
-        if nargin < 6
-          % return the entity of type fldLoc for the given mesh tags
-          tags = varargin{1};
-          obj.fields(id).tags = tags;
-          cells = obj.getFieldCells(id);
-          entList = getEntitiesList(fldLoc,obj.mesh,entityField.cell,cells);
-          totActiveEnts = length(entList);
-        else
-          assert(strcmp(varargin{1},"nEntities"))
-          totActiveEnts = varargin{2};
-          entList = reshape(1:totActiveEnts,[],1);
-        end
-
-        totEnts = numel(getEntitiesList(fldLoc,obj.mesh,fldLoc));
-
-        % populate the dof map
-        obj.dofMap{id} = zeros(totEnts,1);
-        obj.dofMap{id}(entList) = nComp*(0:totActiveEnts-1)'+1;
-
-        % update number of variables and dof counter
-        obj.fields(id).range = [obj.totDofs+1,obj.totDofs+nComp*totActiveEnts];
-        obj.totDofs = obj.totDofs + nComp*totActiveEnts;
-        obj.nVars = obj.nVars+1;
-      end
-
-      % create the entity field
-
-    end
-
+    registerVariable(obj,varName,fldLoc,nComp,varargin)
 
 
     function dofs = getLocalDoF(obj,id,ents)
@@ -186,14 +101,36 @@ classdef DoFManager < handle
     end
 
     function tags = getTargetRegions(obj,varId)
-      id = obj.getVariableId(varId);
-      tags = unique([obj.fields(id).tags]);
+      % get regions where variable fields are present simultaneously
+      % varId - array of id or a string array of variable names
+      % if the variable is not present, the result is empty
+
+      if nargin > 2 
+        error("getTargetRegions:List of variables must be a single array or  single string array of variable names")
+      end
+
+      tags = [];
+
+
+      if numel(varId) > 1
+        tags = obj.getTargetRegions(varId(1));
+        for i = 2:numel(varId)
+          tags = intersect(tags, obj.getTargetRegions(varId(i)));
+        end
+        return
+      end
+
+      if isVariable(obj,varId)
+        id = obj.getVariableId(varId);
+        tags = unique([obj.fields(id).tags]);
+      end
+
     end
 
     function cells = getFieldCells(obj,varId)
       tags = getTargetRegions(obj,varId);
       cells = getEntitiesFromTags(...
-        entityField.cell,obj.mesh,entityField.cell,tags);
+        entityField.cell,obj.grid,entityField.cell,tags);
     end
 
     function location = getFieldLocation(obj,varId)
@@ -206,22 +143,26 @@ classdef DoFManager < handle
 
     function id = getVariableId(obj,varId)
       % return the id of the requested input variable
-      if isnumeric(varId)
-        assert(all(varId > 0) && all(varId <= numel(obj.fields)),"Input variable" + ...
-          "ID is not included in the domain")
 
-        id = varId;
-
-      else
-        assert(isVariable(obj,varId),"Requested variable is not available" + ...
+      assert(isVariable(obj,varId),"Requested variable is not available" + ...
           "in the DoFManager")
+
+      if isnumeric(varId)
+        id = varId;
+      else     
         id = find(strcmp([obj.fields.variableName],varId));
       end
     end
 
-    function fl = isVariable(obj,varId)
-      varId = contains([obj.fields.variableName],varId);
-      fl = any(varId);
+    function out = isVariable(obj,varId)
+
+      if isnumeric(varId)
+        out = all([varId(:) > 0; varId(:) <= numel(obj.fields)]);
+      else
+        out = any(contains([obj.fields.variableName],varId));
+      end
+
+
     end
 
     function numDof = getNumbDoF(obj,varId)

@@ -57,20 +57,35 @@ classdef PreStressMechanics < Poromechanics
       % add gravity contribution to the rhs
       nDoF = obj.domain.dofm.getNumbDoF(obj.fieldId);
       rhsGrav = zeros(nDoF,1);
+      coordinates = obj.grid.coordinates;
+      cells = obj.grid.cells;
+      dofm = obj.domain.dofm;
+      subCells = dofm.getFieldCells(obj.fieldId);
 
-      for el = 1:obj.mesh.nCells
-        nodes = obj.mesh.cells(el,:);
-        dof = dofId(nodes,3);
-        % only affects z contribution
-        dof = dof(3:3:end);
-        vtkId = obj.mesh.cellVTKType(el);
-        elem = getElement(obj.elements,vtkId);
-        N = getBasisFinGPoints(elem);
-        dJWeighed = getDerBasisFAndDet(elem,el,3);
-        b = obj.specWeight(el)*(N'*dJWeighed');
-        rhsGrav(dof) = rhsGrav(dof) + b;
+      for vtkId = cells.vtkTypes
+
+        subCellsLoc = obj.grid.getCellsByVTKId(vtkId,subCells);
+        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+        N = elem.getBasisFinGPoints();
+
+        % get node topology for given vtk type
+        topol = obj.grid.getCellNodes(subCellsLoc);
+
+        for i = 1:numel(subCellsLoc)
+
+          % assembly loop for homogeneous element type
+          el = subCellsLoc(i);
+          nodes = topol(i,:);
+          dof = dofm.getLocalDoF(obj.fieldId,nodes);
+          coord = coordinates(nodes,:);
+          dof = dof(3:3:end);
+          [~,dJWeighed] = getDerBasisFAndDet(elem,coord);
+          b = obj.specWeight(el)*(N'*dJWeighed');
+          rhsGrav(dof) = rhsGrav(dof) + b;
+
+        end
+
       end
-
     end
 
 
@@ -100,7 +115,7 @@ classdef PreStressMechanics < Poromechanics
       solv = NonLinearImplicit(params);
 
       assert(solv.nDom == 1 && solv.nInterf == 0, ...
-        "PreStressMechanics can be used only as a stand-alone PhysicsSolver within a single domain");
+        "getInitialStress can be used only as a stand-alone PhysicsSolver within a single domain");
 
       solv.simulationLoop();
 
@@ -141,9 +156,10 @@ classdef PreStressMechanics < Poromechanics
       tol = 1e-6;
 
       mat = obj.domain.materials;
+      cells = obj.domain.grid.cells;
 
-      gamma = zeros(obj.mesh.nCells,1);
-      poro = zeros(obj.mesh.nCells,1);
+      gamma = zeros(cells.num,1);
+      poro = zeros(cells.num,1);
 
       if ~any(ismissing(grav.obg))
         %  specific weight computed from overburden gradient
@@ -153,15 +169,15 @@ classdef PreStressMechanics < Poromechanics
           error("The overburden gradient obg field must be a valid function handle!")
         end
 
-        C = obj.mesh.cellCentroid;
+        C = cells.center;
         gamma = obg(C(:,1),C(:,2),C(:,3));
 
       else
         % specific weight computed from material user-input
 
-        for i = 1:obj.mesh.nCellTag
+        for i = 1:cells.nTag
 
-          cellsID = obj.mesh.cellTag == i;
+          cellsID = cells.tag == i;
           gamma(cellsID) = mat.getSpecificWeight(i);
 
         end
@@ -178,16 +194,15 @@ classdef PreStressMechanics < Poromechanics
 
         gammaW = fluid.getSpecificWeight();
 
-        for i = 1:obj.mesh.nCellTag
-
-          cellsID = obj.mesh.cellTag == i;
+        for i = 1:cells.nTag
+          cellsID = cells.tag == i;
           rock = mat.getPorousRock(i);
           poro(cellsID) = rock.getPorosity();
 
         end
 
-        maxZ = max(obj.mesh.cellCentroid(:,3));
-        depth = abs(obj.mesh.cellCentroid(:,3) - maxZ);
+        maxZ = max(cells.center(:,3));
+        depth = abs(cells.center(:,3) - maxZ);
         sID = depth > grav.waterDepth - tol;
 
         % compute submerged specific weight (for cells below waterlevel)

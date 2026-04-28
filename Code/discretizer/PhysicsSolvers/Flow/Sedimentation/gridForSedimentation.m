@@ -156,9 +156,12 @@ classdef gridForSedimentation < handle
       if ~exist("dofs","var")
         dofs = (1:obj.ndofs)';
       end
-      pos = find(ismember(obj.dof,dofs));
-      [idI,idJ,idK]=ind2sub(obj.ncells,pos);
 
+      % pos = find(ismember(obj.dof,dofs));
+      map = ismember(obj.dof,dofs);
+      pos = find(map);
+      [~,id] = sort(obj.dof(map));
+      [idI,idJ,idK]=ind2sub(obj.ncells,pos(id));
       neigh = zeros(length(dofs),6);
 
       actTmp = idJ~=1;
@@ -183,19 +186,18 @@ classdef gridForSedimentation < handle
       neigh(actTmp,6) =  obj.dof(pos);
     end
 
-    function out = getMapFromDofs(obj,dofs)
+    function out = getMapFromDofs(obj,dofs)  %<--- ok
       if ~exist("dofs","var")
         dofs = 1:obj.ndofs;
       end
       map = ismember(obj.dof,dofs);
       pos = find(map);
       [~,id] = sort(obj.dof(map));
-      % [idI(id),idJ(id),~]=ind2sub(obj.ncells,pos);
       [idI,idJ,~]=ind2sub(obj.ncells,pos(id));
       out = sub2ind(obj.ncells(1:2), idI', idJ');
     end
 
-    function dofs = getTopDofs(obj)
+    function dofs = getTopDofs(obj)  %<--- ok
       idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
       idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
       idK = obj.columnsHeight;
@@ -335,7 +337,9 @@ classdef gridForSedimentation < handle
       end
 
       map = ismember(obj.dof,dofs);
-      [idI,idJ,idK]=ind2sub(obj.ncells,find(map));
+      ref = find(map);
+      [~,idx]=sort(obj.dof(map));
+      [idI,idJ,idK]=ind2sub(obj.ncells,ref(idx));
       refdof = sub2ind(obj.ncells,idI,idJ,idK);
       dofs = obj.dof(refdof);
 
@@ -579,8 +583,8 @@ classdef gridForSedimentation < handle
     function [idI, idJ, idK] = getIJKfromDofs(obj,dofs)
       map = ismember(obj.dof,dofs);
       pos = find(map);
-      % id = sort(obj.dof(map));
-      [idI,idJ,idK]=ind2sub(obj.ncells,pos);
+      [~,id] = sort(obj.dof(map));
+      [idI,idJ,idK]=ind2sub(obj.ncells,pos(id));
     end
 
   end

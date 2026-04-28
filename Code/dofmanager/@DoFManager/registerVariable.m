@@ -96,6 +96,11 @@ else
   % new variable field
 
   obj.fields(id).variableName = varName;
+
+  if nargin == 2
+    return
+  end
+  
   obj.fields(id).fieldLocation = fldLoc;
   obj.numbComponents(end+1) = nComp;
 
@@ -105,7 +110,7 @@ else
     tags = varargin{1};
     obj.fields(id).tags = tags;
     cells = obj.getFieldCells(id);
-    entList = getEntitiesList(fldLoc,obj.mesh,entityField.cell,cells);
+    entList = getEntitiesList(fldLoc,obj.grid,entityField.cell,cells);
     totActiveEnts = length(entList);
   else
     assert(strcmp(varargin{1},"nEntities"))
@@ -113,7 +118,7 @@ else
     entList = reshape(1:totActiveEnts,[],1);
   end
 
-  totEnts = numel(getEntitiesList(fldLoc,obj.mesh,fldLoc));
+  totEnts = numel(getEntitiesList(fldLoc,obj.grid,fldLoc));
 
   % populate the dof map
   obj.dofMap{id} = zeros(totEnts,1);

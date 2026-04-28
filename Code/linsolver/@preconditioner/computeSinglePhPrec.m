@@ -31,7 +31,7 @@ function computeSinglePhPrec(obj,A,symMat)
          elseif(obj.phys == 1 || obj.phys == 1.1) % true contact mechanichs physics is 1.1, general poromechanics is 1
             TV0 = [];
             for i = 1:obj.nDom
-               TV = mk_rbm_3d(obj.domain(i).grid.topology.coordinates);
+               TV = mk_rbm_3d(obj.domain(i).grid.coordinates);
                TV0 = [TV0;TV];
             end
             if obj.DEBUGflag
@@ -105,40 +105,7 @@ end
 % Function to determine how MfunL and MfunR are for each fsai preconditioner
 function [MfunL,MfunR] = defineMfunFSAI(obj,smootherOp)
    omega = smootherOp.omega;
-   if strcmpi(obj.params.smoother.method,'afsai_enh')
-      F     = smootherOp.left;
-      FT    = smootherOp.right;
-      W     = smootherOp.W;
-      THETA = smootherOp.THETA;
-      MfunL = @(x) omega*(FT*(F*x) + W*(THETA*(W'*x)));
-      MfunR = @(x) omega*(FT*(F*x) + W*(THETA*(W'*x)));
-   else
-      if smootherOp.LS_deg > 0
-         MfunL = smootherOp.polyPrec;
-         MfunR = smootherOp.polyPrec;
-      else
-         if strcmpi(obj.params.smoother.method,'blk_j')
-            MfunL = smootherOp.BLKJ;
-            MfunR = smootherOp.BLKJ;
-         elseif strcmpi(obj.params.smoother.method,'bafsai')
-            MfunL = smootherOp.BAFSAI;
-            MfunR = smootherOp.BAFSAI;
-         elseif strcmpi(obj.params.smoother.method,'ddsw')
-            MfunL = smootherOp.DDSW1;
-            MfunR = smootherOp.DDSW2;
-         else
-            if (numel(smootherOp.left_out) + numel(smootherOp.right_out)) == 0
-               % Simple smoother
-               MfunL = @(x) smootherOp.omega*(smootherOp.right*(smootherOp.left*x));
-               MfunR = @(x) smootherOp.omega*(smootherOp.right*(smootherOp.left*x));
-            else
-               % Nested smoother
-               MfunL = @(x) smootherOp.omega*(smootherOp.right*(smootherOp.right_out*...
-                                   (smootherOp.left_out*(smootherOp.left*x))));
-               MfunR = @(x) smootherOp.omega*(smootherOp.right*(smootherOp.right_out*...
-                                   (smootherOp.left_out*(smootherOp.left*x))));
-            end
-         end
-      end
-   end
+   % Simple smoother
+   MfunL = @(x) omega*(smootherOp.right*(smootherOp.left*x));
+   MfunR = @(x) omega*(smootherOp.right*(smootherOp.left*x));
 end

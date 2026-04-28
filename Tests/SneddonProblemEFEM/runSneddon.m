@@ -20,20 +20,18 @@ X = 40.0;
 Y = 1;
 Z = X;
 
-mesh = structuredMesh(321,1,121,[-0.5*X 0.5*X],[-0.5*Y 0.5*Y],[-0.5*Z 0.5*Z]);
+grid = structuredMesh([10,61,10],1,[10,11,10],[-0.5*X,-2,2,0.5*X],[-0.5*Y 0.5*Y],[-0.5*Z,-2,2,0.5*Z]);
+%grid = structuredMesh(101,1,61,[-0.5*X,0.5*X],[-0.5*Y, 0.5*Y],[-0.5*Z, 0.5*Z]);
+
 
 %assert(3*mesh.nNodes < 2e5,"Mesh is too fine")
 
 %%
-elems = Elements(mesh,2);
-faces = Faces(mesh);
-grid = struct('topology',mesh,'cells',elems,'faces',faces);
-mat = Materials(params.Materials);
 
+mat = Materials(params.Materials);
 
 printUtils = OutState("outputFile",strcat("Output/Sneddon"),"printTimes",1,...
                       "matFileName",strcat("Output/Sneddon"));
-
 
 bc = Boundaries(grid);
 
@@ -52,7 +50,7 @@ bc.addBC('name',"y_fix",...
           'variable',"displacements",...
           'entityListType',"tag", ...
           'entityList',[3,4],...
-          'components',"x");
+          'components',"y");
 bc.addBCEvent("y_fix",'time',0.0,'value',0.0);
 
 bc.addBC('name',"x_fix",...
@@ -89,24 +87,24 @@ solver.simulationLoop();
 
 % fracture angle
 efem = getPhysicsSolver(domain,"EmbeddedFractureMechanics");
-
+f = efem.fractureMesh.surfaces;
 % direction along fracture
-v = efem.cutTang1(1,:);
+v = f.tang1(1,:);
 psi = acos(v*[1;0;0]);
 angle = rad2deg(psi);
 
 fractureSize = 2.0;
 
 % get unique set of cut cells along the fracture
-[v,i] = sort(efem.cutCenters(:,2),"ascend");
+[v,i] = sort(f.center(:,2),"ascend");
 id = abs(diff(v)) > 1e-3;
-centers = efem.cutCenters(i(1:find(id)),:);
+centers = f.center(i(1:find(id)),:);
 
 P1 = [-fractureSize/2,0,0];
 
 % lenght of the fault
 L = fractureSize/cos(deg2rad(angle));
-xi = efem.cutCenters(:,1)/cos(deg2rad(angle));
+xi = f.center(:,1)/cos(deg2rad(angle));
 
 
 gn = efem.domain.state.data.fractureJump(1:3:end); 
@@ -118,7 +116,7 @@ b = L/2;
 sigma = 2;
 
 nu = 0.25;
-E = 15000;
+E = 25000;
 theta = deg2rad(30);
 % tn_anal = sigma*(sin(psi))^2;
 xi_anal = linspace(-L/2,L/2,1000);
@@ -127,12 +125,10 @@ K = 4*(1-nu^2)*sigma/E;
 gn_anal = K*sqrt(b^2-xi.^2);
 % gt_anal = flip(gt_anal);
 
-%%
+err = norm(1e3*f.area(1)*(gn-gn_anal));
+fprintf("Error norm: %1.4e \n",err)
 
-% err_gt = norm(gt-gt_anal);
-% assert(err_gt < 1e-2,"Tangential gap not validated")
-
-%% plot
+% plot
 
 gn_anal_plot = K*sqrt(b^2-xi_anal.^2);
 figure(1)
@@ -145,7 +141,7 @@ xlabel('$\xi$', 'Interpreter', 'latex', 'FontSize', 14)
 ylabel('$\|\mathbf{g_T}\|$', 'Interpreter', 'latex', 'FontSize', 14)
 set(gca,'TickLabelInterpreter','latex','FontSize',14)   % <-- axis numbers in LaTeX
 
-exportgraphics(gcf, fullfile('Output','gn_plot.png'))
+%exportgraphics(gcf, fullfile('Output','gn_plot.png'))
 
 
 % 

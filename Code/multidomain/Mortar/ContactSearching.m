@@ -1,186 +1,136 @@
 classdef ContactSearching < handle
-  % Contact search algorithm using polytopal bounding boxes Yang, B., &
-  % Laursen, T. A. (2008). A contact searching algorithm including bounding
-  % volume trees applied to finite sliding mortar formulations.
-  % Computational mechanics, 41(2), 189-205.
+  %CONTACTSEARCHING Summary of this class goes here
+  %   Detailed explanation goes here
 
   properties
-    polytopSize = 18;
-    msh1
-    msh2
-    BBtree1             % binary tree storying different mesh subidivisions
-    BBtree2
-    polytop             % k-top used to bound a finite element
-    treeNodes1          % For each node of the tree, store primitives along k/2 axis
-    treeNodes2          % For each node of the tree, store primitives along k/2 axis
-    leaf2elem1
-    leaf2elem2
-    elemConnectivity    % master- slave connectivity
-    dim
-    scale = 0.025;      % bounding box expansion (ratio w.r.t elem max dim)
+    BBTreeMaster
+    BBTreeSlave
+    I
+    J
+    cnt
+    cap
   end
 
   methods
-    function obj = ContactSearching(msh1,msh2)
+    function obj = ContactSearching(varargin)
+      % CONTACTSEARCHING
+      % Call as
+      % ContactSearching(2DmeshMaster,2DmeshSlave,options)
+      % ContactSearching(topolMaster,topolSlave,options)
 
-      obj.msh1 = msh1;
-      obj.msh2 = msh2;
-      obj.elemConnectivity = sparse(obj.msh1.nSurfaces, obj.msh2.nSurfaces);
-      switch obj.polytopSize
-        case 8 % standard case for 2D grids
-          obj.polytop = [1 0 -1 1;
-            0 1 1 1];
-          obj.dim = 2;
-        case 18 % standard case for 3D grids
-          obj.polytop = [1 0 0;
-            0 1 0;
-            0 0 1;
-            1 1 0;
-            1 0 1;
-            0 1 1;
-            1 -1 0;
-            1 0 -1;
-            0 1 -1]';
-          obj.dim = 3;
-        otherwise
-          error('%i - top discrete polytop is not supported',k);
+
+      if isa(varargin{1},"Grid")
+        mshSlave = varargin{MortarSide.slave};
+        mshMaster = varargin{MortarSide.master};
+        connMaster = mshMaster.surfaces.connectivity;
+        connSlave =  mshSlave.surfaces.connectivity;
+        centersMaster = mshMaster.surfaces.center;
+        centersSlave = mshSlave.surfaces.center;
+        coordsMaster = mshMaster.coordinates;
+        coordsSlave = mshSlave.coordinates;
+        k = 2;
+      else
+        [coordsSlave,coordsMaster,connSlave,connMaster] = deal(varargin{1:4});
+        k = 4;
+        centersMaster = computeSurfaceCenters(coordsMaster, connMaster);
+        centersSlave  = computeSurfaceCenters(coordsSlave,  connSlave);
       end
-      [obj.BBtree1,obj.treeNodes1, obj.leaf2elem1] = obj.buildBBtree(msh1);
-      [obj.BBtree2,obj.treeNodes2, obj.leaf2elem2] = obj.buildBBtree(msh2);
-      obj.contactSearch();
+
+      % build bounding-box trees
+      obj.BBTreeMaster = BBTree(coordsMaster, connMaster, centersMaster, varargin{k+1:end});
+      obj.BBTreeSlave  = BBTree(coordsSlave, connSlave, centersSlave, varargin{k+1:end});
+
     end
 
-    function [BBtree, treeNodes, leaf2elem] = buildBBtree(obj,msh)
-      
-      % build the hierarchical tree of bounding boxes
-      BBtree = zeros(2*msh.nSurfaces-1, 2);
-      treeNodes = zeros(2*msh.nSurfaces-1, 2*size(obj.polytop,2));
-      % store root polytop
-      elemMap = false(msh.nSurfaces, size(BBtree,1));
-      elemMap(:,1) = 1;
-      leaf2elem = zeros(size(BBtree,1),1);
-      k = 1;
-      for i = 1:size(BBtree,1)
-        % get elements of i-th node of the bounding volume tree
-        surfList = find(elemMap(:,i));
-        [treeNodes(i,:), leftCells, rightCells] = populateTreeNode(obj,msh,surfList);
-        if ~isempty(leftCells) % TreeNode is not a leaf Node
-          BBtree(i,:) = [2*k 2*k+1];
-          elemMap(leftCells,2*k) = 1;
-          elemMap(rightCells,2*k+1) = 1;
-          k = k + 1;
-        else % Tree node is a leaf
-          leaf2elem(i) = surfList;
-        end
-      end
+
+    function elemConnectivity = getElementConnectivity(obj)
+
+      % return sparse connectivity matrix
+      % rows: slave id 
+      % columns: master id
+
+
+      % initial indices for sparse matrix assembly (use cap
+      % for preallocation since size is unknown a priory)
+      obj.cap = 1024;
+      obj.I = zeros(obj.cap,1,'uint32');
+      obj.J = zeros(obj.cap,1,'uint32');
+      obj.cnt = 0;
+
+      obj.tandemTraversal(1,1);
+
+      obj.I = obj.I(1:obj.cnt);
+      obj.J = obj.J(1:obj.cnt);
+
+      % assemble the connectivity matrix
+      elemConnectivity = sparse(double(obj.I), double(obj.J), true, ...
+        obj.BBTreeSlave.nElem, obj.BBTreeMaster.nElem);
+
+
     end
 
-    function contactSearch(obj)
-      % Build connectivity matrix between elements of 2 non
-      % conforming grids
-      % Uses Tandem traversal algorithm, starting from root of the
-      % two trees
-      tandemTraversal(obj,1,1)
-    end
 
-    function tandemTraversal(obj, tNode1, tNode2)
-      % efficient algorithm to find element connectivity between the
-      % two grids
-      if ~checkIntersection(obj, tNode1, tNode2)
-        % Quit the procedure if the two bounding volumes do not
-        % intersect
+    function tandemTraversal(obj,nodeSlave,nodeMaster)
+
+      if ~obj.BBTreeSlave.intersects(nodeSlave, obj.BBTreeMaster, nodeMaster)
         return
       end
 
-      if all(obj.BBtree1(tNode1,:) == 0) && all(obj.BBtree2(tNode2,:) == 0)
-        obj.elemConnectivity(obj.leaf2elem1(tNode1),obj.leaf2elem2(tNode2)) = 1;
+      isLeafSlave  = obj.BBTreeSlave.isLeaf(nodeSlave);
+      isLeafMaster = obj.BBTreeMaster.isLeaf(nodeMaster);
+
+      if isLeafSlave && isLeafMaster
+        obj.cnt = obj.cnt + 1;
+
+        if obj.cnt > obj.cap
+          obj.cap = obj.cap * 2;
+          obj.I(obj.cap,1) = 0;
+          obj.J(obj.cap,1) = 0;
+        end
+
+        obj.I(obj.cnt) = obj.BBTreeSlave.leafElem(nodeSlave);
+        obj.J(obj.cnt) = obj.BBTreeMaster.leafElem(nodeMaster);
         return
       end
 
-      if ~all(obj.BBtree1(tNode1,:) == 0)
-        obj.tandemTraversal(obj.BBtree1(tNode1,1), tNode2);
-        obj.tandemTraversal(obj.BBtree1(tNode1,2), tNode2);
+      if ~isLeafSlave && ~isLeafMaster
+        cS = obj.BBTreeSlave.children(nodeSlave,:);
+        cM = obj.BBTreeMaster.children(nodeMaster,:);
+
+        tandemTraversal(obj,cS(1), cM(1));
+        tandemTraversal(obj,cS(1), cM(2));
+        tandemTraversal(obj,cS(2), cM(1));
+        tandemTraversal(obj,cS(2), cM(2));
+
+      elseif ~isLeafSlave
+        cS = obj.BBTreeSlave.children(nodeSlave,:);
+        tandemTraversal(obj,cS(1), nodeMaster);
+        tandemTraversal(obj,cS(2), nodeMaster);
+
       else
-        obj.tandemTraversal(tNode1, obj.BBtree2(tNode2,1));
-        obj.tandemTraversal(tNode1, obj.BBtree2(tNode2,2));
+        cM = obj.BBTreeMaster.children(nodeMaster,:);
+        tandemTraversal(obj,nodeSlave, cM(1));
+        tandemTraversal(obj,nodeSlave, cM(2));
       end
     end
 
-    function [ktopVals, lCells, rCells] = populateTreeNode(obj, msh, surfID)
-      % INPUT: set of cells indices
-      % OUTPUT: k primitives defining the bounding polytop of the
-      %         Cells belonging to left and right child (if any)
-      nNodes = size(msh.surfaces,2);
-      if nNodes == 9
-        % provisional: for quad9 just keep the first 4 nodes
-        nNodes = 4;
-      end
-      surfCentroid = msh.surfaceCentroid;
-      % get unique set of nodes belonging to input cells
-      nodes = unique(msh.surfaces(surfID,1:nNodes));
-      % Store coordinates depending on 2D or 3D cases
-      coords = msh.coordinates(nodes,1:obj.dim);
-      prim = coords*obj.polytop;
-      ktopVals = [min(prim); max(prim)];
-      % increase slightly the size of the k-top (useful in 3D
-      % setting)
-      red = max(abs(ktopVals(1,:) - ktopVals(2,:)));
-      ktopVals = ktopVals - [obj.scale*red; -obj.scale*red];
 
-      if numel(surfID) > 2
-        % split using cutting plane
-        % oriented like axis i
-        % passing trough point m (median of centroid coords)
-        [~,i] = max(abs(ktopVals(1,:) - ktopVals(2,:)));
-        %m = median(prim(:,i));
-        ktopVals = (ktopVals(:))';
-        surfPrim = surfCentroid(surfID,1:obj.dim)*obj.polytop(:,i);
-        id = surfPrim < median(surfPrim);
-        lCells = surfID(id);
-        rCells = surfID(~id);
-        assert(length(lCells)+length(rCells) == length(surfID), 'Some elements left out from splitting procedure');
+    function centers = computeSurfaceCenters(coordinates, connectivity)
 
-        % avoid unlucky cases due to use of median - use mean
-        if any([isempty(lCells) isempty(rCells)])
-          id = surfPrim < mean(surfPrim);
-          lCells = surfID(id);
-          rCells = surfID(~id);
-        end
-
-        % if also mean does not work, split left and right cells manually
-        if any([isempty(lCells) isempty(rCells)])
-          n = numel(surfID);
-          id = false(1,n);              % preallocate logical array
-          id(1:ceil(n/2)) = true;
-          lCells = surfID(id);
-          rCells = surfID(~id);
-        end
-
-
-
-        assert(~isempty(lCells),'Empty leaf cells');
-        assert(~isempty(rCells),'Empty leaf cells');
-      elseif numel(surfID) > 1
-        ktopVals = (ktopVals(:))';
-        lCells = surfID(1);
-        rCells = surfID(2);
+      if isa(connectivity, 'ArrayOfArrays')
+        v = connectivity.getData();
+        nVert = connectivity.arraySize();
       else
-        ktopVals = (ktopVals(:))';
-        lCells = [];
-        rCells = [];
+        poly = connectivity';
+        v = poly(:);
+        nVert = sum(connectivity > 0, 2);
       end
+
+      poly = coordinates(v,:);
+      centers = computePolygonCentroid(poly,nVert);
+
     end
 
-    function out = checkIntersection(obj, t1, t2)
-      % check intersection between 2 polytops
-      % if any of the primitives interval do not intersect, then
-      % there's no intersection
-      ktop1 = obj.treeNodes1(t1,:);
-      ktop2 = obj.treeNodes2(t2,:);
-      ktop1 = reshape(ktop1,2,[]);
-      ktop2 = reshape(ktop2,2,[]);
-      out = ~any([ktop1(1,:) > ktop2(2,:), ktop2(1,:) > ktop1(2,:)]);
-    end
   end
 end
 

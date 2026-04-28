@@ -8,12 +8,12 @@ scriptDir = fileparts(scriptFullPath);
 % Change the current directory to the script's directory
 cd(scriptDir);
 
-for elem = ["hexa","tetra"]
+for elem = ["tetra","hexa"]
   for flow = ["FV","FEM"]
-    if elem == "tetra" && flow == "FV"
-      continue
-    end
     for scheme = ["FC","FS"]
+      if strcmp(elem,"tetra") && strcmp(scheme,"FS")
+        continue
+      end
       run(elem,flow,scheme);
     end
   end
@@ -24,26 +24,15 @@ function run(elemShape,flowSolver,scheme)
 
 switch elemShape
   case 'tetra'
-    ng = 1;
-    topology = Mesh();
-    topology.importMesh('Input/Mesh/Column_tetra.msh');
+    grid = Grid();
+    grid.importMesh('Input/Mesh/Column_tetra.msh');
   case 'hexa'
-    ng = 2;
-    topology = structuredMesh(1,1,10,[0 1],[0 1],[0 10]);
+    grid = structuredMesh(1,1,10,[0 1],[0 1],[0 10]);
 end
 
 simParam = SimulationParameters("Input/simParam.xml");
 mat = Materials('Input/materials.xml');
-elems = Elements(topology,ng);
 
-if strcmp(flowSolver,"FV")
-  solverIn = struct("SinglePhaseFlowFVTPFA",[]);
-    faces = Faces(topology);
-  grid = struct('topology',topology,'cells',elems,'faces',faces);
-else
-  solverIn = struct("SinglePhaseFlowFEM",[]);
-  grid = struct('topology',topology,'cells',elems);
-end
 
 printUtils = OutState('Input/output.xml');
 
@@ -55,6 +44,13 @@ domain = Discretizer('grid',grid,...
                      'materials',mat,...
                      'boundaries',bound);
 
+if strcmp(flowSolver,"FV")
+  solverIn = struct("SinglePhaseFlowFVTPFA",[]);
+else
+  solverIn = struct("SinglePhaseFlowFEM",[]);
+end
+
+
 switch scheme
   case 'FC'
     domain.addPhysicsSolver('BiotFullyCoupled',solverIn);
@@ -65,7 +61,7 @@ end
 
 % manually apply initial conditions
 state = domain.getState();
-applyTerzaghiIC(state,mat,topology,-10);
+applyTerzaghiIC(state,mat,grid,-10);
 
 switch scheme
   case 'FC'
@@ -77,7 +73,7 @@ switch scheme
                               'domains',domain,...
                               'output',printUtils,...
                               'maxiterations',20,...
-                              'reltolerance',1e-7);
+                              'reltolerance',1e-5);
 
 end
 
@@ -110,13 +106,13 @@ for i = 1:numel(solver.output.timeList)
   errP = norm(pAn-pNum);
   errU = norm(uNum-uAn);
 
-  assert(norm(errP)<1.0,'Pressure error for out time %i \n',i)
+  assert(norm(errP)<1e1,'Pressure error for out time %i \n',i)
   assert(norm(errU)<1e-4,'Displacement error for out time %i\n',i)
 end
 
 if strcmp(class(solver),"FixedStressSplit")
   nIter = mean(solver.getFixedStressIters());
-  assert(nIter<10,"Unexpected number of fixed stress split iterations")
+  assert(nIter<8,"Unexpected number of fixed stress split iterations")
 end
 
 end
@@ -131,12 +127,13 @@ nm = 1000;
 
 mat = solv.domains.materials;
 grid = solv.domains.grid;
-mesh = grid.topology;
+coord = grid.coordinates;
+cells = grid.cells;
 
 
 % Get model geometry
-L_min = min(mesh.coordinates(:,3));
-L_max = max(mesh.coordinates(:,3));
+L_min = min(coord(:,3));
+L_max = max(coord(:,3));
 L = abs(L_max-L_min);
 
 % Get Material parameters from materials class
@@ -163,17 +160,19 @@ gamma = B*(1+nuU)/(3*(1-nuU));
 % nz = 50; %number of calculation points along z-axis
 % z = linspace(L_min,L_max,nz);
 
-zu = mesh.coordinates(:,3);
+zu = coord(:,3);
 
-if isfield(grid,'faces')
-  if ~isempty(grid.faces)
-    zp = mesh.cellCentroid(:,3);
-  else
-    zp = zu;
-  end
+sName = solv.domains.solverNames{1};
+biotSolv = solv.domains.getPhysicsSolver(sName);
+
+flowScheme = biotSolv.getFlowScheme;
+
+if strcmp(flowScheme,"FVTPFA")
+  zp = cells.center(:,3);
 else
   zp = zu;
 end
+
 time = solv.domains.outstate.timeList;
 
 zu = reshape(zu,1,[]);

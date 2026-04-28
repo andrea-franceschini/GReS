@@ -56,7 +56,8 @@ classdef OutState < handle & matlab.mixin.Copyable
     end
 
 
-    function writeVTKfile(obj,block,vtuName,mesh,time,pointData3D,cellData3D,pointData2D,cellData2D,varargin)
+
+    function writeVTKfile(obj,block,vtuName,grid,time,pointData3D,cellData3D,pointData2D,cellData2D,varargin)
 
       % block: the xml block of the vtm file in which we write the vtu dataset
       % data struct: struct array with fields 'name' and 'data'
@@ -71,11 +72,15 @@ classdef OutState < handle & matlab.mixin.Copyable
 
       % call mex vtk writer
       if ~all(isempty([cellData3D; pointData3D]))
-        mxVTKWriter(outName, time, mesh.coordinates, mesh.cells, mesh.cellVTKType, ...
-          mesh.cellNumVerts, pointData3D, cellData3D);
+        cells = grid.cells;
+        nodeList = grid.getFlatConnectivity("cells");
+        mxVTKWriter(outName, time, grid.coordinates, nodeList, cells.VTKType, ...
+          cells.numVerts, pointData3D, cellData3D);
       elseif ~all(isempty([cellData2D; pointData2D]))
-        mxVTKWriter(outName, time, mesh.coordinates, mesh.surfaces, mesh.surfaceVTKType, ...
-          mesh.surfaceNumVerts, pointData2D, cellData2D);
+        surf = grid.surfaces;
+        nodeList = grid.getFlatConnectivity("surfaces");
+        mxVTKWriter(outName, time, grid.coordinates, nodeList, surf.VTKType, ...
+          surf.numVerts, pointData2D, cellData2D);
       end
 
       % write dataset to vtm block
@@ -283,10 +288,10 @@ classdef OutState < handle & matlab.mixin.Copyable
       mergeStruct = mergeStruct(uniqueIdx);
     end
 
-    function outData = printMeshData(mesh,data)
+    function outData = printMeshData(grid,data)
       cellStr = repmat(struct('name', 1, 'data', 1), 1, 1);
       cellStr(1).name = 'cellTag';
-      cellStr(1).data = mesh.cellTag;
+      cellStr(1).data = grid.cells.tag;
       outData = OutState.mergeOutFields(data,cellStr);
     end
 

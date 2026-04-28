@@ -17,9 +17,8 @@ cd(scriptDir);
 
 
 % Domain 1 - Top layer
-mshTop = Mesh();
-mshTop.importMesh(fullfile('Input','topLayer.vtk'));
-gridTop = struct('topology',mshTop,'cells',Elements(mshTop));
+gridTop = Grid();
+gridTop.importMesh(fullfile('Input','topLayer.vtk'));
 matTop = Materials();
 matTop.addSolid('name',"topMat",'cellTags',1);
 matTop.addFluid('specificWeight',0.0,'compressibility',4.59e-7,'dynamicViscosity',1e-6);
@@ -35,14 +34,12 @@ bcTop.addBC('name',"topCornerPressure",...
 bcTop.addBCEvent("topCornerPressure",'time',0.0,'value',0.0);
 
 domainTop = Discretizer('grid',gridTop,'materials',matTop,'boundaries',bcTop);
-
 domainTop.addPhysicsSolver('SinglePhaseFlowFEM');
 
 
 % Domain 2 - Bottom layer
-mshBottom = Mesh();
-mshBottom.importMesh(fullfile('Input','bottomLayer.vtk'));
-gridBottom = struct('topology',mshBottom,'cells',Elements(mshBottom));
+gridBottom = Grid();
+gridBottom.importMesh(fullfile('Input','bottomLayer.vtk'));
 matBottom = Materials();
 matBottom.addSolid('name',"botMat",'cellTags',1);
 matBottom.addFluid('specificWeight',0.0,'compressibility',4.59e-7,'dynamicViscosity',1e-6);
@@ -58,7 +55,6 @@ bcBottom.addBC('name',"bottomCornerPressure",...
 bcBottom.addBCEvent("bottomCornerPressure",'time',0.0,'value',1.0e2);
 
 domainBottom = Discretizer('grid',gridBottom,'materials',matBottom,'boundaries',bcBottom);
-
 domainBottom.addPhysicsSolver('SinglePhaseFlowFEM');
 
 

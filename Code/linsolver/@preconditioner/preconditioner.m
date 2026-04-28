@@ -79,7 +79,7 @@ classdef preconditioner < handle
          if(domainin(1).dofm.getNumberOfVariables() > 1) && isempty(physname)
             multiPhysFlag = true; %#ok<NASGU>
             gresLog().warning(3,'Multiphysics not yet supported');
-            gresLog().log(3,domainin(1).dofm.getVariableNames());
+            % gresLog().log(3,domainin(1).dofm.getVariableNames());
             return
          end
 
@@ -116,7 +116,7 @@ classdef preconditioner < handle
             end
          else
             % Supported MultiPhysics
-            if(contains(physname,['pressure' 'displacements'])) %#ok<UNRCH>
+            if(contains(physname,["pressure" "displacements"])) %#ok<UNRCH>
                if domainin.dofm.getVariableNames(1) == 'pressure' %#ok<BDSCA>
                   phys = 0;
                else
@@ -165,6 +165,9 @@ classdef preconditioner < handle
          % Get the preconditioner type
          obj.PrecType = lower(data.preconditioner);
 
+         % Set maximum number of threads to use if the system provides less
+         obj.maxThreads = maxNumCompThreads;
+
          % Get the different parameters according to the prectype
          switch obj.PrecType
             case 'amg'
@@ -175,19 +178,16 @@ classdef preconditioner < handle
                obj.params.tspace   = data.tspace;
                obj.params.filter   = data.filter;
                obj.params.minIter  = 30;
+               obj.params.prolong.np = min(obj.params.prolong.np,obj.maxThreads);
+               obj.params.filter.np = min(obj.params.filter.np,obj.maxThreads);
 
             case 'fsai'
                obj.params.smoother = data.smoother;
                obj.params.minIter  = 300;
          end
 
-         % Set maximum number of threads to use if the system provides less
-         obj.maxThreads = maxNumCompThreads;
-         obj.params.smoother.nthread = min(obj.params.smoother.nthread,obj.maxThreads);
-         obj.params.prolong.np = min(obj.params.prolong.np,obj.maxThreads);
-         obj.params.filter.np = min(obj.params.filter.np,obj.maxThreads);
-
          % Get user prescribed values
+         obj.params.smoother.nthread = min(obj.params.smoother.nthread,obj.maxThreads);
          obj.params = obj.getUserInput(obj.params,obj.generalsolver.simparams.linSolverParams);
 
       end
@@ -205,7 +205,7 @@ classdef preconditioner < handle
       computeMCP(obj,A)
 
       % Function to treat the Dirichlet boundary conditions
-      treatDirBC(obj,A)
+      A = treatDirBC(obj,A,symMat)
    end
 
 end

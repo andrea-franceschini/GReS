@@ -39,13 +39,7 @@ mat = Materials(params.Materials);
 nn = [16,25,35,45,55];
 linsolverTime = zeros(2,length(nn));
 for i = 1:length(nn)
-   mesh = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
-
-   gaussOrder = 2;
-   elems = Elements(mesh,gaussOrder);
-   faces = Faces(mesh);
-   gridd = struct('topology',mesh,'cells',elems,'faces',faces);
-
+   gridd = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
 
    bound = Boundaries(gridd,params.BoundaryConditions);
 
@@ -84,13 +78,9 @@ simParam = SimulationParameters(params.SimulationParameters);
 mat = Materials(params.Materials);
 
 for i = 1:length(nn)
-   mesh = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
+   gridd = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
 
    gaussOrder = 2;
-   elems = Elements(mesh,gaussOrder);
-   faces = Faces(mesh);
-   gridd = struct('topology',mesh,'cells',elems,'faces',faces);
-
 
    bound = Boundaries(gridd,params.BoundaryConditions);
 
@@ -144,14 +134,9 @@ mat = Materials(params.Materials);
 nn = [8,12,16,20,24];
 linsolverTime = zeros(2,length(nn));
 for i = 1:length(nn)
-   mesh = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
+   gridd = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
 
-   gaussOrder = 2;
-   elems = Elements(mesh,gaussOrder);
-   faces = Faces(mesh);
-   gridd = struct('topology',mesh,'cells',elems,'faces',faces);
-
-
+  
    bound = Boundaries(gridd,params.BoundaryConditions);
 
    printUtils = OutState(params.Output);
@@ -189,13 +174,7 @@ simParam = SimulationParameters(params.SimulationParameters);
 mat = Materials(params.Materials);
 
 for i = 1:length(nn)
-   mesh = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
-
-   gaussOrder = 2;
-   elems = Elements(mesh,gaussOrder);
-   faces = Faces(mesh);
-   gridd = struct('topology',mesh,'cells',elems,'faces',faces);
-
+   gridd = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
 
    bound = Boundaries(gridd,params.BoundaryConditions);
 

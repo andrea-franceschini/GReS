@@ -215,12 +215,12 @@ function fillStats(obj,Tend,time,symValue,globalsymm,T_setup)
    obj.nSolve = obj.nSolve + 1;
    obj.aIter = obj.aIter + obj.params.iter;
    obj.maxIter = max(obj.maxIter,obj.params.iter);
+   obj.precCompLin(obj.nSolve) = T_setup;
 
    if obj.fullInfo
       obj.iterLin(obj.nSolve) = obj.params.iter;
       obj.timeLin(obj.nSolve) = time; 
       obj.solveTLin(obj.nSolve) = Tend;
-      obj.precCompLin(obj.nSolve) = T_setup;
 
       if obj.DEBUGflag
          obj.symFlagLin(obj.nSolve) = symValue;
@@ -263,9 +263,9 @@ function [x,flag] = matlab_solve(obj,A,b)
    x = A\b;
    Tend = toc(startT);
 
-   if obj.DEBUGflag
-      fprintf('condition number of the matrix %e\n',condest(A));
-   end
+   % if obj.DEBUGflag
+   %    fprintf('condition number of the matrix %e\n',condest(A));
+   % end
 
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
