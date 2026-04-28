@@ -9,7 +9,6 @@ classdef ElementBasedQuadrature < MortarQuadrature
 
   properties
     activeGPmap        % index map to access gp related information
-    nGP                % number of gauss points in input
     detJw
   end
 
@@ -25,68 +24,92 @@ classdef ElementBasedQuadrature < MortarQuadrature
   end
 
   methods
-    function obj = ElementBasedQuadrature(interface,multType,input)
-      obj@MortarQuadrature(interface,multType,input);
-      input = readInput(struct('nGP',6),input);
-      obj.nGP = input.nGP;
+    function obj = ElementBasedQuadrature(multType,grids,input)
+
+      obj@MortarQuadrature(multType,grids,input);
+
     end
 
 
-    function processMortarPairs(obj)
+    function processMortarPairs(obj,connectivity)
 
       % initialize the maps to store mortar quadrature info
-      obj.maxGP = obj.nGP^2;
-      %       nConnections = nnz(obj.interface.interfMesh.elemConnectivity);
-      totGP = obj.msh(2).nSurfaces*obj.maxGP;
-      obj.gpCoords = {zeros(totGP,2);
-        zeros(totGP,2)};
+      obj.maxGP = Gauss.getNumPtsFromOrder(obj.gaussOrder)^2;
 
-      nConnections = nnz(obj.interface.interfMesh.elemConnectivity);
+      s = MortarSide.slave;
+      m = MortarSide.master;
+      totGP = obj.grids(s).surfaces.num*obj.maxGP;
+      obj.gpCoords = {zeros(totGP,2);
+                      zeros(totGP,2)};
+
+      nConnections = nnz(connectivity);
 
       obj.interfacePairs = zeros(nConnections,2);
       obj.detJw = zeros(totGP,1);
 
       obj.activeGPmap = zeros(nConnections+1,1);
 
-      nM = full(sum(obj.interface.interfMesh.elemConnectivity,1));
-      nM = [0 cumsum(nM)];
 
-      for is = 1:obj.msh(2).nSurfaces
+      nM = full(sum(connectivity,2));
+      nM = [0;cumsum(nM)];
 
-        % reset slave element based info
-        elemSlave = obj.getElem(2,is);
-        obj.idSlave = is;
-        obj.countGP = 0;
-        obj.gpsCoord = getGPointsLocation(elemSlave,is);
-        obj.gpsCoordLoc = elemSlave.GaussPts.coord;
-        obj.dJwSlave = getDerBasisFAndDet(elemSlave,is);
 
-        imList = find(obj.interface.interfMesh.elemConnectivity(:,is));
 
-        for j = 1:numel(imList)
-          im = imList(j);
-          k = nM(is)+ j;
-          % k (global index to write without race conditions)
-          isPairActive = processMortarPair(obj,is,im,k);
-          if ~isPairActive
-            obj.activeGPmap(k+1) = obj.activeGPmap(k);
-            continue
+
+      for vtkSlave = obj.grids(s).surfaces.vtkTypes
+
+        elemSlave = FiniteElementType.create(vtkSlave,obj.grids(s));
+        listSlave = obj.grids(s).getSurfByVTKId(vtkSlave);
+
+        for vtkMaster = obj.grids(m).surfaces.vtkTypes
+
+          elemMaster = FiniteElementType.create(vtkMaster,obj.grids(m));
+          listMaster = obj.grids(m).getSurfByVTKId(vtkMaster);
+
+          mask = false(obj.grids(m).surfaces.num,1);
+          mask(listMaster) = true;
+
+          for is = listSlave'
+
+            obj.idSlave = is;
+            obj.countGP = 0;
+            obj.gpsCoord = getGPointsLocation(elemSlave,is);
+            obj.gpsCoordLoc = elemSlave.getGauss.coord;
+            obj.dJwSlave = getDerBasisFAndDet(elemSlave,is);
+
+
+            % get master elements belonging to that vtk type
+            imList = find(connectivity(is,:));
+            imList = imList(mask(imList));
+
+            for j = 1:numel(imList)
+              im = imList(j);
+              k = nM(is)+ j;
+              % k (global index to write without race conditions)
+              isPairActive = processMortarPair(obj,is,im,elemSlave,elemMaster,k);
+
+              if ~isPairActive
+                obj.activeGPmap(k+1) = obj.activeGPmap(k);
+                continue
+              end
+
+              % sort out gauss points already projected
+              obj.activeGPmap(k+1) = obj.activeGPmap(k) + sum(obj.suppFlag);
+              obj.gpsCoord = obj.gpsCoord(~obj.suppFlag,:);
+              obj.gpsCoordLoc = obj.gpsCoordLoc(~obj.suppFlag,:);
+              obj.dJwSlave = obj.dJwSlave(~obj.suppFlag);
+              obj.countGP = obj.countGP + sum(obj.suppFlag);
+
+            end
+
+            if obj.countGP ~= elemSlave.getGauss.nNode
+              warning("Some gauss point not projected for element %i",is)
+            end
+
           end
-
-          % sort out gauss points already projected
-          obj.activeGPmap(k+1) = obj.activeGPmap(k) + sum(obj.suppFlag);
-          obj.gpsCoord = obj.gpsCoord(~obj.suppFlag,:);
-          obj.gpsCoordLoc = obj.gpsCoordLoc(~obj.suppFlag,:);
-          obj.dJwSlave = obj.dJwSlave(~obj.suppFlag);
-          obj.countGP = obj.countGP + sum(obj.suppFlag);
-
         end
-
-        if obj.countGP ~= elemSlave.GaussPts.nNode
-          warning("Some gauss point not projected for element %i",is)
-        end
-
       end
+
 
       finalizeMortarMaps(obj);
       computeAreaSlave(obj);
@@ -95,12 +118,15 @@ classdef ElementBasedQuadrature < MortarQuadrature
 
 
 
-    function isPairActive = processMortarPair(obj,is,im,k)
+    function isPairActive = processMortarPair(obj,is,im,elemSlave,elemMaster,k)
 
       isPairActive = true;
 
+      s = MortarSide.slave;
+      m = MortarSide.master;
+
       % compute interpolated gp coordinates and update supportFlag
-      xiMaster = projectGP(obj,is,im);
+      xiMaster = projectGP(obj,is,im,elemSlave,elemMaster);
 
 
       if ~any(obj.suppFlag)
@@ -109,26 +135,31 @@ classdef ElementBasedQuadrature < MortarQuadrature
       end
 
       % store infos in maps
-      obj.interfacePairs(k,:) = [is im];
+      obj.interfacePairs(k,[s m]) = [is im];
 
       nGsupp = sum(obj.suppFlag);
       gpId = (is-1)*obj.maxGP + obj.countGP;
-      obj.gpCoords{1}(gpId+1:gpId+nGsupp,1) = xiMaster(obj.suppFlag,1);
-      obj.gpCoords{1}(gpId+1:gpId+nGsupp,2) = xiMaster(obj.suppFlag,2);
-      obj.gpCoords{2}(gpId+1:gpId+nGsupp,1) = obj.gpsCoordLoc(obj.suppFlag,1);
-      obj.gpCoords{2}(gpId+1:gpId+nGsupp,2) = obj.gpsCoordLoc(obj.suppFlag,2);
+      obj.gpCoords{m}(gpId+1:gpId+nGsupp,1) = xiMaster(obj.suppFlag,1);
+      obj.gpCoords{m}(gpId+1:gpId+nGsupp,2) = xiMaster(obj.suppFlag,2);
+      obj.gpCoords{s}(gpId+1:gpId+nGsupp,1) = obj.gpsCoordLoc(obj.suppFlag,1);
+      obj.gpCoords{s}(gpId+1:gpId+nGsupp,2) = obj.gpsCoordLoc(obj.suppFlag,2);
       obj.detJw(gpId+1:gpId+nGsupp) = obj.dJwSlave(obj.suppFlag);
 
     end
 
-    function xiM = projectGP(obj,is,im)
+    function xiM = projectGP(obj,is,im,elS,elM)
       % xi: reference coordinates of the gauss point
       % get nodal normal
-      elM = getElem(obj,1,im);
-      elS = getElem(obj,2,is);
-      nodeS = obj.msh(2).surfaces(is,:);
+
+      gridSlave = obj.grids(MortarSide.slave);
+      gridMaster = obj.grids(MortarSide.master);
+      nodeS = gridSlave.getSurfNodes(is);
+      nodeM =  gridMaster.getSurfNodes(im);
+      coordM = gridMaster.coordinates(nodeM,:);
       X = obj.gpsCoord;                    % real position of gauss pts
       xiS = obj.gpsCoordLoc;
+
+      normal = gridSlave.surfaces.avgNodNormal(nodeS,:);
 
       ngp = size(xiS,1);
 
@@ -140,13 +171,11 @@ classdef ElementBasedQuadrature < MortarQuadrature
 
       for i = 1:ngp
         Ns = elS.computeBasisF(xiS(i,:));
-        ng = Ns*obj.interface.interfMesh.avgNodNormal{2}(nodeS,:); % slave normal at GP
+        ng = Ns*normal;        % slave normal at GP
         ng = ng/norm(ng);
-        xiM(i,:) = elS.centroid;                          % initial guess
+        xiM(i,:) = elS.centroid;                        % initial guess for gp
         iter = 0;
         w = 0;
-        nodeM = obj.msh(1).surfaces(im,:);
-        coordM = obj.msh(1).coordinates(nodeM,:);
         Nm = elM.computeBasisF(xiM(i,:));
         rhs = (Nm*coordM - w*ng - X(i,:))';
         %
@@ -173,13 +202,13 @@ classdef ElementBasedQuadrature < MortarQuadrature
     function gpCoords = getSlaveGPCoords(obj,kPair)
       i1 = obj.activeGPmap(kPair);
       i2 = obj.activeGPmap(kPair+1);
-      gpCoords = obj.gpCoords{2}(i1+1:i2,:);
+      gpCoords = obj.gpCoords{MortarSide.slave}(i1+1:i2,:);
     end
 
     function gpCoords = getMasterGPCoords(obj,kPair)
       i1 = obj.activeGPmap(kPair);
       i2 = obj.activeGPmap(kPair+1);
-      gpCoords = obj.gpCoords{1}(i1+1:i2,:);
+      gpCoords = obj.gpCoords{MortarSide.master}(i1+1:i2,:);
     end
 
 
@@ -199,8 +228,8 @@ classdef ElementBasedQuadrature < MortarQuadrature
       obj.interfacePairs(id,:) = [];
 
       obj.detJw(id2) = [];
-      for i = 1:2
-        obj.gpCoords{i}(id2,:) = [];
+      for side = [MortarSide.master,MortarSide.slave]
+        obj.gpCoords{side}(id2,:) = [];
       end
 
       obj.numbInterfacePairs = size(obj.interfacePairs,1);

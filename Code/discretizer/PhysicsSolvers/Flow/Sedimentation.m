@@ -425,7 +425,7 @@ classdef Sedimentation < PhysicsSolver
       comp = obj.domain.state.data.cellDefm*fac+obj.domain.stateOld.data.cellDefm*(1-fac);
       cellVarAct = obj.domain.state.data.cellVarAct;
 
-      obj.mesh = obj.mdof.makeMeshOutput(obj.mesh,obj.coordX,obj.coordY,...
+      obj.grid = obj.mdof.makeMeshOutput(obj.grid,obj.coordX,obj.coordY,...
         obj.coordZ,sed,cellVarAct);
       outPrint = obj.finalizeState(fac,t);
       outPrint.comp = obj.mdof.getComp(cellVarAct,comp);

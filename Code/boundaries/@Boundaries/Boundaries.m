@@ -35,10 +35,8 @@ classdef Boundaries < handle
       % % check grid
       % assert()
 
-      if strcmp(obj.grid.topology.meshType,"Unstructured")
-        % Calling the function to read input data from file
-        obj.addBCs(varargin{2:end});
-      end
+      % Calling the function to read input data from file
+      obj.addBCs(varargin{2:end});
     end
 
 
@@ -98,7 +96,7 @@ classdef Boundaries < handle
       if type == BCtype.source || type == BCtype.neumann
         % multiply neumann and source bcs by the size of the source entity
         ents = obj.getSourceEntities(bcId);
-        S = getEntitySize(obj.getField(bcId),obj.grid.topology,ents);
+        S = getEntitySize(obj.getField(bcId),obj.grid,ents);
         valSrc = S.*valSrc;
       end
 

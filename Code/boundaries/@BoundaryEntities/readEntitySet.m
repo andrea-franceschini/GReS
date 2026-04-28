@@ -1,4 +1,4 @@
-function [nEnts, ents, entsPosition] = readEntitySet(obj,type, ents, components, mesh)
+function [nEnts, ents, entsPosition] = readEntitySet(obj,type, ents, components, grid)
 % read entity set and return the number of entities for each
 % component, the list of entities and their reference location
 
@@ -6,11 +6,11 @@ switch lower(type)
   % input file for list of entities
   case "bclistfile"
     [nEnts, ents] = obj.readListFile(ents);
-    entsPosition = getLocation(obj,ents,mesh);
+    entsPosition = getLocation(obj,ents,grid);
     return
   case {'tags','tag'}
     tags = ents;
-    entsID = getEntitiesFromTags(obj.sourceField,mesh,obj.sourceField,tags);
+    entsID = getEntitiesFromTags(obj.sourceField,grid,obj.sourceField,tags);
   case "bclist"
     entsID = ents;
   case "box"
@@ -20,9 +20,9 @@ switch lower(type)
     Lz = boxSize(5:6);
     switch obj.sourceField
       case "node"
-        c = mesh.coordinates;
+        c = grid.coordinates;
       case "cell"
-        c = mesh.cellCentroid;
+        c = grid.cells.center;
       otherwise
         error("Error for BC %s: entityListType 'box' is not valid for BC of type %s", obj.name, obj.sourceField)
     end
@@ -68,7 +68,7 @@ end
 nEnts = numel(entsID).*compID;
 entsID = reshape(entsID,[],1);
 ents = repmat(entsID,sum(compID),1);
-entsPosition = getLocation(obj,ents,mesh);
+entsPosition = getLocation(obj,ents,grid);
 
 end
 

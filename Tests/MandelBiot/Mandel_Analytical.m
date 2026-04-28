@@ -39,8 +39,8 @@ c = (2*K*mu*(1-nu)*(nuU-nu))/(dyn*alpha^2*(1-nuU)*(1-2*nu)^2);
 
 
 % Compute zeros of mandel's function tan(alpha)+fac*alpha;
-syms w
-f = (tan(w)-fac*w);
+syms f
+f = (tan(f)-fac*f);
 %number of serie terms
 nm = 20;
 rangeIn = 0.1;

@@ -26,13 +26,7 @@ simParam = SimulationParameters(params.SimulationParameters);
 mat = Materials(params.Materials);
 
 
-mesh = structuredMesh(200,20,10,[0 100],[0 100],[0 10]);
-
-gaussOrder = 2;
-elems = Elements(mesh,gaussOrder);
-faces = Faces(mesh);
-grid = struct('topology',mesh,'cells',elems,'faces',faces);
-
+grid = structuredMesh(200,20,10,[0 100],[0 100],[0 10]);
 
 bound = Boundaries(grid,params.BoundaryConditions);
 
@@ -63,19 +57,14 @@ simParam = SimulationParameters(params.SimulationParameters);
 mat = Materials(params.Materials);
 
 
-mesh = structuredMesh(20,20,10,[0 100],[0 100],[0 10]);
+grid = structuredMesh(20,20,10,[0 100],[0 100],[0 10]);
 
-
-gaussOrder = 2;
-elems = Elements(mesh,gaussOrder);
-faces = Faces(mesh);
-grid = struct('topology',mesh,'cells',elems,'faces',faces);
 
 % we manually modify the tag for some clay overburden and underburden
-over = mesh.cellCentroid(:,3) < 3;
-under = mesh.cellCentroid(:,3) > 7;
-mesh.cellTag(under) = 2;
-mesh.cellTag(over) = 3;
+over = grid.cells.center(:,3) < 3;
+under = grid.cells.center(:,3) > 7;
+grid.cells.tag(under) = 2;
+grid.cells.tag(over) = 3;
 
 bound = Boundaries(grid,params.BoundaryConditions);
 
@@ -105,18 +94,13 @@ simParam = SimulationParameters(params.SimulationParameters);
 % Create an object of the Materials class and read the materials file
 mat = Materials(params.Materials);
 
-mesh = structuredMesh(15,15,10,[0 100],[0 100],[0 10]);
-
-gaussOrder = 2;
-elems = Elements(mesh,gaussOrder);
-faces = Faces(mesh);
-grid = struct('topology',mesh,'cells',elems,'faces',faces);
+grid = structuredMesh(15,15,10,[0 100],[0 100],[0 10]);
 
 % we manually modify the tag for some clay overburden and underburden
-over = mesh.cellCentroid(:,3) < 3;
-under = mesh.cellCentroid(:,3) > 7;
-mesh.cellTag(under) = 2;
-mesh.cellTag(over) = 3;
+over = grid.cells.center(:,3) < 3;
+under = grid.cells.center(:,3) > 7;
+grid.cells.tag(under) = 2;
+grid.cells.tag(over) = 3;
 
 bound = Boundaries(grid,params.BoundaryConditions);
 
@@ -143,16 +127,13 @@ clear
 fileName = "model04/04_domRight.xml";
 params = readInput(fileName);
 
-mesh1 = structuredMesh(15,15,10,[20 100],[0 100],[0 10]);
-elems = Elements(mesh1,2);
-faces = Faces(mesh1);
-grid = struct('topology',mesh1,'cells',elems,'faces',faces);
+grid = structuredMesh(15,15,10,[20 100],[0 100],[0 10]);
 
 % we manually modify the tag for some clay overburden and underburden
-over = mesh1.cellCentroid(:,3) < 3;
-under = mesh1.cellCentroid(:,3) > 7;
-mesh1.cellTag(under) = 2;
-mesh1.cellTag(over) = 3;
+over = grid.cells.center(:,3) < 3;
+under = grid.cells.center(:,3) > 7;
+grid.cells.tag(under) = 2;
+grid.cells.tag(over) = 3;
 
 mat = Materials(params.Materials);
 bound = Boundaries(grid,params.BoundaryConditions);
@@ -168,10 +149,7 @@ domain1.addPhysicsSolvers(params.Solver);
 fileName = "model04/04_domLeft.xml";
 params = readInput(fileName);
 
-mesh2 = structuredMesh(6,6,4,[0 20],[0 100],[0 10]);
-elems = Elements(mesh2,2);
-faces = Faces(mesh2);
-grid = struct('topology',mesh2,'cells',elems,'faces',faces);
+grid = structuredMesh(6,6,4,[0 20],[0 100],[0 10]);
 
 mat = Materials(params.Materials);
 bound = Boundaries(grid,params.BoundaryConditions);
@@ -210,16 +188,13 @@ clear
 fileName = "model05/05_domRight.xml";
 params = readInput(fileName);
 
-mesh1 = structuredMesh(15,15,10,[20 100],[0 100],[0 10]);
-elems = Elements(mesh1,2);
-faces = Faces(mesh1);
-grid = struct('topology',mesh1,'cells',elems,'faces',faces);
+grid = structuredMesh(15,15,10,[20 100],[0 100],[0 10]);
 
 % we manually modify the tag for some clay overburden and underburden
-over = mesh1.cellCentroid(:,3) < 3;
-under = mesh1.cellCentroid(:,3) > 7;
-mesh1.cellTag(under) = 2;
-mesh1.cellTag(over) = 3;
+over = grid.cells.center(:,3) < 3;
+under = grid.cells.center(:,3) > 7;
+grid.cells.tag(under) = 2;
+grid.cells.tag(over) = 3;
 
 mat = Materials(params.Materials);
 bound = Boundaries(grid,params.BoundaryConditions);
@@ -235,10 +210,7 @@ domain1.addPhysicsSolvers(params.Solver);
 fileName = "model05/05_domLeft.xml";
 params = readInput(fileName);
 
-mesh2 = structuredMesh(6,6,4,[0 20],[0 100],[0 10]);
-elems = Elements(mesh2,2);
-faces = Faces(mesh2);
-grid = struct('topology',mesh2,'cells',elems,'faces',faces);
+grid = structuredMesh(6,6,4,[0 20],[0 100],[0 10]);
 
 mat = Materials(params.Materials);
 bound = Boundaries(grid,params.BoundaryConditions);

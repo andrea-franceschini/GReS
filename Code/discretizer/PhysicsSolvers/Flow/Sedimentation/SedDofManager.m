@@ -163,14 +163,14 @@ classdef SedDofManager < handle
       end
 
       mesh.nDim = 3;
-      mesh.nCells = ncell;      
-      mesh.cellVTKType = 12*ones(ncell,1);
-      mesh.cellNumVerts = 8*ones(ncell,1);
-      mesh.cellTag = 8*ones(ncell,1);
+      mesh.cells.num = ncell;      
+      mesh.cells.VTKType = 12*ones(ncell,1);
+      mesh.cells.numVerts = 8*ones(ncell,1);
+      mesh.cells.tag = 8*ones(ncell,1);
 
       mesh.nNodes = npoint;
       mesh.coordinates = coord;
-      mesh.cells = conec;
+      mesh.cells.connectivity = conec;
     end
 
     function data = getComp(obj,act,comp)

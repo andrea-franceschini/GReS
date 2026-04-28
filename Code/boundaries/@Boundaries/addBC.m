@@ -166,7 +166,7 @@ end
 bcEnt = BoundaryEntities(name,srcEnt);
 bcEnt.setEntities(params.entityListType,...
   params.entityList,...
-  comp,obj.grid.topology);
+  comp,obj.grid);
 
 bc.data = bcEnt;
 

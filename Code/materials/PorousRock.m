@@ -14,6 +14,7 @@ classdef PorousRock < handle
         Ss=1.;               % Maximum saturation        
     end
 
+
     properties
       Curves
     end
@@ -45,10 +46,6 @@ classdef PorousRock < handle
           Sr = obj.Sr;
         end
 
-        % function specGrav = getSpecificGravity(obj)
-        %     specGrav = obj.specGrav;
-        % end
-
         function comp = getCompressibility(obj)
           comp = obj.alpha;
         end
@@ -56,14 +53,6 @@ classdef PorousRock < handle
         function gamma = getSpecificWeight(obj)
           gamma = obj.gamma;
         end
-
-        % function gamma = getDrySpecificWeight(obj)
-        %   gamma = obj.gamma;
-        % end
-        % 
-        % function gamma = getSaturatedSpecificWeight(obj)
-        %   gamma = obj.gamma;
-        % end
 
 
         % Function to get material porosity

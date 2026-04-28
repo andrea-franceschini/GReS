@@ -23,20 +23,21 @@ solver = NonLinearImplicit('simulationparameters',simparams,...
 solver.simulationLoop();
 
 
-nS = getMesh(interfaces{2},MortarSide.slave).nSurfaces;
+surfSlave = interfaces{2}.grids.surfaces;
+nS = surfSlave.num;
 gt = interfaces{2}.state.tangentialSlip;
 gt = sqrt(gt(1:2:end).^2 + gt(2:2:end).^2);
 cId = 2:2:nS-1;
 gt = gt(cId);
 tn = interfaces{2}.state.traction(3*cId-2);
 
-xCoord = getMesh(interfaces{2},MortarSide.slave).surfaceCentroid(cId,1)/cos(deg2rad(20));
+xCoord = surfSlave.center(cId,1)/cos(deg2rad(20));
 xAnal = linspace(-1,1,1000);
 
 % analytical solutions
 b = 1;
 % real angle of the generated fault
-c = getMesh(interfaces{2},MortarSide.slave).surfaceCentroid(end,:);
+c = surfSlave.center(end,:);
 psi = atan(abs(c(2)/c(1)));
 sigma = 100;
 nu = 0.25;
