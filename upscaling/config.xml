@@ -7,7 +7,7 @@
     boundaries = "Input/boundaries.xml"
   />
   <Mesh
-    center = "-3.5e3, 0 -1.0e3"
+    center = "-3.5e3, 0, -1.0e3"
     fault_angle = "30"
   />
   <Rock
