@@ -494,7 +494,7 @@ classdef (Abstract) InterfaceSolver < handle
 
     function processMortarGrid(obj,params)
 
-      obj.grids = repmat(Grid.empty,2,1);
+      obj.grids = repmat(Grid(),2,1);
 
       % read parameters 
       switch params.multiplierType
@@ -530,6 +530,11 @@ classdef (Abstract) InterfaceSolver < handle
       cs = ContactSearching(obj.grids(MortarSide.slave),obj.grids(MortarSide.master));
 
       elemConnectivity = cs.getElementConnectivity();
+
+      if ~any(elemConnectivity,"all")
+        error('No connection between master domain %i (surface %i) and slave domain %i (surface %i)!',...
+          params.masterDomain,params.masterSurface,params.slaveDomain,params.slaveSurface)
+      end
 
 
       obj.quadrature = feval(quadType,...

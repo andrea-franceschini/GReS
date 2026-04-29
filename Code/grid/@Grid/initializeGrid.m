@@ -6,6 +6,10 @@ grid.surfaces.num = size(grid.surfaces.connectivity,1);
 nc = grid.cells.num;
 ns = grid.surfaces.num;
 
+grid.cells.cells2faces = ArrayOfArrays();
+grid.cells.cells2localFaces = ArrayOfArrays();
+
+
 if grid.nNodes > 0    % grid already populated
 
   if nc > 0
@@ -43,9 +47,6 @@ grid.cells.VTKType = zeros(nc,1);
 grid.cells.tag = zeros(nc,1);
 grid.cells.nTag = 0;
 grid.cells.numVerts = zeros(nc,1);
-grid.cells.cells2faces = ArrayOfArrays();
-grid.cells.cells2localFaces = ArrayOfArrays();
-
 
 
 grid.surfaces.area = zeros(ns,1);

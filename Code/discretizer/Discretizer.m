@@ -544,21 +544,25 @@ classdef Discretizer < handle
     function prepareBoundaryConditions(obj)
 
       % preprocess the boundary condition once the type of the target field
-      % is knwon
+      % is known
 
       setBCList(obj.bcs);
 
       bcList = obj.bcs.getBCList();
 
       for i = 1:numel(bcList)
+
         bcId = bcList(i);
 
         % loop over available bcs
         bcVar = obj.bcs.getVariable(bcId);
 
-        targetField = obj.dofm.getFieldLocation(bcVar);
+        if isVariable(obj.dofm,bcVar)
 
-        obj.bcs.initialize(bcId,targetField);
+          targetField = obj.dofm.getFieldLocation(bcVar);
+          obj.bcs.initialize(bcId,targetField);
+
+        end
 
       end
 
