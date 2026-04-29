@@ -8,21 +8,12 @@ function D_eff = get_stiffness(blkID, E_rock, nu_rock, ...
 
         S_j_total = zeros(6);
 
-        for i = 1:length(azimuths.mean)
+        for i = 1:length(azimuths)
 
-            % Randomize orientation
-            azimuth = truncated_random( ...
-                azimuths.mean(i), azimuths.std(i), 0, inf);
-
-            dip = truncated_random( ...
-                dips.mean(i), dips.std(i), 0, inf);
-
-            % Truncated stiffnesses
-            Kn_value = truncated_random( ...
-                Kn.mean(i), Kn.std(i), Kn.min(i), Kn.max(i));
-
-            Ks_value = truncated_random( ...
-                Ks.mean(i), Ks.std(i), Ks.min(i), Ks.max(i));
+            azimuth = azimuths(i);
+            dip = dips(i);
+            Kn_value = Kn(i);
+            Ks_value = Ks(i);
 
             % Number of joints
             num_joints = numbers_of_joints(blkID+1, i);

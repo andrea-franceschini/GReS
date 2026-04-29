@@ -4,6 +4,7 @@ function [mesh, rock, blockSize, jointFamilies, druckerPrager, ...
     problem = readstruct(fileName,AttributeSuffix="");
 
     mesh = problem.Mesh;
+    mesh.center = str2num(mesh.center);
     rock = problem.Rock;
     blockSize = problem.JointFamilies.BlockSize;
     jointFamilies = problem.JointFamilies.Families;

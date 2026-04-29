@@ -60,7 +60,7 @@ avgQs = zeros(nStep,1);
 for id_forceX = 1:nStep
     forceX = stepX(id_forceX);
     [maxF, avgP, avgQ] = solvePQ(fea, forceX, druckerPrager, tol);
-    fprintf('%d  %e  %e\n', forceX, avgP, avgQ);
+    fprintf('%5.2f%15.6e%15.6e\n', forceX, avgP, avgQ);
     avgPs(id_forceX) = avgP;
     avgQs(id_forceX) = avgQ;
 end
