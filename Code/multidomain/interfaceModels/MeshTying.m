@@ -416,7 +416,7 @@ classdef MeshTying < InterfaceSolver
         end
       end
 
-      obj.stabilizationMat = 1e-5*asbH.sparseAssembly();
+      obj.stabilizationMat = asbH.sparseAssembly();
 
       assert(norm(sum(obj.stabilizationMat,2))<1e-8, 'Stabilization matrix is not locally conservative')
     end

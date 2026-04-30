@@ -352,6 +352,7 @@ classdef SolidMechanicsContact < MeshTying
         'tangential_gap',          outTangentialGap
         'tangential_gap_norm',     outTangentialGapNorm
         'fracture_state',          fractureState
+        'rotationMatrix',          obj.grids(1).surfaces.rotationMatrices
         };
 
       surfaceStr = cell2struct(entries, {'name','data'}, 2);

@@ -568,6 +568,9 @@ classdef (Abstract) InterfaceSolver < handle
           Ri = mxComputeRotationMat(n);
           R(i,:) = Ri(:);
         end
+
+        % temporary patch: only for planar interfaces
+        %R = repmat(R(1,:),size(R,1),1);
         obj.grids(side).surfaces.rotationMatrices = R;
       end
       

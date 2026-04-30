@@ -8,9 +8,11 @@ ns = grid.surfaces.num;
 
 grid.cells.cells2faces = ArrayOfArrays();
 grid.cells.cells2localFaces = ArrayOfArrays();
+%grid.surfaces.faceId = [];
 
 
 if grid.nNodes > 0    % grid already populated
+
 
   if nc > 0
     grid.cells.nTag = numel(unique(grid.cells.tag));
