@@ -7,14 +7,14 @@ Mesh.MshFileVersion = 2.2; // Version of the MSH file format to use
 // strictly positive integer; here `1') and defined by a list of four numbers:
 // three coordinates (X, Y and Z) and the target mesh size (lc) close to the
 // point:
-lc = 1e-1;
+
 meshFile = "Column_hexa.msh";
 //meshFile = "Column.msh";
 
-Point(1) = {0, 0, 0, lc};
-Point(2) = {1, 0, 0, lc};
-Point(3) = {1, 1, 0, lc};
-Point(4) = {0, 1, 0, lc};
+Point(1) = {0, 0, 0};
+Point(2) = {1, 0, 0};
+Point(3) = {1, 1, 0};
+Point(4) = {0, 1, 0};
 
 Line(1) = {1, 2};
 Line(2) = {2, 3};

@@ -129,7 +129,6 @@ grid.surfaces.numVerts     = 4 * ones(nS,1);
 
 % finalize geometry
 grid.setStructured;
-processGeometry(grid);
 
 end
 

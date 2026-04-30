@@ -31,7 +31,7 @@ classdef Discretizer < handle
     interfaceList
 
     state
-    stateOld
+
   end
 
 
@@ -42,6 +42,7 @@ classdef Discretizer < handle
 
       % Initialized internal variables
       obj.dofm = DoFManager();
+      obj.state = State();
       % obj.bcs = Boundaries();
       % obj.outstate = OutState();
       % obj.materials = Materials();
@@ -87,6 +88,8 @@ classdef Discretizer < handle
 
 
     function applyDirVal(obj,t)
+      % apply Dirichlet boundary values to the current state object
+
       bcList = obj.bcs.getBCList;
 
       for i = 1:numel(bcList)
@@ -177,38 +180,76 @@ classdef Discretizer < handle
       out = obj.physicsSolvers(id);
     end
 
-    function stat = getState(obj,varName)
-      % get a copy of a state variable field
-      if nargin < 2
-        stat = obj.state;
+    function stateCurr = getState(obj,varName)
+      % get current state variables
+      if nargin == 1
+        stateCurr = obj.state.get('curr');
+      elseif nargin == 2
+        stateCurr = obj.state.get('curr',varName);
       else
-        if ~isfield(obj.getState().data,varName)
-          error("Variable %s does not exist in the State object",varName)
-        end
-        stat = obj.getState().data.(varName);
+        error("getState:Number of input arguments must be 1 or 2")
       end
     end
 
-    function stat = getStateOld(obj,varName)
-      % get a copy of a state variable field
-      if nargin < 2
-        stat = obj.stateOld;
+    function stateOld = getStateOld(obj,varName)
+      % get last converged state variables
+      if nargin == 1
+        stateOld = obj.state.get('old');
+      elseif nargin == 2
+        stateOld = obj.state.get('old',varName);
       else
-        if ~isfield(obj.getStateOld().data,varName)
-          error("Variable %s does not exist in the StateOld object",varName)
-        end
-        stat = obj.getStateOld().data.(varName);
+        error("getState:Number of input arguments must be 1 or 2")
       end
     end
 
 
-    % function addInterface(obj,interfId,interf)
-    %   % add mortar interface to current domain
-    %   if ~ismember(interfId,obj.interfaceList)
-    %     obj.interfaceList = sort([obj.interfaceList interfId]);
-    %     obj.interfaces{end+1} = interf;
-    %   end
-    %end
+    function stateInit = getStateInit(obj,varName)
+      % get initial state variables
+      if nargin == 1
+        stateInit = obj.state.get('init');
+      elseif nargin == 2
+        stateInit = obj.state.get('init',varName);
+      else
+        error("getState:Number of input arguments must be 1 or 2")
+      end
+    end
+
+
+
+    function setState(obj,val,varName)
+      % get current state variables
+      if nargin == 2
+        obj.state.set('curr',val);
+      elseif nargin == 3
+        obj.state.set('curr',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
+      end
+    end
+
+    function setStateOld(obj,val,varName)
+      % get last converged state variables
+      if nargin == 2
+        obj.state.set('old',val);
+      elseif nargin == 3
+        obj.state.set('old',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
+      end
+
+    end
+
+
+    function setStateInit(obj,val,varName)
+      % get initial state variables
+      if nargin == 2
+        obj.state.set('init',val);
+      elseif nargin == 3
+        obj.state.set('init',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
+      end
+    end
 
 
     function assembleSystem(obj,dt)
@@ -357,10 +398,7 @@ classdef Discretizer < handle
 
       prepareBoundaryConditions(obj);
 
-      % apply initial dirichlet condition to the state object
-      tIni = obj.simparams.tIni;
-      applyDirVal(obj,tIni)
-
+      % initial solvers (before any bc is applied)
       for solver = obj.solverNames
         initialize(obj.getPhysicsSolver(solver));
       end
@@ -376,54 +414,6 @@ classdef Discretizer < handle
 
     end
 
-    % function printState(obj)
-    %   % print solution of the model according to the print time in the
-    %   % list
-    %
-    %   % if obj.state.t >= obj.simparams.tMax
-    %   %
-    %   %   time = getState(obj).t;
-    %   %   writeVTK(obj,time);
-    %   %   writeMatFile(obj,time,obj.outstate.timeID);
-    %   %
-    %   % else
-    %
-    %   if obj.outstate.timeID <= length(obj.outstate.timeList)
-    %
-    %     time = obj.outstate.timeList(obj.outstate.timeID);
-    %
-    %     % loop over print times within last time step
-    %     while time <= obj.state.t
-    %
-    %       assert(time >= obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
-    %         time, obj.stateOld.t, obj.state.t);
-    %
-    %       assert(obj.state.t - obj.stateOld.t > eps('double'),...
-    %         'Time step is too small for printing purposes');
-    %
-    %       % move this into the solution scheme class
-    %       % compute factor to interpolate current and old state variables
-    %       fac = (time - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
-    %       if isnan(fac) || isinf(fac)
-    %         fac = 1;
-    %       end
-    %
-    %       writeVTK(obj,fac,time);
-    %
-    %       writeMatFile(obj,fac,obj.outstate.timeID);
-    %
-    %       obj.outstate.timeID = obj.outstate.timeID + 1;
-    %
-    %       if obj.outstate.timeID > length(obj.outstate.timeList)
-    %         break
-    %       else
-    %         time = obj.outstate.timeList(obj.outstate.timeID);
-    %       end
-    %
-    %     end
-    %
-    %   end
-    % end
 
 
     function out = writeVTK(obj,fac,time)

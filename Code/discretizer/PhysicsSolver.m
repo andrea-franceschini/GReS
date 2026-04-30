@@ -87,42 +87,50 @@ classdef (Abstract) PhysicsSolver < handle
 
     % interface to get and set the state object from the solver
 
-    function stat = getState(obj,varName)
+    function state = getState(obj,varargin)
       % get a copy of a state variable field
-      if nargin < 2
-        stat = obj.domain.getState();
-      else
-        if ~isfield(obj.domain.getState().data,varName)
-          error("Variable %s does not exist in the State object",varName)
-        end
-        stat = obj.domain.getState().data.(varName);
-      end
+      state = obj.domain.getState(varargin{:});
     end
 
-    function stat = getStateOld(obj,varName)
+    function state = getStateOld(obj,varargin)
       % get a copy of a state variable field
-      if nargin < 2
-        stat = obj.domain.getStateOld();
-      else
-        if ~isfield(obj.domain.getStateOld().data,varName)
-          error("Variable %s does not exist in the StateOld object",varName)
-        end
-        stat = obj.domain.getStateOld().data.(varName);
-      end
+      state = obj.domain.getStateOld(varargin{:});
     end
+
+    function state = getStateInit(obj,varargin)
+      % get a copy of a state variable field
+      state = obj.domain.getStateInit(varargin{:});
+    end
+
+    function setState(obj,varargin)
+      % get a copy of a state variable field
+      obj.domain.setState(varargin{:});
+    end
+
+    function setStateOld(obj,varargin)
+      % get a copy of a state variable field
+      obj.domain.setStateOld(varargin{:});
+    end
+
+    function setStateInit(obj,varargin)
+      % get a copy of a state variable field
+      obj.domain.setStateInit(varargin{:});
+    end
+
+    
 
     function advanceState(obj,varargin)
 
       % base method to advance the state after reaching convergence
-      % hard copy the new state object
-      obj.domain.stateOld = copy(obj.domain.state);
+      % copy variables from current state to old state
+      setStateOld(obj,getState(obj));
 
     end
 
     function goBackState(obj,varargin)
       % base method to move back the state when convergence is not reached
 
-      obj.domain.state = copy(obj.domain.stateOld);
+      setState(obj,getStateOld(obj));
 
     end
 
@@ -176,10 +184,10 @@ classdef (Abstract) PhysicsSolver < handle
 
       bcVar = obj.domain.bcs.getVariable(bcId);
 
-      s = obj.getState();
-      v = s.data.(bcVar);
+      v = obj.getState(bcVar);
       v(dofs) = vals;
-      s.data.(bcVar) = v;
+      obj.setState(v,bcVar);
+
 
     end
 

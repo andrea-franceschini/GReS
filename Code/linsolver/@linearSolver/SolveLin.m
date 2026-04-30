@@ -255,7 +255,7 @@ end
 
 function [x,flag] = matlab_solve(obj,A,b)
 
-   gresLog().log(3,'Fallback to matlab due to size or chronos inexistance\n');
+   gresLog().log(4,'Fallback to matlab due to size or chronos inexistance\n');
 
    startT = tic;
    % Solve the system

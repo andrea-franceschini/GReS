@@ -2,10 +2,11 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
   %SINGLEPHASEFLOW
 
   properties
-    H
-    P
-    rhsGrav         % gravity contribution to rhs
-    steadyState     % flag to force steady state problem
+    H                         % stiffness matrix
+    P                         % capacity matrix
+    watLev
+    rhsGrav                   % gravity contribution to rhs
+    steadyState               % flag to force steady state problem
   end
 
   properties (Access = protected)
@@ -19,6 +20,8 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     [cellData,pointData] = buildPrintStruct(obj,outPrint);
 
     computeMat(obj,dt)
+    rhsGrav = getRhsGravity(obj,mobility)
+    pHydro = getHydrostaticPressure(obj);
 
   end
 
@@ -30,15 +33,23 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
     function registerSolver(obj,fldLocation,varargin)
 
-      nTags = obj.grid.cells.nTag;
+      cells = obj.grid.cells;
+      nTags = cells.nTag;
 
       default = struct('targetRegions',1:nTags,...
-                       'steadyState',0);
+                       'steadyState',0,...
+                       'waterLevel',missing);
 
 
       params = readInput(default,varargin{:});
 
       obj.steadyState = logical(params.steadyState);
+
+  
+      if ismissing(params.waterLevel)
+        obj.watLev = max(cells.center,3);
+      end
+
 
       dofm = obj.domain.dofm;
 
@@ -47,8 +58,16 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       obj.fieldId = dofm.getVariableId(obj.getField());
 
       % initialize the state object with a pressure field
-      obj.getState().data.(obj.getField()) = zeros(n,1);
+      state = getState(obj);
+      state.pressure = zeros(n,1);
+      setState(obj,state)
 
+    end
+
+
+
+    function initialize(obj)
+      % nothing to initialize here
     end
 
 
@@ -60,19 +79,26 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       p = obj.getState(obj.getField());
       ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
 
+      % balanced pressure to be removed from rhs assembly
+      p0 = getStateInit(obj,"pressure");
+
       if obj.steadyState
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H;
-        rhs = obj.H*p(ents);
+        rhs = obj.H*(p(ents) - p0(ents));
       else
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H + obj.P/dt;
         pOld = obj.getStateOld(obj.getField());
-        rhs = obj.H*p(ents) + (obj.P/dt)*(p(ents) - pOld(ents));
+        rhsH = obj.H*(p(ents) - p0(ents));
+        rhsP = (obj.P/dt)*(p(ents) - pOld(ents));
+        rhs = rhsH + rhsP;
       end
 
       gamma = obj.domain.materials.getFluid().getSpecificWeight();
       if gamma > 0
         % add rhs gravity contribution
-        obj.domain.rhs{obj.fieldId} = rhs + getRhsGravity(obj);
+        pHydro = getHydrostaticPressure(obj);
+        rhsG = getRhsGravity(obj) - obj.H*pHydro;
+        obj.domain.rhs{obj.fieldId} = rhs + rhsG;
       else
         obj.domain.rhs{obj.fieldId} = rhs;  
       end
@@ -81,11 +107,20 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
     function updateState(obj,dSol)
       dofm = obj.domain.dofm;
+      p = getState(obj,"pressure");
       if nargin > 1
         ents = dofm.getActiveEntities(obj.fieldId);
-        state = getState(obj);
-        state.data.pressure(ents) = state.data.pressure(ents) + dSol(dofm.getDoF(obj.fieldId));
+        p(ents) = p(ents) + dSol(dofm.getDoF(obj.fieldId));
       end
+      setState(obj,p,"pressure");
+    end
+
+
+    function pTot = getTotalPressure(obj)
+
+      overPressure =  getState(obj,"pressure");
+      pTot = overPressure + getHydrostaticPressure(obj);
+
     end
 
     % function advanceState(obj)
@@ -94,11 +129,8 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     % end
 
     function [cellData,pointData] = writeVTK(obj,fac,t)
-      % append state variable to output structure
-      sOld = getStateOld(obj);
-      sNew = getState(obj);
 
-      p = sNew.data.pressure*fac+sOld.data.pressure*(1-fac);
+      p = obj.domain.state.interpolate(fac,"pressure");
 
       outPrint = finalizeState(obj,p,t);
       [cellData,pointData] = buildPrintStruct(obj,outPrint);
@@ -193,7 +225,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
       solv.simulationLoop();
 
-      ssPressure = obj.domain.state.data.pressure;
+      ssPressure = getState(obj,obj.getField());
       
     end
   end

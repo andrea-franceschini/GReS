@@ -162,6 +162,15 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       
     end 
 
+
+    function pHydro = getHydrostaticPressure(obj)
+
+      fluid = obj.domain.materials.getFluid();
+      gamma = fluid.getSpecificWeight;
+      pHydro = gamma * (obj.watLev - obj.coordinates(:,3));
+
+    end
+
     % function [ents,vals] = getBC(obj,id,t)
     %   % getBC - function to find the value and the location for the
     %   % boundary condition.

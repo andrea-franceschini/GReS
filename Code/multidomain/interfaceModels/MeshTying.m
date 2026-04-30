@@ -32,17 +32,17 @@ classdef MeshTying < InterfaceSolver
       obj.nMult = ncomp * getNumberOfEntities(obj.multiplierLocation,...
         obj.grids(MortarSide.slave));
 
-      obj.state.multipliers = zeros(obj.nMult,1);
-      obj.state.iniMultipliers = zeros(obj.nMult,1);
-
-      obj.stateOld = obj.state;
+      state.multipliers = zeros(obj.nMult,1);
+      setState(obj,state);
 
     end
 
 
     function updateState(obj,du)
 
-      obj.state.multipliers = obj.state.multipliers + du(1:obj.nMult);
+      mult = getState(obj,"multipliers");
+      mult = mult + du(1:obj.nMult);
+      setState(obj,mult,"multipliers");
 
     end
 
@@ -74,12 +74,15 @@ classdef MeshTying < InterfaceSolver
 
       obj.rhsConstraint = rhsMult;
 
+      mult = getState(obj,"multipliers");
+      multIni = getStateInit(obj,"multipliers");
+
       % apply stabilization for P0 multipliers
       if obj.multiplierLocation == entityField.surface
         
         computeStabilizationMatrix(obj);
         rhsStab = -obj.stabilizationMat*...
-          (obj.state.multipliers-obj.state.iniMultipliers);
+          (mult - multIni);
 
         obj.Jconstraint = -obj.stabilizationMat;
 
@@ -254,8 +257,10 @@ classdef MeshTying < InterfaceSolver
 
       % retrieve active multipliers
       actMult = getMultiplierDoF(obj);
-      iniMult = obj.state.iniMultipliers(actMult);
-      mult = obj.state.multipliers(actMult);
+      s = obj.getState();
+      sIni = obj.getStateInit();
+      iniMult = sIni.multipliers(actMult);
+      mult = s.multipliers(actMult);
 
       % compute rhs terms
       rhsMaster = obj.M' * (mult - iniMult);
@@ -268,9 +273,7 @@ classdef MeshTying < InterfaceSolver
 
     function [surfaceStr,pointStr] = writeVTK(obj,fac,varargin)
 
-      multCurr = obj.state.multipliers;
-      multOld = obj.stateOld.multipliers;
-      mult = fac*multCurr + (1-fac)*multOld;
+      mult = obj.state.interpolate(fac,"multipliers");
 
       surfaceStr = [];
       pointStr = [];
@@ -291,9 +294,7 @@ classdef MeshTying < InterfaceSolver
 
     function writeSolution(obj,fac,tID)
 
-      multCurr = obj.state.multipliers;
-      multOld = obj.stateOld.multipliers;
-      mult = fac*multCurr + (1-fac)*multOld;
+      mult = obj.state.interpolate(fac,"multipliers");
 
       obj.outstate.results(tID).multipliers = mult;
 

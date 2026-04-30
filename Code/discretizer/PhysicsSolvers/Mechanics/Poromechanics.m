@@ -4,10 +4,6 @@ classdef Poromechanics < PhysicsSolver
     K               % the stiffness matrix free of boundary conditions
     fInt            % internal forces
     cell2stress     % map cell ID to position in stress/strain matrix
-    avStress
-    avStrain
-    avStressOld
-    avStrainOld
     flOut = true
     
     % stress and strain tensor use engineering voigt notation
@@ -15,7 +11,6 @@ classdef Poromechanics < PhysicsSolver
   end
 
   properties (Access = protected)
-    iniStress
     gaussOrder      % (0 means the minimum required by the fem type)
   end
 
@@ -56,33 +51,20 @@ classdef Poromechanics < PhysicsSolver
       % initialize the state object
       initState(obj);
 
-      obj.cell2stress = zeros(cells.num,2);
+      % map from cell id to row in stress/strain matrix
+      obj.cell2stress = getCell2StressMap(obj);
 
     end
 
     function assembleSystem(obj,dt)
       % compute the displacements matrices and rhs in the domain
-      obj.domain.J{obj.fieldId,obj.fieldId} = computeJacobian(obj,dt);
-      obj.domain.rhs{obj.fieldId} = computeRhs(obj);
+      assembleSystemMechanics(obj,dt);
+      obj.domain.J{obj.fieldId,obj.fieldId} = obj.K;
+      obj.domain.rhs{obj.fieldId} = obj.fInt;
     end
 
 
-    function Jmat = computeJacobian(obj,dt)
-      if ~isLinear(obj) || isempty(getJacobian(obj))
-        % recompute matrix if the model is non linear
-        % define size of output matrix
-        computeStiffMat(obj,dt);
-      end
-
-      if obj.domain.simparams.isTimeDependent
-        Jmat = obj.domain.simparams.theta*obj.K;
-      else
-        Jmat = obj.K;
-      end
-    end
-
-
-    function computeStiffMat(obj,dt)
+    function assembleSystemMechanics(obj,dt)
       % general sparse assembly loop over elements for Poromechanics
 
       % define local assembler
@@ -92,8 +74,10 @@ classdef Poromechanics < PhysicsSolver
       dofm = obj.domain.dofm;
       coordinates = obj.grid.coordinates;
       cells = obj.grid.cells;
+      t = obj.domain.state.t;
       s = getState(obj);
       sOld = getStateOld(obj);
+      iniStress = getStateInit(obj,'stress');
 
       % allocate
       subCells = dofm.getFieldCells(obj.fieldId);
@@ -102,6 +86,15 @@ classdef Poromechanics < PhysicsSolver
       obj.fInt = zeros(Ndof,1);
       assembleK = assembler(n,Ndof,Ndof);
 
+      % get state variables
+      du = s.displacements - sOld.displacements;
+
+
+      if isempty(obj.K) || ~isLinear(obj)
+        computeK = true;
+      else
+        computeK = false;
+      end
 
       for vtkId = cells.vtkTypes
 
@@ -111,37 +104,40 @@ classdef Poromechanics < PhysicsSolver
         % get node topology for given vtk type
         topol = obj.grid.getCellNodes(subCellsLoc);
 
+        nG = elem.getNumbGaussPts;
+
         for i = 1:numel(subCellsLoc)
 
           % assembly loop for homogeneous element type
 
           el = subCellsLoc(i);
 
-          % position in stress/strain matrix
-          l = obj.cell2stress(el,1);
-          nG = obj.cell2stress(el,2);
+          l = obj.cell2stress(el);
 
           nodes = topol(i,:);
           dof = dofm.getLocalDoF(obj.fieldId,nodes);
           coords = coordinates(nodes,:);
 
-          % get strain matrix B
+          % compute strain
           [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
           B = elem.getStrainMatrix(gradN);
+          s.strain(l:l+nG-1,:) = reshape(pagemtimes(B,du(dof)),6,nG)';
 
           % constitutive update (will be updated with proper
           % constitutiveLaw class)
           [D, sigma, status] = obj.domain.materials.updateMaterial( ...
             cells.tag(el), ...
-            sOld.data.stress(l:l+nG-1,:), ...
-            s.data.strain(l:l+nG-1,:), ...
-            dt, sOld.data.status(l:l+nG-1,:), el, s.t);
+            sOld.stress(l:l+nG-1,:), ...
+            s.strain(l:l+nG-1,:), ...
+            dt, sOld.status(l:l+nG-1,:), el, t);
 
-          % local stiffnes Kloc = B^T * D * B
-          KLoc = obj.computeKloc(B,D,B,dJWeighed);
+
+          % update stress map and gp counter
+          s.status(l:l+nG-1,:) = status;
+          s.stress(l:(l+nG-1),:) = sigma;
 
           % internal forces (initial stresses do not contribute!)
-          sz = sigma - obj.iniStress(l:l+nG-1,:);
+          sz = sigma - iniStress(l:l+nG-1,:);
           sz = reshape(sz',6,1,nG);
           fTmp = pagemtimes(B,'ctranspose',sz,'none');
           fTmp = fTmp.*reshape(dJWeighed,1,1,[]);
@@ -150,87 +146,34 @@ classdef Poromechanics < PhysicsSolver
           % assemble internal forces
           obj.fInt(dof) = obj.fInt(dof)+fLoc;
 
-          % assemble local stiffness
-          assembleK.localAssembly(dof,dof,KLoc);
+          if computeK
+            % local stiffnes Kloc = B^T * D * B
+            KLoc = obj.computeKloc(B,D,B,dJWeighed);
+            assembleK.localAssembly(dof,dof,KLoc);
+          end
 
-          % update stress map and gp counter
-          s.data.status(l:l+nG-1,:) = status;
-          s.data.stress(l:(l+nG-1),:) = sigma;
 
         end % end sub cells loop
 
       end % end vtk loop
 
       % assemble stiffness matrix
-      obj.K = assembleK.sparseAssembly();
+      if computeK
+        obj.K = assembleK.sparseAssembly();
+      end
+
+      % update modified state object with new stress and strain
+      setState(obj,s);
 
     end
 
-   
-
-    % BUBBLES ARE NOT SUPPORTED ANYMORE
-    % function [dofr,dofc,Kub,Kbb,varargout] = computeLocalStiffBubble(obj,el,dt,varargin)
-    %   % compute local stiffness matrix contribution due to bubble basis
-    %   % functions
-    %   % the method return Kub and Kbb for later use
-    %   % faceId: local index of face holding bubble dof
-    %   % assumption: the grid consist only of tetra or hexa, not mixed.
-    %   % the unstabilized stiffness has been already assembled
-    % 
-    %   s = getState(obj);
-    %   sOld = getStateOld(obj);
-    % 
-    %   vtkId = obj.grid.cellVTKType(el);
-    %   elem = getElement(obj.elements,vtkId);
-    %   nG = elem.GaussPts.nNode;
-    %   l = obj.cell2stress(el);      % get index to access stress and strain matrix
-    %   [Nu,dJWeighed] = getDerBasisFAndDet(elem,el,1);
-    %   Nb = getDerBubbleBasisFAndDet(elem,el,2);
-    %   % get strain matrices
-    %   Bu = zeros(6,elem.nNode*obj.grid.nDim,nG);
-    %   Bu(elem.indB(:,2)) = Nu(elem.indB(:,1));
-    %   Bb = zeros(6,elem.nFace*obj.grid.nDim,nG);
-    %   Bb(elem.indBbubble(:,2)) = Nb(elem.indBbubble(:,1));
-    %   [D, ~, ~] = obj.domain.materials.updateMaterial( ...
-    %     obj.grid.cellTag(el), ...
-    %     sOld.data.stress(l:l+nG-1,:), ...
-    %     s.data.strain(l:l+nG-1,:), ...
-    %     dt,sOld.data.status(l:l+nG-1,:), el, s.t);
-    % 
-    %   Kub = Poromechanics.computeKloc(Bu,D,Bb,dJWeighed);
-    %   Kbb = Poromechanics.computeKloc(Bb,D,Bb,dJWeighed);
-    % 
-    %   % important: right hand side in the unstabilized block already
-    %   % considers the bubble contribution due to enhanced strain
-    % 
-    %   % get global DoF
-    %   nodes = obj.grid.cells(el,1:obj.grid.cellNumVerts(el));
-    %   dof = obj.domain.dofm.getLocalDoF(obj.fieldId,nodes);
-    %   dofr = dof; dofc = dof;
-    % 
-    %   % get variable output from matrix
-    %   if ~isempty(varargin)
-    %     varargout = cell(numel(varargin),1);
-    %     for i = 1:numel(varargin)
-    %       switch varargin{i}
-    %         case 'Bb'
-    %           varargout{i} = Bb;
-    %         case 'Bu'
-    %           varargout{i} = Bu;
-    %         case 'D'
-    %           varargout{i} = D;
-    %       end
-    %     end
-    %   end
-    % end
 
     function initialize(obj)
 
       % initial stress - assumed balanced with external forces
-      state = getState(obj);
-      computeStrain(obj);
-      [obj.avStress,obj.avStrain] = finalizeState(obj,state);
-      obj.iniStress = state.data.stress;
+      computeAvgStressAndStrain(obj);
+      setStateInit(obj,getState(obj));
+      setStateOld(obj,getState(obj));
       
     end
 
@@ -239,23 +182,26 @@ classdef Poromechanics < PhysicsSolver
     function initState(obj)
       % add poromechanics fields to state structure
       nGP = FiniteElementType.getTotGPinGrid(obj.grid,obj.gaussOrder);
+      cells = obj.grid.cells;
       state = getState(obj);
-      state.data.stress = zeros(nGP,6);
-      % initial stress ( assumed balanced with external forces)
-      obj.iniStress = zeros(nGP,6);
-      state.data.status = zeros(nGP,6);
-      state.data.strain = zeros(nGP,6);
-      state.data.(obj.getField()) = zeros(obj.grid.nDim*obj.grid.nNodes,1);
+      state.stress = zeros(nGP,6);
+      state.status = zeros(nGP,6);
+      state.strain = zeros(nGP,6);
+      state.displacements = zeros(obj.grid.nDim*obj.grid.nNodes,1);
+      state.avgStress = zeros(cells.num,6);
+      state.avgStrain = zeros(cells.num,6);
+      % load current state
+      setState(obj,state);
+
     end
 
     function advanceState(obj)
       % Set converged state to current state after newton convergence
-      stateOld = getStateOld(obj);
-      state = getState(obj);
-      stateOld.data.displacements = getState(obj,"displacements");
-      state.data.strain = 0.0*state.data.strain;
-      stateOld.data.stress = getState(obj,"stress");
-      stateOld.data.status = getState(obj,"status");
+      stateCurr = getState(obj);
+      setStateOld(obj,stateCurr);
+      % set strain to zero
+      stateCurr.strain(:) = 0.0; 
+
       obj.flOut = true;
     end
 
@@ -264,31 +210,32 @@ classdef Poromechanics < PhysicsSolver
       dofm = obj.domain.dofm;
       ents = dofm.getActiveEntities(obj.fieldId,1);
 
-      stateCurr = obj.getState();
+      uCurr = getState(obj,obj.getField);
       %stateOld = obj.getStateOld();
 
       if nargin > 1
         % apply newton update to current displacements
-        stateCurr.data.displacements(ents) = stateCurr.data.displacements(ents) + ...
-          solution(getDoF(dofm,obj.fieldId));
+        uCurr(ents) = uCurr(ents) + solution(getDoF(dofm,obj.fieldId));
       end
 
-      computeStrain(obj);
+      setState(obj,uCurr,obj.getField);
 
     end
 
-    function [avStress,avStrain] = finalizeState(obj,stateIn)
+    function computeAvgStressAndStrain(obj)
       % compute cell average values of stress and strain for print purpose
-      % note: output strain is the total one strain = B*u
+      % note: output strain is the total strain = B*u
 
       cells = obj.grid.cells;
-
-      avStress = zeros(cells.num,6);
-      avStrain = zeros(cells.num,6);
 
       coordinates = obj.grid.coordinates;
 
       dofm = obj.domain.dofm;
+
+      stress = getState(obj,'stress');
+      avStress = getState(obj,'avgStress');
+      avStrain = getState(obj,'avgStress');
+      disp = getState(obj,'displacements');
 
       for vtkId = cells.vtkTypes
 
@@ -302,33 +249,35 @@ classdef Poromechanics < PhysicsSolver
         for i = 1:numel(cellList)
 
           el = cellList(i);
-          l = obj.cell2stress(el,1);
+          l = obj.cell2stress(el);
           if l == 0
             % cell is not active
             continue
           end
 
-          stress = stateIn.data.stress(l:l+nG-1,:);
+          stressEl = stress(l:l+nG-1,:);
 
           nodes = topol(i,:);
           coord = coordinates(nodes,:);
           dofs = dofm.getLocalDoF(obj.fieldId,nodes);
-          u = stateIn.data.displacements(dofs);
+          u = disp(dofs);
 
           [gradN,dJWeighed] = getDerBasisFAndDet(elem,coord);
-
           vol = sum(dJWeighed);
-
           B = elem.getStrainMatrix(gradN);
 
-          % compute average stress and strain
-          avStress(el,:) = sum(diag(dJWeighed)*stress)/vol;
+          % compute average stress and strain with gauss average
+          avStress(el,:) = sum(diag(dJWeighed)*stressEl)/vol;
           dStrain = pagemtimes(B,u);
           dStrain = dStrain.*reshape(dJWeighed,1,1,[]);
           avStrain(el,:) = sum(dStrain,3)/vol;
 
         end
       end
+
+      setState(obj,avStress,'avgStress');
+      setState(obj,avStrain,'avgStrain');
+
 
     end
 
@@ -421,53 +370,55 @@ classdef Poromechanics < PhysicsSolver
     %   obj.getState().data.displacements(bcEnts) = bcVals;
     % end
 
-    function rhs = computeRhs(obj,varargin)
-
-      dofm = obj.domain.dofm;
-
-      cells = obj.grid.cells;
-
-      if isLinear(obj) % linear case
-
-        J = getJacobian(obj);
-
-        s = obj.getState();
-        sOld = obj.getStateOld();
-
-        % update elastic stress
-        subCells = dofm.getFieldCells(obj.fieldId);
-
-        for el=subCells'
-
-          D = getElasticTensor(obj.domain.materials.getMaterial(cells.tag(el)).ConstLaw);
-
-          l = obj.cell2stress(el,1);
-          nG = obj.cell2stress(el,2);
-
-          % Get the right material stiffness for each element
-
-          s.data.stress((l):(l+nG-1),:) = ...
-            sOld.data.stress((l):(l+nG-1),:)+...
-            s.data.strain((l):(l+nG-1),:)*D;
-
-        end
-
-        ents = dofm.getActiveEntities(obj.fieldId,1);
-
-        u = s.data.(obj.getField());
-        uOld = sOld.data.(obj.getField());
-
-        if obj.domain.simparams.isTimeDependent
-          theta = obj.domain.simparams.theta;
-          rhs = J*u(ents) + (1/theta-1)*J*uOld(ents);
-        else
-          rhs = J*u(ents);
-        end
-      else % non linear case: rhs computed with internal forces (B^T*sigma)
-        rhs = obj.fInt; % provisional assuming theta = 1;
-      end
+    % function rhs = computeRhs(obj,varargin)
+    % 
+    %   dofm = obj.domain.dofm;
+    % 
+    %   cells = obj.grid.cells;
+    % 
+    %   rhs = obj.fInt;
+      % 
+      % if isLinear(obj) % linear case
+      % 
+      %   J = getJacobian(obj);
+      % 
+      %   s = obj.getState();
+      %   sOld = obj.getStateOld();
+      % 
+      %   % update elastic stress
+      %   subCells = dofm.getFieldCells(obj.fieldId);
+      % 
+      %   for el=subCells'
+      % 
+      %     D = getElasticTensor(obj.domain.materials.getMaterial(cells.tag(el)).ConstLaw);
+      % 
+      %     l = obj.cell2stress(el,1);
+      %     nG = obj.cell2stress(el,2);
+      % 
+      %     % Get the right material stiffness for each element
+      % 
+      %     s.data.stress((l):(l+nG-1),:) = ...
+      %       sOld.data.stress((l):(l+nG-1),:)+...
+      %       s.data.strain((l):(l+nG-1),:)*D;
+      % 
+      %   end
+      % 
+      %   ents = dofm.getActiveEntities(obj.fieldId,1);
+      % 
+      %   u = s.data.(obj.getField());
+      %   uOld = sOld.data.(obj.getField());
+      % 
+      %   if obj.domain.simparams.isTimeDependent
+      %     theta = obj.domain.simparams.theta;
+      %     rhs = J*u(ents) + (1/theta-1)*J*uOld(ents);
+      %   else
+      %     rhs = J*u(ents);
+      %   end
+      % else % non linear case: rhs computed with internal forces (B^T*sigma)
+      %   rhs = obj.fInt; % provisional assuming theta = 1;
+      % end
       
-    end
+    %end
 
 
     function order = getGaussOrder(obj)
@@ -475,16 +426,25 @@ classdef Poromechanics < PhysicsSolver
     end
 
 
+    function iniStress = getInitialStress(obj)
+
+      iniStress = obj.iniStress;
+      
+    end
+
+
 
 
     function out = isLinear(obj)
-      out = false;
 
+      % check if model is pure linear elasticity
+
+      out = false;
+      
       % check if there is not embedded fractures
       if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics"))
         return
       end
-
 
       for i = 1:obj.grid.cells.nTag
         out = isa(obj.domain.materials.getMaterial(i).ConstLaw,"Elastic");
@@ -494,49 +454,34 @@ classdef Poromechanics < PhysicsSolver
       end
     end
 
+
     function out = isSymmetric(obj)
 
-      % if the problem is linear, then Poromechanics is symmetric
+      % if the problem is linear, then Poromechanics is also symmetric
       out = isLinear(obj);
 
     end
 
+
     function writeSolution(obj,fac,tID)
 
-      uOld = getStateOld(obj,obj.getField());
-      uCurr = getState(obj,obj.getField());
+      uInterp = obj.domain.state.interpolate(fac,obj.getField());
 
-      obj.domain.outstate.results(tID).(obj.getField()) = uCurr*fac+uOld*(1-fac);
-
-      % TO DO: optional print of stresses as an input for the solver
+      obj.domain.outstate.results(tID).(obj.getField()) = uInterp;
 
     end
 
     function [cellData,pointData] = writeVTK(obj,fac,varargin)
 
-      % append state variable to output structure
-      stateCurr = getState(obj);
-      stateOld = getStateOld(obj);
-
-      displ = getState(obj,obj.getField());
-      dispOld = getStateOld(obj,obj.getField());
-
       if obj.flOut
-        % perform this computation once per time step
-        if isempty(obj.avStress)
-          [obj.avStress,obj.avStrain] = finalizeState(obj,stateOld);
-        end
-        obj.avStressOld = obj.avStress;
-        obj.avStrainOld = obj.avStrain;
-        [obj.avStress,obj.avStrain] = finalizeState(obj,stateCurr);
+        % finalize output only once
+        computeAvgStressAndStrain(obj);
         obj.flOut = false;
       end
 
-      avgStress = obj.avStress*fac+obj.avStressOld*(1-fac);
-      avgStrain = obj.avStrain*fac+obj.avStrainOld*(1-fac);
-      displ = displ*fac+dispOld*(1-fac);
+      stateInterp = obj.domain.state.interpolate(fac);
 
-      [cellData,pointData] = Poromechanics.buildPrintStruct(displ,avgStress,avgStrain);
+      [cellData,pointData] = Poromechanics.buildPrintStruct(stateInterp);
 
     end
 
@@ -544,148 +489,79 @@ classdef Poromechanics < PhysicsSolver
 
   methods (Access=private)
 
-    function computeStrain(obj)
+    % function computeStrain(obj)
+    % 
+    %   stateCurr = obj.getState();
+    %   stateOld = obj.getStateOld();
+    %   coordinates = obj.grid.coordinates;
+    % 
+    %   % displacement increment at current iteration
+    %   du = stateCurr.displacements - stateOld.displacements;
+    % 
+    %   cells = obj.grid.cells;
+    % 
+    %   for vtkId = cells.vtkTypes
+    % 
+    %     cellList = obj.grid.getCellsByVTKId(vtkId);
+    %     elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+    %     nG = elem.getNumbGaussPts;
+    % 
+    %     % get node topology for given vtk type
+    %     topol = obj.grid.getCellNodes(cellList);
+    % 
+    % 
+    %     for i = 1:numel(cellList)
+    % 
+    %       el = cellList(i);
+    % 
+    %       l = obj.cell2stress(el);
+    % 
+    %       nodes = topol(i,:);
+    %       coord = coordinates(nodes,:);
+    %       dof = dofId(nodes,3);
+    % 
+    %       gradN = getDerBasisFAndDet(elem,coord);
+    %       B = elem.getStrainMatrix(gradN);
+    % 
+    %       stateCurr.strain(l:l+nG-1,:) = reshape(pagemtimes(B,du(dof)),6,nG)';
+    % 
+    %     end
+    % 
+    %   end
+    % 
+    %   setState(obj,stateCurr.strain,'strain') 
+    % 
+    % end
 
-      stateCurr = obj.getState();
-      stateOld = obj.getStateOld();
-      coordinates = obj.grid.coordinates;
 
-      % displacement increment at current iteration
-      du = stateCurr.data.displacements - stateOld.data.displacements;
-
-      % Update strain
-      l = 1;
-
-
+    function map = getCell2StressMap(obj)
       cells = obj.grid.cells;
+      vtks = cells.vtkTypes;
 
-      for vtkId = cells.vtkTypes
+      ngCells = zeros(cells.num,1);
 
-        cellList = obj.grid.getCellsByVTKId(vtkId);
-        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
-        nG = elem.getNumbGaussPts;
-
-        % get node topology for given vtk type
-        topol = obj.grid.getCellNodes(cellList);
-
-
-        for i = 1:numel(cellList)
-
-          el = cellList(i);
-
-          nodes = topol(i,:);
-          coord = coordinates(nodes,:);
-          dof = dofId(nodes,3);
-
-          gradN = getDerBasisFAndDet(elem,coord);
-          B = elem.getStrainMatrix(gradN);
-
-          stateCurr.data.strain(l:l+nG-1,:) = reshape(pagemtimes(B,du(dof)),6,nG)';
-
-          obj.cell2stress(el,:) = [l nG];
-          l = l + nG;
-
-        end
-
+      for i = length(vtks)
+        el = FiniteElementType.create(vtks(i));
+        cId = getCellsByVTKId(obj.grid,vtks(i));
+        ngCells(cId) = el.getNumbGaussPts;
       end
+
+      map = [1;cumsum(ngCells)];
+      map = map(1:end-1);
 
     end
 
 
 
-    % function dof = getBCdofs(obj,bcId)
-    % 
-    %   bc = obj.domain.bcs;
-    % 
-    %   % get BC entity
-    %   ents = bc.getBCentities(bcId);
-    % 
-    %   % map to local dof numbering
-    %   ents = obj.domain.dofm.getLocalEnts(obj.fieldId,ents);
-    % 
-    %   dof = bc.getCompEntities(bcId,ents);
-    % 
-    %   if strcmp(bc.getCond(bcId),'VolumeForce')
-    %     dof = dofId(dof,3);
-    %   end
-    % 
-    % end
-    % 
-    % function ents = getBCents(obj,bcId)
-    % 
-    %   bc = obj.domain.bcs;
-    %   % get BC entity
-    %   ents = bc.getBCentities(bcId);
-    % 
-    %   % get component dof for multi-component bcs
-    %   ents = bc.getCompEntities(bcId,ents);
-    % 
-    %   if strcmp(bc.getCond(bcId),'VolumeForce')
-    %     ents = dofId(ents,3);
-    %   end
-    % 
-    % 
-    % end
-
-
-    % function vals = getBCVals(obj,id,t)
-    % 
-    %   bc = obj.domain.bcs;
-    % 
-    %   vals = bc.getVals(id,t);
-    % 
-    %   if strcmp(bc.getCond(id),'surface')
-    % 
-    %     % nodeArea*bcValue
-    %     entInfl = bc.getEntitiesInfluence(id);
-    %     vals = entInfl*vals;
-    % 
-    %   elseif strcmp(bc.getCond(id),'volumeforce')
-    % 
-    %     % imposed volume pressure
-    %     valsCell = vals;
-    %     cells = bc.getEntities(id);
-    % 
-    %     % preallocate vector for later assembly
-    %     vals = zeros(3*sum(obj.grid.cellNumVerts),1);
-    %     dofs = zeros(3*sum(obj.grid.cellNumVerts),1);
-    %     k = 0;
-    % 
-    %     for i = 1:numel(cells)
-    % 
-    %       % local coupling to map cell pressure to nodal force (as in Biot)
-    %       % assumes unit biot coefficient
-    %       el = cells(i);
-    %       elem = getElement(obj.elements,obj.grid.cellVTKType(el));
-    %       nG = elem.GaussPts.nNode;
-    %       n = 3*elem.nNode;
-    %       [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
-    %       B = zeros(6,elem.nNode*obj.grid.nDim,nG);
-    %       B(elem.indB(:,2)) = N(elem.indB(:,1));
-    %       kron = [1;1;1;0;0;0];
-    %       iN = repmat(kron,1,1,nG);
-    %       Qs = pagemtimes(B,'ctranspose',iN,'none'); 
-    %       Qs = Qs.*reshape(dJWeighed,1,1,[]);
-    %       Qloc = sum(Qs,3);
-    %       vals(k+1:k+n) = Qloc*valsCell(i);
-    %       dofs(k+1:k+n) = dofId(obj.grid.cells(el,:),3);
-    %       k = k+n;
-    % 
-    %     end
-    % 
-    %     % accumulate results
-    %     vals = accumarray(dofs,vals,[3*obj.grid.nNodes 1]);
-    %     dof = obj.getBCdofs(id);
-    %     vals = vals(dof);
-    %   end
-    % 
-    % end
-
   end
 
   methods (Static)
     
-    function [cellStr,pointStr] = buildPrintStruct(disp,stress,strain)
+    function [cellStr,pointStr] = buildPrintStruct(state)
+
+      disp = state.displacements;
+      stress = state.avgStress;
+      strain = state.avgStrain;
       
       nCellData = 2;
       nPointData = 1;
@@ -694,43 +570,14 @@ classdef Poromechanics < PhysicsSolver
       % Displacements
       pointStr(1).name = 'displacements';
       pointStr(1).data = [disp(1:3:end) disp(2:3:end) disp(3:3:end)];
-      % pointStr(1).name = 'ux';
-      % pointStr(1).data = disp(1:3:end);
-      % pointStr(2).name = 'uy';
-      % pointStr(2).data = disp(2:3:end);
-      % pointStr(3).name = 'uz';
-      % pointStr(3).data = disp(3:3:end);
-      %
 
       % Permutation needed to be consistent with paraview output
-
       % Stress
       cellStr(1).name = 'stress';
       cellStr(1).data = stress(:,[1 2 3 6 4 5]);
       cellStr(2).name = 'strain';
       cellStr(2).data = strain(:,[1 2 3 6 4 5]);
-      % cellStr(3).name = 'sz';
-      % cellStr(3).data = stress(:,3);
-      % cellStr(4).name = 'tyz';
-      % cellStr(4).data = stress(:,4);
-      % cellStr(5).name = 'txz';
-      % cellStr(5).data = stress(:,5);
-      % cellStr(6).name = 'txy';
-      % cellStr(6).data = stress(:,6);
-      % %
-      % % Strain
-      % cellStr(7).name = 'ex';
-      % cellStr(7).data = strain(:,1);
-      % cellStr(8).name = 'ey';
-      % cellStr(8).data = strain(:,2);
-      % cellStr(9).name = 'ez';
-      % cellStr(9).data = strain(:,3);
-      % cellStr(10).name = 'gyz';
-      % cellStr(10).data = strain(:,4);
-      % cellStr(11).name = 'gxz';
-      % cellStr(11).data = strain(:,5);
-      % cellStr(12).name = 'gxy';
-      % cellStr(12).data = strain(:,6);
+
     end
 
     function indB = setStrainMatIndex(np)

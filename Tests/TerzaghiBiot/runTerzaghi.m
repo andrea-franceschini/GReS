@@ -44,7 +44,7 @@ domain = Discretizer('boundaries',bound,...
                      'materials',mat,...
                      'grid',grid);
 
-domain.addPhysicsSolver("BiotFullyCoupled");
+domain.addPhysicsSolver("BiotFullyCoupled","SinglePhaseFlowFEM",[]);
 
 
 % In this version of the code, the user can assign initial conditions only

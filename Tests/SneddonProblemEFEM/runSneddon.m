@@ -20,7 +20,7 @@ X = 40.0;
 Y = 1;
 Z = X;
 
-grid = structuredMesh([10,61,10],1,[10,11,10],[-0.5*X,-2,2,0.5*X],[-0.5*Y 0.5*Y],[-0.5*Z,-2,2,0.5*Z]);
+grid = structuredMesh([10,101,10],1,[10,31,10],[-0.5*X,-2,2,0.5*X],[-0.5*Y 0.5*Y],[-0.5*Z,-2,2,0.5*Z]);
 %grid = structuredMesh(101,1,61,[-0.5*X,0.5*X],[-0.5*Y, 0.5*Y],[-0.5*Z, 0.5*Z]);
 
 
@@ -107,8 +107,8 @@ L = fractureSize/cos(deg2rad(angle));
 xi = f.center(:,1)/cos(deg2rad(angle));
 
 
-gn = efem.domain.state.data.fractureJump(1:3:end); 
-
+g = getState(efem,"fractureJump");
+gn = g(1:3:end);
 
 % analytical solutions
 b = L/2;
