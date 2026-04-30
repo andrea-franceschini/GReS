@@ -84,11 +84,11 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
       if obj.steadyState
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H;
-        rhs = obj.H*(p(ents) - p0(ents));
+        rhs = obj.H*(p(ents) );
       else
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H + obj.P/dt;
         pOld = obj.getStateOld(obj.getField());
-        rhsH = obj.H*(p(ents) - p0(ents));
+        rhsH = obj.H*(p(ents) );
         rhsP = (obj.P/dt)*(p(ents) - pOld(ents));
         rhs = rhsH + rhsP;
       end
