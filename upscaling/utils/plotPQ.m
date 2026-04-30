@@ -25,6 +25,10 @@ function plotPQ(p, q, A, B, druckerPrager, filename)
     A_DZ2 = -3.0*tan(phi_DZ2) / sqrt(9.0 + 12.0*tan(phi_DZ2)^2);
     B_DZ2 = 3.0*cohes_DZ2 / sqrt(9.0 + 12.0*tan(phi_DZ2)^2);
 
+    tan_phi = -3.0*A / sqrt(9.0 - 12.0*A^2);
+    phi = rad2deg(atan(tan_phi));
+    cohes = B * sqrt(9.0 + 12.0*tan_phi^2) / 3.0;
+
     % Plot
     figure;
     hold on;
@@ -39,7 +43,7 @@ function plotPQ(p, q, A, B, druckerPrager, filename)
     sprintf('damage zone 2: q = %.3f p + %.3f', A_DZ2, B_DZ2));
 
     plot(p, q, 'o--', 'LineWidth', 2, 'DisplayName', ...
-    sprintf('average: q = %.3f p + %.3f', A, B));
+    sprintf('average: q = %.3f p + %.3f\ncohesion %.2f MPa and friction angle %.2f', A, B, cohes, phi));
 
     xlabel('p [MPa]');
     ylabel('q [MPa]');

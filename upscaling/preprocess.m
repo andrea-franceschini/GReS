@@ -1,40 +1,39 @@
 clear
 clc
 
-mesh = Mesh();
-mesh.importMesh("Input/cylinder.vtk");
-topology = Mesh();
+grid = Grid();
+grid.importMesh("Input/cylinder.vtk");
 
 % set bc files with variable load value (assumed constant)
-setLateralBC(mesh,-1);
-setTopBC(mesh,-1);
+setLateralBC(grid,-1);
+setTopBC(grid,-1);
 
+% ----------------------------------------------------------------
+% ------ function to set confining load on lateral surface -------
+% ----------------------------------------------------------------
 
-function setLateralBC(mesh,loadValue)
+function setLateralBC(grid,loadValue)
 
 listName = 'BCs/listLat';
 valsName = 'BCs/valsLat';
 
 % return files for x,y,z component of lateral load in normal direction
-isSurfLateral = mesh.surfaceTag == 3;
+isSurfLateral = grid.surfaces.tag == 3;
 nS = sum(isSurfLateral);
 surfId = find(isSurfLateral);
-
-tri = Triangle(1,mesh);
 
 load = deal(zeros(nS,3));
 k = 0;
 
 % compute normal of each surface element
 for id = surfId'
-  % compute normalized normal
-  n = computeNormal(tri,id);
-  load(k+1,:) = loadValue*n;
-  k = k+1;
+   % retrieve normal
+   n = grid.surfaces.normal(id,:);
+   load(k+1,:) = loadValue*n;
+   k = k+1;
 end
 
 vals = load(:);
-
 
 % write to file
 fList = fopen(listName,'w');
@@ -50,9 +49,11 @@ fprintf(ft,'%1.6e \n',vals);
 
 end
 
+% ----------------------------------------------------------------
+% ------ function to set load on top surface ---------------------
+% ----------------------------------------------------------------
 
-
-function setTopBC(mesh,loadValue)
+function setTopBC(grid,loadValue)
 
 % set bc along the x direction at the top surface
 
@@ -60,15 +61,13 @@ listName = 'BCs/listTop';
 valsName = 'BCs/valsTop';
 
 % return files for x,y,z component of lateral load in normal direction
-isSurfTop = mesh.surfaceTag == 1;
+isSurfTop = grid.surfaces.tag == 1;
 nS = sum(isSurfTop);
 surfId = find(isSurfTop);
-
 
 load = loadValue*ones(nS,1);
 
 vals = load(:);
-
 
 % write to file
 fList = fopen(listName,'w');
