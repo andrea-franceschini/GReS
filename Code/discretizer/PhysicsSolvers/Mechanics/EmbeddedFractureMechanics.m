@@ -712,7 +712,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       % finalize the grid
       fMesh.surfaces = f;
-      initializeGrid(fMesh);
+      %initializeGrid(fMesh);
       obj.fractureMesh = fMesh;
 
     end
