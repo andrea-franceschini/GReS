@@ -546,7 +546,7 @@ classdef Poromechanics < PhysicsSolver
         ngCells(cId) = el.getNumbGaussPts;
       end
 
-      map = [1;cumsum(ngCells)];
+      map = [1;cumsum(ngCells)+1];
       map = map(1:end-1);
 
     end

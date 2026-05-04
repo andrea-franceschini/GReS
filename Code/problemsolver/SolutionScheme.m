@@ -14,7 +14,8 @@ classdef (Abstract) SolutionScheme < handle
     nVars               % total number of inner variable fields in the model
     attemptedReset      % flag for attempting a configuration reset
     iniState            % initial state of the simulation for solver reset
-    isFirstRun = true   % flag if the simulation is first ever or first after a reset          
+    isFirstRun = true   % flag if the simulation is first ever or first after a reset   
+    nDoFs               % total number of dofs in the simulation
   end
 
 
@@ -87,6 +88,14 @@ classdef (Abstract) SolutionScheme < handle
       obj.output.saveHistory();
     end
 
+
+
+    function nDoFs = getNumbDoF(obj)
+
+      nDoFs = obj.nDoFs;
+
+    end
+
   end
 
 
@@ -134,6 +143,7 @@ classdef (Abstract) SolutionScheme < handle
       obj.nVars = 0;
 
       % store initial state and setup simulation
+      obj.nDoFs = 0;
 
       for i = 1:obj.nDom
         dom = obj.domains(i);
@@ -147,6 +157,7 @@ classdef (Abstract) SolutionScheme < handle
         dom.domainId = i;
         obj.nVars = obj.nVars + dom.dofm.getNumberOfVariables();
         initialize(dom);
+        obj.nDoFs = obj.nDoFs + dom.getNumbDoF;
       end
 
       for i = 1:obj.nInterf
@@ -158,7 +169,8 @@ classdef (Abstract) SolutionScheme < handle
         interf.setStateOld(state);
         interf.interfId = i;
         interf.outstate = obj.output;
-        initialize(interf)
+        initialize(interf);
+        obj.nDoFs = obj.nDoFs + interf.getNumbDoF;
       end
 
       obj.isFirstRun = false;
