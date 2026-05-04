@@ -20,6 +20,10 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
     function registerSolver(obj,varargin)
 
       registerSolver@SinglePhaseFlowFVTPFA(obj,varargin{:});
+      state = getState(obj);
+      state.saturation = zeros(numel(state.pressure),1);
+      setState(obj,state);
+
       % additional logic for richards goes here...
       input = readInput(struct('NLscheme',"newton"),varargin{:});
       obj.NLscheme = input.NLscheme;
@@ -107,22 +111,20 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       dofm = obj.domain.dofm;
       if nargin > 1
         ents = dofm.getActiveEntities(obj.getField());
-        p = obj.getState(obj.getField());
         state = getState(obj);
-        p = state.data.pressure;
-        state.data.pressure(ents) = p(ents) + dSol(dofm.getDoF(obj.fieldId));
-        state.data.saturation = computeSaturation(obj,p(ents));
+        p = state.pressure;
+        state.pressure(ents) = p(ents) + dSol(dofm.getDoF(obj.fieldId));
+        state.saturation = computeSaturation(obj,p(ents));
+        setState(obj,state);
       end
     end
 
     function writeSolution(obj,fac,tID)
-      satOld = getStateOld(obj,"saturation");
-      satCurr = getState(obj,"saturation");
-      pOld = getStateOld(obj,"pressure");
-      pCurr = getState(obj,"pressure");
 
-      obj.domain.outstate.results(tID).pressure = pCurr*fac+pOld*(1-fac);
-      obj.domain.outstate.results(tID).saturation = satCurr*fac+satOld*(1-fac);
+      state = obj.domain.state.interpolate(fac);
+
+      obj.domain.outstate.results(tID).pressure = state.pressure;
+      obj.domain.outstate.results(tID).saturation = state.saturation;
     end
 
     function [ents,vals] = getBC(obj,bcId,t)
