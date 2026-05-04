@@ -147,7 +147,7 @@ classdef SolidMechanicsContact < MeshTying
         limitTraction = abs(obj.cohesion - tan(deg2rad(obj.phi))*t(1));
 
         % report traction during activeSet update
-        gresLog().log(4,['\n Element %i: traction: %1.4e %1.4e %1.4e   ' ...
+        gresLog().log(5,['\n Element %i: traction: %1.4e %1.4e %1.4e   ' ...
           'Limit tangential traction: %1.4e \n'],is,t(:), limitTraction)
 
         obj.activeSet.curr(is) = updateContactState(currAS,t,...
@@ -554,11 +554,15 @@ classdef SolidMechanicsContact < MeshTying
 
               slidingTol = obj.activeSet.tol.sliding;
 
+              % important (this is an incremental limiting traction!!!)
               tauLim = obj.cohesion - trac(1)*tan(deg2rad(obj.phi));
 
               asbMt.localAssembly(tDof(1),umDof,Aum(:,1));
               asbDt.localAssembly(tDof(1),usDof,-Aus(:,1));
 
+ 
+              
+              
               % A_tu (non linear term)
               if slipNorm > slidingTol && obj.NLIter > 0
 
@@ -570,7 +574,7 @@ classdef SolidMechanicsContact < MeshTying
                 asbDt.localAssembly(tDof(2:3),usDof,Atu_s);
 
                 % A_tn (non linear term)
-                dtdtn = computeDerTracTn(obj,dgt,trac);
+                dtdtn = computeDerTracTn(obj,dgt,dTrac);
                 Atn = area*dtdtn;
                 asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
 
@@ -579,7 +583,7 @@ classdef SolidMechanicsContact < MeshTying
               else
 
                 % if slip is small, use current traction
-                vaux = trac(2:3);
+                vaux = dTrac(2:3);
                 dtdtn = - tan(deg2rad(obj.phi))*vaux/norm(vaux);
                 Atn = area*dtdtn;
                 asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
@@ -595,7 +599,7 @@ classdef SolidMechanicsContact < MeshTying
               rhsT(tDof(1)) = rhsT(tDof(1)) + area*g_n;
 
               % rhs (mu_t,tT) - local frame
-              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (trac(2:3)-tT_lim);
+              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (dTrac(2:3)-tT_lim);
 
 
               if gresLog().getVerbosity > 4
@@ -616,7 +620,7 @@ classdef SolidMechanicsContact < MeshTying
               asbQ.localAssembly(tDof,tDof,Aoo);
 
               % rhs (mu,t)
-              rhsT(tDof) = rhsT(tDof) + area*(trac-stateIni.traction(tDof));
+              rhsT(tDof) = rhsT(tDof) + area*dTrac;
             end
 
           end % end inner master elems loop
