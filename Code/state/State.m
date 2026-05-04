@@ -10,10 +10,9 @@ classdef State < handle
 
 
   properties (Access = private)
-
-    data = struct('init',[],'old',[],'curr',[])
-
+    data = struct('init',struct('time',[]),'old',struct('time',[]),'curr',struct('time',[]))
   end
+
 
   properties 
     t = 0
@@ -21,7 +20,6 @@ classdef State < handle
 
 
   methods
-
     function state = get(obj,src,var)
       if nargin == 2
         state = obj.data.(src);
@@ -32,7 +30,6 @@ classdef State < handle
         state = obj.data.(src).(var);
       end
     end
-
 
     function set(obj,src,val,var)
       if nargin < 4
@@ -45,15 +42,12 @@ classdef State < handle
       end
     end
 
-
     function valInterp = interpolate(obj,fac,var)
-
       if fac < 0 || fac > 1
         error("Interpolation factor must be a real number from 0 to 1.")
       end
 
       % interpolate field in current and old state
-
       if nargin == 2
         fldNames = reshape(string(fieldnames(obj.data.curr)),1,[]);
         for f = fldNames
@@ -63,26 +57,12 @@ classdef State < handle
         vCurr = obj.get('curr',var);
         vOld = obj.get('old',var);
         valInterp = vCurr*fac + vOld*(1-fac);
-
       end
-
     end
-
-
-
 
     function data = getData(obj)
-
-      data = obj.data;
-      
+      data = obj.data;      
     end
-
-
-
-
-
-
-
 
   end
 
