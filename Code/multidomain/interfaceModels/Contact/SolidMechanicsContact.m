@@ -325,9 +325,12 @@ classdef SolidMechanicsContact < MeshTying
     function [surfaceStr,pointStr] = writeVTK(obj,fac,varargin)
 
       outTraction = obj.state.interpolate(fac,"traction");
+      dT = obj.state.interpolate(fac,"deltaTraction");
       outNormalGap = obj.state.interpolate(fac,"normalGap");
       outTangentialSlip = obj.state.interpolate(fac,"tangentialSlip");
       outTangentialGap = obj.state.interpolate(fac,"tangentialGap");
+
+
 
       outTangentialSlip = (reshape(outTangentialSlip,2,[]))';
       outTangentialGap = (reshape(outTangentialGap,2,[]))';
@@ -337,6 +340,8 @@ classdef SolidMechanicsContact < MeshTying
 
       tT = [outTraction(2:3:end),outTraction(3:3:end)];
       norm_tT = sqrt(tT(:,1).^2 + tT(:,2).^2);
+
+      deltaTrac = [dT(1:3:end), dT(2:3:end), dT(3:3:end)];
 
       fractureState = double(obj.activeSet.curr);
 
@@ -353,6 +358,7 @@ classdef SolidMechanicsContact < MeshTying
         'tangential_gap_norm',     outTangentialGapNorm
         'fracture_state',          fractureState
         'rotationMatrix',          obj.grids(1).surfaces.rotationMatrices
+        'deltaTraction',           deltaTrac
         };
 
       surfaceStr = cell2struct(entries, {'name','data'}, 2);
@@ -489,9 +495,10 @@ classdef SolidMechanicsContact < MeshTying
             usDof = dofSlave.getLocalDoF(fldS,nodeSlave);
             tDof = getMultiplierDoF(obj,is);
             trac = state.traction(tDof);
+            tIni = stateIni.traction(tDof);
 
             % equilibrium equation and stabilization work with delta traction
-            dTrac = trac - stateIni.traction(tDof);
+            dTrac = trac - tIni;
 
             nodeMaster = surfMaster.loc2glob(topolMaster(im,1:elMaster.nNode));
             umDof = dofMaster.getLocalDoF(fldM,nodeMaster);
@@ -591,10 +598,12 @@ classdef SolidMechanicsContact < MeshTying
               rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (trac(2:3)-tT_lim);
 
 
-              if gresLog().getVerbosity > 5
-                fprintf('\nelement %i- rhsT: %5.3e %5.3e \n',is,Att*trac(2:3))
-                fprintf('element %i- rhsTlim: %5.3e %5.3e \n',is,MortarQuadrature.integrate(f1,Nmult_t,tT_lim,dJw))
-                fprintf('------------------------------------ \n')
+              if gresLog().getVerbosity > 4
+                if contactState == ContactMode.slip || contactState == ContactMode.newSlip
+                  fprintf('\n element %i - rhsT: %5.3e %5.3e \n',is,trac(2:3))
+                  fprintf('\n element %i- rhsTlim: %5.3e %5.3e \n',is,tT_lim)
+                  fprintf('------------------------------------ \n')
+                end
               end
 
             end
@@ -607,7 +616,7 @@ classdef SolidMechanicsContact < MeshTying
               asbQ.localAssembly(tDof,tDof,Aoo);
 
               % rhs (mu,t)
-              rhsT(tDof) = rhsT(tDof) + area*trac;
+              rhsT(tDof) = rhsT(tDof) + area*(trac-stateIni.traction(tDof));
             end
 
           end % end inner master elems loop
@@ -641,6 +650,7 @@ classdef SolidMechanicsContact < MeshTying
       end
 
       state = getState(obj);
+      iniTrac = getStateInit(obj,"traction");
 
       H = obj.stabilizationMat;
 
@@ -659,7 +669,7 @@ classdef SolidMechanicsContact < MeshTying
       % use traction variation for tangential components
       rhsH = -H*state.deltaTraction;
 
-      rhsH(1:3:end) = -H(1:3:end,:) * state.traction;
+      rhsH(1:3:end) = -H(1:3:end,:) * (state.traction - iniTrac);
 
     end
 

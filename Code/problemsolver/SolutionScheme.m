@@ -189,7 +189,7 @@ classdef (Abstract) SolutionScheme < handle
       end
 
       for i = 1:obj.nInterf
-        obj.interfaces{i}.state = copy(obj.iniState.interfaces{i}.getState);
+        setState(obj.interfaces{i},obj.iniState.interfaces{i}.getState);
       end
 
       if ~isempty(obj.output)
