@@ -27,7 +27,7 @@ classdef SedDofManager < handle
         case "all"
           obj.dof(:) = 1:prod(obj.ncells);
           obj.laysByCol(:) = obj.ncells(3);
-          obj.inactDof = (prod(ncells(1:2))+1:prod(ncells))';
+          obj.inactDof = ((obj.ncells(3)-1)*prod(ncells(1:2))+1:prod(ncells))';
         case "surface"
           numcells = prod(obj.ncells(1:2));
 

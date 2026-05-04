@@ -55,7 +55,7 @@ classdef Sedimentation < PhysicsSolver
     nmat
     tol = 1e-8;
     niterMx = 100;
-    minCellHeight = 1e-4;
+    minCellHeight = 1e-9;
   end
 
   methods (Access = public)
@@ -142,7 +142,7 @@ classdef Sedimentation < PhysicsSolver
       obj.getState().data.strain = zeros(nelm,1);      
       obj.getState().data.cellDefm = zeros(nelm,1);      
       obj.getState().data.stressCons = zeros(nelm,1);      
-      obj.getState().data.voidrate = zeros(nelm,1);      
+      obj.getState().data.voidrate = zeros(nelm,1);
 
       obj.getState().data.sedmRate = zeros(prod(ncells(1:2)),obj.nmat);
       obj.getState().data.sedmAcc  = zeros(prod(ncells(1:2)),obj.nmat);
@@ -262,7 +262,9 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.state.data.sedmAcc = sedmCols;
 
       % Active and Update the cells with variable height
-      obj.UpdateTopCells(activeCol);
+      % if ~any(cellGrow)
+        obj.UpdateTopCells(activeCol);
+      % end
 
       % Grow mesh if height threshold is reached
       if any(cellGrow)
@@ -311,15 +313,19 @@ classdef Sedimentation < PhysicsSolver
       state.data.voidrate(dofs) = e_prev + delta_e;
 
       % Update the Mesh Deformation - vertical deformation
-      % [~,~,dz] = obj.grid.getCellsDims();
-      % dz = dz + obj.getState('cellDefm');  % to compute as eulerian grid
       eps = delta_e./(1+obj.void0(dofs));
-      strain = stateOld.data.strain(dofs) + eps;  % <-- Lagrangian strain
-      % strain = obj.getStateOld().data.strain + eps./(1+eps); % <-- Eulerian strain
+
+      % Lagrangian strain model
+      strain = stateOld.data.strain(dofs) + eps;  
+      dz = obj.cellDims(dofs,3);
+
+      % Eulerian strain model
+      % strain = obj.getStateOld().data.strain(dofs) + eps./(1+eps);
+      % dz = obj.cellDims(dofs,3);
+      % dz = dz + obj.getState().data.cellDefm(dofs);
 
       state.data.strain(dofs) = strain;
-      % state.data.cellDefm = strain.*dz;
-      state.data.cellDefm(dofs) = strain.*obj.cellDims(dofs,3);
+      state.data.cellDefm(dofs) = strain.*dz;
 
       % Update the iterator for the time step
       state.data.iterTimeStep = state.data.iterTimeStep + 1;
