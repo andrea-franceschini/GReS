@@ -19,6 +19,8 @@ classdef Grid < handle
 
     % edgeVTK = []
 
+    isProcessed = false
+
     isMixed = false             % flag for presence of multiple cell shapes
     structFlag = false        % flag for structured mesh
   end
@@ -160,6 +162,8 @@ classdef Grid < handle
     % end
 
 
+
+
     function outList = getCellsByVTKId(obj,vtkId,cellList)
       if ~isscalar(vtkId)
         error("Input vtk id must be a scalar value");
@@ -223,6 +227,12 @@ classdef Grid < handle
 
     function setStructured(obj)
       obj.structFlag = true;
+    end
+
+    function out = isGeometryProcessed(obj)
+
+      out = obj.isProcessed;
+      
     end
 
 

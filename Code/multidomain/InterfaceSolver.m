@@ -33,7 +33,7 @@ classdef (Abstract) InterfaceSolver < handle
     outstate
 
     % interface state
-    state = State()
+    state
 
     % id of this interface in the solution scheme object
     interfId
@@ -135,6 +135,8 @@ classdef (Abstract) InterfaceSolver < handle
 
       % specify the variables to be coupled
       setCoupledVariables(obj,input)
+
+      obj.state = State();
 
 
     end

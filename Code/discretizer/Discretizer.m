@@ -30,7 +30,7 @@ classdef Discretizer < handle
     % id of the interfaces defined on the domain
     interfaceList
 
-    state = State();
+    state
 
   end
 
@@ -42,6 +42,7 @@ classdef Discretizer < handle
 
       % Initialized internal variables
       obj.dofm = DoFManager();
+      obj.state = State();
       % obj.bcs = Boundaries();
       % obj.outstate = OutState();
       % obj.materials = Materials();
