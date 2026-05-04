@@ -554,17 +554,16 @@ classdef SolidMechanicsContact < MeshTying
 
               slidingTol = obj.activeSet.tol.sliding;
 
-              % important (this is an incremental limiting traction!!!)
+              % total limiting traction norm
               tauLim = obj.cohesion - trac(1)*tan(deg2rad(obj.phi));
 
               asbMt.localAssembly(tDof(1),umDof,Aum(:,1));
               asbDt.localAssembly(tDof(1),usDof,-Aus(:,1));
 
- 
-              
-              
+              isNewSliding = (contactState == ContactMode.newSlip) && obj.NLIter == 0;
+
               % A_tu (non linear term)
-              if slipNorm > slidingTol && obj.NLIter > 0
+              if slipNorm > slidingTol && ~isNewSliding
 
                 % compute only on slip terms with sliding large enough
                 dtdgt = computeDerTracGap(obj,trac(1),dgt);
@@ -578,19 +577,21 @@ classdef SolidMechanicsContact < MeshTying
                 Atn = area*dtdtn;
                 asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
 
-                tT_lim = tauLim*(dgt/norm(dgt));
+                slipDir = dgt/norm(dgt);
 
               else
 
                 % if slip is small, use current traction
-                vaux = dTrac(2:3);
+                vaux = trac(2:3);
                 dtdtn = - tan(deg2rad(obj.phi))*vaux/norm(vaux);
                 Atn = area*dtdtn;
                 asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
 
-                tT_lim = tauLim*vaux/norm(vaux);
+                slipDir = vaux/norm(vaux);
 
               end
+
+              tT_lim = tauLim * slipDir;
 
               % A_tt
               Att = area*eye(2);
@@ -598,11 +599,11 @@ classdef SolidMechanicsContact < MeshTying
 
               rhsT(tDof(1)) = rhsT(tDof(1)) + area*g_n;
 
-              % rhs (mu_t,tT) - local frame
-              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (dTrac(2:3)-tT_lim);
+              % enforce tangential traction to match the limiting value
+              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (trac(2:3)-tT_lim);
 
 
-              if gresLog().getVerbosity > 4
+              if gresLog().getVerbosity > 3
                 if contactState == ContactMode.slip || contactState == ContactMode.newSlip
                   fprintf('\n element %i - rhsT: %5.3e %5.3e \n',is,trac(2:3))
                   fprintf('\n element %i- rhsTlim: %5.3e %5.3e \n',is,tT_lim)
