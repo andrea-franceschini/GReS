@@ -107,6 +107,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       dofm = obj.domain.dofm;
       if nargin > 1
         ents = dofm.getActiveEntities(obj.getField());
+        p = obj.getState(obj.getField());
         state = getState(obj);
         p = state.data.pressure;
         state.data.pressure(ents) = p(ents) + dSol(dofm.getDoF(obj.fieldId));
@@ -162,8 +163,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
         p = getState(obj,obj.getField());
 
         %
-        [mob, dmob] = obj.computeMobilityBoundary( ...
-          obj.domain.state.data.pressure(ents),srcVal,faceId);
+        [mob, dmob] = obj.computeMobilityBoundary(p(ents),srcVal,faceId);
         tr = obj.trans(faceId);
         dz = cells.center(ents,3) - zf;
         dirJ = mob.*tr;
@@ -260,7 +260,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
         isElMat = matUpElem == m;
         p = p(obj.upElem(isElMat));
         [lw(isElMat), dlw(isElMat)] = mat.getMaterial(m).PorousRock.Curves.computeRelativePermeability(p);
-        % [lw(isElMat), dlw(isElMat)] = mat.getMaterial(m).RelativePermCurve.interpTable(p);
       end
       mu = mat.getFluid().getDynViscosity();
       lw = lw/mu;

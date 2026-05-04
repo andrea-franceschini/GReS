@@ -15,8 +15,6 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     end
 
     function registerSolver(obj,varargin)
-
-
       registerSolver@SinglePhaseFlow(obj,entityField.cell,varargin{:});
 
       %linkBoundSurf2TPFAFace(obj);
@@ -28,7 +26,6 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       obj.isIntFaces = all(ismember(obj.grid.faces.neighbors, flowCells), 2);
 
       computeRhsGravTerm(obj);
-
     end
 
     function states = finalizeState(obj,p,t)
@@ -133,11 +130,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
 
     function pHydro = getHydrostaticPressure(obj)
-
       fluid = obj.domain.materials.getFluid();
       gamma = fluid.getSpecificWeight;
       pHydro = gamma * (obj.watLev - obj.grid.cells.center(:,3));
-
     end
 
     function gTerm = getRhsGravity(obj)
@@ -429,7 +424,6 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     function str = typeDiscretization(obj)
       str = "FVTPFA";
     end
-
 
     function transm = getTransmissibility(obj)
       transm = obj.trans;

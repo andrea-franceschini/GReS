@@ -49,7 +49,6 @@ classdef (Abstract) PhysicsSolver < handle
   end
 
   methods (Abstract)
-
     % mandatory methods that need to be implemented in any physicsSolver
 
     % read the input data of the solver and assign variables to cell tags
@@ -72,19 +71,16 @@ classdef (Abstract) PhysicsSolver < handle
 
     % write history to MAT-file
     writeSolution(obj,interpolationFactor,tID);
-
   end
 
   methods (Abstract, Static)
-
     % get the list of variable fields affected by the solver
-    getField();
 
+    getField();
   end
 
 
   methods
-
     % interface to get and set the state object from the solver
 
     function state = getState(obj,varargin)
@@ -117,28 +113,21 @@ classdef (Abstract) PhysicsSolver < handle
       obj.domain.setStateInit(varargin{:});
     end
 
-    
-
     function advanceState(obj,varargin)
-
       % base method to advance the state after reaching convergence
       % copy variables from current state to old state
       setStateOld(obj,getState(obj));
-
     end
 
     function goBackState(obj,varargin)
       % base method to move back the state when convergence is not reached
 
       obj.domain.state = copy(obj.domain.stateOld);
-
     end
 
     function hasConfigurationChanged = updateConfiguration(obj)
-
       % base physicsSolver class implements no configuration update
       hasConfigurationChanged = false;
-
     end
 
     function resetConfiguration(obj)
@@ -159,7 +148,6 @@ classdef (Abstract) PhysicsSolver < handle
     end
 
     function applyDirVal(obj,bcId,varargin)
-
       if ~BCapplies(obj,bcId)
         return
       end
@@ -187,8 +175,6 @@ classdef (Abstract) PhysicsSolver < handle
       v = obj.getState(bcVar);
       v(dofs) = vals;
       obj.setState(v,bcVar);
-
-
     end
 
     function applyBC(obj,bcId,varargin)
@@ -231,12 +217,9 @@ classdef (Abstract) PhysicsSolver < handle
       else
         obj.applyNeuBC(bcId,dofs,vals);
       end
-
     end
 
-
     function applyNeuBC(obj,bcId,bcDofs,bcVals)
-
       if ~BCapplies(obj,bcId)
         return
       end
@@ -252,11 +235,9 @@ classdef (Abstract) PhysicsSolver < handle
       bcVals = bcVals(~id);
 
       obj.domain.rhs{bcId}(bcDofs) = obj.domain.rhs{bcId}(bcDofs) - bcVals;
-
     end
 
     function applyDirBC(obj,bcId,bcDofs,varargin)
-
       % Standard application of Dirichlet boundary condition to the jacobian.
       % This method works with incremental linear system du = J\(-rhs)
 
@@ -322,13 +303,9 @@ classdef (Abstract) PhysicsSolver < handle
       % else
       obj.domain.rhs{bcVarId}(bcDofs) = 0;
       %end
-
     end
 
-
-
     function J = getJacobian(obj,varargin)
-
       % get the Jacobian blocks affected by the solver
       % differently from the getJacobian() in Discretizer, this method
       % returns a matrix ready to perform computations
@@ -340,23 +317,18 @@ classdef (Abstract) PhysicsSolver < handle
       end
 
       J = cell2matrix(J);
-
     end
 
     function out = BCapplies(obj,bcId)
-
       bcVar = obj.domain.bcs.getVariable(bcId);
       out = any(strcmp(obj.getField(),bcVar));
-
     end
-
 
     function out = isSymmetric(obj)
-
       out = false;
       % optional solver query to know if a solver is symmetric or not
-
     end
+
   end
 
 

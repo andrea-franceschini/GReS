@@ -119,7 +119,6 @@ classdef Discretizer < handle
         % loop over available solvers
         obj.getPhysicsSolver(solv).updateState(du);
       end
-
     end
 
     function isConfigChanged = updateConfiguration(obj)
