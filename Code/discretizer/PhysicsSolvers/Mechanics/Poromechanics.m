@@ -442,7 +442,7 @@ classdef Poromechanics < PhysicsSolver
       out = false;
       
       % check if there is not embedded fractures
-      if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics"))
+      if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics")) || ~isempty(obj.domain.interfaceList)
         return
       end
 

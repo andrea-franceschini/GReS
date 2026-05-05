@@ -394,7 +394,7 @@ classdef SolidMechanicsContact < MeshTying
       us = obj.domains(MortarSide.slave).getState("displacements");
 
       % recover variationally consistent stabilized gaps
-      areaSlave = repelem(obj.getSlaveArea(),3);
+      areaSlave = repelem(obj.getSlaveArea(),3,1);
 
       areaGap = (obj.D*us + obj.M*um);
 
@@ -516,7 +516,7 @@ classdef SolidMechanicsContact < MeshTying
             g_n = state.gap(3*is-2);
 
             % tangential slip
-            dgt = slip([3*is-1 3*is]);
+            dgt = slip([3*is-1; 3*is]);
             slipNorm = norm(dgt);
 
             % operator mapping global vectors to local tangential coordinates
@@ -587,7 +587,11 @@ classdef SolidMechanicsContact < MeshTying
                 Atn = area*dtdtn;
                 asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
 
-                slipDir = vaux/norm(vaux);
+                % if obj.state.t > 10.0
+                %   slipDir = -vaux/norm(vaux);
+                % else
+                  slipDir = vaux/norm(vaux);
+                %end
 
               end
 
@@ -603,7 +607,7 @@ classdef SolidMechanicsContact < MeshTying
               rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (trac(2:3)-tT_lim);
 
 
-              if gresLog().getVerbosity > 3
+              if gresLog().getVerbosity > 1
                 if contactState == ContactMode.slip || contactState == ContactMode.newSlip
                   fprintf('\n element %i - rhsT: %5.3e %5.3e \n',is,trac(2:3))
                   fprintf('\n element %i- rhsTlim: %5.3e %5.3e \n',is,tT_lim)

@@ -508,10 +508,18 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       blk = obj.domain.vtmBlock;
       obj.domain.outstate.writeVTKfile(blk,'EmbeddedFractures',obj.fractureMesh,...,
         time,[],[],[],cellStr)
-   
+
     end
 
-   
+
+
+    function gOrd = getGaussOrder(obj)
+
+      gOrd = obj.mechSolver.getGaussOrder();
+
+    end
+
+
   end
 
 
@@ -716,6 +724,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       obj.fractureMesh = fMesh;
 
     end
+
 
 
     function [edges,c2e] = getEdgeTopology(obj)

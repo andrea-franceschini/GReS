@@ -282,6 +282,9 @@ classdef (Abstract) PhysicsSolver < handle
 
       % zero out rows (use transpose trick)
       for j = 1:nV
+        if isempty(obj.domain.J{bcVarId,j})
+          continue
+        end
         obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
         obj.domain.J{bcVarId,j}(:,bcDofs) = 0;
         obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
@@ -300,6 +303,9 @@ classdef (Abstract) PhysicsSolver < handle
       % symmetry)
       if isSymmetric(obj)
         for i = 1:nV
+          if isempty(obj.domain.J{i,bcVarId})
+            continue
+          end
           obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
         end
 
