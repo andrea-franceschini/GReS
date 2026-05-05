@@ -45,8 +45,8 @@ solver = NonLinearImplicit('simulationparameters',simParam,...
 solver.simulationLoop();
 
 %% --------------------- Post Processing the Results ----------------------
-postproc = false;
-printFigs = false;
+postproc = true;
+printFigs = true;
 
 if postproc
 

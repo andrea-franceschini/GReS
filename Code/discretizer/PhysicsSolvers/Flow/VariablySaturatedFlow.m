@@ -18,7 +18,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
     end
 
     function registerSolver(obj,varargin)
-
       registerSolver@SinglePhaseFlowFVTPFA(obj,varargin{:});
       state = getState(obj);
       state.saturation = zeros(numel(state.pressure),1);
@@ -27,11 +26,9 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       % additional logic for richards goes here...
       input = readInput(struct('NLscheme',"newton"),varargin{:});
       obj.NLscheme = input.NLscheme;
-
     end
 
     function assembleSystem(obj,dt)
-
       % compute upstream saturation and mobility
       p = obj.getState(obj.getField());
       [Sw,dSw,d2Sw, obj.lw,dlw] = computeUpElemAndProperties(obj,p);
@@ -41,7 +38,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
       ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
 
-
       if obj.steadyState
         rhs = obj.H*p(ents);
         J = obj.H;
@@ -50,7 +46,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
         rhs = obj.H*p(ents) + (obj.P/dt)*(p(ents) - pOld(ents));
         J = obj.H + obj.P/dt;
       end
-
 
       if isNewtonNLSolver(obj)
         Jh = computeJacobianPartJhNewton(obj,p,dlw);
@@ -70,11 +65,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       else
         obj.domain.rhs{obj.fieldId} = rhs;
       end
-
-
     end
-
-
 
     function states = finalizeState(obj,p,t)
       % Compute the posprocessing variables for the module.
@@ -92,10 +83,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       % states.mass = checkMassCons(obj,mob,potential);
     end
 
-
-
     function gTerm = getRhsGravity(obj,lw)
-
       dofm = obj.domain.dofm;
       nCells = dofm.getNumbDoF(obj.fieldId);
       neigh = obj.grid.faces.neighbors(obj.isIntFaces,:);
@@ -104,8 +92,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
       gTerm = gTerm(dofm.getActiveEntities(obj.fieldId));
     end
-
-
 
     function updateState(obj,dSol)
       dofm = obj.domain.dofm;
@@ -120,7 +106,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
     end
 
     function writeSolution(obj,fac,tID)
-
       state = obj.domain.state.interpolate(fac);
 
       obj.domain.outstate.results(tID).pressure = state.pressure;
@@ -149,7 +134,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       end
 
       if bcFld == entityField.surface && isEssential(bc,bcId)
-
         surfId = bc.getSourceEntities(bcId);
         faceId = surfaces.faceId(surfId);
         zf = faces.center(faceId,3);
@@ -179,14 +163,11 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
         vals = [dirJ,q]; % {JacobianVal,rhsVal]
 
       else
-
         ents = bc.getTargetEntities(bcId);
         vals = bc.getVals(bcId,t);
 
       end
-
     end
-
 
     function [cellStr,pointStr] = buildPrintStruct(obj,state)
       pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);
@@ -316,7 +297,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       if gamma > 0
         zVec = obj.grid.cells.center(:,3);
         zNeigh = zVec(neigh);
-        lElemIsUp = (p(neigh(:,1)) - p(neigh(:,2))) + gamma*(zNeigh(:,1) - zNeigh(:,2)) >= 0;
+        lElemIsUp = (p(neigh(:,1)) - p(neigh(:,2))) + gamma*(zNeigh(:,1) - zNeigh(:,2)) > 0;
       else
         lElemIsUp = p(neigh(:,1)) >= p(neigh(:,2));
       end
@@ -376,34 +357,42 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
       % Define some constant.
       mat = obj.domain.materials;
-      beta = mat.getFluid().getFluidCompressibility();
-      subCells = obj.domain.dofm.getFieldCells(obj.getField());
-      nSubCells = length(subCells);
-      poroMat = zeros(nSubCells,1);
-      alphaMat = zeros(nSubCells,1);
+      dofm = obj.domain.dofm;
+      cellIds = dofm.getFieldCells(obj.fieldId);
       cells = obj.grid.cells;
+
+      poroMat = zeros(cells.nTag,1);
+      alphaMat = zeros(cells.nTag,1);
+      beta = mat.getFluid().getFluidCompressibility();
+
       for m = 1:cells.nTag
-        alphaMat(m) = getRockCompressibility(obj,m);
+        if ~ismember(m,dofm.getTargetRegions(obj.getField()))
+          continue
+        end
+
+        % get regions where pressure is coupled with displacements
+        coupledTags = dofm.getTargetRegions([obj.getField(),"displacements"]);
+        alphaMat(m) = getRockCompressibility(obj,m,coupledTags);
         poroMat(m) = mat.getMaterial(m).PorousRock.getPorosity();
       end
+      ctags = cells.tag(cellIds);
 
-      alphaMat = alphaMat(cells.tag(subCells));
-      poroMat = poroMat(cells.tag(subCells));
+      alphaMat = alphaMat(ctags);
+      poroMat = poroMat(ctags);
  
       % Define some parameters.
-      pTmp = pTmp(subCells);
-      pOld = pOld(subCells);
+      pTmp = pTmp(cellIds);
+      pOld = pOld(cellIds);
       pdiff = pTmp-pOld;
 
       % Computing the Jacobian Part.
       Jp = beta*alphaMat.*Stau + (2*alphaMat+beta*poroMat).*dStau + poroMat.*ddStau;
-      Jp = cells.volume(subCells).*Jp.*pdiff;
+      Jp = cells.volume(cellIds).*Jp.*pdiff;
 
       nDoF = obj.domain.dofm.getNumbDoF(obj.getField());
-      [~,~,dof] = unique(subCells);
+      [~,~,dof] = unique(cellIds);
       Jp = sparse(dof,dof,Jp,nDoF,nDoF);
     end
-
 
     function out = isNewtonNLSolver(obj)
       out = strcmp("newton",obj.NLscheme);
@@ -412,7 +401,6 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
   end
 
   methods (Static)
-    
 
     % function out = getField()
     %   out = "pressure";

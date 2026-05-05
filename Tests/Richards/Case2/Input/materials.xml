@@ -3,11 +3,6 @@
 <Materials>
   <Solid name = "sand"
          cellTags = "1">
-    <Constitutive>
-      <Elastic
-          youngModulus = "9.4706e7"
-          poissonRatio = "0.15"      />
-    </Constitutive>
 
     <PorousRock
         porosity = "1.0"

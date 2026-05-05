@@ -95,9 +95,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         coupledTags = dofm.getTargetRegions([obj.getField(),"displacements"]);
         alphaMat(m) = getRockCompressibility(obj,m,coupledTags);
         poroMat(m) = mat.getMaterial(m).PorousRock.getPorosity();
-
       end
-      
 
       ctags = cells.tag(cellIds);
 
