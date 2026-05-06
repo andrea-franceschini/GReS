@@ -50,7 +50,7 @@ classdef FixedStressSplit < SolutionScheme
         if ~newtConvFlow, break, end
 
         % check convergence of fixed stress split
-        currPress = dom.state.data.pressure;
+        currPress = getState(physSolv,"pressure");
         prevPress = physSolv.conv.pressure;
         relPressChange = norm(currPress-prevPress)/norm(prevPress);
 
@@ -87,63 +87,20 @@ classdef FixedStressSplit < SolutionScheme
 
     function setSolutionScheme(obj,varargin)
 
-      % Check that we have an even number of inputs
-      if mod(length(varargin), 2) ~= 0
-        error('Arguments must come in key-value pairs.');
-      end
+      setSolutionScheme@SolutionScheme(obj,varargin{:})
 
-      % Loop through the key-value pairs
-      for k = 1:2:length(varargin)
-        key = varargin{k};
-        value = varargin{k+1};
-
-        if isempty(value)
-          continue
-        end
-
-        if ~ischar(key) && ~isstring(key)
-          error('Keys must be strings');
-        end
-
-        switch lower(key)
-          % case 'simulationparameters'
-          %   assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
-          %   obj.simparams = value;
-          case 'simulationparameters'
-            obj.simparams = value;
-          case 'output'
-            obj.output = value;
-          case {'domain','domains'}
-            obj.domains = value;
-          case 'maxiterations'
-            obj.maxIterFSS = value;
-          case 'reltolerance'
-            obj.tolFSS = value;
-          otherwise
-            error('Unknown input key %s for SolutionScheme \n', key);
-        end
-      end
-
-      obj.nDom = numel(obj.domains);
-      obj.nInterf = numel(obj.interfaces);
-
-      assert(~isempty(obj.simparams),"Input 'simulationParameters'" + ...
-        " is required for SolutionScheme")
+      % barrier for this solver
+      assert(obj.domains.solverNames == "BiotFixedStressSplit",...
+        "FixedStressSplit algorithm only requires 'BiotFixedStressSplit' physics solver")
       assert(obj.nDom == 1,"Only one domain is admitted when using fixedStressSplit");
       assert(obj.nInterf == 0,"FixedStressSplit with internal interfaces is not yet implmented");
 
       obj.nVars = 0;
 
-      for i = 1:obj.nDom
-        obj.domains(i).domainId = i;
-        obj.domains(i).simparams = obj.simparams;
-        obj.domains(i).outstate = obj.output;
-        obj.domains(i).stateOld = copy(obj.domains(i).getState());
-        obj.nVars = obj.nVars + obj.domains(i).dofm.getNumberOfVariables();
-      end
-
-      assert(obj.domains.solverNames == "BiotFixedStressSplit",...
-        "FixedStressSplit algorithm only requires 'BiotFixedStressSplit' physics solver")
+      default = struct('maxiterations',10,'reltolerance',1e-5);
+      parm = readInput(default,varargin{:});
+      obj.maxIterFSS = parm.maxiterations;
+      obj.tolFSS = parm.reltolerance;
 
     end
 
@@ -208,6 +165,9 @@ classdef FixedStressSplit < SolutionScheme
 
       end % end newton loop
     end
+
+
+    
 
     function setLinearSolver(obj,varName)
 

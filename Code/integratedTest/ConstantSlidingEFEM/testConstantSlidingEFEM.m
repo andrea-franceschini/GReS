@@ -34,7 +34,8 @@ solver = NonLinearImplicit('simulationparameters',simparams,...
 solver.simulationLoop();
 
 % get tangential gap
-gt = abs(domain.state.data.fractureJump(2:3:end));
+gt = abs(getState(domain,"fractureJump"));
+gt = gt(2:3:end);
 anGt = 0.1*sqrt(2);
 tol = 1e-6;
 assert(all(abs(gt - anGt)<tol),"Analytical solution is not matched")

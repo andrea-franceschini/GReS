@@ -120,7 +120,7 @@ grid.surfaces.tag      = elems(ID, 2);
 % grid.edgeVTKType  = elems(ID, 1);
 % grid.nEdges       = length(grid.edgeTag);
 
-processGeometry(grid);
+%processGeometry(grid);
 
 end
 

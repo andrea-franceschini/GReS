@@ -5,7 +5,7 @@
 
 	<!-- General parameters -->
    <general
-      tol="1e-8"
+      tol="1e-6"
       maxit="1000"
       restart="100"
    />

@@ -3,7 +3,7 @@
 <!-- Simulation parameters common to all physical models -->
 <SimulationParameters
                       Start="0."
-                      End ="10."
+                      End ="40."
                       DtInit= "0.5"
                       DtMax ="5"
                       DtMin ="0.5"

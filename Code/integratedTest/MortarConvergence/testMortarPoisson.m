@@ -117,7 +117,7 @@ for i = 1:nref
   [L2(i),H1(i)] = pois.computeError();
   h(i) = 1/Nr(i);
 
-  gresLog().log(0,'Max absolute error is: %1.6e \n',max(abs(domain.state.data.err)));
+  gresLog().log(0,'Max absolute error is: %1.6e \n',max(abs(getState(pois,"err"))));
 end
 
 % compute convergence order
