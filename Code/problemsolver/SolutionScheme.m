@@ -321,13 +321,11 @@ classdef (Abstract) SolutionScheme < handle
       for i = 1:obj.nDom
         dom = obj.domains(i);
         dom.setState(obj.t,'time');
-        dom.state.t = obj.t;
         timeStepSetup(obj.domains(i));
       end
 
       for i = 1:obj.nInterf
         interf = obj.interfaces{i};
-        interf.state.t = obj.t;
         interf.setState(obj.t,'time');
         timeStepSetup(obj.interfaces{i});
       end

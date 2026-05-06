@@ -14,9 +14,9 @@ classdef State < handle
   end
 
 
-  properties 
-    t = 0
-  end
+  % properties 
+  %   t = 0
+  % end
 
 
   methods

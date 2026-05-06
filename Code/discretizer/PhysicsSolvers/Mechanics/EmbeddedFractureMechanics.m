@@ -127,9 +127,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       rhsW = zeros(nDofW,1);
 
       % get state variables
-      t = obj.domain.state.t;
       s = getState(obj);
       sOld = getStateOld(obj);
+      t = s.time;
       iniStress = getStateInit(obj,'stress');
       iniTraction = getStateInit(obj,'traction'); % use this!
       jump = s.fractureJump;

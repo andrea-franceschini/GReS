@@ -74,10 +74,11 @@ classdef Poromechanics < PhysicsSolver
       dofm = obj.domain.dofm;
       coordinates = obj.grid.coordinates;
       cells = obj.grid.cells;
-      t = obj.domain.state.t;
       s = getState(obj);
       sOld = getStateOld(obj);
       iniStress = getStateInit(obj,'stress');
+
+      t = s.time;
 
       % allocate
       subCells = dofm.getFieldCells(obj.fieldId);

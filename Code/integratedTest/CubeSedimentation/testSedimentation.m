@@ -13,11 +13,8 @@
 scriptFullPath = mfilename('fullpath');
 scriptDir = fileparts(scriptFullPath);
 cd(scriptDir);
-tmpFolder = genpath('Output');
-if contains(path, tmpFolder)
-  rmpath(tmpFolder);
-end
-
+rmpath(genpath(fullfile(gres_root,...
+        "/Code/integratedTest/CubeSedimentation/Output")));
 % Result's used as reference to comparison.
 ref = repelem(struct('press', 1, 'stress', 1, 'strain', 1), 3);
 
