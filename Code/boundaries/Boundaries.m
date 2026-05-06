@@ -217,7 +217,7 @@ classdef Boundaries < handle
         ncomp = numel(bc.nloadedEnts);
         l = zeros(ncomp,1);
         for i = 1:ncomp
-          l(i) = sum(isEntActive(n+1:bc.nloadedEnts(i)));
+          l(i) = sum(isEntActive(n+1:n+bc.nloadedEnts(i)));
           n = n + bc.nloadedEnts(i);
         end
 
