@@ -47,7 +47,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
   
       if ismissing(params.waterLevel)
-        obj.watLev = max(cells.center,3);
+        obj.watLev = max(cells.center(:,3));
       end
 
 

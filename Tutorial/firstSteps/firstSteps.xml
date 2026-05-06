@@ -3,7 +3,7 @@
   <!-- single domain -->
   <Domain>
     <Geometry>
-              <StructuredMesh NX = "10" NY = "10" NZ = "10" LX = "0,1" LY = "0,1" LZ = "0,1" />
+              <StructuredMesh NX = "4" NY = "4" NZ = "8" LX = "0,1" LY = "0,1" LZ = "0,1" />
     </Geometry>
     <Gauss nGP="2"/>
     <Materials          fileName="materials.xml"/>
@@ -17,9 +17,9 @@
   <SimulationParameters fileName="simparams.xml"/>
 
   <Output
-      outputFile  = "Output/results"
-      matFileName = "Output/results"
-      printTimes  = "1,5,10"/>
+      outputFile  = "Output/resultsXML"
+      matFileName = "Output/resultsXML"
+      printTimes  = "0,10,20,50,100"/>
 
 
 </Problem>
