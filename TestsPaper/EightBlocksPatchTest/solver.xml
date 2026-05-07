@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model>
+  <!-- Simulation parameters common to all physical models -->
+  <Solver>
+    <Poromechanics />
+
+  </Solver>
+</model>

@@ -1,7 +1,0 @@
-NodeBC            % BC item 
-Dir            % BC type 
-Poromechanics            % Physics 
-fixedZ            % BC name 
-BCs/fixedZ/list 
-0.000000 BCs/fixedZ/time0.dat 
-End

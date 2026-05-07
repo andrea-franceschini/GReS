@@ -27,6 +27,7 @@
 *.lib
 *.mexw64
 *.mexa64
+*.mexmaca64
 
 # Executables
 *.exe
@@ -37,15 +38,18 @@
 *.vtu
 *.vtm
 *.pvd
+*.pvsm
 
 # Matlab files
 *.mat
+*.MATLABDriveTag
+*.DS_Store
 
 # asv files
 *.asv
 
 # Develop Experiments folders
-#/Tests_Develop/
+/Tests_Develop/
 
 # Temporary folders with external classes
 /Code/cross_grid/
@@ -58,3 +62,15 @@
 
 # Shared file system files
 *.nfs*
+
+# idea folders
+.idea
+
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+*.log
+logs/

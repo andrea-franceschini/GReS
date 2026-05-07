@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Problem>
+
+<Interface>
+
+  <!-- Interface 1 -->
+  <MeshTying>
+
+    <Master
+            domainId = "1"
+            surfaceTag = "3"
+            />
+    <Slave
+           domainId = "2"
+           surfaceTag = "5"
+           />
+    <Quadrature
+                type = "SegmentBasedQuadrature"
+                multiplierType = "P0"
+                nGP = "7"
+                />
+
+
+    <Output
+            outputFile = "Output/Interf_1"
+            printTimes = "1"
+            />
+  </MeshTying>
+
+  <!-- Interface 2 -->
+  <MeshTying>
+
+    <Master
+            domainId = "1"
+            surfaceTag = "4"
+            />
+    <Slave
+           domainId = "4"
+           surfaceTag = "2"
+           />
+    <Quadrature
+                type = "SegmentBasedQuadrature"
+                multiplierType = "P0"
+                nGP = "7"
+                />
+
+
+
+    <Output
+            outputFile = "Output/Interf_2"
+            printTimes = "1"
+            />
+  </MeshTying>
+
+  <!-- Interface 3 -->
+  <MeshTying>
+
+    <Master
+            domainId = "2"
+            surfaceTag = "4"
+            />
+    <Slave
+           domainId = "3"
+           surfaceTag = "2"
+           />
+    <Quadrature
+                type = "SegmentBasedQuadrature"
+                multiplierType = "P0"
+                nGP = "7"
+                />
+
+
+
+    <Output
+            outputFile = "Output/Interf_3"
+            printTimes = "1"
+            />
+  </MeshTying>
+
+  <!-- Interface 4 -->
+  <MeshTying>
+
+    <Master
+            domainId = "4"
+            surfaceTag = "3"
+            />
+    <Slave
+           domainId = "3"
+           surfaceTag = "5"
+           />
+    <Quadrature
+                type = "SegmentBasedQuadrature"
+                multiplierType = "P0"
+                nGP = "7"
+                />
+
+
+
+    <Output
+            outputFile = "Output/Interf_4"
+            printTimes = "1"
+            />
+  </MeshTying>
+
+  <!-- Interface 5 -->
+  <MeshTying>
+
+    <Master
+            domainId = "5"
+            surfaceTag = "3"
+            />
+    <Slave
+           domainId = "6"
+           surfaceTag = "5"
+           />
+    <Quadrature
+                type = "SegmentBasedQuadrature"
+                multiplierType = "P0"
+                nGP = "7"
+                />
+
+
+
+    <Output
+            outputFile = "Output/Interf_5"
+            printTimes = "1"
+            />
+  </MeshTying>
+
+  <!-- Interface 6 -->
+  <MeshTying>
+
+    <Master
+            domainId = "5"
+            surfaceTag = "4"
+            />
+    <Slave
+           domainId = "8"
+           surfaceTag = "2"
+           />
+    <Quadrature
+                type = "SegmentBasedQuadrature"
+                multiplierType = "P0"
+                nGP = "7"
+                />
+
+
+
+    <Output
+            outputFile = "Output/Interf_6"
+            printTimes = "1"
+            />
+  </MeshTying>
+
+  <!-- Interface 7 -->
+  <MeshTying>
+
+    <Master
+            domainId = "6"
+            surfaceTag = "4"
+            />
+    <Slave
+           domainId = "7"
+           surfaceTag = "2"
+           />
+    <Quadrature
+                type = "SegmentBasedQuadrature"
+                multiplierType = "P0"
+                nGP = "7"
+                />
+
+
+
+    <Output
+            outputFile = "Output/Interf_7"
+            printTimes = "1"
+            />
+  </MeshTying>
+
+  <!-- Interface 8 -->
+  <MeshTying>
+
+    <Master
+            domainId = "8"
+            surfaceTag = "3"
+            />
+    <Slave
+           domainId = "7"
+           surfaceTag = "5"
+           />
+    <Quadrature
+                type = "SegmentBasedQuadrature"
+                multiplierType = "P0"
+                nGP = "7"
+                />
+
+
+
+    <Output
+            outputFile = "Output/Interf_8"
+            printTimes = "1"
+            />
+  </MeshTying>
+
+  <!-- Interface 9 -->
+  <MeshTying>
+
+    <Master
+            domainId = "1"
+            surfaceTag = "6"
+            />
+    <Slave
+           domainId = "5"
+           surfaceTag = "1"
+           />
+    <Quadrature
+                type = "SegmentBasedQuadrature"
+                multiplierType = "P0"
+                nGP = "7"
+                />
+
+
+
+    <Output
+            outputFile = "Output/Interf_9"
+            printTimes = "1"
+            />
+  </MeshTying>
+
+  <!-- Interface 10 -->
+  <MeshTying>
+
+    <Master
+            domainId = "2"
+            surfaceTag = "6"
+            />
+    <Slave
+           domainId = "6"
+           surfaceTag = "1"
+           />
+    <Quadrature
+                type = "SegmentBasedQuadrature"
+                multiplierType = "P0"
+                nGP = "7"
+                />
+
+
+
+    <Output
+            outputFile = "Output/Interf_10"
+            printTimes = "1"
+            />
+  </MeshTying>
+
+  <!-- Interface 11 -->
+  <MeshTying>
+
+    <Master
+            domainId = "3"
+            surfaceTag = "6"
+            />
+    <Slave
+           domainId = "7"
+           surfaceTag = "1"
+           />
+    <Quadrature
+                type = "SegmentBasedQuadrature"
+                multiplierType = "P0"
+                nGP = "7"
+                />
+
+
+
+    <Output
+            outputFile = "Output/Interf_11"
+            printTimes = "1"
+            />
+  </MeshTying>
+
+  <!-- Interface 12 -->
+  <MeshTying>
+
+    <Master
+            domainId = "4"
+            surfaceTag = "6"
+            />
+    <Slave
+           domainId = "8"
+           surfaceTag = "1"
+           />
+    <Quadrature
+                type = "SegmentBasedQuadrature"
+                multiplierType = "P0"
+                nGP = "7"
+                />
+
+
+
+    <Output
+            outputFile = "Output/Interf_12"
+            printTimes = "1"
+            />
+  </MeshTying>
+
+</Interface>
+
+</Problem>
