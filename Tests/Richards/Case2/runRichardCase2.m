@@ -33,7 +33,10 @@ domain = Discretizer('Grid',grid,...
 domain.addPhysicsSolver('VariablySaturatedFlow');
 
 % Set initial conditions directly modifying the state object
-domain.state.data.pressure(:) = -9.8066e4;
+% domain.state.data.pressure(:) = -9.8066e4;
+p = getState(domain,"pressure");
+p(:) = -9.8066e4;
+setState(domain,p,"pressure");
 
 % Set and solve the simulation
 solver = NonLinearImplicit('simulationparameters',simParam,...

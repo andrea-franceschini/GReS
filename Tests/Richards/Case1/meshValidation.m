@@ -28,8 +28,7 @@ bound = Boundaries(grid,fullfile(input_dir,'boundaries.xml'));
 printUtils = OutState(fullfile(input_dir,'outputValidation.xml'));
 
 sol = struct();
-ComparisonMaterials = ["matTable.xml","matTabular.xml"];
-
+ComparisonMaterials = ["matTabular.xml","matTable.xml"];
 
 for sim=1:length(ComparisonMaterials)
   % Create an object of the Materials class and read the materials file
@@ -43,10 +42,10 @@ for sim=1:length(ComparisonMaterials)
   domain.addPhysicsSolver('VariablySaturatedFlow');
 
   % set initial conditions directly modifying the state object
-  z = elems.mesh.cellCentroid(:,3);
+  z = grid.cells.center(:,3);
   gamma_w = getFluid(mat).getSpecificWeight();
   wLev = 9.; % level of the water table
-  domain.state.data.pressure = gamma_w*(wLev-z);
+  setState(domain,gamma_w*(wLev-z),"pressure");
 
   % Set and solve the simulation
   solver = NonLinearImplicit('simulationparameters',simParam,...
@@ -57,8 +56,8 @@ for sim=1:length(ComparisonMaterials)
   % elem vector containing elements centroid along vertical axis
   numb = 0.;
   tol = 0.01;
-  nodesP = find(abs(grid.cellCentroid(:,1)-numb) < tol & abs(grid.cellCentroid(:,2)-numb) < tol);
-  [~,ind] = sort(grid.cellCentroid(nodesP,3));
+  nodesP = find(abs(grid.cells.center(:,1)-numb) < tol & abs(grid.cells.center(:,2)-numb) < tol);
+  [~,ind] = sort(grid.cells.center(nodesP,3));
   nodesP = nodesP(ind);
 
   nrep = length(printUtils.timeList);
@@ -71,7 +70,7 @@ for sim=1:length(ComparisonMaterials)
   end
 
   % Vertical position of the column
-  ptsZ = elems.mesh.cellCentroid(nodesP,3);
+  ptsZ = grid.cells.center(nodesP,3);
   
   % Values for normalized plots
   pos = find(ptsZ == max(ptsZ));

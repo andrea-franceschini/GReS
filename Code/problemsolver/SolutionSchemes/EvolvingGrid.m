@@ -13,6 +13,7 @@ classdef EvolvingGrid < SolutionScheme
 
   properties (Access = private)
     printGrow
+    printInterv
     printCount = 0
     printList = []
   end
@@ -79,98 +80,75 @@ classdef EvolvingGrid < SolutionScheme
   methods (Access = protected)
 
     function setSolutionScheme(obj,varargin)
-      % Check that we have an even number of inputs
-      if mod(length(varargin), 2) ~= 0
-        error('Arguments must come in key-value pairs.');
+      default = struct('simulationparameters',SimulationParameters.empty,...
+                       'output',missing,...
+                       'domains',Discretizer.empty,...
+                       'growprint',0,...
+                       'intervalprint',missing);
+      params = readInput(default,varargin{:});
+
+      obj.simparams = params.simulationparameters;
+      obj.domains = params.domains;
+      if ~ismissing(params.output)
+        obj.output = params.output;
       end
 
-      % Loop through the key-value pairs
-      for k = 1:2:length(varargin)
-        key = varargin{k};
-        value = varargin{k+1};
-
-        if isempty(value)
-          continue
-        end
-
-        if ~ischar(key) && ~isstring(key)
-          error('Keys must be strings');
-        end
-
-        switch lower(key)
-          % case 'simulationparameters'
-          %   assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
-          %   obj.simparams = value;
-          case 'simulationparameters'
-            obj.simparams = value;
-          case 'output'
-            obj.output = value;
-          case {'domain','domains'}
-            obj.domains = value;
-          case 'growprint'
-            obj.printGrow = value;
-          otherwise
-            error('Unknown input key %s for SolutionScheme \n', key);
-        end
+      obj.printGrow = logical(params.growprint);
+      obj.printInterv = params.intervalprint;
+      if ismissing(obj.printInterv)
+        % Define an interval outside of the simulation
+        tf = params.simulationparameters.tMax+params.simulationparameters.dtMax;
+        obj.printInterv = [tf, 2*tf];
       end
 
       obj.nDom = numel(obj.domains);
-      obj.nInterf = numel(obj.interfaces);
+      obj.nInterf = numel(obj.interfaces);      
+      obj.nVars = 1;
 
       assert(~isempty(obj.simparams),"Input 'simulationParameters'" + ...
         " is required for SolutionScheme")
       assert(obj.nDom == 1,"Only one domain is admitted when using EvolvingGrid");
-      assert(obj.nInterf == 0,"EvolvingGrid do not alound interfaces to another domains");
-
-      obj.nVars = 0;
-      obj.domains(1).domainId = 1;
-      obj.domains(1).simparams = obj.simparams;
-      obj.domains(1).outstate = obj.output;
-      if isempty(obj.domains(1).stateOld)
-        obj.domains(1).stateOld = copy(obj.domains(1).getState());
-      end
-
-      % system has only one pressure field
-      obj.nVars = 1;
-
-      obj.attemptedReset = false;
-
-      solv = obj.domains.solverNames;
-      obj.physics = obj.domains.getPhysicsSolver(solv);
-      obj.field = obj.physics.getField;
     end
 
-    % Sets the linear solver and checks for eventual user input parameters
+    
     function setLinearSolver(obj,varargin)
+      % Sets the linear solver and checks for eventual user input parameters
       if isempty(varargin)
         physname = [];
       else
         % check if the user provided the physics
         physname = varargin{1};
       end
+
+      solv = obj.domains.solverNames;
+      obj.physics = obj.domains.getPhysicsSolver(solv);
+      obj.field = obj.physics.getField;
+
       obj.linsolver = linearSolver(obj,physname);
     end
 
-    function printState(obj)
 
+    function printState(obj)
       if isempty(obj.output)
         return
       end
 
-      print = false;
-      newcells = obj.physics.domain.state.data.newcells~=0;
-      % printByGrow = and(obj.printGrow,newcells);
-      printByGrow = true;
+      tf = obj.t;
+      t0 = tf-obj.dt;
+      flagPrintExtra = false;
+      if and(tf>=obj.printInterv(1),t0<=obj.printInterv(2))
+        flagPrintExtra = true;        
+      end
 
-      if and(~print,printByGrow)
+      if getState(obj.physics.domain,'newcells')~=0
+        flagPrintExtra = or(flagPrintExtra,obj.printGrow);
+      end
+
+      if flagPrintExtra
         % if printByGrow
         fac = 1;  % 0=stateOld, 1=stateNew - Because the mesh update
         % happens after the print, to plot after the grow, i plot the
         % oldstate in the next time step.
-
-        % if print
-        %   obj.printCount = obj.printCount+1;
-        % end
 
         pos = obj.output.timeID + obj.printCount;
 
@@ -186,12 +164,10 @@ classdef EvolvingGrid < SolutionScheme
       end
 
       if obj.output.timeID <= length(obj.output.timeList)
-
         outTime = obj.output.timeList(obj.output.timeID);
 
         % loop over print times contained in the current time step
         while outTime <= obj.t
-
           assert(outTime >= obj.tOld, 'Print time %f out of range (%f - %f)',...
             outTime, obj.tOld, obj.t);
           assert(obj.t - obj.tOld > eps('double'),...
@@ -199,7 +175,6 @@ classdef EvolvingGrid < SolutionScheme
 
           % compute factor to interpolate current and old state variables
           fac = (outTime - obj.tOld)/(obj.t - obj.tOld);
-
           if isnan(fac) || isinf(fac)
             fac = 1;
           end
@@ -223,15 +198,10 @@ classdef EvolvingGrid < SolutionScheme
             outTime = obj.output.timeList(obj.output.timeID);
           end
         end
-
-
-
       end
-
     end
 
     function printVTK(obj,fac,outTime,tID)
-
       if obj.output.writeVtk
         % set folders
         obj.output.prepareOutputFolders(tID);
@@ -265,7 +235,6 @@ classdef EvolvingGrid < SolutionScheme
     end
 
     function finalize(obj)
-
       if ~isempty(obj.output)
         obj.output.savePvd(obj.printList);
 

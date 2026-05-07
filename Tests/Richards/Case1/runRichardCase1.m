@@ -40,7 +40,8 @@ domain.addPhysicsSolver('VariablySaturatedFlow');
 z = grid.cells.center(:,3);
 gamma_w = getFluid(mat).getSpecificWeight();
 wLev = 9.; % level of the water table
-domain.state.data.pressure = gamma_w*(wLev-z);
+p = gamma_w*(wLev-z);
+setState(domain,p,"pressure");
 
 % Set and solve the simulation
 solver = NonLinearImplicit('simulationparameters',simParam,...

@@ -206,7 +206,7 @@ classdef SedimentsMap < handle
 
       % smoothing the data.
       values = reshape(values,obj.dim(1),obj.dim(2));
-      values = imgaussfilt(values, 1);         % light smoothing
+      % values = imgaussfilt(values, 1);         % light smoothing
       values = reshape(values,[],1);
     end
 
