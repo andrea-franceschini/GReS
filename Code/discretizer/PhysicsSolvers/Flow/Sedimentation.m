@@ -169,7 +169,7 @@ classdef Sedimentation < PhysicsSolver
           fracMat = obj.matfrac(dof,:);
           dh = obj.cellDims(dof,3);
           stsCons = stStore(map);
-          [void,stress] = obj.initializeCell(fracMat,dh/2,stsCons);
+          [void,stress,~,~] = obj.initializeCell(fracMat,dh/2,stsCons);
           stStore(map) = 2*stress-stsCons;
 
           obj.void0(dof) = void;
@@ -277,7 +277,7 @@ classdef Sedimentation < PhysicsSolver
 
       % Active and Update the cells with variable height
       % if ~any(cellGrow)
-        updateTopCells(obj,activeCol);
+      updateTopCells(obj,activeCol,true);
       % end
 
       % Grow mesh if height threshold is reached
@@ -615,12 +615,13 @@ classdef Sedimentation < PhysicsSolver
       end
     end
 
-    function updateTopCells(obj,activeCol)
+    function updateTopCells(obj,activeCol,flag)
       state = getState(obj);
       stateOld = getStateOld(obj);
 
       sedm = state.sedmAcc;
       sedmOld = stateOld.sedmAcc;
+      dsedm = sedm - sedmOld;
 
       % Activate inactive cells
       activetedDofs(obj.mdof,activeCol);
@@ -631,22 +632,38 @@ classdef Sedimentation < PhysicsSolver
       dofs = getVarHeightDofs(obj.mdof,actCells);
 
       % Change the height of the tops cells.
-      dh = sum(sedm(actCells,:),2);
-      obj.cellDims(dofs,3) = dh;
+      % if flag
+      %   % Fraction of each column
+      %   fracSOld = sum(sedmOld(actCells,:),2)/sum(sedm(actCells,:),2);
+      %   fracDSed = sum(dsedm(actCells,:),2)/sum(sedm(actCells,:),2);
+      %   dh = sum(dsedm(actCells,:),2);
+      % else
+        dh = sum(sedm(actCells,:),2);
+      % end
+      % dh = sum(sedm(actCells,:),2);
+      obj.cellDims(dofs,3) = sum(sedm(actCells,:),2);
 
       % Initialize for each cell: porosity, initial stress
       stsCons = zeros(size(dh));
       obj.matfrac(dofs,:) = normalize(sedm(actCells,:), 2,'range');
-      [void,stress] = initializeCell(obj,obj.matfrac(dofs,:),dh/2,stsCons);
+      [void,stress,void0,stress0] = initializeCell(obj,obj.matfrac(dofs,:),dh/2,stsCons);
+      % if and(flag,length(obj.void0)>max(dofs))
+      %   void = 1./(1./fracSOld.*obj.void0(dofs)+1./fracDSed.*void);
+      % end
       obj.void0(dofs) = void;
 
       % Update the states
       sInit = getCellsProp(obj,'initialStress',dofs);
       state.stressCons(dofs) = -abs(getCellsProp(obj,'preConStress',dofs));
-      state.stress(dofs) = stress-sInit;
       state.voidrate(dofs) = void;
-      stateOld.stress(dofs) = -sInit;
+      % if flag
+        % state.stress(dofs) = -stress;
+      % else
+        state.stress(dofs) = stress-sInit;
+      % end
+      
       stateOld.voidrate(dofs) = void;
+      stateOld.stress(dofs) = -sInit;
 
       setState(obj,state);
       setStateOld(obj,stateOld);
@@ -744,7 +761,7 @@ classdef Sedimentation < PhysicsSolver
       activeCol = state.cellVarAct;
       activeCol(map) = sum(sed(map,:),2) > obj.heightControl*obj.minCellHeight;
 
-      obj.updateTopCells(activeCol);
+      obj.updateTopCells(activeCol,false);
     end
 
     function computeHalfTrans(obj)
@@ -849,17 +866,17 @@ classdef Sedimentation < PhysicsSolver
       data.poro = voidR;
     end
 
-    function [void,stress] = initializeCell(obj,fracMat,dh,stsCons)
+    function [void,stress,void0,stress0] = initializeCell(obj,fracMat,dh,stsCons)
       % Computing the e0, gamma_s, Cr, stsInit
       ncells = size(fracMat,1);
-      void = zeros(ncells,1);
+      void0 = zeros(ncells,1);
       gamma_s = zeros(ncells,1);
       gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
       Cr = zeros(ncells,1);
       stsInit = zeros(ncells,1);
       for mat=1:obj.nmat
         tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidRate();
-        void = void + fracMat(:,mat).*tmpMat;
+        void0 = void0 + fracMat(:,mat).*tmpMat;
 
         tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getSpecificWeight();
         gamma_s = gamma_s + fracMat(:,mat).*tmpMat;
@@ -873,9 +890,9 @@ classdef Sedimentation < PhysicsSolver
 
       % iterate to find the true value of e and stress
       stsParcial = (gamma_s-gamma_w).*dh;
-      % stress = (1./(1+void)).*stsParcial+stsCons;
-      [void,stress] = Sedimentation.initialCellProp(void,-stsParcial,...
-        -stsInit,stsCons,Cr,obj.tol,obj.niterMx);
+      stress0 = (1./(1+void0)).*stsParcial+stsCons;
+      [void,stress] = Sedimentation.initialCellProp(void0,-stsParcial,...
+        -stsInit,stsCons,Cr,obj.tol,obj.niterMx);      
     end
 
   end

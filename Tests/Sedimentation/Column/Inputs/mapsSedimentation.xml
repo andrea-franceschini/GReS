@@ -1,0 +1,21 @@
+<Sedimentation_Maps type = "ramp">
+  <Event time = "0." >
+    <Map materialFlag = "1"
+         division = "2,2"
+         file = "Inputs/clay_2000.dat"/>
+  </Event>
+
+  <Event time = "400." >
+    <Uniform materialFlag = "2" value= "3.e-3"/>
+  </Event>
+
+  <Event time = "800." >
+    <Linear materialFlag = "3" value= "0.e0, 0.e0, 3.e-3, 3.e-3"/>
+  </Event>
+</Sedimentation_Maps>
+
+
+<!--
+<Uniform materialFlag = "1" value= "3.e-3"/>
+    <Random type = "Lognormal" mean = "0.005" variance= "1.e-1"/>    
+-->
