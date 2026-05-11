@@ -78,6 +78,7 @@ classdef SolidMechanicsContact < MeshTying
 
     function assembleConstraint(obj)
 
+ 
       % reset the jacobian blocks
       obj.setJmu(MortarSide.slave, []);
       obj.setJmu(MortarSide.master, []);
@@ -243,6 +244,19 @@ classdef SolidMechanicsContact < MeshTying
       setStateOld(obj,getState(obj,"traction"),"traction");
 
       setStickNodes(obj);
+
+    end
+
+    function timeStepSetup(obj)
+
+      s = obj.getState();
+      t = s.time;
+
+      if t > 10.1 && t < 11.1
+        trac = s.traction;
+        trac(2:3) = -trac(2:3);
+        setState(obj,trac,"traction")
+      end
 
     end
 
