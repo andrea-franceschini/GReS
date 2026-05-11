@@ -10,7 +10,7 @@ solverName = strcat("SinglePhaseFlow",typeDiscretization);
 simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'));
 
 % output parameters
-printUtils = OutState('outputFile',"Output/results",'printTimes',[1,2,3,4,5,6,7,8,9,10]);
+printUtils = OutState('outputFile',"Output/results",'printTimes',0:10:40);
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(fullfile(input_dir,'materials.xml'));
@@ -24,7 +24,6 @@ grid.importMesh(fullfile(input_dir,'domain.msh'));
 % Creating boundaries conditions.
 bound = Boundaries(grid,fullfile(input_dir,'boundaries.xml'));
 
-
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Grid',grid,...
                      'Materials',mat,...
@@ -32,9 +31,10 @@ domain = Discretizer('Grid',grid,...
 
 domain.addPhysicsSolver(solverName,'steadyState',0);
 
-
 % set initial conditions directly modifying the state object
-domain.state.data.pressure(:) = 1.e5;
+p = getState(domain,"pressure");
+p(:) = 1e5;
+setState(domain,p,"pressure");
 
 solver = NonLinearImplicit('simulationparameters',simParam,...
                            'domains',domain,...
@@ -56,13 +56,8 @@ if postproc
   pressure = [printUtils.results.pressure];
 
   % Ajusting the time position.
-  t = [printUtils.results.time];
-  tind = 2:length(t);
-  t_max = t(end);
-  t = t(tind);
-  tstr = strcat(num2str(t'),' second');
-
-  center = grid.cells.center;
+  t = printUtils.timeList;
+  tstr = strcat(num2str(t'),' second');  
 
   %Getting pressure and saturation solution for specified time from MatFILE
   numbA = 5.;
@@ -74,20 +69,17 @@ if postproc
       [~,ind] = sort(grid.coordinates(nodesP,2));
       nodesP = nodesP(ind);
 
-      pressplot = pressure(nodesP);
-
       % Values for normalized plots
       H = max(grid.coordinates(nodesP,2));
 
       % Location a column to be the plot position.
       pts = grid.coordinates(nodesP,2)/H;
     case "FVTPFA"
+      center = grid.cells.center;
       tol = 0.4;
       nodesP = find(abs(center(:,1)-numbA) < tol & abs(center(:,3)-numbB) < tol);
       [~,ind] = sort(center(nodesP,2));
       nodesP = nodesP(ind);
-
-      pressplot = pressure(nodesP);
 
       % Values for normalized plots
       H = max(center(nodesP,2));
@@ -96,6 +88,7 @@ if postproc
       pts = center(nodesP,2)/H;
     otherwise
   end
+  pressplot = pressure(nodesP,:);
 
   %Plotting pressure head
   figure(1)

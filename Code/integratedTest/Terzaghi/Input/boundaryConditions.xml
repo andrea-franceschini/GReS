@@ -55,6 +55,7 @@ a function handle depending on space (x,y,z)
              />
   </BC>
 
+  <!--
   <BC
       name = "TopLoad"
       type = "Neumann"
@@ -70,7 +71,8 @@ a function handle depending on space (x,y,z)
              value = "-10"
              />
 
-  </BC>
+</BC>
+-->
 
   <BC
       name = "LatFixedY"

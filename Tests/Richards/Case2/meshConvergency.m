@@ -15,22 +15,13 @@ result = struct('pressure',[],'saturation',[],'height',[]);
 meshList = [10 20 40 80 160];
 for i=1:length(meshList)
     % Create the Mesh object
-    topology = Mesh();
+    grid = Grid();
 
     % Set the input file name
     fileName = fullfile(input_dir,'Mesh',strcat('Column',int2str(meshList(i)),'.msh'));
 
     % Import mesh data into the Mesh object
-    topology.importMesh(fileName);
-
-    % Create an object of the "Elements" class and process the element properties
-    elems = Elements(topology,2);
-
-    % Create an object of the "Faces" class and process the face properties
-    faces = Faces(topology);
-
-    % Wrap Mesh, Elements and Faces objects in a structure
-    grid = struct('topology',topology,'cells',elems,'faces',faces);
+    grid.importMesh(fileName);
 
     % Creating boundaries conditions.
     bound = Boundaries(grid,fullfile(input_dir,'boundaries.xml'));
@@ -47,7 +38,9 @@ for i=1:length(meshList)
     domain.addPhysicsSolver('VariablySaturatedFlow');
 
     % Set initial conditions directly modifying the state object
-    domain.state.data.pressure(:) = -9.8066e4;
+    p = getState(domain,"pressure");
+    p(:) = -9.8066e4;
+    setState(domain,p,"pressure");
 
     % Set and solve the simulation
     solver = NonLinearImplicit('simulationparameters',simParam,...
@@ -58,9 +51,9 @@ for i=1:length(meshList)
     % Saving the analysis information
     numb = 0.;
     tol = 0.01;
-    nodesP = find(abs(elems.mesh.cellCentroid(:,1)-numb) < tol & abs(elems.mesh.cellCentroid(:,2)-numb) < tol);
+    nodesP = find(abs(grid.cells.center(:,1)-numb) < tol & abs(grid.cells.center(:,2)-numb) < tol);
 
-    result(i).height = elems.mesh.cellCentroid(nodesP,3);
+    result(i).height = grid.cells.center(nodesP,3);
     result(i).pressure = printUtils.results(1).pressure(nodesP);
     result(i).saturation = printUtils.results(1).saturation(nodesP);
 

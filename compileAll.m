@@ -36,7 +36,7 @@ isChronosReady = isfile(fullfile(chronosDir,'compileAll.m'));
 if isChronosReady
    cd(chronosDir);
    compileAll
-   cd(home)
+   cd(gres_root)
 end
 
 end

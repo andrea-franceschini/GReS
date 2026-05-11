@@ -25,11 +25,12 @@ solver.simulationLoop();
 
 surfSlave = interfaces{2}.grids.surfaces;
 nS = surfSlave.num;
-gt = interfaces{2}.state.tangentialSlip;
+state = getState(interfaces{2});
+gt = state.tangentialSlip;
 gt = sqrt(gt(1:2:end).^2 + gt(2:2:end).^2);
 cId = 2:2:nS-1;
 gt = gt(cId);
-tn = interfaces{2}.state.traction(3*cId-2);
+tn = state.traction(3*cId-2);
 
 xCoord = surfSlave.center(cId,1)/cos(deg2rad(20));
 xAnal = linspace(-1,1,1000);

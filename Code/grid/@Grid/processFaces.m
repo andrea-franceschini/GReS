@@ -16,12 +16,11 @@ function processFaces(grid,vtkId)
 %    .isBoundary   – nF × 1  % logical true if face is at the boundary
 %
 %  grid.cells (appended)
-%    .facePos      – (nCells+1) × 1  offsets into cells.faces (1‑based)
-%    .faces        – packed global face IDs  (one entry per cell–face pair)
-%    .faceLocalId  – packed local face index inside the cell  (1‑based)
-%
+%    .cells2faces      – ArrayOfArrays  (nC × nFPC)  of face global id per cell
+%    .cells2localFaces        – ArrayOfArrays  (nC × nFPC)  of face local id per cell
+
 %  grid.surfaces (appended)
-%    .faceId      – map tagged surface to global id of corresponding face
+%    .faceId      – array map tagged surface to global id of corresponding face
 
 %  Normal convention (normal is unit)
 %    boundary : normal points outward  from neighbors(:,1)

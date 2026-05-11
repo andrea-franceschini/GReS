@@ -36,7 +36,8 @@ classdef testShearPatch < matlab.unittest.TestCase
       solver = NonLinearImplicit('simulationparameters',simparams,'domains',domain,'output',printUtils);
       solver.simulationLoop();
       gresLog().setVerbosity(-1);
-      verifyEqual(testCase,domain.state.data.stress(:,5),1.5*ones(8,1),"AbsTol",1e-9)
+      stress = domain.getState("stress");
+      verifyEqual(testCase,stress(:,5),1.5*ones(8,1),"AbsTol",1e-9)
 
       % validate the vtk output
       s = readstruct("test/output_00001/Domain_1.vtu","FileType","xml");
@@ -103,7 +104,8 @@ classdef testShearPatch < matlab.unittest.TestCase
       solver = NonLinearImplicit('simulationparameters',simparams,'domains',domain);
       solver.simulationLoop();
       gresLog().setVerbosity(-1);
-      verifyEqual(testCase,domain.state.data.stress(:,5),1.5*ones(8,1),"AbsTol",1e-9)
+      stress = domain.getState("stress");
+      verifyEqual(testCase,stress(:,5),1.5*ones(8,1),"AbsTol",1e-9)
 
 
     end

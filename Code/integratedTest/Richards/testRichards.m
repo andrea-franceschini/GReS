@@ -61,7 +61,7 @@ domain = Discretizer('grid',grid,...
 domain.addPhysicsSolver('VariablySaturatedFlow');
 
 % set initial conditions directly modifying the state object
-domain.state.data.pressure = getFluid(mat).getSpecificWeight()*(wLev-z);
+setState(domain,getFluid(mat).getSpecificWeight()*(wLev-z),"pressure");
 
 % Solve the problem
 solver = NonLinearImplicit('simulationparameters',simParam,...

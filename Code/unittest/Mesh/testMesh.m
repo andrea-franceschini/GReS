@@ -5,6 +5,7 @@ classdef testMesh < matlab.unittest.TestCase
     function testReadVTK(testCase)
       grid = Grid();
       grid.importMesh('testMesh.vtk');
+      grid.processGeometry;
       testCase.verifyEqual(grid.nNodes,919);
       testCase.verifyEqual(grid.nDim,3);
       testCase.verifyEqual(grid.cells.num,560);
@@ -13,6 +14,7 @@ classdef testMesh < matlab.unittest.TestCase
 
     function testStructuredGrids(testCase)
       grid = structuredMesh(5,5,5,[0 1],[0 1],[0 1]);
+      grid.processGeometry;
       testCase.verifyEqual(grid.cells.num,5^3);
       testCase.verifyEqual(grid.nNodes,6^3);
       testCase.verifyEqual(grid.getCellNodes(2),[2	3	9	8	38	39	45	44]);

@@ -25,18 +25,20 @@ classdef Boundaries < handle
         return
       end
 
-      if nargin == 1
-        obj.grid = varargin{1};
-        return
-      end
 
       obj.grid = varargin{1};
 
-      % % check grid
-      % assert()
+      if ~obj.grid.isGeometryProcessed
+        processGeometry(obj.grid);
+      end
 
-      % Calling the function to read input data from file
-      obj.addBCs(varargin{2:end});
+      if nargin > 1
+
+        % Calling the function to read input data from file
+        obj.addBCs(varargin{2:end});
+
+      end
+
     end
 
 

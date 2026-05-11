@@ -78,66 +78,32 @@ classdef EvolvingGrid < SolutionScheme
   methods (Access = protected)
 
     function setSolutionScheme(obj,varargin)
-      % Check that we have an even number of inputs
-      if mod(length(varargin), 2) ~= 0
-        error('Arguments must come in key-value pairs.');
-      end
 
-      % Loop through the key-value pairs
-      for k = 1:2:length(varargin)
-        key = varargin{k};
-        value = varargin{k+1};
+      default = struct('simulationparameters',SimulationParameters.empty,...
+                       'output',missing,...
+                       'domains',Discretizer.empty,...
+                       'growprint',false);
 
-        if isempty(value)
-          continue
-        end
+      params = readInput(default,varargin{:});
 
-        if ~ischar(key) && ~isstring(key)
-          error('Keys must be strings');
-        end
-
-        switch lower(key)
-          % case 'simulationparameters'
-          %   assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
-          %   obj.simparams = value;
-          case 'simulationparameters'
-            obj.simparams = value;
-          case 'output'
-            obj.output = value;
-          case {'domain','domains'}
-            obj.domains = value;
-          case 'growprint'
-            obj.printGrow = value;
-          otherwise
-            error('Unknown input key %s for SolutionScheme \n', key);
-        end
+      obj.simparams = params.simulationparameters;
+      obj.domains = params.domains;
+      if ~ismissing(params.output)
+        obj.output = params.output;
       end
 
       obj.nDom = numel(obj.domains);
       obj.nInterf = numel(obj.interfaces);
+      obj.printGrow = params.growprint;
+      obj.nVars = 1;
 
       assert(~isempty(obj.simparams),"Input 'simulationParameters'" + ...
         " is required for SolutionScheme")
       assert(obj.nDom == 1,"Only one domain is admitted when using EvolvingGrid");
-      assert(obj.nInterf == 0,"EvolvingGrid do not alound interfaces to another domains");
-
-      obj.nVars = 0;
-      obj.domains(1).domainId = 1;
-      obj.domains(1).simparams = obj.simparams;
-      obj.domains(1).outstate = obj.output;
-      if isempty(obj.domains(1).stateOld)
-        obj.domains(1).stateOld = copy(obj.domains(1).getState());
-      end
-
-      % system has only one pressure field
-      obj.nVars = 1;
-
-      obj.attemptedReset = false;
-
-      solv = obj.domains.solverNames;
-      obj.physics = obj.domains.getPhysicsSolver(solv);
-      obj.field = obj.physics.getField;
     end
+
+
+
 
     % Sets the linear solver and checks for eventual user input parameters
     function setLinearSolver(obj,varargin)
@@ -147,6 +113,11 @@ classdef EvolvingGrid < SolutionScheme
         % check if the user provided the physics
         physname = varargin{1};
       end
+
+      solv = obj.domains.solverNames;
+      obj.physics = obj.domains.getPhysicsSolver(solv);
+      obj.field = obj.physics.getField;
+
       obj.linsolver = linearSolver(obj,physname);
     end
 
@@ -157,7 +128,7 @@ classdef EvolvingGrid < SolutionScheme
       end
 
       print = false;
-      newcells = obj.physics.domain.state.data.newcells~=0;
+      newcells = getState(obj.physics.domain,'newcells')~=0;
       printByGrow = and(obj.printGrow,newcells);
       % printByGrow = true;
 
