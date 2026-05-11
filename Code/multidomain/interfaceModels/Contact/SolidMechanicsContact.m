@@ -249,14 +249,14 @@ classdef SolidMechanicsContact < MeshTying
 
     function timeStepSetup(obj)
 
-      s = obj.getState();
-      t = s.time;
-
-      if t > 10.1 && t < 11.1
-        trac = s.traction;
-        trac(2:3) = -trac(2:3);
-        setState(obj,trac,"traction")
-      end
+      % s = obj.getState();
+      % t = s.time;
+      % 
+      % if t > 10.1 && t < 11.1
+      %   trac = s.traction;
+      %   trac(2:3) = -trac(2:3);
+      %   setState(obj,trac,"traction")
+      % end
 
     end
 
@@ -600,12 +600,12 @@ classdef SolidMechanicsContact < MeshTying
                 dtdtn = - tan(deg2rad(obj.phi))*vaux/norm(vaux);
                 Atn = area*dtdtn;
                 asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
-
-                if obj.state.t > 10.0
-                  slipDir = -vaux/norm(vaux);
-                else
-                  slipDir = vaux/norm(vaux);
-                end
+                %
+                % if obj.getState().time > 10.0
+                %   slipDir = -vaux/norm(vaux);
+                % else
+                slipDir = vaux/norm(vaux);
+                %end
 
               end
 
