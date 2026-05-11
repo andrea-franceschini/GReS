@@ -138,7 +138,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       t = s.time;
       iniStress = getStateInit(obj,'stress');
       iniTraction = getStateInit(obj,'traction'); % use this!
-      jump = s.fractureJump;
+      %jump = s.fractureJump;
       du = s.displacements - sOld.displacements;
       dj = s.fractureJump - sOld.fractureJump;
 
@@ -221,7 +221,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           slip = dj(wDof([2;3])); % why not dj?
           trac = s.traction(wDof);
           dtrac = trac - iniTraction(wDof);
-          dtdg = computeDerTractionGap(obj,f,slip,trac(1));
+          dtdg = computeDerTractionGap(obj,f,slip,trac);
 
           KwwLoc = KwwLoc - dtdg*frac.area(f);
 
@@ -264,6 +264,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       state = getState(obj);
       state.fractureJump = zeros(3*nCutCells,1);
       state.traction = zeros(3*nCutCells,1);
+      state.plasticSlip = zeros(nCutCells,1);
       setState(obj,state);
       obj.bcTraction = zeros(3*nCutCells,1);
       obj.activeSet.curr = repmat(ContactMode.open,nCutCells,1);
@@ -300,7 +301,16 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           g_n,...
           obj.activeSet.tol);
 
+        % add plastic slip to newSlip dofs
+        if obj.activeSet.curr(i) == ContactMode.newSlip
+          plasticSlip = norm(t(2:3)) - limitTraction;
+          slip = plasticSlip * trac(2:3);
+        end
+
+
       end
+
+      setState(obj,slip,"plasticSlip");
 
 
       % check if active set changed
@@ -397,6 +407,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       % Set converged state to current state after newton convergence
       obj.mechSolver.advanceState()
       obj.activeSet.old = obj.activeSet.curr;
+
     end
 
 
@@ -429,6 +440,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         % apply newton update to current displacements
         dw = solution(getDoF(dofm,obj.fldFrac));
         stateCurr.fractureJump(ents) = stateCurr.fractureJump(ents) + dw;
+        stateCurr.slip = 
 
         setState(obj,stateCurr);
 
@@ -860,15 +872,20 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
 
 
-    function dtdg = computeDerTractionGap(obj,i,slip,tN)
+    function dtdg = computeDerTractionGap(obj,i,slip,t)
 
       % slip: 2x1 array with tangential gap increment
+      s = getState(obj);
       state = obj.activeSet.curr(i);
       dtdg = zeros(3,3);
       fId = obj.fractureMesh.surfaces.fracId(i);
       phiF = obj.phi(fId);
       cF = obj.cohesion(fId);
-      tauLim = cF - tN*tan(phiF);
+      tauLim = cF - t(1)*tan(phiF);
+
+      if state == ContactMode.newSlip
+          slip = s.plasticSlip(i) * t(2:3);
+      end
 
       switch state
         case ContactMode.open
@@ -882,6 +899,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
             dtdg([2 3],1) = - obj.penalty_n*tan(phiF)*(slip/slipNorm);
             dtdg([2 3],[2 3]) = tauLim * ...
               (slipNorm^2*eye(2) - slip * slip')/slipNorm^3;
+          else
+            % use the plastic slip
+            dir = t(2:3)/norm(t(2:3));
+            dtdg([2 3],1) = - obj.penalty_n*tan(phiF)*dir;
           end
 
       end
