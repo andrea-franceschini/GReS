@@ -77,7 +77,7 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
         materials = obj.domain.materials;
         s = getState(obj);
         sOld = getStateOld(obj);
-        t = obj.domain.state.t;
+        t = s.time;
 
         if ~isempty(obj.R) && isLinear(obj.mechSolver)
           return

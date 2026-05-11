@@ -47,7 +47,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
   
       if ismissing(params.waterLevel)
-        obj.watLev = max(cells.center,3);
+        obj.watLev = max(cells.center(:,3));
       end
 
 
@@ -84,11 +84,11 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
       if obj.steadyState
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H;
-        rhs = obj.H*(p(ents) );
+        rhs = obj.H*(p(ents) - p0(ents));
       else
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H + obj.P/dt;
         pOld = obj.getStateOld(obj.getField());
-        rhsH = obj.H*(p(ents) );
+        rhsH = obj.H*(p(ents) - p0(ents));
         rhsP = (obj.P/dt)*(p(ents) - pOld(ents));
         rhs = rhsH + rhsP;
       end
@@ -181,8 +181,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       % printPermeab - print the permeability for the cell or element.
       cells = obj.grid.cells;
       perm = zeros(cells.num,6);
-      subCells = obj.domain.dofm.getFieldCells(obj.getField);
-      for el = subCells'
+      for el=1:cells.num
         ktmp = obj.domain.materials.getMaterial(cells.tag(el)).PorousRock.getPermMatrix();
         perm(el,1)=ktmp(1,1);
         perm(el,2)=ktmp(2,2);

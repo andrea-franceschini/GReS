@@ -6,7 +6,6 @@ grid.surfaces.num = size(grid.surfaces.connectivity,1);
 nc = grid.cells.num;
 ns = grid.surfaces.num;
 
-
 grid.cells.volume = zeros(nc,1);
 grid.cells.center = zeros(nc,3);
 grid.cells.nTag = 0;
@@ -29,9 +28,7 @@ grid.faces.isBoundary = false(0,1);
 grid.faces.connectivity = ArrayOfArrays();
 
 
-
 if grid.nNodes > 0    % grid already populated
-
 
   if nc > 0
     grid.cells.nTag = numel(unique(grid.cells.tag));

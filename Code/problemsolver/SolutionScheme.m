@@ -14,8 +14,7 @@ classdef (Abstract) SolutionScheme < handle
     nVars               % total number of inner variable fields in the model
     attemptedReset      % flag for attempting a configuration reset
     iniState            % initial state of the simulation for solver reset
-    isFirstRun = true   % flag if the simulation is first ever or first after a reset   
-    nDoFs               % total number of dofs in the simulation
+    isFirstRun = true   % flag if the simulation is first ever or first after a reset          
   end
 
 
@@ -29,38 +28,32 @@ classdef (Abstract) SolutionScheme < handle
     interfaces            % cell array of interfaces objects
   end
 
-  methods(Abstract,Access=public)
 
+  methods(Abstract,Access=public)
     % every solution scheme must implement the logic to solve a time step
     % and give feedback on convergence
     conv = solveStep(obj)
-
   end
 
 
   methods (Access = public)
     function obj = SolutionScheme(varargin)
-
       % assert(nargin > 1 && nargin < 9,"Wrong number of input arguments " + ...
       %   "for general solver")
 
       obj.setSolutionScheme(varargin{:});
-
     end
 
     function simulationLoop(obj,varargin)
-
       % Initialize time
       obj.tStep = 0;
       obj.t = obj.simparams.tIni;
       obj.dt = obj.simparams.dtIni;
 
-      initialize(obj);
-      
+      initialize(obj);      
       setLinearSolver(obj,varargin{:});
 
       while obj.t < obj.simparams.tMax
-
         initializeTimeStep(obj)
 
         gresLog().log(-1,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
@@ -74,36 +67,22 @@ classdef (Abstract) SolutionScheme < handle
 
         % move to the next time step
         manageNextTimeStep(obj,conv)
-
       end
 
       obj.finalize;
-
       gresLog().log(-1,"Simulation completed successfully \n")
-
     end
-
 
     function saveHistory(obj)
       obj.output.saveHistory();
     end
 
-
-
-    function nDoFs = getNumbDoF(obj)
-
-      nDoFs = obj.nDoFs;
-
-    end
-
   end
-
 
 
   methods (Access = protected)
 
     function setSolutionScheme(obj,varargin)
-
       default = struct('simulationparameters',SimulationParameters.empty,...
                        'output',missing,...
                        'domains',Discretizer.empty,...
@@ -129,12 +108,9 @@ classdef (Abstract) SolutionScheme < handle
         " is required for SolutionScheme")
       assert(obj.nDom > 0,"Input 'domains'" + ...
         " is required for SolutionScheme")
-
     end
 
-
     function initialize(obj)
-
       % restore the solution scheme object at its initial state
       if ~obj.isFirstRun
         obj.reset();
@@ -143,45 +119,43 @@ classdef (Abstract) SolutionScheme < handle
       obj.nVars = 0;
 
       % store initial state and setup simulation
-      obj.nDoFs = 0;
 
       for i = 1:obj.nDom
         dom = obj.domains(i);
         state = dom.getState;
+        state.time = obj.simparams.tIni;
+        dom.setState(state);
         obj.iniState.domains(i) = dom.state;
         % set old and initial state 
-        dom.setStateInit(state)
+        dom.setStateInit(state);
         dom.setStateOld(state);
         dom.outstate = obj.output;
         dom.simparams = obj.simparams;
         dom.domainId = i;
         obj.nVars = obj.nVars + dom.dofm.getNumberOfVariables();
         initialize(dom);
-        obj.nDoFs = obj.nDoFs + dom.getNumbDoF;
       end
 
       for i = 1:obj.nInterf
         interf = obj.interfaces{i};
         state = interf.getState;
+        state.time = obj.simparams.tIni;
         obj.iniState.interfaces(i) = interf.state;
         % set old and initial state
+        interf.setState(state);
         interf.setStateInit(state)
         interf.setStateOld(state);
         interf.interfId = i;
         interf.outstate = obj.output;
-        initialize(interf);
-        obj.nDoFs = obj.nDoFs + interf.getNumbDoF;
+        initialize(interf)
       end
 
       obj.isFirstRun = false;
 
       obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration || obj.nInterf == 0;
-
     end
 
-
     function reset(obj)
-
       % reset the simulation  at its initial state
 
       for i = 1:obj.nDom
@@ -189,7 +163,7 @@ classdef (Abstract) SolutionScheme < handle
       end
 
       for i = 1:obj.nInterf
-        setState(obj.interfaces{i},obj.iniState.interfaces{i}.getState);
+        obj.interfaces{i}.state = copy(obj.iniState.interfaces{i}.getState);
       end
 
       if ~isempty(obj.output)
@@ -197,11 +171,9 @@ classdef (Abstract) SolutionScheme < handle
       end
 
       obj.isFirstRun = false;
-
     end
 
     function finalize(obj)
-
       if ~isempty(obj.output)
         obj.output.savePvd();
 
@@ -210,9 +182,7 @@ classdef (Abstract) SolutionScheme < handle
     end
 
     function manageNextTimeStep(obj,flConv)
-
       if ~flConv && ~obj.attemptedReset
-
         % allow a configuration reset to attempt saving the simulation
 
         for i = 1:obj.nDom
@@ -234,7 +204,6 @@ classdef (Abstract) SolutionScheme < handle
 
       end
 
-
       if ~flConv
         % BACKSTEP
         % newton did not converge or configuration changed too many times
@@ -254,7 +223,6 @@ classdef (Abstract) SolutionScheme < handle
         return
 
       else
-
         % TIME STEP CONVERGED - advance to the next time step
         printState(obj);
         advanceState(obj);
@@ -275,22 +243,16 @@ classdef (Abstract) SolutionScheme < handle
         end
 
       end
-
     end
 
-
     function sol = solve(obj,J,rhs)
-
       rhs = cell2matrix(rhs);
 
       % Actual solution of the system
       [sol,~] = obj.linsolver.SolveLin(J,-rhs,obj.t);
     end
 
-
-
     function setLinearSolver(obj,varargin)
-
       if isempty(varargin)
          physname = [];
       else
@@ -300,8 +262,6 @@ classdef (Abstract) SolutionScheme < handle
 
       obj.linsolver = linearSolver(obj,physname);
     end
-
-
 
     function applyDirVal(obj)
       for i = 1:obj.nDom
@@ -316,7 +276,6 @@ classdef (Abstract) SolutionScheme < handle
       end
     end
 
-
     function applyBC(obj)
       for i = 1:obj.nDom
         discretizer = obj.domains(i);
@@ -329,7 +288,6 @@ classdef (Abstract) SolutionScheme < handle
         end
       end
     end
-
 
     function updateState(obj,dSol)
       % update domain and interface state using incremental solution
@@ -355,7 +313,6 @@ classdef (Abstract) SolutionScheme < handle
     end
 
     function initializeTimeStep(obj)
-
       obj.tStep = obj.tStep + 1;
       obj.tOld = obj.t;
       obj.t = obj.t + obj.dt;
@@ -363,37 +320,29 @@ classdef (Abstract) SolutionScheme < handle
       % set current time into state objects
       for i = 1:obj.nDom
         dom = obj.domains(i);
-        dom.state.t = obj.t;
+        dom.setState(obj.t,'time');
         timeStepSetup(obj.domains(i));
       end
 
       for i = 1:obj.nInterf
         interf = obj.interfaces{i};
-        interf.state.t = obj.t;
+        interf.setState(obj.t,'time');
         timeStepSetup(obj.interfaces{i});
       end
-
-
-
     end
 
     function printState(obj)
-
       if isempty(obj.output)
         return
       end
 
       if obj.output.timeID <= length(obj.output.timeList)
-
         outTime = obj.output.timeList(obj.output.timeID);
 
         % loop over print times contained in the current time step
-
         while outTime <= obj.t
-
           assert(outTime >= obj.tOld, 'Print time %f out of range (%f - %f)',...
             outTime, obj.tOld, obj.t);
-
           assert(obj.t - obj.tOld > eps('double'),...
             'Time step is too small for printing purposes');
 
@@ -418,15 +367,11 @@ classdef (Abstract) SolutionScheme < handle
           else
             outTime = obj.output.timeList(obj.output.timeID);
           end
-
         end
-
       end
-
     end
 
     function printVTK(obj,fac,outTime,tID)
-
       if obj.output.writeVtk
         % set folders        
         obj.output.prepareOutputFolders(tID);
@@ -472,7 +417,6 @@ classdef (Abstract) SolutionScheme < handle
     end
 
     function advanceState(obj)
-
       for i = 1:obj.nDom
         dom = obj.domains(i);
         advanceState(dom);
@@ -482,11 +426,9 @@ classdef (Abstract) SolutionScheme < handle
         interf = obj.interfaces{i};
         advanceState(interf);
       end
-
     end
 
     function goBackState(obj)
-
       for i = 1:obj.nDom
         dom = obj.domains(i);
         goBackState(dom);
@@ -496,8 +438,6 @@ classdef (Abstract) SolutionScheme < handle
         interf = obj.interfaces{i};
         goBackState(interf);
       end
-
-
     end
 
   end

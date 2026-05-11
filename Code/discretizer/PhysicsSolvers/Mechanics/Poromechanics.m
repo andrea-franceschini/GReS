@@ -74,10 +74,11 @@ classdef Poromechanics < PhysicsSolver
       dofm = obj.domain.dofm;
       coordinates = obj.grid.coordinates;
       cells = obj.grid.cells;
-      t = obj.domain.state.t;
       s = getState(obj);
       sOld = getStateOld(obj);
       iniStress = getStateInit(obj,'stress');
+
+      t = s.time;
 
       % allocate
       subCells = dofm.getFieldCells(obj.fieldId);
@@ -442,7 +443,7 @@ classdef Poromechanics < PhysicsSolver
       out = false;
       
       % check if there is not embedded fractures
-      if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics")) || ~isempty(obj.domain.interfaceList)
+      if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics"))
         return
       end
 
@@ -546,7 +547,7 @@ classdef Poromechanics < PhysicsSolver
         ngCells(cId) = el.getNumbGaussPts;
       end
 
-      map = [1;cumsum(ngCells)+1];
+      map = [1;cumsum(ngCells)];
       map = map(1:end-1);
 
     end

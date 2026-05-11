@@ -229,11 +229,10 @@ interfaces = InterfaceSolver.addInterfaces(domains,params.Interface);
 
 % set initial traction
 % apply initial traction to the interface
-tIni = -1.0;
-interfaces{1}.state.traction(1:3:end) = tIni;
-interfaces{1}.state.iniTraction(1:3:end) = tIni;
-interfaces{1}.stateOld.iniTraction(1:3:end) = tIni;
-interfaces{1}.stateOld.traction(1:3:end) = tIni;
+trac = getState(interfaces{1},"traction");
+trac(1:3:end) = -1.0;
+setState(interfaces{1},trac,"traction");
+
 
 %%%%
 
