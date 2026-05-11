@@ -43,8 +43,8 @@ classdef testShearPatch < matlab.unittest.TestCase
       s = readstruct("test/output_00001/Domain_1.vtu","FileType","xml");
       v = s.UnstructuredGrid.Piece.PointData.DataArray.Text;
       v = str2num(v);
-      vv = zeros(8,3);
-      vv(5:end,1) = 1.0;
+      vv = zeros(12,3);
+      vv(7:end,1) = 1.0;
       verifyEqual(testCase,v,vv,"AbsTol",1e-9)
 
     end
