@@ -25,7 +25,7 @@ classdef testShearPatch < matlab.unittest.TestCase
       gresLog().setVerbosity(-2);
       input = readInput(testCase.pathToFile);
       simparams = SimulationParameters(input.SimulationParameters);
-      grid = structuredMesh(1,1,1,[0 1],[0 1],[0 1]);
+      grid = structuredMesh(1,2,1,[0 1],[0 1],[0 1]);
       mat = Materials(input.Materials);
       bc = Boundaries(grid,input.BoundaryConditions);
       printUtils = OutState('printTimes',1,'outputFile',"test");
@@ -37,14 +37,14 @@ classdef testShearPatch < matlab.unittest.TestCase
       solver.simulationLoop();
       gresLog().setVerbosity(-1);
       stress = domain.getState("stress");
-      verifyEqual(testCase,stress(:,5),1.5*ones(8,1),"AbsTol",1e-9)
+      verifyEqual(testCase,stress(:,5),1.5*ones(16,1),"AbsTol",1e-9)
 
       % validate the vtk output
       s = readstruct("test/output_00001/Domain_1.vtu","FileType","xml");
       v = s.UnstructuredGrid.Piece.PointData.DataArray.Text;
       v = str2num(v);
-      vv = zeros(8,3);
-      vv(5:end,1) = 1.0;
+      vv = zeros(12,3);
+      vv(7:end,1) = 1.0;
       verifyEqual(testCase,v,vv,"AbsTol",1e-9)
 
     end
