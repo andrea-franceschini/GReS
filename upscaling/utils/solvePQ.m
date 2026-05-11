@@ -1,16 +1,16 @@
-function [avgF, avgP, avgQ] = solvePQ(fea, forceX, druckerPrager, tol)
+function [avgF, avgP, avgQ] = solvePQ(solver, forceX, druckerPrager, tol)
 
-    [forceZ1, forceZ2] = initial_guess(fea, forceX, druckerPrager);
+    [forceZ1, forceZ2] = initial_guess(solver, forceX, druckerPrager);
 
     target = 0.5;
 
     % --- Initial bracket ---
     a = forceZ1;
-    [~, ~, ~, ratio_a] = simulate(fea, forceX, a, druckerPrager);
+    [~, ~, ~, ratio_a] = simulate(solver, forceX, a, druckerPrager);
     fa = ratio_a - target;
 
     b = forceZ2;
-    [~, ~, ~, ratio_b] = simulate(fea, forceX, b, druckerPrager);
+    [~, ~, ~, ratio_b] = simulate(solver, forceX, b, druckerPrager);
     fb = ratio_b - target;
 
     if fa * fb > 0
@@ -64,7 +64,7 @@ function [avgF, avgP, avgQ] = solvePQ(fea, forceX, druckerPrager, tol)
 
         d = b - s;
 
-        [avgF, avgP, avgQ, ratio_s] = simulate(fea, forceX, s, druckerPrager);
+        [avgF, avgP, avgQ, ratio_s] = simulate(solver, forceX, s, druckerPrager);
         fs = ratio_s - target;
 
         c = a;
@@ -96,12 +96,12 @@ function [avgF, avgP, avgQ] = solvePQ(fea, forceX, druckerPrager, tol)
 
 end
 
-function [forceZ1, forceZ2] = initial_guess(fea, forceX, druckerPrager)
+function [forceZ1, forceZ2] = initial_guess(solver, forceX, druckerPrager)
     % Volumes
-    vols = fea.solver.domains.grid.cells.volume;
+    vols = solver.domains.grid.cells.volume;
 
     % Regions
-    regions = fea.solver.domains.grid.cells.tag;
+    regions = solver.domains.grid.cells.tag;
 
     % Zone IDs
     ID_DZ1  = regions == druckerPrager.DamageZone1.zoneID;

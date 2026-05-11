@@ -30,9 +30,6 @@ domain = Discretizer('grid',grid,...
 
 domain.addPhysicsSolver('Poromechanics');
 
-% we keep in memory the initial state for repeated simulations
-initState = copy(getState(domain));
-
 % Micro to meso scale
 rng(42);   % Set random seed
 stiffnesses = createMat(domain.grid, meshProp, rock, blockSize, jointFamilies);
@@ -45,9 +42,6 @@ domain.materials.solid{1}.ConstLaw.setStiffnesses(stiffnesses);
 solver = NonLinearImplicit('simulationparameters', simParam, ...
                            'domains', domain);
 
-fea.initState = initState;
-fea.solver = solver;
-
 incr = 9;
 % incr = 3;
 tol = 1e-2;
@@ -59,7 +53,7 @@ avgQs = zeros(nStep,1);
 
 for id_forceX = 1:nStep
     forceX = stepX(id_forceX);
-    [maxF, avgP, avgQ] = solvePQ(fea, forceX, druckerPrager, tol);
+    [maxF, avgP, avgQ] = solvePQ(solver, forceX, druckerPrager, tol);
     fprintf('%5.2f%15.6e%15.6e\n', forceX, avgP, avgQ);
     avgPs(id_forceX) = avgP;
     avgQs(id_forceX) = avgQ;

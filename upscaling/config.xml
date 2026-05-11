@@ -82,7 +82,7 @@
     <DamageZone2
       zoneID = "4"
       cohesion_mean = "1.0"
-      friction_angle_mean = "30"
+      friction_angle_mean = "20"
       cohesion_std = "0.1"
       friction_angle_std = "1"
     />

@@ -3,6 +3,7 @@ clc
 
 grid = Grid();
 grid.importMesh("Input/cylinder.vtk");
+grid.processGeometry();
 
 % set bc files with variable load value (assumed constant)
 setLateralBC(grid,-1);
