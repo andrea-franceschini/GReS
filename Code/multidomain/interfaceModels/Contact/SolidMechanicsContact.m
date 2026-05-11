@@ -249,6 +249,11 @@ classdef SolidMechanicsContact < MeshTying
 
     function timeStepSetup(obj)
 
+      % set all active dofs to stick state (force trial stick state)
+      isActive = obj.activeSet.curr ~= ContactMode.open;
+      obj.activeSet.curr(isActive) = ContactMode.stick;
+
+
       % s = obj.getState();
       % t = s.time;
       % 
@@ -608,8 +613,6 @@ classdef SolidMechanicsContact < MeshTying
                 %end
 
               end
-
-              fprintf("Sliding direction: %2.4e %2.4e \n",slipDir(1),slipDir(2));
 
               tT_lim = tauLim * slipDir;
 

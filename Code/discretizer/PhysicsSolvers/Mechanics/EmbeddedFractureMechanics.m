@@ -105,6 +105,12 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     end
 
 
+    function timeStepSetup(obj)
+      isActive = obj.activeSet.curr ~= ContactMode.open;
+      obj.activeSet.curr(isActive) = ContactMode.stick;
+    end
+
+
     function assembleSystemEFEM(obj,dt)
 
       % allocate

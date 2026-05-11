@@ -79,7 +79,6 @@ classdef NonLinearImplicit < SolutionScheme
           % solve linear system
           du = solve(obj,J,rhs);
 
-          fprintf("Vertical displacement correction: %2.4e \n",du(39))
 
           c = 0;
 

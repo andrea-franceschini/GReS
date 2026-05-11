@@ -16,7 +16,7 @@ in a nonConforming simulation.
                         MaxNLIteration = "10"
                         RelativeTolerance = "1.e-10"
                         AbsoluteTolerance = "1.e-8"
-                        resetConfiguration = "1"
+                        resetConfiguration = "0"
                         />
 
   <Interface>
@@ -39,10 +39,10 @@ in a nonConforming simulation.
                  forceStickBoundary = "0" >
 
         <Tolerances
-                    sliding = "1e-3"
+                    sliding = "1e-5"
                     normalGap = "1e-6"
                     normalTraction = "-1e-3"
-                    tangentialViolation = "1e-5"
+                    tangentialViolation = "1e-3"
                     minLimitTraction = "1e-4"
                     areaChange = "1e-4"
                     maxActiveSetChange = "6"
