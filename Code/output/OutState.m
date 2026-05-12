@@ -115,7 +115,7 @@ classdef OutState < handle & matlab.mixin.Copyable
       if ~isempty(varargin)
         tID = varargin{1};
       else
-        tID = obj.timeList;
+        tID = 1:obj.timeID - 1;
       end
 
       % write the pvd file
@@ -129,7 +129,7 @@ classdef OutState < handle & matlab.mixin.Copyable
         blocks = pvd.createElement('Collection');
 
 
-        for i = 1 : obj.timeID-1
+        for i = 1 : length(tID)
           block = pvd.createElement('DataSet');
           block.setAttribute('timestep', sprintf('%e', tID(i)));
           [~,fname,~] = fileparts(obj.vtkFileName);
