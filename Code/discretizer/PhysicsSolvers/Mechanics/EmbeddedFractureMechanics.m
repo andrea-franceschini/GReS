@@ -302,15 +302,14 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           obj.activeSet.tol);
 
         % add plastic slip to newSlip dofs
-        if obj.activeSet.curr(i) == ContactMode.newSlip
-          plasticSlip = norm(t(2:3)) - limitTraction;
-          slip = plasticSlip * trac(2:3);
-        end
+        % if obj.activeSet.curr(i) == ContactMode.newSlip
+        %   plasticSlip = norm(t(2:3)) - limitTraction;
+        %   slip = plasticSlip * trac(2:3);
+        % end
 
 
       end
 
-      setState(obj,slip,"plasticSlip");
 
 
       % check if active set changed
@@ -417,6 +416,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       % reset state to beginning of time step
       obj.mechSolver.goBackState();
 
+      
+
       obj.activeSet.curr = obj.activeSet.prev;
       % obj.NLIter = 0;
 
@@ -440,7 +441,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         % apply newton update to current displacements
         dw = solution(getDoF(dofm,obj.fldFrac));
         stateCurr.fractureJump(ents) = stateCurr.fractureJump(ents) + dw;
-        stateCurr.slip = 
 
         setState(obj,stateCurr);
 
@@ -802,10 +802,14 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
             t(2:3) = tOld(2:3) + penT * dj(2:3);
 
           case {ContactMode.slip, ContactMode.newSlip}
-            t(1) = tOld(1) + penN * j(1);
+            t(1) = tOld(1) + penN * dj(1);
             tauLim = obj.cohesion(fId) - t(1)*tan(obj.phi(fId));   % using the updated or not?
             %
-            t(2:3) = tauLim * (dj(2:3)/norm(dj(2:3)));
+            if norm(dj) > obj.activeSet.tol.sliding
+              t(2:3) = tauLim * (dj(2:3)/norm(dj(2:3)));
+            else
+              t(2:3) = tauLim * (t(2:3)/norm(t(2:3)));
+            end
           case ContactMode.open
             t(:) = 0;
         end
@@ -883,9 +887,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       cF = obj.cohesion(fId);
       tauLim = cF - t(1)*tan(phiF);
 
-      if state == ContactMode.newSlip
-          slip = s.plasticSlip(i) * t(2:3);
-      end
+      % if state == ContactMode.newSlip
+      %     slip = s.plasticSlip(i) * t(2:3);
+      % end
 
       switch state
         case ContactMode.open
@@ -901,6 +905,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
               (slipNorm^2*eye(2) - slip * slip')/slipNorm^3;
           else
             % use the plastic slip
+            fprintf('Small slip detected for element %i\n',i)
             dir = t(2:3)/norm(t(2:3));
             dtdg([2 3],1) = - obj.penalty_n*tan(phiF)*dir;
           end
