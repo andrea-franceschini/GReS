@@ -9,6 +9,7 @@ classdef SolidMechanicsContact < MeshTying
     activeSet
     NLIter = 0
     stickNodes     % boundary nodes where contact state should stay stick
+    forceStick     % flag to enforce interface to stay stick
   end
 
 
@@ -29,27 +30,29 @@ classdef SolidMechanicsContact < MeshTying
 
       input = varargin{1};
 
-      input = readInput(struct('Coulomb',[],'ActiveSet',missing),input);
+      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0),input);
 
       params = readInput(struct('cohesion',[],'frictionAngle',[]),input.Coulomb);
+
+
+      obj.forceStick = logical(input.forceStick);
 
       obj.cohesion = params.cohesion;
       obj.phi = params.frictionAngle;
 
       nDofsInterface = getNumbDoF(obj);
 
-      obj.state.traction = zeros(nDofsInterface,1);
-      obj.state.deltaTraction = zeros(nDofsInterface,1);
-      obj.state.iniTraction = obj.state.traction;
+      s = getState(obj);
+
+      s.traction = zeros(nDofsInterface,1);
+      s.deltaTraction = zeros(nDofsInterface,1);
 
       % the gap in global coordinates
-      obj.state.gap = zeros(nDofsInterface,1);
-
-      obj.state.normalGap = zeros(round(1/3*nDofsInterface),1);
-      obj.state.tangentialGap = zeros(round(2/3*nDofsInterface),1);
-      obj.state.tangentialSlip = zeros(round(2/3*nDofsInterface),1);
-
-      obj.stateOld = obj.state;
+      s.gap = zeros(nDofsInterface,1);
+      s.normalGap = zeros(round(1/3*nDofsInterface),1);
+      s.tangentialGap = zeros(round(2/3*nDofsInterface),1);
+      s.tangentialSlip = zeros(round(2/3*nDofsInterface),1);
+      setState(obj,s);
 
       N = obj.grids(MortarSide.slave).surfaces.num;
       initializeActiveSet(obj,N,input.ActiveSet);
@@ -61,9 +64,13 @@ classdef SolidMechanicsContact < MeshTying
       % traction update
       actMult = getMultiplierDoF(obj);
 
-      obj.state.traction(actMult) = obj.state.traction(actMult) + du(1:obj.nMult);
-      obj.state.deltaTraction = obj.state.traction - obj.stateOld.traction;
+      state = getState(obj);
+      stateOld = getStateOld(obj);
+      state.traction(actMult) = state.traction(actMult) + du(1:obj.nMult);
+      state.deltaTraction = state.traction - stateOld.traction;
       obj.NLIter = obj.NLIter + 1;
+
+      setState(obj,state);
 
       % update gap
       computeGap(obj);
@@ -91,7 +98,7 @@ classdef SolidMechanicsContact < MeshTying
       obj.Jconstraint = obj.Jconstraint - H;
       obj.rhsConstraint = obj.rhsConstraint + rhsStab;
 
-      if gresLog().getVerbosity > 2
+      if gresLog().getVerbosity > 3
         % print rhs terms for each fracture state for debug purposes
         dof_stick = DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.stick),3);
         dof_slip = [DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.slip),3); ...
@@ -108,14 +115,21 @@ classdef SolidMechanicsContact < MeshTying
 
     function hasConfigurationChanged = updateConfiguration(obj)
 
+      hasConfigurationChanged = false;
+      if obj.forceStick
+        return
+      end
+
       obj.NLIter = 0;
 
       oldActiveSet = obj.activeSet.curr;
       surfSlave = obj.grids(MortarSide.slave).surfaces;
 
+      state = getState(obj);
+
       for is = 1:numel(obj.activeSet.curr)
 
-        state = obj.activeSet.curr(is);
+        currAS = obj.activeSet.curr(is);
 
         nodes = getRowsMatrix(surfSlave.connectivity,is);
         nodes = surfSlave.loc2glob(nodes);
@@ -129,23 +143,23 @@ classdef SolidMechanicsContact < MeshTying
         end
 
         id = DoFManager.dofExpand(is,3);
-        t = obj.state.traction(id);
+        t = state.traction(id);
         limitTraction = abs(obj.cohesion - tan(deg2rad(obj.phi))*t(1));
 
         % report traction during activeSet update
         gresLog().log(4,['\n Element %i: traction: %1.4e %1.4e %1.4e   ' ...
           'Limit tangential traction: %1.4e \n'],is,t(:), limitTraction)
 
-        obj.activeSet.curr(is) = updateContactState(state,t,...
+        obj.activeSet.curr(is) = updateContactState(currAS,t,...
                                                     limitTraction, ...
-                                                    obj.state.normalGap(is),...
+                                                    state.normalGap(is),...
                                                     obj.activeSet.tol);
 
       end
 
       % check if active set changed
-      asNew = ContactMode.integer(obj.activeSet.curr);
-      asOld = ContactMode.integer(oldActiveSet);
+      asNew = obj.activeSet.curr;
+      asOld = oldActiveSet;
 
       % do not upate state of element that exceeded the maximum number of
       % individual updates
@@ -168,7 +182,8 @@ classdef SolidMechanicsContact < MeshTying
 
       hasConfigurationChanged = any(diffState);
 
-      if gresLog().getVerbosity > 2
+      gresLog().log(2,'%s: Active set \n',class(obj));
+      if gresLog().getVerbosity > 3
         % report active set changes
         da = asNew - asOld;
         d = da(asOld == 1);
@@ -184,10 +199,10 @@ classdef SolidMechanicsContact < MeshTying
         fprintf('%i elements from slip to open \n',sum(d==1));
         d = da(asOld==4);
         fprintf('%i elements from open to stick \n',sum(d==-3));
-
-        fprintf('Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
-          sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
       end
+
+      gresLog().log(2,'Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
+          sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
 
       if hasConfigurationChanged
 
@@ -222,24 +237,29 @@ classdef SolidMechanicsContact < MeshTying
 
       % initial traction from cell stress
       tIni = computeInitialTraction(obj);
-      obj.state.traction = obj.state.traction + tIni;
-      obj.state.iniTraction = obj.state.traction;
+
+      addInitialTraction(obj,tIni);
+
+      setStateOld(obj,getState(obj,"traction"),"traction");
 
       setStickNodes(obj);
 
     end
 
 
-    function addInitialTraction(obj)
+    function addInitialTraction(obj,tIni)
       % add a traction on the fault
-      obj.state.traction = obj.state.traction + t;
-      obj.state.iniTraction = obj.state.iniTraction + t;
+      t = getState(obj,"traction");
+      t = t + tIni;
+      setState(obj,t,"traction");
+      setStateInit(obj,t,"traction");
+
     end
 
     function trac = computeInitialTraction(obj)
       % initialize traction for cell stress (average)
       sl = MortarSide.slave;
-      poro = obj.domains(sl).getPhysicsSolver("Poromechanics");
+      avgStress = obj.domains(MortarSide.slave).getState("avgStress");
       surf = obj.grids(sl).surfaces;
       faces = obj.domains(sl).grid.faces;
       normals = surf.normal;
@@ -250,7 +270,7 @@ classdef SolidMechanicsContact < MeshTying
       trac = zeros(getNumbDoF(obj),1);
       for i = 1:numel(cellIds)
         cellId = cellIds(i);
-        sigma(:) = poro.avStress(cellId,idx);
+        sigma(:) = avgStress(cellId,idx);
         n = normals(i,:);
         tDof = getMultiplierDoF(obj,i);
         t = sigma*n';   % global
@@ -263,8 +283,10 @@ classdef SolidMechanicsContact < MeshTying
 
     function advanceState(obj)
 
-      obj.state.deltaTraction(:) = 0;
-      obj.stateOld = obj.state;
+      advanceState@InterfaceSolver(obj);
+      state = getState(obj);
+      state.deltaTraction(:) = 0;
+      setState(obj,state);
       obj.activeSet.prev = obj.activeSet.curr;
       obj.NLIter = 0;
 
@@ -286,9 +308,12 @@ classdef SolidMechanicsContact < MeshTying
     function goBackState(obj,dt)
 
       % reset state to beginning of time step
+      goBackState@InterfaceSolver(obj);
+      state = getState(obj);
+      state.deltaTraction(:) = 0;
+      setState(obj,state);
+
       obj.activeSet.curr = obj.activeSet.prev;
-      obj.state = obj.stateOld;
-      obj.state.deltaTraction(:) = 0;
       obj.NLIter = 0;
       if obj.activeSet.resetActiveSet
         resetConfiguration(obj);
@@ -299,17 +324,12 @@ classdef SolidMechanicsContact < MeshTying
 
     function [surfaceStr,pointStr] = writeVTK(obj,fac,varargin)
 
-      outTraction = fac*obj.state.traction + ...
-        (1-fac)*obj.stateOld.traction;
+      outTraction = obj.state.interpolate(fac,"traction");
+      outNormalGap = obj.state.interpolate(fac,"normalGap");
+      outTangentialSlip = obj.state.interpolate(fac,"tangentialSlip");
+      outTangentialGap = obj.state.interpolate(fac,"tangentialGap");
 
-      outNormalGap = fac*obj.state.normalGap + ...
-        (1-fac)*obj.stateOld.normalGap;
-      outTangentialSlip = fac*obj.state.tangentialSlip + ...
-        (1-fac)*obj.stateOld.tangentialSlip;
       outTangentialSlip = (reshape(outTangentialSlip,2,[]))';
-
-      outTangentialGap = fac*obj.state.tangentialGap + ...
-        (1-fac)*obj.stateOld.tangentialGap;
       outTangentialGap = (reshape(outTangentialGap,2,[]))';
 
       outTangentialGapNorm = sqrt(outTangentialGap(:,1).^2 + ...
@@ -318,7 +338,7 @@ classdef SolidMechanicsContact < MeshTying
       tT = [outTraction(2:3:end),outTraction(3:3:end)];
       norm_tT = sqrt(tT(:,1).^2 + tT(:,2).^2);
 
-      fractureState = ContactMode.integer(obj.activeSet.curr);
+      fractureState = double(obj.activeSet.curr);
 
       pointStr = [];
 
@@ -339,22 +359,15 @@ classdef SolidMechanicsContact < MeshTying
 
     function writeSolution(obj,fac,tID)
 
-      outTraction = fac*obj.state.traction + ...
-        (1-fac)*obj.stateOld.traction;
-      outNormalGap = fac*obj.state.normalGap + ...
-        (1-fac)*obj.stateOld.normalGap;
-      outSlip = fac*obj.state.tangentialSlip + ...
-        (1-fac)*obj.stateOld.tangentialSlip;
-      outSliding = fac*obj.state.tangentialGap + ...
-        (1-fac)*obj.stateOld.tangentialGap;
+      s = obj.state.interpolate(fac);
 
-      tT = [outTraction(2:3:end),outTraction(3:3:end)];
+      tT = [s.traction(2:3:end),s.traction(3:3:end)];
       norm_tT = sqrt(tT(:,1).^2 + tT(:,2).^2);
 
-      obj.outstate.results(tID).tractionVec = outTraction;
-      obj.outstate.results(tID).normalGap = outNormalGap;
-      obj.outstate.results(tID).slipIncrement = outSlip;
-      obj.outstate.results(tID).tangentialGap = outSliding;
+      obj.outstate.results(tID).tractionVec = s.traction;
+      obj.outstate.results(tID).normalGap = s.normalGap;
+      obj.outstate.results(tID).slipIncrement = s.tangentialSlip;
+      obj.outstate.results(tID).tangentialGap = s.tangentialGap;
       obj.outstate.results(tID).tangentialTractionNorm = norm_tT;
 
     end
@@ -367,27 +380,32 @@ classdef SolidMechanicsContact < MeshTying
     function computeGap(obj)
       % compute normal gap and tangential slip (local coordinates)
 
-      um = obj.domains(MortarSide.master).state.data.displacements;
-      us = obj.domains(MortarSide.slave).state.data.displacements;
+      state = getState(obj);
+      stateOld = getStateOld(obj);
+
+      um = obj.domains(MortarSide.master).getState("displacements");
+      us = obj.domains(MortarSide.slave).getState("displacements");
 
       % recover variationally consistent stabilized gaps
       areaSlave = repelem(obj.getSlaveArea(),3);
 
       areaGap = (obj.D*us + obj.M*um);
 
-      obj.state.gap = areaGap./areaSlave;
+      state.gap = areaGap./areaSlave;
 
       [~,rhsStab] = getStabilizationMatrixAndRhs(obj);
 
       stabGap = (areaGap + rhsStab)./areaSlave;
-      stabSlip = (obj.state.gap-obj.stateOld.gap) + rhsStab./areaSlave;
+      stabSlip = (state.gap-stateOld.gap) + rhsStab./areaSlave;
 
       stabSlip(1:3:end) = [];
 
-      obj.state.tangentialSlip = stabSlip;
+      state.tangentialSlip = stabSlip;
       %
-      obj.state.normalGap = stabGap(1:3:end);
-      obj.state.tangentialGap = obj.stateOld.tangentialGap + stabSlip;
+      state.normalGap = stabGap(1:3:end);
+      state.tangentialGap = stateOld.tangentialGap + stabSlip;
+
+      setState(obj,state);
 
     end
 
@@ -429,7 +447,10 @@ classdef SolidMechanicsContact < MeshTying
       f2 = @(a,b) pagemtimes(a,b);
 
       % compute slip
-      slip = obj.state.gap - obj.stateOld.gap;
+      state = getState(obj);
+      stateOld = getStateOld(obj);
+      stateIni = getStateInit(obj);
+      slip = state.gap - stateOld.gap;
 
       topolMaster = getRowsMatrix(surfMaster.connectivity,1:surfMaster.num);
       topolSlave = getRowsMatrix(surfSlave.connectivity,1:surfSlave.num);
@@ -466,10 +487,10 @@ classdef SolidMechanicsContact < MeshTying
             nodeSlave = surfSlave.loc2glob(topolSlave(is,1:elSlave.nNode));
             usDof = dofSlave.getLocalDoF(fldS,nodeSlave);
             tDof = getMultiplierDoF(obj,is);
-            trac = obj.state.traction(tDof);
+            trac = state.traction(tDof);
 
             % equilibrium equation and stabilization work with delta traction
-            dTrac = trac - obj.state.iniTraction(tDof);
+            dTrac = trac - stateIni.traction(tDof);
 
             nodeMaster = surfMaster.loc2glob(topolMaster(im,1:elMaster.nNode));
             umDof = dofMaster.getLocalDoF(fldM,nodeMaster);
@@ -484,7 +505,7 @@ classdef SolidMechanicsContact < MeshTying
             R = getRotationMatrix(obj,MortarSide.slave,is);
 
             % normal gap (minus sign to be checked)
-            g_n = obj.state.gap(3*is-2);
+            g_n = state.gap(3*is-2);
 
             % tangential slip
             dgt = slip([3*is-1 3*is]);
@@ -541,7 +562,7 @@ classdef SolidMechanicsContact < MeshTying
                 asbDt.localAssembly(tDof(2:3),usDof,Atu_s);
 
                 % A_tn (non linear term)
-                dtdtn = computeDerTracTn(obj,dgt);
+                dtdtn = computeDerTracTn(obj,dgt,trac);
                 Atn = area*dtdtn;
                 asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
 
@@ -618,6 +639,8 @@ classdef SolidMechanicsContact < MeshTying
         computeStabilizationMatrix(obj);
       end
 
+      state = getState(obj);
+
       H = obj.stabilizationMat;
 
       %
@@ -633,9 +656,9 @@ classdef SolidMechanicsContact < MeshTying
       H(:,[dofOpen;dofSlip]) = 0;
 
       % use traction variation for tangential components
-      rhsH = -H*obj.state.deltaTraction;
+      rhsH = -H*state.deltaTraction;
 
-      rhsH(1:3:end) = -H(1:3:end,:) * obj.state.traction;
+      rhsH(1:3:end) = -H(1:3:end,:) * state.traction;
 
     end
 
@@ -689,7 +712,7 @@ classdef SolidMechanicsContact < MeshTying
 
     end
 
-    function dtdtn = computeDerTracTn(obj,slip)
+    function dtdtn = computeDerTracTn(obj,slip,t)
 
       tanPhi = tan(deg2rad(obj.phi));
 
@@ -697,9 +720,7 @@ classdef SolidMechanicsContact < MeshTying
         %use available gap to properly compute traction
         dtdtn = -tanPhi*(slip/norm(slip));
       else
-        t = obj.state.traction(getMultiplierDoF(obj,is));
         t = t(2:3);
-        % convert to global reference system
         dtdtn = -tanPhi*(t/norm(t));
       end
     end

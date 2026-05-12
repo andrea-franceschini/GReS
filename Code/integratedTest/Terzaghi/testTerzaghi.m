@@ -8,7 +8,7 @@ scriptDir = fileparts(scriptFullPath);
 % Change the current directory to the script's directory
 cd(scriptDir);
 
-for elem = ["tetra","hexa"]
+for elem = ["hexa","tetra"]
   for flow = ["FV","FEM"]
     for scheme = ["FC","FS"]
       if strcmp(elem,"tetra") && strcmp(scheme,"FS")
@@ -60,8 +60,7 @@ switch scheme
 end
 
 % manually apply initial conditions
-state = domain.getState();
-applyTerzaghiIC(state,mat,grid,-10);
+applyTerzaghiIC(domain.state,mat,grid,-10);
 
 switch scheme
   case 'FC'

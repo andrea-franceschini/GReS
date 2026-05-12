@@ -150,7 +150,12 @@ classdef linearSolver < handle
             % First time solving request preconditioner computation
             obj.params.iter = -1;
             obj.params.lastRelres = 1e10;
-            obj.params.tol = generalsolver.simparams.relTol;
+            if isfield(generalsolver.simparams.linSolverParams, 'tol')
+               obj.params.tol = generalsolver.simparams.linSolverParams.tol;
+            else
+               % Use default tolerance
+               obj.params.tol = 1e-6;
+            end
 
             % Get default values
             chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');

@@ -15,8 +15,6 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     end
 
     function registerSolver(obj,varargin)
-
-
       registerSolver@SinglePhaseFlow(obj,entityField.cell,varargin{:});
 
       %linkBoundSurf2TPFAFace(obj);
@@ -28,7 +26,6 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       obj.isIntFaces = all(ismember(obj.grid.faces.neighbors, flowCells), 2);
 
       computeRhsGravTerm(obj);
-
     end
 
     function states = finalizeState(obj,p,t)
@@ -98,9 +95,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         coupledTags = dofm.getTargetRegions([obj.getField(),"displacements"]);
         alphaMat(m) = getRockCompressibility(obj,m,coupledTags);
         poroMat(m) = mat.getMaterial(m).PorousRock.getPorosity();
-
       end
-      
 
       ctags = cells.tag(cellIds);
 
@@ -131,6 +126,13 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       end
     end
 
+
+    function pHydro = getHydrostaticPressure(obj)
+      fluid = obj.domain.materials.getFluid();
+      gamma = fluid.getSpecificWeight;
+      pHydro = gamma * (obj.watLev - obj.grid.cells.center(:,3));
+    end
+
     function gTerm = getRhsGravity(obj)
 
       fluid = obj.domain.materials.getFluid();
@@ -144,6 +146,13 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         -lw.*obj.rhsGrav],[nCells,1]);
 
       gTerm = gTerm(dofm.getActiveEntities(obj.fieldId));
+
+      % remove hydrostatic contribution
+      gamma = fluid.getSpecificWeight;
+      pHydro = gamma * (obj.watLev - obj.grid.cells.center(:,3));
+      gHydro = obj.H * pHydro;
+
+      gTerm = gTerm - gHydro;
 
     end
 
@@ -413,7 +422,6 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     function str = typeDiscretization(obj)
       str = "FVTPFA";
     end
-
 
     function transm = getTransmissibility(obj)
       transm = obj.trans;

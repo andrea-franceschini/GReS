@@ -5,7 +5,6 @@
 #include <vector>
 #include <algorithm>
 #include <string>
-#include <cmath>
 
 using namespace matlab::data;
 using matlab::mex::ArgumentList;
@@ -36,75 +35,6 @@ class MexFunction : public matlab::mex::Function {
         return Mode::Geometry;
     }
 
-    static bool isNumericArray(const Array& arr)
-    {
-        ArrayType t = arr.getType();
-        return t == ArrayType::DOUBLE || t == ArrayType::SINGLE ||
-               t == ArrayType::INT8   || t == ArrayType::UINT8  ||
-               t == ArrayType::INT16  || t == ArrayType::UINT16 ||
-               t == ArrayType::INT32  || t == ArrayType::UINT32 ||
-               t == ArrayType::INT64  || t == ArrayType::UINT64;
-    }
-
-    static bool isMatrix2D(const Array& arr)
-    {
-        auto d = arr.getDimensions();
-        return d.size() == 2;
-    }
-
-    static std::size_t nRows(const Array& arr)
-    {
-        return arr.getDimensions()[0];
-    }
-
-    static std::size_t nCols(const Array& arr)
-    {
-        return arr.getDimensions()[1];
-    }
-
-    static bool isVectorShape(const Array& arr)
-    {
-        if (!isMatrix2D(arr)) return false;
-        auto d = arr.getDimensions();
-        return d[0] == 1 || d[1] == 1;
-    }
-
-    static bool isScalarShape(const Array& arr)
-    {
-        return numel(arr) == 1;
-    }
-
-    static bool isLocalPointMatrix(const Array& arr)
-    {
-        if (!isMatrix2D(arr)) return false;
-        if (arr.getType() != ArrayType::DOUBLE) return false;
-        std::size_t r = nRows(arr), c = nCols(arr);
-        return r >= 3 && (c == 2 || c == 3);
-    }
-
-    static bool isNormalVectorForDim(const Array& arr, std::size_t dim)
-    {
-        if (!isMatrix2D(arr)) return false;
-        if (arr.getType() != ArrayType::DOUBLE) return false;
-        if (dim == 3) return numel(arr) == 3 && isVectorShape(arr);
-        if (dim == 2) return false;
-        return false;
-    }
-
-    static bool isPossibleNVert(const Array& arr)
-    {
-        if (!isNumericArray(arr)) return false;
-        if (!isVectorShape(arr) && !isScalarShape(arr)) return false;
-        return numel(arr) >= 1;
-    }
-
-    static bool isBatchNormals(const Array& arr, std::size_t nPoly)
-    {
-        if (!isMatrix2D(arr)) return false;
-        if (arr.getType() != ArrayType::DOUBLE) return false;
-        return nRows(arr) == nPoly && nCols(arr) == 3;
-    }
-
     void localGeometry(ArgumentList& outputs, ArgumentList& inputs)
     {
         validateDoubleMatrix(this, factory, inputs[0], "mxPolygonGeometry:input", "points");
@@ -119,8 +49,7 @@ class MexFunction : public matlab::mex::Function {
         const double* userNormal = nullptr;
         if (inputs.size() >= 2 && !isCharArray(inputs[1])) {
             requireArgs(this, factory,
-                        inputs[1].getType() == ArrayType::DOUBLE &&
-                        isVectorShape(inputs[1]) && numel(inputs[1]) == 3,
+                        inputs[1].getType() == ArrayType::DOUBLE && numel(inputs[1]) == 3,
                         "mxPolygonGeometry:input", "normal must be a real 3-vector.");
             userNormalBuf = typedArrayToVector(inputs[1]);
             userNormal = userNormalBuf.data();
@@ -259,117 +188,24 @@ class MexFunction : public matlab::mex::Function {
         }
     }
 
-     enum class DispatchKind { Local, Batch };
+public:
 
-    DispatchKind dispatch(ArgumentList& inputs)
+    void operator()(ArgumentList outputs, ArgumentList inputs) override
     {
         requireArgs(this, factory, inputs.size() >= 1 && inputs.size() <= 4,
                     "mxPolygonGeometry:input",
                     "Usage: [A,C,N] = mxPolygonGeometry(P [,normal] [,mode]) or "
                     "[A,C,N] = mxPolygonGeometry(Pflat,nVert [,normals] [,mode]).");
 
-        requireArgs(this, factory, isLocalPointMatrix(inputs[0]),
-                    "mxPolygonGeometry:input",
-                    "First input must be a real double matrix of size N x 2 or N x 3 with N >= 3.");
-
-        const std::size_t dim = nCols(inputs[0]);
-
-        if (inputs.size() == 1) {
-            return DispatchKind::Local;
+        bool batchCall = false;
+        if (inputs.size() >= 2) {
+            bool secondIsVector = (getRows(inputs[1]) == 1 || getCols(inputs[1]) == 1);
+            bool firstLooksMatrix = (getCols(inputs[0]) == 2 || getCols(inputs[0]) == 3);
+            bool secondHasMany = (numel(inputs[1]) > 1);
+            batchCall = !isCharArray(inputs[1]) && firstLooksMatrix && secondIsVector && secondHasMany;
         }
 
-        if (inputs.size() == 2) {
-            if (isCharArray(inputs[1])) {
-                return DispatchKind::Local;
-            }
-
-            if (isNormalVectorForDim(inputs[1], dim)) {
-                return DispatchKind::Local;
-            }
-
-            if (isPossibleNVert(inputs[1])) {
-                return DispatchKind::Batch;
-            }
-
-            throwErr("mxPolygonGeometry:input",
-                     "Second argument must be either a mode string, a 3-vector normal, or an nVert vector.");
-        }
-
-        if (inputs.size() == 3) {
-            if (isCharArray(inputs[1])) {
-                throwErr("mxPolygonGeometry:input",
-                         "Invalid syntax. If the second argument is a mode string, no third argument is allowed.");
-            }
-
-            /*
-             * Important: decide batch syntax before local-normal syntax.
-             * nVert can be scalar, or can itself contain three entries, e.g. [3 4 3].
-             * In those cases it can look like a local 3-vector normal unless the
-             * third argument is used to disambiguate the call.
-             */
-            if (isPossibleNVert(inputs[1])) {
-                if (isCharArray(inputs[2])) {
-                    return DispatchKind::Batch;
-                }
-
-                requireArgs(this, factory, dim == 3,
-                            "mxPolygonGeometry:input",
-                            "Batch normals are only valid for 3D polygons.");
-
-                requireArgs(this, factory, isBatchNormals(inputs[2], numel(inputs[1])),
-                            "mxPolygonGeometry:input",
-                            "Batch normals must have size nPoly x 3, where nPoly = numel(nVert).");
-
-                return DispatchKind::Batch;
-            }
-
-            if (isNormalVectorForDim(inputs[1], dim)) {
-                requireArgs(this, factory, isCharArray(inputs[2]),
-                            "mxPolygonGeometry:input",
-                            "For local syntax with a normal, the third argument must be a mode string.");
-                return DispatchKind::Local;
-            }
-
-            throwErr("mxPolygonGeometry:input",
-                     "Second argument must be either nVert or a 3-vector normal.");
-        }
-
-        requireArgs(this, factory, inputs.size() == 4,
-                    "mxPolygonGeometry:input", "Too many input arguments.");
-
-        requireArgs(this, factory, !isCharArray(inputs[1]),
-                    "mxPolygonGeometry:input",
-                    "For 4 inputs, the second argument must be nVert.");
-
-        requireArgs(this, factory, isPossibleNVert(inputs[1]),
-                    "mxPolygonGeometry:input",
-                    "For 4 inputs, the second argument must be nVert.");
-
-        requireArgs(this, factory, !isCharArray(inputs[2]),
-                    "mxPolygonGeometry:input",
-                    "For 4 inputs, the third argument must be the normals array.");
-
-        requireArgs(this, factory, dim == 3,
-                    "mxPolygonGeometry:input",
-                    "Batch normals are only valid for 3D polygons.");
-
-        requireArgs(this, factory, isBatchNormals(inputs[2], numel(inputs[1])),
-                    "mxPolygonGeometry:input",
-                    "Batch normals must have size nPoly x 3, where nPoly = numel(nVert).");
-
-        requireArgs(this, factory, isCharArray(inputs[3]),
-                    "mxPolygonGeometry:input",
-                    "For 4 inputs, the fourth argument must be a mode string.");
-
-        return DispatchKind::Batch;
-    }
-
-public:
-
-    void operator()(ArgumentList outputs, ArgumentList inputs) override
-    {
-        DispatchKind kind = dispatch(inputs);
-        if (kind == DispatchKind::Local) localGeometry(outputs, inputs);
-        else                             batchGeometry(outputs, inputs);
+        if (!batchCall) localGeometry(outputs, inputs);
+        else            batchGeometry(outputs, inputs);
     }
 };

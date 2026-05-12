@@ -2,6 +2,10 @@ function processGeometry(grid)
 % process alla geometric informations of the grid starting from minimal
 % connectivity informations
 
+if grid.isProcessed
+  warning('The grid geometry has already been processed, geometry will be restored')
+end
+
 initializeGrid(grid);
 
 for vtkId = grid.cells.vtkTypes
@@ -16,6 +20,10 @@ fId = grid.surfaces.faceId;
 grid.surfaces.area = grid.faces.area(fId);
 grid.surfaces.center = grid.faces.center(fId,:);
 grid.surfaces.normal = grid.faces.normal(fId,:);
+
+
+% set grid processed
+grid.isProcessed = true;
 
 end
 

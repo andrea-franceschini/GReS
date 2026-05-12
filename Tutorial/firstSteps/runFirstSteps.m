@@ -1,8 +1,8 @@
 %% Unit cube with prescribed pressure gradient
 % slightly compressible single phase flow model
 
-% unit cube with 10x10x10 hexahedra
-grid = structuredMesh(10,10,10,[0 1],[0 1],[0 1]);
+% unit cube with 4x4x8 hexahedra
+grid = structuredMesh(4,4,8,[0 1],[0 1],[0 1]);
 
 % materials
 mat = Materials();
@@ -35,8 +35,8 @@ bc.addBC('name',"topPressure",...
 bc.addBCEvent("bottomPressure",'time',0.0,'value',0.0);
 
 % top pressure - linear variation from t = 0.0 to t = 1.0
-bc.addBCEvent("topPressure",'time',0.0,'value',0.0);
-bc.addBCEvent("topPressure",'time',10.0,'value',10.0);
+bc.addBCEvent("topPressure",'time',0.0,'value',10.0);
+%bc.addBCEvent("topPressure",'time',10.0,'value',10.0);
 
 % discretizer
 domain = Discretizer('Boundaries', bc, ...
@@ -45,10 +45,10 @@ domain = Discretizer('Boundaries', bc, ...
 
 domain.addPhysicsSolver("SinglePhaseFlowFVTPFA",'targetRegions',1);
 
-input = struct('Start',0.0,'End',10.0,'DtInit',1e-1,'DtMax',1e0,'DtMin',1e-1,'incrementFactor',1.1);
+input = struct('Start',0.0,'End',100.0,'DtInit',1e-1,'DtMax',1e1,'DtMin',1e-1,'incrementFactor',1.05);
 simparams = SimulationParameters(input);
 
-out = OutState('printTimes',[1.0,5.0,10.0],'outputFile',"Output/results",'matFileName',"Output/results");
+out = OutState('printTimes',0:1:100,'outputFile',"Output/resultsKV",'matFileName',"Output/results");
 
 solver = NonLinearImplicit('simulationparameters',simparams,'domains',domain, 'output', out);
 gresLog().setVerbosity(2);
