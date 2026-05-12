@@ -111,20 +111,6 @@ classdef preconditioner < handle
                end
                return
             end
-         else
-            % Supported MultiPhysics
-            if(contains(physname,["pressure" "displacements"])) %#ok<UNRCH>
-               if domainin.dofm.getVariableNames(1) == 'pressure' %#ok<BDSCA>
-                  phys = 0;
-               else
-                  phys = 1;
-               end
-            else
-               if debugflag
-                  warning('Non supported Physics for linsolver, falling back to matlab solver');
-               end
-               return
-            end
          end
 
          % Now the preconditioner can actually be built, the checks have been passed
