@@ -17,9 +17,6 @@ classdef preconditioner < handle
       nDom
       nInt
 
-      % Flag to treat multiple domains as multiple domains
-      multidomFlag = false
-
       % Flag to know if the problem has multiphysics
       multiPhysFlag = false
 
