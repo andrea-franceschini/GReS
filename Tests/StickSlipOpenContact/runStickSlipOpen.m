@@ -13,10 +13,10 @@ params = readInput(fullfile('Input','StickSlipOpen.xml'));
 
 % set mesh 
 X = 5; Y = 10; Z = 15;
-nx1 = 2; ny1 = 6; nz1 = 6;
+nx1 = 2; ny1 = 12; nz1 = 12;
 gridL = structuredMesh(nx1,ny1,nz1,[0,0.5*X],[0 Y],[0 Z]);
 
-nx2 = 2; ny2 = 8; nz2 = 8;
+nx2 = 2; ny2 = 20; nz2 = 20;
 gridR = structuredMesh(nx2,ny2,nz2,[0.5*X,X],[0 Y],[0 Z]);
 
 assert(mod(ny1,2) == 0 && mod(ny2,2)==0,"Number of elements along y axis " + ...
