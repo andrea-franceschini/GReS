@@ -179,7 +179,7 @@ classdef preconditioner < handle
       [params] = getUserInput(obj,params,xml);
 
       % Function to compute the preconditioner for the single block (single physics)
-      computeSinglePhPrec(obj,A,symMat);
+      computeSinglePhPrec(obj,A,symMat,block);
 
       % Function to compute the Reverse Agumented preconditioner for the lagrange multiplier case (single physics multi domain)
       computeRACP(obj,A,symMat)

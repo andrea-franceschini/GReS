@@ -69,7 +69,7 @@ function computeRACP(obj,A,symMat)
    symAug = min(symMat(1:3));
    
    % Compute the amg for block 11
-   obj.Compute(A11_aug,symAug);
+   obj.computeSinglePhPrec(A11_aug,symAug,true);
 
    obj.Apply_L = @(x) apply_RevAug(obj.Prec,A11_aug,A{1,2},inv_D22,x);
    obj.Apply_R = @(x) x;

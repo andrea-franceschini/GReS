@@ -1,5 +1,9 @@
-function computeSinglePhPrec(obj,A,symMat)
+function computeSinglePhPrec(obj,A,symMat,block)
    
+   if nargin < 4
+      block = false;
+   end
+
    if iscell(A)
       A = A{1,1};
    end
@@ -16,14 +20,16 @@ function computeSinglePhPrec(obj,A,symMat)
       % Compute the AMG preconditioner
       case 'amg'
          
-         % Treat Boundary conditions 
-         warning('off', 'MATLAB:eigs:NotAllEigsConvKeep');
-         lmax = eigs(A,1,'lm','FailureTreatment','keep','Display',0,'Tolerance',0.001,'MaxIterations',3);
+         % Treat Boundary conditions if not coming from a block preconditioner 
+         if ~block
+            warning('off', 'MATLAB:eigs:NotAllEigsConvKeep');
+            lmax = eigs(A,1,'lm','FailureTreatment','keep','Display',0,'Tolerance',0.001,'MaxIterations',3);
 
-         d = diag(A);
-         idx = (d == 1);
-         d(idx) = lmax/10;
-         A = spdiags(d, 0, A);
+            d = diag(A);
+            idx = (d == 1);
+            d(idx) = lmax/10;
+            A = spdiags(d, 0, A);
+         end
 
          % Compute the test space
          if(obj.phys == 0) % fluids
