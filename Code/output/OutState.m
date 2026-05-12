@@ -129,7 +129,7 @@ classdef OutState < handle & matlab.mixin.Copyable
         blocks = pvd.createElement('Collection');
 
 
-        for i = 1 : length(tID)
+        for i = 1 : obj.timeID-1
           block = pvd.createElement('DataSet');
           block.setAttribute('timestep', sprintf('%e', tID(i)));
           [~,fname,~] = fileparts(obj.vtkFileName);
