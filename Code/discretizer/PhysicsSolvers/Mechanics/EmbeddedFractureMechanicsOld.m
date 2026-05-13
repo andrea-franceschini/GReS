@@ -13,7 +13,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     areaTol = 1e-6;         % minimum area of a fracture element
     bcTraction
     mechSolver              % handle to the Poromechanics solver
-    iter                    % newton iteration counter
 
   end
 
@@ -107,11 +106,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
 
     function timeStepSetup(obj)
-
-      % set open if jump is positive
-      isOpen = obj.getState.fractureJump(1:3:end) > obj.activeSet.tol.normalGap;
-      obj.activeSet.curr(isOpen) = ContactMode.open;
-
+      isActive = obj.activeSet.curr ~= ContactMode.open;
+      obj.activeSet.curr(isActive) = ContactMode.stick;
     end
 
 
@@ -142,11 +138,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       t = s.time;
       iniStress = getStateInit(obj,'stress');
       iniTraction = getStateInit(obj,'traction'); % use this!
-      jump = s.fractureJump;
-      jumpOld = sOld.fractureJump;
+      %jump = s.fractureJump;
       du = s.displacements - sOld.displacements;
-      dj = jump - jumpOld;
-
+      djTot = s.fractureJump - sOld.fractureJump;
+      %djEl = s.elasticJump - sOld.elasticJump;
+      djPlas = s.plasticJump - sOld.plasticJump;
 
       coordinates = obj.grid.coordinates;
 
@@ -186,7 +182,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           Bw = computeCompatibilityMatrix(obj,frac,f,coords,gradN);
 
           % enhance strain (only elastic contribution)
-          enhancedStrain = reshape(pagemtimes(Bw,dj(wDof)),6,nG)';
+          enhancedStrain = reshape(pagemtimes(Bw,djTot(wDof)),6,nG)';
 
           % compute E matrix (equilibrium operator, 6x3)
           E = computeEquilibriumOperator(obj,frac,f);
@@ -224,20 +220,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           KwuLoc = Poromechanics.computeKloc(E,D,B,dJw);
           KwwLoc = Poromechanics.computeKloc(E,D,Bw,dJw);
 
-          % compute updated traction and get tangent constitutive operator
-
-          if jump(wDof((1))) > obj.activeSet.tol.normalGap
-            tracNew = zeros(3,1);
-            dtdg = zeros(3);
-            obj.activeSet.curr(f) = ContactMode.open;
-          else
-            % return mapping for coulomb friction
-            tOld = sOld.traction(wDof);
-            fracId = f.fracId(f);
-            [tracNew,dtdg] = returnMapping(obj,f,fracId,tOld,jump(wDof),jumpOld(wDoF)); 
-          end
-
-          s.traction = tracNew;
+          % use plastic slip
+          slip = djPlas(wDof([2;3])); % why not dj?
+          trac = s.traction(wDof);
+          dtrac = trac - iniTraction(wDof);
+          dtdg = computeDerTractionGap(obj,f,slip,[trac(1);dtrac([2;3])]);
 
           KwwLoc = KwwLoc - dtdg*frac.area(f);
 
@@ -248,7 +235,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
           % assemble rhsW (use computed stress tensor)
           %dsigma = reshape(dsigma',6,1,nG);
-          rT = tracNew*frac.area(f);
+          rT = dtrac*frac.area(f);
           fTmp = pagemtimes(E,'ctranspose',dsigma,'none');
           fTmp = fTmp.*reshape(dJw,1,1,[]);
           rSigma = sum(fTmp,3);
@@ -294,132 +281,133 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     end
 
 
-    % function hasConfigurationChanged = updateConfiguration(obj)
-    % 
-    %   oldActiveSet = obj.activeSet.curr;
-    % 
-    %   traction = getState(obj,"traction");
-    %   displacementJump = getState(obj,"fractureJump");
-    % 
-    %   f = obj.fractureMesh.surfaces;
-    % 
-    % 
-    %   for i = 1:numel(obj.activeSet.curr)
-    % 
-    %     fracId = f.fracId(i);
-    % 
-    %     state = obj.activeSet.curr(i);
-    % 
-    %     id = DoFManager.dofExpand(i,3);
-    % 
-    %     t = traction(id);
-    %     g_n = displacementJump(id(1));
-    % 
-    %     limitTraction = abs(obj.cohesion(fracId) - tan(obj.phi(fracId))*t(1));
-    % 
-    %     obj.activeSet.curr(i) = updateContactState(state,t,...
-    %       limitTraction, ...
-    %       g_n,...
-    %       obj.activeSet.tol);
-    % 
-    %     % add plastic slip to newSlip dofs
-    %     % if obj.activeSet.curr(i) == ContactMode.newSlip
-    %     %   plasticSlip = norm(t(2:3)) - limitTraction;
-    %     %   slip = plasticSlip * trac(2:3);
-    %     % end
-    % 
-    % 
-    %   end
-    % 
-    % 
-    % 
-    %   % check if active set changed
-    %   asNew = obj.activeSet.curr;
-    %   asOld = oldActiveSet;
-    % 
-    %   % do not upate state of element that exceeded the maximum number of
-    %   % individual updates
-    %   reset = obj.activeSet.stateChange >= ...
-    %     obj.activeSet.tol.maxStateChange;
-    % 
-    %   asNew(reset) = asOld(reset);
-    % 
-    %   diffState = asNew - asOld;
-    % 
-    %   idNewSlipToSlip = all([asOld==2 diffState==1],2);
-    %   diffState(idNewSlipToSlip) = 0;
-    %   hasChangedElem = diffState~=0;
-    % 
-    %   nomoreStick = diffState > 0;
-    % 
-    %   obj.activeSet.stateChange(nomoreStick) = ...
-    %     obj.activeSet.stateChange(nomoreStick) + 1;
-    % 
-    % 
-    %   hasConfigurationChanged = any(diffState);
-    % 
-    %   gresLog().log(2,'%s: Active set \n',class(obj));
-    %   if gresLog().getVerbosity > 3
-    %     % report active set changes
-    %     da = asNew - asOld;
-    %     d = da(asOld == 1);
-    %     assert(~any(d==2));       % avoid stick to slip without newSlip
-    %     fprintf('%i elements from stick to new slip \n',sum(d==1));
-    %     fprintf('%i elements from stick to open \n',sum(d==3));
-    %     d = da(asOld==2);
-    %     fprintf('%i elements from new slip to stick \n',sum(d==-1));
-    %     fprintf('%i elements from new slip to slip \n',sum(d==1));
-    %     fprintf('%i elements from new slip to open \n',sum(d==2));
-    %     d = da(asOld==3);
-    %     fprintf('%i elements from slip to stick \n',sum(d==-2));
-    %     fprintf('%i elements from slip to open \n',sum(d==1));
-    %     d = da(asOld==4);
-    %     fprintf('%i elements from open to stick \n',sum(d==-3));
-    % 
-    %   end
-    % 
-    %   gresLog().log(2,'Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
-    %     sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
-    % 
-    %   if hasConfigurationChanged
-    % 
-    % 
-    %     % EXCEPTION 1): check if area of fracture changing state is relatively small
-    %     areaChanged = sum(f.area(hasChangedElem));
-    %     totArea = sum(f.area);
-    %     if areaChanged/totArea < obj.activeSet.tol.areaChange
-    %       %obj.activeSet.curr = oldActiveSet;
-    %       % change the active set, but flag it as nothing changed
-    %       hasConfigurationChanged = false;
-    %       gresLog().log(1,['Active set update suppressed due to small fracture change:' ...
-    %         ' areaChange/areaTot = %3.2e \n'],areaChanged/totArea);
-    %     end
-    % 
-    %     % EXCEPTION 2): check if changing elements have been looping from
-    %     % stick to slip/open too much times
-    % 
-    %     if all(obj.activeSet.stateChange(hasChangedElem) > obj.activeSet.tol.maxStateChange)
-    %       hasConfigurationChanged = false;
-    %       gresLog().log(1,['Active set update suppressed due to' ...
-    %         ' unstable behavior detected'])
-    %     end
-    %   end
-    % 
-    %   if hasConfigurationChanged
-    %     updateTractionAndJump(obj);
-    %   end
-    % 
-    % end
+    function hasConfigurationChanged = updateConfiguration(obj)
+
+      oldActiveSet = obj.activeSet.curr;
+
+      traction = getState(obj,"traction");
+      displacementJump = getState(obj,"fractureJump");
+
+      f = obj.fractureMesh.surfaces;
 
 
-    % function isReset = resetConfiguration(obj)
-    % 
-    %   toReset = obj.activeSet.curr(:) ~= ContactMode.open;
-    %   obj.activeSet.curr(toReset) = ContactMode.stick;
-    % 
-    %   isReset = true;
-    % 
-    % end
+      for i = 1:numel(obj.activeSet.curr)
+
+        fracId = f.fracId(i);
+
+        state = obj.activeSet.curr(i);
+
+        id = DoFManager.dofExpand(i,3);
+
+        t = traction(id);
+        g_n = displacementJump(id(1));
+
+        limitTraction = abs(obj.cohesion(fracId) - tan(obj.phi(fracId))*t(1));
+
+        obj.activeSet.curr(i) = updateContactState(state,t,...
+          limitTraction, ...
+          g_n,...
+          obj.activeSet.tol);
+
+        % add plastic slip to newSlip dofs
+        % if obj.activeSet.curr(i) == ContactMode.newSlip
+        %   plasticSlip = norm(t(2:3)) - limitTraction;
+        %   slip = plasticSlip * trac(2:3);
+        % end
+
+
+      end
+
+
+
+      % check if active set changed
+      asNew = obj.activeSet.curr;
+      asOld = oldActiveSet;
+
+      % do not upate state of element that exceeded the maximum number of
+      % individual updates
+      reset = obj.activeSet.stateChange >= ...
+        obj.activeSet.tol.maxStateChange;
+
+      asNew(reset) = asOld(reset);
+
+      diffState = asNew - asOld;
+
+      idNewSlipToSlip = all([asOld==2 diffState==1],2);
+      diffState(idNewSlipToSlip) = 0;
+      hasChangedElem = diffState~=0;
+
+      nomoreStick = diffState > 0;
+
+      obj.activeSet.stateChange(nomoreStick) = ...
+        obj.activeSet.stateChange(nomoreStick) + 1;
+
+
+      hasConfigurationChanged = any(diffState);
+
+      gresLog().log(2,'%s: Active set \n',class(obj));
+      if gresLog().getVerbosity > 3
+        % report active set changes
+        da = asNew - asOld;
+        d = da(asOld == 1);
+        assert(~any(d==2));       % avoid stick to slip without newSlip
+        fprintf('%i elements from stick to new slip \n',sum(d==1));
+        fprintf('%i elements from stick to open \n',sum(d==3));
+        d = da(asOld==2);
+        fprintf('%i elements from new slip to stick \n',sum(d==-1));
+        fprintf('%i elements from new slip to slip \n',sum(d==1));
+        fprintf('%i elements from new slip to open \n',sum(d==2));
+        d = da(asOld==3);
+        fprintf('%i elements from slip to stick \n',sum(d==-2));
+        fprintf('%i elements from slip to open \n',sum(d==1));
+        d = da(asOld==4);
+        fprintf('%i elements from open to stick \n',sum(d==-3));
+
+      end
+
+      gresLog().log(2,'Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
+        sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
+
+      if hasConfigurationChanged
+
+
+        % EXCEPTION 1): check if area of fracture changing state is relatively small
+        areaChanged = sum(f.area(hasChangedElem));
+        totArea = sum(f.area);
+        if areaChanged/totArea < obj.activeSet.tol.areaChange
+          %obj.activeSet.curr = oldActiveSet;
+          % change the active set, but flag it as nothing changed
+          hasConfigurationChanged = false;
+          gresLog().log(1,['Active set update suppressed due to small fracture change:' ...
+            ' areaChange/areaTot = %3.2e \n'],areaChanged/totArea);
+        end
+
+        % EXCEPTION 2): check if changing elements have been looping from
+        % stick to slip/open too much times
+
+        if all(obj.activeSet.stateChange(hasChangedElem) > obj.activeSet.tol.maxStateChange)
+          hasConfigurationChanged = false;
+          gresLog().log(1,['Active set update suppressed due to' ...
+            ' unstable behavior detected'])
+        end
+      end
+
+      if hasConfigurationChanged
+        updateTractionAndJump(obj);
+      end
+
+    end
+
+
+
+    function isReset = resetConfiguration(obj)
+
+      toReset = obj.activeSet.curr(:) ~= ContactMode.open;
+      obj.activeSet.curr(toReset) = ContactMode.stick;
+
+      isReset = true;
+
+    end
 
 
     function advanceState(obj)
@@ -430,75 +418,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       obj.activeSet.prev = obj.activeSet.curr;
 
-    end
-
-
-
-    function [tractionNew, dtdg] = returnMapping(obj,fEl,fracId,tOld,jumpNew,jumpOld)
-
-      % tOld: last converged traction
-      % jumpNew/jumpOld: current and last converged fracture jump
-      
-      tractionNew = zeros(3,1);
-      dtdg = zeros(3);
-
-      % trial traction
-      tTrial = [tOld(1) + obj.penalty_n * jumpNew;...
-                tOld(2:3) + obj.penalty_t * (jumpNew - jumpOld)];
-
-      tTrial_t = tTrial(2:3);
-      tTrial_t_norm = norm(tTrial_t);
-
-      % set dofs to open state
-      if jumpNew > obj.activeSet.tol.normalGap
-        obj.activeSet.curr(fEl) = ContactMode.open;
-        return
-      else
-        tractionNew(1) = tTrial(1);
-      end
-
-      % check slip/stick
-      if obj.iter == 1
-        % force first iter to be stick
-        obj.activeSet.curr(fEl) = ContactMode.stick;
-      else
-
-        tauLim = abs(obj.cohesion(fracId) - tan(obj.phi(fracId))*tractionNew(1));
-        
-        if tTrial_t_norm > tauLim
-          obj.activeSet.curr(fEl) = ContactMode.slip;
-        else
-          obj.activeSet.curr(fEl) = ContactMode.stick;
-        end
-      end
-
-
-      % stick/slip traction update
-      if obj.activeSet.curr(fEl) == ContactMode.stick
-
-        tractionNew = tractionTrial;
-        dtdg = diag([obj.penalty_n,obj.penalty_t,obj.penalty_t]);
-
-
-      elseif obj.activeSet.curr(fEl) == ContactMode.slip
-
-        slipDir = tTrial_t / tTrial_t_norm;     % slip direction
-        tractionNew(2:3) = tauLim * slipDir;
-
-        % consistent tangent operator
-
-
-
-        
-      end
-
-
-
-
-
-
-
-      % 
     end
 
 
