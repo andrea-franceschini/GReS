@@ -115,7 +115,7 @@ classdef OutState < handle & matlab.mixin.Copyable
       if ~isempty(varargin)
         tID = varargin{1};
       else
-        tID = obj.timeList;
+        tID = 1:obj.timeID - 1;
       end
 
       % write the pvd file
