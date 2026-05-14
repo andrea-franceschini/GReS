@@ -127,11 +127,11 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     end
 
 
-    function pHydro = getHydrostaticPressure(obj)
-      fluid = obj.domain.materials.getFluid();
-      gamma = fluid.getSpecificWeight;
-      pHydro = gamma * (obj.watLev - obj.grid.cells.center(:,3));
-    end
+    % function pHydro = getHydrostaticPressure(obj)
+    %   fluid = obj.domain.materials.getFluid();
+    %   gamma = fluid.getSpecificWeight;
+    %   pHydro = gamma * (obj.watLev - obj.grid.cells.center(:,3));
+    % end
 
     function gTerm = getRhsGravity(obj)
 

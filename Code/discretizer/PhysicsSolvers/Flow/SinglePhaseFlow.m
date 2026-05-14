@@ -21,7 +21,6 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
     computeMat(obj,dt)
     rhsGrav = getRhsGravity(obj,mobility)
-    pHydro = getHydrostaticPressure(obj);
 
   end
 
@@ -79,16 +78,13 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       p = obj.getState(obj.getField());
       ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
 
-      % balanced pressure to be removed from rhs assembly
-      p0 = getStateInit(obj,"pressure");
-
       if obj.steadyState
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H;
-        rhs = obj.H*(p(ents) - p0(ents));
+        rhs = obj.H*p(ents);
       else
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H + obj.P/dt;
         pOld = obj.getStateOld(obj.getField());
-        rhsH = obj.H*(p(ents) - p0(ents));
+        rhsH = obj.H*p(ents);
         rhsP = (obj.P/dt)*(p(ents) - pOld(ents));
         rhs = rhsH + rhsP;
       end
@@ -96,8 +92,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       gamma = obj.domain.materials.getFluid().getSpecificWeight();
       if gamma > 0
         % add rhs gravity contribution
-        pHydro = getHydrostaticPressure(obj);
-        rhsG = getRhsGravity(obj) - obj.H*pHydro;
+        rhsG = getRhsGravity(obj);
         obj.domain.rhs{obj.fieldId} = rhs + rhsG;
       else
         obj.domain.rhs{obj.fieldId} = rhs;  
@@ -115,13 +110,6 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       setState(obj,p,"pressure");
     end
 
-
-    function pTot = getTotalPressure(obj)
-
-      overPressure =  getState(obj,"pressure");
-      pTot = overPressure + getHydrostaticPressure(obj);
-
-    end
 
     % function advanceState(obj)
     %   % does nothing for now, but needed to override the abstract

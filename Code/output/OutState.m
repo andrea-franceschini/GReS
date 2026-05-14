@@ -131,7 +131,7 @@ classdef OutState < handle & matlab.mixin.Copyable
 
         for i = 1 : length(tID)
           block = pvd.createElement('DataSet');
-          block.setAttribute('timestep', sprintf('%e', tID(i)));
+          block.setAttribute('timestep', sprintf('%e', obj.timeList(i)));
           [~,fname,~] = fileparts(obj.vtkFileName);
           % standard naming for vtm files
           vtmFileName = sprintf('%s/output_%5.5i.vtm',fname,i);
