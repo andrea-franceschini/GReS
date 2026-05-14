@@ -43,8 +43,11 @@ classdef Sedimentation < PhysicsSolver
     coordZ (:,1)                 % Z coordinates of grid nodes
     heightControl                % Height threshold for new cell
 
-    void0 (:,1)                         % Initial porosity for each cell
+    % void0 (:,1)                         % Initial porosity for each cell
     matfrac (:,:)                       % Material fractions per cell
+
+    deltaStress (:,1)
+    voidTop
   end
 
   properties (Access = protected)
@@ -152,36 +155,57 @@ classdef Sedimentation < PhysicsSolver
       % Initialize the Sedimentation solver before the simulation starts
 
       % Initialize the States
-      state = obj.getState;
+      state = getState(obj);
       ncells = [length(obj.coordX)-1 length(obj.coordY)-1 length(obj.coordZ)-1];
 
-      nelm = obj.mdof.ndofs;      
-      actDofs = obj.mdof.getActiveDof';
-      state.stressCons(actDofs) = -abs(obj.getCellsProp('preConStress'));
+      actDofs = getActiveDof(obj.mdof)';
+      state.stressCons(actDofs) = -abs(getCellsProp(obj,'preConStress'));
       stateOld = state;
 
-      % Initialize for each cell: porosity, initial stress
-      obj.void0 = zeros(nelm,1);
+      % Initialize for each cell
+      gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
       stStore = zeros(ncells(1:2));
       for lay = ncells(3):-1:1
-        [dof,map] = obj.mdof.getDofFromLay(lay);
+        [dof,map] = getDofFromLay(obj.mdof,lay);
         if ~isempty(dof)
-          fracMat = obj.matfrac(dof,:);
+          matFract = obj.matfrac(dof,:);
           dh = obj.cellDims(dof,3);
           stsCons = stStore(map);
-          [void,stress,~,~] = obj.initializeCell(fracMat,dh/2,stsCons);
-          stStore(map) = 2*stress-stsCons;
 
-          obj.void0(dof) = void;
-          sInit = obj.getCellsProp('initialStress',dof);
+          ncols = length(dof);
+          DStress = zeros(ncols,1);
+          voidTmp = zeros(ncols,1);
+          stsCellAcc = zeros(ncols,1);
+          Cr = zeros(ncols,1);          
+          for mat=1:obj.nmat
+            gamma_s = obj.domain.materials.getMaterial(mat).ConstLaw.getSpecificWeight();
+            DStress = DStress + (gamma_s - gamma_w)*matFract(:,mat).*dh;
 
-          state.stress(dof) = stress-sInit;
+            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidRate();
+            voidTmp = voidTmp + matFract(:,mat).*tmpMat;
+
+            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getReCompressibilityIdx();
+            Cr = Cr + matFract(:,mat).*tmpMat;
+
+            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getInitialStress();
+            stsCellAcc = stsCellAcc + matFract(:,mat).*tmpMat;
+          end
+
+          % Iterative procedure
+          strial = (1./(1+voidTmp)).*DStress+stsCons(map);
+          [void,~] = Sedimentation.initialCellProp(voidTmp,-strial,...
+            -stsCellAcc,-stsCons(map),Cr,obj.tol,obj.niterMx);
+          stress = (1./(1+void)).*DStress+stsCons(map);
+          stStore(map) = stress;
+
+          state.stress(dof) = -stress;
           state.voidrate(dof) = void;
-
-          stateOld.stress(dof) = -sInit;          
+          stateOld.stress(dof) = -stress;
           stateOld.voidrate(dof) = void;
         end
       end
+
+      % Set States
       obj.setState(state);
       obj.setStateInit(stateOld);
       obj.setStateOld(stateOld);
@@ -189,12 +213,54 @@ classdef Sedimentation < PhysicsSolver
 
     function timeStepSetup(obj)
       % initialize the physics solver for the time step
+      dofs = getActiveDof(obj.mdof);
+      state = getState(obj);
+      stateOld = getStateOld(obj);
 
       % Finding the sedimentation rate
-      t0 = obj.getStateOld('time');
-      dt = obj.getState('time')-t0;
-      sedmRate = obj.sedimentHistory.getSedimentationMap(t0,dt);
-      obj.setState(sedmRate,'sedmRate');
+      t0 = stateOld.time;
+      dt = state.time-t0;
+      state.sedmRate = getSedimentationMap(obj.sedimentHistory,t0,dt);
+      % setState(obj,sedmRate,'sedmRate');
+
+      % Sediments stress contribution
+      ncols = prod(obj.mdof.ncells(1:2));      
+      matFract = normalize(state.sedmRate,2,'range');
+      map = sum(matFract,2)~=0;
+
+      obj.deltaStress = zeros(ncols,1);
+      obj.voidTop = zeros(ncols,1);
+      Cr = zeros(ncols,1);
+      stsInit = zeros(ncols,1);
+      gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
+      for mat=1:obj.nmat
+        gamma_s = obj.domain.materials.getMaterial(mat).ConstLaw.getSpecificWeight();
+        obj.deltaStress = obj.deltaStress + (gamma_s - gamma_w)*state.sedmRate(:,mat);
+
+        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidRate();
+        obj.voidTop = obj.voidTop + matFract(:,mat).*tmpMat;
+
+        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getReCompressibilityIdx();
+        Cr = Cr + matFract(:,mat).*tmpMat;
+
+        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getInitialStress();
+        stsInit = stsInit + matFract(:,mat).*tmpMat;
+      end
+
+      % iterate to find the true value of e and stress
+      stsCons = zeros(ncols,1);
+      strial = (1./(1+obj.voidTop(map))).*obj.deltaStress(map)+stsCons(map);
+      [void,~] = Sedimentation.initialCellProp(obj.voidTop(map),-strial,...
+        -stsInit(map),stsCons(map),Cr(map),obj.tol,obj.niterMx);
+
+      obj.deltaStress(map) = (1./(1+void)).*obj.deltaStress(map,1);
+      obj.voidTop(map) = void;
+
+      % state.stress
+      dstress = obj.deltaStress(obj.mdof.getMapFromDofs(dofs));
+      state.stress(dofs) = state.stress(dofs) - dstress;
+
+      setState(obj,state);
     end
 
     function assembleSystem(obj,dt)
@@ -263,34 +329,147 @@ classdef Sedimentation < PhysicsSolver
     function advanceState(obj)
       % ADVANCESTATE Finalizes time step and updates grid topology.
 
-      % Update sediment accumulation
-      [cellGrow, cellSed, sedmCols, activeCol] = updateSedAccumulated(obj);
-
-      % Update state for next step
+      % Get state and set the initial conditions
       state = getState(obj);
-      setStateOld(obj,state);
+      state.iterTimeStep = 1;
+      state.strain(:) = 0;
+      mapStressCons = state.stress < state.stressCons;
+      state.stressCons(mapStressCons) = state.stress(mapStressCons);
 
-      map = state.stress < state.stressCons;
-      state.stressCons(map) = state.stress(map);
-      setState(obj,state.stressCons,'stressCons');      
-      setState(obj,sedmCols,'sedmAcc');
+      % fprintf('void ratio\n');
+      % fprintf('%d\n',state.voidrate(4));
+      fprintf('t=%d --- p=%d --- vr=%d\n',state.time,state.pressure(4),state.voidrate(4));
+      % fprintf('vr(%d)-%d  --- p(%d)-%d\n',state.time,state.voidrate(4),state.time,state.pressure(4));
 
-      % Active and Update the cells with variable height
-      % if ~any(cellGrow)
-      updateTopCells(obj,activeCol,true);
-      % end
+      % ------ Update the Sedimentation ------
+      % Update the sedimentation 
+      dt = state.time-getStateOld(obj,'time');
+      sedAdd = dt*state.sedmRate;
+      state.sedmAcc = state.sedmAcc + sedAdd;
 
-      % Grow mesh if height threshold is reached
-      if any(cellGrow)
-        meshUpdate(obj,cellGrow,cellSed);
+      newCellSed = zeros(size(state.sedmAcc));
+      varCellSed = sedAdd;
 
-        % Update the dof used for the parallel solver
-        setState(obj,obj.mdof.getMaxDofUnchanged,'maxDofUnchanged');
+      % Check for growth trigger (Height >= Threshold)
+      dzSed = sum(state.sedmAcc,2);
+      mapNewCells = dzSed > obj.heightControl*(1+obj.minCellHeight); % <-- Very important check
+
+      % Activated the inactive cells
+      activeCols = and((dzSed > obj.heightControl*obj.minCellHeight),~state.cellVarAct);
+      activetedDofs(obj.mdof,activeCols);
+      state.cellVarAct(activeCols)=true;
+
+      % Handle overflow for grown cells
+      if any(mapNewCells)
+        gresLog().log(1,"Created %i new cells \n",sum(mapNewCells))
+
+        dl = dzSed-obj.heightControl;
+        sed = dl.*(sedAdd./sum(sedAdd,2));
+        newCellSed(mapNewCells,:) = sed(mapNewCells,:);
+        varCellSed(mapNewCells,:) = varCellSed(mapNewCells,:) - newCellSed(mapNewCells,:);
+        state.sedmAcc(mapNewCells,:) = sed(mapNewCells,:);
       end
 
-      % Update the necessity to compute the sedimentation rate.
-      setState(obj,1,'iterTimeStep');
-      setState(obj,sum(cellGrow),'newcells');
+      % ------ Update the cells at the top (before the grow) ------
+      dlSedm = sum(sedAdd,2);
+      
+      dofs = getVarHeightDofs(obj.mdof,state.cellVarAct);
+      dzOld = obj.cellDims(dofs,3);
+      dlInc = sum(varCellSed(state.cellVarAct,:),2);
+      dzNew = dzOld+dlInc;
+
+      fracVarCell = dzOld.*obj.matfrac(dofs,:) + varCellSed(state.cellVarAct,:);
+      obj.cellDims(dofs,3) = dzNew;
+      obj.matfrac(dofs,:) = fracVarCell./sum(fracVarCell,2);
+
+      state.voidrate(dofs) = (dzOld.*state.voidrate(dofs) + ...
+        dlInc.*obj.voidTop(state.cellVarAct))./dzNew;
+      state.stress(dofs) = state.stress(dofs) - ...
+        obj.deltaStress(state.cellVarAct).*dlInc./dlSedm(state.cellVarAct);
+
+      % ------ Grow the grid if the threshold is reached ------
+      newcells = sum(mapNewCells);
+      state.newcells = newcells;
+      if newcells>0        
+        ndofs = obj.mdof.ndofs;
+        dofs = (ndofs+1:ndofs+newcells)';
+        % obj.matfrac(end+1:end+newcells,:) = normalize(sedNewCell(mapNewCells,:),2,'range');
+        obj.matfrac(end+1:end+newcells,:) = newCellSed(mapNewCells,:)./sum(newCellSed(mapNewCells,:),2);
+
+        % Update the grid and locate the new dofs
+        newlayer = grow(obj.mdof,mapNewCells);
+        if newlayer
+          obj.coordZ(end+1) = obj.coordZ(end)+obj.heightControl;
+        end
+
+        % Position of the grow
+        nlaysByCol = obj.mdof.laysByCol(:);
+        atTop = nlaysByCol==obj.mdof.ncells(3);
+        newCellNotTop = ~atTop(mapNewCells);
+
+        % Update the cell mesh.
+        segmX = diff(obj.coordX);
+        segmY = diff(obj.coordY);
+        dx = repmat(segmX,[length(segmY) 1]);
+        dy = repelem(segmY,length(segmX));
+        obj.cellDims(end+1:end+newcells,:) = [dx(mapNewCells) dy(mapNewCells) sum(newCellSed(mapNewCells,:),2)];
+
+        % Creating the connectives between new cells
+        neigh = getNeigh(obj.mdof,dofs);
+
+        face = zeros([5*newcells,2]);
+        faceAxis = ones([5*newcells,1]);
+        faceAct = false([5*newcells,1]);
+
+        face(1:newcells,:)=[neigh(:,5) dofs];
+        faceAxis(1:newcells)=3;
+        faceAct(1:newcells)=true;
+        for ref=1:4
+          % Add the connection between the reference cell and the neighborhoods
+          tmp = neigh(:,ref);
+
+          % Evaluate the neighbor if the column is not at the top.
+          flag0 = and(and(tmp<dofs,tmp~=0),newCellNotTop);
+
+          % Evaluate the neighbor if the column is at the top.
+          flag1 = tmp > dofs;
+
+          % Combine the two case.
+          flag = or(flag0,flag1);
+          nfaces = sum(flag);
+
+          face(ref*newcells+1:ref*newcells+nfaces,:)=[dofs(flag),tmp(flag)];
+          faceAxis(ref*newcells+1:ref*newcells+nfaces)=ceil(ref/2);
+          faceAct(ref*newcells+1:ref*newcells+nfaces)=true;
+        end
+        nfaces = sum(faceAct);
+        obj.facesNeigh(end+1:end+nfaces,:) = face(faceAct,:);
+        obj.facesNeighDir(end+1:end+nfaces,:) = faceAxis(faceAct);
+
+        dlNew = sum(newCellSed(mapNewCells,:),2);
+
+        % Update the states
+        state.pressure(end+1:end+newcells) = 0.;
+        state.stress(end+1:end+newcells) = 0.;
+        state.strain(end+1:end+newcells) = 0.;
+        state.cellDefm(end+1:end+newcells) = 0.;
+        state.stressCons(end+1:end+newcells) = 0.;
+        state.voidrate(end+1:end+newcells) = 0.;
+        state.cellVarAct(mapNewCells) = false;
+        state.sedmAcc(mapNewCells,:) = newCellSed(mapNewCells,:);
+        state.cellVarAct(mapNewCells) = dlNew > obj.heightControl*obj.minCellHeight;
+
+        % Activate inactive cells
+        activetedDofs(obj.mdof,state.cellVarAct);        
+
+        state.voidrate(dofs) = obj.voidTop(mapNewCells);
+        state.stress(dofs) = - obj.deltaStress(mapNewCells).*dlNew./dlSedm(mapNewCells);
+
+        state.maxDofUnchanged = getMaxDofUnchanged(obj.mdof);
+      end
+      
+      setStateOld(obj,state);
+      setState(obj,state);
     end
 
     function updateState(obj,solution)
@@ -301,20 +480,23 @@ classdef Sedimentation < PhysicsSolver
       state = getState(obj);
       stateOld = getStateOld(obj);
       state.pressure(dofs) = state.pressure(dofs) + solution;
-      dp = state.pressure(dofs) - stateOld.pressure(dofs);
+      % dp = state.pressure(dofs) - stateOld.pressure(dofs);
 
       % Update the stress state
-      dt = state.time-stateOld.time;
+      % dt = state.time-stateOld.time;
       sPrev = stateOld.stress(dofs);
 
-      dStsMap = obj.getCellsProp('TotalStressVariation');
-      dofList = obj.mdof.getMapFromDofs(dofs);
-      dStsMap = dStsMap(dofList);
-      if state.iterTimeStep == 1
-        sCurr = state.stress(dofs) + dp - dt*dStsMap;
-      else
-        sCurr = sPrev + dp - dt*dStsMap;
-      end
+      % dStsMap = obj.getCellsProp('TotalStressVariation');
+      % dofList = obj.mdof.getMapFromDofs(dofs);
+      % dStsMap = dStsMap(dofList);
+      % if state.iterTimeStep == 1
+      %   sCurr = state.stress(dofs) + dp - dt*dStsMap;
+      % else
+      %   sCurr = sPrev + dp - dt*dStsMap;
+      % end
+      % state.stress(dofs) = sCurr;
+
+      sCurr = state.stress(dofs) + solution;
       state.stress(dofs) = sCurr;
 
       % Update the Void Rate
@@ -327,18 +509,20 @@ classdef Sedimentation < PhysicsSolver
       state.voidrate(dofs) = e_prev + delta_e;
 
       % Update the Mesh Deformation - vertical deformation
-      eps = delta_e./(1+obj.void0(dofs));
+      % eps = delta_e./(1+obj.void0(dofs));
+      eps = delta_e./(1+stateOld.voidrate(dofs));
 
       % Lagrangian strain model
-      strain = stateOld.strain(dofs) + eps;  
-      dz = obj.cellDims(dofs,3);
+      % strain = stateOld.strain(dofs) + eps;  
+      strain = eps;  
+      dz = obj.cellDims(dofs,3)+stateOld.cellDefm(dofs,:);
 
       % Eulerian strain model
       % strain = stateOld.strain(dofs) + eps./(1+eps);
       % dz = obj.cellDims(dofs,3) + state.cellDefm(dofs);
 
       state.strain(dofs) = strain;
-      state.cellDefm(dofs) = strain.*dz;
+      state.cellDefm(dofs) = stateOld.cellDefm(dofs) + strain.*dz;
 
       % Update the iterator for the time step
       state.iterTimeStep = state.iterTimeStep + 1;
@@ -362,8 +546,8 @@ classdef Sedimentation < PhysicsSolver
 
     function J = computeMat(obj,dt)
       % Recompute elementary matrices
-      obj.computeStiffMat;
-      obj.computeCapMat;
+      computeStiffMat(obj);
+      computeCapMat(obj);
       J = obj.H + obj.P/dt;
     end
 
@@ -371,7 +555,7 @@ classdef Sedimentation < PhysicsSolver
       % Compute the residual of the flow problem
 
       % get pressure state
-      dofs = obj.mdof.getActiveDof;
+      dofs = getActiveDof(obj.mdof);
       p = getState(obj,obj.getField());
       pOld = getStateOld(obj,obj.getField());
       p = p(dofs);
@@ -380,14 +564,12 @@ classdef Sedimentation < PhysicsSolver
       rhsStiff = obj.H*p;
       rhsCap = (obj.P/dt)*(p - pOld);
       rhs = rhsStiff + rhsCap;
-
-      K = obj.getCellsProp('TotalStressVariation');
-      K = K(obj.mdof.getMapFromDofs(dofs));
-      dl = obj.getState('cellDefm');
+      
+      dl = getStateOld(obj,'cellDefm');
       volCell = prod(obj.cellDims(dofs,1:2),2).*(obj.cellDims(dofs,3) + dl(dofs));
-      cb = obj.computeOedometricCompressibility(dofs);
+      cb = computeOedometricCompressibility(obj,dofs);
 
-      rhsSedm = volCell .* cb .* K;
+      rhsSedm = volCell .* cb .* obj.deltaStress(getMapFromDofs(obj.mdof,dofs)) ;
       rhs = rhs - rhsSedm;
     end
 
@@ -425,15 +607,15 @@ classdef Sedimentation < PhysicsSolver
       ndofs = obj.mdof.getActiveNdof;
 
       % Computing the volumes
-      dl = obj.getState('cellDefm');
+      dl = getStateOld(obj,'cellDefm');
       volCell = prod(obj.cellDims(dofs,1:2),2).*(obj.cellDims(dofs,3) + dl(dofs));
 
       % Computing the storage coefficient
-      poro = obj.getState('voidrate');
+      poro = getState(obj,'voidrate');
       poro = poro(dofs)./(1+poro(dofs));
 
       beta = obj.domain.materials.getFluid().getFluidCompressibility();
-      oedoComp = obj.computeOedometricCompressibility(dofs);
+      oedoComp = computeOedometricCompressibility(obj,dofs);
       PVal = (oedoComp+beta*poro).*volCell;
 
       % Create the P matrix.
@@ -446,10 +628,10 @@ classdef Sedimentation < PhysicsSolver
       comp = interpolate(obj.domain.state,fac,'cellDefm');
       cellVarAct = getState(obj,'cellVarAct');
 
-      obj.grid = obj.mdof.makeMeshOutput(obj.grid,obj.coordX,obj.coordY,...
+      obj.grid = makeMeshOutput(obj.mdof,obj.grid,obj.coordX,obj.coordY,...
         obj.coordZ,sed,cellVarAct);
-      outPrint = obj.finalizeState(fac);
-      outPrint.comp = obj.mdof.getComp(cellVarAct,comp);
+      outPrint = finalizeState(obj,fac);
+      outPrint.comp = getComp(obj.mdof,cellVarAct,comp);
 
       [cellData,pointData] = buildPrintStruct(obj,outPrint);
     end
@@ -575,202 +757,13 @@ classdef Sedimentation < PhysicsSolver
       obj.matfrac(end+1:end+inDofs,:)=0.;
     end
 
-    function [cellGrow, cellSed, sedAcc, activeCol] = updateSedAccumulated(obj)
-      % UPDATESEDACCUMULATED Updates sediment buffer and triggers grid growth.
-      %
-      %   Calculates new deposition, updates the accumulation buffer, and
-      %   identifies columns reaching the height threshold for new cells.
-      %
-      % Outputs:
-      %   cellGrow - Logical array indicating columns that grow
-      %   cellSed  - Sediment assigned to newly created cells
-      %   sedmCols - Total amount of sediments in each column
-      %  activeCol - The columns of which the cell with variable height is
-      %              activeted.
-
-      % 1. Initialization cellSed
-      sedAcc = getState(obj,'sedmAcc');
-      cellSed = zeros(size(sedAcc));
-
-      % 2. Update accumulation buffer
-      dt = getState(obj,'time')-getStateOld(obj,'time');
-      sedAdd = dt*getState(obj,'sedmRate');
-      sedAcc = sedAcc + sedAdd;
-
-      % 3. Check for growth trigger (Height >= Threshold)
-      actVarCell = getState(obj,"cellVarAct");
-      colSed = sum(sedAcc,2);
-      cellGrow = colSed/obj.heightControl-1 > -obj.tol; % <-- Very important check
-
-      % 4. Check the inactive cells with enough sediment to be activated 
-      activeCol = and((colSed > obj.heightControl*obj.minCellHeight),~actVarCell);
-
-      % 5. Handle overflow for grown cells
-      if any(cellGrow)
-        gresLog().log(1,"Created %i new cells \n",sum(cellGrow))
-        dl = colSed-obj.heightControl;
-        sed = (dl./sum(sedAdd,2)).*sedAdd;
-        cellSed(cellGrow,:) = sed(cellGrow,:);
-        sedAcc(cellGrow,:) = sedAcc(cellGrow,:)-sed(cellGrow,:);
-      end
-    end
-
-    function updateTopCells(obj,activeCol,flag)
-      state = getState(obj);
-      stateOld = getStateOld(obj);
-
-      sedm = state.sedmAcc;
-      sedmOld = stateOld.sedmAcc;
-      dsedm = sedm - sedmOld;
-
-      % Activate inactive cells
-      activetedDofs(obj.mdof,activeCol);
-      state.cellVarAct(activeCol) = true;
-      setState(obj,state.cellVarAct,'cellVarAct');
-
-      actCells = state.cellVarAct;
-      dofs = getVarHeightDofs(obj.mdof,actCells);
-
-      % Change the height of the tops cells.
-      % if flag
-      %   % Fraction of each column
-      %   fracSOld = sum(sedmOld(actCells,:),2)/sum(sedm(actCells,:),2);
-      %   fracDSed = sum(dsedm(actCells,:),2)/sum(sedm(actCells,:),2);
-      %   dh = sum(dsedm(actCells,:),2);
-      % else
-        dh = sum(sedm(actCells,:),2);
-      % end
-      % dh = sum(sedm(actCells,:),2);
-      obj.cellDims(dofs,3) = sum(sedm(actCells,:),2);
-
-      % Initialize for each cell: porosity, initial stress
-      stsCons = zeros(size(dh));
-      obj.matfrac(dofs,:) = normalize(sedm(actCells,:), 2,'range');
-      [void,stress,void0,stress0] = initializeCell(obj,obj.matfrac(dofs,:),dh/2,stsCons);
-      % if and(flag,length(obj.void0)>max(dofs))
-      %   void = 1./(1./fracSOld.*obj.void0(dofs)+1./fracDSed.*void);
-      % end
-      obj.void0(dofs) = void;
-
-      % Update the states
-      sInit = getCellsProp(obj,'initialStress',dofs);
-      state.stressCons(dofs) = -abs(getCellsProp(obj,'preConStress',dofs));
-      state.voidrate(dofs) = void;
-      % if flag
-        % state.stress(dofs) = -stress;
-      % else
-        state.stress(dofs) = stress-sInit;
-      % end
-      
-      stateOld.voidrate(dofs) = void;
-      stateOld.stress(dofs) = -sInit;
-
-      setState(obj,state);
-      setStateOld(obj,stateOld);
-    end
-
-    function meshUpdate(obj,map,sed)
-      % MESHUPDATE Updates grid topology due to sediment growth.
-      %
-      % Actions:
-      %   - Add new cells
-      %   - Update face connectivity
-      %   - Update VTK mesh
-      %   - Update states
-
-      newcells = sum(map);
-      ndofs = obj.mdof.ndofs;
-      dofs = (ndofs+1:ndofs+newcells)';
-      obj.matfrac(end+1:end+newcells,:) = zeros(newcells,obj.nmat);
-
-      % Update the grid and locate the new dofs
-      newlayer = grow(obj.mdof,map);
-      if newlayer
-        obj.coordZ(end+1) = obj.coordZ(end)+obj.heightControl;
-      end
-
-      % Position of the grow
-      nlaysByCol = obj.mdof.laysByCol(:);
-      atTop = nlaysByCol==obj.mdof.ncells(3);
-      newCellNotTop = ~atTop(map);
-
-      % Update the cell mesh.
-      segmX = diff(obj.coordX);
-      segmY = diff(obj.coordY);
-      dx = repmat(segmX,[length(segmY) 1]);
-      dy = repelem(segmY,length(segmX));
-      obj.cellDims(end+1:end+newcells,:) = [dx(map) dy(map) sum(sed(map,:),2)];
-
-      % Creating the connectives between new cells
-      neigh = getNeigh(obj.mdof,dofs);
-
-      face = zeros([5*newcells,2]);
-      faceAxis = ones([5*newcells,1]);
-      faceAct = false([5*newcells,1]);
-
-      face(1:newcells,:)=[neigh(:,5) dofs];
-      faceAxis(1:newcells)=3;
-      faceAct(1:newcells)=true;
-      for ref=1:4
-        % Add the connection between the reference cell and the neighborhoods
-        tmp = neigh(:,ref);
-
-        % Evaluate the neighbor if the column is not at the top.
-        flag0 = and(and(tmp<dofs,tmp~=0),newCellNotTop);
-
-        % Evaluate the neighbor if the column is at the top.
-        flag1 = tmp > dofs;
-
-        % Combine the two case.
-        flag = or(flag0,flag1);
-        nfaces = sum(flag);
-
-        face(ref*newcells+1:ref*newcells+nfaces,:)=[dofs(flag),tmp(flag)];
-        faceAxis(ref*newcells+1:ref*newcells+nfaces)=ceil(ref/2);
-        faceAct(ref*newcells+1:ref*newcells+nfaces)=true;
-      end
-      nfaces = sum(faceAct);
-      obj.facesNeigh(end+1:end+nfaces,:) = face(faceAct,:);
-      obj.facesNeighDir(end+1:end+nfaces,:) = faceAxis(faceAct);
-
-      % Update the states
-      state = getState(obj);
-      stateOld = getStateOld(obj);
-      
-      state.pressure(end+1:end+newcells) = 0.;
-      state.stress(end+1:end+newcells) = 0.;
-      state.strain(end+1:end+newcells) = 0.;
-      state.cellDefm(end+1:end+newcells) = 0.;
-      state.stressCons(end+1:end+newcells) = 0.;
-      state.voidrate(end+1:end+newcells) = 0.;
-      state.cellVarAct(map) = false;
-      state.sedmAcc(map,:) = sed(map,:);
-      setState(obj,state);
-
-      stateOld.pressure(end+1:end+newcells) = 0.;
-      stateOld.stress(end+1:end+newcells) = 0.;
-      stateOld.strain(end+1:end+newcells) = 0.;
-      stateOld.cellDefm(end+1:end+newcells) = 0.;
-      stateOld.stressCons(end+1:end+newcells) = 0.;
-      stateOld.voidrate(end+1:end+newcells) = 0.;
-      stateOld.cellVarAct(map) = false;
-      stateOld.sedmAcc(map,:) = sed(map,:);
-      setStateOld(obj,stateOld);
-
-      % Activeted the new cell if necessary
-      activeCol = state.cellVarAct;
-      activeCol(map) = sum(sed(map,:),2) > obj.heightControl*obj.minCellHeight;
-
-      obj.updateTopCells(activeCol,false);
-    end
-
     function computeHalfTrans(obj)
       % COMPUTEHALFTRANS Computes cells half-transmissibility.
       dofs = getActiveDof(obj.mdof)';
       obj.halfTrans = zeros(obj.mdof.getActiveNdof,3);
 
       % Get mesh dimension and update with the deformation
-      dl = getState(obj,'cellDefm');
+      dl = getStateOld(obj,'cellDefm');
       dx = obj.cellDims(dofs,1);
       dy = obj.cellDims(dofs,2);
       dz = obj.cellDims(dofs,3) + dl(dofs);
@@ -835,17 +828,6 @@ classdef Sedimentation < PhysicsSolver
             tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getInitialStress();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
-        case 'totalstressvariation'
-          % dofs = obj.grid.getTopDofs;
-          dofs = getBordZMax(obj.mdof);
-          out = zeros(length(dofs),1);
-          gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
-          omega = getState(obj,'sedmRate');
-          for mat=1:obj.nmat
-            gamma_s = obj.domain.materials.getMaterial(mat).ConstLaw.getSpecificWeight();
-            out = out + (gamma_s - gamma_w)*omega(:,mat);
-          end
-          out = (1./(1 + obj.void0(dofs))) .*out;
         otherwise
           out = [];
       end
@@ -864,35 +846,6 @@ classdef Sedimentation < PhysicsSolver
       data.void = state.voidrate(dofs);
       data.cond = getCellsProp(obj,'conductivity');
       data.poro = voidR;
-    end
-
-    function [void,stress,void0,stress0] = initializeCell(obj,fracMat,dh,stsCons)
-      % Computing the e0, gamma_s, Cr, stsInit
-      ncells = size(fracMat,1);
-      void0 = zeros(ncells,1);
-      gamma_s = zeros(ncells,1);
-      gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
-      Cr = zeros(ncells,1);
-      stsInit = zeros(ncells,1);
-      for mat=1:obj.nmat
-        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidRate();
-        void0 = void0 + fracMat(:,mat).*tmpMat;
-
-        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getSpecificWeight();
-        gamma_s = gamma_s + fracMat(:,mat).*tmpMat;
-
-        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getReCompressibilityIdx();
-        Cr = Cr + fracMat(:,mat).*tmpMat;
-
-        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getInitialStress();
-        stsInit = stsInit + fracMat(:,mat).*tmpMat;
-      end
-
-      % iterate to find the true value of e and stress
-      stsParcial = (gamma_s-gamma_w).*dh;
-      stress0 = (1./(1+void0)).*stsParcial+stsCons;
-      [void,stress] = Sedimentation.initialCellProp(void0,-stsParcial,...
-        -stsInit,stsCons,Cr,obj.tol,obj.niterMx);      
     end
 
   end
