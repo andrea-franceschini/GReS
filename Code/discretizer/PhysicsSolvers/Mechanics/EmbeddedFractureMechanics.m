@@ -486,10 +486,14 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         tractionNew(2:3) = tauLim * slipDir;
 
         % consistent tangent operator
+        dtdg(2:3,1) = obj.penalty_n * obj.phi(fracId) * slipDir;
+
+        dtdg(2:3,2:3) = 
 
 
 
-        
+
+
       end
 
 
