@@ -25,24 +25,8 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       % Find internal faces (i.e. shared by two active flow cells)
       obj.isIntFaces = all(ismember(obj.grid.faces.neighbors, flowCells), 2);
 
-      computeRhsGravTerm(obj);
     end
 
-    function states = finalizeState(obj,p,t)
-      % Compute the posprocessing variables for the module.
-      fluid = obj.domain.materials.getFluid();
-      gamma = fluid.getSpecificWeight();
-      if gamma>0
-        zbc = obj.grid.cells.center(:,3);
-        states.potential = p + gamma*zbc;
-        states.head = zbc+p/gamma;
-      end
-      mob = (1/fluid.getDynViscosity());
-      states.flux = computeFlux(obj,p,mob,t);
-      states.perm = printPermeab(obj);
-      states.pressure = p;
-      % states.mass = checkMassCons(obj,mob,potential);
-    end
 
     function computeMat(obj,dt)
       % recompute elementary matrices only if the model is non-linear
@@ -127,11 +111,11 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     end
 
 
-    % function pHydro = getHydrostaticPressure(obj)
-    %   fluid = obj.domain.materials.getFluid();
-    %   gamma = fluid.getSpecificWeight;
-    %   pHydro = gamma * (obj.watLev - obj.grid.cells.center(:,3));
-    % end
+    function pHydro = getHydrostaticPressure(obj)
+      fluid = obj.domain.materials.getFluid();
+      gamma = fluid.getSpecificWeight;
+      pHydro = gamma * (obj.watLev - obj.grid.cells.center(:,3));
+    end
 
     function gTerm = getRhsGravity(obj)
 

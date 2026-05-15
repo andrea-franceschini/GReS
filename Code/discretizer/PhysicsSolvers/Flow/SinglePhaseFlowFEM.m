@@ -18,32 +18,10 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       parm = readInput(struct('gaussOrder',0),varargin{:});
       obj.gaussOrder = parm.gaussOrder;
 
-      state = obj.getState;
-      state.flux = zeros(3*numel(state.pressure),1);
-
-      computeRhsGravTerm(obj);
-
-    end
-
-    function states = finalizeState(obj,p,t)
-      % Compute the posprocessing variables for the module.
-      gamma = obj.domain.materials.getFluid().getSpecificWeight();
-
-      flux = computeFlux(obj,p);
-
-
-      if gamma>0
-        zbc = obj.grid.coordinates(:,3);
-        states.potential = p + gamma*zbc;
-        states.head = zbc+p/gamma;
-      end
-      states.perm = printPermeab(obj);
-      states.pressure = p;
-      states.flux = flux;
     end
 
 
-    function flux = computeFlux(obj,p)
+    function flux = computeFlux(obj,p,varargin)
 
       % allocating vars
       dofm = obj.domain.dofm;
@@ -62,31 +40,37 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
         cellList = obj.grid.getCellsByVTKId(vtkId,subCells);
         elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
 
-        % get node topology for given vtk type
-        topol = obj.grid.getCellNodes(cellList);
+        % get unique tags of cell list
 
-        for i = 1:numel(cellList)
 
-          el = cellList(i);
-          tag = cells.tag(el);
-          nodes = topol(i,:);
-          coords = coordinates(nodes,:);
+        for tag = 1:cells.nTag
+
+          cellListTag = cellList(cells.tag(cellList)==tag);
           mat = materials.getMaterial(tag);
-
           permMat = mat.PorousRock.getPermMatrix();
-         
-          [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
-          pLoc = p(nodes); 
-          gradP = pagemtimes(gradN,pLoc);
           permMat = permMat/mu;
-          fluxGP = pagemtimes(permMat,gradP);
 
-          % cell average contribution
-          fluxAvg = sum(fluxGP.*reshape(dJWeighed,1,1,[]),3)/sum(dJWeighed); 
-          flux(3*el-2:3*el,1) = fluxAvg;
+          % get node topology for given vtk type
+          topol = obj.grid.getCellNodes(cellListTag);
+
+          for i = 1:numel(cellListTag)
+
+            nodes = topol(i,:);
+            coords = coordinates(nodes,:);
+            el = cellListTag(i);
+
+            [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
+            pLoc = p(nodes);
+            gradP = pagemtimes(gradN,pLoc);
+            fluxGP = pagemtimes(permMat,gradP);
+
+            % cell average contribution
+            fluxAvg = sum(fluxGP.*reshape(dJWeighed,1,1,[]),3)/sum(dJWeighed);
+            flux(3*el-2:3*el,1) = fluxAvg;
+
+          end
 
         end
-
       end
 
 
@@ -127,32 +111,40 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
         cellList = obj.grid.getCellsByVTKId(vtkId,subCells);
         elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
 
-        % get node topology for given vtk type
-        topol = obj.grid.getCellNodes(cellList);
+        % get unique tags of cell list
 
-        for i = 1:numel(cellList)
 
-          el = cellList(i);
-          tag = cells.tag(el);
-          nodes = topol(i,:);
-          coords = coordinates(nodes,:);
+        for tag = 1:cells.nTag
+
+          cellListTag = cellList(cells.tag(cellList)==tag);
           mat = materials.getMaterial(tag);
-
           permMat = mat.PorousRock.getPermMatrix();
+          permMat = permMat/mu;
           poro = mat.PorousRock.getPorosity();
           alpha = getRockCompressibility(obj,tag,coupledRegions);
 
-          [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
-          N = getBasisFinGPoints(elem);
-          permMat = permMat/mu;
-          Hs = pagemtimes(pagemtimes(gradN,'ctranspose',permMat,'none'),gradN);
-          Hs = Hs.*reshape(dJWeighed,1,1,[]);
-          HLoc = sum(Hs,3);
-          PLoc = (alpha+poro*beta)*(N'*diag(dJWeighed)*N);
-          %Getting dof associated to Flow
-          dof = dofm.getLocalDoF(obj.fieldId,nodes);
-          asbH.localAssembly(dof,dof,HLoc);
-          asbP.localAssembly(dof,dof,PLoc);
+          % get node topology for given vtk type
+          topol = obj.grid.getCellNodes(cellListTag);
+
+
+          for i = 1:numel(cellListTag)
+
+            nodes = topol(i,:);
+            coords = coordinates(nodes,:);
+
+            [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
+            N = getBasisFinGPoints(elem);
+            Hs = pagemtimes(pagemtimes(gradN,'ctranspose',permMat,'none'),gradN);
+            Hs = Hs.*reshape(dJWeighed,1,1,[]);
+            HLoc = sum(Hs,3);
+            PLoc = (alpha+poro*beta)*(N'*diag(dJWeighed)*N);
+            %Getting dof associated to Flow
+            dof = dofm.getLocalDoF(obj.fieldId,nodes);
+            asbH.localAssembly(dof,dof,HLoc);
+            asbP.localAssembly(dof,dof,PLoc);
+
+          end
+
         end
 
       end
@@ -214,21 +206,13 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       end
 
 
+    function pHydro = getHydrostaticPressure(obj)
 
-    function rhsGrav = getRhsGravity(obj)
+      fluid = obj.domain.materials.getFluid();
+      gamma = fluid.getSpecificWeight;
+      pHydro = gamma * (obj.watLev - obj.coordinates(:,3));
 
-      rhsGrav = obj.rhsGrav;
-      
-    end 
-
-
-    % function pHydro = getHydrostaticPressure(obj)
-    % 
-    %   fluid = obj.domain.materials.getFluid();
-    %   gamma = fluid.getSpecificWeight;
-    %   pHydro = gamma * (obj.watLev - obj.coordinates(:,3));
-    % 
-    % end
+    end
 
     % function [ents,vals] = getBC(obj,id,t)
     %   % getBC - function to find the value and the location for the

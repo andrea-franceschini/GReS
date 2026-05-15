@@ -5,7 +5,6 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     H                         % stiffness matrix
     P                         % capacity matrix
     watLev
-    rhsGrav                   % gravity contribution to rhs
     steadyState               % flag to force steady state problem
   end
 
@@ -20,7 +19,6 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     [cellData,pointData] = buildPrintStruct(obj,outPrint);
 
     computeMat(obj,dt)
-    rhsGrav = getRhsGravity(obj,mobility)
 
   end
 
@@ -37,18 +35,13 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
       default = struct('targetRegions',1:nTags,...
                        'steadyState',0,...
-                       'waterLevel',missing);
+                       'waterLevel',0);
 
 
       params = readInput(default,varargin{:});
 
       obj.steadyState = logical(params.steadyState);
-
-  
-      if ismissing(params.waterLevel)
-        obj.watLev = max(cells.center(:,3));
-      end
-
+      obj.watLev = params.waterLevel;
 
       dofm = obj.domain.dofm;
 
@@ -63,8 +56,6 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
     end
 
-
-
     function initialize(obj)
       % nothing to initialize here
     end
@@ -78,25 +69,23 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       p = obj.getState(obj.getField());
       ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
 
+      entType = obj.domain.dofm.getFieldLocation(obj.fieldId);
+      z = getLocation(entType,obj.grid,ents);
+      z = z(:,3);
+      gamma = obj.domain.materials.getFluid.getSpecificWeight;
+
       if obj.steadyState
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H;
-        rhs = obj.H*p(ents);
+        rhs = obj.H*(p(ents) + gamma*z);
       else
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H + obj.P/dt;
         pOld = obj.getStateOld(obj.getField());
-        rhsH = obj.H*p(ents);
+        rhsH = obj.H*(p(ents) + gamma*z);
         rhsP = (obj.P/dt)*(p(ents) - pOld(ents));
         rhs = rhsH + rhsP;
       end
 
-      gamma = obj.domain.materials.getFluid().getSpecificWeight();
-      if gamma > 0
-        % add rhs gravity contribution
-        rhsG = getRhsGravity(obj);
-        obj.domain.rhs{obj.fieldId} = rhs + rhsG;
-      else
-        obj.domain.rhs{obj.fieldId} = rhs;  
-      end
+      obj.domain.rhs{obj.fieldId} = rhs;
       
     end
 
@@ -110,6 +99,26 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       setState(obj,p,"pressure");
     end
 
+
+    function states = finalizeState(obj,p,t)
+      
+      % Compute the posprocessing variables for the module.
+      fluid = obj.domain.materials.getFluid();
+      gamma = fluid.getSpecificWeight();
+      entType = obj.domain.dofm.getFieldLocation(obj.fieldId);
+      z = getLocation(entType,obj.grid);
+      z = z(:,3);
+      mob = computeMobility(obj,p);
+
+      if gamma>0
+        states.potential = p + gamma*z;
+        states.head = p/gamma + z;
+      end
+
+      states.flux = computeFlux(obj,p,mob,t);
+      states.perm = printPermeab(obj);
+      states.pressure = p;
+    end
 
     % function advanceState(obj)
     %   % does nothing for now, but needed to override the abstract
@@ -216,6 +225,17 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       ssPressure = getState(obj,obj.getField());
       
     end
+  end
+
+
+  methods (Access=protected)
+
+    function [lw,dlw] = computeMobility(obj,varargin)
+      mu = obj.domain.materials.getFluid().getDynViscosity();
+      lw = 1/mu;
+      dlw = 0.0;
+    end
+
   end
 
   methods (Static)
