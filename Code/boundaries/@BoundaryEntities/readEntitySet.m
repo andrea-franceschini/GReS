@@ -6,7 +6,7 @@ switch lower(type)
   % input file for list of entities
   case "bclistfile"
     [nEnts, ents] = obj.readListFile(ents);
-    entsPosition = getLocation(obj,ents,grid);
+    entsPosition = getLocation(obj.sourceField,grid,ents);
     return
   case {'tags','tag'}
     tags = ents;
@@ -68,7 +68,7 @@ end
 nEnts = numel(entsID).*compID;
 entsID = reshape(entsID,[],1);
 ents = repmat(entsID,sum(compID),1);
-entsPosition = getLocation(obj,ents,grid);
+entsPosition = getLocation(obj.sourceField,grid,ents);
 
 end
 

@@ -113,9 +113,9 @@ classdef OutState < handle & matlab.mixin.Copyable
     function savePvd(obj,varargin)
       
       if ~isempty(varargin)
-        tID = varargin{1};
+        outTimes = varargin{1};
       else
-        tID = 1:obj.timeID - 1;
+        outTimes = obj.timeList(1:obj.timeID - 1);
       end
 
       % write the pvd file
@@ -129,9 +129,9 @@ classdef OutState < handle & matlab.mixin.Copyable
         blocks = pvd.createElement('Collection');
 
 
-        for i = 1 : length(tID)
+        for i = 1 : length(outTimes)
           block = pvd.createElement('DataSet');
-          block.setAttribute('timestep', sprintf('%e', tID(i)));
+          block.setAttribute('timestep', sprintf('%e', outTimes(i)));
           [~,fname,~] = fileparts(obj.vtkFileName);
           % standard naming for vtm files
           vtmFileName = sprintf('%s/output_%5.5i.vtm',fname,i);
