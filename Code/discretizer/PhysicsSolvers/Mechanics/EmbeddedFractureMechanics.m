@@ -85,6 +85,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       setState(obj,t,"traction");
       setStateOld(obj,t,"traction");
       setStateInit(obj,t,"traction");
+      obj.iter = 0;
 
     end
 
@@ -233,11 +234,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           else
             % return mapping for coulomb friction
             tOld = sOld.traction(wDof);
-            fracId = f.fracId(f);
-            [tracNew,dtdg] = returnMapping(obj,f,fracId,tOld,jump(wDof),jumpOld(wDoF)); 
+            fracId = frac.fracId(f);
+            [tracNew,dtdg] = returnMapping(obj,f,fracId,tOld,jump(wDof),jumpOld(wDof)); 
           end
 
-          s.traction = tracNew;
+          s.traction(wDof) = tracNew;
 
           KwwLoc = KwwLoc - dtdg*frac.area(f);
 
@@ -281,8 +282,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       % total jump (elastic + plastic)
       state.fractureJump = zeros(3*nCutCells,1);
       state.traction = zeros(3*nCutCells,1);
-      state.plasticJump = zeros(3*nCutCells,1); % cumulated at stick
-      state.elasticJump = zeros(3*nCutCells,1); % cumulated at slip
 
       % elastic and plastic slip are obtained subtracting current and
       % previous elastic and plastic jump
@@ -430,6 +429,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       obj.activeSet.prev = obj.activeSet.curr;
 
+      obj.iter = 0;
+
     end
 
 
@@ -443,14 +444,14 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       dtdg = zeros(3);
 
       % trial traction
-      tTrial = [tOld(1) + obj.penalty_n * jumpNew;...
-                tOld(2:3) + obj.penalty_t * (jumpNew - jumpOld)];
+      tTrial = [tOld(1) + obj.penalty_n * (jumpNew(1) - jumpOld(1));...
+                tOld(2:3) + obj.penalty_t * (jumpNew([2;3]) - jumpOld([2;3]))];
 
       tTrial_t = tTrial(2:3);
       tTrial_t_norm = norm(tTrial_t);
 
       % set dofs to open state
-      if jumpNew > obj.activeSet.tol.normalGap
+      if jumpNew(1) > obj.activeSet.tol.normalGap
         obj.activeSet.curr(fEl) = ContactMode.open;
         return
       else
@@ -458,7 +459,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       end
 
       % check slip/stick
-      if obj.iter == 1
+      if obj.iter == 0
         % force first iter to be stick
         obj.activeSet.curr(fEl) = ContactMode.stick;
       else
@@ -476,7 +477,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       % stick/slip traction update
       if obj.activeSet.curr(fEl) == ContactMode.stick
 
-        tractionNew = tractionTrial;
+        tractionNew = tTrial;
         dtdg = diag([obj.penalty_n,obj.penalty_t,obj.penalty_t]);
 
 
@@ -486,21 +487,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         tractionNew(2:3) = tauLim * slipDir;
 
         % consistent tangent operator
-        dtdg(2:3,1) = obj.penalty_n * obj.phi(fracId) * slipDir;
-
-        dtdg(2:3,2:3) = 
-
-
-
-
+        dtdg(1,1) = obj.penalty_n;
+        dtdg(2:3,1) = -obj.penalty_n * tan(obj.phi(fracId)) * slipDir;
+        dtdg(2:3,2:3) = obj.penalty_t * tauLim * (tTrial_t_norm^2*eye(2) - tTrial_t * tTrial_t')/tTrial_t_norm^3;
 
       end
-
-
-
-
-
-
 
       % 
     end
@@ -515,6 +506,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
 
       obj.activeSet.curr = obj.activeSet.prev;
+      obj.iter = 0;
       % obj.NLIter = 0;
 
       if obj.activeSet.resetActiveSet
@@ -541,12 +533,18 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         setState(obj,stateCurr);
 
         % update traction using penalty approach
-        updateTractionAndJump(obj);
+        %updateTractionAndJump(obj);
 
         % update elastic/plastic contribution
         % updateJump(obj,dw)
 
       end
+
+      as = obj.activeSet.curr;
+      gresLog().log(2,'Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
+        sum(as==1), sum(any([as==2,as==3],2)), sum(as==4));
+
+      obj.iter = obj.iter + 1;
 
     end
 
@@ -875,86 +873,86 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
 
 
-    function updateTractionAndJump(obj)
-
-      s = getState(obj);
-      sOld = getStateOld(obj);
-      sIni = getStateInit(obj);
-      %sIni = getStateInit(obj);
-      jump = s.fractureJump;
-      deltaJump = jump - sOld.fractureJump;
-
-
-      penN = obj.penalty_n;
-      penT = obj.penalty_t;
-      frac = obj.fractureMesh.surfaces;
-
-      for i = 1:frac.num
-        dofW = getLocalDoF(obj.domain.dofm,obj.fldFrac,i);
-        t = s.traction(dofW);
-        tOld = sOld.traction(dofW);
-        tIni = sIni.traction(dofW);
-        dTrac = t - tIni;
-        j = jump(dofW);
-        dj = deltaJump(dofW);
-        fId = frac.fracId(i);
-
-        if obj.activeSet.prev(i) == ContactMode.open
-          continue
-        end
-
-        switch obj.activeSet.curr(i)
-          case ContactMode.stick
-
-            s.elasticJump(dofW) = sOld.elasticJump(dofW) + dj;
-
-            t(1) = tIni(1) + penN * s.elasticJump(dofW(1));
-            t(2:3) = tOld(2:3) + penT * dj(2:3);
-
-          case {ContactMode.slip, ContactMode.newSlip}
-            s.elasticJump(dofW(1)) = sOld.elasticJump(dofW(1)) + dj(1);
-            t(1) = tIni(1) + penN * s.elasticJump(dofW(1));
-            % assumption: no elastic slip in stick/slip transition
-
-            %s.plasticJump(dofW(2:3)) = sOld.plasticJump(dofW(2:3)) + dj(2:3);
-            tauLim = obj.cohesion(fId) - t(1)*tan(obj.phi(fId));   % using the updated or not?
-            %
-            if norm(dj) > obj.activeSet.tol.sliding
-              t(2:3) = tauLim * (dj(2:3)/norm(dj(2:3)));
-            else
-              t(2:3) = tauLim * (dTrac(2:3)/norm(dTrac(2:3)));
-            end
-
-
-            if obj.activeSet.curr(i) == ContactMode.newSlip
-              % split elastic and plastic slip contribution
-              elSlip = (1/obj.penalty_t)*(t(2:3) - tOld(2:3));
-              plSlip = dj(2:3) - elSlip;
-              s.elasticJump(dofW(2:3)) = sOld.elasticJump(dofW(2:3)) + elSlip;
-              s.plasticJump(dofW(2:3)) = sOld.plasticJump(dofW(2:3)) + plSlip;
-
-            else
-
-              s.plasticJump(dofW(2:3)) = sOld.plasticJump(dofW(2:3)) + dj(2:3);
-
-            end
-
-
-          case ContactMode.open
-            s.plasticJump(dofW) = sOld.plasticJump(dofW) + dj;
-            t(:) = 0;
-        end
-
-        s.traction(dofW) = t;
-
-      end
-
-      setState(obj,s);
-
-      % stick traction might need the initial one...?
-      %s.traction = s.traction + sIni.traction;
-
-    end
+    % function updateTractionAndJump(obj)
+    % 
+    %   s = getState(obj);
+    %   sOld = getStateOld(obj);
+    %   sIni = getStateInit(obj);
+    %   %sIni = getStateInit(obj);
+    %   jump = s.fractureJump;
+    %   deltaJump = jump - sOld.fractureJump;
+    % 
+    % 
+    %   penN = obj.penalty_n;
+    %   penT = obj.penalty_t;
+    %   frac = obj.fractureMesh.surfaces;
+    % 
+    %   for i = 1:frac.num
+    %     dofW = getLocalDoF(obj.domain.dofm,obj.fldFrac,i);
+    %     t = s.traction(dofW);
+    %     tOld = sOld.traction(dofW);
+    %     tIni = sIni.traction(dofW);
+    %     dTrac = t - tIni;
+    %     j = jump(dofW);
+    %     dj = deltaJump(dofW);
+    %     fId = frac.fracId(i);
+    % 
+    %     if obj.activeSet.prev(i) == ContactMode.open
+    %       continue
+    %     end
+    % 
+    %     switch obj.activeSet.curr(i)
+    %       case ContactMode.stick
+    % 
+    %         s.elasticJump(dofW) = sOld.elasticJump(dofW) + dj;
+    % 
+    %         t(1) = tIni(1) + penN * s.elasticJump(dofW(1));
+    %         t(2:3) = tOld(2:3) + penT * dj(2:3);
+    % 
+    %       case {ContactMode.slip, ContactMode.newSlip}
+    %         s.elasticJump(dofW(1)) = sOld.elasticJump(dofW(1)) + dj(1);
+    %         t(1) = tIni(1) + penN * s.elasticJump(dofW(1));
+    %         % assumption: no elastic slip in stick/slip transition
+    % 
+    %         %s.plasticJump(dofW(2:3)) = sOld.plasticJump(dofW(2:3)) + dj(2:3);
+    %         tauLim = obj.cohesion(fId) - t(1)*tan(obj.phi(fId));   % using the updated or not?
+    %         %
+    %         if norm(dj) > obj.activeSet.tol.sliding
+    %           t(2:3) = tauLim * (dj(2:3)/norm(dj(2:3)));
+    %         else
+    %           t(2:3) = tauLim * (dTrac(2:3)/norm(dTrac(2:3)));
+    %         end
+    % 
+    % 
+    %         if obj.activeSet.curr(i) == ContactMode.newSlip
+    %           % split elastic and plastic slip contribution
+    %           elSlip = (1/obj.penalty_t)*(t(2:3) - tOld(2:3));
+    %           plSlip = dj(2:3) - elSlip;
+    %           s.elasticJump(dofW(2:3)) = sOld.elasticJump(dofW(2:3)) + elSlip;
+    %           s.plasticJump(dofW(2:3)) = sOld.plasticJump(dofW(2:3)) + plSlip;
+    % 
+    %         else
+    % 
+    %           s.plasticJump(dofW(2:3)) = sOld.plasticJump(dofW(2:3)) + dj(2:3);
+    % 
+    %         end
+    % 
+    % 
+    %       case ContactMode.open
+    %         s.plasticJump(dofW) = sOld.plasticJump(dofW) + dj;
+    %         t(:) = 0;
+    %     end
+    % 
+    %     s.traction(dofW) = t;
+    % 
+    %   end
+    % 
+    %   setState(obj,s);
+    % 
+    %   % stick traction might need the initial one...?
+    %   %s.traction = s.traction + sIni.traction;
+    % 
+    % end
 
 
  
