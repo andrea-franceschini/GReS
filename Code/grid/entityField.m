@@ -254,6 +254,23 @@ classdef entityField
       end
     end
 
+
+    function pos = getLocation(ent,grid,ents)
+
+      switch ent
+        case entityField.node
+          pos = grid.coordinates;
+        case entityField.surface
+          pos = grid.surfaces.center;
+        case entityField.cell
+          pos = grid.cells.center;
+      end
+
+      if nargin > 2
+        pos = pos(ents,:);
+      end
+    end
+
   end
 
 end

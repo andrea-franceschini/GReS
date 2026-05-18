@@ -18,20 +18,62 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       parm = readInput(struct('gaussOrder',0),varargin{:});
       obj.gaussOrder = parm.gaussOrder;
 
-      computeRhsGravTerm(obj);
-
     end
 
-    function states = finalizeState(obj,p,t)
-      % Compute the posprocessing variables for the module.
-      gamma = obj.domain.materials.getFluid().getSpecificWeight();
-      if gamma>0
-        zbc = obj.grid.coordinates(:,3);
-        states.potential = p + gamma*zbc;
-        states.head = zbc+p/gamma;
+
+    function flux = computeFlux(obj,p,varargin)
+
+      % allocating vars
+      dofm = obj.domain.dofm;
+      materials = obj.domain.materials;
+      coordinates = obj.grid.coordinates;
+      cells = obj.grid.cells;
+      subCells = dofm.getFieldCells(obj.fieldId);
+
+      flux = zeros(3*cells.num,1);
+
+      % Get the fluid dynamic viscosity
+      mu = materials.getFluid().getDynViscosity();
+
+      for vtkId = cells.vtkTypes
+
+        cellList = obj.grid.getCellsByVTKId(vtkId,subCells);
+        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+
+        % get unique tags of cell list
+
+
+        for tag = 1:cells.nTag
+
+          cellListTag = cellList(cells.tag(cellList)==tag);
+          mat = materials.getMaterial(tag);
+          permMat = mat.PorousRock.getPermMatrix();
+          permMat = permMat/mu;
+
+          % get node topology for given vtk type
+          topol = obj.grid.getCellNodes(cellListTag);
+
+          for i = 1:numel(cellListTag)
+
+            nodes = topol(i,:);
+            coords = coordinates(nodes,:);
+            el = cellListTag(i);
+
+            [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
+            pLoc = p(nodes);
+            gradP = pagemtimes(gradN,pLoc);
+            fluxGP = pagemtimes(permMat,gradP);
+
+            % cell average contribution
+            fluxAvg = sum(fluxGP.*reshape(dJWeighed,1,1,[]),3)/sum(dJWeighed);
+            flux(3*el-2:3*el,1) = fluxAvg;
+
+          end
+
+        end
       end
-      states.perm = printPermeab(obj);
-      states.pressure = p;
+
+
     end
 
     function computeMat(obj,dt)
@@ -69,32 +111,40 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
         cellList = obj.grid.getCellsByVTKId(vtkId,subCells);
         elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
 
-        % get node topology for given vtk type
-        topol = obj.grid.getCellNodes(cellList);
+        % get unique tags of cell list
 
-        for i = 1:numel(cellList)
 
-          el = cellList(i);
-          tag = cells.tag(el);
-          nodes = topol(i,:);
-          coords = coordinates(nodes,:);
+        for tag = 1:cells.nTag
+
+          cellListTag = cellList(cells.tag(cellList)==tag);
           mat = materials.getMaterial(tag);
-
           permMat = mat.PorousRock.getPermMatrix();
+          permMat = permMat/mu;
           poro = mat.PorousRock.getPorosity();
           alpha = getRockCompressibility(obj,tag,coupledRegions);
 
-          [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
-          N = getBasisFinGPoints(elem);
-          permMat = permMat/mu;
-          Hs = pagemtimes(pagemtimes(gradN,'ctranspose',permMat,'none'),gradN);
-          Hs = Hs.*reshape(dJWeighed,1,1,[]);
-          HLoc = sum(Hs,3);
-          PLoc = (alpha+poro*beta)*(N'*diag(dJWeighed)*N);
-          %Getting dof associated to Flow
-          dof = dofm.getLocalDoF(obj.fieldId,nodes);
-          asbH.localAssembly(dof,dof,HLoc);
-          asbP.localAssembly(dof,dof,PLoc);
+          % get node topology for given vtk type
+          topol = obj.grid.getCellNodes(cellListTag);
+
+
+          for i = 1:numel(cellListTag)
+
+            nodes = topol(i,:);
+            coords = coordinates(nodes,:);
+
+            [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
+            N = getBasisFinGPoints(elem);
+            Hs = pagemtimes(pagemtimes(gradN,'ctranspose',permMat,'none'),gradN);
+            Hs = Hs.*reshape(dJWeighed,1,1,[]);
+            HLoc = sum(Hs,3);
+            PLoc = (alpha+poro*beta)*(N'*diag(dJWeighed)*N);
+            %Getting dof associated to Flow
+            dof = dofm.getLocalDoF(obj.fieldId,nodes);
+            asbH.localAssembly(dof,dof,HLoc);
+            asbP.localAssembly(dof,dof,PLoc);
+
+          end
+
         end
 
       end
@@ -114,6 +164,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       gamma = mat.getFluid().getSpecificWeight();
       coordinates = obj.grid.coordinates;
       cells = obj.grid.cells;
+      mu = mat.getFluid().getDynViscosity;
 
       if gamma > 0
 
@@ -137,7 +188,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
             el = cellList(i);
 
             permMat = mat.getMaterial(cells.tag(el)).PorousRock.getPermMatrix();
-            % why K is not divided by the dynamic viscosity?
+            permMat = permMat/mu;
             [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
             fs = pagemtimes(gradN,'ctranspose',permMat(:,3),'none');
             fs = fs.*reshape(dJWeighed,1,1,[]);
@@ -153,14 +204,6 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       end % end if
       
       end
-
-
-
-    function rhsGrav = getRhsGravity(obj)
-
-      rhsGrav = obj.rhsGrav;
-      
-    end 
 
 
     function pHydro = getHydrostaticPressure(obj)
@@ -233,6 +276,8 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       cellStr = repmat(struct('name', 1, 'data', 1), 1, 1);
       cellStr(1).name = 'permeability';
       cellStr(1).data = state.perm;
+      cellStr(2).name = 'flux';
+      cellStr(2).data = (reshape(state.flux,3,[]))';
 
       pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);
       pointStr(1).name = 'pressure';
