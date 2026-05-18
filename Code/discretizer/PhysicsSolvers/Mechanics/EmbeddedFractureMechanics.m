@@ -14,6 +14,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     bcTraction
     mechSolver              % handle to the Poromechanics solver
     iter                    % newton iteration counter
+    fixActiveSet = false
 
   end
 
@@ -110,8 +111,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     function timeStepSetup(obj)
 
       % set open if jump is positive
-      isOpen = obj.getState.fractureJump(1:3:end) > obj.activeSet.tol.normalGap;
-      obj.activeSet.curr(isOpen) = ContactMode.open;
+      % isOpen = obj.getState.fractureJump(1:3:end) > obj.activeSet.tol.normalGap;
+      % obj.activeSet.curr(isOpen) = ContactMode.open;
+      obj.iter = 0;
+      obj.fixActiveSet = false;
+
 
     end
 
@@ -159,6 +163,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       cell2frac(frac.cutCells) = 1:frac.num;
 
       topol = obj.grid.getCellNodes(subCells);
+
+      asOld = obj.activeSet.curr;
 
       for i = 1:numel(subCells)
 
@@ -227,16 +233,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
           % compute updated traction and get tangent constitutive operator
 
-          if jump(wDof((1))) > obj.activeSet.tol.normalGap
-            tracNew = zeros(3,1);
-            dtdg = zeros(3);
-            obj.activeSet.curr(f) = ContactMode.open;
-          else
-            % return mapping for coulomb friction
-            tOld = sOld.traction(wDof);
-            fracId = frac.fracId(f);
-            [tracNew,dtdg] = returnMapping(obj,f,fracId,tOld,jump(wDof),jumpOld(wDof)); 
-          end
+
+          tOld = sOld.traction(wDof);
+          fracId = frac.fracId(f);
+          [tracNew,dtdg] = updateTraction(obj,f,fracId,tOld,jump(wDof),jumpOld(wDof));
 
           s.traction(wDof) = tracNew;
 
@@ -259,6 +259,13 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
         end
 
+      end
+
+      if all(asOld == obj.activeSet.curr) && obj.iter > 1
+        fprintf("Active set fixed \n")
+        obj.fixActiveSet = true;
+      else
+        obj.fixActiveSet = false;
       end
 
       % update modified state
@@ -429,13 +436,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       obj.activeSet.prev = obj.activeSet.curr;
 
-      obj.iter = 0;
-
     end
 
 
 
-    function [tractionNew, dtdg] = returnMapping(obj,fEl,fracId,tOld,jumpNew,jumpOld)
+    function [tractionNew, dtdg] = updateTraction(obj,fEl,fracId,tOld,jumpNew,jumpOld)
 
       % tOld: last converged traction
       % jumpNew/jumpOld: current and last converged fracture jump
@@ -450,8 +455,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       tTrial_t = tTrial(2:3);
       tTrial_t_norm = norm(tTrial_t);
 
+      obj.activeSet.curr(fEl) =  ContactMode.stick;
+
       % set dofs to open state
-      if jumpNew(1) > obj.activeSet.tol.normalGap
+      if tTrial(1) > -obj.activeSet.tol.normalTraction
         obj.activeSet.curr(fEl) = ContactMode.open;
         return
       else
@@ -483,13 +490,29 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       elseif obj.activeSet.curr(fEl) == ContactMode.slip
 
-        slipDir = tTrial_t / tTrial_t_norm;     % slip direction
-        tractionNew(2:3) = tauLim * slipDir;
-
-        % consistent tangent operator
         dtdg(1,1) = obj.penalty_n;
+
+        if ~obj.fixActiveSet
+
+          slipDir = tTrial_t / tTrial_t_norm;     % slip direction
+          tractionNew(2:3) = tauLim * slipDir;
+
+          % consistent tangent operator
+          dtdg(2:3,2:3) = obj.penalty_t * tauLim * (tTrial_t_norm^2*eye(2) - tTrial_t * tTrial_t')/tTrial_t_norm^3;
+        else
+
+          slip = jumpNew([2;3]) - jumpOld([2;3]);
+          slipNorm = norm(slip);
+          slipDir = slip/slipNorm;
+
+          tractionNew(2:3) = tauLim * slipDir;
+
+          % consistent tangent operator
+          dtdg(2:3,2:3) = tauLim * (slipNorm^2*eye(2) - slip * slip')/slipNorm^3;
+
+        end
+
         dtdg(2:3,1) = -obj.penalty_n * tan(obj.phi(fracId)) * slipDir;
-        dtdg(2:3,2:3) = obj.penalty_t * tauLim * (tTrial_t_norm^2*eye(2) - tTrial_t * tTrial_t')/tTrial_t_norm^3;
 
       end
 
