@@ -87,6 +87,12 @@ classdef SedimentsMap < handle
         % Single event or within the same time window
         map = obj.processEvent(pos);
       end
+
+      flagErosion = map<0;
+      if any(flagErosion,"all")
+        gresLog().warning(3,'Spot negative values of sedimentation rate! Set them as zero!');
+        map(flagErosion) = 0.;
+      end
     end
 
   end
@@ -203,6 +209,7 @@ classdef SedimentsMap < handle
         [x_new, y_new] = meshgrid(0:1/(obj.dim(1)-1):1, 0:1/(obj.dim(2)-1):1);        
         values = reshape(interp2(x_ref, y_ref, val_ref, x_new, y_new, 'cubic'),[],1);
       end
+      values(values<0)=0;
 
       % smoothing the data.
       values = reshape(values,obj.dim(1),obj.dim(2));

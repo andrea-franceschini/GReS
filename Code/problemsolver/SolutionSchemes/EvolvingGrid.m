@@ -146,7 +146,7 @@ classdef EvolvingGrid < SolutionScheme
 
       if flagPrintExtra
         % if printByGrow
-        fac = 1;  % 0=stateOld, 1=stateNew - Because the mesh update
+        fac = 0;  % 0=stateOld, 1=stateNew - Because the mesh update
         % happens after the print, to plot after the grow, i plot the
         % oldstate in the next time step.
 
