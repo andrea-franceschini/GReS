@@ -7,7 +7,7 @@ in a nonConforming simulation.
 
   <SimulationParameters
                         Start="0."
-                        End ="13.0"
+                        End ="16.0"
                         DtInit="1"
                         DtMin ="1e-5"
                         DtMax ="1"
@@ -39,7 +39,7 @@ in a nonConforming simulation.
                  forceStickBoundary = "0" >
 
         <Tolerances
-                    sliding = "1e-5"
+                    sliding = "1e-3"
                     normalGap = "1e-6"
                     normalTraction = "-1e-3"
                     tangentialViolation = "1e-3"
