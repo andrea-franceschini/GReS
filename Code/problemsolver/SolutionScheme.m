@@ -235,6 +235,9 @@ classdef (Abstract) SolutionScheme < handle
         % limit time step to end of simulation time
         if ((obj.t + obj.dt) > obj.simparams.tMax)
           obj.dt = obj.simparams.tMax - obj.t;
+          if obj.dt< obj.simparams.dtMin
+            obj.t = obj.t+obj.simparams.dtMin;
+          end
         end
 
         % allow new survival attempts on new time steps

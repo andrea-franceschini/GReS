@@ -84,26 +84,6 @@ classdef SedimentMaterial < handle
     end
 
     methods (Static)
-      % function de = getDeltaVoidRatio(sCurr,sPrev,sCons,Cc,Cr)
-      %   % Return the variation in void ratio
-      %     ndofs = length(sCurr);
-      %     flag = ndofs==length(sPrev);
-      %     flag = and(flag,ndofs==length(sCons));
-      %     flag = and(flag,ndofs==length(Cc));
-      %     flag = and(flag,ndofs==length(Cr));
-      %     if ~flag, return; end
-      %     % map = sCurr > 0; % Select only the positive stress.
-      %     map = sign(sCurr) == sign(sPrev); % Select only the positive stress.
-      %     map1 = and(sCurr <= sCons,map);
-      %     map2 = and(sPrev >= sCons,map);
-      %     map3 = and((~map1),(~map2));
-      %     de = zeros(ndofs,1);
-      %     de(map1) = -Cr(map1).*log10(sCurr(map1)./sPrev(map1));
-      %     de(map2) = -Cc(map2).*log10(sCurr(map2)./sPrev(map2));          
-      %     de(map3) = -Cr(map3).*log10(sCurr(map3)./sPrev(map3)) ...
-      %       - Cc(map3).*log(sCurr(map3)./sCons(map3));
-      % end
-
       function de = getDeltaVoidRatio(sCurr,sPrev,sCons,Cc,Cr)
         % Return the variation in void ratio
           ndofs = length(sCurr);
@@ -144,24 +124,10 @@ classdef SedimentMaterial < handle
           de(map3) = -0.434294481903252*Cc(map3)./sCurr(map3);
       end
 
-      % function de = getDevVoidRatio(sCurr,sPrev,sCons,Cc,Cr)
-      %   % Return the variation in void ratio
-      %     ndofs = length(sCurr);
-      %     flag = ndofs==length(sPrev);
-      %     flag = and(flag,ndofs==length(sCons));
-      %     flag = and(flag,ndofs==length(Cc));
-      %     flag = and(flag,ndofs==length(Cr));
-      %     if ~flag, return; end
-      %     % map = sCurr > 0; % Select only the positive stress.
-      %     map = sign(sCurr) == sign(sPrev); % Select only the positive stress.
-      %     map1 = and(sCurr <= sCons,map);
-      %     map2 = and(sPrev >= sCons,map);
-      %     map3 = and((~map1),(~map2));
-      %     de = zeros(ndofs,1);
-      %     % 1/log(10) = 0.434294481903252
-      %     de(map1) = -0.434294481903252*Cr(map1)./sCurr(map1);
-      %     de(map2) = -0.434294481903252*Cc(map2)./sCurr(map2);
-      %     de(map3) = -0.434294481903252*(Cr(map3)+Cc(map3))./sCurr(map3);
-      % end
+      function void = getVoidRatioFromRef(stress,stress_Ref,void_Ref,Cc)
+        % Return the variation in void ratio
+        void = void_Ref - Cc.*log10(stress./stress_Ref);
+      end
+
     end
 end
