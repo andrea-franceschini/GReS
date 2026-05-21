@@ -469,7 +469,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
 
       % trial traction
-      tTrial = [obj.penalty_n * (jumpNew(1) - jumpOld(1));...
+      tTrial = [obj.penalty_n * jumpNew(1);...
         tOld(2:3) + obj.penalty_t * (jumpNew([2;3]) - jumpOld([2;3]))];
 
       tTrial_t = tTrial(2:3);

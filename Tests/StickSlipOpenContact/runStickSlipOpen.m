@@ -13,10 +13,10 @@ params = readInput(fullfile('Input','StickSlipOpen.xml'));
 
 % set mesh 
 X = 5; Y = 10; Z = 15;
-nx1 = 2; ny1 = 8; nz1 = 8;
+nx1 = 2; ny1 = 20; nz1 = 20;
 gridL = structuredMesh(nx1,ny1,nz1,[0,0.5*X],[0 Y],[0 Z]);
 
-nx2 = 2; ny2 = 8; nz2 = 8;
+nx2 = 2; ny2 = 20; nz2 = 20;
 gridR = structuredMesh(nx2,ny2,nz2,[0.5*X,X],[0 Y],[0 Z]);
 
 assert(mod(ny1,2) == 0 && mod(ny2,2)==0,"Number of elements along y axis " + ...
@@ -55,11 +55,11 @@ interfaces = InterfaceSolver.addInterfaces(domains,params.Interface);
 
 %apply initial compression to the model
 iniStressL = getState(domainL,"stress");
-iniStressL(:,1) = -2.5;
+iniStressL(:,1) = -1.0;
 setState(domainL,iniStressL,"stress");
 
 iniStressR = getState(domainR,"stress");
-iniStressR(:,1) = -2.5;
+iniStressR(:,1) = -1.0;
 setState(domainR,iniStressR,"stress");
 % tIni = -1;
 % interfaces{1}.state.traction(1:3:end) = tIni;
