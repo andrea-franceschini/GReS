@@ -86,7 +86,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       setState(obj,t,"traction");
       setStateOld(obj,t,"traction");
       setStateInit(obj,t,"traction");
-      obj.iter = 0;
 
     end
 
@@ -110,7 +109,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     function timeStepSetup(obj)
 
-      % always start from stick trial simulation
+      % open/closed transition is treated in explicit way
+      % tN = obj.getState.traction(1:3:end);
+      % isOpen = tN > 0.0;
       isOpen = obj.activeSet.curr == ContactMode.open;
       obj.activeSet.curr(~isOpen) = ContactMode.stick;
 
@@ -214,6 +215,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         % assemble internal forces
         dsigma = sigma - iniStress(l:l+nG-1,:);
         dsigma = reshape(dsigma',6,1,nG);
+        sigma = reshape(sigma',6,1,nG);
         fTmp = pagemtimes(B,'ctranspose',dsigma,'none');
         fTmp = fTmp.*reshape(dJw,1,1,[]);
         fLoc = sum(fTmp,3);
@@ -246,10 +248,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           asbKww.localAssembly(wDof,wDof,KwwLoc);
 
           % assemble rhsW (use computed stress tensor)
-          rT = (tracNew - iniTraction(wDof))*frac.area(f);
+          rT = tracNew*frac.area(f);
 
           %end
-          fTmp = pagemtimes(E,'ctranspose',dsigma,'none');
+          fTmp = pagemtimes(E,'ctranspose',sigma,'none');
           fTmp = fTmp.*reshape(dJw,1,1,[]);
           rSigma = sum(fTmp,3);
           rBC = obj.bcTraction(wDof)*frac.area(f);
@@ -294,8 +296,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       state = getState(obj);
       % fracture jump (elastic + plastic)
       state.fractureJump = zeros(3*nCutCells,1);
-      state.elasticJump = zeros(3*nCutCells,1);
-      state.plasticJump = zeros(3*nCutCells,1);
       state.traction = zeros(3*nCutCells,1);
 
       % elastic and plastic slip are obtained subtracting current and
@@ -420,9 +420,13 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         end
       end
 
-      % if hasConfigurationChanged
-      %   updateTraction(obj);
-      % end
+      if hasConfigurationChanged
+        % restore fracture jump in elements that move from open to stick
+        jump = obj.getState.fractureJump;
+        closed = oldActiveSet ~= ContactMode.open & obj.activeSet.curr == ContactMode.open;
+        jump(closed) = obj.getStateOld.fractureJump(closed);
+        setState(obj,jump,"fractureJump");
+      end
 
     end
 
@@ -465,11 +469,17 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
 
       % trial traction
-      tTrial = [tOld(1) + obj.penalty_n * (jumpNew(1) - jumpOld(1));...
+      tTrial = [obj.penalty_n * (jumpNew(1) - jumpOld(1));...
         tOld(2:3) + obj.penalty_t * (jumpNew([2;3]) - jumpOld([2;3]))];
 
       tTrial_t = tTrial(2:3);
       tTrial_t_norm = norm(tTrial_t);
+
+      % if obj.activeSet.prev(fEl) == ContactMode.open
+      %   %%
+      %   fprintf('\n Closing element \n')
+      % end
+
 
 
       tractionNew(1) = tTrial(1);
@@ -676,7 +686,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       % gresLog().log(2,'Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
       %   sum(as==1), sum(any([as==2,as==3],2)), sum(as==4));
       % 
-      % obj.iter = obj.iter + 1;
+      obj.iter = obj.iter + 1;
 
     end
 

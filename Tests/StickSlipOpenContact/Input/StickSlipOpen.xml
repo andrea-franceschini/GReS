@@ -39,10 +39,10 @@ in a nonConforming simulation.
                  forceStickBoundary = "0" >
 
         <Tolerances
-                    sliding = "1e-3"
+                    sliding = "1e-4"
                     normalGap = "1e-6"
                     normalTraction = "-1e-3"
-                    tangentialViolation = "1e-3"
+                    tangentialViolation = "1e-6"
                     minLimitTraction = "1e-4"
                     areaChange = "1e-4"
                     maxActiveSetChange = "6"
