@@ -7,9 +7,9 @@ in a nonConforming simulation.
 
   <SimulationParameters
                         Start="0."
-                        End ="7.0"
+                        End ="16.0"
                         DtInit="1"
-                        DtMin ="1e-5"
+                        DtMin ="1e-4"
                         DtMax ="1"
                         incrementFactor = "1.5"
                         choppingFactor = "2"
@@ -40,9 +40,9 @@ in a nonConforming simulation.
 
         <Tolerances
                     sliding = "1e-4"
-                    normalGap = "1e-4"
+                    normalGap = "1e-5"
                     normalTraction = "-1e-3"
-                    tangentialViolation = "1e-6"
+                    tangentialViolation = "1e-2"
                     minLimitTraction = "1e-4"
                     areaChange = "1e-4"
                     maxActiveSetChange = "6"

@@ -253,16 +253,6 @@ classdef SolidMechanicsContact < MeshTying
       isActive = obj.activeSet.curr ~= ContactMode.open;
       obj.activeSet.curr(isActive) = ContactMode.stick;
 
-
-      % s = obj.getState();
-      % t = s.time;
-      % 
-      % if t > 10.1 && t < 11.1
-      %   trac = s.traction;
-      %   trac(2:3) = -trac(2:3);
-      %   setState(obj,trac,"traction")
-      % end
-
     end
 
 
@@ -609,12 +599,8 @@ classdef SolidMechanicsContact < MeshTying
                 dtdtn = - tan(deg2rad(obj.phi))*vaux/norm(vaux);
                 Atn = area*dtdtn;
                 asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
-                %
-                % if obj.getState().time > 10.0
-                %   slipDir = -vaux/norm(vaux);
-                % else
+
                 slipDir = vaux/norm(vaux);
-                %end
 
               end
 
@@ -628,15 +614,6 @@ classdef SolidMechanicsContact < MeshTying
 
               % enforce tangential traction to match the limiting value
               rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (trac(2:3)-tT_lim);
-
-
-              % if gresLog().getVerbosity > 1
-              %   if contactState == ContactMode.slip || contactState == ContactMode.newSlip
-              %     fprintf('\n element %i - rhsT: %5.3e %5.3e \n',is,trac(2:3))
-              %     fprintf('\n element %i- rhsTlim: %5.3e %5.3e \n',is,tT_lim)
-              %     fprintf('------------------------------------ \n')
-              %   end
-              % end
 
             end
 
