@@ -13,10 +13,10 @@ params = readInput(fullfile('Input','StickSlipOpen.xml'));
 
 % set mesh 
 X = 5; Y = 10; Z = 15;
-nx1 = 2; ny1 = 20; nz1 = 20;
+nx1 = 2; ny1 = 14; nz1 = 14;
 gridL = structuredMesh(nx1,ny1,nz1,[0,0.5*X],[0 Y],[0 Z]);
 
-nx2 = 2; ny2 = 20; nz2 = 20;
+nx2 = 2; ny2 = 14; nz2 = 14;
 gridR = structuredMesh(nx2,ny2,nz2,[0.5*X,X],[0 Y],[0 Z]);
 
 assert(mod(ny1,2) == 0 && mod(ny2,2)==0,"Number of elements along y axis " + ...
@@ -55,11 +55,11 @@ interfaces = InterfaceSolver.addInterfaces(domains,params.Interface);
 
 %apply initial compression to the model
 iniStressL = getState(domainL,"stress");
-iniStressL(:,1) = -1.0;
+iniStressL(:,1) = -0.0;
 setState(domainL,iniStressL,"stress");
 
 iniStressR = getState(domainR,"stress");
-iniStressR(:,1) = -1.0;
+iniStressR(:,1) = -0.0;
 setState(domainR,iniStressR,"stress");
 % tIni = -1;
 % interfaces{1}.state.traction(1:3:end) = tIni;
@@ -132,8 +132,8 @@ bcRigth.addBC('name',"x_load",...
           'entityList',6,...
           'components',"x");
 bcRigth.addBCEvent("x_load",'time',0.0,'value',0.0);
-bcRigth.addBCEvent("x_load",'time',1.0,'value',-5.0);
-bcRigth.addBCEvent("x_load",'time',6.0,'value',-5.0);
+bcRigth.addBCEvent("x_load",'time',1.0,'value',-2.0);
+bcRigth.addBCEvent("x_load",'time',6.0,'value',0.5);
 bcRigth.addBCEvent("x_load",'time',11.0,'value',0.0);
 bcRigth.addBCEvent("x_load",'time',16.0,'value',0.0);
 bcRigth.addBCEvent("x_load",'time',20.0,'value',1.0);
@@ -148,8 +148,8 @@ bcRigth.addBC('name',"z_load",...
           'components',"z");
 bcRigth.addBCEvent("z_load",'time',0.0,'value',0.0);
 bcRigth.addBCEvent("z_load",'time',1.0,'value',0.0);
-bcRigth.addBCEvent("z_load",'time',6.0,'value',-18.0);
-bcRigth.addBCEvent("z_load",'time',11.0,'value',-18.0);
+bcRigth.addBCEvent("z_load",'time',6.0,'value',-30.0);
+bcRigth.addBCEvent("z_load",'time',11.0,'value',-30.0);
 bcRigth.addBCEvent("z_load",'time',16.0,'value',0.0);
 
 

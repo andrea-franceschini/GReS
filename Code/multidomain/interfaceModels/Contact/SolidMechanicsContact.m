@@ -601,7 +601,7 @@ classdef SolidMechanicsContact < MeshTying
               else
 
                 if slipNorm < slidingTol && ~isNewSliding
-                  fprintf('Too small sliding detected! \n')
+                  %fprintf('Too small sliding detected! \n')
                 end
 
                 % if slip is small, use current traction

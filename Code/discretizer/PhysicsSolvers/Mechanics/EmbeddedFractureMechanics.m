@@ -248,10 +248,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           asbKww.localAssembly(wDof,wDof,KwwLoc);
 
           % assemble rhsW (use computed stress tensor)
-          rT = tracNew*frac.area(f);
+          rT = (tracNew - iniTraction(wDof))*frac.area(f);
 
           %end
-          fTmp = pagemtimes(E,'ctranspose',sigma,'none');
+          fTmp = pagemtimes(E,'ctranspose',dsigma,'none');
           fTmp = fTmp.*reshape(dJw,1,1,[]);
           rSigma = sum(fTmp,3);
           rBC = obj.bcTraction(wDof)*frac.area(f);
@@ -422,10 +422,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       if hasConfigurationChanged
         % restore fracture jump in elements that move from open to stick
-        jump = obj.getState.fractureJump;
-        closed = oldActiveSet ~= ContactMode.open & obj.activeSet.curr == ContactMode.open;
-        jump(closed) = obj.getStateOld.fractureJump(closed);
-        setState(obj,jump,"fractureJump");
+        % jump = obj.getState.fractureJump;
+        % closed = oldActiveSet ~= ContactMode.open & obj.activeSet.curr == ContactMode.open;
+        % jump(closed) = obj.getStateOld.fractureJump(closed);
+        % setState(obj,jump,"fractureJump");
       end
 
     end
