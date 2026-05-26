@@ -6,7 +6,6 @@ classdef SedimentMaterial < handle
         compIdx            % Compressibility Index (Cc)
         rcompIdx           % Re-Compression Index (Cr)
         voidRate           % Void Rate (e0)
-        preStress          % Pre Consolidate Stress(Spre)
         inicStress         % Initial stress
         KVec               % Vector of hydraulic conductivity
         gamma;             % sediment specific weight
@@ -31,10 +30,6 @@ classdef SedimentMaterial < handle
             out = obj.voidRate;
         end
 
-        function out = getPreConsolidadeStress(obj)
-            out = obj.preStress;
-        end
-
         function out = getInitialStress(obj)
             out = obj.inicStress;
         end
@@ -57,7 +52,6 @@ classdef SedimentMaterial < handle
         default = struct('conductivity',[],...
                          'specificWeight',[],...
                          'voidRate',[],...
-                         'preStress',1.,...
                          "initStress",1.,...
                          "compressibilityIndex",1.,...
                          "reCompressibilityIndex",1.);
@@ -76,7 +70,6 @@ classdef SedimentMaterial < handle
             "hydraulic conductivity");
         end        
 
-        obj.preStress = params.preStress;
         obj.inicStress = params.initStress;
         obj.compIdx = params.compressibilityIndex;
         obj.rcompIdx = params.reCompressibilityIndex;
