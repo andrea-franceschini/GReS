@@ -373,8 +373,8 @@ classdef Sedimentation < PhysicsSolver
           dof = dofs(ngrowCols);
           loc = idx(ngrowCols);
 
-          fracCell = dzOld.*obj.matfrac(dof,:) + sedAdd(loc,:);
-          obj.cellDims(dof,3) = dzNew;
+          fracCell = dzOld(ngrowCols).*obj.matfrac(dof,:) + sedAdd(loc,:);
+          obj.cellDims(dof,3) = dzNew(ngrowCols);
           obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
 
           state.voidrate(dof) = (dzDef(ngrowCols).*state.voidrate(dof) +...
@@ -387,7 +387,7 @@ classdef Sedimentation < PhysicsSolver
 
           frac = (obj.heightControl-dzDef(growCols))./(dzSedmAdd(loc));
 
-          fracCell = dzOld.*obj.matfrac(dof,:) + frac.*sedAdd(loc,:);
+          fracCell = dzOld(growCols).*obj.matfrac(dof,:) + frac.*sedAdd(loc,:);
           obj.cellDims(dof,3) = obj.heightControl;
           obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
 
