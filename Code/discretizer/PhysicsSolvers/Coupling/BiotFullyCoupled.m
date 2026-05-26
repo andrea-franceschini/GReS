@@ -216,6 +216,16 @@ classdef BiotFullyCoupled < PhysicsSolver
 
     end
 
+    function timeStepSetup(obj)
+      obj.mechSolver.timeStepSetup();
+    end
+
+
+    function goBackState(obj)
+
+      obj.mechSolver.goBackState();
+    end
+
 
     function applyBC(obj,bcId,t)
       obj.flowSolver.applyBC(bcId,t);

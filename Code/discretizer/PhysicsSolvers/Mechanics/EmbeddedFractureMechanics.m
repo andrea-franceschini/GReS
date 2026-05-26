@@ -248,6 +248,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           rhsLoc = rSigma - rT - rBC;
           rhsW(wDof) = rhsW(wDof) + rhsLoc;
 
+          % if obj.activeSet.curr(f) ~= ContactMode.stick
+          %   fprintf('rSigma')
+          % end
+
         end
 
       end
@@ -423,10 +427,12 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       state = obj.activeSet.curr(fEl);
 
+      tnIni = obj.getStateInit.traction(3*fEl-2);
+
 
 
       % trial traction
-      tTrial = [obj.penalty_n * jumpNew(1);...
+      tTrial = [tnIni + obj.penalty_n * jumpNew(1);...
         tOld(2:3) + obj.penalty_t * (jumpNew([2;3]) - jumpOld([2;3]))];
 
       tTrial_t = tTrial(2:3);
@@ -474,6 +480,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       end
 
 
+    end
+
+
+    function order = getGaussOrder(obj)
+      order = obj.mechSolver.getGaussOrder;
     end
 
 
