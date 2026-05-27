@@ -494,7 +494,7 @@ classdef (Abstract) InterfaceSolver < handle
 
     function processMortarGrid(obj,params)
 
-      obj.grids = repmat(Grid.empty,2,1);
+      obj.grids = repmat(Grid(),2,1);
 
       % read parameters 
       switch params.multiplierType
@@ -531,6 +531,11 @@ classdef (Abstract) InterfaceSolver < handle
 
       elemConnectivity = cs.getElementConnectivity();
 
+      if ~any(elemConnectivity,"all")
+        error('No connection between master domain %i (surface %i) and slave domain %i (surface %i)!',...
+          params.masterDomain,params.masterSurface,params.slaveDomain,params.slaveSurface)
+      end
+
 
       obj.quadrature = feval(quadType,...
                              params.multiplierType, ...
@@ -563,6 +568,9 @@ classdef (Abstract) InterfaceSolver < handle
           Ri = mxComputeRotationMat(n);
           R(i,:) = Ri(:);
         end
+
+        % temporary patch: only for planar interfaces
+        %R = repmat(R(1,:),size(R,1),1);
         obj.grids(side).surfaces.rotationMatrices = R;
       end
       

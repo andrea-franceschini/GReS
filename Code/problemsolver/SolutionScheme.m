@@ -236,7 +236,7 @@ classdef (Abstract) SolutionScheme < handle
         if ((obj.t + obj.dt) > obj.simparams.tMax)
           obj.dt = obj.simparams.tMax - obj.t;
           if obj.dt< obj.simparams.dtMin
-            obj.t = obj.t+obj.simparams.dtMin;
+            obj.t = obj.simparams.tMax;
           end
         end
 
