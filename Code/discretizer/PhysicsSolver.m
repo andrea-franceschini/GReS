@@ -263,9 +263,11 @@ classdef (Abstract) PhysicsSolver < handle
 
       % zero out rows (use transpose trick)
       for j = 1:nV
-        obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
-        obj.domain.J{bcVarId,j}(:,bcDofs) = 0;
-        obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
+        if ~isempty(obj.domain.J{bcVarId,j})
+          obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
+          obj.domain.J{bcVarId,j}(:,bcDofs) = 0;
+          obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
+        end
       end
 
       % apply BC to multi-domain jacobian coupling blocks
@@ -281,7 +283,9 @@ classdef (Abstract) PhysicsSolver < handle
       % symmetry)
       if isSymmetric(obj)
         for i = 1:nV
-          obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+          if ~isempty(obj.domain.J{i,bcVarId})
+            obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+          end
         end
 
         for iI = 1:numel(obj.domain.interfaces)

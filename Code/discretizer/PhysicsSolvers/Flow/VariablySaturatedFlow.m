@@ -36,14 +36,19 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       computeStiffMat(obj,obj.lw);
       computeCapMat(obj,Sw,dSw);
 
+
       ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
+      entType = obj.domain.dofm.getFieldLocation(obj.fieldId);
+      z = getLocation(entType,obj.grid,ents);
+      z = z(:,3);
+      gamma = obj.domain.materials.getFluid.getSpecificWeight;
 
       if obj.steadyState
-        rhs = obj.H*p(ents);
+        rhs = obj.H*(p(ents)+gamma*z);
         J = obj.H;
       else
         pOld = obj.getStateOld(obj.getField());
-        rhs = obj.H*p(ents) + (obj.P/dt)*(p(ents) - pOld(ents));
+        rhs = obj.H*(p(ents)+gamma*z) + (obj.P/dt)*(p(ents) - pOld(ents));
         J = obj.H + obj.P/dt;
       end
 
@@ -58,40 +63,27 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
       obj.domain.J{obj.fieldId,obj.fieldId} = J;
 
-      gamma = obj.domain.materials.getFluid().getSpecificWeight();
-      if gamma > 0
-        % add rhs gravity contribution
-        obj.domain.rhs{obj.fieldId} = rhs + getRhsGravity(obj,obj.lw);
-      else
-        obj.domain.rhs{obj.fieldId} = rhs;
-      end
+      obj.domain.rhs{obj.fieldId} = rhs;
+
     end
 
     function states = finalizeState(obj,p,t)
-      % Compute the posprocessing variables for the module.
-      gamma = obj.domain.materials.getFluid().getSpecificWeight();
-      if gamma>0
-        zbc = obj.grid.cells.center(:,3);
-        states.potential = p + gamma*zbc;
-        states.head = zbc+p/gamma;
-      end
-      [mob ,~] = computeMobility(obj,p);
-      states.flux = computeFlux(obj,p,mob,t);
-      states.perm = printPermeab(obj);
+
+      states = finalizeState@SinglePhaseFlowFVTPFA(obj,p,t);
+
+      % print also the saturation
       states.saturation = computeSaturation(obj,p);
-      states.pressure = p;
-      % states.mass = checkMassCons(obj,mob,potential);
     end
 
-    function gTerm = getRhsGravity(obj,lw)
-      dofm = obj.domain.dofm;
-      nCells = dofm.getNumbDoF(obj.fieldId);
-      neigh = obj.grid.faces.neighbors(obj.isIntFaces,:);
-      gTerm = accumarray(neigh(:),[lw.*obj.rhsGrav; ...
-        -lw.*obj.rhsGrav],[nCells,1]);
-
-      gTerm = gTerm(dofm.getActiveEntities(obj.fieldId));
-    end
+    % function gTerm = getRhsGravity(obj,lw)
+    %   dofm = obj.domain.dofm;
+    %   nCells = dofm.getNumbDoF(obj.fieldId);
+    %   neigh = obj.grid.faces.neighbors(obj.isIntFaces,:);
+    %   gTerm = accumarray(neigh(:),[lw.*obj.rhsGrav; ...
+    %     -lw.*obj.rhsGrav],[nCells,1]);
+    % 
+    %   gTerm = gTerm(dofm.getActiveEntities(obj.fieldId));
+    % end
 
     function updateState(obj,dSol)
       dofm = obj.domain.dofm;
@@ -209,7 +201,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
   end
 
-  methods (Access = private)
+  methods (Access = protected)
     function [Sw,dSw,d2Sw] = computeSaturation(obj,p)
       % COMPUTESATURATION compute the saturation and it's derivatives
       cells = obj.grid.cells;

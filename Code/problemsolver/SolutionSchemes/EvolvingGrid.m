@@ -13,6 +13,7 @@ classdef EvolvingGrid < SolutionScheme
 
   properties (Access = private)
     printGrow
+    printInterv
     printCount = 0
     printList = []
   end
@@ -67,6 +68,7 @@ classdef EvolvingGrid < SolutionScheme
 
         % Check for convergence
         converged = (rhsNorm < tolWeigh || rhsNorm < absTol);
+        % converged = rhsNorm < absTol;
       end
     end
 
@@ -78,12 +80,11 @@ classdef EvolvingGrid < SolutionScheme
   methods (Access = protected)
 
     function setSolutionScheme(obj,varargin)
-
       default = struct('simulationparameters',SimulationParameters.empty,...
                        'output',missing,...
                        'domains',Discretizer.empty,...
-                       'growprint',false);
-
+                       'growprint',0,...
+                       'intervalprint',missing);
       params = readInput(default,varargin{:});
 
       obj.simparams = params.simulationparameters;
@@ -92,9 +93,16 @@ classdef EvolvingGrid < SolutionScheme
         obj.output = params.output;
       end
 
+      obj.printGrow = logical(params.growprint);
+      obj.printInterv = params.intervalprint;
+      if ismissing(obj.printInterv)
+        % Define an interval outside of the simulation
+        tf = params.simulationparameters.tMax+params.simulationparameters.dtMax;
+        obj.printInterv = [tf, 2*tf];
+      end
+
       obj.nDom = numel(obj.domains);
-      obj.nInterf = numel(obj.interfaces);
-      obj.printGrow = params.growprint;
+      obj.nInterf = numel(obj.interfaces);      
       obj.nVars = 1;
 
       assert(~isempty(obj.simparams),"Input 'simulationParameters'" + ...
@@ -102,11 +110,9 @@ classdef EvolvingGrid < SolutionScheme
       assert(obj.nDom == 1,"Only one domain is admitted when using EvolvingGrid");
     end
 
-
-
-
-    % Sets the linear solver and checks for eventual user input parameters
+    
     function setLinearSolver(obj,varargin)
+      % Sets the linear solver and checks for eventual user input parameters
       if isempty(varargin)
         physname = [];
       else
@@ -121,26 +127,28 @@ classdef EvolvingGrid < SolutionScheme
       obj.linsolver = linearSolver(obj,physname);
     end
 
-    function printState(obj)
 
+    function printState(obj)
       if isempty(obj.output)
         return
       end
 
-      print = false;
-      newcells = getState(obj.physics.domain,'newcells')~=0;
-      printByGrow = and(obj.printGrow,newcells);
-      % printByGrow = true;
+      tf = obj.t;
+      t0 = tf-obj.dt;
+      flagPrintExtra = false;
+      if and(tf>=obj.printInterv(1),t0<=obj.printInterv(2))
+        flagPrintExtra = true;        
+      end
 
-      if and(~print,printByGrow)
+      if getState(obj.physics.domain,'newcells')~=0
+        flagPrintExtra = or(flagPrintExtra,obj.printGrow);
+      end
+
+      if flagPrintExtra
         % if printByGrow
         fac = 0;  % 0=stateOld, 1=stateNew - Because the mesh update
         % happens after the print, to plot after the grow, i plot the
         % oldstate in the next time step.
-
-        % if print
-        %   obj.printCount = obj.printCount+1;
-        % end
 
         pos = obj.output.timeID + obj.printCount;
 
@@ -156,12 +164,10 @@ classdef EvolvingGrid < SolutionScheme
       end
 
       if obj.output.timeID <= length(obj.output.timeList)
-
         outTime = obj.output.timeList(obj.output.timeID);
 
         % loop over print times contained in the current time step
         while outTime <= obj.t
-
           assert(outTime >= obj.tOld, 'Print time %f out of range (%f - %f)',...
             outTime, obj.tOld, obj.t);
           assert(obj.t - obj.tOld > eps('double'),...
@@ -169,7 +175,6 @@ classdef EvolvingGrid < SolutionScheme
 
           % compute factor to interpolate current and old state variables
           fac = (outTime - obj.tOld)/(obj.t - obj.tOld);
-
           if isnan(fac) || isinf(fac)
             fac = 1;
           end
@@ -193,15 +198,10 @@ classdef EvolvingGrid < SolutionScheme
             outTime = obj.output.timeList(obj.output.timeID);
           end
         end
-
-
-
       end
-
     end
 
     function printVTK(obj,fac,outTime,tID)
-
       if obj.output.writeVtk
         % set folders
         obj.output.prepareOutputFolders(tID);
@@ -235,7 +235,6 @@ classdef EvolvingGrid < SolutionScheme
     end
 
     function finalize(obj)
-
       if ~isempty(obj.output)
         obj.output.savePvd(obj.printList);
 

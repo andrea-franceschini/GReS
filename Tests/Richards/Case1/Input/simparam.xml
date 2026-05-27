@@ -2,8 +2,8 @@
 <SimulationParameters
         Start="0."
         End ="100.01"
-        DtInit= "1.e-1"
-        DtMin ="1.e-1"
+        DtInit= "2.e-1"
+        DtMin ="2.e-1"
         DtMax ="1.e+1"          
         incrementFactor = "1."
         MaxNLIteration = "10"
