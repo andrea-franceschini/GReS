@@ -3,7 +3,7 @@ close all;
 input_dir = 'Input/';
 figures_dir = 'Output/Figs/';
 
-typeDiscretization = "FVTPFA";
+typeDiscretization = "FEM";
 solverName = strcat("SinglePhaseFlow",typeDiscretization);
 
 % Set the simulation parameters for the non-linear solver.

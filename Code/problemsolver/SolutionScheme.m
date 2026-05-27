@@ -125,7 +125,7 @@ classdef (Abstract) SolutionScheme < handle
         state = dom.getState;
         state.time = obj.simparams.tIni;
         dom.setState(state);
-        obj.iniState.domains(i) = dom.state;
+        obj.iniState.domains{i} = dom.getState();
         % set old and initial state 
         dom.setStateInit(state);
         dom.setStateOld(state);
@@ -140,7 +140,7 @@ classdef (Abstract) SolutionScheme < handle
         interf = obj.interfaces{i};
         state = interf.getState;
         state.time = obj.simparams.tIni;
-        obj.iniState.interfaces(i) = interf.state;
+        obj.iniState.interfaces{i} = interf.getState();
         % set old and initial state
         interf.setState(state);
         interf.setStateInit(state)
@@ -159,11 +159,11 @@ classdef (Abstract) SolutionScheme < handle
       % reset the simulation  at its initial state
 
       for i = 1:obj.nDom
-        setState(obj.domains(i),obj.iniState.domains(i).getState);
+        setState(obj.domains(i),obj.iniState.domains{i});
       end
 
       for i = 1:obj.nInterf
-        obj.interfaces{i}.state = copy(obj.iniState.interfaces{i}.getState);
+        setState(get(obj.iniState.interfaces{i}));
       end
 
       if ~isempty(obj.output)
@@ -235,7 +235,7 @@ classdef (Abstract) SolutionScheme < handle
         % limit time step to end of simulation time
         if ((obj.t + obj.dt) > obj.simparams.tMax)
           obj.dt = obj.simparams.tMax - obj.t;
-          if obj.dt < obj.simparams.dtMin
+          if obj.dt< obj.simparams.dtMin
             obj.t = obj.simparams.tMax;
           end
         end
