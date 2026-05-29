@@ -105,6 +105,8 @@ classdef (Abstract) SolutionScheme < handle
 
       if ~ismissing(params.output)
         obj.output = params.output;
+      else
+        obj.output = OutState();
       end
 
       obj.nDom = numel(obj.domains);
@@ -335,9 +337,6 @@ classdef (Abstract) SolutionScheme < handle
 
 
     function printState(obj)
-      if isempty(obj.output)
-        return
-      end
 
       if obj.output.timeID <= length(obj.output.timeList)
         outTime = obj.output.timeList(obj.output.timeID);
