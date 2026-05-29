@@ -30,9 +30,10 @@ classdef SolidMechanicsContact < MeshTying
 
       input = varargin{1};
 
-      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0),input);
-
+      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0,'stabilizationScale',1.0),input);
       params = readInput(struct('cohesion',[],'frictionAngle',[]),input.Coulomb);
+
+      obj.stabilizationScale = input.stabilizationScale;
 
 
       obj.forceStick = logical(input.forceStick);

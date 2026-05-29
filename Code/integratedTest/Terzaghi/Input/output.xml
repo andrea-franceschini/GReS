@@ -3,6 +3,7 @@
 <Output 
         matFileName = "results"
         printTimes = "5.0"
+        solvePrintTimes = "1"
   />
 
 <!-- 
