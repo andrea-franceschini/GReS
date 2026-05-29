@@ -80,6 +80,21 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
       % update gap
       computeGap(obj);
+
+      %applyContactReturnMap(obj);
+
+      if gresLog().getVerbosity > 2
+        nStick = sum(obj.activeSet.curr == ContactMode.stick);
+        nSlip = sum(obj.activeSet.curr == ContactMode.slip | ...
+          obj.activeSet.curr == ContactMode.newSlip);
+        nOpen = sum(obj.activeSet.curr == ContactMode.open);
+
+        fprintf('%s: active set ',class(obj));
+        fprintf('(NLIter %i): stick = %i, slip = %i, open = %i\n', ...
+          obj.NLIter,nStick,nSlip,nOpen);
+      end
+
+
     end
 
     function assembleConstraint(obj)
@@ -118,6 +133,76 @@ classdef SolidMechanicsContactAugmented < MeshTying
       end
 
     end
+
+     function applyContactReturnMap(obj)
+      % Project the trial contact multiplier onto the admissible normal cone
+      % and Coulomb disk. This implements the return-map stage of the
+      % generalized Newton method with return map.
+      %
+      % Sign convention: normal compression is t_N <= 0. The admissible
+      % normal set is therefore t_N <= 0. The tangential admissible set is
+      % ||t_T|| <= tau_max, with tau_max = cohesion - tan(phi)*t_N.
+
+      state = getState(obj);
+      stateOld = getStateOld(obj);
+      surfSlave = obj.grids(MortarSide.slave).surfaces;
+      tanPhi = tan(deg2rad(obj.phi));
+      %tolTau = obj.activeSet.tol.tangentialViolation;
+
+      for is = 1:numel(obj.activeSet.curr)
+
+        % Optional forced-stick boundary handling.
+        if isstring(obj.activeSet.forceStickBoundary)
+          nodes = getRowsMatrix(surfSlave.connectivity,is);
+          nodes = surfSlave.loc2glob(nodes);
+          if any(ismember(nodes,obj.stickNodes))
+            obj.activeSet.curr(is) = ContactMode.stick;
+            continue
+          end
+        end
+
+        id = DoFManager.dofExpand(is,3);
+        tTrial = state.traction(id);
+
+        % Normal return map: t_N = min(t_N^trial,0).
+        tN = min(tTrial(1),0.0);
+
+        % If the point is geometrically open and the projected normal
+        % traction is zero, release also the tangential traction. This avoids
+        % carrying frictional shear on an open interface.
+        if state.normalGap(is) > obj.activeSet.tol.normalGap && abs(tN) <= eps
+          state.traction(id) = 0;
+          obj.activeSet.curr(is) = ContactMode.open;
+          continue
+        end
+
+        % Tangential return map onto the Coulomb disk.
+        tauLim = max(obj.cohesion - tanPhi*tN,0.0);
+        tTTrial = tTrial(2:3);
+        tTNorm = norm(tTTrial);
+
+        if tTNorm <= tauLim
+          tT = tTTrial;
+          obj.activeSet.curr(is) = ContactMode.stick;
+        else
+          if tTNorm > 0
+            tT = tauLim*(tTTrial/tTNorm);
+            obj.activeSet.curr(is) = ContactMode.slip;
+          else
+            tT = zeros(2,1);
+            obj.activeSet.curr(is) = ContactMode.stick;
+          end
+        end
+
+        state.traction(id) = [tN; tT];
+
+      end
+
+      state.deltaTraction = state.traction - stateOld.traction;
+      setState(obj,state);
+
+    end
+
 
 
     function hasConfigurationChanged = updateConfiguration(obj)
@@ -384,7 +469,7 @@ classdef SolidMechanicsContactAugmented < MeshTying
       topolMaster = getRowsMatrix(surfMaster.connectivity,1:surfMaster.num);
       topolSlave = getRowsMatrix(surfSlave.connectivity,1:surfSlave.num);
 
-      obj.count = 0;
+      tols = obj.activeSet.tol;
 
       % The state is now diagnostic. It is still useful for VTK output,
       % stabilization filtering and debugging.
@@ -473,6 +558,8 @@ classdef SolidMechanicsContactAugmented < MeshTying
             zN = tN + cN*g_n;
             tauLim = max(obj.cohesion - tanPhi*tN,0.0);
 
+            contactState = obj.activeSet.curr(is);
+
 
             % --- normal complementarity ---------------------------------
             if zN > 0
@@ -500,8 +587,22 @@ classdef SolidMechanicsContactAugmented < MeshTying
             % --- tangential complementarity ------------------------------
             yT = tT + cT*dgt;     % trial tangential traction
             yNorm = norm(yT);
+            tau = yNorm;
 
-            if yNorm <= tauLim
+            % apply hysteresis to tangential traction norm for check
+            % if contactState == ContactMode.stick && tau >= tauLim
+            % 
+            %   % reduce the tau if goes above limit
+            %   tau = tau*(1-tols.tangentialViolation);
+            % 
+            % elseif contactState ~= ContactMode.stick  && tau <=tauLim
+            % 
+            %   % increase tau if falls below limit
+            %   tau = tau*(1+tols.tangentialViolation);
+            % end
+
+
+            if tau <= tauLim
 
               % stick branch: dg_T = 0
               obj.activeSet.curr(is) = ContactMode.stick;
@@ -558,17 +659,6 @@ classdef SolidMechanicsContactAugmented < MeshTying
       obj.addRhs(MortarSide.master,rhsUm);
       obj.addRhs(MortarSide.slave,rhsUs);
       obj.rhsConstraint = rhsT;
-
-      if gresLog().getVerbosity > 2
-        nStick = sum(obj.activeSet.curr == ContactMode.stick);
-        nSlip = sum(obj.activeSet.curr == ContactMode.slip | ...
-                    obj.activeSet.curr == ContactMode.newSlip);
-        nOpen = sum(obj.activeSet.curr == ContactMode.open);
-
-        fprintf('%s: active set ',class(obj));
-        fprintf('(NLIter %i): stick = %i, slip = %i, open = %i\n', ...
-          obj.NLIter,nStick,nSlip,nOpen);
-      end
 
     end
 
