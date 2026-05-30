@@ -18,37 +18,38 @@ rmpath(genpath(fullfile(gres_root,...
 % Result's used as reference to comparison.
 ref = repelem(struct('press', 1, 'stress', 1, 'strain', 1), 3);
 
-ref(1).time = 10.;
-ref(1).press   = [1.119968400388506e-03; 0];
-ref(1).stress  = [-2.499981842452031e+03; -1.000000000000000e+03];
-ref(1).strain  = [-3.617566676826193e-05; 0];
+ref(1).time = 1.;
+ref(1).press   = [5.696736937229210e-04; 0];
+ref(1).stress  = [-1.650006000161258e+03; -1.499882008974347e+02];
+ref(1).strain  = [-3.762677543472629e-06; 0];
 
 ref(2).time = 10.1;
-ref(2).press   = [1.196120847876733e-03; 1.172092450342516e-04];
-ref(2).stress  = [-2.514981595923788e+03; -1.014999712414959e+03];
-ref(2).strain  = [-3.640571542602931e-05; -5.517824079791585e-07];
+ref(2).press   = [1.392902213852669e-03; 7.974303343768915e-04];
+ref(2).stress  = [-3.014897805099393e+03; -1.514880031633756e+03];
+ref(2).strain  = [-2.736522102337879e-05; 0];
 
-ref(3).time = 20.;
-ref(3).press   = [2.291847661133413e-03; 1.803573647557038e-03; 0];
-ref(3).stress  = [-3.999963632993201e+03; -2.499981158846784e+03; -1.000000000000000e+03];
-ref(3).strain  = [-5.473174585702388e-05; -3.617565597245061e-05; 0];
+ref(3).time = 11.;
+ref(3).press   = [1.464902159932661e-03; 8.680868245770957e-04; 0];
+ref(3).stress  = [-3.149887113907138e+03; -1.649869341784957e+03; -1.499691689054160e+02];
+ref(3).strain  = [-2.929151164702439e-05; 0; 0];
 
-ref(4).time = 30.;
-ref(4).press   = [3.486517334585601e-03; 3.135152541654548e-03; 2.295507961808723e-03];
-ref(4).stress  = [-5.499945400743963e+03; -3.999962789688321e+03; -2.499980666912470e+03];
-ref(4).strain  = [-6.730454262684597e-05; -5.473173753334517e-05; -3.617564820359378e-05];
+ref(4).time = 21.;
+ref(4).press   = [2.475626627689976e-03; 2.071332546363613e-03; 1.070227202550541e-03; 0];
+ref(4).stress  = [-4.649768112157017e+03; -3.149750147513581e+03; -1.649850107652560e+03; -1.499572234211735e+02];
+ref(4).strain  = [-4.466828432299391e-05; -2.552886492208846e-05; 0; 0];
 
 ref(5).time = 30.;
-ref(5).press   = [3.486517334585601e-03; 3.135152541654548e-03; 2.295507961808723e-03; 0];
-ref(5).stress  = [-5.499945400743963e+03; -3.999962789688321e+03; -2.499980666912470e+03; -1.000000000000000e+03];
-ref(5).strain  = [-6.730454262684597e-05; -5.473173753334517e-05; -3.617564820359378e-05; 0];
+ref(5).press   = [3.452834660752819e-03; 3.139508602098363e-03; 2.408416532527968e-03; 1.118558686820950e-03];
+ref(5).stress  = [-5.999660943025895e+03; -4.499642887414438e+03; -2.999742577540141e+03; -1.499849912939399e+03];
+ref(5).strain  = [-5.373249816442258e-05; -3.827222210211486e-05; -2.157771238235775e-05; 0];
 
 % Get the full path of this test
 input_dir = 'Input/';
 testPath = mfilename('fullpath');
 cd(fileparts(testPath));
 
-simParam = SimulationParameters(fullfile(input_dir,'simparam.xml'));
+simParam = SimulationParameters('Start',0.,'End',30.1,'DtInit',1e-0,...
+  'DtMin',1e-0,'DtMax',1e2,'incrementFactor',1.0);
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(fullfile(input_dir,'materials.xml'));
@@ -64,7 +65,7 @@ domain.addPhysicsSolvers(fullfile(input_dir,'solver.xml'));
 solver = EvolvingGrid('simulationparameters',simParam,...
                            'domains',domain,...
                            'output',printUtils, ...
-                           'growprint',true);
+                           'growprint',1);
 solver.simulationLoop();
 
 % Solution

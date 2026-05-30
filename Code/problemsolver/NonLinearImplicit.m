@@ -79,6 +79,7 @@ classdef NonLinearImplicit < SolutionScheme
           % solve linear system
           du = solve(obj,J,rhs);
 
+
           c = 0;
 
           % update simulation state with linear system solution

@@ -296,7 +296,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       mat = obj.domain.materials;
       KMat = zeros(cells.nTag,9);
       for i=1:cells.nTag
-        KMat(i,:) = mat.getMaterial(i).PorousRock.getPermVector();
+        if isfield(mat.getMaterial(i),"PorousRock")
+          KMat(i,:) = mat.getMaterial(i).PorousRock.getPermVector();
+        end
       end
 
       % index for vectorized L*K*N product

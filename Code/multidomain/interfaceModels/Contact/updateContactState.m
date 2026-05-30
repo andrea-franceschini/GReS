@@ -31,12 +31,12 @@ else % not open
   if inState == ContactMode.stick && tau >= tLimit
 
     % reduce the tau if goes above limit
-    tau = tau*(1-tols.tangentialViolation)-tol;
+    tau = tau*(1-tols.tangentialViolation);
 
   elseif inState ~= ContactMode.stick  && tau <=tLimit
 
     % increase tau if falls below limit
-    tau = tau*(1+tols.tangentialViolation)+tol;
+    tau = tau*(1+tols.tangentialViolation);
   end
 
   % change the state after relaxation

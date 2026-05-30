@@ -25,7 +25,7 @@ classdef SedimentsMap < handle
   properties (Access = private)
     type                            % Interpolation type ('linear' | 'ramp')
     dim (1,2)                       % Spatial grid dimensions (nx, ny)
-    nmat uint16                     % Number of materials
+    nmat                            % Number of materials
   end
 
   methods
@@ -64,7 +64,7 @@ classdef SedimentsMap < handle
 
       ntimesteps = length(obj.timeList);
       pos = find(obj.timeList <= t0, 1, 'last');
-      posF = find(t0+dt <= obj.timeList, 1, 'first');
+      posF = find(t0+dt-1e-9 < obj.timeList, 1, 'first');
 
       % Boundary checks
       if isempty(pos)
@@ -79,13 +79,19 @@ classdef SedimentsMap < handle
       % Routing to interpolation logic
       if ntimesteps > 1 && pos ~= posF
         if strcmpi(obj.type, "linear")
-          map = obj.LinearInter(dt, pos, posF) / dt;
+          map = obj.LinearInter(t0, dt, pos, posF);
         else
-          map = obj.RampInter(dt, pos, posF) / dt;
+          map = obj.RampInter(t0, dt, pos, posF);
         end
       else
         % Single event or within the same time window
         map = obj.processEvent(pos);
+      end
+
+      flagErosion = map<0;
+      if any(flagErosion,"all")
+        gresLog().warning(3,'Spot negative values of sedimentation rate! Set them as zero!');
+        map(flagErosion) = 0.;
       end
     end
 
@@ -203,44 +209,59 @@ classdef SedimentsMap < handle
         [x_new, y_new] = meshgrid(0:1/(obj.dim(1)-1):1, 0:1/(obj.dim(2)-1):1);        
         values = reshape(interp2(x_ref, y_ref, val_ref, x_new, y_new, 'cubic'),[],1);
       end
+      values(values<0)=0;
 
       % smoothing the data.
       values = reshape(values,obj.dim(1),obj.dim(2));
-      values = imgaussfilt(values, 1);         % light smoothing
+      % values = imgaussfilt(values, 1);         % light smoothing
       values = reshape(values,[],1);
     end
 
-    function map = LinearInter(obj, dt, pos, posF)
+    function map = LinearInter(obj, t0, dt, pos, posF)
       % LINEARINTER Performs trapezoidal integration of sedimentation rates.
       %
       % Notes:
       %   - Assumes linear variation between event timestamps
 
       map = zeros(prod(obj.dim), obj.nmat);
-      dtAcc = 0;
-      for i=1:(posF-pos)
+      nIntv = posF-pos;
+      for i=1:nIntv
         tSt = obj.timeList(pos+i-1);
         tEd = obj.timeList(pos+i);
         v1 = obj.processEvent(pos+i-1);
         v2 = obj.processEvent(pos+i);
-
-        if i==(posF-pos)
-          dl = dt-dtAcc;
+        if nIntv == 1
+          dl = dt;
+          map = (dl/2)*(v1+v2);
+        else
           % Interpolated rate at time t0
           % y = A x + B
-          tDiff = 1/(tEd - tSt);
-          Aterm = tDiff*(v2 - v1);
-          Bterm = tDiff*(tEd*v1 - tSt*v2);
-          v2 = Aterm*(tSt+dl)+Bterm;
-        else
-          dl = tEd-tSt;
-          dtAcc = dtAcc + dl;
+          if i == 1
+            dl = tEd-t0;
+            pt2 = v2;
+            tDiff = tEd - tSt;
+            Aterm = (v2 - v1)/tDiff;
+            Bterm = v1+v2-(v2-v1)*(tEd+tSt)/tDiff;
+            pt1 = Aterm*(t0)+Bterm/2;
+          elseif i == nIntv
+            dl = t0+dt-tSt;
+            pt1 = v1;
+            tDiff = tEd - tSt;
+            Aterm = (v2 - v1)/tDiff;
+            Bterm = v1+v2-(v2-v1)*(tEd+tSt)/tDiff;
+            pt2 = Aterm*(t0+dt)+Bterm/2;
+          else
+            dl = tEd-tSt;
+            pt1 = v1;
+            pt2 = v2;
+          end
+          map = map + (dl/2)*(pt1+pt2);
         end
-        map = map + (dl/2)*(v1+v2);
       end
+      map = map/dt;
     end
 
-    function map = RampInter(obj, dt, pos, posF)
+    function map = RampInter(obj, t0, dt, pos, posF)
       % RAMPINTER Performs piecewise constant integration.
       %
       % Notes:
@@ -248,20 +269,28 @@ classdef SedimentsMap < handle
       
       map = zeros(prod(obj.dim), obj.nmat);
       dtAcc = 0;
-      for i=1:(posF-pos)
+      nIntv = posF-pos;
+      for i = 1:nIntv
         % Constant by part's between Event(pos) and Event(pos+1)
         tSt = obj.timeList(pos+i-1);
         tEd   = obj.timeList(pos+i);
 
-        if i==(posF-pos)
-          dl = dt-dtAcc;
+        if nIntv == 1
+          dl = dt;
         else
-          dl = tEd-tSt;
-          dtAcc = dtAcc + dl;
-        end
+          if i == 1
+            dl = tEd-t0;
+          elseif i == nIntv
+            dl = t0+dt-tSt;
+          else
+            dl = tEd-tSt;
+          end
+        end        
+        dtAcc = dtAcc + dl;
         v = obj.processEvent(pos+i-1);
         map = map + v * dl;
       end
+      map = map/dt;
     end
 
   end

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Materials>
+  <Solid name = "peat"
+         cellTags = "1">
+    <Constitutive>
+      <SedimentMaterial
+          voidRate = "15."
+          conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
+          initStress = "1e+3"
+          preStress = "1e+1"
+          specificWeight = "2.0e4"
+          compressibilityIndex = "4.00"
+          reCompressibilityIndex = "0.40"
+      />
+    </Constitutive>
+  </Solid>
+
+  <Solid name = "clay"
+         cellTags = "2">
+    <Constitutive>
+      <SedimentMaterial
+          voidRate = "10."
+          conductivity = "0.9450e-1, 0.9450e-1, 0.315e-1"
+          initStress = "1e+3"
+          preStress = "1e+1"
+          specificWeight = "2.7e4"
+          compressibilityIndex = "3.00"
+          reCompressibilityIndex = "0.10"
+      />
+    </Constitutive>
+  </Solid>
+
+  <Solid name = "silt"
+         cellTags = "3">
+    <Constitutive>
+      <SedimentMaterial
+          voidRate = "3."
+          conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
+          initStress = "1e+3"
+          preStress = "1e1"
+          specificWeight = "2.7e4"
+          compressibilityIndex = "0.5"
+          reCompressibilityIndex = "0.05"
+      />
+    </Constitutive>
+  </Solid>
+
+  <Fluid
+      specificWeight = "1.e4"
+      compressibility = "0.432e-9"
+  />
+  
+</Materials>
+
