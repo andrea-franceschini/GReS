@@ -1,4 +1,4 @@
-classdef SolidMechanicsContactAugmented < MeshTying
+classdef SolidMechanicsContactAugmentedSqrtCoulomb < MeshTying
 
   % solid mechanics solver using piece-wise constant multipliers
   % implments semi-smooth newton rewriting constraint inequalities into complementarity function 
@@ -13,11 +13,12 @@ classdef SolidMechanicsContactAugmented < MeshTying
     forceStick     % flag to enforce interface to stay stick
     count
     contactAugmentation
+    coulombRegularization
   end
 
 
   methods
-    function obj = SolidMechanicsContactAugmented(id,domains,inputStruct)
+    function obj = SolidMechanicsContactAugmentedSqrtCoulomb(id,domains,inputStruct)
 
       obj@MeshTying(id,domains,inputStruct);
 
@@ -33,9 +34,11 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
       input = varargin{1};
 
-      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0,...
-        'stabilizationScale',1.0,'augmentationParameter',1.0),input);
+      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'ActiveSetFreeze',[],'CoulombRegularization',[],...
+        'forceStick',0,'stabilizationScale',1.0,...
+        'augmentationParameter',1.0),input);
       params = readInput(struct('cohesion',[],'frictionAngle',[]),input.Coulomb);
+      paramsReg = readInput(struct('epsilonTangential',1.0e-8),input.CoulombRegularization);
 
       obj.stabilizationScale = input.stabilizationScale;
       obj.contactAugmentation = input.augmentationParameter;
@@ -45,6 +48,7 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
       obj.cohesion = params.cohesion;
       obj.phi = params.frictionAngle;
+      obj.coulombRegularization.epsilonTangential = paramsReg.epsilonTangential;
 
       nDofsInterface = getNumbDoF(obj);
 
@@ -62,6 +66,7 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
       N = obj.grids(MortarSide.slave).surfaces.num;
       initializeActiveSet(obj,N,input.ActiveSet);
+      initializeActiveSetFreeze(obj,N,input.ActiveSetFreeze);
       
     end
 
@@ -227,6 +232,7 @@ classdef SolidMechanicsContactAugmented < MeshTying
       % the generalized derivative. The semi-smooth residual updates the
       % diagnostic state during assembly, so no trial-stick reset is applied.
       obj.NLIter = 0;
+      resetActiveSetFreeze(obj);
 
     end
 
@@ -276,6 +282,7 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
       % reset the counter for changed states
       obj.activeSet.stateChange(:) = 0;
+      resetActiveSetFreeze(obj);
 
     end
 
@@ -283,6 +290,7 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
       toReset = obj.activeSet.curr(:) ~= ContactMode.open;
       obj.activeSet.curr(toReset) = ContactMode.stick;
+      resetActiveSetFreeze(obj);
 
       isReset = true;
     end
@@ -299,6 +307,7 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
       obj.activeSet.curr = obj.activeSet.prev;
       obj.NLIter = 0;
+      resetActiveSetFreeze(obj);
       if obj.activeSet.resetActiveSet
         resetConfiguration(obj);
       end
@@ -424,7 +433,9 @@ classdef SolidMechanicsContactAugmented < MeshTying
       % updated by an external configuration loop; they are selected locally
       % by the current Newton iterate and define a generalized derivative.
 
-      prevAS = obj.activeSet.curr;
+      candidateAS = computeCandidateActiveSet(obj);
+      updateActiveSetFreezeForAssembly(obj,candidateAS);
+      assemblyAS = obj.activeSet.assembly;
 
       m = MortarSide.master;
       s = MortarSide.slave;
@@ -461,12 +472,6 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
       topolMaster = getRowsMatrix(surfMaster.connectivity,1:surfMaster.num);
       topolSlave = getRowsMatrix(surfSlave.connectivity,1:surfSlave.num);
-
-      tols = obj.activeSet.tol;
-
-      % The state is now diagnostic. It is still useful for VTK output,
-      % stabilization filtering and debugging.
-      obj.activeSet.curr(:) = ContactMode.stick;
 
       for vtkSlave = surfSlave.vtkTypes
 
@@ -552,13 +557,14 @@ classdef SolidMechanicsContactAugmented < MeshTying
             zN = tN + cN*g_n;
             tauLim = max(obj.cohesion - tanPhi*tN,0.0);
 
+            % The semi-smooth branch used for assembly may be the current
+            % candidate set or a frozen previous set.
+            contactState = assemblyAS(is);
 
             % --- normal complementarity ---------------------------------
-            if zN > 0
+            if contactState == ContactMode.open
 
               % open branch: t_N = 0 and t_T = 0
-              obj.activeSet.curr(is) = ContactMode.open;
-
               rhsT(tDof(1)) = rhsT(tDof(1)) + area*tN/cN;
               asbQ.localAssembly(tDof(1),tDof(1),area/cN);
 
@@ -576,66 +582,53 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
             end
 
-            contactState = obj.activeSet.curr(is);
-
-            % --- tangential complementarity ------------------------------
-            yT = tT + cT*dgtStab;     % trial tangential traction
-            yNorm = norm(yT);
-            tau = yNorm;
-
-            % apply hysteresis to tangential traction norm for check
-            % if contactState == ContactMode.stick && tau >= tauLim
-            % 
-            %   % reduce the tau if goes above limit
-            %   tau = tau*(1-tols.tangentialViolation);
-            % 
-            % elseif contactState ~= ContactMode.stick  && tau <=tauLim
-            % 
-            %   % increase tau if falls below limit
-            %   tau = tau*(1+tols.tangentialViolation);
-            % end
-
-
-            if tau <= tauLim
-
-              % stick branch: dg_T = 0
-              obj.activeSet.curr(is) = ContactMode.stick;
-
+            if isForceStickElement(obj,is)
+              % Optional hard override: preserve the original forceStick
+              % behavior by imposing the exact stick equation.
               rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area*dgt;
               asbMt.localAssembly(tDof(2:3),umDof,BgT_m);
               asbDt.localAssembly(tDof(2:3),usDof,-BgT_s);
-
-            else
-
-              % slip branch: t_T = tau_max * n_T
-              obj.activeSet.curr(is) = ContactMode.slip;
-
-              [nT,DnDy] = getUnitVectorAndDerivative(obj,yT);
-
-              RT = tT - tauLim*nT;
-
-              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area*RT/cT;
-
-              % dR_T/dt_N = -d(tauLim)/d(tN) * n_T
-              tauRaw = obj.cohesion - tanPhi*tN;
-              if tauRaw > 0
-                dTauDtN = -tanPhi;
-              else
-                dTauDtN = 0;
-              end
-              asbQ.localAssembly(tDof(2:3),tDof(1),-area*dTauDtN*nT/cT);
-
-
-              % dR_T/dt_T = I - tau_max d(n_T)/d(y_T)
-              dRdtT = eye(2) - tauLim*DnDy;
-              asbQ.localAssembly(tDof(2:3),tDof(2:3),area*dRdtT/cT);
-
-              % dR_T/ddg_T = -tau_max d(n_T)/d(y_T) c_T
-              dRdgt = -tauLim*DnDy;
-              asbMt.localAssembly(tDof(2:3),umDof,dRdgt*BgT_m);
-              asbDt.localAssembly(tDof(2:3),usDof,-dRdgt*BgT_s);
-
+              continue
             end
+
+            % --- regularized tangential Coulomb law ---------------------
+            % Sharp Coulomb uses n_T = y_T/||y_T|| on the slip branch and
+            % a separate stick branch dg_T = 0. Here the direction is
+            % regularized as
+            %
+            %   n_T^eps = y_T / sqrt(y_T' y_T + eps_T^2),
+            %
+            % and the closed-contact tangential equation is assembled as
+            %
+            %   t_T - tau_max n_T^eps = 0.
+            %
+            % This removes the non-smooth change of direction at y_T = 0.
+            % Consequently, the model is a regularized Coulomb law, not an
+            % exact stick/slip law with a perfectly rigid stick branch.
+            yT = tT + cT*dgtStab;
+            [nT,DnDy] = getRegularizedUnitVectorAndDerivative(obj,yT);
+
+            RT = tT - tauLim*nT;
+
+            rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area*RT/cT;
+
+            % dR_T/dt_N = -d(tauLim)/d(tN) * n_T
+            tauRaw = obj.cohesion - tanPhi*tN;
+            if tauRaw > 0
+              dTauDtN = -tanPhi;
+            else
+              dTauDtN = 0;
+            end
+            asbQ.localAssembly(tDof(2:3),tDof(1),-area*dTauDtN*nT/cT);
+
+            % dR_T/dt_T = I - tau_max d(n_T^eps)/d(y_T)
+            dRdtT = eye(2) - tauLim*DnDy;
+            asbQ.localAssembly(tDof(2:3),tDof(2:3),area*dRdtT/cT);
+
+            % dR_T/ddg_T = -tau_max d(n_T^eps)/d(y_T) c_T
+            dRdgt = -tauLim*DnDy;
+            asbMt.localAssembly(tDof(2:3),umDof,dRdgt*BgT_m);
+            asbDt.localAssembly(tDof(2:3),usDof,-dRdgt*BgT_s);
 
           end % end inner master elems loop
 
@@ -654,6 +647,235 @@ classdef SolidMechanicsContactAugmented < MeshTying
       obj.addRhs(MortarSide.master,rhsUm);
       obj.addRhs(MortarSide.slave,rhsUs);
       obj.rhsConstraint = rhsT;
+
+    end
+
+
+    function candidateAS = computeCandidateActiveSet(obj)
+      % Compute the active set predicted by the current Newton iterate.
+      % This function does not assemble residuals or tangents. It only
+      % evaluates which semi-smooth branch would be selected locally.
+
+      m = MortarSide.master;
+      s = MortarSide.slave;
+
+      surfMaster = obj.grids(m).surfaces;
+      surfSlave = obj.grids(s).surfaces;
+      elemPairs = obj.quadrature.interfacePairs;
+
+      state = getState(obj);
+      stateOld = getStateOld(obj);
+      deltaTangentialGap = state.tangentialGap - stateOld.tangentialGap;
+
+      candidateAS = repmat(ContactMode.stick,surfSlave.num,1);
+
+      for vtkSlave = surfSlave.vtkTypes
+
+        elSlave = getElement(obj,vtkSlave,s);
+
+        for vtkMaster = surfMaster.vtkTypes
+
+          elMaster = getElement(obj,vtkMaster,m);
+
+          for iPair = 1:obj.quadrature.numbInterfacePairs
+
+            is = elemPairs(iPair,s);
+            im = elemPairs(iPair,m);
+
+            if surfSlave.VTKType(is) ~= vtkSlave; continue; end
+            if surfMaster.VTKType(im) ~= vtkMaster; continue; end
+
+            dJw = obj.quadrature.getIntegrationWeights(iPair);
+            area = sum(dJw);
+            [cN,cT] = getComplementarityParameters(obj,area);
+
+            tDof = getMultiplierDoF(obj,is);
+            trac = state.traction(tDof);
+
+            g_n = state.gap(3*is-2);
+            dgtStab = deltaTangentialGap([2*is-1; 2*is]);
+
+            tanPhi = tan(deg2rad(obj.phi));
+            tN = trac(1);
+            tT = trac(2:3);
+
+            zN = tN + cN*g_n;
+
+            if zN > 0
+              candidateAS(is) = ContactMode.open;
+              continue
+            end
+
+            if isForceStickElement(obj,is)
+              candidateAS(is) = ContactMode.stick;
+              continue
+            end
+
+            yT = tT + cT*dgtStab;
+            tau = getRegularizedNorm(obj,yT);
+            tauLim = max(obj.cohesion - tanPhi*tN,0.0);
+
+            if tau <= tauLim
+              candidateAS(is) = ContactMode.stick;
+            else
+              candidateAS(is) = ContactMode.slip;
+            end
+
+          end
+        end
+      end
+
+    end
+
+
+    function initializeActiveSetFreeze(obj,N,inputFreeze)
+      % Initialize active-set freezing. The assembly active set is separated
+      % from the candidate active set so that, after stabilization, the
+      % residual and tangent can be assembled on a fixed semi-smooth branch.
+
+      if nargin < 3 || isempty(inputFreeze)
+        inputFreeze = struct();
+      end
+
+      params = readInput(struct('enabled',true,...
+        'nStableRequired',2,...
+        'relTol',0.01,...
+        'freezeTangentialOnly',true,...
+        'allowOpenClosedWhileFrozen',true),inputFreeze);
+
+      obj.activeSet.freeze.enabled = logical(params.enabled);
+      obj.activeSet.freeze.nStableRequired = params.nStableRequired;
+      obj.activeSet.freeze.relTol = params.relTol;
+      obj.activeSet.freeze.freezeTangentialOnly = logical(params.freezeTangentialOnly);
+      obj.activeSet.freeze.allowOpenClosedWhileFrozen = logical(params.allowOpenClosedWhileFrozen);
+
+      obj.activeSet.freeze.nStable = 0;
+      obj.activeSet.freeze.isFrozen = false;
+      obj.activeSet.freeze.set = obj.activeSet.curr;
+      obj.activeSet.freeze.nChanged = N;
+      obj.activeSet.freeze.relChanged = 1.0;
+
+      obj.activeSet.candidate = obj.activeSet.curr;
+      obj.activeSet.assembly = obj.activeSet.curr;
+
+    end
+
+
+    function resetActiveSetFreeze(obj)
+      % Reset the freeze state at the beginning of a new time/configuration
+      % solve. Do not call this inside each Newton iteration.
+
+      if ~isfield(obj.activeSet,'freeze')
+        initializeActiveSetFreeze(obj,numel(obj.activeSet.curr),struct());
+        return
+      end
+
+      obj.activeSet.freeze.nStable = 0;
+      obj.activeSet.freeze.isFrozen = false;
+      obj.activeSet.freeze.set = obj.activeSet.curr;
+      obj.activeSet.freeze.nChanged = numel(obj.activeSet.curr);
+      obj.activeSet.freeze.relChanged = 1.0;
+
+      obj.activeSet.candidate = obj.activeSet.curr;
+      obj.activeSet.assembly = obj.activeSet.curr;
+
+    end
+
+
+    function updateActiveSetFreezeForAssembly(obj,candidateAS)
+      % Decide which active set is used for the current assembly.
+      % candidateAS is the active set predicted by the current iterate.
+      % obj.activeSet.assembly is the active set actually used to assemble
+      % the residual and tangent.
+
+      if ~isfield(obj.activeSet,'freeze')
+        initializeActiveSetFreeze(obj,numel(candidateAS),struct());
+      end
+
+      previousAS = obj.activeSet.curr;
+
+      if ~obj.activeSet.freeze.enabled
+        obj.activeSet.prev = previousAS;
+        obj.activeSet.candidate = candidateAS;
+        obj.activeSet.assembly = candidateAS;
+        obj.activeSet.curr = candidateAS;
+        return
+      end
+
+      if obj.activeSet.freeze.freezeTangentialOnly
+        isPrevClosed = previousAS ~= ContactMode.open;
+        isCandClosed = candidateAS ~= ContactMode.open;
+        checkMask = isPrevClosed & isCandClosed;
+      else
+        checkMask = true(size(candidateAS));
+      end
+
+      nCheck = nnz(checkMask);
+      if nCheck > 0
+        nChanged = nnz(candidateAS(checkMask) ~= previousAS(checkMask));
+        relChanged = nChanged / nCheck;
+      else
+        nChanged = 0;
+        relChanged = 0.0;
+      end
+
+      obj.activeSet.freeze.nChanged = nChanged;
+      obj.activeSet.freeze.relChanged = relChanged;
+
+      almostFixed = relChanged <= obj.activeSet.freeze.relTol;
+
+      if almostFixed
+        obj.activeSet.freeze.nStable = obj.activeSet.freeze.nStable + 1;
+      else
+        obj.activeSet.freeze.nStable = 0;
+        obj.activeSet.freeze.isFrozen = false;
+        obj.activeSet.freeze.set = previousAS;
+      end
+
+      if ~obj.activeSet.freeze.isFrozen && ...
+          obj.activeSet.freeze.nStable >= obj.activeSet.freeze.nStableRequired
+        obj.activeSet.freeze.isFrozen = true;
+
+        % Freeze the previous active set, not the current candidate.
+        obj.activeSet.freeze.set = previousAS;
+      end
+
+      obj.activeSet.prev = previousAS;
+      obj.activeSet.candidate = candidateAS;
+
+      if obj.activeSet.freeze.isFrozen
+        assemblyAS = obj.activeSet.freeze.set;
+
+        if obj.activeSet.freeze.allowOpenClosedWhileFrozen
+          % Keep normal contact status responsive. This avoids locking an
+          % element closed/open while stabilizing only stick/slip flips.
+          normalChangeMask = candidateAS == ContactMode.open | ...
+                             assemblyAS == ContactMode.open;
+          assemblyAS(normalChangeMask) = candidateAS(normalChangeMask);
+        end
+
+        obj.activeSet.assembly = assemblyAS;
+        obj.activeSet.curr = assemblyAS;
+      else
+        obj.activeSet.assembly = candidateAS;
+        obj.activeSet.curr = candidateAS;
+      end
+
+      if gresLog().getVerbosity > 2
+        nStick = sum(obj.activeSet.assembly == ContactMode.stick);
+        nSlip = sum(obj.activeSet.assembly == ContactMode.slip | ...
+          obj.activeSet.assembly == ContactMode.newSlip);
+        nOpen = sum(obj.activeSet.assembly == ContactMode.open);
+
+        if obj.activeSet.freeze.isFrozen
+          tag = 'frozen';
+        else
+          tag = 'free';
+        end
+
+        fprintf('%s: assembly active set (%s): stick = %i, slip = %i, open = %i, changed = %i, rel = %4.3e, stable = %i\n', ...
+          class(obj),tag,nStick,nSlip,nOpen,nChanged,relChanged,obj.activeSet.freeze.nStable);
+      end
 
     end
 
@@ -681,6 +903,38 @@ classdef SolidMechanicsContactAugmented < MeshTying
       if cN <= 0 || cT <= 0
         error('%s: augmentationParameter must be strictly positive.',class(obj));
       end
+
+    end
+
+
+    function value = getRegularizedNorm(obj,x)
+      % Square-root regularization of the Euclidean norm.
+      % epsilonTangential has the same physical units as x.
+
+      epsT = obj.coulombRegularization.epsilonTangential;
+      if epsT < 0
+        error('%s: CoulombRegularization.epsilonTangential must be non-negative.',class(obj));
+      end
+
+      value = sqrt(x'*x + epsT^2);
+
+    end
+
+
+    function [n,DnDx] = getRegularizedUnitVectorAndDerivative(obj,x)
+      % Smooth approximation of x/||x|| based on
+      %
+      %   n_eps = x / sqrt(x' x + eps_T^2).
+      %
+      % Its derivative is
+      %
+      %   DnDx = I/s - (x x')/s^3,
+      %
+      % where s = sqrt(x' x + eps_T^2).
+
+      sNorm = getRegularizedNorm(obj,x);
+      n = x/sNorm;
+      DnDx = eye(numel(x))/sNorm - (x*x')/(sNorm^3);
 
     end
 
@@ -727,10 +981,11 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
 
     function [H,rhsH] = getStabilizationMatrixAndRhs(obj)
-      % reutnr the stabilization matrix after removing contribution for traction
-      % dofs that do not need stabilization:
-      % - normal component in slip dofs
-      % - all components of open dofs
+      % Return the stabilization matrix after removing contributions for
+      % traction dofs that do not need stabilization. In this regularized
+      % Coulomb version, the tangential closed-contact equation is always
+      % provided by the smooth friction law, so tangential stabilization is
+      % removed for all closed elements. Open elements remove all components.
 
       if isempty(obj.stabilizationMat)
         computeStabilizationMatrix(obj);
@@ -742,16 +997,24 @@ classdef SolidMechanicsContactAugmented < MeshTying
       H = obj.stabilizationMat;
 
       %
-      elOpen = find(obj.activeSet.curr == ContactMode.open);
-      elSlip = [find(obj.activeSet.curr == ContactMode.slip);...
-        find(obj.activeSet.curr == ContactMode.newSlip)];
+      if isfield(obj.activeSet,'assembly')
+        assemblyAS = obj.activeSet.assembly;
+      else
+        assemblyAS = obj.activeSet.curr;
+      end
+
+      elOpen = find(assemblyAS == ContactMode.open);
+      elClosed = find(assemblyAS ~= ContactMode.open);
 
       dofOpen = DoFManager.dofExpand(elOpen,3);
-      dofSlip = [3*elSlip-1; 3*elSlip];
+      dofTangentialClosed = [3*elClosed-1; 3*elClosed];
 
-      % remove rows and columns of dofs not requiring stabilization
-      H([dofOpen;dofSlip],:) = 0;
-      H(:,[dofOpen;dofSlip]) = 0;
+      % Remove rows and columns of dofs not requiring stabilization.
+      % Normal closed dofs remain stabilized; open dofs and closed
+      % tangential dofs are controlled by their contact/friction equations.
+      dofNoStab = [dofOpen; dofTangentialClosed];
+      H(dofNoStab,:) = 0;
+      H(:,dofNoStab) = 0;
 
       % use traction variation for tangential components
       rhsH = -H*state.deltaTraction;
