@@ -14,7 +14,7 @@ in a nonConforming simulation.
                         incrementFactor = "1.5"
                         choppingFactor = "2"
                         MaxNLIteration = "10"
-                        RelativeTolerance = "1.e-10"
+                        RelativeTolerance = "1.e-6"
                         AbsoluteTolerance = "1.e-8"
                         resetConfiguration = "0"
                         />
