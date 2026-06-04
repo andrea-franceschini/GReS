@@ -1,4 +1,4 @@
-function computeSinglePhPrec(obj,A,symMat,block)
+function computeSinglePhPrec(obj,A,sym,block)
    
    if nargin < 4
       block = false;
@@ -8,8 +8,8 @@ function computeSinglePhPrec(obj,A,symMat,block)
       A = A{1,1};
    end
 
-   % If symMat == 0 then the matrix is nonsymmetric
-   if ~symMat
+   % If sym == 0 then the matrix is nonsymmetric
+   if ~sym
       obj.params.symm = false;
    else
       obj.params.symm = true;
