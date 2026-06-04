@@ -20,6 +20,7 @@ classdef OutState < handle & matlab.mixin.Copyable
     writeSolution = true
     writeMatFile = false
     isFolderReady = false
+    solvePrintTimes
   end
 
   methods (Access = public)
@@ -154,6 +155,16 @@ classdef OutState < handle & matlab.mixin.Copyable
       end
     end
 
+    function targetTimes = getTargetTimes(obj)
+
+      if obj.solvePrintTimes
+        targetTimes = obj.timeList;
+      else
+        targetTimes = [];
+      end
+
+    end
+
   end
 
   methods (Access = private)
@@ -163,7 +174,8 @@ classdef OutState < handle & matlab.mixin.Copyable
       default = struct('outputFile',missing,...
                        'matFileName',missing,...
                        'printTimes',missing,...
-                       'saveHistory',missing);
+                       'saveHistory',missing,...
+                       'solvePrintTimes',0);
 
       params = readInput(default,varargin{:});
 
@@ -196,6 +208,8 @@ classdef OutState < handle & matlab.mixin.Copyable
         % vtm file document node
         obj.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
       end
+
+      obj.solvePrintTimes = logical(params.solvePrintTimes);
 
     end
 

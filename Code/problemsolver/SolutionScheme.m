@@ -11,10 +11,12 @@ classdef (Abstract) SolutionScheme < handle
     t                   % simulation time
     tStep               % simulation time step
     dt                  % current time step size
+    dtSave              % stored time step size 
     nVars               % total number of inner variable fields in the model
     attemptedReset      % flag for attempting a configuration reset
     iniState            % initial state of the simulation for solver reset
-    isFirstRun = true   % flag if the simulation is first ever or first after a reset          
+    isFirstRun = true   % flag if the simulation is first ever or first after a reset   
+    targetTimeID        % id for printTimes list for which solution is required
   end
 
 
@@ -48,12 +50,16 @@ classdef (Abstract) SolutionScheme < handle
       % Initialize time
       obj.tStep = 0;
       obj.t = obj.simparams.tIni;
+      obj.tOld = obj.t;
       obj.dt = obj.simparams.dtIni;
+      obj.dtSave = obj.dt;
 
       initialize(obj);      
       setLinearSolver(obj,varargin{:});
 
-      while obj.t < obj.simparams.tMax
+      obj.t = obj.t + obj.dt;
+
+      while obj.t <= obj.simparams.tMax
         initializeTimeStep(obj)
 
         gresLog().log(-1,'\nTSTEP %d   ---  TIME %f  --- DT = %e\n',obj.tStep,obj.t,obj.dt);
@@ -99,6 +105,8 @@ classdef (Abstract) SolutionScheme < handle
 
       if ~ismissing(params.output)
         obj.output = params.output;
+      else
+        obj.output = OutState();
       end
 
       obj.nDom = numel(obj.domains);
@@ -212,7 +220,9 @@ classdef (Abstract) SolutionScheme < handle
         obj.tStep = obj.tStep - 1;
         obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
 
-        goBackState(obj)
+        goBackState(obj);
+
+        obj.t = obj.t + obj.dt;
 
         if obj.dt < obj.simparams.dtMin
           error('Minimum time step reached')
@@ -228,17 +238,9 @@ classdef (Abstract) SolutionScheme < handle
         advanceState(obj);
 
         % go to next time step
-        tmpVec = obj.simparams.multFac;
-        obj.dt = min([obj.dt * min(tmpVec), obj.simparams.dtMax]);
-        obj.dt = max([obj.dt obj.simparams.dtMin]);
-
-        % limit time step to end of simulation time
-        if ((obj.t + obj.dt) > obj.simparams.tMax)
-          obj.dt = obj.simparams.tMax - obj.t;
-          if obj.dt< obj.simparams.dtMin
-            obj.t = obj.simparams.tMax;
-          end
-        end
+        obj.dt = getNextDt(obj);
+        obj.tOld = obj.t;
+        obj.t = obj.t + obj.dt;
 
         % allow new survival attempts on new time steps
         if obj.simparams.attemptSimplestConfiguration
@@ -316,9 +318,8 @@ classdef (Abstract) SolutionScheme < handle
     end
 
     function initializeTimeStep(obj)
+
       obj.tStep = obj.tStep + 1;
-      obj.tOld = obj.t;
-      obj.t = obj.t + obj.dt;
 
       % set current time into state objects
       for i = 1:obj.nDom
@@ -334,10 +335,8 @@ classdef (Abstract) SolutionScheme < handle
       end
     end
 
+
     function printState(obj)
-      if isempty(obj.output)
-        return
-      end
 
       if obj.output.timeID <= length(obj.output.timeList)
         outTime = obj.output.timeList(obj.output.timeID);
@@ -440,6 +439,43 @@ classdef (Abstract) SolutionScheme < handle
       for i = 1:obj.nInterf
         interf = obj.interfaces{i};
         goBackState(interf);
+      end
+    end
+
+
+    function dt = getNextDt(obj)
+
+      targetTimes = obj.output.getTargetTimes;
+      obj.targetTimeID = 1 + sum(targetTimes <= obj.t + obj.simparams.dtMin);
+      if obj.targetTimeID > length(targetTimes)
+        targetTime = Inf;
+      else
+        targetTime = targetTimes(obj.targetTimeID);
+      end
+
+
+      [dt,m] = min([obj.dtSave * obj.simparams.multFac, ...
+                    obj.simparams.dtMax,...
+                    targetTime - obj.t,...
+                    obj.simparams.tMax - obj.t,...
+                    ]);
+
+      dt = max([dt obj.simparams.dtMin]);
+
+      if m == 3
+        % advance target time ID 
+        obj.targetTimeID = obj.targetTimeID + 1;
+      else
+        % save the current step
+        obj.dtSave = dt;
+      end
+
+      % limit time step to end of simulation time
+      if m == 4 && dt == obj.simparams.dtMin
+        % force exit from time simulation loop
+        obj.t = obj.simparams.tMax;
+        % print here the end of simulation if requested
+        printState(obj);
       end
     end
 
