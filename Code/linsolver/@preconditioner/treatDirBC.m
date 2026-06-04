@@ -1,5 +1,5 @@
 % Function for treating the dirichlet boundary conditions
-function A = treatDirBC(obj,A,symMat)
+function A = treatDirBC(obj,A,sym)
 
    n11 = size(A{1,1},1);
 
@@ -20,7 +20,7 @@ function A = treatDirBC(obj,A,symMat)
    A{1,1}(:,ind_dir) = 0;
    A{1,1} = A{1,1}';
    
-   if symMat(1,2) == 1
+   if sym == 1
       % If the matrix is symmetric then I can fix the dir copying the transposed block
       A{1,2} = A{2,1}';
    else
