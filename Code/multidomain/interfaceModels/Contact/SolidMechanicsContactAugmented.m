@@ -83,7 +83,7 @@ classdef SolidMechanicsContactAugmented < MeshTying
       % update gap
       computeGap(obj);
 
-      if gresLog().getVerbosity > 2
+      if gresLog().getVerbosity >= 2
         nStick = sum(obj.activeSet.curr == ContactMode.stick);
         nSlip = sum(obj.activeSet.curr == ContactMode.slip | ...
           obj.activeSet.curr == ContactMode.newSlip);
@@ -643,9 +643,9 @@ classdef SolidMechanicsContactAugmented < MeshTying
         end
       end
 
-      if ~any(int32(obj.activeSet.curr) - int32(prevAS))
-        fprintf('Active set did not change \n')
-      end
+      % if ~any(int32(obj.activeSet.curr) - int32(prevAS))
+      %   fprintf('Active set did not change \n')
+      % end
 
 
       % assemble matrices into jacobian blocks
