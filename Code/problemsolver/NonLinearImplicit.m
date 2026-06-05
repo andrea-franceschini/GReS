@@ -79,7 +79,7 @@ classdef NonLinearImplicit < SolutionScheme
           % solve linear system
           du = solve(obj,J,rhs);
 
-
+          %fprintf('Model has %i dofs\n',numel(du));
           c = 0;
 
           % update simulation state with linear system solution
