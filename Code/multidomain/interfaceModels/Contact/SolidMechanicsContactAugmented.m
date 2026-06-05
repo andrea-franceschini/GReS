@@ -579,21 +579,22 @@ classdef SolidMechanicsContactAugmented < MeshTying
             contactState = obj.activeSet.curr(is);
 
             % --- tangential complementarity ------------------------------
+            cT = min([norm(tauLim)/norm(dgtStab),1e4]);
             yT = tT + cT*dgtStab;     % trial tangential traction
             yNorm = norm(yT);
             tau = yNorm;
 
             % apply hysteresis to tangential traction norm for check
-            % if contactState == ContactMode.stick && tau >= tauLim
-            % 
-            %   % reduce the tau if goes above limit
-            %   tau = tau*(1-tols.tangentialViolation);
-            % 
-            % elseif contactState ~= ContactMode.stick  && tau <=tauLim
-            % 
-            %   % increase tau if falls below limit
-            %   tau = tau*(1+tols.tangentialViolation);
-            % end
+            if contactState == ContactMode.stick && tau >= tauLim
+
+              % reduce the tau if goes above limit
+              tau = tau*(1-tols.tangentialViolation);
+
+            elseif contactState ~= ContactMode.stick  && tau <=tauLim
+
+              % increase tau if falls below limit
+              tau = tau*(1+tols.tangentialViolation);
+            end
 
 
             if tau <= tauLim
@@ -640,6 +641,10 @@ classdef SolidMechanicsContactAugmented < MeshTying
           end % end inner master elems loop
 
         end
+      end
+
+      if ~any(int32(obj.activeSet.curr) - int32(prevAS))
+        fprintf('Active set did not change \n')
       end
 
 

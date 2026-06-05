@@ -468,6 +468,7 @@ classdef SolidMechanicsContact < MeshTying
       stateOld = getStateOld(obj);
       stateIni = getStateInit(obj);
       slip = state.gap - stateOld.gap;
+      tangSlip = state.tangentialGap - stateOld.tangentialGap;
 
       topolMaster = getRowsMatrix(surfMaster.connectivity,1:surfMaster.num);
       topolSlave = getRowsMatrix(surfSlave.connectivity,1:surfSlave.num);
@@ -527,7 +528,9 @@ classdef SolidMechanicsContact < MeshTying
 
             % tangential slip
             dgt = slip([3*is-1; 3*is]);
-            slipNorm = norm(dgt);
+
+            dgtStab = tangSlip([2*is-1; 2*is]);
+            slipNorm = norm(dgtStab);
 
             % operator mapping global vectors to local tangential coordinates
             T = (R(:,2:3))';
@@ -570,30 +573,30 @@ classdef SolidMechanicsContact < MeshTying
               asbMt.localAssembly(tDof(1),umDof,Aum(:,1));
               asbDt.localAssembly(tDof(1),usDof,-Aus(:,1));
 
-              isNewSliding = (contactState == ContactMode.newSlip) && obj.NLIter == 0;
+              % isNewSliding = (contactState == ContactMode.newSlip) && obj.NLIter == 0;
 
               % A_tu (non linear term)
-              if slipNorm > slidingTol && ~isNewSliding
+              if slipNorm > slidingTol 
 
                 % compute only on slip terms with sliding large enough
-                dtdgt = computeDerTracGap(obj,trac(1),dgt);
+                dtdgt = computeDerTracGap(obj,trac(1),dgtStab);
                 Atu_m = MortarQuadrature.integrate(f2, dtdgt,pagemtimes(T,Nm),dJw);
                 Atu_s = MortarQuadrature.integrate(f2, dtdgt,pagemtimes(T,Ns),dJw);
                 asbMt.localAssembly(tDof(2:3),umDof,-Atu_m);
                 asbDt.localAssembly(tDof(2:3),usDof,Atu_s);
 
                 % A_tn (non linear term)
-                dtdtn = computeDerTracTn(obj,dgt,dTrac);
+                dtdtn = computeDerTracTn(obj,dgtStab,dTrac);
                 Atn = area*dtdtn;
                 asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
 
-                slipDir = dgt/norm(dgt);
+                slipDir = dgtStab/norm(dgtStab);
 
               else
 
-                if slipNorm < slidingTol && ~isNewSliding
-                  %fprintf('Too small sliding detected! \n')
-                end
+                % if slipNorm < slidingTol && ~isNewSliding
+                %   %fprintf('Too small sliding detected! \n')
+                % end
 
                 % if slip is small, use current traction
                 vaux = trac(2:3);
