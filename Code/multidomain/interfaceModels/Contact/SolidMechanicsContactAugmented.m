@@ -579,7 +579,7 @@ classdef SolidMechanicsContactAugmented < MeshTying
             contactState = obj.activeSet.curr(is);
 
             % --- tangential complementarity ------------------------------
-            cT = min([norm(tauLim)/norm(dgtStab),1e4]);
+            cT = min([norm(tauLim)/norm(dgtStab),1e5]);
             yT = tT + cT*dgtStab;     % trial tangential traction
             yNorm = norm(yT);
             tau = yNorm;
