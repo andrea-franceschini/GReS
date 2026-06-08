@@ -19,7 +19,7 @@ classdef SolidMechanicsContact < MeshTying
       obj@MeshTying(id,domains,inputStruct);
 
       if obj.multiplierLocation ~= entityField.surface
-        error("Interface Solver %s is not implemented for multipliers ..." + ...
+        error("Interface Solver %s is not implemented for multipliers" + ...
           "located at %s. The only available entityField is %s",...
           class(obj),obj.multiplierLocation,entityField.surface)
       end
@@ -30,9 +30,10 @@ classdef SolidMechanicsContact < MeshTying
 
       input = varargin{1};
 
-      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0),input);
-
+      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0,'stabilizationScale',1.0),input);
       params = readInput(struct('cohesion',[],'frictionAngle',[]),input.Coulomb);
+
+      obj.stabilizationScale = input.stabilizationScale;
 
 
       obj.forceStick = logical(input.forceStick);
@@ -78,6 +79,7 @@ classdef SolidMechanicsContact < MeshTying
 
     function assembleConstraint(obj)
 
+ 
       % reset the jacobian blocks
       obj.setJmu(MortarSide.slave, []);
       obj.setJmu(MortarSide.master, []);
@@ -147,7 +149,7 @@ classdef SolidMechanicsContact < MeshTying
         limitTraction = abs(obj.cohesion - tan(deg2rad(obj.phi))*t(1));
 
         % report traction during activeSet update
-        gresLog().log(4,['\n Element %i: traction: %1.4e %1.4e %1.4e   ' ...
+        gresLog().log(5,['\n Element %i: traction: %1.4e %1.4e %1.4e   ' ...
           'Limit tangential traction: %1.4e \n'],is,t(:), limitTraction)
 
         obj.activeSet.curr(is) = updateContactState(currAS,t,...
@@ -246,6 +248,14 @@ classdef SolidMechanicsContact < MeshTying
 
     end
 
+    function timeStepSetup(obj)
+
+      % set all active dofs to stick state (force trial stick state)
+      isActive = obj.activeSet.curr ~= ContactMode.open;
+      obj.activeSet.curr(isActive) = ContactMode.stick;
+
+    end
+
 
     function addInitialTraction(obj,tIni)
       % add a traction on the fault
@@ -325,9 +335,12 @@ classdef SolidMechanicsContact < MeshTying
     function [surfaceStr,pointStr] = writeVTK(obj,fac,varargin)
 
       outTraction = obj.state.interpolate(fac,"traction");
+      dT = obj.state.interpolate(fac,"deltaTraction");
       outNormalGap = obj.state.interpolate(fac,"normalGap");
       outTangentialSlip = obj.state.interpolate(fac,"tangentialSlip");
       outTangentialGap = obj.state.interpolate(fac,"tangentialGap");
+
+
 
       outTangentialSlip = (reshape(outTangentialSlip,2,[]))';
       outTangentialGap = (reshape(outTangentialGap,2,[]))';
@@ -337,6 +350,8 @@ classdef SolidMechanicsContact < MeshTying
 
       tT = [outTraction(2:3:end),outTraction(3:3:end)];
       norm_tT = sqrt(tT(:,1).^2 + tT(:,2).^2);
+
+      deltaTrac = [dT(1:3:end), dT(2:3:end), dT(3:3:end)];
 
       fractureState = double(obj.activeSet.curr);
 
@@ -352,6 +367,8 @@ classdef SolidMechanicsContact < MeshTying
         'tangential_gap',          outTangentialGap
         'tangential_gap_norm',     outTangentialGapNorm
         'fracture_state',          fractureState
+        'rotationMatrix',          obj.grids(1).surfaces.rotationMatrices
+        'deltaTraction',           deltaTrac
         };
 
       surfaceStr = cell2struct(entries, {'name','data'}, 2);
@@ -387,7 +404,7 @@ classdef SolidMechanicsContact < MeshTying
       us = obj.domains(MortarSide.slave).getState("displacements");
 
       % recover variationally consistent stabilized gaps
-      areaSlave = repelem(obj.getSlaveArea(),3);
+      areaSlave = repelem(obj.getSlaveArea(),3,1);
 
       areaGap = (obj.D*us + obj.M*um);
 
@@ -488,9 +505,10 @@ classdef SolidMechanicsContact < MeshTying
             usDof = dofSlave.getLocalDoF(fldS,nodeSlave);
             tDof = getMultiplierDoF(obj,is);
             trac = state.traction(tDof);
+            tIni = stateIni.traction(tDof);
 
             % equilibrium equation and stabilization work with delta traction
-            dTrac = trac - stateIni.traction(tDof);
+            dTrac = trac - tIni;
 
             nodeMaster = surfMaster.loc2glob(topolMaster(im,1:elMaster.nNode));
             umDof = dofMaster.getLocalDoF(fldM,nodeMaster);
@@ -508,7 +526,7 @@ classdef SolidMechanicsContact < MeshTying
             g_n = state.gap(3*is-2);
 
             % tangential slip
-            dgt = slip([3*is-1 3*is]);
+            dgt = slip([3*is-1; 3*is]);
             slipNorm = norm(dgt);
 
             % operator mapping global vectors to local tangential coordinates
@@ -546,13 +564,16 @@ classdef SolidMechanicsContact < MeshTying
 
               slidingTol = obj.activeSet.tol.sliding;
 
+              % total limiting traction norm
               tauLim = obj.cohesion - trac(1)*tan(deg2rad(obj.phi));
 
               asbMt.localAssembly(tDof(1),umDof,Aum(:,1));
               asbDt.localAssembly(tDof(1),usDof,-Aus(:,1));
 
+              isNewSliding = (contactState == ContactMode.newSlip) && obj.NLIter == 0;
+
               % A_tu (non linear term)
-              if slipNorm > slidingTol && obj.NLIter > 0
+              if slipNorm > slidingTol && ~isNewSliding
 
                 % compute only on slip terms with sliding large enough
                 dtdgt = computeDerTracGap(obj,trac(1),dgt);
@@ -562,13 +583,17 @@ classdef SolidMechanicsContact < MeshTying
                 asbDt.localAssembly(tDof(2:3),usDof,Atu_s);
 
                 % A_tn (non linear term)
-                dtdtn = computeDerTracTn(obj,dgt,trac);
+                dtdtn = computeDerTracTn(obj,dgt,dTrac);
                 Atn = area*dtdtn;
                 asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
 
-                tT_lim = tauLim*(dgt/norm(dgt));
+                slipDir = dgt/norm(dgt);
 
               else
+
+                if slipNorm < slidingTol && ~isNewSliding
+                  %fprintf('Too small sliding detected! \n')
+                end
 
                 % if slip is small, use current traction
                 vaux = trac(2:3);
@@ -576,9 +601,11 @@ classdef SolidMechanicsContact < MeshTying
                 Atn = area*dtdtn;
                 asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
 
-                tT_lim = tauLim*vaux/norm(vaux);
+                slipDir = vaux/norm(vaux);
 
               end
+
+              tT_lim = tauLim * slipDir;
 
               % A_tt
               Att = area*eye(2);
@@ -586,15 +613,8 @@ classdef SolidMechanicsContact < MeshTying
 
               rhsT(tDof(1)) = rhsT(tDof(1)) + area*g_n;
 
-              % rhs (mu_t,tT) - local frame
+              % enforce tangential traction to match the limiting value
               rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (trac(2:3)-tT_lim);
-
-
-              if gresLog().getVerbosity > 5
-                fprintf('\nelement %i- rhsT: %5.3e %5.3e \n',is,Att*trac(2:3))
-                fprintf('element %i- rhsTlim: %5.3e %5.3e \n',is,MortarQuadrature.integrate(f1,Nmult_t,tT_lim,dJw))
-                fprintf('------------------------------------ \n')
-              end
 
             end
 
@@ -606,7 +626,7 @@ classdef SolidMechanicsContact < MeshTying
               asbQ.localAssembly(tDof,tDof,Aoo);
 
               % rhs (mu,t)
-              rhsT(tDof) = rhsT(tDof) + area*trac;
+              rhsT(tDof) = rhsT(tDof) + area*dTrac;
             end
 
           end % end inner master elems loop
@@ -640,6 +660,7 @@ classdef SolidMechanicsContact < MeshTying
       end
 
       state = getState(obj);
+      iniTrac = getStateInit(obj,"traction");
 
       H = obj.stabilizationMat;
 
@@ -658,7 +679,7 @@ classdef SolidMechanicsContact < MeshTying
       % use traction variation for tangential components
       rhsH = -H*state.deltaTraction;
 
-      rhsH(1:3:end) = -H(1:3:end,:) * state.traction;
+      rhsH(1:3:end) = -H(1:3:end,:) * (state.traction - iniTrac);
 
     end
 

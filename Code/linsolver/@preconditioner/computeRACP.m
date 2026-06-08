@@ -1,5 +1,5 @@
 % Function to compute the RACP preconditioner for the lagrange multiplier case (single physics multi domain)
-function computeRACP(obj,A,symMat)
+function computeRACP(obj,A,sym)
 
    simple_flag = false;
 
@@ -11,7 +11,7 @@ function computeRACP(obj,A,symMat)
       A{2,2} = sparse(n22,n22);
    end
 
-   A = obj.treatDirBC(A,symMat);
+   A = obj.treatDirBC(A,sym);
 
    % Set RACP Gamma to 1
    gamma = 1.0;
@@ -21,10 +21,10 @@ function computeRACP(obj,A,symMat)
    D_11 = full(diag(A{1,1}));
    mean_diag_A = mean(D_11);
    %D_22 = full(diag(A{2,2}));
-   A21_scaled_T = A{2,1}';
+   A21_T = A{2,1}';
    for icol = 1:n22
       v12 = A{1,2}(:,icol);
-      v21 = A21_scaled_T(:,icol);
+      v21 = A21_T(:,icol);
       [ii_12,~,bb_12] = find(v12);
       [ii_21,~,bb_21] = find(v21);
       if (numel(ii_12)+numel(ii_21) > 0)
@@ -53,7 +53,7 @@ function computeRACP(obj,A,symMat)
    ADD = A{1,2}*inv_D22*A{2,1}; 
 
    % Strong Symmetrization if the matrix was seen as symmetric
-   if symMat(1,2) == 1
+   if sym == 1
       ADD = 0.5*(ADD+ADD');
    end
    A11_aug = A{1,1}+ADD;
@@ -64,14 +64,10 @@ function computeRACP(obj,A,symMat)
       obj.PrecType = 'amg';
    end
 
-   % If even one of the blocks is nonsymmetric then the agumented matrix
-   % must be nonsymmetric
-   symAug = min(symMat(1:3));
-   
    % Compute the amg for block 11
-   obj.Compute(A11_aug,symAug);
+   obj.computeSinglePhPrec(A11_aug,sym,true);
 
-   obj.Apply_L = @(x) apply_RevAug(obj.Prec,A11_aug,A{1,2},inv_D22,x);
+   obj.Apply_L = @(x) apply_RevAug(obj.Prec,A11_aug,A{1,2},A{2,1},inv_D22,x);
    obj.Apply_R = @(x) x;
 end
 

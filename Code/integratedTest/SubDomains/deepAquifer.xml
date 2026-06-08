@@ -12,8 +12,8 @@ in a nonConforming simulation.
 
     <Solver>
       <BiotFullyCoupled>
-        <Poromechanics targetRegions = "1,2,3" />
-        <SinglePhaseFlowFVTPFA targetRegions = "2,3" />
+        <Mechanics targetRegions = "1,2,3" />
+        <Flow targetRegions = "2,3" />
       </BiotFullyCoupled>
     </Solver>
   </Domain>

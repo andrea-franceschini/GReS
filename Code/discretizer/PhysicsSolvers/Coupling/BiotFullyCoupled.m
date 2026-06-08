@@ -32,30 +32,26 @@ classdef BiotFullyCoupled < PhysicsSolver
 
       dofm = obj.domain.dofm;
 
-      default = struct('Poromechanics',missing,...
-                       'SinglePhaseFlowFVTPFA',missing);
+      default = struct('mechanicsSolver',"Poromechanics",...
+                       'flowSolver',"SinglePhaseFlowFVTPFA", ...
+                       'Mechanics',missing,'Flow',missing);
 
       input = readInput(default,varargin{:});
 
       % Register mechanics
-      obj.mechSolver = Poromechanics(obj.domain);
+      obj.mechSolver = feval(input.mechanicsSolver,obj.domain);
 
-      % setup the solver with custom input
-      if isfield(input,"SinglePhaseFlowFEM")
-        obj.flowSolver = SinglePhaseFlowFEM(obj.domain);
-      else
-        obj.flowSolver = SinglePhaseFlowFVTPFA(obj.domain);
-      end
-
+      % Register flow solver
+      obj.flowSolver = feval(input.flowSolver,obj.domain);
 
       % Register mechanics solver
-      registerSolver(obj.mechSolver,input.(class(obj.mechSolver)));
-      obj.fldMech = dofm.getVariableId(obj.mechSolver.getField());
+      registerSolver(obj.mechSolver,input.Mechanics);
+      obj.fldMech = dofm.getVariableId("displacements");
 
       % Register flow solver
       obj.flowScheme = obj.flowSolver.typeDiscretization();
-      registerSolver(obj.flowSolver,input.(class(obj.flowSolver)));
-      obj.fldFlow = dofm.getVariableId(obj.flowSolver.getField());
+      registerSolver(obj.flowSolver,input.Flow);
+      obj.fldFlow = dofm.getVariableId("pressure");
 
     end
 
@@ -220,6 +216,16 @@ classdef BiotFullyCoupled < PhysicsSolver
 
     end
 
+    function timeStepSetup(obj)
+      obj.mechSolver.timeStepSetup();
+    end
+
+
+    function goBackState(obj)
+
+      obj.mechSolver.goBackState();
+    end
+
 
     function applyBC(obj,bcId,t)
       obj.flowSolver.applyBC(bcId,t);
@@ -242,7 +248,7 @@ classdef BiotFullyCoupled < PhysicsSolver
     function [cellDataBiot,pointDataBiot] = writeVTK(obj,fac,t)
 
       [cellDataFlow,pointDataFlow] = obj.flowSolver.writeVTK(fac,t);
-      [cellDataMech,pointDataMech] = obj.mechSolver.writeVTK(fac);
+      [cellDataMech,pointDataMech] = obj.mechSolver.writeVTK(fac,t);
 
       cellDataBiot = OutState.mergeOutFields(cellDataMech,cellDataFlow);
 
@@ -251,6 +257,12 @@ classdef BiotFullyCoupled < PhysicsSolver
       pointDataBiot = OutState.mergeOutFields(pointDataMech,pointDataFlow);
 
       clear pointDataMech pointDataFlow
+
+    end
+
+    function hasConfigurationChanged = updateConfiguration(obj)
+
+      hasConfigurationChanged = obj.mechSolver.updateConfiguration();
 
     end
 
