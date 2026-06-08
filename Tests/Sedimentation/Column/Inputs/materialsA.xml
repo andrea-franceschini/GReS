@@ -6,11 +6,11 @@
     <Constitutive>
       <SedimentMaterial
           voidRate = "15."
-          voidLowerLimit = "7.5"
-          voidUpperLimit = "15."
+          voidLowerLimit = "10."
+          voidUpperLimit = "20."
           conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
           initStress = "1e+0"
-          preStress = "1e+2"
+          preStress = "0e+0"
           specificWeight = "2.0e3"
           compressibilityIndex = "4.00"
           reCompressibilityIndex = "0.40"
@@ -23,11 +23,11 @@
     <Constitutive>
       <SedimentMaterial
           voidRate = "10."
-          voidLowerLimit = "5."
-          voidUpperLimit = "10."
+          voidLowerLimit = "7.5"
+          voidUpperLimit = "12.5"
           conductivity = "0.9450e-1, 0.9450e-1, 0.315e-1"
           initStress = "1e+0"
-          preStress = "1e+2"
+          preStress = "1e+0"
           specificWeight = "2.7e3"
           compressibilityIndex = "3.00"
           reCompressibilityIndex = "0.10"
@@ -40,11 +40,11 @@
     <Constitutive>
       <SedimentMaterial
           voidRate = "3."
-          voidLowerLimit = "1.5"
-          voidUpperLimit = "3."
+          voidLowerLimit = "2."
+          voidUpperLimit = "4."
           conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
           initStress = "1e+0"
-          preStress = "1e+2"
+          preStress = "1e+0"
           specificWeight = "2.7e3"
           compressibilityIndex = "0.5"
           reCompressibilityIndex = "0.05"
@@ -57,14 +57,14 @@
     <Constitutive>
       <SedimentMaterial
           voidRate = "15."
-          voidLowerLimit = "7.5"
-          voidUpperLimit = "15."
-          conductivity = "0.9450e-5, 0.9450e-5, 0.315e-5"
+          voidLowerLimit = "10."
+          voidUpperLimit = "20."
+          conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
           initStress = "1e+0"
-          preStress = "1e+2"
+          preStress = "1e+0"
           specificWeight = "2.0e3"
-          compressibilityIndex = "1e-6"
-          reCompressibilityIndex = "1e-6"
+          compressibilityIndex = "4.00"
+          reCompressibilityIndex = "0.40"
       />
     </Constitutive>
   </Solid>
@@ -75,3 +75,4 @@
   />
   
 </Materials>
+
