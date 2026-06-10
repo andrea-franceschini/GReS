@@ -1,29 +1,14 @@
 <Sedimentation_Maps type = "ramp">
   <Event time = "0." >
-    <Map materialFlag = "1"
-         division = "100,100"
-         file = "Input/map/peat_0000.dat"/>
+    <Uniform materialFlag = "1" value= "0.3e-2"/>
   </Event>
 
-  <Event time = "1000." >
-    <Map materialFlag = "3"
-         division = "100,100"
-         file = "Input/map/silt_1000.dat"/>
+  <Event time = "400." >
+    <Uniform materialFlag = "2" value= "0.3e-2"/>
   </Event>
 
-  <Event time = "1500." >
-    <Map materialFlag = "3"
-         division = "100,100"
-         file = "Input/map/silt_1500.dat"/>
-  </Event>
-
-  <Event time = "2000." >
-    <Map materialFlag = "2"
-         division = "100,100"
-         file = "Input/map/clay_2000.dat"/>
-  </Event>
-
-  <Event time = "3000." >
+  <Event time = "800." >
+    <Linear materialFlag = "3" value= "0.e0, 0.e0, 0.3e-2, 0.3e-2"/>
   </Event>
 </Sedimentation_Maps>
 

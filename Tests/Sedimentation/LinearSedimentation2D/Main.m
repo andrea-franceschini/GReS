@@ -1,6 +1,6 @@
 close all;
 % clear;
-input_dir = 'Inputs/';
+input_dir = 'Input/';
 file_Mat = fullfile(input_dir,'materials.xml');
 file_Solver = fullfile(input_dir,'solver.xml');
 
