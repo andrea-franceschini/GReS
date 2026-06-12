@@ -13,15 +13,15 @@ in a nonConforming simulation.
                         DtMax ="1"
                         incrementFactor = "1.5"
                         choppingFactor = "2"
-                        MaxNLIteration = "20"
+                        MaxNLIteration = "8"
                         RelativeTolerance = "1.e-9"
-                        AbsoluteTolerance = "1.e-7"
+                        AbsoluteTolerance = "1.e-11"
                         resetConfiguration = "0"
                         />
 
   <Interface>
-    <SolidMechanicsContactAugmentedSqrtCoulomb
-                                         augmentationParameter = "1e0"
+    <SolidMechanicsContactNew
+                                         augmentationParameter = "1e4"
                                          multiplierType = "P0"
                                          stabilizationScale = "1.0"
                                          masterDomain = "1" masterSurface = "6"
@@ -41,10 +41,10 @@ in a nonConforming simulation.
                  forceStickBoundary = "0" >
 
         <Tolerances
-                    sliding = "1e-9"
+                    sliding = "1e-3"
                     normalGap = "1e-5"
                     normalTraction = "-1e-3"
-                    tangentialViolation = "1e-7"
+                    tangentialViolation = "1e-2"
                     minLimitTraction = "1e-4"
                     areaChange = "1e-4"
                     maxActiveSetChange = "6"
@@ -52,7 +52,7 @@ in a nonConforming simulation.
 
       </ActiveSet>
 
-    </SolidMechanicsContactAugmentedSqrtCoulomb>
+    </SolidMechanicsContactNew>
 
   </Interface>
 
