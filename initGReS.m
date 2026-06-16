@@ -1,6 +1,7 @@
 function initGReS(outputFlag)
 % List of folders to check
-foldList = ["Code","ThirdPartyLibs","Utilities"];
+foldList = ["Code",...
+            "Utilities",];
 
 if nargin == 0
   outputFlag = true;
@@ -37,7 +38,15 @@ if outputFlag
   gresLog().welcomeMsg()
 end
 
+
+% initialize MRST if available
+mrstPath = fullfile(gres_root,'ThirdPartyLibs','MRST');
+if isfolder(mrstPath)
+  cd(mrstPath)
+  [~] = evalc('startup');
 end
 
+cd(gres_root)
 
-% addpath(genpath("Tests_Develop"));
+
+end
