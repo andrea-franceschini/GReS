@@ -59,8 +59,9 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       % vertical equilibrium
       % g = 9.8066;     % gravity acceleration
       % equil = ode23(@(z,p) g.* rhoO(p), [0, max(G.cells.centroids(:,3))], pR);
-      p0    = getState.pressure;
-      sW0   = getState.saturation;
+      cIdx = obj.domain.dofm.getActiveEntities('pressure');
+      p0    = obj.getState.pressure(cIdx);
+      sW0   = obj.getState.saturation(cIdx);
       [obj.ops.p, obj.ops.sw]    = initVariablesADI(p0, sW0);
 
 
@@ -71,55 +72,110 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
     function assembleSystem(obj,dt)
 
       % compute material props
-      p0 = getStateInit(obj).pressure;
-      sW0 = getStateInit(obj).saturation;
+      p0 = getStateOld(obj).pressure;
+      sW0 = getStateOld(obj).saturation;
       p = obj.ops.p;
       sW = obj.ops.sw;
+
+      T = obj.trans(obj.isIntFaces);
 
 
       % fluid props
       w = obj.props.wet;
+      nw = obj.props.nwet;
       rW = w.density(p);
       rW0 = w.density(p0);
       rNW = nw.density(p);
       rNW0 = nw.density(p0);
       mobW = w.relPerm(sW)./w.viscosity;
-      mobNW = nw.relPerm(sW)./nw.viscosity;
+      mobNW = nw.relPerm(1-sW)./nw.viscosity;
 
       % rock props
       pv = obj.props.rock.poreVolume;
       vol = pv(p);
       vol0 = pv(p0);
 
+      g     = norm(gravity);
       dp  = obj.ops.grad(p);
-      dpW = dp-g*obj.ops.avg(rW).*obj.ops.gradz;
-      dpO = dp-g*obj.ops.avg(rNW).*obj.ops.gradz;
+      dpW = dp+g*obj.ops.avg(rW).*obj.ops.gradz;
+      dpO = dp+g*obj.ops.avg(rNW).*obj.ops.gradz;
 
       % phase fluxes
-      vW  = -obj.ops.upw(value(dpW) <= 0, rW.*mobW).*obj.trans.*dpW;
-      vNW  = -obj.ops.upw(value(dpO) <= 0, rNW.*mobNW).*obj.trans.*dpO;
+      vW  = -obj.ops.upw(value(dpW) <= 0, rW.*mobW).*T.*dpW;
+      vNW  = -obj.ops.upw(value(dpO) <= 0, rNW.*mobNW).*T.*dpO;
   
       % conservation of phases
-      wet = (1/dt).*(vol.*rW.*sW - vol0.*rW0.*sW0) + div(vW);
-      nwet   = (1/dt).*(vol.*rO.*(1-sW) - vol0.*rNW0.*(1-sW0)) + div(vNW);
+      wet = (1/dt).*(vol.*rW.*sW - vol0.*rW0.*sW0) + obj.ops.div(vW);
+      nwet   = (1/dt).*(vol.*rNW.*(1-sW) - vol0.*rNW0.*(1-sW0)) + obj.ops.div(vNW);
 
+
+      % bcs imposition as in MRST
+      % Injector: volumetric source term multiplied by surface density
+      src = 1.2860;
+      wet(1) = wet(1) - src;
+
+      % Producer: replace equations by new ones specifying fixed pressure
+      % and zero water saturation
+      outPres = 10000000;
+      nwet(end) = p(end) - outPres;
+      wet(end)   = sW(end);
 
       % residual equations
       dofm = obj.domain.dofm;
       eqIdx = [dofm.getVariableId("pressure"); ...
-              dofm.getVariableId("saturation")];
+               dofm.getVariableId("saturation")];
 
-      obj.domain.rhs = wet.value;
-      obj.domain.rhs{eqIdx(1)} = wet.value;
-      obj.domain.rhs{eqIdx(2)} = nwet.value;
+      obj.domain.rhs{eqIdx(1)} = wet.val;
+      obj.domain.rhs{eqIdx(2)} = nwet.val;
       obj.domain.J(eqIdx(1),eqIdx) = wet.jac;
       obj.domain.J(eqIdx(2),eqIdx) = nwet.jac;
 
     end
 
 
+    function [cellData,pointData] = writeVTK(obj,fac,t)
 
-    function updateState(obj)
+      p = obj.domain.state.interpolate(fac,"pressure");
+      sat = obj.domain.state.interpolate(fac,"saturation");
+
+      outPrint = finalizeState(obj,p,t);
+
+      [cellData,pointData] = buildPrintStruct(obj,outPrint);
+
+      cellData(end+1).name = 'saturation';
+      cellData(end).data = sat;
+
+    end
+
+    function writeSolution(obj,fac,tID)
+      p = obj.domain.state.interpolate(fac,"pressure");
+      sat = obj.domain.state.interpolate(fac,"saturation");
+      obj.domain.outstate.results(tID).pressure = p;
+      obj.domain.outstate.results(tID).saturation = sat;
+    end
+
+
+
+    function updateState(obj,du)
+
+
+      % update the adi variable as well as the state object
+      dofm = obj.domain.dofm;
+      dp = du(dofm.getDoF(dofm.getVariableId("pressure")));
+      ds = du(dofm.getDoF(dofm.getVariableId("saturation")));
+      [p,sw] = deal(obj.ops.p,obj.ops.sw);
+      p.val = p.val + dp;
+      sw.val = sw.val + ds;
+      % regularize saturation
+      sw.val = max( min(sw.val, 1), 0);
+      [obj.ops.p,obj.ops.sw] = deal(p,sw);
+
+      setState(obj,value(p),"pressure");
+      setState(obj,value(sw),"saturation");
+
+
+
+
 
       
     end
@@ -137,6 +193,7 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       muW = 1e-3;
       cw = 2.9008e-10;
       rhoWR = 1014;
+      pR   = 200*barsa;
       rhoW = @(p) rhoWR .* exp( cw * (p - pR) );
       krW    = @(S) S.^2;
       obj.props.wet.density = rhoW;
@@ -152,13 +209,14 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       rhoO   = @(p) rhoOR .* exp( co * (p - pR) );
       krO    = @(S) S.^3;
       obj.props.nwet.density = rhoO;
-      obj.props.nwet.compressibility = muO;
-      obj.props.nwet.viscosity = muW;
-      obj.props.Nwet.relPerm = krO;
+      obj.props.nwet.compressibility = co;
+      obj.props.nwet.viscosity = muO;
+      obj.props.nwet.relPerm = krO;
 
       % rock properties
-      regions = getTargetRegions('pressure');
-      nc = obj.dofm.getNumbDoF('pressure');
+      dofm = obj.domain.dofm;
+      regions = getTargetRegions(dofm,"pressure");
+      nc = dofm.getNumbDoF("pressure");
       pv0 = zeros(nc,1);
       cr = zeros(nc,1);
       g = obj.domain.grid;
