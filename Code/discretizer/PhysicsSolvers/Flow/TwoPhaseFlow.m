@@ -111,14 +111,14 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
 
       % bcs imposition as in MRST
       % Injector: volumetric source term multiplied by surface density
-      src = 1.2860;
-      wet(1) = wet(1) - src;
-
-      % Producer: replace equations by new ones specifying fixed pressure
-      % and zero water saturation
-      outPres = 10000000;
-      nwet(end) = p(end) - outPres;
-      wet(end)   = sW(end);
+      % src = 1.2860;
+      % wet(1) = wet(1) - src;
+      % 
+      % % Producer: replace equations by new ones specifying fixed pressure
+      % % and zero water saturation
+      % outPres = 10000000;
+      % wet(end) = p(end) - outPres;
+      % nwet(end)   = sW(end);
 
       % residual equations
       dofm = obj.domain.dofm;
