@@ -1,4 +1,4 @@
-classdef ConstitutiveDriver < handle
+classdef TriaxialDriver < handle
   % General class to run simple triaxial tests using a specified
   % constitutive law.
   %
@@ -19,10 +19,12 @@ classdef ConstitutiveDriver < handle
   end
 
   properties (Access = private)
-    % Rows:    1 axial, 2 radial
-    % Columns: 1 stress, 2 strain
-    % funFlag(1,1) axialStress    funFlag(1,2) axialStrain
-    % funFlag(2,1) radialStress   funFlag(2,2) radialStrain
+    % Linear-index order is intentional:
+    %   funFlag(1) = axialStress  -> funFlag(1,1)
+    %   funFlag(2) = radialStress -> funFlag(2,1)
+    %   funFlag(3) = axialStrain  -> funFlag(1,2)
+    %   funFlag(4) = radialStrain -> funFlag(2,2)
+    % Equivalently, rows are axial/radial and columns are stress/strain.
     funFlag = false(2,2)
   end
 
@@ -42,17 +44,16 @@ classdef ConstitutiveDriver < handle
   end
 
   methods
-    function obj = ConstitutiveDriver(nStep, constLaw, outFile)
-      if nargin < 1 || isempty(nStep)
-        nStep = 1;
-      end
-      if nargin < 2
-        constLaw = [];
-      end
+    function obj = TriaxialDriver(varargin)
 
-      obj.nStep = nStep;
-      obj.constLaw = constLaw;
+      default = struct('nStep',1,'constLaw',[],'outFile',missing);
+      parm = readInput(default,varargin{:});
 
+      obj.nStep = parm.nStep;
+      obj.constLaw = parm.constLaw;
+      obj.outFile = parm.outFile;
+
+      % default parameters
       obj.params = struct();
       obj.params.initialStress = 0.0;
       obj.params.maxIter       = 25;
@@ -60,9 +61,6 @@ classdef ConstitutiveDriver < handle
       obj.params.newtonTol     = 1.0e-10;
       obj.params.minJacobian   = 1.0e-30;
 
-      if nargin > 2
-        obj.outFile = outFile;
-      end
     end
 
     function setFunction(obj, type, xval, yval)
@@ -75,9 +73,8 @@ classdef ConstitutiveDriver < handle
       end
 
       typeID = find(typeID, 1);
-      [row, col] = obj.typeToFlagIndex(types(typeID));
 
-      if obj.funFlag(row, col)
+      if obj.funFlag(typeID)
         warning("Function %s already defined. It will be overwritten.", types(typeID));
       end
 
@@ -94,60 +91,49 @@ classdef ConstitutiveDriver < handle
         error('The x values for %s must be strictly increasing.', types(typeID));
       end
 
-      obj.funFlag(row, col) = true;
+      obj.funFlag(typeID) = true;
       obj.func.(types(typeID)).x = xval;
       obj.func.(types(typeID)).y = yval;
     end
 
-    function setParameters(obj, input, varargin)
-      % Accept either a struct or name-value pairs.
-      if nargin < 2 || isempty(input)
-        return
-      end
+    function setParameters(obj, varargin)
 
-      if isstruct(input)
-        names = fieldnames(input);
-        for i = 1:numel(names)
-          obj.params.(names{i}) = input.(names{i});
-        end
-      else
-        args = [{input}, varargin];
-        if mod(numel(args), 2) ~= 0
-          error('Parameters must be provided as a struct or as name-value pairs.');
-        end
-        for i = 1:2:numel(args)
-          obj.params.(args{i}) = args{i+1};
-        end
-      end
+      % Override default parameters
+      obj.params = readInput(obj.params,varargin{:});
+
     end
 
-    function out = launch(obj, inputArg) %#ok<INUSD>
+    function out = launch(obj) 
       % Return output in matrix format:
       % [time, sig0, sig1, sig2, eps0, eps1, eps2, iter, norm, exitflag]
 
       obj.validateControlFlags();
       obj.control = obj.detectControlMode();
 
+      % prepare output table
+      out = obj.initializeTable(obj.control);
+
       switch obj.control
         case "StressControl"
-          out = obj.runStressControl();
+          out = obj.runStressControl(out);
         case "StrainControl"
-          out = obj.runStrainControl();
+          out = obj.runStrainControl(out);
         case "MixedControl"
-          out = obj.runMixedControl();
+          out = obj.runMixedControl(out);
         otherwise
           error('Unknown control mode.');
       end
 
-      if ~isempty(obj.outFile)
+      if ~ismissing(obj.outFile)
         writematrix(out, obj.outFile);
       end
     end
   end
 
   methods (Access = private)
-    function out = runStrainControl(obj)
-      out = obj.initializeTable();
+
+
+    function out = runStrainControl(obj, out)
 
       sigma = zeros(6,1);
       sigma(1:3) = obj.params.initialStress;
@@ -168,12 +154,10 @@ classdef ConstitutiveDriver < handle
         out(n, obj.NORM) = 0;
         out(n, obj.EXITFLAG) = 1;
 
-        obj.commitConstitutiveState();
       end
     end
 
-    function out = runStressControl(obj)
-      out = obj.initializeTable();
+    function out = runStressControl(obj, out)
 
       sigma = zeros(6,1);
       sigma(1:3) = obj.params.initialStress;
@@ -195,7 +179,6 @@ classdef ConstitutiveDriver < handle
         exitflag = 0;
 
         for k = 0:maxIter-1
-          obj.restoreConstitutiveState();
           [stiffness, trialStress] = obj.localConstitutiveUpdate(sigma, strainIncrement, timeIncrement);
 
           resid = scale .* ([trialStress(1); trialStress(2)] - target);
@@ -220,24 +203,18 @@ classdef ConstitutiveDriver < handle
             jacobian = scale .* [stiffness(1,1), stiffness(1,2) + stiffness(1,3); ...
                                  stiffness(2,1), stiffness(2,2) + stiffness(2,3)];
 
-            detJ = jacobian(1,1)*jacobian(2,2) - jacobian(1,2)*jacobian(2,1);
-            if abs(detJ) < obj.params.minJacobian
+            if rcond(jacobian) < obj.params.minJacobian
               exitflag = -2;
               sigma = trialStress;
               break
             end
 
-            deltaStrainIncrement(1) = (jacobian(2,2)*resid(1) - jacobian(1,2)*resid(2)) / detJ;
-            deltaStrainIncrement(2) = (jacobian(1,1)*resid(2) - jacobian(2,1)*resid(1)) / detJ;
+            deltaStrainIncrement = jacobian \ resid;
 
             strainIncrement(1) = strainIncrement(1) - deltaStrainIncrement(1);
             strainIncrement(2) = strainIncrement(2) - deltaStrainIncrement(2);
             strainIncrement(3) = strainIncrement(2);
           end
-        end
-
-        if exitflag == 1
-          obj.commitConstitutiveState();
         end
 
         out(n, obj.EPS0) = out(n-1, obj.EPS0) + strainIncrement(1);
@@ -253,8 +230,7 @@ classdef ConstitutiveDriver < handle
       end
     end
 
-    function out = runMixedControl(obj)
-      out = obj.initializeTable();
+    function out = runMixedControl(obj, out)
 
       sigma = zeros(6,1);
       sigma(1:3) = obj.params.initialStress;
@@ -277,7 +253,6 @@ classdef ConstitutiveDriver < handle
         exitflag = 0;
 
         for k = 0:maxIter-1
-          obj.restoreConstitutiveState();
           [stiffness, trialStress] = obj.localConstitutiveUpdate(sigma, strainIncrement, timeIncrement);
 
           resid = scale .* (trialStress(2) - targetRadialStress);
@@ -306,14 +281,10 @@ classdef ConstitutiveDriver < handle
               break
             end
 
-            deltaRadialStrain = resid / jacobian;
+            deltaRadialStrain = jacobian \ resid;
             strainIncrement(2) = strainIncrement(2) - deltaRadialStrain;
             strainIncrement(3) = strainIncrement(2);
           end
-        end
-
-        if exitflag == 1
-          obj.commitConstitutiveState();
         end
 
         out(n, obj.SIG0) = sigma(1);
@@ -331,9 +302,7 @@ classdef ConstitutiveDriver < handle
       end
     end
 
-    function out = initializeTable(obj)
-      obj.validateControlFlags();
-      mode = obj.detectControlMode();
+    function out = initializeTable(obj, mode)
 
       axialName = obj.getAxialFunctionName();
       axialFun = obj.func.(axialName);
@@ -349,30 +318,33 @@ classdef ConstitutiveDriver < handle
       out(:, obj.ITER) = NaN;
       out(:, obj.NORM) = NaN;
 
-      for n = 1:size(out,1)
-        tn = out(n, obj.TIME);
-        switch mode
-          case "StressControl"
-            axi = obj.evalFunction("axialStress", tn);
-            rad = obj.evalFunction("radialStress", tn);
-            out(n, obj.SIG0) = axi;
-            out(n, obj.SIG1) = rad;
-            out(n, obj.SIG2) = rad;
+      switch mode
+        case "StressControl"
+          fAxi = obj.func.axialStress;
+          fRad = obj.func.radialStress;
+          axi = interp1(fAxi.x, fAxi.y, time, 'linear', 'extrap');
+          rad = interp1(fRad.x, fRad.y, time, 'linear', 'extrap');
+          out(:, obj.SIG0) = axi;
+          out(:, obj.SIG1) = rad;
+          out(:, obj.SIG2) = rad;
 
-          case "StrainControl"
-            axi = obj.evalFunction("axialStrain", tn);
-            rad = obj.evalFunction("radialStrain", tn);
-            out(n, obj.EPS0) = axi;
-            out(n, obj.EPS1) = rad;
-            out(n, obj.EPS2) = rad;
+        case "StrainControl"
+          fAxi = obj.func.axialStrain;
+          fRad = obj.func.radialStrain;
+          axi = interp1(fAxi.x, fAxi.y, time, 'linear', 'extrap');
+          rad = interp1(fRad.x, fRad.y, time, 'linear', 'extrap');
+          out(:, obj.EPS0) = axi;
+          out(:, obj.EPS1) = rad;
+          out(:, obj.EPS2) = rad;
 
-          case "MixedControl"
-            axi = obj.evalFunction("axialStrain", tn);
-            rad = obj.evalFunction("radialStress", tn);
-            out(n, obj.EPS0) = axi;
-            out(n, obj.SIG1) = rad;
-            out(n, obj.SIG2) = rad;
-        end
+        case "MixedControl"
+          fAxi = obj.func.axialStrain;
+          fRad = obj.func.radialStress;
+          axi = interp1(fAxi.x, fAxi.y, time, 'linear', 'extrap');
+          rad = interp1(fRad.x, fRad.y, time, 'linear', 'extrap');
+          out(:, obj.EPS0) = axi;
+          out(:, obj.SIG1) = rad;
+          out(:, obj.SIG2) = rad;
       end
 
       obj.checkInitialStressConsistency(out, mode);
@@ -381,14 +353,14 @@ classdef ConstitutiveDriver < handle
       out(1, obj.NORM) = 0;
     end
 
-    function [stiffness, sigmaOut] = localConstitutiveUpdate(obj, sigma, strainIncrement, timeIncrement)
+    function [stiffness, sigmaOut] = localConstitutiveUpdate(obj, sigma, strainIncrement)
       if isempty(obj.constLaw)
         error('No constitutive law object was provided.');
       end
 
       % Expected user-side interface, following the commented skeleton:
       %   [constMat, sigmaOut, ...] = constLaw.getStiffnessMatrix(sigma, strainIncrement, 0, 0, timeIncrement)
-      [stiffness, sigmaOut] = obj.constLaw.getStiffnessMatrix(sigma, strainIncrement, 0, 0, timeIncrement);
+      [stiffness, sigmaOut] = obj.constLaw.getStiffnessMatrix(sigma, strainIncrement, 0, 0, 1);
 
       sigmaOut = sigmaOut(:);
       if numel(sigmaOut) ~= 6
@@ -396,17 +368,6 @@ classdef ConstitutiveDriver < handle
       end
       if ~isequal(size(stiffness), [6, 6])
         error('The constitutive law must return a 6-by-6 stiffness matrix.');
-      end
-    end
-
-    function val = evalFunction(obj, name, t)
-      f = obj.func.(name);
-      if exist('interpTable', 'file') == 2
-        val = interpTable(f.x, f.y, t);
-      else
-        % Fallback only to make the class runnable in plain MATLAB sessions.
-        % In MRST/GReS runs, interpTable should be available and used.
-        val = interp1(f.x, f.y, t, 'linear', 'extrap');
       end
     end
 
@@ -468,35 +429,5 @@ classdef ConstitutiveDriver < handle
       end
     end
 
-    function restoreConstitutiveState(obj)
-      if ~isempty(obj.constLaw) && ismethod(obj.constLaw, 'restoreConvergedState')
-        obj.constLaw.restoreConvergedState();
-      elseif ~isempty(obj.constLaw) && ismethod(obj.constLaw, 'restoreCommittedState')
-        obj.constLaw.restoreCommittedState();
-      end
-    end
-
-    function commitConstitutiveState(obj)
-      if ~isempty(obj.constLaw) && ismethod(obj.constLaw, 'saveConvergedState')
-        obj.constLaw.saveConvergedState();
-      elseif ~isempty(obj.constLaw) && ismethod(obj.constLaw, 'commitState')
-        obj.constLaw.commitState();
-      end
-    end
-
-    function [row, col] = typeToFlagIndex(~, type)
-      switch string(type)
-        case "axialStress"
-          row = 1; col = 1;
-        case "axialStrain"
-          row = 1; col = 2;
-        case "radialStress"
-          row = 2; col = 1;
-        case "radialStrain"
-          row = 2; col = 2;
-        otherwise
-          error('Unknown function type.');
-      end
-    end
   end
 end

@@ -1,0 +1,9 @@
+<DruckerPrager>
+  <youngModulus>1e5</youngModulus>
+  <poissonRatio>0.25</poissonRatio>
+  <frictionAngle>25.0</frictionAngle>
+  <dilatancy>10.0</dilatancy>
+  <cohesion>10</cohesion>
+  <hardeningParameter>5e2</hardeningParameter>
+  <hardeningVariable>0.0</hardeningVariable>
+</DruckerPrager>
