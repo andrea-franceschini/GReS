@@ -1,15 +1,10 @@
 classdef DruckerPrager < handle
-  % DRUCKERPRAGER GEOS-style Drucker-Prager elastoplastic material.
+  % DRUCKERPRAGER Drucker-Prager elastoplastic material.
   %
   % The yield function is written as
   %
   %   F = q + alpha*p - cohesion <= 0,
   %
-  % where q = sqrt(3*J2), p = tr(sigma)/3, alpha is the friction
-  % coefficient, beta is the dilation coefficient, and cohesion is the
-  % current cone intercept. 
-  % The internal hardening variable stored in the first column
-  % of the status array is the current cohesion.
 
   properties (Access = public)
     % Elastic modulus
@@ -31,7 +26,7 @@ classdef DruckerPrager < handle
     % Drucker-Prager coefficients
     alpha       % friction coefficient in F = q + alpha*p - cohesion
     beta        % dilation coefficient in G = q + beta*p
-    epsilon     % conversion from Mohr-Coulomb cohesion c to DP intercept
+    a     % conversion from Mohr-Coulomb cohesion c to DP intercept
   end
 
   methods (Access = public)
@@ -42,7 +37,7 @@ classdef DruckerPrager < handle
     function cohesion = initializeStatus(obj, sigma)
       nptGauss = size(sigma,1);
       cohesion = zeros(nptGauss,6);
-      cohesion(:,1) = obj.epsilon * obj.co;
+      cohesion(:,1) = obj.a * obj.co;
     end
 
     function [DAll, sigmaOut, cohesion] = getStiffnessMatrix(obj, sigmaIn, epsilonIn, dt, convCohesion, cellID) %#ok<INUSD>
@@ -229,7 +224,7 @@ classdef DruckerPrager < handle
 
       obj.alpha   = 6.0 * sinPhi / (3.0 - sinPhi);
       obj.beta    = 6.0 * sinPsi / (3.0 - sinPsi);
-      obj.epsilon = 6.0 * cosPhi / (3.0 - sinPhi);
+      obj.a = 6.0 * cosPhi / (3.0 - sinPhi);
 
     end
   end

@@ -9,9 +9,9 @@ law = DruckerPrager('param.xml');
 
 driver = TriaxialDriver('nStep',200,'constLaw',law,'outFile',"DPtest.txt");
 
-t = 0:5;
-axStrain = -[0;4;2;5;3;6]*1e-3;
-radStress = -10e6*ones(6,1);
+t = 0:7;
+axStrain = -[0;1;5;3;7;9;4;6]*1e-3;
+radStress = -10e6*ones(8,1);
 driver.setFunction('axialStrain',t,axStrain);
 driver.setFunction('radialStress',t,radStress);
 

@@ -4,6 +4,6 @@
   <frictionAngle>6.0</frictionAngle>
   <dilatancy>3.0</dilatancy>
   <cohesion>0.1e6</cohesion>
-  <hardeningParameter>0.5e9</hardeningParameter>
+  <hardeningParameter>0.1e9</hardeningParameter>
   <hardeningVariable>0.0</hardeningVariable>
 </DruckerPrager>
