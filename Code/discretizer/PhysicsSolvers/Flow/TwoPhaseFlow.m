@@ -50,11 +50,91 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
     end
 
 
+    function setFluidProperties(obj,input)
+
+
+      defaultWet = struct('wetViscosity',[],...
+        'nwetViscosity',[],...
+        'refPressure',[],...
+        'refWetDensity',[],...
+        'refNonWetDensity',[],...
+        'wetDensity',[],...
+        'nwetDensity',[],...
+        'wetRelPermability',[],...
+        'nwetRelPermeability',[],...
+        'wetCompressibility',[],...,
+        'nwetCompressibility',[]);
+
+      input = readInput(default,input);
+
+      pR = refPressure;
+
+      % water phase
+      muW = input.wetViscosity;
+      cw = input.wetCompressibility;
+      rhoWR = refWetDensity;
+
+
+
+
+
+      cw = 2.9008e-10;
+      rhoWR = 1014;
+      pR   = 200*barsa;
+      rhoW = @(p) rhoWR .* exp( cw * (p - pR) );
+      krW    = @(S) S.^2;
+      obj.props.wet.density = rhoW;
+      obj.props.wet.compressibility = cw;
+      obj.props.wet.viscosity = muW;
+      obj.props.wet.relPerm = krW;
+
+
+      % oil phase
+      muO = 5e-3;
+      co = 1.4504e-9;
+      rhoOR = 850;
+      rhoO   = @(p) rhoOR .* exp( co * (p - pR) );
+      krO    = @(S) S.^3;
+      obj.props.nwet.density = rhoO;
+      obj.props.nwet.compressibility = co;
+      obj.props.nwet.viscosity = muO;
+      obj.props.nwet.relPerm = krO;
+
+      % rock properties
+      dofm = obj.domain.dofm;
+      regions = getTargetRegions(dofm,"pressure");
+      nc = dofm.getNumbDoF("pressure");
+      pv0 = zeros(nc,1);
+      cr = zeros(nc,1);
+      g = obj.domain.grid;
+      mat = obj.domain.materials;
+      pref = 2e7;
+
+
+      for i = regions'
+        rock = mat.getPorousRock(i);
+        cIdx = g.cells.tag == i;
+        poro0 = rock.getPorosity;
+        pv0(cIdx) = g.cells.volume(cIdx).*poro0;
+        cr(cIdx) = rock.getCompressibility;
+      end
+
+      % pore volume adi function
+      obj.props.rock.poreVolume   = @(p) pv0 .* exp(cr .* (p - pref) );
+
+    end
+
+
     function initialize(obj)
 
       % material input is provisionally here
       % units SI
-      setMaterialProperties(obj)
+
+      if isempty(obj.props.wet)
+
+        error('Missing fluid properties. Fluid properties must be passed using the "setFluidParameters()" method');
+
+      end
       
       % vertical equilibrium
       % g = 9.8066;     % gravity acceleration
@@ -113,7 +193,7 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       % Injector: volumetric source term multiplied by surface density
       % src = 1.2860;
       % wet(1) = wet(1) - src;
-      % 
+      %
       % % Producer: replace equations by new ones specifying fixed pressure
       % % and zero water saturation
       % outPres = 10000000;
@@ -123,7 +203,7 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       % residual equations
       dofm = obj.domain.dofm;
       eqIdx = [dofm.getVariableId("pressure"); ...
-               dofm.getVariableId("saturation")];
+        dofm.getVariableId("saturation")];
 
       obj.domain.rhs{eqIdx(1)} = wet.val;
       obj.domain.rhs{eqIdx(2)} = nwet.val;
@@ -177,7 +257,7 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
 
 
 
-      
+
     end
 
 
@@ -186,60 +266,9 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
 
 
 
-  methods (Access=private)
-
-    function setMaterialProperties(obj)
-      % water phase
-      muW = 1e-3;
-      cw = 2.9008e-10;
-      rhoWR = 1014;
-      pR   = 200*barsa;
-      rhoW = @(p) rhoWR .* exp( cw * (p - pR) );
-      krW    = @(S) S.^2;
-      obj.props.wet.density = rhoW;
-      obj.props.wet.compressibility = cw;
-      obj.props.wet.viscosity = muW;
-      obj.props.wet.relPerm = krW;
 
 
-      % oil phase
-      muO = 5e-3;
-      co = 1.4504e-9;
-      rhoOR = 850;
-      rhoO   = @(p) rhoOR .* exp( co * (p - pR) );
-      krO    = @(S) S.^3;
-      obj.props.nwet.density = rhoO;
-      obj.props.nwet.compressibility = co;
-      obj.props.nwet.viscosity = muO;
-      obj.props.nwet.relPerm = krO;
-
-      % rock properties
-      dofm = obj.domain.dofm;
-      regions = getTargetRegions(dofm,"pressure");
-      nc = dofm.getNumbDoF("pressure");
-      pv0 = zeros(nc,1);
-      cr = zeros(nc,1);
-      g = obj.domain.grid;
-      mat = obj.domain.materials;
-      pref = 2e7;
-
-
-      for i = regions'
-        rock = mat.getPorousRock(i);
-        cIdx = g.cells.tag == i;
-        poro0 = rock.getPorosity;
-        pv0(cIdx) = g.cells.volume(cIdx).*poro0;
-        cr(cIdx) = rock.getCompressibility;
-      end
-
-      % pore volume adi function
-      obj.props.rock.poreVolume   = @(p) pv0 .* exp(cr .* (p - pref) );
-
-    end
-  end
-
-
-    methods (Static)
+  methods (Static)
     function out = getField()
       out = ["pressure","saturation"];
       % saturation of the wetting phase
