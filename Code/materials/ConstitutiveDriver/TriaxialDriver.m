@@ -113,13 +113,16 @@ classdef TriaxialDriver < handle
       % prepare output table
       out = obj.initializeTable(obj.control);
 
+      c = obj.constLaw.initializeStatus(0);
+
+
       switch obj.control
         case "StressControl"
-          out = obj.runStressControl(out);
+          out = obj.runStressControl(out,c);
         case "StrainControl"
-          out = obj.runStrainControl(out);
+          out = obj.runStrainControl(out,c);
         case "MixedControl"
-          out = obj.runMixedControl(out);
+          out = obj.runMixedControl(out,c);
         otherwise
           error('Unknown control mode.');
       end
@@ -133,7 +136,7 @@ classdef TriaxialDriver < handle
   methods (Access = private)
 
 
-    function out = runStrainControl(obj, out)
+    function out = runStrainControl(obj, out, status)
 
       sigma = zeros(6,1);
       sigma(1:3) = obj.params.initialStress;
@@ -144,8 +147,8 @@ classdef TriaxialDriver < handle
         strainIncrement(2) = out(n, obj.EPS1) - out(n-1, obj.EPS1);
         strainIncrement(3) = out(n, obj.EPS2) - out(n-1, obj.EPS2);
 
-        timeIncrement = out(n, obj.TIME) - out(n-1, obj.TIME);
-        [~, sigma] = obj.localConstitutiveUpdate(sigma, strainIncrement, timeIncrement);
+        % timeIncrement = out(n, obj.TIME) - out(n-1, obj.TIME);
+        [~, sigma, status] = obj.localConstitutiveUpdate(sigma, strainIncrement, status);
 
         out(n, obj.SIG0) = sigma(1);
         out(n, obj.SIG1) = sigma(2);
@@ -157,7 +160,7 @@ classdef TriaxialDriver < handle
       end
     end
 
-    function out = runStressControl(obj, out)
+    function out = runStressControl(obj, out, oldStatus)
 
       sigma = zeros(6,1);
       sigma(1:3) = obj.params.initialStress;
@@ -168,7 +171,7 @@ classdef TriaxialDriver < handle
       scale   = obj.computeStressScale(out, [obj.SIG0, obj.SIG1, obj.SIG2]);
 
       for n = 2:size(out,1)
-        timeIncrement = out(n, obj.TIME) - out(n-1, obj.TIME);
+        %timeIncrement = out(n, obj.TIME) - out(n-1, obj.TIME);
         strainIncrement = zeros(6,1);
         deltaStrainIncrement = zeros(2,1);
 
@@ -179,7 +182,7 @@ classdef TriaxialDriver < handle
         exitflag = 0;
 
         for k = 0:maxIter-1
-          [stiffness, trialStress] = obj.localConstitutiveUpdate(sigma, strainIncrement, timeIncrement);
+          [stiffness, trialStress, status] = obj.localConstitutiveUpdate(sigma, strainIncrement, oldStatus);
 
           resid = scale .* ([trialStress(1); trialStress(2)] - target);
           normR = norm(resid);
@@ -217,6 +220,8 @@ classdef TriaxialDriver < handle
           end
         end
 
+        oldStatus = status;
+
         out(n, obj.EPS0) = out(n-1, obj.EPS0) + strainIncrement(1);
         out(n, obj.EPS1) = out(n-1, obj.EPS1) + strainIncrement(2);
         out(n, obj.EPS2) = out(n, obj.EPS1);
@@ -230,7 +235,7 @@ classdef TriaxialDriver < handle
       end
     end
 
-    function out = runMixedControl(obj, out)
+    function out = runMixedControl(obj, out, oldStatus)
 
       sigma = zeros(6,1);
       sigma(1:3) = obj.params.initialStress;
@@ -241,7 +246,7 @@ classdef TriaxialDriver < handle
       scale   = obj.computeStressScale(out, [obj.SIG1, obj.SIG2]);
 
       for n = 2:size(out,1)
-        timeIncrement = out(n, obj.TIME) - out(n-1, obj.TIME);
+        %timeIncrement = out(n, obj.TIME) - out(n-1, obj.TIME);
         strainIncrement = zeros(6,1);
         strainIncrement(1) = out(n, obj.EPS0) - out(n-1, obj.EPS0);
 
@@ -253,7 +258,7 @@ classdef TriaxialDriver < handle
         exitflag = 0;
 
         for k = 0:maxIter-1
-          [stiffness, trialStress] = obj.localConstitutiveUpdate(sigma, strainIncrement, timeIncrement);
+          [stiffness, trialStress, status] = obj.localConstitutiveUpdate(sigma, strainIncrement, oldStatus);
 
           resid = scale .* (trialStress(2) - targetRadialStress);
           normR = abs(resid);
@@ -286,6 +291,9 @@ classdef TriaxialDriver < handle
             strainIncrement(3) = strainIncrement(2);
           end
         end
+
+        % commit hardening variable
+        oldStatus = status;
 
         out(n, obj.SIG0) = sigma(1);
         out(n, obj.SIG1) = sigma(2);
@@ -353,14 +361,14 @@ classdef TriaxialDriver < handle
       out(1, obj.NORM) = 0;
     end
 
-    function [stiffness, sigmaOut] = localConstitutiveUpdate(obj, sigma, strainIncrement)
+    function [stiffness, sigmaOut, status] = localConstitutiveUpdate(obj, sigma, strainIncrement, oldStatus)
       if isempty(obj.constLaw)
         error('No constitutive law object was provided.');
       end
 
       % Expected user-side interface, following the commented skeleton:
       %   [constMat, sigmaOut, ...] = constLaw.getStiffnessMatrix(sigma, strainIncrement, 0, 0, timeIncrement)
-      [stiffness, sigmaOut] = obj.constLaw.getStiffnessMatrix(sigma, strainIncrement, 0, 0, 1);
+      [stiffness, sigmaOut, status] = obj.constLaw.getStiffnessMatrix(sigma', strainIncrement', 0, oldStatus, 1);
 
       sigmaOut = sigmaOut(:);
       if numel(sigmaOut) ~= 6
