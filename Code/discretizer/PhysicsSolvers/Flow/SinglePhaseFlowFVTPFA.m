@@ -166,13 +166,13 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         assert(isEssential(bc,bcId),"Boundary condition of type 'seepage' must be essential")
       end
 
-      if bcFld == entityField.surface
+      if bcFld == entityField.surface && isEssential(bc,bcId)
 
         surfId = bc.getSourceEntities(bcId);
         faceId = surfaces.faceId(surfId);
         srcVal = bc.getSourceVals(bcId,t);
         ents = sum(faces.neighbors(faceId,:),2);
-        p = getState(obj,obj.getField());
+        p = getState(obj,"pressure");
 
         %
         switch type

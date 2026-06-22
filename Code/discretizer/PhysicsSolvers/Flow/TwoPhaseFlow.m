@@ -52,53 +52,14 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
 
     function setFluidProperties(obj,input)
 
-
-      defaultWet = struct('wetViscosity',[],...
-        'nwetViscosity',[],...
-        'refPressure',[],...
-        'refWetDensity',[],...
-        'refNonWetDensity',[],...
-        'wetDensity',[],...
-        'nwetDensity',[],...
-        'wetRelPermability',[],...
-        'nwetRelPermeability',[],...
-        'wetCompressibility',[],...,
-        'nwetCompressibility',[]);
+      fluidParams = struct('viscosity',[],'compressibility',0.0,'relPerm',[],'density',[]);
+      rockParams = struct('refPressure',missing);
+      default = struct('wet',fluidParams,'nwet',fluidParams,'rock',rockParams);
 
       input = readInput(default,input);
 
-      pR = refPressure;
-
-      % water phase
-      muW = input.wetViscosity;
-      cw = input.wetCompressibility;
-      rhoWR = refWetDensity;
-
-
-
-
-
-      cw = 2.9008e-10;
-      rhoWR = 1014;
-      pR   = 200*barsa;
-      rhoW = @(p) rhoWR .* exp( cw * (p - pR) );
-      krW    = @(S) S.^2;
-      obj.props.wet.density = rhoW;
-      obj.props.wet.compressibility = cw;
-      obj.props.wet.viscosity = muW;
-      obj.props.wet.relPerm = krW;
-
-
-      % oil phase
-      muO = 5e-3;
-      co = 1.4504e-9;
-      rhoOR = 850;
-      rhoO   = @(p) rhoOR .* exp( co * (p - pR) );
-      krO    = @(S) S.^3;
-      obj.props.nwet.density = rhoO;
-      obj.props.nwet.compressibility = co;
-      obj.props.nwet.viscosity = muO;
-      obj.props.nwet.relPerm = krO;
+      obj.props.wet = input.wet;
+      obj.props.nwet = input.nwet;
 
       % rock properties
       dofm = obj.domain.dofm;
@@ -108,7 +69,6 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       cr = zeros(nc,1);
       g = obj.domain.grid;
       mat = obj.domain.materials;
-      pref = 2e7;
 
 
       for i = regions'
@@ -119,8 +79,15 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
         cr(cIdx) = rock.getCompressibility;
       end
 
-      % pore volume adi function
-      obj.props.rock.poreVolume   = @(p) pv0 .* exp(cr .* (p - pref) );
+      % pore volume function
+      pref = input.rock.refPressure;
+      if ~ismissing(pref)
+        pV   = @(p) pv0 .* exp(cr .* (p - pref) );
+      else
+        pV = @(p) pv0;
+      end
+
+      obj.props.rock.poreVolume = pV;
 
     end
 
