@@ -203,7 +203,8 @@ classdef Sedimentation < PhysicsSolver
           end
 
           % Iterative procedure
-          strial = (1./(1+voidTmp)).*DStress+stsCons(map);
+          strial = (1./(1+voidTmp)).*DStress;
+          % strial = (1./(1+voidTmp)).*DStress+stsCons(map);
           [void,~] = Sedimentation.initialCellProp(voidTmp,-strial,...
             -stsCellAcc,-stsCons(map),Cr,obj.tol,obj.niterMx);
 
@@ -212,13 +213,15 @@ classdef Sedimentation < PhysicsSolver
           mapVoidLim = void > voidUpLim;
           void(mapVoidLim) = voidUpLim(mapVoidLim);
 
-          stress = (1./(1+void)).*DStress+stsCons(map);
+          stress = (1./(1+void)).*DStress;
+          % stress = (1./(1+void)).*DStress+stsCons(map);
 
           mapPreCon = stsCellPreCons<stress;
           stsCellPreCons(mapPreCon)=stress(mapPreCon);
 
           stStore(map) = stress;
-          state.stress(dof) = -stress-1;
+          state.stress(dof) = -stress;
+          % state.stress(dof) = -stress-1;          
           % state.stressCons(dof) = -stress;
           state.stressCons(dof) = -stsCellPreCons;
           state.voidrate(dof) = void;
@@ -546,7 +549,8 @@ classdef Sedimentation < PhysicsSolver
         mapPreCon = stsCellPreCons<-stressAdd;
         stsCellPreCons(mapPreCon)=-stressAdd(mapPreCon);
 
-        state.stress(dofs) = stressAdd-stsInit;
+        state.stress(dofs) = stressAdd;
+        % state.stress(dofs) = stressAdd-stsInit;
         % state.stressCons(dofs) = stressAdd;
         state.stressCons(dofs) = -stsCellPreCons;
       end
