@@ -106,11 +106,11 @@ classdef BoundaryEntities < handle
 
         n = n+obj.nSourceEnts(i);
 
-        if srcField == entityField.surface && targetField == entityField.cell
-          % For FV only: treated differently
-          obj.targetEnts = srcID;
-          continue
-        end
+        % if srcField == entityField.surface && targetField == entityField.cell
+        %   % For FV only: treated differently
+        %   obj.targetEnts = srcID;
+        %   continue
+        % end
 
         [inflMap,targEnts] = getIncidenceMap(entityField(targetField),grid,srcField,srcID);
 

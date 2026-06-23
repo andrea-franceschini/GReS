@@ -7,7 +7,7 @@
 law = DruckerPrager('param.xml');
 
 
-driver = TriaxialDriver('nStep',200,'constLaw',law,'outFile',"DPtest.txt");
+driver = TriaxialDriver('nStep',300,'constLaw',law,'outFile',"DPtest.txt");
 
 t = 0:7;
 axStrain = -[0;1;5;3;7;9;4;6]*1e-3;

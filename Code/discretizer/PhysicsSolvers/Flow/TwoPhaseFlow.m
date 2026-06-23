@@ -84,7 +84,7 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       if ~ismissing(pref)
         pV   = @(p) pv0 .* exp(cr .* (p - pref) );
       else
-        pV = @(p) pv0;
+        pV = @(p) 0*p + pv0;
       end
 
       obj.props.rock.poreVolume = pV;
