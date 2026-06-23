@@ -1,0 +1,23 @@
+% testing the DruckerPrager driver for validation
+
+% input parameter follow GEOS validation study
+
+
+
+law = DruckerPrager('param.xml');
+
+
+driver = TriaxialDriver('nStep',300,'constLaw',law,'outFile',"DPtest.txt");
+
+t = 0:7;
+axStrain = -[0;1;5;3;7;9;4;6]*1e-3;
+radStress = -10e6*ones(8,1);
+driver.setFunction('axialStrain',t,axStrain);
+driver.setFunction('radialStress',t,radStress);
+
+driver.setParameters('initialStress',-10e6);
+
+out = driver.launch;
+
+validateDruckerPragerAnalytical(law,out,'StressUnit','Pa');
+

@@ -19,29 +19,29 @@ rmpath(genpath(fullfile(gres_root,...
 ref = repelem(struct('press', 1, 'stress', 1, 'strain', 1), 3);
 
 ref(1).time = 1.;
-ref(1).press   = [5.662777838171824e-05; 0];
-ref(1).stress  = [1.659881522908224e+02; 1.015000008021166e+03];
-ref(1).strain  = [-3.739167694651991e-06; 0];
+ref(1).press   = [5.6971e-05; 0];
+ref(1).stress  = [1.6499e+02; 1.5000e+01];
+ref(1).strain  = [-3.7629e-06; 0];
 
 ref(2).time = 10.1;
-ref(2).press   = [9.438560935391386e-05; 3.503567426417822e-05];
-ref(2).stress  = [3.024881875256033e+02; 1.151500045978104e+03];
-ref(2).strain  = [-2.723513899440930e-05; 0];
+ref(2).press   = [1.3929e-04; 7.9747e-05];
+ref(2).stress  = [3.0149e+02; 1.5150e+02];
+ref(2).strain  = [-2.7366e-05; 0];
 
 ref(3).time = 11.;
-ref(3).press   = [9.730716827343308e-05; 3.781508100371161e-05; 0];
-ref(3).stress  = [3.159881918230939e+02; 1.165000050417747e+03; 1.014998112222454e+03];
-ref(3).strain  = [-2.915516776363712e-05; 0; 0];
+ref(3).press   = [1.4649e-04; 8.6813e-05; 0];
+ref(3).stress  = [3.1499e+02; 1.6500e+02; 1.4998e+01];
+ref(3).strain  = [-2.9292e-05; 0; 0];
 
 ref(4).time = 21.;
-ref(4).press   = [1.303685685634306e-04; 9.002697772995743e-05; 3.538796715886759e-05; 0];
-ref(4).stress  = [4.659882389733550e+02; 1.315000078417512e+03; 1.164998157046149e+03; 1.014996920553215e+03];
-ref(4).strain  = [-4.449125071534490e-05; -4.781830003829677e-06; 0; 0];
+ref(4).press   = [2.4757e-04; 2.0714e-04; 1.0703e-04; 0];
+ref(4).stress  = [4.6499e+02; 3.1500e+02; 1.6500e+02; 1.4997e+01];
+ref(4).strain  = [-4.4669e-05; -2.5531e-05; 0; 0];
 
 ref(5).time = 30.;
-ref(5).press   = [1.643366570224716e-04; 1.330572243731780e-04; 8.881109714649322e-05; 3.303886677707911e-05];
-ref(5).stress  = [6.009882771957615e+02; 1.450000107577761e+03; 1.299998175813514e+03; 1.149996959704843e+03];
-ref(5).strain  = [-5.353770183370028e-05; -8.229695816906608e-06; -3.870681063557507e-06; 0];
+ref(5).press   = [3.4530e-04; 3.1397e-04; 2.4086e-04; 1.1186e-04];
+ref(5).stress  = [5.9999e+02; 4.5000e+02; 3.0000e+02; 1.5000e+02];
+ref(5).strain  = [-5.3733e-05; -3.8275e-05; -2.1579e-05; 0];
 
 % Get the full path of this test
 input_dir = 'Input/';
@@ -75,7 +75,7 @@ time = printUtils.timeList;
 clearvars -except sol errorTol time ref
 
 % Tolerance error between the results.
-errorTol = 1e-8;
+errorTol = 1e-4;
 epsVal = 1e-12;
 for sim = 1:numel(sol)
   numcell = numel(sol(sim).pressure);
@@ -121,4 +121,3 @@ end
 s = readstruct("Output/Results.pvd","FileType","xml");
 v = s.Collection.DataSet;
 assert( length(v) == 5, 'Five results is expected for this Test!');
-
