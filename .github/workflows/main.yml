@@ -33,8 +33,8 @@ jobs:
 
       - name: Checkout MRST TPL only
         run: |
-          git submodule sync -- external/MRST
-          git submodule update --init external/MRST
+          git submodule sync -- ThirdPartyLibs/MRST
+          git submodule update --init ThirdPartyLibs/MRST
 
       - name: Setup MATLAB
         uses: matlab-actions/setup-matlab@v3
