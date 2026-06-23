@@ -9,9 +9,9 @@
           voidLowerLimit = "7.5"
           voidUpperLimit = "15."
           conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
-          initStress = "1e+0"
-          preStress = "1e+2"
-          specificWeight = "2.0e3"
+          initStress = "1e+1"
+          preStress = "1e+3"
+          specificWeight = "2.0e4"
           compressibilityIndex = "4.00"
           reCompressibilityIndex = "0.40"
       />
@@ -26,9 +26,9 @@
           voidLowerLimit = "5."
           voidUpperLimit = "10."
           conductivity = "0.9450e-1, 0.9450e-1, 0.315e-1"
-          initStress = "1e+0"
-          preStress = "1e+2"
-          specificWeight = "2.7e3"
+          initStress = "1e+1"
+          preStress = "1e+3"
+          specificWeight = "2.7e4"
           compressibilityIndex = "3.00"
           reCompressibilityIndex = "0.10"
       />
@@ -43,9 +43,9 @@
           voidLowerLimit = "1.5"
           voidUpperLimit = "3."
           conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
-          initStress = "1e+0"
-          preStress = "1e+2"
-          specificWeight = "2.7e3"
+          initStress = "1e+1"
+          preStress = "1e+3"
+          specificWeight = "2.7e4"
           compressibilityIndex = "0.5"
           reCompressibilityIndex = "0.05"
       />
@@ -60,9 +60,9 @@
           voidLowerLimit = "7.5"
           voidUpperLimit = "15."
           conductivity = "0.9450e-5, 0.9450e-5, 0.315e-5"
-          initStress = "1e+0"
-          preStress = "1e+2"
-          specificWeight = "2.0e3"
+          initStress = "1e+1"
+          preStress = "1e+3"
+          specificWeight = "2.0e4"
           compressibilityIndex = "1e-6"
           reCompressibilityIndex = "1e-6"
       />
@@ -70,8 +70,8 @@
   </Solid>
 
   <Fluid
-      specificWeight = "1.0e3"
-      compressibility = "0.432e-8"
+      specificWeight = "1.0e4"
+      compressibility = "0.432e-10"
   />
   
 </Materials>

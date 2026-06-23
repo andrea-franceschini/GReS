@@ -1,17 +1,17 @@
-close all;
+% close all;
 % clear;
-input_dir = 'Inputs/';
+input_dir = 'Input/';
 file_Mat = fullfile(input_dir,'materials.xml');
 file_Solver = fullfile(input_dir,'solver.xml');
 
 %% ------------------------------ Set up the Domain -----------------------
 % Set the simulation parameters for the non-linear solver.
-simParam = SimulationParameters('Start',0.,'End',1.0e3,...
-      'DtInit',1e-0,'DtMin',1e-2,'DtMax',1e-0,'MaxNLIteration',30);
+simParam = SimulationParameters('Start',0.,'End',3.0e3,...
+      'DtInit',1e-0,'DtMin',1e-1,'DtMax',1e-0,'MaxNLIteration',30);
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(file_Mat);
-printUtils = OutState('outputFile','Outputs/Results','printTimes',0:25:1000);
+printUtils = OutState('outputFile','Output/Results','printTimes',0:50:3000);
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Materials',mat);
