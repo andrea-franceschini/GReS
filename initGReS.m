@@ -41,7 +41,7 @@ end
 
 % initialize MRST if available
 mrstPath = fullfile(gres_root,'ThirdPartyLibs','MRST');
-if isfolder(mrstPath)
+if isfile(fullfile(mrstPath,'startup.m'))
   cd(mrstPath)
   [~] = evalc('startup');
 end
