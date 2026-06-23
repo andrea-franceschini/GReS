@@ -31,7 +31,7 @@ jobs:
         with:
           submodules: false
 
-      - name: Checkout MRST TPL only
+        - name: Checkout external git submodules
         run: |
           git submodule sync -- ThirdPartyLibs/MRST
           git submodule update --init ThirdPartyLibs/MRST
