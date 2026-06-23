@@ -142,7 +142,7 @@ function elems = gmshToVTK(elems)
 %     GMSH  3 → VTK  9  (4-node quadrilateral)
 %     GMSH  4 → VTK 10  (4-node tetrahedron)
 %     GMSH  5 → VTK 12  (8-node hexahedron)
-%     GMSH 10 → VTK  28  (9-node quad → stored as 4-node quad)
+%     GMSH 10 → VTK 28  (9-node quad → stored as 4-node quad)
 %     GMSH 12 → VTK 29  (27-node hex → stored as 8-node hex)
 
 gmshIDs = [2  3,  4,  10,  5,  12];
