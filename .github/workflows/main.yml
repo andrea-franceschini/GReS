@@ -32,7 +32,7 @@ jobs:
           submodules: false
 
         - name: Checkout external git submodules
-        run: |
+          run: |
           git submodule sync -- ThirdPartyLibs/MRST
           git submodule update --init ThirdPartyLibs/MRST
 
