@@ -219,6 +219,7 @@ classdef (Abstract) SolutionScheme < handle
         obj.t = obj.tOld;
         obj.tStep = obj.tStep - 1;
         obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
+        obj.dtSave = obj.dt;
 
         goBackState(obj);
 
