@@ -154,6 +154,14 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
     end
 
 
+    function initialize(obj)
+
+      if ~isempty(obj.wellModel)
+        error('Well models are not supported in fluid flow with FEM')
+      end
+    end
+
+
     function computeRhsGravTerm(obj)
 
 

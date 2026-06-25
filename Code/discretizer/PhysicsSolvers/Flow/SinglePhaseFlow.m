@@ -6,6 +6,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
     P                         % capacity matrix
     watLev
     steadyState               % flag to force steady state problem
+    wellModel                 % wellModel
   end
 
   properties (Access = protected)
@@ -58,6 +59,22 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
     function initialize(obj)
       % nothing to initialize here
+
+      if ~isempty(obj.wellModel)
+
+        obj.wellModel.initialize(obj);
+
+      end
+    end
+
+
+
+    function setWellModel(obj,wmod)
+      % setup a well model and eventually register variables for bhp
+      % pressure
+
+      obj.wellModel = wmod;
+
     end
 
 
@@ -86,6 +103,12 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       end
 
       obj.domain.rhs{obj.fieldId} = rhs;
+
+      if ~isempty(obj.wellModel)
+        % if wells are present, modify the system with related
+        % contributions
+        obj.wellModel.assembleWells();
+      end
       
     end
 

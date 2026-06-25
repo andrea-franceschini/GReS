@@ -1,7 +1,8 @@
 function initGReS(outputFlag)
 % List of folders to check
 foldList = ["Code",...
-            "Utilities",];
+            "Utilities",...
+            "ThidPartyLibs/Chronos_Lab"];
 
 if nargin == 0
   outputFlag = true;
