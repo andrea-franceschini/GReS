@@ -29,7 +29,9 @@ classdef PeacemanWells < handle
 
 
       % define default structure
+
       
+
       newWell = readInput(default,varargin);
 
       newWell.effRadius = computeEffectiveRadius(obj,newWell);
