@@ -62,7 +62,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
       if ~isempty(obj.wellModel)
 
-        obj.wellModel.initialize(obj);
+        obj.wellModel.initialize();
 
       end
     end
