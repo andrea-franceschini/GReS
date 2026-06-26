@@ -205,8 +205,9 @@ classdef entityField
         case entityField.cell
           % this combination is only needed by FV solvers where influence
           % map is not used
-          map = [];
-          targEnts = [];
+          map = speye(numel(srcList));
+          face = grid.surfaces.faceId(srcList);
+          targEnts = grid.faces.neighbors(face,1);
           %error("Incidence map from surface to %s is not yet available")
       end
 

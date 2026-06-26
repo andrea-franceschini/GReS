@@ -60,10 +60,10 @@ function [x,flag] = SolveLin(obj,A,b,time)
       end
    end
 
-   % Contact has opened a fracture or something similar so amg does not converge. 
+   % Contact has opened a fracture or something similar so amg does not converge well. 
    % Directly recompute the preconditioner
    if obj.Prec.phys == 1.1 
-      if obj.generalsolver.iterConfig > obj.iterConfigOld
+      if obj.generalsolver.iterConfig > obj.iterConfigOld && obj.iterConfigOld == 1
          obj.requestPrecComp = true;
          obj.iterConfigOld = obj.generalsolver.iterConfig;
       elseif obj.generalsolver.iterConfig < obj.iterConfigOld
@@ -75,25 +75,27 @@ function [x,flag] = SolveLin(obj,A,b,time)
    firstSolver = obj.SolverType;
 
    % Apply Ruix Scaling on the Block matrix
-   A = Ruiz(obj,A,b);
+   [A,b] = Ruiz(obj,A,b);
 
    % Fix the pattern to be symmetric and check the symmetry of the
    % resulting matrix
    [A] = fixPattern(A);
    [globalsymm,maxval,symMat] = checkSymmetry(A,obj.nsyTol);
-   
-   if globalsymm == 0
-      % If the matrix is nonSymmetric then use always GMRES
-      obj.SolverType = 'gmres';
-      gresLog().log(3,'The matrix is nonsymmetric with a maximum nonsymmetry of %e\n',maxval);
-   end
 
+   % Symmetric matrix and nonsymmetric preconditioner do not work together.
+   % There is a risk in finding a spurious nonphysical solution satisfying
+   % the residual
+   if globalsymm == true && obj.Prec.PrecSym == false
+      obj.requestPrecComp = true;
+   end
+   
    % Have the linear solver compute the Preconditioner if necessary
    if(obj.requestPrecComp) 
+      obj.Prec.PrecSym = globalsymm;
       gresLog().log(3,'Computing the preconditioner\n');
 
       time_start = tic;
-      obj.Prec.Compute(A,symMat);
+      obj.Prec.Compute(A,globalsymm);
       T_setup = toc(time_start);
 
       obj.aTimeComp = obj.aTimeComp + T_setup;
@@ -107,6 +109,12 @@ function [x,flag] = SolveLin(obj,A,b,time)
       T_setup = 0;
    end
 
+   if globalsymm == 0
+      % If the matrix is nonSymmetric then use always GMRES
+      obj.SolverType = 'gmres';
+      gresLog().log(3,'The matrix is nonsymmetric with a maximum nonsymmetry of %e\n',maxval);
+   end
+
    if iscell(A)
       Amat = cell2matrix(A);
       if obj.DEBUGflag
@@ -116,13 +124,15 @@ function [x,flag] = SolveLin(obj,A,b,time)
       end
    end
 
+   % Adjust the preconditioner to be of the correct size in the case of
+   % growing mesh simulation
    if obj.sizeDiff > 0 
       invD = 1./diag(Amat(end-obj.sizeDiff+1:end,end-obj.sizeDiff+1:end));
       obj.precL = @(x) [obj.Prec.Apply_L(x(1:end-obj.sizeDiff)); invD.*x(end-obj.sizeDiff+1:end)];
    elseif isempty(obj.precL) || obj.params.nSolveSinceLastPrecComp == 0
       obj.precL = obj.Prec.Apply_L;
    end
-
+   
    startT = tic;
    switch obj.SolverType
       case 'gmres'
@@ -144,6 +154,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
 
    % De apply ruiz from the result
    if obj.nIterRuiz > 0
+      D = diag(vertcat(obj.Prec.D{:}));
       x = D*x;
    end
    Tend = toc(startT);
@@ -176,15 +187,16 @@ function [x,flag] = SolveLin(obj,A,b,time)
    if(obj.requestPrecComp)
       % Keep in memory the number of iter it did with the correct matrix
       obj.params.firstSolveTAfterPrecComp = Tend;
-      obj.cumTSolveAfterPrec = Tend;
+      obj.cumTSolveAfterPrec = 0;
       obj.requestPrecComp = false;
+      obj.Delta_T(obj.nSolve) = 0;
    else
       % Choose if to recompute the preconditioner
       obj.cumTSolveAfterPrec = obj.cumTSolveAfterPrec + Tend;
-      Delta_T = obj.cumTSolveAfterPrec - obj.params.nSolveSinceLastPrecComp*obj.params.firstSolveTAfterPrecComp;
+      obj.Delta_T(obj.nSolve) = obj.cumTSolveAfterPrec - obj.params.nSolveSinceLastPrecComp*obj.params.firstSolveTAfterPrecComp;
 
       tSetup = obj.precCompLin(end-obj.params.nSolveSinceLastPrecComp);
-      if Delta_T > obj.alpha*tSetup || obj.alpha < 0.
+      if obj.Delta_T(obj.nSolve) > obj.alpha*tSetup || obj.alpha < 0.
          obj.requestPrecComp = true;
       end
    end
@@ -359,7 +371,7 @@ function [A] = fixPattern(A)
 end
 
 
-function A = Ruiz(obj,A,b)
+function [A,b] = Ruiz(obj,A,b)
    if obj.nIterRuiz > 0
       % Compute and apply Ritz scaling on A
       [A,obj.Prec.D] = ruiz_block_symmetric(A,obj.nIterRuiz,obj.tolRuiz,obj.DEBUGflag);

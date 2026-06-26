@@ -29,7 +29,6 @@ This file requires the definition of four main fields:
   - <Boundary>: Defines the boundary conditions of the simulation.
   - <SedimentMap>: Defines the amount of sediment deposited on the
     top cells of the domain over the entire simulation time.
-  - <Output>: Defines which output data should be stored.
 
 The <Domain> field is composed of three blocks:
 
@@ -63,15 +62,15 @@ The <Domain> field is composed of three blocks:
       -> all:
          All possible cells defined in Grid are active.
 
-      -> surface:
+      -> surface: (In Construction)
          The initial domain consists of cells intersecting a defined
          surface.
 
-      -> untilSurface:
+      -> untilSurface: (In Construction)
          The initial domain consists of all cells below a defined
          surface.
 
-      -> doubleSurface:
+      -> doubleSurface: (In Construction)
          The initial domain consists of the cells intersecting a
          defined surface and, if possible, one cell above it.
 
@@ -135,22 +134,6 @@ Where:
   - variable: system variable to which the condition applies,
   - value: prescribed boundary value.
 
-The <SedimentMap> field defines the spatial and temporal distribution
-of sediment deposition on the top of the domain.
-
-      <BC surface = "XMin"
-          type = "Neumann"
-          value = "0.,0.,0." />
-      <BC surface = "XMax"
-          type = "Neumann"
-          value = "0.,0.,0." />
-      <BC surface = "YMin"
-          type = "Neumann"
-          value = "0.,0.,0." />
-      <BC surface = "YMax"
-          type = "Neumann"
-          value = "0.,0.,0." />
-      <BC surface = "ZMin"
-          type = "Neumann"
-          value = "0.,0.,0." />
+The <SedimentMap> field point to the file that defines the spatial and
+temporal distribution of sediment deposition on the top of the domain
 -->

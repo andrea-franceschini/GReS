@@ -186,6 +186,7 @@ classdef Poromechanics < PhysicsSolver
       cells = obj.grid.cells;
       state = getState(obj);
       state.stress = zeros(nGP,6);
+      
       state.status = zeros(nGP,6);
       state.strain = zeros(nGP,6);
       state.displacements = zeros(obj.grid.nDim*obj.grid.nNodes,1);

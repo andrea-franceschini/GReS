@@ -53,7 +53,7 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 2e4
+      matlabMaxSize = 2e5
       nsyTol = 100*eps
       fullInfo = true
 
@@ -94,6 +94,7 @@ classdef linearSolver < handle
       precCompLin = []
       newtonLin = []
       timeLin = []
+      Delta_T = []
 
       % Ruiz params
       nIterRuiz = 0
@@ -104,6 +105,7 @@ classdef linearSolver < handle
 
       precL
       sizeDiff = 0
+
    end
 
    methods (Access = public)
@@ -154,7 +156,7 @@ classdef linearSolver < handle
                obj.params.tol = generalsolver.simparams.linSolverParams.tol;
             else
                % Use default tolerance
-               obj.params.tol = 1e-6;
+               obj.params.tol = generalsolver.simparams.relTol;
             end
 
             % Get default values
@@ -204,12 +206,12 @@ classdef linearSolver < handle
 
          if obj.fullInfo && ~strcmpi(string,'short')
             fprintf('\nUsed %d threads during mex\n',obj.Prec.maxThreads);
-            fprintf('\n-----------------------------------------------------------------------------\n')
-            fprintf('| %11s | %6s | %4s | %13s | %7s | %13s |\n','Phys Time','Sol N.','Iter','Solve Time','Symm','PrecTime');
-            fprintf('-----------------------------------------------------------------------------\n')
-            timeOld = obj.timeLin(1);
+            fprintf('\n----------------------------------------------------------------------\n')
+            fprintf('| %8s | %6s | %4s | %8s | %7s | %8s | %8s |\n','PhysTime','Sol N.','Iter','SolTime','Symm','PrecTime','DeltaT');
+            fprintf('----------------------------------------------------------------------\n')
+            
             for i = 1:size(obj.solveTLin,2)
-               fprintf('| %.5e | %6d | %4d | %.7e | %.1e | %.7e |\n',obj.timeLin(i),i,obj.iterLin(i),obj.solveTLin(i),obj.symFlagLin(i),obj.precCompLin(i));
+               fprintf('| %.2e | %6d | %4d | %.2e | %.1e | %.2e | %.2e |\n',obj.timeLin(i),i,obj.iterLin(i),obj.solveTLin(i),obj.symFlagLin(i),obj.precCompLin(i),obj.Delta_T(i));
             end
          end
       end

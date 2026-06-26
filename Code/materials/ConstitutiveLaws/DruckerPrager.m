@@ -1,5 +1,10 @@
 classdef DruckerPrager < handle
-  % ELASTIC ISOTROPIC material class
+  % DRUCKERPRAGER Drucker-Prager elastoplastic material.
+  %
+  % The yield function is written as
+  %
+  %   F = q + alpha*p - cohesion <= 0,
+  %
 
   properties (Access = public)
     % Elastic modulus
@@ -14,169 +19,213 @@ classdef DruckerPrager < handle
     psi
     % Friction angle
     phi
-    % Cohestion
+    % Input Mohr-Coulomb cohesion c
     co
-    % Hardening parameter
+    % Hardening parameter acting directly on the GEOS cohesion/intercept
     h
-    % Initial hardening variable
-    k
-    % Drucker Prager coefficients
-    alpha
-    beta  
-    epsilon
-    varepsilon
-    % flag for tabular input prameters
-    isTabular
+    % Drucker-Prager coefficients
+    alpha       % friction coefficient in F = q + alpha*p - cohesion
+    beta        % dilation coefficient in G = q + beta*p
+    a     % conversion from Mohr-Coulomb cohesion c to DP intercept
   end
 
   methods (Access = public)
-     % Class constructor method
-     function obj = DruckerPrager(varargin)
-        % Calling the function to set the object properties
-           obj.readMaterialParameters(varargin{:});
-     end
+    function obj = DruckerPrager(varargin)
+      obj.readMaterialParameters(varargin{:});
+    end
 
-    function [status] = initializeStatus(obj, sigma)
+    function cohesion = initializeStatus(obj, sigma)
       nptGauss = size(sigma,1);
-      status = zeros(nptGauss,2);
+      cohesion = zeros(nptGauss,6);
+      cohesion(:,1) = obj.a * obj.co;
     end
-    %
-    % Material stiffness matrix calculation using the object properties
-    function [DAll, sigmaOut, status] = getStiffnessMatrix(obj, sigmaIn, epsilon, dt, status, cellID)
-      nptGauss = size(sigmaIn,1);
-      D = getElasticTensor(obj,cellID);
-      DAll = repmat(D,[1, 1, nptGauss]);
-      % trial elastic stress
-      sigmaOut0 = sigmaIn + epsilon*D;
-      % Update stress and constitutive tensore with Return mapping algorithm
-      [sigmaOut, DAll] = returnMapping(obj, sigmaOut0, nptGauss, DAll);
-    end
-    %
 
-    % Method that returns the M factor
+    function [DAll, sigmaOut, cohesion] = getStiffnessMatrix(obj, sigmaIn, epsilonIn, dt, convCohesion, cellID) %#ok<INUSD>
+      
+      nptGauss = size(sigmaIn,1);
+
+      % if isempty(cohesion) || isscalar(cohesion)
+      %   cohesion = obj.initializeStatus(sigmaIn);
+      % end
+
+      D = obj.getElasticTensor();
+      DAll = repmat(D,[1, 1, nptGauss]);
+
+      % Incoming epsilonIn is an engineering strain increment row matrix.
+      sigmaTrial = sigmaIn + epsilonIn * D;
+      [sigmaOut, DAll, cohesion] = obj.returnMapping(sigmaTrial, nptGauss, DAll, convCohesion);
+    end
+
     function m = getMFactor(obj)
       m = obj.M;
     end
 
-    % Get vertical compressibility
     function cM = getRockCompressibility(obj)
       cM = obj.cM;
     end
-    function [sigma, D] = returnMapping(obj, sigmaIn, nptGauss, D)
-      sigma = sigmaIn;
+
+
+
+
+    function [sigma, D, oldCohesion] = returnMapping(obj, sigmaTrial, nptGauss, D, oldCohesion)
+
+      sigma = sigmaTrial;
+
+      I = [1;1;1;0;0;0];
+      Pdev = diag([1, 1, 1, 0.5, 0.5, 0.5]) - (1/3) * (I * I');
+
+      G = obj.E / (2 * (1 + obj.nu));
+      K = obj.E / (3 * (1 - 2 * obj.nu));
+
+      tolYield = 1e-9;
+      tolQ     = 1e-12;
+      tolAlpha = 1e-14;
+
       for i = 1:nptGauss
-        q = sqrt(0.5*(((sigmaIn(i, 1)-sigmaIn(i, 2))^2+(sigmaIn(i, 1)- ...
-            sigmaIn(i, 3))^2+(sigmaIn(i, 2)-sigmaIn(i, 3))^2))+ ...
-            3*(sigmaIn(i, 4)^2+sigmaIn(i, 5)^2+sigmaIn(i, 6)^2));
-        qtr = q;
-        p = sum(sigmaIn(i, 1:3))/3;
-        I = [1;1;1;0;0;0];
-        n = ((1.5/q)*(sigmaIn(i, 1:6)'- p*I));
-        f = q/sqrt(3) + obj.alpha*p-obj.epsilon*(obj.co+obj.k);
-        G = obj.E/(2*(1+obj.nu));
-        K = obj.E/(3*(1-2*obj.nu));
-        lambdac = max(0, f/(G+obj.alpha*obj.beta*K+(obj.epsilon^2)*obj.h));
-        if f > 0
-           p = p-lambdac*K*obj.beta;
-           q = q-lambdac*sqrt(3)*G;
-           obj.varepsilon = obj.varepsilon+lambdac*obj.epsilon;
-           if q < 0 %apex return
-              sigma(i, 1:6) = (p*I)';
-              D(:,:,i) = K*((1-(obj.alpha*obj.beta*K)/(obj.alpha*obj.beta*K+obj.epsilon^2*obj.h)))*(I*I');
-           else
-              sigma(i, 1:6) = (p*I + 2/3*q*n)';
-              var1 = lambdac*(2*sqrt(3)*G^2)/(qtr);
-              var2 = diag([1 1 1 0.5 0.5 0.5])-(1/3)*(I*I')-(2/3)*(n*n');
-              var3 = (2*G)/(sqrt(3))*n+K*obj.beta*I;
-              var4 = (2*G)/(sqrt(3))*n+obj.alpha*K*I;
-              var5 = G+obj.alpha*obj.beta*K+obj.epsilon^2*obj.h;
-              D(:,:,i) = D(:,:,i) - var1*var2-var3*((var4)/(var5))';
-           end
+
+        pTrial = sum(sigmaTrial(i,1:3)) / 3;
+        sTrial = sigmaTrial(i,1:6)' - pTrial * I;
+
+        qTrial = sqrt(0.5 * ((sigmaTrial(i,1) - sigmaTrial(i,2))^2 + ...
+          (sigmaTrial(i,1) - sigmaTrial(i,3))^2 + ...
+          (sigmaTrial(i,2) - sigmaTrial(i,3))^2) + ...
+          3.0 * (sigmaTrial(i,4)^2 + sigmaTrial(i,5)^2 + sigmaTrial(i,6)^2));
+
+        cOld = oldCohesion(i,1);
+
+        yield = qTrial + obj.alpha * pTrial - cOld;
+
+        if yield < tolYield
+          continue;
+        end
+
+        % Standard GEOS-style cone return.
+        denom = 3.0 * G + obj.alpha * obj.beta * K + obj.h;
+        lambdaCone = yield / denom;
+
+        cCone = cOld + lambdaCone * obj.h;
+        if cCone < 0
+          cCone = 0;
+        end
+
+        pCone = pTrial - lambdaCone * K * obj.beta;
+        qCone = qTrial - lambdaCone * 3.0 * G;
+
+        % The regular cone return is valid only if q remains positive.
+        useApex = (qTrial <= tolQ) || (qCone <= tolQ);
+
+        if ~useApex
+
+          % smooth return
+
+          sigma(i,1:6) = (pCone * I + (qCone / qTrial) * sTrial)';
+
+          theta = obj.alpha * K * I + (3.0 * G / qTrial) * sTrial;
+          ppsi  = obj.beta  * K * I + (3.0 * G / qTrial) * sTrial;
+
+          D(:,:,i) = K * (I * I') + ...
+            2.0 * G * (qCone / qTrial) * Pdev + ...
+            (3.0 * G / qTrial^2) * (1.0 - qCone / qTrial) * (sTrial * sTrial') - ...
+            (1.0 / denom) * (ppsi * theta');
+
+          oldCohesion(i,1) = cCone;
+
         else
-           continue
+
+
+          % Apex return
+
+          if abs(obj.alpha) < tolAlpha
+            % Degenerate case: alpha = 0 gives a von-Mises-like cylinder,
+            % so there is no Drucker-Prager apex. Fall back to q = 0 only.
+            pApex = pTrial;
+            cNew  = cOld;
+            D(:,:,i) = K * (I * I');
+
+          else
+
+            denomApex = obj.alpha * obj.beta * K + obj.h;
+
+            if abs(denomApex) > tolAlpha
+              lambdaApex = (obj.alpha * pTrial - cOld) / denomApex;
+
+              if lambdaApex < 0
+                lambdaApex = 0;
+              end
+
+              cNew = cOld + lambdaApex * obj.h;
+
+              if cNew < 0
+                cNew = 0;
+              end
+
+              pApex = cNew / obj.alpha;
+
+              % Consistent tangent for the active apex branch.
+              %
+              D(:,:,i) = (K * obj.h / denomApex) * (I * I');
+
+            else
+              % Perfectly plastic, no volumetric plastic flow / no hardening.
+              % The apex equation is singular. Use a robust projection to the
+              % current apex and a zero tangent.
+              cNew = cOld;
+              pApex = cNew / obj.alpha;
+
+              D(:,:,i) = zeros(6,6);
+            end
+          end
+
+          % Deviatoric stress is zero at the apex.
+          sigma(i,1:6) = (pApex * I)';
+
+          oldCohesion(i,1) = cNew;
+
         end
       end
     end
 
 
-    function D = getElasticTensor(obj,cID)
-       D = zeros(6);
-       if obj.isTabular
-          pois = obj.nu(cID);
-          D([1 8 15]) = 1-pois;
-          D([2 3 7 9 13 14]) = pois;
-          D([22 29 36]) = (1-2*pois)/2;
-          D = obj.E(cID)/((1+pois)*(1-2*pois))*D;
-       else
-          D([1 8 15]) = 1-obj.nu;
-          D([2 3 7 9 13 14]) = obj.nu;
-          D([22 29 36]) = (1-2*obj.nu)/2;
-          D = obj.E/((1+obj.nu)*(1-2*obj.nu))*D;
-       end
+
+    function D = getElasticTensor(obj)
+      D = zeros(6);
+      D([1 8 15]) = 1 - obj.nu;
+      D([2 3 7 9 13 14]) = obj.nu;
+      D([22 29 36]) = (1 - 2*obj.nu)/2;
+      D = obj.E / ((1 + obj.nu) * (1 - 2*obj.nu)) * D;
     end
   end
 
   methods (Access = private)
-    % Assigning material parameters (check also the Materials class)
-    % to object properties
     function readMaterialParameters(obj, varargin)
 
-      default = struct('youngModulus',[],...
-                       'poissonRatio',[],...
-                       'dilatancy',[],...
-                       'cohesion',[],...
-                       'hardeningParameter',[],...
-                       'hardeningVariable',0.0);
+      default = struct('youngModulus',[], ...
+                       'poissonRatio',[], ...
+                       'frictionAngle',[], ...
+                       'dilatancy',[], ...
+                       'cohesion',[], ...
+                       'hardeningParameter',0.0);
 
       params = readInput(default,varargin{:});
 
       obj.E = params.youngModulus;
       obj.nu = params.poissonRatio;
-      obj.psi = params.dilatancy;
       obj.phi = params.frictionAngle;
+      obj.psi = params.dilatancy;
       obj.co = params.cohesion;
       obj.h = params.hardeningParameter;
-      obj.varepsilon = params.hardeningVariable;
 
-      % Compute the M factor
-      obj.M = obj.nu/(1-obj.nu);
-      % Compute vertical compressibility
-      obj.cM = (1+obj.nu)*(1-2*obj.nu)/(obj.E*(1-obj.nu));
+      obj.M = obj.nu / (1 - obj.nu);
+      obj.cM = (1 + obj.nu) * (1 - 2 * obj.nu) / (obj.E * (1 - obj.nu));
 
-  
-      obj.alpha = (3*tan(deg2rad(obj.phi)))/(sqrt(9+12*tan(deg2rad(obj.phi))^2)); 
-      obj.beta = (3*tan(deg2rad(obj.psi)))/(sqrt(9+12*tan(deg2rad(obj.psi))^2));
-      obj.epsilon = 3/(sqrt(9+12*tan(deg2rad(obj.phi))^2));
-      obj.k = obj.h*obj.varepsilon;
+      sinPhi = sin(deg2rad(obj.phi));
+      cosPhi = cos(deg2rad(obj.phi));
+      sinPsi = sin(deg2rad(obj.psi));
 
-    end
+      obj.alpha   = 6.0 * sinPhi / (3.0 - sinPhi);
+      obj.beta    = 6.0 * sinPsi / (3.0 - sinPsi);
+      obj.a = 6.0 * cosPhi / (3.0 - sinPhi);
 
-
-
-    function readTabMaterialParameters(obj,fID,fileName,mesh)
-       % read parameters in tabular format 
-       youngModFile = readToken(fID,fileName);
-       poissonRatioFile = readToken(fID,fileName);
-       obj.E = setTabularParams(youngModFile,mesh);
-       obj.nu = setTabularParams(poissonRatioFile,mesh);
-       % Compute the M factor
-       obj.M = obj.nu./(1-obj.nu);
-       % Compute vertical compressibility
-       obj.cM = (1+obj.nu).*(1-2*obj.nu)./(obj.E.*(1-obj.nu));
-       psiFile = readToken(fID,fileName);
-       phiFile = readToken(fID,fileName);
-       cohesionFile = readToken(fID,fileName);
-       hardParamFile = readToken(fID,fileName);
-       hardVarFile = readToken(fID,fileName);
-       obj.psi = setTabularParams(psiFile,mesh);
-       obj.phi = setTabularParams(phiFile,mesh);
-       obj.co = setTabularParams(cohesionFile,mesh);
-       obj.h = setTabularParams(hardParamFile,mesh);
-       obj.varepsilon = setTabularParams(hardVarFile,mesh);
-       obj.alpha = (3*tan(deg2rad(obj.phi)))./(sqrt(9+12*tan(deg2rad(obj.phi)).^2));
-       obj.beta = (3*tan(deg2rad(obj.psi)))./(sqrt(9+12*tan(deg2rad(obj.psi)).^2));
-       obj.epsilon = 3./(sqrt(9+12*tan(deg2rad(obj.phi)).^2));
-       obj.k = obj.h.*obj.varepsilon;
     end
   end
 end

@@ -12,13 +12,10 @@ classdef preconditioner < handle
 
       % Discretizer
       domain
-
+      
       % Number of domains/interfaces
       nDom
       nInt
-
-      % Flag to treat multiple domains as multiple domains
-      multidomFlag = false
 
       % Flag to know if the problem has multiphysics
       multiPhysFlag = false
@@ -33,10 +30,14 @@ classdef preconditioner < handle
    properties (Access = public)
       % Ruiz Diagonal scaling
       D = {}
+
+      % Symmetry of the matrix on which the preconditioner has been
+      % computed
+      PrecSym = true
    end
 
    properties (GetAccess = public,SetAccess = private)
-
+      
       % Physics
       phys
 
@@ -114,20 +115,6 @@ classdef preconditioner < handle
                end
                return
             end
-         else
-            % Supported MultiPhysics
-            if(contains(physname,["pressure" "displacements"])) %#ok<UNRCH>
-               if domainin.dofm.getVariableNames(1) == 'pressure' %#ok<BDSCA>
-                  phys = 0;
-               else
-                  phys = 1;
-               end
-            else
-               if debugflag
-                  warning('Non supported Physics for linsolver, falling back to matlab solver');
-               end
-               return
-            end
          end
 
          % Now the preconditioner can actually be built, the checks have been passed
@@ -196,16 +183,16 @@ classdef preconditioner < handle
       [params] = getUserInput(obj,params,xml);
 
       % Function to compute the preconditioner for the single block (single physics)
-      computeSinglePhPrec(obj,A,symMat);
+      computeSinglePhPrec(obj,A,sym,block);
 
       % Function to compute the Reverse Agumented preconditioner for the lagrange multiplier case (single physics multi domain)
-      computeRACP(obj,A,symMat)
+      computeRACP(obj,A,sym)
 
       % Function to compute the MCP preconditioner for the multiphysics case
       computeMCP(obj,A)
 
       % Function to treat the Dirichlet boundary conditions
-      A = treatDirBC(obj,A,symMat)
+      A = treatDirBC(obj,A,sym)
    end
 
 end

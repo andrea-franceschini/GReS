@@ -21,7 +21,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       obj.computeTransmissibilities();
       %get cells with active flow model
-      flowCells = obj.domain.dofm.getActiveEntities(obj.fieldId);
+      flowCells = obj.domain.dofm.getActiveEntities('pressure');
       % Find internal faces (i.e. shared by two active flow cells)
       obj.isIntFaces = all(ismember(obj.grid.faces.neighbors, flowCells), 2);
 
@@ -166,13 +166,13 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         assert(isEssential(bc,bcId),"Boundary condition of type 'seepage' must be essential")
       end
 
-      if bcFld == entityField.surface
+      if bcFld == entityField.surface && isEssential(bc,bcId)
 
         surfId = bc.getSourceEntities(bcId);
         faceId = surfaces.faceId(surfId);
         srcVal = bc.getSourceVals(bcId,t);
         ents = sum(faces.neighbors(faceId,:),2);
-        p = getState(obj,obj.getField());
+        p = getState(obj,"pressure");
 
         %
         switch type

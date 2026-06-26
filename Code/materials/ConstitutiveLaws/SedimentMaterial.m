@@ -6,6 +6,9 @@ classdef SedimentMaterial < handle
         compIdx            % Compressibility Index (Cc)
         rcompIdx           % Re-Compression Index (Cr)
         voidRate           % Void Rate (e0)
+        voidLowerLim       % Void Rate lower limit
+        voidUpperLim       % Void Rate upper limit        
+        preStress          % Pre Consolidate Stress(Spre)
         inicStress         % Initial stress
         KVec               % Vector of hydraulic conductivity
         gamma;             % sediment specific weight
@@ -30,6 +33,18 @@ classdef SedimentMaterial < handle
             out = obj.voidRate;
         end
 
+        function out = getVoidUpperLim(obj)
+            out = obj.voidUpperLim;
+        end
+
+        function out = getVoidLowerLim(obj)
+            out = obj.voidLowerLim;
+        end
+
+        function out = getPreConsolidadeStress(obj)
+            out = obj.preStress;
+        end
+
         function out = getInitialStress(obj)
             out = obj.inicStress;
         end
@@ -52,12 +67,25 @@ classdef SedimentMaterial < handle
         default = struct('conductivity',[],...
                          'specificWeight',[],...
                          'voidRate',[],...
+                         'voidLowerLimit',NaN,...
+                         'voidUpperLimit',NaN,...
+                         'preStress',0.,...
                          "initStress",1.,...
                          "compressibilityIndex",1.,...
                          "reCompressibilityIndex",1.);
         params = readInput(default,varargin{:});
 
         obj.voidRate = params.voidRate;
+        if isnan(params.voidLowerLimit)
+          obj.voidLowerLim = 1.1*params.voidRate;
+        else
+          obj.voidLowerLim = params.voidLowerLimit;
+        end
+        if isnan(params.voidUpperLimit)
+          obj.voidUpperLim = 0.9*params.voidRate;
+        else
+          obj.voidUpperLim = params.voidUpperLimit;
+        end
         obj.gamma = params.specificWeight;
 
         nK = length(params.conductivity);
@@ -71,6 +99,7 @@ classdef SedimentMaterial < handle
         end        
 
         obj.inicStress = params.initStress;
+        obj.preStress = params.preStress;
         obj.compIdx = params.compressibilityIndex;
         obj.rcompIdx = params.reCompressibilityIndex;
       end
@@ -85,16 +114,27 @@ classdef SedimentMaterial < handle
           flag = and(flag,ndofs==length(Cc));
           flag = and(flag,ndofs==length(Cr));
           if ~flag, return; end
+          sCurr = abs(sCurr);
+          sPrev = abs(sPrev);
+          sCons = abs(sCons);
           % map = sCurr > 0; % Select only the positive stress.
-          map = sign(sCurr) == sign(sPrev); % Select only the positive stress.
-          map1 = and(sCurr <= sCons,map);
-          map2 = and(sPrev >= sCons,map);
+          map1 = sCurr < sCons;
+          map2 = sPrev >= sCons;
           map3 = and((~map1),(~map2));
           de = zeros(ndofs,1);
           de(map1) = -Cr(map1).*log10(sCurr(map1)./sPrev(map1));
           de(map2) = -Cc(map2).*log10(sCurr(map2)./sPrev(map2));          
           de(map3) = -Cr(map3).*log10(sCons(map3)./sPrev(map3)) ...
             - Cc(map3).*log(sCurr(map3)./sCons(map3));
+
+          % % % % map1 = and(sCurr <= sCons,map);
+          % % % % map2 = and(sPrev >= sCons,map);
+          % % % % map3 = and((~map1),(~map2));
+          % % % % de = zeros(ndofs,1);
+          % % % % de(map1) = -Cr(map1).*log10(sCurr(map1)./sPrev(map1));
+          % % % % de(map2) = -Cc(map2).*log10(sCurr(map2)./sPrev(map2));
+          % % % % de(map3) = -Cr(map3).*log10(sCons(map3)./sPrev(map3)) ...
+          % % % %   - Cc(map3).*log(sCurr(map3)./sCons(map3));
       end
 
       function de = getDevVoidRatio(sCurr,sPrev,sCons,Cc,Cr)
@@ -112,9 +152,14 @@ classdef SedimentMaterial < handle
           map3 = and((~map1),(~map2));
           de = zeros(ndofs,1);
           % 1/log(10) = 0.434294481903252
-          de(map1) = -0.434294481903252*Cr(map1)./sCurr(map1);
-          de(map2) = -0.434294481903252*Cc(map2)./sCurr(map2);
-          de(map3) = -0.434294481903252*Cc(map3)./sCurr(map3);
+          % de(map1) = -0.434294481903252*Cr(map1)./sCurr(map1);
+          % de(map2) = -0.434294481903252*Cc(map2)./sCurr(map2);
+          % de(map3) = -0.434294481903252*Cc(map3)./sCurr(map3);
+
+
+          de(map1) = -Cr(map1)./(log(10)*sCurr(map1));
+          de(map2) = -Cc(map2)./(log(10)*sCurr(map2));
+          de(map3) = -Cc(map3)./(log(10)*sCurr(map3));
       end
 
       function void = getVoidRatioFromRef(stress,stress_Ref,void_Ref,Cc)

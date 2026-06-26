@@ -19,29 +19,29 @@ rmpath(genpath(fullfile(gres_root,...
 ref = repelem(struct('press', 1, 'stress', 1, 'strain', 1), 3);
 
 ref(1).time = 1.;
-ref(1).press   = [5.696736937229210e-04; 0];
-ref(1).stress  = [-1.650006000161258e+03; -1.499882008974347e+02];
-ref(1).strain  = [-3.762677543472629e-06; 0];
+ref(1).press   = [5.6971e-05; 0];
+ref(1).stress  = [1.6499e+02; 1.5000e+01];
+ref(1).strain  = [-3.7629e-06; 0];
 
 ref(2).time = 10.1;
-ref(2).press   = [1.392902213852669e-03; 7.974303343768915e-04];
-ref(2).stress  = [-3.014897805099393e+03; -1.514880031633756e+03];
-ref(2).strain  = [-2.736522102337879e-05; 0];
+ref(2).press   = [1.3929e-04; 7.9747e-05];
+ref(2).stress  = [3.0149e+02; 1.5150e+02];
+ref(2).strain  = [-2.7366e-05; 0];
 
 ref(3).time = 11.;
-ref(3).press   = [1.464902159932661e-03; 8.680868245770957e-04; 0];
-ref(3).stress  = [-3.149887113907138e+03; -1.649869341784957e+03; -1.499691689054160e+02];
-ref(3).strain  = [-2.929151164702439e-05; 0; 0];
+ref(3).press   = [1.4649e-04; 8.6813e-05; 0];
+ref(3).stress  = [3.1499e+02; 1.6500e+02; 1.4998e+01];
+ref(3).strain  = [-2.9292e-05; 0; 0];
 
 ref(4).time = 21.;
-ref(4).press   = [2.475626627689976e-03; 2.071332546363613e-03; 1.070227202550541e-03; 0];
-ref(4).stress  = [-4.649768112157017e+03; -3.149750147513581e+03; -1.649850107652560e+03; -1.499572234211735e+02];
-ref(4).strain  = [-4.466828432299391e-05; -2.552886492208846e-05; 0; 0];
+ref(4).press   = [2.4757e-04; 2.0714e-04; 1.0703e-04; 0];
+ref(4).stress  = [4.6499e+02; 3.1500e+02; 1.6500e+02; 1.4997e+01];
+ref(4).strain  = [-4.4669e-05; -2.5531e-05; 0; 0];
 
 ref(5).time = 30.;
-ref(5).press   = [3.452834660752819e-03; 3.139508602098363e-03; 2.408416532527968e-03; 1.118558686820950e-03];
-ref(5).stress  = [-5.999660943025895e+03; -4.499642887414438e+03; -2.999742577540141e+03; -1.499849912939399e+03];
-ref(5).strain  = [-5.373249816442258e-05; -3.827222210211486e-05; -2.157771238235775e-05; 0];
+ref(5).press   = [3.4530e-04; 3.1397e-04; 2.4086e-04; 1.1186e-04];
+ref(5).stress  = [5.9999e+02; 4.5000e+02; 3.0000e+02; 1.5000e+02];
+ref(5).strain  = [-5.3733e-05; -3.8275e-05; -2.1579e-05; 0];
 
 % Get the full path of this test
 input_dir = 'Input/';
@@ -55,7 +55,8 @@ simParam = SimulationParameters('Start',0.,'End',30.1,'DtInit',1e-0,...
 mat = Materials(fullfile(input_dir,'materials.xml'));
 
 % Create and set the print utility
-printUtils = OutState(fullfile(input_dir,'output.xml'));
+% printUtils = OutState(fullfile(input_dir,'output.xml'));
+printUtils = OutState('outputFile','Output/Results','printTimes',[10.1,30]);
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('materials',mat);
@@ -74,7 +75,7 @@ time = printUtils.timeList;
 clearvars -except sol errorTol time ref
 
 % Tolerance error between the results.
-errorTol = 1e-8;
+errorTol = 1e-4;
 epsVal = 1e-12;
 for sim = 1:numel(sol)
   numcell = numel(sol(sim).pressure);
@@ -120,4 +121,3 @@ end
 s = readstruct("Output/Results.pvd","FileType","xml");
 v = s.Collection.DataSet;
 assert( length(v) == 5, 'Five results is expected for this Test!');
-

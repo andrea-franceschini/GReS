@@ -45,7 +45,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
       dofm = obj.domain.dofm;
 
-      dofm.registerVariable(obj.getField(),fldLocation,1,params.targetRegions);
+      dofm.registerVariable("pressure",fldLocation,1,params.targetRegions);
       n = getNumberOfEntities(fldLocation,obj.grid);
       obj.fieldId = dofm.getVariableId(obj.getField());
 
