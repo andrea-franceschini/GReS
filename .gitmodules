@@ -1,3 +1,6 @@
 [submodule "ThirdPartyLibs/MRST"]
 	path = ThirdPartyLibs/MRST
 	url = https://github.com/SINTEF-AppliedCompSci/MRST.git
+[submodule "ThirdPartyLibs/Chronos_Lab"]
+	path = ThirdPartyLibs/Chronos_Lab
+	url = http://gitlab.m3eweb.it/janna/Chronos_Lab.git
