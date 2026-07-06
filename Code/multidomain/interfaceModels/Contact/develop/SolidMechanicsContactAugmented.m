@@ -67,7 +67,9 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
     function updateState(obj,du)
 
-      % traction update
+      % Apply the Newton update first. For GNM-RM this gives the trial
+      % multiplier lambda_trial. The displacement unknowns have already been
+      % updated by the coupled domain solvers at this point.
       actMult = getMultiplierDoF(obj);
 
       state = getState(obj);
@@ -78,10 +80,12 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
       setState(obj,state);
 
-      %applyContactReturnMap(obj);
-
-      % update gap
+      % Compute the gap corresponding to the trial displacement state before
+      % applying the return map. This avoids using stale gap information.
       computeGap(obj);
+
+      % GNM-RM stabilization step: project only the contact multiplier.
+      applyContactReturnMap(obj);
 
       if gresLog().getVerbosity >= 2
         nStick = sum(obj.activeSet.curr == ContactMode.stick);
@@ -136,8 +140,16 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
      function applyContactReturnMap(obj)
       % Project the trial contact multiplier onto the admissible normal cone
-      % and Coulomb disk. This implements the return-map stage of the
-      % generalized Newton method with return map.
+      % and Coulomb disk. This is the explicit return-map step used in
+      % GNM-RM after one generalized Newton update.
+      %
+      % Important implementation detail:
+      % - this function projects only the multiplier;
+      % - it does not update obj.activeSet.curr;
+      % - it does not use a geometric gap/opening test.
+      %
+      % The active set used for the generalized derivative is recomputed in
+      % computeContactMatricesAndRhs, from the complementarity functions.
       %
       % Sign convention: normal compression is t_N <= 0. The admissible
       % normal set is therefore t_N <= 0. The tangential admissible set is
@@ -145,43 +157,32 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
       state = getState(obj);
       stateOld = getStateOld(obj);
-      surfSlave = obj.grids(MortarSide.slave).surfaces;
+
       tanPhi = tan(deg2rad(obj.phi));
-      %tolTau = obj.activeSet.tol.tangentialViolation;
+
+      tOld = state.traction;
 
       for is = 1:numel(obj.activeSet.curr)
 
         id = DoFManager.dofExpand(is,3);
         tTrial = state.traction(id);
 
-        % Normal return map: t_N = min(t_N^trial,0).
+        % Normal return map:
+        %   t_N = min(t_N^trial,0)
+        % This enforces the admissible normal cone for the multiplier.
         tN = min(tTrial(1),0.0);
 
-        % If the point is geometrically open and the projected normal
-        % traction is zero, release also the tangential traction. This avoids
-        % carrying frictional shear on an open interface.
-        if state.normalGap(is) > obj.activeSet.tol.normalGap && abs(tN) <= eps
-          state.traction(id) = 0;
-          obj.activeSet.curr(is) = ContactMode.open;
-          continue
-        end
-
-        % Tangential return map onto the Coulomb disk.
+        % Tangential return map onto the Coulomb disk associated with the
+        % projected normal traction.
         tauLim = max(obj.cohesion - tanPhi*tN,0.0);
+
         tTTrial = tTrial(2:3);
         tTNorm = norm(tTTrial);
 
-        if tTNorm <= tauLim
-          tT = tTTrial;
-          obj.activeSet.curr(is) = ContactMode.stick;
+        if tTNorm > tauLim && tTNorm > 0.0
+          tT = tauLim*(tTTrial/tTNorm);
         else
-          if tTNorm > 0
-            tT = tauLim*(tTTrial/tTNorm);
-            obj.activeSet.curr(is) = ContactMode.slip;
-          else
-            tT = zeros(2,1);
-            obj.activeSet.curr(is) = ContactMode.stick;
-          end
+          tT = tTTrial;
         end
 
         state.traction(id) = [tN; tT];
@@ -192,7 +193,6 @@ classdef SolidMechanicsContactAugmented < MeshTying
       setState(obj,state);
 
     end
-
 
 
     function hasConfigurationChanged = updateConfiguration(obj)
@@ -559,10 +559,10 @@ classdef SolidMechanicsContactAugmented < MeshTying
               % open branch: t_N = 0 and t_T = 0
               obj.activeSet.curr(is) = ContactMode.open;
 
-              rhsT(tDof(1)) = rhsT(tDof(1)) + area*tN/cN;
+              rhsT(tDof(1)) = rhsT(tDof(1)) + area*tN;
               asbQ.localAssembly(tDof(1),tDof(1),area/cN);
 
-              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area*tT/cT;
+              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area*tT;
               asbQ.localAssembly(tDof(2:3),tDof(2:3),area/cT*eye(2));
 
               continue
@@ -579,22 +579,23 @@ classdef SolidMechanicsContactAugmented < MeshTying
             contactState = obj.activeSet.curr(is);
 
             % --- tangential complementarity ------------------------------
-            cT = min([norm(tauLim)/norm(dgtStab),1e6]);
+            % cT = min([norm(tauLim)/norm(dgtStab),1e2]);
+            cT = 1e3;
             yT = tT + cT*dgtStab;     % trial tangential traction
             yNorm = norm(yT);
             tau = yNorm;
 
             % apply hysteresis to tangential traction norm for check
-            if contactState == ContactMode.stick && tau >= tauLim
-
-              % reduce the tau if goes above limit
-              tau = tau*(1-tols.tangentialViolation);
-
-            elseif contactState ~= ContactMode.stick  && tau <=tauLim
-
-              % increase tau if falls below limit
-              tau = tau*(1+tols.tangentialViolation);
-            end
+            % if contactState == ContactMode.stick && tau >= tauLim
+            % 
+            %   % reduce the tau if goes above limit
+            %   tau = tau*(1-tols.tangentialViolation);
+            % 
+            % elseif contactState ~= ContactMode.stick  && tau <=tauLim
+            % 
+            %   % increase tau if falls below limit
+            %   tau = tau*(1+tols.tangentialViolation);
+            % end
 
 
             if tau <= tauLim
@@ -615,7 +616,7 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
               RT = tT - tauLim*nT;
 
-              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area*RT/cT;
+              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area*RT;
 
               % dR_T/dt_N = -d(tauLim)/d(tN) * n_T
               tauRaw = obj.cohesion - tanPhi*tN;
@@ -624,15 +625,15 @@ classdef SolidMechanicsContactAugmented < MeshTying
               else
                 dTauDtN = 0;
               end
-              asbQ.localAssembly(tDof(2:3),tDof(1),-area*dTauDtN*nT/cT);
+              asbQ.localAssembly(tDof(2:3),tDof(1),-area*dTauDtN*nT);
 
 
               % dR_T/dt_T = I - tau_max d(n_T)/d(y_T)
               dRdtT = eye(2) - tauLim*DnDy;
-              asbQ.localAssembly(tDof(2:3),tDof(2:3),area*dRdtT/cT);
+              asbQ.localAssembly(tDof(2:3),tDof(2:3),area*dRdtT);
 
               % dR_T/ddg_T = -tau_max d(n_T)/d(y_T) c_T
-              dRdgt = -tauLim*DnDy;
+              dRdgt = -tauLim*cT*DnDy;
               asbMt.localAssembly(tDof(2:3),umDof,dRdgt*BgT_m);
               asbDt.localAssembly(tDof(2:3),usDof,-dRdgt*BgT_s);
 
@@ -893,5 +894,4 @@ classdef SolidMechanicsContactAugmented < MeshTying
   end
 
 end
-
 

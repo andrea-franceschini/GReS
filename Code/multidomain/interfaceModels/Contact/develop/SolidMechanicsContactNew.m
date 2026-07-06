@@ -589,15 +589,27 @@ classdef SolidMechanicsContactNew < MeshTying
 
               oldSlip = obj.getState.tangentialSlip([2*is-1 2*is]);
 
+              if slipNorm < slidingTol
+
+                cT = 1e-3;
+
+              else
+
+                cT = 1e-1*tauLim/slipNorm;
+
+              end
+
+              cT = min(cT,1e4);
+
               
               % 
-              if slipNorm < 1e2*eps
-                cT = 0.0;
-              elseif slipNorm < slidingTol
-                cT = 1e2;
-              else
-                cT = tauLim/slipNorm;
-              end
+              % if slipNorm < 1e2*eps
+              %   cT = 0.0;
+              % elseif slipNorm < slidingTol
+              %   cT = 1e2;
+              % else
+              %   cT = tauLim/slipNorm;
+              % end
 
               asbMt.localAssembly(tDof(1),umDof,BgN_m);
               asbDt.localAssembly(tDof(1),usDof,-BgN_s);
