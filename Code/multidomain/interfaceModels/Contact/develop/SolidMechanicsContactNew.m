@@ -10,6 +10,7 @@ classdef SolidMechanicsContactNew < MeshTying
     NLIter = 0
     stickNodes     % boundary nodes where contact state should stay stick
     forceStick     % flag to enforce interface to stay stick
+    contactAugmentation
   end
 
 
@@ -30,12 +31,12 @@ classdef SolidMechanicsContactNew < MeshTying
 
       input = varargin{1};
 
-      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0,'stabilizationScale',1.0),input);
+      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0,'stabilizationScale',1.0,'augmentationParameter',1.0),input);
       params = readInput(struct('cohesion',[],'frictionAngle',[]),input.Coulomb);
 
       obj.stabilizationScale = input.stabilizationScale;
 
-
+      obj.contactAugmentation = input.augmentationParameter;
       obj.forceStick = logical(input.forceStick);
 
       obj.cohesion = params.cohesion;
@@ -589,17 +590,19 @@ classdef SolidMechanicsContactNew < MeshTying
 
               oldSlip = obj.getState.tangentialSlip([2*is-1 2*is]);
 
-              if slipNorm < slidingTol
+              % if slipNorm < slidingTol
+              % 
+              %   cT = 1e-3;
+              % 
+              % else
+              % 
+              %   cT = 1e-1*tauLim/slipNorm;
+              % 
+              % end
 
-                cT = 1e-3;
+              %cT = min(cT,1e4);
 
-              else
-
-                cT = 1e-1*tauLim/slipNorm;
-
-              end
-
-              cT = min(cT,1e4);
+              cT = obj.contactAugmentation;
 
               
               % 

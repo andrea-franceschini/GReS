@@ -67,9 +67,7 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
     function updateState(obj,du)
 
-      % Apply the Newton update first. For GNM-RM this gives the trial
-      % multiplier lambda_trial. The displacement unknowns have already been
-      % updated by the coupled domain solvers at this point.
+      % traction update
       actMult = getMultiplierDoF(obj);
 
       state = getState(obj);
@@ -80,12 +78,10 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
       setState(obj,state);
 
-      % Compute the gap corresponding to the trial displacement state before
-      % applying the return map. This avoids using stale gap information.
-      computeGap(obj);
-
-      % GNM-RM stabilization step: project only the contact multiplier.
       applyContactReturnMap(obj);
+
+      % update gap
+      computeGap(obj);
 
       if gresLog().getVerbosity >= 2
         nStick = sum(obj.activeSet.curr == ContactMode.stick);
@@ -138,61 +134,42 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
     end
 
-     function applyContactReturnMap(obj)
-      % Project the trial contact multiplier onto the admissible normal cone
-      % and Coulomb disk. This is the explicit return-map step used in
-      % GNM-RM after one generalized Newton update.
-      %
-      % Important implementation detail:
-      % - this function projects only the multiplier;
-      % - it does not update obj.activeSet.curr;
-      % - it does not use a geometric gap/opening test.
-      %
-      % The active set used for the generalized derivative is recomputed in
-      % computeContactMatricesAndRhs, from the complementarity functions.
-      %
-      % Sign convention: normal compression is t_N <= 0. The admissible
-      % normal set is therefore t_N <= 0. The tangential admissible set is
-      % ||t_T|| <= tau_max, with tau_max = cohesion - tan(phi)*t_N.
+  function applyContactReturnMap(obj)
 
-      state = getState(obj);
-      stateOld = getStateOld(obj);
+  state = getState(obj);
+  stateOld = getStateOld(obj);
+  tanPhi = tan(deg2rad(obj.phi));
 
-      tanPhi = tan(deg2rad(obj.phi));
+  for is = 1:numel(obj.activeSet.curr)
 
-      tOld = state.traction;
+    id = DoFManager.dofExpand(is,3);
+    tTrial = state.traction(id);
 
-      for is = 1:numel(obj.activeSet.curr)
+    % normal projection
+    tN = min(tTrial(1),0.0);
 
-        id = DoFManager.dofExpand(is,3);
-        tTrial = state.traction(id);
+    % Coulomb bound
+    tauLim = max(obj.cohesion - tanPhi*tN,0.0);
 
-        % Normal return map:
-        %   t_N = min(t_N^trial,0)
-        % This enforces the admissible normal cone for the multiplier.
-        tN = min(tTrial(1),0.0);
+    % tangential projection
+    tTTrial = tTrial(2:3);
+    tTNorm = norm(tTTrial);
 
-        % Tangential return map onto the Coulomb disk associated with the
-        % projected normal traction.
-        tauLim = max(obj.cohesion - tanPhi*tN,0.0);
-
-        tTTrial = tTrial(2:3);
-        tTNorm = norm(tTTrial);
-
-        if tTNorm > tauLim && tTNorm > 0.0
-          tT = tauLim*(tTTrial/tTNorm);
-        else
-          tT = tTTrial;
-        end
-
-        state.traction(id) = [tN; tT];
-
-      end
-
-      state.deltaTraction = state.traction - stateOld.traction;
-      setState(obj,state);
-
+    if tTNorm > tauLim && tTNorm > 0
+      tT = tauLim * tTTrial / tTNorm;
+    else
+      tT = tTTrial;
     end
+
+    state.traction(id) = [tN; tT];
+
+  end
+
+  state.deltaTraction = state.traction - stateOld.traction;
+  setState(obj,state);
+
+end
+
 
 
     function hasConfigurationChanged = updateConfiguration(obj)
@@ -580,22 +557,22 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
             % --- tangential complementarity ------------------------------
             % cT = min([norm(tauLim)/norm(dgtStab),1e2]);
-            cT = 1e3;
+            %cT = 1e4;
             yT = tT + cT*dgtStab;     % trial tangential traction
             yNorm = norm(yT);
             tau = yNorm;
 
             % apply hysteresis to tangential traction norm for check
-            % if contactState == ContactMode.stick && tau >= tauLim
-            % 
-            %   % reduce the tau if goes above limit
-            %   tau = tau*(1-tols.tangentialViolation);
-            % 
-            % elseif contactState ~= ContactMode.stick  && tau <=tauLim
-            % 
-            %   % increase tau if falls below limit
-            %   tau = tau*(1+tols.tangentialViolation);
-            % end
+            if contactState == ContactMode.stick && tau >= tauLim
+
+              % reduce the tau if goes above limit
+              tau = tau*(1-tols.tangentialViolation);
+
+            elseif contactState ~= ContactMode.stick  && tau <=tauLim
+
+              % increase tau if falls below limit
+              tau = tau*(1+tols.tangentialViolation);
+            end
 
 
             if tau <= tauLim
