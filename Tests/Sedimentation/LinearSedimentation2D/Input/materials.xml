@@ -56,15 +56,15 @@
          cellTags = "4">
     <Constitutive>
       <SedimentMaterial
-          voidRate = "15."
-          voidLowerLimit = "10."
-          voidUpperLimit = "20."
-          conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
+          voidRate = "1."
+          voidLowerLimit = "0.999"
+          voidUpperLimit = "1.001"
+          conductivity = "0.1e+5, 0.1e+5, 0.1e+5"
           initStress = "1e+0"
           preStress = "1e+2"
           specificWeight = "2.0e3"
-          compressibilityIndex = "4.00"
-          reCompressibilityIndex = "0.40"
+          compressibilityIndex = "0.000001"
+          reCompressibilityIndex = "0.000001"
       />
     </Constitutive>
   </Solid>
@@ -75,23 +75,3 @@
   />
   
 </Materials>
-
-<!--
-In the <Solid name = "X" cellTags = "XXX"> we specify all the properties
-associated with the rock.
-For the sedimentation simulation, the cellTag assign the material to a
-number tag. 
-The <Constitutive> block holds the parameters of the specific constitutive
-model, for this case, for the sedimentation.
-
-The sedimentation materail is define by:
- - voidRate - the experimental value for the void rate.
- - voidLowerLimit - the lower limit for the void rate for this material
- - voidUpperLimit - the upper limit for the void rate for this material
- - conductivity - the hydraulic condutivity of the material
- - initStress - the initial stress of this material
- - preStress - the initial preconsolidated stress for the material
- - specificWeight - the specific weight of this rock
- - compressibilityIndex - the compressibility index of the rock
- - reCompressibilityIndex - the recompressibility index of the rock
--->
