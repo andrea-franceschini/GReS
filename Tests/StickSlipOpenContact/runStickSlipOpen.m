@@ -16,7 +16,7 @@ X = 5; Y = 10; Z = 15;
 nx1 = 2; ny1 = 10; nz1 = 10;
 gridL = structuredMesh(nx1,ny1,nz1,[0,0.5*X],[0 Y],[0 Z]);
 
-nx2 = 2; ny2 = 12; nz2 = 12;
+nx2 = 2; ny2 = 20; nz2 = 20;
 gridR = structuredMesh(nx2,ny2,nz2,[0.5*X,X],[0 Y],[0 Z]);
 
 assert(mod(ny1,2) == 0 && mod(ny2,2)==0,"Number of elements along y axis " + ...
@@ -67,8 +67,8 @@ setState(domainR,iniStressR,"stress");
 % interfaces{1}.stateOld.iniTraction(1:3:end) = tIni;
 % interfaces{1}.stateOld.traction(1:3:end) = tIni;
 
-printUtils = OutState("outputFile","Output/StickSlipOpen","printTimes",0:16,...
-                      "matFileName","Output/StickSlipOpenHistory");
+printUtils = OutState("outputFile","Output/StickSlipOpenNEW","printTimes",[0,1,2,3,4,5,6,7,11,12,13,14,15,16],...
+                      "matFileName","Output/StickSlipOpenHistory",'solvePrintTimes',1);
 
 solver = NonLinearImplicit('simulationparameters',simParam,...
                            'domains',domains,...

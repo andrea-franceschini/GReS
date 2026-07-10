@@ -214,7 +214,9 @@ classdef EFEMaugmented < PhysicsSolver
           djEff = dj(wDof);
           if state == ContactMode.stick
             djEff(:) = 0;
-            s.fractureJump(wDof) = 0;
+            s.fractureJump(wDof(1)) = 0;
+            % tangential total jump remains equal to old value
+            s.fractureJump(wDof(2:3)) = jumpOld(wDof(2:3));
           elseif state == ContactMode.slip || state == ContactMode.newSlip
             % Normal component is global. Tangential components are current
             % local/recovered values from the previous Newton iterate.
@@ -278,11 +280,15 @@ classdef EFEMaugmented < PhysicsSolver
             % No fracture jump is solved in stick. Faces with prescribed
             % bcTraction have already been promoted to open, so this branch
             % only computes the reaction traction and anchors w.
+            % Normal jump and tangential jump increment are set to zero
+            % strongly
             tracNew = iniTraction(wDof) + rSigma/frac.area(f) - obj.bcTraction(wDof);
             s.traction(wDof) = tracNew;
 
             asbKww.localAssembly(wDof,wDof,eye(3));
-            rhsW(wDof) = rhsW(wDof) + s.fractureJump(wDof);
+
+            jStick = [jump(wDof(1)); dj(wDof(2:3))];
+            rhsW(wDof) = rhsW(wDof) + jStick;
 
           elseif state == ContactMode.slip || state == ContactMode.newSlip
 
@@ -681,7 +687,11 @@ classdef EFEMaugmented < PhysicsSolver
         stick = find(obj.activeSet.curr == ContactMode.stick);
         if ~isempty(stick)
           dofStick = getLocalDoF(dofm,obj.fldFrac,stick);
-          stateCurr.fractureJump(dofStick) = 0;
+          oldJump = obj.getStateOld().fractureJump;
+
+          stateCurr.fractureJump(dofStick(1:3:end)) = 0;
+          stateCurr.fractureJump(dofStick(2:3:end)) = oldJump(dofStick(2:3:end));
+          stateCurr.fractureJump(dofStick(3:3:end)) = oldJump(dofStick(3:3:end));
         end
 
         % Tangential slip DOFs are solved globally in slip. No local
