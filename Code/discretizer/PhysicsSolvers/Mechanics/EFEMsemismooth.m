@@ -317,7 +317,7 @@ classdef EFEMsemismooth < PhysicsSolver
       J = zeros(3);
       traction = zeros(3,1);
 
-      if q(1) >= -obj.projectionTol
+      if q(1) >= obj.projectionTol
         mode = ContactMode.open;
         return
       end
