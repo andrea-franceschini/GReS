@@ -175,7 +175,7 @@ classdef Poromechanics < PhysicsSolver
       computeAvgStressAndStrain(obj);
       setStateInit(obj,getState(obj));
       setStateOld(obj,getState(obj));
-      
+
     end
 
 
@@ -186,7 +186,7 @@ classdef Poromechanics < PhysicsSolver
       cells = obj.grid.cells;
       state = getState(obj);
       state.stress = zeros(nGP,6);
-      
+
       state.status = zeros(nGP,6);
       state.strain = zeros(nGP,6);
       state.displacements = zeros(obj.grid.nDim*obj.grid.nNodes,1);
@@ -202,7 +202,7 @@ classdef Poromechanics < PhysicsSolver
       stateCurr = getState(obj);
       setStateOld(obj,stateCurr);
       % set strain to zero
-      stateCurr.strain(:) = 0.0; 
+      stateCurr.strain(:) = 0.0;
 
       obj.flOut = true;
     end
@@ -289,11 +289,11 @@ classdef Poromechanics < PhysicsSolver
 
       switch bcType
         case 'volumeforce' % custom bc type
-          applyVolumeForceBC(obj,bcId,bcDofs);
+          applyVolumeForceBC(obj,bcId,t);
         otherwise
           applyBC@PhysicsSolver(obj,bcId,t);
       end
-      
+
     end
 
 
@@ -304,56 +304,70 @@ classdef Poromechanics < PhysicsSolver
 
       bc = obj.domain.bcs;
 
-      srcVal = bc.getSourceVals(id,t);
+      srcVal = bc.getSourceVals(bcId,t);
 
       assert(getField(bc,bcId)==entityField.cell,"field of 'volumeforce' BC" + ...
         " must be 'cell'")
 
-      cells = bc.getSourceEntities(bcId);
+      cellPress = bc.getSourceEntities(bcId);
+      cells = obj.grid.cells;
+      coordinates = obj.grid.coordinates;
 
+      dofm = obj.domain.dofm;
       nodeId = bc.getTargetEntities(bcId);
 
       % preallocate vector for later assembly
-      valsC = zeros(3*sum(obj.grid.cellNumVerts(cells)),1);
-      dofs = zeros(3*sum(obj.grid.cellNumVerts(cells)),1);
+      vals = zeros(3*sum(cells.numVerts(cellPress)),1);
+      dofs = zeros(3*sum(cells.numVerts(cellPress)),1);
       k = 0;
 
-      for i = 1:numel(cells)
+      for vtkId = cells.vtkTypes
 
-        % local coupling to map cell pressure to nodal force (as in Biot)
-        % assumes unit biot coefficient
-        el = cells(i);
+        subCellsLoc = obj.grid.getCellsByVTKId(vtkId,cellPress);
+        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
 
-        % compute local biot coupling matrix
-        elem = getElement(obj.elements,obj.grid.cellVTKType(el));
-        nG = elem.GaussPts.nNode;
-        n = 3*elem.nNode;
-        [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
-        B = zeros(6,elem.nNode*obj.grid.nDim,nG);
-        B(elem.indB(:,2)) = N(elem.indB(:,1));
-        kron = [1;1;1;0;0;0];
-        iN = repmat(kron,1,1,nG);
-        Qs = pagemtimes(B,'ctranspose',iN,'none');
-        Qs = Qs.*reshape(dJWeighed,1,1,[]);
-        Qloc = sum(Qs,3);
+        % get node topology for given vtk type
+        topol = obj.grid.getCellNodes(subCellsLoc);
 
-        % accumulate bc values
-        valsC(k+1:k+n) = Qloc*srcVal(i);
-        dofState(k+1:k+n) = dofId(obj.grid.cells(el,:),3);
-        k = k+n;
+        nG = elem.getNumbGaussPts;
+
+        bcvalLoc = srcVal(cells.VTKType(cellPress)==vtkId);
+
+        for i = 1:numel(subCellsLoc)
+
+          % assembly loop for homogeneous element type
+
+          %el = subCellsLoc(i);
+
+          nodes = topol(i,:);
+          dof = dofm.getLocalDoF(obj.fieldId,nodes);
+
+          coords = coordinates(nodes,:);
+
+          % compute strain
+          [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
+          B = elem.getStrainMatrix(gradN);
+          kron = [1;1;1;0;0;0];
+          iN = repmat(kron,1,1,nG);
+          Qs = pagemtimes(B,'ctranspose',iN,'none');
+          Qs = Qs.*reshape(dJWeighed,1,1,[]);
+          Qloc = sum(Qs,3);
+
+          % accumulate bc values
+          n = size(Qloc,1);
+          vals(k+1:k+n) = Qloc*srcVal(i);
+          dofs(k+1:k+n) = dof;
+          k = k+n;
+
+        end
 
       end
 
       % accumulate results
-      valsC = accumarray(dofs,valsC,[3*obj.grid.nNodes 1]);
+      bcVals = accumarray(dofs,vals,[dofm.getNumbDoF(obj.fieldId) 1]);
+      bcDofs = dofm.getLocalDoF(obj.fieldId);
 
-      dofState = dofId(nodeId,3);
-
-      % retrieve dof numbering of constrained dofs
-      dofs = dofId(obj.dofm.getLocalEnts(obj.fieldId,nodeId),3);
-      vals = valsC(dofState);
-
-      applyNeuBC(obj,bcId,dofs,vals);
+      applyNeuBC(obj,bcId,bcDofs,bcVals);
 
     end
 
