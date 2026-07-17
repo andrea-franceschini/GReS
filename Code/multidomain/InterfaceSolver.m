@@ -521,9 +521,11 @@ classdef (Abstract) InterfaceSolver < handle
 
         grid = obj.domains(side).grid;
         if ismissing(tags{side})
-          tags{side} = (1:grid.surface.nTag)';
+          obj.grids(side) = getGridBoundary(grid,tags{side});
+        else
+          obj.grids(side) = getSurfaceGrid(grid,tags{side});
         end
-        obj.grids(side) = getSurfaceGrid(grid,tags{side});
+        
         obj.grids(side).computeAvgNodalNormal();
       end
 

@@ -111,6 +111,32 @@ classdef Grid < handle
     end
 
 
+    function outGrid = getGridBoundary(obj)
+
+      f = obj.faces;
+      isBnd = f.isBoundary;
+      surfConn = getRows(f.connectivity,find(isBnd));
+
+      tmpGrid = Grid();
+      tmpGrid.coordinates = obj.coordinates;
+
+      
+
+      s.connectivity = surfConn;
+      s.num          = sum(isBnd);
+      s.tag          = ones(s.num,1);
+      s.VTKType      = f.VTKType(isBnd);
+      s.normal       = f.normal(isBnd,:);
+      s.area         = f.area(isBnd);
+      s.faceId       = find(isBnd);
+      s.center       = f.center(isBnd,:);
+      tmpGrid.surfaces = s;
+
+      outGrid = getSurfaceGrid(tmpGrid,true(tmpGrid.surfaces.num,1));
+
+    end
+
+
     function outGrid = getSurfaceGrid(obj, surfTag)
 
       surf = obj.surfaces;
@@ -118,7 +144,7 @@ classdef Grid < handle
 
       % select surfaces
       if nargin == 1
-        id = true(surf.num,1);
+        outGrid = getGridBoundary(obj);
       elseif nargin == 2
         if islogical(surfTag)
           assert(numel(surfTag) == surf.num);
