@@ -32,6 +32,7 @@ classdef NonLinearImplicit < SolutionScheme
       hasConfigurationChanged = true;
       absTol = obj.simparams.absTol;
       obj.iterConfig = 0;
+      obj.iterNL = 0;
 
       while (hasConfigurationChanged) && (obj.iterConfig < obj.simparams.itMaxConfig)
 
@@ -67,11 +68,13 @@ classdef NonLinearImplicit < SolutionScheme
         newtonConv = false;
 
         % reset non linear iteration counter
-        obj.iterNL = 0;
+        newtonIter = 0;
+        %obj.iterNL = 0;
 
         %%% NEWTON LOOP %%%
-        while (~newtonConv) && (obj.iterNL < obj.simparams.itMaxNR)
+        while (~newtonConv) && (newtonIter < obj.simparams.itMaxNR)
 
+          newtonIter = newtonIter + 1;
           obj.iterNL = obj.iterNL + 1;
 
           J = assembleJacobian(obj);
@@ -79,7 +82,7 @@ classdef NonLinearImplicit < SolutionScheme
           % solve linear system
           du = solve(obj,J,rhs);
 
-
+          %fprintf('Model has %i dofs\n',numel(du));
           c = 0;
 
           % update simulation state with linear system solution
@@ -116,7 +119,7 @@ classdef NonLinearImplicit < SolutionScheme
 
           rhs = assembleRhs(obj);
           rhsNorm = norm(cell2mat(rhs),2);
-          gresLog().log(1,'%d     %e     %e\n',obj.iterNL,rhsNorm,rhsNorm/rhsNormIt0);
+          gresLog().log(1,'%d     %e     %e\n',newtonIter,rhsNorm,rhsNorm/rhsNormIt0);
 
           % Check for convergence
           newtonConv = (rhsNorm < tolWeigh || rhsNorm < absTol);
