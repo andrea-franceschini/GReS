@@ -44,6 +44,73 @@ classdef Grid < handle
     end
 
 
+    function outGrid = getCellGrid(obj,cellTag)
+
+      cell = obj.cells;
+      outGrid = Grid();
+
+      % select surfaces
+      if nargin == 1
+        id = true(cell.num,1);
+      elseif nargin == 2
+        if islogical(cellTag)
+          assert(numel(cellTag) == cell.num);
+          id = cellTag(:);
+        else
+          id = ismember(cell.tag, cellTag);
+        end
+      else
+        error("getCellGrid:wrong number of input arguments")
+      end
+
+
+      if ~any(id); return; end
+
+      sel  = find(id);
+      nSel = numel(sel);
+
+      % extract connectivity
+      connSel = getRows(cell.connectivity, sel);
+
+      if isa(connSel,'ArrayOfArrays')
+        [oldConn, ~] = connSel.getData();
+        nVert = connSel.arraySize();
+        nVert = nVert(:);
+      else
+        oldConn = connSel.';
+        oldConn = oldConn(:);
+        nVert = repmat(size(connSel,2), nSel, 1);
+      end
+
+      % stable local node renumbering
+      [globalNodeId, ~, newConn] = unique(oldConn, 'stable');
+
+      % local connectivity
+      if all(nVert == nVert(1))
+        cellConn = reshape(newConn, nVert(1), []).';
+      else
+        cellConn = ArrayOfArrays(newConn, nVert);
+      end
+
+      % populate output grid
+      cellOut = struct();
+      cellOut.connectivity = cellConn;
+      cellOut.numVerts     = nVert;
+      cellOut.num          = nSel;
+      cellOut.tag          = cell.tag(sel);
+      cellOut.nTag         = numel(unique(cellOut.tag));
+      cellOut.VTKType      = cell.VTKType(sel);
+      cellOut.vtkTypes     = reshape(unique(cellOut.VTKType),1,[]);
+
+      outGrid.coordinates = obj.coordinates(globalNodeId,:);
+      outGrid.nNodes      = size(outGrid.coordinates,1);
+      outGrid.nDim        = 3;
+      outGrid.cells    = cellOut;
+      % outGrid.edges = edgeStruct;
+
+    end
+
+
     function outGrid = getSurfaceGrid(obj, surfTag)
 
       surf = obj.surfaces;

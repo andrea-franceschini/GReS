@@ -208,12 +208,12 @@ classdef BBTree < handle
         case 2
           % 8-DOP written as dim x nPrim
           P = [ 1  0 -1  1;
-            0  1  1  1 ];
+                0  1  1  1 ];
         case 3
           % 18-DOP written as dim x nPrim
           P = [ 1  0  0  1  1  0  1  1  0;
-            0  1  0  1  0  1 -1  0  1;
-            0  0  1  0  1  1  0 -1 -1 ];
+                0  1  0  1  0  1 -1  0  1;
+                0  0  1  0  1  1  0 -1 -1 ];
         otherwise
           error('BBTree:UnsupportedDimension', ...
             'Only dim = 2 or dim = 3 are supported.');
