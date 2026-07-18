@@ -141,7 +141,7 @@ classdef linearSolver < handle
             obj.generalsolver = generalsolver;
 
             % Create the preconditioner object, check if the physics is supported
-            [obj.Prec,obj.ChronosFlag] = preconditioner.create(obj.DEBUGflag,obj.nsyTol,generalsolver,physname);
+            [obj.Prec,obj.ChronosFlag] = obj.choosePrec(obj.DEBUGflag,generalsolver,physname);
 
             % Non supported physics for the preconditioner
             if ~obj.ChronosFlag
@@ -170,7 +170,6 @@ classdef linearSolver < handle
             % Get the solver type
             obj.SolverType = lower(data.solver);
             obj.params.maxit = data.general.maxit;
-            obj.params.minIter = obj.Prec.params.minIter;
 
             % if GMRES get restart value
             if strcmp(obj.SolverType,'gmres')
@@ -220,6 +219,10 @@ classdef linearSolver < handle
 
       % Function to solve the system
       [x,flag] = SolveLin(obj,A,b,time)
+
+      % Function to get if chronos is to be used and if so instanciate the
+      % preconditioner
+      [Prec,ChronosFlag] = choosePrec(obj,debugflag,problemsolver,physname);
 
    end
 end

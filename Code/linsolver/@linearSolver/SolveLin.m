@@ -91,7 +91,6 @@ function [x,flag] = SolveLin(obj,A,b,time)
    
    % Have the linear solver compute the Preconditioner if necessary
    if(obj.requestPrecComp) 
-      obj.Prec.PrecSym = globalsymm;
       gresLog().log(3,'Computing the preconditioner\n');
 
       time_start = tic;
@@ -385,6 +384,6 @@ function [A,b] = Ruiz(obj,A,b)
       % Apply the scaling to the rhs
       b = D*b;
    else
-      obj.Prec.D = {};
+      % obj.Prec.D = {};
    end
 end
