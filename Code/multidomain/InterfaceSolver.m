@@ -529,7 +529,7 @@ classdef (Abstract) InterfaceSolver < handle
         obj.grids(side).computeAvgNodalNormal();
       end
 
-      cs = ContactSearching(obj.grids(MortarSide.slave),obj.grids(MortarSide.master));
+      cs = ContactSearching(obj.grids(MortarSide.slave),obj.grids(MortarSide.master),params);
 
       elemConnectivity = cs.getElementConnectivity();
       
@@ -555,6 +555,8 @@ classdef (Abstract) InterfaceSolver < handle
         id = unique(obj.quadrature.interfacePairs(:,side));
         isMortarElem = false(obj.grids(side).surfaces.num,1);
         isMortarElem(id) = true;
+
+	gresLog().log(2,'%i out of %i left out from %s side \n',sum(~isMortarElem),length(isMortarElem),side)
 
         % update the grids with only active mortar elements
         obj.grids(side) = getSurfaceGrid(obj.grids(side),isMortarElem);
