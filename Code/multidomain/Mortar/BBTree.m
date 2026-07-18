@@ -20,7 +20,6 @@ classdef BBTree < handle
     dim
     polytop
     scale
-
     children        % [nNodesTree x 2], zero if leaf
     nodeBoxes       % [nNodesTree x 2*nPrim]
     leafElem        % [nNodesTree x 1], zero for internal nodes
@@ -39,7 +38,7 @@ classdef BBTree < handle
       obj.dim   = size(centers,2);
 
       % defaults
-      default = struct('scale',0.5,'polytop',BBTree.defaultPolytop(obj.dim));
+      default = struct('scale',0.025,'polytop',BBTree.defaultPolytop(obj.dim));
       parm = readInput(default,varargin{:});
 
       obj.scale = parm.scale;

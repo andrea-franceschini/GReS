@@ -335,6 +335,23 @@ classdef Grid < handle
     end
 
 
+    function gridDiff = gridDifference(obj,gridMinus,varargin)
+      % return gridA with removed cells within gridB
+      if nargin > 2
+        inflation = varargin{1};
+      else
+        inflation = 0.025;
+      end
+      cs = ContactSearching(gridMinus.coordinates,obj.coordinates,...
+        gridMinus.cells.connectivity,obj.cells.connectivity,'scale',inflation);
+      conn = cs.getElementConnectivity();
+
+      cellOut = ~any(conn,1);
+
+      gridDiff = getCellGrid(obj,cellOut);
+    end
+
+
     function out = isStructured(obj)
       out = obj.structFlag;
     end
