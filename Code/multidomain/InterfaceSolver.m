@@ -521,7 +521,7 @@ classdef (Abstract) InterfaceSolver < handle
 
         grid = obj.domains(side).grid;
         if ismissing(tags{side})
-          obj.grids(side) = getGridBoundary(grid,tags{side});
+          obj.grids(side) = getGridBoundary(grid);
         else
           obj.grids(side) = getSurfaceGrid(grid,tags{side});
         end
@@ -532,10 +532,11 @@ classdef (Abstract) InterfaceSolver < handle
       cs = ContactSearching(obj.grids(MortarSide.slave),obj.grids(MortarSide.master));
 
       elemConnectivity = cs.getElementConnectivity();
+      
 
       if ~any(elemConnectivity,"all")
-        error('No connection between master domain %i (surface %i) and slave domain %i (surface %i)!',...
-          params.masterDomain,params.masterSurface,params.slaveDomain,params.slaveSurface)
+        error('No connection between master domain %i  and slave domain %i !',...
+          params.masterDomain,params.slaveDomain)
       end
 
 

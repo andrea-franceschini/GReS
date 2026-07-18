@@ -54,7 +54,7 @@ classdef Grid < handle
         id = true(cell.num,1);
       elseif nargin == 2
         if islogical(cellTag)
-          assert(numel(cellTag) == cell.num);
+          assert(numel(cellTag) == size(cell.connectivity,1));
           id = cellTag(:);
         else
           id = ismember(cell.tag, cellTag);
