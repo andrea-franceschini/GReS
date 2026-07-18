@@ -552,14 +552,12 @@ classdef (Abstract) InterfaceSolver < handle
       % now finalize the grids and compute edges
       for side = [MortarSide.slave,MortarSide.master]
         
-        surf = obj.domains(side).grid.surfaces;
-        isMortarElem = false(surf.num,1);
-        surfList = find(ismember(surf.tag,tags{side}));
-        id = surfList(obj.quadrature.interfacePairs(:,side));
+        id = unique(obj.quadrature.interfacePairs(:,side));
+        isMortarElem = false(obj.grids(side).surfaces.num,1);
         isMortarElem(id) = true;
 
         % update the grids with only active mortar elements
-        obj.grids(side) = getSurfaceGrid(obj.domains(side).grid,isMortarElem);
+        obj.grids(side) = getSurfaceGrid(obj.grids(side),isMortarElem);
 
         % process the edges of the final grid
         obj.grids(side).processEdges();

@@ -207,7 +207,13 @@ classdef Grid < handle
       edgeStruct.connectivity = zeros(0,2); % edge to node
 
       % local 2 global node map
-      surfOut.loc2glob = globalNodeId(:);
+      if isfield(obj.surfaces, 'loc2glob') && ~isempty(obj.surfaces.loc2glob)
+        surfOut.loc2glob = obj.surfaces.loc2glob(globalNodeId);
+      else
+        surfOut.loc2glob = globalNodeId(:);
+      end
+
+      surfOut.loc2glob = surfOut.loc2glob(:);
       surfOut.surfaces2edges = ArrayOfArrays();
 
       outGrid.coordinates = obj.coordinates(globalNodeId,:);
