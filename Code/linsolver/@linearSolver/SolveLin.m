@@ -94,7 +94,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
       gresLog().log(3,'Computing the preconditioner\n');
 
       time_start = tic;
-      obj.Prec.Compute(A,globalsymm);
+      obj.Prec.Compute(A,symMat);
       T_setup = toc(time_start);
 
       obj.aTimeComp = obj.aTimeComp + T_setup;
@@ -116,11 +116,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
 
    if iscell(A)
       Amat = cell2matrix(A);
-      if obj.DEBUGflag
-         symValue = norm(Amat-Amat','f')/norm(Amat,'f');
-      else
-         symValue = -999;
-      end
+      symValue = norm(Amat-Amat','f')/norm(Amat,'f');
    end
 
    % Adjust the preconditioner to be of the correct size in the case of
@@ -159,7 +155,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
-   fillStats(obj,Tend,time,symValue,globalsymm,T_setup);
+   fillStats(obj,Tend,time,symValue,T_setup);
 
    % Did not converge, if prec not computed for it try again
    if(flag == 1 && obj.params.nSolveSinceLastPrecComp > 0)
@@ -220,7 +216,7 @@ end
 
 
 % Function to get and fill the stats
-function fillStats(obj,Tend,time,symValue,globalsymm,T_setup)
+function fillStats(obj,Tend,time,symValue,T_setup)
 
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
@@ -232,12 +228,7 @@ function fillStats(obj,Tend,time,symValue,globalsymm,T_setup)
       obj.iterLin(obj.nSolve) = obj.params.iter;
       obj.timeLin(obj.nSolve) = time; 
       obj.solveTLin(obj.nSolve) = Tend;
-
-      if obj.DEBUGflag
-         obj.symFlagLin(obj.nSolve) = symValue;
-      else
-         obj.symFlagLin(obj.nSolve) = globalsymm;
-      end
+      obj.symFlagLin(obj.nSolve) = symValue;
    end
 end
 

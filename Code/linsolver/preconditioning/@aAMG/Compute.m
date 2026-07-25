@@ -1,4 +1,4 @@
-function Compute(obj,A,sym,varargin)
+function Compute(obj,A,symm,varargin)
    
    % Check inputs are correct 
    if nargin < 4
@@ -27,7 +27,7 @@ function Compute(obj,A,sym,varargin)
    end
 
    % If sym == 0 then the matrix is nonsymmetric
-   if ~sym
+   if ~symm
       obj.params.symm = false;
       obj.PrecSym = false;
    else
