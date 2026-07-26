@@ -49,14 +49,19 @@ classdef linearSolver < handle
 %       preconditioner. Returns solution x and a convergence flag.
 %
 
-   properties (SetAccess = private, GetAccess = public)
+   properties (SetAccess = ?convStrat, GetAccess = public)
 
       % Flag for debug
       DEBUGflag = false
       matlabMaxSize = 2e5
+
+      % Utils flags
       nsyTol = 100*eps
       fullInfo = true
 
+      % Convergence strategy handler
+      convStrat
+      
       % Flag for Chronos existance
       ChronosFlag = false
 
@@ -154,12 +159,9 @@ classdef linearSolver < handle
             % First time solving request preconditioner computation
             obj.params.iter = -1;
             obj.params.lastRelres = 1e10;
-            if isfield(generalsolver.simparams.linSolverParams, 'tol')
-               obj.params.tol = generalsolver.simparams.linSolverParams.tol;
-            else
-               % Use default tolerance
-               obj.params.tol = generalsolver.simparams.relTol;
-            end
+
+            % Choose the relative tolerance strategy
+            obj.convStrat = convStrat(generalsolver);
 
             % Get default values
             chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');
@@ -206,7 +208,7 @@ classdef linearSolver < handle
          end
 
          if obj.fullInfo && ~strcmpi(string,'short')
-            fprintf('\nUsed %d threads during mex\n',obj.Prec.maxThreads);
+            % fprintf('\nUsed %d threads during mex\n',obj.Prec.maxThreads);
             fprintf('\n----------------------------------------------------------------------\n')
             fprintf('| %8s | %6s | %4s | %8s | %7s | %8s | %8s |\n','PhysTime','Sol N.','Iter','SolTime','Symm','PrecTime','DeltaT');
             fprintf('----------------------------------------------------------------------\n')

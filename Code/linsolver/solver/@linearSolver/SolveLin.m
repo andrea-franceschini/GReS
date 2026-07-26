@@ -60,6 +60,9 @@ function [x,flag] = SolveLin(obj,A,b,time)
       end
    end
 
+   % Compute if necessary the tolerance for the linear solver
+   obj.convStrat.computeTol(1,b,true)
+
    % Contact has opened a fracture or something similar so amg does not converge well. 
    % Directly recompute the preconditioner
    if obj.Prec.phys == 1.1 
@@ -133,7 +136,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
       case 'gmres'
 
          % Solve the system by GMRES
-         [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.params.tol,...
+         [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.convStrat.Tol,...
                                                                    obj.params.maxit/obj.params.restart,...
                                                                    obj.precL,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
          obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
@@ -142,7 +145,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
 
          % Solve the system by SQMR
          Afun = @(x) Amat*x;
-         [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.params.tol,obj.params.maxit,...
+         [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.convStrat.Tol,obj.params.maxit,...
                                                                       obj.precL,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
 
    end
@@ -178,23 +181,8 @@ function [x,flag] = SolveLin(obj,A,b,time)
    % Reset the solver
    obj.SolverType = firstSolver;
 
-   % If the preconditioner has just been computed then do not compute it for the next iter
-   if(obj.requestPrecComp)
-      % Keep in memory the number of iter it did with the correct matrix
-      obj.params.firstSolveTAfterPrecComp = Tend;
-      obj.cumTSolveAfterPrec = 0;
-      obj.requestPrecComp = false;
-      obj.Delta_T(obj.nSolve) = 0;
-   else
-      % Choose if to recompute the preconditioner
-      obj.cumTSolveAfterPrec = obj.cumTSolveAfterPrec + Tend;
-      obj.Delta_T(obj.nSolve) = obj.cumTSolveAfterPrec - obj.params.nSolveSinceLastPrecComp*obj.params.firstSolveTAfterPrecComp;
-
-      tSetup = obj.precCompLin(end-obj.params.nSolveSinceLastPrecComp);
-      if obj.Delta_T(obj.nSolve) > obj.alpha*tSetup || obj.alpha < 0.
-         obj.requestPrecComp = true;
-      end
-   end
+   % Check if the preconditioner needs to be recomputed
+   obj.convStrat.recomputePrec(obj,Tend);
 
    % Store the new starting vector
    obj.x0 = x;

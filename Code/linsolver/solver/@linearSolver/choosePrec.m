@@ -14,7 +14,7 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
       if gresLog().getVerbosity() >= 3
          disp(domainin(1).dofm.getVariableNames());
       end
-      return
+      % return
    end
 
    nInt = generalsolver.nInterf;
@@ -50,5 +50,11 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
          return
       end
       ChronosFlag = true;
+   else
+      physname
+      % if((contains(physname,'pressure') || contains(physname,'u')) && contains(physname,'displacements'))
+         Prec = fixedStress(debugflag,generalsolver);
+         ChronosFlag = true;
+      % end
    end
 end
