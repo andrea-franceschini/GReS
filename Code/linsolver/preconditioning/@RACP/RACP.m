@@ -62,6 +62,9 @@ classdef RACP < preconditioner
 
       % Physics
       phys
+      
+      % Max Threads
+      maxThreads
 
    end
 
@@ -147,13 +150,15 @@ classdef RACP < preconditioner
             % Create the inner AMG preconditioner
             obj.AMG = aAMG(debugflag,problemsolver,physname);
 
+            obj.maxThreads = obj.AMG.maxThreads;
             obj.params = obj.AMG.params;
          else
             % Create one AMG preconditioner for each of the domains
             for i = 1:obj.nDom
                obj.AMG{i} = aAMG(debugflag,problemsolver,physname);
             end
-
+            
+            obj.maxThreads = obj.AMG{1}.maxThreads;
             obj.params = obj.AMG{1}.params;
          end
       end

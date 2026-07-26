@@ -43,23 +43,15 @@ function [x,flag] = SolveLin(obj,A,b,time)
       A
    end
 
-   oldProbSize = size(obj.x0,1);
-
    % Chronos does not exist, continue with matlab default
    if ~obj.ChronosFlag || (getGlobalSize(A) < obj.matlabMaxSize)
       [x,flag] = matlab_solve(obj,A,b);
       return
-   elseif oldProbSize ~= 0
-      newProbSize = size(b,1);
-      obj.sizeDiff = obj.sizeDiff + newProbSize - oldProbSize;
-      if obj.sizeDiff > 0
-         obj.x0 = [obj.x0; zeros(obj.sizeDiff,1)];
-         if newProbSize - oldProbSize > 0
-            gresLog().log(3,'changed size from %d to %d\n',oldProbSize,newProbSize);
-         end
-      end
    end
 
+   % Check if the system has changed size and adapt x0 to be of size(b)
+   obj.x0 = obj.Prec.checkGrowth(obj,b);
+   
    % Compute if necessary the tolerance for the linear solver
    obj.convStrat.computeTol(1,b,true)
 
@@ -104,7 +96,6 @@ function [x,flag] = SolveLin(obj,A,b,time)
       obj.nComp = obj.nComp + 1;
       obj.whenComputed(length(obj.whenComputed) + 1) = time;
       obj.params.nSolveSinceLastPrecComp = 0;
-      obj.sizeDiff = 0;
       gresLog().log(3,'Finished computing the preconditioner\n');
    else
       obj.params.nSolveSinceLastPrecComp = obj.params.nSolveSinceLastPrecComp + 1;
@@ -124,12 +115,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
 
    % Adjust the preconditioner to be of the correct size in the case of
    % growing mesh simulation
-   if obj.sizeDiff > 0 
-      invD = 1./diag(Amat(end-obj.sizeDiff+1:end,end-obj.sizeDiff+1:end));
-      obj.precL = @(x) [obj.Prec.Apply_L(x(1:end-obj.sizeDiff)); invD.*x(end-obj.sizeDiff+1:end)];
-   elseif isempty(obj.precL) || obj.params.nSolveSinceLastPrecComp == 0
-      obj.precL = obj.Prec.Apply_L;
-   end
+   obj.Prec.updateGrowingPrec(Amat);
    
    startT = tic;
    switch obj.SolverType
@@ -138,7 +124,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
          % Solve the system by GMRES
          [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.convStrat.Tol,...
                                                                    obj.params.maxit/obj.params.restart,...
-                                                                   obj.precL,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
+                                                                   obj.Prec.Apply_L,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
          obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
          
       case 'sqmr'
@@ -146,7 +132,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
          % Solve the system by SQMR
          Afun = @(x) Amat*x;
          [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.convStrat.Tol,obj.params.maxit,...
-                                                                      obj.precL,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
+                                                                      obj.Prec.Apply_L,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
 
    end
 

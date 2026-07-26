@@ -8,7 +8,7 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
    % Check if the problem comes from multiphysics
    multiPhysFlag = false;
    if(domainin(1).dofm.getNumberOfVariables() > 1) && isempty(physname)
-      multiPhysFlag = true; %#ok<NASGU>
+      multiPhysFlag = true; 
       Prec = [];
       gresLog().warning(3,'Multiphysics not yet supported');
       if gresLog().getVerbosity() >= 3
@@ -28,6 +28,13 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
    % Select the physics, check if asked by user directly
    if isempty(physname)
       physname = domainin(1).dofm.getVariableNames();
+   end
+
+   % Needs the growing preconditioner
+   if contains(domainin(1).solverNames,"Sedimentation") && ~multiPhysFlag
+      Prec = growing(debugflag,generalsolver,physname);
+      ChronosFlag = true;
+      return;
    end
 
    if ~multiPhysFlag

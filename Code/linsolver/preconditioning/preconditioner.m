@@ -44,6 +44,20 @@ classdef (Abstract) preconditioner < handle
       function obj = preconditioner()
 
       end 
+
+      % Growth checking function default (do nothing), overridden in
+      % growing preconditioner
+      function x0 = checkGrowth(obj, linsolver, b)
+
+         % Set default output  
+         x0 = linsolver.x0;
+      end
+
+      % Update the growing preconditioner default (do nothing), overridden in
+      % growing preconditioner
+      function updateGrowingPrec(obj,Amat)
+
+      end
    end
 end
 

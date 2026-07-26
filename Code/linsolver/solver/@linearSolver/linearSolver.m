@@ -107,10 +107,6 @@ classdef linearSolver < handle
 
       % Params struct
       params
-
-      precL
-      sizeDiff = 0
-
    end
 
    methods (Access = public)
@@ -208,7 +204,7 @@ classdef linearSolver < handle
          end
 
          if obj.fullInfo && ~strcmpi(string,'short')
-            % fprintf('\nUsed %d threads during mex\n',obj.Prec.maxThreads);
+            fprintf('\nUsed %d threads during mex\n',obj.Prec.maxThreads);
             fprintf('\n----------------------------------------------------------------------\n')
             fprintf('| %8s | %6s | %4s | %8s | %7s | %8s | %8s |\n','PhysTime','Sol N.','Iter','SolTime','Symm','PrecTime','DeltaT');
             fprintf('----------------------------------------------------------------------\n')
