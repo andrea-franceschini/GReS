@@ -4,6 +4,9 @@ classdef BiotFullyCoupled < PhysicsSolver
 
   properties
     Q             % the biot coupling matrix
+    R             % the fixed stress split relaxation matrix
+    KdrType        % either 1,2,3 for 1D,2D or 3D bulk modulus
+        
   end
 
   properties (Access = protected)
@@ -53,6 +56,11 @@ classdef BiotFullyCoupled < PhysicsSolver
       registerSolver(obj.flowSolver,input.Flow);
       obj.fldFlow = dofm.getVariableId("pressure");
 
+      default = struct('BulkModulus',"3D");
+      params = readInput(default,input);
+      blkMod = char(params.BulkModulus);
+      obj.KdrType = str2double(blkMod(1));
+
     end
 
     function assembleSystem(obj,dt,varargin)
@@ -84,6 +92,90 @@ classdef BiotFullyCoupled < PhysicsSolver
         computeMatBiot(obj)
       end
     end
+
+    function Kdr = getDrainedBulkModulus(obj,D)
+
+          % result is given for each gauss point
+
+          I = zeros(6,1);
+          I(1:obj.KdrType) = 1;
+          DI = pagemtimes(D,I);
+          Kdr = (1/obj.KdrType^2)*pagemtimes(I',DI);
+
+    end
+
+   function computeRelaxationMatrix(obj)
+
+        % R = int_el b^2/Kdr*(Np'*Np)
+
+        dofm = obj.domain.dofm;
+        coordinates = obj.grid.coordinates;
+        cells = obj.grid.cells;
+        materials = obj.domain.materials;
+        s = getState(obj);
+        sOld = getStateOld(obj);
+        t = s.time;
+
+        if ~isempty(obj.R) && isLinear(obj.mechSolver)
+          return
+        end
+
+        subCells = getCoupledCells(obj);
+        nDoF = dofm.getNumbDoF(obj.fldFlow);
+        nEntries = sum(cells.numVerts(subCells).^2);
+        asbR = assembler(nEntries,nDoF,nDoF);
+        gOrd = obj.mechSolver.getGaussOrder;
+
+        for vtkId = cells.vtkTypes
+
+          tmp = obj.grid.getCellsByVTKId(vtkId);
+          cellList = reshape(intersect(subCells,tmp,'sorted'),1,[]);
+          elem = FiniteElementType.create(vtkId,obj.grid,gOrd);
+          nG = elem.getNumbGaussPts;
+
+          % get node topology for given vtk type
+          topol = obj.grid.getCellNodes(cellList);
+
+          for i = 1:numel(cellList)
+
+            % assembly loop for homogeneous element type
+
+            el = cellList(i);
+            tag = cells.tag(el);
+            nodes = topol(i,:);
+            coords = coordinates(nodes,:);
+            mat = materials.getMaterial(tag);
+
+            % get drained bulk modulus
+            l = obj.mechSolver.cell2stress(el,1);
+            [D, ~, ~] = obj.domain.materials.updateMaterial( ...
+              tag, ...
+              sOld.stress(l:l+nG-1,:), ...
+              s.strain(l:l+nG-1,:), ...
+              [], sOld.status(l:l+nG-1,:), el, t);
+
+            Kdr = obj.getDrainedBulkModulus(D);
+
+            [~,dJWeighed] = getDerBasisFAndDet(elem,coords);
+
+            if isFEM(obj.flowSolver)
+              dof = dofm.getLocalDoF(obj.fldFlow,nodes);
+              N = getBasisFinGPoints(elem);
+            elseif isTPFA(obj.flowSolver)
+              N = ones(nG,1);
+              dof = dofm.getLocalDoF(obj.fldFlow,el);
+            end
+
+            biot = mat.PorousRock.getBiotCoefficient();
+            k = biot^2./reshape(Kdr,1,[],1);
+            Rloc = N'*diag(k.*dJWeighed)*N;
+            asbR.localAssembly(dof,dof,Rloc);
+          end
+
+        end
+
+        obj.R = asbR.sparseAssembly();
+   end
 
 
     function computeMatBiot(obj)

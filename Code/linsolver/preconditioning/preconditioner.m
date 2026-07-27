@@ -43,7 +43,7 @@ classdef (Abstract) preconditioner < handle
       % Constructor Function
       function obj = preconditioner()
 
-      end 
+      end
 
       % Growth checking function default (do nothing), overridden in
       % growing preconditioner

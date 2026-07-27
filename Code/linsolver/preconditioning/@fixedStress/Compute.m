@@ -4,16 +4,6 @@ function Compute(obj,A,symMat,varargin)
    % Set the symmetry of the full preconditioner
    obj.PrecSym = floor(sum(symMat,'all')/(size(symMat,1))^2);
 
-   simple_flag = false;
-
-   % Get the dimensions of the block
-   n22 = size(A{1,2},2);
-
-   % If block 22 has dim 0 then resize it
-   if size(A{2,2},1) ~= n22
-      A{2,2} = sparse(n22,n22);
-   end
-
    % Treat the boundary conditions in the mechanics block
    A = obj.treatDirBC(A,obj.PrecSym);
 
@@ -31,7 +21,7 @@ function Compute(obj,A,symMat,varargin)
    obj.domain.getPhysicsSolver("BiotFullyCoupled").computeRelaxationMatrix();
    S = A{2,2} + (1/obj.problemsolver.dt)*obj.domain.getPhysicsSolver("BiotFullyCoupled").R;
 
-   % Compute the amg for block 11 (mechanics)
+   % Compute the amg for block 22 (fluids)
    obj.AMGFlux.Compute(S,symMat(2,2),ones(size(S,1),1),true);
 
    obj.Apply_L = @(x) obj.ApplyLeft(x,S,A{1,1},A{1,2});

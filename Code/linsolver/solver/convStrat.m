@@ -15,11 +15,11 @@ classdef convStrat < handle
       maxEtak = 0.9
       minEtak
       oldEtak
-      eta0 = 0.01
+      eta0 = 0.1
       normFxold
       initConvRate = inf
       degrad = 1.5
-      highPrec = 1e-4
+      highPrec = 1e-2
       highDeg = 2.0
 
    end

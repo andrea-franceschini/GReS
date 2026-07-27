@@ -49,7 +49,7 @@ classdef RACP < preconditioner
       % RACP Gamma
       gamma = 1.0
 
-      multidom = true
+      multidom = false
    end
 
    properties (GetAccess = public,SetAccess = private)

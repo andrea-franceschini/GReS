@@ -18,12 +18,6 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
    end
 
    nInt = generalsolver.nInterf;
-   % Check the number of interfaces and domains
-   if nInt ~= 0
-      interfacein = generalsolver.interfaces;
-   else
-      interfacein = {};
-   end
 
    % Select the physics, check if asked by user directly
    if isempty(physname)
@@ -39,7 +33,7 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
 
    if ~multiPhysFlag
       % Supported Single Physics
-      if(contains(physname,'pressure') || contains(physname,'u') || contains(physname,'displacements'))
+      if contains(physname, {'pressure', 'u','displacements'})
          
          if nInt == 0
             % No interface, its a simple single domain single physics problem,
@@ -58,10 +52,10 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
       end
       ChronosFlag = true;
    else
-      physname
-      % if((contains(physname,'pressure') || contains(physname,'u')) && contains(physname,'displacements'))
+      % physname
+      if any(contains(physname, {'pressure', 'u'})) && any(contains(physname, 'displacements'))
          Prec = fixedStress(debugflag,generalsolver);
          ChronosFlag = true;
-      % end
+      end
    end
 end

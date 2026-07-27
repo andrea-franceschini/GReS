@@ -1,4 +1,4 @@
-function [x,flag] = SolveLin(obj,A,b,time)
+function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
 % This file implements a Solve method and related utilities intended to be
 % used as part of a linear solver class (linsolver). The Solve function
 % orchestrates choosing between internal MATLAB direct solve and an external
@@ -39,6 +39,16 @@ function [x,flag] = SolveLin(obj,A,b,time)
 % - A is passed directly as a cell array, meaning it is already split in the various blocks (A11,A12,A21,A22 for a
 %   single physics single domain with lagrange multipliers)
    
+   % Check if the variables have been passed
+   if nargin < 5
+      nonlinIter = 1;
+      isLinear = true;
+   end
+
+   if nargin < 6
+      isLinear = true;
+   end
+
    if obj.DEBUGflag
       A
    end
@@ -53,7 +63,7 @@ function [x,flag] = SolveLin(obj,A,b,time)
    obj.x0 = obj.Prec.checkGrowth(obj,b);
    
    % Compute if necessary the tolerance for the linear solver
-   obj.convStrat.computeTol(1,b,true)
+   obj.convStrat.computeTol(nonlinIter,b,isLinear);
 
    % Contact has opened a fracture or something similar so amg does not converge well. 
    % Directly recompute the preconditioner

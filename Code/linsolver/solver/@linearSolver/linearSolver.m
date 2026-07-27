@@ -216,7 +216,7 @@ classdef linearSolver < handle
       end
 
       % Function to solve the system
-      [x,flag] = SolveLin(obj,A,b,time)
+      [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear);
 
       % Function to get if chronos is to be used and if so instanciate the
       % preconditioner
