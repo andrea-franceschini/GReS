@@ -57,7 +57,7 @@ classdef Elastic < handle
     end
     
     % Get vertical compressibility
-    function cM = getRockCompressibility(obj)
+    function cM = getRockCompressibility(obj,cId)
       cM = obj.cM;
     end
   end

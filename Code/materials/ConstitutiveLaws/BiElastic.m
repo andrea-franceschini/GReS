@@ -1,20 +1,15 @@
-classdef BiElastic < handle
+classdef BiElastic < Elastic
   % A bielastic constitutive law class where different compressibility is
   % assumed during virgin loading or unloading/reloading
 
   properties (Access = public)
-    % Elastic modulus
-    E
-    % Poisson's ratio
-    nu
-    % M factor (sigmax/sigmaz)
-    M
-    % Vertical compressibility Cm
-    cM
     % scaling of cm between loading and unloading 
     r
-    % flag for tabular input format
-    isTabular = false
+    % preconsolidation stress
+    q
+    % loading state (0 is virigin, 1 is unloading/realoding)
+    loadState
+
   end
 
   methods (Access = public)
@@ -60,8 +55,12 @@ classdef BiElastic < handle
     end
     
     % Get vertical compressibility
-    function cM = getRockCompressibility(obj)
-      cM = obj.cM;
+    function cM = getRockCompressibility(obj,cellIds)
+
+      % scale factor for rock compressibility
+      scale = 1 - (1/obj.r) .* (obj.loadState(cellIds) == 1);  
+      cM = scale * obj.cM;
+
     end
   end
    
@@ -71,7 +70,8 @@ classdef BiElastic < handle
     function readMaterialParameters(obj,varargin)
 
       default = struct("youngModulus",[],...
-                       "poissonRatio",[]);
+                       "poissonRatio",[],...
+                       "");
 
       params = readInput(default,varargin{:});
       

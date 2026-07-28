@@ -45,9 +45,9 @@ domain = Discretizer('grid',grid,...
                      'boundaries',bound);
 
 if strcmp(flowSolver,"FV")
-  solverIn = struct("SinglePhaseFlowFVTPFA",[]);
+  solverIn = struct("flowSolver","SinglePhaseFlowFVTPFA");
 else
-  solverIn = struct("SinglePhaseFlowFEM",[]);
+  solverIn = struct('flowSolver',"SinglePhaseFlowFEM");
 end
 
 
