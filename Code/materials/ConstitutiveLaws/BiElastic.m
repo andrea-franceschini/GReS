@@ -25,29 +25,28 @@ classdef BiElastic < Elastic
     %
     % Material stiffness matrix calculation using the object properties
     function [DAll, sigmaOut, status] = getStiffnessMatrix(obj, sigmaIn, epsilon, dt, status, cellID)
+      
       nptGauss = size(sigmaIn,1);
       D = getElasticTensor(obj,cellID);
+
+      % we assume compression
+      p = abs(sum(sigma(1:3))/3);
+
+      obj.loadState(cellID) = 0;
+
+      if p < obj.q(cellID)
+        obj.loadState(cellID) = 1;
+        D = obj.r * D;
+      end
+
       sigmaOut = sigmaIn + epsilon*D;
+
+      % neglect piecewise transition from reloading to virgin loading
+
       DAll = repmat(D,[1, 1, nptGauss]);
     end
     %
 
-    function D = getElasticTensor(obj,cID)
-      % elastic tensor in engineering Voigt notation
-       D = zeros(6);
-       if obj.isTabular
-          pois = obj.nu(cID);
-          D([1 8 15]) = 1-pois;
-          D([2 3 7 9 13 14]) = pois;
-          D([22 29 36]) = (1-2*pois)/2;
-          D = obj.E(cID)/((1+pois)*(1-2*pois))*D;
-       else
-          D([1 8 15]) = 1-obj.nu;
-          D([2 3 7 9 13 14]) = obj.nu;
-          D([22 29 36]) = (1-2*obj.nu)/2;
-          D = obj.E/((1+obj.nu)*(1-2*obj.nu))*D;
-       end
-    end
  
     % Method that returns the M factor
     function m = getMFactor(obj)
