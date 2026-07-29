@@ -88,51 +88,63 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
         nEntries = sum(cells.numVerts(subCells).^2);
         asbR = assembler(nEntries,nDoF,nDoF);
         gOrd = obj.mechSolver.getGaussOrder;
+        gpMap = obj.domain.gpMap;
 
-        for vtkId = cells.vtkTypes
+        for cTag = 1:cells.nTag
 
-          tmp = obj.grid.getCellsByVTKId(vtkId);
-          cellList = reshape(intersect(subCells,tmp,'sorted'),1,[]);
-          elem = FiniteElementType.create(vtkId,obj.grid,gOrd);
-          nG = elem.getNumbGaussPts;
+          % extract the constitutive law
+          constLaw = obj.domain.materials.getConstitutiveLaw(cTag);
 
-          % get node topology for given vtk type
-          topol = obj.grid.getCellNodes(cellList);
+          rock = obj.domain.materials.getPorousRock(cTag);
 
-          for i = 1:numel(cellList)
+          % extract cells belonging to subregion
+          subRegionCells = subCells(cells.tag(subCells) == cTag);
 
-            % assembly loop for homogeneous element type
+          for vtkId = cells.vtkTypes
 
-            el = cellList(i);
-            tag = cells.tag(el);
-            nodes = topol(i,:);
-            coords = coordinates(nodes,:);
-            mat = materials.getMaterial(tag);
 
-            % get drained bulk modulus
-            l = obj.mechSolver.cell2stress(el,1);
-            [D, ~, ~] = obj.domain.materials.updateMaterial( ...
-              tag, ...
-              sOld.stress(l:l+nG-1,:), ...
-              s.strain(l:l+nG-1,:), ...
-              [], sOld.status(l:l+nG-1,:), el, t);
+            cellId = cells.VTKType(subRegionCells) == vtkId;
+            subCellsLoc = subRegionCells(cellId);
 
-            Kdr = obj.getDrainedBulkModulus(D);
+            elem = FiniteElementType.create(vtkId,obj.grid,gOrd);
+            nG = elem.getNumbGaussPts;
+            cellList = find(cellId);
 
-            [~,dJWeighed] = getDerBasisFAndDet(elem,coords);
+            % get node topology for given vtk type
+            topol = obj.grid.getCellNodes(subCellsLoc);
 
-            if isFEM(obj.flowSolver)
-              dof = dofm.getLocalDoF(obj.fldFlow,nodes);
-              N = getBasisFinGPoints(elem);
-            elseif isTPFA(obj.flowSolver)
-              N = ones(nG,1);
-              dof = dofm.getLocalDoF(obj.fldFlow,el);
+            for i = 1:numel(subCellsLoc)
+
+              % assembly loop for homogeneous element type
+
+              el = subCellsLoc(i);
+              nodes = topol(i,:);
+              coords = coordinates(nodes,:);
+
+              l = gpMap(el,1);
+
+              [~,D] = constLaw.constitutiveUpdate(cellList(i),...
+                sOld.stress(l:l+nG-1,:),...
+                s.strain(l:l+nG-1,:));
+
+              Kdr = obj.getDrainedBulkModulus(D);
+
+              [~,dJWeighed] = getDerBasisFAndDet(elem,coords);
+
+              if isFEM(obj.flowSolver)
+                dof = dofm.getLocalDoF(obj.fldFlow,nodes);
+                N = getBasisFinGPoints(elem);
+              elseif isTPFA(obj.flowSolver)
+                N = ones(nG,1);
+                dof = dofm.getLocalDoF(obj.fldFlow,el);
+              end
+
+              biot = rock.getBiotCoefficient();
+              k = biot^2./reshape(Kdr,1,[],1);
+              Rloc = N'*diag(k.*dJWeighed)*N;
+              asbR.localAssembly(dof,dof,Rloc);
             end
 
-            biot = mat.PorousRock.getBiotCoefficient();
-            k = biot^2./reshape(Kdr,1,[],1);
-            Rloc = N'*diag(k.*dJWeighed)*N;
-            asbR.localAssembly(dof,dof,Rloc);
           end
 
         end

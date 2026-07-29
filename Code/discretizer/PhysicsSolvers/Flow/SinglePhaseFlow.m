@@ -168,7 +168,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
         else
           % otherwise get the compressibility from the porous rock (default
           % is 0)
-          alpha = @(cId) rock.getCompressibility(cId);
+          alpha = @(cId) rock.getCompressibility;
         end
       else
 

@@ -31,54 +31,80 @@ classdef BiElastic < Elastic
     r
     bulkMod
     shearMod
+
+    nChange
   end
 
   properties (Constant, Access = private)
-    STATUS_PC = 1
-    STATUS_LOAD_STATE = 2
-
     VIRGIN = 0
     UNLOADING_RELOADING = 1
   end
 
   methods (Access = public)
+
+
     function obj = BiElastic(varargin)
-      readMaterialParameters(obj, varargin{:});
+
+      obj@Elastic(varargin{:});
+
+      default = struct( ...
+        'bulkModulusRatio', []);
+
+      params = readInput(default, varargin{:});
+
+      rat = params.bulkModulusRatio;
+
+      if ~(rat > 0 && rat <= 1)
+        error('The bulk modulus ratio must be in ]0,1]')
+      end
+
+      obj.r = 1/rat;
+
+      obj.bulkMod = obj.E ./ (3 .* (1 - 2 .* obj.nu));
+      obj.shearMod = obj.E ./ (2 .* (1 + obj.nu));
+
+
     end
 
-    function status = initializeStatus(obj, sigma)
+    function initializeStatus(obj, varargin)
 
-      nptGauss = size(sigma, 1);
-      status = zeros(nptGauss, 2);
-
-      if size(sigma,2) == 1
-        sigma = zeros(size(sigma,1),6);
+      % get stress on region local gauss points
+      if nargin == 3
+        domain = varargin{1};
+        gaussId = varargin{2};
+        stress = domain.getState.stress(gaussId,:);
+      elseif nargin == 2
+        stress = varargin{1};
       end
 
       % Compression-negative convention: store pc as a positive pressure
       % magnitude equal to the initial mean stress magnitude.
-      status(:, obj.STATUS_PC) = -mean(sigma(:, 1:3), 2);
+      obj.status.curr.pc = -mean(stress(:, 1:3), 2);
 
       % The initial state lies exactly on its preconsolidation surface.
-      status(:, obj.STATUS_LOAD_STATE) = obj.VIRGIN;
+      obj.status.curr.state = repmat(obj.VIRGIN,size(obj.status.curr.pc,1),1);
+
     end
 
-    function [DAll, sigmaOut, statusOut] = getStiffnessMatrix( ...
-        obj, sigmaIn, epsilon, dt, statusIn, cellID) %#ok<INUSD>
-      % Vectorized piecewise-integrated constitutive response.
-      %
-      % sigmaIn and statusIn are committed quantities. epsilon is the
-      % complete strain increment from the committed state to the current
-      % Newton iterate.
 
-      nptGauss = size(sigmaIn, 1);
+
+    function [sigmaOut, D] = constitutiveUpdate( ...
+        obj, cellId, sigmaIn, epsilon, varargin) 
+
+      if isempty(cellId)
+        gpsId = 1:size(sigmaIn,1);
+      else
+        gpsId = getGaussPointIdsFromCell(obj,cellId);
+      end
+
+      pcConv = obj.status.conv.pc(gpsId);
+
+      nptGauss = length(gpsId);
 
       Kvirgin = obj.bulkMod;
       G = obj.shearMod;
 
       Kur = obj.r .* Kvirgin;
-
-      pcOld = statusIn(:, obj.STATUS_PC);
 
       % Positive scalar measures of compression.
       pOld = -mean(sigmaIn(:, 1:3), 2);
@@ -87,12 +113,20 @@ classdef BiElastic < Elastic
       % Unloading/reloading predictor.
       pPredictor = pOld + Kur .* depsVComp;
 
-      isVirgin = depsVComp > 0 & pPredictor > pcOld;
-      
+
+      pScale = max([abs(pOld), abs(pcConv), ...
+        abs(pPredictor), ones(nptGauss,1)], [], 2);
+
+      tolP = 1e-10 .* pScale;
+
+      isVirgin = depsVComp > 0 & ...
+        pPredictor > pcConv + tolP;
+
+
+
       % Default: complete increment on the unloading/reloading branch.
       pNew = pPredictor;
       Ktan = repmat(Kur,nptGauss,1);
-      loadState = repmat(obj.UNLOADING_RELOADING, nptGauss, 1);
 
       % Points crossing into, or continuing on, virgin compression.
 
@@ -100,7 +134,7 @@ classdef BiElastic < Elastic
       depsVToPc = zeros(nptGauss, 1);
 
       depsVToPc(isVirgin) = max( ...
-        (pcOld(isVirgin) - pOld(isVirgin)) ./ Kur, 0);
+        (pcConv(isVirgin) - pOld(isVirgin)) ./ Kur, 0);
       depsVToPc(isVirgin) = min( ...
         depsVToPc(isVirgin), depsVComp(isVirgin));
 
@@ -111,7 +145,10 @@ classdef BiElastic < Elastic
         + Kvirgin .* depsVVirgin(isVirgin);
 
       Ktan(isVirgin) = Kvirgin;
-      loadState(isVirgin) = obj.VIRGIN;
+      stateCurr = repmat( ...
+        obj.UNLOADING_RELOADING, numel(gpsId), 1);
+
+      stateCurr(isVirgin) = obj.VIRGIN;
 
       % Constant-deviatoric response. For engineering shear strains:
       % ds_dev,ii = 2G*(deps_ii - tr(deps)/3), ds_dev,ij = G*gamma_ij.
@@ -129,30 +166,36 @@ classdef BiElastic < Elastic
 
       % Vectorized symmetric algorithmic tangent:
       % D = 2G*I_dev + Ktan*(m' m).
-      DAll = zeros(6, 6, nptGauss);
+      D = zeros(6, 6, nptGauss);
       normalDiagonal = reshape(Ktan + 4 .* G ./ 3, 1, 1, []);
       normalOffDiagonal = reshape(Ktan - 2 .* G ./ 3, 1, 1, []);
       shearDiagonal = reshape(G, 1, 1, []);
 
-      DAll(1,1,:) = normalDiagonal;
-      DAll(2,2,:) = normalDiagonal;
-      DAll(3,3,:) = normalDiagonal;
+      D(1,1,:) = normalDiagonal;
+      D(2,2,:) = normalDiagonal;
+      D(3,3,:) = normalDiagonal;
 
-      DAll(1,2,:) = normalOffDiagonal;
-      DAll(1,3,:) = normalOffDiagonal;
-      DAll(2,1,:) = normalOffDiagonal;
-      DAll(2,3,:) = normalOffDiagonal;
-      DAll(3,1,:) = normalOffDiagonal;
-      DAll(3,2,:) = normalOffDiagonal;
+      D(1,2,:) = normalOffDiagonal;
+      D(1,3,:) = normalOffDiagonal;
+      D(2,1,:) = normalOffDiagonal;
+      D(2,3,:) = normalOffDiagonal;
+      D(3,1,:) = normalOffDiagonal;
+      D(3,2,:) = normalOffDiagonal;
 
-      DAll(4,4,:) = shearDiagonal;
-      DAll(5,5,:) = shearDiagonal;
-      DAll(6,6,:) = shearDiagonal;
+      D(4,4,:) = shearDiagonal;
+      D(5,5,:) = shearDiagonal;
+      D(6,6,:) = shearDiagonal;
 
-      % Trial status. Commit only after global convergence.
-      statusOut = statusIn;
-      statusOut(:, obj.STATUS_PC) = max(pcOld, pNew);
-      statusOut(:, obj.STATUS_LOAD_STATE) = loadState;
+      % Trial status. Commit only after global convergence.      
+      obj.status.curr.pc(gpsId) = max(pcConv, pNew);
+
+      % if gresLog().getVerbosity > 2
+      %   obj.status.curr.state(gpsId) - stateCurr > 0;
+      %   fprintf('%d element changes loading state',sum)
+      % end
+
+      obj.status.curr.state(gpsId) = stateCurr;
+
 
     end
 
@@ -169,34 +212,5 @@ classdef BiElastic < Elastic
     end
   end
 
-  methods (Access = private)
-    function readMaterialParameters(obj, varargin)
-      
-      default = struct( ...
-        'youngModulus', [], ...
-        'poissonRatio', [], ...
-        'bulkModulusRatio', []);
 
-      params = readInput(default, varargin{:});
-
-      obj.E = params.youngModulus;
-      obj.nu = params.poissonRatio;
-      rat = params.bulkModulusRatio;
-
-      if ~(rat > 0 && rat <= 1)
-        error('The bulk modulus ratio must be in ]0,1]')
-      end
-
-      obj.r = 1/rat;
-
-      obj.M = obj.nu ./ (1 - obj.nu);
-
-      obj.bulkMod = obj.E ./ (3 .* (1 - 2 .* obj.nu));
-      obj.shearMod = obj.E ./ (2 .* (1 + obj.nu));
-      obj.cM = 1 ./ (obj.bulkMod + 4 .* obj.shearMod ./ 3);
-
-    end
-
-
-  end
 end

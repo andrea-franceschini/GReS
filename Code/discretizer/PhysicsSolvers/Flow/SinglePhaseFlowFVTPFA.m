@@ -66,8 +66,8 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       cellList = dofm.getFieldCells(obj.fieldId);
       cells = obj.grid.cells;
 
-      poroVec = zeros(cells.num,1);
-      alphaVec = zeros(cells.num,1);
+      poroVec = zeros(numel(cellList),1);
+      alphaVec = zeros(numel(cellList),1);
       beta = mat.getFluid().getFluidCompressibility();
 
       for cTag = 1:cells.nTag
@@ -77,7 +77,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         end
 
 
-        cellListTag = cellList(cells.tag(cellList)==cTag);
+        cellListTag = find(cells.tag(cellList)==cTag);
         poroVec(cellListTag) = mat.getMaterial(cTag).PorousRock.getPorosity();
 
         % get regions where pressure is coupled with displacements
@@ -93,7 +93,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       if ~isempty(varargin)
         % variably saturated flow model
-        PVal = PVal.*varargin{1} + poroVec(ctags).*varargin{2};
+        PVal = PVal.*varargin{1} + poroVec.*varargin{2};
       end
       
       PVal = PVal.*cells.volume(cellList);

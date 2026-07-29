@@ -350,40 +350,44 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       % Define some constant.
       mat = obj.domain.materials;
       dofm = obj.domain.dofm;
-      cellIds = dofm.getFieldCells(obj.fieldId);
+      cellList = dofm.getFieldCells(obj.fieldId);
       cells = obj.grid.cells;
 
-      poroMat = zeros(cells.nTag,1);
-      alphaMat = zeros(cells.nTag,1);
+      poroVec = zeros(numel(cellList),1);
+      alphaVec = zeros(numel(cellList),1);
       beta = mat.getFluid().getFluidCompressibility();
 
-      for m = 1:cells.nTag
-        if ~ismember(m,dofm.getTargetRegions(obj.getField()))
+      for cTag = 1:cells.nTag
+
+        if ~ismember(cTag,dofm.getTargetRegions(obj.getField()))
           continue
         end
 
+
+        cellListTag = find(cells.tag(cellList)==cTag);
+        poroVec(cellListTag) = mat.getMaterial(cTag).PorousRock.getPorosity();
+
         % get regions where pressure is coupled with displacements
         coupledTags = dofm.getTargetRegions([obj.getField(),"displacements"]);
-        alphaMat(m) = getRockCompressibility(obj,m,coupledTags);
-        poroMat(m) = mat.getMaterial(m).PorousRock.getPorosity();
-      end
-      ctags = cells.tag(cellIds);
+        rockComp = getRockCompressibility(obj,cTag,coupledTags);
+        alphaVec(cellListTag) = rockComp(cellListTag);
 
-      alphaMat = alphaMat(ctags);
-      poroMat = poroMat(ctags);
+      end
+
  
       % Define some parameters.
-      pTmp = pTmp(cellIds);
-      pOld = pOld(cellIds);
+      pTmp = pTmp(cellList);
+      pOld = pOld(cellList);
       pdiff = pTmp-pOld;
 
       % Computing the Jacobian Part.
-      Jp = beta*alphaMat.*Stau + (2*alphaMat+beta*poroMat).*dStau + poroMat.*ddStau;
-      Jp = cells.volume(cellIds).*Jp.*pdiff;
+      Jp = beta*alphaVec.*Stau + (2*alphaVec+beta*poroVec).*dStau + poroVec.*ddStau;
+      Jp = cells.volume(cellList).*Jp.*pdiff;
 
       nDoF = obj.domain.dofm.getNumbDoF(obj.getField());
-      [~,~,dof] = unique(cellIds);
+      [~,~,dof] = unique(cellList);
       Jp = sparse(dof,dof,Jp,nDoF,nDoF);
+      
     end
 
     function out = isNewtonNLSolver(obj)
