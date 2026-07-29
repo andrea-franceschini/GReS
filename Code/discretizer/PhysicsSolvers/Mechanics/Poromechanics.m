@@ -54,7 +54,32 @@ classdef Poromechanics < PhysicsSolver
 
     function assembleSystem(obj,dt)
       % compute the displacements matrices and rhs in the domain
-      assembleSystemMechanics(obj,dt);
+
+      dofm = obj.domain.dofm;
+      cells = obj.grid.cells;
+
+      % cells where mechanics is active
+      subCells = dofm.getFieldCells(obj.fieldId);
+
+      % allocate sparse matrix assembly
+      n = sum((obj.grid.nDim^2)*(obj.grid.cells.numVerts(subCells)).^2);
+      Ndof = dofm.getNumbDoF(obj.fieldId);
+      obj.fInt = zeros(Ndof,1);
+      assembleK = assembler(n,Ndof,Ndof);
+
+
+      if isempty(obj.K) || ~isLinear(obj)
+        computeK = true;
+      else
+        computeK = false;
+      end
+
+      localAssembly = @(cellList,constLaw,elem) assembleSystemMechanics(...
+        obj,dt,assembleK,cellList,constLaw,elem,computeK);
+
+      % run FEM assembly 
+      FEMassembly(obj,localAssembly);
+
       obj.domain.J{obj.fieldId,obj.fieldId} = obj.K;
       obj.domain.rhs{obj.fieldId} = obj.fInt;
     end
@@ -180,6 +205,11 @@ classdef Poromechanics < PhysicsSolver
       % update modified state object with new stress and strain
       setState(obj,s);
 
+    end
+
+
+
+    function assemble
     end
 
 
