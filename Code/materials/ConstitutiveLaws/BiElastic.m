@@ -29,6 +29,8 @@ classdef BiElastic < Elastic
     % Ratio between unloading/reloading and virgin bulk moduli:
     % Kur = r*Kvirgin. Normally r >= 1.
     r
+    bulkMod
+    shearMod
   end
 
   properties (Constant, Access = private)
@@ -49,6 +51,10 @@ classdef BiElastic < Elastic
       nptGauss = size(sigma, 1);
       status = zeros(nptGauss, 2);
 
+      if size(sigma,2) == 1
+        sigma = zeros(size(sigma,1),6);
+      end
+
       % Compression-negative convention: store pc as a positive pressure
       % magnitude equal to the initial mean stress magnitude.
       status(:, obj.STATUS_PC) = -mean(sigma(:, 1:3), 2);
@@ -67,7 +73,10 @@ classdef BiElastic < Elastic
 
       nptGauss = size(sigmaIn, 1);
 
-      Kur = ratio .* obj.K;
+      Kvirgin = obj.bulkMod;
+      G = obj.shearMod;
+
+      Kur = obj.r .* Kvirgin;
 
       pcOld = statusIn(:, obj.STATUS_PC);
 
@@ -82,15 +91,16 @@ classdef BiElastic < Elastic
       
       % Default: complete increment on the unloading/reloading branch.
       pNew = pPredictor;
-      Ktan = Kur;
+      Ktan = repmat(Kur,nptGauss,1);
       loadState = repmat(obj.UNLOADING_RELOADING, nptGauss, 1);
 
       % Points crossing into, or continuing on, virgin compression.
 
       % amount of reloading strain
       depsVToPc = zeros(nptGauss, 1);
+
       depsVToPc(isVirgin) = max( ...
-        (pcOld(isVirgin) - pOld(isVirgin)) ./ Kur(isVirgin), 0);
+        (pcOld(isVirgin) - pOld(isVirgin)) ./ Kur, 0);
       depsVToPc(isVirgin) = min( ...
         depsVToPc(isVirgin), depsVComp(isVirgin));
 
@@ -98,9 +108,9 @@ classdef BiElastic < Elastic
       depsVVirgin = depsVComp - depsVToPc;
       pAtTransition = pOld + Kur .* depsVToPc;
       pNew(isVirgin) = pAtTransition(isVirgin) ...
-        + Kvirgin(isVirgin) .* depsVVirgin(isVirgin);
+        + Kvirgin .* depsVVirgin(isVirgin);
 
-      Ktan(isVirgin) = Kvirgin(isVirgin);
+      Ktan(isVirgin) = Kvirgin;
       loadState(isVirgin) = obj.VIRGIN;
 
       % Constant-deviatoric response. For engineering shear strains:
@@ -171,17 +181,19 @@ classdef BiElastic < Elastic
 
       obj.E = params.youngModulus;
       obj.nu = params.poissonRatio;
-      obj.r = params.bulkModulusRatio;
+      rat = params.bulkModulusRatio;
 
-      if obj.r > 1
-        error('The bulk modulus ratio must be in ]0 1]')
+      if ~(rat > 0 && rat <= 1)
+        error('The bulk modulus ratio must be in ]0,1]')
       end
+
+      obj.r = 1/rat;
 
       obj.M = obj.nu ./ (1 - obj.nu);
 
-      obj.K = obj.E ./ (3 .* (1 - 2 .* obj.nu));
-      obj.G = obj.E ./ (2 .* (1 + obj.nu));
-      obj.cM = 1 ./ (obj.K + 4 .* obj.G ./ 3);
+      obj.bulkMod = obj.E ./ (3 .* (1 - 2 .* obj.nu));
+      obj.shearMod = obj.E ./ (2 .* (1 + obj.nu));
+      obj.cM = 1 ./ (obj.bulkMod + 4 .* obj.shearMod ./ 3);
 
     end
 

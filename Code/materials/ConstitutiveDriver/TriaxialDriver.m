@@ -28,7 +28,7 @@ classdef TriaxialDriver < handle
     funFlag = false(2,2)
   end
 
-  properties (Constant, Access = private)
+  properties (SetAccess = private, GetAccess = public)
     % index for output table
     TIME = 1
     SIG0 = 2

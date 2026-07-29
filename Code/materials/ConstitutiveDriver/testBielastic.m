@@ -1,20 +1,35 @@
-% testing the DruckerPrager driver for validation
+clear
+clc
 
 % input parameter follow GEOS validation study
 
 law = BiElastic('paramBielastic.xml');
 
-driver = TriaxialDriver('nStep',300,'constLaw',law,'outFile',"DPtest.txt");
+driver = TriaxialDriver('nStep',300,'constLaw',law,'outFile',"BiElasticTest.txt");
 
-t = 0:7;
-axStrain = -[0;1;5;3;7;9;4;6]*1e-3;
-radStress = -10e6*ones(8,1);
-driver.setFunction('axialStrain',t,axStrain);
+axStress = -[0;10;3;20;6;30]*1e6;
+radStress= axStress;
+t = 0:(length(axStress)-1);
+
+driver.setFunction('axialStress',t,axStress);
 driver.setFunction('radialStress',t,radStress);
-
-driver.setParameters('initialStress',-10e6);
+driver.setParameters('initialStress',0.0);
 
 out = driver.launch;
 
+fprintf('Done \n')
+
 %validateDruckerPragerAnalytical(law,out,'StressUnit','Pa');
+
+
+%% plotting
+stressAx = out(:,driver.SIG0);
+strainAx = out(:,driver.EPS0);
+
+plot(-stressAx,-strainAx,'k-o')
+xlabel('axial stress')
+ylabel('axial strain')
+
+
+
 
