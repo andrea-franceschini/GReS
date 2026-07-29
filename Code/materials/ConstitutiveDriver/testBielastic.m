@@ -2,7 +2,7 @@
 
 % input parameter follow GEOS validation study
 
-law = DruckerPrager('param.xml');
+law = BiElastic('paramBielastic.xml');
 
 driver = TriaxialDriver('nStep',300,'constLaw',law,'outFile',"DPtest.txt");
 
@@ -16,5 +16,5 @@ driver.setParameters('initialStress',-10e6);
 
 out = driver.launch;
 
-validateDruckerPragerAnalytical(law,out,'StressUnit','Pa');
+%validateDruckerPragerAnalytical(law,out,'StressUnit','Pa');
 
