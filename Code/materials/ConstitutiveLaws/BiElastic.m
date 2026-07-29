@@ -91,15 +91,12 @@ classdef BiElastic < Elastic
     function [sigmaOut, D] = constitutiveUpdate( ...
         obj, cellId, sigmaIn, epsilon, varargin) 
 
-      if isempty(cellId)
-        gpsId = 1:size(sigmaIn,1);
-      else
-        gpsId = getGaussPointIdsFromCell(obj,cellId);
-      end
 
+      gpId = obj.loc2gp(cellId,1);
+      nptGauss = obj.loc2gp(cellId,2);
+      gpsId = gpId:gpId+nptGauss-1;
+      
       pcConv = obj.status.conv.pc(gpsId);
-
-      nptGauss = length(gpsId);
 
       Kvirgin = obj.bulkMod;
       G = obj.shearMod;
@@ -107,17 +104,13 @@ classdef BiElastic < Elastic
       Kur = obj.r .* Kvirgin;
 
       % Positive scalar measures of compression.
-      pOld = -mean(sigmaIn(:, 1:3), 2);
+      pOld = -(1/3)*sum(sigmaIn(:, 1:3), 2);
       depsVComp = -sum(epsilon(:, 1:3), 2);
 
       % Unloading/reloading predictor.
       pPredictor = pOld + Kur .* depsVComp;
 
-
-      pScale = max([abs(pOld), abs(pcConv), ...
-        abs(pPredictor), ones(nptGauss,1)], [], 2);
-
-      tolP = 1e-10 .* pScale;
+      tolP = 1e-8;
 
       isVirgin = depsVComp > 0 & ...
         pPredictor > pcConv + tolP;
@@ -187,12 +180,7 @@ classdef BiElastic < Elastic
       D(6,6,:) = shearDiagonal;
 
       % Trial status. Commit only after global convergence.      
-      obj.status.curr.pc(gpsId) = max(pcConv, pNew);
-
-      % if gresLog().getVerbosity > 2
-      %   obj.status.curr.state(gpsId) - stateCurr > 0;
-      %   fprintf('%d element changes loading state',sum)
-      % end
+      obj.status.curr.pc(gpsId(isVirgin)) = max(pcConv, pNew);
 
       obj.status.curr.state(gpsId) = stateCurr;
 
@@ -208,6 +196,16 @@ classdef BiElastic < Elastic
       % provisional, before refactoring the constitutive laws and status
       % management
       cM = obj.cM;
+
+    end
+  end
+
+
+  methods (Static)
+
+    function out = isLinear()
+
+      out = false;
 
     end
   end

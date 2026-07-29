@@ -1,16 +1,14 @@
 classdef ConstitutiveLaw < handle
-  %CONSTITUTIVELAW Summary of this class goes here
-  %   Detailed explanation goes here
   
   properties
     status = struct('curr',[],'conv',[])      % internal state variables
-    loc2gp                                    % map local cell index to gp location 
+    loc2gp = [1,1]                                  % map local cell index to gp location 
     loc2glob                                  % map region local cell index to global index
   end
 
   properties (Access=protected)
-    ngp
-    ncells
+    ngp = 1
+    ncells = 1
   end
   
   methods (Abstract)
@@ -71,9 +69,20 @@ classdef ConstitutiveLaw < handle
 
   methods (Access=protected)
 
+
     function gps = getGaussPointIdsFromCell(obj,cellId)
 
       gps = getGaussPointIds(obj.loc2gp,cellId);
+    end
+
+  end
+
+
+  methods (Static)
+
+
+    function out = isLinear()
+      out = false;
     end
 
   end

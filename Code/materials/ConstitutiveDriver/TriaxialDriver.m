@@ -371,7 +371,7 @@ classdef TriaxialDriver < handle
 
       % Expected user-side interface, following the commented skeleton:
       %   [constMat, sigmaOut, ...] = constLaw.getStiffnessMatrix(sigma, strainIncrement, 0, 0, timeIncrement)
-      [sigmaOut,stiffness] = obj.constLaw.constitutiveUpdate([], sigma', strainIncrement');
+      [sigmaOut,stiffness] = obj.constLaw.constitutiveUpdate(1, sigma', strainIncrement');
 
       sigmaOut = sigmaOut(:);
       if numel(sigmaOut) ~= 6

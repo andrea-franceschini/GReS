@@ -85,4 +85,14 @@ classdef Elastic < ConstitutiveLaw
     end
 
   end
+
+
+  methods (Static)
+
+    function out = isLinear()
+
+      out = true;
+
+    end
+  end
 end

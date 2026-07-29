@@ -490,9 +490,8 @@ classdef Poromechanics < PhysicsSolver
 
       % check if model is pure linear elasticity
 
-      out = false;
+      out = true;
 
-      return
       
       % check if there is not embedded fractures
       if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics"))
@@ -500,7 +499,7 @@ classdef Poromechanics < PhysicsSolver
       end
 
       for i = 1:obj.grid.cells.nTag
-        out = isa(obj.domain.materials.getMaterial(i).ConstLaw,"Elastic");
+        out = obj.domain.materials.getConstitutiveLaw(i).isLinear;
         if ~out
           return;
         end
