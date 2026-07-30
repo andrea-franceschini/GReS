@@ -9,11 +9,13 @@ classdef assembler < handle
     count = 0             % counter for sparse assembly
     Nrows                 % number of rows 
     Ncols                 % number of columns 
+    N                     % index to preallocate for each local contribution
   end
 
   methods
     function obj = assembler(n,nrows,ncols,varargin)
-      [obj.iVec,obj.jVec,obj.valsVec] = deal(zeros(n,1));
+
+      obj.N = n;
       
       if ~isempty(nrows) && ~isempty(ncols)
         obj.Nrows = nrows;
@@ -27,7 +29,23 @@ classdef assembler < handle
         assembler.computeLocalBase(dofR,dofC,mat);
       end
     end
-    
+
+
+    function preallocate(obj,nElems)
+
+      % reallocate the sparse assembler to host space for nElems
+      % contributions
+
+      obj.count = 0;
+
+      nEntries = obj.N * nElems;
+
+      obj.iVec    = zeros(nEntries,1);
+      obj.jVec    = zeros(nEntries,1);
+      obj.valsVec = zeros(nEntries,1);
+
+    end
+
     function varargout = localAssembly(obj,varargin)
       % call back to local matrix computation
       nOut = nargout;

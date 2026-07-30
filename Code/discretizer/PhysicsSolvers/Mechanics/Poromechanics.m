@@ -74,7 +74,7 @@ classdef Poromechanics < PhysicsSolver
         computeK = false;
       end
 
-      localAssembly = @(cellList,constLaw,elem) assembleSystemMechanics(...
+      localAssembly = @(cellList,constLaw,elem,assembleK) assembleSystemMechanicsFast(...
         obj,dt,assembleK,cellList,constLaw,elem,computeK);
 
       % run FEM assembly 
@@ -82,6 +82,10 @@ classdef Poromechanics < PhysicsSolver
 
       obj.domain.J{obj.fieldId,obj.fieldId} = obj.K;
       obj.domain.rhs{obj.fieldId} = obj.fInt;
+    end
+
+
+    function assembleSystemMechanicsFast()
     end
 
 
