@@ -2,7 +2,7 @@ classdef ConstitutiveLaw < handle
   
   properties
     status = struct('curr',[],'conv',[])      % internal state variables
-    loc2gp = [1,1]                                  % map local cell index to gp location 
+    loc2gp = [1,1]                            % map local cell index to gp location 
     loc2glob                                  % map region local cell index to global index
   end
 
