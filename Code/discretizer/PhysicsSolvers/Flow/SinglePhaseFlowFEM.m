@@ -121,6 +121,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
           permMat = mat.PorousRock.getPermMatrix();
           permMat = permMat/mu;
 
+
           % get node topology for given vtk type
           topol = obj.grid.getCellNodes(cellListTag);
 
@@ -141,7 +142,9 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
             Hs = pagemtimes(pagemtimes(gradN,'ctranspose',permMat,'none'),gradN);
             Hs = Hs.*reshape(dJWeighed,1,1,[]);
             HLoc = sum(Hs,3);
+
             PLoc = (alpha(i)+poro(i)*beta)*(N'*diag(dJWeighed)*N);
+
             %Getting dof associated to Flow
             dof = dofm.getLocalDoF(obj.fieldId,nodes);
             asbH.localAssembly(dof,dof,HLoc);
