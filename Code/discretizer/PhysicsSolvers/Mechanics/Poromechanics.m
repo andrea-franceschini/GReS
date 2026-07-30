@@ -3,7 +3,6 @@ classdef Poromechanics < PhysicsSolver
   properties
     K               % the stiffness matrix free of boundary conditions
     fInt            % internal forces
-    cell2stress     % map cell ID to position in stress/strain matrix
     flOut = true
     
     % stress and strain tensor use engineering voigt notation
@@ -51,9 +50,6 @@ classdef Poromechanics < PhysicsSolver
       % initialize the state object
       initState(obj);
 
-      % map from cell id to row in stress/strain matrix
-      obj.cell2stress = getCell2StressMap(obj);
-
     end
 
     function assembleSystem(obj,dt)
@@ -90,6 +86,8 @@ classdef Poromechanics < PhysicsSolver
       % get state variables
       du = s.displacements - sOld.displacements;
 
+      gpMap = obj.domain.gpMap;
+
 
       if isempty(obj.K) || ~isLinear(obj)
         computeK = true;
@@ -97,9 +95,24 @@ classdef Poromechanics < PhysicsSolver
         computeK = false;
       end
 
+
+      for cTag = 1:cells.nTag
+
+        % extract the constitutive law
+        constLaw = obj.domain.materials.getConstitutiveLaw(cTag);
+
+        % extract cells belonging to subregion
+        subRegionCells = subCells(cells.tag(subCells) == cTag);
+
+
       for vtkId = cells.vtkTypes
 
-        subCellsLoc = obj.grid.getCellsByVTKId(vtkId,subCells);
+        % extract cells of the subregion of homogeneous vtk type
+        cellId = cells.VTKType(subRegionCells) == vtkId;
+        subCellsLoc = subRegionCells(cellId);
+
+        cellList = find(cellId);
+
         elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
 
         % get node topology for given vtk type
@@ -113,7 +126,7 @@ classdef Poromechanics < PhysicsSolver
 
           el = subCellsLoc(i);
 
-          l = obj.cell2stress(el);
+          l = gpMap(el,1);
 
           nodes = topol(i,:);
           dof = dofm.getLocalDoF(obj.fieldId,nodes);
@@ -124,17 +137,15 @@ classdef Poromechanics < PhysicsSolver
           B = elem.getStrainMatrix(gradN);
           s.strain(l:l+nG-1,:) = reshape(pagemtimes(B,du(dof)),6,nG)';
 
-          % constitutive update (will be updated with proper
-          % constitutiveLaw class)
-          [D, sigma, status] = obj.domain.materials.updateMaterial( ...
-            cells.tag(el), ...
-            sOld.stress(l:l+nG-1,:), ...
-            s.strain(l:l+nG-1,:), ...
-            dt, sOld.status(l:l+nG-1,:), el, t);
+
+          [sigma,D] = constLaw.constitutiveUpdate(cellList(i),...
+                                                  sOld.stress(l:l+nG-1,:),...
+                                                  s.strain(l:l+nG-1,:),...
+                                                  dt,...
+                                                  t);
 
 
           % update stress map and gp counter
-          s.status(l:l+nG-1,:) = status;
           s.stress(l:(l+nG-1),:) = sigma;
 
           % internal forces (initial stresses do not contribute!)
@@ -158,10 +169,13 @@ classdef Poromechanics < PhysicsSolver
 
       end % end vtk loop
 
+      end % end cell tag region loop 
+
       % assemble stiffness matrix
       if computeK
         obj.K = assembleK.sparseAssembly();
       end
+
 
       % update modified state object with new stress and strain
       setState(obj,s);
@@ -175,6 +189,10 @@ classdef Poromechanics < PhysicsSolver
       computeAvgStressAndStrain(obj);
       setStateInit(obj,getState(obj));
       setStateOld(obj,getState(obj));
+
+      for tag = 1:obj.grid.cells.nTag
+        getConstitutiveLaw(obj.domain.materials,tag).initialize(tag,obj.domain);
+      end
 
     end
 
@@ -197,12 +215,29 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
+
+    function goBackState(obj)
+
+      setState(obj,getStateOld(obj));
+
+      for tag = 1:obj.grid.cells.nTag
+        getConstitutiveLaw(obj.domain.materials,tag).goBackStatus();
+      end
+
+    end
+
     function advanceState(obj)
       % Set converged state to current state after newton convergence
       stateCurr = getState(obj);
       setStateOld(obj,stateCurr);
       % set strain to zero
       stateCurr.strain(:) = 0.0;
+
+      for tag = 1:obj.grid.cells.nTag
+        getConstitutiveLaw(obj.domain.materials,tag).advanceStatus();
+      end
+
+
 
       obj.flOut = true;
     end
@@ -251,7 +286,7 @@ classdef Poromechanics < PhysicsSolver
         for i = 1:numel(cellList)
 
           el = cellList(i);
-          l = obj.cell2stress(el);
+          l = obj.domain.gpMap(el,1);
           if l == 0
             % cell is not active
             continue
@@ -455,7 +490,8 @@ classdef Poromechanics < PhysicsSolver
 
       % check if model is pure linear elasticity
 
-      out = false;
+      out = true;
+
       
       % check if there is not embedded fractures
       if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics"))
@@ -463,7 +499,7 @@ classdef Poromechanics < PhysicsSolver
       end
 
       for i = 1:obj.grid.cells.nTag
-        out = isa(obj.domain.materials.getMaterial(i).ConstLaw,"Elastic");
+        out = obj.domain.materials.getConstitutiveLaw(i).isLinear;
         if ~out
           return;
         end

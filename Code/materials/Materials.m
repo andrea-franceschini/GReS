@@ -5,6 +5,7 @@ classdef Materials < handle
     solid     % container of all solid materials in the model
     fluid     % container of all fluid materials in the model
     matMap    % array map cell tag to corresponding material id
+
   end
 
   methods (Access = public)
@@ -199,16 +200,24 @@ classdef Materials < handle
     end
 
 
-    function [status] = initializeStatus(obj,cTag,sigma)
-      mat = obj.getMaterial(cTag).ConstLaw;
-      [status] = mat.initializeStatus(sigma);
+
+    % function [status] = initializeStatus(obj,cTag,sigma)
+    %   mat = obj.getMaterial(cTag).ConstLaw;
+    %   [status] = mat.initializeStatus(sigma);
+    % end
+
+
+    function constLaw = getConstitutiveLaw(obj,cTag)
+
+      constLaw = obj.getMaterial(cTag).ConstLaw;
+
     end
 
-    function [D, sigma, status] = updateMaterial(obj, cTag, sigma, epsilon, dt, status, el, t)
-      % constitutive update
-      mat = obj.getMaterial(cTag).ConstLaw;
-      [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status, el);
-    end
+    % function [D, sigma, status] = updateMaterial(obj, cTag, sigma, epsilon, dt, status, el, t)
+    %   % constitutive update
+    %   mat = obj.getMaterial(cTag).ConstLaw;
+    %   [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status, el);
+    % end
 
     % Destructor
     % function delete(obj)

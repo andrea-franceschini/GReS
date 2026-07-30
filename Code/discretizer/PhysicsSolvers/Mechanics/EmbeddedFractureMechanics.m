@@ -149,108 +149,133 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       coordinates = obj.grid.coordinates;
 
-      % only hexa for now
-      elem = Hexahedron(obj.grid,'gaussOrder',obj.mechSolver.getGaussOrder);
-      nG = getNumbGaussPts(elem);
-
       cell2frac = zeros(cells.num,1);
       cell2frac(frac.cutCells) = 1:frac.num;
 
-      topol = obj.grid.getCellNodes(subCells);
+      gpMap = obj.domain.gpMap;
 
-      for i = 1:numel(subCells)
+      for cTag = 1:cells.nTag
 
-        el = subCells(i);
-        l = obj.mechSolver.cell2stress(el);
+        % extract the constitutive law
+        constLaw = obj.domain.materials.getConstitutiveLaw(cTag);
 
-        f = cell2frac(el);
-        isCellCut = f > 0;
+        % extract cells belonging to subregion
+        subRegionCells = subCells(cells.tag(subCells) == cTag);
 
-        nodes = topol(i,:);
-        uDof = dofm.getLocalDoF(obj.fldMech,nodes);
-        coords = coordinates(nodes,:);
 
-        % compute strain
-        [gradN,dJw] = getDerBasisFAndDet(elem,coords);
+        for vtkId = cells.vtkTypes
 
-        B = elem.getStrainMatrix(gradN);
-        s.strain(l:l+nG-1,:) = reshape(pagemtimes(B,du(uDof)),6,nG)';
+          % extract cells of the subregion of homogeneous vtk type
+          cellId = cells.VTKType(subRegionCells) == vtkId;
+          subCellsLoc = subRegionCells(cellId);
 
-        if isCellCut
+          cellList = find(cellId);
 
-          % grab degree of freedom
-          wDof = dofm.getLocalDoF(obj.fldFrac,f);
+          elem = FiniteElementType.create(vtkId,obj.grid,obj.mechSolver.getGaussOrder);
 
-          % compute Bw matrix (compatibility operator, 6x3)
-          Bw = computeCompatibilityMatrix(obj,frac,f,coords,gradN);
+          % get node topology for given vtk type
+          topol = obj.grid.getCellNodes(subCellsLoc);
 
-          % enhance strain (only elastic contribution)
-          enhancedStrain = reshape(pagemtimes(Bw,dj(wDof)),6,nG)';
+          nG = elem.getNumbGaussPts;
 
-          % compute E matrix (equilibrium operator, 6x3)
-          E = computeEquilibriumOperator(obj,frac,f);
+          for i = 1:numel(subCellsLoc)
 
-          s.strain(l:l+nG-1,:) = s.strain(l:l+nG-1,:) + enhancedStrain;
 
-        end
+            el = subCellsLoc(i);
+            l = gpMap(el,1);
 
-        % constitutive update 
-        [D, sigma, status] = obj.domain.materials.updateMaterial( ...
-          cells.tag(el), ...
-          sOld.stress(l:l+nG-1,:), ...
-          s.strain(l:l+nG-1,:), ...
-          dt, sOld.status(l:l+nG-1,:), el, t);
+            f = cell2frac(el);
+            isCellCut = f > 0;
 
-        % update stress map and gp counter
-        s.status(l:l+nG-1,:) = status;
-        s.stress(l:(l+nG-1),:) = sigma;
+            nodes = topol(i,:);
+            uDof = dofm.getLocalDoF(obj.fldMech,nodes);
+            coords = coordinates(nodes,:);
 
-        % assemble internal forces
-        dsigma = sigma - iniStress(l:l+nG-1,:);
-        dsigma = reshape(dsigma',6,1,nG);
-        sigma = reshape(sigma',6,1,nG);
-        fTmp = pagemtimes(B,'ctranspose',dsigma,'none');
-        fTmp = fTmp.*reshape(dJw,1,1,[]);
-        fLoc = sum(fTmp,3);
-        rhsU(uDof) = rhsU(uDof)+fLoc;
+            % compute strain
+            [gradN,dJw] = getDerBasisFAndDet(elem,coords);
 
-        KLoc = obj.mechSolver.computeKloc(B,D,B,dJw);
-        asbKuu.localAssembly(uDof,uDof,KLoc);
+            B = elem.getStrainMatrix(gradN);
+            s.strain(l:l+nG-1,:) = reshape(pagemtimes(B,du(uDof)),6,nG)';
 
-        if isCellCut
-          % assemble the efem blocks
-          KuwLoc = Poromechanics.computeKloc(B,D,Bw,dJw);
-          KwuLoc = Poromechanics.computeKloc(E,D,B,dJw);
-          KwwLoc = Poromechanics.computeKloc(E,D,Bw,dJw);
+            if isCellCut
 
-          % compute updated traction and get tangent constitutive operator
-          tCurr = s.traction(wDof);
-          tOld = sOld.traction(wDof);
-          fracId = frac.fracId(f);
-          [tracNew,dtdg] = updateTraction(obj,f,fracId,tOld,tCurr,jump(wDof),jumpOld(wDof));
+              % grab degree of freedom
+              wDof = dofm.getLocalDoF(obj.fldFrac,f);
 
-          s.traction(wDof) = tracNew;
+              % compute Bw matrix (compatibility operator, 6x3)
+              Bw = computeCompatibilityMatrix(obj,frac,f,coords,gradN);
 
-          KwwLoc = KwwLoc - dtdg*frac.area(f);
+              % enhance strain (only elastic contribution)
+              enhancedStrain = reshape(pagemtimes(Bw,dj(wDof)),6,nG)';
 
-          % assemble local contributions
-          asbKuw.localAssembly(uDof,wDof,KuwLoc);
-          asbKwu.localAssembly(wDof,uDof,KwuLoc);
-          asbKww.localAssembly(wDof,wDof,KwwLoc);
+              % compute E matrix (equilibrium operator, 6x3)
+              E = computeEquilibriumOperator(obj,frac,f);
 
-          % assemble rhsW (use computed stress tensor)
-          rT = (tracNew - iniTraction(wDof))*frac.area(f);
+              s.strain(l:l+nG-1,:) = s.strain(l:l+nG-1,:) + enhancedStrain;
 
-          fTmp = pagemtimes(E,'ctranspose',dsigma,'none');
-          fTmp = fTmp.*reshape(dJw,1,1,[]);
-          rSigma = sum(fTmp,3);
-          rBC = obj.bcTraction(wDof)*frac.area(f);
-          rhsLoc = rSigma - rT - rBC;
-          rhsW(wDof) = rhsW(wDof) + rhsLoc;
+            end
 
-          % if obj.activeSet.curr(f) ~= ContactMode.stick
-          %   fprintf('rSigma')
-          % end
+            % constitutive update
+            [sigma,D] = constLaw.constitutiveUpdate(cellList(i),...
+              sOld.stress(l:l+nG-1,:),...
+              s.strain(l:l+nG-1,:),...
+              dt,...
+              t);
+
+
+            % update stress map and gp counter
+            s.stress(l:(l+nG-1),:) = sigma;
+
+            % assemble internal forces
+            dsigma = sigma - iniStress(l:l+nG-1,:);
+            dsigma = reshape(dsigma',6,1,nG);
+            sigma = reshape(sigma',6,1,nG);
+            fTmp = pagemtimes(B,'ctranspose',dsigma,'none');
+            fTmp = fTmp.*reshape(dJw,1,1,[]);
+            fLoc = sum(fTmp,3);
+            rhsU(uDof) = rhsU(uDof)+fLoc;
+
+            KLoc = obj.mechSolver.computeKloc(B,D,B,dJw);
+            asbKuu.localAssembly(uDof,uDof,KLoc);
+
+            if isCellCut
+              % assemble the efem blocks
+              KuwLoc = Poromechanics.computeKloc(B,D,Bw,dJw);
+              KwuLoc = Poromechanics.computeKloc(E,D,B,dJw);
+              KwwLoc = Poromechanics.computeKloc(E,D,Bw,dJw);
+
+              % compute updated traction and get tangent constitutive operator
+              tCurr = s.traction(wDof);
+              tOld = sOld.traction(wDof);
+              fracId = frac.fracId(f);
+              [tracNew,dtdg] = updateTraction(obj,f,fracId,tOld,tCurr,jump(wDof),jumpOld(wDof));
+
+              s.traction(wDof) = tracNew;
+
+              KwwLoc = KwwLoc - dtdg*frac.area(f);
+
+              % assemble local contributions
+              asbKuw.localAssembly(uDof,wDof,KuwLoc);
+              asbKwu.localAssembly(wDof,uDof,KwuLoc);
+              asbKww.localAssembly(wDof,wDof,KwwLoc);
+
+              % assemble rhsW (use computed stress tensor)
+              rT = (tracNew - iniTraction(wDof))*frac.area(f);
+
+              fTmp = pagemtimes(E,'ctranspose',dsigma,'none');
+              fTmp = fTmp.*reshape(dJw,1,1,[]);
+              rSigma = sum(fTmp,3);
+              rBC = obj.bcTraction(wDof)*frac.area(f);
+              rhsLoc = rSigma - rT - rBC;
+              rhsW(wDof) = rhsW(wDof) + rhsLoc;
+
+              % if obj.activeSet.curr(f) ~= ContactMode.stick
+              %   fprintf('rSigma')
+              % end
+
+            end
+
+          end
 
         end
 
