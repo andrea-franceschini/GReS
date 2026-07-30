@@ -190,8 +190,15 @@ classdef Poromechanics < PhysicsSolver
       setStateInit(obj,getState(obj));
       setStateOld(obj,getState(obj));
 
-      for tag = 1:obj.grid.cells.nTag
-        getConstitutiveLaw(obj.domain.materials,tag).initialize(tag,obj.domain);
+      mat = obj.domain.materials;
+      matNames = mat.getMaterialNames;
+
+      for matID = matNames
+
+        tags = mat.getMaterialTags(matID);
+
+        getConstitutiveLaw(obj.domain.materials,matID).initialize(tags,obj.domain);
+
       end
 
     end
