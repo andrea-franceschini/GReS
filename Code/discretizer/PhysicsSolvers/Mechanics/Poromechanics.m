@@ -52,7 +52,7 @@ classdef Poromechanics < PhysicsSolver
 
     end
 
-    function assembleSystem(obj,dt)
+    function assembleSystemOld(obj,dt)
       % compute the displacements matrices and rhs in the domain
 
       dofm = obj.domain.dofm;
@@ -85,7 +85,29 @@ classdef Poromechanics < PhysicsSolver
     end
 
 
-    function assembleSystemMechanicsFast()
+    function assembleSystem(obj,dt)
+    
+
+      % define the assembler
+      dofm = obj.domain.dofm;
+      cells = obj.grid.cells;
+
+      % cells where mechanics is active
+      subCells = dofm.getFieldCells(obj.fieldId);
+
+      % allocate sparse matrix assembly
+      n = sum((obj.grid.nDim^2)*(obj.grid.cells.numVerts(subCells)).^2);
+      Ndof = dofm.getNumbDoF(obj.fieldId);
+      obj.fInt = zeros(Ndof,1);
+      assembleK = assembler(n,Ndof,Ndof);
+
+
+      % select the local assembler
+      localAssembly = @(assembler,cellList,elem,constLaw) ...
+          assembleStiffMat(obj,cellList,elem,constLaw,assembler); 
+
+      % utility to assemble the finite element matrix
+      obj.K = FEMassembly(obj,assembler,localAssembly);
     end
 
 

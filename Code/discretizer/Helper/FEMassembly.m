@@ -1,4 +1,4 @@
-function varargout = FEMassembly(solver,assemblers,localAssembler,chunkSize)
+function varargout = FEMassembly(solver,assemblers,localAssembler,varargin)
 
 
 % assemblers is an array of preallocated assembler objects corresponding to
@@ -13,6 +13,7 @@ function varargout = FEMassembly(solver,assemblers,localAssembler,chunkSize)
 
 % output: a matrix for each of the input assembler objects.
 
+default = struct('bilinearFormType',bilinearForm.GradGrad,'chunkSize',1e3);
 
 
 % routine that loops in a domain and call a local assembler on a subset of
@@ -87,7 +88,7 @@ for cTag = 1:cells.nTag
       end
 
       % call assembler for local elements
-      localAssembler(cellList,elem,constLaw,assemblers)
+      localAssembler(assembler,cellList,elem,constLaw)
 
       for m = 1:nMat
 

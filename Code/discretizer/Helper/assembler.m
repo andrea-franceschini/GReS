@@ -13,7 +13,7 @@ classdef assembler < handle
   end
 
   methods
-    function obj = assembler(n,nrows,ncols,varargin)
+    function obj = assembler(n,nrows,ncols)
 
       obj.N = n;
       
@@ -22,12 +22,12 @@ classdef assembler < handle
         obj.Ncols = ncols;
       end
 
-      if ~isempty(varargin)
-        obj.computeLocal = varargin{1};
-      else
-        obj.computeLocal = @(dofR,dofC,mat)...
-        assembler.computeLocalBase(dofR,dofC,mat);
-      end
+      % if ~isempty(varargin)
+      %   obj.computeLocal = varargin{1};
+      % else
+      %   obj.computeLocal = @(dofR,dofC,mat)...
+      %   assembler.computeLocalBase(dofR,dofC,mat);
+      % end
     end
 
 
@@ -46,31 +46,38 @@ classdef assembler < handle
 
     end
 
-    function varargout = localAssembly(obj,varargin)
-      % call back to local matrix computation
-      nOut = nargout;
+    function localAssembly(obj, dofr, dofc, localMat)
 
-      % Call local assembler and manage output
-      allOut = cell(3 + nOut, 1);
-      [allOut{:}] = obj.computeLocal(varargin{:});
+      nRowDofs = size(dofr, 1);
+      nColDofs = size(dofc, 1);
+      nCells   = size(dofr, 2);
 
-      assert(numel(allOut) > 2,['At least 3 output are required: \n' ...
-        'out(1): list of local row dofs \n' ...
-        'out(2): list of local column dofs \n' ...
-        'out(3): list of local values.']);
+      assert(size(dofc, 2) == nCells, ...
+        'dofr and dofc must contain the same number of cells.');
 
-      dofr      = allOut{1};
-      dofc      = allOut{2};
-      localMat  = allOut{3};
-      varargout = allOut(4:end);
+      assert(isequal(size(localMat), [nRowDofs, nColDofs, nCells]), ...
+        'localMat must have size nRowDofs-by-nColDofs-by-nCells.');
 
-      n = numel(localMat);
-      [jLoc,iLoc] = meshgrid(dofc,dofr);
-      obj.iVec(obj.count+1:obj.count+n) = iLoc(:);
-      obj.jVec(obj.count+1:obj.count+n) = jLoc(:);
-      obj.valsVec(obj.count+1:obj.count+n) = localMat(:);
-      obj.count = obj.count + n;
+      nEntriesPerCell = nRowDofs * nColDofs;
+      nEntries        = nEntriesPerCell * nCells;
+
+      idx = obj.count + (1:nEntries);
+
+      % Ordering matches localMat(:):
+      %
+      % localMat(i,j,cell), with i varying fastest, then j, then cell.
+      iLoc = repmat(dofr, nColDofs, 1);
+      jLoc = repelem(dofc, nRowDofs, 1);
+
+      obj.iVec(idx)    = iLoc(:);
+      obj.jVec(idx)    = jLoc(:);
+      obj.valsVec(idx) = localMat(:);
+
+      obj.count = obj.count + nEntries;
+
     end
+
+    
 
     function mat = sparseAssembly(obj)
       % trim row col indices if needed
