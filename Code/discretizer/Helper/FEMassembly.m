@@ -1,64 +1,69 @@
 function varargout = FEMassembly(solver,localAssembler,varargin)
-%FEMASSEMBLY Assemble one or more FEM matrices in bounded-size chunks.
-%
-% Each call to localAssembler fills the supplied assembler objects.  Their
-% sparse outputs are collected in a cell array and added to the contributions
-% produced by previous chunks.  One output is returned for each assembler.
+%FEMASSEMBLY 
+% Efficient Kernel for performing finite element computations
 
 default = struct('chunkSize',1e4);
 options = readInput(default,varargin{:});
 chunkSize = options.chunkSize;
 
-% Number of outputs requested by the caller.
 nMat = nargout;
+mat = cell(nMat,1);
+hasContribution = false;
 
 domain = solver.domain;
 dofm = domain.dofm;
 cells = domain.grid.cells;
 subCells = dofm.getFieldCells(solver.getField());
-hasContribution = false;
 
 for cTag = 1:cells.nTag
 
   subRegionCells = subCells(cells.tag(subCells) == cTag);
 
   for vtkId = cells.vtkTypes
-    subCellsLoc = subRegionCells(cells.VTKType(subRegionCells) == vtkId);
+
+    subCellsLoc = ...
+      subRegionCells(cells.VTKType(subRegionCells) == vtkId);
+
     if isempty(subCellsLoc)
       continue
     end
 
-    elem = FiniteElementType.create(vtkId,solver.grid,solver.getGaussOrder);
+    elem = FiniteElementType.create( ...
+      vtkId,solver.grid,solver.getGaussOrder);
 
     for first = 1:chunkSize:numel(subCellsLoc)
-      cellList = subCellsLoc(first:min(first + chunkSize - 1,numel(subCellsLoc)));
 
-      % Collect the generic outputs of localAssembler in a cell array.
+      cellList = subCellsLoc( ...
+        first:min(first + chunkSize - 1,numel(subCellsLoc)));
+
+      if nMat == 0
+        % Execute localAssembler only for its side effects.
+        localAssembler(cellList,elem);
+        continue
+      end
+
       matLoc = cell(nMat,1);
-      [matLoc{:}] = localAssembler(cTag,cellList,elem);
+      [matLoc{:}] = localAssembler(cellList,elem);
 
-      if hasContribution
-        for m = 1:numel(matLoc)
+      if ~hasContribution
+        mat = matLoc;
+        hasContribution = true;
+      else
+        for m = 1:nMat
           mat{m} = mat{m} + matLoc{m};
         end
-      else
-        % The dimensions and sparse type are known only after the first call.
-        for m = 1:numel(matLoc)
-          mat = cell(nMat,1);
-          mat{m} = matLoc{m};
-          hasContribution = true;
-        end
       end
+
     end
   end
 end
 
-% Preserve the advertised output shape even when there are no active cells.
-if ~hasContribution
-  for m = 1:nMat
-    mat{m} = sparse(assemblers(m).Nrows,assemblers(m).Ncols);
-  end
+if nMat > 0 && ~hasContribution
+  error('FEMassembly:noContributions', ...
+    ['No active cells were found, so the dimensions of the output ', ...
+     'matrices could not be inferred.']);
 end
 
 varargout = mat;
+
 end

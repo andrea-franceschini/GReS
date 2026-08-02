@@ -57,8 +57,8 @@ classdef Poromechanics < PhysicsSolver
 
       obj.fInt = zeros(obj.domain.dofm.getNumbDoF(obj.fieldId),1);
       % declare the assembler function
-      localAssembler = @(tag,cellList,elem) ...
-        assembleMechanics(obj,tag,cellList,elem,dt);
+      localAssembler = @(cellList,elem) ...
+        assembleMechanics(obj,cellList,elem,dt);
 
       % utility to assemble the finite element matrix
       obj.K = FEMassembly(obj,localAssembler);
@@ -204,7 +204,7 @@ classdef Poromechanics < PhysicsSolver
 
 
 
-    function K = assembleMechanics(obj,cTag,cellList,elem,dt)
+    function K = assembleMechanics(obj,cellList,elem,dt)
 
       % assemble local stiffness matrix for a given element type and region
       % tag
@@ -217,6 +217,8 @@ classdef Poromechanics < PhysicsSolver
       topol = obj.grid.getCellNodes(cellList);
       nG = elem.getNumbGaussPts;
 
+
+      cTag = obj.grid.cells.tag(cellList(1));
       constLaw = obj.domain.materials.getConstitutiveLaw(cTag);
 
       % define assembler for matrix
@@ -359,63 +361,13 @@ classdef Poromechanics < PhysicsSolver
     end
 
     function computeAvgStressAndStrain(obj)
-      % compute cell average values of stress and strain for print purpose
-      % note: output strain is the total strain = B*u
 
-      cells = obj.grid.cells;
-
-      coordinates = obj.grid.coordinates;
-
-      dofm = obj.domain.dofm;
-
-      stress = getState(obj,'stress');
-      avStress = getState(obj,'avgStress');
-      avStrain = getState(obj,'avgStress');
-      disp = getState(obj,'displacements');
-
-      for vtkId = cells.vtkTypes
-
-        cellList = obj.grid.getCellsByVTKId(vtkId);
-        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
-        nG = elem.getNumbGaussPts;
-
-        % get node topology for given vtk type
-        topol = obj.grid.getCellNodes(cellList);
-
-        for i = 1:numel(cellList)
-
-          el = cellList(i);
-          l = obj.domain.gpMap(el,1);
-          if l == 0
-            % cell is not active
-            continue
-          end
-
-          stressEl = stress(l:l+nG-1,:);
-
-          nodes = topol(i,:);
-          coord = coordinates(nodes,:);
-          dofs = dofm.getLocalDoF(obj.fieldId,nodes);
-          u = disp(dofs);
-
-          [gradN,dJWeighed] = getDerBasisFAndDet(elem,coord);
-          vol = sum(dJWeighed);
-          B = elem.getStrainMatrix(gradN);
-
-          % compute average stress and strain with gauss average
-          avStress(el,:) = sum(diag(dJWeighed)*stressEl)/vol;
-          dStrain = pagemtimes(B,u);
-          dStrain = dStrain.*reshape(dJWeighed,1,1,[]);
-          avStrain(el,:) = sum(dStrain,3)/vol;
-
-        end
-      end
-
-      setState(obj,avStress,'avgStress');
-      setState(obj,avStrain,'avgStrain');
-
+      kernel = @(cellList,elem) computeAvgStressAndStrainKernel(obj,cellList,elem);
+      FEMassembly(obj,kernel,'chunkSize',1e5);
 
     end
+
+ 
 
     function applyBC(obj,bcId,t)
 
@@ -683,6 +635,50 @@ classdef Poromechanics < PhysicsSolver
     %   setState(obj,stateCurr.strain,'strain')
     %
     % end
+
+    function computeAvgStressAndStrainKernel(obj,cellList,elem)
+      % compute cell average values of stress and strain for print purpose
+      % note: output strain is the total strain = B*u
+
+      stress = getState(obj,'stress');
+      strain = getState(obj,'strain');
+      avStress = getState(obj,'avgStress');
+      avStrain = getState(obj,'avgStrain');
+
+      topol = obj.grid.getCellNodes(cellList);
+
+      nodes = topol';
+      coords = obj.grid.coordinates(nodes(:),:);
+      coords = reshape(coords,elem.nNode,numel(cellList),3);
+      coords = permute(coords,[1,3,2]);
+
+      gpId = getGaussPointIds(obj.domain.gpMap,cellList);
+
+      stresses = stress(gpId,:);
+      strains = strain(gpId,:);
+
+      [~,dJWeighed] = getDerBasisFAndDet(elem,coords);
+
+      nG = elem.getNumbGaussPts();
+      nC = numel(cellList);
+
+      dJW = reshape(dJWeighed,nG,nC,1);
+      vol = sum(dJW,1);
+
+      stresses = reshape(stresses,nG,nC,6);
+      stresses = sum(stresses .* dJW,1);
+      stresses = reshape(stresses,nC,6);
+      avStress(cellList,:) = stresses ./ vol';
+
+      strains = reshape(strains,nG,nC,6);
+      strains = sum(strains .* dJW,1);
+      strains = reshape(strains,nC,6);
+      avStrain(cellList,:) = strains ./ vol';
+
+      setState(obj,avStress,'avgStress');
+      setState(obj,avStrain,'avgStrain');
+
+    end
 
 
     function map = getCell2StressMap(obj)

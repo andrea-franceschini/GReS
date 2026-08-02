@@ -46,38 +46,33 @@ classdef assembler < handle
 
     end
 
-    function localAssembly(obj, dofr, dofc, localMat)
+    function A = localAssembly(obj,dofr,dofc,localMat)
 
-      nRowDofs = size(dofr, 1);
-      nColDofs = size(dofc, 1);
-      nCells   = size(dofr, 2);
+      nRowDofs = size(dofr,1);
+      nColDofs = size(dofc,1);
+      nCells   = size(dofr,2);
 
-      assert(size(dofc, 2) == nCells, ...
+      assert(size(dofc,2) == nCells, ...
         'dofr and dofc must contain the same number of cells.');
 
-      assert(isequal(size(localMat), [nRowDofs, nColDofs, nCells]), ...
+      assert(isequal(size(localMat),[nRowDofs,nColDofs,nCells]), ...
         'localMat must have size nRowDofs-by-nColDofs-by-nCells.');
 
-      nEntriesPerCell = nRowDofs * nColDofs;
-      nEntries        = nEntriesPerCell * nCells;
+      % Ordering agrees with localMat(:):
+      % local row, local column, cell.
+      iLoc = repmat(dofr,nColDofs,1);
+      jLoc = repelem(dofc,nRowDofs,1);
 
-      idx = obj.count + (1:nEntries);
-
-      % Ordering matches localMat(:):
-      %
-      % localMat(i,j,cell), with i varying fastest, then j, then cell.
-      iLoc = repmat(dofr, nColDofs, 1);
-      jLoc = repelem(dofc, nRowDofs, 1);
-
-      obj.iVec(idx)    = iLoc(:);
-      obj.jVec(idx)    = jLoc(:);
-      obj.valsVec(idx) = localMat(:);
-
-      obj.count = obj.count + nEntries;
+      A = sparse( ...
+        iLoc(:), ...
+        jLoc(:), ...
+        localMat(:), ...
+        obj.Nrows, ...
+        obj.Ncols);
 
     end
 
-    
+
 
     function mat = sparseAssembly(obj)
       % trim row col indices if needed
