@@ -16,6 +16,8 @@ classdef assembler < handle
     function obj = assembler(n,nrows,ncols)
 
       obj.N = n;
+
+      preallocate(obj,n);
       
       if ~isempty(nrows) && ~isempty(ncols)
         obj.Nrows = nrows;
@@ -31,14 +33,12 @@ classdef assembler < handle
     end
 
 
-    function preallocate(obj,nElems)
+    function preallocate(obj,nEntries)
 
       % reallocate the sparse assembler to host space for nElems
       % contributions
 
       obj.count = 0;
-
-      nEntries = obj.N * nElems;
 
       obj.iVec    = zeros(nEntries,1);
       obj.jVec    = zeros(nEntries,1);

@@ -3,7 +3,6 @@ classdef ConstitutiveLaw < handle
   properties
     status = struct('curr',[],'conv',[])      % internal state variables
     loc2gp = [1,1]                            % map local cell index to gp location 
-    loc2glob                                  % map region local cell index to global index
   end
 
   properties (Access=protected)
@@ -31,16 +30,16 @@ classdef ConstitutiveLaw < handle
 
       cellsInRegion = ismember(cells.tag,tag);
 
-      obj.loc2glob = find(cellsInRegion);
+      loc2glob = find(cellsInRegion);
 
-      obj.loc2gp = zeros(length(obj.loc2glob),1);
-      obj.loc2gp(:,2) = domain.gpMap(obj.loc2glob,2);
+      obj.loc2gp = zeros(length(loc2glob),1);
+      obj.loc2gp(:,2) = domain.gpMap(loc2glob,2);
       obj.loc2gp(:,1) = [1;1+cumsum(obj.loc2gp(1:end-1,2))];
 
-      obj.ncells = length(obj.loc2glob);
+      obj.ncells = length(loc2glob);
 
       % call abstract method of subclasses
-      gaussId = getGaussPointIds(domain.gpMap,obj.loc2glob);
+      gaussId = getGaussPointIds(domain.gpMap,loc2glob);
 
       obj.ngp = length(gaussId);
 
