@@ -103,6 +103,13 @@ classdef Materials < handle
 
     end
 
+    function tags = getMaterialTags(obj,matName)
+
+      id = getMaterialIDFromName(obj,matName);
+      tags = find(obj.matMap == id);
+
+    end
+
 
     function gamma = getSpecificWeight(obj,input)
 
