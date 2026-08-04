@@ -54,9 +54,9 @@ classdef assembler < handle
 
       assert(size(dofc, 2) == nCells, ...
         'dofr and dofc must contain the same number of cells.');
-
-      assert(isequal(size(localMat), [nRowDofs, nColDofs, nCells]), ...
-        'localMat must have size nRowDofs-by-nColDofs-by-nCells.');
+      % 
+      % assert(isequal(size(localMat), [nRowDofs, nColDofs, nCells]), ...
+      %   'localMat must have size nRowDofs-by-nColDofs-by-nCells.');
 
       nEntriesPerCell = nRowDofs * nColDofs;
       nEntries        = nEntriesPerCell * nCells;

@@ -275,7 +275,9 @@ classdef Poromechanics < PhysicsSolver
 
       % dof is nDofPerCell x nCells and Kloc is
       % nDofPerCell x nDofPerCell x nCells.
-      K = assembleK.localAssembly(dof,dof,Kloc);
+      assembleK.localAssembly(dof,dof,Kloc);
+
+      K = assembleK.sparseAssembly;
       
       setState(obj,s);
 
