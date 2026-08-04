@@ -61,7 +61,7 @@ classdef Poromechanics < PhysicsSolver
         assembleMechanics(obj,cellList,elem,dt);
 
       % utility to assemble the finite element matrix
-      obj.K = FEMassembly(obj,localAssembler,'chunkSize',1e5);
+      obj.K = FEMassembly(obj,localAssembler,'chunkSize',1e4);
 
       obj.domain.J{obj.fieldId,obj.fieldId} = obj.K;
       obj.domain.rhs{obj.fieldId} = obj.fInt;
