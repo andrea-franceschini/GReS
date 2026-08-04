@@ -291,8 +291,11 @@ classdef Poromechanics < PhysicsSolver
       setStateInit(obj,getState(obj));
       setStateOld(obj,getState(obj));
 
-      for tag = 1:obj.grid.cells.nTag
-        getConstitutiveLaw(obj.domain.materials,tag).initialize(tag,obj.domain);
+      mat = obj.domain.materials;
+      matNames = mat.getMaterialNames;
+      for matName = matNames
+        tags = mat.getMaterialRegions(matName);
+        getConstitutiveLaw(obj.domain.materials,matName).initialize(tags,obj.domain);
       end
 
     end
@@ -541,7 +544,7 @@ classdef Poromechanics < PhysicsSolver
 
       % check if model is pure linear elasticity
 
-      out = true;
+      out = false;
 
 
       % check if there is not embedded fractures
@@ -561,7 +564,7 @@ classdef Poromechanics < PhysicsSolver
     function out = isSymmetric(obj)
 
       % if the problem is linear, then Poromechanics is also symmetric
-      out = isLinear(obj);
+      out = true;
 
     end
 
