@@ -1,4 +1,4 @@
-classdef OutState < handle & matlab.mixin.Copyable
+classdef OutStateOld < handle & matlab.mixin.Copyable
   % Class for printing results to VTK
   % Input: OutState(model,mesh,fNameList)
   % Optional parameters:
@@ -25,7 +25,7 @@ classdef OutState < handle & matlab.mixin.Copyable
 
   methods (Access = public)
 
-    function obj = OutState(varargin)
+    function obj = OutStateOld(varargin)
 
       if nargin == 0
         obj.writeSolution = false;

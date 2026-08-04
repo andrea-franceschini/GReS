@@ -2,12 +2,10 @@
 #define VTU_WRITER_HPP
 
 #include <cstdint>
-#include <cstring>
 #include <fstream>
-#include <functional>
 #include <ostream>
 #include <string>
-#include <utility>
+#include <type_traits>
 #include <vector>
 
 constexpr int VTK_TETRA       = 10;
@@ -22,7 +20,7 @@ constexpr int VALUES_IN_COLUMN = 10;
 enum class VTUFormat
 {
   ASCII,
-  BINARY   // "binary" here means the VTK "appended" raw-binary encoding
+  BINARY
 };
 
 template<typename T>
@@ -72,8 +70,6 @@ public:
   void clear();
 
 private:
-  // Holds one field (point or cell data) array and knows how to write
-  // itself either as ascii text or as a raw appended-binary payload.
   template<typename T>
   class VTKDataNode
   {
@@ -88,16 +84,30 @@ private:
         m_numComponents(nComponents)
     {}
 
-    std::string const& name() const { return m_name; }
-    int numComponents() const { return m_numComponents; }
+    std::uint64_t payloadBytes() const
+    {
+      return static_cast<std::uint64_t>(m_size) *
+             static_cast<std::uint64_t>(m_numComponents) * sizeof(T);
+    }
 
-    void writeAscii(std::ostream& os) const
+    void writeAsciiHeader(std::ostream& os) const
     {
       os << "<DataArray type=\"" << vtkTypeName<T>()
          << "\" Name=\"" << m_name
          << "\" NumberOfComponents=\"" << m_numComponents
          << "\" format=\"ascii\">\n";
+    }
 
+    void writeBinaryHeader(std::ostream& os, std::uint64_t offset) const
+    {
+      os << "<DataArray type=\"" << vtkTypeName<T>()
+         << "\" Name=\"" << m_name
+         << "\" NumberOfComponents=\"" << m_numComponents
+         << "\" format=\"appended\" offset=\"" << offset << "\"/>\n";
+    }
+
+    void writeAsciiPayload(std::ostream& os) const
+    {
       if (m_numComponents == 1)
       {
         int column = 0;
@@ -128,51 +138,32 @@ private:
           os << '\n';
         }
       }
-
-      os << "</DataArray>\n";
     }
 
-    // Number of raw payload bytes this array will occupy in the appended
-    // data section (not counting its own 8-byte size header).
-    std::uint64_t appendedPayloadSize() const
+    void writeBinaryBlock(std::ostream& os) const
     {
-      return static_cast<std::uint64_t>(m_size) *
-             static_cast<std::uint64_t>(m_numComponents) *
-             sizeof(T);
-    }
-
-    // Writes the 8-byte (UInt64) size header followed by the raw bytes,
-    // interleaving multi-component data on the fly (source layout is
-    // column-major, VTK expects it interleaved per point/cell).
-    void writeAppendedPayload(std::ostream& os) const
-    {
-      std::uint64_t const byteSize = appendedPayloadSize();
-      os.write(reinterpret_cast<char const*>(&byteSize), sizeof(byteSize));
-      if (byteSize == 0) return;
+      std::uint64_t const nBytes = payloadBytes();
+      os.write(reinterpret_cast<char const*>(&nBytes), sizeof(nBytes));
 
       if (m_numComponents == 1)
       {
         os.write(reinterpret_cast<char const*>(m_data),
-                 static_cast<std::streamsize>(byteSize));
+                 static_cast<std::streamsize>(nBytes));
+        return;
       }
-      else
+
+      std::vector<T> interleaved(
+        static_cast<std::size_t>(m_size) * m_numComponents);
+      for (int i = 0; i < m_size; ++i)
       {
-        std::vector<T> interleaved(
-          static_cast<std::size_t>(m_size) *
-          static_cast<std::size_t>(m_numComponents));
-
-        for (int i = 0; i < m_size; ++i)
+        for (int c = 0; c < m_numComponents; ++c)
         {
-          for (int c = 0; c < m_numComponents; ++c)
-          {
-            interleaved[static_cast<std::size_t>(i) * m_numComponents + c] =
-              m_data[i + c * m_size];
-          }
+          interleaved[static_cast<std::size_t>(i) * m_numComponents + c] =
+            m_data[i + c * m_size];
         }
-
-        os.write(reinterpret_cast<char const*>(interleaved.data()),
-                 static_cast<std::streamsize>(byteSize));
       }
+      os.write(reinterpret_cast<char const*>(interleaved.data()),
+               static_cast<std::streamsize>(nBytes));
     }
 
   private:
@@ -199,11 +190,23 @@ private:
   std::vector<VTKDataNode<T>>& m_cellData();
 
   void writeAscii(std::ostream& os);
-  void writeAppended(std::ostream& os);
+  void writeBinary(std::ostream& os);
   void writeHeader(std::ostream& os) const;
   void writeTimeAscii(std::ostream& os) const;
   void writePointsAscii(std::ostream& os) const;
   void writeCellsAscii(std::ostream& os) const;
+
+  template<typename T>
+  static void writeAsciiNodes(std::ostream& os,
+                              std::vector<VTKDataNode<T>> const& nodes)
+  {
+    for (auto const& node : nodes)
+    {
+      node.writeAsciiHeader(os);
+      node.writeAsciiPayload(os);
+      os << "</DataArray>\n";
+    }
+  }
 
   int m_dim = 0;
   int m_numPoints = 0;

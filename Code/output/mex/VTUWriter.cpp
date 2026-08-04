@@ -2,9 +2,29 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstdint>
-#include <functional>
-#include <vector>
+#include <limits>
+
+namespace
+{
+constexpr std::uint64_t BLOCK_HEADER_BYTES = sizeof(std::uint64_t);
+
+inline void advanceOffset(std::uint64_t& offset, std::uint64_t payloadBytes)
+{
+  offset += BLOCK_HEADER_BYTES + payloadBytes;
+}
+
+template<typename T>
+void writeRawBlock(std::ostream& os, T const* data, std::uint64_t count)
+{
+  std::uint64_t const nBytes = count * sizeof(T);
+  os.write(reinterpret_cast<char const*>(&nBytes), sizeof(nBytes));
+  if (nBytes != 0)
+  {
+    os.write(reinterpret_cast<char const*>(data),
+             static_cast<std::streamsize>(nBytes));
+  }
+}
+}
 
 void VTUWriter::set_mesh(int const dim,
                          int const numPoints,
@@ -16,7 +36,6 @@ void VTUWriter::set_mesh(int const dim,
                          int const* const nVertices)
 {
   assert(dim == 2 || dim == 3);
-
   m_dim = dim;
   m_numPoints = numPoints;
   m_points = coord;
@@ -39,20 +58,17 @@ void VTUWriter::set_format(VTUFormat const format)
 
 void VTUWriter::writeHeader(std::ostream& os) const
 {
-  os << "<?xml version=\"1.0\"?>\n"
-     << "<VTKFile type=\"UnstructuredGrid\" "
-        "version=\"1.0\" "
-        "byte_order=\"LittleEndian\" "
-        "header_type=\"UInt64\">\n"
+  os << "<VTKFile type=\"UnstructuredGrid\" version=\"1.0\""
+        " byte_order=\"LittleEndian\" header_type=\"UInt64\">\n"
      << "<UnstructuredGrid>\n";
 }
 
 void VTUWriter::writeTimeAscii(std::ostream& os) const
 {
   os << "<FieldData>\n"
-     << "<DataArray type=\"Float64\" Name=\"TIME\" "
-        "NumberOfTuples=\"1\" format=\"ascii\">\n"
-     << m_time << '\n'
+     << "<DataArray type=\"Float64\" Name=\"TIME\" NumberOfTuples=\"1\" "
+        "format=\"ascii\">\n"
+     << m_time << "\n"
      << "</DataArray>\n"
      << "</FieldData>\n";
 }
@@ -60,29 +76,22 @@ void VTUWriter::writeTimeAscii(std::ostream& os) const
 void VTUWriter::writePointsAscii(std::ostream& os) const
 {
   os << "<Points>\n"
-     << "<DataArray type=\"Float64\" NumberOfComponents=\"3\" "
-        "format=\"ascii\">\n";
+     << "<DataArray type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">\n";
 
   for (int i = 0; i < m_numPoints; ++i)
   {
-    double const x = m_points[i];
-    double const y = m_points[i + m_numPoints];
-    double const z =
-      m_dim == 3 ? m_points[i + 2 * m_numPoints] : 0.0;
-
-    os << x << ' ' << y << ' ' << z << '\n';
+    os << m_points[i] << ' ' << m_points[i + m_numPoints] << ' ';
+    os << (m_dim == 3 ? m_points[i + 2 * m_numPoints] : 0.0) << '\n';
   }
 
-  os << "</DataArray>\n"
-     << "</Points>\n";
+  os << "</DataArray>\n</Points>\n";
 }
 
 void VTUWriter::writeCellsAscii(std::ostream& os) const
 {
-  os << "<Cells>\n"
-     << "<DataArray type=\"Int32\" Name=\"connectivity\" "
-        "format=\"ascii\">\n";
+  os << "<Cells>\n";
 
+  os << "<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
   int column = 0;
   for (int i = 0; i < m_numConnections; ++i)
   {
@@ -92,10 +101,7 @@ void VTUWriter::writeCellsAscii(std::ostream& os) const
       os << '\n';
       column = 0;
     }
-    else
-    {
-      os << ' ';
-    }
+    else os << ' ';
   }
   if (column != 0) os << '\n';
   os << "</DataArray>\n";
@@ -104,16 +110,14 @@ void VTUWriter::writeCellsAscii(std::ostream& os) const
   int maxType = 0;
   if (m_numCells > 0)
   {
-    auto const minmax =
-      std::minmax_element(m_cellVTKType, m_cellVTKType + m_numCells);
+    auto const minmax = std::minmax_element(m_cellVTKType,
+                                             m_cellVTKType + m_numCells);
     minType = *minmax.first;
     maxType = *minmax.second;
   }
 
-  os << "<DataArray type=\"UInt8\" Name=\"types\" "
-        "format=\"ascii\" RangeMin=\""
-     << minType << "\" RangeMax=\"" << maxType << "\">\n";
-
+  os << "<DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\" "
+     << "RangeMin=\"" << minType << "\" RangeMax=\"" << maxType << "\">\n";
   column = 0;
   for (int i = 0; i < m_numCells; ++i)
   {
@@ -123,44 +127,33 @@ void VTUWriter::writeCellsAscii(std::ostream& os) const
       os << '\n';
       column = 0;
     }
-    else
-    {
-      os << ' ';
-    }
+    else os << ' ';
   }
   if (column != 0) os << '\n';
   os << "</DataArray>\n";
 
-  os << "<DataArray type=\"Int64\" Name=\"offsets\" "
-        "format=\"ascii\">\n";
-
-  std::int64_t cumulative = 0;
+  os << "<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\">\n";
+  std::int64_t offset = 0;
   column = 0;
   for (int i = 0; i < m_numCells; ++i)
   {
-    cumulative += static_cast<std::int64_t>(m_numVertices[i]);
-    os << cumulative;
+    offset += m_numVertices[i];
+    os << offset;
     if (++column == VALUES_IN_COLUMN)
     {
       os << '\n';
       column = 0;
     }
-    else
-    {
-      os << ' ';
-    }
+    else os << ' ';
   }
   if (column != 0) os << '\n';
-
-  os << "</DataArray>\n"
-     << "</Cells>\n";
+  os << "</DataArray>\n</Cells>\n";
 }
 
 void VTUWriter::writeAscii(std::ostream& os)
 {
   writeHeader(os);
   writeTimeAscii(os);
-
   os << "<Piece NumberOfPoints=\"" << m_numPoints
      << "\" NumberOfCells=\"" << m_numCells << "\">\n";
 
@@ -169,8 +162,8 @@ void VTUWriter::writeAscii(std::ostream& os)
   if (!m_pointDataInt.empty() || !m_pointDataDouble.empty())
   {
     os << "<PointData>\n";
-    for (auto const& node : m_pointDataInt) node.writeAscii(os);
-    for (auto const& node : m_pointDataDouble) node.writeAscii(os);
+    writeAsciiNodes(os, m_pointDataInt);
+    writeAsciiNodes(os, m_pointDataDouble);
     os << "</PointData>\n";
   }
 
@@ -179,44 +172,23 @@ void VTUWriter::writeAscii(std::ostream& os)
   if (!m_cellDataInt.empty() || !m_cellDataDouble.empty())
   {
     os << "<CellData>\n";
-    for (auto const& node : m_cellDataInt) node.writeAscii(os);
-    for (auto const& node : m_cellDataDouble) node.writeAscii(os);
+    writeAsciiNodes(os, m_cellDataInt);
+    writeAsciiNodes(os, m_cellDataDouble);
     os << "</CellData>\n";
   }
 
-  os << "</Piece>\n"
-     << "</UnstructuredGrid>\n"
-     << "</VTKFile>\n";
+  os << "</Piece>\n</UnstructuredGrid>\n</VTKFile>\n";
 }
 
-// ---------------------------------------------------------------------------
-// True binary output: every <DataArray> only carries a format="appended"
-// offset="..." reference; the actual bytes live in a single
-// <AppendedData encoding="raw"> block at the end of the file, each array
-// prefixed by an 8-byte (UInt64) size header. No base64, no text encoding
-// of numeric data at all.
-// ---------------------------------------------------------------------------
-void VTUWriter::writeAppended(std::ostream& os)
+void VTUWriter::writeBinary(std::ostream& os)
 {
-  // Build the a few derived buffers exactly once, up front, so the
-  // descriptor pass and the payload pass can both reference them by
-  // pointer without re-deriving anything.
   std::vector<double> points(static_cast<std::size_t>(m_numPoints) * 3);
   for (int i = 0; i < m_numPoints; ++i)
   {
-    std::size_t const base = 3 * static_cast<std::size_t>(i);
-    points[base]     = m_points[i];
-    points[base + 1] = m_points[i + m_numPoints];
-    points[base + 2] =
-      m_dim == 3 ? m_points[i + 2 * m_numPoints] : 0.0;
-  }
-
-  std::vector<std::int32_t> connectivity(
-    static_cast<std::size_t>(m_numConnections));
-  for (int i = 0; i < m_numConnections; ++i)
-  {
-    connectivity[static_cast<std::size_t>(i)] =
-      static_cast<std::int32_t>(m_cells[i]);
+    points[3 * static_cast<std::size_t>(i)] = m_points[i];
+    points[3 * static_cast<std::size_t>(i) + 1] = m_points[i + m_numPoints];
+    points[3 * static_cast<std::size_t>(i) + 2] =
+      (m_dim == 3 ? m_points[i + 2 * m_numPoints] : 0.0);
   }
 
   std::vector<std::uint8_t> types(static_cast<std::size_t>(m_numCells));
@@ -224,162 +196,119 @@ void VTUWriter::writeAppended(std::ostream& os)
   std::int64_t cumulative = 0;
   for (int i = 0; i < m_numCells; ++i)
   {
-    types[static_cast<std::size_t>(i)] =
-      static_cast<std::uint8_t>(m_cellVTKType[i]);
-    cumulative += static_cast<std::int64_t>(m_numVertices[i]);
-    offsets[static_cast<std::size_t>(i)] = cumulative;
+    types[i] = static_cast<std::uint8_t>(m_cellVTKType[i]);
+    cumulative += m_numVertices[i];
+    offsets[i] = cumulative;
   }
 
-  // Running offset (relative to the first byte after the '_' marker) and
-  // the list of payload writers, collected in the exact order their
-  // descriptors are emitted below.
-  std::uint64_t currentOffset = 0;
-  std::vector<std::function<void(std::ostream&)>> payloadWriters;
+  std::uint64_t offset = 0;
+  std::uint64_t const timeOffset = offset;
+  advanceOffset(offset, sizeof(double));
+  std::uint64_t const pointsOffset = offset;
+  advanceOffset(offset, points.size() * sizeof(double));
 
-  auto emitDataArray = [&os, &currentOffset, &payloadWriters](
-                          char const* type,
-                          char const* name,
-                          int numComponents,
-                          char const* extraAttrs,
-                          std::uint64_t byteSize,
-                          std::function<void(std::ostream&)> writePayload)
+  std::vector<std::uint64_t> pointIntOffsets;
+  std::vector<std::uint64_t> pointDoubleOffsets;
+  for (auto const& node : m_pointDataInt)
   {
-    os << "<DataArray type=\"" << type << "\"";
-    if (name != nullptr && name[0] != '\0') os << " Name=\"" << name << "\"";
-    os << " NumberOfComponents=\"" << numComponents << "\"";
-    if (extraAttrs != nullptr && extraAttrs[0] != '\0') os << ' ' << extraAttrs;
-    os << " format=\"appended\" offset=\"" << currentOffset << "\"/>\n";
-
-    payloadWriters.push_back(std::move(writePayload));
-    currentOffset += sizeof(std::uint64_t) + byteSize;
-  };
-
-  // Generic helper: write an 8-byte size header followed by the raw bytes
-  // of a contiguous buffer.
-  auto writeRaw = [](std::ostream& os2, void const* data, std::uint64_t byteSize)
+    pointIntOffsets.push_back(offset);
+    advanceOffset(offset, node.payloadBytes());
+  }
+  for (auto const& node : m_pointDataDouble)
   {
-    os2.write(reinterpret_cast<char const*>(&byteSize), sizeof(byteSize));
-    if (byteSize > 0)
-      os2.write(reinterpret_cast<char const*>(data),
-                static_cast<std::streamsize>(byteSize));
-  };
+    pointDoubleOffsets.push_back(offset);
+    advanceOffset(offset, node.payloadBytes());
+  }
+
+  std::uint64_t const connectivityOffset = offset;
+  advanceOffset(offset,
+    static_cast<std::uint64_t>(m_numConnections) * sizeof(int));
+  std::uint64_t const typesOffset = offset;
+  advanceOffset(offset, types.size() * sizeof(std::uint8_t));
+  std::uint64_t const offsetsOffset = offset;
+  advanceOffset(offset, offsets.size() * sizeof(std::int64_t));
+
+  std::vector<std::uint64_t> cellIntOffsets;
+  std::vector<std::uint64_t> cellDoubleOffsets;
+  for (auto const& node : m_cellDataInt)
+  {
+    cellIntOffsets.push_back(offset);
+    advanceOffset(offset, node.payloadBytes());
+  }
+  for (auto const& node : m_cellDataDouble)
+  {
+    cellDoubleOffsets.push_back(offset);
+    advanceOffset(offset, node.payloadBytes());
+  }
 
   writeHeader(os);
+  os << "<FieldData>\n"
+     << "<DataArray type=\"Float64\" Name=\"TIME\" NumberOfTuples=\"1\" "
+        "format=\"appended\" offset=\"" << timeOffset << "\"/>\n"
+     << "</FieldData>\n"
+     << "<Piece NumberOfPoints=\"" << m_numPoints
+     << "\" NumberOfCells=\"" << m_numCells << "\">\n"
+     << "<Points>\n"
+     << "<DataArray type=\"Float64\" NumberOfComponents=\"3\" "
+        "format=\"appended\" offset=\"" << pointsOffset << "\"/>\n"
+     << "</Points>\n";
 
-  // ---- FieldData (TIME) ----
-  os << "<FieldData>\n";
-  emitDataArray("Float64", "TIME", 1, "NumberOfTuples=\"1\"", sizeof(double),
-    [this, writeRaw](std::ostream& os2) { writeRaw(os2, &m_time, sizeof(double)); });
-  os << "</FieldData>\n";
-
-  os << "<Piece NumberOfPoints=\"" << m_numPoints
-     << "\" NumberOfCells=\"" << m_numCells << "\">\n";
-
-  // ---- Points ----
-  os << "<Points>\n";
-  {
-    std::uint64_t const byteSize =
-      static_cast<std::uint64_t>(points.size()) * sizeof(double);
-    emitDataArray("Float64", nullptr, 3, "", byteSize,
-      [&points, byteSize, writeRaw](std::ostream& os2)
-      { writeRaw(os2, points.data(), byteSize); });
-  }
-  os << "</Points>\n";
-
-  // ---- PointData ----
   if (!m_pointDataInt.empty() || !m_pointDataDouble.empty())
   {
     os << "<PointData>\n";
-    for (auto const& node : m_pointDataInt)
-    {
-      emitDataArray(vtkTypeName<int>(), node.name().c_str(),
-        node.numComponents(), "", node.appendedPayloadSize(),
-        [&node](std::ostream& os2) { node.writeAppendedPayload(os2); });
-    }
-    for (auto const& node : m_pointDataDouble)
-    {
-      emitDataArray(vtkTypeName<double>(), node.name().c_str(),
-        node.numComponents(), "", node.appendedPayloadSize(),
-        [&node](std::ostream& os2) { node.writeAppendedPayload(os2); });
-    }
+    for (std::size_t i = 0; i < m_pointDataInt.size(); ++i)
+      m_pointDataInt[i].writeBinaryHeader(os, pointIntOffsets[i]);
+    for (std::size_t i = 0; i < m_pointDataDouble.size(); ++i)
+      m_pointDataDouble[i].writeBinaryHeader(os, pointDoubleOffsets[i]);
     os << "</PointData>\n";
   }
 
-  // ---- Cells ----
-  os << "<Cells>\n";
-  {
-    std::uint64_t const byteSize =
-      static_cast<std::uint64_t>(connectivity.size()) * sizeof(std::int32_t);
-    emitDataArray("Int32", "connectivity", 1, "", byteSize,
-      [&connectivity, byteSize, writeRaw](std::ostream& os2)
-      { writeRaw(os2, connectivity.data(), byteSize); });
-  }
-  {
-    std::uint64_t const byteSize =
-      static_cast<std::uint64_t>(types.size()) * sizeof(std::uint8_t);
-    emitDataArray("UInt8", "types", 1, "", byteSize,
-      [&types, byteSize, writeRaw](std::ostream& os2)
-      { writeRaw(os2, types.data(), byteSize); });
-  }
-  {
-    std::uint64_t const byteSize =
-      static_cast<std::uint64_t>(offsets.size()) * sizeof(std::int64_t);
-    emitDataArray("Int64", "offsets", 1, "", byteSize,
-      [&offsets, byteSize, writeRaw](std::ostream& os2)
-      { writeRaw(os2, offsets.data(), byteSize); });
-  }
-  os << "</Cells>\n";
+  os << "<Cells>\n"
+     << "<DataArray type=\"Int32\" Name=\"connectivity\" format=\"appended\" offset=\""
+     << connectivityOffset << "\"/>\n"
+     << "<DataArray type=\"UInt8\" Name=\"types\" format=\"appended\" offset=\""
+     << typesOffset << "\"/>\n"
+     << "<DataArray type=\"Int64\" Name=\"offsets\" format=\"appended\" offset=\""
+     << offsetsOffset << "\"/>\n"
+     << "</Cells>\n";
 
-  // ---- CellData ----
   if (!m_cellDataInt.empty() || !m_cellDataDouble.empty())
   {
     os << "<CellData>\n";
-    for (auto const& node : m_cellDataInt)
-    {
-      emitDataArray(vtkTypeName<int>(), node.name().c_str(),
-        node.numComponents(), "", node.appendedPayloadSize(),
-        [&node](std::ostream& os2) { node.writeAppendedPayload(os2); });
-    }
-    for (auto const& node : m_cellDataDouble)
-    {
-      emitDataArray(vtkTypeName<double>(), node.name().c_str(),
-        node.numComponents(), "", node.appendedPayloadSize(),
-        [&node](std::ostream& os2) { node.writeAppendedPayload(os2); });
-    }
+    for (std::size_t i = 0; i < m_cellDataInt.size(); ++i)
+      m_cellDataInt[i].writeBinaryHeader(os, cellIntOffsets[i]);
+    for (std::size_t i = 0; i < m_cellDataDouble.size(); ++i)
+      m_cellDataDouble[i].writeBinaryHeader(os, cellDoubleOffsets[i]);
     os << "</CellData>\n";
   }
 
-  os << "</Piece>\n"
-     << "</UnstructuredGrid>\n";
+  os << "</Piece>\n</UnstructuredGrid>\n"
+     << "<AppendedData encoding=\"raw\">\n_";
 
-  // ---- Raw payloads, in the same order the descriptors were emitted ----
-  os << "<AppendedData encoding=\"raw\">\n_";
-  for (auto const& writePayload : payloadWriters)
-  {
-    writePayload(os);
-  }
-  os << "\n</AppendedData>\n"
-     << "</VTKFile>\n";
+  writeRawBlock(os, &m_time, 1);
+  writeRawBlock(os, points.data(), points.size());
+  for (auto const& node : m_pointDataInt) node.writeBinaryBlock(os);
+  for (auto const& node : m_pointDataDouble) node.writeBinaryBlock(os);
+  writeRawBlock(os, m_cells, static_cast<std::uint64_t>(m_numConnections));
+  writeRawBlock(os, types.data(), types.size());
+  writeRawBlock(os, offsets.data(), offsets.size());
+  for (auto const& node : m_cellDataInt) node.writeBinaryBlock(os);
+  for (auto const& node : m_cellDataDouble) node.writeBinaryBlock(os);
+
+  os << "\n</AppendedData>\n</VTKFile>\n";
 }
 
 bool VTUWriter::write_mesh(std::string const& path)
 {
   std::ofstream os;
   std::vector<char> buffer(4 * 1024 * 1024);
-  os.rdbuf()->pubsetbuf(
-    buffer.data(), static_cast<std::streamsize>(buffer.size()));
-
-  os.open(path, std::ios::out | std::ios::binary | std::ios::trunc);
+  os.rdbuf()->pubsetbuf(buffer.data(),
+                        static_cast<std::streamsize>(buffer.size()));
+  os.open(path, std::ios::out | std::ios::binary);
   if (!os) return false;
 
-  if (m_format == VTUFormat::BINARY)
-  {
-    writeAppended(os);
-  }
-  else
-  {
-    writeAscii(os);
-  }
+  if (m_format == VTUFormat::BINARY) writeBinary(os);
+  else writeAscii(os);
 
   os.flush();
   bool const success = static_cast<bool>(os);
