@@ -68,7 +68,7 @@ classdef BiElastic < Elastic
       Kur = obj.r .* obj.bulkMod;
 
       obj.DVirgin = obj.buildElasticMatrix(obj.bulkMod,obj.shearMod);
-      obj.DUR = obj.buildElasticMatrix(Kur,obj.bulkMod);
+      obj.DUR = obj.buildElasticMatrix(Kur,obj.shearMod);
 
 
     end

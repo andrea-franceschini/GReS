@@ -61,7 +61,7 @@ classdef assembler < handle
       nEntriesPerCell = nRowDofs * nColDofs;
       nEntries        = nEntriesPerCell * nCells;
 
-      idx = obj.count + (1:nEntries);
+      idx = (obj.count + (1:nEntries))';
 
       % Ordering matches localMat(:):
       %

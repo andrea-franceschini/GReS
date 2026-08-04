@@ -52,7 +52,7 @@ classdef linearSolver < handle
    properties (SetAccess = private, GetAccess = public)
 
       % Flag for debug
-      DEBUGflag = true
+      DEBUGflag = false
       matlabMaxSize = 2e4
       nsyTol = 100*eps
       fullInfo = true

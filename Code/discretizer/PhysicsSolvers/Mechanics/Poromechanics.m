@@ -61,7 +61,7 @@ classdef Poromechanics < PhysicsSolver
         assembleMechanics(obj,cellList,elem,dt);
 
       % utility to assemble the finite element matrix
-      obj.K = FEMassembly(obj,localAssembler);
+      obj.K = FEMassembly(obj,localAssembler,'chunkSize',1e5);
 
       obj.domain.J{obj.fieldId,obj.fieldId} = obj.K;
       obj.domain.rhs{obj.fieldId} = obj.fInt;
@@ -293,9 +293,13 @@ classdef Poromechanics < PhysicsSolver
 
       mat = obj.domain.materials;
       matNames = mat.getMaterialNames;
-      for matName = matNames
-        tags = mat.getMaterialRegions(matName);
-        getConstitutiveLaw(obj.domain.materials,matName).initialize(tags,obj.domain);
+
+      for matID = matNames
+
+        tags = mat.getMaterialTags(matID);
+
+        getConstitutiveLaw(obj.domain.materials,matID).initialize(tags,obj.domain);
+
       end
 
     end
