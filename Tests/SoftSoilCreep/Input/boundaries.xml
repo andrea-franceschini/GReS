@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BoundaryConditions>
+   <BC name="fix_bottom" type="dirichlet" field="surface"
+      variable="displacements" entityListType="tags" entityList="1" 
+      components="x,y,z">
+    <BCevent time="0.0" value="0.0"/>
+   </BC>
+   
+   <BC name="compress_top" type="neumann" field="surface"
+      variable="displacements" entityListType="tags" entityList="2" 
+      components="z">
+    <BCevent time="0.0" value="0.0"/>
+    <BCevent time="1.0" value="-100.00"/>
+    <BCevent time="2.0" value="50.00"/>
+    <BCevent time="15.0" value="-8.00"/>
+    <BCevent time="20.0" value="0.0"/>
+   </BC>
+
+   <BC name="fix_back" type="dirichlet" field="surface"
+      variable="displacements" entityListType="tags" entityList="3" 
+      components="y">
+    <BCevent time="0.0" value="0.0"/>
+   </BC>
+   
+   <BC name="fix_front" type="dirichlet" field="surface"
+      variable="displacements" entityListType="tags" entityList="4" 
+      components="y">
+    <BCevent time="0.0" value="0.0"/>
+   </BC>
+   <BC name="fix_left" type="dirichlet" field="surface"
+      variable="displacements" entityListType="tags" entityList="5" 
+      components="x">
+    <BCevent time="0.0" value="0.0"/>
+   </BC>
+   <BC name="fix_right" type="dirichlet" field="surface"
+      variable="displacements" entityListType="tags" entityList="6" 
+      components="x">
+    <BCevent time="0.0" value="0.0"/>
+   </BC>
+</BoundaryConditions>

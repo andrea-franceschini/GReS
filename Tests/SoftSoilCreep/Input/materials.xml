@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Materials>
+    <Solid>
+        <cellTags>1</cellTags>
+        <name>SoftSoil</name>
+        <specificWeight>0.0</specificWeight>
+        <Constitutive>
+            <SoftSoilCreep>
+                <poissonRatio>0.30</poissonRatio>
+                <modifiedCompressionIndex>0.0350</modifiedCompressionIndex>
+                <modifiedSwellingIndex>0.0071</modifiedSwellingIndex>
+                <creepIndex>0.15</creepIndex>
+                <referenceTime>86400</referenceTime>
+                <cohesion>0.0</cohesion>
+                <frictionAngle>30.0</frictionAngle>
+                <K0NC>0.43</K0NC>
+                <initialOCR>5</initialOCR>
+            </SoftSoilCreep>
+        </Constitutive>
+    </Solid>
+</Materials>
