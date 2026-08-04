@@ -6,49 +6,9 @@
 // MATLAB signature:
 //   dN = computeQuad4Derivatives(coords)   % coords: n×2, dN: 2×4×n
 //
-// Build command:
-//   mex -R2018a computeQuad4Derivatives_wrap.cpp
-//
-// ALL FIXES APPLIED
-// -----------------------------------------------------------------------
-// [FIX-A] mexErrMsgTxt() not declared in the pure C++ MEX API.
-//         Replaced with throwError() routing through
-//         getEngine()->feval(u"error", ..., createCharArray()).
-//         Generic IDs assigned since original used no-ID mexErrMsgTxt.
-//
-// [FIX-B] TypedArray<T>::operator[] returns a proxy — cannot take address.
-//         coords copied into std::vector<double>; kernel writes into a
-//         std::vector<double> output buffer, then std::copy into TypedArray.
-//
-// [FIX-C] ArgumentList::size() / operator[] are NOT const-qualified.
-//         validateArguments() takes non-const ArgumentList& references.
-//
-// [FIX-E] factory.createScalar<T>() is only valid for arithmetic T.
-//         All string arguments use factory.createCharArray() instead.
-//
-// [FIX-F] mwSize is declared in mex.h — NOT included by mex.hpp.
-//         Every mwSize replaced with std::size_t (same underlying type
-//         on all 64-bit platforms). #include <cstddef> provides it.
-//         Affected sites:
-//           - computeQuad4Derivatives() parameter types
-//           - both loop variables (i, j)
-//           - np declaration in operator()()
-//
-// [NEW-1] mxGetPr() / mxCreateNumericArray(3, {2,4,np}) replaced with
-//         factory.createArray<double>({2, 4, np}) and std::copy.
-//
-// [NEW-2] mxGetM() / mxGetN() replaced with getDimensions()[0] / [1].
-//
-// [NEW-3] The pure computational function computeQuad4Derivatives() is
-//         kept unchanged in logic — no MATLAB API dependency in kernel.
-//
-// [NEW-4] 3D output indexing: dN[row + 2*col + 8*i]
-//         factory.createArray<double>({2, 4, np}) produces a column-major
-//         3D array with stride 2*4 = 8 between point slices — identical
-//         to the original mxCreateNumericArray layout.
-// -----------------------------------------------------------------------
 //----------------------------------------------------------------------------------------
 
+#include <cstdint>
 #include "mex.hpp"
 #include "mexAdapter.hpp"
 
@@ -62,7 +22,6 @@ using matlab::mex::ArgumentList;
 
 //----------------------------------------------------------------------------------------
 // Pure computational kernel — no MATLAB API dependency.
-// [FIX-F] mwSize → std::size_t throughout
 //
 // coords layout: column-major, np rows × 2 cols
 //   xi  = coords[i]       (col 0)
@@ -114,31 +73,24 @@ public:
 
     void operator()(ArgumentList outputs, ArgumentList inputs) override
     {
-        // [FIX-C]
         validateArguments(outputs, inputs);
 
-        // -----------------------------------------------------------------------
-        // [FIX-B][NEW-2] Read coords — n×2 double matrix (column-major)
-        // [FIX-F] np is std::size_t, no cast needed
-        // -----------------------------------------------------------------------
         const TypedArray<double> coordArr = inputs[0];
         const auto dims                   = coordArr.getDimensions();
         const std::size_t np              = dims[0];   // [FIX-F]
 
-        // [FIX-B] Copy into contiguous vector for raw pointer access in kernel
+        // Copy into contiguous vector for raw pointer access in kernel
         std::vector<double> coordsVec(coordArr.begin(), coordArr.end());
 
         // -----------------------------------------------------------------------
-        // [FIX-B][NEW-4] Allocate flat output buffer: 2 × 4 × np elements
-        //                Fill via kernel, then copy into TypedArray
+        // Fill via kernel, then copy into TypedArray
         // -----------------------------------------------------------------------
         std::vector<double> dN_vec(2 * 4 * np, 0.0);
 
         computeQuad4Derivatives(dN_vec.data(), coordsVec.data(), np);
 
         // -----------------------------------------------------------------------
-        // [NEW-1] Build 3D TypedArray output: {2, 4, np}
-        //         Column-major flat layout matches dN[row + 2*col + 8*i] exactly
+        // Column-major flat layout matches dN[row + 2*col + 8*i] exactly
         // -----------------------------------------------------------------------
         TypedArray<double> dN_out =
             factory.createArray<double>({2, 4, np});
@@ -149,7 +101,6 @@ public:
 
 private:
 
-    // [FIX-C] non-const refs — ArgumentList methods are not const-qualified
     void validateArguments(ArgumentList& outputs, ArgumentList& inputs)
     {
         if (inputs.size() != 1)
@@ -172,7 +123,6 @@ private:
                        "Input must be a real double n x 2 array.");
     }
 
-    // [FIX-E] createCharArray for strings; routes through MATLAB error()
     void throwError(const std::string& id, const std::string& msg)
     {
         getEngine()->feval(u"error", 0,

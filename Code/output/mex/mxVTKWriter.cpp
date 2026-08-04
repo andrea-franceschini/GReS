@@ -4,6 +4,7 @@
 
 #ifdef MEX_FUNCTION
 
+#include <cstdint>
 #include "mex.hpp"
 #include "mexAdapter.hpp"
 
