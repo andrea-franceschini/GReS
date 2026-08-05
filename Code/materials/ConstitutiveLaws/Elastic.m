@@ -30,11 +30,13 @@ classdef Elastic < ConstitutiveLaw
     % Material stiffness matrix calculation using the object properties
     function [sigmaOut,DAll] = constitutiveUpdate(obj, cellId, sigmaIn, epsilon, varargin)
 
-      nptGauss = obj.loc2gp(cellId,2);
+      nptGauss = obj.loc2gp(cellId(1),2);
 
       D = getElasticTensor(obj);
       sigmaOut = sigmaIn + epsilon*D;
-      DAll = repmat(D,[1, 1, nptGauss]);
+
+      % all cells have the same elastic properties
+      DAll = repmat(D,[1, 1, nptGauss,numel(cellId)]);
 
     end
     %

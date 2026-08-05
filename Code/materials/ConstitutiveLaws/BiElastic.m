@@ -31,6 +31,8 @@ classdef BiElastic < Elastic
     r
     bulkMod
     shearMod
+    DVirgin
+    DUR
 
     nChange
   end
@@ -63,6 +65,11 @@ classdef BiElastic < Elastic
       obj.bulkMod = obj.E ./ (3 .* (1 - 2 .* obj.nu));
       obj.shearMod = obj.E ./ (2 .* (1 + obj.nu));
 
+      Kur = obj.r .* obj.bulkMod;
+
+      obj.DVirgin = obj.buildElasticMatrix(obj.bulkMod,obj.shearMod);
+      obj.DUR = obj.buildElasticMatrix(Kur,obj.shearMod);
+
 
     end
 
@@ -88,102 +95,84 @@ classdef BiElastic < Elastic
 
 
 
-    function [sigmaOut, D] = constitutiveUpdate( ...
-        obj, cellId, sigmaIn, epsilon, varargin) 
+    function [sigmaOut,D] = constitutiveUpdate( ...
+        obj,cellList,sigmaIn,epsilon,varargin)
 
+      gpsId = getGaussPointIds(obj.loc2gp,cellList);
 
-      gpId = obj.loc2gp(cellId,1);
-      nptGauss = obj.loc2gp(cellId,2);
-      gpsId = gpId:gpId+nptGauss-1;
-      
+      nC = numel(cellList);
+      nptGauss = obj.loc2gp(cellList(1),2);
+      nPoints = nptGauss.*nC;
+
       pcConv = obj.status.conv.pc(gpsId);
 
       Kvirgin = obj.bulkMod;
       G = obj.shearMod;
-
-      Kur = obj.r .* Kvirgin;
+      Kur = obj.r.*Kvirgin;
 
       % Positive scalar measures of compression.
-      pOld = -(1/3)*sum(sigmaIn(:, 1:3), 2);
-      depsVComp = -sum(epsilon(:, 1:3), 2);
+      pOld = -(1/3).*sum(sigmaIn(:,1:3),2);
+      depsVComp = -sum(epsilon(:,1:3),2);
 
       % Unloading/reloading predictor.
-      pPredictor = pOld + Kur .* depsVComp;
+      pPredictor = pOld + Kur.*depsVComp;
 
       tolP = 1e-8;
 
       isVirgin = depsVComp > 0 & ...
         pPredictor > pcConv + tolP;
 
-
-
-      % Default: complete increment on the unloading/reloading branch.
+      % Default: complete increment on unloading/reloading branch.
       pNew = pPredictor;
-      Ktan = repmat(Kur,nptGauss,1);
 
-      % Points crossing into, or continuing on, virgin compression.
-
-      % amount of reloading strain
-      depsVToPc = zeros(nptGauss, 1);
+      % Amount of reloading strain required to reach pc.
+      depsVToPc = zeros(nPoints,1,'like',epsilon);
 
       depsVToPc(isVirgin) = max( ...
-        (pcConv(isVirgin) - pOld(isVirgin)) ./ Kur, 0);
+        (pcConv(isVirgin)-pOld(isVirgin))./Kur,0);
+
       depsVToPc(isVirgin) = min( ...
-        depsVToPc(isVirgin), depsVComp(isVirgin));
+        depsVToPc(isVirgin),depsVComp(isVirgin));
 
-      % amount of virgin strain
-      depsVVirgin = depsVComp - depsVToPc;
-      pAtTransition = pOld + Kur .* depsVToPc;
-      pNew(isVirgin) = pAtTransition(isVirgin) ...
-        + Kvirgin .* depsVVirgin(isVirgin);
+      % Remaining volumetric strain belongs to the virgin branch.
+      depsVVirgin = depsVComp-depsVToPc;
+      pAtTransition = pOld + Kur.*depsVToPc;
 
-      Ktan(isVirgin) = Kvirgin;
+      pNew(isVirgin) = pAtTransition(isVirgin) + ...
+        Kvirgin.*depsVVirgin(isVirgin);
+
       stateCurr = repmat( ...
-        obj.UNLOADING_RELOADING, numel(gpsId), 1);
+        obj.UNLOADING_RELOADING,nPoints,1);
 
       stateCurr(isVirgin) = obj.VIRGIN;
 
-      % Constant-deviatoric response. For engineering shear strains:
-      % ds_dev,ii = 2G*(deps_ii - tr(deps)/3), ds_dev,ij = G*gamma_ij.
-      depsTrace = sum(epsilon(:, 1:3), 2);
-      dsDev = zeros(size(epsilon));
-      dsDev(:, 1:3) = 2 .* G .* ...
-        (epsilon(:, 1:3) - depsTrace ./ 3);
-      dsDev(:, 4:6) = G .* epsilon(:, 4:6);
+      % Constant-deviatoric response.
+      depsTraceOver3 = sum(epsilon(:,1:3),2)./3;
+      dp = pNew-pOld;
 
-      % Increasing positive pressure means increasingly negative normal
-      % stress under the compression-negative convention.
-      dp = pNew - pOld;
-      sigmaOut = sigmaIn + dsDev;
-      sigmaOut(:, 1:3) = sigmaOut(:, 1:3) - dp;
+      sigmaOut = sigmaIn;
 
-      % Vectorized symmetric algorithmic tangent:
-      % D = 2G*I_dev + Ktan*(m' m).
-      D = zeros(6, 6, nptGauss);
-      normalDiagonal = reshape(Ktan + 4 .* G ./ 3, 1, 1, []);
-      normalOffDiagonal = reshape(Ktan - 2 .* G ./ 3, 1, 1, []);
-      shearDiagonal = reshape(G, 1, 1, []);
+      sigmaOut(:,1:3) = sigmaOut(:,1:3) + ...
+        2.*G.*(epsilon(:,1:3)-depsTraceOver3) - dp;
 
-      D(1,1,:) = normalDiagonal;
-      D(2,2,:) = normalDiagonal;
-      D(3,3,:) = normalDiagonal;
+      sigmaOut(:,4:6) = sigmaOut(:,4:6) + ...
+        G.*epsilon(:,4:6);
 
-      D(1,2,:) = normalOffDiagonal;
-      D(1,3,:) = normalOffDiagonal;
-      D(2,1,:) = normalOffDiagonal;
-      D(2,3,:) = normalOffDiagonal;
-      D(3,1,:) = normalOffDiagonal;
-      D(3,2,:) = normalOffDiagonal;
+      % Assign one of the two fixed tangent matrices to every material point.
 
-      D(4,4,:) = shearDiagonal;
-      D(5,5,:) = shearDiagonal;
-      D(6,6,:) = shearDiagonal;
+      Dpages = obj.DUR(:) + ...
+        (obj.DVirgin(:) - obj.DUR(:)) .* isVirgin.';
 
-      % Trial status. Commit only after global convergence.      
-      obj.status.curr.pc(gpsId(isVirgin)) = max(pcConv, pNew);
+      % Preserve Gauss-point-major ordering within each cell.
+      D = reshape(Dpages,6,6,nptGauss,nC);
+
+      % Trial status. Commit only after global convergence.
+      obj.status.curr.pc(gpsId) = pcConv;
+
+      obj.status.curr.pc(gpsId(isVirgin)) = max( ...
+        pcConv(isVirgin),pNew(isVirgin));
 
       obj.status.curr.state(gpsId) = stateCurr;
-
 
     end
 
@@ -196,6 +185,24 @@ classdef BiElastic < Elastic
       % provisional, before refactoring the constitutive laws and status
       % management
       cM = obj.cM;
+
+    end
+
+    function D = buildElasticMatrix(obj,K,G)
+
+      D = zeros(6,6);
+
+      normalDiagonal = K + 4.*G./3;
+      normalOffDiagonal = K - 2.*G./3;
+
+      D(1:3,1:3) = normalOffDiagonal;
+      D(1,1) = normalDiagonal;
+      D(2,2) = normalDiagonal;
+      D(3,3) = normalDiagonal;
+
+      D(4,4) = G;
+      D(5,5) = G;
+      D(6,6) = G;
 
     end
   end

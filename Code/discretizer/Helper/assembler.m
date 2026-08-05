@@ -9,50 +9,75 @@ classdef assembler < handle
     count = 0             % counter for sparse assembly
     Nrows                 % number of rows 
     Ncols                 % number of columns 
+    N                     % index to preallocate for each local contribution
   end
 
   methods
-    function obj = assembler(n,nrows,ncols,varargin)
-      [obj.iVec,obj.jVec,obj.valsVec] = deal(zeros(n,1));
+    function obj = assembler(n,nrows,ncols)
+
+      obj.N = n;
+
+      preallocate(obj,n);
       
       if ~isempty(nrows) && ~isempty(ncols)
         obj.Nrows = nrows;
         obj.Ncols = ncols;
       end
 
-      if ~isempty(varargin)
-        obj.computeLocal = varargin{1};
-      else
-        obj.computeLocal = @(dofR,dofC,mat)...
-        assembler.computeLocalBase(dofR,dofC,mat);
-      end
+      % if ~isempty(varargin)
+      %   obj.computeLocal = varargin{1};
+      % else
+      %   obj.computeLocal = @(dofR,dofC,mat)...
+      %   assembler.computeLocalBase(dofR,dofC,mat);
+      % end
     end
+
+
+    function preallocate(obj,nEntries)
+
+      % reallocate the sparse assembler to host space for nElems
+      % contributions
+
+      obj.count = 0;
+
+      obj.iVec    = zeros(nEntries,1);
+      obj.jVec    = zeros(nEntries,1);
+      obj.valsVec = zeros(nEntries,1);
+
+    end
+
+    function localAssembly(obj, dofr, dofc, localMat)
+
+      nRowDofs = size(dofr, 1);
+      nColDofs = size(dofc, 1);
+      nCells   = size(dofr, 2);
+
+      assert(size(dofc, 2) == nCells, ...
+        'dofr and dofc must contain the same number of cells.');
+      % 
+      % assert(isequal(size(localMat), [nRowDofs, nColDofs, nCells]), ...
+      %   'localMat must have size nRowDofs-by-nColDofs-by-nCells.');
+
+      nEntriesPerCell = nRowDofs * nColDofs;
+      nEntries        = nEntriesPerCell * nCells;
+
+      idx = (obj.count + (1:nEntries))';
+
+      % Ordering matches localMat(:):
+      %
+      % localMat(i,j,cell), with i varying fastest, then j, then cell.
+      iLoc = repmat(dofr, nColDofs, 1);
+      jLoc = repelem(dofc, nRowDofs, 1);
+
+      obj.iVec(idx)    = iLoc(:);
+      obj.jVec(idx)    = jLoc(:);
+      obj.valsVec(idx) = localMat(:);
+
+      obj.count = obj.count + nEntries;
+
+    end
+
     
-    function varargout = localAssembly(obj,varargin)
-      % call back to local matrix computation
-      nOut = nargout;
-
-      % Call local assembler and manage output
-      allOut = cell(3 + nOut, 1);
-      [allOut{:}] = obj.computeLocal(varargin{:});
-
-      assert(numel(allOut) > 2,['At least 3 output are required: \n' ...
-        'out(1): list of local row dofs \n' ...
-        'out(2): list of local column dofs \n' ...
-        'out(3): list of local values.']);
-
-      dofr      = allOut{1};
-      dofc      = allOut{2};
-      localMat  = allOut{3};
-      varargout = allOut(4:end);
-
-      n = numel(localMat);
-      [jLoc,iLoc] = meshgrid(dofc,dofr);
-      obj.iVec(obj.count+1:obj.count+n) = iLoc(:);
-      obj.jVec(obj.count+1:obj.count+n) = jLoc(:);
-      obj.valsVec(obj.count+1:obj.count+n) = localMat(:);
-      obj.count = obj.count + n;
-    end
 
     function mat = sparseAssembly(obj)
       % trim row col indices if needed

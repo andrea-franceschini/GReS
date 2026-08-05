@@ -396,6 +396,8 @@ classdef Discretizer < handle
       obj.J = cell(nV);
       obj.rhs = cell(nV,1);
 
+      obj.materials.setCellMap(obj.grid);
+
       setGaussPointMap(obj);
 
       prepareBoundaryConditions(obj);

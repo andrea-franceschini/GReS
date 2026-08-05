@@ -5,7 +5,11 @@ classdef Materials < handle
     solid     % container of all solid materials in the model
     fluid     % container of all fluid materials in the model
     matMap    % array map cell tag to corresponding material id
+  end
 
+
+  properties (Access = private)
+    cellMap
   end
 
   methods (Access = public)
@@ -107,6 +111,8 @@ classdef Materials < handle
     end
 
 
+
+
     function gamma = getSpecificWeight(obj,input)
 
       mat = getMaterial(obj,input);
@@ -124,6 +130,26 @@ classdef Materials < handle
     function mat = getMaterialFromTag(obj,tag)
 
       mat = obj.solid{obj.matMap(tag)};
+
+    end
+
+
+    function tags = getMaterialRegions(obj,input)
+
+      matID = obj.getMaterialID(input);
+
+      tags = find(obj.matMap == matID);
+
+    end
+
+
+    function matID = getMaterialID(obj,input)
+
+      if ~isnumeric(input)
+        matID = getMaterialIDFromName(obj,input);
+      else
+        matID = getMaterialIDFromTag(obj,input);
+      end
 
     end
 
@@ -218,6 +244,27 @@ classdef Materials < handle
 
       constLaw = obj.getMaterial(cTag).ConstLaw;
 
+    end
+
+    function matCellId = getMaterialCells(obj,cellId)
+
+      matCellId = obj.cellMap(cellId);
+
+    end
+
+    function setCellMap(obj,grid)
+
+      cells = grid.cells;
+      obj.cellMap = zeros(cells.num,1);
+
+      for i = 1:numel(obj.solid)
+
+        tags = find(obj.matMap == i);
+
+        id = find(ismember(cells.tag,tags)); 
+        obj.cellMap(id) = 1:length(id);
+        
+      end
     end
 
     % function [D, sigma, status] = updateMaterial(obj, cTag, sigma, epsilon, dt, status, el, t)
