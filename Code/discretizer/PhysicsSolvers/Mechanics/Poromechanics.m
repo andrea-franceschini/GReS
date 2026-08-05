@@ -758,8 +758,8 @@ classdef Poromechanics < PhysicsSolver
 
 
     function Kloc = computeKloc(a,b,c,dJW)
-      nC = size(a,4);
-      ng = size(a,3);
+      nC = size(b,4);
+      ng = size(b,3);
       Ks = pagemtimes(pagemtimes(a,'ctranspose',b,'none'),c);
       Ks = Ks.*reshape(dJW,1,1,ng,nC);
       Kloc = sum(Ks,3);
