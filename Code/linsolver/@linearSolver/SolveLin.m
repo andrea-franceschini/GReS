@@ -45,8 +45,6 @@ function [x,flag] = SolveLin(obj,A,b,time)
 
    oldProbSize = size(obj.x0,1);
 
-   error('stop')
-
    % Chronos does not exist, continue with matlab default
    if ~obj.ChronosFlag || (getGlobalSize(A) < obj.matlabMaxSize)
       [x,flag] = matlab_solve(obj,A,b);
