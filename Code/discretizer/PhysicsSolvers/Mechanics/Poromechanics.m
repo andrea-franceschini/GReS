@@ -61,6 +61,7 @@ classdef Poromechanics < PhysicsSolver
         assembleMechanics(obj,cellList,elem,dt);
 
       % utility to assemble the finite element matrix
+
       obj.K = FEMassembly(obj,localAssembler,'chunkSize',1e4);
 
       obj.domain.J{obj.fieldId,obj.fieldId} = obj.K;
@@ -275,6 +276,7 @@ classdef Poromechanics < PhysicsSolver
 
       % dof is nDofPerCell x nCells and Kloc is
       % nDofPerCell x nDofPerCell x nCells.
+
       assembleK.localAssembly(dof,dof,Kloc);
 
       K = assembleK.sparseAssembly;
@@ -550,7 +552,6 @@ classdef Poromechanics < PhysicsSolver
 
       out = false;
 
-
       % check if there is not embedded fractures
       if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics"))
         return
@@ -758,8 +759,10 @@ classdef Poromechanics < PhysicsSolver
 
 
     function Kloc = computeKloc(a,b,c,dJW)
+
       nC = size(b,4);
       ng = size(b,3);
+
       Ks = pagemtimes(pagemtimes(a,'ctranspose',b,'none'),c);
       Ks = Ks.*reshape(dJW,1,1,ng,nC);
       Kloc = sum(Ks,3);
