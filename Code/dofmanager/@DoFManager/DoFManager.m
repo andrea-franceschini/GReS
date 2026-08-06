@@ -45,7 +45,7 @@ classdef DoFManager < handle
       if isscalar(id)
         ncomp = obj.numbComponents(id);
         dofs = obj.dofMap{id}(ents);
-        dofs =  repelem(dofs,ncomp,1) + ...
+        dofs =  repelem(dofs(:),ncomp,1) + ...
           repmat((0:ncomp-1)',numel(ents),1);
       else
         for i = 1:numel(id)
