@@ -10,6 +10,8 @@ classdef OutState < handle & matlab.mixin.Copyable
     % model
     timeID = 1
     vtkFile
+    vtkFormat = "auto"
+    vtkBinaryThreshold = 1e4
   end
 
   properties (SetAccess = private)
@@ -75,13 +77,17 @@ classdef OutState < handle & matlab.mixin.Copyable
       if ~all(isempty([cellData3D; pointData3D]))
         cells = grid.cells;
         nodeList = grid.getFlatConnectivity("cells");
-        mxVTKWriter(outName, time, grid.coordinates, nodeList, cells.VTKType, ...
+        vtkFmt = obj.resolveVTKFormat(grid.coordinates, nodeList, ...
           cells.numVerts, pointData3D, cellData3D);
+        mxVTKWriter(outName, time, grid.coordinates, nodeList, cells.VTKType, ...
+          cells.numVerts, char(vtkFmt), pointData3D, cellData3D);
       elseif ~all(isempty([cellData2D; pointData2D]))
         surf = grid.surfaces;
         nodeList = grid.getFlatConnectivity("surfaces");
-        mxVTKWriter(outName, time, grid.coordinates, nodeList, surf.VTKType, ...
+        vtkFmt = obj.resolveVTKFormat(grid.coordinates, nodeList, ...
           surf.numVerts, pointData2D, cellData2D);
+        mxVTKWriter(outName, time, grid.coordinates, nodeList, surf.VTKType, ...
+          surf.numVerts, char(vtkFmt), pointData2D, cellData2D);
       end
 
       % write dataset to vtm block
@@ -175,7 +181,9 @@ classdef OutState < handle & matlab.mixin.Copyable
                        'matFileName',missing,...
                        'printTimes',missing,...
                        'saveHistory',missing,...
-                       'solvePrintTimes',0);
+                       'solvePrintTimes',0,...
+                       'vtkFormat',"auto",...
+                       'vtkBinaryThreshold',1e6);
 
       params = readInput(default,varargin{:});
 
@@ -210,6 +218,16 @@ classdef OutState < handle & matlab.mixin.Copyable
       end
 
       obj.solvePrintTimes = logical(params.solvePrintTimes);
+
+      obj.vtkFormat = lower(string(params.vtkFormat));
+      validFormats = ["auto", "ascii", "binary"];
+      assert(isscalar(obj.vtkFormat) && any(obj.vtkFormat == validFormats), ...
+        "vtkFormat must be 'auto', 'ascii', or 'binary'.");
+
+      obj.vtkBinaryThreshold = double(params.vtkBinaryThreshold);
+      assert(isscalar(obj.vtkBinaryThreshold) && ...
+        isfinite(obj.vtkBinaryThreshold) && obj.vtkBinaryThreshold >= 0, ...
+        "vtkBinaryThreshold must be a finite nonnegative scalar.");
 
     end
 
@@ -246,6 +264,35 @@ classdef OutState < handle & matlab.mixin.Copyable
       end
       fclose(fid);
     end
+
+    function vtkFormat = resolveVTKFormat(obj,coordinates,nodeList,numVerts,pointData,cellData)
+
+      vtkFormat = obj.vtkFormat;
+      if vtkFormat ~= "auto"
+        return
+      end
+
+      % Estimated number of scalar values written to the VTU file.
+      % Coordinates always have three VTK components; connectivity, cell
+      % types and offsets contribute one scalar each.
+      nPoints = size(coordinates,1);
+      nCells = numel(numVerts);
+      outputSize = 3*nPoints + numel(nodeList) + 2*nCells + 1;
+
+      for i = 1:numel(pointData)
+        outputSize = outputSize + numel(pointData(i).data);
+      end
+      for i = 1:numel(cellData)
+        outputSize = outputSize + numel(cellData(i).data);
+      end
+
+      if outputSize >= obj.vtkBinaryThreshold
+        vtkFormat = "binary";
+      else
+        vtkFormat = "ascii";
+      end
+    end
+
 
     function createVTKFolder(obj)
       if (isfolder(obj.vtkFileName))

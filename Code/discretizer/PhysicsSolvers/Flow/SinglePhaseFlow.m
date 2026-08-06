@@ -147,14 +147,14 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       out = isLinear(obj);
     end
 
-
     function alpha = getRockCompressibility(obj,cellTag,coupledRegions)
+
+      % return handle to retrieve the rock compressibility
 
       % regions: cell tags where pressure is coupled with displacements
 
       mat = obj.domain.materials.getMaterial(cellTag);
       rock = mat.PorousRock;
-      alpha = 0.0;
 
       if nargin < 3
         coupledRegions = [];
@@ -164,12 +164,15 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       if ~ismember(cellTag,coupledRegions) 
         % get alpha from mechanical constitutive law if provided
         if isfield(mat,"ConstLaw")
-          alpha = mat.ConstLaw.getRockCompressibility();
+          alpha = @(cId) mat.ConstLaw.getRockCompressibility(cId);
         else
           % otherwise get the compressibility from the porous rock (default
           % is 0)
-          alpha = rock.getCompressibility;
+          alpha = @(cId) rock.getCompressibility;
         end
+      else
+
+        alpha = @(cId) zeros(length(cId),1);
       end
     end
 

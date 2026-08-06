@@ -53,7 +53,7 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 2e5
+      matlabMaxSize = 2e4
       nsyTol = 100*eps
       fullInfo = true
 
@@ -118,21 +118,23 @@ classdef linearSolver < handle
 
          % Possible the user wants to use matlab even if the size is sufficient
          if isfield(generalsolver.simparams.linSolverParams, 'useMatlab')
-            if generalsolver.simparams.linSolverParams.useMatlab == 1
-               gresLog().log(3,'The user requested the use of matlab\n');
-               return;
-            end
+           if generalsolver.simparams.linSolverParams.useMatlab == 1
+             gresLog().log(3,'The user requested the use of matlab\n');
+             return;
+           end
          end
 
          if isfolder(ChronosDir)
-            if strcmp(computer('arch'),'maca64')
-               fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexmaca64');
-            else
-               fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexa64');
-            end
-            
+           if strcmp(computer('arch'),'maca64')
+             fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexmaca64');
+           elseif strcmp(computer('arch'),'win64')
+             fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexw64');
+           else
+             fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexa64');
+           end
+
             if ~isfile(fileMex)
-               gresLog().warning(2,'Chronos_Lab submodule is present, but not compiled. Using matlab fallback');
+               gresLog().warning(1,'Chronos_Lab submodule is present, but not compiled. Using matlab fallback');
                return;
             end
 
