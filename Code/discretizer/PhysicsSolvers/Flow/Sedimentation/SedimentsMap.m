@@ -204,16 +204,17 @@ classdef SedimentsMap < handle
         val_ref = cell2mat(textscan(fid,'%f','Delimiter','\n'));
         fclose(fid);
         mapDim = data.division;
-        val_ref = reshape(val_ref,mapDim)';
+        val_ref = reshape(val_ref,[mapDim(2) mapDim(1)])';
+        % val_ref = reshape(val_ref,mapDim)';
         [x_ref, y_ref] = meshgrid(0:1/(mapDim(1)-1):1, 0:1/(mapDim(2)-1):1);
-        [x_new, y_new] = meshgrid(0:1/(obj.dim(1)-1):1, 0:1/(obj.dim(2)-1):1);        
-        values = reshape(interp2(x_ref, y_ref, val_ref, x_new, y_new, 'cubic'),[],1);
+        [x_new, y_new] = meshgrid(0:1/(obj.dim(1)-1):1, 0:1/(obj.dim(2)-1):1);
+        values = reshape(interp2(x_ref, y_ref, val_ref', x_new, y_new, 'cubic')',[],1);
       end
       values(values<0)=0;
 
       % smoothing the data.
       values = reshape(values,obj.dim(1),obj.dim(2));
-      values = imgaussfilt(values, 1);         % light smoothing
+      % values = imgaussfilt(values, 1);         % light smoothing
       values = reshape(values,[],1);
     end
 

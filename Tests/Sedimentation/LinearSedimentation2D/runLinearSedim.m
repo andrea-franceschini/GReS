@@ -11,7 +11,7 @@ simParam = SimulationParameters('Start',0.,'End',1.0e3,...
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(file_Mat);
-printUtils = OutState('outputFile','Outputs/Results','printTimes',0:25:1000);
+printUtils = OutState('outputFile','Outputs/Results2','printTimes',0:250:1000);
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Materials',mat);
