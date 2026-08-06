@@ -111,6 +111,8 @@ classdef Materials < handle
     end
 
 
+
+
     function gamma = getSpecificWeight(obj,input)
 
       mat = getMaterial(obj,input);
@@ -128,6 +130,26 @@ classdef Materials < handle
     function mat = getMaterialFromTag(obj,tag)
 
       mat = obj.solid{obj.matMap(tag)};
+
+    end
+
+
+    function tags = getMaterialRegions(obj,input)
+
+      matID = obj.getMaterialID(input);
+
+      tags = find(obj.matMap == matID);
+
+    end
+
+
+    function matID = getMaterialID(obj,input)
+
+      if ~isnumeric(input)
+        matID = getMaterialIDFromName(obj,input);
+      else
+        matID = getMaterialIDFromTag(obj,input);
+      end
 
     end
 

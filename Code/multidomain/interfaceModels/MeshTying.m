@@ -354,7 +354,7 @@ classdef MeshTying < InterfaceSolver
       nEntries = 2*36*nes; % each cell should contribute at least two times
       nmult = getNumbDoF(obj);
       localKernel = @(S,e1,e2) assembleLocalStabilization(obj,S,e1,e2);
-      asbH = assembler(nEntries,nmult,nmult,localKernel);
+      asbH = assembler(nEntries,nmult,nmult);
 
       intEdgeM = (find(~edgeM.isBoundary))';
       surf2edge = getRowsMatrix(surfS.surfaces2edges,1:surfS.num);
@@ -412,7 +412,13 @@ classdef MeshTying < InterfaceSolver
           Sloc = 0.5*(S(fLoc1,fLoc1)+S(fLoc2,fLoc2));
           %Sloc = 0.5*(Am/As)*(S(fLoc1,fLoc1)+S(fLoc2,fLoc2));
 
-          asbH.localAssembly(Sloc,f(1),f(2));
+          Sloc = obj.stabilizationScale*[Sloc,-Sloc;-Sloc,Sloc];
+          dof1 = DoFManager.dofExpand(f(1),nComp);
+          dof2 = DoFManager.dofExpand(f(2),nComp);
+          dof = [dof1;dof2];
+
+
+          asbH.localAssembly(dof,dof,Sloc);
         end
       end
 
