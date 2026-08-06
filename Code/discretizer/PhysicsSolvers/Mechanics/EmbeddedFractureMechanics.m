@@ -49,12 +49,12 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       defineFractures(obj,params.Fracture);
 
-      nCutCells = obj.fractureMesh.surfaces.num;
+      nFracSurf = obj.fractureMesh.surfaces.num;
 
       dofm = obj.domain.dofm;
 
       % register nodal displacements on target regions
-      dofm.registerVariable("fractureJump",entityField.cell,3,"nEntities",nCutCells);
+      dofm.registerVariable("fractureJump",entityField.cell,3,"nEntities",nFracSurf);
 
       % store the id of the field in the degree of freedom manager
       flds = obj.getField;
@@ -64,7 +64,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       % initialize the state object
       initState(obj);
 
-      initializeActiveSet(obj,nCutCells,params.ActiveSet);
+      initializeActiveSet(obj,nFracSurf,params.ActiveSet);
 
     end
 
@@ -119,9 +119,12 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       % allocate
       dofm = obj.domain.dofm;
       frac = obj.fractureMesh.surfaces;
+
       cells = obj.grid.cells;
 
       subCells = dofm.getFieldCells(obj.fldMech);
+
+
       n = sum((obj.grid.nDim^2)*(obj.grid.cells.numVerts(subCells)).^2);
       n1 = sum((obj.grid.nDim^2)*(cells.numVerts(frac.cutCells)*frac.num));
       n2 = sum((obj.grid.nDim^2)*frac.num^2);
@@ -149,8 +152,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       coordinates = obj.grid.coordinates;
 
-      cell2frac = zeros(cells.num,1);
-      cell2frac(frac.cutCells) = 1:frac.num;
+      c2f = obj.fractureMesh.cells.cell2fracId;
+
 
       gpMap = obj.domain.gpMap;
 
@@ -184,8 +187,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
             el = subCellsLoc(i);
             l = gpMap(el,1);
 
-            f = cell2frac(el);
-            isCellCut = f > 0;
+            fracSurfs = c2f{el};
+            nF = numel(fracSurfs);
+
+            %isCellCut = any(fracSurfs);
 
             nodes = topol(i,:);
             uDof = dofm.getLocalDoF(obj.fldMech,nodes);
@@ -197,23 +202,35 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
             B = elem.getStrainMatrix(gradN);
             s.strain(l:l+nG-1,:) = reshape(pagemtimes(B,du(uDof)),6,nG)';
 
-            if isCellCut
+
+            enhancedStrain = zeros(6,nG);
+
+            Bw = zeros(6,3*elem.nNode,nG,nF);
+            E = zeros(3,6,nG,nF);
+            dofW = zeros(3,numel(fracSurfs));
+
+            for fA = 1:nF
+
+              fId = fracSurfs(fA);
 
               % grab degree of freedom
-              wDof = dofm.getLocalDoF(obj.fldFrac,f);
+              wDof(:,fA) = dofm.getLocalDoF(obj.fldFrac,fId);
 
-              % compute Bw matrix (compatibility operator, 6x3)
-              Bw = computeCompatibilityMatrix(obj,frac,f,coords,gradN);
+              % compute Bw matrix (compatibility operator, 6x3xfracSurfs)
+              BwLoc = computeCompatibilityMatrix(obj,frac,fId,coords,gradN);
+              Bw(:,:,:,fA) = BwLoc;
+              E(:,:,:,fA) = computeEquilibriumOperator(obj,frac,fId);
 
               % enhance strain (only elastic contribution)
-              enhancedStrain = reshape(pagemtimes(Bw,dj(wDof)),6,nG)';
 
-              % compute E matrix (equilibrium operator, 6x3)
-              E = computeEquilibriumOperator(obj,frac,f);
+              enhancedStrain = enhancedStrain + reshape(pagemtimes(BwLoc,dj(cellDofW)),6,nG)';
 
-              s.strain(l:l+nG-1,:) = s.strain(l:l+nG-1,:) + enhancedStrain;
-
+              % compute E matrix (equilibrium operator, 6x3xfracSurfs)
             end
+
+
+            % total enhanced strain
+            s.strain(l:l+nG-1,:) = s.strain(l:l+nG-1,:) + enhancedStrain;
 
             % constitutive update
             [sigma,D] = constLaw.constitutiveUpdate(cellList(i),...
@@ -238,40 +255,61 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
             KLoc = obj.mechSolver.computeKloc(B,D,B,dJw);
             asbKuu.localAssembly(uDof,uDof,KLoc);
 
-            if isCellCut
+            % prepare D for fracture vectorized operations
+            Dd = repmat(D,1,1,1,nF);
+
+            KuwLoc = Poromechanics.computeKloc(B,Dd,Bw,dJw);
+            KwuLoc = Poromechanics.computeKloc(E,Dd,B,dJw);
+
+            asbKuw.localAssembly(uDof,KuwLoc);
+            asbKwu.localAssembly(cellDofW,uDof,KwuLoc);
+
+            for fA = 1:numel(fracSurfs)
+
               % assemble the efem blocks
-              KuwLoc = Poromechanics.computeKloc(B,D,Bw,dJw);
-              KwuLoc = Poromechanics.computeKloc(E,D,B,dJw);
-              KwwLoc = Poromechanics.computeKloc(E,D,Bw,dJw);
+
+              EA = E(:,:,:,fA);
+
+
 
               % compute updated traction and get tangent constitutive operator
-              tCurr = s.traction(wDof);
-              tOld = sOld.traction(wDof);
-              fracId = frac.fracId(f);
-              [tracNew,dtdg] = updateTraction(obj,f,fracId,tOld,tCurr,jump(wDof),jumpOld(wDof));
 
-              s.traction(wDof) = tracNew;
+              fId = fracSurfs(fA);
+              dofA = dofW(:,fA);
 
-              KwwLoc = KwwLoc - dtdg*frac.area(f);
+              tCurr = s.traction(dofA);
+              tOld = sOld.traction(dofA);
 
-              % assemble local contributions
-              asbKuw.localAssembly(uDof,wDof,KuwLoc);
-              asbKwu.localAssembly(wDof,uDof,KwuLoc);
-              asbKww.localAssembly(wDof,wDof,KwwLoc);
+              fracId = frac.fracId(fId);
+              [tracNew,dtdg] = updateTraction(obj,fId,fracId,tOld,tCurr,jump(dofA),jumpOld(dofA));
+
+              s.traction(dofA) = tracNew;
 
               % assemble rhsW (use computed stress tensor)
-              rT = (tracNew - iniTraction(wDof))*frac.area(f);
+              rT = (tracNew - iniTraction(dofA))*frac.area(fId);
 
-              fTmp = pagemtimes(E,'ctranspose',dsigma,'none');
+              fTmp = pagemtimes(EA,'ctranspose',dsigma,'none');
               fTmp = fTmp.*reshape(dJw,1,1,[]);
               rSigma = sum(fTmp,3);
-              rBC = obj.bcTraction(wDof)*frac.area(f);
+              rBC = obj.bcTraction(dofA)*frac.area(fId);
               rhsLoc = rSigma - rT - rBC;
-              rhsW(wDof) = rhsW(wDof) + rhsLoc;
+              rhsW(cellDofW) = rhsW(dofA) + rhsLoc;
 
-              % if obj.activeSet.curr(f) ~= ContactMode.stick
-              %   fprintf('rSigma')
-              % end
+              for fB = 1:numel(fracSurfs)
+
+                BwB = Bw(:,:,:,fB);
+                dofB = dofW(:,fB);
+
+                KwwLoc = obj.mechSolver.computeKloc(EA,D,BwB,dJw);
+
+
+                KwwLoc = KwwLoc - dtdg*frac.area(fId);
+
+                % assemble local contributions
+                asbKww.localAssembly(dofA,dofB,KwwLoc);
+
+
+              end
 
             end
 
@@ -297,16 +335,16 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     function initState(obj)
       % add embedded fracture fields to state structure
-      nCutCells = obj.fractureMesh.surfaces.num;
+      nFracSurf = obj.fractureMesh.surfaces.num;
       state = getState(obj);
-      state.fractureJump = zeros(3*nCutCells,1);
-      state.traction = zeros(3*nCutCells,1);
+      state.fractureJump = zeros(3*nFracSurf,1);
+      state.traction = zeros(3*nFracSurf,1);
 
       % elastic and plastic slip are obtained subtracting current and
       % previous elastic and plastic jump
       setState(obj,state);
-      obj.bcTraction = zeros(3*nCutCells,1);
-      obj.activeSet.curr = repmat(ContactMode.stick,nCutCells,1);
+      obj.bcTraction = zeros(3*nFracSurf,1);
+      obj.activeSet.curr = repmat(ContactMode.stick,nFracSurf,1);
       obj.activeSet.prev = obj.activeSet.curr;
 
     end
@@ -833,6 +871,20 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       % finalize the grid
       fMesh.surfaces = f;
       %initializeGrid(fMesh);
+
+      c = fMesh.cells;
+  
+      nC = obj.grid.cells.num;
+      cell2fracId = cell(nC,1);
+
+      for i = 1:nC
+        cell2fracId{i} = reshape(find(f.cutCells == i),1,[]);
+      end
+
+      c.cell2fracId = cell2fracId;
+      fMesh.cells = c;
+
+
       obj.fractureMesh = fMesh;
 
     end
