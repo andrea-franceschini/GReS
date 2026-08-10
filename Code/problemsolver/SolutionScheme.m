@@ -74,7 +74,7 @@ classdef (Abstract) SolutionScheme < handle
 
         conv = solveStep(obj);
 
-        obj.totNLiter = obj.totNLiter + obj.iterNL;
+        obj.totNLiter = obj.totNLiter + obj.totIter;
 
         if conv 
           obj.avgIter = (obj.avgIter*obj.tStep + obj.iterNL)/(obj.tStep+1);

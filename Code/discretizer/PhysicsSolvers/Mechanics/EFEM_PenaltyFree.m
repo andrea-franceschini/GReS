@@ -175,10 +175,11 @@ classdef EFEM_PenaltyFree < PhysicsSolver
 
       topol = obj.grid.getCellNodes(subCells);
 
+      gpMap = obj.domain.gpMap;
       for i = 1:numel(subCells)
 
         el = subCells(i);
-        l = obj.mechSolver.cell2stress(el);
+        l = gpMap(el,1);
 
         f = cell2frac(el);
         isCellCut = f > 0;
@@ -226,14 +227,13 @@ classdef EFEM_PenaltyFree < PhysicsSolver
         end
 
         % constitutive update
-        [D, sigma, status] = obj.domain.materials.updateMaterial( ...
-          cells.tag(el), ...
-          sOld.stress(l:l+nG-1,:), ...
-          s.strain(l:l+nG-1,:), ...
-          dt, sOld.status(l:l+nG-1,:), el, time);
-
+        constLaw = obj.domain.materials.getConstitutiveLaw(cells.tag(el));
+	[sigma,D] = constLaw.constitutiveUpdate(el,...
+              sOld.stress(l:l+nG-1,:),...
+              s.strain(l:l+nG-1,:),...
+              dt,...
+              time);
         % update stress map and gp counter
-        s.status(l:l+nG-1,:) = status;
         s.stress(l:(l+nG-1),:) = sigma;
 
         % assemble internal forces for u

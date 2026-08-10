@@ -122,9 +122,11 @@ classdef EFEMsemismooth < PhysicsSolver
       cell2frac(frac.cutCells) = 1:frac.num;
       topol = obj.grid.getCellNodes(subCells);
 
+      gpMap = obj.domain.gpMap;
+
       for i = 1:numel(subCells)
         el = subCells(i);
-        l = obj.mechSolver.cell2stress(el);
+        l = gpMap(el,1);
         f = cell2frac(el);
         isCellCut = f > 0;
         nodes = topol(i,:);
@@ -142,13 +144,15 @@ classdef EFEMsemismooth < PhysicsSolver
             reshape(pagemtimes(Bw,dj(wDof)),6,nG)';
         end
 
-        [D,sigma,status] = obj.domain.materials.updateMaterial( ...
-          cells.tag(el),sOld.stress(l:l+nG-1,:),s.strain(l:l+nG-1,:), ...
-          dt,sOld.status(l:l+nG-1,:),el,s.time);
-        s.status(l:l+nG-1,:) = status;
-        s.stress(l:l+nG-1,:) = sigma;
+	constLaw = obj.domain.materials.getConstitutiveLaw(cells.tag(el));
 
-        dsigma = reshape((sigma-iniStress(l:l+nG-1,:))',6,1,nG);
+        % constitutive update
+        [sigma,D] = constLaw.constitutiveUpdate(el,...
+              sOld.stress(l:l+nG-1,:),...
+              s.strain(l:l+nG-1,:),...
+              dt);
+
+	dsigma = reshape((sigma-iniStress(l:l+nG-1,:))',6,1,nG);
         fTmp = pagemtimes(B,'ctranspose',dsigma,'none').*reshape(dJw,1,1,[]);
         rhsU(uDof) = rhsU(uDof) + sum(fTmp,3);
         asbKuu.localAssembly(uDof,uDof,obj.mechSolver.computeKloc(B,D,B,dJw));
