@@ -143,7 +143,12 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
          Afun = @(x) Amat*x;
          [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.convStrat.Tol,obj.params.maxit,...
                                                                       obj.Prec.Apply_L,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
+   end
 
+   % Sanity check for all real solutions
+   if any(~isreal(x),'all')
+      warning('wtf')
+      x = real(x);
    end
 
    % De apply ruiz from the result
@@ -207,13 +212,10 @@ function fillStats(obj,Tend,time,symValue,T_setup)
    obj.aIter = obj.aIter + obj.params.iter;
    obj.maxIter = max(obj.maxIter,obj.params.iter);
    obj.precCompLin(obj.nSolve) = T_setup;
-
-   if obj.fullInfo
-      obj.iterLin(obj.nSolve) = obj.params.iter;
-      obj.timeLin(obj.nSolve) = time; 
-      obj.solveTLin(obj.nSolve) = Tend;
-      obj.symFlagLin(obj.nSolve) = symValue;
-   end
+   obj.iterLin(obj.nSolve) = obj.params.iter;
+   obj.timeLin(obj.nSolve) = time; 
+   obj.solveTLin(obj.nSolve) = Tend;
+   obj.symFlagLin(obj.nSolve) = symValue;
 end
 
 

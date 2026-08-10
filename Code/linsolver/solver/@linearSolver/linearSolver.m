@@ -22,12 +22,12 @@ classdef linearSolver < handle
 %     nComp            - Number of preconditioner computations performed
 %     maxIter          - Maximum iterations observed across solves
 %     aIter            - Accumulated iteration counts
-%     iterLin          - Per-solve iteration counts (when fullInfo)
-%     solveTLin        - Per-solve solve times (when fullInfo)
-%     symFlagLin       - Per-solve symmetry flags (when fullInfo)
-%     precCompLin      - Per-solve preconditioner computation flags (when fullInfo)
-%     newtonLin        - Per-solve Newton step indices (when fullInfo)
-%     timeLin          - Per-solve timestamps (when fullInfo)
+%     iterLin          - Per-solve iteration counts
+%     solveTLin        - Per-solve solve times
+%     symFlagLin       - Per-solve symmetry flags
+%     precCompLin      - Per-solve preconditioner computation flags
+%     newtonLin        - Per-solve Newton step indices
+%     timeLin          - Per-solve timestamps
 %     params           - Struct of solver parameters (tol, maxit, restart, ...)
 %
 %   METHODS:
@@ -40,9 +40,8 @@ classdef linearSolver < handle
 %
 %     printStats()
 %       Prints accumulated statistics for preconditioner construction and
-%       linear solves. When fullInfo is enabled, also prints a per-solve
-%       table of timing, iterations, symmetry flag and preconditioner
-%       computation time.
+%       linear solves. Also prints a per-solve table of timing, iterations, 
+%       symmetry flag and preconditioner computation time.
 %
 %     Solve(obj, A, b, time)
 %       Solves the linear system A*x = b using the configured solver and
@@ -57,7 +56,6 @@ classdef linearSolver < handle
 
       % Utils flags
       nsyTol = 100*eps
-      fullInfo = true
 
       % Convergence strategy handler
       convStrat
@@ -91,8 +89,6 @@ classdef linearSolver < handle
       maxIter = -1
       aIter = 0
       cumTSolveAfterPrec = 0
-      
-      % Full info stats
       iterLin = []
       solveTLin = []
       symFlagLin = []
@@ -203,7 +199,7 @@ classdef linearSolver < handle
             string = [];
          end
 
-         if obj.fullInfo && ~strcmpi(string,'short')
+         if ~strcmpi(string,'short')
             fprintf('\nUsed %d threads during mex\n',obj.Prec.maxThreads);
             fprintf('\n----------------------------------------------------------------------\n')
             fprintf('| %8s | %6s | %4s | %8s | %7s | %8s | %8s |\n','PhysTime','Sol N.','Iter','SolTime','Symm','PrecTime','DeltaT');
