@@ -8,6 +8,7 @@ classdef Discretizer < handle
     bcs
     materials
     grid
+    gpMap
   end
 
   properties
@@ -395,6 +396,10 @@ classdef Discretizer < handle
       obj.J = cell(nV);
       obj.rhs = cell(nV,1);
 
+      obj.materials.setCellMap(obj.grid);
+
+      setGaussPointMap(obj);
+
       prepareBoundaryConditions(obj);
 
       % initial solvers (before any bc is applied)
@@ -403,6 +408,32 @@ classdef Discretizer < handle
       end
 
     end
+
+    function setGaussPointMap(obj)
+
+      cells = obj.grid.cells;
+
+      if cells.num == 0
+        return
+      end
+
+      vtks = cells.vtkTypes;
+
+      ngCells = zeros(cells.num,1);
+
+      for i = length(vtks)
+        el = FiniteElementType.create(vtks(i));
+        cId = getCellsByVTKId(obj.grid,vtks(i));
+        ngCells(cId) = el.getNumbGaussPts;
+      end
+
+      gpM = [1;1+cumsum(ngCells(1:end-1))];
+      obj.gpMap = [gpM, ngCells];
+
+    end
+
+
+
 
     function timeStepSetup(obj)
 

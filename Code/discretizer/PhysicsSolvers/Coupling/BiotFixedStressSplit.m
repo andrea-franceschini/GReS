@@ -64,7 +64,6 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
         end
       end
 
-
       function rhsMech = computeRhsMech(obj,dt)
 
         pCurr = getState(obj,"pressure");

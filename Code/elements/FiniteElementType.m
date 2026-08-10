@@ -78,10 +78,27 @@ classdef (Abstract) FiniteElementType < handle
 
     end
 
-    
+
     function B = getStrainMatrix(obj,gradN)
-      B = zeros(6,obj.nNode*obj.grid.nDim,obj.getNumbGaussPts);
-      B(obj.indB(:,2)) = gradN(obj.indB(:,1));
+
+      nGauss = size(gradN,3);
+      nCells = size(gradN,4);
+      nDof   = obj.nNode * obj.grid.nDim;
+      nPages = nGauss * nCells;
+
+      % Output: 6 × nDof × nGauss × nCells
+      B = zeros(6,nDof,nGauss,nCells,'like',gradN);
+
+      % Temporarily collect Gauss points and cells into one page dimension
+      gradNPages = reshape(gradN,3*obj.nNode,nPages);
+      BPages     = reshape(B,6*nDof,nPages);
+
+      % indB refers only to one 3×nNode and one 6×nDof page
+      BPages(obj.indB(:,2),:) = gradNPages(obj.indB(:,1),:);
+
+      % Restore Gauss-point and cell dimensions
+      B = reshape(BPages,6,nDof,nGauss,nCells);
+
     end
 
 
@@ -110,8 +127,7 @@ classdef (Abstract) FiniteElementType < handle
 
 
     function setStrainMatrixIndex(obj)
-      n = obj.nNode*obj.GaussPts.nNode;
-      obj.indB = Poromechanics.setStrainMatIndex(n);
+      obj.indB = Poromechanics.setStrainMatIndex(obj.nNode);
       % bubbles
       n = obj.nFace*obj.GaussPts.nNode;
       obj.indBbubble = Poromechanics.setStrainMatIndex(n);

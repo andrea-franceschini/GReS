@@ -63,35 +63,42 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       mat = obj.domain.materials;
       dofm = obj.domain.dofm;
-      cellIds = dofm.getFieldCells(obj.fieldId);
+      cellList = dofm.getFieldCells(obj.fieldId);
       cells = obj.grid.cells;
 
-      poroMat = zeros(cells.nTag,1);
-      alphaMat = zeros(cells.nTag,1);
+      poroVec = zeros(numel(cellList),1);
+      alphaVec = zeros(numel(cellList),1);
       beta = mat.getFluid().getFluidCompressibility();
 
-      for m = 1:cells.nTag
-        if ~ismember(m,dofm.getTargetRegions(obj.getField()))
+      for cTag = 1:cells.nTag
+     
+        if ~ismember(cTag,dofm.getTargetRegions(obj.getField()))
           continue
         end
 
+
+        cellListTag = find(cells.tag(cellList)==cTag);
+        poroVec(cellListTag) = mat.getMaterial(cTag).PorousRock.getPorosity();
+
         % get regions where pressure is coupled with displacements
         coupledTags = dofm.getTargetRegions([obj.getField(),"displacements"]);
-        alphaMat(m) = getRockCompressibility(obj,m,coupledTags);
-        poroMat(m) = mat.getMaterial(m).PorousRock.getPorosity();
-      end
+        rockComp = getRockCompressibility(obj,cTag,coupledTags);
+        alphaVec(cellListTag) = rockComp(cellListTag);
 
-      ctags = cells.tag(cellIds);
+      end
 
       % (alpha+poro*beta)
-      PVal = alphaMat(ctags) + beta*poroMat(ctags);
+
+      PVal = alphaVec + beta*poroVec;
+
       if ~isempty(varargin)
         % variably saturated flow model
-        PVal = PVal.*varargin{1} + poroMat(ctags).*varargin{2};
+        PVal = PVal.*varargin{1} + poroVec.*varargin{2};
       end
-      PVal = PVal.*cells.volume(cellIds);
+      
+      PVal = PVal.*cells.volume(cellList);
       nDoF = dofm.getNumbDoF(obj.fieldId);
-      [~,~,dof] = unique(cellIds);
+      [~,~,dof] = unique(cellList);
       obj.P = sparse(dof,dof,PVal,nDoF,nDoF);
     end
 
