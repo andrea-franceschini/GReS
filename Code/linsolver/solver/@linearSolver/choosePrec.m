@@ -28,6 +28,8 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
    if contains(domainin(1).solverNames,"Sedimentation") && ~multiPhysFlag
       Prec = growing(debugflag,generalsolver,physname);
       ChronosFlag = true;
+      obj.useSAM = false;
+      obj.SAM = [];
       return;
    end
 

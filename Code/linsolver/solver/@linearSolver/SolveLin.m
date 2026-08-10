@@ -107,22 +107,36 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
       obj.whenComputed(length(obj.whenComputed) + 1) = time;
       obj.params.nSolveSinceLastPrecComp = 0;
       gresLog().log(3,'Finished computing the preconditioner\n');
+      
+      % Reset the SAM
+      obj.SAM.reset();
    else
       obj.params.nSolveSinceLastPrecComp = obj.params.nSolveSinceLastPrecComp + 1;
       T_setup = 0;
    end
 
+   % If the matrix is nonSymmetric then use always GMRES
    if globalsymm == 0
-      % If the matrix is nonSymmetric then use always GMRES
       obj.SolverType = 'gmres';
       gresLog().log(3,'The matrix is nonsymmetric with a maximum nonsymmetry of %e\n',maxval);
    end
 
+   % Convert the matrix to a sparse double if not already like this
    if iscell(A)
       Amat = cell2matrix(A);
       symValue = norm(Amat-Amat','f')/norm(Amat,'f');
    end
 
+   % Store the matrix for the SAM when the preconditioner is being computed
+   % anew if SAM is used
+   if obj.requestPrecComp
+      obj.SAM.getOldMat(Amat,globalsymm);
+   end
+
+   % Computes the SAM if deemed necessary and pass the Prec to setup the
+   % apply left/right
+   obj.SAM.Compute(Amat,globalsymm,obj.Prec);
+   
    % Adjust the preconditioner to be of the correct size in the case of
    % growing mesh simulation
    obj.Prec.updateGrowingPrec(Amat);
@@ -134,7 +148,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
          % Solve the system by GMRES
          [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.convStrat.Tol,...
                                                                    obj.params.maxit/obj.params.restart,...
-                                                                   obj.Prec.Apply_L,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
+                                                                   obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
          obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
          
       case 'sqmr'
@@ -142,7 +156,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
          % Solve the system by SQMR
          Afun = @(x) Amat*x;
          [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.convStrat.Tol,obj.params.maxit,...
-                                                                      obj.Prec.Apply_L,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
+                                                                      obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
    end
 
    % Sanity check for all real solutions
@@ -159,7 +173,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
-   fillStats(obj,Tend,time,symValue,T_setup);
+   fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup);
 
    % Did not converge, if prec not computed for it try again
    if(flag == 1 && obj.params.nSolveSinceLastPrecComp > 0)
@@ -185,6 +199,9 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
    % Check if the preconditioner needs to be recomputed
    obj.convStrat.recomputePrec(obj,Tend);
 
+   % Check if the SAM needs to be (re)computed
+   obj.convStrat.recomputeSAM(obj,obj.SAM,Tend);
+
    % Store the new starting vector
    obj.x0 = x;
 end
@@ -205,13 +222,13 @@ end
 
 
 % Function to get and fill the stats
-function fillStats(obj,Tend,time,symValue,T_setup)
+function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM)
 
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
    obj.aIter = obj.aIter + obj.params.iter;
    obj.maxIter = max(obj.maxIter,obj.params.iter);
-   obj.precCompLin(obj.nSolve) = T_setup;
+   obj.precCompLin(obj.nSolve) = T_setup+setupTSAM;
    obj.iterLin(obj.nSolve) = obj.params.iter;
    obj.timeLin(obj.nSolve) = time; 
    obj.solveTLin(obj.nSolve) = Tend;

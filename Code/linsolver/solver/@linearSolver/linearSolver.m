@@ -101,6 +101,10 @@ classdef linearSolver < handle
       nIterRuiz = 0
       tolRuiz = 1e-3
 
+      % SAM object
+      useSAM = false
+      SAM = []
+
       % Params struct
       params
    end
@@ -139,6 +143,10 @@ classdef linearSolver < handle
 
             % Create the preconditioner object, check if the physics is supported
             [obj.Prec,obj.ChronosFlag] = obj.choosePrec(obj.DEBUGflag,generalsolver,physname);
+
+            % Create SAM object, deals with everything inside if not asked
+            % to be used
+            obj.SAM = SAM(obj.useSAM);
 
             % Non supported physics for the preconditioner
             if ~obj.ChronosFlag

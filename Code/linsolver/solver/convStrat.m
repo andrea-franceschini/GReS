@@ -141,5 +141,48 @@ classdef convStrat < handle
             end
          end
       end
+
+      function recomputeSAM(obj,linsolver,sam,Tend)
+         % Check if SAM needs to be recomputed, do nothing id not asked to
+         % use SAM
+         if linsolver.useSAM
+            % Get the setup time of the preconditioner and the number of
+            % solves since the start
+            tSetup = linsolver.precCompLin(end-linsolver.params.nSolveSinceLastPrecComp);
+            nsolve = linsolver.nSolve;
+
+            % If the preconditioner has been computed in the last iteration
+            % supposedly the matrix now should be quite similar so no use
+            % in computing the SAM
+            if ~sam.precJustComputed
+               % The degradation is enought to compute the sam
+               if linsolver.Delta_T() > sam.firstCompPercDegrad*tSetup
+                  sam.requestComp = true;
+                  return;
+               end
+
+               if(sam.requestComp)
+                  % Keep in memory the number of iter it did with the correct matrix
+                  sam.firstSolveTAfterComp = Tend;
+                  sam.cumTSolveAfter = 0;
+                  sam.Delta_T(nsolve) = 0;
+                  sam.requestComp = false; % Reset the request for SAM computation
+               else
+                  % Choose if to recompute the SAM
+                  sam.cumTSolveAfter = sam.cumTSolveAfter + Tend;
+                  sam.Delta_T(nsolve) = sam.cumTSolveAfter - sam.nSolveSinceLastComp*sam.firstSolveTAfterComp;
+            
+                  tSetupSAM = sam.CompLin(end-sam.nSolveSinceLastComp);
+                  if sam.Delta_T(nsolve) > sam.alpha*tSetupSAM || sam.alpha < 0.
+                     sam.requestComp = true;
+                  end
+               end
+            else
+               % The preconditioner has alreay been computed a while ago,
+               % can check for SAM computation
+               sam.precJustComputed = false;
+            end
+         end
+      end
    end
 end
