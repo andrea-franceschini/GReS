@@ -1,6 +1,9 @@
 function Compute(obj,A,symm,varargin)
+   % Get input preconditioner
+   Prec = varargin{1};
+
    if obj.useSAM
-      if isempty(obj.N)
+      if isempty(obj.N) && ~obj.requestComp
          % If it is empty it was not computed then set to zero the setup
          % time
          obj.tSetup = 0;
@@ -35,6 +38,8 @@ function Compute(obj,A,symm,varargin)
          obj.tSetup = 0;
       end
    else
+      obj.tSetup = 0;
+
       % Set up the usage when the sam is not requested
       obj.Apply_L = @(x) Prec.Apply_L(x);
       obj.Apply_R = @(x) Prec.Apply_R(x);

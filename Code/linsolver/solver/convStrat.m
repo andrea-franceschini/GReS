@@ -156,25 +156,27 @@ classdef convStrat < handle
             % in computing the SAM
             if ~sam.precJustComputed
                % The degradation is enought to compute the sam
-               if linsolver.Delta_T() > sam.firstCompPercDegrad*tSetup
+               if linsolver.Delta_T(nsolve) > sam.firstCompPercDegrad*tSetup && isempty(sam.N)
                   sam.requestComp = true;
                   return;
                end
 
-               if(sam.requestComp)
-                  % Keep in memory the number of iter it did with the correct matrix
-                  sam.firstSolveTAfterComp = Tend;
-                  sam.cumTSolveAfter = 0;
-                  sam.Delta_T(nsolve) = 0;
-                  sam.requestComp = false; % Reset the request for SAM computation
-               else
-                  % Choose if to recompute the SAM
-                  sam.cumTSolveAfter = sam.cumTSolveAfter + Tend;
-                  sam.Delta_T(nsolve) = sam.cumTSolveAfter - sam.nSolveSinceLastComp*sam.firstSolveTAfterComp;
-            
-                  tSetupSAM = sam.CompLin(end-sam.nSolveSinceLastComp);
-                  if sam.Delta_T(nsolve) > sam.alpha*tSetupSAM || sam.alpha < 0.
-                     sam.requestComp = true;
+               if ~isempty(sam.N)
+                  if sam.requestComp
+                     % Keep in memory the number of iter it did with the correct matrix
+                     sam.firstSolveTAfterComp = Tend;
+                     sam.cumTSolveAfterComp = 0;
+                     sam.Delta_T(nsolve) = 0;
+                     sam.requestComp = false; % Reset the request for SAM computation
+                  else
+                     % Choose if to recompute the SAM
+                     sam.cumTSolveAfterComp = sam.cumTSolveAfterComp + Tend;
+                     sam.Delta_T(nsolve) = sam.cumTSolveAfterComp - sam.nSolveSinceLastComp*sam.firstSolveTAfterComp;
+               
+                     tSetupSAM = sam.CompLin(end-sam.nSolveSinceLastComp);
+                     if sam.Delta_T(nsolve) > sam.alpha*tSetupSAM || sam.alpha < 0.
+                        sam.requestComp = true;
+                     end
                   end
                end
             else

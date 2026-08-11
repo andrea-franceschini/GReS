@@ -45,15 +45,19 @@ classdef SAM < preconditioner
       requestComp = false % starts at false and modified inside convStrat
       precJustComputed = true
       firstCompPercDegrad = 0.01
+      nSolveSinceLastComp
+      firstSolveTAfterComp = 0
 
       % Statistics
       aTimeComp = 0
       nComp = 0
-      Delta_T = []
-      CompLin = []
-      cumTSolveAfterSAM = 0
+      Delta_T = zeros(2,1)
+      cumTSolveAfterComp = 0
       tSetup
 
+   end
+   properties (Access = public)
+      CompLin = []
    end
 
    methods (Access = public)

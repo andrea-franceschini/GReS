@@ -226,13 +226,15 @@ function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM)
 
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
+   solves = obj.nSolve;
    obj.aIter = obj.aIter + obj.params.iter;
    obj.maxIter = max(obj.maxIter,obj.params.iter);
-   obj.precCompLin(obj.nSolve) = T_setup+setupTSAM;
-   obj.iterLin(obj.nSolve) = obj.params.iter;
-   obj.timeLin(obj.nSolve) = time; 
-   obj.solveTLin(obj.nSolve) = Tend;
-   obj.symFlagLin(obj.nSolve) = symValue;
+   obj.precCompLin(solves) = T_setup;
+   obj.SAM.CompLin(solves) = setupTSAM;
+   obj.iterLin(solves) = obj.params.iter;
+   obj.timeLin(solves) = time; 
+   obj.solveTLin(solves) = Tend;
+   obj.symFlagLin(solves) = symValue;
 end
 
 
