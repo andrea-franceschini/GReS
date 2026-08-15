@@ -195,12 +195,6 @@ classdef linearSolver < handle
          if ~obj.useSAM
             obj.SAM.CompLin = zeros(size(obj.precCompLin));
          end
-
-         % Print the time steps at which the preconditioner was computed
-         fprintf('The preconditioner was computed at time(s):\n');
-         for i = 1:length(obj.whenComputed)
-            fprintf('             %d\t%e\n',i,obj.whenComputed(i));
-         end
          
          % Check if the user wants only the summary review
          if ~isempty(varargin)
@@ -211,6 +205,12 @@ classdef linearSolver < handle
 
          % The user did not ask for the summary only, show full info
          if ~strcmpi(string,'short')
+            % Print the time steps at which the preconditioner was computed
+            fprintf('The preconditioner was computed at time(s):\n');
+            for i = 1:length(obj.whenComputed)
+               fprintf('             %d\t%e\n',i,obj.whenComputed(i));
+            end
+
             fprintf('\n----------------------------------------------------------------------\n')
             fprintf('| %8s | %6s | %4s | %8s | %7s | %8s | %8s |\n','PhysTime','Sol N.','Iter','SolTime','Symm','PrecTime','DeltaT');
             fprintf('----------------------------------------------------------------------\n')
@@ -220,7 +220,7 @@ classdef linearSolver < handle
             end
          end
 
-         fprintf('\n\n\nAverage Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
+         fprintf('Average Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
          fprintf('Preconditioner computed %d times\n',length(obj.whenComputed));
          if obj.useSAM
             nnzSAMcomp = size(nonzeros(obj.SAM.CompLin),1);
@@ -231,7 +231,7 @@ classdef linearSolver < handle
          fprintf('Average number of iterations = %f\n',(obj.aIter/obj.nSolve));
          fprintf('Max number of iterations = %d\n',obj.maxIter);
          fprintf('Total time for computation of the linear systems = %e\n',obj.aTimeComp+obj.aTimeSolve+sum(obj.SAM.CompLin));
-         fprintf('Used %d threads during mex\n',obj.Prec.maxThreads);
+         % fprintf('Used %d threads during mex\n',obj.Prec.maxThreads);
 
       end
 
@@ -241,6 +241,13 @@ classdef linearSolver < handle
       % Function to get if chronos is to be used and if so instanciate the
       % preconditioner
       [Prec,ChronosFlag] = choosePrec(obj,debugflag,problemsolver,physname);
+
+      function tot = getTotalTime(obj)
+         if ~obj.useSAM || ~obj.ChronosFlag
+            obj.SAM.CompLin = zeros(size(obj.precCompLin));
+         end
+         tot = obj.aTimeComp+obj.aTimeSolve+sum(obj.SAM.CompLin);
+      end
 
    end
 end

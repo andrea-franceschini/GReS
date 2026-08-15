@@ -37,7 +37,7 @@ function Compute(obj,A,symMat,varargin)
    % compute the racp assuming that there are no multiple domains and or
    % interfaces
    % ======================================================================
-   if obj.multidom == false
+   % if obj.multidom == false
    
       % Treat the multiple domains as if they were one and then use RACP
       if numel(A) ~= 4
@@ -81,88 +81,88 @@ function Compute(obj,A,symMat,varargin)
    
       obj.Apply_L = @(x) obj.ApplyLeft(x,A11_aug,A{1,2},A{2,1},inv_D22);
       obj.Apply_R = @(x) obj.ApplyRight(x);
-   else
-      % ===================================================================
-      % Use the treatment for keeping the multiple domains separate
-      % ===================================================================
-
-      % If there is more than one interface there is the need to treat it
-      % carefully
-      if obj.nInt > 1
-         Amod = cell(obj.nDom+1,obj.nDom+1);
-         symMatMod = false(obj.nDom+1,obj.nDom+1);
-
-         % Copy the different physical domains in Amod
-         Amod(idxMain,idxMain) = A(idxMain,idxMain);
-         symMatMod(idxMain,idxMain) = symMat(idxMain,idxMain);
-
-         % Loop over the domains to accumulate the interfaces
-         for i = 1:obj.nDom
-            % Accumulate the top right interfaces
-            Amod{i,obj.nDom+1} = cell2matrix(A(i,idxSupp));
-   
-            % Accumulate the bottom left interfaces
-            Amod{obj.nDom+1,i} = cell2matrix(A(idxSupp,i));
-
-            % Accumulate also the symmetry matrix
-            symMatMod(i,obj.nDom+1) = all(symMat(i,idxSupp),'all');
-            symMatMod(obj.nDom+1,i) = all(symMat(idxSupp,i),'all');
-         end
-   
-         % Accumulate the lagrange multipliers
-         Amod{obj.nDom+1,obj.nDom+1} = cell2matrix(A(idxSupp,idxSupp));
-         symMatMod(obj.nDom+1,obj.nDom+1) = all(symMat(idxSupp,idxSupp),'all');
-
-         clear A symMat;
-
-         A = Amod;
-         symMat = symMatMod;
-      end
-
-      % Treat the boundary conditions for AMG
-      A = obj.treatDirBCmulti(A,symMat);
-      
-      % Get the full interfaces matrices
-      B1 = vertcat(A{1:obj.nDom,end});
-      B2 = horzcat(A{end,1:obj.nDom});
-      A11 = cell2matrix(A(idxMain,idxMain));
-
-      % Allocate cell array
-      A11_aug = cell(obj.nDom,1);
-
-      % Compute the inverse Chat matrix
-      [inv_D22] = obj.cpt_invD(A11,B1,B2,A{end,end});
-         
-      % Treat the domains separately with a block Jacobi approach
-      for i = 1:obj.nDom
-         
-         % Get the submatrix
-         Ai = [A(i,i), A(i,end); A(end,i), A(end,end)];
-
-         % Compute the addendum
-         ADD = Ai{1,2}*inv_D22*Ai{2,1}; 
-
-         % Strong Symmetrization if the matrix was seen as symmetric
-         symm = symMat(i,i) && symMat(i,end) && symMat(end,end);
-         if symm
-            ADD = 0.5*(ADD+ADD');
-         end
-         A11_aug{i} = Ai{1,1}+ADD;
-
-         % Compute the test space
-         if(obj.phys == 0) % fluids
-            TV0 = ones(size(Ai{1,1},1),1);
-         elseif(obj.phys == 1 || obj.phys == 1.1) % true contact mechanichs physics is 1.1, general poromechanics is 1
-            TV0 = mk_rbm_3d(obj.domain(i).grid.coordinates);
-         end
-      
-         % Compute the amg for block 11
-         obj.AMG{i}.Compute(A11_aug{i},symm,TV0,true);
-         clear TV0;
-      end
-      
-      obj.Apply_L = @(x) obj.ApplyLeft(x,A11_aug,B1,B2,inv_D22);
-      obj.Apply_R = @(x) obj.ApplyRight(x);
-   end
+   % else
+   %    % ===================================================================
+   %    % Use the treatment for keeping the multiple domains separate
+   %    % ===================================================================
+   % 
+   %    % If there is more than one interface there is the need to treat it
+   %    % carefully
+   %    if obj.nInt > 1
+   %       Amod = cell(obj.nDom+1,obj.nDom+1);
+   %       symMatMod = false(obj.nDom+1,obj.nDom+1);
+   % 
+   %       % Copy the different physical domains in Amod
+   %       Amod(idxMain,idxMain) = A(idxMain,idxMain);
+   %       symMatMod(idxMain,idxMain) = symMat(idxMain,idxMain);
+   % 
+   %       % Loop over the domains to accumulate the interfaces
+   %       for i = 1:obj.nDom
+   %          % Accumulate the top right interfaces
+   %          Amod{i,obj.nDom+1} = cell2matrix(A(i,idxSupp));
+   % 
+   %          % Accumulate the bottom left interfaces
+   %          Amod{obj.nDom+1,i} = cell2matrix(A(idxSupp,i));
+   % 
+   %          % Accumulate also the symmetry matrix
+   %          symMatMod(i,obj.nDom+1) = all(symMat(i,idxSupp),'all');
+   %          symMatMod(obj.nDom+1,i) = all(symMat(idxSupp,i),'all');
+   %       end
+   % 
+   %       % Accumulate the lagrange multipliers
+   %       Amod{obj.nDom+1,obj.nDom+1} = cell2matrix(A(idxSupp,idxSupp));
+   %       symMatMod(obj.nDom+1,obj.nDom+1) = all(symMat(idxSupp,idxSupp),'all');
+   % 
+   %       clear A symMat;
+   % 
+   %       A = Amod;
+   %       symMat = symMatMod;
+   %    end
+   % 
+   %    % Treat the boundary conditions for AMG
+   %    A = obj.treatDirBCmulti(A,symMat);
+   % 
+   %    % Get the full interfaces matrices
+   %    B1 = vertcat(A{1:obj.nDom,end});
+   %    B2 = horzcat(A{end,1:obj.nDom});
+   %    A11 = cell2matrix(A(idxMain,idxMain));
+   % 
+   %    % Allocate cell array
+   %    A11_aug = cell(obj.nDom,1);
+   % 
+   %    % Compute the inverse Chat matrix
+   %    [inv_D22] = obj.cpt_invD(A11,B1,B2,A{end,end});
+   % 
+   %    % Treat the domains separately with a block Jacobi approach
+   %    for i = 1:obj.nDom
+   % 
+   %       % Get the submatrix
+   %       Ai = [A(i,i), A(i,end); A(end,i), A(end,end)];
+   % 
+   %       % Compute the addendum
+   %       ADD = Ai{1,2}*inv_D22*Ai{2,1}; 
+   % 
+   %       % Strong Symmetrization if the matrix was seen as symmetric
+   %       symm = symMat(i,i) && symMat(i,end) && symMat(end,end);
+   %       if symm
+   %          ADD = 0.5*(ADD+ADD');
+   %       end
+   %       A11_aug{i} = Ai{1,1}+ADD;
+   % 
+   %       % Compute the test space
+   %       if(obj.phys == 0) % fluids
+   %          TV0 = ones(size(Ai{1,1},1),1);
+   %       elseif(obj.phys == 1 || obj.phys == 1.1) % true contact mechanichs physics is 1.1, general poromechanics is 1
+   %          TV0 = mk_rbm_3d(obj.domain(i).grid.coordinates);
+   %       end
+   % 
+   %       % Compute the amg for block 11
+   %       obj.AMG{i}.Compute(A11_aug{i},symm,TV0,true);
+   %       clear TV0;
+   %    end
+   % 
+   %    obj.Apply_L = @(x) obj.ApplyLeft(x,A11_aug,B1,B2,inv_D22);
+   %    obj.Apply_R = @(x) obj.ApplyRight(x);
+   % end
 end
 

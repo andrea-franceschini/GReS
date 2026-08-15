@@ -70,6 +70,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
    if obj.Prec.phys == 1.1 
       if obj.generalsolver.iterConfig > obj.iterConfigOld && obj.iterConfigOld == 1
          obj.requestPrecComp = true;
+         % obj.SAM.requestComp = true;
          obj.iterConfigOld = obj.generalsolver.iterConfig;
       elseif obj.generalsolver.iterConfig < obj.iterConfigOld
          obj.iterConfigOld = obj.generalsolver.iterConfig;
@@ -92,6 +93,9 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
    % the residual
    if globalsymm == true && obj.Prec.PrecSym == false
       obj.requestPrecComp = true;
+   end
+   if globalsymm == true && obj.SAM.PrecSym == false && obj.useSAM
+      obj.SAM.requestComp = true;
    end
    
    % Have the linear solver compute the Preconditioner if necessary

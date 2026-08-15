@@ -17,9 +17,11 @@ function Compute(obj,A,symm,varargin)
          time_start = tic;
          [obj.N, ~] = MEX_sam_adaptive_left(A,obj.A0,obj.maxThreads,obj.nstep,obj.stp_size,obj.epss);
       
+         obj.PrecSym = false;
          % Symmetrize
-         if obj.PrecSym && symm
+         if obj.A0Sym && symm
             obj.N = 0.5*(obj.N+obj.N');
+            obj.PrecSym = true;
          end
          obj.tSetup = toc(time_start);
    

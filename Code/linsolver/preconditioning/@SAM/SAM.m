@@ -27,6 +27,7 @@ classdef SAM < preconditioner
 
       % Initial matrix 
       A0
+      A0Sym
       
       % Symmetry of the matrix on which the preconditioner has been
       % computed
@@ -42,7 +43,6 @@ classdef SAM < preconditioner
 
       % Recomputing
       alpha = 0.5
-      requestComp = false % starts at false and modified inside convStrat
       precJustComputed = true
       firstCompPercDegrad = 0.01
       nSolveSinceLastComp
@@ -58,6 +58,8 @@ classdef SAM < preconditioner
    end
    properties (Access = public)
       CompLin = []
+      requestComp = false % starts at false and modified inside convStrat
+      
    end
 
    methods (Access = public)
@@ -120,7 +122,7 @@ classdef SAM < preconditioner
          % Save only if needed
          if obj.useSAM
             obj.A0 = A0;
-            obj.PrecSym = symm;
+            obj.A0Sym = symm;
          end
       end
    end
