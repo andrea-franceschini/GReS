@@ -49,7 +49,6 @@ classdef RACP < preconditioner
       % RACP Gamma
       gamma = 1.0
 
-      % multidom = false
    end
 
    properties (GetAccess = public,SetAccess = private)
@@ -77,27 +76,15 @@ classdef RACP < preconditioner
 
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)
-         % if obj.multidom == false
-            if nargin < 6
-               error('Not enough arguments for RACP apply Left');
-            end
-            A11_aug = varargin{1};
-            A12     = varargin{2};
-            A21     = varargin{3};
-            inv_D22 = varargin{4};
-            
-            x = apply_RevAug(obj.AMG.Prec,A11_aug,A12,A21,inv_D22,b);
-         % else
-         %    if nargin < 6
-         %       error('Not enough arguments for RACP apply Left');
-         %    end
-         %    A11_aug = varargin{1};
-         %    B1      = varargin{2};
-         %    B2      = varargin{3};
-         %    inv_D22 = varargin{4};
-         % 
-         %    x = obj.applyMultiRACP(A11_aug,B1,B2,inv_D22,b);
-         % end
+         if nargin < 6
+            error('Not enough arguments for RACP apply Left');
+         end
+         A11_aug = varargin{1};
+         A12     = varargin{2};
+         A21     = varargin{3};
+         inv_D22 = varargin{4};
+         
+         x = apply_RevAug(obj.AMG.Prec,A11_aug,A12,A21,inv_D22,b);
       end
 
       % Getter for the function handle to apply the right preconditioner
@@ -146,32 +133,16 @@ classdef RACP < preconditioner
             error('Non supported Physics for preconditioner');
          end
 
-         % if obj.multidom == false
-            % Create the inner AMG preconditioner
-            obj.AMG = aAMG(debugflag,problemsolver,physname);
+         % Create the inner AMG preconditioner
+         obj.AMG = aAMG(debugflag,problemsolver,physname);
 
-            obj.maxThreads = obj.AMG.maxThreads;
-            obj.params = obj.AMG.params;
-         % else
-         %    % Create one AMG preconditioner for each of the domains
-         %    for i = 1:obj.nDom
-         %       obj.AMG{i} = aAMG(debugflag,problemsolver,physname);
-         %    end
-         % 
-         %    obj.maxThreads = obj.AMG{1}.maxThreads;
-         %    obj.params = obj.AMG{1}.params;
-         % end
+         obj.maxThreads = obj.AMG.maxThreads;
+         obj.params = obj.AMG.params;
+         
       end
 
       % Function for treating the dirichlet boundary conditions
       A = treatDirBC(obj,A,sym)
-
-      % % Function for treating the dirichlet boundary conditions
-      % % Multidomain case
-      % A = treatDirBCmulti(obj, A, sym)
-
-      % % Compute the Chat for the local additions 
-      % [inv_D22] = cpt_invD(obj,A11,A12,A21,A22);
 
       % Compute local Augmented matrix for multidom == false
       [A11_aug,inv_D22] = cpt_localAug(obj,A11,A12,A21,A22,symm)
