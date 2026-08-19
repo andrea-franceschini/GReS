@@ -187,10 +187,15 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
    % Interesting problem
    if(flag == 1)
       gresLog().log(3,'Number of solves since last preconditioner computation %d\n',obj.params.nSolveSinceLastPrecComp);
-      [~,~] = matlab_solve(obj,A,b);
-      TV0 = obj.Prec.TV0;
-      save('new_problem.mat','A','b','TV0');
-      error('matlab could solve and chronos did not.');
+      [x,~] = matlab_solve(obj,A,b);
+      % TV0 = obj.Prec.TV0;
+      % save('new_problem.mat','A','b','TV0');
+
+      % Fall back to matlab to continue without breaking the
+      % simulation
+      warning('Matlab could solve and chronos did not. Falling back to matlab to continue simulation');
+      obj.ChronosFlag = false;
+      return;
    end
 
    % Reset the solver
