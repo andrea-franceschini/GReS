@@ -167,21 +167,13 @@ classdef linearSolver < handle
 
             % Get the solver type
             obj.SolverType = lower(data.solver);
-            obj.params.maxit = 400;
+            obj.params.maxit = 500;
 
             % if GMRES get restart value
             if strcmp(obj.SolverType,'gmres')
                obj.params.restart = data.general.restart;
             else
                obj.params.restart = 100;
-            end
-
-            % Get the values if ruiz symmetric scaling is asked for by the user
-            if isfield(generalsolver.simparams.linSolverParams, 'ruizIter')
-               obj.nIterRuiz = generalsolver.simparams.linSolverParams.ruizIter;
-            end
-            if isfield(generalsolver.simparams.linSolverParams, 'ruizTol')
-               obj.tolRuiz = generalsolver.simparams.linSolverParams.ruizTol;
             end
          end
       end
