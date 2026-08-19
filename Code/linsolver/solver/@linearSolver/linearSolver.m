@@ -1,52 +1,63 @@
 classdef linearSolver < handle
-% LINEARSOLVER  Wrapper around external (Chronos) and MATLAB linear solvers.
+% linearSolver - Handle class that manages linear solver selection, preconditioner
+%                creation (Chronos_Lab), solving strategy and statistics.
 %
-%   This class manages optional preconditioning, solver configuration,
-%   timing and statistics for preconditioner construction and linear solves.
+% Usage:
+%   obj = linearSolver(generalsolver, physname)
 %
-%   PROPERTIES (public get, private set):
-%     DEBUGflag        - Flag for debug output (logical)
-%     matlabMaxSize    - Threshold size to force MATLAB solver (numeric)
-%     nsyTol           - Numerical symmetry tolerance (numeric)
-%     ChronosFlag      - True if Chronos preconditioner is available (logical)
-%     requestPrecComp  - Request preconditioner computation (logical)
-%     x0               - Starting vector for iterative solvers (numeric vector)
-%     SolverType       - Solver type string (e.g., 'gmres')
-%     Prec             - Preconditioner object (Chronos wrapper)
-%     generalsolver    - Reference to the nonlinear solver object
-%     iterConfigOld    - Configuration flag for iterative solver reuse
-%     whenComputed     - Times at which preconditioner was computed
-%     aTimeComp        - Accumulated time spent computing preconditioner
-%     aTimeSolve       - Accumulated time spent solving linear systems
-%     nSolve           - Number of solves performed
-%     nComp            - Number of preconditioner computations performed
-%     maxIter          - Maximum iterations observed across solves
-%     aIter            - Accumulated iteration counts
-%     iterLin          - Per-solve iteration counts
-%     solveTLin        - Per-solve solve times
-%     symFlagLin       - Per-solve symmetry flags
-%     precCompLin      - Per-solve preconditioner computation flags
-%     newtonLin        - Per-solve Newton step indices
-%     timeLin          - Per-solve timestamps
-%     params           - Struct of solver parameters (tol, maxit, restart, ...)
+% Inputs:
+%   generalsolver - struct or object containing simulation parameters and
+%                   interfaces required to configure solver and preconditioner.
+%   physname      - string with the physics name used to select appropriate
+%                   preconditioner setup.
 %
-%   METHODS:
-%     linearSolver(generalsolver, physname)
-%       Constructor. Checks for Chronos library and compiled mex, creates
-%       the preconditioner object when supported, reads default Chronos XML
-%       settings, and initializes solver parameters. Sets ChronosFlag=false
-%       if Chronos is unavailable or useMatlab is forced via
-%       generalsolver.simparams.linSolverParams.useMatlab.
+% Description:
+%   This class detects presence of the Chronos_Lab third-party library and,
+%   when available and compiled, configures a Chronos preconditioner and a
+%   solver strategy (GMRES, etc.). It also supports a MATLAB fallback if
+%   Chronos is missing or not compiled. The object gathers statistics about
+%   preconditioner computation, solve times and iteration counts, and can
+%   print a summary via printStats.
 %
-%     printStats()
-%       Prints accumulated statistics for preconditioner construction and
-%       linear solves. Also prints a per-solve table of timing, iterations, 
-%       symmetry flag and preconditioner computation time.
+% Main methods:
+%   linearSolver(generalsolver, physname) - constructor: checks Chronos,
+%       sets up preconditioner and solver defaults.
+%   printStats(varargin) - print collected statistics; 'short' option prints
+%       only summary.
 %
-%     Solve(obj, A, b, time)
-%       Solves the linear system A*x = b using the configured solver and
-%       preconditioner. Returns solution x and a convergence flag.
-%
+% Notes:
+%   - If generalsolver.simparams.linSolverParams.useMatlab is set, constructor
+%     will exit early to allow MATLAB solvers only.
+% Brief property descriptions:
+% DEBUGflag       - boolean: enable debug logging and extra checks.
+% matlabMaxSize   - numeric: maximum matrix size for which MATLAB fallback is enforced.
+% nsyTol          - numeric: tolerance used to detect near-symmetric matrices.
+% convStrat       - object: convergence strategy handler (convStrat class instance).
+% ChronosFlag     - boolean: true if Chronos_Lab preconditioner support is available.
+% requestPrecComp - boolean: flag requesting that the preconditioner be (re)computed.
+% alpha           - numeric: scaling parameter used during recomputation of the preconditioner.
+% x0              - vector: starting vector for iterative solvers.
+% SolverType      - string: name of the iterative solver in use (e.g. 'gmres').
+% Prec            - object: preconditioner instance (Chronos preconditioner wrapper).
+% iterConfigOld   - numeric: stored iteration configuration version to detect changes.
+% whenComputed    - vector: physical times at which the preconditioner was computed.
+% aTimeComp       - numeric: accumulated time spent computing preconditioners.
+% aTimeSolve      - numeric: accumulated time spent in solver calls.
+% nSolve          - integer: number of times the linear solver was invoked.
+% nComp           - integer: number of preconditioner computations performed.
+% maxIter         - integer: maximum iterations observed across solves.
+% aIter           - numeric: accumulated iterations (for averaging/stats).
+% cumTSolveAfterPrec - numeric: cumulative solve time measured after preconditioner build.
+% iterLin         - vector: recorded iteration counts per linear solve.
+% solveTLin       - vector: recorded solve times per linear solve.
+% symFlagLin      - vector: flags indicating symmetry detection per solve.
+% precCompLin     - vector: flags indicating whether prec was computed for each solve.
+% newtonLin       - vector: Newton iteration indices associated with each linear solve.
+% timeLin         - vector: physical times corresponding to each linear solve.
+% Delta_T         - vector: time step sizes used when recording solves.
+% useSAM          - boolean: whether SAM monitoring/analysis is enabled.
+% SAM             - object: SAM instance.
+% params          - struct: runtime parameters for the solver (tolerances, maxit, restart, etc.)
 
    properties (SetAccess = ?convStrat, GetAccess = public)
 
@@ -230,6 +241,8 @@ classdef linearSolver < handle
       % preconditioner
       [Prec,ChronosFlag] = choosePrec(obj,debugflag,problemsolver,physname);
 
+      % Function to get the total time taken by the linear solver for
+      % preconditioner computation and solve step
       function tot = getTotalTime(obj)
          if ~obj.useSAM || ~obj.ChronosFlag
             obj.SAM.CompLin = zeros(size(obj.precCompLin));
