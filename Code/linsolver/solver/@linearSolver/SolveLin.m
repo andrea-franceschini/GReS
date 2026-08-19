@@ -69,8 +69,13 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
    % Directly recompute the preconditioner
    if obj.Prec.phys == 1.1 
       if obj.generalsolver.iterConfig > obj.iterConfigOld && obj.iterConfigOld == 1
-         obj.requestPrecComp = true;
-         % obj.SAM.requestComp = true;
+         % If the SAM is being used then it is better to just compute it
+         % wrt computing the whole preconditioner
+         if ~obj.useSAM
+            obj.requestPrecComp = true;
+         else
+            obj.SAM.requestComp = true;
+         end
          obj.iterConfigOld = obj.generalsolver.iterConfig;
       elseif obj.generalsolver.iterConfig < obj.iterConfigOld
          obj.iterConfigOld = obj.generalsolver.iterConfig;
@@ -79,9 +84,6 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
 
    % Save the solver type
    firstSolver = obj.SolverType;
-
-   % Apply Ruix Scaling on the Block matrix
-   [A,b] = Ruiz(obj,A,b);
 
    % Fix the pattern to be symmetric and check the symmetry of the
    % resulting matrix
@@ -150,29 +152,23 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
       case 'gmres'
 
          % Solve the system by GMRES
-         [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.convStrat.Tol,...
-                                                                   obj.params.maxit/obj.params.restart,...
-                                                                   obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
+         [x,flag,obj.params.lastRelres,iter1] = gmres_RIGHT(Amat,b,obj.params.restart,obj.convStrat.Tol,...
+                                                            obj.params.maxit/obj.params.restart,...
+                                                            obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
          obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
          
       case 'sqmr'
 
          % Solve the system by SQMR
          Afun = @(x) Amat*x;
-         [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.convStrat.Tol,obj.params.maxit,...
-                                                                      obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
+         [x,flag,obj.params.lastRelres,obj.params.iter] = SQMR(Afun,b,obj.convStrat.Tol,obj.params.maxit,...
+                                                               obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
    end
 
    % Sanity check for all real solutions
    if any(~isreal(x),'all')
       warning('wtf')
       x = real(x);
-   end
-
-   % De apply ruiz from the result
-   if obj.nIterRuiz > 0
-      D = diag(vertcat(obj.Prec.D{:}));
-      x = D*x;
    end
    Tend = toc(startT);
 
@@ -370,20 +366,4 @@ function [A] = fixPattern(A)
 end
 
 
-function [A,b] = Ruiz(obj,A,b)
-   if obj.nIterRuiz > 0
-      % Compute and apply Ritz scaling on A
-      [A,obj.Prec.D] = ruiz_block_symmetric(A,obj.nIterRuiz,obj.tolRuiz,obj.DEBUGflag);
 
-      % Prepare the D for future applications
-      obj.Prec.D = cellfun(@(Di) diag(Di), obj.Prec.D, 'UniformOutput', false);
-
-      % Single vector D to apply to the rhs
-      D = diag(vertcat(obj.Prec.D{:}));
-
-      % Apply the scaling to the rhs
-      b = D*b;
-   else
-      % obj.Prec.D = {};
-   end
-end

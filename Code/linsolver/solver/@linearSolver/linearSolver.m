@@ -97,10 +97,6 @@ classdef linearSolver < handle
       timeLin = []
       Delta_T = []
 
-      % Ruiz params
-      nIterRuiz = 0
-      tolRuiz = 1e-3
-
       % SAM object
       useSAM = false
       SAM = []
