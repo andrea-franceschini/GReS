@@ -1,4 +1,4 @@
-function [x,flag] = SolveLin(obj,A,b,time)
+function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
 % This file implements a Solve method and related utilities intended to be
 % used as part of a linear solver class (linsolver). The Solve function
 % orchestrates choosing between internal MATLAB direct solve and an external
@@ -39,32 +39,43 @@ function [x,flag] = SolveLin(obj,A,b,time)
 % - A is passed directly as a cell array, meaning it is already split in the various blocks (A11,A12,A21,A22 for a
 %   single physics single domain with lagrange multipliers)
    
+   % Check if the variables have been passed
+   if nargin < 5
+      nonlinIter = 1;
+      isLinear = true;
+   end
+
+   if nargin < 6
+      isLinear = true;
+   end
+
    if obj.DEBUGflag
       A
    end
-
-   oldProbSize = size(obj.x0,1);
 
    % Chronos does not exist, continue with matlab default
    if ~obj.ChronosFlag || (getGlobalSize(A) < obj.matlabMaxSize)
       [x,flag] = matlab_solve(obj,A,b);
       return
-   elseif oldProbSize ~= 0
-      newProbSize = size(b,1);
-      obj.sizeDiff = obj.sizeDiff + newProbSize - oldProbSize;
-      if obj.sizeDiff > 0
-         obj.x0 = [obj.x0; zeros(obj.sizeDiff,1)];
-         if newProbSize - oldProbSize > 0
-            gresLog().log(3,'changed size from %d to %d\n',oldProbSize,newProbSize);
-         end
-      end
    end
+
+   % Check if the system has changed size and adapt x0 to be of size(b)
+   obj.x0 = obj.Prec.checkGrowth(obj,b);
+   
+   % Compute if necessary the tolerance for the linear solver
+   obj.convStrat.computeTol(nonlinIter,b,isLinear);
 
    % Contact has opened a fracture or something similar so amg does not converge well. 
    % Directly recompute the preconditioner
    if obj.Prec.phys == 1.1 
       if obj.generalsolver.iterConfig > obj.iterConfigOld && obj.iterConfigOld == 1
-         obj.requestPrecComp = true;
+         % If the SAM is being used then it is better to just compute it
+         % wrt computing the whole preconditioner
+         if ~obj.useSAM
+            obj.requestPrecComp = true;
+         else
+            obj.SAM.requestComp = true;
+         end
          obj.iterConfigOld = obj.generalsolver.iterConfig;
       elseif obj.generalsolver.iterConfig < obj.iterConfigOld
          obj.iterConfigOld = obj.generalsolver.iterConfig;
@@ -73,9 +84,6 @@ function [x,flag] = SolveLin(obj,A,b,time)
 
    % Save the solver type
    firstSolver = obj.SolverType;
-
-   % Apply Ruix Scaling on the Block matrix
-   [A,b] = Ruiz(obj,A,b);
 
    % Fix the pattern to be symmetric and check the symmetry of the
    % resulting matrix
@@ -88,79 +96,84 @@ function [x,flag] = SolveLin(obj,A,b,time)
    if globalsymm == true && obj.Prec.PrecSym == false
       obj.requestPrecComp = true;
    end
+   if globalsymm == true && obj.SAM.PrecSym == false && obj.useSAM
+      obj.SAM.requestComp = true;
+   end
    
    % Have the linear solver compute the Preconditioner if necessary
    if(obj.requestPrecComp) 
-      obj.Prec.PrecSym = globalsymm;
       gresLog().log(3,'Computing the preconditioner\n');
 
       time_start = tic;
-      obj.Prec.Compute(A,globalsymm);
+      obj.Prec.Compute(A,symMat);
       T_setup = toc(time_start);
 
       obj.aTimeComp = obj.aTimeComp + T_setup;
       obj.nComp = obj.nComp + 1;
       obj.whenComputed(length(obj.whenComputed) + 1) = time;
       obj.params.nSolveSinceLastPrecComp = 0;
-      obj.sizeDiff = 0;
       gresLog().log(3,'Finished computing the preconditioner\n');
+      
+      % Reset the SAM
+      obj.SAM.reset();
    else
       obj.params.nSolveSinceLastPrecComp = obj.params.nSolveSinceLastPrecComp + 1;
       T_setup = 0;
    end
 
+   % If the matrix is nonSymmetric then use always GMRES
    if globalsymm == 0
-      % If the matrix is nonSymmetric then use always GMRES
       obj.SolverType = 'gmres';
       gresLog().log(3,'The matrix is nonsymmetric with a maximum nonsymmetry of %e\n',maxval);
    end
 
+   % Convert the matrix to a sparse double if not already like this
    if iscell(A)
       Amat = cell2matrix(A);
-      if obj.DEBUGflag
-         symValue = norm(Amat-Amat','f')/norm(Amat,'f');
-      else
-         symValue = -999;
-      end
+      symValue = norm(Amat-Amat','f')/norm(Amat,'f');
    end
 
+   % Store the matrix for the SAM when the preconditioner is being computed
+   % anew if SAM is used
+   if obj.requestPrecComp
+      obj.SAM.getOldMat(Amat,globalsymm);
+   end
+
+   % Computes the SAM if deemed necessary and pass the Prec to setup the
+   % apply left/right
+   obj.SAM.Compute(Amat,globalsymm,obj.Prec);
+   
    % Adjust the preconditioner to be of the correct size in the case of
    % growing mesh simulation
-   if obj.sizeDiff > 0 
-      invD = 1./diag(Amat(end-obj.sizeDiff+1:end,end-obj.sizeDiff+1:end));
-      obj.precL = @(x) [obj.Prec.Apply_L(x(1:end-obj.sizeDiff)); invD.*x(end-obj.sizeDiff+1:end)];
-   elseif isempty(obj.precL) || obj.params.nSolveSinceLastPrecComp == 0
-      obj.precL = obj.Prec.Apply_L;
-   end
+   obj.Prec.updateGrowingPrec(Amat);
    
    startT = tic;
    switch obj.SolverType
       case 'gmres'
 
          % Solve the system by GMRES
-         [x,flag,obj.params.lastRelres,iter1,resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.params.tol,...
-                                                                   obj.params.maxit/obj.params.restart,...
-                                                                   obj.precL,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
+         [x,flag,obj.params.lastRelres,iter1] = gmres_RIGHT(Amat,b,obj.params.restart,obj.convStrat.Tol,...
+                                                            obj.params.maxit/obj.params.restart,...
+                                                            obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
          obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
          
       case 'sqmr'
 
          % Solve the system by SQMR
          Afun = @(x) Amat*x;
-         [x,flag,obj.params.lastRelres,obj.params.iter,resvec] = SQMR(Afun,b,obj.params.tol,obj.params.maxit,...
-                                                                      obj.precL,obj.Prec.Apply_R,obj.x0,obj.DEBUGflag);
-
+         [x,flag,obj.params.lastRelres,obj.params.iter] = SQMR(Afun,b,obj.convStrat.Tol,obj.params.maxit,...
+                                                               obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
    end
 
-   % De apply ruiz from the result
-   if obj.nIterRuiz > 0
-      D = diag(vertcat(obj.Prec.D{:}));
-      x = D*x;
+   % Sanity check for all real solutions
+   if any(~isreal(x),'all')
+      warning('wtf')
+      x = real(x);
    end
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
-   fillStats(obj,Tend,time,symValue,globalsymm,T_setup);
+   fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup);
 
    % Did not converge, if prec not computed for it try again
    if(flag == 1 && obj.params.nSolveSinceLastPrecComp > 0)
@@ -174,32 +187,25 @@ function [x,flag] = SolveLin(obj,A,b,time)
    % Interesting problem
    if(flag == 1)
       gresLog().log(3,'Number of solves since last preconditioner computation %d\n',obj.params.nSolveSinceLastPrecComp);
-      [~,~] = matlab_solve(obj,A,b);
-      TV0 = obj.Prec.TV0;
-      save('new_problem.mat','A','b','TV0');
-      error('matlab could solve and chronos did not.');
+      [x,~] = matlab_solve(obj,A,b);
+      % TV0 = obj.Prec.TV0;
+      % save('new_problem.mat','A','b','TV0');
+
+      % Fall back to matlab to continue without breaking the
+      % simulation
+      warning('Matlab could solve and chronos did not. Falling back to matlab to continue simulation');
+      obj.ChronosFlag = false;
+      return;
    end
 
    % Reset the solver
    obj.SolverType = firstSolver;
 
-   % If the preconditioner has just been computed then do not compute it for the next iter
-   if(obj.requestPrecComp)
-      % Keep in memory the number of iter it did with the correct matrix
-      obj.params.firstSolveTAfterPrecComp = Tend;
-      obj.cumTSolveAfterPrec = 0;
-      obj.requestPrecComp = false;
-      obj.Delta_T(obj.nSolve) = 0;
-   else
-      % Choose if to recompute the preconditioner
-      obj.cumTSolveAfterPrec = obj.cumTSolveAfterPrec + Tend;
-      obj.Delta_T(obj.nSolve) = obj.cumTSolveAfterPrec - obj.params.nSolveSinceLastPrecComp*obj.params.firstSolveTAfterPrecComp;
+   % Check if the preconditioner needs to be recomputed
+   obj.convStrat.recomputePrec(obj,Tend);
 
-      tSetup = obj.precCompLin(end-obj.params.nSolveSinceLastPrecComp);
-      if obj.Delta_T(obj.nSolve) > obj.alpha*tSetup || obj.alpha < 0.
-         obj.requestPrecComp = true;
-      end
-   end
+   % Check if the SAM needs to be (re)computed
+   obj.convStrat.recomputeSAM(obj,obj.SAM,Tend);
 
    % Store the new starting vector
    obj.x0 = x;
@@ -221,25 +227,19 @@ end
 
 
 % Function to get and fill the stats
-function fillStats(obj,Tend,time,symValue,globalsymm,T_setup)
+function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM)
 
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
+   solves = obj.nSolve;
    obj.aIter = obj.aIter + obj.params.iter;
    obj.maxIter = max(obj.maxIter,obj.params.iter);
-   obj.precCompLin(obj.nSolve) = T_setup;
-
-   if obj.fullInfo
-      obj.iterLin(obj.nSolve) = obj.params.iter;
-      obj.timeLin(obj.nSolve) = time; 
-      obj.solveTLin(obj.nSolve) = Tend;
-
-      if obj.DEBUGflag
-         obj.symFlagLin(obj.nSolve) = symValue;
-      else
-         obj.symFlagLin(obj.nSolve) = globalsymm;
-      end
-   end
+   obj.precCompLin(solves) = T_setup;
+   obj.SAM.CompLin(solves) = setupTSAM;
+   obj.iterLin(solves) = obj.params.iter;
+   obj.timeLin(solves) = time; 
+   obj.solveTLin(solves) = Tend;
+   obj.symFlagLin(solves) = symValue;
 end
 
 
@@ -371,20 +371,4 @@ function [A] = fixPattern(A)
 end
 
 
-function [A,b] = Ruiz(obj,A,b)
-   if obj.nIterRuiz > 0
-      % Compute and apply Ritz scaling on A
-      [A,obj.Prec.D] = ruiz_block_symmetric(A,obj.nIterRuiz,obj.tolRuiz,obj.DEBUGflag);
 
-      % Prepare the D for future applications
-      obj.Prec.D = cellfun(@(Di) diag(Di), obj.Prec.D, 'UniformOutput', false);
-
-      % Single vector D to apply to the rhs
-      D = diag(vertcat(obj.Prec.D{:}));
-
-      % Apply the scaling to the rhs
-      b = D*b;
-   else
-      obj.Prec.D = {};
-   end
-end
