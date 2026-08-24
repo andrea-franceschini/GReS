@@ -24,12 +24,12 @@
 %
 % Run GReS unit tests in parallel.
 
-testPath = fullfile(fileparts(fileparts(mfilename('fullpath'))),'UnitTest');
+testPath = fullfile(fileparts(mfilename('fullpath')));
 
-pool = gcp('nocreate');
-if isempty(pool)
-    parpool('Processes', 2);
-end
+% pool = gcp('nocreate');
+% if isempty(pool)
+%     parpool('Processes', 2);
+% end
 
 results = runtests(fullfile(testPath, 'UnitTests.m'),'UseParallel', true);
 disp(results);
