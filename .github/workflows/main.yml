@@ -78,13 +78,16 @@ jobs:
       - name: Run unit tests
         uses: matlab-actions/run-tests@v3
         with:
-          command: run('Code/unittest/runUnitTests.m')
+          command: |
+            initGReS;
+            runUnitTests;
 
       # Integrated tests
       - name: Run integrated tests
         uses: matlab-actions/run-tests@v3
-        with:
-          command: run('Code/unittest/runIntegratedTests.m')
+        with: |
+          initGReS;
+          runIntegratedTests;
 
   aggregate:
     name: check_all_tests_passed
