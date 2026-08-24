@@ -63,7 +63,8 @@ simParam = SimulationParameters(params.SimulationParameters);
 mat = Materials(params.Materials);
 
 nn = [8,12,16,20];
-linsolverTime = zeros(3,length(nn));
+linsolverTime = zeros(4,length(nn));
+totSimTime = zeros(4,length(nn));
 for i = 1:length(nn)
    gridd = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
 
@@ -83,11 +84,53 @@ for i = 1:length(nn)
    solver = NonLinearImplicit('simulationparameters',simParam,...
                               'domains',domain,...
                               'output',printUtils);
+   t0 = tic;
    solver.simulationLoop();
+   totSimTime(1,i) = toc(t0);
 
    % Get the time needed for the solve
-   linsolverTime(1,i) = solver.linsolver.aTimeSolve;
+   linsolverTime(1,i) = solver.linsolver.getTotalTime();
 
+end
+
+%% COUPLED PHYSICS - FULLY COUPLED ITERATIVE
+clc
+
+fileName = 'fixedStress/fullyCoupledIterative.xml';
+params = readInput(fileName);
+
+% Set parameters of the simulation
+simParam = SimulationParameters(params.SimulationParameters);
+
+% Create an object of the Materials class and read the materials file
+mat = Materials(params.Materials);
+
+for i = 1:length(nn)
+   gridd = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
+
+   bound = Boundaries(gridd,params.BoundaryConditions);
+
+   printUtils = OutState(params.Output);
+
+   domain = Discretizer('Boundaries',bound,...
+                        'Materials',mat,...
+                        'Grid',gridd);
+   domain.addPhysicsSolvers(params.Solver);
+
+   F = -10; % vertical force
+   state = applyMandelIC(domain.state,mat,gridd,F);
+
+   % Solve the fully coupled Mandel Biot problem with matlab
+   solver = NonLinearImplicit('simulationparameters',simParam,...
+                              'domains',domain,...
+                              'output',printUtils);
+   t0 = tic;
+   solver.simulationLoop();
+   totSimTime(2,i) = toc(t0);
+
+   % Get the time needed for the solve
+   linsolverTime(2,i) = solver.linsolver.getTotalTime();
+   
 end
 
 
@@ -128,10 +171,12 @@ for i = 1:length(nn)
                               'domains',domain,...
                               'maxiterations',30,...
                               'output',printUtils);
+   t0 = tic;
    solver.simulationLoop();
+   totSimTime(3,i) = toc(t0);
 
    % Sum the time contributions coming from the flow and mechanics solve steps
-   linsolverTime(2,i) = solver.solverMech.aTimeSolve+solver.solverFlow.aTimeSolve;
+   linsolverTime(3,i) = solver.solverMech.getTotalTime()+solver.solverFlow.getTotalTime();
 
 end
 
@@ -155,7 +200,7 @@ mat = Materials(params.Materials);
 for i = 1:length(nn)
    gridd = structuredMesh(nn(i),nn(i),nn(i),[0 100],[0 100],[0 10]);
 
- 
+
    bound = Boundaries(gridd,params.BoundaryConditions);
 
    printUtils = OutState(params.Output);
@@ -174,16 +219,14 @@ for i = 1:length(nn)
                               'domains',domain,...
                               'maxiterations',30,...
                               'output',printUtils);
+   t0 = tic;
    solver.simulationLoop();
+   totSimTime(4,i) = toc(t0);
 
    % Sum the time contributions coming from the flow and mechanics solver 
-   % (both solve and preconditioner computation steps)
-   linsolverTime(3,i) = solver.solverMech.aTimeComp+solver.solverMech.aTimeSolve;
-   linsolverTime(3,i) = linsolverTime(3,i) + solver.solverFlow.aTimeComp+solver.solverFlow.aTimeSolve;
-
+   linsolverTime(4,i) = solver.solverMech.getTotalTime() + solver.solverFlow.getTotalTime();
+   
 end
-
-
 
 
 
@@ -194,11 +237,23 @@ hold on
 grid on
 plot(nn,linsolverTime(2,:),'ko-');
 plot(nn,linsolverTime(3,:),'go-');
+plot(nn,linsolverTime(4,:),'bo-');
 hold off
-legend('FC MATLAB','FS MATLAB','FS Iterative',Location='northwest')
+legend('FC MATLAB','FC Iterative','FS MATLAB','FS Iterative',Location='northwest')
 xlabel('Number of Nodes per dimension');
 ylabel('Computation Time (s)');
 title('Solver Time Comparison');
 
 
-
+figure;
+plot(nn,totSimTime(1,:),'ro-');
+hold on
+grid on
+plot(nn,totSimTime(2,:),'ko-');
+plot(nn,totSimTime(3,:),'go-');
+plot(nn,totSimTime(4,:),'bo-');
+hold off
+legend('FC MATLAB','FC Iterative','FS MATLAB','FS Iterative',Location='northwest')
+xlabel('Number of Nodes per dimension');
+ylabel('Simulation Time (s)');
+title('Simulation Time Comparison');

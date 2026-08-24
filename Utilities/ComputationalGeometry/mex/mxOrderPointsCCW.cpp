@@ -1,3 +1,4 @@
+#include <cstdint>
 #include "mex.hpp"
 #include "mexAdapter.hpp"
 #include "src/MexHelper.hpp"
