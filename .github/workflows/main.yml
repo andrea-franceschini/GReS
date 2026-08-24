@@ -78,17 +78,13 @@ jobs:
       - name: Run unit tests
         uses: matlab-actions/run-tests@v3
         with:
-          source-folder: Code
-          select-by-folder: Code/unittest
-          use-parallel: true
+          command: run('Code/unittest/runUnitTests.m')
 
       # Integrated tests
       - name: Run integrated tests
         uses: matlab-actions/run-tests@v3
         with:
-          source-folder: Code
-          select-by-folder: Code/integratedTest
-          use-parallel: true            
+          command: run('Code/unittest/runIntegratedTests.m')
 
   aggregate:
     name: check_all_tests_passed
