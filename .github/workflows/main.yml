@@ -38,6 +38,9 @@ jobs:
 
       - name: Setup MATLAB
         uses: matlab-actions/setup-matlab@v3
+        with:
+          products: >
+            Parallel_Computing_Toolbox
 
       - name: Ensure GCC 11 is active on Ubuntu
         if: matrix.os == 'ubuntu-latest'
@@ -49,19 +52,43 @@ jobs:
           gcc --version
           g++ --version
 
-      - name: Initialize GReS, compile MEX, and run tests
+      # - name: Initialize GReS, compile MEX, and run tests
+      #   uses: matlab-actions/run-command@v3
+      #   with:
+      #     command: |
+      #       try
+      #           initGReS;
+      #           compileAll;
+      #           run("Code/unittest/runUnitTests.m");
+      #           run("Code/integratedTest/runIntegratedTests.m");
+      #       catch ME
+      #           disp(getReport(ME));
+      #           exit(1); % Mark job as failed
+      #       end
+
+      # GReS initialization and MEX compilation
+      - name: Initialize GReS and compile MEX
         uses: matlab-actions/run-command@v3
         with:
           command: |
-            try
-                initGReS;
-                compileAll;
-                run("Code/unittest/runUnitTests.m");
-                run("Code/integratedTest/runIntegratedTests.m");
-            catch ME
-                disp(getReport(ME));
-                exit(1); % Mark job as failed
-            end
+            initGReS;
+            compileAll;
+
+      # Unit tests
+      - name: Run unit tests in parallel
+        uses: matlab-actions/run-tests@v3
+        with:
+          source-folder: Code
+          select-by-folder: Code/unittest
+          use-parallel: true
+
+      # Integrated tests
+      - name: Run integrated tests in parallel
+        uses: matlab-actions/run-tests@v3
+        with:
+          source-folder: Code
+          select-by-folder: Code/integratedTest
+          use-parallel: true            
 
   aggregate:
     name: check_all_tests_passed
