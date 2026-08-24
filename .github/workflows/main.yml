@@ -75,7 +75,7 @@ jobs:
             compileAll;
 
       # Unit tests
-      - name: Run unit tests in parallel
+      - name: Run unit tests
         uses: matlab-actions/run-tests@v3
         with:
           source-folder: Code
@@ -83,7 +83,7 @@ jobs:
           use-parallel: true
 
       # Integrated tests
-      - name: Run integrated tests in parallel
+      - name: Run integrated tests
         uses: matlab-actions/run-tests@v3
         with:
           source-folder: Code

@@ -24,7 +24,7 @@
 %
 % Run GReS unit tests in parallel.
 
-testPath = fullfile(gres_root(),'Code','unittest');
+testPath = fullfile(fileparts(fileparts(mfilename('fullpath'))),'UnitTest');
 
 pool = gcp('nocreate');
 if isempty(pool)

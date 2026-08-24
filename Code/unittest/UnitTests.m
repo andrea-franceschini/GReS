@@ -15,10 +15,7 @@ classdef UnitTests < matlab.unittest.TestCase
       addpath(gresRoot);
 
       initGReS(0);
-      testCase.testPath = fullfile( ...
-        gres_root(), ...
-        'Code', ...
-        'unittest');
+      testCase.testPath = fullfile(gres_root(),'Code','UnitTest');
       addpath(testCase.testPath);
 
       % Store current verbosity and disable output during tests
@@ -46,7 +43,7 @@ classdef UnitTests < matlab.unittest.TestCase
       elapsedCPU  = cputime - testCase.tCPU;
       fprintf('Wall time: %.3f s | CPU time: %.3f s\n', ...
         elapsedWall,elapsedCPU);
-      close all;
+      % close all;
     end
   end
 
