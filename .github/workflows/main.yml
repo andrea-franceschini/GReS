@@ -85,9 +85,10 @@ jobs:
       # Integrated tests
       - name: Run integrated tests
         uses: matlab-actions/run-tests@v3
-        with: |
-          initGReS;
-          runIntegratedTests;
+        with:
+          command: |
+            initGReS;
+            runIntegratedTests;
 
   aggregate:
     name: check_all_tests_passed
