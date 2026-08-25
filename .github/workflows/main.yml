@@ -55,6 +55,7 @@ jobs:
       - name: Initialize GReS, compile MEX, and run tests
         uses: matlab-actions/run-command@v3
         with:
+          generate-summary: false
           command: |
             try
                 initGReS;
@@ -65,38 +66,6 @@ jobs:
                 disp(getReport(ME));
                 exit(1); % Mark job as failed
             end
-
-      # GReS initialization and MEX compilation
-      - name: Initialize GReS and compile MEX
-        uses: matlab-actions/run-command@v3
-        with:
-          generate-summary: false
-          command: |
-            try
-              initGReS;
-              compileAll;
-              runUnitTests;
-              runIntegratedTests;
-            catch ME
-              disp(getReport(ME));
-              exit(1); % Mark job as failed
-            end
-
-      # # # # Unit tests
-      # # # - name: Run unit tests
-      # # #   uses: matlab-actions/run-tests@v3
-      # # #   with:
-      # # #     command: |
-      # # #       initGReS;
-      # # #       runUnitTests;
-      # # # 
-      # # # # Integrated tests
-      # # # - name: Run integrated tests
-      # # #   uses: matlab-actions/run-tests@v3
-      # # #   with:
-      # # #     command: |
-      # # #       initGReS;
-      # # #       runIntegratedTests;
 
   aggregate:
     name: check_all_tests_passed

@@ -43,7 +43,6 @@ classdef UnitTests < matlab.unittest.TestCase
       elapsedCPU  = cputime - testCase.tCPU;
       fprintf('Wall time: %.3f s | CPU time: %.3f s\n', ...
         elapsedWall,elapsedCPU);
-      % close all;
     end
   end
 
