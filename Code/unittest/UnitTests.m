@@ -15,7 +15,7 @@ classdef UnitTests < matlab.unittest.TestCase
       addpath(gresRoot);
 
       initGReS(0);
-      testCase.testPath = fullfile(gres_root(),'Code','UnitTest');
+      testCase.testPath = fullfile(gres_root(),'Code','unittest');
       addpath(testCase.testPath);
 
       % Store current verbosity and disable output during tests

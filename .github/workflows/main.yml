@@ -52,24 +52,25 @@ jobs:
           gcc --version
           g++ --version
 
-      # - name: Initialize GReS, compile MEX, and run tests
-      #   uses: matlab-actions/run-command@v3
-      #   with:
-      #     command: |
-      #       try
-      #           initGReS;
-      #           compileAll;
-      #           run("Code/unittest/runUnitTests.m");
-      #           run("Code/integratedTest/runIntegratedTests.m");
-      #       catch ME
-      #           disp(getReport(ME));
-      #           exit(1); % Mark job as failed
-      #       end
+      - name: Initialize GReS, compile MEX, and run tests
+        uses: matlab-actions/run-command@v3
+        with:
+          command: |
+            try
+                initGReS;
+                compileAll;
+                run("Code/unittest/runUnitTests.m");
+                run("Code/integratedTest/runIntegratedTests.m");
+            catch ME
+                disp(getReport(ME));
+                exit(1); % Mark job as failed
+            end
 
       # GReS initialization and MEX compilation
       - name: Initialize GReS and compile MEX
         uses: matlab-actions/run-command@v3
         with:
+          generate-summary: false
           command: |
             try
               initGReS;
