@@ -71,24 +71,31 @@ jobs:
         uses: matlab-actions/run-command@v3
         with:
           command: |
-            initGReS;
-            compileAll;
+            try
+              initGReS;
+              compileAll;
+              runUnitTests;
+              runIntegratedTests;
+            catch ME
+              disp(getReport(ME));
+              exit(1); % Mark job as failed
+            end
 
-      # Unit tests
-      - name: Run unit tests
-        uses: matlab-actions/run-tests@v3
-        with:
-          command: |
-            initGReS;
-            runUnitTests;
-
-      # Integrated tests
-      - name: Run integrated tests
-        uses: matlab-actions/run-tests@v3
-        with:
-          command: |
-            initGReS;
-            runIntegratedTests;
+      # # # # Unit tests
+      # # # - name: Run unit tests
+      # # #   uses: matlab-actions/run-tests@v3
+      # # #   with:
+      # # #     command: |
+      # # #       initGReS;
+      # # #       runUnitTests;
+      # # # 
+      # # # # Integrated tests
+      # # # - name: Run integrated tests
+      # # #   uses: matlab-actions/run-tests@v3
+      # # #   with:
+      # # #     command: |
+      # # #       initGReS;
+      # # #       runIntegratedTests;
 
   aggregate:
     name: check_all_tests_passed
