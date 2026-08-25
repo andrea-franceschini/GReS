@@ -1,20 +1,15 @@
-clear
-clc
+% Run GReS unit tests in parallel.
+testPath = fullfile(fileparts(mfilename('fullpath')));
 
-v = gresLog().getVerbosity;
-gresLog().setVerbosity(-2);
-testFiles = {fullfile('Mesh','testMesh.m');...
-             fullfile('Simparam','testSimparam.m');...
-             fullfile('Materials','testMaterials.m')
-             fullfile('BoundaryConditions','testBoundaries.m')
-             fullfile('PatchTestMechanics','testShearPatch.m')
-             };
+% pool = gcp('nocreate');
+% if isempty(pool)
+%     parpool('Processes', 2);
+% end
 
-results = runtests(testFiles);
-gresLog().setVerbosity(v);
+results = runtests(fullfile(testPath, 'UnitTests.m'),'UseParallel', true);
+disp(results);
 if any([results.Failed])
-  error("Some test not passed");
+  error('GReS:UnitTestsFailed','One or more unit tests failed.');
 else
-  disp("All test passed")
+  disp('All unit tests passed.');
 end
-

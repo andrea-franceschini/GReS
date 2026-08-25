@@ -160,6 +160,35 @@ classdef SedDofManager < handle
       end
     end
 
+    function data = getBath(obj,bath)
+      % Identify the top layer index.
+
+      idxTop = obj.laysByCol;
+      dofs = getDofs(obj);
+      npoint = sum(4*idxTop+4,"all");
+      data(1:npoint,1)=0.;
+
+      count = 0;
+      for col=1:prod(obj.ncells(1:2))
+        idI = mod(col-1,obj.ncells(1))+1;
+        idJ = (col-idI)/obj.ncells(1)+1;
+
+        count = count;
+        % count = count+1;
+        topLay = idxTop(col);
+        % acc = 0.;
+        for lay = 0:topLay
+          % cell = dofs(obj.dof(idI,idJ,lay));
+          % acc = acc+comp(cell);
+          % data(4*count+1:4*count+4,1) = acc;
+          % count=count+1;
+
+          data(4*count+1:4*count+4,1) = bath(idI,idJ);
+          count=count+1;
+        end
+      end
+    end
+
     function [dof,pos] = getDofFromLay(obj,nlay)
       dof = obj.dof(:,:,nlay);
       map = dof(:)~=0;
