@@ -194,7 +194,6 @@ classdef Sedimentation < PhysicsSolver
           Cr = zeros(ncols,1);
           Cc = zeros(ncols,1);
           voidLwLim = zeros(ncols,1);
-          voidUpLim = zeros(ncols,1);
           for mat=1:obj.nmat
             gamma_s = obj.domain.materials.getMaterial(mat).ConstLaw.getSpecificWeight();
             DStress = DStress + (gamma_s - gamma_w)*matFract(:,mat).*dh;
@@ -216,8 +215,6 @@ classdef Sedimentation < PhysicsSolver
 
             tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidLowerLim();
             voidLwLim = voidLwLim + matFract(:,mat).*tmpMat;
-            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidUpperLim();
-            voidUpLim = voidUpLim + matFract(:,mat).*tmpMat;
           end
 
           % Iterative procedure
@@ -228,8 +225,6 @@ classdef Sedimentation < PhysicsSolver
 
           mapVoidLim = void < voidLwLim;
           void(mapVoidLim) = voidLwLim(mapVoidLim);
-          mapVoidLim = void > voidUpLim;
-          void(mapVoidLim) = voidUpLim(mapVoidLim);
 
           stress = (1./(1+void)).*DStress;
           % stress = (1./(1+void)).*DStress+stsCons(map);
@@ -281,7 +276,6 @@ classdef Sedimentation < PhysicsSolver
       sedmWeight = zeros(ncols,1);
       gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
       voidLwLim = zeros(ncols,1);
-      voidUpLim = zeros(ncols,1);
       for mat=1:obj.nmat
         gamma_s = obj.domain.materials.getMaterial(mat).ConstLaw.getSpecificWeight();
         sedmWeight = sedmWeight + (gamma_s - gamma_w)*sedm(:,mat);
@@ -300,8 +294,6 @@ classdef Sedimentation < PhysicsSolver
 
         tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidLowerLim();
         voidLwLim = voidLwLim + matFract(:,mat).*tmpMat;
-        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidUpperLim();
-        voidUpLim = voidUpLim + matFract(:,mat).*tmpMat;
       end
       % obj.deltaStress = sedmWeight;
 
@@ -312,11 +304,8 @@ classdef Sedimentation < PhysicsSolver
         -stsInit(map),-stsInit(map),Cr(map),obj.tol,obj.niterMx);
 
       voidLwLim = voidLwLim(map);
-      voidUpLim = voidUpLim(map);
       mapVoidLim = void < voidLwLim;
       void(mapVoidLim) = voidLwLim(mapVoidLim);
-      mapVoidLim = void > voidUpLim;
-      void(mapVoidLim) = voidUpLim(mapVoidLim);
 
       obj.deltaStress(map) = (1./(1+void)).*sedmWeight(map);
       obj.voidTop(map) = void;
