@@ -5,24 +5,9 @@
 //
 // MATLAB signature:
 //   N = computeQuad9Basis(coords)   % coords: n×2, N: n×9
-//
-// Build command:
-//   mex -R2018a computeQuad9Basis_wrap.cpp
-//
-// FIXES APPLIED (vs previous version)
-// -----------------------------------------------------------------------
-// [FIX-F] mwSize is declared in mex.h — which is NOT included by the
-//         pure C++ MEX API (mex.hpp). Using it caused "unknown type name
-//         'mwSize'" errors at every use site.
-//         Fixed by replacing every mwSize with std::size_t throughout,
-//         both in the computational kernel and in the gateway.
-//         std::size_t is the correct portable equivalent; it is the same
-//         underlying type as mwSize on all 64-bit platforms.
-//
-// All previously documented fixes (FIX-A/B/C/E, NEW-1..4) are retained.
-// -----------------------------------------------------------------------
 //----------------------------------------------------------------------------------------
 
+#include <cstdint>
 #include "mex.hpp"
 #include "mexAdapter.hpp"
 
@@ -36,7 +21,6 @@ using matlab::mex::ArgumentList;
 
 //----------------------------------------------------------------------------------------
 // Pure computational kernel — no MATLAB API dependency.
-// [FIX-F] mwSize replaced with std::size_t
 //
 // coords layout: column-major, np rows × 2 cols
 //   xi  = coords[i]       (col 0)
@@ -87,11 +71,10 @@ public:
 
         // -----------------------------------------------------------------------
         // Read coords — n×2 double matrix (column-major)
-        // [FIX-F] mwSize → std::size_t
         // -----------------------------------------------------------------------
         const TypedArray<double> coordArr = inputs[0];
         const auto dims                   = coordArr.getDimensions();
-        const std::size_t np              = dims[0];   // [FIX-F]
+        const std::size_t np              = dims[0];
 
         // Copy into contiguous vector for raw pointer access in kernel
         std::vector<double> coordsVec(coordArr.begin(), coordArr.end());

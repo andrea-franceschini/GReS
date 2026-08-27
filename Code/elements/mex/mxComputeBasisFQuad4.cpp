@@ -5,24 +5,9 @@
 //
 // MATLAB signature:
 //   N = computeQuad4Basis(coords)   % coords: n×2, N: n×4
-//
-// Build command:
-//   mex -R2018a computeQuad4Basis_wrap.cpp
-//
-// FIXES APPLIED (vs previous version)
-// -----------------------------------------------------------------------
-// [FIX-F] mwSize is declared in mex.h — NOT included by mex.hpp.
-//         Every mwSize replaced with std::size_t (same underlying type
-//         on all 64-bit platforms). #include <cstddef> provides it.
-//         Affected sites:
-//           - computeQuad4Basis() parameter type
-//           - computeQuad4Basis() loop variable
-//           - np declaration in operator()()
-//
-// All previously documented fixes (FIX-A/B/C/E, NEW-1..4) are retained.
-// -----------------------------------------------------------------------
 //----------------------------------------------------------------------------------------
 
+#include <cstdint>
 #include "mex.hpp"
 #include "mexAdapter.hpp"
 
@@ -36,8 +21,6 @@ using matlab::mex::ArgumentList;
 
 //----------------------------------------------------------------------------------------
 // Pure computational kernel — no MATLAB API dependency.
-// [FIX-F] mwSize → std::size_t
-//
 // coords layout: column-major, np rows × 2 cols
 //   xi  = coords[i]       (col 0)
 //   eta = coords[i + np]  (col 1)
@@ -72,11 +55,10 @@ public:
 
         // -----------------------------------------------------------------------
         // Read coords — n×2 double matrix (column-major)
-        // [FIX-F] np is std::size_t, no cast needed
         // -----------------------------------------------------------------------
         const TypedArray<double> coordArr = inputs[0];
         const auto dims                   = coordArr.getDimensions();
-        const std::size_t np              = dims[0];   // [FIX-F]
+        const std::size_t np              = dims[0];
 
         // Copy into contiguous vector for raw pointer access in kernel
         std::vector<double> coordsVec(coordArr.begin(), coordArr.end());

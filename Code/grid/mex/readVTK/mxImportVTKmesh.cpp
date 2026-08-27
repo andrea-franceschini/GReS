@@ -6,30 +6,9 @@
 // MATLAB signature:
 //   [coordTable, cellMatrix] = readVTKmesh(fileName)
 //
-// Build command:
-//   mex -R2018a readVTKmesh_wrap.cpp
-//
-// FIXES APPLIED (vs previous version)
-// -----------------------------------------------------------------------
-// [FIX-G] TypedArray flat-index subscripting causes runtime error
-//         "Not enough indices provided" on multi-dimensional arrays.
-//         When TypedArray is created with {rows, cols}, operator[](i)
-//         does NOT perform flat/linear indexing — it expects
-//         multi-dimensional subscripts instead.
-//
-//         All previous direct writes to coordTable[i + j*rows] and
-//         cellMatrix[i + j*numCells] are REPLACED with the established
-//         pattern used throughout this codebase:
-//           1. Fill a flat std::vector<double> with column-major data
-//           2. factory.createArray<double>({rows, cols})
-//           3. std::copy(vec.begin(), vec.end(), arr.begin())
-//         This is correct because TypedArray iterators DO traverse
-//         elements in flat column-major order.
-//
-// All previously documented fixes (FIX-A/B/C/E, NEW-1..5) are retained.
-// -----------------------------------------------------------------------
 //----------------------------------------------------------------------------------------
 
+#include <cstdint>
 #include "mex.hpp"
 #include "mexAdapter.hpp"
 #include "readVTKmesh.hpp"
@@ -82,11 +61,6 @@ public:
                 maxVerts = cell.pointIndices.size();
 
         // -----------------------------------------------------------------------
-        // [FIX-G] Build coordTable: numPoints x 3
-        //
-        //   Fill a flat std::vector column-major (col 0 = x, col 1 = y, col 2 = z)
-        //   then std::copy into TypedArray — avoids flat-index subscript error.
-        //
         //   Column-major layout for {numPoints, 3}:
         //     indices [0             .. numPoints-1    ] → x values (col 0)
         //     indices [numPoints     .. 2*numPoints-1  ] → y values (col 1)
@@ -103,8 +77,6 @@ public:
         std::copy(coordVec.begin(), coordVec.end(), coordTable.begin());
 
         // -----------------------------------------------------------------------
-        // [FIX-G] Build cellMatrix: numCells x (3 + maxVerts)
-        //
         //   Column layout (column-major):
         //     col 0          : VTK cell type
         //     col 1          : cell tag

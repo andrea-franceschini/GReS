@@ -30,7 +30,7 @@ end
 if ismember("chronos",compileList)
 
 % compiling Chronos if available
-chronosDir = fullfile(gres_root,'ThirdPartyLibs','Chronos_Lab');
+chronosDir = fullfile(gres_root,'ThirdPartyLibs','ChronosLab');
 isChronosReady = isfile(fullfile(chronosDir,'compileAll.m'));
 
 if isChronosReady

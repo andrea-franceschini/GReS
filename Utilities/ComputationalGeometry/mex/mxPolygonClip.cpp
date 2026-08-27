@@ -13,6 +13,7 @@
 //   mex -R2018a mxPolygonClip.cpp
 //----------------------------------------------------------------------------------------
 
+#include <cstdint>
 #include "mex.hpp"
 #include "mexAdapter.hpp"
 #include "src/polygonClip.hpp"

@@ -8,26 +8,6 @@
 // MATLAB signature:
 //   [coord, elems, regions] = readGMSHmesh(fileName)
 //
-// Build command (MEX):
-//   mex -R2018a -DMEX_FUNCTION readGMSHmesh_wrap.cpp
-//
-// FIXES APPLIED (vs previous version)
-// -----------------------------------------------------------------------
-// [FIX-G] TypedArray flat-index subscripting causes runtime error
-//         "Not enough indices provided" on 2D arrays.
-//
-//         mxCoord {nNodes, 3}:
-//           mxCoord[i + j*nNodes] was flat-indexing a 2D TypedArray.
-//           Fixed: fill std::vector<double> coordBuf column-major,
-//           then std::copy into mxCoord via iterators.
-//
-//         mxElems {nElems, numCols}:
-//           mxElems[i + j*nElems] was flat-indexing a 2D TypedArray.
-//           Fixed: fill std::vector<int32_t> elemsBuf column-major,
-//           then std::copy into mxElems via iterators.
-//
-// All previously documented fixes (FIX-A/C/E, NEW-1..6) are retained.
-// -----------------------------------------------------------------------
 //----------------------------------------------------------------------------------------
 
 #include "readGMSHmesh.hpp"
@@ -36,6 +16,7 @@
 
 #ifdef MEX_FUNCTION
 
+#include <cstdint>
 #include "mex.hpp"
 #include "mexAdapter.hpp"
 #include <vector>
@@ -72,7 +53,6 @@ public:
                        "Wrong file format.");
 
         // -----------------------------------------------------------------------
-        // [FIX-G] coord output: nNodes x 3 double
         //   Fill flat column-major buffer, then std::copy into TypedArray.
         // -----------------------------------------------------------------------
         const std::size_t nNodes = coord.size();
@@ -89,7 +69,6 @@ public:
         std::copy(coordBuf.begin(), coordBuf.end(), mxCoord.begin());
 
         // -----------------------------------------------------------------------
-        // [FIX-G] elems output: nElems x (MAX_NUM_VERTICES+3) int32
         //   Fill flat column-major buffer (zero-init for padding),
         //   then std::copy into TypedArray.
         // -----------------------------------------------------------------------

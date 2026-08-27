@@ -1,5 +1,6 @@
 #include "VTUWriter.hpp"
 
+#include <cstdint>
 #include "mex.hpp"
 #include "mexAdapter.hpp"
 
