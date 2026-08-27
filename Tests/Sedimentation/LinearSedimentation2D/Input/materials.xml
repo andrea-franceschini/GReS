@@ -5,15 +5,16 @@
          cellTags = "1">
     <Constitutive>
       <SedimentMaterial
-          voidRate = "15."
-          voidLowerLimit = "10."
-          voidUpperLimit = "20."
-          conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
-          initStress = "1e+0"
-          preStress = "1e+2"
-          specificWeight = "2.0e3"
+          stressReference = "1."
+          voidRateReference = "15."
           compressibilityIndex = "4.00"
           reCompressibilityIndex = "0.40"
+          stressPreConsolidated = "100"
+          stressMin = "0.1"
+          stressMax = "10000."
+          voidRateMin = "6"
+          specificWeight = "2.0e3"
+          conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
       />
     </Constitutive>
   </Solid>
@@ -22,15 +23,16 @@
          cellTags = "2">
     <Constitutive>
       <SedimentMaterial
-          voidRate = "10."
-          voidLowerLimit = "7.5"
-          voidUpperLimit = "12.5"
-          conductivity = "0.9450e-1, 0.9450e-1, 0.315e-1"
-          initStress = "1e+0"
-          preStress = "1e+2"
-          specificWeight = "2.7e3"
+          stressReference = "1."
+          voidRateReference = "10."
           compressibilityIndex = "3.00"
           reCompressibilityIndex = "0.10"
+          stressPreConsolidated = "100"
+          stressMin = "0.1"
+          stressMax = "10000."
+          voidRateMin = "2.5"
+          specificWeight = "2.7e3"
+          conductivity = "0.9450e-1, 0.9450e-1, 0.315e-1"
       />
     </Constitutive>
   </Solid>
@@ -39,15 +41,16 @@
          cellTags = "3">
     <Constitutive>
       <SedimentMaterial
-          voidRate = "3."
-          voidLowerLimit = "2."
-          voidUpperLimit = "4."
-          conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
-          initStress = "1e+0"
-          preStress = "1e+2"
-          specificWeight = "2.7e3"
-          compressibilityIndex = "0.5"
+          stressReference = "1."
+          voidRateReference = "3."
+          compressibilityIndex = "0.50"
           reCompressibilityIndex = "0.05"
+          stressPreConsolidated = "100"
+          stressMin = "0.1"
+          stressMax = "10000."
+          voidRateMin = "1.5"
+          specificWeight = "2.7e3"
+          conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
       />
     </Constitutive>
   </Solid>
@@ -56,18 +59,20 @@
          cellTags = "4">
     <Constitutive>
       <SedimentMaterial
-          voidRate = "1."
-          voidLowerLimit = "0.999"
-          voidUpperLimit = "1.001"
-          conductivity = "0.1e+5, 0.1e+5, 0.1e+5"
-          initStress = "1e+0"
-          preStress = "1e+2"
-          specificWeight = "2.0e3"
+          stressReference = "1."
+          voidRateReference = "1."
           compressibilityIndex = "0.000001"
           reCompressibilityIndex = "0.000001"
+          stressPreConsolidated = "100"
+          stressMin = "0.1"
+          stressMax = "10000."
+          voidRateMin = "0.999975"
+          specificWeight = "2.0e3"
+          conductivity = "0.1e+5, 0.1e+5, 0.1e+5"
       />
     </Constitutive>
   </Solid>
+
 
   <Fluid
       specificWeight = "1.0e3"
