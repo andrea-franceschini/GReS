@@ -33,7 +33,7 @@ classdef NonLinearImplicit < SolutionScheme
       hasConfigurationChanged = true;
       absTol = obj.simparams.absTol;
       obj.iterConfig = 0;
-      obj.totIter = 0;
+      % obj.totIter = 0;
 
       while (hasConfigurationChanged) && (obj.iterConfig < obj.simparams.itMaxConfig)
 

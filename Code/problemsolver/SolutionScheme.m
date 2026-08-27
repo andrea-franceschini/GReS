@@ -28,9 +28,6 @@ classdef (Abstract) SolutionScheme < handle
     simparams             % parameters of the simulations (shared)
     domains               % array of Discretizer objects
     interfaces            % cell array of interfaces objects
-    totNLiter = 0
-    totBackStep = 0
-    avgIter = 0
   end
 
 
@@ -73,12 +70,6 @@ classdef (Abstract) SolutionScheme < handle
         % dtOut: requested time step from the physics solver
 
         conv = solveStep(obj);
-
-        obj.totNLiter = obj.totNLiter + obj.totIter;
-
-        if conv 
-          obj.avgIter = (obj.avgIter*obj.tStep + obj.iterNL)/(obj.tStep+1);
-        end
 
         % move to the next time step
         manageNextTimeStep(obj,conv)
