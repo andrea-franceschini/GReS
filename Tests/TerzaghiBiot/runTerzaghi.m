@@ -37,7 +37,7 @@ bound = Boundaries(grid,fullfile(scriptDir,input_dir,"boundaries.xml"));
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility for the solution
-printUtils = OutState('outputFile',"Output/results",'printTimes',[5,15,30]);
+printUtils = OutState('outputFile',"Output/results",'printTimes',0:5:180,'matFileName',"Output/history");
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('boundaries',bound,...

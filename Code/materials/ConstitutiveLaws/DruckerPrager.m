@@ -1,4 +1,4 @@
-classdef DruckerPrager < handle
+classdef DruckerPrager < ConstitutiveLaw
   % DRUCKERPRAGER Drucker-Prager elastoplastic material.
   %
   % The yield function is written as
@@ -34,26 +34,29 @@ classdef DruckerPrager < handle
       obj.readMaterialParameters(varargin{:});
     end
 
-    function cohesion = initializeStatus(obj, sigma)
-      nptGauss = size(sigma,1);
-      cohesion = zeros(nptGauss,6);
-      cohesion(:,1) = obj.a * obj.co;
+    function initializeStatus(obj, varargin)
+
+      obj.status.curr.cohesion = obj.a * obj.co * ones(obj.ngp,1);
+
     end
 
-    function [DAll, sigmaOut, cohesion] = getStiffnessMatrix(obj, sigmaIn, epsilonIn, dt, convCohesion, cellID) %#ok<INUSD>
+    function [sigmaOut, DAll] = constitutiveUpdate(obj, cellId, sigmaIn, epsilonIn) %#ok<INUSD>
       
-      nptGauss = size(sigmaIn,1);
-
-      % if isempty(cohesion) || isscalar(cohesion)
-      %   cohesion = obj.initializeStatus(sigmaIn);
-      % end
+      gpId = obj.loc2gp(cellId,1);
+      nptGauss = obj.loc2gp(cellId,2);
 
       D = obj.getElasticTensor();
       DAll = repmat(D,[1, 1, nptGauss]);
 
       % Incoming epsilonIn is an engineering strain increment row matrix.
       sigmaTrial = sigmaIn + epsilonIn * D;
-      [sigmaOut, DAll, cohesion] = obj.returnMapping(sigmaTrial, nptGauss, DAll, convCohesion);
+
+      cohesion = obj.status.conv.cohesion(gpId:gpId+nptGauss-1);
+
+      [sigmaOut, DAll, cohesion] = obj.returnMapping(sigmaTrial, nptGauss, DAll, cohesion);
+    
+      obj.status.curr.cohesion(gpId:gpId+nptGauss-1) = cohesion;
+
     end
 
     function m = getMFactor(obj)
@@ -67,7 +70,7 @@ classdef DruckerPrager < handle
 
 
 
-    function [sigma, D, oldCohesion] = returnMapping(obj, sigmaTrial, nptGauss, D, oldCohesion)
+    function [sigma, D, cohesion] = returnMapping(obj, sigmaTrial, nptGauss, D, cohesion)
 
       sigma = sigmaTrial;
 
@@ -91,7 +94,7 @@ classdef DruckerPrager < handle
           (sigmaTrial(i,2) - sigmaTrial(i,3))^2) + ...
           3.0 * (sigmaTrial(i,4)^2 + sigmaTrial(i,5)^2 + sigmaTrial(i,6)^2));
 
-        cOld = oldCohesion(i,1);
+        cOld = cohesion(i,1);
 
         yield = qTrial + obj.alpha * pTrial - cOld;
 
@@ -128,7 +131,7 @@ classdef DruckerPrager < handle
             (3.0 * G / qTrial^2) * (1.0 - qCone / qTrial) * (sTrial * sTrial') - ...
             (1.0 / denom) * (ppsi * theta');
 
-          oldCohesion(i,1) = cCone;
+          cohesion(i,1) = cCone;
 
         else
 
@@ -179,7 +182,7 @@ classdef DruckerPrager < handle
           % Deviatoric stress is zero at the apex.
           sigma(i,1:6) = (pApex * I)';
 
-          oldCohesion(i,1) = cNew;
+          cohesion(i,1) = cNew;
 
         end
       end

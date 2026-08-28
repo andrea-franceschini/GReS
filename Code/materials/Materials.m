@@ -7,6 +7,11 @@ classdef Materials < handle
     matMap    % array map cell tag to corresponding material id
   end
 
+
+  properties (Access = private)
+    cellMap
+  end
+
   methods (Access = public)
     % Class constructor method
     function obj = Materials(input)
@@ -98,6 +103,15 @@ classdef Materials < handle
 
     end
 
+    function tags = getMaterialTags(obj,matName)
+
+      id = getMaterialIDFromName(obj,matName);
+      tags = find(obj.matMap == id);
+
+    end
+
+
+
 
     function gamma = getSpecificWeight(obj,input)
 
@@ -116,6 +130,26 @@ classdef Materials < handle
     function mat = getMaterialFromTag(obj,tag)
 
       mat = obj.solid{obj.matMap(tag)};
+
+    end
+
+
+    function tags = getMaterialRegions(obj,input)
+
+      matID = obj.getMaterialID(input);
+
+      tags = find(obj.matMap == matID);
+
+    end
+
+
+    function matID = getMaterialID(obj,input)
+
+      if ~isnumeric(input)
+        matID = getMaterialIDFromName(obj,input);
+      else
+        matID = getMaterialIDFromTag(obj,input);
+      end
 
     end
 
@@ -199,16 +233,45 @@ classdef Materials < handle
     end
 
 
-    function [status] = initializeStatus(obj,cTag,sigma)
-      mat = obj.getMaterial(cTag).ConstLaw;
-      [status] = mat.initializeStatus(sigma);
+
+    % function [status] = initializeStatus(obj,cTag,sigma)
+    %   mat = obj.getMaterial(cTag).ConstLaw;
+    %   [status] = mat.initializeStatus(sigma);
+    % end
+
+
+    function constLaw = getConstitutiveLaw(obj,cTag)
+
+      constLaw = obj.getMaterial(cTag).ConstLaw;
+
     end
 
-    function [D, sigma, status] = updateMaterial(obj, cTag, sigma, epsilon, dt, status, el, t)
-      % constitutive update
-      mat = obj.getMaterial(cTag).ConstLaw;
-      [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status, el);
+    function matCellId = getMaterialCells(obj,cellId)
+
+      matCellId = obj.cellMap(cellId);
+
     end
+
+    function setCellMap(obj,grid)
+
+      cells = grid.cells;
+      obj.cellMap = zeros(cells.num,1);
+
+      for i = 1:numel(obj.solid)
+
+        tags = find(obj.matMap == i);
+
+        id = find(ismember(cells.tag,tags)); 
+        obj.cellMap(id) = 1:length(id);
+        
+      end
+    end
+
+    % function [D, sigma, status] = updateMaterial(obj, cTag, sigma, epsilon, dt, status, el, t)
+    %   % constitutive update
+    %   mat = obj.getMaterial(cTag).ConstLaw;
+    %   [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status, el);
+    % end
 
     % Destructor
     % function delete(obj)

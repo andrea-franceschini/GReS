@@ -11,7 +11,7 @@ simParam = SimulationParameters('Start',0.,'End',3.0e3,...
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(file_Mat);
-printUtils = OutState('outputFile','Output/Results','printTimes',0:50:3000);
+printUtils = OutState('outputFile','Output/Results2','printTimes',0:25:3000,"vtkFormat","binary");
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Materials',mat);
@@ -22,4 +22,7 @@ domain.addPhysicsSolvers(file_Solver);
 solver = EvolvingGrid('simulationparameters',simParam,...
                            'domains',domain,...
                            'output',printUtils);
+profile off
+profile on
 solver.simulationLoop();
+profile viewer

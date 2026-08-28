@@ -10,7 +10,12 @@ mat1.addPorousRock("rock","specificWeight",21.0,"permeability",1e-12);
 
 mat1.addCapillaryCurves("rock","type","mualem","beta",2.0,"n",1.0,"kappa",1.0)
 
-%%
+%
 
 mat = Materials("Dev/materials.xml");
+
+
+
+
+
 

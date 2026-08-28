@@ -2,10 +2,7 @@
 
 % input parameter follow GEOS validation study
 
-
-
 law = DruckerPrager('param.xml');
-
 
 driver = TriaxialDriver('nStep',300,'constLaw',law,'outFile',"DPtest.txt");
 

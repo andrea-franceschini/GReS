@@ -57,6 +57,7 @@ classdef Tetrahedron < FiniteElementType
 
         % flip nodes 3 and 4 and change volume sign
         tetraNodes(neg,[3 4]) = tetraNodes(neg,[4 3]);
+        vol(neg) = -vol(neg);
 
         if any(neg)
           gresLog().warning(1,"Found %i tetrahedra with negative determinant. Node ordering has been automatically fixed",sum(neg))

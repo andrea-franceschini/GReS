@@ -4,7 +4,7 @@ classdef (Abstract) SolutionScheme < handle
   % solution schemes
   
 
-  properties (Access = protected)
+  properties (SetAccess = protected, GetAccess = public)
     %
     %
     tOld                % tOld: previous converged time instant

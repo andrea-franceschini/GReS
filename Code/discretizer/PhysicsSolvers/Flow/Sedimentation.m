@@ -43,12 +43,15 @@ classdef Sedimentation < PhysicsSolver
     coordZ (:,1)                 % Z coordinates of grid nodes
     heightControl                % Height threshold for new cell
 
-    matfrac (:,:)                       % Material fractions per cell
+    matfrac (:,:)                % Material fractions per cell
 
     deltaStress (:,1)
     voidTop
 
     initColumn (:,1)  % indication of the necessity of initialize the column
+
+    bath (:,:)
+    % bathCell (:,1)
   end
 
   properties (Access = protected)
@@ -148,6 +151,21 @@ classdef Sedimentation < PhysicsSolver
       state.sedmAcc  = zeros(prod(map(1:2)),obj.nmat);
 
       setState(obj,state)
+
+      % Set bathymetry
+      if isfield(input,"Bathymetry")
+        vls = readmatrix(input.Bathymetry.file,'Delimiter','\t');
+        mapDim = size(vls);
+        if all(mapDim==map(1:2))
+          tmp = vls;
+        else
+          [x_ref, y_ref] = meshgrid(0:1/(mapDim(1)-1):1, 0:1/(mapDim(2)-1):1);
+          [x_new, y_new] = meshgrid(0:1/(map(1)-1):1, 0:1/(map(2)-1):1);
+          tmp = interp2(x_ref, y_ref, vls, x_new, y_new, 'cubic')';
+        end
+        obj.bath = tmp;
+        % obj.bathCell = tmp(:);
+      end
     end
 
     function initialize(obj)
@@ -474,6 +492,7 @@ classdef Sedimentation < PhysicsSolver
         if newlayer
           obj.coordZ(end+1) = obj.coordZ(end)+obj.heightControl;
         end
+        % obj.bathCell(dofs) = obj.bath(mapNewCells);
 
         % Position of the grow
         nlaysByCol = obj.mdof.laysByCol(:);
@@ -691,6 +710,11 @@ classdef Sedimentation < PhysicsSolver
         obj.coordZ,sed,obj.initColumn);
       outPrint = finalizeState(obj,fac);
       outPrint.comp = -getComp(obj.mdof,comp);
+      if isempty(obj.bath)
+        outPrint.bath = zeros(size(outPrint.comp));
+      else
+        outPrint.bath = getBath(obj.mdof,obj.bath);
+      end
 
       [cellData,pointData] = buildPrintStruct(obj,outPrint);
     end
@@ -736,8 +760,19 @@ classdef Sedimentation < PhysicsSolver
         cellStr(mat+celLast).data = obj.matfrac(:,mat);
       end
 
+      cellStr(9).name = 'Precon_stress';
+      cellStr(9).data = state.stressCons;
+
+      if ~isempty(obj.bath)
+        pointStr = repmat(struct('name', 1, 'data', 1), 2, 1);
+      end
       pointStr(1).name = 'compaction';
       pointStr(1).data = state.comp;
+      if ~isempty(obj.bath)
+        pointStr(2).name = 'bathymetry';
+        pointStr(2).data = state.bath;
+      end
+
     end
 
     function out = isLinear(obj)
@@ -850,6 +885,8 @@ classdef Sedimentation < PhysicsSolver
       sCon  = state.stressCons;
       void = state.voidrate;
       oedoComp = (1./(1+void)).*SedimentMaterial.getDevVoidRatio(sCurr,sPrev,sCon,Cc,Cr);
+      % lim = oedoComp > 1e-3;
+      % oedoComp(lim)=1e-3;
     end
 
     function out = getCellsProp(obj,type,dofs)

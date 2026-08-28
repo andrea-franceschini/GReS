@@ -1,4 +1,4 @@
-classdef Elastic < handle
+classdef Elastic < ConstitutiveLaw
   % ELASTIC ISOTROPIC material class
 
   properties (Access = public)
@@ -10,8 +10,6 @@ classdef Elastic < handle
     M
     % Vertical compressibility Cm
     cM
-    % flag for tabular input format
-    isTabular = false
   end
 
   methods (Access = public)
@@ -20,35 +18,38 @@ classdef Elastic < handle
           readMaterialParameters(obj,varargin{:});
     end
     
-    function [status] = initializeStatus(obj, sigma)
-      nptGauss = size(sigma,1);
-      status = zeros(nptGauss,2);
+    function initializeStatus(obj, state, gaussId) %#ok<INUSD>
+
+      % no state variables in Linear elastic law
+
+
     end
+
+
     %
     % Material stiffness matrix calculation using the object properties
-    function [DAll, sigmaOut, status] = getStiffnessMatrix(obj, sigmaIn, epsilon, dt, status, cellID)
-      nptGauss = size(sigmaIn,1);
-      D = getElasticTensor(obj,cellID);
+    function [sigmaOut,DAll] = constitutiveUpdate(obj, cellId, sigmaIn, epsilon, varargin)
+
+      nptGauss = obj.loc2gp(cellId(1),2);
+
+      D = getElasticTensor(obj);
       sigmaOut = sigmaIn + epsilon*D;
-      DAll = repmat(D,[1, 1, nptGauss]);
+
+      % all cells have the same elastic properties
+      DAll = repmat(D,[1, 1, nptGauss,numel(cellId)]);
+
     end
     %
 
-    function D = getElasticTensor(obj,cID)
+    function D = getElasticTensor(obj)
       % elastic tensor in engineering Voigt notation
-       D = zeros(6);
-       if obj.isTabular
-          pois = obj.nu(cID);
-          D([1 8 15]) = 1-pois;
-          D([2 3 7 9 13 14]) = pois;
-          D([22 29 36]) = (1-2*pois)/2;
-          D = obj.E(cID)/((1+pois)*(1-2*pois))*D;
-       else
-          D([1 8 15]) = 1-obj.nu;
-          D([2 3 7 9 13 14]) = obj.nu;
-          D([22 29 36]) = (1-2*obj.nu)/2;
-          D = obj.E/((1+obj.nu)*(1-2*obj.nu))*D;
-       end
+      D = zeros(6);
+
+      D([1 8 15]) = 1-obj.nu;
+      D([2 3 7 9 13 14]) = obj.nu;
+      D([22 29 36]) = (1-2*obj.nu)/2;
+      D = obj.E/((1+obj.nu)*(1-2*obj.nu))*D;
+
     end
  
     % Method that returns the M factor
@@ -57,12 +58,13 @@ classdef Elastic < handle
     end
     
     % Get vertical compressibility
-    function cM = getRockCompressibility(obj)
+    function cM = getRockCompressibility(obj,cId) %#ok<INUSD>
       cM = obj.cM;
     end
   end
    
-  methods (Access = private)
+  methods (Access = protected)
+
     % Assigning material parameters (check also the Materials class)
     % to object properties
     function readMaterialParameters(obj,varargin)
@@ -83,18 +85,16 @@ classdef Elastic < handle
        obj.cM =  (1+obj.nu).*(1-2*obj.nu)./(obj.E.*(1-obj.nu));
 
     end
- 
-    % function readTabMaterialParameters(obj,fID,fileName,mesh)
-    %    % young modulus
-    %    youngModFile = readToken(fID,fileName);
-    %    poissonRatioFile = readToken(fID,fileName);
-    %    obj.E = setTabularParams(youngModFile,mesh);
-    %    obj.nu = setTabularParams(poissonRatioFile,mesh);
-    %    % Compute the M factor
-    %    obj.M = obj.nu./(1-obj.nu);
-    %    %
-    %    % Compute vertical compressibility
-    %    obj.cM = (1+obj.nu).*(1-2*obj.nu)./(obj.E.*(1-obj.nu));
-    % end
+
+  end
+
+
+  methods (Static)
+
+    function out = isLinear()
+
+      out = true;
+
+    end
   end
 end
