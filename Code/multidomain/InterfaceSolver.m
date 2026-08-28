@@ -571,6 +571,10 @@ classdef (Abstract) InterfaceSolver < handle
         obj.quadrature.interfacePairs(:,side) = ...
           old2new(obj.quadrature.interfacePairs(:,side));
 
+        if side == MortarSide.slave
+          obj.quadrature.areaSlave = obj.quadrature.areaSlave(isMortarElem);
+        end
+
         % Extract only active mortar surfaces
         obj.grids(side) = getSurfaceGrid( ...
           obj.grids(side), isMortarElem);
