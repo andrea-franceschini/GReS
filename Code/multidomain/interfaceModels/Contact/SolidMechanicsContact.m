@@ -468,6 +468,7 @@ classdef SolidMechanicsContact < MeshTying
       stateOld = getStateOld(obj);
       stateIni = getStateInit(obj);
       slip = state.gap - stateOld.gap;
+      tangSlip = state.tangentialGap - stateOld.tangentialGap;
 
       topolMaster = getRowsMatrix(surfMaster.connectivity,1:surfMaster.num);
       topolSlave = getRowsMatrix(surfSlave.connectivity,1:surfSlave.num);
@@ -527,7 +528,9 @@ classdef SolidMechanicsContact < MeshTying
 
             % tangential slip
             dgt = slip([3*is-1; 3*is]);
-            slipNorm = norm(dgt);
+
+            dgtStab = tangSlip([2*is-1; 2*is]);
+            slipNorm = norm(dgtStab);
 
             % operator mapping global vectors to local tangential coordinates
             T = (R(:,2:3))';
@@ -541,11 +544,21 @@ classdef SolidMechanicsContact < MeshTying
             asbMu.localAssembly(umDof,tDof,Aum);
             asbDu.localAssembly(usDof,tDof,-Aus);
 
+            BgN_m = Aum(:,1)';
+            BgN_s = Aus(:,1)';
+            BgT_m = Aum(:,2:3)';
+            BgT_s = Aus(:,2:3)';
+
             % rhs (jump(eta),t)
             rhsUm(umDof) = rhsUm(umDof) + Aum*dTrac;
             rhsUs(usDof) = rhsUs(usDof) - Aus*dTrac;
 
             % assemble jacobian and rhs of traction balance equations
+
+            tanPhi = tan(deg2rad(obj.phi));
+            tN = trac(1);
+            tT = trac(2:3);
+            tauLim = max(obj.cohesion - tanPhi*tN,0.0);
 
             % STICK MODE
             if contactState == ContactMode.stick
@@ -564,36 +577,37 @@ classdef SolidMechanicsContact < MeshTying
 
               slidingTol = obj.activeSet.tol.sliding;
 
-              % total limiting traction norm
-              tauLim = obj.cohesion - trac(1)*tan(deg2rad(obj.phi));
+              if dgtStab > slidingTol
+                cT = norm(tauLim)/slipNorm;
+              else
+                cT = 0.0;
+              end
 
               asbMt.localAssembly(tDof(1),umDof,Aum(:,1));
               asbDt.localAssembly(tDof(1),usDof,-Aus(:,1));
 
-              isNewSliding = (contactState == ContactMode.newSlip) && obj.NLIter == 0;
-
               % A_tu (non linear term)
-              if slipNorm > slidingTol && ~isNewSliding
+              if slipNorm > slidingTol 
 
                 % compute only on slip terms with sliding large enough
-                dtdgt = computeDerTracGap(obj,trac(1),dgt);
+                dtdgt = computeDerTracGap(obj,trac(1),dgtStab);
                 Atu_m = MortarQuadrature.integrate(f2, dtdgt,pagemtimes(T,Nm),dJw);
                 Atu_s = MortarQuadrature.integrate(f2, dtdgt,pagemtimes(T,Ns),dJw);
                 asbMt.localAssembly(tDof(2:3),umDof,-Atu_m);
                 asbDt.localAssembly(tDof(2:3),usDof,Atu_s);
 
                 % A_tn (non linear term)
-                dtdtn = computeDerTracTn(obj,dgt,dTrac);
+                dtdtn = computeDerTracTn(obj,dgtStab,dTrac);
                 Atn = area*dtdtn;
                 asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
 
-                slipDir = dgt/norm(dgt);
+                slipDir = dgtStab/norm(dgtStab);
 
               else
 
-                if slipNorm < slidingTol && ~isNewSliding
-                  %fprintf('Too small sliding detected! \n')
-                end
+                % if slipNorm < slidingTol && ~isNewSliding
+                %   %fprintf('Too small sliding detected! \n')
+                % end
 
                 % if slip is small, use current traction
                 vaux = trac(2:3);
@@ -645,6 +659,23 @@ classdef SolidMechanicsContact < MeshTying
       obj.addRhs(MortarSide.master,rhsUm);
       obj.addRhs(MortarSide.slave,rhsUs);
       obj.rhsConstraint = rhsT;
+
+    end
+
+    function [n,DnDx] = getUnitVectorAndDerivative(obj,x)
+      % Generalized derivative of x/||x||. At the origin, pick a bounded
+      % element of the generalized derivative to avoid division by zero.
+
+      xNorm = norm(x);
+      tol = obj.activeSet.tol.sliding;
+
+      if xNorm > tol
+        n = x/xNorm;
+        DnDx = (eye(numel(x)) - n*n')/xNorm;
+      else
+        n = zeros(size(x));
+        DnDx = zeros(numel(x));
+      end
 
     end
 

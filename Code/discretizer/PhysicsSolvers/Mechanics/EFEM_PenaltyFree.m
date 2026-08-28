@@ -176,6 +176,7 @@ classdef EFEM_PenaltyFree < PhysicsSolver
       topol = obj.grid.getCellNodes(subCells);
 
       gpMap = obj.domain.gpMap;
+
       for i = 1:numel(subCells)
 
         el = subCells(i);
@@ -234,6 +235,7 @@ classdef EFEM_PenaltyFree < PhysicsSolver
               dt,...
               time);
         % update stress map and gp counter
+
         s.stress(l:(l+nG-1),:) = sigma;
 
         % assemble internal forces for u

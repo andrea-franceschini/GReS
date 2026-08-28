@@ -32,8 +32,8 @@ classdef ContactSearching < handle
       else
         [coordsSlave,coordsMaster,connSlave,connMaster] = deal(varargin{1:4});
         k = 4;
-        centersMaster = computeSurfaceCenters(coordsMaster, connMaster);
-        centersSlave  = computeSurfaceCenters(coordsSlave,  connSlave);
+        centersMaster = obj.computeCenters(coordsMaster, connMaster);
+        centersSlave  = obj.computeCenters(coordsSlave,  connSlave);
       end
 
       % build bounding-box trees
@@ -114,8 +114,13 @@ classdef ContactSearching < handle
       end
     end
 
+  end
 
-    function centers = computeSurfaceCenters(coordinates, connectivity)
+
+  methods (Static)
+
+
+    function centers = computeCenters(coordinates, connectivity)
 
       if isa(connectivity, 'ArrayOfArrays')
         v = connectivity.getData();
@@ -132,5 +137,7 @@ classdef ContactSearching < handle
     end
 
   end
+
+
 end
 

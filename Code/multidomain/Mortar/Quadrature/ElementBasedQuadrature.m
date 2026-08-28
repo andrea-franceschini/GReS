@@ -173,7 +173,7 @@ classdef ElementBasedQuadrature < MortarQuadrature
         Ns = elS.computeBasisF(xiS(i,:));
         ng = Ns*normal;        % slave normal at GP
         ng = ng/norm(ng);
-        xiM(i,:) = elS.centroid;                        % initial guess for gp
+        xiM(i,:) = elM.centroid;                        % initial guess for gp
         iter = 0;
         w = 0;
         Nm = elM.computeBasisF(xiM(i,:));

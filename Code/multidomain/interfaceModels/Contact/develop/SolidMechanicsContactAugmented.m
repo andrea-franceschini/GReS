@@ -78,7 +78,11 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
       setState(obj,state);
 
+<<<<<<< HEAD
       %applyContactReturnMap(obj);
+=======
+      applyContactReturnMap(obj);
+>>>>>>> feature/moretto/surfaceFreeMortar
 
       % update gap
       computeGap(obj);
@@ -526,7 +530,11 @@ end
             tN = trac(1);
             tT = trac(2:3);
 
+<<<<<<< HEAD
             zN = tN + cN*state.normalGap(is);
+=======
+            zN = tN + cN*g_n;
+>>>>>>> feature/moretto/surfaceFreeMortar
             tauLim = max(obj.cohesion - tanPhi*tN,0.0);
 
 

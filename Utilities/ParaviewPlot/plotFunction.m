@@ -20,7 +20,7 @@ var.name = 'solution';
 var.data = funct;
 % outVTK.writeVTKFile(0, [], [], [], []);
 if isempty(varargin) || strcmpi(varargin{1},'node')
-  if ~isempty(mesh.cells)
+  if mesh.cells.num > 0
     writeVTKfile(out,block,vtuName,mesh,time,var,[],[],[]);
   else
     writeVTKfile(out,block,vtuName,mesh,time,[],[],var,[]);
