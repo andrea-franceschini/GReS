@@ -89,14 +89,29 @@ classdef EFEMsemismooth < PhysicsSolver
     end
 
     function assembleSystemEFEM(obj,dt)
+      % Assemble semi-smooth EFEM system.
+      %
+      % Supports:
+      %   - multiple bulk element types;
+      %   - multiple material regions;
+      %   - multiple fracture surfaces intersecting the same bulk cell;
+      %   - full fracture-fracture coupling through the bulk stress.
+
+      % allocate
       dofm = obj.domain.dofm;
       frac = obj.fractureMesh.surfaces;
       cells = obj.grid.cells;
+
+      c2f = obj.fractureMesh.cells.cell2fracId;
+
       subCells = dofm.getFieldCells(obj.fldMech);
 
-      n = sum((obj.grid.nDim^2)*(cells.numVerts(subCells)).^2);
-      n1 = sum((obj.grid.nDim^2)*(cells.numVerts(frac.cutCells)*frac.num));
-      n2 = sum((obj.grid.nDim^2)*frac.num^2);
+      nDim = obj.grid.nDim;
+      n = sum(nDim^2 * (cells.numVerts(subCells)).^2);
+      n1 = nDim^2 * sum(cells.numVerts(frac.cutCells));
+      nFracPerCell = cellfun(@numel,c2f);
+      n2 = nDim^2 * sum(nFracPerCell.^2,"all");
+
       nDofU = dofm.getNumbDoF(Poromechanics.getField());
       nDofW = dofm.getNumbDoF(obj.fldFrac);
 
@@ -104,101 +119,609 @@ classdef EFEMsemismooth < PhysicsSolver
       asbKuw = assembler(n1,nDofU,nDofW);
       asbKwu = assembler(n1,nDofW,nDofU);
       asbKww = assembler(n2,nDofW,nDofW);
+
       rhsU = zeros(nDofU,1);
       rhsW = zeros(nDofW,1);
 
+      % get state variables
       s = getState(obj);
       sOld = getStateOld(obj);
+      time = s.time;
+
       iniStress = getStateInit(obj,'stress');
       iniTraction = getStateInit(obj,'traction');
+
       jump = s.fractureJump;
       jumpOld = sOld.fractureJump;
+
       du = s.displacements - sOld.displacements;
       dj = jump - jumpOld;
 
-      elem = Hexahedron(obj.grid,'gaussOrder',obj.mechSolver.getGaussOrder);
-      nG = getNumbGaussPts(elem);
-      cell2frac = zeros(cells.num,1);
-      cell2frac(frac.cutCells) = 1:frac.num;
-      topol = obj.grid.getCellNodes(subCells);
-
+      coordinates = obj.grid.coordinates;
       gpMap = obj.domain.gpMap;
 
-      for i = 1:numel(subCells)
-        el = subCells(i);
-        l = gpMap(el,1);
-        f = cell2frac(el);
-        isCellCut = f > 0;
-        nodes = topol(i,:);
-        uDof = dofm.getLocalDoF(obj.fldMech,nodes);
-        coords = obj.grid.coordinates(nodes,:);
-        [gradN,dJw] = getDerBasisFAndDet(elem,coords);
-        B = elem.getStrainMatrix(gradN);
-        s.strain(l:l+nG-1,:) = reshape(pagemtimes(B,du(uDof)),6,nG)';
+      Caug = diag([ ...
+        obj.augmentation_n,...
+        obj.augmentation_t,...
+        obj.augmentation_t]);
 
-        if isCellCut
-          wDof = dofm.getLocalDoF(obj.fldFrac,f);
-          Bw = computeCompatibilityMatrix(obj,frac,f,coords,gradN);
-          E = computeEquilibriumOperator(obj,frac,f);
-          s.strain(l:l+nG-1,:) = s.strain(l:l+nG-1,:) + ...
-            reshape(pagemtimes(Bw,dj(wDof)),6,nG)';
-        end
+      for cTag = 1:cells.nTag
 
-	constLaw = obj.domain.materials.getConstitutiveLaw(cells.tag(el));
+        % extract constitutive law
+        constLaw = obj.domain.materials.getConstitutiveLaw(cTag);
 
-        % constitutive update
-        [sigma,D] = constLaw.constitutiveUpdate(el,...
+        % extract cells belonging to subregion
+        subRegionCells = subCells(cells.tag(subCells) == cTag);
+
+        for vtkId = cells.vtkTypes
+
+          % extract cells of the subregion of homogeneous vtk type
+          cellId = cells.VTKType(subRegionCells) == vtkId;
+          subCellsLoc = subRegionCells(cellId);
+
+          if isempty(subCellsLoc)
+            continue
+          end
+
+          cellList = find(cellId);
+
+          elem = FiniteElementType.create( ...
+            vtkId,obj.grid,obj.mechSolver.getGaussOrder);
+
+          % get node topology for given vtk type
+          topol = obj.grid.getCellNodes(subCellsLoc);
+
+          nG = elem.getNumbGaussPts;
+
+          for i = 1:numel(subCellsLoc)
+
+            el = subCellsLoc(i);
+            l = gpMap(el,1);
+
+            fracSurfs = c2f{el};
+            nF = numel(fracSurfs);
+
+            nodes = topol(i,:);
+            uDof = dofm.getLocalDoF(obj.fldMech,nodes);
+            coords = coordinates(nodes,:);
+
+            % compute strain from continuous displacement field
+            [gradN,dJw] = getDerBasisFAndDet(elem,coords);
+
+            B = elem.getStrainMatrix(gradN);
+
+            s.strain(l:l+nG-1,:) = ...
+              reshape(pagemtimes(B,du(uDof)),6,nG)';
+
+            % store fracture operators
+            Bw = zeros(6,3,nG,nF);
+            E = zeros(6,3,1,nF);
+            dofW = zeros(3,nF);
+
+            enhancedStrain = zeros(nG,6);
+
+            for fA = 1:nF
+
+              fId = fracSurfs(fA);
+
+              dofA = dofm.getLocalDoF(obj.fldFrac,fId);
+              dofW(:,fA) = dofA;
+
+              BwLoc = computeCompatibilityMatrix( ...
+                obj,frac,fId,coords,gradN);
+
+              Bw(:,:,:,fA) = BwLoc;
+              E(:,:,1,fA) = computeEquilibriumOperator(obj,frac,fId);
+
+              enhancedStrain = enhancedStrain + ...
+                reshape(pagemtimes(BwLoc,dj(dofA)),6,nG)';
+
+            end
+
+            % total enhanced strain
+            s.strain(l:l+nG-1,:) = ...
+              s.strain(l:l+nG-1,:) + enhancedStrain;
+
+            % constitutive update
+            [sigma,D] = constLaw.constitutiveUpdate( ...
+              cellList(i),...
               sOld.stress(l:l+nG-1,:),...
               s.strain(l:l+nG-1,:),...
-              dt);
+              dt,...
+              time);
 
-	dsigma = reshape((sigma-iniStress(l:l+nG-1,:))',6,1,nG);
-        fTmp = pagemtimes(B,'ctranspose',dsigma,'none').*reshape(dJw,1,1,[]);
-        rhsU(uDof) = rhsU(uDof) + sum(fTmp,3);
-        asbKuu.localAssembly(uDof,uDof,obj.mechSolver.computeKloc(B,D,B,dJw));
+            % update stress map
+            s.stress(l:l+nG-1,:) = sigma;
 
-        if isCellCut
-          KuwLoc = Poromechanics.computeKloc(B,D,Bw,dJw);
-          KwuLoc = Poromechanics.computeKloc(E,D,B,dJw);
-          KwwLoc = Poromechanics.computeKloc(E,D,Bw,dJw);
-          fTmp = pagemtimes(E,'ctranspose',dsigma,'none').*reshape(dJw,1,1,[]);
-          rSigma = sum(fTmp,3);
-          A = frac.area(f);
-          projectedTrac = iniTraction(wDof) + rSigma/A - obj.bcTraction(wDof);
+            % assemble internal forces for u
+            dsigma = sigma - iniStress(l:l+nG-1,:);
+            dsigma = reshape(dsigma',6,1,nG);
 
-          if obj.hasFractureTractionBC(f)
-            tracNew = zeros(3,1);
-            Jproj = zeros(3);
-            mode = ContactMode.open;
-          else
-            gAug = [jump(wDof(1)); dj(wDof(2:3))];
-            Caug = diag([obj.augmentation_n,obj.augmentation_t,obj.augmentation_t]);
-            q = projectedTrac + Caug*gAug;
-            [tracNew,Jproj,mode] = projectContactTraction(obj,q,frac.fracId(f));
+            fTmp = pagemtimes(B,'ctranspose',dsigma,'none');
+            fTmp = fTmp.*reshape(dJw,1,1,[]);
+            rhsU(uDof) = rhsU(uDof) + sum(fTmp,3);
+
+            KLoc = obj.mechSolver.computeKloc(B,D,B,dJw);
+            asbKuu.localAssembly(uDof,uDof,KLoc);
+
+            % fracture contributions
+            for fA = 1:nF
+
+              fId = fracSurfs(fA);
+              dofA = dofW(:,fA);
+
+              BwA = Bw(:,:,:,fA);
+              EA = E(:,:,:,fA);
+
+              % -------------------------------------------------------------
+              % Kuw contribution associated with fracture A
+              % -------------------------------------------------------------
+
+              KuwLoc = Poromechanics.computeKloc(B,D,BwA,dJw);
+              asbKuw.localAssembly(uDof,dofA,KuwLoc);
+
+              % -------------------------------------------------------------
+              % projected bulk stress on fracture A
+              % -------------------------------------------------------------
+
+              fTmp = pagemtimes(EA,'ctranspose',dsigma,'none');
+              fTmp = fTmp.*reshape(dJw,1,1,[]);
+              rSigma = sum(fTmp,3);
+
+              A = frac.area(fId);
+
+              projectedTrac = ...
+                iniTraction(dofA) + ...
+                rSigma/A - ...
+                obj.bcTraction(dofA);
+
+              % -------------------------------------------------------------
+              % semi-smooth traction projection
+              % -------------------------------------------------------------
+
+              if obj.hasFractureTractionBC(fId)
+
+                tracNew = zeros(3,1);
+                Jproj = zeros(3);
+                mode = ContactMode.open;
+
+              else
+
+                gAug = [ ...
+                  jump(dofA(1)); ...
+                  dj(dofA(2:3))];
+
+                q = projectedTrac + Caug*gAug;
+
+                [tracNew,Jproj,mode] = ...
+                  projectContactTraction( ...
+                  obj,q,frac.fracId(fId));
+
+              end
+
+              s.traction(dofA) = tracNew;
+              obj.activeSet.curr(fId) = mode;
+
+              % -------------------------------------------------------------
+              % fracture residual
+              % -------------------------------------------------------------
+
+              rT = ...
+                (tracNew - iniTraction(dofA))*A;
+
+              rBC = ...
+                obj.bcTraction(dofA)*A;
+
+              rhsW(dofA) = rhsW(dofA) + ...
+                rSigma - rT - rBC;
+
+              % -------------------------------------------------------------
+              % Kwu
+              % -------------------------------------------------------------
+
+              IminusJ = eye(3) - Jproj;
+
+              KwuLoc = ...
+                Poromechanics.computeKloc(EA,D,B,dJw);
+
+              asbKwu.localAssembly( ...
+                dofA,uDof,IminusJ*KwuLoc);
+
+              % -------------------------------------------------------------
+              % Kww
+              %
+              % Fracture equation A depends on the jumps of every fracture B
+              % intersecting the same bulk cell.
+              % -------------------------------------------------------------
+
+              for fB = 1:nF
+
+                BwB = Bw(:,:,:,fB);
+                dofB = dofW(:,fB);
+
+                KwwLoc = ...
+                  obj.mechSolver.computeKloc(EA,D,BwB,dJw);
+
+                KAB = IminusJ*KwwLoc;
+
+                % Augmentation acts only on fracture A's own jump.
+                if fA == fB
+                  KAB = KAB - A*Jproj*Caug;
+                end
+
+                asbKww.localAssembly(dofA,dofB,KAB);
+
+              end
+
+            end
+
           end
-          s.traction(wDof) = tracNew;
-          obj.activeSet.curr(f) = mode;
 
-          rT = (tracNew-iniTraction(wDof))*A;
-          rBC = obj.bcTraction(wDof)*A;
-          rhsW(wDof) = rhsW(wDof) + rSigma-rT-rBC;
-
-          IminusJ = eye(3)-Jproj;
-          Caug = diag([obj.augmentation_n,obj.augmentation_t,obj.augmentation_t]);
-          asbKuw.localAssembly(uDof,wDof,KuwLoc);
-          asbKwu.localAssembly(wDof,uDof,IminusJ*KwuLoc);
-          asbKww.localAssembly(wDof,wDof,IminusJ*KwwLoc-A*Jproj*Caug);
         end
+
       end
 
+      % update modified state
       setState(obj,s);
-      obj.domain.J{obj.fldMech,obj.fldMech} = asbKuu.sparseAssembly;
-      obj.domain.J{obj.fldMech,obj.fldFrac} = asbKuw.sparseAssembly;
-      obj.domain.J{obj.fldFrac,obj.fldMech} = asbKwu.sparseAssembly;
-      obj.domain.J{obj.fldFrac,obj.fldFrac} = asbKww.sparseAssembly;
+
+      % populate rhs and Jacobian
+      obj.domain.J{obj.fldMech,obj.fldMech} = ...
+        asbKuu.sparseAssembly;
+
+      obj.domain.J{obj.fldMech,obj.fldFrac} = ...
+        asbKuw.sparseAssembly;
+
+      obj.domain.J{obj.fldFrac,obj.fldMech} = ...
+        asbKwu.sparseAssembly;
+
+      obj.domain.J{obj.fldFrac,obj.fldFrac} = ...
+        asbKww.sparseAssembly;
+
       obj.domain.rhs{obj.fldMech} = rhsU;
       obj.domain.rhs{obj.fldFrac} = rhsW;
+
     end
+
+
+
+    %     function assembleSystemEFEM(obj,dt)
+    %   % Assemble EFEM(0) system with state-dependent active fracture DOFs.
+    %   % Multiple fracture surfaces can intersect the same bulk cell.
+    %
+    %   % allocate
+    %   dofm = obj.domain.dofm;
+    %   frac = obj.fractureMesh.surfaces;
+    %   cells = obj.grid.cells;
+    %
+    %   c2f = obj.fractureMesh.cells.cell2fracId;
+    %
+    %   subCells = dofm.getFieldCells(obj.fldMech);
+    %
+    %   nDim = obj.grid.nDim;
+    %   n = sum(nDim^2 * (obj.grid.cells.numVerts(subCells)).^2);
+    %   n1 = nDim^2 * sum(cells.numVerts(frac.cutCells));
+    %   nFracPerCell = cellfun(@numel,c2f);
+    %   n2 = nDim^2 * sum(nFracPerCell.^2,"all");
+    %   nDofU = dofm.getNumbDoF(Poromechanics.getField());
+    %   nDofW = dofm.getNumbDoF(obj.fldFrac);
+    %
+    %   asbKuu = assembler(n,nDofU,nDofU);
+    %   asbKuw = assembler(n1,nDofU,nDofW);
+    %   asbKwu = assembler(n1,nDofW,nDofU);
+    %   asbKww = assembler(n2,nDofW,nDofW);
+    %   rhsU = zeros(nDofU,1);
+    %   rhsW = zeros(nDofW,1);
+    %
+    %   % get state variables
+    %   s = getState(obj);
+    %   sOld = getStateOld(obj);
+    %   time = s.time;
+    %   iniStress = getStateInit(obj,'stress');
+    %   iniTraction = getStateInit(obj,'traction');
+    %   jump = s.fractureJump;
+    %   jumpOld = sOld.fractureJump;
+    %   du = s.displacements - sOld.displacements;
+    %   dj = jump - jumpOld;
+    %
+    %   coordinates = obj.grid.coordinates;
+    %   gpMap = obj.domain.gpMap;
+    %
+    %   for cTag = 1:cells.nTag
+    %
+    %     % extract the constitutive law
+    %     constLaw = obj.domain.materials.getConstitutiveLaw(cTag);
+    %
+    %     % extract cells belonging to subregion
+    %     subRegionCells = subCells(cells.tag(subCells) == cTag);
+    %
+    %     for vtkId = cells.vtkTypes
+    %
+    %       % extract cells of the subregion of homogeneous vtk type
+    %       cellId = cells.VTKType(subRegionCells) == vtkId;
+    %       subCellsLoc = subRegionCells(cellId);
+    %
+    %       if isempty(subCellsLoc)
+    %         continue
+    %       end
+    %
+    %       cellList = find(cellId);
+    %
+    %       elem = FiniteElementType.create(vtkId,obj.grid,...
+    %         obj.mechSolver.getGaussOrder);
+    %
+    %       % get node topology for given vtk type
+    %       topol = obj.grid.getCellNodes(subCellsLoc);
+    %
+    %       nG = elem.getNumbGaussPts;
+    %
+    %       for i = 1:numel(subCellsLoc)
+    %
+    %         el = subCellsLoc(i);
+    %         l = gpMap(el,1);
+    %
+    %         fracSurfs = c2f{el};
+    %         nF = numel(fracSurfs);
+    %
+    %         nodes = topol(i,:);
+    %         uDof = dofm.getLocalDoF(obj.fldMech,nodes);
+    %         coords = coordinates(nodes,:);
+    %
+    %         % compute strain from continuous displacement field
+    %         [gradN,dJw] = getDerBasisFAndDet(elem,coords);
+    %
+    %         B = elem.getStrainMatrix(gradN);
+    %         s.strain(l:l+nG-1,:) = ...
+    %           reshape(pagemtimes(B,du(uDof)),6,nG)';
+    %
+    %         enhancedStrain = zeros(nG,6);
+    %
+    %         Bw = zeros(6,3,nG,nF);
+    %         E = zeros(6,3,1,nF);
+    %         dofW = zeros(3,nF);
+    %         fracState = zeros(nF,1);
+    %
+    %         for fA = 1:nF
+    %
+    %           fId = fracSurfs(fA);
+    %
+    %           % grab fracture DOFs and operators
+    %           dofW(:,fA) = dofm.getLocalDoF(obj.fldFrac,fId);
+    %           BwLoc = computeCompatibilityMatrix(obj,frac,fId,coords,gradN);
+    %           Bw(:,:,:,fA) = BwLoc;
+    %           E(:,:,1,fA) = computeEquilibriumOperator(obj,frac,fId);
+    %
+    %           state = obj.activeSet.curr(fId);
+    %           if obj.hasFractureTractionBC(fId)
+    %             state = ContactMode.open;
+    %             obj.activeSet.curr(fId) = ContactMode.open;
+    %           end
+    %           fracState(fA) = state;
+    %
+    %           % Enhance strain only with jump components allowed by the
+    %           % current contact state.
+    %           dofA = dofW(:,fA);
+    %           djEff = dj(dofA);
+    %
+    %           if state == ContactMode.stick
+    %             djEff(:) = 0;
+    %             s.fractureJump(dofA(1)) = 0;
+    %             s.fractureJump(dofA(2:3)) = jumpOld(dofA(2:3));
+    %           end
+    %
+    %           enhancedStrain = enhancedStrain + ...
+    %             reshape(pagemtimes(BwLoc,djEff),6,nG)';
+    %
+    %         end
+    %
+    %         % total enhanced strain
+    %         s.strain(l:l+nG-1,:) = ...
+    %           s.strain(l:l+nG-1,:) + enhancedStrain;
+    %
+    %         % constitutive update
+    %         [sigma,D] = constLaw.constitutiveUpdate(cellList(i),...
+    %           sOld.stress(l:l+nG-1,:),...
+    %           s.strain(l:l+nG-1,:),...
+    %           dt,...
+    %           time);
+    %
+    %         % update stress map
+    %         s.stress(l:l+nG-1,:) = sigma;
+    %
+    %         % assemble internal forces for u
+    %         dsigma = sigma - iniStress(l:l+nG-1,:);
+    %         dsigma = reshape(dsigma',6,1,nG);
+    %         fTmp = pagemtimes(B,'ctranspose',dsigma,'none');
+    %         fTmp = fTmp.*reshape(dJw,1,1,[]);
+    %         fLoc = sum(fTmp,3);
+    %         rhsU(uDof) = rhsU(uDof) + fLoc;
+    %
+    %         KLoc = obj.mechSolver.computeKloc(B,D,B,dJw);
+    %         asbKuu.localAssembly(uDof,uDof,KLoc);
+    %
+    %         % Mechanical coupling columns depend on the state of each
+    %         % fracture contributing to the enhanced strain.
+    %         for fB = 1:nF
+    %
+    %           stateB = fracState(fB);
+    %           if stateB == ContactMode.stick
+    %             continue
+    %           end
+    %
+    %           BwB = Bw(:,:,:,fB);
+    %           dofB = dofW(:,fB);
+    %           KuwLoc = Poromechanics.computeKloc(B,D,BwB,dJw);
+    %
+    %           if stateB == ContactMode.slip || ...
+    %               stateB == ContactMode.newSlip
+    %             asbKuw.localAssembly(uDof,dofB(2:3),KuwLoc(:,2:3));
+    %           elseif stateB == ContactMode.open
+    %             asbKuw.localAssembly(uDof,dofB,KuwLoc);
+    %           else
+    %             error('Unsupported contact state in EFEM assembly')
+    %           end
+    %
+    %         end
+    %
+    %         for fA = 1:nF
+    %
+    %           fId = fracSurfs(fA);
+    %           dofA = dofW(:,fA);
+    %           stateA = fracState(fA);
+    %           EA = E(:,:,:,fA);
+    %
+    %           % projected stress residual on fracture A
+    %           fTmp = pagemtimes(EA,'ctranspose',dsigma,'none');
+    %           fTmp = fTmp.*reshape(dJw,1,1,[]);
+    %           rSigma = sum(fTmp,3);
+    %
+    %           tCurr = s.traction(dofA);
+    %           tOld = sOld.traction(dofA);
+    %           fracId = frac.fracId(fId);
+    %
+    %           if stateA == ContactMode.stick
+    %
+    %             % No fracture jump is solved in stick. The traction is the
+    %             % reaction obtained from the projected bulk stress.
+    %             tracNew = iniTraction(dofA) + ...
+    %               rSigma/frac.area(fId) - obj.bcTraction(dofA);
+    %             s.traction(dofA) = tracNew;
+    %
+    %             asbKww.localAssembly(dofA,dofA,eye(3));
+    %
+    %             jStick = [jump(dofA(1)); dj(dofA(2:3))];
+    %             rhsW(dofA) = rhsW(dofA) + jStick;
+    %
+    %           elseif stateA == ContactMode.slip || ...
+    %               stateA == ContactMode.newSlip
+    %
+    %             projectedTrac = iniTraction(dofA) + ...
+    %               rSigma/frac.area(fId) - obj.bcTraction(dofA);
+    %
+    %             [tracNew,slipDir,dDir,tauLim,tauSign] = ...
+    %               updateTraction(obj,fId,fracId,projectedTrac,tOld,tCurr,...
+    %               s.fractureJump(dofA),jumpOld(dofA));
+    %             s.traction(dofA) = tracNew;
+    %
+    %             rT = (tracNew - iniTraction(dofA))*frac.area(fId);
+    %             rBC = obj.bcTraction(dofA)*frac.area(fId);
+    %             rhsLoc = rSigma - rT - rBC;
+    %
+    %             idN = 1;
+    %             idT = [2 3];
+    %             Afrac = frac.area(fId);
+    %             tanPhi = tan(obj.phi(fracId));
+    %             Iaug = eye(2) - tauLim*dDir;
+    %
+    %             KwuLoc = Poromechanics.computeKloc(EA,D,B,dJw);
+    %             KTu = Iaug*KwuLoc(idT,:) + ...
+    %               tanPhi*tauSign*(slipDir*KwuLoc(idN,:));
+    %
+    %             asbKwu.localAssembly(dofA(idT),uDof,KTu);
+    %             rhsW(dofA(idT)) = rhsW(dofA(idT)) + rhsLoc(idT);
+    %
+    %             % Normal contact closure: w_N = 0.
+    %             asbKww.localAssembly(dofA(idN),dofA(idN),1);
+    %             rhsW(dofA(idN)) = rhsW(dofA(idN)) + ...
+    %               s.fractureJump(dofA(idN));
+    %
+    %             % All fracture pairs contribute through the common stress.
+    %             for fB = 1:nF
+    %
+    %               stateB = fracState(fB);
+    %               if stateB == ContactMode.stick
+    %                 continue
+    %               end
+    %
+    %               BwB = Bw(:,:,:,fB);
+    %               dofB = dofW(:,fB);
+    %               KwwLoc = obj.mechSolver.computeKloc(EA,D,BwB,dJw);
+    %
+    %               if stateB == ContactMode.slip || ...
+    %                   stateB == ContactMode.newSlip
+    %                 colsB = idT;
+    %               elseif stateB == ContactMode.open
+    %                 colsB = 1:3;
+    %               else
+    %                 error('Unsupported contact state in EFEM assembly')
+    %               end
+    %
+    %               KTB = Iaug*KwwLoc(idT,colsB) + ...
+    %                 tanPhi*tauSign*(slipDir*KwwLoc(idN,colsB));
+    %
+    %               if fA == fB
+    %                 idTang = find(colsB == 2 | colsB == 3);
+    %                 KTB(:,idTang) = KTB(:,idTang) - ...
+    %                   Afrac*tauLim*obj.augmentation_t*dDir(:,colsB(idTang)-1);
+    %               end
+    %
+    %               asbKww.localAssembly(dofA(idT),dofB(colsB),KTB);
+    %
+    %             end
+    %
+    %           elseif stateA == ContactMode.open
+    %
+    %             % Open: all jump components are global and projected
+    %             % traction is zero.
+    %             tracNew = zeros(3,1);
+    %             s.traction(dofA) = tracNew;
+    %
+    %             KwuLoc = Poromechanics.computeKloc(EA,D,B,dJw);
+    %             asbKwu.localAssembly(dofA,uDof,KwuLoc);
+    %
+    %             rT = (tracNew - iniTraction(dofA))*frac.area(fId);
+    %             rBC = obj.bcTraction(dofA)*frac.area(fId);
+    %             rhsLoc = rSigma - rT - rBC;
+    %             rhsW(dofA) = rhsW(dofA) + rhsLoc;
+    %
+    %             for fB = 1:nF
+    %
+    %               stateB = fracState(fB);
+    %               if stateB == ContactMode.stick
+    %                 continue
+    %               end
+    %
+    %               BwB = Bw(:,:,:,fB);
+    %               dofB = dofW(:,fB);
+    %               KwwLoc = obj.mechSolver.computeKloc(EA,D,BwB,dJw);
+    %
+    %               if stateB == ContactMode.slip || ...
+    %                   stateB == ContactMode.newSlip
+    %                 colsB = [2 3];
+    %               elseif stateB == ContactMode.open
+    %                 colsB = 1:3;
+    %               else
+    %                 error('Unsupported contact state in EFEM assembly')
+    %               end
+    %
+    %               asbKww.localAssembly(dofA,dofB(colsB),...
+    %                 KwwLoc(:,colsB));
+    %
+    %             end
+    %
+    %           else
+    %             error('Unsupported contact state in EFEM assembly')
+    %           end
+    %
+    %         end
+    %
+    %       end
+    %
+    %     end
+    %
+    %   end
+    %
+    %   % update modified state
+    %   setState(obj,s);
+    %
+    %   % populate rhs and jacobian
+    %   obj.domain.J{obj.fldMech,obj.fldMech} = asbKuu.sparseAssembly;
+    %   obj.domain.J{obj.fldMech,obj.fldFrac} = asbKuw.sparseAssembly;
+    %   obj.domain.J{obj.fldFrac,obj.fldMech} = asbKwu.sparseAssembly;
+    %   obj.domain.J{obj.fldFrac,obj.fldFrac} = asbKww.sparseAssembly;
+    %   obj.domain.rhs{obj.fldMech} = rhsU;
+    %   obj.domain.rhs{obj.fldFrac} = rhsW;
+    %
+    % end
 
     function initState(obj)
       nCutCells = obj.fractureMesh.surfaces.num;
@@ -565,6 +1088,20 @@ classdef EFEMsemismooth < PhysicsSolver
       % finalize the grid
       fMesh.surfaces = f;
       %initializeGrid(fMesh);
+
+      c = fMesh.cells;
+
+      nC = obj.grid.cells.num;
+      cell2fracId = cell(nC,1);
+
+      for i = 1:nC
+        cell2fracId{i} = reshape(find(f.cutCells == i),1,[]);
+      end
+
+      c.cell2fracId = cell2fracId;
+      fMesh.cells = c;
+
+
       obj.fractureMesh = fMesh;
 
     end

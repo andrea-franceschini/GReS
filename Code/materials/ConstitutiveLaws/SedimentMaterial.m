@@ -1,4 +1,4 @@
-classdef SedimentMaterial < handle
+classdef SedimentMaterial < matlab.mixin.Copyable
     % POROUS ROCK material class
 
     properties (Access = private)

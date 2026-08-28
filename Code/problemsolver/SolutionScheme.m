@@ -223,7 +223,7 @@ classdef (Abstract) SolutionScheme < handle
 
         goBackState(obj);
 
-        obj.totBackStep = obj.totBackStep + 1;
+        %obj.totBackStep = obj.totBackStep + 1;
 
         obj.t = obj.t + obj.dt;
 
