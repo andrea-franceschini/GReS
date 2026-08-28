@@ -343,10 +343,10 @@ classdef Poromechanics < PhysicsSolver
       % set strain to zero
       stateCurr.strain(:) = 0.0;
 
+
       for tag = 1:obj.grid.cells.nTag
         getConstitutiveLaw(obj.domain.materials,tag).advanceStatus();
       end
-
 
 
       obj.flOut = true;

@@ -1,6 +1,6 @@
 classdef (Abstract) InterfaceSolver < handle
   % General Interface solver between domains in GReS
-  % 
+  %
   % Any interfaceSolver should implemented everything needed to couple a
   % variable field across two non conforming lower dimensional (2D) interfaces
   %
@@ -10,7 +10,7 @@ classdef (Abstract) InterfaceSolver < handle
 
 
   properties (GetAccess=public, SetAccess=public)
-       
+
     % constraint multiplier block
     Jconstraint
 
@@ -145,7 +145,7 @@ classdef (Abstract) InterfaceSolver < handle
 
       % note: state in interface solver is just a value struct
       setStateOld(obj,getState(obj));
-      
+
     end
 
     function timeStepSetup(obj)
@@ -162,7 +162,7 @@ classdef (Abstract) InterfaceSolver < handle
 
       % base class implements no configuration change
       hasConfigurationChanged = false;
-      
+
     end
 
     function initialize(obj)
@@ -310,7 +310,7 @@ classdef (Abstract) InterfaceSolver < handle
       else
         ncomp = max(getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables));
         obj.nMult = ncomp * getNumberOfEntities(obj.multiplierLocation,...
-                                                obj.grids(MortarSide.slave));
+          obj.grids(MortarSide.slave));
         nDoFs = obj.nMult;
       end
     end
@@ -478,9 +478,9 @@ classdef (Abstract) InterfaceSolver < handle
 
 
       default = struct('masterSurface',missing,...
-                       'slaveSurface',missing,...
-                       'multiplierType',"P0",...
-                       'Quadrature',struct());
+        'slaveSurface',missing,...
+        'multiplierType',"P0",...
+        'Quadrature',struct());
 
       % the Quadrature field implies that this is an xml field
 
@@ -496,7 +496,7 @@ classdef (Abstract) InterfaceSolver < handle
 
       obj.grids = repmat(Grid(),2,1);
 
-      % read parameters 
+      % read parameters
       switch params.multiplierType
         case {"standard","dual"}
           obj.multiplierLocation = entityField.node;
@@ -521,59 +521,80 @@ classdef (Abstract) InterfaceSolver < handle
 
         grid = obj.domains(side).grid;
         if ismissing(tags{side})
-          tags{side} = (1:grid.surface.nTag)';
+          obj.grids(side) = getGridBoundary(grid);
+        else
+          obj.grids(side) = getSurfaceGrid(grid,tags{side});
         end
-        obj.grids(side) = getSurfaceGrid(grid,tags{side});
+
         obj.grids(side).computeAvgNodalNormal();
       end
 
-      cs = ContactSearching(obj.grids(MortarSide.slave),obj.grids(MortarSide.master));
+      cs = ContactSearching(obj.grids(MortarSide.slave),obj.grids(MortarSide.master),params);
 
       elemConnectivity = cs.getElementConnectivity();
 
+
       if ~any(elemConnectivity,"all")
-        error('No connection between master domain %i (surface %i) and slave domain %i (surface %i)!',...
-          params.masterDomain,params.masterSurface,params.slaveDomain,params.slaveSurface)
+        error('No connection between master domain %i  and slave domain %i !',...
+          params.masterDomain,params.slaveDomain)
       end
 
 
       obj.quadrature = feval(quadType,...
-                             params.multiplierType, ...
-                             obj.grids, ...
-                             params.Quadrature);
+        params.multiplierType, ...
+        obj.grids, ...
+        params.Quadrature);
 
 
       processMortarPairs(obj.quadrature,elemConnectivity);
 
 
       % now finalize the grids and compute edges
-      for side = [MortarSide.slave,MortarSide.master]
-        
-        surf = obj.domains(side).grid.surfaces;
-        isMortarElem = false(surf.num,1);
-        surfList = find(ismember(surf.tag,tags{side}));
-        id = surfList(obj.quadrature.interfacePairs(:,side));
-        isMortarElem(id) = true;
+      for side = [MortarSide.slave, MortarSide.master]
 
-        % update the grids with only active mortar elements
-        obj.grids(side) = getSurfaceGrid(obj.domains(side).grid,isMortarElem);
+        nOld = obj.grids(side).surfaces.num;
 
-        % process the edges of the final grid
+        % Active surface IDs in the current local numbering
+        activeId = unique(obj.quadrature.interfacePairs(:,side));
+
+        isMortarElem = false(nOld,1);
+        isMortarElem(activeId) = true;
+
+        % Surfaces are retained by getSurfaceGrid in this order
+        keptId = find(isMortarElem);
+
+        % Map old local surface IDs to new local surface IDs
+        old2new = zeros(nOld,1);
+        old2new(keptId) = 1:numel(keptId);
+
+        % Renumber this side of all interface pairs
+        obj.quadrature.interfacePairs(:,side) = ...
+          old2new(obj.quadrature.interfacePairs(:,side));
+
+        if side == MortarSide.slave
+          obj.quadrature.areaSlave = obj.quadrature.areaSlave(isMortarElem);
+        end
+
+        % Extract only active mortar surfaces
+        obj.grids(side) = getSurfaceGrid( ...
+          obj.grids(side), isMortarElem);
+
+        % Process the final surface grid
         obj.grids(side).processEdges();
         obj.grids(side).computeAvgNodalNormal();
+
         surf = obj.grids(side).surfaces;
         R = zeros(surf.num,9);
+
         for i = 1:surf.num
           n = surf.normal(i,:);
           Ri = mxComputeRotationMat(n);
           R(i,:) = Ri(:);
         end
 
-        % temporary patch: only for planar interfaces
-        %R = repmat(R(1,:),size(R,1),1);
         obj.grids(side).surfaces.rotationMatrices = R;
       end
-      
+
     end
 
 
@@ -590,7 +611,7 @@ classdef (Abstract) InterfaceSolver < handle
       bc = obj.domains(MortarSide.slave).bcs;
       bcList = bc.getBCList();
 
-      
+
       for bcId = bcList
         if getType(bc,bcId) == BCtype.dirichlet
           bcNodes = intersect(bc.getTargetEntities(bcId),nodSlave);
@@ -639,7 +660,7 @@ classdef (Abstract) InterfaceSolver < handle
     function [Ju,Jm] = getCouplingBlocks(obj,id)
 
       % id: logical array to determine if the request for coupling blocks
-      % come from master or slave 
+      % come from master or slave
 
       if all(id)
         domId = 1;
@@ -706,8 +727,8 @@ classdef (Abstract) InterfaceSolver < handle
         for in = [interfStruct.(interfNames{i})]
 
           interfaces = InterfaceSolver.add(interfNames{i},...
-                                           domains,...
-                                           interfaces,in);
+            domains,...
+            interfaces,in);
         end
       end
 
@@ -785,7 +806,7 @@ classdef (Abstract) InterfaceSolver < handle
 
 
 
-    end
+  end
 
 
 end

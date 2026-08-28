@@ -127,6 +127,7 @@ f.area      = [f.area; area];
 f.numVerts   = [f.numVerts; nPlist];
 f.isBoundary = [f.isBoundary; isBoundary];
 f.connectivity = [f.connectivity; ArrayOfArrays(faceTopol)];
+f.VTKType = double(VTKType.to2D(c.VTKType(f.neighbors(:,1))));
 
 
 % cell to faces mapping

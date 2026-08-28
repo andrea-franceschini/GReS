@@ -73,8 +73,9 @@ nE      = edgeIdx(end);
 % manifold check
 nSPE = accumarray(edgeIdx, 1, [nE, 1]); % number of surfaces per edge
 if any(nSPE > 2)
-  error('processEdges:nonManifoldMesh', ...
-    'Non-manifold surface mesh detected: some edges belong to more than two surfaces.');
+  nNM = sum(nSPE > 2);
+  warning('processEdges:nonManifoldMesh', ...
+    'Non-manifold surface mesh detected: %i edges belong to more than two surfaces.',nNM);
 end
 
 edgeTopol = heSorted(isNew,:);
