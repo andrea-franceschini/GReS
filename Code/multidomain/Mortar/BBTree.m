@@ -42,7 +42,7 @@ classdef BBTree < handle
       parm = readInput(default,varargin{:});
 
       obj.scale = parm.scale;
-      fprintf('Using polytop inflation %1.4f\n',obj.scale)
+      gresLog().log(3,'Using polytop inflation %1.4f\n',obj.scale)
       obj.polytop = parm.polytop;
 
       obj.build();
