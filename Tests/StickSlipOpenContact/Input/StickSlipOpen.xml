@@ -13,21 +13,23 @@ in a nonConforming simulation.
                         DtMax ="1"
                         incrementFactor = "1.5"
                         choppingFactor = "2"
-                        MaxNLIteration = "10"
-                        RelativeTolerance = "1.e-6"
-                        AbsoluteTolerance = "1.e-8"
+                        MaxNLIteration = "20"
+                        RelativeTolerance = "1.e-9"
+                        AbsoluteTolerance = "1.e-11"
                         resetConfiguration = "0"
                         />
 
   <Interface>
-    <SolidMechanicsContact
-                           stabilizationScale = "1.0"
-                           masterDomain = "1" masterSurface = "6"
-                           slaveDomain = "2" slaveSurface = "5">
+    <SolidMechanicsContactNew
+                                         augmentationParameter = "1e4"
+                                         multiplierType = "P0"
+                                         stabilizationScale = "1.0"
+                                         masterDomain = "1" masterSurface = "6"
+                                         slaveDomain = "2" slaveSurface = "5">
 
       <Quadrature
                   type = "SegmentBasedQuadrature"
-                  nGP = "4"
+                  gaussOrder = "4"
                   />
 
       <Coulomb
@@ -39,7 +41,7 @@ in a nonConforming simulation.
                  forceStickBoundary = "0" >
 
         <Tolerances
-                    sliding = "1e-4"
+                    sliding = "1e-3"
                     normalGap = "1e-5"
                     normalTraction = "-1e-3"
                     tangentialViolation = "1e-2"
@@ -50,7 +52,7 @@ in a nonConforming simulation.
 
       </ActiveSet>
 
-    </SolidMechanicsContact>
+    </SolidMechanicsContactNew>
 
   </Interface>
 

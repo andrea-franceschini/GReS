@@ -19,8 +19,7 @@ classdef BBTree < handle
     nElem
     dim
     polytop
-    scale = 0.025
-
+    scale
     children        % [nNodesTree x 2], zero if leaf
     nodeBoxes       % [nNodesTree x 2*nPrim]
     leafElem        % [nNodesTree x 1], zero for internal nodes
@@ -43,6 +42,7 @@ classdef BBTree < handle
       parm = readInput(default,varargin{:});
 
       obj.scale = parm.scale;
+      gresLog().log(3,'Using polytop inflation %1.4f\n',obj.scale)
       obj.polytop = parm.polytop;
 
       obj.build();
@@ -208,12 +208,12 @@ classdef BBTree < handle
         case 2
           % 8-DOP written as dim x nPrim
           P = [ 1  0 -1  1;
-            0  1  1  1 ];
+                0  1  1  1 ];
         case 3
           % 18-DOP written as dim x nPrim
           P = [ 1  0  0  1  1  0  1  1  0;
-            0  1  0  1  0  1 -1  0  1;
-            0  0  1  0  1  1  0 -1 -1 ];
+                0  1  0  1  0  1 -1  0  1;
+                0  0  1  0  1  1  0 -1 -1 ];
         otherwise
           error('BBTree:UnsupportedDimension', ...
             'Only dim = 2 or dim = 3 are supported.');
