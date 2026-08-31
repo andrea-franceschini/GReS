@@ -846,7 +846,8 @@ classdef EFEMaugmented < PhysicsSolver
 
       % plot directly into the domain vtm block
       blk = obj.domain.vtmBlock;
-      obj.domain.outstate.writeVTKfile(blk,'EmbeddedFractures',obj.fractureMesh,...,
+      name = sprintf('EmbeddedFracture_%i',obj.domain.domainId);
+      obj.domain.outstate.writeVTKfile(blk,name,obj.fractureMesh,...,
         time,[],[],[],cellStr)
 
     end

@@ -108,6 +108,19 @@ classdef Grid < handle
       outGrid.cells    = cellOut;
       % outGrid.edges = edgeStruct;
 
+      % extract surfaces
+      % surf = obj.surfaces;
+      % keptNodes = false(obj.nNodes,1);
+      % keptNodes(globalNodeId) = true;
+      % remNodes = find(~keptNodes);
+      % remSurf = any(ismember(obj.getSurfNodes,remNodes),2);
+      % keptSurf = true(obj.surfaces.num,1);
+      % keptSurf(remSurf) = false;
+      % outGrid.surfaces = getSurfaceGrid(obj,keptSurf);
+
+      
+
+
     end
 
 
