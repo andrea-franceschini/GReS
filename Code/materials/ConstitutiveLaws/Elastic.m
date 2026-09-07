@@ -96,5 +96,12 @@ classdef Elastic < ConstitutiveLaw
       out = true;
 
     end
+
+    function out = isSymmetric()
+
+      out = true;
+
+    end
+
   end
 end
