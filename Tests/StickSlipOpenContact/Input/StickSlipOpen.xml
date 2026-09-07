@@ -21,7 +21,7 @@ in a nonConforming simulation.
 
   <Interface>
     <SolidMechanicsContactNew
-                                         augmentationParameter = "1e4"
+                                         augmentationParameter = "5e3"
                                          multiplierType = "P0"
                                          stabilizationScale = "1.0"
                                          masterDomain = "1" masterSurface = "6"
@@ -41,13 +41,13 @@ in a nonConforming simulation.
                  forceStickBoundary = "0" >
 
         <Tolerances
-                    sliding = "1e-3"
+                    sliding = "1e-8"
                     normalGap = "1e-5"
                     normalTraction = "-1e-3"
                     tangentialViolation = "1e-2"
-                    minLimitTraction = "1e-4"
+                    minLimitTraction = "1e-8"
                     areaChange = "1e-4"
-                    maxActiveSetChange = "6"
+                    maxActiveSetChange = "20"
                     />
 
       </ActiveSet>

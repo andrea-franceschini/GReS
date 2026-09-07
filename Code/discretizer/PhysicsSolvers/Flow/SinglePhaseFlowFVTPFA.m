@@ -57,6 +57,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       obj.H = sparse([neigh1; neigh2; (1:nSubCells)'],...
         [neigh2; neigh1; (1:nSubCells)'],...
         [-T; -T; sumDiagTrans], nDoF, nDoF);
+
+      % regularization for pure neumann problem
+      obj.H = obj.H + speye(size(obj.H)) * 1e-10;
     end
 
     function computeCapMat(obj,varargin)

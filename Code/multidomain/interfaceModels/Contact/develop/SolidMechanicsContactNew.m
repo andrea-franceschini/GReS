@@ -654,7 +654,7 @@ classdef SolidMechanicsContactNew < MeshTying
               asbQ.localAssembly(tDof,tDof,Aoo);
 
               % rhs (mu,t)
-              rhsT(tDof) = rhsT(tDof) + area*dTrac;
+              rhsT(tDof) = rhsT(tDof) + area*trac;
             end
 
           end % end inner master elems loop

@@ -13,10 +13,10 @@ params = readInput(fullfile('Input','StickSlipOpen.xml'));
 
 % set mesh 
 X = 5; Y = 10; Z = 15;
-nx1 = 2; ny1 = 10; nz1 = 10;
+nx1 = 3; ny1 = 10; nz1 = 15;
 gridL = structuredMesh(nx1,ny1,nz1,[0,0.5*X],[0 Y],[0 Z]);
 
-nx2 = 2; ny2 = 20; nz2 = 20;
+nx2 = 3; ny2 = 10; nz2 = 15;
 gridR = structuredMesh(nx2,ny2,nz2,[0.5*X,X],[0 Y],[0 Z]);
 
 assert(mod(ny1,2) == 0 && mod(ny2,2)==0,"Number of elements along y axis " + ...
@@ -67,7 +67,7 @@ setState(domainR,iniStressR,"stress");
 % interfaces{1}.stateOld.iniTraction(1:3:end) = tIni;
 % interfaces{1}.stateOld.traction(1:3:end) = tIni;
 
-printUtils = OutState("outputFile","Output/StickSlipOpenNEW","printTimes",[0,1,2,3,4,5,6,7,11,12,13,14,15,16],...
+printUtils = OutState("outputFile","Output/StickSlipOpenNEW","printTimes",0:16,...
                       "matFileName","Output/StickSlipOpenHistory",'solvePrintTimes',1);
 
 solver = NonLinearImplicit('simulationparameters',simParam,...
@@ -139,12 +139,15 @@ bcRigth.addBCEvent("x_load",'time',16.0,'value',0.0);
 bcRigth.addBCEvent("x_load",'time',20.0,'value',1.0);
 
 
+c = gridR.surfaces.center;
+sList = find(c(:,1) > 3.3 & c(:,3) > 14.99);
+
 bcRigth.addBC('name',"z_load",...
           'type',"neumann",...
           'field',"surface",...
           'variable',"displacements",...
-          'entityListType',"tag", ...
-          'entityList',2,...
+          'entityListType',"bcList", ...
+          'entityList',sList,...
           'components',"z");
 bcRigth.addBCEvent("z_load",'time',0.0,'value',0.0);
 bcRigth.addBCEvent("z_load",'time',1.0,'value',0.0);
