@@ -40,12 +40,11 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
 %   single physics single domain with lagrange multipliers)
    
    % Check if the variables have been passed
-   if nargin < 5
+   if nargin < 5 || isempty(nonlinIter)
       nonlinIter = 1;
-      isLinear = true;
    end
 
-   if nargin < 6
+   if nargin < 6 || isempty(isLinear)
       isLinear = true;
    end
 

@@ -63,7 +63,7 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 2e4
+      matlabMaxSize = 2e3
 
       % Utils flags
       nsyTol = 100*eps
@@ -237,10 +237,6 @@ classdef linearSolver < handle
       % Function to solve the system
       [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear);
 
-      % Function to get if chronos is to be used and if so instanciate the
-      % preconditioner
-      [Prec,ChronosFlag] = choosePrec(obj,debugflag,problemsolver,physname);
-
       % Function to get the total time taken by the linear solver for
       % preconditioner computation and solve step
       function tot = getTotalTime(obj)
@@ -249,6 +245,16 @@ classdef linearSolver < handle
          end
          tot = obj.aTimeComp+obj.aTimeSolve+sum(obj.SAM.CompLin);
       end
+   end
 
+   methods (Access = private)
+
+      % Function to get if chronos is to be used and if so instanciate the
+      % preconditioner
+      [Prec,ChronosFlag] = choosePrec(obj,debugflag,problemsolver,physname);
+
+      % Specific functions to be used inside choosePrec
+      [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physname)
+      [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname);
    end
 end
