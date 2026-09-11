@@ -548,14 +548,9 @@ classdef Poromechanics < PhysicsSolver
 
     function out = isLinear(obj)
 
-      % check if model is pure linear elasticity
+      % check if mechanical model is linear
 
-      out = false;
-
-      % check if there is not embedded fractures
-      if any(contains(obj.domain.solverNames,"EmbeddedFractureMechanics"))
-        return
-      end
+      out = true;
 
       for i = 1:obj.grid.cells.nTag
         out = obj.domain.materials.getConstitutiveLaw(i).isLinear;
@@ -568,8 +563,16 @@ classdef Poromechanics < PhysicsSolver
 
     function out = isSymmetric(obj)
 
-      % if the problem is linear, then Poromechanics is also symmetric
+      % check if model is pure linear elasticity
+
       out = true;
+
+      for i = 1:obj.grid.cells.nTag
+        out = obj.domain.materials.getConstitutiveLaw(i).isSymmetric;
+        if ~out
+          return;
+        end
+      end
 
     end
 

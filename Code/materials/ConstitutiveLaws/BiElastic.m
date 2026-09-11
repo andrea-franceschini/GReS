@@ -216,6 +216,13 @@ classdef BiElastic < Elastic
       out = false;
 
     end
+
+    function out = isSymmetric()
+
+      out = true;
+
+    end
+    
   end
 
 

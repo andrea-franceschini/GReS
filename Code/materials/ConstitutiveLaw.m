@@ -80,8 +80,14 @@ classdef ConstitutiveLaw < handle
   methods (Static)
 
 
-    function out = isLinear()
+    function out = isSymmetric(obj)
       out = false;
+      % optional solver query to know if a solver is symmetric or not
+    end
+
+    function out = isLinear(obj)
+      out = false;
+      % optional solver query to know if a solver is symmetric or not
     end
 
   end

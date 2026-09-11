@@ -231,4 +231,22 @@ classdef DruckerPrager < ConstitutiveLaw
 
     end
   end
+
+
+    methods (Static)
+
+    function out = isLinear()
+
+      out = false;
+
+    end
+
+    function out = isSymmetric()
+
+      out = false;
+
+    end
+    
+    end
+
 end
