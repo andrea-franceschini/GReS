@@ -13,16 +13,19 @@ function Compute(obj,A,symm,varargin)
          obj.Apply_R = @(x) Prec.Apply_R(x);
 
       elseif obj.requestComp
+
+         if obj.A0Sym && symm
+            warning('Asked to compute sam from a symmetric matrix to another. Not supported yet');
+            obj.tSetup = 0;
+            obj.Apply_L = @(x) Prec.Apply_L(x);
+            obj.Apply_R = @(x) Prec.Apply_R(x);
+            return;
+         end
          % Compute the SAM
          time_start = tic;
          [obj.N, ~] = MEX_sam_adaptive_left(A,obj.A0,obj.maxThreads,obj.nstep,obj.stp_size,obj.epss);
       
          obj.PrecSym = false;
-         % Symmetrize
-         if obj.A0Sym && symm
-            obj.N = 0.5*(obj.N+obj.N');
-            obj.PrecSym = true;
-         end
          obj.tSetup = toc(time_start);
    
          % Take the stats

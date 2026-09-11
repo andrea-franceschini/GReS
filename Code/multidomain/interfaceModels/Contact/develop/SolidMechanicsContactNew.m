@@ -1,4 +1,4 @@
-classdef SolidMechanicsContact < MeshTying
+classdef SolidMechanicsContactNew < MeshTying
 
   % solid mechanics solver using piece-wise constant multipliers
 
@@ -10,11 +10,12 @@ classdef SolidMechanicsContact < MeshTying
     NLIter = 0
     stickNodes     % boundary nodes where contact state should stay stick
     forceStick     % flag to enforce interface to stay stick
+    contactAugmentation
   end
 
 
   methods
-    function obj = SolidMechanicsContact(id,domains,inputStruct)
+    function obj = SolidMechanicsContactNew(id,domains,inputStruct)
 
       obj@MeshTying(id,domains,inputStruct);
 
@@ -30,12 +31,12 @@ classdef SolidMechanicsContact < MeshTying
 
       input = varargin{1};
 
-      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0,'stabilizationScale',1.0),input);
+      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0,'stabilizationScale',1.0,'augmentationParameter',1.0),input);
       params = readInput(struct('cohesion',[],'frictionAngle',[]),input.Coulomb);
 
       obj.stabilizationScale = input.stabilizationScale;
 
-
+      obj.contactAugmentation = input.augmentationParameter;
       obj.forceStick = logical(input.forceStick);
 
       obj.cohesion = params.cohesion;
@@ -575,60 +576,73 @@ classdef SolidMechanicsContact < MeshTying
             % SLIP MODE
             if contactState == ContactMode.slip || contactState == ContactMode.newSlip
 
-              slidingTol = obj.activeSet.tol.sliding;
-
-              if dgtStab > slidingTol
-                cT = norm(tauLim)/slipNorm;
-              else
-                cT = 0.0;
-              end
-
-              asbMt.localAssembly(tDof(1),umDof,Aum(:,1));
-              asbDt.localAssembly(tDof(1),usDof,-Aus(:,1));
-
-              % A_tu (non linear term)
-              if slipNorm > slidingTol 
-
-                % compute only on slip terms with sliding large enough
-                dtdgt = computeDerTracGap(obj,trac(1),dgtStab);
-                Atu_m = MortarQuadrature.integrate(f2, dtdgt,pagemtimes(T,Nm),dJw);
-                Atu_s = MortarQuadrature.integrate(f2, dtdgt,pagemtimes(T,Ns),dJw);
-                asbMt.localAssembly(tDof(2:3),umDof,-Atu_m);
-                asbDt.localAssembly(tDof(2:3),usDof,Atu_s);
-
-                % A_tn (non linear term)
-                dtdtn = computeDerTracTn(obj,dgtStab,dTrac);
-                Atn = area*dtdtn;
-                asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
-
-                slipDir = dgtStab/norm(dgtStab);
-
-              else
-
-                % if slipNorm < slidingTol && ~isNewSliding
-                %   %fprintf('Too small sliding detected! \n')
-                % end
-
-                % if slip is small, use current traction
-                vaux = trac(2:3);
-                dtdtn = - tan(deg2rad(obj.phi))*vaux/norm(vaux);
-                Atn = area*dtdtn;
-                asbQ.localAssembly(tDof(2:3),tDof(1),-Atn);
-
-                slipDir = vaux/norm(vaux);
-
-              end
-
-              tT_lim = tauLim * slipDir;
-
-              % A_tt
-              Att = area*eye(2);
-              asbQ.localAssembly(tDof(2:3),tDof(2:3),Att);
-
               rhsT(tDof(1)) = rhsT(tDof(1)) + area*g_n;
 
-              % enforce tangential traction to match the limiting value
-              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area * (trac(2:3)-tT_lim);
+              slidingTol = obj.activeSet.tol.sliding;
+
+              % if slipNorm < 1e2*eps
+              %   cT = 0.0;
+              % else
+              %   cT = 1e-1*tauLim/slipNorm;
+              % end
+
+              %cT = 1e-1*tauLim/slipNorm;
+
+              oldSlip = obj.getState.tangentialSlip([2*is-1 2*is]);
+
+              % if slipNorm < slidingTol
+              % 
+              %   cT = 1e-3;
+              % 
+              % else
+              % 
+              %   cT = 1e-1*tauLim/slipNorm;
+              % 
+              % end
+
+              %cT = min(cT,1e4);
+
+              cT = obj.contactAugmentation;
+
+              
+              % 
+              % if slipNorm < 1e2*eps
+              %   cT = 0.0;
+              % elseif slipNorm < slidingTol
+              %   cT = 1e2;
+              % else
+              %   cT = tauLim/slipNorm;
+              % end
+
+              asbMt.localAssembly(tDof(1),umDof,BgN_m);
+              asbDt.localAssembly(tDof(1),usDof,-BgN_s);
+
+              yT = tT + cT*dgtStab;     % trial tangential traction
+
+              [nT,DnDy] = getUnitVectorAndDerivative(obj,yT);
+
+              RT = tT - tauLim*nT;
+
+              rhsT(tDof(2:3)) = rhsT(tDof(2:3)) + area*RT;
+
+              % dR_T/dt_N = -d(tauLim)/d(tN) * n_T
+              tauRaw = obj.cohesion - tanPhi*tN;
+              if tauRaw > 0
+                dTauDtN = -tanPhi;
+              else
+                dTauDtN = 0;
+              end
+              asbQ.localAssembly(tDof(2:3),tDof(1),-area*dTauDtN*nT);
+
+
+              % dR_T/dt_T = I - tau_max d(n_T)/d(y_T)
+              dRdtT = eye(2) - tauLim*DnDy;
+              asbQ.localAssembly(tDof(2:3),tDof(2:3),area*dRdtT);
+
+              % dR_T/ddg_T = -tau_max d(n_T)/d(y_T) c_T
+              dRdgt = -cT*tauLim*DnDy;
+              asbMt.localAssembly(tDof(2:3),umDof,dRdgt*BgT_m);
+              asbDt.localAssembly(tDof(2:3),usDof,-dRdgt*BgT_s);
 
             end
 
@@ -661,6 +675,8 @@ classdef SolidMechanicsContact < MeshTying
       obj.rhsConstraint = rhsT;
 
     end
+
+
 
     function [n,DnDx] = getUnitVectorAndDerivative(obj,x)
       % Generalized derivative of x/||x||. At the origin, pick a bounded

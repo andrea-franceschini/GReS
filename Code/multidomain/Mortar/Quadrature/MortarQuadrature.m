@@ -17,7 +17,7 @@ classdef (Abstract) MortarQuadrature < handle
     function obj = MortarQuadrature(multType,grids,input)
       % grids: the lower dimensional grids for slave and master side
 
-      input = readInput(struct('gaussOrder',3),input);
+      input = readInput(struct('gaussOrder',4),input);
       obj.gaussOrder = input.gaussOrder;
 
       obj.multiplierType = multType;

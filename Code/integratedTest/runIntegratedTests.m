@@ -1,35 +1,15 @@
-clear
-clc
+% Run GReS integrated tests in parallel.
+testPath = fullfile(fileparts(mfilename('fullpath')));
 
-tWall = tic();      % start wall-clock timer
-tCPU  = cputime;    % start CPU timer
+% pool = gcp('nocreate');
+% if isempty(pool)
+%     parpool('Processes', 2);
+% end
 
-v = gresLog().getVerbosity();
-gresLog().setVerbosity(-2);
+results = runtests(fullfile(testPath, 'IntegratedTests.m'),'UseParallel', true);
 
-testFiles = {
-    fullfile('Terzaghi','testTerzaghi.m')
-    fullfile('SubDomains','testSubDomains.m')
-    fullfile('Richards','testRichards.m')
-    fullfile('CubeSedimentation','testSedimentation.m')
-    fullfile('MortarConvergence','testMortarPoisson.m')
-    fullfile('ConstantSliding','testConstantSliding.m')
-    fullfile('SingleCrackCompressed','testSingleCrackCompressed.m')
-    fullfile('ConstantSlidingEFEM','testConstantSlidingEFEM.m')
-};
-
-results = runtests(testFiles);
-
-elapsedWall = toc(tWall);
-elapsedCPU  = cputime - tCPU;
-
-fprintf("Elapsed wall-clock time: %1.2f s\n", elapsedWall);
-fprintf("Elapsed CPU time:        %1.2f s\n", elapsedCPU);
-
-gresLog().setVerbosity(v);
+disp(results);
 
 if any([results.Failed])
-    error("Some tests did not pass");
-else
-    disp("All tests passed");
+    error('GReS:IntegratedTestsFailed','One or more integrated tests failed.');
 end

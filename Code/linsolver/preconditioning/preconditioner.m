@@ -50,7 +50,11 @@ classdef (Abstract) preconditioner < handle
       function x0 = checkGrowth(obj, linsolver, b)
 
          % Set default output  
-         x0 = linsolver.x0;
+         if ~isempty(linsolver.x0)
+            x0 = linsolver.x0;
+         else
+            x0 = zeros(size(b));
+         end
       end
 
       % Update the growing preconditioner default (do nothing), overridden in

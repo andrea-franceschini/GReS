@@ -217,9 +217,9 @@ classdef MeshTying < InterfaceSolver
               Mloc = MortarQuadrature.integrate(f,Nmult,Nm,dJw);
               Dloc = MortarQuadrature.integrate(f,Nmult,Ns,dJw);
               asbM.localAssembly(tDof,umDof,Mloc); % minus sign!
-              if strcmp(obj.quadrature.multiplierType,"dual")
-                Dloc = diag(sum(Dloc,2));
-              end
+              % if strcmp(obj.quadrature.multiplierType,"dual")
+              %   Dloc = diag(sum(Dloc,2));
+              % end
 
               asbD.localAssembly(tDof,usDof,-Dloc);
 

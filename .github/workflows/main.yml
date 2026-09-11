@@ -38,6 +38,9 @@ jobs:
 
       - name: Setup MATLAB
         uses: matlab-actions/setup-matlab@v3
+        with:
+          products: >
+            Parallel_Computing_Toolbox
 
       - name: Ensure GCC 11 is active on Ubuntu
         if: matrix.os == 'ubuntu-latest'
@@ -52,6 +55,7 @@ jobs:
       - name: Initialize GReS, compile MEX, and run tests
         uses: matlab-actions/run-command@v3
         with:
+          generate-summary: false
           command: |
             try
                 initGReS;

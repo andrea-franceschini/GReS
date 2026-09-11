@@ -122,7 +122,7 @@ classdef linearSolver < handle
       function obj = linearSolver(generalsolver,physname)
 
          % Check if chronos is available
-         ChronosDir = fullfile(gres_root,'ThirdPartyLibs','Chronos_Lab','sources');
+         ChronosDir = fullfile(gres_root,'ThirdPartyLibs','ChronosLab','sources');
 
          % Possible the user wants to use matlab even if the size is sufficient
          if isfield(generalsolver.simparams.linSolverParams, 'useMatlab')

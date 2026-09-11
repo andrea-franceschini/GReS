@@ -163,10 +163,8 @@ classdef Poisson < PhysicsSolver
 
     function [cellData,pointData] = writeVTK(obj,fac,varargin)
 
-      sOld = getStateOld(obj);
-      sNew = getState(obj);
 
-      u = sNew.data.u*fac+sOld.data.u*(1-fac);
+      u = obj.domain.state.interpolate(fac,obj.getField());
 
       [cellData,pointData] = buildPrintStruct(obj,u);
 
@@ -174,10 +172,9 @@ classdef Poisson < PhysicsSolver
 
     function writeSolution(obj,fac,tID)
 
-      uOld = getStateOld(obj,obj.getField());
-      uCurr = getState(obj,obj.getField());
+      u = obj.domain.state.interpolate(fac,obj.getField());
 
-      obj.domain.outstate.results(tID).(obj.getField()) = uCurr*fac+uOld*(1-fac);
+      obj.domain.outstate.results(tID).(obj.getField()) = u;
     
     end
 
