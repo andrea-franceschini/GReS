@@ -45,9 +45,6 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       nonlinIter = 1;
    end
 
-   % Check if this step is linear to use maximum resolution needed
-   isLinear = getIsLinear(obj.generalsolver);
-
    if obj.DEBUGflag
       A
    end
@@ -57,6 +54,9 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       [x,flag] = matlab_solve(obj,A,b);
       return
    end
+   
+   % Check if this step is linear to use maximum resolution needed
+   isLinear = getIsLinear(obj.generalsolver);
 
    % Check if the system has changed size and adapt x0 to be of size(b)
    obj.x0 = obj.Prec.checkGrowth(obj,b);
