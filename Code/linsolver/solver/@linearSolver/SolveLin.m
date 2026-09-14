@@ -1,4 +1,4 @@
-function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
+function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 % This file implements a Solve method and related utilities intended to be
 % used as part of a linear solver class (linsolver). The Solve function
 % orchestrates choosing between internal MATLAB direct solve and an external
@@ -32,21 +32,21 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear)
 %   relative residual). The decision logic is encoded using fields in obj.
 % - After a failed solve (flag == 1), the method may attempt to recompute
 %   the preconditioner and retry once. If MATLAB direct solve succeeds but
-%   Chronos does not, the code saves a snapshot ('new_problem.mat') and
-%   raises an error to aid debugging.
-% - Note that the A passed here might be slightly different than the one passed in the computation of the preconditioner
-%   if the two As differ too much the preconditioner loses effectiveness. Must be recomputed
-% - A is passed directly as a cell array, meaning it is already split in the various blocks (A11,A12,A21,A22 for a
-%   single physics single domain with lagrange multipliers)
+%   Chronos does not, the code falls back onto matlab and continues the simulation.
+% - Note that the A passed here might be slightly different than the one
+%   passed in the computation of the preconditioner if the two As differ 
+%   too much the preconditioner loses effectiveness. Must be recomputed
+% - A is passed directly as a cell array, meaning it is already split in 
+%   the various blocks (A11,A12,A21,A22 for a single physics single domain
+%   with lagrange multipliers)
    
    % Check if the variables have been passed
    if nargin < 5 || isempty(nonlinIter)
       nonlinIter = 1;
    end
 
-   if nargin < 6 || isempty(isLinear)
-      isLinear = true;
-   end
+   % Check if this step is linear to use maximum resolution needed
+   isLinear = getIsLinear(obj.generalsolver);
 
    if obj.DEBUGflag
       A
@@ -344,6 +344,33 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
    maxval = max(val);
 end
 
+function [isLinear] = getIsLinear(generalsolver)
+   % Initialize to false to return at the first nonlinear solver in any domain
+   isLinear = false;
+
+   % Loop over the different domains
+   for i = 1:generalsolver.nDom
+
+      % Get current domain handle
+      dom = generalsolver.domains(i);
+
+      % Loop over the various solvers of this domain
+      solver = dom.solverNames;
+      for j = 1:numel(solver)
+
+         % Call isLinear on the current solver in domain i
+         lin = dom.getPhysicsSolver(solver(j)).isLinear();
+   
+         % Early exit, if one domain has a solver which is nonlinear
+         % then all the system is nonlinear
+         if lin == false
+            return;
+         end
+      end
+   end
+   % If reached here all the domains solvers are linear
+   isLinear = true;
+end
 
 function [A] = fixPattern(A)
    N = size(A, 1);

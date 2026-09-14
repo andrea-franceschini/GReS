@@ -63,7 +63,7 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 2e3
+      matlabMaxSize = 2e4
 
       % Utils flags
       nsyTol = 100*eps
@@ -235,7 +235,7 @@ classdef linearSolver < handle
       end
 
       % Function to solve the system
-      [x,flag] = SolveLin(obj,A,b,time,nonlinIter,isLinear);
+      [x,flag] = SolveLin(obj,A,b,time,nonlinIter);
 
       % Function to get the total time taken by the linear solver for
       % preconditioner computation and solve step

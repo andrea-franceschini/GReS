@@ -251,42 +251,11 @@ classdef (Abstract) SolutionScheme < handle
       end
     end
 
-    function [isLinear] = getIsLinear(obj)
-       % Initialize to false to return at the first nonlinear solver in any domain
-       isLinear = false;
-
-       % Loop over the different domains
-       for i = 1:obj.nDom
- 
-          % Get current domain handle
-          dom = obj.domains(i);
- 
-          % Loop over the various solvers of this domain
-          solver = dom.solverNames;
-          for j = 1:numel(solver)
-
-             % Call isLinear on the current solver in domain i
-             lin = dom.getPhysicsSolver(solver(j)).isLinear();
-    
-             % Early exit, if one domain has a solver which is nonlinear
-             % then all the system is nonlinear
-             if lin == false
-                return;
-             end
-          end
-       end
-
-       % If reached here all the domains solvers are linear
-       isLinear = true;
-    end
-
     function sol = solve(obj,J,rhs)
       rhs = cell2matrix(rhs);
 
-      isLinear = obj.getIsLinear();
-
       % Actual solution of the system
-      [sol,~] = obj.linsolver.SolveLin(J,-rhs,obj.t,[],isLinear);
+      [sol,~] = obj.linsolver.SolveLin(J,-rhs,obj.t,[]);
     end
 
     function setLinearSolver(obj,varargin)
