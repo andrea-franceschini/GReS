@@ -1,15 +1,27 @@
-% Run GReS integrated tests in parallel.
-testPath = fullfile(fileparts(mfilename('fullpath')));
+function results = runIntegratedTests(useParallel)
+    % Run GReS integrated tests with optional parallel execution.
+    % Usage:
+    %   runIntegratedTests()       % Runs in parallel by default
+    %   runIntegratedTests(false)  % Runs sequentially
+    %   runIntegratedTests(true)   % Runs in parallel
 
-% pool = gcp('nocreate');
-% if isempty(pool)
-%     parpool('Processes', 2);
-% end
+    if nargin < 1
+        useParallel = true;
+    end
 
-results = runtests(fullfile(testPath, 'IntegratedTests.m'),'UseParallel', true);
+    testPath = fileparts(mfilename('fullpath'));
+    testFile = fullfile(testPath, 'IntegratedTests.m');
 
-disp(results);
+    % Optional: manage parallel pool lifecycle if needed
+    % if useParallel && isempty(gcp('nocreate'))
+    %     parpool('Processes', 2);
+    % end
 
-if any([results.Failed])
-    error('GReS:IntegratedTestsFailed','One or more integrated tests failed.');
+    results = runtests(testFile, 'UseParallel', useParallel);
+
+    disp(results);
+
+    if any([results.Failed])
+        error('GReS:IntegratedTestsFailed', 'One or more integrated tests failed.');
+    end
 end
