@@ -3,61 +3,49 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
    % Initialize the Chronos Flag
    ChronosFlag = false;
 
+   % Get the domains
    domainin = generalsolver.domains;
+   multiDomFlag = (generalsolver.nDom > 1);
 
    % Check if the problem comes from multiphysics
-   multiPhysFlag = false;
-   if(domainin(1).dofm.getNumberOfVariables() > 1) && isempty(physname)
-      multiPhysFlag = true; 
+   multiPhysFlag = (max(arrayfun(@(x) x.dofm.getNumberOfVariables(), domainin)) > 1);
+
+   % Early exit with multiphysics multidomain
+   if multiPhysFlag && multiDomFlag
+      gresLog().warning(3,'Multiphysics with multidomain not yet supported');
       Prec = [];
-      gresLog().warning(3,'Multiphysics not yet supported');
-      if gresLog().getVerbosity() >= 3
-         disp(domainin(1).dofm.getVariableNames());
-      end
-      % return
-   end
-
-   nInt = generalsolver.nInterf;
-
-   % Select the physics, check if asked by user directly
-   if isempty(physname)
-      physname = domainin(1).dofm.getVariableNames();
-   end
-
-   % Needs the growing preconditioner
-   if contains(domainin(1).solverNames,"Sedimentation") && ~multiPhysFlag
-      Prec = growing(debugflag,generalsolver,physname);
-      ChronosFlag = true;
-      obj.useSAM = false;
-      obj.SAM = [];
       return;
    end
 
-   if ~multiPhysFlag
-      % Supported Single Physics
-      if contains(physname, {'pressure', 'u','displacements'})
-         
-         if nInt == 0
-            % No interface, its a simple single domain single physics problem,
-            % AMG handles it beautifully
-            Prec = aAMG(debugflag,generalsolver,physname);
-         else
-            % Multiple interfaces mean multiple blocks, RACP is needed
-            Prec = RACP(debugflag,generalsolver,physname);
-         end
-      else
-         if debugflag
-            warning('No preconditioner available for this physics, falling back to matlab solver');
-            disp(physname);
-         end
-         return
-      end
-      ChronosFlag = true;
-   else
-      % physname
-      if any(contains(physname, {'pressure', 'u'})) && any(contains(physname, 'displacements'))
-         Prec = fixedStress(debugflag,generalsolver);
+   % Select the physics, check if asked by user directly
+   if isempty(physname)
+      physname = arrayfun(@(x) x.dofm.getVariableNames(), domainin, 'UniformOutput', false);
+      physname = [physname{:}];
+   end
+
+   % Check if it needs the growing preconditioner
+   solvers = unique(arrayfun(@(x) x.solverNames, domainin));
+   if contains(solvers,"Sedimentation")
+      if ~multiPhysFlag && ~multiDomFlag
+         Prec = growing(debugflag,generalsolver,physname);
          ChronosFlag = true;
-      end
+         obj.useSAM = false;
+         obj.SAM = [];
+         return;
+      else
+         gresLog().warning(3,'Multiphysics growth and Multidomain growth not yet supported');
+         Prec = [];
+         return;
+      end         
+   end
+
+   % Now choose the correct preconditioner for the correct case
+   if(multiPhysFlag && ~multiDomFlag)
+      [ChronosFlag,Prec] = obj.chooseMultiPhys(generalsolver,debugflag,physname);
+   else
+      % Keep only the unique one for the single physics
+      physname = unique(physname);
+
+      [ChronosFlag,Prec] = obj.chooseSinglePhys(generalsolver,debugflag,physname);
    end
 end
