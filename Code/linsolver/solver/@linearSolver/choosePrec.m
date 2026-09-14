@@ -17,6 +17,12 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
       return;
    end
 
+   % Select the physics, check if asked by user directly
+   if isempty(physname)
+      physname = arrayfun(@(x) x.dofm.getVariableNames(), domainin, 'UniformOutput', false);
+      physname = [physname{:}];
+   end
+
    % Check if it needs the growing preconditioner
    solvers = unique(arrayfun(@(x) x.solverNames, domainin));
    if contains(solvers,"Sedimentation")
@@ -31,12 +37,6 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
          Prec = [];
          return;
       end         
-   end
-   
-   % Select the physics, check if asked by user directly
-   if isempty(physname)
-      physname = arrayfun(@(x) x.dofm.getVariableNames(), domainin, 'UniformOutput', false);
-      physname = [physname{:}];
    end
 
    % Now choose the correct preconditioner for the correct case

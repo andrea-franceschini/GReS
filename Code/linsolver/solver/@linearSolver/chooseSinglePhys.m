@@ -3,7 +3,7 @@ function [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physn
    nInt = generalsolver.nInterf;
 
    % Supported Single Physics
-   if contains(physname, {'pressure', 'u','displacements'})
+   if contains(physname, {'pressure', 'u', 'displacements'})
       
       if nInt == 0
          % No interface, its a simple single domain single physics problem,
