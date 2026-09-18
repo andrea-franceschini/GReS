@@ -11,8 +11,8 @@
           reCompressibilityIndex = "0.40"
           stressPreConsolidated = "100"
           stressMin = "1e-1"
-          stressMax = "1e5"
-          voidRateMin = "2"
+          stressMax = "1e4"
+          voidRateMin = "6"
           specificWeight = "2.0e3"
           conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
       />
@@ -29,8 +29,8 @@
           reCompressibilityIndex = "0.10"
           stressPreConsolidated = "100"
           stressMin = "1e-1"
-          stressMax = "1e5"
-          voidRateMin = "1."
+          stressMax = "1e4"
+          voidRateMin = "2.5"
           specificWeight = "2.7e3"
           conductivity = "0.9450e-1, 0.9450e-1, 0.315e-1"
       />
@@ -47,8 +47,8 @@
           reCompressibilityIndex = "0.05"
           stressPreConsolidated = "100"
           stressMin = "1e-1"
-          stressMax = "1e5"
-          voidRateMin = "1.2"
+          stressMax = "1e4"
+          voidRateMin = "1.5"
           specificWeight = "2.7e3"
           conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
       />
@@ -65,8 +65,8 @@
           reCompressibilityIndex = "0.000001"
           stressPreConsolidated = "100"
           stressMin = "1e-1"
-          stressMax = "1e5"
-          voidRateMin = "0.99995"
+          stressMax = "1e4"
+          voidRateMin = "0.999975"
           specificWeight = "2.0e3"
           conductivity = "0.1e+5, 0.1e+5, 0.1e+5"
       />

@@ -47,6 +47,7 @@ classdef Sedimentation < PhysicsSolver
 
     deltaStress (:,1)
     voidTop
+    voidTop0
 
     initColumn (:,1)  % indication of the necessity of initialize the column
 
@@ -143,9 +144,10 @@ classdef Sedimentation < PhysicsSolver
       state.strain = zeros(nelm,1);
       state.strainAcc = zeros(nelm,1);
       state.cellDefm = zeros(nelm,1);
-      state.stressCons = zeros(nelm,1);      
-      state.voidrate = zeros(nelm,1);
+      state.Sp = zeros(nelm,1);      
+      state.void = zeros(nelm,1);
       state.age = zeros(nelm,1);
+      state.void0 = zeros(nelm,1);
 
       state.sedmRate = zeros(prod(map(1:2)),obj.nmat);
       state.sedmAcc  = zeros(prod(map(1:2)),obj.nmat);
@@ -193,31 +195,15 @@ classdef Sedimentation < PhysicsSolver
           stsCellPreCons = zeros(ncols,1);
           Cr = zeros(ncols,1);
           Cc = zeros(ncols,1);
-          voidLwLim = zeros(ncols,1);
-          voidUpLim = zeros(ncols,1);
           for mat=1:obj.nmat
-            gamma_s = obj.domain.materials.getMaterial(mat).ConstLaw.getSpecificWeight();
-            DStress = DStress + (gamma_s - gamma_w)*matFract(:,mat).*dh;
+            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
 
-            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidRate();
-            voidTmp = voidTmp + matFract(:,mat).*tmpMat;
-
-            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getCompressibilityIdx();
-            Cc = Cc + matFract(:,mat).*tmpMat;
-
-            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getReCompressibilityIdx();
-            Cr = Cr + matFract(:,mat).*tmpMat;
-
-            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getInitialStress();
-            stsCellAcc = stsCellAcc + matFract(:,mat).*tmpMat;
-
-            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getPreConsolidadeStress();
-            stsCellPreCons = stsCellPreCons + matFract(:,mat).*tmpMat;
-
-            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidLowerLim();
-            voidLwLim = voidLwLim + matFract(:,mat).*tmpMat;
-            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidUpperLim();
-            voidUpLim = voidUpLim + matFract(:,mat).*tmpMat;
+            DStress = DStress + (tmpMat.gamma - gamma_w)*matFract(:,mat).*dh;
+            voidTmp = voidTmp + matFract(:,mat).*tmpMat.e0;
+            Cc = Cc + matFract(:,mat).*tmpMat.Cc;
+            Cr = Cr + matFract(:,mat).*tmpMat.Cr;
+            stsCellAcc = stsCellAcc + matFract(:,mat).*tmpMat.S0;
+            stsCellPreCons = stsCellPreCons + matFract(:,mat).*tmpMat.Sp;
           end
 
           % Iterative procedure
@@ -225,11 +211,6 @@ classdef Sedimentation < PhysicsSolver
           % strial = (1./(1+voidTmp)).*DStress+stsCons(map);
           [void,~] = Sedimentation.initialCellProp(voidTmp,-strial,...
             -stsCellAcc,-stsCons(map),Cr,obj.tol,obj.niterMx);
-
-          mapVoidLim = void < voidLwLim;
-          void(mapVoidLim) = voidLwLim(mapVoidLim);
-          mapVoidLim = void > voidUpLim;
-          void(mapVoidLim) = voidUpLim(mapVoidLim);
 
           stress = (1./(1+void)).*DStress;
           % stress = (1./(1+void)).*DStress+stsCons(map);
@@ -240,12 +221,11 @@ classdef Sedimentation < PhysicsSolver
           stStore(map) = stress;
           state.stress(dof) = -stress;
           % state.stress(dof) = -stress-1;          
-          % state.stressCons(dof) = -stress;
-          state.stressCons(dof) = -stsCellPreCons;
-          state.voidrate(dof) = void;
+          % state.Sp(dof) = -stress;
+          state.Sp(dof) = -stsCellPreCons;
+          state.void(dof) = void;
 
-          % % delta_e = SedimentMaterial.getDeltaVoidRatio(-stress,-strial,-stsCellPreCons,Cc,Cr);
-          % % state.strainAcc(dof) = delta_e./(1+void);
+          state.void0 = SedimentMaterial.getVoidPreCon(abs(stress),stsCellPreCons,void,Cr);
         end
       end
 
@@ -263,6 +243,7 @@ classdef Sedimentation < PhysicsSolver
       ncols = prod(obj.mdof.ncells(1:2));
       obj.deltaStress = zeros(ncols,1);
       obj.voidTop = zeros(ncols,1);
+      obj.voidTop0 = zeros(ncols,1);
 
       % Finding the sedimentation rate
       t0 = stateOld.time;
@@ -280,46 +261,26 @@ classdef Sedimentation < PhysicsSolver
       stsInit = zeros(ncols,1);
       sedmWeight = zeros(ncols,1);
       gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
-      voidLwLim = zeros(ncols,1);
-      voidUpLim = zeros(ncols,1);
       for mat=1:obj.nmat
-        gamma_s = obj.domain.materials.getMaterial(mat).ConstLaw.getSpecificWeight();
-        sedmWeight = sedmWeight + (gamma_s - gamma_w)*sedm(:,mat);
+        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
 
-        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidRate();
-        obj.voidTop = obj.voidTop + matFract(:,mat).*tmpMat;
-
-        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getCompressibilityIdx();
-        Cc = Cc + matFract(:,mat).*tmpMat;
-
-        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getReCompressibilityIdx();
-        Cr = Cr + matFract(:,mat).*tmpMat;
-
-        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getInitialStress();
-        stsInit = stsInit + matFract(:,mat).*tmpMat;
-
-        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidLowerLim();
-        voidLwLim = voidLwLim + matFract(:,mat).*tmpMat;
-        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidUpperLim();
-        voidUpLim = voidUpLim + matFract(:,mat).*tmpMat;
+        sedmWeight = sedmWeight + (tmpMat.gamma - gamma_w)*sedm(:,mat);
+        obj.voidTop = obj.voidTop + matFract(:,mat).*tmpMat.e0;
+        Cc = Cc + matFract(:,mat).*tmpMat.Cc;
+        Cr = Cr + matFract(:,mat).*tmpMat.Cr;
+        stsInit = stsInit + matFract(:,mat).*tmpMat.S0;
       end
       % obj.deltaStress = sedmWeight;
 
       % iterate to find the true value of e and stress
-      stsCons = zeros(ncols,1);
+      % stsCons = zeros(ncols,1);
       strial = (1./(1+obj.voidTop(map))).*sedmWeight(map);
       [void,~] = Sedimentation.initialCellProp(obj.voidTop(map),-strial,...
         -stsInit(map),-stsInit(map),Cr(map),obj.tol,obj.niterMx);
 
-      voidLwLim = voidLwLim(map);
-      voidUpLim = voidUpLim(map);
-      mapVoidLim = void < voidLwLim;
-      void(mapVoidLim) = voidLwLim(mapVoidLim);
-      mapVoidLim = void > voidUpLim;
-      void(mapVoidLim) = voidUpLim(mapVoidLim);
-
       obj.deltaStress(map) = (1./(1+void)).*sedmWeight(map);
       obj.voidTop(map) = void;
+      obj.voidTop0(map) = SedimentMaterial.getVoidPreCon(obj.deltaStress(map),stsInit(map),void,Cr(map));
 
       dstress = obj.deltaStress(getMapFromDofs(obj.mdof,dofs));
       state.stress(dofs) = state.stress(dofs) - dstress*dt;
@@ -395,8 +356,9 @@ classdef Sedimentation < PhysicsSolver
       % Get state and set the initial conditions
       state = getState(obj);
       state.strainAcc = state.strainAcc + state.strain;      
-      mapStressCons = state.stress < state.stressCons;
-      state.stressCons(mapStressCons) = state.stress(mapStressCons);
+      mapSp = state.stress < state.Sp;
+      state.Sp(mapSp) = state.stress(mapSp);
+      state.void0(mapSp) = state.void(mapSp);
 
       % ------ Update the Sedimentation ------
       % Update the sedimentation 
@@ -442,14 +404,18 @@ classdef Sedimentation < PhysicsSolver
           obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
 
           % Mean average
-          % state.voidrate(dof) = (dzDef(ngrowCols).*state.voidrate(dof) +...
+          % state.void(dof) = (dzDef(ngrowCols).*state.void(dof) +...
           %   dzSedmAdd(loc).*obj.voidTop(loc))./dzNew(ngrowCols);
 
           % Harmonic series
-          state.voidrate(dof) = ...
+          state.void(dof) = ...
             (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
-            ( dzDef(ngrowCols) ./ state.voidrate(dof) + ...
+            ( dzDef(ngrowCols) ./ state.void(dof) + ...
             dzSedmAdd(loc) ./ obj.voidTop(loc) );
+          state.void0(dof) = ...
+            (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
+            ( dzDef(ngrowCols) ./ state.void0(dof) + ...
+            dzSedmAdd(loc) ./ obj.voidTop0(loc) );
         end
 
         if (any(growCols))
@@ -463,14 +429,19 @@ classdef Sedimentation < PhysicsSolver
           obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
 
           % Mean average
-          % % % % state.voidrate(dof) = (dzDef(growCols).*state.voidrate(dof) +...
+          % % % % state.void(dof) = (dzDef(growCols).*state.void(dof) +...
           % % % %   frac.*dzSedmAdd(loc).*obj.voidTop(loc))./obj.heightControl;
 
           % Harmonic series
-          state.voidrate(dof) = ...
+          state.void(dof) = ...
             (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
-            ( dzDef(growCols) ./ state.voidrate(dof) + ...
+            ( dzDef(growCols) ./ state.void(dof) + ...
             (frac.*dzSedmAdd(loc)) ./ obj.voidTop(loc) );
+
+          state.void0(dof) = ...
+            (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
+            ( dzDef(growCols) ./ state.void0(dof) + ...
+            (frac.*dzSedmAdd(loc)) ./ obj.voidTop0(loc) );
 
           newCellSed(loc,:) = (1-frac).*sedAdd(loc,:);
           mapNewCells(loc) = true;
@@ -546,12 +517,14 @@ classdef Sedimentation < PhysicsSolver
         state.strain(end+1:end+newcells) = 0.;
         state.strainAcc(end+1:end+newcells) = 0.;
         state.cellDefm(end+1:end+newcells) = 0.;
-        state.stressCons(end+1:end+newcells) = 0.;
-        state.voidrate(end+1:end+newcells) = 0.;
+        state.Sp(end+1:end+newcells) = 0.;
+        state.void(end+1:end+newcells) = 0.;
+        state.void0(end+1:end+newcells) = 0.;
         state.age(end+1:end+newcells) = state.time;
 
         state.sedmAcc(mapNewCells,:) = newCellSed(mapNewCells,:);        
-        state.voidrate(dofs) = obj.voidTop(mapNewCells);
+        state.void(dofs) = obj.voidTop(mapNewCells);
+        state.void0(dofs) = obj.voidTop0(mapNewCells);
 
         frac = sum(newCellSed(mapNewCells,:),2)./sum(sedAdd(mapNewCells,:),2);
         stressAdd = - frac.*obj.deltaStress(mapNewCells)*dt;
@@ -560,18 +533,19 @@ classdef Sedimentation < PhysicsSolver
         stsCellPreCons = zeros(newcells,1);
         matTmp = newCellSed(mapNewCells,:)./sum(newCellSed(mapNewCells,:),2);
         for mat=1:obj.nmat
-          tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getPreConsolidadeStress();
-          stsCellPreCons = stsCellPreCons + matTmp(:,mat).*tmpMat;
-          tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getInitialStress();
-          stsInit = stsInit + matTmp(:,mat).*tmpMat;
+          tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
+          stsCellPreCons = stsCellPreCons + matTmp(:,mat).*tmpMat.Sp;
+          stsInit = stsInit + matTmp(:,mat).*tmpMat.S0;
+          % tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getPreConsolidadeStress();
+          % tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getInitialStress();
         end
         mapPreCon = stsCellPreCons<-stressAdd;
         stsCellPreCons(mapPreCon)=-stressAdd(mapPreCon);
 
         state.stress(dofs) = stressAdd;
         % state.stress(dofs) = stressAdd-stsInit;
-        % state.stressCons(dofs) = stressAdd;
-        state.stressCons(dofs) = -stsCellPreCons;
+        % state.Sp(dofs) = stressAdd;
+        state.Sp(dofs) = -stsCellPreCons;
       end
       
       setStateOld(obj,state);
@@ -580,40 +554,32 @@ classdef Sedimentation < PhysicsSolver
 
     function updateState(obj,solution)
       % UPDATESTATE Iterate in the time step.
-
-      % Update pressure
-      % dofs = getDofs(obj.mdof);
       state = getState(obj);
-      stateOld = getStateOld(obj);
-      state.pressure = state.pressure + solution;
-      % dp = state.pressure(dofs) - stateOld.pressure(dofs);
+      stateOld = getStateOld(obj);      
 
-      % Update the stress state
-      % dt = state.time-stateOld.time;
-      sPrev = stateOld.stress;
-      sCurr = state.stress + solution;
-      state.stress = sCurr;
+      % Some variables wrappers
+      Sprev = stateOld.stress;
+      Scurr = state.stress + solution;
+      Sp = state.Sp;
+      eprev = stateOld.void;
+      
+      % New version
+      ep = state.void0;
+      sedMat = getCellsProp(obj,'sedMat');
+      ecurr = SedimentMaterial.getVoidRatio(Scurr,Sp,ep,sedMat);
 
-      % Update the Void Rate
-      sCon = state.stressCons;
-      Cc = getCellsProp(obj,'compressIdx');
-      Cr = getCellsProp(obj,'recompressIdx');
-      delta_e = SedimentMaterial.getDeltaVoidRatio(sCurr,sPrev,sCon,Cc,Cr);
-
-      % fprintf('delta e: %1.4e \n\n', delta_e);
-
-      voidLwLim = getCellsProp(obj,'voidLowerLimit');
-      e_prev = stateOld.voidrate;
-      void = e_prev + delta_e;
-
-      % map = void < voidLwLim;
-      % void(map) = voidLwLim(map);
-      % delta_e(map) = void(map) - e_prev(map);
-
-      state.voidrate = void;
+      % % Old version
+      % Cc = getCellsProp(obj,'compressIdx');
+      % Cr = getCellsProp(obj,'recompressIdx');
+      % delta_e = SedimentMaterial.getDeltaVoidRatio(Scurr,Sprev,Sp,Cc,Cr);
+      % ecurr = eprev + delta_e;
 
       % Update the Mesh Deformation - vertical deformation
-      eps = delta_e./(1+stateOld.voidrate);
+      eps = (ecurr-eprev)./(1+eprev); % - New version
+      % eps = delta_e./(1+eprev);
+
+      % Update the Mesh Deformation - vertical deformation
+      % eps = delta_e./(1+stateOld.void);
 
       % Lagrangian strain model
       % strain = stateOld.strain(dofs) + eps;  
@@ -624,6 +590,10 @@ classdef Sedimentation < PhysicsSolver
       % strain = stateOld.strain(dofs) + eps./(1+eps);
       % dz = obj.cellDims(dofs,3) + state.cellDefm(dofs);
 
+      % Update State
+      state.stress = Scurr;
+      state.pressure = state.pressure + solution;
+      state.void = ecurr;
       state.strain = strain;
       state.cellDefm = stateOld.cellDefm + strain.*dz;
 
@@ -690,7 +660,7 @@ classdef Sedimentation < PhysicsSolver
       volCell = prod(obj.cellDims(:,1:2),2).*(obj.cellDims(:,3) + dl);
 
       % Computing the storage coefficient
-      poro = getState(obj,'voidrate');
+      poro = getState(obj,'void');
       poro = poro./(1+poro);
 
       beta = obj.domain.materials.getFluid().getFluidCompressibility();
@@ -739,7 +709,7 @@ classdef Sedimentation < PhysicsSolver
       cellStr(2).data = state.stress;
       cellStr(3).name = 'strain';
       cellStr(3).data = -state.strain;
-      cellStr(4).name = 'voidRate';
+      cellStr(4).name = 'void';
       cellStr(4).data = state.void;
       cellStr(5).name = 'porosity';
       cellStr(5).data = state.poro;
@@ -752,7 +722,7 @@ classdef Sedimentation < PhysicsSolver
       cellStr(8).data = state.cb;
 
       cellStr(9).name = 'Precon_stress';
-      cellStr(9).data = state.stressCons;
+      cellStr(9).data = state.Sp;
 
       celLast = length(cellStr);
       for mat=1:obj.nmat
@@ -761,7 +731,7 @@ classdef Sedimentation < PhysicsSolver
       end
 
       cellStr(9).name = 'Precon_stress';
-      cellStr(9).data = state.stressCons;
+      cellStr(9).data = state.Sp;
 
       if ~isempty(obj.bath)
         pointStr = repmat(struct('name', 1, 'data', 1), 2, 1);
@@ -876,18 +846,36 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function oedoComp = computeOedometricCompressibility(obj)
+      % Some variables
       state = getState(obj);
-      stressOld = getStateOld(obj,'stress');      
+      stateOld = getStateOld(obj);
+
+      % Some variables wrappers - New Version
+      % Scurr= state.stress;
+      % Sp   = stateOld.Sp;
+      % void = state.void;
+      % void0    = state.void0;
+      % 
+      % sedMat   = getCellsProp(obj,'sedMat');
+      % oedoComp = SedimentMaterial.computeOedoComp2(Scurr,Sp,void,sedMat);
+
+      % oedoComp = zeros(length(void),1);
+      % for mat=1:obj.nmat
+      %   tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
+      %   oedoComp = oedoComp + ...
+      %     obj.matfrac(:,mat).*computeOedoComp(tmpMat,Scurr,Sp,void);
+      % end
+
+      % Some variables wrappers - Old Version
+      Sprev = stateOld.stress;
+      Scurr = state.stress;
+      Sp = state.Sp;
+      void = state.void;
       Cc = getCellsProp(obj,'compressIdx');
-      Cr = getCellsProp(obj,'recompressIdx');
-      sCurr = state.stress;
-      sPrev = stressOld;
-      sCon  = state.stressCons;
-      void = state.voidrate;
-      oedoComp = (1./(1+void)).*SedimentMaterial.getDevVoidRatio(sCurr,sPrev,sCon,Cc,Cr);
-      % lim = oedoComp > 1e-3;
-      % oedoComp(lim)=1e-3;
+      Cr = getCellsProp(obj,'recompressIdx');      
+      oedoComp = SedimentMaterial.OedoCompressibility(Scurr,Sprev,Sp,void,Cc,Cr);
     end
+
 
     function out = getCellsProp(obj,type,dofs)
       if ~exist("dofs","var")
@@ -903,7 +891,7 @@ classdef Sedimentation < PhysicsSolver
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
           % try to impose kz0*10^((e-e0)/Ck)
-          % dvoid = obj.getState("voidrate")-obj.void0;
+          % dvoid = obj.getState("void")-obj.void0;
           % out(:,3)=out(:,3).*10.^(dvoid/10);
           % out(:,1:2)=[3*out(:,3) 3*out(:,3)];
         case 'compressidx'
@@ -918,12 +906,27 @@ classdef Sedimentation < PhysicsSolver
             tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getReCompressibilityIdx();
             out = out + obj.matfrac(dofs,mat).*tmpMat;
           end
-        case 'voidlowerlimit'
-          out = zeros(length(dofs),1);
+        case 'sedmat'
+          out=struct();
+          out.Cc = zeros(obj.mdof.ndofs,1);
+          out.Cr = zeros(obj.mdof.ndofs,1);
+          out.S1 = zeros(obj.mdof.ndofs,1);
+          out.S2 = zeros(obj.mdof.ndofs,1);
+          out.emin = zeros(obj.mdof.ndofs,1);
           for mat=1:obj.nmat
-            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidLowerLim();
-            out = out + obj.matfrac(dofs,mat).*tmpMat;
+            tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
+            out.Cc = out.Cc + obj.matfrac(:,mat).*tmpMat.Cc;
+            out.Cr = out.Cr + obj.matfrac(:,mat).*tmpMat.Cr;
+            out.S1 = out.S1 + obj.matfrac(:,mat).*tmpMat.S1;
+            out.S2 = out.S2 + obj.matfrac(:,mat).*tmpMat.S2;
+            out.emin = out.emin + obj.matfrac(:,mat).*tmpMat.emin;
           end
+        % case 'voidlowerlimit'
+        %   out = zeros(length(dofs),1);
+        %   for mat=1:obj.nmat
+        %     tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidLowerLim();
+        %     out = out + obj.matfrac(dofs,mat).*tmpMat;
+        %   end
         otherwise
           out = [];
       end
@@ -932,14 +935,14 @@ classdef Sedimentation < PhysicsSolver
     function data = finalizeState(obj,fac)
       % append state variable to output structure
       state = interpolate(obj.domain.state,fac);
-      voidR = state.voidrate./(1+state.voidrate);
+      voidR = state.void./(1+state.void);
 
       data.time = state.time;
       data.pres = state.pressure;
       data.stress = -state.stress;
-      data.stressCons = -state.stressCons;
+      data.Sp = -state.Sp;
       data.strain = state.strainAcc;
-      data.void = state.voidrate;
+      data.void = state.void;
       data.age = getState(obj,'time')-state.age;
       data.cond = getCellsProp(obj,'conductivity');
       data.poro = voidR;
