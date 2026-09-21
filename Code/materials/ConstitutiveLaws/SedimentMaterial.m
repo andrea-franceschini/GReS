@@ -161,9 +161,13 @@ classdef SedimentMaterial < handle
   end
 
   methods (Static)
-    function out = getVoidPreCon(S,Sp,void,C)
+    function out = getVoidPreCon(S,Sp,void,Cr,Cc)
       % Return the variation in void ratio
-      out = void + C.*log10(S./Sp);
+      map1 = S < Sp;
+      map2 = ~map1;
+      out = zeros(length(S),1);
+      out(map1) = void(map1) + Cr(map1).*log10(S(map1)./Sp(map1));
+      out(map2) = void(map2) + Cc(map2).*log10(S(map2)./Sp(map2));
     end
 
     function void = getVoidRatioFromRef(stress,stress_Ref,void_Ref,Cc)
@@ -198,25 +202,23 @@ classdef SedimentMaterial < handle
       %
       %   OUTPUT:
       %      e     - Void ratio.
-      Scurr=abs(Scurr);
-      Sp=abs(Sp);
+      Scurr = abs(Scurr);
+      Sp = abs(Sp);
       S1 = abs(mat.S1);
       S2 = abs(mat.S2);
+
+      map1 = Scurr < S1;
+      map2 = (Scurr >= S1) & (Scurr < Sp);
+      map3 = (Scurr >= Sp) & (Scurr <= S2);
+      map4 = Scurr > S2;
+
+      % map2 = Scurr<Sp;
+      % map3 = Scurr>Sp;
 
       e1 = ep - mat.Cr.*log10(S1./Sp);
       e2 = ep - mat.Cc.*log10(S2./Sp);
       cbmin = mat.Cr./(log(10)*S1.*(1+e1));
       kdecay = mat.Cc./(log(10)*S2.*(e2-mat.emin));
-
-      map1 = Scurr < S1;
-      map4 = Scurr > S2;
-      mapTmp = and(~map1,~map4);
-      % mapTmp = ~map1;
-      map2 = and(mapTmp,Scurr<Sp);
-      map3 = and(mapTmp,Scurr>Sp);
-
-      % map2 = Scurr<Sp;
-      % map3 = Scurr>Sp;
 
       ndofs = length(Scurr);
       e = zeros(ndofs,1);
@@ -227,35 +229,98 @@ classdef SedimentMaterial < handle
       e(map4) = mat.emin(map4)+(e2(map4)-mat.emin(map4)).*exp(kdecay(map4).*(S2(map4)-Scurr(map4)));
     end
 
-
-    function cb = computeOedoComp2(S,Sp,void,mat)
-      S=abs(S);
-      Sp=abs(Sp);
-
-      % map1 = S<mat.S1;
-      % map4 = S>mat.S2;
-      % mapTmp = and(~map1,~map4);
-      % mapTmp = ~map1;
-      % map2 = and(mapTmp,S<Sp);
-      % map3 = and(mapTmp,S>Sp);
-
-      map2 = S<Sp;
-      map3 = S>Sp;
-
-      cb = zeros(length(S),1);
-      ep = void + mat.Cc.*log10(S./Sp);
+    function e = getVoidRatio2(Scurr,Sp,ep,mat)
+      %GETVOIDRATIO Compute the void ratio.
+      %
+      %   Computes the void ratio according to the stress range:
+      %               / (1+e1)*exp(cbmin*(S1-Scurr))-1,        Scurr < S1
+      %              | ep-Cr*log10(Scurr/Sp),           S1 <= Scurr <= Sp
+      %     e(S) =  <
+      %              | ep-Cc*log10(Scurr/Sp),            Sp < Scurr <= S2
+      %               \ emin+(e2-emin)*exp(k*(S2-S)),         Scurr > S2
+      %
+      %   where S1 and S2 define the lower and upper stress limits, Sp
+      %   is the preconsolidation stress, Cc and Cr are the compression
+      %   and recompression indices, and emin is the minimum void ratio.
+      %
+      %   INPUTS:
+      %     Scurr  - Current effective stress.
+      %     Sp     - Preconsolidation stress.
+      %     ep     - Previous effective void ratios.
+      %     mat    - Low-stress exponential coefficient.
+      %
+      %   OUTPUT:
+      %      e     - Void ratio.
+      map1 = Scurr < mat.S1;
+      map2 = (Scurr >= mat.S1) & (Scurr < Sp);
+      map3 = (Scurr >= Sp) & (Scurr <= mat.S2);
+      map4 = Scurr > mat.S2;
 
       e1 = ep - mat.Cr.*log10(mat.S1./Sp);
       e2 = ep - mat.Cc.*log10(mat.S2./Sp);
+      cbmin = mat.Cr./(log(10)*mat.S1.*(1+e1));
+      kdecay = mat.Cc./(log(10)*mat.S2.*(e2-mat.emin));
 
-      cbmin = mat.Cr./(log(10).*mat.S1.*(1+e1));
-      kDecay = mat.Cc./(log(10)*mat.S2.*(e2-mat.emin));
+      e = zeros(length(Scurr),1);
+      e(map1) = (1+e1(map1)).*exp(cbmin(map1).*(mat.S1(map1)-Scurr(map1)))-1;
+      e(map2) = ep(map2)-mat.Cr(map2).*log10(Scurr(map2)./Sp(map2));
+      e(map3) = ep(map3)-mat.Cc(map3).*log10(Scurr(map3)./Sp(map3));
+      e(map4) = mat.emin(map4)+(e2(map4)-mat.emin(map4)).*exp(kdecay(map4).*(mat.S2(map4)-Scurr(map4)));
+    end
 
-      % cb(map1)=cbmin(map1);
-      cb(map2)=mat.Cr(map2)./(log(10)*S(map2).*(1+void(map2)));
-      cb(map3)=mat.Cc(map3)./(log(10)*S(map3).*(1+void(map3)));
-      % cb(map4)=mat.Cc(map4).*exp(kDecay(map4).*(mat.S2(map4)-S(map4)))...
+
+    function oedo = computeOedoComp2(S,Sp,void,mat)
+      % s  = abs(S);
+      % sp = abs(Sp);
+      % s1 = abs(mat.S1);      
+      % s2 = abs(mat.S2);
+
+      % map1 = s < s1;
+      % map2 = (s >= s1) & (s < sp);
+      % map3 = (s >= sp) & (s <= s2);
+      % map4 = s > s2;
+
+      % map2 = s < sp;
+      % map3 = s >= sp;
+
+      map2 = S>Sp;
+      map3 = S<=Sp;
+
+      de = zeros(length(S),1);
+      % ep = void + mat.Cc.*log10(S./Sp);
+      % e1 = ep - mat.Cr.*log10(mat.S1./Sp);
+      % e2 = ep - mat.Cc.*log10(mat.S2./Sp);
+      % 
+      % cbmin = mat.Cr./(log(10).*mat.S1.*(1+e1));
+      % kDecay = mat.Cc./(log(10)*mat.S2.*(e2-mat.emin));
+
+      % de(map1)=cbmin(map1);
+      de(map2)=mat.Cr(map2)./(log(10)*S(map2));
+      de(map3)=mat.Cc(map3)./(log(10)*S(map3));
+      % de(map4)=mat.Cc(map4).*exp(kDecay(map4).*(mat.S2(map4)-S(map4)))...
       %   ./(log(10)*mat.S2(map4).*(1+void(map4)));
+
+      oedo = -de./(1+void);
+      % oedo(map1)=cbmin(map1);
+    end
+
+    function oedo = computeOedoComp3(S,Sp,void0,void,mat)
+      map1 = S > mat.S1;
+      map2 = (S <= mat.S1) & (S > Sp);
+      map3 = (S <= Sp) & (S >= mat.S2);
+      map4 = S < mat.S2;
+
+      oedo = zeros(length(S),1);
+      e1 = void0(map1) - mat.Cr(map1).*log10(mat.S1(map1)./Sp(map1));
+      oedo(map1) = mat.Cr(map1)./(log(10).*mat.S1(map1).*(1+e1));
+      
+      oedo(map2) = mat.Cr(map2)./(log(10)*S(map2).*(1+void(map2)));
+      oedo(map3) = mat.Cc(map3)./(log(10)*S(map3).*(1+void(map3)));
+
+      e2 = void0(map4) - mat.Cc(map4).*log10(mat.S2(map4)./Sp(map4));
+      kDecay = mat.Cc(map4)./(log(10)*mat.S2(map4).*(e2-mat.emin(map4)));
+      oedo(map4) = kDecay(map4).*exp(kDecay.*(mat.S2(map4)-S(map4))).* ...
+        ((e2-mat.emin(map4))./(1+void(map4)));
     end
 
 
@@ -666,6 +731,8 @@ classdef SedimentMaterial < handle
       set(gca,'FontName','Liberation Serif','FontSize',16,...
         'XGrid','on','YGrid','on','XScale','log');
     end
+
+
 
   end
 end

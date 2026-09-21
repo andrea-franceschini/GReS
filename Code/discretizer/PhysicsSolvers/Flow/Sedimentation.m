@@ -225,7 +225,7 @@ classdef Sedimentation < PhysicsSolver
           state.Sp(dof) = -stsCellPreCons;
           state.void(dof) = void;
 
-          state.void0 = SedimentMaterial.getVoidPreCon(abs(stress),stsCellPreCons,void,Cr);
+          state.void0 = SedimentMaterial.getVoidPreCon(stress,stsCellPreCons,void,Cr,Cc);
         end
       end
 
@@ -280,7 +280,7 @@ classdef Sedimentation < PhysicsSolver
 
       obj.deltaStress(map) = (1./(1+void)).*sedmWeight(map);
       obj.voidTop(map) = void;
-      obj.voidTop0(map) = SedimentMaterial.getVoidPreCon(obj.deltaStress(map),stsInit(map),void,Cr(map));
+      obj.voidTop0(map) = SedimentMaterial.getVoidPreCon(obj.deltaStress(map),stsInit(map),void,Cr(map),Cc(map));
 
       dstress = obj.deltaStress(getMapFromDofs(obj.mdof,dofs));
       state.stress(dofs) = state.stress(dofs) - dstress*dt;
@@ -565,8 +565,13 @@ classdef Sedimentation < PhysicsSolver
       
       % New version
       ep = state.void0;
-      sedMat = getCellsProp(obj,'sedMat');
-      ecurr = SedimentMaterial.getVoidRatio(Scurr,Sp,ep,sedMat);
+      % sedMat = getCellsProp(obj,'sedMat');
+      % ecurr = SedimentMaterial.getVoidRatio(Scurr,Sp,ep,sedMat);
+      ecurr = zeros(length(Scurr),1);
+      map1 = Scurr<0;
+      sedMat = getCellsProp(obj,'sedMat',find(map1 == true));
+      ecurr(~map1)=ep(~map1);
+      ecurr(map1) = SedimentMaterial.getVoidRatio2(-Scurr(map1),-Sp(map1),ep(map1),sedMat);
 
       % % Old version
       % Cc = getCellsProp(obj,'compressIdx');
@@ -850,15 +855,24 @@ classdef Sedimentation < PhysicsSolver
       state = getState(obj);
       stateOld = getStateOld(obj);
 
-      % Some variables wrappers - New Version
-      % Scurr= state.stress;
-      % Sp   = stateOld.Sp;
-      % void = state.void;
-      % void0    = state.void0;
-      % 
-      % sedMat   = getCellsProp(obj,'sedMat');
-      % oedoComp = SedimentMaterial.computeOedoComp2(Scurr,Sp,void,sedMat);
+      % % % % % % % % % ecurr = zeros(length(Scurr),1);
+      % % % % % % % % % map1 = Scurr<0;
+      % % % % % % % % % sedMat = getCellsProp(obj,'sedMat',find(map1 == true));
+      % % % % % % % % % ecurr(~map1)=ep(~map1);
+      % % % % % % % % % ecurr(map1) = SedimentMaterial.getVoidRatio2(-Scurr(map1),-Sp(map1),ep(map1),sedMat);
 
+      % Some variables wrappers - New Version
+      Scurr= state.stress;
+      Sp   = stateOld.Sp;
+      void = state.void;
+      ep = state.void0;
+
+      oedoComp = zeros(length(Scurr),1);
+      map1 = Scurr<0;
+      sedMat = getCellsProp(obj,'sedMat',find(map1 == true));
+      oedoComp(map1) = SedimentMaterial.computeOedoComp3(-Scurr(map1),-Sp(map1),ep(map1),void(map1),sedMat);
+
+      % void0    = state.void0;
       % oedoComp = zeros(length(void),1);
       % for mat=1:obj.nmat
       %   tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
@@ -866,14 +880,14 @@ classdef Sedimentation < PhysicsSolver
       %     obj.matfrac(:,mat).*computeOedoComp(tmpMat,Scurr,Sp,void);
       % end
 
-      % Some variables wrappers - Old Version
-      Sprev = stateOld.stress;
-      Scurr = state.stress;
-      Sp = state.Sp;
-      void = state.void;
-      Cc = getCellsProp(obj,'compressIdx');
-      Cr = getCellsProp(obj,'recompressIdx');      
-      oedoComp = SedimentMaterial.OedoCompressibility(Scurr,Sprev,Sp,void,Cc,Cr);
+      % % Some variables wrappers - Old Version
+      % Sprev = stateOld.stress;
+      % Scurr = state.stress;
+      % Sp = state.Sp;
+      % void = state.void;
+      % Cc = getCellsProp(obj,'compressIdx');
+      % Cr = getCellsProp(obj,'recompressIdx');      
+      % oedoComp = SedimentMaterial.OedoCompressibility(Scurr,Sprev,Sp,void,Cc,Cr);
     end
 
 
@@ -915,11 +929,11 @@ classdef Sedimentation < PhysicsSolver
           out.emin = zeros(obj.mdof.ndofs,1);
           for mat=1:obj.nmat
             tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
-            out.Cc = out.Cc + obj.matfrac(:,mat).*tmpMat.Cc;
-            out.Cr = out.Cr + obj.matfrac(:,mat).*tmpMat.Cr;
-            out.S1 = out.S1 + obj.matfrac(:,mat).*tmpMat.S1;
-            out.S2 = out.S2 + obj.matfrac(:,mat).*tmpMat.S2;
-            out.emin = out.emin + obj.matfrac(:,mat).*tmpMat.emin;
+            out.Cc = out.Cc + obj.matfrac(dofs,mat).*tmpMat.Cc;
+            out.Cr = out.Cr + obj.matfrac(dofs,mat).*tmpMat.Cr;
+            out.S1 = out.S1 + obj.matfrac(dofs,mat).*tmpMat.S1;
+            out.S2 = out.S2 + obj.matfrac(dofs,mat).*tmpMat.S2;
+            out.emin = out.emin + obj.matfrac(dofs,mat).*tmpMat.emin;
           end
         % case 'voidlowerlimit'
         %   out = zeros(length(dofs),1);
