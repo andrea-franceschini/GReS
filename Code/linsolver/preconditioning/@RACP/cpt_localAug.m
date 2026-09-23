@@ -32,6 +32,25 @@ function [A11_aug,inv_D22] = cpt_localAug(obj,A11,A12,A21,A22,symm)
          aug(icol) = 1 / alpha;
       end
    end
+   
+   iscomplex = ~isreal(aug);
+
+   if any(iscomplex)
+
+     compAug = aug(iscomplex);
+     r = real(compAug);
+     c = imag(compAug);
+
+     n = norm(c./r,'inf');
+
+     if n > 100*eps
+       error('Coumplex found in local augmentation')
+     else
+       aug = real(aug);
+     end
+
+   end
+     
 
    aug_mat = diag(sparse(aug));
    A22_aug = A22 - obj.gamma*aug_mat;

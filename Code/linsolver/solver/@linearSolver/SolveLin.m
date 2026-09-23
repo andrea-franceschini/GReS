@@ -289,17 +289,21 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
    
    % Base Case: Numeric Matrix
    if ~iscell(A)
-
       diffnorm = norm(A-A','f');
       Anorm = norm(A,'f');
-      relNorm = diffnorm/Anorm;
-
-      if relNorm < eps1
-         maxval = 0;
+      
+      if diffnorm == 0 || Anorm == 0
          globalsymm = 1;
+         maxval = 0;
       else
-         maxval = relNorm;
-         globalsymm = 0;
+         relNorm = diffnorm/Anorm;
+         if relNorm < eps1
+            maxval = 0;
+            globalsymm = 1;
+         else
+            maxval = relNorm;
+            globalsymm = 0;
+         end
       end
       symMat = globalsymm;
       return
@@ -320,16 +324,20 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
          elseif ~isempty(A{i,j})
             % Off-Diagonal Block
             diffnorm = norm(A{i,j}-A{j,i}','f');
-            Anorm = norm(A{i,j},'f');
-            relNorm = diffnorm/Anorm;
+            Anorm = 0.5 * (norm(A{i,j},'f') + norm(A{j,i},'f'));            
             
-            
-            if relNorm < eps1
-                symm(cont) = 1;
-                val(cont) = 0;
+            if diffnorm == 0 || Anorm == 0
+               symm(cont) = 1;
+               val(cont) = 0;
             else
-                symm(cont) = 0;
-                val(cont) = relNorm < eps1;
+               relNorm = diffnorm/Anorm;
+               if relNorm < eps1
+                  symm(cont) = 1;
+                  val(cont) = 0;
+               else
+                  symm(cont) = 0;
+                  val(cont) = relNorm < eps1;
+               end
             end
          end
          cont = cont + 1;
