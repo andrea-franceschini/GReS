@@ -9,6 +9,7 @@ classdef Discretizer < handle
     materials
     grid
     gpMap
+    cellMap
   end
 
   properties
@@ -396,7 +397,7 @@ classdef Discretizer < handle
       obj.J = cell(nV);
       obj.rhs = cell(nV,1);
 
-      obj.materials.setCellMap(obj.grid);
+      obj.setCellMap(obj.grid);
 
       setGaussPointMap(obj);
 
@@ -406,6 +407,33 @@ classdef Discretizer < handle
       for solver = obj.solverNames
         initialize(obj.getPhysicsSolver(solver));
       end
+
+    end
+
+
+    function setCellMap(obj,grid)
+
+      mat = obj.materials;
+      cells = grid.cells;
+
+      matNames = mat.getMaterialNames;
+
+
+      for matID = matNames
+
+        tags = getMaterialTags(mat,matID);
+
+        id = find(ismember(cells.tag,tags));
+
+        obj.cellMap(id) = 1:length(id);
+
+      end
+    end
+
+
+    function matCellId = getMaterialCells(obj,cellId)
+
+      matCellId = obj.cellMap(cellId);
 
     end
 
@@ -529,7 +557,8 @@ classdef Discretizer < handle
       params = readInput(default,input);
 
       obj.grid = params.grid;
-      obj.materials = params.materials;
+      % ensure materials are distinct objects across different domains
+      obj.materials = copy(params.materials);
       obj.bcs = params.boundaries;
 
     end

@@ -252,7 +252,7 @@ classdef Poromechanics < PhysicsSolver
       s.strain(gpId,:) = reshape(strainIncrement,6,[])';
 
       % batched constitutive update
-      locCells = obj.domain.materials.getMaterialCells(cellList);
+      locCells = obj.domain.getMaterialCells(cellList);
       [sigma,D] = constLaw.constitutiveUpdate(locCells,...
         sOld.stress(gpId,:),s.strain(gpId,:),dt,s.time);
 

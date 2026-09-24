@@ -8,6 +8,7 @@ classdef NonLinearImplicit < SolutionScheme
     iterNL = 0          % nonlinear iteration number
     iterConfig = 0      % configuration iteration number
     targetVariables     % variables currently solved for
+    totIter
   end
 
 
@@ -32,6 +33,8 @@ classdef NonLinearImplicit < SolutionScheme
       hasConfigurationChanged = true;
       absTol = obj.simparams.absTol;
       obj.iterConfig = 0;
+      obj.iterNL = 0;
+
       obj.iterNL = 0;
 
       while (hasConfigurationChanged) && (obj.iterConfig < obj.simparams.itMaxConfig)
@@ -76,6 +79,7 @@ classdef NonLinearImplicit < SolutionScheme
 
           newtonIter = newtonIter + 1;
           obj.iterNL = obj.iterNL + 1;
+          obj.totIter = obj.totIter + 1;
 
           J = assembleJacobian(obj);
 

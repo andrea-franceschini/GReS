@@ -155,7 +155,7 @@ classdef (Abstract) SolutionScheme < handle
         interf.setStateOld(state);
         interf.interfId = i;
         interf.outstate = obj.output;
-        initialize(interf)
+        initialize(interf);
       end
 
       obj.isFirstRun = false;
@@ -222,6 +222,8 @@ classdef (Abstract) SolutionScheme < handle
         obj.dtSave = obj.dt;
 
         goBackState(obj);
+
+        %obj.totBackStep = obj.totBackStep + 1;
 
         obj.t = obj.t + obj.dt;
 

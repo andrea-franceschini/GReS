@@ -461,8 +461,10 @@ classdef (Abstract) InterfaceSolver < handle
       % master and slave discretizers
       sharedVars = intersect(varSlave,varMaster);
 
-      in = readInput(struct('variable',sharedVars),input);
-      obj.coupledVariables = in.variable;
+      if isempty(obj.coupledVariables)
+        in = readInput(struct('variable',sharedVars),input);
+        obj.coupledVariables = in.variable;
+      end
 
 
       isInterfaceValid = all(ismember(obj.coupledVariables,sharedVars));

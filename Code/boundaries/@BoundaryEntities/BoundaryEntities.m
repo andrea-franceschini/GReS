@@ -147,7 +147,7 @@ classdef BoundaryEntities < handle
       l = zeros(ncomp,1);
 
       for i = 1:ncomp
-        l(i) = sum(isEntActive(n+1:obj.nTargetEnts(i)));
+        l(i) = sum(isEntActive(n+1:n+obj.nTargetEnts(i)));
         n = n + obj.nTargetEnts(i);
       end
 
