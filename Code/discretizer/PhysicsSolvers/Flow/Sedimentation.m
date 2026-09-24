@@ -560,18 +560,25 @@ classdef Sedimentation < PhysicsSolver
       % Some variables wrappers
       Sprev = stateOld.stress;
       Scurr = state.stress + solution;
-      Sp = state.Sp;
+      Sp = stateOld.Sp;
       eprev = stateOld.void;
       
-      % New version
-      ep = state.void0;
-      % sedMat = getCellsProp(obj,'sedMat');
-      % ecurr = SedimentMaterial.getVoidRatio(Scurr,Sp,ep,sedMat);
-      ecurr = zeros(length(Scurr),1);
+      % % New version
       map1 = Scurr<0;
-      sedMat = getCellsProp(obj,'sedMat',find(map1 == true));
-      ecurr(~map1)=ep(~map1);
-      ecurr(map1) = SedimentMaterial.getVoidRatio2(-Scurr(map1),-Sp(map1),ep(map1),sedMat);
+      ep = state.void0;
+      ecurr = zeros(length(ep),1);      
+      ecurr(~map1)=eprev(~map1);
+      for mat=1:obj.nmat
+        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
+        fraction = obj.matfrac(:,mat);
+        if all(fraction==0)
+          continue;
+        end
+        map2 = map1 & (fraction~=0.);
+        voidFrac = fraction(map2).*ep(map2);
+        ecurr(map2) = ecurr(map2) + ...
+          fraction(map2).*getVoidRatio(tmpMat,-Scurr(map2),-Sp(map2),voidFrac);
+      end
 
       % % Old version
       % Cc = getCellsProp(obj,'compressIdx');
@@ -599,6 +606,7 @@ classdef Sedimentation < PhysicsSolver
       state.stress = Scurr;
       state.pressure = state.pressure + solution;
       state.void = ecurr;
+      % state.void = eprev+delta_e;
       state.strain = strain;
       state.cellDefm = stateOld.cellDefm + strain.*dz;
 
@@ -855,39 +863,34 @@ classdef Sedimentation < PhysicsSolver
       state = getState(obj);
       stateOld = getStateOld(obj);
 
-      % % % % % % % % % ecurr = zeros(length(Scurr),1);
-      % % % % % % % % % map1 = Scurr<0;
-      % % % % % % % % % sedMat = getCellsProp(obj,'sedMat',find(map1 == true));
-      % % % % % % % % % ecurr(~map1)=ep(~map1);
-      % % % % % % % % % ecurr(map1) = SedimentMaterial.getVoidRatio2(-Scurr(map1),-Sp(map1),ep(map1),sedMat);
-
       % Some variables wrappers - New Version
       Scurr= state.stress;
       Sp   = stateOld.Sp;
       void = state.void;
       ep = state.void0;
 
-      oedoComp = zeros(length(Scurr),1);
+      oedoComp = zeros(length(void),1);
       map1 = Scurr<0;
-      sedMat = getCellsProp(obj,'sedMat',find(map1 == true));
-      oedoComp(map1) = SedimentMaterial.computeOedoComp3(-Scurr(map1),-Sp(map1),ep(map1),void(map1),sedMat);
-
-      % void0    = state.void0;
-      % oedoComp = zeros(length(void),1);
-      % for mat=1:obj.nmat
-      %   tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
-      %   oedoComp = oedoComp + ...
-      %     obj.matfrac(:,mat).*computeOedoComp(tmpMat,Scurr,Sp,void);
-      % end
+      for mat=1:obj.nmat
+        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
+        fraction = obj.matfrac(:,mat);
+        if all(fraction==0)
+          continue;
+        end
+        map2 = map1 & (fraction~=0.);
+        oedoComp(map2) = oedoComp(map2) + ...
+          fraction(map2).*computeOedoComp(tmpMat,-Scurr(map2),-Sp(map2),void(map2),fraction(map2));        
+      end
 
       % % Some variables wrappers - Old Version
       % Sprev = stateOld.stress;
       % Scurr = state.stress;
-      % Sp = state.Sp;
+      % Sp = stateOld.Sp;
       % void = state.void;
       % Cc = getCellsProp(obj,'compressIdx');
-      % Cr = getCellsProp(obj,'recompressIdx');      
-      % oedoComp = SedimentMaterial.OedoCompressibility(Scurr,Sprev,Sp,void,Cc,Cr);
+      % Cr = getCellsProp(obj,'recompressIdx');
+      % % oedoComp = SedimentMaterial.OedoCompressibility(Scurr,Sprev,Sp,void,Cc,Cr);
+      % oedoComp = SedimentMaterial.OedoCompressibility2(-Scurr,-Sp,void,Cc,Cr);
     end
 
 

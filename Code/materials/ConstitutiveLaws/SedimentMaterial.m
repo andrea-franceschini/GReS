@@ -49,45 +49,40 @@ classdef SedimentMaterial < handle
       out = obj.KVec;
     end
 
-    function cb = computeOedoComp(obj,S,Sp,void)
-      S=abs(S);
-      Sp=abs(Sp);
+    function cb = computeOedoComp(obj,S,Sp,void,frac)
+      map4 = S < obj.S1;
+      map3 = (S >= obj.S1) & (S < Sp);
+      map2 = (S >= Sp) & (S <= obj.S2);
+      map1 = S > obj.S2;
+
+      % map2 = S < Sp;
+      % map3 = ~map2;
       
-      % map1 = S<obj.S1;
-      % map4 = S>obj.S2;
-      % mapTmp = and(~map1,~map4);
-      % map2 = and(mapTmp,S<Sp);
-      % map3 = and(mapTmp,S>Sp);
-
-      map2 = S<Sp;
-      map3 = S>Sp;
-
       cb = zeros(length(S),1);
-      % cb(map1)=obj.cbmin;
-      cb(map2)=obj.Cr./(log(10)*S(map2).*(1+void(map2)));
-      cb(map3)=obj.Cc./(log(10)*S(map3).*(1+void(map3)));
-      % cb(map4)=obj.kDecay*((void(map4)-obj.emin)./(1+void(map4)));
+      cb(map1) = obj.Cr./(log(10)*obj.S1);
+      cb(map2) = obj.Cr./(log(10)*S(map2));
+      cb(map3) = obj.Cc./(log(10)*S(map3));
+      cb(map4) = (obj.Cc.*exp(obj.kDecay.*(obj.S2-S(map4))))./(log(10)*obj.S2);
+
+      % voidDiff = 1+frac.*void;
+      voidDiff = 1+void;
+      % voidDiff(map1)=1+frac(map1).*obj.e1;
+      cb=cb./voidDiff;
     end
 
+   
+    function e = getVoidRatio(obj,Scurr,Sp,ep)
+      map1 = Scurr < obj.S1;
+      map2 = (Scurr >= obj.S1) & (Scurr < Sp);
+      map3 = (Scurr >= Sp) & (Scurr <= obj.S2);
+      map4 = Scurr > obj.S2;
 
-
-    % % function out = getVoidRate(obj)
-    % %     out = obj.voidRate;
-    % % end
-    % %
-    % % function out = getVoidLowerLim(obj)
-    % %     out = obj.voidLowerLim;
-    % % end
-    % %
-    % % function out = getPreConsolidadeStress(obj)
-    % %     out = obj.preStress;
-    % % end
-    % %
-    % % function out = getInitialStress(obj)
-    % %     out = obj.inicStress;
-    % % end
-
-
+      e = zeros(length(Scurr),1);
+      e(map1) = (1+obj.e1).*exp(obj.cbmin.*(obj.S1-Scurr(map1)))-1;
+      e(map2) = ep(map2)-obj.Cr.*log10(Scurr(map2)./Sp(map2));
+      e(map3) = ep(map3)-obj.Cc.*log10(Scurr(map3)./Sp(map3));
+      e(map4) = obj.emin+(obj.e2-obj.emin).*exp(obj.kDecay.*(obj.S2-Scurr(map4)));
+    end
   end
 
   methods (Access = private)
@@ -154,10 +149,6 @@ classdef SedimentMaterial < handle
       obj.cbmin = obj.Cr./(log(10)*obj.S1*(1+obj.e1));
       obj.kDecay = (obj.Cc)/(log(10)*obj.S2*(obj.e2-obj.emin));
     end
-
-
-
-
   end
 
   methods (Static)
@@ -175,155 +166,6 @@ classdef SedimentMaterial < handle
       void = void_Ref - Cc.*log10(stress./stress_Ref);
     end
 
-    function e = getVoidRatio(Scurr,Sp,ep,mat)
-      %GETVOIDRATIO Compute the void ratio.
-      %
-      %   Computes the void ratio according to the stress range:
-      %               / (1+e1)*exp(cbmin*(S1-Scurr))-1,        Scurr < S1
-      %              | ep-Cr*log10(Scurr/Sp),           S1 <= Scurr <= Sp
-      %     e(S) =  <
-      %              | ep-Cc*log10(Scurr/Sp),            Sp < Scurr <= S2
-      %               \ emin+(e2-emin)*exp(k*(S2-S)),         Scurr > S2
-      %
-      %   where S1 and S2 define the lower and upper stress limits, Sp
-      %   is the preconsolidation stress, Cc and Cr are the compression
-      %   and recompression indices, and emin is the minimum void ratio.
-      %
-      %   INPUTS:
-      %     Scurr  - Current effective stress.
-      %     S1,S2  - Lower and upper stress limits.
-      %     Sp     - Preconsolidation stress.
-      %     Cc,Cr  - Compression and recompression indices.
-      %     ep     - Previous effective void ratios.
-      %     e1,e2  - Void ratios at S1 and S2.
-      %     emin   - Minimum void ratio.
-      %     cbmin  - Low-stress exponential coefficient.
-      %     kdecay - High-stress decay coefficient.
-      %
-      %   OUTPUT:
-      %      e     - Void ratio.
-      Scurr = abs(Scurr);
-      Sp = abs(Sp);
-      S1 = abs(mat.S1);
-      S2 = abs(mat.S2);
-
-      map1 = Scurr < S1;
-      map2 = (Scurr >= S1) & (Scurr < Sp);
-      map3 = (Scurr >= Sp) & (Scurr <= S2);
-      map4 = Scurr > S2;
-
-      % map2 = Scurr<Sp;
-      % map3 = Scurr>Sp;
-
-      e1 = ep - mat.Cr.*log10(S1./Sp);
-      e2 = ep - mat.Cc.*log10(S2./Sp);
-      cbmin = mat.Cr./(log(10)*S1.*(1+e1));
-      kdecay = mat.Cc./(log(10)*S2.*(e2-mat.emin));
-
-      ndofs = length(Scurr);
-      e = zeros(ndofs,1);
-
-      e(map1) = (1+e1(map1)).*exp(cbmin(map1).*(S1(map1)-Scurr(map1)))-1;
-      e(map2) = ep(map2)-mat.Cr(map2).*log10(Scurr(map2)./Sp(map2));
-      e(map3) = ep(map3)-mat.Cc(map3).*log10(Scurr(map3)./Sp(map3));
-      e(map4) = mat.emin(map4)+(e2(map4)-mat.emin(map4)).*exp(kdecay(map4).*(S2(map4)-Scurr(map4)));
-    end
-
-    function e = getVoidRatio2(Scurr,Sp,ep,mat)
-      %GETVOIDRATIO Compute the void ratio.
-      %
-      %   Computes the void ratio according to the stress range:
-      %               / (1+e1)*exp(cbmin*(S1-Scurr))-1,        Scurr < S1
-      %              | ep-Cr*log10(Scurr/Sp),           S1 <= Scurr <= Sp
-      %     e(S) =  <
-      %              | ep-Cc*log10(Scurr/Sp),            Sp < Scurr <= S2
-      %               \ emin+(e2-emin)*exp(k*(S2-S)),         Scurr > S2
-      %
-      %   where S1 and S2 define the lower and upper stress limits, Sp
-      %   is the preconsolidation stress, Cc and Cr are the compression
-      %   and recompression indices, and emin is the minimum void ratio.
-      %
-      %   INPUTS:
-      %     Scurr  - Current effective stress.
-      %     Sp     - Preconsolidation stress.
-      %     ep     - Previous effective void ratios.
-      %     mat    - Low-stress exponential coefficient.
-      %
-      %   OUTPUT:
-      %      e     - Void ratio.
-      map1 = Scurr < mat.S1;
-      map2 = (Scurr >= mat.S1) & (Scurr < Sp);
-      map3 = (Scurr >= Sp) & (Scurr <= mat.S2);
-      map4 = Scurr > mat.S2;
-
-      e1 = ep - mat.Cr.*log10(mat.S1./Sp);
-      e2 = ep - mat.Cc.*log10(mat.S2./Sp);
-      cbmin = mat.Cr./(log(10)*mat.S1.*(1+e1));
-      kdecay = mat.Cc./(log(10)*mat.S2.*(e2-mat.emin));
-
-      e = zeros(length(Scurr),1);
-      e(map1) = (1+e1(map1)).*exp(cbmin(map1).*(mat.S1(map1)-Scurr(map1)))-1;
-      e(map2) = ep(map2)-mat.Cr(map2).*log10(Scurr(map2)./Sp(map2));
-      e(map3) = ep(map3)-mat.Cc(map3).*log10(Scurr(map3)./Sp(map3));
-      e(map4) = mat.emin(map4)+(e2(map4)-mat.emin(map4)).*exp(kdecay(map4).*(mat.S2(map4)-Scurr(map4)));
-    end
-
-
-    function oedo = computeOedoComp2(S,Sp,void,mat)
-      % s  = abs(S);
-      % sp = abs(Sp);
-      % s1 = abs(mat.S1);      
-      % s2 = abs(mat.S2);
-
-      % map1 = s < s1;
-      % map2 = (s >= s1) & (s < sp);
-      % map3 = (s >= sp) & (s <= s2);
-      % map4 = s > s2;
-
-      % map2 = s < sp;
-      % map3 = s >= sp;
-
-      map2 = S>Sp;
-      map3 = S<=Sp;
-
-      de = zeros(length(S),1);
-      % ep = void + mat.Cc.*log10(S./Sp);
-      % e1 = ep - mat.Cr.*log10(mat.S1./Sp);
-      % e2 = ep - mat.Cc.*log10(mat.S2./Sp);
-      % 
-      % cbmin = mat.Cr./(log(10).*mat.S1.*(1+e1));
-      % kDecay = mat.Cc./(log(10)*mat.S2.*(e2-mat.emin));
-
-      % de(map1)=cbmin(map1);
-      de(map2)=mat.Cr(map2)./(log(10)*S(map2));
-      de(map3)=mat.Cc(map3)./(log(10)*S(map3));
-      % de(map4)=mat.Cc(map4).*exp(kDecay(map4).*(mat.S2(map4)-S(map4)))...
-      %   ./(log(10)*mat.S2(map4).*(1+void(map4)));
-
-      oedo = -de./(1+void);
-      % oedo(map1)=cbmin(map1);
-    end
-
-    function oedo = computeOedoComp3(S,Sp,void0,void,mat)
-      map1 = S > mat.S1;
-      map2 = (S <= mat.S1) & (S > Sp);
-      map3 = (S <= Sp) & (S >= mat.S2);
-      map4 = S < mat.S2;
-
-      oedo = zeros(length(S),1);
-      e1 = void0(map1) - mat.Cr(map1).*log10(mat.S1(map1)./Sp(map1));
-      oedo(map1) = mat.Cr(map1)./(log(10).*mat.S1(map1).*(1+e1));
-      
-      oedo(map2) = mat.Cr(map2)./(log(10)*S(map2).*(1+void(map2)));
-      oedo(map3) = mat.Cc(map3)./(log(10)*S(map3).*(1+void(map3)));
-
-      e2 = void0(map4) - mat.Cc(map4).*log10(mat.S2(map4)./Sp(map4));
-      kDecay = mat.Cc(map4)./(log(10)*mat.S2(map4).*(e2-mat.emin(map4)));
-      oedo(map4) = kDecay(map4).*exp(kDecay.*(mat.S2(map4)-S(map4))).* ...
-        ((e2-mat.emin(map4))./(1+void(map4)));
-    end
-
-
     function oedo = OedoCompressibility(Scurr,Sprev,Sp,void,Cc,Cr)
       % Return the variation in void ratio
       ndofs = length(Scurr);
@@ -336,6 +178,18 @@ classdef SedimentMaterial < handle
       de(map2) = Cc(map2)./(log(10)*Scurr(map2));
       de(map3) = Cc(map3)./(log(10)*Scurr(map3));
       oedo = -(1./(1+void)).*de;
+    end
+
+    function oedo = OedoCompressibility2(Scurr,Sp,void,Cr,Cc)
+      % Return the variation in void ratio
+      ndofs = length(Scurr);
+      map1 = Scurr < Sp;
+      map2 = ~map1;
+
+      de = zeros(ndofs,1);
+      de(map1) = Cr(map1)./(log(10)*Scurr(map1));
+      de(map2) = Cc(map2)./(log(10)*Scurr(map2));
+      oedo = de./(1+void);
     end
 
     function dvoid = getDeltaVoidRatio(Scurr,Sprev,Sp,Cc,Cr)
@@ -360,286 +214,6 @@ classdef SedimentMaterial < handle
 
 
 
-    % % % % function [map1, map2, map3, map4] = branch(S,S1,S2,Sp)
-    % % % %   S = abs(S); S1=abs(S1); S2=abs(S2); Sp=abs(Sp);
-    % % % %   map1 = S<S1;
-    % % % %   map2 = S>S2;
-    % % % %   mapTmp = and(~map1,~map2);
-    % % % %   map3 = and(mapTmp,S<Sp);
-    % % % %   map4 = and(mapTmp,S>Sp);
-    % % % % end
-    % % % %
-    % % % % function out = branchID(S,S1,S2,Sp)
-    % % % %   [map1, map2, map3, map4] = SedimentationMaterial.branch(S,S1,S2,Sp);
-    % % % %   out = map1+2.*map2+3.*map3+4.*map4;
-    % % % % end
-
-    % % % % function e = getVoidRatio1(Scurr,Sp,S1,S2,Cc,Cr,ep,e1,e2,emin,cbmin,kdecay)
-    % % % %   %GETVOIDRATIO Compute the void ratio.
-    % % % %   %
-    % % % %   %   Computes the void ratio according to the stress range:
-    % % % %   %               / (1+e1)*exp(cbmin*(S1-Scurr))-1,        Scurr < S1
-    % % % %   %              | ep-Cr*log10(Scurr/Sp),           S1 <= Scurr <= Sp
-    % % % %   %     e(S) =  <
-    % % % %   %              | ep-Cc*log10(Scurr/Sp),            Sp < Scurr <= S2
-    % % % %   %               \ emin+(e2-emin)*exp(k*(S2-S)),         Scurr > S2
-    % % % %   %
-    % % % %   %   where S1 and S2 define the lower and upper stress limits, Sp
-    % % % %   %   is the preconsolidation stress, Cc and Cr are the compression
-    % % % %   %   and recompression indices, and emin is the minimum void ratio.
-    % % % %   %
-    % % % %   %   INPUTS:
-    % % % %   %     Scurr  - Current effective stress.
-    % % % %   %     S1,S2  - Lower and upper stress limits.
-    % % % %   %     Sp     - Preconsolidation stress.
-    % % % %   %     Cc,Cr  - Compression and recompression indices.
-    % % % %   %     ep     - Previous effective void ratios.
-    % % % %   %     e1,e2  - Void ratios at S1 and S2.
-    % % % %   %     emin   - Minimum void ratio.
-    % % % %   %     cbmin  - Low-stress exponential coefficient.
-    % % % %   %     kdecay - High-stress decay coefficient.
-    % % % %   %
-    % % % %   %   OUTPUT:
-    % % % %   %      e     - Void ratio.
-    % % % %
-    % % % %   Scurr = abs(Scurr);
-    % % % %   Sp    = abs(Sp);
-    % % % %   S1    = abs(S1);
-    % % % %   S2    = abs(S2);
-    % % % %
-    % % % %   map1 = Scurr < S1;
-    % % % %   map4 = Scurr > S2;
-    % % % %   map2 = and(and(Scurr < Sp,~map1),~map4);
-    % % % %   map3 = and(and(Scurr > Sp,~map1),~map4);
-    % % % %
-    % % % %   ndofs = length(Scurr);
-    % % % %   e = zeros(ndofs,1);
-    % % % %
-    % % % %   e(map1) = (1+e1(map1)).*exp(cbmin(map1).*(S1(map1)-Scurr(map1)))-1;
-    % % % %   e(map2) = ep(map2)-Cr(map2).*log10(Scurr(map2)./Sp(map2));
-    % % % %   e(map3) = ep(map3)-Cc(map3).*log10(Scurr(map3)./Sp(map3));
-    % % % %   e(map4) = emin(map4)+(e2(map4)-emin(map4)).*exp(kdecay(map4).*(S2(map4)-Scurr(map4)));
-    % % % % end
-
-    % % % % function e = getDiffVoidRatio1(Scurr,Sp,S1,S2,Cc,Cr,e1,e2,emin,cbmin,kdecay)
-    % % % %   %GETVOIDRATIO Compute the void ratio.
-    % % % %   %
-    % % % %   %   Computes the derivative of the void ratio with respect to stress:
-    % % % %   %               / -cbmin*(1+e1)*exp(cbmin*(S1-Scurr)),   Scurr < S1
-    % % % %   %              | -Cr/(Scurr*log(10)),                     S1 <= Scurr <= Sp
-    % % % %   %     de/dS =  <
-    % % % %   %              | -Cc/(Scurr*log(10)),                     Sp < Scurr <= S2
-    % % % %   %               \ -k*(e2-emin)*exp(k*(S2-Scurr)),         Scurr > S2
-    % % % %   %
-    % % % %   %   where S1 and S2 define the lower and upper stress limits, Sp
-    % % % %   %   is the preconsolidation stress, Cc and Cr are the compression
-    % % % %   %   and recompression indices, and emin is the minimum void ratio.
-    % % % %   %
-    % % % %   %   INPUTS:
-    % % % %   %     Scurr  - Current effective stress.
-    % % % %   %     S1,S2  - Lower and upper stress limits.
-    % % % %   %     Sp     - Preconsolidation stress.
-    % % % %   %     Cc,Cr  - Compression and recompression indices.
-    % % % %   %     e1,e2  - Void ratios at S1 and S2.
-    % % % %   %     emin   - Minimum void ratio.
-    % % % %   %     cbmin  - Low-stress exponential coefficient.
-    % % % %   %     kdecay - High-stress decay coefficient.
-    % % % %   %
-    % % % %   %   OUTPUT:
-    % % % %   %      e     - Void ratio.
-    % % % %
-    % % % %   Scurr = abs(Scurr);
-    % % % %   Sp    = abs(Sp);
-    % % % %   S1    = abs(S1);
-    % % % %   S2    = abs(S2);
-    % % % %
-    % % % %   map1 = Scurr < S1;
-    % % % %   map4 = Scurr > S2;
-    % % % %   map2 = and(and(Scurr < Sp,~map1),~map4);
-    % % % %   map3 = and(and(Scurr > Sp,~map1),~map4);
-    % % % %
-    % % % %   ndofs = length(Scurr);
-    % % % %   e = zeros(ndofs,1);
-    % % % %
-    % % % %   e(map1) = -cbmin(map1).*(1+e1(map1)).*exp(cbmin(map1).*(S1(map1)-Scurr(map1)))-1;
-    % % % %   e(map2) = -Cr(map2)./(log(10)*Scurr(map2));
-    % % % %   e(map3) = -Cc(map3)./(log(10)*Scurr(map3));
-    % % % %   e(map4) = -kdecay(map4).*(e2(map4)-emin(map4)).*exp(kdecay(map4).*(S2(map4)-Scurr(map4)));
-    % % % % end
-
-
-
-    % % % % function [e,cbmin] = getDiffVoidRatio(Scurr,Sp,S1,S2,Cc,Cr,ep,emin)
-    % % % %   %GETVOIDRATIO Compute the void ratio.
-    % % % %   %
-    % % % %   %   Computes the derivative of the void ratio with respect to stress:
-    % % % %   %               / -cbmin*(1+e1)*exp(cbmin*(S1-Scurr)),   Scurr < S1
-    % % % %   %              | -Cr/(Scurr*log(10)),                     S1 <= Scurr <= Sp
-    % % % %   %     de/dS =  <
-    % % % %   %              | -Cc/(Scurr*log(10)),                     Sp < Scurr <= S2
-    % % % %   %               \ -k*(e2-emin)*exp(k*(S2-Scurr)),         Scurr > S2
-    % % % %   %
-    % % % %   %   where S1 and S2 define the lower and upper stress limits, Sp
-    % % % %   %   is the preconsolidation stress, Cc and Cr are the compression
-    % % % %   %   and recompression indices, and emin is the minimum void ratio.
-    % % % %   %
-    % % % %   %   INPUTS:
-    % % % %   %     Scurr  - Current effective stress.
-    % % % %   %     S1,S2  - Lower and upper stress limits.
-    % % % %   %     Sp     - Preconsolidation stress.
-    % % % %   %     Cc,Cr  - Compression and recompression indices.
-    % % % %   %     e1,e2  - Void ratios at S1 and S2.
-    % % % %   %     emin   - Minimum void ratio.
-    % % % %   %     cbmin  - Low-stress exponential coefficient.
-    % % % %   %     kdecay - High-stress decay coefficient.
-    % % % %   %
-    % % % %   %   OUTPUT:
-    % % % %   %      e     - Void ratio.
-    % % % %
-    % % % %   Scurr = abs(Scurr);
-    % % % %   Sp    = abs(Sp);
-    % % % %   S1    = abs(S1);
-    % % % %   S2    = abs(S2);
-    % % % %
-    % % % %   e1 = ep - Cr.*log10(S1./Sp);
-    % % % %   e2 = ep - Cc.*log10(S2./Sp);
-    % % % %   cbmin = Cr./(log(10)*S1.*(1+e1));
-    % % % %   kdecay = Cc./(log(10).*S2.*(e2-emin));
-    % % % %
-    % % % %   map1 = Scurr < S1;
-    % % % %   map4 = Scurr > S2;
-    % % % %   map2 = and(and(Scurr < Sp,~map1),~map4);
-    % % % %   map3 = and(and(Scurr > Sp,~map1),~map4);
-    % % % %
-    % % % %   ndofs = length(Scurr);
-    % % % %   e = zeros(ndofs,1);
-    % % % %
-    % % % %   e(map1) = -cbmin(map1).*(1+e1(map1)).*exp(cbmin(map1).*(S1(map1)-Scurr(map1)))-1;
-    % % % %   e(map2) = -Cr(map2)./(log(10)*Scurr(map2));
-    % % % %   e(map3) = -Cc(map3)./(log(10)*Scurr(map3));
-    % % % %   e(map4) = -kdecay(map4).*(e2(map4)-emin(map4)).*exp(kdecay(map4).*(S2(map4)-Scurr(map4)));
-    % % % % end
-
-
-    % % % % function de = getDeltaVoidRatio(Scurr,Sprev,S1,S2,Sp,Cc,Cr,e1,e2,emin,cbmin,kdecay,eprev)
-    % % % %   %GETDELTAVOIDRATIO Compute the variation in void ratio.
-    % % % %   %
-    % % % %   %   Computes the void ratio variation according to the stress range:
-    % % % %   %               / (1+e1)*exp(cbmin*(S1-Scurr))-1-eprev,             Scurr < S1
-    % % % %   %              | -Cr*log10(Scurr/Sp),                               S1 <= Scurr <= Sp
-    % % % %   %     e(S) =  <  -Cr*log10(Sp/Sprev)-Cc*log10(Scurr/Sp),            Scurr> Sp and Sprev < Sp
-    % % % %   %              | -Cc*log10(Scurr/Sp),                               Sp < Scurr <= S2
-    % % % %   %               \ emin+(e2-emin)*exp(-k*(S-S2))-eprev,              Scurr > S2
-    % % % %   %
-    % % % %   %   where S1 and S2 define the lower and upper stress limits, Sp is the
-    % % % %   %   preconsolidation stress, Cc and Cr are the compression and
-    % % % %   %   recompression indices, and emin is the minimum void ratio.
-    % % % %   %
-    % % % %   %   INPUTS:
-    % % % %   %     Scurr  - Current effective stress.
-    % % % %   %     Sprev  - Previous effective stress.
-    % % % %   %     eprev  - Previous effective void ratios.
-    % % % %   %     S1,S2  - Lower and upper stress limits.
-    % % % %   %     Sp     - Preconsolidation stress.
-    % % % %   %     Cc,Cr  - Compression and recompression indices.
-    % % % %   %     e1,e2  - Void ratios at S1 and S2.
-    % % % %   %     emin   - Minimum void ratio.
-    % % % %   %     cbmin  - Low-stress exponential coefficient.
-    % % % %   %     kdecay - High-stress decay coefficient.
-    % % % %   %
-    % % % %   %   OUTPUT:
-    % % % %   %     de     - Variation in void ratio.
-    % % % %
-    % % % %   Scurr = abs(Scurr);
-    % % % %   Sprev = abs(Sprev);
-    % % % %   Sp    = abs(Sp);
-    % % % %   S1    = abs(S1);
-    % % % %   S2    = abs(S2);
-    % % % %
-    % % % %   map1 = Scurr < Sp;
-    % % % %   map2 = Sprev >= Sp;
-    % % % %   map3 = and((~map1),(~map2));
-    % % % %   map4 = Scurr < S1;
-    % % % %   map5 = Scurr > S2;
-    % % % %
-    % % % %   map1 = and(map1,~map4);
-    % % % %   map2 = and(map2,~map4);
-    % % % %   map3 = and(map3,~map4);
-    % % % %
-    % % % %   map1 = and(map1,~map5);
-    % % % %   map2 = and(map2,~map5);
-    % % % %   map3 = and(map3,~map5);
-    % % % %
-    % % % %   ndofs = length(Scurr);
-    % % % %   de = zeros(ndofs,1);
-    % % % %   de(map1) = -Cr(map1).*log10(Scurr(map1)./Sprev(map1));
-    % % % %   de(map2) = -Cc(map2).*log10(Scurr(map2)./Sprev(map2));
-    % % % %   de(map3) = -Cr(map3).*log10(Sp(map3)./Sprev(map3)) ...
-    % % % %     - Cc(map3).*log(Scurr(map3)./Sp(map3));
-    % % % %
-    % % % %   de(map4) = (1+e1(map4)).*exp(cbmin(map4).*(S1(map4)-Scurr(map4)))-1-eprev(map4);
-    % % % %   de(map5) = emin(map5)-eprev(map5)+(e2(map5)-emin(map5)).*exp(kdecay(map5).*(S2(map5)-Scurr(map5)));
-    % % % % end
-
-    % % % % function de = getDevVoidRatio(Scurr,Sprev,S1,S2,Sp,Cc,Cr,e2,emin,kdecay)
-    % % % %   %GETDEVVOIDRATIO2 Compute the derivative of void ratio with respect to stress.
-    % % % %   %
-    % % % %   %   Computes de/dScurr according to the stress range:
-    % % % %   %                / -cbmin*(1+e1)*exp(cbmin*(S1-Scurr)),             Scurr < S1
-    % % % %   %               | -Cr/(log(10)*Scurr),                              S1 <= Scurr < Sp
-    % % % %   %   de/dS =    <  -Cc*log10(Scurr/Sp),                              Scurr > Sp and Sprev < Sp
-    % % % %   %               | -Cc/(log(10)*Scurr),                              Sp <= Scurr <= S2
-    % % % %   %                \ -kdecay*(e2-emin)*exp(kdecay*(S2-Scurr)),        Scurr > S2
-    % % % %   %
-    % % % %   %   For a stress path crossing the preconsolidation stress from below,
-    % % % %   %   i.e. Sprev < Sp and Scurr >= Sp, the derivative corresponds to the
-    % % % %   %   compression branch and is therefore based on Cc.
-    % % % %   %
-    % % % %   %   INPUTS:
-    % % % %   %     Scurr  - Current effective stress.
-    % % % %   %     Sprev  - Previous effective stress.
-    % % % %   %     S1,S2  - Lower and upper stress limits.
-    % % % %   %     Sp     - Preconsolidation stress.
-    % % % %   %     Cc,Cr  - Compression and recompression indices.
-    % % % %   %     e1,e2  - Void ratios at S1 and S2.
-    % % % %   %     emin   - Minimum void ratio.
-    % % % %   %     cbmin  - Low-stress exponential coefficient.
-    % % % %   %     kdecay - High-stress decay coefficient.
-    % % % %   %
-    % % % %   %   OUTPUT:
-    % % % %   %     de     - Derivative of void ratio with respect to Scurr.
-    % % % %
-    % % % %   Scurr = abs(Scurr);
-    % % % %   Sprev = abs(Sprev);
-    % % % %   Sp    = abs(Sp);
-    % % % %   S1    = abs(S1);
-    % % % %   S2    = abs(S2);
-    % % % %
-    % % % %   map1 = Scurr < Sp;
-    % % % %   map2 = Sprev >= Sp;
-    % % % %   map3 = and((~map1),(~map2));
-    % % % %   map4 = Scurr < S1;
-    % % % %   map5 = Scurr > S2;
-    % % % %
-    % % % %   map1 = and(map1,~map4);
-    % % % %   map2 = and(map2,~map4);
-    % % % %   map3 = and(map3,~map4);
-    % % % %
-    % % % %   map1 = and(map1,~map5);
-    % % % %   map2 = and(map2,~map5);
-    % % % %   map3 = and(map3,~map5);
-    % % % %
-    % % % %   ndofs = length(Scurr);
-    % % % %   de = zeros(ndofs,1);
-    % % % %
-    % % % %   de(map1) = -Cr(map1)./(log(10)*Scurr(map1));
-    % % % %   de(map2) = -Cc(map2)./(log(10)*Scurr(map2));
-    % % % %   de(map3) = -Cc(map3)./(log(10)*Scurr(map3));
-    % % % %
-    % % % %   % de(map4) = -cbmin(map4)*(1+e1(map4))*exp(cbmin(map4)*(S1(map4)-Scurr(map4)));
-    % % % %   % de(map4) = 0;
-    % % % %   de(map5) = -kdecay(map5).*(e2(map5)-emin(map5)).*exp(kdecay(map5).*(S2(map5)-Scurr(map5)));
-    % % % % end
 
     function graphVoidOedo(mat,range,pts)
       % GRAPHVOIDOEDO Plot void ratio and oedometric compressibility.
@@ -748,7 +322,7 @@ end
 %
 %
 %
-%
+% 
 % mat(1) = struct('Cc',  4,'Cr',0.4,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',2,'e0',15,'S0',1);
 % mat(2) = struct('Cc',  3,'Cr',0.1,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',1.,'e0',10,'S0',1);
 % mat(3) = struct('Cc',0.5,'Cr',0.05,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',1.2,'e0',3,'S0',1);
