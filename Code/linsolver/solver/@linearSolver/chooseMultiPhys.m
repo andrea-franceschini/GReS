@@ -1,7 +1,7 @@
 function [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname)
 
    % List of allowed physics
-   allowedPhysics = {'pressure', 'u', 'displacements'};
+   allowedPhysics = {'pressure', 'displacements'};
    
    % Check if any entry in physname is NOT among the allowed physics
    if any(~ismember(physname, allowedPhysics))
@@ -13,10 +13,10 @@ function [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physna
        Prec = [];
        ChronosFlag = false;
    
-   % Exactly 2 physics: ('displacements' AND 'pressure') OR ('displacements' AND 'u')
+   % Exactly 2 physics: ('displacements' AND 'pressure')
    elseif numel(unique(physname)) == 2 && ...
           ismember("displacements", physname) && ...
-          (ismember("pressure", physname) || ismember("u", physname))
+          (ismember("pressure", physname))
    
        Prec = fixedStress(debugflag, generalsolver);
        ChronosFlag = true;
