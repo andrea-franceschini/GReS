@@ -107,6 +107,7 @@ classdef linearSolver < handle
       newtonLin = []
       timeLin = []
       Delta_T = []
+      systemSize = 0
 
       % SAM object
       useSAM = false
@@ -231,7 +232,7 @@ classdef linearSolver < handle
          fprintf('Max number of iterations = %d\n',obj.maxIter);
          fprintf('Total time for computation of the linear systems = %e\n',obj.aTimeComp+obj.aTimeSolve+sum(obj.SAM.CompLin));
          % fprintf('Used %d threads during mex\n',obj.Prec.maxThreads);
-
+         fprintf('Max system size = %d\n',obj.systemSize);
       end
 
       % Function to solve the system

@@ -129,8 +129,15 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % Convert the matrix to a sparse double if not already like this
    if iscell(A)
       Amat = cell2matrix(A);
-      symValue = norm(Amat-Amat','f')/norm(Amat,'f');
+   else
+      Amat = A;
    end
+
+   % Get the size of the system
+   obj.systemSize = size(Amat,1);
+
+   % Get symmetry
+   symValue = norm(Amat-Amat','f')/norm(Amat,'f');
 
    % Store the matrix for the SAM when the preconditioner is being computed
    % anew if SAM is used
@@ -274,6 +281,9 @@ function [x,flag] = matlab_solve(obj,A,b,time)
    x = A\b;
    Tend = toc(startT);
 
+   % Get the size of the system
+   obj.systemSize = max(size(A,1),obj.systemSize);
+
    % if obj.DEBUGflag
    %    fprintf('condition number of the matrix %e\n',condest(A));
    % end
@@ -296,6 +306,7 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
          maxval = 0;
       else
          relNorm = diffnorm/Anorm;
+
          if relNorm < eps1
             maxval = 0;
             globalsymm = 1;
@@ -323,13 +334,14 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
          elseif ~isempty(A{i,j})
             % Off-Diagonal Block
             diffnorm = norm(A{i,j}-A{j,i}','f');
-            Anorm = 0.5 * (norm(A{i,j},'f') + norm(A{j,i},'f'));            
+            Anorm = 0.5 * (norm(A{i,j},'f') + norm(A{j,i},'f'));
             
             if diffnorm == 0 || Anorm == 0
                symm(cont) = 1;
                val(cont) = 0;
             else
                relNorm = diffnorm/Anorm;
+
                if relNorm < eps1
                   symm(cont) = 1;
                   val(cont) = 0;
