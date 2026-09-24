@@ -51,6 +51,9 @@ function Compute(obj,A,symm,varargin)
    % Compute the AMG preconditioner
    obj.Prec = cpt_aspAMG(obj.params,A,TV0,obj.DEBUGflag);
 
+   % Get AMG hierarchy information
+   obj.AMG_info = get_AMG_info(obj.Prec,A);
+
    % Define Mfun
    obj.Apply_L = @(r) obj.ApplyLeft(r,A);
    obj.Apply_R = @(r) obj.ApplyRight(r);

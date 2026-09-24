@@ -37,6 +37,9 @@ classdef aAMG < preconditioner
       % Generalsolver
       generalsolver
 
+      % AMG info
+      AMG_info
+
    end
 
    methods (Access = public)
@@ -62,6 +65,12 @@ classdef aAMG < preconditioner
 
          x = b;
       end
+
+      % Print info
+      function AMGinfo(obj)
+         print_AMG_info(obj.AMG_info)
+      end
+         
 
       % Constructor Function
       function obj = aAMG(debugflag,generalsolver,physname)
