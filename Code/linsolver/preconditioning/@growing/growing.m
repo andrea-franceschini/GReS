@@ -49,6 +49,9 @@ classdef growing < preconditioner
       % Size difference from when the preconditioner was originally
       % computed
       sizeDiff = 0
+
+      % Size at which the preconditioner had been initially computed
+      sizeComp = 0
       
    end
 
@@ -70,8 +73,11 @@ classdef growing < preconditioner
             A = A{1,1};
          end
 
+         % Size at which has been computed
+         obj.sizeComp = size(A,1);
+
          % Compute the test space
-         TV0 = ones(size(A,1),1);
+         TV0 = ones(obj.sizeComp,1);
       
          % Compute the amg for block 11
          obj.AMG.Compute(A,obj.PrecSym,TV0,false);
