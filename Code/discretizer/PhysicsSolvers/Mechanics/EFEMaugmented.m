@@ -782,18 +782,6 @@ classdef EFEMaugmented < PhysicsSolver
 
     end
 
-
-    function out = isLinear(obj)
-      out = false;
-    end
-
-    function out = isSymmetric(obj)
-
-      % if the problem is linear, then Poromechanics is symmetric
-      out = false;
-
-    end
-
     function writeSolution(obj,fac,tID)
 
       jumpOld = getStateOld(obj,"fractureJump");
@@ -852,6 +840,28 @@ classdef EFEMaugmented < PhysicsSolver
 
     end
 
+
+    function [out] = isLinear(obj)
+       % Initialize output
+       out = false;
+
+       % Check if poromechanics is linear
+       if ~obj.mechSolver.isLinear()
+          return
+       end
+
+       % If all nodes are stick then the problem is linear
+       if all(obj.activeSet.curr == ContactMode.stick)
+          out = true;
+       end
+    end
+
+    function out = isSymmetric(obj)
+
+       % if the problem is linear, then EFEMaugmented is symmetric
+       out = obj.isLinear();
+
+    end
 
   end
 
