@@ -253,9 +253,12 @@ classdef (Abstract) SolutionScheme < handle
       end
     end
 
-    function sol = solve(obj,J,rhs,newtonIter)
-      % Safety check for newtonIter not present
-      if isempty(newtonIter)
+    function sol = solve(obj,J,rhs,varargin)
+      
+      % Extract the Newton iteration count when provided
+      if ~isempty(varargin)
+         newtonIter = varargin{1};
+      else
          newtonIter = 1;
       end
 

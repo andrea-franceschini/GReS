@@ -60,7 +60,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 
    % Get the full rhs
    if iscell(b)
-      b = -cell2matrix(b); 
+      b = -cell2matrix(b);
    end
 
    % Check if the system has changed size and adapt x0 to be of size(b)
@@ -121,6 +121,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       % Reset the SAM
       obj.SAM.reset();
    else
+      obj.Prec.updateStateBlocks(A);
       obj.params.nSolveSinceLastPrecComp = obj.params.nSolveSinceLastPrecComp + 1;
       T_setup = 0;
    end
@@ -284,7 +285,7 @@ function [x,flag] = matlab_solve(obj,A,b,time)
 
    % Get the full rhs
    if iscell(b)
-      b = cell2matrix(b);
+      b = -cell2matrix(b);
    end
 
    startT = tic;
