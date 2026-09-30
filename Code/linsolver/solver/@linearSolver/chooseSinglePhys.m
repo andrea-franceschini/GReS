@@ -2,6 +2,9 @@ function [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physn
 
    nInt = generalsolver.nInterf;
 
+   % List of allowed physics
+   allowedPhysics = {'pressure', 'u', 'displacements'};
+
    % Supported Single Physics
    if contains(physname, {'pressure', 'u', 'displacements'})
       

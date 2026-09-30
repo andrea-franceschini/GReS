@@ -1,4 +1,4 @@
-classdef Materials < handle
+classdef Materials < matlab.mixin.Copyable
   % MATERIAL - General material class
 
   properties (Access = public)
@@ -31,7 +31,7 @@ classdef Materials < handle
     function addMaterials(obj,input)
 
       default = struct('Fluid',struct(),...
-                       'Solid',struct());
+        'Solid',struct());
       input = readInput(default,input);
 
       % order matters: some solid PorousRock properties depend on the fluid
@@ -53,10 +53,10 @@ classdef Materials < handle
       matID = numel(obj.solid)+1;
 
       default = struct('cellTags',[],...
-                       'name',string(strcat('mat_',num2str(matID))),...
-                       'specificWeight',0.0,...
-                       'Constitutive',missing,...
-                       'PorousRock',missing);
+        'name',string(strcat('mat_',num2str(matID))),...
+        'specificWeight',0.0,...
+        'Constitutive',missing,...
+        'PorousRock',missing);
 
       input = readInput(default,varargin{:});
 
@@ -160,7 +160,11 @@ classdef Materials < handle
       matNames = getMaterialNames(obj);
       matID = find(matNames==name);
 
-      assert(isscalar(matID),"Multiple materials with name %s have been defined",matNames(matID(1)));
+      if isempty(matID)
+        error("Material '%s' is not available",name)
+      end
+
+      assert(isscalar(matID),"Multiple materials with name '%s' have been defined",name);
 
     end
 
@@ -246,37 +250,39 @@ classdef Materials < handle
 
     end
 
-    function matCellId = getMaterialCells(obj,cellId)
+  end
 
-      matCellId = obj.cellMap(cellId);
 
-    end
 
-    function setCellMap(obj,grid)
 
-      cells = grid.cells;
-      obj.cellMap = zeros(cells.num,1);
 
-      for i = 1:numel(obj.solid)
 
-        tags = find(obj.matMap == i);
+  % function [D, sigma, status] = updateMaterial(obj, cTag, sigma, epsilon, dt, status, el, t)
+  %   % constitutive update
+  %   mat = obj.getMaterial(cTag).ConstLaw;
+  %   [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status, el);
+  % end
 
-        id = find(ismember(cells.tag,tags)); 
-        obj.cellMap(id) = 1:length(id);
-        
+  % Destructor
+  % function delete(obj)
+  %   remove(obj.db,keys(obj.db));
+  % end
+
+  methods (Access=protected)
+
+    function cp = copyElement(obj)
+
+      cp = copyElement@matlab.mixin.Copyable(obj);
+
+      % deep copy of constitutive laws
+      for i = 1:numel(cp.solid)
+        if isfield(obj.solid{i},"ConstLaw")
+          cp.solid{i}.ConstLaw = copy(obj.solid{i}.ConstLaw);
+        end
       end
     end
 
-    % function [D, sigma, status] = updateMaterial(obj, cTag, sigma, epsilon, dt, status, el, t)
-    %   % constitutive update
-    %   mat = obj.getMaterial(cTag).ConstLaw;
-    %   [D, sigma, status] = mat.getStiffnessMatrix(sigma, epsilon, dt, status, el);
-    % end
 
-    % Destructor
-    % function delete(obj)
-    %   remove(obj.db,keys(obj.db));
-    % end
   end
 
 end

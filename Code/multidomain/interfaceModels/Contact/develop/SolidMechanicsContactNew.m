@@ -390,6 +390,15 @@ classdef SolidMechanicsContactNew < MeshTying
 
     end
 
+    function [out] = isLinear(obj)
+       % Initialize output
+       out = false;
+
+       % If all nodes are stick then the problem is linear
+       if all(obj.activeSet.curr == ContactMode.stick)
+          out = true;
+       end
+    end
   end
 
   methods (Access = protected)
@@ -654,7 +663,7 @@ classdef SolidMechanicsContactNew < MeshTying
               asbQ.localAssembly(tDof,tDof,Aoo);
 
               % rhs (mu,t)
-              rhsT(tDof) = rhsT(tDof) + area*dTrac;
+              rhsT(tDof) = rhsT(tDof) + area*trac;
             end
 
           end % end inner master elems loop

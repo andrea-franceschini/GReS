@@ -8,6 +8,7 @@ classdef NonLinearImplicit < SolutionScheme
     iterNL = 0          % nonlinear iteration number
     iterConfig = 0      % configuration iteration number
     targetVariables     % variables currently solved for
+    totIter
   end
 
 
@@ -69,18 +70,18 @@ classdef NonLinearImplicit < SolutionScheme
 
         % reset non linear iteration counter
         newtonIter = 0;
-        %obj.iterNL = 0;
 
         %%% NEWTON LOOP %%%
         while (~newtonConv) && (newtonIter < obj.simparams.itMaxNR)
 
           newtonIter = newtonIter + 1;
           obj.iterNL = obj.iterNL + 1;
+          obj.totIter = obj.totIter + 1;
 
           J = assembleJacobian(obj);
 
           % solve linear system
-          du = solve(obj,J,rhs);
+          du = solve(obj,J,rhs,newtonIter);
 
           %fprintf('Model has %i dofs\n',numel(du));
           c = 0;

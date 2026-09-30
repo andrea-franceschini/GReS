@@ -22,7 +22,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 %   b is the right-hand side, and currentTime is a scalar timestamp used
 %   for profiling (e.g., simulation time).
 %
-% Notes and behaviour details:
+% Notes and behavior details:
 % - For small problems or when Chronos (external iterative solver) is not
 %   available, the method falls back to matlab_solve which uses the direct
 %   backslash on the assembled matrix.
@@ -57,6 +57,11 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    
    % Check if this step is linear to use maximum resolution needed
    isLinear = getIsLinear(obj.generalsolver);
+
+   % Get the full rhs
+   if iscell(b)
+      b = -cell2matrix(b);
+   end
 
    % Check if the system has changed size and adapt x0 to be of size(b)
    obj.x0 = obj.Prec.checkGrowth(obj,b);
@@ -116,6 +121,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       % Reset the SAM
       obj.SAM.reset();
    else
+      obj.Prec.updateStateBlocks(A);
       obj.params.nSolveSinceLastPrecComp = obj.params.nSolveSinceLastPrecComp + 1;
       T_setup = 0;
    end
@@ -123,7 +129,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % If the matrix is nonSymmetric then use always GMRES
    if globalsymm == 0
       obj.SolverType = 'gmres';
-      gresLog().log(3,'The matrix is nonsymmetric with a maximum nonsymmetry of %e\n',maxval);
+      gresLog().log(4,'The matrix is nonsymmetric with a maximum nonsymmetry of %e\n',maxval);
    end
 
    % Convert the matrix to a sparse double if not already like this
@@ -176,17 +182,19 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       warning('wtf')
       x = real(x);
    end
+
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
    fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup);
 
-   % Did not converge, if prec not computed for it try again
+   % Did not converge, if the preconditioner was not computed for this matrix
+   % recompute it and try again
    if(flag == 1 && obj.params.nSolveSinceLastPrecComp > 0)
       gresLog().log(3,'Trying to recompute the preconditioner to see if it manages to converge\n');
       obj.params.nSolveSinceLastPrecComp = 0;
       obj.requestPrecComp = true;
-      [x,flag] = obj.SolveLin(A,b,time);
+      [x,flag] = obj.SolveLin(A,b,time,nonlinIter);
       return;
    end
 
@@ -275,6 +283,11 @@ function [x,flag] = matlab_solve(obj,A,b,time)
 
    gresLog().log(4,'Fallback to matlab due to size or chronos inexistance\n');
 
+   % Get the full rhs
+   if iscell(b)
+      b = -cell2matrix(b);
+   end
+
    startT = tic;
    % Solve the system
    A = cell2matrix(A);
@@ -348,7 +361,7 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
                   val(cont) = 0;
                else
                   symm(cont) = 0;
-                  val(cont) = relNorm < eps1;
+                  val(cont) = relNorm;
                end
             end
          end
@@ -389,6 +402,20 @@ function [isLinear] = getIsLinear(generalsolver)
          end
       end
    end
+
+   % Loop over the different interfaces
+   for i = 1:generalsolver.nInterf
+
+      % Call isLinear on the current interface
+      lin = generalsolver.interfaces{i}.isLinear();
+
+      % Early exit, if one interface is nonlinear
+      % then all the system is nonlinear
+      if lin == false
+         return
+      end      
+   end
+
    % If reached here all the domains solvers are linear
    isLinear = true;
 end
