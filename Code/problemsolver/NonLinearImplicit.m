@@ -35,8 +35,6 @@ classdef NonLinearImplicit < SolutionScheme
       obj.iterConfig = 0;
       obj.iterNL = 0;
 
-      obj.iterNL = 0;
-
       while (hasConfigurationChanged) && (obj.iterConfig < obj.simparams.itMaxConfig)
 
         gresLog().log(0,'\nConfiguration iteration n. %i \n', obj.iterConfig);
@@ -72,7 +70,6 @@ classdef NonLinearImplicit < SolutionScheme
 
         % reset non linear iteration counter
         newtonIter = 0;
-        %obj.iterNL = 0;
 
         %%% NEWTON LOOP %%%
         while (~newtonConv) && (newtonIter < obj.simparams.itMaxNR)
@@ -84,7 +81,7 @@ classdef NonLinearImplicit < SolutionScheme
           J = assembleJacobian(obj);
 
           % solve linear system
-          du = solve(obj,J,rhs);
+          du = solve(obj,J,rhs,newtonIter);
 
           %fprintf('Model has %i dofs\n',numel(du));
           c = 0;

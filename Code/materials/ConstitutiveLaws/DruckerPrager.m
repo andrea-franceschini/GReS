@@ -27,6 +27,9 @@ classdef DruckerPrager < ConstitutiveLaw
     alpha       % friction coefficient in F = q + alpha*p - cohesion
     beta        % dilation coefficient in G = q + beta*p
     a     % conversion from Mohr-Coulomb cohesion c to DP intercept
+
+    % Plasticity active flag
+    plasticFlag = false;
   end
 
   methods (Access = public)
@@ -40,7 +43,7 @@ classdef DruckerPrager < ConstitutiveLaw
 
     end
 
-    function [sigmaOut, DAll] = constitutiveUpdate(obj, cellId, sigmaIn, epsilonIn) %#ok<INUSD>
+    function [sigmaOut, DAll] = constitutiveUpdate(obj, cellId, sigmaIn, epsilonIn)
       
       gpId = obj.loc2gp(cellId,1);
       nptGauss = obj.loc2gp(cellId,2);
@@ -101,6 +104,9 @@ classdef DruckerPrager < ConstitutiveLaw
         if yield < tolYield
           continue;
         end
+
+        % Set plastic flag
+        obj.plasticFlag = true;
 
         % Standard GEOS-style cone return.
         denom = 3.0 * G + obj.alpha * obj.beta * K + obj.h;
@@ -196,6 +202,14 @@ classdef DruckerPrager < ConstitutiveLaw
       D([2 3 7 9 13 14]) = obj.nu;
       D([22 29 36]) = (1 - 2*obj.nu)/2;
       D = obj.E / ((1 + obj.nu) * (1 - 2*obj.nu)) * D;
+    end
+
+    function advanceStatus(obj)
+
+       obj.status.conv = obj.status.curr;
+       
+       % Reset plastic flag
+       obj.plasticFlag = false;
     end
   end
 

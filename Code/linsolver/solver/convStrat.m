@@ -88,6 +88,13 @@ classdef convStrat < handle
       end
 
       function recomputePrec(obj,linsolver,Tend)
+         % If alpha <=0 then always recompute the preconditioner
+         if linsolver.alpha <= 0.
+            linsolver.Delta_T(linsolver.nSolve) = 0;
+            linsolver.requestPrecComp = true;
+            return
+         end
+
          % If the preconditioner has just been computed then do not compute it for the next iter
          if linsolver.requestPrecComp
             % --- Preconditioner was just recomputed ---
@@ -115,7 +122,7 @@ classdef convStrat < handle
                % For simple fixed convergence tolerance check if the time
                % for the new solves is sufficient to need a preconditioner
                % recomputation
-               if linsolver.Delta_T(linsolver.nSolve) > linsolver.alpha*tSetup || linsolver.alpha < 0.
+               if linsolver.Delta_T(linsolver.nSolve) > linsolver.alpha*tSetup
                   linsolver.requestPrecComp = true;
                end
             else

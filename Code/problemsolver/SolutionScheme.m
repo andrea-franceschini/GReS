@@ -253,11 +253,14 @@ classdef (Abstract) SolutionScheme < handle
       end
     end
 
-    function sol = solve(obj,J,rhs)
-      rhs = cell2matrix(rhs);
+    function sol = solve(obj,J,rhs,newtonIter)
+      % Safety check for newtonIter not present
+      if isempty(newtonIter)
+         newtonIter = 1;
+      end
 
       % Actual solution of the system
-      [sol,~] = obj.linsolver.SolveLin(J,-rhs,obj.t,[]);
+      [sol,~] = obj.linsolver.SolveLin(J,rhs,obj.t,newtonIter);
     end
 
     function setLinearSolver(obj,varargin)

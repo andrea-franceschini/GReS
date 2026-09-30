@@ -65,7 +65,7 @@ classdef (Abstract) InterfaceSolver < handle
 
   methods (Abstract)
 
-    % intialize the interface properties
+    % Initialize the interface properties
     registerInterface(obj);
 
     % assemble the constraint matrices
@@ -130,7 +130,7 @@ classdef (Abstract) InterfaceSolver < handle
 
       end
 
-      % prepare cross-grid informations
+      % prepare cross-grid information
       setMortarInterface(obj,input);
 
       % specify the variables to be coupled
@@ -437,7 +437,9 @@ classdef (Abstract) InterfaceSolver < handle
       dofm = obj.domains(side).dofm;
     end
 
-
+    function [out] = isLinear(obj)
+       out = false;
+    end
 
   end
 
