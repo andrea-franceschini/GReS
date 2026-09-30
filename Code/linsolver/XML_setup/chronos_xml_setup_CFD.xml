@@ -57,7 +57,7 @@
 	<coarsen
 		SoC_type="CLA"
 		tau="0.25"
-		nl_agg="1"
+		nl_agg="2"
 	/>
 
 	<!-- TEST SPACE parameters -->
@@ -65,7 +65,7 @@
 		ntv="1"
 		itmax="30"
 		tol="1.e-6"
-		method="SRQCG"
+		method="NONE"
 		init_approx="5"
 	/>
 

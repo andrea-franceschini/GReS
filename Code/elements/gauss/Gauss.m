@@ -353,7 +353,7 @@ classdef Gauss < handle
 
       availGP = [1,2,3,4,5,6,8,16];
       i = find(availGP >= nG);
-      nG = i(1);
+      nG = availGP(i(1));
 
     end
 

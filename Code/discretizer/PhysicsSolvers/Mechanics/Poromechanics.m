@@ -134,7 +134,7 @@ classdef Poromechanics < PhysicsSolver
 
           cellList = find(cellId);
 
-          elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+          elem = FiniteElementType.create(vtkId,obj.grid,'gaussOrder',obj.gaussOrder);
 
           % get node topology for given vtk type
           topol = obj.grid.getCellNodes(subCellsLoc);
@@ -419,7 +419,7 @@ classdef Poromechanics < PhysicsSolver
       for vtkId = cells.vtkTypes
 
         subCellsLoc = obj.grid.getCellsByVTKId(vtkId,cellPress);
-        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+        elem = FiniteElementType.create(vtkId,obj.grid,'gaussOrder',obj.gaussOrder);
 
         % get node topology for given vtk type
         topol = obj.grid.getCellNodes(subCellsLoc);

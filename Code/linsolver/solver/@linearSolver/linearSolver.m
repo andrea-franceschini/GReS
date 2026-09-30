@@ -63,7 +63,7 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 2e5
+      matlabMaxSize = 5e4
 
       % Utils flags
       nsyTol = 100*eps

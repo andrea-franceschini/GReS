@@ -1,17 +1,17 @@
 classdef Grid < handle
 
   properties (SetAccess = public, GetAccess = public)
-    
+
     nDim = 0    % mesh dimensions: 2(D) or 3(D)
 
-    cells = struct('connectivity',[]); 
+    cells = struct('connectivity',[]);
     surfaces = struct('connectivity',[]);    % external faces with tag
-    faces 
-    edges         
+    faces
+    edges
 
     nNodes = 0
     coordinates
-   
+
   end
 
   properties (GetAccess = private, SetAccess = private)
@@ -45,6 +45,8 @@ classdef Grid < handle
 
 
     function outGrid = getCellGrid(obj,cellTag)
+
+      % create grid keeping a subset of the cells
 
       cell = obj.cells;
       outGrid = Grid();
@@ -118,7 +120,7 @@ classdef Grid < handle
       % keptSurf(remSurf) = false;
       % outGrid.surfaces = getSurfaceGrid(obj,keptSurf);
 
-      
+
 
 
     end
@@ -133,7 +135,7 @@ classdef Grid < handle
       tmpGrid = Grid();
       tmpGrid.coordinates = obj.coordinates;
 
-      
+
 
       s.connectivity = surfConn;
       s.num          = sum(isBnd);
@@ -247,7 +249,7 @@ classdef Grid < handle
     %    else
     %       obj.surfaceTag = [obj.surfaceTag; id*ones(size(surf,1),1)];
     %    end
-    % 
+    %
     %    if isempty(obj.nSurfaceTag)
     %       obj.nSurfaceTag = 1;
     %    else
@@ -257,8 +259,8 @@ classdef Grid < handle
     %    obj.surfaceVTKType(obj.surfaceNumVerts == 3) = 5;
     %    obj.surfaceVTKType(obj.surfaceNumVerts == 4) = 9;
     % end
-    % 
-    % 
+    %
+    %
     % function msh = getQuad4mesh(obj)
     %     assert(obj.cartGrid,'This method is valid only for Cartesian grids');
     %     msh = Grid();
@@ -317,7 +319,7 @@ classdef Grid < handle
         id = 1:obj.surfaces.num;
       end
 
-       nodes = getRowsMatrix(obj.surfaces.connectivity,id);
+      nodes = getRowsMatrix(obj.surfaces.connectivity,id);
 
     end
 
@@ -344,7 +346,7 @@ classdef Grid < handle
     function out = isGeometryProcessed(obj)
 
       out = obj.isProcessed;
-      
+
     end
 
 
@@ -378,7 +380,21 @@ classdef Grid < handle
 
       for i = 1:surf.num
         nVert = surf.numVerts(i);
+
+        if surf.VTKType(i) == VTKType.Quad9
+          elem = FiniteElementType.create(VTKType.Quad9,obj);
+          ids = topol(i,1:nVert);
+          coords = coord(ids,:);
+          for j = 1:nVert
+            tangent = elem.computeDerBasisF(elem.coordLoc(j,:))*coords;
+            nLoc = cross(tangent(1,:),tangent(2,:));
+            if dot(nLoc,surf.normal(i,:)) < 0, nLoc = -nLoc; end
+            avNorm(ids(j),:) = avNorm(ids(j),:) + nLoc;
+          end
+          continue
+        end
         coordLoc = coord(topol(i,[nVert,1:nVert,1]),:);
+
         % get edges direction according to predefined node ordering
         dn = diff(coordLoc,1);
         for j = 1:nVert
@@ -398,7 +414,7 @@ classdef Grid < handle
       % return the nodal incidence of a subset of source entities
       % list is an array of array with numel(entId) subarrays
       % infl is the influence value for each node in each cell
-      % if fl == "interp", the influence is interpolative 
+      % if fl == "interp", the influence is interpolative
 
       % process by vtk type
       switch srcEnt

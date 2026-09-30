@@ -619,8 +619,9 @@ classdef Discretizer < handle
         if isVariable(obj.dofm,bcVar)
 
           targetField = obj.dofm.getFieldLocation(bcVar);
-          obj.bcs.initialize(bcId,targetField);
-
+          numbComp = obj.dofm.getNumberOfComponents(bcVar);
+          obj.bcs.initialize(bcId,targetField,numbComp);
+          
         end
 
       end
