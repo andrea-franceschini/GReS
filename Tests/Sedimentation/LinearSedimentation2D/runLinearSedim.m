@@ -1,7 +1,7 @@
 close all;
 % clear;
 input_dir = 'Input/';
-file_Mat = fullfile(input_dir,'materials.xml');
+file_Mat = fullfile(input_dir,'materials2.xml');
 file_Solver = fullfile(input_dir,'solver.xml');
 
 %% ------------------------------ Set up the Domain -----------------------
@@ -12,7 +12,7 @@ simParam = SimulationParameters('Start',0.,'End',1.0e3,...
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(file_Mat);
-printUtils = OutState('outputFile','Outputs/Results5','printTimes',0:50:1000,"vtkFormat","ascii");
+printUtils = OutState('outputFile','Outputs/ResultsNew','printTimes',0:10:1000,"vtkFormat","ascii");
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Materials',mat);
