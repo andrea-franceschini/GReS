@@ -5,7 +5,7 @@
       <Grid
           type = "classic"
           division = "50,15,1"
-          size = "10,3,0.1"/>
+          size = "10,3,0.01"/>
       <Initial
           type = "all"
           materialTag = "4" />

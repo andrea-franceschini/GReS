@@ -49,40 +49,6 @@ classdef SedimentMaterial < handle
       out = obj.KVec;
     end
 
-    function [cb,count] = computeOedoComp(obj,S,Sp,void,frac)
-      map1 = S < obj.S1;
-      map2 = (S >= obj.S1) & (S <= Sp);
-      map3 = (S > Sp) & (S <= obj.S2);
-      map4 = S > obj.S2;
-      count = [sum(map1), sum(map2), sum(map3), sum(map4)];
-
-      % map2 = S < Sp;
-      % map3 = ~map2;
-
-      cb = zeros(length(S),1);
-      cb(map1) = frac(map1).*obj.Cr./(log(10)*obj.S1);
-      cb(map2) = frac(map2).*obj.Cr./(log(10)*S(map2));
-      cb(map3) = frac(map3).*obj.Cc./(log(10)*S(map3));
-      cb(map4) = (frac(map4).*obj.Cc.*exp(obj.kDecay.*(obj.S2-S(map4))))./(log(10)*obj.S2);
-
-      voidDiff = 1+frac.*void;
-      voidDiff(map1)=1+frac(map1).*obj.e1;
-      cb=cb./voidDiff;
-    end
-
-
-    function e = getVoidRatio(obj,Scurr,Sp,ep)
-      map1 = Scurr < obj.S1;
-      map2 = (Scurr >= obj.S1) & (Scurr < Sp);
-      map3 = (Scurr >= Sp) & (Scurr <= obj.S2);
-      map4 = Scurr > obj.S2;
-
-      e = zeros(length(Scurr),1);
-      e(map1) = (1+obj.e1).*exp(obj.cbmin.*(obj.S1-Scurr(map1)))-1;
-      e(map2) = ep(map2)-obj.Cr.*log10(Scurr(map2)./Sp(map2));
-      e(map3) = ep(map3)-obj.Cc.*log10(Scurr(map3)./Sp(map3));
-      e(map4) = obj.emin+(obj.e2-obj.emin).*exp(obj.kDecay.*(obj.S2-Scurr(map4)));
-    end
   end
 
   methods (Access = private)
@@ -166,76 +132,50 @@ classdef SedimentMaterial < handle
       void = void_Ref - Cc.*log10(stress./stress_Ref);
     end
 
-    function oedo = OedoCompressibility(Scurr,Sprev,Sp,void,Cc,Cr)
-      % Return the variation in void ratio
-      ndofs = length(Scurr);
-      map1 = Scurr <= Sp;
-      map2 = Sprev >= Sp;
-      map3 = and((~map1),(~map2));
+    % % % function dvoid = getDeltaVoidRatio(Scurr,Sprev,Sp,Cc,Cr)
+    % % %   % Return the variation in void ratio
+    % % %   Scurr=abs(Scurr);
+    % % %   Sprev=abs(Sprev);
+    % % %   Sp=abs(Sp);
+    % % % 
+    % % %   ndofs = length(Scurr);
+    % % %   map1 = Scurr < Sp;
+    % % %   map2 = Sprev >= Sp;
+    % % %   map3 = and((~map1),(~map2));
+    % % % 
+    % % %   dvoid = zeros(ndofs,1);
+    % % %   dvoid(map1) = -Cr(map1).*log10(Scurr(map1)./Sprev(map1));
+    % % %   dvoid(map2) = -Cc(map2).*log10(Scurr(map2)./Sprev(map2));
+    % % %   dvoid(map3) = -Cr(map3).*log10(Sp(map3)./Sprev(map3)) ...
+    % % %     - Cc(map3).*log(Scurr(map3)./Sp(map3));
+    % % % end
 
-      de = zeros(ndofs,1);
-      de(map1) = Cr(map1)./(log(10)*Scurr(map1));
-      de(map2) = Cc(map2)./(log(10)*Scurr(map2));
-      de(map3) = Cc(map3)./(log(10)*Scurr(map3));
-      oedo = -(1./(1+void)).*de;
-    end
+    % % % function de = getDevVoidRatio(sCurr,sPrev,sCons,Cc,Cr)
+    % % %   % Return the variation in void ratio
+    % % %   ndofs = length(sCurr);
+    % % %   flag = ndofs==length(sPrev);
+    % % %   flag = and(flag,ndofs==length(sCons));
+    % % %   flag = and(flag,ndofs==length(Cc));
+    % % %   flag = and(flag,ndofs==length(Cr));
+    % % %   if ~flag, return; end
+    % % %   % map = sCurr > 0; % Select only the positive stress.
+    % % %   map = sign(sCurr) == sign(sPrev); % Select only the positive stress.
+    % % %   map1 = and(sCurr <= sCons,map);
+    % % %   map2 = and(sPrev >= sCons,map);
+    % % %   map3 = and((~map1),(~map2));
+    % % % 
+    % % %   de = zeros(ndofs,1);
+    % % %   de(map1) = -Cr(map1)./(log(10)*sCurr(map1));
+    % % %   de(map2) = -Cc(map2)./(log(10)*sCurr(map2));
+    % % %   de(map3) = -Cc(map3)./(log(10)*sCurr(map3));
+    % % % end
 
-    function oedo = OedoCompressibility2(Scurr,Sp,void,Cr,Cc)
-      % Return the variation in void ratio
-      ndofs = length(Scurr);
-      map1 = Scurr < Sp;
-      map2 = ~map1;
-
-      de = zeros(ndofs,1);
-      de(map1) = Cr(map1)./(log(10)*Scurr(map1));
-      de(map2) = Cc(map2)./(log(10)*Scurr(map2));
-      oedo = de./(1+void);
-    end
-
-    function dvoid = getDeltaVoidRatio(Scurr,Sprev,Sp,Cc,Cr)
-      % Return the variation in void ratio
-      Scurr=abs(Scurr);
-      Sprev=abs(Sprev);
-      Sp=abs(Sp);
-
-      ndofs = length(Scurr);
-      map1 = Scurr < Sp;
-      map2 = Sprev >= Sp;
-      map3 = and((~map1),(~map2));
-
-      dvoid = zeros(ndofs,1);
-      dvoid(map1) = -Cr(map1).*log10(Scurr(map1)./Sprev(map1));
-      dvoid(map2) = -Cc(map2).*log10(Scurr(map2)./Sprev(map2));
-      dvoid(map3) = -Cr(map3).*log10(Sp(map3)./Sprev(map3)) ...
-        - Cc(map3).*log(Scurr(map3)./Sp(map3));
-    end
-
-    function de = getDevVoidRatio(sCurr,sPrev,sCons,Cc,Cr)
-      % Return the variation in void ratio
-      ndofs = length(sCurr);
-      flag = ndofs==length(sPrev);
-      flag = and(flag,ndofs==length(sCons));
-      flag = and(flag,ndofs==length(Cc));
-      flag = and(flag,ndofs==length(Cr));
-      if ~flag, return; end
-      % map = sCurr > 0; % Select only the positive stress.
-      map = sign(sCurr) == sign(sPrev); % Select only the positive stress.
-      map1 = and(sCurr <= sCons,map);
-      map2 = and(sPrev >= sCons,map);
-      map3 = and((~map1),(~map2));
-
-      de = zeros(ndofs,1);
-      de(map1) = -Cr(map1)./(log(10)*sCurr(map1));
-      de(map2) = -Cc(map2)./(log(10)*sCurr(map2));
-      de(map3) = -Cc(map3)./(log(10)*sCurr(map3));
-    end
-
-    function map = computeCurveBranch(S,Sp,S1,S2)
+    function map = curveBranch(S,Sp,S1,S2)
       map(:,1) = S < S1;
       map(:,2) = (S >= S1) & (S <= Sp);
       map(:,3) = (S > Sp) & (S <= S2);
       map(:,4) = S > S2;
-      count = [sum(map(:,1)),sum(map(:,2)),sum(map(:,3)),sum(map(:,4))];
+      % count = [sum(map(:,1)),sum(map(:,2)),sum(map(:,3)),sum(map(:,4))];
     end
 
     function void = computeVoid(S,Sp,ep,map,mat)
@@ -275,12 +215,6 @@ classdef SedimentMaterial < handle
       end
       cb=cb./voidDiff;
     end
-
-
-
-
-
-
 
     function graphVoidOedo(mat,range,pts)
       % GRAPHVOIDOEDO Plot void ratio and oedometric compressibility.
@@ -439,8 +373,6 @@ classdef SedimentMaterial < handle
         'FontSize',16, 'XGrid','on', 'YGrid','on', 'XScale','log');
     end
 
-
-
   end
 end
 
@@ -462,8 +394,8 @@ end
 % mat(4) = struct('name','base','Cc',1.e-5,'Cr',1.e-6,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',0.99995,'e0',1,'S0',1);
 % SedimentMaterial.graphVoidOedo(mat,[-2,6],1000);
 
-% mat(1) = struct('name','peat','Cc',  4,'Cr',0.4,'Sp',1000,'Smin',1e-1,'Smax',1e5,'emin',2,'e0',15,'S0',1);
-% mat(2) = struct('name','clay','Cc',  3,'Cr',0.1,'Sp',1000,'Smin',1e-1,'Smax',1e5,'emin',1.,'e0',10,'S0',1);
-% mat(3) = struct('name','silt','Cc',0.5,'Cr',0.05,'Sp',1000,'Smin',1e-1,'Smax',1e5,'emin',1.2,'e0',3,'S0',1);
-% mat(4) = struct('name','base','Cc',1.e-5,'Cr',1.e-6,'Sp',1000,'Smin',1e-1,'Smax',1e5,'emin',0.99995,'e0',1,'S0',1);
+% mat(1) = struct('name','peat','Cc',  4,'Cr',0.4,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',2,'e0',15,'S0',1);
+% mat(2) = struct('name','clay','Cc',  3,'Cr',0.1,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',1.,'e0',10,'S0',1);
+% mat(3) = struct('name','silt','Cc',0.5,'Cr',0.05,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',1.2,'e0',3,'S0',1);
+% mat(4) = struct('name','base','Cc',1.e-5,'Cr',1.e-6,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',0.99995,'e0',1,'S0',1);
 % SedimentMaterial.graphVoidOedo(mat,[-2,6],1000);

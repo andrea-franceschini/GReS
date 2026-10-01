@@ -9,6 +9,9 @@ classdef EvolvingGrid < SolutionScheme
     targetVariables     % variables currently solved for
     field
     physics
+    isBackStep = false
+    freezeCount = 0
+    freezeAt
   end
 
   properties (Access = private)
@@ -78,13 +81,13 @@ classdef EvolvingGrid < SolutionScheme
 
 
   methods (Access = protected)
-
     function setSolutionScheme(obj,varargin)
       default = struct('simulationparameters',SimulationParameters.empty,...
                        'output',missing,...
                        'domains',Discretizer.empty,...
                        'growprint',0,...
-                       'intervalprint',missing);
+                       'intervalprint',missing,...
+                       'freezeAt',missing);
       params = readInput(default,varargin{:});
 
       obj.simparams = params.simulationparameters;
@@ -101,6 +104,13 @@ classdef EvolvingGrid < SolutionScheme
         obj.printInterv = [tf, 2*tf];
       end
 
+      if ismissing(params.freezeAt)
+        obj.freezeAt = params.simulationparameters.dtMin + ...
+          (params.simulationparameters.dtMax-params.simulationparameters.dtMin)/10;
+      else
+        obj.freezeAt = params.freezeAt;
+      end
+
       obj.nDom = numel(obj.domains);
       obj.nInterf = numel(obj.interfaces);      
       obj.nVars = 1;
@@ -109,7 +119,6 @@ classdef EvolvingGrid < SolutionScheme
         " is required for SolutionScheme")
       assert(obj.nDom == 1,"Only one domain is admitted when using EvolvingGrid");
     end
-
     
     function setLinearSolver(obj,varargin)
       % Sets the linear solver and checks for eventual user input parameters
@@ -127,6 +136,49 @@ classdef EvolvingGrid < SolutionScheme
       obj.linsolver = linearSolver(obj,physname);
     end
 
+    function manageNextTimeStep(obj,flConv)
+      if ~flConv
+        % BACKSTEP
+        % newton did not converge or configuration changed too many times
+        obj.t = obj.tOld;
+        obj.tStep = obj.tStep - 1;
+
+        dt = obj.dt/obj.simparams.divFac;  % Time increment chop
+        if (dt<obj.freezeAt) && ~obj.isBackStep
+          dt = obj.dt;  % Time increment chop
+          obj.physics.cbFreeze = true;
+          obj.freezeCount = obj.freezeCount +1;
+        end
+        % obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
+
+        obj.dt = dt;  % Time increment chop
+        obj.dtSave = obj.dt;
+        goBackState(obj);
+        obj.t = obj.t + obj.dt;
+        if obj.dt < obj.simparams.dtMin
+          error('Minimum time step reached')
+        else
+          gresLog().log(0,'\n %s \n','BACKSTEP')
+        end
+        obj.isBackStep = true;
+        % return
+      else
+        % TIME STEP CONVERGED - advance to the next time step
+        printState(obj);
+        advanceState(obj);
+
+        % go to next time step
+        obj.dt = getNextDt(obj);
+        obj.tOld = obj.t;
+        obj.t = obj.t + obj.dt;
+
+        % allow new survival attempts on new time steps
+        if obj.simparams.attemptSimplestConfiguration
+          obj.attemptedReset = false;
+        end
+        obj.isBackStep = false;
+      end
+    end
 
     function printState(obj)
       if isempty(obj.output)

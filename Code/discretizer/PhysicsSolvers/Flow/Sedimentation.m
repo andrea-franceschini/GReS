@@ -46,10 +46,11 @@ classdef Sedimentation < PhysicsSolver
     matfrac (:,:)                % Material fractions per cell
 
     cellMatBranch
+    cbFreeze = false
 
     deltaStress (:,1)
     voidTop
-    voidTop0
+    e0Top
 
     initColumn (:,1)  % indication of the necessity of initialize the column
     bath (:,:)
@@ -96,7 +97,7 @@ classdef Sedimentation < PhysicsSolver
       % open space for sediments
       obj.deltaStress = zeros(ncols,1);
       obj.voidTop = zeros(ncols,1);
-      obj.voidTop0 = zeros(ncols,1);
+      obj.e0Top = zeros(ncols,1);
 
       % Build the material fractions for each cell
       prepareMaterialFractions(obj,input.Domain.Initial);
@@ -250,7 +251,7 @@ classdef Sedimentation < PhysicsSolver
       ncols = prod(obj.mdof.ncells(1:2));
       obj.deltaStress(:) = 0.;
       obj.voidTop(:) = 0.;
-      obj.voidTop0(:) = 0.;
+      obj.e0Top(:) = 0.;
 
       % Finding the sedimentation rate
       t0 = stateOld.time;
@@ -287,28 +288,21 @@ classdef Sedimentation < PhysicsSolver
 
       obj.deltaStress(map) = (1./(1+void)).*sedmWeight(map);
       obj.voidTop(map) = void;
-      obj.voidTop0(map) = SedimentMaterial.getVoidPreCon(obj.deltaStress(map),stsInit(map),void,Cr(map),Cc(map));
+      obj.e0Top(map) = SedimentMaterial.getVoidPreCon(obj.deltaStress(map),stsInit(map),void,Cr(map),Cc(map));
 
       dstress = obj.deltaStress(getMapFromDofs(obj.mdof,dofs));
       state.stress(dofs) = state.stress(dofs) - dstress*dt;
 
       setState(obj,state);
-      obj.MaterialMap();
     end
 
-
-
-
-
-    % function assembleSystem(obj,dt)
-    function assembleSystem(obj,varargin)      
+    function assembleSystem(obj,dt)
       % Update the cells half transmissibility
-      % obj.MaterialMap(varargin);
+      obj.MaterialMap();
       obj.computeHalfTrans();
       obj.computeCb();
 
       % Assembling the system.
-      dt = varargin{1};
       obj.domain.J{obj.fieldId,obj.fieldId} = computeMat(obj,dt);
       obj.domain.rhs{obj.fieldId} = computeRhs(obj,dt);
     end
@@ -368,6 +362,7 @@ classdef Sedimentation < PhysicsSolver
 
     function advanceState(obj)
       % ADVANCESTATE Finalizes time step and updates grid topology.
+      obj.cbFreeze = false; % Unfreeze the branch of oedometric compressibility 
 
       % Get state and set the initial conditions
       state = getState(obj);
@@ -431,7 +426,7 @@ classdef Sedimentation < PhysicsSolver
           state.void0(dof) = ...
             (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
             ( dzDef(ngrowCols) ./ state.void0(dof) + ...
-            dzSedmAdd(loc) ./ obj.voidTop0(loc) );
+            dzSedmAdd(loc) ./ obj.e0Top(loc) );
         end
 
         if (any(growCols))
@@ -457,7 +452,7 @@ classdef Sedimentation < PhysicsSolver
           state.void0(dof) = ...
             (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
             ( dzDef(growCols) ./ state.void0(dof) + ...
-            (frac.*dzSedmAdd(loc)) ./ obj.voidTop0(loc) );
+            (frac.*dzSedmAdd(loc)) ./ obj.e0Top(loc) );
 
           newCellSed(loc,:) = (1-frac).*sedAdd(loc,:);
           mapNewCells(loc) = true;
@@ -540,7 +535,7 @@ classdef Sedimentation < PhysicsSolver
 
         state.sedmAcc(mapNewCells,:) = newCellSed(mapNewCells,:);        
         state.void(dofs) = obj.voidTop(mapNewCells);
-        state.void0(dofs) = obj.voidTop0(mapNewCells);
+        state.void0(dofs) = obj.e0Top(mapNewCells);
 
         frac = sum(newCellSed(mapNewCells,:),2)./sum(sedAdd(mapNewCells,:),2);
         stressAdd = - frac.*obj.deltaStress(mapNewCells)*dt;
@@ -577,17 +572,19 @@ classdef Sedimentation < PhysicsSolver
       Sp = stateOld.Sp;
       eprev = stateOld.void;
 
-      % New version
+      % % New version
       map1 = Scurr<0;
       ep = state.void0;
       tmpMat = getCellsProp(obj,'sedmat');
-      ecurr = SedimentMaterial.computeVoid(-Scurr(map1),-Sp(map1),ep(map1),obj.cellMatBranch(map1,:),tmpMat);
+      % ecurr = SedimentMaterial.computeVoid(-Scurr(map1),-Sp(map1),ep(map1),obj.cellMatBranch(map1,:),tmpMat);
+      mapSS = SedimentMaterial.curveBranch(-Scurr(map1),-Sp(map1),tmpMat.S1(map1),tmpMat.S2(map1));
+      ecurr = SedimentMaterial.computeVoid(-Scurr(map1),-Sp(map1),ep(map1),mapSS,tmpMat);
 
-      % % Old version
-      % Cc = getCellsProp(obj,'compressIdx');
-      % Cr = getCellsProp(obj,'recompressIdx');
-      % delta_e = SedimentMaterial.getDeltaVoidRatio(Scurr,Sprev,Sp,Cc,Cr);
-      % ecurr = eprev + delta_e;
+      % % % % Old version
+      % % % Cc = getCellsProp(obj,'compressIdx');
+      % % % Cr = getCellsProp(obj,'recompressIdx');
+      % % % delta_e = SedimentMaterial.getDeltaVoidRatio(Scurr,Sprev,Sp,Cc,Cr);
+      % % % ecurr = eprev + delta_e;
 
       % Update the Mesh Deformation - vertical deformation
       eps = (ecurr-eprev)./(1+eprev); % - New version
@@ -876,25 +873,21 @@ classdef Sedimentation < PhysicsSolver
       % void = state.void;
       % Cc = getCellsProp(obj,'compressIdx');
       % Cr = getCellsProp(obj,'recompressIdx');
-      % % oedoComp = SedimentMaterial.OedoCompressibility(Scurr,Sprev,Sp,void,Cc,Cr);
-      % % oedoComp = SedimentMaterial.OedoCompressibility2(-Scurr,-Sp,void,Cc,Cr);
-      % 
       % oedoComp = (1./(1+void)).*SedimentMaterial.getDevVoidRatio(Scurr,Sprev,Sp,Cc,Cr);
 
       setState(obj,oedoComp,'cb');
     end
 
-    function MaterialMap(obj,varargin)
-      Scurr = getState(obj,'stress');
-      Sp = getState(obj,'Sp');
-      obj.cellMatBranch = false(length(Scurr),4);
-
-      % New version
-      map1 = Scurr<0;
-      tmpMat = getCellsProp(obj,'sedmat');
-      obj.cellMatBranch(map1,:) = SedimentMaterial.computeCurveBranch(-Scurr(map1),-Sp(map1),tmpMat.S1,tmpMat.S2);
+    function MaterialMap(obj)
+      if ~obj.cbFreeze
+        Scurr = getState(obj,'stress');
+        Sp = getState(obj,'Sp');
+        obj.cellMatBranch = false(length(Scurr),4);
+        map1 = Scurr<0;
+        tmpMat = getCellsProp(obj,'sedmat');
+        obj.cellMatBranch(map1,:) = SedimentMaterial.curveBranch(-Scurr(map1),-Sp(map1),tmpMat.S1(map1),tmpMat.S2(map1));
+      end
     end
-
 
     function out = getCellsProp(obj,type,dofs)
       if ~exist("dofs","var")

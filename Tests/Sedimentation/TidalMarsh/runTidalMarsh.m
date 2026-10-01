@@ -22,7 +22,7 @@ domain.addPhysicsSolvers(file_Solver);
 solver = EvolvingGrid('simulationparameters',simParam,...
                            'domains',domain,...
                            'output',printUtils);
-profile off
-profile on
+% profile off
+% profile on
 solver.simulationLoop();
-profile viewer
+% profile viewer
