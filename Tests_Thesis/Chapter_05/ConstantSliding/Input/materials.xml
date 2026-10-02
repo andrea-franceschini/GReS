@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Materials>
+  <Solid
+         name = "soil"
+         cellTags = " 1 ">
+    <Constitutive>
+      <Elastic
+               youngModulus = "5e3"
+               poissonRatio = "0.25"
+               />
+    </Constitutive>
+
+  </Solid>
+
+</Materials>

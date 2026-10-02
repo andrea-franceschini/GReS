@@ -8,7 +8,7 @@ classdef NonLinearImplicit < SolutionScheme
     iterNL = 0          % nonlinear iteration number
     iterConfig = 0      % configuration iteration number
     targetVariables     % variables currently solved for
-    totIter
+    totIter = 0
   end
 
 

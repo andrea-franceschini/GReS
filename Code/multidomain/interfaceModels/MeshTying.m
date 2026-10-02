@@ -156,7 +156,7 @@ classdef MeshTying < InterfaceSolver
 
         elSlave = getElement(obj,vtkSlave,s);
 
-        for vtkMaster = surfSlave.vtkTypes
+        for vtkMaster = surfMaster.vtkTypes
 
           elMaster = getElement(obj,vtkSlave,m);
 

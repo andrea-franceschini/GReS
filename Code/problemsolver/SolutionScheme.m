@@ -17,6 +17,7 @@ classdef (Abstract) SolutionScheme < handle
     iniState            % initial state of the simulation for solver reset
     isFirstRun = true   % flag if the simulation is first ever or first after a reset   
     targetTimeID        % id for printTimes list for which solution is required
+    totBackStep
   end
 
 
@@ -223,7 +224,7 @@ classdef (Abstract) SolutionScheme < handle
 
         goBackState(obj);
 
-        %obj.totBackStep = obj.totBackStep + 1;
+        obj.totBackStep = obj.totBackStep + 1;
 
         obj.t = obj.t + obj.dt;
 

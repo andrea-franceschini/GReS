@@ -1,0 +1,6 @@
+function thesisAddBC(bc, name, type, field, variable, entities, components, value)
+bc.addBC('name', string(name), 'type', string(type), 'field', string(field), ...
+    'variable', string(variable), 'entityListType', "bcList", ...
+    'entityList', entities, 'components', components);
+bc.addBCEvent(string(name), 'time', 0.0, 'value', value);
+end

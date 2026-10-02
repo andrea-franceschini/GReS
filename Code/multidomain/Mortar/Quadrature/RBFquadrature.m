@@ -114,7 +114,7 @@ classdef RBFquadrature < MortarQuadrature
             end
 
             if obj.countGP ~= elemSlave.getGauss.nNode
-              warning("Some gauss point not projected for element %i",is)
+              gresLog().warning(3,"Some gauss point not projected for element %i",is)
             end
 
           end
@@ -217,9 +217,9 @@ classdef RBFquadrature < MortarQuadrature
       coordinates = obj.grids(m).coordinates;
 
       vtk = surf.VTKType;
-      nTri = sum(vtk == VTKType.Tri);
-      nQuad = sum(any([vtk == VTKType.Quad; vtk == VTKType.Quad9]));
-      numPts =  nTri*sum(1:obj.nInt) + nQuad*(obj.nInt)^2;
+      isTri = any(sum(vtk == VTKType.Tri));
+      isQuad = sum(any([vtk == VTKType.Quad; vtk == VTKType.Quad9]));
+      numPts =  isTri*sum(1:obj.nInt) + isQuad*(obj.nInt)^2;
 
       nElM = surf.num;
       weighF = zeros(numPts,2*nElM);

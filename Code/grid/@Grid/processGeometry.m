@@ -16,6 +16,9 @@ end
 % fix normal orientation and finalize surface geometry
 fixNormals(grid);
 
+% get surfaces if not present
+setSurfaces(grid);
+
 fId = grid.surfaces.faceId;
 grid.surfaces.area = grid.faces.area(fId);
 grid.surfaces.center = grid.faces.center(fId,:);

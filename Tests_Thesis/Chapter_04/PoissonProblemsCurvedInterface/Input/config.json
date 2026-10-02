@@ -1,0 +1,21 @@
+{
+  "leftSizes": [
+    4,
+    8
+  ],
+  "rightSizes": [
+    6,
+    12
+  ],
+  "orders": [
+    1,
+    2
+  ],
+  "quadratureOrders": [
+    5,
+    11
+  ],
+  "nInt": 5,
+  "multiplierType": "dual",
+  "curvatureAmplitude": 0.15
+}

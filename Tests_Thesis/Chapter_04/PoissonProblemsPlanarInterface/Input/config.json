@@ -1,0 +1,23 @@
+{
+  "leftSizes": [
+    4,
+    8,
+    16
+  ],
+  "rightSizes": [
+    6,
+    12,
+    24
+  ],
+  "orders": [
+    1,
+    2
+  ],
+  "quadratureOrders": [
+    5, 
+    11,
+    31
+  ],
+  "nInt": 5,
+  "multiplierType": "dual"
+}

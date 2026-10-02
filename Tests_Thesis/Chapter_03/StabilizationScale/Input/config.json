@@ -1,0 +1,12 @@
+{
+  "Nm": 20,
+  "Nnm": 20,
+  "NzM": 10,
+  "NzS": 10,
+  "stabilizationScales": [
+    0,
+    1,
+    10,
+    100
+  ]
+}

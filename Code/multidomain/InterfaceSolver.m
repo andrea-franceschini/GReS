@@ -98,8 +98,8 @@ classdef (Abstract) InterfaceSolver < handle
       % information of the model
 
       % minimal required input is the id of the connected domains
-      default = struct('slaveDomain',[], ...
-        'masterDomain',[]);
+      default = struct('slaveDomain',1, ...
+        'masterDomain',2);
 
       input = readInput(default,varargin{:});
 

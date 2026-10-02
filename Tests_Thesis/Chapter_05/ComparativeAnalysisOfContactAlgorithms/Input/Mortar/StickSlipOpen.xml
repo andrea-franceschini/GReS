@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+  <SimulationParameters
+                        Start="0."
+                        End ="16.0"
+                        DtInit="1"
+                        DtMin ="1e-2"
+                        DtMax ="1"
+                        incrementFactor = "1.5"
+                        choppingFactor = "2"
+                        MaxNLIteration = "16"
+                        RelativeTolerance = "1.e-11"
+                        AbsoluteTolerance = "1.e-9"
+                        resetConfiguration = "0"
+                        MaxConfigurationIteration = "30"
+                        />
+
+  <Interface>
+    <SolidMechanicsContactNew
+                                         augmentationParameter = "1e3"
+                                         multiplierType = "P0"
+                                         stabilizationScale = "0.25"
+                                         masterDomain = "1" masterSurface = "6"
+                                         slaveDomain = "2" slaveSurface = "5">
+
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  gaussOrder = "4"
+                  />
+
+      <Coulomb
+               cohesion = "0.0"
+               frictionAngle = "30" />
+
+      <ActiveSet
+                 resetActiveSet = "0"
+                 forceStickBoundary = "0" >
+
+        <Tolerances
+                    sliding = "1e-9"
+                    normalGap = "1e-5"
+                    normalTraction = "-1e-3"
+                    tangentialViolation = "1e-9"
+                    minLimitTraction = "1e-4"
+                    areaChange = "1e-4"
+                    maxActiveSetChange = "6"
+                    />
+
+      </ActiveSet>
+
+    </SolidMechanicsContactNew>
+
+  </Interface>
+
+
+  <Output
+          printTimes  = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16"
+          outputFile  = "Output/resultsAUG"
+          matFileName = "Output/resultsAUG"
+          saveHistory = "1"
+          />
+
+
+</Problem>

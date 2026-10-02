@@ -21,9 +21,9 @@
       nthread="20"
       nupre="1"
       nupost="1"
-      nstep="15"
+      nstep="30"
       step_size="1"
-      epsilon="1e-3"
+      epsilon="1e-4"
 	   method="afsai_sym"
    />
 
@@ -44,8 +44,8 @@
 		patt_tau="1e-3"
 		nnzr_max="20"
 		itmax_emin="10"
-		energ_tol="1e-2"
-		condmax_emin="1e5"
+		energ_tol="1e-3"
+		condmax_emin="1e10"
 		prec_emin="1"
 		solv_emin="4"
 		min_lfil="0"

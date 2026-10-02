@@ -1,0 +1,182 @@
+[
+  {
+    "chapter": 3,
+    "name": "InfSupStability",
+    "title": "Lagrange multiplier spaces and inf-sup stability",
+    "section": "3.2",
+    "entry": "main",
+    "source": "Chapter_03/infsup/infSupPoisson.m",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 3,
+    "name": "InfluenceOfRelativeRefinement",
+    "title": "Influence of the relative refinement",
+    "section": "3.3.1",
+    "entry": "main",
+    "source": "Chapter_03/infsup/poissonExactBC_clean.m",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 3,
+    "name": "DirichletBoundaryConditionEnforcement",
+    "title": "Dirichlet boundary condition enforcement",
+    "section": "3.3.2",
+    "entry": "main",
+    "source": "Chapter_03/infsup/poissonApproxBC_clean.m",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 3,
+    "name": "StabilizationScale",
+    "title": "Stabilized piecewise constant multiplier",
+    "section": "3.2.3",
+    "entry": "main",
+    "source": "Chapter_03/infsup/poissonApproxBC_P0_stabilizationSweep.m",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 3,
+    "name": "CrossPoints",
+    "title": "Cross points",
+    "section": "3.3.3",
+    "entry": "main",
+    "source": "Chapter_03/infsup/crossPointPatch.m",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 5,
+    "name": "NonUniformSliding",
+    "title": "Test case 1: Non uniform sliding",
+    "section": "5.5.4.1",
+    "entry": "main",
+    "source": "Chapter_05/ConstantSlidingEFEM_borja/testConstantSlidingEFEM.m",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 5,
+    "name": "SneddonsProblem",
+    "title": "Test case 2: Sneddon\u2019s problem",
+    "section": "5.5.4.2",
+    "entry": "main",
+    "source": "Chapter_05/SneddonProblemEFEM/runSneddon.m",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 5,
+    "name": "IntersectingFractures",
+    "title": "Test case 3: Multiple intersecting fractures",
+    "section": "5.5.4.3",
+    "entry": "main",
+    "source": "Chapter_05/EFEM_crossinFracs/crossingFracs.m",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 6,
+    "name": "FluidWithdrawalFromADeepAquifer",
+    "title": "Fluid withdrawal from a deep aquifer",
+    "section": "6.3.1",
+    "entry": "main",
+    "source": "Chapter_06/FancyMultiDomain/deepAquifer_3.m",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 6,
+    "name": "SealedReservoir",
+    "title": "Sealed reservoir in a fractured graben-horst formation",
+    "section": "6.3.4",
+    "entry": "main",
+    "source": "Chapter_06/Graben/grabenThesis.m",
+    "blocked": "",
+    "smokeSupported": false
+  },
+  {
+    "chapter": 5,
+    "name": "ComparativeAnalysisOfContactAlgorithms",
+    "title": "A comparative analysis of contact algorithms",
+    "section": "5.6 (also 5.4.3.3 and 5.5.4.4)",
+    "entry": "main",
+    "source": "Chapter_05/StickSlipThesis",
+    "blocked": "",
+    "smokeSupported": false
+  },
+  {
+    "chapter": 4,
+    "name": "PoissonProblemsPlanarInterface",
+    "title": "Poisson problems: planar interface",
+    "section": "4.4.2",
+    "entry": "main",
+    "source": "Chapter_04/Poisson3D",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 4,
+    "name": "PoissonProblemsCurvedInterface",
+    "title": "Poisson problems: curved interface",
+    "section": "4.4.2",
+    "entry": "main",
+    "source": "Chapter_04/Poisson3D_twoDomain_curve",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 4,
+    "name": "MechanicalPatchTest",
+    "title": "Mechanical patch test",
+    "section": "4.4.3",
+    "entry": "main",
+    "source": "Chapter_04/MechanicalPatchTest",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 4,
+    "name": "ComputationalCost",
+    "title": "Computational cost",
+    "section": "4.3.5",
+    "entry": "main",
+    "source": "Chapter_04/costAnalysis",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 5,
+    "name": "ConstantSliding",
+    "title": "Test case 1: Constant sliding",
+    "section": "5.4.3.1",
+    "entry": "main",
+    "source": "Chapter_05/ConstantSliding",
+    "blocked": "",
+    "smokeSupported": true
+  },
+  {
+    "chapter": 5,
+    "name": "SingleCrackUnderCompression",
+    "title": "Test case 2: Single crack under compression",
+    "section": "5.4.3.2",
+    "entry": "main",
+    "source": "Chapter_05/SingleCrackCompressed",
+    "blocked": "",
+    "smokeSupported": false
+  },
+  {
+    "chapter": 6,
+    "name": "FaultedAquifer",
+    "title": "Faulted aquifer",
+    "section": "6.3.3",
+    "entry": "main",
+    "source": "Chapter_06/FaultedAquifer",
+    "blocked": "",
+    "smokeSupported": false
+  }
+]

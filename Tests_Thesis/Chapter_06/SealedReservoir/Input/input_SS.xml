@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+<Problem>
+
+  <SimulationParameters
+                        Start="0."
+                        End ="0.1"
+                        DtInit="0.1"
+                        DtMin ="1e-4"
+                        DtMax ="0.2"
+                        incrementFactor = "1.25"
+                        choppingFactor = "2"
+                        MaxNLIteration = "10"
+                        RelativeTolerance = "1.e-8"
+                        AbsoluteTolerance = "1.e-9"
+                        resetConfiguration = "0"
+                        >
+    <LinearSolver useMatlab = "1"/>
+
+                        </SimulationParameters>
+
+
+
+  <Interface>
+
+    <MeshTying
+                                    augmentationParameter = "1e5"
+                                    stabilizationScale = "1.0"
+                                    masterDomain = "1" masterSurface = "6"
+                                    slaveDomain = "2" slaveSurface = "5"
+                                    forceStick = "0">
+
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  gaussOrder="4"
+                  />
+
+      <Coulomb
+               cohesion = "0.0"
+               frictionAngle = "30" />
+
+      <ActiveSet
+                 resetActiveSet = "0"
+                 forceStickBoundary = "0" >
+
+        <Tolerances
+                    sliding = "1e-8"
+                    normalGap = "1e-6"
+                    normalTraction = "-1e-3"
+                    tangentialViolation = "1e-4"
+                    minLimitTraction = "1e-4"
+                    areaChange = "1e-4"
+                    maxActiveSetChange = "6"
+                    />
+
+      </ActiveSet>
+
+    </MeshTying>
+
+
+    <SolidMechanicsContactNew
+                                    augmentationParameter = "1e5"
+                                    stabilizationScale = "1.0"
+                                    masterDomain = "2" masterSurface = "6"
+                                    slaveDomain = "3" slaveSurface = "5"
+                                    forceStick = "0"
+                                    >
+
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  gaussOrder="4"
+                  />
+
+      <Coulomb
+               cohesion = "0.0"
+               frictionAngle = "30" />
+
+      <ActiveSet
+                 resetActiveSet = "0"
+                 forceStickBoundary = "0" >
+
+        <Tolerances
+                    sliding = "1e-8"
+                    normalGap = "1e-6"
+                    normalTraction = "-1e-3"
+                    tangentialViolation = "1e-4"
+                    minLimitTraction = "1e-4"
+                    areaChange = "1e-4"
+                    maxActiveSetChange = "6"
+                    />
+
+      </ActiveSet>
+
+    </SolidMechanicsContactNew>
+
+    <SolidMechanicsContactNew
+                                    augmentationParameter = "1e5"
+                                    stabilizationScale = "1.0"
+                                    masterDomain = "4" masterSurface = "5"
+                                    slaveDomain = "3" slaveSurface = "6"
+                                    forceStick = "0"
+                                    >
+
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  gaussOrder="4"
+                  />
+
+      <Coulomb
+               cohesion = "0.0"
+               frictionAngle = "30" />
+
+      <ActiveSet
+                 resetActiveSet = "0"
+                 forceStickBoundary = "0" >
+
+        <Tolerances
+                    sliding = "1e-8"
+                    normalGap = "1e-6"
+                    normalTraction = "-1e-3"
+                    tangentialViolation = "1e-4"
+                    minLimitTraction = "1e-4"
+                    areaChange = "1e-4"
+                    maxActiveSetChange = "6"
+                    />
+
+      </ActiveSet>
+
+    </SolidMechanicsContactNew>
+
+
+
+
+
+
+    <MeshTying
+                                    augmentationParameter = "1e5"
+                                    stabilizationScale = "1.0"
+                                    masterDomain = "5" masterSurface = "5"
+                                    slaveDomain = "4" slaveSurface = "6"
+                                    forceStick = "0">
+
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  gaussOrder="4"
+                  />
+
+      <Coulomb
+               cohesion = "0.0"
+               frictionAngle = "30" />
+
+      <ActiveSet
+                 resetActiveSet = "0"
+                 forceStickBoundary = "0" >
+
+        <Tolerances
+                    sliding = "1e-8"
+                    normalGap = "1e-6"
+                    normalTraction = "-1e-3"
+                    tangentialViolation = "2e-4"
+                    minLimitTraction = "1e-4"
+                    areaChange = "1e-4"
+                    maxActiveSetChange = "6"
+                    />
+
+      </ActiveSet>
+
+    </MeshTying>
+
+  </Interface>
+
+
+
+  <Solver>
+
+    <BiotFullyCoupled
+
+                      mechanicsSolver = "EFEMaugmented">
+
+      <Mechanics
+                 augmentationTangential = "1e5"
+                 augmentation = "1e5"
+                 penaltyNormal = "1e8"
+                 penaltyTangential = "1e8">
+
+        <ActiveSet>
+          <Tolerances
+                      sliding = "1e-8"
+                      tangentialViolation = "1e-4"
+                      normalGap = "0.0"
+                      areaChange = "0.0"
+                      />
+        </ActiveSet>
+
+        <Fracture
+                  origin = "2400,1000,110"
+                  normal = "0.19518,0.09759,0.9759"
+                  lengthVec = "-0.53093,-0.82612,0.1888"
+                  widthVec = "0.82463,-0.55498,-0.10943"
+                  dimensions = "700,450"
+                  cohesion = "0.0"
+                  frictionAngle = "30"
+                  />
+
+        <Fracture
+                  origin = "2400,700,720"
+                  normal = "0.17609,0.44023,0.88045"
+                  lengthVec = "-0.26543,0.88253,-0.38818"
+                  widthVec = "-0.94791,-0.16535,0.27226"
+                  dimensions = "600,650"
+                  cohesion = "0.0"
+                  frictionAngle = "30"
+                  />
+
+        <Fracture
+                  origin = "2500,2200,580"
+                  normal = "0.27005,0.4306,0.86119"
+                  lengthVec = "-0.92133,0.37536,0.10123"
+                  widthVec = "-0.27967,-0.82078,0.49809"
+                  dimensions = "300,650"
+                  cohesion = "0.0"
+                  frictionAngle = "30"
+                  />
+
+        <Fracture
+                  origin = "2000,1200,335"
+                  normal = "0.25319,0.4892,0.83461"
+                  lengthVec = "-0.16821,-0.82732,0.53596"
+                  widthVec = "0.95268,-0.27609,-0.12718"
+                  dimensions = "350,450"
+                  cohesion = "0.0"
+                  frictionAngle = "30"
+                  />
+
+        <Fracture
+                  origin = "2600,350,200"
+                  normal = "0.22616,0.43698,0.87057"
+                  lengthVec = "0.92878,-0.36614,-0.057503"
+                  widthVec = "0.29362,0.82158,-0.48867"
+                  dimensions = "500,280"
+                  cohesion = "0.0"
+                  frictionAngle = "30"
+                  />
+
+        <Fracture
+                  origin = "2900,1385,560"
+                  normal = "0.9759,0.09759,0.19518"
+                  lengthVec = "-0.16227,-0.27347,0.94809"
+                  widthVec = "0.1459,-0.95692,-0.25105"
+                  dimensions = "600,500"
+                  cohesion = "0.0"
+                  frictionAngle = "30"
+                  />
+
+
+      </Mechanics>
+
+      <Flow targetRegions = "2" />
+    </BiotFullyCoupled>
+
+    <!--<BiotFullyCoupled >
+<Flow targetRegions = "2" />
+</BiotFullyCoupled>-->
+
+  </Solver>
+
+</Problem>
+
+
+

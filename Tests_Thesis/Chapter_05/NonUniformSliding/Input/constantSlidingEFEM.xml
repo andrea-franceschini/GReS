@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Problem>
+
+  <SimulationParameters
+                        Start="0.0"
+                        End ="1e0"
+                        DtInit= "1e0"
+                        DtMax ="1e0"
+                        DtMin ="1.0"
+                        AbsoluteTolerance = "1e-12"
+                        RelativeTolerance = "1e-11"
+                        MaxNLIteration = "30"
+                        />
+
+
+  <Materials>
+    <Solid
+           cellTags = " 1 ">
+      <Constitutive>
+        <Elastic
+                 youngModulus = "9.96e-5"
+                 poissonRatio = "0.3"
+                 />
+      </Constitutive>
+
+    </Solid>
+
+  </Materials>
+
+  <BoundaryConditions>
+
+    <BC
+        name = "fix_bottom"
+        type = "Dirichlet"
+        field = "surface"
+        variable = "displacements"
+        entityListType = "tags"
+        entityList = "1"
+        components = "x,z"
+        >
+
+
+      <BCevent
+               time = "0.0"
+               value = "0.0"
+               />
+
+    </BC>
+
+    <BC
+        name = "y_fix"
+        type = "Dirichlet"
+        field = "surface"
+        variable = "displacements"
+        entityListType = "tags"
+        entityList = "3,4"
+        components = "y"
+        >
+
+
+      <BCevent
+               time = "0.0"
+               value = "0.0"
+               />
+
+    </BC>
+
+
+    <BC
+        name = "top_displacement"
+        type = "Dirichlet"
+        field = "surface"
+        variable = "displacements"
+        entityListType = "tags"
+        entityList = "2"
+        components = "z"
+        >
+
+
+      <BCevent
+               time = "0.0"
+               value = "-0.1"
+               />
+
+    </BC>
+
+  </BoundaryConditions>
+
+
+  <Solver>
+
+    <EFEMaugmented
+                               augmentation = "1e3">
+
+      <Fracture
+                origin = "0.0,0.025,0.7"
+                normal = "-0.7071,0.0,0.7071"
+                lengthVec = "0.7071,0.0,0.7071"
+                widthVec = "0.0,1.0,0.0"
+                dimensions = "3.6770,2.0"
+                cohesion = "0.0"
+                frictionAngle = "5.71"
+
+                />
+
+
+    </EFEMaugmented>
+
+  </Solver>
+
+
+
+</Problem>
+

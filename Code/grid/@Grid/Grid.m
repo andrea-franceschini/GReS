@@ -120,8 +120,12 @@ classdef Grid < handle
       % keptSurf(remSurf) = false;
       % outGrid.surfaces = getSurfaceGrid(obj,keptSurf);
 
+    end
 
 
+    function setGridSurfaces(obj)
+
+      % set surfaces as external faces
 
     end
 
@@ -274,6 +278,32 @@ classdef Grid < handle
     %     msh.nDim = obj.nDim;
     %     %
     % end
+
+    function setSurfaces(obj)
+
+      if obj.surfaces.num > 0
+        return
+      end
+
+      f = obj.faces;
+      isBnd = f.isBoundary;
+      surfConn = getRows(f.connectivity,find(isBnd));
+
+      tmpGrid = Grid();
+      tmpGrid.coordinates = obj.coordinates;
+
+
+
+      ns = sum(isBnd);
+      s.num = ns;
+      s.connectivity = surfConn;
+      s.tag          = ones(ns,1);
+      s.VTKType      = f.VTKType(isBnd);
+      s.numVerts     = f.numVerts(isBnd);
+      s.faceId       = find(isBnd);
+      obj.surfaces   = s;
+
+    end
 
 
 

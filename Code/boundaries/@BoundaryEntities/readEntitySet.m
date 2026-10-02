@@ -23,8 +23,8 @@ switch lower(type)
         c = grid.coordinates;
       case "cell"
         c = grid.cells.center;
-      otherwise
-        error("Error for BC %s: entityListType 'box' is not valid for BC of type %s", obj.name, obj.sourceField)
+      case "surface"
+        c = grid.surfaces.center;
     end
 
     entsID = all([ c(:,1) > Lx(1), c(:,1) < Lx(2),...

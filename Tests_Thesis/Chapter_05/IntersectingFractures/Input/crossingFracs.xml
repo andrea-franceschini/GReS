@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Problem>
+
+  <SimulationParameters
+                        Start="0.0"
+                        End ="1e0"
+                        DtInit= "1e0"
+                        DtMax ="1e0"
+                        DtMin ="1e-2"
+                        AbsoluteTolerance = "1e-11"
+                        RelativeTolerance = "1e-9"
+                        MaxNLIteration = "30">
+
+    <LinearSolver useMatlab = "1"/>
+    
+    </SimulationParameters>
+
+
+
+    <Materials>
+      <Solid
+             cellTags = " 1 ">
+        <Constitutive>
+          <Elastic
+                   youngModulus = "50.0"
+                   poissonRatio = "0.3"
+                   />
+        </Constitutive>
+
+      </Solid>
+
+    </Materials>
+
+
+    <Solver>
+
+      <EFEMaugmented
+                     augmentation = "5e-1"
+                     augmentationNormal = "5e-1"
+                     augmentationTangential = "5e-1">
+        <!--
+Hypothetical reconstruction of the six-fracture model
+of Wang, Vuik and Hajibeygi.
+
+Domain:
+x = [0,6] m
+y = [0,6] m
+z = [0,0.1] m
+
+origin is assumed to be the centre of each rectangular fracture.
+Each fracture spans the complete thin z-direction.
+-->
+
+        <!--
+Domain: 8 x 8 x 0.1 m
+Grid:   100 x 100 x 1 cells
+dx = dy = 0.08 m
+
+Complete fracture network translated by:
+Delta x = 0.016 m
+Delta y = 0.042 m
+-->
+
+        <!-- Fracture 1: L = 4 m, theta = 55 deg -->
+        <Fracture
+                  origin = "2.016000,4.142000,0.050000"
+                  normal = "0.819152,-0.573576,0.000000"
+                  lengthVec = "0.573576,0.819152,0.000000"
+                  widthVec = "0.000000,0.000000,1.000000"
+                  dimensions = "4.000000,0.100000"
+                  cohesion = "0.0"
+                  frictionAngle = "30"
+                  />
+
+        <!-- Fracture 2: L = 2 m, theta = -45 deg -->
+        <Fracture
+                  origin = "1.792106,3.780908,0.050000"
+                  normal = "-0.707107,-0.707107,0.000000"
+                  lengthVec = "0.707107,-0.707107,0.000000"
+                  widthVec = "0.000000,0.000000,1.000000"
+                  dimensions = "2.000000,0.100000"
+                  cohesion = "0.0"
+                  frictionAngle = "30"
+                  />
+
+        <!-- Fracture 3: L = 2 m, theta = 50 deg -->
+        <Fracture
+                  origin = "6.016000,6.042000,0.050000"
+                  normal = "0.766044,-0.642788,0.000000"
+                  lengthVec = "0.642788,0.766044,0.000000"
+                  widthVec = "0.000000,0.000000,1.000000"
+                  dimensions = "2.000000,0.100000"
+                  cohesion = "0.0"
+                  frictionAngle = "30"
+                  />
+
+        <!-- Fracture 4: L = 3 m, theta = -58 deg -->
+        <Fracture
+                  origin = "6.111697,5.016000,0.050000"
+                  normal = "-0.848048,-0.529919,0.000000"
+                  lengthVec = "0.529919,-0.848048,0.000000"
+                  widthVec = "0.000000,0.000000,1.000000"
+                  dimensions = "3.000000,0.100000"
+                  cohesion = "0.0"
+                  frictionAngle = "30"
+                  />
+
+        <!-- Fracture 5: L = 3 m, theta = 48 deg -->
+        <Fracture
+                  origin = "4.551000,2.847750,0.050000"
+                  normal = "0.743145,-0.669131,0.000000"
+                  lengthVec = "0.669131,0.743145,0.000000"
+                  widthVec = "0.000000,0.000000,1.000000"
+                  dimensions = "3.000000,0.100000"
+                  cohesion = "0.0"
+                  frictionAngle = "30"
+                  />
+
+        <!-- Fracture 6: L = 2 m, theta = -52 deg -->
+        <Fracture
+                  origin = "4.530661,2.877989,0.050000"
+                  normal = "-0.788011,-0.615661,0.000000"
+                  lengthVec = "0.615661,-0.788011,0.000000"
+                  widthVec = "0.000000,0.000000,1.000000"
+                  dimensions = "2.000000,0.100000"
+                  cohesion = "0.0"
+                  frictionAngle = "30"
+                  />
+      </EFEMaugmented>
+    </Solver>
+
+
+
+  </Problem>
+

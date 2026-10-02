@@ -70,3 +70,11 @@
 # Swap files
 *.swp
 *.swo
+
+
+
+# Ignore contents of every Output folder
+**/Output/**
+
+# Keep placeholders so empty folders remain in Git
+!**/Output/.gitkeep

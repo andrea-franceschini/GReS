@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+  <SimulationParameters
+                        Start="0."
+                        End ="16.0"
+                        DtInit="1"
+                        DtMin ="1e-2"
+                        DtMax ="1"
+                        incrementFactor = "1.5"
+                        choppingFactor = "2"
+                        MaxNLIteration = "16"
+                        RelativeTolerance = "1.e-7"
+                        AbsoluteTolerance = "1.e-9"
+                        resetConfiguration = "0"
+                        />
+
+
+  <Materials>
+    <Solid cellTags = "1" name = "mat">
+
+      <Constitutive>
+
+        <Elastic
+                 youngModulus = "5000.0"
+                 poissonRatio = "0.3"
+                 />
+      </Constitutive>
+
+    </Solid>
+
+  </Materials>
+
+
+
+  <EFEM
+                 augmentation = "5e3"
+                             penaltyNormal = "1e8"
+                             penaltyTangential = "1e8">
+
+    <ActiveSet>
+      <Tolerances
+                    sliding = "1e-9"
+                    normalGap = "1e-6"
+                    normalTraction = "1e-5"
+                    tangentialViolation = "1e-4"
+                    areaChange = "1e-5"
+                  />
+    </ActiveSet>
+
+    <Fracture
+              origin = "2.5,0,7.5"
+              normal = "1,0,0"
+              lengthVec = "0,1,0"
+              widthVec = "0,0,1"
+              dimensions = "100,15"
+              cohesion = "0"
+              frictionAngle = "30"
+              />
+
+
+  </EFEM>
+
+
+</Problem>
