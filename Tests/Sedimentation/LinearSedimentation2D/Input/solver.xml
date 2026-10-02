@@ -4,7 +4,7 @@
     <Domain>
       <Grid
           type = "classic"
-          division = "20,3,1"
+          division = "50,15,1"
           size = "10,3,0.01"/>
       <Initial
           type = "all"
