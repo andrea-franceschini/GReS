@@ -65,7 +65,7 @@ classdef (Abstract) InterfaceSolver < handle
 
   methods (Abstract)
 
-    % intialize the interface properties
+    % Initialize the interface properties
     registerInterface(obj);
 
     % assemble the constraint matrices
@@ -130,7 +130,7 @@ classdef (Abstract) InterfaceSolver < handle
 
       end
 
-      % prepare cross-grid informations
+      % prepare cross-grid information
       setMortarInterface(obj,input);
 
       % specify the variables to be coupled
@@ -437,7 +437,9 @@ classdef (Abstract) InterfaceSolver < handle
       dofm = obj.domains(side).dofm;
     end
 
-
+    function [out] = isLinear(obj)
+       out = false;
+    end
 
   end
 
@@ -461,8 +463,10 @@ classdef (Abstract) InterfaceSolver < handle
       % master and slave discretizers
       sharedVars = intersect(varSlave,varMaster);
 
-      in = readInput(struct('variable',sharedVars),input);
-      obj.coupledVariables = in.variable;
+      if isempty(obj.coupledVariables)
+        in = readInput(struct('variable',sharedVars),input);
+        obj.coupledVariables = in.variable;
+      end
 
 
       isInterfaceValid = all(ismember(obj.coupledVariables,sharedVars));

@@ -7,8 +7,7 @@ file_Solver = fullfile(input_dir,'solver.xml');
 %% ------------------------------ Set up the Domain -----------------------
 % Set the simulation parameters for the non-linear solver.
 simParam = SimulationParameters('Start',0.,'End',1.0e3,...
-      'DtInit',1e-0,'DtMin',1e-2,'DtMax',1e-0,'MaxNLIteration',8,...
-      'LinearSolver',struct('useMatlab',1));
+      'DtInit',1e-0,'DtMin',1e-2,'DtMax',1e-0,'MaxNLIteration',8);
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(file_Mat);
@@ -23,6 +22,6 @@ domain.addPhysicsSolvers(file_Solver);
 solver = EvolvingGrid('simulationparameters',simParam,...
                            'domains',domain,...
                            'output',printUtils,...
-                           'freezeAt',1.1);
+                           'freezeCbAt',0.5);
 
 solver.simulationLoop();

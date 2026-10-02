@@ -122,7 +122,7 @@ else
 
   % populate the dof map
   obj.dofMap{id} = zeros(totEnts,1);
-  obj.dofMap{id}(entList) = nComp*(0:totActiveEnts-1)'+1;
+  obj.dofMap{id}(entList) = reshape(nComp*(0:totActiveEnts-1)'+1,[],1);
 
   % update number of variables and dof counter
   obj.fields(id).range = [obj.totDofs+1,obj.totDofs+nComp*totActiveEnts];

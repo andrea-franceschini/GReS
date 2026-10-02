@@ -155,7 +155,7 @@ classdef (Abstract) SolutionScheme < handle
         interf.setStateOld(state);
         interf.interfId = i;
         interf.outstate = obj.output;
-        initialize(interf)
+        initialize(interf);
       end
 
       obj.isFirstRun = false;
@@ -223,6 +223,8 @@ classdef (Abstract) SolutionScheme < handle
 
         goBackState(obj);
 
+        %obj.totBackStep = obj.totBackStep + 1;
+
         obj.t = obj.t + obj.dt;
 
         if obj.dt < obj.simparams.dtMin
@@ -251,11 +253,17 @@ classdef (Abstract) SolutionScheme < handle
       end
     end
 
-    function sol = solve(obj,J,rhs)
-      rhs = cell2matrix(rhs);
+    function sol = solve(obj,J,rhs,varargin)
+      
+      % Extract the Newton iteration count when provided
+      if ~isempty(varargin)
+         newtonIter = varargin{1};
+      else
+         newtonIter = 1;
+      end
 
       % Actual solution of the system
-      [sol,~] = obj.linsolver.SolveLin(J,-rhs,obj.t,[]);
+      [sol,~] = obj.linsolver.SolveLin(J,rhs,obj.t,newtonIter);
     end
 
     function setLinearSolver(obj,varargin)

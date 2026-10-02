@@ -6,7 +6,7 @@ classdef (Abstract) preconditioner < handle
 %   for preconditioner objects used to accelerate iterative linear solvers.
 %   Subclasses must implement the Compute(obj,A,sym,varargin) method to
 %   assemble or update the preconditioner for a given matrix A. The class
-%   provides readonly function handles Apply_L and Apply_R for applying the
+%   provides read only function handles Apply_L and Apply_R for applying the
 %   preconditioner on the left and right, respectively. A DEBUGflag property
 %   is available for internal debugging control.
 %
@@ -27,7 +27,7 @@ classdef (Abstract) preconditioner < handle
       Apply_L = []
       Apply_R = []
    end
-   
+
    methods (Abstract)
       % Function to compute the preconditioner
       Compute(obj,A,sym,varargin)
@@ -60,6 +60,12 @@ classdef (Abstract) preconditioner < handle
       % Update the growing preconditioner default (do nothing), overridden in
       % growing preconditioner
       function updateGrowingPrec(obj,Amat)
+
+      end
+
+      % Update the state of the blocks default (do nothing), overridden in
+      % specific preconditioners
+      function updateStateBlocks(obj, A)
 
       end
    end

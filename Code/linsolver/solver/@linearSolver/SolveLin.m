@@ -22,7 +22,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 %   b is the right-hand side, and currentTime is a scalar timestamp used
 %   for profiling (e.g., simulation time).
 %
-% Notes and behaviour details:
+% Notes and behavior details:
 % - For small problems or when Chronos (external iterative solver) is not
 %   available, the method falls back to matlab_solve which uses the direct
 %   backslash on the assembled matrix.
@@ -51,12 +51,17 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 
    % Chronos does not exist, continue with matlab default
    if ~obj.ChronosFlag || (getGlobalSize(A) < obj.matlabMaxSize)
-      [x,flag] = matlab_solve(obj,A,b);
+      [x,flag] = matlab_solve(obj,A,b,time);
       return
    end
    
    % Check if this step is linear to use maximum resolution needed
    isLinear = getIsLinear(obj.generalsolver);
+
+   % Get the full rhs
+   if iscell(b)
+      b = -cell2matrix(b);
+   end
 
    % Check if the system has changed size and adapt x0 to be of size(b)
    obj.x0 = obj.Prec.checkGrowth(obj,b);
@@ -116,6 +121,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       % Reset the SAM
       obj.SAM.reset();
    else
+      obj.Prec.updateStateBlocks(A);
       obj.params.nSolveSinceLastPrecComp = obj.params.nSolveSinceLastPrecComp + 1;
       T_setup = 0;
    end
@@ -123,14 +129,21 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % If the matrix is nonSymmetric then use always GMRES
    if globalsymm == 0
       obj.SolverType = 'gmres';
-      gresLog().log(3,'The matrix is nonsymmetric with a maximum nonsymmetry of %e\n',maxval);
+      gresLog().log(4,'The matrix is nonsymmetric with a maximum nonsymmetry of %e\n',maxval);
    end
 
    % Convert the matrix to a sparse double if not already like this
    if iscell(A)
       Amat = cell2matrix(A);
-      symValue = norm(Amat-Amat','f')/norm(Amat,'f');
+   else
+      Amat = A;
    end
+
+   % Get the size of the system
+   obj.systemSize = size(Amat,1);
+
+   % Get symmetry
+   symValue = norm(Amat-Amat','f')/norm(Amat,'f');
 
    % Store the matrix for the SAM when the preconditioner is being computed
    % anew if SAM is used
@@ -169,24 +182,26 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       warning('wtf')
       x = real(x);
    end
+
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
    fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup);
 
-   % Did not converge, if prec not computed for it try again
+   % Did not converge, if the preconditioner was not computed for this matrix
+   % recompute it and try again
    if(flag == 1 && obj.params.nSolveSinceLastPrecComp > 0)
       gresLog().log(3,'Trying to recompute the preconditioner to see if it manages to converge\n');
       obj.params.nSolveSinceLastPrecComp = 0;
       obj.requestPrecComp = true;
-      [x,flag] = obj.SolveLin(A,b,time);
+      [x,flag] = obj.SolveLin(A,b,time,nonlinIter);
       return;
    end
 
    % Interesting problem
    if(flag == 1)
       gresLog().log(3,'Number of solves since last preconditioner computation %d\n',obj.params.nSolveSinceLastPrecComp);
-      [x,~] = matlab_solve(obj,A,b);
+      [x,~] = matlab_solve(obj,A,b,time);
       % TV0 = obj.Prec.TV0;
       % save('new_problem.mat','A','b','TV0');
 
@@ -264,9 +279,14 @@ function [gSize] = getGlobalSize(A)
    gSize = sum(rowSizes);
 end
 
-function [x,flag] = matlab_solve(obj,A,b)
+function [x,flag] = matlab_solve(obj,A,b,time)
 
    gresLog().log(4,'Fallback to matlab due to size or chronos inexistance\n');
+
+   % Get the full rhs
+   if iscell(b)
+      b = -cell2matrix(b);
+   end
 
    startT = tic;
    % Solve the system
@@ -274,14 +294,17 @@ function [x,flag] = matlab_solve(obj,A,b)
    x = A\b;
    Tend = toc(startT);
 
+   % Get the size of the system
+   obj.systemSize = max(size(A,1),obj.systemSize);
+
    % if obj.DEBUGflag
    %    fprintf('condition number of the matrix %e\n',condest(A));
    % end
-
-   obj.aTimeSolve = obj.aTimeSolve + Tend;
-   obj.nSolve = obj.nSolve + 1;
-   flag = 0;
+   symValue = norm(A-A','f')/norm(A,'f');
    obj.params.iter = 0;
+   fillStats(obj,Tend,time,symValue,0,0);
+   obj.Delta_T(obj.nSolve) = 0;
+   flag = 0;
 end
 
 function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
@@ -291,14 +314,20 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
 
       diffnorm = norm(A-A','f');
       Anorm = norm(A,'f');
-      relNorm = diffnorm/Anorm;
-
-      if relNorm < eps1
-         maxval = 0;
+      
+      if diffnorm == 0 || Anorm == 0
          globalsymm = 1;
+         maxval = 0;
       else
-         maxval = relNorm;
-         globalsymm = 0;
+         relNorm = diffnorm/Anorm;
+
+         if relNorm < eps1
+            maxval = 0;
+            globalsymm = 1;
+         else
+            maxval = relNorm;
+            globalsymm = 0;
+         end
       end
       symMat = globalsymm;
       return
@@ -319,16 +348,21 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
          elseif ~isempty(A{i,j})
             % Off-Diagonal Block
             diffnorm = norm(A{i,j}-A{j,i}','f');
-            Anorm = norm(A{i,j},'f');
-            relNorm = diffnorm/Anorm;
+            Anorm = 0.5 * (norm(A{i,j},'f') + norm(A{j,i},'f'));
             
-            
-            if relNorm < eps1
-                symm(cont) = 1;
-                val(cont) = 0;
+            if diffnorm == 0 || Anorm == 0
+               symm(cont) = 1;
+               val(cont) = 0;
             else
-                symm(cont) = 0;
-                val(cont) = relNorm < eps1;
+               relNorm = diffnorm/Anorm;
+
+               if relNorm < eps1
+                  symm(cont) = 1;
+                  val(cont) = 0;
+               else
+                  symm(cont) = 0;
+                  val(cont) = relNorm;
+               end
             end
          end
          cont = cont + 1;
@@ -368,6 +402,20 @@ function [isLinear] = getIsLinear(generalsolver)
          end
       end
    end
+
+   % Loop over the different interfaces
+   for i = 1:generalsolver.nInterf
+
+      % Call isLinear on the current interface
+      lin = generalsolver.interfaces{i}.isLinear();
+
+      % Early exit, if one interface is nonlinear
+      % then all the system is nonlinear
+      if lin == false
+         return
+      end      
+   end
+
    % If reached here all the domains solvers are linear
    isLinear = true;
 end

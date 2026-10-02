@@ -21,6 +21,8 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
    if isempty(physname)
       physname = arrayfun(@(x) x.dofm.getVariableNames(), domainin, 'UniformOutput', false);
       physname = [physname{:}];
+   else
+      multiPhysFlag = numel(physname) > 1;
    end
 
    % Check if it needs the growing preconditioner

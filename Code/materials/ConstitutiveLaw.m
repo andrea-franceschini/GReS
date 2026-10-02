@@ -1,4 +1,4 @@
-classdef ConstitutiveLaw < handle
+classdef ConstitutiveLaw < matlab.mixin.Copyable
   
   properties
     status = struct('curr',[],'conv',[])      % internal state variables

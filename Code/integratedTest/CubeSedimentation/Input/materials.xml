@@ -3,15 +3,17 @@
   <Solid cellTags = "1">
     <Constitutive>
       <SedimentMaterial
-          voidRate = "0.1"
-          voidLowerLimit = "0.05"
-          voidUpperLimit = "0.2"
-          conductivity = "0.945e-0, 0.945e-0, 0.315e-0"
-          initStress = "1000.0"
-          preStress = "1e+3"
-          specificWeight = "2.65e3"
+          stressReference = "1000."
+          voidRateReference = "0.1"
           compressibilityIndex = "0.0001"
-          reCompressibilityIndex = "0.0001"   />
+          reCompressibilityIndex = "0.0001"
+          stressPreConsolidated = "1000"
+          stressMin = "1e-1"
+          stressMax = "1e5"
+          voidRateMin = "0.09999"
+          specificWeight = "2.65e3"
+          conductivity = "0.9450e+0, 0.9450e+0, 0.315e+0"
+      />
     </Constitutive>
   </Solid>
 

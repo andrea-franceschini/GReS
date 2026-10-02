@@ -1,4 +1,4 @@
-classdef SedimentMaterial < handle
+classdef SedimentMaterial < matlab.mixin.Copyable
   % Sediment Material class
 
   properties (Access = public)
@@ -137,12 +137,12 @@ classdef SedimentMaterial < handle
     % % %   Scurr=abs(Scurr);
     % % %   Sprev=abs(Sprev);
     % % %   Sp=abs(Sp);
-    % % % 
+    % % %
     % % %   ndofs = length(Scurr);
     % % %   map1 = Scurr < Sp;
     % % %   map2 = Sprev >= Sp;
     % % %   map3 = and((~map1),(~map2));
-    % % % 
+    % % %
     % % %   dvoid = zeros(ndofs,1);
     % % %   dvoid(map1) = -Cr(map1).*log10(Scurr(map1)./Sprev(map1));
     % % %   dvoid(map2) = -Cc(map2).*log10(Scurr(map2)./Sprev(map2));
@@ -163,7 +163,7 @@ classdef SedimentMaterial < handle
     % % %   map1 = and(sCurr <= sCons,map);
     % % %   map2 = and(sPrev >= sCons,map);
     % % %   map3 = and((~map1),(~map2));
-    % % % 
+    % % %
     % % %   de = zeros(ndofs,1);
     % % %   de(map1) = -Cr(map1)./(log(10)*sCurr(map1));
     % % %   de(map2) = -Cc(map2)./(log(10)*sCurr(map2));
@@ -243,21 +243,26 @@ classdef SedimentMaterial < handle
       %
       %   EXAMPLE:
       %     mat(1) = struct('name','peat', ...
-      %                     'Cc',4,'Cr',0.4,'Sp',100, ...
+      %                     'Cc',4,'Cr',0.4,'Sp',1000, ...
       %                     'Smin',0.1,'Smax',1e5, ...
-      %                     'emin',6,'e0',15,'S0',1);
+      %                     'emin',5,'e0',15,'S0',10);
       %
       %     mat(2) = struct('name','clay', ...
-      %                     'Cc',3,'Cr',0.1,'Sp',100, ...
+      %                     'Cc',3,'Cr',0.1,'Sp',1000, ...
       %                     'Smin',0.1,'Smax',1e5, ...
-      %                     'emin',2.5,'e0',10,'S0',1);
+      %                     'emin',2.5,'e0',10,'S0',10);
       %
       %     mat(3) = struct('name','silt', ...
-      %                     'Cc',0.5,'Cr',0.05,'Sp',100, ...
+      %                     'Cc',0.5,'Cr',0.05,'Sp',1000, ...
       %                     'Smin',0.1,'Smax',1e5, ...
-      %                     'emin',1.5,'e0',3,'S0',1);
+      %                     'emin',1.75,'e0',3,'S0',10);
       %
-      %     SedimentMaterial.graphVoidOedo(mat,[-3,6],1000);
+      %     mat(4) = struct('name','base', ...
+      %                     'Cc',1.e-5,'Cr',1.e-6,'Sp',1000, ...
+      %                     'Smin',0.1,'Smax',1e5, ...
+      %                     'emin',0.99995,'e0',1,'S0',10);
+      %
+      %     SedimentMaterial.graphVoidOedo(mat,[-2,6],1000);
       nmat = length(mat);
 
       % Stress values
@@ -350,8 +355,8 @@ classdef SedimentMaterial < handle
         xline(mat(loop).Smin,'--','\sigma_{min}','HandleVisibility','off');
         xline(mat(loop).Smax,'--','\sigma_{max}','HandleVisibility','off');
       end
-      xlabel('Stress');
-      ylabel('OedoComp');
+      xlabel('\sigma_{eff}');
+      ylabel('cb');
       legend(h,labels,'Location','best');
 
       set(gca, 'FontName','Liberation Serif', ...
@@ -365,8 +370,8 @@ classdef SedimentMaterial < handle
         xline(mat(loop).Smin,'--','\sigma_{min}','HandleVisibility','off');
         xline(mat(loop).Smax,'--','\sigma_{max}','HandleVisibility','off');
       end
-      xlabel('Stress');
-      ylabel('Void Ratio');
+      xlabel('\sigma_{eff}');
+      ylabel('e');
 
       legend(h,labels,'Location','best');
       set(gca, 'FontName','Liberation Serif', ...
@@ -375,27 +380,3 @@ classdef SedimentMaterial < handle
 
   end
 end
-
-
-
-%
-% mat(1) = struct('name','peat','Cc',  4,'Cr',0.4,'Sp',100,'Smin',0.1,'Smax',1e4,'emin',6,'e0',15,'S0',1);
-% mat(2) = struct('name','clay','Cc',  3,'Cr',0.1,'Sp',100,'Smin',0.1,'Smax',1e4,'emin',2.5,'e0',10,'S0',1);
-% mat(3) = struct('name','silt','Cc',0.5,'Cr',0.05,'Sp',100,'Smin',0.1,'Smax',1e4,'emin',1.5,'e0',3,'S0',1);
-% mat(4) = struct('name','base','Cc',1.e-5,'Cr',1.e-6,'Sp',100,'Smin',0.1,'Smax',1e4,'emin',0.999975,'e0',1,'S0',1);
-% SedimentMaterial.graphVoidOedo(mat,[-3,6],1000);
-%
-%
-%
-%
-% mat(1) = struct('name','peat','Cc',  4,'Cr',0.4,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',2,'e0',15,'S0',1);
-% mat(2) = struct('name','clay','Cc',  3,'Cr',0.1,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',1.,'e0',10,'S0',1);
-% mat(3) = struct('name','silt','Cc',0.5,'Cr',0.05,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',1.2,'e0',3,'S0',1);
-% mat(4) = struct('name','base','Cc',1.e-5,'Cr',1.e-6,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',0.99995,'e0',1,'S0',1);
-% SedimentMaterial.graphVoidOedo(mat,[-2,6],1000);
-
-% mat(1) = struct('name','peat','Cc',  4,'Cr',0.4,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',2,'e0',15,'S0',1);
-% mat(2) = struct('name','clay','Cc',  3,'Cr',0.1,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',1.,'e0',10,'S0',1);
-% mat(3) = struct('name','silt','Cc',0.5,'Cr',0.05,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',1.2,'e0',3,'S0',1);
-% mat(4) = struct('name','base','Cc',1.e-5,'Cr',1.e-6,'Sp',100,'Smin',1e-1,'Smax',1e5,'emin',0.99995,'e0',1,'S0',1);
-% SedimentMaterial.graphVoidOedo(mat,[-2,6],1000);

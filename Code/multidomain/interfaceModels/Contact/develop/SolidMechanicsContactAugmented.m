@@ -78,6 +78,7 @@ classdef SolidMechanicsContactAugmented < MeshTying
 
       setState(obj,state);
 
+
       applyContactReturnMap(obj);
 
       % update gap
@@ -526,7 +527,8 @@ end
             tN = trac(1);
             tT = trac(2:3);
 
-            zN = tN + cN*g_n;
+            zN = tN + cN*state.normalGap(is);
+
             tauLim = max(obj.cohesion - tanPhi*tN,0.0);
 
 

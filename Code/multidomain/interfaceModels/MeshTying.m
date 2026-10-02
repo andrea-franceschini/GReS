@@ -300,6 +300,9 @@ classdef MeshTying < InterfaceSolver
 
     end
 
+    function [out] = isLinear(obj)
+       out = true;
+    end
 
   end
 

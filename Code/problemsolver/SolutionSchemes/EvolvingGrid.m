@@ -87,7 +87,7 @@ classdef EvolvingGrid < SolutionScheme
                        'domains',Discretizer.empty,...
                        'growprint',0,...
                        'intervalprint',missing,...
-                       'freezeAt',missing);
+                       'freezeCbAt',missing);
       params = readInput(default,varargin{:});
 
       obj.simparams = params.simulationparameters;
@@ -104,11 +104,11 @@ classdef EvolvingGrid < SolutionScheme
         obj.printInterv = [tf, 2*tf];
       end
 
-      if ismissing(params.freezeAt)
+      if ismissing(params.freezeCbAt)
         obj.freezeAt = params.simulationparameters.dtMin + ...
           (params.simulationparameters.dtMax-params.simulationparameters.dtMin)/10;
       else
-        obj.freezeAt = params.freezeAt;
+        obj.freezeAt = params.freezeCbAt;
       end
 
       obj.nDom = numel(obj.domains);

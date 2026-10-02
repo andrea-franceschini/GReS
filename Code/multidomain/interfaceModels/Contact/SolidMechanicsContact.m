@@ -389,6 +389,15 @@ classdef SolidMechanicsContact < MeshTying
 
     end
 
+    function [out] = isLinear(obj)
+       % Initialize output
+       out = false;
+
+       % If all nodes are stick then the problem is linear
+       if all(obj.activeSet.curr == ContactMode.stick)
+          out = true;
+       end
+    end
   end
 
   methods (Access = protected)
