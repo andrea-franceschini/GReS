@@ -344,7 +344,6 @@ classdef (Abstract) SolutionScheme < handle
       end
     end
 
-
     function printState(obj)
 
       if obj.output.timeID <= length(obj.output.timeList)
@@ -450,7 +449,6 @@ classdef (Abstract) SolutionScheme < handle
         goBackState(interf);
       end
     end
-
 
     function dt = getNextDt(obj)
 

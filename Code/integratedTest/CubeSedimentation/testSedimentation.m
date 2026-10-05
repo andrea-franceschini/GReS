@@ -9,6 +9,11 @@
 % due to the internal logic of GRES, this result will be recorded before
 % the creation of the new layer.
 
+% mat(1) = struct('name','Rigid','Cc',0.0001,'Cr',0.0001,'Sp',1000, ...
+%   'Smin',0.1,'Smax',1e5,'emin',0.09999,'e0',0.1,'S0',1);
+% SedimentMaterial.graphVoidOedo(mat,[-2,6],1000);
+
+
 % Get the full path of the currently executing file
 scriptFullPath = mfilename('fullpath');
 scriptDir = fileparts(scriptFullPath);
@@ -19,29 +24,29 @@ rmpath(genpath(fullfile(gres_root,...
 ref = repelem(struct('press', 1, 'stress', 1, 'strain', 1), 3);
 
 ref(1).time = 1.;
-ref(1).press   = [5.6971e-05; 0];
-ref(1).stress  = [1.6499e+02; 1.5000e+01];
-ref(1).strain  = [-3.7629e-06; 0];
+ref(1).press   = [5.69710e-05; 0];
+ref(1).stress  = [1.64988e+02; 1.5000e+01];
+ref(1).strain  = [3.76295e-06; 0];
 
 ref(2).time = 10.1;
-ref(2).press   = [1.3929e-04; 7.9747e-05];
-ref(2).stress  = [3.0149e+02; 1.5150e+02];
-ref(2).strain  = [-2.7366e-05; 0];
+ref(2).press   = [1.39296e-04; 7.97493e-05];
+ref(2).stress  = [3.01488e+02; 1.51500e+02];
+ref(2).strain  = [2.73661e-05; 0];
 
 ref(3).time = 11.;
-ref(3).press   = [1.4649e-04; 8.6813e-05; 0];
-ref(3).stress  = [3.1499e+02; 1.6500e+02; 1.4998e+01];
-ref(3).strain  = [-2.9292e-05; 0; 0];
+ref(3).press   = [1.46497e-04; 8.68158e-05; 0];
+ref(3).stress  = [3.14988e+02; 1.65000e+02; 1.49981e+01];
+ref(3).strain  = [2.92924e-05; 0; 0];
 
 ref(4).time = 21.;
-ref(4).press   = [2.4757e-04; 2.0714e-04; 1.0703e-04; 0];
-ref(4).stress  = [4.6499e+02; 3.1500e+02; 1.6500e+02; 1.4997e+01];
-ref(4).strain  = [-4.4669e-05; -2.5531e-05; 0; 0];
+ref(4).press   = [2.47579e-04; 2.07151e-04; 1.07033e-04; 0];
+ref(4).stress  = [4.64988e+02; 3.15000e+02; 1.64998e+02; 1.49969e+01];
+ref(4).strain  = [4.46688e-05; 2.55336e-05; 0; 0];
 
 ref(5).time = 30.;
-ref(5).press   = [3.4530e-04; 3.1397e-04; 2.4086e-04; 1.1186e-04];
-ref(5).stress  = [5.9999e+02; 4.5000e+02; 3.0000e+02; 1.5000e+02];
-ref(5).strain  = [-5.3733e-05; -3.8275e-05; -2.1579e-05; 0];
+ref(5).press   = [3.45311e-04; 3.13980e-04; 2.40866e-04; 1.11868e-04];
+ref(5).stress  = [5.99988e+02; 4.50000e+02; 2.99998e+02; 1.5000e+02];
+ref(5).strain  = [5.37326e-05; 3.82787e-05; 2.15827e-05; 0];
 
 % Get the full path of this test
 input_dir = 'Input/';

@@ -54,11 +54,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       [x,flag] = matlab_solve(obj,A,b,time);
       return
    end
-
-   % Save a backup in the case of fallback or something strange
-   backupA = A;
-   backupb = b;
-
+   
    % Check if this step is linear to use maximum resolution needed
    isLinear = getIsLinear(obj.generalsolver);
 
@@ -70,6 +66,9 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % Check if the system has changed size and adapt x0 to be of size(b)
    obj.x0 = obj.Prec.checkGrowth(obj,b);
    
+   % Compute if necessary the tolerance for the linear solver
+   obj.convStrat.computeTol(nonlinIter,b,isLinear);
+
    % Contact has opened a fracture or something similar so amg does not converge well. 
    % Directly recompute the preconditioner
    if obj.Prec.phys == 1.1 
@@ -110,17 +109,9 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       gresLog().log(3,'Computing the preconditioner\n');
 
       time_start = tic;
-      % Compute the preconditioner
-      mc = metaclass(obj.Prec);
-      m = mc.MethodList(strcmp({mc.MethodList.Name}, 'Compute'));
-      if ~isempty(m) && ~isempty(m.OutputNames)
-         A = obj.Prec.Compute(A,symMat);
-      else
-         obj.Prec.Compute(A,symMat);
-      end
+      obj.Prec.Compute(A,symMat);
       T_setup = toc(time_start);
 
-      % Update stats
       obj.aTimeComp = obj.aTimeComp + T_setup;
       obj.nComp = obj.nComp + 1;
       obj.whenComputed(length(obj.whenComputed) + 1) = time;
@@ -130,17 +121,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       % Reset the SAM
       obj.SAM.reset();
    else
-
-      % Condense the domains in a 2x2 matrix in case RACP is used
-      A = obj.Prec.condenseDomains(A);
-
-      % Scale the matrix and the rhs using the precomputed diagonal scaling
-      A = obj.Ruiz.scaleMat(A);
-
-      % Update the blocks for the preconditioner application 
       obj.Prec.updateStateBlocks(A);
-
-      % Update stats
       obj.params.nSolveSinceLastPrecComp = obj.params.nSolveSinceLastPrecComp + 1;
       T_setup = 0;
    end
@@ -177,13 +158,6 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % Adjust the preconditioner to be of the correct size in the case of
    % growing mesh simulation
    obj.Prec.updateGrowingPrec(Amat);
-
-   % Scale the initial solution and the rhs
-   obj.x0 = obj.Ruiz.applyDinv(obj.x0);
-   b = obj.Ruiz.applyD(b);
-
-   % Compute if necessary the tolerance for the linear solver
-   obj.convStrat.computeTol(nonlinIter,b,isLinear,obj.Ruiz,backupb);
    
    startT = tic;
    switch obj.SolverType
@@ -209,9 +183,6 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       x = real(x);
    end
 
-   % De-apply Ruiz scaling if used
-   x = obj.Ruiz.applyD(x);
-
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
@@ -223,16 +194,17 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       gresLog().log(3,'Trying to recompute the preconditioner to see if it manages to converge\n');
       obj.params.nSolveSinceLastPrecComp = 0;
       obj.requestPrecComp = true;
-      
-      [x,flag] = obj.SolveLin(backupA,backupb,time,nonlinIter);
+      [x,flag] = obj.SolveLin(A,b,time,nonlinIter);
       return;
    end
 
    % Interesting problem
    if(flag == 1)
       gresLog().log(3,'Number of solves since last preconditioner computation %d\n',obj.params.nSolveSinceLastPrecComp);
-      [x,~] = matlab_solve(obj,backupA,backupb,time);
-      
+      [x,~] = matlab_solve(obj,A,b,time);
+      % TV0 = obj.Prec.TV0;
+      % save('new_problem.mat','A','b','TV0');
+
       % Fall back to matlab to continue without breaking the
       % simulation
       warning('Matlab could solve and chronos did not. Falling back to matlab to continue simulation');
@@ -317,17 +289,17 @@ function [x,flag] = matlab_solve(obj,A,b,time)
    end
 
    startT = tic;
-
    % Solve the system
    A = cell2matrix(A);
    x = A\b;
-
    Tend = toc(startT);
 
    % Get the size of the system
    obj.systemSize = max(size(A,1),obj.systemSize);
 
-   % Update stats
+   % if obj.DEBUGflag
+   %    fprintf('condition number of the matrix %e\n',condest(A));
+   % end
    symValue = norm(A-A','f')/norm(A,'f');
    obj.params.iter = 0;
    fillStats(obj,Tend,time,symValue,0,0);
