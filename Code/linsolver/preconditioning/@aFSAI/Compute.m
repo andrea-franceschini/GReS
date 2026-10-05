@@ -1,11 +1,4 @@
-function Compute(obj,A,symm,varargin)
-
-   % Understand if part of a block preconditioner
-   if nargin < 4
-      block = false;
-   else
-      block = varargin{1};
-   end
+function A = Compute(obj,A,symm,varargin)
 
    if iscell(A)
       A = A{1,1};
@@ -16,17 +9,6 @@ function Compute(obj,A,symm,varargin)
       obj.PrecSym = false;
    else
       obj.PrecSym = true;
-   end
-
-   % Treat Boundary conditions if not coming from a block preconditioner 
-   if ~block
-      warning('off', 'MATLAB:eigs:NotAllEigsConvKeep');
-      lmax = eigs(A,1,'lm','FailureTreatment','keep','Display',0,'Tolerance',0.001,'MaxIterations',3);
-
-      d = diag(A);
-      idx = (d == 1);
-      d(idx) = lmax/10;
-      A = spdiags(d, 0, A);
    end
 
    % Compute the FSAI preconditioner

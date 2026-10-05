@@ -1,6 +1,6 @@
 classdef linearSolver < handle
 % linearSolver - Handle class that manages linear solver selection, preconditioner
-%                creation (Chronos_Lab), solving strategy and statistics.
+%                creation (ChronosLab), solving strategy and statistics.
 %
 % Usage:
 %   obj = linearSolver(generalsolver, physname)
@@ -12,7 +12,7 @@ classdef linearSolver < handle
 %                   preconditioner setup.
 %
 % Description:
-%   This class detects presence of the Chronos_Lab third-party library and,
+%   This class detects presence of the ChronosLab third-party library and,
 %   when available and compiled, configures a Chronos preconditioner and a
 %   solver strategy (GMRES, etc.). It also supports a MATLAB fallback if
 %   Chronos is missing or not compiled. The object gathers statistics about
@@ -63,7 +63,7 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 2e5
+      matlabMaxSize = 2e4
 
       % Utils flags
       nsyTol = 100*eps
@@ -71,7 +71,7 @@ classdef linearSolver < handle
       % Convergence strategy handler
       convStrat
       
-      % Flag for Chronos existance
+      % Flag for Chronos existence
       ChronosFlag = false
 
       % Flag to request Preconditioner computation
@@ -115,6 +115,16 @@ classdef linearSolver < handle
 
       % Params struct
       params
+
+   end
+
+   properties (Access = public)
+      % Ruiz diagonal scaling object
+      Ruiz
+
+      % Ruiz params
+      maxitRuiz = 10
+      tolRuiz = 1e-2
    end
 
    methods (Access = public)
@@ -122,7 +132,7 @@ classdef linearSolver < handle
       % Constructor Function
       function obj = linearSolver(generalsolver,physname)
 
-         % Check if chronos is available
+         % Check if Chronos is available
          ChronosDir = fullfile(gres_root,'ThirdPartyLibs','ChronosLab','sources');
 
          % Possible the user wants to use matlab even if the size is sufficient
@@ -133,24 +143,27 @@ classdef linearSolver < handle
            end
          end
 
+         % Check if ChronosLab folder is present
          if isfolder(ChronosDir)
-           if strcmp(computer('arch'),'maca64')
-             fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexmaca64');
-           elseif strcmp(computer('arch'),'win64')
-             fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexw64');
-           else
-             fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexa64');
-           end
+            % Check if ChronosLab has been compiled
+            if strcmp(computer('arch'),'maca64')
+              fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexmaca64');
+            elseif strcmp(computer('arch'),'win64')
+              fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexw64');
+            else
+              fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexa64');
+            end
 
+            % If this file exists then Chronos is compiled
             if ~isfile(fileMex)
-               gresLog().warning(1,'Chronos_Lab submodule is present, but not compiled. Using matlab fallback');
+               warning('ChronosLab submodule is present, but not compiled. Using matlab fallback');
                return;
             end
 
             obj.generalsolver = generalsolver;
 
             % Create the preconditioner object, check if the physics is supported
-            [obj.Prec,obj.ChronosFlag] = obj.choosePrec(obj.DEBUGflag,generalsolver,physname);
+            [obj.Prec,obj.ChronosFlag, scalingFlag] = obj.choosePrec(obj.DEBUGflag,generalsolver,physname);
 
             % Create SAM object, deals with everything inside if not asked
             % to be used
@@ -187,6 +200,25 @@ classdef linearSolver < handle
             else
                obj.params.restart = 100;
             end
+
+            % Create Ruiz scaling object
+            obj.Ruiz = RuizScaling(obj.DEBUGflag,obj.maxitRuiz,obj.tolRuiz);
+            obj.Ruiz.scalingFlag = scalingFlag;
+            
+            % Parse scaling options if provided
+            if isfield(generalsolver.simparams.linSolverParams, 'scalingFlag')
+               obj.Ruiz.scalingFlag = generalsolver.simparams.linSolverParams.scalingFlag;
+            end
+
+            % Check if Ruiz is supported
+            if obj.Ruiz.scalingFlag == true && ismember(class(obj.Prec),["aFSAI", "aAMG"]) 
+               % Not supported
+               obj.Ruiz.scalingFlag = false;
+               gresLog().warning(1,'Ruiz scaling not supported for basic preconditioners as aAMG and aFSAI');
+            end
+
+            % Copy the Ruiz scaling class to the preconditioner
+            obj.Prec.Ruiz = obj.Ruiz;
          end
       end
 
@@ -250,12 +282,12 @@ classdef linearSolver < handle
 
    methods (Access = private)
 
-      % Function to get if chronos is to be used and if so instanciate the
+      % Function to get if Chronos is to be used and if so instantiate the
       % preconditioner
-      [Prec,ChronosFlag] = choosePrec(obj,debugflag,problemsolver,physname);
+      [Prec,ChronosFlag,scalingFlag] = choosePrec(obj,debugflag,problemsolver,physname);
 
       % Specific functions to be used inside choosePrec
-      [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physname)
+      [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physname);
       [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname);
    end
 end

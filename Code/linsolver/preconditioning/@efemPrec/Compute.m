@@ -1,11 +1,8 @@
 % Function to compute the Embedded Fractures Preconditioner
-function Compute(obj,A,symMat,varargin)
+function A = Compute(obj,A,symMat,varargin)
 
    % Set the symmetry of the full preconditioner
    obj.PrecSym = floor(sum(symMat,'all')/(size(symMat,1))^2);
-
-   % Treat the boundary conditions in the mechanics block
-   A = obj.treatDirBC(A,obj.PrecSym);
 
    % Compute the test space
    TV0 = [];
@@ -13,6 +10,10 @@ function Compute(obj,A,symMat,varargin)
       TV = mk_rbm_3d(obj.domain(i).grid.coordinates);
       TV0 = [TV0;TV];
    end
+   
+   % Compute and apply Ruiz diagonal scaling if requested
+   A = obj.Ruiz.Compute(A);
+   TV0 = obj.Ruiz.applyDinv(TV0,1);
    
    % Make A22 slightly more diagonally dominant
    A22 = obj.regularizeA22(A{2,2});

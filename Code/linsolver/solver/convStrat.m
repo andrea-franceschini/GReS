@@ -49,10 +49,23 @@ classdef convStrat < handle
       end
 
       % Function to compute the tolerance for the linear solver
-      function computeTol(obj,nonlinIter,b,islinear)
-         % If the problem is linear then use the tolerance needed from the nonlinearsolver
+      function computeTol(obj, nonlinIter, b, islinear, Ruiz, backupb)
+         
+         % If the problem is linear then use the tolerance needed from the nonlinear-solver
          if islinear
             obj.Tol = obj.minEtak;
+
+            % Determine effective tolerance for the scaled linear solver to guarantee
+            % convergence of the unscaled physical residual
+            if Ruiz.scalingFlag
+               b_unscaled_norm = norm(cell2matrix(backupb));
+               b_scaled_norm = norm(b);
+               if b_scaled_norm > 0 && b_unscaled_norm > 0
+                  minD = min(Ruiz.fullD);
+                  scaleFactor = (minD * b_unscaled_norm) / b_scaled_norm;
+                  obj.Tol = obj.Tol * min(1, scaleFactor);
+               end
+            end
             return;
          end
 

@@ -34,7 +34,7 @@ classdef aFSAI < preconditioner
    methods (Access = public)
 
       % Function to compute the preconditioner
-      Compute(obj,A,sym,varargin)
+      A = Compute(obj,A,sym,varargin)
 
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)

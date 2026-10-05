@@ -6,7 +6,7 @@ function [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physn
    allowedPhysics = {'pressure', 'u', 'displacements'};
 
    % Supported Single Physics
-   if contains(physname, {'pressure', 'u', 'displacements'})
+   if contains(physname, allowedPhysics)
       
       if nInt == 0
          % No interface, its a simple single domain single physics problem,

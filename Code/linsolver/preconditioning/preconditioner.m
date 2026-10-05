@@ -28,6 +28,12 @@ classdef (Abstract) preconditioner < handle
       Apply_R = []
    end
 
+   properties (GetAccess = public, SetAccess = public)
+      % Diagonal scaling object
+      Ruiz = []
+      scalingFlag
+   end
+   
    methods (Abstract)
       % Function to compute the preconditioner
       Compute(obj,A,sym,varargin)
@@ -66,6 +72,13 @@ classdef (Abstract) preconditioner < handle
       % Update the state of the blocks default (do nothing), overridden in
       % specific preconditioners
       function updateStateBlocks(obj, A)
+
+      end
+
+
+      % Condenses the domains and interfaces in a 2x2 matrix (default do
+      % nothing), overridden in specific preconditioners
+      function A = condenseDomains(obj,A)
 
       end
    end
