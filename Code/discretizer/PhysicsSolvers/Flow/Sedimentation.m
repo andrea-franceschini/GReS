@@ -795,22 +795,22 @@ classdef Sedimentation < PhysicsSolver
         obj.coordZ = linspace(0,dim(3),ncells(3)+1);
       elseif strcmp(data.Grid.type,"explicit")
         % Internal initialization of grid, maps, and material layers.
-        if isfield(data,'xfile')
-          obj.coordX = load(data.xfile);
+        if isfield(data.Grid,'xfile')
+          obj.coordX = load(data.Grid.xfile);
         else
-          obj.coordX = data.xcoord;
+          obj.coordX = data.Grid.xcoord;
         end
 
-        if isfield(data,'yfile')
-          obj.coordY = load(data.yfile);
+        if isfield(data.Grid,'yfile')
+          obj.coordY = load(data.Grid.yfile);
         else
-          obj.coordY = data.ycoord;
+          obj.coordY = data.Grid.ycoord;
         end
 
-        if isfield(data,'zfile')
-          obj.coordZ = load(data.zfile);
+        if isfield(data.Grid,'zfile')
+          obj.coordZ = load(data.Grid.zfile);
         else
-          obj.coordZ = data.zcoord;
+          obj.coordZ = data.Grid.zcoord;
         end
       else
         gresLog().error("The grid parameters for the simulation is not well defined!");
