@@ -40,7 +40,7 @@ bound = Boundaries(grid,fullfile(scriptDir,input_dir,"boundaries.xml"));
 
 %% ------------------ Set up and Calling the Solver -----------------------
 % Create and set the print utility
-printUtils = OutState('outputFile',"Output/results",'printTimes',[0.05,1,2.5,5]);
+printUtils = OutState('outputFile',"Output/results",'printTimes',[0.25,1,2.5,5]);
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Boundaries',bound,...
@@ -49,7 +49,7 @@ domain = Discretizer('Boundaries',bound,...
 
 solverIn.(solverName) = [];
 
-domain.addPhysicsSolver('BiotFullyCoupled',solverIn)
+domain.addPhysicsSolver('BiotFullyCoupled')
 
 % In this version of the code, the user can assign initial conditions only
 % manually, by directly modifying the entries of the state structure. 
@@ -68,7 +68,7 @@ solver = NonLinearImplicit('simulationparameters',simParam,...
 solver.simulationLoop();
 
 % calling analytical solution script
-Mandel_Analytical(grid, mat, abs(F),[0.05,1,2.5,5],output_dir)
+Mandel_Analytical(grid, mat, abs(F),[0.25,1,2.5,5],output_dir)
 
 %% --------------------- Post Processing the Results ----------------------
 if true
@@ -83,9 +83,9 @@ if true
   center = grid.cells.center;
 
   %Post processing using MAT-FILE
-  %list of nodes along vertical axis (with x,y=0)
+  %list of nodes along horizontal axis (with z,y=0)
   tol = 0.001;
-  elemP1 = find(abs(center(:,3) - 0.025) < tol);
+  elemP1 = find(abs(center(:,3) - 0.475) < tol);
   elemP2 = find(abs(center(:,2) - 0.025) < tol);
   elemP = intersect(elemP1, elemP2);
   nodesX1 = find(abs(grid.coordinates(:,2)-0.05)<tol) ;
