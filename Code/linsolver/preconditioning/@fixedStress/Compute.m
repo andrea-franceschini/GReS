@@ -33,5 +33,6 @@ function A = Compute(obj,A,symMat,varargin)
 
    obj.Apply_L = @(x) obj.ApplyLeft(x,S,A{1,1},A{1,2});
    obj.Apply_R = @(x) obj.ApplyRight(x);
+   
 end
 

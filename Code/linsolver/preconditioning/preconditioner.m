@@ -73,6 +73,12 @@ classdef (Abstract) preconditioner < handle
       function updateStateBlocks(obj, A)
 
       end
+
+      % Condenses the domains and interfaces in a 2x2 matrix, default does
+      % nothing. Overridden in specific preconditioners
+      function A = condenseDomains(obj,A)
+
+      end
    end
 end
 

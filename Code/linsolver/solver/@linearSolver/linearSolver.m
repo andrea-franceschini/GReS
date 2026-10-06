@@ -63,7 +63,7 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 2e5
+      matlabMaxSize = 2e4
 
       % Utils flags
       nsyTol = 100*eps
@@ -182,7 +182,7 @@ classdef linearSolver < handle
             obj.params.lastRelres = 1e10;
 
             % Choose the relative tolerance strategy
-            obj.convStrat = convStrat(generalsolver);
+            obj.convStrat = chooseConvStrat(generalsolver);
 
             % Get default values
             chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');
