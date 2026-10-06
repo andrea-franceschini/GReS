@@ -1,7 +1,8 @@
-function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
+function [Prec,ChronosFlag,scalingFlag] = choosePrec(obj,debugflag,generalsolver,physname)
    
-   % Initialize the Chronos Flag
+   % Initialize the Chronos and scaling flags
    ChronosFlag = false;
+   scalingFlag = false;
 
    % Get the domains
    domainin = generalsolver.domains;
@@ -12,6 +13,7 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
 
    % Early exit with multiphysics multidomain
    if multiPhysFlag && multiDomFlag
+      scalingFlag = true;
       gresLog().warning(3,'Multiphysics with multidomain not yet supported');
       Prec = [];
       return;
@@ -43,6 +45,7 @@ function [Prec,ChronosFlag] = choosePrec(obj,debugflag,generalsolver,physname)
 
    % Now choose the correct preconditioner for the correct case
    if(multiPhysFlag && ~multiDomFlag)
+      scalingFlag = true;
       [ChronosFlag,Prec] = obj.chooseMultiPhys(generalsolver,debugflag,physname);
    else
       % Keep only the unique one for the single physics
