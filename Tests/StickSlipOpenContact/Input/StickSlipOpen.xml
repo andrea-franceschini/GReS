@@ -20,7 +20,7 @@ in a nonConforming simulation.
                         />
 
   <Interface>
-    <SolidMechanicsContact
+    <SolidMechanicsContact_stab
                                          augmentationParameter = "1e4"
                                          multiplierType = "P0"
                                          isSmooth = "0"
@@ -51,7 +51,7 @@ in a nonConforming simulation.
 
       </ActiveSet>
 
-    </SolidMechanicsContact>
+    </SolidMechanicsContact_stab>
 
   </Interface>
 
