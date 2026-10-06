@@ -50,7 +50,10 @@
                            slaveDomain = "1"
                            masterSurface = "6"
                            slaveSurface = "7"
-                           multiplierType = "P0">
+                           multiplierType = "P0"
+                           isSmooth = "1"
+                           augmentationNormal = "1e4"
+                           augmentationTangential = "1e4">
 
       <Quadrature
                   type = "SegmentBasedQuadrature"

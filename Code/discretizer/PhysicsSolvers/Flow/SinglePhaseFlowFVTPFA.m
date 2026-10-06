@@ -59,7 +59,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         [-T; -T; sumDiagTrans], nDoF, nDoF);
 
       % regularization for pure neumann problem
-      obj.H = obj.H + speye(size(obj.H)) * 1e-10;
+      obj.H = obj.H + diag(diag(obj.H)) * 1e-10;
     end
 
     function computeCapMat(obj,varargin)

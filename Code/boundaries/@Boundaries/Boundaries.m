@@ -167,7 +167,7 @@ classdef Boundaries < handle
       end
 
       % component multiplication
-      dim = length(nEnts);
+      dim = dofm.getNumberOfComponents(varId);
       i1 = 1;
       dofs = zeros(numel(ents),1);
       for i = 1 : dim
@@ -195,12 +195,23 @@ classdef Boundaries < handle
       end
     end
 
-    function initialize(obj,bcId,target)
+    function initialize(obj,bcId,target,numbComp)
 
       src = obj.getField(bcId);
       bc = obj.getData(bcId);
+
+      % verify bcs dimensions
+      if numbComp < sum(bc.data.nSourceEnts > 0)
+        error('Number of bc components is not compatible with the variable field number of components')
+      end
+
+      if numbComp ~= length(bc.data.nSourceEnts)
+        bc.data.nSourceEnts = bc.data.nSourceEnts(bc.data.nSourceEnts > 0);
+      end
+
       bc.data.reset();
       bc.data.computeTargetEntities(obj.grid,target,src);
+
 
     end
 
