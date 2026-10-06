@@ -124,6 +124,11 @@ classdef SolidMechanicsContact < MeshTying
 
       computeContactMatricesAndRhs(obj);
 
+      % Semi-smooth stabilization is already differentiated inside the law.
+      if ~obj.isSmooth
+        return
+      end
+
       % get stabilization matrix depending on the current active set
       [H,rhsStab] = getStabilizationMatrixAndRhs(obj);
 
@@ -478,24 +483,27 @@ classdef SolidMechanicsContact < MeshTying
       um = obj.domains(MortarSide.master).getState("displacements");
       us = obj.domains(MortarSide.slave).getState("displacements");
 
-      % Recover the stabilized gap using the pasted class convention:
-      % closed/stick constraints are A*g + rhsStab = 0 in both strategies.
       areaSlave = repelem(obj.getSlaveArea(),3,1);
-
-      areaGap = (obj.D*us + obj.M*um);
-
+      areaGap = obj.D*us + obj.M*um;
       state.gap = areaGap./areaSlave;
 
-      [~,rhsStab] = getStabilizationMatrixAndRhs(obj);
-
-      stabGap = (areaGap + rhsStab)./areaSlave;
-      stabSlip = (state.gap-stateOld.gap) + rhsStab./areaSlave;
-
-      stabSlip(1:3:end) = [];
-
-      state.tangentialSlip = stabSlip;
-      state.normalGap = stabGap(1:3:end);
-      state.tangentialGap = stateOld.tangentialGap + stabSlip;
+      if obj.isSmooth
+        % Preserve the original outer active-set strategy.
+        [~,rhsStab] = getStabilizationMatrixAndRhs(obj);
+        stabGap = (areaGap + rhsStab)./areaSlave;
+        stabSlip = (state.gap-stateOld.gap) + rhsStab./areaSlave;
+        stabSlip(1:3:end) = [];
+        state.tangentialSlip = stabSlip;
+        state.normalGap = stabGap(1:3:end);
+        state.tangentialGap = stateOld.tangentialGap + stabSlip;
+      else
+        % Physical outputs contain only the geometric jump, never H*t.
+        rawSlip = state.gap-stateOld.gap;
+        rawSlip(1:3:end) = [];
+        state.normalGap = state.gap(1:3:end);
+        state.tangentialSlip = rawSlip;
+        state.tangentialGap = stateOld.tangentialGap + rawSlip;
+      end
 
       setState(obj,state);
 
@@ -527,28 +535,50 @@ classdef SolidMechanicsContact < MeshTying
       deltaGap = state.gap - stateOld.gap;
       deltaTangentialGap = state.tangentialGap - stateOld.tangentialGap;
 
-      % Freeze a single classification per slave face before visiting pairs.
-      % Smooth: retain the outer active set. 
-      % Semi-smooth: select branches from the current stabilized gap and augmented tangential traction.
-      updateAssemblyContactModes(obj,state,deltaTangentialGap);
       [cN,cT] = getComplementarityParameters(obj);
-
-      % Evaluate the local law once per P0 multiplier face, rather than once
-      % per intersection cell. Only the geometric integration is pairwise.
       residual = zeros(3,surfSlave.num);
       gapTangent = zeros(3,3,surfSlave.num);
       tractionTangent = zeros(3,3,surfSlave.num);
+      H = [];
 
+      if obj.isSmooth
+        updateAssemblyContactModes(obj,state,deltaTangentialGap);
+        for is = 1:surfSlave.num
+          id = getMultiplierDoF(obj,is);
+          g = [state.gap(3*is-2); deltaGap(3*is-1:3*is)];
+          slip = deltaTangentialGap(2*is-1:2*is);
+          [residual(:,is),gapTangent(:,:,is),tractionTangent(:,:,is)] = ...
+            getLocalContactLaw(obj,obj.activeSet.curr(is),...
+            state.traction(id),g,slip,cN,cT);
+        end
+      else
+        % Recompute raw gaps from the current displacement state, so branch
+        % selection never depends on the ordering of updateState calls.
+        computeGap(obj);
+        state = getState(obj);
+        deltaGap = state.gap-stateOld.gap;
+        rawConstraintGap = deltaGap;
+        rawConstraintGap(1:3:end) = state.gap(1:3:end);
 
-     
-      for is = 1:surfSlave.num
-        id = getMultiplierDoF(obj,is);
-        g = [state.gap(3*is-2); deltaGap(3*is-1:3*is)];
-        slip = deltaTangentialGap(2*is-1:2*is);
+        if isempty(obj.stabilizationMat)
+          computeStabilizationMatrix(obj);
+        end
+        % Use a fixed operator: projection derivatives automatically disable
+        % stabilization in open directions. No active-set-dependent masking.
+        H = obj.stabilizationMat;
+        referenceChange = state.traction-stateOld.traction;
+        referenceChange(1:3:end) = ...
+          state.traction(1:3:end)-stateIni.traction(1:3:end);
+        areaSlave = repelem(obj.getSlaveArea(),3,1);
+        defect = rawConstraintGap-(H*referenceChange)./areaSlave;
 
-        [residual(:,is),gapTangent(:,:,is),tractionTangent(:,:,is)] = ...
-          getLocalContactLaw(obj,obj.activeSet.curr(is),...
-          state.traction(id),g,slip,cN,cT);
+        for is = 1:surfSlave.num
+          id = getMultiplierDoF(obj,is);
+          [residual(:,is),gapTangent(:,:,is),tractionTangent(:,:,is),mode] = ...
+            getSemismoothContactLaw(obj,state.traction(id),defect(id),...
+            cN,cT,isForceStickElement(obj,is));
+          obj.activeSet.curr(is) = mode;
+        end
       end
 
       elemPairs = obj.quadrature.interfacePairs;
@@ -593,6 +623,26 @@ classdef SolidMechanicsContact < MeshTying
       obj.addJmu(m,asbMt.sparseAssembly());
       obj.addJmu(s,asbDt.sparseAssembly());
       obj.Jconstraint = asbQ.sparseAssembly();
+      if ~obj.isSmooth
+        % Chain rule for defect = rawGap - A^{-1} H*(t-reference).
+        % A commutes with each face-local 3x3 block; retain ALL off-face
+        % traction couplings, including those in sliding rows.
+        n = getNumbDoF(obj);
+        row = zeros(9*surfSlave.num,1);
+        col = row;
+        val = row;
+        for is = 1:surfSlave.num
+          id = getMultiplierDoF(obj,is);
+          [rr,cc] = ndgrid(id,id);
+          k = (is-1)*9+(1:9);
+          row(k) = rr(:);
+          col(k) = cc(:);
+          block = gapTangent(:,:,is);
+          val(k) = block(:);
+        end
+        Gglobal = sparse(row,col,val,n,n);
+        obj.Jconstraint = obj.Jconstraint-Gglobal*H;
+      end
       obj.addRhs(m,rhsUm);
       obj.addRhs(s,rhsUs);
       obj.rhsConstraint = rhsT;
@@ -614,39 +664,56 @@ classdef SolidMechanicsContact < MeshTying
       Aus = MortarQuadrature.integrate(f,Ns,Nmult,dJw)*R;
     end
 
-    function updateAssemblyContactModes(obj,state,slip)
+    function updateAssemblyContactModes(obj,~,~)
+      % Smooth assembly retains the outer active set. Semi-smooth assembly
+      % selects the branch together with its residual and generalized tangent.
+      enforceForcedStick(obj);
+    end
 
-      if obj.isSmooth
-        enforceForcedStick(obj);
+    function [r,G,Q,mode] = getSemismoothContactLaw(obj,t,d,cN,cT,forced)
+      % Projection residual with gap units in ALL branches:
+      % R_N = (min(t_N+cN*d_N,0)-t_N)/cN;
+      % R_T = (Proj_ball(t_T+cT*d_T)-t_T)/cT.
+      % d is an algebraic constraint defect, not the physical gap.
+      r = zeros(3,1);
+      G = zeros(3);
+      Q = zeros(3);
+      if forced
+        mode = ContactMode.stick;
+        r = d;
+        G = eye(3);
         return
       end
-
-      [cN,cT] = getComplementarityParameters(obj);
-
-      for is = 1:numel(obj.activeSet.curr)
-
-        if isForceStickElement(obj,is)
-          obj.activeSet.curr(is) = ContactMode.stick;
-          continue
-        end
-        id = getMultiplierDoF(obj,is);
-        t = state.traction(id);
-        if t(1) + cN*state.normalGap(is) > 0
-          obj.activeSet.curr(is) = ContactMode.open;
-        else
-          tauLim = getFrictionLimit(obj,t(1));
-          tau = norm(t(2:3) + cT*slip(2*is-1:2*is));
-          % Preserve the tangential violation allowance of Augmented.
-          % Its assembly reset each face to stick before this comparison.
-          if tau >= tauLim
-            tau = tau*(1-obj.activeSet.tol.tangentialViolation);
-          end
-          if tau <= tauLim
-            obj.activeSet.curr(is) = ContactMode.stick;
-          else
-            obj.activeSet.curr(is) = ContactMode.slip;
-          end
-        end
+      qN = t(1)+cN*d(1);
+      if qN > 0
+        mode = ContactMode.open;
+        Q = -diag([1/cN,1/cT,1/cT]);
+        r = Q*t;
+        return
+      end
+      r(1) = d(1);
+      G(1,1) = 1;
+      % Use the projected normal predictor in the Coulomb radius. At a
+      % converged closed constraint qN=tN. This also differentiates normal
+      % gap and its stabilization coupling in the slipping equation.
+      [tauLim,dTauDqN] = getFrictionLimit(obj,qN);
+      qT = t(2:3)+cT*d(2:3);
+      qNorm = norm(qT);
+      if qNorm <= tauLim
+        mode = ContactMode.stick;
+        r(2:3) = d(2:3);
+        G(2:3,2:3) = eye(2);
+      else
+        mode = ContactMode.slip;
+        % qNorm>tauLim>=0: normalization is safe without a cutoff that
+        % would invalidate the residual/Jacobian for small sliding loads.
+        direction = qT/qNorm;
+        Ddirection = (eye(2)-direction*direction')/qNorm;
+        r(2:3) = (tauLim*direction-t(2:3))/cT;
+        G(2:3,1) = (cN/cT)*dTauDqN*direction;
+        G(2:3,2:3) = tauLim*Ddirection;
+        Q(2:3,1) = dTauDqN*direction/cT;
+        Q(2:3,2:3) = (tauLim*Ddirection-eye(2))/cT;
       end
     end
 
