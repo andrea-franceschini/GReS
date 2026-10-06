@@ -26,6 +26,11 @@ classdef (Abstract) preconditioner < handle
       % Preconditioner application
       Apply_L = []
       Apply_R = []
+
+   end
+
+   properties (GetAccess = public, SetAccess = ?linearSolver)
+      Ruiz = []
    end
 
    methods (Abstract)
