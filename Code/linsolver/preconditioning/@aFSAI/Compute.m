@@ -15,9 +15,7 @@ function Compute(obj,A,symm,varargin)
    obj.Prec = smoother(A, symm, obj.param, obj.DEBUGflag);
 
    % Check if there was the fallback and propagate the symmetry
-   if ~obj.Prec.is_posdef && obj.PrecSym == true
-      obj.PrecSym = false;
-   end
+   obj.posDef = obj.Prec.is_posdef;
 
    % Define Mfun
    obj.Apply_L = @(r) obj.ApplyLeft(r,A);

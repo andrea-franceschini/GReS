@@ -27,9 +27,12 @@ classdef (Abstract) preconditioner < handle
       Apply_L = []
       Apply_R = []
 
+      % Define the positive definiteness of the problem
+      posDef = true;
    end
 
    properties (GetAccess = public, SetAccess = ?linearSolver)
+      % Ruiz scaling object
       Ruiz = []
    end
 
