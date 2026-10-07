@@ -28,7 +28,7 @@ function [A] = Compute(obj,A,symMat,varargin)
    obj.S = A{1,1} - A{1,2}*invC(A{2,1});
   
    % Check in case of symmetric indefinite systems for FSAI
-   AMGSym = obj.FSAI.PrecSym && obj.PrecSym;
+   AMGSym = obj.FSAI.PrecSym && obj.PrecSym && obj.FSAI.posDef;
 
    % Compute the amg for block 11 (mechanics)
    obj.AMG.Compute(obj.S,AMGSym,TV0,true);
