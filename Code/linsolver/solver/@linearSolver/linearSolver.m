@@ -228,15 +228,22 @@ classdef linearSolver < handle
             obj.SAM.CompLin = zeros(size(obj.precCompLin));
          end
          
-         % Check if the user wants only the summary review
-         if ~isempty(varargin)
-            string = varargin{1};
-         else
-            string = [];
+         % Parse optional arguments
+         showShort = false;
+         showEW = false;
+         for k = 1:numel(varargin)
+            arg = varargin{k};
+            if ischar(arg) || isstring(arg)
+               if strcmpi(arg, 'short')
+                  showShort = true;
+               elseif strcmpi(arg, 'ew')
+                  showEW = true;
+               end
+            end
          end
 
-         % The user did not ask for the summary only, show full info
-         if ~strcmpi(string,'short')
+         % If not 'short', show full linear solver table and preconditioner times
+         if ~showShort
             % Print the time steps at which the preconditioner was computed
             fprintf('The preconditioner was computed at time(s):\n');
             for i = 1:length(obj.whenComputed)
@@ -250,6 +257,11 @@ classdef linearSolver < handle
             for i = 1:size(obj.solveTLin,2)
                fprintf('| %.2e | %6d | %4d | %.2e | %.1e | %.2e | %.2e |\n',obj.timeLin(i),i,obj.iterLin(i),obj.solveTLin(i),obj.symFlagLin(i),obj.precCompLin(i)+obj.SAM.CompLin(i),obj.Delta_T(i));
             end
+         end
+
+         % Print Eisenstat-Walker statistics if explicitly requested
+         if showEW && ~isempty(obj.convStrat)
+            obj.convStrat.printStats();
          end
 
          fprintf('Average Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));

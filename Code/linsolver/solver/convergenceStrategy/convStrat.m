@@ -20,6 +20,11 @@ classdef (Abstract) convStrat < handle
          % nonlinear solver
          obj.linearTol = generalsolver.simparams.relTol;
       end
+
+      function printStats(obj)
+         % Default empty method for convergence strategies that do not
+         % track specialized statistics
+      end
    end
 
    methods (Abstract)

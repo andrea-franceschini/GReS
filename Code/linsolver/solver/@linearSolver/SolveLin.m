@@ -178,12 +178,12 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % growing mesh simulation
    obj.Prec.updateGrowingPrec(Amat);
 
-   % Compute if necessary the tolerance for the linear solver
-   obj.convStrat.computeTol(b, isLinear, nonlinIter, obj.Ruiz, backupb);
-
    % Apply Ruiz scaling if necessary
    obj.x0 = obj.Ruiz.applyDinv(obj.x0);
    b = obj.Ruiz.applyD(b);
+
+   % Compute if necessary the tolerance for the linear solver
+   obj.convStrat.computeTol(b, isLinear, nonlinIter, obj.Ruiz, backupb);
 
    startT = tic;
    switch obj.SolverType
