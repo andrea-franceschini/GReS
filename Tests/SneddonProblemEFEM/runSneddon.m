@@ -23,7 +23,7 @@ Lz = 100.0;
 %   15 -> 45 -> 135 -> 405
 %
 % Add 405 if desired.
-nList = [15, 45, 135, 405];
+nList = [15, 45, 135];
 
 % The fracture spans exactly 7 cells of the 15x15 base grid.
 % DO NOT use 46.67: the exact value keeps the fracture tips on grid
@@ -49,9 +49,6 @@ hVec      = zeros(nRuns,1);
 errAbsVec = zeros(nRuns,1);
 errRelVec = zeros(nRuns,1);
 
-%% ========================================================================
-%  REFINEMENT LOOP
-%  ========================================================================
 
 for iRun = 1:nRuns
 
@@ -79,21 +76,6 @@ for iRun = 1:nRuns
 
     h = Lx/nCell;
     hVec(iRun) = h;
-
-    %% --------------------------------------------------------------------
-    %  Analytical Sneddon displacement on external boundary
-    %
-    %  Horizontal fracture:
-    %
-    %             z
-    %             ^
-    %             |
-    %      --------+---------> x
-    %            -a   a
-    %
-    %  fracture: z = 0,  -a <= x <= a
-    %
-    %  --------------------------------------------------------------------
 
     c = grid.coordinates;
 
@@ -147,9 +129,6 @@ for iRun = 1:nRuns
         (1 - (r./sqrtR1R2).* ...
         cos(theta - theta12)) );
 
-    %% --------------------------------------------------------------------
-    %  Material and output
-    %  --------------------------------------------------------------------
 
     mat = Materials(params.Materials);
 
@@ -160,9 +139,6 @@ for iRun = 1:nRuns
         "printTimes",1, ...
         "matFileName",outputName);
 
-    %% --------------------------------------------------------------------
-    %  Boundary conditions
-    %  --------------------------------------------------------------------
 
     bc = Boundaries(grid);
 
@@ -211,10 +187,6 @@ for iRun = 1:nRuns
         'time',0.0, ...
         'value',0.0);
 
-    %% --------------------------------------------------------------------
-    %  Domain
-    %  --------------------------------------------------------------------
-
     domain = Discretizer( ...
         'Boundaries',bc, ...
         'Materials',mat, ...
@@ -222,11 +194,9 @@ for iRun = 1:nRuns
 
     domain.addPhysicsSolvers(params.Solver);
 
-    %% --------------------------------------------------------------------
-    %  Prescribed fracture pressure
-    %  --------------------------------------------------------------------
 
-    efem = getPhysicsSolver(domain,"EFEMaugmented");
+
+    efem = getPhysicsSolver(domain,"EmbeddedFractureMechanics");
 
     % Local fracture component 1 = normal traction
     efem.bcTraction(1:3:end) = p;
@@ -246,7 +216,7 @@ for iRun = 1:nRuns
     %  POSTPROCESSING
     %  ====================================================================
 
-    efem = getPhysicsSolver(domain,"EFEMaugmented");
+    efem = getPhysicsSolver(domain,"EmbeddedFractureMechanics");
 
     f = efem.fractureMesh.surfaces;
 
@@ -451,10 +421,6 @@ for iRun = 1:nRuns
         fullfile('Output',sprintf('gn_plot_%d.pdf',nCell)));
 end
 
-%% ========================================================================
-%  OBSERVED CONVERGENCE ORDER
-%  ========================================================================
-
 fprintf('\n');
 fprintf('============================================================\n');
 fprintf(' CONVERGENCE RESULTS\n');
@@ -481,10 +447,6 @@ for k = 2:nRuns
         errRelVec(k), ...
         pObs(k-1));
 end
-
-%% ========================================================================
-%  CONVERGENCE PLOT
-%  ========================================================================
 
 figure
 

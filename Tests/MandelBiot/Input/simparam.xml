@@ -5,7 +5,7 @@
                       End ="5.01"
                       DtInit= "5e-2"
                       DtMin ="1.e-5"
-                      DtMax ="1.e-1"
+                      DtMax ="5.e-2"
                       incrementFactor = "1."
                       MaxNLIteration = "10"
                       RelativeTolerance = "1.e-8"

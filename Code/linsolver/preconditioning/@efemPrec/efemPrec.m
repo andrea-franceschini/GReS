@@ -46,7 +46,7 @@ classdef efemPrec < preconditioner
 
    methods
       % Function to compute the preconditioner
-      Compute(obj,A,sym,varargin)
+      A = Compute(obj,A,sym,varargin)
 
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)
@@ -145,9 +145,5 @@ classdef efemPrec < preconditioner
          obj.params = obj.AMG.params;
          obj.nsyTol = nsyTol;
       end
-
-      % Function for treating the Dirichlet boundary conditions
-      A = treatDirBC(obj,A,sym)
-
    end
 end
