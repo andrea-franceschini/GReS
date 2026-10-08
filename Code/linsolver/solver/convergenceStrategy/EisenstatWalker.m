@@ -92,6 +92,14 @@ classdef EisenstatWalker < convStrat
                   status = 'Safeguard';
                end
 
+               % Final-stage oversolving safeguard (Eisenstat & Walker 1996)
+               tauNL = obj.getTauNL();
+               etaOversolve = (obj.alphaSafe * tauNL) / max(physNorm, eps);
+               if etak < etaOversolve
+                  etak = etaOversolve;
+                  status = 'Oversolve';
+               end
+
                % Cap at globalization upper bound
                if etak > obj.maxEtak
                   etak = obj.maxEtak;
@@ -139,7 +147,7 @@ classdef EisenstatWalker < convStrat
             if b_scaled_norm > 0 && b_unscaled_norm > 0
                minD = min(Ruiz.fullD);
                scaleFactor = (minD * b_unscaled_norm) / b_scaled_norm;
-               obj.Tol = obj.Tol * min(1, scaleFactor);
+               obj.Tol = max(obj.Tol * min(1, scaleFactor), 100 * eps);
             end
          end
 

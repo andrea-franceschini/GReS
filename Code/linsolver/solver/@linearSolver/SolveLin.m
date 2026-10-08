@@ -249,7 +249,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    obj.convStrat.recomputeSAM(obj,obj.SAM,Tend);
 
    % Store the new starting vector
-   obj.x0 = x;
+   obj.x0 = zeros(size(x,1),1);
 end
 
 

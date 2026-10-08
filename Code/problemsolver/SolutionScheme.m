@@ -17,6 +17,7 @@ classdef (Abstract) SolutionScheme < handle
     iniState            % initial state of the simulation for solver reset
     isFirstRun = true   % flag if the simulation is first ever or first after a reset   
     targetTimeID        % id for printTimes list for which solution is required
+    rhsNormIt0 = 0      % initial residual norm of current step
   end
 
 

@@ -60,6 +60,7 @@ classdef NonLinearImplicit < SolutionScheme
 
         rhs = assembleRhs(obj);
         rhsNorm = norm(cell2mat(rhs),2);
+        obj.rhsNormIt0 = rhsNorm;
         rhsNormIt0 = rhsNorm;
 
         tolWeigh = obj.simparams.relTol*rhsNorm;
