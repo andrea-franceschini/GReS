@@ -27,12 +27,6 @@ classdef (Abstract) convStrat < handle
          % Select the linear tolerance to be the relative tolerance of the
          % nonlinear solver
          obj.linearTol = generalsolver.simparams.relTol;
-
-         % Parse optional alphaSafe if provided in linSolverParams
-         if isfield(generalsolver.simparams, 'linSolverParams') && ...
-            isfield(generalsolver.simparams.linSolverParams, 'alphaSafe')
-            obj.alphaSafe = str2double(string(generalsolver.simparams.linSolverParams.alphaSafe));
-         end
       end
 
       function tauNL = getTauNL(obj)

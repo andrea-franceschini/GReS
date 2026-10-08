@@ -210,13 +210,6 @@ classdef linearSolver < handle
                obj.Ruiz.scalingFlag = generalsolver.simparams.linSolverParams.scalingFlag;
             end
 
-            % Check if Ruiz is supported
-            if obj.Ruiz.scalingFlag == true && ismember(class(obj.Prec),["aFSAI", "aAMG"]) 
-               % Not supported
-               obj.Ruiz.scalingFlag = false;
-               gresLog().warning(1,'Ruiz scaling not supported for basic preconditioners as aAMG and aFSAI');
-            end
-
             % Copy the Ruiz scaling class to the preconditioner
             obj.Prec.Ruiz = obj.Ruiz;
          end
