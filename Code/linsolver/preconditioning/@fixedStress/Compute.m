@@ -7,11 +7,15 @@ function A = Compute(obj,A,symMat,varargin)
    % Compute and apply Ruiz diagonal scaling if requested
    A = obj.Ruiz.Compute(A);
 
-   % Compute the test space
-   TV0 = [];
-   for i = 1:obj.nDom
-      TV = mk_rbm_3d(obj.domain(i).grid.coordinates);
-      TV0 = [TV0;TV];
+   % Compute or use provided test space for mechanics
+   if nargin >= 4 && ~isempty(varargin{1})
+      TV0 = varargin{1};
+   else
+      TV0 = [];
+      for i = 1:obj.nDom
+         TV = mk_rbm_3d(obj.domain(i).grid.coordinates);
+         TV0 = [TV0;TV];
+      end
    end
 
    % Scale the test space if needed

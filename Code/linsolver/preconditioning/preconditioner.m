@@ -31,7 +31,7 @@ classdef (Abstract) preconditioner < handle
       posDef = true;
    end
 
-   properties (GetAccess = public, SetAccess = ?linearSolver)
+   properties (Access = public)
       % Ruiz scaling object
       Ruiz = []
    end

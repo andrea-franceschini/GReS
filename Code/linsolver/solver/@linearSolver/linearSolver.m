@@ -125,6 +125,10 @@ classdef linearSolver < handle
       % Ruiz params
       maxitRuiz = 10
       tolRuiz = 1e-2
+
+      % .mat export settings for SolveSingle
+      saveMatFlag = false
+      saveMatSolves = []
    end
 
    methods (Access = public)

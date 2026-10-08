@@ -54,10 +54,16 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       [x,flag] = matlab_solve(obj,A,b,time);
       return
    end
-   
+
    % Save a backup for the inputs
    backupA = A;
    backupb = b;
+
+   % Save system to .mat if requested
+   currentSolve = obj.nSolve + 1;
+   if obj.saveMatFlag && ismember(currentSolve, obj.saveMatSolves)
+      saveLinearSystem(obj, backupA, backupb, currentSolve);
+   end
 
    % Check if this step is linear to use maximum resolution needed
    isLinear = getIsLinear(obj.generalsolver);
@@ -471,5 +477,32 @@ function [A] = fixPattern(A)
    end
 end
 
+function saveLinearSystem(obj, A, b, currentSolve)
+   coordinates = getCoordinates(obj.generalsolver);
+   filename = fullfile(sprintf('linearSystem_solve%d.mat', currentSolve));
 
+   ruizFlag = false;
+   if ~isempty(obj.Ruiz)
+      ruizFlag = obj.Ruiz.scalingFlag;
+   end
 
+   preconditioner = '';
+   if ~isempty(obj.Prec)
+      preconditioner = class(obj.Prec);
+   end
+
+   save(filename, 'A', 'b', 'coordinates', 'ruizFlag', 'preconditioner');
+   gresLog().log(3, 'Saved linear system solve %d to %s\n', currentSolve, filename);
+end
+
+function [coordinates] = getCoordinates(generalsolver)
+   nDom = numel(generalsolver.domains);
+   if nDom == 1
+      coordinates = generalsolver.domains(1).grid.coordinates;
+   else
+      coordinates = cell(nDom, 1);
+      for d = 1:nDom
+         coordinates{d} = generalsolver.domains(d).grid.coordinates;
+      end
+   end
+end

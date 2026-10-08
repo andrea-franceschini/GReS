@@ -13,18 +13,22 @@ function A = Compute(obj,A,symMat,varargin)
    % Compute the augmented matrix
    [A11_aug,inv_D22] = obj.cpt_localAug(A{1,1},A{1,2},A{2,1},A{2,2},obj.PrecSym);
    
-   % Compute the test space
-   if(obj.phys == 0) % fluids
-      TV0 = [];
-      for i = 1:obj.nDom - obj.nInt
-         TV = ones(size(A{i,1},1),1);
-         TV0 = [TV0;TV];
-      end
-   elseif(obj.phys == 1 || obj.phys == 1.1) % true contact mechanichs physics is 1.1, general poromechanics is 1
-      TV0 = [];
-      for i = 1:obj.nDom
-         TV = mk_rbm_3d(obj.domain(i).grid.coordinates);
-         TV0 = [TV0;TV];
+   % Compute or use provided test space
+   if nargin >= 4 && ~isempty(varargin{1})
+      TV0 = varargin{1};
+   else
+      if(obj.phys == 0) % fluids
+         TV0 = [];
+         for i = 1:obj.nDom - obj.nInt
+            TV = ones(size(A{i,1},1),1);
+            TV0 = [TV0;TV];
+         end
+      elseif(obj.phys == 1 || obj.phys == 1.1) % true contact mechanichs physics is 1.1, general poromechanics is 1
+         TV0 = [];
+         for i = 1:obj.nDom
+            TV = mk_rbm_3d(obj.domain(i).grid.coordinates);
+            TV0 = [TV0;TV];
+         end
       end
    end
 
