@@ -12,6 +12,8 @@ classdef OutState < matlab.mixin.Copyable
     vtkFile
     vtkFormat = "auto"
     vtkBinaryThreshold = 1e4
+    restart = struct('on',false,'filename',missing,'dt',missing,'time',...
+      missing,'overwrite',true)
   end
 
   properties (SetAccess = private)
@@ -171,6 +173,20 @@ classdef OutState < matlab.mixin.Copyable
 
     end
 
+    function obj = prepareRestart(obj)
+      if obj.restart.on
+        folder = fileparts(obj.restart.filename);
+        if ~isfolder(folder)
+          status = mkdir(folder);
+          if (status ~= 1)
+            gresLog().log(0,"Unable to create the folder for save the" + ...
+              " restart files, turn off the restart capability.\n");
+            obj.restart.on = false;
+          end
+        end
+      end
+    end
+
   end
 
   methods (Access = private)
@@ -228,6 +244,28 @@ classdef OutState < matlab.mixin.Copyable
       assert(isscalar(obj.vtkBinaryThreshold) && ...
         isfinite(obj.vtkBinaryThreshold) && obj.vtkBinaryThreshold >= 0, ...
         "vtkBinaryThreshold must be a finite nonnegative scalar.");
+
+      % obj.restart = struct('on',false,'filename',missing,'dt',...
+      %   missing,'time',missing,'overwrite',true);
+      if isfield(params,'restart')        
+        if isfield(params.restart,'time')
+          obj.restart.time = params.restart.time;
+        end
+        if isfield(params.restart,'dt')
+          obj.restart.dt = params.restart.dt;
+          obj.restart.time = missing;
+        end
+        if isfield(params.restart,'overwrite')
+          obj.restart.overwrite = params.restart.overwrite;
+        end
+        if isfield(params.restart,'filename')
+          obj.restart.filename = params.restart.filename;
+          obj.restart.on = true;
+        else
+          gresLog().log(0,"A filename is required to activate the " + ...
+            " restart capability.\n")
+        end
+      end
 
     end
 

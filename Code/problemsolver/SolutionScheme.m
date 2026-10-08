@@ -17,6 +17,7 @@ classdef (Abstract) SolutionScheme < handle
     iniState            % initial state of the simulation for solver reset
     isFirstRun = true   % flag if the simulation is first ever or first after a reset   
     targetTimeID        % id for printTimes list for which solution is required
+    restartControl      % variable to control the save point for restart
   end
 
 
@@ -42,20 +43,32 @@ classdef (Abstract) SolutionScheme < handle
     function obj = SolutionScheme(varargin)
       % assert(nargin > 1 && nargin < 9,"Wrong number of input arguments " + ...
       %   "for general solver")
-
       obj.setSolutionScheme(varargin{:});
     end
 
     function simulationLoop(obj,varargin)
-      % Initialize time
-      obj.tStep = 0;
-      obj.t = obj.simparams.tIni;
-      obj.tOld = obj.t;
-      obj.dt = obj.simparams.dtIni;
-      obj.dtSave = obj.dt;
+      % Check restart option
+      flagRestart = any(strcmpi(varargin,"restart"));
 
-      initialize(obj);      
-      setLinearSolver(obj,varargin{:});
+      % Remove restart from varargin
+      varargin(strcmpi(varargin,"restart")) = [];
+
+      if ~flagRestart
+        % Initialize time
+        obj.tStep = 0;
+        obj.t = obj.simparams.tIni;
+        obj.tOld = obj.t;
+        obj.dt = obj.simparams.dtIni;
+        obj.dtSave = obj.dt;
+
+        initialize(obj);
+        setLinearSolver(obj,varargin{:});
+        if ismissing(obj.output.restart.dt)
+          obj.restartControl = 1;
+        else
+          obj.restartControl = 0.;
+        end
+      end
 
       obj.t = obj.t + obj.dt;
 
@@ -76,6 +89,9 @@ classdef (Abstract) SolutionScheme < handle
       end
 
       obj.finalize;
+      if obj.output.restart.on
+        obj.saveRestart();
+      end
       gresLog().log(-1,"Simulation completed successfully \n")
     end
 
@@ -83,6 +99,23 @@ classdef (Abstract) SolutionScheme < handle
       obj.output.saveHistory();
     end
 
+    function saveRestart(restartObj,varargin)
+      if restartObj.output.restart.overwrite
+        restartFile = restartObj.output.restart.filename;
+      else
+        % If the file already exists, it will be overwritten
+        restartFile = sprintf('%s_%05d',restartObj.output.restart.filename,...
+          round(restartObj.t));
+      end
+      if any(strcmpi(varargin,'fail'))
+        restartFile = sprintf('%s_FailAt%05d',restartObj.output.restart.filename,...
+          round(restartObj.t));
+      end
+      save(restartFile,"restartObj","-v7.3");
+
+      gresLog().log(2,'\nRestart file saved: %s\nSimulation time: %g\n',...
+        restartFile,restartObj.t);
+    end
   end
 
 
@@ -161,6 +194,9 @@ classdef (Abstract) SolutionScheme < handle
       obj.isFirstRun = false;
 
       obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration || obj.nInterf == 0;
+
+      % Prepare folder to save the restart files.
+      obj.output = obj.output.prepareRestart();
     end
 
     function reset(obj)
@@ -218,18 +254,18 @@ classdef (Abstract) SolutionScheme < handle
 
         obj.t = obj.tOld;
         obj.tStep = obj.tStep - 1;
-        obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
-        obj.dtSave = obj.dt;
-
+        dtNew = obj.dt/obj.simparams.divFac;  % Time increment chop
         goBackState(obj);
-
-        %obj.totBackStep = obj.totBackStep + 1;
-
-        obj.t = obj.t + obj.dt;
-
-        if obj.dt < obj.simparams.dtMin
+        
+        if dtNew < obj.simparams.dtMin
+          if obj.output.restart.on
+            obj.saveRestart('fail');
+          end
           error('Minimum time step reached')
         else
+          obj.dt = dtNew;
+          obj.dtSave = dtNew;
+          obj.t = obj.t + dtNew;
           gresLog().log(0,'\n %s \n','BACKSTEP')
         end
 
@@ -248,6 +284,25 @@ classdef (Abstract) SolutionScheme < handle
         % allow new survival attempts on new time steps
         if obj.simparams.attemptSimplestConfiguration
           obj.attemptedReset = false;
+        end
+
+        % save restart point
+        if obj.output.restart.on
+          if ismissing(obj.output.restart.dt)
+            if (obj.t-obj.dt)>obj.output.restart.time(obj.restartControl)
+              obj.saveRestart();
+              obj.restartControl=obj.restartControl+1;
+              if obj.restartControl>length(obj.output.restart.time)
+                obj.output.restart.on = false;
+              end
+            end
+          else
+            obj.restartControl = obj.restartControl+obj.dt;
+            if obj.restartControl>=obj.output.restart.dt
+              obj.saveRestart();
+              obj.restartControl = 0;
+            end
+          end
         end
 
       end
@@ -485,6 +540,20 @@ classdef (Abstract) SolutionScheme < handle
         printState(obj);
       end
     end
+
+    
+    
+
+  end
+
+  methods (Static)
+
+    function obj = loadRestart(restartFile)
+      load(restartFile);
+      obj=restartObj;
+    end
+
+    
 
   end
 end
