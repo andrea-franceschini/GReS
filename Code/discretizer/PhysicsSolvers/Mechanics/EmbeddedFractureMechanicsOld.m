@@ -14,6 +14,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     bcTraction
     mechSolver              % handle to the Poromechanics solver
     fixActiveSet = false
+    isSmooth
 
   end
 
@@ -37,10 +38,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       obj.mechSolver.registerSolver(varargin{:});
 
 
-      default = struct('penaltyNormal',1e8,...
-        'penaltyTangential',1e8,...
-        'Fracture',struct.empty,...
-        'ActiveSet',missing);
+      default = struct('augmentationParameter',...
+                       'Fracture',struct.empty,...
+                       'ActiveSet',missing);
 
       params = readInput(default,varargin{:});
 

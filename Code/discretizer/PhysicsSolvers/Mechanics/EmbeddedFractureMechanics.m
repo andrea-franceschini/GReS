@@ -1,137 +1,150 @@
 classdef EmbeddedFractureMechanics < PhysicsSolver
 
-  % solver for embedded tractions implementing the EFEM(0) formulation
-  % Cusini et al (2021).
+  % Unified two-field EFEM(0) contact solver.
+  % isSmooth=true: fixed contact branch during Newton, outer active-set loop.
+  % isSmooth=false: branch selected inside each Newton assembly.
+
 
   properties
     activeSet = struct("curr",[],"prev",[])
-    penalty_n               % penalty parameter for normal direction
-    penalty_t               % penalty parameter for tangential direction
-    phi                     % friction angle in radians for each fracture
-    cohesion                % the cohesion of each fracture
-    fractureMesh            % a 2D mesh object with cut cell topology
-    areaTol = 1e-6;         % minimum area of a fracture element
+    phi
+    cohesion
+    fractureMesh
+    areaTol = 1e-6
     bcTraction
-    mechSolver              % handle to the Poromechanics solver
-    fixActiveSet = false
-    isSmooth
-
+    mechSolver
+    isSmooth = true
+    contactAugmentation
   end
 
   properties (Access = private)
     fldMech
     fldFrac
+    trialTraction % augmented trial q, cached by the latest assembly
   end
 
   methods (Access = public)
 
     function obj = EmbeddedFractureMechanics(domain)
-
-      % call physicsSolver constructor
       obj@PhysicsSolver(domain);
-
     end
 
     function registerSolver(obj,varargin)
-
       obj.mechSolver = Poromechanics(obj.domain);
       obj.mechSolver.registerSolver(varargin{:});
 
+      default = struct('Fracture',struct.empty, ...
+        'ActiveSet',missing, ...
+        'isSmooth',1, ...
+        'augmentationParameter',1.0, ...
+        'augmentationNormal',missing, ...
+        'augmentationTangential',missing);
 
-      default = struct('augmentationParameter',...
-                       'Fracture',struct.empty,...
-                       'ActiveSet',missing);
 
       params = readInput(default,varargin{:});
 
-      obj.penalty_n = params.penaltyNormal;
-      obj.penalty_t = params.penaltyTangential;
+      obj.isSmooth = logical(params.isSmooth);
+
+      if ~ismissing(params.augmentationNormal)
+        obj.contactAugmentation(1) = params.augmentationNormal;
+      else
+        obj.contactAugmentation(1) = params.augmentationParameter;
+      end
+
+      if ~ismissing(params.augmentationTangential)
+        obj.contactAugmentation(2) = params.augmentationTangential;
+      else
+        obj.contactAugmentation(2) = params.augmentationParameter;
+      end
 
       defineFractures(obj,params.Fracture);
-
-      nFracSurf = obj.fractureMesh.surfaces.num;
-
+      nCutCells = obj.fractureMesh.surfaces.num;
       dofm = obj.domain.dofm;
+      dofm.registerVariable("fractureJump",entityField.cell,3,"nEntities",nCutCells);
 
-      % register nodal displacements on target regions
-      dofm.registerVariable("fractureJump",entityField.cell,3,"nEntities",nFracSurf);
-
-      % store the id of the field in the degree of freedom manager
       flds = obj.getField;
       obj.fldMech = dofm.getVariableId(flds(1));
       obj.fldFrac = dofm.getVariableId(flds(2));
-
-      % initialize the state object
       initState(obj);
 
-      initializeActiveSet(obj,nFracSurf,params.ActiveSet);
-
+      initializeActiveSet(obj,nCutCells,params.ActiveSet);
     end
 
     function assembleSystem(obj,dt)
-      % compute the displacements matrices and rhs in the domain
-
       assembleSystemEFEM(obj,dt);
-
     end
 
-
     function initialize(obj)
-      %
-      obj.mechSolver.initialize()
+
+      obj.mechSolver.initialize();
       tIni = computeInitialTraction(obj);
-      t = getState(obj,"traction");
-      t = t + tIni(:);
+      t = getState(obj,"traction") + tIni(:);
       setState(obj,t,"traction");
       setStateOld(obj,t,"traction");
       setStateInit(obj,t,"traction");
+      obj.trialTraction = t;
+      obj.activeSet.curr(obj.hasFractureTractionBC()) = ContactMode.open;
+      obj.activeSet.prev = obj.activeSet.curr;
 
     end
 
     function trac = computeInitialTraction(obj)
-      % initialize traction for cell stress (average)
+
       avgStress = getState(obj.mechSolver,"avgStress");
       frac = obj.fractureMesh.surfaces;
       idx = [1;6;5;6;2;4;5;4;3];
       sigma = zeros(3);
-      trac = zeros(frac.num,1);
+      trac = zeros(3*frac.num,1);
+
+      % project average stress onto the embedded fracture
       for i = 1:frac.num
         R = reshape(frac.rotationMatrices(i,:),3,3);
         cellId = frac.cutCells(i);
         sigma(:) = avgStress(cellId,idx);
-        n = frac.normal(i,:);
-        t = sigma*n';
-        trac(dofId(i,3)) = R'*t;
+        t = sigma*frac.normal(i,:)';
+        trac(DoFManager.dofExpand(i,3)) = R'*t;
       end
-    end
 
+    end
 
     function timeStepSetup(obj)
 
-      isOpen = obj.activeSet.curr == ContactMode.open;
-      obj.activeSet.curr(~isOpen) = ContactMode.stick;
+      if obj.isSmooth
+        hasBC = obj.hasFractureTractionBC();
+        closed = obj.activeSet.curr ~= ContactMode.open & ~hasBC;
+        obj.activeSet.curr(closed) = ContactMode.stick;
+        if isfield(obj.activeSet,'stateChange')
+          obj.activeSet.stateChange(:) = 0;
+        end
+      end
 
+      % set to open fracture element that are initially pressurized
+      obj.activeSet.curr(obj.hasFractureTractionBC()) = ContactMode.open;
     end
 
-
     function assembleSystemEFEM(obj,dt)
+
+
 
       % allocate
       dofm = obj.domain.dofm;
       frac = obj.fractureMesh.surfaces;
-
       cells = obj.grid.cells;
-
 
       c2f = obj.fractureMesh.cells.cell2fracId;
 
       subCells = dofm.getFieldCells(obj.fldMech);
+      if any(~ismember(frac.cutCells,subCells))
+        error('EFEMContact:inactiveCutCell',...
+          'All fracture cut cells must belong to the mechanical solver region.');
+      end
 
       nDim = obj.grid.nDim;
-      n = sum(nDim^2 * (obj.grid.cells.numVerts(subCells)).^2);
+      n = sum(nDim^2 * (cells.numVerts(subCells)).^2);
       n1 = nDim^2 * sum(cells.numVerts(frac.cutCells));
-      nFracPerCell = cellfun(@numel, c2f);
-      n2 = nDim^2 * sum(nFracPerCell,"all");
+      nFracPerCell = cellfun(@numel,c2f);
+      n2 = nDim^2 * sum(nFracPerCell.^2,"all");
+
       nDofU = dofm.getNumbDoF(Poromechanics.getField());
       nDofW = dofm.getNumbDoF(obj.fldFrac);
 
@@ -139,34 +152,39 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       asbKuw = assembler(n1,nDofU,nDofW);
       asbKwu = assembler(n1,nDofW,nDofU);
       asbKww = assembler(n2,nDofW,nDofW);
+
       rhsU = zeros(nDofU,1);
       rhsW = zeros(nDofW,1);
 
       % get state variables
       s = getState(obj);
       sOld = getStateOld(obj);
-      t = s.time;
+      time = s.time;
+
       iniStress = getStateInit(obj,'stress');
-      iniTraction = getStateInit(obj,'traction'); % use this!
+      iniTraction = getStateInit(obj,'traction');
+
       jump = s.fractureJump;
       jumpOld = sOld.fractureJump;
+
       du = s.displacements - sOld.displacements;
       dj = jump - jumpOld;
 
-
       coordinates = obj.grid.coordinates;
-
-
       gpMap = obj.domain.gpMap;
+
+      Caug = diag([ ...
+        obj.contactAugmentation(1),...
+        obj.contactAugmentation(2),...
+        obj.contactAugmentation(2)]);
 
       for cTag = 1:cells.nTag
 
-        % extract the constitutive law
+        % extract constitutive law
         constLaw = obj.domain.materials.getConstitutiveLaw(cTag);
 
         % extract cells belonging to subregion
         subRegionCells = subCells(cells.tag(subCells) == cTag);
-
 
         for vtkId = cells.vtkTypes
 
@@ -174,9 +192,14 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
           cellId = cells.VTKType(subRegionCells) == vtkId;
           subCellsLoc = subRegionCells(cellId);
 
+          if isempty(subCellsLoc)
+            continue
+          end
+
           cellList = find(cellId);
 
-          elem = FiniteElementType.create(vtkId,obj.grid,obj.mechSolver.getGaussOrder);
+          elem = FiniteElementType.create( ...
+            vtkId,obj.grid,obj.mechSolver.getGaussOrder);
 
           % get node topology for given vtk type
           topol = obj.grid.getCellNodes(subCellsLoc);
@@ -185,497 +208,451 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
           for i = 1:numel(subCellsLoc)
 
-
             el = subCellsLoc(i);
             l = gpMap(el,1);
 
             fracSurfs = c2f{el};
             nF = numel(fracSurfs);
-
-            %isCellCut = any(fracSurfs);
+            % if the cells is not cut by any fracture, nF == 0
 
             nodes = topol(i,:);
             uDof = dofm.getLocalDoF(obj.fldMech,nodes);
             coords = coordinates(nodes,:);
 
-            % compute strain
+            % compute strain from continuous displacement field
             [gradN,dJw] = getDerBasisFAndDet(elem,coords);
 
             B = elem.getStrainMatrix(gradN);
-            s.strain(l:l+nG-1,:) = reshape(pagemtimes(B,du(uDof)),6,nG)';
 
+            s.strain(l:l+nG-1,:) = ...
+              reshape(pagemtimes(B,du(uDof)),6,nG)';
+
+            % store fracture operators
+            Bw = zeros(6,3,nG,nF);
+            E = zeros(6,3,1,nF);
+            dofW = zeros(3,nF);
 
             enhancedStrain = zeros(nG,6);
 
-            Bw = zeros(6,3,nG,nF);
-            E = zeros(6,3,1,nF);
-            dofW = zeros(3,numel(fracSurfs));
-
-            for fA = 1:nF
+            for fA = 1:nF % loop over all fractures intersecting the cell
 
               fId = fracSurfs(fA);
 
-              % grab degree of freedom
-              dofW(:,fA) = dofm.getLocalDoF(obj.fldFrac,fId);
+              dofA = dofm.getLocalDoF(obj.fldFrac,fId);
+              dofW(:,fA) = dofA;
 
-              % compute Bw matrix (compatibility operator, 6x3xfracSurfs)
-              BwLoc = computeCompatibilityMatrix(obj,frac,fId,coords,gradN);
+              % precompute enhanced strain matrix and projection operators
+              BwLoc = computeCompatibilityMatrix( ...
+                obj,frac,fId,coords,gradN);
+
               Bw(:,:,:,fA) = BwLoc;
               E(:,:,1,fA) = computeEquilibriumOperator(obj,frac,fId);
 
-              % enhance strain (only elastic contribution)
+              enhancedStrain = enhancedStrain + ...
+                reshape(pagemtimes(BwLoc,dj(dofA)),6,nG)';
 
-              enhancedStrain = enhancedStrain + reshape(pagemtimes(BwLoc,dj(dofW(:,fA))),6,nG)';
-
-              % compute E matrix (equilibrium operator, 6x3xfracSurfs)
             end
 
-
             % total enhanced strain
-            s.strain(l:l+nG-1,:) = s.strain(l:l+nG-1,:) + enhancedStrain;
+            s.strain(l:l+nG-1,:) = ...
+              s.strain(l:l+nG-1,:) + enhancedStrain;
 
-            % constitutive update
-            [sigma,D] = constLaw.constitutiveUpdate(cellList(i),...
+            % constitutive update (uses the enhanced strain!)
+            [sigma,D] = constLaw.constitutiveUpdate( ...
+              cellList(i),...
               sOld.stress(l:l+nG-1,:),...
               s.strain(l:l+nG-1,:),...
               dt,...
-              t);
+              time);
 
+            % update stress map
+            s.stress(l:l+nG-1,:) = sigma;
 
-            % update stress map and gp counter
-            s.stress(l:(l+nG-1),:) = sigma;
-
-            % assemble internal forces
+            % assemble internal forces for u
             dsigma = sigma - iniStress(l:l+nG-1,:);
             dsigma = reshape(dsigma',6,1,nG);
-            sigma = reshape(sigma',6,1,nG);
+
             fTmp = pagemtimes(B,'ctranspose',dsigma,'none');
             fTmp = fTmp.*reshape(dJw,1,1,[]);
-            fLoc = sum(fTmp,3);
-            rhsU(uDof) = rhsU(uDof)+fLoc;
+            rhsU(uDof) = rhsU(uDof) + sum(fTmp,3);
 
             KLoc = obj.mechSolver.computeKloc(B,D,B,dJw);
             asbKuu.localAssembly(uDof,uDof,KLoc);
 
-            for fA = 1:numel(fracSurfs)
-
-              % assemble the efem blocks
-
-              BwA = Bw(:,:,:,fA);
-              EA = E(:,:,:,fA);
-
-              % compute updated traction and get tangent constitutive operator
+            % fracture contributions
+            for fA = 1:nF
 
               fId = fracSurfs(fA);
               dofA = dofW(:,fA);
 
+              BwA = Bw(:,:,:,fA);
+              EA = E(:,:,:,fA);
+
               KuwLoc = Poromechanics.computeKloc(B,D,BwA,dJw);
-              KwuLoc = Poromechanics.computeKloc(EA,D,B,dJw);
-
               asbKuw.localAssembly(uDof,dofA,KuwLoc);
-              asbKwu.localAssembly(dofA,uDof,KwuLoc);
 
-
-              tCurr = s.traction(dofA);
-              tOld = sOld.traction(dofA);
-
-              fracId = frac.fracId(fId);
-              [tracNew,dtdg] = updateTraction(obj,fId,fracId,tOld,tCurr,jump(dofA),jumpOld(dofA));
-
-              s.traction(dofA) = tracNew;
-
-              % assemble rhsW (use computed stress tensor)
-              rT = (tracNew - iniTraction(dofA))*frac.area(fId);
 
               fTmp = pagemtimes(EA,'ctranspose',dsigma,'none');
               fTmp = fTmp.*reshape(dJw,1,1,[]);
               rSigma = sum(fTmp,3);
-              rBC = obj.bcTraction(dofA)*frac.area(fId);
-              rhsLoc = rSigma - rT - rBC;
-              rhsW(dofA) = rhsW(dofA) + rhsLoc;
 
-              for fB = 1:numel(fracSurfs)
+              A = frac.area(fId);
+
+              projectedTrac = ...
+                iniTraction(dofA) + ...
+                rSigma/A - ...
+                obj.bcTraction(dofA);
+
+
+              gAug = [jump(dofA(1)); dj(dofA(2:3))];
+              q = projectedTrac + Caug*gAug;
+              obj.trialTraction(dofA) = q;
+              [tracNew,Jproj,mode] = evaluateContactLaw(obj,q,fId);
+
+              s.traction(dofA) = tracNew;
+              obj.activeSet.curr(fId) = mode;
+
+
+              rT = ...
+                (tracNew - iniTraction(dofA))*A;
+
+              % prescribed traction on the fracture (pressurization)
+              rBC = ...
+                obj.bcTraction(dofA)*A;
+
+              rhsW(dofA) = rhsW(dofA) + ...
+                rSigma - rT - rBC;
+
+              IminusJ = eye(3) - Jproj;
+
+              KwuLoc = ...
+                Poromechanics.computeKloc(EA,D,B,dJw);
+
+              asbKwu.localAssembly( ...
+                dofA,uDof,IminusJ*KwuLoc);
+
+              % nested loop (account for fracture intersections)
+
+              for fB = 1:nF
 
                 BwB = Bw(:,:,:,fB);
                 dofB = dofW(:,fB);
 
-                KwwLoc = obj.mechSolver.computeKloc(EA,D,BwB,dJw);
+                KwwLoc = ...
+                  obj.mechSolver.computeKloc(EA,D,BwB,dJw);
 
+                KAB = IminusJ*KwwLoc;
 
+                % Augmentation acts only on fracture A's own jump.
                 if fA == fB
-                  KwwLoc = KwwLoc - dtdg*frac.area(fId);
+                  KAB = KAB - A*Jproj*Caug;
                 end
-                % assemble local contributions
-                asbKww.localAssembly(dofA,dofB,KwwLoc);
 
+                asbKww.localAssembly(dofA,dofB,KAB);
 
-              end
+              end % end loop over other fractures in the cell
 
-            end
+            end % end loop over fractures in the cell
 
-          end
+          end % end loop over cells
 
-        end
+        end % end loop over cell shapes
 
-      end
+      end % end loop over cell tag
 
       % update modified state
       setState(obj,s);
 
-      % populate rhs and jacobian
-      obj.domain.J{obj.fldMech,obj.fldMech} = asbKuu.sparseAssembly;
-      obj.domain.J{obj.fldMech,obj.fldFrac} = asbKuw.sparseAssembly;
-      obj.domain.J{obj.fldFrac,obj.fldMech} = asbKwu.sparseAssembly;
-      obj.domain.J{obj.fldFrac,obj.fldFrac} = asbKww.sparseAssembly;
+      % populate rhs and Jacobian
+      obj.domain.J{obj.fldMech,obj.fldMech} = ...
+        asbKuu.sparseAssembly;
+
+      obj.domain.J{obj.fldMech,obj.fldFrac} = ...
+        asbKuw.sparseAssembly;
+
+      obj.domain.J{obj.fldFrac,obj.fldMech} = ...
+        asbKwu.sparseAssembly;
+
+      obj.domain.J{obj.fldFrac,obj.fldFrac} = ...
+        asbKww.sparseAssembly;
+
       obj.domain.rhs{obj.fldMech} = rhsU;
       obj.domain.rhs{obj.fldFrac} = rhsW;
 
     end
 
 
-    function initState(obj)
-      % add embedded fracture fields to state structure
-      nFracSurf = obj.fractureMesh.surfaces.num;
-      state = getState(obj);
-      state.fractureJump = zeros(3*nFracSurf,1);
-      state.traction = zeros(3*nFracSurf,1);
 
-      % elastic and plastic slip are obtained subtracting current and
-      % previous elastic and plastic jump
+    function initState(obj)
+
+
+      nCutCells = obj.fractureMesh.surfaces.num;
+      state = getState(obj);
+      state.fractureJump = zeros(3*nCutCells,1);
+      state.traction = zeros(3*nCutCells,1);
       setState(obj,state);
-      obj.bcTraction = zeros(3*nFracSurf,1);
-      obj.activeSet.curr = repmat(ContactMode.stick,nFracSurf,1);
+      obj.bcTraction = zeros(3*nCutCells,1);
+      obj.activeSet.curr = repmat(ContactMode.stick,nCutCells,1);
       obj.activeSet.prev = obj.activeSet.curr;
+      obj.trialTraction = zeros(3*nCutCells,1);
 
     end
 
-
     function hasConfigurationChanged = updateConfiguration(obj)
-
-      oldActiveSet = obj.activeSet.curr;
-
-      traction = getState(obj,"traction");
-      displacementJump = getState(obj,"fractureJump");
-
-      f = obj.fractureMesh.surfaces;
-
-
-      for i = 1:numel(obj.activeSet.curr)
-
-        fracId = f.fracId(i);
-
-        state = obj.activeSet.curr(i);
-
-        id = DoFManager.dofExpand(i,3);
-
-        t = traction(id);
-        g_n = displacementJump(id(1));
-
-        limitTraction = abs(obj.cohesion(fracId) - tan(obj.phi(fracId))*t(1));
-
-        obj.activeSet.curr(i) = updateContactState(state,t,...
-          limitTraction, ...
-          g_n,...
-          obj.activeSet.tol);
-
+      if ~obj.isSmooth
+        hasConfigurationChanged = false;
+        return
       end
-
-      % check if active set changed
-      asNew = obj.activeSet.curr;
-      asOld = oldActiveSet;
-
-      % do not upate state of element that exceeded the maximum number of
-      % individual updates
-      reset = obj.activeSet.stateChange >= ...
-        obj.activeSet.tol.maxStateChange;
-
-      asNew(reset) = asOld(reset);
-
-      diffState = asNew - asOld;
-
-      idNewSlipToSlip = all([asOld==2 diffState==1],2);
-      diffState(idNewSlipToSlip) = 0;
-      hasChangedElem = diffState~=0;
-
-      nomoreStick = diffState > 0;
-
-      obj.activeSet.stateChange(nomoreStick) = ...
-        obj.activeSet.stateChange(nomoreStick) + 1;
-
-
-      hasConfigurationChanged = any(diffState);
-
-      gresLog().log(2,'%s: Active set \n',class(obj));
-      if gresLog().getVerbosity > 3
-        % report active set changes
-        da = asNew - asOld;
-        d = da(asOld == 1);
-        assert(~any(d==2));       % avoid stick to slip without newSlip
-        fprintf('%i elements from stick to new slip \n',sum(d==1));
-        fprintf('%i elements from stick to open \n',sum(d==3));
-        d = da(asOld==2);
-        fprintf('%i elements from new slip to stick \n',sum(d==-1));
-        fprintf('%i elements from new slip to slip \n',sum(d==1));
-        fprintf('%i elements from new slip to open \n',sum(d==2));
-        d = da(asOld==3);
-        fprintf('%i elements from slip to stick \n',sum(d==-2));
-        fprintf('%i elements from slip to open \n',sum(d==1));
-        d = da(asOld==4);
-        fprintf('%i elements from open to stick \n',sum(d==-3));
-
-      end
-
-      gresLog().log(2,'Stick dofs: %i    Slip dofs: %i    Open dofs: %i \n',...
-        sum(asNew==1), sum(any([asNew==2,asNew==3],2)), sum(asNew==4));
-
-      if hasConfigurationChanged
-
-
-        % EXCEPTION 1): check if area of fracture changing state is relatively small
-        areaChanged = sum(f.area(hasChangedElem));
-        totArea = sum(f.area);
-        if areaChanged/totArea < obj.activeSet.tol.areaChange
-          %obj.activeSet.curr = oldActiveSet;
-          % change the active set, but flag it as nothing changed
-          hasConfigurationChanged = false;
-          gresLog().log(1,['Active set update suppressed due to small fracture change:' ...
-            ' areaChange/areaTot = %3.2e \n'],areaChanged/totArea);
-        end
-
-        % EXCEPTION 2): check if changing elements have been looping from
-        % stick to slip/open too much times
-
-        if all(obj.activeSet.stateChange(hasChangedElem) > obj.activeSet.tol.maxStateChange)
-          hasConfigurationChanged = false;
-          gresLog().log(1,['Active set update suppressed due to' ...
-            ' unstable behavior detected'])
-        end
-      end
-
+      hasConfigurationChanged = updateOuterActiveSet(obj);
     end
 
     function isReset = resetConfiguration(obj)
-
-      toReset = obj.activeSet.curr(:) ~= ContactMode.open;
-      obj.activeSet.curr(toReset) = ContactMode.stick;
-
-      isReset = true;
-
-    end
-
-
-    function advanceState(obj)
-      % Set converged state to current state after newton convergence
-
-      % add elastic/plastic jump contribution to stored variables
-      obj.mechSolver.advanceState();
-
-      obj.activeSet.prev = obj.activeSet.curr;
-
-    end
-
-
-    function [tractionNew, dtdg] = updateTraction(obj,fEl,fracId,tOld,tCurr,jumpNew,jumpOld)
-
-      % tOld: last converged traction
-      % jumpNew/jumpOld: current and last converged fracture jump
-
-      tractionNew = zeros(3,1);
-      dtdg = zeros(3);
-
-      if obj.activeSet.curr(fEl) == ContactMode.open
-        % open dof stay open
+      if ~obj.isSmooth
+        isReset = false;
         return
       end
-
-      state = obj.activeSet.curr(fEl);
-
-      tnIni = obj.getStateInit.traction(3*fEl-2);
-
-
-
-      % trial traction
-      tTrial = [tnIni + obj.penalty_n * jumpNew(1);...
-        tOld(2:3) + obj.penalty_t * (jumpNew([2;3]) - jumpOld([2;3]))];
-
-      tTrial_t = tTrial(2:3);
-      tTrial_t_norm = norm(tTrial_t);
-
-
-      tractionNew(1) = tTrial(1);
-
-      tauLim = obj.cohesion(fracId) - tan(obj.phi(fracId))*tractionNew(1);
-
-      % relax stick-slip transition
-      % stick/slip traction update
-
-      if state == ContactMode.stick
-
-        tractionNew = tTrial;
-        dtdg = diag([obj.penalty_n,obj.penalty_t,obj.penalty_t]);
-
-
-      elseif state == ContactMode.slip || state == ContactMode.newSlip
-
-        % slipNorm is always 0 at first iteration
-        slip = jumpNew([2;3]) - jumpOld([2;3]);
-        slipNorm = norm(slip);
-        isSlidingReliable = slipNorm > obj.activeSet.tol.sliding;
-
-        dtdg(1,1) = obj.penalty_n;
-
-        if isSlidingReliable % we can trust the available tangential traction direction
-
-          slipDir = tTrial_t / tTrial_t_norm;
-
-          % consistent tangent operator
-          dtdg(2:3,2:3) = obj.penalty_t * tauLim * (tTrial_t_norm^2*eye(2) - tTrial_t * tTrial_t')/tTrial_t_norm^3;
-
-        else
-
-          slipDir = tCurr(2:3)/norm(tCurr(2:3));
-
-        end
-
-        tractionNew(2:3) = tauLim * slipDir;
-        dtdg(2:3,1) = -obj.penalty_n * tan(obj.phi(fracId)) * slipDir;
-
-      end
-
-
+      hasBC = obj.hasFractureTractionBC();
+      closed = obj.activeSet.curr ~= ContactMode.open & ~hasBC;
+      obj.activeSet.curr(closed) = ContactMode.stick;
+      obj.activeSet.curr(hasBC) = ContactMode.open;
+      isReset = true;
     end
 
+    function advanceState(obj)
+      obj.mechSolver.advanceState();
+      obj.activeSet.prev = obj.activeSet.curr;
+    end
 
     function order = getGaussOrder(obj)
       order = obj.mechSolver.getGaussOrder;
     end
 
-
-
     function goBackState(obj)
-
-      % reset state to beginning of time step
       obj.mechSolver.goBackState();
-
-
-
       obj.activeSet.curr = obj.activeSet.prev;
-
-      if obj.activeSet.resetActiveSet
+      if obj.isSmooth && isfield(obj.activeSet,'resetActiveSet') && ...
+          obj.activeSet.resetActiveSet
         resetConfiguration(obj);
       end
-
+      obj.activeSet.curr(obj.hasFractureTractionBC()) = ContactMode.open;
+      % Next assembly recomputes q from restored stress and jump.
+      obj.trialTraction = getStateOld(obj,'traction');
     end
 
     function updateState(obj,solution)
-
-      % Update state structure with last solution increment
       obj.mechSolver.updateState(solution);
-
-      dofm = obj.domain.dofm;
-      ents = dofm.getActiveEntities(obj.fldFrac,1);
-      stateCurr = obj.getState();
-      %stateOld = obj.getStateOld();
-
       if nargin > 1
-        % apply newton update to current displacements
+        dofm = obj.domain.dofm;
+        ents = dofm.getActiveEntities(obj.fldFrac,1);
+        stateCurr = obj.getState();
         dw = solution(getDoF(dofm,obj.fldFrac));
         stateCurr.fractureJump(ents) = stateCurr.fractureJump(ents) + dw;
-
         setState(obj,stateCurr);
-      end
+        end
 
+
+      if gresLog().getVerbosity >= 2
+        nStick = sum(obj.activeSet.curr == ContactMode.stick);
+        nSlip = sum(obj.activeSet.curr == ContactMode.slip | ...
+          obj.activeSet.curr == ContactMode.newSlip);
+        nOpen = sum(obj.activeSet.curr == ContactMode.open);
+
+        fprintf('%s: active set ',class(obj));
+        fprintf('stick = %i, slip = %i, open = %i\n',nStick,nSlip,nOpen);
+      end
     end
 
-
     function applyBC(obj,bcId,t)
-
       obj.mechSolver.applyBC(bcId,t);
-
     end
 
     function applyDirVal(obj,bcId,t)
-
       obj.mechSolver.applyDirVal(bcId,t);
-
     end
-
 
     function out = isLinear(obj)
-      out = false;
+      out = obj.isSmooth && obj.mechSolver.isLinear() && ...
+        all(obj.activeSet.curr == ContactMode.stick);
     end
 
-    function out = isSymmetric(obj)
-
-      % if the problem is linear, then Poromechanics is symmetric
+    function out = isSymmetric(obj) %#ok<MANU>
+      % In stick K_wu=0 while B_1=K_uw is retained: nonsymmetric.
       out = false;
-
     end
 
     function writeSolution(obj,fac,tID)
-
       jumpOld = getStateOld(obj,"fractureJump");
       jumpCurr = getState(obj,"fractureJump");
-
       tractionOld = getStateOld(obj,"traction");
       tractionCurr = getState(obj,"traction");
-
       obj.domain.outstate.results(tID).fractureJump = jumpCurr*fac+jumpOld*(1-fac);
       obj.domain.outstate.results(tID).traction = tractionCurr*fac+tractionOld*(1-fac);
-
     end
 
     function [cellData,pointData] = writeVTK(obj,fac,time)
 
       [cellData,pointData] = obj.mechSolver.writeVTK(fac,time);
-
-
-      cellDataFrac = repmat(struct('name', 1, 'data', 1), 1, 1);
+      cellDataFrac = repmat(struct('name',1,'data',1),1,1);
       cellDataFrac(1).name = 'isCellFractured';
       isCutCell = false(obj.grid.cells.num,1);
       isCutCell(obj.fractureMesh.surfaces.cutCells) = true;
       cellDataFrac(1).data = double(isCutCell);
-
       cellData = OutState.mergeOutFields(cellData,cellDataFrac);
 
-
-      % this method do not return outputs for the 3D mesh grid. instead, it
-      % works on a separate 2D polygonal mesh
       s = obj.domain.state.interpolate(fac);
       jump = s.fractureJump;
-      jumpDiff = s.fractureJump - obj.domain.getStateOld.fractureJump;
+      jumpDiff = s.fractureJump-obj.domain.getStateOld.fractureJump;
       trac = s.traction(:);
-
-      nCellData = 3;
-      cellStr = repmat(struct('name', 1, 'data', 1), nCellData, 1);
-      % Displacements
-      cellStr(1).name = 'fractureJump';
-      cellStr(1).data = [jump(1:3:end), jump(2:3:end), jump(3:3:end)];
-
-      cellStr(2).name = 'traction';
-      cellStr(2).data = [trac(1:3:end), trac(2:3:end), trac(3:3:end)];
-
-      cellStr(3).name = 'fractureState';
-      as = double(obj.activeSet.curr);
-      cellStr(3).data = as;
-
-      cellStr(4).name = 'jumpSlip';
-      cellStr(4).data = [jumpDiff(2:3:end), jumpDiff(3:3:end)];
-
-      % plot directly into the domain vtm block
-      blk = obj.domain.vtmBlock;
-      obj.domain.outstate.writeVTKfile(blk,'EmbeddedFractures',obj.fractureMesh,...,
-        time,[],[],[],cellStr)
+      cellStr = repmat(struct('name',1,'data',1),4,1);
+      cellStr(1).name='fractureJump';
+      cellStr(1).data=[jump(1:3:end),jump(2:3:end),jump(3:3:end)];
+      cellStr(2).name='traction';
+      cellStr(2).data=[trac(1:3:end),trac(2:3:end),trac(3:3:end)];
+      cellStr(3).name='fractureState';
+      cellStr(3).data=double(obj.activeSet.curr);
+      cellStr(4).name='jumpSlip';
+      cellStr(4).data=[jumpDiff(2:3:end),jumpDiff(3:3:end)];
+      obj.domain.outstate.writeVTKfile(obj.domain.vtmBlock,'EmbeddedFractures', ...
+        obj.fractureMesh,time,[],[],[],cellStr);
 
     end
 
-
   end
 
-
-
-
   methods (Access=private)
+
+    function [traction,J,mode] = evaluateContactLaw(obj,q,fId)
+
+      % Self-contained strategy switch. The assembly always uses the same
+      % projected traction and its derivative with respect to q.
+
+      % classify contact according to algorithm strategy (smooth vs
+      % semi-smooth)
+
+      % return updated traction
+      % derivative of traction w.r.t jump
+      % contact mode 
+
+      if obj.hasFractureTractionBC(fId)
+        mode = ContactMode.open;
+      elseif obj.isSmooth
+        mode = obj.activeSet.curr(fId);
+      else
+        mode = classifyContact(obj,q,obj.fractureMesh.surfaces.fracId(fId));
+      end
+      [traction,J] = evaluateContactBranch(obj,q,...
+        obj.fractureMesh.surfaces.fracId(fId),mode);
+    end
+
+    function mode = classifyContact(obj,q,fracId)
+      % Same tolerance policy as SolidMechanicsContact's in-Newton
+      % classification: strict normal test and relative tangential allowance.
+      if q(1) > 0
+        mode = ContactMode.open;
+        return
+      end
+      tauLim = max(obj.cohesion(fracId)-tan(obj.phi(fracId))*q(1),0);
+      tau = norm(q(2:3));
+      if tau >= tauLim
+        tau = tau*(1-obj.activeSet.tol.tangentialViolation);
+      end
+      if tau <= tauLim
+        mode = ContactMode.stick;
+      else
+        mode = ContactMode.slip;
+      end
+    end
+
+    function [traction,J] = evaluateContactBranch(obj,q,fracId,mode)
+
+      % compute updated traction and jacobian block dtdg
+      traction = zeros(3,1);
+      J = zeros(3);
+      if mode == ContactMode.open
+        return
+      elseif mode == ContactMode.stick
+        % Fixed-stick trial must retain inadmissible reactions so the outer
+        % update can detect slip/open. No clipping or jump overwriting.
+        traction = q;
+        J = eye(3);
+        return
+      elseif mode ~= ContactMode.slip && mode ~= ContactMode.newSlip
+        error('EFEMContact:mode','Unsupported contact branch.');
+      end
+
+      traction(1) = q(1);
+      J(1,1) = 1;
+      mu = tan(obj.phi(fracId));
+      tauRaw = obj.cohesion(fracId)-mu*q(1);
+      tauLim = max(tauRaw,0);
+      qT = q(2:3);
+      qNorm = norm(qT);
+      if qNorm > obj.activeSet.tol.sliding
+        direction = qT/qNorm;
+        traction(2:3) = tauLim*direction;
+        % Include the derivative of the clamp when tauRaw <= 0.
+        J(2:3,1) = -mu*double(tauRaw > 0)*direction;
+        J(2:3,2:3) = (tauLim/qNorm)*(eye(2)-direction*direction');
+      end
+
+    end
+
+    function changed = updateOuterActiveSet(obj)
+
+
+      oldModes = obj.activeSet.curr;
+      newModes = oldModes;
+      frac = obj.fractureMesh.surfaces;
+      hasBC = obj.hasFractureTractionBC();
+      for i = 1:frac.num
+        if hasBC(i)
+          newModes(i) = ContactMode.open;
+        else
+          id = DoFManager.dofExpand(i,3);
+          newModes(i) = classifyContact(obj,obj.trialTraction(id),frac.fracId(i));
+          if newModes(i) == ContactMode.slip && oldModes(i) == ContactMode.stick
+            newModes(i) = ContactMode.newSlip;
+          end
+        end
+      end
+
+      oldSliding = oldModes == ContactMode.slip | oldModes == ContactMode.newSlip;
+      newSliding = newModes == ContactMode.slip | newModes == ContactMode.newSlip;
+      changedFaces = oldModes ~= newModes & ~(oldSliding & newSliding);
+      obj.activeSet.curr = newModes;
+
+      % Counters are diagnostic only. Do not suppress an inadmissible branch
+      % change because an area/count tolerance has been exceeded.
+      if isfield(obj.activeSet,'stateChange')
+        obj.activeSet.stateChange(changedFaces) = ...
+          obj.activeSet.stateChange(changedFaces)+1;
+      end
+      changed = any(changedFaces);
+      gresLog().log(3,'%s: outer active set changed on %i faces.\n',...
+        class(obj),sum(changedFaces));
+    end
+
+    function hasBC = hasFractureTractionBC(obj,fracId)
+
+      % Return true for fracture-surface elements with a prescribed local
+      % traction. A nonzero bcTraction means the element must be treated as
+      % open from the active-set point of view, so the full u+w EFEM
+      % residual imposes P*sigma = bcTraction.
+
+      if isempty(obj.bcTraction)
+        n = obj.fractureMesh.surfaces.num;
+        hasAll = false(n,1);
+      else
+        bc = reshape(obj.bcTraction,3,[])';
+        hasAll = any(abs(bc) > 0,2);
+      end
+
+      if nargin > 1
+        hasBC = hasAll(fracId);
+      else
+        hasBC = hasAll;
+      end
+    end
 
     function defineFractures(obj,fractureStruct)
 
@@ -852,6 +829,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       f.tang1         = f.tang1(id,:);
       f.tang2         = f.tang2(id,:);
       f.numVerts      = f.numVerts(id);
+      f.fracId        = f.fracId(id);
       f.VTKType       = repmat(double(VTKType.Polygon),f.num,1);
 
       surfs = getRows(f.connectivity,find(id));
@@ -928,134 +906,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     end
 
 
-
-
-    % function updateTractionAndJump(obj)
-    %
-    %   s = getState(obj);
-    %   sOld = getStateOld(obj);
-    %   sIni = getStateInit(obj);
-    %   %sIni = getStateInit(obj);
-    %   jump = s.fractureJump;
-    %   deltaJump = jump - sOld.fractureJump;
-    %
-    %
-    %   penN = obj.penalty_n;
-    %   penT = obj.penalty_t;
-    %   frac = obj.fractureMesh.surfaces;
-    %
-    %   for i = 1:frac.num
-    %     dofW = getLocalDoF(obj.domain.dofm,obj.fldFrac,i);
-    %     t = s.traction(dofW);
-    %     tOld = sOld.traction(dofW);
-    %     tIni = sIni.traction(dofW);
-    %     dTrac = t - tIni;
-    %     j = jump(dofW);
-    %     dj = deltaJump(dofW);
-    %     fId = frac.fracId(i);
-    %
-    %     if obj.activeSet.prev(i) == ContactMode.open
-    %       continue
-    %     end
-    %
-    %     switch obj.activeSet.curr(i)
-    %       case ContactMode.stick
-    %
-    %         s.elasticJump(dofW) = sOld.elasticJump(dofW) + dj;
-    %
-    %         t(1) = tIni(1) + penN * s.elasticJump(dofW(1));
-    %         t(2:3) = tOld(2:3) + penT * dj(2:3);
-    %
-    %       case {ContactMode.slip, ContactMode.newSlip}
-    %         s.elasticJump(dofW(1)) = sOld.elasticJump(dofW(1)) + dj(1);
-    %         t(1) = tIni(1) + penN * s.elasticJump(dofW(1));
-    %         % assumption: no elastic slip in stick/slip transition
-    %
-    %         %s.plasticJump(dofW(2:3)) = sOld.plasticJump(dofW(2:3)) + dj(2:3);
-    %         tauLim = obj.cohesion(fId) - t(1)*tan(obj.phi(fId));   % using the updated or not?
-    %         %
-    %         if norm(dj) > obj.activeSet.tol.sliding
-    %           t(2:3) = tauLim * (dj(2:3)/norm(dj(2:3)));
-    %         else
-    %           t(2:3) = tauLim * (dTrac(2:3)/norm(dTrac(2:3)));
-    %         end
-    %
-    %
-    %         if obj.activeSet.curr(i) == ContactMode.newSlip
-    %           % split elastic and plastic slip contribution
-    %           elSlip = (1/obj.penalty_t)*(t(2:3) - tOld(2:3));
-    %           plSlip = dj(2:3) - elSlip;
-    %           s.elasticJump(dofW(2:3)) = sOld.elasticJump(dofW(2:3)) + elSlip;
-    %           s.plasticJump(dofW(2:3)) = sOld.plasticJump(dofW(2:3)) + plSlip;
-    %
-    %         else
-    %
-    %           s.plasticJump(dofW(2:3)) = sOld.plasticJump(dofW(2:3)) + dj(2:3);
-    %
-    %         end
-    %
-    %
-    %       case ContactMode.open
-    %         s.plasticJump(dofW) = sOld.plasticJump(dofW) + dj;
-    %         t(:) = 0;
-    %     end
-    %
-    %     s.traction(dofW) = t;
-    %
-    %   end
-    %
-    %   setState(obj,s);
-    %
-    %   % stick traction might need the initial one...?
-    %   %s.traction = s.traction + sIni.traction;
-    %
-    % end
-
-
-
-    % function updateJump(obj)
-    %
-    %   % split jump increment into elastic/plastic components
-    %
-    %
-    %   as = obj.activeSet.curr;
-    %   state = obj.getState();
-    %   stateOld = obj.getStateOld();
-    %   dofm = obj.domain.dofm;
-    %
-    %   deltaJump = state.fractureJump - stateOld.fractureJump;
-    %
-    %   dofStick = getLocalDoF(dofm,obj.fldFrac,find(as == ContactMode.stick));
-    %   dofNewSlip = getLocalDoF(dofm,obj.fldFrac,find(as == ContactMode.newSlip));
-    %   dofSlip = getLocalDoF(dofm,obj.fldFrac,find(as == ContactMode.slip));
-    %   dofOpen = getLocalDoF(dofm,obj.fldFrac,find(as == ContactMode.open));
-    %
-    %   % stick update - all components elastic
-    %   state.elasticJump(dofStick) = stateOld.elasticJump(dofStick) + deltaJump(dofStick);
-    %
-    %   % new slip update - normal elastic, tangential partially
-    %   % elastic/plastic
-    %   t = state.traction(dofNewSlip);           % limit tangential traction
-    %   tOld = stateOld.traction(dofNewSlip);
-    %   state.elasticJump(dofNewSlip(1:3:end)) = stateOld.elasticJump(dofNewSlip(1:3:end)) + deltaJump(dofNewSlip(1:3:end));
-    %   elJump = (t - tOld)/obj.penalty_t;
-    %   plJump = deltaJump(dofNewSlip) - elJump;
-    %   state.elasticJump(dofNewSlip(2:3:end)) = stateOld.elasticJump(dofNewSlip(2:3:end)) + elJump(dofNewSlip(1:3:end));
-    %   state.elasticJump(dofNewSlip(3:3:end)) = stateOld.elasticJump(dofNewSlip(3:3:end)) + elJump(dofNewSlip(1:3:end));
-    %   state.plasticJump(dofNewSlip(2:3:end)) = stateOld.plasticJump(dofNewSlip(3:3:end)) + plJump(dofNewSlip(2:3:end));
-    %   state.plasticJump(dofNewSlip(3:3:end)) = stateOld.plasticJump(dofNewSlip(3:3:end)) + plJump(dofNewSlip(3:3:end));
-    %
-    %
-    %   % slip update - normal elastic, tangential plastic
-    %   state.elasticJump(dofSlip(1:3:end))  =  stateOld.elasticJump(dofSlip(1:3:end))  + deltaJump(dofSlip);
-    %   state.plasticJump(dofSlip(2:3:end)) =  stateOld.plasticJump(dofSlip(2:3:end)) + deltaJump(dofSlip);
-    %   state.plasticJump(dofSlip(3:3:end)) =  stateOld.plasticJump(dofSlip(3:3:end)) + deltaJump(dofSlip);
-    %
-    %   % open update - all components plastic
-    %   state.plasticJump(dofOpen) = stateOld.plasticJump(dofOpen) + deltaJump(dofOpen);
-    %
-    % end
-
+    % HELPER FUNCTIONS
 
     function H = computeHeaviside(obj,i,coord)
 
@@ -1105,47 +956,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     end
 
-
-
-    function dtdg = computeDerTractionGap(obj,i,slip,t)
-
-      % slip: 2x1 array with tangential gap increment
-      s = getState(obj);
-      state = obj.activeSet.curr(i);
-      dtdg = zeros(3,3);
-      fId = obj.fractureMesh.surfaces.fracId(i);
-      phiF = obj.phi(fId);
-      cF = obj.cohesion(fId);
-      tauLim = cF - t(1)*tan(phiF);
-
-      % if state == ContactMode.newSlip
-      %     slip = s.plasticSlip(i) * t(2:3);
-      % end
-
-      switch state
-        case ContactMode.open
-          return
-        case ContactMode.stick
-          dtdg = diag([obj.penalty_n,obj.penalty_t,obj.penalty_t]);
-        case {ContactMode.slip,ContactMode.newSlip}
-          dtdg(1,1) = obj.penalty_n;
-          if norm(slip) > obj.activeSet.tol.sliding
-            slipNorm = norm(slip);
-            dtdg([2 3],1) = - obj.penalty_n*tan(phiF)*(slip/slipNorm);
-            dtdg([2 3],[2 3]) = tauLim * ...
-              (slipNorm^2*eye(2) - slip * slip')/slipNorm^3;
-          else
-            % use the plastic slip
-            %fprintf('Small slip detected for element %i\n',i)
-            dir = t(2:3)/norm(t(2:3));
-            dtdg([2 3],1) = - obj.penalty_n*tan(phiF)*dir;
-          end
-
-      end
-
-    end
-
   end
+
+
 
   methods (Static)
 
@@ -1169,6 +982,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     end
 
   end
+
+
 
 end
 

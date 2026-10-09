@@ -36,14 +36,23 @@ classdef SolidMechanicsContact < MeshTying
 
       input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0,...
         'stabilizationScale',1.0,'augmentationParameter',1.0,...
-        'augmentationNormal',1.0,'augmentationTangential',1.0,'isSmooth',1),input);
+        'augmentationNormal',missing,'augmentationTangential',missing,'isSmooth',1),input);
 
       params = readInput(struct('cohesion',[],'frictionAngle',[]),input.Coulomb);
 
       obj.stabilizationScale = input.stabilizationScale;
 
-      obj.contactAugmentation(1) = input.augmentationNormal;
-      obj.contactAugmentation(2) = input.augmentationTangential;
+      if ~ismissing(input.augmentationNormal)
+        obj.contactAugmentation(1) = input.augmentationNormal;
+      else
+        obj.contactAugmentation(1) = input.augmentationParameter;
+      end
+
+      if ~ismissing(input.augmentationTangential)
+        obj.contactAugmentation(2) = input.augmentationTangential;
+      else
+        obj.contactAugmentation(2) = input.augmentationParameter;
+      end
 
       obj.isSmooth = logical(input.isSmooth);
 
@@ -629,6 +638,7 @@ classdef SolidMechanicsContact < MeshTying
           obj.activeSet.curr(is) = ContactMode.stick;
           continue
         end
+        
         id = getMultiplierDoF(obj,is);
         t = state.traction(id);
         if t(1) + cN*state.normalGap(is) > 0
@@ -641,6 +651,7 @@ classdef SolidMechanicsContact < MeshTying
           if tau >= tauLim
             tau = tau*(1-obj.activeSet.tol.tangentialViolation);
           end
+          
           if tau <= tauLim
             obj.activeSet.curr(is) = ContactMode.stick;
           else

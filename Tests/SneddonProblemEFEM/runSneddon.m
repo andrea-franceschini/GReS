@@ -23,7 +23,7 @@ Lz = 100.0;
 %   15 -> 45 -> 135 -> 405
 %
 % Add 405 if desired.
-nList = [15, 45, 135, 405];
+nList = [15, 45, 135];
 
 % The fracture spans exactly 7 cells of the 15x15 base grid.
 % DO NOT use 46.67: the exact value keeps the fracture tips on grid
@@ -226,7 +226,7 @@ for iRun = 1:nRuns
     %  Prescribed fracture pressure
     %  --------------------------------------------------------------------
 
-    efem = getPhysicsSolver(domain,"EFEMaugmented");
+    efem = getPhysicsSolver(domain,"EmbeddedFractureMechanics");
 
     % Local fracture component 1 = normal traction
     efem.bcTraction(1:3:end) = p;
@@ -246,7 +246,7 @@ for iRun = 1:nRuns
     %  POSTPROCESSING
     %  ====================================================================
 
-    efem = getPhysicsSolver(domain,"EFEMaugmented");
+    efem = getPhysicsSolver(domain,"EmbeddedFractureMechanics");
 
     f = efem.fractureMesh.surfaces;
 

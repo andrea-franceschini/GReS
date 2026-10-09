@@ -74,9 +74,9 @@
 
   <Solver>
 
-    <EFEMaugmented
-                               penaltyNormal = "1e8"
-                               penaltyTangential = "1e8">
+    <EmbeddedFractureMechanics
+                               augmentationParameter = "2.5e4"
+                               isSmooth = "0">
       <Fracture
                 origin = "0,0,0"
                 normal = "0,0,1"
@@ -90,7 +90,7 @@
       <ActiveSet>
         <normalTraction>1e-6</normalTraction>
       </ActiveSet>
-    </EFEMaugmented>
+    </EmbeddedFractureMechanics>
   </Solver>
 
 </struct>
