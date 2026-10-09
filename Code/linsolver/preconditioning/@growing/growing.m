@@ -2,30 +2,29 @@ classdef growing < preconditioner
 %   Growing Preconditioner
 %
 %   This class implements the growing as a subclass of the abstract preconditioner
-%   class. This preconditioner leverages on an internal AMG preconditioner
+%   class. This preconditioner leverages on an internal preconditioner
 %   which is progressively grown using a jacobi diagonal preconditioner.
-%   Once needed the full AMG is then recomputed on the whole new domain
+%   Once needed the full inner preconditioner is then recomputed on the whole new domain
 %
 %   Key features:
-%     - Holds an inner AMG preconditioner (AMG) 
+%     - Holds an inner preconditioner (innerPrec)
 %
 %   Usage:
-%     obj = growing(debugflag,problemsolver,physname)
+%     obj = growing(debugflag,problemsolver,physname,innerPrec)
 %       Constructs the growing preconditioner with debugging control,
 %       a handle to the problemsolver (which must expose domain info),
-%       and a string describing the physics (e.g., 'pressure',
-%       'displacements', 'displacements_contact').
+%       a string describing the physics (e.g., 'pressure',
+%       'displacements'), and an optional inner preconditioner ('amg' or 'fsai').
 %
 %   Notes:
 %     - The class expects the problemsolver.domains to be available and
 %       that the provided physname matches supported physics types.
-%     - Inner AMG behavior and parameters are encapsulated in the aAMG
-%       instance created during construction.
+%     - Inner behavior and parameters are encapsulated in the innerPrec instance.
 
    properties (GetAccess = public,SetAccess = private)
 
-      % Inner preconditioners
-      AMG
+      % Inner preconditioner
+      innerPrec
 
       % Problemsolver params
       problemsolver
@@ -37,7 +36,7 @@ classdef growing < preconditioner
       % computed
       PrecSym = true
 
-      % AMG params structure
+      % Params structure
       params
 
       % Physics
@@ -79,8 +78,8 @@ classdef growing < preconditioner
          % Compute the test space
          TV0 = ones(obj.sizeComp,1);
       
-         % Compute the amg for block 11
-         obj.AMG.Compute(A,obj.PrecSym,TV0,false);
+         % Compute the inner preconditioner for block 11
+         obj.innerPrec.Compute(A,obj.PrecSym,TV0,false);
       
          obj.Apply_L = @(x) obj.ApplyLeft(x,A);
          obj.Apply_R = @(x) obj.ApplyRight(x);
@@ -94,7 +93,7 @@ classdef growing < preconditioner
          % computed
          if obj.sizeDiff > 0 
             invD = 1./diag(Amat(end-obj.sizeDiff+1:end,end-obj.sizeDiff+1:end));
-            obj.Apply_L = @(x) [obj.AMG.Apply_L(x(1:end-obj.sizeDiff)); 
+            obj.Apply_L = @(x) [obj.innerPrec.Apply_L(x(1:end-obj.sizeDiff)); 
                                 invD.*x(end-obj.sizeDiff+1:end)];
          end
       end
@@ -107,7 +106,7 @@ classdef growing < preconditioner
 
          A = varargin{1};
 
-         x = obj.AMG.ApplyLeft(b,A);
+         x = obj.innerPrec.ApplyLeft(b,A);
       end
 
       % Getter for the function handle to apply the right preconditioner
@@ -120,13 +119,18 @@ classdef growing < preconditioner
       end
 
       % Constructor Function
-      function obj = growing(debugflag,problemsolver,physname)
+      function obj = growing(debugflag,problemsolver,physname,innerPrec)
 
          % Call the constructor of the abstract class
          obj = obj@preconditioner();
          
          % Set the debugflag
          obj.DEBUGflag = debugflag;
+
+         % Default inner preconditioner to amg if not specified
+         if nargin < 4 || isempty(innerPrec)
+            innerPrec = 'amg';
+         end
 
          % Get the domains
          obj.problemsolver = problemsolver;
@@ -148,11 +152,13 @@ classdef growing < preconditioner
             error('Non supported Physics for growing preconditioner');
          end
 
-         % Create the inner AMG preconditioner
-         obj.AMG = aAMG(debugflag,problemsolver,physname);
+         % Create the inner preconditioner
+         obj.innerPrec = createInnerPrec(innerPrec,debugflag,problemsolver,physname);
 
-         obj.maxThreads = obj.AMG.maxThreads;
-         obj.params = obj.AMG.params;
+         obj.maxThreads = obj.innerPrec.maxThreads;
+         if isprop(obj.innerPrec, 'params')
+            obj.params = obj.innerPrec.params;
+         end
       end
    end
 end

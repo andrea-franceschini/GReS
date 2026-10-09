@@ -50,12 +50,6 @@ classdef EisenstatWalker < convStrat
             if isfield(lsp, 'eta0')
                obj.eta0 = str2double(string(lsp.eta0));
             end
-            if isfield(lsp, 'maxEtak')
-               obj.maxEtak = str2double(string(lsp.maxEtak));
-            end
-            if isfield(lsp, 'gamma')
-               obj.gamma = str2double(string(lsp.gamma));
-            end
          end
       end
 

@@ -127,14 +127,13 @@ classdef linearSolver < handle
       tolRuiz = 1e-2
 
       % .mat export settings for SolveSingle
-      saveMatFlag = false
       saveMatSolves = []
    end
 
    methods (Access = public)
 
       % Constructor Function
-      function obj = linearSolver(generalsolver,physname)
+      function obj = linearSolver(generalsolver,physname,varargin)
 
          % Check if Chronos is available
          ChronosDir = fullfile(gres_root,'ThirdPartyLibs','ChronosLab','sources');
@@ -166,8 +165,11 @@ classdef linearSolver < handle
 
             obj.generalsolver = generalsolver;
 
+            % Parse optional preconditioner flags from varargin ('precType', 'innerPrec', 'innerPrecFlux')
+            [precType, innerPrec, innerPrecFlux] = parseInput(varargin);
+
             % Create the preconditioner object, check if the physics is supported
-            [obj.Prec,obj.ChronosFlag, scalingFlag] = obj.choosePrec(obj.DEBUGflag,generalsolver,physname);
+            [obj.Prec,obj.ChronosFlag, scalingFlag] = obj.choosePrec(obj.DEBUGflag,generalsolver,physname,precType,innerPrec,innerPrecFlux);
 
             % Create SAM object, deals with everything inside if not asked
             % to be used
@@ -293,10 +295,35 @@ classdef linearSolver < handle
 
       % Function to get if Chronos is to be used and if so instantiate the
       % preconditioner
-      [Prec,ChronosFlag,scalingFlag] = choosePrec(obj,debugflag,problemsolver,physname);
+      [Prec,ChronosFlag,scalingFlag] = choosePrec(obj,debugflag,problemsolver,physname,varargin);
 
       % Specific functions to be used inside choosePrec
-      [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physname);
-      [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname);
+      [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physname,varargin);
+      [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname,varargin);
+   end
+end
+
+function [precType, innerPrec, innerPrecFlux] = parseInput(varargin)
+   precType      = [];
+   innerPrec     = [];
+   innerPrecFlux = [];
+   
+   if ~isempty(varargin)
+      if mod(numel(varargin), 2) == 0 && (ischar(varargin{1}) || isstring(varargin{1}))
+         p = inputParser;
+         p.KeepUnmatched = true;
+         addParameter(p, 'precType', []);
+         addParameter(p, 'innerPrec', []);
+         addParameter(p, 'innerPrecFlux', []);
+         parse(p, varargin{:});
+   
+         precType      = p.Results.precType;
+         innerPrec     = p.Results.innerPrec;
+         innerPrecFlux = p.Results.innerPrecFlux;
+      else
+         precType = varargin{1};
+         if numel(varargin) >= 2, innerPrec = varargin{2}; end
+         if numel(varargin) >= 3, innerPrecFlux = varargin{3}; end
+      end
    end
 end

@@ -34,8 +34,8 @@ function [A] = Compute(obj,A,symMat,varargin)
    % Check in case of symmetric indefinite systems for FSAI
    AMGSym = obj.FSAI.PrecSym && obj.PrecSym && obj.FSAI.posDef;
 
-   % Compute the amg for block 11 (mechanics)
-   obj.AMG.Compute(obj.S,AMGSym,TV0,true);
+   % Compute the inner preconditioner for block 11 (mechanics)
+   obj.innerMech.Compute(obj.S,AMGSym,TV0,true);
    
    % Define handles for application of the preconditioner
    obj.Apply_L = @(x) obj.ApplyLeft(x,A{1,2},A{2,1},invC);

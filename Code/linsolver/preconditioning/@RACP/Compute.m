@@ -38,8 +38,8 @@ function A = Compute(obj,A,symMat,varargin)
    %    obj.TV0 = TV0;
    % end
    
-   % Compute the amg for block 11
-   obj.AMG.Compute(A11_aug,obj.PrecSym,TV0,true);
+   % Compute the inner preconditioner for block 11
+   obj.innerPrec.Compute(A11_aug,obj.PrecSym,TV0,true);
   
    obj.Apply_L = @(x) obj.ApplyLeft(x,A11_aug,A{1,2},A{2,1},inv_D22);
    obj.Apply_R = @(x) obj.ApplyRight(x);

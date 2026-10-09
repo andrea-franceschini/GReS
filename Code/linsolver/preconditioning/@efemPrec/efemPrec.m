@@ -2,8 +2,8 @@ classdef efemPrec < preconditioner
 
    properties (SetAccess = private,GetAccess=public)
 
-      % Inner preconditioner
-      AMG = []
+      % Inner preconditioner for mechanics
+      innerMech = []
 
       % A22 block Inverter
       FSAI = []
@@ -18,7 +18,7 @@ classdef efemPrec < preconditioner
       nDom
       nInt
 
-      % Schur complement matrix on which AMG was computed on
+      % Schur complement matrix on which inner preconditioner was computed on
       S
 
       % Nonsymmetric matrix tolerance
@@ -34,7 +34,7 @@ classdef efemPrec < preconditioner
       % computed
       PrecSym = true
 
-      % AMG params structure
+      % Params structure
       params
 
       % Physics
@@ -51,7 +51,7 @@ classdef efemPrec < preconditioner
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)
          if nargin < 4
-            error('Not enough arguments for fixedStress apply Left');
+            error('Not enough arguments for efemPrec apply Left');
          end
 
          B1 = varargin{1};
@@ -68,8 +68,8 @@ classdef efemPrec < preconditioner
          % Apply the coupling
          x11 = b(1:n1) - B1*x2;
          
-         % Apply AMG to complete the block upper Gauss Seidel
-         x1 = obj.AMG.ApplyLeft(x11,obj.S);
+         % Apply inner preconditioner to complete the block upper Gauss Seidel
+         x1 = obj.innerMech.ApplyLeft(x11,obj.S);
 
          % Apply the coupling correction to the state block
          x2 = invC(b2 - B2*x1);
@@ -82,7 +82,7 @@ classdef efemPrec < preconditioner
       % Getter for the function handle to apply the right preconditioner
       function x = ApplyRight(obj,b,varargin)
          if nargin < 2
-            error('Not enough arguments for fixedStress apply Right');
+            error('Not enough arguments for efemPrec apply Right');
          end
 
          x = b;
@@ -114,18 +114,23 @@ classdef efemPrec < preconditioner
          B1 = A{1,2};
          B2 = A{2,1};
       
-         % Update function handle while keeping the frozen AMG hierarchy S
+         % Update function handle while keeping the frozen inner hierarchy S
          obj.Apply_L = @(x) obj.ApplyLeft(x, B1, B2, invC);
       end
 
       % Constructor Function
-      function obj = efemPrec(debugflag,problemsolver,nsyTol)
+      function obj = efemPrec(debugflag,problemsolver,nsyTol,innerPrec)
 
          % Call the constructor of the abstract class
          obj = obj@preconditioner();
          
          % Set the debugflag
          obj.DEBUGflag = debugflag;
+
+         % Default inner preconditioner to amg if not specified
+         if nargin < 4 || isempty(innerPrec)
+            innerPrec = 'amg';
+         end
 
          % Get the domains
          obj.problemsolver = problemsolver;
@@ -134,15 +139,17 @@ classdef efemPrec < preconditioner
          obj.nInt = problemsolver.nInterf;
          obj.nDom = problemsolver.nDom;
 
-         % Create the inner AMG preconditioner
-         obj.AMG = aAMG(debugflag,problemsolver,"displacements");
+         % Create the inner preconditioner for mechanics
+         obj.innerMech = createInnerPrec(innerPrec,debugflag,problemsolver,"displacements");
 
-         % Create the inner FSAI solver
+         % Create the inner FSAI solver for fracture jump block
          obj.FSAI = aFSAI(debugflag);
 
          % Get the parameters
-         obj.maxThreads = obj.AMG.maxThreads;
-         obj.params = obj.AMG.params;
+         obj.maxThreads = obj.innerMech.maxThreads;
+         if isprop(obj.innerMech, 'params')
+            obj.params = obj.innerMech.params;
+         end
          obj.nsyTol = nsyTol;
       end
    end

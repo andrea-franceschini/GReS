@@ -4,37 +4,28 @@ classdef RACP < preconditioner
 %   This class implements the RACP (Reverse Augmented Constraint
 %   Preconditioner) as a subclass of the abstract preconditioner
 %   class. RACP provides a block preconditioning strategy for coupled
-%    problems arising from finite element discretizations. 
-%    It builds a reverse-augmented constraint framework while delegating 
-%   inner solves to an algebraic multigrid (AMG) preconditioner.
+%   problems arising from finite element discretizations. 
+%   It builds a reverse-augmented constraint framework while delegating 
+%   inner solves to an inner preconditioner (e.g. AMG or FSAI).
 %
 %   Key features:
-%     - Holds an inner AMG preconditioner (AMG) for approximate inversion
+%     - Holds an inner preconditioner (innerPrec) for approximate inversion
 %       of block diagonal or Schur-complement approximations.
 %     - Stores references to the problem solver and domain discretization,
 %       enabling assembly and treatment of domain/interface quantities.
 %     - Supports different physics modes (pressure, displacement, contact)
 %       and adapts preconditioning strategy accordingly.
 %     - Provides Compute method for building the operator
-%       
 %
 %   Usage:
-%     obj = RACP(debugflag,problemsolver,physname)
+%     obj = RACP(debugflag,problemsolver,physname,innerPrec)
 %       Constructs the RACP preconditioner with debugging control,
 %       a handle to the problemsolver (which must expose domain info),
-%       and a string describing the physics (e.g., 'pressure',
-%       'displacements', 'displacements_contact').
-%
-%   Notes:
-%     - The class expects the problemsolver.domains to be available and
-%       that the provided physname matches supported physics types.
-%     - Inner AMG behavior and parameters are encapsulated in the aAMG
-%       instance created during construction.
+%       a string describing the physics (e.g., 'pressure',
+%       'displacements', 'displacements_contact'), and an optional
+%       inner preconditioner type ('amg' or 'fsai').
 
    properties (Access = private)
-
-      % Inner preconditioners
-      AMG
 
       % Problemsolver params
       problemsolver
@@ -52,11 +43,14 @@ classdef RACP < preconditioner
    end
 
    properties (GetAccess = public,SetAccess = private)
+      % Inner preconditioner
+      innerPrec
+
       % Symmetry of the matrix on which the preconditioner has been
       % computed
       PrecSym = true
 
-      % AMG params structure
+      % Params structure
       params
 
       % Physics
@@ -81,7 +75,24 @@ classdef RACP < preconditioner
          A21     = varargin{3};
          inv_D22 = varargin{4};
          
-         x = apply_RevAug(obj.AMG.Prec,A11_aug,A12,A21,inv_D22,b);
+         % Get domain augmented block size
+         n1 = size(A11_aug,1);
+
+         % Partition the right-hand side vector
+         x1 = b(1:n1,:);
+         x2 = b(n1+1:end,:);
+
+         % Compute augmented rhs for domain block
+         b1 = x1 + A12*(inv_D22*x2);
+
+         % Apply inner preconditioner to domain augmented block
+         y1 = obj.innerPrec.ApplyLeft(b1,A11_aug);
+
+         % Compute interface block solution
+         y2 = inv_D22*(A21*y1 - x2);
+
+         % Compose the solution
+         x = [y1; y2];
       end
 
       % Getter for the function handle to apply the right preconditioner
@@ -94,13 +105,18 @@ classdef RACP < preconditioner
       end
 
       % Constructor Function
-      function obj = RACP(debugflag,problemsolver,physname)
+      function obj = RACP(debugflag,problemsolver,physname,innerPrec)
 
          % Call the constructor of the abstract class
          obj = obj@preconditioner();
          
          % Set the debugflag
          obj.DEBUGflag = debugflag;
+
+         % Default inner preconditioner to amg if not specified
+         if nargin < 4 || isempty(innerPrec)
+            innerPrec = 'amg';
+         end
 
          % Get the domains
          obj.problemsolver = problemsolver;
@@ -130,11 +146,13 @@ classdef RACP < preconditioner
             error('Non supported Physics for preconditioner');
          end
 
-         % Create the inner AMG preconditioner
-         obj.AMG = aAMG(debugflag,problemsolver,physname);
+         % Create the inner preconditioner
+         obj.innerPrec = createInnerPrec(innerPrec,debugflag,problemsolver,physname);
 
-         obj.maxThreads = obj.AMG.maxThreads;
-         obj.params = obj.AMG.params;
+         obj.maxThreads = obj.innerPrec.maxThreads;
+         if isprop(obj.innerPrec, 'params')
+            obj.params = obj.innerPrec.params;
+         end
          
       end
 

@@ -1,4 +1,4 @@
-function Compute(obj,A,symm,varargin)
+function [A] = Compute(obj,A,symm,varargin)
 
    if iscell(A)
       % Ruiz is done only here as it is entered only if the problem to be

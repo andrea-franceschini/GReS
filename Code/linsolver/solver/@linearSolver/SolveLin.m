@@ -61,7 +61,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 
    % Save system to .mat if requested
    currentSolve = obj.nSolve + 1;
-   if obj.saveMatFlag && ismember(currentSolve, obj.saveMatSolves)
+   if ismember(currentSolve, obj.saveMatSolves)
       saveLinearSystem(obj, backupA, backupb, currentSolve);
    end
 
@@ -78,7 +78,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    
    % Contact has opened a fracture or something similar so amg does not converge well. 
    % Directly recompute the preconditioner
-   if obj.Prec.phys == 1.1 
+   if ~isempty(obj.Prec.phys) && obj.Prec.phys == 1.1 
       if obj.generalsolver.iterConfig > obj.iterConfigOld && obj.iterConfigOld == 1
          % If the SAM is being used then it is better to just compute it
          % wrt computing the whole preconditioner

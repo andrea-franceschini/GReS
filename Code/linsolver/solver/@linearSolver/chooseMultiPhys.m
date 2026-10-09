@@ -1,4 +1,11 @@
-function [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname)
+function [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname,innerPrec,innerPrecFlux)
+
+   if nargin < 5 || isempty(innerPrec)
+      innerPrec = 'amg';
+   end
+   if nargin < 6 || isempty(innerPrecFlux)
+      innerPrecFlux = innerPrec;
+   end
 
    % List of allowed physics
    allowedPhysics = {'pressure', 'displacements','fractureJump'};
@@ -7,7 +14,7 @@ function [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physna
    if any(~ismember(physname, allowedPhysics))
        gresLog().warning(3, 'Multiphysics not yet supported');
        if gresLog().getVerbosity() >= 3
-           physNames = arrayfun(@(x) x.dofm.getVariableNames(), domainin);
+           physNames = arrayfun(@(x) x.dofm.getVariableNames(), generalsolver.domains);
            disp(physNames);
        end
        Prec = [];
@@ -18,7 +25,7 @@ function [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physna
           ismember("displacements", physname) && ...
           ismember("pressure", physname)
    
-       Prec = fixedStress(debugflag, generalsolver);
+       Prec = fixedStress(debugflag, generalsolver, innerPrec, innerPrecFlux);
        ChronosFlag = true;
 
    % Exactly 2 physics: ('displacements' AND 'fractureJump')
@@ -26,9 +33,9 @@ function [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physna
           ismember("displacements", physname) && ...
           ismember("fractureJump", physname)
    
-       Prec = efemPrec(debugflag, generalsolver, obj.nsyTol);
+       Prec = efemPrec(debugflag, generalsolver, obj.nsyTol, innerPrec);
        ChronosFlag = true;
-   
+
    % Any other combination of allowed physics not explicitly supported
    else
        gresLog().warning(3, 'Multiphysics not yet supported');

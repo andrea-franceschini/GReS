@@ -21,8 +21,8 @@ function A = Compute(obj,A,symMat,varargin)
    % Scale the test space if needed
    TV0 = obj.Ruiz.applyDinv(TV0,1);
 
-   % Compute the amg for block 11 (mechanics)
-   obj.AMGMech.Compute(A{1,1},symMat(1,1),TV0,true);
+   % Compute the inner preconditioner for block 11 (mechanics)
+   obj.innerMech.Compute(A{1,1},symMat(1,1),TV0,true);
 
    % Compute the approximated Schur complement
    obj.domain.getPhysicsSolver("BiotFullyCoupled").computeRelaxationMatrix();
@@ -32,8 +32,8 @@ function A = Compute(obj,A,symMat,varargin)
    % Scale the test space if needed
    TVFlux = obj.Ruiz.applyDinv(ones(size(S,1),1),2);
 
-   % Compute the amg for block 22 (fluids)
-   obj.AMGFlux.Compute(S,symMat(2,2),TVFlux,true);
+   % Compute the inner preconditioner for block 22 (fluids)
+   obj.innerFlux.Compute(S,symMat(2,2),TVFlux,true);
 
    obj.Apply_L = @(x) obj.ApplyLeft(x,S,A{1,1},A{1,2});
    obj.Apply_R = @(x) obj.ApplyRight(x);
