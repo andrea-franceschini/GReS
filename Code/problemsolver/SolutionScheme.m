@@ -47,14 +47,12 @@ classdef (Abstract) SolutionScheme < handle
     end
 
     function simulationLoop(obj,varargin)
+
       % Check restart option
-      flagRestart = any(strcmpi(varargin,"restart"));
 
-      % Remove restart from varargin
-      varargin(strcmpi(varargin,"restart")) = [];
+      if nargin < 2 || ~strcmpi(varargin{1},"restart")
 
-      if ~flagRestart
-        % Initialize time
+        % The simulation is assumed to start from the beginning
         obj.tStep = 0;
         obj.t = obj.simparams.tIni;
         obj.tOld = obj.t;
@@ -63,12 +61,9 @@ classdef (Abstract) SolutionScheme < handle
 
         initialize(obj);
         setLinearSolver(obj,varargin{:});
-        if ismissing(obj.output.restart.dt)
-          obj.restartControl = 1;
-        else
-          obj.restartControl = 0.;
-        end
+
       end
+
 
       obj.t = obj.t + obj.dt;
 
@@ -89,9 +84,7 @@ classdef (Abstract) SolutionScheme < handle
       end
 
       obj.finalize;
-      if obj.output.restart.on
-        obj.saveRestart();
-      end
+
       gresLog().log(-1,"Simulation completed successfully \n")
     end
 
@@ -100,6 +93,7 @@ classdef (Abstract) SolutionScheme < handle
     end
 
     function saveRestart(restartObj,varargin)
+
       if restartObj.output.restart.overwrite
         restartFile = restartObj.output.restart.filename;
       else
@@ -107,13 +101,15 @@ classdef (Abstract) SolutionScheme < handle
         restartFile = sprintf('%s_%05d',restartObj.output.restart.filename,...
           round(restartObj.t));
       end
+
       if any(strcmpi(varargin,'fail'))
         restartFile = sprintf('%s_FailAt%05d',restartObj.output.restart.filename,...
           round(restartObj.t));
       end
+
       save(restartFile,"restartObj","-v7.3");
 
-      gresLog().log(2,'\nRestart file saved: %s\nSimulation time: %g\n',...
+      gresLog().log(2,'\n Restart file saved: %s\nSimulation time: %g\n',...
         restartFile,restartObj.t);
     end
   end
@@ -171,6 +167,13 @@ classdef (Abstract) SolutionScheme < handle
         dom.setStateInit(state);
         dom.setStateOld(state);
         dom.outstate = obj.output;
+
+        if ismissing(obj.output.restart.dt)
+          obj.restartControl = 1;
+        else
+          obj.restartControl = 0.;
+        end
+
         dom.simparams = obj.simparams;
         dom.domainId = i;
         obj.nVars = obj.nVars + dom.dofm.getNumberOfVariables();
@@ -276,6 +279,10 @@ classdef (Abstract) SolutionScheme < handle
         printState(obj);
         advanceState(obj);
 
+        if obj.output.restart.on
+          saveState(obj);
+        end
+
         % go to next time step
         obj.dt = getNextDt(obj);
         obj.tOld = obj.t;
@@ -286,24 +293,7 @@ classdef (Abstract) SolutionScheme < handle
           obj.attemptedReset = false;
         end
 
-        % save restart point
-        if obj.output.restart.on
-          if ismissing(obj.output.restart.dt)
-            if (obj.t-obj.dt)>obj.output.restart.time(obj.restartControl)
-              obj.saveRestart();
-              obj.restartControl=obj.restartControl+1;
-              if obj.restartControl>length(obj.output.restart.time)
-                obj.output.restart.on = false;
-              end
-            end
-          else
-            obj.restartControl = obj.restartControl+obj.dt;
-            if obj.restartControl>=obj.output.restart.dt
-              obj.saveRestart();
-              obj.restartControl = 0;
-            end
-          end
-        end
+
 
       end
     end
@@ -322,14 +312,15 @@ classdef (Abstract) SolutionScheme < handle
     end
 
     function setLinearSolver(obj,varargin)
-      if isempty(varargin)
-         physname = [];
-      else
-         % check if the user provided the physics
-         physname = varargin{1};
+
+      input = readInput(struct('variableName',missing),varargin{:});
+
+      if ismissing(input.variableName)
+        input.variableName = [];
       end
 
-      obj.linsolver = linearSolver(obj,physname);
+      obj.linsolver = linearSolver(obj,input.variableName);
+
     end
 
     function applyDirVal(obj)
@@ -434,6 +425,39 @@ classdef (Abstract) SolutionScheme < handle
           end
         end
       end
+    end
+
+
+    function saveState(obj)
+
+      % save restart point
+
+      if ismissing(obj.output.restart.dt)
+
+        % save object at specified times
+        if obj.t >= obj.output.restart.time(obj.restartControl)
+
+          obj.restartControl = obj.restartControl+1;
+          obj.saveRestart();
+
+          if obj.restartControl > length(obj.output.restart.time)
+            obj.output.restart.on = false;
+          end
+        end
+
+      else
+
+        % restart after a specified time interval
+        obj.restartControl = obj.restartControl+obj.dt;
+
+        if obj.restartControl >= obj.output.restart.dt
+          obj.restartControl = 0;
+          obj.saveRestart();
+        end
+
+      end
+
+
     end
 
     function printVTK(obj,fac,outTime,tID)
@@ -549,8 +573,9 @@ classdef (Abstract) SolutionScheme < handle
   methods (Static)
 
     function obj = loadRestart(restartFile)
-      load(restartFile);
-      obj=restartObj;
+      
+      obj = load(restartFile).restartObj;
+
     end
 
     
