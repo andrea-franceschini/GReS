@@ -11,9 +11,8 @@ simParam = SimulationParameters('Start',0.,'End',2e2,...
 
 % Create an object of the Materials class and read the materials file
 mat = Materials(file_Mat);
-restart = struct('time',82.3,'overwrite',false,'filename','Output/Time');
 printUtils = OutState('outputFile','Output/Results','printTimes',...
-  50:50:1000,"vtkFormat","ascii","restart",restart);
+  50:50:1000,"vtkFormat","ascii");
 
 % Create object handling construction of Jacobian and rhs of the model
 domain = Discretizer('Materials',mat);
@@ -22,13 +21,8 @@ domain.addPhysicsSolvers(file_Solver);
 % The modular structure of the discretizer class allow the user to easily
 % customize the solution scheme.
 solver = EvolvingGrid('simulationparameters',simParam,...
-                      'domains',domain,...
-                      'output',printUtils,...
-                      'freezeCbAt',1.1);
+                           'domains',domain,...
+                           'output',printUtils,...
+                           'freezeCbAt',1e-1);
 
 solver.simulationLoop();
-
-
-%%
-solver = SolutionScheme.loadRestart('Output/Time_00083.mat');
-solver.simulationLoop('restart')

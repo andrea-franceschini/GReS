@@ -61,10 +61,7 @@ classdef (Abstract) SolutionScheme < handle
 
         initialize(obj);
         setLinearSolver(obj,varargin{:});
-
-
       end
-
 
       obj.t = obj.t + obj.dt;
 
@@ -295,8 +292,6 @@ classdef (Abstract) SolutionScheme < handle
           obj.attemptedReset = false;
         end
 
-
-
       end
     end
 
@@ -437,15 +432,14 @@ classdef (Abstract) SolutionScheme < handle
       if ~ismissing(obj.output.restart.time)
 
         % save object at specified times
-        if obj.t >= obj.output.restart.time(obj.restartControl)
-
-          obj.restartControl = obj.restartControl+1;
-          obj.saveRestart();
-
-          if obj.restartControl > length(obj.output.restart.time)
-            obj.output.restart.on = false;
+        if obj.restartControl > length(obj.output.restart.time)
+          obj.output.restart.on = false;
+        else
+          if obj.t >= obj.output.restart.time(obj.restartControl)
+            obj.restartControl = obj.restartControl+1;
+            obj.saveRestart();
           end
-        end
+        end        
 
       elseif ~ismissing(obj.output.restart.dt)
 
