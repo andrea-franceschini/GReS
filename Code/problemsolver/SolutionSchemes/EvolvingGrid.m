@@ -172,6 +172,10 @@ classdef EvolvingGrid < SolutionScheme
         printState(obj);
         advanceState(obj);
 
+        if obj.output.restart.on
+          saveState(obj);
+        end
+
         % go to next time step
         obj.dt = getNextDt(obj);
         obj.tOld = obj.t;
@@ -183,25 +187,6 @@ classdef EvolvingGrid < SolutionScheme
         end
         obj.isBackStep = false;
         obj.freezeAttempted = false;
-
-        % save restart point
-        if obj.output.restart.on
-          if ismissing(obj.output.restart.dt)
-            if (obj.t-obj.dt)>obj.output.restart.time(obj.restartControl)
-              obj.saveRestart();
-              obj.restartControl=obj.restartControl+1;
-              if obj.restartControl>length(obj.output.restart.time)
-                obj.output.restart.on = false;
-              end
-            end
-          else
-            obj.restartControl = obj.restartControl+obj.dt;
-            if obj.restartControl>=obj.output.restart.dt
-              obj.saveRestart();
-              obj.restartControl = 0;
-            end
-          end
-        end
       end
     end
 

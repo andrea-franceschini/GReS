@@ -31,21 +31,21 @@ function inputStruct = readInput(varargin)
 %     inputStruct : scalar struct with the parsed (and merged) fields.
 %
 %   See also: mergeInput, readKeyValueInput, readXMLfile.
- 
+
 default = [];
 usrIn   = varargin;
- 
+
 % If first arg is a struct and more args follow, treat it as defaults
 if nargin > 1 && isstruct(varargin{1})
-    default = varargin{1};
-    usrIn   = varargin(2:end);
+  default = varargin{1};
+  usrIn   = varargin(2:end);
 end
- 
+
 % Treat empty string as no input
 if isscalar(usrIn) && isstring(usrIn{1}) && strlength(usrIn{1}) == 0
-    usrIn = {};
+  usrIn = {};
 end
- 
+
 % No user input, return default unchanged
 if isempty(usrIn) || all(cellfun(@isempty, usrIn))
   inputStruct = default;
@@ -77,11 +77,11 @@ end
 if isempty(default)
   inputStruct = usr;
 else
-    inputStruct = mergeInput(default, usr);
+  inputStruct = mergeInput(default, usr);
 end
- 
+
 end
- 
+
 
 
 
@@ -99,28 +99,28 @@ function str = readKeyValueInput(kv)
 %
 %   OUTPUT:
 %     str : scalar struct with one field per key.
- 
+
 if mod(numel(kv),2) ~= 0
-    error('readKeyValueInput:InvalidInput', ...
-        'Key-value input must have even length.');
+  error('readKeyValueInput:InvalidInput', ...
+    'Key-value input must have even length.');
 end
- 
+
 str = struct();
- 
+
 for k = 1:2:numel(kv)
-    key = kv{k};
-    val = kv{k+1};
- 
-    % if iscell(val) && mod(numel(val),2) == 0
-    %     val = kv2struct(val);   % recurse into nested name-value cell
-    % end
- 
-    str.(key) = val;
+  key = kv{k};
+  val = kv{k+1};
+
+  % if iscell(val) && mod(numel(val),2) == 0
+  %     val = kv2struct(val);   % recurse into nested name-value cell
+  % end
+
+  str.(key) = val;
 end
- 
+
 end
- 
- 
+
+
 function str = readXMLfile(fileName)
 %READXMLFILE Read an XML file and return its contents as a struct.
 %
@@ -134,13 +134,13 @@ function str = readXMLfile(fileName)
 %
 %   OUTPUT:
 %     str : struct mirroring the XML element hierarchy.
- 
+
 str = readstruct(fileName, AttributeSuffix="");
 str = parseXMLStruct(str);
- 
+
 end
- 
- 
+
+
 function S = parseXMLStruct(S)
 %PARSEXMLSTRUCT Recursively convert XML-typed values to MATLAB types.
 %
@@ -152,23 +152,23 @@ function S = parseXMLStruct(S)
 %
 %   INPUT / OUTPUT:
 %     S : struct (possibly nested/array) or scalar XML value.
- 
+
 if ~isstruct(S)
-    S = getXMLValue(S);   % convert leaf value (external utility)
-    return
+  S = getXMLValue(S);   % convert leaf value (external utility)
+  return
 end
- 
+
 for i = 1:numel(S)
-    fn = fieldnames(S(i));
-    for k = 1:numel(fn)
-        field = fn{k};
-        S(i).(field) = parseXMLStruct(S(i).(field));
-    end
+  fn = fieldnames(S(i));
+  for k = 1:numel(fn)
+    field = fn{k};
+    S(i).(field) = parseXMLStruct(S(i).(field));
+  end
 end
- 
+
 end
- 
- 
+
+
 function out = mergeInput(default, usr)
 %MERGEINPUT Merge user struct into a default struct (top-level fields only).
 %
@@ -187,52 +187,61 @@ function out = mergeInput(default, usr)
 %
 %   OUTPUT:
 %     out     : merged struct.
- 
+
 out  = default;
 
 if any([isempty(usr),any(ismissing(usr))])
-    return
+  return
 end
 fusr = fieldnames(usr);
 fdef = fieldnames(default);
- 
+
 % Apply user-supplied fields
 for k = 1:numel(fusr)
- 
-    fn   = fusr{k};
-    uval = usr.(fn);
- 
-    if isfield(default, fn)
-        dval = default.(fn);
- 
-        % Required field: default is empty, user must provide a value
-        if isempty(dval) && isempty(uval)
-            error('mergeInput:RequiredFieldNotProvided', ...
-                'Required field "%s" must be provided.', fn);
-        end
- 
-        % Type check: classes must agree when both values are non-empty
-        if ~isempty(dval) && ~isempty(uval) && ~any(ismissing(dval))
-            if ~isa(uval, class(dval))
-                error('mergeInput:TypeMismatch', ...
-                    'Field "%s" has type %s but expected %s.', ...
-                    fn, class(uval), class(dval));
-            end
-        end
+
+  fn   = fusr{k};
+  uval = usr.(fn);
+
+  if isfield(default, fn)
+    dval = default.(fn);
+
+    % Accept numeric 0/1 for fields whose expected type is logical
+    if islogical(dval) && isnumeric(uval) && ~isempty(uval)
+      if ~isreal(uval) || ~all(uval == 0 | uval == 1, 'all')
+        error('mergeInput:InvalidLogicalValue', ...
+          'Field "%s" must contain only logical values or numeric 0/1.', fn);
+      end
+      uval = logical(uval);
     end
- 
-    out.(fn) = uval;
+
+    % Required field: default is empty, user must provide a value
+    if isempty(dval) && isempty(uval)
+      error('mergeInput:RequiredFieldNotProvided', ...
+        'Required field "%s" must be provided.', fn);
+    end
+
+    % Type check: classes must agree when both values are non-empty
+    if ~isempty(dval) && ~isempty(uval) && ~any(ismissing(dval))
+      if ~isa(uval, class(dval))
+        error('mergeInput:TypeMismatch', ...
+          'Field "%s" has type %s but expected %s.', ...
+          fn, class(uval), class(dval));
+      end
+    end
+  end
+
+  out.(fn) = uval;
 end
- 
+
 % Check that all required default fields (empty) were supplied by usr
 for k = 1:numel(fdef)
- 
-    fn = fdef{k};
- 
-    if isempty(default.(fn)) && ~isfield(usr, fn)
-        error('mergeInput:RequiredFieldMissing', ...
-            'Required field "%s" must be provided.', fn);
-    end
+
+  fn = fdef{k};
+
+  if isempty(default.(fn)) && ~isfield(usr, fn)
+    error('mergeInput:RequiredFieldMissing', ...
+      'Required field "%s" must be provided.', fn);
+  end
 end
- 
+
 end
