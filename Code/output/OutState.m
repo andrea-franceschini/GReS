@@ -12,7 +12,8 @@ classdef OutState < matlab.mixin.Copyable
     vtkFile
     vtkFormat = "auto"
     vtkBinaryThreshold = 1e4
-    restart
+    restart = struct('on',false,'filename',missing,'dt',missing,'time',...
+      missing,'overwrite',true)
   end
 
   properties (SetAccess = private)
@@ -233,9 +234,11 @@ classdef OutState < matlab.mixin.Copyable
       end
 
       if any([obj.writeSolution,obj.writeVtk,obj.writeMatFile])
-        assert(~any(ismissing(params.printTimes)),"Print times are required when specifying output files");
-        t = readInput(struct('printTimes',double.empty),varargin{:});
-        obj.timeList = t.printTimes;
+        % assert(~any(ismissing(params.printTimes)),"Print times are required when specifying output files");
+        % t = readInput(struct('printTimes',double.empty),varargin{:});
+        if ~ismissing(params.printTimes)
+          obj.timeList = params.printTimes;
+        end
       end
 
       if obj.writeVtk
@@ -264,8 +267,8 @@ classdef OutState < matlab.mixin.Copyable
                                 'filename',[]);
 
         obj.restart = readInput(restartDefault,params.restart);
-        obj.restart.overwrite = logical(obj.restart.overwrite);
         obj.restart.on = true;
+
       else
 
         obj.restart.on = false;

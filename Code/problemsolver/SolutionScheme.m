@@ -62,6 +62,7 @@ classdef (Abstract) SolutionScheme < handle
         initialize(obj);
         setLinearSolver(obj,varargin{:});
 
+
       end
 
 
@@ -148,6 +149,7 @@ classdef (Abstract) SolutionScheme < handle
     end
 
     function initialize(obj)
+
       % restore the solution scheme object at its initial state
       if ~obj.isFirstRun
         obj.reset();
@@ -167,13 +169,6 @@ classdef (Abstract) SolutionScheme < handle
         dom.setStateInit(state);
         dom.setStateOld(state);
         dom.outstate = obj.output;
-
-        if ismissing(obj.output.restart.dt)
-          obj.restartControl = 1;
-        else
-          obj.restartControl = 0.;
-        end
-
         dom.simparams = obj.simparams;
         dom.domainId = i;
         obj.nVars = obj.nVars + dom.dofm.getNumberOfVariables();
@@ -200,6 +195,13 @@ classdef (Abstract) SolutionScheme < handle
 
       % Prepare folder to save the restart files.
       obj.output = obj.output.prepareRestart();
+
+      if ismissing(obj.output.restart.dt)
+        obj.restartControl = 1;
+      else
+        obj.restartControl = 0.;
+      end
+      
     end
 
     function reset(obj)
@@ -432,7 +434,7 @@ classdef (Abstract) SolutionScheme < handle
 
       % save restart point
 
-      if ismissing(obj.output.restart.dt)
+      if ~ismissing(obj.output.restart.time)
 
         % save object at specified times
         if obj.t >= obj.output.restart.time(obj.restartControl)
@@ -445,7 +447,7 @@ classdef (Abstract) SolutionScheme < handle
           end
         end
 
-      else
+      elseif ~ismissing(obj.output.restart.dt)
 
         % restart after a specified time interval
         obj.restartControl = obj.restartControl+obj.dt;
