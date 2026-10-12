@@ -107,6 +107,8 @@ classdef linearSolver < handle
       newtonLin = []
       timeLin = []
       Delta_T = []
+      tolReqLin = []
+      scaledTolLin = []
       systemSize = 0
 
       % SAM object
@@ -249,12 +251,54 @@ classdef linearSolver < handle
                fprintf('             %d\t%e\n',i,obj.whenComputed(i));
             end
 
-            fprintf('\n----------------------------------------------------------------------\n')
-            fprintf('| %8s | %6s | %4s | %8s | %7s | %8s | %8s |\n','PhysTime','Sol N.','Iter','SolTime','Symm','PrecTime','DeltaT');
-            fprintf('----------------------------------------------------------------------\n')
-            
-            for i = 1:size(obj.solveTLin,2)
-               fprintf('| %.2e | %6d | %4d | %.2e | %.1e | %.2e | %.2e |\n',obj.timeLin(i),i,obj.iterLin(i),obj.solveTLin(i),obj.symFlagLin(i),obj.precCompLin(i)+obj.SAM.CompLin(i),obj.Delta_T(i));
+            isRuiz = ~isempty(obj.Ruiz) && obj.Ruiz.scalingFlag;
+
+            if isRuiz
+               lineLen = 83;
+               sepLine = [repmat('-', 1, lineLen), '\n'];
+               fprintf(['\n', sepLine]);
+               fprintf('| %8s | %6s | %4s | %8s | %7s | %8s | %8s | %9s |\n', ...
+                  'PhysTime', 'Sol N.', 'Iter', 'SolTime', 'Symm', 'PrecTime', 'TolReq', 'TolScaled');
+               fprintf(sepLine);
+               
+               for i = 1:size(obj.solveTLin,2)
+                  if i <= length(obj.tolReqLin) && ~isnan(obj.tolReqLin(i))
+                     tolReqStr = sprintf('%8.2e', obj.tolReqLin(i));
+                  else
+                     tolReqStr = '     ---';
+                  end
+
+                  if i <= length(obj.scaledTolLin) && ~isnan(obj.scaledTolLin(i))
+                     tolScaledStr = sprintf('%9.2e', obj.scaledTolLin(i));
+                  else
+                     tolScaledStr = '      ---';
+                  end
+
+                  fprintf('| %.2e | %6d | %4d | %.2e | %.1e | %.2e | %8s | %9s |\n', ...
+                     obj.timeLin(i), i, obj.iterLin(i), obj.solveTLin(i), obj.symFlagLin(i), ...
+                     obj.precCompLin(i)+obj.SAM.CompLin(i), tolReqStr, tolScaledStr);
+               end
+               fprintf(sepLine);
+            else
+               lineLen = 71;
+               sepLine = [repmat('-', 1, lineLen), '\n'];
+               fprintf(['\n', sepLine]);
+               fprintf('| %8s | %6s | %4s | %8s | %7s | %8s | %8s |\n', ...
+                  'PhysTime', 'Sol N.', 'Iter', 'SolTime', 'Symm', 'PrecTime', 'TolReq');
+               fprintf(sepLine);
+               
+               for i = 1:size(obj.solveTLin,2)
+                  if i <= length(obj.tolReqLin) && ~isnan(obj.tolReqLin(i))
+                     tolReqStr = sprintf('%8.2e', obj.tolReqLin(i));
+                  else
+                     tolReqStr = '     ---';
+                  end
+
+                  fprintf('| %.2e | %6d | %4d | %.2e | %.1e | %.2e | %8s |\n', ...
+                     obj.timeLin(i), i, obj.iterLin(i), obj.solveTLin(i), obj.symFlagLin(i), ...
+                     obj.precCompLin(i)+obj.SAM.CompLin(i), tolReqStr);
+               end
+               fprintf(sepLine);
             end
          end
 

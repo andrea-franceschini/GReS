@@ -23,7 +23,10 @@ classdef fixedTol < convStrat
          
          % If the problem is linear then use the tolerance needed from the nonlinear-solver
          if islinear
-            obj.Tol = obj.linearTol;
+            targetTol = obj.linearTol;
+
+            obj.unscaledTol = targetTol;
+            obj.Tol = targetTol;
 
             % Determine effective tolerance for the scaled linear solver to guarantee
             % convergence of the unscaled physical residual
@@ -44,7 +47,10 @@ classdef fixedTol < convStrat
 
             % Relax tolerance if physNorm is already small, capped at maxTol
             maxTol = 0.5;
-            obj.Tol = min(maxTol, max(obj.nonLinTol, tolFromAbs));
+            targetTol = min(maxTol, max(obj.nonLinTol, tolFromAbs));
+
+            obj.unscaledTol = targetTol;
+            obj.Tol = targetTol;
          end
       end
 

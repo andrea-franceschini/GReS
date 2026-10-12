@@ -8,6 +8,9 @@ classdef (Abstract) convStrat < handle
       % Tolerance value
       Tol
 
+      % Unscaled tolerance value
+      unscaledTol
+
       % Tolerance for linear step
       linearTol
 

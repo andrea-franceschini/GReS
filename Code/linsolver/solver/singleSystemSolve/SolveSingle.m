@@ -50,6 +50,7 @@ function [x, flag, relres, iter, resvec] = SolveSingle(varargin)
 %
 % See also SolveSingleFile.
 
+   rng(0);
    if nargin < 1
       error('SolveSingle: Not enough input arguments.');
    end
@@ -245,6 +246,7 @@ function [x, flag, relres, iter, resvec] = solveSingleFromData(A, b, TV0Coords, 
          if isempty(b)
             error('SolveSingle: Input b is empty with rhsFlag = 0.');
          end
+         b = b/norm(b);
       case 1
          b = ones(n, 1);
       case 2
