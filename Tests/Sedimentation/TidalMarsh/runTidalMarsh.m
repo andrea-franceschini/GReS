@@ -21,8 +21,6 @@ domain.addPhysicsSolvers(file_Solver);
 % customize the solution scheme.
 solver = EvolvingGrid('simulationparameters',simParam,...
                            'domains',domain,...
-                           'output',printUtils);
-% profile off
-% profile on
+                           'output',printUtils,...
+                           'freezeCbAt',1e-1);
 solver.simulationLoop();
-% profile viewer

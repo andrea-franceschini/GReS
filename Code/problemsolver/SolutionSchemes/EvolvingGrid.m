@@ -88,7 +88,7 @@ classdef EvolvingGrid < SolutionScheme
                        'domains',Discretizer.empty,...
                        'growprint',0,...
                        'intervalprint',missing,...
-                       'freezeCbAt',missing);
+                       'freezeCbAt',double.empty);
       params = readInput(default,varargin{:});
 
       obj.simparams = params.simulationparameters;
@@ -97,20 +97,14 @@ classdef EvolvingGrid < SolutionScheme
         obj.output = params.output;
       end
 
+      obj.freezeAt = params.freezeCbAt;
       obj.printGrow = logical(params.growprint);
       obj.printInterv = params.intervalprint;
       if ismissing(obj.printInterv)
         % Define an interval outside of the simulation
         tf = params.simulationparameters.tMax+params.simulationparameters.dtMax;
         obj.printInterv = [tf, 2*tf];
-      end
-
-      if ismissing(params.freezeCbAt)
-        obj.freezeAt = params.simulationparameters.dtMin + ...
-          (params.simulationparameters.dtMax-params.simulationparameters.dtMin)/10;
-      else
-        obj.freezeAt = params.freezeCbAt;
-      end
+      end      
 
       obj.nDom = numel(obj.domains);
       obj.nInterf = numel(obj.interfaces);      
@@ -143,11 +137,10 @@ classdef EvolvingGrid < SolutionScheme
         % newton did not converge or configuration changed too many times
         obj.t = obj.tOld;
         obj.tStep = obj.tStep - 1;
-
-        dtNew = obj.dt/obj.simparams.divFac;  % Time increment chop
+        
         goBackState(obj);
 
-        if (dtNew<obj.freezeAt) && ~obj.freezeAttempted
+        if (obj.dt<=obj.freezeAt) && ~obj.freezeAttempted
           % First failure at this time-step size
           dtNew = obj.dt;
           obj.physics.cbFreeze = true;
@@ -155,6 +148,7 @@ classdef EvolvingGrid < SolutionScheme
           obj.freezeAttempted = true;
           gresLog().log(0,' %s \n','FREEZE THE CB CURVE BRANCH WITHIN THE TIME STEP' )
         else
+          dtNew = obj.dt/obj.simparams.divFac;  % Time increment chop
           % Reduce time step and allow freezing at the new size
           obj.physics.cbFreeze = false;
           obj.freezeAttempted = false;
