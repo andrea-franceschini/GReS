@@ -4,7 +4,6 @@ classdef FixedStressSplit < SolutionScheme
 % This scheme is valid only when used together with the
 % BiotFixedStressSplit physics solver.
 
-% The 
   properties
     % instance of linearSolver for singlePhysics
     solverMech
