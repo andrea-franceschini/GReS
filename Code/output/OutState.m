@@ -54,7 +54,12 @@ classdef OutState < matlab.mixin.Copyable
       end
 
       % create folder for vtu files
+      if (isfolder(foldName))
+        rmdir(foldName, 's');
+      end
+
       status = mkdir(foldName);
+
       if (status ~= 1)
         error('Unable to create folder for VTK output.');
       end
@@ -174,17 +179,22 @@ classdef OutState < matlab.mixin.Copyable
     end
 
     function obj = prepareRestart(obj)
-      if obj.restart.on
+
+      if ~obj.restart.on
+        return
+      end
+
         folder = fileparts(obj.restart.filename);
+
         if ~isfolder(folder)
           status = mkdir(folder);
+
           if (status ~= 1)
             gresLog().log(0,"Unable to create the folder for save the" + ...
-              " restart files, turn off the restart capability.\n");
+              " restart files. The restart capability is turned off.\n");
             obj.restart.on = false;
           end
         end
-      end
     end
 
   end
@@ -199,7 +209,8 @@ classdef OutState < matlab.mixin.Copyable
                        'saveHistory',missing,...
                        'solvePrintTimes',0,...
                        'vtkFormat',"auto",...
-                       'vtkBinaryThreshold',1e6);
+                       'vtkBinaryThreshold',1e6,...
+                       'restart',missing);
 
       params = readInput(default,varargin{:});
 
@@ -223,9 +234,11 @@ classdef OutState < matlab.mixin.Copyable
       end
 
       if any([obj.writeSolution,obj.writeVtk,obj.writeMatFile])
-        assert(~any(ismissing(params.printTimes)),"Print times are required when specifying output files");
-        t = readInput(struct('printTimes',double.empty),varargin{:});
-        obj.timeList = t.printTimes;
+        % assert(~any(ismissing(params.printTimes)),"Print times are required when specifying output files");
+        % t = readInput(struct('printTimes',double.empty),varargin{:});
+        if ~ismissing(params.printTimes)
+          obj.timeList = params.printTimes;
+        end
       end
 
       if obj.writeVtk
@@ -245,26 +258,21 @@ classdef OutState < matlab.mixin.Copyable
         isfinite(obj.vtkBinaryThreshold) && obj.vtkBinaryThreshold >= 0, ...
         "vtkBinaryThreshold must be a finite nonnegative scalar.");
 
-      % obj.restart = struct('on',false,'filename',missing,'dt',...
-      %   missing,'time',missing,'overwrite',true);
-      if isfield(params,'restart')        
-        if isfield(params.restart,'time')
-          obj.restart.time = params.restart.time;
-        end
-        if isfield(params.restart,'dt')
-          obj.restart.dt = params.restart.dt;
-          obj.restart.time = missing;
-        end
-        if isfield(params.restart,'overwrite')
-          obj.restart.overwrite = params.restart.overwrite;
-        end
-        if isfield(params.restart,'filename')
-          obj.restart.filename = params.restart.filename;
-          obj.restart.on = true;
-        else
-          gresLog().log(0,"A filename is required to activate the " + ...
-            " restart capability.\n")
-        end
+
+      if ~ismissing(params.restart)
+
+        restartDefault = struct('time',missing,...
+                                'dt',missing,...
+                                'overwrite',true,...
+                                'filename',[]);
+
+        obj.restart = readInput(restartDefault,params.restart);
+        obj.restart.on = true;
+
+      else
+
+        obj.restart.on = false;
+        
       end
 
     end
