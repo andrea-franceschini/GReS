@@ -127,10 +127,14 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
 
           rockComp = getRockCompressibility(obj,tag,coupledRegions);
 
+          % porosity and rock compressibility (arrays local to the element
+          % region)
           poro = zeros(numel(cellListTag),1);
           alpha = zeros(numel(cellListTag),1);
-          poro(cellListTag) = mat.PorousRock.getPorosity();
-          alpha(cellListTag) = rockComp(cellListTag);
+
+          % constant porosity is allowed for now
+          poro(:) = mat.PorousRock.getPorosity();
+          alpha(:) = rockComp(cellListTag);
 
           for i = 1:numel(cellListTag)
 
