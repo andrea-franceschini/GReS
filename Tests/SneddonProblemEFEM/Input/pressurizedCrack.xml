@@ -76,7 +76,7 @@
 
     <EmbeddedFractureMechanics
                                augmentationParameter = "2.5e4"
-                               isSmooth = "0">
+                               isSmooth = "1">
       <Fracture
                 origin = "0,0,0"
                 normal = "0,0,1"
