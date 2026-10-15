@@ -1,7 +1,0 @@
-NodeBC                            % BC item
-Dir                               % BC type
-Poro                              % Physics
-dir_Poro_Sym                             % BC name
-dir_Poro_Sym/list
-0.000000 dir_Poro_Sym/time0.dat
-End
