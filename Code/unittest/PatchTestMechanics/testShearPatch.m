@@ -51,13 +51,16 @@ classdef testShearPatch < matlab.unittest.TestCase
 
     function testPatchKV(testCase)
       gresLog().setVerbosity(-2);
-      simparams = SimulationParameters('Start',0.0,...
-        'End',3e0,...
-        'DtInit',1.0,...
-        'DtMax',1.0,...
-        'DtMin',1.0,...
-        'RelativeTolerance',1.e-8,...
-        'AbsoluteTolerance',1.e-9);
+
+      sim = struct('Start',0.0,...
+                   'End',3e0,...
+                   'DtInit',1.0,...
+                   'DtMax',1.0,...
+                   'DtMin',1.0,...
+                   'RelativeTolerance',1.e-8,...
+                   'AbsoluteTolerance',1.e-9);
+
+      simparams = SimulationParameters(sim);
 
       grid = structuredMesh(1,1,1,[0 1],[0 1],[0 1]);
       mat = Materials();
@@ -106,6 +109,35 @@ classdef testShearPatch < matlab.unittest.TestCase
       gresLog().setVerbosity(-1);
       stress = domain.getState("stress");
       verifyEqual(testCase,stress(:,5),1.5*ones(8,1),"AbsTol",1e-9)
+
+
+      % testing restart and rerun capabilities
+      sim.End = 5.0;
+      simparams = SimulationParameters(sim);
+      restart = struct('time',[1.0,3.0,5.0],'overwrite',false,'filename','test/restart');
+      printUtils = OutState('restart',restart);
+      solver.simparams = simparams;
+      solver.output = printUtils;
+      solver.simulationLoop();
+      stress = domain.getState("stress");
+      verifyEqual(testCase,stress(:,5),2.5*ones(8,1),"AbsTol",1e-9)
+
+
+      solver = SolutionScheme.loadRestart('test/restart_00003.mat');
+      solver.simulationLoop("restart");
+      stress = domain.getState("stress");
+      verifyEqual(testCase,stress(:,5),2.5*ones(8,1),"AbsTol",1e-9)
+
+      sim.End = 4.0;
+      simparams = SimulationParameters(sim);
+      restart = struct('dt',2.0,'overwrite',false,'filename','test/restart');
+      printUtils = OutState('restart',restart);
+      solver = SolutionScheme.loadRestart('test/restart_00001.mat');
+      solver.simparams = simparams;
+      solver.output = printUtils;
+      solver.simulationLoop("restart");
+      stress = domain.getState("stress");
+      verifyEqual(testCase,stress(:,5),2.5*ones(8,1),"AbsTol",1e-9)
 
 
     end

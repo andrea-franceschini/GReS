@@ -49,9 +49,6 @@ hVec      = zeros(nRuns,1);
 errAbsVec = zeros(nRuns,1);
 errRelVec = zeros(nRuns,1);
 
-%% ========================================================================
-%  REFINEMENT LOOP
-%  ========================================================================
 
 for iRun = 1:nRuns
 
@@ -79,21 +76,6 @@ for iRun = 1:nRuns
 
     h = Lx/nCell;
     hVec(iRun) = h;
-
-    %% --------------------------------------------------------------------
-    %  Analytical Sneddon displacement on external boundary
-    %
-    %  Horizontal fracture:
-    %
-    %             z
-    %             ^
-    %             |
-    %      --------+---------> x
-    %            -a   a
-    %
-    %  fracture: z = 0,  -a <= x <= a
-    %
-    %  --------------------------------------------------------------------
 
     c = grid.coordinates;
 
@@ -147,9 +129,6 @@ for iRun = 1:nRuns
         (1 - (r./sqrtR1R2).* ...
         cos(theta - theta12)) );
 
-    %% --------------------------------------------------------------------
-    %  Material and output
-    %  --------------------------------------------------------------------
 
     mat = Materials(params.Materials);
 
@@ -160,9 +139,6 @@ for iRun = 1:nRuns
         "printTimes",1, ...
         "matFileName",outputName);
 
-    %% --------------------------------------------------------------------
-    %  Boundary conditions
-    %  --------------------------------------------------------------------
 
     bc = Boundaries(grid);
 
@@ -211,10 +187,6 @@ for iRun = 1:nRuns
         'time',0.0, ...
         'value',0.0);
 
-    %% --------------------------------------------------------------------
-    %  Domain
-    %  --------------------------------------------------------------------
-
     domain = Discretizer( ...
         'Boundaries',bc, ...
         'Materials',mat, ...
@@ -222,10 +194,11 @@ for iRun = 1:nRuns
 
     domain.addPhysicsSolvers(params.Solver);
 
-    %% --------------------------------------------------------------------
-    %  Prescribed fracture pressure
-    %  --------------------------------------------------------------------
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
     efem = getPhysicsSolver(domain,"EmbeddedFractureMechanics");
 
     % Local fracture component 1 = normal traction
@@ -451,10 +424,6 @@ for iRun = 1:nRuns
         fullfile('Output',sprintf('gn_plot_%d.pdf',nCell)));
 end
 
-%% ========================================================================
-%  OBSERVED CONVERGENCE ORDER
-%  ========================================================================
-
 fprintf('\n');
 fprintf('============================================================\n');
 fprintf(' CONVERGENCE RESULTS\n');
@@ -481,10 +450,6 @@ for k = 2:nRuns
         errRelVec(k), ...
         pObs(k-1));
 end
-
-%% ========================================================================
-%  CONVERGENCE PLOT
-%  ========================================================================
 
 figure
 

@@ -1,8 +1,8 @@
-function Compute(obj,A,symm,varargin)
+function A = Compute(obj,A,symm,varargin)
    
    % Check inputs are correct 
    if nargin < 4
-      gresLog().log(3,'test space not passed to aAMG, using defaults');
+      gresLog().log(3,'test space not passed to aAMG, using defaults\n');
       if obj.phys == 0
          TV0 = ones(size(A,1),1);
       elseif obj.phys == 1 
@@ -13,13 +13,6 @@ function Compute(obj,A,symm,varargin)
    else
       % Get the test space
       TV0 = varargin{1};
-   end
-
-   % Understand if part of a block preconditioner
-   if nargin < 5
-      block = false;
-   else
-      block = varargin{2};
    end
 
    if iscell(A)
@@ -34,35 +27,14 @@ function Compute(obj,A,symm,varargin)
       obj.params.symm = true;
       obj.PrecSym = true;
    end
-   
-   % Treat Boundary conditions if not coming from a block preconditioner 
-   if ~block
-      warning('off', 'MATLAB:eigs:NotAllEigsConvKeep');
-      lmax = eigs(A,1,'lm','FailureTreatment','keep','Display',0,'Tolerance',0.001,'MaxIterations',3);
-
-      d = diag(A);
-      idx = (d == 1);
-      d(idx) = lmax/10;
-      A = spdiags(d, 0, A);
-   end
 
    set_DEBINFO();
 
    % Compute the AMG preconditioner
    obj.Prec = cpt_aspAMG(obj.params,A,TV0,obj.DEBUGflag);
    
-   % Find the saved actual symmetry for the indefinite case
-   curr = obj.Prec;
-   childFieldName = 'next'; 
-   while isfield(curr, childFieldName) && isstruct(curr.(childFieldName))
-      curr = curr.(childFieldName);
-   end
-   actualSymm = curr.symm;
-
-   % Check if the matrix was symmetric indefinite
-   if obj.PrecSym == true && actualSymm == false
-      obj.PrecSym = false;
-   end
+   % Find out if it is an indefinite case
+   obj.posDef = obj.Prec.isPosDef;
 
    % Get AMG hierarchy information
    obj.AMG_info = get_AMG_info(obj.Prec,A);

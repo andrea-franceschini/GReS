@@ -3,6 +3,7 @@ classdef FixedStressSplit < SolutionScheme
 % Fixed-stress split algorithm
 % This scheme is valid only when used together with the
 % BiotFixedStressSplit physics solver.
+
   properties
     % instance of linearSolver for singlePhysics
     solverMech

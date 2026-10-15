@@ -12,6 +12,7 @@ classdef EvolvingGrid < SolutionScheme
     isBackStep = false
     freezeCount = 0
     freezeAt
+    freezeAttempted = false
   end
 
   properties (Access = private)
@@ -87,7 +88,7 @@ classdef EvolvingGrid < SolutionScheme
                        'domains',Discretizer.empty,...
                        'growprint',0,...
                        'intervalprint',missing,...
-                       'freezeCbAt',missing);
+                       'freezeCbAt',double.empty);
       params = readInput(default,varargin{:});
 
       obj.simparams = params.simulationparameters;
@@ -96,20 +97,14 @@ classdef EvolvingGrid < SolutionScheme
         obj.output = params.output;
       end
 
+      obj.freezeAt = params.freezeCbAt;
       obj.printGrow = logical(params.growprint);
       obj.printInterv = params.intervalprint;
       if ismissing(obj.printInterv)
         % Define an interval outside of the simulation
         tf = params.simulationparameters.tMax+params.simulationparameters.dtMax;
         obj.printInterv = [tf, 2*tf];
-      end
-
-      if ismissing(params.freezeCbAt)
-        obj.freezeAt = params.simulationparameters.dtMin + ...
-          (params.simulationparameters.dtMax-params.simulationparameters.dtMin)/10;
-      else
-        obj.freezeAt = params.freezeCbAt;
-      end
+      end      
 
       obj.nDom = numel(obj.domains);
       obj.nInterf = numel(obj.interfaces);      
@@ -142,30 +137,44 @@ classdef EvolvingGrid < SolutionScheme
         % newton did not converge or configuration changed too many times
         obj.t = obj.tOld;
         obj.tStep = obj.tStep - 1;
-
-        dt = obj.dt/obj.simparams.divFac;  % Time increment chop
-        if (dt<obj.freezeAt) && ~obj.isBackStep
-          dt = obj.dt;  % Time increment chop
-          obj.physics.cbFreeze = true;
-          obj.freezeCount = obj.freezeCount +1;
-        end
-        % obj.dt = obj.dt/obj.simparams.divFac;  % Time increment chop
-
-        obj.dt = dt;  % Time increment chop
-        obj.dtSave = obj.dt;
+        
         goBackState(obj);
-        obj.t = obj.t + obj.dt;
-        if obj.dt < obj.simparams.dtMin
+
+        if (obj.dt<=obj.freezeAt) && ~obj.freezeAttempted
+          % First failure at this time-step size
+          dtNew = obj.dt;
+          obj.physics.cbFreeze = true;
+          obj.freezeCount = obj.freezeCount + 1;
+          obj.freezeAttempted = true;
+          gresLog().log(0,' %s \n','FREEZE THE CB CURVE BRANCH WITHIN THE TIME STEP' )
+        else
+          dtNew = obj.dt/obj.simparams.divFac;  % Time increment chop
+          % Reduce time step and allow freezing at the new size
+          obj.physics.cbFreeze = false;
+          obj.freezeAttempted = false;
+        end       
+        
+        if dtNew < obj.simparams.dtMin
+          if obj.output.restart.on
+            obj.saveRestart('fail');
+          end
           error('Minimum time step reached')
         else
+          obj.dt = dtNew;
+          obj.dtSave = dtNew;
+          obj.t = obj.t + dtNew;
           gresLog().log(0,'\n %s \n','BACKSTEP')
         end
         obj.isBackStep = true;
-        % return
+        return
       else
         % TIME STEP CONVERGED - advance to the next time step
         printState(obj);
         advanceState(obj);
+
+        if obj.output.restart.on
+          saveState(obj);
+        end
 
         % go to next time step
         obj.dt = getNextDt(obj);
@@ -177,6 +186,7 @@ classdef EvolvingGrid < SolutionScheme
           obj.attemptedReset = false;
         end
         obj.isBackStep = false;
+        obj.freezeAttempted = false;
       end
     end
 
@@ -295,7 +305,6 @@ classdef EvolvingGrid < SolutionScheme
     end
 
   end
-
 
 
 end

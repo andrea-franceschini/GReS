@@ -26,6 +26,14 @@ classdef (Abstract) preconditioner < handle
       % Preconditioner application
       Apply_L = []
       Apply_R = []
+
+      % Define the positive definiteness of the problem
+      posDef = true;
+   end
+
+   properties (GetAccess = public, SetAccess = ?linearSolver)
+      % Ruiz scaling object
+      Ruiz = []
    end
 
    methods (Abstract)
@@ -66,6 +74,12 @@ classdef (Abstract) preconditioner < handle
       % Update the state of the blocks default (do nothing), overridden in
       % specific preconditioners
       function updateStateBlocks(obj, A)
+
+      end
+
+      % Condenses the domains and interfaces in a 2x2 matrix, default does
+      % nothing. Overridden in specific preconditioners
+      function A = condenseDomains(obj,A)
 
       end
    end

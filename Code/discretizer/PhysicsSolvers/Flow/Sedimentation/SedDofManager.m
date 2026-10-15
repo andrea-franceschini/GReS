@@ -29,8 +29,8 @@ classdef SedDofManager < handle
         case "surface"
           numcells = prod(obj.ncells(1:2));
 
-          if isfield(data,"columnHeight")
-            surfCellHeight = load(data.columnHeight);
+          if isfield(data.Initial,"columnHeight")
+            surfCellHeight = load(data.Initial.columnHeight);
           end
 
           count=1;

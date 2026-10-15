@@ -15,8 +15,8 @@ classdef RACP < preconditioner
 %       enabling assembly and treatment of domain/interface quantities.
 %     - Supports different physics modes (pressure, displacement, contact)
 %       and adapts preconditioning strategy accordingly.
-%     - Provides Compute and treatDirBC methods for building the operator
-%       and handling Dirichlet boundary conditions.
+%     - Provides Compute method for building the operator
+%       
 %
 %   Usage:
 %     obj = RACP(debugflag,problemsolver,physname)
@@ -69,10 +69,7 @@ classdef RACP < preconditioner
 
    methods
       % Function to compute the preconditioner
-      Compute(obj,A,symMat,varargin)
-
-      % % Function to apply the multidomain RACP procedure
-      % y = applyMultiRACP(obj,A11_aug,B1,B2,inv_D22,x);
+      A = Compute(obj,A,symMat,varargin)
 
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)
@@ -141,11 +138,10 @@ classdef RACP < preconditioner
          
       end
 
-      % Function for treating the dirichlet boundary conditions
-      A = treatDirBC(obj,A,sym)
-
-      % Compute local Augmented matrix for multidom == false
+      % Compute local Augmented matrix
       [A11_aug,inv_D22] = cpt_localAug(obj,A11,A12,A21,A22,symm)
-
+   
+      % Condenses the domains and interfaces in a 2x2 matrix
+      A = condenseDomains(obj,A)
    end
 end

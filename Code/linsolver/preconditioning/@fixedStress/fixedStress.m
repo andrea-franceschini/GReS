@@ -35,7 +35,7 @@ classdef fixedStress < preconditioner
 
    methods
       % Function to compute the preconditioner
-      Compute(obj,A,sym,varargin)
+      A = Compute(obj,A,sym,varargin)
 
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)
@@ -101,9 +101,5 @@ classdef fixedStress < preconditioner
          obj.maxThreads = obj.AMGFlux.maxThreads;
          obj.params = obj.AMGFlux.params;
       end
-
-      % Function for treating the dirichlet boundary conditions
-      A = treatDirBC(obj,A,sym)
-
    end
 end
