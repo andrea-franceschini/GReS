@@ -43,8 +43,7 @@
                            masterSurface = "3"
                            slaveDomain = "1"
                            slaveSurface = "1"
-                           augmentationNormal = "5e3"
-                           augmentationTangential = "5e3"
+                           augmentationParameter = "5e3"
                            isSmooth = "0">
 
       <Quadrature

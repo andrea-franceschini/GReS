@@ -52,8 +52,7 @@
                            slaveSurface = "7"
                            multiplierType = "P0"
                            isSmooth = "1"
-                           augmentationNormal = "1e4"
-                           augmentationTangential = "1e4">
+                           augmentationParameter = "1e4">
 
       <Quadrature
                   type = "SegmentBasedQuadrature"

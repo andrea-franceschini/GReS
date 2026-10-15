@@ -164,10 +164,12 @@ classdef Boundaries < handle
         var = obj.getVariable(bcId);
         varId = dofm.getVariableId(var);
         ents = getLocalEnts(dofm,varId,ents);
+        dim = dofm.getNumberOfComponents(varId);
+      else
+        dim = sum(obj.getNumbSourceEntities(bcId) > 0);
       end
 
       % component multiplication
-      dim = dofm.getNumberOfComponents(varId);
       i1 = 1;
       dofs = zeros(numel(ents),1);
       for i = 1 : dim
@@ -200,6 +202,10 @@ classdef Boundaries < handle
       src = obj.getField(bcId);
       bc = obj.getData(bcId);
 
+      if nargin < 4
+        numbComp = sum(bc.data.nSourceEnts > 0);
+      end
+
       % verify bcs dimensions
       if numbComp < sum(bc.data.nSourceEnts > 0)
         error('Number of bc components is not compatible with the variable field number of components')
@@ -218,7 +224,7 @@ classdef Boundaries < handle
 
 
     function nEnts = getNumbSourceEntities(obj,identifier)
-      nEnts = obj.getData(identifier).data.nSorceEnts;
+      nEnts = obj.getData(identifier).data.nSourceEnts;
     end
 
     function nEnts = getNumbTargetEntities(obj,identifier)
