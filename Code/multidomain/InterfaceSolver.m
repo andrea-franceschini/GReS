@@ -98,8 +98,8 @@ classdef (Abstract) InterfaceSolver < handle
       % information of the model
 
       % minimal required input is the id of the connected domains
-      default = struct('slaveDomain',[], ...
-        'masterDomain',[]);
+      default = struct('slaveDomain',MortarSide.slave, ...
+                       'masterDomain',MortarSide.master);
 
       input = readInput(default,varargin{:});
 
@@ -109,7 +109,7 @@ classdef (Abstract) InterfaceSolver < handle
 
       % store handle to connected domains
       obj.domains = [domains(obj.domainId(1));
-        domains(obj.domainId(2))];
+                     domains(obj.domainId(2))];
 
       % add handle of this object to the list of interfaces of connected
       % domains
