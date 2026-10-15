@@ -1,0 +1,10 @@
+SurfBC                            % BC item
+Neu                               % BC type
+Poro                              % Physics
+z                                 % Direction
+topFace                           % BC name
+neuSurf_Poro_TopLoad/list
+0.000000 neuSurf_Poro_TopLoad/time0.dat
+3.000000 neuSurf_Poro_TopLoad/timeMax.dat
+100.000000 neuSurf_Poro_TopLoad/timeEnd.dat
+End
