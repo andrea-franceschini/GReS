@@ -779,18 +779,21 @@ classdef (Abstract) InterfaceSolver < handle
       %   ---------------------------------------------------------------------
 
 
-      if iscell(varargin{1})
+      if nargin == 2
+        interfaces = {};
+        input = [];
+      elseif iscell(varargin{1})
         interfaces = varargin{1};
-        i1 = 2;
+        input = varargin{2:end};
       else
         % generate the interface list
         interfaces = {};
-        i1 = 1;
+        input = varargin{1:end};
       end
 
       k = numel(interfaces);
 
-      input = varargin{i1:end};
+
 
       % general input
       interf = feval(interfType,k+1,domains,input);

@@ -36,7 +36,7 @@ classdef SolidMechanicsContact < MeshTying
 
       input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0,...
         'stabilizationScale',1.0,'augmentationParameter',1.0,...
-        'augmentationNormal',missing,'augmentationTangential',missing,'isSmooth',1),input);
+        'augmentationNormal',missing,'augmentationTangential',missing,'isSmooth',true),input);
 
       params = readInput(struct('cohesion',[],'frictionAngle',[]),input.Coulomb);
 
@@ -242,7 +242,6 @@ classdef SolidMechanicsContact < MeshTying
       t = getState(obj,"traction");
       t = t + tIni;
       setState(obj,t,"traction");
-      setStateInit(obj,t,"traction");
 
     end
 
