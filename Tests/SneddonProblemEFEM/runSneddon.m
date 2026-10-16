@@ -195,7 +195,10 @@ for iRun = 1:nRuns
     domain.addPhysicsSolvers(params.Solver);
 
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> origin/main
     efem = getPhysicsSolver(domain,"EmbeddedFractureMechanics");
 
     % Local fracture component 1 = normal traction

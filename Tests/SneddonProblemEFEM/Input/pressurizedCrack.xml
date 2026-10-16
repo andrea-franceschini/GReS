@@ -75,8 +75,8 @@
   <Solver>
 
     <EmbeddedFractureMechanics
-                               penaltyNormal = "1e8"
-                               penaltyTangential = "1e8">
+                               augmentationParameter = "2.5e4"
+                               isSmooth = "1">
       <Fracture
                 origin = "0,0,0"
                 normal = "0,0,1"

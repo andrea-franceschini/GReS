@@ -6,7 +6,7 @@ file_Solver = fullfile(input_dir,'solver.xml');
 
 %% ------------------------------ Set up the Domain -----------------------
 % Set the simulation parameters for the non-linear solver.
-simParam = SimulationParameters('Start',0.,'End',2e2,...
+simParam = SimulationParameters('Start',0.,'End',1e3,...
       'DtInit',1e-0,'DtMin',1e-2,'DtMax',1e0,'MaxNLIteration',8);
 
 % Create an object of the Materials class and read the materials file
