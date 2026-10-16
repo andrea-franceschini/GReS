@@ -73,17 +73,26 @@ classdef PorousRock < handle
           end
         end
 
-        function K = getPermVector(obj)
+        function K = getPermVector(obj,dim)
           % returns 1x9 permeability entries as
           %[Kxx,Kxy,Kxz,Kzx,Kyy,Kyz,Kxz,Kyz,Kzz]
 
           if isscalar(obj.KVec)
-            K = [obj.KVec, 0, 0, 0, obj.KVec, 0, 0, 0, obj.KVec];
-          elseif length(obj.KVec) == 3
-            K = [obj.KVec(1), 0, 0, 0, obj.KVec(2), 0, 0, 0, obj.KVec(3)];
+            K3D = [obj.KVec, 0, 0, 0, obj.KVec, 0, 0, 0, obj.KVec];
+            K2D = [obj.KVec, 0, 0, obj.KVec];
+          elseif length(obj.KVec) == dim
+            K3D = [obj.KVec(1), 0, 0, 0, obj.KVec(2), 0, 0, 0, obj.KVec(3)];
+            K2D = [obj.KVec(1), 0, 0, obj.KVec(2)];
           else
-            K = [obj.KVec(1), obj.KVec(6), obj.KVec(5), obj.KVec(6), obj.KVec(2), ...
+            K3D = [obj.KVec(1), obj.KVec(6), obj.KVec(5), obj.KVec(6), obj.KVec(2), ...
               obj.KVec(4), obj.KVec(5), obj.KVec(4), obj.KVec(3)];
+            K2D = [obj.KVec(1), obj.KVec(3), obj.KVec(3), obj.KVec(2)];
+          end
+
+          if dim == 3
+            K = K3D;
+          elseif dim == 2
+            K = K2D;
           end
         end
 

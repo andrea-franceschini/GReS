@@ -34,14 +34,17 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       nTags = cells.nTag;
 
       default = struct('targetRegions',1:nTags,...
-                       'steadyState',0,...
-                       'waterLevel',0);
+                       'steadyState',false,...
+                       'waterLevel',false,...
+                       'aperture',false);
+
 
 
       params = readInput(default,varargin{:});
 
       obj.steadyState = logical(params.steadyState);
       obj.watLev = params.waterLevel;
+      obj.isFracture = params.isFracture;
 
       dofm = obj.domain.dofm;
 

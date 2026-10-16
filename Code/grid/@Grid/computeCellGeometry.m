@@ -1,80 +1,99 @@
 function [volumes, centers] = computeCellGeometry(grid)
-%COMPUTECELLGEOMETRY Compute cell volumes and centroids for generic polyhedra
+%COMPUTECELLGEOMETRY Compute cell measures and centroids in 2D or 3D
 %
 %   [volumes, centers] = computeCellGeometry(grid)
 %
-% Geometry is computed with the divergence theorem. 
-% It is assumed that the average of the vertex coordinates (rough centroid)
-% lies inside the cell
+% Geometry is computed with the divergence theorem.
+% volumes contains areas for grid.nDim = 2 and volumes for grid.nDim = 3.
+% Coordinates and returned centers may have two or three components in 2D.
 %
 % Assumptions:
-%   - grid.coordinates              : nN x 3
+%   - grid.nDim                     : intrinsic dimension, 2 or 3
+%   - grid.coordinates              : nN x nCoord
 %   - grid.cells.num                : number of cells
 %   - grid.cells.connectivity       : matrix or ArrayOfArrays-compatible
-%   - grid.cells.cell2faces         : matrix or ArrayOfArrays-compatible
-%   - grid.faces.center             : nF x 3
-%   - grid.faces.normal             : nF x 3  (unit normals)
-%   - grid.faces.area               : nF x 1
+%   - grid.cells.cells2faces        : matrix or ArrayOfArrays-compatible
+%   - grid.faces.connectivity      : edge endpoint nodes in 2D
+%   - grid.faces.center             : face centroids or edge midpoints
+%   - grid.faces.normal             : unit face normals, used in 3D only
+%   - grid.faces.area               : face areas in 3D, edge lengths in 2D
 %
 % Notes:
-%   - This computes geometric polyhedral volume/centroid.
-%   - The rough centroid is only used to define local outwardness through abs().
-%   - The returned centers are the final geometric centroids, not the rough ones.
+%   - In 2D, each cell must be planar and its edges straight.
+%   - The rough centroid must lie on the interior side of every supporting
+%     face/edge. Convex cells satisfy this condition.
+%   - In 2D, distances are computed separately for each cell-edge pair,
+%     allowing neighboring cells to lie in different planes.
+%   - The returned centers are the final geometric centroids.
 
 coords = grid.coordinates;
 nC = grid.cells.num;
+nDim = grid.nDim;
+nCoord = size(coords,2);
 
 cellConn = ArrayOfArrays(grid.cells.connectivity);
-[cellNodes,ptr] = getData(cellConn);   % flat node ids, nodes-per-cell
+[cellNodes,ptr] = getData(cellConn);
 nNPC = diff(ptr);
 
 xyz = coords(cellNodes,:);
 rowId = repelem((1:nC).', nNPC, 1);
 
-roughCenters = zeros(nC, 3);
-roughCenters(:,1) = accumarray(rowId, xyz(:,1), [nC,1]) ./ nNPC;
-roughCenters(:,2) = accumarray(rowId, xyz(:,2), [nC,1]) ./ nNPC;
-roughCenters(:,3) = accumarray(rowId, xyz(:,3), [nC,1]) ./ nNPC;
+roughCenters = zeros(nC, nCoord);
+for k = 1:nCoord
+  roughCenters(:,k) = accumarray(rowId, xyz(:,k), [nC,1]) ./ nNPC;
+end
 
 
 cell2faces = ArrayOfArrays(grid.cells.cells2faces);
-[c2f, ptr] = getData(cell2faces);    
+[c2f, ptr] = getData(cell2faces);
 nFPC = diff(ptr);
 
 % expand cells for each face
 rowId = repelem((1:nC).', nFPC, 1);
 
 
-cf = grid.faces.center(c2f,:);           % face centroids
-
- % area-weighted normals
-Nf = grid.faces.normal(c2f,:) .* grid.faces.area(c2f);  
-
+cf = grid.faces.center(c2f,:);
 cc = roughCenters(rowId,:);
+relcf = cf - cc;
 
+if nDim == 2
+  % Distance to each supporting edge line within the cell plane.
+  % This avoids using one shared co-normal for noncoplanar cells.
+  faceConn = ArrayOfArrays(grid.faces.connectivity);
+  [faceNodes,facePtr] = getData(faceConn);
 
-% local signed contribution relative to rough interior point
-projLocal = sum((cf - cc) .* Nf, 2);
+  p1 = coords(faceNodes(facePtr(c2f)),:);
+  p2 = coords(faceNodes(facePtr(c2f) + 1),:);
+  tangent = p2 - p1;
+  tangent = tangent ./ sqrt(sum(tangent.^2,2));
 
-% use abs assuming cc lies within the polyhedron
-contribVol = abs(projLocal);
+  normalPart = relcf - sum(relcf .* tangent,2) .* tangent;
+  contribVol = sqrt(sum(normalPart.^2,2)) .* grid.faces.area(c2f);
+else
+  % area-weighted normals
+  Nf = grid.faces.normal(c2f,:) .* grid.faces.area(c2f);
 
-volumes = accumarray(rowId, contribVol, [nC,1]) / 3;
+  % local signed contribution relative to rough interior point
+  projLocal = sum(relcf .* Nf, 2);
+
+  % use abs assuming cc is on the interior side of each face
+  contribVol = abs(projLocal);
+end
+
+volumes = accumarray(rowId, contribVol, [nC,1]) / nDim;
 
 % For consistency with the same local origin cc:
-%   V  = 1/3 sum_f |(cf-cc)·Nf|
-%   c  = cc + (1/(4V)) sum_f |(cf-cc)·Nf| (cf-cc)
-%
+%   V = 1/nDim sum_f contribVol_f
+%   c = cc + 1/((nDim+1)*V) sum_f contribVol_f (cf-cc)
 
-% Comptute centroid location relative to rough centroids
+% Compute centroid location relative to rough centroids
+mom = relcf .* contribVol;
 
-relcf = cf - cc;
-mom = relcf .* contribVol;   % each row scaled by its scalar contribution
+centers = zeros(nC, nCoord);
+for k = 1:nCoord
+  centers(:,k) = accumarray(rowId, mom(:,k), [nC,1]);
+end
 
-Mx = accumarray(rowId, mom(:,1), [nC,1]);
-My = accumarray(rowId, mom(:,2), [nC,1]);
-Mz = accumarray(rowId, mom(:,3), [nC,1]);
-
-centers = roughCenters + [Mx, My, Mz] ./ (4 * volumes);
+centers = roughCenters + centers ./ ((nDim + 1) * volumes);
 
 end

@@ -281,10 +281,10 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       end
     end
 
-    function computeTransmissibilities(obj)   % Inspired by MRST
-      % Compute first the vector connecting each cell centroid to the
-      % half-face
+    function computeFractureTransmissibilities(obj)
 
+      nCoord = obj.grid.nCoord;
+      nDim = obj.grid.nDim;
       cells = obj.grid.cells;
       faces = obj.grid.faces;
 
@@ -293,8 +293,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       hf2Cell = repelem((1:cells.num)',nFPC,1);
       L = faces.center(faceList,:) - cells.center(hf2Cell,:);
-      A = faces.area(faceList);
-
+      
       % signed normal for half face transmissibility (points outside the
       % cell)
       % if a cell do not match with the first column entry of the
@@ -304,16 +303,16 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       N = sgn .* faces.normal(faceList,:);
 
       mat = obj.domain.materials;
-      KMat = zeros(cells.nTag,9);
+      KMat = zeros(cells.nTag,);
       for i=1:cells.nTag
         if isfield(mat.getMaterial(i),"PorousRock")
-          KMat(i,:) = mat.getMaterial(i).PorousRock.getPermVector();
+          KMat(i,:) = mat.getMaterial(i).PorousRock.getPermVector(obj.grid.nCoord);
         end
       end
 
       % index for vectorized L*K*N product
-      r = [1, 1, 1, 2, 2, 2, 3, 3, 3];
-      c = [1, 2, 3, 1, 2, 3, 1, 2, 3];
+      r = repelem(1:nCoord,nCoord);
+      c = repmat(1:nCoord,1,nCoord);
 
       % half-face transmissibilities
       hT = zeros(length(hf2Cell),1);
@@ -321,6 +320,61 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         hT = hT + L(:,r(k)) .* KMat(cells.tag(hf2Cell),k) .* N(:,c(k));
       end
 
+
+      % we assume that the given permeability is already (aperture
+      % integrated)
+
+      hT = hT./sum(L.*L,2);
+
+      % compute face transmissibilities
+      obj.trans = 1 ./ accumarray(faceList,1 ./ hT,[faces.num,1]);
+
+    end
+
+    function computeTransmissibilities(obj)   % Inspired by MRST
+      % Compute first the vector connecting each cell centroid to the
+      % half-face
+
+      if obj.isFracture
+        computeFractureTransmissibilities(obj);
+        return
+      end
+
+      nCoord = obj.grid.nCoord;
+      cells = obj.grid.cells;
+      faces = obj.grid.faces;
+
+      [faceList,ptr] = getData(cells.cells2faces);
+      nFPC = diff(ptr);                       % number of faces per cell
+
+      hf2Cell = repelem((1:cells.num)',nFPC,1);
+      L = faces.center(faceList,:) - cells.center(hf2Cell,:);
+      
+      % signed normal for half face transmissibility (points outside the
+      % cell)
+      % if a cell do not match with the first column entry of the
+      % neighbors, it measn that the normal of that face points inside the
+      % cell (so it has to be flipped)
+      sgn = 2*(hf2Cell == faces.neighbors(faceList,1)) - 1;
+      N = sgn .* faces.normal(faceList,:);
+
+      mat = obj.domain.materials;
+      KMat = zeros(cells.nTag,);
+      for i=1:cells.nTag
+        if isfield(mat.getMaterial(i),"PorousRock")
+          KMat(i,:) = mat.getMaterial(i).PorousRock.getPermVector(obj.grid.nCoord,nCoord);
+        end
+      end
+
+      % index for vectorized L*K*N product
+      r = repelem(1:nCoord,nCoord);
+      c = repmat(1:nCoord,1,nCoord);
+
+      % half-face transmissibilities
+      hT = zeros(length(hf2Cell),1);
+      for k=1:length(r)
+        hT = hT + L(:,r(k)) .* KMat(cells.tag(hf2Cell),k) .* N(:,c(k));
+      end
 
       hT = A.*hT./sum(L.*L,2);
 

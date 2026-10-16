@@ -1,12 +1,22 @@
 function initializeGrid(grid)
 
-nd = grid.nCoord;
-
 grid.nNodes = size(grid.coordinates,1);
 grid.cells.num = size(grid.cells.connectivity,1);
 grid.surfaces.num = size(grid.surfaces.connectivity,1);
 nc = grid.cells.num;
 ns = grid.surfaces.num;
+
+nd = 3;
+if grid.nNodes > 0    % grid already populated
+  % detect if the grid object is purely 2D
+  if any(grid.coordinates(:,3) ~= 0)
+    grid.nCoord = 3;
+  else
+    grid.nCoord = 2;
+    grid.coordinates = grid.coordinates(:,[1,2]);
+  end
+  nd = grid.nCoord;
+end
 
 grid.cells.volume = zeros(nc,1);
 grid.cells.center = zeros(nc,nd);
@@ -31,7 +41,7 @@ grid.faces.connectivity = ArrayOfArrays();
 
 
 if grid.nNodes > 0    % grid already populated
-
+  
   if nc > 0
     grid.cells.nTag = numel(unique(grid.cells.tag));
     % check if mixed cell shapes are present

@@ -88,12 +88,6 @@ else
 end
 
 % check problem dimensions
-if any(grid.coordinates(:,3) ~= 0)
-  grid.nCoord = 3;
-else
-  grid.nCoord = 2;
-  grid.coordinates = grid.coordinates(:,[1,2]);
-end
 grid.nNodes = size(grid.coordinates, 1);
 
 % -------------------------------------------------

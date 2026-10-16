@@ -1,20 +1,24 @@
-function grid = structuredMesh(nx,ny,nz,varargin)
-% STRUCTUREDMESH Build a Cartesian structured hexahedral or tetrahedral mesh.
+function grid = structuredMesh(nx,ny,varargin)
+% STRUCTUREDMESH Build a 2D or 3D Cartesian structured mesh.
+%
+%   GRID = STRUCTUREDMESH(nx,ny,Lx,Ly)
+%   creates a structured 2D quadrilateral mesh.
+%
+%   GRID = STRUCTUREDMESH(x,y)
+%   creates a quadrilateral mesh using prescribed node coordinates.
 %
 %   GRID = STRUCTUREDMESH(nx,ny,nz,Lx,Ly,Lz)
-%   creates a structured hexahedral mesh.
-%
-%   GRID = STRUCTUREDMESH(nx,ny,nz,Lx,Ly,Lz,'tetra',1)
-%   creates the same structured grid, with every hexahedron divided into
-%   six tetrahedra.
+%   creates a structured 3D hexahedral mesh.
 %
 %   GRID = STRUCTUREDMESH(x,y,z)
-%   creates a hexahedral mesh using explicitly prescribed node coordinates.
+%   creates a hexahedral mesh using prescribed node coordinates.
 %
-%   GRID = STRUCTUREDMESH(x,y,z,'tetra',1)
-%   creates the corresponding tetrahedral mesh.
+%   GRID = STRUCTUREDMESH(...,'triangle',1)
+%   divides each 2D quadrilateral into two triangles.
 %
-% -------------------------------------------------------------------------
+%   GRID = STRUCTUREDMESH(...,'tetra',1)
+%   divides each 3D hexahedron into six tetrahedra.
+%
 % INPUTS, piecewise-uniform spacing
 %
 %   nx, ny, nz  - number of cells in each interval
@@ -26,68 +30,98 @@ function grid = structuredMesh(nx,ny,nz,varargin)
 %
 % INPUTS, prescribed coordinates
 %
-%   x, y, z     - node coordinate vectors
+%   x, y, z     - strictly increasing node coordinate vectors
 %
 % OPTIONAL INPUT
 %
-%   'tetra'     - false/0: hexahedral mesh, default
-%                 true/1:  tetrahedral mesh
+%   'triangle'  - false/0: quadrilateral mesh, default
+%                 true/1: triangular mesh (2D only)
 %
-% -------------------------------------------------------------------------
+%   'tetra'     - false/0: hexahedral mesh, default
+%                 true/1: tetrahedral mesh (3D only)
+%
 % OUTPUT
 %
-%   grid        - processed three-dimensional grid
+%   grid        - processed grid, with grid.nDim = 2 or 3
+%
+%   2D coordinates are stored as [x,y,0]. Cells are quads or triangles;
+%   boundary lines are stored in grid.surfaces (VTK_LINE = 3).
+%   2D tags: bottom (y min) = 1, top (y max) = 2,
+%            left (x min) = 3, right (x max) = 4.
+%   3D tags remain: bottom = 1, top = 2, south = 3, north = 4,
+%                    west = 5, east = 6.
 
-% Determine whether the first three optional inputs are the breakpoint
-% arrays or whether varargin contains only name-value arguments.
-if isempty(varargin) || ischar(varargin{1}) || isstring(varargin{1})
-
-  % Explicit coordinate-vector input:
-  %
-  % structuredMesh(x,y,z,...)
-
-  x = nx(:);
-  y = ny(:);
-  z = nz(:);
-
-  inputOptions = varargin;
-
-else
-
-  % Piecewise-uniform input:
-  %
-  % structuredMesh(nx,ny,nz,Lx,Ly,Lz,...)
-
-  if numel(varargin) < 3
-    error('structuredMesh:InvalidInput', ...
-      ['Use structuredMesh(nx,ny,nz,Lx,Ly,Lz) or ', ...
-       'structuredMesh(x,y,z).']);
+% Count the positional arguments before the name-value options.
+nPos = 0;
+for k = 1:numel(varargin)
+  if ischar(varargin{k}) || isstring(varargin{k})
+    break
   end
-
-  Lx = varargin{1};
-  Ly = varargin{2};
-  Lz = varargin{3};
-
-  x = buildStructuredAxis(nx,Lx,'x');
-  y = buildStructuredAxis(ny,Ly,'y');
-  z = buildStructuredAxis(nz,Lz,'z');
-
-  inputOptions = varargin(4:end);
-
+  nPos = nPos + 1;
 end
 
+switch nPos
+  case 0
+    % structuredMesh(x,y,...)
+    nDim = 2;
+    x = nx(:);
+    y = ny(:);
+    z = 0;
+
+  case 1
+    % structuredMesh(x,y,z,...)
+    nDim = 3;
+    x = nx(:);
+    y = ny(:);
+    z = varargin{1}(:);
+
+  case 2
+    % structuredMesh(nx,ny,Lx,Ly,...)
+    nDim = 2;
+    x = buildStructuredAxis(nx,varargin{1},'x');
+    y = buildStructuredAxis(ny,varargin{2},'y');
+    z = 0;
+
+  case 4
+    % structuredMesh(nx,ny,nz,Lx,Ly,Lz,...)
+    nDim = 3;
+    nz = varargin{1};
+    x = buildStructuredAxis(nx,varargin{2},'x');
+    y = buildStructuredAxis(ny,varargin{3},'y');
+    z = buildStructuredAxis(nz,varargin{4},'z');
+
+  otherwise
+    error('structuredMesh:InvalidInput', ...
+      ['Use structuredMesh(x,y), structuredMesh(x,y,z), ', ...
+       'structuredMesh(nx,ny,Lx,Ly), or ', ...
+       'structuredMesh(nx,ny,nz,Lx,Ly,Lz).']);
+end
+
+inputOptions = varargin(nPos+1:end);
+
 % Parse optional arguments.
-options = struct('tetra',0);
+options = struct('tetra',false,'triangle',false);
 options = readInput(options,inputOptions{:});
 tetra = logical(options.tetra);
+triangle = logical(options.triangle);
+
+if nDim == 2 && tetra
+  error('structuredMesh:InvalidInput', ...
+    'The tetra option is only available for 3D meshes.');
+end
+
+if nDim == 3 && triangle
+  error('structuredMesh:InvalidInput', ...
+    'The triangle option is only available for 2D meshes.');
+end
 
 nnx = numel(x);
 nny = numel(y);
 nnz = numel(z);
 
-if nnx < 2 || nny < 2 || nnz < 2
+if nnx < 2 || nny < 2 || (nDim == 3 && nnz < 2)
   error('structuredMesh:InvalidCoordinates', ...
-    'Each coordinate vector must contain at least two entries.');
+    'Each active coordinate vector must contain at least two entries.');
 end
 
 if any(diff(x) <= 0) || any(diff(y) <= 0) || any(diff(z) <= 0)
@@ -104,123 +138,153 @@ coord = [X(:),Y(:),Z(:)];
 
 nid = reshape(1:nnx*nny*nnz,nnx,nny,nnz);
 
-n1 = nid(1:end-1,1:end-1,1:end-1);
-n2 = nid(2:end,  1:end-1,1:end-1);
-n3 = nid(1:end-1,2:end,  1:end-1);
-n4 = nid(2:end,  2:end,  1:end-1);
-n5 = nid(1:end-1,1:end-1,2:end);
-n6 = nid(2:end,  1:end-1,2:end);
-n7 = nid(1:end-1,2:end,  2:end);
-n8 = nid(2:end,  2:end,  2:end);
+if nDim == 2
 
-% Hexahedral local ordering:
-%
-%       8---------7
-%      /|        /|
-%     5---------6 |
-%     | |       | |
-%     | 4-------|-3
-%     |/        |/
-%     1---------2
-%
-% In terms of the structured arrays:
-%
-%   local 1 = n1
-%   local 2 = n2
-%   local 3 = n4
-%   local 4 = n3
-%   local 5 = n5
-%   local 6 = n6
-%   local 7 = n8
-%   local 8 = n7
+  n1 = nid(1:end-1,1:end-1);
+  n2 = nid(2:end,  1:end-1);
+  n3 = nid(1:end-1,2:end);
+  n4 = nid(2:end,  2:end);
 
-topolHex = [
-  n1(:), ...
-  n2(:), ...
-  n4(:), ...
-  n3(:), ...
-  n5(:), ...
-  n6(:), ...
-  n8(:), ...
-  n7(:)
-];
+  topol = [n1(:),n2(:),n4(:),n3(:)];
 
-%% Boundary quadrilateral surfaces
+  %% Boundary lines
 
-% Bottom: tag 1
-n = nid(:,:,1);
-fb = flipFace(FaceGrid(n));
+  % Bottom (constant y): tag 1
+  n = nid(:,1);
+  fs = [n(1:end-1),n(2:end)];
 
-% Top: tag 2
-n = nid(:,:,end);
-ft = FaceGrid(n);
+  % Top (constant y): tag 2
+  n = nid(:,end);
+  fn = [n(2:end),n(1:end-1)];
 
-% South: tag 3
-n = nid(:,1,:);
-fs = FaceGrid(n);
+  % Left (constant x): tag 3
+  n = nid(1,:).';
+  fw = [n(2:end),n(1:end-1)];
 
-% North: tag 4
-n = nid(:,end,:);
-fn = flipFace(FaceGrid(n));
+  % Right (constant x): tag 4
+  n = nid(end,:).';
+  fe = [n(1:end-1),n(2:end)];
 
-% West: tag 5
-n = nid(1,:,:);
-fw = flipFace(FaceGrid(n));
+  surf = [fs;fn;fw;fe];
 
-% East: tag 6
-n = nid(end,:,:);
-fe = FaceGrid(n);
+  surfTag = [
+    ones(size(fs,1),1)
+    2*ones(size(fn,1),1)
+    3*ones(size(fw,1),1)
+    4*ones(size(fe,1),1)
+  ];
 
-surfQuad = [fb;ft;fs;fn;fw;fe];
+  if triangle
 
-surfTagQuad = [
-  ones(size(fb,1),1)
-  2*ones(size(ft,1),1)
-  3*ones(size(fs,1),1)
-  4*ones(size(fn,1),1)
-  5*ones(size(fw,1),1)
-  6*ones(size(fe,1),1)
-];
+    topol = QuadToTriangle(topol);
+    cellVTKType = 5; % VTK_TRIANGLE
+    cellNumVerts = 3;
 
-%% Select hexahedral or tetrahedral topology
+  else
 
-if tetra
+    cellVTKType = 9; % VTK_QUAD
+    cellNumVerts = 4;
 
-  % Split every hexahedron into six tetrahedra around the common body
-  % diagonal connecting local hexahedral vertices 1 and 7.
-  topol = HexaToTetra(topolHex);
+  end
 
-  % Split each oriented quadrilateral boundary face into two triangles.
-  surf = QuadToTriangle(surfQuad);
-
-  % QuadToTriangle places the two triangles associated with each
-  % quadrilateral consecutively.
-  surfTag = repelem(surfTagQuad,2,1);
-
-  cellVTKType = 10; % VTK_TETRA
-  cellNumVerts = 4;
-
-  surfaceVTKType = 5; % VTK_TRIANGLE
-  surfaceNumVerts = 3;
+  surfaceVTKType = 3; % VTK_LINE
+  surfaceNumVerts = 2;
 
 else
 
-  topol = topolHex;
-  surf = surfQuad;
-  surfTag = surfTagQuad;
+  n1 = nid(1:end-1,1:end-1,1:end-1);
+  n2 = nid(2:end,  1:end-1,1:end-1);
+  n3 = nid(1:end-1,2:end,  1:end-1);
+  n4 = nid(2:end,  2:end,  1:end-1);
+  n5 = nid(1:end-1,1:end-1,2:end);
+  n6 = nid(2:end,  1:end-1,2:end);
+  n7 = nid(1:end-1,2:end,  2:end);
+  n8 = nid(2:end,  2:end,  2:end);
 
-  cellVTKType = 12; % VTK_HEXAHEDRON
-  cellNumVerts = 8;
+  % Hexahedral local ordering:
+  % local [1 2 3 4 5 6 7 8] = [n1 n2 n4 n3 n5 n6 n8 n7]
+  topolHex = [
+    n1(:), ...
+    n2(:), ...
+    n4(:), ...
+    n3(:), ...
+    n5(:), ...
+    n6(:), ...
+    n8(:), ...
+    n7(:)
+  ];
 
-  surfaceVTKType = 9; % VTK_QUAD
-  surfaceNumVerts = 4;
+  %% Boundary quadrilateral surfaces
+
+  % Bottom: tag 1
+  n = nid(:,:,1);
+  fb = flipFace(FaceGrid(n));
+
+  % Top: tag 2
+  n = nid(:,:,end);
+  ft = FaceGrid(n);
+
+  % South: tag 3
+  n = nid(:,1,:);
+  fs = FaceGrid(n);
+
+  % North: tag 4
+  n = nid(:,end,:);
+  fn = flipFace(FaceGrid(n));
+
+  % West: tag 5
+  n = nid(1,:,:);
+  fw = flipFace(FaceGrid(n));
+
+  % East: tag 6
+  n = nid(end,:,:);
+  fe = FaceGrid(n);
+
+  surfQuad = [fb;ft;fs;fn;fw;fe];
+
+  surfTagQuad = [
+    ones(size(fb,1),1)
+    2*ones(size(ft,1),1)
+    3*ones(size(fs,1),1)
+    4*ones(size(fn,1),1)
+    5*ones(size(fw,1),1)
+    6*ones(size(fe,1),1)
+  ];
+
+  %% Select hexahedral or tetrahedral topology
+
+  if tetra
+
+    topol = HexaToTetra(topolHex);
+    surf = QuadToTriangle(surfQuad);
+    surfTag = repelem(surfTagQuad,2,1);
+
+    cellVTKType = 10; % VTK_TETRA
+    cellNumVerts = 4;
+
+    surfaceVTKType = 5; % VTK_TRIANGLE
+    surfaceNumVerts = 3;
+
+  else
+
+    topol = topolHex;
+    surf = surfQuad;
+    surfTag = surfTagQuad;
+
+    cellVTKType = 12; % VTK_HEXAHEDRON
+    cellNumVerts = 8;
+
+    surfaceVTKType = 9; % VTK_QUAD
+    surfaceNumVerts = 4;
+
+  end
 
 end
 
 %% Construct grid
 
 grid = Grid();
-grid.nDim = 3;
+grid.nDim = nDim;
 grid.coordinates = coord;
 
 nC = size(topol,1);
@@ -312,31 +376,11 @@ end
 
 function tetra = HexaToTetra(hexa)
 % HEXATOTETRA Divide each hexahedron into six tetrahedra.
-%
-% Input:
-%
-%   hexa  - nHexa x 8
-%
-% Output:
-%
-%   tetra - 6*nHexa x 4
-%
-% All tetrahedra share the hexahedral body diagonal between local
-% vertices 1 and 7. This gives a conforming subdivision across adjacent
-% structured cells.
+% All tetrahedra share the body diagonal between local vertices 1 and 7.
 
 nHexa = size(hexa,1);
 
 tetra = zeros(6*nHexa,4,'like',hexa);
-
-% Local tetrahedral connectivity:
-%
-%   [1 2 3 7]
-%   [1 3 4 7]
-%   [1 4 8 7]
-%   [1 8 5 7]
-%   [1 5 6 7]
-%   [1 6 2 7]
 
 tetra(1:6:end,:) = hexa(:,[1 2 3 7]);
 tetra(2:6:end,:) = hexa(:,[1 3 4 7]);
@@ -350,16 +394,6 @@ end
 
 function triangle = QuadToTriangle(quad)
 % QUADTOTRIANGLE Divide every oriented quadrilateral into two triangles.
-%
-% Input:
-%
-%   quad      - nQuad x 4
-%
-% Output:
-%
-%   triangle  - 2*nQuad x 3
-%
-% The orientation inherited from the quadrilateral is preserved.
 
 nQuad = size(quad,1);
 
