@@ -36,9 +36,16 @@ classdef Quadrilateral < FiniteElementType
       % if in is not scalar, it is a 4x2 list of 2D coordinates, the
       % gradient matrix and the determinant are returned
 
-      if size(in,2) == 2
+      if isscalar(in)
+        n = obj.grid.getCellNodes(in);
+        coord = obj.grid.coordinates(n,:);
+      else
+        coord = in;
+      end
+
+      if size(coord,2) == 2
         % 2D - in is a given list of x-y coordinates for nodes
-        J = pagemtimes(obj.Jref,in);
+        J = pagemtimes(obj.Jref,coord);
         for i=1:obj.GaussPts.nNode
           obj.detJ(i) = det(J(:,:,i));
           J(:,:,i) = inv(J(:,:,i));
@@ -46,18 +53,12 @@ classdef Quadrilateral < FiniteElementType
         outVar1 = pagemtimes(J,obj.Jref);
         outVar2 = obj.detJ.*(obj.GaussPts.weight)';
       else
-        if isscalar(in)
-          % 3D setting
-          n = obj.grid.getSurfNodes(in);
-          coord = obj.grid.coordinates(n,:);
-        elseif size(in,2)==3 % 3D list of coordinates in input
-          coord = in;
-        end
         J = pagemtimes(obj.Jref,coord);
         for i = 1:obj.GaussPts.nNode
           obj.detJ(i) = norm(cross(J(1,:,i),J(2,:,i)),2);
         end
-        outVar1 = obj.detJ.*(obj.GaussPts.weight)';
+        outVar1 = [];
+        outVar2 = obj.detJ.*(obj.GaussPts.weight)';
       end
     end
 
@@ -74,13 +75,25 @@ classdef Quadrilateral < FiniteElementType
 
     function [area,cellCentroid] = getSizeAndCentroid(obj,idQuad)
       % Find the Area of the cells using the determinant of the Jacobian
+
+      if nargin == 1
+
+        if obj.grid.isStructured
+          % use cheaper divergence theorem for simple meshes
+          [area,cellCentroid] = obj.grid.computeCellGeometry();
+          return
+        end
+
+        idQuad = obj.grid.getCellsByVTKId(obj.vtkType);
+      end
+
       % of the isoparameric transformation
       area = zeros(length(idQuad),1);
-      cellCentroid = zeros(length(idQuad),3);
+      cellCentroid = zeros(length(idQuad),size(obj.grid.coordinates,2));
       i = 0;
       for el = idQuad'
         i = i + 1;
-        dJWeighed = getDerBasisFAndDet(obj,el);
+        [~,dJWeighed] = getDerBasisFAndDet(obj,el);
         area(i) = sum(dJWeighed);
         assert(area(i)>0,'Volume less than 0');
         gPCoordinates = getGPointsLocation(obj,el);
@@ -115,14 +128,14 @@ classdef Quadrilateral < FiniteElementType
 
 
 
-    function n_a = computeAreaNod(obj,surfMsh)
-      % compute area associated to each node of a surface mesh
-      n_a = zeros(max(surfMsh.surfaces,[],'all'),1);
-      for i = 1:length(surfMsh.surfaces)
-        n_a(surfMsh.surfaces(i,:)) = n_a(surfMsh.surfaces(i,:)) + findNodeArea(obj,i);
-      end
-      n_a = n_a(unique(surfMsh.surfaces));
-    end
+    % function n_a = computeAreaNod(obj,surfMsh)
+    %   % compute area associated to each node of a surface mesh
+    %   n_a = zeros(max(surfMsh.surfaces,[],'all'),1);
+    %   for i = 1:length(surfMsh.surfaces)
+    %     n_a(surfMsh.surfaces(i,:)) = n_a(surfMsh.surfaces(i,:)) + findNodeArea(obj,i);
+    %   end
+    %   n_a = n_a(unique(surfMsh.surfaces));
+    % end
 
 
     function gPCoordinates = getGPointsLocation(obj,in)

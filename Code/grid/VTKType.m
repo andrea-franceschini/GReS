@@ -3,6 +3,7 @@ classdef VTKType < uint8
   % VTKTypes implemented in GReS
 
   enumeration
+    Line (3)
     Tri (5)           % 3 node triangle
     Polygon (7)       % n-node polygon
     Quad  (9)         % 4 node quadrilateral
@@ -96,6 +97,10 @@ classdef VTKType < uint8
 
     function t2d = types2D()
       t2d = [5,9,28];
+    end
+
+    function t1d = types1D()
+      t1d = 3;
     end
 
   end

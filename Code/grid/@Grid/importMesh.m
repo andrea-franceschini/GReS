@@ -63,18 +63,10 @@ end
 % -------------------------------------------------
 % DIMENSIONALITY
 % -------------------------------------------------
-if any(grid.coordinates(:,3) ~= 0)
-  grid.nDim = 3;
-else
-  grid.nDim = 2;
-end
-grid.nNodes = size(grid.coordinates, 1);
 
-% -------------------------------------------------
-% 3D CELL DATA
-% -------------------------------------------------
-if any(~ismember(elems(:,1), [VTKType.types2D,VTKType.types3D]))
+if any(~ismember(elems(:,1), [VTKType.types1D,VTKType.types2D,VTKType.types3D]))
   error(['Unsupported  elements in the mesh.\n', ...
+    'Supported types: 2-node segmented (VTKType = 3), ', ...
     'Supported types: 3-node triangles (VTKType = 5), ', ...
     '4-node quadrilaterals (VTKType = 9).',...
     '9-node quadrilaterals (VTKType = 28).',...
@@ -83,7 +75,33 @@ if any(~ismember(elems(:,1), [VTKType.types2D,VTKType.types3D]))
     '27-node hexahedra (VTKType = 29).']);
 end
 
-ID = ismember(elems(:,1), VTKType.types3D);
+% check if grid contains 3D cells
+is3D = any(ismember(elems(:,1), VTKType.types3D));
+if is3D
+  grid.nDim = 3;
+  cellTypes = VTKType.types3D;
+  surfTypes = VTKType.types2D;
+else
+  grid.nDim = 2;
+  cellTypes = VTKType.types2D;
+  surfTypes = VTKType.types1D;
+end
+
+% check problem dimensions
+if any(grid.coordinates(:,3) ~= 0)
+  grid.nCoord = 3;
+else
+  grid.nCoord = 2;
+  grid.coordinates = grid.coordinates(:,[1,2]);
+end
+grid.nNodes = size(grid.coordinates, 1);
+
+% -------------------------------------------------
+% 3D CELL DATA
+% -------------------------------------------------
+
+
+ID = ismember(elems(:,1), cellTypes);
 grid.cells.numVerts  = elems(ID, 3);
 nVerts            = max(grid.cells.numVerts);
 grid.cells.connectivity = Grid.makeConnectivity(elems(ID, 4:nVerts+3));
@@ -98,7 +116,7 @@ end
 % 2D SURFACE DATA - tagged boundary surfaces (for bc and grid coupling)
 % -------------------------------------------------
 
-ID = ismember(elems(:,1), VTKType.types2D);
+ID = ismember(elems(:,1), surfTypes);
 grid.surfaces.numVerts = elems(ID, 3);
 nVerts = max(grid.surfaces.numVerts);
 grid.surfaces.connectivity = Grid.makeConnectivity(elems(ID, 4:nVerts+3));
@@ -106,21 +124,7 @@ grid.surfaces.VTKType  = elems(ID, 1);
 grid.surfaces.tag      = elems(ID, 2);
 
 % -------------------------------------------------
-% 1D EDGE DATA
-% -------------------------------------------------
 
-% for now, edge data is derived from external surfaces only
-% potentially, this is also a field of the imported grid
-
-% ID = ismember(elems(:,1), grid.edgeVTK);
-% grid.edgeNumVerts = elems(ID, 3);
-% nVerts           = max(grid.edgeNumVerts);
-% grid.edges        = elems(ID, 4:nVerts+3);
-% grid.edgeTag      = elems(ID, 2);
-% grid.edgeVTKType  = elems(ID, 1);
-% grid.nEdges       = length(grid.edgeTag);
-
-%processGeometry(grid);
 
 end
 
@@ -138,6 +142,7 @@ function elems = gmshToVTK(elems)
 %   The output 'elems' matrix uses VTK type IDs in column 1.
 %
 %   GMSH-to-VTK type mapping:
+%     GMSH  1 → VTK  3  (2-node segment)
 %     GMSH  2 → VTK  5  (3-node triangle)
 %     GMSH  3 → VTK  9  (4-node quadrilateral)
 %     GMSH  4 → VTK 10  (4-node tetrahedron)
@@ -145,8 +150,8 @@ function elems = gmshToVTK(elems)
 %     GMSH 10 → VTK 28  (9-node quad → stored as 4-node quad)
 %     GMSH 12 → VTK 29  (27-node hex → stored as 8-node hex)
 
-gmshIDs = [2  3,  4,  10,  5,  12];
-vtkIDs  = [5,  9, 10,   28, 12,  29];
+gmshIDs = [1,  2,  3,  4,  10,  5,  12];
+vtkIDs  = [3,  5,  9, 10,   28, 12,  29];
 
 newCol = elems(:,1);
 for k = 1:length(gmshIDs)

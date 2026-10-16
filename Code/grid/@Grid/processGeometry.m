@@ -29,15 +29,15 @@ end
 
 
 
-function processShape(grid,vtk3d)
+function processShape(grid,vtkId)
 
-idC = grid.getCellsByVTKId(vtk3d);
+idC = grid.getCellsByVTKId(vtkId);
 
 % process faces
-grid.processFaces(vtk3d);
+grid.processFaces(vtkId);
 
 % compute geometry of the cells
-volShape = FiniteElementType.create(vtk3d,grid);
+volShape = FiniteElementType.create(vtkId,grid);
 [grid.cells.volume(idC), grid.cells.center(idC,:)] = getSizeAndCentroid(volShape);
 
 end

@@ -3,6 +3,7 @@ classdef Grid < handle
   properties (SetAccess = public, GetAccess = public)
     
     nDim = 0    % mesh dimensions: 2(D) or 3(D)
+    nCoord      % number of coordinate dimensions of the grid object
 
     cells = struct('connectivity',[]); 
     surfaces = struct('connectivity',[]);    % external faces with tag

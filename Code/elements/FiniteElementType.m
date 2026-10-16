@@ -112,7 +112,7 @@ classdef (Abstract) FiniteElementType < handle
 
 
     function coords = getElementCoords(obj,id)
-      nodes = obj.grid.getSurfNodes(id);
+      nodes = obj.grid.getCellNodes(id);
       coords = obj.grid.coordinates(nodes,:);
     end
 
