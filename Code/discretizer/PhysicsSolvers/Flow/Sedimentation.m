@@ -54,6 +54,8 @@ classdef Sedimentation < PhysicsSolver
 
     initColumn (:,1)  % indication of the necessity of initialize the column
     bath (:,:)
+
+    tmpObj
   end
 
   properties (Access = protected)
@@ -84,6 +86,7 @@ classdef Sedimentation < PhysicsSolver
 
       % Build DOF manager
       obj.mdof = SedDofManager(input.Domain,map);
+      obj.tmpObj = domainManagerSed(input.Domain);
 
       % Build the cells dimensions.
       ncols = prod(map(1:2));
@@ -240,6 +243,8 @@ classdef Sedimentation < PhysicsSolver
       obj.setState(state);
       obj.setStateInit(state);
       obj.setStateOld(state);
+
+      obj.tmpObj.getConnectivity(zeros(obj.tmpObj.ndofs,1));
     end
 
     function timeStepSetup(obj)
@@ -471,6 +476,8 @@ classdef Sedimentation < PhysicsSolver
 
         % Update the grid and locate the new dofs
         newlayer = grow(obj.mdof,mapNewCells);
+        % growLayer(obj.tmpObj,mapNewCells);
+        updateConectivities(obj.tmpObj,mapNewCells,sum(newCellSed(mapNewCells,:),2));
         if newlayer
           obj.coordZ(end+1) = obj.coordZ(end)+obj.heightControl;
         end
