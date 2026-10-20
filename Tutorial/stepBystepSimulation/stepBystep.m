@@ -58,7 +58,8 @@ mat = Materials(params.Materials);
 
 
 grid = structuredMesh(20,20,10,[0 100],[0 100],[0 10]);
-
+grid.initializeGrid();
+grid.processGeometry();
 
 % we manually modify the tag for some clay overburden and underburden
 over = grid.cells.center(:,3) < 3;
@@ -95,6 +96,8 @@ simParam = SimulationParameters(params.SimulationParameters);
 mat = Materials(params.Materials);
 
 grid = structuredMesh(15,15,10,[0 100],[0 100],[0 10]);
+grid.initializeGrid();
+grid.processGeometry();
 
 % we manually modify the tag for some clay overburden and underburden
 over = grid.cells.center(:,3) < 3;
@@ -128,6 +131,8 @@ fileName = "model04/04_domRight.xml";
 params = readInput(fileName);
 
 grid = structuredMesh(15,15,10,[20 100],[0 100],[0 10]);
+grid.initializeGrid();
+grid.processGeometry();
 
 % we manually modify the tag for some clay overburden and underburden
 over = grid.cells.center(:,3) < 3;
@@ -150,6 +155,8 @@ fileName = "model04/04_domLeft.xml";
 params = readInput(fileName);
 
 grid = structuredMesh(6,6,4,[0 20],[0 100],[0 10]);
+grid.initializeGrid();
+grid.processGeometry();
 
 mat = Materials(params.Materials);
 bound = Boundaries(grid,params.BoundaryConditions);
@@ -189,6 +196,8 @@ fileName = "model05/05_domRight.xml";
 params = readInput(fileName);
 
 grid = structuredMesh(15,15,10,[20 100],[0 100],[0 10]);
+grid.initializeGrid();
+grid.processGeometry();
 
 % we manually modify the tag for some clay overburden and underburden
 over = grid.cells.center(:,3) < 3;
@@ -211,6 +220,8 @@ fileName = "model05/05_domLeft.xml";
 params = readInput(fileName);
 
 grid = structuredMesh(6,6,4,[0 20],[0 100],[0 10]);
+grid.initializeGrid();
+grid.processGeometry();
 
 mat = Materials(params.Materials);
 bound = Boundaries(grid,params.BoundaryConditions);
