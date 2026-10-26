@@ -17,12 +17,12 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
 
       end
 
-      function registerSolver(obj,input)
+      function registerSolver(obj,varargin)
 
-        registerSolver@BiotFullyCoupled(obj,input);
+        registerSolver@BiotFullyCoupled(obj,varargin{:});
 
         default = struct('BulkModulus',"3D");
-        params = readInput(default,input);
+        params = readInput(default,varargin{:});
         blkMod = char(params.BulkModulus);
 
         obj.KdrType = str2double(blkMod(1));
