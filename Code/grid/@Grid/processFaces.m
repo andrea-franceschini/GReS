@@ -151,6 +151,18 @@ if s.num > 0
   [sId,fId] = ismember(sort(topolSurf,2),sort(boundFaces,2),'rows');
   boundId = find(isBoundary);
   s.faceId(sId) = nFold + boundId(fId);
+
+else
+
+  % populate surfaces from faces
+  s.faceId = find(isBoundary);
+  s.connectivity = getRows(f.connectivity,s.faceId);
+  s.num = sum(isBoundary);
+  s.tag = ones(s.num,1);
+  s.nTag = 1;
+  s.numVerts = f.numVerts(isBoundary);
+  s.VTKType = f.VTKType(isBoundary);
+  s.vtkTypes = reshape(unique(s.VTKType),1,[]);
 end
 
 
