@@ -23,6 +23,18 @@ classdef (Abstract) MortarQuadrature < handle
       obj.multiplierType = multType;
       obj.grids = grids;
 
+<<<<<<< HEAD
+=======
+      ng = getXMLData(input,4,"nGP");
+
+
+      if strcmp(class(obj),"SegmentBasedQuadrature") && ng > 6
+        ng = 6;
+      end
+
+      obj.elements = [Elements(interf.interfMesh.msh(1),ng),...
+        Elements(interf.interfMesh.msh(2),ng)];
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
     end
 
 

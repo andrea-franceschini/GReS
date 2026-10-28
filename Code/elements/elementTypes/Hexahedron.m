@@ -282,6 +282,22 @@ classdef Hexahedron < FiniteElementType
       end
     end
 
+<<<<<<< HEAD:Code/elements/elementTypes/Hexahedron.m
+=======
+    function setElement(obj)
+      if obj.nGP < 2
+        obj.nGP = 2;
+        gresLog().warning(2,"Gauss integration for Hexahedron set to minimum of 2 per direction")
+      end
+      obj.GaussPts = Gauss(obj.vtkType,obj.nGP);
+      obj.detJ = zeros(1,obj.GaussPts.nNode);
+      findLocBasisF(obj);
+      findLocDerBasisF(obj);
+      findLocBubbleBasisF(obj);
+      findLocDerBubbleBasisF(obj);
+      FEM.setStrainMatrix(obj);
+    end
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa:Code/elements/Hexahedron.m
   end
 
 end

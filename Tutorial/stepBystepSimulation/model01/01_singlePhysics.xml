@@ -57,9 +57,16 @@ in a nonConforming simulation.
 
 
   <Output
+<<<<<<< HEAD
           printTimes   = "1,5,10"
           outputFile   = "model01/Output01/results"
           matFileName  = "model01/Output01/history"
+=======
+          printTimes   = "1,2,3,4"
+          outputFile   = "model01/Output01/results"
+          matFileName  = "model01/Output01/history"
+          saveHistory  = "1"
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
           />
 
 

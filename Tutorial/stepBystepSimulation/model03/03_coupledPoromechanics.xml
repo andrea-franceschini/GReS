@@ -5,6 +5,7 @@ in a nonConforming simulation.
 
 <Problem>
 
+<<<<<<< HEAD
   <SimulationParameters
                         Start="0."
                         End ="1.0"
@@ -27,15 +28,52 @@ in a nonConforming simulation.
           printTimes   = ".1,.5,1"
           outputFile   = "model03/Output03/results"
           matFileName  = "model03/Output03/history"
+=======
+  <simParam>
+    <Time
+          Start="0."
+          End ="1.0"
+          DtInit=".1"
+          DtMin ="1e-5"
+          DtMax =".2"
+          incrementFactor = "1.25"
+          choppingFactor = "2" />
+
+    <Solver
+            RelativeTolerance = "1.e-10"
+            AbsoluteTolerance = "1.e-8"
+            />
+  </simParam>
+
+
+  <Materials fileName = "Input/materials.xml"/>
+
+
+  <BoundaryConditions fileName = "Input/boundaryConditions.xml"/>
+   
+
+  <Output
+          printTimes   = ".25,.5,1"
+          outputFile   = "model03/Output03/results"
+          matFileName  = "model03/Output03/history"
+          saveHistory  = "1"
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
           />
 
 
 
   <Solver>
+<<<<<<< HEAD
     <BiotFullyCoupled>
       <Poromechanics />
       <SinglePhaseFlowFVTPFA targetRegions = "1"/>
     </BiotFullyCoupled>
+=======
+    <BiotFullySaturated>
+      <Poromechanics />
+      <SinglePhaseFlowFVTPFA targetRegions = "1"/>
+    </BiotFullySaturated>
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
   </Solver>
 
 

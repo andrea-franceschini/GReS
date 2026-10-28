@@ -13,10 +13,17 @@ in a nonConforming simulation.
                poissonRatio = "0.25"
                />
     </Constitutive>
+<<<<<<< HEAD
     
     <PorousRock
                 porosity="0.375"
                 permeability="1.0e-12,1.0e-12,1.0e-12"/>
+=======
+    <PorousRock
+                porosity="0.3"
+                specificWeight="21"
+                permeability="1.0e-11,1.0e-11,1e-15"/>
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
   </Solid>
 
   <Solid name = "clay_underburden" cellTags = "2">

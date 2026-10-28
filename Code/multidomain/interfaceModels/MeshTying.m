@@ -25,8 +25,12 @@ classdef MeshTying < InterfaceSolver
           "If you want to couple more than one variable field, create more than one interface")
       end
 
+<<<<<<< HEAD
       params = readInput(struct('stabilizationScale',1.0),input);
       obj.stabilizationScale = params.stabilizationScale;
+=======
+      obj.stabilizationScale = getXMLData(input,1.0,"stabilizationScale");
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
 
       ncomp = obj.domains(MortarSide.slave).dofm.getNumberOfComponents(obj.coupledVariables);
       obj.nMult = ncomp * getNumberOfEntities(obj.multiplierLocation,...

@@ -9,8 +9,13 @@ function results = runIntegratedTests(useParallel)
         useParallel = true;
     end
 
+<<<<<<< HEAD
     testPath = fileparts(mfilename('fullpath'));
     testFile = fullfile(testPath, 'IntegratedTests.m');
+=======
+v = gresLog().getVerbosity();
+gresLog().setVerbosity(-2);
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
 
     % Optional: manage parallel pool lifecycle if needed
     % if useParallel && isempty(gcp('nocreate'))
@@ -21,7 +26,20 @@ function results = runIntegratedTests(useParallel)
 
     disp(results);
 
+<<<<<<< HEAD
     if any([results.Failed])
         error('GReS:IntegratedTestsFailed', 'One or more integrated tests failed.');
     end
 end
+=======
+fprintf("Elapsed wall-clock time: %1.2f s\n", elapsedWall);
+fprintf("Elapsed CPU time:        %1.2f s\n", elapsedCPU);
+
+if any([results.Failed])
+    error("Some tests did not pass");
+else
+    disp("All tests ran successfully");
+end
+
+gresLog().setVerbosity(v);
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa

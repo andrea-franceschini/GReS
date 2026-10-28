@@ -488,7 +488,20 @@ classdef (Abstract) InterfaceSolver < handle
 
       % the Quadrature field implies that this is an xml field
 
+<<<<<<< HEAD
       params = readInput(default,params);
+=======
+      if isfield(interfaceInput,"Quadrature")
+        quad = interfaceInput.Quadrature;
+      else
+        quad = [];
+      end
+
+      multType = getXMLData(interfaceInput,"P0","multiplierType");
+
+      quadType = getXMLData(quad,...
+        "SegmentBasedQuadrature","type");
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
 
       processMortarGrid(obj,params);
 
@@ -511,11 +524,33 @@ classdef (Abstract) InterfaceSolver < handle
             "Available types are: standard,dual,P0");
       end
 
+<<<<<<< HEAD
       if numel(fieldnames(params.Quadrature)) > 0
         quadType = params.Quadrature.type;
       else
         quadType = "SegmentBasedQuadrature";
       end
+=======
+
+      obj.quadrature = feval(quadType,...
+                             obj,...
+                             multType,...
+                             quad);
+
+      % remove slave Dirichlet boundary conditions for nodal multipliers
+      removeSlaveBCents(obj);
+
+      % Mortar quadrature preprocessing
+      computeMortarInterpolation(obj);
+
+      % Finalize interface geometry
+      finalizeInterfaceGeometry(obj.interfMesh,obj);
+
+      % initialize the state objects
+      obj.state.t = 0;
+      obj.stateOld = obj.state;
+    end
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
 
 
       % get initial grids (may include non active mortar elements)

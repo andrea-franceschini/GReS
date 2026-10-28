@@ -234,6 +234,11 @@ classdef (Abstract) PhysicsSolver < handle
       bcDofs = bcDofs(~id);
       bcVals = bcVals(~id);
 
+      % remove inactive dofs
+      id = bcDofs == 0;
+      bcDofs = bcDofs(~id);
+      bcVals = bcVals(~id);
+
       obj.domain.rhs{bcId}(bcDofs) = obj.domain.rhs{bcId}(bcDofs) - bcVals;
     end
 
@@ -248,10 +253,17 @@ classdef (Abstract) PhysicsSolver < handle
       % remove inactive dofs
       id = bcDofs == 0;
       bcDofs = bcDofs(~id);
+<<<<<<< HEAD
 
       % if nargin > 3
       %   bcVals = bcVals(~id);
       % end
+=======
+      if nargin > 3
+        bcVals = bcVals(~id);
+      end
+
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
 
       % sort bcDofs to improve sparse access performance
       [bcDofs,sortId] = sort(bcDofs);

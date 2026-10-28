@@ -53,9 +53,21 @@ end
 
 function domain = defineDomain(input)
 
+<<<<<<< HEAD:Utilities/InputParser/buildModel.m
 input = readInput(input);
 
 grid = Grid.create(input.Geometry);
+=======
+if isfield(input,"fileName")
+  % create domain linking input file
+  str = readstruct(input.fileName,AttributeSuffix="");
+  domain = defineDomain(str);
+  return
+end
+
+geom = input.Geometry;
+topology = Mesh.generateGrid(geom);
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa:Code/multidomain/buildModel.m
 
 if isfield(input,"Materials")
   mat = Materials(input.Materials);

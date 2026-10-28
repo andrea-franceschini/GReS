@@ -19,7 +19,13 @@ classdef SegmentBasedQuadrature < MortarQuadrature
   methods
     function obj = SegmentBasedQuadrature(multType,grids,input)
 
+<<<<<<< HEAD
       obj@MortarQuadrature(multType,grids,input);
+=======
+      obj@MortarQuadrature(interface,multType,input);
+
+      obj.ngTri = getXMLData(input,4,"nGP");
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
 
       gaussTri = Gauss(5,obj.gaussOrder);      % 5 is the vtk type of triangles
       obj.wTri = gaussTri.weight;

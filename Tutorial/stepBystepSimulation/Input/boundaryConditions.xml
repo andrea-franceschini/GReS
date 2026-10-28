@@ -8,6 +8,7 @@ in a nonConforming simulation.
   <BC
       name = "fix_bottom"
       type = "Dirichlet"
+<<<<<<< HEAD
       field = "surface"
       variable = "displacements"
       entityListType = "tags"
@@ -65,10 +66,22 @@ in a nonConforming simulation.
       entityList =  "30,40,45,55,5,6"
       >
 
+=======
+      entityType = "SurfBC"
+      variable = "displacements"
+      >
+
+    <BCentities
+                surfaceTags = "1"
+                components = "z"
+                />
+
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
     <BCevent
              time = "0"
              value = "0.0"
              />
+<<<<<<< HEAD
     <BCevent
              time = "1.0"
              value = "-100.0"
@@ -85,6 +98,79 @@ in a nonConforming simulation.
       entityList = "1,3,4,6"
 
       >
+=======
+  </BC>
+
+  <BC
+      name = "y_fix"
+      type = "Dirichlet"
+      entityType = "SurfBC"
+      variable = "displacements"
+      >
+
+    <BCentities
+                surfaceTags = "3,4"
+                components = "y"
+                />
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
+
+    <BCevent
+             time = "0"
+             value = "0.0"
+             />
+  </BC>
+<<<<<<< HEAD
+
+</BoundaryConditions>
+
+=======
+  <BC
+      name = "x_fix"
+      type = "Dirichlet"
+      entityType = "SurfBC"
+      variable = "displacements"
+      >
+
+    <BCentities
+                surfaceTags = "5,6"
+                components = "x"
+                />
+
+    <BCevent
+             time = "0"
+             value = "0"
+             />
+  </BC>
+  <BC
+      name = "pressureBC"
+      type = "Dirichlet"
+      entityType = "ElementBC"
+      variable = "pressure"
+      >
+
+    <BCentities
+                box = "30,40,45,55,5,6"
+                />
+
+    <BCevent
+             time = "0"
+             value = "0.0"
+             />
+    <BCevent
+             time = "1.0"
+             value = "-100.0"
+             />
+  </BC>
+  <BC
+      name = "pressureDir"
+      type = "Dirichlet"
+      entityType = "SurfBC"
+      variable = "pressure"
+      >
+
+    <BCentities
+                surfaceTags = "1,3,4,6"
+                />
 
     <BCevent
              time = "0"
@@ -94,3 +180,4 @@ in a nonConforming simulation.
 
 </BoundaryConditions>
 
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa

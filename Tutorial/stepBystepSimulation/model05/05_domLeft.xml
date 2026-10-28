@@ -14,11 +14,16 @@
         <Constitutive>
           <Elastic youngModulus="10e6" poissonRatio="0.25"/>
         </Constitutive>
+<<<<<<< HEAD
+=======
+        <PorousRock porosity="0.3" specificWeight="21" permeability="1e-18"/>
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
       </Solid>
     </Materials>
 
 
     <BoundaryConditions>
+<<<<<<< HEAD
       <BC name="fix_bottom" type="Dirichlet" field="surface"
           variable="displacements"
           entityListType = "tags" entityList = "1" components = "z">
@@ -34,11 +39,37 @@
       <BC name="x_fix" type="Dirichlet" field="surface"
           variable="displacements"
            entityListType = "tags" entityList = "5" components = "x">
+=======
+      <BC name="fix_bottom" type="Dirichlet" entityType="SurfBC"
+          variable="displacements">
+        <BCentities surfaceTags="1" components="z"/>
+        <BCevent time="0" value="0"/>
+      </BC>
+
+      <BC name="y_fix" type="Dirichlet" entityType="SurfBC"
+          variable="displacements">
+        <BCentities surfaceTags="3,4" components="y"/>
+        <BCevent time="0" value="0"/>
+      </BC>
+
+      <BC name="x_fix" type="Dirichlet" entityType="SurfBC"
+          variable="displacements">
+        <BCentities surfaceTags="5" components="x"/>
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
         <BCevent time="0" value="0"/>
       </BC>
     </BoundaryConditions>
 
 
+<<<<<<< HEAD
+=======
+    <Output printTimes=".1,.25,.5,.1"
+            outputFile="model05/Output05/resultsRock"
+            matFileName="model05/Output05/history"
+            saveHistory="1"/>
+
+
+>>>>>>> a89efce9a482544a17704feb06040edeee9becaa
     <Solver>
       <Poromechanics/>
     </Solver>
