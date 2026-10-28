@@ -24,13 +24,13 @@
       nstep="15"
       step_size="1"
       epsilon="1e-3"
-	   method="jacobi"
+	   method="afsai_sym"
    />
 
 	<!-- PROLONGATION parameters -->
 	<prolong
-		proltype="EXTI"
-		prol_emin="NONE"
+		proltype="BAMG"
+		prol_emin="EMIN"
 		np="20"
 		itmax_Vol="100"
 		tol_Vol="0.01"
