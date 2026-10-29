@@ -7,7 +7,7 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
   
   properties
 
-    ops                       % struct collecting AD operators
+    ops                                               % struct collecting AD operators
     props = struct('wet',[],'nwet',[],'rock',[])      % struct collecting fluid props
             
   end

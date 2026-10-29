@@ -176,6 +176,34 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       end
     end
 
+    function K = getPermeabilities(obj)
+
+      % return the 9 permeabilities component for each requested cell
+      cells = obj.grid.cells;
+      K = zeros(cells.num,9);
+
+      for i = 1:cells.nTag
+
+        cId = cells.tag == i;
+        nc = sum(cId);
+        rock = obj.domain.materials.getMaterial(i).PorousRock;
+
+        Ki = rock.getPermVector();
+
+        if size(Ki,1) ~= 1 && size(Ki,1) ~= nc
+          error('Input permeabilities in cell tag %i have incompatible number of elements (either 1 value or value for each cell)',i)
+        end
+
+        if size(Ki,1) == 1
+          Ki = repmat(Ki,nc,1);
+        end
+
+        K(cId,:) = Ki;
+
+      end
+
+    end
+
     function perm = printPermeab(obj)
 
       % printPermeab - print the permeability for the cell or element.

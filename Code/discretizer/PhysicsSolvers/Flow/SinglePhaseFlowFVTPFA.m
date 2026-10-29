@@ -303,13 +303,8 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       sgn = 2*(hf2Cell == faces.neighbors(faceList,1)) - 1;
       N = sgn .* faces.normal(faceList,:);
 
-      mat = obj.domain.materials;
-      KMat = zeros(cells.nTag,9);
-      for i=1:cells.nTag
-        if isfield(mat.getMaterial(i),"PorousRock")
-          KMat(i,:) = mat.getMaterial(i).PorousRock.getPermVector();
-        end
-      end
+      KMat = getPermeabilities(obj);
+
 
       % index for vectorized L*K*N product
       r = [1, 1, 1, 2, 2, 2, 3, 3, 3];
@@ -318,7 +313,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       % half-face transmissibilities
       hT = zeros(length(hf2Cell),1);
       for k=1:length(r)
-        hT = hT + L(:,r(k)) .* KMat(cells.tag(hf2Cell),k) .* N(:,c(k));
+        hT = hT + L(:,r(k)) .* KMat(hf2Cell,k) .* N(:,c(k));
       end
 
 

@@ -3,7 +3,7 @@ classdef PorousRock < handle
 
     properties (Access = private)
         %General properties:
-        KVec                 % Vector of permeabilities
+        permeability                 % Vector of permeabilities
         % (upper triangular part ordered column-wise)
         poro                 % Porosity
         biot                 % Biot coefficient
@@ -61,29 +61,49 @@ classdef PorousRock < handle
         end
 
         % Function to get material permeability as a 3x3 matrix
-        function K = getPermMatrix(obj)
-          if isscalar(obj.KVec)
-            K = diag(obj.KVec*ones(3,1));
-          elseif length(obj.KVec) == 3
-            K = diag(obj.KVec);
-          else
-            K = [obj.KVec(1) obj.KVec(6) obj.KVec(5);
-              obj.KVec(6) obj.KVec(2) obj.KVec(4);
-              obj.KVec(5) obj.KVec(4) obj.KVec(3)];
+        function K = getPermMatrix(obj,Kin)
+
+          % convert input permeability in matrix format
+          % the input should be a row vector
+
+          if nargin == 1
+            Kin = obj.permeability;
+          end
+
+          assert(size(Kin,1)==1);
+
+          if isscalar(Kin)
+            K = diag(Kin*ones(3,1));
+          elseif length(Kin) == 3
+            K = diag(Kin);
+          elseif length(Kin) == 6
+            K = [Kin(1) Kin(6) Kin(5);
+              Kin(6) Kin(2) Kin(4);
+              Kin(5) Kin(4) Kin(3)];
           end
         end
 
-        function K = getPermVector(obj)
+        function K = getPermVector(obj,Kin)
           % returns 1x9 permeability entries as
           %[Kxx,Kxy,Kxz,Kzx,Kyy,Kyz,Kxz,Kyz,Kzz]
 
-          if isscalar(obj.KVec)
-            K = [obj.KVec, 0, 0, 0, obj.KVec, 0, 0, 0, obj.KVec];
-          elseif length(obj.KVec) == 3
-            K = [obj.KVec(1), 0, 0, 0, obj.KVec(2), 0, 0, 0, obj.KVec(3)];
-          else
-            K = [obj.KVec(1), obj.KVec(6), obj.KVec(5), obj.KVec(6), obj.KVec(2), ...
-              obj.KVec(4), obj.KVec(5), obj.KVec(4), obj.KVec(3)];
+          if nargin == 1
+            Kin = obj.permeability;
+          end
+
+          nK = size(Kin,1);
+          nC = size(Kin,2);
+          Z = zeros(nK,1);
+
+
+
+          if nC == 1
+            K = [Kin(:), Z, Z, Z, Kin(:), Z, Z, Z, Kin(:)];
+          elseif nC == 3
+            K = [Kin(:,1), Z, Z, Z, Kin(:,2), Z, Z, Z, Kin(:,3)];
+          elseif nC == 6
+            K = [Kin(:,1), Kin(:,6), Kin(:,5), Kin(:,6), Kin(:,2), ...
+              Kin(:,4), Kin(:,5), Kin(:,4), Kin(:,3)];
           end
         end
 
@@ -125,23 +145,27 @@ classdef PorousRock < handle
         obj.Ss = params.maximumSaturation;
         obj.alpha = params.compressibility;
 
-        Kvec = params.permeability;
+        Kin = params.permeability;
 
-        nK = length(Kvec);
+        nK = size(Kin,2);
         if ~any([nK==1,nK==3,nK==6])
           error("Wrong number of numeric " + ...
             "values for permeability");
         end
-        obj.KVec = Kvec;
+        obj.permeability = Kin;
+
+
 
         % K needs to be SPD. It is symmetric by construction but is it also
         % Positive Definite?
-        K = getPermMatrix(obj);
-        eigv = eig(K);
-        if any(eigv < length(eigv)*eps(max(eigv)))
-          % Tolerance chosen following the hint in:
-          % https://it.mathworks.com/help/matlab/math/determine-whether-matrix-is-positive-definite.html#DetermineWhetherMatrixIsSPDExample-3
-          gresLog().error('The values passed for permeability matrix is not positive definite');
+        if size(Kin,1) == 1
+          K = getPermMatrix(obj);
+          eigv = eig(K);
+          if any(eigv < length(eigv)*eps(max(eigv)))
+            % Tolerance chosen following the hint in:
+            % https://it.mathworks.com/help/matlab/math/determine-whether-matrix-is-positive-definite.html#DetermineWhetherMatrixIsSPDExample-3
+            gresLog().error('The values passed for permeability matrix is not positive definite');
+          end
         end
 
         % read capillaery curves
