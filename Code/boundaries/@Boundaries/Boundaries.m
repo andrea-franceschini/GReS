@@ -61,6 +61,13 @@ classdef Boundaries < handle
     end
 
 
+    function removeBC(obj,id)
+
+      remove(obj.db,id);
+      
+    end
+
+
 
     function bc = getData(obj,identifier)
       % Check if the identifier defined by the user is a key of the Map object
