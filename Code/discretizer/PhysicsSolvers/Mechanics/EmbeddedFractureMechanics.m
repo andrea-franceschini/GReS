@@ -9,7 +9,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     phi
     cohesion
     fractureMesh
-    areaTol = 1e-6
+    areaTol = 1e-5
     bcTraction
     mechSolver
     isSmooth = true
