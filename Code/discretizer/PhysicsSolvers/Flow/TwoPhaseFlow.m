@@ -4,25 +4,25 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
   % negligible
 
   % Uses TPFA operators
-  
+
   properties
 
     ops                                               % struct collecting AD operators
     props = struct('wet',[],'nwet',[],'rock',[])      % struct collecting fluid props
-            
+
   end
-  
+
   methods
     function obj = TwoPhaseFlow(domain)
 
       obj@SinglePhaseFlowFVTPFA(domain);
-     
+
     end
 
-    
+
     function registerSolver(obj,varargin)
-     
-      
+
+
       registerSolver@SinglePhaseFlowFVTPFA(obj,varargin{:});
       dofm = obj.domain.dofm;
 
@@ -42,14 +42,14 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       assert(all(found(:)), "Internal faces must connect active pressure cells.");
 
       D = sparse([(1:nf)'; (1:nf)'], [N(:,1); N(:,2)], ...
-                 [-ones(nf,1); ones(nf,1)], nf, nc);
+        [-ones(nf,1); ones(nf,1)], nf, nc);
       obj.ops.grad  = @(x)  D*x;
       obj.ops.div   = @(x) -D'*x;
       obj.ops.avg   = @(x) 0.5 * (x(N(:,1)) + x(N(:,2)));
       obj.ops.upw   = @(flag, x) flag.*x(N(:, 1)) + ~flag.*x(N(:, 2));
       obj.ops.gradz = obj.ops.grad(G.cells.center(cellIdx,3));
 
-     
+
     end
 
 
@@ -95,7 +95,7 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
     end
 
 
-     function applyBC(obj,bcId,t)
+    function applyBC(obj,bcId,t)
 
       if ~BCapplies(obj,bcId)
         return
@@ -112,7 +112,7 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
         applyBC@SinglePhaseFlowFVTPFA(obj,bcId,t);
       end
 
-      
+
 
     end
 
@@ -166,7 +166,7 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
         error('Missing fluid properties. Fluid properties must be passed using the "setFluidParameters()" method');
 
       end
-      
+
       % vertical equilibrium
       % g = 9.8066;     % gravity acceleration
       % equil = ode23(@(z,p) g.* rhoO(p), [0, max(G.cells.centroids(:,3))], pR);
@@ -175,6 +175,10 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       sW0   = obj.getState.saturation(cIdx);
       [obj.ops.p, obj.ops.sw]    = initVariablesADI(p0, sW0);
 
+      gravity reset off
+      msg = sprintf("Gravity not yet supported in %s solver",class(obj));
+      gresLog().log(3,msg);
+
 
     end
 
@@ -182,61 +186,20 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
 
     function assembleSystem(obj,dt)
 
-      % compute material props
-      % Domain state is authoritative, including after a rejected timestep.
-      % Reseed independent AD variables instead of reusing stale trial values.
       cells = obj.domain.dofm.getFieldCells("pressure");
-      current = getState(obj);
-      previous = getStateOld(obj);
-      p0 = previous.pressure(cells);
-      sW0 = previous.saturation(cells);
-      [p,sW] = initVariablesADI(current.pressure(cells), ...
-                                current.saturation(cells));
-      obj.ops.p = p;
-      obj.ops.sw = sW;
+      curr  = getState(obj);
+      prev = getStateOld(obj);
 
-      T = obj.trans(obj.isIntFaces);
+      pOld  = prev.pressure(cells);
+      sWOld = prev.saturation(cells);
 
+      [p,sW] = initVariablesADI( ...
+        curr.pressure(cells),curr.saturation(cells));
 
-      % fluid props
-      w = obj.props.wet;
-      nw = obj.props.nwet;
-      rW = w.density(p);
-      rW0 = w.density(p0);
-      rNW = nw.density(p);
-      rNW0 = nw.density(p0);
-      mobW = w.relPerm(sW)./w.viscosity;
-      mobNW = nw.relPerm(1-sW)./nw.viscosity;
-
-      % rock props
       pv = obj.props.rock.poreVolume;
-      vol = pv(p);
-      vol0 = pv(p0);
 
-      g     = norm(gravity);
-      dp  = obj.ops.grad(p);
-      dpW = dp+g*obj.ops.avg(rW).*obj.ops.gradz;
-      dpO = dp+g*obj.ops.avg(rNW).*obj.ops.gradz;
-
-      % Face mass rates: positive from neighbor 1 to neighbor 2.
-      % With div = -D', div(v) is positive net OUTWARD rate.
-      % phase fluxes
-      vW  = -obj.ops.upw(value(dpW) <= 0, rW.*mobW).*T.*dpW;
-      vNW  = -obj.ops.upw(value(dpO) <= 0, rNW.*mobNW).*T.*dpO;
-  
-      % conservation of phases
-      wet = (1/dt).*(vol.*rW.*sW - vol0.*rW0.*sW0) + obj.ops.div(vW);
-      nwet   = (1/dt).*(vol.*rNW.*(1-sW) - vol0.*rNW0.*(1-sW0)) + obj.ops.div(vNW);
-
-      % apply well model if available
-      if ~isempty(obj.wellModel)
-
-        [wetWell,nwetWell] = addWellFlux(obj,mobW,mobNW,rW,rNW);
-
-        wet = wet - wetWell;
-        nwet = nwet - nwetWell; 
-
-      end
+      [wet,nwet] = obj.computeFlowResidual( ...
+        dt,p,sW,pOld,sWOld,pv(p),pv(pOld));
 
 
       % residual equations
@@ -284,7 +247,7 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       ds = du(dofm.getDoF(dofm.getVariableId("saturation")));
       [p,sw] = deal(obj.ops.p,obj.ops.sw);
       assert(all(isfinite(dp(:))) && all(isfinite(ds(:))), ...
-          "Nonfinite Newton correction: stop before corrupting the state.");
+        "Nonfinite Newton correction: stop before corrupting the state.");
       p.val = p.val + dp;
       sw.val = sw.val + ds;
       % regularize saturation
@@ -295,6 +258,56 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       setState(obj,value(sw),"saturation");
 
     end
+
+
+
+    function [wet,nwet] = computeFlowResidual(obj,dt,p,sW,pOld,sWOld,vol,volOld)
+
+      % Preserve these for helpers that currently access obj.ops.p.
+      obj.ops.p  = p;
+      obj.ops.sw = sW;
+
+      T = obj.trans(obj.isIntFaces);
+
+      w  = obj.props.wet;
+      nw = obj.props.nwet;
+
+      rW   = w.density(p);
+      rWOld  = w.density(pOld);
+      rNW  = nw.density(p);
+      rNWOld = nw.density(pOld);
+
+      mobW  = w.relPerm(sW)./w.viscosity;
+      mobNW = nw.relPerm(1-sW)./nw.viscosity;
+
+      g = norm(gravity);
+      dp = obj.ops.grad(p);
+
+      dpW  = dp + g*obj.ops.avg(rW).*obj.ops.gradz;
+      dpNW = dp + g*obj.ops.avg(rNW).*obj.ops.gradz;
+
+      vW = -obj.ops.upw(value(dpW)<=0,rW.*mobW).*T.*dpW;
+      vNW = -obj.ops.upw(value(dpNW)<=0,rNW.*mobNW).*T.*dpNW;
+
+      wet = (vol.*rW.*sW - volOld.*rWOld.*sWOld)/dt ...
+        + obj.ops.div(vW);
+
+      nwet = (vol.*rNW.*(1-sW) - volOld.*rNWOld.*(1-sWOld))/dt ...
+        + obj.ops.div(vNW);
+
+      if ~isempty(obj.wellModel)
+        [qw,qnw] = obj.addWellFlux(mobW,mobNW,rW,rNW);
+        wet  = wet  - qw;
+        nwet = nwet - qnw;
+      end
+    end
+
+
+  end
+
+
+  methods (Access = protected)
+
 
 
   end
@@ -317,12 +330,12 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
         W = obj.wellModel.wells(i);
         pbh = getValue(obj.wellModel,i,obj.getState.time);
         c = obj.domain.dofm.getLocalDoF( ...
-            obj.domain.dofm.getVariableId("pressure"),W.cellList(:));
+          obj.domain.dofm.getVariableId("pressure"),W.cellList(:));
         c = c(:);
         assert(all(c > 0),"Well completions must be active pressure cells.");
         WI = W.WI(:);
         assert(isscalar(WI) || numel(WI)==numel(c), ...
-            "WI must be scalar or have one entry per completion.");
+          "WI must be scalar or have one entry per completion.");
         assert(all(isfinite(WI) & WI > 0),"Well indices must be positive and finite.");
         assert(isscalar(pbh) && isfinite(pbh),"Expected a finite scalar BHP.");
         phi = WI .* (pbh-p(c));
@@ -330,8 +343,8 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
         if W.sign == 1
           comp = W.comp(:);
           assert(numel(comp)==2 && all(comp>=0) && ...
-                 abs(sum(comp)-1)<1e-12 && nnz(comp)==1, ...
-              "Use a pure-phase injection composition, e.g. [1 0].");
+            abs(sum(comp)-1)<1e-12 && nnz(comp)==1, ...
+            "Use a pure-phase injection composition, e.g. [1 0].");
           fw = comp(1).*totMob(c).*rhoW(c).*phi;
           fnw = comp(2).*totMob(c).*rhoNW(c).*phi;
         elseif W.sign == -1

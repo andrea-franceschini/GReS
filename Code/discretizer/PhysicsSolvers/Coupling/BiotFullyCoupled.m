@@ -79,7 +79,7 @@ classdef BiotFullyCoupled < PhysicsSolver
       obj.domain.J{obj.fldFlow,obj.fldMech} = obj.Q'/dt;
 
       % add rhs from coupling contribution
-      [rhsMech,rhsFlow] = computeRhs(obj);
+      rhsMech = computeRhs(obj);
       obj.domain.rhs{obj.fldMech} = obj.domain.rhs{obj.fldMech} + rhsMech;
       obj.domain.rhs{obj.fldFlow} = obj.domain.rhs{obj.fldFlow} + rhsFlow;
 

@@ -186,7 +186,13 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
         cId = cells.tag == i;
         nc = sum(cId);
-        rock = obj.domain.materials.getMaterial(i).PorousRock;
+        mat = obj.domain.materials.getMaterial(i);
+
+        if ~isfield(mat,"PorousRock")
+          continue
+        end
+
+        rock = mat.PorousRock;
 
         Ki = rock.getPermVector();
 
