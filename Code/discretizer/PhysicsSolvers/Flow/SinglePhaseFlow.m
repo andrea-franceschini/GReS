@@ -206,19 +206,10 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
     function perm = printPermeab(obj)
 
-      % printPermeab - print the permeability for the cell or element.
-      cells = obj.grid.cells;
-      perm = zeros(cells.num,6);
-      subCells = obj.domain.dofm.getFieldCells(obj.getField);
-      for el = subCells'
-        ktmp = obj.domain.materials.getMaterial(cells.tag(el)).PorousRock.getPermMatrix();
-        perm(el,1)=ktmp(1,1);
-        perm(el,2)=ktmp(2,2);
-        perm(el,3)=ktmp(3,3);
-        perm(el,4)=ktmp(1,2);
-        perm(el,5)=ktmp(2,3);
-        perm(el,6)=ktmp(1,3);
-      end
+      % print 6 permeability tensor components of all cells
+      perm = getPermeabilities(obj);
+      perm = perm(:,[1,5,9,4,9,7]);
+
     end
 
 

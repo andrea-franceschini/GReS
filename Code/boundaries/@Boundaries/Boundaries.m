@@ -136,6 +136,14 @@ classdef Boundaries < handle
       variable = obj.getData(identifier).variable;
     end
 
+    function options = getOptions(obj, identifier)
+      options = obj.getData(identifier).options;
+
+      if ismissing(options)
+        error("Options are missing for boundary condition %s",obj.getName(identifier));
+      end
+    end
+
     function dofs = getCompEntities(obj,identifier,ents)
       % get component dof of Dirichlet BC loaded entities
       nEnts = getNumbTargetEntities(obj,identifier);

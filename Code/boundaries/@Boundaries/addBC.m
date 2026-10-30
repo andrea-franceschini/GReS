@@ -71,6 +71,9 @@ function addBC(obj,varargin)
 %                      event is passed to ADDBCEVENT individually. Example:
 %                      myEventStruct
 %
+%   'options'         - (optional) stores custom data related to specific
+%                       types of boundary conditions
+%
 % -------------------------------------------------------------------------
 % USAGE EXAMPLES
 % -------------------------------------------------------------------------
@@ -122,7 +125,8 @@ default = struct('name',string.empty,...
   'entityListType',string.empty,...
   'type',string.empty,...
   'components',missing,...
-  'essential',missing);
+  'essential',missing,...
+  'options',missing);
 
 params = readInput(default,varargin{:});
 
@@ -134,6 +138,7 @@ end
 srcEnt = entityField(lower(params.field));
 variable = lower(params.variable);
 type = lower(params.type);
+options = params.options;
 
 % BC type
 % THE USER IS RESPONSIBLE FOR INPUTTING THE CORRECT BCTYPE NAME.
@@ -155,7 +160,8 @@ elseif BCtype(type) == BCtype.dirichlet
 end
 
 bc = struct('data', [], 'essential', essentialFlag,...
-  'sourceField',srcEnt,'type', type, 'variable', variable, 'scale', 1.0);
+  'sourceField',srcEnt,'type', type, 'variable', variable, 'scale', 1.0,...
+  'options',options);
 
 if ismissing(params.components)
   comp = [];

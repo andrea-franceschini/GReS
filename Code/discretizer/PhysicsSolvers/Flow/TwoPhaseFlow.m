@@ -34,12 +34,15 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
 
       % set ADI operators
       G = obj.grid;
-      N     = G.faces.neighbors(obj.isIntFaces,:);
+      Nglobal = G.faces.neighbors(obj.isIntFaces,:);
       cellIdx = obj.domain.dofm.getFieldCells("pressure");
       nc = numel(cellIdx);
-      nf = size(N,1);
+      nf = size(Nglobal,1);
+      [found,N] = ismember(Nglobal,cellIdx);
+      assert(all(found(:)), "Internal faces must connect active pressure cells.");
 
-      D     = sparse([(1:nf)'; (1:nf)'], N, ones(nf,1)*[-1 1], nf, nc);
+      D = sparse([(1:nf)'; (1:nf)'], [N(:,1); N(:,2)], ...
+                 [-ones(nf,1); ones(nf,1)], nf, nc);
       obj.ops.grad  = @(x)  D*x;
       obj.ops.div   = @(x) -D'*x;
       obj.ops.avg   = @(x) 0.5 * (x(N(:,1)) + x(N(:,2)));
@@ -92,6 +95,67 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
     end
 
 
+     function applyBC(obj,bcId,t)
+
+      if ~BCapplies(obj,bcId)
+        return
+      end
+
+      bcs = obj.domain.boundaries;
+      type = bcs.getType(bcId);
+
+      if contains(type,"well")
+        % well equations
+
+
+      else
+        applyBC@SinglePhaseFlowFVTPFA(obj,bcId,t);
+      end
+
+      
+
+    end
+
+
+    function applyDirVal(obj,bcId,varargin)
+      if ~BCapplies(obj,bcId)
+        return
+      end
+
+      if ~isEssential(obj.domain.bcs,bcId)
+        return
+      end
+
+      if nargin == 3
+        type = obj.domain.bcs.getType(bcId);
+        assert(~BCtype.isCustomBC(type),"Base applyBC method for custom BC requires " + ...
+          "dofs and values to be already specified")
+        t = varargin{1};
+        dofs = obj.domain.bcs.getStateDofs(bcId);
+        vals = obj.domain.bcs.getVals(bcId,t);
+      elseif nargin==4
+        dofs = varargin{1};
+        vals = varargin{2};
+      else
+        error("Wrong number of input for applyBC function")
+      end
+
+      bcVar = obj.domain.bcs.getVariable(bcId);
+
+      v = obj.getState(bcVar);
+      v(dofs) = vals;
+      obj.setState(v,bcVar);
+
+      % apply Dirichlet condition also to ADI variable!
+      if strcmp(bcVar,"pressure")
+        obj.ops.p.val(dofs) = vals;
+      elseif strcmp(bcVar,"saturation")
+        obj.ops.sw.val(dofs) = vals;
+      end
+
+    end
+
+
     function initialize(obj)
 
       % material input is provisionally here
@@ -119,10 +183,17 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
     function assembleSystem(obj,dt)
 
       % compute material props
-      p0 = getStateOld(obj).pressure;
-      sW0 = getStateOld(obj).saturation;
-      p = obj.ops.p;
-      sW = obj.ops.sw;
+      % Domain state is authoritative, including after a rejected timestep.
+      % Reseed independent AD variables instead of reusing stale trial values.
+      cells = obj.domain.dofm.getFieldCells("pressure");
+      current = getState(obj);
+      previous = getStateOld(obj);
+      p0 = previous.pressure(cells);
+      sW0 = previous.saturation(cells);
+      [p,sW] = initVariablesADI(current.pressure(cells), ...
+                                current.saturation(cells));
+      obj.ops.p = p;
+      obj.ops.sw = sW;
 
       T = obj.trans(obj.isIntFaces);
 
@@ -147,6 +218,8 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       dpW = dp+g*obj.ops.avg(rW).*obj.ops.gradz;
       dpO = dp+g*obj.ops.avg(rNW).*obj.ops.gradz;
 
+      % Face mass rates: positive from neighbor 1 to neighbor 2.
+      % With div = -D', div(v) is positive net OUTWARD rate.
       % phase fluxes
       vW  = -obj.ops.upw(value(dpW) <= 0, rW.*mobW).*T.*dpW;
       vNW  = -obj.ops.upw(value(dpO) <= 0, rNW.*mobNW).*T.*dpO;
@@ -155,17 +228,16 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       wet = (1/dt).*(vol.*rW.*sW - vol0.*rW0.*sW0) + obj.ops.div(vW);
       nwet   = (1/dt).*(vol.*rNW.*(1-sW) - vol0.*rNW0.*(1-sW0)) + obj.ops.div(vNW);
 
+      % apply well model if available
+      if ~isempty(obj.wellModel)
 
-      % bcs imposition as in MRST
-      % Injector: volumetric source term multiplied by surface density
-      % src = 1.2860;
-      % wet(1) = wet(1) - src;
-      %
-      % % Producer: replace equations by new ones specifying fixed pressure
-      % % and zero water saturation
-      % outPres = 10000000;
-      % wet(end) = p(end) - outPres;
-      % nwet(end)   = sW(end);
+        [wetWell,nwetWell] = addWellFlux(obj,mobW,mobNW,rW,rNW);
+
+        wet = wet - wetWell;
+        nwet = nwet - nwetWell; 
+
+      end
+
 
       % residual equations
       dofm = obj.domain.dofm;
@@ -211,6 +283,8 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       dp = du(dofm.getDoF(dofm.getVariableId("pressure")));
       ds = du(dofm.getDoF(dofm.getVariableId("saturation")));
       [p,sw] = deal(obj.ops.p,obj.ops.sw);
+      assert(all(isfinite(dp(:))) && all(isfinite(ds(:))), ...
+          "Nonfinite Newton correction: stop before corrupting the state.");
       p.val = p.val + dp;
       sw.val = sw.val + ds;
       % regularize saturation
@@ -220,14 +294,67 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       setState(obj,value(p),"pressure");
       setState(obj,value(sw),"saturation");
 
-
-
-
-
-
     end
 
 
+  end
+
+
+  methods (Access=private)
+
+
+    function [wetFlux,nwetFlux] = addWellFlux(obj,mobW,mobNW,rhoW,rhoNW)
+
+      % Signed mass sources: + injection, - production.
+      % BHP is interpreted at completion elevation (no well gravity term).
+      % Pure-phase injectors are supported; mixed surface compositions need PVT.
+      p = obj.ops.p;
+      wetFlux = 0*p;
+      nwetFlux = 0*p;
+      totMob = mobW + mobNW;
+
+      for i = 1:numel(obj.wellModel.wells)
+        W = obj.wellModel.wells(i);
+        pbh = getValue(obj.wellModel,i,obj.getState.time);
+        c = obj.domain.dofm.getLocalDoF( ...
+            obj.domain.dofm.getVariableId("pressure"),W.cellList(:));
+        c = c(:);
+        assert(all(c > 0),"Well completions must be active pressure cells.");
+        WI = W.WI(:);
+        assert(isscalar(WI) || numel(WI)==numel(c), ...
+            "WI must be scalar or have one entry per completion.");
+        assert(all(isfinite(WI) & WI > 0),"Well indices must be positive and finite.");
+        assert(isscalar(pbh) && isfinite(pbh),"Expected a finite scalar BHP.");
+        phi = WI .* (pbh-p(c));
+
+        if W.sign == 1
+          comp = W.comp(:);
+          assert(numel(comp)==2 && all(comp>=0) && ...
+                 abs(sum(comp)-1)<1e-12 && nnz(comp)==1, ...
+              "Use a pure-phase injection composition, e.g. [1 0].");
+          fw = comp(1).*totMob(c).*rhoW(c).*phi;
+          fnw = comp(2).*totMob(c).*rhoNW(c).*phi;
+        elseif W.sign == -1
+          % phi is negative during production: no additional minus here.
+          fw = mobW(c).*rhoW(c).*phi;
+          fnw = mobNW(c).*rhoNW(c).*phi;
+        else
+          error("Well sign must be +1 or -1.");
+        end
+
+        % Local indexed accumulation; sum repeated completions individually.
+        if numel(unique(c)) == numel(c)
+          wetFlux(c) = wetFlux(c) + fw;
+          nwetFlux(c) = nwetFlux(c) + fnw;
+        else
+          for j = 1:numel(c)
+            wetFlux(c(j)) = wetFlux(c(j)) + fw(j);
+            nwetFlux(c(j)) = nwetFlux(c(j)) + fnw(j);
+          end
+        end
+      end
+
+    end
 
   end
 
