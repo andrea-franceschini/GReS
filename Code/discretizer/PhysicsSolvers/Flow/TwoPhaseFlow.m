@@ -240,22 +240,21 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
 
     function updateState(obj,du)
 
-
-      % update the adi variable as well as the state object
       dofm = obj.domain.dofm;
+      activeEnts = dofm.getFieldCells("pressure");
+      state = getState(obj);
+
       dp = du(dofm.getDoF(dofm.getVariableId("pressure")));
       ds = du(dofm.getDoF(dofm.getVariableId("saturation")));
-      [p,sw] = deal(obj.ops.p,obj.ops.sw);
+
       assert(all(isfinite(dp(:))) && all(isfinite(ds(:))), ...
         "Nonfinite Newton correction: stop before corrupting the state.");
-      p.val = p.val + dp;
-      sw.val = sw.val + ds;
-      % regularize saturation
-      sw.val = max( min(sw.val, 1), 0);
-      [obj.ops.p,obj.ops.sw] = deal(p,sw);
 
-      setState(obj,value(p),"pressure");
-      setState(obj,value(sw),"saturation");
+      state.pressure(activeEnts) = state.pressure(activeEnts) + dp;
+      state.saturation(activeEnts) = max(min( ...
+        state.saturation(activeEnts) + ds, 1), 0);
+
+      setState(obj,state);
 
     end
 

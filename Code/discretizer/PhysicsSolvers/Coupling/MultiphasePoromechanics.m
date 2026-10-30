@@ -119,15 +119,7 @@ classdef MultiphasePoromechanics < BiotFullyCoupled
 
     function updateState(obj,dsol)
 
-
       updateState@BiotFullyCoupled(obj,dsol);
-
-      % update the adi variable as well as the state object
-      dofm = obj.domain.dofm;
-      du = dsol(dofm.getDoF(dofm.getVariableId("displacements")));
-      u = obj.flowSolver.ops.u;
-      u.val = u.val + du;
-      obj.flowSolver.ops.u = u;
   
     end
   end

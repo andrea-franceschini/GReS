@@ -105,7 +105,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       % Compute the posprocessing variables for the module.
       fluid = obj.domain.materials.getFluid();
       gamma = fluid.getSpecificWeight();
-      entType = obj.domain.dofm.getFieldLocation(obj.fieldId);
+      entType = obj.domain.dofm.getFieldLocation("pressure");
       z = getLocation(entType,obj.grid);
       z = z(:,3);
       mob = computeMobility(obj,p);
