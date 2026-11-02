@@ -288,16 +288,16 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       vW = -obj.ops.upw(value(dpW)<=0,rW.*mobW).*T.*dpW;
       vNW = -obj.ops.upw(value(dpNW)<=0,rNW.*mobNW).*T.*dpNW;
 
-      wet = (vol.*rW.*sW - volOld.*rWOld.*sWOld)/dt ...
-        + obj.ops.div(vW);
+      wet = (vol.*rW.*sW - volOld.*rWOld.*sWOld) ...
+        + dt * obj.ops.div(vW);
 
-      nwet = (vol.*rNW.*(1-sW) - volOld.*rNWOld.*(1-sWOld))/dt ...
-        + obj.ops.div(vNW);
+      nwet = (vol.*rNW.*(1-sW) - volOld.*rNWOld.*(1-sWOld)) ...
+        + dt * obj.ops.div(vNW);
 
       if ~isempty(obj.wellModel)
         [qw,qnw] = obj.addWellFlux(mobW,mobNW,rW,rNW);
-        wet  = wet  - qw;
-        nwet = nwet - qnw;
+        wet  = wet  - dt * qw;
+        nwet = nwet - dt * qnw;
       end
     end
 
