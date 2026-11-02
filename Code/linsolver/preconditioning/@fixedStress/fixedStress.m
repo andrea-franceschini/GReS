@@ -74,7 +74,7 @@ classdef fixedStress < preconditioner
                yf = bf - obj.Afu * zu;
 
                % Flow CPR solve: zf = CPR(yf)
-               zf = obj.FlowPrec.ApplyLeft(yf);
+               zf = obj.FlowPrec.Apply_L(yf);
 
                % Combine
                x = [zu; zf];
@@ -182,6 +182,9 @@ classdef fixedStress < preconditioner
             obj.FlowPrec = CPR(debugflag, problemsolver);
             obj.maxThreads = obj.FlowPrec.maxThreads;
             obj.params = obj.FlowPrec.params;
+
+            obj.FlowPrec.Ruiz = RuizScaling();
+            obj.FlowPrec.Ruiz.scalingFlag = false;
          else
             obj.flowPrecType = 'AMG';
             obj.AMGFlux = aAMG(debugflag,problemsolver,"pressure");
