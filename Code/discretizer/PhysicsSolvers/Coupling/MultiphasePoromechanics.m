@@ -141,15 +141,18 @@ classdef MultiphasePoromechanics < BiotFullyCoupled
       pv0 = zeros(nc,1);
       mat = obj.domain.materials;
 
-      for i = regions'
+      for i = reshape(regions,1,[])
         rock = mat.getPorousRock(i);
         cIdx = g.cells.tag == i;
         poro0 = rock.getPorosity;
         pv0(cIdx) = g.cells.volume(cIdx).*poro0;
       end
 
+      id = ismember(g.cells.tag,regions);
+      pv0 = pv0(id);
+
       % 0 * p because Biot coefficient is assumed unitary
-      pV = @(u,p) pv0(cIdx) + obj.Q' * (u - u0) + 0 * p .* g.cells.volume(dofm.getFieldCells("pressure"));
+      pV = @(u,p) pv0 + obj.Q' * (u - u0) + 0 * p .* g.cells.volume(dofm.getFieldCells("pressure"));
 
     end
 

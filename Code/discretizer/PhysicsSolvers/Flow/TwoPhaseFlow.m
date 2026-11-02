@@ -74,7 +74,7 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       mat = obj.domain.materials;
 
 
-      for i = regions'
+      for i = reshape(regions,1,[])
         rock = mat.getPorousRock(i);
         cIdx = g.cells.tag == i;
         poro0 = rock.getPorosity;
