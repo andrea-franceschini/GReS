@@ -52,6 +52,11 @@ classdef Sedimentation < PhysicsSolver
     voidTop
     e0Top
 
+    flip = 0
+    flipNum = 0
+    flipCells
+    branchTS
+
     initColumn (:,1)  % indication of the necessity of initialize the column
     bath (:,:)
   end
@@ -156,6 +161,9 @@ classdef Sedimentation < PhysicsSolver
       state.age = zeros(nelm,1);
       state.void0 = zeros(nelm,1);
       state.cb = zeros(nelm,1);
+      state.iter = 0;
+
+      state.branch = zeros(nelm,1);
 
       state.sedmRate = zeros(prod(map(1:2)),obj.nmat);
       state.sedmAcc  = zeros(prod(map(1:2)),obj.nmat);
@@ -293,6 +301,12 @@ classdef Sedimentation < PhysicsSolver
       dstress = obj.deltaStress(getMapFromDofs(obj.mdof,dofs));
       state.stress(dofs) = state.stress(dofs) - dstress*dt;
 
+      if ~obj.cbFreeze
+        tmpMat = getCellsProp(obj,'sedmat');
+        [~, obj.branchTS] = max(SedimentMaterial.curveBranch(-state.stress,-state.Sp,tmpMat.S1,tmpMat.S2), [], 2);
+        obj.flipCells = zeros(numel(dofs),1);
+      end
+      state.iter=1;
       setState(obj,state);
     end
 
@@ -610,7 +624,21 @@ classdef Sedimentation < PhysicsSolver
       state.strain = strain;
       state.cellDefm = stateOld.cellDefm + strain.*dz;
 
-      obj.setState(state);
+      if ~obj.cbFreeze
+        obj.flipCells = obj.flipCells + (obj.branchTS~=state.branch);
+        obj.branchTS = state.branch;
+        if state.iter>7
+          if max(obj.flipCells)>3
+            obj.flip=obj.flip+1;
+            tt = sum(obj.flipCells>3);
+            if tt>obj.flipNum
+              obj.flipNum=tt;
+            end
+          end
+        end
+      end
+      state.iter=state.iter+1;
+      obj.setState(state);          
     end
 
     function J = computeMat(obj,dt)
@@ -886,6 +914,8 @@ classdef Sedimentation < PhysicsSolver
         map1 = Scurr<0;
         tmpMat = getCellsProp(obj,'sedmat');
         obj.cellMatBranch(map1,:) = SedimentMaterial.curveBranch(-Scurr(map1),-Sp(map1),tmpMat.S1(map1),tmpMat.S2(map1));
+        [~, branch] = max(obj.cellMatBranch(map1,:), [], 2);
+        setState(obj,branch,'branch');
       end
     end
 
