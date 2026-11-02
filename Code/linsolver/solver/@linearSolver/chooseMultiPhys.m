@@ -1,13 +1,13 @@
 function [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname)
 
    % List of allowed physics
-   allowedPhysics = {'pressure', 'displacements','fractureJump'};
+   allowedPhysics = {'pressure', 'displacements','fractureJump','saturation'};
    
    % Check if any entry in physname is NOT among the allowed physics
    if any(~ismember(physname, allowedPhysics))
        gresLog().warning(3, 'Multiphysics not yet supported');
        if gresLog().getVerbosity() >= 3
-           physNames = arrayfun(@(x) x.dofm.getVariableNames(), domainin);
+           physNames = arrayfun(@(x) x.dofm.getVariableNames(), generalsolver.domains);
            disp(physNames);
        end
        Prec = [];
@@ -19,6 +19,14 @@ function [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physna
           ismember("pressure", physname)
    
        Prec = fixedStress(debugflag, generalsolver);
+       ChronosFlag = true;
+
+   % Exactly 2 physics: ('pressure' AND 'saturation')
+   elseif numel(unique(physname)) == 2 && ...
+          ismember("pressure", physname) && ...
+          ismember("saturation", physname)
+   
+       Prec = cprPrec(debugflag, generalsolver);
        ChronosFlag = true;
 
    % Exactly 2 physics: ('displacements' AND 'fractureJump')

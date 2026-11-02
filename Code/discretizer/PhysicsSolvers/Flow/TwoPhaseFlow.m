@@ -22,6 +22,11 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
 
     function registerSolver(obj,varargin)
 
+      if (isempty(varargin) || ~any(strcmp(varargin(1:2:end), 'targetRegions'))) && obj.grid.cells.nTag == 0
+        nTags = numel(unique(obj.grid.cells.tag));
+        if nTags == 0, nTags = 1; end
+        varargin = [varargin, {'targetRegions', 1:nTags}];
+      end
 
       registerSolver@SinglePhaseFlowFVTPFA(obj,varargin{:});
       dofm = obj.domain.dofm;
@@ -61,6 +66,32 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
 
       input = readInput(default,input);
 
+      % Convert constant numeric density to function handle if provided
+      pref = input.rock.refPressure;
+      if ismissing(pref)
+        p0 = 0;
+      else
+        p0 = pref;
+      end
+      if ~isempty(input.wet.density) && isnumeric(input.wet.density)
+        rhoW0 = input.wet.density;
+        cW = input.wet.compressibility;
+        if ~isempty(cW) && cW > 0
+          input.wet.density = @(p) rhoW0 .* exp(cW .* (p - p0));
+        else
+          input.wet.density = @(p) 0*p + rhoW0;
+        end
+      end
+      if ~isempty(input.nwet.density) && isnumeric(input.nwet.density)
+        rhoNW0 = input.nwet.density;
+        cNW = input.nwet.compressibility;
+        if ~isempty(cNW) && cNW > 0
+          input.nwet.density = @(p) rhoNW0 .* exp(cNW .* (p - p0));
+        else
+          input.nwet.density = @(p) 0*p + rhoNW0;
+        end
+      end
+
       obj.props.wet = input.wet;
       obj.props.nwet = input.nwet;
 
@@ -83,7 +114,6 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       end
 
       % pore volume function
-      pref = input.rock.refPressure;
       if ~ismissing(pref)
         pV   = @(p) pv0 .* exp(cr .* (p - pref) );
       else
@@ -109,7 +139,11 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
 
 
       else
-        applyBC@SinglePhaseFlowFVTPFA(obj,bcId,t);
+        bcVar = bcs.getVariable(bcId);
+        varId = obj.domain.dofm.getVariableId(bcVar);
+        [bcEnts,bcVals] = getBC(obj,bcId,t);
+        bcDofs = obj.domain.dofm.getLocalDoF(varId,bcEnts);
+        applyBC@PhysicsSolver(obj,bcId,bcDofs,bcVals);
       end
 
 
@@ -146,11 +180,13 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       v(dofs) = vals;
       obj.setState(v,bcVar);
 
-      % apply Dirichlet condition also to ADI variable!
-      if strcmp(bcVar,"pressure")
-        obj.ops.p.val(dofs) = vals;
-      elseif strcmp(bcVar,"saturation")
-        obj.ops.sw.val(dofs) = vals;
+      % apply Dirichlet condition also to ADI variable if initialized!
+      if isfield(obj.ops, 'p') && ~isempty(obj.ops.p)
+        if strcmp(bcVar,"pressure")
+          obj.ops.p.val(dofs) = vals;
+        elseif strcmp(bcVar,"saturation")
+          obj.ops.sw.val(dofs) = vals;
+        end
       end
 
     end
@@ -163,7 +199,7 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
 
       if isempty(obj.props.wet)
 
-        error('Missing fluid properties. Fluid properties must be passed using the "setFluidParameters()" method');
+        error('Missing fluid properties. Fluid properties must be passed using the "setFluidProperties()" method');
 
       end
 
@@ -220,13 +256,26 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       p = obj.domain.state.interpolate(fac,"pressure");
       sat = obj.domain.state.interpolate(fac,"saturation");
 
-      outPrint = finalizeState(obj,p,t);
+      if ~isempty(obj.domain.materials) && ~isempty(obj.domain.materials.getFluid())
+        outPrint = finalizeState(obj,p,t);
+      else
+        outPrint.pressure = p;
+        outPrint.perm = printPermeab(obj);
+      end
 
       [cellData,pointData] = buildPrintStruct(obj,outPrint);
 
       cellData(end+1).name = 'saturation';
       cellData(end).data = sat;
 
+    end
+
+    function out = isLinear(~)
+      out = false;
+    end
+
+    function out = isSymmetric(~)
+      out = false;
     end
 
     function writeSolution(obj,fac,tID)
