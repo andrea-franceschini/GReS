@@ -120,6 +120,7 @@ classdef NonLinearImplicit < SolutionScheme
 
           rhs = assembleRhs(obj);
           rhsNorm = norm(cell2mat(rhs),2);
+
           gresLog().log(1,'%d     %e     %e\n',newtonIter,rhsNorm,rhsNorm/rhsNormIt0);
 
           % Check for convergence
