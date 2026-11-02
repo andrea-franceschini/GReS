@@ -12,7 +12,7 @@ function [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physna
        end
        Prec = [];
        ChronosFlag = false;
-   
+
    % Exactly 2 physics: ('displacements' AND 'pressure')
    elseif numel(unique(physname)) == 2 && ...
           ismember("displacements", physname) && ...
@@ -26,7 +26,7 @@ function [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physna
           ismember("pressure", physname) && ...
           ismember("saturation", physname)
    
-       Prec = cprPrec(debugflag, generalsolver);
+       Prec = CPR(debugflag, generalsolver);
        ChronosFlag = true;
 
    % Exactly 2 physics: ('displacements' AND 'fractureJump')
@@ -35,6 +35,15 @@ function [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physna
           ismember("fractureJump", physname)
    
        Prec = efemPrec(debugflag, generalsolver, obj.nsyTol);
+       ChronosFlag = true;
+
+   % Exactly 3 physics: ('displacements' AND 'pressure' AND 'saturation') -> White et al. (2019)
+   elseif numel(unique(physname)) == 3 && ...
+          ismember("displacements", physname) && ...
+          ismember("pressure", physname) && ...
+          ismember("saturation", physname)
+   
+       Prec = fixedStress(debugflag, generalsolver, 'flowPreconditioner', 'CPR');
        ChronosFlag = true;
    
    % Any other combination of allowed physics not explicitly supported

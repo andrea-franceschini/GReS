@@ -14,6 +14,11 @@ function A = Compute(obj,A,varargin)
    % Multiphase system is nonsymmetric
    obj.PrecSym = false;
 
+   % Compute and apply Ruiz diagonal scaling if requested
+   if ~isempty(obj.Ruiz) && isa(obj.Ruiz, 'RuizScaling') && obj.Ruiz.scalingFlag
+      A = obj.Ruiz.Compute(A);
+   end
+
    % Extract block matrices and assembled sparse matrix
    if iscell(A)
       A11 = A{1,1};
@@ -33,10 +38,34 @@ function A = Compute(obj,A,varargin)
    obj.np = size(A11, 1);
    np = obj.np;
 
-   % Decoupling weights alpha based on cprType
+   % Decoupling weights alpha and saturation factor d12 based on cprType
+   % In GReS block ordering:
+   % Row 1 = wetting mass balance, Row 2 = non-wetting mass balance
+   % Col 1 = pressure (p), Col 2 = saturation (s)
+   % Thus A12 = dr_w/ds (Ass in White et al.), A22 = dr_nw/ds (Aps in White et al.)
+   %      A11 = dr_w/dp (Asp in White et al.), A21 = dr_nw/dp (App in White et al.)
    switch lower(string(obj.cprType))
       case {"true", "true-impes", "trueimpes"}
-         % True-IMPES: physical volume-scaling using fluid phase densities
+         % True-IMPES reduction via column-sum lumping (Eq 36a-36b, White et al. 2019):
+         % Ass ≈ D_ss = diag(Ass^T * e), Aps ≈ D_ps = diag(Aps^T * e)
+         e = ones(size(A12, 1), 1);
+         d_ss = full(A12' * e);
+         d_ps = full(A22' * e);
+         alpha = zeros(size(d_ss));
+         valid = abs(d_ss) > 1e-14;
+         alpha(valid) = d_ps(valid) ./ d_ss(valid);
+
+      case {"quasi", "quasi-impes", "quasiimpes"}
+         % Quasi-IMPES reduction via diagonal extraction (Eq 37a-37b, White et al. 2019):
+         % Ass ≈ D_ss = diagm(Ass), Aps ≈ D_ps = diagm(Aps)
+         d_ss = full(diag(A12));
+         d_ps = full(diag(A22));
+         alpha = zeros(size(d_ss));
+         valid = abs(d_ss) > 1e-14;
+         alpha(valid) = d_ps(valid) ./ d_ss(valid);
+
+      case {"pvt", "physical"}
+         % Physical volume-scaling using fluid phase densities rho_nw(p) / rho_w(p)
          alpha = [];
          if ~isempty(obj.domain)
             try
@@ -47,55 +76,46 @@ function A = Compute(obj,A,varargin)
                   pCells = p(cIdx);
                   rhoW = tpSolver.props.wet.density(pCells);
                   rhoNW = tpSolver.props.nwet.density(pCells);
-                  alpha = full(value(rhoW ./ rhoNW));
+                  alpha = - full(value(rhoNW ./ rhoW));
                end
             catch
                alpha = [];
             end
          end
-
-         % Fallback to Quasi-IMPES if fluid properties unavailable
+         d_ss = full(diag(A12));
          if isempty(alpha)
-            d12 = full(diag(A12));
-            d22 = full(diag(A22));
-            alpha = zeros(size(d22));
-            valid = abs(d22) > 1e-14;
-            alpha(valid) = -d12(valid) ./ d22(valid);
+            d_ps = full(diag(A22));
+            alpha = zeros(size(d_ss));
+            valid = abs(d_ss) > 1e-14;
+            alpha(valid) = d_ps(valid) ./ d_ss(valid);
          end
 
-      case {"quasi", "quasi-impes", "quasiimpes"}
-         % Quasi-IMPES: algebraic diagonal decoupling from Jacobian
-         d12 = full(diag(A12));
-         d22 = full(diag(A22));
-         alpha = zeros(size(d22));
-         valid = abs(d22) > 1e-14;
-         alpha(valid) = -d12(valid) ./ d22(valid);
-
       otherwise
-         warning('cprPrec:UnknownType', 'Unknown cprType "%s". Defaulting to "quasi".', obj.cprType);
-         d12 = full(diag(A12));
-         d22 = full(diag(A22));
-         alpha = zeros(size(d22));
-         valid = abs(d22) > 1e-14;
-         alpha(valid) = -d12(valid) ./ d22(valid);
+         warning('CPR:UnknownType', 'Unknown cprType "%s". Defaulting to "quasi".', obj.cprType);
+         d_ss = full(diag(A12));
+         d_ps = full(diag(A22));
+         alpha = zeros(size(d_ss));
+         valid = abs(d_ss) > 1e-14;
+         alpha(valid) = d_ps(valid) ./ d_ss(valid);
    end
 
    obj.alpha = alpha(:);
+   obj.d12 = d_ss(:);
+   obj.A22 = A22;
 
-   % Decoupled pressure operator: Ap = A11 + diag(alpha)*A21
+   % Decoupled pressure operator (Eq 38, White et al. 2019):
+   % S_pp = A21 - diag(alpha) * A11
    W = sparse(1:np, 1:np, obj.alpha, np, np);
-   obj.Ap = A11 + W * A21;
+   obj.Ap = A21 - W * A11;
 
-   % Determine symmetry of Ap
-   normAp = norm(obj.Ap, 'fro');
-   if normAp > 1e-12
-      symAp = (norm(obj.Ap - obj.Ap', 'fro') / normAp) < 0.05;
-   else
-      symAp = false;
-   end
+   % Multiphase pressure operator with upwinded mobilities is non-symmetric
+   symAp = false;
 
-   % Test space: constant vector for pressure
+   % Test space: constant vector for pressure (scaled if Ruiz scaling is active)
    TV0 = ones(np, 1);
+   if ~isempty(obj.Ruiz) && isa(obj.Ruiz, 'RuizScaling') && obj.Ruiz.scalingFlag
+      TV0 = obj.Ruiz.applyDinv(TV0, 1);
+   end
 
    % Stage 1: Compute AMG for decoupled pressure equation
    if ~isempty(obj.AMGP)

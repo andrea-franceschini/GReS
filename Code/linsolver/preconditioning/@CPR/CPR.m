@@ -1,5 +1,5 @@
-classdef cprPrec < preconditioner
-% CPRPREC Constrained Pressure Residual (CPR) Preconditioner.
+classdef CPR < preconditioner
+% CPR Constrained Pressure Residual (CPR) Preconditioner.
 %
 % This class implements a two-stage multiplicative Constrained Pressure
 % Residual (CPR) preconditioner derived from the abstract 'preconditioner'
@@ -50,7 +50,7 @@ classdef cprPrec < preconditioner
 
    end
 
-   properties (Access = private)
+   properties (SetAccess = public, GetAccess = public)
 
       % Inner AMG for decoupled pressure equation
       AMGP = []
@@ -82,6 +82,12 @@ classdef cprPrec < preconditioner
       % Decoupling weights: alpha
       alpha = []
 
+      % Saturation diagonal / column-sum factor: D_ss (Eq 36-37 in White et al. 2019)
+      d12 = []
+
+      % Coupling block: A22 (A_ps in White et al. 2019)
+      A22 = []
+
       % Decoupled pressure matrix: Ap = A11 + diag(alpha)*A21
       Ap = []
 
@@ -107,33 +113,44 @@ classdef cprPrec < preconditioner
       % Compute the preconditioner
       A = Compute(obj,A,varargin)
 
-      % Left preconditioner application
+      % Left preconditioner application (Algorithm 1, White et al. 2019)
       function x = ApplyLeft(obj,b,varargin)
          if isempty(obj.Amat)
-            error('cprPrec must be computed before applying.');
+            error('CPR must be computed before applying.');
          end
 
          np = obj.np;
-         r1 = b(1:np);
-         r2 = b(np+1:end);
+         r1 = b(1:np);       % Wetting mass balance residual (ys in paper)
+         r2 = b(np+1:end);   % Non-wetting mass balance residual (yp in paper)
 
-         % 1. Restriction to decoupled pressure space: r_p = r_1 + alpha .* r_2
-         rp = r1 + obj.alpha .* r2;
-
-         % 2. Pressure solve with AMG (or direct solve fallback)
-         if ~isempty(obj.AMGP) && ~isempty(obj.AMGP.Prec)
-            xp = obj.AMGP.ApplyLeft(rp, obj.Ap);
-         else
-            xp = obj.Ap \ rp;
+         % 1. Step 3 in Algorithm 1: Jacobi saturation update zs = (D_ss^{(CPR)})^{-1} * r1
+         zs = zeros(size(r1));
+         if ~isempty(obj.d12)
+            valid_d12 = abs(obj.d12) > 1e-14;
+            zs(valid_d12) = r1(valid_d12) ./ obj.d12(valid_d12);
          end
 
-         % 3. Prolongate pressure correction: x^(1) = [xp; 0]
-         x1 = [xp; zeros(size(r2))];
+         % 2. Step 4 in Algorithm 1: Coupling update wp = r2 - A22 * zs
+         if ~isempty(obj.A22)
+            wp = r2 - obj.A22 * zs;
+         else
+            wp = r2;
+         end
 
-         % 4. Residual update: r^(1) = b - A * x^(1)
+         % 3. Step 5 in Algorithm 1: AMG pressure solve: Ap * zp = wp
+         if ~isempty(obj.AMGP) && ~isempty(obj.AMGP.Prec)
+            zp = obj.AMGP.ApplyLeft(wp, obj.Ap);
+         else
+            zp = obj.Ap \ wp;
+         end
+
+         % 4. Prolongate both pressure and saturation: x^(1) = [zp; zs]
+         x1 = [zp; zs];
+
+         % 5. Step 6 in Algorithm 1: Residual update r^(1) = b - Amat * x^(1)
          r_upd = b - obj.Amat * x1;
 
-         % 5. Second-stage smoothing on updated residual
+         % 6. Step 7 in Algorithm 1: Second-stage smoothing on updated residual using FSAI
          switch lower(obj.smootherType)
             case {'fsai', 'afsai'}
                x2 = obj.FSAI.ApplyLeft(r_upd);
@@ -143,7 +160,7 @@ classdef cprPrec < preconditioner
                x2 = obj.FSAI.ApplyLeft(r_upd);
          end
 
-         % 6. Multiplicative combination
+         % 7. Step 8 in Algorithm 1: Multiplicative combination
          x = x1 + x2;
       end
 
@@ -156,13 +173,16 @@ classdef cprPrec < preconditioner
       function updateStateBlocks(obj, A)
          if iscell(A)
             obj.Amat = cell2matrix(A);
+            obj.A22 = A{2,2};
          else
             obj.Amat = A;
+            np = obj.np;
+            obj.A22 = A(np+1:end, np+1:end);
          end
       end
 
       % Constructor
-      function obj = cprPrec(debugflag,problemsolver,varargin)
+      function obj = CPR(debugflag,problemsolver,varargin)
 
          % Call base class constructor
          obj = obj@preconditioner();

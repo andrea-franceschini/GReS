@@ -79,7 +79,7 @@ classdef BiotFullyCoupled < PhysicsSolver
       obj.domain.J{obj.fldFlow,obj.fldMech} = obj.Q'/dt;
 
       % add rhs from coupling contribution
-      rhsMech = computeRhs(obj);
+      [rhsMech, rhsFlow] = computeRhs(obj);
       obj.domain.rhs{obj.fldMech} = obj.domain.rhs{obj.fldMech} + rhsMech;
       obj.domain.rhs{obj.fldFlow} = obj.domain.rhs{obj.fldFlow} + rhsFlow;
 
@@ -129,13 +129,16 @@ classdef BiotFullyCoupled < PhysicsSolver
 
         for cTag = 1:cells.nTag
 
+          % extract cells belonging to subregion
+          subRegionCells = subCells(cells.tag(subCells) == cTag);
+          if isempty(subRegionCells)
+            continue;
+          end
+
           % extract the constitutive law
           constLaw = obj.domain.materials.getConstitutiveLaw(cTag);
 
           rock = obj.domain.materials.getPorousRock(cTag);
-
-          % extract cells belonging to subregion
-          subRegionCells = subCells(cells.tag(subCells) == cTag);
 
           for vtkId = cells.vtkTypes
 

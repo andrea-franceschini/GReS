@@ -35,25 +35,131 @@ classdef RuizScaling < handle
       end
 
       % Compute the Ruiz-scaled matrix and store the diagonal scaling
-      % matrix
-      function [Abal] = Compute(obj, A) 
-         if obj.scalingFlag
-            if ~iscell(A)
-               warning('Non cell A is not supported');
-               obj.scalingFlag = false;
-               return;
+      % matrix. Supports optional key-value pair 'freezeBlocks', vec
+      function [Abal] = Compute(obj, A, varargin) 
+         if ~obj.scalingFlag
+            Abal = A;
+            return;
+         end
+
+         if ~iscell(A)
+            warning('Non cell A is not supported');
+            obj.scalingFlag = false;
+            Abal = A;
+            return;
+         end
+
+         % Parse optional key-value pairs
+         freezeBlocks = [];
+         for k = 1:2:numel(varargin)
+            if k+1 <= numel(varargin)
+               if strcmpi(varargin{k}, 'freezeBlocks')
+                  freezeBlocks = varargin{k+1};
+               end
             end
-   
+         end
+
+         if isempty(freezeBlocks) || isempty(obj.D)
+            % Compute full Ruiz equilibration
             [Abal, obj.D] = ruiz_block_symmetric(A, obj.maxit, obj.tol, obj.verb);
-            
-            % Get the number of blocks
             obj.nBlocks = numel(obj.D);
-  
-            % Get the full sparse matrix
             obj.fullD = vertcat(obj.D{:});
          else
-            Abal = A;
+            % Compute Ruiz equilibration with specified blocks frozen
+            Abal = obj.computeFreezeBlocks(A, freezeBlocks);
          end
+      end
+
+      % Internal method to compute Ruiz scaling while keeping specified blocks frozen
+      function [Abal] = computeFreezeBlocks(obj, A, frozenBlocks)
+         nb = size(A, 1);
+         blksize = zeros(nb, 1);
+
+         % Get the size of the matrices
+         for i = 1:nb
+            blksize(i) = size(A{i,1}, 1);
+         end
+
+         D_old = obj.D;
+         D_init = cell(nb, 1);
+         % Check if frozen values
+         for i = 1:nb
+            if ismember(i, frozenBlocks)
+               D_init{i} = D_old{i};
+            else
+               D_init{i} = ones(blksize(i), 1);
+            end
+         end
+
+         % Initialize Abal
+         Abal = A;
+
+         % Compute the frozen balanced matrix
+         for i = 1:nb
+            di = D_init{i};
+            for j = 1:nb
+               Abal{i,j} = di .* Abal{i,j} .* (D_init{j}.');
+            end
+         end
+
+         % Get the non frozen diagonal entries
+         activeBlocks = setdiff(1:nb, frozenBlocks);
+         D_act = cell(nb, 1);
+         for i = 1:nb
+            D_act{i} = ones(blksize(i), 1);
+         end
+
+         % Compute the new diagonal entries
+         for k = 1:obj.maxit
+            s = cell(nb, 1);
+            conv = 0;
+            for i = activeBlocks
+               ri = zeros(blksize(i), 1);
+               for j = 1:nb
+                  if ~isempty(Abal{i,j})
+                     ri = ri + sum(abs(Abal{i,j}).^2, 2);
+                  end
+               end
+               ri = max(sqrt(ri), 1e-15);
+               s{i} = 1 ./ sqrt(ri);
+               conv = max(conv, max(abs(s{i} - 1)));
+            end
+
+            if conv < obj.tol, break; end
+
+            for i = activeBlocks
+               D_act{i} = D_act{i} .* s{i};
+            end
+
+            for j = activeBlocks
+               sj = s{j}.';
+               for i = 1:nb
+                  if ~isempty(Abal{i,j})
+                     Abal{i,j} = Abal{i,j} .* sj;
+                  end
+               end
+            end
+            for i = activeBlocks
+               si = s{i};
+               for j = 1:nb
+                  if ~isempty(Abal{i,j})
+                     Abal{i,j} = si .* Abal{i,j};
+                  end
+               end
+            end
+         end
+
+         % Finish setting the diagonal scaling with both frozen and new
+         % entries
+         for i = 1:nb
+            if ismember(i, frozenBlocks)
+               obj.D{i} = D_old{i};
+            else
+               obj.D{i} = D_act{i};
+            end
+         end
+         obj.nBlocks = numel(obj.D);
+         obj.fullD = vertcat(obj.D{:});
       end
 
       % Scale a block matrix

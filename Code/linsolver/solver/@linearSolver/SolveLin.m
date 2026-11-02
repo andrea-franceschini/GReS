@@ -59,6 +59,9 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    backupA = A;
    backupb = b;
 
+   % Save system to .mat if requested
+   saveLinearSystem(obj, backupA, backupb, obj.nSolve + 1);
+
    % Check if this step is linear to use maximum resolution needed
    isLinear = getIsLinear(obj.generalsolver);
 
@@ -72,7 +75,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    
    % Contact has opened a fracture or something similar so amg does not converge well. 
    % Directly recompute the preconditioner
-   if obj.Prec.phys == 1.1 
+   if isequal(obj.Prec.phys, 1.1)
       if obj.generalsolver.iterConfig > obj.iterConfigOld && obj.iterConfigOld == 1
          % If the SAM is being used then it is better to just compute it
          % wrt computing the whole preconditioner
@@ -118,10 +121,19 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       else
          obj.Prec.Compute(A,symMat);
       end
-      T_setup = toc(time_start);
+      T_setup_wall = toc(time_start);
+
+      % If the preconditioner can provide a recomputation-specific setup time
+      % (e.g. fixedStress with linear mechanics, where AMGMech is recycled
+      % and only the flow part is recomputed), use that for the convergence strategy
+      if ismethod(obj.Prec, 'getRecomputeSetupTime')
+         T_setup = obj.Prec.getRecomputeSetupTime(T_setup_wall);
+      else
+         T_setup = T_setup_wall;
+      end
 
       % Update stats
-      obj.aTimeComp = obj.aTimeComp + T_setup;
+      obj.aTimeComp = obj.aTimeComp + T_setup_wall;
       obj.nComp = obj.nComp + 1;
       obj.whenComputed(length(obj.whenComputed) + 1) = time;
       obj.params.nSolveSinceLastPrecComp = 0;
@@ -248,8 +260,8 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % Check if the SAM needs to be (re)computed
    obj.convStrat.recomputeSAM(obj,obj.SAM,Tend);
 
-   % Store the new starting vector
-   obj.x0 = x;
+   % Restore the new starting vector
+   obj.x0 = zeros(size(x));
 end
 
 
@@ -473,3 +485,35 @@ end
 
 
 
+function saveLinearSystem(obj, A, b, currentSolve)
+   if strcmpi('all',obj.saveMatType) || ...
+         (strcmpi('selected',obj.saveMatType) && ismember(currentSolve,obj.saveMatSolves))
+      coordinates = getCoordinates(obj.generalsolver);
+      filename = fullfile(sprintf('linearSystem_solve%d.mat', currentSolve));
+   
+      ruizFlag = false;
+      if ~isempty(obj.Ruiz)
+         ruizFlag = obj.Ruiz.scalingFlag;
+      end
+   
+      preconditioner = '';
+      if ~isempty(obj.Prec)
+         preconditioner = class(obj.Prec);
+      end
+      
+      save(filename, 'A', 'b', 'coordinates', 'ruizFlag', 'preconditioner');
+      gresLog().log(3, 'Saved linear system solve %d to %s\n', currentSolve, filename);
+   end
+end
+
+function [coordinates] = getCoordinates(generalsolver)
+   nDom = numel(generalsolver.domains);
+   if nDom == 1
+      coordinates = generalsolver.domains(1).grid.coordinates;
+   else
+      coordinates = cell(nDom, 1);
+      for d = 1:nDom
+         coordinates{d} = generalsolver.domains(d).grid.coordinates;
+      end
+   end
+end

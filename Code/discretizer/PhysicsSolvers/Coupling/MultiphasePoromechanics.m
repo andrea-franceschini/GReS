@@ -45,7 +45,6 @@ classdef MultiphasePoromechanics < BiotFullyCoupled
       % assign coupling blocks to jacobian
       obj.domain.J{obj.fldMech,obj.fldP} = -obj.Q;
 
-
       dofm = obj.domain.dofm;
       flowEnts = dofm.getFieldCells("pressure");
       mechEnts = dofm.getActiveEntities("displacements",1);
