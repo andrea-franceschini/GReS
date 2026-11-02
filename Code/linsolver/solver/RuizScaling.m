@@ -14,10 +14,10 @@ classdef RuizScaling < handle
       verb = false
       
       % Max number of iter to compute D
-      maxit
+      maxit = 10
 
       % Tolerance to compute D to
-      tol
+      tol = 1e-3
 
    end
 
@@ -29,9 +29,15 @@ classdef RuizScaling < handle
    methods
       % Initialize the class
       function obj = RuizScaling(debugFlag, maxitin, tolin)
-         obj.maxit = maxitin;
-         obj.tol = tolin;
-         obj.verb = debugFlag;
+         if nargin > 1
+            obj.verb = debugFlag;
+         end
+         if nargin > 2
+            obj.maxit = maxitin;
+         end
+         if nargin > 3
+            obj.tol = tolin;
+         end
       end
 
       % Compute the Ruiz-scaled matrix and store the diagonal scaling
