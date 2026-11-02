@@ -463,6 +463,11 @@ function [A] = fixPattern(A)
    N = size(A, 1);
    for j = 1:N
       for i = 1:j
+         if isempty(A{i,j}) && ~isempty(A{j,i})
+            A{i,j} = sparse(size(A{j,i},2), size(A{j,i},1));
+         elseif ~isempty(A{i,j}) && isempty(A{j,i})
+            A{j,i} = sparse(size(A{i,j},2), size(A{i,j},1));
+         end
          patt = spones(A{i,j}) - spones(A{j,i}');
          if nnz(patt)
             mask1 = (patt ==  1);  % in A{i,j} but not A{j,i}'
@@ -485,9 +490,15 @@ end
 
 
 
-function saveLinearSystem(obj, A, b, currentSolve)
+function saveLinearSystem(obj, A, b, currentSolve,varargin)
+   if ~isempty(varargin)
+      forcing = strcmpi(varargin{1},'true');
+   else
+      forcing = false;
+   end
    if strcmpi('all',obj.saveMatType) || ...
-         (strcmpi('selected',obj.saveMatType) && ismember(currentSolve,obj.saveMatSolves))
+         (strcmpi('selected',obj.saveMatType) && ismember(currentSolve,obj.saveMatSolves)) || ...
+         forcing
       coordinates = getCoordinates(obj.generalsolver);
       filename = fullfile(sprintf('linearSystem_solve%d.mat', currentSolve));
    
