@@ -1,0 +1,14 @@
+<BoundaryConditions>
+
+  <BC name="bottomPressure" type="dirichlet" field="surface"
+      variable="pressure" entityListType="tags" entityList="1">
+    <BCevent time="0.0" value="0.0"/>
+  </BC>
+
+  <BC name="topPressure" type="dirichlet" field="surface"
+      variable="pressure" entityListType="tags" entityList="2">
+    <BCevent time="0.0" value="0.0"/>
+    <BCevent time="1.0" value="10.0"/>
+  </BC>
+
+</BoundaryConditions>

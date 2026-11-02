@@ -34,9 +34,7 @@ classdef (Abstract) PhysicsSolver < handle
     % handle to domain properties
     domain
     simparams
-    mesh
-    elements
-    faces
+    grid
   end
 
   methods
@@ -45,28 +43,25 @@ classdef (Abstract) PhysicsSolver < handle
       % inputStruct: struct with additional solver-specific parameters
       obj.domain = domain;
       obj.simparams = domain.simparams;
-      obj.mesh = domain.grid.topology;
-      obj.faces = domain.grid.faces;
-      obj.elements = domain.grid.cells;
+      obj.grid = domain.grid;
 
     end
   end
 
   methods (Abstract)
-
     % mandatory methods that need to be implemented in any physicsSolver
 
     % read the input data of the solver and assign variables to cell tags
-    registerSolver(obj,input);
+    registerSolver(obj,varargin);
 
     % compute the jacobian and the rhs
     assembleSystem(obj,varargin);
 
     % apply the boundary condition to the jacobian and rhs
-    applyBC(obj,bcId,t);
+    %applyBC(obj,bcId,t);
 
     % apply the dirichlet values to the state object
-    applyDirVal(obj,bcId,t);
+    %applyDirVal(obj,bcId,t);
     
     % update the state variables after solving the linear system
     updateState(obj,solution);
@@ -75,84 +70,156 @@ classdef (Abstract) PhysicsSolver < handle
     [cellData,pointData] = writeVTK(obj,interpolationFactor,t);
 
     % write history to MAT-file
-    writeMatFile(obj,interpolationFactor,tID);
-
+    writeSolution(obj,interpolationFactor,tID);
   end
 
   methods (Abstract, Static)
-
     % get the list of variable fields affected by the solver
-    getField();
 
+    getField();
   end
 
 
   methods
-
     % interface to get and set the state object from the solver
 
-    function stat = getState(obj,varName)
+    function state = getState(obj,varargin)
       % get a copy of a state variable field
-      if nargin < 2
-        stat = obj.domain.getState();
-      else
-        if ~isfield(obj.domain.getState().data,varName)
-          error("Variable %s does not exist in the State object",varName)
-        end
-        stat = obj.domain.getState().data.(varName);
-      end
+      state = obj.domain.getState(varargin{:});
     end
 
-    function stat = getStateOld(obj,varName)
+    function state = getStateOld(obj,varargin)
       % get a copy of a state variable field
-      if nargin < 2
-        stat = obj.domain.getStateOld();
-      else
-        if ~isfield(obj.domain.getStateOld().data,varName)
-          error("Variable %s does not exist in the StateOld object",varName)
-        end
-        stat = obj.domain.getStateOld().data.(varName);
-      end
+      state = obj.domain.getStateOld(varargin{:});
+    end
+
+    function state = getStateInit(obj,varargin)
+      % get a copy of a state variable field
+      state = obj.domain.getStateInit(varargin{:});
+    end
+
+    function setState(obj,varargin)
+      % get a copy of a state variable field
+      obj.domain.setState(varargin{:});
+    end
+
+    function setStateOld(obj,varargin)
+      % get a copy of a state variable field
+      obj.domain.setStateOld(varargin{:});
+    end
+
+    function setStateInit(obj,varargin)
+      % get a copy of a state variable field
+      obj.domain.setStateInit(varargin{:});
     end
 
     function advanceState(obj,varargin)
-
       % base method to advance the state after reaching convergence
-      % hard copy the new state object
-      obj.domain.stateOld = copy(obj.domain.state);
-
+      % copy variables from current state to old state
+      setStateOld(obj,getState(obj));
     end
 
     function goBackState(obj,varargin)
       % base method to move back the state when convergence is not reached
 
-      obj.domain.state = copy(obj.domain.stateOld);
-
+      setState(obj,getStateOld(obj));
     end
 
     function hasConfigurationChanged = updateConfiguration(obj)
-
       % base physicsSolver class implements no configuration update
       hasConfigurationChanged = false;
-
     end
 
     function resetConfiguration(obj)
+      % reset the physicsSolver configuraiton
+    end
 
-      % base physicsSolver class implements no configuration reset
+    function initialize(obj)
+      % initialize the physics solver just before the simulation starts
+    end
 
+    function timeStepSetup(obj)
+      % prepare the physics solver at the begin of each time step
     end
 
     function finalizeOutput(obj)
-
       % override this method in a PhysicsSolver to produce additional
-      % output files other then the general Discretizer.outState pvd file
-      return
+      % output files other than the general Discretizer.outState pvd file
     end
 
+    function applyDirVal(obj,bcId,varargin)
+      if ~BCapplies(obj,bcId)
+        return
+      end
+
+      if ~isEssential(obj.domain.bcs,bcId)
+        return
+      end
+
+      if nargin == 3
+        type = obj.domain.bcs.getType(bcId);
+        assert(~BCtype.isCustomBC(type),"Base applyBC method for custom BC requires " + ...
+          "dofs and values to be already specified")
+        t = varargin{1};
+        dofs = obj.domain.bcs.getStateDofs(bcId);
+        vals = obj.domain.bcs.getVals(bcId,t);
+      elseif nargin==4
+        dofs = varargin{1};
+        vals = varargin{2};
+      else
+        error("Wrong number of input for applyBC function")
+      end
+
+      bcVar = obj.domain.bcs.getVariable(bcId);
+
+      v = obj.getState(bcVar);
+      v(dofs) = vals;
+      obj.setState(v,bcVar);
+    end
+
+    function applyBC(obj,bcId,varargin)
+      % applyBC apply a boundary condition to the system
+      %
+      %   applyBC(obj, bcId, t) applies the boundary condition identified
+      %   by bcId and retreive bc dofs and values at time t
+      %
+      %   applyBC(obj, bcId, dofs, vals) applies the boundary condition
+      %   using explicitly provided degrees of freedom dofs and
+      %   corresponding values vals.
+      %
+      %   - for custom boundary conditions, dofs and values must be
+      %   provided explicitely
+
+      bcs = obj.domain.bcs;
+
+      if ~BCapplies(obj,bcId)
+        return
+      end
+
+      if nargin == 3
+        type = bcs.getType(bcId);
+        assert(~BCtype.isCustomBC(type),"Base applyBC method for custom BC requires " + ...
+          "dofs and values to be already specified")
+        t = varargin{1};
+        dofs = bcs.getDofs(bcId,obj.domain.dofm);
+        vals = bcs.getVals(bcId,t);
+      elseif nargin==4
+        dofs = varargin{1};
+        vals = varargin{2};
+      else
+        error("Wrong number of input for applyBC function")
+      end
+
+      % standard application of a boundary condition
+
+      if isEssential(bcs,bcId)
+        obj.applyDirBC(bcId,dofs,vals);
+      else
+        obj.applyNeuBC(bcId,dofs,vals);
+      end
+    end
 
     function applyNeuBC(obj,bcId,bcDofs,bcVals)
-
       if ~BCapplies(obj,bcId)
         return
       end
@@ -168,11 +235,9 @@ classdef (Abstract) PhysicsSolver < handle
       bcVals = bcVals(~id);
 
       obj.domain.rhs{bcId}(bcDofs) = obj.domain.rhs{bcId}(bcDofs) - bcVals;
-
     end
 
-    function applyDirBC(obj,bcId,bcDofs,bcVals)
-
+    function applyDirBC(obj,bcId,bcDofs,varargin)
       % Standard application of Dirichlet boundary condition to the jacobian.
       % This method works with incremental linear system du = J\(-rhs)
 
@@ -183,10 +248,10 @@ classdef (Abstract) PhysicsSolver < handle
       % remove inactive dofs
       id = bcDofs == 0;
       bcDofs = bcDofs(~id);
-      if nargin > 3
-        bcVals = bcVals(~id);
-      end
 
+      % if nargin > 3
+      %   bcVals = bcVals(~id);
+      % end
 
       % sort bcDofs to improve sparse access performance
       [bcDofs,sortId] = sort(bcDofs);
@@ -198,9 +263,11 @@ classdef (Abstract) PhysicsSolver < handle
 
       % zero out rows (use transpose trick)
       for j = 1:nV
-        obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
-        obj.domain.J{bcVarId,j}(:,bcDofs) = 0;
-        obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
+        if ~isempty(obj.domain.J{bcVarId,j})
+          obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
+          obj.domain.J{bcVarId,j}(:,bcDofs) = 0;
+          obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
+        end
       end
 
       % apply BC to multi-domain jacobian coupling blocks
@@ -216,11 +283,13 @@ classdef (Abstract) PhysicsSolver < handle
       % symmetry)
       if isSymmetric(obj)
         for i = 1:nV
-          obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+          if ~isempty(obj.domain.J{i,bcVarId})
+            obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
+          end
         end
 
         for iI = 1:numel(obj.domain.interfaces)
-          if ~isempty(obj.domain.Jum{bcVarId})
+          if ~isempty(obj.domain.Jum{iI}{bcVarId})
             obj.domain.Jmu{iI}{bcVarId}(:,bcDofs) = 0;
           end
         end
@@ -233,18 +302,14 @@ classdef (Abstract) PhysicsSolver < handle
       J = J + sparse(bcDofs, bcDofs, ones(size(bcDofs)), size(J,1), size(J,2));
       obj.domain.J{bcVarId,bcVarId} = J;
 
-      if nargin > 3
-        obj.domain.rhs{bcVarId}(bcDofs) = bcVals(sortId);
-      else
-        obj.domain.rhs{bcVarId}(bcDofs) = 0;
-      end
-
+      % if nargin > 3
+      %   obj.domain.rhs{bcVarId}(bcDofs) = bcVals(sortId);
+      % else
+      obj.domain.rhs{bcVarId}(bcDofs) = 0;
+      %end
     end
 
-
-
     function J = getJacobian(obj,varargin)
-
       % get the Jacobian blocks affected by the solver
       % differently from the getJacobian() in Discretizer, this method
       % returns a matrix ready to perform computations
@@ -256,23 +321,23 @@ classdef (Abstract) PhysicsSolver < handle
       end
 
       J = cell2matrix(J);
-
     end
 
     function out = BCapplies(obj,bcId)
-
       bcVar = obj.domain.bcs.getVariable(bcId);
       out = any(strcmp(obj.getField(),bcVar));
-
     end
-
 
     function out = isSymmetric(obj)
-
       out = false;
       % optional solver query to know if a solver is symmetric or not
-
     end
+
+    function out = isLinear(obj)
+      out = false;
+      % optional solver query to know if a solver is symmetric or not
+    end
+
   end
 
 

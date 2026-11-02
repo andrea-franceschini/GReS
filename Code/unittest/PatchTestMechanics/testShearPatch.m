@@ -1,5 +1,5 @@
 classdef testShearPatch < matlab.unittest.TestCase
-  
+
   properties
     pathToFile
   end
@@ -7,11 +7,13 @@ classdef testShearPatch < matlab.unittest.TestCase
   methods(TestClassSetup)
     % Shared setup for the entire test class
     function setupOnce(testCase)
+      rmpath(genpath(fullfile(gres_root,...
+        "/Code/unittest/PatchTestMechanics/test")));
       testCase.pathToFile = fullfile(gres_root,...
         "/Code/unittest/PatchTestMechanics/shearPatch.xml");
     end
   end
-  
+
   methods(TestMethodSetup)
     % Setup for each test
   end
@@ -19,23 +21,123 @@ classdef testShearPatch < matlab.unittest.TestCase
   methods(Test)
     % Test methods
 
-    function testPatch(testCase)
+    function testPatchXML(testCase)
       gresLog().setVerbosity(-2);
-      simparams = SimulationParameters(testCase.pathToFile);
-      mesh = structuredMesh(1,1,1,[0 1],[0 1],[0 1]);
-      elems = Elements(mesh,2);
-      faces = Faces(mesh);
-      grid = struct('topology',mesh,'cells',elems,'faces',faces);
-      mat = Materials(testCase.pathToFile);
-      bc = Boundaries(testCase.pathToFile,grid);
-      domain = Discretizer('Boundaries',bc,...
-                            'Materials',mat,...
-                            'Grid',grid);
-      domain.addPhysicsSolver(testCase.pathToFile);
-      solver = NonLinearImplicit('simulationparameters',simparams,'domain',domain);
+      input = readInput(testCase.pathToFile);
+      simparams = SimulationParameters(input.SimulationParameters);
+      grid = structuredMesh(1,2,1,[0 1],[0 1],[0 1]);
+      mat = Materials(input.Materials);
+      bc = Boundaries(grid,input.BoundaryConditions);
+      printUtils = OutState('printTimes',1,'outputFile',"test");
+      domain = Discretizer('boundaries',bc,...
+                           'materials',mat,...
+                           'grid',grid);
+      domain.addPhysicsSolvers(input.Solver);
+      solver = NonLinearImplicit('simulationparameters',simparams,'domains',domain,'output',printUtils);
       solver.simulationLoop();
       gresLog().setVerbosity(-1);
-      verifyEqual(testCase,domain.state.data.stress(:,5),1.5*ones(8,1),"AbsTol",1e-9)
+      stress = domain.getState("stress");
+      verifyEqual(testCase,stress(:,5),1.5*ones(16,1),"AbsTol",1e-9)
+
+      % validate the vtk output
+      s = readstruct("test/output_00001/Domain_1.vtu","FileType","xml");
+      v = s.UnstructuredGrid.Piece.PointData.DataArray.Text;
+      v = str2num(v);
+      vv = zeros(12,3);
+      vv(7:end,1) = 1.0;
+      verifyEqual(testCase,v,vv,"AbsTol",1e-9)
+
+    end
+
+    function testPatchKV(testCase)
+      gresLog().setVerbosity(-2);
+
+      sim = struct('Start',0.0,...
+                   'End',3e0,...
+                   'DtInit',1.0,...
+                   'DtMax',1.0,...
+                   'DtMin',1.0,...
+                   'RelativeTolerance',1.e-8,...
+                   'AbsoluteTolerance',1.e-9);
+
+      simparams = SimulationParameters(sim);
+
+      grid = structuredMesh(1,1,1,[0 1],[0 1],[0 1]);
+      mat = Materials();
+      mat.addSolid('name',"solid",'cellTags',1);
+      mat.addConstitutiveLaw("solid","Elastic",'youngModulus',1e0,'poissonRatio',0.0);
+
+      bc = Boundaries(grid);
+      bc.addBC('name',"fix_bottom",...
+        'type',"Dirichlet",...
+        'field',"surface",...
+        'variable',"displacements",...
+        'entityListType',"tags",...
+        'entityList',1,...
+        'components',[1,2,3]);
+
+      bc.addBCEvent('fix_bottom','time',0,'value',0.0);
+
+      bc.addBC('name','top_fix',...
+        'type',"Dirichlet",...
+        'field',"surface",...
+        'variable',"displacements",...
+        'entityListType',"tags",...
+        'entityList',2,...
+        'components',3);
+
+      bc.addBCEvent('top_fix','time',0,'value',0.0);
+
+      bc.addBC('name','top_disp',...
+        'type',"Dirichlet",...
+        'field',"surface",...
+        'variable',"displacements",...
+        'entityListType',"tags",...
+        'entityList',2,...
+        'components',1);
+
+      bc.addBCEvent('top_disp','time',0,'value',0.0);
+      bc.addBCEvent('top_disp','time',5.0,'value',5.0);
+
+
+      domain = Discretizer('boundaries',bc,...
+                           'materials',mat,...
+                           'grid',grid);
+      domain.addPhysicsSolver('Poromechanics');
+      solver = NonLinearImplicit('simulationparameters',simparams,'domains',domain);
+      solver.simulationLoop();
+      gresLog().setVerbosity(-1);
+      stress = domain.getState("stress");
+      verifyEqual(testCase,stress(:,5),1.5*ones(8,1),"AbsTol",1e-9)
+
+
+      % testing restart and rerun capabilities
+      sim.End = 5.0;
+      simparams = SimulationParameters(sim);
+      restart = struct('time',[1.0,3.0,5.0],'overwrite',false,'filename','test/restart');
+      printUtils = OutState('restart',restart);
+      solver.simparams = simparams;
+      solver.output = printUtils;
+      solver.simulationLoop();
+      stress = domain.getState("stress");
+      verifyEqual(testCase,stress(:,5),2.5*ones(8,1),"AbsTol",1e-9)
+
+
+      solver = SolutionScheme.loadRestart('test/restart_00003.mat');
+      solver.simulationLoop("restart");
+      stress = domain.getState("stress");
+      verifyEqual(testCase,stress(:,5),2.5*ones(8,1),"AbsTol",1e-9)
+
+      sim.End = 4.0;
+      simparams = SimulationParameters(sim);
+      restart = struct('dt',2.0,'overwrite',false,'filename','test/restart');
+      printUtils = OutState('restart',restart);
+      solver = SolutionScheme.loadRestart('test/restart_00001.mat');
+      solver.simparams = simparams;
+      solver.output = printUtils;
+      solver.simulationLoop("restart");
+      stress = domain.getState("stress");
+      verifyEqual(testCase,stress(:,5),2.5*ones(8,1),"AbsTol",1e-9)
 
 
     end

@@ -1,286 +1,325 @@
 #include "VTUWriter.hpp"
+
+#include <algorithm>
 #include <cassert>
-#include <iostream>
-#include <cmath>
+#include <limits>
 
-void VTUWriter::write_point_data(std::ostream &os)
+namespace
 {
-  if( !m_scalar_point_data_present && !m_vector_point_data_present )
-  {
-    return;
-  }
-  os << "<PointData>\n";
-  for( auto it = m_point_data_int.begin(); it != m_point_data_int.end(); ++it )
-  {
-    it->write(os);
-  }
-  for( auto it = m_point_data_dbl.begin(); it != m_point_data_dbl.end(); ++it )
-  {
-    it->write(os);
-  }
-  os << "</PointData>\n";
+constexpr std::uint64_t BLOCK_HEADER_BYTES = sizeof(std::uint64_t);
+
+inline void advanceOffset(std::uint64_t& offset, std::uint64_t payloadBytes)
+{
+  offset += BLOCK_HEADER_BYTES + payloadBytes;
 }
 
-void VTUWriter::write_header( const int n_vertices,
-                              const int n_elements,
-                              std::ostream &os )
+template<typename T>
+void writeRawBlock(std::ostream& os, T const* data, std::uint64_t count)
 {
-  os << "<VTKFile type=\"UnstructuredGrid\" version=\"1.0\">\n";
-  os << "<UnstructuredGrid>\n";
-  write_time( os );
-  os << "<Piece NumberOfPoints=\"" << n_vertices << "\" NumberOfCells=\""
-     << n_elements << "\">\n";
+  std::uint64_t const nBytes = count * sizeof(T);
+  os.write(reinterpret_cast<char const*>(&nBytes), sizeof(nBytes));
+  if (nBytes != 0)
+  {
+    os.write(reinterpret_cast<char const*>(data),
+             static_cast<std::streamsize>(nBytes));
+  }
+}
 }
 
-void VTUWriter::write_time( std::ostream &os )
+void VTUWriter::set_mesh(int const dim,
+                         int const numPoints,
+                         double const* const coord,
+                         int const numCells,
+                         int const numConnections,
+                         int const* const cells,
+                         int const* const cellVTKType,
+                         int const* const nVertices)
 {
-  os << "<FieldData>\n";
-  os << "<DataArray type=\"Float64\" Name=\"TIME\" NumberOfTuples=\"1\" format=\"ascii\" RangeMin=\""
-     << m_time << "\" RangeMax=\"" << m_time << "\">\n";
-  os << m_time << "\n";
-  os << "</DataArray>\n";
-  os << "</FieldData>\n";
-}
-
-void VTUWriter::write_footer( std::ostream &os )
-{
-  os << "</Piece>\n";
-  os << "</UnstructuredGrid>\n";
-  os << "</VTKFile>\n";
-}
-
-void VTUWriter::write_points( int const dim,
-                              int const numPoints,
-                              double const * const points,
-                              std::ostream &os )
-{
-  os << "<Points>\n";
-  os << "<DataArray type=\"Float64\" NumberOfComponents=\"3\" "
-        "format=\"ascii\">\n";
-
-  int k = 0;
-  for( int i = 0; i < numPoints; ++i )
-  {
-    for( int j = 0; j < dim; ++j )
-    {
-      os << points[i+j*numPoints];
-      if( ( ( k+1 ) / VALUES_IN_COLUMN ) * VALUES_IN_COLUMN == k+1 )
-      {
-        os << "\n";
-      }
-      else
-      {
-        os << " ";
-      }
-      k++;
-    }
-  }
-
-  os << "</DataArray>\n";
-  os << "</Points>\n";
-}
-
-void VTUWriter::write_cells( int const numCells,
-                             int const numConnections,
-                             int const * const cells,
-                             int const * const cellVTKType,
-                             int const * const n_vertices,
-                             std::ostream &os )
-{
-  os << "<Cells>\n";
-  /////////////////////////////////////////////////////////////////////////////
-  // List vertex id's i=0, ..., n_vertices associated with each cell c
-  os << "<DataArray type=\"Int64\" Name=\"connectivity\" "
-        "format=\"ascii\">\n";
-  for (int c = 0; c < numConnections; ++c)
-  {
-    os << cells[c];
-    if( ( ( c+1 ) / VALUES_IN_COLUMN ) * VALUES_IN_COLUMN == c+1 )
-    {
-      os << "\n";
-    }
-    else
-    {
-      os << " ";
-    }
-  }
-
-  int maxVal = cellVTKType[0];
-  int minVal = cellVTKType[0];
-  for( int i = 1; i < numCells; ++i )
-  {
-    if( cellVTKType[i] > maxVal )
-    {
-      maxVal = cellVTKType[i];
-    }
-    if( cellVTKType[i] < minVal )
-    {
-      minVal = cellVTKType[i];
-    }
-  }
-
-  os << "</DataArray>\n";
-  /////////////////////////////////////////////////////////////////////////////
-  // List the VTK cell type for each mesh element.
-  // This assumes a uniform cell type the entire mesh; to generalize, pass
-  // or compute the number of vertices per cell and recompute the cell type
-  os << "<DataArray type=\"Int8\" Name=\"types\" format=\"ascii\" "
-        "RangeMin=\"" << minVal << "\" RangeMax=\"" << maxVal << "\">\n";
-  for (int i = 0; i < numCells; ++i)
-  {
-    os << cellVTKType[i];
-    if( ( ( i+1 ) / VALUES_IN_COLUMN ) * VALUES_IN_COLUMN == i+1 )
-    {
-      os << "\n";
-    }
-    else
-    {
-      os << " ";
-    }
-  }
-  os << "</DataArray>\n";
-
-  /////////////////////////////////////////////////////////////////////////////
-  // List offsets to access the vertex indices of the ith cell. Non-trivial
-  // if the mesh is a general polyognal mesh.
-  os << "<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\" "
-        "RangeMin=\""
-     << n_vertices[0] << "\" RangeMax=\"" << numConnections << "\">\n";
-
-  // fixed bug here
-  int acc = 0;
-  for (int i = 0; i < numCells; ++i)
-  {
-    acc += n_vertices[i];
-    os << acc;
-    if( ( ( i+1 ) / VALUES_IN_COLUMN ) * VALUES_IN_COLUMN == i+1 )
-    {
-      os << "\n";
-    }
-    else
-    {
-      os << " ";
-    }
-  }
-
-  os << "</DataArray>\n";
-  /////////////////////////////////////////////////////////////////////////////
-  os << "</Cells>\n";
-}
-
-void VTUWriter::write_cell_data(std::ostream &os)
-{
-  if( !m_scalar_cell_data_present && !m_vector_cell_data_present )
-  {
-    return;
-  }
-
-  os << "<CellData>\n";
-  for( auto it = m_cell_data_int.begin(); it != m_cell_data_int.end(); ++it )
-  {
-    it->write(os);
-  }
-  for( auto it = m_cell_data_dbl.begin(); it != m_cell_data_dbl.end(); ++it )
-  {
-    it->write(os);
-  }
-  os << "</CellData>\n";
-}
-
-void VTUWriter::clear()
-{
-  m_point_data_int.clear();
-  m_cell_data_int.clear();
-  m_point_data_dbl.clear();
-  m_cell_data_dbl.clear();
-}
-
-void VTUWriter::set_time( double const time )
-{
-  m_time = time;
-}
-
-void VTUWriter::set_mesh( int const dim,
-                          int const numPoints,
-                          double const * const points,
-                          int const numCells,
-                          int const numConnections,
-                          int const * const cells,
-                          int const * const cellVTKType,
-                          int const * const n_vertices )
-{
-  assert( dim > 1 );
-
+  assert(dim == 2 || dim == 3);
   m_dim = dim;
   m_numPoints = numPoints;
-  m_points = points;
+  m_points = coord;
   m_numCells = numCells;
   m_numConnections = numConnections;
   m_cells = cells;
   m_cellVTKType = cellVTKType;
-  m_numVertices = n_vertices;
+  m_numVertices = nVertices;
 }
 
-
-bool VTUWriter::write_mesh( const std::string & path )
+void VTUWriter::set_time(double const time)
 {
-  std::ofstream os;
-  os.open(path.c_str());
-  if( !os.good() )
+  m_time = time;
+}
+
+void VTUWriter::set_format(VTUFormat const format)
+{
+  m_format = format;
+}
+
+void VTUWriter::writeHeader(std::ostream& os) const
+{
+  os << "<VTKFile type=\"UnstructuredGrid\" version=\"1.0\""
+        " byte_order=\"LittleEndian\" header_type=\"UInt64\">\n"
+     << "<UnstructuredGrid>\n";
+}
+
+void VTUWriter::writeTimeAscii(std::ostream& os) const
+{
+  os << "<FieldData>\n"
+     << "<DataArray type=\"Float64\" Name=\"TIME\" NumberOfTuples=\"1\" "
+        "format=\"ascii\">\n"
+     << m_time << "\n"
+     << "</DataArray>\n"
+     << "</FieldData>\n";
+}
+
+void VTUWriter::writePointsAscii(std::ostream& os) const
+{
+  os << "<Points>\n"
+     << "<DataArray type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+
+  for (int i = 0; i < m_numPoints; ++i)
   {
-    os.close();
-    return false;
+    os << m_points[i] << ' ' << m_points[i + m_numPoints] << ' ';
+    os << (m_dim == 3 ? m_points[i + 2 * m_numPoints] : 0.0) << '\n';
   }
 
-  write_header( m_numPoints, m_numCells, os );
-  write_points( m_dim, m_numPoints, m_points, os );
-  write_point_data( os );
-  write_cells( m_numCells, m_numConnections, m_cells, m_cellVTKType, m_numVertices, os );
-  write_cell_data( os );
-  write_footer( os );
-  clear();
-
-  os.close();
-  return true;
+  os << "</DataArray>\n</Points>\n";
 }
 
-bool VTUWriter::write_point_cloud( std::ostream &os,
-                                   int const numPoints,
-                                   int const dim,
-                                   double const * const points )
+void VTUWriter::writeCellsAscii(std::ostream& os) const
 {
-  write_header( numPoints, 0, os );
-  write_points( dim, numPoints, points, os );
-  write_point_data( os );
   os << "<Cells>\n";
-  /////////////////////////////////////////////////////////////////////////////
-  // List vertex id's i=0, ..., n_vertices associated with each cell c
-  os << "<DataArray type=\"Int64\" Name=\"connectivity\" "
-        "format=\"ascii\">\n";
 
+  os << "<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+  int column = 0;
+  for (int i = 0; i < m_numConnections; ++i)
+  {
+    os << m_cells[i];
+    if (++column == VALUES_IN_COLUMN)
+    {
+      os << '\n';
+      column = 0;
+    }
+    else os << ' ';
+  }
+  if (column != 0) os << '\n';
   os << "</DataArray>\n";
-  os << "<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\" "
-        "RangeMin=\""
-     <<-1e+299 << "\" RangeMax=\"" << 1e+299 << "\">\n";
+
+  int minType = 0;
+  int maxType = 0;
+  if (m_numCells > 0)
+  {
+    auto const minmax = std::minmax_element(m_cellVTKType,
+                                             m_cellVTKType + m_numCells);
+    minType = *minmax.first;
+    maxType = *minmax.second;
+  }
+
+  os << "<DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\" "
+     << "RangeMin=\"" << minType << "\" RangeMax=\"" << maxType << "\">\n";
+  column = 0;
+  for (int i = 0; i < m_numCells; ++i)
+  {
+    os << m_cellVTKType[i];
+    if (++column == VALUES_IN_COLUMN)
+    {
+      os << '\n';
+      column = 0;
+    }
+    else os << ' ';
+  }
+  if (column != 0) os << '\n';
   os << "</DataArray>\n";
-  os << "</Cells>\n";
-  write_footer( os );
-  clear();
-  return true;
+
+  os << "<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\">\n";
+  std::int64_t offset = 0;
+  column = 0;
+  for (int i = 0; i < m_numCells; ++i)
+  {
+    offset += m_numVertices[i];
+    os << offset;
+    if (++column == VALUES_IN_COLUMN)
+    {
+      os << '\n';
+      column = 0;
+    }
+    else os << ' ';
+  }
+  if (column != 0) os << '\n';
+  os << "</DataArray>\n</Cells>\n";
 }
 
-bool VTUWriter::write_point_cloud( std::string const & path,
-                                   int const numPoints,
-                                   int const dim,
-                                   double const * const points )
+void VTUWriter::writeAscii(std::ostream& os)
+{
+  writeHeader(os);
+  writeTimeAscii(os);
+  os << "<Piece NumberOfPoints=\"" << m_numPoints
+     << "\" NumberOfCells=\"" << m_numCells << "\">\n";
+
+  writePointsAscii(os);
+
+  if (!m_pointDataInt.empty() || !m_pointDataDouble.empty())
+  {
+    os << "<PointData>\n";
+    writeAsciiNodes(os, m_pointDataInt);
+    writeAsciiNodes(os, m_pointDataDouble);
+    os << "</PointData>\n";
+  }
+
+  writeCellsAscii(os);
+
+  if (!m_cellDataInt.empty() || !m_cellDataDouble.empty())
+  {
+    os << "<CellData>\n";
+    writeAsciiNodes(os, m_cellDataInt);
+    writeAsciiNodes(os, m_cellDataDouble);
+    os << "</CellData>\n";
+  }
+
+  os << "</Piece>\n</UnstructuredGrid>\n</VTKFile>\n";
+}
+
+void VTUWriter::writeBinary(std::ostream& os)
+{
+  std::vector<double> points(static_cast<std::size_t>(m_numPoints) * 3);
+  for (int i = 0; i < m_numPoints; ++i)
+  {
+    points[3 * static_cast<std::size_t>(i)] = m_points[i];
+    points[3 * static_cast<std::size_t>(i) + 1] = m_points[i + m_numPoints];
+    points[3 * static_cast<std::size_t>(i) + 2] =
+      (m_dim == 3 ? m_points[i + 2 * m_numPoints] : 0.0);
+  }
+
+  std::vector<std::uint8_t> types(static_cast<std::size_t>(m_numCells));
+  std::vector<std::int64_t> offsets(static_cast<std::size_t>(m_numCells));
+  std::int64_t cumulative = 0;
+  for (int i = 0; i < m_numCells; ++i)
+  {
+    types[i] = static_cast<std::uint8_t>(m_cellVTKType[i]);
+    cumulative += m_numVertices[i];
+    offsets[i] = cumulative;
+  }
+
+  std::uint64_t offset = 0;
+  std::uint64_t const timeOffset = offset;
+  advanceOffset(offset, sizeof(double));
+  std::uint64_t const pointsOffset = offset;
+  advanceOffset(offset, points.size() * sizeof(double));
+
+  std::vector<std::uint64_t> pointIntOffsets;
+  std::vector<std::uint64_t> pointDoubleOffsets;
+  for (auto const& node : m_pointDataInt)
+  {
+    pointIntOffsets.push_back(offset);
+    advanceOffset(offset, node.payloadBytes());
+  }
+  for (auto const& node : m_pointDataDouble)
+  {
+    pointDoubleOffsets.push_back(offset);
+    advanceOffset(offset, node.payloadBytes());
+  }
+
+  std::uint64_t const connectivityOffset = offset;
+  advanceOffset(offset,
+    static_cast<std::uint64_t>(m_numConnections) * sizeof(int));
+  std::uint64_t const typesOffset = offset;
+  advanceOffset(offset, types.size() * sizeof(std::uint8_t));
+  std::uint64_t const offsetsOffset = offset;
+  advanceOffset(offset, offsets.size() * sizeof(std::int64_t));
+
+  std::vector<std::uint64_t> cellIntOffsets;
+  std::vector<std::uint64_t> cellDoubleOffsets;
+  for (auto const& node : m_cellDataInt)
+  {
+    cellIntOffsets.push_back(offset);
+    advanceOffset(offset, node.payloadBytes());
+  }
+  for (auto const& node : m_cellDataDouble)
+  {
+    cellDoubleOffsets.push_back(offset);
+    advanceOffset(offset, node.payloadBytes());
+  }
+
+  writeHeader(os);
+  os << "<FieldData>\n"
+     << "<DataArray type=\"Float64\" Name=\"TIME\" NumberOfTuples=\"1\" "
+        "format=\"appended\" offset=\"" << timeOffset << "\"/>\n"
+     << "</FieldData>\n"
+     << "<Piece NumberOfPoints=\"" << m_numPoints
+     << "\" NumberOfCells=\"" << m_numCells << "\">\n"
+     << "<Points>\n"
+     << "<DataArray type=\"Float64\" NumberOfComponents=\"3\" "
+        "format=\"appended\" offset=\"" << pointsOffset << "\"/>\n"
+     << "</Points>\n";
+
+  if (!m_pointDataInt.empty() || !m_pointDataDouble.empty())
+  {
+    os << "<PointData>\n";
+    for (std::size_t i = 0; i < m_pointDataInt.size(); ++i)
+      m_pointDataInt[i].writeBinaryHeader(os, pointIntOffsets[i]);
+    for (std::size_t i = 0; i < m_pointDataDouble.size(); ++i)
+      m_pointDataDouble[i].writeBinaryHeader(os, pointDoubleOffsets[i]);
+    os << "</PointData>\n";
+  }
+
+  os << "<Cells>\n"
+     << "<DataArray type=\"Int32\" Name=\"connectivity\" format=\"appended\" offset=\""
+     << connectivityOffset << "\"/>\n"
+     << "<DataArray type=\"UInt8\" Name=\"types\" format=\"appended\" offset=\""
+     << typesOffset << "\"/>\n"
+     << "<DataArray type=\"Int64\" Name=\"offsets\" format=\"appended\" offset=\""
+     << offsetsOffset << "\"/>\n"
+     << "</Cells>\n";
+
+  if (!m_cellDataInt.empty() || !m_cellDataDouble.empty())
+  {
+    os << "<CellData>\n";
+    for (std::size_t i = 0; i < m_cellDataInt.size(); ++i)
+      m_cellDataInt[i].writeBinaryHeader(os, cellIntOffsets[i]);
+    for (std::size_t i = 0; i < m_cellDataDouble.size(); ++i)
+      m_cellDataDouble[i].writeBinaryHeader(os, cellDoubleOffsets[i]);
+    os << "</CellData>\n";
+  }
+
+  os << "</Piece>\n</UnstructuredGrid>\n"
+     << "<AppendedData encoding=\"raw\">\n_";
+
+  writeRawBlock(os, &m_time, 1);
+  writeRawBlock(os, points.data(), points.size());
+  for (auto const& node : m_pointDataInt) node.writeBinaryBlock(os);
+  for (auto const& node : m_pointDataDouble) node.writeBinaryBlock(os);
+  writeRawBlock(os, m_cells, static_cast<std::uint64_t>(m_numConnections));
+  writeRawBlock(os, types.data(), types.size());
+  writeRawBlock(os, offsets.data(), offsets.size());
+  for (auto const& node : m_cellDataInt) node.writeBinaryBlock(os);
+  for (auto const& node : m_cellDataDouble) node.writeBinaryBlock(os);
+
+  os << "\n</AppendedData>\n</VTKFile>\n";
+}
+
+bool VTUWriter::write_mesh(std::string const& path)
 {
   std::ofstream os;
-  os.open(path.c_str());
-  if (!os.good()) {
-    os.close();
-    return false;
-  }
-  write_point_cloud( os, numPoints, dim, points );
-  os.close();
-  return true;
+  std::vector<char> buffer(4 * 1024 * 1024);
+  os.rdbuf()->pubsetbuf(buffer.data(),
+                        static_cast<std::streamsize>(buffer.size()));
+  os.open(path, std::ios::out | std::ios::binary);
+  if (!os) return false;
+
+  if (m_format == VTUFormat::BINARY) writeBinary(os);
+  else writeAscii(os);
+
+  os.flush();
+  bool const success = static_cast<bool>(os);
+  clear();
+  return success;
+}
+
+void VTUWriter::clear()
+{
+  m_pointDataInt.clear();
+  m_cellDataInt.clear();
+  m_pointDataDouble.clear();
+  m_cellDataDouble.clear();
 }

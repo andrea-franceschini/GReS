@@ -1,0 +1,305 @@
+classdef linearSolver < handle
+% linearSolver - Handle class that manages linear solver selection, preconditioner
+%                creation (ChronosLab), solving strategy and statistics.
+%
+% Usage:
+%   obj = linearSolver(generalsolver, physname)
+%
+% Inputs:
+%   generalsolver - struct or object containing simulation parameters and
+%                   interfaces required to configure solver and preconditioner.
+%   physname      - string with the physics name used to select appropriate
+%                   preconditioner setup.
+%
+% Description:
+%   This class detects presence of the ChronosLab third-party library and,
+%   when available and compiled, configures a Chronos preconditioner and a
+%   solver strategy (GMRES, etc.). It also supports a MATLAB fallback if
+%   Chronos is missing or not compiled. The object gathers statistics about
+%   preconditioner computation, solve times and iteration counts, and can
+%   print a summary via printStats.
+%
+% Main methods:
+%   linearSolver(generalsolver, physname) - constructor: checks Chronos,
+%       sets up preconditioner and solver defaults.
+%   printStats(varargin) - print collected statistics; 'short' option prints
+%       only summary.
+%
+% Notes:
+%   - If generalsolver.simparams.linSolverParams.useMatlab is set, constructor
+%     will exit early to allow MATLAB solvers only.
+% Brief property descriptions:
+% DEBUGflag       - boolean: enable debug logging and extra checks.
+% matlabMaxSize   - numeric: maximum matrix size for which MATLAB fallback is enforced.
+% nsyTol          - numeric: tolerance used to detect near-symmetric matrices.
+% convStrat       - object: convergence strategy handler (convStrat class instance).
+% ChronosFlag     - boolean: true if Chronos_Lab preconditioner support is available.
+% requestPrecComp - boolean: flag requesting that the preconditioner be (re)computed.
+% alpha           - numeric: scaling parameter used during recomputation of the preconditioner.
+% x0              - vector: starting vector for iterative solvers.
+% SolverType      - string: name of the iterative solver in use (e.g. 'gmres').
+% Prec            - object: preconditioner instance (Chronos preconditioner wrapper).
+% iterConfigOld   - numeric: stored iteration configuration version to detect changes.
+% whenComputed    - vector: physical times at which the preconditioner was computed.
+% aTimeComp       - numeric: accumulated time spent computing preconditioners.
+% aTimeSolve      - numeric: accumulated time spent in solver calls.
+% nSolve          - integer: number of times the linear solver was invoked.
+% nComp           - integer: number of preconditioner computations performed.
+% maxIter         - integer: maximum iterations observed across solves.
+% aIter           - numeric: accumulated iterations (for averaging/stats).
+% cumTSolveAfterPrec - numeric: cumulative solve time measured after preconditioner build.
+% iterLin         - vector: recorded iteration counts per linear solve.
+% solveTLin       - vector: recorded solve times per linear solve.
+% symFlagLin      - vector: flags indicating symmetry detection per solve.
+% precCompLin     - vector: flags indicating whether prec was computed for each solve.
+% newtonLin       - vector: Newton iteration indices associated with each linear solve.
+% timeLin         - vector: physical times corresponding to each linear solve.
+% Delta_T         - vector: time step sizes used when recording solves.
+% useSAM          - boolean: whether SAM monitoring/analysis is enabled.
+% SAM             - object: SAM instance.
+% params          - struct: runtime parameters for the solver (tolerances, maxit, restart, etc.)
+
+   properties (SetAccess = ?convStrat, GetAccess = public)
+
+      % Flag for debug
+      DEBUGflag = false
+      matlabMaxSize = 2e4
+
+      % Utils flags
+      nsyTol = 100*eps
+
+      % Convergence strategy handler
+      convStrat
+      
+      % Flag for Chronos existence
+      ChronosFlag = false
+
+      % Flag to request Preconditioner computation
+      requestPrecComp = true
+      alpha = 1
+
+      % starting vector
+      x0 = []
+
+      % Solver Type
+      SolverType
+
+      % Preconditioner object
+      Prec
+
+      % General solver
+      generalsolver
+      iterConfigOld = 1
+
+      % Statistics
+      whenComputed = []
+      aTimeComp = 0
+      aTimeSolve = 0
+      nSolve = 0
+      nComp = 0
+      maxIter = -1
+      aIter = 0
+      cumTSolveAfterPrec = 0
+      iterLin = []
+      solveTLin = []
+      symFlagLin = []
+      precCompLin = []
+      newtonLin = []
+      timeLin = []
+      Delta_T = []
+      systemSize = 0
+
+      % SAM object
+      useSAM = false
+      SAM = []
+
+      % Params struct
+      params
+
+   end
+
+   properties (Access = public)
+      % Ruiz diagonal scaling object
+      Ruiz
+
+      % Ruiz params
+      maxitRuiz = 10
+      tolRuiz = 1e-2
+   end
+
+   methods (Access = public)
+
+      % Constructor Function
+      function obj = linearSolver(generalsolver,physname)
+
+         % Check if Chronos is available
+         ChronosDir = fullfile(gres_root,'ThirdPartyLibs','ChronosLab','sources');
+
+         % Possible the user wants to use matlab even if the size is sufficient
+         if isfield(generalsolver.simparams.linSolverParams, 'useMatlab')
+           if generalsolver.simparams.linSolverParams.useMatlab == 1
+             gresLog().log(3,'The user requested the use of matlab\n');
+             return;
+           end
+         end
+
+         % Check if ChronosLab folder is present
+         if isfolder(ChronosDir)
+            % Check if ChronosLab has been compiled
+            if strcmp(computer('arch'),'maca64')
+              fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexmaca64');
+            elseif strcmp(computer('arch'),'win64')
+              fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexw64');
+            else
+              fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexa64');
+            end
+
+            % If this file exists then Chronos is compiled
+            if ~isfile(fileMex)
+               warning('ChronosLab submodule is present, but not compiled. Using matlab fallback');
+               return;
+            end
+
+            obj.generalsolver = generalsolver;
+
+            % Create the preconditioner object, check if the physics is supported
+            [obj.Prec,obj.ChronosFlag, scalingFlag] = obj.choosePrec(obj.DEBUGflag,generalsolver,physname);
+
+            % Create SAM object, deals with everything inside if not asked
+            % to be used
+            obj.SAM = SAM(obj.useSAM);
+
+            % Non supported physics for the preconditioner
+            if ~obj.ChronosFlag
+               return;
+            end
+
+            % Chronos exists
+            addpath(genpath(ChronosDir));
+
+            % First time solving request preconditioner computation
+            obj.params.iter = -1;
+            obj.params.lastRelres = 1e10;
+
+            % Choose the relative tolerance strategy
+            obj.convStrat = chooseConvStrat(generalsolver);
+
+            % Get default values
+            chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');
+
+            % Read Defaults
+            data = readInput(chronos_xml_default);
+
+            % Get the solver type
+            obj.SolverType = lower(data.solver);
+            obj.params.maxit = 500;
+
+            % if GMRES get restart value
+            if strcmp(obj.SolverType,'gmres')
+               obj.params.restart = data.general.restart;
+            else
+               obj.params.restart = 100;
+            end
+
+            % Create Ruiz scaling object
+            obj.Ruiz = RuizScaling(obj.DEBUGflag,obj.maxitRuiz,obj.tolRuiz);
+            obj.Ruiz.scalingFlag = scalingFlag;
+            
+            % Parse scaling options if provided
+            if isfield(generalsolver.simparams.linSolverParams, 'scalingFlag')
+               obj.Ruiz.scalingFlag = generalsolver.simparams.linSolverParams.scalingFlag;
+            end
+
+            % Check if Ruiz is supported
+            if obj.Ruiz.scalingFlag == true && ismember(class(obj.Prec),["aFSAI", "aAMG"]) 
+               % Not supported
+               obj.Ruiz.scalingFlag = false;
+               gresLog().warning(1,'Ruiz scaling not supported for basic preconditioners as aAMG and aFSAI');
+            end
+
+            % Copy the Ruiz scaling class to the preconditioner
+            obj.Prec.Ruiz = obj.Ruiz;
+         end
+      end
+
+      function printStats(obj,varargin)
+         % Allocate for stats if sam not used
+         if ~obj.useSAM
+            obj.SAM.CompLin = zeros(size(obj.precCompLin));
+         end
+         
+         % Parse optional arguments
+         showShort = false;
+         showEW = false;
+         for k = 1:numel(varargin)
+            arg = varargin{k};
+            if ischar(arg) || isstring(arg)
+               if strcmpi(arg, 'short')
+                  showShort = true;
+               elseif strcmpi(arg, 'ew')
+                  showEW = true;
+               end
+            end
+         end
+
+         % If not 'short', show full linear solver table and preconditioner times
+         if ~showShort
+            % Print the time steps at which the preconditioner was computed
+            fprintf('The preconditioner was computed at time(s):\n');
+            for i = 1:length(obj.whenComputed)
+               fprintf('             %d\t%e\n',i,obj.whenComputed(i));
+            end
+
+            fprintf('\n----------------------------------------------------------------------\n')
+            fprintf('| %8s | %6s | %4s | %8s | %7s | %8s | %8s |\n','PhysTime','Sol N.','Iter','SolTime','Symm','PrecTime','DeltaT');
+            fprintf('----------------------------------------------------------------------\n')
+            
+            for i = 1:size(obj.solveTLin,2)
+               fprintf('| %.2e | %6d | %4d | %.2e | %.1e | %.2e | %.2e |\n',obj.timeLin(i),i,obj.iterLin(i),obj.solveTLin(i),obj.symFlagLin(i),obj.precCompLin(i)+obj.SAM.CompLin(i),obj.Delta_T(i));
+            end
+         end
+
+         % Print Eisenstat-Walker statistics if explicitly requested
+         if showEW && ~isempty(obj.convStrat)
+            obj.convStrat.printStats();
+         end
+
+         fprintf('Average Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
+         fprintf('Preconditioner computed %d times\n',length(obj.whenComputed));
+         if obj.useSAM
+            nnzSAMcomp = size(nonzeros(obj.SAM.CompLin),1);
+            fprintf('Average SAM computation time = %e\n',sum(obj.SAM.CompLin)/nnzSAMcomp);
+            fprintf('SAM computed %d times\n',nnzSAMcomp);
+         end
+         fprintf('Average Solve time = %e\n',(obj.aTimeSolve/obj.nSolve));
+         fprintf('Average number of iterations = %f\n',(obj.aIter/obj.nSolve));
+         fprintf('Max number of iterations = %d\n',obj.maxIter);
+         fprintf('Total time for computation of the linear systems = %e\n',obj.aTimeComp+obj.aTimeSolve+sum(obj.SAM.CompLin));
+         % fprintf('Used %d threads during mex\n',obj.Prec.maxThreads);
+         fprintf('Max system size = %d\n',obj.systemSize);
+      end
+
+      % Function to solve the system
+      [x,flag] = SolveLin(obj,A,b,time,nonlinIter);
+
+      % Function to get the total time taken by the linear solver for
+      % preconditioner computation and solve step
+      function tot = getTotalTime(obj)
+         if ~obj.useSAM || ~obj.ChronosFlag
+            obj.SAM.CompLin = zeros(size(obj.precCompLin));
+         end
+         tot = obj.aTimeComp+obj.aTimeSolve+sum(obj.SAM.CompLin);
+      end
+   end
+
+   methods (Access = private)
+
+      % Function to get if Chronos is to be used and if so instantiate the
+      % preconditioner
+      [Prec,ChronosFlag,scalingFlag] = choosePrec(obj,debugflag,problemsolver,physname);
+
+      % Specific functions to be used inside choosePrec
+      [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physname);
+      [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname);
+   end
+end

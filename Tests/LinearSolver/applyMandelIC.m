@@ -1,0 +1,1 @@
+../MandelBiot/applyMandelIC.m

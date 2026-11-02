@@ -1,4 +1,4 @@
-classdef OutState < handle & matlab.mixin.Copyable
+classdef OutState < matlab.mixin.Copyable
   % Class for printing results to VTK
   % Input: OutState(model,mesh,fNameList)
   % Optional parameters:
@@ -6,19 +6,25 @@ classdef OutState < handle & matlab.mixin.Copyable
   % 'folderName','folderName': specify name of output folder
 
   properties (Access = public)
-    matFile
+    results
     % model
     timeID = 1
     vtkFile
+    vtkFormat = "auto"
+    vtkBinaryThreshold = 1e4
+    restart = struct('on',false,'filename',missing,'dt',missing,'time',...
+      missing,'overwrite',true)
   end
 
   properties (SetAccess = private)
-    writeVtk
+    writeVtk = false
     timeList
     matFileName
     vtkFileName
-    writeSolution
+    writeSolution = true
+    writeMatFile = false
     isFolderReady = false
+    solvePrintTimes
   end
 
   methods (Access = public)
@@ -26,134 +32,69 @@ classdef OutState < handle & matlab.mixin.Copyable
     function obj = OutState(varargin)
 
       if nargin == 0
-        return
-      end
-
-      % Default parameters
-      folderName = "output";
-      tList = [];
-
-      % ------------------------------------------------------------
-      % Detect input mode
-      % ------------------------------------------------------------
-      if isempty(varargin)
-        % no output
-        obj.writeVtk = false;
         obj.writeSolution = false;
-        % obj.model = model;
-        return
-      end
-
-      firstArg = varargin{1};
-
-      if isscalar(varargin) && (ischar(firstArg) || isstring(firstArg) || isstruct(firstArg))
-        % ---------------- XML configuration mode ----------------
-        input = firstArg;
-        if ~isstruct(input)
-          input = readstruct(input, AttributeSuffix="");
-        end
-
-        if isfield(input,"Output")
-          input = input.Output;
-        end
-
-        if isfield(input,"fileName")
-          assert(isscalar(fieldnames(input)),"FileName, " + ...
-            " must be a unique parameter.");
-          input = readstruct(input.fileName,AttributeSuffix="");
-        end
-
-        obj.writeSolution = logical(getXMLData(input, 0, "saveHistory"));
-        obj.vtkFileName  = getXMLData(input, folderName, "outputFile");
-        obj.matFileName = getXMLData(input, folderName, "matFileName");
-
-        % If no outputFile name provided, disable VTK
-        obj.writeVtk = isfield(input, "outputFile");
-
-        if any([obj.writeSolution,obj.writeVtk])
-          tList = getXMLData(input, [], "printTimes");
-        else
-          return
-        end
-
-
       else
-        % ---------------- Key-value pair mode ----------------
-        if mod(numel(varargin), 2) ~= 0
-          error('OutState:InvalidInput', ...
-            'Key-value pair inputs must come in pairs.');
-        end
-
-        opt = struct(varargin{:});
-        if isfield(opt, 'flagMatFile'), obj.writeSolution = logical(opt.flagMatFile); end
-        if isfield(opt, 'folderName')
-          obj.vtkFileName  = string(opt.folderName);
-          obj.writeVtk = true;
-        end
-        if isfield(opt, 'matFileName'),  obj.matFileName  = string(opt.matFileName);   end
-        if isfield(opt, 'timeList'),    tList       = opt.timeList;             end
-
-      end
-
-      % ------------------------------------------------------------
-      % Object setup
-      % ------------------------------------------------------------
-
-
-      % Time list handling
-      if obj.writeVtk
-        % vtm file document node
-        obj.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
-        assert(~isempty(tList), ...
-          "Print times have not been specified for output.");
-      end
-
-      if isnumeric(tList)
-        obj.timeList = reshape(tList, [], 1);
-      else
-        obj.timeList = obj.readTimeList(tList);
-      end
-
-      % MAT-file output
-      if obj.writeSolution
-        if isfile('expData.mat'), delete 'expData.mat'; end
-        nT = length(obj.timeList);
-        obj.matFile = repmat(struct('time', 0),nT,1);
+        obj.setOutState(varargin{:})
       end
 
     end
 
-    function prepareOutputFolders(obj)
+    function prepareOutputFolders(obj,varargin)
 
-      foldName = sprintf('%s/output_%5.5i',obj.vtkFileName,obj.timeID);
+      if nargin > 1
+        tID = varargin{1};
+      else
+        tID = obj.timeID;
+      end
+
+      foldName = sprintf('%s/output_%5.5i',obj.vtkFileName,tID);
 
       if (~obj.isFolderReady)
         createVTKFolder(obj);
       end
 
       % create folder for vtu files
+      if (isfolder(foldName))
+        rmdir(foldName, 's');
+      end
+
       status = mkdir(foldName);
+
       if (status ~= 1)
         error('Unable to create folder for VTK output.');
       end
     end
 
 
-    function writeVTKfile(obj,block,vtuName,mesh,time,pointData3D,cellData3D,pointData2D,cellData2D)
+
+    function writeVTKfile(obj,block,vtuName,grid,time,pointData3D,cellData3D,pointData2D,cellData2D,varargin)
 
       % block: the xml block of the vtm file in which we write the vtu dataset
       % data struct: struct array with fields 'name' and 'data'
+      if ~isempty(varargin)
+        tID = varargin{1};
+      else
+        tID = obj.timeID;
+      end
 
-      vtmName = sprintf('output_%5.5i/%s',obj.timeID,vtuName);
+      vtmName = sprintf('output_%5.5i/%s',tID,vtuName);
       outName = sprintf('%s/%s.vtu',obj.vtkFileName,vtmName);
 
       % call mex vtk writer
       if ~all(isempty([cellData3D; pointData3D]))
-        mxVTKWriter(outName, time, mesh.coordinates, mesh.cells, mesh.cellVTKType, ...
-          mesh.cellNumVerts, pointData3D, cellData3D);
+        cells = grid.cells;
+        nodeList = grid.getFlatConnectivity("cells");
+        vtkFmt = obj.resolveVTKFormat(grid.coordinates, nodeList, ...
+          cells.numVerts, pointData3D, cellData3D);
+        mxVTKWriter(outName, time, grid.coordinates, nodeList, cells.VTKType, ...
+          cells.numVerts, char(vtkFmt), pointData3D, cellData3D);
       elseif ~all(isempty([cellData2D; pointData2D]))
-        mxVTKWriter(outName, time, mesh.coordinates, mesh.surfaces, mesh.surfaceVTKType, ...
-          mesh.surfaceNumVerts, pointData2D, cellData2D);
+        surf = grid.surfaces;
+        nodeList = grid.getFlatConnectivity("surfaces");
+        vtkFmt = obj.resolveVTKFormat(grid.coordinates, nodeList, ...
+          surf.numVerts, pointData2D, cellData2D);
+        mxVTKWriter(outName, time, grid.coordinates, nodeList, surf.VTKType, ...
+          surf.numVerts, char(vtkFmt), pointData2D, cellData2D);
       end
 
       % write dataset to vtm block
@@ -164,48 +105,177 @@ classdef OutState < handle & matlab.mixin.Copyable
       block.appendChild(dataset);
     end
 
-    function writeVTMFile(obj)
-      fname = sprintf('%s/output_%5.5i.vtm',obj.vtkFileName,obj.timeID);
+    function writeVTMFile(obj,varargin)
+      if nargin > 1
+        tID = varargin{1};
+      else
+        tID = obj.timeID;
+      end
+
+      fname = sprintf('%s/output_%5.5i.vtm',obj.vtkFileName,tID);
       xmlwrite(fname, obj.vtkFile);
 
     end
 
-    function finalize(obj)
+    function reset(obj)
+
+      obj.timeID = 1;
+      obj.results = [];
+
+    end
+
+    function savePvd(obj,varargin)
+      
+      if ~isempty(varargin)
+        outTimes = varargin{1};
+      else
+        outTimes = obj.timeList(1:obj.timeID - 1);
+      end
 
       % write the pvd file
-      pvd = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
-      toc = pvd.getDocumentElement;
+      if obj.writeVtk
 
-      toc.setAttribute('type', 'Collection');
-      toc.setAttribute('version', '1.0');
-      blocks = pvd.createElement('Collection');
+        pvd = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
+        toc = pvd.getDocumentElement;
+
+        toc.setAttribute('type', 'Collection');
+        toc.setAttribute('version', '1.0');
+        blocks = pvd.createElement('Collection');
 
 
-      for i = 1 : obj.timeID-1
-        block = pvd.createElement('DataSet');
-        block.setAttribute('timestep', sprintf('%e', obj.timeList(i)));
-        [~,fname,~] = fileparts(obj.vtkFileName);
-        % standard naming for vtm files
-        vtmFileName = sprintf('%s/output_%5.5i.vtm',fname,i);
-        block.setAttribute('file', vtmFileName);
-        blocks.appendChild(block);
+        for i = 1 : length(outTimes)
+          block = pvd.createElement('DataSet');
+          block.setAttribute('timestep', sprintf('%e', outTimes(i)));
+          [~,fname,~] = fileparts(obj.vtkFileName);
+          % standard naming for vtm files
+          vtmFileName = sprintf('%s/output_%5.5i.vtm',fname,i);
+          block.setAttribute('file', vtmFileName);
+          blocks.appendChild(block);
+        end
+
+        toc.appendChild(blocks);
+
+        fileName = sprintf('%s.pvd', obj.vtkFileName);
+        xmlwrite(fileName, pvd);
+
+      end
+    end
+
+    function saveHistory(obj)
+      if obj.writeMatFile
+      output = obj.results;
+      save(strcat(obj.matFileName,'.mat'),"output")
+      end
+    end
+
+    function targetTimes = getTargetTimes(obj)
+
+      if obj.solvePrintTimes
+        targetTimes = obj.timeList;
+      else
+        targetTimes = [];
       end
 
-      toc.appendChild(blocks);
+    end
 
-      fileName = sprintf('%s.pvd', obj.vtkFileName);
-      xmlwrite(fileName, pvd);
+    function obj = prepareRestart(obj)
 
-      if obj.writeSolution
-        output = obj.matFile;
-        save(strcat(obj.matFileName,'.mat'),"output")
+      if ~obj.restart.on
+        return
       end
 
+        folder = fileparts(obj.restart.filename);
+
+        if ~isfolder(folder)
+          status = mkdir(folder);
+
+          if (status ~= 1)
+            gresLog().log(0,"Unable to create the folder for save the" + ...
+              " restart files. The restart capability is turned off.\n");
+            obj.restart.on = false;
+          end
+        end
     end
 
   end
 
   methods (Access = private)
+
+    function setOutState(obj,varargin)
+
+      default = struct('outputFile',missing,...
+                       'matFileName',missing,...
+                       'printTimes',missing,...
+                       'saveHistory',missing,...
+                       'solvePrintTimes',0,...
+                       'vtkFormat',"auto",...
+                       'vtkBinaryThreshold',1e6,...
+                       'restart',missing);
+
+      params = readInput(default,varargin{:});
+
+      if ~ismissing(params.outputFile)
+        obj.writeVtk = true;
+        obj.vtkFileName = params.outputFile;
+      end
+
+      if ~ismissing(params.matFileName)
+        obj.matFileName = params.matFileName;
+        obj.writeMatFile = true;
+      end
+
+
+      if ~any(ismissing(params.saveHistory))
+        sh = params.saveHistory;
+        if ~isnumeric(params.saveHistory)
+          sh = str2double(sh);
+        end
+        obj.writeSolution = logical(sh);
+      end
+
+      if any([obj.writeSolution,obj.writeVtk,obj.writeMatFile])
+        % assert(~any(ismissing(params.printTimes)),"Print times are required when specifying output files");
+        % t = readInput(struct('printTimes',double.empty),varargin{:});
+        if ~ismissing(params.printTimes)
+          obj.timeList = params.printTimes;
+        end
+      end
+
+      if obj.writeVtk
+        % vtm file document node
+        obj.vtkFile = com.mathworks.xml.XMLUtils.createDocument('VTKFile');
+      end
+
+      obj.solvePrintTimes = logical(params.solvePrintTimes);
+
+      obj.vtkFormat = lower(string(params.vtkFormat));
+      validFormats = ["auto", "ascii", "binary"];
+      assert(isscalar(obj.vtkFormat) && any(obj.vtkFormat == validFormats), ...
+        "vtkFormat must be 'auto', 'ascii', or 'binary'.");
+
+      obj.vtkBinaryThreshold = double(params.vtkBinaryThreshold);
+      assert(isscalar(obj.vtkBinaryThreshold) && ...
+        isfinite(obj.vtkBinaryThreshold) && obj.vtkBinaryThreshold >= 0, ...
+        "vtkBinaryThreshold must be a finite nonnegative scalar.");
+
+
+      if ~ismissing(params.restart)
+
+        restartDefault = struct('time',missing,...
+                                'dt',missing,...
+                                'overwrite',true,...
+                                'filename',[]);
+
+        obj.restart = readInput(restartDefault,params.restart);
+        obj.restart.on = true;
+
+      else
+
+        obj.restart.on = false;
+        
+      end
+
+    end
 
    
     function tList = readTimeList(obj,fileName)
@@ -241,6 +311,35 @@ classdef OutState < handle & matlab.mixin.Copyable
       fclose(fid);
     end
 
+    function vtkFormat = resolveVTKFormat(obj,coordinates,nodeList,numVerts,pointData,cellData)
+
+      vtkFormat = obj.vtkFormat;
+      if vtkFormat ~= "auto"
+        return
+      end
+
+      % Estimated number of scalar values written to the VTU file.
+      % Coordinates always have three VTK components; connectivity, cell
+      % types and offsets contribute one scalar each.
+      nPoints = size(coordinates,1);
+      nCells = numel(numVerts);
+      outputSize = 3*nPoints + numel(nodeList) + 2*nCells + 1;
+
+      for i = 1:numel(pointData)
+        outputSize = outputSize + numel(pointData(i).data);
+      end
+      for i = 1:numel(cellData)
+        outputSize = outputSize + numel(cellData(i).data);
+      end
+
+      if outputSize >= obj.vtkBinaryThreshold
+        vtkFormat = "binary";
+      else
+        vtkFormat = "ascii";
+      end
+    end
+
+
     function createVTKFolder(obj)
       if (isfolder(obj.vtkFileName))
         rmdir(obj.vtkFileName, 's');
@@ -264,6 +363,9 @@ classdef OutState < handle & matlab.mixin.Copyable
       % structure
       % Concatenate the two structure arrays
 
+      strA = reshape(strA,[],1);
+      strB = reshape(strB,[],1);
+      
       if isempty(strA)
         mergeStruct = strB;
       elseif isempty(strB)
@@ -293,11 +395,10 @@ classdef OutState < handle & matlab.mixin.Copyable
       mergeStruct = mergeStruct(uniqueIdx);
     end
 
-    function outData = printMeshData(mesh,data)
+    function outData = printMeshData(grid,data)
       cellStr = repmat(struct('name', 1, 'data', 1), 1, 1);
-      % Displacement
       cellStr(1).name = 'cellTag';
-      cellStr(1).data = mesh.cellTag;
+      cellStr(1).data = grid.cells.tag;
       outData = OutState.mergeOutFields(data,cellStr);
     end
 

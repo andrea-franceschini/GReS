@@ -1,40 +1,96 @@
-#include "mex.h"
-#include "polygonClip.hpp"
+//----------------------------------------------------------------------------------------
+// mxPolygonClip.cpp
+// MEX gateway — MathWorks C++ MEX API (R2018a+)
+//
+// MATLAB signature:
+//   [polyOut, isValid] = polygonClip(poly, clipPoly)
+//     poly     : N x 2 real double
+//     clipPoly : M x 2 real double
+//     polyOut  : K x 2 real double (clipped polygon, or 0x2 if invalid)
+//     isValid  : logical scalar
+//
+// Build command:
+//   mex -R2018a mxPolygonClip.cpp
+//----------------------------------------------------------------------------------------
 
-// Convert MATLAB Nx2 array -> Polygon
-Polygon mxToPolygon(const mxArray* mx){
-    mwSize N=mxGetM(mx);
-    const double* P=mxGetPr(mx);
-    Polygon poly(N);
-    for(mwSize i=0;i<N;++i) poly[i]={P[i],P[i+N]};
-    return poly;
-}
+#include <cstdint>
+#include "mex.hpp"
+#include "mexAdapter.hpp"
+#include "src/polygonClip.hpp"
+#include "src/MexHelper.hpp"
 
-// Convert Polygon -> MATLAB Nx2 array
-mxArray* polygonToMx(const Polygon& poly){
-    mwSize N=poly.size();
-    mxArray* mx=mxCreateDoubleMatrix(N,2,mxREAL);
-    double* P=mxGetPr(mx);
-    for(mwSize i=0;i<N;++i){ P[i]=poly[i][0]; P[i+N]=poly[i][1]; }
-    return mx;
-}
+#include <cstddef>
+#include <vector>
+#include <algorithm>
 
-void mexFunction(int nlhs,mxArray* plhs[],int nrhs,const mxArray* prhs[]){
-    if(nrhs!=2) mexErrMsgTxt("Usage: [polyOut,isValid] = polygonClip_mex(poly, clipPoly)");
-    if(nlhs!=2) mexErrMsgTxt("Two outputs required.");
+using namespace matlab::data;
+using matlab::mex::ArgumentList;
+using namespace mexhelper;
 
-    for(int i=0;i<2;++i){
-        if(!mxIsDouble(prhs[i])||mxIsComplex(prhs[i])||mxGetN(prhs[i])!=2)
-            mexErrMsgTxt("Inputs must be Nx2 real double matrices.");
+class MexFunction : public matlab::mex::Function {
+
+    ArrayFactory factory;
+
+    void throwErr(const std::string& id, const std::string& msg) {
+        throwError(this, factory, id, msg);
     }
 
-    Polygon poly    = mxToPolygon(prhs[0]);
-    Polygon clipper = mxToPolygon(prhs[1]);
+    Polygon arrayToPolygon(const TypedArray<double>& arr)
+    {
+        const auto dims     = arr.getDimensions();
+        const std::size_t N = dims[0];
+        std::vector<double> buf(arr.begin(), arr.end());
+        Polygon poly(N);
+        for (std::size_t i = 0; i < N; ++i)
+            poly[i] = { buf[i], buf[i + N] };
+        return poly;
+    }
 
-    bool valid=false;
-    if(poly.size()>=3 && clipper.size()>=3)
-        valid=clipPolygon(poly,clipper);
+    TypedArray<double> polygonToArray(const Polygon& poly)
+    {
+        const std::size_t N = poly.size();
+        std::vector<double> buf(N * 2, 0.0);
+        for (std::size_t i = 0; i < N; ++i) {
+            buf[i]     = poly[i][0];
+            buf[i + N] = poly[i][1];
+        }
+        TypedArray<double> arr = factory.createArray<double>({N, 2});
+        std::copy(buf.begin(), buf.end(), arr.begin());
+        return arr;
+    }
 
-    plhs[0]=polygonToMx(valid?poly:Polygon{});   // clipped polygon
-    plhs[1]=mxCreateLogicalScalar(valid);       // validity flag
-}
+public:
+
+    void operator()(ArgumentList outputs, ArgumentList inputs) override
+    {
+        if (inputs.size() != 2)
+            throwErr("polygonClip:inputError",
+                     "Usage: [polyOut, isValid] = polygonClip(poly, clipPoly).");
+
+        if (outputs.size() > 2)
+            throwErr("polygonClip:outputError", "Two outputs required.");
+
+        for (std::size_t i = 0; i < 2; ++i) {
+            if (inputs[i].getType() != ArrayType::DOUBLE)
+                throwErr("polygonClip:inputError",
+                         "Inputs must be N x 2 real double matrices.");
+            const auto dims = inputs[i].getDimensions();
+            if (dims.size() < 2 || dims[1] != 2)
+                throwErr("polygonClip:inputError",
+                         "Inputs must be N x 2 real double matrices.");
+        }
+
+        Polygon poly    = arrayToPolygon(inputs[0]);
+        Polygon clipper = arrayToPolygon(inputs[1]);
+
+        bool valid = false;
+        if (poly.size() >= 3 && clipper.size() >= 3)
+            valid = clipPolygon(poly, clipper);
+
+        outputs[0] = valid ? polygonToArray(poly)
+                           : factory.createArray<double>({0, 2});
+        outputs[1] = factory.createScalar<bool>(valid);
+    }
+};
+
+//----------------------------------------------------------------------------------------

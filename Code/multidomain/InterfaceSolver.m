@@ -1,21 +1,16 @@
 classdef (Abstract) InterfaceSolver < handle
-  % Interface to create an interface between domains in GReS
-
+  % General Interface solver between domains in GReS
+  %
   % Any interfaceSolver should implemented everything needed to couple a
   % variable field across two non conforming lower dimensional (2D) interfaces
-
-  % The interface can belong to two different domains 
-
-  % The fields property lists a set of single physical moduls that are
-  % implemented
-
-  % If the physicsSolver is coupled:
-  % fields is a string array with all the single physics fields
-  % J and rhs are cell variable with the same size as the number of fields
+  %
+  % Each side of the interface is specified by one (or more) surfaceTags of
+  % a domain. The sides of the interface can both belong to the same
+  % domain, provided that their nodes are disjoint.
 
 
   properties (GetAccess=public, SetAccess=public)
-       
+
     % constraint multiplier block
     Jconstraint
 
@@ -25,8 +20,8 @@ classdef (Abstract) InterfaceSolver < handle
     % object for non-conforming integration
     quadrature
 
-    % object holding the interface mesh geometrical info
-    interfMesh
+    % grids(1): master    grids(2): slave
+    grids
 
     % Number of multiplier dofs
     nMult
@@ -34,17 +29,16 @@ classdef (Abstract) InterfaceSolver < handle
     % Location of the lagrange multiplier ( default is P0 )
     multiplierLocation = entityField.surface
 
-    % print utilities
+    % print utilities (pointer to property of solutionScheme)
     outstate
 
     % interface state
     state
-    stateOld
 
-    % id of this interface within the final linear solver
+    % id of this interface in the solution scheme object
     interfId
 
-    % id of connected domains
+    % global id of the connected domains
     domainId
 
     % list of variables coupled from the solver
@@ -52,8 +46,6 @@ classdef (Abstract) InterfaceSolver < handle
 
     % list of dirichlet nodes
     dirNodes
-
-    vtmBlock
 
   end
 
@@ -73,7 +65,7 @@ classdef (Abstract) InterfaceSolver < handle
 
   methods (Abstract)
 
-    % intialize the interface properties
+    % Initialize the interface properties
     registerInterface(obj);
 
     % assemble the constraint matrices
@@ -86,7 +78,7 @@ classdef (Abstract) InterfaceSolver < handle
     [cellData,pointData] = writeVTK(obj,t);
 
     % write history to MAT-file
-    writeMatFile(obj,t,tID);
+    writeSolution(obj,t,tID);
 
   end
 
@@ -100,73 +92,69 @@ classdef (Abstract) InterfaceSolver < handle
 
   methods
 
-    function obj = InterfaceSolver(id,domains,inputStruct)
+    function obj = InterfaceSolver(id,domains,varargin)
 
       % domain:  handle to the Discretizer object storing all the
       % information of the model
 
-      if ~isstruct(inputStruct)
-        inputStruct = readstruct(inputStruct,AttributeSuffix="");
-      end
+      % minimal required input is the id of the connected domains
+      default = struct('slaveDomain',double(MortarSide.slave), ...
+                       'masterDomain',double(MortarSide.master));
 
-      if isfield(inputStruct,"Interface")
-        inputStruct = inputStruct.Interface;
-      end
+      input = readInput(default,varargin{:});
 
-      obj.domainId = [getXMLData(inputStruct.Master,[],"domainId");
-        getXMLData(inputStruct.Slave,[],"domainId")];
+
+      obj.domainId = [input.slaveDomain,input.masterDomain];
+
 
       % store handle to connected domains
       obj.domains = [domains(obj.domainId(1));
-        domains(obj.domainId(2))];
+                     domains(obj.domainId(2))];
 
       % add handle of this object to the list of interfaces of connected
       % domains
-      master = getSide(MortarSide.master);
-      slave = getSide(MortarSide.slave);
 
-      obj.interfaceId = [numel(obj.domains(master).interfaces),...
-        numel(obj.domains(slave).interfaces)] + 1;
-
-      % make domain aware of its interface
-      obj.domains(1).interfaces{obj.interfaceId(master)} = obj;
-      obj.domains(2).interfaces{obj.interfaceId(slave)} = obj;
-      obj.domains(1).interfaceList(obj.interfaceId(master)) = id;
-      obj.domains(2).interfaceList(obj.interfaceId(slave)) = id;
+      obj.interfaceId(MortarSide.slave) = numel(obj.domains(MortarSide.slave).interfaces) + 1;
+      obj.interfaceId(MortarSide.master) = numel(obj.domains(MortarSide.master).interfaces) + 1;
 
 
-      % initialize interfaces jacobian and rhs blocks to match same number
-      % of variable of connected domains
-      dofMaster = getDoFManager(obj,MortarSide.master);
-      dofSlave = getDoFManager(obj,MortarSide.slave);
-      nVarMaster = getNumberOfVariables(dofMaster);
-      nVarSlave =  getNumberOfVariables(dofSlave);
+      for side = [MortarSide.slave,MortarSide.master]
 
-      % initialize the jacobian blocks for domain coupling
-      obj.domains(master).Jum{obj.interfaceId(master)} = cell(nVarMaster,1);
-      obj.domains(slave).Jum{obj.interfaceId(slave)} = cell(nVarSlave,1);
-      obj.domains(master).Jmu{obj.interfaceId(master)} = cell(1,nVarMaster);
-      obj.domains(slave).Jmu{obj.interfaceId(slave)} = cell(1,nVarSlave);
+        obj.domains(side).interfaces{obj.interfaceId(side)} = obj;
+        obj.domains(side).interfaceList(obj.interfaceId(side)) = id;
+
+        dof = getDoFManager(obj,side);
+        nVar = getNumberOfVariables(dof);
+        obj.domains(side).Jum{obj.interfaceId(side)} = cell(nVar,1);
+        obj.domains(side).Jmu{obj.interfaceId(side)} = cell(1,nVar);
+
+      end
+
+      % prepare cross-grid information
+      setMortarInterface(obj,input);
 
       % specify the variables to be coupled
-      setCoupledVariables(obj,inputStruct)
-  
-      % mortar computations
-      setMortarInterface(obj,inputStruct);
+      setCoupledVariables(obj,input)
+
+      obj.state = State();
+
 
     end
-
 
     function advanceState(obj)
 
       % note: state in interface solver is just a value struct
-      obj.stateOld = obj.state;
-      
+      setStateOld(obj,getState(obj));
+
+    end
+
+    function timeStepSetup(obj)
+      % prepare the interface solver at the begin of each time step
     end
 
     function goBackState(obj)
 
-      obj.state = obj.stateOld;
+      setState(obj,getStateOld(obj));
 
     end
 
@@ -174,76 +162,104 @@ classdef (Abstract) InterfaceSolver < handle
 
       % base class implements no configuration change
       hasConfigurationChanged = false;
-      
+
+    end
+
+    function initialize(obj)
+      % initialize the interface solver
+
+      obj.Jconstraint = [];
+      obj.rhsConstraint = [];
+
+      % remove slave Dirichlet boundary conditions for nodal multipliers
+      removeSlaveBCents(obj);
     end
 
 
-    % function printState(obj)
-    %   % print solution at the interface according to the print time in the
-    %   % input list 
-    % 
-    %   if obj.outstate.timeID <= length(obj.outstate.timeList)
-    % 
-    %     time = obj.outstate.timeList(obj.outstate.timeID);
-    % 
-    %     % loop over print times within last time step
-    %     while time <= obj.state.t
-    % 
-    %       assert(time >= obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
-    %         time, obj.stateOld.t, obj.state.t);
-    % 
-    %       % assert(obj.state.t - obj.stateOld.t > eps('double'),...
-    %       %   'Time step is too small for printing purposes');
-    % 
-    %       % compute factor to interpolate current and old state variables
-    %       fac = (time - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
-    %       if isnan(fac) || isinf(fac)
-    %         fac = 1;
-    %       end
-    % 
-    %       % call methods inside the individual interface solvers
-    %       if obj.outstate.writeVtk
-    %         surfData2D = struct('name', [], 'data', []);
-    %         pointData2D = struct('name', [], 'data', []);
-    %         [surfData,pointData] = writeVTK(obj,fac,time);
-    %         surfData2D = OutState.mergeOutFields(surfData2D,surfData);
-    %         pointData2D = OutState.mergeOutFields(pointData2D,pointData);
-    %         obj.outstate.VTK.writeVTKFile(time, [], [], pointData2D, surfData2D);
-    %       end
-    % 
-    %       if obj.outstate.writeSolution
-    %         writeMatFile(obj,fac,obj.outstate.timeID);
-    %       end
-    % 
-    %       obj.outstate.timeID = obj.outstate.timeID + 1;
-    % 
-    %       if obj.outstate.timeID > length(obj.outstate.timeList)
-    %         break
-    %       else
-    %         time = obj.outstate.timeList(obj.outstate.timeID);
-    %       end
-    % 
-    %     end
-    % 
-    %   end
-    % end
+    function vtmBlock = writeVTKfile(obj,fac,time)
 
-    function out = writeVTKfile(obj,fac,time)
-
-      obj.vtmBlock = obj.outstate.vtkFile.createElement('Block');
-      
-      mesh = getMesh(obj,MortarSide.slave);
+      grid = obj.grids(MortarSide.slave);
       surfData2D = struct('name', [], 'data', []);
       pointData2D = struct('name', [], 'data', []);
       [surfData,pointData] = writeVTK(obj,fac,time);
       surfData2D = OutState.mergeOutFields(surfData2D,surfData);
       pointData2D = OutState.mergeOutFields(pointData2D,pointData);
-      if ~isempty(surfData2D) || ~isempty(pointData2D)
-      obj.outstate.writeVTKfile(obj.vtmBlock,obj.getOutName(),mesh,...
+      vtmBlock = obj.outstate.vtkFile.createElement('Block');
+      obj.outstate.writeVTKfile(vtmBlock,obj.getOutName(),grid,...
         time, [], [], pointData2D, surfData2D);
-      out = obj.vtmBlock;
+
+    end
+
+
+
+    function stateCurr = getState(obj,varName)
+      % get current state variables
+      if nargin == 1
+        stateCurr = obj.state.get('curr');
+      elseif nargin == 2
+        stateCurr = obj.state.get('curr',varName);
       else
-        out = [];
+        error("getState:Number of input arguments must be 1 or 2")
+      end
+    end
+
+    function stateOld = getStateOld(obj,varName)
+      % get last converged state variables
+      if nargin == 1
+        stateOld = obj.state.get('old');
+      elseif nargin == 2
+        stateOld = obj.state.get('old',varName);
+      else
+        error("getState:Number of input arguments must be 1 or 2")
+      end
+    end
+
+
+    function stateInit = getStateInit(obj,varName)
+      % get initial state variables
+      if nargin == 1
+        stateInit = obj.state.get('init');
+      elseif nargin == 2
+        stateInit = obj.state.get('init',varName);
+      else
+        error("getState:Number of input arguments must be 1 or 2")
+      end
+    end
+
+
+
+    function setState(obj,val,varName)
+      % get current state variables
+      if nargin == 2
+        obj.state.set('curr',val);
+      elseif nargin == 3
+        obj.state.set('curr',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
+      end
+    end
+
+    function setStateOld(obj,val,varName)
+      % get last converged state variables
+      if nargin == 2
+        obj.state.set('old',val);
+      elseif nargin == 3
+        obj.state.set('old',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
+      end
+
+    end
+
+
+    function setStateInit(obj,val,varName)
+      % get initial state variables
+      if nargin == 2
+        obj.state.set('init',val);
+      elseif nargin == 3
+        obj.state.set('init',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
       end
     end
 
@@ -266,21 +282,25 @@ classdef (Abstract) InterfaceSolver < handle
 
     function dofs = getMultiplierDoF(obj,el)
 
-      meshSlave = getMesh(obj,MortarSide.slave);
+      meshSlave = obj.grids(MortarSide.slave);
       dofSlave = getDoFManager(obj,MortarSide.slave);
       ncomp = dofSlave.getNumberOfComponents(obj.coupledVariables);
 
       if nargin > 1
 
-      dofs = getEntityFromElement( obj.multiplierLocation,...
-                                   entityField.surface,...
-                                   meshSlave,...
-                                   el,...
-                                   ncomp );
+        dofs = getIncidenceID(obj.multiplierLocation,meshSlave,entityField.surface,el);
+        dofs = dofs.getData;
+
+        % dofs = getEntityFromElement( obj.multiplierLocation,...
+        %   entityField.surface,...
+        %   meshSlave,...
+        %   el,...
+        %   ncomp );
       else
         dofs = 1:getNumberOfEntities(obj.multiplierLocation,meshSlave);
-        dofs = DoFManager.dofExpand(dofs,ncomp);
       end
+
+      dofs = DoFManager.dofExpand(dofs,ncomp);
     end
 
     function nDoFs = getNumbDoF(obj)
@@ -290,8 +310,26 @@ classdef (Abstract) InterfaceSolver < handle
       else
         ncomp = max(getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables));
         obj.nMult = ncomp * getNumberOfEntities(obj.multiplierLocation,...
-                                                obj.getMesh(MortarSide.slave));
+          obj.grids(MortarSide.slave));
         nDoFs = obj.nMult;
+      end
+    end
+
+
+    function R = getRotationMatrix(obj,side,el)
+
+      if obj.multiplierLocation == entityField.surface
+        R = obj.grids(side).surfaces.rotationMatrices(el,:);
+        R = reshape(R,3,3);
+      elseif obj.multiplierLocation == entityField.node
+        nodes = obj.grids(side).getSurfNodes(el);
+        n = (obj.grids(side).surfaces.avgNodNormal(nodes,:))';
+        n = n(:);
+        sz = size(n,1);
+        R = zeros(sz(1));
+        for i = 1:3:sz(1)
+          R(i:i+2,i:i+2) = mxComputeRotationMat(n(i:i+2));
+        end
       end
     end
 
@@ -396,13 +434,11 @@ classdef (Abstract) InterfaceSolver < handle
 
 
     function dofm = getDoFManager(obj,side)
-      s = getSide(side);
-      dofm = obj.domains(s).dofm;
+      dofm = obj.domains(side).dofm;
     end
 
-    function mesh = getMesh(obj,side)
-      s = getSide(side);
-      mesh = obj.interfMesh.msh(s);
+    function [out] = isLinear(obj)
+       out = false;
     end
 
   end
@@ -415,61 +451,57 @@ classdef (Abstract) InterfaceSolver < handle
 
       obj.coupledVariables = obj.getCoupledVariables();
 
-      varMaster = getVariableNames(obj.domains(1).dofm);
-      varSlave = getVariableNames(obj.domains(2).dofm);
+      varMaster = getVariableNames(obj.domains(MortarSide.master).dofm);
+      varSlave = getVariableNames(obj.domains(MortarSide.slave).dofm);
+
+      if any([isempty(varMaster),isempty(varSlave)])
+        error(['Interface solver can be registered only after ' ...
+          'physicsSolver have been defined'])
+      end
 
       % default candidate interface variable are those in common between
       % master and slave discretizers
       sharedVars = intersect(varSlave,varMaster);
 
-      if ~isempty(obj.coupledVariables)
-        % the interfaceSolver specifies the coupled variables directly in
-        % the properties block
-        % only check that the interface is compatible with the available
-        % field
-
-        isInterfaceValid = all(ismember(obj.coupledVariables,sharedVars));
-
-        if ~isInterfaceValid
-          error("The interface attempts to couple a variable that is not" + ...
-            " available in any of the connected domains.")
-        end
-
-      else
-        % the interfaceSolver does not specify the coupled variables
-        % in the properties block
-
-        if isfield(input,"variable")
-          sharedVars = getXMLData(input,[],"variable");
-        end
-
-        obj.coupledVariables = sharedVars;
+      if isempty(obj.coupledVariables)
+        in = readInput(struct('variable',sharedVars),input);
+        obj.coupledVariables = in.variable;
       end
+
+
+      isInterfaceValid = all(ismember(obj.coupledVariables,sharedVars));
+
+      if ~isInterfaceValid
+        error("The interface attempts to couple a variable named '%s' that is not" + ...
+          " available in any of the connected domains.",obj.coupledVariables)
+      end
+
     end
 
-    function setMortarInterface(obj,interfaceInput)
+    function setMortarInterface(obj,params)
 
-      masterSurf = getXMLData(interfaceInput.Master,0,"surfaceTag");
-      slaveSurf = getXMLData(interfaceInput.Slave,0,"surfaceTag");
 
-      obj.interfMesh = InterfaceMesh(obj.domains(1).grid.topology,...
-        obj.domains(2).grid.topology,...
-        masterSurf,slaveSurf);
+      default = struct('masterSurface',missing,...
+        'slaveSurface',missing,...
+        'multiplierType',"P0",...
+        'Quadrature',struct());
 
-      checkInterfaceDisjoint(obj);
+      % the Quadrature field implies that this is an xml field
 
-      if isfield(interfaceInput,"Quadrature")
-        quad = interfaceInput.Quadrature;
-      else
-        quad = [];
-      end
+      params = readInput(default,params);
 
-      multType = getXMLData(interfaceInput,"P0","multiplierType");
+      processMortarGrid(obj,params);
 
-      quadType = getXMLData(quad,...
-        "SegmentBasedQuadrature","type");
 
-      switch multType
+    end
+
+
+    function processMortarGrid(obj,params)
+
+      obj.grids = repmat(Grid(),2,1);
+
+      % read parameters
+      switch params.multiplierType
         case {"standard","dual"}
           obj.multiplierLocation = entityField.node;
         case "P0"
@@ -479,71 +511,137 @@ classdef (Abstract) InterfaceSolver < handle
             "Available types are: standard,dual,P0");
       end
 
+      if numel(fieldnames(params.Quadrature)) > 0
+        quadType = params.Quadrature.type;
+      else
+        quadType = "SegmentBasedQuadrature";
+      end
+
+
+      % get initial grids (may include non active mortar elements)
+      tags = {params.slaveSurface,params.masterSurface};
+
+      for side = [MortarSide.slave,MortarSide.master]
+
+        grid = obj.domains(side).grid;
+        if ismissing(tags{side})
+          obj.grids(side) = getGridBoundary(grid);
+        else
+          obj.grids(side) = getSurfaceGrid(grid,tags{side});
+        end
+
+        obj.grids(side).computeAvgNodalNormal();
+      end
+
+      cs = ContactSearching(obj.grids(MortarSide.slave),obj.grids(MortarSide.master),params);
+
+      elemConnectivity = cs.getElementConnectivity();
+
+
+      if ~any(elemConnectivity,"all")
+        error('No connection between master domain %i  and slave domain %i !',...
+          params.masterDomain,params.slaveDomain)
+      end
+
 
       obj.quadrature = feval(quadType,...
-                             obj,...
-                             multType,...
-                             quad);
+        params.multiplierType, ...
+        obj.grids, ...
+        params.Quadrature);
 
-      % remove slave Dirichlet boundary conditions for nodal multipliers
-      removeSlaveBCents(obj);
 
-      % Mortar quadrature preprocessing
-      computeMortarInterpolation(obj);
+      processMortarPairs(obj.quadrature,elemConnectivity);
 
-      % Finalize interface geometry
-      finalizeInterfaceGeometry(obj.interfMesh,obj);
 
-      % initialize the state objects
-      obj.state.t = 0;
-      obj.stateOld = obj.state;
+      % now finalize the grids and compute edges
+      for side = [MortarSide.slave, MortarSide.master]
+
+        nOld = obj.grids(side).surfaces.num;
+
+        % Active surface IDs in the current local numbering
+        activeId = unique(obj.quadrature.interfacePairs(:,side));
+
+        isMortarElem = false(nOld,1);
+        isMortarElem(activeId) = true;
+
+        % Surfaces are retained by getSurfaceGrid in this order
+        keptId = find(isMortarElem);
+
+        % Map old local surface IDs to new local surface IDs
+        old2new = zeros(nOld,1);
+        old2new(keptId) = 1:numel(keptId);
+
+        % Renumber this side of all interface pairs
+        obj.quadrature.interfacePairs(:,side) = ...
+          old2new(obj.quadrature.interfacePairs(:,side));
+
+        if side == MortarSide.slave
+          obj.quadrature.areaSlave = obj.quadrature.areaSlave(isMortarElem);
+        end
+
+        % Extract only active mortar surfaces
+        obj.grids(side) = getSurfaceGrid( ...
+          obj.grids(side), isMortarElem);
+
+        % Process the final surface grid
+        obj.grids(side).processEdges();
+        obj.grids(side).computeAvgNodalNormal();
+
+        surf = obj.grids(side).surfaces;
+        R = zeros(surf.num,9);
+
+        for i = 1:surf.num
+          n = surf.normal(i,:);
+          Ri = mxComputeRotationMat(n);
+          R(i,:) = Ri(:);
+        end
+
+        obj.grids(side).surfaces.rotationMatrices = R;
+      end
+
     end
 
 
-    function computeMortarInterpolation(obj)
-
-      processMortarPairs(obj.quadrature);
-
-      % remove inactive interface elements
-      inactiveMaster = ~ismember(1:getMesh(obj,MortarSide.master).nSurfaces,...
-        obj.quadrature.interfacePairs(:,2));
-
-      [~, ~, obj.quadrature.interfacePairs(:,2)] = ...
-        unique(obj.quadrature.interfacePairs(:,2));
-
-      inactiveSlave = ~ismember(1:getMesh(obj,MortarSide.slave).nSurfaces,...
-        obj.quadrature.interfacePairs(:,1));
-
-      [~, ~, obj.quadrature.interfacePairs(:,1)] = ...
-        unique(obj.quadrature.interfacePairs(:,1));
-
-      % remove master elements
-      obj.interfMesh.removeMortarSurface(1,inactiveMaster);
-
-      % remove slave elements
-      obj.interfMesh.removeMortarSurface(2,inactiveSlave);
-
-
+    function elem = getElement(obj,vtkId,side)
+      elem = FiniteElementType.create(vtkId,obj.grids(side),'gaussOrder',obj.quadrature.gaussOrder);
     end
+
 
 
     function removeSlaveBCents(obj)
 
-      % domain 2 is the slave
-      nodSlave = obj.interfMesh.local2glob{2};
+      nodSlave = obj.grids(MortarSide.slave).surfaces.loc2glob;
 
-      bc = obj.domains(2).bcs;
-      bcList = bc.db.keys;
+      bc = obj.domains(MortarSide.slave).bcs;
+      bcList = bc.getBCList();
 
-      for bcId = string(bcList)
-        if strcmp(getType(bc,bcId),"Dirichlet")
-          bcNodes = intersect(bc.getBCentities(bcId),nodSlave);
+
+      for bcId = bcList
+        if getType(bc,bcId) == BCtype.dirichlet
+          bcNodes = intersect(bc.getTargetEntities(bcId),nodSlave);
           obj.dirNodes = [obj.dirNodes; bcNodes];
           if obj.multiplierLocation == entityField.node
-            bc.removeBCentities(bcId,nodSlave);
+            bc.removeTargetEntities(bcId,nodSlave);
           end
         end
       end
+    end
+
+    function initializeMortarInterface(obj,slaveTag,masterTag)
+
+      surf = [slaveTag,masterTag];
+
+      for side = [MortarSide.slave, MortarSide.master]
+
+        gDom = obj.domains(side).grid;
+
+        if ismissing(surf(side))
+          obj.grids(side) = gDom.getSurfaceGrid();
+        else
+          obj.grids(side) = gDom.getSurfaceGrid(surf(side));
+        end
+      end
+
     end
 
 
@@ -566,7 +664,7 @@ classdef (Abstract) InterfaceSolver < handle
     function [Ju,Jm] = getCouplingBlocks(obj,id)
 
       % id: logical array to determine if the request for coupling blocks
-      % come from master or slave 
+      % come from master or slave
 
       if all(id)
         domId = 1;
@@ -609,11 +707,112 @@ classdef (Abstract) InterfaceSolver < handle
 
       outName = sprintf('Interface_%i',obj.interfId);
 
+    end
+
+
+  end
+
+
+  methods (Static)
+
+    function interfaces = addInterfaces(domains,input)
+
+      assert(nargin == 2,"Input must be a structure array or an input file")
+
+      interfStruct = readInput(input);
+
+      interfaces = {};
+
+      interfNames = fieldnames(interfStruct);
+
+      for i = 1:numel(interfNames)
+
+        % deal with multiple interfaces having same name
+        for in = [interfStruct.(interfNames{i})]
+
+          interfaces = InterfaceSolver.add(interfNames{i},...
+            domains,...
+            interfaces,in);
+        end
+      end
 
     end
 
 
-    
+    function interfaces = add(interfType,domains,varargin)
+      %   Add a new interface object to the interface list.
+      %
+      %   interfaces = add(interfType, domains, input)
+      %   interfaces = add(interfType, domains, interfaces, input)
+      %
+      %   This function creates a new interface object of type `interfType`,
+      %   assigns it a progressive index, registers solver-specific data,
+      %   and appends it to the interface list.
+      %
+      %   INPUT
+      %   -----
+      %   interfType : function handle or class name (char/string)
+      %       Constructor for the interface object. The constructor must
+      %       accept the signature:
+      %           obj = interfType(id, domains, input)
+      %
+      %   domains : array or cell array
+      %       Collection of domains connected by the interface.
+      %
+      %   interfaces : cell array (optional)
+      %       Existing list of interface objects. If omitted, a new list
+      %       is created.
+      %
+      %   input : cell array
+      %       Additional user-defined input parameters passed both to the
+      %       constructor and to the interface method `registerInterface`.
+      %
+      %   OUTPUT
+      %   ------
+      %   interfaces : cell array
+      %       Updated list of interface objects, including the newly
+      %       created interface appended at the end.
+      %
+      %
+      %   See also: InterfaceSolver
+      %
+      %   ---------------------------------------------------------------------
+
+
+      if nargin == 2
+        interfaces = {};
+        input = [];
+      elseif iscell(varargin{1})
+        interfaces = varargin{1};
+        input = varargin{2:end};
+      else
+        % generate the interface list
+        interfaces = {};
+        input = varargin{1:end};
+      end
+
+      k = numel(interfaces);
+
+
+
+      % general input
+      interf = feval(interfType,k+1,domains,input);
+      % solver-specific input
+      interf.registerInterface(input);
+
+      interfaces{end+1} = interf;
+
+    end
+
+
+
+
+
+
+
+
+
+
   end
 
 

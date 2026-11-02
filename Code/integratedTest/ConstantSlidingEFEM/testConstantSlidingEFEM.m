@@ -10,26 +10,23 @@ cd(scriptDir);
 
 fname = 'constantSlidingEFEM.xml';
 
-simparams = SimulationParameters(fname);
+params = readInput(fname);
+
+simparams = SimulationParameters(params.SimulationParameters);
 
 
-mesh = structuredMesh(8,2,16,[0 2],[0, 0.5],[0 4]);
+grid = structuredMesh(8,2,16,[0 2],[0, 0.5],[0 4]);
 
+mat = Materials(params.Materials);
 
-elems = Elements(mesh,2);
-faces = Faces(mesh);
-grid = struct('topology',mesh,'cells',elems,'faces',faces);
-mat = Materials(fname);
-
-
-bc = Boundaries(fname,grid);
+bc = Boundaries(grid,params.BoundaryConditions);
 % Create object handling construction of Jacobian and rhs of the model
-domain = Discretizer('Boundaries',bc,...
-                     'Materials',mat,...
-                     'Grid',grid);
+domain = Discretizer('boundaries',bc,...
+                     'materials',mat,...
+                     'grid',grid);
 
 
-domain.addPhysicsSolver(fname);
+domain.addPhysicsSolvers(params.Solver);
 
 
 solver = NonLinearImplicit('simulationparameters',simparams,...
@@ -37,7 +34,8 @@ solver = NonLinearImplicit('simulationparameters',simparams,...
 solver.simulationLoop();
 
 % get tangential gap
-gt = abs(domain.state.data.fractureJump(2:3:end));
+gt = abs(getState(domain,"fractureJump"));
+gt = gt(2:3:end);
 anGt = 0.1*sqrt(2);
 tol = 1e-6;
 assert(all(abs(gt - anGt)<tol),"Analytical solution is not matched")

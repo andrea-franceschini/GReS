@@ -14,17 +14,12 @@
   <BoundaryConditions fileName = "model04/boundaryConditions.xml" />
 
 
-  <Output printTimes=".1,.25,.5,1"
-          outputFile="model05/Output05/results"
-          matFileName="model05/Output05/history"
-          saveHistory="1"/>
-
 
   <Solver>
-    <BiotFullySaturated>
+    <BiotFullyCoupled>
       <Poromechanics/>
       <SinglePhaseFlowFVTPFA targetRegions="1"/>
-    </BiotFullySaturated>
+    </BiotFullyCoupled>
   </Solver>
 
 </Problem>

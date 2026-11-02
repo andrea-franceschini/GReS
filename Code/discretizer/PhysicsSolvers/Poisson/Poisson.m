@@ -1,11 +1,11 @@
 classdef Poisson < PhysicsSolver
-  %UNTITLED Summary of this class goes here
-  %   Detailed explanation goes here
+  % FEM solver for Poisson equation
   
   properties
     F
     analyticalSolution
     fieldId
+    gaussOrder
   end
 
 
@@ -14,20 +14,19 @@ classdef Poisson < PhysicsSolver
       obj@PhysicsSolver(domain)
     end
 
-    function registerSolver(obj,solverInput)
+    function registerSolver(obj,varargin)
 
-      nTags = obj.mesh.nCellTag;
+      nTags = obj.grid.cells.nTag;
 
-      if ~isempty(solverInput)
-        targetRegions = getXMLData(solverInput,1:nTags,"targetRegions");
-      else
-        targetRegions = 1:nTags;
-      end
+      default = struct('targetRegions',1:nTags,'gaussOrder',0);
 
+      params = readInput(default,varargin{:});
+
+      obj.gaussOrder = params.gaussOrder;
       dofm = obj.domain.dofm;
 
-      % register nodal displacements on target regions
-      dofm.registerVariable(obj.getField(),entityField.node,1,targetRegions);
+      % register scalar poisson variable on target regions
+      dofm.registerVariable(obj.getField(),entityField.node,1,params.targetRegions);
 
       % store the id of the field in the degree of freedom manager
       obj.fieldId = dofm.getVariableId(obj.getField());
@@ -35,9 +34,10 @@ classdef Poisson < PhysicsSolver
       % initialize the state object
       n = getNumbDoF(dofm,obj.fieldId);
 
-      state = getState(obj);
-      state.data.u = zeros(n,1);
-      state.data.err = zeros(n,1);
+      s = getState(obj);
+      s.u = zeros(n,1);
+      s.err = zeros(n,1);
+      setState(obj,s);
 
     end
 
@@ -51,125 +51,130 @@ classdef Poisson < PhysicsSolver
     function J = computeMat(obj,varargin)
 
       subCells = obj.domain.dofm.getFieldCells(obj.fieldId);
-      n = sum(obj.mesh.cellNumVerts(subCells).^2);
+      cells = obj.grid.cells;
+      
+      n = sum(cells.numVerts(subCells).^2);
       Ndof = obj.domain.dofm.getNumbDoF(obj.getField());
-      asbJ = assembler(n,Ndof,Ndof, @(el) computeLocalMatrix(obj,el));
+      asbJ = assembler(n,Ndof,Ndof);
+      coordinates = obj.grid.coordinates;
+      cells = obj.grid.cells;
+
       % loop over cells
-      for el = subCells'
-        % get dof id and local matrix
-        asbJ.localAssembly(el);
+      for vtkId = cells.vtkTypes
+
+        tmp = obj.grid.getCellsByVTKId(vtkId);
+        subCellsLoc = intersect(subCells,tmp,'sorted');
+        elem = FiniteElementType.create(vtkId,obj.grid,'gaussOrder',obj.gaussOrder);
+
+        % get node topology for given vtk type
+        topol = obj.grid.getCellNodes(subCellsLoc);
+
+        for i = 1:numel(subCellsLoc)
+          el = subCellsLoc(i);
+          nodes = topol(el,:);
+          coords = coordinates(nodes,:);
+          % get dof id and local matrix
+          [gradN,dJW] = getDerBasisFAndDet(elem,coords);
+          Jloc = pagemtimes(gradN,'ctranspose',gradN,'none');
+          Jloc = Jloc.*reshape(dJW,1,1,[]);
+          Jloc = sum(Jloc,3);
+          % get global DoF
+          dof = obj.domain.dofm.getLocalDoF(obj.fieldId,nodes);
+          asbJ.localAssembly(dof,dof,Jloc);
+        end
       end
       % populate stiffness matrix
       J = asbJ.sparseAssembly();
-    end
-
-
-    function [dofr,dofc,matLoc] = computeLocalMatrix(obj,elID)
-      elem = getElementByID(obj.elements,elID);
-      [gradN,dJW] = getDerBasisFAndDet(elem,elID,1);
-      matLoc = pagemtimes(gradN,'ctranspose',gradN,'none');
-      matLoc = matLoc.*reshape(dJW,1,1,[]);
-      matLoc = sum(matLoc,3);
-      % get global DoF
-      nodes = obj.mesh.cells(elID,1:obj.mesh.cellNumVerts(elID));
-      dof = obj.domain.dofm.getLocalDoF(obj.fieldId,nodes);
-      dofr = dof; dofc = dof;
     end
 
     function rhs = computeRhs(obj,varargin)
       ents = obj.domain.dofm.getActiveEntities(obj.getField());
       J = getJacobian(obj);
       f = computeForcingTerm(obj);
-      rhs = J*obj.domain.state.data.u(ents) + f(ents);
+      u = getState(obj,"u");
+      rhs = J*u(ents) + f(ents);
     end
 
-    function initState(obj)
-      % add poromechanics fields to state structure
-      obj.domain.state.data.u = zeros(obj.mesh.nNodes,1);
-      obj.domain.state.data.err = zeros(obj.mesh.nNodes,1);
-    end
 
     function updateState(obj,dSol)
       % Update state structure with last solution increment
       ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
       if nargin > 1
         % update solution
-        obj.domain.state.data.u(ents) = obj.domain.state.data.u(ents) + ...
-          dSol(getDoF(obj.domain.dofm,obj.fieldId));
+        u = getState(obj,"u");
+        u(ents) = u(ents) + dSol(getDoF(obj.domain.dofm,obj.fieldId));
+        setState(obj,u,"u");
       end
 
       % compute error if analytical solution is available
       if ~isempty(obj.analyticalSolution)
         analSol = computeAnal(obj,ents,'u',0);
-        obj.domain.state.data.err(ents) = obj.domain.state.data.u(ents) - analSol;
+        err = u(ents) - analSol;
+        setState(obj,err,"err");
       end
     end
 
-    function applyBC(obj,bcId,t)
-
-      if ~BCapplies(obj,bcId)
-        return
-      end
-
-      % get bcDofs and bcVals
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
-
-      bcType = obj.domain.bcs.getType(bcId);
-
-      switch bcType
-        case 'Dirichlet'
-          applyDirBC(obj,bcId,bcDofs);
-        case 'Neumann'
-          applyNeuBC(obj,bcId,bcDofs,bcVals);
-        otherwise
-          error("Error in %s: Boundary condition type '%s' is not " + ...
-            "available in %s",class(obj),bcType);
-      end
-      
-    end
+    % function applyBC(obj,bcId,t)
+    % 
+    % 
+    %   if ~strcmp(bc.getField(bcId),"node")
+    %     error('BC entitiy %s is not available for %s field',cond,obj.getField());
+    %   end
+    % 
+    %   applyBC@PhysicsSolver(obj,bcId,t);
+    % 
+    %   % % get bcDofs and bcVals
+    %   % [bcDofs,bcVals] = getBC(obj,bcId,t);
+    %   % 
+    %   % bcType = obj.domain.bcs.getType(bcId);
+    %   % 
+    %   % switch bcType
+    %   %   case 'Dirichlet'
+    %   %     applyDirBC(obj,bcId,bcDofs);
+    %   %   case 'Neumann'
+    %   %     applyNeuBC(obj,bcId,bcDofs,bcVals);
+    %   %   otherwise
+    %   %     error("Error in %s: Boundary condition type '%s' is not " + ...
+    %   %       "available in %s",class(obj),bcType);
+    %   % end
+    % 
+    % end
 
     function advanceState(obj)
       % do nothing
     end
 
+    % 
+    % function [dof,vals] = getBC(obj,bcId,t)
+    % 
+    %   bc = obj.domain.bcs;
+    %   dof = bc.getBCentities(bcId);
+    %   vals = bc.getVals(bcId,t);
+    % 
+    % end
 
-    function [dof,vals] = getBC(obj,bcId,t)
-
-      bc = obj.domain.bcs;
-      if ~strcmp(bc.getCond(bcId),"NodeBC")
-          error('BC entitiy %s is not available for %s field',cond,obj.getField());
-      end
-
-      dof = bc.getBCentities(bcId);
-      vals = bc.getVals(bcId,t);
-
-    end
-
-    function applyDirVal(obj,bcId,t)
-
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
-
-      obj.domain.state.data.u(bcDofs) = bcVals;
-
-    end
+    % function applyDirVal(obj,bcId,t)
+    % 
+    %   [bcDofs,bcVals] = getBC(obj,bcId,t);
+    % 
+    %   obj.domain.state.data.u(bcDofs) = bcVals;
+    % 
+    % end
 
     function [cellData,pointData] = writeVTK(obj,fac,varargin)
 
-      sOld = getStateOld(obj);
-      sNew = getState(obj);
 
-      u = sNew.data.u*fac+sOld.data.u*(1-fac);
+      u = obj.domain.state.interpolate(fac,obj.getField());
 
       [cellData,pointData] = buildPrintStruct(obj,u);
 
     end
 
-    function writeMatFile(obj,fac,tID)
+    function writeSolution(obj,fac,tID)
 
-      uOld = getStateOld(obj,obj.getField());
-      uCurr = getState(obj,obj.getField());
+      u = obj.domain.state.interpolate(fac,obj.getField());
 
-      obj.domain.outstate.matFile(tID).(obj.getField()) = uCurr*fac+uOld*(1-fac);
+      obj.domain.outstate.results(tID).(obj.getField()) = u;
     
     end
 
@@ -187,7 +192,7 @@ classdef Poisson < PhysicsSolver
       pointStr(1).data = var;
       if ~isempty(obj.analyticalSolution)
         pointStr(2).name = 'abs_error';
-        pointStr(2).data = abs(var-computeAnal(obj,1:obj.mesh.nNodes,'u',0));
+        pointStr(2).data = abs(var-computeAnal(obj,1:obj.grid.nNodes,'u',0));
       end
     end
 
@@ -206,12 +211,14 @@ classdef Poisson < PhysicsSolver
 
     function anal = computeAnal(obj,list,var,mode)
       if mode == 0
-        x = obj.mesh.coordinates(list,:);
+        x = obj.grid.coordinates(list,:);
       elseif mode == 1
         x = list;
       else 
         error('Mode input must be 0 (nodes list) or 1 (coordinate input list)');
       end
+
+      [x,y,z] = deal(x(:,1),x(:,2),x(:,3));
       switch var
         case 'u'
           f = obj.analyticalSolution.u;
@@ -226,7 +233,7 @@ classdef Poisson < PhysicsSolver
         otherwise
           error('Incorrect input for flag')
       end
-      anal = arrayfun(@(i) f(x(i,:)),1:size(x,1));
+      anal = f(x,y,z);
       anal = reshape(anal,[],1);      % make column array
     end
 
@@ -234,98 +241,94 @@ classdef Poisson < PhysicsSolver
       % classical
       % general sparse assembly loop over elements for Poromechanics
       subCells = obj.domain.dofm.getFieldCells(obj.getField());
+      cells = obj.grid.cells;
+      coordinates = obj.grid.coordinates;
       F = zeros(obj.domain.dofm.getNumbDoF(obj.getField()),1);
-      % loop over cells
-      for el = subCells'
-        % get dof id and local matrix
-        id = obj.mesh.cells(el,:);
-        elem = getElementByID(obj.elements,el);
-        c_gp = getGPointsLocation(elem,el);
-        f_gp = computeAnal(obj,c_gp,'f',1);
-        [~,dJW] = getDerBasisFAndDet(elem,el,1);
-        N = getBasisFinGPoints(elem);
-        floc = N'*(f_gp.*dJW');
-        % proper integration
-        F(id) = F(id) + floc;
+
+      for vtkId = cells.vtkTypes
+
+        subCellsLoc = obj.grid.getCellsByVTKId(vtkId,subCells);
+        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+
+        % get node topology for given vtk type
+        topol = obj.grid.getCellNodes(subCellsLoc);
+
+        for i = 1:numel(subCellsLoc)
+          el = subCellsLoc(i);
+          nodes = topol(el,:);
+          coords = coordinates(nodes,:);
+          c_gp = getGPointsLocation(elem,el);
+          f_gp = computeAnal(obj,c_gp,'f',1);
+          [~,dJW] = getDerBasisFAndDet(elem,coords);
+          N = getBasisFinGPoints(elem);
+          floc = N'*(f_gp.*dJW');
+          % proper integration
+          F(nodes) = F(nodes) + floc;
+        end
       end
+
     end
+
+
 
     function [L2err,H1err] = computeError(obj)
       assert(~isempty(obj.analyticalSolution),['Missing analytical solution for ' ...
         'Poisson model \n'])
       L2err = 0;
       H1err = 0;
-      for el = 1:obj.mesh.nCells
-        vtkId = obj.mesh.cellVTKType(el);
-        elem = getElement(obj.elements,vtkId);
-        N = getBasisFinGPoints(elem);
-        [gradN,dJW] = getDerBasisFAndDet(elem,el,1);
-        dofId = obj.mesh.cells(el,:);
-        locErr = (obj.domain.state.data.err(dofId));
-        norm_e = N*locErr.^2;        % squared value of error
-        L2errLoc = sum(norm_e.*reshape(dJW,[],1));
-        grad_e = pagemtimes(gradN,locErr);
-        ngp = size(grad_e,3);
-        norm_grad_e = zeros(ngp,1);
-        for i = 1:ngp
-          norm_grad_e(i) = norm(grad_e(:,:,i),2);
+
+      u = getState(obj,"u");
+
+      coordinates = obj.grid.coordinates;
+      cells = obj.grid.cells;
+
+      for vtkId = cells.vtkTypes
+
+        cellList = obj.grid.getCellsByVTKId(vtkId);
+        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+
+        % get node topology for given vtk type
+        topol = obj.grid.getCellNodes(cellList);
+
+        for i = 1:numel(cellList)
+
+          el = cellList(i);
+          nodes = topol(el,:);
+          coords = coordinates(nodes,:);
+          N = getBasisFinGPoints(elem);
+          [gradN,dJW] = getDerBasisFAndDet(elem,coords);
+          c_gp = getGPointsLocation(elem,el);
+          u_gp = N*u(nodes);
+          err = u_gp - computeAnal(obj,c_gp,'u',1);
+          err_2 = err.^2;        % squared value of error
+          L2errLoc = sum(err_2.*reshape(dJW,[],1));
+          grad_uh = pagemtimes(gradN,u(nodes));
+          grad_uh = squeeze(permute(grad_uh,[3 1 2]));
+
+          grad_u = [computeAnal(obj,c_gp,'grad_x',1),...
+                    computeAnal(obj,c_gp,'grad_y',1),...
+                    computeAnal(obj,c_gp,'grad_z',1)];
+
+          grad_err = grad_uh - grad_u;
+          grad_err2 = sum(grad_err.^2,2);
+          semiH1errLoc = sum(grad_err2.*reshape(dJW,[],1));
+
+          L2err = L2err + L2errLoc;
+          H1err = H1err + L2errLoc + semiH1errLoc;
         end
-        norm_e_grad_e = norm_e + norm_grad_e;
-        H1errLoc = sum(norm_e_grad_e.*reshape(dJW,[],1));
-        L2err = L2err + L2errLoc;
-        H1err = H1err + H1errLoc;
+
+        L2err = sqrt(L2err);
+        H1err = sqrt(H1err);
       end
-      L2err = sqrt(L2err);
-      H1err = sqrt(H1err);
     end
 
-
-  function [L2err,H1err] = computeError_v2(obj)
-    assert(~isempty(obj.analyticalSolution),['Missing analytical solution for ' ...
-      'Poisson model \n'])
-    L2err = 0;
-    H1err = 0;
-
-    u = obj.domain.state.data.u;
-
-    for el = 1:obj.mesh.nCells
-      vtkId = obj.mesh.cellVTKType(el);
-      elem = getElement(obj.elements,vtkId);
-      N = getBasisFinGPoints(elem);
-      [gradN,dJW] = getDerBasisFAndDet(elem,el,1);
-      c_gp = getGPointsLocation(elem,el);
-      dofId = obj.mesh.cells(el,:);
-      u_gp = N*u(dofId);
-      err = u_gp - computeAnal(obj,c_gp,'u',1);
-      err_2 = err.^2;        % squared value of error
-      L2errLoc = sum(err_2.*reshape(dJW,[],1));
-
-      grad_uh = pagemtimes(gradN,u(dofId));
-      grad_uh = squeeze(permute(grad_uh,[3 1 2]));
-
-      grad_u = [computeAnal(obj,c_gp,'grad_x',1),...
-                computeAnal(obj,c_gp,'grad_y',1),...
-                computeAnal(obj,c_gp,'grad_z',1)];
-
-      grad_err = grad_uh - grad_u;
-      grad_err2 = sum(grad_err.^2,2);
-      semiH1errLoc = sum(grad_err2.*reshape(dJW,[],1));
-
-      L2err = L2err + L2errLoc;
-      H1err = H1err + L2errLoc + semiH1errLoc;
+      function out = isSymmetric(obj)
+        out = true;
+      end
     end
 
-    L2err = sqrt(L2err);
-    H1err = sqrt(H1err);
-  end
-
-  function out = isSymmetric(obj)
-     out = true;
-  end
-end
-
-  methods (Static)
-    function out = getField()
+    methods (Static)
+      function out = getField()
       out = "u";
     end
   end

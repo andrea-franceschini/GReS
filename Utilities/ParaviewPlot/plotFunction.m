@@ -2,7 +2,7 @@ function  plotFunction(mesh, foldName, time, funct, varargin)
 % PLOTFUNCTION Summary of this function goes here
 %   Detailed explanation goes here
 
-out = OutState('folderName',foldName,'timeList',time);
+out = OutState('outputFile',foldName,'printTimes',time,'vtkFormat',"ascii");
 out.prepareOutputFolders();
 
 [~, vtuName, ~] = fileparts(foldName);
@@ -20,7 +20,7 @@ var.name = 'solution';
 var.data = funct;
 % outVTK.writeVTKFile(0, [], [], [], []);
 if isempty(varargin) || strcmpi(varargin{1},'node')
-  if ~isempty(mesh.cells)
+  if mesh.cells.num > 0
     writeVTKfile(out,block,vtuName,mesh,time,var,[],[],[]);
   else
     writeVTKfile(out,block,vtuName,mesh,time,[],[],var,[]);

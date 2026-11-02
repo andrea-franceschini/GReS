@@ -1,84 +1,159 @@
-#include "mex.h"
-#include <cmath>
+//----------------------------------------------------------------------------------------
+// computeQuad9Derivatives_wrap.cpp
+// Modernized MEX gateway — MathWorks C++ MEX API (R2018a+)
+// Uses: mex.hpp + mexAdapter.hpp (matlab::data API)
+//
+// MATLAB signature:
+//   dN = computeQuad9Derivatives(coords)   % coords: n×2, dN: 2×9×n
+//
+//----------------------------------------------------------------------------------------
 
-void computeDerivatives(double* dN, const double* coords, mwSize np) {
-    for (mwSize i = 0; i < np; ++i) {
-        double xi  = coords[i];           // c(i,0)
-        double eta = coords[i + np];      // c(i,1)
+#include <cstdint>
+#include "mex.hpp"
+#include "mexAdapter.hpp"
 
-        // Basis functions
-        double b1_xi  = 0.5 * xi * (xi - 1);
-        double b2_xi  = 1.0 - xi * xi;
-        double b3_xi  = 0.5 * xi * (xi + 1);
-        double gb1_xi = 0.5 * (2 * xi - 1);
-        double gb2_xi = -2.0 * xi;
-        double gb3_xi = 0.5 * (2 * xi + 1);
+#include <cstddef>   // std::size_t 
+#include <vector>
+#include <string>
+#include <algorithm> // std::copy
 
-        double b1_eta  = 0.5 * eta * (eta - 1);
-        double b2_eta  = 1.0 - eta * eta;
-        double b3_eta  = 0.5 * eta * (eta + 1);
-        double gb1_eta = 0.5 * (2 * eta - 1);
-        double gb2_eta = -2.0 * eta;
-        double gb3_eta = 0.5 * (2 * eta + 1);
+using namespace matlab::data;
+using matlab::mex::ArgumentList;
 
-        // Indexing: dN(row, col, i) => dN[row + 2 * col + 18 * i]
-        // where row = 0 (d/dxi), 1 (d/deta); col = 0..8
+//----------------------------------------------------------------------------------------
+// coords layout: column-major, np rows × 2 cols
+//   xi  = coords[i]       (col 0)
+//   eta = coords[i + np]  (col 1)
+//
+// dN layout: column-major 3D, dims {2, 9, np}
+//   dN[row + 2*col + 18*i]
+//     row = 0 → d/dxi,  row = 1 → d/deta
+//     col = 0..8 (node index)
+//     i   = 0..np-1 (point index)
+//----------------------------------------------------------------------------------------
+static void computeDerivatives(double* dN, const double* coords, std::size_t np)
+{
+    for (std::size_t i = 0; i < np; ++i) {
+        const double xi  = coords[i];         // col 0
+        const double eta = coords[i + np];    // col 1
+
+        // 1D quadratic basis functions and their derivatives
+        const double b1_xi  =  0.5 * xi  * (xi  - 1.0);
+        const double b2_xi  =  1.0 - xi  * xi;
+        const double b3_xi  =  0.5 * xi  * (xi  + 1.0);
+        const double gb1_xi =  0.5 * (2.0 * xi  - 1.0);
+        const double gb2_xi = -2.0 * xi;
+        const double gb3_xi =  0.5 * (2.0 * xi  + 1.0);
+
+        const double b1_eta  =  0.5 * eta * (eta - 1.0);
+        const double b2_eta  =  1.0 - eta * eta;
+        const double b3_eta  =  0.5 * eta * (eta + 1.0);
+        const double gb1_eta =  0.5 * (2.0 * eta - 1.0);
+        const double gb2_eta = -2.0 * eta;
+        const double gb3_eta =  0.5 * (2.0 * eta + 1.0);
+
+        const std::size_t base = 18 * i;   // stride per point
 
         // Node 1
-        dN[0 + 2 * 0 + 18 * i] = gb1_xi * b1_eta;
-        dN[1 + 2 * 0 + 18 * i] = b1_xi  * gb1_eta;
-
+        dN[base + 0 + 2 * 0] = gb1_xi * b1_eta;
+        dN[base + 1 + 2 * 0] = b1_xi  * gb1_eta;
         // Node 2
-        dN[0 + 2 * 1 + 18 * i] = gb3_xi * b1_eta;
-        dN[1 + 2 * 1 + 18 * i] = b3_xi  * gb1_eta;
-
+        dN[base + 0 + 2 * 1] = gb3_xi * b1_eta;
+        dN[base + 1 + 2 * 1] = b3_xi  * gb1_eta;
         // Node 3
-        dN[0 + 2 * 2 + 18 * i] = gb3_xi * b3_eta;
-        dN[1 + 2 * 2 + 18 * i] = b3_xi  * gb3_eta;
-
+        dN[base + 0 + 2 * 2] = gb3_xi * b3_eta;
+        dN[base + 1 + 2 * 2] = b3_xi  * gb3_eta;
         // Node 4
-        dN[0 + 2 * 3 + 18 * i] = gb1_xi * b3_eta;
-        dN[1 + 2 * 3 + 18 * i] = b1_xi  * gb3_eta;
-
+        dN[base + 0 + 2 * 3] = gb1_xi * b3_eta;
+        dN[base + 1 + 2 * 3] = b1_xi  * gb3_eta;
         // Node 5
-        dN[0 + 2 * 4 + 18 * i] = gb2_xi * b1_eta;
-        dN[1 + 2 * 4 + 18 * i] = b2_xi  * gb1_eta;
-
+        dN[base + 0 + 2 * 4] = gb2_xi * b1_eta;
+        dN[base + 1 + 2 * 4] = b2_xi  * gb1_eta;
         // Node 6
-        dN[0 + 2 * 5 + 18 * i] = gb3_xi * b2_eta;
-        dN[1 + 2 * 5 + 18 * i] = b3_xi  * gb2_eta;
-
+        dN[base + 0 + 2 * 5] = gb3_xi * b2_eta;
+        dN[base + 1 + 2 * 5] = b3_xi  * gb2_eta;
         // Node 7
-        dN[0 + 2 * 6 + 18 * i] = gb2_xi * b3_eta;
-        dN[1 + 2 * 6 + 18 * i] = b2_xi  * gb3_eta;
-
+        dN[base + 0 + 2 * 6] = gb2_xi * b3_eta;
+        dN[base + 1 + 2 * 6] = b2_xi  * gb3_eta;
         // Node 8
-        dN[0 + 2 * 7 + 18 * i] = gb1_xi * b2_eta;
-        dN[1 + 2 * 7 + 18 * i] = b1_xi  * gb2_eta;
-
+        dN[base + 0 + 2 * 7] = gb1_xi * b2_eta;
+        dN[base + 1 + 2 * 7] = b1_xi  * gb2_eta;
         // Node 9
-        dN[0 + 2 * 8 + 18 * i] = gb2_xi * b2_eta;
-        dN[1 + 2 * 8 + 18 * i] = b2_xi  * gb2_eta;
+        dN[base + 0 + 2 * 8] = gb2_xi * b2_eta;
+        dN[base + 1 + 2 * 8] = b2_xi  * gb2_eta;
     }
 }
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-    if (nrhs != 1)
-        mexErrMsgTxt("One input required: list (n×2 array)");
-    if (nlhs != 1)
-        mexErrMsgTxt("One output required: dN (2×9×n array)");
+//----------------------------------------------------------------------------------------
+// MexFunction
+//----------------------------------------------------------------------------------------
+class MexFunction : public matlab::mex::Function {
 
-    const mxArray *list = prhs[0];
-    if (!mxIsDouble(list) || mxIsComplex(list) || mxGetN(list) != 2)
-        mexErrMsgTxt("Input must be a real double n×2 array");
+    ArrayFactory factory;
 
-    mwSize np = mxGetM(list);
-    const double* coords = mxGetPr(list);  // coords stored column-major
+public:
 
-    // Output array: 2×9×np
-    mwSize dims[3] = {2, 9, np};
-    plhs[0] = mxCreateNumericArray(3, dims, mxDOUBLE_CLASS, mxREAL);
-    double* dN = mxGetPr(plhs[0]);
+    void operator()(ArgumentList outputs, ArgumentList inputs) override
+    {
+        validateArguments(outputs, inputs);
 
-    computeDerivatives(dN, coords, np);
-}
+        // -----------------------------------------------------------------------
+        const TypedArray<double> coordArr = inputs[0];
+        const auto dims                   = coordArr.getDimensions();
+        const std::size_t np              = dims[0];
+
+        // Copy into contiguous vector for raw pointer access in kernel
+        std::vector<double> coordsVec(coordArr.begin(), coordArr.end());
+
+        // -----------------------------------------------------------------------
+        // Fill via kernel then copy into TypedArray
+        // -----------------------------------------------------------------------
+        std::vector<double> dN_vec(2 * 9 * np, 0.0);
+
+        computeDerivatives(dN_vec.data(), coordsVec.data(), np);
+
+        // -----------------------------------------------------------------------
+        // Column-major flat layout matches dN[row + 2*col + 18*i] exactly
+        // -----------------------------------------------------------------------
+        TypedArray<double> dN_out =
+            factory.createArray<double>({2, 9, np});
+        std::copy(dN_vec.begin(), dN_vec.end(), dN_out.begin());
+
+        outputs[0] = std::move(dN_out);
+    }
+
+private:
+
+    void validateArguments(ArgumentList& outputs, ArgumentList& inputs)
+    {
+        if (inputs.size() != 1)
+            throwError("Quad9Deriv:inputError",
+                       "One input required: list (n x 2 array).");
+
+        if (outputs.size() > 1)
+            throwError("Quad9Deriv:outputError",
+                       "One output required: dN (2 x 9 x n array).");
+
+        // Must be a real double array
+        if (inputs[0].getType() != ArrayType::DOUBLE)
+            throwError("Quad9Deriv:inputError",
+                       "Input must be a real double n x 2 array.");
+
+        // Must have exactly 2 columns [NEW-2]
+        const auto dims = inputs[0].getDimensions();
+        if (dims.size() < 2 || dims[1] != 2)
+            throwError("Quad9Deriv:inputError",
+                       "Input must be a real double n x 2 array.");
+    }
+
+    void throwError(const std::string& id, const std::string& msg)
+    {
+        getEngine()->feval(u"error", 0,
+            std::vector<Array>{
+                factory.createCharArray(id),
+                factory.createCharArray(msg)
+            });
+    }
+};
+
+//----------------------------------------------------------------------------------------

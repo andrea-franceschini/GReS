@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+   <SimulationParameters
+      Start="0."
+      End ="1.5"
+      DtInit= "2.5e-1"
+      DtMin ="1.e-5"
+      DtMax ="2.5e-1"
+      incrementFactor = "1."
+      MaxNLIteration = "10"
+      RelativeTolerance = "1.e-6"
+      AbsoluteTolerance = "1.e-8"
+      >
+      <LinearSolver
+         useMatlab="1">
+      </LinearSolver>
+  </SimulationParameters>
+
+
+  <Materials >
+     <Solid cellTags = "1">
+    <Constitutive>
+      <Elastic
+          youngModulus = "1.e5"
+          poissonRatio = "0.25"
+      />
+    </Constitutive>
+
+    <PorousRock
+        porosity = "0.375"
+        specificWeight = "2.1e1"
+        biotCoefficient = "1."
+        permeability = "1e-12, 1e-12, 1e-12"
+    />
+    <!-- porosity (Adimensional, between 0 and 1),
+         specificGravity (kg/m^3 ),
+         permeability (m^2) -->
+  </Solid>
+
+
+  <Fluid
+      specificWeight = "0.0"
+      compressibility = "4.4e-7"
+      dynamicViscosity = "1.0e-6"
+  />
+  </Materials>
+
+
+
+  <BoundaryConditions>
+
+      <!-- Boundary Conditions to Flow -->
+      <!-- Lateral Left -->
+      <BC name = "LatNoFlow"
+          type = "Dirichlet"
+          field = "surface"
+          variable = "pressure"
+          entityListType = "tag"
+          entityList = "5"
+          >
+
+        <BCevent time = "0." value = "0.000000e+00" />
+      </BC>
+
+      <!-- Boundary Conditions to Mechanics -->
+      <!-- Top -->
+      <BC name = "TopLoad"
+          type = "Neumann"
+          field = "surface"
+          variable = "displacements"
+          entityListType = "tag"
+          entityList = "2"
+          components = "z"
+          >
+
+        <BCevent time = "0." value = "-1.000000e+01" />
+      </BC>
+
+      <!-- Front/Back -->
+      <BC name = "LatFixedY"
+          type = "Dirichlet"
+          field = "surface"
+          variable = "displacements"
+          entityListType = "tag"
+          entityList = "3,4"
+          components = "y"
+          >
+
+        <BCevent time = "0." value = "0.000000e+00" />
+      </BC>
+
+      <!-- Lateral Left -->
+      <BC name = "LatFixedX"
+          type = "Dirichlet"
+          field = "surface"
+          variable = "displacements"
+          entityListType = "tag"
+          entityList = "5"
+          components = "x"
+          >
+
+        <BCevent time = "0." value = "0.000000e+00" />
+      </BC>
+
+      <!-- Bottom -->
+      <BC name = "BotFix"
+          type = "Dirichlet"
+          field = "surface"
+          variable = "displacements"
+          entityListType = "tag"
+          entityList = "1"
+          components = "z"
+          >
+
+        <BCevent time = "0." value = "0.000000e+00" />
+      </BC>
+
+   </BoundaryConditions>
+
+
+
+  <Output
+          printTimes   = "0.05,0.25,1,2.5,5"
+          outputFile   = "fixedStress/Output/resultsFC"
+          matFileName  = "fixedStress/Output/historyFC"
+          />
+
+
+  <Solver>
+    <BiotFullyCoupled />
+  </Solver>
+</Problem>

@@ -8,6 +8,8 @@ classdef Discretizer < handle
     bcs
     materials
     grid
+    gpMap
+    cellMap
   end
 
   properties
@@ -31,7 +33,7 @@ classdef Discretizer < handle
     interfaceList
 
     state
-    stateOld
+
   end
 
 
@@ -42,21 +44,35 @@ classdef Discretizer < handle
 
       % Initialized internal variables
       obj.dofm = DoFManager();
-      obj.bcs = Boundaries();
-      obj.outstate = OutState();
-      obj.materials = Materials();
-      obj.grid = struct('topology',Mesh(),'faces',[],'cells',[]);
+      obj.state = State();
+      % obj.bcs = Boundaries();
+      % obj.outstate = OutState();
+      % obj.materials = Materials();
+      % obj.grid = Grid();
 
       obj.physicsSolvers = containers.Map('KeyType','char','ValueType','any');
       obj.setDiscretizer(varargin{:});
     end
 
-    function applyBC(obj,t)
+
+    function applyBC(obj,t,varargin)
       bcList = obj.bcs.getBCList();
 
-      for bcId = bcList
+      if isempty(varargin)
+        varNames = obj.dofm.getVariableNames();
+      else
+        varNames = [varargin{:}];
+      end
+
+      for i = 1:numel(bcList)
+        bcId = bcList(i);
+
         % loop over available bcs
         bcVar = obj.bcs.getVariable(bcId);
+
+        if ~strcmp(bcVar,varNames)
+          continue
+        end
 
         for solv = obj.solverNames
           % loop over available solvers
@@ -74,11 +90,15 @@ classdef Discretizer < handle
 
 
     function applyDirVal(obj,t)
+      % apply Dirichlet boundary values to the current state object
+
       bcList = obj.bcs.getBCList;
 
-      for bcId = bcList
-        % discard non-Dirichlet BC
-        if ~strcmp(obj.bcs.getType(bcId),"Dirichlet")
+      for i = 1:numel(bcList)
+        bcId = bcList(i);
+
+        % discard non-dirichlet BC
+        if ~isEssential(obj.bcs,bcId)
           continue
         end
 
@@ -102,7 +122,6 @@ classdef Discretizer < handle
         % loop over available solvers
         obj.getPhysicsSolver(solv).updateState(du);
       end
-
     end
 
     function isConfigChanged = updateConfiguration(obj)
@@ -162,38 +181,76 @@ classdef Discretizer < handle
       out = obj.physicsSolvers(id);
     end
 
-    function stat = getState(obj,varName)
-      % get a copy of a state variable field
-      if nargin < 2
-        stat = obj.state;
+    function stateCurr = getState(obj,varName)
+      % get current state variables
+      if nargin == 1
+        stateCurr = obj.state.get('curr');
+      elseif nargin == 2
+        stateCurr = obj.state.get('curr',varName);
       else
-        if ~isfield(obj.getState().data,varName)
-          error("Variable %s does not exist in the State object",varName)
-        end
-        stat = obj.getState().data.(varName);
+        error("getState:Number of input arguments must be 1 or 2")
       end
     end
 
-    function stat = getStateOld(obj,varName)
-      % get a copy of a state variable field
-      if nargin < 2
-        stat = obj.stateOld;
+    function stateOld = getStateOld(obj,varName)
+      % get last converged state variables
+      if nargin == 1
+        stateOld = obj.state.get('old');
+      elseif nargin == 2
+        stateOld = obj.state.get('old',varName);
       else
-        if ~isfield(obj.getStateOld().data,varName)
-          error("Variable %s does not exist in the StateOld object",varName)
-        end
-        stat = obj.getStateOld().data.(varName);
+        error("getState:Number of input arguments must be 1 or 2")
       end
     end
 
 
-    % function addInterface(obj,interfId,interf)
-    %   % add mortar interface to current domain
-    %   if ~ismember(interfId,obj.interfaceList)
-    %     obj.interfaceList = sort([obj.interfaceList interfId]);
-    %     obj.interfaces{end+1} = interf;
-    %   end
-    %end
+    function stateInit = getStateInit(obj,varName)
+      % get initial state variables
+      if nargin == 1
+        stateInit = obj.state.get('init');
+      elseif nargin == 2
+        stateInit = obj.state.get('init',varName);
+      else
+        error("getState:Number of input arguments must be 1 or 2")
+      end
+    end
+
+
+
+    function setState(obj,val,varName)
+      % get current state variables
+      if nargin == 2
+        obj.state.set('curr',val);
+      elseif nargin == 3
+        obj.state.set('curr',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
+      end
+    end
+
+    function setStateOld(obj,val,varName)
+      % get last converged state variables
+      if nargin == 2
+        obj.state.set('old',val);
+      elseif nargin == 3
+        obj.state.set('old',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
+      end
+
+    end
+
+
+    function setStateInit(obj,val,varName)
+      % get initial state variables
+      if nargin == 2
+        obj.state.set('init',val);
+      elseif nargin == 3
+        obj.state.set('init',val,varName);
+      else
+        error("setState:Number of input arguments must be 2 or 3")
+      end
+    end
 
 
     function assembleSystem(obj,dt)
@@ -205,38 +262,52 @@ classdef Discretizer < handle
     end
 
 
-    function addPhysicsSolver(obj,solverInput)
+    function addPhysicsSolvers(obj,solverInput)
 
       assert(isempty(getJacobian(obj)),"Cannot add a physics solver " + ...
         "after system has already been assembled");
 
       % Add a new solver to the Discretizer
-      assert(nargin == 2,"Input must be an xml file or a scalar struct")
+      assert(nargin == 2,"Input must be an xml file or a struct")
 
-      if ~isstruct(solverInput)
-        solverInput = readstruct(solverInput,AttributeSuffix="");
-      end
-
+      solverInput = readInput(solverInput);
       if isfield(solverInput,"Solver")
         solverInput = solverInput.Solver;
       end
 
-      obj.solverNames = string(fieldnames(solverInput));
-      obj.solverNames = reshape(obj.solverNames,1,[]);
+      sN = string(fieldnames(solverInput));
+      sN = reshape(sN,1,[]);
 
-      for solverName = obj.solverNames
+      % assert(numel(sN)==numel(solverInput),"A PhysicsSolver cannot" + ...
+      %   "be defined more than once in a model.")
+
+      for solverName = sN
         % create and register the solver
-        solver = feval(solverName,obj);
-        solver.registerSolver(solverInput.(solverName));
-        obj.physicsSolvers(solverName) = solver;
+        addPhysicsSolver(obj,solverName,solverInput.(solverName));
       end
 
-      nV = obj.dofm.getNumberOfVariables();
-      obj.J = cell(nV);
-      obj.rhs = cell(nV,1);
+      % nV = obj.dofm.getNumberOfVariables();
+      % obj.J = cell(nV);
+      % obj.rhs = cell(nV,1);
 
     end
 
+    function addPhysicsSolver(obj,solverName,varargin)
+
+      if ~any([ischar(solverName),isstring(solverName)])
+        error("First input must be the name of the PhysicsSolver")
+      end
+
+      if any(strcmp(solverName,obj.solverNames))
+        error('Solver %s has already been defined',solverName)
+      else
+        obj.solverNames = [obj.solverNames, string(solverName)];
+      end
+      solver = feval(solverName,obj);
+      solver.registerSolver(varargin{:});
+      obj.physicsSolvers(solverName) = solver;
+
+    end
 
 
     function J = getJacobian(obj,varargin)
@@ -316,54 +387,91 @@ classdef Discretizer < handle
       end
     end
 
-    % function printState(obj)
-    %   % print solution of the model according to the print time in the
-    %   % list
-    %
-    %   % if obj.state.t >= obj.simparams.tMax
-    %   %
-    %   %   time = getState(obj).t;
-    %   %   writeVTK(obj,time);
-    %   %   writeMatFile(obj,time,obj.outstate.timeID);
-    %   %
-    %   % else
-    %
-    %   if obj.outstate.timeID <= length(obj.outstate.timeList)
-    %
-    %     time = obj.outstate.timeList(obj.outstate.timeID);
-    %
-    %     % loop over print times within last time step
-    %     while time <= obj.state.t
-    %
-    %       assert(time >= obj.stateOld.t, 'Print time %f out of range (%f - %f)',...
-    %         time, obj.stateOld.t, obj.state.t);
-    %
-    %       assert(obj.state.t - obj.stateOld.t > eps('double'),...
-    %         'Time step is too small for printing purposes');
-    %
-    %       % move this into the solution scheme class
-    %       % compute factor to interpolate current and old state variables
-    %       fac = (time - obj.stateOld.t)/(obj.state.t - obj.stateOld.t);
-    %       if isnan(fac) || isinf(fac)
-    %         fac = 1;
-    %       end
-    %
-    %       writeVTK(obj,fac,time);
-    %
-    %       writeMatFile(obj,fac,obj.outstate.timeID);
-    %
-    %       obj.outstate.timeID = obj.outstate.timeID + 1;
-    %
-    %       if obj.outstate.timeID > length(obj.outstate.timeList)
-    %         break
-    %       else
-    %         time = obj.outstate.timeList(obj.outstate.timeID);
-    %       end
-    %
-    %     end
-    %
-    %   end
-    % end
+
+    function initialize(obj)
+
+      % prepare the discretizer before starting a new simulation
+
+      % initialize block jacobian and rhs
+      nV = obj.dofm.getNumberOfVariables();
+      obj.J = cell(nV);
+      obj.rhs = cell(nV,1);
+
+      obj.setCellMap(obj.grid);
+
+      setGaussPointMap(obj);
+
+      prepareBoundaryConditions(obj);
+
+      % initial solvers (before any bc is applied)
+      for solver = obj.solverNames
+        initialize(obj.getPhysicsSolver(solver));
+      end
+
+    end
+
+
+    function setCellMap(obj,grid)
+
+      mat = obj.materials;
+      cells = grid.cells;
+
+      matNames = mat.getMaterialNames;
+
+
+      for matID = matNames
+
+        tags = getMaterialTags(mat,matID);
+
+        id = find(ismember(cells.tag,tags));
+
+        obj.cellMap(id) = 1:length(id);
+
+      end
+    end
+
+
+    function matCellId = getMaterialCells(obj,cellId)
+
+      matCellId = obj.cellMap(cellId);
+
+    end
+
+    function setGaussPointMap(obj)
+
+      cells = obj.grid.cells;
+
+      if cells.num == 0
+        return
+      end
+
+      vtks = cells.vtkTypes;
+
+      ngCells = zeros(cells.num,1);
+
+      for i = length(vtks)
+        el = FiniteElementType.create(vtks(i));
+        cId = getCellsByVTKId(obj.grid,vtks(i));
+        ngCells(cId) = el.getNumbGaussPts;
+      end
+
+      gpM = [1;1+cumsum(ngCells(1:end-1))];
+      obj.gpMap = [gpM, ngCells];
+
+    end
+
+
+
+
+    function timeStepSetup(obj)
+
+      % prepare the physics for each new time step
+      for solver = obj.solverNames
+        timeStepSetup(obj.getPhysicsSolver(solver));
+      end
+
+    end
+
 
 
     function out = writeVTK(obj,fac,time)
@@ -381,10 +489,10 @@ classdef Discretizer < handle
         pointData3D = OutState.mergeOutFields(pointData3D,pointData);
       end
 
-      cellData3D = OutState.printMeshData(obj.grid.topology,cellData3D);
+      cellData3D = OutState.printMeshData(obj.grid,cellData3D);
 
       % write dataset to vtmBlock
-      obj.outstate.writeVTKfile(obj.vtmBlock,obj.getOutName(),obj.grid.topology,...
+      obj.outstate.writeVTKfile(obj.vtmBlock,obj.getOutName(),obj.grid,...
         time, pointData3D, cellData3D, [], []);
 
       out = obj.vtmBlock;
@@ -392,12 +500,12 @@ classdef Discretizer < handle
     end
 
 
-    function writeMatFile(obj,fac,timeID)
+    function writeSolution(obj,fac,timeID)
       % write to MAT-file
-      obj.outstate.matFile(timeID).time = obj.outstate.timeList(timeID);
+      obj.outstate.results(timeID).time = obj.outstate.timeList(timeID);
 
       for solv = obj.solverNames
-        getPhysicsSolver(obj,solv).writeMatFile(fac,timeID);
+        getPhysicsSolver(obj,solv).writeSolution(fac,timeID);
       end
     end
 
@@ -423,94 +531,125 @@ classdef Discretizer < handle
 
       obj.state = State();
 
-      if ~isempty(obj.grid.topology)
-        obj.dofm = DoFManager(obj.grid.topology);
+      if ~isempty(obj.grid)
+        obj.dofm = DoFManager(obj.grid);
       end
 
     end
 
     function setInput(obj, varargin)
 
-      msg = 'Invalid key-value pair for Discretizer class \n';
+      default = struct('grid',Grid(),...
+        'materials',Materials(),...
+        'boundaries',Boundaries());
 
-      % Check that we have an even number of inputs
-      if mod(length(varargin), 2) ~= 0
-        error('Arguments must come in key-value pairs.');
-      end
-
-      % Loop through the key-value pairs
-      for k = 1:2:length(varargin)
-        key = varargin{k};
-        value = varargin{k+1};
-
-        if isempty(value)
-          continue
-        end
-
-        if ~ischar(key) && ~isstring(key)
-          error('Keys must be strings');
-        end
-
-        switch lower(key)
-          % case 'simulationparameters'
-          %   assert(isa(value, 'SimulationParameters')|| isempty(value),msg)
-          %   obj.simparams = value;
-          case 'grid'
-            obj.grid = value;
-            % check that grid has been defined correctly
-            if ~isfield(obj.grid,"topology")
-              obj.grid.topology = [];
-            end
-            if ~isfield(obj.grid,"cells")
-              obj.grid.cells = [];
-            end
-            if ~isfield(obj.grid,"faces")
-              obj.grid.faces = [];
-            end
-
-            isGridCorrect = numel(fieldnames(obj.grid))==3;
-
-            assert(isGridCorrect,"Error in Discretizer: grid input is not correct. " + ...
-              "grid must be a struct with fields: 'topology','cells','faces'.");
-
-          case 'materials'
-            assert(isa(value, 'Materials'),msg)
-            obj.materials = value;
-          case 'boundaries'
-            assert(isa(value, 'Boundaries'),msg)
-            obj.bcs = value;
-          otherwise
-            error('Unknown input key %s for Discretier \n', key);
+      % make read case-insensitive
+      input = readInput(varargin{:});
+      fn = fieldnames(input);
+      for i = 1:numel(fn)
+        newName = lower(fn{i});
+        if ~strcmp(fn{i}, newName)
+          input.(newName) = input.(fn{i});
+          input = rmfield(input, fn{i});
         end
       end
 
+      params = readInput(default,input);
+
+      obj.grid = params.grid;
+      % ensure materials are distinct objects across different domains
+      obj.materials = copy(params.materials);
+      obj.bcs = params.boundaries;
 
     end
+
 
     function validateInput(obj)
-      msh = obj.grid.topology;
 
-      u = unique(msh.cellTag);
-      if ~isempty(u)
-        assert(max(u)==length(u),"cellTag numbering must be progressive from 1 to the number of cellTags")
-        msh.nCellTag = max(u);
+      if obj.grid.nNodes == 0
+        % the grid is still empty, nothing to validate
+        return
       end
 
-      u = unique(msh.surfaceTag);
-      if ~isempty(u)
-        assert(max(u)==length(u),"surfaceTag numbering must be progressive from 1 to the number of cellTags")
-        msh.nSurfaceTag = max(u);
+      msh = obj.grid.cells;
+
+      if msh.num > 0
+
+        t = unique(msh.tag);
+        if ~isempty(t)
+          assert(t(end) == length(t),"cellTag numbering must be progressive from 1 to the number of cellTags")
+        end
+        msh.nTag = t(end);
+        obj.grid.cells = msh;
+
+      end
+
+
+      msh = obj.grid.surfaces;
+
+      if msh.num > 0
+
+        t = unique(msh.tag);
+        if ~isempty(t)
+          assert(t(end) == length(t),"surfaceTag numbering must be progressive from 1 to the number of cellTags")
+        end
+        msh.nTag = t(end);
+        obj.grid.surfaces = msh;
+
       end
 
     end
+
+    function prepareBoundaryConditions(obj)
+
+      % preprocess the boundary condition once the type of the target field
+      % is known
+
+      setBCList(obj.bcs);
+
+      bcList = obj.bcs.getBCList();
+
+      for i = 1:numel(bcList)
+
+        bcId = bcList(i);
+
+        % loop over available bcs
+        bcVar = obj.bcs.getVariable(bcId);
+
+        if isVariable(obj.dofm,bcVar)
+
+          targetField = obj.dofm.getFieldLocation(bcVar);
+          numbComp = obj.dofm.getNumberOfComponents(bcVar);
+          obj.bcs.initialize(bcId,targetField,numbComp);
+          
+        end
+
+      end
+
+    end
+
 
 
     function outName = getOutName(obj)
-
+      % property domainId not set yet
       outName = sprintf('Domain_%i',obj.domainId);
 
 
     end
+
+  end
+
+
+  methods (Static)
+
+
+    function checkClass(val,fldName,className)
+
+      if ~isa(val, className)
+        error("Invalid key-value pair for Discretizer class. Input field %s must be an object of class %s \n",fldName,className);
+      end
+    end
+
 
   end
 
