@@ -19,7 +19,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
   properties (Access = private)
     fldMech
     fldFrac
-    trialTraction % augmented trial q, cached by the latest assembly
   end
 
   methods (Access = public)
@@ -74,7 +73,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       setState(obj,t,"traction");
       setStateOld(obj,t,"traction");
       setStateInit(obj,t,"traction");
-      obj.trialTraction = t;
       obj.activeSet.curr(obj.hasFractureTractionBC()) = ContactMode.open;
       obj.activeSet.prev = obj.activeSet.curr;
     end
@@ -262,7 +260,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
                 obj.bcTraction(dofA);
               gAug = [jump(dofA(1)); dj(dofA(2:3))];
               q = projectedTrac + Caug*gAug;
-              obj.trialTraction(dofA) = q;
               [tracNew,Jproj,mode] = evaluateContactLaw(obj,q,fId);
               s.traction(dofA) = tracNew;
               obj.activeSet.curr(fId) = mode;
@@ -325,7 +322,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       obj.bcTraction = zeros(3*nCutCells,1);
       obj.activeSet.curr = repmat(ContactMode.stick,nCutCells,1);
       obj.activeSet.prev = obj.activeSet.curr;
-      obj.trialTraction = zeros(3*nCutCells,1);
     end
 
     function hasConfigurationChanged = updateConfiguration(obj)
@@ -336,6 +332,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       end
 
       hasConfigurationChanged = updateOuterActiveSet(obj);
+
+      if obj.isSmooth
+        logActiveSet(obj)
+      end
+
     end
 
     function isReset = resetConfiguration(obj)
@@ -372,8 +373,6 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       obj.activeSet.curr(obj.hasFractureTractionBC()) = ContactMode.open;
 
-      % Next assembly recomputes q from restored stress and jump.
-      obj.trialTraction = getStateOld(obj,'traction');
     end
 
     function updateState(obj,solution)
@@ -388,13 +387,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         setState(obj,stateCurr);
         end
 
-      if gresLog().getVerbosity >= 2
-        nStick = sum(obj.activeSet.curr == ContactMode.stick);
-        nSlip = sum(obj.activeSet.curr == ContactMode.slip | ...
-          obj.activeSet.curr == ContactMode.newSlip);
-        nOpen = sum(obj.activeSet.curr == ContactMode.open);
-        fprintf('%s: active set ',class(obj));
-        fprintf('stick = %i, slip = %i, open = %i\n',nStick,nSlip,nOpen);
+      if ~obj.isSmooth
+        logActiveSet(obj)
       end
     end
 
@@ -404,6 +398,17 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     function applyDirVal(obj,bcId,t)
       obj.mechSolver.applyDirVal(bcId,t);
+    end
+
+    function logActiveSet(obj)
+      if gresLog().getVerbosity >= 2
+        nStick = sum(obj.activeSet.curr == ContactMode.stick);
+        nSlip = sum(obj.activeSet.curr == ContactMode.slip | ...
+          obj.activeSet.curr == ContactMode.newSlip);
+        nOpen = sum(obj.activeSet.curr == ContactMode.open);
+        fprintf('%s: active set ',class(obj));
+        fprintf('stick = %i, slip = %i, open = %i\n',nStick,nSlip,nOpen);
+      end
     end
 
     function out = isLinear(obj)
@@ -589,11 +594,11 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       frac = obj.fractureMesh.surfaces;
       hasBC = obj.hasFractureTractionBC();
       jump = obj.getState.fractureJump;
+      trac = obj.getState.traction;
 
       % The driver assembles the final iterate before checking convergence.
       % Use its unprojected augmented trial: a returned slip traction lies
       % on the friction bound and hides unloading back into stick.
-      trial = obj.trialTraction;
 
       for i = 1:frac.num
 
@@ -602,10 +607,10 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         else
           id = DoFManager.dofExpand(i,3);
           f = frac.fracId(i);
-          q = trial(id);
-          tauLim = abs(obj.cohesion(f)-tan(obj.phi(f))*q(1));
+          t = trac(id);
+          tauLim = abs(obj.cohesion(f)-tan(obj.phi(f))*t(1));
           gN = jump(id(1));
-          newModes(i) = updateContactState(oldModes(i),q,tauLim,gN,obj.activeSet.tol);
+          newModes(i) = updateContactState(oldModes(i),t,tauLim,gN,obj.activeSet.tol);
 
           if newModes(i) == ContactMode.slip && oldModes(i) == ContactMode.stick
             newModes(i) = ContactMode.newSlip;
