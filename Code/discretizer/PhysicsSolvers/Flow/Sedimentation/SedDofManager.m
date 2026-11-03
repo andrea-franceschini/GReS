@@ -189,6 +189,21 @@ classdef SedDofManager < handle
       end
     end
 
+    function colHeig = getColHeight(obj,zcol,comp,dzlastlay)
+      ncols = prod(obj.ncells(1:2));
+      colHeig = zeros(ncols,1);
+      count = 1;
+      for j=1:obj.ncells(2)
+        for i=1:obj.ncells(1)
+          dofs = obj.dof(i,j,:);
+          dofs = dofs(dofs~=0);
+          top = length(dofs);
+          colHeig(count)=zcol(top)+sum(comp(dofs))+dzlastlay(count);
+          count=count+1;
+        end
+      end
+    end
+
     function [dof,pos] = getDofFromLay(obj,nlay)
       dof = obj.dof(:,:,nlay);
       map = dof(:)~=0;

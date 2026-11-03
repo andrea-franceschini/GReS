@@ -54,6 +54,9 @@ classdef Sedimentation < PhysicsSolver
 
     initColumn (:,1)  % indication of the necessity of initialize the column
     bath (:,:)
+
+    spredict
+    slr = []
   end
 
   properties (Access = protected)
@@ -156,6 +159,8 @@ classdef Sedimentation < PhysicsSolver
       state.age = zeros(nelm,1);
       state.void0 = zeros(nelm,1);
       state.cb = zeros(nelm,1);
+      state.slr = 0;
+      state.columnheight = zeros(nelm,1);
 
       state.sedmRate = zeros(prod(map(1:2)),obj.nmat);
       state.sedmAcc  = zeros(prod(map(1:2)),obj.nmat);
@@ -174,6 +179,14 @@ classdef Sedimentation < PhysicsSolver
           tmp = interp2(x_ref, y_ref, vls, x_new, y_new, 'cubic')';
         end
         obj.bath = tmp;
+      end
+
+      if isfield(input,"SeaLevelRise")
+        opts = delimitedTextImportOptions('NumVariables', 2, 'Delimiter', ' ');
+        opts.ConsecutiveDelimitersRule = 'join';
+        opts.LeadingDelimitersRule = 'ignore';
+        opts.VariableTypes = {'double', 'double'};
+        obj.slr = readmatrix(input.SeaLevelRise.file, opts);
       end
     end
 
@@ -256,8 +269,14 @@ classdef Sedimentation < PhysicsSolver
       % Finding the sedimentation rate
       t0 = stateOld.time;
       dt = state.time-t0;
-      state.sedmRate = getSedimentationMap(obj.sedimentHistory,t0,dt);
-      sedm = state.sedmRate;
+      sedm = getSedimentationMap(obj.sedimentHistory,t0,dt);
+      if and(t0>=obj.spredict, ~isempty(obj.slr))
+        sedmSum = sum(sedm,2);
+        [sedm, state.slr,state.columnheight] = computeSedmSLR( obj,...
+          t0-obj.spredict,dt,sedm./sedmSum);
+      end
+
+      state.sedmRate = sedm;
       dlSedm = sum(sedm,2);
 
       matFract = sedm./dlSedm;
@@ -876,6 +895,48 @@ classdef Sedimentation < PhysicsSolver
       % oedoComp = (1./(1+void)).*SedimentMaterial.getDevVoidRatio(Scurr,Sprev,Sp,Cc,Cr);
 
       setState(obj,oedoComp,'cb');
+    end
+
+    function [sedm,slrTx,trueColHeig] = computeSedmSLR(obj,t0,dt,fract)
+      % Compute the amount of sediment necessary for predict using the sea level rising      
+
+      % Finding the amount of sediment in function of the SLR
+      tf = t0 + dt;
+      pos = find(obj.slr(:,1) <= t0, 1, 'last');
+      posF = find(t0+dt-1e-9 < obj.slr(:,1), 1, 'first');
+      if isempty(pos)
+        pos = 0;
+      end
+
+      if pos~=posF
+        % interpolation
+        if pos == 0
+          dl = obj.slr(posF,1);
+        else
+          dl = obj.slr(posF,1)-obj.slr(pos,1);
+        end
+        
+        if posF-pos==1
+          slrTx = obj.slr(posF,2)*(dt/dl);
+        else
+          slrTx = obj.slr(posF,2)*((tf-obj.slr(posF-1,1))/dl) ...
+              + sum(obj.slr(pos:posF-1,2));
+        end
+      else
+        % extrapolation
+        slrTx = obj.slr(pos,2)*((obj.slr(pos,1)-obj.slr(pos-1,1))*dt);
+      end
+      sedm = slrTx*fract;
+
+      % Correction necessary from the previous prediction
+      trueColHeig = getColHeight(obj.mdof,obj.coordZ,...
+        getStateOld(obj,'cellDefm'),sum(getStateOld(obj,'sedmAcc'),2));
+
+      if t0~=0.
+        predColHeig = getStateOld(obj,'columnheight')+getStateOld(obj,'slr');
+        correction = predColHeig-trueColHeig;
+        sedm = sedm + correction.*fract;
+      end
     end
 
     function MaterialMap(obj)

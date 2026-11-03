@@ -13,6 +13,7 @@ classdef EvolvingGrid < SolutionScheme
     freezeCount = 0
     freezeAt
     freezeAttempted = false
+    startPrediction
   end
 
   properties (Access = private)
@@ -88,6 +89,7 @@ classdef EvolvingGrid < SolutionScheme
                        'domains',Discretizer.empty,...
                        'growprint',0,...
                        'intervalprint',missing,...
+                       'predictAt',missing,...
                        'freezeCbAt',double.empty);
       params = readInput(default,varargin{:});
 
@@ -95,6 +97,12 @@ classdef EvolvingGrid < SolutionScheme
       obj.domains = params.domains;
       if ~ismissing(params.output)
         obj.output = params.output;
+      end
+
+      if ~ismissing(params.predictAt)
+        obj.startPrediction = params.predictAt;
+        tmp = obj.domains.physicsSolvers(obj.domains.solverNames);
+        tmp.spredict = params.predictAt;
       end
 
       obj.freezeAt = params.freezeCbAt;
@@ -187,6 +195,46 @@ classdef EvolvingGrid < SolutionScheme
         end
         obj.isBackStep = false;
         obj.freezeAttempted = false;
+      end
+    end
+
+    function dt = getNextDt(obj)
+      targetTimes = obj.output.getTargetTimes;
+      obj.targetTimeID = 1 + sum(targetTimes <= obj.t + obj.simparams.dtMin);
+      if obj.targetTimeID > length(targetTimes)
+        targetTime = Inf;
+      else
+        targetTime = targetTimes(obj.targetTimeID);
+      end
+
+
+      [dt,m] = min([obj.dtSave * obj.simparams.multFac, ...
+                    obj.simparams.dtMax,...
+                    targetTime - obj.t,...
+                    obj.simparams.tMax - obj.t,...
+                    ]);
+
+      dt = max([dt obj.simparams.dtMin]);
+
+      if m == 3
+        % advance target time ID 
+        obj.targetTimeID = obj.targetTimeID + 1;
+      else
+        % save the current step
+        obj.dtSave = dt;
+      end
+
+      % limit time step to end of simulation time
+      if m == 4 && dt == obj.simparams.dtMin
+        % force exit from time simulation loop
+        obj.t = obj.simparams.tMax;
+        % print here the end of simulation if requested
+        printState(obj);
+      end
+
+      % Enforce the dt pass in the prediction time
+      if and(obj.t+dt>obj.startPrediction,obj.t<obj.startPrediction)
+        dt=obj.startPrediction-obj.t;
       end
     end
 
