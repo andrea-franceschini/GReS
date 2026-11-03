@@ -5,8 +5,8 @@ function Mandel_Analytical(mesh, mat, F, time, outDir)
 gresLog().log(2,'\nComputing Mandel Analytical solution...\n');
 
 % Get model geometry
-nx = 50; %numb. of calc.points along axis x
-nz = 50; %numb. of calc.points along axis z (vertical)
+nx = 20; %numb. of calc.points along axis x
+nz = 20; %numb. of calc.points along axis z (vertical)
 x_min = min(mesh.coordinates(:,1));
 x_max = max(mesh.coordinates(:,1));
 a = abs(x_max-x_min);

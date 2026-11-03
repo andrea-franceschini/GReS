@@ -78,9 +78,15 @@ classdef MultiphasePoromechanics < BiotFullyCoupled
                dofm.getVariableId("pressure"); ...
                dofm.getVariableId("saturation")];
 
+      nDoF = [dofm.getNumbDoF("displacements"); ...
+              dofm.getNumbDoF("pressure"); ...
+              dofm.getNumbDoF("saturation")]; 
+
+
       obj.domain.rhs{eqIdx(1)} = obj.domain.rhs{obj.fldMech} + rhsMech;
       obj.domain.rhs{eqIdx(2)} = wet.val;
       obj.domain.rhs{eqIdx(3)} = nwet.val;
+      obj.domain.J{eqIdx(1),eqIdx(3)} = sparse(nDoF(1),nDoF(3)); 
       obj.domain.J(eqIdx(2),eqIdx) = wet.jac;
       obj.domain.J(eqIdx(3),eqIdx) = nwet.jac;
 

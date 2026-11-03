@@ -217,7 +217,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 
    % Sanity check for all real solutions
    if any(~isreal(x),'all')
-      warning('wtf')
+      gresLog().warning(3,'wtf')
       x = real(x);
    end
 
