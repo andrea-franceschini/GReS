@@ -43,22 +43,27 @@ classdef DruckerPrager < ConstitutiveLaw
 
     end
 
-    function [sigmaOut, DAll] = constitutiveUpdate(obj, cellId, sigmaIn, epsilonIn)
+    function [sigmaOut, DAll] = constitutiveUpdate(obj, cellList, sigmaIn, epsilonIn, varargin)
       
-      gpId = obj.loc2gp(cellId,1);
-      nptGauss = obj.loc2gp(cellId,2);
+      gpsId = getGaussPointIds(obj.loc2gp, cellList);
+
+      nC = numel(cellList);
+      nptGauss = obj.loc2gp(cellList(1), 2);
+      nPoints = nptGauss * nC;
 
       D = obj.getElasticTensor();
-      DAll = repmat(D,[1, 1, nptGauss]);
+      DAll = repmat(D, [1, 1, nPoints]);
 
       % Incoming epsilonIn is an engineering strain increment row matrix.
       sigmaTrial = sigmaIn + epsilonIn * D;
 
-      cohesion = obj.status.conv.cohesion(gpId:gpId+nptGauss-1);
+      cohesion = obj.status.conv.cohesion(gpsId);
 
-      [sigmaOut, DAll, cohesion] = obj.returnMapping(sigmaTrial, nptGauss, DAll, cohesion);
+      [sigmaOut, DAll, cohesion] = obj.returnMapping(sigmaTrial, nPoints, DAll, cohesion);
     
-      obj.status.curr.cohesion(gpId:gpId+nptGauss-1) = cohesion;
+      obj.status.curr.cohesion(gpsId) = cohesion;
+
+      DAll = reshape(DAll, 6, 6, nptGauss, nC);
 
     end
 
@@ -73,7 +78,7 @@ classdef DruckerPrager < ConstitutiveLaw
 
 
 
-    function [sigma, D, cohesion] = returnMapping(obj, sigmaTrial, nptGauss, D, cohesion)
+    function [sigma, D, cohesion] = returnMapping(obj, sigmaTrial, nPoints, D, cohesion)
 
       sigma = sigmaTrial;
 
@@ -87,7 +92,7 @@ classdef DruckerPrager < ConstitutiveLaw
       tolQ     = 1e-12;
       tolAlpha = 1e-14;
 
-      for i = 1:nptGauss
+      for i = 1:nPoints
 
         pTrial = sum(sigmaTrial(i,1:3)) / 3;
         sTrial = sigmaTrial(i,1:6)' - pTrial * I;
@@ -208,6 +213,14 @@ classdef DruckerPrager < ConstitutiveLaw
 
        obj.status.conv = obj.status.curr;
        
+       % Reset plastic flag
+       obj.plasticFlag = false;
+    end
+
+    function goBackStatus(obj)
+
+       obj.status.curr = obj.status.conv;
+
        % Reset plastic flag
        obj.plasticFlag = false;
     end
