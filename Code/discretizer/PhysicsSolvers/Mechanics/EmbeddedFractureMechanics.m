@@ -497,7 +497,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       tauLim = max(obj.cohesion(fracId)-tan(obj.phi(fracId))*q(1),0);
       tau = norm(q(2:3));
 
-      tol = 1e-6;
+      tol = 1e-10;
       if mode == ContactMode.stick
         tau = tau * (1 - tol);
       elseif mode == ContactMode.slip
@@ -813,7 +813,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       end
 
       % discard too small fractures
-      id = f.area > obj.areaTol;
+      id = f.area > obj.areaTol * max(f.area);
       f.num           = sum(id);
       f.cutCells      = f.cutCells(id);
       f.center        = f.center(id,:);

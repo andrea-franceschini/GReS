@@ -177,11 +177,11 @@ classdef (Abstract) SolutionScheme < handle
         interf = obj.interfaces{i};
         state = interf.getState;
         state.time = obj.simparams.tIni;
+        interf.setState(state);
         initialize(interf);
         state = interf.getState();
         obj.iniState.interfaces{i} = state;
         % set old and initial state
-        interf.setState(state);
         interf.setStateInit(state);
         interf.setStateOld(state);
         interf.interfId = i;
