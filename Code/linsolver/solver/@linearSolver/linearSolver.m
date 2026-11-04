@@ -107,6 +107,8 @@ classdef linearSolver < handle
       newtonLin = []
       timeLin = []
       Delta_T = []
+      tolReqLin = []
+      scaledTolLin = []
       systemSize = 0
 
       % SAM object
@@ -210,74 +212,13 @@ classdef linearSolver < handle
                obj.Ruiz.scalingFlag = generalsolver.simparams.linSolverParams.scalingFlag;
             end
 
-            % Check if Ruiz is supported
-            if obj.Ruiz.scalingFlag == true && ismember(class(obj.Prec),["aFSAI", "aAMG"]) 
-               % Not supported
-               obj.Ruiz.scalingFlag = false;
-               gresLog().warning(1,'Ruiz scaling not supported for basic preconditioners as aAMG and aFSAI');
-            end
-
             % Copy the Ruiz scaling class to the preconditioner
             obj.Prec.Ruiz = obj.Ruiz;
          end
       end
 
-      function printStats(obj,varargin)
-         % Allocate for stats if sam not used
-         if ~obj.useSAM
-            obj.SAM.CompLin = zeros(size(obj.precCompLin));
-         end
-         
-         % Parse optional arguments
-         showShort = false;
-         showEW = false;
-         for k = 1:numel(varargin)
-            arg = varargin{k};
-            if ischar(arg) || isstring(arg)
-               if strcmpi(arg, 'short')
-                  showShort = true;
-               elseif strcmpi(arg, 'ew')
-                  showEW = true;
-               end
-            end
-         end
-
-         % If not 'short', show full linear solver table and preconditioner times
-         if ~showShort
-            % Print the time steps at which the preconditioner was computed
-            fprintf('The preconditioner was computed at time(s):\n');
-            for i = 1:length(obj.whenComputed)
-               fprintf('             %d\t%e\n',i,obj.whenComputed(i));
-            end
-
-            fprintf('\n----------------------------------------------------------------------\n')
-            fprintf('| %8s | %6s | %4s | %8s | %7s | %8s | %8s |\n','PhysTime','Sol N.','Iter','SolTime','Symm','PrecTime','DeltaT');
-            fprintf('----------------------------------------------------------------------\n')
-            
-            for i = 1:size(obj.solveTLin,2)
-               fprintf('| %.2e | %6d | %4d | %.2e | %.1e | %.2e | %.2e |\n',obj.timeLin(i),i,obj.iterLin(i),obj.solveTLin(i),obj.symFlagLin(i),obj.precCompLin(i)+obj.SAM.CompLin(i),obj.Delta_T(i));
-            end
-         end
-
-         % Print Eisenstat-Walker statistics if explicitly requested
-         if showEW && ~isempty(obj.convStrat)
-            obj.convStrat.printStats();
-         end
-
-         fprintf('Average Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
-         fprintf('Preconditioner computed %d times\n',length(obj.whenComputed));
-         if obj.useSAM
-            nnzSAMcomp = size(nonzeros(obj.SAM.CompLin),1);
-            fprintf('Average SAM computation time = %e\n',sum(obj.SAM.CompLin)/nnzSAMcomp);
-            fprintf('SAM computed %d times\n',nnzSAMcomp);
-         end
-         fprintf('Average Solve time = %e\n',(obj.aTimeSolve/obj.nSolve));
-         fprintf('Average number of iterations = %f\n',(obj.aIter/obj.nSolve));
-         fprintf('Max number of iterations = %d\n',obj.maxIter);
-         fprintf('Total time for computation of the linear systems = %e\n',obj.aTimeComp+obj.aTimeSolve+sum(obj.SAM.CompLin));
-         % fprintf('Used %d threads during mex\n',obj.Prec.maxThreads);
-         fprintf('Max system size = %d\n',obj.systemSize);
-      end
+      % Function to print the statistics of the simulation
+      printStats(obj,varargin)
 
       % Function to solve the system
       [x,flag] = SolveLin(obj,A,b,time,nonlinIter);

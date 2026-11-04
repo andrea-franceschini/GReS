@@ -214,7 +214,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
-   fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup);
+   fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup,obj.convStrat.unscaledTol,obj.convStrat.Tol);
 
    % Did not converge, if the preconditioner was not computed for this matrix
    % recompute it and try again
@@ -268,7 +268,7 @@ end
 
 
 % Function to get and fill the stats
-function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM)
+function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM,tolReq,tolScaled)
 
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
@@ -281,6 +281,8 @@ function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM)
    obj.timeLin(solves) = time; 
    obj.solveTLin(solves) = Tend;
    obj.symFlagLin(solves) = symValue;
+   obj.tolReqLin(solves) = tolReq;
+   obj.scaledTolLin(solves) = tolScaled;
 end
 
 
@@ -324,12 +326,9 @@ function [x,flag] = matlab_solve(obj,A,b,time)
    % Get the size of the system
    obj.systemSize = max(size(A,1),obj.systemSize);
 
-   % if obj.DEBUGflag
-   %    fprintf('condition number of the matrix %e\n',condest(A));
-   % end
    symValue = norm(A-A','f')/norm(A,'f');
    obj.params.iter = 0;
-   fillStats(obj,Tend,time,symValue,0,0);
+   fillStats(obj,Tend,time,symValue,0,0,NaN,NaN);
    obj.Delta_T(obj.nSolve) = 0;
    flag = 0;
 end

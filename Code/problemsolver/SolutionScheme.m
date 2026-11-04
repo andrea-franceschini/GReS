@@ -18,6 +18,7 @@ classdef (Abstract) SolutionScheme < handle
     isFirstRun = true   % flag if the simulation is first ever or first after a reset   
     targetTimeID        % id for printTimes list for which solution is required
     restartControl      % variable to control the save point for restart
+    rhsNormIt0 = 0      % initial residual norm of current step
   end
 
 
