@@ -233,12 +233,14 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % Interesting problem
    if(flag == 1)
       gresLog().log(3,'Number of solves since last preconditioner computation %d\n',obj.params.nSolveSinceLastPrecComp);
+      if length(cell2matrix(backupb)) > 1e5
+        error('Chronos could not solve. Fallback to Matlab blocked due to excessive system size')
+      end
       [x,~] = matlab_solve(obj,backupA,backupb,time);
 
       % Fall back to matlab to continue without breaking the
       % simulation
       warning('Matlab could solve and chronos did not. Falling back to matlab to continue simulation');
-      obj.ChronosFlag = false;
       return;
    end
 

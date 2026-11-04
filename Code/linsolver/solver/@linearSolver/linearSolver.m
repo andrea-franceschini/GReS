@@ -149,6 +149,14 @@ classdef linearSolver < handle
            end
          end
 
+         % Possible the user wants to use iterative even if the size is not sufficient
+         if isfield(generalsolver.simparams.linSolverParams, 'useIterative')
+           if generalsolver.simparams.linSolverParams.useIterative == 1
+             gresLog().log(3,'The user requested the use of the iterative solver\n');
+             obj.matlabMaxSize = 0;
+           end
+         end
+
          % Check if ChronosLab folder is present
          if isfolder(ChronosDir)
             % Check if ChronosLab has been compiled
