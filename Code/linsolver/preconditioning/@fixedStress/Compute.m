@@ -87,7 +87,7 @@ function A = Compute(obj,A,symMat,varargin)
             pState = obj.domain(1).getState("pressure");
             swState = obj.domain(1).getState("saturation");
             cIdx = obj.domain(1).dofm.getFieldCells("pressure");
-            tpSolver = obj.domain(1).getPhysicsSolver("TwoPhaseFlow");
+            tpSolver = obj.domain(1).getPhysicsSolver("MultiphasePoromechanics").getFlowSolver;
             if isempty(tpSolver) && ~isempty(mSolver)
                try
                   tpSolver = mSolver.getFlowSolver();
