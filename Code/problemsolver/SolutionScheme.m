@@ -161,7 +161,9 @@ classdef (Abstract) SolutionScheme < handle
         state = dom.getState;
         state.time = obj.simparams.tIni;
         dom.setState(state);
-        obj.iniState.domains{i} = dom.getState();
+        initialize(dom);
+        state = dom.getState();
+        obj.iniState.domains{i} = state;
         % set old and initial state 
         dom.setStateInit(state);
         dom.setStateOld(state);
@@ -169,21 +171,21 @@ classdef (Abstract) SolutionScheme < handle
         dom.simparams = obj.simparams;
         dom.domainId = i;
         obj.nVars = obj.nVars + dom.dofm.getNumberOfVariables();
-        initialize(dom);
       end
 
       for i = 1:obj.nInterf
         interf = obj.interfaces{i};
         state = interf.getState;
         state.time = obj.simparams.tIni;
-        obj.iniState.interfaces{i} = interf.getState();
+        initialize(interf);
+        state = interf.getState();
+        obj.iniState.interfaces{i} = state;
         % set old and initial state
         interf.setState(state);
-        interf.setStateInit(state)
+        interf.setStateInit(state);
         interf.setStateOld(state);
         interf.interfId = i;
         interf.outstate = obj.output;
-        initialize(interf);
       end
 
       obj.isFirstRun = false;
