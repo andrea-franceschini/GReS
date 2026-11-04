@@ -1,22 +1,23 @@
 % spflow
-solveSingle('matrices/spflow_fluxBarrier.mat');
+linearSolver.solveSingle('matrices/spflow_fluxBarrier.mat');
 
 %% mechanics 
-solveSingle('matrices/mech_treporti.mat');
+linearSolver.solveSingle('matrices/mech_treporti.mat');
 
 
 %% richards
-solveSingle('matrices/richards_column.mat');
+linearSolver.solveSingle('matrices/richards_column.mat');
 
 %% biot (surfaceLoad)
-solveSingle('matrices/biotFEM_treporti.mat');
+linearSolver.solveSingle('matrices/biotFEM_treporti.mat');
 
 
 %% stick slip (simulation, EW, linear)
 run('simul/runStickSlipOpen.m')
+linearSolver.solveSingle('matrices/stickslipmat.mat');
 
-% EFEM
-solveSingle('matrices/stickslipEFEM.mat');
+%% EFEM
+linearSolver.solveSingle('matrices/stickslipEFEM.mat');
 
 
 

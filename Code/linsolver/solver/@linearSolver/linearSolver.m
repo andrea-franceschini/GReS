@@ -233,6 +233,11 @@ classdef linearSolver < handle
       end
    end
 
+   methods (Static)
+      % Standalone solver for saved linear systems (.mat files)
+      [x, stats, flag, relres, iter, resvec] = solveSingle(matFile, varargin);
+   end
+
    methods (Access = private)
 
       % Function to get if Chronos is to be used and if so instantiate the

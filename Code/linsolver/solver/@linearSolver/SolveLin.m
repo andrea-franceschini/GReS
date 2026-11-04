@@ -498,8 +498,41 @@ function saveLinearSystem(obj, A, b, currentSolve,varargin)
       if ~isempty(obj.Prec)
          preconditioner = class(obj.Prec);
       end
+
+      % Extract relaxation matrix R and time it if Fixed Stress is active
+      timeRelaxation = 0;
+      if isa(obj.Prec, 'fixedStress')
+         biot = obj.generalsolver.domains(1).getPhysicsSolver("BiotFullyCoupled");
+         t0_R = tic;
+         biot.computeRelaxationMatrix();
+         timeRelaxation = toc(t0_R);
+         R = biot.R;
+      else
+         R = [];
+      end
+
+      dt = obj.generalsolver.dt;
+
+      % Determine physics name
+      if ~isempty(obj.Prec) && isa(obj.Prec, 'fixedStress')
+         physics = ["displacements", "pressure"];
+      elseif ~isempty(obj.Prec) && isa(obj.Prec, 'aAMG')
+         if obj.Prec.phys == 0, physics = "pressure"; else, physics = "displacements"; end
+      else
+         physname = arrayfun(@(x) x.dofm.getVariableNames(), obj.generalsolver.domains, 'UniformOutput', false);
+         physics = [physname{:}];
+      end
+
+      solverType = obj.SolverType;
+      restart = 100;
+      if isfield(obj.params, 'restart')
+         restart = obj.params.restart;
+      end
+      tol = obj.generalsolver.simparams.relTol;
+      maxit = obj.params.maxit;
    
-      save(filename, 'A', 'b', 'coordinates', 'ruizFlag', 'preconditioner');
+      save(filename, 'A', 'b', 'coordinates', 'ruizFlag', 'preconditioner', ...
+           'physics', 'solverType', 'restart', 'tol', 'maxit', 'dt', 'R', 'timeRelaxation');
       gresLog().log(3, 'Saved linear system solve %d to %s\n', currentSolve, filename);
    end
 end
