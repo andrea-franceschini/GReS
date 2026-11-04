@@ -141,21 +141,9 @@ classdef linearSolver < handle
          % Check if Chronos is available
          ChronosDir = fullfile(gres_root,'ThirdPartyLibs','ChronosLab','sources');
 
-         % Possible the user wants to use matlab even if the size is sufficient
-         if isfield(generalsolver.simparams.linSolverParams, 'useMatlab')
-           if generalsolver.simparams.linSolverParams.useMatlab == 1
-             gresLog().log(3,'The user requested the use of matlab\n');
-             return;
-           end
-         end
+         setOptions(obj,generalsolver.simparams.linSolverParams);
 
-         % Possible the user wants to use iterative even if the size is not sufficient
-         if isfield(generalsolver.simparams.linSolverParams, 'useIterative')
-           if generalsolver.simparams.linSolverParams.useIterative == 1
-             gresLog().log(3,'The user requested the use of the iterative solver\n');
-             obj.matlabMaxSize = 0;
-           end
-         end
+
 
          % Check if ChronosLab folder is present
          if isfolder(ChronosDir)
@@ -254,5 +242,41 @@ classdef linearSolver < handle
       % Specific functions to be used inside choosePrec
       [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physname);
       [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname);
+
+
+
+      function setOptions(obj,parm)
+
+        % Possible the user wants to use matlab even if the size is sufficient
+        if isfield(parm, 'useMatlab')
+          if parm.useMatlab == 1
+            gresLog().log(3,'The user requested the use of matlab\n');
+            return;
+          end
+        end
+
+        % Possible the user wants to use iterative even if the size is not sufficient
+        if isfield(parm, 'useIterative')
+          if parm.useIterative == 1
+            gresLog().log(3,'The user requested the use of the iterative solver\n');
+            obj.matlabMaxSize = 0;
+          end
+        end
+
+
+        if isfield(parm, 'saveMatType')
+          obj.saveMatType = parm.saveMatType;
+          switch parm.saveMatType
+            case {"none","all"}
+            case "selected"
+              assert(isfield(parm, 'saveMatSolves'));
+              obj.saveMatSolves = parm.saveMatSolves;
+            otherwise
+              error('Unknown options for "saveMatSolve"')
+          end
+
+        end
+
+      end
    end
 end
