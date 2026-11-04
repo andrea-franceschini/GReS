@@ -118,6 +118,10 @@ classdef linearSolver < handle
       % Params struct
       params
 
+      % .mat export settings for SolveSingle
+      saveMatType = 'none'
+      saveMatSolves = []
+
    end
 
    properties (Access = public)

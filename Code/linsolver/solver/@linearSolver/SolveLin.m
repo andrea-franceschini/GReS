@@ -59,6 +59,9 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    backupA = A;
    backupb = b;
 
+   % Save system to .mat if requested
+   saveLinearSystem(obj, backupA, backupb, obj.nSolve + 1);
+
    % Check if this step is linear to use maximum resolution needed
    isLinear = getIsLinear(obj.generalsolver);
 
@@ -472,3 +475,41 @@ end
 
 
 
+function saveLinearSystem(obj, A, b, currentSolve,varargin)
+   if ~isempty(varargin)
+      forcing = strcmpi(varargin{1},'true');
+   else
+      forcing = false;
+   end
+   if strcmpi('all',obj.saveMatType) || ...
+         (strcmpi('selected',obj.saveMatType) && ismember(currentSolve,obj.saveMatSolves)) || ...
+         forcing
+      coordinates = getCoordinates(obj.generalsolver);
+      filename = fullfile(sprintf('linearSystem_solve%d.mat', currentSolve));
+   
+      ruizFlag = false;
+      if ~isempty(obj.Ruiz)
+         ruizFlag = obj.Ruiz.scalingFlag;
+      end
+   
+      preconditioner = '';
+      if ~isempty(obj.Prec)
+         preconditioner = class(obj.Prec);
+      end
+   
+      save(filename, 'A', 'b', 'coordinates', 'ruizFlag', 'preconditioner');
+      gresLog().log(3, 'Saved linear system solve %d to %s\n', currentSolve, filename);
+   end
+end
+
+function [coordinates] = getCoordinates(generalsolver)
+   nDom = numel(generalsolver.domains);
+   if nDom == 1
+      coordinates = generalsolver.domains(1).grid.coordinates;
+   else
+      coordinates = cell(nDom, 1);
+      for d = 1:nDom
+         coordinates{d} = generalsolver.domains(d).grid.coordinates;
+      end
+   end
+end
