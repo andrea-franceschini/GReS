@@ -1,34 +1,27 @@
-clear
-clc
+function results = runIntegratedTests(useParallel)
+    % Run GReS integrated tests with optional parallel execution.
+    % Usage:
+    %   runIntegratedTests()       % Runs in parallel by default
+    %   runIntegratedTests(false)  % Runs sequentially
+    %   runIntegratedTests(true)   % Runs in parallel
 
-tWall = tic();      % start wall-clock timer
-tCPU  = cputime;    % start CPU timer
+    if nargin < 1
+        useParallel = true;
+    end
 
-v = gresLog().getVerbosity();
-gresLog().setVerbosity(-2);
+    testPath = fileparts(mfilename('fullpath'));
+    testFile = fullfile(testPath, 'IntegratedTests.m');
 
-testFiles = {
-    fullfile('Terzaghi','testTerzaghi.m')
-    fullfile('SubDomains','testSubDomains.m')
-    fullfile('MortarConvergence','testMortarPoisson.m')
-    fullfile('Richards','testRichards.m')
-    fullfile('ConstantSliding','testConstantSliding.m')
-    fullfile('SingleCrackCompressed','testSingleCrackCompressed.m')
-    fullfile('ConstantSlidingEFEM','testConstantSlidingEFEM.m')
-};
+    % Optional: manage parallel pool lifecycle if needed
+    % if useParallel && isempty(gcp('nocreate'))
+    %     parpool('Processes', 2);
+    % end
 
-results = runtests(testFiles);
+    results = runtests(testFile, 'UseParallel', useParallel);
 
-elapsedWall = toc(tWall);
-elapsedCPU  = cputime - tCPU;
+    disp(results);
 
-fprintf("Elapsed wall-clock time: %1.2f s\n", elapsedWall);
-fprintf("Elapsed CPU time:        %1.2f s\n", elapsedCPU);
-
-if any([results.Failed])
-    error("Some tests did not pass");
-else
-    disp("All tests ran successfully");
+    if any([results.Failed])
+        error('GReS:IntegratedTestsFailed', 'One or more integrated tests failed.');
+    end
 end
-
-gresLog().setVerbosity(v);

@@ -2,7 +2,6 @@
 
 <Output
     matFileName = "Output/ValidationResults"
-    saveHistory = "1"
     printTimes = "10,50,100."
 />
 

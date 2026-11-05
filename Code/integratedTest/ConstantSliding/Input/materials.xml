@@ -2,6 +2,7 @@
 
 <Materials>
   <Solid
+         name = "soil"
          cellTags = " 1 ">
     <Constitutive>
       <Elastic

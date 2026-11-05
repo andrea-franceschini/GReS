@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Materials>
+  <Solid cellTags = "1">
+    <Constitutive>
+      <SedimentMaterial
+          stressReference = "1000."
+          voidRateReference = "0.1"
+          compressibilityIndex = "0.0001"
+          reCompressibilityIndex = "0.0001"
+          stressPreConsolidated = "1000"
+          stressMin = "1e-1"
+          stressMax = "1e5"
+          voidRateMin = "0.09999"
+          specificWeight = "2.65e3"
+          conductivity = "0.9450e+0, 0.9450e+0, 0.315e+0"
+      />
+    </Constitutive>
+  </Solid>
+
+  <Fluid
+      specificWeight = "1.e3"
+      compressibility = "0.432e-8"  />
+</Materials>

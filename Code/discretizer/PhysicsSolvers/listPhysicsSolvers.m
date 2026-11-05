@@ -94,6 +94,10 @@ end
 
 function yes = inheritsFrom(mc, superName)
 yes = false;
+
+if isempty(mc.SuperclassList)
+  return
+end
 for sc = mc.SuperclassList
   if strcmp(sc.Name, superName)
     yes = true;

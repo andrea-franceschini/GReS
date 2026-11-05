@@ -1,0 +1,28 @@
+close all;
+% clear;
+input_dir = 'Input/';
+file_Mat = fullfile(input_dir,'materials.xml');
+file_Solver = fullfile(input_dir,'solver.xml');
+
+%% ------------------------------ Set up the Domain -----------------------
+% Set the simulation parameters for the non-linear solver.
+simParam = SimulationParameters('Start',0.,'End',1e3,...
+      'DtInit',1e-0,'DtMin',1e-2,'DtMax',1e0,'MaxNLIteration',8);
+
+% Create an object of the Materials class and read the materials file
+mat = Materials(file_Mat);
+printUtils = OutState('outputFile','Output/Results','printTimes',...
+  50:50:1000,"vtkFormat","ascii");
+
+% Create object handling construction of Jacobian and rhs of the model
+domain = Discretizer('Materials',mat);
+domain.addPhysicsSolvers(file_Solver);
+
+% The modular structure of the discretizer class allow the user to easily
+% customize the solution scheme.
+solver = EvolvingGrid('simulationparameters',simParam,...
+                           'domains',domain,...
+                           'output',printUtils,...
+                           'freezeCbAt',1e-1);
+
+solver.simulationLoop();

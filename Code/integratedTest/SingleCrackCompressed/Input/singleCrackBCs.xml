@@ -43,14 +43,12 @@ a function handle depending on space (x,y,z)
   <BC
       name = "z_outer"
       type = "Dirichlet"
-      entityType = "SurfBC"
+      field = "surface"
       variable = "displacements"
+      entityListType = "tags"
+      entityList = "1"
+      components = "z"
       >
-
-    <BCentities
-                surfaceTags = "1"
-                components = "z"
-                />
 
     <BCevent
              time = "0.0"
@@ -62,14 +60,12 @@ a function handle depending on space (x,y,z)
   <BC
       name = "left_load"
       type = "Neumann"
-      entityType = "SurfBC"
+      field = "surface"
       variable = "displacements"
+      entityListType = "tags"
+      entityList = "2"
+      components = "x"
       >
-
-    <BCentities
-                surfaceTags = "2"
-                components = "x"
-                />
 
     <BCevent
              time = "0.0"
@@ -79,36 +75,35 @@ a function handle depending on space (x,y,z)
   </BC>
 
 
-   <BC
+  <BC
       name = "right_load"
       type = "Neumann"
-      entityType = "SurfBC"
+      field = "surface"
       variable = "displacements"
+      entityListType = "tags"
+      entityList = "3"
+      components = "x"
+
       >
 
-    <BCentities
-                surfaceTags = "3"
-                components = "x"
-                />
 
     <BCevent
              time = "0.0"
              value = "-100.0"
              />
 
-   </BC>
+  </BC>
 
   <BC
       name = "x_fix"
       type = "Dirichlet"
-      entityType = "NodeBC"
+      field = "node"
       variable = "displacements"
+      entityListType = "bcList"
+      entityList = "14,30,960,2,18,506"
+      components = "x"
       >
 
-    <BCentities
-                bcList = "14,30,960,2,18,506"
-                components = "x"
-                />
 
     <BCevent
              time = "0.0"
@@ -121,14 +116,14 @@ a function handle depending on space (x,y,z)
   <BC
       name = "y_fix"
       type = "Dirichlet"
-      entityType = "NodeBC"
+      field = "node"
       variable = "displacements"
+      entityListType = "bcList"
+      entityList = "4,20,542,16,32,980"
+      components = "y"
+
       >
 
-    <BCentities
-                bcList = "4,20,542,16,32,980"
-                components = "y"
-                />
 
     <BCevent
              time = "0.0"

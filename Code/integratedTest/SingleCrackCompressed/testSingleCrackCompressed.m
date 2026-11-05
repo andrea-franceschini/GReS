@@ -10,9 +10,11 @@ cd(scriptDir);
 
 fileName = "singleCrackCompressed.xml";
 
-simparams = SimulationParameters(fileName);
+params = readInput(fileName);
 
-[domains,interfaces] = buildModel(fileName); 
+simparams = SimulationParameters(params.SimulationParameters);
+
+[domains,interfaces] = buildModel(params); 
 
 %solver = MultidomainFCSolver(simparams,domains,interfaces);
 solver = NonLinearImplicit('simulationparameters',simparams,...
@@ -21,20 +23,22 @@ solver = NonLinearImplicit('simulationparameters',simparams,...
 solver.simulationLoop();
 
 
-nS = getMesh(interfaces{2},MortarSide.slave).nSurfaces;
-gt = interfaces{2}.state.tangentialSlip;
+surfSlave = interfaces{2}.grids.surfaces;
+nS = surfSlave.num;
+state = getState(interfaces{2});
+gt = state.tangentialSlip;
 gt = sqrt(gt(1:2:end).^2 + gt(2:2:end).^2);
 cId = 2:2:nS-1;
 gt = gt(cId);
-tn = interfaces{2}.state.traction(3*cId-2);
+tn = state.traction(3*cId-2);
 
-xCoord = getMesh(interfaces{2},MortarSide.slave).surfaceCentroid(cId,1)/cos(deg2rad(20));
+xCoord = surfSlave.center(cId,1)/cos(deg2rad(20));
 xAnal = linspace(-1,1,1000);
 
 % analytical solutions
 b = 1;
 % real angle of the generated fault
-c = getMesh(interfaces{2},MortarSide.slave).surfaceCentroid(end,:);
+c = surfSlave.center(end,:);
 psi = atan(abs(c(2)/c(1)));
 sigma = 100;
 nu = 0.25;

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Materials >
+
+  <Solid name = "sand" cellTags = "1">
+
+    <Constitutive>
+      <Elastic
+               youngModulus = "1e4"
+               poissonRatio = "0.25"
+               />
+    </Constitutive>
+    
+    <PorousRock
+                porosity="0.375"
+                permeability="1.0e-12"/>
+  </Solid>
+
+  <Solid name = "clay" cellTags = "2">
+    <Constitutive>
+      <Elastic
+               youngModulus = "5e3"
+               poissonRatio = "0.25"
+               />
+    </Constitutive>
+    <PorousRock
+                porosity="0.3"
+                permeability="1e-15"/>
+  </Solid>
+
+  <Fluid
+         compressibility = "4.4e-7"
+         dynamicViscosity = "1.1574e-11"
+         />
+  <!--kPa, days -->
+</Materials>
+
+

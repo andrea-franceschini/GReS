@@ -1,0 +1,74 @@
+function [nEnts, ents, entsPosition] = readEntitySet(obj,type, ents, components, grid)
+% read entity set and return the number of entities for each
+% component, the list of entities and their reference location
+
+switch lower(type)
+  % input file for list of entities
+  case "bclistfile"
+    [nEnts, ents] = obj.readListFile(ents);
+    entsPosition = getLocation(obj.sourceField,grid,ents);
+    return
+  case {'tags','tag'}
+    tags = ents;
+    entsID = getEntitiesFromTags(obj.sourceField,grid,obj.sourceField,tags);
+  case "bclist"
+    entsID = ents;
+  case "box"
+    boxSize = ents;
+    Lx = boxSize(1:2);
+    Ly = boxSize(3:4);
+    Lz = boxSize(5:6);
+    switch obj.sourceField
+      case "node"
+        c = grid.coordinates;
+      case "cell"
+        c = grid.cells.center;
+      case "surface"
+        c = grid.surfaces.center;
+    end
+
+    entsID = all([ c(:,1) > Lx(1), c(:,1) < Lx(2),...
+      c(:,2) > Ly(1), c(:,2) < Ly(2),...
+      c(:,3) > Lz(1), c(:,3) < Lz(2)],2);
+
+    entsID = find(entsID);
+
+    if isempty(entsID)
+      error("The specified box does not fully contain any entity of source type %s",obj.sourceField)
+    end
+
+  otherwise
+    error("Unrecognized entityListType '%s' for Boundary condition '%s'.\n" + ...
+      "Valid entries for 'entityListType' are: 'bclist','bclistfile','tags','box'.",type,obj.name)
+end
+
+
+if isempty(entsID)
+  error("Error for BC %s: Empty or invalid list of entity in Boundary condition input.",obj.name)
+end
+
+% expand entity list to components
+compID = true;
+
+if ~isempty(components)
+
+  if isnumeric(components)
+    dir = ["x","y","z"];
+    components = dir(components);
+  end
+
+  compID =  ismember(["x","y","z"],components);
+
+end
+
+if ~any(compID)
+  error("Error for BC %s: Check syntax of 'components' field.",obj.name)
+end
+
+nEnts = numel(entsID).*compID;
+entsID = reshape(entsID,[],1);
+ents = repmat(entsID,sum(compID),1);
+entsPosition = getLocation(obj.sourceField,grid,ents);
+
+end
+

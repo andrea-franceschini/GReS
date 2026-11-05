@@ -5,21 +5,17 @@ in a nonConforming simulation.
 
 <Problem>
 
-  <simParam>
-    <Time
-          Start="0."
-          End ="10.0"
-          DtInit="0.25"
-          DtMin ="1e-5"
-          DtMax ="0.5"
-          incrementFactor = "1.25"
-          choppingFactor = "2" />
-
-    <Solver
+  <SimulationParameters
+            Start="0."
+            End ="10.0"
+            DtInit="0.25"
+            DtMin ="1e-5"
+            DtMax ="0.5"
+            incrementFactor = "1.25"
+            choppingFactor = "2"
             RelativeTolerance = "1.e-10"
             AbsoluteTolerance = "1.e-8"
             />
-  </simParam>
 
 
   <Materials >
@@ -54,17 +50,16 @@ in a nonConforming simulation.
 
 
 
+
   <BoundaryConditions>
     <BC
         name = "pressureBC"
         type = "Dirichlet"
-        entityType = "ElementBC"
+        field = "cell"
         variable = "pressure"
+        entityListType = "box"
+        entityList = "50,55,50,55,5,6"
         >
-
-      <BCentities
-                  box = "50,55,50,55,5,6"
-                  />
 
       <BCevent
                time = "0"
@@ -80,7 +75,6 @@ in a nonConforming simulation.
           printTimes   = "1,5,10"
           outputFile   = "model02/Output02/results"
           matFileName  = "model02/Output02/history"
-          saveHistory  = "1"
           />
 
 

@@ -1,0 +1,475 @@
+function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
+% This file implements a Solve method and related utilities intended to be
+% used as part of a linear solver class (linsolver). The Solve function
+% orchestrates choosing between internal MATLAB direct solve and an external
+% iterative solver (Chronos), manages preconditioner computation and reuse,
+% gathers timing/iteration statistics, and handles fallback/retry logic.
+%
+% Relationship with linsolver class:
+% - The code expects to be a method of an object "obj" that encapsulates the
+%   solver state and configuration.
+% - Prec is expected to be an object with methods Compute and function
+%   handles Apply_L and Apply_R used as left/right preconditioners.
+% - The linsolver class should provide gmres_RIGHT and SQMR wrappers or
+%   have them available on the path. The code also relies on helper
+%   utilities cell2matrix, fixPattern, and checkSymmetry.
+% - Solve manages recursive calls to itself when it requests a
+%   recomputation of the preconditioner and retrying the solve.
+%
+% Usage:
+% - Call as: [x,flag] = obj.Solve(Acell,b,currentTime)
+%   where Acell is a cell array of blocks representing the system matrix,
+%   b is the right-hand side, and currentTime is a scalar timestamp used
+%   for profiling (e.g., simulation time).
+%
+% Notes and behavior details:
+% - For small problems or when Chronos (external iterative solver) is not
+%   available, the method falls back to matlab_solve which uses the direct
+%   backslash on the assembled matrix.
+% - If the matrix is detected non-symmetric, SolverType is forced to 'gmres'.
+% - The preconditioner is computed when requested or when convergence
+%   metrics indicate poor performance (high iteration counts or large
+%   relative residual). The decision logic is encoded using fields in obj.
+% - After a failed solve (flag == 1), the method may attempt to recompute
+%   the preconditioner and retry once. If MATLAB direct solve succeeds but
+%   Chronos does not, the code falls back onto matlab and continues the simulation.
+% - Note that the A passed here might be slightly different than the one
+%   passed in the computation of the preconditioner if the two As differ 
+%   too much the preconditioner loses effectiveness. Must be recomputed
+% - A is passed directly as a cell array, meaning it is already split in 
+%   the various blocks (A11,A12,A21,A22 for a single physics single domain
+%   with lagrange multipliers)
+   
+   % Check if the variables have been passed
+   if nargin < 5 || isempty(nonlinIter)
+      nonlinIter = 1;
+   end
+
+   if obj.DEBUGflag
+      A
+   end
+
+   % Chronos does not exist, continue with matlab default
+   if ~obj.ChronosFlag || (getGlobalSize(A) < obj.matlabMaxSize)
+      [x,flag] = matlab_solve(obj,A,b,time);
+      return
+   end
+   
+   % Save a backup for the inputs
+   backupA = A;
+   backupb = b;
+
+   % Check if this step is linear to use maximum resolution needed
+   isLinear = getIsLinear(obj.generalsolver);
+
+   % Get the full rhs
+   if iscell(b)
+      b = -cell2matrix(b);
+   end
+
+   % Check if the system has changed size and adapt x0 to be of size(b)
+   obj.x0 = obj.Prec.checkGrowth(obj,b);
+   
+   % Contact has opened a fracture or something similar so amg does not converge well. 
+   % Directly recompute the preconditioner
+   if obj.Prec.phys == 1.1 
+      if obj.generalsolver.iterConfig > obj.iterConfigOld && obj.iterConfigOld == 1
+         % If the SAM is being used then it is better to just compute it
+         % wrt computing the whole preconditioner
+         if ~obj.useSAM
+            obj.requestPrecComp = true;
+         else
+            obj.SAM.requestComp = true;
+         end
+         obj.iterConfigOld = obj.generalsolver.iterConfig;
+      elseif obj.generalsolver.iterConfig < obj.iterConfigOld
+         obj.iterConfigOld = obj.generalsolver.iterConfig;
+      end
+   end
+
+   % Save the solver type
+   firstSolver = obj.SolverType;
+
+   % Fix the pattern to be symmetric and check the symmetry of the
+   % resulting matrix
+   [A] = fixPattern(A);
+   [globalsymm,maxval,symMat] = checkSymmetry(A,obj.nsyTol);
+
+   % Symmetric matrix and nonsymmetric preconditioner do not work together.
+   % There is a risk in finding a spurious nonphysical solution satisfying
+   % the residual
+   if globalsymm == true && obj.Prec.PrecSym == false
+      obj.requestPrecComp = true;
+   end
+   if globalsymm == true && obj.SAM.PrecSym == false && obj.useSAM
+      obj.SAM.requestComp = true;
+   end
+   
+   % Have the linear solver compute the Preconditioner if necessary
+   if(obj.requestPrecComp) 
+      gresLog().log(3,'Computing the preconditioner\n');
+
+      time_start = tic;
+      % Compute the preconditioner
+      mc = metaclass(obj.Prec);
+      m = mc.MethodList(strcmp({mc.MethodList.Name}, 'Compute'));
+      if ~isempty(m) && ~isempty(m.OutputNames)
+         A = obj.Prec.Compute(A,symMat);
+      else
+         obj.Prec.Compute(A,symMat);
+      end
+      T_setup = toc(time_start);
+
+      % Update stats
+      obj.aTimeComp = obj.aTimeComp + T_setup;
+      obj.nComp = obj.nComp + 1;
+      obj.whenComputed(length(obj.whenComputed) + 1) = time;
+      obj.params.nSolveSinceLastPrecComp = 0;
+      gresLog().log(3,'Finished computing the preconditioner\n');
+
+      % Reset the SAM
+      obj.SAM.reset();
+   else
+
+      % Condense the domains in a 2x2 matrix
+      A = obj.Prec.condenseDomains(A);
+
+      % Scale the matrix and the rhs using the precomputed diagonal scaling
+      A = obj.Ruiz.scaleMat(A);
+
+      % Update the state of the blocks in certain preconditioners
+      obj.Prec.updateStateBlocks(A);
+
+      % Update stats
+      obj.params.nSolveSinceLastPrecComp = obj.params.nSolveSinceLastPrecComp + 1;
+      T_setup = 0;
+   end
+
+   % If the matrix is nonSymmetric then use always GMRES
+   if globalsymm == 0
+      obj.SolverType = 'gmres';
+      gresLog().log(4,'The matrix is nonsymmetric with a maximum nonsymmetry of %e\n',maxval);
+   end
+
+   % Convert the matrix to a sparse double if not already like this
+   if iscell(A)
+      Amat = cell2matrix(A);
+   else
+      Amat = A;
+   end
+
+   % Get the size of the system
+   obj.systemSize = size(Amat,1);
+
+   % Get symmetry
+   symValue = norm(Amat-Amat','f')/norm(Amat,'f');
+
+   % Store the matrix for the SAM when the preconditioner is being computed
+   % anew if SAM is used
+   if obj.requestPrecComp
+      obj.SAM.getOldMat(Amat,globalsymm);
+   end
+
+   % Computes the SAM if deemed necessary and pass the Prec to setup the
+   % apply left/right
+   obj.SAM.Compute(Amat,globalsymm,obj.Prec);
+   
+   % Adjust the preconditioner to be of the correct size in the case of
+   % growing mesh simulation
+   obj.Prec.updateGrowingPrec(Amat);
+
+   % Apply Ruiz scaling if necessary
+   obj.x0 = obj.Ruiz.applyDinv(obj.x0);
+   b = obj.Ruiz.applyD(b);
+
+   % Compute if necessary the tolerance for the linear solver
+   obj.convStrat.computeTol(b, isLinear, nonlinIter, obj.Ruiz, backupb);
+
+   startT = tic;
+   switch obj.SolverType
+      case 'gmres'
+
+         % Solve the system by GMRES
+         [x,flag,obj.params.lastRelres,iter1] = gmres_RIGHT(Amat,b,obj.params.restart,obj.convStrat.Tol,...
+                                                            obj.params.maxit/obj.params.restart,...
+                                                            obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
+         obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
+         
+      case 'sqmr'
+
+         % Solve the system by SQMR
+         Afun = @(x) Amat*x;
+         [x,flag,obj.params.lastRelres,obj.params.iter] = SQMR(Afun,b,obj.convStrat.Tol,obj.params.maxit,...
+                                                               obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
+   end
+
+   % Sanity check for all real solutions
+   if any(~isreal(x),'all')
+      warning('wtf')
+      x = real(x);
+   end
+
+   % De-apply Ruiz scaling if used
+   x = obj.Ruiz.applyD(x);
+   Tend = toc(startT);
+
+   % Save statistics for profiling or info in general
+   fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup);
+
+   % Did not converge, if the preconditioner was not computed for this matrix
+   % recompute it and try again
+   if(flag == 1 && obj.params.nSolveSinceLastPrecComp > 0)
+      gresLog().log(3,'Trying to recompute the preconditioner to see if it manages to converge\n');
+      obj.params.nSolveSinceLastPrecComp = 0;
+      obj.requestPrecComp = true;
+
+      [x,flag] = obj.SolveLin(backupA,backupb,time,nonlinIter);
+      return;
+   end
+
+   % Interesting problem
+   if(flag == 1)
+      gresLog().log(3,'Number of solves since last preconditioner computation %d\n',obj.params.nSolveSinceLastPrecComp);
+      [x,~] = matlab_solve(obj,backupA,backupb,time);
+
+      % Fall back to matlab to continue without breaking the
+      % simulation
+      warning('Matlab could solve and chronos did not. Falling back to matlab to continue simulation');
+      obj.ChronosFlag = false;
+      return;
+   end
+
+   % Reset the solver
+   obj.SolverType = firstSolver;
+
+   % Check if the preconditioner needs to be recomputed
+   obj.convStrat.recomputePrec(obj,Tend);
+
+   % Check if the SAM needs to be (re)computed
+   obj.convStrat.recomputeSAM(obj,obj.SAM,Tend);
+
+   % Store the new starting vector
+   obj.x0 = x;
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+% Function to get and fill the stats
+function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM)
+
+   obj.aTimeSolve = obj.aTimeSolve + Tend;
+   obj.nSolve = obj.nSolve + 1;
+   solves = obj.nSolve;
+   obj.aIter = obj.aIter + obj.params.iter;
+   obj.maxIter = max(obj.maxIter,obj.params.iter);
+   obj.precCompLin(solves) = T_setup;
+   obj.SAM.CompLin(solves) = setupTSAM;
+   obj.iterLin(solves) = obj.params.iter;
+   obj.timeLin(solves) = time; 
+   obj.solveTLin(solves) = Tend;
+   obj.symFlagLin(solves) = symValue;
+end
+
+
+
+
+
+% Function to get the global size of the system
+function [gSize] = getGlobalSize(A)
+
+   [nBlockRows,nBlockCols] = size(A);
+   rowSizes = zeros(nBlockRows,1);
+   
+   for i = 1:nBlockRows
+      for j = 1:nBlockCols
+         C = A{i,j};
+         if ~isempty(C)
+            rowSizes(i) = size(C,1);
+            break;
+         end
+      end
+   end
+
+   gSize = sum(rowSizes);
+end
+
+function [x,flag] = matlab_solve(obj,A,b,time)
+
+   gresLog().log(4,'Fallback to matlab due to size or chronos inexistance\n');
+
+   % Get the full rhs
+   if iscell(b)
+      b = -cell2matrix(b);
+   end
+
+   startT = tic;
+   % Solve the system
+   A = cell2matrix(A);
+   x = A\b;
+   Tend = toc(startT);
+
+   % Get the size of the system
+   obj.systemSize = max(size(A,1),obj.systemSize);
+
+   % if obj.DEBUGflag
+   %    fprintf('condition number of the matrix %e\n',condest(A));
+   % end
+   symValue = norm(A-A','f')/norm(A,'f');
+   obj.params.iter = 0;
+   fillStats(obj,Tend,time,symValue,0,0);
+   obj.Delta_T(obj.nSolve) = 0;
+   flag = 0;
+end
+
+function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
+   
+   % Base Case: Numeric Matrix
+   if ~iscell(A)
+
+      diffnorm = norm(A-A','f');
+      Anorm = norm(A,'f');
+      
+      if diffnorm == 0 || Anorm == 0
+         globalsymm = 1;
+         maxval = 0;
+      else
+         relNorm = diffnorm/Anorm;
+
+         if relNorm < eps1
+            maxval = 0;
+            globalsymm = 1;
+         else
+            maxval = relNorm;
+            globalsymm = 0;
+         end
+      end
+      symMat = globalsymm;
+      return
+   end
+   
+   % Allocate the stuff
+   N = size(A,1);
+   symm = ones(sum(1:N),1);
+   val = zeros(sum(1:N),1);
+   cont = 1;
+   
+   % Loop over the blocks
+   for j = 1:N
+      for i = 1:j
+         if i == j
+            % Diagonal Block
+            [symm(cont), val(cont)] = checkSymmetry(A{i,i},eps1);
+         elseif ~isempty(A{i,j})
+            % Off-Diagonal Block
+            diffnorm = norm(A{i,j}-A{j,i}','f');
+            Anorm = 0.5 * (norm(A{i,j},'f') + norm(A{j,i},'f'));
+            
+            if diffnorm == 0 || Anorm == 0
+               symm(cont) = 1;
+               val(cont) = 0;
+            else
+               relNorm = diffnorm/Anorm;
+
+               if relNorm < eps1
+                  symm(cont) = 1;
+                  val(cont) = 0;
+               else
+                  symm(cont) = 0;
+                  val(cont) = relNorm;
+               end
+            end
+         end
+         cont = cont + 1;
+      end
+   end
+   
+   % Global mapping and output
+   symMat = zeros(N, N);
+   symMat(triu(true(N))) = symm;
+   symMat = symMat + triu(symMat, 1).';
+   
+   globalsymm = min(symm);
+   maxval = max(val);
+end
+
+function [isLinear] = getIsLinear(generalsolver)
+   % Initialize to false to return at the first nonlinear solver in any domain
+   isLinear = false;
+
+   % Loop over the different domains
+   for i = 1:generalsolver.nDom
+
+      % Get current domain handle
+      dom = generalsolver.domains(i);
+
+      % Loop over the various solvers of this domain
+      solver = dom.solverNames;
+      for j = 1:numel(solver)
+
+         % Call isLinear on the current solver in domain i
+         lin = dom.getPhysicsSolver(solver(j)).isLinear();
+   
+         % Early exit, if one domain has a solver which is nonlinear
+         % then all the system is nonlinear
+         if lin == false
+            return;
+         end
+      end
+   end
+
+   % Loop over the different interfaces
+   for i = 1:generalsolver.nInterf
+
+      % Call isLinear on the current interface
+      lin = generalsolver.interfaces{i}.isLinear();
+
+      % Early exit, if one interface is nonlinear
+      % then all the system is nonlinear
+      if lin == false
+         return
+      end      
+   end
+
+   % If reached here all the domains solvers are linear
+   isLinear = true;
+end
+
+function [A] = fixPattern(A)
+   N = size(A, 1);
+   for j = 1:N
+      for i = 1:j
+         patt = spones(A{i,j}) - spones(A{j,i}');
+         if nnz(patt)
+            mask1 = (patt ==  1);  % in A{i,j} but not A{j,i}'
+            mask2 = (patt == -1);  % in A{j,i}' but not A{i,j}
+            if i ~= j
+               A{j,i} = A{j,i} + (A{i,j} .* mask1)' * eps;
+               A{i,j} = A{i,j} + (A{j,i} .* mask2')' * eps;
+
+               patt = spones(A{i,j}) - spones(A{j,i}');
+               if nnz(patt) ~= 0
+                  error('asymmetric pattern found');
+               end
+            else
+               A{i,i} = A{i,i} + (A{i,i} .* mask1)' * eps;
+            end
+         end
+      end
+   end
+end
+
+
+

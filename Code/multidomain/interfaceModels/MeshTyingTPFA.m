@@ -2,16 +2,18 @@ classdef MeshTyingTPFA < InterfaceSolver
 
   % Finite volume mesh tying between non conforming interfaces
 
+  % One interface pressure per active slave surface. Half transmissibilities
+  % are evaluated on intersections; flux continuity is summed per slave face.
   % Now only for SinglePhaseFlow without gravity
 
   properties
-    neigh                     % neighborship map between non-conforming cells [master,slave]
+    neigh                     % volume-cell neighbors; columns indexed by MortarSide
     faceArea                  % area of the intersection polygons
     faceCenter                % centroid of the intersection polygons
-    halfTrans                 % Nface x 2 halfTransmissibilities at the intersecting faces [master,slave]
+    halfTrans                 % Nface x 2 half transmissibilities; columns indexed by MortarSide
     flowModels = cell(2,1)    % handle to Flow models in master and slave side
     faceNormals               % normals of the intersection polygons
-    elements
+    intersectionToSlave       % intersection row -> local slave surface / pressure DoF
 
   end
 
@@ -28,19 +30,22 @@ classdef MeshTyingTPFA < InterfaceSolver
       % check validity of the model
       validateInterface(obj);
 
-      % number of interface variables
-      obj.nMult = length(obj.faceArea);
-
-      obj.state.interfacePressure = zeros(obj.nMult,1);
-
-      obj.stateOld = obj.state;
+      % One pressure on each retained slave face, shared by its intersections.
+      obj.nMult = obj.grids(MortarSide.slave).surfaces.num;
+      obj.multiplierLocation = entityField.surface;
+      state = getState(obj);
+      state.interfacePressure = zeros(obj.nMult,1);
+      setState(obj,state);
+      setStateOld(obj,state);
+      setStateInit(obj,state);
 
     end
 
 
     function updateState(obj,du)
 
-      obj.state.interfacePressure = obj.state.interfacePressure + du(1:obj.nMult);
+      p = getState(obj,"interfacePressure");
+      setState(obj,p + du(1:obj.nMult),"interfacePressure");
 
     end
 
@@ -97,7 +102,8 @@ classdef MeshTyingTPFA < InterfaceSolver
 
         neighs = getDoFManager(obj,side).getLocalDoF(idPressure,obj.neigh(:,s));
 
-        Tfu = sparse((1:obj.nMult)',neighs,hT,obj.nMult,nDoF);
+        % Repeated slave indices sum all intersections of the same face.
+        Tfu = sparse(obj.intersectionToSlave,neighs,hT,obj.nMult,nDoF);
         Tuu = sparse(neighs,neighs,hT,nDoF,nDoF);
 
         addJmu(obj,side,-Tfu);
@@ -105,7 +111,8 @@ classdef MeshTyingTPFA < InterfaceSolver
         obj.flowModels{s}.domain.J{idPressure,idPressure} = ...
           obj.flowModels{s}.domain.J{idPressure,idPressure} + Tuu;
 
-        Tff = Tff + spdiags(hT,0,obj.nMult,obj.nMult);
+        Tff = Tff + sparse(obj.intersectionToSlave,...
+          obj.intersectionToSlave,hT,obj.nMult,obj.nMult);
         
       end
 
@@ -115,44 +122,52 @@ classdef MeshTyingTPFA < InterfaceSolver
 
     function [rhsM,rhsS,rhsI] = computeRhs(obj,mob)
 
+      pFace = getState(obj,"interfacePressure");
+      pI = pFace(obj.intersectionToSlave);
+      rhs = cell(2,1);
+      rhsI = zeros(obj.nMult,1);
 
-      hTM = mob(1).*obj.halfTrans(:,1);
-      hTS = mob(2).*obj.halfTrans(:,2);
-      pM = obj.domains(1).state.data.(obj.coupledVariables)(obj.neigh(:,1));
-      pS = obj.domains(2).state.data.(obj.coupledVariables)(obj.neigh(:,2));
-      pI = obj.state.interfacePressure;
-      nDoFM = getDoFManager(obj,MortarSide.master).getNumbDoF(obj.coupledVariables);
-      nDoFS = getDoFManager(obj,MortarSide.slave).getNumbDoF(obj.coupledVariables);
-      rhsM = accumarray(obj.neigh(:,1),hTM.*(pM-pI),[nDoFM 1]);
-      rhsS = accumarray(obj.neigh(:,2),hTS.*(pS-pI),[nDoFS 1]);
-      rhsI = hTM.*(pI-pM) + hTS.*(pI-pS); 
+      for side = [MortarSide.slave,MortarSide.master]
+        dofm = getDoFManager(obj,side);
+        idPressure = dofm.getVariableId(obj.coupledVariables);
+        nDoF = dofm.getNumbDoF(obj.coupledVariables);
+        cells = obj.neigh(:,side);
+        dofs = dofm.getLocalDoF(idPressure,cells);
+        p = getState(obj.domains(side),obj.coupledVariables);
+        hT = mob(side).*obj.halfTrans(:,side);
+        q = hT.*(p(cells)-pI); % outward flux from this volume cell
+        rhs{side} = accumarray(dofs,q,[nDoF,1]);
+        rhsI = rhsI - accumarray(obj.intersectionToSlave,q,[obj.nMult,1]);
+      end
+
+      rhsM = rhs{MortarSide.master};
+      rhsS = rhs{MortarSide.slave};
+
+    end
+
+
+    function writeSolution(obj,fac,tID)
+
+      p = obj.state.interpolate(fac,"interfacePressure");
+
+      obj.outstate.results(tID).interfacePressure = p;
 
     end
 
 
     function [surfaceStr,pointStr] = writeVTK(obj,fac,varargin)
 
-      pCurr = obj.state.interfacePressure;
-      pOld = obj.stateOld.interfacePressure;
-      p = fac*pCurr + (1-fac)*pOld;
-
-      surfaceStr = [];
+      % The pressure ordering is exactly the retained slave surface ordering.
+      surfaceStr = struct('name','interfacePressure',...
+        'data',obj.state.interpolate(fac,"interfacePressure"));
       pointStr = [];
 
-      % append state variable to output structure
-
-      % we dont plot anything for now. mesh does not support it
-      % surfaceStr(1).name = 'interfacePressure';
-      % surfaceStr(1).data = p;
     end
 
 
     function writeMatFile(obj,fac,tID)
 
-      pCurr = obj.state.interfacePressure;
-      pOld = obj.stateOld.interfacePressure;
-      p = fac*pCurr + (1-fac)*pOld;
-
+      p = obj.state.interpolate(fac,"interfacePressure");
       obj.outstate.matFile(tID).interfacePressure = p;
 
     end
@@ -163,118 +178,77 @@ classdef MeshTyingTPFA < InterfaceSolver
 
   methods (Access = protected)
 
-    function setMortarInterface(obj,varargin)
+    function setMortarInterface(obj,params)
 
-      interfaceInput = varargin{1};
+      % force segment-based mortar processing
+      quad.type = "SegmentBasedQuadrature";
+      quad.gaussOrder = 1;
+      params.Quadrature = quad;
+      params.multiplierType = "P0";
 
-      % setup the face neighborship at the interface
-      masterSurf = getXMLData(interfaceInput.Master,[],"surfaceTag");
-      slaveSurf = getXMLData(interfaceInput.Slave,[],"surfaceTag");
+      setMortarInterface@InterfaceSolver(obj,params);
 
-      % rough screen connectivity
-      obj.interfMesh = InterfaceMesh(obj.domains(1).grid.topology,...
-        obj.domains(2).grid.topology,...
-        masterSurf,slaveSurf);
+      % Quadrature pairs contain LOCAL surface IDs, one row per subtriangle.
+      % Retain intersection geometry, but share pressure on each slave face.
+      pairs = obj.quadrature.interfacePairs;
+      [surfacePairs,~,polygonId] = unique(pairs,'rows');
+      obj.intersectionToSlave = surfacePairs(:,MortarSide.slave);
+      obj.multiplierLocation = entityField.surface;
+      nConn = size(surfacePairs,1);
+      obj.neigh = zeros(nConn,2);
+      obj.faceArea = zeros(nConn,1);
+      obj.faceCenter = zeros(nConn,3);
+      obj.faceNormals = zeros(nConn,3);
+      obj.halfTrans = [];
 
-      checkInterfaceDisjoint(obj);
-
-      % initialize the maps to store mortar quadrature infos
-      nConnections = nnz(obj.interfMesh.elemConnectivity);
-
-      obj.neigh = zeros(nConnections,2);
-      obj.faceArea = zeros(nConnections,1);
-      obj.faceCenter = zeros(nConnections,3);
-
-      obj.elements = [Elements(obj.interfMesh.msh(1),3),...
-                      Elements(obj.interfMesh.msh(2),3)];
-
-      idx = 0;
-
-      for is = 1:obj.interfMesh.msh(2).nSurfaces
-
-        imList = find(obj.interfMesh.elemConnectivity(:,is));
-
-        for j = 1:numel(imList)
-
-          % add new pair to neighborship
-          im = imList(j);
-          
-          idx = processFacePair(obj,is,im,idx);
-
-        end
-      end
-
-      obj.neigh = obj.neigh(1:idx,:);
-      obj.faceArea = obj.faceArea(1:idx);
-      obj.faceCenter = obj.faceCenter(1:idx,:);
-
-
-      % remove inactive interface elements
-      mshMaster = getMesh(obj,MortarSide.master);
-      inactiveMaster = ~ismember(1:mshMaster.nSurfaces,...
-        obj.neigh(:,1));
-      [~, ~, obj.neigh(:,1)] = unique(obj.neigh(:,1));
-      mshSlave = getMesh(obj,MortarSide.slave);
-      inactiveSlave = ~ismember(1:mshSlave.nSurfaces,...
-        obj.neigh(:,2));
-      [~, ~, obj.neigh(:,2)] = unique(obj.neigh(:,2));
-
-      % remove master elements
-      obj.interfMesh.removeMortarSurface(1,inactiveMaster);
-      % remove slave elements
-      obj.interfMesh.removeMortarSurface(2,inactiveSlave);
-
-      % map interface surfaces to adjacent domain cells
-      mesh3DMaster = obj.domains(1).grid.topology;
-      mesh3DSlave = obj.domains(2).grid.topology;
-      obj.interfMesh.buildFace2CellMap([mesh3DMaster,mesh3DSlave]);
-
-      obj.neigh = [obj.interfMesh.f2c{1}(obj.neigh(:,1)),...
-                   obj.interfMesh.f2c{2}(obj.neigh(:,2))];
-
-    end
-
-
-
-    function idx = processFacePair(obj,idS,idM,idx)
-
-      mshS = getMesh(obj,MortarSide.slave);
-      mshM = getMesh(obj,MortarSide.master);
-
-      elemS = obj.elements(2).getElement(mshS.surfaceVTKType(idS));
-      elemM = obj.elements(1).getElement(mshM.surfaceVTKType(idM));
-
-      % compute auxiliairy plane on slave surface 
-      P0 = mshS.surfaceCentroid(idS,:);
-      nP = elemS.computeNormal(idS,elemS.centroid);
-
-      coordS3D = FEM.getElementCoords(elemS,idS);
-      [coordS,m1,m2] = pointToSurfaceProjection(P0,nP,coordS3D);
-
-      coordM3D = FEM.getElementCoords(elemM,idM);
-      coordM = pointToSurfaceProjection(P0,nP,coordM3D);
-
-      [polyClip,isClipValid] = mxPolygonClip(coordS,coordM);
-
-      if ~isClipValid || isempty(polyClip)
+      if nConn == 0
         return
       end
 
-      polyClip = orderPointsCCW2D(polyClip);
-      center2D = mxComputePolygonCentroid2D(polyClip);
-      area = computePolygonArea2D(polyClip);
+      slave = MortarSide.slave;
+      surfSlave = obj.grids(slave).surfaces;
+      firstMoment = zeros(size(pairs,1),3);
+      triArea = zeros(size(pairs,1),1);
 
-      % map the center back to 3D coords
-      center3D = P0' + center2D(1)*m1 + center2D(2)*m2;
+      % Map local Gauss coordinates to physical coordinates BEFORE averaging.
+      % The weights already include the subtriangle Jacobian (physical area).
+      for vtk = surfSlave.vtkTypes
+        elem = getElement(obj,vtk,slave);
+        triIds = find(surfSlave.VTKType(pairs(:,slave)) == vtk);
+        for k = triIds'
+          is = pairs(k,slave);
+          xi = obj.quadrature.getSlaveGPCoords(k);
+          x = elem.computeBasisF(xi)*elem.getElementCoords(is);
+          w = obj.quadrature.getIntegrationWeights(k);
+          w = w(:);
+          triArea(k) = sum(w);
+          firstMoment(k,:) = w'*x;
+        end
+      end
 
-      % add new face to list
-      idx = idx+1;
-      obj.neigh(idx,:) = [idM,idS];
-      obj.faceNormals(idx,:) = nP;
-      obj.faceArea(idx) = area;
-      obj.faceCenter(idx,:) = center3D;
+      obj.faceArea = accumarray(polygonId,triArea,[nConn,1]);
+      assert(all(isfinite(obj.faceArea) & obj.faceArea > 0),...
+        "MeshTyingTPFA: invalid intersection area");
+      for d = 1:3
+        obj.faceCenter(:,d) = accumarray(polygonId,firstMoment(:,d),...
+          [nConn,1])./obj.faceArea;
+      end
+
+      % Surface grids retain faceId through extraction and local renumbering.
+      % Convert to parent volume cells, using the enum for column ordering.
+      for side = [MortarSide.slave,MortarSide.master]
+        faceId = obj.grids(side).surfaces.faceId(surfacePairs(:,side));
+        faces = obj.domains(side).grid.faces;
+        assert(all(faces.neighbors(faceId,2) == 0),...
+          "MeshTyingTPFA requires boundary faces on both sides");
+        obj.neigh(:,side) = faces.neighbors(faceId,1);
+      end
+
+      % The shared normal points outward from the slave volume.
+      obj.faceNormals = surfSlave.normal(surfacePairs(:,slave),:);
 
     end
+
 
     function computeHalfTrans(obj)
 
@@ -289,23 +263,25 @@ classdef MeshTyingTPFA < InterfaceSolver
       
       % sign to ensure that the scalar product between c and normal is positive
       % remember: normal points outward the slave domain
-      sgn = [-1,+1];
+      sgn = zeros(1,2);
+      sgn(MortarSide.master) = -1;
+      sgn(MortarSide.slave) = +1;
 
       for side = [MortarSide.master,MortarSide.slave]
 
         hT = zeros(size(obj.halfTrans,1),1);
 
         s = getSide(side);
-        mesh = obj.domains(s).grid.topology;
-        L = obj.faceCenter - mesh.cellCentroid(obj.neigh(:,s),:);
+        mesh = obj.domains(s).grid;
+        L = obj.faceCenter - mesh.cells.center(obj.neigh(:,s),:);
         L = sgn(s)*L;
-        KMat = zeros(mesh.nCellTag,9);
-        for i=1:mesh.nCellTag
+        KMat = zeros(mesh.cells.nTag,9);
+        for i=1:mesh.cells.nTag
           KMat(i,:) = obj.domains(s).materials.getMaterial(i).PorousRock.getPermVector();
         end
 
         for k=1:length(r)
-          hT = hT + L(:,r(k)) .* KMat(mesh.cellTag(obj.neigh(:,s)),k) .* obj.faceNormals(:,c(k));
+          hT = hT + L(:,r(k)) .* KMat(mesh.cells.tag(obj.neigh(:,s)),k) .* obj.faceNormals(:,c(k));
         end
 
         hT = obj.faceArea.*hT;
@@ -342,11 +318,7 @@ classdef MeshTyingTPFA < InterfaceSolver
         gamma = obj.domains(s).materials.getFluid().getSpecificWeight();
         assert(gamma==0.0,"Gravity contribution not yet supported in MeshTyingTPFA")
 
-        % not elegant but effective
-        isFlow = contains(solvNames,"Flow");
-        assert(sum(isFlow)==1,"Only one flow model can be coupled");
-
-        obj.flowModels{s} = getPhysicsSolver(obj.domains(s),solvNames(isFlow)); 
+        obj.flowModels{s} = getPhysicsSolver(obj.domains(s),solvNames); 
 
       end
 

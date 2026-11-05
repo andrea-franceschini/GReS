@@ -1,0 +1,16 @@
+# Force LF for all text files
+* text=auto eol=lf
+
+# Explicitly declare text files you want to always be normalized and converted
+# to native line endings on checkout.
+*.m    text eol=lf
+*.cpp  text eol=lf
+*.hpp  text eol=lf
+*.py   text eol=lf
+*.vtk  text eol=lf
+*.xml  text eol=lf
+
+# Binary files
+*.mat binary
+*.png binary
+*.pdf binary

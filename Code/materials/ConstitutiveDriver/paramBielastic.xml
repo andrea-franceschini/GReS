@@ -1,0 +1,5 @@
+<BiElastic>
+  <youngModulus>1.5e10</youngModulus>
+  <poissonRatio>0.25</poissonRatio>
+  <bulkModulusRatio>0.3</bulkModulusRatio>
+</BiElastic>

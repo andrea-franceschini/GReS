@@ -1,8 +1,17 @@
+function compileAll(varargin)
+
+if isempty(varargin)
+  compileList = ["gres","chronos"];
+else
+  compileList = string(varargin);
+end
+
 clc;
-clear;
 close all;
 
-list = {'Code/read',...
+if ismember("gres",compileList)
+
+list = {'Code/grid',...
         'Code/output', ...
         'Code/elements',...
         'Utilities/ComputationalGeometry'};
@@ -15,4 +24,23 @@ for folder = list
   fprintf('\n\n')
   cd(home);
 end
-clear
+
+end
+
+if ismember("chronos",compileList)
+
+% compiling Chronos if available
+chronosDir = fullfile(gres_root,'ThirdPartyLibs','ChronosLab');
+isChronosReady = isfile(fullfile(chronosDir,'compileAll.m'));
+
+if isChronosReady
+   cd(chronosDir);
+   compileAll
+   cd(gres_root)
+end
+
+end
+
+
+
+end

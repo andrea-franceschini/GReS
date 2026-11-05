@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <model>
   <!-- Simulation parameters common to all physical models -->
-  <simParam>
-    <Time 
+  <SimulationParameters
           Start="0.0"
           End ="1e0"
           DtInit= "1e0"
@@ -10,6 +9,4 @@
           DtMin ="1e0"
 
           />
-
-  </simParam>
 </model>

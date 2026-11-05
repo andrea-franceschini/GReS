@@ -1,222 +1,294 @@
 classdef SinglePhaseFlowFEM < SinglePhaseFlow
   %SINGLEPHASEFLOW
 
+  properties (Access=protected)
+    gaussOrder      % order for gauss integration (0 means the minimum required by the fem type)
+  end
+
   methods (Access = public)
     function obj = SinglePhaseFlowFEM(domain)
       obj@SinglePhaseFlow(domain);
     end
 
-    function registerSolver(obj,solverInput)
-      nTags = obj.mesh.nCellTag;
-      
-      if ~isempty(solverInput)
-        targetRegions = getXMLData(solverInput,1:nTags,"targetRegions");
-      else
-        targetRegions = 1:nTags;
-      end
+    function registerSolver(obj,varargin)
 
+
+      registerSolver@SinglePhaseFlow(obj,entityField.node,varargin{:});
+
+      parm = readInput(struct('gaussOrder',0),varargin{:});
+      obj.gaussOrder = parm.gaussOrder;
+
+    end
+
+
+    function flux = computeFlux(obj,p,varargin)
+
+      % allocating vars
       dofm = obj.domain.dofm;
+      materials = obj.domain.materials;
+      coordinates = obj.grid.coordinates;
+      cells = obj.grid.cells;
+      subCells = dofm.getFieldCells(obj.fieldId);
 
-      dofm.registerVariable(obj.getField(),entityField.node,1,targetRegions);
-      n = getNumberOfEntities(entityField.node,obj.mesh);
-      obj.fieldId = dofm.getVariableId(obj.getField());
+      flux = zeros(3*cells.num,1);
 
-      % initialize the state object with a pressure field
-      obj.getState().data.(obj.getField()) = zeros(n,1);
+      % Get the fluid dynamic viscosity
+      mu = materials.getFluid().getDynViscosity();
 
-      computeRHSGravTerm(obj);
-    end
+      for vtkId = cells.vtkTypes
 
-    function states = finalizeState(obj,p,t)
-      % Compute the posprocessing variables for the module.
-      gamma = obj.domain.materials.getFluid().getSpecificWeight();
-      if gamma>0
-        zbc = obj.mesh.coordinates(:,3);
-        states.potential = p + gamma*zbc;
-        states.head = zbc+p/gamma;
+        cellList = obj.grid.getCellsByVTKId(vtkId,subCells);
+        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+
+        % get unique tags of cell list
+
+
+        for tag = 1:cells.nTag
+
+          cellListTag = cellList(cells.tag(cellList)==tag);
+          mat = materials.getMaterial(tag);
+          permMat = mat.PorousRock.getPermMatrix();
+          permMat = permMat/mu;
+
+          % get node topology for given vtk type
+          topol = obj.grid.getCellNodes(cellListTag);
+
+          for i = 1:numel(cellListTag)
+
+            nodes = topol(i,:);
+            coords = coordinates(nodes,:);
+            el = cellListTag(i);
+
+            [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
+            pLoc = p(nodes);
+            gradP = pagemtimes(gradN,pLoc);
+            fluxGP = pagemtimes(permMat,gradP);
+
+            % cell average contribution
+            fluxAvg = sum(fluxGP.*reshape(dJWeighed,1,1,[]),3)/sum(dJWeighed);
+            flux(3*el-2:3*el,1) = fluxAvg;
+
+          end
+
+        end
       end
-      states.perm = printPermeab(obj);
-      states.pressure = p;
+
+
     end
 
-    function J = computeMat(obj,dt)
+    function computeMat(obj,dt)
       % recompute elementary matrices only if the model is non-linear
       if ~isLinear(obj) || isempty(getJacobian(obj))
         computeMatFEM(obj);
       end
-
-      if obj.domain.simparams.isTimeDependent
-        J = obj.domain.simparams.theta*obj.H + obj.P/dt;
-      else
-        J = obj.H;
-      end
     end
 
     function computeMatFEM(obj)
-      % dealing with input params
-      dofm = obj.domain.dofm;
-      mat = obj.domain.materials;
-      subCells = dofm.getFieldCells(obj.fieldId);
-      nEntries = sum(obj.mesh.cellNumVerts(subCells).^2);
 
-      [iiVec,jjVec,HVec,PVec] = deal(zeros(nEntries,1));
+      % allocating vars
+      dofm = obj.domain.dofm;
+      materials = obj.domain.materials;
+      coordinates = obj.grid.coordinates;
+      cells = obj.grid.cells;
+      subCells = dofm.getFieldCells(obj.fieldId);
+      nEntries = sum(cells.numVerts(subCells).^2);
+      Ndof = dofm.getNumbDoF(obj.fieldId);
+      % assembler for H and P matrix
+      asbH = assembler(nEntries,Ndof,Ndof);
+      asbP = assembler(nEntries,Ndof,Ndof);
 
       % Get the fluid compressibility
-      beta = mat.getFluid().getFluidCompressibility();
+      beta = materials.getFluid().getFluidCompressibility();
 
       % Get the fluid dynamic viscosity
-      mu = mat.getFluid().getDynViscosity();
+      mu = materials.getFluid().getDynViscosity();
 
-      l1 = 0;
-      for el = subCells'
-        permMat = mat.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
-        poro = mat.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPorosity();
-        alpha = getRockCompressibility(obj,el);
-        % Compute the element matrices based on the element type
-        % (tetrahedra vs. hexahedra)
-        elem = getElement(obj.elements,obj.mesh.cellVTKType(el));
-        [gradN,dJWeighed] = getDerBasisFAndDet(elem,el,1);
-        N = getBasisFinGPoints(elem);
-        permMat = permMat/mu;
-        Hs = pagemtimes(pagemtimes(gradN,'ctranspose',permMat,'none'),gradN);
-        Hs = Hs.*reshape(dJWeighed,1,1,[]);
-        HLoc = sum(Hs,3);
-        clear Hs;
-        s1 = numel(HLoc);
-        % Computing the P matrix contribution
-        PLoc = (alpha+poro*beta)*(N'*diag(dJWeighed)*N);
-        %Getting dof associated to Flow subphysic
-        nodes = (obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el)));
-        dof = dofm.getLocalDoF(obj.fieldId,nodes);
-        [jjLoc,iiLoc] = meshgrid(dof,dof);
-        iiVec(l1+1:l1+s1) = iiLoc(:);
-        jjVec(l1+1:l1+s1) = jjLoc(:);
-        HVec(l1+1:l1+s1) = HLoc(:);
-        PVec(l1+1:l1+s1) = PLoc(:);
-        l1 = l1 + s1;
+      % get cell tags where there is coupling with the displacements
+      coupledRegions = dofm.getTargetRegions([obj.getField(),"displacements"]);
+
+      for vtkId = cells.vtkTypes
+
+        cellList = obj.grid.getCellsByVTKId(vtkId,subCells);
+        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+
+        % get unique tags of cell list
+
+
+        for tag = 1:cells.nTag
+
+          cellListTag = cellList(cells.tag(cellList)==tag);
+          mat = materials.getMaterial(tag);
+          permMat = mat.PorousRock.getPermMatrix();
+          permMat = permMat/mu;
+
+
+          % get node topology for given vtk type
+          topol = obj.grid.getCellNodes(cellListTag);
+
+          rockComp = getRockCompressibility(obj,tag,coupledRegions);
+
+          % porosity and rock compressibility (arrays local to the element
+          % region)
+          poro = zeros(numel(cellListTag),1);
+          alpha = zeros(numel(cellListTag),1);
+
+          % constant porosity is allowed for now
+          poro(:) = mat.PorousRock.getPorosity();
+          alpha(:) = rockComp(cellListTag);
+
+          for i = 1:numel(cellListTag)
+
+            nodes = topol(i,:);
+            coords = coordinates(nodes,:);
+
+            [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
+            N = getBasisFinGPoints(elem);
+            Hs = pagemtimes(pagemtimes(gradN,'ctranspose',permMat,'none'),gradN);
+            Hs = Hs.*reshape(dJWeighed,1,1,[]);
+            HLoc = sum(Hs,3);
+
+            PLoc = (alpha(i)+poro(i)*beta)*(N'*diag(dJWeighed)*N);
+
+            %Getting dof associated to Flow
+            dof = dofm.getLocalDoF(obj.fieldId,nodes);
+            asbH.localAssembly(dof,dof,HLoc);
+            asbP.localAssembly(dof,dof,PLoc);
+
+          end
+
+        end
+
       end
-      % renumber indices according to active nodes
-      nDoF = dofm.getNumbDoF(obj.fieldId);
-      % Assemble H and P matrices defined as new fields of
-      obj.H = sparse(iiVec, jjVec, HVec, nDoF, nDoF);
-      obj.P = sparse(iiVec, jjVec, PVec, nDoF, nDoF);
+
+      obj.H = asbH.sparseAssembly();
+      obj.P = asbP.sparseAssembly();
     end
 
-    function rhs = computeRhs(obj,dt)
-      % Compute the residual of the flow problem
 
-      % get pressure state
-      p = getState(obj,obj.getField());
-      pOld = getStateOld(obj,obj.getField());
+    function computeRhsGravTerm(obj)
 
-      ents = obj.domain.dofm.getActiveEntities(obj.fieldId);
 
-      if ~obj.domain.simparams.isTimeDependent
-        rhs = obj.H*p(ents);
-      else
-        theta = obj.domain.simparams.theta;
-        rhsStiff = theta*obj.H*p(ents) + (1-theta)*obj.H*pOld(ents);
-        rhsCap = (obj.P/dt)*(p(ents) - pOld(ents));
-        rhs = rhsStiff + rhsCap;
-      end
-
-      %adding gravity rhs contribute
-      gamma = obj.domain.materials.getFluid().getSpecificWeight();
-      if gamma > 0
-        rhs = rhs + obj.rhsGrav;
-      end
-    end
-
-    % TO DO: update to new FEM logic
-    function computeRHSGravTerm(obj)
       % Compute the gravity contribution
-      % Get the fluid specific weight and viscosity'
+      % Get the fluid specific weight and viscosity
       dofm = obj.domain.dofm;
       mat = obj.domain.materials;
       gamma = mat.getFluid().getSpecificWeight();
+      coordinates = obj.grid.coordinates;
+      cells = obj.grid.cells;
+      mu = mat.getFluid().getDynViscosity;
+
       if gamma > 0
+
         rhsTmp = zeros(dofm.getNumbDoF(obj.fieldId),1);
         subCells = dofm.getFieldCells(obj.fieldId);
-        for el = subCells'
-          % Get the material permeability
-          permMat = mat.getMaterial(obj.mesh.cellTag(el)).PorousRock.getPermMatrix();
-          %             permMat = permMat/mu;
-          vtkId = obj.mesh.cellVTKType(el);
-          elem = getElement(obj.elements,vtkId);
-          [N,dJWeighed] = getDerBasisFAndDet(elem,el,1);
-          fs = pagemtimes(N,'ctranspose',permMat(:,3),'none');
-          fs = fs.*reshape(dJWeighed,1,1,[]);
-          rhsLoc = sum(fs,3)*gamma;
-          entsId = obj.mesh.cells(el,1:obj.mesh.cellNumVerts(el));
-          rhsTmp(entsId) = rhsTmp(entsId) + rhsLoc;
+
+        for vtkId = cells.vtkTypes
+
+          tmp = obj.grid.getCellsByVTKId(vtkId);
+          cellList = reshape(intersect(subCells,tmp,'sorted'),1,[]);
+          elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+
+          % get node topology for given vtk type
+          topol = obj.grid.getCellNodes(cellList);
+
+          for i = 1:numel(cellList)
+
+            % Get the material permeability
+            nodes = topol(i,:);
+            coords = coordinates(nodes,:);
+            el = cellList(i);
+
+            permMat = mat.getMaterial(cells.tag(el)).PorousRock.getPermMatrix();
+            permMat = permMat/mu;
+            [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
+            fs = pagemtimes(gradN,'ctranspose',permMat(:,3),'none');
+            fs = fs.*reshape(dJWeighed,1,1,[]);
+            rhsLoc = sum(fs,3)*gamma;
+
+            rhsTmp(nodes) = rhsTmp(nodes) + rhsLoc;
+          end
         end
+
+        % remove inactive components of rhs vector
         obj.rhsGrav = rhsTmp(dofm.getActiveEntities(obj.fieldId));
-      end
-      % remove inactive components of rhs vector
-    end
 
-    function [ents,vals] = getBC(obj,id,t)
-      % getBC - function to find the value and the location for the
-      % boundary condition.
-      %
-      % Observation.:
-      %  - The seepage boundary condition apply a hydrostatic pressure
-      % in the boundary, and it's assume as a datum the most elavated
-      % point in the domain. (For future, have a way to pass this
-      % information).
-      bc = obj.domain.bcs;
-
-      switch bc.getCond(id)
-        case {'NodeBC','ElementBC'}
-          ents = bc.getEntities(id);
-          vals = bc.getVals(id,t);
-        case 'SurfBC'
-          v = bc.getVals(id,t);
-          ents = bc.getLoadedEntities(id);
-          entitiesInfl = bc.getEntitiesInfluence(id);
-          vals = entitiesInfl*v;
-        case 'VolumeForce'
-          v = bc.getVals(id,t);
-          ents = bc.getLoadedEntities(id);
-          entitiesInfl = bc.getEntitiesInfluence(id);
-          vals = entitiesInfl*v;
+      end % end if
+      
       end
+
+
+    function pHydro = getHydrostaticPressure(obj)
+
+      fluid = obj.domain.materials.getFluid();
+      gamma = fluid.getSpecificWeight;
+      pHydro = gamma * (obj.watLev - obj.coordinates(:,3));
 
     end
 
-    function applyDirVal(obj,bcId,t)
-      bcVar = obj.domain.bcs.getVariable(bcId);
-      if ~strcmp(bcVar,obj.getField()) 
-        return 
-      end
-      [bcEnts,bcVals] = getBC(obj,bcId,t);
-      state = getState(obj);
-      state.data.pressure(bcEnts) = bcVals;
-    end
+    % function [ents,vals] = getBC(obj,id,t)
+    %   % getBC - function to find the value and the location for the
+    %   % boundary condition.
+    %   %
+    %   % Observation.:
+    %   %  - The seepage boundary condition apply a hydrostatic pressure
+    %   % in the boundary, and it's assume as a datum the most elavated
+    %   % point in the domain. (For future, have a way to pass this
+    %   % information).
+    %   bc = obj.domain.bcs;
+    % 
+    %   switch bc.getCond(id)
+    %     case {'node','cell'}
+    %       ents = bc.getEntities(id);
+    %       vals = bc.getVals(id,t);
+    %     case 'surface'
+    %       v = bc.getVals(id,t);
+    %       ents = bc.getLoadedEntities(id);
+    %       entitiesInfl = bc.getEntitiesInfluence(id);
+    %       vals = entitiesInfl*v;
+    %     case 'volumeforce'
+    %       v = bc.getVals(id,t);
+    %       ents = bc.getLoadedEntities(id);
+    %       entitiesInfl = bc.getEntitiesInfluence(id);
+    %       vals = entitiesInfl*v;
+    %   end
+    % 
+    % end
 
-    function applyBC(obj,bcId,t)
-      if ~BCapplies(obj,bcId)
-        return
-      end
-      [bcDofs,bcVals] = getBC(obj,bcId,t);
+    % function applyDirVal(obj,bcId,t)
+    %   bcVar = obj.domain.bcs.getVariable(bcId);
+    %   if ~strcmp(bcVar,obj.getField()) 
+    %     return 
+    %   end
+    %   [bcEnts,bcVals] = getBC(obj,bcId,t);
+    %   state = getState(obj);
+    %   state.data.pressure(bcEnts) = bcVals;
+    % end
 
-      % Base application of a Boundary condition
-      bcType = obj.domain.bcs.getType(bcId);
-      switch bcType
-        case {'Dirichlet','Seepage'}
-          applyDirBC(obj,bcId,bcDofs);
-        case {'Neumann','VolumeForce'}
-          applyNeuBC(obj,bcId,bcDofs,bcVals);
-        otherwise
-          error("Error in %s: Boundary condition type '%s' is not " + ...
-            "available in applyBC()",class(obj),bcType)
-      end
-    end    
+    % function applyBC(obj,bcId,t)
+    %   if ~BCapplies(obj,bcId)
+    %     return
+    %   end
+    %   [bcDofs,bcVals] = getBC(obj,bcId,t);
+    % 
+    %   % Base application of a Boundary condition
+    %   bcType = obj.domain.bcs.getType(bcId);
+    %   switch bcType
+    %     case {'dirichlet','seepage'}
+    %       applyDirBC(obj,bcId,bcDofs);
+    %     case {'neumann','volumeforce'}
+    %       applyNeuBC(obj,bcId,bcDofs,bcVals);
+    %     otherwise
+    %       error("Error in %s: Boundary condition type '%s' is not " + ...
+    %         "available in applyBC()",class(obj),bcType)
+    %   end
+    % end    
 
     function [cellStr,pointStr] = buildPrintStruct(obj,state)
       cellStr = repmat(struct('name', 1, 'data', 1), 1, 1);
       cellStr(1).name = 'permeability';
       cellStr(1).data = state.perm;
+      cellStr(2).name = 'flux';
+      cellStr(2).data = (reshape(state.flux,3,[]))';
 
       pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);
       pointStr(1).name = 'pressure';
