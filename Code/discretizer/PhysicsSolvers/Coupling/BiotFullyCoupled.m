@@ -129,13 +129,16 @@ classdef BiotFullyCoupled < PhysicsSolver
 
         for cTag = 1:cells.nTag
 
+          % extract cells belonging to subregion
+          subRegionCells = subCells(cells.tag(subCells) == cTag);
+          if isempty(subRegionCells)
+            continue;
+          end
+
           % extract the constitutive law
           constLaw = obj.domain.materials.getConstitutiveLaw(cTag);
 
           rock = obj.domain.materials.getPorousRock(cTag);
-
-          % extract cells belonging to subregion
-          subRegionCells = subCells(cells.tag(subCells) == cTag);
 
           for vtkId = cells.vtkTypes
 

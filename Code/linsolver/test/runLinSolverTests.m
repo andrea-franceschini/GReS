@@ -17,14 +17,12 @@ run('simul/runStickSlipOpen.m')
 linearSolver.solveSingle('matrices/stickslipmat.mat');
 
 %% EFEM
-linearSolver.solveSingle('matrices/stickslipEFEM.mat');
+[~,out] = linearSolver.solveSingle('matrices/stickslipEFEM.mat');
+
+%% twoPhase
 
 
-
-% twoPhase
-
-
-% multiPhasePoromechanics
+%% multiPhasePoromechanics
 
 
 

@@ -4,10 +4,11 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
   properties (Access = protected)
     trans
     isIntFaces
+    wellModel
   end
 
   methods (Access = public)
-    
+
     function obj = SinglePhaseFlowFVTPFA(domain)
 
       obj@SinglePhaseFlow(domain);
@@ -24,6 +25,20 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       flowCells = obj.domain.dofm.getActiveEntities('pressure');
       % Find internal faces (i.e. shared by two active flow cells)
       obj.isIntFaces = all(ismember(obj.grid.faces.neighbors, flowCells), 2);
+
+    end
+
+    function addWellModel(obj,wellModel)
+
+      % add a well model
+      if ~isempty(obj.wellModel)
+        warning('A well model was already present and has been replaced');
+      end
+
+      perm = getPermeabilities(obj);
+      wellModel.computeWellProperties(perm)
+
+      obj.wellModel = wellModel;
 
     end
 
@@ -46,7 +61,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       % get transmissibility of internal faces
       neigh = obj.grid.faces.neighbors(obj.isIntFaces,:);
       T = lw.*obj.trans(obj.isIntFaces);
-   
+
       neigh1 = dofm.getLocalDoF(obj.fieldId,neigh(:,1));
       neigh2 = dofm.getLocalDoF(obj.fieldId,neigh(:,2));
       sumDiagTrans = accumarray( [neigh1;neigh2], repmat(T,[2,1]), ...
@@ -74,7 +89,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       beta = mat.getFluid().getFluidCompressibility();
 
       for cTag = 1:cells.nTag
-     
+
         if ~ismember(cTag,dofm.getTargetRegions(obj.getField()))
           continue
         end
@@ -98,14 +113,14 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         % variably saturated flow model
         PVal = PVal.*varargin{1} + poroVec.*varargin{2};
       end
-      
+
       PVal = PVal.*cells.volume(cellList);
       nDoF = dofm.getNumbDoF(obj.fieldId);
       [~,~,dof] = unique(cellList);
       obj.P = sparse(dof,dof,PVal,nDoF,nDoF);
     end
 
- 
+
 
     function computeRhsGravTerm(obj)
       % Compute the gravity contribution
@@ -131,7 +146,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
       fluid = obj.domain.materials.getFluid();
       lw = 1/fluid.getDynViscosity();
-      
+
       dofm = obj.domain.dofm;
       nCells = dofm.getNumbDoF(obj.fieldId);
       neigh = obj.grid.faces.neighbors(obj.isIntFaces,:);
@@ -225,8 +240,8 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
     function applyDirVal(obj,bcId,t)
 
       bcVar = obj.domain.bcs.getVariable(bcId);
-      if ~strcmp(bcVar,obj.getField()) 
-        return 
+      if ~strcmp(bcVar,obj.getField())
+        return
       end
       [bcEnts,bcVals] = getBC(obj,bcId,t);
 
@@ -303,13 +318,8 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       sgn = 2*(hf2Cell == faces.neighbors(faceList,1)) - 1;
       N = sgn .* faces.normal(faceList,:);
 
-      mat = obj.domain.materials;
-      KMat = zeros(cells.nTag,9);
-      for i=1:cells.nTag
-        if isfield(mat.getMaterial(i),"PorousRock")
-          KMat(i,:) = mat.getMaterial(i).PorousRock.getPermVector();
-        end
-      end
+      KMat = getPermeabilities(obj);
+
 
       % index for vectorized L*K*N product
       r = [1, 1, 1, 2, 2, 2, 3, 3, 3];
@@ -318,7 +328,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       % half-face transmissibilities
       hT = zeros(length(hf2Cell),1);
       for k=1:length(r)
-        hT = hT + L(:,r(k)) .* KMat(cells.tag(hf2Cell),k) .* N(:,c(k));
+        hT = hT + L(:,r(k)) .* KMat(hf2Cell,k) .* N(:,c(k));
       end
 
 
@@ -332,7 +342,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
     function flux = computeFlux(obj,pot,mob,t)
       %COMPUTEFLUX - compute the flux at the faces, than accumulate
-      %the value at the nodes 
+      %the value at the nodes
       % boundary fluxes are retrieved from boundary condition value
 
       % Compute the nodal fluxes in the domain
@@ -373,7 +383,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       end
 
       %%% map fluxes from face to nodes
-      % provisional: nodeArea = faceArea/numNodes 
+      % provisional: nodeArea = faceArea/numNodes
       % TO DO: use proper nodeInfluence for internal faces
 
       [nList,ptr] = getData(faces.connectivity);
@@ -398,7 +408,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       cellStr(1).name = 'pressure';
       cellStr(1).data = state.pressure;
       cellStr(2).name = 'permeability';
-      cellStr(2).data = state.perm;      
+      cellStr(2).data = state.perm;
       if isfield(state,"potential")
         cellStr(3).name = 'potential';
         cellStr(3).data = state.potential;
@@ -438,6 +448,9 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       dlwkpt = 0;
     end
 
+
+
   end
+
 
 end

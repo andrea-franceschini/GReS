@@ -75,7 +75,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    
    % Contact has opened a fracture or something similar so amg does not converge well. 
    % Directly recompute the preconditioner
-   if obj.Prec.phys == 1.1 
+   if isequal(obj.Prec.phys, 1.1)
       if obj.generalsolver.iterConfig > obj.iterConfigOld && obj.iterConfigOld == 1
          % If the SAM is being used then it is better to just compute it
          % wrt computing the whole preconditioner
@@ -121,10 +121,19 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       else
          obj.Prec.Compute(A,symMat);
       end
-      T_setup = toc(time_start);
+      T_setup_wall = toc(time_start);
+
+      % If the preconditioner can provide a recomputation-specific setup time
+      % (e.g. fixedStress with linear mechanics, where AMGMech is recycled
+      % and only the flow part is recomputed), use that for the convergence strategy
+      if ismethod(obj.Prec, 'getRecomputeSetupTime')
+         T_setup = obj.Prec.getRecomputeSetupTime(T_setup_wall);
+      else
+         T_setup = T_setup_wall;
+      end
 
       % Update stats
-      obj.aTimeComp = obj.aTimeComp + T_setup;
+      obj.aTimeComp = obj.aTimeComp + T_setup_wall;
       obj.nComp = obj.nComp + 1;
       obj.whenComputed(length(obj.whenComputed) + 1) = time;
       obj.params.nSolveSinceLastPrecComp = 0;
@@ -208,7 +217,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 
    % Sanity check for all real solutions
    if any(~isreal(x),'all')
-      warning('wtf')
+      gresLog().warning(3,'wtf')
       x = real(x);
    end
 
@@ -253,8 +262,8 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % Check if the SAM needs to be (re)computed
    obj.convStrat.recomputeSAM(obj,obj.SAM,Tend);
 
-   % Store the new starting vector
-   obj.x0 = x;
+   % Restore the new starting vector
+   obj.x0 = zeros(size(x));
 end
 
 
