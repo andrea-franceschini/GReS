@@ -105,8 +105,6 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       obj.P = sparse(dof,dof,PVal,nDoF,nDoF);
     end
 
- 
-
     function computeRhsGravTerm(obj)
       % Compute the gravity contribution
       % Get the fluid specific weight and viscosity'
@@ -119,7 +117,6 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
         obj.rhsGrav = gamma*obj.trans(obj.isIntFaces).*(zNeigh(:,1) - zNeigh(:,2));
       end
     end
-
 
     function pHydro = getHydrostaticPressure(obj)
       fluid = obj.domain.materials.getFluid();
@@ -329,7 +326,6 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
     end
 
-
     function flux = computeFlux(obj,pot,mob,t)
       %COMPUTEFLUX - compute the flux at the faces, than accumulate
       %the value at the nodes 
@@ -387,7 +383,6 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       end
 
     end
-
 
     function [cellStr,pointStr] = buildPrintStruct(obj,state)
       pointStr = repmat(struct('name', 1, 'data', 1), 1, 1);

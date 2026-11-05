@@ -79,8 +79,6 @@ classdef EvolvingGrid < SolutionScheme
   end
 
 
-
-
   methods (Access = protected)
     function setSolutionScheme(obj,varargin)
       default = struct('simulationparameters',SimulationParameters.empty,...
