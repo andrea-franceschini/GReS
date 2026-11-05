@@ -20,10 +20,10 @@ linearSolver.solveSingle('matrices/stickslipmat.mat');
 [~,out] = linearSolver.solveSingle('matrices/stickslipEFEM.mat');
 
 %% twoPhase
-
+linearSolver.solveSingle('matrices/twoPhase_SPE.mat');
 
 %% multiPhasePoromechanics
-
+linearSolver.solveSingle('matrices/mpPoro_staircase.mat');
 
 
 

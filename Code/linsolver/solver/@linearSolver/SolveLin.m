@@ -511,7 +511,11 @@ function saveLinearSystem(obj, A, b, currentSolve,varargin)
       % Extract relaxation matrix R and time it if Fixed Stress is active
       timeRelaxation = 0;
       if isa(obj.Prec, 'fixedStress')
+        try
          biot = obj.generalsolver.domains(1).getPhysicsSolver("BiotFullyCoupled");
+        catch
+          biot = obj.generalsolver.domains(1).getPhysicsSolver("MultiphasePoromechanics");
+        end
          t0_R = tic;
          biot.computeRelaxationMatrix();
          timeRelaxation = toc(t0_R);
