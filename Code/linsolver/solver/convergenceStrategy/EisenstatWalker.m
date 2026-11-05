@@ -54,7 +54,11 @@ classdef EisenstatWalker < convStrat
 
       function computeTol(obj, b, islinear, nonlinIter, Ruiz, backupb)
          % Extract unscaled physical residual norm
-         physNorm = norm(cell2matrix(backupb));
+         if iscell(backupb)
+            physNorm = norm(cell2matrix(backupb));
+         else
+            physNorm = norm(backupb);
+         end
 
          % Check if the solver is retrying to converge
          isRetry = (nonlinIter == obj.lastNonlinIter && abs(physNorm - obj.lastPhysNorm) <= 1e-12 * max(1, physNorm));

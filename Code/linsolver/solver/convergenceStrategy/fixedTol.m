@@ -31,7 +31,11 @@ classdef fixedTol < convStrat
             % Determine effective tolerance for the scaled linear solver to guarantee
             % convergence of the unscaled physical residual
             if Ruiz.scalingFlag
-               b_unscaled_norm = norm(cell2matrix(backupb));
+               if iscell(backupb)
+                  b_unscaled_norm = norm(cell2matrix(backupb));
+               else
+                  b_unscaled_norm = norm(backupb);
+               end
                b_scaled_norm = norm(b);
                if b_scaled_norm > 0 && b_unscaled_norm > 0
                   minD = min(Ruiz.fullD);
@@ -41,7 +45,11 @@ classdef fixedTol < convStrat
             end
          else
             % Nonlinear iteration: guard against oversolving
-            physNorm = norm(cell2matrix(backupb));
+            if iscell(backupb)
+               physNorm = norm(cell2matrix(backupb));
+            else
+               physNorm = norm(backupb);
+            end
             tauNL = obj.getTauNL();
             tolFromAbs = (obj.alphaSafe * tauNL) / max(physNorm, eps);
 

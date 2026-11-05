@@ -1,30 +1,326 @@
-% spflow
-linearSolver.solveSingle('matrices/spflow_fluxBarrier.mat');
+% runLinSolverTests - Test suite and regression verification for linearSolver.
 
-%% mechanics 
-linearSolver.solveSingle('matrices/mech_treporti.mat');
+clear; clc;
+
+% Configuration flags
+updateReference   = false;
+includeSimulation = true;
+
+refFile = fullfile('matrices', 'linsolver_test_reference.mat');
+
+% Test case definitions covering single-phase flow, mechanics, coupled Biot,
+% stick-slip contact, embedded fracture, two-phase flow, and multiphase poromechanics.
+testCases = {
+   struct('file', 'matrices/spflow_fluxBarrier.mat', 'rhsFlag', 0, 'desc', 'Single-Phase Flow (flux barrier)');
+   struct('file', 'matrices/mech_treporti.mat',      'rhsFlag', 0, 'desc', 'Linear Mechanics (Treporti)');
+   struct('file', 'matrices/richards_column.mat',    'rhsFlag', 0, 'desc', 'Richards Equation (column)');
+   struct('file', 'matrices/biotFEM_treporti.mat',   'rhsFlag', 0, 'desc', 'Coupled Biot FEM (surface load)');
+   struct('file', 'matrices/stickslipEFEM.mat',      'rhsFlag', 0, 'desc', 'Embedded Fracture (EFEM)');
+   struct('file', 'matrices/twoPhase_SPE.mat',        'rhsFlag', 0, 'desc', 'Two-Phase Flow (SPE)');
+   struct('file', 'matrices/mpPoro_staircase.mat',    'rhsFlag', 0, 'desc', 'Multiphase Poromechanics (3-field)');
+   struct('file', 'matrices/spflow_fluxBarrier.mat', 'rhsFlag', 1, 'desc', 'Flow with b = ones(n, 1)');
+   struct('file', 'matrices/spflow_fluxBarrier.mat', 'rhsFlag', 2, 'desc', 'Flow with b = rand(n, 1) [seeded]');
+   struct('file', 'matrices/mech_treporti.mat',      'rhsFlag', 3, 'desc', 'Mechanics with manufactured A*ones');
+   struct('file', 'matrices/biotFEM_treporti.mat',   'rhsFlag', 3, 'desc', 'Biot with manufactured A*ones');
+   struct('file', 'matrices/twoPhase_SPE.mat',        'rhsFlag', 1, 'desc', 'Two-Phase Flow with b = ones')
+};
+
+nTests = numel(testCases);
+
+% Load reference baseline if existing, otherwise force baseline creation
+refData = [];
+refSimStats = [];
+if ~updateReference && isfile(refFile)
+   loaded = load(refFile);
+   if isfield(loaded, 'referenceResults')
+      refData = loaded.referenceResults;
+   end
+   if isfield(loaded, 'referenceSimStats')
+      refSimStats = loaded.referenceSimStats;
+   end
+else
+   updateReference = true;
+end
+
+results = cell(nTests, 1);
+reports = cell(nTests, 1);
+allPassed = true;
+
+% Print run mode header
+if updateReference
+   fprintf('Updating reference baseline\n\n');
+else
+   fprintf('Running regression verification\n\n');
+end
+
+% Execute each standalone matrix test case sequentially
+for k = 1:nTests
+   tc = testCases{k};
+   fprintf('[%2d/%2d] Running: %-32s (rhsFlag=%d)... ', k, nTests, tc.file, tc.rhsFlag);
+
+   % Seed random number generator to ensure reproducible RHS vectors for random test cases
+   if tc.rhsFlag == 2
+      rng(0);
+   end
+
+   % Solve test case via solveSingle
+   [x, stats, flag, relres, iter, resvec] = linearSolver.solveSingle(tc.file, 'rhsFlag', tc.rhsFlag, 'verb', false);
+
+   % Fail fast on divergence
+   assert(flag == 0, 'Test %s (rhsFlag=%d) failed to converge!', tc.file, tc.rhsFlag);
+   fprintf('Converged (%d iters, relres=%.2e)\n', iter, relres);
+
+   % Package full solution result struct
+   res = stats;
+   res.file = tc.file;
+   res.rhsFlag = tc.rhsFlag;
+   res.desc = tc.desc;
+   res.x = x;
+   results{k} = res;
+
+   % Evaluate comparison against reference baseline
+   refItem = [];
+   if ~updateReference && k <= numel(refData)
+      refItem = refData{k};
+   end
+   [rep, passed] = evaluateReport(tc, x, stats, relres, iter, refItem);
+   reports{k} = rep;
+   allPassed = allPassed && passed;
+end
+
+% Execute nonlinear simulations if enabled
+simReport = [];
+sedimReport = [];
+if includeSimulation
+   fprintf('\n[SIM ] Running: Stick-Slip contact simulation (simul/runStickSlipOpen.m)...\n');
+   run('simul/runStickSlipOpen.m');
+
+   % Extract simulation linear solver performance metrics via printStats
+   simStats = solver.linsolver.printStats('short');
+
+   % Package and evaluate simulation results against reference baseline
+   [simReport, simPassed] = evaluateSimulationReport(simStats, refSimStats);
+   allPassed = allPassed && simPassed;
+
+   % Execute evolving grid sedimentation simulation to verify the growing preconditioner
+   fprintf('\n[SIM ] Running: Sedimentation 2D simulation (simul/runLinearSedim.m)...\n');
+   run('simul/runLinearSedim.m');
+
+   % Verify only that the sedimentation simulation completes successfully with growing preconditioner
+   sedimStats = solverSedim.linsolver.printStats('short');
+   sedimPassed = (solverSedim.t >= 40.0) && isa(solverSedim.linsolver.Prec, 'growing');
+   allPassed = allPassed && sedimPassed;
+
+   sedimReport = struct();
+   sedimReport.nSolve = sedimStats.nSolve;
+   sedimReport.solverType = sedimStats.solverType;
+   sedimReport.preconditioner = 'growing';
+   sedimReport.totalIter = sedimStats.totalIter;
+   sedimReport.nComp = sedimStats.nComp;
+   sedimReport.totalTime = sedimStats.totalTime;
+   if sedimPassed
+      sedimReport.status = 'PASSED';
+   else
+      sedimReport.status = 'FAILED';
+   end
+end
+
+% Persist updated reference baseline to MAT file
+if updateReference
+   referenceResults = results;
+   if includeSimulation
+      referenceSimStats = simStats;
+      save(refFile, 'referenceResults', 'referenceSimStats');
+   else
+      save(refFile, 'referenceResults');
+   end
+   fprintf('\nReference baseline successfully saved to: %s\n', refFile);
+end
+
+% Render summary table and enforce regression assertions
+printSummaryTable(reports, simReport, sedimReport, updateReference);
+assert(allPassed, 'One or more tests regressed or drifted from reference baseline!');
 
 
-%% richards
-linearSolver.solveSingle('matrices/richards_column.mat');
+% =========================================================================
+% Local Helper Functions
+% =========================================================================
 
-%% biot (surfaceLoad)
-linearSolver.solveSingle('matrices/biotFEM_treporti.mat');
+% Evaluate test metrics and compare against baseline reference if available
+function [rep, passed] = evaluateReport(tc, x, stats, relres, iter, refItem)
+   rep = struct();
+   rep.file = tc.file;
+   rep.rhsFlag = tc.rhsFlag;
+   rep.solverType = stats.solverType;
+   rep.preconditioner = stats.preconditioner;
+   rep.iter = iter;
+   rep.relres = relres;
+   rep.trueResNorm = stats.trueResNorm;
+   rep.precTime = stats.precTime;
+   rep.solveTime = stats.solveTime;
 
+   % Baseline generation mode (no reference comparison needed)
+   if isempty(refItem)
+      rep.hasRef = false;
+      rep.refIter = iter;
+      rep.refSolveTime = stats.solveTime;
+      rep.relDiffX = 0;
+      rep.status = 'SAVED';
+      passed = true;
+      return;
+   end
 
-%% stick slip (simulation, EW, linear)
-run('simul/runStickSlipOpen.m')
-linearSolver.solveSingle('matrices/stickslipmat.mat');
+   % Regression verification against saved baseline
+   rep.hasRef = true;
+   rep.refIter = refItem.iter;
+   rep.refSolveTime = refItem.solveTime;
 
-%% EFEM
-[~,out] = linearSolver.solveSingle('matrices/stickslipEFEM.mat');
+   % Measure relative solution vector difference: ||x - xref|| / ||xref||
+   rep.relDiffX = norm(x - refItem.x) / max(norm(refItem.x), eps);
 
-%% twoPhase
-linearSolver.solveSingle('matrices/twoPhase_SPE.mat');
+   % Verify against tolerances. A 15% iteration window accounts for minor
+   % platform or BLAS scheduling variations, while 100*tol detects numerical drift.
+   maxAllowedDiffX = max(1e-4, 100 * stats.tol);
+   iterDelta = iter - refItem.iter;
+   iterTol = max(5, ceil(0.15 * refItem.iter));
 
-%% multiPhasePoromechanics
-linearSolver.solveSingle('matrices/mpPoro_staircase.mat');
+   passed = true;
+   rep.status = 'MATCH';
 
+   if rep.relDiffX > maxAllowedDiffX
+      rep.status = 'DRIFT';
+      passed = false;
+   elseif iterDelta > iterTol
+      rep.status = 'REGRESSION';
+      passed = false;
+   elseif iterDelta < -iterTol
+      rep.status = 'IMPROVED';
+   end
+end
 
+% Evaluate simulation linear solver performance metrics against baseline
+function [rep, passed] = evaluateSimulationReport(simStats, refSimStats)
+   rep = struct();
+   rep.solverType = simStats.solverType;
+   rep.nSolve = simStats.nSolve;
+   rep.nComp = simStats.nComp;
+   rep.totalIter = simStats.totalIter;
+   rep.maxIter = simStats.maxIter;
+   rep.avgIter = simStats.avgIter;
+   rep.totalTime = simStats.totalTime;
 
+   % Baseline generation mode
+   if isempty(refSimStats)
+      rep.hasRef = false;
+      rep.refTotalIter = simStats.totalIter;
+      rep.refNSolve = simStats.nSolve;
+      rep.refNComp = simStats.nComp;
+      rep.refTotalTime = simStats.totalTime;
+      rep.status = 'SAVED';
+      passed = true;
+      return;
+   end
 
+   % Regression verification against baseline
+   rep.hasRef = true;
+   rep.refTotalIter = refSimStats.totalIter;
+   rep.refNSolve = refSimStats.nSolve;
+   rep.refNComp = refSimStats.nComp;
+   rep.refTotalTime = refSimStats.totalTime;
+
+   % Check exact solve count and preconditioner computation count
+   solvesMatch = (abs(simStats.nSolve - refSimStats.nSolve) <= 2);
+   compsMatch = (abs(simStats.nComp - refSimStats.nComp) <= 1);
+
+   % Check total iteration counts within 10% tolerance
+   iterDelta = simStats.totalIter - refSimStats.totalIter;
+   iterTol = max(10, ceil(0.15 * refSimStats.totalIter));
+
+   passed = true;
+   rep.status = 'MATCH';
+
+   if ~solvesMatch || ~compsMatch
+      rep.status = 'DRIFT';
+      passed = false;
+   elseif iterDelta > iterTol
+      rep.status = 'REGRESSION';
+      passed = false;
+   elseif iterDelta < -iterTol
+      rep.status = 'IMPROVED';
+   end
+end
+
+% Print clean summary table displaying execution metrics and regression status
+function printSummaryTable(reports, simReport, sedimReport, isUpdateMode)
+   fprintf('\n');
+   if isUpdateMode
+      fprintf(' #  %-29s RHS  %-7s  %-12s  Iter    RelRes     TrueResNorm   SolveTime   PrecTime   Status\n', ...
+         'Matrix File', 'Solver', 'Precond');
+   else
+      fprintf(' #  %-29s RHS  %-7s  %-12s  Iter(Ref)   RelRes     TrueResNorm   ||x-xref||/||x||  dT_solve   Status\n', ...
+         'Matrix File', 'Solver', 'Precond');
+   end
+   fprintf('%s\n', repmat('-', 1, 115));
+
+   for k = 1:numel(reports)
+      r = reports{k};
+      [~, baseName, ext] = fileparts(r.file);
+      dispName = [baseName, ext];
+      if length(dispName) > 29
+         dispName = [dispName(1:26), '...'];
+      end
+
+      precShort = r.preconditioner;
+      if length(precShort) > 12
+         precShort = [precShort(1:9), '...'];
+      end
+
+      if isUpdateMode
+         fprintf('%2d  %-29s [%d]  %-7s  %-12s  %4d    %.2e   %.2e     %6.4fs    %6.4fs    %-8s\n', ...
+            k, dispName, r.rhsFlag, r.solverType, precShort, ...
+            r.iter, r.relres, r.trueResNorm, r.solveTime, r.precTime, r.status);
+      else
+         iterStr = sprintf('%3d (%3d)', r.iter, r.refIter);
+         if r.refSolveTime > 0
+            timeDiffPct = ((r.solveTime - r.refSolveTime) / r.refSolveTime) * 100;
+            timeStr = sprintf('%+5.1fpct', timeDiffPct);
+         else
+            timeStr = '   N/A   ';
+         end
+         fprintf('%2d  %-29s [%d]  %-7s  %-12s  %9s  %.2e   %.2e     %.2e       %9s  %-8s\n', ...
+            k, dispName, r.rhsFlag, r.solverType, precShort, ...
+            iterStr, r.relres, r.trueResNorm, r.relDiffX, timeStr, r.status);
+      end
+   end
+
+   % Print Stick-Slip contact simulation row if executed
+   if ~isempty(simReport)
+      fprintf('%s\n', repmat('-', 1, 115));
+      if isUpdateMode
+         fprintf('SIM %-29s [%d]  %-7s  %-12s  %4d    %2d prec   %6.2fs total   %6.4fs    ---       %-8s\n', ...
+            'StickSlipOpen (Simulation)', simReport.nSolve, upper(simReport.solverType), 'RACP', ...
+            simReport.totalIter, simReport.nComp, simReport.totalTime, simReport.totalTime, simReport.status);
+      else
+         timeDiffPct = 0;
+         if simReport.refTotalTime > 0
+            timeDiffPct = ((simReport.totalTime - simReport.refTotalTime) / simReport.refTotalTime) * 100;
+         end
+         simIterStr = sprintf('%4d(%4d)', simReport.totalIter, simReport.refTotalIter);
+         timeStr = sprintf('%+5.1fpct', timeDiffPct);
+         fprintf('SIM %-29s [%d]  %-7s  %-12s  %9s  %2d prec   %6.2fs total   %9s  ---       %-8s\n', ...
+            'StickSlipOpen (Simulation)', simReport.nSolve, upper(simReport.solverType), 'RACP', ...
+            simIterStr, simReport.nComp, simReport.totalTime, timeStr, simReport.status);
+      end
+   end
+
+   % Print Sedimentation growing preconditioner simulation row if executed
+   if ~isempty(sedimReport)
+      if isempty(simReport)
+         fprintf('%s\n', repmat('-', 1, 115));
+      end
+      fprintf('SIM %-29s [%d]  %-7s  %-12s  %4d    %2d prec   %6.2fs total   %6.4fs    ---       %-8s\n', ...
+         'LinearSedim (Growing Prec)', sedimReport.nSolve, upper(sedimReport.solverType), sedimReport.preconditioner, ...
+         sedimReport.totalIter, sedimReport.nComp, sedimReport.totalTime, sedimReport.totalTime, sedimReport.status);
+   end
+   fprintf('\n');
+end

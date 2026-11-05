@@ -1,17 +1,10 @@
-clc
 close all;
-clear;
 
-% Get the full path of the currently executing file
-scriptFullPath = mfilename('fullpath');
+% Extract directory containing script to locate simulation input XML files
+scriptDir = fileparts(mfilename('fullpath'));
+params = readInput(fullfile(scriptDir, "StickSlipOpen.xml"));
 
-% Extract the directory containing the script
-scriptDir = fileparts(scriptFullPath);
-
-cd(scriptDir)
-params = readInput("StickSlipOpen.xml");
-
-% set mesh 
+% Set structured mesh geometry for left and right contact blocks
 X = 5; Y = 10; Z = 15;
 nx1 = 10; ny1 = 10; nz1 = 15;
 gridL = structuredMesh(nx1,ny1,nz1,[0,0.5*X],[0 Y],[0 Z]);
@@ -22,13 +15,10 @@ gridR = structuredMesh(nx2,ny2,nz2,[0.5*X,X],[0 Y],[0 Z]);
 assert(mod(ny1,2) == 0 && mod(ny2,2)==0,"Number of elements along y axis " + ...
   "must be even to correctly apply symmetric bcs")
 
-% define model 
-
+% Initialize simulation parameters and material definitions from inputs
 simParam = SimulationParameters(params.SimulationParameters);
-
-matL = Materials(fullfile('Input','materials.xml'));
-
-matR = Materials(fullfile('Input','materials.xml'));
+matL = Materials(fullfile(scriptDir, 'Input', 'materials.xml'));
+matR = Materials(fullfile(scriptDir, 'Input', 'materials.xml'));
 
 
 % Create an object of the "Boundaries" class 
