@@ -142,7 +142,7 @@ classdef linearSolver < handle
          ChronosDir = fullfile(gres_root,'ThirdPartyLibs','ChronosLab','sources');
 
          % Possible the user wants to use matlab even if the size is sufficient
-         if isfield(parm, 'useMatlab')
+         if isfield(generalsolver.simparams.linSolverParams, 'useMatlab')
             if parm.useMatlab == 1
                gresLog().log(3,'The user requested the use of matlab\n');
                return;
