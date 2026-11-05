@@ -54,14 +54,13 @@ classdef fixedStress < preconditioner
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)
          if strcmpi(obj.flowPrecType,'CPR')
-            Auu = varargin{1};
+            n1 = varargin{1};
             Afu = varargin{2};
 
-            n1 = size(Auu, 1);
             bu = b(1:n1);
             bf = b(n1+1:end);
 
-            % Algorithm (White et al. 2019):
+            % White et al. (2019) block triangular solve:
             % Mechanics solve: zu = M_uu^{-1} bu
             zu = obj.AMGMech.Apply_L(bu);
 
@@ -71,14 +70,10 @@ classdef fixedStress < preconditioner
             % Flow CPR solve: zf = CPR(yf)
             zf = obj.FlowPrec.Apply_L(yf);
 
-            % Combine
+            % Combine displacement and flow solutions
             x = [zu; zf];
 
          else
-            if nargin < 3
-               error('Not enough arguments for fixedStress apply Left');
-            end
-
             A11 = varargin{1};
             B1 = varargin{2};
             B2 = varargin{3};

@@ -59,23 +59,27 @@ function A = Compute(obj,A,symMat,varargin)
       rhoW = tpSolver.props.wet.density(sp);
       rhoNW = tpSolver.props.nwet.density(sp);
 
+      % Keep diagR sparse; do not convert to full to preserve matrix sparsity
       diagR = diag(RR);
       d11_fs = (1 / dt) * (sw .* rhoW) .* diagR;
       d21_fs = (1 / dt) * ((1 - sw) .* rhoNW) .* diagR;
 
-      % Scale relaxation matrix if requested
-      D11_mat = obj.Ruiz.scaleMat(d11_fs,2);
-      D21_mat = obj.Ruiz.scaleMat(d21_fs,3);
+      % Scale relaxation matrix blocks directly using Ruiz scaling function
+      D11_mat = obj.Ruiz.scaleDiag(d11_fs, 2);
+      D21_mat = obj.Ruiz.scaleDiag(d21_fs, 3, 2);
 
       % Form approximate Schur complement flow operator S_ff^(FS) = Aff + D^(FS)
       S_ff = {A{2,2} + D11_mat, A{2,3}; ...
               A{3,2} + D21_mat, A{3,3}};
       
-      % Compute CPR preconditioner for S_ff 
+      % Get mechanics dimension for ApplyLeft
+      n1 = size(A{1,1}, 1);
+
+      % Compute CPR preconditioner for S_ff
       obj.FlowPrec.Compute(S_ff);
       
-      % Set function handles for ApplyLeft
-      obj.Apply_L = @(b) obj.ApplyLeft(b,A{1,1},Afu);
+      % Bind required blocks directly into Apply_L closure
+      obj.Apply_L = @(b) obj.ApplyLeft(b, n1, Afu);
       obj.Apply_R = @(b) obj.ApplyRight(b);
 
    else
@@ -93,7 +97,6 @@ function A = Compute(obj,A,symMat,varargin)
 
       % Compute the amg for block 22 (fluids)
       obj.FlowPrec.Compute(S,symMat(2,2),TVFlux);
-      obj.tSetupFlow = toc(t_flow_start);
 
       obj.Apply_L = @(x) obj.ApplyLeft(x,A{1,1},A{1,2},A{2,1});
       obj.Apply_R = @(x) obj.ApplyRight(x);
