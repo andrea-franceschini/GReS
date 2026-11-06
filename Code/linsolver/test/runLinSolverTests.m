@@ -1,6 +1,7 @@
 % runLinSolverTests - Test suite and regression verification for linearSolver.
 
 clear; clc;
+rng(0);
 
 % Configuration flags
 updateReference   = false;
@@ -137,7 +138,7 @@ if updateReference
    fprintf('\nReference baseline successfully saved to: %s\n', refFile);
 end
 
-% Render summary table and enforce regression assertions
+%% Render summary table and enforce regression assertions
 printSummaryTable(reports, simReport, sedimReport, updateReference);
 assert(allPassed, 'One or more tests regressed or drifted from reference baseline!');
 
@@ -178,11 +179,11 @@ function [rep, passed] = evaluateReport(tc, x, stats, relres, iter, refItem)
    % Measure relative solution vector difference: ||x - xref|| / ||xref||
    rep.relDiffX = norm(x - refItem.x) / max(norm(refItem.x), eps);
 
-   % Verify against tolerances. A 15% iteration window accounts for minor
-   % platform or BLAS scheduling variations, while 100*tol detects numerical drift.
-   maxAllowedDiffX = max(1e-4, 100 * stats.tol);
+   % Verify against tolerances. A 10% iteration window accounts for minor
+   % platform or BLAS scheduling variations, while 10*tol detects numerical drift.
+   maxAllowedDiffX = max(1e-4, 10 * stats.tol);
    iterDelta = iter - refItem.iter;
-   iterTol = max(5, ceil(0.15 * refItem.iter));
+   iterTol = max(5, ceil(0.1 * refItem.iter));
 
    passed = true;
    rep.status = 'MATCH';
@@ -229,12 +230,12 @@ function [rep, passed] = evaluateSimulationReport(simStats, refSimStats)
    rep.refTotalTime = refSimStats.totalTime;
 
    % Check exact solve count and preconditioner computation count
-   solvesMatch = (abs(simStats.nSolve - refSimStats.nSolve) <= 2);
+   solvesMatch = (abs(simStats.nSolve - refSimStats.nSolve) <= 1);
    compsMatch = (abs(simStats.nComp - refSimStats.nComp) <= 1);
 
    % Check total iteration counts within 10% tolerance
    iterDelta = simStats.totalIter - refSimStats.totalIter;
-   iterTol = max(10, ceil(0.15 * refSimStats.totalIter));
+   iterTol = max(10, ceil(0.1 * refSimStats.totalIter));
 
    passed = true;
    rep.status = 'MATCH';
@@ -254,14 +255,15 @@ end
 function printSummaryTable(reports, simReport, sedimReport, isUpdateMode)
    fprintf('\n');
    if isUpdateMode
-      fprintf(' #  %-29s RHS  %-7s  %-12s  Iter    RelRes     TrueResNorm   SolveTime   PrecTime   Status\n', ...
+      fprintf(' #  %-29s RHS  %-7s  %-13s  Iter    RelRes     TrueResNorm   Status\n', ...
          'Matrix File', 'Solver', 'Precond');
+      fprintf('%s\n', repmat('-', 1, 102));
    else
-      fprintf(' #  %-29s RHS  %-7s  %-12s  Iter(Ref)   RelRes     TrueResNorm   ||x-xref||/||x||  dT_solve   Status\n', ...
+      fprintf(' #  %-29s RHS  %-7s  %-13s  Iter(Ref)   RelRes     TrueResNorm   ||x-xref||/||x||  Status\n', ...
          'Matrix File', 'Solver', 'Precond');
+      fprintf('%s\n', repmat('-', 1, 124));
    end
-   fprintf('%s\n', repmat('-', 1, 115));
-
+   
    for k = 1:numel(reports)
       r = reports{k};
       [~, baseName, ext] = fileparts(r.file);
@@ -276,51 +278,44 @@ function printSummaryTable(reports, simReport, sedimReport, isUpdateMode)
       end
 
       if isUpdateMode
-         fprintf('%2d  %-29s [%d]  %-7s  %-12s  %4d    %.2e   %.2e     %6.4fs    %6.4fs    %-8s\n', ...
+         fprintf('%2d  %-29s [%d]  %-7s  %-12s %4d      %.2e   %.2e      %-8s\n', ...
             k, dispName, r.rhsFlag, r.solverType, precShort, ...
-            r.iter, r.relres, r.trueResNorm, r.solveTime, r.precTime, r.status);
+            r.iter, r.relres, r.trueResNorm, r.status);
       else
          iterStr = sprintf('%3d (%3d)', r.iter, r.refIter);
-         if r.refSolveTime > 0
-            timeDiffPct = ((r.solveTime - r.refSolveTime) / r.refSolveTime) * 100;
-            timeStr = sprintf('%+5.1fpct', timeDiffPct);
-         else
-            timeStr = '   N/A   ';
-         end
-         fprintf('%2d  %-29s [%d]  %-7s  %-12s  %9s  %.2e   %.2e     %.2e       %9s  %-8s\n', ...
+         fprintf('%2d  %-29s [%d]  %-7s  %-12s  %9s    %.2e   %.2e      %.2e          %-8s\n', ...
             k, dispName, r.rhsFlag, r.solverType, precShort, ...
-            iterStr, r.relres, r.trueResNorm, r.relDiffX, timeStr, r.status);
+            iterStr, r.relres, r.trueResNorm, r.relDiffX, r.status);
       end
    end
 
    % Print Stick-Slip contact simulation row if executed
    if ~isempty(simReport)
-      fprintf('%s\n', repmat('-', 1, 115));
       if isUpdateMode
-         fprintf('SIM %-29s [%d]  %-7s  %-12s  %4d    %2d prec   %6.2fs total   %6.4fs    ---       %-8s\n', ...
+         fprintf('%s\n', repmat('-', 1, 102));
+         fprintf('SIM %-29s [%d] %-7s  %-12s   %4d    %2d prec  %6.2fs total   %-8s\n', ...
             'StickSlipOpen (Simulation)', simReport.nSolve, upper(simReport.solverType), 'RACP', ...
-            simReport.totalIter, simReport.nComp, simReport.totalTime, simReport.totalTime, simReport.status);
+            simReport.totalIter, simReport.nComp, simReport.totalTime, simReport.status);
       else
-         timeDiffPct = 0;
-         if simReport.refTotalTime > 0
-            timeDiffPct = ((simReport.totalTime - simReport.refTotalTime) / simReport.refTotalTime) * 100;
-         end
+         fprintf('%s\n', repmat('-', 1, 124));
          simIterStr = sprintf('%4d(%4d)', simReport.totalIter, simReport.refTotalIter);
-         timeStr = sprintf('%+5.1fpct', timeDiffPct);
-         fprintf('SIM %-29s [%d]  %-7s  %-12s  %9s  %2d prec   %6.2fs total   %9s  ---       %-8s\n', ...
+         fprintf('SIM %-29s [%d] %-7s  %-12s   %9s  %2d prec  %6.2fs total     ----            %-8s\n', ...
             'StickSlipOpen (Simulation)', simReport.nSolve, upper(simReport.solverType), 'RACP', ...
-            simIterStr, simReport.nComp, simReport.totalTime, timeStr, simReport.status);
+            simIterStr, simReport.nComp, simReport.totalTime, simReport.status);
       end
    end
 
    % Print Sedimentation growing preconditioner simulation row if executed
    if ~isempty(sedimReport)
-      if isempty(simReport)
-         fprintf('%s\n', repmat('-', 1, 115));
+      if isUpdateMode
+         fprintf('SIM %-29s [%d] %-7s  %-12s   %4d   %2d  prec  %6.2fs total   %-8s\n', ...
+            'LinearSedim (Growing Prec)', sedimReport.nSolve, upper(sedimReport.solverType), sedimReport.preconditioner, ...
+            sedimReport.totalIter, sedimReport.nComp, sedimReport.totalTime, sedimReport.status);
+      else
+         fprintf('SIM %-29s [%d] %-7s  %-12s   %4d       %2d  prec  %6.2fs total     ----            %-8s\n', ...
+            'LinearSedim (Growing Prec)', sedimReport.nSolve, upper(sedimReport.solverType), sedimReport.preconditioner, ...
+            sedimReport.totalIter, sedimReport.nComp, sedimReport.totalTime, sedimReport.status);
       end
-      fprintf('SIM %-29s [%d]  %-7s  %-12s  %4d    %2d prec   %6.2fs total   %6.4fs    ---       %-8s\n', ...
-         'LinearSedim (Growing Prec)', sedimReport.nSolve, upper(sedimReport.solverType), sedimReport.preconditioner, ...
-         sedimReport.totalIter, sedimReport.nComp, sedimReport.totalTime, sedimReport.totalTime, sedimReport.status);
    end
    fprintf('\n');
 end
