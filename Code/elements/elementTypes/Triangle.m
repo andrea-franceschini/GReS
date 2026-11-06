@@ -159,10 +159,9 @@ classdef Triangle < FiniteElementType
       Ntmp(:,1) = 1-obj.GaussPts.coord(:,1)-obj.GaussPts.coord(:,2);
       Ntmp(:,2) = obj.GaussPts.coord(:,1);
       Ntmp(:,3) = obj.GaussPts.coord(:,2);
-      obj.Nref = Ntmp;
-      if obj.GaussPts.nNode == 1
-        obj.Nref = obj.Nref';
-      end
+
+      obj.Nref = reshape(Ntmp,obj.GaussPts.nNode,3);
+
     end
 
     function findLocDerBasisF(obj, varargin)

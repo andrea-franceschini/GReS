@@ -214,8 +214,6 @@ classdef SolidMechanicsContact < MeshTying
 
       addInitialTraction(obj,tIni);
 
-      setStateOld(obj,getState(obj,"traction"),"traction");
-
       setStickNodes(obj);
       enforceForcedStick(obj);
 
