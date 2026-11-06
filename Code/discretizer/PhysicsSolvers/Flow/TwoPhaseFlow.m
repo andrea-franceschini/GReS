@@ -131,13 +131,11 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
         return
       end
 
-      bcs = obj.domain.boundaries;
+      bcs = obj.domain.bcs;
       type = bcs.getType(bcId);
 
       if contains(type,"well")
         % well equations
-
-
       else
         bcVar = bcs.getVariable(bcId);
         varId = obj.domain.dofm.getVariableId(bcVar);
