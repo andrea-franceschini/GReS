@@ -4,17 +4,10 @@ classdef fixedStress < preconditioner
 
       % Inner preconditioners
       AMGMech = []
-      AMGFlux = []
       FlowPrec = []
 
       % Flow preconditioner type: 'AMG' (single-phase) or 'CPR' (two-phase)
       flowPrecType = 'AMG'
-
-      % Cached blocks for coupled solve
-      Auu = []
-      Auf = []
-      Afu = []
-      S_ff = []
 
       % Flag indicating if mechanics is linear (allows AMGMech recycling)
       isMechLinear = false
@@ -60,50 +53,46 @@ classdef fixedStress < preconditioner
 
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)
-         switch upper(obj.flowPrecType)
-            case 'CPR'
-               n1 = size(obj.Auu, 1);
-               bu = b(1:n1);
-               bf = b(n1+1:end);
+         if strcmpi(obj.flowPrecType,'CPR')
+            n1 = varargin{1};
+            Afu = varargin{2};
 
-               % Algorithm (White et al. 2019):
-               % Mechanics solve: zu = M_uu^{-1} bu
-               zu = obj.AMGMech.ApplyLeft(bu, obj.Auu);
+            bu = b(1:n1);
+            bf = b(n1+1:end);
 
-               % Flow coupling update: yf = bf - Afu * zu
-               yf = bf - obj.Afu * zu;
+            % White et al. (2019) block triangular solve:
+            % Mechanics solve: zu = M_uu^{-1} bu
+            zu = obj.AMGMech.Apply_L(bu);
 
-               % Flow CPR solve: zf = CPR(yf)
-               zf = obj.FlowPrec.ApplyLeft(yf);
+            % Flow coupling update: yf = bf - Afu * zu
+            yf = bf - Afu * zu;
 
-               % Combine
-               x = [zu; zf];
+            % Flow CPR solve: zf = CPR(yf)
+            zf = obj.FlowPrec.Apply_L(yf);
 
-            otherwise
-               if nargin >= 4
-                  S = varargin{1};
-                  A11 = varargin{2};
-                  B1 = varargin{3};
-               elseif ~isempty(obj.S_ff) && ~isempty(obj.Auu) && ~isempty(obj.Auf)
-                  S = obj.S_ff;
-                  A11 = obj.Auu;
-                  B1 = obj.Auf;
-               else
-                  error('Not enough arguments for fixedStress apply Left');
-               end
+            % Combine displacement and flow solutions
+            x = [zu; zf];
 
-               % Get mechanics size
-               n1 = size(A11,1);
+         else
+            A11 = varargin{1};
+            B1 = varargin{2};
+            B2 = varargin{3};
 
-               % Apply AMG for fluid part
-               x2 = obj.AMGFlux.ApplyLeft(b(n1+1:end),S);
+            % Get mechanics size
+            n1 = size(A11,1);
 
-               % Apply the top part of the block preconditioner
-               x11 = b(1:n1) - B1*x2;
-               x1 = obj.AMGMech.ApplyLeft(x11,A11);
+            % Apply AMG for fluid part
+            x2 = obj.FlowPrec.Apply_L(b(n1+1:end));
 
-               % Compose the solution
-               x = [x1;x2];
+            % Apply the top part of the block preconditioner
+            x11 = b(1:n1) - B1*x2;
+            x1 = obj.AMGMech.Apply_L(x11);
+
+            % Apply the coupling correction to the state block
+            x2 = x2 - obj.FlowPrec.Apply_L(B2*x1);
+            
+            % Compose the solution
+            x = [x1;x2];
          end
       end
 
@@ -115,26 +104,6 @@ classdef fixedStress < preconditioner
 
          x = b;
       end
-
-      % % Update state blocks when preconditioner recomputation is skipped
-      % function updateStateBlocks(obj, A)
-      %    if strcmpi(obj.flowPrecType, 'CPR')
-      %       if iscell(A)
-      %          obj.Auu = A{1,1};
-      %          obj.Auf = [A{1,2}, A{1,3}];
-      %          obj.Afu = [A{2,1}; A{3,1}];
-      %          Aff = {A{2,2}, A{2,3}; A{3,2}, A{3,3}};
-      %          if ~isempty(obj.FlowPrec)
-      %             obj.FlowPrec.updateStateBlocks(Aff);
-      %          end
-      %       end
-      %    else
-      %       if iscell(A)
-      %          obj.Auu = A{1,1};
-      %          obj.Auf = A{1,2};
-      %       end
-      %    end
-      % end
 
       % Return setup time for recomputing the preconditioner
       % (for linear mechanics, only the flow part is recomputed, not the mechanics part)
@@ -182,11 +151,14 @@ classdef fixedStress < preconditioner
             obj.FlowPrec = CPR(debugflag, problemsolver);
             obj.maxThreads = obj.FlowPrec.maxThreads;
             obj.params = obj.FlowPrec.params;
+
+            obj.FlowPrec.Ruiz = RuizScaling();
+            obj.FlowPrec.Ruiz.scalingFlag = false;
          else
             obj.flowPrecType = 'AMG';
-            obj.AMGFlux = aAMG(debugflag,problemsolver,"pressure");
-            obj.maxThreads = obj.AMGFlux.maxThreads;
-            obj.params = obj.AMGFlux.params;
+            obj.FlowPrec = aAMG(debugflag,problemsolver,"pressure");
+            obj.maxThreads = obj.FlowPrec.maxThreads;
+            obj.params = obj.FlowPrec.params;
          end
       end
    end

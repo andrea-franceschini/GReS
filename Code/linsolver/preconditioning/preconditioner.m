@@ -50,7 +50,8 @@ classdef (Abstract) preconditioner < handle
    methods
       % Constructor Function
       function obj = preconditioner()
-
+         % Instantiate default Ruiz scaling object (scalingFlag = false by default)
+         obj.Ruiz = RuizScaling();
       end
 
       % Growth checking function default (do nothing), overridden in
