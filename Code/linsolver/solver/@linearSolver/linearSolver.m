@@ -63,7 +63,7 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 2e4
+      matlabMaxSize = 2e2
 
       % Utils flags
       nsyTol = 100*eps
@@ -116,15 +116,14 @@ classdef linearSolver < handle
       % Params struct
       params
 
+      % .mat export settings for SolveSingle
+      saveMatType = 'none'
+      saveMatSolves = []
    end
 
    properties (Access = public)
       % Ruiz diagonal scaling object
       Ruiz
-
-      % Ruiz params
-      maxitRuiz = 10
-      tolRuiz = 1e-2
    end
 
    methods (Access = public)
@@ -146,13 +145,8 @@ classdef linearSolver < handle
          % Check if ChronosLab folder is present
          if isfolder(ChronosDir)
             % Check if ChronosLab has been compiled
-            if strcmp(computer('arch'),'maca64')
-              fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexmaca64');
-            elseif strcmp(computer('arch'),'win64')
-              fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexw64');
-            else
-              fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter','FilterProl_wrap.mexa64');
-            end
+            ext = mexext;
+            fileMex = fullfile(ChronosDir,'Preconditioner','AMG','filter','MEX_Prol_Filter',['FilterProl_wrap.',ext]);
 
             % If this file exists then Chronos is compiled
             if ~isfile(fileMex)
@@ -201,8 +195,9 @@ classdef linearSolver < handle
                obj.params.restart = 100;
             end
 
-            % Create Ruiz scaling object
-            obj.Ruiz = RuizScaling(obj.DEBUGflag,obj.maxitRuiz,obj.tolRuiz);
+            % Copy the Ruiz scaling class from the preconditioner
+            % (created as default)
+            obj.Ruiz = obj.Prec.Ruiz;
             obj.Ruiz.scalingFlag = scalingFlag;
             
             % Parse scaling options if provided
@@ -216,9 +211,6 @@ classdef linearSolver < handle
                obj.Ruiz.scalingFlag = false;
                gresLog().warning(1,'Ruiz scaling not supported for basic preconditioners as aAMG and aFSAI');
             end
-
-            % Copy the Ruiz scaling class to the preconditioner
-            obj.Prec.Ruiz = obj.Ruiz;
          end
       end
 
