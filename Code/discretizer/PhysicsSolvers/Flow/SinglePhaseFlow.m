@@ -76,17 +76,40 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
       if obj.steadyState
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H;
-        rhs = obj.H*(p(ents) + gamma*z);
+        rhs = dt*obj.H*(p(ents) + gamma*z);
       else
-        obj.domain.J{obj.fieldId,obj.fieldId} = obj.H + obj.P/dt;
+        obj.domain.J{obj.fieldId,obj.fieldId} = dt*obj.H + obj.P;
         pOld = obj.getStateOld(obj.getField());
-        rhsH = obj.H*(p(ents) + gamma*z);
-        rhsP = (obj.P/dt)*(p(ents) - pOld(ents));
+        rhsH = dt*obj.H*(p(ents) + gamma*z);
+        rhsP = obj.P*(p(ents) - pOld(ents));
         rhs = rhsH + rhsP;
       end
 
       obj.domain.rhs{obj.fieldId} = rhs;
       
+    end
+
+
+
+    function applyNeuBC(obj,bcId,bcDofs,bcVals)
+      if ~BCapplies(obj,bcId)
+        return
+      end
+
+      % Base application of Neumann boundary condition to the rhs.
+      % bc values are subtracted since we solve du = J\(-rhs)
+      bcVar = obj.domain.bcs.getVariable(bcId);
+      bcId = obj.domain.dofm.getVariableId(bcVar);
+
+      %remove inactive dofs
+      id = bcDofs == 0;
+      bcDofs = bcDofs(~id);
+      bcVals = bcVals(~id);
+
+      % neumann and sourcer ar given as flux rates
+      dt = obj.getState.time - obj.getStateOld.time;
+
+      obj.domain.rhs{bcId}(bcDofs) = obj.domain.rhs{bcId}(bcDofs) - dt*bcVals;
     end
 
     function updateState(obj,dSol)

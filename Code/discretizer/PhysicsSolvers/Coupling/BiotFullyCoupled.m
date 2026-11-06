@@ -76,7 +76,7 @@ classdef BiotFullyCoupled < PhysicsSolver
 
       % assign coupling blocks to jacobian
       obj.domain.J{obj.fldMech,obj.fldFlow} = -obj.Q;
-      obj.domain.J{obj.fldFlow,obj.fldMech} = obj.Q'/dt;
+      obj.domain.J{obj.fldFlow,obj.fldMech} = obj.Q';
 
       % add rhs from coupling contribution
       [rhsMech,rhsFlow] = computeRhs(obj);
