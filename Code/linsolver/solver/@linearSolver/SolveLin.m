@@ -465,6 +465,11 @@ function [A] = fixPattern(A)
    N = size(A, 1);
    for j = 1:N
       for i = 1:j
+         if isempty(A{i,j}) && ~isempty(A{j,i})
+            A{i,j} = sparse(size(A{j,i},2), size(A{j,i},1));
+         elseif ~isempty(A{i,j}) && isempty(A{j,i})
+            A{j,i} = sparse(size(A{i,j},2), size(A{i,j},1));
+         end
          patt = spones(A{i,j}) - spones(A{j,i}');
          if nnz(patt)
             mask1 = (patt ==  1);  % in A{i,j} but not A{j,i}'
