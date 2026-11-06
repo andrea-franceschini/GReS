@@ -76,6 +76,15 @@ function [x, stats, flag, relres, iter, resvec] = solveSingle(matFile, varargin)
    n = size(Amat_unscaled, 1);
    [b_in, b_unscaled] = constructRhs(b, Amat_unscaled, A, opt.rhsFlag);
 
+   % Extract fluid properties for multiphase fixed-stress systems.
+   % For legacy matrices lacking saved fluid properties, fall back to default
+   % wetting saturation sw = 0.5 and unit phase densities.
+   ncFlow = size(A{min(2, size(A, 1)), min(2, size(A, 2))}, 1);
+   props = struct('sw', 0.5 * ones(ncFlow, 1), 'rhoW', ones(ncFlow, 1), 'rhoNW', ones(ncFlow, 1));
+   if isfield(matData, 'props')
+      props = matData.props;
+   end
+
    % Determine whether to force MATLAB direct backslash solve.
    % For direct solves, Ruiz diagonal equilibration and iterative preconditioners
    % are bypassed because backslash handles factorization directly.
@@ -97,7 +106,7 @@ function [x, stats, flag, relres, iter, resvec] = solveSingle(matFile, varargin)
    % Construct mock simulation context providing domain DOF managers and physics solvers.
    % This allows linearSolver to automatically choose physics-aware preconditioners (CPR,
    % fixedStress, RACP) without duplicating assembly or simulation harness code.
-   mockSolver = buildMockSolver(coordinates, opt.physics, A, dt, opt.tol, linParams, R);
+   mockSolver = buildMockSolver(coordinates, opt.physics, A, dt, opt.tol, linParams, R, props);
    lin = linearSolver(mockSolver, opt.physics);
 
    % Apply explicit user solver and preconditioner overrides
@@ -205,7 +214,7 @@ end
 % This provides degrees of freedom, coordinate mappings, and physics solver
 % handles needed by coupled block preconditioners (fixedStress, CPR, RACP)
 % without requiring the full simulation problem or mesh classes.
-function mockSolver = buildMockSolver(coordinates, physics, A, dt, tol, linParams, R)
+function mockSolver = buildMockSolver(coordinates, physics, A, dt, tol, linParams, R, props)
 
    % Normalize coordinates into cell array to treat single-domain and
    % multi-domain problems uniformly without nested cell checks
@@ -222,7 +231,7 @@ function mockSolver = buildMockSolver(coordinates, physics, A, dt, tol, linParam
    % each domain holds 1 variable. In single-domain coupled physics
    % (e.g. ["displacements", "pressure"]), domain 1 holds all coupled variables.
    physStr = string(physics);
-   if nDom > 1 && numel(unique(physStr)) == 1
+   if nDom > 1 && isscalar(unique(physStr))
       nVarsPerDom = 1;
       domPhysics = unique(physStr);
    else
@@ -231,22 +240,24 @@ function mockSolver = buildMockSolver(coordinates, physics, A, dt, tol, linParam
    end
 
    % Construct mock domains with DOF manager interfaces and dummy solvers
+   ncFlow = size(A{min(2, size(A, 1)), min(2, size(A, 2))}, 1);
    dom = struct();
    for d = 1:nDom
       coords_d = coordinates{d};
       nc = max(size(coords_d, 1), size(A{d, d}, 1));
 
       dom(d).grid.coordinates = coords_d;
-      dom(d).solverNames = ["GenericSolver"];
+      dom(d).solverNames = "GenericSolver";
       dom(d).dofm.getNumberOfVariables = @() nVarsPerDom;
       dom(d).dofm.getVariableNames = @() domPhysics;
-      dom(d).dofm.getFieldCells = @(name) 1:nc;
+      dom(d).dofm.getFieldCells = @(name) 1:ncFlow;
       dom(d).dofm.getNumbDoF = @(name) nc;
-      dom(d).getState = @(name) zeros(nc, 1);
+      dom(d).getState = @(name) getMockState(name, props.sw, ncFlow, nc);
 
       % Provide physics solver handles for coupled mechanics and flow relaxation
       dummyMech = struct('isLinear', @() true);
-      dummyFlow = struct('props', struct('wet', struct('density', @(p) 1000), 'nwet', struct('density', @(p) 800)));
+      dummyFlow = struct('props', struct('wet', struct('density', @(p) props.rhoW), ...
+                                         'nwet', struct('density', @(p) props.rhoNW)));
       dummySolver = struct('R', R, 'computeRelaxationMatrix', @() [], 'isLinear', @() true, ...
                            'getMechSolver', @() dummyMech, 'getFlowSolver', @() dummyFlow);
       dom(d).getPhysicsSolver = @(name) dummySolver;
@@ -372,4 +383,15 @@ function printRecap(n, solverType, precStr, physics, rhsFlag, ruizFlag, ...
    fprintf('  Preconditioner Time : %.4f s\n', precTime);
    fprintf('  Linear Solve Time   : %.4f s\n', solveTime);
    fprintf('  Total Elapsed Time  : %.4f s\n\n', totalTime);
+end
+
+% Return mock state vector by physical variable name
+function state = getMockState(name, sw, ncFlow, nc)
+   if strcmpi(name, "saturation")
+      state = sw;
+   elseif strcmpi(name, "pressure")
+      state = zeros(ncFlow, 1);
+   else
+      state = zeros(nc, 1);
+   end
 end

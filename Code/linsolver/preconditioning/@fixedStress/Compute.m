@@ -47,15 +47,14 @@ function A = Compute(obj,A,symMat,varargin)
       solver.computeRelaxationMatrix();
       RR = solver.R;
       
-      % Extract saturation and fluid densities for mass accumulation scaling
       pState = obj.domain(1).getState("pressure");
       swState = obj.domain(1).getState("saturation");
       cIdx = obj.domain(1).dofm.getFieldCells("pressure");
-      tpSolver = solver.getFlowSolver;
-      
+      tpSolver = solver.getFlowSolver();
+
       sp = pState(cIdx);
       sw = swState(cIdx);
-      
+
       rhoW = tpSolver.props.wet.density(sp);
       rhoNW = tpSolver.props.nwet.density(sp);
 
@@ -98,7 +97,7 @@ function A = Compute(obj,A,symMat,varargin)
       % Compute the amg for block 22 (fluids)
       obj.FlowPrec.Compute(S,symMat(2,2),TVFlux);
 
-      obj.Apply_L = @(x) obj.ApplyLeft(x,A{1,1},A{1,2},A{2,1});
+      obj.Apply_L = @(x) obj.ApplyLeft(x,A{1,1},A{1,2});
       obj.Apply_R = @(x) obj.ApplyRight(x);
    end
 

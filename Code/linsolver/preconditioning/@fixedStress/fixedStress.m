@@ -76,21 +76,17 @@ classdef fixedStress < preconditioner
          else
             A11 = varargin{1};
             B1 = varargin{2};
-            B2 = varargin{3};
 
             % Get mechanics size
             n1 = size(A11,1);
 
-            % Apply AMG for fluid part
+            % Apply AMG for fluid part (approximate Schur complement)
             x2 = obj.FlowPrec.Apply_L(b(n1+1:end));
 
-            % Apply the top part of the block preconditioner
+            % Apply the top part of the block preconditioner (upper block triangular solve)
             x11 = b(1:n1) - B1*x2;
             x1 = obj.AMGMech.Apply_L(x11);
 
-            % Apply the coupling correction to the state block
-            x2 = x2 - obj.FlowPrec.Apply_L(B2*x1);
-            
             % Compose the solution
             x = [x1;x2];
          end

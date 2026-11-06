@@ -517,6 +517,7 @@ function saveLinearSystem(obj, A, b, currentSolve, varargin)
    % is required by fixedStress to decouple mechanics and flow without rebuilding domain matrices.
    timeRelaxation = 0;
    R = [];
+   props = struct();
    if isa(obj.Prec, 'fixedStress')
       dom1 = obj.generalsolver.domains(1);
       if ismember("MultiphasePoromechanics", dom1.solverNames)
@@ -532,6 +533,19 @@ function saveLinearSystem(obj, A, b, currentSolve, varargin)
          biot.computeRelaxationMatrix();
          timeRelaxation = toc(t0_R);
          R = biot.R;
+
+         % For multiphase poromechanics, extract fluid saturation and phase densities
+         % to enable exact Schur complement flow scaling in standalone solveSingle runs
+         if ismember("MultiphasePoromechanics", dom1.solverNames)
+            pState = dom1.getState("pressure");
+            swState = dom1.getState("saturation");
+            cIdx = dom1.dofm.getFieldCells("pressure");
+            tpSolver = biot.getFlowSolver();
+            sp = pState(cIdx);
+            props.sw = swState(cIdx);
+            props.rhoW = tpSolver.props.wet.density(sp);
+            props.rhoNW = tpSolver.props.nwet.density(sp);
+         end
       end
    end
 
@@ -558,7 +572,7 @@ function saveLinearSystem(obj, A, b, currentSolve, varargin)
 
    % Persist system matrix, RHS, and full execution metadata to disk
    save(filename, 'A', 'b', 'coordinates', 'ruizFlag', 'preconditioner', ...
-        'physics', 'solverType', 'restart', 'tol', 'maxit', 'dt', 'R', 'timeRelaxation');
+        'physics', 'solverType', 'restart', 'tol', 'maxit', 'dt', 'R', 'timeRelaxation', 'props');
    gresLog().log(3, 'Saved linear system solve %d to %s\n', currentSolve, filename);
 end
 
