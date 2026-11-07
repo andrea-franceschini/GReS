@@ -42,7 +42,7 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
           rhsFlow = computeRhsFlow(obj,dt);
           % add the relaxation matrix 
           obj.domain.J{obj.fldFlow,obj.fldFlow} = ...
-            obj.domain.J{obj.fldFlow,obj.fldFlow} + obj.R/dt;
+            obj.domain.J{obj.fldFlow,obj.fldFlow} + obj.R;
           obj.domain.rhs{obj.fldFlow} = obj.domain.rhs{obj.fldFlow} + rhsFlow;
         elseif strcmpi(var,"displacements")
           obj.mechSolver.assembleSystem(dt);
@@ -89,9 +89,9 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
           entsFlow = obj.domain.dofm.getActiveEntities(obj.fldFlow,1);
 
 
-          rhsFlow = (obj.Q'/dt) * (uConv(entsPoro) - uOld(entsPoro));
+          rhsFlow = obj.Q' * (uConv(entsPoro) - uOld(entsPoro));
           % new contribution of fixed stress split algorithm
-          rhsFlow = rhsFlow  + (obj.R/dt) * (pCurr(entsFlow) - pConv(entsFlow));
+          rhsFlow = rhsFlow  + obj.R * (pCurr(entsFlow) - pConv(entsFlow));
         end
 
     
