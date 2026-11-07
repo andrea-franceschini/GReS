@@ -63,7 +63,7 @@ classdef linearSolver < handle
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 2e2
+      matlabMaxSize = 2e4
 
       % Utils flags
       nsyTol = 100*eps
@@ -136,16 +136,14 @@ classdef linearSolver < handle
          % Check if Chronos is available
          ChronosDir = fullfile(gres_root,'ThirdPartyLibs','ChronosLab','sources');
 
-         % Possible the user wants to use matlab even if the size is sufficient
-         if isfield(generalsolver.simparams.linSolverParams, 'useMatlab')
-            if parm.useMatlab == 1
-               gresLog().log(3,'The user requested the use of matlab\n');
-               return;
-            end
+         % Check if the user has set to use or not use or force use of
+         % Chronos
+         if (ChronosUsage(obj,generalsolver) == false)
+            return;
          end
 
-         % Set the options for the linear solver
-         setOptions(obj,generalsolver.simparams.linSolverParams);
+         % Set the print options for the linear solver
+         setPrintOptions(obj,generalsolver.simparams.linSolverParams);
 
          % Check if ChronosLab folder is present
          if isfolder(ChronosDir)
@@ -250,19 +248,8 @@ classdef linearSolver < handle
       [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physname);
       [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname);
 
-
-
-      function setOptions(obj,parm)
-
-         % Possible the user wants to use iterative even if the size is not sufficient
-         if isfield(parm, 'useIterative')
-            if parm.useIterative == 1
-               gresLog().log(3,'The user requested the use of the iterative solver\n');
-               obj.matlabMaxSize = 0;
-            end
-         end
-
-
+      % Function to set the print settings of the linear solver
+      function setPrintOptions(obj,parm)
          if isfield(parm, 'saveMatType')
             obj.saveMatType = parm.saveMatType;
             switch parm.saveMatType
@@ -272,6 +259,42 @@ classdef linearSolver < handle
                   obj.saveMatSolves = parm.saveMatSolves;
                otherwise
                   error('Unknown options for "saveMatSolve"')
+            end
+         end
+      end
+
+      function useChronos = ChronosUsage(linsolver,generalsolver)
+         % Get the global variable
+         use_Chronos = getappdata(0,'use_Chronos');
+         
+         % Check the global variable
+         if strcmpi(use_Chronos,"off")
+            linsolver.ChronosFlag = false;
+            useChronos = false;
+         elseif strcmpi(use_Chronos,"force")
+            linsolver.matlabMaxSize = 0;
+            useChronos = true;
+         else
+            % use_Chronos == "on"
+            useChronos = true;
+         end
+
+         parm = generalsolver.simparams.linSolverParams;
+         % Possible the user wants to use matlab even if the size is sufficient
+         if isfield(parm, 'useMatlab')
+            if parm.useMatlab == 1
+               gresLog().log(3,'The user requested the use of matlab\n');
+               linsolver.ChronosFlag = false;
+               useChronos = false;
+            end
+         end
+
+         % Possible the user wants to use iterative even if the size is not sufficient
+         if isfield(parm, 'useIterative')
+            if parm.useIterative == 1
+               gresLog().log(3,'The user requested the use of the iterative solver\n');
+               linsolver.matlabMaxSize = 0;
+               useChronos = true;
             end
          end
       end
