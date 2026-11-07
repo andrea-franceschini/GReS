@@ -33,6 +33,9 @@ for k = 1:numel(foldList)
   addpath(genpath(fullfile(gres_root, foldList(k))));
 end
 
+% Initialize the use of chronos
+chronos("on");
+
 setappdata(0,'gresLog', Logger());
 if outputFlag
   gresLog().welcomeMsg()

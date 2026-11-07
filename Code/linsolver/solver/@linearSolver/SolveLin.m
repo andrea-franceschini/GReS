@@ -114,13 +114,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 
       time_start = tic;
       % Compute the preconditioner
-      mc = metaclass(obj.Prec);
-      m = mc.MethodList(strcmp({mc.MethodList.Name}, 'Compute'));
-      if ~isempty(m) && ~isempty(m.OutputNames)
-         A = obj.Prec.Compute(A,symMat);
-      else
-         obj.Prec.Compute(A,symMat);
-      end
+      A = obj.Prec.Compute(A,symMat);
       T_setup_wall = toc(time_start);
 
       % If the preconditioner can provide a recomputation-specific setup time
@@ -198,11 +192,12 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    obj.convStrat.computeTol(b, isLinear, nonlinIter, obj.Ruiz, backupb);
 
    startT = tic;
+   obj.params.actualSolver = obj.SolverType;
    switch obj.SolverType
       case 'gmres'
 
          % Solve the system by GMRES
-         [x,flag,obj.params.lastRelres,iter1] = gmres_RIGHT(Amat,b,obj.params.restart,obj.convStrat.Tol,...
+         [x,flag,obj.params.lastRelres,iter1,obj.params.resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.convStrat.Tol,...
                                                             obj.params.maxit/obj.params.restart,...
                                                             obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
          obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
@@ -211,13 +206,13 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 
          % Solve the system by SQMR
          Afun = @(x) Amat*x;
-         [x,flag,obj.params.lastRelres,obj.params.iter] = SQMR(Afun,b,obj.convStrat.Tol,obj.params.maxit,...
+         [x,flag,obj.params.lastRelres,obj.params.iter,obj.params.resvec] = SQMR(Afun,b,obj.convStrat.Tol,obj.params.maxit,...
                                                                obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
    end
 
    % Sanity check for all real solutions
    if any(~isreal(x),'all')
-      warning('wtf')
+      gresLog().warning(3,'wtf')
       x = real(x);
    end
 
@@ -226,7 +221,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
-   fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup);
+   fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup,obj.convStrat.unscaledTol,obj.convStrat.Tol);
 
    % Did not converge, if the preconditioner was not computed for this matrix
    % recompute it and try again
@@ -242,12 +237,19 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % Interesting problem
    if(flag == 1)
       gresLog().log(3,'Number of solves since last preconditioner computation %d\n',obj.params.nSolveSinceLastPrecComp);
+      if iscell(backupb)
+         backupb_len = length(cell2matrix(backupb));
+      else
+         backupb_len = length(backupb);
+      end
+      if backupb_len > 1e5
+        error('Chronos could not solve. Fallback to Matlab blocked due to excessive system size')
+      end
       [x,~] = matlab_solve(obj,backupA,backupb,time);
 
       % Fall back to matlab to continue without breaking the
       % simulation
       warning('Matlab could solve and chronos did not. Falling back to matlab to continue simulation');
-      obj.ChronosFlag = false;
       return;
    end
 
@@ -280,7 +282,7 @@ end
 
 
 % Function to get and fill the stats
-function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM)
+function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM,tolReq,tolScaled)
 
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
@@ -293,6 +295,8 @@ function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM)
    obj.timeLin(solves) = time; 
    obj.solveTLin(solves) = Tend;
    obj.symFlagLin(solves) = symValue;
+   obj.tolReqLin(solves) = tolReq;
+   obj.scaledTolLin(solves) = tolScaled;
 end
 
 
@@ -336,12 +340,10 @@ function [x,flag] = matlab_solve(obj,A,b,time)
    % Get the size of the system
    obj.systemSize = max(size(A,1),obj.systemSize);
 
-   % if obj.DEBUGflag
-   %    fprintf('condition number of the matrix %e\n',condest(A));
-   % end
    symValue = norm(A-A','f')/norm(A,'f');
    obj.params.iter = 0;
-   fillStats(obj,Tend,time,symValue,0,0);
+   obj.params.actualSolver = 'direct';
+   fillStats(obj,Tend,time,symValue,0,0,NaN,NaN);
    obj.Delta_T(obj.nSolve) = 0;
    flag = 0;
 end
@@ -490,41 +492,95 @@ end
 
 
 
-function saveLinearSystem(obj, A, b, currentSolve,varargin)
-   if ~isempty(varargin)
-      forcing = strcmpi(varargin{1},'true');
+% Save current linear system matrix, RHS, grid coordinates, and solver metadata to .mat file.
+% This enables standalone reproduction and benchmark validation of linear systems via solveSingle.
+function saveLinearSystem(obj, A, b, currentSolve, varargin)
+
+   % Determine if matrix export is requested for this solve step
+   forcing = ~isempty(varargin) && (isequal(varargin{1}, true) || strcmpi(string(varargin{1}), "true"));
+   shouldSave = forcing || strcmpi('all', obj.saveMatType) || ...
+                (strcmpi('selected', obj.saveMatType) && ismember(currentSolve, obj.saveMatSolves));
+   if ~shouldSave
+      return;
+   end
+
+   % Extract spatial grid coordinates from domain models
+   coordinates = getCoordinates(obj.generalsolver);
+   filename = sprintf('linearSystem_solve%d.mat', currentSolve);
+
+   % Extract scaling flag and active preconditioner class
+   ruizFlag = ~isempty(obj.Ruiz) && obj.Ruiz.scalingFlag;
+   if ~isempty(obj.Prec), preconditioner = class(obj.Prec); else, preconditioner = ''; end
+
+   % For fixed-stress split systems, precompute and record relaxation matrix R.
+   % The relaxation matrix (e.g. volumetric fluid coupling in Biot or multiphase poromechanics)
+   % is required by fixedStress to decouple mechanics and flow without rebuilding domain matrices.
+   timeRelaxation = 0;
+   R = [];
+   props = struct();
+   if isa(obj.Prec, 'fixedStress')
+      dom1 = obj.generalsolver.domains(1);
+      if ismember("MultiphasePoromechanics", dom1.solverNames)
+         biot = dom1.getPhysicsSolver("MultiphasePoromechanics");
+      elseif ismember("BiotFullyCoupled", dom1.solverNames)
+         biot = dom1.getPhysicsSolver("BiotFullyCoupled");
+      else
+         error('Configuration not recognized for fixed stress in saveLinearSystem');
+      end
+
+      if ~isempty(biot)
+         t0_R = tic;
+         biot.computeRelaxationMatrix();
+         timeRelaxation = toc(t0_R);
+         R = biot.R;
+
+         % For multiphase poromechanics, extract fluid saturation and phase densities
+         % to enable exact Schur complement flow scaling in standalone solveSingle runs
+         if ismember("MultiphasePoromechanics", dom1.solverNames)
+            pState = dom1.getState("pressure");
+            swState = dom1.getState("saturation");
+            cIdx = dom1.dofm.getFieldCells("pressure");
+            tpSolver = biot.getFlowSolver();
+            sp = pState(cIdx);
+            props.sw = swState(cIdx);
+            props.rhoW = tpSolver.props.wet.density(sp);
+            props.rhoNW = tpSolver.props.nwet.density(sp);
+         end
+      end
+   end
+
+   % Extract physical variable names from domain degree of freedom managers
+   if ~isempty(obj.generalsolver.domains)
+      physCell = arrayfun(@(x) x.dofm.getVariableNames(), obj.generalsolver.domains, 'UniformOutput', false);
+      physics = [physCell{:}];
+   elseif ~isempty(obj.Prec) && isa(obj.Prec, 'aAMG')
+      if obj.Prec.phys == 0, physics = "pressure"; else, physics = "displacements"; end
    else
-      forcing = false;
+      physics = "displacements";
    end
-   if strcmpi('all',obj.saveMatType) || ...
-         (strcmpi('selected',obj.saveMatType) && ismember(currentSolve,obj.saveMatSolves)) || ...
-         forcing
-      coordinates = getCoordinates(obj.generalsolver);
-      filename = fullfile(sprintf('linearSystem_solve%d.mat', currentSolve));
-   
-      ruizFlag = false;
-      if ~isempty(obj.Ruiz)
-         ruizFlag = obj.Ruiz.scalingFlag;
-      end
-   
-      preconditioner = '';
-      if ~isempty(obj.Prec)
-         preconditioner = class(obj.Prec);
-      end
-      
-      save(filename, 'A', 'b', 'coordinates', 'ruizFlag', 'preconditioner');
-      gresLog().log(3, 'Saved linear system solve %d to %s\n', currentSolve, filename);
+
+   % Extract solver parameters and time step
+   dt = obj.generalsolver.dt;
+   solverType = obj.SolverType;
+   tol = obj.generalsolver.simparams.relTol;
+   maxit = obj.params.maxit;
+   if isfield(obj.params, 'restart') && ~isempty(obj.params.restart)
+      restart = obj.params.restart;
+   else
+      restart = 100;
    end
+
+   % Persist system matrix, RHS, and full execution metadata to disk
+   save(filename, 'A', 'b', 'coordinates', 'ruizFlag', 'preconditioner', ...
+        'physics', 'solverType', 'restart', 'tol', 'maxit', 'dt', 'R', 'timeRelaxation', 'props');
+   gresLog().log(3, 'Saved linear system solve %d to %s\n', currentSolve, filename);
 end
 
-function [coordinates] = getCoordinates(generalsolver)
-   nDom = numel(generalsolver.domains);
-   if nDom == 1
+% Extract spatial grid coordinates from domain objects across single or multiple domains
+function coordinates = getCoordinates(generalsolver)
+   if numel(generalsolver.domains) == 1
       coordinates = generalsolver.domains(1).grid.coordinates;
    else
-      coordinates = cell(nDom, 1);
-      for d = 1:nDom
-         coordinates{d} = generalsolver.domains(d).grid.coordinates;
-      end
+      coordinates = arrayfun(@(d) d.grid.coordinates, generalsolver.domains, 'UniformOutput', false);
    end
 end

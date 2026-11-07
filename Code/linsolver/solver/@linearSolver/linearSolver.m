@@ -1,76 +1,76 @@
 classdef linearSolver < handle
-% linearSolver - Handle class that manages linear solver selection, preconditioner
-%                creation (ChronosLab), solving strategy and statistics.
-%
-% Usage:
-%   obj = linearSolver(generalsolver, physname)
-%
-% Inputs:
-%   generalsolver - struct or object containing simulation parameters and
-%                   interfaces required to configure solver and preconditioner.
-%   physname      - string with the physics name used to select appropriate
-%                   preconditioner setup.
-%
-% Description:
-%   This class detects presence of the ChronosLab third-party library and,
-%   when available and compiled, configures a Chronos preconditioner and a
-%   solver strategy (GMRES, etc.). It also supports a MATLAB fallback if
-%   Chronos is missing or not compiled. The object gathers statistics about
-%   preconditioner computation, solve times and iteration counts, and can
-%   print a summary via printStats.
-%
-% Main methods:
-%   linearSolver(generalsolver, physname) - constructor: checks Chronos,
-%       sets up preconditioner and solver defaults.
-%   printStats(varargin) - print collected statistics; 'short' option prints
-%       only summary.
-%
-% Notes:
-%   - If generalsolver.simparams.linSolverParams.useMatlab is set, constructor
-%     will exit early to allow MATLAB solvers only.
-% Brief property descriptions:
-% DEBUGflag       - boolean: enable debug logging and extra checks.
-% matlabMaxSize   - numeric: maximum matrix size for which MATLAB fallback is enforced.
-% nsyTol          - numeric: tolerance used to detect near-symmetric matrices.
-% convStrat       - object: convergence strategy handler (convStrat class instance).
-% ChronosFlag     - boolean: true if Chronos_Lab preconditioner support is available.
-% requestPrecComp - boolean: flag requesting that the preconditioner be (re)computed.
-% alpha           - numeric: scaling parameter used during recomputation of the preconditioner.
-% x0              - vector: starting vector for iterative solvers.
-% SolverType      - string: name of the iterative solver in use (e.g. 'gmres').
-% Prec            - object: preconditioner instance (Chronos preconditioner wrapper).
-% iterConfigOld   - numeric: stored iteration configuration version to detect changes.
-% whenComputed    - vector: physical times at which the preconditioner was computed.
-% aTimeComp       - numeric: accumulated time spent computing preconditioners.
-% aTimeSolve      - numeric: accumulated time spent in solver calls.
-% nSolve          - integer: number of times the linear solver was invoked.
-% nComp           - integer: number of preconditioner computations performed.
-% maxIter         - integer: maximum iterations observed across solves.
-% aIter           - numeric: accumulated iterations (for averaging/stats).
-% cumTSolveAfterPrec - numeric: cumulative solve time measured after preconditioner build.
-% iterLin         - vector: recorded iteration counts per linear solve.
-% solveTLin       - vector: recorded solve times per linear solve.
-% symFlagLin      - vector: flags indicating symmetry detection per solve.
-% precCompLin     - vector: flags indicating whether prec was computed for each solve.
-% newtonLin       - vector: Newton iteration indices associated with each linear solve.
-% timeLin         - vector: physical times corresponding to each linear solve.
-% Delta_T         - vector: time step sizes used when recording solves.
-% useSAM          - boolean: whether SAM monitoring/analysis is enabled.
-% SAM             - object: SAM instance.
-% params          - struct: runtime parameters for the solver (tolerances, maxit, restart, etc.)
+   % linearSolver - Handle class that manages linear solver selection, preconditioner
+   %                creation (ChronosLab), solving strategy and statistics.
+   %
+   % Usage:
+   %   obj = linearSolver(generalsolver, physname)
+   %
+   % Inputs:
+   %   generalsolver - struct or object containing simulation parameters and
+   %                   interfaces required to configure solver and preconditioner.
+   %   physname      - string with the physics name used to select appropriate
+   %                   preconditioner setup.
+   %
+   % Description:
+   %   This class detects presence of the ChronosLab third-party library and,
+   %   when available and compiled, configures a Chronos preconditioner and a
+   %   solver strategy (GMRES, etc.). It also supports a MATLAB fallback if
+   %   Chronos is missing or not compiled. The object gathers statistics about
+   %   preconditioner computation, solve times and iteration counts, and can
+   %   print a summary via printStats.
+   %
+   % Main methods:
+   %   linearSolver(generalsolver, physname) - constructor: checks Chronos,
+   %       sets up preconditioner and solver defaults.
+   %   printStats(varargin) - print collected statistics; 'short' option prints
+   %       only summary.
+   %
+   % Notes:
+   %   - If generalsolver.simparams.linSolverParams.useMatlab is set, constructor
+   %     will exit early to allow MATLAB solvers only.
+   % Brief property descriptions:
+   % DEBUGflag       - boolean: enable debug logging and extra checks.
+   % matlabMaxSize   - numeric: maximum matrix size for which MATLAB fallback is enforced.
+   % nsyTol          - numeric: tolerance used to detect near-symmetric matrices.
+   % convStrat       - object: convergence strategy handler (convStrat class instance).
+   % ChronosFlag     - boolean: true if Chronos_Lab preconditioner support is available.
+   % requestPrecComp - boolean: flag requesting that the preconditioner be (re)computed.
+   % alpha           - numeric: scaling parameter used during recomputation of the preconditioner.
+   % x0              - vector: starting vector for iterative solvers.
+   % SolverType      - string: name of the iterative solver in use (e.g. 'gmres').
+   % Prec            - object: preconditioner instance (Chronos preconditioner wrapper).
+   % iterConfigOld   - numeric: stored iteration configuration version to detect changes.
+   % whenComputed    - vector: physical times at which the preconditioner was computed.
+   % aTimeComp       - numeric: accumulated time spent computing preconditioners.
+   % aTimeSolve      - numeric: accumulated time spent in solver calls.
+   % nSolve          - integer: number of times the linear solver was invoked.
+   % nComp           - integer: number of preconditioner computations performed.
+   % maxIter         - integer: maximum iterations observed across solves.
+   % aIter           - numeric: accumulated iterations (for averaging/stats).
+   % cumTSolveAfterPrec - numeric: cumulative solve time measured after preconditioner build.
+   % iterLin         - vector: recorded iteration counts per linear solve.
+   % solveTLin       - vector: recorded solve times per linear solve.
+   % symFlagLin      - vector: flags indicating symmetry detection per solve.
+   % precCompLin     - vector: flags indicating whether prec was computed for each solve.
+   % newtonLin       - vector: Newton iteration indices associated with each linear solve.
+   % timeLin         - vector: physical times corresponding to each linear solve.
+   % Delta_T         - vector: time step sizes used when recording solves.
+   % useSAM          - boolean: whether SAM monitoring/analysis is enabled.
+   % SAM             - object: SAM instance.
+   % params          - struct: runtime parameters for the solver (tolerances, maxit, restart, etc.)
 
    properties (SetAccess = ?convStrat, GetAccess = public)
 
       % Flag for debug
       DEBUGflag = false
-      matlabMaxSize = 2e2
+      matlabMaxSize = 2e4
 
       % Utils flags
       nsyTol = 100*eps
 
       % Convergence strategy handler
       convStrat
-      
+
       % Flag for Chronos existence
       ChronosFlag = false
 
@@ -107,6 +107,8 @@ classdef linearSolver < handle
       newtonLin = []
       timeLin = []
       Delta_T = []
+      tolReqLin = []
+      scaledTolLin = []
       systemSize = 0
 
       % SAM object
@@ -134,13 +136,14 @@ classdef linearSolver < handle
          % Check if Chronos is available
          ChronosDir = fullfile(gres_root,'ThirdPartyLibs','ChronosLab','sources');
 
-         % Possible the user wants to use matlab even if the size is sufficient
-         if isfield(generalsolver.simparams.linSolverParams, 'useMatlab')
-           if generalsolver.simparams.linSolverParams.useMatlab == 1
-             gresLog().log(3,'The user requested the use of matlab\n');
-             return;
-           end
+         % Check if the user has set to use or not use or force use of
+         % Chronos
+         if (ChronosUsage(obj,generalsolver) == false)
+            return;
          end
+
+         % Set the print options for the linear solver
+         setPrintOptions(obj,generalsolver.simparams.linSolverParams);
 
          % Check if ChronosLab folder is present
          if isfolder(ChronosDir)
@@ -199,7 +202,7 @@ classdef linearSolver < handle
             % (created as default)
             obj.Ruiz = obj.Prec.Ruiz;
             obj.Ruiz.scalingFlag = scalingFlag;
-            
+
             % Parse scaling options if provided
             if isfield(generalsolver.simparams.linSolverParams, 'scalingFlag')
                obj.Ruiz.scalingFlag = generalsolver.simparams.linSolverParams.scalingFlag;
@@ -214,62 +217,8 @@ classdef linearSolver < handle
          end
       end
 
-      function printStats(obj,varargin)
-         % Allocate for stats if sam not used
-         if ~obj.useSAM
-            obj.SAM.CompLin = zeros(size(obj.precCompLin));
-         end
-         
-         % Parse optional arguments
-         showShort = false;
-         showEW = false;
-         for k = 1:numel(varargin)
-            arg = varargin{k};
-            if ischar(arg) || isstring(arg)
-               if strcmpi(arg, 'short')
-                  showShort = true;
-               elseif strcmpi(arg, 'ew')
-                  showEW = true;
-               end
-            end
-         end
-
-         % If not 'short', show full linear solver table and preconditioner times
-         if ~showShort
-            % Print the time steps at which the preconditioner was computed
-            fprintf('The preconditioner was computed at time(s):\n');
-            for i = 1:length(obj.whenComputed)
-               fprintf('             %d\t%e\n',i,obj.whenComputed(i));
-            end
-
-            fprintf('\n----------------------------------------------------------------------\n')
-            fprintf('| %8s | %6s | %4s | %8s | %7s | %8s | %8s |\n','PhysTime','Sol N.','Iter','SolTime','Symm','PrecTime','DeltaT');
-            fprintf('----------------------------------------------------------------------\n')
-            
-            for i = 1:size(obj.solveTLin,2)
-               fprintf('| %.2e | %6d | %4d | %.2e | %.1e | %.2e | %.2e |\n',obj.timeLin(i),i,obj.iterLin(i),obj.solveTLin(i),obj.symFlagLin(i),obj.precCompLin(i)+obj.SAM.CompLin(i),obj.Delta_T(i));
-            end
-         end
-
-         % Print Eisenstat-Walker statistics if explicitly requested
-         if showEW && ~isempty(obj.convStrat)
-            obj.convStrat.printStats();
-         end
-
-         fprintf('Average Preconditioner computation time = %e\n',(obj.aTimeComp/obj.nComp));
-         fprintf('Preconditioner computed %d times\n',length(obj.whenComputed));
-         if obj.useSAM
-            nnzSAMcomp = size(nonzeros(obj.SAM.CompLin),1);
-            fprintf('Average SAM computation time = %e\n',sum(obj.SAM.CompLin)/nnzSAMcomp);
-            fprintf('SAM computed %d times\n',nnzSAMcomp);
-         end
-         fprintf('Average Solve time = %e\n',(obj.aTimeSolve/obj.nSolve));
-         fprintf('Average number of iterations = %f\n',(obj.aIter/obj.nSolve));
-         fprintf('Max number of iterations = %d\n',obj.maxIter);
-         fprintf('Total time for computation of the linear systems = %e\n',obj.aTimeComp+obj.aTimeSolve+sum(obj.SAM.CompLin));
-         % fprintf('Used %d threads during mex\n',obj.Prec.maxThreads);
-         fprintf('Max system size = %d\n',obj.systemSize);
-      end
+      % Function to print the statistics of the simulation
+      varargout = printStats(obj,varargin)
 
       % Function to solve the system
       [x,flag] = SolveLin(obj,A,b,time,nonlinIter);
@@ -284,6 +233,11 @@ classdef linearSolver < handle
       end
    end
 
+   methods (Static)
+      % Standalone solver for saved linear systems (.mat files)
+      [x, stats, flag, relres, iter, resvec] = solveSingle(matFile, varargin);
+   end
+
    methods (Access = private)
 
       % Function to get if Chronos is to be used and if so instantiate the
@@ -293,5 +247,56 @@ classdef linearSolver < handle
       % Specific functions to be used inside choosePrec
       [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physname);
       [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname);
+
+      % Function to set the print settings of the linear solver
+      function setPrintOptions(obj,parm)
+         if isfield(parm, 'saveMatType')
+            obj.saveMatType = parm.saveMatType;
+            switch parm.saveMatType
+               case {"none","all"}
+               case "selected"
+                  assert(isfield(parm, 'saveMatSolves'));
+                  obj.saveMatSolves = parm.saveMatSolves;
+               otherwise
+                  error('Unknown options for "saveMatSolve"')
+            end
+         end
+      end
+
+      function useChronos = ChronosUsage(linsolver,generalsolver)
+         % Get the global variable
+         use_Chronos = getappdata(0,'use_Chronos');
+         
+         % Check the global variable
+         if strcmpi(use_Chronos,"off")
+            linsolver.ChronosFlag = false;
+            useChronos = false;
+         elseif strcmpi(use_Chronos,"force")
+            linsolver.matlabMaxSize = 0;
+            useChronos = true;
+         else
+            % use_Chronos == "on"
+            useChronos = true;
+         end
+
+         parm = generalsolver.simparams.linSolverParams;
+         % Possible the user wants to use matlab even if the size is sufficient
+         if isfield(parm, 'useMatlab')
+            if parm.useMatlab == 1
+               gresLog().log(3,'The user requested the use of matlab\n');
+               linsolver.ChronosFlag = false;
+               useChronos = false;
+            end
+         end
+
+         % Possible the user wants to use iterative even if the size is not sufficient
+         if isfield(parm, 'useIterative')
+            if parm.useIterative == 1
+               gresLog().log(3,'The user requested the use of the iterative solver\n');
+               linsolver.matlabMaxSize = 0;
+               useChronos = true;
+            end
+         end
+      end
    end
 end

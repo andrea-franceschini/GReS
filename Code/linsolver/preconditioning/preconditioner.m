@@ -31,14 +31,14 @@ classdef (Abstract) preconditioner < handle
       posDef = true;
    end
 
-   properties (GetAccess = public, SetAccess = public)
+   properties (Access = public)
       % Ruiz scaling object
       Ruiz = []
    end
 
    methods (Abstract)
       % Function to compute the preconditioner
-      Compute(obj,A,sym,varargin)
+      A = Compute(obj,A,sym,varargin)
 
       % Getter for the function handle to apply the left preconditioner
       x = ApplyLeft(obj,b,varargin)

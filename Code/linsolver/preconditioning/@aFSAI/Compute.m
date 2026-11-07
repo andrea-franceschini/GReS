@@ -1,6 +1,16 @@
-function Compute(obj,A,symm,varargin)
+function [A] = Compute(obj,A,symm,varargin)
 
    if iscell(A)
+      % Ruiz is done only here as it is entered only if the problem to be
+      % solved is a single physics using amg as a preconditioner. In the
+      % other cases is handled in the block preconditioners
+   
+      % Compute and apply Ruiz diagonal scaling if requested
+      if ~isempty(obj.Ruiz)
+         A = obj.Ruiz.Compute(A);
+      end
+   
+      % Convert the matrix to sparse double
       A = A{1,1};
    end
 

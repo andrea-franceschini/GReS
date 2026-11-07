@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This XML input file is a shortcut to preprocess the model for each domain
+in a nonConforming simulation.
+-->
+
+<Problem>
+
+  <SimulationParameters
+                        Start="0."
+                        End ="8.0"
+                        DtInit="1"
+                        DtMin ="1e-4"
+                        DtMax ="1"
+                        incrementFactor = "1.5"
+                        choppingFactor = "2"
+                        MaxNLIteration = "20"
+                        RelativeTolerance = "1.e-12"
+                        AbsoluteTolerance = "1.e-11"
+                        resetConfiguration = "0">
+                        
+                        
+
+  <LinearSolver
+                useIterative = "1"
+                useEW = "1"
+                />
+
+  </SimulationParameters>
+
+  <Interface>
+    <SolidMechanicsContact
+                                         augmentationParameter = "1e3"
+                                         multiplierType = "P0"
+                                         isSmooth = "0"
+                                         stabilizationScale = "1.0"
+                                         masterDomain = "1" masterSurface = "6"
+                                         slaveDomain = "2" slaveSurface = "5">
+
+      <Quadrature
+                  type = "SegmentBasedQuadrature"
+                  gaussOrder = "4"
+                  />
+
+      <Coulomb
+               cohesion = "0.0"
+               frictionAngle = "30" />
+
+      <ActiveSet
+                 resetActiveSet = "0"
+                 forceStickBoundary = "0" >
+
+        <Tolerances
+                    sliding = "1e-4"
+                    normalGap = "1e-5"
+                    normalTraction = "1e-3"
+                    tangentialViolation = "1e-3"
+                    minLimitTraction = "1e-8"
+                    areaChange = "1e-4"
+                    maxActiveSetChange = "12"
+                    />
+
+      </ActiveSet>
+
+    </SolidMechanicsContact>
+
+  </Interface>
+
+
+</Problem>
