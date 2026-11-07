@@ -1,19 +1,5 @@
-clear
-clc
-close all
-% White et al., CMAME 357 (2019), 112575: Section 6.1, Table 1, Fig. 1.
-% Adapted from gresSPE10_mech.m. Run initGReS and start MRST beforehand.
-%
-% REPRODUCTION LIMITS
-% - The three channel boxes below reconstruct Fig. 1; their internal face
-%   coordinates are not tabulated in the paper. They are an explicit,
-%   adjustable interpretation, not an author-supplied geometry dataset.
-% - Like the supplied reference, this script uses uniform initial pressure
-%   and zero gravity: an incremental, gravity-free benchmark variant. The
-%   paper starts from hydrostatic/lithostatic equilibrium. Do not interpret
-%   this script as reproducing the paper's absolute initial stress field.
-% - MultiphasePoromechanics and PeacemanWells must be available from the
-%   same GReS branch as the uploaded reference (not the public checkout).
+% From White et al., CMAME 357 (2019), 112575: Section 6.1, Table 1, Fig. 1.
+
 
 mrstModule add ad-core ad-blackoil ad-props mrst-gui
 gravity reset off
@@ -22,23 +8,12 @@ assert(exist('MultiphasePoromechanics','class') == 8, ...
 assert(exist('PeacemanWells','class') == 8, ...
     'Use the GReS branch containing PeacemanWells.');
 
-%% Mesh and reconstructed staircase channel
-% Domain dimensions read from Fig. 1: 500 x 500 x 250 m.
-% 32 x 32 x 16 cells give 88,307 unconstrained unknowns (3 nodal
-% displacements + 2 cell variables), matching the paper's ~88k base mesh.
-refinement = 1;                    % 1, 2, 4, ... for uniform refinement
-assert(refinement >= 1 && refinement == fix(refinement));
-n = refinement*[16,16,8];
+n = [8,8,4];
 boxSize = [500,500,250]*meter;
 grid = structuredMesh(n(1),n(2),n(3), ...
     [0 boxSize(1)],[0 boxSize(2)],[0 boxSize(3)]);
 grid.processGeometry();
 xyz = grid.cells.center;
-
-% Each row is [xmin xmax ymin ymax zmin zmax] in metres.
-% Successive boxes share a vertical face over a nonzero height, so the
-% channel is face-connected and does not depend on edge-only connections.
-% All breaks align with the base mesh; edit here to refine the reconstruction.
 
 % permeable regions
 c = grid.cells.center;
@@ -58,7 +33,6 @@ grid.cells.tag(:) = 2;              % low-permeability seal
 grid.cells.tag(isChannel) = 1;      % permeable channel
 assert(any(isChannel) && any(~isChannel));
 
-%% Materials: Table 1, SI units
 materials = Materials();
 materials.addFluid();
 regionNames = ["channel","seal"];
@@ -74,10 +48,8 @@ for k = 1:2
     materials.addConstitutiveLaw(regionNames(k),"Elastic", ...
         'youngModulus',5000*mega*Pascal,'poissonRatio',0.25);
 end
-% No SPE10 data, burden layers, or extra empirical rock compressibility.
-% With gravity off, the tabulated grain density (2650 kg/m^3) is inactive.
 
-%% Two immiscible fluids: equations (41)--(42)
+% Two immiscible fluids
 srW = 0.2; srNW = 0.2;
 pRef = 6000*psia;                 % datum retained from supplied reference;
                                   % not a specified staircase datum in paper
@@ -97,7 +69,6 @@ fluid.nwet = struct('viscosity',muNW,'compressibility',cNW, ...
     'relPerm',krNW,'density',rhoNW);
 fluid.rock = struct('refPressure',pRef);
 
-%% Boundary conditions: impervious exterior, roller sides/bottom, free top
 bc = Boundaries(grid);
 % structuredMesh tags: 1 bottom, 2 top, 3/4 y-normal, 5/6 x-normal.
 surfaceTags = [1,3,4,5,6];
@@ -120,7 +91,6 @@ twoph.setFluidProperties(fluid);
 domain.setState(pRef*ones(grid.cells.num,1),"pressure");
 domain.setState(srW*ones(grid.cells.num,1),"saturation");
 
-%% Wells: opposite ends, completed only through the channel
 % x-fastest indexing, as in the uploaded reference. Select using coordinates
 % to avoid any dependence on the ordering of cells within the mesh.
 dx = boxSize(1)/n(1); dy = boxSize(2)/n(2);
@@ -138,33 +108,32 @@ wellMod = PeacemanWells(domain);
 wellMod.addWell(injId,'control',"bhp", ...
     'time',wellTimes,'value',pRef+[0,deltaP,deltaP], ...
     'radius',0.1524*meter, ...
-    'name','injector','dir','z','comp',[1,0],'sign',+1);
+    'name',"injector",'dir',"z",'comp',[1,0],'sign',+1);
 wellMod.addWell(prodId,'control',"bhp", ...
     'time',wellTimes,'value',pRef-[0,deltaP,deltaP], ...
     'radius',0.1524*meter, ...
-    'name','producer','dir','z','sign',-1);
+    'name',"producer",'dir',"z",'sign',-1);
 % Skin = 0 is assumed to be the default, as in the supplied reference API.
 twoph.addWellModel(wellMod);
 
-%% Time integration and output
 % Initial/max/end times and Newton tolerance from Table 1. The exponential
 % growth factor is not given in the paper; retain 1.1 from the reference.
-simpar = struct('End',5*day,'DtInit',0.1*day,'DtMax',1*day, ...
-    'DtMin',1e-5*day,'choppingFactor',2,'incrementFactor',1.1, ...
+simpar = struct('End',50*day,'DtInit',0.5*day,'DtMax',10*day, ...
+    'DtMin',1e-5*day,'choppingFactor',2,'incrementFactor',1.5, ...
     'RelativeTolerance',1e-5);
 simparams = SimulationParameters(simpar);
-% The previous standalone CPR class supports flow-only systems. This model
-% needs a three-field mechanics/flow preconditioner for iterative solves.
-% Keep the reference script's solver selection here; do not force flow CPR.
-if ~isfolder('Output'), mkdir('Output'); end
-printUtils = OutState('printTimes',unique([0:day:simpar.End,92*day]), ...
-    'outputFile',"Output/staircase_mech",'vtkFormat',"binary");
 
-fprintf('Staircase: %d cells; %d channel cells; %d seal cells.\n', ...
-    grid.cells.num,nnz(isChannel),nnz(~isChannel));
-fprintf('Channel completions: injector %d, producer %d.\n', ...
-    numel(injId),numel(prodId));
-fprintf('Unconstrained DoFs: %d.\n',3*prod(n+1)+2*prod(n));
+out = OutState('printTimes',0:day:simpar.End);
+
 solver = NonLinearImplicit('domains',domain, ...
-    'simulationparameters',simparams,'output',printUtils);
+    'simulationparameters',simparams,'output',out);
 solver.simulationLoop();
+
+c = grid.cells.num - (0.5*n(1) - 1)*n(2);
+sat = out.results(end).saturation(c);
+uz = out.results(end).displacements(end);
+tol = 1e-4;
+assert(abs(sat - 0.373051)/sat < 1e-3,'Saturation not validated')
+assert(abs(uz - 0.0741527)/uz < 1e-3,'Vertical stress not validated')
+
+

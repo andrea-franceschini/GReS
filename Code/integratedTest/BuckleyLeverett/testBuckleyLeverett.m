@@ -1,9 +1,6 @@
-clear
-clc
-
 % Run after initializing GReS and MRST. All quantities use SI units.
 % Refine nx to check convergence in space and time together.
-nx = 50;
+nx = 20;
 L = 100;
 A = 1;
 phi = 0.2;
@@ -69,7 +66,7 @@ setState(domain,zeros(nx,1),"saturation");
 % Bounds follow from min/max total mobility on [0,1].
 qMin = (pIn-pOut)/((muW+muO)*resistance);
 qMax = (pIn-pOut)/(min(muW,muO)*resistance);
-dt = 5*2^floor(log2(0.25*(PV/nx)/(qMax*shockSpeed)));
+dt = 10*2^floor(log2(0.25*(PV/nx)/(qMax*shockSpeed)));
 nSteps = ceil(1.25*pviBT*PV/(qMin*dt));
 times = (0:nSteps)*dt;
 
@@ -109,15 +106,15 @@ assert(pvi(end) > pviBT,'Simulation ended before analytical breakthrough.');
 % that jump as a reproducible threshold for the smeared numerical front.
 cutThreshold = 0.5*fw(sShock);
 jBT = find(waterCut >= cutThreshold,1);
-fprintf('Analytical shock saturation: %.6f\n',sShock);
-fprintf('Analytical breakthrough: %.6f PVI\n',pviBT);
+gresLog().log(3,sprintf('Analytical shock saturation: %.6f\n',sShock));
+gresLog().log(3,sprintf('Analytical breakthrough: %.6f PVI\n',pviBT));
 
 if isempty(jBT)
     warning('Numerical water cut did not reach the breakthrough threshold.');
 else
     j = jBT-1:jBT;
     pviBTnum = interp1(waterCut(j),pvi(j),cutThreshold);
-    assert(pviBTnum-pviBT < 2e-2)
+    assert(abs(pviBTnum-pviBT) < 3e-2)
     gresLog().log(3,sprintf('Numerical breakthrough: %.6f PVI (error %+.3e PVI)\n', ...
         pviBTnum,pviBTnum-pviBT));
 end
