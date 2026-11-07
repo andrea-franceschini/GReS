@@ -131,7 +131,9 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
         return
       end
 
+
       bcs = obj.domain.bcs;
+
       type = bcs.getType(bcId);
 
       if contains(type,"well")
