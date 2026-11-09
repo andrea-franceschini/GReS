@@ -39,9 +39,6 @@ function A = Compute(obj,A,symMat,varargin)
       % Store coupling block
       Afu = [A{2,1}; A{3,1}];
 
-      % Get the deltaT
-      dt = obj.problemsolver.dt;
-
       % Compute fixed-stress relaxation matrix D^(FS)
       solver = obj.domain(1).getPhysicsSolver("MultiphasePoromechanics");
       solver.computeRelaxationMatrix();
@@ -60,8 +57,8 @@ function A = Compute(obj,A,symMat,varargin)
 
       % Keep diagR sparse; do not convert to full to preserve matrix sparsity
       diagR = diag(RR);
-      d11_fs = (1 / dt) * (sw .* rhoW) .* diagR;
-      d21_fs = (1 / dt) * ((1 - sw) .* rhoNW) .* diagR;
+      d11_fs = (sw .* rhoW) .* diagR;
+      d21_fs = ((1 - sw) .* rhoNW) .* diagR;
 
       % Scale relaxation matrix blocks directly using Ruiz scaling function
       D11_mat = obj.Ruiz.scaleDiag(d11_fs, 2);
@@ -86,7 +83,7 @@ function A = Compute(obj,A,symMat,varargin)
       % Get the relaxation matrix
       solver = obj.domain.getPhysicsSolver("BiotFullyCoupled");
       solver.computeRelaxationMatrix();
-      RR = (1/obj.problemsolver.dt)*solver.R;
+      RR = solver.R;
       
       % Compute the approximated Schur complement
       S = A{2,2} + obj.Ruiz.scaleMat(RR,2);

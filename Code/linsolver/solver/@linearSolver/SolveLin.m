@@ -54,16 +54,21 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       [x,flag] = matlab_solve(obj,A,b,time);
       return
    end
-   
+
+   % Fix the pattern to be symmetric and check the symmetry of the
+   % resulting matrix
+   [A] = fixPattern(A);
+   [globalsymm,maxval,symMat] = checkSymmetry(A,obj.nsyTol);
+
+   % Check if this step is linear to use maximum resolution needed
+   isLinear = getIsLinear(obj.generalsolver);
+
    % Save a backup for the inputs
    backupA = A;
    backupb = b;
 
    % Save system to .mat if requested
    saveLinearSystem(obj, backupA, backupb, obj.nSolve + 1);
-
-   % Check if this step is linear to use maximum resolution needed
-   isLinear = getIsLinear(obj.generalsolver);
 
    % Get the full rhs
    if iscell(b)
@@ -92,11 +97,6 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 
    % Save the solver type
    firstSolver = obj.SolverType;
-
-   % Fix the pattern to be symmetric and check the symmetry of the
-   % resulting matrix
-   [A] = fixPattern(A);
-   [globalsymm,maxval,symMat] = checkSymmetry(A,obj.nsyTol);
 
    % Symmetric matrix and nonsymmetric preconditioner do not work together.
    % There is a risk in finding a spurious nonphysical solution satisfying
@@ -310,11 +310,15 @@ function [gSize] = getGlobalSize(A)
    rowSizes = zeros(nBlockRows,1);
    
    for i = 1:nBlockRows
-      for j = 1:nBlockCols
-         C = A{i,j};
-         if ~isempty(C)
-            rowSizes(i) = size(C,1);
-            break;
+      if ~isempty(A{i,i})
+         rowSizes(i) = size(A{i,i}, 1);
+      else
+         for j = 1:nBlockCols
+            C = A{i,j};
+            if ~isempty(C)
+               rowSizes(i) = size(C,1);
+               break;
+            end
          end
       end
    end
@@ -386,7 +390,7 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
          if i == j
             % Diagonal Block
             [symm(cont), val(cont)] = checkSymmetry(A{i,i},eps1);
-         elseif ~isempty(A{i,j})
+         elseif nnz(A{i,j}) > 0 || nnz(A{j,i}) > 0
             % Off-Diagonal Block
             diffnorm = norm(A{i,j}-A{j,i}','f');
             Anorm = 0.5 * (norm(A{i,j},'f') + norm(A{j,i},'f'));
@@ -461,29 +465,100 @@ function [isLinear] = getIsLinear(generalsolver)
    isLinear = true;
 end
 
+% Ensures block matrix A has non-empty blocks of valid dimensions
+% and symmetric nonzero sparsity patterns.
 function [A] = fixPattern(A)
    N = size(A, 1);
+
+   % Determine row and column dimensions for each block row/col index.
+   % Also flag blocks that are empty [] or 0x0.
+   blkRows = zeros(N, 1);
+   blkCols = zeros(N, 1);
+   emptyMask = false(N, N);
+
+   for j = 1:N
+      for i = 1:N
+         M = A{i,j};
+         if isempty(M)
+            emptyMask(i,j) = true;
+         else
+            [r, c] = size(M);
+            if r > 0 && blkRows(i) == 0, blkRows(i) = r; end
+            if c > 0 && blkCols(j) == 0, blkCols(j) = c; end
+         end
+      end
+   end
+
+   % For square block partitionings, if an entire row or column had only empty
+   % blocks, recover the missing dimension from the symmetric counterpart.
+   for i = 1:N
+      if blkRows(i) == 0 && blkCols(i) > 0
+         blkRows(i) = blkCols(i);
+      elseif blkCols(i) == 0 && blkRows(i) > 0
+         blkCols(i) = blkRows(i);
+      end
+   end
+
+   % Replace empty blocks with correctly dimensioned sparse zeros.
+   if any(emptyMask, 'all')
+      [eRows, eCols] = find(emptyMask);
+      for k = 1:numel(eRows)
+         i = eRows(k);
+         j = eCols(k);
+         r = blkRows(i);
+         c = blkCols(j);
+         if r == 0 || c == 0
+            error('fixPattern:cannotDetermineBlockSize', ...
+                  'Cannot determine dimensions for empty block (%d,%d).', i, j);
+         end
+         A{i,j} = sparse(r, c);
+      end
+   end
+
+   % Symmetrize the sparsity pattern across blocks.
+   % If A{i,j} has a nonzero at (r,c) but A{j,i} does not at (c,r), add an
+   % eps-weight entry at (c,r) in A{j,i} so the graph structure is symmetric.
    for j = 1:N
       for i = 1:j
-         if isempty(A{i,j}) && ~isempty(A{j,i})
-            A{i,j} = sparse(size(A{j,i},2), size(A{j,i},1));
-         elseif ~isempty(A{i,j}) && isempty(A{j,i})
-            A{j,i} = sparse(size(A{i,j},2), size(A{i,j},1));
-         end
-         patt = spones(A{i,j}) - spones(A{j,i}');
-         if nnz(patt)
-            mask1 = (patt ==  1);  % in A{i,j} but not A{j,i}'
-            mask2 = (patt == -1);  % in A{j,i}' but not A{i,j}
-            if i ~= j
-               A{j,i} = A{j,i} + (A{i,j} .* mask1)' * eps;
-               A{i,j} = A{i,j} + (A{j,i} .* mask2')' * eps;
-
-               patt = spones(A{i,j}) - spones(A{j,i}');
-               if nnz(patt) ~= 0
-                  error('asymmetric pattern found');
+         Aij = A{i,j};
+         if i == j
+            % Diagonal block: check internal symmetry of sparsity pattern
+            if nnz(Aij) > 0
+               S = spones(Aij);
+               St = S';
+               if ~isequal(S, St)
+                  % Nonzeros in S not present in S'
+                  diff = S - St;
+                  [r, c] = find(diff == 1);
+                  A{i,i} = Aij + sparse(c, r, eps, blkRows(i), blkRows(i));
                end
-            else
-               A{i,i} = A{i,i} + (A{i,i} .* mask1)' * eps;
+            end
+         else
+            % Off-diagonal block pair (i,j) and (j,i)
+            Aji = A{j,i};
+            nnz_ij = nnz(Aij);
+            nnz_ji = nnz(Aji);
+            % Fast exit if both blocks are purely zero
+            if nnz_ij == 0 && nnz_ji == 0
+               continue;
+            end
+
+            Sij = spones(Aij);
+            Sji_t = spones(Aji)';
+
+            % Fast equality check: compares sparsity structures directly
+            if ~isequal(Sij, Sji_t)
+               diff = Sij - Sji_t;
+               % Entries present in A{i,j} but missing in A{j,i}'
+               [r1, c1] = find(diff == 1);
+               if ~isempty(r1)
+                  A{j,i} = Aji + sparse(c1, r1, eps, blkCols(j), blkRows(i));
+               end
+               % Entries present in A{j,i}' but missing in A{i,j}
+               [r2, c2] = find(diff == -1);
+               if ~isempty(r2)
+                  A{i,j} = Aij + sparse(r2, c2, eps, blkRows(i), blkCols(j));
+               end
             end
          end
       end
