@@ -62,6 +62,9 @@ Tests/**/*.png
 # Compiler  builds
 /ThirdPartLibs/*/build
 
+# Local Gmsh SDK and installer staging files
+/ThirdPartyLibs/Gmsh/
+
 # Shared file system files
 *.nfs*
 

@@ -51,5 +51,9 @@ end
 
 cd(gres_root)
 
+[sdk, gmshReady] = gmshSdk();
+if gmshReady
+  addGmshRuntimePath(sdk);
+end
 
 end

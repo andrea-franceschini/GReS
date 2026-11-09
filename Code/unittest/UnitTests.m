@@ -59,6 +59,14 @@ classdef UnitTests < matlab.unittest.TestCase
       testCase.verifyFalse(any([results.Failed]),'Simparam tests did not pass.');
     end
 
+    function GmshInterface(testCase)
+      testCase.assumeEqual(exist('gmshMex','file'), 3, ...
+        'Optional Gmsh MEX is unavailable.');
+      testFile = fullfile(testCase.testPath,'Mesh','testGmshInterface.m');
+      results = runtests(testFile);
+      testCase.verifyTrue(all([results.Passed]),'Gmsh interface test did not pass.');
+    end
+
     function Materials(testCase)
       testFile = fullfile(testCase.testPath,'Materials','testMaterials.m');
       results = runtests(testFile);
