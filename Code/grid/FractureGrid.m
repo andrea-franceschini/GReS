@@ -7,6 +7,8 @@ classdef FractureGrid < Grid
 
   methods
     function obj = FractureGrid(matrix, triangles, matrixFaces, fractureId)
+
+
       obj.matrix = matrix;
       normal = matrix.faces.normal(matrixFaces(:,1),:);
       xyz = matrix.coordinates;
@@ -30,6 +32,7 @@ classdef FractureGrid < Grid
       obj.cells.center = matrix.faces.center(matrixFaces(:,1),:);
       obj.cells.area = matrix.faces.area(matrixFaces(:,1));
       obj.cells.normal = normal;
+      obj.processGeometry();
     end
   end
 end

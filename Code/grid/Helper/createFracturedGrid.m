@@ -1,5 +1,5 @@
-function [matrix, fractureGrids] = createFracturedMesh(bounds, fractures, options)
-%CREATEFRACTUREDMESH Mesh a box and split its faces along planar fractures.
+function [matrix, fractureGrids] = createFracturedGrid(bounds, fractures, options)
+%CREATEFRACTUREDGRID Mesh a box and split its faces along planar fractures.
 %   bounds is [xmin xmax; ymin ymax; zmin zmax]. Each entry of fractures is
 %   an ordered N-by-3 perimeter or a struct with center, normal and extents.
 %   A single perimeter or a struct array can also be passed directly.
@@ -53,15 +53,17 @@ if options.meshSize > 0
     'Use either meshSize or matrixMeshSize and fractureMeshSize.');
   matrixSize = options.meshSize;
 end
-[coordinates, tetrahedra, triangles] = gmshMex(bounds, polygons, ...
+
+% call gmsh mex api to create the fractured grid
+[coordinates, matrixElems, fracElems] = gmshMex(bounds, polygons, ...
   matrixSize, fractureSize, options.transitionFactor);
 
 matrix = Grid();
 matrix.coordinates = coordinates;
-matrix.cells.connectivity = tetrahedra;
-matrix.cells.tag = ones(size(tetrahedra,1),1);
+matrix.cells.connectivity = matrixElems;
+matrix.cells.tag = ones(size(matrixElems,1),1);
 matrix.cells.numVerts = 4 * matrix.cells.tag;
-matrix.cells.VTKType = repmat(double(VTKType.Tetra),size(tetrahedra,1),1);
+matrix.cells.VTKType = repmat(double(VTKType.Tetra),size(matrixElems,1),1);
 matrix.processGeometry();
 
 fractureGrids = cell(size(fractures));
@@ -70,9 +72,9 @@ if isempty(fractures)
 end
 
 matrixFaces = matrix.faces.connectivity.toMatrix();
-faceIds = cell(size(triangles));
-for k = 1:numel(triangles)
-  [matched, faceIds{k}] = ismember(sort(triangles{k},2),matrixFaces,'rows');
+faceIds = cell(size(fracElems));
+for k = 1:numel(fracElems)
+  [matched, faceIds{k}] = ismember(sort(fracElems{k},2),matrixFaces,'rows');
   assert(all(matched) && all(~matrix.faces.isBoundary(faceIds{k})), ...
     'GReS:GmshFractureTopology', 'Fracture %d must match internal matrix faces.',k);
 end
@@ -82,17 +84,18 @@ assert(numel(unique(ids)) == numel(ids), 'GReS:GmshFractureOverlap', ...
   'Fracture polygons must not overlap over a finite area.');
 splitIds = splitMatrixFaces(matrix, ids, matrixFaces);
 first = 1;
-for k = 1:numel(triangles)
-  last = first + size(triangles{k},1) - 1;
+for k = 1:numel(fracElems)
+  last = first + size(fracElems{k},1) - 1;
   pairs = splitIds(first:last,:);
   swap = matrix.faces.normal(pairs(:,1),:) * normals(k,:).' < 0;
   pairs(swap,:) = pairs(swap,[2 1]);
-  fractureGrids{k} = FractureGrid(matrix, triangles{k}, pairs, k);
+  fractureGrids{k} = FractureGrid(matrix, fracElems{k}, pairs, k);
   first = last + 1;
 end
 end
 
 function [polygon,normal] = fracturePerimeter(fracture, k)
+
 if isstruct(fracture)
   assert(isscalar(fracture) && all(isfield(fracture,{'center','normal','extents'})), ...
     'GReS:GmshFractureInput', 'Fracture %d needs center, normal and extents.',k);

@@ -6,7 +6,7 @@ classdef testGmshInterface < matlab.unittest.TestCase
       bounds = [0 1; 0 1; 0 1];
       perimeter = [.5 .2 .2; .5 .8 .2; .5 .8 .8; .5 .2 .8];
       rectangle = struct('center',[.5 .5 .5],'normal',[0 1 0],'extents',[.6 .6]);
-      [matrix, fractures] = createFracturedMesh(bounds,{perimeter,rectangle}, ...
+      [matrix, fractures] = createFracturedGrid(bounds,{perimeter,rectangle}, ...
         'matrixMeshSize',.24,'fractureMeshSize',.10,'transitionFactor',1.5);
       testCase.verifyNumElements(fractures,2);
       matrixFaces = matrix.faces.connectivity.toMatrix();
@@ -14,6 +14,8 @@ classdef testGmshInterface < matlab.unittest.TestCase
       fractureEdges = cell(1,2);
       for k = 1:2
         fracture = fractures{k};
+        testCase.verifyEqual([fracture.nDim fracture.nCoord],[2 3]);
+        testCase.verifyGreaterThan(fracture.surfaces.num,0);
         pairs = fracture.cells.matrixFaces;
         testCase.verifyGreaterThan(fracture.cells.num,0);
         triangles = fracture.cells.loc2glob(fracture.cells.connectivity);

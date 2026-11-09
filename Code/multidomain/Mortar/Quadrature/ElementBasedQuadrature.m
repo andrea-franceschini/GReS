@@ -38,7 +38,7 @@ classdef ElementBasedQuadrature < MortarQuadrature
 
       s = MortarSide.slave;
       m = MortarSide.master;
-      totGP = obj.grids(s).surfaces.num*obj.maxGP;
+      totGP = obj.grids(s).cells.num*obj.maxGP;
       obj.gpCoords = {zeros(totGP,2);
                       zeros(totGP,2)};
 
@@ -56,17 +56,17 @@ classdef ElementBasedQuadrature < MortarQuadrature
 
 
 
-      for vtkSlave = obj.grids(s).surfaces.vtkTypes
+      for vtkSlave = obj.grids(s).cells.vtkTypes
 
         elemSlave = FiniteElementType.create(vtkSlave,obj.grids(s));
-        listSlave = obj.grids(s).getSurfByVTKId(vtkSlave);
+        listSlave = obj.grids(s).getCellsByVTKId(vtkSlave);
 
-        for vtkMaster = obj.grids(m).surfaces.vtkTypes
+        for vtkMaster = obj.grids(m).cells.vtkTypes
 
           elemMaster = FiniteElementType.create(vtkMaster,obj.grids(m));
-          listMaster = obj.grids(m).getSurfByVTKId(vtkMaster);
+          listMaster = obj.grids(m).getCellsByVTKId(vtkMaster);
 
-          mask = false(obj.grids(m).surfaces.num,1);
+          mask = false(obj.grids(m).cells.num,1);
           mask(listMaster) = true;
 
           for is = listSlave'
@@ -153,13 +153,13 @@ classdef ElementBasedQuadrature < MortarQuadrature
 
       gridSlave = obj.grids(MortarSide.slave);
       gridMaster = obj.grids(MortarSide.master);
-      nodeS = gridSlave.getSurfNodes(is);
-      nodeM =  gridMaster.getSurfNodes(im);
+      nodeS = gridSlave.getCellNodes(is);
+      nodeM =  gridMaster.getCellNodes(im);
       coordM = gridMaster.coordinates(nodeM,:);
       X = obj.gpsCoord;                    % real position of gauss pts
       xiS = obj.gpsCoordLoc;
 
-      normal = gridSlave.surfaces.avgNodNormal(nodeS,:);
+      normal = gridSlave.cells.avgNodNormal(nodeS,:);
 
       ngp = size(xiS,1);
 

@@ -22,10 +22,10 @@ classdef ContactSearching < handle
       if isa(varargin{1},"Grid")
         mshSlave = varargin{MortarSide.slave};
         mshMaster = varargin{MortarSide.master};
-        connMaster = mshMaster.surfaces.connectivity;
-        connSlave =  mshSlave.surfaces.connectivity;
-        centersMaster = mshMaster.surfaces.center;
-        centersSlave = mshSlave.surfaces.center;
+        connMaster = mshMaster.cells.connectivity;
+        connSlave =  mshSlave.cells.connectivity;
+        centersMaster = mshMaster.cells.center;
+        centersSlave = mshSlave.cells.center;
         coordsMaster = mshMaster.coordinates;
         coordsSlave = mshSlave.coordinates;
         k = 2;

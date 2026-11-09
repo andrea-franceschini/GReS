@@ -31,8 +31,8 @@ classdef MeshTyingTPFA < InterfaceSolver
       validateInterface(obj);
 
       % One pressure on each retained slave face, shared by its intersections.
-      obj.nMult = obj.grids(MortarSide.slave).surfaces.num;
-      obj.multiplierLocation = entityField.surface;
+      obj.nMult = obj.grids(MortarSide.slave).cells.num;
+      obj.multiplierLocation = entityField.cell;
       state = getState(obj);
       state.interfacePressure = zeros(obj.nMult,1);
       setState(obj,state);
@@ -193,7 +193,7 @@ classdef MeshTyingTPFA < InterfaceSolver
       pairs = obj.quadrature.interfacePairs;
       [surfacePairs,~,polygonId] = unique(pairs,'rows');
       obj.intersectionToSlave = surfacePairs(:,MortarSide.slave);
-      obj.multiplierLocation = entityField.surface;
+      obj.multiplierLocation = entityField.cell;
       nConn = size(surfacePairs,1);
       obj.neigh = zeros(nConn,2);
       obj.faceArea = zeros(nConn,1);
@@ -206,7 +206,7 @@ classdef MeshTyingTPFA < InterfaceSolver
       end
 
       slave = MortarSide.slave;
-      surfSlave = obj.grids(slave).surfaces;
+      surfSlave = obj.grids(slave).cells;
       firstMoment = zeros(size(pairs,1),3);
       triArea = zeros(size(pairs,1),1);
 
@@ -237,7 +237,7 @@ classdef MeshTyingTPFA < InterfaceSolver
       % Surface grids retain faceId through extraction and local renumbering.
       % Convert to parent volume cells, using the enum for column ordering.
       for side = [MortarSide.slave,MortarSide.master]
-        faceId = obj.grids(side).surfaces.faceId(surfacePairs(:,side));
+        faceId = obj.grids(side).cells.faceId(surfacePairs(:,side));
         faces = obj.domains(side).grid.faces;
         assert(all(faces.neighbors(faceId,2) == 0),...
           "MeshTyingTPFA requires boundary faces on both sides");

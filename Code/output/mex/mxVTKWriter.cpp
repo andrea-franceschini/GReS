@@ -68,7 +68,7 @@ error("MATLAB:mxVTKWriter:cellNumVerts",
 totalConnections += cellNumVertsInt[i];
 
 int const type = cellVTKTypeInt[i];
-if (type != VTK_TRIANGLE && type != VTK_QUAD && type != VTK_TETRA &&
+if (type != VTK_LINE && type != VTK_TRIANGLE && type != VTK_QUAD && type != VTK_TETRA &&
 type != VTK_HEXAHEDRON && type != VTK_HEXAHEDRON2 &&
 type != VTK_QUAD2 && type != VTK_POLYGON)
 error("MATLAB:mxVTKWriter:cellType", "Element type not supported.");

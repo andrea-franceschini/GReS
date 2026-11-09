@@ -67,7 +67,7 @@ classdef OutState < matlab.mixin.Copyable
 
 
 
-    function writeVTKfile(obj,block,vtuName,grid,time,pointData3D,cellData3D,pointData2D,cellData2D,varargin)
+    function writeVTKfile(obj,block,vtuName,grid,time,pointDataCells,cellDataCells,pointDataBoundary,cellDataBoundary,varargin)
 
       % block: the xml block of the vtm file in which we write the vtu dataset
       % data struct: struct array with fields 'name' and 'data'
@@ -81,20 +81,20 @@ classdef OutState < matlab.mixin.Copyable
       outName = sprintf('%s/%s.vtu',obj.vtkFileName,vtmName);
 
       % call mex vtk writer
-      if ~all(isempty([cellData3D; pointData3D]))
+      if ~all(isempty([cellDataCells; pointDataCells]))
         cells = grid.cells;
         nodeList = grid.getFlatConnectivity("cells");
         vtkFmt = obj.resolveVTKFormat(grid.coordinates, nodeList, ...
-          cells.numVerts, pointData3D, cellData3D);
+          cells.numVerts, pointDataCells, cellDataCells);
         mxVTKWriter(outName, time, grid.coordinates, nodeList, cells.VTKType, ...
-          cells.numVerts, char(vtkFmt), pointData3D, cellData3D);
-      elseif ~all(isempty([cellData2D; pointData2D]))
+          cells.numVerts, char(vtkFmt), pointDataCells, cellDataCells);
+      elseif ~all(isempty([cellDataBoundary; pointDataBoundary]))
         surf = grid.surfaces;
         nodeList = grid.getFlatConnectivity("surfaces");
         vtkFmt = obj.resolveVTKFormat(grid.coordinates, nodeList, ...
-          surf.numVerts, pointData2D, cellData2D);
+          surf.numVerts, pointDataBoundary, cellDataBoundary);
         mxVTKWriter(outName, time, grid.coordinates, nodeList, surf.VTKType, ...
-          surf.numVerts, char(vtkFmt), pointData2D, cellData2D);
+          surf.numVerts, char(vtkFmt), pointDataBoundary, cellDataBoundary);
       end
 
       % write dataset to vtm block

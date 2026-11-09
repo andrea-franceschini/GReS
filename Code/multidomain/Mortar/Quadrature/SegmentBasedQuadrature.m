@@ -24,8 +24,8 @@ classdef SegmentBasedQuadrature < MortarQuadrature
       gaussTri = Gauss(5,obj.gaussOrder);      % 5 is the vtk type of triangles
       obj.wTri = gaussTri.weight;
 
-      isQuadratic = [any(grids(1).surfaces.VTKType == 28);
-                     any(grids(2).surfaces.VTKType == 28)];
+      isQuadratic = [any(grids(1).cells.VTKType == 28);
+                     any(grids(2).cells.VTKType == 28)];
 
       if sum(isQuadratic)==0 % no quadratic elements
         obj.maxTriPerPair = 6;
@@ -57,17 +57,17 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
       % process homogenous vtk types on both sides of the grid
 
-      for vtkSlave = gridS.surfaces.vtkTypes
+      for vtkSlave = gridS.cells.vtkTypes
 
         elemSlave = FiniteElementType.create(vtkSlave,gridS);
-        listSlave = gridS.getSurfByVTKId(vtkSlave);
+        listSlave = gridS.getCellsByVTKId(vtkSlave);
 
-        for vtkMaster = gridM.surfaces.vtkTypes
+        for vtkMaster = gridM.cells.vtkTypes
 
           elemMaster = FiniteElementType.create(vtkMaster,gridM);
-          listMaster = gridM.getSurfByVTKId(vtkMaster);
+          listMaster = gridM.getCellsByVTKId(vtkMaster);
 
-          mask = false(gridM.surfaces.num,1);
+          mask = false(gridM.cells.num,1);
           mask(listMaster) = true;
 
           for is = listSlave'
@@ -226,8 +226,8 @@ classdef SegmentBasedQuadrature < MortarQuadrature
     
     function [P,n] = computeAuxiliaryPlane(obj,el,elem,subID)
       if nargin == 2
-        P = obj.grids(MortarSide.slave).surfaces.center(el,:);
-        n = obj.grids(MortarSide.slave).surfaces.normal(el,:);
+        P = obj.grids(MortarSide.slave).cells.center(el,:);
+        n = obj.grids(MortarSide.slave).cells.normal(el,:);
       elseif nargin == 4
         % compute auxiliary plane on subsegment of quad9
         P = elem.computeCentroid(el,subID);

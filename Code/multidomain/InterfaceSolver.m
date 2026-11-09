@@ -27,7 +27,7 @@ classdef (Abstract) InterfaceSolver < handle
     nMult
 
     % Location of the lagrange multiplier ( default is P0 )
-    multiplierLocation = entityField.surface
+    multiplierLocation = entityField.cell
 
     % print utilities (pointer to property of solutionScheme)
     outstate
@@ -186,7 +186,7 @@ classdef (Abstract) InterfaceSolver < handle
       pointData2D = OutState.mergeOutFields(pointData2D,pointData);
       vtmBlock = obj.outstate.vtkFile.createElement('Block');
       obj.outstate.writeVTKfile(vtmBlock,obj.getOutName(),grid,...
-        time, [], [], pointData2D, surfData2D);
+        time, pointData2D, surfData2D, [], []);
 
     end
 
@@ -288,11 +288,11 @@ classdef (Abstract) InterfaceSolver < handle
 
       if nargin > 1
 
-        dofs = getIncidenceID(obj.multiplierLocation,meshSlave,entityField.surface,el);
+        dofs = getIncidenceID(obj.multiplierLocation,meshSlave,entityField.cell,el);
         dofs = dofs.getData;
 
         % dofs = getEntityFromElement( obj.multiplierLocation,...
-        %   entityField.surface,...
+        %   entityField.cell,...
         %   meshSlave,...
         %   el,...
         %   ncomp );
@@ -318,12 +318,12 @@ classdef (Abstract) InterfaceSolver < handle
 
     function R = getRotationMatrix(obj,side,el)
 
-      if obj.multiplierLocation == entityField.surface
-        R = obj.grids(side).surfaces.rotationMatrices(el,:);
+      if obj.multiplierLocation == entityField.cell
+        R = obj.grids(side).cells.rotationMatrices(el,:);
         R = reshape(R,3,3);
       elseif obj.multiplierLocation == entityField.node
-        nodes = obj.grids(side).getSurfNodes(el);
-        n = (obj.grids(side).surfaces.avgNodNormal(nodes,:))';
+        nodes = obj.grids(side).getCellNodes(el);
+        n = (obj.grids(side).cells.avgNodNormal(nodes,:))';
         n = n(:);
         sz = size(n,1);
         R = zeros(sz(1));
@@ -505,7 +505,7 @@ classdef (Abstract) InterfaceSolver < handle
         case {"standard","dual"}
           obj.multiplierLocation = entityField.node;
         case "P0"
-          obj.multiplierLocation = entityField.surface;
+          obj.multiplierLocation = entityField.cell;
         otherwise
           error("Multiplier type %s is not available." + ...
             "Available types are: standard,dual,P0");
@@ -556,7 +556,7 @@ classdef (Abstract) InterfaceSolver < handle
       % now finalize the grids and compute edges
       for side = [MortarSide.slave, MortarSide.master]
 
-        nOld = obj.grids(side).surfaces.num;
+        nOld = obj.grids(side).cells.num;
 
         % Active surface IDs in the current local numbering
         activeId = unique(obj.quadrature.interfacePairs(:,side));
@@ -564,7 +564,7 @@ classdef (Abstract) InterfaceSolver < handle
         isMortarElem = false(nOld,1);
         isMortarElem(activeId) = true;
 
-        % Surfaces are retained by getSurfaceGrid in this order
+        % Cells are retained by getCellGrid in this order
         keptId = find(isMortarElem);
 
         % Map old local surface IDs to new local surface IDs
@@ -580,14 +580,14 @@ classdef (Abstract) InterfaceSolver < handle
         end
 
         % Extract only active mortar surfaces
-        obj.grids(side) = getSurfaceGrid( ...
+        obj.grids(side) = getCellGrid( ...
           obj.grids(side), isMortarElem);
 
         % Process the final surface grid
-        obj.grids(side).processEdges();
+        obj.grids(side).processGeometry(true);
         obj.grids(side).computeAvgNodalNormal();
 
-        surf = obj.grids(side).surfaces;
+        surf = obj.grids(side).cells;
         R = zeros(surf.num,9);
 
         for i = 1:surf.num
@@ -596,7 +596,7 @@ classdef (Abstract) InterfaceSolver < handle
           R(i,:) = Ri(:);
         end
 
-        obj.grids(side).surfaces.rotationMatrices = R;
+        obj.grids(side).cells.rotationMatrices = R;
       end
 
     end
@@ -610,7 +610,7 @@ classdef (Abstract) InterfaceSolver < handle
 
     function removeSlaveBCents(obj)
 
-      nodSlave = obj.grids(MortarSide.slave).surfaces.loc2glob;
+      nodSlave = obj.grids(MortarSide.slave).cells.loc2glob;
 
       bc = obj.domains(MortarSide.slave).bcs;
       bcList = bc.getBCList();

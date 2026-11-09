@@ -82,7 +82,7 @@ classdef (Abstract) MortarQuadrature < handle
 
     function computeAreaSlave(obj)
       % compute the effective area of the slave elements being integrated
-      obj.areaSlave = zeros(obj.grids(MortarSide.slave).surfaces.num,1);
+      obj.areaSlave = zeros(obj.grids(MortarSide.slave).cells.num,1);
       for iPair = 1:size(obj.interfacePairs,1)
         is = obj.interfacePairs(iPair,1);
         areaPair = sum(obj.getIntegrationWeights(iPair));

@@ -2,12 +2,13 @@ classdef Grid < handle
 
   properties (SetAccess = public, GetAccess = public)
     
-    nDim = 0    % mesh dimensions: 2(D) or 3(D)
+    nCoord = 0  % Number of coordinate columns
+    nDim = 0    % Topological dimension. 
 
     cells = struct('connectivity',[]); 
-    surfaces = struct('connectivity',[]);    % external faces with tag
+    surfaces = struct('connectivity',[]);    % Tagged boundary entities
     faces 
-    edges         
+
 
     nNodes = 0
     coordinates
@@ -31,13 +32,13 @@ classdef Grid < handle
 
     initializeGrid(obj)
 
-    processGeometry(obj)
+    processGeometry(obj,varargin)
 
     [vol,center] = computeCellGeometry(obj)
 
-    processFaces(obj,vtkId)
+    processFaces(obj)
 
-    processEdges(obj,vtkId)
+
 
     function obj = Grid()
       initializeGrid(obj)
@@ -54,7 +55,7 @@ classdef Grid < handle
         id = true(cell.num,1);
       elseif nargin == 2
         if islogical(cellTag)
-          assert(numel(cellTag) == size(cell.connectivity,1));
+          assert(numel(cellTag) == cell.num);
           id = cellTag(:);
         else
           id = ismember(cell.tag, cellTag);
@@ -78,8 +79,8 @@ classdef Grid < handle
         nVert = nVert(:);
       else
         oldConn = connSel.';
-        oldConn = oldConn(:);
-        nVert = repmat(size(connSel,2), nSel, 1);
+        oldConn = oldConn(oldConn > 0);
+        nVert = cell.numVerts(sel);
       end
 
       % stable local node renumbering
@@ -104,19 +105,20 @@ classdef Grid < handle
 
       outGrid.coordinates = obj.coordinates(globalNodeId,:);
       outGrid.nNodes      = size(outGrid.coordinates,1);
-      outGrid.nDim        = 3;
-      outGrid.cells    = cellOut;
-      % outGrid.edges = edgeStruct;
-
-      % extract surfaces
-      % surf = obj.surfaces;
-      % keptNodes = false(obj.nNodes,1);
-      % keptNodes(globalNodeId) = true;
-      % remNodes = find(~keptNodes);
-      % remSurf = any(ismember(obj.getSurfNodes,remNodes),2);
-      % keptSurf = true(obj.surfaces.num,1);
-      % keptSurf(remSurf) = false;
-      % outGrid.surfaces = getSurfaceGrid(obj,keptSurf);
+      outGrid.nDim = obj.nDim;
+      outGrid.nCoord = size(outGrid.coordinates,2);
+      for field = ["center","normal","area","volume","faceId","matrixFaces","rotationMatrices"]
+        if isfield(cell,field)
+          values = cell.(field);
+          cellOut.(field) = values(sel,:);
+        end
+      end
+      if isfield(cell,'loc2glob')
+        cellOut.loc2glob = cell.loc2glob(globalNodeId);
+      else
+        cellOut.loc2glob = globalNodeId(:);
+      end
+      outGrid.cells = cellOut;
 
     end
 
@@ -129,6 +131,7 @@ classdef Grid < handle
 
       tmpGrid = Grid();
       tmpGrid.coordinates = obj.coordinates;
+      tmpGrid.nDim = obj.nDim;
 
       
 
@@ -155,6 +158,7 @@ classdef Grid < handle
       % select surfaces
       if nargin == 1
         outGrid = getGridBoundary(obj);
+        return
       elseif nargin == 2
         if islogical(surfTag)
           assert(numel(surfTag) == surf.num);
@@ -181,8 +185,8 @@ classdef Grid < handle
         nVert = nVert(:);
       else
         oldConn = connSel.';
-        oldConn = oldConn(:);
-        nVert = repmat(size(connSel,2), nSel, 1);
+        oldConn = oldConn(oldConn > 0);
+        nVert = surf.numVerts(sel);
       end
 
       % stable local node renumbering
@@ -209,13 +213,6 @@ classdef Grid < handle
       surfOut.area         = surf.area(sel);
       surfOut.faceId       = surf.faceId(sel);
 
-      edgeStruct.num = 0;
-      edgeStruct.length = zeros(0,1);
-      edgeStruct.center = zeros(0,3);
-      edgeStruct.neighbors = zeros(0,2);    % edge to surface
-      edgeStruct.isBoundary = false(0,1);
-      edgeStruct.connectivity = zeros(0,2); % edge to node
-
       % local 2 global node map
       if isfield(obj.surfaces, 'loc2glob') && ~isempty(obj.surfaces.loc2glob)
         surfOut.loc2glob = obj.surfaces.loc2glob(globalNodeId);
@@ -224,13 +221,15 @@ classdef Grid < handle
       end
 
       surfOut.loc2glob = surfOut.loc2glob(:);
-      surfOut.surfaces2edges = ArrayOfArrays();
-
       outGrid.coordinates = obj.coordinates(globalNodeId,:);
-      outGrid.nNodes      = size(outGrid.coordinates,1);
-      outGrid.nDim        = 3;
-      outGrid.surfaces    = surfOut;
-      outGrid.edges = edgeStruct;
+      outGrid.nNodes = numel(globalNodeId);
+      outGrid.nDim = obj.nDim - 1;
+      outGrid.nCoord = size(outGrid.coordinates,2);
+      surfOut.volume = surfOut.area;
+      outGrid.cells = surfOut;
+      if outGrid.nDim == 2
+        outGrid.processGeometry(true);
+      end
 
     end
     %
@@ -370,22 +369,26 @@ classdef Grid < handle
 
       avNorm = zeros(obj.nNodes,3);
       coord = obj.coordinates;
-      surf = obj.surfaces;
+      if size(coord,2) == 2
+        coord(:,3) = 0;
+      end
+      surf = obj.cells;
       topol = surf.connectivity;
 
       for i = 1:surf.num
         nVert = surf.numVerts(i);
-        coordLoc = coord(topol(i,[nVert,1:nVert,1]),:);
+        nodes = getRowsMatrix(topol,i);
+        coordLoc = coord(nodes([nVert,1:nVert,1]),:);
         % get edges direction according to predefined node ordering
         dn = diff(coordLoc,1);
         for j = 1:nVert
           nLoc = cross(dn(j,:),dn(j+1,:));
-          avNorm(topol(i,j),:) = avNorm(topol(i,j),:) + nLoc;
+          avNorm(nodes(j),:) = avNorm(nodes(j),:) + nLoc;
         end
       end
       % normalize matrix
       normN = sqrt(sum(avNorm.^2,2));
-      obj.surfaces.avgNodNormal = avNorm./(normN);
+      obj.cells.avgNodNormal = avNorm./(normN);
     end
 
 
@@ -421,10 +424,17 @@ classdef Grid < handle
       for i = 1:length(vtkTypes)
         vtkId = vtkTypes(i);
 
-        elem = FiniteElementType.create(vtkId,obj);
+        if vtkId ~= VTKType.Line
+          elem = FiniteElementType.create(vtkId,obj);
+        end
         elIds = find(mesh.VTKType == vtkId);
 
         elIds = intersect(entId,elIds);
+        if isempty(elIds)
+          list{i} = ArrayOfArrays();
+          infl{i} = zeros(0,1);
+          continue
+        end
 
         topol = getNodes(elIds);
 
@@ -439,7 +449,13 @@ classdef Grid < handle
         for j = 1:length(elIds)
           % nodes = topol(j,:);
           % coord = coords(nodes,:);
-          infEl = elem.getNodeInfluence(elIds(j));
+          if vtkId == VTKType.Line
+            infEl = repmat(mesh.area(elIds(j))/2,2,1);
+          elseif srcEnt == entityField.surface
+            infEl = elem.getNodeInfluence(coords(topol(j,1:elem.nNode),:));
+          else
+            infEl = elem.getNodeInfluence(elIds(j));
+          end
           if interp
             infEl = infEl/sum(infEl);
           end
@@ -469,7 +485,7 @@ classdef Grid < handle
         list = conn.getData;
       else % connectivity is a strandard matrix
         conn = conn';
-        list = conn(:);
+        list = conn(conn > 0);
       end
 
     end

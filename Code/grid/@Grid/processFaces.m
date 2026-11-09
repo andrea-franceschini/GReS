@@ -1,201 +1,120 @@
-function processFaces(grid,vtkId)
-%PROCESSFACES  Build face topology and geometry for an unstructured grid.
-%
-%  PROCESSFACES(grid) operates on all 3‑D cell types found in grid and
-%  populates the following fields in-place:
-%
-%  grid.faces
-%    .num          – scalar, total number of unique faces
-%    .connectivity – matrix  (nF × nNPF)  for uniform meshes, or
-%                    ArrayOfArrays        for mixed meshes (e.g tet+hex)
-%    .numVerts     – nF × 1  nodes per face  (3 = triangle, 4 = quad)
-%    .neighbors    – nF × 2  [n1, n2] global cell IDs;  n2 = 0 on boundary
-%    .normals      – nF × 3  area‑weighted face normals  (‖n‖₂ = area)
-%    .centroids    – nF × 3  face centroid coordinates
-%    .areas        – nF × 1
-%    .isBoundary   – nF × 1  % logical true if face is at the boundary
-%
-%  grid.cells (appended)
-%    .cells2faces      – ArrayOfArrays  (nC × nFPC)  of face global id per cell
-%    .cells2localFaces        – ArrayOfArrays  (nC × nFPC)  of face local id per cell
+function processFaces(grid)
+% Build codimension-one topology from all cells, including mixed cell types.
+nCells = grid.cells.num;
+halfFaces = cell(1,numel(grid.cells.vtkTypes));
+halfCells = halfFaces;
+halfLocal = halfFaces;
 
-%  grid.surfaces (appended)
-%    .faceId      – array map tagged surface to global id of corresponding face
-
-%  Normal convention (normal is unit)
-%    boundary : normal points outward  from neighbors(:,1)
-%    internal : normal points          from neighbors(:,1) to neighbors(:,2)
-
-% Supported VTK types: tetrahedron and hexahedron (hexa27 are treated as hexa8)
-% IMPORTANT: The code assumes that the processed vtkId has constant number of face (not valid for VTK type POLYHEDRON)
-%  See also: processGeometry, ArrayOfArrays
-
-
-% 1.  Extract typed half-faces for every cell type
-%
-%     triHF  (nTriHF  × nVert + 2) : [n1 n2 n3    cellId localFaceId]
-%     quadHF (nQuadHF × nVers + 2) : [n1 n2 n3 n4 cellId localFaceId]
-
-
-if nargin == 1
-  vtkIds = unique(grid.cells.VTKType);
-  for k = 1:numel(vtkIds)
-    processFaces(grid, vtkIds(k));
+for k = 1:numel(grid.cells.vtkTypes)
+  vtkId = grid.cells.vtkTypes(k);
+  ids = grid.getCellsByVTKId(vtkId);
+  nodes = grid.getCellNodes(ids);
+  local = localFaceDefs(vtkId);
+  nLocal = size(local,1);
+  width = size(local,2);
+  halfFaces{k} = zeros(numel(ids)*nLocal,4);
+  for j = 1:nLocal
+    rows = (j-1)*numel(ids) + (1:numel(ids));
+    conn = nodes(:,local(j,:));
+    % Canonicalize cyclic connectivity without changing the polygon perimeter.
+    [~,first] = min(conn,[],2);
+    offsets = mod(first-1+(0:width-1),width);
+    conn = conn((1:numel(ids)).' + offsets*numel(ids));
+    flip = conn(:,2) > conn(:,end);
+    conn(flip,2:end) = conn(flip,end:-1:2);
+    halfFaces{k}(rows,1:width) = conn;
   end
-  return
+  halfCells{k} = repmat(ids(:),nLocal,1);
+  halfLocal{k} = repelem((1:nLocal).',numel(ids));
 end
 
-coords = grid.coordinates;
+conn = vertcat(halfFaces{:});
+owners = vertcat(halfCells{:});
+localIds = vertcat(halfLocal{:});
+[faceNodes,~,faceId] = unique(conn,'rows');
+nFaces = size(faceNodes,1);
+counts = accumarray(faceId,1,[nFaces,1]);
+assert(all(counts <= 2), 'GReS:NonManifoldGrid', ...
+  'A face belongs to more than two cells.');
+[~,order] = sortrows([faceId,(1:numel(faceId)).']);
+first = cumsum([1;counts(1:end-1)]);
+neighbors = [owners(order(first)),zeros(nFaces,1)];
+internal = counts == 2;
+neighbors(internal,2) = owners(order(first(internal)+1));
 
-idC = grid.getCellsByVTKId(vtkId);
-if isempty(idC)
-  return
-end
-
-nC    = numel(idC);
-topol = grid.getCellNodes(idC);
-
-lf = localFaceDefs(vtkId);
-[nFPC, nNPF] = size(lf);
-
-% half-faces
-hfNodes = zeros(nFPC*nC, nNPF, class(topol));
-for id = 1:nFPC
-  k = (id-1)*nC;
-  hfNodes(k+1:k+nC, :) = topol(:, lf(id,:));
-end
-
-hfCellId   = repmat(idC(:), nFPC, 1);
-hfLocalFId = repelem((1:nFPC)', nC);
-
-% canonical representation of faces
-nHF = size(hfNodes, 1);
-
-[~, minCol] = min(hfNodes, [], 2);
-offsets     = mod(bsxfun(@plus, 0:nNPF-1, minCol-1), nNPF);
-linIdx      = bsxfun(@plus, offsets*nHF, (1:nHF)');
-hfCan       = reshape(hfNodes(linIdx), nHF, nNPF);
-
-needFlip               = hfCan(:,2) > hfCan(:,end);
-hfCan(needFlip, 2:end) = hfCan(needFlip, end:-1:2);
-
-% winding sign
-hfSign           = ones(nHF, 1);
-hfSign(needFlip) = -1;
-
-[hfSorted, sIdx] = sortrows(hfCan);
-hfCellSorted     = hfCellId(sIdx);
-%hfSignSorted     = hfSign(sIdx);
-hfLocalSorted    = hfLocalFId(sIdx);
-
-% CHECK THIS IN FUTURE
-isNew   = [true; any(hfSorted(2:end,:) ~= hfSorted(1:end-1,:), 2)];
-faceIdx = cumsum(isNew);
-nF      = faceIdx(end);
-nPlist = nNPF*ones(nF,1);
-
-faceTopol = hfSorted(isNew, :);
-
-% get unique neighbors
-col = ones(nHF, 1);
-col(~isNew) = 2;
-neighbors = accumarray([faceIdx, col], hfCellSorted, [nF, 2]);
-
-% make sure that boundary faces have 0 cell as secondo position
-needSwap = neighbors(:,1) == 0 & neighbors(:,2) ~= 0;
-neighbors(needSwap,:) = neighbors(needSwap, [2,1]);
-
-isBoundary = neighbors(:,2) == 0;
-
-% compute faces geometrical informations
-nList = faceTopol';
-poly = coords(nList(:),:);
-[area, cent, normal] = computePolygonGeometry(poly, nPlist);
-
-
-% append faces
 f = grid.faces;
-c = grid.cells;
-s = grid.surfaces;
-
-nFold = f.num;
-f.num        = nFold + nF;
-f.neighbors  = [f.neighbors; neighbors];
-f.normal    = [f.normal; normal];
-f.center  = [f.center; cent];
-f.area      = [f.area; area];
-f.numVerts   = [f.numVerts; nPlist];
-f.isBoundary = [f.isBoundary; isBoundary];
-f.connectivity = [f.connectivity; ArrayOfArrays(faceTopol)];
-f.VTKType = double(VTKType.to2D(c.VTKType(f.neighbors(:,1))));
-
-
-% cell to faces mapping
-[~,id] = sort(hfCellSorted);
-nFPCs = nFPC*ones(nC,1);
-c2f = ArrayOfArrays(faceIdx(id),nFPCs);
-c2locf = ArrayOfArrays(hfLocalSorted(id),nFPCs);
-c.cells2faces = [c.cells2faces; c2f];
-c.cells2localFaces = [c.cells2localFaces; c2locf];
-
-% surfaces (map surfaces to boundaryfaces)
-boundFaces = faceTopol(isBoundary,:);
-
-% connectivity of the surfaces corresponding to the 2D VTK
-if s.num > 0
-  idS = grid.getSurfByVTKId(VTKType.to2D(vtkId));
-  topolSurf = grid.getSurfNodes(idS);
-  if VTKType.to2D(vtkId) == VTKType.Quad9
-    topolSurf = topolSurf(:,1:4);
+f.num = nFaces;
+f.connectivity = ArrayOfArrays(faceNodes);
+f.numVerts = sum(faceNodes > 0,2);
+f.neighbors = neighbors;
+f.isBoundary = ~internal;
+if grid.nDim == 2
+  p1 = grid.coordinates(faceNodes(:,1),:);
+  p2 = grid.coordinates(faceNodes(:,2),:);
+  tangent = p2 - p1;
+  f.area = vecnorm(tangent,2,2);
+  f.center = (p1 + p2)/2;
+  if grid.nCoord == 2
+    tangent(:,3) = 0;
   end
-  [sId,fId] = ismember(sort(topolSurf,2),sort(boundFaces,2),'rows');
-  boundId = find(isBoundary);
-  s.faceId(sId) = nFold + boundId(fId);
-
+  f.normal = cross(tangent,grid.cells.normal(neighbors(:,1),:),2) ./ f.area;
+  f.normal = f.normal(:,1:grid.nCoord);
+  f.VTKType = repmat(double(VTKType.Line),nFaces,1);
 else
-
-  % populate surfaces from faces
-  s.faceId = find(isBoundary);
-  s.connectivity = getRows(f.connectivity,s.faceId);
-  s.num = sum(isBoundary);
-  s.tag = ones(s.num,1);
-  s.nTag = 1;
-  s.numVerts = f.numVerts(isBoundary);
-  s.VTKType = f.VTKType(isBoundary);
-  s.vtkTypes = reshape(unique(s.VTKType),1,[]);
+  [f.area,f.center,f.normal] = computePolygonGeometry( ...
+    grid.coordinates(f.connectivity.getData(),:),f.numVerts);
+  f.VTKType = repmat(double(VTKType.Tri),nFaces,1);
+  f.VTKType(f.numVerts == 4) = double(VTKType.Quad);
 end
-
-
-% finally update grid
 grid.faces = f;
-grid.cells = c;
+
+[~,order] = sortrows([owners,localIds]);
+nLocal = accumarray(owners,1,[nCells,1]);
+grid.cells.cells2faces = ArrayOfArrays(faceId(order),nLocal);
+grid.cells.cells2localFaces = ArrayOfArrays(localIds(order),nLocal);
+
+s = grid.surfaces;
+boundaryIds = find(f.isBoundary);
+if s.num == 0
+  s.faceId = boundaryIds;
+  s.connectivity = getRows(f.connectivity,boundaryIds);
+  s.num = numel(boundaryIds);
+  s.numVerts = f.numVerts(boundaryIds);
+  s.VTKType = f.VTKType(boundaryIds);
+  s.tag = ones(s.num,1);
+else
+  keys = zeros(s.num,4);
+  for vtkId = s.vtkTypes
+    ids = grid.getSurfByVTKId(vtkId);
+    nodes = grid.getSurfNodes(ids);
+    nodes = nodes(:,1:s.numVerts(ids(1)));
+    if vtkId == VTKType.Quad9
+      nodes = nodes(:,1:4);
+    end
+    keys(ids,1:size(nodes,2)) = sort(nodes,2);
+  end
+  % Map each supplied boundary row separately, including repeated tags.
+  [found,face] = ismember(sort(keys,2),sort(faceNodes(boundaryIds,:),2),'rows');
+  assert(all(found), 'GReS:BoundaryFaceMismatch', ...
+    'Every tagged boundary entity must match a boundary face.');
+  s.faceId = boundaryIds(face);
+end
+s.nTag = numel(unique(s.tag));
+s.vtkTypes = reshape(unique(s.VTKType),1,[]);
 grid.surfaces = s;
-
-
 end
 
-
-function lf = localFaceDefs(vtkId)
-
-switch vtkId
+function faces = localFaceDefs(vtkId)
+switch double(vtkId)
+  case 5
+    faces = [1 2; 2 3; 3 1];
+  case {9,28}
+    faces = [1 2; 2 3; 3 4; 4 1];
   case 10
-    lf = [1 2 4;
-      2 3 4;
-      3 1 4;
-      1 3 2];
-
-  case {12, 29}
-    lf = [1 4 3 2;
-      5 6 7 8;
-      1 2 6 5;
-      2 3 7 6;
-      3 4 8 7;
-      4 1 5 8];
-
+    faces = [1 2 4; 2 3 4; 3 1 4; 1 3 2];
+  case {12,29}
+    faces = [1 4 3 2; 5 6 7 8; 1 2 6 5; 2 3 7 6; 3 4 8 7; 4 1 5 8];
   otherwise
-    error('processFaces:unsupportedVTKType', ...
-      'Unsupported VTK type %d.', vtkId);
+    error('GReS:UnsupportedCellType','Unsupported VTK cell type %d.',vtkId);
 end
-
 end
-

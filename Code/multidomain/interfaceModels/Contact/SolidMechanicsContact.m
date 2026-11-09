@@ -22,10 +22,10 @@ classdef SolidMechanicsContact < MeshTying
 
       obj@MeshTying(id,domains,inputStruct);
 
-      if obj.multiplierLocation ~= entityField.surface
+      if obj.multiplierLocation ~= entityField.cell
         error("Interface Solver %s is not implemented for multipliers" + ...
           "located at %s. The only available entityField is %s",...
-          class(obj),obj.multiplierLocation,entityField.surface)
+          class(obj),obj.multiplierLocation,entityField.cell)
       end
 
     end
@@ -79,7 +79,7 @@ classdef SolidMechanicsContact < MeshTying
       s.tangentialSlip = zeros(round(2/3*nDofsInterface),1);
       setState(obj,s);
 
-      N = obj.grids(MortarSide.slave).surfaces.num;
+      N = obj.grids(MortarSide.slave).cells.num;
       initializeActiveSet(obj,N,input.ActiveSet);
       
     end
@@ -247,7 +247,7 @@ classdef SolidMechanicsContact < MeshTying
       % initialize traction for cell stress (average)
       sl = MortarSide.slave;
       avgStress = obj.domains(MortarSide.slave).getState("avgStress");
-      surf = obj.grids(sl).surfaces;
+      surf = obj.grids(sl).cells;
       faces = obj.domains(sl).grid.faces;
       normals = surf.normal;
       faceIds = surf.faceId;
@@ -338,7 +338,7 @@ classdef SolidMechanicsContact < MeshTying
         'tangential_gap',          outTangentialGap
         'tangential_gap_norm',     outTangentialGapNorm
         'fracture_state',          fractureState
-        'rotationMatrix',          obj.grids(1).surfaces.rotationMatrices
+        'rotationMatrix',          obj.grids(1).cells.rotationMatrices
         'deltaTraction',           deltaTrac
         };
 
@@ -375,7 +375,7 @@ classdef SolidMechanicsContact < MeshTying
       obj.NLIter = 0;
 
       oldActiveSet = obj.activeSet.curr;
-      surfSlave = obj.grids(MortarSide.slave).surfaces;
+      surfSlave = obj.grids(MortarSide.slave).cells;
 
       state = getState(obj);
 
@@ -514,8 +514,8 @@ classdef SolidMechanicsContact < MeshTying
 
       m = MortarSide.master;
       s = MortarSide.slave;
-      surfMaster = obj.grids(m).surfaces;
-      surfSlave = obj.grids(s).surfaces;
+      surfMaster = obj.grids(m).cells;
+      surfSlave = obj.grids(s).cells;
       dofMaster = getDoFManager(obj,m);
       dofSlave = getDoFManager(obj,s);
       fldM = dofMaster.getVariableId(obj.coupledVariables);
@@ -758,7 +758,7 @@ classdef SolidMechanicsContact < MeshTying
         return
       end
 
-      surfSlave = obj.grids(MortarSide.slave).surfaces;
+      surfSlave = obj.grids(MortarSide.slave).cells;
       nodes = getRowsMatrix(surfSlave.connectivity,is);
       nodes = surfSlave.loc2glob(nodes);
 
@@ -805,8 +805,8 @@ classdef SolidMechanicsContact < MeshTying
       s = MortarSide.slave;
       m = MortarSide.master;
 
-      surfMaster = obj.grids(m).surfaces;
-      surfSlave = obj.grids(s).surfaces;
+      surfMaster = obj.grids(m).cells;
+      surfSlave = obj.grids(s).cells;
       dofSlave = getDoFManager(obj,s);
       dofMaster = getDoFManager(obj,m);
 

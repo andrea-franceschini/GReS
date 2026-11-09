@@ -19,6 +19,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
   properties (Access = private)
     fldMech
     fldFrac
+    matrixCellToFractures
   end
 
   methods (Access = public)
@@ -52,7 +53,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       end
 
       defineFractures(obj,params.Fracture);
-      nCutCells = obj.fractureMesh.surfaces.num;
+      nCutCells = obj.fractureMesh.cells.num;
       dofm = obj.domain.dofm;
       dofm.registerVariable("fractureJump",entityField.cell,3,"nEntities",nCutCells);
       flds = obj.getField;
@@ -79,7 +80,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
     function trac = computeInitialTraction(obj)
       avgStress = getState(obj.mechSolver,"avgStress");
-      frac = obj.fractureMesh.surfaces;
+      frac = obj.fractureMesh.cells;
       idx = [1;6;5;6;2;4;5;4;3];
       sigma = zeros(3);
       trac = zeros(3*frac.num,1);
@@ -114,9 +115,9 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
 
       % allocate
       dofm = obj.domain.dofm;
-      frac = obj.fractureMesh.surfaces;
+      frac = obj.fractureMesh.cells;
       cells = obj.grid.cells;
-      c2f = obj.fractureMesh.cells.cell2fracId;
+      c2f = obj.matrixCellToFractures;
       subCells = dofm.getFieldCells(obj.fldMech);
 
       if any(~ismember(frac.cutCells,subCells))
@@ -314,7 +315,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     end
 
     function initState(obj)
-      nCutCells = obj.fractureMesh.surfaces.num;
+      nCutCells = obj.fractureMesh.cells.num;
       state = getState(obj);
       state.fractureJump = zeros(3*nCutCells,1);
       state.traction = zeros(3*nCutCells,1);
@@ -436,7 +437,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       cellDataFrac = repmat(struct('name',1,'data',1),1,1);
       cellDataFrac(1).name = 'isCellFractured';
       isCutCell = false(obj.grid.cells.num,1);
-      isCutCell(obj.fractureMesh.surfaces.cutCells) = true;
+      isCutCell(obj.fractureMesh.cells.cutCells) = true;
       cellDataFrac(1).data = double(isCutCell);
       cellData = OutState.mergeOutFields(cellData,cellDataFrac);
       s = obj.domain.state.interpolate(fac);
@@ -453,7 +454,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       cellStr(4).name='jumpSlip';
       cellStr(4).data=[jumpDiff(2:3:end),jumpDiff(3:3:end)];
       obj.domain.outstate.writeVTKfile(obj.domain.vtmBlock,'EmbeddedFractures', ...
-        obj.fractureMesh,time,[],[],[],cellStr);
+        obj.fractureMesh,time,[],cellStr,[],[]);
     end
   end
 
@@ -477,7 +478,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       end
 
       [traction,J] = evaluateContactBranch(obj,q,...
-        obj.fractureMesh.surfaces.fracId(fId),mode,fId);
+        obj.fractureMesh.cells.fracId(fId),mode,fId);
     end
 
     function mode = classifyContact(obj,q,fId)
@@ -485,7 +486,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       % Same tolerance policy as SolidMechanicsContact's in-Newton
       % classification: strict normal test and relative tangential allowance.
 
-      fracId = obj.fractureMesh.surfaces.fracId(fId);
+      fracId = obj.fractureMesh.cells.fracId(fId);
 
       mode = obj.activeSet.curr(fId);
 
@@ -601,7 +602,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     function changed = updateOuterActiveSet(obj)
       oldModes = obj.activeSet.curr;
       newModes = oldModes;
-      frac = obj.fractureMesh.surfaces;
+      frac = obj.fractureMesh.cells;
       hasBC = obj.hasFractureTractionBC();
       jump = obj.getState.fractureJump;
       trac = obj.getState.traction;
@@ -652,7 +653,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       % open from the active-set point of view, so the full u+w EFEM
       % residual imposes P*sigma = bcTraction.
       if isempty(obj.bcTraction)
-        n = obj.fractureMesh.surfaces.num;
+        n = obj.fractureMesh.cells.num;
         hasAll = false(n,1);
       else
         bc = reshape(obj.bcTraction,3,[])';
@@ -683,8 +684,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       obj.phi = zeros(nFractures,1);
       obj.fractureMesh = Grid();
       fMesh = obj.fractureMesh;
-      f = fMesh.surfaces;
-      [f.tang1,f.tang2,f.cutCells,f.fracId] = deal([]);
+      f = fMesh.cells;
+      [f.normal,f.area,f.tang1,f.tang2,f.cutCells,f.fracId] = deal([]);
       f.connectivity = ArrayOfArrays();
 
       % count number of vertices in each fracture
@@ -823,6 +824,8 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       f.tang2         = f.tang2(id,:);
       f.numVerts      = f.numVerts(id);
       f.fracId        = f.fracId(id);
+      f.tag           = f.fracId;
+      f.nTag          = numel(unique(f.tag));
       f.VTKType       = repmat(double(VTKType.Polygon),f.num,1);
       surfs = getRows(f.connectivity,find(id));
       [u,~,id2] = unique(getData(surfs));
@@ -839,10 +842,13 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       f.rotationMatrices = R;
 
       % finalize the grid
-      fMesh.surfaces = f;
+      fMesh.cells = f;
 
-      %initializeGrid(fMesh);
-      c = fMesh.cells;
+      fMesh.nDim = 2;
+      fMesh.nCoord = size(fMesh.coordinates,2);
+      fMesh.nNodes = size(fMesh.coordinates,1);
+      fMesh.cells.volume = f.area;
+      fMesh.cells.vtkTypes = double(VTKType.Polygon);
       nC = obj.grid.cells.num;
       cell2fracId = cell(nC,1);
 
@@ -850,8 +856,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
         cell2fracId{i} = reshape(find(f.cutCells == i),1,[]);
       end
 
-      c.cell2fracId = cell2fracId;
-      fMesh.cells = c;
+      obj.matrixCellToFractures = cell2fracId;
       obj.fractureMesh = fMesh;
     end
 
@@ -888,7 +893,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     % HELPER FUNCTIONS
 
     function H = computeHeaviside(obj,i,coord)
-      f = obj.fractureMesh.surfaces;
+      f = obj.fractureMesh.cells;
       dist = f.center(i,:) - coord;
       n = f.normal(i,:)';
       dn = dist*n;

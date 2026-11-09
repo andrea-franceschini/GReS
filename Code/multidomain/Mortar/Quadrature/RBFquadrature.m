@@ -48,7 +48,7 @@ classdef RBFquadrature < MortarQuadrature
 
       s = MortarSide.slave;
       m = MortarSide.master;
-      totGP = obj.grids(s).surfaces.num*obj.maxGP;
+      totGP = obj.grids(s).cells.num*obj.maxGP;
       obj.gpCoords = {zeros(totGP,2);
         zeros(totGP,2)};
 
@@ -66,18 +66,18 @@ classdef RBFquadrature < MortarQuadrature
 
 
 
-      for vtkSlave = obj.grids(s).surfaces.vtkTypes
+      for vtkSlave = obj.grids(s).cells.vtkTypes
 
         elemSlave = FiniteElementType.create(vtkSlave,obj.grids(s),...
           'gaussOrder',obj.gaussOrder);
-        listSlave = obj.grids(s).getSurfByVTKId(vtkSlave);
+        listSlave = obj.grids(s).getCellsByVTKId(vtkSlave);
 
-        for vtkMaster = obj.grids(m).surfaces.vtkTypes
+        for vtkMaster = obj.grids(m).cells.vtkTypes
 
           elemMaster = FiniteElementType.create(vtkMaster,obj.grids(m),'gaussOrder',obj.gaussOrder);
-          listMaster = obj.grids(m).getSurfByVTKId(vtkMaster);
+          listMaster = obj.grids(m).getCellsByVTKId(vtkMaster);
 
-          mask = false(obj.grids(m).surfaces.num,1);
+          mask = false(obj.grids(m).cells.num,1);
           mask(listMaster) = true;
 
           for is = listSlave'
@@ -213,7 +213,7 @@ classdef RBFquadrature < MortarQuadrature
     function getWeights(obj)
 
       m = MortarSide.master;
-      surf = obj.grids(m).surfaces;
+      surf = obj.grids(m).cells;
       coordinates = obj.grids(m).coordinates;
 
       vtk = surf.VTKType;
@@ -231,13 +231,13 @@ classdef RBFquadrature < MortarQuadrature
 
       k = 0;
 
-      for vtkMaster = obj.grids(m).surfaces.vtkTypes
+      for vtkMaster = obj.grids(m).cells.vtkTypes
 
         elem = FiniteElementType.create(vtkMaster,...
           obj.grids(m),'gaussOrder',obj.gaussOrder);
-        listMaster = obj.grids(m).getSurfByVTKId(vtkMaster);
+        listMaster = obj.grids(m).getCellsByVTKId(vtkMaster);
 
-        topol = obj.grids(m).getSurfNodes(listMaster);
+        topol = obj.grids(m).getCellNodes(listMaster);
 
 
         for im = listMaster'
@@ -291,7 +291,7 @@ classdef RBFquadrature < MortarQuadrature
     %   % evaluate shape function in the real space and return position of
     %   % integration points in the real space
     %   surf = obj.grids(MortarSide.master).surface;
-    %   surfNodes = msh.surfaces(elId,:);
+    %   surfNodes = msh.cells(elId,:);
     %   coord = msh.coordinates(surfNodes,:);
     %   elem = obj.getElem(1,elId);
     %   % place interpolation points in a regular grid

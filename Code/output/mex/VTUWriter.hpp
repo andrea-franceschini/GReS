@@ -9,6 +9,7 @@
 #include <vector>
 
 constexpr int VTK_TETRA       = 10;
+constexpr int VTK_LINE        = 3;
 constexpr int VTK_TRIANGLE    = 5;
 constexpr int VTK_QUAD        = 9;
 constexpr int VTK_HEXAHEDRON  = 12;

@@ -78,7 +78,7 @@ classdef MeshTying < InterfaceSolver
       multIni = getStateInit(obj,"multipliers");
 
       % apply stabilization for P0 multipliers
-      if obj.multiplierLocation == entityField.surface
+      if obj.multiplierLocation == entityField.cell
         
         computeStabilizationMatrix(obj);
         rhsStab = -obj.stabilizationMat*...
@@ -102,8 +102,8 @@ classdef MeshTying < InterfaceSolver
       m = MortarSide.master;
       s = MortarSide.slave;
 
-      surfMaster = obj.grids(m).surfaces;
-      surfSlave = obj.grids(s).surfaces;
+      surfMaster = obj.grids(m).cells;
+      surfSlave = obj.grids(s).cells;
 
       dofmMaster = getDoFManager(obj,m);
       dofmSlave =  getDoFManager(obj,s);
@@ -242,7 +242,7 @@ classdef MeshTying < InterfaceSolver
     %   mat = pagemtimes(Nmult,'ctranspose',Nu,'none');
     %   mat = mat.*reshape(dJw,1,1,[]);
     %   mat = sum(mat,3);
-    %   nodes = obj.interfMesh.local2glob{side}(obj.getMesh(MortarSide.slave).surfaces(iu,:));
+    %   nodes = obj.interfMesh.local2glob{side}(obj.getMesh(MortarSide.slave).cells(iu,:));
     %   fld = obj.domains(side).dofm.getVariableId(obj.coupledVariables);
     %   dofc = obj.domains(side).dofm.getLocalDoF(fld,nodes);
     %   dofr = getMultiplierDoF(obj,imult);
@@ -283,7 +283,7 @@ classdef MeshTying < InterfaceSolver
       mult = (reshape(mult,nComp,[]))';
 
       % append state variable to output structure
-      if obj.multiplierLocation == entityField.surface
+      if obj.multiplierLocation == entityField.cell
         surfaceStr(1).name = 'multiplier';
         surfaceStr(1).data = mult;
       elseif obj.multiplierLocation == entityField.node
@@ -346,10 +346,10 @@ classdef MeshTying < InterfaceSolver
       s = MortarSide.slave;
       nComp = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables);
 
-      edgeM = obj.grids(m).edges;
-      edgeS = obj.grids(s).edges;
-      surfM = obj.grids(m).surfaces;
-      surfS = obj.grids(s).surfaces;
+      edgeM = obj.grids(m).faces;
+      edgeS = obj.grids(s).faces;
+      surfM = obj.grids(m).cells;
+      surfS = obj.grids(s).cells;
 
       % initialize matrix estimating number of entries
       % number of internal slave edges
@@ -360,13 +360,13 @@ classdef MeshTying < InterfaceSolver
       asbH = assembler(nEntries,nmult,nmult);
 
       intEdgeM = (find(~edgeM.isBoundary))';
-      surf2edge = getRowsMatrix(surfS.surfaces2edges,1:surfS.num);
+      surf2edge = getRowsMatrix(surfS.cells2faces,1:surfS.num);
 
       % loop over internal master edges
       for eM = intEdgeM
 
         % get master node and element in the patch
-        nodeM = edgeM.connectivity(eM,:);
+        nodeM = getRowsMatrix(edgeM.connectivity,eM);
         fM = edgeM.neighbors(eM,:);
         
         % get slave faces sharing support with master faces
@@ -391,7 +391,7 @@ classdef MeshTying < InterfaceSolver
           continue
         end
 
-        connS = edgeS.connectivity(ieS,:);
+        connS = getRowsMatrix(edgeS.connectivity,ieS);
         nodeS = unique(connS(:));
 
         % compute local schur complement approximation

@@ -20,8 +20,8 @@ classdef Triangle < FiniteElementType
       % this work only in 2D!
 
      % inv([ones(3,1), in])
-     nodes = obj.grid.getSurfNodes(el);
-     coords = obj.grid.coordinates(nodes,1:2);
+     coords = obj.getElementCoords(el);
+     coords = coords(:,1:2);
      inv_A = inv([ones(3,1), coords]);
      gradN = inv_A(2:3,:);
 
@@ -31,40 +31,21 @@ classdef Triangle < FiniteElementType
       dN = obj.Jref;
     end
 
-     function varargout = getDerBasisFAndDet(obj,in)   % mat,dJWeighed
-      % findJacAndDet(obj,el);  % OUTPUT: J and obj.detJ
-      % way to call this method: if el is a scalar (element idx) the 3D
-      % coordinates are retrieved by the corresponding mesh object. Only
-      % the determinant is returned
-      % if in is not scalar, it is a 4x2 list of 2 coordinates, the
-      % gradient matrix and the determinant are returned
-
+    function [out,weights] = getDerBasisFAndDet(obj,in)
       if isscalar(in)
-        % 3D setting
-        assert(nargout==1,['Too many output argument. If input is scalar' ...
-          ' 3D setting is assumed and only element jacobian is returned'])
-        % jacobian is constant in a simplex
-        coord = obj.grid.coordinates(obj.grid.getSurfNodes(in),:);
-        v1 = coord(1,:) - coord(2,:);
-        v2 = coord(1,:) - coord(3,:);
-        obj.detJ = norm(cross(v1,v2));
-        varargout{1} = obj.detJ.*(obj.GaussPts.weight)';
+        in = obj.getElementCoords(in);
+      end
+      J = [in(2,:) - in(1,:); in(3,:) - in(1,:)];
+      if size(J,2) == 2
+        obj.detJ = abs(det(J));
       else
-        % 2D setting: 'in' is a given list of x-y coordinates
-        inv_A = inv([ones(3,1), in]);
-        mat = inv_A(2:3,:);
-        %v1 = norm(in(1,:)-in(2,:));
-        %v2 = norm(in(1,:)-in(3,:));
-        e1 = [in(1,:)-in(2,:), 0];
-        e2 = [in(1,:)-in(3,:), 0];
-        obj.detJ = norm(cross(e1',e2'));
-        % jacobian is constant in a simplex
-        if nargout == 2
-          varargout{1} = mat;
-          varargout{2} = obj.detJ.*(obj.GaussPts.weight)';
-        else
-          varargout{1} = obj.detJ*(obj.GaussPts.weight)';
-        end
+        obj.detJ = norm(cross(J(1,:),J(2,:)));
+      end
+      weights = obj.detJ.*obj.GaussPts.weight';
+      if nargout == 1
+        out = weights;
+      else
+        out = pinv(J)*[-1 1 0; -1 0 1];
       end
     end
 
@@ -99,8 +80,7 @@ classdef Triangle < FiniteElementType
       % space
    
       if isscalar(in) % input is element id
-        nodes = obj.grid.getSurfNodes(in);
-        coords = obj.grid.coordinates(nodes,:);
+        coords = obj.getElementCoords(in);
         gPCoordinates = obj.Nref*coords;
       else % input is coordinates matrix
         gPCoordinates = obj.Nref*in;
@@ -111,14 +91,14 @@ classdef Triangle < FiniteElementType
       % Find the Area of the cells using the determinant of the Jacobian
       % of the isoparameric transformation
       area = zeros(length(idTri),1);
-      cellCentroid = zeros(length(idTri),3);
+      cellCentroid = zeros(length(idTri),size(obj.grid.coordinates,2));
       i = 0;
       for el = idTri'
         i = i + 1;
         dJWeighed = getDerBasisFAndDet(obj,el);
         area(i) = sum(dJWeighed);
         assert(area(i)>0,'Volume less than 0');
-        coord = FEM.getElementCoords(obj,el);
+        coord = obj.getElementCoords(el);
         cellCentroid(i,:) = 1/3*(sum(coord,1));
       end
     end
@@ -126,7 +106,10 @@ classdef Triangle < FiniteElementType
     function n = computeNormal(obj,idTri,varargin)
       % compute normal vector of triangle
       assert(isscalar(idTri),'Input id must be a scalar positive integer')
-      nodeCoord = FEM.getElementCoords(obj,idTri);
+      nodeCoord = obj.getElementCoords(idTri);
+      if size(nodeCoord,2) == 2
+        nodeCoord(:,3) = 0;
+      end
       v1 = nodeCoord(1,:) - nodeCoord(2,:);
       v2 = nodeCoord(2,:) - nodeCoord(3,:);
       n = cross(v1',v2');
@@ -135,7 +118,12 @@ classdef Triangle < FiniteElementType
 
     function areaNod = getNodeInfluence(obj,in)
 
-      area = obj.grid.surfaces.area(in);
+      if isscalar(in)
+        area = obj.grid.cells.volume(in);
+      else
+        [~,weights] = obj.getDerBasisFAndDet(in);
+        area = sum(weights);
+      end
       areaNod = repelem(area/obj.nNode,obj.nNode,1);
     end
 
