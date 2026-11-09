@@ -24,7 +24,7 @@ classdef domainManagerSed < handle
     cellsByCol (:,:)
     ndofs
 
-    initColumn (:,1)  % indication of the necessity of initialize the column
+    % initColumn (:,1)  % indication of the necessity of initialize the column
 
     % material variables
     matfrac (:,:)                % Material fractions per cell
@@ -33,6 +33,10 @@ classdef domainManagerSed < handle
     interfX = struct('neigh',[],'area',[],'cm',[])
     interfY = struct('neigh',[],'area',[],'cm',[])
     interfZ = struct('neigh',[],'area',[],'cm',[])
+  end
+
+  properties (Access = private)
+    dzMin = 1e-9;
   end
 
   methods (Access = public)
@@ -72,7 +76,7 @@ classdef domainManagerSed < handle
       obj.ndofs = prod(map-1);
       obj.dof = reshape(1:obj.ndofs,map-1);
       obj.cellsByCol = ones(map(1:2)-1);
-      obj.initColumn(1:obj.ndofs,1) = true;
+      % obj.initColumn(1:obj.ndofs,1) = true;
 
       % % Defining the initial domain material mesh
       obj.matfrac = zeros(obj.ndofs,nmat);
@@ -82,30 +86,6 @@ classdef domainManagerSed < handle
       obj.top_dS = zeros(map(1:2)-1);
       obj.top_e = zeros(map(1:2)-1);
       obj.top_e0 = zeros(map(1:2)-1);
-    end
-
-    function growLayer(obj,map)
-      nNewDofs = sum(map);
-      newDofs = obj.ndofs+1:obj.ndofs+nNewDofs;
-      ncells = size(obj.dof,1:3);
-
-      % check if is necessary to add a new layer in z
-      atTop = obj.cellsByCol == ncells(3);
-      newlayer = any(and(atTop(:),map));
-      if newlayer
-        obj.dof(:,:,end+1) = zeros(ncells(1:2));
-        tmpZ = obj.coordZ(end)+obj.dzInc;
-        obj.coordZ(end+1) = tmpZ;
-        ncells(3) = ncells(3)+1;
-      end
-
-      % update the dof for the newest cells.
-      idI = repmat((1:ncells(1))',ncells(2),1);
-      idJ = repelem((1:ncells(2))',ncells(1));
-      pos = sub2ind(ncells,idI(map),idJ(map),obj.cellsByCol(map)+1);
-      obj.dof(pos) = newDofs';
-      obj.ndofs = obj.ndofs + nNewDofs;
-      obj.cellsByCol(map) = obj.cellsByCol(map)+1;
     end
 
     function getConnectivity(obj,deform)
@@ -120,7 +100,7 @@ classdef domainManagerSed < handle
       for refJ=1:ncells(2)
         for refI=1:ncells(1)
           pillarCount = obj.cellsByCol(refI,refJ)-1;
-          if pillarCount <= 1
+          if pillarCount < 1
             continue
           end
           interval = countZ:countZ+pillarCount-1;
@@ -132,7 +112,7 @@ classdef domainManagerSed < handle
           obj.interfZ.area(interval,1) = dx*dy;
           obj.interfZ.cm(interval,1) = (obj.coordX(refI+1)+obj.coordX(refI))/2.;
           obj.interfZ.cm(interval,2) = (obj.coordY(refJ+1)+obj.coordY(refJ))/2.;
-          obj.interfZ.cm(interval,3) = (obj.coordZ(1:pillarCount)+obj.coordZ(2:pillarCount+1))/2.;
+          obj.interfZ.cm(interval,3) = obj.coordZ(2:pillarCount+1);
           countZ = countZ+pillarCount;
         end
       end
@@ -408,8 +388,7 @@ classdef domainManagerSed < handle
       obj.interfY.area  = vertcat(areaCell{:});
       obj.interfY.cm    = vertcat(cmCell{:});
     end
-    
- 
+     
     function out = getMapFromDofs(obj,dofs)
       if ~exist("dofs","var")
         dofs = 1:obj.ndofs;
@@ -678,7 +657,7 @@ classdef domainManagerSed < handle
       % Get mesh dimension and update with the deformation
       dx = obj.dl(dofs,1);
       dy = obj.dl(dofs,2);
-      dz = obj.dl(dofs,3) + deform;
+      dz = obj.dl(dofs,3) + deform(dofs);
 
       % Computing half transmissibilities
       switch type
@@ -690,6 +669,233 @@ classdef domainManagerSed < handle
           trans = (dx.*dy)./(dz/2).*perm(:,3);
       end
     end
+
+    function act = activeVarCellHeightCols(obj)
+      act = obj.cellsByCol~=1;
+      act = act(:);
+    end
+
+    function [dofs,mapGrowCell,residualSedm,state] = updateTopCells(obj,pos,sedm,state,mapGrowCell)
+
+      dofs = getBord(obj,"zmax");
+      idx = 1:length(dofs);
+      dofs = dofs(pos);
+      idx = idx(pos);
+
+      dzOld = obj.dl(dofs,3);
+      dzDef = dzOld.*(1+state.strain(pos));
+      dzNew = dzDef+dzSedmAdd(pos);
+
+      growCols = dzNew > obj.dzInc*(1+obj.dzMin); % <-- Very important check
+
+      state.cellDefm(dofs) = 0;
+      state.strainAcc(dofs) = 0;
+      if (any(~growCols))
+        ngrowCols = ~growCols;
+        dof = dofs(ngrowCols);
+        loc = idx(ngrowCols);
+
+        fracCell = dzOld(ngrowCols).*obj.matfrac(dof,:) + sedm(loc,:);
+        obj.cellDims(dof,3) = dzNew(ngrowCols);
+        obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
+
+        % Mean average
+        % state.e(dof) = (dzDef(ngrowCols).*state.e(dof) +...
+        %   dzSedmAdd(loc).*obj.voidTop(loc))./dzNew(ngrowCols);
+
+        % Harmonic series
+        state.e(dof) = ...
+          (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
+          ( dzDef(ngrowCols) ./ state.e(dof) + ...
+          dzSedmAdd(loc) ./ obj.top_e(loc) );
+        state.e0(dof) = ...
+          (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
+          ( dzDef(ngrowCols) ./ state.e0(dof) + ...
+          dzSedmAdd(loc) ./ obj.top_e0(loc) );
+      end
+
+      if (any(growCols))
+        dof = dofs(growCols);
+        loc = idx(growCols);
+
+        frac = (obj.dzInc-dzDef(growCols))./(dzSedmAdd(loc));
+
+        fracCell = dzOld(growCols).*obj.matfrac(dof,:) + frac.*sedm(loc,:);
+        obj.cellDims(dof,3) = obj.dzInc;
+        obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
+
+        % Mean average
+        % % % % state.e(dof) = (dzDef(growCols).*state.e(dof) +...
+        % % % %   frac.*dzSedmAdd(loc).*obj.voidTop(loc))./obj.dzInc;
+
+        % Harmonic series
+        state.e(dof) = ...
+          (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
+          ( dzDef(growCols) ./ state.e(dof) + ...
+          (frac.*dzSedmAdd(loc)) ./ obj.top_e(loc) );
+
+        state.e0(dof) = ...
+          (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
+          ( dzDef(growCols) ./ state.e0(dof) + ...
+          (frac.*dzSedmAdd(loc)) ./ obj.top_e0(loc) );
+
+        residualSedm(loc,:) = (1-frac).*sedm(loc,:);
+        mapGrowCell(loc) = true;
+      end
+
+
+
+    end
+
+    function growMesh(obj,map,sedm)
+      % cols = size(obj.cellsByCol);
+      newcells = sum(map);
+      dofs = (obj.ndofs+1:obj.ndofs+newcells)';
+      obj.matfrac(dofs,:) = sedm(map,:)./sum(sedm(map,:),2);
+
+      % Update the cell mesh.
+      dx = obj.dl(1:numel(obj.cellsByCol),1);
+      dy = obj.dl(1:numel(obj.cellsByCol),2);
+      obj.dl(dofs,:) = [dx(map) dy(map) sum(sedm(map,:),2)];
+
+      % Cell center coordinates
+      xc = obj.cm(1:numel(obj.cellsByCol),1);
+      yc = obj.cm(1:numel(obj.cellsByCol),2);
+      zc = obj.coordZ(obj.cellsByCol(:)+1)+sum(sedm,2)/2.;
+      obj.cm(dofs,:) = [xc(map) yc(map) zc(map)];
+
+      growLayer(obj,map);
+    end
+
+    function growLayer(obj,map)
+      newcells = sum(map);
+      dofs = obj.ndofs+1:obj.ndofs+newcells;
+      ncells = size(obj.dof,1:3);
+
+      % check if is necessary to add a new layer in z
+      atTop = obj.cellsByCol == ncells(3);
+      newlayer = any(and(atTop(:),map));
+      if newlayer
+        obj.dof(:,:,end+1) = zeros(ncells(1:2));
+        tmpZ = obj.coordZ(end)+obj.dzInc;
+        obj.coordZ(end+1) = tmpZ;
+        ncells(3) = ncells(3)+1;
+      end
+
+      % update the dof for the newest cells.
+      idI = repmat((1:ncells(1))',ncells(2),1);
+      idJ = repelem((1:ncells(2))',ncells(1));
+      pos = sub2ind(ncells,idI(map),idJ(map),obj.cellsByCol(map)+1);
+      obj.dof(pos) = dofs';
+      obj.ndofs = obj.ndofs + newcells;
+      obj.cellsByCol(map) = obj.cellsByCol(map)+1;
+    end
+
+
+    function mesh = makeMeshOutput(obj,mesh,sedAcc)
+      % idxTop = obj.laysByCol;
+      % dofs = getDofs(obj);
+
+      dofs = (1:obj.ndofs)';
+      ncells = size(obj.dof);
+
+      npoint = sum(4*obj.cellsByCol+4,"all");
+      ncell = sum(obj.cellsByCol,"all");
+
+      coord(1:npoint,1:3) = 0.;
+      conec(1:ncell,1:8)  = 0;
+
+      initCol = activeVarCellHeightCols(obj);
+
+      count = 0;
+      for col=1:prod(ncells(1:2))
+        idI = mod(col-1,ncells(1))+1;
+        idJ = (col-idI)/ncells(1)+1;
+
+        coord(4*count+1,1) = obj.coordX(idI);
+        coord(4*count+2,1) = obj.coordX(idI+1);
+        coord(4*count+3,1) = obj.coordX(idI+1);
+        coord(4*count+4,1) = obj.coordX(idI);
+        
+        coord(4*count+1,2) = obj.coordY(idJ);
+        coord(4*count+2,2) = obj.coordY(idJ);
+        coord(4*count+3,2) = obj.coordY(idJ+1);
+        coord(4*count+4,2) = obj.coordY(idJ+1);
+        
+        coord(4*count+1:4*count+4,3) = obj.coordZ(1)+obj.bathy(idI,idJ);
+        count = count+1;
+        topLay = obj.cellsByCol(col);
+        for lay = 1:topLay
+          coord(4*count+1,1) = obj.coordX(idI);
+          coord(4*count+2,1) = obj.coordX(idI+1);
+          coord(4*count+3,1) = obj.coordX(idI+1);
+          coord(4*count+4,1) = obj.coordX(idI);
+
+          coord(4*count+1,2) = obj.coordY(idJ);
+          coord(4*count+2,2) = obj.coordY(idJ);
+          coord(4*count+3,2) = obj.coordY(idJ+1);
+          coord(4*count+4,2) = obj.coordY(idJ+1);
+
+          if lay == topLay
+            if ~initCol(col)
+              coord(4*count+1:4*count+4,3) = obj.coordZ(lay)+sedAcc(col)+obj.bathy(idI,idJ);
+            else
+              coord(4*count+1:4*count+4,3) = obj.coordZ(lay+1)+obj.bathy(idI,idJ);
+            end
+          else
+            coord(4*count+1:4*count+4,3) = obj.coordZ(lay+1)+obj.bathy(idI,idJ);
+          end
+          cell = dofs(obj.dof(idI,idJ,lay));
+          conec(cell,1)=4*(count-1)+1;
+          conec(cell,2)=4*(count-1)+2;
+          conec(cell,3)=4*(count-1)+3;
+          conec(cell,4)=4*(count-1)+4;
+          conec(cell,5)=4*count+1;
+          conec(cell,6)=4*count+2;
+          conec(cell,7)=4*count+3;
+          conec(cell,8)=4*count+4;
+          count=count+1;
+        end
+      end
+
+      mesh.nDim = 3;
+      mesh.cells.num = ncell;      
+      mesh.cells.VTKType = 12*ones(ncell,1);
+      mesh.cells.numVerts = 8*ones(ncell,1);
+      mesh.cells.tag = 8*ones(ncell,1);
+
+      mesh.nNodes = npoint;
+      mesh.coordinates = coord;
+      mesh.cells.connectivity = conec;
+    end
+
+
+    function data = getComp(obj,comp)
+      % Identify the top layer index.
+
+      ncells = size(obj.dof);
+      idxTop = obj.cellsByCol;
+      dofs = (1:obj.ndofs)';
+      npoint = sum(4*idxTop+4,"all");
+      data(1:npoint,1)=0.;
+
+      count = 0;
+      for col=1:prod(ncells(1:2))
+        idI = mod(col-1,ncells(1))+1;
+        idJ = (col-idI)/ncells(1)+1;
+
+        count = count+1;
+        topLay = idxTop(col);
+        acc = 0.;
+        for lay = 1:topLay
+          cell = dofs(obj.dof(idI,idJ,lay));
+          acc = acc+comp(cell);
+          data(4*count+1:4*count+4,1) = acc;
+          count=count+1;
+        end
+      end
+    end
+
   end
 
   methods (Access = private)
