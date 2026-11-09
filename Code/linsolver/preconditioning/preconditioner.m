@@ -83,6 +83,11 @@ classdef (Abstract) preconditioner < handle
       function A = condenseDomains(obj,A)
 
       end
+
+      % Scale the system matrix and RHS before linear solve (default: do nothing)
+      function [A, b] = scaleSystem(obj, A, b)
+
+      end
    end
 end
 

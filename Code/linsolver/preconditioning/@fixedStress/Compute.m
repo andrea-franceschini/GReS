@@ -55,10 +55,12 @@ function A = Compute(obj,A,symMat,varargin)
       rhoW = tpSolver.props.wet.density(sp);
       rhoNW = tpSolver.props.nwet.density(sp);
 
+      dt = obj.problemsolver.dt;
+
       % Keep diagR sparse; do not convert to full to preserve matrix sparsity
       diagR = diag(RR);
-      d11_fs = (sw .* rhoW) .* diagR;
-      d21_fs = ((1 - sw) .* rhoNW) .* diagR;
+      d11_fs = (1 / dt) * (sw .* rhoW) .* diagR;
+      d21_fs = (1 / dt) * ((1 - sw) .* rhoNW) .* diagR;
 
       % Scale relaxation matrix blocks directly using Ruiz scaling function
       D11_mat = obj.Ruiz.scaleDiag(d11_fs, 2);
@@ -83,7 +85,7 @@ function A = Compute(obj,A,symMat,varargin)
       % Get the relaxation matrix
       solver = obj.domain.getPhysicsSolver("BiotFullyCoupled");
       solver.computeRelaxationMatrix();
-      RR = solver.R;
+      RR = (1 / obj.problemsolver.dt) * solver.R;
       
       % Compute the approximated Schur complement
       S = A{2,2} + obj.Ruiz.scaleMat(RR,2);

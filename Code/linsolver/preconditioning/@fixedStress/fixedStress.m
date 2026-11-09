@@ -154,6 +154,31 @@ classdef fixedStress < preconditioner
             obj.params = obj.FlowPrec.params;
          end
       end
+
+      % Scale the system matrix and RHS to rate form
+      function [A, b] = scaleSystem(obj, A, b)
+         dt = obj.problemsolver.dt;
+
+         if strcmpi(obj.flowPrecType, 'CPR')
+            flowRows = [2, 3];
+         else
+            flowRows = 2;
+         end
+
+         % Scale flow rows of matrix A by 1/dt
+         for r = flowRows
+            for c = 1:size(A, 2)
+               if nnz(A{r, c}) > 0
+                  A{r, c} = (1 / dt) * A{r, c};
+               end
+            end
+         end
+
+         % Scale flow rows of RHS b by 1/dt
+         for r = flowRows
+            b{r} = (1 / dt) * b{r};
+         end
+      end
    end
 
    methods (Access = private)

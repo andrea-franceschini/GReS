@@ -55,11 +55,9 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       return
    end
 
-   % Fix the pattern to be symmetric and check the symmetry of the
-   % resulting matrix
+   % Fix the pattern to be symmetric
    [A] = fixPattern(A);
-   [globalsymm,maxval,symMat] = checkSymmetry(A,obj.nsyTol);
-
+   
    % Check if this step is linear to use maximum resolution needed
    isLinear = getIsLinear(obj.generalsolver);
 
@@ -69,6 +67,12 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 
    % Save system to .mat if requested
    saveLinearSystem(obj, backupA, backupb, obj.nSolve + 1);
+   
+   % Scale the system if required by the preconditioner (e.g. fixedStress rate scaling)
+   [A, b] = obj.Prec.scaleSystem(A, b);
+
+   % Check the symmetry of the matrix
+   [globalsymm,maxval,symMat] = checkSymmetry(A,obj.nsyTol);
 
    % Get the full rhs
    if iscell(b)
