@@ -45,19 +45,19 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
       if obj.steadyState
         rhs = obj.H*(p(ents)+gamma*z);
-        J = obj.H;
+        J = dt*obj.H;
       else
         pOld = obj.getStateOld(obj.getField());
-        rhs = obj.H*(p(ents)+gamma*z) + (obj.P/dt)*(p(ents) - pOld(ents));
-        J = obj.H + obj.P/dt;
+        rhs = dt*obj.H*(p(ents)+gamma*z) + obj.P*(p(ents) - pOld(ents));
+        J = dt*obj.H + obj.P;
       end
 
       if isNewtonNLSolver(obj)
         Jh = computeJacobianPartJhNewton(obj,p,dlw);
         Jp = computeJacobianPartJpNewton(obj,dt,p,pOld,Sw,dSw,d2Sw);
-        J = J + Jh;
+        J = J + dt*Jh;
         if ~obj.steadyState
-          J = J + Jp/dt;
+          J = J + Jp;
         end
       end
 

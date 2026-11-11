@@ -76,7 +76,7 @@ classdef BiotFullyCoupled < PhysicsSolver
 
       % assign coupling blocks to jacobian
       obj.domain.J{obj.fldMech,obj.fldFlow} = -obj.Q;
-      obj.domain.J{obj.fldFlow,obj.fldMech} = obj.Q'/dt;
+      obj.domain.J{obj.fldFlow,obj.fldMech} = obj.Q';
 
       % add rhs from coupling contribution
       [rhsMech,rhsFlow] = computeRhs(obj);
@@ -129,13 +129,16 @@ classdef BiotFullyCoupled < PhysicsSolver
 
         for cTag = 1:cells.nTag
 
+          % extract cells belonging to subregion
+          subRegionCells = subCells(cells.tag(subCells) == cTag);
+          if isempty(subRegionCells)
+            continue;
+          end
+
           % extract the constitutive law
           constLaw = obj.domain.materials.getConstitutiveLaw(cTag);
 
           rock = obj.domain.materials.getPorousRock(cTag);
-
-          % extract cells belonging to subregion
-          subRegionCells = subCells(cells.tag(subCells) == cTag);
 
           for vtkId = cells.vtkTypes
 

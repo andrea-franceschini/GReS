@@ -10,7 +10,6 @@ classdef EisenstatWalker < convStrat
       oldEtak
       eta0 = 0.1
       normFxold
-      unscaledTol          % Physical forcing term eta_k (independent of Ruiz scaling)
       
       % Preconditioner recycling tracking
       initNormSolveT = inf % Baseline normalized solve time (sec per decade)
@@ -50,18 +49,16 @@ classdef EisenstatWalker < convStrat
             if isfield(lsp, 'eta0')
                obj.eta0 = str2double(string(lsp.eta0));
             end
-            if isfield(lsp, 'maxEtak')
-               obj.maxEtak = str2double(string(lsp.maxEtak));
-            end
-            if isfield(lsp, 'gamma')
-               obj.gamma = str2double(string(lsp.gamma));
-            end
          end
       end
 
       function computeTol(obj, b, islinear, nonlinIter, Ruiz, backupb)
          % Extract unscaled physical residual norm
-         physNorm = norm(cell2matrix(backupb));
+         if iscell(backupb)
+            physNorm = norm(cell2matrix(backupb));
+         else
+            physNorm = norm(backupb);
+         end
 
          % Check if the solver is retrying to converge
          isRetry = (nonlinIter == obj.lastNonlinIter && abs(physNorm - obj.lastPhysNorm) <= 1e-12 * max(1, physNorm));
@@ -72,12 +69,29 @@ classdef EisenstatWalker < convStrat
             rawEtak = obj.minEtak;
             ratio = NaN;
             status = 'Linear';
+
+            obj.unscaledTol = targetTol;
+            obj.Tol = targetTol;
+
+            % Adjust tolerance if Ruiz scaling is active
+            if Ruiz.scalingFlag
+               b_unscaled_norm = physNorm;
+               b_scaled_norm = norm(b);
+               if b_scaled_norm > 0 && b_unscaled_norm > 0
+                  minD = min(Ruiz.fullD);
+                  scaleFactor = (minD * b_unscaled_norm) / b_scaled_norm;
+                  obj.Tol = max(obj.Tol * min(1, scaleFactor), 100 * eps);
+               end
+            end
          elseif isRetry
             % Retry of current Newton step: preserve tolerance without altering history
             targetTol = obj.unscaledTol;
             rawEtak = obj.lastRawEtak;
             ratio = obj.lastRatio;
             status = 'Retry';
+
+            obj.unscaledTol = targetTol;
+            obj.Tol = targetTol;
          else
             if nonlinIter ~= 1
                ratio = physNorm / obj.normFxold;
@@ -90,6 +104,14 @@ classdef EisenstatWalker < convStrat
                if lowerB > 0.1 && lowerB > etak
                   etak = lowerB;
                   status = 'Safeguard';
+               end
+
+               % Final-stage oversolving safeguard (Eisenstat & Walker 1996)
+               tauNL = obj.getTauNL();
+               etaOversolve = (obj.alphaSafe * tauNL) / max(physNorm, eps);
+               if etak < etaOversolve
+                  etak = etaOversolve;
+                  status = 'Oversolve';
                end
 
                % Cap at globalization upper bound
@@ -127,20 +149,9 @@ classdef EisenstatWalker < convStrat
                obj.lastRawEtak = rawEtak;
                obj.lastRatio = ratio;
             end
-         end
 
-         obj.unscaledTol = targetTol;
-         obj.Tol = targetTol;
-
-         % Adjust tolerance if Ruiz scaling is active
-         if Ruiz.scalingFlag
-            b_unscaled_norm = physNorm;
-            b_scaled_norm = norm(b);
-            if b_scaled_norm > 0 && b_unscaled_norm > 0
-               minD = min(Ruiz.fullD);
-               scaleFactor = (minD * b_unscaled_norm) / b_scaled_norm;
-               obj.Tol = obj.Tol * min(1, scaleFactor);
-            end
+            obj.unscaledTol = targetTol;
+            obj.Tol = targetTol;
          end
 
          % Store step info to be committed to history in recomputePrec

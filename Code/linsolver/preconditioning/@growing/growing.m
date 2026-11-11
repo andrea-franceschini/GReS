@@ -60,7 +60,7 @@ classdef growing < preconditioner
       x0 = checkGrowth(obj, linsolver, b);
 
       % Function to compute the growing preconditioner
-      function Compute(obj,A,symMat,varargin)
+      function A = Compute(obj,A,symMat,varargin)
       
          % Set the symmetry of the full preconditioner
          obj.PrecSym = symMat;

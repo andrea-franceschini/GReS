@@ -135,6 +135,11 @@ function str = readXMLfile(fileName)
 %   OUTPUT:
 %     str : struct mirroring the XML element hierarchy.
 
+fileName = char(fileName);
+if ~startsWith(fileName, '/') && ~startsWith(fileName, '\') && ~contains(fileName, ':') && isfile(fileName)
+  fileName = fullfile(pwd, fileName);
+end
+
 str = readstruct(fileName, AttributeSuffix="");
 str = parseXMLStruct(str);
 

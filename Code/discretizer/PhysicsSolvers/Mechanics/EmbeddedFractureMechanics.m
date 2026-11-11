@@ -9,7 +9,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
     phi
     cohesion
     fractureMesh
-    areaTol = 1e-6
+    areaTol = 1e-5
     bcTraction
     mechSolver
     isSmooth = true
@@ -473,17 +473,22 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       elseif obj.isSmooth
         mode = obj.activeSet.curr(fId);
       else
-        mode = classifyContact(obj,q,obj.fractureMesh.surfaces.fracId(fId));
+        mode = classifyContact(obj,q,fId);
       end
 
       [traction,J] = evaluateContactBranch(obj,q,...
         obj.fractureMesh.surfaces.fracId(fId),mode,fId);
     end
 
-    function mode = classifyContact(obj,q,fracId)
+    function mode = classifyContact(obj,q,fId)
 
       % Same tolerance policy as SolidMechanicsContact's in-Newton
       % classification: strict normal test and relative tangential allowance.
+
+      fracId = obj.fractureMesh.surfaces.fracId(fId);
+
+      mode = obj.activeSet.curr(fId);
+
       if q(1) > 0
         mode = ContactMode.open;
         return
@@ -492,14 +497,19 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       tauLim = max(obj.cohesion(fracId)-tan(obj.phi(fracId))*q(1),0);
       tau = norm(q(2:3));
 
-      % if tau >= tauLim
-      %   tau = tau*(1-obj.activeSet.tol.tangentialViolation);
-      % end
-      if tau <= tauLim
+      tol = 1e-10;
+      if mode == ContactMode.stick
+        tau = tau * (1 - tol);
+      elseif mode == ContactMode.slip
+        tau = tau * (1 + tol);
+      end
+
+      if tau < tauLim
         mode = ContactMode.stick;
-      else
+      elseif tau > tauLim
         mode = ContactMode.slip;
       end
+
     end
 
     function [traction,J] = evaluateContactBranch(obj,q,fracId,mode,fId)
@@ -803,7 +813,7 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       end
 
       % discard too small fractures
-      id = f.area > obj.areaTol;
+      id = f.area > obj.areaTol * max(f.area);
       f.num           = sum(id);
       f.cutCells      = f.cutCells(id);
       f.center        = f.center(id,:);
