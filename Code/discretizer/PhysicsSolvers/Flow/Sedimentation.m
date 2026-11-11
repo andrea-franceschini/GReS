@@ -398,7 +398,7 @@ classdef Sedimentation < PhysicsSolver
         idx = idx(cellVar);
 
         dzOld = obj.cellDims(dofs,3);
-        dzDef = dzOld.*(1+state.strain(cellVar));
+        dzDef = dzOld.*(1+state.strain(dofs));
         dzNew = dzDef+dzSedmAdd(cellVar);        
 
         growCols = dzNew > obj.heightControl*(1+obj.minCellHeight); % <-- Very important check
