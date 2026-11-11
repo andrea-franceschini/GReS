@@ -17,15 +17,15 @@ function A = Compute(obj,A,varargin)
    % Row 1 = wetting mass balance, Row 2 = non-wetting mass balance
    % Col 1 = pressure (p), Col 2 = saturation (s)
    if strcmp(obj.cprType, 'true')
-      e = ones(size(A12, 1), 1);
-      d_ss = full(A12' * e);
-      d_ps = full(A22' * e);
+      e = ones(size(Ass, 1), 1);
+      d_ss = full(Ass' * e);
+      d_ps = full(Aps' * e);
       alpha = zeros(size(d_ss));
       valid = abs(d_ss) > max(abs(d_ss))*eps;
       alpha(valid) = d_ps(valid) ./ d_ss(valid);
    else
-      d_ss = full(diag(A12));
-      d_ps = full(diag(A22));
+      d_ss = full(diag(Ass));
+      d_ps = full(diag(Aps));
       alpha = zeros(size(d_ss));
       valid = abs(d_ss) > max(abs(d_ss))*eps;
       alpha(valid) = d_ps(valid) ./ d_ss(valid);
