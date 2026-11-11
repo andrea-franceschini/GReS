@@ -46,25 +46,7 @@ end
 end
 
 if ismember("gmsh",compileList)
-  [sdk, ready] = gmshSdk();
-  if ready
-    mexDir = fullfile(gres_root,'Code','grid','mex');
-    args = ["-O", "-outdir", string(mexDir), ...
-      "-I" + sdk.includeDir, fullfile(mexDir,'gmshMex.cpp'), sdk.linkFile];
-    if ~ispc
-      % Let the loader find the SDK without changing library search variables.
-      args(end+1) = 'LDFLAGS=$LDFLAGS -Wl,-rpath,"' + sdk.libDir + '"';
-    end
-    fprintf('Compiling Gmsh MEX with %s\n', sdk.name);
-    mex(args{:});
-    addGmshRuntimePath(sdk);
-  elseif requireGmsh
-    error('GReS:GmshSDKUnavailable', ...
-      'Gmsh SDK unavailable for %s. Run setupGmsh to enable Gmsh support.', computer);
-  else
-    fprintf('Gmsh SDK unavailable for %s. Skipping Gmsh interface.\n', computer);
-    fprintf('Run setupGmsh to enable Gmsh support.\n');
-  end
+  compileGmsh(requireGmsh);
 end
 
 end

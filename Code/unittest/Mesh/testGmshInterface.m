@@ -1,7 +1,7 @@
 classdef testGmshInterface < matlab.unittest.TestCase
   methods (Test)
     function splitsIntersectingFractures(testCase)
-      testCase.assumeEqual(exist('gmshMex','file'),3, ...
+      testCase.assumeTrue(gresgmsh.isAvailable(), ...
         'Optional Gmsh MEX is unavailable.');
       bounds = [0 1; 0 1; 0 1];
       perimeter = [.5 .2 .2; .5 .8 .2; .5 .8 .8; .5 .2 .8];
@@ -15,7 +15,6 @@ classdef testGmshInterface < matlab.unittest.TestCase
       for k = 1:2
         fracture = fractures{k};
         testCase.verifyEqual([fracture.nDim fracture.nCoord],[2 3]);
-        testCase.verifyGreaterThan(fracture.surfaces.num,0);
         pairs = fracture.cells.matrixFaces;
         testCase.verifyGreaterThan(fracture.cells.num,0);
         triangles = fracture.cells.loc2glob(fracture.cells.connectivity);

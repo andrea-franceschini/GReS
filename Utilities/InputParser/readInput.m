@@ -207,7 +207,7 @@ for k = 1:numel(fusr)
 
     % Accept numeric 0/1 for fields whose expected type is logical
     if islogical(dval) && isnumeric(uval) && ~isempty(uval)
-      if ~isreal(uval) || ~all(uval == 0 | uval == 1, 'all')
+      if ~isreal(uval) || ~all(uval(:) == 0 | uval(:) == 1)
         error('mergeInput:InvalidLogicalValue', ...
           'Field "%s" must contain only logical values or numeric 0/1.', fn);
       end

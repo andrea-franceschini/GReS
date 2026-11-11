@@ -51,6 +51,7 @@ end
 
 cd(gres_root)
 
+addpath(fullfile(gres_root, 'ThirdPartyLibs', 'Gmsh'));
 [sdk, gmshReady] = gmshSdk();
 if gmshReady
   addGmshRuntimePath(sdk);

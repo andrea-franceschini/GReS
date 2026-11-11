@@ -1,4 +1,4 @@
-function [matrix, fractureGrids] = createFracturedGrid(bounds, fractures, options)
+function [matrix, fractureGrids] = createFracturedGrid(bounds, fractures, varargin)
 %CREATEFRACTUREDGRID Mesh a box and split its faces along planar fractures.
 %   bounds is [xmin xmax; ymin ymax; zmin zmax]. Each entry of fractures is
 %   an ordered N-by-3 perimeter or a struct with center, normal and extents.
@@ -16,19 +16,23 @@ function [matrix, fractureGrids] = createFracturedGrid(bounds, fractures, option
 %   triangle. The first face normal follows the perimeter winding or input
 %   normal, and the second face normal points in the opposite direction.
 %   The mapping is tied to the returned matrix topology.
-arguments
-  bounds (3,2) double {mustBeReal, mustBeFinite}
-  fractures
-  options.matrixMeshSize (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 0
-  options.fractureMeshSize (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 0
-  options.transitionFactor (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 2
-  options.meshSize (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 0
-end
+validateattributes(bounds, {'numeric','logical'}, {'size',[3,2],'real','finite'}, ...
+  mfilename, 'bounds');
+bounds = double(bounds);
+parser = inputParser;
+parser.FunctionName = mfilename;
+parser.PartialMatching = false;
+isSize = @(value) (isnumeric(value) || islogical(value)) && isscalar(value) && ...
+  isreal(value) && isfinite(value) && value >= 0;
+addParameter(parser, 'matrixMeshSize', 0, isSize);
+addParameter(parser, 'fractureMeshSize', 0, isSize);
+addParameter(parser, 'transitionFactor', 2, @(value) isSize(value) && value > 0);
+addParameter(parser, 'meshSize', 0, isSize);
+parse(parser, varargin{:});
+options = parser.Results;
 
 assert(all(bounds(:,1) < bounds(:,2)), 'GReS:GmshBounds', ...
   'Each box lower bound must be smaller than its upper bound.');
-assert(exist('gmshMex','file') == 3, 'GReS:GmshUnavailable', ...
-  'Run setupGmsh and compileAll(''gmsh'') to enable fracture meshing.');
 
 if isstruct(fractures)
   fractures = num2cell(fractures);
@@ -54,9 +58,9 @@ if options.meshSize > 0
   matrixSize = options.meshSize;
 end
 
-% call gmsh mex api to create the fractured grid
-[coordinates, matrixElems, fracElems] = gmshMex(bounds, polygons, ...
-  matrixSize, fractureSize, options.transitionFactor);
+% Build the conforming mesh through the individual Gmsh commands.
+[coordinates, matrixElems, fracElems] = gresgmsh.meshFracturedBox(full(bounds), polygons, ...
+  double(matrixSize), double(fractureSize), double(options.transitionFactor));
 
 matrix = Grid();
 matrix.coordinates = coordinates;

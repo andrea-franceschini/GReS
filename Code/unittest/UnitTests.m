@@ -60,7 +60,7 @@ classdef UnitTests < matlab.unittest.TestCase
     end
 
     function GmshInterface(testCase)
-      testCase.assumeEqual(exist('gmshMex','file'), 3, ...
+      testCase.assumeTrue(gresgmsh.isAvailable(), ...
         'Optional Gmsh MEX is unavailable.');
       testFile = fullfile(testCase.testPath,'Mesh','testGmshInterface.m');
       results = runtests(testFile);
