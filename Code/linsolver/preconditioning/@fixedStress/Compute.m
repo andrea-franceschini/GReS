@@ -39,25 +39,23 @@ function A = Compute(obj,A,symMat,varargin)
       % Store coupling block
       Afu = [A{2,1}; A{3,1}];
 
-      % Get the deltaT
-      dt = obj.problemsolver.dt;
-
       % Compute fixed-stress relaxation matrix D^(FS)
       solver = obj.domain(1).getPhysicsSolver("MultiphasePoromechanics");
       solver.computeRelaxationMatrix();
       RR = solver.R;
       
-      % Extract saturation and fluid densities for mass accumulation scaling
       pState = obj.domain(1).getState("pressure");
       swState = obj.domain(1).getState("saturation");
       cIdx = obj.domain(1).dofm.getFieldCells("pressure");
-      tpSolver = solver.getFlowSolver;
-      
+      tpSolver = solver.getFlowSolver();
+
       sp = pState(cIdx);
       sw = swState(cIdx);
-      
+
       rhoW = tpSolver.props.wet.density(sp);
       rhoNW = tpSolver.props.nwet.density(sp);
+
+      dt = obj.problemsolver.dt;
 
       % Keep diagR sparse; do not convert to full to preserve matrix sparsity
       diagR = diag(RR);
@@ -87,7 +85,7 @@ function A = Compute(obj,A,symMat,varargin)
       % Get the relaxation matrix
       solver = obj.domain.getPhysicsSolver("BiotFullyCoupled");
       solver.computeRelaxationMatrix();
-      RR = (1/obj.problemsolver.dt)*solver.R;
+      RR = (1 / obj.problemsolver.dt) * solver.R;
       
       % Compute the approximated Schur complement
       S = A{2,2} + obj.Ruiz.scaleMat(RR,2);
@@ -98,7 +96,7 @@ function A = Compute(obj,A,symMat,varargin)
       % Compute the amg for block 22 (fluids)
       obj.FlowPrec.Compute(S,symMat(2,2),TVFlux);
 
-      obj.Apply_L = @(x) obj.ApplyLeft(x,A{1,1},A{1,2},A{2,1});
+      obj.Apply_L = @(x) obj.ApplyLeft(x,A{1,1},A{1,2});
       obj.Apply_R = @(x) obj.ApplyRight(x);
    end
 

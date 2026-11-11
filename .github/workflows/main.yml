@@ -31,16 +31,26 @@ jobs:
         with:
           submodules: false
 
-      - name: Checkout external git submodules
+      - name: Detect changes in linear solver
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            linsolver:
+              - 'Code/linsolver/**'
+              - 'ThirdPartyLibs/ChronosLab/**'
+              - '.github/workflows/main.yml'
+
+      - name: Checkout external git submodules (MRST)
         run: |
           git submodule sync -- ThirdPartyLibs/MRST
           git submodule update --init ThirdPartyLibs/MRST
 
-      - name: Setup MATLAB
-        uses: matlab-actions/setup-matlab@v3
-        with:
-          products: >
-            Parallel_Computing_Toolbox
+      - name: Checkout ChronosLab git submodule (conditional)
+        if: steps.filter.outputs.linsolver == 'true'
+        run: |
+          git submodule sync -- ThirdPartyLibs/ChronosLab
+          git submodule update --init --recursive ThirdPartyLibs/ChronosLab
 
       - name: Ensure GCC 11 is active on Ubuntu
         if: matrix.os == 'ubuntu-latest'
@@ -52,8 +62,22 @@ jobs:
           gcc --version
           g++ --version
 
+      - name: Install OpenMP on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install libomp
+
+      - name: Setup MATLAB
+        uses: matlab-actions/setup-matlab@v3
+        with:
+          products: >
+            Parallel_Computing_Toolbox
+
       - name: Initialize GReS, compile MEX, and run tests
         uses: matlab-actions/run-command@v3
+        env:
+          KMP_DUPLICATE_LIB_OK: "TRUE"
+          LINSOLVER_CHANGED: ${{ steps.filter.outputs.linsolver }}
         with:
           generate-summary: false
           command: |
@@ -62,6 +86,13 @@ jobs:
                 compileAll;
                 run("Code/unittest/runUnitTests.m");
                 run("Code/integratedTest/runIntegratedTests.m");
+
+                if strcmp(getenv('LINSOLVER_CHANGED'), 'true')
+                    fprintf('\n========================================\n');
+                    fprintf('Running Linear Solver & Chronos Tests...\n');
+                    fprintf('========================================\n\n');
+                    run("Code/linsolver/test/runLinSolverTests.m");
+                end
             catch ME
                 disp(getReport(ME));
                 exit(1); % Mark job as failed

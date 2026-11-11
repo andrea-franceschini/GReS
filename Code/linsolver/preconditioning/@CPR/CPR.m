@@ -68,18 +68,18 @@ classdef CPR < preconditioner
       A = Compute(obj,A,varargin)
 
       % Left preconditioner application
-      function x = ApplyLeft(obj,b,ndofP,d12,A22,Amat)
+      function x = ApplyLeft(obj,b,ndofP,dss,Aps,Amat,pRows,invPCols)
 
          r1 = b(1:ndofP);       % Wetting mass balance residual
          r2 = b(ndofP+1:end);   % Non-wetting mass balance residual
 
          % Jacobi saturation update
          zs = zeros(size(r1));
-         valid = abs(d12) > eps*max(abs(d12));
-         zs(valid) = r1(valid) ./ d12(valid);
+         valid = abs(dss) > eps*max(abs(dss));
+         zs(valid) = r1(valid) ./ dss(valid);
 
          % Coupling update
-         wp = r2 - A22 * zs;
+         wp = r2 - Aps * zs;
 
          % AMG pressure solve
          zp = obj.AMGP.Apply_L(wp);
@@ -89,7 +89,10 @@ classdef CPR < preconditioner
          r_upd = b - Amat * x1;
 
          % Second-stage smoothing on updated residual using FSAI
-         x2 = obj.FSAI.Apply_L(r_upd);
+         % Permute and inverse permute the rows to apply the permuted FSAI
+         r_int = r_upd(pRows);
+         x_int = obj.FSAI.Apply_L(r_int);
+         x2 = x_int(invPCols);
 
          % Multiplicative combination
          x = x1 + x2;
