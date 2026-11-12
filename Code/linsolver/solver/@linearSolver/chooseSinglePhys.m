@@ -13,8 +13,12 @@ function [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physn
          % AMG handles it beautifully
          Prec = aAMG(debugflag,generalsolver,physname);
       else
-         % Multiple interfaces mean multiple blocks, RACP is needed
-         Prec = RACP(debugflag,generalsolver,physname);
+         if all(cellfun(@(x) isa(x, 'MeshTyingTPFA'), generalsolver.interfaces))
+            Prec = multiDomAMG(debugflag,generalsolver,physname);
+         else
+            % Multiple interfaces mean multiple blocks, RACP is needed
+            Prec = RACP(debugflag,generalsolver,physname);
+         end
       end
 
       ChronosFlag = true;
