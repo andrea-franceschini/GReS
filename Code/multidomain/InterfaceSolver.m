@@ -82,14 +82,6 @@ classdef (Abstract) InterfaceSolver < handle
 
   end
 
-  methods (Abstract, Static)
-
-    % return the variables that are coupled from the interface solver
-    % if var = empty, the user can/must choose which variable can be coupled
-    var = getCoupledVariables(obj)
-
-  end
-
   methods
 
     function obj = InterfaceSolver(id,domains,varargin)
@@ -226,7 +218,11 @@ classdef (Abstract) InterfaceSolver < handle
       end
     end
 
-
+    % return the variables that are coupled from the interface solver
+    % if var = empty, the user can/must choose which variable can be coupled
+    function var = getCoupledVariables(obj)
+       var = obj.coupledVariables;
+    end
 
     function setState(obj,val,varName)
       % get current state variables

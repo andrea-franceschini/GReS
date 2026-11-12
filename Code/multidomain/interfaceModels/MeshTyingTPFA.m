@@ -324,14 +324,6 @@ classdef MeshTyingTPFA < InterfaceSolver
 
     end
   end
-
-  methods (Static)
-
-    function var = getCoupledVariables()
-      var = [];
-    end
-
-  end
 end
 
 

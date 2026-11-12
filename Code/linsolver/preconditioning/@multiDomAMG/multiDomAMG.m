@@ -1,0 +1,117 @@
+classdef multiDomAMG < preconditioner
+   properties (GetAccess = public,SetAccess = private)
+       % Preconditioner
+      Prec = []
+      
+      % Symmetry of the matrix on which the preconditioner has been
+      % computed
+      PrecSym = true
+
+      % Physics
+      phys
+      
+      % Params struct
+      params
+      
+      % Max Threads
+      maxThreads
+
+      % Generalsolver
+      generalsolver
+
+      % AMG info
+      AMG_info
+
+   end
+
+   methods (Access = public)
+
+      % Function to compute the preconditioner
+      A = Compute(obj,A,sym,varargin)
+
+      % Getter for the function handle to apply the left preconditioner
+      function x = ApplyLeft(obj,b,varargin)
+         if nargin < 3
+            error('Not enough arguments for AMG apply Left');
+         end
+         A = varargin{1};
+         
+         x = AMG_Vcycle(obj.Prec,A,b);
+      end
+
+      % Getter for the function handle to apply the right preconditioner
+      function x = ApplyRight(obj,b,varargin)
+         if nargin < 2
+            error('Not enough arguments for AMG apply Right');
+         end
+
+         x = b;
+      end
+
+      % Print info
+      function AMGinfo(obj)
+         print_AMG_info(obj.AMG_info)
+      end
+         
+
+      % Constructor Function
+      function obj = multiDomAMG(debugflag,generalsolver,physname)
+
+         % Call the constructor of the abstract class
+         obj = obj@preconditioner();
+
+         % Set the debugflag
+         obj.DEBUGflag = debugflag;
+
+         % Get General Solver
+         obj.generalsolver = generalsolver;
+
+         % Get default values
+         if(contains(physname,'pressure') || contains(physname,'u'))
+            obj.phys = 0;
+            chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup_CFD.xml');
+         elseif(contains(physname,'displacements')) 
+            obj.phys = 1;
+            chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');
+         else
+            disp(physname);
+            error('Non supported Physics for preconditioner');
+         end
+
+         % Read Defaults
+         data = readInput(chronos_xml_default);
+
+         % Set maximum number of threads to use if the system provides less
+         obj.maxThreads = maxNumCompThreads;
+
+         % Get the different parameters 
+         obj.params.amg      = data.amg;
+         obj.params.smoother = data.smoother;
+         obj.params.prolong  = data.prolong;
+         obj.params.coarsen  = data.coarsen;
+         obj.params.tspace   = data.tspace;
+         obj.params.filter   = data.filter;
+         obj.params.prolong.np = min(obj.params.prolong.np,obj.maxThreads);
+         obj.params.filter.np = min(obj.params.filter.np,obj.maxThreads);
+
+         % Get user prescribed values
+         obj.params.smoother.nthread = min(obj.params.smoother.nthread,obj.maxThreads);
+         obj.params = obj.getUserInput(obj.params,generalsolver.simparams.linSolverParams);
+      end
+
+      % Condenses the domains and interfaces in a single matrix
+      function A = condenseDomains(obj,A)
+
+         A = {cell2matrix(A)};
+
+      end
+   end
+
+   methods (Access = private)
+
+      % Function to get the user input parameters for the preconditioner
+      [params] = getUserInput(obj,params,xml);
+   end
+end
+
+
