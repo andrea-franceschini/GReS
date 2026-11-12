@@ -7,8 +7,7 @@ function [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physna
    if any(~ismember(physname, allowedPhysics))
        gresLog().warning(3, 'Multiphysics not yet supported');
        if gresLog().getVerbosity() >= 3
-           physNames = arrayfun(@(x) x.dofm.getVariableNames(), generalsolver.domains);
-           disp(physNames);
+           disp([obj.systemInfo.varBlocks.varName]);
        end
        Prec = [];
        ChronosFlag = false;

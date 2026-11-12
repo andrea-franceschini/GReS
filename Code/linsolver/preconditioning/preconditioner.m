@@ -29,6 +29,12 @@ classdef (Abstract) preconditioner < handle
 
       % Define the positive definiteness of the problem
       posDef = true;
+
+      % Global diagonal block indices owned by this preconditioner (1..nBlocks)
+      precBlocks = []
+
+      % Diagonal block metadata slice matching precBlocks (from describeSystem)
+      blockInfo = struct([])
    end
 
    properties (Access = public)
@@ -87,6 +93,36 @@ classdef (Abstract) preconditioner < handle
       % Scale the system matrix and RHS before linear solve (default: do nothing)
       function [A, b] = scaleSystem(obj, A, b)
 
+      end
+
+      % Set diagonal block scope from systemInfo
+      function setBlockScope(obj, sysInfo, blockIds)
+         obj.precBlocks = reshape(blockIds, 1, []);
+         obj.blockInfo = sysInfo.blocks(obj.precBlocks);
+      end
+
+      % Get local indices matching kind ("variable" or "interface")
+      function idx = getKindBlocks(obj, kind)
+         idx = find([obj.blockInfo.kind] == kind);
+      end
+
+      % Get local indices matching variable names
+      function idx = getVarBlocks(obj, varNames)
+         idx = find([obj.blockInfo.kind] == "variable" & ismember([obj.blockInfo.varName], varNames));
+      end
+
+      % Build test space for specified local diagonal blocks
+      function TV0 = buildTestSpace(obj, generalsolver, localIdx)
+         TV0 = [];
+         for b = localIdx
+            blk = obj.blockInfo(b);
+            if blk.varName == "displacements"
+               TV = mk_rbm_3d(generalsolver.domains(blk.domainId(1)).grid.coordinates);
+            else
+               TV = ones(blk.nDof, 1);
+            end
+            TV0 = [TV0; TV]; %#ok<AGROW>
+         end
       end
    end
 end

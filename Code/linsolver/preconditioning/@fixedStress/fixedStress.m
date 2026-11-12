@@ -155,15 +155,19 @@ classdef fixedStress < preconditioner
          end
       end
 
+      % Set diagonal block scope and propagate to mechanics and flow children
+      function setBlockScope(obj, sysInfo, blockIds)
+         setBlockScope@preconditioner(obj, sysInfo, blockIds);
+         uBlk = obj.getVarBlocks("displacements");
+         flowBlk = obj.getVarBlocks(["pressure", "saturation"]);
+         obj.AMGMech.setBlockScope(sysInfo, obj.precBlocks(uBlk));
+         obj.FlowPrec.setBlockScope(sysInfo, obj.precBlocks(flowBlk));
+      end
+
       % Scale the system matrix and RHS to rate form
       function [A, b] = scaleSystem(obj, A, b)
          dt = obj.problemsolver.dt;
-
-         if strcmpi(obj.flowPrecType, 'CPR')
-            flowRows = [2, 3];
-         else
-            flowRows = 2;
-         end
+         flowRows = obj.getVarBlocks(["pressure", "saturation"]);
 
          % Scale flow rows of matrix A by 1/dt
          for r = flowRows

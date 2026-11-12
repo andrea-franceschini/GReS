@@ -235,10 +235,8 @@ function mockSolver = buildMockSolver(coordinates, physics, A, dt, tol, linParam
    if ~iscell(coordinates), coordinates = {coordinates}; end
 
    % Derive domain and interface counts from block matrix and coordinates.
-   % Any block rows beyond the number of spatial domains correspond to interface
-   % or Lagrange multiplier constraints (e.g., mortar contact interfaces).
    nDom = numel(coordinates);
-   nInt = max(0, size(A, 1) - nDom);
+   rowSizes = getBlockRowSizes(A);
 
    % Determine variable assignment per domain.
    % In multi-domain single physics (e.g. ["displacements", "displacements"]),
@@ -253,6 +251,9 @@ function mockSolver = buildMockSolver(coordinates, physics, A, dt, tol, linParam
       domPhysics = physStr;
    end
 
+   % Interface blocks are rows beyond the physical domain variables
+   nInt = max(0, size(A, 1) - nDom * nVarsPerDom);
+
    % Construct mock domains with DOF manager interfaces and dummy solvers
    ncFlow = size(A{min(2, size(A, 1)), min(2, size(A, 2))}, 1);
    dom = struct();
@@ -265,7 +266,9 @@ function mockSolver = buildMockSolver(coordinates, physics, A, dt, tol, linParam
       dom(d).dofm.getNumberOfVariables = @() nVarsPerDom;
       dom(d).dofm.getVariableNames = @() domPhysics;
       dom(d).dofm.getFieldCells = @(name) 1:ncFlow;
-      dom(d).dofm.getNumbDoF = @(name) nc;
+      dom(d).dofm.getNumbDoF = @(name) getMockVarDof(name, domPhysics, d, nVarsPerDom, rowSizes, nc);
+      dom(d).dofm.getVariableId = @(name) find(domPhysics == string(name), 1);
+      dom(d).dofm.isVariable = @(name) any(domPhysics == string(name));
       dom(d).getState = @(name) getMockState(name, props.sw, ncFlow, nc);
 
       % Provide physics solver handles for coupled mechanics and flow relaxation
@@ -273,12 +276,22 @@ function mockSolver = buildMockSolver(coordinates, physics, A, dt, tol, linParam
       dummyFlow = struct('props', struct('wet', struct('density', @(p) props.rhoW), ...
                                          'nwet', struct('density', @(p) props.rhoNW)));
       dummySolver = struct('R', R, 'computeRelaxationMatrix', @() [], 'isLinear', @() true, ...
+                           'getField', @() domPhysics, ...
                            'getMechSolver', @() dummyMech, 'getFlowSolver', @() dummyFlow);
       dom(d).getPhysicsSolver = @(name) dummySolver;
    end
 
    % Initialize linear interface placeholders for mortar contact blocks
-   interfaces = repmat({struct('isLinear', @() true)}, nInt, 1);
+   interfaces = cell(nInt, 1);
+   for i = 1:nInt
+      intBlock = nDom * nVarsPerDom + i;
+      intDof = rowSizes(intBlock);
+      interfaces{i} = struct('isLinear', @() true, ...
+                             'domainId', [1, min(2, nDom)], ...
+                             'getCoupledVariables', @() domPhysics(1), ...
+                             'multiplierLocation', "surface", ...
+                             'getNumbDoF', @() intDof);
+   end
 
    % Assemble mock solver root structure
    mockSolver = struct();
@@ -397,6 +410,17 @@ function printRecap(n, solverType, precStr, physics, rhsFlag, ruizFlag, ...
    fprintf('  Preconditioner Time : %.4f s\n', precTime);
    fprintf('  Linear Solve Time   : %.4f s\n', solveTime);
    fprintf('  Total Elapsed Time  : %.4f s\n\n', totalTime);
+end
+
+% Return mock DOF count for variable
+function nDof = getMockVarDof(name, domPhysics, d, nVarsPerDom, rowSizes, nc)
+   idx = find(domPhysics == string(name), 1);
+   blk = (d - 1) * nVarsPerDom + idx;
+   if blk <= numel(rowSizes)
+      nDof = rowSizes(blk);
+   else
+      nDof = nc;
+   end
 end
 
 % Return mock state vector by physical variable name

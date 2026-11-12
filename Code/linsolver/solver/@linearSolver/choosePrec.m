@@ -4,12 +4,11 @@ function [Prec,ChronosFlag,scalingFlag] = choosePrec(obj,debugflag,generalsolver
    ChronosFlag = false;
    scalingFlag = false;
 
-   % Get the domains
-   domainin = generalsolver.domains;
+   sys = obj.systemInfo;
    multiDomFlag = (generalsolver.nDom > 1);
 
-   % Check if the problem comes from multiphysics
-   multiPhysFlag = (max(arrayfun(@(x) x.dofm.getNumberOfVariables(), domainin)) > 1);
+   % Check if the problem comes from multiphysics (max number of variables in any single domain > 1)
+   multiPhysFlag = (max(arrayfun(@(x) x.dofm.getNumberOfVariables(), generalsolver.domains)) > 1);
 
    % Early exit with multiphysics multidomain
    if multiPhysFlag && multiDomFlag
@@ -21,14 +20,13 @@ function [Prec,ChronosFlag,scalingFlag] = choosePrec(obj,debugflag,generalsolver
 
    % Select the physics, check if asked by user directly
    if isempty(physname)
-      physname = arrayfun(@(x) x.dofm.getVariableNames(), domainin, 'UniformOutput', false);
-      physname = [physname{:}];
+      physname = [sys.varBlocks.varName];
    else
       multiPhysFlag = numel(physname) > 1;
    end
 
    % Check if it needs the growing preconditioner
-   solvers = unique(arrayfun(@(x) x.solverNames, domainin));
+   solvers = [sys.varBlocks.solvers];
    if contains(solvers,"Sedimentation")
       if ~multiPhysFlag && ~multiDomFlag
          Prec = growing(debugflag,generalsolver,physname);

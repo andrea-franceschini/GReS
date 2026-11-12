@@ -6,10 +6,12 @@ function A = Compute(obj,A,varargin)
    A = obj.Ruiz.Compute(A);
    
    % Extract block matrices and assembled sparse matrix
-   Asp = A{1,1};
-   Ass = A{1,2};
-   App = A{2,1};
-   Aps = A{2,2};
+   pBlk = obj.getVarBlocks("pressure");
+   sBlk = obj.getVarBlocks("saturation");
+   Asp = A{pBlk, pBlk};
+   Ass = A{pBlk, sBlk};
+   App = A{sBlk, pBlk};
+   Aps = A{sBlk, sBlk};
    Amat = cell2matrix(A);
    ndofP = size(Asp, 1);
    
@@ -41,7 +43,7 @@ function A = Compute(obj,A,varargin)
    
    % Test space: constant vector for pressure (scaled if Ruiz scaling is active)
    TV0 = ones(ndofP, 1);
-   TV0 = obj.Ruiz.applyDinv(TV0, 1);
+   TV0 = obj.Ruiz.applyDinv(TV0, pBlk);
    
    % Compute AMG for decoupled pressure equation
    obj.AMGP.Compute(Ap, symAp, TV0);

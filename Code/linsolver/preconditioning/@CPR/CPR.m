@@ -67,6 +67,13 @@ classdef CPR < preconditioner
       % Compute the preconditioner
       A = Compute(obj,A,varargin)
 
+      % Set diagonal block scope and propagate pressure block to AMGP
+      function setBlockScope(obj, sysInfo, blockIds)
+         setBlockScope@preconditioner(obj, sysInfo, blockIds);
+         pBlk = obj.getVarBlocks("pressure");
+         obj.AMGP.setBlockScope(sysInfo, obj.precBlocks(pBlk));
+      end
+
       % Left preconditioner application
       function x = ApplyLeft(obj,b,ndofP,dss,Aps,Amat,pRows,invPCols)
 

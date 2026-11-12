@@ -123,6 +123,11 @@ classdef linearSolver < handle
       saveMatSolves = []
    end
 
+   properties (SetAccess = private, GetAccess = public)
+      % System block metadata from describeSystem
+      systemInfo
+   end
+
    properties (Access = public)
       % Ruiz diagonal scaling object
       Ruiz
@@ -132,6 +137,9 @@ classdef linearSolver < handle
 
       % Constructor Function
       function obj = linearSolver(generalsolver,physname)
+         
+         % Inspect matrix structure
+         obj.systemInfo = linearSolver.describeSystem(generalsolver, obj.DEBUGflag);
 
          % Check if Chronos is available
          ChronosDir = fullfile(gres_root,'ThirdPartyLibs','ChronosLab','sources');
@@ -173,6 +181,9 @@ classdef linearSolver < handle
 
             % Chronos exists
             addpath(genpath(ChronosDir));
+
+            % Set diagonal block scope on top-level preconditioner
+            obj.Prec.setBlockScope(obj.systemInfo, 1:obj.systemInfo.nBlocks);
 
             % First time solving request preconditioner computation
             obj.params.iter = -1;
@@ -227,6 +238,9 @@ classdef linearSolver < handle
    end
 
    methods (Static)
+      % Inspect system matrix structure from generalsolver
+      info = describeSystem(generalsolver, verbose);
+
       % Standalone solver for saved linear systems (.mat files)
       [x, stats, flag, relres, iter, resvec] = solveSingle(matFile, varargin);
    end

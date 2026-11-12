@@ -7,32 +7,16 @@ function A = Compute(obj,A,symMat,varargin)
    % Make the matrix 2x2
    A = obj.condenseDomains(A);
 
+   % Compute the test space
+   idxMain = obj.getKindBlocks("variable");
+   TV0 = obj.buildTestSpace(obj.problemsolver, idxMain);
+
    % Compute and apply Ruiz diagonal scaling if requested
    A = obj.Ruiz.Compute(A);
+   TV0 = obj.Ruiz.applyDinv(TV0,1);
 
    % Compute the augmented matrix
    [A11_aug,inv_D22] = obj.cpt_localAug(A{1,1},A{1,2},A{2,1},A{2,2},obj.PrecSym);
-   
-   % Compute the test space
-   if(obj.phys == 0) % fluids
-      TV0 = [];
-      for i = 1:obj.nDom - obj.nInt
-         TV = ones(size(A{i,1},1),1);
-         TV0 = [TV0;TV];
-      end
-   elseif(obj.phys == 1 || obj.phys == 1.1) % true contact mechanichs physics is 1.1, general poromechanics is 1
-      TV0 = [];
-      for i = 1:obj.nDom
-         TV = mk_rbm_3d(obj.domain(i).grid.coordinates);
-         TV0 = [TV0;TV];
-      end
-   end
-
-   TV0 = obj.Ruiz.applyDinv(TV0,1);
-
-   % if obj.DEBUGflag
-   %    obj.TV0 = TV0;
-   % end
    
    % Compute the amg for block 11
    obj.AMG.Compute(A11_aug,obj.PrecSym,TV0,true);

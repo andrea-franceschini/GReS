@@ -4,27 +4,28 @@ function A = Compute(obj,A,symMat,varargin)
    % Set the symmetry of the full preconditioner
    obj.PrecSym = floor(sum(symMat,'all')/(size(symMat,1))^2);
 
+   % Resolve local block indices
+   uBlk = obj.getVarBlocks("displacements");
+   pBlk = obj.getVarBlocks("pressure");
+   sBlk = obj.getVarBlocks("saturation");
+   domId = obj.blockInfo(uBlk(1)).domainId;
+
    % Determine whether mechanics AMG can be recycled
    recycleMech = obj.isMechLinear && ~isempty(obj.AMGMech.Prec);
 
    % Compute and apply Ruiz diagonal scaling if requested at the fixedStress level
    if recycleMech
-      A = obj.Ruiz.Compute(A, 'freezeBlocks', 1);
+      A = obj.Ruiz.Compute(A, 'freezeBlocks', uBlk);
    else
-      A = obj.Ruiz.Compute(A);
-
       % Compute the test space (only needed when computing AMGMech)
-      TV0 = [];
-      for i = 1:obj.nDom
-         TV = mk_rbm_3d(obj.domain(i).grid.coordinates);
-         TV0 = [TV0;TV];
-      end
+      TV0 = obj.AMGMech.buildTestSpace(obj.problemsolver, 1:numel(obj.AMGMech.blockInfo));
 
-      % Scale the test space if needed
-      TV0 = obj.Ruiz.applyDinv(TV0,1);
+      % Scale the matrix and test space if needed
+      A = obj.Ruiz.Compute(A);
+      TV0 = obj.Ruiz.applyDinv(TV0, uBlk);
 
       % Store mechanics matrix and compute mechanics AMG
-      obj.AMGMech.Compute(A{1,1},symMat(1,1),TV0,true);
+      obj.AMGMech.Compute(A{uBlk,uBlk}, symMat(uBlk,uBlk), TV0, true);
    end
 
    % Time the flow part in case the mechanics is reused
@@ -32,21 +33,17 @@ function A = Compute(obj,A,symMat,varargin)
 
    if strcmpi(obj.flowPrecType,'CPR')
       % Coupled mechanics and two-phase flow (3x3 block system as in White et al. 2019)
-      % Block 1: Displacements (u)
-      % Block 2: Pressure (p)
-      % Block 3: Saturation (s)
-      
       % Store coupling block
-      Afu = [A{2,1}; A{3,1}];
+      Afu = [A{pBlk,uBlk}; A{sBlk,uBlk}];
 
       % Compute fixed-stress relaxation matrix D^(FS)
-      solver = obj.domain(1).getPhysicsSolver("MultiphasePoromechanics");
+      solver = obj.domain(domId).getPhysicsSolver("MultiphasePoromechanics");
       solver.computeRelaxationMatrix();
       RR = solver.R;
       
-      pState = obj.domain(1).getState("pressure");
-      swState = obj.domain(1).getState("saturation");
-      cIdx = obj.domain(1).dofm.getFieldCells("pressure");
+      pState = obj.domain(domId).getState("pressure");
+      swState = obj.domain(domId).getState("saturation");
+      cIdx = obj.domain(domId).dofm.getFieldCells("pressure");
       tpSolver = solver.getFlowSolver();
 
       sp = pState(cIdx);
@@ -63,15 +60,15 @@ function A = Compute(obj,A,symMat,varargin)
       d21_fs = (1 / dt) * ((1 - sw) .* rhoNW) .* diagR;
 
       % Scale relaxation matrix blocks directly using Ruiz scaling function
-      D11_mat = obj.Ruiz.scaleDiag(d11_fs, 2);
-      D21_mat = obj.Ruiz.scaleDiag(d21_fs, 3, 2);
+      D11_mat = obj.Ruiz.scaleDiag(d11_fs, pBlk);
+      D21_mat = obj.Ruiz.scaleDiag(d21_fs, sBlk, pBlk);
 
       % Form approximate Schur complement flow operator S_ff^(FS) = Aff + D^(FS)
-      S_ff = {A{2,2} + D11_mat, A{2,3}; ...
-              A{3,2} + D21_mat, A{3,3}};
+      S_ff = {A{pBlk,pBlk} + D11_mat, A{pBlk,sBlk}; ...
+              A{sBlk,pBlk} + D21_mat, A{sBlk,sBlk}};
       
       % Get mechanics dimension for ApplyLeft
-      n1 = size(A{1,1}, 1);
+      n1 = size(A{uBlk,uBlk}, 1);
 
       % Compute CPR preconditioner for S_ff
       obj.FlowPrec.Compute(S_ff);
@@ -83,20 +80,20 @@ function A = Compute(obj,A,symMat,varargin)
    else
       % Single-phase flow
       % Get the relaxation matrix
-      solver = obj.domain.getPhysicsSolver("BiotFullyCoupled");
+      solver = obj.domain(domId).getPhysicsSolver("BiotFullyCoupled");
       solver.computeRelaxationMatrix();
       RR = (1 / obj.problemsolver.dt) * solver.R;
       
       % Compute the approximated Schur complement
-      S = A{2,2} + obj.Ruiz.scaleMat(RR,2);
+      S = A{pBlk,pBlk} + obj.Ruiz.scaleMat(RR, pBlk);
 
       % Scale the test space if needed
-      TVFlux = obj.Ruiz.applyDinv(ones(size(S,1),1),2);
+      TVFlux = obj.Ruiz.applyDinv(ones(size(S,1),1), pBlk);
 
-      % Compute the amg for block 22 (fluids)
-      obj.FlowPrec.Compute(S,symMat(2,2),TVFlux);
+      % Compute the amg for pressure block
+      obj.FlowPrec.Compute(S, symMat(pBlk,pBlk), TVFlux);
 
-      obj.Apply_L = @(x) obj.ApplyLeft(x,A{1,1},A{1,2});
+      obj.Apply_L = @(x) obj.ApplyLeft(x, A{uBlk,uBlk}, A{uBlk,pBlk});
       obj.Apply_R = @(x) obj.ApplyRight(x);
    end
 

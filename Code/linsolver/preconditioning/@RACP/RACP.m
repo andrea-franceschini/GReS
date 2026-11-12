@@ -71,6 +71,12 @@ classdef RACP < preconditioner
       % Function to compute the preconditioner
       A = Compute(obj,A,symMat,varargin)
 
+      % Set diagonal block scope and propagate variable blocks to inner AMG
+      function setBlockScope(obj, sysInfo, blockIds)
+         setBlockScope@preconditioner(obj, sysInfo, blockIds);
+         obj.AMG.setBlockScope(sysInfo, obj.precBlocks(obj.getKindBlocks("variable")));
+      end
+
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)
          if nargin < 6

@@ -5,18 +5,8 @@ function A = Compute(obj,A,symm,varargin)
 
    % Check inputs are correct 
    if nargin < 4
-      gresLog().log(3,'test space not passed to aAMG, using defaults\n');
-      if obj.phys == 0
-         if iscell(A)
-            TV0 = ones(size(A{1,1},1),1);
-         else
-            TV0 = ones(size(A,1),1);
-         end
-      elseif obj.phys == 1 
-         TV0 = mk_rbm_3d(obj.generalsolver.domains(1).grid.coordinates);
-      else
-         error('Physics not recognized');
-      end
+      gresLog().log(3,'test space not passed to multiDomAMG, using defaults\n');
+      TV0 = obj.buildTestSpace(obj.generalsolver, 1:numel(obj.blockInfo));
    else
       % Get the test space
       TV0 = varargin{1};

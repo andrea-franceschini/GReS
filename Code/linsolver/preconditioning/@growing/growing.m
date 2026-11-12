@@ -56,6 +56,12 @@ classdef growing < preconditioner
    end
 
    methods
+      % Set diagonal block scope and propagate to inner AMG
+      function setBlockScope(obj, sysInfo, blockIds)
+         setBlockScope@preconditioner(obj, sysInfo, blockIds);
+         obj.AMG.setBlockScope(sysInfo, blockIds);
+      end
+
       % Function to check if the system has grown
       x0 = checkGrowth(obj, linsolver, b);
 

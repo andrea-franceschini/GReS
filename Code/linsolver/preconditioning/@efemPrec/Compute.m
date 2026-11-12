@@ -4,37 +4,49 @@ function [A] = Compute(obj,A,symMat,varargin)
    % Set the symmetry of the full preconditioner
    obj.PrecSym = floor(sum(symMat,'all')/(size(symMat,1))^2);
 
-   % Compute and apply Ruiz diagonal scaling if requested
-   A = obj.Ruiz.Compute(A);
+   uBlk = obj.getVarBlocks("displacements");
+   jBlk = obj.getVarBlocks("fractureJump");
 
-   % Compute the test space
-   TV0 = [];
-   for i = 1:obj.nDom
-      TV = mk_rbm_3d(obj.domain(i).grid.coordinates);
-      TV0 = [TV0;TV];
+   % If RACP is requested, compute physical stiffness ratio on unscaled blocks
+   k_phys = [];
+   if strcmpi(obj.regularizationMethod, 'racp')
+      k_phys = obj.computePhysicalK(A{uBlk,uBlk}, A{uBlk,jBlk});
    end
 
+   % Compute and apply Ruiz diagonal scaling if requested (ON THE TRUE MATRIX A)
+   A = obj.Ruiz.Compute(A);
+
+   if strcmpi(obj.regularizationMethod, 'racp')
+      % Physics-weighted RACP augmentation on Ruiz-scaled block
+      A22 = obj.augmentA22_RACP(A{uBlk,uBlk}, A{uBlk,jBlk}, A{jBlk,uBlk}, A{jBlk,jBlk}, k_phys);
+   else
+      % Baseline diagShift: Make A22 slightly more diagonally dominant
+      A22 = obj.regularizeA22(A{jBlk,jBlk});
+   end
+
+   % Compute the test space
+   TV0 = obj.AMG.buildTestSpace(obj.problemsolver, 1:numel(obj.AMG.blockInfo));
+
    % Scale the test space if needed
-   TV0 = obj.Ruiz.applyDinv(TV0,1);
+   TV0 = obj.Ruiz.applyDinv(TV0, uBlk);
 
-   % Make A22 slightly more diagonally dominant
-   A22 = obj.regularizeA22(A{2,2});
+   % Compute factorization of the jump block
+   obj.FSAI.Compute(A22, symMat(jBlk,jBlk), true);
 
-   % Compute factorization of the 22 block
-   obj.FSAI.Compute(A22,symMat(2,2),true);
-
-   % Compute reverse Schur complement of A11
+   % Compute reverse Schur complement of mechanics block
    invC = @(x) obj.FSAI.ApplyLeft(x);
-   obj.S = A{1,1} - A{1,2}*invC(A{2,1});
-  
+   obj.S = A{uBlk,uBlk} - A{uBlk,jBlk}*invC(A{jBlk,uBlk});
+   fprintf("Condest 11 %e, S %e. Cond 22 %e, 21 %e, 12 %e, 22mod %e\n",...
+      condest(A{uBlk,uBlk}),condest(obj.S),cond(full(A{jBlk,jBlk})),cond(full(A{jBlk,uBlk})),cond(full(A{uBlk,jBlk})),cond(full(A22)));
+
    % Check in case of symmetric indefinite systems for FSAI
    AMGSym = obj.FSAI.PrecSym && obj.PrecSym && obj.FSAI.posDef;
 
-   % Compute the amg for block 11 (mechanics)
-   obj.AMG.Compute(obj.S,AMGSym,TV0,true);
-   
+   % Compute the amg for mechanics block
+   obj.AMG.Compute(obj.S, AMGSym, TV0, true);
+
    % Define handles for application of the preconditioner
-   obj.Apply_L = @(x) obj.ApplyLeft(x,A{1,2},A{2,1},invC);
+   obj.Apply_L = @(x) obj.ApplyLeft(x, A{uBlk,jBlk}, A{jBlk,uBlk}, invC);
    obj.Apply_R = @(x) obj.ApplyRight(x);
 
 end
