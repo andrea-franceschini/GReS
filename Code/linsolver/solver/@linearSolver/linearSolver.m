@@ -54,6 +54,10 @@ classdef linearSolver < handle
    % precCompLin     - vector: flags indicating whether prec was computed for each solve.
    % newtonLin       - vector: Newton iteration indices associated with each linear solve.
    % timeLin         - vector: physical times corresponding to each linear solve.
+   % tolReqLin       - vector: requested linear solver tolerance per solve.
+   % scaledTolLin    - vector: scaled tolerance per solve when Ruiz scaling is active.
+   % tolReachLin     - vector: achieved relative residual per solve.
+   % precEffLin      - vector: effective preconditioner setup time used for degradation strategy.
    % Delta_T         - vector: time step sizes used when recording solves.
    % useSAM          - boolean: whether SAM monitoring/analysis is enabled.
    % SAM             - object: SAM instance.
@@ -109,6 +113,8 @@ classdef linearSolver < handle
       Delta_T = []
       tolReqLin = []
       scaledTolLin = []
+      tolReachLin = []
+      precEffLin = []
       systemSize = 0
 
       % SAM object

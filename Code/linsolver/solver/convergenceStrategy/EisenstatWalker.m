@@ -194,7 +194,7 @@ classdef EisenstatWalker < convStrat
             linsolver.cumTSolveAfterPrec = linsolver.cumTSolveAfterPrec + normDeltaT;
             linsolver.Delta_T(linsolver.nSolve) = linsolver.cumTSolveAfterPrec;
            
-            tSetup = linsolver.precCompLin(end - linsolver.params.nSolveSinceLastPrecComp);
+            tSetup = linsolver.precEffLin(end - linsolver.params.nSolveSinceLastPrecComp);
             convDegradation = currentConvRate / max(1e-12, obj.initConvRate);
            
             % Evaluate recycling conditions
@@ -280,7 +280,7 @@ classdef EisenstatWalker < convStrat
 
       function recomputeSAM(obj, linsolver, sam, Tend)
          if linsolver.useSAM
-            tSetup = linsolver.precCompLin(end - linsolver.params.nSolveSinceLastPrecComp);
+            tSetup = linsolver.precEffLin(end - linsolver.params.nSolveSinceLastPrecComp);
             nsolve = linsolver.nSolve;
 
             if ~sam.precJustComputed

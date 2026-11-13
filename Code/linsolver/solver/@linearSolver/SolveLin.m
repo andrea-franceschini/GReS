@@ -51,7 +51,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 
    % Chronos does not exist, continue with matlab default
    if ~obj.ChronosFlag || (getGlobalSize(A) < obj.matlabMaxSize)
-      [x,flag] = matlab_solve(obj,A,b,time);
+      [x,flag] = matlab_solve(obj,A,b,time,nonlinIter);
       return
    end
 
@@ -125,10 +125,11 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       % (e.g. fixedStress with linear mechanics, where AMGMech is recycled
       % and only the flow part is recomputed), use that for the convergence strategy
       if ismethod(obj.Prec, 'getRecomputeSetupTime')
-         T_setup = obj.Prec.getRecomputeSetupTime(T_setup_wall);
+         T_setup_eff = obj.Prec.getRecomputeSetupTime(T_setup_wall);
       else
-         T_setup = T_setup_wall;
+         T_setup_eff = T_setup_wall;
       end
+      T_setup = T_setup_wall;
 
       % Update stats
       obj.aTimeComp = obj.aTimeComp + T_setup_wall;
@@ -153,6 +154,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       % Update stats
       obj.params.nSolveSinceLastPrecComp = obj.params.nSolveSinceLastPrecComp + 1;
       T_setup = 0;
+      T_setup_eff = 0;
    end
 
    % If the matrix is nonSymmetric then use always GMRES
@@ -225,7 +227,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
-   fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup,obj.convStrat.unscaledTol,obj.convStrat.Tol);
+   fillStats(obj,Tend,time,symValue,T_setup,T_setup_eff,obj.SAM.tSetup,obj.convStrat.unscaledTol,obj.convStrat.Tol,nonlinIter,obj.params.lastRelres);
 
    % Did not converge, if the preconditioner was not computed for this matrix
    % recompute it and try again
@@ -249,7 +251,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       if backupb_len > 1e5
         error('Chronos could not solve. Fallback to Matlab blocked due to excessive system size')
       end
-      [x,~] = matlab_solve(obj,backupA,backupb,time);
+      [x,~] = matlab_solve(obj,backupA,backupb,time,nonlinIter);
 
       % Fall back to matlab to continue without breaking the
       % simulation
@@ -286,7 +288,7 @@ end
 
 
 % Function to get and fill the stats
-function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM,tolReq,tolScaled)
+function fillStats(obj,Tend,time,symValue,T_setup,T_setup_eff,setupTSAM,tolReq,tolScaled,nonlinIter,tolReach)
 
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
@@ -294,6 +296,7 @@ function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM,tolReq,tolScaled)
    obj.aIter = obj.aIter + obj.params.iter;
    obj.maxIter = max(obj.maxIter,obj.params.iter);
    obj.precCompLin(solves) = T_setup;
+   obj.precEffLin(solves) = T_setup_eff;
    obj.SAM.CompLin(solves) = setupTSAM;
    obj.iterLin(solves) = obj.params.iter;
    obj.timeLin(solves) = time; 
@@ -301,6 +304,8 @@ function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM,tolReq,tolScaled)
    obj.symFlagLin(solves) = symValue;
    obj.tolReqLin(solves) = tolReq;
    obj.scaledTolLin(solves) = tolScaled;
+   obj.newtonLin(solves) = nonlinIter;
+   obj.tolReachLin(solves) = tolReach;
 end
 
 
@@ -330,7 +335,7 @@ function [gSize] = getGlobalSize(A)
    gSize = sum(rowSizes);
 end
 
-function [x,flag] = matlab_solve(obj,A,b,time)
+function [x,flag] = matlab_solve(obj,A,b,time,nonlinIter)
 
    gresLog().log(4,'Fallback to matlab due to size or chronos inexistance\n');
 
@@ -351,7 +356,7 @@ function [x,flag] = matlab_solve(obj,A,b,time)
    symValue = norm(A-A','f')/norm(A,'f');
    obj.params.iter = 0;
    obj.params.actualSolver = 'direct';
-   fillStats(obj,Tend,time,symValue,0,0,NaN,NaN);
+   fillStats(obj,Tend,time,symValue,0,0,0,NaN,NaN,nonlinIter,0);
    obj.Delta_T(obj.nSolve) = 0;
    flag = 0;
 end

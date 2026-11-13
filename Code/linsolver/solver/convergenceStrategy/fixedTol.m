@@ -85,7 +85,7 @@ classdef fixedTol < convStrat
             linsolver.Delta_T(linsolver.nSolve) = linsolver.cumTSolveAfterPrec - ...
                 linsolver.params.nSolveSinceLastPrecComp * linsolver.params.firstSolveTAfterPrecComp;
            
-            tSetup = linsolver.precCompLin(end - linsolver.params.nSolveSinceLastPrecComp);
+            tSetup = linsolver.precEffLin(end - linsolver.params.nSolveSinceLastPrecComp);
             
             % Check if the time for the new solves is sufficient to need a
             % preconditioner recomputation
@@ -101,7 +101,7 @@ classdef fixedTol < convStrat
          if linsolver.useSAM
             % Get the setup time of the preconditioner and the number of
             % solves since the start
-            tSetup = linsolver.precCompLin(end-linsolver.params.nSolveSinceLastPrecComp);
+            tSetup = linsolver.precEffLin(end-linsolver.params.nSolveSinceLastPrecComp);
             nsolve = linsolver.nSolve;
 
             % If the preconditioner has been computed in the last iteration
