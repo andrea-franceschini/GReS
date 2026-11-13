@@ -23,7 +23,7 @@ in a nonConforming simulation.
     <SolidMechanicsContact
                                          augmentationParameter = "1e3"
                                          multiplierType = "P0"
-                                         isSmooth = "0"
+                                         isSmooth = "1"
                                          stabilizationScale = "1.0"
                                          masterDomain = "1" masterSurface = "6"
                                          slaveDomain = "2" slaveSurface = "5">
