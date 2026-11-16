@@ -161,6 +161,7 @@ classdef Sedimentation < PhysicsSolver
       state.cb = zeros(nelm,1);
       state.slr = 0;
       state.columnheight = zeros(nelm,1);
+      state.CorSlr = 0;
 
       state.sedmRate = zeros(prod(map(1:2)),obj.nmat);
       state.sedmAcc  = zeros(prod(map(1:2)),obj.nmat);
@@ -272,7 +273,7 @@ classdef Sedimentation < PhysicsSolver
       sedm = getSedimentationMap(obj.sedimentHistory,t0,dt);
       if and(t0>=obj.spredict, ~isempty(obj.slr))
         sedmSum = sum(sedm,2);
-        [sedm, state.slr,state.columnheight] = computeSedmSLR( obj,...
+        [sedm, state.slr,state.columnheight,state.CorSlr] = computeSedmSLR( obj,...
           t0-obj.spredict,dt,sedm./sedmSum);
       end
 
@@ -727,6 +728,10 @@ classdef Sedimentation < PhysicsSolver
       obj.domain.outstate.results(tID).stress = outPrint.stress;
       obj.domain.outstate.results(tID).strain = outPrint.strain;
       obj.domain.outstate.results(tID).compaction = outPrint.comp;
+
+      obj.domain.outstate.results(tID).slr = outPrint.slr;
+      obj.domain.outstate.results(tID).columnheight = outPrint.columnheight;
+      obj.domain.outstate.results(tID).corSlr = outPrint.CorSlr;
     end
 
     function [cellStr,pointStr] = buildPrintStruct(obj,state)
@@ -897,7 +902,7 @@ classdef Sedimentation < PhysicsSolver
       setState(obj,oedoComp,'cb');
     end
 
-    function [sedm,slrTx,trueColHeig] = computeSedmSLR(obj,t0,dt,fract)
+    function [sedm,slrTx,trueColHeig,corSlr] = computeSedmSLR(obj,t0,dt,fract)
       % Compute the amount of sediment necessary for predict using the sea level rising      
 
       % Finding the amount of sediment in function of the SLR
@@ -927,6 +932,7 @@ classdef Sedimentation < PhysicsSolver
         slrTx = obj.slr(pos,2)*((obj.slr(pos,1)-obj.slr(pos-1,1))*dt);
       end
       sedm = slrTx*fract;
+      corSlr = 0;
 
       % Correction necessary from the previous prediction
       trueColHeig = getColHeight(obj.mdof,obj.coordZ,...
@@ -934,8 +940,8 @@ classdef Sedimentation < PhysicsSolver
 
       if t0~=0.
         predColHeig = getStateOld(obj,'columnheight')+getStateOld(obj,'slr');
-        correction = predColHeig-trueColHeig;
-        sedm = sedm + correction.*fract;
+        corSlr = predColHeig-trueColHeig;
+        sedm = sedm + corSlr.*fract;
       end
     end
 
@@ -1028,6 +1034,12 @@ classdef Sedimentation < PhysicsSolver
       data.poro = state.void./(1+state.void);
       data.cb = state.cb;
       data.comp = -getComp(obj.mdof,state.cellDefm);
+      
+      data.slr = state.slr;
+      data.CorSlr = state.CorSlr;
+      data.columnheight = state.columnheight;
+      % data.slr = state.slr*ones(size(state.pressure));
+      % data.columnheight = state.columnheight(getMapFromDofs(obj.mdof));
     end
 
   end
