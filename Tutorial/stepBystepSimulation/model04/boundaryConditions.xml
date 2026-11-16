@@ -8,12 +8,14 @@ in a nonConforming simulation.
   <BC
       name = "fix_bottom"
       type = "Dirichlet"
-      field = "surface"
+      entityType = "SurfBC"
       variable = "displacements"
-      entityListType = "tags"
-      entityList = "1"
-      components = "z"
       >
+
+    <BCentities
+                surfaceTags = "1"
+                components = "z"
+                />
 
     <BCevent
              time = "0"
@@ -24,45 +26,47 @@ in a nonConforming simulation.
   <BC
       name = "y_fix"
       type = "Dirichlet"
-      field = "surface"
+      entityType = "SurfBC"
       variable = "displacements"
-      entityListType = "tags"
-      entityList = "3,4"
-      components = "y"
       >
 
+    <BCentities
+                surfaceTags = "3,4"
+                components = "y"
+                />
 
     <BCevent
              time = "0"
              value = "0"
              />
   </BC>
-
- 
   <BC
       name = "x_fix"
       type = "Dirichlet"
-      field = "surface"
+      entityType = "SurfBC"
       variable = "displacements"
-      entityListType = "tags"
-      entityList = "5,6"
-      components = "x"
       >
+
+    <BCentities
+                surfaceTags = "6"
+                components = "x"
+                />
 
     <BCevent
              time = "0"
              value = "0"
              />
   </BC>
-
   <BC
       name = "pressureBC"
       type = "Dirichlet"
-      field = "cell"
+      entityType = "ElementBC"
       variable = "pressure"
-      entityListType = "box"
-      entityList =  "30,40,45,55,5,6"
       >
+
+    <BCentities
+                box = "30,40,45,55,5,6"
+                />
 
     <BCevent
              time = "0"
@@ -73,16 +77,16 @@ in a nonConforming simulation.
              value = "-100.0"
              />
   </BC>
-
   <BC
       name = "pressureDir"
       type = "Dirichlet"
-      field = "surface"
+      entityType = "SurfBC"
       variable = "pressure"
-      entityListType = "tags"
-      entityList = "1,3,4,6"
-
       >
+
+    <BCentities
+                surfaceTags = "1,3,4,6"
+                />
 
     <BCevent
              time = "0"

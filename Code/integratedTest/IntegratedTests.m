@@ -104,5 +104,17 @@ classdef IntegratedTests < matlab.unittest.TestCase
       testCase.verifyFalse(any([results.Failed]),'ConstantSlidingEFEM tests did not pass.');
     end
 
+    function BuckleyLeverett(testCase)
+      testFile = fullfile(testCase.testPath,'BuckleyLeverett','testBuckleyLeverett.m');
+      results = runtests(testFile);
+      testCase.verifyFalse(any([results.Failed]),'BuckleyLeverett tests did not pass.');
+    end
+
+    function testStaircase(testCase)
+      testFile = fullfile(testCase.testPath,'Staircase','testStaircase.m');
+      results = runtests(testFile);
+      testCase.verifyFalse(any([results.Failed]),'Staircase tests did not pass.');
+    end
+
   end
 end

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Materials>
+  <Solid name = "peat"
+         cellTags = "1">
+    <Constitutive>
+      <SedimentMaterial
+          stressReference = "10."
+          voidRateReference = "15."
+          compressibilityIndex = "4.00"
+          reCompressibilityIndex = "0.40"
+          stressPreConsolidated = "1000"
+          stressMin = "1e-1"
+          stressMax = "1e5"
+          voidRateMin = "5"
+          specificWeight = "2.0e4"
+          conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
+      />
+    </Constitutive>
+  </Solid>
+
+  <Solid name = "clay"
+         cellTags = "2">
+    <Constitutive>
+      <SedimentMaterial
+          stressReference = "10."
+          voidRateReference = "10."
+          compressibilityIndex = "3.00"
+          reCompressibilityIndex = "0.10"
+          stressPreConsolidated = "1000"
+          stressMin = "1e-1"
+          stressMax = "1e5"
+          voidRateMin = "2.5"
+          specificWeight = "2.7e4"
+          conductivity = "0.9450e-1, 0.9450e-1, 0.315e-1"
+      />
+    </Constitutive>
+  </Solid>
+
+  <Solid name = "silt"
+         cellTags = "3">
+    <Constitutive>
+      <SedimentMaterial
+          stressReference = "10."
+          voidRateReference = "3."
+          compressibilityIndex = "0.50"
+          reCompressibilityIndex = "0.05"
+          stressPreConsolidated = "1000"
+          stressMin = "1e-1"
+          stressMax = "1e5"
+          voidRateMin = "1.75"
+          specificWeight = "2.7e4"
+          conductivity = "0.9450e+1, 0.9450e+1, 0.315e+1"
+      />
+    </Constitutive>
+  </Solid>
+
+  <Solid name = "base"
+         cellTags = "4">
+    <Constitutive>
+      <SedimentMaterial
+          stressReference = "10."
+          voidRateReference = "1."
+          compressibilityIndex = "0.000001"
+          reCompressibilityIndex = "0.000001"
+          stressPreConsolidated = "1000"
+          stressMin = "1e-1"
+          stressMax = "1e5"
+          voidRateMin = "0.99995"
+          specificWeight = "2.0e4"
+          conductivity = "0.1e+5, 0.1e+5, 0.1e+5"
+      />
+    </Constitutive>
+  </Solid>
+
+  <Fluid
+      specificWeight = "1.0e4"
+      compressibility = "0.432e-8"
+  />
+
+</Materials>

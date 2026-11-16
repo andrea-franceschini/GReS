@@ -54,13 +54,25 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       [x,flag] = matlab_solve(obj,A,b,time);
       return
    end
+
+   % Fix the pattern to be symmetric
+   [A] = fixPattern(A);
    
+   % Check if this step is linear to use maximum resolution needed
+   isLinear = getIsLinear(obj.generalsolver);
+
    % Save a backup for the inputs
    backupA = A;
    backupb = b;
 
-   % Check if this step is linear to use maximum resolution needed
-   isLinear = getIsLinear(obj.generalsolver);
+   % Save system to .mat if requested
+   saveLinearSystem(obj, backupA, backupb, obj.nSolve + 1);
+   
+   % Scale the system if required by the preconditioner (e.g. fixedStress rate scaling)
+   [A, b] = obj.Prec.scaleSystem(A, b);
+
+   % Check the symmetry of the matrix
+   [globalsymm,maxval,symMat] = checkSymmetry(A,obj.nsyTol);
 
    % Get the full rhs
    if iscell(b)
@@ -72,7 +84,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    
    % Contact has opened a fracture or something similar so amg does not converge well. 
    % Directly recompute the preconditioner
-   if obj.Prec.phys == 1.1 
+   if isequal(obj.Prec.phys, 1.1)
       if obj.generalsolver.iterConfig > obj.iterConfigOld && obj.iterConfigOld == 1
          % If the SAM is being used then it is better to just compute it
          % wrt computing the whole preconditioner
@@ -90,11 +102,6 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % Save the solver type
    firstSolver = obj.SolverType;
 
-   % Fix the pattern to be symmetric and check the symmetry of the
-   % resulting matrix
-   [A] = fixPattern(A);
-   [globalsymm,maxval,symMat] = checkSymmetry(A,obj.nsyTol);
-
    % Symmetric matrix and nonsymmetric preconditioner do not work together.
    % There is a risk in finding a spurious nonphysical solution satisfying
    % the residual
@@ -111,17 +118,20 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 
       time_start = tic;
       % Compute the preconditioner
-      mc = metaclass(obj.Prec);
-      m = mc.MethodList(strcmp({mc.MethodList.Name}, 'Compute'));
-      if ~isempty(m) && ~isempty(m.OutputNames)
-         A = obj.Prec.Compute(A,symMat);
+      A = obj.Prec.Compute(A,symMat);
+      T_setup_wall = toc(time_start);
+
+      % If the preconditioner can provide a recomputation-specific setup time
+      % (e.g. fixedStress with linear mechanics, where AMGMech is recycled
+      % and only the flow part is recomputed), use that for the convergence strategy
+      if ismethod(obj.Prec, 'getRecomputeSetupTime')
+         T_setup = obj.Prec.getRecomputeSetupTime(T_setup_wall);
       else
-         obj.Prec.Compute(A,symMat);
+         T_setup = T_setup_wall;
       end
-      T_setup = toc(time_start);
 
       % Update stats
-      obj.aTimeComp = obj.aTimeComp + T_setup;
+      obj.aTimeComp = obj.aTimeComp + T_setup_wall;
       obj.nComp = obj.nComp + 1;
       obj.whenComputed(length(obj.whenComputed) + 1) = time;
       obj.params.nSolveSinceLastPrecComp = 0;
@@ -186,11 +196,12 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    obj.convStrat.computeTol(b, isLinear, nonlinIter, obj.Ruiz, backupb);
 
    startT = tic;
+   obj.params.actualSolver = obj.SolverType;
    switch obj.SolverType
       case 'gmres'
 
          % Solve the system by GMRES
-         [x,flag,obj.params.lastRelres,iter1] = gmres_RIGHT(Amat,b,obj.params.restart,obj.convStrat.Tol,...
+         [x,flag,obj.params.lastRelres,iter1,obj.params.resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.convStrat.Tol,...
                                                             obj.params.maxit/obj.params.restart,...
                                                             obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
          obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
@@ -199,13 +210,13 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 
          % Solve the system by SQMR
          Afun = @(x) Amat*x;
-         [x,flag,obj.params.lastRelres,obj.params.iter] = SQMR(Afun,b,obj.convStrat.Tol,obj.params.maxit,...
+         [x,flag,obj.params.lastRelres,obj.params.iter,obj.params.resvec] = SQMR(Afun,b,obj.convStrat.Tol,obj.params.maxit,...
                                                                obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
    end
 
    % Sanity check for all real solutions
    if any(~isreal(x),'all')
-      warning('wtf')
+      gresLog().warning(3,'wtf')
       x = real(x);
    end
 
@@ -214,7 +225,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
-   fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup);
+   fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup,obj.convStrat.unscaledTol,obj.convStrat.Tol);
 
    % Did not converge, if the preconditioner was not computed for this matrix
    % recompute it and try again
@@ -230,12 +241,19 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % Interesting problem
    if(flag == 1)
       gresLog().log(3,'Number of solves since last preconditioner computation %d\n',obj.params.nSolveSinceLastPrecComp);
+      if iscell(backupb)
+         backupb_len = length(cell2matrix(backupb));
+      else
+         backupb_len = length(backupb);
+      end
+      if backupb_len > 1e5
+        error('Chronos could not solve. Fallback to Matlab blocked due to excessive system size')
+      end
       [x,~] = matlab_solve(obj,backupA,backupb,time);
 
       % Fall back to matlab to continue without breaking the
       % simulation
       warning('Matlab could solve and chronos did not. Falling back to matlab to continue simulation');
-      obj.ChronosFlag = false;
       return;
    end
 
@@ -248,8 +266,8 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % Check if the SAM needs to be (re)computed
    obj.convStrat.recomputeSAM(obj,obj.SAM,Tend);
 
-   % Store the new starting vector
-   obj.x0 = x;
+   % Restore the new starting vector
+   obj.x0 = zeros(size(x));
 end
 
 
@@ -268,7 +286,7 @@ end
 
 
 % Function to get and fill the stats
-function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM)
+function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM,tolReq,tolScaled)
 
    obj.aTimeSolve = obj.aTimeSolve + Tend;
    obj.nSolve = obj.nSolve + 1;
@@ -281,6 +299,8 @@ function fillStats(obj,Tend,time,symValue,T_setup,setupTSAM)
    obj.timeLin(solves) = time; 
    obj.solveTLin(solves) = Tend;
    obj.symFlagLin(solves) = symValue;
+   obj.tolReqLin(solves) = tolReq;
+   obj.scaledTolLin(solves) = tolScaled;
 end
 
 
@@ -294,11 +314,15 @@ function [gSize] = getGlobalSize(A)
    rowSizes = zeros(nBlockRows,1);
    
    for i = 1:nBlockRows
-      for j = 1:nBlockCols
-         C = A{i,j};
-         if ~isempty(C)
-            rowSizes(i) = size(C,1);
-            break;
+      if ~isempty(A{i,i})
+         rowSizes(i) = size(A{i,i}, 1);
+      else
+         for j = 1:nBlockCols
+            C = A{i,j};
+            if ~isempty(C)
+               rowSizes(i) = size(C,1);
+               break;
+            end
          end
       end
    end
@@ -324,12 +348,10 @@ function [x,flag] = matlab_solve(obj,A,b,time)
    % Get the size of the system
    obj.systemSize = max(size(A,1),obj.systemSize);
 
-   % if obj.DEBUGflag
-   %    fprintf('condition number of the matrix %e\n',condest(A));
-   % end
    symValue = norm(A-A','f')/norm(A,'f');
    obj.params.iter = 0;
-   fillStats(obj,Tend,time,symValue,0,0);
+   obj.params.actualSolver = 'direct';
+   fillStats(obj,Tend,time,symValue,0,0,NaN,NaN);
    obj.Delta_T(obj.nSolve) = 0;
    flag = 0;
 end
@@ -372,7 +394,7 @@ function [globalsymm,maxval,symMat] = checkSymmetry(A,eps1)
          if i == j
             % Diagonal Block
             [symm(cont), val(cont)] = checkSymmetry(A{i,i},eps1);
-         elseif ~isempty(A{i,j})
+         elseif nnz(A{i,j}) > 0 || nnz(A{j,i}) > 0
             % Off-Diagonal Block
             diffnorm = norm(A{i,j}-A{j,i}','f');
             Anorm = 0.5 * (norm(A{i,j},'f') + norm(A{j,i},'f'));
@@ -447,24 +469,100 @@ function [isLinear] = getIsLinear(generalsolver)
    isLinear = true;
 end
 
+% Ensures block matrix A has non-empty blocks of valid dimensions
+% and symmetric nonzero sparsity patterns.
 function [A] = fixPattern(A)
    N = size(A, 1);
+
+   % Determine row and column dimensions for each block row/col index.
+   % Also flag blocks that are empty [] or 0x0.
+   blkRows = zeros(N, 1);
+   blkCols = zeros(N, 1);
+   emptyMask = false(N, N);
+
+   for j = 1:N
+      for i = 1:N
+         M = A{i,j};
+         if isempty(M)
+            emptyMask(i,j) = true;
+         else
+            [r, c] = size(M);
+            if r > 0 && blkRows(i) == 0, blkRows(i) = r; end
+            if c > 0 && blkCols(j) == 0, blkCols(j) = c; end
+         end
+      end
+   end
+
+   % For square block partitionings, if an entire row or column had only empty
+   % blocks, recover the missing dimension from the symmetric counterpart.
+   for i = 1:N
+      if blkRows(i) == 0 && blkCols(i) > 0
+         blkRows(i) = blkCols(i);
+      elseif blkCols(i) == 0 && blkRows(i) > 0
+         blkCols(i) = blkRows(i);
+      end
+   end
+
+   % Replace empty blocks with correctly dimensioned sparse zeros.
+   if any(emptyMask, 'all')
+      [eRows, eCols] = find(emptyMask);
+      for k = 1:numel(eRows)
+         i = eRows(k);
+         j = eCols(k);
+         r = blkRows(i);
+         c = blkCols(j);
+         if r == 0 || c == 0
+            error('fixPattern:cannotDetermineBlockSize', ...
+                  'Cannot determine dimensions for empty block (%d,%d).', i, j);
+         end
+         A{i,j} = sparse(r, c);
+      end
+   end
+
+   % Symmetrize the sparsity pattern across blocks.
+   % If A{i,j} has a nonzero at (r,c) but A{j,i} does not at (c,r), add an
+   % eps-weight entry at (c,r) in A{j,i} so the graph structure is symmetric.
    for j = 1:N
       for i = 1:j
-         patt = spones(A{i,j}) - spones(A{j,i}');
-         if nnz(patt)
-            mask1 = (patt ==  1);  % in A{i,j} but not A{j,i}'
-            mask2 = (patt == -1);  % in A{j,i}' but not A{i,j}
-            if i ~= j
-               A{j,i} = A{j,i} + (A{i,j} .* mask1)' * eps;
-               A{i,j} = A{i,j} + (A{j,i} .* mask2')' * eps;
-
-               patt = spones(A{i,j}) - spones(A{j,i}');
-               if nnz(patt) ~= 0
-                  error('asymmetric pattern found');
+         Aij = A{i,j};
+         if i == j
+            % Diagonal block: check internal symmetry of sparsity pattern
+            if nnz(Aij) > 0
+               S = spones(Aij);
+               St = S';
+               if ~isequal(S, St)
+                  % Nonzeros in S not present in S'
+                  diff = S - St;
+                  [r, c] = find(diff == 1);
+                  A{i,i} = Aij + sparse(c, r, eps, blkRows(i), blkRows(i));
                end
-            else
-               A{i,i} = A{i,i} + (A{i,i} .* mask1)' * eps;
+            end
+         else
+            % Off-diagonal block pair (i,j) and (j,i)
+            Aji = A{j,i};
+            nnz_ij = nnz(Aij);
+            nnz_ji = nnz(Aji);
+            % Fast exit if both blocks are purely zero
+            if nnz_ij == 0 && nnz_ji == 0
+               continue;
+            end
+
+            Sij = spones(Aij);
+            Sji_t = spones(Aji)';
+
+            % Fast equality check: compares sparsity structures directly
+            if ~isequal(Sij, Sji_t)
+               diff = Sij - Sji_t;
+               % Entries present in A{i,j} but missing in A{j,i}'
+               [r1, c1] = find(diff == 1);
+               if ~isempty(r1)
+                  A{j,i} = Aji + sparse(c1, r1, eps, blkCols(j), blkRows(i));
+               end
+               % Entries present in A{j,i}' but missing in A{i,j}
+               [r2, c2] = find(diff == -1);
+               if ~isempty(r2)
+                  A{i,j} = Aij + sparse(r2, c2, eps, blkRows(i), blkCols(j));
+               end
             end
          end
       end
@@ -473,3 +571,95 @@ end
 
 
 
+% Save current linear system matrix, RHS, grid coordinates, and solver metadata to .mat file.
+% This enables standalone reproduction and benchmark validation of linear systems via solveSingle.
+function saveLinearSystem(obj, A, b, currentSolve, varargin)
+
+   % Determine if matrix export is requested for this solve step
+   forcing = ~isempty(varargin) && (isequal(varargin{1}, true) || strcmpi(string(varargin{1}), "true"));
+   shouldSave = forcing || strcmpi('all', obj.saveMatType) || ...
+                (strcmpi('selected', obj.saveMatType) && ismember(currentSolve, obj.saveMatSolves));
+   if ~shouldSave
+      return;
+   end
+
+   % Extract spatial grid coordinates from domain models
+   coordinates = getCoordinates(obj.generalsolver);
+   filename = sprintf('linearSystem_solve%d.mat', currentSolve);
+
+   % Extract scaling flag and active preconditioner class
+   ruizFlag = ~isempty(obj.Ruiz) && obj.Ruiz.scalingFlag;
+   if ~isempty(obj.Prec), preconditioner = class(obj.Prec); else, preconditioner = ''; end
+
+   % For fixed-stress split systems, precompute and record relaxation matrix R.
+   % The relaxation matrix (e.g. volumetric fluid coupling in Biot or multiphase poromechanics)
+   % is required by fixedStress to decouple mechanics and flow without rebuilding domain matrices.
+   timeRelaxation = 0;
+   R = [];
+   props = struct();
+   if isa(obj.Prec, 'fixedStress')
+      dom1 = obj.generalsolver.domains(1);
+      if ismember("MultiphasePoromechanics", dom1.solverNames)
+         biot = dom1.getPhysicsSolver("MultiphasePoromechanics");
+      elseif ismember("BiotFullyCoupled", dom1.solverNames)
+         biot = dom1.getPhysicsSolver("BiotFullyCoupled");
+      else
+         error('Configuration not recognized for fixed stress in saveLinearSystem');
+      end
+
+      if ~isempty(biot)
+         t0_R = tic;
+         biot.computeRelaxationMatrix();
+         timeRelaxation = toc(t0_R);
+         R = biot.R;
+
+         % For multiphase poromechanics, extract fluid saturation and phase densities
+         % to enable exact Schur complement flow scaling in standalone solveSingle runs
+         if ismember("MultiphasePoromechanics", dom1.solverNames)
+            pState = dom1.getState("pressure");
+            swState = dom1.getState("saturation");
+            cIdx = dom1.dofm.getFieldCells("pressure");
+            tpSolver = biot.getFlowSolver();
+            sp = pState(cIdx);
+            props.sw = swState(cIdx);
+            props.rhoW = tpSolver.props.wet.density(sp);
+            props.rhoNW = tpSolver.props.nwet.density(sp);
+         end
+      end
+   end
+
+   % Extract physical variable names from domain degree of freedom managers
+   if ~isempty(obj.generalsolver.domains)
+      physCell = arrayfun(@(x) x.dofm.getVariableNames(), obj.generalsolver.domains, 'UniformOutput', false);
+      physics = [physCell{:}];
+   elseif ~isempty(obj.Prec) && isa(obj.Prec, 'aAMG')
+      if obj.Prec.phys == 0, physics = "pressure"; else, physics = "displacements"; end
+   else
+      physics = "displacements";
+   end
+
+   % Extract solver parameters and time step
+   dt = obj.generalsolver.dt;
+   solverType = obj.SolverType;
+   tol = obj.generalsolver.simparams.relTol;
+   maxit = obj.params.maxit;
+   if isfield(obj.params, 'restart') && ~isempty(obj.params.restart)
+      restart = obj.params.restart;
+   else
+      restart = 100;
+   end
+
+   % Persist system matrix, RHS, and full execution metadata to disk
+   save(filename, 'A', 'b', 'coordinates', 'ruizFlag', 'preconditioner', ...
+        'physics', 'solverType', 'restart', 'tol', 'maxit', 'dt', 'R', 'timeRelaxation', 'props');
+   gresLog().log(3, 'Saved linear system solve %d to %s\n', currentSolve, filename);
+end
+
+% Extract spatial grid coordinates from domain objects across single or multiple domains
+function coordinates = getCoordinates(generalsolver)
+   if numel(generalsolver.domains) == 1
+      coordinates = generalsolver.domains(1).grid.coordinates;
+   else
+      coordinates = arrayfun(@(d) d.grid.coordinates, generalsolver.domains, 'UniformOutput', false);
+   end
+end
