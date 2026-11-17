@@ -1,18 +1,30 @@
-% Condenses the domains and interfaces in a 2x2 matrix
-function A = condenseDomains(obj,A)
+% Condenses only the saddle-point interfaces into block K+1 while keeping variable blocks 1..K separate
+function A_out = condenseDomains(obj,A)
    idxMain = obj.getKindBlocks("variable");
    idxSupp = obj.getKindBlocks("interface");
 
-   % Treat the multiple domains as if they were one and then use RACP
-   if numel(A) ~= 4
-
-      A11 = cell2matrix(A(idxMain,idxMain));
-      A12 = cell2matrix(A(idxMain,idxSupp));
-      A21 = cell2matrix(A(idxSupp,idxMain));
-      A22 = cell2matrix(A(idxSupp,idxSupp));
-
-      clear A;
-
-      A = {A11, A12; A21 A22};
+   K = numel(idxMain);
+   if isempty(idxSupp)
+      A_out = A(idxMain, idxMain);
+      return;
    end
+
+   % If already condensed to (K+1) x (K+1) with a single merged interface block
+   if size(A, 1) == (K + 1) && size(A, 2) == (K + 1)
+      A_out = A;
+      return;
+   end
+
+   A_out = cell(K + 1, K + 1);
+   % Keep variable blocks separate
+   A_out(1:K, 1:K) = A(idxMain, idxMain);
+
+   % Condense coupling to saddle interface block (column K+1 and row K+1)
+   for i = 1:K
+      A_out{i, K + 1} = cell2matrix(A(idxMain(i), idxSupp));
+      A_out{K + 1, i} = cell2matrix(A(idxSupp, idxMain(i)));
+   end
+
+   % Condense interface-interface block
+   A_out{K + 1, K + 1} = cell2matrix(A(idxSupp, idxSupp));
 end

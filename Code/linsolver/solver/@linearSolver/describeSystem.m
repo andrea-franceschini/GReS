@@ -107,12 +107,28 @@ function info = describeSystem(generalsolver, verbose)
       ib = interfBlocks(iI);
       b = totalVars + iI;
       blocks(b).blockIdx = b;
-      blocks(b).kind = "interface";
+      if contains(string(ib.interfType), "MeshTyingTPFA")
+         blocks(b).kind = "variable";
+         blocks(b).varName = "pressure";
+      else
+         blocks(b).kind = "interface";
+         blocks(b).varName = ib.coupledVar;
+      end
       blocks(b).domainId = [ib.slaveDom, ib.masterDom];
-      blocks(b).varName = ib.coupledVar;
       blocks(b).nDof = ib.nDof;
       blocks(b).solverType = ib.interfType;
    end
+
+   % Default identity permutation before preconditioner-driven resolution
+   pBlk = 1:nTotalBlocks;
+   isPermuted = false;
+   dofOffsets = [0, cumsum([blocks.nDof])];
+   rawDofs = cell(nTotalBlocks, 1);
+   for b = 1:nTotalBlocks
+      rawDofs{b} = ((dofOffsets(b)+1):dofOffsets(b+1))';
+   end
+   pDofs = vertcat(rawDofs{:});
+   canonicalBlocks = blocks;
 
    % Identify couplings between blocks
    couplings = {};
@@ -170,7 +186,11 @@ function info = describeSystem(generalsolver, verbose)
    info.nBlocks = nTotalBlocks;
    info.nDomainVariables = totalVars;
    info.nInterfaces = nInterf;
-   info.blocks = blocks;
+   info.pBlk = pBlk;
+   info.pDofs = pDofs;
+   info.isPermuted = isPermuted;
+   info.blocks = canonicalBlocks;
+   info.rawBlocks = blocks;
    info.varBlocks = varBlocks;
    info.interfBlocks = interfBlocks;
    info.couplings = couplings;
@@ -178,16 +198,16 @@ function info = describeSystem(generalsolver, verbose)
    % Print summary to console when requested
    if verbose
       fprintf('=== Assembled Matrix Structure (%dx%d blocks) ===\n', nTotalBlocks, nTotalBlocks);
-      for b = 1:totalVars
-         vb = varBlocks(b);
-         solvStr = join(vb.solvers, ',');
-         fprintf('Block (%d,%d): Domain %d, variable "%s" [DoFs: %d, physics: %s]\n', ...
-            b, b, vb.domainId, vb.varName, vb.nDof, solvStr);
-      end
-      for iI = 1:nInterf
-         ib = interfBlocks(iI);
-         fprintf('Block (%d,%d): Interface %d (%s) [DoFs: %d, location: %s, variable: "%s"]\n', ...
-            ib.blockIdx, ib.blockIdx, ib.interfId, ib.interfType, ib.nDof, ib.multiplierLocation, ib.coupledVar);
+      for b = 1:nTotalBlocks
+         blk = canonicalBlocks(b);
+         if blk.kind == "variable"
+            solvStr = join(blk.solverType, ',');
+            fprintf('Block (%d,%d): Domain %d, variable "%s" [DoFs: %d, physics: %s]\n', ...
+               b, b, blk.domainId, blk.varName, blk.nDof, solvStr);
+         else
+            fprintf('Block (%d,%d): Interface (%s) [DoFs: %d, variable: "%s"]\n', ...
+               b, b, blk.solverType, blk.nDof, blk.varName);
+         end
       end
 
       if ~isempty(couplings)

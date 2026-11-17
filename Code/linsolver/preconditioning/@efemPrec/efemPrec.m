@@ -59,6 +59,24 @@ classdef efemPrec < preconditioner
       % Function to compute the preconditioner
       A = Compute(obj,A,sym,varargin)
 
+      % Set sub-preconditioners for EFEM (mechanics)
+      function setSubPrecs(obj, varargin)
+         for k = 1:2:numel(varargin)
+            if strcmpi(string(varargin{k}), "displacements")
+               obj.AMG = varargin{k+1};
+            end
+         end
+      end
+
+      % Determine adaptive block ordering for activeBlockIds
+      function blockOrder = getBlockOrdering(obj, blocks, activeBlockIds)
+         activeMeta = blocks(activeBlockIds);
+         uBlocks = activeBlockIds([activeMeta.varName] == "displacements");
+         jBlocks = activeBlockIds([activeMeta.varName] == "fractureJump");
+         uOrder = obj.AMG.getBlockOrdering(blocks, uBlocks);
+         blockOrder = [uOrder, jBlocks];
+      end
+
       % Set diagonal block scope and propagate to AMG and FSAI children
       function setBlockScope(obj, sysInfo, blockIds)
          setBlockScope@preconditioner(obj, sysInfo, blockIds);

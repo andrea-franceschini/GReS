@@ -156,15 +156,6 @@ end
 % Local Helper Functions
 % =========================================================================
 
-% Helper function to extract a struct field or return a default value
-function val = getFieldOr(s, fieldName, defaultVal)
-   if isfield(s, fieldName) && ~isempty(s.(fieldName))
-      val = s.(fieldName);
-   else
-      val = defaultVal;
-   end
-end
-
 % Construct right-hand side vector based on the requested rhsFlag
 function [b_in, b_unscaled] = constructRhs(b_file, Amat, A, rhsFlag)
    n = size(Amat, 1);

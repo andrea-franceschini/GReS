@@ -171,9 +171,12 @@ classdef RuizScaling < handle
       %
       % Syntax:
       %   Abal = scaleMat(obj, A)                    -> full cell matrix or full double matrix
-      %   Abal = scaleMat(obj, A, iblock)            -> diagonal block i: D_i * A * D_i'
-      %   Abal = scaleMat(obj, A, iblock, jblock)    -> off-diagonal block: D_i * A * D_j'
+      %   Abal = scaleMat(obj, A, iblock)            -> diagonal block(s) i: D_i * A * D_i'
+      %   Abal = scaleMat(obj, A, iblock, jblock)    -> off-diagonal block(s): D_i * A * D_j'
       %   Abal = scaleMat(obj, A, startBlk, endBlk)  -> subrange of cell matrix
+      %
+      % Note: iblock and jblock can be scalar indices or vectors of block IDs
+      % (e.g. pBlk = [1, 2, 3]), in which case vertcat(obj.D{iblock}) is used.
       function [Abal] = scaleMat(obj, A, varargin)
          if ~obj.scalingFlag
             Abal = A;
@@ -226,14 +229,14 @@ classdef RuizScaling < handle
                % Full unpartitioned matrix
                Abal = obj.fullD .* A .* (obj.fullD.');
             elseif isscalar(varargin)
-               % Diagonal block i: D_i * A * D_i'
-               iblock = varargin{1};
-               Abal = obj.D{iblock} .* A .* (obj.D{iblock}.');
+               % Diagonal block(s) i: D_i * A * D_i'
+               di = vertcat(obj.D{varargin{1}});
+               Abal = di .* A .* (di.');
             elseif numel(varargin) == 2
-               % Off-diagonal block (i, j): D_i * A * D_j'
-               iblock = varargin{1};
-               jblock = varargin{2};
-               Abal = obj.D{iblock} .* A .* (obj.D{jblock}.');
+               % Off-diagonal block(s) (i, j): D_i * A * D_j'
+               di = vertcat(obj.D{varargin{1}});
+               dj = vertcat(obj.D{varargin{2}});
+               Abal = di .* A .* (dj.');
             else
                error('RuizScaling:scaleMat:TooManyArgs', ...
                   'Too many optional arguments passed to scaleMat.');
@@ -365,6 +368,26 @@ classdef RuizScaling < handle
       function [vec] = applyDinv(obj, vecBal, varargin)
          if ~obj.scalingFlag
             vec = vecBal;
+            return;
+         end
+
+         if isstruct(vecBal)
+            vec = vecBal;
+            if isscalar(varargin) && ~isempty(varargin{1})
+               iblock = varargin{1};
+               for k = 1:numel(iblock)
+                  b = iblock(k);
+                  if b <= numel(vec) && ~isempty(vec(b).TV) && b <= numel(obj.D) && ~isempty(obj.D{b})
+                     vec(b).TV = obj.applyDinvVector(vec(b).TV, obj.D{b});
+                  end
+               end
+            else
+               for b = 1:min(numel(vecBal), numel(obj.D))
+                  if ~isempty(vecBal(b).TV) && ~isempty(obj.D{b})
+                     vec(b).TV = obj.applyDinvVector(vecBal(b).TV, obj.D{b});
+                  end
+               end
+            end
             return;
          end
 

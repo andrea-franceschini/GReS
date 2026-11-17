@@ -171,7 +171,10 @@ classdef MeshTyingTPFA < InterfaceSolver
       obj.outstate.matFile(tID).interfacePressure = p;
 
     end
-
+   
+    function [out] = isLinear(obj)
+       out = true;
+    end
 
   end
 

@@ -3,16 +3,16 @@ classdef fixedStress < preconditioner
    properties (SetAccess = protected, GetAccess = public)
 
       % Inner preconditioners
-      AMGMech = []
+      MechPrec = []
       FlowPrec = []
 
       % Flow preconditioner type: 'AMG' (single-phase) or 'CPR' (two-phase)
       flowPrecType = 'AMG'
 
-      % Flag indicating if mechanics is linear (allows AMGMech recycling)
+      % Flag indicating if mechanics is linear (allows MechPrec recycling)
       isMechLinear = false
 
-      % Flow part setup time (excluding one-time linear mechanics AMG)
+      % Flow part setup time (excluding one-time linear mechanics)
       tSetupFlow = 0
 
    end
@@ -53,43 +53,47 @@ classdef fixedStress < preconditioner
 
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)
-         if strcmpi(obj.flowPrecType,'CPR')
-            n1 = varargin{1};
-            Afu = varargin{2};
+         error('Undefined, use the specific functions ApplyLeft(...)');
+      end
 
-            bu = b(1:n1);
-            bf = b(n1+1:end);
+      function x = ApplyLeftCPR(obj,b,varargin)
+         n1 = varargin{1};
+         Afu = varargin{2};
 
-            % White et al. (2019) block triangular solve:
-            % Mechanics solve: zu = M_uu^{-1} bu
-            zu = obj.AMGMech.Apply_L(bu);
+         bu = b(1:n1);
+         bf = b(n1+1:end);
 
-            % Flow coupling update: yf = bf - Afu * zu
-            yf = bf - Afu * zu;
+         % White et al. (2019) block triangular solve:
+         % Mechanics solve: zu = M_uu^{-1} bu
+         zu = obj.MechPrec.Apply_L(bu);
 
-            % Flow CPR solve: zf = CPR(yf)
-            zf = obj.FlowPrec.Apply_L(yf);
+         % Flow coupling update: yf = bf - Afu * zu
+         yf = bf - Afu * zu;
 
-            % Combine displacement and flow solutions
-            x = [zu; zf];
+         % Flow CPR solve: zf = CPR(yf)
+         zf = obj.FlowPrec.Apply_L(yf);
 
-         else
-            A11 = varargin{1};
-            B1 = varargin{2};
+         % Combine displacement and flow solutions
+         x = [zu; zf];
+      end
 
-            % Get mechanics size
-            n1 = size(A11,1);
 
-            % Apply AMG for fluid part (approximate Schur complement)
-            x2 = obj.FlowPrec.Apply_L(b(n1+1:end));
+      function x = ApplyLeftAMG(obj,b,varargin)
+         A11 = varargin{1};
+         B1 = varargin{2};
 
-            % Apply the top part of the block preconditioner (upper block triangular solve)
-            x11 = b(1:n1) - B1*x2;
-            x1 = obj.AMGMech.Apply_L(x11);
+         % Get mechanics size
+         n1 = size(A11,1);
 
-            % Compose the solution
-            x = [x1;x2];
-         end
+         % Apply AMG for fluid part (approximate Schur complement)
+         x2 = obj.FlowPrec.Apply_L(b(n1+1:end));
+
+         % Apply the top part of the block preconditioner (upper block triangular solve)
+         x11 = b(1:n1) - B1*x2;
+         x1 = obj.MechPrec.Apply_L(x11);
+
+         % Compose the solution
+         x = [x1;x2];
       end
 
       % Getter for the function handle to apply the right preconditioner
@@ -140,7 +144,7 @@ classdef fixedStress < preconditioner
          obj.isMechLinear = obj.checkMechLinear();
 
          % Create the inner mechanics AMG preconditioner
-         obj.AMGMech = aAMG(debugflag,problemsolver,"displacements");
+         obj.MechPrec = aAMG(debugflag,problemsolver,"displacements");
 
          if hasSat
             obj.flowPrecType = 'CPR';
@@ -155,12 +159,44 @@ classdef fixedStress < preconditioner
          end
       end
 
+      % Set sub-preconditioners for mechanics and flow
+      function setSubPrecs(obj, varargin)
+         for k = 1:2:numel(varargin)
+            key = string(varargin{k});
+            if strcmpi(key, "mechanics")
+               obj.MechPrec = varargin{k+1};
+            elseif strcmpi(key, "flow")
+               obj.FlowPrec = varargin{k+1};
+               if isa(obj.FlowPrec, 'CPR')
+                  obj.flowPrecType = 'CPR';
+               elseif isa(obj.FlowPrec, 'aAMG')
+                  obj.flowPrecType = 'AMG';
+               elseif isa(obj.FlowPrec, 'RACP')
+                  obj.flowPrecType = 'RACP';
+               else
+                  error('Unsupported flow preconditioner');
+               end
+            end
+         end
+      end
+
+      % Determine adaptive block ordering for activeBlockIds
+      function blockOrder = getBlockOrdering(obj, blocks, activeBlockIds)
+         activeMeta = blocks(activeBlockIds);
+         isFlow = ismember([activeMeta.varName], ["pressure", "saturation"]);
+         mechBlocks = activeBlockIds(~isFlow);
+         flowBlocks = activeBlockIds(isFlow);
+         mechOrder = obj.MechPrec.getBlockOrdering(blocks, mechBlocks);
+         flowOrder = obj.FlowPrec.getBlockOrdering(blocks, flowBlocks);
+         blockOrder = [mechOrder, flowOrder];
+      end
+
       % Set diagonal block scope and propagate to mechanics and flow children
       function setBlockScope(obj, sysInfo, blockIds)
          setBlockScope@preconditioner(obj, sysInfo, blockIds);
-         uBlk = obj.getVarBlocks("displacements");
-         flowBlk = obj.getVarBlocks(["pressure", "saturation"]);
-         obj.AMGMech.setBlockScope(sysInfo, obj.precBlocks(uBlk));
+         uBlk = obj.getPhysicsBlocks("displacements");
+         flowBlk = obj.getPhysicsBlocks(["pressure", "saturation"]);
+         obj.MechPrec.setBlockScope(sysInfo, obj.precBlocks(uBlk));
          obj.FlowPrec.setBlockScope(sysInfo, obj.precBlocks(flowBlk));
       end
 

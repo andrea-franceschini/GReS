@@ -4,24 +4,31 @@ function A = Compute(obj,A,symMat,varargin)
    % Set the symmetry of the full preconditioner
    obj.PrecSym = floor(sum(symMat,'all')/(size(symMat,1))^2);
    
-   % Make the matrix 2x2
+   % Retrieve or compute cached unscaled test space
+   if nargin >= 4 && ~isempty(varargin{1})
+      TV0 = varargin{1};
+   else
+      TV0 = obj.getBlockTestSpace(obj.problemsolver);
+   end
+
+   % Compute and apply Ruiz diagonal scaling on full block matrix A if requested
+   A = obj.Ruiz.Compute(A);
+   TV0 = obj.Ruiz.applyDinv(TV0);
+
+   % Condense only saddle-point interfaces into block K+1, keeping variable blocks separate
    A = obj.condenseDomains(A);
 
-   % Compute the test space
-   idxMain = obj.getKindBlocks("variable");
-   TV0 = obj.buildTestSpace(obj.problemsolver, idxMain);
-
-   % Compute and apply Ruiz diagonal scaling if requested
-   A = obj.Ruiz.Compute(A);
-   TV0 = obj.Ruiz.applyDinv(TV0,1);
-
-   % Compute the augmented matrix
-   [A11_aug,inv_D22] = obj.cpt_localAug(A{1,1},A{1,2},A{2,1},A{2,2},obj.PrecSym);
+   % Compute augmented variable blocks directly at cell block level
+   [A11_aug,inv_D22,A12,A21] = obj.cpt_localAug(A,obj.PrecSym);
    
-   % Compute the amg for block 11
-   obj.AMG.Compute(A11_aug,obj.PrecSym,TV0,true);
+   % Slice test space for variable blocks
+   idxMain = obj.getKindBlocks("variable");
+   TV0_main = TV0(idxMain);
+
+   % Compute the inner preconditioner for augmented variable blocks
+   obj.innerPrec.Compute(A11_aug,symMat(idxMain,idxMain),TV0_main,true);
   
-   obj.Apply_L = @(x) obj.ApplyLeft(x,A11_aug,A{1,2},A{2,1},inv_D22);
+   obj.Apply_L = @(x) obj.ApplyLeft(x,A12,A21,inv_D22);
    obj.Apply_R = @(x) obj.ApplyRight(x);
    
 end

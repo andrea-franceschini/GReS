@@ -10,11 +10,20 @@ function [Prec,ChronosFlag,scalingFlag] = choosePrec(obj,debugflag,generalsolver
    % Check if the problem comes from multiphysics (max number of variables in any single domain > 1)
    multiPhysFlag = (max(arrayfun(@(x) x.dofm.getNumberOfVariables(), generalsolver.domains)) > 1);
 
-   % Early exit with multiphysics multidomain
+   % Check if multiphysics multidomain
    if multiPhysFlag && multiDomFlag
       scalingFlag = true;
-      gresLog().warning(3,'Multiphysics with multidomain not yet supported');
-      Prec = [];
+      order = "racpFirst";
+      if isfield(generalsolver.simparams.linSolverParams, 'multiDomPrecOrder')
+         order = generalsolver.simparams.linSolverParams.multiDomPrecOrder;
+      end
+      Prec = resolvePreconditioner(obj, generalsolver, 1:sys.nBlocks, order);
+      if ~isempty(Prec)
+         ChronosFlag = true;
+      else
+         gresLog().warning(3, 'Multiphysics with multidomain could not be resolved, falling back to MATLAB solver');
+         ChronosFlag = false;
+      end
       return;
    end
 
@@ -44,11 +53,11 @@ function [Prec,ChronosFlag,scalingFlag] = choosePrec(obj,debugflag,generalsolver
    % Now choose the correct preconditioner for the correct case
    if(multiPhysFlag && ~multiDomFlag)
       scalingFlag = true;
-      [ChronosFlag,Prec] = obj.chooseMultiPhys(generalsolver,debugflag,physname);
+      [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname);
    else
       % Keep only the unique one for the single physics
       physname = unique(physname);
 
-      [ChronosFlag,Prec] = obj.chooseSinglePhys(generalsolver,debugflag,physname);
+      [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physname);
    end
 end

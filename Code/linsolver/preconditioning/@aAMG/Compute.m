@@ -1,9 +1,8 @@
 function A = Compute(obj,A,symm,varargin)
    
    % Check inputs are correct 
-   if nargin < 4
-      gresLog().log(3,'test space not passed to aAMG, using defaults\n');
-      TV0 = obj.buildTestSpace(obj.generalsolver, 1:numel(obj.blockInfo));
+   if nargin < 4 || isempty(varargin{1})
+      TV0 = obj.getBlockTestSpace(obj.generalsolver);
    else
       % Get the test space
       TV0 = varargin{1};
@@ -21,8 +20,11 @@ function A = Compute(obj,A,symm,varargin)
       end
 
       % Convert the matrix to sparse double
-      A = A{1,1};
+      A = cell2matrix(A);
    end
+
+   % Extract assembled numeric test space matrix for cpt_aspAMG
+   TV0 = preconditioner.extractTestSpaceMatrix(TV0);
 
    % If sym == 0 then the matrix is nonsymmetric
    if ~symm
@@ -33,11 +35,16 @@ function A = Compute(obj,A,symm,varargin)
       obj.PrecSym = true;
    end
 
-   set_DEBINFO();
+   resetTimersAndDebinfo();
 
    % Compute the AMG preconditioner
+   tTotal = tic;
    obj.Prec = cpt_aspAMG(obj.params,A,TV0,obj.DEBUGflag);
-   
+   totalTime = toc(tTotal);
+
+   % Record hierarchy construction times for this compute call
+   obj.recordBuildTimes(totalTime);
+
    % Find out if it is an indefinite case
    obj.posDef = obj.Prec.isPosDef;
 
@@ -57,8 +64,8 @@ end
 
 
 
-% Helper function for computePrec
-function set_DEBINFO()
+% Helper function to reset debinfo and AMG hierarchy construction timers
+function resetTimersAndDebinfo()
    global DEBINFO;
    % GENERAL 
    DEBINFO.flag = false;
@@ -77,4 +84,9 @@ function set_DEBINFO()
    DEBINFO.coarsen = [];
    % prints
    DEBINFO.coarsen.draw_dist = false;
+
+   % Reset AMG construction timers
+   amg_times;
+   T_smoo = 0; T_tspa = 0; T_coar = 0; T_CR = 0;
+   T_prol = 0; T_FilProl = 0; T_FilCLev = 0; T_LowRank = 0; T_Total = 0;
 end

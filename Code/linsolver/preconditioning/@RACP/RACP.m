@@ -31,10 +31,12 @@ classdef RACP < preconditioner
 %     - Inner AMG behavior and parameters are encapsulated in the aAMG
 %       instance created during construction.
 
-   properties (Access = private)
+   properties (SetAccess = private, GetAccess = public)
+      % Inner preconditioner for augmented A11 block (e.g. aAMG, fixedStress)
+      innerPrec
+   end
 
-      % Inner preconditioners
-      AMG
+   properties (Access = private)
 
       % Problemsolver params
       problemsolver
@@ -71,23 +73,55 @@ classdef RACP < preconditioner
       % Function to compute the preconditioner
       A = Compute(obj,A,symMat,varargin)
 
-      % Set diagonal block scope and propagate variable blocks to inner AMG
+      % Set diagonal block scope and propagate variable blocks to inner preconditioner
       function setBlockScope(obj, sysInfo, blockIds)
          setBlockScope@preconditioner(obj, sysInfo, blockIds);
-         obj.AMG.setBlockScope(sysInfo, obj.precBlocks(obj.getKindBlocks("variable")));
+         obj.innerPrec.setBlockScope(sysInfo, obj.precBlocks(obj.getKindBlocks("variable")));
+      end
+
+      % Set inner sub-preconditioner
+      function setSubPrecs(obj, varargin)
+         if isa(varargin{1}, 'preconditioner')
+            obj.innerPrec = varargin{1};
+         else
+            obj.innerPrec = varargin{2};
+         end
+      end
+
+      % Determine adaptive block ordering for activeBlockIds
+      function blockOrder = getBlockOrdering(obj, blocks, activeBlockIds)
+         activeMeta = blocks(activeBlockIds);
+         isSaddle = [activeMeta.kind] == "interface";
+         mainBlocks = activeBlockIds(~isSaddle);
+         saddleBlocks = activeBlockIds(isSaddle);
+         mainOrder = obj.innerPrec.getBlockOrdering(blocks, mainBlocks);
+         blockOrder = [mainOrder, saddleBlocks];
       end
 
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)
-         if nargin < 6
+         if numel(varargin) >= 3
+            A12     = varargin{1};
+            A21     = varargin{2};
+            inv_D22 = varargin{3};
+         else
             error('Not enough arguments for RACP apply Left');
          end
-         A11_aug = varargin{1};
-         A12     = varargin{2};
-         A21     = varargin{3};
-         inv_D22 = varargin{4};
          
-         x = apply_RevAug(obj.AMG.Prec,A11_aug,A12,A21,inv_D22,b);
+         n1 = size(A12, 1);
+         b1 = b(1:n1);
+         b2 = b(n1+1:end);
+
+         % Augment RHS for A11 block
+         rhs1 = b1 + A12 * (inv_D22 * b2);
+
+         % Solve augmented block polymorphically via innerPrec.Apply_L
+         x1 = obj.innerPrec.Apply_L(rhs1);
+
+         % Backsubstitute for interface multipliers
+         x2 = inv_D22 * (b2 - A21 * x1);
+
+         x = [x1; x2];
       end
 
       % Getter for the function handle to apply the right preconditioner
@@ -137,15 +171,15 @@ classdef RACP < preconditioner
          end
 
          % Create the inner AMG preconditioner
-         obj.AMG = aAMG(debugflag,problemsolver,physname);
+         obj.innerPrec = aAMG(debugflag,problemsolver,physname);
 
-         obj.maxThreads = obj.AMG.maxThreads;
-         obj.params = obj.AMG.params;
+         obj.maxThreads = obj.innerPrec.maxThreads;
+         obj.params = obj.innerPrec.params;
          
       end
 
       % Compute local Augmented matrix
-      [A11_aug,inv_D22] = cpt_localAug(obj,A11,A12,A21,A22,symm)
+      [A11_aug,inv_D22,A12,A21] = cpt_localAug(obj,A,symm,varargin)
    
       % Condenses the domains and interfaces in a 2x2 matrix
       A = condenseDomains(obj,A)

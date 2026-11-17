@@ -42,7 +42,18 @@ function A = Compute(obj,A,varargin)
    symAp = false;
    
    % Test space: constant vector for pressure (scaled if Ruiz scaling is active)
-   TV0 = ones(ndofP, 1);
+   if numel(varargin) >= 2 && ~isempty(varargin{2})
+      TV0 = varargin{2};
+      if isstruct(TV0)
+         TV0 = TV0(pBlk);
+      end
+   elseif numel(varargin) >= 1 && isstruct(varargin{1})
+      TV0 = varargin{1};
+      TV0 = TV0(pBlk);
+   else
+      TV0 = obj.getBlockTestSpace(obj.problemsolver);
+      TV0 = TV0(pBlk);
+   end
    TV0 = obj.Ruiz.applyDinv(TV0, pBlk);
    
    % Compute AMG for decoupled pressure equation

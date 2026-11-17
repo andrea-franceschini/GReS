@@ -40,6 +40,17 @@ classdef aAMG < preconditioner
       % AMG info
       AMG_info
 
+      % Hierarchy construction timing records
+      buildTimes = struct('smoother', {}, ...
+                          'testspace', {}, ...
+                          'coarsening', {}, ...
+                          'compatibleRelaxation', {}, ...
+                          'prolongation', {}, ...
+                          'filterProlongation', {}, ...
+                          'filterCoarseLevel', {}, ...
+                          'lowRank', {}, ...
+                          'total', {})
+
    end
 
    methods (Access = public)
@@ -69,6 +80,45 @@ classdef aAMG < preconditioner
       % Print info
       function AMGinfo(obj)
          print_AMG_info(obj.AMG_info)
+         if ~isempty(obj.buildTimes)
+            obj.printBuildTimes();
+         end
+      end
+
+      % Print hierarchy construction timing statistics
+      function printBuildTimes(obj)
+         n = numel(obj.buildTimes);
+         avgSmoo = mean([obj.buildTimes.smoother]);
+         avgTspa = mean([obj.buildTimes.testspace]);
+         avgCoar = mean([obj.buildTimes.coarsening]);
+         avgCR   = mean([obj.buildTimes.compatibleRelaxation]);
+         avgProl = mean([obj.buildTimes.prolongation]);
+         avgFilP = mean([obj.buildTimes.filterProlongation]);
+         avgFilC = mean([obj.buildTimes.filterCoarseLevel]);
+         avgLowR = mean([obj.buildTimes.lowRank]);
+         avgTot  = mean([obj.buildTimes.total]);
+
+         fprintf('\n');
+         fprintf('-------------------------------------------------------------------\n');
+         fprintf('             AMG HIERARCHY CONSTRUCTION TIMING (s)\n');
+         fprintf('-------------------------------------------------------------------\n');
+         fprintf(' Number of recorded constructions: %d\n\n', n);
+         fprintf(' %-30s %15s %12s\n', 'Phase', 'Avg Time (s)', '% Total');
+         fprintf(' %-30s %15.4e %11.2f%%\n', 'Smoother setup', avgSmoo, (avgSmoo/avgTot)*100);
+         fprintf(' %-30s %15.4e %11.2f%%\n', 'Test space setup', avgTspa, (avgTspa/avgTot)*100);
+         fprintf(' %-30s %15.4e %11.2f%%\n', 'Coarsening', avgCoar, (avgCoar/avgTot)*100);
+         if avgCR > 0
+            fprintf(' %-30s %15.4e %11.2f%%\n', 'Compatible relaxation', avgCR, (avgCR/avgTot)*100);
+         end
+         fprintf(' %-30s %15.4e %11.2f%%\n', 'Prolongation', avgProl, (avgProl/avgTot)*100);
+         fprintf(' %-30s %15.4e %11.2f%%\n', 'Prolongation filtering', avgFilP, (avgFilP/avgTot)*100);
+         fprintf(' %-30s %15.4e %11.2f%%\n', 'Coarse level filtering', avgFilC, (avgFilC/avgTot)*100);
+         if avgLowR > 0
+            fprintf(' %-30s %15.4e %11.2f%%\n', 'Low-rank updates', avgLowR, (avgLowR/avgTot)*100);
+         end
+         fprintf('-------------------------------------------------------------------\n');
+         fprintf(' %-30s %15.4e %12s\n', 'Total construction time', avgTot, '100.00%');
+         fprintf('-------------------------------------------------------------------\n\n');
       end
          
 
@@ -122,6 +172,25 @@ classdef aAMG < preconditioner
 
       % Function to get the user input parameters for the preconditioner
       [params] = getUserInput(obj,params,xml);
+
+      % Record hierarchy construction times from global timing variables
+      function recordBuildTimes(obj, totalTime)
+         amg_times;
+         tRec = struct('smoother', T_smoo, ...
+                       'testspace', T_tspa, ...
+                       'coarsening', T_coar, ...
+                       'compatibleRelaxation', T_CR, ...
+                       'prolongation', T_prol, ...
+                       'filterProlongation', T_FilProl, ...
+                       'filterCoarseLevel', T_FilCLev, ...
+                       'lowRank', T_LowRank, ...
+                       'total', totalTime);
+         if isempty(obj.buildTimes)
+            obj.buildTimes = tRec;
+         else
+            obj.buildTimes(end+1) = tRec;
+         end
+      end
    end
 end
 

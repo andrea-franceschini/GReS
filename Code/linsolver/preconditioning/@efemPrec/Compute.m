@@ -24,8 +24,16 @@ function [A] = Compute(obj,A,symMat,varargin)
       A22 = obj.regularizeA22(A{jBlk,jBlk});
    end
 
-   % Compute the test space
-   TV0 = obj.AMG.buildTestSpace(obj.problemsolver, 1:numel(obj.AMG.blockInfo));
+   % Compute or retrieve test space
+   if nargin >= 4 && ~isempty(varargin{1})
+      TV0 = varargin{1};
+      if isstruct(TV0)
+         TV0 = TV0(uBlk);
+      end
+   else
+      TV0 = obj.getBlockTestSpace(obj.problemsolver);
+      TV0 = TV0(uBlk);
+   end
 
    % Scale the test space if needed
    TV0 = obj.Ruiz.applyDinv(TV0, uBlk);

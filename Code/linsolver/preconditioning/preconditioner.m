@@ -35,6 +35,9 @@ classdef (Abstract) preconditioner < handle
 
       % Diagonal block metadata slice matching precBlocks (from describeSystem)
       blockInfo = struct([])
+
+      % Cached unscaled test space struct array matching blockInfo
+      testSpace = struct([])
    end
 
    properties (Access = public)
@@ -111,17 +114,69 @@ classdef (Abstract) preconditioner < handle
          idx = find([obj.blockInfo.kind] == "variable" & ismember([obj.blockInfo.varName], varNames));
       end
 
-      % Build test space for specified local diagonal blocks
+      % Get local indices matching physics/variable names across variables and interfaces
+      function idx = getPhysicsBlocks(obj, varNames)
+         idx = find(ismember([obj.blockInfo.varName], varNames));
+      end
+
+      % Set sub-preconditioners (no-op default for leaf preconditioners)
+      function setSubPrecs(obj, varargin)
+
+      end
+
+      % Determine adaptive block ordering for activeBlockIds
+      function blockOrder = getBlockOrdering(obj, blocks, activeBlockIds)
+         % Default for leaf preconditioners (aAMG, aFSAI, direct):
+         % Retains activeBlockIds in their natural domain sequence.
+         blockOrder = activeBlockIds;
+      end
+
+      % Retrieve or compute cached unscaled test space struct array
+      function TV0 = getBlockTestSpace(obj, generalsolver)
+         if isempty(obj.testSpace)
+            obj.testSpace = obj.buildTestSpace(generalsolver);
+         end
+         TV0 = obj.testSpace;
+      end
+
+      % Build test space struct array for specified local diagonal blocks
       function TV0 = buildTestSpace(obj, generalsolver, localIdx)
-         TV0 = [];
-         for b = localIdx
+         if nargin < 3 || isempty(localIdx)
+            localIdx = 1:numel(obj.blockInfo);
+         end
+         TV0 = struct('TV', cell(1, numel(localIdx)), ...
+                      'varName', cell(1, numel(localIdx)), ...
+                      'domainId', cell(1, numel(localIdx)));
+         for k = 1:numel(localIdx)
+            b = localIdx(k);
             blk = obj.blockInfo(b);
-            if blk.varName == "displacements"
-               TV = mk_rbm_3d(generalsolver.domains(blk.domainId(1)).grid.coordinates);
+            TV0(k).varName = blk.varName;
+            TV0(k).domainId = blk.domainId;
+            if blk.kind == "interface"
+               TV0(k).TV = [];
+            elseif blk.varName == "displacements"
+               TV0(k).TV = mk_rbm_3d(generalsolver.domains(blk.domainId(1)).grid.coordinates);
             else
-               TV = ones(blk.nDof, 1);
+               TV0(k).TV = ones(blk.nDof, 1);
             end
-            TV0 = [TV0; TV]; %#ok<AGROW>
+         end
+      end
+   end
+
+   methods (Static)
+      % Extract assembled numeric test space matrix from TV0 struct or matrix
+      function matTV = extractTestSpaceMatrix(TV0)
+         if isempty(TV0)
+            matTV = [];
+         elseif isstruct(TV0)
+            validTV = {TV0(~cellfun(@isempty, {TV0.TV})).TV};
+            if isempty(validTV)
+               matTV = [];
+            else
+               matTV = vertcat(validTV{:});
+            end
+         else
+            matTV = TV0;
          end
       end
    end

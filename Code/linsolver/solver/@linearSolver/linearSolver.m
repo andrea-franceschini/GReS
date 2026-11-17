@@ -188,6 +188,10 @@ classdef linearSolver < handle
             % Chronos exists
             addpath(genpath(ChronosDir));
 
+            % Adaptively determine block permutation from the resolved preconditioner hierarchy
+            pBlk = obj.Prec.getBlockOrdering(obj.systemInfo.rawBlocks, 1:obj.systemInfo.nBlocks);
+            obj.systemInfo = linearSolver.applyPermutation(obj.systemInfo, pBlk);
+
             % Set diagonal block scope on top-level preconditioner
             obj.Prec.setBlockScope(obj.systemInfo, 1:obj.systemInfo.nBlocks);
 
@@ -241,11 +245,51 @@ classdef linearSolver < handle
          end
          tot = obj.aTimeComp+obj.aTimeSolve+sum(obj.SAM.CompLin);
       end
+
+      % Permute cell array blocks of matrix A and RHS b to canonical physics order
+      function [A, b] = permuteBlocks(obj, A, b)
+         if ~isempty(obj.systemInfo) && isfield(obj.systemInfo, 'isPermuted') && obj.systemInfo.isPermuted
+            p = obj.systemInfo.pBlk;
+            A = A(p, p);
+            b = b(p);
+         end
+      end
+
+      % Permute solution vector x back to raw discretizer order
+      function x = permuteBackBlocks(obj, x)
+         if ~isempty(obj.systemInfo) && isfield(obj.systemInfo, 'isPermuted') && obj.systemInfo.isPermuted
+            xOrig = zeros(size(x), 'like', x);
+            xOrig(obj.systemInfo.pDofs) = x;
+            x = xOrig;
+         end
+      end
    end
 
    methods (Static)
       % Inspect system matrix structure from generalsolver
       info = describeSystem(generalsolver, verbose);
+
+      % Apply block permutation to systemInfo
+      function info = applyPermutation(info, pBlk)
+         pBlk = reshape(pBlk, 1, []);
+         nTotalBlocks = info.nBlocks;
+         info.pBlk = pBlk;
+         info.isPermuted = ~isequal(pBlk, 1:nTotalBlocks);
+
+         canonicalBlocks = info.rawBlocks(pBlk);
+         for b = 1:nTotalBlocks
+            canonicalBlocks(b).blockIdx = b;
+         end
+         info.blocks = canonicalBlocks;
+
+         dofOffsets = [0, cumsum([info.rawBlocks.nDof])];
+         rawDofs = cell(nTotalBlocks, 1);
+         for b = 1:nTotalBlocks
+            rawDofs{b} = ((dofOffsets(b)+1):dofOffsets(b+1))';
+         end
+         permDofs = rawDofs(pBlk);
+         info.pDofs = vertcat(permDofs{:});
+      end
 
       % Standalone solver for saved linear systems (.mat files)
       [x, stats, flag, relres, iter, resvec] = solveSingle(matFile, varargin);
@@ -256,10 +300,6 @@ classdef linearSolver < handle
       % Function to get if Chronos is to be used and if so instantiate the
       % preconditioner
       [Prec,ChronosFlag,scalingFlag] = choosePrec(obj,debugflag,problemsolver,physname);
-
-      % Specific functions to be used inside choosePrec
-      [ChronosFlag,Prec] = chooseSinglePhys(obj,generalsolver,debugflag,physname);
-      [ChronosFlag,Prec] = chooseMultiPhys(obj,generalsolver,debugflag,physname);
 
       % Function to set the print settings of the linear solver
       function setPrintOptions(obj,parm)
