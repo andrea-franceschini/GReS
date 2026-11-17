@@ -158,13 +158,14 @@ classdef Sedimentation < PhysicsSolver
       state.void = zeros(nelm,1);
       state.age = zeros(nelm,1);
       state.void0 = zeros(nelm,1);
-      state.cb = zeros(nelm,1);
-      state.slr = 0;
-      state.columnheight = zeros(nelm,1);
-      state.CorSlr = 0;
+      state.cb = zeros(nelm,1);      
 
       state.sedmRate = zeros(prod(map(1:2)),obj.nmat);
       state.sedmAcc  = zeros(prod(map(1:2)),obj.nmat);
+
+      state.slr = 0;
+      state.columnheight = zeros(prod(map(1:2)),1);
+      state.CorSlr = zeros(prod(map(1:2)),1);
 
       setState(obj,state)
 
@@ -430,23 +431,32 @@ classdef Sedimentation < PhysicsSolver
           dof = dofs(ngrowCols);
           loc = idx(ngrowCols);
 
-          fracCell = dzOld(ngrowCols).*obj.matfrac(dof,:) + sedAdd(loc,:);
           obj.cellDims(dof,3) = dzNew(ngrowCols);
+          fracCell = dzOld(ngrowCols).*obj.matfrac(dof,:) + sedAdd(loc,:);
+
+          % fracCell = dzOld(ngrowCols).*obj.matfrac(dof,:) + sedAdd(loc,:);
+          
           obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
 
           % Mean average
           % state.void(dof) = (dzDef(ngrowCols).*state.void(dof) +...
           %   dzSedmAdd(loc).*obj.voidTop(loc))./dzNew(ngrowCols);
+          % state.void0(dof) = (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
+          %   ( dzDef(ngrowCols) ./ state.void0(dof) + ...
+          %   dzSedmAdd(loc) ./ obj.e0Top(loc) );
 
           % Harmonic series
-          state.void(dof) = ...
-            (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
+          Voidmean = (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
             ( dzDef(ngrowCols) ./ state.void(dof) + ...
             dzSedmAdd(loc) ./ obj.voidTop(loc) );
-          state.void0(dof) = ...
-            (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
+          state.void(dof) = Voidmean;
+
+          Void0mean = (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
             ( dzDef(ngrowCols) ./ state.void0(dof) + ...
             dzSedmAdd(loc) ./ obj.e0Top(loc) );
+
+          % Void0mean = void0mean(obj,Voidmean,fracCell./sum(fracCell,2),dzNew(ngrowCols));
+          state.void0(dof) = Void0mean;          
         end
 
         if (any(growCols))
@@ -464,15 +474,26 @@ classdef Sedimentation < PhysicsSolver
           % % % %   frac.*dzSedmAdd(loc).*obj.voidTop(loc))./obj.heightControl;
 
           % Harmonic series
-          state.void(dof) = ...
-            (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
-            ( dzDef(growCols) ./ state.void(dof) + ...
-            (frac.*dzSedmAdd(loc)) ./ obj.voidTop(loc) );
+          % state.void(dof) = ...
+          %   (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
+          %   ( dzDef(growCols) ./ state.void(dof) + ...
+          %   (frac.*dzSedmAdd(loc)) ./ obj.voidTop(loc) );
+          state.void(dof) = obj.voidTop(loc);
 
-          state.void0(dof) = ...
-            (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
-            ( dzDef(growCols) ./ state.void0(dof) + ...
-            (frac.*dzSedmAdd(loc)) ./ obj.e0Top(loc) );
+          % state.void0(dof) = ...
+          %   (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
+          %   ( dzDef(growCols) ./ state.void0(dof) + ...
+          %   (frac.*dzSedmAdd(loc)) ./ obj.e0Top(loc) );
+          state.void0(dof) = obj.e0Top(loc);
+
+
+          % Voidmean = (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
+          %   ( dzDef(growCols) ./ state.void(dof) + ...
+          %   (frac.*dzSedmAdd(loc)) ./ obj.voidTop(loc) );
+          % state.void(dof) = Voidmean;
+          % 
+          % Void0mean = void0mean(obj,Voidmean,fracCell./sum(fracCell,2),sum((1-frac).*sedAdd(loc,:),2));
+          % state.void0(dof) = Void0mean;           
 
           newCellSed(loc,:) = (1-frac).*sedAdd(loc,:);
           mapNewCells(loc) = true;
@@ -593,12 +614,13 @@ classdef Sedimentation < PhysicsSolver
       eprev = stateOld.void;
 
       % % New version
+      ecurr = eprev;
       map1 = Scurr<0;
       ep = state.void0;
       tmpMat = getCellsProp(obj,'sedmat');
       % ecurr = SedimentMaterial.computeVoid(-Scurr(map1),-Sp(map1),ep(map1),obj.cellMatBranch(map1,:),tmpMat);
       mapSS = SedimentMaterial.curveBranch(-Scurr(map1),-Sp(map1),tmpMat.S1(map1),tmpMat.S2(map1));
-      ecurr = SedimentMaterial.computeVoid(-Scurr(map1),-Sp(map1),ep(map1),mapSS,tmpMat);
+      ecurr(map1) = SedimentMaterial.computeVoid(-Scurr(map1),-Sp(map1),ep(map1),mapSS,tmpMat);
 
       % % % % Old version
       % % % Cc = getCellsProp(obj,'compressIdx');
@@ -607,7 +629,9 @@ classdef Sedimentation < PhysicsSolver
       % % % ecurr = eprev + delta_e;
 
       % Update the Mesh Deformation - vertical deformation
-      eps = (ecurr-eprev)./(1+eprev); % - New version
+      % eps = (ecurr-eprev)./(1+eprev); % - New version
+      eps = min(0,(ecurr-eprev)./(1+eprev)); % exclude extansion strain
+
       % eps = delta_e./(1+eprev);
 
       % Update the Mesh Deformation - vertical deformation
@@ -907,43 +931,84 @@ classdef Sedimentation < PhysicsSolver
 
       % Finding the amount of sediment in function of the SLR
       tf = t0 + dt;
-      pos = find(obj.slr(:,1) <= t0, 1, 'last');
-      posF = find(t0+dt-1e-9 < obj.slr(:,1), 1, 'first');
-      if isempty(pos)
-        pos = 0;
-      end
+      slrTx = interp1(obj.slr(:,1), obj.slr(:,2), tf, 'next', 'extrap');
 
-      if pos~=posF
-        % interpolation
-        if pos == 0
-          dl = obj.slr(posF,1);
-        else
-          dl = obj.slr(posF,1)-obj.slr(pos,1);
-        end
-        
-        if posF-pos==1
-          slrTx = obj.slr(posF,2)*(dt/dl);
-        else
-          slrTx = obj.slr(posF,2)*((tf-obj.slr(posF-1,1))/dl) ...
-              + sum(obj.slr(pos:posF-1,2));
-        end
-      else
-        % extrapolation
-        slrTx = obj.slr(pos,2)*((obj.slr(pos,1)-obj.slr(pos-1,1))*dt);
-      end
-      sedm = slrTx*fract;
-      corSlr = 0;
+      % Integration points
+      time = [t0; obj.slr(obj.slr(:,1) > t0 & obj.slr(:,1) < tf, 1); tf];
+
+      % Midpoints of each interval
+      tm = (time(1:end-1) + time(2:end))/2;
+
+      % Piecewise-constant SLR rate
+      slrRate = interp1(obj.slr(:,1), obj.slr(:,2), tm, 'next', 'extrap');
+      % slrRate = interp1(obj.slr(:,1), obj.slr(:,2), time, 'next', 'extrap');
+
+      % Integrate SLR
+      slr = sum(diff(time).*slrRate);
+
+      % Linear interpolation with extrapolation
+      % slr0 = interp1(obj.slr(:,1), obj.slr(:,2), t0, 'linear', 'extrap');
+      % slrF = interp1(obj.slr(:,1), obj.slr(:,2), tf, 'linear', 'extrap');
+      % 
+      % % SLR increment during the time step
+      % slrTx = slrF - slr0;
+      % sedm = slrTx*fract;      
 
       % Correction necessary from the previous prediction
-      trueColHeig = getColHeight(obj.mdof,obj.coordZ,...
-        getStateOld(obj,'cellDefm'),sum(getStateOld(obj,'sedmAcc'),2));
+      % trueColHeig = getColHeight(obj.mdof,obj.coordZ,...
+      %   getStateOld(obj,'cellDefm'),sum(getStateOld(obj,'sedmAcc'),2));
+      % trueColHeig = getColHeight(obj.mdof,obj.coordZ,...
+      %   getStateOld(obj,'strainAcc'),sum(getStateOld(obj,'sedmAcc'),2));
+      % trueColHeig = getColHeight(obj.mdof,obj.cellDims(:,3),...
+      %   getStateOld(obj,'strainAcc'));
 
-      if t0~=0.
-        predColHeig = getStateOld(obj,'columnheight')+getStateOld(obj,'slr');
-        corSlr = predColHeig-trueColHeig;
-        sedm = sedm + corSlr.*fract;
+      trueColHeig = getColHeight(obj.mdof,obj.cellDims(:,3),getStateOld(obj,'cellDefm'));
+
+      % Correction from the previous prediction
+      corSlr = zeros(size(trueColHeig));
+      if t0 ~= 0
+        predColHeig = getStateOld(obj,'columnheight') + getStateOld(obj,'slr');
+        corSlr = max(0,predColHeig-trueColHeig);
       end
+
+      % Convert sediment thickness into sedimentation rate
+      sedm = (slr+corSlr).*fract;
     end
+
+    % % % % % % function [sedm,slrTx,trueColHeig,corSlr] = computeSedmSLR(obj,t0,dt,fract)
+    % % % % % %   % COMPUTESEDMSLR Computes the sedimentation rate required to
+    % % % % % %   % compensate for sea-level rise and previous height discrepancies.
+    % % % % % % 
+    % % % % % %   tf = t0 + dt;
+    % % % % % % 
+    % % % % % %   % Integrate the piecewise-constant SLR rate
+    % % % % % %   time = [t0; obj.slr(obj.slr(:,1)>t0 & obj.slr(:,1)<tf,1); tf];
+    % % % % % % 
+    % % % % % %   tm = (time(1:end-1)+time(2:end))/2;
+    % % % % % %   slrRate = interp1(obj.slr(:,1),obj.slr(:,2), tm,'next','extrap');
+    % % % % % %   % slrRate = interp1(obj.slr(:,1),obj.slr(:,2), tf,'next','extrap');
+    % % % % % % 
+    % % % % % %   slrTx = sum(diff(time).*slrRate);
+    % % % % % % 
+    % % % % % %   % Calculate actual column heights
+    % % % % % %   % trueColHeig = getColHeight(obj.mdof,obj.cellDims(:,3),getStateOld(obj,'strainAcc'));
+    % % % % % %   trueColHeig = getColHeight(obj.mdof,obj.cellDims(:,3),getStateOld(obj,'cellDefm'));
+    % % % % % % 
+    % % % % % %   % Correction from the previous prediction
+    % % % % % %   corSlr = zeros(size(trueColHeig));
+    % % % % % %   if t0 > 0
+    % % % % % %     predColHeig = getStateOld(obj,'columnheight') + getStateOld(obj,'slr');
+    % % % % % %     corSlr = max(0,predColHeig-trueColHeig);
+    % % % % % %   end
+    % % % % % % 
+    % % % % % %   % Convert sediment thickness into sedimentation rate
+    % % % % % %   sedm = (slrTx+corSlr).*fract;
+    % % % % % % end
+
+    
+
+
+
 
     function MaterialMap(obj)
       if ~obj.cbFreeze
@@ -1042,6 +1107,23 @@ classdef Sedimentation < PhysicsSolver
       % data.columnheight = state.columnheight(getMapFromDofs(obj.mdof));
     end
 
+    function data = void0mean(obj,void,fracCell,dz)
+      tmpCc = zeros(size(void));
+      tmpCr = zeros(size(void));
+      tmpS  = zeros(size(void));
+      tmpSp = zeros(size(void));
+      gamma_w = obj.domain.materials.getFluid().getSpecificWeight();
+      for mat=1:obj.nmat
+        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
+
+        tmpS = tmpS + (tmpMat.gamma - gamma_w)*fracCell(:,mat).*dz;
+        tmpCc = tmpCc + fracCell(:,mat).*tmpMat.Cc;
+        tmpCr = tmpCr + fracCell(:,mat).*tmpMat.Cr;
+        tmpSp = tmpSp + fracCell(:,mat).*tmpMat.Sp;
+      end
+      stress = (1./(1+void)).*tmpS;
+      data = SedimentMaterial.getVoidPreCon(stress,tmpSp,void,tmpCr,tmpCc);
+    end
   end
 
   methods (Static)

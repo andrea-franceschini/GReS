@@ -189,16 +189,63 @@ classdef SedDofManager < handle
       end
     end
 
-    function colHeig = getColHeight(obj,zcol,comp,dzlastlay)
+    % function colHeig = getColHeight(obj,zcol,comp,dzlastlay)
+    %   ncols = prod(obj.ncells(1:2));
+    %   colHeig = zeros(ncols,1);
+    %   count = 1;
+    %   for j=1:obj.ncells(2)
+    %     for i=1:obj.ncells(1)
+    %       dofs = obj.dof(i,j,:);
+    %       dofs = dofs(dofs~=0);
+    %       top = length(dofs);
+    %       colHeig(count)=zcol(top)+sum(comp(dofs))+dzlastlay(count);
+    %       count=count+1;
+    %     end
+    %   end
+    % end
+
+    % function colHeig = getColHeight(obj,zcol,comp,dzlastlay)
+    %   ncols = prod(obj.ncells(1:2));
+    %   colHeig = zeros(ncols,1);
+    %   count = 1;
+    %   dz=diff(zcol);
+    %   for j=1:obj.ncells(2)
+    %     for i=1:obj.ncells(1)
+    %       dofs = obj.dof(i,j,:);
+    %       dofs = dofs(dofs~=0);
+    %       top = length(dofs);
+    %       colHeig(count)=sum(dz(1:top-1).*(1+comp(dofs(1:end-1))))+dzlastlay(count);
+    %       % colHeig(count)=zcol(top)+sum(comp(dofs))+dzlastlay(count);
+    %       count=count+1;
+    %     end
+    %   end
+    % end
+
+    % function colHeig = getColHeight(obj,dz,strain)
+    %   ncols = prod(obj.ncells(1:2));
+    %   colHeig = zeros(ncols,1);
+    %   count = 1;
+    %   dL = dz.*(1+strain);
+    %   for j=1:obj.ncells(2)
+    %     for i=1:obj.ncells(1)
+    %       dofs = obj.dof(i,j,:);
+    %       dofs = dofs(dofs~=0);
+    %       colHeig(count)=sum(dL(dofs));
+    %       count=count+1;
+    %     end
+    %   end
+    % end
+
+    function colHeig = getColHeight(obj,dz,deform)
       ncols = prod(obj.ncells(1:2));
       colHeig = zeros(ncols,1);
       count = 1;
+      dL = dz+deform;
       for j=1:obj.ncells(2)
         for i=1:obj.ncells(1)
           dofs = obj.dof(i,j,:);
           dofs = dofs(dofs~=0);
-          top = length(dofs);
-          colHeig(count)=zcol(top)+sum(comp(dofs))+dzlastlay(count);
+          colHeig(count)=sum(dL(dofs));
           count=count+1;
         end
       end
