@@ -200,7 +200,7 @@ function info = describeSystem(generalsolver, verbose)
       fprintf('=== Assembled Matrix Structure (%dx%d blocks) ===\n', nTotalBlocks, nTotalBlocks);
       for b = 1:nTotalBlocks
          blk = canonicalBlocks(b);
-         if blk.kind == "variable"
+         if blk.kind == "variable" && ~contains(blk.solverType,"MeshTyingTPFA")
             solvStr = join(blk.solverType, ',');
             fprintf('Block (%d,%d): Domain %d, variable "%s" [DoFs: %d, physics: %s]\n', ...
                b, b, blk.domainId, blk.varName, blk.nDof, solvStr);
