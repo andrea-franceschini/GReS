@@ -1,6 +1,10 @@
 % Function to compute the Fixed Stress preconditioner
 function A = Compute(obj,A,symMat,varargin)
 
+   if ~iscell(A)
+      error("Parent preconditioner not configured to run with multiphys multidomain");
+   end
+
    % Set the symmetry of the full preconditioner
    obj.PrecSym = floor(sum(symMat,'all')/(size(symMat,1))^2);
 
@@ -18,9 +22,9 @@ function A = Compute(obj,A,symMat,varargin)
    end
 
    % Determine whether mechanics preconditioner can be recycled
-   innerAMG = isprop(obj.MechPrec,'Prec') && ~isempty(obj.MechPrec.Prec);
-   innerRACP = isprop(obj.MechPrec,'innerPrec') && ~isempty(obj.MechPrec.innerPrec.Prec);
-   recycleMech = obj.isMechLinear && (innerAMG || innerRACP);
+   mechLin = obj.isMechLinear();
+   recycleMech = mechLin && obj.isMechLinearOld;
+   obj.isMechLinearOld = mechLin;
 
    % Compute and apply Ruiz diagonal scaling if requested at the fixedStress level
    if recycleMech
@@ -31,16 +35,12 @@ function A = Compute(obj,A,symMat,varargin)
       TV0 = obj.Ruiz.applyDinv(TV0);
 
       % Store mechanics matrix and compute mechanics AMG
-      A_uu = cell2matrix(A(uBlk, uBlk));
       TV0_mech = TV0(uBlk);
-      sym_uu = floor(sum(symMat(uBlk, uBlk), 'all') / (numel(uBlk))^2);
-      if isa(obj.MechPrec, 'RACP')
-         obj.MechPrec.Compute(A(uBlk, uBlk), symMat(uBlk, uBlk), TV0_mech, true);
-      else
-         obj.MechPrec.Compute(A_uu, sym_uu, TV0_mech, true);
-      end
+      obj.MechPrec.Compute(A(uBlk, uBlk), symMat(uBlk, uBlk), TV0_mech, true);
    end
 
+   % Get mechanics part of the matrix and the test spaces
+   A_uu = cell2matrix(A(uBlk, uBlk));
    TV0_flow = TV0(pBlk);
 
    % Time the flow part in case the mechanics is reused

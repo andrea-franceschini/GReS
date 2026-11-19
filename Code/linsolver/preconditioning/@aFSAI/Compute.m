@@ -1,5 +1,9 @@
 function [A] = Compute(obj,A,symm,varargin)
 
+   if (iscell(A) && size(A,1) > 1) || (size(symm,1) > 1)
+      error('FSAI does not support block matrices, check');
+   end
+   
    if iscell(A)
       % Ruiz is done only here as it is entered only if the problem to be
       % solved is a single physics using amg as a preconditioner. In the

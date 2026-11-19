@@ -1,13 +1,30 @@
-function A = Compute(obj,A,varargin)
+function A = Compute(obj,A,symMat,varargin)
+   
+   if ~iscell(A)
+      error("Parent preconditioner not configured to run with multiphys multidomain");
+   end
+
    % Multiphase system is nonsymmetric
    obj.PrecSym = false;
    
-   % Compute and apply Ruiz diagonal scaling if requested
-   A = obj.Ruiz.Compute(A);
-   
-   % Extract block matrices and assembled sparse matrix
+   % Get blocks
    pBlk = obj.getVarBlocks("pressure");
    sBlk = obj.getVarBlocks("saturation");
+
+   % Get or compute the test space
+   if nargin >= 4 && ~isempty(varargin{1})
+      TV0 = varargin{1};
+      TV0 = TV0(pBlk);
+   else
+      TV0 = obj.getBlockTestSpace(obj.problemsolver);
+      TV0 = TV0(pBlk);
+   end
+   
+   % Compute and apply Ruiz diagonal scaling if requested
+   A = obj.Ruiz.Compute(A);
+   TV0 = obj.Ruiz.applyDinv(TV0, pBlk);
+   
+   % Extract block matrices and assembled sparse matrix
    Asp = A{pBlk, pBlk};
    Ass = A{pBlk, sBlk};
    App = A{sBlk, pBlk};
@@ -41,33 +58,27 @@ function A = Compute(obj,A,varargin)
    % Multiphase pressure operator with upwinded mobilities is non-symmetric
    symAp = false;
    
-   % Test space: constant vector for pressure (scaled if Ruiz scaling is active)
-   if numel(varargin) >= 2 && ~isempty(varargin{2})
-      TV0 = varargin{2};
-      if isstruct(TV0)
-         TV0 = TV0(pBlk);
-      end
-   elseif numel(varargin) >= 1 && isstruct(varargin{1})
-      TV0 = varargin{1};
-      TV0 = TV0(pBlk);
-   else
-      TV0 = obj.getBlockTestSpace(obj.problemsolver);
-      TV0 = TV0(pBlk);
-   end
-   TV0 = obj.Ruiz.applyDinv(TV0, pBlk);
-   
    % Compute AMG for decoupled pressure equation
    obj.AMGP.Compute(Ap, symAp, TV0);
    
    % Compute smoother for full system (cell-interleaved as in White et al. 2019)
    % Need to invert also the columns as compared to White GReS has a different ordering of derivation
-   pRows = reshape([1:ndofP; ndofP + (1:ndofP)], [], 1);
-   pCols = reshape([ndofP + (1:ndofP); 1:ndofP], [], 1);
-   invPCols = zeros(2 * ndofP, 1);
-   invPCols(pCols) = 1:(2 * ndofP);
+   [pRows,pCols,invPCols] = computePermutation(ndofP);
+   
+   % Compute the general system smoother
    obj.FSAI.Compute(Amat(pRows, pCols), false);
 
    % Set application function handles
    obj.Apply_L = @(r) obj.ApplyLeft(r, ndofP, d_ss(:), Aps, Amat, pRows, invPCols);
    obj.Apply_R = @(r) obj.ApplyRight(r);
+end
+
+
+% Function to compute the permutation to have interleaving pressure and
+% saturation
+function [pRows,pCols,invPCols] = computePermutation(ndofP)
+   pRows = reshape([1:ndofP; ndofP + (1:ndofP)], [], 1);
+   pCols = reshape([ndofP + (1:ndofP); 1:ndofP], [], 1);
+   invPCols = zeros(2 * ndofP, 1);
+   invPCols(pCols) = 1:(2 * ndofP);
 end

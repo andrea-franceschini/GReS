@@ -4,8 +4,8 @@ classdef RACP < preconditioner
 %   This class implements the RACP (Reverse Augmented Constraint
 %   Preconditioner) as a subclass of the abstract preconditioner
 %   class. RACP provides a block preconditioning strategy for coupled
-%    problems arising from finite element discretizations. 
-%    It builds a reverse-augmented constraint framework while delegating 
+%   problems arising from finite element discretizations. 
+%   It builds a reverse-augmented constraint framework while delegating 
 %   inner solves to an algebraic multigrid (AMG) preconditioner.
 %
 %   Key features:
@@ -32,7 +32,7 @@ classdef RACP < preconditioner
 %       instance created during construction.
 
    properties (SetAccess = private, GetAccess = public)
-      % Inner preconditioner for augmented A11 block (e.g. aAMG, fixedStress)
+      % Inner preconditioner for augmented A11 block
       innerPrec
    end
 
@@ -40,13 +40,6 @@ classdef RACP < preconditioner
 
       % Problemsolver params
       problemsolver
-
-      % Discretizer
-      domain
-      
-      % Number of domains/interfaces
-      nDom
-      nInt
 
       % RACP Gamma
       gamma = 1.0
@@ -72,31 +65,6 @@ classdef RACP < preconditioner
    methods
       % Function to compute the preconditioner
       A = Compute(obj,A,symMat,varargin)
-
-      % Set diagonal block scope and propagate variable blocks to inner preconditioner
-      function setBlockScope(obj, sysInfo, blockIds)
-         setBlockScope@preconditioner(obj, sysInfo, blockIds);
-         obj.innerPrec.setBlockScope(sysInfo, obj.precBlocks(obj.getKindBlocks("variable")));
-      end
-
-      % Set inner sub-preconditioner
-      function setSubPrecs(obj, varargin)
-         if isa(varargin{1}, 'preconditioner')
-            obj.innerPrec = varargin{1};
-         else
-            obj.innerPrec = varargin{2};
-         end
-      end
-
-      % Determine adaptive block ordering for activeBlockIds
-      function blockOrder = getBlockOrdering(obj, blocks, activeBlockIds)
-         activeMeta = blocks(activeBlockIds);
-         isSaddle = [activeMeta.kind] == "interface";
-         mainBlocks = activeBlockIds(~isSaddle);
-         saddleBlocks = activeBlockIds(isSaddle);
-         mainOrder = obj.innerPrec.getBlockOrdering(blocks, mainBlocks);
-         blockOrder = [mainOrder, saddleBlocks];
-      end
 
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)
@@ -144,17 +112,9 @@ classdef RACP < preconditioner
 
          % Get the domains
          obj.problemsolver = problemsolver;
-         obj.domain = problemsolver.domains;
 
-         obj.nInt = problemsolver.nInterf;
-         obj.nDom = problemsolver.nDom;
-
-         % Check the number of interfaces and domains
-         if obj.nInt ~= 0
-            interfacein = problemsolver.interfaces;
-         else
-            interfacein = {};
-         end
+         % Get the interfaces of the problem
+         interfacein = problemsolver.interfaces;
 
          % Supported Single Physics
          if(contains(physname,'pressure') || contains(physname,'u'))
@@ -183,5 +143,28 @@ classdef RACP < preconditioner
    
       % Condenses the domains and interfaces in a 2x2 matrix
       A = condenseDomains(obj,A)
+
+      % Set diagonal block scope and propagate variable blocks to inner preconditioner
+      function setBlockScope(obj, sysInfo, blockIds)
+         setBlockScope@preconditioner(obj, sysInfo, blockIds);
+         obj.innerPrec.setBlockScope(sysInfo, obj.precBlocks(obj.getKindBlocks("variable")));
+      end
+
+      % Set inner sub-preconditioner
+      function setSubPrecs(obj, varargin)
+         if nargin > 1 && ~isempty(varargin{1})
+            obj.innerPrec = varargin{1};
+         end
+      end
+
+      % Determine adaptive block ordering for activeBlockIds
+      function blockOrder = getBlockOrdering(obj, blocks, activeBlockIds)
+         activeMeta = blocks(activeBlockIds);
+         isSaddle = [activeMeta.kind] == "interface";
+         mainBlocks = activeBlockIds(~isSaddle);
+         saddleBlocks = activeBlockIds(isSaddle);
+         mainOrder = obj.innerPrec.getBlockOrdering(blocks, mainBlocks);
+         blockOrder = [mainOrder, saddleBlocks];
+      end
    end
 end

@@ -1,5 +1,8 @@
 function A = Compute(obj,A,symm,varargin)
    
+   % Correct if symm is a matrix
+   symm = isequal(sum(diag(symm)), size(symm,1));
+   
    % Check inputs are correct 
    if nargin < 4 || isempty(varargin{1})
       TV0 = obj.getBlockTestSpace(obj.generalsolver);
@@ -51,7 +54,7 @@ function A = Compute(obj,A,symm,varargin)
    % Get AMG hierarchy information
    obj.AMG_info = get_AMG_info(obj.Prec,A);
 
-   % Define Mfun
+   % Define the preconditioner application criterion
    obj.Apply_L = @(r) obj.ApplyLeft(r,A);
    obj.Apply_R = @(r) obj.ApplyRight(r);
 

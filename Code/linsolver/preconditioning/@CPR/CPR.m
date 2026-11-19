@@ -65,32 +65,7 @@ classdef CPR < preconditioner
    methods (Access = public)
 
       % Compute the preconditioner
-      A = Compute(obj,A,varargin)
-
-      % Set sub-preconditioners for CPR (pressure stage)
-      function setSubPrecs(obj, varargin)
-         for k = 1:2:numel(varargin)
-            if strcmpi(string(varargin{k}), "pressure")
-               obj.AMGP = varargin{k+1};
-            end
-         end
-      end
-
-      % Determine adaptive block ordering for activeBlockIds
-      function blockOrder = getBlockOrdering(obj, blocks, activeBlockIds)
-         activeMeta = blocks(activeBlockIds);
-         pBlocks = activeBlockIds([activeMeta.varName] == "pressure");
-         sBlocks = activeBlockIds([activeMeta.varName] == "saturation");
-         pOrder = obj.AMGP.getBlockOrdering(blocks, pBlocks);
-         blockOrder = [pOrder, sBlocks];
-      end
-
-      % Set diagonal block scope and propagate pressure block to AMGP
-      function setBlockScope(obj, sysInfo, blockIds)
-         setBlockScope@preconditioner(obj, sysInfo, blockIds);
-         pBlk = obj.getVarBlocks("pressure");
-         obj.AMGP.setBlockScope(sysInfo, obj.precBlocks(pBlk));
-      end
+      A = Compute(obj,A,symMat,varargin)
 
       % Left preconditioner application
       function x = ApplyLeft(obj,b,ndofP,dss,Aps,Amat,pRows,invPCols)
@@ -157,6 +132,31 @@ classdef CPR < preconditioner
          obj.FSAI = aFSAI(debugflag);
          obj.PrecSym = false;
 
+      end
+
+      % Set sub-preconditioners for CPR (pressure stage)
+      function setSubPrecs(obj, varargin)
+         for k = 1:2:numel(varargin)
+            if strcmpi(string(varargin{k}), "pressure")
+               obj.AMGP = varargin{k+1};
+            end
+         end
+      end
+
+      % Determine adaptive block ordering for activeBlockIds
+      function blockOrder = getBlockOrdering(obj, blocks, activeBlockIds)
+         activeMeta = blocks(activeBlockIds);
+         pBlocks = activeBlockIds([activeMeta.varName] == "pressure");
+         sBlocks = activeBlockIds([activeMeta.varName] == "saturation");
+         pOrder = obj.AMGP.getBlockOrdering(blocks, pBlocks);
+         blockOrder = [pOrder, sBlocks];
+      end
+
+      % Set diagonal block scope and propagate pressure block to AMGP
+      function setBlockScope(obj, sysInfo, blockIds)
+         setBlockScope@preconditioner(obj, sysInfo, blockIds);
+         pBlk = obj.getVarBlocks("pressure");
+         obj.AMGP.setBlockScope(sysInfo, obj.precBlocks(pBlk));
       end
    end
 end

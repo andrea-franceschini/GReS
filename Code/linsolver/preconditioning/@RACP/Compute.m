@@ -1,6 +1,10 @@
 % Function to compute the RACP preconditioner for the lagrange multiplier case (single physics multi domain)
 function A = Compute(obj,A,symMat,varargin)
 
+   if ~iscell(A)
+      error("Parent preconditioner not configured to run with multiphys multidomain");
+   end
+
    % Set the symmetry of the full preconditioner
    obj.PrecSym = floor(sum(symMat,'all')/(size(symMat,1))^2);
    

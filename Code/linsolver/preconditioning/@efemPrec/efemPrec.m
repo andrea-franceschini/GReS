@@ -3,7 +3,7 @@ classdef efemPrec < preconditioner
    properties (SetAccess = private,GetAccess=public)
 
       % Inner preconditioner
-      AMG = []
+      innerPrec = []
 
       % A22 block Inverter
       FSAI = []
@@ -59,33 +59,6 @@ classdef efemPrec < preconditioner
       % Function to compute the preconditioner
       A = Compute(obj,A,sym,varargin)
 
-      % Set sub-preconditioners for EFEM (mechanics)
-      function setSubPrecs(obj, varargin)
-         for k = 1:2:numel(varargin)
-            if strcmpi(string(varargin{k}), "displacements")
-               obj.AMG = varargin{k+1};
-            end
-         end
-      end
-
-      % Determine adaptive block ordering for activeBlockIds
-      function blockOrder = getBlockOrdering(obj, blocks, activeBlockIds)
-         activeMeta = blocks(activeBlockIds);
-         uBlocks = activeBlockIds([activeMeta.varName] == "displacements");
-         jBlocks = activeBlockIds([activeMeta.varName] == "fractureJump");
-         uOrder = obj.AMG.getBlockOrdering(blocks, uBlocks);
-         blockOrder = [uOrder, jBlocks];
-      end
-
-      % Set diagonal block scope and propagate to AMG and FSAI children
-      function setBlockScope(obj, sysInfo, blockIds)
-         setBlockScope@preconditioner(obj, sysInfo, blockIds);
-         uBlk = obj.getVarBlocks("displacements");
-         jBlk = obj.getVarBlocks("fractureJump");
-         obj.AMG.setBlockScope(sysInfo, obj.precBlocks(uBlk));
-         obj.FSAI.setBlockScope(sysInfo, obj.precBlocks(jBlk));
-      end
-
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)
          if nargin < 4
@@ -107,7 +80,7 @@ classdef efemPrec < preconditioner
          x11 = b(1:n1) - B1*x2;
          
          % Apply AMG to complete the block upper Gauss Seidel
-         x1 = obj.AMG.ApplyLeft(x11,obj.S);
+         x1 = obj.innerPrec.ApplyLeft(x11,obj.S);
 
          % Apply the coupling correction to the state block
          x2 = invC(b2 - B2*x1);
@@ -249,16 +222,45 @@ classdef efemPrec < preconditioner
          obj.nDom = problemsolver.nDom;
 
          % Create the inner AMG preconditioner
-         obj.AMG = aAMG(debugflag,problemsolver,"displacements");
+         obj.innerPrec = aAMG(debugflag,problemsolver,"displacements");
 
          % Create the inner FSAI solver
          obj.FSAI = aFSAI(debugflag);
 
          % Get the parameters
-         obj.maxThreads = obj.AMG.maxThreads;
-         obj.params = obj.AMG.params;
+         obj.maxThreads = obj.innerPrec.maxThreads;
+         obj.params = obj.innerPrec.params;
          obj.nsyTol = nsyTol;
          obj.linsolverTol = problemsolver.simparams.relTol;
       end
+
+
+      % Set sub-preconditioners for EFEM (mechanics)
+      function setSubPrecs(obj, varargin)
+         for k = 1:2:numel(varargin)
+            if strcmpi(string(varargin{k}), "displacements")
+               obj.innerPrec = varargin{k+1};
+            end
+         end
+      end
+
+      % Determine adaptive block ordering for activeBlockIds
+      function blockOrder = getBlockOrdering(obj, blocks, activeBlockIds)
+         activeMeta = blocks(activeBlockIds);
+         uBlocks = activeBlockIds([activeMeta.varName] == "displacements");
+         jBlocks = activeBlockIds([activeMeta.varName] == "fractureJump");
+         uOrder = obj.innerPrec.getBlockOrdering(blocks, uBlocks);
+         blockOrder = [uOrder, jBlocks];
+      end
+
+      % Set diagonal block scope and propagate to AMG and FSAI children
+      function setBlockScope(obj, sysInfo, blockIds)
+         setBlockScope@preconditioner(obj, sysInfo, blockIds);
+         uBlk = obj.getVarBlocks("displacements");
+         jBlk = obj.getVarBlocks("fractureJump");
+         obj.innerPrec.setBlockScope(sysInfo, obj.precBlocks(uBlk));
+         obj.FSAI.setBlockScope(sysInfo, obj.precBlocks(jBlk));
+      end
+
    end
 end

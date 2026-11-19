@@ -63,10 +63,10 @@
 	<!-- TEST SPACE parameters -->
 	<tspace
 		ntv="6"
-		itmax="20"
-		tol="1.e-5"
+		itmax="80"
+		tol="1.e-3"
 		method="NONE"
-		init_approx="1"
+		init_approx="5"
 	/>
 
 	<!-- FILTERING parameters -->

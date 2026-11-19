@@ -77,51 +77,6 @@ classdef aAMG < preconditioner
          x = b;
       end
 
-      % Print info
-      function AMGinfo(obj)
-         print_AMG_info(obj.AMG_info)
-         if ~isempty(obj.buildTimes)
-            obj.printBuildTimes();
-         end
-      end
-
-      % Print hierarchy construction timing statistics
-      function printBuildTimes(obj)
-         n = numel(obj.buildTimes);
-         avgSmoo = mean([obj.buildTimes.smoother]);
-         avgTspa = mean([obj.buildTimes.testspace]);
-         avgCoar = mean([obj.buildTimes.coarsening]);
-         avgCR   = mean([obj.buildTimes.compatibleRelaxation]);
-         avgProl = mean([obj.buildTimes.prolongation]);
-         avgFilP = mean([obj.buildTimes.filterProlongation]);
-         avgFilC = mean([obj.buildTimes.filterCoarseLevel]);
-         avgLowR = mean([obj.buildTimes.lowRank]);
-         avgTot  = mean([obj.buildTimes.total]);
-
-         fprintf('\n');
-         fprintf('-------------------------------------------------------------------\n');
-         fprintf('             AMG HIERARCHY CONSTRUCTION TIMING (s)\n');
-         fprintf('-------------------------------------------------------------------\n');
-         fprintf(' Number of recorded constructions: %d\n\n', n);
-         fprintf(' %-30s %15s %12s\n', 'Phase', 'Avg Time (s)', '% Total');
-         fprintf(' %-30s %15.4e %11.2f%%\n', 'Smoother setup', avgSmoo, (avgSmoo/avgTot)*100);
-         fprintf(' %-30s %15.4e %11.2f%%\n', 'Test space setup', avgTspa, (avgTspa/avgTot)*100);
-         fprintf(' %-30s %15.4e %11.2f%%\n', 'Coarsening', avgCoar, (avgCoar/avgTot)*100);
-         if avgCR > 0
-            fprintf(' %-30s %15.4e %11.2f%%\n', 'Compatible relaxation', avgCR, (avgCR/avgTot)*100);
-         end
-         fprintf(' %-30s %15.4e %11.2f%%\n', 'Prolongation', avgProl, (avgProl/avgTot)*100);
-         fprintf(' %-30s %15.4e %11.2f%%\n', 'Prolongation filtering', avgFilP, (avgFilP/avgTot)*100);
-         fprintf(' %-30s %15.4e %11.2f%%\n', 'Coarse level filtering', avgFilC, (avgFilC/avgTot)*100);
-         if avgLowR > 0
-            fprintf(' %-30s %15.4e %11.2f%%\n', 'Low-rank updates', avgLowR, (avgLowR/avgTot)*100);
-         end
-         fprintf('-------------------------------------------------------------------\n');
-         fprintf(' %-30s %15.4e %12s\n', 'Total construction time', avgTot, '100.00%');
-         fprintf('-------------------------------------------------------------------\n\n');
-      end
-         
-
       % Constructor Function
       function obj = aAMG(debugflag,generalsolver,physname)
 
@@ -166,6 +121,51 @@ classdef aAMG < preconditioner
          obj.params.smoother.nthread = min(obj.params.smoother.nthread,obj.maxThreads);
          obj.params = obj.getUserInput(obj.params,generalsolver.simparams.linSolverParams);
       end
+
+      % Print info
+      function AMGinfo(obj)
+         print_AMG_info(obj.AMG_info)
+         if ~isempty(obj.buildTimes)
+            obj.printBuildTimes();
+         end
+      end
+
+      % Print hierarchy construction timing statistics
+      function printBuildTimes(obj)
+         n = numel(obj.buildTimes);
+         avgSmoo = mean([obj.buildTimes.smoother]);
+         avgTspa = mean([obj.buildTimes.testspace]);
+         avgCoar = mean([obj.buildTimes.coarsening]);
+         avgCR   = mean([obj.buildTimes.compatibleRelaxation]);
+         avgProl = mean([obj.buildTimes.prolongation]);
+         avgFilP = mean([obj.buildTimes.filterProlongation]);
+         avgFilC = mean([obj.buildTimes.filterCoarseLevel]);
+         avgLowR = mean([obj.buildTimes.lowRank]);
+         avgTot  = mean([obj.buildTimes.total]);
+
+         fprintf('\n');
+         fprintf('-------------------------------------------------------------------\n');
+         fprintf('             AMG HIERARCHY CONSTRUCTION TIMING (s)\n');
+         fprintf('-------------------------------------------------------------------\n');
+         fprintf(' Number of recorded constructions: %d\n\n', n);
+         fprintf(' %-30s %15s %12s\n', 'Phase', 'Avg Time (s)', '% Total');
+         fprintf(' %-30s %15.4e %11.2f%%\n', 'Smoother setup', avgSmoo, (avgSmoo/avgTot)*100);
+         fprintf(' %-30s %15.4e %11.2f%%\n', 'Test space setup', avgTspa, (avgTspa/avgTot)*100);
+         fprintf(' %-30s %15.4e %11.2f%%\n', 'Coarsening', avgCoar, (avgCoar/avgTot)*100);
+         if avgCR > 0
+            fprintf(' %-30s %15.4e %11.2f%%\n', 'Compatible relaxation', avgCR, (avgCR/avgTot)*100);
+         end
+         fprintf(' %-30s %15.4e %11.2f%%\n', 'Prolongation', avgProl, (avgProl/avgTot)*100);
+         fprintf(' %-30s %15.4e %11.2f%%\n', 'Prolongation filtering', avgFilP, (avgFilP/avgTot)*100);
+         fprintf(' %-30s %15.4e %11.2f%%\n', 'Coarse level filtering', avgFilC, (avgFilC/avgTot)*100);
+         if avgLowR > 0
+            fprintf(' %-30s %15.4e %11.2f%%\n', 'Low-rank updates', avgLowR, (avgLowR/avgTot)*100);
+         end
+         fprintf('-------------------------------------------------------------------\n');
+         fprintf(' %-30s %15.4e %12s\n', 'Total construction time', avgTot, '100.00%');
+         fprintf('-------------------------------------------------------------------\n\n');
+      end
+
    end
 
    methods (Access = private)

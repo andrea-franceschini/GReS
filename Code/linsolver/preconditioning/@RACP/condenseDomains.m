@@ -2,13 +2,8 @@
 function A_out = condenseDomains(obj,A)
    idxMain = obj.getKindBlocks("variable");
    idxSupp = obj.getKindBlocks("interface");
-
    K = numel(idxMain);
-   if isempty(idxSupp)
-      A_out = A(idxMain, idxMain);
-      return;
-   end
-
+   
    % If already condensed to (K+1) x (K+1) with a single merged interface block
    if size(A, 1) == (K + 1) && size(A, 2) == (K + 1)
       A_out = A;

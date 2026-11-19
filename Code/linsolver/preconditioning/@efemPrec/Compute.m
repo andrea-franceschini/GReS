@@ -1,6 +1,10 @@
 % Function to compute the Embedded Fractures Preconditioner
 function [A] = Compute(obj,A,symMat,varargin)
 
+   if ~iscell(A)
+      error("Parent preconditioner not configured to run with multiphys multidomain");
+   end
+
    % Set the symmetry of the full preconditioner
    obj.PrecSym = floor(sum(symMat,'all')/(size(symMat,1))^2);
 
@@ -13,8 +17,18 @@ function [A] = Compute(obj,A,symMat,varargin)
       k_phys = obj.computePhysicalK(A{uBlk,uBlk}, A{uBlk,jBlk});
    end
 
-   % Compute and apply Ruiz diagonal scaling if requested (ON THE TRUE MATRIX A)
+   % Compute or retrieve test space
+   if nargin >= 4 && ~isempty(varargin{1})
+      TV0 = varargin{1};
+      TV0 = TV0(uBlk);
+   else
+      TV0 = obj.getBlockTestSpace(obj.problemsolver);
+      TV0 = TV0(uBlk);
+   end
+
+   % Compute and apply Ruiz diagonal scaling if requested
    A = obj.Ruiz.Compute(A);
+   TV0 = obj.Ruiz.applyDinv(TV0, uBlk);
 
    if strcmpi(obj.regularizationMethod, 'racp')
       % Physics-weighted RACP augmentation on Ruiz-scaled block
@@ -24,34 +38,18 @@ function [A] = Compute(obj,A,symMat,varargin)
       A22 = obj.regularizeA22(A{jBlk,jBlk});
    end
 
-   % Compute or retrieve test space
-   if nargin >= 4 && ~isempty(varargin{1})
-      TV0 = varargin{1};
-      if isstruct(TV0)
-         TV0 = TV0(uBlk);
-      end
-   else
-      TV0 = obj.getBlockTestSpace(obj.problemsolver);
-      TV0 = TV0(uBlk);
-   end
-
-   % Scale the test space if needed
-   TV0 = obj.Ruiz.applyDinv(TV0, uBlk);
-
    % Compute factorization of the jump block
    obj.FSAI.Compute(A22, symMat(jBlk,jBlk), true);
+   invC = @(x) obj.FSAI.ApplyLeft(x);
 
    % Compute reverse Schur complement of mechanics block
-   invC = @(x) obj.FSAI.ApplyLeft(x);
    obj.S = A{uBlk,uBlk} - A{uBlk,jBlk}*invC(A{jBlk,uBlk});
-   fprintf("Condest 11 %e, S %e. Cond 22 %e, 21 %e, 12 %e, 22mod %e\n",...
-      condest(A{uBlk,uBlk}),condest(obj.S),cond(full(A{jBlk,jBlk})),cond(full(A{jBlk,uBlk})),cond(full(A{uBlk,jBlk})),cond(full(A22)));
-
+   
    % Check in case of symmetric indefinite systems for FSAI
-   AMGSym = obj.FSAI.PrecSym && obj.PrecSym && obj.FSAI.posDef;
+   innerPrecSym = obj.FSAI.PrecSym && obj.PrecSym && obj.FSAI.posDef;
 
-   % Compute the amg for mechanics block
-   obj.AMG.Compute(obj.S, AMGSym, TV0, true);
+   % Compute the innerPrec for mechanics block
+   obj.innerPrec.Compute(obj.S, innerPrecSym, TV0, true);
 
    % Define handles for application of the preconditioner
    obj.Apply_L = @(x) obj.ApplyLeft(x, A{uBlk,jBlk}, A{jBlk,uBlk}, invC);

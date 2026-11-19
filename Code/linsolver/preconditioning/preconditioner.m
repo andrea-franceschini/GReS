@@ -13,7 +13,7 @@ classdef (Abstract) preconditioner < handle
 %   Typical usage:
 %      % Create subclass instance (e.g., myPrecond) and compute
 %      p = myPrecond();
-%      p.Compute(A,true);
+%      A = p.Compute(A,true);
 %      % Apply preconditioner via p.Apply_L and/or p.Apply_R
 
 
@@ -147,15 +147,23 @@ classdef (Abstract) preconditioner < handle
          TV0 = struct('TV', cell(1, numel(localIdx)), ...
                       'varName', cell(1, numel(localIdx)), ...
                       'domainId', cell(1, numel(localIdx)));
+         
+         % Loop over all blocks of the matrix to check if the test space is
+         % to be constructed
          for k = 1:numel(localIdx)
             b = localIdx(k);
             blk = obj.blockInfo(b);
             TV0(k).varName = blk.varName;
             TV0(k).domainId = blk.domainId;
+            
+            % Interface, no Test space
             if blk.kind == "interface"
                TV0(k).TV = [];
+            % Displacements, create rigid body modes
             elseif blk.varName == "displacements"
                TV0(k).TV = mk_rbm_3d(generalsolver.domains(blk.domainId(1)).grid.coordinates);
+            % Fluxes, vector of ones is sufficient (will then improve as
+            % default)
             else
                TV0(k).TV = ones(blk.nDof, 1);
             end

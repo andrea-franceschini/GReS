@@ -34,9 +34,7 @@ classdef (Abstract) convStrat < handle
 
       function tauNL = getTauNL(obj)
          tauNL = obj.generalsolver.simparams.absTol;
-         if isprop(obj.generalsolver, 'rhsNormIt0') && ~isempty(obj.generalsolver.rhsNormIt0) && obj.generalsolver.rhsNormIt0 > 0
-            tauNL = max(tauNL, obj.generalsolver.simparams.relTol * obj.generalsolver.rhsNormIt0);
-         end
+         tauNL = max(tauNL, obj.generalsolver.simparams.relTol * obj.generalsolver.rhsNormIt0);
       end
 
       function printStats(obj)

@@ -9,11 +9,11 @@ classdef fixedStress < preconditioner
       % Flow preconditioner type: 'AMG' (single-phase) or 'CPR' (two-phase)
       flowPrecType = 'AMG'
 
-      % Flag indicating if mechanics is linear (allows MechPrec recycling)
-      isMechLinear = false
-
       % Flow part setup time (excluding one-time linear mechanics)
       tSetupFlow = 0
+
+      % Check if the old preconditioner was computed for linear physics
+      isMechLinearOld = false;
 
    end
 
@@ -140,12 +140,12 @@ classdef fixedStress < preconditioner
             end
          end
 
-         % Check if mechanics is linear (allows AMGMech recycling)
-         obj.isMechLinear = obj.checkMechLinear();
-
          % Create the inner mechanics AMG preconditioner
          obj.MechPrec = aAMG(debugflag,problemsolver,"displacements");
 
+         % The two versions supported for single domain are the following,
+         % but RACP as flowPrec is supported as well in the case of
+         % multiple domains
          if hasSat
             obj.flowPrecType = 'CPR';
             obj.FlowPrec = CPR(debugflag, problemsolver);
@@ -183,19 +183,34 @@ classdef fixedStress < preconditioner
       % Determine adaptive block ordering for activeBlockIds
       function blockOrder = getBlockOrdering(obj, blocks, activeBlockIds)
          activeMeta = blocks(activeBlockIds);
+         
+         % Get the flow blocks (the interfaces in varName have the
+         % variables that they are coupling)
          isFlow = ismember([activeMeta.varName], ["pressure", "saturation"]);
+         
+         % Give the flow blocks to the flow preconditioner to decide the
+         % ordering, the rest are to be given to the mech preconditioner
+         % for the ordering
          mechBlocks = activeBlockIds(~isFlow);
          flowBlocks = activeBlockIds(isFlow);
          mechOrder = obj.MechPrec.getBlockOrdering(blocks, mechBlocks);
          flowOrder = obj.FlowPrec.getBlockOrdering(blocks, flowBlocks);
+         
+         % Set the final ordering as mechanics first flow second
          blockOrder = [mechOrder, flowOrder];
       end
 
       % Set diagonal block scope and propagate to mechanics and flow children
       function setBlockScope(obj, sysInfo, blockIds)
          setBlockScope@preconditioner(obj, sysInfo, blockIds);
+         
+         % Get all mechanical blocks (also interfaces)
          uBlk = obj.getPhysicsBlocks("displacements");
+
+         % Get all flux blocks (also interfaces)
          flowBlk = obj.getPhysicsBlocks(["pressure", "saturation"]);
+         
+         % Set the scope
          obj.MechPrec.setBlockScope(sysInfo, obj.precBlocks(uBlk));
          obj.FlowPrec.setBlockScope(sysInfo, obj.precBlocks(flowBlk));
       end
@@ -222,17 +237,42 @@ classdef fixedStress < preconditioner
    end
 
    methods (Access = private)
-      function isLin = checkMechLinear(obj)
-         isLin = false;
-         for d = 1:numel(obj.domain)
-            dom = obj.domain(d);
-            if ismember("MultiphasePoromechanics", dom.solverNames)
-               mSolver = dom.getPhysicsSolver("MultiphasePoromechanics");
-               isLin = mSolver.getMechSolver().isLinear();
+      function isLin = isMechLinear(obj)
+         % Set to true, if one domain says it is not then exit
+         isLin = true;
+
+         domains = obj.getVarBlocks("displacements");
+         interfaces = intersect(obj.getPhysicsBlocks("displacements"),obj.getKindBlocks("interface"));
+         
+         % if obj.isParentAugmentationNonlinear
+         %    return;
+         % end
+
+         % Loop over the domains
+         for i = interfaces
+            % Get the interface solver
+            mSolver = obj.problemsolver.interfaces(obj.blockInfo(i).interfId);
+
+            % Ask if it is currently linear
+            isLin = mSolver{1}.isLinear();
+
+            % Fast exit if false
+            if isLin == false
                return;
-            elseif ismember("BiotFullyCoupled", dom.solverNames)
-               mSolver = dom.getPhysicsSolver("BiotFullyCoupled");
-               isLin = mSolver.getMechSolver().isLinear();
+            end
+         end
+
+         % Loop over the domains
+         for d = domains
+            % Get the physics solver
+            dom = obj.domain(obj.blockInfo(d).domainId);
+            mSolver = dom.getPhysicsSolver(obj.blockInfo(d).solverType);
+            
+            % Ask if it is currently linear
+            isLin = mSolver.getMechSolver().isLinear();
+            
+            % Fast exit if false
+            if isLin == false
                return;
             end
          end
