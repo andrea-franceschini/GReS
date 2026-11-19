@@ -59,14 +59,6 @@ classdef RuizScaling < handle
             return;
          end
 
-         if ~iscell(A)
-            warning('RuizScaling:Compute:NonCell', ...
-               'RuizScaling Compute requires a cell array of block matrices. Scaling disabled.');
-            obj.scalingFlag = false;
-            Abal = A;
-            return;
-         end
-
          % Parse optional key-value pairs
          freezeBlocks = [];
          for k = 1:2:numel(varargin)
@@ -94,24 +86,15 @@ classdef RuizScaling < handle
          nb = size(A, 1);
          blksize = zeros(nb, 1);
 
-         % Infer block sizes from first non-empty block in each row
+         % Infer block sizes from diagonal block
          for i = 1:nb
-            for j = 1:nb
-               if ~isempty(A{i,j})
-                  blksize(i) = size(A{i,j}, 1);
-                  break;
-               end
-            end
-            if blksize(i) == 0
-               error('RuizScaling:computeFreezeBlocks:EmptyRow', ...
-                  'Cannot determine size of block-row %d (entire row is empty).', i);
-            end
+            blksize(i) = size(A{i,i}, 1);
          end
 
          D_old = obj.D;
          D_init = cell(nb, 1);
          for i = 1:nb
-            if ismember(i, frozenBlocks) && ~isempty(D_old) && numel(D_old) >= i && ~isempty(D_old{i})
+            if ismember(i, frozenBlocks) && numel(D_old) >= i
                D_init{i} = D_old{i};
             else
                D_init{i} = ones(blksize(i), 1);
@@ -123,7 +106,7 @@ classdef RuizScaling < handle
          for i = 1:nb
             di = D_init{i};
             for j = 1:nb
-               if ~isempty(Abal{i,j})
+               if nnz(Abal{i,j}) > 0
                   Abal{i,j} = di .* Abal{i,j} .* (D_init{j}.');
                end
             end
@@ -142,7 +125,7 @@ classdef RuizScaling < handle
             for i = activeBlocks
                ri = zeros(blksize(i), 1);
                for j = 1:nb
-                  if ~isempty(Abal{i,j})
+                  if nnz(Abal{i,j}) > 0
                      ri = ri + sum(abs(Abal{i,j}).^2, 2);
                   end
                end
@@ -160,7 +143,7 @@ classdef RuizScaling < handle
             for j = activeBlocks
                sj = s{j}.';
                for i = 1:nb
-                  if ~isempty(Abal{i,j})
+                  if nnz(Abal{i,j}) > 0
                      Abal{i,j} = Abal{i,j} .* sj;
                   end
                end
@@ -168,7 +151,7 @@ classdef RuizScaling < handle
             for i = activeBlocks
                si = s{i};
                for j = 1:nb
-                  if ~isempty(Abal{i,j})
+                  if nnz(Abal{i,j}) > 0
                      Abal{i,j} = si .* Abal{i,j};
                   end
                end
@@ -192,7 +175,7 @@ classdef RuizScaling < handle
       %   Abal = scaleMat(obj, A, iblock, jblock)    -> off-diagonal block: D_i * A * D_j'
       %   Abal = scaleMat(obj, A, startBlk, endBlk)  -> subrange of cell matrix
       function [Abal] = scaleMat(obj, A, varargin)
-         if ~obj.scalingFlag || isempty(obj.D) || isempty(obj.fullD)
+         if ~obj.scalingFlag
             Abal = A;
             return;
          end
@@ -215,7 +198,7 @@ classdef RuizScaling < handle
                   for i = 1:numel(range)
                      di = obj.D{range(i)};
                      for j = 1:numel(range)
-                        if ~isempty(A{i,j})
+                        if nnz(A{i,j}) > 0
                            Abal{i,j} = di .* A{i,j} .* (obj.D{range(j)}.');
                         end
                      end
@@ -231,7 +214,7 @@ classdef RuizScaling < handle
             for i = startBlock:endBlock
                di = obj.D{i};
                for j = startBlock:endBlock
-                  if ~isempty(A{i,j})
+                  if nnz(A{i,j}) > 0
                      Abal{i,j} = di .* A{i,j} .* (obj.D{j}.');
                   end
                end
@@ -333,7 +316,7 @@ classdef RuizScaling < handle
       %   vecBal = applyD(obj, vec)            -> full vector or cell array of vectors
       %   vecBal = applyD(obj, vec, iblock)    -> single block vector
       function [vecBal] = applyD(obj, vec, varargin)
-         if ~obj.scalingFlag || isempty(obj.D) || isempty(obj.fullD)
+         if ~obj.scalingFlag
             vecBal = vec;
             return;
          end
@@ -380,7 +363,7 @@ classdef RuizScaling < handle
       %   vec = applyDinv(obj, vecBal)         -> full vector or cell array of vectors
       %   vec = applyDinv(obj, vecBal, iblock) -> single block vector
       function [vec] = applyDinv(obj, vecBal, varargin)
-         if ~obj.scalingFlag || isempty(obj.D) || isempty(obj.fullD)
+         if ~obj.scalingFlag
             vec = vecBal;
             return;
          end

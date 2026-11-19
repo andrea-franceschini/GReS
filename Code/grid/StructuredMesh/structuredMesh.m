@@ -284,7 +284,7 @@ end
 
 %% Construct grid
 
-grid = Grid();
+grid = StructuredGrid();
 grid.nDim = nDim;
 grid.coordinates = coord;
 grid.nCoord = size(coord,2);

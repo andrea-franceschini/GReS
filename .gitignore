@@ -76,3 +76,6 @@ Tests/**/*.png
 # Swap files
 *.swp
 *.swo
+
+# Other types
+*.dat

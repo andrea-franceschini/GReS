@@ -35,7 +35,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       % Get the fluid dynamic viscosity
       mu = materials.getFluid().getDynViscosity();
 
-      perm = getPermeabilities;
+      perm = getPermeabilities(obj);
 
       for vtkId = cells.vtkTypes
 
@@ -59,7 +59,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
             coords = coordinates(nodes,:);
             el = cellListTag(i);
 
-            permMat = mat.PorousRock.getPermMatrix(perm(el,:));
+            permMat = reshape(perm(el,:),3,3);
             permMat = permMat/mu;
 
             [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);

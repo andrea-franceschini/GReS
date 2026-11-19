@@ -398,7 +398,7 @@ classdef Sedimentation < PhysicsSolver
         idx = idx(cellVar);
 
         dzOld = obj.cellDims(dofs,3);
-        dzDef = dzOld.*(1+state.strain(cellVar));
+        dzDef = dzOld.*(1+state.strain(dofs));
         dzNew = dzDef+dzSedmAdd(cellVar);        
 
         growCols = dzNew > obj.heightControl*(1+obj.minCellHeight); % <-- Very important check
@@ -439,20 +439,8 @@ classdef Sedimentation < PhysicsSolver
           obj.cellDims(dof,3) = obj.heightControl;
           obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
 
-          % Mean average
-          % % % % state.void(dof) = (dzDef(growCols).*state.void(dof) +...
-          % % % %   frac.*dzSedmAdd(loc).*obj.voidTop(loc))./obj.heightControl;
-
-          % Harmonic series
-          state.void(dof) = ...
-            (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
-            ( dzDef(growCols) ./ state.void(dof) + ...
-            (frac.*dzSedmAdd(loc)) ./ obj.voidTop(loc) );
-
-          state.void0(dof) = ...
-            (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
-            ( dzDef(growCols) ./ state.void0(dof) + ...
-            (frac.*dzSedmAdd(loc)) ./ obj.e0Top(loc) );
+          state.void(dof)  = obj.voidTop(loc);
+          state.void0(dof) = obj.e0Top(loc);
 
           newCellSed(loc,:) = (1-frac).*sedAdd(loc,:);
           mapNewCells(loc) = true;

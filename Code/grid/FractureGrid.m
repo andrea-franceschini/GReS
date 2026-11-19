@@ -1,31 +1,32 @@
 classdef FractureGrid < Grid
-  % A triangular grid coupled to the two matrix faces at each triangle.
+  % A surface grid coupled to two matrix faces per cell.
 
   properties
     matrix
   end
 
   methods
-    function obj = FractureGrid(matrix, triangles, matrixFaces, fractureId)
+    function obj = FractureGrid(matrix, connectivity, matrixFaces, fractureId)
 
 
       obj.matrix = matrix;
       normal = matrix.faces.normal(matrixFaces(:,1),:);
       xyz = matrix.coordinates;
-      winding = cross(xyz(triangles(:,2),:) - xyz(triangles(:,1),:), ...
-                      xyz(triangles(:,3),:) - xyz(triangles(:,1),:),2);
+      nVerts = size(connectivity,2);
+      winding = cross(xyz(connectivity(:,2),:) - xyz(connectivity(:,1),:), ...
+        xyz(connectivity(:,3),:) - xyz(connectivity(:,1),:),2);
       flip = dot(winding,normal,2) < 0;
-      triangles(flip,[2 3]) = triangles(flip,[3 2]);
-      [nodes,~,localNodes] = unique(triangles(:),'stable');
+      connectivity(flip,2:end) = connectivity(flip,end:-1:2);
+      [nodes,~,localNodes] = unique(connectivity(:),'stable');
       obj.coordinates = matrix.coordinates(nodes,:);
       obj.nNodes = numel(nodes);
       obj.nDim = 2;
-      obj.cells.connectivity = reshape(localNodes,size(triangles));
-      obj.cells.num = size(triangles,1);
-      obj.cells.numVerts = repmat(3,obj.cells.num,1);
+      obj.cells.connectivity = reshape(localNodes,size(connectivity));
+      obj.cells.num = size(connectivity,1);
+      obj.cells.numVerts = repmat(nVerts,obj.cells.num,1);
       obj.cells.tag = repmat(fractureId,obj.cells.num,1);
       obj.cells.nTag = 1;
-      obj.cells.vtkTypes = double(VTKType.Tri);
+      obj.cells.vtkTypes = double(matrix.faces.VTKType(matrixFaces(1,1)));
       obj.cells.VTKType = repmat(obj.cells.vtkTypes,obj.cells.num,1);
       obj.cells.loc2glob = nodes;
       obj.cells.matrixFaces = matrixFaces;

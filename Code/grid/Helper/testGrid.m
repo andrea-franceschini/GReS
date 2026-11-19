@@ -45,3 +45,22 @@ names = ["Matrix", "Main", "Cross-cut", "Interior branch", ...
     'transitionFactor', 1.0);
 
 plotMesh({matrix, fractures{:}}, 'damage_zone', names);
+
+
+%%
+f1.center = [.5,.5,.5];
+f1.normal = [1,0,0];
+f1.extents = [1,1];
+
+f2.center = [.5,.5,.5];
+f2.normal = [0,1,0];
+f2.extents = [1,1];
+
+f3.center = [.5,.5,.5];
+f3.normal = [0,0,1];
+f3.extents = [1,1];
+[matrix,fractures] = createFracturedGrid(bounds,{f1,f2,f3},'matrixMeshSize', 1, 'structured', true);
+
+plotMesh({matrix, fractures{:}}, 'structuredFrac', ["matrix","f1","f2","f3"]);
+
+

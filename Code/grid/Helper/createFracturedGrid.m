@@ -13,27 +13,30 @@ function [matrix, fractureGrids] = createFracturedGrid(bounds, fractures, vararg
 %   transitionFactor (default 2) multiplies the size difference to set the
 %   width of the grading region. Larger values give a more gradual change.
 %   fractureGrids{k}.cells.matrixFaces has two matrix.faces indices per
-%   triangle. The first face normal follows the perimeter winding or input
+%   fracture cell. The first face normal follows the perimeter winding or input
 %   normal, and the second face normal points in the opposite direction.
-%   The mapping is tied to the returned matrix topology.
-validateattributes(bounds, {'numeric','logical'}, {'size',[3,2],'real','finite'}, ...
-  mfilename, 'bounds');
-bounds = double(bounds);
-parser = inputParser;
-parser.FunctionName = mfilename;
-parser.PartialMatching = false;
-isSize = @(value) (isnumeric(value) || islogical(value)) && isscalar(value) && ...
-  isreal(value) && isfinite(value) && value >= 0;
-addParameter(parser, 'matrixMeshSize', 0, isSize);
-addParameter(parser, 'fractureMeshSize', 0, isSize);
-addParameter(parser, 'transitionFactor', 2, @(value) isSize(value) && value > 0);
-addParameter(parser, 'meshSize', 0, isSize);
-parse(parser, varargin{:});
-options = parser.Results;
+%   structured=true builds a Cartesian grid with coordinate-aligned
+%   fracture planes and perimeters, using the smaller supplied mesh size
+%   throughout. transitionFactor applies only to unstructured grids.
+%   Matrix nodes are shared across intact faces, including internal fracture
+%   fronts. Separate rock sectors at fracture interiors and crossings use
+%   coincident node copies.
 
+
+% deal input parameters
+default = struct('matrixMeshSize',0,...
+                 'fractureMeshSize',0,...
+                 'transitionFactor',2.0,...
+                 'meshSize',0,...
+                 'structured',false);
+
+options = readInput(default,varargin{:});
+
+assert(all(size(bounds) == [3,2]));
 assert(all(bounds(:,1) < bounds(:,2)), 'GReS:GmshBounds', ...
   'Each box lower bound must be smaller than its upper bound.');
 
+% collect fractures in a cell array
 if isstruct(fractures)
   fractures = num2cell(fractures);
 elseif isnumeric(fractures)
@@ -43,72 +46,150 @@ elseif isnumeric(fractures)
     fractures = {fractures};
   end
 end
-assert(iscell(fractures), 'GReS:GmshFractureInput', ...
-  'Expected a perimeter, fracture struct, or cell array of fracture definitions.');
+
 polygons = cell(size(fractures));
 normals = zeros(numel(fractures),3);
+
+% get unified fracture geometry description
+% resolve struct fracture as perimeters
 for k = 1:numel(fractures)
   [polygons{k},normals(k,:)] = fracturePerimeter(fractures{k}, k);
 end
+
+% requested mesh size for matrix and fracture
 matrixSize = options.matrixMeshSize;
 fractureSize = options.fractureMeshSize;
 if options.meshSize > 0
   assert(matrixSize == 0 && fractureSize == 0, 'GReS:GmshMeshSize', ...
     'Use either meshSize or matrixMeshSize and fractureMeshSize.');
-  matrixSize = options.meshSize;
+  matrixSize = double(options.meshSize);
 end
 
-% Build the conforming mesh through the individual Gmsh commands.
-[coordinates, matrixElems, fracElems] = gresgmsh.meshFracturedBox(full(bounds), polygons, ...
-  double(matrixSize), double(fractureSize), double(options.transitionFactor));
+if options.structured
+  % attempt to create a structured grid with hexahedra 
+  % requires the fracture to be parallel to the coordinate axis
+  [matrix,faceIds] = structuredFractureMesh(bounds,polygons,normals, ...
+    matrixSize,fractureSize);
+else
 
-matrix = Grid();
-matrix.coordinates = coordinates;
-matrix.cells.connectivity = matrixElems;
-matrix.cells.tag = ones(size(matrixElems,1),1);
-matrix.cells.numVerts = 4 * matrix.cells.tag;
-matrix.cells.VTKType = repmat(double(VTKType.Tetra),size(matrixElems,1),1);
-matrix.processGeometry();
+  % Build the conforming tetrahedral mesh through the individual Gmsh calls.
+  [coordinates, matrixCells, fractureCells] = gresgmsh.meshFracturedBox( ...
+    bounds, polygons, matrixSize, fractureSize, options.transitionFactor);
+
+  matrix = Grid();
+  matrix.coordinates = coordinates;
+  matrix.cells.connectivity = matrixCells;
+  matrix.cells.tag = ones(size(matrixCells,1),1);
+  matrix.cells.numVerts = repmat(size(matrixCells,2),size(matrixCells,1),1);
+  matrix.cells.VTKType = repmat(double(VTKType.Tetra),size(matrixCells,1),1);
+  matrix.processGeometry();
+
+  % check if fractures and matrix are conforming
+  faceIds = cell(size(fractureCells));
+  matrixFaces = sort(matrix.faces.connectivity.toMatrix(),2);
+  for k = 1:numel(fractureCells)
+    width = size(fractureCells{k},2);
+
+    [matched, faceIds{k}] = ismember(sort(fractureCells{k},2), ...
+      matrixFaces(:,end-width+1:end),'rows');
+    assert(all(matched), 'GReS:GmshFractureTopology', ...
+      'Fracture %d must match matrix faces.',k);
+  end
+end
 
 fractureGrids = cell(size(fractures));
 if isempty(fractures)
   return
 end
 
-matrixFaces = matrix.faces.connectivity.toMatrix();
-faceIds = cell(size(fracElems));
-for k = 1:numel(fracElems)
-  [matched, faceIds{k}] = ismember(sort(fracElems{k},2),matrixFaces,'rows');
-  assert(all(matched) && all(~matrix.faces.isBoundary(faceIds{k})), ...
+for k = 1:numel(faceIds)
+  assert(~isempty(faceIds{k}) && all(~matrix.faces.isBoundary(faceIds{k})), ...
     'GReS:GmshFractureTopology', 'Fracture %d must match internal matrix faces.',k);
 end
 
 ids = vertcat(faceIds{:});
 assert(numel(unique(ids)) == numel(ids), 'GReS:GmshFractureOverlap', ...
   'Fracture polygons must not overlap over a finite area.');
+matrixFaces = matrix.faces.connectivity.toMatrix();
+
 splitIds = splitMatrixFaces(matrix, ids, matrixFaces);
 first = 1;
-for k = 1:numel(fracElems)
-  last = first + size(fracElems{k},1) - 1;
+for k = 1:numel(faceIds)
+  last = first + numel(faceIds{k}) - 1;
   pairs = splitIds(first:last,:);
   swap = matrix.faces.normal(pairs(:,1),:) * normals(k,:).' < 0;
   pairs(swap,:) = pairs(swap,[2 1]);
-  fractureGrids{k} = FractureGrid(matrix, fracElems{k}, pairs, k);
+  fractureGrids{k} = FractureGrid(matrix, matrixFaces(faceIds{k},:), pairs, k);
+  if options.structured
+    fractureGrids{k}.setStructured();
+  end
   first = last + 1;
+end
+end
+
+function [matrix,faceIds] = structuredFractureMesh(bounds,polygons,normals,matrixSize,fractureSize)
+axes = num2cell(bounds.',1);
+normalAxes = zeros(numel(polygons),1);
+for k = 1:numel(polygons)
+  polygon = polygons{k};
+  [~,axis] = max(abs(normals(k,:)));
+  tangential = setdiff(1:3,axis);
+  edges = circshift(polygon,-1,1) - polygon;
+  assert(all(abs(normals(k,tangential)) <= 1e-10) && ...
+    all(polygon(:,axis) == polygon(1,axis)) && ...
+    all(sum(edges(:,tangential) ~= 0,2) == 1), ...
+    'GReS:StructuredFractureAlignment', ...
+    'Fracture %d must have a coordinate-aligned plane and perimeter.',k);
+  assert(all(all(polygon >= bounds(:,1).' & polygon <= bounds(:,2).')), ...
+    'GReS:StructuredFractureBounds','Fracture %d must lie inside the box.',k);
+  normalAxes(k) = axis;
+  for d = 1:3
+    axes{d} = [axes{d};polygon(:,d)];
+  end
+end
+
+sizes = [matrixSize,fractureSize];
+step = min(sizes(sizes > 0));
+for d = 1:3
+  breaks = unique(axes{d});
+  if isempty(step)
+    axes{d} = breaks;
+    continue
+  end
+  intervals = cell(numel(breaks)-1,1);
+  for j = 1:numel(intervals)
+    n = ceil((breaks(j+1)-breaks(j))/step);
+    points = linspace(breaks(j),breaks(j+1),n+1).';
+    intervals{j} = points(1:end-1);
+  end
+  axes{d} = [vertcat(intervals{:});breaks(end)];
+end
+matrix = structuredMesh(axes{:});
+matrix.processGeometry();
+
+centers = matrix.faces.center;
+faceNodes = matrix.faces.connectivity.toMatrix();
+faceIds = cell(size(polygons));
+for k = 1:numel(polygons)
+  axis = normalAxes(k);
+  tangential = setdiff(1:3,axis);
+  polygon = polygons{k};
+  candidates = find(matrix.coordinates(faceNodes(:,1),axis) == polygon(1,axis) & ...
+    abs(matrix.faces.normal(:,axis)) > 0.5);
+  inside = inpolygon(centers(candidates,tangential(1)),centers(candidates,tangential(2)), ...
+    polygon(:,tangential(1)),polygon(:,tangential(2)));
+  faceIds{k} = candidates(inside);
 end
 end
 
 function [polygon,normal] = fracturePerimeter(fracture, k)
 
 if isstruct(fracture)
-  assert(isscalar(fracture) && all(isfield(fracture,{'center','normal','extents'})), ...
+  assert(all(isfield(fracture,{'center','normal','extents'})), ...
     'GReS:GmshFractureInput', 'Fracture %d needs center, normal and extents.',k);
-  validateattributes(fracture.center,{'numeric'},{'real','finite','vector','numel',3});
-  validateattributes(fracture.normal,{'numeric'},{'real','finite','vector','numel',3});
-  validateattributes(fracture.extents,{'numeric'},{'real','finite','vector','numel',2,'positive'});
-  center = double(fracture.center(:)).';
-  normal = double(fracture.normal(:)).';
-  assert(any(normal), 'GReS:GmshFractureInput', 'Fracture %d has a zero normal.',k);
+  
+  center = fracture.center(:).';
+  normal = fracture.normal(:).';
   normal = normal / max(abs(normal));
   normal = normal / norm(normal);
   [~,axis] = min(abs(normal));
@@ -119,14 +200,16 @@ if isstruct(fracture)
   v = cross(normal,u);
   extents = double(fracture.extents);
   polygon = center + [-1;1;1;-1] * (extents(1)/2*u) + ...
-                     [-1;-1;1;1] * (extents(2)/2*v);
+    [-1;-1;1;1] * (extents(2)/2*v);
 else
   validateattributes(fracture,{'numeric'},{'real','finite','2d','ncols',3});
   polygon = full(double(fracture));
 end
+
 if size(polygon,1) > 1 && isequal(polygon(1,:),polygon(end,:))
   polygon(end,:) = [];
 end
+
 assert(size(polygon,1) >= 3 && size(unique(polygon,'rows'),1) == size(polygon,1), ...
   'GReS:GmshFractureInput', 'Fracture %d needs at least three distinct vertices.',k);
 centered = polygon - mean(polygon,1);
@@ -143,7 +226,12 @@ end
 end
 
 function pairs = splitMatrixFaces(matrix, ids, connectivity)
+
 faces = matrix.faces;
+oldCells = matrix.cells.connectivity;
+newCells = splitMatrixNodes(matrix, ids, connectivity);
+matrix.cells.connectivity = newCells;
+matrix.nNodes = size(matrix.coordinates,1);
 otherCells = faces.neighbors(ids,2);
 newIds = faces.num + (1:numel(ids)).';
 pairs = [ids,newIds];
@@ -157,7 +245,9 @@ cellFaces(sub2ind(size(cellFaces),otherCells(rows),localFaces)) = newIds(rows);
 matrix.cells.cells2faces = ArrayOfArrays(cellFaces);
 
 faces.num = faces.num + numel(ids);
-faces.connectivity = ArrayOfArrays([connectivity; connectivity(ids,:)]);
+owners = [faces.neighbors(:,1);otherCells];
+faces.connectivity = ArrayOfArrays(remapNodes([connectivity;connectivity(ids,:)], ...
+  oldCells(owners,:),newCells(owners,:)));
 faces.neighbors(ids,2) = 0;
 faces.neighbors(newIds,:) = [otherCells,zeros(numel(ids),1)];
 faces.isBoundary(pairs(:)) = true;
@@ -167,4 +257,60 @@ faces.area(newIds,1) = faces.area(ids);
 faces.numVerts(newIds,1) = faces.numVerts(ids);
 faces.VTKType(newIds,1) = faces.VTKType(ids);
 matrix.faces = faces;
+owners = faces.neighbors(matrix.surfaces.faceId,1);
+surfaceNodes = matrix.getSurfNodes((1:matrix.surfaces.num).');
+matrix.surfaces.connectivity = remapNodes(surfaceNodes,oldCells(owners,:),newCells(owners,:));
+end
+
+function cells = splitMatrixNodes(matrix, ids, connectivity)
+% Give each connected component of the node's incident cells one node copy.
+% Connections cross intact faces only. Cells remain connected around an
+
+% internal fracture front, so its nodes stay shared.
+cells = matrix.cells.connectivity;
+neighbors = matrix.faces.neighbors;
+isSplit = false(matrix.faces.num,1);
+isSplit(ids) = true;
+splitNodes = unique(connectivity(ids,:));
+splitNodes(splitNodes == 0) = [];
+[isSplitNode,nodeIndex] = ismember(connectivity,splitNodes);
+[faceRows,~] = find(isSplitNode);
+incidentFaces = accumarray(nodeIndex(isSplitNode),faceRows,[numel(splitNodes),1], ...
+  @(rows) {rows});
+coordinates = matrix.coordinates;
+
+for k = 1:numel(splitNodes)
+  node = splitNodes(k);
+  faceRows = incidentFaces{k};
+  owners = neighbors(faceRows,:);
+  [incidentCells,~,local] = unique(owners(:));
+  local = reshape(local,size(owners));
+  internal = owners(:,2) ~= 0;
+  ties = local(internal & ~isSplit(faceRows),:);
+  groups = (1:numel(incidentCells)).';
+
+  for j = 1:size(ties,1)
+    a = groups(ties(j,1));
+    b = groups(ties(j,2));
+    groups(groups == b) = a;
+  end
+
+  [~,~,group] = unique(groups(incidentCells > 0),'stable');
+  newIds = size(coordinates,1) + (1:max(group)-1);
+  coordinates(newIds,:) = repmat(coordinates(node,:),numel(newIds),1);
+  rows = incidentCells(incidentCells > 0);
+  copies = [node;newIds(:)];
+  cells(rows,:) = remapNodes(cells(rows,:),repmat(node,numel(rows),1), ...
+    copies(group));
+end
+
+matrix.coordinates = coordinates;
+end
+
+function nodes = remapNodes(nodes,oldCells,newCells)
+original = nodes;
+  for j = 1:size(oldCells,2)
+    [rows,cols] = find(original == oldCells(:,j));
+    nodes(sub2ind(size(nodes),rows,cols)) = newCells(rows,j);
+  end
 end

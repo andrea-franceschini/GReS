@@ -76,21 +76,17 @@ classdef fixedStress < preconditioner
          else
             A11 = varargin{1};
             B1 = varargin{2};
-            B2 = varargin{3};
 
             % Get mechanics size
             n1 = size(A11,1);
 
-            % Apply AMG for fluid part
+            % Apply AMG for fluid part (approximate Schur complement)
             x2 = obj.FlowPrec.Apply_L(b(n1+1:end));
 
-            % Apply the top part of the block preconditioner
+            % Apply the top part of the block preconditioner (upper block triangular solve)
             x11 = b(1:n1) - B1*x2;
             x1 = obj.AMGMech.Apply_L(x11);
 
-            % Apply the coupling correction to the state block
-            x2 = x2 - obj.FlowPrec.Apply_L(B2*x1);
-            
             % Compose the solution
             x = [x1;x2];
          end
@@ -151,14 +147,36 @@ classdef fixedStress < preconditioner
             obj.FlowPrec = CPR(debugflag, problemsolver);
             obj.maxThreads = obj.FlowPrec.maxThreads;
             obj.params = obj.FlowPrec.params;
-
-            obj.FlowPrec.Ruiz = RuizScaling();
-            obj.FlowPrec.Ruiz.scalingFlag = false;
          else
             obj.flowPrecType = 'AMG';
             obj.FlowPrec = aAMG(debugflag,problemsolver,"pressure");
             obj.maxThreads = obj.FlowPrec.maxThreads;
             obj.params = obj.FlowPrec.params;
+         end
+      end
+
+      % Scale the system matrix and RHS to rate form
+      function [A, b] = scaleSystem(obj, A, b)
+         dt = obj.problemsolver.dt;
+
+         if strcmpi(obj.flowPrecType, 'CPR')
+            flowRows = [2, 3];
+         else
+            flowRows = 2;
+         end
+
+         % Scale flow rows of matrix A by 1/dt
+         for r = flowRows
+            for c = 1:size(A, 2)
+               if nnz(A{r, c}) > 0
+                  A{r, c} = (1 / dt) * A{r, c};
+               end
+            end
+         end
+
+         % Scale flow rows of RHS b by 1/dt
+         for r = flowRows
+            b{r} = (1 / dt) * b{r};
          end
       end
    end
@@ -175,14 +193,6 @@ classdef fixedStress < preconditioner
             elseif ismember("BiotFullyCoupled", dom.solverNames)
                mSolver = dom.getPhysicsSolver("BiotFullyCoupled");
                isLin = mSolver.getMechSolver().isLinear();
-               return;
-            elseif ismember("Poromechanics", dom.solverNames)
-               mSolver = dom.getPhysicsSolver("Poromechanics");
-               isLin = mSolver.isLinear();
-               return;
-            elseif ismember("EmbeddedFractureMechanics", dom.solverNames)
-               mSolver = dom.getPhysicsSolver("EmbeddedFractureMechanics");
-               isLin = mSolver.isLinear();
                return;
             end
          end

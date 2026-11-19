@@ -48,6 +48,7 @@ else
     [grid.cells.volume(ids),grid.cells.center(ids,:)] = elem.getSizeAndCentroid(ids);
   end
 end
+
 if grid.nDim == 2
   grid.cells.area = grid.cells.volume;
 end

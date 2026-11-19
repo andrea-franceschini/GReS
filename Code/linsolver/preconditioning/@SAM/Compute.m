@@ -1,4 +1,4 @@
-function Compute(obj,A,symm,varargin)
+function A = Compute(obj,A,symm,varargin)
    % Get input preconditioner
    Prec = varargin{1};
 

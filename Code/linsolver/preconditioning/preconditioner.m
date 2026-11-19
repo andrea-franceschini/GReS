@@ -31,14 +31,14 @@ classdef (Abstract) preconditioner < handle
       posDef = true;
    end
 
-   properties (GetAccess = public, SetAccess = public)
+   properties (Access = public)
       % Ruiz scaling object
       Ruiz = []
    end
 
    methods (Abstract)
       % Function to compute the preconditioner
-      Compute(obj,A,sym,varargin)
+      A = Compute(obj,A,sym,varargin)
 
       % Getter for the function handle to apply the left preconditioner
       x = ApplyLeft(obj,b,varargin)
@@ -81,6 +81,11 @@ classdef (Abstract) preconditioner < handle
       % Condenses the domains and interfaces in a 2x2 matrix, default does
       % nothing. Overridden in specific preconditioners
       function A = condenseDomains(obj,A)
+
+      end
+
+      % Scale the system matrix and RHS before linear solve (default: do nothing)
+      function [A, b] = scaleSystem(obj, A, b)
 
       end
    end
