@@ -160,14 +160,11 @@ classdef Grid < handle
         outGrid = getGridBoundary(obj);
         return
 
-      elseif nargin == 2
-
-        if islogical(surfTag)
-          assert(numel(surfTag) == surf.num);
-          id = find(surfTag);
-        end
+      elseif islogical(surfTag)
+        assert(numel(surfTag) == surf.num);
+        id = surfTag(:);
       else
-        error("getSurfaceGrid:wrong number of input arguments")
+        id = ismember(surf.tag,surfTag);
       end
 
 

@@ -34,7 +34,7 @@ options = readInput(struct('tetra',false,'triangle',false,'input',missing), ...
   varargin{nPos+1:end});
 inputMode = 'auto';
 
-if ~ismissing(options.input,'missing')
+if ~ismissing(options.input)
   inputMode = validatestring(options.input,{'auto','coordinates'});
 end
 

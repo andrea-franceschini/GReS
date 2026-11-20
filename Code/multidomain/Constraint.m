@@ -1,14 +1,16 @@
 classdef (Abstract) Constraint < handle
   %CONSTRAINT Summary of this class goes here
   %   Detailed explanation goes here
-  
+
   properties
 
     interface
     coupledVariables
-    
 
-    
+    quadrature                % quadrature owned by this constraint
+
+
+
   end
 
 
@@ -29,19 +31,28 @@ classdef (Abstract) Constraint < handle
   end
 
 
-  
+
   methods
-    function obj = Constraint(inputArg1,inputArg2)
-      %CONSTRAINT Construct an instance of this class
-      %   Detailed explanation goes here
-      obj.Property1 = inputArg1 + inputArg2;
+    function obj = Constraint(interface)
+      if nargin > 0
+        obj.interface = interface;
+      end
     end
-    
-    function outputArg = method1(obj,inputArg)
-      %METHOD1 Summary of this method goes here
-      %   Detailed explanation goes here
-      outputArg = obj.Property1 + inputArg;
+
+
+    function quadrature = setMortarQuadrature(obj,multiplierType,varargin)
+
+      default = struct('type',"SegmentBasedQuadrature");
+      options = readInput(default,varargin{:});
+
+      quadType = options.type;
+      grid = InterfaceGrid(obj.interface.grid);
+      quadrature = feval(quadType,multiplierType,grid,options);
+      quadrature.processMortarTriplets();
+      obj.quadrature = quadrature;
+
     end
+
   end
 end
 

@@ -25,9 +25,6 @@ classdef Interface < handle
     % name of the constraints 
     constraintNames
 
-    % handle to object implementing the Mortar quadrature
-    quadrature
-
     % degree of freedom manager of the interface
     dofm
 
@@ -59,11 +56,11 @@ classdef Interface < handle
       % minimal required input is the id of the connected domains
 
       obj.domains = getInterfaceGrid(obj,input,varargin{:});
-      
+
       for side = [MortarSide.slave,MortarSide.master]
 
         obj.domains(side).interfaces = [obj.domains(side).interfaces; obj];
-        
+
       end
 
       obj.state = State();
@@ -75,11 +72,16 @@ classdef Interface < handle
     function domains = getInterfaceGrid(obj,in,varargin)
 
       default = struct('masterSurface',missing,...
-                        'slaveSurface',missing);
+        'slaveSurface',missing);
 
-      options = readInput(default,varargin{:});
+      optionArgs = varargin;
+      if isa(in,'Grid')
+        optionArgs = varargin(2:end);
+      end
+      options = readInput(default,optionArgs{:});
 
 
+      % Process the Interface geometry according to three input formats
       switch class(in)
         case 'FracturedGrid'
           % input is a fracture, require the second input to be its hosting
@@ -89,41 +91,52 @@ classdef Interface < handle
           neigh = in.matrix.cells.matrixFaces;
           faceId = matrix.cells.surfaces.faceId;
           surf = zeros(size(neigh));
-         surf(:,1) = find(ismember(faceId,neigh(:,1)));
-         surf(:,2) = find(ismember(faceId,neigh(:,2)));
-         grid1 = matrix.getSurfaceGrid(surf(:,1));
-         grid2 = matrix.getSurfaceGrid(surf(:,2));
-         gridInterf = in;
+          surf(:,1) = find(ismember(faceId,neigh(:,1)));
+          surf(:,2) = find(ismember(faceId,neigh(:,2)));
+          grid1 = matrix.getSurfaceGrid(surf(:,1));
+          grid2 = matrix.getSurfaceGrid(surf(:,2));
+          gridInterf = in;
 
-         domains = [varargin{1};varargin{1}];
+          domains = [varargin{1};varargin{1}];
 
-       case 'Grid'
+        case {'Grid','StructuredGrid'}
 
-         domains = [varargin{1:2}];
-         assert(isa(domains,'Domain'))
+          domains = [varargin{1}];
+          assert(isa(domains,'Domain'))
 
-         grid1 = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
-         grid2 = getSurfaceGrid(domains(MortarSide.master).grid,options.masterSurface);
-         gridInterf = in;
+          grid1 = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
+          grid2 = getSurfaceGrid(domains(MortarSide.master).grid,options.masterSurface);
+          gridInterf = in;
 
-       case 'Domain'
+        case 'Domain'
 
-         assert(numel(in)==2)
-         
-         domains = [in(1);in(2)];
+          assert(numel(in)==2)
 
-         % the interface grid is made coincide with the slave one!
-         gridInterf = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
-         grid1 = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
-         grid2 = getSurfaceGrid(domains(MortarSide.master).grid,options.masterSurface);
+          domains = [in(1);in(2)];
+
+          % the interface grid is made coincide with the slave one!
+          gridInterf = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
+          grid1 = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
+          grid2 = getSurfaceGrid(domains(MortarSide.master).grid,options.masterSurface);
+
+        otherwise
+          error('Unexpected input for Interface')
 
       end
 
 
-     % process the interface grid supplying all ingredients
-     obj.grid = InterfaceGrid(gridInterf,grid1,grid2);
+      % process the interface grid supplying all ingredients
+      if ~gridInterf.isGeometryProcessed()
+        gridInterf.processGeometry();
+      end
+      obj.grid = InterfaceGrid(gridInterf,grid1,grid2);
+
+      if isempty(obj.grid.neighbors)
+        error("No connections found for interface")
+      end
 
     end
+
 
     function advanceState(obj)
 
@@ -412,11 +425,6 @@ classdef Interface < handle
 
     end
 
-    function slaveArea = getSlaveArea(obj)
-      slaveArea = obj.quadrature.areaSlave;
-    end
-
-
     function dofm = getDoFManager(obj,side)
       dofm = obj.domains(side).dofm;
     end
@@ -461,136 +469,6 @@ classdef Interface < handle
       end
 
     end
-
-    function setMortarInterface(obj,params)
-
-
-      default = struct('masterSurface',missing,...
-        'slaveSurface',missing,...
-        'multiplierType',"P0",...
-        'Quadrature',struct());
-
-      % the Quadrature field implies that this is an xml field
-
-      params = readInput(default,params);
-
-      processMortarGrid(obj,params);
-
-
-    end
-
-
-    function processMortarGrid(obj,params)
-
-      obj.grids = repmat(Grid(),2,1);
-
-      % read parameters
-      switch params.multiplierType
-        case {"standard","dual"}
-          obj.multiplierLocation = entityField.node;
-        case "P0"
-          obj.multiplierLocation = entityField.cell;
-        otherwise
-          error("Multiplier type %s is not available." + ...
-            "Available types are: standard,dual,P0");
-      end
-
-      if numel(fieldnames(params.Quadrature)) > 0
-        quadType = params.Quadrature.type;
-      else
-        quadType = "SegmentBasedQuadrature";
-      end
-
-
-      % get initial grids (may include non active mortar elements)
-      tags = {params.slaveSurface,params.masterSurface};
-
-      for side = [MortarSide.slave,MortarSide.master]
-
-        grid = obj.domains(side).grid;
-        if ismissing(tags{side})
-          obj.grids(side) = getGridBoundary(grid);
-        else
-          obj.grids(side) = getSurfaceGrid(grid,tags{side});
-        end
-
-        obj.grids(side).computeAvgNodalNormal();
-      end
-
-      cs = ContactSearching(obj.grids(MortarSide.slave),obj.grids(MortarSide.master),params);
-
-      elemConnectivity = cs.getElementConnectivity();
-
-
-      if ~any(elemConnectivity,"all")
-        error('No connection between master domain %i  and slave domain %i !',...
-          params.masterDomain,params.slaveDomain)
-      end
-
-
-      obj.quadrature = feval(quadType,...
-        params.multiplierType, ...
-        obj.grids, ...
-        params.Quadrature);
-
-
-      processMortarPairs(obj.quadrature,elemConnectivity);
-
-
-      % now finalize the grids and compute edges
-      for side = [MortarSide.slave, MortarSide.master]
-
-        nOld = obj.grids(side).cells.num;
-
-        % Active surface IDs in the current local numbering
-        activeId = unique(obj.quadrature.interfacePairs(:,side));
-
-        isMortarElem = false(nOld,1);
-        isMortarElem(activeId) = true;
-
-        % Cells are retained by getCellGrid in this order
-        keptId = find(isMortarElem);
-
-        % Map old local surface IDs to new local surface IDs
-        old2new = zeros(nOld,1);
-        old2new(keptId) = 1:numel(keptId);
-
-        % Renumber this side of all interface pairs
-        obj.quadrature.interfacePairs(:,side) = ...
-          old2new(obj.quadrature.interfacePairs(:,side));
-
-        if side == MortarSide.slave
-          obj.quadrature.areaSlave = obj.quadrature.areaSlave(isMortarElem);
-        end
-
-        % Extract only active mortar surfaces
-        obj.grids(side) = getCellGrid( ...
-          obj.grids(side), isMortarElem);
-
-        % Process the final surface grid
-        obj.grids(side).processGeometry(true);
-        obj.grids(side).computeAvgNodalNormal();
-
-        surf = obj.grids(side).cells;
-        R = zeros(surf.num,9);
-
-        for i = 1:surf.num
-          n = surf.normal(i,:);
-          Ri = mxComputeRotationMat(n);
-          R(i,:) = Ri(:);
-        end
-
-        obj.grids(side).cells.rotationMatrices = R;
-      end
-
-    end
-
-
-    function elem = getElement(obj,vtkId,side)
-      elem = FiniteElementType.create(vtkId,obj.grids(side),'gaussOrder',obj.quadrature.gaussOrder);
-    end
-
-
 
     function removeSlaveBCents(obj)
 

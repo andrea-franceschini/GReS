@@ -3,31 +3,45 @@ classdef InterfaceGrid < Grid
 
   properties (SetAccess = private)
     neighbors = zeros(0,3)       % [interface cell, slave cell, master cell]
-    traceGrids
+    traceGrids = [Grid(),Grid()]
     intersections = []
   end
 
-  properties (Access = private)
+  properties (GetAccess = public, SetAccess = private)
     isConforming = false(1,2)
   end
 
   methods
 
-    function obj = InterfaceGrid(gInterf,g1,g2)
+    function obj = InterfaceGrid(gInterf,g1,g2,varargin)
+
       obj.setGrid(gInterf);
+
+      if nargin == 1 && isa(gInterf,'InterfaceGrid')
+        % A constraint can prune its own triplets without rerunning search
+        % or renumbering the interface's candidate grids.
+        obj.traceGrids = gInterf.traceGrids;
+        obj.neighbors = gInterf.neighbors;
+        obj.intersections = gInterf.intersections;
+        obj.isConforming = gInterf.isConforming;
+        return
+      end
+      obj.traceGrids = [Grid();Grid()];
+      obj.traceGrids(1).setGrid(g1);
+      obj.traceGrids(2).setGrid(g2);
 
       assert(obj.nDim,"Interface grid must be lower dimensional")
 
-      obj.traceGrids = [g1,g2];
-      [obj.neighbors,obj.isConforming] = obj.getNeighbors();
+      [obj.neighbors,obj.isConforming] = obj.getNeighbors(varargin{:});
+
     end
 
 
-    function [neighbors,conforming] = getNeighbors(obj)
+    function [neighbors,conforming] = getNeighbors(obj,varargin)
       % Join the two contact searches on their shared interface cell.
 
-      slaveSearch = ContactSearching(obj,obj.traceGrids(1));
-      masterSearch = ContactSearching(obj,obj.traceGrids(2));
+      slaveSearch = ContactSearching(obj,obj.traceGrids(1),varargin{:});
+      masterSearch = ContactSearching(obj,obj.traceGrids(2),varargin{:});
 
       conforming = [slaveSearch.isConforming,masterSearch.isConforming];
 
@@ -83,10 +97,6 @@ classdef InterfaceGrid < Grid
           keep(id) = false;
         end
       end
-      if all(keep)
-        return
-      end
-
       newNeighs = obj.neighbors(keep,:);
 
       if isempty(newNeighs)
@@ -110,14 +120,14 @@ classdef InterfaceGrid < Grid
 
       % update intersection if already computed
       intersect = obj.intersections;
-      if ~isempty(intersect)
+      if ~isempty(intersect) && ~all(keep)
         intersect.center = intersect.center(keep,:);
         intersect.area = intersect.area(keep);
         intersect.verts = intersect.verts.getRows(find(keep));
       end
 
       obj.setGrid(grids{1});
-      obj.traceGrids = [grids{2},grids{3}];
+      obj.traceGrids = [grids{2};grids{3}];
       obj.neighbors = newNeighs;
       obj.intersections = intersect;
     end
@@ -189,13 +199,13 @@ classdef InterfaceGrid < Grid
         end
       end
 
+      if ~any(areas > 0)
+        error('InterfaceGrid:NoRemainingConnections','No remaining connections in interface grid.');
+      end
       verts = ArrayOfArrays(vertcat(polygons{:}),counts);
-      intersections = struct('center',centers,'area',areas,'verts',verts);
-      obj.intersections = intersections;
-
-      inactive = areas == 0;
-
-      removeNeighbors(obj,inactive);
+      obj.intersections = struct('center',centers,'area',areas,'verts',verts);
+      obj.removeNeighbors(areas == 0);
+      intersections = obj.intersections;
 
     end
 
@@ -212,6 +222,7 @@ classdef InterfaceGrid < Grid
 
 
   methods (Static, Access = private)
+
 
     function verts = cellPolygon(grid,id)
       nodes = grid.getCellNodes(id);

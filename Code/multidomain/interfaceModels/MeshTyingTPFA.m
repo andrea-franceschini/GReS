@@ -188,9 +188,10 @@ classdef MeshTyingTPFA < InterfaceSolver
 
       setMortarInterface@InterfaceSolver(obj,params);
 
-      % Quadrature pairs contain LOCAL surface IDs, one row per subtriangle.
+      % Quadrature pairs contain local surface IDs, one row per active triplet.
       % Retain intersection geometry, but share pressure on each slave face.
       pairs = obj.quadrature.interfacePairs;
+      triplets = obj.quadrature.getActiveTriplets();
       [surfacePairs,~,polygonId] = unique(pairs,'rows');
       obj.intersectionToSlave = surfacePairs(:,MortarSide.slave);
       obj.multiplierLocation = entityField.cell;
@@ -217,9 +218,9 @@ classdef MeshTyingTPFA < InterfaceSolver
         triIds = find(surfSlave.VTKType(pairs(:,slave)) == vtk);
         for k = triIds'
           is = pairs(k,slave);
-          xi = obj.quadrature.getSlaveGPCoords(k);
+          xi = obj.quadrature.getSlaveGPCoords(triplets(k));
           x = elem.computeBasisF(xi)*elem.getElementCoords(is);
-          w = obj.quadrature.getIntegrationWeights(k);
+          w = obj.quadrature.getIntegrationWeights(triplets(k));
           w = w(:);
           triArea(k) = sum(w);
           firstMoment(k,:) = w'*x;

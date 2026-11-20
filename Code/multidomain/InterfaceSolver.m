@@ -507,7 +507,7 @@ classdef (Abstract) InterfaceSolver < handle
             "Available types are: standard,dual,P0");
       end
 
-      if numel(fieldnames(params.Quadrature)) > 0
+      if isfield(params.Quadrature,'type')
         quadType = params.Quadrature.type;
       else
         quadType = "SegmentBasedQuadrature";
@@ -529,56 +529,12 @@ classdef (Abstract) InterfaceSolver < handle
         obj.grids(side).computeAvgNodalNormal();
       end
 
-      cs = ContactSearching(obj.grids(MortarSide.slave),obj.grids(MortarSide.master),params);
+      mortarGrid = InterfaceGrid(obj.grids(1),obj.grids(1),obj.grids(2),params);
+      obj.quadrature = feval(quadType,params.multiplierType,mortarGrid,params.Quadrature);
+      obj.quadrature.processMortarPairs();
+      obj.grids = mortarGrid.traceGrids;
 
-      elemConnectivity = cs.getElementConnectivity();
-
-
-      if ~any(elemConnectivity,"all")
-        error('No connection between master domain %i  and slave domain %i !',...
-          params.masterDomain,params.slaveDomain)
-      end
-
-
-      obj.quadrature = feval(quadType,...
-        params.multiplierType, ...
-        obj.grids, ...
-        params.Quadrature);
-
-
-      processMortarPairs(obj.quadrature,elemConnectivity);
-
-
-      % now finalize the grids and compute edges
       for side = [MortarSide.slave, MortarSide.master]
-
-        nOld = obj.grids(side).cells.num;
-
-        % Active surface IDs in the current local numbering
-        activeId = unique(obj.quadrature.interfacePairs(:,side));
-
-        isMortarElem = false(nOld,1);
-        isMortarElem(activeId) = true;
-
-        % Cells are retained by getCellGrid in this order
-        keptId = find(isMortarElem);
-
-        % Map old local surface IDs to new local surface IDs
-        old2new = zeros(nOld,1);
-        old2new(keptId) = 1:numel(keptId);
-
-        % Renumber this side of all interface pairs
-        obj.quadrature.interfacePairs(:,side) = ...
-          old2new(obj.quadrature.interfacePairs(:,side));
-
-        if side == MortarSide.slave
-          obj.quadrature.areaSlave = obj.quadrature.areaSlave(isMortarElem);
-        end
-
-        % Extract only active mortar surfaces
-        obj.grids(side) = getCellGrid( ...
-          obj.grids(side), isMortarElem);
-
         % Process the final surface grid
         obj.grids(side).processGeometry(true);
         obj.grids(side).computeAvgNodalNormal();

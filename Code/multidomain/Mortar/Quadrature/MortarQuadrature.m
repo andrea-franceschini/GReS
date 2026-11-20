@@ -1,109 +1,219 @@
 classdef (Abstract) MortarQuadrature < handle
-  % General class for handling mortar integration
-  % REFS: Puso,2004, A mortar segment-to-segment contact method for large
-  % deformation solid mechanics
-  
-  properties
-    interfacePairs
-    grids                  % handle to master and slave lower dimensional grids
-    gpCoords = cell(1,2);  % store local coordinates for each intersection pair
+  % Mortar integration on [interface, slave, master] neighbor triplets.
+
+  properties (SetAccess = private)
+    grid
+    gpCoords = cell(0,3)   % reference coordinates, one row per triplet
+    weights = cell(0,1)    % physical integration weights per triplet
     multiplierType
-    areaSlave
     gaussOrder
   end
 
-  methods
-    function obj = MortarQuadrature(multType,grids,input)
-      % grids: the lower dimensional grids for slave and master side
-
-      input = readInput(struct('gaussOrder',4),input);
-      obj.gaussOrder = input.gaussOrder;
-
-      obj.multiplierType = multType;
-      obj.grids = grids;
-
-    end
-
-
+  properties (SetAccess = private)
+    areaSlave = []
   end
 
 
+  properties (Access = private)
+    % store in memory transform operators for dual basis construction
+    dualTransforms
+  end
 
   methods (Abstract)
-    processMortarPairs(obj,connectivity)
-    isPairActive = processMortarPair(obj,is,im);
-    finalizeMortarMaps(obj);
-    getIntegrationWeights(obj,idPair);
-    xiMaster = getMasterGPCoords(obj,idPair);
-    xiSlave = getSlaveGPCoords(obj,idPair);
+
+    [xi,w] = processMortarPair(obj,tripletId,elements)
+
+
   end
 
   methods
 
-    % function elem = getElem(obj,sideID,id)
-    %   % get instance of element class on one the sides of the interface
-    %   % Assumption: same element type in the entire interface
-    %   % get istance of element class based on cell type
-    %   type = obj.msh(sideID).surfaceVTKType(id);
-    %   elem = obj.elements(sideID).getElement(type);
-    % end
+    function obj = MortarQuadrature(multType,interfGrid,input)
 
-    function Nmult = computeMultiplierBasisF(obj,elId,elem,NslaveIn)
+      options = readInput(struct('gaussOrder',4),input);
+      obj.gaussOrder = options.gaussOrder;
 
-      switch obj.multiplierType
-        case 'P0'
-          Nmult = ones(size(NslaveIn,1),1);
-        case 'standard'
-          Nmult = NslaveIn;
-        case 'dual'
-          % ref: Popp, A. (2012). Mortar methods for computational contact
-          % mechanics and general interface problems 
-          Ns = getBasisFinGPoints(elem);
-          gpW = getDerBasisFAndDet(elem,elId);
-          Ml = Ns'*(Ns.*gpW');
-          Dl = diag(Ns'*gpW');
-          A = Ml\Dl;
-          Nmult = NslaveIn*A;
-      end
+      obj.multiplierType = validatestring(multType,{'P0','standard','dual'});
+
+      obj.grid = interfGrid;
+
     end
 
-    function [Nslave, Nmaster, Nmult, varargout] = getMortarBasisFunctions(obj,~,is,elemMaster,elemSlave,xiMaster,xiSlave)
 
-      Nmaster = elemMaster.computeBasisF(xiMaster);
+    function processMortarTriplets(obj)
+
+      if ~isempty(obj.weights)
+        return
+      end
+
+      % Segment preparation can prune and renumber the intersection triplets.
+      obj.prepareQuadrature();
+      elements = obj.createElements();
+
+      neighbors = obj.grid.neighbors;
+      n = size(neighbors,1);
+      coords = cell(n,3);
+      w = cell(n,1);
+      for k = 1:n
+
+        ids = neighbors(k,:);
+        elems = {elements{1}{ids(1)},elements{2}{ids(2)},elements{3}{ids(3)}};
+
+        [coords(k,:),w{k}] = obj.processMortarPair(k,elems);
+
+      end
+
+      % keep only active triplets (at least a gauss weight)
+      active = ~cellfun(@isempty,w);
+      obj.grid.removeNeighbors(~active);
+      obj.dualTransforms = cell(obj.grid.cells.num,1);
+      obj.gpCoords = coords(active,:);
+      obj.weights = w(active);
+      obj.areaSlave = accumarray(obj.grid.neighbors(:,2),cellfun(@sum,obj.weights), ...
+        [obj.grid.traceGrids(1).cells.num,1]);
+
+    end
+
+    function ids = getActiveTriplets(obj)
+      ids = (1:numel(obj.weights)).';
+    end
+
+    function [xiInterf,xiSlave,xiMaster] = getGPCoords(obj,triplet)
+      [xiInterf,xiSlave,xiMaster] = obj.gpCoords{triplet,:};
+    end
+
+    function xi = getSlaveGPCoords(obj,triplet)
+      xi = obj.gpCoords{triplet,2};
+    end
+
+    function xi = getMasterGPCoords(obj,triplet)
+      xi = obj.gpCoords{triplet,3};
+    end
+
+    function w = getIntegrationWeights(obj,triplet)
+      w = obj.weights{triplet};
+    end
+
+    function [Nslave,Nmaster,Nmult] = getMortarBasisFunctions(obj,triplet,elemInterf,elemMaster,elemSlave)
+
+      % return basis functions for a given triplet of connected elmements
+      ids = obj.grid.neighbors(triplet,:);
+      [xiInterf,xiSlave,xiMaster] = obj.getGPCoords(triplet);
+
       Nslave = elemSlave.computeBasisF(xiSlave);
-      Nmult = obj.computeMultiplierBasisF(is,elemSlave,Nslave);
+      Nmaster = elemMaster.computeBasisF(xiMaster);
 
-      if nargout ==4
-        % outout the bubble function on the slave side
-        varargout{1} = elemSlave.computeBubbleBasisF(xiSlave);
-      end
-    end
+      Nmult = obj.computeMultiplierBasis(ids(1),elemInterf,xiInterf);
 
-    function computeAreaSlave(obj)
-      % compute the effective area of the slave elements being integrated
-      obj.areaSlave = zeros(obj.grids(MortarSide.slave).cells.num,1);
-      for iPair = 1:size(obj.interfacePairs,1)
-        is = obj.interfacePairs(iPair,1);
-        areaPair = sum(obj.getIntegrationWeights(iPair));
-        obj.areaSlave(is) = obj.areaSlave(is) + areaPair;
-      end
-      
     end
 
 
+    function Nmult = computeMultiplierBasis(obj,elId,elem,xi)
+
+      if strcmp(obj.multiplierType,'P0')
+        Nmult = ones(size(xi,1),1);
+        return
+      end
+
+      % standard case
+      Nmult = elem.computeBasisF(xi);
+
+      if strcmp(obj.multiplierType,'dual')
+
+
+      error('Temporarily unavailable')
+
+
+        % store dual mapping
+        if isempty(obj.dualTransforms{elId})
+          % Biorthogonality is defined over the whole interface facet.
+          % Use a rule that integrates products of the facet basis functions.
+          rule = FiniteElementType.create(elem.vtkType,obj.grid, ...
+            'gaussOrder',max([2,2*elem.minGaussOrder-1,obj.gaussOrder]));
+          N = rule.getBasisFinGPoints();
+          [~,w] = rule.getDerBasisFAndDet(elId);
+          w = sign(sum(w))*w(:);
+          M = N'*(N.*w);
+          D = diag(N'*w);
+          obj.dualTransforms{elId} = M\D;
+        end
+
+        Nmult = Nmult*obj.dualTransforms{elId};
+      end
+    end
+  end
+
+
+  methods (Access = protected)
+    function prepareQuadrature(~)
+    end
+  end
+
+  methods (Access = private)
+
+    function elements = createElements(obj)
+
+      % helper function allocating ready to use elements for mortar
+      % processing
+      grids = {obj.grid,obj.grid.traceGrids(1),obj.grid.traceGrids(2)};
+      elements = cell(3,1);
+      for side = 1:3
+        mesh = grids{side};
+        ids = double(mesh.cells.VTKType);
+        types = cell(1,max([0;ids(:)]));
+        for vtk = reshape(unique(ids),1,[])
+          types{vtk} = FiniteElementType.create(vtk,mesh,'gaussOrder',obj.gaussOrder);
+        end
+        elements{side} = types(ids);
+      end
+    end
+  end
+
+  methods (Static, Access = protected)
+
+    function basis = facetBasis(coords)
+      basis = eye(2);
+      if size(coords,2) == 3
+        if size(coords,1) == 9
+          coords = coords(1:4,:);
+        end
+        normal = computePolygonNormal(coords);
+        [~,d1,d2] = pointToSurfaceProjection(coords(1,:),normal,coords);
+        basis = [d1,d2];
+      end
+    end
+
+    function [xi,converged] = mapToReference(elem,coords,points)
+      % Invert a facet map in the two-dimensional projection plane.
+      n = size(points,1);
+      xi = repmat(elem.centroid,n,1);
+      converged = false(n,1);
+      tolerance = 1e-10*max(vecnorm(coords - coords(1,:),2,2));
+
+      for g = 1:n
+        for iter = 1:20
+          residual = points(g,:) - elem.computeBasisF(xi(g,:))*coords;
+          if norm(residual) <= tolerance
+            converged(g) = true;
+            break
+          end
+          J = elem.computeDerBasisF(xi(g,:))*coords;
+          if rcond(J) <= eps
+            break
+          end
+          % With row coordinates, the Newton increment satisfies dXi*J = residual.
+          xi(g,:) = xi(g,:) + residual/J;
+        end
+      end
+    end
   end
 
   methods (Static)
-
     function mat = integrate(func,varargin)
       dJw = varargin{end};
       mat = func(varargin{1:end-1});
       mat = mat.*reshape(dJw,1,1,[]);
       mat = sum(mat,3);
     end
-    
   end
-
-    
 end
-
