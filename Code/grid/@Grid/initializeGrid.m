@@ -53,7 +53,11 @@ if grid.nNodes > 0    % grid already populated
   end
 
   if grid.nDim == 0 && nc > 0
-    grid.nDim = 2 + any(ismember(grid.cells.VTKType,VTKType.types3D));
+    if all(grid.cells.VTKType == VTKType.Line)
+      grid.nDim = 1;
+    else
+      grid.nDim = 2 + any(ismember(grid.cells.VTKType,VTKType.types3D));
+    end
   end
 
 else

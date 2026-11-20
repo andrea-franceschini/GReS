@@ -1,22 +1,26 @@
 function processGeometry(grid,preserveParentGeometry)
-% Populate cell measures and codimension-one geometry for 2D and 3D grids.
+
+% Populate cell measures and codimension-one geometry for 1D, 2D, and 3D grids.
 % An extracted boundary patch inherits its parent face geometry.
+
 fromParent = nargin > 1 && preserveParentGeometry;
 if fromParent
   parentGeometry = grid.cells;
 end
 initializeGrid(grid);
-assert(grid.cells.num > 0 && ismember(grid.nDim,[2,3]), ...
-  'GReS:GridDimension', 'Expected a populated 2D or 3D grid.');
+assert(grid.cells.num > 0 && ismember(grid.nDim,[1,2,3]), ...
+  'GReS:GridDimension', 'Expected a populated grid of dimension 1, 2, or 3.');
 
 if fromParent
   grid.cells.normal = parentGeometry.normal;
+
 elseif grid.nDim == 2
   previousNormals = [];
   if isfield(grid.cells,'normal')
     previousNormals = grid.cells.normal;
   end
   grid.cells.normal = zeros(grid.cells.num,3);
+
   for vtkId = grid.cells.vtkTypes
     ids = grid.getCellsByVTKId(vtkId);
     nodes = grid.getCellNodes(ids);
@@ -35,12 +39,15 @@ elseif grid.nDim == 2
     end
     grid.cells.normal(ids,:) = normal;
   end
+
 end
 
 grid.processFaces();
 if fromParent
   grid.cells.volume = parentGeometry.area;
   grid.cells.center = parentGeometry.center;
+elseif grid.nDim == 1
+  [grid.cells.volume,grid.cells.center] = grid.computeCellGeometry();
 else
   for vtkId = grid.cells.vtkTypes
     ids = grid.getCellsByVTKId(vtkId);
@@ -63,4 +70,5 @@ grid.surfaces.area = grid.faces.area(faceIds);
 grid.surfaces.center = grid.faces.center(faceIds,:);
 grid.surfaces.normal = grid.faces.normal(faceIds,:);
 grid.isProcessed = true;
+
 end

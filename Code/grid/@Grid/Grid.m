@@ -156,15 +156,15 @@ classdef Grid < handle
       outGrid = Grid();
 
       % select surfaces
-      if nargin == 1
+      if nargin == 1 || isempty(surfTag) || all(ismissing(surfTag))
         outGrid = getGridBoundary(obj);
         return
+
       elseif nargin == 2
+
         if islogical(surfTag)
           assert(numel(surfTag) == surf.num);
-          id = surfTag(:);
-        else
-          id = ismember(surf.tag, surfTag);
+          id = find(surfTag);
         end
       else
         error("getSurfaceGrid:wrong number of input arguments")
@@ -488,6 +488,17 @@ classdef Grid < handle
         list = conn(conn > 0);
       end
 
+    end
+
+
+    function setGrid(obj,grid)
+      obj.coordinates = grid.coordinates;
+      obj.nNodes = grid.nNodes;
+      obj.nDim = grid.nDim;
+      obj.nCoord = grid.nCoord;
+      obj.cells = grid.cells;
+      obj.faces = grid.faces;
+      obj.surfaces = grid.surfaces;
     end
 
   end

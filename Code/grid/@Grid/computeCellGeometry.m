@@ -4,11 +4,11 @@ function [volumes, centers] = computeCellGeometry(grid)
 %   [volumes, centers] = computeCellGeometry(grid)
 %
 % Geometry is computed with the divergence theorem.
-% volumes contains areas for grid.nDim = 2 and volumes for grid.nDim = 3.
+% volumes contains lengths, areas, or volumes for dimensions 1, 2, or 3.
 % Coordinates and returned centers may have two or three components in 2D.
 %
 % Assumptions:
-%   - grid.nDim                     : intrinsic dimension, 2 or 3
+%   - grid.nDim                     : intrinsic dimension, 1 to 3
 %   - grid.coordinates              : nN x nCoord
 %   - grid.cells.num                : number of cells
 %   - grid.cells.connectivity       : matrix or ArrayOfArrays-compatible
@@ -30,6 +30,15 @@ coords = grid.coordinates;
 nC = grid.cells.num;
 nDim = grid.nDim;
 nCoord = size(coords,2);
+
+if nDim == 1
+  nodes = reshape(grid.getCellNodes(),[],2);
+  p1 = coords(nodes(:,1),:);
+  p2 = coords(nodes(:,2),:);
+  volumes = vecnorm(p2 - p1,2,2);
+  centers = (p1 + p2)/2;
+  return
+end
 
 cellConn = ArrayOfArrays(grid.cells.connectivity);
 [cellNodes,ptr] = getData(cellConn);

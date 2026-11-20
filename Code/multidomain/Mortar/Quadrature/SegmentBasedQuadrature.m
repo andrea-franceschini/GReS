@@ -80,7 +80,7 @@ classdef SegmentBasedQuadrature < MortarQuadrature
               im = imList(j);
               k = nM(is)+ j;
               % k (global index to write without race conditions)
-              processMortarPair(obj,is,im,elemSlave,elemMaster,k);
+              `(obj,is,im,elemSlave,elemMaster,k);
             end
           end
         end

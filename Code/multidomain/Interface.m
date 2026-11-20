@@ -1,4 +1,4 @@
-classdef (Abstract) Interface < handle
+classdef Interface < handle
   % General Interface class
   %
   % There exist several way in which an interface
@@ -6,23 +6,9 @@ classdef (Abstract) Interface < handle
 
   properties (GetAccess=public, SetAccess=public)
 
-    % constraint multiplier block
-    Jconstraint
-
-    % rhs block of the constraint equation
-    rhsConstraint
-
-    % object for non-conforming integration
-    quadrature
-
-    % grids(1): master    grids(2): slave
-    grids
-
-    % Number of multiplier dofs
-    nMult
-
-    % Location of the lagrange multiplier ( default is P0 )
-    multiplierLocation = entityField.cell
+    % the grid of the interface (with special information for connection of
+    % neighboring grid)
+    grid
 
     % print utilities (pointer to property of solutionScheme)
     outstate
@@ -31,16 +17,19 @@ classdef (Abstract) Interface < handle
     state
 
     % id of this interface in the solution scheme object
-    interfId
+    id
 
-    % global id of the connected domains
-    domainId
+    % constraints object added to the interface
+    constraints
 
-    % list of variables coupled from the solver
-    coupledVariables
+    % name of the constraints 
+    constraintNames
 
-    % list of dirichlet nodes
-    dirNodes
+    % handle to object implementing the Mortar quadrature
+    quadrature
+
+    % degree of freedom manager of the interface
+    dofm
 
   end
 
@@ -58,81 +47,81 @@ classdef (Abstract) Interface < handle
     domains
   end
 
-  methods (Abstract)
 
-    % Initialize the interface properties
-    registerInterface(obj);
-
-    % assemble the constraint matrices
-    assembleConstraint(obj,varargin);
-
-    % update the state after solving a linear system
-    updateState(obj,du);
-
-    % update the output structures for printing purposes
-    [cellData,pointData] = writeVTK(obj,t);
-
-    % write history to MAT-file
-    writeSolution(obj,t,tID);
-
-  end
-
-  methods (Abstract, Static)
-
-    % return the variables that are coupled from the interface solver
-    % if var = empty, the user can/must choose which variable can be coupled
-    var = getCoupledVariables(obj)
-
-  end
 
   methods
 
-    function obj = Interface(id,domains,varargin)
+    function obj = Interface(input,varargin)
 
       % domain:  handle to the Discretizer object storing all the
       % information of the model
 
       % minimal required input is the id of the connected domains
-      default = struct('slaveDomain',double(MortarSide.slave), ...
-                       'masterDomain',double(MortarSide.master));
 
-      input = readInput(default,varargin{:});
-
-
-      obj.domainId = [input.slaveDomain,input.masterDomain];
-
-
-      % store handle to connected domains
-      obj.domains = [domains(obj.domainId(1));
-                     domains(obj.domainId(2))];
-
-      % add handle of this object to the list of interfaces of connected
-      % domains
-
-      obj.interfaceId(MortarSide.slave) = numel(obj.domains(MortarSide.slave).interfaces) + 1;
-      obj.interfaceId(MortarSide.master) = numel(obj.domains(MortarSide.master).interfaces) + 1;
-
-
+      obj.domains = getInterfaceGrid(obj,input,varargin{:});
+      
       for side = [MortarSide.slave,MortarSide.master]
 
-        obj.domains(side).interfaces{obj.interfaceId(side)} = obj;
-        obj.domains(side).interfaceList(obj.interfaceId(side)) = id;
-
-        dof = getDoFManager(obj,side);
-        nVar = getNumberOfVariables(dof);
-        obj.domains(side).Jum{obj.interfaceId(side)} = cell(nVar,1);
-        obj.domains(side).Jmu{obj.interfaceId(side)} = cell(1,nVar);
-
+        obj.domains(side).interfaces = [obj.domains(side).interfaces; obj];
+        
       end
-
-      % prepare cross-grid information
-      setMortarInterface(obj,input);
-
-      % specify the variables to be coupled
-      setCoupledVariables(obj,input)
 
       obj.state = State();
 
+
+    end
+
+
+    function domains = getInterfaceGrid(obj,in,varargin)
+
+      default = struct('masterSurface',missing,...
+                        'slaveSurface',missing);
+
+      options = readInput(default,varargin{:});
+
+
+      switch class(in)
+        case 'FracturedGrid'
+          % input is a fracture, require the second input to be its hosting
+          % domain
+          assert(isa(varargin{1}),'Domain');
+
+          neigh = in.matrix.cells.matrixFaces;
+          faceId = matrix.cells.surfaces.faceId;
+          surf = zeros(size(neigh));
+         surf(:,1) = find(ismember(faceId,neigh(:,1)));
+         surf(:,2) = find(ismember(faceId,neigh(:,2)));
+         grid1 = matrix.getSurfaceGrid(surf(:,1));
+         grid2 = matrix.getSurfaceGrid(surf(:,2));
+         gridInterf = in;
+
+         domains = [varargin{1};varargin{1}];
+
+       case 'Grid'
+
+         domains = [varargin{1:2}];
+         assert(isa(domains,'Domain'))
+
+         grid1 = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
+         grid2 = getSurfaceGrid(domains(MortarSide.master).grid,options.masterSurface);
+         gridInterf = in;
+
+       case 'Domain'
+
+         assert(numel(in)==2)
+         
+         domains = [in(1);in(2)];
+
+         % the interface grid is made coincide with the slave one!
+         gridInterf = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
+         grid1 = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
+         grid2 = getSurfaceGrid(domains(MortarSide.master).grid,options.masterSurface);
+
+      end
+
+
+     % process the interface grid supplying all ingredients
+     obj.grid = InterfaceGrid(gridInterf,grid1,grid2);
 
     end
 

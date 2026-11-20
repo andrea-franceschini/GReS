@@ -3,6 +3,7 @@ classdef VTKType < uint8
   % VTKTypes implemented in GReS
 
   enumeration
+    Vertex (1)
     Line (3)
     Tri (5)           % 3 node triangle
     Polygon (7)       % n-node polygon

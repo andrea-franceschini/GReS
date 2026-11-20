@@ -8,7 +8,7 @@ halfLocal = halfFaces;
 for k = 1:numel(grid.cells.vtkTypes)
   vtkId = grid.cells.vtkTypes(k);
   ids = grid.getCellsByVTKId(vtkId);
-  nodes = grid.getCellNodes(ids);
+  nodes = reshape(grid.getCellNodes(ids),numel(ids),[]);
   local = localFaceDefs(vtkId);
   nLocal = size(local,1);
   width = size(local,2);
@@ -20,8 +20,10 @@ for k = 1:numel(grid.cells.vtkTypes)
     [~,first] = min(conn,[],2);
     offsets = mod(first-1+(0:width-1),width);
     conn = conn((1:numel(ids)).' + offsets*numel(ids));
-    flip = conn(:,2) > conn(:,end);
-    conn(flip,2:end) = conn(flip,end:-1:2);
+    if width > 1
+      flip = conn(:,2) > conn(:,end);
+      conn(flip,2:end) = conn(flip,end:-1:2);
+    end
     halfFaces{k}(rows,1:width) = conn;
   end
   halfCells{k} = repmat(ids(:),nLocal,1);
@@ -48,7 +50,16 @@ f.connectivity = ArrayOfArrays(faceNodes);
 f.numVerts = sum(faceNodes > 0,2);
 f.neighbors = neighbors;
 f.isBoundary = ~internal;
-if grid.nDim == 2
+if grid.nDim == 1
+  f.center = grid.coordinates(faceNodes(:,1),:);
+  f.area = ones(nFaces,1);
+  cellNodes = grid.getCellNodes(neighbors(:,1));
+  tangent = grid.coordinates(cellNodes(:,2),:) - grid.coordinates(cellNodes(:,1),:);
+  f.normal = tangent ./ vecnorm(tangent,2,2);
+  atFirstNode = faceNodes(:,1) == cellNodes(:,1);
+  f.normal(atFirstNode,:) = -f.normal(atFirstNode,:);
+  f.VTKType = repmat(double(VTKType.Vertex),nFaces,1);
+elseif grid.nDim == 2
   p1 = grid.coordinates(faceNodes(:,1),:);
   p2 = grid.coordinates(faceNodes(:,2),:);
   tangent = p2 - p1;
@@ -106,6 +117,8 @@ end
 
 function faces = localFaceDefs(vtkId)
 switch double(vtkId)
+  case 3
+    faces = [1;2];
   case 5
     faces = [1 2; 2 3; 3 1];
   case {9,28}

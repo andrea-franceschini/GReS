@@ -6,8 +6,7 @@ classdef (Abstract) MortarQuadrature < handle
   properties
     interfacePairs
     grids                  % handle to master and slave lower dimensional grids
-    gpCoords = cell(1,2);  % store local coordinates for each master and slave pair
-    numbInterfacePairs
+    gpCoords = cell(1,2);  % store local coordinates for each intersection pair
     multiplierType
     areaSlave
     gaussOrder

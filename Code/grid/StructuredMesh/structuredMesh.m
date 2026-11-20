@@ -1,55 +1,25 @@
-function grid = structuredMesh(nx,ny,varargin)
-% STRUCTUREDMESH Build a 2D or 3D Cartesian structured mesh.
+function grid = structuredMesh(varargin)
+%STRUCTUREDMESH Build a Cartesian grid of lines, surfaces, or volumes.
 %
-%   GRID = STRUCTUREDMESH(nx,ny,Lx,Ly)
-%   creates a structured 2D quadrilateral mesh.
+%  structuredMesh(x), structuredMesh(x,y), structuredMesh(x,y,z)
+%  use prescribed node coordinates. A scalar coordinate fixes that axis.
 %
-%   GRID = STRUCTUREDMESH(x,y)
-%   creates a quadrilateral mesh using prescribed node coordinates.
+%  structuredMesh(nx,Lx), structuredMesh(nx,ny,Lx,Ly), and
+%  structuredMesh(nx,ny,nz,Lx,Ly,Lz) use cell counts and breakpoints.
+%  For each varying axis, numel(L) = numel(n)+1. A scalar count of zero
+%  fixes an axis at the corresponding scalar coordinate.
 %
-%   GRID = STRUCTUREDMESH(nx,ny,nz,Lx,Ly,Lz)
-%   creates a structured 3D hexahedral mesh.
+%  Two positional inputs with a scalar first input use the count form.
+%  Use 'input','coordinates' to interpret both inputs as coordinates.
 %
-%   GRID = STRUCTUREDMESH(x,y,z)
-%   creates a hexahedral mesh using prescribed node coordinates.
+%  'triangle',true splits surface quads into triangles.
+%  'tetra',true splits volume hexes into tetrahedra.
 %
-%   GRID = STRUCTUREDMESH(...,'triangle',1)
-%   divides each 2D quadrilateral into two triangles.
-%
-%   GRID = STRUCTUREDMESH(...,'tetra',1)
-%   divides each 3D hexahedron into six tetrahedra.
-%
-% INPUTS, piecewise-uniform spacing
-%
-%   nx, ny, nz  - number of cells in each interval
-%   Lx, Ly, Lz  - interval breakpoints, with:
-%
-%                   numel(Lx) = numel(nx) + 1
-%
-%                 and similarly for y and z.
-%
-% INPUTS, prescribed coordinates
-%
-%   x, y, z     - strictly increasing node coordinate vectors
-%
-% OPTIONAL INPUT
-%
-%   'triangle'  - false/0: quadrilateral mesh, default
-%                 true/1: triangular mesh (2D only)
-%
-%   'tetra'     - false/0: hexahedral mesh, default
-%                 true/1: tetrahedral mesh (3D only)
-%
-% OUTPUT
-%
-%   grid        - processed grid, with grid.nDim = 2 or 3
-%
-%   2D coordinates are stored as [x,y]. Cells are quads or triangles;
-%   boundary lines are stored in grid.surfaces (VTK_LINE = 3).
-%   2D tags: bottom (y min) = 1, top (y max) = 2,
-%            left (x min) = 3, right (x max) = 4.
-%   3D tags remain: bottom = 1, top = 2, south = 3, north = 4,
-%                    west = 5, east = 6.
+%  grid.nCoord counts coordinate axes and grid.nDim counts varying axes.
+%  Line boundary tags 1 and 2 mark the low and high endpoints.
+%  Surface tags 1 through 4 mark the low/high second varying axis, then
+%  the low/high first varying axis. Volume tags 1 through 6 mark the
+%  bottom, top, south, north, west, and east faces.
 
 % Count the positional arguments before the name-value options.
 nPos = 0;
@@ -60,86 +30,78 @@ for k = 1:numel(varargin)
   nPos = nPos + 1;
 end
 
-switch nPos
-  case 0
-    % structuredMesh(x,y,...)
-    nDim = 2;
-    x = nx(:);
-    y = ny(:);
-    z = 0;
+options = readInput(struct('tetra',false,'triangle',false,'input',missing), ...
+  varargin{nPos+1:end});
+inputMode = 'auto';
 
-  case 1
-    % structuredMesh(x,y,z,...)
-    nDim = 3;
-    x = nx(:);
-    y = ny(:);
-    z = varargin{1}(:);
-
-  case 2
-    % structuredMesh(nx,ny,Lx,Ly,...)
-    nDim = 2;
-    x = buildStructuredAxis(nx,varargin{1},'x');
-    y = buildStructuredAxis(ny,varargin{2},'y');
-    z = 0;
-
-  case 4
-    % structuredMesh(nx,ny,nz,Lx,Ly,Lz,...)
-    nDim = 3;
-    nz = varargin{1};
-    x = buildStructuredAxis(nx,varargin{2},'x');
-    y = buildStructuredAxis(ny,varargin{3},'y');
-    z = buildStructuredAxis(nz,varargin{4},'z');
-
-  otherwise
-    error('structuredMesh:InvalidInput', ...
-      ['Use structuredMesh(x,y), structuredMesh(x,y,z), ', ...
-       'structuredMesh(nx,ny,Lx,Ly), or ', ...
-       'structuredMesh(nx,ny,nz,Lx,Ly,Lz).']);
+if ~ismissing(options.input,'missing')
+  inputMode = validatestring(options.input,{'auto','coordinates'});
 end
 
-inputOptions = varargin(nPos+1:end);
+countForm = any(nPos == [4,6]) || ...
+  (nPos == 2 && isnumeric(varargin{1}) && isscalar(varargin{1}));
+axisNames = 'xyz';
+if strcmp(inputMode,'auto') && countForm
+  nCoord = nPos/2;
+  axes = cell(1,nCoord);
+  for k = 1:nCoord
+    axes{k} = buildStructuredAxis(varargin{k},varargin{nCoord+k},axisNames(k));
+  end
+elseif ismember(nPos,1:3)
+  nCoord = nPos;
+  axes = varargin(1:nPos);
+else
+  error('structuredMesh:InvalidInput', ...
+    'Supply one to three coordinate vectors or matching cell counts and breakpoints.');
+end
 
-% Parse optional arguments.
-options = struct('tetra',false,'triangle',false);
-options = readInput(options,inputOptions{:});
+for k = 1:nCoord
+  validateattributes(axes{k},{'numeric'},{'vector','nonempty','real','finite'});
+  axes{k} = axes{k}(:);
+  if any(diff(axes{k}) <= 0)
+    error('structuredMesh:InvalidCoordinates', ...
+      'Coordinate vectors must be strictly increasing.');
+  end
+end
+
+axisSizes = cellfun(@numel,axes);
+varying = axisSizes(axisSizes > 1);
+nDim = numel(varying);
+if nDim == 0
+  error('structuredMesh:InvalidCoordinates','At least one axis must vary.');
+end
+
 tetra = logical(options.tetra);
 triangle = logical(options.triangle);
-
-if nDim == 2 && tetra
+if nDim ~= 3 && tetra
   error('structuredMesh:InvalidInput', ...
     'The tetra option is only available for 3D meshes.');
 end
-
-if nDim == 3 && triangle
+if nDim ~= 2 && triangle
   error('structuredMesh:InvalidInput', ...
     'The triangle option is only available for 2D meshes.');
 end
 
-nnx = numel(x);
-nny = numel(y);
-nnz = numel(z);
+% Coordinates and structured node numbering
 
-if nnx < 2 || nny < 2 || (nDim == 3 && nnz < 2)
-  error('structuredMesh:InvalidCoordinates', ...
-    'Each active coordinate vector must contain at least two entries.');
+components = cell(1,nCoord);
+[components{:}] = ndgrid(axes{:});
+coord = zeros(prod(axisSizes),nCoord);
+for k = 1:nCoord
+  coord(:,k) = components{k}(:);
 end
 
-if any(diff(x) <= 0) || any(diff(y) <= 0) || any(diff(z) <= 0)
-  error('structuredMesh:InvalidCoordinates', ...
-    'Coordinate vectors must be strictly increasing.');
-end
-
-%% Coordinates
-
-[X,Y,Z] = ndgrid(x,y,z);
-coord = [X(:),Y(:),Z(:)];
-
-%% Structured node numbering
-
-nid = reshape(1:nnx*nny*nnz,nnx,nny,nnz);
-
-if nDim == 2
-  coord = coord(:,1:2);
+if nDim == 1
+  nid = (1:varying).';
+  topol = [nid(1:end-1),nid(2:end)];
+  surf = nid([1,end]);
+  surfTag = [1;2];
+  cellVTKType = double(VTKType.Line);
+  cellNumVerts = 2;
+  surfaceVTKType = double(VTKType.Vertex);
+  surfaceNumVerts = 1;
+elseif nDim == 2
+  nid = reshape(1:prod(axisSizes),varying);
 
   n1 = nid(1:end-1,1:end-1);
   n2 = nid(2:end,  1:end-1);
@@ -148,7 +110,7 @@ if nDim == 2
 
   topol = [n1(:),n2(:),n4(:),n3(:)];
 
-  %% Boundary lines
+  % Boundary lines
 
   % Bottom (constant y): tag 1
   n = nid(:,1);
@@ -193,6 +155,7 @@ if nDim == 2
 
 else
 
+  nid = reshape(1:prod(axisSizes),varying);
   n1 = nid(1:end-1,1:end-1,1:end-1);
   n2 = nid(2:end,  1:end-1,1:end-1);
   n3 = nid(1:end-1,2:end,  1:end-1);
@@ -252,7 +215,7 @@ else
     6*ones(size(fe,1),1)
   ];
 
-  %% Select hexahedral or tetrahedral topology
+  % Select hexahedral or tetrahedral topology
 
   if tetra
 
@@ -282,7 +245,7 @@ else
 
 end
 
-%% Construct grid
+% Construct grid
 
 grid = StructuredGrid();
 grid.nDim = nDim;
@@ -303,7 +266,7 @@ grid.surfaces.VTKType = surfaceVTKType*ones(nS,1);
 grid.surfaces.tag = surfTag;
 grid.surfaces.numVerts = surfaceNumVerts*ones(nS,1);
 
-% Finalize geometry.
+% Mark the grid as structured.
 grid.setStructured;
 
 end
@@ -311,17 +274,23 @@ end
 
 function x = buildStructuredAxis(n,L,axisName)
 
+validateattributes(n,{'numeric'},{'vector','nonempty','integer','nonnegative','finite'});
+validateattributes(L,{'numeric'},{'vector','nonempty','real','finite'});
 n = n(:);
 L = L(:);
+if isscalar(n) && n == 0 && isscalar(L)
+  x = L;
+  return
+end
 
 if numel(L) ~= numel(n) + 1
   error('structuredMesh:InvalidAxisInput', ...
     'For axis %s, numel(L) must be numel(n)+1.',axisName);
 end
 
-if any(n <= 0) || any(abs(n-round(n)) > 0)
+if any(n == 0)
   error('structuredMesh:InvalidAxisInput', ...
-    'For axis %s, cell counts must be positive integers.',axisName);
+    'For axis %s, a zero cell count requires a scalar coordinate.',axisName);
 end
 
 if any(diff(L) <= 0)

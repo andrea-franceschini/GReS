@@ -1,5 +1,5 @@
-classdef Discretizer < handle
-  % General discretizer class
+classdef Domain < handle
+  % General Domain class
 
   properties (GetAccess=public, SetAccess=public)
     physicsSolvers                     % physics solvers database
@@ -38,7 +38,7 @@ classdef Discretizer < handle
 
 
   methods (Access = public)
-    function obj = Discretizer(varargin)
+    function obj = Domain(varargin)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
 
@@ -51,7 +51,7 @@ classdef Discretizer < handle
       % obj.grid = Grid();
 
       obj.physicsSolvers = containers.Map('KeyType','char','ValueType','any');
-      obj.setDiscretizer(varargin{:});
+      obj.setDomain(varargin{:});
     end
 
 
@@ -267,7 +267,7 @@ classdef Discretizer < handle
       assert(isempty(getJacobian(obj)),"Cannot add a physics solver " + ...
         "after system has already been assembled");
 
-      % Add a new solver to the Discretizer
+      % Add a new solver to the Domain
       assert(nargin == 2,"Input must be an xml file or a struct")
 
       solverInput = readInput(solverInput);
@@ -390,7 +390,7 @@ classdef Discretizer < handle
 
     function initialize(obj)
 
-      % prepare the discretizer before starting a new simulation
+      % prepare the Domain before starting a new simulation
 
       % initialize block jacobian and rhs
       nV = obj.dofm.getNumberOfVariables();
@@ -521,7 +521,7 @@ classdef Discretizer < handle
 
   methods(Access = private)
 
-    function setDiscretizer(obj,varargin)
+    function setDomain(obj,varargin)
 
       % key-value input
       setInput(obj,varargin{:});
@@ -646,7 +646,7 @@ classdef Discretizer < handle
     function checkClass(val,fldName,className)
 
       if ~isa(val, className)
-        error("Invalid key-value pair for Discretizer class. Input field %s must be an object of class %s \n",fldName,className);
+        error("Invalid key-value pair for Domain class. Input field %s must be an object of class %s \n",fldName,className);
       end
     end
 
