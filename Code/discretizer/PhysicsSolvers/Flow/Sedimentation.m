@@ -94,7 +94,7 @@ classdef Sedimentation < PhysicsSolver
       segmY = diff(obj.coordY);
       segmZ = diff(obj.coordZ);
       [idI,idJ,idK] = getIJKFromDofs(obj.mdof);
-      obj.cellDims = [segmX(idI) segmY(idJ) segmZ(idK)];      
+      obj.cellDims = [segmX(idI) segmY(idJ) segmZ(idK)];
       obj.initColumn(1:ncols,1) = true;
 
       % open space for sediments
@@ -107,7 +107,7 @@ classdef Sedimentation < PhysicsSolver
 
       % Prepare the faces connectivity
       nelm = obj.mdof.ndofs;
-      dofs = (1:nelm)';      
+      dofs = (1:nelm)';
       cellNeigh = getNeigh(obj.mdof);
       cellsConc = zeros([6*nelm,2]);
       cellsConcDir = ones([6*nelm,1]);
@@ -147,6 +147,7 @@ classdef Sedimentation < PhysicsSolver
       % set the variables for the states.
       state = getState(obj);
       state.newcells = 0;
+      state.dt = 0;
       state.maxDofUnchanged = 0;
 
       state.pressure = zeros(nelm,1);
@@ -154,11 +155,11 @@ classdef Sedimentation < PhysicsSolver
       state.strain = zeros(nelm,1);
       state.strainAcc = zeros(nelm,1);
       state.cellDefm = zeros(nelm,1);
-      state.Sp = zeros(nelm,1);      
+      state.Sp = zeros(nelm,1);
       state.void = zeros(nelm,1);
       state.age = zeros(nelm,1);
       state.void0 = zeros(nelm,1);
-      state.cb = zeros(nelm,1);      
+      state.cb = zeros(nelm,1);
 
       state.sedmRate = zeros(prod(map(1:2)),obj.nmat);
       state.sedmAcc  = zeros(prod(map(1:2)),obj.nmat);
@@ -242,7 +243,7 @@ classdef Sedimentation < PhysicsSolver
 
           stStore(map) = stress;
           state.stress(dof) = -stress;
-          % state.stress(dof) = -stress-1;          
+          % state.stress(dof) = -stress-1;
           % state.Sp(dof) = -stress;
           state.Sp(dof) = -stsCellPreCons;
           state.void(dof) = void;
@@ -262,6 +263,7 @@ classdef Sedimentation < PhysicsSolver
       dofs = getDofs(obj.mdof);
       state = getState(obj);
       stateOld = getStateOld(obj);
+      state.dt = state.time-stateOld.time;
 
       ncols = prod(obj.mdof.ncells(1:2));
       obj.deltaStress(:) = 0.;
@@ -274,6 +276,8 @@ classdef Sedimentation < PhysicsSolver
       sedm = getSedimentationMap(obj.sedimentHistory,t0,dt);
       if and(t0>=obj.spredict, ~isempty(obj.slr))
         sedmSum = sum(sedm,2);
+        flag = sedmSum == 0;
+        sedmSum(flag) = 1;
         [sedm, state.slr,state.columnheight,state.CorSlr] = computeSedmSLR( obj,...
           t0-obj.spredict,dt,sedm./sedmSum);
       end
@@ -284,7 +288,7 @@ classdef Sedimentation < PhysicsSolver
       matFract = sedm./dlSedm;
       matFract(dlSedm==0,:) = 0;
       map = sum(matFract,2)~=0;
-      
+
       Cc = zeros(ncols,1);
       Cr = zeros(ncols,1);
       stsInit = zeros(ncols,1);
@@ -381,226 +385,520 @@ classdef Sedimentation < PhysicsSolver
       return
     end
 
-    function advanceState(obj)
-      % ADVANCESTATE Finalizes time step and updates grid topology.
-      obj.cbFreeze = false; % Unfreeze the branch of oedometric compressibility 
+    % % % % % function advanceState(obj)
+    % % % % %   % ADVANCESTATE Finalizes time step and updates grid topology.
+    % % % % %   obj.cbFreeze = false; % Unfreeze the branch of oedometric compressibility
+    % % % % %
+    % % % % %   % Get state and set the initial conditions
+    % % % % %   state = getState(obj);
+    % % % % %   state.strainAcc = state.strainAcc + state.strain;
+    % % % % %   mapSp = state.stress < state.Sp;
+    % % % % %   state.Sp(mapSp) = state.stress(mapSp);
+    % % % % %   state.void0(mapSp) = state.void(mapSp);
+    % % % % %
+    % % % % %   % ------ Update the Sedimentation ------
+    % % % % %   % Update the sedimentation
+    % % % % %   dt = state.time-getStateOld(obj,'time');
+    % % % % %   sedAdd = dt*state.sedmRate;
+    % % % % %   state.sedmAcc = state.sedmAcc + sedAdd;
+    % % % % %
+    % % % % %   newCellSed = zeros(size(state.sedmAcc));
+    % % % % %   mapNewCells(1:prod(obj.mdof.ncells(1:2)),1) = false;
+    % % % % %
+    % % % % %   % initialize the columns
+    % % % % %   dzSedmAdd = sum(sedAdd,2);
+    % % % % %   mapSedmPos = dzSedmAdd > 0;
+    % % % % %
+    % % % % %   initCol = and(mapSedmPos,obj.initColumn);
+    % % % % %   cellVar = and(mapSedmPos,~obj.initColumn);
+    % % % % %
+    % % % % %   newCellSed(initCol,:) = sedAdd(initCol,:);
+    % % % % %   mapNewCells(initCol) = true;
+    % % % % %
+    % % % % %   if any(cellVar)
+    % % % % %     % ------ Update the cells at the top (before the grow) ------
+    % % % % %     dofs = getBordZMax(obj.mdof);
+    % % % % %     idx = 1:length(dofs);
+    % % % % %     dofs = dofs(cellVar);
+    % % % % %     idx = idx(cellVar);
+    % % % % %
+    % % % % %     dzOld = obj.cellDims(dofs,3);
+    % % % % %     % dzDef = dzOld.*(1+state.strain(dofs));
+    % % % % %     dzDef = dzOld + state.cellDefm(dofs);
+    % % % % %     dzNew = dzDef+dzSedmAdd(cellVar);
+    % % % % %
+    % % % % %     growCols = dzNew > obj.heightControl*(1+obj.minCellHeight); % <-- Very important check
+    % % % % %
+    % % % % %     state.cellDefm(dofs) = 0;
+    % % % % %     state.strainAcc(dofs) = 0;
+    % % % % %     if (any(~growCols))
+    % % % % %       ngrowCols = ~growCols;
+    % % % % %       dof = dofs(ngrowCols);
+    % % % % %       loc = idx(ngrowCols);
+    % % % % %
+    % % % % %       obj.cellDims(dof,3) = dzNew(ngrowCols);
+    % % % % %       fracCell = dzOld(ngrowCols).*obj.matfrac(dof,:) + sedAdd(loc,:);
+    % % % % %       % fracCell = dzDef(ngrowCols).*obj.matfrac(dof,:) + sedAdd(loc,:);
+    % % % % %
+    % % % % %       obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
+    % % % % %
+    % % % % %       hOld = dzDef(ngrowCols);
+    % % % % %       hSed = dzSedmAdd(loc);
+    % % % % %       eOld = state.void(dof);
+    % % % % %       eSed = obj.voidTop(loc);
+    % % % % %       state.void(dof) = (hOld+hSed)./(hOld./(1+eOld) + hSed./(1+eSed)) - 1;
+    % % % % %
+    % % % % %       % Harmonic series <- Best approx
+    % % % % %       % state.void(dof) = (dzNew(ngrowCols).*state.void(dof).*obj.voidTop(loc)) ./ ...
+    % % % % %       %   (state.void(dof).*dzSedmAdd(loc)+obj.voidTop(loc).*dzDef(ngrowCols));
+    % % % % %       % state.void0(dof) = (dzNew(ngrowCols).*state.void0(dof).*obj.e0Top(loc)) ./ ...
+    % % % % %       %   (state.void0(dof).*dzSedmAdd(loc)+obj.e0Top(loc).*dzDef(ngrowCols));
+    % % % % %
+    % % % % %       Void0mean = void0mean(obj,state.void(dof),fracCell./sum(fracCell,2),dzNew(ngrowCols));
+    % % % % %       state.void0(dof) =Void0mean;
+    % % % % %       %
+    % % % % %       % state.void(dof) = dzNew(ngrowCols) ./ ( ...
+    % % % % %       %   (state.void(dof)./dzDef(ngrowCols)) + ...
+    % % % % %       %   (obj.voidTop(loc)./dzSedmAdd(loc)));
+    % % % % %       %
+    % % % % %       % state.void0(dof) = dzNew(ngrowCols) ./ ( ...
+    % % % % %       %   (state.void0(dof)./dzDef(ngrowCols)) + ...
+    % % % % %       %   (obj.e0Top(loc)./dzSedmAdd(loc)));
+    % % % % %     end
+    % % % % %
+    % % % % %     if (any(growCols))
+    % % % % %       dof = dofs(growCols);
+    % % % % %       loc = idx(growCols);
+    % % % % %
+    % % % % %       frac = (obj.heightControl-dzDef(growCols))./(dzSedmAdd(loc));
+    % % % % %       fracCell = dzOld(growCols).*obj.matfrac(dof,:) + frac.*sedAdd(loc,:);
+    % % % % %       % fracCell = dzDef(growCols).*obj.matfrac(dof,:) + frac.*sedAdd(loc,:);
+    % % % % %
+    % % % % %       obj.cellDims(dof,3) = obj.heightControl;
+    % % % % %       obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
+    % % % % %
+    % % % % %       hOld = dzDef(growCols);
+    % % % % %       hSed = frac.*dzSedmAdd(loc);
+    % % % % %       eOld = state.void(dof);
+    % % % % %       eSed = obj.voidTop(loc);
+    % % % % %
+    % % % % %       state.void(dof) = (hOld+hSed)./(hOld./(1+eOld) + hSed./(1+eSed)) - 1;
+    % % % % %
+    % % % % %       % Harmonic series <- Best approx
+    % % % % %       % state.void(dof) = (obj.heightControl.*state.void(dof).*obj.voidTop(loc)) ./ ...
+    % % % % %       %   (state.void(dof).*frac.*dzSedmAdd(loc)+obj.voidTop(loc).*dzDef(growCols));
+    % % % % %       % state.void0(dof) = (obj.heightControl.*state.void0(dof).*obj.e0Top(loc)) ./ ...
+    % % % % %       %   ( state.void0(dof).*frac.*dzSedmAdd(loc)+obj.e0Top(loc).*dzDef(growCols));
+    % % % % %
+    % % % % %       Void0mean = void0mean(obj,state.void(dof),fracCell./sum(fracCell,2),obj.heightControl);
+    % % % % %       state.void0(dof) =Void0mean;
+    % % % % %
+    % % % % %       % state.void(dof) = obj.heightControl ./ ( ...
+    % % % % %       %   (state.void(dof)./dzDef(growCols)) + ...
+    % % % % %       %   (obj.voidTop(loc)./(frac.*dzSedmAdd(loc))));
+    % % % % %       %
+    % % % % %       % state.void0(dof) = obj.heightControl ./ ( ...
+    % % % % %       %   (state.void0(dof)./dzDef(growCols)) + ...
+    % % % % %       %   (obj.e0Top(loc)./(frac.*dzSedmAdd(loc))));
+    % % % % %
+    % % % % %       newCellSed(loc,:) = (1-frac).*sedAdd(loc,:);
+    % % % % %       mapNewCells(loc) = true;
+    % % % % %     end
+    % % % % %   end
+    % % % % %   obj.initColumn(initCol) = false;
+    % % % % %
+    % % % % %   state.strain(:) = 0;
+    % % % % %   % ------ Grow the grid if the threshold is reached ------
+    % % % % %   newcells = sum(mapNewCells);
+    % % % % %   state.newcells = newcells;
+    % % % % %   if newcells>0
+    % % % % %     ndofs = obj.mdof.ndofs;
+    % % % % %     dofs = (ndofs+1:ndofs+newcells)';
+    % % % % %     obj.matfrac(end+1:end+newcells,:) = newCellSed(mapNewCells,:)./sum(newCellSed(mapNewCells,:),2);
+    % % % % %
+    % % % % %     % Update the grid and locate the new dofs
+    % % % % %     newlayer = grow(obj.mdof,mapNewCells);
+    % % % % %     if newlayer
+    % % % % %       obj.coordZ(end+1) = obj.coordZ(end)+obj.heightControl;
+    % % % % %     end
+    % % % % %
+    % % % % %     % Position of the grow
+    % % % % %     nlaysByCol = obj.mdof.laysByCol(:);
+    % % % % %     atTop = nlaysByCol==obj.mdof.ncells(3);
+    % % % % %     newCellNotTop = ~atTop(mapNewCells);
+    % % % % %
+    % % % % %     % Update the cell mesh.
+    % % % % %     segmX = diff(obj.coordX);
+    % % % % %     segmY = diff(obj.coordY);
+    % % % % %     dx = repmat(segmX,[length(segmY) 1]);
+    % % % % %     dy = repelem(segmY,length(segmX));
+    % % % % %     obj.cellDims(end+1:end+newcells,:) = [dx(mapNewCells) dy(mapNewCells) sum(newCellSed(mapNewCells,:),2)];
+    % % % % %
+    % % % % %     % Creating the connectives between new cells
+    % % % % %     neigh = getNeigh(obj.mdof,dofs);
+    % % % % %
+    % % % % %     face = zeros([5*newcells,2]);
+    % % % % %     faceAxis = ones([5*newcells,1]);
+    % % % % %     faceAct = false([5*newcells,1]);
+    % % % % %
+    % % % % %     face(1:newcells,:)=[neigh(:,5) dofs];
+    % % % % %     faceAxis(1:newcells)=3;
+    % % % % %     faceAct(1:newcells)=true;
+    % % % % %     for ref=1:4
+    % % % % %       % Add the connection between the reference cell and the neighborhoods
+    % % % % %       tmp = neigh(:,ref);
+    % % % % %
+    % % % % %       % Evaluate the neighbor if the column is not at the top.
+    % % % % %       flag0 = and(and(tmp<dofs,tmp~=0),newCellNotTop);
+    % % % % %
+    % % % % %       % Evaluate the neighbor if the column is at the top.
+    % % % % %       flag1 = tmp > dofs;
+    % % % % %
+    % % % % %       % Combine the two case.
+    % % % % %       flag = or(flag0,flag1);
+    % % % % %       nfaces = sum(flag);
+    % % % % %
+    % % % % %       face(ref*newcells+1:ref*newcells+nfaces,:)=[dofs(flag),tmp(flag)];
+    % % % % %       faceAxis(ref*newcells+1:ref*newcells+nfaces)=ceil(ref/2);
+    % % % % %       faceAct(ref*newcells+1:ref*newcells+nfaces)=true;
+    % % % % %     end
+    % % % % %     nfaces = sum(faceAct);
+    % % % % %     obj.facesNeigh(end+1:end+nfaces,:) = face(faceAct,:);
+    % % % % %     obj.facesNeighDir(end+1:end+nfaces,:) = faceAxis(faceAct);
+    % % % % %
+    % % % % %     % Update the states
+    % % % % %     state.maxDofUnchanged = getMaxDofUnchanged(obj.mdof);
+    % % % % %
+    % % % % %     state.pressure(end+1:end+newcells) = 0.;
+    % % % % %     state.stress(end+1:end+newcells) = 0.;
+    % % % % %     state.strain(end+1:end+newcells) = 0.;
+    % % % % %     state.strainAcc(end+1:end+newcells) = 0.;
+    % % % % %     state.cellDefm(end+1:end+newcells) = 0.;
+    % % % % %     state.Sp(end+1:end+newcells) = 0.;
+    % % % % %     state.void(end+1:end+newcells) = 0.;
+    % % % % %     state.void0(end+1:end+newcells) = 0.;
+    % % % % %     state.age(end+1:end+newcells) = state.time;
+    % % % % %     state.cb(end+1:end+newcells) = 0.;
+    % % % % %
+    % % % % %     state.sedmAcc(mapNewCells,:) = newCellSed(mapNewCells,:);
+    % % % % %     state.void(dofs) = obj.voidTop(mapNewCells);
+    % % % % %     state.void0(dofs) = obj.e0Top(mapNewCells);
+    % % % % %
+    % % % % %     frac = sum(newCellSed(mapNewCells,:),2)./sum(sedAdd(mapNewCells,:),2);
+    % % % % %     stressAdd = - frac.*obj.deltaStress(mapNewCells)*dt;
+    % % % % %
+    % % % % %     stsInit = zeros(newcells,1);
+    % % % % %     stsCellPreCons = zeros(newcells,1);
+    % % % % %     matTmp = newCellSed(mapNewCells,:)./sum(newCellSed(mapNewCells,:),2);
+    % % % % %     for mat=1:obj.nmat
+    % % % % %       tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
+    % % % % %       stsCellPreCons = stsCellPreCons + matTmp(:,mat).*tmpMat.Sp;
+    % % % % %       stsInit = stsInit + matTmp(:,mat).*tmpMat.S0;
+    % % % % %     end
+    % % % % %     mapPreCon = stsCellPreCons<-stressAdd;
+    % % % % %     stsCellPreCons(mapPreCon)=-stressAdd(mapPreCon);
+    % % % % %
+    % % % % %     state.stress(dofs) = stressAdd;
+    % % % % %     % state.stress(dofs) = stressAdd-stsInit;
+    % % % % %     % state.Sp(dofs) = stressAdd;
+    % % % % %     state.Sp(dofs) = -stsCellPreCons;
+    % % % % %   end
+    % % % % %
+    % % % % %   setStateOld(obj,state);
+    % % % % %   setState(obj,state);
+    % % % % % end
 
-      % Get state and set the initial conditions
+
+    function advanceState(obj)
+      % ADVANCESTATE Finalizes the time step and updates the grid.
+      obj.cbFreeze = false;
       state = getState(obj);
-      state.strainAcc = state.strainAcc + state.strain;      
+
+      % Update accumulated strain and pre consolidation state
+      state.strainAcc = state.strainAcc + state.strain;
       mapSp = state.stress < state.Sp;
       state.Sp(mapSp) = state.stress(mapSp);
       state.void0(mapSp) = state.void(mapSp);
 
-      % ------ Update the Sedimentation ------
-      % Update the sedimentation 
-      dt = state.time-getStateOld(obj,'time');
+      % Sediment deposited during the current time step
+      dt = state.time - getStateOld(obj,'time');
       sedAdd = dt*state.sedmRate;
       state.sedmAcc = state.sedmAcc + sedAdd;
 
-      newCellSed = zeros(size(state.sedmAcc));
-      mapNewCells(1:prod(obj.mdof.ncells(1:2)),1) = false;
-      
-      % initialize the columns
-      dzSedmAdd = sum(sedAdd,2);
-      mapSedmPos = dzSedmAdd > 0;
+      % Update existing top cells and identify new cells
+      [state,mapNewCells,newCellSed] = updateTopCells(obj,state,sedAdd);
 
-      initCol = and(mapSedmPos,obj.initColumn);
-      cellVar = and(mapSedmPos,~obj.initColumn);
-
-      newCellSed(initCol,:) = sedAdd(initCol,:);
-      mapNewCells(initCol) = true;
-      
-      if any(cellVar)
-        % ------ Update the cells at the top (before the grow) ------
-        dofs = getBordZMax(obj.mdof);
-        idx = 1:length(dofs);
-        dofs = dofs(cellVar);
-        idx = idx(cellVar);
-
-        dzOld = obj.cellDims(dofs,3);
-        dzDef = dzOld.*(1+state.strain(dofs));
-        dzNew = dzDef+dzSedmAdd(cellVar);        
-
-        growCols = dzNew > obj.heightControl*(1+obj.minCellHeight); % <-- Very important check
-        
-        state.cellDefm(dofs) = 0;
-        state.strainAcc(dofs) = 0;
-        if (any(~growCols))
-          ngrowCols = ~growCols;
-          dof = dofs(ngrowCols);
-          loc = idx(ngrowCols);
-
-          obj.cellDims(dof,3) = dzNew(ngrowCols);
-          fracCell = dzOld(ngrowCols).*obj.matfrac(dof,:) + sedAdd(loc,:);
-
-          % fracCell = dzOld(ngrowCols).*obj.matfrac(dof,:) + sedAdd(loc,:);
-          
-          obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
-
-          % Mean average
-          % state.void(dof) = (dzDef(ngrowCols).*state.void(dof) +...
-          %   dzSedmAdd(loc).*obj.voidTop(loc))./dzNew(ngrowCols);
-          % state.void0(dof) = (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
-          %   ( dzDef(ngrowCols) ./ state.void0(dof) + ...
-          %   dzSedmAdd(loc) ./ obj.e0Top(loc) );
-
-          % Harmonic series
-          Voidmean = (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
-            ( dzDef(ngrowCols) ./ state.void(dof) + ...
-            dzSedmAdd(loc) ./ obj.voidTop(loc) );
-          state.void(dof) = Voidmean;
-
-          Void0mean = (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
-            ( dzDef(ngrowCols) ./ state.void0(dof) + ...
-            dzSedmAdd(loc) ./ obj.e0Top(loc) );
-
-          % Void0mean = void0mean(obj,Voidmean,fracCell./sum(fracCell,2),dzNew(ngrowCols));
-          state.void0(dof) = Void0mean;          
-        end
-
-        if (any(growCols))
-          dof = dofs(growCols);
-          loc = idx(growCols);
-
-          frac = (obj.heightControl-dzDef(growCols))./(dzSedmAdd(loc));
-
-          fracCell = dzOld(growCols).*obj.matfrac(dof,:) + frac.*sedAdd(loc,:);
-          obj.cellDims(dof,3) = obj.heightControl;
-          obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
-
-          % Mean average
-          % % % % state.void(dof) = (dzDef(growCols).*state.void(dof) +...
-          % % % %   frac.*dzSedmAdd(loc).*obj.voidTop(loc))./obj.heightControl;
-
-          % Harmonic series
-          % state.void(dof) = ...
-          %   (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
-          %   ( dzDef(growCols) ./ state.void(dof) + ...
-          %   (frac.*dzSedmAdd(loc)) ./ obj.voidTop(loc) );
-          state.void(dof) = obj.voidTop(loc);
-
-          % state.void0(dof) = ...
-          %   (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
-          %   ( dzDef(growCols) ./ state.void0(dof) + ...
-          %   (frac.*dzSedmAdd(loc)) ./ obj.e0Top(loc) );
-          state.void0(dof) = obj.e0Top(loc);
-
-
-          % Voidmean = (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
-          %   ( dzDef(growCols) ./ state.void(dof) + ...
-          %   (frac.*dzSedmAdd(loc)) ./ obj.voidTop(loc) );
-          % state.void(dof) = Voidmean;
-          % 
-          % Void0mean = void0mean(obj,Voidmean,fracCell./sum(fracCell,2),sum((1-frac).*sedAdd(loc,:),2));
-          % state.void0(dof) = Void0mean;           
-
-          newCellSed(loc,:) = (1-frac).*sedAdd(loc,:);
-          mapNewCells(loc) = true;
-        end
-      end
-      obj.initColumn(initCol) = false;
-      
+      % Current deformation is incorporated into the geometry
+      % for the updated top cells by updateTopCells.
       state.strain(:) = 0;
-      % ------ Grow the grid if the threshold is reached ------
-      newcells = sum(mapNewCells);
-      state.newcells = newcells;
-      if newcells>0        
-        ndofs = obj.mdof.ndofs;
-        dofs = (ndofs+1:ndofs+newcells)';
-        obj.matfrac(end+1:end+newcells,:) = newCellSed(mapNewCells,:)./sum(newCellSed(mapNewCells,:),2);
 
-        % Update the grid and locate the new dofs
-        newlayer = grow(obj.mdof,mapNewCells);
-        if newlayer
-          obj.coordZ(end+1) = obj.coordZ(end)+obj.heightControl;
-        end
-
-        % Position of the grow
-        nlaysByCol = obj.mdof.laysByCol(:);
-        atTop = nlaysByCol==obj.mdof.ncells(3);
-        newCellNotTop = ~atTop(mapNewCells);
-
-        % Update the cell mesh.
-        segmX = diff(obj.coordX);
-        segmY = diff(obj.coordY);
-        dx = repmat(segmX,[length(segmY) 1]);
-        dy = repelem(segmY,length(segmX));
-        obj.cellDims(end+1:end+newcells,:) = [dx(mapNewCells) dy(mapNewCells) sum(newCellSed(mapNewCells,:),2)];
-
-        % Creating the connectives between new cells
-        neigh = getNeigh(obj.mdof,dofs);
-
-        face = zeros([5*newcells,2]);
-        faceAxis = ones([5*newcells,1]);
-        faceAct = false([5*newcells,1]);
-
-        face(1:newcells,:)=[neigh(:,5) dofs];
-        faceAxis(1:newcells)=3;
-        faceAct(1:newcells)=true;
-        for ref=1:4
-          % Add the connection between the reference cell and the neighborhoods
-          tmp = neigh(:,ref);
-
-          % Evaluate the neighbor if the column is not at the top.
-          flag0 = and(and(tmp<dofs,tmp~=0),newCellNotTop);
-
-          % Evaluate the neighbor if the column is at the top.
-          flag1 = tmp > dofs;
-
-          % Combine the two case.
-          flag = or(flag0,flag1);
-          nfaces = sum(flag);
-
-          face(ref*newcells+1:ref*newcells+nfaces,:)=[dofs(flag),tmp(flag)];
-          faceAxis(ref*newcells+1:ref*newcells+nfaces)=ceil(ref/2);
-          faceAct(ref*newcells+1:ref*newcells+nfaces)=true;
-        end
-        nfaces = sum(faceAct);
-        obj.facesNeigh(end+1:end+nfaces,:) = face(faceAct,:);
-        obj.facesNeighDir(end+1:end+nfaces,:) = faceAxis(faceAct);        
-
-        % Update the states
-        state.maxDofUnchanged = getMaxDofUnchanged(obj.mdof);
-
-        state.pressure(end+1:end+newcells) = 0.;
-        state.stress(end+1:end+newcells) = 0.;
-        state.strain(end+1:end+newcells) = 0.;
-        state.strainAcc(end+1:end+newcells) = 0.;
-        state.cellDefm(end+1:end+newcells) = 0.;
-        state.Sp(end+1:end+newcells) = 0.;
-        state.void(end+1:end+newcells) = 0.;
-        state.void0(end+1:end+newcells) = 0.;
-        state.age(end+1:end+newcells) = state.time;
-        state.cb(end+1:end+newcells) = 0.;
-
-        state.sedmAcc(mapNewCells,:) = newCellSed(mapNewCells,:);        
-        state.void(dofs) = obj.voidTop(mapNewCells);
-        state.void0(dofs) = obj.e0Top(mapNewCells);
-
-        frac = sum(newCellSed(mapNewCells,:),2)./sum(sedAdd(mapNewCells,:),2);
-        stressAdd = - frac.*obj.deltaStress(mapNewCells)*dt;
-
-        stsInit = zeros(newcells,1);
-        stsCellPreCons = zeros(newcells,1);
-        matTmp = newCellSed(mapNewCells,:)./sum(newCellSed(mapNewCells,:),2);
-        for mat=1:obj.nmat
-          tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
-          stsCellPreCons = stsCellPreCons + matTmp(:,mat).*tmpMat.Sp;
-          stsInit = stsInit + matTmp(:,mat).*tmpMat.S0;
-        end
-        mapPreCon = stsCellPreCons<-stressAdd;
-        stsCellPreCons(mapPreCon)=-stressAdd(mapPreCon);
-
-        state.stress(dofs) = stressAdd;
-        % state.stress(dofs) = stressAdd-stsInit;
-        % state.Sp(dofs) = stressAdd;
-        state.Sp(dofs) = -stsCellPreCons;
+      % Create and initialize new cells
+      state.newcells = nnz(mapNewCells);
+      if state.newcells > 0
+        [state,newDofs] = growSedimentGrid(obj,state,mapNewCells,newCellSed);
+        state = initializeNewSedimentCells(obj,state,newDofs,mapNewCells,newCellSed,sedAdd);
       end
-      
+
+      % Commit the updated state
       setStateOld(obj,state);
       setState(obj,state);
     end
+
+    function [state,mapNewCells,newCellSed] = updateTopCells(obj,state,sedAdd)
+
+      ncols = prod(obj.mdof.ncells(1:2));
+      mapNewCells = false(ncols,1);
+      newCellSed = zeros(size(sedAdd));
+
+      dzSed = sum(sedAdd,2);
+      mapSed = dzSed > 0;
+
+      % Initialize empty columns
+      initCol = mapSed & obj.initColumn;
+      mapNewCells(initCol) = true;
+      newCellSed(initCol,:) = sedAdd(initCol,:);
+      obj.initColumn(initCol) = false;
+
+      % Existing active columns receiving sediment
+      cellVar = mapSed & ~obj.initColumn & ~initCol;
+
+      if ~any(cellVar)
+        return
+      end
+
+      topDofs = getBordZMax(obj.mdof);
+      colIds = find(cellVar);
+      dofs = topDofs(cellVar);
+
+      % Current deformed geometry
+      dzOld = obj.cellDims(dofs,3);
+      dzDef = dzOld + state.cellDefm(dofs);
+      dzAdd = dzSed(colIds);
+
+      dzTotal = dzDef + dzAdd;
+      Hc = obj.heightControl;
+
+      % Determine which columns require division
+      growCols = dzTotal > Hc*(1+obj.minCellHeight);
+
+      % Existing cell height after deposition
+      dzLower = dzTotal;
+
+      % For growing columns, preserve the existing
+      % deformed height if it already exceeds Hc.
+      dzLower(growCols) = max(Hc,dzDef(growCols));
+
+      % Sediment incorporated into existing cells
+      dzIncorporated = max(0,dzLower - dzDef);
+
+      % Remaining sediment for newly created cells
+      % dzRemaining = max(0,dzAdd - dzIncorporated);
+
+      % Fraction of deposited sediment incorporated
+      frac = dzIncorporated./dzAdd;
+
+      % Update existing cell properties      
+      state = mixTopCellProperties(obj,state,dofs,colIds,dzDef, ...
+        dzLower,dzIncorporated,sedAdd);
+
+      % Update the reference geometry
+      obj.cellDims(dofs,3) = dzLower;
+
+      % Deformation is now included in cellDims
+      state.cellDefm(dofs) = 0;
+      state.strainAcc(dofs) = 0;
+
+      % Sediment assigned to new cells
+      growDofs = growCols;
+
+      if any(growDofs)
+        loc = colIds(growDofs);
+        newCellSed(loc,:) = (1-frac(growDofs)).*sedAdd(loc,:);
+        mapNewCells(loc) = true;
+      end
+    end
+
+
+    function state = mixTopCellProperties(obj,state,dofs,colIds,dzDef, ...
+        dzLower,dzInc,sedAdd)
+
+      % Avoid mixing when no sediment is incorporated
+      active = dzInc > 0;
+      if ~any(active)
+        return
+      end
+
+      % Original cell properties
+      eOld = state.void(dofs);
+      matOld = obj.matfrac(dofs,:);
+
+      % Newly deposited sediment properties
+      eSed = obj.voidTop(colIds);
+
+      dof = dofs(active);
+      loc = colIds(active);
+
+      hOld = dzDef(active);
+      hSed = dzInc(active);
+      hTotal = dzLower(active);
+
+      e1 = eOld(active);
+      e2 = eSed(active);
+
+      % Solid-volume-conserving void ratio
+      solidOld = hOld./(1+e1);
+      solidSed = hSed./(1+e2);
+      state.void(dof) = hTotal./(solidOld+solidSed)-1;
+
+      % Sediment material fractions
+      sedFrac = sedAdd(loc,:)./sum(sedAdd(loc,:),2);
+
+      % Solid-volume-weighted material fractions
+      matMix = solidOld.*matOld(active,:) + solidSed.*sedFrac;
+      obj.matfrac(dof,:) = matMix./sum(matMix,2);
+
+      % Recalculate reference void ratio
+      state.void0(dof) = void0mean(obj,state.void(dof),obj.matfrac(dof,:),hTotal);
+    end
+
+
+    function [state,dofs] = growSedimentGrid(obj,state,mapNewCells,newCellSed)
+
+      newcells = nnz(mapNewCells);
+      ndofs = obj.mdof.ndofs;
+
+      dofs = (ndofs+1:ndofs+newcells)';
+
+      % New cell material fractions
+      sedNew = newCellSed(mapNewCells,:);
+      dzNew = sum(sedNew,2);
+
+      if any(dzNew <= 0)
+        error('New cells must have positive height.');
+      end
+
+      obj.matfrac(end+1:end+newcells,:) = sedNew./dzNew;
+
+      % Grow the DOF manager
+      newlayer = grow(obj.mdof,mapNewCells);
+
+      if newlayer
+        obj.coordZ(end+1) = obj.coordZ(end)+obj.heightControl;
+      end
+
+      % New cell dimensions
+      segmX = diff(obj.coordX);
+      segmY = diff(obj.coordY);
+
+      dx = repmat(segmX,[length(segmY) 1]);
+      dy = repelem(segmY,length(segmX));
+
+      obj.cellDims(end+1:end+newcells,:) = [dx(mapNewCells),dy(mapNewCells),dzNew];
+
+      % Update face connectivity
+      updateNewCellConnectivity(obj,dofs,mapNewCells);
+
+      % Update DOF bookkeeping
+      state.maxDofUnchanged = getMaxDofUnchanged(obj.mdof);
+    end
+
+
+    function updateNewCellConnectivity(obj,dofs,mapNewCells)
+
+      newcells = numel(dofs);
+
+      nlaysByCol = obj.mdof.laysByCol(:);
+      atTop = nlaysByCol == obj.mdof.ncells(3);
+
+      newCellNotTop = ~atTop(mapNewCells);
+
+      neigh = getNeigh(obj.mdof,dofs);
+
+      face = zeros(5*newcells,2);
+      faceAxis = ones(5*newcells,1);
+      faceAct = false(5*newcells,1);
+
+      % Vertical connections
+      face(1:newcells,:) = [neigh(:,5),dofs];
+      faceAxis(1:newcells) = 3;
+      faceAct(1:newcells) = true;
+
+      % Horizontal connections
+      for ref = 1:4
+        tmp = neigh(:,ref);
+        flag0 = (tmp < dofs) & (tmp ~= 0) & newCellNotTop;
+        flag1 = tmp > dofs;
+        flag = flag0 | flag1;
+        nfaces = nnz(flag);
+
+        interval = ref*newcells + (1:nfaces);
+
+        face(interval,:) = [dofs(flag),tmp(flag)];
+        faceAxis(interval) = ceil(ref/2);
+        faceAct(interval) = true;
+      end
+
+      % Append new faces
+      obj.facesNeigh = [ obj.facesNeigh; face(faceAct,:)];
+      obj.facesNeighDir = [obj.facesNeighDir; faceAxis(faceAct) ];
+    end
+
+
+    function state = initializeNewSedimentCells(obj,state,dofs,mapNewCells,newCellSed,sedAdd)
+
+      newcells = numel(dofs);
+
+      % Extend state variables
+      state.pressure(end+1:end+newcells) = 0;
+      state.stress(end+1:end+newcells) = 0;
+      state.strain(end+1:end+newcells) = 0;
+      state.strainAcc(end+1:end+newcells) = 0;
+      state.cellDefm(end+1:end+newcells) = 0;
+      state.Sp(end+1:end+newcells) = 0;
+      state.void(end+1:end+newcells) = 0;
+      state.void0(end+1:end+newcells) = 0;
+      state.age(end+1:end+newcells) = state.time;
+      state.cb(end+1:end+newcells) = 0;
+
+      % Newly deposited sediment
+      sedNew = newCellSed(mapNewCells,:);
+
+      % Preserve the original top-cell accumulation convention
+      state.sedmAcc(mapNewCells,:) = sedNew;
+
+      % Initial void properties
+      state.void(dofs) = obj.voidTop(mapNewCells);
+      state.void0(dofs) = obj.e0Top(mapNewCells);
+
+      % Fraction of the current deposition assigned to new cells
+      frac = sum(sedNew,2)./sum(sedAdd(mapNewCells,:),2);
+
+      % Initial effective stress
+      dt = state.time-getStateOld(obj,'time');
+      stressAdd = -frac.*obj.deltaStress(mapNewCells);
+
+      % Initial preconsolidation stress
+      stsCellPreCons = zeros(newcells,1);
+      matFrac = sedNew./sum(sedNew,2);
+      for mat = 1:obj.nmat
+        tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw;
+        stsCellPreCons = stsCellPreCons + matFrac(:,mat).*tmpMat.Sp;
+      end
+      stsCellPreCons = max(stsCellPreCons,-stressAdd);
+
+      state.stress(dofs) = stressAdd;
+      state.Sp(dofs) = -stsCellPreCons;
+    end
+
+
+
+
+
+
+
+
+
+
 
     function updateState(obj,solution)
       % UPDATESTATE Iterate in the time step.
@@ -630,7 +928,7 @@ classdef Sedimentation < PhysicsSolver
 
       % Update the Mesh Deformation - vertical deformation
       % eps = (ecurr-eprev)./(1+eprev); % - New version
-      eps = min(0,(ecurr-eprev)./(1+eprev)); % exclude extansion strain
+      eps = min(0,(ecurr-eprev)./(1+eprev)); % exclude extension strain
 
       % eps = delta_e./(1+eprev);
 
@@ -638,8 +936,8 @@ classdef Sedimentation < PhysicsSolver
       % eps = delta_e./(1+stateOld.void);
 
       % Lagrangian strain model
-      % strain = stateOld.strain(dofs) + eps;  
-      strain = eps;  
+      % strain = stateOld.strain(dofs) + eps;
+      strain = eps;
       dz = obj.cellDims(:,3)+state.cellDefm;
 
       % Eulerian strain model
@@ -675,7 +973,7 @@ classdef Sedimentation < PhysicsSolver
       rhsStiff = obj.H*p;
       rhsCap = (obj.P/dt)*(p - pOld);
       rhs = rhsStiff + rhsCap;
-      
+
       dl = getStateOld(obj,'cellDefm');
       volCell = prod(obj.cellDims(:,1:2),2).*(obj.cellDims(:,3) + dl);
       cb = getState(obj,'cb');
@@ -834,7 +1132,7 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function prepareGrid(obj,data)
-      % Constructing the grid      
+      % Constructing the grid
       if strcmp(data.Grid.type,"classic")
         ncells = data.Grid.division;
         dim = data.Grid.size;
@@ -927,32 +1225,19 @@ classdef Sedimentation < PhysicsSolver
     end
 
     function [sedm,slrTx,trueColHeig,corSlr] = computeSedmSLR(obj,t0,dt,fract)
-      % Compute the amount of sediment necessary for predict using the sea level rising      
+      % Compute the amount of sediment necessary for predict using the sea level rising
 
       % Finding the amount of sediment in function of the SLR
       tf = t0 + dt;
-      slrTx = interp1(obj.slr(:,1), obj.slr(:,2), tf, 'next', 'extrap');
-
-      % Integration points
-      time = [t0; obj.slr(obj.slr(:,1) > t0 & obj.slr(:,1) < tf, 1); tf];
-
-      % Midpoints of each interval
-      tm = (time(1:end-1) + time(2:end))/2;
-
-      % Piecewise-constant SLR rate
-      slrRate = interp1(obj.slr(:,1), obj.slr(:,2), tm, 'next', 'extrap');
-      % slrRate = interp1(obj.slr(:,1), obj.slr(:,2), time, 'next', 'extrap');
-
-      % Integrate SLR
-      slr = sum(diff(time).*slrRate);
 
       % Linear interpolation with extrapolation
-      % slr0 = interp1(obj.slr(:,1), obj.slr(:,2), t0, 'linear', 'extrap');
-      % slrF = interp1(obj.slr(:,1), obj.slr(:,2), tf, 'linear', 'extrap');
-      % 
-      % % SLR increment during the time step
-      % slrTx = slrF - slr0;
-      % sedm = slrTx*fract;      
+      slr0 = interp1(obj.slr(:,1), obj.slr(:,2), t0, 'linear', 'extrap');
+      slrF = interp1(obj.slr(:,1), obj.slr(:,2), tf, 'linear', 'extrap');
+      slrTx = max(0,(slrF+slr0)/2);
+
+
+      % slrTx = interp1(obj.slr(:,1), obj.slr(:,2), tf, 'linear', 'extrap');
+
 
       % Correction necessary from the previous prediction
       % trueColHeig = getColHeight(obj.mdof,obj.coordZ,...
@@ -961,54 +1246,19 @@ classdef Sedimentation < PhysicsSolver
       %   getStateOld(obj,'strainAcc'),sum(getStateOld(obj,'sedmAcc'),2));
       % trueColHeig = getColHeight(obj.mdof,obj.cellDims(:,3),...
       %   getStateOld(obj,'strainAcc'));
-
       trueColHeig = getColHeight(obj.mdof,obj.cellDims(:,3),getStateOld(obj,'cellDefm'));
 
       % Correction from the previous prediction
       corSlr = zeros(size(trueColHeig));
       if t0 ~= 0
-        predColHeig = getStateOld(obj,'columnheight') + getStateOld(obj,'slr');
-        corSlr = max(0,predColHeig-trueColHeig);
+        predColHeig = getStateOld(obj,'columnheight') + getStateOld(obj,'dt')*getStateOld(obj,'slr');
+        % corSlr = max(0,predColHeig-trueColHeig);
+        corSlr = min(max(0,predColHeig-trueColHeig),0.1*slrTx);
       end
 
       % Convert sediment thickness into sedimentation rate
-      sedm = (slr+corSlr).*fract;
+      sedm = (slrTx+corSlr/dt).*fract;
     end
-
-    % % % % % % function [sedm,slrTx,trueColHeig,corSlr] = computeSedmSLR(obj,t0,dt,fract)
-    % % % % % %   % COMPUTESEDMSLR Computes the sedimentation rate required to
-    % % % % % %   % compensate for sea-level rise and previous height discrepancies.
-    % % % % % % 
-    % % % % % %   tf = t0 + dt;
-    % % % % % % 
-    % % % % % %   % Integrate the piecewise-constant SLR rate
-    % % % % % %   time = [t0; obj.slr(obj.slr(:,1)>t0 & obj.slr(:,1)<tf,1); tf];
-    % % % % % % 
-    % % % % % %   tm = (time(1:end-1)+time(2:end))/2;
-    % % % % % %   slrRate = interp1(obj.slr(:,1),obj.slr(:,2), tm,'next','extrap');
-    % % % % % %   % slrRate = interp1(obj.slr(:,1),obj.slr(:,2), tf,'next','extrap');
-    % % % % % % 
-    % % % % % %   slrTx = sum(diff(time).*slrRate);
-    % % % % % % 
-    % % % % % %   % Calculate actual column heights
-    % % % % % %   % trueColHeig = getColHeight(obj.mdof,obj.cellDims(:,3),getStateOld(obj,'strainAcc'));
-    % % % % % %   trueColHeig = getColHeight(obj.mdof,obj.cellDims(:,3),getStateOld(obj,'cellDefm'));
-    % % % % % % 
-    % % % % % %   % Correction from the previous prediction
-    % % % % % %   corSlr = zeros(size(trueColHeig));
-    % % % % % %   if t0 > 0
-    % % % % % %     predColHeig = getStateOld(obj,'columnheight') + getStateOld(obj,'slr');
-    % % % % % %     corSlr = max(0,predColHeig-trueColHeig);
-    % % % % % %   end
-    % % % % % % 
-    % % % % % %   % Convert sediment thickness into sedimentation rate
-    % % % % % %   sedm = (slrTx+corSlr).*fract;
-    % % % % % % end
-
-    
-
-
-
 
     function MaterialMap(obj)
       if ~obj.cbFreeze
@@ -1073,12 +1323,12 @@ classdef Sedimentation < PhysicsSolver
             out.cbmin = out.cbmin + obj.matfrac(dofs,mat).*tmpMat.cbmin;
             out.kDecay = out.kDecay + obj.matfrac(dofs,mat).*tmpMat.kDecay;
           end
-        % case 'voidlowerlimit'
-        %   out = zeros(length(dofs),1);
-        %   for mat=1:obj.nmat
-        %     tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidLowerLim();
-        %     out = out + obj.matfrac(dofs,mat).*tmpMat;
-        %   end
+          % case 'voidlowerlimit'
+          %   out = zeros(length(dofs),1);
+          %   for mat=1:obj.nmat
+          %     tmpMat = obj.domain.materials.getMaterial(mat).ConstLaw.getVoidLowerLim();
+          %     out = out + obj.matfrac(dofs,mat).*tmpMat;
+          %   end
         otherwise
           out = [];
       end
@@ -1099,7 +1349,7 @@ classdef Sedimentation < PhysicsSolver
       data.poro = state.void./(1+state.void);
       data.cb = state.cb;
       data.comp = -getComp(obj.mdof,state.cellDefm);
-      
+
       data.slr = state.slr;
       data.CorSlr = state.CorSlr;
       data.columnheight = state.columnheight;
@@ -1148,7 +1398,7 @@ classdef Sedimentation < PhysicsSolver
       % rate and the void rate using the stress. This procedure is maintain
       % util the difference of void rate is smaller than a tolerance value
       % between iterations.
-            
+
       % First iteration
       stress = (1./(1+voidInit)).*stsParcial+stsCons;
       void = SedimentMaterial.getVoidRatioFromRef(stress,stsInit,voidInit,Cc);
