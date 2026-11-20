@@ -32,13 +32,15 @@ testCases = {
    struct('file', 'matrices/richards_column.mat',    'rhsFlag', 0, 'desc', 'Richards Equation (column)');
    struct('file', 'matrices/biotFEM_treporti.mat',   'rhsFlag', 0, 'desc', 'Coupled Biot FEM (surface load)');
    struct('file', 'matrices/stickslipEFEM.mat',      'rhsFlag', 0, 'desc', 'Embedded Fracture (EFEM)');
-   struct('file', 'matrices/twoPhase_SPE.mat',        'rhsFlag', 0, 'desc', 'Two-Phase Flow (SPE)');
-   struct('file', 'matrices/mpPoro_staircase.mat',    'rhsFlag', 0, 'desc', 'Multiphase Poromechanics (3-field)');
+   struct('file', 'matrices/twoPhase_SPE.mat',       'rhsFlag', 0, 'desc', 'Two-Phase Flow (SPE)');
+   struct('file', 'matrices/mpPoro_staircase.mat',   'rhsFlag', 0, 'desc', 'Multiphase Poromechanics (3-field)');
+   struct('file', 'matrices/StickSlipRACPnsy.mat',   'rhsFlag', 0, 'desc', 'Contact Mechanics (RACP, NSY)');
+   struct('file', 'matrices/StickSlipRACPsym.mat',   'rhsFlag', 0, 'desc', 'Contact Mechanics (RACP, SYM)');
    struct('file', 'matrices/spflow_fluxBarrier.mat', 'rhsFlag', 1, 'desc', 'Flow with b = ones(n, 1)');
    struct('file', 'matrices/spflow_fluxBarrier.mat', 'rhsFlag', 2, 'desc', 'Flow with b = rand(n, 1) [seeded]');
    struct('file', 'matrices/mech_treporti.mat',      'rhsFlag', 3, 'desc', 'Mechanics with manufactured A*ones');
    struct('file', 'matrices/biotFEM_treporti.mat',   'rhsFlag', 3, 'desc', 'Biot with manufactured A*ones');
-   struct('file', 'matrices/twoPhase_SPE.mat',        'rhsFlag', 1, 'desc', 'Two-Phase Flow with b = ones')
+   struct('file', 'matrices/twoPhase_SPE.mat',       'rhsFlag', 1, 'desc', 'Two-Phase Flow with b = ones')
    };
 
 nTests = numel(testCases);
