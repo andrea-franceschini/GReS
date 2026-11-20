@@ -246,9 +246,10 @@ classdef linearSolver < handle
          tot = obj.aTimeComp+obj.aTimeSolve+sum(obj.SAM.CompLin);
       end
 
-      % Permute cell array blocks of matrix A and RHS b to canonical physics order
+      % Permute cell array blocks of matrix A and RHS b to the specified
+      % ordering
       function [A, b] = permuteBlocks(obj, A, b)
-         if ~isempty(obj.systemInfo) && isfield(obj.systemInfo, 'isPermuted') && obj.systemInfo.isPermuted
+         if obj.systemInfo.isPermuted
             p = obj.systemInfo.pBlk;
             A = A(p, p);
             b = b(p);
@@ -257,7 +258,7 @@ classdef linearSolver < handle
 
       % Permute solution vector x back to raw discretizer order
       function x = permuteBackBlocks(obj, x)
-         if ~isempty(obj.systemInfo) && isfield(obj.systemInfo, 'isPermuted') && obj.systemInfo.isPermuted
+         if obj.systemInfo.isPermuted
             xOrig = zeros(size(x), 'like', x);
             xOrig(obj.systemInfo.pDofs) = x;
             x = xOrig;
@@ -274,19 +275,23 @@ classdef linearSolver < handle
          pBlk = reshape(pBlk, 1, []);
          nTotalBlocks = info.nBlocks;
          info.pBlk = pBlk;
+         
+         % Check if the blocks are to be permuted
          info.isPermuted = ~isequal(pBlk, 1:nTotalBlocks);
 
-         canonicalBlocks = info.rawBlocks(pBlk);
-         for b = 1:nTotalBlocks
-            canonicalBlocks(b).blockIdx = b;
-         end
-         info.blocks = canonicalBlocks;
-
+         % Get the degrees of freedom for each block
          dofOffsets = [0, cumsum([info.rawBlocks.nDof])];
          rawDofs = cell(nTotalBlocks, 1);
          for b = 1:nTotalBlocks
             rawDofs{b} = ((dofOffsets(b)+1):dofOffsets(b+1))';
          end
+
+         % Actually permute the blocks and the degrees of freedom
+         permutedBlocks = info.rawBlocks(pBlk);
+         for b = 1:nTotalBlocks
+            permutedBlocks(b).blockIdx = b;
+         end
+         info.blocks = permutedBlocks;
          permDofs = rawDofs(pBlk);
          info.pDofs = vertcat(permDofs{:});
       end

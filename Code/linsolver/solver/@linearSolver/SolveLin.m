@@ -111,17 +111,15 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       % Compute the preconditioner
       A = obj.Prec.Compute(A,symMat);
       T_setup_wall = toc(time_start);
+      T_setup = T_setup_wall;
 
       % If the preconditioner can provide a recomputation-specific setup time
-      % (e.g. fixedStress with linear mechanics, where AMGMech is recycled
-      % and only the flow part is recomputed), use that for the convergence strategy
       if ismethod(obj.Prec, 'getRecomputeSetupTime')
          T_setup_eff = obj.Prec.getRecomputeSetupTime(T_setup_wall);
       else
          T_setup_eff = T_setup_wall;
       end
-      T_setup = T_setup_wall;
-
+      
       % Update stats
       obj.aTimeComp = obj.aTimeComp + T_setup_wall;
       obj.nComp = obj.nComp + 1;

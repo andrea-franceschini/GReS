@@ -87,7 +87,7 @@ classdef RACP < preconditioner
          x1 = obj.innerPrec.Apply_L(rhs1);
 
          % Backsubstitute for interface multipliers
-         x2 = inv_D22 * (b2 - A21 * x1);
+         x2 = inv_D22 * (A21 * x1 - b2);
 
          x = [x1; x2];
       end
