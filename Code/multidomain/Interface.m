@@ -1,193 +1,273 @@
 classdef Interface < handle
-  % General Interface class
-  %
-  % There exist several way in which an interface
+  % Geometry, state, and system blocks shared by interface constraints.
 
-
-  properties (GetAccess=public, SetAccess=public)
-
-    % the grid of the interface (with special information for connection of
-    % neighboring grid)
+  properties
     grid
-
-    % print utilities (pointer to property of solutionScheme)
     outstate
-
-    % interface state
     state
-
-    % id of this interface in the solution scheme object
     id
-
-    % constraints object added to the interface
-    constraints
-
-    % name of the constraints 
-    constraintNames
-
-    % degree of freedom manager of the interface
     dofm
+    J
+    rhs
+    vtmBlock
+  end
 
+  properties (SetAccess=private)
+    domains
+    constraints
+    constraintNames = strings(1,0)
   end
 
   properties (Access=private)
-
-    % id of this interface for master and slave domain
     interfaceId
-
+    initialized = false
   end
-
-
-  properties (GetAccess=public, SetAccess=protected)
-
-    % handle to master and slave Discretizer objects
-    domains
-  end
-
-
 
   methods
-
     function obj = Interface(input,varargin)
-
-      % domain:  handle to the Discretizer object storing all the
-      % information of the model
-
-      % minimal required input is the id of the connected domains
-
       obj.domains = getInterfaceGrid(obj,input,varargin{:});
+      obj.dofm = DoFManager(obj.grid);
+      obj.state = State();
+      obj.constraints = containers.Map('KeyType','char','ValueType','any');
 
       for side = [MortarSide.slave,MortarSide.master]
-
-        obj.domains(side).interfaces = [obj.domains(side).interfaces; obj];
-
+        domain = obj.domains(side);
+        slot = numel(domain.interfaces) + 1;
+        domain.interfaces{slot} = obj;
+        obj.interfaceId(side) = slot;
       end
-
-      obj.state = State();
-
-
     end
 
-
-    function domains = getInterfaceGrid(obj,in,varargin)
-
-      default = struct('masterSurface',missing,...
-        'slaveSurface',missing);
-
-      optionArgs = varargin;
-      if isa(in,'Grid')
-        optionArgs = varargin(2:end);
-      end
-      options = readInput(default,optionArgs{:});
-
-
-      % Process the Interface geometry according to three input formats
-      switch class(in)
-        case 'FracturedGrid'
-          % input is a fracture, require the second input to be its hosting
-          % domain
-          assert(isa(varargin{1}),'Domain');
-
-          neigh = in.matrix.cells.matrixFaces;
-          faceId = matrix.cells.surfaces.faceId;
-          surf = zeros(size(neigh));
-          surf(:,1) = find(ismember(faceId,neigh(:,1)));
-          surf(:,2) = find(ismember(faceId,neigh(:,2)));
-          grid1 = matrix.getSurfaceGrid(surf(:,1));
-          grid2 = matrix.getSurfaceGrid(surf(:,2));
-          gridInterf = in;
-
-          domains = [varargin{1};varargin{1}];
-
-        case {'Grid','StructuredGrid'}
-
-          domains = [varargin{1}];
-          assert(isa(domains,'Domain'))
-
-          grid1 = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
-          grid2 = getSurfaceGrid(domains(MortarSide.master).grid,options.masterSurface);
-          gridInterf = in;
-
-        case 'Domain'
-
-          assert(numel(in)==2)
-
-          domains = [in(1);in(2)];
-
-          % the interface grid is made coincide with the slave one!
-          gridInterf = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
-          grid1 = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
-          grid2 = getSurfaceGrid(domains(MortarSide.master).grid,options.masterSurface);
-
-        otherwise
-          error('Unexpected input for Interface')
-
+    function addConstraints(obj,input)
+      input = readInput(input);
+      if isfield(input,"Constraint")
+        input = input.Constraint;
       end
 
-
-      % process the interface grid supplying all ingredients
-      if ~gridInterf.isGeometryProcessed()
-        gridInterf.processGeometry();
+      for name = reshape(string(fieldnames(input)),1,[])
+        obj.addConstraint(name,input.(name));
       end
-      obj.grid = InterfaceGrid(gridInterf,grid1,grid2);
-
-      if isempty(obj.grid.neighbors)
-        error("No connections found for interface")
-      end
-
     end
 
+    function addConstraint(obj,name,varargin)
+      assert(~obj.initialized, ...
+        "Cannot add a constraint after the interface has been initialized");
+      assert((ischar(name) && isrow(name)) || ...
+        (isstring(name) && isscalar(name) && ~ismissing(name)), ...
+        "First input must be the name of the Constraint");
+      name = char(name);
+      assert(~isempty(name),"Constraint name must be nonempty");
+      assert(~isKey(obj.constraints,name), ...
+        "Constraint %s has already been defined",name);
 
-    function advanceState(obj)
-
-      % note: state in interface solver is just a value struct
-      setStateOld(obj,getState(obj));
-
+      constraint = feval(name,obj);
+      assert(isa(constraint,'Constraint'),"%s must derive from Constraint",name);
+      constraint.registerConstraint(varargin{:});
+      obj.constraints(name) = constraint;
+      obj.constraintNames(end+1) = string(name);
     end
 
-    function timeStepSetup(obj)
-      % prepare the interface solver at the begin of each time step
-    end
-
-    function goBackState(obj)
-
-      setState(obj,getStateOld(obj));
-
-    end
-
-    function hasConfigurationChanged = updateConfiguration(obj)
-
-      % base class implements no configuration change
-      hasConfigurationChanged = false;
-
+    function constraint = getConstraint(obj,name)
+      constraint = obj.constraints(char(name));
     end
 
     function initialize(obj)
-      % initialize the interface solver
+      nFields = obj.dofm.getNumberOfVariables();
+      obj.J = cell(nFields);
+      obj.rhs = cell(nFields,1);
 
-      obj.Jconstraint = [];
-      obj.rhsConstraint = [];
+      for side = [MortarSide.slave,MortarSide.master]
+        [domain,slot] = obj.getDomainSlot(side);
+        nDomainFields = domain.dofm.getNumberOfVariables();
+        domain.Jum{slot} = cell(nDomainFields,nFields);
+        domain.Jmu{slot} = cell(nFields,nDomainFields);
+      end
 
-      % remove slave Dirichlet boundary conditions for nodal multipliers
-      removeSlaveBCents(obj);
+      for name = obj.constraintNames
+        obj.getConstraint(name).initialize();
+      end
+      obj.initialized = true;
     end
 
-
-    function vtmBlock = writeVTKfile(obj,fac,time)
-
-      grid = obj.grids(MortarSide.slave);
-      surfData2D = struct('name', [], 'data', []);
-      pointData2D = struct('name', [], 'data', []);
-      [surfData,pointData] = writeVTK(obj,fac,time);
-      surfData2D = OutState.mergeOutFields(surfData2D,surfData);
-      pointData2D = OutState.mergeOutFields(pointData2D,pointData);
-      vtmBlock = obj.outstate.vtkFile.createElement('Block');
-      obj.outstate.writeVTKfile(vtmBlock,obj.getOutName(),grid,...
-        time, pointData2D, surfData2D, [], []);
-
+    function timeStepSetup(obj)
+      for name = obj.constraintNames
+        obj.getConstraint(name).timeStepSetup();
+      end
     end
 
+    function assembleSystem(obj,varargin)
+      for name = obj.constraintNames
+        obj.getConstraint(name).assembleConstraint(varargin{:});
+      end
+    end
 
+    function updateState(obj,solution)
+      for name = obj.constraintNames
+        obj.getConstraint(name).updateState(solution);
+      end
+    end
+
+    function hasConfigurationChanged = updateConfiguration(obj)
+      hasConfigurationChanged = false;
+      for name = obj.constraintNames
+        changed = obj.getConstraint(name).updateConfiguration();
+        hasConfigurationChanged = hasConfigurationChanged || changed;
+      end
+    end
+
+    function resetConfiguration(obj)
+      for name = obj.constraintNames
+        obj.getConstraint(name).resetConfiguration();
+      end
+    end
+
+    function advanceState(obj)
+      for name = obj.constraintNames
+        obj.getConstraint(name).advanceState();
+      end
+    end
+
+    function goBackState(obj)
+      for name = obj.constraintNames
+        obj.getConstraint(name).goBackState();
+      end
+    end
+
+    function out = isLinear(obj)
+      out = true;
+      for name = obj.constraintNames
+        out = out && obj.getConstraint(name).isLinear();
+      end
+    end
+
+    function J = getJacobian(obj,varargin)
+      narginchk(1,3);
+      J = obj.J;
+      if ~isempty(varargin)
+        rows = obj.getFieldIds(obj.dofm,varargin{1});
+        cols = rows;
+        if numel(varargin) == 2
+          cols = obj.getFieldIds(obj.dofm,varargin{2});
+        end
+        J = J(rows,cols);
+      end
+    end
+
+    function rhs = getRhs(obj,varargin)
+      narginchk(1,2);
+      rhs = obj.rhs;
+      if ~isempty(varargin)
+        rhs = rhs(obj.getFieldIds(obj.dofm,varargin{1}));
+      end
+    end
+
+    function nDofs = getNumbDoF(obj,varargin)
+      nDofs = obj.dofm.getNumbDoF(varargin{:});
+    end
+
+    function dofm = getDoFManager(obj,side)
+      if nargin == 1
+        dofm = obj.dofm;
+      else
+        dofm = obj.domains(side).dofm;
+      end
+    end
+
+    function J = getJum(obj,side,domainField,interfaceField)
+      [domain,slot] = obj.getDomainSlot(side);
+      J = domain.Jum{slot};
+      if nargin >= 3
+        J = J(obj.getFieldIds(domain.dofm,domainField),:);
+      end
+      if nargin == 4
+        J = J(:,obj.getFieldIds(obj.dofm,interfaceField));
+      end
+      if isscalar(J) && nargin >= 3
+        J = J{1};
+      end
+    end
+
+    function J = getJmu(obj,side,domainField,interfaceField)
+      [domain,slot] = obj.getDomainSlot(side);
+      J = domain.Jmu{slot};
+      if nargin >= 3
+        J = J(:,obj.getFieldIds(domain.dofm,domainField));
+      end
+      if nargin == 4
+        J = J(obj.getFieldIds(obj.dofm,interfaceField),:);
+      end
+      if isscalar(J) && nargin >= 3
+        J = J{1};
+      end
+    end
+
+    function setJum(obj,side,val,varargin)
+      [domain,slot,r,c] = obj.getCouplingIndices(side,varargin{:});
+      domain.Jum{slot}{r,c} = val;
+    end
+
+    function setJmu(obj,side,val,varargin)
+      [domain,slot,r,c] = obj.getCouplingIndices(side,varargin{:});
+      domain.Jmu{slot}{c,r} = val;
+    end
+
+    function addJum(obj,side,val,varargin)
+      [domain,slot,r,c] = obj.getCouplingIndices(side,varargin{:});
+      domain.Jum{slot}{r,c} = obj.addBlock(domain.Jum{slot}{r,c},val);
+    end
+
+    function addJmu(obj,side,val,varargin)
+      [domain,slot,r,c] = obj.getCouplingIndices(side,varargin{:});
+      domain.Jmu{slot}{c,r} = obj.addBlock(domain.Jmu{slot}{c,r},val);
+    end
+
+    function addRhs(obj,side,val,domainField)
+      domain = obj.domains(side);
+      id = domain.dofm.getVariableId(domainField);
+      domain.rhs{id} = obj.addBlock(domain.rhs{id},val);
+    end
+
+    function val = getVariableField(obj,side,domainField)
+      domain = obj.domains(side);
+      ents = domain.dofm.getActiveEntities(domainField,1);
+      val = domain.getState(domainField);
+      val = val(ents);
+    end
+
+    function block = writeVTK(obj,fac,time)
+      obj.vtmBlock = obj.outstate.vtkFile.createElement('Block');
+      cellData = struct('name', [], 'data', []);
+      pointData = struct('name', [], 'data', []);
+
+      for name = obj.constraintNames
+        [constraintCells,constraintPoints] = obj.getConstraint(name).writeVTK(fac,time);
+        cellData = OutState.mergeOutFields(cellData,constraintCells);
+        pointData = OutState.mergeOutFields(pointData,constraintPoints);
+      end
+
+      cellData = OutState.printMeshData(obj.grid,cellData);
+      obj.outstate.writeVTKfile(obj.vtmBlock,sprintf('Interface_%i',obj.id),...
+        obj.grid,time,pointData,cellData,[],[]);
+      block = obj.vtmBlock;
+    end
+
+    function block = writeVTKfile(obj,fac,time)
+      block = obj.writeVTK(fac,time);
+    end
+
+    function writeSolution(obj,fac,timeID)
+      obj.outstate.results(timeID).time = obj.outstate.timeList(timeID);
+      for name = obj.constraintNames
+        obj.getConstraint(name).writeSolution(fac,timeID);
+      end
+    end
+
+    function finalizeOutput(obj)
+      obj.outstate.finalize();
+      for name = obj.constraintNames
+        obj.getConstraint(name).finalizeOutput();
+      end
+    end
 
     function stateCurr = getState(obj,varName)
       % get current state variables
@@ -260,320 +340,114 @@ classdef Interface < handle
       end
     end
 
-
-
-
-    function J = getJacobian(obj)
-
-      % return the multiplier jacobian block
-      J = obj.Jconstraint;
-
-    end
-
-    function rhs = getRhs(obj)
-
-      % return the multiplier jacobian block
-      rhs = obj.rhsConstraint;
-
-    end
-
-    function dofs = getMultiplierDoF(obj,el)
-
-      meshSlave = obj.grids(MortarSide.slave);
-      dofSlave = getDoFManager(obj,MortarSide.slave);
-      ncomp = dofSlave.getNumberOfComponents(obj.coupledVariables);
-
-      if nargin > 1
-
-        dofs = getIncidenceID(obj.multiplierLocation,meshSlave,entityField.cell,el);
-        dofs = dofs.getData;
-
-        % dofs = getEntityFromElement( obj.multiplierLocation,...
-        %   entityField.cell,...
-        %   meshSlave,...
-        %   el,...
-        %   ncomp );
-      else
-        dofs = 1:getNumberOfEntities(obj.multiplierLocation,meshSlave);
-      end
-
-      dofs = DoFManager.dofExpand(dofs,ncomp);
-    end
-
-    function nDoFs = getNumbDoF(obj)
-
-      if ~isempty(obj.nMult)
-        nDoFs = obj.nMult;
-      else
-        ncomp = max(getDoFManager(obj,MortarSide.slave).getNumberOfComponents(obj.coupledVariables));
-        obj.nMult = ncomp * getNumberOfEntities(obj.multiplierLocation,...
-          obj.grids(MortarSide.slave));
-        nDoFs = obj.nMult;
-      end
-    end
-
-
-    function R = getRotationMatrix(obj,side,el)
-
-      if obj.multiplierLocation == entityField.cell
-        R = obj.grids(side).cells.rotationMatrices(el,:);
-        R = reshape(R,3,3);
-      elseif obj.multiplierLocation == entityField.node
-        nodes = obj.grids(side).getCellNodes(el);
-        n = (obj.grids(side).cells.avgNodNormal(nodes,:))';
-        n = n(:);
-        sz = size(n,1);
-        R = zeros(sz(1));
-        for i = 1:3:sz(1)
-          R(i:i+2,i:i+2) = mxComputeRotationMat(n(i:i+2));
-        end
-      end
-    end
-
-
-    %%% Get the coupling jacobian
-    function J = getJum(obj,side,varargin)
-
-      [s,varId] = getSideAndVar(obj,side,varargin{:});
-
-      J = obj.domains(s).Jum{obj.interfaceId(s)}{varId};
-    end
-
-    function J = getJmu(obj,side,varargin)
-
-      [s,varId] = getSideAndVar(obj,side,varargin{:});
-
-      J = obj.domains(s).Jmu{obj.interfaceId(s)}{varId};
-    end
-
-
-    %%% Set the coupling jacobian
-    function setJmu(obj,side,setVal,varargin)
-
-      [s,varId] = getSideAndVar(obj,side,varargin{:});
-
-      obj.domains(s).Jmu{obj.interfaceId(s)}{varId} = setVal;
-    end
-
-    function setJum(obj,side,setVal,varargin)
-
-      [s,varId] = getSideAndVar(obj,side,varargin{:});
-
-      obj.domains(s).Jum{obj.interfaceId(s)}{varId} = setVal;
-    end
-
-
-    %%% Add contribution to coupling jacobian
-    function addJum(obj,side,setVal,varargin)
-
-      [s,varId] = getSideAndVar(obj,side,varargin{:});
-
-      % assert(~isempty(obj.domains(s).Jmu{varId}),...
-      %   "Cannot add contribution to empty Jacobian block");
-
-      if ~isempty(obj.domains(s).Jum{obj.interfaceId(s)}{varId})
-        obj.domains(s).Jum{obj.interfaceId(s)}{varId} = ...
-          obj.domains(s).Jum{obj.interfaceId(s)}{varId} + setVal;
-      else
-        obj.domains(s).Jum{obj.interfaceId(s)}{varId} = setVal;
-      end
-    end
-
-    function addJmu(obj,side,setVal,varargin)
-
-      [s,varId] = getSideAndVar(obj,side,varargin{:});
-
-      if ~isempty(obj.domains(s).Jmu{obj.interfaceId(s)}{varId})
-        obj.domains(s).Jmu{obj.interfaceId(s)}{varId} = ...
-          obj.domains(s).Jmu{obj.interfaceId(s)}{varId} + setVal;
-      else
-        obj.domains(s).Jmu{obj.interfaceId(s)}{varId} = setVal;
-      end
-
-
-    end
-
-
-    %%% Add contribution to rhs
-    function addRhs(obj,side,setVal,varargin)
-
-      [s,varId] = getSideAndVar(obj,side,varargin{:});
-
-      assert(~isempty(obj.domains(s).rhs{varId}),...
-        "Cannot add contribution to empty rhs block");
-
-      obj.domains(s).rhs{varId} = obj.domains(s).rhs{varId} + setVal;
-    end
-
-    function var = getVariableField(obj,side,varargin)
-
-      s = getSide(side);
-
-      if nargin < 3
-        assert(isscalar(obj.coupledVariables),...
-          "The object couples multiple variable field. " + ...
-          "Specify the varIable name.")
-        var = obj.coupledVariables;
-      else
-        var = varargin{1};
-      end
-
-      dof = getDoFManager(obj,side);
-      ents = dof.getActiveEntities(var,1);
-      var = getState(obj.domains(s),var);
-      var = var(ents);
-
-    end
-
-    function dofm = getDoFManager(obj,side)
-      dofm = obj.domains(side).dofm;
-    end
-
-    function [out] = isLinear(obj)
-       out = false;
-    end
-
   end
 
-
-
-  methods (Access=protected)
-
-    function setCoupledVariables(obj,input)
-
-      obj.coupledVariables = obj.getCoupledVariables();
-
-      varMaster = getVariableNames(obj.domains(MortarSide.master).dofm);
-      varSlave = getVariableNames(obj.domains(MortarSide.slave).dofm);
-
-      if any([isempty(varMaster),isempty(varSlave)])
-        error(['Interface solver can be registered only after ' ...
-          'physicsSolver have been defined'])
-      end
-
-      % default candidate interface variable are those in common between
-      % master and slave discretizers
-      sharedVars = intersect(varSlave,varMaster);
-
-      if isempty(obj.coupledVariables)
-        in = readInput(struct('variable',sharedVars),input);
-        obj.coupledVariables = in.variable;
-      end
-
-
-      isInterfaceValid = all(ismember(obj.coupledVariables,sharedVars));
-
-      if ~isInterfaceValid
-        error("The interface attempts to couple a variable named '%s' that is not" + ...
-          " available in any of the connected domains.",obj.coupledVariables)
-      end
-
+  methods (Access=private)
+    function [domain,slot] = getDomainSlot(obj,side)
+      domain = obj.domains(side);
+      slot = obj.interfaceId(side);
     end
 
-    function removeSlaveBCents(obj)
-
-      nodSlave = obj.grids(MortarSide.slave).cells.loc2glob;
-
-      bc = obj.domains(MortarSide.slave).bcs;
-      bcList = bc.getBCList();
-
-
-      for bcId = bcList
-        if getType(bc,bcId) == BCtype.dirichlet
-          bcNodes = intersect(bc.getTargetEntities(bcId),nodSlave);
-          obj.dirNodes = [obj.dirNodes; bcNodes];
-          if obj.multiplierLocation == entityField.node
-            bc.removeTargetEntities(bcId,nodSlave);
-          end
-        end
+    function [domain,slot,r,c] = getCouplingIndices(obj,side,domainField,interfaceField)
+      [domain,slot] = obj.getDomainSlot(side);
+      if nargin < 4
+        assert(obj.dofm.getNumberOfVariables() == 1, ...
+          "Specify the interface field when there are multiple interface fields");
+        interfaceField = 1;
       end
+      r = domain.dofm.getVariableId(domainField);
+      c = obj.dofm.getVariableId(interfaceField);
     end
 
-    function initializeMortarInterface(obj,slaveTag,masterTag)
+    function domains = getInterfaceGrid(obj,in,varargin)
 
-      surf = [slaveTag,masterTag];
+      default = struct('masterSurface',missing,...
+        'slaveSurface',missing);
 
-      for side = [MortarSide.slave, MortarSide.master]
+      optionArgs = varargin;
+      if isa(in,'Grid')
+        optionArgs = varargin(2:end);
+      end
+      options = readInput(default,optionArgs{:});
 
-        gDom = obj.domains(side).grid;
 
-        if ismissing(surf(side))
-          obj.grids(side) = gDom.getSurfaceGrid();
-        else
-          obj.grids(side) = gDom.getSurfaceGrid(surf(side));
-        end
+      % Process the Interface geometry according to three input formats
+      switch class(in)
+        case 'FractureGrid'
+          % input is a fracture, require the second input to be its hosting
+          % domain
+          assert(numel(varargin) >= 1 && isa(varargin{1},'Domain') && ...
+            isscalar(varargin{1}), 'A fracture requires its hosting Domain');
+
+          matrix = in.matrix;
+          neigh = in.cells.matrixFaces;
+          faceId = matrix.cells.surfaces.faceId;
+          grid1 = matrix.getSurfaceGrid(ismember(faceId,neigh(:,1)));
+          grid2 = matrix.getSurfaceGrid(ismember(faceId,neigh(:,2)));
+          gridInterf = in;
+
+          domains = [varargin{1};varargin{1}];
+
+        case {'Grid','StructuredGrid'}
+
+          domains = varargin{1};
+          assert(isa(domains,'Domain') && numel(domains) == 2, ...
+            'An interface grid requires two connected domains');
+          domains = domains(:);
+
+          grid1 = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
+          grid2 = getSurfaceGrid(domains(MortarSide.master).grid,options.masterSurface);
+          gridInterf = in;
+
+        case 'Domain'
+
+          assert(numel(in)==2)
+
+          domains = [in(1);in(2)];
+
+          % the interface grid is made coincide with the slave one!
+          grid1 = getSurfaceGrid(domains(MortarSide.slave).grid,options.slaveSurface);
+          gridInterf = grid1;
+          grid2 = getSurfaceGrid(domains(MortarSide.master).grid,options.masterSurface);
+
+        otherwise
+          error('Unexpected input for Interface')
+
       end
 
-    end
 
-
-    function checkInterfaceDisjoint(obj)
-      % check that the nodes of mortar and slave side are disjoint
-
-      if obj.domainId(1) == obj.domainId(2)
-        % interface defined within the same domain
-
-        out = setdiff(obj.interfMesh.local2glob{1},obj.interfMesh.local2glob{2});
-
-        if ~all(ismember(obj.interfMesh.local2glob{1},out))
-          error('Nodes of master and slave side are not disjoint');
-        end
-
+      % process the interface grid supplying all ingredients
+      if ~gridInterf.isGeometryProcessed()
+        gridInterf.processGeometry();
       end
-    end
+      obj.grid = InterfaceGrid(gridInterf,grid1,grid2);
 
-
-    function [Ju,Jm] = getCouplingBlocks(obj,id)
-
-      % id: logical array to determine if the request for coupling blocks
-      % come from master or slave
-
-      if all(id)
-        domId = 1;
-      else
-        domId = getSide(obj,id);
+      if isempty(obj.grid.neighbors)
+        error("No connections found for interface")
       end
-
-
-      if all(id)
-
-        Ju = cell2matrix(obj.Jum{1}) + cell2matrix(obj.Jum{2});
-        Jm{1,iVar} = cell2matrix(obj.Jmu{1}) + cell2matrix(obj.Jmu{2});
-
-      else
-
-        Ju{iVar,1} = cell2matrix(obj.Jum{domId});
-        Jm{1,iVar} = cell2matrix(obj.Jmu{domId});
-
-      end
-
-
-    end
-
-
-    function [s,v] = getSideAndVar(obj,side,varargin)
-
-      s = getSide(side);
-      if nargin < 3
-        assert(isscalar(obj.coupledVariables),...
-          "The object couples multiple variable field. " + ...
-          "Specify the varIable name.")
-        v = getDoFManager(obj,side).getVariableId(obj.coupledVariables);
-      else
-        v = getDoFManager(obj,side).getVariableId(varargin{1});
-      end
-
-    end
-
-    function outName = getOutName(obj)
-
-      outName = sprintf('Interface_%i',obj.interfId);
 
     end
 
 
   end
 
+  methods (Static, Access=private)
+    function ids = getFieldIds(dofm,fields)
+      if isnumeric(fields)
+        ids = dofm.getVariableId(fields);
+      else
+        ids = arrayfun(@(field) dofm.getVariableId(field),string(fields));
+      end
+    end
+
+    function block = addBlock(block,val)
+      if isempty(block)
+        block = val;
+      else
+        block = block + val;
+      end
+    end
+  end
 
   methods (Static)
 
@@ -665,17 +539,5 @@ classdef Interface < handle
       interfaces{end+1} = interf;
 
     end
-
-
-
-
-
-
-
-
-
-
   end
-
-
 end

@@ -28,14 +28,15 @@ classdef (Abstract) MortarQuadrature < handle
 
   methods
 
-    function obj = MortarQuadrature(multType,interfGrid,input)
+    function obj = MortarQuadrature(grid,multType,input)
 
       options = readInput(struct('gaussOrder',4),input);
       obj.gaussOrder = options.gaussOrder;
 
+
       obj.multiplierType = validatestring(multType,{'P0','standard','dual'});
 
-      obj.grid = interfGrid;
+      obj.grid = grid;
 
     end
 

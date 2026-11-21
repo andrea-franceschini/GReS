@@ -7,14 +7,18 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
   methods
     function obj = SegmentBasedQuadrature(multType,grid,input)
+
       obj@MortarQuadrature(multType,grid,input);
       obj.triangle = Triangle('gaussOrder',obj.gaussOrder);
+
     end
 
     function [gpCoords,gpWeights] = processMortarPair(obj,triplet,elems)
       polygon = obj.grid.getIntersectionPolygon(triplet);
       ids = obj.grid.neighbors(triplet,:);
       interfaceCoords = elems{1}.getElementCoords(ids(1));
+
+      % project polygon in 2D space
       origin = interfaceCoords(1,:);
       basis = obj.facetBasis(interfaceCoords);
       polygon = (polygon - origin)*basis;
@@ -22,6 +26,7 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
       % The clipped polygon is convex, so a fan covers it without overlap.
       % Store each triangle's points and weights in consecutive rows.
+      
       ng = obj.triangle.getNumbGaussPts();
       nTri = size(polygon,1)-2;
       points = zeros(nTri*ng,2);

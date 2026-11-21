@@ -14,14 +14,21 @@ mat.addSolid('name',"rock",'cellTags',1);
 mat.addConstitutiveLaw("rock","Elastic",'youngModulus',5e3,'poissonRatio',0.0);
 
 
-d1 = Domain('grid',g1);
-d2 = Domain('grid',g2);
+d1 = Domain('grid',g1,'materials',mat);
+d2 = Domain('grid',g2,'materials',mat);
+d1.addPhysicsSolver("Poromechanics");
+d2.addPhysicsSolver("Poromechanics");
+
 
 interf = Interface(gI,[d1,d2]);
 
 
 interf.grid.findGridIntersections;
 
+interf.addConstraint("MortarContinuity",'quadrature',struct('type',"ElementBasedQuadrature"))
+
 
 %% example patch test for new mortar capabilities
+
+
 

@@ -344,8 +344,7 @@ classdef MeshTying < InterfaceSolver
 
       m = MortarSide.master;
       s = MortarSide.slave;
-      nComp = getDoFManager(obj,MortarSide.slave).getNumberOfComponents(
-);
+      nComp = getDoFManager(obj,MortarSide.slave).getNumberOfComponents();
 
       edgeM = obj.grids(m).faces;
       edgeS = obj.grids(s).faces;

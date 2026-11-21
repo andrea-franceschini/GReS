@@ -7,7 +7,9 @@ classdef ElementBasedQuadrature < MortarQuadrature
 
   methods
     function obj = ElementBasedQuadrature(multType,grid,input)
+
       obj@MortarQuadrature(multType,grid,input);
+      
     end
 
     function [gpCoords,gpWeights] = processMortarPair(obj,triplet,elems)
