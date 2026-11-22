@@ -2,6 +2,7 @@ classdef (Abstract) Constraint < handle
   % Base class for the constraints registered on an Interface.
 
   properties
+    name
     coupledVariables
     quadrature
   end

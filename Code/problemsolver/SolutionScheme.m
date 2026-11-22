@@ -5,31 +5,29 @@ classdef (Abstract) SolutionScheme < handle
   
 
   properties (SetAccess = protected, GetAccess = public)
-    %
-    %
+
     tOld                % tOld: previous converged time instant
     t                   % simulation time
     tStep               % simulation time step
     dt                  % current time step size
     dtSave              % stored time step size 
-    nVars               % total number of inner variable fields in the model
     attemptedReset      % flag for attempting a configuration reset
     iniState            % initial state of the simulation for solver reset
     isFirstRun = true   % flag if the simulation is first ever or first after a reset   
     targetTimeID        % id for printTimes list for which solution is required
     restartControl      % variable to control the save point for restart
     rhsNormIt0 = 0      % initial residual norm of current step
+    
   end
 
 
   properties (Access = public)
-    nDom                % number of domains in the model
-    nInterf             % number of interfaces in the model
-    linsolver             % instance of linear solver object
-    output                % object handling the output of the simulation
-    simparams             % parameters of the simulations (shared)
-    domains               % array of Discretizer objects
-    interfaces            % cell array of interfaces objects
+
+    model
+    simparams
+    output
+    linsolver             
+
   end
 
 
@@ -118,18 +116,11 @@ classdef (Abstract) SolutionScheme < handle
 
     function setSolutionScheme(obj,varargin)
       default = struct('simulationparameters',SimulationParameters.empty,...
-                       'output',missing,...
-                       'domains',Discretizer.empty,...
-                       'interface',missing);
+                       'output',missing)
 
       params = readInput(default,varargin{:});
 
       obj.simparams = params.simulationparameters;
-      obj.domains = params.domains;
-
-      if ~ismissing(params.interface)
-        obj.interfaces = params.interface;
-      end
 
       if ~ismissing(params.output)
         obj.output = params.output;
@@ -137,13 +128,9 @@ classdef (Abstract) SolutionScheme < handle
         obj.output = OutState();
       end
 
-      obj.nDom = numel(obj.domains);
-      obj.nInterf = numel(obj.interfaces);
-
       assert(~isempty(obj.simparams),"Input 'simulationParameters'" + ...
         " is required for SolutionScheme")
-      assert(obj.nDom > 0,"Input 'domains'" + ...
-        " is required for SolutionScheme")
+      
     end
 
     function initialize(obj)

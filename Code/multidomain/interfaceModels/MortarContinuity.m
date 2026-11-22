@@ -8,6 +8,10 @@ classdef MortarContinuity < Constraint
     stabilizationMat
     stabilizationScale = 1.0
 
+    % the constraint can be enforced to more than one fields at the same
+    % time
+    coupledFields
+
   end
 
   methods
@@ -40,33 +44,36 @@ classdef MortarContinuity < Constraint
       end
 
 
-      cFld = getCoupledField(obj,params.variable);
+      obj.coupledFields = getCoupledField(obj,params.variable);
       fld = getField(obj);
 
       % scaling for jump stabilization of P0 multipliers
       obj.stabilizationScale = params.stabilizationScale;
 
-      dofm = obj.interface.domains(1).dofm;
-      nComp = dofm.getNumberOfComponents(cFld);
+      dofmD = obj.interface.domains(1).dofm;
+      dofmI = obj.interface.dofm;
 
-      % register nodal displacements on target regions
-      dofm = obj.interface.dofm;
+      state = getState(obj);
 
-      dofm.registerVariable(fld,multLocation,nComp);
-
-
-      state - get
-      state.multipliers = zeros(obj.nMult,1);
-      setState(obj,state);
+      for i = 1:numel(obj.coupledFields)
+        nComp = dofmD.getNumberOfComponents(obj.coupledFields(i));
+        dofmI.registerVariable(fld(i),multLocation,nComp,1:obj.grid.cells.nTag);
+        state.(fld) = zeros(getNumbDoF(dofmI,fld(i)),1);
+      end
 
     end
 
 
     function updateState(obj,du)
 
-      mult = getState(obj,"multipliers");
-      mult = mult + du(1:obj.nMult);
-      setState(obj,mult,"multipliers");
+      flds = obj.getField;
+      
+      for i = 1:numel(flds)
+        fld = flds(i);
+        mult = getState(obj,fld);
+        mult = mult + du;
+        setState(obj,mult,flds(i));
+      end
 
     end
 
@@ -102,7 +109,7 @@ classdef MortarContinuity < Constraint
       multIni = getStateInit(obj,"multipliers");
 
       % apply stabilization for P0 multipliers
-      if obj.multiplierLocation == entityField.cell
+      if obj.quadrature.multiplierLocation == entityField.cell
         
         computeStabilizationMatrix(obj);
         rhsStab = -obj.stabilizationMat*...
@@ -331,6 +338,13 @@ classdef MortarContinuity < Constraint
 
     function fld = getCoupledField(obj,fld)
 
+      if nargin == 1
+        if isempty(obj.coupledFields)
+          error('Coupled field not yet specified')
+        end
+        fld = obj.coupledFields;
+      end
+
       dom = obj.interface.domains;
 
       var1 = dom(1).dofm.getVariableNames;
@@ -345,8 +359,6 @@ classdef MortarContinuity < Constraint
         end
       end
 
-        assert(isscalar(fld),"Constraint %s can be enforced only on a single variable field",class(obj))
-
     end
 
 
@@ -354,9 +366,11 @@ classdef MortarContinuity < Constraint
 
     function fld = getField(obj)
 
-      coupFld = getCoupledField(obj);
+      if isempty(obj.coupledFields)
+        error("Coupled fields not yet specified")
+      end
 
-      fld = "multiplier_" + coupFld;
+      fld = "multiplier_" + obj.coupledFields;
 
     end
 

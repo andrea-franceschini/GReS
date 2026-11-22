@@ -50,6 +50,7 @@ classdef Interface < handle
     end
 
     function addConstraint(obj,name,varargin)
+      
       assert(~obj.initialized, ...
         "Cannot add a constraint after the interface has been initialized");
       assert((ischar(name) && isrow(name)) || ...
