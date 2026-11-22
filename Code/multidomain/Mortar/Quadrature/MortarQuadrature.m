@@ -47,7 +47,6 @@ classdef (Abstract) MortarQuadrature < handle
         return
       end
 
-      % Segment preparation can prune and renumber the intersection triplets.
       obj.prepareQuadrature();
       elements = obj.createElements();
 
@@ -95,7 +94,7 @@ classdef (Abstract) MortarQuadrature < handle
       w = obj.weights{triplet};
     end
 
-    function [Nslave,Nmaster,Nmult] = getMortarBasisFunctions(obj,triplet,elemInterf,elemMaster,elemSlave)
+    function [Nslave,Nmaster,Nmult] = getMortarBasisFunctions(obj,triplet,elemInterf,elemMaster,elemSlave,multType)
 
       % return basis functions for a given triplet of connected elmements
       ids = obj.grid.neighbors(triplet,:);
@@ -104,14 +103,20 @@ classdef (Abstract) MortarQuadrature < handle
       Nslave = elemSlave.computeBasisF(xiSlave);
       Nmaster = elemMaster.computeBasisF(xiMaster);
 
-      Nmult = obj.computeMultiplierBasis(ids(1),elemInterf,xiInterf);
+      if nargin < 6
+        multType = obj.multiplierType;
+      end
+      Nmult = obj.computeMultiplierBasis(ids(1),elemInterf,xiInterf,multType);
 
     end
 
 
-    function Nmult = computeMultiplierBasis(obj,elId,elem,xi)
+    function Nmult = computeMultiplierBasis(obj,elId,elem,xi,multType)
 
-      if strcmp(obj.multiplierType,'P0')
+      if nargin < 5
+        multType = obj.multiplierType;
+      end
+      if strcmp(multType,'P0')
         Nmult = ones(size(xi,1),1);
         return
       end
@@ -119,7 +124,7 @@ classdef (Abstract) MortarQuadrature < handle
       % standard case
       Nmult = elem.computeBasisF(xi);
 
-      if strcmp(obj.multiplierType,'dual')
+      if strcmp(multType,'dual')
 
 
       error('Temporarily unavailable')

@@ -53,10 +53,36 @@ interf = Interface(gI,[d1,d2]);
 
 interf.grid.findGridIntersections;
 
-interf.addConstraint("MortarContinuity",'quadrature',struct('type',"ElementBasedQuadrature"))
+interf.addConstraint("MortarContinuity",'quadrature',struct('type',"SegmentBasedQuadrature"))
 
 names = interf.getConstraintNames;
 constr = interf.getConstraint("MortarContinuity");
 
+
+model = Model([d1;d2],interf);
+
+% Use a constant time step over the interval [0, 10].
+input = struct( ...
+    'Start',           0.0, ...
+    'End',             1.0, ...
+    'DtInit',          1.0, ...
+    'DtMax',           1.0, ...
+    'DtMin',           1.0, ...
+    'incrementFactor', 1.0);
+
+simParam = SimulationParameters(input);
+
+% Define the requested output times and the output file prefix.
+
+out = OutState( ...
+    'printTimes',  1, ...
+    'outputFile', "test");
+
+solver = NonLinearImplicit( ...
+    'simulationparameters', simParam, ...
+    'model',              model, ...
+    'output',               out);
+
+solver.simulationLoop();
 
 

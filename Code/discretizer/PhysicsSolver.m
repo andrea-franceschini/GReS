@@ -224,104 +224,37 @@ classdef (Abstract) PhysicsSolver < handle
         return
       end
 
-      % Base application of Neumann boundary condition to the rhs.
-      % bc values are subtracted since we solve du = J\(-rhs)
-      bcVar = obj.domain.bcs.getVariable(bcId);
-      bcId = obj.domain.dofm.getVariableId(bcVar);
+      domain = obj.domain;
+      field = domain.bcs.getVariable(bcId);
+      dofs = domain.model.getGlobalDoFs(domain,field);
+      active = bcDofs ~= 0;
+      domain.model.addResidualAtDoFs(dofs(bcDofs(active)),-bcVals(active));
 
-      %remove inactive dofs
-      id = bcDofs == 0;
-      bcDofs = bcDofs(~id);
-      bcVals = bcVals(~id);
-
-      obj.domain.rhs{bcId}(bcDofs) = obj.domain.rhs{bcId}(bcDofs) - bcVals;
     end
 
+
     function applyDirBC(obj,bcId,bcDofs,varargin)
-      % Standard application of Dirichlet boundary condition to the jacobian.
-      % This method works with incremental linear system du = J\(-rhs)
 
       if ~BCapplies(obj,bcId)
         return
       end
 
-      % remove inactive dofs
-      id = bcDofs == 0;
-      bcDofs = bcDofs(~id);
+      domain = obj.domain;
+      field = domain.bcs.getVariable(bcId);
+      domain.model.applyDirichlet(domain,field,bcDofs(bcDofs ~= 0),obj.isSymmetric());
 
-      % if nargin > 3
-      %   bcVals = bcVals(~id);
-      % end
-
-      % sort bcDofs to improve sparse access performance
-      [bcDofs,sortId] = sort(bcDofs);
-
-      bcVar = obj.domain.bcs.getVariable(bcId);
-      bcVarId = obj.domain.dofm.getVariableId(bcVar);
-
-      nV = getNumberOfVariables(obj.domain.dofm);
-
-      % zero out rows (use transpose trick)
-      for j = 1:nV
-        if ~isempty(obj.domain.J{bcVarId,j})
-          obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
-          obj.domain.J{bcVarId,j}(:,bcDofs) = 0;
-          obj.domain.J{bcVarId,j} = obj.domain.J{bcVarId,j}';
-        end
-      end
-
-      % apply BC to multi-domain jacobian coupling blocks
-      for iI = 1:numel(obj.domain.interfaces)
-        if ~isempty(obj.domain.Jum{iI}{bcVarId})
-          obj.domain.Jum{iI}{bcVarId} = obj.domain.Jum{iI}{bcVarId}';
-          obj.domain.Jum{iI}{bcVarId}(:,bcDofs) = 0;
-          obj.domain.Jum{iI}{bcVarId} = obj.domain.Jum{iI}{bcVarId}';
-        end
-      end
-
-      % zero out columns only if the solver is symmetric (preserves
-      % symmetry)
-      if isSymmetric(obj)
-        for i = 1:nV
-          if ~isempty(obj.domain.J{i,bcVarId})
-            obj.domain.J{i,bcVarId}(:,bcDofs) = 0;
-          end
-        end
-
-        for iI = 1:numel(obj.domain.interfaces)
-          if ~isempty(obj.domain.Jum{iI}{bcVarId})
-            obj.domain.Jmu{iI}{bcVarId}(:,bcDofs) = 0;
-          end
-        end
-      end
-
-      % add 1 to diagonal entry of diagonal block
-      %J(bcDofs + (bcDofs-1)*size(J,1)) = 1;   extremely slow
-
-      J = obj.domain.J{bcVarId,bcVarId};
-      J = J + sparse(bcDofs, bcDofs, ones(size(bcDofs)), size(J,1), size(J,2));
-      obj.domain.J{bcVarId,bcVarId} = J;
-
-      % if nargin > 3
-      %   obj.domain.rhs{bcVarId}(bcDofs) = bcVals(sortId);
-      % else
-      obj.domain.rhs{bcVarId}(bcDofs) = 0;
-      %end
     end
+
 
     function J = getJacobian(obj,varargin)
-      % get the Jacobian blocks affected by the solver
-      % differently from the getJacobian() in Discretizer, this method
-      % returns a matrix ready to perform computations
 
-      if nargin < 2
-        J = obj.domain.getJacobian(obj.getField());
-      else
-        J = obj.domain.getJacobian(varargin{:});
+      if isempty(varargin)
+        varargin = {obj.getField()};
       end
+      J = obj.domain.model.getJacobian(obj.domain,varargin{:});
 
-      J = cell2matrix(J);
     end
+
 
     function out = BCapplies(obj,bcId)
       bcVar = obj.domain.bcs.getVariable(bcId);

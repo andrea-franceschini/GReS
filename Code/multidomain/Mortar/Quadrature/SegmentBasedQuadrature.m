@@ -15,6 +15,12 @@ classdef SegmentBasedQuadrature < MortarQuadrature
 
     function [gpCoords,gpWeights] = processMortarPair(obj,triplet,elems)
       polygon = obj.grid.getIntersectionPolygon(triplet);
+      if isempty(polygon)
+        gpCoords = {zeros(0,2),zeros(0,2),zeros(0,2)};
+        gpWeights = zeros(0,1);
+        return
+      end
+
       ids = obj.grid.neighbors(triplet,:);
       interfaceCoords = elems{1}.getElementCoords(ids(1));
 

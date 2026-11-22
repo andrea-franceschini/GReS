@@ -54,31 +54,16 @@ classdef Poromechanics < PhysicsSolver
 
     function assembleSystem(obj,dt)
 
-
-      obj.fInt = zeros(obj.domain.dofm.getNumbDoF(obj.fieldId),1);
-      % declare the assembler function
-      localAssembler = @(cellList,elem) ...
-        assembleMechanics(obj,cellList,elem,dt);
-
-      % utility to assemble the finite element matrix
-
+      id = obj.fieldId;
+      obj.fInt = zeros(obj.domain.dofm.getNumbDoF(id),1);
+      localAssembler = @(cellList,elem) assembleMechanics(obj,cellList,elem,dt);
       obj.K = FEMassembly(obj,localAssembler,'chunkSize',1e4);
 
-      obj.domain.J{obj.fieldId,obj.fieldId} = obj.K;
-      obj.domain.rhs{obj.fieldId} = obj.fInt;
+      model = obj.domain.model;
+      model.setJacobian(obj.domain,obj.K,id);
+      model.setResidual(obj.domain,obj.fInt,id);
 
     end
-
-
-
-    % function assembleSystem(obj,dt)
-    %   % compute the displacements matrices and rhs in the domain
-    %   assembleSystemMechanics(obj,dt);
-    %   obj.domain.J{obj.fieldId,obj.fieldId} = obj.K;
-    %   obj.domain.rhs{obj.fieldId} = obj.fInt;
-    % end
-
-
 
 
     function assembleSystemMechanics(obj,dt)

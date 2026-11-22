@@ -2,24 +2,23 @@ classdef Interface < handle
   % Geometry, state, and system blocks shared by interface constraints.
 
   properties
+    model
     grid
     outstate
     state
     id
     dofm
-    J
-    rhs
     vtmBlock
   end
 
   properties (SetAccess=private)
     domains
+    quadrature
     constraints
     constraintNames = strings(1,0)
   end
 
   properties (Access=private)
-    interfaceId
     initialized = false
   end
 
@@ -30,13 +29,33 @@ classdef Interface < handle
       obj.state = State();
       obj.constraints = containers.Map('KeyType','char','ValueType','any');
 
-      for side = [MortarSide.slave,MortarSide.master]
-        domain = obj.domains(side);
-        slot = numel(domain.interfaces) + 1;
-        domain.interfaces{slot} = obj;
-        obj.interfaceId(side) = slot;
-      end
     end
+
+    function setMortarQuadrature(obj,multType,varargin)
+
+      if ~isempty(obj.quadrature)
+        return
+      end
+
+      assert(obj.dofm.getNumberOfVariables() == 0,...
+        'Set up mortar quadrature before registering interface fields');
+      options = readInput(struct('type',"SegmentBasedQuadrature"),varargin{:});
+      quadrature = feval(options.type,obj.grid,multType,options);
+      quadrature.processMortarTriplets();
+
+      % Pruning can replace meshes with subgrids that have no edge topology.
+      grids = {obj.grid,obj.grid.traceGrids(1),obj.grid.traceGrids(2)};
+      for i = 1:numel(grids)
+        mesh = grids{i};
+        if mesh.nDim == 2 && mesh.faces.num == 0
+          mesh.processFaces();
+        end
+      end
+
+      obj.quadrature = quadrature;
+
+    end
+
 
     function addConstraints(obj,input)
       input = readInput(input);
@@ -72,18 +91,12 @@ classdef Interface < handle
       constraint = obj.constraints(char(name));
     end
 
+    function names = getConstraintNames(obj)
+
+      names = obj.constraintNames;
+    end
+
     function initialize(obj)
-      nFields = obj.dofm.getNumberOfVariables();
-      obj.J = cell(nFields);
-      obj.rhs = cell(nFields,1);
-
-      for side = [MortarSide.slave,MortarSide.master]
-        [domain,slot] = obj.getDomainSlot(side);
-        nDomainFields = domain.dofm.getNumberOfVariables();
-        domain.Jum{slot} = cell(nDomainFields,nFields);
-        domain.Jmu{slot} = cell(nFields,nDomainFields);
-      end
-
       for name = obj.constraintNames
         obj.getConstraint(name).initialize();
       end
@@ -141,27 +154,6 @@ classdef Interface < handle
       end
     end
 
-    function J = getJacobian(obj,varargin)
-      narginchk(1,3);
-      J = obj.J;
-      if ~isempty(varargin)
-        rows = obj.getFieldIds(obj.dofm,varargin{1});
-        cols = rows;
-        if numel(varargin) == 2
-          cols = obj.getFieldIds(obj.dofm,varargin{2});
-        end
-        J = J(rows,cols);
-      end
-    end
-
-    function rhs = getRhs(obj,varargin)
-      narginchk(1,2);
-      rhs = obj.rhs;
-      if ~isempty(varargin)
-        rhs = rhs(obj.getFieldIds(obj.dofm,varargin{1}));
-      end
-    end
-
     function nDofs = getNumbDoF(obj,varargin)
       nDofs = obj.dofm.getNumbDoF(varargin{:});
     end
@@ -172,60 +164,6 @@ classdef Interface < handle
       else
         dofm = obj.domains(side).dofm;
       end
-    end
-
-    function J = getJum(obj,side,domainField,interfaceField)
-      [domain,slot] = obj.getDomainSlot(side);
-      J = domain.Jum{slot};
-      if nargin >= 3
-        J = J(obj.getFieldIds(domain.dofm,domainField),:);
-      end
-      if nargin == 4
-        J = J(:,obj.getFieldIds(obj.dofm,interfaceField));
-      end
-      if isscalar(J) && nargin >= 3
-        J = J{1};
-      end
-    end
-
-    function J = getJmu(obj,side,domainField,interfaceField)
-      [domain,slot] = obj.getDomainSlot(side);
-      J = domain.Jmu{slot};
-      if nargin >= 3
-        J = J(:,obj.getFieldIds(domain.dofm,domainField));
-      end
-      if nargin == 4
-        J = J(obj.getFieldIds(obj.dofm,interfaceField),:);
-      end
-      if isscalar(J) && nargin >= 3
-        J = J{1};
-      end
-    end
-
-    function setJum(obj,side,val,varargin)
-      [domain,slot,r,c] = obj.getCouplingIndices(side,varargin{:});
-      domain.Jum{slot}{r,c} = val;
-    end
-
-    function setJmu(obj,side,val,varargin)
-      [domain,slot,r,c] = obj.getCouplingIndices(side,varargin{:});
-      domain.Jmu{slot}{c,r} = val;
-    end
-
-    function addJum(obj,side,val,varargin)
-      [domain,slot,r,c] = obj.getCouplingIndices(side,varargin{:});
-      domain.Jum{slot}{r,c} = obj.addBlock(domain.Jum{slot}{r,c},val);
-    end
-
-    function addJmu(obj,side,val,varargin)
-      [domain,slot,r,c] = obj.getCouplingIndices(side,varargin{:});
-      domain.Jmu{slot}{c,r} = obj.addBlock(domain.Jmu{slot}{c,r},val);
-    end
-
-    function addRhs(obj,side,val,domainField)
-      domain = obj.domains(side);
-      id = domain.dofm.getVariableId(domainField);
-      domain.rhs{id} = obj.addBlock(domain.rhs{id},val);
     end
 
     function val = getVariableField(obj,side,domainField)
@@ -344,22 +282,6 @@ classdef Interface < handle
   end
 
   methods (Access=private)
-    function [domain,slot] = getDomainSlot(obj,side)
-      domain = obj.domains(side);
-      slot = obj.interfaceId(side);
-    end
-
-    function [domain,slot,r,c] = getCouplingIndices(obj,side,domainField,interfaceField)
-      [domain,slot] = obj.getDomainSlot(side);
-      if nargin < 4
-        assert(obj.dofm.getNumberOfVariables() == 1, ...
-          "Specify the interface field when there are multiple interface fields");
-        interfaceField = 1;
-      end
-      r = domain.dofm.getVariableId(domainField);
-      c = obj.dofm.getVariableId(interfaceField);
-    end
-
     function domains = getInterfaceGrid(obj,in,varargin)
 
       default = struct('masterSurface',missing,...
@@ -430,115 +352,5 @@ classdef Interface < handle
     end
 
 
-  end
-
-  methods (Static, Access=private)
-    function ids = getFieldIds(dofm,fields)
-      if isnumeric(fields)
-        ids = dofm.getVariableId(fields);
-      else
-        ids = arrayfun(@(field) dofm.getVariableId(field),string(fields));
-      end
-    end
-
-    function block = addBlock(block,val)
-      if isempty(block)
-        block = val;
-      else
-        block = block + val;
-      end
-    end
-  end
-
-  methods (Static)
-
-    function interfaces = addInterfaces(domains,input)
-
-      assert(nargin == 2,"Input must be a structure array or an input file")
-
-      interfStruct = readInput(input);
-
-      interfaces = {};
-
-      interfNames = fieldnames(interfStruct);
-
-      for i = 1:numel(interfNames)
-
-        % deal with multiple interfaces having same name
-        for in = [interfStruct.(interfNames{i})]
-
-          interfaces = Interface.add(interfNames{i},...
-            domains,...
-            interfaces,in);
-        end
-      end
-
-    end
-
-
-    function interfaces = add(interfType,domains,varargin)
-      %   Add a new interface object to the interface list.
-      %
-      %   interfaces = add(interfType, domains, input)
-      %   interfaces = add(interfType, domains, interfaces, input)
-      %
-      %   This function creates a new interface object of type `interfType`,
-      %   assigns it a progressive index, registers solver-specific data,
-      %   and appends it to the interface list.
-      %
-      %   INPUT
-      %   -----
-      %   interfType : function handle or class name (char/string)
-      %       Constructor for the interface object. The constructor must
-      %       accept the signature:
-      %           obj = interfType(id, domains, input)
-      %
-      %   domains : array or cell array
-      %       Collection of domains connected by the interface.
-      %
-      %   interfaces : cell array (optional)
-      %       Existing list of interface objects. If omitted, a new list
-      %       is created.
-      %
-      %   input : cell array
-      %       Additional user-defined input parameters passed both to the
-      %       constructor and to the interface method `registerInterface`.
-      %
-      %   OUTPUT
-      %   ------
-      %   interfaces : cell array
-      %       Updated list of interface objects, including the newly
-      %       created interface appended at the end.
-      %
-      %
-      %   See also: Interface
-      %
-      %   ---------------------------------------------------------------------
-
-
-      if nargin == 2
-        interfaces = {};
-        input = [];
-      elseif iscell(varargin{1})
-        interfaces = varargin{1};
-        input = varargin{2:end};
-      else
-        % generate the interface list
-        interfaces = {};
-        input = varargin{1:end};
-      end
-
-      k = numel(interfaces);
-
-
-
-      % general input
-      interf = feval(interfType,k+1,domains,input);
-      % solver-specific input
-      interf.registerInterface(input);
-
-      interfaces{end+1} = interf;
-
-    end
   end
 end

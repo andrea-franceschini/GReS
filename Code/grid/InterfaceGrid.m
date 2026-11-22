@@ -18,8 +18,7 @@ classdef InterfaceGrid < Grid
       obj.setGrid(gInterf);
 
       if nargin == 1 && isa(gInterf,'InterfaceGrid')
-        % A constraint can prune its own triplets without rerunning search
-        % or renumbering the interface's candidate grids.
+        % Copy the candidate triplets without repeating the contact search.
         obj.traceGrids = gInterf.traceGrids;
         obj.neighbors = gInterf.neighbors;
         obj.intersections = gInterf.intersections;
@@ -135,8 +134,8 @@ classdef InterfaceGrid < Grid
 
     function intersections = findGridIntersections(obj)
 
-      % Cache polygon geometry in triplet order, with one variable-length
-      % array of vertex coordinates per triplet.
+      % Cache polygons in candidate triplet order. Quadrature prunes the
+      % triplets once their weights are known.
       if ~isempty(obj.intersections)
         intersections = obj.intersections;
         return
@@ -204,7 +203,6 @@ classdef InterfaceGrid < Grid
       end
       verts = ArrayOfArrays(vertcat(polygons{:}),counts);
       obj.intersections = struct('center',centers,'area',areas,'verts',verts);
-      obj.removeNeighbors(areas == 0);
       intersections = obj.intersections;
 
     end

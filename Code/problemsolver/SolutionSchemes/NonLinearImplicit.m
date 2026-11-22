@@ -8,7 +8,7 @@ classdef NonLinearImplicit < SolutionScheme
     iterNL = 0          % nonlinear iteration number
     iterConfig = 0      % configuration iteration number
     targetVariables     % variables currently solved for
-    totIter
+    totIter = 0
   end
 
 
@@ -31,6 +31,7 @@ classdef NonLinearImplicit < SolutionScheme
       end
 
       hasConfigurationChanged = true;
+      newtonConv = false;
       absTol = obj.simparams.absTol;
       obj.iterConfig = 0;
       obj.iterNL = 0;
@@ -40,26 +41,13 @@ classdef NonLinearImplicit < SolutionScheme
         gresLog().log(0,'\nConfiguration iteration n. %i \n', obj.iterConfig);
         obj.iterConfig = obj.iterConfig + 1;
 
-        for i = 1:obj.nDom
-          obj.domains(i).applyDirVal(obj.t);
-        end
+        obj.applyDirVal();
 
-        gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
+        gresLog().log(1,'Iter     ||res||     ||res||/||res_0||\n');
 
-        for i = 1:obj.nDom
-          obj.domains(i).assembleSystem(obj.dt);
-        end
-
-        for i = 1:obj.nInterf
-          obj.interfaces{i}.assembleConstraint();
-        end
-
-        for i = 1:obj.nDom
-          obj.domains(i).applyBC(obj.t);
-        end
-
-        rhs = assembleRhs(obj);
-        rhsNorm = norm(cell2mat(rhs),2);
+        obj.model.assembleSystem(obj.dt);
+        obj.applyBC();
+        rhsNorm = norm(cell2mat(obj.model.res),2);
         obj.rhsNormIt0 = rhsNorm;
         rhsNormIt0 = rhsNorm;
 
@@ -79,48 +67,12 @@ classdef NonLinearImplicit < SolutionScheme
           obj.iterNL = obj.iterNL + 1;
           obj.totIter = obj.totIter + 1;
 
-          J = assembleJacobian(obj);
+          du = solve(obj,obj.model.J,obj.model.res,newtonIter);
+          obj.model.updateState(du);
 
-          % solve linear system
-          du = solve(obj,J,rhs,newtonIter);
-
-          %fprintf('Model has %i dofs\n',numel(du));
-          c = 0;
-
-          % update simulation state with linear system solution
-          for i = 1:obj.nDom
-            if obj.nDom == 1 && obj.nInterf == 0
-              sol = du;
-            else
-              nDof = obj.domains(i).getNumbDoF();
-              sol = du(c+1:c+nDof);
-              c = c + nDof;
-            end
-            obj.domains(i).updateState(sol);
-          end
-
-          for i = 1:obj.nInterf
-            nDof = obj.interfaces{i}.getNumbDoF();
-            sol = du(c+1:c+nDof);
-            obj.interfaces{i}.updateState(sol);
-            c = c + nDof;
-          end
-
-          % reassemble system
-          for i = 1:obj.nDom
-            obj.domains(i).assembleSystem(obj.dt);
-          end
-
-          for i = 1:obj.nInterf
-            obj.interfaces{i}.assembleConstraint();
-          end
-
-          for i = 1:obj.nDom
-            obj.domains(i).applyBC(obj.t);
-          end
-
-          rhs = assembleRhs(obj);
-          rhsNorm = norm(cell2mat(rhs),2);
+          obj.model.assembleSystem(obj.dt);
+          obj.applyBC();
+          rhsNorm = norm(cell2mat(obj.model.res),2);
 
           gresLog().log(1,'%d     %e     %e\n',newtonIter,rhsNorm,rhsNorm/rhsNormIt0);
 
@@ -131,18 +83,7 @@ classdef NonLinearImplicit < SolutionScheme
 
         if newtonConv % Newton Convergence
 
-          hasConfigurationChanged = false;
-
-          % update the active set
-          for i = 1:obj.nDom
-            hasConfigurationChanged = any([hasConfigurationChanged; ...
-              obj.domains(i).updateConfiguration()]);
-          end
-
-          for i = 1:obj.nInterf
-            hasConfigurationChanged = any([hasConfigurationChanged; ...
-              obj.interfaces{i}.updateConfiguration()]);
-          end
+          hasConfigurationChanged = obj.model.updateConfiguration();
 
         else
 
@@ -163,99 +104,20 @@ classdef NonLinearImplicit < SolutionScheme
   methods (Access = protected)
 
 
-   % Sets the linear solver and checks for eventual user input parameters
-   function setLinearSolver(obj,varargin)
+    function setLinearSolver(obj,varargin)
 
-      if isempty(varargin)
-         physname = [];
-      else
-         % check if the user provided the physics
-         physname = varargin{1};
-      end
+      % The Chronos preconditioners still require scheme-owned domains.
+      options = struct('useMatlab',true);
+      context = struct('simparams',struct('linSolverParams',options));
+      obj.linsolver = linearSolver(context,[]);
 
-      obj.linsolver = linearSolver(obj,physname);
-   end
+    end
 
 
     function out = computeRhsNorm(obj)
 
-      %Return maximum norm of the entire domain
-      rhsNorm = zeros(obj.nDom,1);
-      for i = 1:obj.nDom
-        nRhs = length(obj.domains(i).dofm.subList);
-        rhsNorm_loc = zeros(nRhs,1);
-        for j = 1:nRhs
-          rhsNorm_loc(j) = norm(obj.domains(i).rhs{j}, obj.simparams.pNorm);
-        end
-        rhsNorm(i) = sqrt(sum(rhsNorm_loc.^2));
-      end
-      out = norm(rhsNorm);
-    end
-
-
-
-    function J = assembleJacobian(obj)
-
-      J = cell(obj.nVars + obj.nInterf);
-
-      k = 0;
-
-      for iD = 1:obj.nDom
-
-        dom = obj.domains(iD);
-        nV = dom.dofm.getNumberOfVariables;
-
-        % inner domain blocks
-        J(k+1:k+nV,k+1:k+nV) = getJacobian(dom);
-
-        for iI = 1:numel(dom.interfaceList)
-
-          q = dom.interfaceList(iI);
-
-          % domain coupling blocks
-          [J(k+1:k+nV,obj.nVars+q), J(obj.nVars+q,k+1:k+nV)] = ...
-            getInterfaceJacobian(dom,iI);
-
-        end
-
-        k = k + nV;
-
-      end
-
-      for iI = 1:obj.nInterf
-        interf = obj.interfaces{iI};
-        % constraint blocks
-        J{obj.nVars+iI,obj.nVars+iI} = getJacobian(interf);
-      end
+      out = norm(cell2mat(obj.model.res),obj.simparams.pNorm);
 
     end
-
-
-    function rhs = assembleRhs(obj)
-      % assemble blocks of rhs for multidomain system
-
-      % each variable field of each domain represents a cell row
-      rhs = cell(obj.nVars + obj.nInterf,1);
-
-      k = 0;
-
-      for iD = 1:obj.nDom
-        nV = obj.domains(iD).dofm.getNumberOfVariables;
-        rhs(k+1:k+nV) = getRhs(obj.domains(iD));
-        k = k+nV;
-      end
-
-      for iI = 1:obj.nInterf
-
-        rhs{k+1} = getRhs(obj.interfaces{iI});
-
-        % each interface has one only multiplier field!
-        k = k+1;
-      end
-    end
-
-
   end
-
 end
-

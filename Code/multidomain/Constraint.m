@@ -4,7 +4,6 @@ classdef (Abstract) Constraint < handle
   properties
     name
     coupledVariables
-    quadrature
   end
 
   properties (GetAccess=public, SetAccess=protected)
@@ -86,11 +85,11 @@ classdef (Abstract) Constraint < handle
       if isempty(varargin)
         varargin = {obj.getField()};
       end
-      J = cell2matrix(obj.interface.getJacobian(varargin{:}));
+      J = obj.interface.model.getJacobian(obj.interface,varargin{:});
     end
 
-    function rhs = getRhs(obj)
-      rhs = cell2matrix(obj.interface.getRhs(obj.getField()));
+    function res = getResidual(obj)
+      res = obj.interface.model.getResidual(obj.interface,obj.getField());
     end
 
     function dofm = getDoFManager(obj,varargin)
@@ -133,53 +132,11 @@ classdef (Abstract) Constraint < handle
       end
     end
 
-    function J = getJum(obj,side,varargin)
-      fields = obj.getCouplingFields(varargin{:});
-      J = obj.interface.getJum(side,fields{:});
-    end
-
-    function J = getJmu(obj,side,varargin)
-      fields = obj.getCouplingFields(varargin{:});
-      J = obj.interface.getJmu(side,fields{:});
-    end
-
-    function setJum(obj,side,val,varargin)
-      fields = obj.getCouplingFields(varargin{:});
-      obj.interface.setJum(side,val,fields{:});
-    end
-
-    function setJmu(obj,side,val,varargin)
-      fields = obj.getCouplingFields(varargin{:});
-      obj.interface.setJmu(side,val,fields{:});
-    end
-
-    function addJum(obj,side,val,varargin)
-      fields = obj.getCouplingFields(varargin{:});
-      obj.interface.addJum(side,val,fields{:});
-    end
-
-    function addJmu(obj,side,val,varargin)
-      fields = obj.getCouplingFields(varargin{:});
-      obj.interface.addJmu(side,val,fields{:});
-    end
-
-    function addRhs(obj,side,val,varargin)
-      field = obj.getDomainField(varargin{:});
-      obj.interface.addRhs(side,val,field);
-    end
-
     function val = getVariableField(obj,side,varargin)
       field = obj.getDomainField(varargin{:});
       val = obj.interface.getVariableField(side,field);
     end
 
-    function setMortarQuadrature(obj,multType,varargin)
-      options = readInput(struct('type',"SegmentBasedQuadrature"),varargin{:});
-      grid = InterfaceGrid(obj.grid);
-      quadrature = feval(options.type,grid,multType,options);
-      quadrature.processMortarTriplets();
-      obj.quadrature = quadrature;
-    end
   end
 
   methods (Access=private)
@@ -187,19 +144,6 @@ classdef (Abstract) Constraint < handle
       if nargin == 1
         field = obj.getCoupledField();
         assert(isscalar(string(field)),"Specify the coupled domain field");
-      end
-    end
-
-    function fields = getCouplingFields(obj,varargin)
-      narginchk(1,3);
-      fields = varargin;
-      if isempty(fields)
-        fields = {obj.getDomainField()};
-      end
-      if numel(fields) == 1
-        field = obj.getField();
-        assert(isscalar(string(field)),"Specify the interface field");
-        fields{2} = field;
       end
     end
   end
