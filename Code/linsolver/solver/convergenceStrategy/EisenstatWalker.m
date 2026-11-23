@@ -5,10 +5,10 @@ classdef EisenstatWalker < convStrat
       % Eisenstat-Walker parameters (Choice 2)
       gamma = 1.0
       alpha = 0.5 * (1 + sqrt(5))
-      maxEtak = 0.5
+      maxEtak = 0.05
       minEtak
       oldEtak
-      eta0 = 0.1
+      eta0 = 0.05
       normFxold
       
       % Preconditioner recycling tracking

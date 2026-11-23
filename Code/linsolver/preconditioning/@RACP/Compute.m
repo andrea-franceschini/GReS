@@ -8,6 +8,9 @@ function A = Compute(obj,A,symMat,varargin)
    % Set the symmetry of the full preconditioner
    obj.PrecSym = floor(sum(symMat,'all')/(size(symMat,1))^2);
    
+   % Compute the symmetry of the augmented matrix
+   symMatAug = computeSymMatAug(obj,A,symMat);
+
    % Retrieve or compute cached unscaled test space
    if nargin >= 4 && ~isempty(varargin{1})
       TV0 = varargin{1};
@@ -30,10 +33,35 @@ function A = Compute(obj,A,symMat,varargin)
    TV0_main = TV0(idxMain);
 
    % Compute the inner preconditioner for augmented variable blocks
-   obj.innerPrec.Compute(A11_aug,symMat(idxMain,idxMain),TV0_main,true);
+   obj.innerPrec.Compute(A11_aug,symMatAug(idxMain,idxMain),TV0_main,true);
   
    obj.Apply_L = @(x) obj.ApplyLeft(x,A12,A21,inv_D22);
    obj.Apply_R = @(x) obj.ApplyRight(x);
    
 end
 
+
+
+
+% Compute the symmetry of the augmented matrix correctly
+function symMatAug = computeSymMatAug(obj,A,symMat)
+   
+   % Get the blocks to loop on
+   idxMain = obj.getKindBlocks("variable");
+   idxSupp = obj.getKindBlocks("interface");
+
+   % Initialize the augmented matrix symmetry
+   symMatAug = symMat;
+
+   % Loop over the main blocks
+   for i = idxMain
+      % Loop over the associated interface blocks
+      for j = idxSupp
+         % If the interface matrix is nonzero and the main block is still
+         % symmetric check if the augmentation will turn it nonsymmetric
+         if nnz(A{i,j}) > 0 && symMatAug(i,i) ~= 0
+            symMatAug(i,i) = floor(sum(symMat([i j],[i j]),'all')/4);
+         end
+      end
+   end
+end
