@@ -10,9 +10,7 @@ classdef EvolvingGrid < SolutionScheme
     field
     physics
     isBackStep = false
-    freezeCount = 0
     freezeAt
-    freezeAttempted = false
     startPrediction
   end
 
@@ -147,34 +145,21 @@ classdef EvolvingGrid < SolutionScheme
         obj.tStep = obj.tStep - 1;
         
         goBackState(obj);
-
-        if (obj.dt<=obj.freezeAt) && ~obj.freezeAttempted
-          % First failure at this time-step size
-          dtNew = obj.dt;
-          obj.physics.cbFreeze = true;
-          obj.freezeCount = obj.freezeCount + 1;
-          obj.freezeAttempted = true;
-          gresLog().log(0,' %s \n','FREEZE THE CB CURVE BRANCH WITHIN THE TIME STEP' )
-        else
-          dtNew = obj.dt/obj.simparams.divFac;  % Time increment chop
-          % Reduce time step and allow freezing at the new size
-          obj.physics.cbFreeze = false;
-          obj.freezeAttempted = false;
-        end       
+        % Reduce time step
+        dtNew = obj.dt/obj.simparams.divFac;
         
         if dtNew < obj.simparams.dtMin
           if obj.output.restart.on
             obj.saveRestart('fail');
           end
-          error('Minimum time step reached')
-        else
-          obj.dt = dtNew;
-          obj.dtSave = dtNew;
-          obj.t = obj.t + dtNew;
-          gresLog().log(0,'\n %s \n','BACKSTEP')
+          gresLog().error('Minimum time step reached')
         end
+        obj.dt = dtNew;
+        obj.dtSave = dtNew;
+        obj.t = obj.t + dtNew;
         obj.isBackStep = true;
-        return
+
+        gresLog().log(0,'\n %s \n','BACKSTEP')
       else
         % TIME STEP CONVERGED - advance to the next time step
         printState(obj);
@@ -194,8 +179,10 @@ classdef EvolvingGrid < SolutionScheme
           obj.attemptedReset = false;
         end
         obj.isBackStep = false;
-        obj.freezeAttempted = false;
       end
+
+      % Configure freezing for the next time-step attempt
+      obj.physics.cbFreeze = ~isempty(obj.freezeAt) && obj.dt <= obj.freezeAt;
     end
 
     function dt = getNextDt(obj)
