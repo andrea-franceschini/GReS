@@ -218,6 +218,9 @@ classdef MortarContinuity < Constraint
       mesh = quad.grid;
       slaveTrace = mesh.traceGrids(MortarSide.slave);
       masterTrace = mesh.traceGrids(MortarSide.master);
+
+      % get handle to all possible finite element involved in quadrature
+      % this avoids nested loops over aailable vtk indices
       interfaceElements = obj.createTraceElements(mesh,quad.gaussOrder);
       slaveElements = obj.createTraceElements(slaveTrace,quad.gaussOrder);
       masterElements = obj.createTraceElements(masterTrace,quad.gaussOrder);
@@ -231,26 +234,38 @@ classdef MortarContinuity < Constraint
         nMult = mesh.nNodes;
       end
 
+      % prepare mortar matrices assemblers
       nSlave = sum(nRows .* slaveTrace.cells.numVerts(neighbors(:,2)));
       nMaster = sum(nRows .* masterTrace.cells.numVerts(neighbors(:,3)));
       asbD = assembler(nSlave,nMult,slaveTrace.nNodes);
       asbM = assembler(nMaster,nMult,masterTrace.nNodes);
 
+      % loop over triplets (I,S,M)
       for triplet = reshape(quad.getActiveTriplets(),1,[])
         ids = neighbors(triplet,:);
+        % interface element (I)
         elemI = interfaceElements{mesh.cells.VTKType(ids(1))};
+        % slave element (S)
         elemS = slaveElements{slaveTrace.cells.VTKType(ids(2))};
+        % master element (M)
         elemM = masterElements{masterTrace.cells.VTKType(ids(3))};
+
+        % use the quadrature object to get the basis functions of (I,S,M)
         [Ns,Nm,Nmult] = quad.getMortarBasisFunctions(...
           triplet,elemI,elemM,elemS,obj.multiplierType);
 
+        % select multiplier indices
         rows = ids(1);
         if nodal
           rows = mesh.getCellNodes(ids(1));
           rows = reshape(rows(1:size(Nmult,2)),[],1);
         end
+
+        % select trace nodes indices
         nodesS = slaveTrace.getCellNodes(ids(2));
         nodesM = masterTrace.getCellNodes(ids(3));
+
+        % unified mortar integration
         weights = quad.getIntegrationWeights(triplet);
         weighted = Nmult' .* weights(:)';
         asbD.localAssembly(rows,reshape(nodesS(1:size(Ns,2)),[],1),-weighted*Ns);
@@ -273,6 +288,8 @@ classdef MortarContinuity < Constraint
       multId = dofm.getVariableId(multiplier);
       nComp = dofm.getNumberOfComponents(multId);
 
+      % Map columns from local trace grid node id to global bulk grid node
+      % id
       D = obj.projectTraceField(slave,mesh.traceGrids(MortarSide.slave),field,obj.Dmat);
       M = obj.projectTraceField(master,mesh.traceGrids(MortarSide.master),field,obj.Mmat);
 
@@ -283,10 +300,13 @@ classdef MortarContinuity < Constraint
       D = D(entities(order),:);
       M = M(entities(order),:);
 
+      % expand the scalar mortar matrices for multi-valued fields
       if nComp > 1
         D = kron(D,speye(nComp));
         M = kron(M,speye(nComp));
       end
+
+      % apply rotation matrix for multipliers computed in the local frame
       if nComp == 3
         R = obj.getMultiplierRotation(mesh,dofm,multId);
         D = R' * D;
@@ -297,6 +317,9 @@ classdef MortarContinuity < Constraint
 
 
     function matrix = projectTraceField(~,domain,trace,field,matrix)
+
+      % map the column of interface matrices from local trace grid
+      % numbering to global domain dof numbering
 
       dofm = domain.dofm;
       id = dofm.getVariableId(field);
@@ -327,6 +350,8 @@ classdef MortarContinuity < Constraint
 
     function R = getMultiplierRotation(~,mesh,dofm,field)
 
+      % get a block diagonal matrix that rotates the multipliers according to  a
+      % local frame
       entities = dofm.getActiveEntities(field);
       normals = mesh.cells.normal;
       if dofm.getFieldLocation(field) == entityField.node
@@ -353,6 +378,7 @@ classdef MortarContinuity < Constraint
 
     function computeStabilizationMatrix(obj,field,multiplier)
 
+      % get ingredients
       interf = obj.interface;
       mesh = interf.grid;
       masterTrace = mesh.traceGrids(MortarSide.master);
@@ -366,37 +392,39 @@ classdef MortarContinuity < Constraint
       masterEdges = masterTrace.faces.neighbors(~masterTrace.faces.isBoundary,:);
       triplets = mesh.neighbors;
 
+      % diagonal approximation of leading jacobian blocks
       model = interf.model;
-      slaveDiag = diag(cell2mat(model.getJacobian(slave,field)));
-      slaveCoupling = cell2mat(model.getJacobian(interf,multiplier,field,slave));
-      sameDomain = master == slave;
-      if ~sameDomain
-        masterDiag = diag(cell2mat(model.getJacobian(master,field)));
-        masterCoupling = cell2mat(model.getJacobian(interf,multiplier,field,master));
-      end
+      Ks = diag(cell2mat(model.getJacobian(slave,field)));
+      Km = diag(cell2mat(model.getJacobian(master,field)));
+      [D,M] = getFieldMatrices(obj,field,multiplier);
+
       stabilization = assembler(size(edges,1)*(2*nComp)^2,nMult,nMult);
 
       % Master-edge patches are mapped to interface cells through the triplets.
       for edge = 1:size(masterEdges,1)
+
         inPatch = ismember(triplets(:,3),masterEdges(edge,:));
         cells = unique(triplets(inPatch,1));
         patchEdges = edges(all(ismember(edges,cells),2),:);
+
         if isempty(patchEdges)
           continue
         end
 
         patchDofs = dofm.getLocalDoF(multId,cells);
-        S = obj.computeSchurPatch(slaveCoupling(patchDofs,:),slaveDiag);
-        S = S + obj.computeSchurPatch(masterCoupling(patchDofs,:),masterDiag);
+        % compute the local Schur complement approximation for the patch
+        S = obj.computeSchurPatch(D(patchDofs,:),Ks);
+        S = S + obj.computeSchurPatch(M(patchDofs,:),Km);
 
-        % D and M already use the local multiplier frames.
+        % Remember: D and M already use the local multiplier frames.
         [~,positions] = ismember(patchEdges,cells);
         for i = 1:size(patchEdges,1)
-          first = DoFManager.dofExpand(positions(i,1),nComp);
-          second = DoFManager.dofExpand(positions(i,2),nComp);
-          weight = 0.5*obj.stabilizationScale*(S(first,first) + S(second,second));
+          % assemble the jump-jump matrix
+          f1 = DoFManager.dofExpand(positions(i,1),nComp);
+          f2 = DoFManager.dofExpand(positions(i,2),nComp);
+          Sloc = 0.5*obj.stabilizationScale*(S(f1,f1) + S(f2,f2));
           rows = dofm.getLocalDoF(multId,patchEdges(i,:));
-          stabilization.localAssembly(rows,rows,[weight,-weight;-weight,weight]);
+          stabilization.localAssembly(rows,rows,[Sloc,-Sloc;-Sloc,Sloc]);
         end
       end
 
@@ -405,11 +433,13 @@ classdef MortarContinuity < Constraint
     end
 
 
-    function S = computeSchurPatch(~,coupling,diagonal)
+    function S = computeSchurPatch(~,B,K)
 
-      cols = find(any(coupling,1));
-      coupling = coupling(:,cols);
-      S = coupling * (spdiags(1./diagonal(cols),0,numel(cols),numel(cols))*coupling');
+      cols = find(any(B,1));  % id of coupled dofs 
+
+      invK = 1./K(cols);
+      B = B(:,cols);
+      S = B * (invK.*B');
 
     end
   end

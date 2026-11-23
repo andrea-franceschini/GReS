@@ -37,11 +37,11 @@ matR = Materials(fullfile('Input','materials.xml'));
 
 
 % Create object handling construction of Jacobian and rhs of the model
-domainL = Discretizer('boundaries',bcL,...
+domainL = Domain('boundaries',bcL,...
                       'materials',matL,...
                       'grid',gridL);
 
-domainR = Discretizer('boundaries',bcR,...
+domainR = Domain('boundaries',bcR,...
                       'materials',matR,...
                       'grid',gridR);
 
@@ -51,7 +51,8 @@ domainR.addPhysicsSolver('Poromechanics');
 domains = [domainL; domainR];
 
 % build the mortar interface with xml input
-interfaces = InterfaceSolver.addInterfaces(domains,params.Interface);
+interface = Interface([domainR,domainL]);
+interface.addConstraint("MortarContinuity",'stabilizationScale',1.0)
 
 
 %apply initial compression to the model
@@ -71,9 +72,12 @@ setState(domainR,iniStressR,"stress");
 printUtils = OutState("outputFile","Output/StickSlipOpenNEW","printTimes",[0,1,2,3,4,5,6,7,11,12,13,14,15,16],...
                       "matFileName","Output/StickSlipOpenHistory",'solvePrintTimes',1);
 
+
+model = Model(domains,interface);
+
+
 solver = NonLinearImplicit('simulationparameters',simParam,...
-                           'domains',domains,...
-                           'interface',interfaces, ...
+                           'model',model,...
                            'output',printUtils);
 solver.simulationLoop();
 
