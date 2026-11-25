@@ -41,12 +41,6 @@ function [x, stats, flag, relres, iter, resvec] = solveSingle(matFile, varargin)
 
    % Load linear system data from mat file
    matData = load(matFile);
-   if ~isfield(matData, 'A') || ~isfield(matData, 'b')
-      error('linearSolver:solveSingle: MAT file "%s" must contain "A" and "b".', matFile);
-   end
-
-   A = matData.A;
-   b = matData.b;
 
    % Parse inputs with simulation defaults inheriting directly from file metadata
    p = inputParser;
@@ -69,6 +63,26 @@ function [x, stats, flag, relres, iter, resvec] = solveSingle(matFile, varargin)
    coordinates = getFieldOr(matData, 'coordinates', []);
    dt          = getFieldOr(matData, 'dt', 1.0);
    R           = getFieldOr(matData, 'R', []);
+
+   if ~isfield(matData, 'A') 
+      if ~isfield(matData, 'J')
+         error('linearSolver:solveSingle: MAT file "%s" must contain "A".', matFile);
+      else
+         A = matData.J;
+      end
+   else
+      A = matData.A;
+   end
+
+   if ~isfield(matData, 'b') 
+      if opt.rhsFlag == 0
+         error('linearSolver:solveSingle: MAT file "%s" must contain "b".', matFile);
+      else
+         b = {ones(size(A{1,1},1),1); ones(size(A{1,2},1),1)};
+      end
+   else 
+      b = matData.b;
+   end
 
    % Ensure block matrix representation and construct RHS vector
    if ~iscell(A), A = {A}; end

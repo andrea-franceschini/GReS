@@ -41,7 +41,7 @@
 		eps_prol="1e-10"
 		updateCF="0"
       patt_pow="2"
-		patt_tau="1e-3"
+		patt_tau="1e-2"
 		nnzr_max="20"
 		itmax_emin="10"
 		energ_tol="1e-2"
