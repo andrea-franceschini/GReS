@@ -335,7 +335,7 @@ classdef MeshTying < InterfaceSolver
       Ks = obj.domains(MortarSide.slave).J{fldS,fldS}(dofS,dofS);
       Kloc = diag([1./diag(Ks);1./diag(Km)]);
 
-      S = obj.stabilizationScale*V*(Kloc*V');  % compute Schur complement
+      S = V*(Kloc*V');  % compute Schur complement
 
     end
     
@@ -472,14 +472,6 @@ classdef MeshTying < InterfaceSolver
     end
 
 
-
-  end
-
-  methods (Static)
-
-    function var = getCoupledVariables()
-      var = [];
-    end
 
   end
 end

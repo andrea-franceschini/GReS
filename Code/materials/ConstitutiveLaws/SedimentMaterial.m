@@ -132,55 +132,19 @@ classdef SedimentMaterial < matlab.mixin.Copyable
       void = void_Ref - Cc.*log10(stress./stress_Ref);
     end
 
-    % % % function dvoid = getDeltaVoidRatio(Scurr,Sprev,Sp,Cc,Cr)
-    % % %   % Return the variation in void ratio
-    % % %   Scurr=abs(Scurr);
-    % % %   Sprev=abs(Sprev);
-    % % %   Sp=abs(Sp);
-    % % %
-    % % %   ndofs = length(Scurr);
-    % % %   map1 = Scurr < Sp;
-    % % %   map2 = Sprev >= Sp;
-    % % %   map3 = and((~map1),(~map2));
-    % % %
-    % % %   dvoid = zeros(ndofs,1);
-    % % %   dvoid(map1) = -Cr(map1).*log10(Scurr(map1)./Sprev(map1));
-    % % %   dvoid(map2) = -Cc(map2).*log10(Scurr(map2)./Sprev(map2));
-    % % %   dvoid(map3) = -Cr(map3).*log10(Sp(map3)./Sprev(map3)) ...
-    % % %     - Cc(map3).*log(Scurr(map3)./Sp(map3));
-    % % % end
-
-    % % % function de = getDevVoidRatio(sCurr,sPrev,sCons,Cc,Cr)
-    % % %   % Return the variation in void ratio
-    % % %   ndofs = length(sCurr);
-    % % %   flag = ndofs==length(sPrev);
-    % % %   flag = and(flag,ndofs==length(sCons));
-    % % %   flag = and(flag,ndofs==length(Cc));
-    % % %   flag = and(flag,ndofs==length(Cr));
-    % % %   if ~flag, return; end
-    % % %   % map = sCurr > 0; % Select only the positive stress.
-    % % %   map = sign(sCurr) == sign(sPrev); % Select only the positive stress.
-    % % %   map1 = and(sCurr <= sCons,map);
-    % % %   map2 = and(sPrev >= sCons,map);
-    % % %   map3 = and((~map1),(~map2));
-    % % %
-    % % %   de = zeros(ndofs,1);
-    % % %   de(map1) = -Cr(map1)./(log(10)*sCurr(map1));
-    % % %   de(map2) = -Cc(map2)./(log(10)*sCurr(map2));
-    % % %   de(map3) = -Cc(map3)./(log(10)*sCurr(map3));
-    % % % end
-
     function map = curveBranch(S,Sp,S1,S2)
       map(:,1) = S < S1;
       map(:,2) = (S >= S1) & (S <= Sp);
       map(:,3) = (S > Sp) & (S <= S2);
       map(:,4) = S > S2;
-      % count = [sum(map(:,1)),sum(map(:,2)),sum(map(:,3)),sum(map(:,4))];
     end
 
     function void = computeVoid(S,Sp,ep,map,mat)
       void = zeros(length(S),1);
       if any(map(:,1))
+        % e1 = ep(map(:,1)) - mat.Cr(map(:,1)).*log10(mat.S1(map(:,1))./Sp(map(:,1)));
+        % cbmin = mat.Cr(map(:,1))./(log(10)*mat.S1(map(:,1)).*(1+e1));
+        % void(map(:,1)) = (1+e1).*exp(cbmin.*(mat.S1(map(:,1))-S(map(:,1))))-1;
         void(map(:,1)) = (1+mat.e1(map(:,1))).*exp(mat.cbmin(map(:,1)).*(mat.S1(map(:,1))-S(map(:,1))))-1;
       end
       if any(map(:,2))
@@ -190,6 +154,9 @@ classdef SedimentMaterial < matlab.mixin.Copyable
         void(map(:,3)) = ep(map(:,3))-mat.Cc(map(:,3)).*log10(S(map(:,3))./Sp(map(:,3)));
       end
       if any(map(:,4))
+        % e2 = ep(map(:,4)) - mat.Cc(map(:,4)).*log10(mat.S2(map(:,4))./Sp(map(:,4)));
+        % kDecay = mat.Cc(map(:,4))./(log(10)*mat.S2(map(:,4)).*(e2-mat.emin(map(:,4))));
+        % void(map(:,4)) = mat.emin(map(:,4))+(e2-mat.emin(map(:,4))).*exp(kDecay.*(mat.S2(map(:,4))-S(map(:,4))));
         void(map(:,4)) = mat.emin(map(:,4))+(mat.e2(map(:,4))-mat.emin(map(:,4))).*exp(mat.kDecay(map(:,4)).*(mat.S2(map(:,4))-S(map(:,4))));
       end
     end

@@ -61,6 +61,13 @@ classdef Boundaries < handle
     end
 
 
+    function removeBC(obj,id)
+
+      remove(obj.db,id);
+      
+    end
+
+
 
     function bc = getData(obj,identifier)
       % Check if the identifier defined by the user is a key of the Map object
@@ -129,6 +136,14 @@ classdef Boundaries < handle
       variable = obj.getData(identifier).variable;
     end
 
+    function options = getOptions(obj, identifier)
+      options = obj.getData(identifier).options;
+
+      if ismissing(options)
+        error("Options are missing for boundary condition %s",obj.getName(identifier));
+      end
+    end
+
     function dofs = getCompEntities(obj,identifier,ents)
       % get component dof of Dirichlet BC loaded entities
       nEnts = getNumbTargetEntities(obj,identifier);
@@ -164,10 +179,12 @@ classdef Boundaries < handle
         var = obj.getVariable(bcId);
         varId = dofm.getVariableId(var);
         ents = getLocalEnts(dofm,varId,ents);
+        dim = dofm.getNumberOfComponents(varId);
+      else
+        dim = sum(obj.getNumbSourceEntities(bcId) > 0);
       end
 
       % component multiplication
-      dim = length(nEnts);
       i1 = 1;
       dofs = zeros(numel(ents),1);
       for i = 1 : dim
@@ -195,19 +212,34 @@ classdef Boundaries < handle
       end
     end
 
-    function initialize(obj,bcId,target)
+    function initialize(obj,bcId,target,numbComp)
 
       src = obj.getField(bcId);
       bc = obj.getData(bcId);
+
+      if nargin < 4
+        numbComp = sum(bc.data.nSourceEnts > 0);
+      end
+
+      % verify bcs dimensions
+      if numbComp < sum(bc.data.nSourceEnts > 0)
+        error('Number of bc components is not compatible with the variable field number of components')
+      end
+
+      if numbComp ~= length(bc.data.nSourceEnts)
+        bc.data.nSourceEnts = bc.data.nSourceEnts(bc.data.nSourceEnts > 0);
+      end
+
       bc.data.reset();
       bc.data.computeTargetEntities(obj.grid,target,src);
+
 
     end
 
 
 
     function nEnts = getNumbSourceEntities(obj,identifier)
-      nEnts = obj.getData(identifier).data.nSorceEnts;
+      nEnts = obj.getData(identifier).data.nSourceEnts;
     end
 
     function nEnts = getNumbTargetEntities(obj,identifier)

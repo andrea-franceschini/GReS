@@ -2,7 +2,7 @@
 
 <SimulationParameters
                       Start="0."
-                      End ="8.01e0"
+                      End ="8.0e0"
                       DtInit="5.0e-1"
                       DtMin ="1.0e-5"
                       DtMax ="5.0e-1"

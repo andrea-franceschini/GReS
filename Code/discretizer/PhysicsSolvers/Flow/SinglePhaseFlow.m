@@ -76,17 +76,40 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
 
       if obj.steadyState
         obj.domain.J{obj.fieldId,obj.fieldId} = obj.H;
-        rhs = obj.H*(p(ents) + gamma*z);
+        rhs = dt*obj.H*(p(ents) + gamma*z);
       else
-        obj.domain.J{obj.fieldId,obj.fieldId} = obj.H + obj.P/dt;
+        obj.domain.J{obj.fieldId,obj.fieldId} = dt*obj.H + obj.P;
         pOld = obj.getStateOld(obj.getField());
-        rhsH = obj.H*(p(ents) + gamma*z);
-        rhsP = (obj.P/dt)*(p(ents) - pOld(ents));
+        rhsH = dt*obj.H*(p(ents) + gamma*z);
+        rhsP = obj.P*(p(ents) - pOld(ents));
         rhs = rhsH + rhsP;
       end
 
       obj.domain.rhs{obj.fieldId} = rhs;
       
+    end
+
+
+
+    function applyNeuBC(obj,bcId,bcDofs,bcVals)
+      if ~BCapplies(obj,bcId)
+        return
+      end
+
+      % Base application of Neumann boundary condition to the rhs.
+      % bc values are subtracted since we solve du = J\(-rhs)
+      bcVar = obj.domain.bcs.getVariable(bcId);
+      bcId = obj.domain.dofm.getVariableId(bcVar);
+
+      %remove inactive dofs
+      id = bcDofs == 0;
+      bcDofs = bcDofs(~id);
+      bcVals = bcVals(~id);
+
+      % neumann and sourcer ar given as flux rates
+      dt = obj.getState.time - obj.getStateOld.time;
+
+      obj.domain.rhs{bcId}(bcDofs) = obj.domain.rhs{bcId}(bcDofs) - dt*bcVals;
     end
 
     function updateState(obj,dSol)
@@ -105,7 +128,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       % Compute the posprocessing variables for the module.
       fluid = obj.domain.materials.getFluid();
       gamma = fluid.getSpecificWeight();
-      entType = obj.domain.dofm.getFieldLocation(obj.fieldId);
+      entType = obj.domain.dofm.getFieldLocation("pressure");
       z = getLocation(entType,obj.grid);
       z = z(:,3);
       mob = computeMobility(obj,p);
@@ -176,21 +199,46 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       end
     end
 
+    function K = getPermeabilities(obj)
+
+      % return the 9 permeabilities component for each requested cell
+      cells = obj.grid.cells;
+      K = zeros(cells.num,9);
+
+      for i = 1:cells.nTag
+
+        cId = cells.tag == i;
+        nc = sum(cId);
+        mat = obj.domain.materials.getMaterial(i);
+
+        if ~isfield(mat,"PorousRock")
+          continue
+        end
+
+        rock = mat.PorousRock;
+
+        Ki = rock.getPermVector();
+
+        if size(Ki,1) ~= 1 && size(Ki,1) ~= nc
+          error('Input permeabilities in cell tag %i have incompatible number of elements (either 1 value or value for each cell)',i)
+        end
+
+        if size(Ki,1) == 1
+          Ki = repmat(Ki,nc,1);
+        end
+
+        K(cId,:) = Ki;
+
+      end
+
+    end
+
     function perm = printPermeab(obj)
 
-      % printPermeab - print the permeability for the cell or element.
-      cells = obj.grid.cells;
-      perm = zeros(cells.num,6);
-      subCells = obj.domain.dofm.getFieldCells(obj.getField);
-      for el = subCells'
-        ktmp = obj.domain.materials.getMaterial(cells.tag(el)).PorousRock.getPermMatrix();
-        perm(el,1)=ktmp(1,1);
-        perm(el,2)=ktmp(2,2);
-        perm(el,3)=ktmp(3,3);
-        perm(el,4)=ktmp(1,2);
-        perm(el,5)=ktmp(2,3);
-        perm(el,6)=ktmp(1,3);
-      end
+      % print 6 permeability tensor components of all cells
+      perm = getPermeabilities(obj);
+      perm = perm(:,[1,5,9,4,9,7]);
+
     end
 
 

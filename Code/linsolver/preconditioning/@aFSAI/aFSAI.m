@@ -15,7 +15,7 @@ classdef aFSAI < preconditioner
 %   for preconditioner creation and application.
 
    properties (GetAccess = public,SetAccess = private)
-       % Preconditioner
+      % Preconditioner
       Prec = []
       
       % Symmetry of the matrix on which the preconditioner has been
@@ -29,12 +29,17 @@ classdef aFSAI < preconditioner
       step_size = 1
       epsilon = 1e-5
 
+      % Physics
+      phys = []
+
+      % Generalsolver
+      generalsolver = []
    end
 
    methods (Access = public)
 
       % Function to compute the preconditioner
-      Compute(obj,A,sym,varargin)
+      [A] = Compute(obj,A,sym,varargin)
 
       % Getter for the function handle to apply the left preconditioner
       function x = ApplyLeft(obj,b,varargin)
@@ -57,7 +62,7 @@ classdef aFSAI < preconditioner
          
 
       % Constructor Function
-      function obj = aFSAI(debugflag)
+      function obj = aFSAI(debugflag,paramIn)
 
          % Call the constructor of the abstract class
          obj = obj@preconditioner();
@@ -69,11 +74,16 @@ classdef aFSAI < preconditioner
          obj.maxThreads = maxNumCompThreads;
 
          % Get the different parameters 
-         obj.param.nthread      = obj.maxThreads;
-         obj.param.nstep        = obj.nstep;
-         obj.param.step_size    = obj.step_size;
-         obj.param.epsilon      = obj.epsilon;
-         obj.param.method       = 'afsai_sym';
+         obj.param.nthread   = obj.maxThreads;
+         obj.param.nstep     = obj.nstep;
+         obj.param.step_size = obj.step_size;
+         obj.param.epsilon   = obj.epsilon;
+         obj.param.method    = 'afsai_sym';
+
+         % Override the defaults with the user defined parameters
+         if nargin > 1 && ~isempty(paramIn)
+            obj.param = readInput(obj.param,paramIn);
+         end
       end
    end
 end

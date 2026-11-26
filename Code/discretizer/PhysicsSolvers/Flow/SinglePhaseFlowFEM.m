@@ -35,6 +35,8 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       % Get the fluid dynamic viscosity
       mu = materials.getFluid().getDynViscosity();
 
+      perm = getPermeabilities(obj);
+
       for vtkId = cells.vtkTypes
 
         cellList = obj.grid.getCellsByVTKId(vtkId,subCells);
@@ -47,8 +49,6 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
 
           cellListTag = cellList(cells.tag(cellList)==tag);
           mat = materials.getMaterial(tag);
-          permMat = mat.PorousRock.getPermMatrix();
-          permMat = permMat/mu;
 
           % get node topology for given vtk type
           topol = obj.grid.getCellNodes(cellListTag);
@@ -58,6 +58,9 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
             nodes = topol(i,:);
             coords = coordinates(nodes,:);
             el = cellListTag(i);
+
+            permMat = reshape(perm(el,:),3,3);
+            permMat = permMat/mu;
 
             [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
             pLoc = p(nodes);
@@ -103,6 +106,8 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       % Get the fluid dynamic viscosity
       mu = materials.getFluid().getDynViscosity();
 
+      perm = getPermeabilities(obj);
+
       % get cell tags where there is coupling with the displacements
       coupledRegions = dofm.getTargetRegions([obj.getField(),"displacements"]);
 
@@ -118,8 +123,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
 
           cellListTag = cellList(cells.tag(cellList)==tag);
           mat = materials.getMaterial(tag);
-          permMat = mat.PorousRock.getPermMatrix();
-          permMat = permMat/mu;
+
 
 
           % get node topology for given vtk type
@@ -127,15 +131,23 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
 
           rockComp = getRockCompressibility(obj,tag,coupledRegions);
 
+          % porosity and rock compressibility (arrays local to the element
+          % region)
           poro = zeros(numel(cellListTag),1);
           alpha = zeros(numel(cellListTag),1);
-          poro(cellListTag) = mat.PorousRock.getPorosity();
-          alpha(cellListTag) = rockComp(cellListTag);
+
+          % constant porosity is allowed for now
+          poro(:) = mat.PorousRock.getPorosity();
+          alpha(:) = rockComp(cellListTag);
 
           for i = 1:numel(cellListTag)
 
             nodes = topol(i,:);
             coords = coordinates(nodes,:);
+
+            el = cellListTag(i);
+            permMat = reshape(perm(el,:),3,3);
+            permMat = permMat/mu;
 
             [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
             N = getBasisFinGPoints(elem);
@@ -172,6 +184,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
       coordinates = obj.grid.coordinates;
       cells = obj.grid.cells;
       mu = mat.getFluid().getDynViscosity;
+      perm = getPermeabilities(obj);
 
       if gamma > 0
 
@@ -194,7 +207,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
             coords = coordinates(nodes,:);
             el = cellList(i);
 
-            permMat = mat.getMaterial(cells.tag(el)).PorousRock.getPermMatrix();
+            permMat = reshape(perm(el,:),3,3);
             permMat = permMat/mu;
             [gradN,dJWeighed] = getDerBasisFAndDet(elem,coords);
             fs = pagemtimes(gradN,'ctranspose',permMat(:,3),'none');

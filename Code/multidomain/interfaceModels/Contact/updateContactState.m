@@ -4,7 +4,7 @@ function outState = updateContactState(inState,traction,tLimit,normalGap,tols)
 % the method is static to be reused by other contact solvERS
 outState = inState;
 
-tol = 1e-8;
+%tol = 1e-8;
 
 % contact state update
 if inState == ContactMode.open

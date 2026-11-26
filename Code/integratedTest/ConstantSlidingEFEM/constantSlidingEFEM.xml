@@ -91,9 +91,9 @@
   <Solver>
 
     <EmbeddedFractureMechanics
-                               penaltyNormal = "1e8"
-                               penaltyTangential = "1e8"
-                               outputFile = "Output/Crack" >
+                               augmentationParameter = "5e3"
+                               outputFile = "Output/Crack"
+                               isSmooth = "1">
 
       <Fracture
                 origin = "1.0,0.25,1.7"

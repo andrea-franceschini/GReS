@@ -82,14 +82,6 @@ classdef (Abstract) InterfaceSolver < handle
 
   end
 
-  methods (Abstract, Static)
-
-    % return the variables that are coupled from the interface solver
-    % if var = empty, the user can/must choose which variable can be coupled
-    var = getCoupledVariables(obj)
-
-  end
-
   methods
 
     function obj = InterfaceSolver(id,domains,varargin)
@@ -98,8 +90,8 @@ classdef (Abstract) InterfaceSolver < handle
       % information of the model
 
       % minimal required input is the id of the connected domains
-      default = struct('slaveDomain',[], ...
-        'masterDomain',[]);
+      default = struct('slaveDomain',double(MortarSide.slave), ...
+                       'masterDomain',double(MortarSide.master));
 
       input = readInput(default,varargin{:});
 
@@ -109,7 +101,7 @@ classdef (Abstract) InterfaceSolver < handle
 
       % store handle to connected domains
       obj.domains = [domains(obj.domainId(1));
-        domains(obj.domainId(2))];
+                     domains(obj.domainId(2))];
 
       % add handle of this object to the list of interfaces of connected
       % domains
@@ -226,7 +218,11 @@ classdef (Abstract) InterfaceSolver < handle
       end
     end
 
-
+    % return the variables that are coupled from the interface solver
+    % if var = empty, the user can/must choose which variable can be coupled
+    function var = getCoupledVariables(obj)
+       var = obj.coupledVariables;
+    end
 
     function setState(obj,val,varName)
       % get current state variables
@@ -779,18 +775,21 @@ classdef (Abstract) InterfaceSolver < handle
       %   ---------------------------------------------------------------------
 
 
-      if iscell(varargin{1})
+      if nargin == 2
+        interfaces = {};
+        input = [];
+      elseif iscell(varargin{1})
         interfaces = varargin{1};
-        i1 = 2;
+        input = varargin{2:end};
       else
         % generate the interface list
         interfaces = {};
-        i1 = 1;
+        input = varargin{1:end};
       end
 
       k = numel(interfaces);
 
-      input = varargin{i1:end};
+
 
       % general input
       interf = feval(interfType,k+1,domains,input);

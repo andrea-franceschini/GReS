@@ -1,6 +1,11 @@
 classdef domainManagerSed < handle
-  %UNTITLED Summary of this class goes here
-  %   Detailed explanation goes here
+  %DOMAINMANAGERSED Manages the evolving domain for sedimentation problems.
+  %
+  %   Handles grid geometry, cell connectivity, material fractions,
+  %   sediment deposition, and domain growth.
+  %
+  %   Provides methods for computing transmissibilities, updating cell
+  %   properties, initializing new cells, and generating output meshes.
 
   properties
     % domain variables
@@ -10,21 +15,25 @@ classdef domainManagerSed < handle
     bathy  (:,:)   % <- bathymetry of the bottom surface
 
     cm     (:,3)   % <- center of mass of the undeformed cell
-    dl     (:,3)   % <- dimension of the undeformed cell    
+    dl     (:,3)   % <- dimension of the undeformed cell
     dzInc          % <- dz increment for grow z array
 
     % top surface information
     lastLay (:,:)  % <- last height
-    top_dS
-    top_e
-    top_e0
+
+    % Sediments properties
+    top_S  (:,:)
+    top_Sp (:,:)
+    top_e   (:,:)
+    top_ep  (:,:)
 
     % dof manager control
-    dof      (:,:,:)
-    cellsByCol (:,:)
+    dof     (:,:,:)
     ndofs
 
-    % initColumn (:,1)  % indication of the necessity of initialize the column
+    % cells information
+    ncells (1,3)   % <- maximum number of cells in x,y,z directions
+    cellsByCol (:,:)
 
     % material variables
     matfrac (:,:)                % Material fractions per cell
@@ -37,6 +46,7 @@ classdef domainManagerSed < handle
 
   properties (Access = private)
     dzMin = 1e-9;
+    mixtureType = true
   end
 
   methods (Access = public)
@@ -51,6 +61,7 @@ classdef domainManagerSed < handle
       obj.coordY = grid.coordY;
       obj.coordZ = grid.coordZ;
       obj.dzInc = params.NewCellHeightControl;
+      obj.ncells = [length(grid.coordX) length(grid.coordY) length(grid.coordZ)]-1;
 
       % Cell center coordinates
       [xc, yc, zc] = ndgrid((obj.coordX(1:end-1) + obj.coordX(2:end))/2,...
@@ -62,20 +73,18 @@ classdef domainManagerSed < handle
       [dx, dy, dz] = ndgrid(diff(obj.coordX),diff(obj.coordY),diff(obj.coordZ));
       obj.dl = [dx(:) dy(:) dz(:)];
 
-      map = [length(grid.coordX) length(grid.coordY) 2];
-
       % Defining the bathymetry for each column.
       if ~ismissing(params.Bathymetry)
-        obj.bathy = domainManagerSed.getBathy(params.Bathymetry,map(1:2)-1);
+        obj.bathy = domainManagerSed.getBathy(params.Bathymetry,obj.ncells(1:2));
       else
-        obj.bathy = zeros(map(1:2)-1);
+        obj.bathy = zeros(obj.ncells(1:2));
       end
-      obj.lastLay = zeros(map(1:2)-1);
+      obj.lastLay = zeros(obj.ncells(1:2));
 
       % Defining the degree of freedom
-      obj.ndofs = prod(map-1);
-      obj.dof = reshape(1:obj.ndofs,map-1);
-      obj.cellsByCol = ones(map(1:2)-1);
+      obj.ndofs = prod(obj.ncells);
+      obj.dof = reshape(1:obj.ndofs,obj.ncells);
+      obj.cellsByCol = ones(obj.ncells(1:2));
       % obj.initColumn(1:obj.ndofs,1) = true;
 
       % % Defining the initial domain material mesh
@@ -83,22 +92,44 @@ classdef domainManagerSed < handle
       obj.matfrac(:,grid.mat) = 1.;
 
       % open space for sediments
-      obj.top_dS = zeros(map(1:2)-1);
-      obj.top_e = zeros(map(1:2)-1);
-      obj.top_e0 = zeros(map(1:2)-1);
+      obj.top_S  = zeros(obj.ncells(1:2));
+      obj.top_Sp = zeros(obj.ncells(1:2));
+      obj.top_e   = zeros(obj.ncells(1:2));
+      obj.top_ep  = zeros(obj.ncells(1:2));
     end
 
-    function getConnectivity(obj,deform)
-      ncells = size(obj.dof,1:3);
+    function updateSedmProps(obj,dS,dSp,e,ep)
+      obj.top_S  = reshape(dS,obj.ncells(1:2));
+      obj.top_Sp = reshape(dSp,obj.ncells(1:2));
+      obj.top_e   = reshape(e,obj.ncells(1:2));
+      obj.top_ep  = reshape(ep,obj.ncells(1:2));
+    end
 
+    function state = updateGrid(obj,state,sedAdd,mats)
+      % Update the growing cells at the top of the domain
+      [state,sedNewCells] = updateGrowingCells(obj,state,sedAdd,mats);
+
+      % Reset the strain deformation in all domain for the next time step.
+      state.strain(:) = 0;
+
+      % Create and initialize new cells
+      state.newcells = nnz(any(sedNewCells,2));
+      if state.newcells > 0
+        newDofs = growGrid(obj,sedNewCells);
+        state = initializeStatesNewCells(obj,state,newDofs,sedNewCells,sedAdd);
+      end
+    end
+
+
+    function getConnectivity(obj,deform)
       % Make connections in the z direction
       tmp=sum(obj.cellsByCol-1,"all");
       obj.interfZ.neigh = zeros(tmp,2);
       obj.interfZ.area = zeros(tmp,1);
       obj.interfZ.cm = zeros(tmp,3);
       countZ = 1;
-      for refJ=1:ncells(2)
-        for refI=1:ncells(1)
+      for refJ=1:obj.ncells(2)
+        for refI=1:obj.ncells(1)
           pillarCount = obj.cellsByCol(refI,refJ)-1;
           if pillarCount < 1
             continue
@@ -128,17 +159,17 @@ classdef domainManagerSed < handle
 
       % Allocating memory
       memMax = 0;
-      for refJ=1:ncells(2)-1
-        for refI=1:ncells(1)-1
+      for refJ=1:obj.ncells(2)-1
+        for refI=1:obj.ncells(1)-1
           memMax=memMax+obj.cellsByCol(refI,refJ)+obj.cellsByCol(refI+1,refJ)-1;
           memMax=memMax+obj.cellsByCol(refI,refJ)+obj.cellsByCol(refI,refJ+1)-1;
         end
       end
-      for refI=1:ncells(1)-1
-        memMax=memMax+obj.cellsByCol(refI,ncells(2))+obj.cellsByCol(refI+1,ncells(2))-1;
+      for refI=1:obj.ncells(1)-1
+        memMax=memMax+obj.cellsByCol(refI,obj.ncells(2))+obj.cellsByCol(refI+1,obj.ncells(2))-1;
       end
-      for refJ=1:ncells(2)-1
-        memMax=memMax+obj.cellsByCol(ncells(1),refJ)+obj.cellsByCol(ncells(1)-1,refJ+1)-1;
+      for refJ=1:obj.ncells(2)-1
+        memMax=memMax+obj.cellsByCol(obj.ncells(1),refJ)+obj.cellsByCol(obj.ncells(1)-1,refJ+1)-1;
       end
       [zmin,zmax] = obj.getCoordinatesZ(deform);
 
@@ -153,9 +184,9 @@ classdef domainManagerSed < handle
       cmfaceY = zeros(memMax,3);
       countY = 1;
 
-      if ncells(1)>1 && ncells(2)>1
-        for refJ=1:ncells(2)-1
-          for refI=1:ncells(1)-1
+      if obj.ncells(1)>1 && obj.ncells(2)>1
+        for refJ=1:obj.ncells(2)-1
+          for refI=1:obj.ncells(1)-1
             dofA  = reshape(obj.dof(refI,refJ,1:obj.cellsByCol(refI,refJ)), [], 1);
             zMinA = zmin(dofA);
             zMaxA = zmax(dofA);
@@ -192,8 +223,8 @@ classdef domainManagerSed < handle
       end
 
       % Completing conection in X direction.
-      if ncells(1)>1
-        for refI=1:ncells(1)-1
+      if obj.ncells(1)>1
+        for refI=1:obj.ncells(1)-1
           dofA  = reshape(obj.dof(refI,end,1:obj.cellsByCol(refI,end)), [], 1);
           zMinA = zmin(dofA);
           zMaxA = zmax(dofA);
@@ -219,8 +250,8 @@ classdef domainManagerSed < handle
       obj.interfX.cm = cmfaceX(1:countX-1,:);
 
       % Finding conection in Y direction.
-      if ncells(2)>1
-        for refJ=1:ncells(2)-1
+      if obj.ncells(2)>1
+        for refJ=1:obj.ncells(2)-1
           dofA  = reshape(obj.dof(end,refJ,1:obj.cellsByCol(end,refJ)), [], 1);
           zMinA = zmin(dofA);
           zMaxA = zmax(dofA);
@@ -247,9 +278,8 @@ classdef domainManagerSed < handle
     end
 
     function getConnectivityPARALLEL(obj,deform)
-      ncells = size(obj.dof,1:3);
-      nx = ncells(1);
-      ny = ncells(2);
+      nx = obj.ncells(1);
+      ny = obj.ncells(2);
 
       dof_pt = obj.dof;
       dofByCol_pt = obj.cellsByCol;
@@ -388,16 +418,14 @@ classdef domainManagerSed < handle
       obj.interfY.area  = vertcat(areaCell{:});
       obj.interfY.cm    = vertcat(cmCell{:});
     end
-     
-    function out = getMapFromDofs(obj,dofs)
-      if ~exist("dofs","var")
-        dofs = 1:obj.ndofs;
-      end
+
+    function out = getMapFromDofs(obj)
+      dofs = 1:obj.ndofs;
       map = ismember(obj.dof,dofs);
       pos = find(map);
       [~,id] = sort(obj.dof(map));
-      [idI,idJ,~]=ind2sub(size(obj.dof),pos(id));
-      out = sub2ind(size(obj.bathy), idI', idJ');
+      [idI,idJ,~]=ind2sub(obj.ncells,pos(id));
+      out = sub2ind(obj.ncells(1:2), idI', idJ')';
     end
 
     function [dofs] = getBord(obj,label)
@@ -426,10 +454,9 @@ classdef domainManagerSed < handle
           tmp = obj.dof(:,:,1);
           dofs(:) = tmp(tmp~=0);
         case "zmax"
-          ncells = size(obj.dof,1:3);
-          idI = repmat((1:ncells(1))',ncells(2),1);
-          idJ = repelem((1:ncells(2))',ncells(1));
-          pos = sub2ind(ncells,idI,idJ,obj.cellsByCol(:));
+          idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
+          idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
+          pos = sub2ind(obj.ncells,idI,idJ,obj.cellsByCol(:));
           tmp = obj.dof(pos);
           dofs(:) = tmp(tmp~=0);
         otherwise
@@ -439,19 +466,18 @@ classdef domainManagerSed < handle
     end
 
     function updateConectivities(obj,map,dz)
-      ncells = size(obj.dof,1:3);
       nNewDofs = sum(map);
       obj.growLayer(map);
       obj.lastLay(map) = dz;
 
       % Make connections in the z direction
-      map=reshape(map,ncells(1:2));
+      map=reshape(map,obj.ncells(1:2));
       neigh = zeros(nNewDofs,2);
       area = zeros(nNewDofs,1);
       cm = zeros(nNewDofs,3);
       countZ = 1;
-      for refJ=1:ncells(2)
-        for refI=1:ncells(1)
+      for refJ=1:obj.ncells(2)
+        for refI=1:obj.ncells(1)
           if map(refI,refJ)
             refK = obj.cellsByCol(refI,refJ);
             neigh(countZ,:) = [obj.dof(refI,refJ,refK) obj.dof(refI,refJ,refK)];
@@ -472,16 +498,16 @@ classdef domainManagerSed < handle
 
       % Make connections in the x and y direction
       countX = 1;
-      neighX = zeros((ncells(1)-1)*ncells(2)*2,2);
+      neighX = zeros((obj.ncells(1)-1)*obj.ncells(2)*2,2);
       areaX = zeros(nNewDofs,1);
       cmX = zeros(nNewDofs,3);
       countY = 1;
-      neighY = zeros((ncells(2)-1)*ncells(1)*2,2);
+      neighY = zeros((obj.ncells(2)-1)*obj.ncells(1)*2,2);
       areaY = zeros(nNewDofs,1);
       cmY = zeros(nNewDofs,3);
-      for refJ=1:ncells(2)
+      for refJ=1:obj.ncells(2)
         dy = obj.coordY(refJ+1)-obj.coordY(refJ);
-        for refI=1:ncells(1)
+        for refI=1:obj.ncells(1)
           dx = obj.coordX(refI+1)-obj.coordX(refI);
           dz = obj.coordZ(refK+1)-obj.coordZ(refK);
           if map(refI,refJ)
@@ -498,7 +524,7 @@ classdef domainManagerSed < handle
                 cmX(countX,3) = (obj.coordZ(refK)+obj.coordZ(refK))/2.;
                 countX=countX+1;
               end
-            elseif refI==ncells(1)
+            elseif refI==obj.ncells(1)
               dofA = obj.dof(refI-1,refJ,refK);
               if ~ismember([dofA dofRef], obj.interfX.neigh, 'rows') && ...
                   ~ismember([dofA dofRef], neighX, 'rows') && dofA ~=0
@@ -541,7 +567,7 @@ classdef domainManagerSed < handle
                 cmY(countY,3) = (obj.coordZ(refK)+obj.coordZ(refK))/2.;
                 countY=countY+1;
               end
-            elseif refJ==ncells(2)
+            elseif refJ==obj.ncells(2)
               dofA = obj.dof(refI,refJ-1,refK);
               if ~ismember([dofA dofRef], obj.interfY.neigh, 'rows') && ...
                   ~ismember([dofA dofRef], neighY, 'rows') && dofA ~=0
@@ -662,9 +688,9 @@ classdef domainManagerSed < handle
       % Computing half transmissibilities
       switch type
         case 1
-          trans = (dy.*dz)./(dx/2).*perm(:,1);      
+          trans = (dy.*dz)./(dx/2).*perm(:,1);
         case 2
-          trans = (dx.*dz)./(dy/2).*perm(:,2);      
+          trans = (dx.*dz)./(dy/2).*perm(:,2);
         case 3
           trans = (dx.*dy)./(dz/2).*perm(:,3);
       end
@@ -675,129 +701,8 @@ classdef domainManagerSed < handle
       act = act(:);
     end
 
-    function [dofs,mapGrowCell,residualSedm,state] = updateTopCells(obj,pos,sedm,state,mapGrowCell)
-
-      dofs = getBord(obj,"zmax");
-      idx = 1:length(dofs);
-      dofs = dofs(pos);
-      idx = idx(pos);
-
-      dzOld = obj.dl(dofs,3);
-      dzDef = dzOld.*(1+state.strain(pos));
-      dzNew = dzDef+dzSedmAdd(pos);
-
-      growCols = dzNew > obj.dzInc*(1+obj.dzMin); % <-- Very important check
-
-      state.cellDefm(dofs) = 0;
-      state.strainAcc(dofs) = 0;
-      if (any(~growCols))
-        ngrowCols = ~growCols;
-        dof = dofs(ngrowCols);
-        loc = idx(ngrowCols);
-
-        fracCell = dzOld(ngrowCols).*obj.matfrac(dof,:) + sedm(loc,:);
-        obj.cellDims(dof,3) = dzNew(ngrowCols);
-        obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
-
-        % Mean average
-        % state.e(dof) = (dzDef(ngrowCols).*state.e(dof) +...
-        %   dzSedmAdd(loc).*obj.voidTop(loc))./dzNew(ngrowCols);
-
-        % Harmonic series
-        state.e(dof) = ...
-          (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
-          ( dzDef(ngrowCols) ./ state.e(dof) + ...
-          dzSedmAdd(loc) ./ obj.top_e(loc) );
-        state.e0(dof) = ...
-          (dzDef(ngrowCols) + dzSedmAdd(loc)) ./ ...
-          ( dzDef(ngrowCols) ./ state.e0(dof) + ...
-          dzSedmAdd(loc) ./ obj.top_e0(loc) );
-      end
-
-      if (any(growCols))
-        dof = dofs(growCols);
-        loc = idx(growCols);
-
-        frac = (obj.dzInc-dzDef(growCols))./(dzSedmAdd(loc));
-
-        fracCell = dzOld(growCols).*obj.matfrac(dof,:) + frac.*sedm(loc,:);
-        obj.cellDims(dof,3) = obj.dzInc;
-        obj.matfrac(dof,:) = fracCell./sum(fracCell,2);
-
-        % Mean average
-        % % % % state.e(dof) = (dzDef(growCols).*state.e(dof) +...
-        % % % %   frac.*dzSedmAdd(loc).*obj.voidTop(loc))./obj.dzInc;
-
-        % Harmonic series
-        state.e(dof) = ...
-          (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
-          ( dzDef(growCols) ./ state.e(dof) + ...
-          (frac.*dzSedmAdd(loc)) ./ obj.top_e(loc) );
-
-        state.e0(dof) = ...
-          (dzDef(growCols) + frac.*dzSedmAdd(loc)) ./ ...
-          ( dzDef(growCols) ./ state.e0(dof) + ...
-          (frac.*dzSedmAdd(loc)) ./ obj.top_e0(loc) );
-
-        residualSedm(loc,:) = (1-frac).*sedm(loc,:);
-        mapGrowCell(loc) = true;
-      end
-
-
-
-    end
-
-    function growMesh(obj,map,sedm)
-      % cols = size(obj.cellsByCol);
-      newcells = sum(map);
-      dofs = (obj.ndofs+1:obj.ndofs+newcells)';
-      obj.matfrac(dofs,:) = sedm(map,:)./sum(sedm(map,:),2);
-
-      % Update the cell mesh.
-      dx = obj.dl(1:numel(obj.cellsByCol),1);
-      dy = obj.dl(1:numel(obj.cellsByCol),2);
-      obj.dl(dofs,:) = [dx(map) dy(map) sum(sedm(map,:),2)];
-
-      % Cell center coordinates
-      xc = obj.cm(1:numel(obj.cellsByCol),1);
-      yc = obj.cm(1:numel(obj.cellsByCol),2);
-      zc = obj.coordZ(obj.cellsByCol(:)+1)+sum(sedm,2)/2.;
-      obj.cm(dofs,:) = [xc(map) yc(map) zc(map)];
-
-      growLayer(obj,map);
-    end
-
-    function growLayer(obj,map)
-      newcells = sum(map);
-      dofs = obj.ndofs+1:obj.ndofs+newcells;
-      ncells = size(obj.dof,1:3);
-
-      % check if is necessary to add a new layer in z
-      atTop = obj.cellsByCol == ncells(3);
-      newlayer = any(and(atTop(:),map));
-      if newlayer
-        obj.dof(:,:,end+1) = zeros(ncells(1:2));
-        tmpZ = obj.coordZ(end)+obj.dzInc;
-        obj.coordZ(end+1) = tmpZ;
-        ncells(3) = ncells(3)+1;
-      end
-
-      % update the dof for the newest cells.
-      idI = repmat((1:ncells(1))',ncells(2),1);
-      idJ = repelem((1:ncells(2))',ncells(1));
-      pos = sub2ind(ncells,idI(map),idJ(map),obj.cellsByCol(map)+1);
-      obj.dof(pos) = dofs';
-      obj.ndofs = obj.ndofs + newcells;
-      obj.cellsByCol(map) = obj.cellsByCol(map)+1;
-    end
-
-
     function mesh = makeMeshOutput(obj,mesh,sedAcc)
-      % idxTop = obj.laysByCol;
-      % dofs = getDofs(obj);
-
       dofs = (1:obj.ndofs)';
-      ncells = size(obj.dof);
 
       npoint = sum(4*obj.cellsByCol+4,"all");
       ncell = sum(obj.cellsByCol,"all");
@@ -808,20 +713,20 @@ classdef domainManagerSed < handle
       initCol = activeVarCellHeightCols(obj);
 
       count = 0;
-      for col=1:prod(ncells(1:2))
-        idI = mod(col-1,ncells(1))+1;
-        idJ = (col-idI)/ncells(1)+1;
+      for col=1:prod(obj.ncells(1:2))
+        idI = mod(col-1,obj.ncells(1))+1;
+        idJ = (col-idI)/obj.ncells(1)+1;
 
         coord(4*count+1,1) = obj.coordX(idI);
         coord(4*count+2,1) = obj.coordX(idI+1);
         coord(4*count+3,1) = obj.coordX(idI+1);
         coord(4*count+4,1) = obj.coordX(idI);
-        
+
         coord(4*count+1,2) = obj.coordY(idJ);
         coord(4*count+2,2) = obj.coordY(idJ);
         coord(4*count+3,2) = obj.coordY(idJ+1);
         coord(4*count+4,2) = obj.coordY(idJ+1);
-        
+
         coord(4*count+1:4*count+4,3) = obj.coordZ(1)+obj.bathy(idI,idJ);
         count = count+1;
         topLay = obj.cellsByCol(col);
@@ -859,7 +764,7 @@ classdef domainManagerSed < handle
       end
 
       mesh.nDim = 3;
-      mesh.cells.num = ncell;      
+      mesh.cells.num = ncell;
       mesh.cells.VTKType = 12*ones(ncell,1);
       mesh.cells.numVerts = 8*ones(ncell,1);
       mesh.cells.tag = 8*ones(ncell,1);
@@ -869,20 +774,17 @@ classdef domainManagerSed < handle
       mesh.cells.connectivity = conec;
     end
 
-
     function data = getComp(obj,comp)
       % Identify the top layer index.
-
-      ncells = size(obj.dof);
       idxTop = obj.cellsByCol;
       dofs = (1:obj.ndofs)';
       npoint = sum(4*idxTop+4,"all");
       data(1:npoint,1)=0.;
 
       count = 0;
-      for col=1:prod(ncells(1:2))
-        idI = mod(col-1,ncells(1))+1;
-        idJ = (col-idI)/ncells(1)+1;
+      for col=1:prod(obj.ncells(1:2))
+        idI = mod(col-1,obj.ncells(1))+1;
+        idJ = (col-idI)/obj.ncells(1)+1;
 
         count = count+1;
         topLay = idxTop(col);
@@ -900,12 +802,10 @@ classdef domainManagerSed < handle
 
   methods (Access = private)
     function [zmin,zmax] = getCoordinatesZ(obj,deform)
-      ncells = size(obj.dof,1:3);
-
       zmin(1:obj.ndofs,1) = 0.;
       zmax(1:obj.ndofs,1) = 0.;
-      for refJ=1:ncells(2)
-        for refI=1:ncells(1)
+      for refJ=1:obj.ncells(2)
+        for refI=1:obj.ncells(1)
           column = reshape(obj.dof(refI,refJ,:), [], 1);
           dofs = column(column~=0);
           ndofsCol = nnz(column);
@@ -928,10 +828,10 @@ classdef domainManagerSed < handle
     function defCM = getDeformCM(obj,deform)
       % The deformation of the last cell is always zero, because is a
       % special cell that grow in function of the material being deposited.
+      
       defCM = obj.cm;
-      ncells = size(obj.bathy);
-      for j=1:ncells(2)
-        for i=1:ncells(1)
+      for j=1:obj.ncells(2)
+        for i=1:obj.ncells(1)
           dofs = obj.dof(i,j,:);
           dofs = dofs(dofs~=0);
           dofs = dofs(1:end);
@@ -941,11 +841,273 @@ classdef domainManagerSed < handle
               dofRef=dofs(k);
               defCM(dofRef,3)=defCM(dofRef,3)+deform(dofRef)/2.+acc;
               acc=acc+deform(dofRef);
-            end            
+            end
           end
         end
       end
     end
+
+
+    % functions related to update the grid size for the advance state
+    function [state,sedNewCells] = updateGrowingCells(obj,state,sedAdd,mats)
+
+      sedNewCells = zeros(size(sedAdd));
+      dzSed = sum(sedAdd,2);
+      mapSed = dzSed > 0;
+
+      % Initialize empty columns
+      initColumn = activeVarCellHeightCols(obj);
+      initCol = mapSed & ~initColumn;
+      sedNewCells(initCol,:) = sedAdd(initCol,:);
+
+      % Existing active columns receiving sediment
+      cellVar = mapSed & initColumn & ~initCol;
+
+      if ~any(cellVar)
+        return
+      end
+
+      dofs = getBord(obj,'zmax');
+      dofs = dofs(cellVar);
+      colIds = find(cellVar);
+
+      % Current deformed geometry
+      dzDef = obj.dl(dofs,3) + state.cellDefm(dofs);
+      dzAdd = dzSed(colIds);
+      dzTotal = dzDef + dzAdd;
+
+      % Determine which columns require division
+      growCols = dzTotal > obj.dzInc*(1+obj.dzMin);
+
+      % Existing cell height after deposition
+      dzLower = dzTotal;
+
+      % For growing columns, preserve the existing deformed height if it
+      % already exceeds Hc.
+      dzLower(growCols) = max(obj.dzInc,dzDef(growCols));
+
+      % Sediment incorporated into existing cells
+      dzIncorporated = max(0,dzLower - dzDef);
+
+      % Fraction of deposited sediment incorporated
+      frac = dzIncorporated./dzAdd;
+
+      % Update existing cell properties
+      state = updateGrowingCellsProperties(obj,state,dofs,colIds,dzDef,...
+        dzLower,dzIncorporated,sedAdd,mats);
+
+      % Update the reference geometry
+      obj.dl(dofs,3) = dzLower;
+
+      % Deformation is now included in cellDims
+      state.cellDefm(dofs) = 0;
+      state.strainAcc(dofs) = 0;
+
+      % Sediment assigned to new cells
+      if any(growCols)
+        loc = colIds(growCols);
+        sedNewCells(loc,:) = (1-frac(growCols)).*sedAdd(loc,:);
+      end
+    end
+
+    function state = updateGrowingCellsProperties(obj,state,dofs,colIds,...
+        dzDef,dzLower,dzInc,sedAdd,mats)
+
+      % Avoid mixing when no sediment is incorporated
+      active = dzInc > 0;
+      if ~any(active)
+        return
+      end
+
+      % Original cell properties
+      eOld = state.e(dofs);
+      matOld = obj.matfrac(dofs,:);
+
+      % Newly deposited sediment properties
+      eSed = obj.top_e(colIds);
+
+      dofAtTop = dofs(active);
+      loc = colIds(active);
+
+      hOld = dzDef(active);
+      hSed = dzInc(active);
+      hTotal = dzLower(active);
+
+      e1 = eOld(active);
+      e2 = eSed(active);
+
+      % Solid-volume-conserving void ratio
+      solidOld = hOld./(1+e1);
+      solidSed = hSed./(1+e2);
+      state.e(dofAtTop) = hTotal./(solidOld+solidSed)-1;
+
+      % Sediment material fractions
+      sedFrac = sedAdd(loc,:)./sum(sedAdd(loc,:),2);
+
+      % Solid-volume-weighted material fractions
+      matMix = solidOld.*matOld(active,:) + solidSed.*sedFrac;
+      obj.matfrac(dofAtTop,:) = matMix./sum(matMix,2);
+
+      % How to recompute the pre consolidated void rate
+      if obj.mixtureType
+        % Solid-volume-conserving void ratio for the pre consolidated level
+
+        % Original cell properties
+        eOld = state.ep(dofs);
+        eSed = obj.top_ep(colIds);
+        e1 = eOld(active);
+        e2 = eSed(active);
+
+        % Solid-volume-conserving void ratio
+        solidOld = hOld./(1+e1);
+        solidSed = hSed./(1+e2);
+        state.ep(dofAtTop) = hTotal./(solidOld+solidSed)-1;
+      else
+        % Recompute the pre consolidation void ratio for the new cell mixture
+        voidMix = state.e(dofAtTop);
+        SpMix = state.Sp(dofAtTop);
+        fracMix = obj.matfrac(dofAtTop,:);
+
+        % Initialize equivalent material properties and effective stress
+        CcMix = zeros(size(voidMix));
+        CrMix = zeros(size(voidMix));
+        stressMix = zeros(size(voidMix));
+        gammaW = mats.getFluid().getSpecificWeight();
+        for mat = 1:numel(mats)
+          matLaw = mats.getMaterial(mat).ConstLaw;
+          CcMix = CcMix + fracMix(:,mat).*matLaw.Cc;
+          CrMix = CrMix + fracMix(:,mat).*matLaw.Cr;
+          stressMix = stressMix + (matLaw.gamma - gammaW).*fracMix(:,mat).*hTotal;
+        end
+        stressMix = stressMix./(1+voidMix);
+
+        % Update preconsolidation void ratio
+        state.ep(dofAtTop) = SedimentMaterial.getVoidPreCon(stressMix, ...
+          -SpMix, voidMix, CrMix, CcMix);
+      end
+    end
+
+    function dofs = growGrid(obj,sedm)
+      map = any(sedm,2);
+      newcells = nnz(map);
+      dofs = (obj.ndofs+1:obj.ndofs+newcells)';
+      ncols = prod(obj.ncells(1:2));
+
+      % New cell material fractions
+      sedNew = sedm(map,:);
+      dzNew = sum(sedNew,2);
+      obj.matfrac(end+1:end+newcells,:) = sedNew./dzNew;
+
+      % Update the cell mesh.
+      dx = obj.dl(1:ncols,1);
+      dy = obj.dl(1:ncols,2);
+      obj.dl(dofs,:) = [dx(map) dy(map) sum(sedm(map,:),2)];
+
+      % Cell center coordinates
+      xc = obj.cm(1:ncols,1);
+      yc = obj.cm(1:ncols,2);
+      zc = obj.coordZ(obj.cellsByCol(:)+1)+sum(sedm,2)/2.;
+      obj.cm(dofs,:) = [xc(map) yc(map) zc(map)];
+
+      % check if is necessary to add a new layer in z
+      atTop = obj.cellsByCol == obj.ncells(3);
+      newlayer = any(and(atTop(:),map));
+      if newlayer
+        obj.dof(:,:,end+1) = zeros(obj.ncells(1:2));
+        tmpZ = obj.coordZ(end)+obj.dzInc;
+        obj.coordZ(end+1) = tmpZ;
+        obj.ncells(3) = obj.ncells(3)+1;
+      end
+
+      % update the dof for the newest cells.
+      idI = repmat((1:obj.ncells(1))',obj.ncells(2),1);
+      idJ = repelem((1:obj.ncells(2))',obj.ncells(1));
+      pos = sub2ind(obj.ncells,idI(map),idJ(map),obj.cellsByCol(map)+1);
+      obj.dof(pos) = dofs';
+      obj.ndofs = obj.ndofs + newcells;
+      obj.cellsByCol(map) = obj.cellsByCol(map)+1;
+
+      % Update face connectivity
+      % updateConnectivity(obj,dofs,map);
+    end
+
+    function state = initializeStatesNewCells(obj,state,dofs,newCellSed,sedAdd)
+      newcells = state.newcells;
+
+      % Extend state variables
+      state.pressure(end+1:end+newcells) = 0;
+      state.stress(end+1:end+newcells) = 0;
+      state.strain(end+1:end+newcells) = 0;
+      state.strainAcc(end+1:end+newcells) = 0;
+      state.cellDefm(end+1:end+newcells) = 0;
+      state.Sp(end+1:end+newcells) = 0;
+      state.e(end+1:end+newcells) = 0;
+      state.ep(end+1:end+newcells) = 0;
+      state.age(end+1:end+newcells) = state.time;
+      state.cb(end+1:end+newcells) = 0;
+
+      map = any(newCellSed,2);
+
+      % Newly deposited sediment
+      sedNew = newCellSed(map,:);
+
+      % Preserve the original top-cell accumulation convention
+      state.sedmAcc(map,:) = sedNew;
+
+      % Initial void properties
+      state.e(dofs) = obj.top_e(map);
+      state.ep(dofs) = obj.top_ep(map);
+
+      % Fraction of the current deposition assigned to new cells
+      frac = sum(sedNew,2)./sum(sedAdd(map,:),2);
+
+      % Initial effective stress and preconsolidation stress
+      StressNewCells = -frac.*obj.top_S(map);
+      state.stress(dofs) = StressNewCells;
+      state.Sp(dofs) = min(StressNewCells,-obj.top_Sp(map));
+    end
+
+    % % % % function updateConnectivity(obj,dofs,map)
+    % % % %   newcells = numel(dofs);
+    % % % % 
+    % % % %   nlaysByCol = obj.mdof.laysByCol(:);
+    % % % %   atTop = nlaysByCol == obj.mdof.ncells(3);
+    % % % % 
+    % % % %   newCellNotTop = ~atTop(map);
+    % % % % 
+    % % % %   neigh = getNeigh(obj.mdof,dofs);
+    % % % % 
+    % % % %   face = zeros(5*newcells,2);
+    % % % %   faceAxis = ones(5*newcells,1);
+    % % % %   faceAct = false(5*newcells,1);
+    % % % % 
+    % % % %   % Vertical connections
+    % % % %   face(1:newcells,:) = [neigh(:,5),dofs];
+    % % % %   faceAxis(1:newcells) = 3;
+    % % % %   faceAct(1:newcells) = true;
+    % % % % 
+    % % % %   % Horizontal connections
+    % % % %   for ref = 1:4
+    % % % %     tmp = neigh(:,ref);
+    % % % %     flag0 = (tmp < dofs) & (tmp ~= 0) & newCellNotTop;
+    % % % %     flag1 = tmp > dofs;
+    % % % %     flag = flag0 | flag1;
+    % % % %     nfaces = nnz(flag);
+    % % % % 
+    % % % %     interval = ref*newcells + (1:nfaces);
+    % % % % 
+    % % % %     face(interval,:) = [dofs(flag),tmp(flag)];
+    % % % %     faceAxis(interval) = ceil(ref/2);
+    % % % %     faceAct(interval) = true;
+    % % % %   end
+    % % % % 
+    % % % %   % Append new faces
+    % % % %   obj.facesNeigh = [ obj.facesNeigh; face(faceAct,:)];
+    % % % %   obj.facesNeighDir = [obj.facesNeighDir; faceAxis(faceAct) ];
+    % % % % end
+
+
+
 
   end
 
@@ -996,7 +1158,7 @@ classdef domainManagerSed < handle
             data.coordY = params.ycoord;
           end
 
-          % z coordanate          
+          % z coordanate
           if ~ismissing(params.zsize)
             gresLog().error("The grid parameters for the simulation is not well defined!");
           else

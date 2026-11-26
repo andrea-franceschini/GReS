@@ -40,7 +40,7 @@
 		maxrownrm="5.0"
 		eps_prol="1e-10"
 		updateCF="0"
-      patt_pow="2"
+        patt_pow="2"
 		patt_tau="1e-3"
 		nnzr_max="30"
 		itmax_emin="10"
