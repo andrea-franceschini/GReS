@@ -193,7 +193,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    b = obj.Ruiz.applyD(b);
 
    % Compute if necessary the tolerance for the linear solver
-   obj.convStrat.computeTol(b, isLinear, nonlinIter, obj.Ruiz, backupb);
+   obj.toleranceStrategy.computeTol(b, isLinear, nonlinIter, obj.Ruiz, backupb);
 
    startT = tic;
    obj.params.actualSolver = obj.SolverType;
@@ -201,7 +201,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
       case 'gmres'
 
          % Solve the system by GMRES
-         [x,flag,obj.params.lastRelres,iter1,obj.params.resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.convStrat.Tol,...
+         [x,flag,obj.params.lastRelres,iter1,obj.params.resvec] = gmres_RIGHT(Amat,b,obj.params.restart,obj.toleranceStrategy.Tol,...
                                                             obj.params.maxit/obj.params.restart,...
                                                             obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
          obj.params.iter = (iter1(1) - 1) * obj.params.restart + iter1(2);
@@ -210,7 +210,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
 
          % Solve the system by SQMR
          Afun = @(x) Amat*x;
-         [x,flag,obj.params.lastRelres,obj.params.iter,obj.params.resvec] = SQMR(Afun,b,obj.convStrat.Tol,obj.params.maxit,...
+         [x,flag,obj.params.lastRelres,obj.params.iter,obj.params.resvec] = SQMR(Afun,b,obj.toleranceStrategy.Tol,obj.params.maxit,...
                                                                obj.SAM.Apply_L,obj.SAM.Apply_R,obj.x0,obj.DEBUGflag);
    end
 
@@ -225,7 +225,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
-   fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup,obj.convStrat.unscaledTol,obj.convStrat.Tol);
+   fillStats(obj,Tend,time,symValue,T_setup,obj.SAM.tSetup,obj.toleranceStrategy.unscaledTol,obj.toleranceStrategy.Tol);
 
    % Did not converge, if the preconditioner was not computed for this matrix
    % recompute it and try again
@@ -260,11 +260,10 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % Reset the solver
    obj.SolverType = firstSolver;
 
-   % Check if the preconditioner needs to be recomputed
-   obj.convStrat.recomputePrec(obj,Tend);
-
-   % Check if the SAM needs to be (re)computed
-   obj.convStrat.recomputeSAM(obj,obj.SAM,Tend);
+   % Check if preconditioner or SAM need recomputation and record tolerance stats
+   obj.recycleStrategy.recomputePrec(obj, Tend);
+   obj.recycleStrategy.recomputeSAM(obj, obj.SAM, Tend);
+   obj.toleranceStrategy.recordStats(obj);
 
    % Restore the new starting vector
    obj.x0 = zeros(size(x));

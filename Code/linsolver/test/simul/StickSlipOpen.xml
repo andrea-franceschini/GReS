@@ -22,7 +22,7 @@ in a nonConforming simulation.
 
   <LinearSolver
                 useIterative = "1"
-                useEW = "1"
+                toleranceStrategy = "EisenstatWalker"
                 />
 
   </SimulationParameters>

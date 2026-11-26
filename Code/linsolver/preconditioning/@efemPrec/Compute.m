@@ -17,11 +17,8 @@ function [A] = Compute(obj,A,symMat,varargin)
    % Scale the test space if needed
    TV0 = obj.Ruiz.applyDinv(TV0,1);
 
-   % Make A22 slightly more diagonally dominant
-   A22 = obj.regularizeA22(A{2,2});
-
    % Compute factorization of the 22 block
-   obj.FSAI.Compute(A22,symMat(2,2),true);
+   obj.FSAI.Compute(A{2,2},symMat(2,2),true);
 
    % Compute reverse Schur complement of A11
    invC = @(x) obj.FSAI.ApplyLeft(x);

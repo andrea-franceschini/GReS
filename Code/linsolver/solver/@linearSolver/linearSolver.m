@@ -32,7 +32,8 @@ classdef linearSolver < handle
    % DEBUGflag       - boolean: enable debug logging and extra checks.
    % matlabMaxSize   - numeric: maximum matrix size for which MATLAB fallback is enforced.
    % nsyTol          - numeric: tolerance used to detect near-symmetric matrices.
-   % convStrat       - object: convergence strategy handler (convStrat class instance).
+   % toleranceStrategy - object: tolerance selection strategy (tolStrategy class instance).
+   % recycleStrategy   - object: preconditioner/SAM recycling strategy (precRecycle class instance).
    % ChronosFlag     - boolean: true if Chronos_Lab preconditioner support is available.
    % requestPrecComp - boolean: flag requesting that the preconditioner be (re)computed.
    % alpha           - numeric: scaling parameter used during recomputation of the preconditioner.
@@ -59,7 +60,7 @@ classdef linearSolver < handle
    % SAM             - object: SAM instance.
    % params          - struct: runtime parameters for the solver (tolerances, maxit, restart, etc.)
 
-   properties (SetAccess = ?convStrat, GetAccess = public)
+   properties (SetAccess = ?precRecycle, GetAccess = public)
 
       % Flag for debug
       DEBUGflag = false
@@ -68,8 +69,9 @@ classdef linearSolver < handle
       % Utils flags
       nsyTol = 100*eps
 
-      % Convergence strategy handler
-      convStrat
+      % Tolerance and preconditioner recycling strategy handlers
+      toleranceStrategy
+      recycleStrategy
 
       % Flag for Chronos existence
       ChronosFlag = false
@@ -178,8 +180,9 @@ classdef linearSolver < handle
             obj.params.iter = -1;
             obj.params.lastRelres = 1e10;
 
-            % Choose the relative tolerance strategy
-            obj.convStrat = chooseConvStrat(generalsolver);
+            % Choose the tolerance and preconditioner recycling strategies
+            obj.toleranceStrategy = chooseTolStrategy(generalsolver);
+            obj.recycleStrategy = choosePrecRecycle(generalsolver);
 
             % Get default values
             chronos_xml_default = fullfile(gres_root,'Code','linsolver','XML_setup','chronos_xml_setup.xml');

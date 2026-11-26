@@ -18,7 +18,7 @@ classdef SAM < preconditioner
 %   keeps implementation details private and presents a simple interface
 %   for preconditioner creation and application.
 
-   properties (GetAccess = public,SetAccess = ?convStrat)
+   properties (GetAccess = public,SetAccess = ?precRecycle)
       % Flag to use SAM
       useSAM
 
@@ -58,7 +58,7 @@ classdef SAM < preconditioner
    end
    properties (Access = public)
       CompLin = []
-      requestComp = false % starts at false and modified inside convStrat
+      requestComp = false % starts at false and modified inside precRecycle
       
    end
 

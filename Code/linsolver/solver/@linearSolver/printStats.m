@@ -10,7 +10,10 @@ function varargout = printStats(obj, varargin)
 % Options:
 %   'short'  - Skip per-solve row table and only print summary metrics
 %   'silent' - Suppress all console printing (useful when only extracting stats struct)
-%   'ew'     - Display Eisenstat-Walker adaptive tolerance statistics
+%   'tol'       - Display tolerance strategy statistics
+%   'recycle'   - Display preconditioner recycling statistics
+%   'ew'        - Display tolerance strategy statistics (alias for 'tol')
+%   'convStrat' - Display both tolerance and recycling strategy statistics
 
    % Allocate zero SAM timings if Semi-Algebraic Multigrid was not active
    if ~obj.useSAM
@@ -18,9 +21,10 @@ function varargout = printStats(obj, varargin)
    end
 
    % Parse display flags
-   isSilent  = any(strcmpi(varargin, 'silent')) || any(strcmpi(varargin, 'quiet'));
-   showShort = any(strcmpi(varargin, 'short'));
-   showEW    = any(strcmpi(varargin, 'ew'));
+   isSilent    = any(strcmpi(varargin, 'silent')) || any(strcmpi(varargin, 'quiet'));
+   showShort   = any(strcmpi(varargin, 'short'));
+   showTol     = any(strcmpi(varargin, 'tol')) || any(strcmpi(varargin, 'ew')) || any(strcmpi(varargin, 'convStrat'));
+   showRecycle = any(strcmpi(varargin, 'recycle')) || any(strcmpi(varargin, 'convStrat'));
 
    % Print detailed per-solve diagnostics table unless short or silent display is requested
    if ~showShort && ~isSilent
@@ -67,9 +71,12 @@ function varargout = printStats(obj, varargin)
       fprintf(sepLine);
    end
 
-   % Print Eisenstat-Walker statistics if requested
-   if showEW && ~isSilent && ~isempty(obj.convStrat)
-      obj.convStrat.printStats();
+   % Print tolerance and recycling strategy statistics if requested
+   if showTol && ~isSilent && ~isempty(obj.toleranceStrategy)
+      obj.toleranceStrategy.printStats();
+   end
+   if showRecycle && ~isSilent && ~isempty(obj.recycleStrategy)
+      obj.recycleStrategy.printStats();
    end
 
    % Print summary statistics

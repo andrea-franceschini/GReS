@@ -16,17 +16,12 @@ classdef efemPrec < preconditioner
       
       % Number of domains/interfaces
       nDom
-      nInt
 
       % Schur complement matrix on which AMG was computed on
       S
 
       % Nonsymmetric matrix tolerance
       nsyTol
-
-      % Regularization factors
-      zeroReg = 1e-12
-      diagReg = 1e-11
    end
 
    properties (GetAccess = public,SetAccess = private)
@@ -88,14 +83,6 @@ classdef efemPrec < preconditioner
          x = b;
       end
 
-      % Make A22 slightly more diagonally dominant
-      function A22 = regularizeA22(obj,A22)
-         diagShift = obj.diagReg * abs(diag(A22));
-         diagShift(diagShift == 0) = obj.zeroReg;
-
-         A22 = A22 + diag(diagShift);
-      end
-      
       function updateStateBlocks(obj, A)
          % Cheap update for reuse
 
@@ -103,12 +90,9 @@ classdef efemPrec < preconditioner
          A22 = A{2,2};
          symm = norm(A22-A22','f')/norm(A22,'f') < obj.nsyTol;
 
-         % Make A22 slightly more diagonally dominant
-         A22 = obj.regularizeA22(A22);
-
          % Compute the factorization of the 22 block
          obj.FSAI.Compute(A22,symm,true);
-      
+         
          % Compute reverse Schur complement of A11
          invC = @(x) obj.FSAI.ApplyLeft(x);
          B1 = A{1,2};
@@ -130,8 +114,6 @@ classdef efemPrec < preconditioner
          % Get the domains
          obj.problemsolver = problemsolver;
          obj.domain = problemsolver.domains;
-
-         obj.nInt = problemsolver.nInterf;
          obj.nDom = problemsolver.nDom;
 
          % Create the inner AMG preconditioner
