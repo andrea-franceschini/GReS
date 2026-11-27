@@ -1,22 +1,15 @@
-classdef EisenstatWalker < convStrat
-   % Eisenstat-Walker Choice 2 convergence strategy (Eisenstat & Walker, 1996)
-   
+classdef EisenstatWalker < tolStrategy
+   % Eisenstat-Walker Choice 2 forcing term strategy (Eisenstat & Walker, 1996).
+
    properties (SetAccess = private, GetAccess = public)
       % Eisenstat-Walker parameters (Choice 2)
-      gamma = 1.0
-      alpha = 0.5 * (1 + sqrt(5))
-      maxEtak = 0.05
+      gamma = 0.9
+      alpha = 2.0
+      maxEtak = 0.01
       minEtak
       oldEtak
-      eta0 = 0.05
+      eta0 = 0.005
       normFxold
-      
-      % Preconditioner recycling tracking
-      initNormSolveT = inf % Baseline normalized solve time (sec per decade)
-      initConvRate = inf   % Baseline Krylov rate (iters per decade)
-      degrad = 1.5
-      highPrec = 1e-4
-      highDeg = 2.0
    end
 
    properties (Access = private)
@@ -39,48 +32,32 @@ classdef EisenstatWalker < convStrat
 
    methods
       function obj = EisenstatWalker(generalsolver)
-         obj@convStrat(generalsolver);
-         obj.minEtak = generalsolver.simparams.relTol;
-         obj.linearTol = generalsolver.simparams.relTol;
+         % Set floor minEtak = linearTol and read optional initial forcing term eta0
+         obj@tolStrategy(generalsolver);
+         obj.minEtak = obj.linearTol;
 
-         % Parse optional EW parameters from linSolverParams if provided
-         if isfield(generalsolver.simparams, 'linSolverParams')
-            lsp = generalsolver.simparams.linSolverParams;
-            if isfield(lsp, 'eta0')
-               obj.eta0 = str2double(string(lsp.eta0));
-            end
+         lsp = generalsolver.simparams.linSolverParams;
+         if isfield(lsp, 'eta0')
+            obj.eta0 = str2double(string(lsp.eta0));
          end
       end
 
       function computeTol(obj, b, islinear, nonlinIter, Ruiz, backupb)
-         % Extract unscaled physical residual norm
-         physNorm = norm(cell2matrix(backupb));
-         
-         % Check if the solver is retrying to converge
+         % Compute Eisenstat-Walker Choice 2 forcing term eta_k for the current Newton step
+         physNorm = obj.getPhysNorm(backupb);
+         % Detect Krylov retry on the same Newton residual (same iter and RHS norm)
          isRetry = (nonlinIter == obj.lastNonlinIter && abs(physNorm - obj.lastPhysNorm) <= 1e-12 * max(1, physNorm));
 
-         % Compute target physical inexact Newton forcing term eta_k
          if islinear
+            % Solve to floor tolerance with Ruiz adjustment
             targetTol = obj.minEtak;
             rawEtak = obj.minEtak;
             ratio = NaN;
             status = 'Linear';
 
-            obj.unscaledTol = targetTol;
-            obj.Tol = targetTol;
-
-            % Adjust tolerance if Ruiz scaling is active
-            if Ruiz.scalingFlag
-               b_unscaled_norm = physNorm;
-               b_scaled_norm = norm(b);
-               if b_scaled_norm > 0 && b_unscaled_norm > 0
-                  minD = min(Ruiz.fullD);
-                  scaleFactor = (minD * b_unscaled_norm) / b_scaled_norm;
-                  obj.Tol = max(obj.Tol * min(1, scaleFactor), 100 * eps);
-               end
-            end
+            obj.applyLinearRuizTol(targetTol, b, Ruiz, backupb, physNorm);
          elseif isRetry
-            % Retry of current Newton step: preserve tolerance without altering history
+            % Preserve tolerance on retry without altering history
             targetTol = obj.unscaledTol;
             rawEtak = obj.lastRawEtak;
             ratio = obj.lastRatio;
@@ -90,12 +67,13 @@ classdef EisenstatWalker < convStrat
             obj.Tol = targetTol;
          else
             if nonlinIter ~= 1
+               % Compute Choice 2 forcing term eta_k = gamma * (||F_k|| / ||F_{k-1}||)^alpha
                ratio = physNorm / obj.normFxold;
                rawEtak = obj.gamma * (ratio)^obj.alpha;
                etak = rawEtak;
                status = 'Choice2';
 
-               % Choice 2 safeguard: prevent etak from dropping too rapidly
+               % Prevent etak from dropping too rapidly (Choice 2 safeguard)
                lowerB = obj.gamma * (obj.oldEtak^obj.alpha);
                if lowerB > 0.1 && lowerB > etak
                   etak = lowerB;
@@ -110,13 +88,12 @@ classdef EisenstatWalker < convStrat
                   status = 'Oversolve';
                end
 
-               % Cap at globalization upper bound
+               % Clamp forcing term within [minEtak, maxEtak]
                if etak > obj.maxEtak
                   etak = obj.maxEtak;
                   status = 'CapMax';
                end
 
-               % Lower bound from nonlinear solver stopping criteria
                if etak < obj.minEtak
                   targetTol = obj.minEtak;
                   status = 'FloorMin';
@@ -124,7 +101,7 @@ classdef EisenstatWalker < convStrat
                   targetTol = etak;
                end
 
-               % Update state history
+               % Persist step state for next Newton iteration and retry detection
                obj.oldEtak = targetTol;
                obj.normFxold = physNorm;
                obj.lastNonlinIter = nonlinIter;
@@ -132,7 +109,7 @@ classdef EisenstatWalker < convStrat
                obj.lastRawEtak = rawEtak;
                obj.lastRatio = ratio;
             else
-               % Initial iteration
+               % Start from initial forcing term eta0
                ratio = NaN;
                rawEtak = obj.eta0;
                targetTol = obj.eta0;
@@ -150,7 +127,7 @@ classdef EisenstatWalker < convStrat
             obj.Tol = targetTol;
          end
 
-         % Store step info to be committed to history in recomputePrec
+         % Cache step metadata until post-solve recordStats commits deltaT and relres
          obj.curStep.ratio = ratio;
          obj.curStep.rawEta = rawEtak;
          obj.curStep.eta = targetTol;
@@ -159,27 +136,12 @@ classdef EisenstatWalker < convStrat
          obj.curStep.status = status;
       end
 
-      function recomputePrec(obj, linsolver, Tend)
-         % Decades of residual reduction requested by Eisenstat-Walker
-         decades = max(0.5, -log10(obj.unscaledTol));
-
-         if linsolver.alpha <= 0.
-            linsolver.Delta_T(linsolver.nSolve) = 0;
-            linsolver.requestPrecComp = true;
-            obj.recordStats(linsolver, decades);
-            return
-         end
-
-         if linsolver.requestPrecComp
-            % --- Preconditioner was freshly computed ---
-            linsolver.params.firstSolveTAfterPrecComp = Tend;
-            linsolver.cumTSolveAfterPrec = 0;
-            linsolver.requestPrecComp = false;
-            linsolver.Delta_T(linsolver.nSolve) = 0;
-        
-            % Record normalized baseline metrics per decade
-            obj.initNormSolveT = Tend / decades;
-            obj.initConvRate = max(1, linsolver.params.iter) / decades;
+      function recordStats(obj, linsolver)
+         % Append post-solve Krylov metrics (relres, iters/decade, deltaT) for the last solve
+         relres = linsolver.params.lastRelres;
+         % Measure achieved residual reduction in decades for iters/decade metric
+         if isempty(relres) || ~isfinite(relres) || relres >= 1
+            D = 0;
          else
             % Normalized solve time and Krylov iteration rate for current solve
             currentNormSolveT = Tend / decades;
@@ -203,11 +165,27 @@ classdef EisenstatWalker < convStrat
             end
          end
 
-         % Record statistics for this linear solve
-         obj.recordStats(linsolver, decades);
+         ns = linsolver.nSolve;
+         idx = numel(obj.stats.time) + 1;
+         obj.stats.time(idx)       = linsolver.timeLin(ns);
+         obj.stats.nonlinIter(idx) = obj.curStep.nonlinIter;
+         obj.stats.ratio(idx)      = obj.curStep.ratio;
+         obj.stats.rawEta(idx)     = obj.curStep.rawEta;
+         obj.stats.eta(idx)        = obj.curStep.eta;
+         obj.stats.tolReq(idx)     = obj.curStep.tolReq;
+         obj.stats.tolReached(idx) = relres;
+         obj.stats.iter(idx)       = linsolver.params.iter;
+         if D > 0
+            obj.stats.itPerDec(idx) = max(1, linsolver.params.iter) / D;
+         else
+            obj.stats.itPerDec(idx) = NaN;
+         end
+         obj.stats.deltaT(idx)     = linsolver.Delta_T(ns);
+         obj.stats.status{idx}     = obj.curStep.status;
       end
 
       function printStats(obj)
+         % Print per-solve Eisenstat-Walker history table and forcing-term summary
          if isempty(obj.stats.time)
             return;
          end
@@ -225,6 +203,7 @@ classdef EisenstatWalker < convStrat
             'PhysTime', 'NL-It', 'Ratio', 'RawEta', 'Eta', 'TolReq', 'TolReach', 'LinIt', 'It/Dec', 'DeltaT', 'Status');
          fprintf(sepLine);
 
+         % Format rows, substituting dashes for NaN metrics (first, linear, or zero-reduction solves)
          n = length(obj.stats.time);
          for i = 1:n
             if isnan(obj.stats.ratio(i))
@@ -239,7 +218,13 @@ classdef EisenstatWalker < convStrat
                rawEtaStr = sprintf('%8.2e', obj.stats.rawEta(i));
             end
 
-            fprintf('| %.2e | %5d | %8s | %8s | %.2e | %.2e | %.2e | %5d | %6.1f | %.2e | %-9s |\n', ...
+            if isnan(obj.stats.itPerDec(i))
+               itPerDecStr = '   ---';
+            else
+               itPerDecStr = sprintf('%6.1f', obj.stats.itPerDec(i));
+            end
+
+            fprintf('| %.2e | %5d | %8s | %8s | %.2e | %.2e | %.2e | %5d | %6s | %.2e | %-9s |\n', ...
                obj.stats.time(i), ...
                obj.stats.nonlinIter(i), ...
                ratioStr, ...
@@ -248,7 +233,7 @@ classdef EisenstatWalker < convStrat
                obj.stats.tolReq(i), ...
                obj.stats.tolReached(i), ...
                obj.stats.iter(i), ...
-               obj.stats.itPerDec(i), ...
+               itPerDecStr, ...
                obj.stats.deltaT(i), ...
                obj.stats.status{i});
          end
@@ -256,8 +241,9 @@ classdef EisenstatWalker < convStrat
          fprintf('Eisenstat-Walker Summary:\n');
          fprintf('  Average Forcing Term (Eta)    = %e (min: %e, max: %e)\n', ...
             mean(obj.stats.eta), min(obj.stats.eta), max(obj.stats.eta));
-         fprintf('  Average Krylov Iters / Decade = %.1f\n', mean(obj.stats.itPerDec));
-         
+         fprintf('  Average Krylov Iters / Decade = %.1f\n', mean(obj.stats.itPerDec, 'omitnan'));
+
+         % Tally occurrences of each forcing-term status
          statusList = obj.stats.status;
          uniqueStatuses = unique(statusList);
          statusCountStr = '';
@@ -272,57 +258,6 @@ classdef EisenstatWalker < convStrat
          fprintf('  Forcing term status counts    : %s\n', statusCountStr);
          fprintf(sepLine);
          fprintf('\n');
-      end
-
-      function recomputeSAM(obj, linsolver, sam, Tend)
-         if linsolver.useSAM
-            tSetup = linsolver.precEffLin(end - linsolver.params.nSolveSinceLastPrecComp);
-            nsolve = linsolver.nSolve;
-
-            if ~sam.precJustComputed
-               if linsolver.Delta_T(nsolve) > sam.firstCompPercDegrad * tSetup && isempty(sam.N)
-                  sam.requestComp = true;
-                  return;
-               end
-
-               if ~isempty(sam.N)
-                  if sam.requestComp
-                     sam.firstSolveTAfterComp = Tend;
-                     sam.cumTSolveAfterComp = 0;
-                     sam.Delta_T(nsolve) = 0;
-                     sam.requestComp = false;
-                  else
-                     sam.cumTSolveAfterComp = sam.cumTSolveAfterComp + Tend;
-                     sam.Delta_T(nsolve) = sam.cumTSolveAfterComp - sam.nSolveSinceLastComp * sam.firstSolveTAfterComp;
-               
-                     tSetupSAM = sam.CompLin(end - sam.nSolveSinceLastComp);
-                     if sam.Delta_T(nsolve) > sam.alpha * tSetupSAM || sam.alpha < 0.
-                        sam.requestComp = true;
-                     end
-                  end
-               end
-            else
-               sam.precJustComputed = false;
-            end
-         end
-      end
-   end
-
-   methods (Access = private)
-      function recordStats(obj, linsolver, decades)
-         idx = linsolver.nSolve;
-
-         obj.stats.time(idx)       = linsolver.timeLin(idx);
-         obj.stats.nonlinIter(idx) = obj.curStep.nonlinIter;
-         obj.stats.ratio(idx)      = obj.curStep.ratio;
-         obj.stats.rawEta(idx)     = obj.curStep.rawEta;
-         obj.stats.eta(idx)        = obj.curStep.eta;
-         obj.stats.tolReq(idx)     = obj.curStep.tolReq;
-         obj.stats.tolReached(idx) = linsolver.params.lastRelres;
-         obj.stats.iter(idx)       = linsolver.params.iter;
-         obj.stats.itPerDec(idx)   = max(1, linsolver.params.iter) / decades;
-         obj.stats.deltaT(idx)     = linsolver.Delta_T(idx);
-         obj.stats.status{idx}     = obj.curStep.status;
       end
    end
 end

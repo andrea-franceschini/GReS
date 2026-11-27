@@ -12,11 +12,11 @@ function varargout = printStats(obj, varargin)
 %   stats = obj.printStats(...)
 %
 % Verbosity Levels (0 to 4):
-%   0 - 'silent', 'quiet'   : Suppress all output.
-%   1 - 'short', 'summary'  : Print aggregated summary metrics only.
-%   2 - 'default', 'standard': Standard overview table + summary metrics.
-%   3 - 'detailed'          : Detailed table (+ NL-It, PrecEff, TolScaled, DeltaT) + summary.
-%   4 - 'all', 'long'       : Comprehensive table (+ SAMTime, Symm), EW statistics table (if active).
+%   0 - 'silent'    : Suppress all output.
+%   1 - 'short'     : Print aggregated summary metrics only.
+%   2 - 'default'   : Standard overview table + summary metrics.
+%   3 - 'detailed'  : Detailed table (+ NL-It, PrecEff, TolScaled, DeltaT) + summary.
+%   4 - 'all'       : Comprehensive table (+ SAMTime, Symm), EW statistics table (if active).
 %
 % Additional Options:
 %   'ew' - Explicitly display Eisenstat-Walker statistics table regardless of level.
@@ -133,17 +133,17 @@ function verbosity = parseVerbosity(varargin)
          return;
       elseif ischar(arg) || isstring(arg)
          switch lower(char(arg))
-            case {'silent', 'quiet'}
+            case 'silent'
                verbosity = 0;
                return;
-            case {'short', 'summary'}
+            case 'short'
                verbosity = 1;
                return;
-            case {'default', 'standard'}
+            case 'default'
                verbosity = 2;
-            case {'detailed'}
+            case 'detailed'
                verbosity = 3;
-            case {'all', 'long'}
+            case 'all'
                verbosity = 4;
          end
       end

@@ -111,7 +111,9 @@ if includeSimulation
 
    % Extract simulation linear solver performance metrics via printStats
    simStats = solver.linsolver.printStats('short');
-   simPassed = (solver.t >= 8.0) && isa(solver.linsolver.Prec, 'RACP') && isa(solver.linsolver.convStrat, 'EisenstatWalker');
+   simPassed = (solver.t >= 8.0) && isa(solver.linsolver.Prec, 'RACP') && ...
+      isa(solver.linsolver.toleranceStrategy, 'EisenstatWalker') && ...
+      isa(solver.linsolver.recycleStrategy, 'chronosRecycle');
    allPassed = allPassed && simPassed;
    simReport = createSimulationReport(simStats, simPassed, 'RACP');
 

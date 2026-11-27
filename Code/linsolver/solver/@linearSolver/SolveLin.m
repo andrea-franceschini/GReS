@@ -177,7 +177,7 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    b = obj.Ruiz.applyD(b);
 
    % Compute if necessary the tolerance for the linear solver
-   obj.convStrat.computeTol(b, isLinear, nonlinIter, obj.Ruiz, backupb);
+   obj.toleranceStrategy.computeTol(b, isLinear, nonlinIter, obj.Ruiz, backupb);
 
    % Solve the linear system with Krylov solvers
    startT = tic;
@@ -193,7 +193,8 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    Tend = toc(startT);
 
    % Save statistics for profiling or info in general
-   fillStats(obj,Tend,time,symValue,T_setup,T_setup_eff,obj.SAM.tSetup,obj.convStrat.unscaledTol,obj.convStrat.Tol,nonlinIter,obj.params.lastRelres);
+   fillStats(obj,Tend,time,symValue,T_setup,T_setup_eff,obj.SAM.tSetup,obj.toleranceStrategy.unscaledTol,...
+             obj.toleranceStrategy.Tol,nonlinIter,obj.params.lastRelres);
 
    % Did not converge, if the preconditioner was not computed for this matrix
    % recompute it and try again
@@ -224,9 +225,8 @@ function [x,flag] = SolveLin(obj,A,b,time,nonlinIter)
    % Reset the solver
    obj.SolverType = firstSolver;
 
-   % Check if the preconditioner needs to be recomputed
-   obj.convStrat.recomputePrec(obj,Tend);
-
-   % Check if the SAM needs to be (re)computed
-   obj.convStrat.recomputeSAM(obj,obj.SAM,Tend);
+   % Check if preconditioner or SAM need recomputation and record tolerance stats
+   obj.recycleStrategy.recomputePrec(obj, Tend);
+   obj.recycleStrategy.recomputeSAM(obj, obj.SAM, Tend);
+   obj.toleranceStrategy.recordStats(obj);
 end

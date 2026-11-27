@@ -11,12 +11,6 @@ function [A] = Compute(obj,A,symMat,varargin)
    uBlk = obj.getVarBlocks("displacements");
    jBlk = obj.getVarBlocks("fractureJump");
 
-   % If RACP is requested, compute physical stiffness ratio on unscaled blocks
-   k_phys = [];
-   if strcmpi(obj.regularizationMethod, 'racp')
-      k_phys = obj.computePhysicalK(A{uBlk,uBlk}, A{uBlk,jBlk});
-   end
-
    % Compute or retrieve test space
    if nargin >= 4 && ~isempty(varargin{1})
       TV0 = varargin{1};
@@ -30,16 +24,8 @@ function [A] = Compute(obj,A,symMat,varargin)
    A = obj.Ruiz.Compute(A);
    TV0 = obj.Ruiz.applyDinv(TV0, uBlk);
 
-   if strcmpi(obj.regularizationMethod, 'racp')
-      % Physics-weighted RACP augmentation on Ruiz-scaled block
-      A22 = obj.augmentA22_RACP(A{uBlk,uBlk}, A{uBlk,jBlk}, A{jBlk,uBlk}, A{jBlk,jBlk}, k_phys);
-   else
-      % Baseline diagShift: Make A22 slightly more diagonally dominant
-      A22 = obj.regularizeA22(A{jBlk,jBlk});
-   end
-
    % Compute factorization of the jump block
-   obj.FSAI.Compute(A22, symMat(jBlk,jBlk), true);
+   obj.FSAI.Compute(A{2,2}, symMat(jBlk,jBlk), true);
    invC = @(x) obj.FSAI.ApplyLeft(x);
 
    % Compute reverse Schur complement of mechanics block

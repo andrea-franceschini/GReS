@@ -16,28 +16,12 @@ classdef efemPrec < preconditioner
       
       % Number of domains/interfaces
       nDom
-      nInt
 
       % Schur complement matrix on which AMG was computed on
       S
 
       % Nonsymmetric matrix tolerance
       nsyTol
-
-      % Linear solver tolerance to compute the correct regularization
-      linsolverTol
-
-      % FSAI params
-      nstep = 15
-   end
-
-   properties (Access = public)
-      % Regularization method for A22: 'diagShift' (default) or 'racp'
-      % Note: Change flag directly here on file (no XML user change allowed)
-      regularizationMethod = 'diagShift'
-
-      % RACP augmentation parameter (default: 1e-3)
-      omegaRACP = 1e-3
    end
 
    properties (GetAccess = public,SetAccess = private)
@@ -99,107 +83,23 @@ classdef efemPrec < preconditioner
          x = b;
       end
 
-      % Make A22 slightly more diagonally dominant
-      function A22 = regularizeA22(obj,A22)
-         d = abs(diag(A22));
-         maxD = max(d);
-         if maxD == 0, maxD = 1; end
-         tol = obj.linsolverTol;
-         
-         diagShift = (2.2e-15 / (tol * maxD)) * d;
-         A22 = A22 + diag(diagShift);
-      end
-
-      % Compute physical stiffness scaling k_raw on unscaled blocks
-      function k_raw = computePhysicalK(~, A11, A12)
-         nw = size(A12, 2);
-         d11 = full(diag(A11));
-         mean_d11 = mean(d11);
-         if mean_d11 == 0, mean_d11 = 1.0; end
-         k_raw = zeros(nw, 1);
-         for j = 1:nw
-            v = A12(:, j);
-            supp = find(v);
-            if ~isempty(supp)
-               m_a = max(d11(supp));
-               if m_a <= 0, m_a = mean_d11; end
-               m_b = full(v(supp)' * v(supp));
-               k_raw(j) = m_b / m_a;
-            else
-               k_raw(j) = 1.0;
-            end
-         end
-      end
-
-      % Physics-based RACP augmentation for A22 block computed directly on Ruiz-scaled blocks
-      function A22 = augmentA22_RACP(obj, A11, A12, A21, A22, k_phys)
-         if nargin < 6 || isempty(k_phys)
-            % If not provided, compute from Ruiz blocks or unscaled
-            d11 = full(diag(A11));
-            mean_d11 = mean(d11);
-            if mean_d11 == 0, mean_d11 = 1.0; end
-            nw = size(A22, 1);
-            k_phys = zeros(nw, 1);
-            for j = 1:nw
-               v = A12(:, j);
-               supp = find(v);
-               if ~isempty(supp)
-                  m_a = max(d11(supp));
-                  if m_a <= 0, m_a = mean_d11; end
-                  m_b = full(v(supp)' * v(supp));
-                  k_phys(j) = m_b / m_a;
-               else
-                  k_phys(j) = 1.0;
-               end
-            end
-         end
-
-         % Compute relative coupling normalized to [0, 1]
-         maxK = max(k_phys);
-         if maxK <= 0, maxK = 1.0; end
-         k_rel = k_phys / maxK;
-
-         % Base diagShift magnitude in Ruiz space
-         d = abs(diag(A22));
-         maxD = max(d);
-         if maxD == 0, maxD = 1; end
-         tol = obj.linsolverTol;
-
-         % RACP-weighted shift: preserves exact stable numerical scale of diagShift
-         % while scaling the shift according to local rock-fracture coupling energy
-         diagShift = (2.2e-15 / (tol * maxD)) * (k_rel .* d);
-         A22 = A22 + diag(sparse(diagShift));
-      end
-
-      % Dispatches between diagShift and racp based on regularizationMethod
-      function A22 = regularizeOrAugmentA22(obj, A11, A12, A21, A22)
-         switch lower(obj.regularizationMethod)
-            case 'racp'
-               A22 = obj.augmentA22_RACP(A11, A12, A21, A22);
-            case 'diagshift'
-               A22 = obj.regularizeA22(A22);
-            otherwise
-               error('Unknown regularizationMethod: %s. Use ''diagShift'' or ''racp''.', obj.regularizationMethod);
-         end
-      end
-      
       function updateStateBlocks(obj, A)
          % Cheap update for reuse
 
-         % Check symmetry
-         A22 = A{2,2};
-         symm = norm(A22-A22','f')/norm(A22,'f') < obj.nsyTol;
+         uBlk = obj.getVarBlocks("displacements");
+         jBlk = obj.getVarBlocks("fractureJump");
 
-         % Make A22 slightly more diagonally dominant or augment with RACP
-         A22 = obj.regularizeOrAugmentA22(A{1,1}, A{1,2}, A{2,1}, A{2,2});
+         % Check symmetry
+         A22 = A{jBlk,jBlk};
+         symm = norm(A22-A22','f')/norm(A22,'f') < obj.nsyTol;
 
          % Compute the factorization of the 22 block
          obj.FSAI.Compute(A22,symm,true);
-      
+         
          % Compute reverse Schur complement of A11
          invC = @(x) obj.FSAI.ApplyLeft(x);
-         B1 = A{1,2};
-         B2 = A{2,1};
+         B1 = A{uBlk,jBlk};
+         B2 = A{jBlk,uBlk};
       
          % Update function handle while keeping the frozen AMG hierarchy S
          obj.Apply_L = @(x) obj.ApplyLeft(x, B1, B2, invC);
@@ -217,8 +117,6 @@ classdef efemPrec < preconditioner
          % Get the domains
          obj.problemsolver = problemsolver;
          obj.domain = problemsolver.domains;
-
-         obj.nInt = problemsolver.nInterf;
          obj.nDom = problemsolver.nDom;
 
          % Create the inner AMG preconditioner

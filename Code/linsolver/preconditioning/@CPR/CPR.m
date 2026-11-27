@@ -115,12 +115,10 @@ classdef CPR < preconditioner
          obj.nDom = problemsolver.nDom;
          obj.nInt = problemsolver.nInterf;
 
-         % Check if user specified parameters in simparams
-         if isfield(problemsolver.simparams, 'linSolverParams')
-            lsp = problemsolver.simparams.linSolverParams;
-            if isfield(lsp, 'cprType')
-               obj.cprType = lsp.cprType;
-            end
+         % Read optional cprType override from linear solver params
+         lsp = problemsolver.simparams.linSolverParams;
+         if isfield(lsp, 'cprType')
+            obj.cprType = lsp.cprType;
          end
 
          % Create inner aAMG instance for pressure
