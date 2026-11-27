@@ -139,32 +139,11 @@ classdef EisenstatWalker < tolStrategy
       function recordStats(obj, linsolver)
          % Append post-solve Krylov metrics (relres, iters/decade, deltaT) for the last solve
          relres = linsolver.params.lastRelres;
+         
          % Measure achieved residual reduction in decades for iters/decade metric
-         if isempty(relres) || ~isfinite(relres) || relres >= 1
-            D = 0;
-         else
-            % Normalized solve time and Krylov iteration rate for current solve
-            currentNormSolveT = Tend / decades;
-            currentConvRate = max(1, linsolver.params.iter) / decades;
-            
-            % Normalized extra time spent due to preconditioner degradation
-            normDeltaT = max(0, currentNormSolveT - obj.initNormSolveT) * decades;
-            linsolver.cumTSolveAfterPrec = linsolver.cumTSolveAfterPrec + normDeltaT;
-            linsolver.Delta_T(linsolver.nSolve) = linsolver.cumTSolveAfterPrec;
-           
-            tSetup = linsolver.precEffLin(end - linsolver.params.nSolveSinceLastPrecComp);
-            convDegradation = currentConvRate / max(1e-12, obj.initConvRate);
-           
-            % Evaluate recycling conditions
-            timeExceeded = (linsolver.Delta_T(linsolver.nSolve) > linsolver.alpha * tSetup);
-            rateDegraded = (convDegradation > obj.degrad);
-            tightEtaStall = (obj.unscaledTol < obj.highPrec) && (convDegradation > obj.highDeg);
-           
-            if (timeExceeded && rateDegraded) || tightEtaStall
-                linsolver.requestPrecComp = true;
-            end
-         end
+         D = -log10(max(relres, 100 * eps));
 
+         % Actual recording of the statistics
          ns = linsolver.nSolve;
          idx = numel(obj.stats.time) + 1;
          obj.stats.time(idx)       = linsolver.timeLin(ns);
@@ -175,11 +154,7 @@ classdef EisenstatWalker < tolStrategy
          obj.stats.tolReq(idx)     = obj.curStep.tolReq;
          obj.stats.tolReached(idx) = relres;
          obj.stats.iter(idx)       = linsolver.params.iter;
-         if D > 0
-            obj.stats.itPerDec(idx) = max(1, linsolver.params.iter) / D;
-         else
-            obj.stats.itPerDec(idx) = NaN;
-         end
+         obj.stats.itPerDec(idx) = max(1, linsolver.params.iter) / D;
          obj.stats.deltaT(idx)     = linsolver.Delta_T(ns);
          obj.stats.status{idx}     = obj.curStep.status;
       end

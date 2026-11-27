@@ -129,7 +129,6 @@ classdef efemPrec < preconditioner
          obj.maxThreads = obj.innerPrec.maxThreads;
          obj.params = obj.innerPrec.params;
          obj.nsyTol = nsyTol;
-         obj.linsolverTol = problemsolver.simparams.relTol;
       end
 
 
