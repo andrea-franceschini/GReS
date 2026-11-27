@@ -3,12 +3,12 @@ classdef EisenstatWalker < tolStrategy
 
    properties (SetAccess = private, GetAccess = public)
       % Eisenstat-Walker parameters (Choice 2)
-      gamma = 1.0
-      alpha = 0.5 * (1 + sqrt(5))
-      maxEtak = 0.05
+      gamma = 0.9
+      alpha = 2.0
+      maxEtak = 0.01
       minEtak
       oldEtak
-      eta0 = 0.05
+      eta0 = 0.005
       normFxold
    end
 
@@ -36,11 +36,9 @@ classdef EisenstatWalker < tolStrategy
          obj@tolStrategy(generalsolver);
          obj.minEtak = obj.linearTol;
 
-         if isfield(generalsolver.simparams, 'linSolverParams')
-            lsp = generalsolver.simparams.linSolverParams;
-            if isfield(lsp, 'eta0')
-               obj.eta0 = str2double(string(lsp.eta0));
-            end
+         lsp = generalsolver.simparams.linSolverParams;
+         if isfield(lsp, 'eta0')
+            obj.eta0 = str2double(string(lsp.eta0));
          end
       end
 
@@ -77,7 +75,7 @@ classdef EisenstatWalker < tolStrategy
 
                % Prevent etak from dropping too rapidly (Choice 2 safeguard)
                lowerB = obj.gamma * (obj.oldEtak^obj.alpha);
-               if lowerB > etak
+               if lowerB > 0.1 && lowerB > etak
                   etak = lowerB;
                   status = 'Safeguard';
                end
@@ -148,8 +146,9 @@ classdef EisenstatWalker < tolStrategy
             D = -log10(max(relres, 100 * eps));
          end
 
-         idx = linsolver.nSolve;
-         obj.stats.time(idx)       = linsolver.timeLin(idx);
+         ns = linsolver.nSolve;
+         idx = numel(obj.stats.time) + 1;
+         obj.stats.time(idx)       = linsolver.timeLin(ns);
          obj.stats.nonlinIter(idx) = obj.curStep.nonlinIter;
          obj.stats.ratio(idx)      = obj.curStep.ratio;
          obj.stats.rawEta(idx)     = obj.curStep.rawEta;
@@ -162,7 +161,7 @@ classdef EisenstatWalker < tolStrategy
          else
             obj.stats.itPerDec(idx) = NaN;
          end
-         obj.stats.deltaT(idx)     = linsolver.Delta_T(idx);
+         obj.stats.deltaT(idx)     = linsolver.Delta_T(ns);
          obj.stats.status{idx}     = obj.curStep.status;
       end
 

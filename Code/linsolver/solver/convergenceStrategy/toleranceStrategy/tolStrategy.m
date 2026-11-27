@@ -15,7 +15,7 @@ classdef (Abstract) tolStrategy < handle
       linearTol
 
       % Safety factor for oversolving protection
-      alphaSafe = 0
+      alphaSafe = 0.01
    end
 
    methods
