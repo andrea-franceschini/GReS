@@ -81,7 +81,7 @@ classdef SinglePhaseFlowFEM < SinglePhaseFlow
 
     function computeMat(obj,dt)
       % recompute elementary matrices only if the model is non-linear
-      if ~isLinear(obj) || isempty(getJacobian(obj))
+      if ~isLinear(obj) || isempty(obj.H)
         computeMatFEM(obj);
       end
     end

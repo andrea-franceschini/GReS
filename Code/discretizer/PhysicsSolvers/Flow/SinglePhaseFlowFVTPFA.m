@@ -45,7 +45,7 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
 
     function computeMat(obj,dt)
       % recompute elementary matrices only if the model is non-linear
-      if ~isLinear(obj) || isempty(getJacobian(obj))
+      if ~isLinear(obj) || isempty(obj.H)
         mu = obj.domain.materials.getFluid().getDynViscosity();
         computeStiffMat(obj,1/mu);
         computeCapMat(obj);
@@ -285,12 +285,11 @@ classdef SinglePhaseFlowFVTPFA < SinglePhaseFlow
       if size(bcVals,2) == 2
         assert(size(bcVals,2)==2,'Invalid matrix size for BC values');
         nDoF = obj.domain.dofm.getNumbDoF(obj.fieldId);
-        bcDofsJ = nDoF*(bcDofs-1) + bcDofs;
-        J = getJacobian(obj);
-        obj.domain.J{obj.fieldId,obj.fieldId}(bcDofsJ) = ...
-          J(bcDofsJ) + bcVals(:,1);
-        obj.domain.rhs{obj.fieldId}(bcDofs) = ...
-          obj.domain.rhs{obj.fieldId}(bcDofs) + bcVals(:,2);
+        model = obj.domain.model;
+        model.addJacobian(obj.domain, ...
+          sparse(bcDofs,bcDofs,bcVals(:,1),nDoF,nDoF),obj.fieldId);
+        dofs = model.getGlobalDoFs(obj.domain,obj.getField());
+        model.addResidualAtDoFs(dofs(bcDofs),bcVals(:,2));
       else
         applyDirBC@PhysicsSolver(obj,bcId,bcDofs);
       end

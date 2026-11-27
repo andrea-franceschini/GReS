@@ -3,7 +3,7 @@ classdef (Abstract) Constraint < handle
 
   properties
     name
-    coupledVariables
+    coupledFields
   end
 
   properties (GetAccess=public, SetAccess=protected)

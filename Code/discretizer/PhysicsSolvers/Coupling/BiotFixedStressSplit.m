@@ -35,19 +35,19 @@ classdef BiotFixedStressSplit < BiotFullyCoupled
         % compute coupling matrix obj.Q
         computeMat(obj);
 
-        % get Jacobian and rhs from single physics solvers
+        model = obj.domain.model;
+      % get Jacobian and rhs from single physics solvers
         if strcmpi(var,"pressure")
           obj.flowSolver.assembleSystem(dt);
           computeRelaxationMatrix(obj);
           rhsFlow = computeRhsFlow(obj,dt);
           % add the relaxation matrix 
-          obj.domain.J{obj.fldFlow,obj.fldFlow} = ...
-            obj.domain.J{obj.fldFlow,obj.fldFlow} + obj.R;
-          obj.domain.rhs{obj.fldFlow} = obj.domain.rhs{obj.fldFlow} + rhsFlow;
+          model.addJacobian(obj.domain,obj.R,obj.fldFlow);
+          model.addResidual(obj.domain,rhsFlow,obj.fldFlow);
         elseif strcmpi(var,"displacements")
           obj.mechSolver.assembleSystem(dt);
           rhsMech = computeRhsMech(obj);
-          obj.domain.rhs{obj.fldMech} = obj.domain.rhs{obj.fldMech} + rhsMech;
+          model.addResidual(obj.domain,rhsMech,obj.fldMech);
         else
           error("Unknown variable for BiotFixedStressSplit solver." + ...
             "\nAvailable variables are: '%s' and '%s'",...

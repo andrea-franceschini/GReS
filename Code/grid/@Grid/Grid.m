@@ -489,6 +489,8 @@ classdef Grid < handle
 
 
     function setGrid(obj,grid)
+
+      % create a copy of an incoming grid object
       obj.coordinates = grid.coordinates;
       obj.nNodes = grid.nNodes;
       obj.nDim = grid.nDim;

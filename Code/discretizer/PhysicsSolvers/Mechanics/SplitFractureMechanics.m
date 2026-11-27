@@ -76,8 +76,9 @@ classdef SplitFractureMechanics < PhysicsSolver
       field = obj.getField();
       active = obj.domain.dofm.getActiveEntities(obj.fieldId,true);
       u = obj.getState(field);
-      obj.domain.J{obj.fieldId,obj.fieldId} = obj.stiffness;
-      obj.domain.rhs{obj.fieldId} = obj.stiffness*u(active) - obj.force;
+      model = obj.domain.model;
+      model.setJacobian(obj.domain,obj.stiffness,obj.fieldId);
+      model.setResidual(obj.domain,obj.stiffness*u(active) - obj.force,obj.fieldId);
     end
 
     function updateState(obj,solution)

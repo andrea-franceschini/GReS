@@ -13,7 +13,7 @@ classdef PreStressMechanics < Poromechanics
   end
 
   properties (Access = private)
-    fieldId = 1
+    fieldId
   end
 
   methods (Access = public)
@@ -28,7 +28,8 @@ classdef PreStressMechanics < Poromechanics
 
     function registerSolver(obj,varargin)
 
-      registerSolver@Poromechanics(obj,varargin)
+      registerSolver@Poromechanics(obj,varargin{:});
+      obj.fieldId = obj.domain.dofm.getVariableId(obj.getField());
 
       setGravity(obj,varargin{:})
 
@@ -42,8 +43,7 @@ classdef PreStressMechanics < Poromechanics
 
       if ~isempty(obj.specWeight)
         % gravitational forces
-        obj.domain.rhs{obj.fieldId} = ...
-          obj.domain.rhs{obj.fieldId}  + computeGravityRhs(obj);
+        obj.domain.model.addResidual(obj.domain,computeGravityRhs(obj),obj.fieldId);
       end
 
     end
@@ -65,7 +65,7 @@ classdef PreStressMechanics < Poromechanics
       for vtkId = cells.vtkTypes
 
         subCellsLoc = obj.grid.getCellsByVTKId(vtkId,subCells);
-        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+        elem = FiniteElementType.create(vtkId,obj.grid,'gaussOrder',obj.gaussOrder);
         N = elem.getBasisFinGPoints();
 
         % get node topology for given vtk type
@@ -107,16 +107,18 @@ classdef PreStressMechanics < Poromechanics
 
       % default parameters for the simulation
       parm = struct('Start',0.0,'End',1.0,'DtInit',1.0,'DtMax',1.0,'DtMin',0.01);
-      default = struct('simulationparameters',SimulationParameters(parm),...
-        'domains',obj.domain);
-
+      default = struct('simulationparameters',SimulationParameters(parm));
       params = readInput(default,varargin{:});
+      model = obj.domain.model;
+      if isempty(model)
+        model = Model(obj.domain);
+      end
+      params.model = model;
 
-      solv = NonLinearImplicit(params);
-
-      assert(solv.nDom == 1 && solv.nInterf == 0, ...
+      assert(isscalar(model.domains) && isempty(model.interfaces), ...
         "getInitialStress can be used only as a stand-alone PhysicsSolver within a single domain");
 
+      solv = NonLinearImplicit(params);
       solv.simulationLoop();
 
       initialStress = getState(obj,"stress");

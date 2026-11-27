@@ -302,16 +302,13 @@ classdef EmbeddedFractureMechanics < PhysicsSolver
       setState(obj,s);
 
       % populate rhs and Jacobian
-      obj.domain.J{obj.fldMech,obj.fldMech} = ...
-        asbKuu.sparseAssembly;
-      obj.domain.J{obj.fldMech,obj.fldFrac} = ...
-        asbKuw.sparseAssembly;
-      obj.domain.J{obj.fldFrac,obj.fldMech} = ...
-        asbKwu.sparseAssembly;
-      obj.domain.J{obj.fldFrac,obj.fldFrac} = ...
-        asbKww.sparseAssembly;
-      obj.domain.rhs{obj.fldMech} = rhsU;
-      obj.domain.rhs{obj.fldFrac} = rhsW;
+      model = obj.domain.model;
+      model.setJacobian(obj.domain,asbKuu.sparseAssembly(),obj.fldMech);
+      model.setJacobian(obj.domain,asbKuw.sparseAssembly(),obj.fldMech,obj.fldFrac);
+      model.setJacobian(obj.domain,asbKwu.sparseAssembly(),obj.fldFrac,obj.fldMech);
+      model.setJacobian(obj.domain,asbKww.sparseAssembly(),obj.fldFrac);
+      model.setResidual(obj.domain,rhsU,obj.fldMech);
+      model.setResidual(obj.domain,rhsW,obj.fldFrac);
     end
 
     function initState(obj)

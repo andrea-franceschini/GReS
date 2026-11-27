@@ -43,7 +43,8 @@ classdef MultiphasePoromechanics < BiotFullyCoupled
       computeMat(obj);
 
       % assign coupling blocks to jacobian
-      obj.domain.J{obj.fldMech,obj.fldP} = -obj.Q;
+      model = obj.domain.model;
+      model.setJacobian(obj.domain,-obj.Q,obj.fldMech,obj.fldP);
 
       dofm = obj.domain.dofm;
       flowEnts = dofm.getFieldCells("pressure");
@@ -78,17 +79,12 @@ classdef MultiphasePoromechanics < BiotFullyCoupled
                dofm.getVariableId("pressure"); ...
                dofm.getVariableId("saturation")];
 
-      nDoF = [dofm.getNumbDoF("displacements"); ...
-              dofm.getNumbDoF("pressure"); ...
-              dofm.getNumbDoF("saturation")]; 
-
-
-      obj.domain.rhs{eqIdx(1)} = obj.domain.rhs{obj.fldMech} + rhsMech;
-      obj.domain.rhs{eqIdx(2)} = wet.val;
-      obj.domain.rhs{eqIdx(3)} = nwet.val;
-      obj.domain.J{eqIdx(1),eqIdx(3)} = sparse(nDoF(1),nDoF(3)); 
-      obj.domain.J(eqIdx(2),eqIdx) = wet.jac;
-      obj.domain.J(eqIdx(3),eqIdx) = nwet.jac;
+      model.addResidual(obj.domain,rhsMech,eqIdx(1));
+      model.setResidual(obj.domain,wet.val,eqIdx(2));
+      model.setResidual(obj.domain,nwet.val,eqIdx(3));
+      model.setJacobian(obj.domain,[],eqIdx(1),eqIdx(3));
+      model.setJacobian(obj.domain,cell2mat(wet.jac),eqIdx(2),eqIdx);
+      model.setJacobian(obj.domain,cell2mat(nwet.jac),eqIdx(3),eqIdx);
 
     end
 

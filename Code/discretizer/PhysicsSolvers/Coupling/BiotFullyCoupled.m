@@ -75,13 +75,14 @@ classdef BiotFullyCoupled < PhysicsSolver
       computeMat(obj);
 
       % assign coupling blocks to jacobian
-      obj.domain.J{obj.fldMech,obj.fldFlow} = -obj.Q;
-      obj.domain.J{obj.fldFlow,obj.fldMech} = obj.Q';
+      model = obj.domain.model;
+      model.setJacobian(obj.domain,-obj.Q,obj.fldMech,obj.fldFlow);
+      model.setJacobian(obj.domain,obj.Q',obj.fldFlow,obj.fldMech);
 
       % add rhs from coupling contribution
       [rhsMech,rhsFlow] = computeRhs(obj);
-      obj.domain.rhs{obj.fldMech} = obj.domain.rhs{obj.fldMech} + rhsMech;
-      obj.domain.rhs{obj.fldFlow} = obj.domain.rhs{obj.fldFlow} + rhsFlow;
+      model.addResidual(obj.domain,rhsMech,obj.fldMech);
+      model.addResidual(obj.domain,rhsFlow,obj.fldFlow);
 
     end
 
@@ -283,13 +284,8 @@ classdef BiotFullyCoupled < PhysicsSolver
       entsPoro = obj.domain.dofm.getActiveEntities(obj.fldMech,1);
       entsFlow = obj.domain.dofm.getActiveEntities(obj.fldFlow,1);
 
-      % get coupling blocks
-      Qmech = getJacobian(obj,obj.fldMech,obj.fldFlow);
-      Qflow = getJacobian(obj,obj.fldFlow,obj.fldMech);
-
-      % compute rhs
-      rhsMech = Qmech * dp(entsFlow);
-      rhsFlow = Qflow * (uCurr(entsPoro) - uOld(entsPoro));
+      rhsMech = -obj.Q * dp(entsFlow);
+      rhsFlow = obj.Q' * (uCurr(entsPoro) - uOld(entsPoro));
     end
 
     function initialize(obj)
