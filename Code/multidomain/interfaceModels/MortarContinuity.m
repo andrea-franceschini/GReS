@@ -114,8 +114,8 @@ classdef MortarContinuity < Constraint
           obj.stabilizationMat = [];
         end
 
-        model.addResidualAtDoFs(model.getGlobalDoFs(master,field),resMaster);
-        model.addResidualAtDoFs(model.getGlobalDoFs(slave,field),resSlave);
+        model.addResidual(master,resMaster,field);
+        model.addResidual(slave,resSlave,field);
         model.setResidual(interf,resMult,multField);
       end
 

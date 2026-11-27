@@ -138,7 +138,12 @@ classdef Model < handle
     function setJacobian(obj,owner,J,varargin)
 
       [rows,cols] = obj.getJacobianFields(owner,varargin{:});
-      obj.J(rows,cols) = mat2cell(sparse(J),obj.fieldSizes(rows),obj.fieldSizes(cols));
+      rowSizes = obj.fieldSizes(rows);
+      colSizes = obj.fieldSizes(cols);
+      if isempty(J)
+        J = sparse(sum(rowSizes),sum(colSizes));
+      end
+      obj.J(rows,cols) = mat2cell(sparse(J),rowSizes,colSizes);
 
     end
 
@@ -168,6 +173,15 @@ classdef Model < handle
 
       rows = obj.getFieldIds(owner,field);
       obj.res(rows) = mat2cell(sparse(res(:)),obj.fieldSizes(rows),1);
+
+    end
+
+
+    function addResidual(obj,owner,resAdd,field)
+
+      rows = obj.getFieldIds(owner,field);
+      assert(isscalar(rows))
+      obj.res{rows} = obj.res{rows} + resAdd;
 
     end
 

@@ -37,11 +37,15 @@ classdef Interface < handle
         return
       end
 
+      % every interface can have one single quadrature object
+      % it is not possible to use different quadrature rules on different
+      % constraints
+
       assert(obj.dofm.getNumberOfVariables() == 0,...
         'Set up mortar quadrature before registering interface fields');
       options = readInput(struct('type',"SegmentBasedQuadrature"),varargin{:});
-      quadrature = feval(options.type,obj.grid,multType,options);
-      quadrature.processMortarTriplets();
+      quad = feval(options.type,obj.grid,multType,options);
+      quad.processMortarTriplets();
 
       % Pruning can replace meshes with subgrids that have no edge topology.
       grids = {obj.grid,obj.grid.traceGrids(1),obj.grid.traceGrids(2)};
@@ -52,7 +56,7 @@ classdef Interface < handle
         end
       end
 
-      obj.quadrature = quadrature;
+      obj.quadrature = quad;
 
     end
 

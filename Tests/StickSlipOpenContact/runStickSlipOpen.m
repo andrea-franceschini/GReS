@@ -52,7 +52,7 @@ domains = [domainL; domainR];
 
 % build the mortar interface with xml input
 interface = Interface([domainR,domainL]);
-interface.addConstraint("MortarContinuity",'stabilizationScale',1.0)
+interface.addConstraint("SolidMechanicsContact",'stabilizationScale',1.0)
 
 
 %apply initial compression to the model

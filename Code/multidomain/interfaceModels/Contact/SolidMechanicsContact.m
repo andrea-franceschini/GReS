@@ -1,4 +1,4 @@
-classdef SolidMechanicsContact < MeshTying
+classdef SolidMechanicsContact < MortarContinuity
 
   % Mortar contact with piecewise constant traction multipliers.
   % isSmooth = true: fixed active set in Newton, updated in an outer loop.
@@ -18,29 +18,31 @@ classdef SolidMechanicsContact < MeshTying
 
   methods
 
-    function obj = SolidMechanicsContact(id,domains,inputStruct)
+    function obj = SolidMechanicsContact(interface)
 
-      obj@MeshTying(id,domains,inputStruct);
+      obj@MortarContinuity(interface);
 
-      if obj.multiplierLocation ~= entityField.cell
-        error("Interface Solver %s is not implemented for multipliers" + ...
+    end
+
+    function registerConstraint(obj,varargin)
+
+      registerConstraint@MortarContinuity(varargin{:});
+
+      if ~strcmp(obj.multiplierType,'P0')
+        error("Constraint %s is implemented only for P0 multipliers" + ...
           "located at %s. The only available entityField is %s",...
           class(obj),obj.multiplierLocation,entityField.cell)
       end
 
-    end
 
-    function registerInterface(obj,varargin)
 
       input = varargin{1};
 
-      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0,...
-        'stabilizationScale',1.0,'augmentationParameter',1.0,...
+      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0,'augmentationParameter',1.0,...
         'augmentationNormal',missing,'augmentationTangential',missing,'isSmooth',true),input);
 
       params = readInput(struct('cohesion',[],'frictionAngle',[]),input.Coulomb);
 
-      obj.stabilizationScale = input.stabilizationScale;
 
       if ~ismissing(input.augmentationNormal)
         obj.contactAugmentation(1) = input.augmentationNormal;
@@ -61,26 +63,30 @@ classdef SolidMechanicsContact < MeshTying
       obj.cohesion = params.cohesion;
       obj.phi = params.frictionAngle;
 
-      nDofsInterface = getNumbDoF(obj);
+      dofm = obj.interface.dofm;
+
+      fld = obj.getField;
+
+      dofm.registerVariable(fld,entityField.cell,3,obj.grid.cells.num);
+      nTracDof = dofm.getNumbDoF(fld);
 
       s = getState(obj);
 
-      s.traction = zeros(nDofsInterface,1);
-      s.deltaTraction = zeros(nDofsInterface,1);
+      s.traction = zeros(nTracDof,1);
+      s.deltaTraction = zeros(nTracDof,1);
 
       % Raw mortar gap in the local contact frame
-      s.gap = zeros(nDofsInterface,1);
-      s.normalGap = zeros(round(1/3*nDofsInterface),1);
+      s.gap = zeros(nTracDof,1);
+      s.normalGap = zeros(round(1/3*nTracDof),1);
 
       % total tangential gap
-      s.tangentialGap = zeros(round(2/3*nDofsInterface),1);
+      s.tangentialGap = zeros(round(2/3*nTracDof),1);
 
       % gap variation at the current time step
-      s.tangentialSlip = zeros(round(2/3*nDofsInterface),1);
+      s.tangentialSlip = zeros(round(2/3*nTracDof),1);
       setState(obj,s);
 
-      N = obj.grids(MortarSide.slave).cells.num;
-      initializeActiveSet(obj,N,input.ActiveSet);
+      initializeActiveSet(obj,obj.grid.cells.num,input.ActiveSet);
       
     end
 
@@ -122,13 +128,22 @@ classdef SolidMechanicsContact < MeshTying
     function assembleConstraint(obj)
 
       % reset the jacobian blocks
-      obj.setJmu(MortarSide.slave, []);
-      obj.setJmu(MortarSide.master, []);
-      obj.setJum(MortarSide.slave, []);
-      obj.setJum(MortarSide.master, []);
 
-      if isempty(obj.D)
-        computeConstraintMatrices(obj);
+      interf = obj.interface;
+      model = interf.model;
+      master = interf.domains(MortarSide.master);
+      slave = interf.domains(MortarSide.slave);
+      dispFld = obj.getCoupledField();
+      tracFld = obj.getField();
+
+      % clear previous jacobian coupling
+      obj.setJacobian(slave,[],dispFld,tracFld,interf);
+      obj.setJacobian(master,[],dispFld,tracFld,interf);
+      obj.setJacobian(interf,[],tracFld,dispFld,master);
+      obj.setJacobian(interf,[],tracFld,dispFld,slave);
+
+      if isempty(obj.Dmat)
+        computeConstraintMatrices(obj,dispFld);
       end
 
       computeContactMatricesAndRhs(obj);
@@ -136,19 +151,20 @@ classdef SolidMechanicsContact < MeshTying
       % get stabilization matrix depending on the current active set
       [H,rhsStab] = getStabilizationMatrixAndRhs(obj);
 
-      obj.Jconstraint = obj.Jconstraint - H;
-      obj.rhsConstraint = obj.rhsConstraint + rhsStab;
+      model.addJacobian(interf,-H,tracFld);
+      model.addResidual(interf,rhsStab,tracFld);
 
       if gresLog().getVerbosity > 3
         % print rhs terms for each fracture state for debug purposes
+        res = model.getResidual(interf,tracFld);
         dof_stick = DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.stick),3);
         dof_slip = [DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.slip),3); ...
                     DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.newSlip),3)];
         dof_open = DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.open),3);
         fprintf('Rhs norm for stabilization: %4.3e \n', norm(rhsStab));
-        fprintf('Rhs norm for stick dofs: %4.3e \n', norm(obj.rhsConstraint(dof_stick)))
-        fprintf('Rhs norm for slip dofs: %4.3e \n', norm(obj.rhsConstraint(dof_slip)))
-        fprintf('Rhs norm for open dofs: %4.3e \n', norm(obj.rhsConstraint(dof_open)))
+        fprintf('Rhs norm for stick dofs: %4.3e \n', norm(res(dof_stick)))
+        fprintf('Rhs norm for slip dofs: %4.3e \n', norm(res(dof_slip)))
+        fprintf('Rhs norm for open dofs: %4.3e \n', norm(res(dof_open)))
       end
 
     end
@@ -358,6 +374,17 @@ classdef SolidMechanicsContact < MeshTying
       obj.outstate.results(tID).tangentialGap = s.tangentialGap;
       obj.outstate.results(tID).tangentialTractionNorm = norm_tT;
 
+    end
+
+
+    function coupledFld = getCoupledField(~)
+
+      coupledFld = "displacements";
+    end
+
+    function fld = getField(~)
+
+      fld = "traction";
     end
 
   end
