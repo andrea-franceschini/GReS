@@ -48,39 +48,30 @@ classdef QuadrilateralQuadratic < FiniteElementType
 
   methods (Access = public)
 
-    function [outVar1,outVar2] = getDerBasisFAndDet(obj,in)   % mat,dJWeighed
-      %       findJacAndDet(obj,el);  % OUTPUT: J and obj.detJ
-      % way to call this method: if el is a scalar (element idx) the 3D
-      % coordinates are retrieved by the corresponding grid object. Only
-      % the determinant is returned
-      % if in is not scalar, it is a 4x2 list of 2D coordinates, the
-      % gradient matrix and the determinant are returned
-
-      if size(in,2) == 2
-        % 2D - in is a given list of x-y coordinates for nodes
-        J = pagemtimes(obj.Jref,in);
-        for i=1:obj.GaussPts.nNode
+    function [outVar1,outVar2] = getDerBasisFAndDet(obj,in)
+      if isscalar(in)
+        coord = obj.getElementCoords(in);
+      else
+        coord = in;
+      end
+      J = pagemtimes(obj.Jref,coord);
+      if size(coord,2) == 2
+        for i = 1:obj.GaussPts.nNode
           obj.detJ(i) = det(J(:,:,i));
           J(:,:,i) = inv(J(:,:,i));
         end
         outVar1 = pagemtimes(J,obj.Jref);
-        outVar2 = obj.detJ.*(obj.GaussPts.weight)';
       else
-        if isscalar(in)
-          % 3D setting
-          n = obj.grid.getSurfNodes(in);
-          coord = obj.grid.coordinates(n,:);
-        elseif size(in,2)==3 % 3D list of coordinates in input
-          coord = in;
-        end
-        J = pagemtimes(obj.Jref,coord);
         for i = 1:obj.GaussPts.nNode
-          obj.detJ(i) = norm(cross(J(1,:,i),J(2,:,i)),2);
+          obj.detJ(i) = norm(cross(J(1,:,i),J(2,:,i)));
         end
-        outVar1 = obj.detJ.*(obj.GaussPts.weight)';
+        outVar1 = [];
+      end
+      outVar2 = obj.detJ.*obj.GaussPts.weight';
+      if nargout == 1 && (isscalar(in) || size(coord,2) == 3)
+        outVar1 = outVar2;
       end
     end
-
 
     function N1Mat = getBasisFinGPoints(obj)
       N1Mat = obj.Nref;
@@ -96,7 +87,7 @@ classdef QuadrilateralQuadratic < FiniteElementType
       % Find the Area of the cells using the determinant of the Jacobian
       % of the isoparameric transformation
       area = zeros(length(idQuad),1);
-      cellCentroid = zeros(length(idQuad),3);
+      cellCentroid = zeros(length(idQuad),size(obj.grid.coordinates,2));
       i = 0;
       for el = idQuad'
         i = i + 1;
@@ -111,7 +102,7 @@ classdef QuadrilateralQuadratic < FiniteElementType
 
 
     function nodeArea = getNodeInfluence(obj,el)
-        dJWeighed = obj.getDerBasisFAndDet(el);
+        [~,dJWeighed] = obj.getDerBasisFAndDet(el);
         nodeArea = obj.Nref'*dJWeighed';
     end
 
@@ -150,17 +141,6 @@ classdef QuadrilateralQuadratic < FiniteElementType
       area = sum(dJWeighed);
       assert(area>0,'Volume less than 0');
       centroid = dJWeighed * gPCoordinates/area;
-    end
-
-
-
-    function n_a = computeAreaNod(obj,surfMsh)
-      % compute area associated to each node of a surface grid
-      n_a = zeros(max(surfMsh.surfaces,[],'all'),1);
-      for i = 1:length(surfMsh.surfaces)
-        n_a(surfMsh.surfaces(i,:)) = n_a(surfMsh.surfaces(i,:)) + findNodeArea(obj,i);
-      end
-      n_a = n_a(unique(surfMsh.surfaces));
     end
 
 
@@ -262,7 +242,7 @@ classdef QuadrilateralQuadratic < FiniteElementType
     end
 
     function coord = getSubElementCoords(obj,idQuad,idSub)
-      nList = obj.grid.getSurfNodes(idQuad);
+      nList = obj.grid.getCellNodes(idQuad);
       nList = nList(obj.nod2sub(idSub,:));
       coord = obj.grid.coordinates(nList,:);
     end
@@ -308,7 +288,7 @@ classdef QuadrilateralQuadratic < FiniteElementType
       end
 
       % Compute derivatives in the reference space for all Gauss points
-      obj.Jref = zeros(2,obj.grid.surfaces.numVerts(1),np);
+      obj.Jref = zeros(2,obj.nNode,np);
       
       obj.Jref(1,1,:) = arrayfun(@(i) gb1(c(i,1)).*b1(c(i,2)),1:np);
       obj.Jref(2,1,:) = arrayfun(@(i) b1(c(i,1)).*gb1(c(i,2)),1:np);

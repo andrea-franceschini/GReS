@@ -54,16 +54,15 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
 
       if isNewtonNLSolver(obj)
         Jh = computeJacobianPartJhNewton(obj,p,dlw);
-        Jp = computeJacobianPartJpNewton(obj,dt,p,pOld,Sw,dSw,d2Sw);
         J = J + dt*Jh;
         if ~obj.steadyState
-          J = J + Jp;
+          J = J + computeJacobianPartJpNewton(obj,dt,p,pOld,Sw,dSw,d2Sw);
         end
       end
 
-      obj.domain.J{obj.fieldId,obj.fieldId} = J;
-
-      obj.domain.rhs{obj.fieldId} = rhs;
+      model = obj.domain.model;
+      model.setJacobian(obj.domain,J,obj.fieldId);
+      model.setResidual(obj.domain,rhs,obj.fieldId);
 
     end
 
@@ -288,7 +287,7 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       gamma = obj.domain.materials.getFluid().getSpecificWeight();
       if gamma > 0
         zVec = obj.grid.cells.center(:,3);
-        zNeigh = zVec(neigh);
+        zNeigh = reshape(zVec(neigh),size(neigh));
         lElemIsUp = (p(neigh(:,1)) - p(neigh(:,2))) + gamma*(zNeigh(:,1) - zNeigh(:,2)) > 0;
       else
         lElemIsUp = p(neigh(:,1)) >= p(neigh(:,2));
@@ -317,8 +316,8 @@ classdef VariablySaturatedFlow < SinglePhaseFlowFVTPFA
       % Get pairs of faces that contribute to the subdomain
       neigh = obj.grid.faces.neighbors(obj.isIntFaces,:);
       zVec = obj.grid.cells.center(:,3);
-      zNeigh = zVec(neigh);
-      pTau = pTau(neigh);
+      zNeigh = reshape(zVec(neigh),size(neigh));
+      pTau = reshape(pTau(neigh),size(neigh));
       nneigh = length(dMob);
       % [~,~,reorder] = unique([neigh(:,1); neigh(:,2); obj.upElem'; subCells]);
       [~,~,reorder] = unique([neigh(:,1); neigh(:,2); obj.upElem']);

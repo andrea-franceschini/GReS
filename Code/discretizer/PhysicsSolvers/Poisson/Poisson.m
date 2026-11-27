@@ -43,8 +43,10 @@ classdef Poisson < PhysicsSolver
 
     function assembleSystem(obj,varargin)
 
-      obj.domain.J{obj.fieldId,obj.fieldId} = computeMat(obj);
-      obj.domain.rhs{obj.fieldId} = computeRhs(obj);
+      field = obj.getField();
+      J = obj.computeMat();
+      obj.domain.model.setJacobian(obj.domain,J,field);
+      obj.domain.model.setResidual(obj.domain,obj.computeRhs(J),field);
 
     end
 
@@ -70,8 +72,7 @@ classdef Poisson < PhysicsSolver
         topol = obj.grid.getCellNodes(subCellsLoc);
 
         for i = 1:numel(subCellsLoc)
-          el = subCellsLoc(i);
-          nodes = topol(el,:);
+          nodes = topol(i,:);
           coords = coordinates(nodes,:);
           % get dof id and local matrix
           [gradN,dJW] = getDerBasisFAndDet(elem,coords);
@@ -87,12 +88,14 @@ classdef Poisson < PhysicsSolver
       J = asbJ.sparseAssembly();
     end
 
-    function rhs = computeRhs(obj,varargin)
+    function rhs = computeRhs(obj,J)
+      if nargin < 2
+        J = cell2mat(obj.getJacobian());
+      end
       ents = obj.domain.dofm.getActiveEntities(obj.getField());
-      J = getJacobian(obj);
-      f = computeForcingTerm(obj);
+      f = obj.computeForcingTerm();
       u = getState(obj,"u");
-      rhs = J*u(ents) + f(ents);
+      rhs = J*u(ents) + f;
     end
 
 
@@ -248,14 +251,14 @@ classdef Poisson < PhysicsSolver
       for vtkId = cells.vtkTypes
 
         subCellsLoc = obj.grid.getCellsByVTKId(vtkId,subCells);
-        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+        elem = FiniteElementType.create(vtkId,obj.grid,'gaussOrder',obj.gaussOrder);
 
         % get node topology for given vtk type
         topol = obj.grid.getCellNodes(subCellsLoc);
 
         for i = 1:numel(subCellsLoc)
           el = subCellsLoc(i);
-          nodes = topol(el,:);
+          nodes = topol(i,:);
           coords = coordinates(nodes,:);
           c_gp = getGPointsLocation(elem,el);
           f_gp = computeAnal(obj,c_gp,'f',1);
@@ -263,7 +266,8 @@ classdef Poisson < PhysicsSolver
           N = getBasisFinGPoints(elem);
           floc = N'*(f_gp.*dJW');
           % proper integration
-          F(nodes) = F(nodes) + floc;
+          dofs = obj.domain.dofm.getLocalDoF(obj.fieldId,nodes);
+          F(dofs) = F(dofs) + floc;
         end
       end
 
@@ -285,7 +289,7 @@ classdef Poisson < PhysicsSolver
       for vtkId = cells.vtkTypes
 
         cellList = obj.grid.getCellsByVTKId(vtkId);
-        elem = FiniteElementType.create(vtkId,obj.grid,obj.gaussOrder);
+        elem = FiniteElementType.create(vtkId,obj.grid,'gaussOrder',obj.gaussOrder);
 
         % get node topology for given vtk type
         topol = obj.grid.getCellNodes(cellList);
@@ -293,7 +297,7 @@ classdef Poisson < PhysicsSolver
         for i = 1:numel(cellList)
 
           el = cellList(i);
-          nodes = topol(el,:);
+          nodes = topol(i,:);
           coords = coordinates(nodes,:);
           N = getBasisFinGPoints(elem);
           [gradN,dJW] = getDerBasisFAndDet(elem,coords);

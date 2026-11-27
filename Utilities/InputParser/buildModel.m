@@ -42,6 +42,7 @@ varargout{1} = domains;
 
 if nargout > 1
   if numel(fieldnames(interfInput))>0
+    interface = Interface(domains);
     interfaces = InterfaceSolver.addInterfaces(domains,interfInput);
     varargout{2} = interfaces;
   end

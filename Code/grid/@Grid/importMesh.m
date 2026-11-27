@@ -42,22 +42,22 @@ function importMesh(grid, fileName)
 % -------------------------------------------------------------------------
 %   mxImportVTKmesh, mxImportGMSHmesh, gmshToVTK
 
-str = split(fileName, '.');
-extension = str{2};
+[~,~,extension] = fileparts(fileName);
+extension = lower(string(extension));
 
 switch extension
-  case 'vtk'
+  case '.vtk'
     [grid.coordinates, elems] = mxImportVTKmesh(char(fileName));
     elems = double(elems);
 
-  case 'msh'
+  case '.msh'
     [grid.coordinates, elems, ~] = mxImportGMSHmesh(char(fileName));
     % the third input contains region names and is currently not supported
     % by GReS
     elems = double(elems);
     elems = gmshToVTK(elems);
   otherwise
-    error("Unsupported mesh format '.%s'. Valid formats are: 'vtk', 'msh'.", extension);
+    error("Unsupported mesh format '%s'. Valid formats are: 'vtk', 'msh'.", extension);
 end
 
 % -------------------------------------------------
@@ -69,11 +69,12 @@ else
   grid.nDim = 2;
 end
 grid.nNodes = size(grid.coordinates, 1);
+grid.nCoord = size(grid.coordinates, 2);
 
 % -------------------------------------------------
 % 3D CELL DATA
 % -------------------------------------------------
-if any(~ismember(elems(:,1), [VTKType.types2D,VTKType.types3D]))
+if any(~ismember(elems(:,1), [VTKType.types1D,VTKType.types2D,VTKType.types3D]))
   error(['Unsupported  elements in the mesh.\n', ...
     'Supported types: 3-node triangles (VTKType = 5), ', ...
     '4-node quadrilaterals (VTKType = 9).',...
@@ -83,7 +84,19 @@ if any(~ismember(elems(:,1), [VTKType.types2D,VTKType.types3D]))
     '27-node hexahedra (VTKType = 29).']);
 end
 
-ID = ismember(elems(:,1), VTKType.types3D);
+if any(ismember(elems(:,1),VTKType.types3D))
+  grid.nDim = 3;
+  cellTypes = VTKType.types3D;
+  boundaryTypes = VTKType.types2D;
+else
+  grid.nDim = 2;
+  cellTypes = VTKType.types2D;
+  boundaryTypes = VTKType.types1D;
+end
+assert(any(ismember(elems(:,1),cellTypes)), 'GReS:ImportMeshDimension', ...
+  'Expected a mesh with 2D or 3D cells.');
+
+ID = ismember(elems(:,1), cellTypes);
 grid.cells.numVerts  = elems(ID, 3);
 nVerts            = max(grid.cells.numVerts);
 grid.cells.connectivity = Grid.makeConnectivity(elems(ID, 4:nVerts+3));
@@ -98,9 +111,9 @@ end
 % 2D SURFACE DATA - tagged boundary surfaces (for bc and grid coupling)
 % -------------------------------------------------
 
-ID = ismember(elems(:,1), VTKType.types2D);
+ID = ismember(elems(:,1), boundaryTypes);
 grid.surfaces.numVerts = elems(ID, 3);
-nVerts = max(grid.surfaces.numVerts);
+nVerts = max([0; grid.surfaces.numVerts]);
 grid.surfaces.connectivity = Grid.makeConnectivity(elems(ID, 4:nVerts+3));
 grid.surfaces.VTKType  = elems(ID, 1);
 grid.surfaces.tag      = elems(ID, 2);
@@ -145,8 +158,8 @@ function elems = gmshToVTK(elems)
 %     GMSH 10 → VTK 28  (9-node quad → stored as 4-node quad)
 %     GMSH 12 → VTK 29  (27-node hex → stored as 8-node hex)
 
-gmshIDs = [2  3,  4,  10,  5,  12];
-vtkIDs  = [5,  9, 10,   28, 12,  29];
+gmshIDs = [1, 2, 3, 4, 10, 5, 12];
+vtkIDs  = [3, 5,  9, 10,   28, 12,  29];
 
 newCol = elems(:,1);
 for k = 1:length(gmshIDs)

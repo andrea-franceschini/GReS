@@ -71,7 +71,6 @@ int readGMSHmesh( std::string const & fileName,
       elems.resize( nElements );
 
       int j, k, elemNodes;
-      int numUnusedElems = 0;
       int ind = 0;
       for ( int i = 0; i < nElements; ++i )
       {
@@ -126,7 +125,7 @@ int readGMSHmesh( std::string const & fileName,
           }
           case (10): // quadrilateral 9-node
           {
-            elemNodes = 27;  
+            elemNodes = 9;
             break;  
           }
           case (12): // hexahedron 27-node
@@ -137,7 +136,6 @@ int readGMSHmesh( std::string const & fileName,
           default:
           {
             usedElem = false;
-            numUnusedElems++;
             break;
           }
         }
@@ -154,6 +152,7 @@ int readGMSHmesh( std::string const & fileName,
           ind++;
         }
       }
+      elems.resize(ind);
     }
   }
   inFile.close();

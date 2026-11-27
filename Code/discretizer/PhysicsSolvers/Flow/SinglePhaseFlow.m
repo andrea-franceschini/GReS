@@ -75,17 +75,19 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       gamma = obj.domain.materials.getFluid.getSpecificWeight;
 
       if obj.steadyState
-        obj.domain.J{obj.fieldId,obj.fieldId} = obj.H;
+        J = obj.H;
         rhs = dt*obj.H*(p(ents) + gamma*z);
       else
-        obj.domain.J{obj.fieldId,obj.fieldId} = dt*obj.H + obj.P;
+        J = dt*obj.H + obj.P;
         pOld = obj.getStateOld(obj.getField());
         rhsH = dt*obj.H*(p(ents) + gamma*z);
         rhsP = obj.P*(p(ents) - pOld(ents));
         rhs = rhsH + rhsP;
       end
 
-      obj.domain.rhs{obj.fieldId} = rhs;
+      model = obj.domain.model;
+      model.setJacobian(obj.domain,J,obj.fieldId);
+      model.setResidual(obj.domain,rhs,obj.fieldId);
       
     end
 
@@ -99,7 +101,8 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       % Base application of Neumann boundary condition to the rhs.
       % bc values are subtracted since we solve du = J\(-rhs)
       bcVar = obj.domain.bcs.getVariable(bcId);
-      bcId = obj.domain.dofm.getVariableId(bcVar);
+      model = obj.domain.model;
+      dofs = model.getGlobalDoFs(obj.domain,bcVar);
 
       %remove inactive dofs
       id = bcDofs == 0;
@@ -109,7 +112,7 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       % neumann and sourcer ar given as flux rates
       dt = obj.getState.time - obj.getStateOld.time;
 
-      obj.domain.rhs{bcId}(bcDofs) = obj.domain.rhs{bcId}(bcDofs) - dt*bcVals;
+      model.addResidualAtDoFs(dofs(bcDofs),-dt*bcVals);
     end
 
     function updateState(obj,dSol)
@@ -262,16 +265,18 @@ classdef (Abstract) SinglePhaseFlow < PhysicsSolver
       end
 
       parm = struct('Start',0.0,'End',1.0,'DtInit',1.0,'DtMax',1.0,'DtMin',0.01);
-      default = struct('simulationparameters',SimulationParameters(parm),...
-        'domains',obj.domain);
-
+      default = struct('simulationparameters',SimulationParameters(parm));
       params = readInput(default,varargin{:});
+      model = obj.domain.model;
+      if isempty(model)
+        model = Model(obj.domain);
+      end
+      params.model = model;
 
-      solv = NonLinearImplicit(params);
-
-      assert(solv.nDom == 1 && solv.nInterf == 0, ...
+      assert(isscalar(model.domains) && isempty(model.interfaces), ...
         "SteadyState pressure computation can be used only as a stand-alone PhysicsSolver within a single domain");
 
+      solv = NonLinearImplicit(params);
       solv.simulationLoop();
 
       ssPressure = getState(obj,obj.getField());

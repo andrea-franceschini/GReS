@@ -217,7 +217,7 @@ for iRun = 1:nRuns
 
     efem = getPhysicsSolver(domain,"EmbeddedFractureMechanics");
 
-    f = efem.fractureMesh.surfaces;
+    f = efem.fractureMesh.cells;
 
     % ---------------------------------------------------------------------
     % Fracture geometry checks

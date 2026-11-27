@@ -31,8 +31,8 @@ classdef MeshTyingTPFA < InterfaceSolver
       validateInterface(obj);
 
       % One pressure on each retained slave face, shared by its intersections.
-      obj.nMult = obj.grids(MortarSide.slave).surfaces.num;
-      obj.multiplierLocation = entityField.surface;
+      obj.nMult = obj.grids(MortarSide.slave).cells.num;
+      obj.multiplierLocation = entityField.cell;
       state = getState(obj);
       state.interfacePressure = zeros(obj.nMult,1);
       setState(obj,state);
@@ -188,12 +188,13 @@ classdef MeshTyingTPFA < InterfaceSolver
 
       setMortarInterface@InterfaceSolver(obj,params);
 
-      % Quadrature pairs contain LOCAL surface IDs, one row per subtriangle.
+      % Quadrature pairs contain local surface IDs, one row per active triplet.
       % Retain intersection geometry, but share pressure on each slave face.
       pairs = obj.quadrature.interfacePairs;
+      triplets = obj.quadrature.getActiveTriplets();
       [surfacePairs,~,polygonId] = unique(pairs,'rows');
       obj.intersectionToSlave = surfacePairs(:,MortarSide.slave);
-      obj.multiplierLocation = entityField.surface;
+      obj.multiplierLocation = entityField.cell;
       nConn = size(surfacePairs,1);
       obj.neigh = zeros(nConn,2);
       obj.faceArea = zeros(nConn,1);
@@ -206,7 +207,7 @@ classdef MeshTyingTPFA < InterfaceSolver
       end
 
       slave = MortarSide.slave;
-      surfSlave = obj.grids(slave).surfaces;
+      surfSlave = obj.grids(slave).cells;
       firstMoment = zeros(size(pairs,1),3);
       triArea = zeros(size(pairs,1),1);
 
@@ -217,9 +218,9 @@ classdef MeshTyingTPFA < InterfaceSolver
         triIds = find(surfSlave.VTKType(pairs(:,slave)) == vtk);
         for k = triIds'
           is = pairs(k,slave);
-          xi = obj.quadrature.getSlaveGPCoords(k);
+          xi = obj.quadrature.getSlaveGPCoords(triplets(k));
           x = elem.computeBasisF(xi)*elem.getElementCoords(is);
-          w = obj.quadrature.getIntegrationWeights(k);
+          w = obj.quadrature.getIntegrationWeights(triplets(k));
           w = w(:);
           triArea(k) = sum(w);
           firstMoment(k,:) = w'*x;
@@ -237,7 +238,7 @@ classdef MeshTyingTPFA < InterfaceSolver
       % Surface grids retain faceId through extraction and local renumbering.
       % Convert to parent volume cells, using the enum for column ordering.
       for side = [MortarSide.slave,MortarSide.master]
-        faceId = obj.grids(side).surfaces.faceId(surfacePairs(:,side));
+        faceId = obj.grids(side).cells.faceId(surfacePairs(:,side));
         faces = obj.domains(side).grid.faces;
         assert(all(faces.neighbors(faceId,2) == 0),...
           "MeshTyingTPFA requires boundary faces on both sides");

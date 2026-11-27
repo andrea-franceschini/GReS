@@ -1,9 +1,13 @@
 function compileAll(varargin)
+%COMPILEALL Build GReS MEX files and optional installed dependencies.
+%   compileAll('gmsh') builds only the Gmsh MEX and requires setupGmsh first.
 
 if isempty(varargin)
-  compileList = ["gres","chronos"];
+  compileList = ["gres","chronos","gmsh"];
+  requireGmsh = false;
 else
   compileList = string(varargin);
+  requireGmsh = ismember("gmsh",compileList);
 end
 
 clc;
@@ -41,6 +45,8 @@ end
 
 end
 
-
+if ismember("gmsh",compileList)
+  compileGmsh(requireGmsh);
+end
 
 end

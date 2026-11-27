@@ -1,5 +1,5 @@
-classdef Discretizer < handle
-  % General discretizer class
+classdef Domain < handle
+  % General Domain class
 
   properties (GetAccess=public, SetAccess=public)
     physicsSolvers                     % physics solvers database
@@ -13,24 +13,14 @@ classdef Discretizer < handle
   end
 
   properties
+    model
     simparams
-    J
-    rhs
-    outstate
     domainId
-    % Jacobian blocks for multidomain coupling
-    Jum
-    Jmu
+    outstate
     vtmBlock
   end
 
   properties (GetAccess=public, SetAccess=public)
-
-    % handle to interface solver defined on the domain
-    interfaces
-
-    % id of the interfaces defined on the domain
-    interfaceList
 
     state
 
@@ -38,7 +28,7 @@ classdef Discretizer < handle
 
 
   methods (Access = public)
-    function obj = Discretizer(varargin)
+    function obj = Domain(varargin)
       %UNTITLED Construct an instance of this class
       %   Detailed explanation goes here
 
@@ -51,7 +41,7 @@ classdef Discretizer < handle
       % obj.grid = Grid();
 
       obj.physicsSolvers = containers.Map('KeyType','char','ValueType','any');
-      obj.setDiscretizer(varargin{:});
+      obj.setDomain(varargin{:});
     end
 
 
@@ -264,10 +254,7 @@ classdef Discretizer < handle
 
     function addPhysicsSolvers(obj,solverInput)
 
-      assert(isempty(getJacobian(obj)),"Cannot add a physics solver " + ...
-        "after system has already been assembled");
-
-      % Add a new solver to the Discretizer
+      % Add a new solver to the Domain
       assert(nargin == 2,"Input must be an xml file or a struct")
 
       solverInput = readInput(solverInput);
@@ -285,10 +272,6 @@ classdef Discretizer < handle
         % create and register the solver
         addPhysicsSolver(obj,solverName,solverInput.(solverName));
       end
-
-      % nV = obj.dofm.getNumberOfVariables();
-      % obj.J = cell(nV);
-      % obj.rhs = cell(nV,1);
 
     end
 
@@ -310,92 +293,9 @@ classdef Discretizer < handle
     end
 
 
-    function J = getJacobian(obj,varargin)
-      % GETJACOBIAN Return the system Jacobian matrix
-      %
-      % Usage:
-      %   J = getJacobian(obj)
-      %       Returns the full Jacobian matrix.
-      %
-      %   J = getJacobian(obj, fieldList)
-      %       Returns only the Jacobian blocks corresponding to the
-      %       specified fields. Assumes the same fields for both rows and columns.
-      %
-      %   J = getJacobian(obj, rowFields, colFields)
-      %       Returns the Jacobian blocks corresponding to the specified
-      %       fields for rows and columns separately.
-      %
-      % Inputs:
-      %   fieldList  - string or cell array of field names (for both rows and columns)
-      %   rowFields  - string or cell array of field names for rows
-      %   colFields  - string or cell array of field names for columns
-      %
-      % Output:
-      %   J          - the assembled Jacobian matrix
-      %
-      % Notes:
-      %   - If no input fields are provided, the full Jacobian is returned.
-      %   - Row and column fields must correspond to existing variables in the system.
-
-      if nargin == 1
-        J = obj.J;
-      elseif nargin == 2
-        id = obj.dofm.getVariableId(varargin{1});
-        J = obj.J(id,id);
-      elseif nargin == 3
-        idRow = obj.dofm.getVariableId(varargin{1});
-        idCol = obj.dofm.getVariableId(varargin{2});
-        J = obj.J(idRow,idCol);
-      else
-        error("Too many input arguments")
-      end
-
-    end
-
-
-    function [Jum,Jmu] = getInterfaceJacobian(obj,interfaceId)
-
-      % get the multidomain coupling blocks for a certain interface
-      Jum = obj.Jum{interfaceId};
-      Jmu = obj.Jmu{interfaceId};
-
-    end
-
-    function rhs = getRhs(obj,varargin)
-      % GETRHS Return the right-hand side vector
-      %
-      % Usage:
-      %   rhs = getRhs(obj)               - returns full RHS
-      %   rhs = getRhs(obj, fieldList)    - returns only specified fields
-      %
-      % Inputs:
-      %   fieldList - string or cell array of field names
-      %
-      % Output:
-      %   rhs       - RHS vector (subset or full)
-      %
-      % Notes:
-      %   Only one field list is allowed; multiple fields will be concatenated
-
-      if nargin == 1
-        rhs = obj.rhs;
-      elseif nargin == 2
-        id = obj.dofm.getVariableId(varargin{1});
-        rhs = obj.rhs(id);
-      else
-        error("Too many input arguments")
-      end
-    end
-
-
     function initialize(obj)
 
-      % prepare the discretizer before starting a new simulation
-
-      % initialize block jacobian and rhs
-      nV = obj.dofm.getNumberOfVariables();
-      obj.J = cell(nV);
-      obj.rhs = cell(nV,1);
+      % prepare the Domain before starting a new simulation
 
       obj.setCellMap(obj.grid);
 
@@ -521,7 +421,7 @@ classdef Discretizer < handle
 
   methods(Access = private)
 
-    function setDiscretizer(obj,varargin)
+    function setDomain(obj,varargin)
 
       % key-value input
       setInput(obj,varargin{:});
@@ -646,7 +546,7 @@ classdef Discretizer < handle
     function checkClass(val,fldName,className)
 
       if ~isa(val, className)
-        error("Invalid key-value pair for Discretizer class. Input field %s must be an object of class %s \n",fldName,className);
+        error("Invalid key-value pair for Domain class. Input field %s must be an object of class %s \n",fldName,className);
       end
     end
 

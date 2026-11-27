@@ -15,7 +15,35 @@ classdef FixedStressSplit < SolutionScheme
   end
 
 
-  methods (Access = public)
+  % Chronos still reads these from the solution scheme.
+  properties (Dependent, SetAccess = private)
+    domains
+    nDom
+    nInterf
+  end
+
+  properties (SetAccess = private)
+    iterConfig = 1
+  end
+
+
+  methods
+    function obj = FixedStressSplit(varargin)
+      obj@SolutionScheme(varargin{:});
+    end
+
+    function dom = get.domains(obj)
+      dom = obj.model.domains;
+    end
+
+    function n = get.nDom(obj)
+      n = numel(obj.model.domains);
+    end
+
+    function n = get.nInterf(obj)
+      n = numel(obj.model.interfaces);
+    end
+
 
     function fSSplitConv = solveStep(obj,varargin)
 
@@ -24,7 +52,7 @@ classdef FixedStressSplit < SolutionScheme
         error("solveStep with target variables is not yet implemented")
       end
 
-      dom = obj.domains;
+      dom = obj.model.domains;
       physSolv = dom.getPhysicsSolver("BiotFixedStressSplit");
 
       % apply dirichlet value at the beginning of the time step
@@ -53,7 +81,10 @@ classdef FixedStressSplit < SolutionScheme
         % check convergence of fixed stress split
         currPress = getState(physSolv,"pressure");
         prevPress = physSolv.conv.pressure;
-        relPressChange = norm(currPress-prevPress)/norm(prevPress);
+        relPressChange = norm(currPress-prevPress);
+        if relPressChange > 0
+          relPressChange = relPressChange/norm(prevPress);
+        end
 
         physSolv.advanceState("pressure");
 
@@ -91,12 +122,10 @@ classdef FixedStressSplit < SolutionScheme
       setSolutionScheme@SolutionScheme(obj,varargin{:})
 
       % barrier for this solver
-      assert(obj.domains.solverNames == "BiotFixedStressSplit",...
-        "FixedStressSplit algorithm only requires 'BiotFixedStressSplit' physics solver")
       assert(obj.nDom == 1,"Only one domain is admitted when using fixedStressSplit");
-      assert(obj.nInterf == 0,"FixedStressSplit with internal interfaces is not yet implmented");
-
-      obj.nVars = 0;
+      assert(isequal(obj.domains.solverNames,"BiotFixedStressSplit"),...
+        "FixedStressSplit algorithm only requires 'BiotFixedStressSplit' physics solver");
+      assert(obj.nInterf == 0,"FixedStressSplit with internal interfaces is not yet implemented");
 
       default = struct('maxiterations',10,'reltolerance',1e-5);
       parm = readInput(default,varargin{:});
@@ -114,8 +143,8 @@ classdef FixedStressSplit < SolutionScheme
 
       setLinearSolver(obj,varName);
       
-      varId = obj.domains.dofm.getVariableId(varName);
-      dom = obj.domains(1);
+      model = obj.model;
+      dom = model.domains(1);
       physSolv = dom.getPhysicsSolver("BiotFixedStressSplit");
 
       physSolv.assembleSystem(obj.dt,varName);
@@ -124,7 +153,7 @@ classdef FixedStressSplit < SolutionScheme
 
       gresLog().log(1,'Iter     ||rhs||     ||rhs||/||rhs_0||\n');
 
-      rhs = dom.rhs{varId};
+      rhs = model.getResidual(dom,varName);
       rhsNorm = norm(rhs,2);
       rhsNormIt0 = rhsNorm;
 
@@ -142,11 +171,9 @@ classdef FixedStressSplit < SolutionScheme
 
         iter= iter + 1;
 
-        J = dom.J(varId,varId);
-        rhs = dom.rhs(varId);
-
-        % solve linear system
-        du = solve(obj,J,rhs);
+        % Extract only the current subproblem; its update is field-local.
+        J = model.getJacobian(dom,varName);
+        du = solve(obj,J,{rhs},iter);
 
         % update state variable calling directly the BiotFixedStressSplit
         % solver
@@ -154,9 +181,9 @@ classdef FixedStressSplit < SolutionScheme
 
         % reassemble system
         physSolv.assembleSystem(obj.dt,varName);
-        obj.domains.applyBC(obj.t,varName);
+        dom.applyBC(obj.t,varName);
 
-        rhs = dom.rhs{varId};
+        rhs = model.getResidual(dom,varName);
         rhsNorm = norm(rhs,2);
 
         gresLog().log(1,'%d     %e     %e\n',iter,rhsNorm,rhsNorm/rhsNormIt0);

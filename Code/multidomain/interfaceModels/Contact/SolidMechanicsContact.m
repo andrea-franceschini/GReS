@@ -1,4 +1,4 @@
-classdef SolidMechanicsContact < MeshTying
+classdef SolidMechanicsContact < MortarContinuity
 
   % Mortar contact with piecewise constant traction multipliers.
   % isSmooth = true: fixed active set in Newton, updated in an outer loop.
@@ -12,35 +12,35 @@ classdef SolidMechanicsContact < MeshTying
     NLIter = 0
     stickNodes     % boundary nodes where contact state should stay stick
     forceStick     % flag to enforce interface to stay stick
+    forcedStickCells
     contactAugmentation
     isSmooth = true % outer active-set loop; false selects semi-smooth Newton
   end
 
   methods
 
-    function obj = SolidMechanicsContact(id,domains,inputStruct)
+    function obj = SolidMechanicsContact(interface)
 
-      obj@MeshTying(id,domains,inputStruct);
-
-      if obj.multiplierLocation ~= entityField.surface
-        error("Interface Solver %s is not implemented for multipliers" + ...
-          "located at %s. The only available entityField is %s",...
-          class(obj),obj.multiplierLocation,entityField.surface)
-      end
+      obj@MortarContinuity(interface);
 
     end
 
-    function registerInterface(obj,varargin)
+    function registerConstraint(obj,varargin)
 
-      input = varargin{1};
+      registerConstraint@MortarContinuity(obj,varargin{:});
 
-      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0,...
-        'stabilizationScale',1.0,'augmentationParameter',1.0,...
-        'augmentationNormal',missing,'augmentationTangential',missing,'isSmooth',true),input);
+      if ~strcmp(obj.multiplierType,'P0')
+        error("Constraint %s is implemented only for P0 multipliers" + ...
+          " located at %s",...
+          class(obj),entityField.cell)
+      end
 
-      params = readInput(struct('cohesion',[],'frictionAngle',[]),input.Coulomb);
 
-      obj.stabilizationScale = input.stabilizationScale;
+      input = readInput(struct('Coulomb',[],'ActiveSet',missing,'forceStick',0,'augmentationParameter',1.0,...
+        'augmentationNormal',missing,'augmentationTangential',missing,'isSmooth',true),varargin{:});
+
+      params = readInput(struct('cohesion',0.0,'frictionAngle',[]),input.Coulomb);
+
 
       if ~ismissing(input.augmentationNormal)
         obj.contactAugmentation(1) = input.augmentationNormal;
@@ -61,27 +61,30 @@ classdef SolidMechanicsContact < MeshTying
       obj.cohesion = params.cohesion;
       obj.phi = params.frictionAngle;
 
-      nDofsInterface = getNumbDoF(obj);
+      dofm = obj.interface.dofm;
+
+      fld = obj.getField;
+
+      nTracDof = dofm.getNumbDoF(fld);
 
       s = getState(obj);
 
-      s.traction = zeros(nDofsInterface,1);
-      s.deltaTraction = zeros(nDofsInterface,1);
+      s.traction = zeros(nTracDof,1);
+      s.deltaTraction = zeros(nTracDof,1);
 
       % Raw mortar gap in the local contact frame
-      s.gap = zeros(nDofsInterface,1);
-      s.normalGap = zeros(round(1/3*nDofsInterface),1);
+      s.gap = zeros(nTracDof,1);
+      s.normalGap = zeros(round(1/3*nTracDof),1);
 
       % total tangential gap
-      s.tangentialGap = zeros(round(2/3*nDofsInterface),1);
+      s.tangentialGap = zeros(round(2/3*nTracDof),1);
 
       % gap variation at the current time step
-      s.tangentialSlip = zeros(round(2/3*nDofsInterface),1);
+      s.tangentialSlip = zeros(round(2/3*nTracDof),1);
       setState(obj,s);
 
-      N = obj.grids(MortarSide.slave).surfaces.num;
-      initializeActiveSet(obj,N,input.ActiveSet);
-      
+      initializeActiveSet(obj,obj.grid.cells.num,input.ActiveSet);
+
     end
 
     function updateState(obj,du)
@@ -91,7 +94,11 @@ classdef SolidMechanicsContact < MeshTying
 
       state = getState(obj);
       stateOld = getStateOld(obj);
-      state.traction(actMult) = state.traction(actMult) + du(1:obj.nMult);
+
+      dofm = obj.interface.dofm;
+      dofs = dofm.getDoF(dofm.getVariableId(obj.getField));
+      state.traction(actMult) = state.traction(actMult) + du(dofs);
+      
       state.deltaTraction = state.traction - stateOld.traction;
       obj.NLIter = obj.NLIter + 1;
 
@@ -119,39 +126,95 @@ classdef SolidMechanicsContact < MeshTying
 
     end
 
+
+
     function assembleConstraint(obj)
 
       % reset the jacobian blocks
-      obj.setJmu(MortarSide.slave, []);
-      obj.setJmu(MortarSide.master, []);
-      obj.setJum(MortarSide.slave, []);
-      obj.setJum(MortarSide.master, []);
 
-      if isempty(obj.D)
-        computeConstraintMatrices(obj);
-      end
+      interf = obj.interface;
+      model = interf.model;
+      master = interf.domains(MortarSide.master);
+      slave = interf.domains(MortarSide.slave);
+      dispFld = obj.getCoupledField();
+      tracFld = obj.getField();
+
+      % clear previous jacobian coupling
+      % obj.model.setJacobian(slave,[],dispFld,tracFld,interf);
+      % obj.model.setJacobian(master,[],dispFld,tracFld,interf);
+      % obj.model.setJacobian(interf,[],tracFld,dispFld,master);
+      % obj.model.setJacobian(interf,[],tracFld,dispFld,slave);
+
+      obj.computeConstraintMatrices(dispFld);
+
 
       computeContactMatricesAndRhs(obj);
 
       % get stabilization matrix depending on the current active set
       [H,rhsStab] = getStabilizationMatrixAndRhs(obj);
 
-      obj.Jconstraint = obj.Jconstraint - H;
-      obj.rhsConstraint = obj.rhsConstraint + rhsStab;
+      model.addJacobian(interf,-H,tracFld);
+      model.addResidual(interf,rhsStab,tracFld);
 
       if gresLog().getVerbosity > 3
         % print rhs terms for each fracture state for debug purposes
+        res = model.getResidual(interf,tracFld);
         dof_stick = DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.stick),3);
         dof_slip = [DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.slip),3); ...
-                    DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.newSlip),3)];
+          DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.newSlip),3)];
         dof_open = DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.open),3);
         fprintf('Rhs norm for stabilization: %4.3e \n', norm(rhsStab));
-        fprintf('Rhs norm for stick dofs: %4.3e \n', norm(obj.rhsConstraint(dof_stick)))
-        fprintf('Rhs norm for slip dofs: %4.3e \n', norm(obj.rhsConstraint(dof_slip)))
-        fprintf('Rhs norm for open dofs: %4.3e \n', norm(obj.rhsConstraint(dof_open)))
+        fprintf('Rhs norm for stick dofs: %4.3e \n', norm(res(dof_stick)))
+        fprintf('Rhs norm for slip dofs: %4.3e \n', norm(res(dof_slip)))
+        fprintf('Rhs norm for open dofs: %4.3e \n', norm(res(dof_open)))
       end
 
     end
+
+
+    % function assembleConstraintOld(obj)
+    %
+    %   % reset the jacobian blocks
+    %
+    %   interf = obj.interface;
+    %   model = interf.model;
+    %   master = interf.domains(MortarSide.master);
+    %   slave = interf.domains(MortarSide.slave);
+    %   dispFld = obj.getCoupledField();
+    %   tracFld = obj.getField();
+    %
+    %   % clear previous jacobian coupling
+    %   obj.setJacobian(slave,[],dispFld,tracFld,interf);
+    %   obj.setJacobian(master,[],dispFld,tracFld,interf);
+    %   obj.setJacobian(interf,[],tracFld,dispFld,master);
+    %   obj.setJacobian(interf,[],tracFld,dispFld,slave);
+    %
+    %   if isempty(obj.Dmat)
+    %     computeConstraintMatrices(obj,dispFld);
+    %   end
+    %
+    %   computeContactMatricesAndRhs(obj);
+    %
+    %   % get stabilization matrix depending on the current active set
+    %   [H,rhsStab] = getStabilizationMatrixAndRhs(obj);
+    %
+    %   model.addJacobian(interf,-H,tracFld);
+    %   model.addResidual(interf,rhsStab,tracFld);
+    %
+    %   if gresLog().getVerbosity > 3
+    %     % print rhs terms for each fracture state for debug purposes
+    %     res = model.getResidual(interf,tracFld);
+    %     dof_stick = DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.stick),3);
+    %     dof_slip = [DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.slip),3); ...
+    %                 DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.newSlip),3)];
+    %     dof_open = DoFManager.dofExpand(find(obj.activeSet.curr == ContactMode.open),3);
+    %     fprintf('Rhs norm for stabilization: %4.3e \n', norm(rhsStab));
+    %     fprintf('Rhs norm for stick dofs: %4.3e \n', norm(res(dof_stick)))
+    %     fprintf('Rhs norm for slip dofs: %4.3e \n', norm(res(dof_slip)))
+    %     fprintf('Rhs norm for open dofs: %4.3e \n', norm(res(dof_open)))
+    %   end
+    %
+    % end
 
     function applyContactReturnMap(obj)
 
@@ -207,7 +270,7 @@ classdef SolidMechanicsContact < MeshTying
 
     function initialize(obj)
 
-      initialize@InterfaceSolver(obj);
+      initialize@MortarContinuity(obj);
 
       % initial traction from cell stress
       tIni = computeInitialTraction(obj);
@@ -244,31 +307,38 @@ classdef SolidMechanicsContact < MeshTying
     end
 
     function trac = computeInitialTraction(obj)
-      % initialize traction for cell stress (average)
-      sl = MortarSide.slave;
-      avgStress = obj.domains(MortarSide.slave).getState("avgStress");
-      surf = obj.grids(sl).surfaces;
-      faces = obj.domains(sl).grid.faces;
-      normals = surf.normal;
-      faceIds = surf.faceId;
-      cellIds = faces.neighbors(faceIds,1);
-      sigma = zeros(3);
+      quad = obj.interface.quadrature;
+      mesh = quad.grid;
+      slave = obj.interface.domains(MortarSide.slave);
+      slaveFaces = mesh.traceGrids(MortarSide.slave).cells.faceId;
+      bulkCells = slave.grid.faces.neighbors(slaveFaces,1);
+      avgStress = slave.getState("avgStress");
+
+      % Project the slave stress onto the interface normal, then average
+      % traction over the part of the interface cell covered by triplets.
       idx = [1;6;5;6;2;4;5;4;3];
+      traction = zeros(3,mesh.cells.num);
+      area = zeros(mesh.cells.num,1);
+      for triplet = reshape(quad.getActiveTriplets(),1,[])
+        cellId = mesh.neighbors(triplet,1);
+        slaveId = mesh.neighbors(triplet,2);
+        sigma = reshape(avgStress(bulkCells(slaveId),idx),3,3);
+        weight = sum(quad.getIntegrationWeights(triplet));
+        traction(:,cellId) = traction(:,cellId) + weight*sigma*mesh.cells.normal(cellId,:)';
+        area(cellId) = area(cellId) + weight;
+      end
+
       trac = zeros(getNumbDoF(obj),1);
-      for i = 1:numel(cellIds)
-        cellId = cellIds(i);
-        sigma(:) = avgStress(cellId,idx);
-        n = normals(i,:);
-        tDof = getMultiplierDoF(obj,i);
-        t = sigma*n';   % global
-        R = getRotationMatrix(obj,sl,i);
-        trac(tDof) = R'*t;
+      for cellId = 1:mesh.cells.num
+        tDof = getMultiplierDoF(obj,cellId);
+        R = obj.getMultiplierRotation(cellId);
+        trac(tDof) = R'*traction(:,cellId)/area(cellId);
       end
     end
 
     function advanceState(obj)
 
-      advanceState@InterfaceSolver(obj);
+      advanceState@MortarContinuity(obj);
       state = getState(obj);
       state.deltaTraction(:) = 0;
       setState(obj,state);
@@ -292,7 +362,7 @@ classdef SolidMechanicsContact < MeshTying
     function goBackState(obj,dt)
 
       % reset state to beginning of time step
-      goBackState@InterfaceSolver(obj);
+      goBackState@MortarContinuity(obj);
       state = getState(obj);
       state.deltaTraction(:) = 0;
       setState(obj,state);
@@ -307,11 +377,13 @@ classdef SolidMechanicsContact < MeshTying
 
     function [surfaceStr,pointStr] = writeVTK(obj,fac,varargin)
 
-      outTraction = obj.state.interpolate(fac,"traction");
-      dT = obj.state.interpolate(fac,"deltaTraction");
-      outNormalGap = obj.state.interpolate(fac,"normalGap");
-      outTangentialSlip = obj.state.interpolate(fac,"tangentialSlip");
-      outTangentialGap = obj.state.interpolate(fac,"tangentialGap");
+      state = obj.interface.state;
+
+      outTraction = state.interpolate(fac,"traction");
+      dT = state.interpolate(fac,"deltaTraction");
+      outNormalGap = state.interpolate(fac,"normalGap");
+      outTangentialSlip = state.interpolate(fac,"tangentialSlip");
+      outTangentialGap = state.interpolate(fac,"tangentialGap");
 
       outTangentialSlip = (reshape(outTangentialSlip,2,[]))';
       outTangentialGap = (reshape(outTangentialGap,2,[]))';
@@ -338,7 +410,7 @@ classdef SolidMechanicsContact < MeshTying
         'tangential_gap',          outTangentialGap
         'tangential_gap_norm',     outTangentialGapNorm
         'fracture_state',          fractureState
-        'rotationMatrix',          obj.grids(1).surfaces.rotationMatrices
+        'rotationMatrix',          obj.grid.cells.rotationMatrices
         'deltaTraction',           deltaTrac
         };
 
@@ -347,17 +419,29 @@ classdef SolidMechanicsContact < MeshTying
 
     function writeSolution(obj,fac,tID)
 
-      s = obj.state.interpolate(fac);
+      s = obj.interface.state.interpolate(fac);
 
       tT = [s.traction(2:3:end),s.traction(3:3:end)];
       norm_tT = sqrt(tT(:,1).^2 + tT(:,2).^2);
 
-      obj.outstate.results(tID).tractionVec = s.traction;
-      obj.outstate.results(tID).normalGap = s.normalGap;
-      obj.outstate.results(tID).slipIncrement = s.tangentialSlip;
-      obj.outstate.results(tID).tangentialGap = s.tangentialGap;
-      obj.outstate.results(tID).tangentialTractionNorm = norm_tT;
+      out = obj.interface.outstate;
+      out.results(tID).tractionVec = s.traction;
+      out.results(tID).normalGap = s.normalGap;
+      out.results(tID).slipIncrement = s.tangentialSlip;
+      out.results(tID).tangentialGap = s.tangentialGap;
+      out.results(tID).tangentialTractionNorm = norm_tT;
 
+    end
+
+
+    function coupledFld = getCoupledField(~,varargin)
+
+      coupledFld = "displacements";
+    end
+
+    function fld = getField(~)
+
+      fld = "traction";
     end
 
   end
@@ -375,7 +459,7 @@ classdef SolidMechanicsContact < MeshTying
       obj.NLIter = 0;
 
       oldActiveSet = obj.activeSet.curr;
-      surfSlave = obj.grids(MortarSide.slave).surfaces;
+      cells = obj.grid.cells;
 
       state = getState(obj);
 
@@ -455,8 +539,8 @@ classdef SolidMechanicsContact < MeshTying
 
         % EXCEPTION 1): check if area of fracture changing state is relatively small
 
-        areaChanged = sum(surfSlave.area(hasChangedElem));
-        totArea = sum(surfSlave.area);
+        areaChanged = sum(cells.area(hasChangedElem));
+        totArea = sum(cells.area);
         if areaChanged/totArea < obj.activeSet.tol.areaChange
           % change the active set, but flag it as nothing changed
           hasConfigurationChanged = false;
@@ -481,21 +565,32 @@ classdef SolidMechanicsContact < MeshTying
       state = getState(obj);
       stateOld = getStateOld(obj);
 
-      um = obj.domains(MortarSide.master).getState("displacements");
-      us = obj.domains(MortarSide.slave).getState("displacements");
+      um = obj.interface.domains(MortarSide.master).getState("displacements");
+      us = obj.interface.domains(MortarSide.slave).getState("displacements");
 
       % Recover the stabilized gap using the pasted class convention:
       % closed/stick constraints are A*g + rhsStab = 0 in both strategies.
-      areaSlave = repelem(obj.getSlaveArea(),3,1);
+      quad = obj.interface.quadrature;
+      % The traction rows are indexed by interface cell, so sum triplet
+      % weights on those cells before normalizing the integrated gap.
+      area = accumarray(quad.grid.neighbors(:,1),cellfun(@sum,quad.weights), ...
+        [quad.grid.cells.num,1]);
+      areaDof = zeros(obj.getNumbDoF(),1);
+      dofm = obj.getDoFManager();
+      fieldId = dofm.getVariableId(obj.getField());
+      dofs = dofm.getLocalDoF(fieldId,(1:numel(area)).');
+      areaDof(dofs) = repelem(area,3,1);
 
-      areaGap = (obj.D*us + obj.M*um);
+      [D,M] = obj.computeConstraintMatrices(obj.getCoupledField());
 
-      state.gap = areaGap./areaSlave;
+      areaGap = (D*us + M*um);
+
+      state.gap = areaGap./areaDof;
 
       [~,rhsStab] = getStabilizationMatrixAndRhs(obj);
 
-      stabGap = (areaGap + rhsStab)./areaSlave;
-      stabSlip = (state.gap-stateOld.gap) + rhsStab./areaSlave;
+      stabGap = (areaGap + rhsStab)./areaDof;
+      stabSlip = (state.gap-stateOld.gap) + rhsStab./areaDof;
 
       stabSlip(1:3:end) = [];
 
@@ -507,115 +602,116 @@ classdef SolidMechanicsContact < MeshTying
 
     end
 
+    function computeContactMatricesAndRhsOld(obj)
+      computeContactMatricesAndRhs(obj);
+    end
+
     function computeContactMatricesAndRhs(obj)
 
-      % A local law returns r, G=dR/dg and Q=dR/dt using the same branch
-      % scaling for smooth and semi-smooth contact. Mortar assembly is shared.
-
+      interf = obj.interface;
+      model = interf.model;
       m = MortarSide.master;
       s = MortarSide.slave;
-      surfMaster = obj.grids(m).surfaces;
-      surfSlave = obj.grids(s).surfaces;
-      dofMaster = getDoFManager(obj,m);
-      dofSlave = getDoFManager(obj,s);
-      fldM = dofMaster.getVariableId(obj.coupledVariables);
-      fldS = dofSlave.getVariableId(obj.coupledVariables);
-      topolMaster = getRowsMatrix(surfMaster.connectivity,1:surfMaster.num);
-      topolSlave = getRowsMatrix(surfSlave.connectivity,1:surfSlave.num);
-      [asbMu,asbDu,asbMt,asbDt,asbQ] = defineAssemblers(obj);
-      rhsUm = zeros(getNumbDoF(dofMaster,obj.coupledVariables),1);
-      rhsUs = zeros(getNumbDoF(dofSlave,obj.coupledVariables),1);
-      rhsT = zeros(getNumbDoF(obj),1);
+      master = interf.domains(m);
+      slave = interf.domains(s);
+      quad = interf.quadrature;
+      mesh = quad.grid;
+      meshMaster = mesh.traceGrids(m);
+      meshSlave = mesh.traceGrids(s);
+      coupFld = obj.getCoupledField();
+      tracFld = obj.getField();
+      dofMaster = master.dofm;
+      dofSlave = slave.dofm;
+      fldM = dofMaster.getVariableId(coupFld);
+      fldS = dofSlave.getVariableId(coupFld);
+      interfaceElements = obj.createTraceElements(mesh,quad.gaussOrder);
+      masterElements = obj.createTraceElements(meshMaster,quad.gaussOrder);
+      slaveElements = obj.createTraceElements(meshSlave,quad.gaussOrder);
 
+      [asbMu,asbDu,asbMt,asbDt,asbQ] = defineAssemblers(obj);
+      rhsUm = zeros(dofMaster.getNumbDoF(fldM),1);
+      rhsUs = zeros(dofSlave.getNumbDoF(fldS),1);
+      rhsT = zeros(getNumbDoF(obj),1);
       state = getState(obj);
       stateOld = getStateOld(obj);
       stateIni = getStateInit(obj);
       deltaGap = state.gap - stateOld.gap;
       deltaTangentialGap = state.tangentialGap - stateOld.tangentialGap;
 
-      % Freeze a single classification per slave face before visiting pairs.
-      % Smooth: retain the outer active set. 
-      % Semi-smooth: select branches from the current stabilized gap and augmented tangential traction.
+      % update contact state if semismooth
       updateAssemblyContactModes(obj,state,deltaTangentialGap);
       [cN,cT] = getComplementarityParameters(obj);
 
-      % Evaluate the local law once per P0 multiplier face, rather than once
-      % per intersection cell. Only the geometric integration is pairwise.
-      residual = zeros(3,surfSlave.num);
-      gapTangent = zeros(3,3,surfSlave.num);
-      tractionTangent = zeros(3,3,surfSlave.num);
+      % The contact law belongs to the interface cell. Several trace
+      % triplets can contribute to the same P0 traction multiplier.
 
-
-     
-      for is = 1:surfSlave.num
-        id = getMultiplierDoF(obj,is);
-        g = [state.gap(3*is-2); deltaGap(3*is-1:3*is)];
-        slip = deltaTangentialGap(2*is-1:2*is);
-
-        [residual(:,is),gapTangent(:,:,is),tractionTangent(:,:,is)] = ...
-          getLocalContactLaw(obj,obj.activeSet.curr(is),...
-          state.traction(id),g,slip,cN,cT);
+      % cache tangent matrices
+      residual = zeros(3,mesh.cells.num);
+      gapTangent = zeros(3,3,mesh.cells.num);
+      tractionTangent = zeros(3,3,mesh.cells.num);
+      for cellId = 1:mesh.cells.num
+        tDof = getMultiplierDoF(obj,cellId);
+        g = [state.gap(tDof(1));deltaGap(tDof(2:3))];
+        slip = deltaTangentialGap(2*cellId-1:2*cellId);
+        [residual(:,cellId),gapTangent(:,:,cellId),tractionTangent(:,:,cellId)] = ...
+          getLocalContactLaw(obj,obj.activeSet.curr(cellId),state.traction(tDof),g,slip,cN,cT);
       end
 
-      elemPairs = obj.quadrature.interfacePairs;
-      for vtkSlave = surfSlave.vtkTypes
-        elSlave = getElement(obj,vtkSlave,s);
-        for vtkMaster = surfMaster.vtkTypes
-          elMaster = getElement(obj,vtkMaster,m);
-          for iPair = 1:obj.quadrature.numbInterfacePairs
-            is = elemPairs(iPair,s);
-            im = elemPairs(iPair,m);
-            if surfSlave.VTKType(is) ~= vtkSlave; continue; end
-            if surfMaster.VTKType(im) ~= vtkMaster; continue; end
+      % loop over facet neighbors
+      for triplet = reshape(quad.getActiveTriplets(),1,[])
+        ids = mesh.neighbors(triplet,:);
+        cellId = ids(1);
+        is = ids(s+1);
+        im = ids(m+1);
+        % get FEM objects
+        elemI = interfaceElements{mesh.cells.VTKType(cellId)};
+        elemS = slaveElements{meshSlave.cells.VTKType(is)};
+        elemM = masterElements{meshMaster.cells.VTKType(im)};
 
-            nodesS = surfSlave.loc2glob(topolSlave(is,1:elSlave.nNode));
-            nodesM = surfMaster.loc2glob(topolMaster(im,1:elMaster.nNode));
-            usDof = dofSlave.getLocalDoF(fldS,nodesS);
-            umDof = dofMaster.getLocalDoF(fldM,nodesM);
-            tDof = getMultiplierDoF(obj,is);
-            [Aum,Aus,area] = getContactPairOperators(obj,iPair,...
-              im,is,elMaster,elSlave);
-            dTrac = state.traction(tDof) - stateIni.traction(tDof);
+        % get dofs
+        nodesS = meshSlave.getCellNodes(is);
+        nodesM = meshMaster.getCellNodes(im);
+        usDof = dofSlave.getLocalDoF(fldS,meshSlave.cells.loc2glob(nodesS(1:elemS.nNode)));
+        umDof = dofMaster.getLocalDoF(fldM,meshMaster.cells.loc2glob(nodesM(1:elemM.nNode)));
+        tDof = getMultiplierDoF(obj,cellId);
 
-            % Equilibrium: displacement-test jump paired with traction.
-            asbMu.localAssembly(umDof,tDof,Aum);
-            asbDu.localAssembly(usDof,tDof,-Aus);
-            rhsUm(umDof) = rhsUm(umDof) + Aum*dTrac;
-            rhsUs(usDof) = rhsUs(usDof) - Aus*dTrac;
+        % get cross grid contribution for the curretn triplet
+        [Aum,Aus,area] = getContactPairOperators(obj,triplet,cellId,elemI,elemM,elemS);
 
-            % Constraint: one common assembly for stick, slip and open.
-            G = gapTangent(:,:,is);
-            Q = tractionTangent(:,:,is);
-            asbMt.localAssembly(tDof,umDof,G*Aum');
-            asbDt.localAssembly(tDof,usDof,-G*Aus');
-            asbQ.localAssembly(tDof,tDof,area*Q);
-            rhsT(tDof) = rhsT(tDof) + area*residual(:,is);
-          end
-        end
+        dTrac = state.traction(tDof) - stateIni.traction(tDof);
+        asbMu.localAssembly(umDof,tDof,Aum);
+        asbDu.localAssembly(usDof,tDof,-Aus);
+        rhsUm(umDof) = rhsUm(umDof) + Aum*dTrac;
+        rhsUs(usDof) = rhsUs(usDof) - Aus*dTrac;
+
+        % assemble local tangent blocks
+        G = gapTangent(:,:,cellId);
+        Q = tractionTangent(:,:,cellId);
+        asbMt.localAssembly(tDof,umDof,G*Aum');
+        asbDt.localAssembly(tDof,usDof,-G*Aus');
+        asbQ.localAssembly(tDof,tDof,area*Q);
+        rhsT(tDof) = rhsT(tDof) + area*residual(:,cellId);
       end
 
-      obj.addJum(m,asbMu.sparseAssembly());
-      obj.addJum(s,asbDu.sparseAssembly());
-      obj.addJmu(m,asbMt.sparseAssembly());
-      obj.addJmu(s,asbDt.sparseAssembly());
-      obj.Jconstraint = asbQ.sparseAssembly();
-      obj.addRhs(m,rhsUm);
-      obj.addRhs(s,rhsUs);
-      obj.rhsConstraint = rhsT;
+      % add jacobian and rhs 
+      model.addJacobian(master,asbMu.sparseAssembly(),coupFld,tracFld,interf);
+      model.addJacobian(slave,asbDu.sparseAssembly(),coupFld,tracFld,interf);
+      model.addJacobian(interf,asbMt.sparseAssembly(),tracFld,coupFld,master);
+      model.addJacobian(interf,asbDt.sparseAssembly(),tracFld,coupFld,slave);
+      model.addJacobian(interf,asbQ.sparseAssembly(),tracFld);
+      model.addResidual(master,rhsUm,coupFld);
+      model.addResidual(slave,rhsUs,coupFld);
+      model.addResidual(interf,rhsT,tracFld);
     end
 
-    function [Aum,Aus,area] = getContactPairOperators(obj,iPair,...
-        im,is,elMaster,elSlave)
-      % Pure mortar geometry, independent of contact mode and strategy.
-      xiMaster = obj.quadrature.getMasterGPCoords(iPair);
-      xiSlave = obj.quadrature.getSlaveGPCoords(iPair);
-      dJw = obj.quadrature.getIntegrationWeights(iPair);
+    function [Aum,Aus,area] = getContactPairOperators(obj,triplet,cellId,elemI,elemM,elemS)
+      quad = obj.interface.quadrature;
+      dJw = quad.getIntegrationWeights(triplet);
       area = sum(dJw);
-      [Ns,Nm,Nmult] = getMortarBasisFunctions(obj.quadrature,...
-        im,is,elMaster,elSlave,xiMaster,xiSlave);
+      [Ns,Nm,Nmult] = quad.getMortarBasisFunctions(triplet,elemI,elemM,elemS,obj.multiplierType);
       [Ns,Nm,Nmult] = reshapeBasisFunctions(3,Ns,Nm,Nmult);
       f = @(a,b) pagemtimes(a,'ctranspose',b,'none');
-      R = getRotationMatrix(obj,MortarSide.slave,is);
+      R = obj.getMultiplierRotation(cellId);
       Aum = MortarQuadrature.integrate(f,Nm,Nmult,dJw)*R;
       Aus = MortarQuadrature.integrate(f,Ns,Nmult,dJw)*R;
     end
@@ -635,7 +731,7 @@ classdef SolidMechanicsContact < MeshTying
           obj.activeSet.curr(is) = ContactMode.stick;
           continue
         end
-        
+
         id = getMultiplierDoF(obj,is);
         t = state.traction(id);
         if t(1) + cN*state.normalGap(is) > 0
@@ -648,7 +744,7 @@ classdef SolidMechanicsContact < MeshTying
           if tau >= tauLim
             tau = tau*(1-obj.activeSet.tol.tangentialViolation);
           end
-          
+
           if tau <= tauLim
             obj.activeSet.curr(is) = ContactMode.stick;
           else
@@ -697,7 +793,7 @@ classdef SolidMechanicsContact < MeshTying
       r = t(2:3) - tauLim*n;
       G = -tauLim*cT*Dn;
       Q = [-dTauDtN*n, eye(2)-tauLim*Dn];
-      
+
     end
 
     function [tauLim,dTauDtN] = getFrictionLimit(obj,tN)
@@ -724,7 +820,7 @@ classdef SolidMechanicsContact < MeshTying
       cN = c(1);
       cT = c(end);
 
-      
+
     end
 
     function [n,DnDx] = getUnitVectorAndDerivative(obj,x)
@@ -745,25 +841,8 @@ classdef SolidMechanicsContact < MeshTying
     end
 
     function isForced = isForceStickElement(obj,is)
-      % Check whether the current slave surface is constrained to remain in
-      % stick mode because of the optional forceStick settings.
-
-      isForced = obj.forceStick;
-
-      if isForced
-        return
-      end
-
-      if ~isstring(obj.activeSet.forceStickBoundary)
-        return
-      end
-
-      surfSlave = obj.grids(MortarSide.slave).surfaces;
-      nodes = getRowsMatrix(surfSlave.connectivity,is);
-      nodes = surfSlave.loc2glob(nodes);
-
-      isForced = any(ismember(nodes,obj.stickNodes));
-
+      isForced = obj.forceStick || ...
+        (~isempty(obj.forcedStickCells) && obj.forcedStickCells(is));
     end
 
     function [H,rhsH] = getStabilizationMatrixAndRhs(obj)
@@ -773,7 +852,7 @@ classdef SolidMechanicsContact < MeshTying
       % pasted class. Slip tangential rows and open rows are filtered out.
 
       if isempty(obj.stabilizationMat)
-        computeStabilizationMatrix(obj);
+        computeStabilizationMatrix(obj,obj.getCoupledField(),obj.getField());
       end
 
       state = getState(obj);
@@ -805,28 +884,22 @@ classdef SolidMechanicsContact < MeshTying
       s = MortarSide.slave;
       m = MortarSide.master;
 
-      surfMaster = obj.grids(m).surfaces;
-      surfSlave = obj.grids(s).surfaces;
+      meshMaster = obj.grid.traceGrids(m).cells;
+      meshSlave = obj.grid.traceGrids(s).cells;
       dofSlave = getDoFManager(obj,s);
       dofMaster = getDoFManager(obj,m);
 
       ncomp = 3;
 
-      elemPairs = obj.quadrature.interfacePairs;
-      nv = surfMaster.numVerts(elemPairs(:,m));
-      nNMPS = accumarray(elemPairs(:,s),nv,[surfSlave.num,1]);
-
-      N1 = sum(nNMPS);
-      N2 = sum(surfSlave.numVerts(elemPairs(:,s)));
-
-      nmu = (ncomp^2)*N1;
-      nsu = ncomp^2*N2;
+      neigh = obj.grid.neighbors;
+      nmu = ncomp^2*sum(meshMaster.numVerts(neigh(:,m+1)));
+      nsu = ncomp^2*sum(meshSlave.numVerts(neigh(:,s+1)));
       nmt = nmu;
       nst = nsu;
-      nq = ncomp^2*N2;
+      nq = ncomp^2*size(neigh,1);
 
-      nDofMaster = dofMaster.getNumbDoF(obj.coupledVariables);
-      nDofSlave = dofSlave.getNumbDoF(obj.coupledVariables);
+      nDofMaster = dofMaster.getNumbDoF(obj.coupledFields);
+      nDofSlave = dofSlave.getNumbDoF(obj.coupledFields);
       nDofMult = getNumbDoF(obj);
 
       % initialize sparse matrix assemblers
@@ -839,38 +912,43 @@ classdef SolidMechanicsContact < MeshTying
     end
 
     function setStickNodes(obj)
-
-      % set boundary nodes that must remain stick
-
-      bcs = obj.domains(2).bcs;
-      bcList = keys(bcs.db);
-
-      if ~isstring(obj.activeSet.forceStickBoundary)
+      obj.forcedStickCells = false(obj.grid.cells.num,1);
+      obj.stickNodes = [];
+      selection = obj.activeSet.forceStickBoundary;
+      master = obj.interface.domains(MortarSide.master);
+      bcs = master.bcs;
+      if isempty(bcs) || ~(isstring(selection) || ischar(selection))
         return
       end
 
-      directions = ismember(["x","y","z"],obj.activeSet.forceStickBoundary);
-
+      directions = ismember(["x","y","z"],string(selection));
       stickList = [];
-
-      for bcId = string(bcList)
-
-        if strcmpi(getType(bcs,bcId),"dirichlet") && getVariable(bcs,bcId) == obj.coupledVariables
-
-          nEnts = getNumbTargetEntities(bcs,bcId);
-
-          if sum(nEnts(directions))==0
-            continue
+      for bcId = reshape(bcs.getBCList(),1,[])
+        if bcs.getType(bcId) == BCtype.dirichlet && ...
+            bcs.getVariable(bcId) == obj.getCoupledField()
+          counts = bcs.getNumbTargetEntities(bcId);
+          nodes = bcs.getTargetEntities(bcId);
+          % BC targets are concatenated by component.
+          offsets = [0;cumsum(counts(:))];
+          for component = find(directions)
+            rows = offsets(component)+1:offsets(component+1);
+            stickList = [stickList;reshape(nodes(rows),[],1)];
           end
-
-          stickList = [stickList; getTargetEntities(bcs,bcId)];
-
         end
-
       end
-
       obj.stickNodes = unique(stickList);
-      
+
+      % Match the selected bulk nodes on the master side, then use the
+      % triplets to flag the interface cells supported by those trace facets.
+      trace = obj.grid.traceGrids(MortarSide.master);
+      isStickNode = ismember(trace.cells.loc2glob,obj.stickNodes);
+      isStickFacet = false(trace.cells.num,1);
+      for facet = 1:trace.cells.num
+        nodes = trace.getCellNodes(facet);
+        isStickFacet(facet) = any(isStickNode(nodes(nodes>0)));
+      end
+      neighbors = obj.grid.neighbors;
+      obj.forcedStickCells(neighbors(isStickFacet(neighbors(:,3)),1)) = true;
     end
 
   end

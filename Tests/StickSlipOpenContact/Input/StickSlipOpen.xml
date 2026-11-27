@@ -7,7 +7,7 @@ in a nonConforming simulation.
 
   <SimulationParameters
                         Start="0."
-                        End ="16.0"
+                        End ="4.0"
                         DtInit="1"
                         DtMin ="1e-4"
                         DtMax ="1"
@@ -23,7 +23,7 @@ in a nonConforming simulation.
     <SolidMechanicsContact
                                          augmentationParameter = "1e3"
                                          multiplierType = "P0"
-                                         isSmooth = "0"
+                                         isSmooth = "1"
                                          stabilizationScale = "1.0"
                                          masterDomain = "1" masterSurface = "6"
                                          slaveDomain = "2" slaveSurface = "5">

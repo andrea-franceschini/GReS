@@ -1,42 +1,18 @@
-function  plotFunction(mesh, foldName, time, funct, varargin)
-% PLOTFUNCTION Summary of this function goes here
-%   Detailed explanation goes here
-
-out = OutState('outputFile',foldName,'printTimes',time,'vtkFormat',"ascii");
-out.prepareOutputFolders();
-
-[~, vtuName, ~] = fileparts(foldName);
-
-toc = out.vtkFile.getDocumentElement;
-toc.setAttribute('type', 'vtkMultiBlockDataSet');
-toc.setAttribute('version', '1.0');
-blocks = out.vtkFile.createElement('vtkMultiBlockDataSet');
-
-
-% inner block with vtu dataset to append to vtm file
-block = out.vtkFile.createElement('Block');
-
-var.name = 'solution';
-var.data = funct;
-% outVTK.writeVTKFile(0, [], [], [], []);
-if isempty(varargin) || strcmpi(varargin{1},'node')
-  if mesh.cells.num > 0
-    writeVTKfile(out,block,vtuName,mesh,time,var,[],[],[]);
-  else
-    writeVTKfile(out,block,vtuName,mesh,time,[],[],var,[]);
-  end
-elseif strcmpi(varargin{1},'elem')
-  if ~isempty(mesh.cells)
-    writeVTKfile(out,block,vtuName,mesh,time,[],var,[],[]);
-  else
-    writeVTKfile(out,block,vtuName,mesh,time,[],[],[],var);
-  end
+function plotFunction(mesh, foldName, time, funct, location)
+%PLOTFUNCTION Export a nodal or elemental field as a ParaView collection.
+%   plotFunction(mesh, 'solution', time, values, 'elem') writes cell data.
+%   The default location is 'node'.
+arguments
+  mesh
+  foldName (1,1) string
+  time (1,1) double {mustBeReal,mustBeFinite}
+  funct
+  location (1,1) string = "node"
 end
 
-blocks.appendChild(block);
-toc.appendChild(blocks);
-
-out.writeVTMFile();
-
+location = lower(location);
+assert(any(location == ["node","elem"]), 'GReS:PlotFunction', ...
+  'Field location must be node or elem.');
+[~, name] = fileparts(foldName);
+writePlotCollection({mesh},foldName,time,{funct},location,name);
 end
-

@@ -5,31 +5,29 @@ classdef (Abstract) SolutionScheme < handle
   
 
   properties (SetAccess = protected, GetAccess = public)
-    %
-    %
+
     tOld                % tOld: previous converged time instant
     t                   % simulation time
     tStep               % simulation time step
     dt                  % current time step size
     dtSave              % stored time step size 
-    nVars               % total number of inner variable fields in the model
     attemptedReset      % flag for attempting a configuration reset
     iniState            % initial state of the simulation for solver reset
     isFirstRun = true   % flag if the simulation is first ever or first after a reset   
     targetTimeID        % id for printTimes list for which solution is required
     restartControl      % variable to control the save point for restart
     rhsNormIt0 = 0      % initial residual norm of current step
+    
   end
 
 
   properties (Access = public)
-    nDom                % number of domains in the model
-    nInterf             % number of interfaces in the model
-    linsolver             % instance of linear solver object
-    output                % object handling the output of the simulation
-    simparams             % parameters of the simulations (shared)
-    domains               % array of Discretizer objects
-    interfaces            % cell array of interfaces objects
+
+    model
+    simparams
+    output
+    linsolver             
+
   end
 
 
@@ -119,17 +117,11 @@ classdef (Abstract) SolutionScheme < handle
     function setSolutionScheme(obj,varargin)
       default = struct('simulationparameters',SimulationParameters.empty,...
                        'output',missing,...
-                       'domains',Discretizer.empty,...
-                       'interface',missing);
+                       'model',Model.empty);
 
       params = readInput(default,varargin{:});
-
+      obj.model = params.model;
       obj.simparams = params.simulationparameters;
-      obj.domains = params.domains;
-
-      if ~ismissing(params.interface)
-        obj.interfaces = params.interface;
-      end
 
       if ~ismissing(params.output)
         obj.output = params.output;
@@ -137,14 +129,11 @@ classdef (Abstract) SolutionScheme < handle
         obj.output = OutState();
       end
 
-      obj.nDom = numel(obj.domains);
-      obj.nInterf = numel(obj.interfaces);
-
       assert(~isempty(obj.simparams),"Input 'simulationParameters'" + ...
         " is required for SolutionScheme")
-      assert(obj.nDom > 0,"Input 'domains'" + ...
-        " is required for SolutionScheme")
+      
     end
+
 
     function initialize(obj)
 
@@ -153,12 +142,10 @@ classdef (Abstract) SolutionScheme < handle
         obj.reset();
       end
 
-      obj.nVars = 0;
-
       % store initial state and setup simulation
 
-      for i = 1:obj.nDom
-        dom = obj.domains(i);
+      for i = 1:numel(obj.model.domains)
+        dom = obj.model.domains(i);
         state = dom.getState;
         state.time = obj.simparams.tIni;
         dom.setState(state);
@@ -171,11 +158,10 @@ classdef (Abstract) SolutionScheme < handle
         dom.outstate = obj.output;
         dom.simparams = obj.simparams;
         dom.domainId = i;
-        obj.nVars = obj.nVars + dom.dofm.getNumberOfVariables();
       end
 
-      for i = 1:obj.nInterf
-        interf = obj.interfaces{i};
+      for i = 1:numel(obj.model.interfaces)
+        interf = obj.model.interfaces(i);
         state = interf.getState;
         state.time = obj.simparams.tIni;
         interf.setState(state);
@@ -185,13 +171,13 @@ classdef (Abstract) SolutionScheme < handle
         % set old and initial state
         interf.setStateInit(state);
         interf.setStateOld(state);
-        interf.interfId = i;
+        interf.id = i;
         interf.outstate = obj.output;
       end
 
       obj.isFirstRun = false;
 
-      obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration || obj.nInterf == 0;
+      obj.attemptedReset = ~obj.simparams.attemptSimplestConfiguration || isempty(obj.model.interfaces);
 
       % Prepare folder to save the restart files.
       obj.output = obj.output.prepareRestart();
@@ -207,12 +193,12 @@ classdef (Abstract) SolutionScheme < handle
     function reset(obj)
       % reset the simulation  at its initial state
 
-      for i = 1:obj.nDom
-        setState(obj.domains(i),obj.iniState.domains{i});
+      for i = 1:numel(obj.model.domains)
+        setState(obj.model.domains(i),obj.iniState.domains{i});
       end
 
-      for i = 1:obj.nInterf
-        setState(get(obj.iniState.interfaces{i}));
+      for i = 1:numel(obj.model.interfaces)
+        obj.model.interfaces(i).setState(obj.iniState.interfaces{i});
       end
 
       if ~isempty(obj.output)
@@ -234,13 +220,7 @@ classdef (Abstract) SolutionScheme < handle
       if ~flConv && ~obj.attemptedReset
         % allow a configuration reset to attempt saving the simulation
 
-        for i = 1:obj.nDom
-          resetConfiguration(obj.domains(i));
-        end
-
-        for i = 1:obj.nInterf
-          resetConfiguration(obj.interfaces{i});
-        end
+        obj.model.resetConfiguration();
 
         obj.tStep = obj.tStep - 1;
         obj.t = obj.t - obj.dt;
@@ -298,7 +278,7 @@ classdef (Abstract) SolutionScheme < handle
       end
     end
 
-    function sol = solve(obj,J,rhs,varargin)
+    function sol = solve(obj,J,res,varargin)
       
       % Extract the Newton iteration count when provided
       if ~isempty(varargin)
@@ -308,7 +288,7 @@ classdef (Abstract) SolutionScheme < handle
       end
 
       % Actual solution of the system
-      [sol,~] = obj.linsolver.SolveLin(J,rhs,obj.t,newtonIter);
+      [sol,~] = obj.linsolver.SolveLin(J,res,obj.t,newtonIter);
     end
 
     function setLinearSolver(obj,varargin)
@@ -324,11 +304,11 @@ classdef (Abstract) SolutionScheme < handle
     end
 
     function applyDirVal(obj)
-      for i = 1:obj.nDom
-        discretizer = obj.domains(i);
+      for i = 1:numel(obj.model.domains)
+        discretizer = obj.model.domains(i);
 
         % Check if boundary conditions are defined for the i-th domain
-        if ~isempty(obj.domains(i).bcs)
+        if ~isempty(obj.model.domains(i).bcs)
 
           % Apply Dirichlet boundary values to i-th domain
           applyDirVal(discretizer,obj.t);
@@ -337,56 +317,35 @@ classdef (Abstract) SolutionScheme < handle
     end
 
     function applyBC(obj)
-      for i = 1:obj.nDom
-        discretizer = obj.domains(i);
+      for i = 1:numel(obj.model.domains)
+        domain = obj.model.domains(i);
         % Apply BCs to the blocks of the linear system
-        applyBC(discretizer, obj.t);
-
-        % Apply BC to domain coupling matrices
-        for j = discretizer.interfaceList
-          applyBC(obj.interfaces{j},i,discretizer.bcs,obj.t);
-        end
+        applyBC(domain, obj.t);
       end
     end
 
     function updateState(obj,dSol)
-      % update domain and interface state using incremental solution
-      dSol_fix = dSol;
-      for i = 1:obj.nDom
-        N = obj.domains(i).dofm.totDoF;
-        du = dSol(1:N);
-        updateState(obj.domains(i),du);
-        dSol = dSol(N+1:end);
-      end
 
-      % update interface state
-      for j = 1:obj.nInterf
-        N = obj.interfaces{j}.totMult;
-        if N == 0
-          du = dSol_fix;
-        else
-          du = dSol(1:N);
-        end
-        obj.interfaces{j}.updateState(du);
-        dSol = dSol(N+1:end);
-      end
+      obj.model.updateState(dSol);
+
     end
+
 
     function initializeTimeStep(obj)
 
       obj.tStep = obj.tStep + 1;
 
       % set current time into state objects
-      for i = 1:obj.nDom
-        dom = obj.domains(i);
+      for i = 1:numel(obj.model.domains)
+        dom = obj.model.domains(i);
         dom.setState(obj.t,'time');
-        timeStepSetup(obj.domains(i));
+        timeStepSetup(obj.model.domains(i));
       end
 
-      for i = 1:obj.nInterf
-        interf = obj.interfaces{i};
+      for i = 1:numel(obj.model.interfaces)
+        interf = obj.model.interfaces(i);
         interf.setState(obj.t,'time');
-        timeStepSetup(obj.interfaces{i});
+        timeStepSetup(obj.model.interfaces(i));
       end
     end
 
@@ -471,15 +430,15 @@ classdef (Abstract) SolutionScheme < handle
         blocks = obj.output.vtkFile.createElement('vtkMultiBlockDataSet');
 
         % append blocks looping into domains and interfaces
-        for i = 1:obj.nDom
-          vtmBlock = obj.domains(i).writeVTK(fac,outTime);
+        for i = 1:numel(obj.model.domains)
+          vtmBlock = obj.model.domains(i).writeVTK(fac,outTime);
           if ~isempty(vtmBlock)
             blocks.appendChild(vtmBlock);
           end
         end
         %
-        for i = 1:obj.nInterf
-          vtmBlock = obj.interfaces{i}.writeVTKfile(fac,outTime);
+        for i = 1:numel(obj.model.interfaces)
+          vtmBlock = obj.model.interfaces(i).writeVTKfile(fac,outTime);
           if ~isempty(vtmBlock)
             blocks.appendChild(vtmBlock);
           end
@@ -494,39 +453,29 @@ classdef (Abstract) SolutionScheme < handle
       % write results into an output structure
       
       if obj.output.writeSolution
-        for i = 1:obj.nDom
-          obj.domains(i).writeSolution(fac,timeID);
+        for i = 1:numel(obj.model.domains)
+          obj.model.domains(i).writeSolution(fac,timeID);
         end
 
-        for i = 1:obj.nInterf
-          obj.interfaces{i}.writeSolution(fac,timeID);
+        for i = 1:numel(obj.model.interfaces)
+          obj.model.interfaces(i).writeSolution(fac,timeID);
         end
       end
     end
 
     function advanceState(obj)
-      for i = 1:obj.nDom
-        dom = obj.domains(i);
-        advanceState(dom);
-      end
 
-      for i = 1:obj.nInterf
-        interf = obj.interfaces{i};
-        advanceState(interf);
-      end
+      obj.model.advanceState();
+
     end
+
 
     function goBackState(obj)
-      for i = 1:obj.nDom
-        dom = obj.domains(i);
-        goBackState(dom);
-      end
 
-      for i = 1:obj.nInterf
-        interf = obj.interfaces{i};
-        goBackState(interf);
-      end
+      obj.model.goBackState();
+
     end
+
 
     function dt = getNextDt(obj)
 

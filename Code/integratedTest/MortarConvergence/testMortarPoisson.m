@@ -1,147 +1,120 @@
-% study parameters
-% clc
-% clear
-% Get the full path of the currently executing file
-scriptFullPath = mfilename('fullpath');
-% Extract the directory containing the script
-scriptDir = fileparts(scriptFullPath);
-% Change the current directory to the script's directory
-cd(scriptDir);
+function tests = testMortarPoisson
+% Manufactured Poisson solution on two nonmatching Cartesian subdomains.
+  tests = functiontests(localfunctions);
+end
 
 
-for integration_type = ["SegmentBasedQuadrature",...
-                        "ElementBasedQuadrature",...
-                        "RBFquadrature"]
+function testLinearSegment(~)
+  checkRates(1,"SegmentBasedQuadrature");
+end
 
-  for elem_type = ["hexa","hexa27"]
 
-    [L2,H1] = run(elem_type,integration_type);
-    validate(elem_type,integration_type,L2,H1);
+function testLinearElement(~)
+  checkRates(1,"ElementBasedQuadrature");
+end
 
+
+function testQuadraticSegment(~)
+  checkRates(2,"SegmentBasedQuadrature");
+end
+
+
+function testQuadraticElement(~)
+  checkRates(2,"ElementBasedQuadrature");
+end
+
+
+function checkRates(degree,quadrature)
+  errors = zeros(2,2);
+  for level = 1:2
+    errors(level,:) = solveMortarPoisson(degree,quadrature,2^(level-1));
   end
+  rates = log2(errors(1,:)./errors(2,:));
+  fprintf('Q%d %s: L2 rate %.3f, H1 rate %.3f\n',degree,quadrature,rates);
+  expected = [degree+1,degree];
+  assert(all(rates > expected-0.2 & rates < expected+0.5), ...
+    'Unexpected Q%d convergence for %s: L2 = %.3f, H1 = %.3f.', ...
+    degree,quadrature,rates);
 end
 
 
-function [L2ord,H1ord] = run(elem,quadrature)
+function errors = solveMortarPoisson(degree,quadrature,refinement)
+  u = @(x,y,z) cos(pi*y).*cos(pi*z).*(2*x-x.^2+sin(pi*x));
+  ux = @(x,y,z) cos(pi*y).*cos(pi*z).*(2-2*x+pi*cos(pi*x));
+  uy = @(x,y,z) -pi*sin(pi*y).*cos(pi*z).*(2*x-x.^2+sin(pi*x));
+  uz = @(x,y,z) -pi*cos(pi*y).*sin(pi*z).*(2*x-x.^2+sin(pi*x));
+  f = @(x,y,z) cos(pi*y).*cos(pi*z).*(-2-4*pi^2*x+2*pi^2*x.^2-3*pi^2*sin(pi*x));
 
-fileName = 'poissonMortar.xml';
-params = readstruct(fileName,AttributeSuffix="");
+  left = makeGrid([3,4,4]*refinement,[0,1],degree);
+  right = makeGrid([4,6,6]*refinement,[1,2],degree);
+  slave = makeDomain(left,0,u,f,ux,uy,uz);
+  master = makeDomain(right,2,u,f,ux,uy,uz);
+  interface = Interface([slave;master],'slaveSurface',6,'masterSurface',5);
+  order = 6;
+  if quadrature == "ElementBasedQuadrature"
+    order = 10;
+  end
+  interface.addConstraint("MortarContinuity",'variable',"u", ...
+    'multiplierType',"standard",'quadrature',struct('type',quadrature,'gaussOrder',order));
 
-
-%% Poisson problem with single domain in 3D. Testing new poisson module
-
-% analytical solution
-anal = @(x,y,z) cos(pi*y).*cos(pi*z).*(2*x-x.^2 + sin(pi*x));
-gradx = @(x,y,z) cos(pi*y).*cos(pi*z).*(2 - 2*x + pi*cos(pi*x));
-grady = @(x,y,z) -pi*sin(pi*y).*cos(pi*z).*(2*x-x.^2 + sin(pi*x));
-gradz = @(x,y,z) -pi*cos(pi*y).*sin(pi*z).*(2*x-x.^2 + sin(pi*x));
-h = @(x,y,z) -2-3*pi^2*sin(pi*x)-4*pi^2*x+2*pi^2*x.^2;
-f = @(x,y,z) cos(pi*y).*cos(pi*z).*h(x);
-
-
-
-%% INPUT
-
-% number of refinement
-nref = 2;
-[h,L2,H1] = deal(zeros(nref,1));
-
-% set mortar integration info
-if strcmp(quadrature,'SegmentBasedQuadrature')
-  order = 5;
-else
-  order = 10; % 6 gp per direction
-end
-
-interfStr.masterDomain = 1;
-interfStr.slaveDomain = 1;
-interfStr.masterSurface = 1;
-interfStr.slaveSurface = 3;
-interfStr.multiplierType="dual";
-
-quadStr.type = quadrature;
-quadStr.gaussOrder = order;
-quadStr.nInt = 5;
-
-
-%Nl = [4 8 16];
-Nr = [6 12 24];
-
-simparams = SimulationParameters(params.SimulationParameters);
-
-
-%% convergence loop
-for i = 1:nref
-  %N_i_l = N_l(i);
-
-  % run script to get refined mesh
-  meshName = "domain_"+elem+"_"+num2str(i);
-  meshFileName = fullfile('Input','Mesh','meshes',meshName+".vtk");
-
-  grid = Grid();
-  grid.importMesh(meshFileName);
-
-  surf = grid.surfaces;
-
-
-  bcEnts = unique(surf.connectivity(ismember(surf.tag,[2;4]),:));
-  c = grid.coordinates(bcEnts,:);
-  [X,Y,Z] = deal(c(:,1),c(:,2),c(:,3));
-  bcVals = anal(X,Y,Z);
-  bc = Boundaries(grid);
-  bc.addBC('name',"analSol",...
-    'type',"dirichlet",...
-    'field',"node",...
-    'entityListType',"bcList",...
-    'entityList',bcEnts,...
-    'variable',"u")
-
-  bc.addBCEvent("analSol",'time',0.0,'value',bcVals)
-
-  domain = Discretizer('grid',grid,'boundaries',bc);
-  domain.addPhysicsSolver('Poisson','gaussOrder',4);
-
-  interfStr.Quadrature = quadStr;
-
-  interface = InterfaceSolver.add('MeshTying',domain,interfStr);
-
-  domain.getPhysicsSolver("Poisson").setAnalSolution(anal,f,gradx,grady,gradz);
-
-  solver = NonLinearImplicit('simulationparameters',simparams,...
-    'domains',domain,...
-    'interface',interface);
-
+  params = SimulationParameters(struct('Start',0,'End',1,'DtInit',1,'DtMin',1,'DtMax',1));
+  model = Model([slave;master],interface);
+  solver = NonLinearImplicit('simulationparameters',params,'model',model);
   solver.simulationLoop();
 
-  pois = getPhysicsSolver(domain,'Poisson');
-  [L2(i),H1(i)] = pois.computeError();
-  h(i) = 1/Nr(i);
-
-  gresLog().log(0,'Max absolute error is: %1.6e \n',max(abs(getState(pois,"err"))));
+  [l2s,h1s] = slave.getPhysicsSolver("Poisson").computeError();
+  [l2m,h1m] = master.getPhysicsSolver("Poisson").computeError();
+  errors = [hypot(l2s,l2m),hypot(h1s,h1m)];
 end
 
-% compute convergence order
-L2ord = log(L2(1:end-1)./L2(2:end))./log(h(1:end-1)./h(2:end));
-H1ord = log(H1(1:end-1)./H1(2:end))./log(h(1:end-1)./h(2:end));
 
-
-
+function domain = makeDomain(grid,xBoundary,u,f,ux,uy,uz)
+  % The manufactured solution has homogeneous flux on the y and z walls.
+  xyz = grid.coordinates;
+  nodes = find(xyz(:,1) == xBoundary);
+  bc = Boundaries(grid);
+  bc.addBC('name',"exact",'type',"dirichlet",'field',"node", ...
+    'entityListType',"bcList",'entityList',nodes,'variable',"u");
+  bc.addBCEvent("exact",'time',0,'value',u(xyz(nodes,1),xyz(nodes,2),xyz(nodes,3)));
+  domain = Domain('grid',grid,'boundaries',bc);
+  domain.addPhysicsSolver("Poisson",'gaussOrder',4);
+  domain.getPhysicsSolver("Poisson").setAnalSolution(u,f,ux,uy,uz);
 end
 
-function validate(elem,quadrature,L2,H1)
-msg = "Error for %s element with %s mortar quadrature scheme";
 
-switch elem
-  % ensure correct convergence rate
-  case "hexa"
-    assert(all([L2>1.8;L2<2.5]),...
-      msg,elem,quadrature)
-    assert(all([H1>0.8;H1<1.5]),...
-      msg,elem,quadrature)
-  case "hexa27"
-    assert(all([L2>2.8;L2<3.5]),...
-      msg,elem,quadrature)
-    assert(all([H1>1.8;H1<2.5]),...
-      msg,elem,quadrature)
+function grid = makeGrid(n,xRange,degree)
+  grid = structuredMesh(n(1),n(2),n(3),xRange,[0,1],[0,1]);
+  if degree == 2
+    % Use the twice-refined lattice for shared vertices, mid-edge nodes,
+    % face centers, and cell centers in VTK connectivity order.
+    fine = structuredMesh(2*n(1),2*n(2),2*n(3),xRange,[0,1],[0,1]);
+    lattice = round(2*n.*(grid.coordinates - [xRange(1),0,0]));
+    corners = grid.cells.connectivity;
+    offsets = HexahedronQuadratic.coordLoc + 1;
+    grid.cells.connectivity = nodeIds(lattice(corners(:,1),:),offsets,n);
+    grid.cells.numVerts(:) = 27;
+    grid.cells.VTKType(:) = double(VTKType.Hexa27);
+
+    corners = grid.surfaces.connectivity;
+    faceOrigin = lattice(corners(:,1),:);
+    first = (lattice(corners(:,2),:) - faceOrigin)/2;
+    second = (lattice(corners(:,4),:) - faceOrigin)/2;
+    offsets = QuadrilateralQuadratic.coordLoc + 1;
+    shape = 2*n + 1;
+    for k = 1:size(offsets,1)
+      xyz = faceOrigin + offsets(k,1)*first + offsets(k,2)*second + 1;
+      grid.surfaces.connectivity(:,k) = sub2ind(shape,xyz(:,1),xyz(:,2),xyz(:,3));
+    end
+    grid.surfaces.numVerts(:) = 9;
+    grid.surfaces.VTKType(:) = double(VTKType.Quad9);
+    grid.coordinates = fine.coordinates;
+  end
+  grid.processGeometry();
 end
+
+
+function ids = nodeIds(origin,offsets,n)
+  shape = 2*n + 1;
+  ids = sub2ind(shape,origin(:,1) + offsets(:,1)' + 1, ...
+    origin(:,2) + offsets(:,2)' + 1,origin(:,3) + offsets(:,3)' + 1);
 end

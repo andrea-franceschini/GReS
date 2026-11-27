@@ -243,10 +243,11 @@ classdef TwoPhaseFlow < SinglePhaseFlowFVTPFA
       eqIdx = [dofm.getVariableId("pressure"); ...
         dofm.getVariableId("saturation")];
 
-      obj.domain.rhs{eqIdx(1)} = wet.val;
-      obj.domain.rhs{eqIdx(2)} = nwet.val;
-      obj.domain.J(eqIdx(1),eqIdx) = wet.jac;
-      obj.domain.J(eqIdx(2),eqIdx) = nwet.jac;
+      model = obj.domain.model;
+      model.setResidual(obj.domain,wet.val,eqIdx(1));
+      model.setResidual(obj.domain,nwet.val,eqIdx(2));
+      model.setJacobian(obj.domain,cell2mat(wet.jac),eqIdx(1),eqIdx);
+      model.setJacobian(obj.domain,cell2mat(nwet.jac),eqIdx(2),eqIdx);
 
     end
 

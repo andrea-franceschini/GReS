@@ -107,7 +107,7 @@ classdef entityField
       end
 
       list = list';
-      infl = ArrayOfArrays(list(:),rl);
+      infl = ArrayOfArrays(list(list > 0),rl);
 
     end
 
@@ -129,7 +129,7 @@ classdef entityField
       end
 
       list = list';
-      infl = ArrayOfArrays(list(:),rl);
+      infl = ArrayOfArrays(list(list > 0),rl);
 
     end
 

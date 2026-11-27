@@ -23,7 +23,7 @@ solver = NonLinearImplicit('simulationparameters',simparams,...
 solver.simulationLoop();
 
 
-surfSlave = interfaces{2}.grids.surfaces;
+surfSlave = interfaces{2}.grids.cells;
 nS = surfSlave.num;
 state = getState(interfaces{2});
 gt = state.tangentialSlip;
