@@ -25,7 +25,7 @@ function [A] = Compute(obj,A,symMat,varargin)
    TV0 = obj.Ruiz.applyDinv(TV0, uBlk);
 
    % Compute factorization of the jump block
-   obj.FSAI.Compute(A{2,2}, symMat(jBlk,jBlk), true);
+   obj.FSAI.Compute(A{jBlk,jBlk}, symMat(jBlk,jBlk), true);
    invC = @(x) obj.FSAI.ApplyLeft(x);
 
    % Compute reverse Schur complement of mechanics block

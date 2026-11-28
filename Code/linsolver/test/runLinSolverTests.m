@@ -19,9 +19,6 @@ testDir = fileparts(mfilename('fullpath'));
 cd(testDir);
 cleanUpObj = onCleanup(@() cd(origDir));
 
-% Set for reproducibility
-rng(0);
-
 refFile = fullfile(testDir, 'matrices', 'linsolver_test_reference.mat');
 
 % Test case definitions covering single-phase flow, mechanics, coupled Biot,
@@ -72,10 +69,8 @@ for k = 1:nTests
    tc = testCases{k};
    fprintf('[%2d/%2d] Running: %-32s (rhsFlag=%d)... ', k, nTests, tc.file, tc.rhsFlag);
 
-   % Seed random number generator to ensure reproducible RHS vectors for random test cases
-   if tc.rhsFlag == 2
-      rng(0);
-   end
+   % Seed random number generator before each test to isolate RNG state across tests
+   rng(0);
 
    % Solve test case via solveSingle
    [x, stats, flag, relres, iter, resvec] = linearSolver.solveSingle(tc.file, 'rhsFlag', tc.rhsFlag, 'verb', false);
@@ -106,6 +101,7 @@ end
 simReport = [];
 sedimReport = [];
 if includeSimulation
+   rng(0);
    fprintf('\n[SIM ] Running: Stick-Slip contact simulation (simul/runStickSlipOpen.m)...\n');
    run('simul/runStickSlipOpen.m');
 
@@ -118,6 +114,7 @@ if includeSimulation
    simReport = createSimulationReport(simStats, simPassed, 'RACP');
 
    % Execute evolving grid sedimentation simulation to verify the growing preconditioner
+   rng(0);
    fprintf('\n[SIM ] Running: Sedimentation 2D simulation (simul/runLinearSedim.m)...\n');
    run('simul/runLinearSedim.m');
 
